@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strings"
 )
 
 type Runner struct {
@@ -16,18 +17,23 @@ type Runner struct {
 	FailFast bool   // Stop on first test failure.
 }
 
-// RunTests executes the tests for each provided package.
+// RunTests executes the tests for each provided package and aggregates all results.
+// It returns all test results and any error encountered during testing.
 func (r *Runner) RunTests(packages []string) ([]TestResult, error) {
 	var allResults []TestResult
+	var errors []string
 
 	for _, p := range packages {
 		testResults, err := r.runTestPackage(p)
-		if err != nil {
-			return nil, fmt.Errorf("failed to run tests in package %s: %w", p, err)
-		}
-
-		// Append results from this package to the overall results
 		allResults = append(allResults, testResults...)
+
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("failed to run tests in package %s: %v", p, err))
+		}
+	}
+
+	if len(errors) > 0 {
+		return allResults, fmt.Errorf("some tests failed: %s", strings.Join(errors, "; "))
 	}
 
 	return allResults, nil
@@ -64,12 +70,18 @@ func (r *Runner) runTestPackage(testPackage string) ([]TestResult, error) {
 
 	// Run the command
 	err := cmd.Run()
-	if err != nil {
-		return nil, fmt.Errorf("test failed at %s: %w", testPackage, err)
+
+	// Parse results
+	results, parseErr := parseTestResults(out.Bytes())
+	if parseErr != nil {
+		return results, fmt.Errorf("failed to parse test results for %s: %v", testPackage, parseErr)
 	}
 
-	// Parse test results from JSON output
-	return parseTestResults(out.Bytes())
+	if err != nil {
+		return results, fmt.Errorf("test command failed at %s: %w", testPackage, err)
+	}
+
+	return results, nil
 }
 
 // parseTestResults analyzes the JSON output from 'go test -json' to determine test results

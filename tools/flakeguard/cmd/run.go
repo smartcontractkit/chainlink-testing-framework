@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner"
@@ -24,14 +25,12 @@ var RunTestsCmd = &cobra.Command{
 		var testPackages []string
 		if testPackagesJson != "" {
 			if err := json.Unmarshal([]byte(testPackagesJson), &testPackages); err != nil {
-				fmt.Fprintf(os.Stderr, "Error decoding test packages JSON: %s\n", err)
-				os.Exit(1)
+				log.Fatalf("Error decoding test packages JSON: %v", err)
 			}
 		} else if testPackage != "" {
 			testPackages = append(testPackages, testPackage)
 		} else {
-			fmt.Fprintf(os.Stderr, "Error: must specify either --test-packages-json or --test-package\n")
-			os.Exit(1)
+			log.Fatalf("Error: must specify either --test-packages-json or --test-package")
 		}
 
 		runner := runner.Runner{
@@ -42,24 +41,31 @@ var RunTestsCmd = &cobra.Command{
 			FailFast: failFast,
 		}
 
-		testResults, err := runner.RunTests(testPackages)
+		testResults, runErr := runner.RunTests(testPackages)
+
+		jsonData, err := json.MarshalIndent(testResults, "", "  ")
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error running tests: %s\n", err)
-			os.Exit(1)
+			log.Fatalf("Error marshaling test results to JSON: %v", err)
 		}
+
+		// Print the test results
+		fmt.Println("Test results:")
+		fmt.Println(string(jsonData))
 
 		// Save the test results in JSON format
 		if outputPath != "" {
-			jsonData, err := json.MarshalIndent(testResults, "", "  ")
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error marshaling test results to JSON: %s\n", err)
-				os.Exit(1)
-			}
 			if err := os.WriteFile(outputPath, jsonData, 0644); err != nil {
-				fmt.Fprintf(os.Stderr, "Error writing test results to file: %s\n", err)
-				os.Exit(1)
+				log.Fatalf("Error writing test results to file: %v", err)
 			}
 			fmt.Printf("Test results saved to %s\n", outputPath)
+		}
+
+		// Handle error from running tests
+		if runErr != nil {
+			fmt.Println("Some tests failed")
+			os.Exit(1)
+		} else {
+			fmt.Println("Tests completed successfully")
 		}
 	},
 }
