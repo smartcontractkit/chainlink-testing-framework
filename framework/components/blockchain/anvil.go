@@ -48,8 +48,8 @@ func deployAnvil(in *Input) (*Output, error) {
 		ChainID: in.ChainID,
 		Nodes: []*Node{
 			{
-				WSUrl:                 fmt.Sprintf("ws://%s:%s", host, mp),
-				HTTPUrl:               fmt.Sprintf("http://%s:%s", host, mp),
+				WSUrl:                 fmt.Sprintf("ws://%s:%s", host, mp.Port()),
+				HTTPUrl:               fmt.Sprintf("http://%s:%s", host, mp.Port()),
 				DockerInternalWSUrl:   fmt.Sprintf("ws://%s:%s", containerName, in.Port),
 				DockerInternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
 			},
