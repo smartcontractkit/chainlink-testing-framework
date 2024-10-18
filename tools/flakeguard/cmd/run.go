@@ -58,7 +58,7 @@ var RunTestsCmd = &cobra.Command{
 		}
 
 		// Save the test results in JSON format
-		if outputPath != "" {
+		if outputPath != "" && len(testResults) > 0 {
 			jsonData, err := json.MarshalIndent(testResults, "", "  ")
 			if err != nil {
 				log.Fatalf("Error marshaling test results to JSON: %v", err)
@@ -71,6 +71,8 @@ var RunTestsCmd = &cobra.Command{
 
 		if len(failedTests) > 0 {
 			os.Exit(1)
+		} else if len(testResults) == 0 {
+			fmt.Printf("No tests were run for the specified packages.\n")
 		} else {
 			fmt.Printf("All %d tests passed.\n", len(testResults))
 		}
