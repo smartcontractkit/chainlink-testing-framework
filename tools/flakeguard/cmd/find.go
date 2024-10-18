@@ -33,7 +33,9 @@ var FindTestsCmd = &cobra.Command{
 			if err != nil {
 				log.Fatalf("Error finding changed test files: %v", err)
 			}
-			fmt.Println("Changed test files:", changedTestFiles)
+			if verbose {
+				fmt.Println("Changed test files:", changedTestFiles)
+			}
 			changedTestPkgs, err = golang.GetFilePackages(changedTestFiles)
 			if err != nil {
 				log.Fatalf("Error getting package names for test files: %v", err)
