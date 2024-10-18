@@ -18,7 +18,7 @@ var RunTestsCmd = &cobra.Command{
 		repoPath, _ := cmd.Flags().GetString("repo-path")
 		testPackagesJson, _ := cmd.Flags().GetString("test-packages-json")
 		testPackage, _ := cmd.Flags().GetString("test-package")
-		count, _ := cmd.Flags().GetInt("count")
+		runCount, _ := cmd.Flags().GetInt("run-count")
 		useRace, _ := cmd.Flags().GetBool("race")
 		failFast, _ := cmd.Flags().GetBool("fail-fast")
 		outputPath, _ := cmd.Flags().GetString("output-json")
@@ -38,13 +38,16 @@ var RunTestsCmd = &cobra.Command{
 		runner := runner.Runner{
 			Verbose:  true,
 			Dir:      repoPath,
-			Count:    count,
+			RunCount: runCount,
 			UseRace:  useRace,
 			FailFast: failFast,
 		}
 
-		testResults, _ := runner.RunTests(testPackages)
-		// TODO: Handle error
+		testResults, err := runner.RunTests(testPackages)
+		if err != nil {
+			fmt.Printf("Error running tests: %v\n", err)
+			os.Exit(1)
+		}
 
 		// Filter out failed tests based on the threshold
 		failedTests := reports.FilterFailedTests(testResults, threshold)
@@ -54,7 +57,6 @@ var RunTestsCmd = &cobra.Command{
 				log.Fatalf("Error marshaling test results to JSON: %v", err)
 			}
 			fmt.Printf("Threshold for flaky tests: %.2f\nFailed tests:\n%s\n", threshold, string(jsonData))
-			fmt.Println(string(jsonData))
 		}
 
 		// Save the test results in JSON format
@@ -66,7 +68,7 @@ var RunTestsCmd = &cobra.Command{
 			if err := os.WriteFile(outputPath, jsonData, 0644); err != nil {
 				log.Fatalf("Error writing test results to file: %v", err)
 			}
-			fmt.Printf("Test results saved to %s\n", outputPath)
+			fmt.Printf("All test results saved to %s\n", outputPath)
 		}
 
 		if len(failedTests) > 0 {
@@ -81,7 +83,7 @@ func init() {
 	RunTestsCmd.Flags().StringP("repo-path", "r", ".", "Path to the Git repository")
 	RunTestsCmd.Flags().String("test-packages-json", "", "JSON-encoded string of test packages")
 	RunTestsCmd.Flags().String("test-package", "", "Single test package to run")
-	RunTestsCmd.Flags().IntP("count", "c", 1, "Number of times to run the tests")
+	RunTestsCmd.Flags().IntP("run-count", "c", 1, "Number of times to run the tests")
 	RunTestsCmd.Flags().Bool("race", false, "Enable the race detector")
 	RunTestsCmd.Flags().Bool("fail-fast", false, "Stop on the first test failure")
 	RunTestsCmd.Flags().String("output-json", "", "Path to output the test results in JSON format")
