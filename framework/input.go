@@ -28,6 +28,12 @@ const (
 	EnvVarAWSSecretsManager = "CTF_AWS_SECRETS_MANAGER"
 )
 
+const (
+	OutputFieldNameTOML = "out"
+	OutputFieldName     = "Out"
+	OverridesFieldName  = "Overrides"
+)
+
 var (
 	// Secrets is a singleton AWS Secrets Manager
 	// Loaded once on start inside Load and is safe to call concurrently
@@ -35,7 +41,7 @@ var (
 
 	DefaultNetworkName string
 
-	AllowedEmptyConfigurationFields = []string{"Out", "Overrides"}
+	AllowedEmptyConfigurationFields = []string{OutputFieldName, OverridesFieldName}
 )
 
 type ValidationError struct {

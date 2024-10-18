@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"fmt"
+	"github.com/pelletier/go-toml"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/urfave/cli/v2"
 	"io/fs"
@@ -29,10 +30,27 @@ func main() {
 		UsageText: "'ctf' is a useful utility that can:\n- clean up test docker containers\n- modify test files\n- create a local observability stack with Grafana/Loki/Pyroscope",
 		Commands: []*cli.Command{
 			{
+				Name:    "config",
+				Aliases: []string{"c"},
+				Usage:   "Shapes your test config, removes outputs",
+				Subcommands: []*cli.Command{
+					{
+						Name:    "cleanup",
+						Aliases: []string{"c"},
+						Usage:   "Clean up the outputs of any test configuration",
+						Action: func(c *cli.Context) error {
+							in := c.Args().Get(0)
+							return CleanupToml(in, in)
+						},
+					},
+				},
+			},
+			{
 				Name:    "docker",
 				Aliases: []string{"d"},
 				Usage:   "Control docker containers marked with 'framework=ctf' label",
 				Subcommands: []*cli.Command{
+
 					{
 						Name:    "clean",
 						Aliases: []string{"rm"},
@@ -81,7 +99,8 @@ func cleanDockerResources() error {
 		docker ps -aq --filter "label=framework=ctf" | xargs -r docker rm -f && \
 		docker network ls --filter "label=framework=ctf" -q | xargs -r docker network rm
 	`)
-	framework.L.Info().Str("Cmd", cmd.String()).Msg("Running command")
+	framework.L.Debug().Msg("Running command")
+	fmt.Println(cmd.String())
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("error running clean command: %s", string(output))
@@ -150,12 +169,16 @@ func observabilityUp() error {
 		cd %s && \
 		docker compose up -d
 	`, "compose"))
-	framework.L.Info().Str("Cmd", cmd.String()).Msg("Running command")
+	framework.L.Debug().Msg("Running command")
+	fmt.Println(cmd.String())
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("error running clean command: %s", string(output))
 	}
-	fmt.Printf("Check services logs here: %s\nUse '{job=\"ctf\"}' query to select all logs\nPyroscope traces are available at %s\n", LocalLogsURL, LocalPyroScopeURL)
+	fmt.Println()
+	framework.L.Info().Msgf("Loki: %s", LocalLogsURL)
+	framework.L.Info().Msgf("Queries: %s", "{job=\"ctf\"}")
+	framework.L.Info().Msgf("Pyroscope: %s", LocalPyroScopeURL)
 	return nil
 }
 
@@ -164,10 +187,79 @@ func observabilityDown() error {
 		cd %s && \
 		docker compose down -v
 	`, "compose"))
-	framework.L.Info().Str("Cmd", cmd.String()).Msg("Running command")
+	framework.L.Info().Msg("Running command")
+	fmt.Println(cmd.String())
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("error running clean command: %s", string(output))
 	}
 	return nil
+}
+
+// CleanupToml removes any paths in the TOML tree that contain "out" and writes the result to a new file.
+func CleanupToml(inputFile string, outputFile string) error {
+	tomlData, err := os.ReadFile(inputFile)
+	if err != nil {
+		return fmt.Errorf("error reading file: %v", err)
+	}
+	tree, err := toml.Load(string(tomlData))
+	if err != nil {
+		return fmt.Errorf("error parsing TOML: %v", err)
+	}
+
+	// Recursively remove fields/paths that contain "out"
+	removeOutFields(tree)
+
+	// Write the result to a new file
+	dumpData, err := tree.ToTomlString()
+	if err != nil {
+		return fmt.Errorf("error converting to TOML string: %v", err)
+	}
+
+	err = os.WriteFile(outputFile, []byte(dumpData), 0644)
+	if err != nil {
+		return fmt.Errorf("error writing to output file: %v", err)
+	}
+	framework.L.Info().Str("File", outputFile).Msg("File cleaned up and saved")
+	return nil
+}
+
+// removeOutFields recursively removes any table, array of tables, or key path containing "out"
+func removeOutFields(tree *toml.Tree) {
+	keys := tree.Keys()
+
+	for _, key := range keys {
+		value := tree.Get(key)
+
+		// If the key contains framework.OutputFieldNameTOML, delete the whole path
+		if hasOutputField(key) {
+			_ = tree.Delete(key)
+			continue
+		}
+
+		switch v := value.(type) {
+		// Handle regular tables recursively
+		case *toml.Tree:
+			removeOutFields(v)
+			if len(v.Keys()) == 0 {
+				_ = tree.Delete(key)
+			}
+		// Handle arrays of tables
+		case []*toml.Tree:
+			for i := len(v) - 1; i >= 0; i-- {
+				removeOutFields(v[i])
+				if len(v[i].Keys()) == 0 {
+					v = append(v[:i], v[i+1:]...)
+				}
+			}
+			if len(v) == 0 {
+				_ = tree.Delete(key)
+			}
+		}
+	}
+}
+
+func hasOutputField(key string) bool {
+	return len(key) > 0 && (key == framework.OutputFieldNameTOML ||
+		len(key) > 3 && key[len(key)-3:] == framework.OutputFieldNameTOML)
 }
