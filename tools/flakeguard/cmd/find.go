@@ -31,6 +31,7 @@ var FindTestsCmd = &cobra.Command{
 			if err != nil {
 				log.Fatalf("Error finding changed test files: %v", err)
 			}
+			fmt.Println("Changed test files:", changedTestFiles)
 			changedTestPkgs, err = golang.GetFilePackages(changedTestFiles)
 			if err != nil {
 				log.Fatalf("Error getting package names for test files: %v", err)
@@ -40,6 +41,7 @@ var FindTestsCmd = &cobra.Command{
 		// Find all affected test packages
 		var affectedTestPkgs []string
 		if findByAffected {
+			fmt.Println("Finding affected packages...")
 			affectedTestPkgs = findAffectedPackages(baseRef, projectPath, excludes, levels)
 		}
 
@@ -48,6 +50,7 @@ var FindTestsCmd = &cobra.Command{
 		allTestPkgs = utils.Deduplicate(allTestPkgs)
 
 		// Filter out packages that do not have tests
+		fmt.Println("Filtering packages without tests...")
 		testPkgs := golang.FilterPackagesWithTests(allTestPkgs)
 
 		outputResults(testPkgs, jsonOutput)
