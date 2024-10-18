@@ -18,6 +18,7 @@ var FindTestsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		projectPath, _ := cmd.Flags().GetString("project-path")
 		jsonOutput, _ := cmd.Flags().GetBool("json")
+		filterEmptyTests, _ := cmd.Flags().GetBool("filter-empty-tests")
 		baseRef, _ := cmd.Flags().GetString("base-ref")
 		excludes, _ := cmd.Flags().GetStringSlice("excludes")
 		levels, _ := cmd.Flags().GetInt("levels")
@@ -46,12 +47,14 @@ var FindTestsCmd = &cobra.Command{
 		}
 
 		// Combine and deduplicate test package names
-		allTestPkgs := append(changedTestPkgs, affectedTestPkgs...)
-		allTestPkgs = utils.Deduplicate(allTestPkgs)
+		testPkgs := append(changedTestPkgs, affectedTestPkgs...)
+		testPkgs = utils.Deduplicate(testPkgs)
 
 		// Filter out packages that do not have tests
-		fmt.Println("Filtering packages without tests...")
-		testPkgs := golang.FilterPackagesWithTests(allTestPkgs)
+		if filterEmptyTests {
+			fmt.Println("Filtering packages without tests...")
+			testPkgs = golang.FilterPackagesWithTests(testPkgs)
+		}
 
 		outputResults(testPkgs, jsonOutput)
 	},
@@ -61,6 +64,7 @@ func init() {
 	FindTestsCmd.Flags().StringP("project-path", "r", ".", "The path to the Go project. Default is the current directory. Useful for subprojects.")
 	FindTestsCmd.Flags().String("base-ref", "", "Git base reference (branch, tag, commit) for comparing changes. Required.")
 	FindTestsCmd.Flags().Bool("json", false, "Output the results in JSON format")
+	FindTestsCmd.Flags().Bool("filter-empty-tests", false, "Filter out test packages with no actual test functions. Can be very slow for large projects.")
 	FindTestsCmd.Flags().StringSlice("excludes", []string{}, "List of paths to exclude. Useful for repositories with multiple Go projects within.")
 	FindTestsCmd.Flags().IntP("levels", "l", 2, "The number of levels of recursion to search for affected packages. Default is 2. 0 is unlimited.")
 	FindTestsCmd.Flags().Bool("find-by-test-files-diff", true, "Enable the mode to find test packages by changes in test files.")
