@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"math"
 	"math/big"
 	"net/http"
 	"path/filepath"
@@ -58,7 +59,7 @@ type Client struct {
 	Client                   *ethclient.Client
 	Addresses                []common.Address
 	PrivateKeys              []*ecdsa.PrivateKey
-	ChainID                  int64
+	ChainID                  int64 // TODO: Use uint64
 	URL                      string
 	Context                  context.Context
 	CancelFunc               context.CancelFunc
@@ -253,13 +254,20 @@ func NewClientRaw(
 		cfg.Network.ChainID = chainId.Uint64()
 	}
 	ctx, cancelFunc := context.WithCancel(context.Background())
+
+	// Protect from overflow
+	chainId := cfg.Network.ChainID
+	if chainId > math.MaxInt64 {
+		cancelFunc()
+		return nil, fmt.Errorf("chain ID is too big: %d", chainId)
+	}
 	c := &Client{
 		Cfg:         cfg,
 		Client:      client,
 		Addresses:   addrs,
 		PrivateKeys: pkeys,
 		URL:         cfg.FirstNetworkURL(),
-		ChainID:     int64(cfg.Network.ChainID),
+		ChainID:     int64(chainId),
 		Context:     ctx,
 		CancelFunc:  cancelFunc,
 	}
@@ -433,13 +441,18 @@ func (m *Client) TransferETHFromKey(ctx context.Context, fromKeyNum int, to stri
 		return errors.Wrap(err, "failed to get network ID")
 	}
 
-	var gasLimit int64
+	var gasLimit uint64
 	//nolint
 	gasLimitRaw, err := m.EstimateGasLimitForFundTransfer(m.Addresses[fromKeyNum], common.HexToAddress(to), value)
 	if err != nil {
-		gasLimit = m.Cfg.Network.TransferGasFee
+		// protect from overflow
+		gasFee := m.Cfg.Network.TransferGasFee
+		if gasFee < 0 {
+			return fmt.Errorf("transferGasFee is negative, and gas limit estimation failed: %w", err)
+		}
+		gasLimit = uint64(gasFee)
 	} else {
-		gasLimit = int64(gasLimitRaw)
+		gasLimit = gasLimitRaw
 	}
 
 	if gasPrice == nil {
@@ -565,7 +578,7 @@ func WithPending(pending bool) CallOpt {
 // WithBlockNumber sets blockNumber option for bind.CallOpts
 func WithBlockNumber(bn uint64) CallOpt {
 	return func(o *bind.CallOpts) {
-		o.BlockNumber = big.NewInt(int64(bn))
+		o.BlockNumber = new(big.Int).SetUint64(bn)
 	}
 }
 
@@ -916,7 +929,7 @@ func (m *Client) configureTransactionOpts(
 	estimations GasEstimations,
 	o ...TransactOpt,
 ) *bind.TransactOpts {
-	opts.Nonce = big.NewInt(int64(nonce))
+	opts.Nonce = new(big.Int).SetUint64(nonce)
 	opts.GasPrice = estimations.GasPrice
 	opts.GasLimit = m.Cfg.Network.GasLimit
 
@@ -945,7 +958,12 @@ func NewContractLoader[T any](client *Client) *ContractLoader[T] {
 
 // LoadContract loads contract by name, address, ABI loader and wrapper init function, it adds contract ABI to Seth Contract Store and address to Contract Map. Thanks to that we can easily
 // trace and debug interactions with the contract. Signatures of functions passed to this method were chosen to conform to Geth wrappers' GetAbi() and NewXXXContract() functions.
-func (cl *ContractLoader[T]) LoadContract(name string, address common.Address, abiLoadFn func() (*abi.ABI, error), wrapperInitFn func(common.Address, bind.ContractBackend) (*T, error)) (*T, error) {
+func (cl *ContractLoader[T]) LoadContract(
+	name string,
+	address common.Address,
+	abiLoadFn func() (*abi.ABI, error),
+	wrapperInitFn func(common.Address, bind.ContractBackend) (*T, error),
+) (*T, error) {
 	abiData, err := abiLoadFn()
 	if err != nil {
 		return new(T), err
