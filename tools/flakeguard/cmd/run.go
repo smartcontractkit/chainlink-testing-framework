@@ -56,7 +56,7 @@ var RunTestsCmd = &cobra.Command{
 			if err != nil {
 				log.Fatalf("Error marshaling test results to JSON: %v", err)
 			}
-			fmt.Printf("Threshold for flaky tests: %.2f\nFailed tests:\n%s\n", threshold, string(jsonData))
+			fmt.Printf("Threshold for flaky tests: %.2f\n%d failed tests:\n%s\n", threshold, len(failedTests), string(jsonData))
 		}
 
 		// Save the test results in JSON format
@@ -74,7 +74,7 @@ var RunTestsCmd = &cobra.Command{
 		if len(failedTests) > 0 {
 			os.Exit(1)
 		} else {
-			fmt.Println("All tests passed.")
+			fmt.Printf("All %d tests passed.\n", len(testResults))
 		}
 	},
 }

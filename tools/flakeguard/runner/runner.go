@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os/exec"
 	"strings"
 
@@ -57,7 +58,7 @@ func (r *Runner) runTestPackage(testPackage string) ([]byte, error) {
 	args = append(args, testPackage)
 
 	if r.Verbose {
-		fmt.Printf("Running command: go %s\n", strings.Join(args, " "))
+		log.Printf("Running command: go %s\n", strings.Join(args, " "))
 	}
 	cmd := exec.Command("go", args...)
 
