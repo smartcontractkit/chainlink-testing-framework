@@ -25,10 +25,11 @@ func Store[T any](cfg *T) error {
 	if err != nil {
 		return err
 	}
-	L.Info().Str("OutputFile", baseConfigPath).Msg("Storing configuration output")
+	cachedOutName := fmt.Sprintf("%s-cache.toml", strings.Replace(baseConfigPath, ".toml", "", -1))
+	L.Info().Str("OutputFile", cachedOutName).Msg("Storing configuration output")
 	d, err := toml.Marshal(cfg)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(DefaultConfigDir, baseConfigPath), d, os.ModePerm)
+	return os.WriteFile(filepath.Join(DefaultConfigDir, cachedOutName), d, os.ModePerm)
 }
