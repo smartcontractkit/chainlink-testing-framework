@@ -15,7 +15,6 @@ var RunTestsCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run tests to check if they are flaky",
 	Run: func(cmd *cobra.Command, args []string) {
-		repoPath, _ := cmd.Flags().GetString("repo-path")
 		testPackagesJson, _ := cmd.Flags().GetString("test-packages-json")
 		testPackagesArg, _ := cmd.Flags().GetStringSlice("test-packages")
 		runCount, _ := cmd.Flags().GetInt("run-count")
@@ -37,7 +36,6 @@ var RunTestsCmd = &cobra.Command{
 
 		runner := runner.Runner{
 			Verbose:  true,
-			Dir:      repoPath,
 			RunCount: runCount,
 			UseRace:  useRace,
 			FailFast: failFast,
@@ -80,7 +78,6 @@ var RunTestsCmd = &cobra.Command{
 }
 
 func init() {
-	RunTestsCmd.Flags().StringP("repo-path", "r", ".", "Path to the Git repository")
 	RunTestsCmd.Flags().String("test-packages-json", "", "JSON-encoded string of test packages")
 	RunTestsCmd.Flags().StringSlice("test-packages", nil, "Comma-separated list of test packages to run")
 	RunTestsCmd.Flags().IntP("run-count", "c", 1, "Number of times to run the tests")

@@ -14,11 +14,10 @@ import (
 )
 
 type Runner struct {
-	Verbose  bool   // If true, provides detailed logging.
-	Dir      string // Directory to run commands in.
-	RunCount int    // Number of times to run the tests.
-	UseRace  bool   // Enable race detector.
-	FailFast bool   // Stop on first test failure.
+	Verbose  bool // If true, provides detailed logging.
+	RunCount int  // Number of times to run the tests.
+	UseRace  bool // Enable race detector.
+	FailFast bool // Stop on first test failure.
 }
 
 // RunTests executes the tests for each provided package and aggregates all results.
@@ -36,6 +35,7 @@ func (r *Runner) RunTests(packages []string) ([]reports.TestResult, error) {
 		}
 	}
 
+	// TODO: make sure the test name includes package name
 	return parseTestResults(jsonOutputs)
 }
 
@@ -63,7 +63,6 @@ func (r *Runner) runTestPackage(testPackage string) ([]byte, error) {
 	cmd := exec.Command("go", args...)
 
 	// cmd.Env = append(cmd.Env, "GOFLAGS=-extldflags=-Wl,-ld_classic") // Ensure modules are enabled
-	cmd.Dir = r.Dir
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
