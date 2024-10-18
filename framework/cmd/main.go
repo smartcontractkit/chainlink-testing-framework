@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"github.com/pelletier/go-toml"
+	"github.com/rs/zerolog"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/urfave/cli/v2"
 	"io/fs"
@@ -94,17 +95,21 @@ func main() {
 }
 
 func cleanDockerResources() error {
+	framework.L.Info().Str("label", "framework=ctf").Msg("Cleaning up docker containers")
 	// Bash command for removing Docker containers and networks with "framework=ctf" label
 	cmd := exec.Command("bash", "-c", `
 		docker ps -aq --filter "label=framework=ctf" | xargs -r docker rm -f && \
 		docker network ls --filter "label=framework=ctf" -q | xargs -r docker network rm
 	`)
 	framework.L.Debug().Msg("Running command")
-	fmt.Println(cmd.String())
+	if framework.L.GetLevel() == zerolog.DebugLevel {
+		fmt.Println(cmd.String())
+	}
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("error running clean command: %s", string(output))
 	}
+	framework.L.Info().Msgf("Done")
 	return nil
 }
 
@@ -162,6 +167,7 @@ func extractAllFiles(embeddedDir string) error {
 }
 
 func observabilityUp() error {
+	framework.L.Info().Msg("Creating local observability stack")
 	if err := extractAllFiles("observability"); err != nil {
 		return err
 	}
@@ -170,11 +176,14 @@ func observabilityUp() error {
 		docker compose up -d
 	`, "compose"))
 	framework.L.Debug().Msg("Running command")
-	fmt.Println(cmd.String())
+	if framework.L.GetLevel() == zerolog.DebugLevel {
+		fmt.Println(cmd.String())
+	}
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("error running clean command: %s", string(output))
 	}
+	framework.L.Info().Msg("Done")
 	fmt.Println()
 	framework.L.Info().Msgf("Loki: %s", LocalLogsURL)
 	framework.L.Info().Msgf("Queries: %s", "{job=\"ctf\"}")
@@ -183,16 +192,20 @@ func observabilityUp() error {
 }
 
 func observabilityDown() error {
+	framework.L.Info().Msg("Removing local observability stack")
 	cmd := exec.Command("bash", "-c", fmt.Sprintf(`
 		cd %s && \
 		docker compose down -v
 	`, "compose"))
-	framework.L.Info().Msg("Running command")
-	fmt.Println(cmd.String())
+	framework.L.Debug().Msg("Running command")
+	if framework.L.GetLevel() == zerolog.DebugLevel {
+		fmt.Println(cmd.String())
+	}
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("error running clean command: %s", string(output))
 	}
+	framework.L.Info().Msg("Done")
 	return nil
 }
 
