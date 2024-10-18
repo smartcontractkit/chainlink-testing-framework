@@ -44,7 +44,7 @@ type NodeOut struct {
 }
 
 func NewNode(in *Input) (*Output, error) {
-	if in.Out != nil && framework.NoCache() {
+	if in.Out != nil && framework.UseCache() {
 		return in.Out, nil
 	}
 	pgOut, err := postgres.NewPostgreSQL(in.DbInput)

@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func NoCache() bool {
+func UseCache() bool {
 	return os.Getenv("CTF_USE_CACHED_OUTPUTS") == "true"
 }
 
@@ -21,6 +21,9 @@ func getBaseConfigPath() (string, error) {
 }
 
 func Store[T any](cfg *T) error {
+	if UseCache() {
+		return nil
+	}
 	baseConfigPath, err := getBaseConfigPath()
 	if err != nil {
 		return err

@@ -28,7 +28,7 @@ type Node struct {
 }
 
 func NewBlockchainNetwork(input *Input) (*Output, error) {
-	if input.Out != nil && framework.NoCache() {
+	if input.Out != nil && framework.UseCache() {
 		return input.Out, nil
 	}
 	var out *Output

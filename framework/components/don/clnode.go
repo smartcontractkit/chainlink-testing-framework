@@ -16,7 +16,7 @@ type Output struct {
 }
 
 func NewBasicDON(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output, error) {
-	if in.Out != nil && framework.NoCache() {
+	if in.Out != nil && framework.UseCache() {
 		return in.Out, nil
 	}
 	nodeOuts := make([]*clnode.Output, 0)

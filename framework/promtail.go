@@ -105,6 +105,9 @@ scrape_configs:
 }
 
 func NewLokiStreamer() error {
+	if UseCache() {
+		return nil
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
