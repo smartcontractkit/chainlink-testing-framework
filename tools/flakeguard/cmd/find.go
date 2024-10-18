@@ -47,7 +47,12 @@ var FindTestsCmd = &cobra.Command{
 		allTestPkgs := append(changedTestPkgs, affectedTestPkgs...)
 		allTestPkgs = utils.Deduplicate(allTestPkgs)
 
-		outputResults(allTestPkgs, jsonOutput)
+		allTestPkgs = append(allTestPkgs, "github.com/smartcontractkit/chainlink/v2/core/capabilities/integration_tests/keystone", "github.com/smartcontractkit/chainlink/v2/core")
+
+		// Filter out packages that do not have tests
+		testPkgs := golang.FilterPackagesWithTests(allTestPkgs)
+
+		outputResults(testPkgs, jsonOutput)
 	},
 }
 

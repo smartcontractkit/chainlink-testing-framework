@@ -166,3 +166,33 @@ func GetFilePackages(files []string) ([]string, error) {
 	uniqueDirs := utils.UniqueDirectories(files)
 	return GetPackageNames(uniqueDirs), nil
 }
+
+// Function to check if a package contains any test functions
+func hasTests(pkgName string) (bool, error) {
+	cmd := exec.Command("go", "test", pkgName, "-run=^$", "-list", ".")
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		return false, err
+	}
+
+	// Parse the output to find test names, excluding the "no test files" message
+	output := strings.TrimSpace(out.String())
+	return output != "" && !strings.Contains(output, "no test files"), nil
+}
+
+// Filter out test packages with no actual test functions
+func FilterPackagesWithTests(pkgs []string) []string {
+	var testPkgs []string
+	for _, pkg := range pkgs {
+		hasT, err := hasTests(pkg)
+		if err != nil {
+			fmt.Printf("Error checking for tests in package %s: %s\n", pkg, err)
+		}
+		if hasT {
+			testPkgs = append(testPkgs, pkg)
+		}
+	}
+	return testPkgs
+}
