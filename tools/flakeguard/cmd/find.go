@@ -17,6 +17,7 @@ var FindTestsCmd = &cobra.Command{
 	Short: "Find test packages that may be affected by changes",
 	Run: func(cmd *cobra.Command, args []string) {
 		projectPath, _ := cmd.Flags().GetString("project-path")
+		verbose, _ := cmd.Flags().GetBool("verbose")
 		jsonOutput, _ := cmd.Flags().GetBool("json")
 		filterEmptyTests, _ := cmd.Flags().GetBool("filter-empty-tests")
 		baseRef, _ := cmd.Flags().GetString("base-ref")
@@ -42,7 +43,9 @@ var FindTestsCmd = &cobra.Command{
 		// Find all affected test packages
 		var affectedTestPkgs []string
 		if findByAffected {
-			fmt.Println("Finding affected packages...")
+			if verbose {
+				fmt.Println("Finding affected packages...")
+			}
 			affectedTestPkgs = findAffectedPackages(baseRef, projectPath, excludes, levels)
 		}
 
@@ -52,7 +55,9 @@ var FindTestsCmd = &cobra.Command{
 
 		// Filter out packages that do not have tests
 		if filterEmptyTests {
-			fmt.Println("Filtering packages without tests...")
+			if verbose {
+				fmt.Println("Filtering packages without tests...")
+			}
 			testPkgs = golang.FilterPackagesWithTests(testPkgs)
 		}
 
@@ -63,6 +68,7 @@ var FindTestsCmd = &cobra.Command{
 func init() {
 	FindTestsCmd.Flags().StringP("project-path", "r", ".", "The path to the Go project. Default is the current directory. Useful for subprojects.")
 	FindTestsCmd.Flags().String("base-ref", "", "Git base reference (branch, tag, commit) for comparing changes. Required.")
+	FindTestsCmd.Flags().BoolP("verbose", "v", false, "Enable verbose mode")
 	FindTestsCmd.Flags().Bool("json", false, "Output the results in JSON format")
 	FindTestsCmd.Flags().Bool("filter-empty-tests", false, "Filter out test packages with no actual test functions. Can be very slow for large projects.")
 	FindTestsCmd.Flags().StringSlice("excludes", []string{}, "List of paths to exclude. Useful for repositories with multiple Go projects within.")
