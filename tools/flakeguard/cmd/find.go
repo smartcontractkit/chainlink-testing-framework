@@ -139,9 +139,8 @@ func outputResults(packages []string, jsonOutput bool) {
 		}
 		fmt.Println(string(data))
 	} else {
-		fmt.Println("Changed test packages:")
 		for _, pkg := range packages {
-			fmt.Println(pkg)
+			fmt.Print(pkg, " ")
 		}
 	}
 }
