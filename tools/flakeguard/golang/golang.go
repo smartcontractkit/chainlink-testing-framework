@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
-	"sync"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/utils"
 )
@@ -186,26 +185,14 @@ func hasTests(pkgName string) (bool, error) {
 // Filter out test packages with no actual test functions
 func FilterPackagesWithTests(pkgs []string) []string {
 	var testPkgs []string
-	var mutex sync.Mutex
-	var wg sync.WaitGroup
-
 	for _, pkg := range pkgs {
-		wg.Add(1)
-		go func(p string) {
-			defer wg.Done()
-			hasT, err := hasTests(p)
-			if err != nil {
-				fmt.Printf("Error checking for tests in package %s: %s\n", p, err)
-				return
-			}
-			if hasT {
-				mutex.Lock()
-				testPkgs = append(testPkgs, p)
-				mutex.Unlock()
-			}
-		}(pkg)
+		hasT, err := hasTests(pkg)
+		if err != nil {
+			fmt.Printf("Error checking for tests in package %s: %s\n", pkg, err)
+		}
+		if hasT {
+			testPkgs = append(testPkgs, pkg)
+		}
 	}
-
-	wg.Wait()
 	return testPkgs
 }
