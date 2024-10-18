@@ -17,7 +17,7 @@ var RunTestsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		repoPath, _ := cmd.Flags().GetString("repo-path")
 		testPackagesJson, _ := cmd.Flags().GetString("test-packages-json")
-		testPackage, _ := cmd.Flags().GetString("test-package")
+		testPackagesArg, _ := cmd.Flags().GetStringSlice("test-packages")
 		runCount, _ := cmd.Flags().GetInt("run-count")
 		useRace, _ := cmd.Flags().GetBool("race")
 		failFast, _ := cmd.Flags().GetBool("fail-fast")
@@ -29,10 +29,10 @@ var RunTestsCmd = &cobra.Command{
 			if err := json.Unmarshal([]byte(testPackagesJson), &testPackages); err != nil {
 				log.Fatalf("Error decoding test packages JSON: %v", err)
 			}
-		} else if testPackage != "" {
-			testPackages = append(testPackages, testPackage)
+		} else if len(testPackagesArg) > 0 {
+			testPackages = testPackagesArg
 		} else {
-			log.Fatalf("Error: must specify either --test-packages-json or --test-package")
+			log.Fatalf("Error: must specify either --test-packages-json or --test-packages")
 		}
 
 		runner := runner.Runner{
@@ -82,7 +82,7 @@ var RunTestsCmd = &cobra.Command{
 func init() {
 	RunTestsCmd.Flags().StringP("repo-path", "r", ".", "Path to the Git repository")
 	RunTestsCmd.Flags().String("test-packages-json", "", "JSON-encoded string of test packages")
-	RunTestsCmd.Flags().String("test-package", "", "Single test package to run")
+	RunTestsCmd.Flags().StringSlice("test-packages", nil, "Comma-separated list of test packages to run")
 	RunTestsCmd.Flags().IntP("run-count", "c", 1, "Number of times to run the tests")
 	RunTestsCmd.Flags().Bool("race", false, "Enable the race detector")
 	RunTestsCmd.Flags().Bool("fail-fast", false, "Stop on the first test failure")
