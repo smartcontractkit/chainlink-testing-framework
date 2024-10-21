@@ -41,8 +41,8 @@ type Output struct {
 
 // NodeOut is CL node container output, URLs to connect
 type NodeOut struct {
-	Url               string `toml:"url"`
-	DockerInternalURL string `toml:"docker_internal_url"`
+	HostURL   string `toml:"url"`
+	DockerURL string `toml:"docker_internal_url"`
 }
 
 // NewNode create a new Chainlink node with some image:tag and one or several configs
@@ -180,8 +180,8 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	}
 
 	return &NodeOut{
-		DockerInternalURL: fmt.Sprintf("http://%s:%s", containerName, in.Node.Port),
-		Url:               fmt.Sprintf("%s:%s", host, mp.Port()),
+		DockerURL: fmt.Sprintf("http://%s:%s", containerName, in.Node.Port),
+		HostURL:   fmt.Sprintf("http://%s:%s", host, mp.Port()),
 	}, nil
 }
 
