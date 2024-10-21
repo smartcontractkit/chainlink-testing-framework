@@ -10,13 +10,8 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"os"
-	"path/filepath"
 	"text/template"
 	"time"
-)
-
-const (
-	DefaultTestKeystorePassword = "thispasswordislongenough"
 )
 
 // Input represents Chainlink node input
@@ -75,8 +70,14 @@ func NewNode(in *Input) (*Output, error) {
 func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	ctx := context.Background()
 
-	passwordPath := filepath.Join(framework.PathCLNode, "password.txt")
-	apiCredentialsPath := filepath.Join(framework.PathCLNode, "apicredentials")
+	passwordPath, err := writeToFile(DefaultPasswordTxt, "password.txt")
+	apiCredentialsPath, err := writeToFile(DefaultAPICredentials, "apicredentials")
+	if err != nil {
+		return nil, err
+	}
+	if err != nil {
+		return nil, err
+	}
 	cfgPath, err := writeDefaultConfig(in)
 	if err != nil {
 		return nil, err
@@ -150,12 +151,12 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 				FileMode:          0644,
 			},
 			{
-				HostFilePath:      passwordPath,
+				HostFilePath:      passwordPath.Name(),
 				ContainerFilePath: "/config/node_password",
 				FileMode:          0644,
 			},
 			{
-				HostFilePath:      apiCredentialsPath,
+				HostFilePath:      apiCredentialsPath.Name(),
 				ContainerFilePath: "/config/apicredentials",
 				FileMode:          0644,
 			},
@@ -189,23 +190,6 @@ type DefaultCLNodeConfig struct {
 	SecureCookies bool
 }
 
-const defaultConfigTmpl = `
-[Log]
-Level = 'info'
-
-[WebServer]
-HTTPWriteTimeout = '30s'
-SecureCookies = false
-HTTPPort = {{.HTTPPort}}
-
-[WebServer.TLS]
-HTTPSPort = 0
-
-[JobPipeline]
-[JobPipeline.HTTPRequest]
-DefaultTimeout = '10s'
-`
-
 func generateDefaultConfig(in *Input) (string, error) {
 	config := DefaultCLNodeConfig{
 		HTTPPort:      in.Node.Port,
@@ -227,13 +211,6 @@ type DefaultSecretsConfig struct {
 	DatabaseURL string
 	Keystore    string
 }
-
-const dbTmpl = `[Database]
-URL = '{{.DatabaseURL}}'
-
-[Password]
-Keystore = '{{.Keystore}}'
-`
 
 func generateSecretsConfig(connString, password string) (string, error) {
 	// Create the configuration with example values
