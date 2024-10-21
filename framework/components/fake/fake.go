@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	MockService *gin.Engine
+	Service *gin.Engine
 )
 
 type Input struct {
@@ -23,10 +23,10 @@ type Output struct {
 }
 
 func FakeJSON(path string, response gin.H, statusCode int) error {
-	if MockService == nil {
+	if Service == nil {
 		return fmt.Errorf("mock service is not initialized, please set up NewFakeDataProvider in your tests")
 	}
-	MockService.Any(path, func(c *gin.Context) {
+	Service.Any(path, func(c *gin.Context) {
 		c.JSON(statusCode, response)
 	})
 	return nil
