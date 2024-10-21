@@ -24,8 +24,8 @@ type Output struct {
 
 // Node represents blockchain node output, URLs required for connection locally and inside docker network
 type Node struct {
-	WSUrl                 string `toml:"ws_url"`
-	HTTPUrl               string `toml:"http_url"`
+	HostWSUrl             string `toml:"ws_url"`
+	HostHTTPUrl           string `toml:"http_url"`
 	DockerInternalWSUrl   string `toml:"docker_internal_ws_url" validate:"required"`
 	DockerInternalHTTPUrl string `toml:"docker_internal_http_url" validate:"required"`
 }

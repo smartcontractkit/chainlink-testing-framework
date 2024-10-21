@@ -538,7 +538,8 @@ type JobForm struct {
 
 // Job contains the job data for a given job
 type Job struct {
-	Data JobData `json:"data"`
+	Data   JobData  `json:"data"`
+	Errors []string `json:"errors"`
 }
 
 // JobData contains the ID for a given job

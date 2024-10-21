@@ -10,6 +10,10 @@ import (
 	"time"
 )
 
+const (
+	DefaultAnvilPrivateKey = `ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
+)
+
 // deployAnvil deploy foundry anvil node
 func deployAnvil(in *Input) (*Output, error) {
 	ctx := context.Background()
@@ -49,8 +53,8 @@ func deployAnvil(in *Input) (*Output, error) {
 		ChainID: in.ChainID,
 		Nodes: []*Node{
 			{
-				WSUrl:                 fmt.Sprintf("ws://%s:%s", host, mp.Port()),
-				HTTPUrl:               fmt.Sprintf("http://%s:%s", host, mp.Port()),
+				HostWSUrl:             fmt.Sprintf("ws://%s:%s", host, mp.Port()),
+				HostHTTPUrl:           fmt.Sprintf("http://%s:%s", host, mp.Port()),
 				DockerInternalWSUrl:   fmt.Sprintf("ws://%s:%s", containerName, in.Port),
 				DockerInternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
 			},
