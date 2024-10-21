@@ -11,6 +11,8 @@ const (
 	DefaultPasswordTxt          = `T.tLHkcmwePT/p,]sYuntjwHKAsrhm#4eRs4LuKHwvHejWYAC2JP4M8HimwgmbaZ`
 	DefaultAPICredentials       = `notreal@fakeemail.ch
 fj293fbBnlQ!f9vNs`
+	DefaultAPIUser     = `notreal@fakeemail.ch`
+	DefaultAPIPassword = `fj293fbBnlQ!f9vNs`
 )
 
 const defaultConfigTmpl = `

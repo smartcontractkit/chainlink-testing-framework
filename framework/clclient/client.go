@@ -3,6 +3,7 @@ package clclient
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 	"math/big"
 	"net/http"
 	"os"
@@ -55,6 +56,23 @@ func NewChainlinkClient(c *Config, logger zerolog.Logger) (*ChainlinkClient, err
 		pageSize:  25,
 		l:         logger,
 	}, nil
+}
+
+// NewCLCDefaultlients connects all the clients using clnode.Output and default login/password
+func NewCLCDefaultlients(outs []*clnode.Output, l zerolog.Logger) ([]*ChainlinkClient, error) {
+	clients := make([]*ChainlinkClient, 0)
+	for _, out := range outs {
+		c, err := NewChainlinkClient(&Config{
+			URL:      out.Node.HostURL,
+			Email:    clnode.DefaultAPIUser,
+			Password: clnode.DefaultAPIPassword,
+		}, l)
+		if err != nil {
+			return nil, err
+		}
+		clients = append(clients, c)
+	}
+	return clients, nil
 }
 
 func initRestyClient(url string, email string, password string, headers map[string]string, timeout *time.Duration) (*resty.Client, error) {
