@@ -10,6 +10,7 @@ import (
 	"time"
 )
 
+// deployAnvil deploy foundry anvil node
 func deployAnvil(in *Input) (*Output, error) {
 	ctx := context.Background()
 	entryPoint := []string{"anvil", "--host", "0.0.0.0", "--port", in.Port, "--chain-id", in.ChainID}

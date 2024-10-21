@@ -1,6 +1,7 @@
 package clnode
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/docker/go-connections/nat"
@@ -8,7 +9,9 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"os"
 	"path/filepath"
+	"text/template"
 	"time"
 )
 
@@ -16,6 +19,7 @@ const (
 	DefaultTestKeystorePassword = "thispasswordislongenough"
 )
 
+// Input represents Chainlink node input
 type Input struct {
 	DataProviderURL string          `toml:"data_provider_url" validate:"required"`
 	DbInput         *postgres.Input `toml:"db" validate:"required"`
@@ -23,11 +27,7 @@ type Input struct {
 	Out             *Output         `toml:"out"`
 }
 
-type Output struct {
-	Node       *NodeOut         `toml:"node"`
-	PostgreSQL *postgres.Output `toml:"postgresql"`
-}
-
+// NodeInput is CL nod container inputs
 type NodeInput struct {
 	Image                string `toml:"image" validate:"required"`
 	Tag                  string `toml:"tag" validate:"required"`
@@ -38,11 +38,20 @@ type NodeInput struct {
 	UserSecretsOverrides string `toml:"user_secrets_overrides"`
 }
 
+// Output represents Chainlink node output, nodes and databases connection URLs
+type Output struct {
+	Node       *NodeOut         `toml:"node"`
+	PostgreSQL *postgres.Output `toml:"postgresql"`
+}
+
+// NodeOut is CL node container output, URLs to connect
 type NodeOut struct {
 	Url               string `toml:"url"`
 	DockerInternalURL string `toml:"docker_internal_url"`
 }
 
+// NewNode create a new Chainlink node with some image:tag and one or several configs
+// see config params: TestConfigOverrides, UserConfigOverrides, etc
 func NewNode(in *Input) (*Output, error) {
 	if in.Out != nil && framework.UseCache() {
 		return in.Out, nil
@@ -76,19 +85,19 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfgOverridesPath, err := writeTestConfigOverrides(in.Node.TestConfigOverrides)
+	overridesFile, err := writeToFile(in.Node.TestConfigOverrides, "overrides.toml")
 	if err != nil {
 		return nil, err
 	}
-	cfgSecretsOverridesPath, err := writeTestSecretsOverrides(in.Node.TestSecretsOverrides)
+	secretsOverridesFile, err := writeToFile(in.Node.TestSecretsOverrides, "secrets-overrides.toml")
 	if err != nil {
 		return nil, err
 	}
-	cfgUserOverridesPath, err := writeUserConfigOverrides(in.Node.UserConfigOverrides)
+	userOverridesFile, err := writeToFile(in.Node.UserConfigOverrides, "user-overrides.toml")
 	if err != nil {
 		return nil, err
 	}
-	cfgUserSecretsOverridesPath, err := writeUserSecretsOverrides(in.Node.UserSecretsOverrides)
+	userSecretsOverridesFile, err := writeToFile(in.Node.UserSecretsOverrides, "user-secrets-overrides.toml")
 	if err != nil {
 		return nil, err
 	}
@@ -121,22 +130,22 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 				FileMode:          0644,
 			},
 			{
-				HostFilePath:      cfgOverridesPath.Name(),
+				HostFilePath:      overridesFile.Name(),
 				ContainerFilePath: "/config/overrides",
 				FileMode:          0644,
 			},
 			{
-				HostFilePath:      cfgUserOverridesPath.Name(),
+				HostFilePath:      userOverridesFile.Name(),
 				ContainerFilePath: "/config/user-overrides",
 				FileMode:          0644,
 			},
 			{
-				HostFilePath:      cfgSecretsOverridesPath.Name(),
+				HostFilePath:      secretsOverridesFile.Name(),
 				ContainerFilePath: "/config/secrets-overrides",
 				FileMode:          0644,
 			},
 			{
-				HostFilePath:      cfgUserSecretsOverridesPath.Name(),
+				HostFilePath:      userSecretsOverridesFile.Name(),
 				ContainerFilePath: "/config/user-secrets-overrides",
 				FileMode:          0644,
 			},
@@ -153,14 +162,6 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		},
 		WaitingFor: wait.ForLog("Listening and serving HTTP").WithStartupTimeout(2 * time.Minute),
 	}
-	// TODO: this is complex, though, desired by developers because of static addresses and fast login
-	// TODO: skipping for now
-	//if in.HostNetworkEnabled {
-	//req.HostConfigModifier = func(hc *container.HostConfig) {
-	//	hc.NetworkMode = "host"
-	//	hc.PortBindings = framework.MapTheSamePort(bindPort)
-	//}
-	//}
 	c, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
@@ -181,4 +182,102 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		DockerInternalURL: fmt.Sprintf("http://%s:%s", containerName, in.Node.Port),
 		Url:               fmt.Sprintf("%s:%s", host, mp.Port()),
 	}, nil
+}
+
+type DefaultCLNodeConfig struct {
+	HTTPPort      string
+	SecureCookies bool
+}
+
+const defaultConfigTmpl = `
+[Log]
+Level = 'info'
+
+[WebServer]
+HTTPWriteTimeout = '30s'
+SecureCookies = false
+HTTPPort = {{.HTTPPort}}
+
+[WebServer.TLS]
+HTTPSPort = 0
+
+[JobPipeline]
+[JobPipeline.HTTPRequest]
+DefaultTimeout = '10s'
+`
+
+func generateDefaultConfig(in *Input) (string, error) {
+	config := DefaultCLNodeConfig{
+		HTTPPort:      in.Node.Port,
+		SecureCookies: false,
+	}
+	tmpl, err := template.New("toml").Parse(defaultConfigTmpl)
+	if err != nil {
+		return "", err
+	}
+	var output bytes.Buffer
+	err = tmpl.Execute(&output, config)
+	if err != nil {
+		return "", err
+	}
+	return output.String(), nil
+}
+
+type DefaultSecretsConfig struct {
+	DatabaseURL string
+	Keystore    string
+}
+
+const dbTmpl = `[Database]
+URL = '{{.DatabaseURL}}'
+
+[Password]
+Keystore = '{{.Keystore}}'
+`
+
+func generateSecretsConfig(connString, password string) (string, error) {
+	// Create the configuration with example values
+	config := DefaultSecretsConfig{
+		DatabaseURL: connString,
+		Keystore:    password,
+	}
+	tmpl, err := template.New("toml").Parse(dbTmpl)
+	if err != nil {
+		return "", err
+	}
+	var output bytes.Buffer
+	err = tmpl.Execute(&output, config)
+	if err != nil {
+		return "", err
+	}
+	return output.String(), nil
+}
+
+func writeDefaultSecrets(pgOut *postgres.Output) (*os.File, error) {
+	secretsOverrides, err := generateSecretsConfig(pgOut.DockerInternalURL, DefaultTestKeystorePassword)
+	if err != nil {
+		return nil, err
+	}
+	return writeToFile(secretsOverrides, "secrets.toml")
+}
+
+func writeDefaultConfig(in *Input) (*os.File, error) {
+	cfg, err := generateDefaultConfig(in)
+	if err != nil {
+		return nil, err
+	}
+	return writeToFile(cfg, "config.toml")
+}
+
+// writeToFile writes the provided data string to a specified filepath and returns the file and any error encountered.
+func writeToFile(data, filePath string) (*os.File, error) {
+	file, err := os.CreateTemp("", filePath)
+	if err != nil {
+		return nil, err
+	}
+	_, err = file.WriteString(data)
+	if err != nil {
+		return nil, err
+	}
+	return file, nil
 }

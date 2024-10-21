@@ -7,13 +7,15 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 )
 
-type NetworkConfig struct {
+// EVMNetworkConfig is CL node network configuration
+type EVMNetworkConfig struct {
 	MinIncomingConfirmations int
 	MinContractPayment       string
 	ChainID                  string
 	EVMNodes                 []*EVMNode
 }
 
+// EVMNode is CL node EVM node
 type EVMNode struct {
 	Name     string
 	WsUrl    string
@@ -24,7 +26,7 @@ type EVMNode struct {
 
 // NewNetworkCfg generate new network configuration from blockchain.Output
 // EVMNodes is used to set priority and primary/secondary for particular nodes
-func NewNetworkCfg(in *NetworkConfig, out *blockchain.Output) (string, error) {
+func NewNetworkCfg(in *EVMNetworkConfig, out *blockchain.Output) (string, error) {
 	if len(out.Nodes) != len(in.EVMNodes) {
 		return "", fmt.Errorf("error configuring network, requested %d nodes, has %d blockchain outputs", len(in.EVMNodes), len(out.Nodes))
 	}
@@ -57,6 +59,8 @@ func NewNetworkCfg(in *NetworkConfig, out *blockchain.Output) (string, error) {
 	return resultCfg, nil
 }
 
+// NewNetworkCfgOneNetworkAllNodes is simplified CL node network configuration where we
+// add all the nodes are from the same network
 func NewNetworkCfgOneNetworkAllNodes(out *blockchain.Output) (string, error) {
 	resultCfg, err := framework.RenderTemplate(`
 	[[EVM]]
