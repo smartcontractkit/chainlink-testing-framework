@@ -70,8 +70,8 @@ func NewNode(in *Input) (*Output, error) {
 func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	ctx := context.Background()
 
-	passwordPath, err := writeToFile(DefaultPasswordTxt, "password.txt")
-	apiCredentialsPath, err := writeToFile(DefaultAPICredentials, "apicredentials")
+	passwordPath, err := WriteTmpFile(DefaultPasswordTxt, "password.txt")
+	apiCredentialsPath, err := WriteTmpFile(DefaultAPICredentials, "apicredentials")
 	if err != nil {
 		return nil, err
 	}
@@ -86,19 +86,19 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	if err != nil {
 		return nil, err
 	}
-	overridesFile, err := writeToFile(in.Node.TestConfigOverrides, "overrides.toml")
+	overridesFile, err := WriteTmpFile(in.Node.TestConfigOverrides, "overrides.toml")
 	if err != nil {
 		return nil, err
 	}
-	secretsOverridesFile, err := writeToFile(in.Node.TestSecretsOverrides, "secrets-overrides.toml")
+	secretsOverridesFile, err := WriteTmpFile(in.Node.TestSecretsOverrides, "secrets-overrides.toml")
 	if err != nil {
 		return nil, err
 	}
-	userOverridesFile, err := writeToFile(in.Node.UserConfigOverrides, "user-overrides.toml")
+	userOverridesFile, err := WriteTmpFile(in.Node.UserConfigOverrides, "user-overrides.toml")
 	if err != nil {
 		return nil, err
 	}
-	userSecretsOverridesFile, err := writeToFile(in.Node.UserSecretsOverrides, "user-secrets-overrides.toml")
+	userSecretsOverridesFile, err := WriteTmpFile(in.Node.UserSecretsOverrides, "user-secrets-overrides.toml")
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +235,7 @@ func writeDefaultSecrets(pgOut *postgres.Output) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return writeToFile(secretsOverrides, "secrets.toml")
+	return WriteTmpFile(secretsOverrides, "secrets.toml")
 }
 
 func writeDefaultConfig(in *Input) (*os.File, error) {
@@ -243,11 +243,11 @@ func writeDefaultConfig(in *Input) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return writeToFile(cfg, "config.toml")
+	return WriteTmpFile(cfg, "config.toml")
 }
 
-// writeToFile writes the provided data string to a specified filepath and returns the file and any error encountered.
-func writeToFile(data, filePath string) (*os.File, error) {
+// WriteTmpFile writes the provided data string to a specified filepath and returns the file and any error encountered.
+func WriteTmpFile(data, filePath string) (*os.File, error) {
 	file, err := os.CreateTemp("", filePath)
 	if err != nil {
 		return nil, err
