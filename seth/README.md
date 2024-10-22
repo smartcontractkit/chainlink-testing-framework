@@ -205,9 +205,11 @@ This config uses what we consider reasonable defaults, such as:
 You can also use a `ClientBuilder` to build a config programmatically. Here's an extensive example:
 
 ```go
-client, err := builder.
+client, err := NewClientBuilder().
     // network
     WithNetworkName("my network").
+	// if empty we will ask the RPC node for the chain ID
+	WithNetworkChainId(1337).
     WithRpcUrl("ws://localhost:8546").
     WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
     WithRpcDialTimeout(10*time.Second).
@@ -240,6 +242,20 @@ if err != nil {
 By default, it uses the same values as simplified configuration, but you can override them by calling the appropriate methods. Builder includes only options
 that we thought to be most useful, it's not a 1:1 mapping of all fields in the `Config` struct. Therefore, if you need to set some more advanced options, you should create the `Config` struct directly,
 use TOML config or manually set the fields on the `Config` struct returned by the builder.
+
+It' also possible to use the builder to create a new config from an existing one:
+
+```go
+client, err := NewClientBuilderWithConfig(&existingConfig).
+        UseNetworkWithChainId(1337).
+        WithEIP1559DynamicFees(false).
+	    Build()
+
+if err != nil {
+    log.Fatal(err)
+}
+```
+This can be useful if you already have a config, but want to modify it slightly. It can also be useful if you read TOML config with multiple `Networks` and you want to specify which one you want to use.
 
 ### Supported env vars
 

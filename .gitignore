@@ -76,3 +76,6 @@ __debug*
 
 # asdf
 .tool-versions
+
+import_keys_test.go
+tag.py

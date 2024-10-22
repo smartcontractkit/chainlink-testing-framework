@@ -3,7 +3,7 @@ module github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghe
 go 1.22.5
 
 require (
-	github.com/smartcontractkit/chainlink-testing-framework/lib v1.99.4-0.20240903123107-cd7909d3e9fb
+	github.com/smartcontractkit/chainlink-testing-framework/lib v1.50.10
 	github.com/stretchr/testify v1.9.0
 )
 
@@ -13,3 +13,5 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+retract [v1.999.0-test-release, v1.999.999-test-release]

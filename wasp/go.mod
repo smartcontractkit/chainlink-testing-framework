@@ -76,7 +76,7 @@ require (
 	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/grafana/loki/pkg/push v0.0.0-20231124142027-e52380921608 // indirect
 	github.com/grafana/regexp v0.0.0-20221122212121-6b5c0a4cb7fd // indirect
-	github.com/hashicorp/consul/api v1.25.1 // indirect
+	github.com/hashicorp/consul/api v1.28.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-hclog v1.5.0 // indirect
@@ -167,7 +167,7 @@ require (
 
 require (
 	github.com/grafana/pyroscope-go v1.1.2
-	github.com/smartcontractkit/chainlink-testing-framework/lib/grafana v0.1.0
+	github.com/smartcontractkit/chainlink-testing-framework/lib/grafana v1.50.0
 )
 
 require (
@@ -210,3 +210,5 @@ require (
 	go4.org/netipx v0.0.0-20230125063823-8449b0a6169f // indirect
 	golang.org/x/arch v0.4.0 // indirect
 )
+
+retract [v1.999.0-test-release, v1.999.999-test-release]

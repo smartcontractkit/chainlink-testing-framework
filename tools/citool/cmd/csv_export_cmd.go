@@ -55,14 +55,14 @@ func exportConfigToCSV(configFile string) error {
 	defer writer.Flush()
 
 	// Write CSV headers
-	headers := []string{"ID", "Test Path", "Test Env Type", "Runs On", "Test Cmd", "Test Config Override Required", "Test Secrets Required", "Remote Runner Memory", "Pyroscope Env", "Workflows", "Test Inputs"}
+	headers := []string{"ID", "Test Path", "Test Env Type", "Runs On", "Test Cmd", "Test Config Override Required", "Test Secrets Required", "Remote Runner Memory", "Pyroscope Env", "Triggers", "Test Inputs"}
 	if err := writer.Write(headers); err != nil {
 		return err
 	}
 
 	// Iterate over Tests and write data to CSV
 	for _, test := range config.Tests {
-		workflows := strings.Join(test.Workflows, ", ") // Combine workflows into a single CSV field
+		triggers := strings.Join(test.Triggers, ", ") // Combine workflow triggers into a single CSV field
 		// Serialize TestInputs
 		testInputs := serializeMap(test.TestEnvVars)
 
@@ -76,7 +76,7 @@ func exportConfigToCSV(configFile string) error {
 			fmt.Sprintf("%t", test.TestSecretsRequired),
 			test.RemoteRunnerMemory,
 			test.PyroscopeEnv,
-			workflows,
+			triggers,
 			testInputs,
 		}
 		if err := writer.Write(record); err != nil {

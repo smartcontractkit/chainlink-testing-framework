@@ -9,20 +9,23 @@ general:
   networkId: 1337
 shared:
   mnemonic: giant issue aisle success illegal bike spike question tent bar rely arctic volcano long crawl hungry vocal artwork sniff fantasy very lucky have athlete
-  configDataDir: /data/custom_config_data
+  configDataDir: /data/metadata
   keystoreDataSubdir: /keystore
   password: password
   accountKeystoreFile: account_key
   accountPasswordFile: account_password.txt
   jwtFile: jwtSecret
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
 valKeys:
   image:
     repository: protolambda/eth2-val-tools
     tag: latest
 genesis:
   image:
-    repository: tofelb/ethereum-genesis-generator
-    tag: 2.0.5
+    repository: public.ecr.aws/w0i8p0z9/ethereum-genesis-generator
+    tag: main-f3d278d
   values:
     currentUnixTimestamp: 1600000000
     secondsPerSlot: 20
@@ -45,7 +48,7 @@ genesis:
 excutionClient:
   image:
     repository: hyperledger/besu
-    tag: '23.10'
+    tag: '24.8.0'
   name: besu
   ports:
     http: 8544
@@ -62,7 +65,7 @@ prysm:
     name: prysm-beacon-chain
     image:
       repository: gcr.io/prysmaticlabs/prysm/beacon-chain
-      tag: v4.1.1
+      tag: v5.0.4
     ports:
       query: 3500
       node: 4000
@@ -71,7 +74,7 @@ prysm:
     name: prysm-validator
     image:
       repository: gcr.io/prysmaticlabs/prysm/validator
-      tag: v4.1.1
+      tag: v5.0.4
 busybox:
   image:
     repository: busybox
