@@ -1,0 +1,47 @@
+imagePullPolicy: IfNotPresent
+bootnode:
+  replicas: 2
+  image:
+    repository: ethereum/client-go
+    tag: alltools-v1.10.6
+bootnodeRegistrar:
+  replicas: 1
+  image:
+    repository: jpoon/bootnode-registrar
+    tag: v1.0.0
+geth:
+  image:
+    repository: ethereum/client-go
+    tag: v1.10.17
+  tx:
+    replicas: 1
+    service:
+      type: ClusterIP
+    resources:
+      requests:
+        cpu: 200m
+        memory: 528Mi
+      limits:
+        cpu: 200m
+        memory: 528Mi
+  miner:
+    replicas: 2
+    account:
+      secret: ''
+    resources:
+      requests:
+        cpu: 200m
+        memory: 528Mi
+      limits:
+        cpu: 200m
+        memory: 528Mi
+  genesis:
+    networkId: 1337
+
+podAnnotations: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

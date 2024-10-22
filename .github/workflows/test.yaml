@@ -1,56 +1,56 @@
-name: Tests
+name: (all packages) Unit tests
 on:
   push:
     tags:
       - v*
-    branches:
-      - main
   pull_request:
 jobs:
   unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - name: lib
+            path: ./lib/
+          - name: gotestloghelper
+            path: ./tools/gotestloghelper/
+          - name: testlistgenerator
+            path: ./tools/testlistgenerator/
+          - name: ecrimagefetcher
+            path: ./tools/ecrimagefetcher/
+          - name: ghlatestreleasechecker
+            path: ./tools/ghlatestreleasechecker/
+          - name: asciitable
+            path: ./tools/asciitable/
+          - name: workflowresultparser
+            path: ./tools/workflowresultparser/
     runs-on: ubuntu-latest
+    name: ${{ matrix.project.name }} unit tests
     steps:
       - name: Checkout the Repo
-        uses: actions/checkout@v3
-      - uses: smartcontractkit/tool-versions-to-env-action@v1.0.8
-        id: go-version
-      - name: Install Go ${{ steps.go-version.outputs.golang_version }}
-        uses: actions/setup-go@v3
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+      - name: Install gotestloghelper
+        run: cd lib && make gotestloghelper_build
+      - name: Install Nix
+        uses: cachix/install-nix-action@8887e596b4ee1134dae06b98d573bd674693f47c # v26
         with:
-          go-version: ${{ steps.go-version.outputs.golang_version }}
-      - name: Cache Vendor Packages
-        uses: actions/cache@v3
-        id: cache-packages
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-            ~/go/bin
-          key: ${{ runner.os }}-go2-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go2-
-      - name: Download Go Vendor Packages
-        if: steps.cache-packages.outputs.cache-hit != 'true'
-        run: make install_ci
-      # gotestfmt gives us pretty test output
-      - name: Set Up gotestfmt
-        uses: GoTestTools/gotestfmt-action@v2
-        with:
-          token: ${{ github.token }} # Avoids rate-limiting
+          nix_path: nixpkgs=channel:nixos-unstable
+      - name: Load Nix
+        run: |
+          nix develop -c sh -c "cd ${{ matrix.project.path }} && \
+          go mod download"
       - name: Run Tests
         run: |
           PATH=$PATH:$(go env GOPATH)/bin
           export PATH
           set -euo pipefail
-          go test -json -cover -covermode=count -coverprofile=unit-test-coverage.out ./client ./gauntlet ./testreporters 2>&1 | tee /tmp/gotest.log | gotestfmt
-      - name: Code Coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./unit-test-coverage.out
-          name: codecov-umbrella
+          # disabled, because we want to use a multiline output of go list command
+          # shellcheck disable=SC2046
+          nix develop -c sh -c "cd ${{ matrix.project.path }} && \
+            make test_unit"
       - name: Publish Artifacts
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
         with:
           name: test-logs
-          path: ./logs
+          path: /tmp/gotest.log

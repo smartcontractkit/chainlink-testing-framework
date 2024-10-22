@@ -1,0 +1,30 @@
+{{- if .Values.prometheus }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: "{{ .Release.Name }}-pod-monitor"
+  labels:
+    release: grafana-agent
+spec:
+  selector:
+    matchLabels:
+      release: {{ .Release.Name }}
+  podMetricsEndpoints:
+    - port: access
+---
+{{- if .Values.db.enablePrometheusPostgresExporter }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: "{{ .Release.Name }}-pg-pod-monitor"
+  labels:
+    release: grafana-agent
+spec:
+  selector:
+    matchLabels:
+      release: {{ .Release.Name }}
+      prometheus-postgres-exporter: 'true'
+  podMetricsEndpoints:
+    - port: prom-pg-exp
+{{- end }}
+{{- end }}

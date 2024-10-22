@@ -1,0 +1,35 @@
+namespace: wasp
+# amount of jobs to spin up
+jobs: 1
+# a label jobs will use to sync before starting, a random 5-digit number by default
+sync:
+# Go test name and timeout
+test:
+  name: ""
+  timeout: "24h"
+  binaryName: ""
+
+# image + tag string - ${IMAGE}:${TAG} format
+image: public.ecr.aws/chainlink/wasp-test:latest
+imagePullPolicy: Always
+labels:
+  app: wasp
+annotations: {}
+env:
+  wasp:
+    log_level: info
+  loki:
+    basic_auth: ""
+    tenant_id: ""
+    token: ""
+    url: ""
+resources:
+  requests:
+    cpu: 1000m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+nodeSelector: {}
+tolerations: []
+affinity: {}

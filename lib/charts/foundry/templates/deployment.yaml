@@ -1,0 +1,179 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "foundry.fullname" . }}
+  labels:
+    {{- include "foundry.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "foundry.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "foundry.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "foundry.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          tty: true
+          stdin: true
+          command:
+            - "anvil"
+            - "--chain-id"
+            - {{ .Values.anvil.chainId | quote }}
+            {{- if .Values.anvil.noMine }}
+            - "--no-mine"
+            {{- end }}
+            {{- if .Values.anvil.enableTracing }}
+            - "--steps-tracing"
+            {{- end }}
+            {{- if not .Values.anvil.noMine }}
+            - "--block-time"
+            - {{ .Values.anvil.blockTime | quote }}
+            {{- end }}
+            {{- if .Values.anvil.blockGasLimit }}
+            - "--gas-limit"
+            - {{ .Values.anvil.blockGasLimit | quote }}
+            {{- end }}
+            {{- if .Values.anvil.codeSizeLimit }}
+            - "--code-size-limit"
+            - {{ .Values.anvil.codeSizeLimit | quote }}
+            {{- end }}
+            {{- if .Values.anvil.baseFee }}
+            - "--base-fee"
+            - {{ .Values.anvil.baseFee | quote }}
+            {{- end }}
+            - "--host"
+            - {{ .Values.anvil.host }}
+            - "--port"
+            - {{ .Values.anvil.port | quote }}
+            {{- if .Values.anvil.forkURL }}
+            - "--fork-url"
+            - {{ .Values.anvil.forkURL }}
+            {{- else }}
+            {{- end }}
+            {{- if .Values.anvil.forkBlockNumber }}
+            - "--fork-block-number"
+            - {{ .Values.anvil.forkBlockNumber | quote }}
+            {{- else }}
+            {{- end }}
+            {{- if .Values.anvil.forkRetryBackoff }}
+            - "--fork-retry-backoff"
+            - {{ .Values.anvil.forkRetryBackoff }}
+            {{- else }}
+            {{- end }}
+            {{- if .Values.anvil.forkRetries }}
+            - "--retries"
+            - {{ .Values.anvil.forkRetries | quote }}
+            {{- else }}
+            {{- end }}
+            {{- if .Values.anvil.forkTimeout }}
+            - "--timeout"
+            - {{ .Values.anvil.forkTimeout | quote }}
+            {{- else }}
+            {{- end }}
+            {{- if .Values.anvil.forkComputeUnitsPerSecond }}
+            - "--compute-units-per-second"
+            - {{ .Values.anvil.forkComputeUnitsPerSecond | quote }}
+            {{- else }}
+            {{- end }}
+            {{- if .Values.anvil.forkNoRateLimit }}
+            - "--no-rate-limit"
+            {{- else }}
+            {{- end }}
+            {{- if .Values.anvil.runAsOptimism }}
+            - "--optimism"
+            {{- end }}
+            {{- if .Values.anvil.noOfAccounts }}
+            - "--accounts"
+            - {{ .Values.anvil.noOfAccounts | quote }}
+            {{- end }}
+            {{- if .Values.anvil.accountBalance }}
+            - "--balance"
+            - {{ .Values.anvil.accountBalance | quote }}
+            {{- end }}
+            - "--state"
+            - "/state/dump.json"
+            {{- if .Values.anvil.intervalInSecondsToDumpState }}
+            - "--state-interval"
+            - {{ .Values.anvil.intervalInSecondsToDumpState | quote }}
+            {{- end }}
+            {{- if .Values.anvil.blocksToKeepInMemory }}
+            - "--transaction-block-keeper"
+            - {{ .Values.anvil.blocksToKeepInMemory | quote }}
+            {{- end }}
+            {{- if .Values.anvil.maxPersistedStates }}
+            - "--max-persisted-states"
+            - {{ .Values.anvil.maxPersistedStates | quote }}
+            {{- end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.anvil.port }}
+              protocol: TCP
+          readinessProbe:
+            exec:
+              command: ["/bin/sh", "-c", 'until nc -z -v {{ .Values.anvil.host }} {{ .Values.anvil.port }}; do sleep 2; done']
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 2
+            timeoutSeconds: 120
+          livenessProbe:
+            exec:
+              command: ["/bin/sh", "-c", 'until nc -z -v {{ .Values.anvil.host }} {{ .Values.anvil.port }}; do sleep 2; done']
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 2
+            timeoutSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: state-storage
+              mountPath: /state
+            - name: cache-storage
+              mountPath: /home
+          {{- with .Values.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: state-storage
+          persistentVolumeClaim:
+            claimName: {{ include "foundry.fullname" . }}-state-pvc
+        - name: cache-storage
+          persistentVolumeClaim:
+            claimName: {{ include "foundry.fullname" . }}-cache-pvc
+      {{- with .Values.volumes }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

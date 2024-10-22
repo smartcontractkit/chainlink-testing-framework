@@ -1,0 +1,165 @@
+{{- range $cfg := .Values.nodes }}
+apiVersion: apps/v1
+{{ if $.Values.db.stateful }}
+kind: StatefulSet
+{{ else }}
+kind: Deployment
+{{ end }}
+metadata:
+  name: {{ $.Release.Name }}-postgres-{{ $cfg.name }}
+spec:
+{{ if $.Values.db.stateful }}
+  serviceName: {{ $.Release.Name }}-postgres-{{ $cfg.name }}
+  podManagementPolicy: Parallel
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ $.Values.db.capacity }}
+        {{ if $.Values.db.storageClassName }}
+        storageClassName: {{ $.Values.db.storageClassName}}
+        {{ end }}
+{{ end }}
+  selector:
+    matchLabels:
+      app: {{ $.Release.Name }}-postgres
+      instance: {{ $cfg.name }}
+      release: {{ $.Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $.Release.Name }}-postgres
+        instance: {{ $cfg.name }}
+        release: {{ $.Release.Name }}
+        {{- range $key, $value := $.Values.db.labels }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+        {{- if $.Values.db.enablePrometheusPostgresExporter }}
+        prometheus-postgres-exporter: 'true'
+        {{- end }}
+      annotations:
+        prometheus.io/scrape: 'true'
+    spec:
+      volumes:
+        - name: {{ $.Release.Name }}-{{ $cfg.name }}-config-map
+          configMap:
+            name: {{ $.Release.Name }}-{{ $cfg.name }}-cm
+      containers:
+        - name: chainlink-db
+          {{- $image := $.Values.db.image.image }}
+          {{- $tag := $.Values.db.image.version }}
+          {{- if $cfg.db }}
+             {{- if $cfg.db.image }}
+                 {{- if $cfg.db.image.image }}
+                    {{ $image = $cfg.db.image.image }}
+                 {{- end }}
+                 {{- if $cfg.db.image.version }}
+                    {{ $tag = $cfg.db.image.version }}
+                 {{- end }}
+             {{- end }}
+          {{- end }}
+          image: {{ $image }}:{{ $tag }}
+          command:
+            - docker-entrypoint.sh
+          args:
+          {{- range $arg := $.Values.db.pgArgs}}
+            - {{ $arg }}
+           {{- end }}
+           {{- range $arg := $.Values.db.additionalArgs}}
+            - {{ $arg }}
+           {{- end }}
+          ports:
+            - name: postgres
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: {{ $.Values.db.postgresDatabase }}
+            - name: POSTGRES_PASSWORD
+              value: {{ $.Values.db.postgresPassword }}
+            - name: PGPASSWORD
+              value: {{ $.Values.db.postgresPassword }}
+            - name: PGUSER
+              value: {{ $.Values.db.postgresUser }}
+          lifecycle:
+            preStop:
+              exec:
+                command: [ "/bin/sh", "-c", "while [ $(psql -d chainlink -c \"SELECT COUNT(*) FROM pg_stat_activity WHERE datname = 'chainlink' AND state = 'active';\" -tA ) -ne 0 ]; do echo \"waiting for connection to become 0\"; sleep 10; done" ]
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 1
+            periodSeconds: 5
+            timeoutSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 1
+            periodSeconds: 5
+            timeoutSeconds: 10
+          startupProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            failureThreshold: 20
+          resources:
+            requests:
+              memory: {{ $.Values.db.resources.requests.memory }}
+              cpu: {{ $.Values.db.resources.requests.cpu }}
+            limits:
+              memory: {{ $.Values.db.resources.limits.memory }}
+              cpu: {{ $.Values.db.resources.limits.cpu }}
+          volumeMounts:
+            - mountPath: /docker-entrypoint-initdb.d/init.sql
+              name: {{ $.Release.Name }}-{{ $cfg.name }}-config-map
+              subPath: init.sql
+          {{ if $.Values.db.stateful }}
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgres
+              subPath: postgres-db
+          {{ end }}
+        {{- if $.Values.db.enablePrometheusPostgresExporter }}
+        - name: prometheus-postgres-exporter
+          image: {{ $.Values.prometheusPostgresExporter.image.image }}
+          resources:
+            requests:
+              memory: {{ $.Values.prometheusPostgresExporter.resources.requests.memory }}
+              cpu: {{ $.Values.prometheusPostgresExporter.resources.requests.cpu }}
+            limits:
+              memory: {{ $.Values.prometheusPostgresExporter.resources.limits.memory }}
+              cpu: {{ $.Values.prometheusPostgresExporter.resources.limits.cpu }}
+          env:
+            - name: DATA_SOURCE_NAME
+              value: "postgresql://{{ $.Values.db.postgresUser }}:{{ $.Values.db.postgresPassword }}@localhost/{{ $.Values.db.postgresDatabase }}?sslmode=disable"
+          ports:
+            - name: prom-pg-exp
+              containerPort: {{ $.Values.prometheusPostgresExporter.containerPort }}
+        {{- end }}
+{{- with $.Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with $.Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with $.Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+---
+{{- end }}

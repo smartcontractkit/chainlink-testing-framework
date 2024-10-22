@@ -5,7 +5,6 @@ external_artifacts
 # Hardhat config that might sneak through
 node_modules/
 package-lock.json
-package.json
 artifacts/
 
 # Binaries for programs and plugins
@@ -55,3 +54,28 @@ dist/
 
 **/remote_runner_config.yaml
 logs/
+
+.test_summary/
+.run.id
+
+env/cmd/chaos
+env/bin/
+# temp manifest for deployment and validation
+tmp-manifest-*.yaml
+# remote runner binary
+remote.test
+e2e.test
+
+k3dvolume/
+charts/**/*.tgz
+__debug*
+# saved private chain configuration
+.private_chains/*
+
+.direnv
+
+# asdf
+.tool-versions
+
+import_keys_test.go
+tag.py

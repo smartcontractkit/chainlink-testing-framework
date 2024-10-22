@@ -1,0 +1,66 @@
+{{/* Prysm Validator Deployment */}}
+{{- define "eth2-common.templates.statefulset.prysm-validator" }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-{{ .Values.prysm.validator.name }}
+  labels:
+    release: {{ .Release.Name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-{{ .Values.prysm.validator.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-{{ .Values.prysm.validator.name }}
+        release: {{ .Release.Name }}
+    spec:
+      volumes:
+      - name: {{ .Release.Name }}-genesis-config
+        configMap:
+          name: {{ .Release.Name }}-ethereum-genesis-generator-config
+      - name: {{ .Release.Name }}-after-genesis-helper-config
+        configMap:
+          name: {{ .Release.Name }}-after-genesis-helper-config
+      securityContext:
+        fsGroup: {{ .Values.securityContext.runAsGroup }}
+      containers:
+        - name: {{ .Values.prysm.validator.name }}
+          image: {{ .Values.prysm.validator.image.repository }}:{{ .Values.prysm.validator.image.tag }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          args:
+          - "--accept-terms-of-use"
+          - "--chain-config-file={{ .Values.shared.configDataDir }}/config.yaml"
+          - "--beacon-rpc-provider={{ .Release.Name }}-{{ .Values.prysm.beacon.name }}-svc:{{ .Values.prysm.beacon.ports.node }}"
+          - "--datadir={{ .Values.shared.configDataDir }}/consensus-data-val"
+          - "--suggested-fee-recipient={{ .Values.prysm.shared.feeRecipent }}"
+          - "--wallet-dir=/data/val_keys/prysm"
+          - "--wallet-password-file={{ .Values.shared.configDataDir }}/wallet_password.txt"
+          - "--force-clear-db"
+          volumeMounts:
+            - name: {{ .Release.Name }}-{{ .Values.storage.claim }}-validator
+              mountPath: /data
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            runAsUser: {{ .Values.securityContext.runAsUser }}
+            runAsGroup: {{ .Values.securityContext.runAsGroup }}
+            runAsNonRoot: true
+
+{{- $customData := dict "pvcName" (printf "%s-%s-validator" .Release.Name .Values.storage.claim) }}
+{{- $newContext := merge $customData . }}
+{{- include "eth2-common.templates.execution-client.init-containers" $newContext | nindent 6 }}
+  volumeClaimTemplates:
+  - metadata:
+      name: {{ .Release.Name }}-{{ .Values.storage.claim }}-validator
+      labels:
+        app: {{ .Release.Name }}-{{ .Values.prysm.validator.name }}
+        release: {{ .Release.Name }}
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: {{ .Values.storage.size }}
+{{- end }}

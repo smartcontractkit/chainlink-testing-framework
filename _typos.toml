@@ -1,0 +1,12 @@
+[files]
+extend-exclude = [
+    "**/go.mod",
+    "**/go.sum",
+    "charts",
+    "**/*.tgz",
+    "**/*.png",
+    "wasp/HOW_IT_WORKS.md",
+    "wasp/dashboard/**",
+    "seth/*_test.go",
+    "seth/dot_graph.go"
+]

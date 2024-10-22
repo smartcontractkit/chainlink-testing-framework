@@ -1,0 +1,72 @@
+exclude: '(\.bin|\.abi)'
+
+repos:
+  - repo: local
+    hooks:
+      - id: go-lint
+        name: Check go lint
+        entry: ./.githooks/go-lint
+        language: script
+        pass_filenames: false
+      - id: go-mod-local-replace
+        name: Check for local replaces in go.mod
+        entry: ./.githooks/go-mod-local-replace
+        language: script
+        files: 'go\.mod$'
+      - id: detect-etherum-keys
+        name: Detect ethereum keys
+        entry: ./.githooks/detect-ethereum-keys
+        language: script
+      - id: detect-rpc-urls
+        name: Check for RPC URLs
+        entry: ./.githooks/detect-rpc-urls
+        language: script
+      - id: detect-typos
+        name: Check for typos
+        entry: ./.githooks/typos
+        language: script
+      - id: go-mod-tidy
+        name: Check go mod tidy
+        entry: ./.githooks/go-mod-tidy
+        language: script
+        pass_filenames: false
+        stages: [pre-push]
+      - id: go-test-build
+        name: Check go test build
+        entry: ./.githooks/go-test-build
+        language: script
+        pass_filenames: false
+        stages: [pre-push]
+      - id: run-unit-tests
+        name: Run unit tests
+        entry: ./.githooks/run-unit-tests
+        language: script
+        pass_filenames: false
+        stages: [pre-push]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 2c9f875913ee60ca25ce70243dc24d5b6415598c # v4.6.0
+    hooks:
+      - id: detect-private-key
+      - id: detect-aws-credentials
+        args: [--allow-missing-credentials]
+      - id: check-added-large-files
+      - id: check-json
+      - id: check-toml
+      - id: end-of-file-fixer
+      - id: check-case-conflict
+      - id: check-shebang-scripts-are-executable
+      - id: check-merge-conflict
+      - id: trailing-whitespace
+  - repo: https://github.com/gruntwork-io/pre-commit
+    rev: e9250bd69bb312d55364213ff5ff037a09be55d9 # v0.1.12
+    hooks:
+      # TODO: change to using the same lint a in CI
+      # - name: Check Helm charts
+      #   id: helmlint
+      - name: Check shell scripts
+        id: shellcheck
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: bc48c541add1551be726f23c4294c773442341cb # v2.3.2
+    hooks:
+      - name: Prettier
+        id: prettier

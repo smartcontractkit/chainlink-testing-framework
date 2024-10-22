@@ -1,0 +1,11 @@
+charts/**/templates/**/*.yml
+charts/**/templates/**/*.yaml
+charts/**/values.yml
+charts/**/values.yaml
+charts/**/README.md
+k8s-test-runner/chart/**/*.yaml
+node_modules/
+index.yaml
+wasp/**
+havoc/**
+seth/**

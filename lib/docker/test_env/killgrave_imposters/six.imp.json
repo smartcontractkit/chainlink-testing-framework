@@ -1,0 +1,28 @@
+[
+  {
+    "request": {
+      "method": "GET",
+      "endpoint": "/six"
+    },
+    "response": {
+      "status": 200,
+      "body": "{\"id\":\"\",\"error\":null,\"data\":{\"result\":6}}",
+      "headers": {
+        "Content-Type": "application/json"
+      }
+    }
+  },
+  {
+    "request": {
+      "method": "POST",
+      "endpoint": "/six"
+    },
+    "response": {
+      "status": 200,
+      "body": "{\"id\":\"\",\"error\":null,\"data\":{\"result\":6}}",
+      "headers": {
+        "Content-Type": "application/json"
+      }
+    }
+  }
+]

@@ -1,0 +1,30 @@
+name: SETH Lint
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  golangci:
+    defaults:
+      run:
+        working-directory: seth
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+      - name: Check for changes in Seth project
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: changes
+        with:
+          filters: |
+            src:
+              - 'seth/**'
+      - uses: cachix/install-nix-action@8887e596b4ee1134dae06b98d573bd674693f47c # v26
+        if: steps.changes.outputs.src == 'true'
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - name: Lint
+        if: steps.changes.outputs.src == 'true'
+        run: |
+          nix develop -c make lint

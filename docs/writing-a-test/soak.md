@@ -49,17 +49,17 @@ Modify these values that make sense for the tests you want to run. Once the valu
 The rest of the `remote_runner_config.yaml` file holds various Slack bot params to notify you when the test finishes.
 
 ```yaml
-slack_api_key: abcdefg # A Slack API key to upload test results with. This should be the `Bot User OAuth Token` 
+slack_api_key: abcdefg # A Slack API key to upload test results with. This should be the `Bot User OAuth Token`
 slack_channel: C01xxxxx # The Slack Channel ID (open your Slack channel details and copy the ID there)
 slack_user_id: U01xxxxx # Your Slack member ID https://zapier.com/help/doc/common-problems-slack
 ```
 
 The Slack Bot will need to have the following:
 
-* Permission for [files:write](https://api.slack.com/scopes/files:write)
-* Permission for [chat:write](https://api.slack.com/scopes/chat:write)
-* The bot must be invited into the channel you want it to notify in: `/invite @botname` HINT: If you get the error `not_in_channel` this is likely what you need to set up.
+- Permission for [files:write](https://api.slack.com/scopes/files:write)
+- Permission for [chat:write](https://api.slack.com/scopes/chat:write)
+- The bot must be invited into the channel you want it to notify in: `/invite @botname` HINT: If you get the error `not_in_channel` this is likely what you need to set up.
 
 ## After the Test
 
-The test environment **will stay active until you manually delete it from your Kubernetes cluster**. This keeps the test env alive so you can view the logs when the test is done. You can do so by [using kubectl](https://www.dnsstuff.com/how-to-tail-kubernetes-and-kubectl-logs), something like [Lens](https://k8slens.dev/), or use the [chainlink-env](https://github.com/smartcontractkit/chainlink-env) `dump` command.
+The test environment **will stay active until you manually delete it from your Kubernetes cluster**. This keeps the test env alive so you can view the logs when the test is done. You can do so by [using kubectl](https://www.dnsstuff.com/how-to-tail-kubernetes-and-kubectl-logs), something like [Lens](https://k8slens.dev/), or use the [chainlink-testing-framework](https://github.com/smartcontractkit/chainlink-testing-framework/k8s/examples/dump/env.go) `dump` command.

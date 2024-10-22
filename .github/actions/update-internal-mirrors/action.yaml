@@ -1,0 +1,56 @@
+name: 'Update Internal Mirrors Action'
+inputs:
+  aws_region:
+    description: 'AWS region for the ECR'
+    required: false
+  role_to_assume:
+    description: 'AWS IAM role to assume'
+    required: false
+  aws_account_number:
+    description: 'AWS Account Number'
+    required: false
+  image_name:
+    description: 'Name of the docker image to update'
+    required: false
+  expression:
+    description: 'Regex expression for image tags'
+    required: false
+  page_size:
+    description: 'Number of tags to return per page'
+    required: false
+    default: '100'
+  github_token:
+    description: 'Token to use for GitHub API, in most cases github.token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout the Repo
+      uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+      with:
+        aws-region: ${{ inputs.aws_region }}
+        role-to-assume: ${{ inputs.role_to_assume }}
+        role-duration-seconds: 3600
+    - name: Login to Amazon ECR
+      uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
+      with:
+        mask-password: 'true'
+      env:
+        AWS_REGION: ${{ inputs.aws_region }}
+    - name: Update images
+      shell: bash
+      env:
+        GHCR_TOKEN: ${{ inputs.github_token }}
+      run: |
+        # Update images
+        # Change to the directory where the action is stored
+        cd ${{ github.action_path }}
+        if [[ -z "${{ inputs.image_name }}" ]]; then
+          ./scripts/update_mirrors.sh ${{ inputs.aws_account_number }}.dkr.ecr.${{ inputs.aws_region }}.amazonaws.com
+        else
+          # Update ${{ inputs.image_name }}
+          ./scripts/update_mirrors.sh ${{ inputs.aws_account_number }}.dkr.ecr.${{ inputs.aws_region }}.amazonaws.com ${{ inputs.image_name }} '${{ inputs.expression }}' ${{ inputs.page_size }}
+        fi

@@ -1,0 +1,28 @@
+replicas: 1
+
+geth:
+  image:
+    image: ethereum/client-go
+    version: v1.13.8
+
+  networkid: 1337
+  blocktime: 1
+  startGaslimit: "11500000"
+  targetGasLimit: "30000000"
+  capacity: 1Gi
+
+resources:
+  requests:
+    cpu: 1000m
+    memory: 768Mi
+  limits:
+    cpu: 1000m
+    memory: 768Mi
+
+podAnnotations: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

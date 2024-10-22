@@ -1,0 +1,18 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ template "ethereum.fullname" . }}-node-registrar
+  labels:
+    app: node-registrar
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  selector:
+    app: {{ template "ethereum.fullname" . }}-node-registrar
+    release: {{ .Release.Name }}
+  type: ClusterIP
+  ports:
+    - name: node-registrar
+      port: 80
+      targetPort: 9898

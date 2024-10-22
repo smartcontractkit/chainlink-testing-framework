@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-{{ .Values.excutionClient.name }}
+  labels:
+    release: {{ .Release.Name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-{{ .Values.excutionClient.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-{{ .Values.excutionClient.name }}
+        release: {{ .Release.Name }}
+    spec:
+      volumes:
+      - name: {{ .Release.Name }}-genesis-config
+        configMap:
+          name: {{ .Release.Name }}-ethereum-genesis-generator-config
+      - name: {{ .Release.Name }}-after-genesis-helper-config
+        configMap:
+          name: {{ .Release.Name }}-after-genesis-helper-config
+      securityContext:
+        fsGroup: {{ .Values.securityContext.runAsGroup }}
+      containers:
+        - name: {{ .Values.excutionClient.name }}
+          image: {{ .Values.excutionClient.image.repository }}:{{ .Values.excutionClient.image.tag }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          env:
+            - name: JAVA_OPTS
+              value: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n"
+          args:
+            - "--data-path=/data/execution_data"
+            - "--genesis-file={{ .Values.shared.configDataDir }}/besu.json"
+            - "--network-id={{ .Values.general.networkId }}"
+            - "--host-allowlist=*"
+            - "--rpc-http-enabled=true"
+            - "--rpc-http-host=0.0.0.0"
+            - "--rpc-http-port={{ .Values.excutionClient.ports.http }}"
+            - "--rpc-http-api=ADMIN,CLIQUE,ETH,NET,DEBUG,TXPOOL,ENGINE,TRACE,WEB3"
+            - "--rpc-http-cors-origins=*"
+            - "--rpc-ws-enabled=true"
+            - "--rpc-ws-host=0.0.0.0"
+            - "--rpc-ws-port={{ .Values.excutionClient.ports.ws }}"
+            - "--rpc-ws-api=ADMIN,CLIQUE,ETH,NET,DEBUG,TXPOOL,ENGINE,TRACE,WEB3"
+            - "--engine-rpc-enabled=true"
+            - "--engine-jwt-secret={{ .Values.shared.configDataDir }}/{{ .Values.shared.jwtFile }}"
+            - "--engine-host-allowlist=*"
+            - "--engine-rpc-port={{ .Values.excutionClient.ports.execution }}"
+            - "--sync-mode=FULL"
+            - "--data-storage-format=BONSAI"
+            - "--rpc-tx-feecap=0"
+            - "--logging={{ .Values.excutionClient.logging.level }}"
+          ports:
+            - name: http-rpc
+              containerPort: {{ .Values.excutionClient.ports.http }}
+            - name: ws-rpc
+              containerPort: {{ .Values.excutionClient.ports.ws }}
+            - name: execution-rpc
+              containerPort: {{ .Values.excutionClient.ports.execution }}
+            - name: discovery-udp
+              containerPort: {{ .Values.excutionClient.ports.discovery }}
+              protocol: UDP
+            - name: discovery-tcp
+              containerPort: {{ .Values.excutionClient.ports.discovery }}
+          volumeMounts:
+          - name: {{ .Release.Name }}-{{ .Values.storage.claim }}-besu
+            mountPath: /data
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            runAsUser: {{ .Values.securityContext.runAsUser }}
+            runAsGroup: {{ .Values.securityContext.runAsGroup }}
+            runAsNonRoot: true
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.excutionClient.ports.http }}
+            initialDelaySeconds: 50
+            periodSeconds: 5
+            failureThreshold: 2
+            timeoutSeconds: 120
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.excutionClient.ports.http }}
+            initialDelaySeconds: 50
+            periodSeconds: 5
+            failureThreshold: 2
+            timeoutSeconds: 120
+
+{{- $customData := dict "pvcName" (printf "%s-%s-besu" .Release.Name .Values.storage.claim) }}
+{{- $newContext := merge $customData . }}
+{{- include "eth2-common.templates.execution-client.init-containers" $newContext | nindent 6 }}
+  volumeClaimTemplates:
+  - metadata:
+      name: {{ .Release.Name }}-{{ .Values.storage.claim }}-besu
+      labels:
+        app: {{ .Release.Name }}-{{ .Values.excutionClient.name }}
+        release: {{ .Release.Name }}
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: {{ .Values.storage.size }}

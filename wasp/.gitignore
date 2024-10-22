@@ -1,0 +1,9 @@
+bin/
+.vscode/
+.idea/
+.direnv/
+
+k3dvolume/
+.private.env
+.envrc.ci
+.envrc.local

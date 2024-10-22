@@ -1,0 +1,124 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: geth
+spec:
+  serviceName: {{ .Release.Name }}
+  volumeClaimTemplates:
+  - metadata:
+      name: geth
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ .Values.geth.capacity }}
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app: geth
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: geth
+        release: {{ .Release.Name }}
+      annotations:
+        {{- range $key, $value := .Values.podAnnotations }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+    spec:
+      restartPolicy: Always
+      enableServiceLinks: false
+      volumes:
+      - name: configmap-volume
+        configMap:
+          name: geth-cm
+      containers:
+      - name: geth-network
+        image: "{{ .Values.geth.image.image }}:{{ .Values.geth.image.version }}"
+        command: [ "sh", "./root/init.sh" ]
+        volumeMounts:
+        - name: geth
+          mountPath: /root/.ethereum/devchain/
+        - name : configmap-volume
+          mountPath: /root/init.sh
+          subPath: init.sh
+        - name: configmap-volume
+          mountPath: /root/config
+        - name: configmap-volume
+          mountPath: /root/.ethereum/devchain/keystore/key1
+          subPath: key1
+        - name: configmap-volume
+          mountPath: /root/.ethereum/devchain/keystore/key2
+          subPath: key2
+        - name: configmap-volume
+          mountPath: /root/.ethereum/devchain/keystore/key3
+          subPath: key3
+        args:
+          - '--dev'
+          - '--password'
+          - '/root/config/password.txt'
+          - '--datadir'
+          - '/root/.ethereum/devchain'
+          - '--unlock'
+          - '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'
+          - '--mine'
+          - '--miner.etherbase'
+          - '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'
+          - '--ipcdisable'
+          - '--http'
+          - '--http.vhosts'
+          - '*'
+          - '--http.api'
+          - 'admin,debug,web3,eth,txpool,personal,clique,miner,net'
+          - '--http.addr'
+          - '0.0.0.0'
+          - '--http.port=8544'
+          - '--ws'
+          - '--ws.api'
+          - 'admin,debug,web3,eth,txpool,personal,clique,miner,net'
+          - '--ws.origins'
+          - '*'
+          - '--ws.addr'
+          - '0.0.0.0'
+          - '--ws.port=8546'
+          - '--graphql'
+          - '-graphql.corsdomain'
+          - '*'
+          - '--allow-insecure-unlock'
+          - '--rpc.allow-unprotected-txs'
+          - '--http.corsdomain'
+          - '*'
+          - '--vmdebug'
+          - '--networkid={{ .Values.geth.networkid }}'
+          - '--rpc.txfeecap'
+          - '0'
+          - '--dev.period'
+          - '{{ .Values.geth.blocktime }}'
+          - '--dev.gaslimit'
+          - '{{ .Values.geth.startGaslimit }}'
+        ports:
+        - name: http-rpc
+          containerPort: 8544
+        - name: ws-rpc
+          containerPort: 8546
+        resources:
+          requests:
+            memory: {{ .Values.resources.requests.memory }}
+            cpu: {{ .Values.resources.requests.cpu }}
+          limits:
+            memory: {{ .Values.resources.limits.memory }}
+            cpu: {{ .Values.resources.limits.cpu }}
+{{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+{{- end }}

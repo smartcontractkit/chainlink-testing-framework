@@ -3,3 +3,11 @@ CVE-2022-23328 # Geth is able to be used for DoS attacks on different nodes. Not
 sonatype-2021-0076 # More weird geth vulnerabilities we don't care about.
 CVE-2022-31030  # This is associated to the dependency 'containerd' and also warns of a DoS attack.
 CVE-2022-37450 # Geth bug that only affects nodes used for mining
+CVE-2021-42219 # Uncontrolled Resource Consumption ('Resource Exhaustion')
+CVE-2020-28483 # Inconsistent Interpretation of HTTP Requests ('HTTP Request Smuggling')
+CVE-2022-29153 # Server-Side Request Forgery (SSRF)
+CVE-2023-3518 # CWE-Other (when using JWT Auth for service mesh incorrectly allows/denies access regardless of service identities) -- coming from WASP
+CVE-2023-48795 # Improper Validation of Integrity Check Value x/crypto, which is an indirect dependency
+CVE-2024-24786 # CWE-835 Loop with Unreachable Exit Condition ('Infinite Loop') in indirect dependency
+CVE-2024-32972 # CWE-400: Uncontrolled Resource Consumption ('Resource Exhaustion') [still not fixed, not even in v1.13.8]
+CVE-2023-42319 # CWE-noinfo: lol... go-ethereum v1.13.8 again

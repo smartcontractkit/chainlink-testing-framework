@@ -1,0 +1,64 @@
+geth:
+  podSecurityContext:
+    fsGroup: 999
+  securityContext:
+    capabilities:
+      drop:
+        - ALL
+    readOnlyRootFilesystem: false
+    runAsNonRoot: false
+    runAsUser: 999
+    runAsGroup: 999
+  version: v1.12.0
+  wsrpc-port: 8546
+  httprpc-port: 8544
+  networkId: 1337
+  blocktime: 1
+  resources:
+    requests:
+      cpu: 1
+      memory: 1024Mi
+    limits:
+      cpu: 1
+      memory: 1024Mi
+
+ingress:
+  enabled: false
+  annotations: {}
+  ingressClassName: alb
+  annotation_certificate_arn: ''
+  annotation_group_name: ''
+  hosts:
+    - host: chainlink-geth-http.local
+      http:
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: geth
+                port:
+                  number: 8544
+    - host: chainlink-geth-ws.local
+      http:
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: geth
+                port:
+                  number: 8546
+
+# monitoring.coreos.com/v1 PodMonitor for each node
+prometheusMonitor: false
+
+networkPolicies:
+  enabled: true
+
+# Configure the default network policy.
+networkPolicyDefault:
+  ingress:
+    allowCustomCidrs: false
+    # List of custom CIDRs to allow ingress from. If allowCustomCidrs is true, this list will be appended to the default list of CIDRs.
+    customCidrs: ''

@@ -1,0 +1,5 @@
+{
+  "name": "ghsecrets",
+  "description": "A tool for managing GitHub test secrets",
+  "version": "1.0.0"
+}

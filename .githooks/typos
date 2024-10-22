@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set +e
+# shellcheck disable=SC2068
+typos --config ./_typos.toml --force-exclude $@
+typos_result=$?
+set -e
+
+# Check typos result
+if [[ $typos_result -ne 0 ]]; then
+    echo -e "❌ Found typos\n"
+    # shellcheck disable=SC2145
+    echo -e "Run \`typos --write-changes --config ./_typos.toml --force-exclude $@\` and fix any issues left\n"
+    exit 1
+fi

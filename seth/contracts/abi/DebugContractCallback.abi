@@ -1,0 +1,1 @@
+[{"inputs":[{"internalType":"int256","name":"x","type":"int256"}],"name":"callbackMethod","outputs":[{"internalType":"int256","name":"","type":"int256"}],"stateMutability":"nonpayable","type":"function"}]

@@ -1,0 +1,43 @@
+{{- range $cfg := .Values.nodes }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app: {{ $.Release.Name }}-{{ $cfg.name }}-cm
+    release: {{ $.Release.Name }}
+  name: {{ $.Release.Name }}-{{ $cfg.name }}-cm
+data:
+  apicredentials: |
+    notreal@fakeemail.ch
+    fj293fbBnlQ!f9vNs
+  node-password: T.tLHkcmwePT/p,]sYuntjwHKAsrhm#4eRs4LuKHwvHejWYAC2JP4M8HimwgmbaZ
+  init.sql: |
+    CREATE EXTENSION pg_stat_statements;
+  default.toml: |
+    RootDir = './clroot'
+
+    [Log]
+    JSONConsole = true
+    Level = 'debug'
+
+    [WebServer]
+    AllowOrigins = '*'
+    SecureCookies = false
+    SessionTimeout = '999h0m0s'
+
+    [WebServer.TLS]
+    HTTPSPort = 0
+  overrides.toml: |
+    {{- $toml := $.Values.toml }}
+    {{- if $cfg.toml }}
+        {{- $toml = $cfg.toml }}
+    {{- end }}
+{{ indent 4 $toml }}
+  secrets.toml: |
+  {{- $secrets := $.Values.secretsToml }}
+  {{- if $cfg.secretsToml }}
+        {{- $secrets = $cfg.secretsToml }}
+  {{- end }}
+{{ indent 4 $secrets }}
+---
+{{- end }}

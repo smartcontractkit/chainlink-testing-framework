@@ -1,0 +1,4 @@
+apiVersion: v1
+description: Elements shared by different eth2 clients
+name: eth2-common
+version: 0.6.0

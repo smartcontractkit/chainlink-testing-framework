@@ -1,0 +1,60 @@
+# IDE and environment
+.idea/
+.vscode/
+.DS_STORE
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories
+dist/
+vendor/
+node_modules/
+.yarn/
+
+# Mercuy server configuration file
+config.toml
+config.*.toml
+
+# Personal/secret env vars
+.envrc-personal
+
+# Other
+tmp/
+*.log
+*.swp
+.air.toml
+.DS_Store
+output.txt
+
+# Default binary name with go build
+main
+test.sh
+
+# Ignore DevSpace cache and log folder
+.devspace/
+
+# env files
+.env
+.envrc
+
+# Geth data
+geth_data/geth/**
+
+/traces
+reverted_transactions*.json
+/dot_graphs
+artifacts/
+
+#map of address -> ABI name of deployed contracts
+deployed_contracts*.toml

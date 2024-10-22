@@ -1,0 +1,5 @@
+{
+  "name": "workflowresultparser",
+  "description": "Tool for parsing the results of a GHA workflow run",
+  "version": "1.0.0"
+}

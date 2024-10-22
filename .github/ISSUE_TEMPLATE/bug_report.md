@@ -4,7 +4,6 @@ about: Create a report to help us improve
 title: ''
 labels: ''
 assignees: ''
-
 ---
 
 **Describe the bug**
@@ -12,9 +11,9 @@ A clear and concise description of what the bug is.
 
 **Versions**
 
-* OS: 
-* Integrations Framework Version: 
-* chainlink-env Version: 
+- OS:
+- Integrations Framework Version:
+- chainlink-testing-framework Version:
 
 **To Reproduce**
 Steps to reproduce the behavior:

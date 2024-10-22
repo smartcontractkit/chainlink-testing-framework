@@ -1,0 +1,28 @@
+name: WASP Lint
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  golangci:
+    defaults:
+      run:
+        working-directory: wasp
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            src:
+              - 'wasp/**'
+      - uses: cachix/install-nix-action@v18
+        if: steps.changes.outputs.src == 'true'
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - name: Run lint
+        if: steps.changes.outputs.src == 'true'
+        run: |-
+          nix develop -c make lint

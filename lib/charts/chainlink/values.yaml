@@ -1,0 +1,79 @@
+chainlink:
+  image:
+    image: public.ecr.aws/chainlink/chainlink
+    version: 2.5.0
+  web_port: 6688
+  p2p_port: 6690
+  resources:
+    requests:
+      cpu: 350m
+      memory: 1024Mi
+    limits:
+      cpu: 350m
+      memory: 1024Mi
+db:
+  image:
+    image: postgres
+    version: 12.18
+  stateful: true
+  capacity: 1Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  postgresUser: postgres
+  postgresPassword: verylongdatabasepassword
+  postgresDatabase: chainlink
+  pgArgs:
+    - '-c'
+    - 'shared_preload_libraries=pg_stat_statements'
+    - '-c'
+    - 'pg_stat_statements.track=all'
+  additionalArgs:
+    - '-c'
+    - 'shared_buffers=128MB'
+    - '-c'
+    - 'effective_cache_size=4096MB'
+    - '-c'
+    - 'work_mem=4MB'
+  enablePrometheusPostgresExporter: false
+
+prometheusPostgresExporter:
+  image:
+    image: 'quay.io/prometheuscommunity/postgres-exporter:v0.15.0'
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  containerPort: 9187
+
+replicas: 1
+nodes:
+  - name: node-1
+    db:
+      image:
+        image: postgres
+        version: 13.12
+      enablePrometheusPostgresExporter: false
+
+prometheus: false
+
+toml: ''
+secretsToml: ''
+
+env:
+  CL_DEV: 'false'
+
+podAnnotations: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

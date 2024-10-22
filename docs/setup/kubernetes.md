@@ -15,10 +15,10 @@ In order to use this framework, you must have a connection to an actively runnin
 
 There's a lot of different components to bring up for each test, most of which involve:
 
-* A simulated blockchain
-* Some number of Chainlink nodes
-* An equal number of postgres DBs to support the Chainlink nodes
-* At least one external adapter
+- A simulated blockchain
+- Some number of Chainlink nodes
+- An equal number of postgres DBs to support the Chainlink nodes
+- At least one external adapter
 
 Following the good testing practice of having clean, non-dependent test environments means we're creating a lot of these components for each test, and tearing them down soon after. In order to organize these test environments, and after finding `docker compose` to be woefully inadequate after a certain point, Kubernetes was the obvious choice.
 

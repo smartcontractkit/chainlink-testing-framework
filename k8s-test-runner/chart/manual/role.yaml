@@ -1,0 +1,78 @@
+# apiVersion: v1
+# kind: ServiceAccount
+# metadata:
+#   name: {{ .Values.rbac.serviceAccountName }}
+#   namespace: {{ .Values.namespace }}
+#   annotations:
+#     meta.helm.sh/release-name: {{ .Release.Name }}
+#   labels:
+#     app.kubernetes.io/managed-by: Helm
+---
+# kind: Role
+# apiVersion: rbac.authorization.k8s.io/v1
+# metadata:
+#   name: {{ .Values.rbac.roleName }}
+#   namespace: {{ .Values.namespace }}
+#   annotations:
+#     # meta.helm.sh/release-name: {{ .Release.Name }}
+#     meta.helm.sh/release-namespace: {{ .Values.namespace }}
+#   labels:
+#     app.kubernetes.io/managed-by: Helm
+# rules:
+#   - apiGroups:
+#       - ""
+#       - "apps"
+#       - "batch"
+#       - "chaos-mesh.org"
+#     resources:
+#       - "*"
+#     verbs:
+#       - "*"
+# ---
+# kind: RoleBinding
+# apiVersion: rbac.authorization.k8s.io/v1
+# metadata:
+#   name: {{ .Values.rbac.roleName }}
+#   namespace: {{ .Values.namespace }}
+#   annotations:
+#     # meta.helm.sh/release-name: {{ .Release.Name }}
+#     meta.helm.sh/release-namespace: {{ .Values.namespace }}
+#   labels:
+#     app.kubernetes.io/managed-by: Helm
+# subjects:
+#   - kind: ServiceAccount
+#     name: default
+#     namespace: {{ .Values.namespace }}
+# roleRef:
+#   kind: Role
+#   name: {{ .Values.rbac.roleName }}
+#   apiGroup: rbac.authorization.k8s.io
+
+
+# apiVersion: rbac.authorization.k8s.io/v1
+# kind: ClusterRole
+# metadata:
+#   name: lf-chaos-role
+# rules:
+#   - apiGroups:
+#       - ""
+#       - "apps"
+#       - "batch"
+#       - "chaos-mesh.org"
+#     resources:
+#       - "*"
+#     verbs:
+#       - "*"
+
+# apiVersion: rbac.authorization.k8s.io/v1
+# kind: ClusterRoleBinding
+# metadata:
+#   name: chaos-mesh-lukaszfryc-binding
+# subjects:
+# - kind: ServiceAccount
+#   name: custom
+#   namespace: e2e-tests-lukaszfryc
+# roleRef:
+#   kind: ClusterRole
+#   name: lf-chaos-role
+#   apiGroup: rbac.authorization.k8s.io

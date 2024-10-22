@@ -1,0 +1,38 @@
+general:
+  networkId: 1337
+genesis:
+  image:
+    repository: public.ecr.aws/w0i8p0z9/ethereum-genesis-generator
+    tag: main-f3d278d
+  values:
+    currentUnixTimestamp: 1600000000
+    secondsPerSlot: 12
+    slotsPerEpoch: 4
+    delaySeconds: 10
+    validatorCount: 8
+    preminedAddresses:
+      - 'D8eC39A12cd0aD2814C521CdC81a664875B68039'
+      - 'f3541234BdEED46b0BCF3D872b1922F5Bca4BD90'
+      - '614bDCBE12e79b360CA5CC82d6f5BDeA5cCaB3B8'
+      - '1a07E7660E1d502194a584e59Ab300482Bb8Eef4'
+      - '1c38D6524230b3B898095aAe3920294afdC778Bb'
+      - 'dF3C09bD056b8Cd93BFdA803c66f8ff556c93F65'
+      - 'D54546c84B541d5136f0A7e405457CD3371D354E'
+      - '95371c9792C9435efcd0B9CBb76991966995672d'
+      - 'd83FCe08439C7ab9881d2AEA3a3fe0bf3B90f008'
+      - 'D0A242b96e8C1700ff6dFE24B5Ec2dE832B6424F'
+      - 'f39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+shared:
+  mnemonic: giant issue aisle success illegal bike spike question tent bar rely arctic volcano long crawl hungry vocal artwork sniff fantasy very lucky have athlete
+  configDataDir: /data/metadata
+  keystoreDataSubdir: /keystore
+  password: password
+  accountKeystoreFile: account_key
+  accountPasswordFile: account_password.txt
+  jwtFile: jwtSecret
+storage:
+  claim: chain-state-claim
+  size: 2Gi

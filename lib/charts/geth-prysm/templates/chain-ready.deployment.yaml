@@ -1,0 +1,1 @@
+{{- include "eth2-common.templates.deployment.chain-ready" . }}

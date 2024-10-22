@@ -1,0 +1,64 @@
+{{/* Chain Ready Deployment */}}
+{{- define "eth2-common.templates.deployment.chain-ready" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-{{ .Values.ready.name }}
+  labels:
+    release: {{ .Release.Name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-{{ .Values.ready.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-{{ .Values.ready.name }}
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ .Values.ready.name }}
+          image: {{ .Values.ready.image.repository }}:{{ .Values.ready.image.tag }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          command:
+          - /bin/sh
+          - -c
+          - |
+            while true; do
+              response=$(curl -s -H "Content-Type: application/json" -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest", false],"id":1}' http://{{ .Release.Name }}-{{ .Values.excutionClient.name }}-svc:{{ .Values.excutionClient.ports.http }})
+              block_number=$(echo $response | grep -o '"number":"[^"]*' | cut -d'"' -f4)
+
+              if [ -n "$block_number" ]; then
+                block_number_decimal=$(printf "%d" "$block_number")
+                echo "Latest unfinalised block number: $block_number_decimal"
+              else
+                echo "Latest unfinalised block number: N/A"
+              fi
+
+              sleep {{ printf "%d" (add .Values.genesis.secondsPerSlot 2) }}
+              done
+          readinessProbe:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - |
+                response=$(curl -s -H "Content-Type: application/json" -X POST --data '{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["latest", false],"id":1}' http://{{ .Release.Name }}-{{ .Values.excutionClient.name }}-svc:{{ .Values.excutionClient.ports.http }})
+                block_number=$(echo $response | grep -o '"number":"[^"]*' | cut -d'"' -f4)
+                block_number_decimal=$(printf "%d" "$block_number")
+
+                if [ "$block_number_decimal" -gt 1 ]; then
+                    exit 0
+                else
+                    exit 1
+                fi
+            initialDelaySeconds: 60
+            periodSeconds: 5
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            runAsUser: {{ .Values.securityContext.runAsUser }}
+            runAsGroup: {{ .Values.securityContext.runAsGroup }}
+            runAsNonRoot: true
+{{- end}}
