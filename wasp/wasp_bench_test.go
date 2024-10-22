@@ -21,7 +21,7 @@ func BenchmarkPacedCall(b *testing.B) {
 		Gun:               NewMockGun(&MockGunConfig{}),
 	})
 	require.NoError(b, err)
-	gen.setupSchedule()
+	gen.runExecuteLoop()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		gen.pacedCall()
