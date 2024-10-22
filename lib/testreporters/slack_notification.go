@@ -22,7 +22,7 @@ var (
 )
 
 // Uploads a slack file to the designated channel using the API key
-func UploadSlackFile(slackClient *slack.Client, uploadParams slack.FileUploadParameters) error {
+func UploadSlackFile(slackClient *slack.Client, uploadParams slack.UploadFileV2Parameters) error {
 	log.Info().
 		Str("Slack API Key", SlackAPIKey).
 		Str("Slack Channel", SlackChannel).
@@ -35,17 +35,22 @@ func UploadSlackFile(slackClient *slack.Client, uploadParams slack.FileUploadPar
 	if SlackChannel == "" {
 		return fmt.Errorf("unable to upload file without a Slack Channel")
 	}
-	if uploadParams.Channels == nil || uploadParams.Channels[0] == "" {
-		uploadParams.Channels = []string{SlackChannel}
+	if uploadParams.Channel == "" {
+		uploadParams.Channel = SlackChannel
 	}
 	if uploadParams.File != "" {
-		if _, err := os.Stat(uploadParams.File); errors.Is(err, os.ErrNotExist) {
+		file, err := os.Stat(uploadParams.File)
+		if errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("unable to upload file as it does not exist: %w", err)
 		} else if err != nil {
 			return err
 		}
+		// file size is now mandatory, so we need to set if it's empty
+		if uploadParams.FileSize == 0 {
+			uploadParams.FileSize = int(file.Size())
+		}
 	}
-	_, err := slackClient.UploadFile(uploadParams)
+	_, err := slackClient.UploadFileV2(uploadParams)
 	return err
 }
 
