@@ -7,7 +7,7 @@ import (
 
 // Input is a blockchain network configuration params
 type Input struct {
-	Type                     string   `toml:"type" validate:"required,oneof=anvil geth"`
+	Type                     string   `toml:"type" validate:"required,oneof=anvil geth" envconfig:"net_type"`
 	Image                    string   `toml:"image" validate:"required"`
 	Tag                      string   `toml:"tag" validate:"required"`
 	Port                     string   `toml:"port" validate:"required"`
@@ -18,16 +18,16 @@ type Input struct {
 
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network
 type Output struct {
-	ChainID string  `toml:"chain_id" validate:"required"`
-	Nodes   []*Node `toml:"nodes" validate:"required"`
+	ChainID string  `toml:"chain_id"`
+	Nodes   []*Node `toml:"nodes"`
 }
 
 // Node represents blockchain node output, URLs required for connection locally and inside docker network
 type Node struct {
 	HostWSUrl             string `toml:"ws_url"`
 	HostHTTPUrl           string `toml:"http_url"`
-	DockerInternalWSUrl   string `toml:"docker_internal_ws_url" validate:"required"`
-	DockerInternalHTTPUrl string `toml:"docker_internal_http_url" validate:"required"`
+	DockerInternalWSUrl   string `toml:"docker_internal_ws_url"`
+	DockerInternalHTTPUrl string `toml:"docker_internal_http_url"`
 }
 
 // NewBlockchainNetwork this is an abstraction that can spin up various blockchain network simulators

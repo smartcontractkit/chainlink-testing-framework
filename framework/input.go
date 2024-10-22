@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-playground/validator/v10"
+	"github.com/kelseyhightower/envconfig"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
@@ -194,6 +195,9 @@ func Load[X any](t *testing.T) (*X, error) {
 	if err != nil {
 		return input, err
 	}
+	if err := applyEnvConfig("", input); err != nil {
+		return nil, fmt.Errorf("error overriding config using envconfig: %s", err)
+	}
 	if err := validateStruct(input); err != nil {
 		return nil, err
 	}
@@ -208,9 +212,6 @@ func Load[X any](t *testing.T) (*X, error) {
 	//		return nil, fmt.Errorf("failed to connect AWSSecretsManager: %w", err)
 	//	}
 	//}
-	// TODO: do we really need more than one environment locally? Do we need more than one in CI so network isolation makes sense?
-	// TODO: since CL will became a plugin platform it make sense to re-use one environment per runner and run more than one test now
-	// TODO: can the runner be our isolation, one static network per process (that's because GHA do not allow "host" network mode)
 	net, err := network.New(
 		context.Background(),
 		network.WithLabels(map[string]string{"framework": "ctf"}),
@@ -230,4 +231,62 @@ func RenderTemplate(tmpl string, data interface{}) (string, error) {
 	var buf bytes.Buffer
 	err := template.Must(template.New("tmpl").Parse(tmpl)).Execute(&buf, data)
 	return buf.String(), err
+}
+
+// applyEnvConfig recursively processes environment variables for structs, slices, and maps.
+func applyEnvConfig(prefix string, input interface{}) error {
+	// Get the value of the input
+	val := reflect.ValueOf(input)
+	if val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Struct {
+		return fmt.Errorf("input must be a pointer to a struct")
+	}
+
+	// Get the element (dereference) of the pointer
+	val = val.Elem()
+
+	// Process the current struct with envconfig
+	if err := envconfig.Process(prefix, input); err != nil {
+		return err
+	}
+
+	// Iterate over the fields of the struct
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Field(i)
+		fieldType := val.Type().Field(i)
+		// Handle struct fields
+		if field.Kind() == reflect.Struct {
+			if err := applyEnvConfig(prefix, field.Addr().Interface()); err != nil {
+				return fmt.Errorf("failed to process struct field %s: %w", fieldType.Name, err)
+			}
+		}
+		// Slice fields
+		if field.Kind() == reflect.Slice {
+			for j := 0; j < field.Len(); j++ {
+				elem := field.Index(j)
+				if elem.Kind() == reflect.Struct {
+					if err := applyEnvConfig(prefix, elem.Addr().Interface()); err != nil {
+						return fmt.Errorf("failed to process slice element %s[%d]: %w", fieldType.Name, j, err)
+					}
+				}
+			}
+		}
+		// Recursively handle map fields
+		if field.Kind() == reflect.Map {
+			for _, key := range field.MapKeys() {
+				elem := field.MapIndex(key)
+				// If the map value is a struct, create a copy to process it
+				if elem.Kind() == reflect.Struct {
+					// Create a new variable to hold the value
+					elemCopy := reflect.New(elem.Type()).Elem()
+					elemCopy.Set(elem)
+					if err := applyEnvConfig(prefix, elemCopy.Addr().Interface()); err != nil {
+						return fmt.Errorf("failed to process map element %s[%v]: %w", fieldType.Name, key, err)
+					}
+					// Update the map with the processed value
+					field.SetMapIndex(key, elemCopy)
+				}
+			}
+		}
+	}
+	return nil
 }
