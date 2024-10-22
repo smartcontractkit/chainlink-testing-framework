@@ -1,3 +1,5 @@
+exclude: '(\.bin|\.abi)'
+
 repos:
   - repo: local
     hooks:

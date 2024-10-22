@@ -10,8 +10,8 @@ jobs:
       fail-fast: false
       matrix:
         project:
-          - name: root
-            path: ./
+          - name: lib
+            path: ./lib/
           - name: gotestloghelper
             path: ./tools/gotestloghelper/
           - name: testlistgenerator
@@ -30,7 +30,7 @@ jobs:
       - name: Checkout the Repo
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
       - name: Install gotestloghelper
-        run: make gotestloghelper_build
+        run: cd lib && make gotestloghelper_build
       - name: Install Nix
         uses: cachix/install-nix-action@8887e596b4ee1134dae06b98d573bd674693f47c # v26
         with:
@@ -48,11 +48,6 @@ jobs:
           # shellcheck disable=SC2046
           nix develop -c sh -c "cd ${{ matrix.project.path }} && \
             make test_unit"
-      - name: Code Coverage
-        uses: codecov/codecov-action@84508663e988701840491b86de86b666e8a86bed # v4.3.0
-        with:
-          files: ./unit-test-coverage.out
-          name: codecov-umbrella
       - name: Publish Artifacts
         if: failure()
         uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3

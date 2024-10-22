@@ -1,0 +1,6 @@
+apiVersion: v2
+name: foundry
+description: A Helm chart for foundry, mostly used to run Anvil node
+type: application
+version: 0.2.2
+appVersion: 'latest'

@@ -1,0 +1,89 @@
+imagePullPolicy: Always
+eth2-common:
+  general:
+    networkId: 1337
+  genesis:
+    values:
+      currentUnixTimestamp: 1600000000
+general:
+  networkId: 1337
+shared:
+  mnemonic: giant issue aisle success illegal bike spike question tent bar rely arctic volcano long crawl hungry vocal artwork sniff fantasy very lucky have athlete
+  configDataDir: /data/metadata
+  keystoreDataSubdir: /keystore
+  password: password
+  accountKeystoreFile: account_key
+  accountPasswordFile: account_password.txt
+  jwtFile: jwtSecret
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+valKeys:
+  image:
+    repository: protolambda/eth2-val-tools
+    tag: latest
+genesis:
+  image:
+    repository: public.ecr.aws/w0i8p0z9/ethereum-genesis-generator
+    tag: main-f3d278d
+  values:
+    currentUnixTimestamp: 1600000000
+    secondsPerSlot: 20
+    slotsPerEpoch: 4
+    delaySeconds: 90
+    validatorCount: 8
+    denebForkEpoch: 200
+    preminedAddresses:
+      - 'D8eC39A12cd0aD2814C521CdC81a664875B68039'
+      - 'f3541234BdEED46b0BCF3D872b1922F5Bca4BD90'
+      - '614bDCBE12e79b360CA5CC82d6f5BDeA5cCaB3B8'
+      - '1a07E7660E1d502194a584e59Ab300482Bb8Eef4'
+      - '1c38D6524230b3B898095aAe3920294afdC778Bb'
+      - 'dF3C09bD056b8Cd93BFdA803c66f8ff556c93F65'
+      - 'D54546c84B541d5136f0A7e405457CD3371D354E'
+      - '95371c9792C9435efcd0B9CBb76991966995672d'
+      - 'd83FCe08439C7ab9881d2AEA3a3fe0bf3B90f008'
+      - 'D0A242b96e8C1700ff6dFE24B5Ec2dE832B6424F'
+      - 'f39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
+excutionClient:
+  image:
+    repository: hyperledger/besu
+    tag: '24.8.0'
+  name: besu
+  ports:
+    http: 8544
+    ws: 8545
+    execution: 8551
+    discovery: 30303
+  logging:
+    level: INFO
+prysm:
+  shared:
+    feeRecipent: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
+    gethInitTimeoutSeconds: 600
+  beacon:
+    name: prysm-beacon-chain
+    image:
+      repository: gcr.io/prysmaticlabs/prysm/beacon-chain
+      tag: v5.0.4
+    ports:
+      query: 3500
+      node: 4000
+      status: 8080
+  validator:
+    name: prysm-validator
+    image:
+      repository: gcr.io/prysmaticlabs/prysm/validator
+      tag: v5.0.4
+busybox:
+  image:
+    repository: busybox
+    tag: 1.36.1
+ready:
+  name: chain-ready
+  image:
+    repository: curlimages/curl
+    tag: 8.4.0
+storage:
+  claim: chain-state-claim
+  size: 2Gi

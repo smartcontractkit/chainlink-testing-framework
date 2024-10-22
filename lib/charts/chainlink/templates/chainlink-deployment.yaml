@@ -1,0 +1,126 @@
+{{- range $cfg := .Values.nodes }}
+apiVersion: apps/v1
+{{- if $.Values.db.stateful }}
+kind: StatefulSet
+{{- else }}
+kind: Deployment
+{{- end }}
+metadata:
+  name: {{ $.Release.Name }}-{{ $cfg.name }}
+spec:
+{{ if $.Values.db.stateful }}
+  serviceName: {{ $.Release.Name }}-{{ $cfg.name }}
+{{- end }}
+  selector:
+    matchLabels:
+      app: {{ $.Release.Name }}
+      instance: {{ $cfg.name }}
+      release: {{ $.Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $.Release.Name }}
+        instance: {{ $cfg.name }}
+        release: {{ $.Release.Name }}
+        {{- range $key, $value := $.Values.labels }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+      annotations:
+        prometheus.io/scrape: 'true'
+    spec:
+      volumes:
+        - name: {{ $.Release.Name }}-{{ $cfg.name }}-config-map
+          configMap:
+            name: {{ $.Release.Name }}-{{ $cfg.name }}-cm
+      containers:
+        - name: node
+          {{- $image := $.Values.chainlink.image.image }}
+          {{- $tag := $.Values.chainlink.image.version }}
+          {{- if $cfg.chainlink }}
+            {{- if $cfg.chainlink.image }}
+                {{- if $cfg.chainlink.image.image }}
+                    {{ $image = $cfg.chainlink.image.image }}
+                {{- end }}
+                {{- if $cfg.chainlink.image.version }}
+                    {{ $tag = $cfg.chainlink.image.version }}
+                {{- end }}
+            {{- end }}
+          {{- end }}
+          image: {{ $image }}:{{ $tag }}
+          imagePullPolicy: Always
+          command: [ "/bin/bash" ]
+          args:
+            - "-c"
+            - |-
+              while ! pg_isready -d $POSTGRES_DB -h $POSTGRES_HOST -p $POSTGRES_PORT -U $POSTGRES_USER; do sleep 1; done && chainlink -c /etc/node-secrets-volume/default.toml -c /etc/node-secrets-volume/overrides.toml -secrets /etc/node-secrets-volume/secrets.toml node start -d -p /etc/node-secrets-volume/node-password -a /etc/node-secrets-volume/apicredentials --vrfpassword=/etc/node-secrets-volume/apicredentials;
+          ports:
+            - name: access
+              containerPort: {{ $.Values.chainlink.web_port }}
+            - name: p2p
+              containerPort: {{ $.Values.chainlink.p2p_port }}
+          env:
+            - name: POSTGRES_HOST
+              value: {{ $.Release.Name }}-postgres-{{ $cfg.name }}.{{ $.Release.Namespace }}.svc.cluster.local
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_USER
+              value: {{ $.Values.db.postgresUser }}
+            - name: POSTGRES_DB
+              value: {{ $.Values.db.postgresDatabase }}
+            - name: CL_DATABASE_URL
+              value: postgresql://{{ $.Values.db.postgresUser }}:{{ $.Values.db.postgresPassword }}@{{ $.Release.Name }}-postgres-{{ $cfg.name }}.{{ $.Release.Namespace }}.svc.cluster.local:5432/{{ $.Values.db.postgresDatabase }}?sslmode=disable
+          {{- range $key, $value := $.Values.env }}
+            {{- if $value }}
+            - name: {{ $key | upper}}
+              {{- if kindIs "string" $value}}
+              value: {{ $value | quote}}
+              {{- else }}
+              value: {{ $value }}
+              {{- end }}
+            {{- end }}
+          {{- end }}
+          volumeMounts:
+            - name: {{ $.Release.Name }}-{{ $cfg.name }}-config-map
+              mountPath: /etc/node-secrets-volume/
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ $.Values.chainlink.web_port }}
+            initialDelaySeconds: 1
+            periodSeconds: 5
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ $.Values.chainlink.web_port }}
+            initialDelaySeconds: 1
+            periodSeconds: 5
+            timeoutSeconds: 10
+          startupProbe:
+            httpGet:
+              path: /
+              port: {{ $.Values.chainlink.web_port }}
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            failureThreshold: 20
+          resources:
+            requests:
+              memory: {{ $.Values.chainlink.resources.requests.memory }}
+              cpu: {{ $.Values.chainlink.resources.requests.cpu }}
+            limits:
+              memory: {{ $.Values.chainlink.resources.limits.memory }}
+              cpu: {{ $.Values.chainlink.resources.limits.cpu }}
+              {{- with $.Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with $.Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- with $.Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+{{- end }}
+---
+{{- end }}

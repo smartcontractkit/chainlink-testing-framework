@@ -1,0 +1,82 @@
+{{/* Prysm Beacon Chain StatefulSet */}}
+{{- define "eth2-common.templates.statefulset.prysm-beacon" }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-{{ .Values.prysm.beacon.name }}
+  labels:
+    release: {{ .Release.Name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-{{ .Values.prysm.beacon.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-{{ .Values.prysm.beacon.name }}
+        release: {{ .Release.Name }}
+    spec:
+      volumes:
+      - name: {{ .Release.Name }}-genesis-config
+        configMap:
+          name: {{ .Release.Name }}-ethereum-genesis-generator-config
+      - name: {{ .Release.Name }}-after-genesis-helper-config
+        configMap:
+          name: {{ .Release.Name }}-after-genesis-helper-config
+      securityContext:
+        fsGroup: {{ .Values.securityContext.runAsGroup }}
+      containers:
+        - name: {{ .Values.prysm.beacon.name }}
+          image: {{ .Values.prysm.beacon.image.repository }}:{{ .Values.prysm.beacon.image.tag }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          args:
+            - "--accept-terms-of-use"
+            - "--datadir={{ .Values.shared.configDataDir }}/consensus-data-chain"
+            - "--genesis-state={{ .Values.shared.configDataDir }}/genesis.ssz"
+            - "--chain-config-file={{ .Values.shared.configDataDir }}/config.yaml"
+            - "--contract-deployment-block=0"
+            - "--chain-id={{ .Values.general.networkId }}"
+            - "--rpc-host=0.0.0.0"
+            - "--grpc-gateway-host=0.0.0.0"
+            - "--grpc-gateway-corsdomain=*"
+            - "--execution-endpoint=http://{{ .Release.Name }}-{{ .Values.excutionClient.name }}-svc:{{ .Values.excutionClient.ports.execution }}"
+            - "--jwt-secret={{ .Values.shared.configDataDir }}/{{ .Values.shared.jwtFile }}"
+            - "--subscribe-all-subnets=true"
+            - "--suggested-fee-recipient={{ .Values.prysm.shared.feeRecipent }}"
+            - "--minimum-peers-per-subnet=0"
+            - "--min-sync-peers=0"
+            - "--force-clear-db"
+            - "--interop-eth1data-votes"
+          ports:
+            - name: query-rpc
+              containerPort: {{ .Values.prysm.beacon.ports.query }}
+            - name: node-rpc
+              containerPort: {{ .Values.prysm.beacon.ports.node }}
+            - name: status
+              containerPort: {{ .Values.prysm.beacon.ports.status }}
+          volumeMounts:
+            - name: {{ .Release.Name }}-{{ .Values.storage.claim }}-beacon-chain
+              mountPath: /data
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            runAsUser: {{ .Values.securityContext.runAsUser }}
+            runAsGroup: {{ .Values.securityContext.runAsGroup }}
+            runAsNonRoot: true
+
+{{- $customData := dict "pvcName" (printf "%s-%s-beacon-chain" .Release.Name .Values.storage.claim) }}
+{{- $newContext := merge $customData . }}
+{{- include "eth2-common.templates.execution-client.init-containers" $newContext | nindent 6 }}
+  volumeClaimTemplates:
+  - metadata:
+      name: {{ .Release.Name }}-{{ .Values.storage.claim }}-beacon-chain
+      labels:
+        app: {{ .Release.Name }}-{{ .Values.prysm.beacon.name }}
+        release: {{ .Release.Name }}
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: {{ .Values.storage.size }}
+{{- end}}

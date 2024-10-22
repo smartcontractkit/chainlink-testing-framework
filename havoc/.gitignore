@@ -1,0 +1,38 @@
+# IDE and environment
+.idea/
+.vscode/
+.DS_STORE
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories
+dist/
+vendor/
+node_modules/
+.yarn/
+
+# Mercuy server configuration file
+config.toml
+config.*.toml
+
+# Other
+tmp/
+*.log
+*.swp
+.air.toml
+.DS_Store
+output.txt
+
+# General env vars config
+.envrc

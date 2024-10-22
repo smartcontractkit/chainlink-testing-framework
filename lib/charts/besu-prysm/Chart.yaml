@@ -1,0 +1,8 @@
+apiVersion: v2
+description: Eth2 private network with Besu and Prysm
+name: besu-prysm
+version: 0.3.2
+dependencies:
+  - name: eth2-common
+    version: 0.6.0
+    repository: 'https://raw.githubusercontent.com/smartcontractkit/qa-charts/gh-pages/'

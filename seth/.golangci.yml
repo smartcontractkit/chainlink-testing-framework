@@ -1,0 +1,86 @@
+run:
+  concurrency: 4
+  timeout: 5m
+linters:
+  enable:
+    # defaults
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - typecheck
+    - unused
+    # extra
+    - exhaustive
+    - exportloopref
+    - revive
+    - goimports
+    - gosec
+    - misspell
+    - errorlint
+    - contextcheck
+linters-settings:
+  exhaustive:
+    default-signifies-exhaustive: true
+  goimports:
+    local-prefixes: github.com/smartcontractkit/chainlink-testing-framework/seth
+  gosec:
+    exclude-generated: true
+  govet:
+    # report about shadowed variables
+    check-shadowing: false
+  errorlint:
+    # Allow formatting of errors without %w
+    errorf: false
+  revive:
+    confidence: 0.8
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: if-return
+      - name: increment-decrement
+#      - name: var-naming
+      - name: var-declaration
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: exported
+      - name: empty-block
+      - name: superfluous-else
+      - name: unused-parameter
+      - name: unreachable-code
+      - name: redefines-builtin-id
+      - name: waitgroup-by-value
+      - name: unconditional-recursion
+      - name: struct-tag
+      - name: string-format
+      - name: string-of-int
+      - name: range-val-address
+      - name: range-val-in-closure
+      - name: modifies-value-receiver
+      - name: modifies-parameter
+      - name: identical-branches
+      - name: get-return
+      - name: flag-parameter
+      - name: early-return
+      - name: defer
+      - name: constant-logical-expr
+      - name: confusing-naming
+#      - name: confusing-results
+      - name: bool-literal-in-expr
+      - name: atomic
+issues:
+  exclude-dirs:
+    - contracts/*
+    - examples/*
+    - examples_wasp/*

@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-{{ .Values.excutionClient.name }}
+  labels:
+    release: {{ .Release.Name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-{{ .Values.excutionClient.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-{{ .Values.excutionClient.name }}
+        release: {{ .Release.Name }}
+    spec:
+      volumes:
+      - name: {{ .Release.Name }}-genesis-config
+        configMap:
+          name: {{ .Release.Name }}-ethereum-genesis-generator-config
+      - name: {{ .Release.Name }}-after-genesis-helper-config
+        configMap:
+          name: {{ .Release.Name }}-after-genesis-helper-config
+      - name: {{ .Release.Name }}-geth-config
+        configMap:
+          name: {{ .Release.Name }}-geth-config
+      securityContext:
+        fsGroup: {{ .Values.securityContext.runAsGroup }}
+      containers:
+        - name: {{ .Values.excutionClient.name }}
+          image: {{ .Values.excutionClient.image.repository }}:{{ .Values.excutionClient.image.tag }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          command: ["/bin/sh","/entrypoint.sh"]
+          ports:
+            - name: http-rpc
+              containerPort: {{ .Values.excutionClient.ports.http }}
+            - name: ws-rpc
+              containerPort: {{ .Values.excutionClient.ports.ws }}
+            - name: execution-rpc
+              containerPort: {{ .Values.excutionClient.ports.execution }}
+            - name: discovery-udp
+              containerPort: {{ .Values.excutionClient.ports.discovery }}
+              protocol: UDP
+            - name: discovery-tcp
+              containerPort: {{ .Values.excutionClient.ports.discovery }}
+          volumeMounts:
+            - name: {{ .Release.Name }}-{{ .Values.storage.claim }}-geth
+              mountPath: /data
+            - name: {{ .Release.Name }}-geth-config
+              mountPath: /entrypoint.sh
+              subPath: entrypoint.sh
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            runAsUser: {{ .Values.securityContext.runAsUser }}
+            runAsGroup: {{ .Values.securityContext.runAsGroup }}
+            runAsNonRoot: true
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.excutionClient.ports.http }}
+            initialDelaySeconds: 50
+            periodSeconds: 5
+            failureThreshold: 2
+            timeoutSeconds: 120
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.excutionClient.ports.http }}
+            initialDelaySeconds: 50
+            periodSeconds: 5
+            failureThreshold: 2
+            timeoutSeconds: 120
+
+{{- $customData := dict "pvcName" (printf "%s-%s-geth" .Release.Name .Values.storage.claim) }}
+{{- $newContext := merge $customData . }}
+{{- include "eth2-common.templates.execution-client.init-containers" $newContext | nindent 6 }}
+  volumeClaimTemplates:
+  - metadata:
+      name: {{ .Release.Name }}-{{ .Values.storage.claim }}-geth
+      labels:
+        app: {{ .Release.Name }}-{{ .Values.excutionClient.name }}
+        release: {{ .Release.Name }}
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: {{ .Values.storage.size }}
