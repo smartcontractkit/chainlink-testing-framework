@@ -13,8 +13,10 @@ type CITestConf struct {
 	Name        string `yaml:"name" json:"name"`
 	Path        string `yaml:"path" json:"path"`
 	TestEnvType string `yaml:"test_env_type" json:"test_env_type"`
-	// RunsOn denotes the type of GitHub actions runner to use for the test: https://docs.github.com/en/billing/managing-billing-for-github-actions/about-billing-for-github-actions#per-minute-rates
+	// RunsOn denotes the type of GitHub Actions runner to use for the test: https://docs.github.com/en/billing/managing-billing-for-github-actions/about-billing-for-github-actions#per-minute-rates
 	RunsOn string `yaml:"runs_on" json:"runs_on"`
+	// RunsOnARM64 denotes what type of GitHub Actions runner to use for the test when running on ARM64 architecture. Only used if ChainlinkImageTypes specifies ARM64.
+	RunsOnARM64 string `yaml:"runs_on_arm64" json:"runs_on_arm64"`
 	// ChainlinkImageTypes is a list of Chainlink image variants to test with
 	ChainlinkImageTypes        []string          `yaml:"chainlink_image_types" json:"chainlink_image_types"`
 	TestCmd                    string            `yaml:"test_cmd" json:"test_cmd"`
