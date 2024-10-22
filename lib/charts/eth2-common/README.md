@@ -33,6 +33,6 @@ Even though Prysm Beacon Chain and Validator are the same regarding of the execu
 {{- include "eth2-common.templates.deployment.prysm-beacon" .  }}
 ```
 
-You need to do similar thing for prysm beacon service, validator deployment and chain ready deployment.
+You need to do similar thing for Prysm Beacon service, validator deployment and chain ready deployment.
 
 Remember, that you cannot reuse predefined values from the dependency, you need to define them in your package.

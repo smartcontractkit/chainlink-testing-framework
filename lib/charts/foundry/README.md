@@ -18,7 +18,7 @@ anvil:
   # forkNoRateLimit: "true"
 ```
 
-By default ingress is disabled, so remember to enable it in `values.yaml`.
+By default, ingress is disabled, so remember to enable it in `values.yaml`.
 Sample command:
 ```bash
 export RELEASE_NAME="your-release-name"
@@ -40,7 +40,7 @@ helm install "${RELEASE_NAME}" . -f ./values.yaml \
 
 You can find documentation for anvil [here](https://book.getfoundry.sh/reference/anvil/)
 
-Also additional use cases can be found in the [testcases](../../client/rpc_test.go) folder:
+Also, additional use cases can be found in the [testcases](../../client/rpc_test.go) folder:
 1. (anvil) test drop transaction
 2. (anvil) test we can shrink the block and control transaction inclusion
 3. (anvil) test we can change next block base fee per gas and make tx pass or fail
