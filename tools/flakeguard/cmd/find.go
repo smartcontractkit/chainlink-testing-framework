@@ -25,6 +25,7 @@ var FindTestsCmd = &cobra.Command{
 		levels, _ := cmd.Flags().GetInt("levels")
 		findByTestFilesDiff, _ := cmd.Flags().GetBool("find-by-test-files-diff")
 		findByAffected, _ := cmd.Flags().GetBool("find-by-affected-packages")
+		onlyShowChangedTestFiles, _ := cmd.Flags().GetBool("only-show-changed-test-files")
 
 		// Find all changes in test files and get their package names
 		var changedTestPkgs []string
@@ -32,6 +33,10 @@ var FindTestsCmd = &cobra.Command{
 			changedTestFiles, err := git.FindChangedFiles(baseRef, "grep '_test\\.go$'")
 			if err != nil {
 				log.Fatalf("Error finding changed test files: %v", err)
+			}
+			if onlyShowChangedTestFiles {
+				outputResults(changedTestFiles, jsonOutput)
+				return
 			}
 			if verbose {
 				fmt.Println("Changed test files:", changedTestFiles)
@@ -77,6 +82,7 @@ func init() {
 	FindTestsCmd.Flags().IntP("levels", "l", 2, "The number of levels of recursion to search for affected packages. Default is 2. 0 is unlimited.")
 	FindTestsCmd.Flags().Bool("find-by-test-files-diff", true, "Enable the mode to find test packages by changes in test files.")
 	FindTestsCmd.Flags().Bool("find-by-affected-packages", true, "Enable the mode to find test packages that may be affected by changes in any of the project packages.")
+	FindTestsCmd.Flags().Bool("only-show-changed-test-files", false, "Only show the changed test files and exit")
 
 	if err := FindTestsCmd.MarkFlagRequired("base-ref"); err != nil {
 		fmt.Println("Error marking base-ref as required:", err)
