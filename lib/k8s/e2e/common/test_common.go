@@ -111,6 +111,8 @@ func TestConnectWithoutManifest(t *testing.T) {
 		existingEnv = environment.New(existingEnvConfig)
 		l.Info().Str("Namespace", existingEnvConfig.Namespace).Msg("Existing Env Namespace")
 		// deploy environment to use as an existing one for the test
+		require.NotNil(t, existingEnv, "existingEnv is nil")
+		require.NotNil(t, existingEnv.Cfg, "existingEnv.Cfg is nil %v", existingEnv)
 		existingEnv.Cfg.JobImage = ""
 		existingEnv.AddHelm(ethereum.New(nil)).
 			AddHelm(chainlink.New(0, map[string]any{
