@@ -23,11 +23,12 @@ func deployAnvil(in *Input) (*Output, error) {
 	containerName := framework.DefaultTCName("anvil")
 
 	req := testcontainers.ContainerRequest{
-		Image:        fmt.Sprintf("%s:%s", in.Image, in.Tag),
-		Labels:       framework.DefaultTCLabels(),
-		Name:         containerName,
-		ExposedPorts: []string{bindPort},
-		Networks:     []string{framework.DefaultNetworkName},
+		AlwaysPullImage: in.PullImage,
+		Image:           fmt.Sprintf("%s:%s", in.Image, in.Tag),
+		Labels:          framework.DefaultTCLabels(),
+		Name:            containerName,
+		ExposedPorts:    []string{bindPort},
+		Networks:        []string{framework.DefaultNetworkName},
 		NetworkAliases: map[string][]string{
 			framework.DefaultNetworkName: {containerName},
 		},

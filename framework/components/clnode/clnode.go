@@ -26,6 +26,7 @@ type Input struct {
 type NodeInput struct {
 	Image                string `toml:"image" validate:"required"`
 	Tag                  string `toml:"tag" validate:"required"`
+	PullImage            bool   `toml:"pull_image" validate:"required"`
 	Port                 string `toml:"port" validate:"required"`
 	TestConfigOverrides  string `toml:"test_config_overrides"`
 	UserConfigOverrides  string `toml:"user_config_overrides"`
@@ -107,10 +108,11 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	containerName := framework.DefaultTCName("clnode")
 
 	req := tc.ContainerRequest{
-		Image:    fmt.Sprintf("%s:%s", in.Node.Image, in.Node.Tag),
-		Name:     containerName,
-		Labels:   framework.DefaultTCLabels(),
-		Networks: []string{framework.DefaultNetworkName},
+		AlwaysPullImage: in.Node.PullImage,
+		Image:           fmt.Sprintf("%s:%s", in.Node.Image, in.Node.Tag),
+		Name:            containerName,
+		Labels:          framework.DefaultTCLabels(),
+		Networks:        []string{framework.DefaultNetworkName},
 		NetworkAliases: map[string][]string{
 			framework.DefaultNetworkName: {containerName},
 		},

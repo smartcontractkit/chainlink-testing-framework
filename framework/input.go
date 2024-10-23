@@ -3,6 +3,7 @@ package framework
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-playground/validator/v10"
@@ -63,17 +64,23 @@ func mergeInputs[T any]() (*T, error) {
 	}
 	for _, path := range paths {
 		L.Info().Str("Path", path).Msg("Loading configuration input")
-		file, err := os.ReadFile(filepath.Join(DefaultConfigDir, path))
+		data, err := os.ReadFile(filepath.Join(DefaultConfigDir, path))
 		if err != nil {
 			return nil, fmt.Errorf("error reading promtailConfig file %s: %w", path, err)
 		}
 		if L.GetLevel() == zerolog.DebugLevel {
-			fmt.Println(string(file))
+			fmt.Println(string(data))
 		}
 
-		err = toml.Unmarshal(file, &config)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing config file %s: %w", path, err)
+		decoder := toml.NewDecoder(strings.NewReader(string(data)))
+		decoder.DisallowUnknownFields()
+
+		if err := decoder.Decode(&config); err != nil {
+			var details *toml.StrictMissingError
+			if errors.As(err, &details) {
+				fmt.Println(details.String())
+			}
+			return nil, fmt.Errorf("failed to decode TOML config, strict mode: %s", err)
 		}
 	}
 	if L.GetLevel() == zerolog.DebugLevel {
