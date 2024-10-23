@@ -10,16 +10,48 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/Masterminds/semver/v3"
-
+	"github.com/hashicorp/go-version"
 	"github.com/itchyny/gojq"
 )
+
+type byVersion []string
+
+func (s byVersion) Len() int {
+	return len(s)
+}
+
+func (s byVersion) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s byVersion) Less(i, j int) bool {
+	v1, err := version.NewVersion(s[i])
+	if err != nil {
+		panic(err)
+	}
+	v2, err := version.NewVersion(s[j])
+	if err != nil {
+		panic(err)
+	}
+	return v1.LessThan(v2)
+}
 
 func fetchImageDetails(repositoryName string) ([]byte, error) {
 	// #nosec G204
 	cmd := exec.Command("aws", "ecr", "describe-images", "--repository-name", repositoryName, "--region", os.Getenv("AWS_REGION"), "--output", "json", "--query", "imageDetails[?imageTags!=`null` && imageTags!=`[]`]")
 	return cmd.Output()
+}
+
+func trimToVersion(s string) string {
+	for i, r := range s {
+		if unicode.IsDigit(r) || r == 'v' {
+			return s[i:]
+		}
+	}
+	return s
 }
 
 func parseImageTags(output []byte, grepString string, constraints *semver.Constraints) ([]string, error) {
@@ -33,7 +65,7 @@ func parseImageTags(output []byte, grepString string, constraints *semver.Constr
 		return nil, fmt.Errorf("failed to parse gojq query: %w", err)
 	}
 
-	var tags []string
+	var tags byVersion
 	iter := query.Run(imageDetails)
 	for {
 		tag, ok := iter.Next()
@@ -41,13 +73,14 @@ func parseImageTags(output []byte, grepString string, constraints *semver.Constr
 			break
 		}
 		if tagStr, ok := tag.(string); ok {
+			tagStr = trimToVersion(tagStr)
 			tags = append(tags, tagStr)
 		} else if err, ok := tag.(error); ok {
 			return nil, fmt.Errorf("failed to run gojq query: %w", err)
 		}
 	}
 
-	sort.Sort(sort.Reverse(sort.StringSlice(tags)))
+	sort.Sort(sort.Reverse(tags))
 
 	re, err := regexp.Compile(grepString)
 	if err != nil {
@@ -59,11 +92,11 @@ func parseImageTags(output []byte, grepString string, constraints *semver.Constr
 		if re.MatchString(tag) {
 			ignore := false
 			if constraints != nil {
-				version, err := semver.NewVersion(tag)
+				semversion, err := semver.NewVersion(tag)
 				if err != nil {
 					return nil, fmt.Errorf("failed to parse version: %w", err)
 				}
-				if !constraints.Check(version) {
+				if !constraints.Check(semversion) {
 					ignore = true
 				}
 			}
