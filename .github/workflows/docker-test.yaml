@@ -22,7 +22,7 @@ jobs:
             tests: TestPostgres|TestMockServer|TestKillgrave
     steps:
       - name: Checkout the Repo
-        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
       - name: Install Go
         uses: smartcontractkit/chainlink-github-actions/chainlink-testing-framework/setup-go@e29366cdecfe6befff9ab8c3cfe4825218505d58 # v2.3.16
         with:
