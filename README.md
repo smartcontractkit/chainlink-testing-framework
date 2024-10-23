@@ -2,6 +2,7 @@
 
 # Chainlink Testing Framework
 
+[![Main branch breaking changes check](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/rc-breaking-changes.yaml/badge.svg)](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/rc-breaking-changes.yaml)
 [![Lib tag](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework?filter=%2Alib%2A)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
 [![WASP tag](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework?filter=%2Awasp%2A)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
 [![Seth tag](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework?filter=%2Aseth%2A)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
@@ -22,6 +23,7 @@ If you're looking to implement a new chain integration for the testing framework
 # Content
 
 1. [Libraries](#libraries)
+2. [Releasing](#releasing)
 
 ## Libraries
 
@@ -31,3 +33,7 @@ CTF monorepository contains a set of libraries:
 - [WASP](wasp/README.md) - Scalable protocol-agnostic load testing library for `Go`
 - [Havoc](havoc/README.md) - Chaos testing library
 - [Seth](seth/README.md) - Ethereum client library with transaction tracing and gas bumping
+
+## Releasing
+
+We follow [SemVer](https://semver.org/) and follow best Go practices for releasing our modules, please follow the [instruction](RELEASE.md)

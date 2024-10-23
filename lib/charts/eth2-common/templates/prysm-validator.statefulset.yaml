@@ -16,16 +16,6 @@ spec:
         app: {{ .Release.Name }}-{{ .Values.prysm.validator.name }}
         release: {{ .Release.Name }}
     spec:
-      affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: release
-                operator: In
-                values:
-                - {{ .Release.Name }}
-            topologyKey: kubernetes.io/hostname
       volumes:
       - name: {{ .Release.Name }}-genesis-config
         configMap:
@@ -33,6 +23,8 @@ spec:
       - name: {{ .Release.Name }}-after-genesis-helper-config
         configMap:
           name: {{ .Release.Name }}-after-genesis-helper-config
+      securityContext:
+        fsGroup: {{ .Values.securityContext.runAsGroup }}
       containers:
         - name: {{ .Values.prysm.validator.name }}
           image: {{ .Values.prysm.validator.image.repository }}:{{ .Values.prysm.validator.image.tag }}
@@ -49,6 +41,13 @@ spec:
           volumeMounts:
             - name: {{ .Release.Name }}-{{ .Values.storage.claim }}-validator
               mountPath: /data
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            runAsUser: {{ .Values.securityContext.runAsUser }}
+            runAsGroup: {{ .Values.securityContext.runAsGroup }}
+            runAsNonRoot: true
 
 {{- $customData := dict "pvcName" (printf "%s-%s-validator" .Release.Name .Values.storage.claim) }}
 {{- $newContext := merge $customData . }}
@@ -56,6 +55,9 @@ spec:
   volumeClaimTemplates:
   - metadata:
       name: {{ .Release.Name }}-{{ .Values.storage.claim }}-validator
+      labels:
+        app: {{ .Release.Name }}-{{ .Values.prysm.validator.name }}
+        release: {{ .Release.Name }}
     spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:

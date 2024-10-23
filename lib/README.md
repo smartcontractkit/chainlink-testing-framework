@@ -430,3 +430,33 @@ export RESTY_DEBUG=true
 ## Using AWS Secrets Manager
 
 Check the [docs](SECRETS.md)
+
+## Loki Client
+
+The `LokiClient` allows you to easily query Loki logs from your tests. It supports basic authentication, custom queries, and can be configured for (Resty) debug mode.
+
+### Debugging Resty and Loki Client
+
+```bash
+export LOKI_CLIENT_LOG_LEVEL=info
+export RESTY_DEBUG=true
+```
+
+### Example usage:
+
+```go
+auth := LokiBasicAuth{
+    Username: os.Getenv("LOKI_LOGIN"),
+    Password: os.Getenv("LOKI_PASSWORD"),
+}
+
+queryParams := LokiQueryParams{
+		Query:     `{namespace="test"} |= "test"`,
+		StartTime: time.Now().AddDate(0, 0, -1),
+		EndTime:   time.Now(),
+		Limit:     100,
+	}
+
+lokiClient := NewLokiClient("https://loki.api.url", "my-tenant", auth, queryParams)
+logEntries, err := lokiClient.QueryLogs(context.Background())
+```

@@ -10,3 +10,38 @@ updates:
     schedule:
       interval: daily
     open-pull-requests-limit: 10
+  - package-ecosystem: gomod
+    directory: '/lib'
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    labels:
+      - 'dependencies'
+  - package-ecosystem: gomod
+    directory: '/wasp'
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    labels:
+      - 'dependencies'
+  - package-ecosystem: gomod
+    directory: '/seth'
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    labels:
+      - 'dependencies'
+  - package-ecosystem: gomod
+    directory: '/havoc'
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    labels:
+      - 'dependencies'
+  - package-ecosystem: gomod
+    directory: '/k8s-test-runner'
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    labels:
+      - 'dependencies'

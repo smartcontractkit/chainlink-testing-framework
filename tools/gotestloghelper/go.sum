@@ -4,8 +4,8 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/smartcontractkit/chainlink-testing-framework/lib v1.99.4-0.20240903123107-cd7909d3e9fb h1:3FUCF0KLWOVJdtTeSGhiSZYsNY7yimqW99k67f2vY+E=
-github.com/smartcontractkit/chainlink-testing-framework/lib v1.99.4-0.20240903123107-cd7909d3e9fb/go.mod h1:sJt0auUnNSN/bYhSyucgWi8hcWGEMAxc3+Vg6+zWmCw=
+github.com/smartcontractkit/chainlink-testing-framework/lib v1.50.10 h1:FQss3hzNBkwzIJ8TQNHeYnXZkVepzNERv5HZhm9VbjU=
+github.com/smartcontractkit/chainlink-testing-framework/lib v1.50.10/go.mod h1:7R5wGWWJi0dr5Y5cXbLQ4vSeIj0ElvhBaymcfvqqUmo=
 github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=

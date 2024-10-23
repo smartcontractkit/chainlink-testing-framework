@@ -158,13 +158,13 @@ func (pg *PostgresDb) startOrRestartContainer(withReuse bool) error {
 	internalUrl, err := url.Parse(fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		pg.User, pg.Password, pg.ContainerName, "5432", pg.DbName))
 	if err != nil {
-		return fmt.Errorf("error parsing mercury db internal url: %w", err)
+		return errors.Wrap(err, "error parsing db internal url")
 	}
 	pg.InternalURL = internalUrl
 	externalUrl, err := url.Parse(fmt.Sprintf("postgres://%s:%s@127.0.0.1:%s/%s?sslmode=disable",
 		pg.User, pg.Password, externalPort.Port(), pg.DbName))
 	if err != nil {
-		return fmt.Errorf("error parsing mercury db external url: %w", err)
+		return errors.Wrap(err, "error parsing db external url")
 	}
 	pg.ExternalURL = externalUrl
 

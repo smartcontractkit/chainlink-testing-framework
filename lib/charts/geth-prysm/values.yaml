@@ -7,21 +7,23 @@ general:
 shared:
   mnemonic: giant issue aisle success illegal bike spike question tent bar rely arctic volcano long crawl hungry vocal artwork sniff fantasy very lucky have athlete
   password: password
-  configDataDir: /data/custom_config_data
+  configDataDir: /data/metadata
   keystoreDataSubdir: /keystore
   accountPasswordFile: account_password.txt
   jwtFile: jwtSecret
   accountKeystoreFile: account_key
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
 genesis:
   image:
-    repository: tofelb/ethereum-genesis-generator
-    tag: 2.0.5
+    repository: public.ecr.aws/w0i8p0z9/ethereum-genesis-generator
+    tag: main-f3d278d
   values:
     secondsPerSlot: 4
     slotsPerEpoch: 2
-    delaySeconds: 20
+    delaySeconds: 10
     validatorCount: 8
-    denebForkEpoch: 200
     preminedAddresses:
       - 'D8eC39A12cd0aD2814C521CdC81a664875B68039'
       - 'f3541234BdEED46b0BCF3D872b1922F5Bca4BD90'
@@ -51,7 +53,7 @@ excutionClient:
   logging:
     level: INFO
 geth:
-  executionDir: /execution-data
+  executionDir: /data/execution-data
 prysm:
   shared:
     feeRecipent: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
@@ -60,7 +62,7 @@ prysm:
     name: prysm-beacon-chain
     image:
       repository: gcr.io/prysmaticlabs/prysm/beacon-chain
-      tag: v4.1.1
+      tag: v5.0.4
     ports:
       query: 3500
       node: 4000
@@ -69,7 +71,7 @@ prysm:
     name: prysm-validator
     image:
       repository: gcr.io/prysmaticlabs/prysm/validator
-      tag: v4.1.1
+      tag: v5.0.4
 busybox:
   image:
     repository: busybox

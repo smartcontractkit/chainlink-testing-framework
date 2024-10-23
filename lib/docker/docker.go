@@ -24,13 +24,14 @@ func CreateNetwork(l zerolog.Logger) (*tc.DockerNetwork, error) {
 	// our custom registry and then using the default Ryuk image
 	//nolint:staticcheck
 	reaperCO := tc.WithImageName(ryukImage)
+	f := false
 	//nolint:staticcheck
 	network, err := tc.GenericNetwork(testcontext.Get(nil), tc.GenericNetworkRequest{
 		//nolint:staticcheck
 		NetworkRequest: tc.NetworkRequest{
 			Name:           networkName,
 			CheckDuplicate: true,
-			EnableIPv6:     false, // disabling due to https://github.com/moby/moby/issues/42442
+			EnableIPv6:     &f, // disabling due to https://github.com/moby/moby/issues/42442
 			ReaperOptions: []tc.ContainerOption{
 				reaperCO,
 			},

@@ -10,6 +10,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/seth"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/config/types"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
 )
 
@@ -282,6 +283,36 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		}
 		logger.Debug().Msgf("Using %s env var to override ChainlinkUpgradeImage.Version", E2E_TEST_CHAINLINK_UPGRADE_VERSION_ENV)
 		c.ChainlinkUpgradeImage.Version = &chainlinkUpgradeVersion
+	}
+
+	ethereumExecutionLayer := MustReadEnvVar_String(E2E_TEST_PRIVATE_ETHEREUM_EXECUTION_LAYER_ENV)
+	if ethereumExecutionLayer != "" {
+		if c.PrivateEthereumNetwork == nil {
+			c.PrivateEthereumNetwork = &EthereumNetworkConfig{}
+		}
+		logger.Debug().Msgf("Using %s env var to override PrivateEthereumNetwork.ExecutionLayer", E2E_TEST_PRIVATE_ETHEREUM_EXECUTION_LAYER_ENV)
+		el := types.ExecutionLayer(ethereumExecutionLayer)
+		c.PrivateEthereumNetwork.ExecutionLayer = &el
+	}
+
+	ethereumVersion := MustReadEnvVar_String(E2E_TEST_PRIVATE_ETHEREUM_ETHEREUM_VERSION_ENV)
+	if ethereumVersion != "" {
+		if c.PrivateEthereumNetwork == nil {
+			c.PrivateEthereumNetwork = &EthereumNetworkConfig{}
+		}
+		logger.Debug().Msgf("Using %s env var to override PrivateEthereumNetwork.EthereumVersion", E2E_TEST_PRIVATE_ETHEREUM_ETHEREUM_VERSION_ENV)
+		ev := types.EthereumVersion(ethereumVersion)
+		c.PrivateEthereumNetwork.EthereumVersion = &ev
+	}
+
+	customDockerImage := MustReadEnvVar_String(E2E_TEST_PRIVATE_ETHEREUM_CUSTOM_DOCKER_IMAGE_ENV)
+	if customDockerImage != "" {
+		if c.PrivateEthereumNetwork == nil {
+			c.PrivateEthereumNetwork = &EthereumNetworkConfig{}
+		}
+		logger.Debug().Msgf("Using %s env var to override PrivateEthereumNetwork.CustomDockerImages", E2E_TEST_PRIVATE_ETHEREUM_CUSTOM_DOCKER_IMAGE_ENV)
+		customImages := map[ContainerType]string{"execution_layer": customDockerImage}
+		c.PrivateEthereumNetwork.CustomDockerImages = customImages
 	}
 
 	return nil

@@ -4,6 +4,7 @@ metadata:
   name: {{ .Release.Name }}-ethereum-genesis-generator-config
 data:
   values_template.env: |-
+    export PRESET_BASE="mainnet"
     export CHAIN_ID="{{ .Values.general.networkId }}"
     export DEPOSIT_CONTRACT_ADDRESS="0x4242424242424242424242424242424242424242"
     export EL_AND_CL_MNEMONIC="{{ .Values.shared.mnemonic }}"
@@ -19,18 +20,28 @@ data:
     export DENEB_FORK_VERSION="0x50000038"
     export DENEB_FORK_EPOCH="{{ .Values.genesis.values.denebForkEpoch }}"
     export ELECTRA_FORK_VERSION="0x60000038"
-    export ELECTRA_FORK_EPOCH=""
+    export EIP7594_FORK_VERSION="0x70000000"
     export WITHDRAWAL_TYPE="0x00"
     export WITHDRAWAL_ADDRESS=0xf97e180c050e5Ab072211Ad2C213Eb5AEE4DF134
     export BEACON_STATIC_ENR="enr:-Iq4QJk4WqRkjsX5c2CXtOra6HnxN-BMXnWhmhEQO9Bn9iABTJGdjUOurM7Btj1ouKaFkvTRoju5vz2GPmVON2dffQKGAX53x8JigmlkgnY0gmlwhLKAlv6Jc2VjcDI1NmsxoQK6S-Cii_KmfFdUJL2TANL3ksaKUnNXvTCv1tLwXs0QgIN1ZHCCIyk"
+    export SHADOW_FORK_RPC=""
+    export SHADOW_FORK_FILE=""
     export GENESIS_DELAY={{ .Values.genesis.values.delaySeconds }}
     export MAX_CHURN=8
     export EJECTION_BALANCE=16000000000
     export SLOTS_PER_EPOCH={{ .Values.genesis.values.slotsPerEpoch }}
+    export ETH1_FOLLOW_DISTANCE="2048"
+    export MIN_VALIDATOR_WITHDRAWABILITY_DELAY="256"
+    export SHARD_COMMITTEE_PERIOD="256"
+    export SAMPLES_PER_SLOT="8"
+    export CUSTODY_REQUIREMENT="1"
+    export DATA_COLUMN_SIDECAR_SUBNET_COUNT="32"
+    export TARGET_NUMBER_OF_PEERS="70"
+    export ADDITIONAL_PRELOADED_CONTRACTS="{}"
     {{- include "eth2-common.genesis.formatPreminedAddresses" .Values.genesis.values.preminedAddresses | nindent 4 }}
   config.yaml: |-
     # Extends the mainnet preset
-    PRESET_BASE: 'mainnet'
+    PRESET_BASE: $PRESET_BASE
     CONFIG_NAME: testnet # needs to exist because of Prysm. Otherwise it conflicts with mainnet genesis
 
     # Genesis
@@ -42,6 +53,7 @@ data:
     MIN_GENESIS_TIME: $GENESIS_TIMESTAMP
     GENESIS_FORK_VERSION: $GENESIS_FORK_VERSION
     GENESIS_DELAY: $GENESIS_DELAY
+
 
     # Forking
     # ---------------------------------------------------------------
@@ -67,18 +79,26 @@ data:
     DENEB_FORK_VERSION: $DENEB_FORK_VERSION
     DENEB_FORK_EPOCH: $DENEB_FORK_EPOCH
 
+    # Electra
+    ELECTRA_FORK_VERSION: $ELECTRA_FORK_VERSION
+    ELECTRA_FORK_EPOCH: $ELECTRA_FORK_EPOCH
+
+    # EIP7594 - Peerdas
+    EIP7594_FORK_VERSION: $EIP7594_FORK_VERSION
+    EIP7594_FORK_EPOCH: $EIP7594_FORK_EPOCH
+
     # Time parameters
     # ---------------------------------------------------------------
     # 12 seconds
     SECONDS_PER_SLOT: $SLOT_DURATION_IN_SECONDS
     # 14 (estimate from Eth1 mainnet)
     SECONDS_PER_ETH1_BLOCK: $SLOT_DURATION_IN_SECONDS
-    # 2**0 (= 1) epochs ~1 hours
-    MIN_VALIDATOR_WITHDRAWABILITY_DELAY: 1
     # 2**8 (= 256) epochs ~27 hours
-    SHARD_COMMITTEE_PERIOD: 1
+    MIN_VALIDATOR_WITHDRAWABILITY_DELAY: $MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+    # 2**8 (= 256) epochs ~27 hours
+    SHARD_COMMITTEE_PERIOD: $SHARD_COMMITTEE_PERIOD
     # 2**11 (= 2,048) Eth1 blocks ~8 hours
-    ETH1_FOLLOW_DISTANCE: 12
+    ETH1_FOLLOW_DISTANCE: $ETH1_FOLLOW_DISTANCE
 
     SLOTS_PER_EPOCH: $SLOTS_PER_EPOCH
 
@@ -93,14 +113,20 @@ data:
     # 2**2 (= 4)
     MIN_PER_EPOCH_CHURN_LIMIT: 4
     # 2**16 (= 65,536)
-    CHURN_LIMIT_QUOTIENT: 65536
+    CHURN_LIMIT_QUOTIENT: $CHURN_LIMIT_QUOTIENT
     # [New in Deneb:EIP7514] 2**3 (= 8)
-    MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT: $MAX_CHURN
+    MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT: $MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT
 
     # Fork choice
     # ---------------------------------------------------------------
     # 40%
     PROPOSER_SCORE_BOOST: 40
+    # 20%
+    REORG_HEAD_WEIGHT_THRESHOLD: 20
+    # 160%
+    REORG_PARENT_WEIGHT_THRESHOLD: 160
+    # 2 epochs
+    REORG_MAX_EPOCHS_SINCE_FINALIZATION: 2
 
     # Deposit contract
     # ---------------------------------------------------------------
@@ -146,9 +172,27 @@ data:
     MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS: 4096
     # 6
     BLOB_SIDECAR_SUBNET_COUNT: 6
-    # uint64(6)
-    MAX_BLOBS_PER_BLOCK: 6
+
+    # Whisk
+    # Epoch(2**8)
+    WHISK_EPOCHS_PER_SHUFFLING_PHASE: 256
+    # Epoch(2)
+    WHISK_PROPOSER_SELECTION_GAP: 2
+
+    # EIP7594
+    NUMBER_OF_COLUMNS: 128
+    MAX_CELLS_IN_EXTENDED_MATRIX: 768
+    DATA_COLUMN_SIDECAR_SUBNET_COUNT: $DATA_COLUMN_SIDECAR_SUBNET_COUNT
+    MAX_REQUEST_DATA_COLUMN_SIDECARS: 16384
+    SAMPLES_PER_SLOT: $SAMPLES_PER_SLOT
+    CUSTODY_REQUIREMENT: $CUSTODY_REQUIREMENT
+    TARGET_NUMBER_OF_PEERS: $TARGET_NUMBER_OF_PEERS
+
+    # [New in Electra:EIP7251]
+    MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA: 128000000000 # 2**7 * 10**9 (= 128,000,000,000)
+    MAX_PER_EPOCH_ACTIVATION_EXIT_CHURN_LIMIT: 256000000000 # 2**8 * 10**9 (= 256,000,000,000)
   genesis-config.yaml: |-
+    preset_base: ${PRESET_BASE}
     chain_id: ${CHAIN_ID}
     deposit_contract_address: "${DEPOSIT_CONTRACT_ADDRESS}"
     mnemonic: ${EL_AND_CL_MNEMONIC}
@@ -177,32 +221,44 @@ data:
     el_premine_addrs: ${PREMINE_ADDRS}
     genesis_timestamp: ${GENESIS_TIMESTAMP}
     genesis_delay: ${GENESIS_DELAY}
-    slot_duration_in_seconds: ${SLOT_DURATION_IN_SECONDS}
+    genesis_gaslimit: ${GENESIS_GASLIMIT}
     deneb_fork_epoch: ${DENEB_FORK_EPOCH}
+    additional_preloaded_contracts: ${ADDITIONAL_PRELOADED_CONTRACTS}
+    slot_duration_in_seconds: ${SLOT_DURATION_IN_SECONDS}
+    electra_fork_epoch: ${ELECTRA_FORK_EPOCH}
+    eof_activation_epoch: ${EOF_ACTIVATION_EPOCH}
     slots_per_epoch: ${SLOTS_PER_EPOCH}
+
   valkeys-entrypoint.sh: |-
+    #!/bin/bash
+
     if [ -f "/app/generated/chain_initialised.done" ]; then
         echo "Chain already initalised."
         exit 0
     fi
+
+    rm -rf /app/generated/val_keys
+
     ./eth2-val-tools keystores --out-loc=/app/generated/val_keys \
     --insecure --prysm-pass="{{ .Values.shared.password }}" \
     --source-mnemonic="{{ .Values.shared.mnemonic }}" \
     --source-min=0 --source-max={{ .Values.genesis.values.validatorCount }}
 
   genesis-entrypoint.sh: |-
+    #!/usr/bin/env bash
+
+    set -euo
+
     if [ -f "/data/chain_initialised.done" ]; then
         echo "Chain already initalised."
         exit 0
     fi
 
-    # change ownership so that besu user (1000:1000) can persist chain data
-    mkdir /data/execution_data
-    chown -R 1000:1000 /data/execution_data
+    mkdir -p /data/execution_data
 
     genesis_delay="{{ .Values.genesis.values.delaySeconds}}"
     validator_count="{{ .Values.genesis.values.validatorCount }}"
-    current_unix_timestamp="{{ .Values.genesis.values.currentUnixTimestamp }}"
+    current_unix_timestamp="{{ .Values.genesis.values.currentUnixTimestamp | int }}"
 
     validator_based_genesis_delay=$((validator_count * 5))
     genesis_timestamp=$((current_unix_timestamp + genesis_delay + validator_based_genesis_delay))
@@ -222,5 +278,7 @@ data:
     current_timestamp=$(date +%s)
     time_diff=$(($genesis_timestamp - current_timestamp))
     echo "More or less $time_diff seconds from now"
+
+    # Genesis generator relies on hardcoded /config/ directory to read env variables
     ./work/entrypoint.sh all
     touch /data/chain_initialised.done

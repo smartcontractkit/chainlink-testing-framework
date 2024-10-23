@@ -68,7 +68,7 @@ type ClusterConfig struct {
 	tmpHelmFilePath string
 }
 
-func (m *ClusterConfig) Defaults() error {
+func (m *ClusterConfig) Defaults(a int) error {
 	// TODO: will it be more clear if we move Helm values to a struct
 	// TODO: or should it be like that for extensibility of a chart without reflection?
 	m.HelmValues["namespace"] = m.Namespace
@@ -165,7 +165,7 @@ func NewClusterProfile(cfg *ClusterConfig) (*ClusterProfile, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
-	if err := cfg.Defaults(); err != nil {
+	if err := cfg.Defaults(0); err != nil {
 		return nil, err
 	}
 	log.Info().Interface("Config", cfg).Msg("Cluster configuration")

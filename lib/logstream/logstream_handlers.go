@@ -164,14 +164,6 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 		return "", errors.New("no Loki consumers found")
 	}
 
-	// if no Grafana URL has been set lets at least print query parameters that can be manually added to the dashboard url
-	baseUrl := ""
-	if h.loggingConfig.Grafana != nil && h.loggingConfig.Grafana.BaseUrl != nil {
-		baseUrl = *h.loggingConfig.Grafana.BaseUrl
-		baseUrl = strings.TrimSuffix(baseUrl, "/")
-		baseUrl = baseUrl + "/"
-	}
-
 	dabshoardUrl := ""
 	if h.loggingConfig.Grafana != nil && h.loggingConfig.Grafana.DashboardUrl != nil {
 		dabshoardUrl = *h.loggingConfig.Grafana.DashboardUrl
@@ -207,17 +199,32 @@ func (h *LokiLogHandler) GetLogLocation(consumers map[string]*ContainerLogConsum
 		sb.WriteString(fmt.Sprintf("&var-test=%s", testName))
 	}
 
-	var shorteningErr error
-	// try to shorten the URL only if we have all the required configuration parameters
-	if baseUrl != "" && dabshoardUrl != "" && h.loggingConfig.Grafana.BearerToken != nil {
-		var shortened string
-		shortened, shorteningErr = ShortenUrl(baseUrl, sb.String(), *h.loggingConfig.Grafana.BearerToken)
-		if shorteningErr == nil {
-			h.grafanaUrl = shortened
+	// Use short Grafana URL only in CI
+	if os.Getenv("CI") == "true" {
+		if h.loggingConfig.Grafana == nil || h.loggingConfig.Grafana.BaseUrlCI == nil {
+			return "", errors.New("grafana base URL for CI is not set in logging config")
 		}
+		baseUrl := *h.loggingConfig.Grafana.BaseUrlCI
+		baseUrl = strings.TrimSuffix(baseUrl, "/")
+		baseUrl = baseUrl + "/"
+
+		// try to shorten the URL only if we have all the required configuration parameters
+		shortUrl, err := ShortenUrl(baseUrl, sb.String(), *h.loggingConfig.Grafana.BearerToken)
+		if err != nil {
+			return "", err
+		}
+		h.grafanaUrl = shortUrl
+	} else {
+		if h.loggingConfig.Grafana == nil || h.loggingConfig.Grafana.BaseUrl == nil {
+			h.grafanaUrl = sb.String()
+			return h.grafanaUrl, nil
+		}
+		url := *h.loggingConfig.Grafana.BaseUrl
+		url = strings.TrimSuffix(url, "/")
+		h.grafanaUrl = url + "/" + sb.String()
 	}
 
-	return h.grafanaUrl, shorteningErr
+	return h.grafanaUrl, nil
 }
 
 func (h LokiLogHandler) GetTarget() LogTarget {

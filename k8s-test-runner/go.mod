@@ -76,3 +76,5 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
+
+retract [v1.999.0-test-release, v1.999.999-test-release]

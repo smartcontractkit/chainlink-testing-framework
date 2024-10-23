@@ -73,3 +73,9 @@ __debug*
 .private_chains/*
 
 .direnv
+
+# asdf
+.tool-versions
+
+import_keys_test.go
+tag.py

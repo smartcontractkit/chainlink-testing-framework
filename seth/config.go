@@ -99,6 +99,7 @@ type NonceManagerCfg struct {
 type Network struct {
 	Name                         string    `toml:"name"`
 	URLs                         []string  `toml:"urls_secret"`
+	ChainID                      uint64    `toml:"chain_id"`
 	EIP1559DynamicFees           bool      `toml:"eip_1559_dynamic_fees"`
 	GasPrice                     int64     `toml:"gas_price"`
 	GasFeeCap                    int64     `toml:"gas_fee_cap"`
@@ -111,9 +112,6 @@ type Network struct {
 	GasPriceEstimationEnabled    bool      `toml:"gas_price_estimation_enabled"`
 	GasPriceEstimationBlocks     uint64    `toml:"gas_price_estimation_blocks"`
 	GasPriceEstimationTxPriority string    `toml:"gas_price_estimation_tx_priority"`
-
-	// derivative vars
-	ChainID string
 }
 
 // DefaultClient returns a Client with reasonable default config with the specified RPC URL and private keys. You should pass at least 1 private key.
@@ -168,7 +166,7 @@ func ReadConfig() (*Config, error) {
 				cfg.Network.URLs = []string{url}
 
 				if selectedNetwork == "" {
-					L.Warn().Msg("No network name provided, using default network")
+					L.Debug().Msg("No network name provided, using default network")
 					cfg.Network.Name = DefaultNetworkName
 				}
 
@@ -303,4 +301,14 @@ func (c *Config) hasOutput(output string) bool {
 	}
 
 	return false
+}
+
+func (c *Config) findNetworkByName(name string) *Network {
+	for _, n := range c.Networks {
+		if strings.EqualFold(n.Name, name) {
+			return n
+		}
+	}
+
+	return nil
 }

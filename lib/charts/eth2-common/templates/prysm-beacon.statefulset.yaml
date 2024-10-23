@@ -16,16 +16,6 @@ spec:
         app: {{ .Release.Name }}-{{ .Values.prysm.beacon.name }}
         release: {{ .Release.Name }}
     spec:
-      affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: release
-                operator: In
-                values:
-                - {{ .Release.Name }}
-            topologyKey: kubernetes.io/hostname
       volumes:
       - name: {{ .Release.Name }}-genesis-config
         configMap:
@@ -33,6 +23,8 @@ spec:
       - name: {{ .Release.Name }}-after-genesis-helper-config
         configMap:
           name: {{ .Release.Name }}-after-genesis-helper-config
+      securityContext:
+        fsGroup: {{ .Values.securityContext.runAsGroup }}
       containers:
         - name: {{ .Values.prysm.beacon.name }}
           image: {{ .Values.prysm.beacon.image.repository }}:{{ .Values.prysm.beacon.image.tag }}
@@ -65,6 +57,13 @@ spec:
           volumeMounts:
             - name: {{ .Release.Name }}-{{ .Values.storage.claim }}-beacon-chain
               mountPath: /data
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            runAsUser: {{ .Values.securityContext.runAsUser }}
+            runAsGroup: {{ .Values.securityContext.runAsGroup }}
+            runAsNonRoot: true
 
 {{- $customData := dict "pvcName" (printf "%s-%s-beacon-chain" .Release.Name .Values.storage.claim) }}
 {{- $newContext := merge $customData . }}
@@ -72,6 +71,9 @@ spec:
   volumeClaimTemplates:
   - metadata:
       name: {{ .Release.Name }}-{{ .Values.storage.claim }}-beacon-chain
+      labels:
+        app: {{ .Release.Name }}-{{ .Values.prysm.beacon.name }}
+        release: {{ .Release.Name }}
     spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:

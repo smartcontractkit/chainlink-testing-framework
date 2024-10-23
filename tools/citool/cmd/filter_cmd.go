@@ -24,7 +24,7 @@ func filterTests(allTests []CITestConf, workflow, testType, ids string, envresol
 	var filteredTests []CITestConf
 
 	for _, test := range allTests {
-		workflowMatch := workflow == "" || contains(test.Workflows, workflowFilter)
+		workflowMatch := workflow == "" || contains(test.Triggers, workflowFilter)
 		typeMatch := testType == "" || test.TestEnvType == typeFilter
 		idMatch := ids == "*" || ids == "" || contains(idFilter, test.ID)
 
@@ -60,7 +60,7 @@ func filterAndMergeTests(allTests []CITestConf, workflow, testType, base64Tests 
 
 	var filteredTests []CITestConf
 	for _, test := range allTests {
-		workflowMatch := workflow == "" || contains(test.Workflows, workflow)
+		workflowMatch := workflow == "" || contains(test.Triggers, workflow)
 		typeMatch := testType == "" || test.TestEnvType == testType
 
 		if decodedTest, exists := idFilter[test.ID]; exists && workflowMatch && typeMatch {

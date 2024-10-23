@@ -16,16 +16,6 @@ spec:
         app: {{ .Release.Name }}-{{ .Values.ready.name }}
         release: {{ .Release.Name }}
     spec:
-      affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: release
-                operator: In
-                values:
-                - {{ .Release.Name }}
-            topologyKey: kubernetes.io/hostname
       containers:
         - name: {{ .Values.ready.name }}
           image: {{ .Values.ready.image.repository }}:{{ .Values.ready.image.tag }}
@@ -64,4 +54,11 @@ spec:
                 fi
             initialDelaySeconds: 60
             periodSeconds: 5
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            runAsUser: {{ .Values.securityContext.runAsUser }}
+            runAsGroup: {{ .Values.securityContext.runAsGroup }}
+            runAsNonRoot: true
 {{- end}}

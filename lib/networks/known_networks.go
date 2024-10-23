@@ -513,6 +513,8 @@ var (
 		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
+		FinalityDepth:             400,
+		DefaultGasLimit:           6000000,
 	}
 
 	ScrollMainnet = blockchain.EVMNetwork{
@@ -524,6 +526,8 @@ var (
 		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       0,
+		FinalityDepth:             400,
+		DefaultGasLimit:           6000000,
 	}
 
 	CeloAlfajores = blockchain.EVMNetwork{
@@ -615,6 +619,8 @@ var (
 		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       1000,
+		FinalityDepth:             200,
+		DefaultGasLimit:           6000000,
 	}
 
 	LineaMainnet blockchain.EVMNetwork = blockchain.EVMNetwork{
@@ -627,6 +633,8 @@ var (
 		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       1000,
+		FinalityDepth:             200,
+		DefaultGasLimit:           6000000,
 	}
 
 	PolygonZkEvmGoerli = blockchain.EVMNetwork{
@@ -651,6 +659,8 @@ var (
 		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           8000000,
 	}
 
 	PolygonZkEvmCardona = blockchain.EVMNetwork{
@@ -663,6 +673,8 @@ var (
 		Timeout:                   blockchain.StrDuration{Duration: time.Minute},
 		MinimumConfirmations:      0,
 		GasEstimationBuffer:       1000,
+		FinalityTag:               true,
+		DefaultGasLimit:           8000000,
 	}
 
 	WeMixTestnet blockchain.EVMNetwork = blockchain.EVMNetwork{
@@ -964,6 +976,7 @@ var (
 		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
+		FinalityTag:               true,
 		DefaultGasLimit:           6000000,
 	}
 
@@ -977,6 +990,7 @@ var (
 		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
+		FinalityTag:               true,
 		DefaultGasLimit:           6000000,
 	}
 
@@ -1059,8 +1073,8 @@ var (
 		"ASTAR_SHIBUYA":         AstarShibuya,
 		"ASTAR_MAINNET":         AstarMainnet,
 		"HEDERA_TESTNET":        HederaTestnet,
-		"X_LAYER_SEPOLIA":       XLayerSepolia,
-		"X_LAYER_MAINNET":       XLayerMainnet,
+		"XLAYER_SEPOLIA":        XLayerSepolia,
+		"XLAYER_MAINNET":        XLayerMainnet,
 		"TREASURE_RUBY":         TreasureRuby,
 	}
 )

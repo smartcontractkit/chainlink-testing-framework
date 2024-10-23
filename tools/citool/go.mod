@@ -15,3 +15,5 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
+
+retract [v1.999.0-test-release, v1.999.999-test-release]
