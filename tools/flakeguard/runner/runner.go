@@ -94,7 +94,7 @@ func parseTestResults(datas [][]byte) ([]reports.TestResult, error) {
 				Test   string `json:"Test"`
 			}
 			if err := json.Unmarshal(scanner.Bytes(), &entry); err != nil {
-				return nil, fmt.Errorf("failed to parse json test output: %w", err)
+				return nil, fmt.Errorf("failed to parse json test output: %s, err: %w", scanner.Text(), err)
 			}
 
 			// Skip processing if the test name is empty

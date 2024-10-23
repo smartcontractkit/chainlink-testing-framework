@@ -14,9 +14,15 @@ import (
 // FindChangedFiles executes a git diff against a specified base reference and pipes the output through a user-defined grep command or sequence.
 // The baseRef parameter specifies the base git reference for comparison (e.g., "main", "develop").
 // The filterCmd parameter should include the full command to be executed after git diff, such as "grep '_test.go$'" or "grep -v '_test.go$' | sort".
-func FindChangedFiles(baseRef, filterCmd string) ([]string, error) {
-	// First command to list files changed between the baseRef and HEAD
-	diffCmdStr := fmt.Sprintf("git diff --name-only --diff-filter=AM %s...HEAD", baseRef)
+func FindChangedFiles(baseRef, filterCmd string, excludePaths []string) ([]string, error) {
+	// Constructing the exclusion part of the git command
+	excludeStr := ""
+	for _, path := range excludePaths {
+		excludeStr += fmt.Sprintf("':(exclude)%s' ", path)
+	}
+
+	// First command to list files changed between the baseRef and HEAD, excluding specified paths
+	diffCmdStr := fmt.Sprintf("git diff --name-only --diff-filter=AM %s...HEAD %s", baseRef, excludeStr)
 	diffCmd := exec.Command("bash", "-c", diffCmdStr)
 
 	// Using a buffer to capture stdout and a separate buffer for stderr
