@@ -41,6 +41,20 @@ Each component can define inputs and outputs, following these rules:
 - `if input.Out != nil && framework.UseCache()` should be added if you'd like to use caching
 
 ### Docker components good practices for [testcontainers-go](https://golang.testcontainers.org/):
+
+An example [simple component](components/blockchain/anvil.go)
+
+An example of [complex component](components/clnode/clnode.go)
+
+An example of [composite component](components/don/don.go)
+
+- Inputs should include at least `image`, `tag` and `pull_image` field
+```
+	Image                string `toml:"image" validate:"required"`
+	Tag                  string `toml:"tag" validate:"required"`
+	PullImage            bool   `toml:"pull_image" validate:"required"`
+```
+
 - `ContainerRequest` must contain labels, network and alias required for local observability stack and deployment isolation
 ```
 		Labels:   framework.DefaultTCLabels(),

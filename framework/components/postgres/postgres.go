@@ -11,11 +11,14 @@ import (
 )
 
 type Input struct {
-	User     string  `toml:"user" validate:"required"`
-	Password string  `toml:"password" validate:"required"`
-	Database string  `toml:"database" validate:"required"`
-	Port     string  `toml:"port" validate:"required"`
-	Out      *Output `toml:"out"`
+	Image     string  `toml:"image" validate:"required"`
+	Tag       string  `toml:"tag" validate:"required"`
+	PullImage bool    `toml:"pull_image" validate:"required"`
+	User      string  `toml:"user" validate:"required"`
+	Password  string  `toml:"password" validate:"required"`
+	Database  string  `toml:"database" validate:"required"`
+	Port      string  `toml:"port" validate:"required"`
+	Out       *Output `toml:"out"`
 }
 
 type Output struct {
@@ -31,11 +34,12 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 	containerName := framework.DefaultTCName("postgresql")
 
 	req := testcontainers.ContainerRequest{
-		Image:        "postgres:15.6",
-		Name:         containerName,
-		Labels:       framework.DefaultTCLabels(),
-		ExposedPorts: []string{bindPort},
-		Networks:     []string{framework.DefaultNetworkName},
+		AlwaysPullImage: in.PullImage,
+		Image:           fmt.Sprintf("%s:%s", in.Image, in.Tag),
+		Name:            containerName,
+		Labels:          framework.DefaultTCLabels(),
+		ExposedPorts:    []string{bindPort},
+		Networks:        []string{framework.DefaultNetworkName},
 		NetworkAliases: map[string][]string{
 			framework.DefaultNetworkName: {containerName},
 		},
