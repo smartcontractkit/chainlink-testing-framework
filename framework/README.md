@@ -1,5 +1,11 @@
 ## Chainlink Testing Framework Harness
 
+<!-- TOC -->
+* [Components](./COMPONENTS.md)
+* [Configuration](./CONFIGURATION.md)
+* [Caching](./CACHING.md)
+<!-- TOC -->
+
 This module includes the CTFv2 harness, a lightweight, modular, and data-driven framework designed for combining off-chain and on-chain components while implementing best practices for end-to-end system-level testing:
 
 - **Non-nil configuration**: All test variables must have defaults, automatic validation.

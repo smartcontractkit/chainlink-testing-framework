@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	LogLevelEnvVar = "CTF_LOG_LEVEL"
+	EnvVarLogLevel = "CTF_LOG_LEVEL"
 )
 
 var (
@@ -20,7 +20,7 @@ func init() {
 }
 
 func initDefaultLogging() {
-	lvlStr := os.Getenv(LogLevelEnvVar)
+	lvlStr := os.Getenv(EnvVarLogLevel)
 	if lvlStr == "" {
 		lvlStr = "info"
 	}
