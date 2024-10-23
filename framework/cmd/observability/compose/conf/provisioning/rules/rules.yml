@@ -1,0 +1,9 @@
+groups:
+  - name: test
+    interval: 10s
+    rules:
+      - record: lokiTest
+        expr: |
+          sum(count_over_time({github_app_handler="go_test"} | json | Action="pass" [10m])) by (WorkflowName)
+        labels:
+          downsampled: "go_test"

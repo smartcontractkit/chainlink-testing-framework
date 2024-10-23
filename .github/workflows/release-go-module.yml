@@ -47,7 +47,7 @@ jobs:
           VERSION=$(echo "$TAG_REF" | cut -d'/' -f2)
 
           # Find the latest tag for the same package that is not the current tag
-          LAST_TAG=$(git describe --abbrev=0 --match "$PACKAGE_NAME/v*" --tags $(git rev-list --tags --skip=1 --max-count=1))
+          LAST_TAG=$(git describe --abbrev=0 --always --match "$PACKAGE_NAME/v*" --tags $(git rev-list --tags --skip=1 --max-count=1))
           echo "Last tag: ${LAST_TAG}"
 
           # If no previous tag is found, use the initial commit as the reference
