@@ -17,6 +17,9 @@ import (
 
 const afterTestEndedMsg = "LOG AFTER TEST ENDED"
 
+// Logger is an alias for zerolog.Logger, exposed through the logging package
+type Logger = zerolog.Logger
+
 // CustomT wraps testing.T for two purposes:
 // 1. it implements Write to override the default logger
 // 2. it implements Printf to implement the testcontainers-go/Logging interface

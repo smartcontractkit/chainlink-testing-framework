@@ -183,6 +183,25 @@ func (m *RPCClient) AnvilDropTransaction(params []interface{}) error {
 	return nil
 }
 
+// AnvilSetStorageAt sets storage at address
+// API Reference https://book.getfoundry.sh/reference/anvil/
+func (m *RPCClient) AnvilSetStorageAt(params []interface{}) error {
+	rInt, err := rand.Int()
+	if err != nil {
+		return err
+	}
+	payload := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  "anvil_setStorageAt",
+		"params":  params,
+		"id":      rInt,
+	}
+	if _, err := m.client.R().SetBody(payload).Post(m.URL); err != nil {
+		return errors.Wrap(err, "anvil_setStorageAt")
+	}
+	return nil
+}
+
 type CurrentBlockResponse struct {
 	Result string `json:"result"`
 }
