@@ -22,7 +22,6 @@ require (
 	k8s.io/api v0.31.1
 	k8s.io/apimachinery v0.31.1
 	k8s.io/client-go v0.31.1
-	nhooyr.io/websocket v1.8.17
 )
 
 require (
@@ -163,6 +162,7 @@ require (
 )
 
 require (
+	github.com/coder/websocket v1.8.12
 	github.com/grafana/pyroscope-go v1.1.2
 	github.com/smartcontractkit/chainlink-testing-framework/lib/grafana v1.50.0
 )
