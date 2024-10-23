@@ -1,9 +1,12 @@
 ## Chainlink Testing Framework Harness
 
 <!-- TOC -->
+* [CLI](./cmd/README.md)
 * [Components](./COMPONENTS.md)
 * [Configuration](./CONFIGURATION.md)
 * [Caching](./CACHING.md)
+* [Local Observability Stack](./cmd/observability/README.md)
+* [Examples](https://github.com/smartcontractkit/chainlink/tree/8e8597aa14c39c48ed4b3261f6080fa43b5d7cd0/e2e/capabilities)
 <!-- TOC -->
 
 This module includes the CTFv2 harness, a lightweight, modular, and data-driven framework designed for combining off-chain and on-chain components while implementing best practices for end-to-end system-level testing:
@@ -27,9 +30,3 @@ This module includes the CTFv2 harness, a lightweight, modular, and data-driven 
 | TESTCONTAINERS_RYUK_DISABLED |                                   Testcontainers-Go reaper container, removes all the containers after the test exit                                   |          `true`, `false` | `false` |            🚫            |
 |    CTF_USE_CACHED_OUTPUTS    |                                                  Use cached `.out` fields from `*-cache.toml` config                                                   |          `true`, `false` | `false` |            🚫            |
 |         RESTY_DEBUG          |                                                            Log all Resty client HTTP calls                                                             |          `true`, `false` | `false` |            🚫            |
-
-### CLI
-```
-go install github.com/smartcontractkit/chainlink-testing-framework/framework/cmd && mv ~/go/bin/cmd ~/go/bin/ctf
-ctf -h
-```
