@@ -20,6 +20,8 @@ jobs:
       - name: Strip "lib/" from github.ref_name
         run: |
           stripped_ref_name="${GITHUB_REF//refs\/tags\/lib\//}"
+          # disabling as the string containing variable is double-quotted as a whole, no need to quote each variable separately
+          # shellcheck disable=SC2086          
           echo "BASE_IMAGE_TAG=${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com/test-base-image:$stripped_ref_name" >> $GITHUB_ENV
 
       - name: Build Base Image
