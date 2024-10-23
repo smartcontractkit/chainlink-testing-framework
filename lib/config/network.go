@@ -7,7 +7,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
-	utils_json "github.com/smartcontractkit/chainlink-testing-framework/lib/utils/json"
+	ctf_time "github.com/smartcontractkit/chainlink-testing-framework/lib/time"
 )
 
 type AnvilConfig struct {
@@ -51,27 +51,27 @@ type NetworkConfig struct {
 }
 
 type ReorgConfig struct {
-	Enabled     bool                   `toml:"enabled,omitempty"`
-	Depth       int                    `toml:"depth,omitempty"`
-	DelayCreate utils_json.StrDuration `toml:"delay_create,omitempty"` // Delay before creating, expressed in Go duration format (e.g., "1m", "30s")
+	Enabled     bool                 `toml:"enabled,omitempty"`
+	Depth       int                  `toml:"depth,omitempty"`
+	DelayCreate ctf_time.StrDuration `toml:"delay_create,omitempty"` // Delay before creating, expressed in Go duration format (e.g., "1m", "30s")
 }
 
 // GasSpikeSimulation is the configuration for simulating gas spikes on the network
 type GasSpikeSimulationConfig struct {
-	Enabled           bool                   `toml:"enabled,omitempty"`
-	StartGasPrice     int64                  `toml:"start_gas_price,omitempty"`
-	GasRisePercentage float64                `toml:"gas_rise_percentage,omitempty"`
-	GasSpike          bool                   `toml:"gas_spike,omitempty"`
-	DelayCreate       utils_json.StrDuration `toml:"delay_create,omitempty"` // Delay before creating, expressed in Go duration format (e.g., "1m", "30s")
-	Duration          utils_json.StrDuration `toml:"duration,omitempty"`     // Duration of the gas simulation, expressed in Go duration format (e.g., "1m", "30s")
+	Enabled           bool                 `toml:"enabled,omitempty"`
+	StartGasPrice     int64                `toml:"start_gas_price,omitempty"`
+	GasRisePercentage float64              `toml:"gas_rise_percentage,omitempty"`
+	GasSpike          bool                 `toml:"gas_spike,omitempty"`
+	DelayCreate       ctf_time.StrDuration `toml:"delay_create,omitempty"` // Delay before creating, expressed in Go duration format (e.g., "1m", "30s")
+	Duration          ctf_time.StrDuration `toml:"duration,omitempty"`     // Duration of the gas simulation, expressed in Go duration format (e.g., "1m", "30s")
 }
 
 // GasLimitSimulationConfig is the configuration for simulating gas limit changes on the network
 type GasLimitSimulationConfig struct {
-	Enabled                bool                   `toml:"enabled,omitempty"`
-	NextGasLimitPercentage float64                `toml:"next_gas_limit_percentage,omitempty"` // Percentage of last gasUsed in previous block creating congestion
-	DelayCreate            utils_json.StrDuration `toml:"delay_create,omitempty"`              // Delay before creating, expressed in Go duration format (e.g., "1m", "30s")
-	Duration               utils_json.StrDuration `toml:"duration,omitempty"`                  // Duration of the gas simulation, expressed in Go duration format (e.g., "1m", "30s")
+	Enabled                bool                 `toml:"enabled,omitempty"`
+	NextGasLimitPercentage float64              `toml:"next_gas_limit_percentage,omitempty"` // Percentage of last gasUsed in previous block creating congestion
+	DelayCreate            ctf_time.StrDuration `toml:"delay_create,omitempty"`              // Delay before creating, expressed in Go duration format (e.g., "1m", "30s")
+	Duration               ctf_time.StrDuration `toml:"duration,omitempty"`                  // Duration of the gas simulation, expressed in Go duration format (e.g., "1m", "30s")
 }
 
 func (n NetworkConfig) IsSimulatedGethSelected() bool {

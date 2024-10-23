@@ -17,7 +17,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logstream"
-	utils_json "github.com/smartcontractkit/chainlink-testing-framework/lib/utils/json"
+	ctf_time "github.com/smartcontractkit/chainlink-testing-framework/lib/time"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/ptr"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
 )
@@ -902,7 +902,7 @@ func newDefaultLogStream() (*logstream.LogStream, error) {
 	loggingConfig := config.LoggingConfig{}
 	loggingConfig.LogStream = &config.LogStreamConfig{
 		LogTargets:            []string{"in-memory"},
-		LogProducerTimeout:    &utils_json.StrDuration{Duration: 10 * time.Second},
+		LogProducerTimeout:    &ctf_time.StrDuration{Duration: 10 * time.Second},
 		LogProducerRetryLimit: ptr.Ptr(uint(10)),
 	}
 	lw, err := logstream.NewLogStream(nil, &loggingConfig)
@@ -913,7 +913,7 @@ func newLogStream(timeout time.Duration) (*logstream.LogStream, error) {
 	loggingConfig := config.LoggingConfig{}
 	loggingConfig.LogStream = &config.LogStreamConfig{
 		LogTargets:            []string{"in-memory"},
-		LogProducerTimeout:    &utils_json.StrDuration{Duration: timeout},
+		LogProducerTimeout:    &ctf_time.StrDuration{Duration: timeout},
 		LogProducerRetryLimit: ptr.Ptr(uint(10)),
 	}
 	lw, err := logstream.NewLogStream(nil, &loggingConfig)

@@ -13,7 +13,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logstream"
-	utils_json "github.com/smartcontractkit/chainlink-testing-framework/lib/utils/json"
+	ctf_time "github.com/smartcontractkit/chainlink-testing-framework/lib/time"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/ptr"
 )
 
@@ -84,7 +84,7 @@ func TestFileLoggingTarget(t *testing.T) {
 	loggingConfig := config.LoggingConfig{}
 	loggingConfig.LogStream = &config.LogStreamConfig{
 		LogTargets:            []string{"file"},
-		LogProducerTimeout:    &utils_json.StrDuration{Duration: 10 * time.Second},
+		LogProducerTimeout:    &ctf_time.StrDuration{Duration: 10 * time.Second},
 		LogProducerRetryLimit: ptr.Ptr(uint(10)),
 	}
 

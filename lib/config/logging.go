@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	utils_json "github.com/smartcontractkit/chainlink-testing-framework/lib/utils/json"
+	ctf_time "github.com/smartcontractkit/chainlink-testing-framework/lib/time"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/net"
 )
 
@@ -42,9 +42,9 @@ func (l *LoggingConfig) Validate() error {
 }
 
 type LogStreamConfig struct {
-	LogTargets            []string                `toml:"log_targets"`
-	LogProducerTimeout    *utils_json.StrDuration `toml:"log_producer_timeout"`
-	LogProducerRetryLimit *uint                   `toml:"log_producer_retry_limit"`
+	LogTargets            []string              `toml:"log_targets"`
+	LogProducerTimeout    *ctf_time.StrDuration `toml:"log_producer_timeout"`
+	LogProducerRetryLimit *uint                 `toml:"log_producer_retry_limit"`
 }
 
 // Validate checks that the log stream config is valid, which means that

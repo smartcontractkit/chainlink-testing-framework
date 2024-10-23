@@ -18,7 +18,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/docker/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logstream"
-	utils_json "github.com/smartcontractkit/chainlink-testing-framework/lib/utils/json"
+	ctf_time "github.com/smartcontractkit/chainlink-testing-framework/lib/time"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
 	toml_utils "github.com/smartcontractkit/chainlink-testing-framework/lib/utils/toml"
 )
@@ -710,7 +710,7 @@ func (en *EthereumNetwork) generateGenesisAndFoldersIfNeeded(baseEthereumFork et
 func (en *EthereumNetwork) getFinalEvmNetworkConfig(net blockchain.EVMNetwork) blockchain.EVMNetwork {
 	net.ChainID = int64(en.EthereumChainConfig.ChainID)
 	// use a higher value than the default, because eth2 is slower than dev-mode eth1
-	net.Timeout = utils_json.StrDuration{Duration: time.Duration(4 * time.Minute)}
+	net.Timeout = ctf_time.StrDuration{Duration: time.Duration(4 * time.Minute)}
 	net.FinalityTag = true
 	net.FinalityDepth = 0
 
