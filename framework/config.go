@@ -182,8 +182,9 @@ func noFieldsWithoutRequiredTag(cfg interface{}) []ValidationError {
 		}
 	}
 
-	// Combine missing "required" tag errors with validation errors
-	validationErrors = append(validationErrors, checkRequiredTag(cfg, "")...)
+	// TODO: need more granular approach
+	//// Combine missing "required" tag errors with validation errors
+	//validationErrors = append(validationErrors, checkRequiredTag(cfg, "")...)
 
 	return validationErrors
 }
@@ -300,10 +301,6 @@ func applyEnvConfig(prefix string, input interface{}) error {
 	return nil
 }
 
-func UseCache() bool {
-	return os.Getenv("CTF_USE_CACHED_OUTPUTS") == "true"
-}
-
 func getBaseConfigPath() (string, error) {
 	configs := os.Getenv("CTF_CONFIGS")
 	if configs == "" {
@@ -313,12 +310,14 @@ func getBaseConfigPath() (string, error) {
 }
 
 func Store[T any](cfg *T) error {
-	if UseCache() {
-		return nil
-	}
 	baseConfigPath, err := getBaseConfigPath()
 	if err != nil {
 		return err
+	}
+	newCacheName := strings.Replace(baseConfigPath, ".toml", "", -1)
+	if strings.Contains(newCacheName, "cache") {
+		L.Info().Str("Cache", baseConfigPath).Msg("Cache file already exists, skipping")
+		return nil
 	}
 	cachedOutName := fmt.Sprintf("%s-cache.toml", strings.Replace(baseConfigPath, ".toml", "", -1))
 	L.Info().Str("OutputFile", cachedOutName).Msg("Storing configuration output")

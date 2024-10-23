@@ -1,7 +1,6 @@
 package don
 
 import (
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 )
@@ -12,11 +11,12 @@ type Input struct {
 }
 
 type Output struct {
-	Nodes []*clnode.Output `toml:"node"`
+	UseCache bool             `toml:"use_cache"`
+	Nodes    []*clnode.Output `toml:"node"`
 }
 
 func NewBasicDON(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output, error) {
-	if in.Out != nil && framework.UseCache() {
+	if in.Out.UseCache {
 		return in.Out, nil
 	}
 	nodeOuts := make([]*clnode.Output, 0)
@@ -34,7 +34,8 @@ func NewBasicDON(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output, 
 		nodeOuts = append(nodeOuts, o)
 	}
 	out := &Output{
-		Nodes: nodeOuts,
+		UseCache: true,
+		Nodes:    nodeOuts,
 	}
 	in.Out = out
 	return out, nil

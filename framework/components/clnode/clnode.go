@@ -36,6 +36,7 @@ type NodeInput struct {
 
 // Output represents Chainlink node output, nodes and databases connection URLs
 type Output struct {
+	UseCache   bool             `toml:"use_cache"`
 	Node       *NodeOut         `toml:"node"`
 	PostgreSQL *postgres.Output `toml:"postgresql"`
 }
@@ -49,7 +50,7 @@ type NodeOut struct {
 // NewNode create a new Chainlink node with some image:tag and one or several configs
 // see config params: TestConfigOverrides, UserConfigOverrides, etc
 func NewNode(in *Input) (*Output, error) {
-	if in.Out != nil && framework.UseCache() {
+	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
 	pgOut, err := postgres.NewPostgreSQL(in.DbInput)
@@ -61,6 +62,7 @@ func NewNode(in *Input) (*Output, error) {
 		return nil, err
 	}
 	out := &Output{
+		UseCache:   true,
 		Node:       nodeOut,
 		PostgreSQL: pgOut,
 	}

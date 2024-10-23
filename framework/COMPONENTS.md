@@ -17,12 +17,13 @@ type Input struct {
 }
 
 type Output struct {
+    UseCache bool             `toml:"use_cache"`
     // outputs that will be dumped to config and cached
 }
 
 
 func NewComponent(input *Input) (*Output, error) {
-	if input.Out != nil && framework.UseCache() {
+	if input.Out.UseCache {
 		return input.Out, nil
 	}
 	
@@ -38,7 +39,7 @@ Each component can define inputs and outputs, following these rules:
 
 - Outputs should be included within inputs.
 - If your component is used for side effects output can be omitted.
-- `if input.Out != nil && framework.UseCache()` should be added if you'd like to use caching
+- `input.Out.UseCache` should be added if you'd like to use caching, see more [here](CACHING.md)
 
 ### Docker components good practices for [testcontainers-go](https://golang.testcontainers.org/):
 
