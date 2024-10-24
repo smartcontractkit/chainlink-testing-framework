@@ -6,14 +6,14 @@ import (
 )
 
 type Input struct {
-	Nodes int `toml:"nodes" validate:"required"`
-	*clnode.Input
-	Out *Output `toml:"out"`
+	Nodes    int           `toml:"nodes" validate:"required"`
+	NodeSpec *clnode.Input `toml:"node_spec" validate:"required"`
+	Out      *Output       `toml:"out"`
 }
 
 type Output struct {
 	UseCache bool             `toml:"use_cache"`
-	Nodes    []*clnode.Output `toml:"node"`
+	CLNodes  []*clnode.Output `toml:"cl_nodes"`
 }
 
 func NewSimpleDON(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output, error) {
@@ -26,10 +26,11 @@ func NewSimpleDON(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output,
 		if err != nil {
 			return nil, err
 		}
-		in.Input.Node.TestConfigOverrides = net
-		in.Input.DataProviderURL = fakeUrl
-		in.Input.Out = nil
-		o, err := clnode.NewNode(in.Input)
+		newIn := in.NodeSpec
+		newIn.Node.TestConfigOverrides = net
+		newIn.DataProviderURL = fakeUrl
+		newIn.Out = nil
+		o, err := clnode.NewNode(newIn)
 		if err != nil {
 			return nil, err
 		}
@@ -37,7 +38,7 @@ func NewSimpleDON(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output,
 	}
 	out := &Output{
 		UseCache: true,
-		Nodes:    nodeOuts,
+		CLNodes:  nodeOuts,
 	}
 	in.Out = out
 	return out, nil

@@ -68,7 +68,7 @@ func mergeInputs[T any]() (*T, error) {
 		L.Info().Str("Path", path).Msg("Loading configuration input")
 		data, err := os.ReadFile(filepath.Join(DefaultConfigDir, path))
 		if err != nil {
-			return nil, fmt.Errorf("error reading promtailConfig file %s: %w", path, err)
+			return nil, fmt.Errorf("error reading promtail config file %s: %w", path, err)
 		}
 		if L.GetLevel() == zerolog.DebugLevel {
 			fmt.Println(string(data))
@@ -304,7 +304,7 @@ func applyEnvConfig(prefix string, input interface{}) error {
 func getBaseConfigPath() (string, error) {
 	configs := os.Getenv("CTF_CONFIGS")
 	if configs == "" {
-		return "", fmt.Errorf("no %s env var is provided, you should provide at least one test promtailConfig in TOML", EnvVarTestConfigs)
+		return "", fmt.Errorf("no %s env var is provided, you should provide at least one test config in TOML", EnvVarTestConfigs)
 	}
 	return strings.Split(configs, ",")[0], nil
 }

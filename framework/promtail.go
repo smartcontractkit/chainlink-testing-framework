@@ -83,7 +83,7 @@ scrape_configs:
 
 	filePath := PathRoot + "/promtail-config.yml"
 
-	// Create the file where the promtailConfig will be written
+	// Create the file where the promtail config will be written
 	configFile, err := os.CreateTemp("", "promtail-config.yml")
 	if err != nil {
 		return "", fmt.Errorf("could not create promtail-config.yml file: %w", err)
@@ -92,15 +92,15 @@ scrape_configs:
 
 	tmpl, err := template.New("promtail").Parse(configTemplate)
 	if err != nil {
-		return "", fmt.Errorf("could not parse promtailConfig template: %w", err)
+		return "", fmt.Errorf("could not parse promtail config template: %w", err)
 	}
 
 	err = tmpl.Execute(configFile, secrets)
 	if err != nil {
-		return "", fmt.Errorf("could not execute promtailConfig template: %w", err)
+		return "", fmt.Errorf("could not execute promtail config template: %w", err)
 	}
 
-	fmt.Printf("Promtail promtailConfig written to %s\n", filePath)
+	fmt.Printf("Promtail config written to %s\n", filePath)
 	return configFile.Name(), nil
 }
 
