@@ -1,0 +1,47 @@
+version: 1
+project_name: mockserver
+
+env:
+  - IMG_PRE={{ if index .Env "IMAGE_PREFIX"  }}{{ .Env.IMAGE_PREFIX }}{{ else }}localhost:5001{{ end }}
+  - TAG={{ if index .Env "IMAGE_TAG" }}{{ .Env.IMAGE_TAG }}{{ else }}latest{{ end }}
+
+# Build settings for binaries
+builds:
+  - id: mockserver
+    main: ./main.go
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - '-s -w' # Strip debug information to reduce binary size
+    binary: 'mockserver_{{ .Os }}_{{ .Arch }}'
+
+archives:
+  - format: binary
+
+dockers:
+  - image_templates:
+      - '{{ .Env.IMG_PRE }}/mockserver:{{ .Tag }}'
+      # - "{{ .Env.IMG_PRE }}/mockserver:latest"
+      - '{{ .Env.IMG_PRE }}/mockserver:debug' # DEBUG: Using for testing
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    dockerfile: Dockerfile
+    use: buildx
+
+# Git tag management
+git:
+  tag: true
+
+changelog:
+  disable: 'true'
+
+before:
+  hooks:
+    - cmd: go mod tidy
