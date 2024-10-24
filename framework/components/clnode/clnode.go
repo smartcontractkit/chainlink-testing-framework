@@ -29,6 +29,7 @@ type NodeInput struct {
 	Tag                     string   `toml:"tag" validate:"required"`
 	PullImage               bool     `toml:"pull_image" default:"true"`
 	Port                    string   `toml:"port" validate:"required" default:"6688"`
+	P2PPort                 string   `toml:"p2p_port" validate:"required" default:"6690"`
 	CapabilitiesBinaryPaths []string `toml:"capabilities"`
 	CapabilityContainerDir  string   `toml:"capabilities_container_dir" default:"/capabilities"`
 	TestConfigOverrides     string   `toml:"test_config_overrides"`
@@ -46,8 +47,10 @@ type Output struct {
 
 // NodeOut is CL node container output, URLs to connect
 type NodeOut struct {
-	HostURL   string `toml:"url"`
-	DockerURL string `toml:"docker_internal_url"`
+	HostURL      string `toml:"url"`
+	HostP2PURL   string `toml:"p2p_url"`
+	DockerURL    string `toml:"docker_internal_url"`
+	DockerP2PUrl string `toml:"p2p_docker_internal_url"`
 }
 
 // NewNode create a new Chainlink node with some image:tag and one or several configs
@@ -109,7 +112,8 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		return nil, err
 	}
 
-	bindPort := fmt.Sprintf("%s/tcp", in.Node.Port)
+	httpPort := fmt.Sprintf("%s/tcp", in.Node.Port)
+	p2pPort := fmt.Sprintf("%s/udp", in.Node.P2PPort)
 	containerName := framework.DefaultTCName("clnode")
 
 	req := tc.ContainerRequest{
@@ -121,7 +125,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		NetworkAliases: map[string][]string{
 			framework.DefaultNetworkName: {containerName},
 		},
-		ExposedPorts: []string{bindPort},
+		ExposedPorts: []string{httpPort, p2pPort},
 		Entrypoint: []string{
 			"/bin/sh", "-c",
 			"chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials",
@@ -191,14 +195,20 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	if err != nil {
 		return nil, err
 	}
-	mp, err := c.MappedPort(ctx, nat.Port(bindPort))
+	mp, err := c.MappedPort(ctx, nat.Port(httpPort))
+	if err != nil {
+		return nil, err
+	}
+	mpP2P, err := c.MappedPort(ctx, nat.Port(p2pPort))
 	if err != nil {
 		return nil, err
 	}
 
 	return &NodeOut{
-		DockerURL: fmt.Sprintf("http://%s:%s", containerName, in.Node.Port),
-		HostURL:   fmt.Sprintf("http://%s:%s", host, mp.Port()),
+		HostURL:      fmt.Sprintf("http://%s:%s", host, mp.Port()),
+		HostP2PURL:   fmt.Sprintf("http://%s:%s", host, mpP2P.Port()),
+		DockerURL:    fmt.Sprintf("http://%s:%s", containerName, in.Node.Port),
+		DockerP2PUrl: fmt.Sprintf("http://%s:%s", containerName, in.Node.P2PPort),
 	}, nil
 }
 
