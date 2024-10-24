@@ -21,11 +21,6 @@ jobs:
           filters: |
             src:
               - 'mockserver/**'
-      - uses: cachix/install-nix-action@08dcb3a5e62fa31e2da3d490afc4176ef55ecd72 # v30
-        if: steps.changes.outputs.src == 'true'
-        with:
-          nix_path: nixpkgs=channel:nixos-unstable
       - name: Run tests
         if: steps.changes.outputs.src == 'true'
-        run: |
-          nix develop -c go test ./mockserver/...
+        run: go test ./mockserver/...
