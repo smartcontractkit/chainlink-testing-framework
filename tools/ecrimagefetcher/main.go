@@ -13,31 +13,8 @@ import (
 	"unicode"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/hashicorp/go-version"
 	"github.com/itchyny/gojq"
 )
-
-type byVersion []string
-
-func (s byVersion) Len() int {
-	return len(s)
-}
-
-func (s byVersion) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-
-func (s byVersion) Less(i, j int) bool {
-	v1, err := version.NewVersion(s[i])
-	if err != nil {
-		panic(err)
-	}
-	v2, err := version.NewVersion(s[j])
-	if err != nil {
-		panic(err)
-	}
-	return v1.LessThan(v2)
-}
 
 func fetchImageDetails(repositoryName string) ([]byte, error) {
 	// #nosec G204
@@ -65,7 +42,7 @@ func parseImageTags(output []byte, grepString string, constraints *semver.Constr
 		return nil, fmt.Errorf("failed to parse gojq query: %w", err)
 	}
 
-	var tags byVersion
+	var tags semver.Collection
 	iter := query.Run(imageDetails)
 	for {
 		tag, ok := iter.Next()
@@ -73,8 +50,11 @@ func parseImageTags(output []byte, grepString string, constraints *semver.Constr
 			break
 		}
 		if tagStr, ok := tag.(string); ok {
-			tagStr = trimToVersion(tagStr)
-			tags = append(tags, tagStr)
+			asVersion, err := semver.NewVersion(trimToVersion(tagStr))
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse version: %w", err)
+			}
+			tags = append(tags, asVersion)
 		} else if err, ok := tag.(error); ok {
 			return nil, fmt.Errorf("failed to run gojq query: %w", err)
 		}
@@ -89,20 +69,16 @@ func parseImageTags(output []byte, grepString string, constraints *semver.Constr
 
 	var filteredTags []string
 	for _, tag := range tags {
-		if re.MatchString(tag) {
+		if re.MatchString(tag.Original()) {
 			ignore := false
 			if constraints != nil {
-				semversion, err := semver.NewVersion(tag)
-				if err != nil {
-					return nil, fmt.Errorf("failed to parse version: %w", err)
-				}
-				if !constraints.Check(semversion) {
+				if !constraints.Check(tag) {
 					ignore = true
 				}
 			}
 
 			if !ignore {
-				filteredTags = append(filteredTags, tag)
+				filteredTags = append(filteredTags, tag.Original())
 			}
 		}
 	}

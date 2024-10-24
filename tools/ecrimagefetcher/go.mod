@@ -4,7 +4,6 @@ go 1.22.5
 
 require (
 	github.com/Masterminds/semver/v3 v3.2.1
-	github.com/hashicorp/go-version v1.7.0
 	github.com/itchyny/gojq v0.12.16
 	github.com/stretchr/testify v1.9.0
 )
