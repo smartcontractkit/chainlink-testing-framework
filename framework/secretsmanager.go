@@ -72,7 +72,7 @@ func NewAWSSecretsManager(requestTimeout time.Duration) (*AWSSecretsManager, err
 	}
 	cfg.Region = region
 	if err != nil {
-		return nil, fmt.Errorf("unable to load AWS SDK promtailConfig, %v", err)
+		return nil, fmt.Errorf("unable to load AWS SDK config, %v", err)
 	}
 	l := log.Logger.With().Str("Component", "AWSSecretsManager").Logger()
 	l.Info().Msg("Connecting to AWS Secrets Manager")

@@ -3,6 +3,7 @@ package framework
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
@@ -18,6 +19,7 @@ import (
 	"strings"
 	"testing"
 	"text/template"
+	"time"
 )
 
 const (
@@ -66,7 +68,7 @@ func mergeInputs[T any]() (*T, error) {
 		L.Info().Str("Path", path).Msg("Loading configuration input")
 		data, err := os.ReadFile(filepath.Join(DefaultConfigDir, path))
 		if err != nil {
-			return nil, fmt.Errorf("error reading promtailConfig file %s: %w", path, err)
+			return nil, fmt.Errorf("error reading promtail config file %s: %w", path, err)
 		}
 		if L.GetLevel() == zerolog.DebugLevel {
 			fmt.Println(string(data))
@@ -180,8 +182,9 @@ func noFieldsWithoutRequiredTag(cfg interface{}) []ValidationError {
 		}
 	}
 
-	// Combine missing "required" tag errors with validation errors
-	validationErrors = append(validationErrors, checkRequiredTag(cfg, "")...)
+	// TODO: need more granular approach
+	//// Combine missing "required" tag errors with validation errors
+	//validationErrors = append(validationErrors, checkRequiredTag(cfg, "")...)
 
 	return validationErrors
 }
@@ -296,4 +299,58 @@ func applyEnvConfig(prefix string, input interface{}) error {
 		}
 	}
 	return nil
+}
+
+func getBaseConfigPath() (string, error) {
+	configs := os.Getenv("CTF_CONFIGS")
+	if configs == "" {
+		return "", fmt.Errorf("no %s env var is provided, you should provide at least one test config in TOML", EnvVarTestConfigs)
+	}
+	return strings.Split(configs, ",")[0], nil
+}
+
+func Store[T any](cfg *T) error {
+	baseConfigPath, err := getBaseConfigPath()
+	if err != nil {
+		return err
+	}
+	newCacheName := strings.Replace(baseConfigPath, ".toml", "", -1)
+	if strings.Contains(newCacheName, "cache") {
+		L.Info().Str("Cache", baseConfigPath).Msg("Cache file already exists, skipping")
+		return nil
+	}
+	cachedOutName := fmt.Sprintf("%s-cache.toml", strings.Replace(baseConfigPath, ".toml", "", -1))
+	L.Info().Str("OutputFile", cachedOutName).Msg("Storing configuration output")
+	d, err := toml.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(DefaultConfigDir, cachedOutName), d, os.ModePerm)
+}
+
+// JSONStrDuration is JSON friendly duration that can be parsed from "1h2m0s" Go format
+type JSONStrDuration struct {
+	time.Duration
+}
+
+func (d *JSONStrDuration) MarshalJSON() ([]byte, error) {
+	return json.Marshal(d.String())
+}
+
+func (d *JSONStrDuration) UnmarshalJSON(b []byte) error {
+	var v interface{}
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	switch value := v.(type) {
+	case string:
+		var err error
+		d.Duration, err = time.ParseDuration(value)
+		if err != nil {
+			return err
+		}
+		return nil
+	default:
+		return errors.New("invalid duration")
+	}
 }

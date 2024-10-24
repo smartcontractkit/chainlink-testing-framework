@@ -8,7 +8,6 @@ You can use an environment variable to skip deployment steps and use cached outp
 
 ```
 export CTF_CONFIGS=smoke-cache.toml
-export CTF_USE_CACHED_OUTPUTS=true
 ```
 
 ### Using remote components
@@ -18,6 +17,7 @@ Because components are decoupled through outputs, you can use a cached config an
 Example:
 ```
 [blockchain_a.out]
+use_cache = true
 chain_id = '31337'
 
 [[blockchain_a.out.nodes]]
@@ -26,3 +26,4 @@ http_url = 'http://127.0.0.1:33447'
 docker_internal_ws_url = 'ws://anvil-3716a:8900'
 docker_internal_http_url = 'http://anvil-3716a:8900'
 ```
+Set flag `use_cache = true` on any component output and run your test again

@@ -15,8 +15,8 @@ This module includes the CTFv2 harness, a lightweight, modular, and data-driven 
 - **Component isolation**: Components are decoupled via input/output structs, without exposing internal details.
 - **Modular configuration**: No arcane knowledge of framework settings is required; the config is simply a reflection of the components being used in the test. Components declare their own configuration—'what you see is what you get.'
 - **Replaceability and extensibility**: Since components are decoupled via outputs, any deployment component can be swapped with a real service without altering the test code.
+- **Caching**: any component can use cached configs to skip environment setup for faster test development
 - **Integrated observability stack**: use `ctf obs up` to spin up a local observability stack.
-- **Connectivity**: seamless connection of production-ready components and local components using [testcontainers-go networking](https://golang.testcontainers.org/features/networking/#exposing-host-ports-to-the-container)."
 
 
 ### Environment variables (Tests, when using in Go code)
@@ -28,5 +28,4 @@ This module includes the CTFv2 harness, a lightweight, modular, and data-driven 
 |           LOKI_URL           |                                            URL to `Loki` push api, should be like`${host}/loki/api/v1/push`                                            |                      URL |    -    | If you use `Loki` then ✅ |
 |        LOKI_TENANT_ID        |                                                Streams all components logs to `Loki`, see params below                                                 |          `true`, `false` |    -    | If you use `Loki` then ✅ |
 | TESTCONTAINERS_RYUK_DISABLED |                                   Testcontainers-Go reaper container, removes all the containers after the test exit                                   |          `true`, `false` | `false` |            🚫            |
-|    CTF_USE_CACHED_OUTPUTS    |                                                  Use cached `.out` fields from `*-cache.toml` config                                                   |          `true`, `false` | `false` |            🚫            |
 |         RESTY_DEBUG          |                                                            Log all Resty client HTTP calls                                                             |          `true`, `false` | `false` |            🚫            |
