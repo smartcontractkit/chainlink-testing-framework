@@ -4,6 +4,7 @@ on:
     tags:
       # we only need base image for k8s based tests
       - 'lib/v*'
+  workflow_dispatch:
 
 jobs:
   publish_test_base_image:
