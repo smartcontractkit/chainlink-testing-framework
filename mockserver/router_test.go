@@ -23,7 +23,7 @@ func registerRoute(tb testing.TB, route Route) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rec := httptest.NewRecorder()
-	RegisterRouteHandler(rec, req)
+	registerRouteHandler(rec, req)
 
 	resp := rec.Result()
 	tb.Cleanup(func() {
@@ -74,7 +74,7 @@ func TestRegisteredRoute(t *testing.T) {
 
 			req := httptest.NewRequest(route.Method, route.Path, nil)
 			rec := httptest.NewRecorder()
-			DynamicHandler(rec, req)
+			dynamicHandler(rec, req)
 			resp := rec.Result()
 
 			assert.Equal(t, resp.StatusCode, route.StatusCode)
@@ -92,7 +92,7 @@ func TestUnregisteredRoute(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/unregistered", nil)
 	rec := httptest.NewRecorder()
 
-	DynamicHandler(rec, req)
+	dynamicHandler(rec, req)
 	resp := rec.Result()
 	defer resp.Body.Close()
 
@@ -128,18 +128,18 @@ func TestSaveLoad(t *testing.T) {
 		os.Remove(filename)
 	})
 
-	err := Save()
+	err := save()
 	require.NoError(t, err)
 	require.FileExists(t, filename)
 
-	err = Load()
+	err = load()
 	require.NoError(t, err)
 
 	for _, route := range routes {
 		req := httptest.NewRequest(route.Method, route.Path, nil)
 		rec := httptest.NewRecorder()
 
-		DynamicHandler(rec, req)
+		dynamicHandler(rec, req)
 		resp := rec.Result()
 
 		assert.Equal(t, resp.StatusCode, route.StatusCode)
@@ -163,7 +163,7 @@ func BenchmarkRegisterRoute(b *testing.B) {
 		body, _ := json.Marshal(route)
 		req := httptest.NewRequest(http.MethodPost, "/register", bytes.NewReader(body))
 		rec := httptest.NewRecorder()
-		RegisterRouteHandler(rec, req)
+		registerRouteHandler(rec, req)
 	}
 }
 
@@ -180,7 +180,7 @@ func BenchmarkRouteResponse(b *testing.B) {
 	rec := httptest.NewRecorder()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		DynamicHandler(rec, req)
+		dynamicHandler(rec, req)
 	}
 }
 
@@ -203,7 +203,7 @@ func BenchmarkSaveRoutes(b *testing.B) {
 
 	b.ResetTimer() // Start measuring time
 	for i := 0; i < b.N; i++ {
-		if err := Save(); err != nil {
+		if err := save(); err != nil {
 			b.Fatalf("SaveRoutes failed: %v", err)
 		}
 	}
@@ -233,7 +233,7 @@ func BenchmarkLoadRoutes(b *testing.B) {
 
 	b.ResetTimer() // Start measuring time
 	for i := 0; i < b.N; i++ {
-		if err := Load(); err != nil {
+		if err := load(); err != nil {
 			b.Fatalf("Load failed: %v", err)
 		}
 	}

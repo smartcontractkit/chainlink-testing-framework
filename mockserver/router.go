@@ -31,8 +31,8 @@ var (
 	routesMu sync.RWMutex             // Protects access to the routes map
 )
 
-// RegisterRouteHandler handles the dynamic route registration.
-func RegisterRouteHandler(w http.ResponseWriter, r *http.Request) {
+// registerRouteHandler handles the dynamic route registration.
+func registerRouteHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST allowed", http.StatusMethodNotAllowed)
 		return
@@ -58,8 +58,8 @@ func RegisterRouteHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Str("Path", route.Path).Str("Method", route.Method).Msg("Route registered")
 }
 
-// DynamicHandler handles all incoming requests and responds based on the registered routes.
-func DynamicHandler(w http.ResponseWriter, r *http.Request) {
+// dynamicHandler handles all incoming requests and responds based on the registered routes.
+func dynamicHandler(w http.ResponseWriter, r *http.Request) {
 	routesMu.RLock()
 	route, exists := routes[r.Method+":"+r.URL.Path]
 	routesMu.RUnlock()
@@ -77,8 +77,8 @@ func DynamicHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Load loads all registered routes from a file.
-func Load() error {
+// load loads all registered routes from a file.
+func load() error {
 	if _, err := os.Stat(config.SaveFile); os.IsNotExist(err) {
 		log.Debug().Str("Save File", config.SaveFile).Msg("No routes to load")
 		return nil
@@ -103,8 +103,8 @@ func Load() error {
 	return nil
 }
 
-// Save saves all registered routes to a file.
-func Save() error {
+// save saves all registered routes to a file.
+func save() error {
 	start := time.Now()
 	log.Debug().Str("Save File", config.SaveFile).Msg("Saving routes")
 
@@ -122,4 +122,22 @@ func Save() error {
 
 	log.Debug().Str("Save File", config.SaveFile).Str("Duration", time.Since(start).String()).Msg("Routes saved")
 	return nil
+}
+
+func RegisterRoute(route Route) {
+	routesMu.Lock()
+	routes[route.Method+":"+route.Path] = route
+	routesMu.Unlock()
+}
+
+func CallRoute(method, path string) (int, string, string) {
+	routesMu.RLock()
+	route, exists := routes[method+":"+path]
+	routesMu.RUnlock()
+
+	if !exists {
+		return http.StatusNotFound, "", ""
+	}
+
+	return route.StatusCode, route.ContentType, route.Response
 }

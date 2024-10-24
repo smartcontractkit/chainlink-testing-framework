@@ -33,13 +33,13 @@ func init() {
 
 func main() {
 	defer func() {
-		if err := Save(); err != nil {
+		if err := save(); err != nil {
 			log.Error().Err(err).Msg("Failed to save configuration")
 		}
 	}()
 
-	http.HandleFunc("/register", RegisterRouteHandler)
-	http.HandleFunc("/", DynamicHandler)
+	http.HandleFunc("/register", registerRouteHandler)
+	http.HandleFunc("/", dynamicHandler)
 
 	server := &http.Server{
 		Addr:         ":8080",
