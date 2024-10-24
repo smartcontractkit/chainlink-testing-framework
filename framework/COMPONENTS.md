@@ -31,7 +31,11 @@ func NewComponent(input *Input) (*Output, error) {
 	// deploy a docker container(s)
 	// or deploy a set of smart contracts
 	
-	input.Out = &Output{...}
+	input.Out = &Output{
+	    UseCache: true,
+	    // other fields
+	    ...
+	}
 	return out, nil
 }
 ```
@@ -83,6 +87,7 @@ An example of [composite component](components/don/don.go)
 	}
 
 	return &NodeOut{
+	    UseCache: true,
 		DockerURL: fmt.Sprintf("http://%s:%s", containerName, in.Node.Port),
 		HostURL:   fmt.Sprintf("http://%s:%s", host, mp.Port()),
 	}, nil

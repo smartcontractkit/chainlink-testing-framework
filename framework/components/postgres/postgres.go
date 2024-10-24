@@ -11,13 +11,13 @@ import (
 )
 
 type Input struct {
-	Image     string  `toml:"image" validate:"required"`
-	Tag       string  `toml:"tag" validate:"required"`
-	PullImage bool    `toml:"pull_image"`
-	User      string  `toml:"user" validate:"required"`
-	Password  string  `toml:"password" validate:"required"`
-	Database  string  `toml:"database" validate:"required"`
-	Port      string  `toml:"port" validate:"required"`
+	Image     string  `toml:"image" validate:"required" default:"postgres"`
+	Tag       string  `toml:"tag" validate:"required" default:"15.6"`
+	PullImage bool    `toml:"pull_image" default:"true"`
+	User      string  `toml:"user" validate:"required" default:"chainlink"`
+	Password  string  `toml:"password" validate:"required" default:"thispasswordislongenough"`
+	Database  string  `toml:"database" validate:"required" default:"chainlink"`
+	Port      string  `toml:"port" validate:"required" default:"5432"`
 	Out       *Output `toml:"out"`
 }
 

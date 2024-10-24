@@ -17,7 +17,7 @@ fj293fbBnlQ!f9vNs`
 
 const defaultConfigTmpl = `
 [Log]
-Level = 'info'
+Level = 'debug'
 
 [WebServer]
 HTTPWriteTimeout = '30s'

@@ -1,4 +1,4 @@
-package don
+package simple_don
 
 import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
@@ -6,8 +6,9 @@ import (
 )
 
 type Input struct {
-	Nodes []*clnode.Input `toml:"nodes" validate:"required"`
-	Out   *Output         `toml:"out"`
+	Nodes int `toml:"nodes" validate:"required"`
+	*clnode.Input
+	Out *Output `toml:"out"`
 }
 
 type Output struct {
@@ -15,19 +16,20 @@ type Output struct {
 	Nodes    []*clnode.Output `toml:"node"`
 }
 
-func NewDON(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output, error) {
+func NewSimpleDON(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output, error) {
 	if in.Out.UseCache {
 		return in.Out, nil
 	}
 	nodeOuts := make([]*clnode.Output, 0)
-	for _, n := range in.Nodes {
+	for i := 0; i < in.Nodes; i++ {
 		net, err := clnode.NewNetworkCfgOneNetworkAllNodes(bcOut)
 		if err != nil {
 			return nil, err
 		}
-		n.Node.TestConfigOverrides = net
-		n.DataProviderURL = fakeUrl
-		o, err := clnode.NewNode(n)
+		in.Input.Node.TestConfigOverrides = net
+		in.Input.DataProviderURL = fakeUrl
+		in.Input.Out = nil
+		o, err := clnode.NewNode(in.Input)
 		if err != nil {
 			return nil, err
 		}
