@@ -7,6 +7,7 @@ on:
   push:
     tags:
       - '*/v*.*.*' # Trigger only on tags with the format $package/vX.X.X
+      - '*/*/v*.*.*' # Trigger only on tags with the format $package/$subpackage/vX.X.X
 
 permissions:
   contents: write
