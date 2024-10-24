@@ -123,14 +123,13 @@ func TestSaveLoad(t *testing.T) {
 		registerRoute(t, route)
 	}
 
-	filename := "test_routes.json"
 	t.Cleanup(func() {
-		os.Remove(filename)
+		os.Remove("save.json")
 	})
 
 	err := save()
 	require.NoError(t, err)
-	require.FileExists(t, filename)
+	require.FileExists(t, "save.json")
 
 	err = load()
 	require.NoError(t, err)
