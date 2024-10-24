@@ -15,20 +15,28 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils"
 )
 
-// Filter tests based on workflow, test type, and test IDs.
-func filterTests(allTests []CITestConf, workflow, testType, ids string, envresolve bool) []CITestConf {
-	workflowFilter := workflow
-	typeFilter := testType
+// filterTests filters tests based on trigger, test type, test IDs, and chainlink image types.
+func filterTests(
+	allTests []CITestConf,
+	trigger, testType, ids, chainlinkImageType string,
+	envresolve bool,
+) []CITestConf {
+	triggerFilter := trigger
+	testTypeFilter := testType
+	imageTypeFilter := chainlinkImageType
 	idFilter := strings.Split(ids, ",")
 
 	var filteredTests []CITestConf
 
 	for _, test := range allTests {
-		workflowMatch := workflow == "" || contains(test.Triggers, workflowFilter)
-		typeMatch := testType == "" || test.TestEnvType == typeFilter
-		idMatch := ids == "*" || ids == "" || contains(idFilter, test.ID)
+		var (
+			triggerMatch   = trigger == "" || contains(test.Triggers, triggerFilter)
+			testTypeMatch  = testType == "" || test.TestEnvType == testTypeFilter
+			imageTypeMatch = chainlinkImageType == "" || contains(test.ChainlinkImageTypes, imageTypeFilter) || (len(test.ChainlinkImageTypes) == 0 && imageTypeFilter == "amd64") // Default amd64 for all
+			idMatch        = ids == "*" || ids == "" || contains(idFilter, test.ID)
+		)
 
-		if workflowMatch && typeMatch && idMatch {
+		if triggerMatch && testTypeMatch && idMatch && imageTypeMatch {
 			test.IDSanitized = sanitizeTestID(test.ID)
 			filteredTests = append(filteredTests, test)
 		}
@@ -42,7 +50,7 @@ func filterTests(allTests []CITestConf, workflow, testType, ids string, envresol
 	return filteredTests
 }
 
-func filterAndMergeTests(allTests []CITestConf, workflow, testType, base64Tests string, envresolve bool) ([]CITestConf, error) {
+func filterAndMergeTests(allTests []CITestConf, trigger, testType, base64Tests string, envresolve bool) ([]CITestConf, error) {
 	decodedBytes, err := base64.StdEncoding.DecodeString(base64Tests)
 	if err != nil {
 		return nil, err
@@ -60,10 +68,10 @@ func filterAndMergeTests(allTests []CITestConf, workflow, testType, base64Tests 
 
 	var filteredTests []CITestConf
 	for _, test := range allTests {
-		workflowMatch := workflow == "" || contains(test.Triggers, workflow)
+		triggerMatch := trigger == "" || contains(test.Triggers, trigger)
 		typeMatch := testType == "" || test.TestEnvType == testType
 
-		if decodedTest, exists := idFilter[test.ID]; exists && workflowMatch && typeMatch {
+		if decodedTest, exists := idFilter[test.ID]; exists && triggerMatch && typeMatch {
 			// Override test inputs from the base64 encoded tests
 			for k, v := range decodedTest.TestEnvVars {
 				if test.TestEnvVars == nil {
@@ -105,14 +113,15 @@ func contains(slice []string, element string) bool {
 var filterCmd = &cobra.Command{
 	Use:   "filter",
 	Short: "Filter test configurations based on specified criteria",
-	Long: `Filters tests from a YAML configuration based on name, workflow, test type, and test IDs.
+	Long: `Filters tests from a YAML configuration based on name, trigger, test type, and test IDs.
 Example usage:
-./e2e_tests_tool filter --file .github/e2e-tests.yml --workflow "Run Nightly E2E Tests" --test-env-type "docker" --test-ids "test1,test2"`,
+./e2e_tests_tool filter --file .github/e2e-tests.yml --trigger "Run Nightly E2E Tests" --test-env-type "docker" --test-ids "test1,test2"`,
 	Run: func(cmd *cobra.Command, _ []string) {
 		yamlFile, _ := cmd.Flags().GetString("file")
-		workflow, _ := cmd.Flags().GetString("workflow")
+		trigger, _ := cmd.Flags().GetString("trigger")
 		testType, _ := cmd.Flags().GetString("test-env-type")
 		testIDs, _ := cmd.Flags().GetString("test-ids")
+		chainlinkImageType, _ := cmd.Flags().GetString("chainlink-image-type")
 		testMap, _ := cmd.Flags().GetString("test-list")
 		envresolve, _ := cmd.Flags().GetBool("envresolve")
 
@@ -131,9 +140,9 @@ Example usage:
 
 		var filteredTests []CITestConf
 		if testMap == "" {
-			filteredTests = filterTests(config.Tests, workflow, testType, testIDs, envresolve)
+			filteredTests = filterTests(config.Tests, trigger, testType, testIDs, chainlinkImageType, envresolve)
 		} else {
-			filteredTests, err = filterAndMergeTests(config.Tests, workflow, testType, testMap, envresolve)
+			filteredTests, err = filterAndMergeTests(config.Tests, trigger, testType, testMap, envresolve)
 			if err != nil {
 				log.Fatalf("Error filtering and merging tests: %v", err)
 			}
@@ -153,8 +162,9 @@ func init() {
 	filterCmd.Flags().StringP("file", "f", "", "Path to the YAML file")
 	filterCmd.Flags().String("test-list", "", "Base64 encoded list of tests (YML objects) to filter by. Can include test_inputs for each test.")
 	filterCmd.Flags().StringP("test-ids", "i", "*", "Comma-separated list of test IDs to filter by")
+	filterCmd.Flags().StringP("chainlink-image-type", "c", "amd64", "Build type of Chainlink image to filter by (e.g. 'amd64', 'arm64')")
 	filterCmd.Flags().StringP("test-env-type", "y", "", "Type of test to filter by")
-	filterCmd.Flags().StringP("workflow", "t", "", "Workflow filter")
+	filterCmd.Flags().StringP("trigger", "t", "", "trigger filter")
 	filterCmd.Flags().Bool("envresolve", false, "Resolve environment variables in test inputs")
 
 	err := filterCmd.MarkFlagRequired("file")

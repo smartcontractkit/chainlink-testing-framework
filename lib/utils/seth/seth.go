@@ -246,10 +246,10 @@ func ValidateSethNetworkConfig(cfg *pkg_seth.Network) error {
 	if cfg == nil {
 		return errors.New("network cannot be nil")
 	}
-	if cfg.URLs == nil || len(cfg.URLs) == 0 {
+	if len(cfg.URLs) == 0 {
 		return errors.New("URLs are required")
 	}
-	if cfg.PrivateKeys == nil || len(cfg.PrivateKeys) == 0 {
+	if len(cfg.PrivateKeys) == 0 {
 		return errors.New("PrivateKeys are required")
 	}
 	if cfg.TransferGasFee == 0 {
