@@ -7,9 +7,17 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	NoPkForRpcHealthCheckErr  = "you need to provide at least one private key to check the RPC health"
+	NoPkForNonceProtection    = "you need to provide at least one private key to enable nonce protection"
+	NoPkForEphemeralKeys      = "you need to provide at least one private key to generate and fund ephemeral addresses"
+	NoPkForGasPriceEstimation = "you need to provide at least one private key to enable gas price estimations"
+)
+
 type ClientBuilder struct {
-	config *Config
-	errors []error
+	config   *Config
+	readonly bool
+	errors   []error
 }
 
 // NewClientBuilder creates a new ClientBuilder with reasonable default values. You only need to pass private key(s) and RPC URL to build a usable config.
@@ -351,6 +359,12 @@ func (c *ClientBuilder) WithNonceManager(rateLimitSec int, retries uint, timeout
 	return c
 }
 
+// WithReadOnlyMode sets the client to read-only mode. It removes all private keys from all Networks and disables nonce protection and ephemeral addresses.
+func (c *ClientBuilder) WithReadOnlyMode() *ClientBuilder {
+	c.readonly = true
+	return c
+}
+
 // Build creates a new Client from the builder.
 func (c *ClientBuilder) Build() (*Client, error) {
 	config, err := c.BuildConfig()
@@ -362,6 +376,8 @@ func (c *ClientBuilder) Build() (*Client, error) {
 
 // BuildConfig returns the config from the builder.
 func (c *ClientBuilder) BuildConfig() (*Config, error) {
+	c.handleReadOnlyMode()
+	c.validateConfig()
 	if len(c.errors) > 0 {
 		var concatenatedErrors string
 		for _, err := range c.errors {
@@ -370,6 +386,39 @@ func (c *ClientBuilder) BuildConfig() (*Config, error) {
 		return nil, fmt.Errorf("errors occurred during building the config:%s", concatenatedErrors)
 	}
 	return c.config, nil
+}
+
+func (c *ClientBuilder) handleReadOnlyMode() {
+	if c.readonly {
+		c.config.PendingNonceProtectionEnabled = false
+		c.config.CheckRpcHealthOnStart = false
+		c.config.EphemeralAddrs = nil
+		if c.config.Network != nil {
+			c.config.Network.GasPriceEstimationEnabled = false
+			c.config.Network.PrivateKeys = []string{}
+		}
+
+		for i := range c.config.Networks {
+			c.config.Networks[i].PrivateKeys = []string{}
+		}
+	}
+}
+
+func (c *ClientBuilder) validateConfig() {
+	if c.config.Network != nil {
+		if len(c.config.Network.PrivateKeys) == 0 && c.config.CheckRpcHealthOnStart {
+			c.errors = append(c.errors, errors.New(NoPkForRpcHealthCheckErr))
+		}
+		if len(c.config.Network.PrivateKeys) == 0 && c.config.PendingNonceProtectionEnabled {
+			c.errors = append(c.errors, errors.New(NoPkForNonceProtection))
+		}
+		if len(c.config.Network.PrivateKeys) == 0 && c.config.EphemeralAddrs != nil && *c.config.EphemeralAddrs > 0 {
+			c.errors = append(c.errors, errors.New(NoPkForEphemeralKeys))
+		}
+		if len(c.config.Network.PrivateKeys) == 0 && c.config.Network.GasPriceEstimationEnabled {
+			c.errors = append(c.errors, errors.New(NoPkForGasPriceEstimation))
+		}
+	}
 }
 
 func (c *ClientBuilder) checkIfNetworkIsSet() bool {
