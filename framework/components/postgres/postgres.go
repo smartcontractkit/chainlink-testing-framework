@@ -13,7 +13,7 @@ import (
 type Input struct {
 	Image     string  `toml:"image" validate:"required"`
 	Tag       string  `toml:"tag" validate:"required"`
-	PullImage bool    `toml:"pull_image" validate:"required"`
+	PullImage bool    `toml:"pull_image"`
 	User      string  `toml:"user" validate:"required"`
 	Password  string  `toml:"password" validate:"required"`
 	Database  string  `toml:"database" validate:"required"`

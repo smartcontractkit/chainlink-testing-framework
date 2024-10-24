@@ -26,7 +26,7 @@ type Input struct {
 type NodeInput struct {
 	Image                string `toml:"image" validate:"required"`
 	Tag                  string `toml:"tag" validate:"required"`
-	PullImage            bool   `toml:"pull_image" validate:"required"`
+	PullImage            bool   `toml:"pull_image"`
 	Port                 string `toml:"port" validate:"required"`
 	TestConfigOverrides  string `toml:"test_config_overrides"`
 	UserConfigOverrides  string `toml:"user_config_overrides"`
