@@ -1,5 +1,7 @@
 FROM golang:alpine as builder
 
+ARG TARGETARCH
+
 WORKDIR /app
 
 COPY go.mod go.sum ./

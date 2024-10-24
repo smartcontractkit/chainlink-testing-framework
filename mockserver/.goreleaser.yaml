@@ -25,23 +25,37 @@ archives:
   - format: binary
 
 dockers:
-  - image_templates:
+  - id: linux-amd64-mockserver
+    goos: linux
+    goarch: amd64
+    image_templates:
       - '{{ .Env.IMG_PRE }}/mockserver:{{ .Tag }}'
       # - "{{ .Env.IMG_PRE }}/mockserver:latest"
       - '{{ .Env.IMG_PRE }}/mockserver:debug' # DEBUG: Using for testing
-    platforms:
-      - linux/amd64
-      - linux/arm64
     dockerfile: Dockerfile
-    use: buildx
-
-# Git tag management
-git:
-  tag: true
-
+    build_flag_templates:
+      - --platform=linux/amd64
+      - --pull
+      - --build-arg=TARGETARCH=amd64
+      - --label=org.opencontainers.image.created={{.Date}}
+      - --label=org.opencontainers.image.title={{.ProjectName}}
+      - --label=org.opencontainers.image.revision={{.FullCommit}}
+      - --label=org.opencontainers.image.version={{.Version}}
+  - id: linux-arm64-mockserver
+    goos: linux
+    goarch: arm64
+    image_templates:
+      - '{{ .Env.IMG_PRE }}/mockserver:{{ .Tag }}-arm64'
+      # - "{{ .Env.IMG_PRE }}/mockserver:latest-arm64"
+      - '{{ .Env.IMG_PRE }}/mockserver:debug-arm64' # DEBUG: Using for testing
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - --platform=linux/arm64
+      - --pull
+      - --build-arg=TARGETARCH=arm64
+      - --label=org.opencontainers.image.created={{.Date}}
+      - --label=org.opencontainers.image.title={{.ProjectName}}
+      - --label=org.opencontainers.image.revision={{.FullCommit}}
+      - --label=org.opencontainers.image.version={{.Version}}
 changelog:
   disable: 'true'
-
-before:
-  hooks:
-    - cmd: go mod tidy
