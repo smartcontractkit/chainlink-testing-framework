@@ -10,13 +10,14 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"os"
+	"path/filepath"
 	"text/template"
 	"time"
 )
 
 // Input represents Chainlink node input
 type Input struct {
-	DataProviderURL string          `toml:"data_provider_url" validate:"required"`
+	DataProviderURL string          `toml:"data_provider_url" validate:"required" default:"http://host.docker.internal:9111"`
 	DbInput         *postgres.Input `toml:"db" validate:"required"`
 	Node            *NodeInput      `toml:"node" validate:"required"`
 	Out             *Output         `toml:"out"`
@@ -24,14 +25,16 @@ type Input struct {
 
 // NodeInput is CL nod container inputs
 type NodeInput struct {
-	Image                string `toml:"image" validate:"required"`
-	Tag                  string `toml:"tag" validate:"required"`
-	PullImage            bool   `toml:"pull_image" default:"true"`
-	Port                 string `toml:"port" validate:"required" default:"6688"`
-	TestConfigOverrides  string `toml:"test_config_overrides"`
-	UserConfigOverrides  string `toml:"user_config_overrides"`
-	TestSecretsOverrides string `toml:"test_secrets_overrides"`
-	UserSecretsOverrides string `toml:"user_secrets_overrides"`
+	Image                   string   `toml:"image" validate:"required"`
+	Tag                     string   `toml:"tag" validate:"required"`
+	PullImage               bool     `toml:"pull_image" default:"true"`
+	Port                    string   `toml:"port" validate:"required" default:"6688"`
+	CapabilitiesBinaryPaths []string `toml:"capabilities"`
+	CapabilityContainerDir  string   `toml:"capabilities_container_dir" default:"/capabilities"`
+	TestConfigOverrides     string   `toml:"test_config_overrides"`
+	UserConfigOverrides     string   `toml:"user_config_overrides"`
+	TestSecretsOverrides    string   `toml:"test_secrets_overrides"`
+	UserSecretsOverrides    string   `toml:"user_secrets_overrides"`
 }
 
 // Output represents Chainlink node output, nodes and databases connection URLs
@@ -123,50 +126,60 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 			"/bin/sh", "-c",
 			"chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials",
 		},
-		Files: []tc.ContainerFile{
-			{
-				HostFilePath:      cfgPath.Name(),
-				ContainerFilePath: "/config/config",
-				FileMode:          0644,
-			},
-			{
-				HostFilePath:      secretsPath.Name(),
-				ContainerFilePath: "/config/secrets",
-				FileMode:          0644,
-			},
-			{
-				HostFilePath:      overridesFile.Name(),
-				ContainerFilePath: "/config/overrides",
-				FileMode:          0644,
-			},
-			{
-				HostFilePath:      userOverridesFile.Name(),
-				ContainerFilePath: "/config/user-overrides",
-				FileMode:          0644,
-			},
-			{
-				HostFilePath:      secretsOverridesFile.Name(),
-				ContainerFilePath: "/config/secrets-overrides",
-				FileMode:          0644,
-			},
-			{
-				HostFilePath:      userSecretsOverridesFile.Name(),
-				ContainerFilePath: "/config/user-secrets-overrides",
-				FileMode:          0644,
-			},
-			{
-				HostFilePath:      passwordPath.Name(),
-				ContainerFilePath: "/config/node_password",
-				FileMode:          0644,
-			},
-			{
-				HostFilePath:      apiCredentialsPath.Name(),
-				ContainerFilePath: "/config/apicredentials",
-				FileMode:          0644,
-			},
-		},
 		WaitingFor: wait.ForLog("Listening and serving HTTP").WithStartupTimeout(2 * time.Minute),
 	}
+	files := []tc.ContainerFile{
+		{
+			HostFilePath:      cfgPath.Name(),
+			ContainerFilePath: "/config/config",
+			FileMode:          0644,
+		},
+		{
+			HostFilePath:      secretsPath.Name(),
+			ContainerFilePath: "/config/secrets",
+			FileMode:          0644,
+		},
+		{
+			HostFilePath:      overridesFile.Name(),
+			ContainerFilePath: "/config/overrides",
+			FileMode:          0644,
+		},
+		{
+			HostFilePath:      userOverridesFile.Name(),
+			ContainerFilePath: "/config/user-overrides",
+			FileMode:          0644,
+		},
+		{
+			HostFilePath:      secretsOverridesFile.Name(),
+			ContainerFilePath: "/config/secrets-overrides",
+			FileMode:          0644,
+		},
+		{
+			HostFilePath:      userSecretsOverridesFile.Name(),
+			ContainerFilePath: "/config/user-secrets-overrides",
+			FileMode:          0644,
+		},
+		{
+			HostFilePath:      passwordPath.Name(),
+			ContainerFilePath: "/config/node_password",
+			FileMode:          0644,
+		},
+		{
+			HostFilePath:      apiCredentialsPath.Name(),
+			ContainerFilePath: "/config/apicredentials",
+			FileMode:          0644,
+		},
+	}
+	for _, cp := range in.Node.CapabilitiesBinaryPaths {
+		cpPath := filepath.Base(cp)
+		framework.L.Info().Any("Path", cpPath).Str("Binary", cpPath).Msg("Copying capability binary")
+		files = append(files, tc.ContainerFile{
+			HostFilePath:      cp,
+			ContainerFilePath: filepath.Join(in.Node.CapabilityContainerDir, cpPath),
+			FileMode:          0644,
+		})
+	}
+	req.Files = append(req.Files, files...)
 	c, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,

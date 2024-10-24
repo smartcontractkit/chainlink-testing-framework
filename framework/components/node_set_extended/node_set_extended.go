@@ -1,4 +1,4 @@
-package simple_don
+package node_set_extended
 
 import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
@@ -6,31 +6,28 @@ import (
 )
 
 type Input struct {
-	Nodes    int           `toml:"nodes" validate:"required"`
-	NodeSpec *clnode.Input `toml:"node_spec" validate:"required"`
-	Out      *Output       `toml:"out"`
+	Nodes []*clnode.Input `toml:"nodes" validate:"required"`
+	Out   *Output         `toml:"out"`
 }
 
 type Output struct {
 	UseCache bool             `toml:"use_cache"`
-	CLNodes  []*clnode.Output `toml:"cl_nodes"`
+	Nodes    []*clnode.Output `toml:"node"`
 }
 
-func NewSimpleDON(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output, error) {
+func NewExtendedNodeSet(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output, error) {
 	if in.Out.UseCache {
 		return in.Out, nil
 	}
 	nodeOuts := make([]*clnode.Output, 0)
-	for i := 0; i < in.Nodes; i++ {
+	for _, n := range in.Nodes {
 		net, err := clnode.NewNetworkCfgOneNetworkAllNodes(bcOut)
 		if err != nil {
 			return nil, err
 		}
-		newIn := in.NodeSpec
-		newIn.Node.TestConfigOverrides = net
-		newIn.DataProviderURL = fakeUrl
-		newIn.Out = nil
-		o, err := clnode.NewNode(newIn)
+		n.Node.TestConfigOverrides = net
+		n.DataProviderURL = fakeUrl
+		o, err := clnode.NewNode(n)
 		if err != nil {
 			return nil, err
 		}
@@ -38,7 +35,7 @@ func NewSimpleDON(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output,
 	}
 	out := &Output{
 		UseCache: true,
-		CLNodes:  nodeOuts,
+		Nodes:    nodeOuts,
 	}
 	in.Out = out
 	return out, nil

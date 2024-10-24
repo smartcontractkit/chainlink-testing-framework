@@ -51,7 +51,7 @@ An example [simple component](components/blockchain/anvil.go)
 
 An example of [complex component](components/clnode/clnode.go)
 
-An example of [composite component](components/don/don.go)
+An example of [composite component](components/node_set_extended/don.go)
 
 - Inputs should include at least `image`, `tag` and `pull_image` field
 ```
