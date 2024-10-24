@@ -122,7 +122,7 @@ func NewLokiStreamer() error {
 	req := testcontainers.ContainerRequest{
 		Image:        "grafana/promtail:latest",
 		ExposedPorts: []string{"9080/tcp"},
-		Name:         DefaultTCName("promtail"),
+		Name:         "promtail",
 		Cmd:          cmd,
 		Labels:       DefaultTCLabels(),
 		Files: []testcontainers.ContainerFile{
@@ -151,6 +151,7 @@ func NewLokiStreamer() error {
 
 	_, err = testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
+		Reuse:            true,
 		Started:          true,
 	})
 	if err != nil {
