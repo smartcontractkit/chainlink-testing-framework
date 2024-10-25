@@ -203,7 +203,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		files = append(files, tc.ContainerFile{
 			HostFilePath:      cp,
 			ContainerFilePath: filepath.Join(in.Node.CapabilityContainerDir, cpPath),
-			FileMode:          0644,
+			FileMode:          0777,
 		})
 	}
 	req.Files = append(req.Files, files...)
