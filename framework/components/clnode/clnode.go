@@ -53,15 +53,32 @@ type NodeOut struct {
 	DockerP2PUrl string `toml:"p2p_docker_internal_url"`
 }
 
-// NewNode create a new Chainlink node with some image:tag and one or several configs
+// NewNodeWithDB create a new Chainlink node with some image:tag and one or several configs
 // see config params: TestConfigOverrides, UserConfigOverrides, etc
-func NewNode(in *Input) (*Output, error) {
+func NewNodeWithDB(in *Input) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
 	pgOut, err := postgres.NewPostgreSQL(in.DbInput)
 	if err != nil {
 		return nil, err
+	}
+	nodeOut, err := newNode(in, pgOut)
+	if err != nil {
+		return nil, err
+	}
+	out := &Output{
+		UseCache:   true,
+		Node:       nodeOut,
+		PostgreSQL: pgOut,
+	}
+	in.Out = out
+	return out, nil
+}
+
+func NewNode(in *Input, pgOut *postgres.Output) (*Output, error) {
+	if in.Out != nil && in.Out.UseCache {
+		return in.Out, nil
 	}
 	nodeOut, err := newNode(in, pgOut)
 	if err != nil {

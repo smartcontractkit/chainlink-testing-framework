@@ -7,6 +7,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -17,6 +19,7 @@ type Input struct {
 	User      string  `toml:"user" validate:"required" default:"chainlink"`
 	Password  string  `toml:"password" validate:"required" default:"thispasswordislongenough"`
 	Database  string  `toml:"database" validate:"required" default:"chainlink"`
+	Databases int     `toml:"databases" validate:"required" default:"20"`
 	Port      string  `toml:"port" validate:"required" default:"5432"`
 	Out       *Output `toml:"out"`
 }
@@ -32,6 +35,23 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 	bindPort := fmt.Sprintf("%s/tcp", in.Port)
 
 	containerName := framework.DefaultTCName("postgresql")
+
+	var sqlCommands []string
+	for i := 0; i <= in.Databases; i++ {
+		sqlCommands = append(sqlCommands, fmt.Sprintf("CREATE DATABASE db_%d;", i))
+	}
+	sqlCommands = append(sqlCommands, "ALTER USER chainlink WITH SUPERUSER;")
+	initSQL := strings.Join(sqlCommands, "\n")
+	initFile, err := os.CreateTemp("", "init-*.sql")
+	if err != nil {
+		return nil, err
+	}
+	if _, err := initFile.WriteString(initSQL); err != nil {
+		return nil, err
+	}
+	if err := initFile.Close(); err != nil {
+		return nil, err
+	}
 
 	req := testcontainers.ContainerRequest{
 		AlwaysPullImage: in.PullImage,
@@ -51,9 +71,16 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 		Cmd: []string{
 			"postgres", "-c", fmt.Sprintf("port=%s", in.Port),
 		},
+		Files: []testcontainers.ContainerFile{
+			{
+				HostFilePath:      initFile.Name(),
+				ContainerFilePath: "/docker-entrypoint-initdb.d/init.sql",
+				FileMode:          0644,
+			},
+		},
 		WaitingFor: tcwait.ForExec([]string{"psql", "-h", "127.0.0.1",
 			"-U", in.User, "-p", in.Port, "-c", "select", "1", "-d", in.Database}).
-			WithStartupTimeout(10 * time.Second),
+			WithStartupTimeout(20 * time.Second),
 	}
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,

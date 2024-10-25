@@ -27,7 +27,7 @@ func NewExtendedNodeSet(in *Input, bcOut *blockchain.Output, fakeUrl string) (*O
 		}
 		n.Node.TestConfigOverrides = net
 		n.DataProviderURL = fakeUrl
-		o, err := clnode.NewNode(n)
+		o, err := clnode.NewNodeWithDB(n)
 		if err != nil {
 			return nil, err
 		}
