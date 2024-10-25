@@ -20,8 +20,7 @@ builds:
       - amd64
       - arm64
     ldflags:
-      - '-s -w' # Strip debug information to reduce binary size
-    binary: 'mockserver_{{ .Os }}_{{ .Arch }}'
+      - '-s -w'
 
 archives:
   - format: binary
@@ -36,7 +35,6 @@ dockers:
     build_flag_templates:
       - --platform=linux/amd64
       - --pull
-      - --build-arg=TARGETARCH=amd64
       - --label=org.opencontainers.image.created={{.Date}}
       - --label=org.opencontainers.image.title={{.ProjectName}}
       - --label=org.opencontainers.image.revision={{.FullCommit}}
@@ -50,7 +48,6 @@ dockers:
     build_flag_templates:
       - --platform=linux/arm64
       - --pull
-      - --build-arg=TARGETARCH=arm64
       - --label=org.opencontainers.image.created={{.Date}}
       - --label=org.opencontainers.image.title={{.ProjectName}}
       - --label=org.opencontainers.image.revision={{.FullCommit}}
@@ -58,4 +55,4 @@ dockers:
 
 before:
   hooks:
-    - go mod tidy
+    - cd mockserver && go mod tidy
