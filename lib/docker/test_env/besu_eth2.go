@@ -130,7 +130,7 @@ func (g *Besu) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 			tcwait.ForLog("Ethereum main loop is up").
 				WithPollInterval(1 * time.Second)).
 			WithStartupTimeoutDefault(g.StartupTimeout),
-		//User: "0:0", //otherwise in CI we get "permission denied" error, when trying to access data from mounted volume
+		User: "0:0", //otherwise in CI we get "permission denied" error, when trying to access data from mounted volume
 		Entrypoint: []string{
 			"sh",
 			"/init.sh",
@@ -168,7 +168,8 @@ func (g *Besu) buildPosInitScript(params string) (string, error) {
 	echo "Copied genesis file to {{.ExecutionDir}}"
 	mkdir -p {{.ExecutionDir}}
 	cp {{.GeneratedDataDir}}/besu.json {{.ExecutionDir}}/besu.json
-	# chmod 777 {{.GeneratedDataDir}}/genesis.json
+    # to avoid permission issues without diving into the details
+	chmod 777 {{.GeneratedDataDir}}/genesis.json
 
 	echo "Starting Besu..."
 	echo "Running command: {{.Command}}"
