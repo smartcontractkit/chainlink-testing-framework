@@ -21,35 +21,6 @@ type Output struct {
 	CLNodes  []*clnode.Output `toml:"cl_nodes"`
 }
 
-// NewNodeSet creates a simple set of CL nodes
-func NewNodeSet(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output, error) {
-	if in.Out.UseCache {
-		return in.Out, nil
-	}
-	nodeOuts := make([]*clnode.Output, 0)
-	for i := 0; i < in.Nodes; i++ {
-		net, err := clnode.NewNetworkCfgOneNetworkAllNodes(bcOut)
-		if err != nil {
-			return nil, err
-		}
-		newIn := in.NodeSpec
-		newIn.Node.TestConfigOverrides = net
-		newIn.DataProviderURL = fakeUrl
-		newIn.Out = nil
-		o, err := clnode.NewNodeWithDB(newIn)
-		if err != nil {
-			return nil, err
-		}
-		nodeOuts = append(nodeOuts, o)
-	}
-	out := &Output{
-		UseCache: true,
-		CLNodes:  nodeOuts,
-	}
-	in.Out = out
-	return out, nil
-}
-
 func NewSharedDBNodeSet(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output, error) {
 	if in.Out.UseCache {
 		return in.Out, nil
