@@ -3,7 +3,7 @@ name: Mockserver Release
 on:
   push:
     tags:
-      - 'mockserver/v*.*.*'
+      - mockserver/v*
 
 jobs:
   release:

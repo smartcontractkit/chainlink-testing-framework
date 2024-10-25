@@ -7,7 +7,7 @@ monorepo:
   dir: mockserver
 
 env:
-  - IMG_PRE={{ if index .Env "IMAGE_PREFIX"  }}{{ .Env.IMAGE_PREFIX }}{{ else }}mockserver{{ end }}
+  - IMG_PRE={{ if index .Env "IMAGE_PREFIX"  }}{{ .Env.IMAGE_PREFIX }}{{ else }}local{{ end }}
   - TAG={{ if index .Env "IMAGE_TAG" }}{{ .Env.IMAGE_TAG }}{{ else }}latest{{ end }}
 
 # Build settings for binaries
