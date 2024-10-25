@@ -45,7 +45,6 @@ func TestBesuEth2(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		//nolint:staticcheck //ignore SA1019
 		WithEthereumVersion(config_types.EthereumVersion_Eth2).
 		WithExecutionLayer(config_types.ExecutionLayer_Besu).
 		Build()

@@ -135,7 +135,6 @@ func (g *Besu) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 			"sh",
 			"/init.sh",
 		},
-		//Cmd:  cmd,
 		Env: map[string]string{
 			"JAVA_OPTS": "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n",
 		},

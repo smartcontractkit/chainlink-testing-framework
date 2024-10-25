@@ -45,14 +45,13 @@ func TestErigonEth2(t *testing.T) {
 
 	builder := NewEthereumNetworkBuilder()
 	cfg, err := builder.
-		//nolint:staticcheck //ignore SA1019
 		WithEthereumVersion(config_types.EthereumVersion_Eth2).
 		WithExecutionLayer(config_types.ExecutionLayer_Erigon).
 		Build()
 	require.NoError(t, err, "Builder validation failed")
 
 	net, _, err := cfg.Start()
-	require.NoError(t, err, "Couldn't start PoW network")
+	require.NoError(t, err, "Couldn't start PoS network")
 
 	c, err := blockchain.ConnectEVMClient(net, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
