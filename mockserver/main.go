@@ -18,7 +18,7 @@ func init() {
 		Out:        os.Stderr,
 		TimeFormat: "15:04:05.00", // hh:mm:ss.ss format
 	})
-	config = ReadConfig()
+	config = readConfig()
 	level := zerolog.DebugLevel
 	if config.LogLevel != "" {
 		l, err := zerolog.ParseLevel(config.LogLevel)

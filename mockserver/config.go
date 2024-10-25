@@ -11,7 +11,7 @@ type Config struct {
 	LogLevel string `json:"log_level"`
 }
 
-func ReadConfig() *Config {
+func readConfig() *Config {
 	saveFile := os.Getenv("SAVE_FILE")
 	if saveFile == "" {
 		log.Warn().Msg("SAVE_FILE is not set. Using default file 'save.json'")

@@ -62,13 +62,13 @@ go run .
 ## Test
 
 ```sh
-go test ./...
+go test -cover -race ./...
 ```
 
 ## Benchmark
 
 ```sh
-LOG_LEVEL=disabled go test -bench=. -benchmem -run=^\$
+LOG_LEVEL=disabled go test -bench=. -benchmem -run=^$
 ```
 
 Benchmark run on an Apple M3 Max.
@@ -81,4 +81,12 @@ BenchmarkRegisterRoute-14    	  604978	      1967 ns/op	    6263 B/op	      29 a
 BenchmarkRouteResponse-14    	16561670	        70.62 ns/op	      80 B/op	       1 allocs/op
 BenchmarkSaveRoutes-14       	    1245	    956784 ns/op	  636042 B/op	    2014 allocs/op
 BenchmarkLoadRoutes-14       	    1020	   1185990 ns/op	  348919 B/op	    9020 allocs/op
+```
+
+## Contribute
+
+[Pre-commit](https://pre-commit.com/) is recommended to run checks before committing or pushing.
+
+```sh
+pre-commit install
 ```

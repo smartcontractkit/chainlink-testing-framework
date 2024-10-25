@@ -1,4 +1,4 @@
-module github.com/smartcontractkit/chainlink-testing-framework/mockserver
+module github.com/smartcontractkit/mockserver
 
 go 1.23.2
 

@@ -1,0 +1,17 @@
+linters:
+  disable-all: false
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - zerologlint
+    - unparam
+    - revive
+    - paralleltest
+    - misspell
+    - goimports
+    - gofmt
+    - godox

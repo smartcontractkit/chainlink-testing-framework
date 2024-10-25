@@ -1,16 +1,18 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
 version: 1
 project_name: mockserver
 
+monorepo:
+  tag_prefix: mockserver/
+  dir: mockserver
+
 env:
-  - IMG_PRE={{ if index .Env "IMAGE_PREFIX"  }}{{ .Env.IMAGE_PREFIX }}{{ else }}localhost:5001{{ end }}
+  - IMG_PRE={{ if index .Env "IMAGE_PREFIX"  }}{{ .Env.IMAGE_PREFIX }}{{ else }}mockserver{{ end }}
   - TAG={{ if index .Env "IMAGE_TAG" }}{{ .Env.IMAGE_TAG }}{{ else }}latest{{ end }}
 
 # Build settings for binaries
 builds:
   - id: mockserver
-    main: ./main.go
-    env:
-      - CGO_ENABLED=0
     goos:
       - linux
       - darwin
@@ -30,9 +32,7 @@ dockers:
     goarch: amd64
     image_templates:
       - '{{ .Env.IMG_PRE }}/mockserver:{{ .Tag }}'
-      # - "{{ .Env.IMG_PRE }}/mockserver:latest"
-      - '{{ .Env.IMG_PRE }}/mockserver:debug' # DEBUG: Using for testing
-    dockerfile: Dockerfile
+      - "{{ .Env.IMG_PRE }}/mockserver:latest"
     build_flag_templates:
       - --platform=linux/amd64
       - --pull
@@ -46,9 +46,7 @@ dockers:
     goarch: arm64
     image_templates:
       - '{{ .Env.IMG_PRE }}/mockserver:{{ .Tag }}-arm64'
-      # - "{{ .Env.IMG_PRE }}/mockserver:latest-arm64"
-      - '{{ .Env.IMG_PRE }}/mockserver:debug-arm64' # DEBUG: Using for testing
-    dockerfile: Dockerfile
+      - "{{ .Env.IMG_PRE }}/mockserver:latest-arm64"
     build_flag_templates:
       - --platform=linux/arm64
       - --pull
@@ -57,5 +55,7 @@ dockers:
       - --label=org.opencontainers.image.title={{.ProjectName}}
       - --label=org.opencontainers.image.revision={{.FullCommit}}
       - --label=org.opencontainers.image.version={{.Version}}
-changelog:
-  disable: 'true'
+
+before:
+  hooks:
+    - go mod tidy

@@ -1,0 +1,26 @@
+default_install_hook_types: [pre-commit, pre-push]
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0  # Use the ref you want to point at
+    hooks:
+    - id: trailing-whitespace
+    - id: check-yaml
+    - id: end-of-file-fixer
+    - id: detect-private-key
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v1.61.0
+    hooks:
+    - id: golangci-lint
+      args: ['--config', '.golangci.yml']
+  - repo: https://github.com/TekWizely/pre-commit-golang
+    rev: v1.0.0-rc.1
+    hooks:
+    - id: go-mod-tidy
+  - repo: local
+    hooks:
+    - id: test
+      name: Test
+      entry: go test ./...
+      types: [go]
+      language: system
+      stages: [pre-push]
