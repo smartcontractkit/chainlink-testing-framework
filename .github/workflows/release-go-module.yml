@@ -118,7 +118,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           sudo apt-get install -y gh
-          gh release create "${{ env.PACKAGE_NAME }}-${{ env.VERSION }}" --title "${{ env.PACKAGE_NAME }} ${{ env.VERSION }}" --notes "${{ env.FULL_RELEASE_NOTES }}" || true
+          gh release create "${{ env.PACKAGE_NAME }}/${{ env.VERSION }}" --title "${{ env.PACKAGE_NAME }}/${{ env.VERSION }}" --notes "${{ env.FULL_RELEASE_NOTES }}" || true
       - name: Check if 'cmd' directory exists and set environment variable
         run: |
           if [ -f "$GITHUB_WORKSPACE/${{ env.PACKAGE_NAME }}/cmd/main.go" ]; then
