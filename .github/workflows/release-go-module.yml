@@ -43,8 +43,8 @@ jobs:
         run: |
           # Extract the package name and version from the tag
           TAG_REF="${GITHUB_REF#refs/tags/}"
-          PACKAGE_NAME=$(echo "$TAG_REF" | cut -d'/' -f1)
-          VERSION=$(echo "$TAG_REF" | cut -d'/' -f2)
+          PACKAGE_NAME="${TAG_REF%/*}"
+          VERSION="${TAG_REF##*/}"  
 
           # Find the latest tag for the same package that is not the current tag
           LAST_TAG=$(git describe --abbrev=0 --always --match "$PACKAGE_NAME/v*" --tags $(git rev-list --tags --skip=1 --max-count=1))
@@ -56,7 +56,7 @@ jobs:
           fi
 
           # Extract the version part of the last tag
-          LAST_TAG_VERSION=$(echo "$LAST_TAG" | cut -d'/' -f2)
+          LAST_TAG_VERSION="${LAST_TAG##*/}"  
           echo "Last tag version: $LAST_TAG_VERSION"
           echo "LAST_TAG_VERSION=${LAST_TAG_VERSION}" >> "$GITHUB_ENV"
 
