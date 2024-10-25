@@ -32,7 +32,7 @@ type NodeInput struct {
 	Port                    string   `toml:"port" validate:"required" default:"6688"`
 	P2PPort                 string   `toml:"p2p_port" validate:"required" default:"6690"`
 	CapabilitiesBinaryPaths []string `toml:"capabilities"`
-	CapabilityContainerDir  string   `toml:"capabilities_container_dir" default:"/capabilities"`
+	CapabilityContainerDir  string   `toml:"capabilities_container_dir" default:"/home/capabilities"`
 	TestConfigOverrides     string   `toml:"test_config_overrides"`
 	UserConfigOverrides     string   `toml:"user_config_overrides"`
 	TestSecretsOverrides    string   `toml:"test_secrets_overrides"`
