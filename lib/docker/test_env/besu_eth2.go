@@ -112,8 +112,8 @@ func (g *Besu) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 			tcwait.ForLog("Ethereum main loop is up").
 				WithPollInterval(1 * time.Second)).
 			WithStartupTimeoutDefault(g.StartupTimeout),
-		User: "0:0", //otherwise in CI we get "permission denied" error, when trying to access data from mounted volume
-		Cmd:  cmd,
+		//User: "0:0", //otherwise in CI we get "permission denied" error, when trying to access data from mounted volume
+		Cmd: cmd,
 		Env: map[string]string{
 			"JAVA_OPTS": "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n",
 		},

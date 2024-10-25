@@ -7,7 +7,7 @@ const (
 	besuGitRepo          = "hyperledger/besu"
 
 	DefaultErigonEth1Image = "thorax/erigon:v2.40.0"
-	DefaultErigonEth2Image = "thorax/erigon:v2.59.3" // v.2.60.0 is the latest, but gas estimations using zero address are broken
+	DefaultErigonEth2Image = "thorax/erigon:2.60.8"
 	ErigonBaseImageName    = "thorax/erigon"
 	erigonGitRepo          = "ledgerwatch/erigon"
 

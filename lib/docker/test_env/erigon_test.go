@@ -40,6 +40,31 @@ func TestErigonEth1(t *testing.T) {
 	require.NoError(t, err, "Couldn't close the client")
 }
 
+func TestErigonEth2(t *testing.T) {
+	l := logging.GetTestLogger(t)
+
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		//nolint:staticcheck //ignore SA1019
+		WithEthereumVersion(config_types.EthereumVersion_Eth2).
+		WithExecutionLayer(config_types.ExecutionLayer_Erigon).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+
+	net, _, err := cfg.Start()
+	require.NoError(t, err, "Couldn't start PoW network")
+
+	c, err := blockchain.ConnectEVMClient(net, l)
+	require.NoError(t, err, "Couldn't connect to the evm client")
+
+	address := common.HexToAddress("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1")
+	err = sendAndCompareBalances(testcontext.Get(t), c, address)
+	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated for %s network", net.Name))
+
+	err = c.Close()
+	require.NoError(t, err, "Couldn't close the client")
+}
+
 func TestErigonEth2_Deneb(t *testing.T) {
 	l := logging.GetTestLogger(t)
 
