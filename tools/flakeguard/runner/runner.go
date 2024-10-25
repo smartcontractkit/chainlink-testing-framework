@@ -83,15 +83,16 @@ func (r *Runner) runTestPackage(testPackage string) ([]byte, error) {
 // It accepts a slice of []byte where each []byte represents a separate JSON output from a test run.
 // This function aggregates results across multiple test runs, summing runs and passes for each test.
 func parseTestResults(datas [][]byte) ([]reports.TestResult, error) {
-	testDetails := make(map[string]map[string]int) // Holds run and pass counts for each test
+	testDetails := make(map[string]map[string]interface{}) // Holds run, pass counts, and other details for each test
 
 	// Process each data set
 	for _, data := range datas {
 		scanner := bufio.NewScanner(bytes.NewReader(data))
 		for scanner.Scan() {
 			var entry struct {
-				Action string `json:"Action"`
-				Test   string `json:"Test"`
+				Action  string `json:"Action"`
+				Test    string `json:"Test"`
+				Package string `json:"Package"`
 			}
 			if err := json.Unmarshal(scanner.Bytes(), &entry); err != nil {
 				return nil, fmt.Errorf("failed to parse json test output: %s, err: %w", scanner.Text(), err)
@@ -102,15 +103,23 @@ func parseTestResults(datas [][]byte) ([]reports.TestResult, error) {
 				continue
 			}
 
-			if _, exists := testDetails[entry.Test]; !exists {
-				testDetails[entry.Test] = map[string]int{"run": 0, "pass": 0}
+			key := entry.Package + "/" + entry.Test // Create a unique key using package and test name
+
+			if _, exists := testDetails[key]; !exists {
+				testDetails[key] = map[string]interface{}{
+					"run":     0,
+					"pass":    0,
+					"name":    entry.Test,
+					"package": entry.Package,
+				}
 			}
 
+			details := testDetails[key]
 			if entry.Action == "run" {
-				testDetails[entry.Test]["run"]++
+				details["run"] = details["run"].(int) + 1
 			}
 			if entry.Action == "pass" {
-				testDetails[entry.Test]["pass"]++
+				details["pass"] = details["pass"].(int) + 1
 			}
 		}
 
@@ -120,17 +129,18 @@ func parseTestResults(datas [][]byte) ([]reports.TestResult, error) {
 	}
 
 	var results []reports.TestResult
-	for testName, counts := range testDetails {
-		runs := counts["run"]
-		passes := counts["pass"]
+	for _, details := range testDetails {
+		runs := details["run"].(int)
+		passes := details["pass"].(int)
 		passRatio := 0.0
 		if runs > 0 {
 			passRatio = float64(passes) / float64(runs)
 		}
 		results = append(results, reports.TestResult{
-			TestName:  testName,
-			PassRatio: passRatio,
-			Runs:      runs,
+			TestName:    details["name"].(string),
+			TestPackage: details["package"].(string),
+			PassRatio:   passRatio,
+			Runs:        runs,
 		})
 	}
 

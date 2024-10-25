@@ -1,9 +1,10 @@
 package reports
 
 type TestResult struct {
-	TestName  string
-	PassRatio float64
-	Runs      int
+	TestName    string
+	TestPackage string
+	PassRatio   float64
+	Runs        int
 }
 
 // FilterFailedTests returns a slice of TestResult where the pass ratio is below the specified threshold.
