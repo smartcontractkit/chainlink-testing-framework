@@ -5,9 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"nhooyr.io/websocket/wsjson"
-
-	"nhooyr.io/websocket"
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 )
 
 /* This is a naive WS mock server to check the tool performance */
