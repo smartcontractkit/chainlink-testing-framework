@@ -27,6 +27,7 @@ type Input struct {
 type NodeInput struct {
 	Image                   string   `toml:"image" validate:"required"`
 	Tag                     string   `toml:"tag" validate:"required"`
+	Name                    string   `toml:"name"`
 	PullImage               bool     `toml:"pull_image" default:"true"`
 	Port                    string   `toml:"port" validate:"required" default:"6688"`
 	P2PPort                 string   `toml:"p2p_port" validate:"required" default:"6690"`
@@ -131,7 +132,12 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 
 	httpPort := fmt.Sprintf("%s/tcp", in.Node.Port)
 	p2pPort := fmt.Sprintf("%s/udp", in.Node.P2PPort)
-	containerName := framework.DefaultTCName("clnode")
+	var containerName string
+	if in.Node.Name != "" {
+		containerName = in.Node.Name
+	} else {
+		containerName = framework.DefaultTCName("clnode")
+	}
 
 	req := tc.ContainerRequest{
 		AlwaysPullImage: in.Node.PullImage,

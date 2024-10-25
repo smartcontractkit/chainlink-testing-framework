@@ -62,20 +62,39 @@ func NewSharedDBNodeSet(in *Input, bcOut *blockchain.Output, fakeUrl string) (*O
 	eg := &errgroup.Group{}
 	mu := &sync.Mutex{}
 	for i := 0; i < in.Nodes; i++ {
+		i := i
 		eg.Go(func() error {
 			net, err := clnode.NewNetworkCfgOneNetworkAllNodes(bcOut)
 			if err != nil {
 				return err
 			}
-			in.NodeSpec.Node.TestConfigOverrides = net
-			in.NodeSpec.DataProviderURL = fakeUrl
-			in.NodeSpec.Out = nil
+
+			nodeSpec := &clnode.Input{
+				DataProviderURL: fakeUrl,
+				DbInput:         in.NodeSpec.DbInput,
+				Node: &clnode.NodeInput{
+					Image:                   in.NodeSpec.Node.Image,
+					Tag:                     in.NodeSpec.Node.Tag,
+					Name:                    fmt.Sprintf("node%d", i),
+					PullImage:               in.NodeSpec.Node.PullImage,
+					Port:                    in.NodeSpec.Node.Port,
+					P2PPort:                 in.NodeSpec.Node.P2PPort,
+					CapabilitiesBinaryPaths: in.NodeSpec.Node.CapabilitiesBinaryPaths,
+					CapabilityContainerDir:  in.NodeSpec.Node.CapabilityContainerDir,
+					TestConfigOverrides:     net,
+					UserConfigOverrides:     in.NodeSpec.Node.UserConfigOverrides,
+					TestSecretsOverrides:    in.NodeSpec.Node.TestSecretsOverrides,
+					UserSecretsOverrides:    in.NodeSpec.Node.UserSecretsOverrides,
+				},
+			}
 
 			dbURL := strings.Replace(dbOut.DockerInternalURL, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i), -1)
-			o, err := clnode.NewNode(in.NodeSpec, &postgres.Output{
+			dbSpec := &postgres.Output{
 				Url:               dbOut.Url,
 				DockerInternalURL: dbURL,
-			})
+			}
+
+			o, err := clnode.NewNode(nodeSpec, dbSpec)
 			if err != nil {
 				return err
 			}
