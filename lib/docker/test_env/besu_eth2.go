@@ -139,6 +139,13 @@ func (g *Besu) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 		Env: map[string]string{
 			"JAVA_OPTS": "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n",
 		},
+		Files: []tc.ContainerFile{
+			{
+				HostFilePath:      initFile.Name(),
+				ContainerFilePath: "/root/init.sh",
+				FileMode:          0744,
+			},
+		},
 		HostConfigModifier: func(hostConfig *container.HostConfig) {
 			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
 				Type:     mount.TypeBind,
@@ -160,11 +167,12 @@ func (g *Besu) buildPosInitScript(params string) (string, error) {
 	initTemplate := `#!/bin/bash
 	echo "Copied genesis file to {{.ExecutionDir}}"
 	mkdir -p {{.ExecutionDir}}
-	cp {{.GeneratedDataDir}}/genesis.json {{.ExecutionDir}}/genesis.json
+	cp {{.GeneratedDataDir}}/besu.json {{.ExecutionDir}}/besu.json
+	chmod 777 {{.GeneratedDataDir}}/genesis.json
 
 	echo "Starting Besu..."
-	echo "Running command: $command"
-	eval $command`
+	echo "Running command: {{.Command}}"
+	{{.Command}}`
 
 	data := struct {
 		GeneratedDataDir string

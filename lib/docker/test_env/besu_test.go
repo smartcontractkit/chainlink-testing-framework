@@ -52,7 +52,7 @@ func TestBesuEth2(t *testing.T) {
 	require.NoError(t, err, "Builder validation failed")
 
 	net, _, err := cfg.Start()
-	require.NoError(t, err, "Couldn't start PoW network")
+	require.NoError(t, err, "Couldn't start PoS network")
 
 	c, err := blockchain.ConnectEVMClient(net, l)
 	require.NoError(t, err, "Couldn't connect to the evm client")
