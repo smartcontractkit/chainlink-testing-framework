@@ -33,15 +33,15 @@ func main() {
 			{
 				Name:    "config",
 				Aliases: []string{"c"},
-				Usage:   "Shapes your test config, removes outputs",
+				Usage:   "Shapes your test config, removes outputs, formatting ,etc",
 				Subcommands: []*cli.Command{
 					{
-						Name:    "cleanup",
-						Aliases: []string{"c"},
-						Usage:   "Clean up the outputs of any test configuration",
+						Name:    "fmt",
+						Aliases: []string{"f"},
+						Usage:   "Formats TOML config",
 						Action: func(c *cli.Context) error {
 							in := c.Args().Get(0)
-							return CleanupToml(in, in)
+							return PrettyPrintTOML(in, in)
 						},
 					},
 				},
@@ -210,8 +210,8 @@ func observabilityDown() error {
 	return nil
 }
 
-// CleanupToml removes any paths in the TOML tree that contain "out" and writes the result to a new file.
-func CleanupToml(inputFile string, outputFile string) error {
+// PrettyPrintTOML pretty prints TOML
+func PrettyPrintTOML(inputFile string, outputFile string) error {
 	tomlData, err := os.ReadFile(inputFile)
 	if err != nil {
 		return fmt.Errorf("error reading file: %v", err)
@@ -220,9 +220,6 @@ func CleanupToml(inputFile string, outputFile string) error {
 	if err != nil {
 		return fmt.Errorf("error parsing TOML: %v", err)
 	}
-
-	// Recursively remove fields/paths that contain "out"
-	removeOutFields(tree)
 
 	// Write the result to a new file
 	dumpData, err := tree.ToTomlString()
@@ -236,44 +233,4 @@ func CleanupToml(inputFile string, outputFile string) error {
 	}
 	framework.L.Info().Str("File", outputFile).Msg("File cleaned up and saved")
 	return nil
-}
-
-// removeOutFields recursively removes any table, array of tables, or key path containing "out"
-func removeOutFields(tree *toml.Tree) {
-	keys := tree.Keys()
-
-	for _, key := range keys {
-		value := tree.Get(key)
-
-		// If the key contains framework.OutputFieldNameTOML, delete the whole path
-		if hasOutputField(key) {
-			_ = tree.Delete(key)
-			continue
-		}
-
-		switch v := value.(type) {
-		// Handle regular tables recursively
-		case *toml.Tree:
-			removeOutFields(v)
-			if len(v.Keys()) == 0 {
-				_ = tree.Delete(key)
-			}
-		// Handle arrays of tables
-		case []*toml.Tree:
-			for i := len(v) - 1; i >= 0; i-- {
-				removeOutFields(v[i])
-				if len(v[i].Keys()) == 0 {
-					v = append(v[:i], v[i+1:]...)
-				}
-			}
-			if len(v) == 0 {
-				_ = tree.Delete(key)
-			}
-		}
-	}
-}
-
-func hasOutputField(key string) bool {
-	return len(key) > 0 && (key == framework.OutputFieldNameTOML ||
-		len(key) > 3 && key[len(key)-3:] == framework.OutputFieldNameTOML)
 }

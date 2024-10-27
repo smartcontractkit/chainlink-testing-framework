@@ -15,9 +15,14 @@ import (
 	"time"
 )
 
+const (
+	Port    = "6688"
+	P2PPort = "6690"
+)
+
 // Input represents Chainlink node input
 type Input struct {
-	DataProviderURL string          `toml:"data_provider_url" validate:"required" default:"http://host.docker.internal:9111"`
+	DataProviderURL string          `toml:"data_provider_url" validate:"required"`
 	DbInput         *postgres.Input `toml:"db" validate:"required"`
 	Node            *NodeInput      `toml:"node" validate:"required"`
 	Out             *Output         `toml:"out"`
@@ -25,14 +30,13 @@ type Input struct {
 
 // NodeInput is CL nod container inputs
 type NodeInput struct {
-	Image                   string   `toml:"image" validate:"required"`
-	Tag                     string   `toml:"tag" validate:"required"`
-	Name                    string   `toml:"name"`
-	PullImage               bool     `toml:"pull_image" default:"true"`
-	Port                    string   `toml:"port" validate:"required" default:"6688"`
-	P2PPort                 string   `toml:"p2p_port" validate:"required" default:"6690"`
+	Image     string `toml:"image" validate:"required"`
+	Name      string `toml:"name"`
+	PullImage bool   `toml:"pull_image"`
+	//Port                    string   `toml:"port" validate:"required"`
+	//P2PPort                 string   `toml:"p2p_port" validate:"required"`
 	CapabilitiesBinaryPaths []string `toml:"capabilities"`
-	CapabilityContainerDir  string   `toml:"capabilities_container_dir" default:"/home/capabilities"`
+	CapabilityContainerDir  string   `toml:"capabilities_container_dir"`
 	TestConfigOverrides     string   `toml:"test_config_overrides"`
 	UserConfigOverrides     string   `toml:"user_config_overrides"`
 	TestSecretsOverrides    string   `toml:"test_secrets_overrides"`
@@ -130,8 +134,8 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		return nil, err
 	}
 
-	httpPort := fmt.Sprintf("%s/tcp", in.Node.Port)
-	p2pPort := fmt.Sprintf("%s/udp", in.Node.P2PPort)
+	httpPort := fmt.Sprintf("%s/tcp", Port)
+	p2pPort := fmt.Sprintf("%s/udp", P2PPort)
 	var containerName string
 	if in.Node.Name != "" {
 		containerName = in.Node.Name
@@ -141,7 +145,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 
 	req := tc.ContainerRequest{
 		AlwaysPullImage: in.Node.PullImage,
-		Image:           fmt.Sprintf("%s:%s", in.Node.Image, in.Node.Tag),
+		Image:           fmt.Sprintf("%s", in.Node.Image),
 		Name:            containerName,
 		Labels:          framework.DefaultTCLabels(),
 		Networks:        []string{framework.DefaultNetworkName},
@@ -230,8 +234,8 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	return &NodeOut{
 		HostURL:      fmt.Sprintf("http://%s:%s", host, mp.Port()),
 		HostP2PURL:   fmt.Sprintf("http://%s:%s", host, mpP2P.Port()),
-		DockerURL:    fmt.Sprintf("http://%s:%s", containerName, in.Node.Port),
-		DockerP2PUrl: fmt.Sprintf("http://%s:%s", containerName, in.Node.P2PPort),
+		DockerURL:    fmt.Sprintf("http://%s:%s", containerName, Port),
+		DockerP2PUrl: fmt.Sprintf("http://%s:%s", containerName, P2PPort),
 	}, nil
 }
 
@@ -242,7 +246,7 @@ type DefaultCLNodeConfig struct {
 
 func generateDefaultConfig(in *Input) (string, error) {
 	config := DefaultCLNodeConfig{
-		HTTPPort:      in.Node.Port,
+		HTTPPort:      Port,
 		SecureCookies: false,
 	}
 	tmpl, err := template.New("toml").Parse(defaultConfigTmpl)

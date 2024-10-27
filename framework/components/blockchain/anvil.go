@@ -24,7 +24,7 @@ func deployAnvil(in *Input) (*Output, error) {
 
 	req := testcontainers.ContainerRequest{
 		AlwaysPullImage: in.PullImage,
-		Image:           fmt.Sprintf("%s:%s", in.Image, in.Tag),
+		Image:           fmt.Sprintf("%s", in.Image),
 		Labels:          framework.DefaultTCLabels(),
 		Name:            containerName,
 		ExposedPorts:    []string{bindPort},

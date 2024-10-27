@@ -8,10 +8,9 @@ import (
 type Input struct {
 	Type                     string   `toml:"type" validate:"required,oneof=anvil geth" envconfig:"net_type"`
 	Image                    string   `toml:"image" validate:"required"`
-	Tag                      string   `toml:"tag" validate:"required"`
-	PullImage                bool     `toml:"pull_image" default:"true"`
-	Port                     string   `toml:"port" validate:"required" default:"8545"`
-	ChainID                  string   `toml:"chain_id" validate:"required" default:"31337"`
+	PullImage                bool     `toml:"pull_image"`
+	Port                     string   `toml:"port" validate:"required"`
+	ChainID                  string   `toml:"chain_id" validate:"required"`
 	DockerCmdParamsOverrides []string `toml:"docker_cmd_params"`
 	Out                      *Output  `toml:"out"`
 }
@@ -35,7 +34,7 @@ type Node struct {
 // - Anvil
 // - Geth
 func NewBlockchainNetwork(in *Input) (*Output, error) {
-	if in.Out.UseCache {
+	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
 	var out *Output
