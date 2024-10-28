@@ -35,7 +35,6 @@ func (r *Runner) RunTests(packages []string) ([]reports.TestResult, error) {
 		}
 	}
 
-	// TODO: make sure the test name includes package name
 	return parseTestResults(jsonOutputs)
 }
 
@@ -83,7 +82,7 @@ func (r *Runner) runTestPackage(testPackage string) ([]byte, error) {
 // It accepts a slice of []byte where each []byte represents a separate JSON output from a test run.
 // This function aggregates results across multiple test runs, summing runs and passes for each test.
 func parseTestResults(datas [][]byte) ([]reports.TestResult, error) {
-	testDetails := make(map[string]map[string]interface{}) // Holds run, pass counts, and other details for each test
+	testDetails := make(map[string]*reports.TestResult) // Holds run, pass counts, and other details for each test
 
 	// Process each data set
 	for _, data := range datas {
@@ -93,6 +92,7 @@ func parseTestResults(datas [][]byte) ([]reports.TestResult, error) {
 				Action  string `json:"Action"`
 				Test    string `json:"Test"`
 				Package string `json:"Package"`
+				Output  string `json:"Output"`
 			}
 			if err := json.Unmarshal(scanner.Bytes(), &entry); err != nil {
 				return nil, fmt.Errorf("failed to parse json test output: %s, err: %w", scanner.Text(), err)
@@ -104,22 +104,28 @@ func parseTestResults(datas [][]byte) ([]reports.TestResult, error) {
 			}
 
 			key := entry.Package + "/" + entry.Test // Create a unique key using package and test name
-
 			if _, exists := testDetails[key]; !exists {
-				testDetails[key] = map[string]interface{}{
-					"run":     0,
-					"pass":    0,
-					"name":    entry.Test,
-					"package": entry.Package,
+				testDetails[key] = &reports.TestResult{
+					TestName:    entry.Test,
+					TestPackage: entry.Package,
+					Runs:        0,
+					PassRatio:   0,
+					Failures:    []string{},
 				}
 			}
 
-			details := testDetails[key]
-			if entry.Action == "run" {
-				details["run"] = details["run"].(int) + 1
-			}
-			if entry.Action == "pass" {
-				details["pass"] = details["pass"].(int) + 1
+			result := testDetails[key]
+			switch entry.Action {
+			case "run":
+				result.Runs++
+			case "pass":
+				result.PassRatio = (result.PassRatio*float64(result.Runs-1) + 1) / float64(result.Runs)
+			case "output":
+				if len(entry.Output) > 0 && strings.Contains(entry.Output, "FAIL") {
+					result.Failures = append(result.Failures, entry.Output) // Collect output that indicates a failure
+				}
+			case "fail":
+				result.PassRatio = (result.PassRatio * float64(result.Runs-1)) / float64(result.Runs)
 			}
 		}
 
@@ -129,19 +135,8 @@ func parseTestResults(datas [][]byte) ([]reports.TestResult, error) {
 	}
 
 	var results []reports.TestResult
-	for _, details := range testDetails {
-		runs := details["run"].(int)
-		passes := details["pass"].(int)
-		passRatio := 0.0
-		if runs > 0 {
-			passRatio = float64(passes) / float64(runs)
-		}
-		results = append(results, reports.TestResult{
-			TestName:    details["name"].(string),
-			TestPackage: details["package"].(string),
-			PassRatio:   passRatio,
-			Runs:        runs,
-		})
+	for _, result := range testDetails {
+		results = append(results, *result)
 	}
 
 	return results, nil
