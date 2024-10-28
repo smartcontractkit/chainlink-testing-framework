@@ -31,7 +31,7 @@ dockers:
     goarch: amd64
     image_templates:
       - '{{ .Env.IMG_PRE }}/parrotserver:{{ .Tag }}'
-      - "{{ .Env.IMG_PRE }}/parrotserver:latest"
+      - '{{ .Env.IMG_PRE }}/parrotserver:latest'
     build_flag_templates:
       - --platform=linux/amd64
       - --pull
@@ -44,7 +44,7 @@ dockers:
     goarch: arm64
     image_templates:
       - '{{ .Env.IMG_PRE }}/parrotserver:{{ .Tag }}-arm64'
-      - "{{ .Env.IMG_PRE }}/parrotserver:latest-arm64"
+      - '{{ .Env.IMG_PRE }}/parrotserver:latest-arm64'
     build_flag_templates:
       - --platform=linux/arm64
       - --pull
