@@ -10,6 +10,8 @@ jobs:
       fail-fast: false
       matrix:
         project:
+          - name: framework
+            path: ./framework/
           - name: lib
             path: ./lib/
           - name: gotestloghelper

@@ -37,7 +37,7 @@ func checkBasicOutputs(t *testing.T, output *ns.Output) {
 	require.Contains(t, output.CLNodes[1].Node.DockerP2PUrl, "node")
 }
 
-func TestNodeSetSharedDB(t *testing.T) {
+func TestDockerNodeSetSharedDB(t *testing.T) {
 	testCases := []testCase{
 		{
 			name:    "2 nodes cluster, override mode 'all'",
