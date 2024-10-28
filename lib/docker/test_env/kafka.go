@@ -17,7 +17,6 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
 )
 
@@ -162,10 +161,9 @@ func (k *Kafka) CreateLocalTopics() error {
 }
 
 func (k *Kafka) getContainerRequest() (tc.ContainerRequest, error) {
-	kafkaImage := mirror.AddMirrorToImageIfSet(defaultKafkaImage)
 	return tc.ContainerRequest{
 		Name:         k.ContainerName,
-		Image:        kafkaImage,
+		Image:        defaultKafkaImage,
 		ExposedPorts: []string{"29092/tcp"},
 		Env:          k.EnvVars,
 		Networks:     k.Networks,

@@ -17,7 +17,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/docker/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
 )
 
@@ -72,8 +71,6 @@ func NewPrysmBeaconChain(networks []string, chainConfig *config.EthereumChainCon
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
-	// if the internal docker repo is set then add it to the version
-	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
 }
 
@@ -210,8 +207,6 @@ func NewPrysmValidator(networks []string, chainConfig *config.EthereumChainConfi
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
-	// if the internal docker repo is set then add it to the version
-	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
 }
 
