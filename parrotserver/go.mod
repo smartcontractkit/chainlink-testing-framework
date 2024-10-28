@@ -1,4 +1,4 @@
-module github.com/smartcontractkit/mockserver
+module github.com/smartcontractkit/parrotserver
 
 go 1.23.2
 
