@@ -10,9 +10,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/Masterminds/semver/v3"
-
 	"github.com/itchyny/gojq"
 )
 
@@ -20,6 +20,15 @@ func fetchImageDetails(repositoryName string) ([]byte, error) {
 	// #nosec G204
 	cmd := exec.Command("aws", "ecr", "describe-images", "--repository-name", repositoryName, "--region", os.Getenv("AWS_REGION"), "--output", "json", "--query", "imageDetails[?imageTags!=`null` && imageTags!=`[]`]")
 	return cmd.Output()
+}
+
+func trimToVersion(s string) string {
+	for i, r := range s {
+		if unicode.IsDigit(r) || r == 'v' {
+			return s[i:]
+		}
+	}
+	return s
 }
 
 func parseImageTags(output []byte, grepString string, constraints *semver.Constraints) ([]string, error) {
@@ -33,7 +42,7 @@ func parseImageTags(output []byte, grepString string, constraints *semver.Constr
 		return nil, fmt.Errorf("failed to parse gojq query: %w", err)
 	}
 
-	var tags []string
+	var tags semver.Collection
 	iter := query.Run(imageDetails)
 	for {
 		tag, ok := iter.Next()
@@ -41,13 +50,17 @@ func parseImageTags(output []byte, grepString string, constraints *semver.Constr
 			break
 		}
 		if tagStr, ok := tag.(string); ok {
-			tags = append(tags, tagStr)
+			asVersion, err := semver.NewVersion(trimToVersion(tagStr))
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse version: %w", err)
+			}
+			tags = append(tags, asVersion)
 		} else if err, ok := tag.(error); ok {
 			return nil, fmt.Errorf("failed to run gojq query: %w", err)
 		}
 	}
 
-	sort.Sort(sort.Reverse(sort.StringSlice(tags)))
+	sort.Sort(sort.Reverse(tags))
 
 	re, err := regexp.Compile(grepString)
 	if err != nil {
@@ -56,20 +69,16 @@ func parseImageTags(output []byte, grepString string, constraints *semver.Constr
 
 	var filteredTags []string
 	for _, tag := range tags {
-		if re.MatchString(tag) {
+		if re.MatchString(tag.Original()) {
 			ignore := false
 			if constraints != nil {
-				version, err := semver.NewVersion(tag)
-				if err != nil {
-					return nil, fmt.Errorf("failed to parse version: %w", err)
-				}
-				if !constraints.Check(version) {
+				if !constraints.Check(tag) {
 					ignore = true
 				}
 			}
 
 			if !ignore {
-				filteredTags = append(filteredTags, tag)
+				filteredTags = append(filteredTags, tag.Original())
 			}
 		}
 	}
