@@ -12,7 +12,6 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
 )
 
@@ -110,10 +109,9 @@ func (r *SchemaRegistry) StartContainer() error {
 }
 
 func (r *SchemaRegistry) getContainerRequest() (tc.ContainerRequest, error) {
-	schemaImage := mirror.AddMirrorToImageIfSet(defaultSchemaRegistryImage)
 	return tc.ContainerRequest{
 		Name:         r.ContainerName,
-		Image:        schemaImage,
+		Image:        defaultSchemaRegistryImage,
 		ExposedPorts: []string{"8081/tcp"},
 		Env:          r.EnvVars,
 		Networks:     r.Networks,

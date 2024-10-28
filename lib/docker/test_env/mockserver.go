@@ -16,7 +16,6 @@ import (
 	ctfClient "github.com/smartcontractkit/chainlink-testing-framework/lib/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
 )
 
@@ -110,11 +109,9 @@ func (ms *MockServer) StartContainer() error {
 }
 
 func (ms *MockServer) getContainerRequest() (tc.ContainerRequest, error) {
-	msImage := mirror.AddMirrorToImageIfSet(defaultMockServerImage)
-
 	return tc.ContainerRequest{
 		Name:         ms.ContainerName,
-		Image:        msImage,
+		Image:        defaultMockServerImage,
 		ExposedPorts: []string{"1080/tcp"},
 		Env: map[string]string{
 			"SERVER_PORT": "1080",

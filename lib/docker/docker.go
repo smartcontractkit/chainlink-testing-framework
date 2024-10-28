@@ -1,51 +1,25 @@
 package docker
 
 import (
-	"fmt"
+	"context"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
+	tc_network "github.com/testcontainers/testcontainers-go/network"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
 )
 
 const RetryAttempts = 3
-const defaultRyukImage = "testcontainers/ryuk:0.11.0"
 
 func CreateNetwork(l zerolog.Logger) (*tc.DockerNetwork, error) {
-	uuidObj, _ := uuid.NewRandom()
-	var networkName = fmt.Sprintf("network-%s", uuidObj.String())
-	ryukImage := mirror.AddMirrorToImageIfSet(defaultRyukImage)
-	// currently there's no way to use custom Ryuk image with testcontainers-go v0.28.0 :/
-	// but we can go around it, by setting TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX env var to
-	// our custom registry and then using the default Ryuk image
-	//nolint:staticcheck
-	reaperCO := tc.WithImageName(ryukImage)
-	f := false
-	//nolint:staticcheck
-	network, err := tc.GenericNetwork(testcontext.Get(nil), tc.GenericNetworkRequest{
-		//nolint:staticcheck
-		NetworkRequest: tc.NetworkRequest{
-			Name:           networkName,
-			CheckDuplicate: true,
-			EnableIPv6:     &f, // disabling due to https://github.com/moby/moby/issues/42442
-			ReaperOptions: []tc.ContainerOption{
-				reaperCO,
-			},
-		},
-	})
+	network, err := tc_network.New(context.Background())
 	if err != nil {
 		return nil, err
 	}
-	dockerNetwork, ok := network.(*tc.DockerNetwork)
-	if !ok {
-		return nil, fmt.Errorf("failed to cast network to *dockertest.Network")
-	}
-	l.Trace().Any("network", dockerNetwork).Msgf("created network")
-	return dockerNetwork, nil
+	l.Trace().Str("Name", network.Name).Msg("Created network")
+	return network, nil
 }
 
 type StartContainerRetrier func(l zerolog.Logger, startErr error, req tc.GenericContainerRequest) (tc.Container, error)

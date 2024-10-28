@@ -94,7 +94,7 @@ const (
 	EnvVarRemoteRunnerMemUserDescription = "The mem limit and req for the remote runner"
 	EnvVarRemoteRunnerMemExample         = "1024Mi"
 
-	EnvVarInternalDockerRepo            = "INTERNAL_DOCKER_REPO"
+	EnvVarInternalDockerRepo            = "DOCKER_HOST"
 	EnvVarInternalDockerRepoDescription = "Use internal docker repository for some images"
 	EnvVarInternalDockerRepoExample     = "public.ecr.aws"
 

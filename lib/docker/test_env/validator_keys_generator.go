@@ -16,7 +16,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/mirror"
 )
 
 const defaultEth2ValToolsImage = "protolambda/eth2-val-tools:latest"
@@ -48,9 +47,6 @@ func NewValKeysGeneretor(chainConfig *config.EthereumChainConfig, valKeysHostDat
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
-
-	// if the internal docker repo is set then add it to the version
-	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
 }
 

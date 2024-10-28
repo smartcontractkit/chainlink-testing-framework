@@ -413,7 +413,7 @@ Basic and universal building blocks for TOML-based config are provided by `confi
 
 An ecr mirror can be used to push images used often in order to bypass rate limit issues from dockerhub. The list of image mirrors can be found in the [matrix here](./.github/workflows/update-internal-mirrors.yaml). This currently works with images with version numbers in dockerhub. Support for gcr is coming in the future. The images must also have a version number so putting `latest` will not work. We have a separate list for one offs we want that can be added to [here](./scripts/mirror.json) that does work with gcr and latest images. Note however for `latest` it will only pull it once and will not update it in our mirror if the latest on the public repository has changed, in this case it is preferable to update it manually when you know that you need the new latest and the update will not break your tests.
 
-For images in the mirrors you can use the INTERNAL_DOCKER_REPO environment variable when running tests and it will use that mirror in place of the public repository.
+For images in the mirrors you can use the DOCKER_HOST environment variable when running tests and it will use that mirror in place of the public repository.
 
 We have two ways to add new images to the ecr. The first two requirements are that you create the ecr repository with the same name as the one in dockerhub out in aws and then add that ecr to the infra permissions (ask TT if you don't know how to do this).
 
