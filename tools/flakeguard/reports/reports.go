@@ -5,7 +5,7 @@ type TestResult struct {
 	TestPackage string
 	PassRatio   float64
 	Runs        int
-	Failures    []string // Stores error messages for failures
+	Outputs     []string // Stores outputs for a test
 }
 
 // FilterFailedTests returns a slice of TestResult where the pass ratio is below the specified threshold.

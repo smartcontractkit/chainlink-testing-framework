@@ -110,7 +110,7 @@ func parseTestResults(datas [][]byte) ([]reports.TestResult, error) {
 					TestPackage: entry.Package,
 					Runs:        0,
 					PassRatio:   0,
-					Failures:    []string{},
+					Outputs:     []string{},
 				}
 			}
 
@@ -121,9 +121,7 @@ func parseTestResults(datas [][]byte) ([]reports.TestResult, error) {
 			case "pass":
 				result.PassRatio = (result.PassRatio*float64(result.Runs-1) + 1) / float64(result.Runs)
 			case "output":
-				if len(entry.Output) > 0 && strings.Contains(entry.Output, "FAIL") {
-					result.Failures = append(result.Failures, entry.Output) // Collect output that indicates a failure
-				}
+				result.Outputs = append(result.Outputs, entry.Output)
 			case "fail":
 				result.PassRatio = (result.PassRatio * float64(result.Runs-1)) / float64(result.Runs)
 			}
