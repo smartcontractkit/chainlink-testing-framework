@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"errors"
 	"fmt"
 	"github.com/pelletier/go-toml"
 	"github.com/rs/zerolog"
@@ -51,7 +52,6 @@ func main() {
 				Aliases: []string{"d"},
 				Usage:   "Control docker containers marked with 'framework=ctf' label",
 				Subcommands: []*cli.Command{
-
 					{
 						Name:    "clean",
 						Aliases: []string{"rm"},
@@ -62,6 +62,48 @@ func main() {
 								return fmt.Errorf("failed to clean Docker resources: %w", err)
 							}
 							return nil
+						},
+					},
+					{
+						Name:    "build",
+						Aliases: []string{"c"},
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:    "dockerfile",
+								Aliases: []string{"f"},
+								Usage:   "Path to the Dockerfile",
+							},
+							&cli.StringFlag{
+								Name:    "context",
+								Aliases: []string{"c"},
+								Usage:   "Build context for the Docker image",
+							},
+							&cli.StringFlag{
+								Name:    "image_name",
+								Aliases: []string{"n"},
+								Usage:   "Image name",
+							},
+						},
+						Usage: "Builds you image and pushes it to a local registry",
+						UsageText: `
+Builds your image and pushes it to a local registry.
+If you don't have a registry spins it up, default registry is localhost:5050.
+It always build with one tag - "latest" and it is useful if you'd like to quickly rebuild some images
+
+Example command for Chainlink image (e2e/capabilities dir):
+ctf docker build -f ../../core/chainlink.Dockerfile -c ../.. -n chainlink
+
+You can reference this image in config as:
+localhost:5050/chainlink:latest`,
+
+						Action: func(c *cli.Context) error {
+							dockerfile := c.String("dockerfile")
+							buildContext := c.String("context")
+							imgName := c.String("image_name")
+							if dockerfile == "" || buildContext == "" || imgName == "" {
+								return errors.New(`dockerfile, build context and image name must be provided\nex.: -f ./core/chainlink.Dockerfile -c . -n chainlink`)
+							}
+							return BuildDocker(dockerfile, buildContext, imgName)
 						},
 					},
 				},
@@ -233,4 +275,54 @@ func PrettyPrintTOML(inputFile string, outputFile string) error {
 	}
 	framework.L.Info().Str("File", outputFile).Msg("File cleaned up and saved")
 	return nil
+}
+
+// BuildDocker runs Docker commands to set up a local registry, build an image, and push it.
+func BuildDocker(dockerfile string, buildContext string, imageName string) error {
+	registryRunning := isContainerRunning("local-registry")
+	if registryRunning {
+		fmt.Println("Local registry container is already running.")
+	} else {
+		framework.L.Info().Msg("Starting local registry container...")
+		err := runCommand("docker", "run", "-d", "-p", "5050:5000", "--name", "local-registry", "registry:2")
+		if err != nil {
+			return fmt.Errorf("failed to start local registry: %w", err)
+		}
+		framework.L.Info().Msg("Local registry started")
+	}
+
+	img := fmt.Sprintf("localhost:5050/%s:latest", imageName)
+	framework.L.Info().Str("DockerFile", dockerfile).Str("Context", buildContext).Msg("Building Docker image")
+	err := runCommand("docker", "build", "-t", fmt.Sprintf("localhost:5050/%s:latest", imageName), "-f", dockerfile, buildContext)
+	if err != nil {
+		return fmt.Errorf("failed to build Docker image: %w", err)
+	}
+	framework.L.Info().Msg("Docker image built successfully")
+
+	framework.L.Info().Str("Image", img).Msg("Pushing Docker image to local registry")
+	fmt.Println("Pushing Docker image to local registry...")
+	err = runCommand("docker", "push", img)
+	if err != nil {
+		return fmt.Errorf("failed to push Docker image: %w", err)
+	}
+	framework.L.Info().Msg("Docker image pushed successfully")
+	return nil
+}
+
+// isContainerRunning checks if a Docker container with the given name is running.
+func isContainerRunning(containerName string) bool {
+	cmd := exec.Command("docker", "ps", "--filter", fmt.Sprintf("name=%s", containerName), "--format", "{{.Names}}")
+	output, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(output), containerName)
+}
+
+// runCommand executes a command and prints the output.
+func runCommand(name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
