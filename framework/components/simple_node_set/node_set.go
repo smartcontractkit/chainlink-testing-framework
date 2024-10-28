@@ -33,10 +33,14 @@ func oneNodeSharedDBConfiguration(in *Input, bcOut *blockchain.Output, fakeUrl s
 	for i := 0; i < in.Nodes; i++ {
 		i := i
 		var overrideIdx int
+		var nodeName string
 		if overrideEach {
 			overrideIdx = i
 		} else {
 			overrideIdx = 0
+		}
+		if in.NodeSpecs[overrideIdx].Node.Name == "" {
+			nodeName = fmt.Sprintf("node%d", i)
 		}
 		eg.Go(func() error {
 			net, err := clnode.NewNetworkCfgOneNetworkAllNodes(bcOut)
@@ -49,7 +53,7 @@ func oneNodeSharedDBConfiguration(in *Input, bcOut *blockchain.Output, fakeUrl s
 				DbInput:         in.NodeSpecs[overrideIdx].DbInput,
 				Node: &clnode.NodeInput{
 					Image:                   in.NodeSpecs[overrideIdx].Node.Image,
-					Name:                    fmt.Sprintf("node%d", i),
+					Name:                    nodeName,
 					PullImage:               in.NodeSpecs[overrideIdx].Node.PullImage,
 					CapabilitiesBinaryPaths: in.NodeSpecs[overrideIdx].Node.CapabilitiesBinaryPaths,
 					CapabilityContainerDir:  in.NodeSpecs[overrideIdx].Node.CapabilityContainerDir,

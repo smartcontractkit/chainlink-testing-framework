@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"text/template"
 	"time"
@@ -39,6 +40,7 @@ const (
 )
 
 var (
+	once = &sync.Once{}
 	// Secrets is a singleton AWS Secrets Manager
 	// Loaded once on start inside Load and is safe to call concurrently
 	Secrets *AWSSecretsManager
@@ -136,19 +138,27 @@ func Load[X any](t *testing.T) (*X, error) {
 	//		return nil, fmt.Errorf("failed to connect AWSSecretsManager: %w", err)
 	//	}
 	//}
-	net, err := network.New(
-		context.Background(),
-		network.WithLabels(map[string]string{"framework": "ctf"}),
-	)
+	err = DefaultNetwork(t, once)
 	if err != nil {
 		return input, err
 	}
-	DefaultNetworkName = net.Name
 	if os.Getenv(EnvVarLokiStream) == "true" {
 		err = NewLokiStreamer()
 		require.NoError(t, err)
 	}
 	return input, nil
+}
+
+func DefaultNetwork(t *testing.T, once *sync.Once) error {
+	once.Do(func() {
+		net, err := network.New(
+			context.Background(),
+			network.WithLabels(map[string]string{"framework": "ctf"}),
+		)
+		require.NoError(t, err)
+		DefaultNetworkName = net.Name
+	})
+	return nil
 }
 
 func RenderTemplate(tmpl string, data interface{}) (string, error) {

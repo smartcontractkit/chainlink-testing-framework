@@ -30,11 +30,9 @@ type Input struct {
 
 // NodeInput is CL nod container inputs
 type NodeInput struct {
-	Image     string `toml:"image" validate:"required"`
-	Name      string `toml:"name"`
-	PullImage bool   `toml:"pull_image"`
-	//Port                    string   `toml:"port" validate:"required"`
-	//P2PPort                 string   `toml:"p2p_port" validate:"required"`
+	Image                   string   `toml:"image" validate:"required"`
+	Name                    string   `toml:"name"`
+	PullImage               bool     `toml:"pull_image"`
 	CapabilitiesBinaryPaths []string `toml:"capabilities"`
 	CapabilityContainerDir  string   `toml:"capabilities_container_dir"`
 	TestConfigOverrides     string   `toml:"test_config_overrides"`
