@@ -2,7 +2,7 @@ name: Framework Docker Component Tests
 on:
   push:
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-components
+  group: ${{ github.workflow }}-${{ github.ref }}-framework
   cancel-in-progress: true
 jobs:
   test:
@@ -20,6 +20,21 @@ jobs:
           filters: |
             src:
               - 'framework/**'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.22.8
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-modules-${{ hashFiles('**/go.sum') }}-${{ runner.os }}-framework
+          restore-keys: |
+            go-modules-${{ hashFiles('**/go.sum') }}-${{ runner.os }}-framework
+      - name: Install dependencies
+        run: go mod download
       - name: Run Docker Component Tests
         if: steps.changes.outputs.src == 'true'
         run: |
