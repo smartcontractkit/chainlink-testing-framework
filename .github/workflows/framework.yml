@@ -1,0 +1,26 @@
+name: Framework Docker Component Tests
+on:
+  push:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-components
+  cancel-in-progress: true
+jobs:
+  test:
+    defaults:
+      run:
+        working-directory: framework
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+      - name: Check for changes in Framework
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: changes
+        with:
+          filters: |
+            src:
+              - 'framework/**'
+      - name: Run Docker Component Tests
+        if: steps.changes.outputs.src == 'true'
+        run: |
+          go test -timeout 5m -v -count 1 -run TestDocker ./...
