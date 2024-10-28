@@ -13,7 +13,7 @@ import (
 )
 
 const RetryAttempts = 3
-const defaultRyukImage = "testcontainers/ryuk:0.5.1"
+const defaultRyukImage = "testcontainers/ryuk:0.11.0"
 
 func CreateNetwork(l zerolog.Logger) (*tc.DockerNetwork, error) {
 	uuidObj, _ := uuid.NewRandom()
