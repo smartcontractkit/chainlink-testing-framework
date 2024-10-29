@@ -29,6 +29,7 @@ const (
 	EnvVarTestConfigs       = "CTF_CONFIGS"
 	EnvVarLokiStream        = "CTF_LOKI_STREAM"
 	EnvVarAWSSecretsManager = "CTF_AWS_SECRETS_MANAGER"
+	EnvVarDockerImagesBuild = "CTF_BUILD_DOCKER_IMAGES"
 	// EnvVarCI this is a default env variable many CI runners use so code can detect we run in CI
 	EnvVarCI = "CI"
 )

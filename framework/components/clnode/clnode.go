@@ -11,6 +11,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 	"os"
 	"path/filepath"
+	"sync"
 	"text/template"
 	"time"
 )
@@ -18,6 +19,10 @@ import (
 const (
 	Port    = "6688"
 	P2PPort = "6690"
+)
+
+var (
+	once = &sync.Once{}
 )
 
 // Input represents Chainlink node input
@@ -32,6 +37,9 @@ type Input struct {
 type NodeInput struct {
 	Image                   string   `toml:"image" validate:"required"`
 	Name                    string   `toml:"name"`
+	DockerFilePath          string   `toml:"docker_file"`
+	DockerContext           string   `toml:"docker_ctx"`
+	DockerImageName         string   `toml:"docker_image_name"`
 	PullImage               bool     `toml:"pull_image"`
 	CapabilitiesBinaryPaths []string `toml:"capabilities"`
 	CapabilityContainerDir  string   `toml:"capabilities_container_dir"`
@@ -209,6 +217,13 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		})
 	}
 	req.Files = append(req.Files, files...)
+	localImg, err := framework.RebuildDockerImage(once, in.Node.DockerFilePath, in.Node.DockerContext, in.Node.DockerImageName)
+	if err != nil {
+		return nil, err
+	}
+	if localImg != "" {
+		req.Image = localImg
+	}
 	c, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
