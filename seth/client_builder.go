@@ -393,6 +393,7 @@ func (c *ClientBuilder) handleReadOnlyMode() {
 		c.config.PendingNonceProtectionEnabled = false
 		c.config.CheckRpcHealthOnStart = false
 		c.config.EphemeralAddrs = nil
+		c.readonly = true
 		if c.config.Network != nil {
 			c.config.Network.GasPriceEstimationEnabled = false
 			c.config.Network.PrivateKeys = []string{}

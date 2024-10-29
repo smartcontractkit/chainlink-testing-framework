@@ -67,6 +67,7 @@ type Config struct {
 	CheckRpcHealthOnStart         bool              `toml:"check_rpc_health_on_start"`
 	BlockStatsConfig              *BlockStatsConfig `toml:"block_stats"`
 	GasBump                       *GasBumpConfig    `toml:"gas_bump"`
+	ReadOnly                      bool              `toml:"read_only"`
 }
 
 type GasBumpConfig struct {

@@ -465,3 +465,98 @@ func TestConfigAppendPkToInactiveNetwork(t *testing.T) {
 	require.Equal(t, 0, len(cfg.Networks[0].PrivateKeys), "network should have 0 pks")
 	require.Equal(t, []string{"pk"}, cfg.Networks[1].PrivateKeys, "network should have 1 pk")
 }
+
+func TestConfig_ReadOnly_WithPk(t *testing.T) {
+	cfg := seth.Config{
+		ReadOnly: true,
+		Network: &seth.Network{
+			Name: "some_other",
+			URLs: []string{"ws://localhost:8546"},
+		},
+	}
+
+	addrs := []common.Address{common.HexToAddress("0xb794f5ea0ba39494ce839613fffba74279579268")}
+
+	_, err := seth.NewClientRaw(&cfg, addrs, nil)
+	require.Error(t, err, "succeeded in creating client")
+	require.Equal(t, seth.ErrReadOnlyWithPrivateKeys, err.Error(), "expected different error message")
+
+	privateKey, err := crypto.HexToECDSA("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
+	require.NoError(t, err, "failed to parse private key")
+
+	pks := []*ecdsa.PrivateKey{privateKey}
+	_, err = seth.NewClientRaw(&cfg, nil, pks)
+	require.Error(t, err, "succeeded in creating client")
+	require.Equal(t, seth.ErrReadOnlyWithPrivateKeys, err.Error(), "expected different error message")
+
+	_, err = seth.NewClientRaw(&cfg, addrs, pks)
+	require.Error(t, err, "succeeded in creating client")
+	require.Equal(t, seth.ErrReadOnlyWithPrivateKeys, err.Error(), "expected different error message")
+}
+
+func TestConfig_ReadOnly_GasBumping(t *testing.T) {
+	cfg := seth.Config{
+		ReadOnly: true,
+		Network: &seth.Network{
+			Name:        "some_other",
+			URLs:        []string{"ws://localhost:8546"},
+			DialTimeout: &seth.Duration{D: 10 * time.Second},
+		},
+		GasBump: &seth.GasBumpConfig{
+			Retries: uint(1),
+		},
+	}
+
+	_, err := seth.NewClientRaw(&cfg, nil, nil)
+	require.Error(t, err, "succeeded in creating client")
+	require.Equal(t, seth.ErrReadOnlyGasBumping, err.Error(), "expected different error message")
+}
+
+func TestConfig_ReadOnly_RpcHealth(t *testing.T) {
+	cfg := seth.Config{
+		ReadOnly:              true,
+		CheckRpcHealthOnStart: true,
+		Network: &seth.Network{
+			Name:        "some_other",
+			URLs:        []string{"ws://localhost:8546"},
+			DialTimeout: &seth.Duration{D: 10 * time.Second},
+		},
+	}
+
+	_, err := seth.NewClientRaw(&cfg, nil, nil)
+	require.Error(t, err, "succeeded in creating client")
+	require.Equal(t, seth.ErrReadOnlyRpcHealth, err.Error(), "expected different error message")
+}
+
+func TestConfig_ReadOnly_PendingNonce(t *testing.T) {
+	cfg := seth.Config{
+		ReadOnly:                      true,
+		PendingNonceProtectionEnabled: true,
+		Network: &seth.Network{
+			Name:        "some_other",
+			URLs:        []string{"ws://localhost:8546"},
+			DialTimeout: &seth.Duration{D: 10 * time.Second},
+		},
+	}
+
+	_, err := seth.NewClientRaw(&cfg, nil, nil)
+	require.Error(t, err, "succeeded in creating client")
+	require.Equal(t, seth.ErrReadOnlyPendingNonce, err.Error(), "expected different error message")
+}
+
+func TestConfig_ReadOnly_EphemeralKeys(t *testing.T) {
+	ten := int64(10)
+	cfg := seth.Config{
+		ReadOnly:       true,
+		EphemeralAddrs: &ten,
+		Network: &seth.Network{
+			Name:        "some_other",
+			URLs:        []string{"ws://localhost:8546"},
+			DialTimeout: &seth.Duration{D: 10 * time.Second},
+		},
+	}
+
+	_, err := seth.NewClientRaw(&cfg, nil, nil)
+	require.Error(t, err, "succeeded in creating client")
+	require.Equal(t, seth.ErrNoPksEphemeralMode, err.Error(), "expected different error message")
+}
