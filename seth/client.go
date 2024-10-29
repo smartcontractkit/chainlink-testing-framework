@@ -34,6 +34,8 @@ const (
 	ErrRpcHealthCheckFailed     = "RPC health check failed ¯\\_(ツ)_/¯"
 	ErrContractDeploymentFailed = "contract deployment failed"
 	ErrNoPksEphemeralMode       = "no private keys loaded, cannot fund ephemeral addresses"
+	// unused by Seth, but used by upstream
+	ErrNoKeyLoaded = "failed to load private key"
 
 	ErrReadOnlyWithPrivateKeys = "read-only mode is enabled, but you tried to load private keys"
 	ErrReadOnlyEphemeralKeys   = "ephemeral mode is not supported in read-only mode"
