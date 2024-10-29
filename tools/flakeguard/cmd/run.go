@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner"
 	"github.com/spf13/cobra"
@@ -22,6 +23,7 @@ var RunTestsCmd = &cobra.Command{
 		failFast, _ := cmd.Flags().GetBool("fail-fast")
 		outputPath, _ := cmd.Flags().GetString("output-json")
 		threshold, _ := cmd.Flags().GetFloat64("threshold")
+		sendToLoki, _ := cmd.Flags().GetBool("send-to-loki")
 
 		var testPackages []string
 		if testPackagesJson != "" {
@@ -69,6 +71,16 @@ var RunTestsCmd = &cobra.Command{
 			fmt.Printf("All test results saved to %s\n", outputPath)
 		}
 
+		// Send test results to Loki
+		if sendToLoki {
+			lc, err := newLokiClient()
+			if err != nil {
+				log.Fatalf("Error creating Loki client: %v", err)
+			}
+			reports.SendResultsToLoki(lc, testResults)
+			lc.StopNow()
+		}
+
 		if len(failedTests) > 0 {
 			os.Exit(1)
 		} else if len(testResults) == 0 {
@@ -87,4 +99,19 @@ func init() {
 	RunTestsCmd.Flags().Bool("fail-fast", false, "Stop on the first test failure")
 	RunTestsCmd.Flags().String("output-json", "", "Path to output the test results in JSON format")
 	RunTestsCmd.Flags().Float64("threshold", 0.8, "Threshold for considering a test as flaky")
+	RunTestsCmd.Flags().Bool("send-to-loki", false, "Send test results to Loki")
+	RunTestsCmd.Flags().String("loki-endpoint", "", "Loki endpoint")
+	RunTestsCmd.Flags().String("loki-tenant-id", "", "Loki tenant ID")
+	RunTestsCmd.Flags().String("loki-basic-auth-login", "", "Loki basic auth login")
+}
+
+func newLokiClient() (*client.LokiPromtailClient, error) {
+	endpoint := os.Getenv("LOKI_ENDPOINT")
+	tenant := os.Getenv("LOKI_TENANT_ID")
+	basicAuth := os.Getenv("LOKI_BASIC_AUTH")
+	token := os.Getenv("LOKI_TOKEN")
+
+	config := client.NewLokiConfig(&endpoint, &tenant, &basicAuth, &token)
+
+	return client.NewLokiPromtailClient(config)
 }
