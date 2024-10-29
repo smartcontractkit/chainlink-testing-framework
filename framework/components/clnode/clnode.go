@@ -3,6 +3,7 @@ package clnode
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/docker/go-connections/nat"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
@@ -217,12 +218,14 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		})
 	}
 	req.Files = append(req.Files, files...)
-	localImg, err := framework.RebuildDockerImage(once, in.Node.DockerFilePath, in.Node.DockerContext, in.Node.DockerImageName)
-	if err != nil {
-		return nil, err
+	if req.Image != "" && (in.Node.DockerFilePath != "" || in.Node.DockerContext != "" || in.Node.DockerImageName != "") {
+		return nil, errors.New("you provided both 'image' and one of 'docker_file', 'docker_ctx', 'docker_image_name' fields. Please provide either 'image' or params to build a local one")
 	}
-	if localImg != "" {
-		req.Image = localImg
+	if req.Image == "" {
+		req.Image, err = framework.RebuildDockerImage(once, in.Node.DockerFilePath, in.Node.DockerContext, in.Node.DockerImageName)
+		if err != nil {
+			return nil, err
+		}
 	}
 	c, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
 		ContainerRequest: req,

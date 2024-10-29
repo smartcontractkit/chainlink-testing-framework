@@ -51,6 +51,11 @@ func DefaultTCName(name string) string {
 func BuildAndPublishLocalDockerImage(once *sync.Once, dockerfile string, buildContext string, imageName string) error {
 	var retErr error
 	once.Do(func() {
+		L.Info().
+			Str("Dockerfile", dockerfile).
+			Str("Ctx", buildContext).
+			Str("ImageName", imageName).
+			Msg("Building local docker file")
 		registryRunning := isContainerRunning("local-registry")
 		if registryRunning {
 			fmt.Println("Local registry container is already running.")
@@ -64,7 +69,6 @@ func BuildAndPublishLocalDockerImage(once *sync.Once, dockerfile string, buildCo
 		}
 
 		img := fmt.Sprintf("localhost:5050/%s:latest", imageName)
-		L.Info().Str("DockerFile", dockerfile).Str("Context", buildContext).Msg("Building Docker image")
 		err := runCommand("docker", "build", "-t", fmt.Sprintf("localhost:5050/%s:latest", imageName), "-f", dockerfile, buildContext)
 		if err != nil {
 			retErr = fmt.Errorf("failed to build Docker image: %w", err)
@@ -102,7 +106,7 @@ func runCommand(name string, args ...string) error {
 
 // RebuildDockerImage rebuilds docker image if necessary
 func RebuildDockerImage(once *sync.Once, dockerfile string, buildContext string, imageName string) (string, error) {
-	if os.Getenv(EnvVarDockerImagesBuild) == "true" {
+	if dockerfile != "" || buildContext != "" || imageName != "" {
 		if dockerfile == "" {
 			return "", errors.New("docker_file path must be provided")
 		}

@@ -57,8 +57,8 @@ func NewChainlinkClient(c *Config) (*ChainlinkClient, error) {
 	}, nil
 }
 
-// NewCLCDefaultlients connects all the clients using clnode.Output and default login/password
-func NewCLCDefaultlients(outs []*clnode.Output, l zerolog.Logger) ([]*ChainlinkClient, error) {
+// NewCLDefaultClients connects all the clients using clnode.Output and default login/password
+func NewCLDefaultClients(outs []*clnode.Output, l zerolog.Logger) ([]*ChainlinkClient, error) {
 	clients := make([]*ChainlinkClient, 0)
 	for _, out := range outs {
 		c, err := NewChainlinkClient(&Config{
