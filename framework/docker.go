@@ -106,20 +106,17 @@ func runCommand(name string, args ...string) error {
 
 // RebuildDockerImage rebuilds docker image if necessary
 func RebuildDockerImage(once *sync.Once, dockerfile string, buildContext string, imageName string) (string, error) {
-	if dockerfile != "" || buildContext != "" || imageName != "" {
-		if dockerfile == "" {
-			return "", errors.New("docker_file path must be provided")
-		}
-		if buildContext == "" {
-			return "", errors.New("docker_ctx path must be provided")
-		}
-		if imageName == "" {
-			return "", errors.New("docker_image_name must be provided")
-		}
-		if err := BuildAndPublishLocalDockerImage(once, dockerfile, buildContext, imageName); err != nil {
-			return "", err
-		}
-		return fmt.Sprintf("localhost:5050/%s:latest", imageName), nil
+	if dockerfile == "" {
+		return "", errors.New("docker_file path must be provided")
 	}
-	return "", nil
+	if buildContext == "" {
+		return "", errors.New("docker_ctx path must be provided")
+	}
+	if imageName == "" {
+		imageName = "ctftmp"
+	}
+	if err := BuildAndPublishLocalDockerImage(once, dockerfile, buildContext, imageName); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("localhost:5050/%s:latest", imageName), nil
 }

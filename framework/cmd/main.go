@@ -229,7 +229,7 @@ func observabilityUp() error {
 	fmt.Println()
 	framework.L.Info().Msgf("Loki: %s", LocalLogsURL)
 	framework.L.Info().Msgf("All logs: %s", "{job=\"ctf\"}")
-	framework.L.Info().Msgf("By log level: %s", "{job=\"ctf\", container=~\"clnode-.*\"} |= \"WARN|INFO|DEBUG\"")
+	framework.L.Info().Msgf("By log level: %s", "{job=\"ctf\", container=~\"node.*\"} |= \"WARN|INFO|DEBUG\"")
 	framework.L.Info().Msgf("Pyroscope: %s", LocalPyroScopeURL)
 	return nil
 }

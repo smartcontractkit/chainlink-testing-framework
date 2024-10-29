@@ -152,7 +152,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 
 	req := tc.ContainerRequest{
 		AlwaysPullImage: in.Node.PullImage,
-		Image:           fmt.Sprintf("%s", in.Node.Image),
+		Image:           in.Node.Image,
 		Name:            containerName,
 		Labels:          framework.DefaultTCLabels(),
 		Networks:        []string{framework.DefaultNetworkName},
@@ -218,14 +218,15 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		})
 	}
 	req.Files = append(req.Files, files...)
-	if req.Image != "" && (in.Node.DockerFilePath != "" || in.Node.DockerContext != "" || in.Node.DockerImageName != "") {
-		return nil, errors.New("you provided both 'image' and one of 'docker_file', 'docker_ctx', 'docker_image_name' fields. Please provide either 'image' or params to build a local one")
+	if req.Image != "" && (in.Node.DockerFilePath != "" || in.Node.DockerContext != "") {
+		return nil, errors.New("you provided both 'image' and one of 'docker_file', 'docker_ctx' fields. Please provide either 'image' or params to build a local one")
 	}
 	if req.Image == "" {
 		req.Image, err = framework.RebuildDockerImage(once, in.Node.DockerFilePath, in.Node.DockerContext, in.Node.DockerImageName)
 		if err != nil {
 			return nil, err
 		}
+		req.KeepImage = false
 	}
 	c, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
 		ContainerRequest: req,
