@@ -156,7 +156,7 @@ func (g *Reth) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return nil
 	}
-	waitForFirstBlock := tcwait.NewLogStrategy("Block added to canonical chain").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
+	waitForFirstBlock := tcwait.NewLogStrategy("Canonical chain committed").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
 	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
 }
 

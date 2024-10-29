@@ -211,7 +211,7 @@ func (m *Client) waitUntilMined(l zerolog.Logger, tx *types.Transaction) (*types
 			tx = replacementTx
 		}),
 		retry.DelayType(retry.FixedDelay),
-		// unless attempts is at least 1 retry.Do won't execute at all
+		// unless attempts is at least 1 retry.Do() won't execute at all
 		retry.Attempts(func() uint {
 			if m.Cfg.GasBumpRetries() == 0 {
 				return 1

@@ -35,6 +35,7 @@ Reliable and debug-friendly Ethereum client
 14. [Single transaction tracing](#single-transaction-tracing)
 15. [Bulk transaction tracing](#bulk-transaction-tracing)
 16. [RPC traffic logging](#rpc-traffic-logging)
+17. [Read-only mode](#read-only-mode)
 
 ## Goals
 
@@ -808,3 +809,33 @@ You need to pass a file with a list of transaction hashes to trace. The file sho
 
 ### RPC Traffic logging
 With `SETH_LOG_LEVEL=trace` we will also log to console all traffic between Seth and RPC node. This can be useful for debugging as you can see all the requests and responses.
+
+
+### Read-only mode
+It's possible to use Seth in read-only mode only for transaction confirmation and tracing. Following operations will fail:
+* contract deployment (we need a pk to sign the transaction)
+* new transaction options (we need the pk/address to check nonce)
+* RPC health check (we need a pk to send a transaction to ourselves)
+* pending nonce protection (we need an address to check pending transactions)
+* ephemeral keys (we need a pk to fund them)
+* gas bumping (we need a pk to sign the transaction)
+
+The easiest way to enable read-only mode is to client via `ClientBuilder`:
+```go
+	client, err := builder.
+		WithNetworkName("my network").
+		WithRpcUrl("ws://localhost:8546").
+		WithEphemeralAddresses(10, 1000).
+		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+		WithReadOnlyMode().
+		Build()
+```
+
+when builder is called with `WithReadOnlyMode()` it will disable all the operations mentioned above and all the configuration settings related to them.
+
+Additionally, when the client is build anc `cfg.ReadOnly = true` is set, we will validate that:
+* no addresses and private keys are passed
+* no ephemeral addresses are to be created
+* RPC health check is disabled
+* pending nonce protection is disabled
+* gas bumping is disabled
