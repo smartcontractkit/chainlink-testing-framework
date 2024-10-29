@@ -35,6 +35,7 @@ Reliable and debug-friendly Ethereum client
 14. [Single transaction tracing](#single-transaction-tracing)
 15. [Bulk transaction tracing](#bulk-transaction-tracing)
 16. [RPC traffic logging](#rpc-traffic-logging)
+17. [Read-only mode](#read-only-mode)
 
 ## Goals
 
@@ -269,6 +270,8 @@ export SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae7
 
 alias seth="SETH_CONFIG_PATH=seth.toml go run cmd/seth/seth.go" # useful alias for CLI
 ```
+
+> Find the log level options [here](https://github.com/rs/zerolog?tab=readme-ov-file#leveled-logging)
 
 Alternatively if you don't have a network defined in the TOML you can still use the CLI by providing these 2 key env vars:
 
@@ -806,3 +809,25 @@ You need to pass a file with a list of transaction hashes to trace. The file sho
 
 ### RPC Traffic logging
 With `SETH_LOG_LEVEL=trace` we will also log to console all traffic between Seth and RPC node. This can be useful for debugging as you can see all the requests and responses.
+
+
+### Read-only mode
+It's possible to use Seth in read-only mode only for transaction confirmation and tracing. Following operations will fail:
+* contract deployment
+* gas estimations (we need the pk/address to check nonce)
+* RPC health check (we need a pk to send a transaction to ourselves)
+* pending nonce protection (we need an address to check pending transactions)
+* ephemeral keys (we need a pk to fund them)
+
+The easiest way to enable read-only mode is to client via `ClientBuilder`:
+```go
+	client, err := builder.
+		WithNetworkName("my network").
+		WithRpcUrl("ws://localhost:8546").
+		WithEphemeralAddresses(10, 1000).
+		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+		WithReadOnlyMode().
+		Build()
+```
+
+when builder is called with `WithReadOnlyMode()` it will disable all the operations mentioned above and all the configuration settings related to them.
