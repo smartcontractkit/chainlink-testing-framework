@@ -31,9 +31,15 @@ const (
 	ErrCreateNonceManager       = "failed to create nonce manager"
 	ErrCreateTracer             = "failed to create tracer"
 	ErrReadContractMap          = "failed to read deployed contract map"
-	ErrNoKeyLoaded              = "failed to load private key"
 	ErrRpcHealthCheckFailed     = "RPC health check failed ¯\\_(ツ)_/¯"
 	ErrContractDeploymentFailed = "contract deployment failed"
+	ErrNoPksEphemeralMode       = "no private keys loaded, cannot fund ephemeral addresses"
+
+	ErrReadOnlyWithPrivateKeys = "read-only mode is enabled, but you tried to load private keys"
+	ErrReadOnlyEphemeralKeys   = "ephemeral mode is not supported in read-only mode"
+	ErrReadOnlyGasBumping      = "gas bumping is not supported in read-only mode"
+	ErrReadOnlyRpcHealth       = "RPC health check is not supported in read-only mode"
+	ErrReadOnlyPendingNonce    = "pending nonce protection is not supported in read-only mode"
 
 	ContractMapFilePattern          = "deployed_contracts_%s_%s.toml"
 	RevertedTransactionsFilePattern = "reverted_transactions_%s_%s.json"
@@ -231,6 +237,11 @@ func NewClientRaw(
 	if len(cfg.Network.URLs) > 1 {
 		L.Warn().Msg("Multiple RPC URLs provided, only the first one will be used")
 	}
+
+	if cfg.ReadOnly && (len(addrs) > 0 || len(pkeys) > 0) {
+		return nil, errors.New(ErrReadOnlyWithPrivateKeys)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Network.DialTimeout.Duration())
 	defer cancel()
 	rpcClient, err := rpc.DialOptions(ctx,
@@ -303,6 +314,9 @@ func NewClientRaw(
 	}
 
 	if cfg.CheckRpcHealthOnStart {
+		if cfg.ReadOnly {
+			return nil, errors.New(ErrReadOnlyRpcHealth)
+		}
 		if c.NonceManager == nil {
 			L.Debug().Msg("Nonce manager is not set, RPC health check will be skipped. Client will most probably fail on first transaction")
 		} else {
@@ -310,6 +324,10 @@ func NewClientRaw(
 				return nil, err
 			}
 		}
+	}
+
+	if cfg.PendingNonceProtectionEnabled && cfg.ReadOnly {
+		return nil, errors.New(ErrReadOnlyPendingNonce)
 	}
 
 	cfg.setEphemeralAddrs()
@@ -324,7 +342,10 @@ func NewClientRaw(
 
 	if cfg.ephemeral {
 		if len(c.Addresses) == 0 {
-			return nil, errors.New("no private keys loaded, cannot fund ephemeral addresses")
+			return nil, errors.New(ErrNoPksEphemeralMode)
+		}
+		if cfg.ReadOnly {
+			return nil, errors.New(ErrReadOnlyEphemeralKeys)
 		}
 		gasPrice, err := c.GetSuggestedLegacyFees(context.Background(), Priority_Standard)
 		if err != nil {
@@ -390,6 +411,10 @@ func NewClientRaw(
 				Priority:             Priority_Standard,
 			})
 		}
+	}
+
+	if c.Cfg.GasBump != nil && c.Cfg.GasBump.Retries != 0 && c.Cfg.ReadOnly {
+		return nil, errors.New(ErrReadOnlyGasBumping)
 	}
 
 	// if gas bumping is enabled, but no strategy is set, we set the default one; otherwise we set the no-op strategy (defensive programming to avoid NPE)
