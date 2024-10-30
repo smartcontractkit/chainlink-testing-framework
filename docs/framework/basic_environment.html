@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Getting Started - Chainlink Testing Framework</title>
+        <title>Basic NodeSet Environment - Chainlink Testing Framework</title>
 
 
         <!-- Custom HTML head -->
@@ -88,7 +88,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="../overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../libraries.html"><strong aria-hidden="true">2.</strong> Libraries</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../libs/seth.html"><strong aria-hidden="true">2.1.</strong> Seth</a></li><li class="chapter-item expanded "><a href="../libs/wasp.html"><strong aria-hidden="true">2.2.</strong> WASP</a></li><li class="chapter-item expanded "><a href="../libs/havoc.html"><strong aria-hidden="true">2.3.</strong> Havoc</a></li></ol></li><li class="chapter-item expanded "><a href="../framework/overview.html"><strong aria-hidden="true">3.</strong> Framework</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../framework/overview.html"><strong aria-hidden="true">3.1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../framework/getting_started.html" class="active"><strong aria-hidden="true">3.2.</strong> Getting Started</a></li><li class="chapter-item expanded "><a href="../framework/first_test.html"><strong aria-hidden="true">3.3.</strong> First Test</a></li><li class="chapter-item expanded "><a href="../framework/connecting_chainlink_node.html"><strong aria-hidden="true">3.4.</strong> Connecting Chainlink Node</a></li><li class="chapter-item expanded "><a href="../framework/basic_environment.html"><strong aria-hidden="true">3.5.</strong> Basic NodeSet Environment</a></li><li class="chapter-item expanded "><a href="../framework/cli.html"><strong aria-hidden="true">3.6.</strong> CLI</a></li><li class="chapter-item expanded "><a href="../framework/components/overview.html"><strong aria-hidden="true">3.7.</strong> Components</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../framework/components/blockchains/overview.html"><strong aria-hidden="true">3.7.1.</strong> Blockchains</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../framework/components/blockchains/anvil.html"><strong aria-hidden="true">3.7.1.1.</strong> Anvil</a></li></ol></li></ol></li><li class="chapter-item expanded "><a href="../secrets.html"><strong aria-hidden="true">3.8.</strong> Secrets</a></li></ol></li><li class="chapter-item expanded "><li class="spacer"></li><li class="chapter-item expanded "><a href="../developing.html"><strong aria-hidden="true">4.</strong> Developing</a></li><li class="chapter-item expanded "><a href="../releasing_modules.html"><strong aria-hidden="true">5.</strong> Releasing modules</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../libraries.html"><strong aria-hidden="true">2.</strong> Libraries</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../libs/seth.html"><strong aria-hidden="true">2.1.</strong> Seth</a></li><li class="chapter-item expanded "><a href="../libs/wasp.html"><strong aria-hidden="true">2.2.</strong> WASP</a></li><li class="chapter-item expanded "><a href="../libs/havoc.html"><strong aria-hidden="true">2.3.</strong> Havoc</a></li></ol></li><li class="chapter-item expanded "><a href="../framework/overview.html"><strong aria-hidden="true">3.</strong> Framework</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../framework/overview.html"><strong aria-hidden="true">3.1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../framework/getting_started.html"><strong aria-hidden="true">3.2.</strong> Getting Started</a></li><li class="chapter-item expanded "><a href="../framework/first_test.html"><strong aria-hidden="true">3.3.</strong> First Test</a></li><li class="chapter-item expanded "><a href="../framework/connecting_chainlink_node.html"><strong aria-hidden="true">3.4.</strong> Connecting Chainlink Node</a></li><li class="chapter-item expanded "><a href="../framework/basic_environment.html" class="active"><strong aria-hidden="true">3.5.</strong> Basic NodeSet Environment</a></li><li class="chapter-item expanded "><a href="../framework/cli.html"><strong aria-hidden="true">3.6.</strong> CLI</a></li><li class="chapter-item expanded "><a href="../framework/components/overview.html"><strong aria-hidden="true">3.7.</strong> Components</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../framework/components/blockchains/overview.html"><strong aria-hidden="true">3.7.1.</strong> Blockchains</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../framework/components/blockchains/anvil.html"><strong aria-hidden="true">3.7.1.1.</strong> Anvil</a></li></ol></li></ol></li><li class="chapter-item expanded "><a href="../secrets.html"><strong aria-hidden="true">3.8.</strong> Secrets</a></li></ol></li><li class="chapter-item expanded "><li class="spacer"></li><li class="chapter-item expanded "><a href="../developing.html"><strong aria-hidden="true">4.</strong> Developing</a></li><li class="chapter-item expanded "><a href="../releasing_modules.html"><strong aria-hidden="true">5.</strong> Releasing modules</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -173,41 +173,84 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="getting-started"><a class="header" href="#getting-started">Getting started</a></h1>
-<p>To start writing tests create a directory for your project with <code>go.mod</code> and pull the framework</p>
-<pre><code>go get github.com/smartcontractkit/chainlink-testing-framework/framework@ac819d889f97e0f5c04aee3212454ad1f8b6f4ef
-</code></pre>
-<p>Then download the CLI (runs from directory where you have <code>go.mod</code>)</p>
-<pre><code>go get github.com/smartcontractkit/chainlink-testing-framework/framework/cmd &amp;&amp; \
-go install github.com/smartcontractkit/chainlink-testing-framework/framework/cmd &amp;&amp; \
-mv ~/go/bin/cmd ~/go/bin/ctf
-</code></pre>
-<p>More CLI <a href="./cli.html">docs</a></p>
-<p>Spin up your local obserability stack</p>
-<pre><code>ctf obs up
-</code></pre>
-<p>Create an <code>.envrc</code> file and put common parameters there (you can use <a href="https://direnv.net/">direnv</a> to sync them more easily)</p>
-<pre><code>export CTF_LOG_LEVEL=info
-export CTF_LOKI_STREAM=true
-export LOKI_TENANT_ID=promtail
-export LOKI_URL=http://host.docker.internal:3030/loki/api/v1/push
-export TESTCONTAINERS_RYUK_DISABLED=true
-export RESTY_DEBUG=false
+                        <h1 id="nodeset-environmnet"><a class="header" href="#nodeset-environmnet">NodeSet environmnet</a></h1>
+<p>Create a configuration file <code>smoke.toml</code></p>
+<pre><code class="language-toml">funds_eth = 30.0
 
-export CTF_CONFIGS=smoke.toml
-export PRIVATE_KEY="ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+[blockchain_a]
+  chain_id = "31337"
+  image = "f4hrenh9it/foundry:latest"
+  port = "8545"
+  type = "anvil"
+
+[contracts]
+
+[data_provider]
+  port = 9111
+
+[nodeset]
+  nodes = 5
+  override_mode = "all"
+
+  [[nodeset.node_specs]]
+
+    [nodeset.node_specs.db]
+      image = "postgres:15.6"
+      pull_image = true
+
+    [nodeset.node_specs.node]
+      image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+      pull_image = true
+
 </code></pre>
-<p>Now you are ready to write your <a href="./first_test.html">first test</a></p>
+<p>Create a file <code>smoke_test.go</code></p>
+<pre><code class="language-golang">package yourpackage_test
+
+import (
+	"fmt"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
+	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
+	"github.com/smartcontractkit/chainlink/e2e/capabilities/components/onchain"
+	"github.com/stretchr/testify/require"
+	"testing"
+)
+
+type Config struct {
+	FundingETH         float64           `toml:"funds_eth"`
+	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
+	Contracts          *onchain.Input    `toml:"contracts" validate:"required"`
+	MockerDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
+	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
+}
+
+func TestNodeSet(t *testing.T) {
+	in, err := framework.Load[Config](t)
+	require.NoError(t, err)
+
+	// deploy docker test environment
+	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
+	require.NoError(t, err)
+	dp, err := fake.NewFakeDataProvider(in.MockerDataProvider)
+	require.NoError(t, err)
+	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc, dp.BaseURLDocker)
+	require.NoError(t, err)
+}
+</code></pre>
+<p>Run it</p>
+<pre><code class="language-bash">go test -v -run TestNodeSet
+</code></pre>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../framework/overview.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../framework/connecting_chainlink_node.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../framework/first_test.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../framework/cli.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -217,11 +260,11 @@ export PRIVATE_KEY="ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../framework/overview.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../framework/connecting_chainlink_node.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../framework/first_test.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../framework/cli.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

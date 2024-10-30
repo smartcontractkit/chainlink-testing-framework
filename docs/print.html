@@ -89,7 +89,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="libraries.html"><strong aria-hidden="true">2.</strong> Libraries</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="libs/seth.html"><strong aria-hidden="true">2.1.</strong> Seth</a></li><li class="chapter-item expanded "><a href="libs/wasp.html"><strong aria-hidden="true">2.2.</strong> WASP</a></li><li class="chapter-item expanded "><a href="libs/havoc.html"><strong aria-hidden="true">2.3.</strong> Havoc</a></li></ol></li><li class="chapter-item expanded "><a href="framework/overview.html"><strong aria-hidden="true">3.</strong> Framework</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="framework/getting_started.html"><strong aria-hidden="true">3.1.</strong> Getting Started</a></li><li class="chapter-item expanded "><a href="framework/cli.html"><strong aria-hidden="true">3.2.</strong> CLI</a></li><li class="chapter-item expanded "><a href="framework/components/overview.html"><strong aria-hidden="true">3.3.</strong> Components</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="framework/components/blockchains/overview.html"><strong aria-hidden="true">3.3.1.</strong> Blockchains</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="framework/components/blockchains/anvil.html"><strong aria-hidden="true">3.3.1.1.</strong> Anvil</a></li></ol></li></ol></li><li class="chapter-item expanded "><a href="secrets.html"><strong aria-hidden="true">3.4.</strong> Secrets</a></li></ol></li><li class="chapter-item expanded "><li class="spacer"></li><li class="chapter-item expanded "><a href="developing.html"><strong aria-hidden="true">4.</strong> Developing</a></li><li class="chapter-item expanded "><a href="releasing_modules.html"><strong aria-hidden="true">5.</strong> Releasing modules</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="libraries.html"><strong aria-hidden="true">2.</strong> Libraries</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="libs/seth.html"><strong aria-hidden="true">2.1.</strong> Seth</a></li><li class="chapter-item expanded "><a href="libs/wasp.html"><strong aria-hidden="true">2.2.</strong> WASP</a></li><li class="chapter-item expanded "><a href="libs/havoc.html"><strong aria-hidden="true">2.3.</strong> Havoc</a></li></ol></li><li class="chapter-item expanded "><a href="framework/overview.html"><strong aria-hidden="true">3.</strong> Framework</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="framework/overview.html"><strong aria-hidden="true">3.1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="framework/getting_started.html"><strong aria-hidden="true">3.2.</strong> Getting Started</a></li><li class="chapter-item expanded "><a href="framework/first_test.html"><strong aria-hidden="true">3.3.</strong> First Test</a></li><li class="chapter-item expanded "><a href="framework/connecting_chainlink_node.html"><strong aria-hidden="true">3.4.</strong> Connecting Chainlink Node</a></li><li class="chapter-item expanded "><a href="framework/basic_environment.html"><strong aria-hidden="true">3.5.</strong> Basic NodeSet Environment</a></li><li class="chapter-item expanded "><a href="framework/cli.html"><strong aria-hidden="true">3.6.</strong> CLI</a></li><li class="chapter-item expanded "><a href="framework/components/overview.html"><strong aria-hidden="true">3.7.</strong> Components</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="framework/components/blockchains/overview.html"><strong aria-hidden="true">3.7.1.</strong> Blockchains</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="framework/components/blockchains/anvil.html"><strong aria-hidden="true">3.7.1.1.</strong> Anvil</a></li></ol></li></ol></li><li class="chapter-item expanded "><a href="secrets.html"><strong aria-hidden="true">3.8.</strong> Secrets</a></li></ol></li><li class="chapter-item expanded "><li class="spacer"></li><li class="chapter-item expanded "><a href="developing.html"><strong aria-hidden="true">4.</strong> Developing</a></li><li class="chapter-item expanded "><a href="releasing_modules.html"><strong aria-hidden="true">5.</strong> Releasing modules</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -1185,40 +1185,284 @@ func main() {
 <tr><td style="text-align: center">TESTCONTAINERS_RYUK_DISABLED</td><td style="text-align: center">Testcontainers-Go reaper container, removes all the containers after the test exit</td><td style="text-align: right"><code>true</code>, <code>false</code></td><td style="text-align: center"><code>false</code></td><td style="text-align: center">🚫</td></tr>
 <tr><td style="text-align: center">RESTY_DEBUG</td><td style="text-align: center">Log all Resty client HTTP calls</td><td style="text-align: right"><code>true</code>, <code>false</code></td><td style="text-align: center"><code>false</code></td><td style="text-align: center">🚫</td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><div style="break-before: page; page-break-before: always;"></div><h2 id="cli-1"><a class="header" href="#cli-1">CLI</a></h2>
-<h3 id="install"><a class="header" href="#install">Install</a></h3>
+</div><div style="break-before: page; page-break-before: always;"></div><h2 id="chainlink-testing-framework-harness-1"><a class="header" href="#chainlink-testing-framework-harness-1">Chainlink Testing Framework Harness</a></h2>
+<!-- TOC -->
+<ul>
+<li><a href="framework/./cmd/README.html">CLI</a></li>
+<li><a href="framework/./COMPONENTS.html">Components</a></li>
+<li><a href="framework/./CONFIGURATION.html">Configuration</a></li>
+<li><a href="framework/./CACHING.html">Caching</a></li>
+<li><a href="framework/./cmd/observability/README.html">Local Observability Stack</a></li>
+<li><a href="https://github.com/smartcontractkit/chainlink/tree/8e8597aa14c39c48ed4b3261f6080fa43b5d7cd0/e2e/capabilities">Examples</a></li>
+</ul>
+<!-- TOC -->
+<p>This module includes the CTFv2 harness, a lightweight, modular, and data-driven framework designed for combining off-chain and on-chain components while implementing best practices for end-to-end system-level testing:</p>
+<ul>
+<li><strong>Non-nil configuration</strong>: All test variables must have defaults, automatic validation.</li>
+<li><strong>Component isolation</strong>: Components are decoupled via input/output structs, without exposing internal details.</li>
+<li><strong>Modular configuration</strong>: No arcane knowledge of framework settings is required; the config is simply a reflection of the components being used in the test. Components declare their own configuration—'what you see is what you get.'</li>
+<li><strong>Replaceability and extensibility</strong>: Since components are decoupled via outputs, any deployment component can be swapped with a real service without altering the test code.</li>
+<li><strong>Caching</strong>: any component can use cached configs to skip environment setup for faster test development</li>
+<li><strong>Integrated observability stack</strong>: use <code>ctf obs up</code> to spin up a local observability stack.</li>
+</ul>
+<h3 id="environment-variables-tests-when-using-in-go-code-1"><a class="header" href="#environment-variables-tests-when-using-in-go-code-1">Environment variables (Tests, when using in Go code)</a></h3>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">Name</th><th style="text-align: center">Description</th><th style="text-align: right">Possible values</th><th style="text-align: center">Default</th><th style="text-align: center">Required?</th></tr></thead><tbody>
+<tr><td style="text-align: center">CTF_CONFIGS</td><td style="text-align: center">Path(s) to test config files. <br/>Can be more than one, ex.: smoke.toml,smoke_1.toml,smoke_2.toml.<br/>First filepath will hold all the merged values</td><td style="text-align: right">Any valid TOML file path</td><td style="text-align: center"></td><td style="text-align: center">✅</td></tr>
+<tr><td style="text-align: center">CTF_LOG_LEVEL</td><td style="text-align: center">Harness log level</td><td style="text-align: right"><code>info</code>, <code>debug</code>, <code>trace</code></td><td style="text-align: center"><code>info</code></td><td style="text-align: center">🚫</td></tr>
+<tr><td style="text-align: center">CTF_LOKI_STREAM</td><td style="text-align: center">Streams all components logs to <code>Loki</code>, see params below</td><td style="text-align: right"><code>true</code>, <code>false</code></td><td style="text-align: center"><code>false</code></td><td style="text-align: center">🚫</td></tr>
+<tr><td style="text-align: center">LOKI_URL</td><td style="text-align: center">URL to <code>Loki</code> push api, should be like<code>${host}/loki/api/v1/push</code></td><td style="text-align: right">URL</td><td style="text-align: center">-</td><td style="text-align: center">If you use <code>Loki</code> then ✅</td></tr>
+<tr><td style="text-align: center">LOKI_TENANT_ID</td><td style="text-align: center">Streams all components logs to <code>Loki</code>, see params below</td><td style="text-align: right"><code>true</code>, <code>false</code></td><td style="text-align: center">-</td><td style="text-align: center">If you use <code>Loki</code> then ✅</td></tr>
+<tr><td style="text-align: center">TESTCONTAINERS_RYUK_DISABLED</td><td style="text-align: center">Testcontainers-Go reaper container, removes all the containers after the test exit</td><td style="text-align: right"><code>true</code>, <code>false</code></td><td style="text-align: center"><code>false</code></td><td style="text-align: center">🚫</td></tr>
+<tr><td style="text-align: center">RESTY_DEBUG</td><td style="text-align: center">Log all Resty client HTTP calls</td><td style="text-align: right"><code>true</code>, <code>false</code></td><td style="text-align: center"><code>false</code></td><td style="text-align: center">🚫</td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="getting-started"><a class="header" href="#getting-started">Getting started</a></h1>
+<p>To start writing tests create a directory for your project with <code>go.mod</code> and pull the framework</p>
+<pre><code>go get github.com/smartcontractkit/chainlink-testing-framework/framework@ac819d889f97e0f5c04aee3212454ad1f8b6f4ef
+</code></pre>
+<p>Then download the CLI (runs from directory where you have <code>go.mod</code>)</p>
 <pre><code>go get github.com/smartcontractkit/chainlink-testing-framework/framework/cmd &amp;&amp; \
 go install github.com/smartcontractkit/chainlink-testing-framework/framework/cmd &amp;&amp; \
 mv ~/go/bin/cmd ~/go/bin/ctf
 </code></pre>
-<h3 id="usage"><a class="header" href="#usage">Usage</a></h3>
+<p>More CLI <a href="framework/./cli.html">docs</a></p>
+<p>Spin up your local obserability stack</p>
+<pre><code>ctf obs up
+</code></pre>
+<p>Create an <code>.envrc</code> file and put common parameters there (you can use <a href="https://direnv.net/">direnv</a> to sync them more easily)</p>
+<pre><code>export CTF_LOG_LEVEL=info
+export CTF_LOKI_STREAM=true
+export LOKI_TENANT_ID=promtail
+export LOKI_URL=http://host.docker.internal:3030/loki/api/v1/push
+export TESTCONTAINERS_RYUK_DISABLED=true
+export RESTY_DEBUG=false
+
+export CTF_CONFIGS=smoke.toml
+export PRIVATE_KEY="ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+</code></pre>
+<p>Now you are ready to write your <a href="framework/./first_test.html">first test</a></p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="writing-your-first-test"><a class="header" href="#writing-your-first-test">Writing your first test</a></h1>
+<p>The Chainlink Testing Framework (CTF) is a modular, data-driven tool that lets you explicitly define and configure various Chainlink components.</p>
+<p>Let's spin up a simple component.</p>
+<p>Create your configuration in <code>smoke.toml</code></p>
+<pre><code class="language-toml">[blockchain_a]
+  chain_id = "31337"
+  image = "ghcr.io/gakonst/foundry:latest"
+  port = "8545"
+  type = "anvil"
+</code></pre>
+<p>Create your test in <code>smoke.go</code></p>
+<pre><code class="language-golang">package mymodule_test
+
+import (
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/stretchr/testify/require"
+	"testing"
+)
+
+type Config struct {
+	BlockchainA *blockchain.Input `toml:"blockchain_a" validate:"required"`
+}
+
+func TestMe(t *testing.T) {
+	in, err := framework.Load[Config](t)
+	require.NoError(t, err)
+
+	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
+	require.NoError(t, err)
+
+	t.Run("test something", func(t *testing.T) {
+		require.NotEmpty(t, bc.Nodes[0].HostHTTPUrl)
+	})
+}
+</code></pre>
+<p>Select your configuration by setting <code>CTF_CONFIGS=smoke.toml</code> and run it</p>
+<pre><code class="language-bash">go test -v -run TestMe
+</code></pre>
+<p>Summary:</p>
+<ul>
+<li>We defined configuration for <code>BlockchainNetwork</code></li>
+<li>We've used one CTF component in test and checked if it's working</li>
+</ul>
+<p>You can learn more about <a href="framework/./components/overview.html">component design</a> or proceed with another example of <a href="framework/./connecting_chainlink_node.html">connecting Chainlink node</a></p>
+<p>Learn more about <a href="framework/./components/blockchains/anvil.html">anvil</a> component.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="writing-your-first-test-1"><a class="header" href="#writing-your-first-test-1">Writing your first test</a></h1>
+<p>The Chainlink Testing Framework (CTF) is a modular, data-driven tool that lets you explicitly define and configure various Chainlink components.</p>
+<p>Let's spin up a simple component.</p>
+<p>Create your configuration in <code>smoke.toml</code></p>
+<pre><code class="language-toml">[blockchain_a]
+  chain_id = "31337"
+  image = "ghcr.io/gakonst/foundry:latest"
+  port = "8545"
+  type = "anvil"
+
+[cl_node]
+  data_provider_url = "http://example.com"
+
+  [cl_node.db]
+    image = "postgres:15.6"
+    pull_image = true
+
+  [cl_node.node]
+    image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+    pull_image = true
+</code></pre>
+<p>Create your test in <code>smoke.go</code></p>
+<pre><code class="language-golang">
+package capabilities_test
+
+import (
+	"fmt"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
+	"github.com/stretchr/testify/require"
+	"testing"
+)
+
+type Config struct {
+	BlockchainA *blockchain.Input `toml:"blockchain_a" validate:"required"`
+	CLNode      *clnode.Input     `toml:"cl_node" validate:"required"`
+}
+
+func TestNode(t *testing.T) {
+	in, err := framework.Load[Config](t)
+	require.NoError(t, err)
+
+	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
+	require.NoError(t, err)
+
+	networkCfg, err := clnode.NewNetworkCfgOneNetworkAllNodes(bc)
+	require.NoError(t, err)
+	in.CLNode.Node.TestConfigOverrides = networkCfg
+
+	output, err := clnode.NewNodeWithDB(in.CLNode)
+	require.NoError(t, err)
+
+	t.Run("test something", func(t *testing.T) {
+		fmt.Printf("node url: %s\n", output.Node.HostURL)
+		require.NotEmpty(t, output.Node.HostURL)
+	})
+}
+
+
+</code></pre>
+<p>Select your configuration by setting <code>CTF_CONFIGS=smoke.toml</code> and run it</p>
+<pre><code class="language-bash">go test -v -run TestNode
+</code></pre>
+<p>Summary:</p>
+<ul>
+<li>We defined configuration for <code>BlockchainNetwork</code> and <code>NodeWithDB</code> (Chainlink + PostgreSQL)</li>
+<li>We connected them together by creating common network config in <code>NewNetworkCfgOneNetworkAllNodes</code></li>
+<li>We have a Chainlink node running, check <code>node url: ...</code> messages in logs to open UI</li>
+</ul>
+<p>You can learn more about <a href="framework/./components/overview.html">component design</a> or proceed with another example of <a href="framework/./connecting_chainlink_node.html">connecting Chainlink node</a></p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="nodeset-environmnet"><a class="header" href="#nodeset-environmnet">NodeSet environmnet</a></h1>
+<p>Create a configuration file <code>smoke.toml</code></p>
+<pre><code class="language-toml">funds_eth = 30.0
+
+[blockchain_a]
+  chain_id = "31337"
+  image = "f4hrenh9it/foundry:latest"
+  port = "8545"
+  type = "anvil"
+
+[contracts]
+
+[data_provider]
+  port = 9111
+
+[nodeset]
+  nodes = 5
+  override_mode = "all"
+
+  [[nodeset.node_specs]]
+
+    [nodeset.node_specs.db]
+      image = "postgres:15.6"
+      pull_image = true
+
+    [nodeset.node_specs.node]
+      image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+      pull_image = true
+
+</code></pre>
+<p>Create a file <code>smoke_test.go</code></p>
+<pre><code class="language-golang">package yourpackage_test
+
+import (
+	"fmt"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
+	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
+	"github.com/smartcontractkit/chainlink/e2e/capabilities/components/onchain"
+	"github.com/stretchr/testify/require"
+	"testing"
+)
+
+type Config struct {
+	FundingETH         float64           `toml:"funds_eth"`
+	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
+	Contracts          *onchain.Input    `toml:"contracts" validate:"required"`
+	MockerDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
+	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
+}
+
+func TestNodeSet(t *testing.T) {
+	in, err := framework.Load[Config](t)
+	require.NoError(t, err)
+
+	// deploy docker test environment
+	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
+	require.NoError(t, err)
+	dp, err := fake.NewFakeDataProvider(in.MockerDataProvider)
+	require.NoError(t, err)
+	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc, dp.BaseURLDocker)
+	require.NoError(t, err)
+}
+</code></pre>
+<p>Run it</p>
+<pre><code class="language-bash">go test -v -run TestNodeSet
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h2 id="cli-1"><a class="header" href="#cli-1">CLI</a></h2>
+<p>To keep documentation simple we provide CLI docs in "help" format</p>
 <pre><code>ctf -h
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="components"><a class="header" href="#components">Components</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="blockchain-components-simulators"><a class="header" href="#blockchain-components-simulators">Blockchain components (Simulators)</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="anvil"><a class="header" href="#anvil">Anvil</a></h1>
 <p><a href="https://book.getfoundry.sh/anvil/">Anvil</a> is a Foundry local EVM blockchain simulator</p>
-<p>Use <code>docker_cmd_params = ['--block-time=1', '...']</code> to provide more params</p>
 <h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
 <pre><code class="language-toml">[blockchain_a]
-  chain_id = "31337"
-  docker_cmd_params = []
-  image = "ghcr.io/gakonst/foundry:latest"
-  port = "8545"
-  pull_image = false
+  # Blockchain node type, can be "anvil" or "geth"
   type = "anvil"
+  # Chain ID
+  chain_id = "31337"
+  # Anvil command line params, ex.: docker_cmd_params = ['--block-time=1', '...']
+  docker_cmd_params = []
+  # Docker image and tag
+  image = "ghcr.io/gakonst/foundry:latest"
+  # External port to expose
+  port = "8545"
+  # Pulls the image every time if set to 'true', used like that in CI. Can be set to 'false' to speed up local runs
+  pull_image = false
 
+  # Outputs are the results of deploying a component that can be used by another component
   [blockchain_a.out]
     chain_id = "31337"
+    # If 'use_cache' equals 'true' we skip component setup when we run the test and return the outputs
     use_cache = true
 
     [[blockchain_a.out.nodes]]
+      # URLs to access the node(s) inside docker network, used by other components
       docker_internal_http_url = "http://anvil-14411:8545"
       docker_internal_ws_url = "ws://anvil-14411:8545"
+      # URLs to access the node(s) on your host machine or in CI
       http_url = "http://127.0.0.1:33955"
       ws_url = "ws://127.0.0.1:33955"
 </code></pre>
-<h2 id="usage-1"><a class="header" href="#usage-1">Usage</a></h2>
+<h2 id="usage"><a class="header" href="#usage">Usage</a></h2>
 <pre><code class="language-golang">package my_test
 
 import (
