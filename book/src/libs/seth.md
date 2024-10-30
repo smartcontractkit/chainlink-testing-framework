@@ -76,11 +76,11 @@ Reliable and debug-friendly Ethereum client
 - [x] DOT graph output for tracing
 - [x] Gas bumping for slow transactions
 
-You can read more about how ABI finding and contract map works [here](./docs/abi_finder_contract_map.md) and about contract store here [here](./docs/contract_store.md).
+You can read more about how ABI finding and contract map works [here](../../../seth/docs/abi_finder_contract_map.md) and about contract store here [here](../../../seth/docs/contract_store.md).
 
 ## Examples
 
-Check [examples](./examples) folder
+Check [examples](../../../seth/examples) folder
 
 Lib provides a small amount of helpers for decoding handling that you can use with vanilla `go-ethereum` generated wrappers
 
@@ -148,16 +148,16 @@ make GethSync
 
 You can use default `hardhat` key `ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80` to run tests
 
-Run the [decode](./client_decode_test.go) tests
+Run the [decode](../../../seth/client_decode_test.go) tests
 
 ```sh
 make network=Anvil root_private_key=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 test
 make network=Geth root_private_key=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 test
 ```
 
-Check other params in [seth.toml](./seth.toml), select any network and use your key for testnets
+Check other params in [seth.toml](../../../seth/seth.toml), select any network and use your key for testnets
 
-User facing API tests are [here](./client_api_test.go)
+User facing API tests are [here](../../../seth/client_api_test.go)
 
 ```sh
 make network=Anvil root_private_key=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 test_api
@@ -330,7 +330,7 @@ trace_outputs = ["console", "json", "dot"]
 For info on viewing DOT files please check the [DOT graphs](#dot-graphs) section below.
 
 Example:
-![image](./docs/tracing_example.png)
+![image](../../../seth/docs/tracing_example.png)
 These two options should be used with care, when `tracing_level` is set to `all` as they might generate a lot of data.
 
 If you want to check if the RPC is healthy on start, you can enable it with:
@@ -569,7 +569,7 @@ if err != nil {
 }
 ```
 
-A working example can be found [here](examples/example_test.go) as `TestSmokeExampleMultiKeyFromEnv` test.
+A working example can be found [here](../../../seth/examples/example_test.go) as `TestSmokeExampleMultiKeyFromEnv` test.
 
 Currently, there's no safe way to pass multiple keys to CLI. In that case TOML is the only way to go, but you should be mindful that if you commit the TOML file with keys in it, you should assume they are compromised and all funds on them are lost.
 
@@ -623,7 +623,7 @@ How gas price is calculated depends on transaction type:
 
 Please note that Blob and AccessList support remains experimental and is not tested.
 
-If you want to use a custom bumping strategy, you can use a function with [GasBumpStrategyFn](retry.go) type. Here's an example of a custom strategy that bumps the gas price by 100% for every retry:
+If you want to use a custom bumping strategy, you can use a function with [GasBumpStrategyFn](../../../seth/retry.go) type. Here's an example of a custom strategy that bumps the gas price by 100% for every retry:
 
 ```golang
 var customGasBumpStrategyFn = func(gasPrice *big.Int) *big.Int {

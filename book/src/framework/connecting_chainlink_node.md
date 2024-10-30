@@ -1,9 +1,6 @@
 # Connecting Chainlink Node
 
-The Chainlink Testing Framework (CTF) is a modular, data-driven tool that lets you explicitly define and configure various Chainlink components.
-
-Let's spin up a simple component.
-
+Now let's have an example of Chainlink node connected to some local blockchain.
 
 Create your configuration in `smoke.toml`
 ```toml
@@ -72,9 +69,15 @@ Select your configuration by setting `CTF_CONFIGS=smoke.toml` and run it
 go test -v -run TestNode
 ```
 
+Check `node url: ...` in logs, open it and login using default credentials:
+```
+notreal@fakeemail.ch
+fj293fbBnlQ!f9vNs
+```
+
 Summary:
 - We defined configuration for `BlockchainNetwork` and `NodeWithDB` (Chainlink + PostgreSQL)
 - We connected them together by creating common network config in `NewNetworkCfgOneNetworkAllNodes`
-- We have a Chainlink node running, check `node url: ...` messages in logs to open UI
+- We explored the Chainlink node UI
 
-You can learn more about [component design](./components/overview.md) or proceed with another example of [connecting Chainlink node](./connecting_chainlink_node.md)
+Let's proceed with another example of [using node sets](./nodeset_environment)

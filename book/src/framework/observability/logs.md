@@ -9,9 +9,9 @@ Queries:
 ```
 - All nodes logs
 ```json
-{job="ctf", container=~"node"}
+{job="ctf", container=~"node.*"}
 ```
 - Filter by log level
 ```json
-{job="ctf", container=~"node"} |= "WARN|INFO|DEBUG"
+{job="ctf", container=~"node.*"} |= "WARN|INFO|DEBUG"
 ```

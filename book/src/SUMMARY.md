@@ -2,14 +2,17 @@
 
 - [Overview](./overview.md)
 - [Framework](./framework/overview.md)
-    - [Overview](./framework/overview.md)
     - [Getting Started](./framework/getting_started.md)
     - [First Test](./framework/first_test.md)
     - [Connecting Chainlink Node](./framework/connecting_chainlink_node.md)
     - [Connecting Chainlink Node (Multiple networks)]()
-    - [Basic NodeSet Environment](./framework/basic_environment.md)
+    - [NodeSet Environment](./framework/nodeset_environment.md)
+    - [NodeSet with External Blockchain](./framework/nodeset_external.md)
+    - [NodeSet (Local Docker builds)](./framework/nodeset_docker_rebuild.md)
+    - [NodeSet Compat Environment](./framework/nodeset_compatibility.md)
     - [CLI](./framework/cli.md)
     - [Configuration](./framework/configuration.md)
+    - [Test Configuration](./framework/test_configuration_overrides.md)
     - [Secrets]()
     - [Observability Stack](framework/observability/observability_stack.md)
       - [Metrics]()
@@ -31,5 +34,6 @@
 
 ---
 
-- [Developing](./developing.md)
-- [Releasing modules](./releasing_modules.md)
+- [Developing](developing.md)
+  - [Components](developing/developing_components.md)
+- [Releasing modules](releasing_modules.md)
