@@ -1,8 +1,11 @@
 ## MDBook
 Install [mdbook](https://github.com/rust-lang/mdBook)
 ```
-cargo install mdbook
+cargo install mdbook && \
+cargo install mdbook-alerts && \
+cargo install mdbook-cmdrun
 ```
+
 Run it locally
 ```
 make run

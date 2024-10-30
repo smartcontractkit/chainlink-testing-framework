@@ -20,6 +20,7 @@ jobs:
       - name: Install Pre-processors
         run: |
           cargo install mdbook-alerts
+          cargo install mdbook-cmdrun
 
       - name: Build
         working-directory: book
