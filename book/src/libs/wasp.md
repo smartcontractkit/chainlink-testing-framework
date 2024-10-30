@@ -62,7 +62,7 @@ make stop
 Check [examples](examples/README.md) to understand what is the easiest way to structure your tests, run them both locally and remotely, at scale, inside `k8s`
 
 ## Run pyroscope test
-```
+```bash
 make pyro_start
 make test_pyro_rps
 make test_pyro_vu
@@ -85,7 +85,7 @@ If Loki client fail to deliver a batch test will proceed, if you experience Loki
 `MaxErrors: -1` can be used to ignore all the errors
 
 Default Promtail settings are:
-```
+```golang
 &LokiConfig{
     TenantID:                os.Getenv("LOKI_TENANT_ID"),
     URL:                     os.Getenv("LOKI_URL"),
@@ -121,7 +121,7 @@ You can integrate components from the WASP dashboard into your custom dashboards
 
 Example:
 
-```
+```golang
 import (
     waspdashboard "github.com/smartcontractkit/wasp/dashboard"
 )
@@ -149,7 +149,7 @@ To enable dashboard annotations and alert monitoring, utilize the `WithGrafana()
 
 Example:
 
-```
+```golang
 _, err = wasp.NewProfile().
     WithGrafana(grafanaOpts).
     Add(wasp.NewGenerator(getLatestReportByTimestampCfg)).
@@ -159,7 +159,7 @@ require.NoError(t, err)
 
 Where:
 
-```
+```golang
 type GrafanaOpts struct {
 	GrafanaURL                   string        `toml:"grafana_url"`
 	GrafanaToken                 string        `toml:"grafana_token_secret"`

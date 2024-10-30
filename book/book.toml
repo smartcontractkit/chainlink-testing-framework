@@ -7,3 +7,6 @@ title = "Chainlink Testing Framework"
 
 [build]
 build-dir = "docs"
+
+[output.html]
+default-theme = "ayu"

@@ -84,7 +84,7 @@ Check [examples](./examples) folder
 
 Lib provides a small amount of helpers for decoding handling that you can use with vanilla `go-ethereum` generated wrappers
 
-```go
+```golang
 // Decode waits for transaction and decode all the data/errors
 Decode(tx *types.Transaction, txErr error) (*DecodedTransaction, error)
 
@@ -98,7 +98,7 @@ NewCallOpts(o ...CallOpt) *bind.CallOpts
 
 By default, we are using the `root` key `0`, but you can also use any of the private keys passed as part of `Network` configuration in `seth.toml` or ephemeral keys.
 
-```go
+```golang
 // NewCallKeyOpts returns a new sequential call options wrapper from the key N
 NewCallKeyOpts(keyNum int, o ...CallOpt) *bind.CallOpts
 
@@ -184,7 +184,7 @@ make network=Geth root_private_key=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5
 
 If you do not want to set all the parameters, you can use a simplified progammatical configuration. Here's an example:
 
-```go
+```golang
 cfg := seth.DefaultConfig("ws://localhost:8546", []string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"})
 client, err := seth.NewClientWithConfig(cfg)
 if err != nil {
@@ -205,7 +205,7 @@ This config uses what we consider reasonable defaults, such as:
 
 You can also use a `ClientBuilder` to build a config programmatically. Here's an extensive example:
 
-```go
+```golang
 client, err := NewClientBuilder().
     // network
     WithNetworkName("my network").
@@ -246,7 +246,7 @@ use TOML config or manually set the fields on the `Config` struct returned by th
 
 It' also possible to use the builder to create a new config from an existing one:
 
-```go
+```golang
 client, err := NewClientBuilderWithConfig(&existingConfig).
         UseNetworkWithChainId(1337).
         WithEIP1559DynamicFees(false).
@@ -438,7 +438,7 @@ When fetching historical base fee and tip data, we will use the last `gas_price_
 
 Finally, `gas_price_estimation_tx_priority` is also used, when deciding, which percentile to use for base fee and tip for historical fee data. Here's how that looks:
 
-```go
+```golang
 case Priority_Fast:
     baseFee = stats.GasPrice.Perc99
     historicalGasTipCap = stats.TipCap.Perc99
@@ -454,7 +454,7 @@ case Priority_Slow:
 
 All values are multiplied by the adjustment factor, which is calculated based on `gas_price_estimation_tx_priority`:
 
-```go
+```golang
 case Priority_Fast:
     return 1.2
 case Priority_Standard:
@@ -469,7 +469,7 @@ For fast transactions we will increase gas price by 20%, for standard we will us
 
 If `gas_price_estimation_blocks` is higher than `0` we further adjust the gas price by adding a buffer to it, based on congestion rate:
 
-```go
+```golang
 case Congestion_Low:
     return 1.10, nil
 case Congestion_Medium:
@@ -517,7 +517,7 @@ Once you've read them in a safe manner you should programmatically add them to S
 
 For example you could start by reading the TOML configuration first:
 
-```go
+```golang
 cfg, err := seth.ReadCfg()
 if err != nil {
     log.Fatal(err)
@@ -526,7 +526,7 @@ if err != nil {
 
 Then read the private keys in a safe manner. For example from a secure vault or environment variables:
 
-```go
+```golang
 var privateKeys []string
 var err error
 privateKeys, err = some_utils.ReadPrivateKeysFromEnv()
@@ -537,7 +537,7 @@ if err != nil {
 
 and then add them to the `Network` you plan to use. Let's assume it's called `Sepolia`:
 
-```go
+```golang
 for i, network := range cfg.Networks {
     if network.Name == "Sepolia" {
         cfg.Networks[i].PrivateKeys = privateKeys
@@ -547,13 +547,13 @@ for i, network := range cfg.Networks {
 
 Or if you aren't using `[[Networks]]` in your TOML config and have just a single `Network`:
 
-```go
+```golang
 cfg.Network.PrivateKeys = privateKeys
 ```
 
 Or... you can use the convenience function `AppendPksToNetwork()` to have them added to both the `Network` and `Networks` slice:
 
-```go
+```golang
 added := cfg.AppendPksToNetwork(privateKeys, "Sepolia")
 if !added {
     log.Fatal("Network Sepolia not found in the config")
@@ -562,7 +562,7 @@ if !added {
 
 Finally, proceed to create a new Seth instance:
 
-```go
+```golang
 seth, err := seth.NewClientWithConfig(cfg)
 if err != nil {
     log.Fatal(err)
@@ -625,7 +625,7 @@ Please note that Blob and AccessList support remains experimental and is not tes
 
 If you want to use a custom bumping strategy, you can use a function with [GasBumpStrategyFn](retry.go) type. Here's an example of a custom strategy that bumps the gas price by 100% for every retry:
 
-```go
+```golang
 var customGasBumpStrategyFn = func(gasPrice *big.Int) *big.Int {
     return new(big.Int).Mul(gasPrice, big.NewInt(2))
 }
@@ -633,7 +633,7 @@ var customGasBumpStrategyFn = func(gasPrice *big.Int) *big.Int {
 
 To use this strategy, you need to pass it to the `WithGasBumping` function in the `ClientBuilder`:
 
-```go
+```golang
 var hundredGwei in64 = 100_000_000_000
 client, err := builder.
     // other settings...
@@ -643,14 +643,14 @@ client, err := builder.
 
 Or set it directly on Seth's config:
 
-```go
+```golang
 // assuming sethClient is already created
 sethClient.Config.GasBumps.StrategyFn = customGasBumpStrategyFn
 ```
 
 Since strategy function only accepts a single parameter, if you want to base its behaviour on anything else than that you will need to capture these values from the context, in which you define the strategy function. For example, you can use a closure to capture the initial gas price:
 
-```go
+```golang
 gasOracleClient := NewGasOracleClient()
 
 var oracleGasBumpStrategyFn = func(gasPrice *big.Int) *big.Int {
@@ -821,7 +821,7 @@ It's possible to use Seth in read-only mode only for transaction confirmation an
 * gas bumping (we need a pk to sign the transaction)
 
 The easiest way to enable read-only mode is to client via `ClientBuilder`:
-```go
+```golang
 	client, err := builder.
 		WithNetworkName("my network").
 		WithRpcUrl("ws://localhost:8546").
