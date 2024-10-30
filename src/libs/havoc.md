@@ -44,7 +44,7 @@ chaos.AddListener(logger)
 
 Initialize `SingleLineGrafanaAnnotator` with your Grafana instance details and register it alongside `ChaosLogger`:
 
-```
+```golang
 annotator := havoc.NewSingleLineGrafanaAnnotator(
     "http://grafana-instance.com",
     "grafana-access-token",
@@ -59,7 +59,7 @@ To create a chaos experiment, define the chaos object options, initialize a chao
 
 Here is an example of creating and starting a PodChaos experiment:
 
-```
+```golang
 package main
 
 import (
@@ -108,7 +108,7 @@ func main() {
 
 ### Test Example
 
-```
+```golang
 func TestChaosDON(t *testing.T) {
 	testDuration := time.Minute * 60
 

@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light" dir="ltr">
+<html lang="en" class="ayu" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -36,7 +36,7 @@
         <!-- Provide site root to javascript -->
         <script>
             var path_to_root = "../";
-            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "ayu";
         </script>
 
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
@@ -61,7 +61,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             var html = document.querySelector('html');
-            html.classList.remove('light')
+            html.classList.remove('ayu')
             html.classList.add(theme);
             var body = document.querySelector('body');
             body.classList.remove('no-js')
@@ -88,7 +88,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="../overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../libraries.html"><strong aria-hidden="true">2.</strong> Libraries</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../libs/seth.html" class="active"><strong aria-hidden="true">2.1.</strong> Seth</a></li><li class="chapter-item expanded "><a href="../libs/wasp.html"><strong aria-hidden="true">2.2.</strong> WASP</a></li></ol></li><li class="chapter-item expanded "><a href="../framework.html"><strong aria-hidden="true">3.</strong> Framework</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../components.html"><strong aria-hidden="true">3.1.</strong> Components</a></li><li class="chapter-item expanded "><a href="../secrets.html"><strong aria-hidden="true">3.2.</strong> Secrets</a></li></ol></li><li class="chapter-item expanded "><a href="../developing.html"><strong aria-hidden="true">4.</strong> Developing</a></li><li class="chapter-item expanded "><a href="../releasing_modules.html"><strong aria-hidden="true">5.</strong> Releasing modules</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../libraries.html"><strong aria-hidden="true">2.</strong> Libraries</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../libs/seth.html" class="active"><strong aria-hidden="true">2.1.</strong> Seth</a></li><li class="chapter-item expanded "><a href="../libs/wasp.html"><strong aria-hidden="true">2.2.</strong> WASP</a></li><li class="chapter-item expanded "><a href="../libs/havoc.html"><strong aria-hidden="true">2.3.</strong> Havoc</a></li></ol></li><li class="chapter-item expanded "><a href="../framework/overview.html"><strong aria-hidden="true">3.</strong> Framework</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../framework/getting_started.html"><strong aria-hidden="true">3.1.</strong> Getting Started</a></li><li class="chapter-item expanded "><a href="../framework/cli.html"><strong aria-hidden="true">3.2.</strong> CLI</a></li><li class="chapter-item expanded "><a href="../framework/components/overview.html"><strong aria-hidden="true">3.3.</strong> Components</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../framework/components/blockchains/overview.html"><strong aria-hidden="true">3.3.1.</strong> Blockchains</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../framework/components/blockchains/anvil.html"><strong aria-hidden="true">3.3.1.1.</strong> Anvil</a></li></ol></li></ol></li><li class="chapter-item expanded "><a href="../secrets.html"><strong aria-hidden="true">3.4.</strong> Secrets</a></li></ol></li><li class="chapter-item expanded "><li class="spacer"></li><li class="chapter-item expanded "><a href="../developing.html"><strong aria-hidden="true">4.</strong> Developing</a></li><li class="chapter-item expanded "><a href="../releasing_modules.html"><strong aria-hidden="true">5.</strong> Releasing modules</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -284,7 +284,7 @@ Gas bumping for slow transactions</li>
 <h2 id="examples"><a class="header" href="#examples">Examples</a></h2>
 <p>Check <a href="./examples">examples</a> folder</p>
 <p>Lib provides a small amount of helpers for decoding handling that you can use with vanilla <code>go-ethereum</code> generated wrappers</p>
-<pre><code class="language-go">// Decode waits for transaction and decode all the data/errors
+<pre><code class="language-golang">// Decode waits for transaction and decode all the data/errors
 Decode(tx *types.Transaction, txErr error) (*DecodedTransaction, error)
 
 // NewTXOpts returns a new sequential transaction options wrapper,
@@ -295,7 +295,7 @@ NewTXOpts(o ...TransactOpt) *bind.TransactOpts
 NewCallOpts(o ...CallOpt) *bind.CallOpts
 </code></pre>
 <p>By default, we are using the <code>root</code> key <code>0</code>, but you can also use any of the private keys passed as part of <code>Network</code> configuration in <code>seth.toml</code> or ephemeral keys.</p>
-<pre><code class="language-go">// NewCallKeyOpts returns a new sequential call options wrapper from the key N
+<pre><code class="language-golang">// NewCallKeyOpts returns a new sequential call options wrapper from the key N
 NewCallKeyOpts(keyNum int, o ...CallOpt) *bind.CallOpts
 
 // NewTXKeyOpts returns a new transaction options wrapper called from the key N
@@ -343,7 +343,7 @@ make network=Geth root_private_key=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5
 <h1 id="config"><a class="header" href="#config">Config</a></h1>
 <h3 id="simplified-configuration"><a class="header" href="#simplified-configuration">Simplified configuration</a></h3>
 <p>If you do not want to set all the parameters, you can use a simplified progammatical configuration. Here's an example:</p>
-<pre><code class="language-go">cfg := seth.DefaultConfig("ws://localhost:8546", []string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"})
+<pre><code class="language-golang">cfg := seth.DefaultConfig("ws://localhost:8546", []string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"})
 client, err := seth.NewClientWithConfig(cfg)
 if err != nil {
     log.Fatal(err)
@@ -360,7 +360,7 @@ if err != nil {
 </ul>
 <h3 id="clientbuilder"><a class="header" href="#clientbuilder">ClientBuilder</a></h3>
 <p>You can also use a <code>ClientBuilder</code> to build a config programmatically. Here's an extensive example:</p>
-<pre><code class="language-go">client, err := NewClientBuilder().
+<pre><code class="language-golang">client, err := NewClientBuilder().
     // network
     WithNetworkName("my network").
 	// if empty we will ask the RPC node for the chain ID
@@ -397,7 +397,7 @@ if err != nil {
 that we thought to be most useful, it's not a 1:1 mapping of all fields in the <code>Config</code> struct. Therefore, if you need to set some more advanced options, you should create the <code>Config</code> struct directly,
 use TOML config or manually set the fields on the <code>Config</code> struct returned by the builder.</p>
 <p>It' also possible to use the builder to create a new config from an existing one:</p>
-<pre><code class="language-go">client, err := NewClientBuilderWithConfig(&amp;existingConfig).
+<pre><code class="language-golang">client, err := NewClientBuilderWithConfig(&amp;existingConfig).
         UseNetworkWithChainId(1337).
         WithEIP1559DynamicFees(false).
 	    Build()
@@ -538,7 +538,7 @@ gas_price_estimation_tx_priority = "slow"
 <p>Understanding and setting these parameters correctly ensures that your transactions are processed efficiently and cost-effectively on the network.</p>
 <p>When fetching historical base fee and tip data, we will use the last <code>gas_price_estimation_blocks</code> blocks. If it's set to <code>0</code> we will default to <code>100</code> last blocks. If the blockchain has less than <code>100</code> blocks we will use all of them.</p>
 <p>Finally, <code>gas_price_estimation_tx_priority</code> is also used, when deciding, which percentile to use for base fee and tip for historical fee data. Here's how that looks:</p>
-<pre><code class="language-go">case Priority_Fast:
+<pre><code class="language-golang">case Priority_Fast:
     baseFee = stats.GasPrice.Perc99
     historicalGasTipCap = stats.TipCap.Perc99
 case Priority_Standard:
@@ -550,7 +550,7 @@ case Priority_Slow:
 </code></pre>
 <h5 id="adjustment-factor"><a class="header" href="#adjustment-factor">Adjustment factor</a></h5>
 <p>All values are multiplied by the adjustment factor, which is calculated based on <code>gas_price_estimation_tx_priority</code>:</p>
-<pre><code class="language-go">case Priority_Fast:
+<pre><code class="language-golang">case Priority_Fast:
     return 1.2
 case Priority_Standard:
     return 1.0
@@ -560,7 +560,7 @@ case Priority_Slow:
 <p>For fast transactions we will increase gas price by 20%, for standard we will use the value as is and for slow we will decrease it by 20%.</p>
 <h5 id="buffer-percents"><a class="header" href="#buffer-percents">Buffer percents</a></h5>
 <p>If <code>gas_price_estimation_blocks</code> is higher than <code>0</code> we further adjust the gas price by adding a buffer to it, based on congestion rate:</p>
-<pre><code class="language-go">case Congestion_Low:
+<pre><code class="language-golang">case Congestion_Low:
     return 1.10, nil
 case Congestion_Medium:
     return 1.20, nil
@@ -594,13 +594,13 @@ For both transaction types if any of the steps fails, we fall back to hardcoded 
 <p>If you want to use existing multiple keys (instead of ephemeral ones) you can pass them as part of the network configuration. In that case it's recommended to <strong>not</strong> read them from TOML file. If you need to read them for the filesystem/os it's best if you use environment variables.
 Once you've read them in a safe manner you should programmatically add them to Seth's Config struct (which safe parts can be read from TOML file). You can either add them directly to <code>Network</code>, if it's already set up, or you can add them to <code>Networks</code> slice to the network you intend to use.</p>
 <p>For example you could start by reading the TOML configuration first:</p>
-<pre><code class="language-go">cfg, err := seth.ReadCfg()
+<pre><code class="language-golang">cfg, err := seth.ReadCfg()
 if err != nil {
     log.Fatal(err)
 }
 </code></pre>
 <p>Then read the private keys in a safe manner. For example from a secure vault or environment variables:</p>
-<pre><code class="language-go">var privateKeys []string
+<pre><code class="language-golang">var privateKeys []string
 var err error
 privateKeys, err = some_utils.ReadPrivateKeysFromEnv()
 if err != nil {
@@ -608,23 +608,23 @@ if err != nil {
 }
 </code></pre>
 <p>and then add them to the <code>Network</code> you plan to use. Let's assume it's called <code>Sepolia</code>:</p>
-<pre><code class="language-go">for i, network := range cfg.Networks {
+<pre><code class="language-golang">for i, network := range cfg.Networks {
     if network.Name == "Sepolia" {
         cfg.Networks[i].PrivateKeys = privateKeys
     }
 }
 </code></pre>
 <p>Or if you aren't using <code>[[Networks]]</code> in your TOML config and have just a single <code>Network</code>:</p>
-<pre><code class="language-go">cfg.Network.PrivateKeys = privateKeys
+<pre><code class="language-golang">cfg.Network.PrivateKeys = privateKeys
 </code></pre>
 <p>Or... you can use the convenience function <code>AppendPksToNetwork()</code> to have them added to both the <code>Network</code> and <code>Networks</code> slice:</p>
-<pre><code class="language-go">added := cfg.AppendPksToNetwork(privateKeys, "Sepolia")
+<pre><code class="language-golang">added := cfg.AppendPksToNetwork(privateKeys, "Sepolia")
 if !added {
     log.Fatal("Network Sepolia not found in the config")
 }
 </code></pre>
 <p>Finally, proceed to create a new Seth instance:</p>
-<pre><code class="language-go">seth, err := seth.NewClientWithConfig(cfg)
+<pre><code class="language-golang">seth, err := seth.NewClientWithConfig(cfg)
 if err != nil {
     log.Fatal(err)
 }
@@ -669,23 +669,23 @@ max_gas_price = 1000000000000
 </ul>
 <p>Please note that Blob and AccessList support remains experimental and is not tested.</p>
 <p>If you want to use a custom bumping strategy, you can use a function with <a href="retry.go">GasBumpStrategyFn</a> type. Here's an example of a custom strategy that bumps the gas price by 100% for every retry:</p>
-<pre><code class="language-go">var customGasBumpStrategyFn = func(gasPrice *big.Int) *big.Int {
+<pre><code class="language-golang">var customGasBumpStrategyFn = func(gasPrice *big.Int) *big.Int {
     return new(big.Int).Mul(gasPrice, big.NewInt(2))
 }
 </code></pre>
 <p>To use this strategy, you need to pass it to the <code>WithGasBumping</code> function in the <code>ClientBuilder</code>:</p>
-<pre><code class="language-go">var hundredGwei in64 = 100_000_000_000
+<pre><code class="language-golang">var hundredGwei in64 = 100_000_000_000
 client, err := builder.
     // other settings...
     WithGasBumping(5, hundredGwei, customGasBumpStrategyFn).
     Build()
 </code></pre>
 <p>Or set it directly on Seth's config:</p>
-<pre><code class="language-go">// assuming sethClient is already created
+<pre><code class="language-golang">// assuming sethClient is already created
 sethClient.Config.GasBumps.StrategyFn = customGasBumpStrategyFn
 </code></pre>
 <p>Since strategy function only accepts a single parameter, if you want to base its behaviour on anything else than that you will need to capture these values from the context, in which you define the strategy function. For example, you can use a closure to capture the initial gas price:</p>
-<pre><code class="language-go">gasOracleClient := NewGasOracleClient()
+<pre><code class="language-golang">gasOracleClient := NewGasOracleClient()
 
 var oracleGasBumpStrategyFn = func(gasPrice *big.Int) *big.Int {
     // get the current gas price from the oracle
@@ -800,7 +800,7 @@ max_tps = 8.0
 <li>gas bumping (we need a pk to sign the transaction)</li>
 </ul>
 <p>The easiest way to enable read-only mode is to client via <code>ClientBuilder</code>:</p>
-<pre><code class="language-go">	client, err := builder.
+<pre><code class="language-golang">	client, err := builder.
 		WithNetworkName("my network").
 		WithRpcUrl("ws://localhost:8546").
 		WithEphemeralAddresses(10, 1000).

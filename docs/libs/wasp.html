@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light" dir="ltr">
+<html lang="en" class="ayu" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -36,7 +36,7 @@
         <!-- Provide site root to javascript -->
         <script>
             var path_to_root = "../";
-            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "ayu";
         </script>
 
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
@@ -61,7 +61,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             var html = document.querySelector('html');
-            html.classList.remove('light')
+            html.classList.remove('ayu')
             html.classList.add(theme);
             var body = document.querySelector('body');
             body.classList.remove('no-js')
@@ -88,7 +88,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="../overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../libraries.html"><strong aria-hidden="true">2.</strong> Libraries</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../libs/seth.html"><strong aria-hidden="true">2.1.</strong> Seth</a></li><li class="chapter-item expanded "><a href="../libs/wasp.html" class="active"><strong aria-hidden="true">2.2.</strong> WASP</a></li></ol></li><li class="chapter-item expanded "><a href="../framework.html"><strong aria-hidden="true">3.</strong> Framework</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../components.html"><strong aria-hidden="true">3.1.</strong> Components</a></li><li class="chapter-item expanded "><a href="../secrets.html"><strong aria-hidden="true">3.2.</strong> Secrets</a></li></ol></li><li class="chapter-item expanded "><a href="../developing.html"><strong aria-hidden="true">4.</strong> Developing</a></li><li class="chapter-item expanded "><a href="../releasing_modules.html"><strong aria-hidden="true">5.</strong> Releasing modules</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../libraries.html"><strong aria-hidden="true">2.</strong> Libraries</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../libs/seth.html"><strong aria-hidden="true">2.1.</strong> Seth</a></li><li class="chapter-item expanded "><a href="../libs/wasp.html" class="active"><strong aria-hidden="true">2.2.</strong> WASP</a></li><li class="chapter-item expanded "><a href="../libs/havoc.html"><strong aria-hidden="true">2.3.</strong> Havoc</a></li></ol></li><li class="chapter-item expanded "><a href="../framework/overview.html"><strong aria-hidden="true">3.</strong> Framework</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../framework/getting_started.html"><strong aria-hidden="true">3.1.</strong> Getting Started</a></li><li class="chapter-item expanded "><a href="../framework/cli.html"><strong aria-hidden="true">3.2.</strong> CLI</a></li><li class="chapter-item expanded "><a href="../framework/components/overview.html"><strong aria-hidden="true">3.3.</strong> Components</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../framework/components/blockchains/overview.html"><strong aria-hidden="true">3.3.1.</strong> Blockchains</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../framework/components/blockchains/anvil.html"><strong aria-hidden="true">3.3.1.1.</strong> Anvil</a></li></ol></li></ol></li><li class="chapter-item expanded "><a href="../secrets.html"><strong aria-hidden="true">3.4.</strong> Secrets</a></li></ol></li><li class="chapter-item expanded "><li class="spacer"></li><li class="chapter-item expanded "><a href="../developing.html"><strong aria-hidden="true">4.</strong> Developing</a></li><li class="chapter-item expanded "><a href="../releasing_modules.html"><strong aria-hidden="true">5.</strong> Releasing modules</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -223,7 +223,7 @@ make dashboard
 <h2 id="test-layout-and-examples"><a class="header" href="#test-layout-and-examples">Test Layout and examples</a></h2>
 <p>Check <a href="examples/README.html">examples</a> to understand what is the easiest way to structure your tests, run them both locally and remotely, at scale, inside <code>k8s</code></p>
 <h2 id="run-pyroscope-test"><a class="header" href="#run-pyroscope-test">Run pyroscope test</a></h2>
-<pre><code>make pyro_start
+<pre><code class="language-bash">make pyro_start
 make test_pyro_rps
 make test_pyro_vu
 make pyro_stop
@@ -238,7 +238,7 @@ make pyro_stop
 <p>If Loki client fail to deliver a batch test will proceed, if you experience Loki issues, consider setting <code>Timeout</code> in <code>LokiConfig</code> or set <code>MaxErrors: 10</code> to return an error after N Loki errors</p>
 <p><code>MaxErrors: -1</code> can be used to ignore all the errors</p>
 <p>Default Promtail settings are:</p>
-<pre><code>&amp;LokiConfig{
+<pre><code class="language-golang">&amp;LokiConfig{
     TenantID:                os.Getenv("LOKI_TENANT_ID"),
     URL:                     os.Getenv("LOKI_URL"),
     Token:                   os.Getenv("LOKI_TOKEN"),
@@ -264,7 +264,7 @@ make pyro_stop
 <h3 id="reusing-dashboard-components"><a class="header" href="#reusing-dashboard-components">Reusing Dashboard Components</a></h3>
 <p>You can integrate components from the WASP dashboard into your custom dashboards.</p>
 <p>Example:</p>
-<pre><code>import (
+<pre><code class="language-golang">import (
     waspdashboard "github.com/smartcontractkit/wasp/dashboard"
 )
 
@@ -287,14 +287,14 @@ func BuildCustomLoadTestDashboard(dashboardName string) (dashboard.Builder, erro
 <h2 id="annotate-dashboards-and-monitor-alerts"><a class="header" href="#annotate-dashboards-and-monitor-alerts">Annotate Dashboards and Monitor Alerts</a></h2>
 <p>To enable dashboard annotations and alert monitoring, utilize the <code>WithGrafana()</code> function in conjunction with <code>wasp.Profile</code>. This approach allows for the integration of dashboard annotations and the evaluation of dashboard alerts.</p>
 <p>Example:</p>
-<pre><code>_, err = wasp.NewProfile().
+<pre><code class="language-golang">_, err = wasp.NewProfile().
     WithGrafana(grafanaOpts).
     Add(wasp.NewGenerator(getLatestReportByTimestampCfg)).
     Run(true)
 require.NoError(t, err)
 </code></pre>
 <p>Where:</p>
-<pre><code>type GrafanaOpts struct {
+<pre><code class="language-golang">type GrafanaOpts struct {
 	GrafanaURL                   string        `toml:"grafana_url"`
 	GrafanaToken                 string        `toml:"grafana_token_secret"`
 	WaitBeforeAlertCheck         time.Duration `toml:"grafana_wait_before_alert_check"`                  // Cooldown period to wait before checking for alerts
@@ -312,7 +312,7 @@ require.NoError(t, err)
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../framework.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../libs/havoc.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -326,7 +326,7 @@ require.NoError(t, err)
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../framework.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../libs/havoc.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
