@@ -8,7 +8,7 @@ Use `docker_cmd_params = ['--block-time=1', '...']` to provide more params
 [blockchain_a]
   chain_id = "31337"
   docker_cmd_params = []
-  image = "f4hrenh9it/foundry:latest"
+  image = "ghcr.io/gakonst/foundry:latest"
   port = "8545"
   pull_image = false
   type = "anvil"
