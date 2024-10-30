@@ -14,10 +14,11 @@ import (
 )
 
 type Runner struct {
-	Verbose  bool // If true, provides detailed logging.
-	RunCount int  // Number of times to run the tests.
-	UseRace  bool // Enable race detector.
-	FailFast bool // Stop on first test failure.
+	ProjectPath string // Path to the Go project directory.
+	Verbose     bool   // If true, provides detailed logging.
+	RunCount    int    // Number of times to run the tests.
+	UseRace     bool   // Enable race detector.
+	FailFast    bool   // Stop on first test failure.
 }
 
 // RunTests executes the tests for each provided package and aggregates all results.
@@ -58,6 +59,7 @@ func (r *Runner) runTestPackage(testPackage string) ([]byte, bool, error) {
 		log.Printf("Running command: go %s\n", strings.Join(args, " "))
 	}
 	cmd := exec.Command("go", args...)
+	cmd.Dir = r.ProjectPath
 
 	// cmd.Env = append(cmd.Env, "GOFLAGS=-extldflags=-Wl,-ld_classic") // Ensure modules are enabled
 	var out bytes.Buffer
