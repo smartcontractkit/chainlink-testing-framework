@@ -173,15 +173,14 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h2 id="chainlink-testing-framework-harness"><a class="header" href="#chainlink-testing-framework-harness">Chainlink Testing Framework Harness</a></h2>
-<p>This module includes the CTFv2 harness, a lightweight, modular, and data-driven framework designed for combining off-chain and on-chain components while implementing best practices for end-to-end system-level testing:</p>
+                        <h2 id="framework"><a class="header" href="#framework">Framework</a></h2>
+<p>The Framework module a lightweight, modular, and data-driven framework designed for combining off-chain and on-chain components while implementing best practices for end-to-end system-level testing:</p>
 <ul>
-<li><strong>Non-nil configuration</strong>: All test variables must have defaults, automatic validation.</li>
-<li><strong>Component isolation</strong>: Components are decoupled via input/output structs, without exposing internal details.</li>
 <li><strong>Modular configuration</strong>: No arcane knowledge of framework settings is required; the config is simply a reflection of the components being used in the test. Components declare their own configuration—'what you see is what you get.'</li>
+<li><strong>Component isolation</strong>: Components are decoupled via input/output structs, without exposing internal details.</li>
 <li><strong>Replaceability and extensibility</strong>: Since components are decoupled via outputs, any deployment component can be swapped with a real service without altering the test code.</li>
-<li><strong>Caching</strong>: any component can use cached configs to skip environment setup for faster test development</li>
-<li><strong>Integrated observability stack</strong>: use <code>ctf obs up</code> to spin up a local observability stack.</li>
+<li><strong>Caching</strong>: any component can use cached configs to skip setup for faster test development.</li>
+<li><strong>Integrated observability stack</strong>: get all the info you need to develop end-to-end tests: metrics, logs, traces, profiles.</li>
 </ul>
 
                     </main>

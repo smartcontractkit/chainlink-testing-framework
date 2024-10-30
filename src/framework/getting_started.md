@@ -23,10 +23,7 @@ Create an `.envrc` file and put common parameters there (you can use [direnv](ht
 ```
 export CTF_LOG_LEVEL=info
 export CTF_LOKI_STREAM=true
-export LOKI_TENANT_ID=promtail
-export LOKI_URL=http://host.docker.internal:3030/loki/api/v1/push
 export TESTCONTAINERS_RYUK_DISABLED=true
-export RESTY_DEBUG=false
 
 export CTF_CONFIGS=smoke.toml
 export PRIVATE_KEY="ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"

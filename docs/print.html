@@ -175,26 +175,31 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="intro"><a class="header" href="#intro">Intro</a></h1>
-<p>The Chainlink Testing Framework (CTF) is a blockchain development framework written in Go. Its primary purpose is to help chainlink developers create extensive integration, e2e, performance, and chaos tests to ensure the stability of the chainlink project. It can also be helpful to those who just want to use chainlink oracles in their projects to help test their contracts, or even for those that aren't using chainlink.</p>
-<div style="break-before: page; page-break-before: always;"></div><h2 id="chainlink-testing-framework-harness"><a class="header" href="#chainlink-testing-framework-harness">Chainlink Testing Framework Harness</a></h2>
-<p>This module includes the CTFv2 harness, a lightweight, modular, and data-driven framework designed for combining off-chain and on-chain components while implementing best practices for end-to-end system-level testing:</p>
+<p>The Chainlink Testing Framework (CTF) is a blockchain development framework written in Go.
+Its primary purpose is to help chainlink developers create extensive integration, e2e, performance, and chaos tests to ensure the stability of the chainlink project.
+It can also be helpful to those who just want to use chainlink oracles in their projects to help test their contracts, or even for those that aren't using chainlink.</p>
+<p><a href="https://github.com/smartcontractkit/chainlink-testing-framework">Repository</a> contains two major pieces:</p>
 <ul>
-<li><strong>Non-nil configuration</strong>: All test variables must have defaults, automatic validation.</li>
-<li><strong>Component isolation</strong>: Components are decoupled via input/output structs, without exposing internal details.</li>
-<li><strong>Modular configuration</strong>: No arcane knowledge of framework settings is required; the config is simply a reflection of the components being used in the test. Components declare their own configuration—'what you see is what you get.'</li>
-<li><strong>Replaceability and extensibility</strong>: Since components are decoupled via outputs, any deployment component can be swapped with a real service without altering the test code.</li>
-<li><strong>Caching</strong>: any component can use cached configs to skip environment setup for faster test development</li>
-<li><strong>Integrated observability stack</strong>: use <code>ctf obs up</code> to spin up a local observability stack.</li>
+<li><a href="framework/overview.html">Framework</a></li>
+<li><a href="libraries.html">Libraries</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h2 id="chainlink-testing-framework-harness-1"><a class="header" href="#chainlink-testing-framework-harness-1">Chainlink Testing Framework Harness</a></h2>
-<p>This module includes the CTFv2 harness, a lightweight, modular, and data-driven framework designed for combining off-chain and on-chain components while implementing best practices for end-to-end system-level testing:</p>
+<div style="break-before: page; page-break-before: always;"></div><h2 id="framework"><a class="header" href="#framework">Framework</a></h2>
+<p>The Framework module a lightweight, modular, and data-driven framework designed for combining off-chain and on-chain components while implementing best practices for end-to-end system-level testing:</p>
 <ul>
-<li><strong>Non-nil configuration</strong>: All test variables must have defaults, automatic validation.</li>
-<li><strong>Component isolation</strong>: Components are decoupled via input/output structs, without exposing internal details.</li>
 <li><strong>Modular configuration</strong>: No arcane knowledge of framework settings is required; the config is simply a reflection of the components being used in the test. Components declare their own configuration—'what you see is what you get.'</li>
+<li><strong>Component isolation</strong>: Components are decoupled via input/output structs, without exposing internal details.</li>
 <li><strong>Replaceability and extensibility</strong>: Since components are decoupled via outputs, any deployment component can be swapped with a real service without altering the test code.</li>
-<li><strong>Caching</strong>: any component can use cached configs to skip environment setup for faster test development</li>
-<li><strong>Integrated observability stack</strong>: use <code>ctf obs up</code> to spin up a local observability stack.</li>
+<li><strong>Caching</strong>: any component can use cached configs to skip setup for faster test development.</li>
+<li><strong>Integrated observability stack</strong>: get all the info you need to develop end-to-end tests: metrics, logs, traces, profiles.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h2 id="framework-1"><a class="header" href="#framework-1">Framework</a></h2>
+<p>The Framework module a lightweight, modular, and data-driven framework designed for combining off-chain and on-chain components while implementing best practices for end-to-end system-level testing:</p>
+<ul>
+<li><strong>Modular configuration</strong>: No arcane knowledge of framework settings is required; the config is simply a reflection of the components being used in the test. Components declare their own configuration—'what you see is what you get.'</li>
+<li><strong>Component isolation</strong>: Components are decoupled via input/output structs, without exposing internal details.</li>
+<li><strong>Replaceability and extensibility</strong>: Since components are decoupled via outputs, any deployment component can be swapped with a real service without altering the test code.</li>
+<li><strong>Caching</strong>: any component can use cached configs to skip setup for faster test development.</li>
+<li><strong>Integrated observability stack</strong>: get all the info you need to develop end-to-end tests: metrics, logs, traces, profiles.</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="getting-started"><a class="header" href="#getting-started">Getting started</a></h1>
 <p>To start writing tests create a directory for your project with <code>go.mod</code> and pull the framework</p>
@@ -212,10 +217,7 @@ mv ~/go/bin/cmd ~/go/bin/ctf
 <p>Create an <code>.envrc</code> file and put common parameters there (you can use <a href="https://direnv.net/">direnv</a> to sync them more easily)</p>
 <pre><code>export CTF_LOG_LEVEL=info
 export CTF_LOKI_STREAM=true
-export LOKI_TENANT_ID=promtail
-export LOKI_URL=http://host.docker.internal:3030/loki/api/v1/push
 export TESTCONTAINERS_RYUK_DISABLED=true
-export RESTY_DEBUG=false
 
 export CTF_CONFIGS=smoke.toml
 export PRIVATE_KEY="ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
