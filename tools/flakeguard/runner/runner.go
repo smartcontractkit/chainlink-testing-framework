@@ -124,6 +124,9 @@ func parseTestResults(datas [][]byte) ([]reports.TestResult, error) {
 				result.Outputs = append(result.Outputs, entry.Output)
 			case "fail":
 				result.PassRatio = (result.PassRatio * float64(result.Runs-1)) / float64(result.Runs)
+			case "skip":
+				result.Skipped = true
+				result.Runs++
 			}
 		}
 
