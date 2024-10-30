@@ -30,7 +30,7 @@ var FindTestsCmd = &cobra.Command{
 		// Find all changes in test files and get their package names
 		var changedTestPkgs []string
 		if findByTestFilesDiff {
-			changedTestFiles, err := git.FindChangedFiles(baseRef, "grep '_test\\.go$'", excludes)
+			changedTestFiles, err := git.FindChangedFiles(projectPath, baseRef, "grep '_test\\.go$'")
 			if err != nil {
 				log.Fatalf("Error finding changed test files: %v", err)
 			}
