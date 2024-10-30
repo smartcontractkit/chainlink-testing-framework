@@ -1,4 +1,4 @@
-# NodeSet environmnet
+# Chainlink Cluster (NodeSet) Environment Test
 
 Create a configuration file `smoke.toml`
 ```toml

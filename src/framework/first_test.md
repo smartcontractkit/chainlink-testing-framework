@@ -13,7 +13,7 @@ Create your configuration in `smoke.toml`
   type = "anvil"
 ```
 
-Create your test in `smoke.go`
+Create your test in `smoke_test.go`
 ```golang
 package mymodule_test
 

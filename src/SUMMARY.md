@@ -10,6 +10,7 @@
     - [Getting Started](./framework/getting_started.md)
     - [First Test](./framework/first_test.md)
     - [Connecting Chainlink Node](./framework/connecting_chainlink_node.md)
+    - [Connecting Chainlink Node (Multiple networks)]()
     - [Basic NodeSet Environment](./framework/basic_environment.md)
     - [CLI](./framework/cli.md)
     - [Components](framework/components/overview.md)

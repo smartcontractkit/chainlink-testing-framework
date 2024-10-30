@@ -1,4 +1,4 @@
-# Connecting Chainlink Node
+# Writing your first test
 
 The Chainlink Testing Framework (CTF) is a modular, data-driven tool that lets you explicitly define and configure various Chainlink components.
 
