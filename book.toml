@@ -12,6 +12,4 @@ build-dir = "docs"
 default-theme = "ayu"
 
 [preprocessor.alerts]
-
-#[preprocessor.commit]
-#command = "python preprocessors/commit.py"
+[preprocessor.cmdrun]

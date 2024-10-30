@@ -1,6 +1,5 @@
 # Intro
 
-
 The Chainlink Testing Framework (CTF) is a blockchain development framework written in Go. 
 
 Its primary purpose is to help chainlink developers create extensive integration, e2e, performance, and chaos tests to ensure the stability of the chainlink project.
