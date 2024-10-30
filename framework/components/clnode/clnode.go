@@ -208,6 +208,9 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 			FileMode:          0644,
 		},
 	}
+	if in.Node.CapabilityContainerDir == "" {
+		in.Node.CapabilityContainerDir = "/home/capabilities"
+	}
 	for _, cp := range in.Node.CapabilitiesBinaryPaths {
 		cpPath := filepath.Base(cp)
 		framework.L.Info().Any("Path", cpPath).Str("Binary", cpPath).Msg("Copying capability binary")

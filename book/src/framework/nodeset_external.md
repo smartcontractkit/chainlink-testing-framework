@@ -20,7 +20,11 @@ Create a configuration file `smoke-fuji.toml`
 
 ```
 
-Set both configs: `export CTF_CONFIGS=smoke.toml,smoke-fuji.toml`
+Set both configs and replace your private key:
+```bash
+export PRIVATE_KEY=...
+export CTF_CONFIGS=smoke.toml,smoke-fuji.toml
+```
 
 Run it
 ```bash
