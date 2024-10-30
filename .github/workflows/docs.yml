@@ -17,6 +17,10 @@ jobs:
         with:
           mdbook-version: '0.4.40'
 
+      - name: Install Pre-processors
+        run: |
+          cargo install mdbook-alerts
+
       - name: Build
         working-directory: book
         run: |
