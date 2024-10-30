@@ -1,10 +1,6 @@
 # Summary
 
 - [Overview](./overview.md)
-- [Libraries](./libraries.md)
-    - [Seth](./libs/seth.md)
-    - [WASP](./libs/wasp.md)
-    - [Havoc](./libs/havoc.md)
 - [Framework](./framework/overview.md)
     - [Overview](./framework/overview.md)
     - [Getting Started](./framework/getting_started.md)
@@ -13,10 +9,21 @@
     - [Connecting Chainlink Node (Multiple networks)]()
     - [Basic NodeSet Environment](./framework/basic_environment.md)
     - [CLI](./framework/cli.md)
+    - [Configuration](./framework/configuration.md)
+    - [Observability Stack](framework/observability_stack.md)
+      - [Metrics]()
+      - [Logs](framework/logs.md)
+      - [Profiling](framework/profiling.md)
+      - [Traces]()
+      - [Debugger]()
     - [Components](framework/components/overview.md)
         - [Blockchains](framework/components/blockchains/overview.md)
             - [Anvil](framework/components/blockchains/anvil.md)
     - [Secrets](./secrets.md)
+- [Libraries](./libraries.md)
+  - [Seth](./libs/seth.md)
+  - [WASP](./libs/wasp.md)
+  - [Havoc](./libs/havoc.md)
 
 ---
 
