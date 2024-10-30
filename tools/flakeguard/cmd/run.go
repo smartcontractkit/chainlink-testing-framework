@@ -19,7 +19,6 @@ var RunTestsCmd = &cobra.Command{
 		testPackagesArg, _ := cmd.Flags().GetStringSlice("test-packages")
 		runCount, _ := cmd.Flags().GetInt("run-count")
 		useRace, _ := cmd.Flags().GetBool("race")
-		failFast, _ := cmd.Flags().GetBool("fail-fast")
 		outputPath, _ := cmd.Flags().GetString("output-json")
 		threshold, _ := cmd.Flags().GetFloat64("threshold")
 
@@ -38,7 +37,7 @@ var RunTestsCmd = &cobra.Command{
 			Verbose:  true,
 			RunCount: runCount,
 			UseRace:  useRace,
-			FailFast: failFast,
+			FailFast: threshold == 1.0, // Fail test on first test run if threshold is 1.0
 		}
 
 		testResults, err := runner.RunTests(testPackages)
