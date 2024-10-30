@@ -1,9 +1,6 @@
 # Connecting Chainlink Node
 
-The Chainlink Testing Framework (CTF) is a modular, data-driven tool that lets you explicitly define and configure various Chainlink components.
-
-Let's spin up a simple component.
-
+Now let's have an example of Chainlink node connected to some local blockchain.
 
 Create your configuration in `smoke.toml`
 ```toml

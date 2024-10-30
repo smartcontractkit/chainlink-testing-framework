@@ -23,7 +23,7 @@ type Output struct {
 
 
 func NewComponent(input *Input) (*Output, error) {
-	if input.Out.UseCache {
+	if input.Out != nil && input.Out.UseCache {
 		return input.Out, nil
 	}
 	
@@ -47,11 +47,11 @@ Each component can define inputs and outputs, following these rules:
 
 ### Docker components good practices for [testcontainers-go](https://golang.testcontainers.org/):
 
-An example [simple component](components/blockchain/anvil.go)
+An example [simple component](../../../../framework/components/blockchain/anvil.go)
 
-An example of [complex component](components/clnode/clnode.go)
+An example of [complex component](../../../../framework/components/clnode/clnode.go)
 
-An example of [composite component](components/node_set_extended/don.go)
+An example of [composite component](../../../../framework/components/simple_node_set/node_set.go)
 
 - Inputs should include at least `image`, `tag` and `pull_image` field
 ```

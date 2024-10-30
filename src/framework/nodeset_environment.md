@@ -1,5 +1,7 @@
 # Chainlink Node Set Environment Test
 
+Let's create a full-fledged set of Chainlink nodes connected to some blockchain.
+
 Create a configuration file `smoke.toml`
 ```toml
 [blockchain_a]
