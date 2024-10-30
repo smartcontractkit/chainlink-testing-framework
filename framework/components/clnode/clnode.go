@@ -147,7 +147,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	if in.Node.Name != "" {
 		containerName = in.Node.Name
 	} else {
-		containerName = framework.DefaultTCName("clnode")
+		containerName = framework.DefaultTCName("node")
 	}
 
 	req := tc.ContainerRequest{

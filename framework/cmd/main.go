@@ -2,7 +2,6 @@ package main
 
 import (
 	"embed"
-	"errors"
 	"fmt"
 	"github.com/pelletier/go-toml"
 	"github.com/rs/zerolog"
@@ -53,7 +52,7 @@ func main() {
 				Usage:   "Control docker containers marked with 'framework=ctf' label",
 				Subcommands: []*cli.Command{
 					{
-						Name:    "clean",
+						Name:    "remove",
 						Aliases: []string{"rm"},
 						Usage:   "Remove Docker containers and networks with 'framework=ctf' label",
 						Action: func(c *cli.Context) error {
@@ -62,48 +61,6 @@ func main() {
 								return fmt.Errorf("failed to clean Docker resources: %w", err)
 							}
 							return nil
-						},
-					},
-					{
-						Name:    "build",
-						Aliases: []string{"c"},
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:    "dockerfile",
-								Aliases: []string{"f"},
-								Usage:   "Path to the Dockerfile",
-							},
-							&cli.StringFlag{
-								Name:    "context",
-								Aliases: []string{"c"},
-								Usage:   "Build context for the Docker image",
-							},
-							&cli.StringFlag{
-								Name:    "image_name",
-								Aliases: []string{"n"},
-								Usage:   "Image name",
-							},
-						},
-						Usage: "Builds you image and pushes it to a local registry",
-						UsageText: `
-Builds your image and pushes it to a local registry.
-If you don't have a registry spins it up, default registry is localhost:5050.
-It always build with one tag - "latest" and it is useful if you'd like to quickly rebuild some images
-
-Example command for Chainlink image (e2e/capabilities dir):
-ctf docker build -f ../../core/chainlink.Dockerfile -c ../.. -n chainlink
-
-You can reference this image in config as:
-localhost:5050/chainlink:latest`,
-
-						Action: func(c *cli.Context) error {
-							dockerfile := c.String("dockerfile")
-							buildContext := c.String("context")
-							imgName := c.String("image_name")
-							if dockerfile == "" || buildContext == "" || imgName == "" {
-								return errors.New(`dockerfile, build context and image name must be provided\nex.: -f ./core/chainlink.Dockerfile -c . -n chainlink`)
-							}
-							return BuildDocker(dockerfile, buildContext, imgName)
 						},
 					},
 				},
