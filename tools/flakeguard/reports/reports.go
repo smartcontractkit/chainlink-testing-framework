@@ -20,7 +20,7 @@ func FilterFailedTests(results []TestResult, threshold float64) []TestResult {
 	return failedTests
 }
 
-// FilterPassedTests returns a slice of TestResult where the tests passed (PassRatio is 1.0) and were not skipped.
+// FilterPassedTests returns a slice of TestResult where the tests passed and were not skipped.
 func FilterPassedTests(results []TestResult, threshold float64) []TestResult {
 	var passedTests []TestResult
 	for _, result := range results {
