@@ -59,7 +59,7 @@ make stop
 ```
 
 ## Test Layout and examples
-Check [examples](examples/README.md) to understand what is the easiest way to structure your tests, run them both locally and remotely, at scale, inside `k8s`
+Check [examples](../../../wasp/examples/README.md) to understand what is the easiest way to structure your tests, run them both locally and remotely, at scale, inside `k8s`
 
 ## Run pyroscope test
 ```bash
@@ -73,9 +73,9 @@ Open [pyroscope](http://localhost:4040/)
 You can also use `trace.out` in the root folder with `Go` default tracing UI
 
 ## How it works
-![img.png](images/how-it-works.png)
+![img.png](../../../wasp/images/how-it-works.png)
 
-Check this [doc](./HOW_IT_WORKS.md) for more examples and project overview
+Check this [doc](../../../wasp/HOW_IT_WORKS.md) for more examples and project overview
 
 ## Loki debug
 You can check all the messages the tool sends with env var `WASP_LOG_LEVEL=trace`
@@ -111,7 +111,7 @@ Try to increase `MaxStreams` even more or check your `Loki` configuration
 
 ## WASP Dashboard
 
-Basic [dashboard](dashboard/dashboard.go):
+Basic [dashboard](../../../wasp/dashboard/dashboard.go):
 
 ![dashboard_img](./images/dashboard_basic.png)
 
