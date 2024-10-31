@@ -31,6 +31,7 @@ contract NetworkDebugContract {
     event ThreeIndexEvent(uint256 indexed roundId, address indexed startedBy, uint256 indexed startedAt);
     event ThreeIndexAndOneNonIndexedEvent(uint256 indexed roundId, address indexed startedBy, uint256 indexed startedAt, string dataId);
     event CallbackEvent(int256 indexed a);
+    event UniqueDebugEvent();
 
     /* Struct events */
 
@@ -111,6 +112,11 @@ contract NetworkDebugContract {
         subContract.trace(x, y);
         emit TwoIndexEvent(uint256(y), address(msg.sender));
         return x + y;
+    }
+
+    function traceNestedEvents() public {
+        subContract.traceUniqueEvent();
+        emit UniqueDebugEvent();
     }
 
     /* Events */

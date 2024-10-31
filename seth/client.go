@@ -1222,25 +1222,29 @@ func (t TransactionLog) GetData() []byte {
 	return t.Data
 }
 
-func (m *Client) decodeContractLogs(l zerolog.Logger, logs []types.Log, a abi.ABI) ([]DecodedTransactionLog, error) {
-	l.Trace().Msg("Decoding events")
+func (m *Client) decodeContractLogs(l zerolog.Logger, logs []types.Log, allABIs []*abi.ABI) ([]DecodedTransactionLog, error) {
+	l.Trace().Msg("Decoding ALL events")
 	var eventsParsed []DecodedTransactionLog
 	for _, lo := range logs {
-		for _, evSpec := range a.Events {
-			if evSpec.ID.Hex() == lo.Topics[0].Hex() {
-				d := TransactionLog{lo.Topics, lo.Data}
-				l.Trace().Str("Name", evSpec.RawName).Str("Signature", evSpec.Sig).Msg("Unpacking event")
-				eventsMap, topicsMap, err := decodeEventFromLog(l, a, evSpec, d)
-				if err != nil {
-					return nil, errors.Wrap(err, ErrDecodeLog)
-				}
-				parsedEvent := decodedLogFromMaps(&DecodedTransactionLog{}, eventsMap, topicsMap)
-				if decodedTransactionLog, ok := parsedEvent.(*DecodedTransactionLog); ok {
-					decodedTransactionLog.Signature = evSpec.Sig
-					m.mergeLogMeta(decodedTransactionLog, lo)
-					eventsParsed = append(eventsParsed, *decodedTransactionLog)
-					l.Trace().Interface("Log", parsedEvent).Msg("Transaction log")
-				} else {
+	ABI_LOOP:
+		for _, a := range allABIs {
+			for _, evSpec := range a.Events {
+				if evSpec.ID.Hex() == lo.Topics[0].Hex() {
+					d := TransactionLog{lo.Topics, lo.Data}
+					l.Trace().Str("Name", evSpec.RawName).Str("Signature", evSpec.Sig).Msg("Unpacking event")
+					eventsMap, topicsMap, err := decodeEventFromLog(l, *a, evSpec, d)
+					if err != nil {
+						return nil, errors.Wrap(err, ErrDecodeLog)
+					}
+					parsedEvent := decodedLogFromMaps(&DecodedTransactionLog{}, eventsMap, topicsMap)
+					decodedTransactionLog, ok := parsedEvent.(*DecodedTransactionLog)
+					if ok {
+						decodedTransactionLog.Signature = evSpec.Sig
+						m.mergeLogMeta(decodedTransactionLog, lo)
+						eventsParsed = append(eventsParsed, *decodedTransactionLog)
+						l.Trace().Interface("Log", parsedEvent).Msg("Transaction log")
+						break ABI_LOOP
+					}
 					l.Trace().
 						Str("Actual type", fmt.Sprintf("%T", decodedTransactionLog)).
 						Msg("Failed to cast decoded event to DecodedCommonLog")

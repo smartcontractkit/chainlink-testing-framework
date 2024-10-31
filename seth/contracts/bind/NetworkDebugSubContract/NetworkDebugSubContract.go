@@ -1,7 +1,7 @@
 // Code generated - DO NOT EDIT.
 // This file is a generated binding and any manual changes will be lost.
 
-package network_debug_sub_contract
+package NetworkDebugSubContract
 
 import (
 	"errors"
@@ -38,8 +38,8 @@ type NetworkDebugSubContractAccount struct {
 
 // NetworkDebugSubContractMetaData contains all meta data concerning the NetworkDebugSubContract contract.
 var NetworkDebugSubContractMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"available\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"required\",\"type\":\"uint256\"}],\"name\":\"CustomErr\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"NoIndexEvent\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"str\",\"type\":\"string\"}],\"name\":\"NoIndexEventString\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"components\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"uint64\",\"name\":\"balance\",\"type\":\"uint64\"},{\"internalType\":\"uint256\",\"name\":\"dailyLimit\",\"type\":\"uint256\"}],\"indexed\":false,\"internalType\":\"structNetworkDebugSubContract.Account\",\"name\":\"a\",\"type\":\"tuple\"}],\"name\":\"NoIndexStructEvent\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"a\",\"type\":\"uint256\"}],\"name\":\"OneIndexEvent\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"roundId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"startedBy\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"startedAt\",\"type\":\"uint256\"}],\"name\":\"ThreeIndexEvent\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"roundId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"startedBy\",\"type\":\"address\"}],\"name\":\"TwoIndexEvent\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"x\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"y\",\"type\":\"uint256\"}],\"name\":\"alwaysRevertsCustomError\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"pay\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"x\",\"type\":\"int256\"},{\"internalType\":\"int256\",\"name\":\"y\",\"type\":\"int256\"}],\"name\":\"trace\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"x\",\"type\":\"int256\"}],\"name\":\"traceOneInt\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"r\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"x\",\"type\":\"int256\"},{\"internalType\":\"int256\",\"name\":\"y\",\"type\":\"int256\"}],\"name\":\"traceWithCallback\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
-	Bin: "0x608060405234801561001057600080fd5b506105f4806100206000396000f3fe60806040526004361061004a5760003560e01c8063047c44251461004f57806311abb0021461008c5780631b9265b8146100b55780633e41f135146100bf578063fa8fca7a146100fc575b600080fd5b34801561005b57600080fd5b5061007660048036038101906100719190610368565b610139565b60405161008391906103a4565b60405180910390f35b34801561009857600080fd5b506100b360048036038101906100ae91906103f5565b610186565b005b6100bd6101c5565b005b3480156100cb57600080fd5b506100e660048036038101906100e19190610435565b6101c7565b6040516100f391906103a4565b60405180910390f35b34801561010857600080fd5b50610123600480360381019061011e9190610435565b610230565b60405161013091906103a4565b60405180910390f35b60007f33bc9bae48dbe1e057f264b3fc6a1dacdcceacb3ba28d937231c70e068a02f1c3360405161016a91906104b6565b60405180910390a160038261017f9190610500565b9050919050565b81816040517f4a2eaf7e0000000000000000000000000000000000000000000000000000000081526004016101bc929190610553565b60405180910390fd5b565b60006002826101d69190610500565b91503373ffffffffffffffffffffffffffffffffffffffff16827f33b47a1cd66813164ec00800d74296f57415217c22505ee380594a712936a0b560405160405180910390a381836102289190610500565b905092915050565b60003373ffffffffffffffffffffffffffffffffffffffff16827f33b47a1cd66813164ec00800d74296f57415217c22505ee380594a712936a0b560405160405180910390a360003373ffffffffffffffffffffffffffffffffffffffff1663fbcb8d07846040518263ffffffff1660e01b81526004016102b191906103a4565b6020604051808303816000875af11580156102d0573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906102f49190610591565b9050807feace1be0b97ec11f959499c07b9f60f0cc47bf610b28fda8fb0e970339cf3b3560405160405180910390a28091505092915050565b600080fd5b6000819050919050565b61034581610332565b811461035057600080fd5b50565b6000813590506103628161033c565b92915050565b60006020828403121561037e5761037d61032d565b5b600061038c84828501610353565b91505092915050565b61039e81610332565b82525050565b60006020820190506103b96000830184610395565b92915050565b6000819050919050565b6103d2816103bf565b81146103dd57600080fd5b50565b6000813590506103ef816103c9565b92915050565b6000806040838503121561040c5761040b61032d565b5b600061041a858286016103e0565b925050602061042b858286016103e0565b9150509250929050565b6000806040838503121561044c5761044b61032d565b5b600061045a85828601610353565b925050602061046b85828601610353565b9150509250929050565b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b60006104a082610475565b9050919050565b6104b081610495565b82525050565b60006020820190506104cb60008301846104a7565b92915050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b600061050b82610332565b915061051683610332565b92508282019050828112156000831216838212600084121516171561053e5761053d6104d1565b5b92915050565b61054d816103bf565b82525050565b60006040820190506105686000830185610544565b6105756020830184610544565b9392505050565b60008151905061058b8161033c565b92915050565b6000602082840312156105a7576105a661032d565b5b60006105b58482850161057c565b9150509291505056fea2646970667358221220baf1ca0ebe5c3f70cf36de50eba34b796fa2141e3773a505c3199b335b0023c564736f6c63430008130033",
+	ABI: "[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"available\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"required\",\"type\":\"uint256\"}],\"name\":\"CustomErr\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"NoIndexEvent\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"str\",\"type\":\"string\"}],\"name\":\"NoIndexEventString\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"components\":[{\"internalType\":\"string\",\"name\":\"name\",\"type\":\"string\"},{\"internalType\":\"uint64\",\"name\":\"balance\",\"type\":\"uint64\"},{\"internalType\":\"uint256\",\"name\":\"dailyLimit\",\"type\":\"uint256\"}],\"indexed\":false,\"internalType\":\"structNetworkDebugSubContract.Account\",\"name\":\"a\",\"type\":\"tuple\"}],\"name\":\"NoIndexStructEvent\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"a\",\"type\":\"uint256\"}],\"name\":\"OneIndexEvent\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"roundId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"startedBy\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"startedAt\",\"type\":\"uint256\"}],\"name\":\"ThreeIndexEvent\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"roundId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"startedBy\",\"type\":\"address\"}],\"name\":\"TwoIndexEvent\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[],\"name\":\"UniqueSubDebugEvent\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"x\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"y\",\"type\":\"uint256\"}],\"name\":\"alwaysRevertsCustomError\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"pay\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"x\",\"type\":\"int256\"},{\"internalType\":\"int256\",\"name\":\"y\",\"type\":\"int256\"}],\"name\":\"trace\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"x\",\"type\":\"int256\"}],\"name\":\"traceOneInt\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"r\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"traceUniqueEvent\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"int256\",\"name\":\"x\",\"type\":\"int256\"},{\"internalType\":\"int256\",\"name\":\"y\",\"type\":\"int256\"}],\"name\":\"traceWithCallback\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	Bin: "0x608060405234801561001057600080fd5b50610644806100206000396000f3fe6080604052600436106100555760003560e01c8063047c44251461005a57806311abb002146100975780631b9265b8146100c05780632d948d89146100ca5780633e41f135146100e1578063fa8fca7a1461011e575b600080fd5b34801561006657600080fd5b50610081600480360381019061007c91906103b8565b61015b565b60405161008e91906103f4565b60405180910390f35b3480156100a357600080fd5b506100be60048036038101906100b99190610445565b6101a8565b005b6100c86101e7565b005b3480156100d657600080fd5b506100df6101e9565b005b3480156100ed57600080fd5b5061010860048036038101906101039190610485565b610217565b60405161011591906103f4565b60405180910390f35b34801561012a57600080fd5b5061014560048036038101906101409190610485565b610280565b60405161015291906103f4565b60405180910390f35b60007f33bc9bae48dbe1e057f264b3fc6a1dacdcceacb3ba28d937231c70e068a02f1c3360405161018c9190610506565b60405180910390a16003826101a19190610550565b9050919050565b81816040517f4a2eaf7e0000000000000000000000000000000000000000000000000000000081526004016101de9291906105a3565b60405180910390fd5b565b7fe0b03c5e88196d907268b0babc690e041bdc7fcc1abf4bbf1e363e28c17e6b9b60405160405180910390a1565b60006002826102269190610550565b91503373ffffffffffffffffffffffffffffffffffffffff16827f33b47a1cd66813164ec00800d74296f57415217c22505ee380594a712936a0b560405160405180910390a381836102789190610550565b905092915050565b60003373ffffffffffffffffffffffffffffffffffffffff16827f33b47a1cd66813164ec00800d74296f57415217c22505ee380594a712936a0b560405160405180910390a360003373ffffffffffffffffffffffffffffffffffffffff1663fbcb8d07846040518263ffffffff1660e01b815260040161030191906103f4565b6020604051808303816000875af1158015610320573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061034491906105e1565b9050807feace1be0b97ec11f959499c07b9f60f0cc47bf610b28fda8fb0e970339cf3b3560405160405180910390a28091505092915050565b600080fd5b6000819050919050565b61039581610382565b81146103a057600080fd5b50565b6000813590506103b28161038c565b92915050565b6000602082840312156103ce576103cd61037d565b5b60006103dc848285016103a3565b91505092915050565b6103ee81610382565b82525050565b600060208201905061040960008301846103e5565b92915050565b6000819050919050565b6104228161040f565b811461042d57600080fd5b50565b60008135905061043f81610419565b92915050565b6000806040838503121561045c5761045b61037d565b5b600061046a85828601610430565b925050602061047b85828601610430565b9150509250929050565b6000806040838503121561049c5761049b61037d565b5b60006104aa858286016103a3565b92505060206104bb858286016103a3565b9150509250929050565b600073ffffffffffffffffffffffffffffffffffffffff82169050919050565b60006104f0826104c5565b9050919050565b610500816104e5565b82525050565b600060208201905061051b60008301846104f7565b92915050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b600061055b82610382565b915061056683610382565b92508282019050828112156000831216838212600084121516171561058e5761058d610521565b5b92915050565b61059d8161040f565b82525050565b60006040820190506105b86000830185610594565b6105c56020830184610594565b9392505050565b6000815190506105db8161038c565b92915050565b6000602082840312156105f7576105f661037d565b5b6000610605848285016105cc565b9150509291505056fea26469706673582212205f29e7a2fe3b977e48321d06e8e10c9329a7347f657a04085ae8411d96cf98b664736f6c63430008130033",
 }
 
 // NetworkDebugSubContractABI is the input ABI used to generate the binding from.
@@ -291,6 +291,27 @@ func (_NetworkDebugSubContract *NetworkDebugSubContractSession) TraceOneInt(x *b
 // Solidity: function traceOneInt(int256 x) returns(int256 r)
 func (_NetworkDebugSubContract *NetworkDebugSubContractTransactorSession) TraceOneInt(x *big.Int) (*types.Transaction, error) {
 	return _NetworkDebugSubContract.Contract.TraceOneInt(&_NetworkDebugSubContract.TransactOpts, x)
+}
+
+// TraceUniqueEvent is a paid mutator transaction binding the contract method 0x2d948d89.
+//
+// Solidity: function traceUniqueEvent() returns()
+func (_NetworkDebugSubContract *NetworkDebugSubContractTransactor) TraceUniqueEvent(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _NetworkDebugSubContract.contract.Transact(opts, "traceUniqueEvent")
+}
+
+// TraceUniqueEvent is a paid mutator transaction binding the contract method 0x2d948d89.
+//
+// Solidity: function traceUniqueEvent() returns()
+func (_NetworkDebugSubContract *NetworkDebugSubContractSession) TraceUniqueEvent() (*types.Transaction, error) {
+	return _NetworkDebugSubContract.Contract.TraceUniqueEvent(&_NetworkDebugSubContract.TransactOpts)
+}
+
+// TraceUniqueEvent is a paid mutator transaction binding the contract method 0x2d948d89.
+//
+// Solidity: function traceUniqueEvent() returns()
+func (_NetworkDebugSubContract *NetworkDebugSubContractTransactorSession) TraceUniqueEvent() (*types.Transaction, error) {
+	return _NetworkDebugSubContract.Contract.TraceUniqueEvent(&_NetworkDebugSubContract.TransactOpts)
 }
 
 // TraceWithCallback is a paid mutator transaction binding the contract method 0xfa8fca7a.
@@ -1161,6 +1182,139 @@ func (_NetworkDebugSubContract *NetworkDebugSubContractFilterer) WatchTwoIndexEv
 func (_NetworkDebugSubContract *NetworkDebugSubContractFilterer) ParseTwoIndexEvent(log types.Log) (*NetworkDebugSubContractTwoIndexEvent, error) {
 	event := new(NetworkDebugSubContractTwoIndexEvent)
 	if err := _NetworkDebugSubContract.contract.UnpackLog(event, "TwoIndexEvent", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// NetworkDebugSubContractUniqueSubDebugEventIterator is returned from FilterUniqueSubDebugEvent and is used to iterate over the raw logs and unpacked data for UniqueSubDebugEvent events raised by the NetworkDebugSubContract contract.
+type NetworkDebugSubContractUniqueSubDebugEventIterator struct {
+	Event *NetworkDebugSubContractUniqueSubDebugEvent // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *NetworkDebugSubContractUniqueSubDebugEventIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(NetworkDebugSubContractUniqueSubDebugEvent)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(NetworkDebugSubContractUniqueSubDebugEvent)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *NetworkDebugSubContractUniqueSubDebugEventIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *NetworkDebugSubContractUniqueSubDebugEventIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// NetworkDebugSubContractUniqueSubDebugEvent represents a UniqueSubDebugEvent event raised by the NetworkDebugSubContract contract.
+type NetworkDebugSubContractUniqueSubDebugEvent struct {
+	Raw types.Log // Blockchain specific contextual infos
+}
+
+// FilterUniqueSubDebugEvent is a free log retrieval operation binding the contract event 0xe0b03c5e88196d907268b0babc690e041bdc7fcc1abf4bbf1e363e28c17e6b9b.
+//
+// Solidity: event UniqueSubDebugEvent()
+func (_NetworkDebugSubContract *NetworkDebugSubContractFilterer) FilterUniqueSubDebugEvent(opts *bind.FilterOpts) (*NetworkDebugSubContractUniqueSubDebugEventIterator, error) {
+
+	logs, sub, err := _NetworkDebugSubContract.contract.FilterLogs(opts, "UniqueSubDebugEvent")
+	if err != nil {
+		return nil, err
+	}
+	return &NetworkDebugSubContractUniqueSubDebugEventIterator{contract: _NetworkDebugSubContract.contract, event: "UniqueSubDebugEvent", logs: logs, sub: sub}, nil
+}
+
+// WatchUniqueSubDebugEvent is a free log subscription operation binding the contract event 0xe0b03c5e88196d907268b0babc690e041bdc7fcc1abf4bbf1e363e28c17e6b9b.
+//
+// Solidity: event UniqueSubDebugEvent()
+func (_NetworkDebugSubContract *NetworkDebugSubContractFilterer) WatchUniqueSubDebugEvent(opts *bind.WatchOpts, sink chan<- *NetworkDebugSubContractUniqueSubDebugEvent) (event.Subscription, error) {
+
+	logs, sub, err := _NetworkDebugSubContract.contract.WatchLogs(opts, "UniqueSubDebugEvent")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(NetworkDebugSubContractUniqueSubDebugEvent)
+				if err := _NetworkDebugSubContract.contract.UnpackLog(event, "UniqueSubDebugEvent", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseUniqueSubDebugEvent is a log parse operation binding the contract event 0xe0b03c5e88196d907268b0babc690e041bdc7fcc1abf4bbf1e363e28c17e6b9b.
+//
+// Solidity: event UniqueSubDebugEvent()
+func (_NetworkDebugSubContract *NetworkDebugSubContractFilterer) ParseUniqueSubDebugEvent(log types.Log) (*NetworkDebugSubContractUniqueSubDebugEvent, error) {
+	event := new(NetworkDebugSubContractUniqueSubDebugEvent)
+	if err := _NetworkDebugSubContract.contract.UnpackLog(event, "UniqueSubDebugEvent", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log

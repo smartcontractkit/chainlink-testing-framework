@@ -603,7 +603,7 @@ func (t *Tracer) SaveDecodedCallsAsJson(dirname string) error {
 }
 
 func (t *Tracer) decodeContractLogs(l zerolog.Logger, logs []TraceLog, a abi.ABI) ([]DecodedCommonLog, error) {
-	l.Trace().Msg("Decoding events")
+	l.Trace().Msg("Decoding ALL events")
 	var eventsParsed []DecodedCommonLog
 	for _, lo := range logs {
 		for _, evSpec := range a.Events {

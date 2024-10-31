@@ -425,7 +425,15 @@ func (m *Client) decodeTransaction(l zerolog.Logger, tx *types.Transaction, rece
 		for _, l := range receipt.Logs {
 			logsValues = append(logsValues, *l)
 		}
-		txEvents, err = m.decodeContractLogs(l, logsValues, abiResult.ABI)
+
+		var allABIs []*abi.ABI
+		if m.ContractStore == nil {
+			allABIs = append(allABIs, &abiResult.ABI)
+		} else {
+			allABIs = m.ContractStore.GetAllABIs()
+		}
+
+		txEvents, err = m.decodeContractLogs(l, logsValues, allABIs)
 		if err != nil {
 			return defaultTxn, err
 		}
