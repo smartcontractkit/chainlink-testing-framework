@@ -183,8 +183,8 @@ func TestUtilPendingNonce(t *testing.T) {
 					seth.L.Debug().Msgf("Starting tx %d", index)
 
 					opts := c.NewTXOpts()
-					nonceToUse := int64(getNonceAndIncrement())
-					opts.Nonce = big.NewInt(nonceToUse)
+					nonceToUse := getNonceAndIncrement()
+					opts.Nonce = new(big.Int).SetUint64(nonceToUse)
 					defer seth.L.Debug().Msgf("Finished tx %d with nonce %d", index, nonceToUse)
 
 					_, _, _, err := network_sub_contract.DeployNetworkDebugSubContract(opts, c.Client)
@@ -193,7 +193,7 @@ func TestUtilPendingNonce(t *testing.T) {
 					if index == 50 {
 						started <- struct{}{}
 					}
-					nonceCh <- uint64(nonceToUse)
+					nonceCh <- nonceToUse
 				}(i)
 			}
 		}()
@@ -205,7 +205,7 @@ func TestUtilPendingNonce(t *testing.T) {
 		pendingNonce, err := c.Client.PendingNonceAt(context.Background(), c.Addresses[testCase.keyNum])
 		require.NoError(t, err, "Error getting pending nonce")
 
-		require.Greater(t, int64(pendingNonce), int64(lastNonce), "Pending nonce should be greater than last nonce")
+		require.Greater(t, pendingNonce, lastNonce, "Pending nonce should be greater than last nonce")
 
 		if testCase.keyNum == 0 {
 			err = c.WaitUntilNoPendingTxForRootKey(testCase.timeout)

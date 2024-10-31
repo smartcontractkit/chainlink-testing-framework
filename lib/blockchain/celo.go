@@ -83,7 +83,7 @@ func (e *CeloClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOpts, 
 	if err != nil {
 		return nil, err
 	}
-	opts.Nonce = big.NewInt(int64(nonce))
+	opts.Nonce = new(big.Int).SetUint64(nonce)
 
 	gasPrice, err := e.Client.SuggestGasPrice(context.Background())
 	if err != nil {
