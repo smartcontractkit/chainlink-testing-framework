@@ -49,11 +49,11 @@ Each component can define inputs and outputs, following these rules:
 
 ### Docker components good practices for [testcontainers-go](https://golang.testcontainers.org/):
 
-An example [simple component](../../../../framework/components/blockchain/anvil.go)
+An example [simple component](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/components/blockchain/anvil.go)
 
-An example of [complex component](../../../../framework/components/clnode/clnode.go)
+An example of [complex component](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/components/clnode/clnode.go)
 
-An example of [composite component](../../../../framework/components/simple_node_set/node_set.go)
+An example of [composite component](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/components/simple_node_set/node_set.go)
 
 - Inputs should include at least `image`, `tag` and `pull_image` field
 ```golang
