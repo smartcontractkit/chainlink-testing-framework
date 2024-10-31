@@ -20,7 +20,7 @@ The Chainlink Testing Framework (CTF) is a blockchain development framework writ
 
 If you're looking to implement a new chain integration for the testing framework, head over to the [blockchain](./blockchain/) directory for more info.
 
-[![Documentation](https://img.shields.io/badge/Documentation-GitHub_Pages-blue?style=for-the-badge)](https://michaelcurrin.github.io/mdbook-quickstart/)
+[![Documentation](https://img.shields.io/badge/Documentation-MDBook-blue?style=for-the-badge)](https://smartcontractkit.github.io/chainlink-testing-framework/overview.html)
 
 
 # Content
