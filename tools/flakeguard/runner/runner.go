@@ -14,11 +14,12 @@ import (
 )
 
 type Runner struct {
-	ProjectPath string // Path to the Go project directory.
-	Verbose     bool   // If true, provides detailed logging.
-	RunCount    int    // Number of times to run the tests.
-	UseRace     bool   // Enable race detector.
-	FailFast    bool   // Stop on first test failure.
+	ProjectPath string   // Path to the Go project directory.
+	Verbose     bool     // If true, provides detailed logging.
+	RunCount    int      // Number of times to run the tests.
+	UseRace     bool     // Enable race detector.
+	FailFast    bool     // Stop on first test failure.
+	SkipTests   []string // Test names to exclude.
 }
 
 // RunTests executes the tests for each provided package and aggregates all results.
@@ -53,6 +54,13 @@ func (r *Runner) runTestPackage(testPackage string) ([]byte, bool, error) {
 	if r.UseRace {
 		args = append(args, "-race")
 	}
+
+	// Construct regex pattern from ExcludedTests slice
+	if len(r.SkipTests) > 0 {
+		skipPattern := strings.Join(r.SkipTests, "|")
+		args = append(args, fmt.Sprintf("-skip=%s", skipPattern))
+	}
+
 	args = append(args, testPackage)
 
 	if r.Verbose {
@@ -61,7 +69,6 @@ func (r *Runner) runTestPackage(testPackage string) ([]byte, bool, error) {
 	cmd := exec.Command("go", args...)
 	cmd.Dir = r.ProjectPath
 
-	// cmd.Env = append(cmd.Env, "GOFLAGS=-extldflags=-Wl,-ld_classic") // Ensure modules are enabled
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
