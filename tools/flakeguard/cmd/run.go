@@ -94,5 +94,5 @@ func init() {
 	RunTestsCmd.Flags().Bool("fail-fast", false, "Stop on the first test failure")
 	RunTestsCmd.Flags().String("output-json", "", "Path to output the test results in JSON format")
 	RunTestsCmd.Flags().Float64("threshold", 0.8, "Threshold for considering a test as flaky")
-	RunTestsCmd.Flags().StringSlice("skip-tests", nil, "Comma-separated list of test names to exclude from running")
+	RunTestsCmd.Flags().StringSlice("skip-tests", nil, "Comma-separated list of test names to skip from running")
 }
