@@ -136,6 +136,6 @@ jobs:
           goarch: ${{ matrix.goarch }}
           binary_name: ${{ env.PACKAGE_NAME }}
           release_name: ${{ env.PACKAGE_NAME }}
-          release_tag: ${{ env.PACKAGE_NAME}}-${{ env.VERSION }}
+          release_tag: ${{ env.PACKAGE_NAME}}/${{ env.VERSION }}
           project_path: ${{ env.PACKAGE_NAME }}/cmd
           asset_name: ${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.goarch }}
