@@ -1,5 +1,12 @@
 # TOML Config
 
+<div class="warning">
+
+This documentation is deprecated, we are using it in [Chainlink Integration Tests](https://github.com/smartcontractkit/chainlink/tree/develop/integration-tests)
+
+If you want to test our new products use [v2](../framework/overview.md)
+</div>
+
 These basic building blocks can be used to create a TOML config file. For example:
 
 ```golang

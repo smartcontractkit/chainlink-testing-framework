@@ -1,11 +1,11 @@
 # Kubernetes
 
+
 <div class="warning">
 
 Managing k8s is challenging, so we've decided to separate `k8s` deployments here - [CRIB](https://github.com/smartcontractkit/crib)
 
 This documentation is outdated, and we are using it only internally to run our soak tests. For `v2` tests please check [this example](../crib.md) and read [CRIB docs](https://github.com/smartcontractkit/crib)
-
 </div>
 
 We run our software in Kubernetes.

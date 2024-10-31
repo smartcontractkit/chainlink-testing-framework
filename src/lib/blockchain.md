@@ -1,5 +1,12 @@
 # Blockchain Clients
 
+<div class="warning">
+
+This documentation is deprecated, we are using it in [Chainlink Integration Tests](https://github.com/smartcontractkit/chainlink/tree/develop/integration-tests)
+
+If you want to test our new products use [v2](../framework/overview.md)
+</div>
+
 This folder contains the bulk of code that handles integrating with different EVM chains. If you're looking to run tests on a new EVM chain, and are having issues with the default implementation, you've come to the right place.
 
 ### Some Terminology
