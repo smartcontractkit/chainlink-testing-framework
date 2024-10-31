@@ -6,6 +6,7 @@ go get github.com/smartcontractkit/chainlink-testing-framework/framework
 ```
 
 Then download the CLI (runs from directory where you have `go.mod`)
+Make sure you have your GOPATH set: `export GOPATH=$HOME/go && export PATH=$PATH:$GOPATH/bin`
 ```
 go get github.com/smartcontractkit/chainlink-testing-framework/framework/cmd && \
 go install github.com/smartcontractkit/chainlink-testing-framework/framework/cmd && \

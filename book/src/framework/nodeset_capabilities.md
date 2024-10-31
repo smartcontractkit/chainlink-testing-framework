@@ -16,8 +16,6 @@ Create a configuration file `smoke.toml`
   port = "8545"
   type = "anvil"
 
-[contracts]
-
 [data_provider]
   port = 9111
 

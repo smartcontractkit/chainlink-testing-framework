@@ -14,6 +14,7 @@
     - [CLI](./framework/cli.md)
     - [Configuration](./framework/configuration.md)
     - [Test Configuration](./framework/test_configuration_overrides.md)
+    - [Caching](framework/components/caching.md)
     - [Secrets]()
     - [Observability Stack](framework/observability/observability_stack.md)
       - [Metrics]()
