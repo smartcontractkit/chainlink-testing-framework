@@ -9,9 +9,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/seth"
-	network_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/debug"
+	network_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/NetworkDebugContract"
+	network_sub_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/NetworkDebugSubContract"
 	link_token "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/link"
-	network_sub_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/sub"
 )
 
 func init() {

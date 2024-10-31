@@ -15,13 +15,14 @@ var RunTestsCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run tests to check if they are flaky",
 	Run: func(cmd *cobra.Command, args []string) {
+		projectPath, _ := cmd.Flags().GetString("project-path")
 		testPackagesJson, _ := cmd.Flags().GetString("test-packages-json")
 		testPackagesArg, _ := cmd.Flags().GetStringSlice("test-packages")
 		runCount, _ := cmd.Flags().GetInt("run-count")
 		useRace, _ := cmd.Flags().GetBool("race")
-		failFast, _ := cmd.Flags().GetBool("fail-fast")
 		outputPath, _ := cmd.Flags().GetString("output-json")
 		threshold, _ := cmd.Flags().GetFloat64("threshold")
+		skipTests, _ := cmd.Flags().GetStringSlice("skip-tests")
 
 		var testPackages []string
 		if testPackagesJson != "" {
@@ -35,10 +36,12 @@ var RunTestsCmd = &cobra.Command{
 		}
 
 		runner := runner.Runner{
-			Verbose:  true,
-			RunCount: runCount,
-			UseRace:  useRace,
-			FailFast: failFast,
+			ProjectPath: projectPath,
+			Verbose:     true,
+			RunCount:    runCount,
+			UseRace:     useRace,
+			FailFast:    threshold == 1.0, // Fail test on first test run if threshold is 1.0
+			SkipTests:   skipTests,
 		}
 
 		testResults, err := runner.RunTests(testPackages)
@@ -47,15 +50,19 @@ var RunTestsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		// Filter out failed tests based on the threshold
+		passedTests := reports.FilterPassedTests(testResults, threshold)
 		failedTests := reports.FilterFailedTests(testResults, threshold)
+		skippedTests := reports.FilterSkippedTests(testResults)
+
 		if len(failedTests) > 0 {
 			jsonData, err := json.MarshalIndent(failedTests, "", "  ")
 			if err != nil {
 				log.Fatalf("Error marshaling test results to JSON: %v", err)
 			}
-			fmt.Printf("Threshold for flaky tests: %.2f\n%d failed tests:\n%s\n", threshold, len(failedTests), string(jsonData))
+			fmt.Printf("PassRatio threshold for flaky tests: %.2f\n%d failed tests:\n%s\n", threshold, len(failedTests), string(jsonData))
 		}
+
+		fmt.Printf("Summary: %d passed, %d skipped, %d failed\n", len(passedTests), len(skippedTests), len(failedTests))
 
 		// Save the test results in JSON format
 		if outputPath != "" && len(testResults) > 0 {
@@ -70,16 +77,16 @@ var RunTestsCmd = &cobra.Command{
 		}
 
 		if len(failedTests) > 0 {
+			// Fail if any tests failed
 			os.Exit(1)
 		} else if len(testResults) == 0 {
 			fmt.Printf("No tests were run for the specified packages.\n")
-		} else {
-			fmt.Printf("All %d tests passed.\n", len(testResults))
 		}
 	},
 }
 
 func init() {
+	RunTestsCmd.Flags().StringP("project-path", "r", ".", "The path to the Go project. Default is the current directory. Useful for subprojects")
 	RunTestsCmd.Flags().String("test-packages-json", "", "JSON-encoded string of test packages")
 	RunTestsCmd.Flags().StringSlice("test-packages", nil, "Comma-separated list of test packages to run")
 	RunTestsCmd.Flags().IntP("run-count", "c", 1, "Number of times to run the tests")
@@ -87,4 +94,5 @@ func init() {
 	RunTestsCmd.Flags().Bool("fail-fast", false, "Stop on the first test failure")
 	RunTestsCmd.Flags().String("output-json", "", "Path to output the test results in JSON format")
 	RunTestsCmd.Flags().Float64("threshold", 0.8, "Threshold for considering a test as flaky")
+	RunTestsCmd.Flags().StringSlice("skip-tests", nil, "Comma-separated list of test names to skip from running")
 }
