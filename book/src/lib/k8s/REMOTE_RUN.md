@@ -1,7 +1,7 @@
 ## How to run the same environment deployment inside k8s
 
 You can build a `Dockerfile` to run exactly the same environment interactions inside k8s in case you need to run long-running tests
-Base image is [here](Dockerfile.base)
+Base image is [here](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/lib/k8s/Dockerfile.base)
 
 ```Dockerfile
 FROM <account number>.dkr.ecr.us-west-2.amazonaws.com/test-base-image:latest
