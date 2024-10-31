@@ -34,12 +34,10 @@
       - [Chainlink]()
       - [RPC]()
       - [Loki]()
-- [Continuous Integration](ci/ci.md)
 - [Libraries](./libraries.md)
   - [Seth](./libs/seth.md)
   - [WASP](./libs/wasp.md)
   - [Havoc](./libs/havoc.md)
-  - [K8s Test Runner](k8s-test-runner/k8s-test-runner.md)
 
 ---
 
@@ -47,13 +45,5 @@
   - [Components](developing/developing_components.md)
 - [Releasing modules](releasing_modules.md)
 
----
-- [Lib (*Deprecated*)](lib.md)
-    - [Blockchain](lib/blockchain.md)
-    - [Kubernetes](lib/k8s/KUBERNETES.md)
-    - [K8s Remote Run](lib/k8s/REMOTE_RUN.md)
-    - [K8s Tutorial](lib/k8s/TUTORIAL.md)
-    - [Config](lib/config/config.md)
-    - [CRIB Connector](lib/crib.md)
 ---
 - [Build info](build_info.md)
