@@ -15,6 +15,7 @@ var RunTestsCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run tests to check if they are flaky",
 	Run: func(cmd *cobra.Command, args []string) {
+		projectPath, _ := cmd.Flags().GetString("project-path")
 		testPackagesJson, _ := cmd.Flags().GetString("test-packages-json")
 		testPackagesArg, _ := cmd.Flags().GetStringSlice("test-packages")
 		runCount, _ := cmd.Flags().GetInt("run-count")
@@ -34,10 +35,11 @@ var RunTestsCmd = &cobra.Command{
 		}
 
 		runner := runner.Runner{
-			Verbose:  true,
-			RunCount: runCount,
-			UseRace:  useRace,
-			FailFast: threshold == 1.0, // Fail test on first test run if threshold is 1.0
+			ProjectPath: projectPath,
+			Verbose:     true,
+			RunCount:    runCount,
+			UseRace:     useRace,
+			FailFast:    threshold == 1.0, // Fail test on first test run if threshold is 1.0
 		}
 
 		testResults, err := runner.RunTests(testPackages)
@@ -82,6 +84,7 @@ var RunTestsCmd = &cobra.Command{
 }
 
 func init() {
+	RunTestsCmd.Flags().StringP("project-path", "r", ".", "The path to the Go project. Default is the current directory. Useful for subprojects.")
 	RunTestsCmd.Flags().String("test-packages-json", "", "JSON-encoded string of test packages")
 	RunTestsCmd.Flags().StringSlice("test-packages", nil, "Comma-separated list of test packages to run")
 	RunTestsCmd.Flags().IntP("run-count", "c", 1, "Number of times to run the tests")

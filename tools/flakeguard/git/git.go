@@ -3,6 +3,7 @@ package git
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -14,15 +15,15 @@ import (
 // FindChangedFiles executes a git diff against a specified base reference and pipes the output through a user-defined grep command or sequence.
 // The baseRef parameter specifies the base git reference for comparison (e.g., "main", "develop").
 // The filterCmd parameter should include the full command to be executed after git diff, such as "grep '_test.go$'" or "grep -v '_test.go$' | sort".
-func FindChangedFiles(baseRef, filterCmd string, excludePaths []string) ([]string, error) {
-	// Constructing the exclusion part of the git command
-	excludeStr := ""
-	for _, path := range excludePaths {
-		excludeStr += fmt.Sprintf("':(exclude)%s' ", path)
+func FindChangedFiles(rootGoModPath, baseRef, filterCmd string) ([]string, error) {
+	// Find directories containing a go.mod file and build an exclusion string
+	excludeStr, err := buildExcludeStringForGoModDirs(rootGoModPath)
+	if err != nil {
+		return nil, fmt.Errorf("error finding go.mod directories: %w", err)
 	}
 
 	// First command to list files changed between the baseRef and HEAD, excluding specified paths
-	diffCmdStr := fmt.Sprintf("git diff --name-only --diff-filter=AM %s...HEAD %s", baseRef, excludeStr)
+	diffCmdStr := fmt.Sprintf("git diff --name-only --diff-filter=AM %s...HEAD -- %s %s", baseRef, rootGoModPath, excludeStr)
 	diffCmd := exec.Command("bash", "-c", diffCmdStr)
 
 	// Using a buffer to capture stdout and a separate buffer for stderr
@@ -36,7 +37,7 @@ func FindChangedFiles(baseRef, filterCmd string, excludePaths []string) ([]strin
 		return nil, fmt.Errorf("error executing git diff command: %s; error: %w; stderr: %s", diffCmdStr, err, errBuf.String())
 	}
 
-	// Check if there are any files listed, if not, return an empty slice
+	// Check if there are any files listed; if not, return an empty slice
 	diffOutput := strings.TrimSpace(out.String())
 	if diffOutput == "" {
 		return []string{}, nil
@@ -72,6 +73,32 @@ func FindChangedFiles(baseRef, filterCmd string, excludePaths []string) ([]strin
 	}
 
 	return files, nil
+}
+
+// buildExcludeStringForGoModDirs searches the given root directory for subdirectories
+// containing a go.mod file and returns a formatted string to exclude those directories
+// (except the root directory if it contains a go.mod file) from git diff.
+func buildExcludeStringForGoModDirs(rootGoModPath string) (string, error) {
+	var excludeStr string
+
+	err := filepath.Walk(rootGoModPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.Name() == "go.mod" {
+			dir := filepath.Dir(path)
+			// Skip excluding the root directory if go.mod is found there
+			if dir != rootGoModPath {
+				excludeStr += fmt.Sprintf("':(exclude)%s/**' ", dir)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return excludeStr, nil
 }
 
 func Diff(baseBranch string) (*utils.CmdOutput, error) {
