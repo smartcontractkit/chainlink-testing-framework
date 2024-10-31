@@ -2,7 +2,7 @@
 
 To start writing tests create a directory for your project with `go.mod` and pull the framework
 ```
-go get github.com/smartcontractkit/chainlink-testing-framework/framework@ac819d889f97e0f5c04aee3212454ad1f8b6f4ef
+go get github.com/smartcontractkit/chainlink-testing-framework/framework
 ```
 
 Then download the CLI (runs from directory where you have `go.mod`)
