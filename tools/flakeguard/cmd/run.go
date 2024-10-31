@@ -22,6 +22,7 @@ var RunTestsCmd = &cobra.Command{
 		useRace, _ := cmd.Flags().GetBool("race")
 		outputPath, _ := cmd.Flags().GetString("output-json")
 		threshold, _ := cmd.Flags().GetFloat64("threshold")
+		skipTests, _ := cmd.Flags().GetStringSlice("skip-tests")
 
 		var testPackages []string
 		if testPackagesJson != "" {
@@ -40,6 +41,7 @@ var RunTestsCmd = &cobra.Command{
 			RunCount:    runCount,
 			UseRace:     useRace,
 			FailFast:    threshold == 1.0, // Fail test on first test run if threshold is 1.0
+			SkipTests:   skipTests,
 		}
 
 		testResults, err := runner.RunTests(testPackages)
@@ -84,7 +86,7 @@ var RunTestsCmd = &cobra.Command{
 }
 
 func init() {
-	RunTestsCmd.Flags().StringP("project-path", "r", ".", "The path to the Go project. Default is the current directory. Useful for subprojects.")
+	RunTestsCmd.Flags().StringP("project-path", "r", ".", "The path to the Go project. Default is the current directory. Useful for subprojects")
 	RunTestsCmd.Flags().String("test-packages-json", "", "JSON-encoded string of test packages")
 	RunTestsCmd.Flags().StringSlice("test-packages", nil, "Comma-separated list of test packages to run")
 	RunTestsCmd.Flags().IntP("run-count", "c", 1, "Number of times to run the tests")
@@ -92,4 +94,5 @@ func init() {
 	RunTestsCmd.Flags().Bool("fail-fast", false, "Stop on the first test failure")
 	RunTestsCmd.Flags().String("output-json", "", "Path to output the test results in JSON format")
 	RunTestsCmd.Flags().Float64("threshold", 0.8, "Threshold for considering a test as flaky")
+	RunTestsCmd.Flags().StringSlice("skip-tests", nil, "Comma-separated list of test names to skip from running")
 }
