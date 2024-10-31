@@ -7,17 +7,22 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
+	"os"
+	"strings"
 	"time"
+)
+
+const (
+	User      = "chainlink"
+	Password  = "thispasswordislongenough"
+	Port      = "5432"
+	Database  = "chainlink"
+	Databases = 20
 )
 
 type Input struct {
 	Image     string  `toml:"image" validate:"required"`
-	Tag       string  `toml:"tag" validate:"required"`
-	PullImage bool    `toml:"pull_image" validate:"required"`
-	User      string  `toml:"user" validate:"required"`
-	Password  string  `toml:"password" validate:"required"`
-	Database  string  `toml:"database" validate:"required"`
-	Port      string  `toml:"port" validate:"required"`
+	PullImage bool    `toml:"pull_image"`
 	Out       *Output `toml:"out"`
 }
 
@@ -29,13 +34,30 @@ type Output struct {
 func NewPostgreSQL(in *Input) (*Output, error) {
 	ctx := context.Background()
 
-	bindPort := fmt.Sprintf("%s/tcp", in.Port)
+	bindPort := fmt.Sprintf("%s/tcp", Port)
 
 	containerName := framework.DefaultTCName("postgresql")
 
+	var sqlCommands []string
+	for i := 0; i <= Databases; i++ {
+		sqlCommands = append(sqlCommands, fmt.Sprintf("CREATE DATABASE db_%d;", i))
+	}
+	sqlCommands = append(sqlCommands, "ALTER USER chainlink WITH SUPERUSER;")
+	initSQL := strings.Join(sqlCommands, "\n")
+	initFile, err := os.CreateTemp("", "init-*.sql")
+	if err != nil {
+		return nil, err
+	}
+	if _, err := initFile.WriteString(initSQL); err != nil {
+		return nil, err
+	}
+	if err := initFile.Close(); err != nil {
+		return nil, err
+	}
+
 	req := testcontainers.ContainerRequest{
 		AlwaysPullImage: in.PullImage,
-		Image:           fmt.Sprintf("%s:%s", in.Image, in.Tag),
+		Image:           fmt.Sprintf("%s", in.Image),
 		Name:            containerName,
 		Labels:          framework.DefaultTCLabels(),
 		ExposedPorts:    []string{bindPort},
@@ -44,16 +66,23 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 			framework.DefaultNetworkName: {containerName},
 		},
 		Env: map[string]string{
-			"POSTGRES_USER":     in.User,
-			"POSTGRES_PASSWORD": in.Password,
-			"POSTGRES_DB":       in.Database,
+			"POSTGRES_USER":     User,
+			"POSTGRES_PASSWORD": Password,
+			"POSTGRES_DB":       Database,
 		},
 		Cmd: []string{
-			"postgres", "-c", fmt.Sprintf("port=%s", in.Port),
+			"postgres", "-c", fmt.Sprintf("port=%s", Port),
+		},
+		Files: []testcontainers.ContainerFile{
+			{
+				HostFilePath:      initFile.Name(),
+				ContainerFilePath: "/docker-entrypoint-initdb.d/init.sql",
+				FileMode:          0644,
+			},
 		},
 		WaitingFor: tcwait.ForExec([]string{"psql", "-h", "127.0.0.1",
-			"-U", in.User, "-p", in.Port, "-c", "select", "1", "-d", in.Database}).
-			WithStartupTimeout(10 * time.Second),
+			"-U", User, "-p", Port, "-c", "select", "1", "-d", Database}).
+			WithStartupTimeout(20 * time.Second),
 	}
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
@@ -73,19 +102,19 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 	return &Output{
 		DockerInternalURL: fmt.Sprintf(
 			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
-			in.User,
-			in.Password,
+			User,
+			Password,
 			containerName,
-			in.Port,
-			in.Database,
+			Port,
+			Database,
 		),
 		Url: fmt.Sprintf(
 			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
-			in.User,
-			in.Password,
+			User,
+			Password,
 			host,
 			mp.Port(),
-			in.Database,
+			Database,
 		),
 	}, nil
 }

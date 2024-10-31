@@ -83,7 +83,7 @@ scrape_configs:
 
 	filePath := PathRoot + "/promtail-config.yml"
 
-	// Create the file where the promtailConfig will be written
+	// Create the file where the promtail config will be written
 	configFile, err := os.CreateTemp("", "promtail-config.yml")
 	if err != nil {
 		return "", fmt.Errorf("could not create promtail-config.yml file: %w", err)
@@ -92,22 +92,19 @@ scrape_configs:
 
 	tmpl, err := template.New("promtail").Parse(configTemplate)
 	if err != nil {
-		return "", fmt.Errorf("could not parse promtailConfig template: %w", err)
+		return "", fmt.Errorf("could not parse promtail config template: %w", err)
 	}
 
 	err = tmpl.Execute(configFile, secrets)
 	if err != nil {
-		return "", fmt.Errorf("could not execute promtailConfig template: %w", err)
+		return "", fmt.Errorf("could not execute promtail config template: %w", err)
 	}
 
-	fmt.Printf("Promtail promtailConfig written to %s\n", filePath)
+	fmt.Printf("Promtail config written to %s\n", filePath)
 	return configFile.Name(), nil
 }
 
 func NewLokiStreamer() error {
-	if UseCache() {
-		return nil
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
@@ -125,7 +122,7 @@ func NewLokiStreamer() error {
 	req := testcontainers.ContainerRequest{
 		Image:        "grafana/promtail:latest",
 		ExposedPorts: []string{"9080/tcp"},
-		Name:         DefaultTCName("promtail"),
+		Name:         "promtail",
 		Cmd:          cmd,
 		Labels:       DefaultTCLabels(),
 		Files: []testcontainers.ContainerFile{
@@ -154,6 +151,7 @@ func NewLokiStreamer() error {
 
 	_, err = testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
+		Reuse:            true,
 		Started:          true,
 	})
 	if err != nil {

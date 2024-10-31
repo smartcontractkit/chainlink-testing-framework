@@ -33,15 +33,15 @@ func main() {
 			{
 				Name:    "config",
 				Aliases: []string{"c"},
-				Usage:   "Shapes your test config, removes outputs",
+				Usage:   "Shapes your test config, removes outputs, formatting ,etc",
 				Subcommands: []*cli.Command{
 					{
-						Name:    "cleanup",
-						Aliases: []string{"c"},
-						Usage:   "Clean up the outputs of any test configuration",
+						Name:    "fmt",
+						Aliases: []string{"f"},
+						Usage:   "Formats TOML config",
 						Action: func(c *cli.Context) error {
 							in := c.Args().Get(0)
-							return CleanupToml(in, in)
+							return PrettyPrintTOML(in, in)
 						},
 					},
 				},
@@ -51,9 +51,8 @@ func main() {
 				Aliases: []string{"d"},
 				Usage:   "Control docker containers marked with 'framework=ctf' label",
 				Subcommands: []*cli.Command{
-
 					{
-						Name:    "clean",
+						Name:    "remove",
 						Aliases: []string{"rm"},
 						Usage:   "Remove Docker containers and networks with 'framework=ctf' label",
 						Action: func(c *cli.Context) error {
@@ -187,7 +186,7 @@ func observabilityUp() error {
 	fmt.Println()
 	framework.L.Info().Msgf("Loki: %s", LocalLogsURL)
 	framework.L.Info().Msgf("All logs: %s", "{job=\"ctf\"}")
-	framework.L.Info().Msgf("By log level: %s", "{job=\"ctf\", container=~\"clnode-.*\"} |= \"WARN|INFO|DEBUG\"")
+	framework.L.Info().Msgf("By log level: %s", "{job=\"ctf\", container=~\"node.*\"} |= \"WARN|INFO|DEBUG\"")
 	framework.L.Info().Msgf("Pyroscope: %s", LocalPyroScopeURL)
 	return nil
 }
@@ -210,8 +209,8 @@ func observabilityDown() error {
 	return nil
 }
 
-// CleanupToml removes any paths in the TOML tree that contain "out" and writes the result to a new file.
-func CleanupToml(inputFile string, outputFile string) error {
+// PrettyPrintTOML pretty prints TOML
+func PrettyPrintTOML(inputFile string, outputFile string) error {
 	tomlData, err := os.ReadFile(inputFile)
 	if err != nil {
 		return fmt.Errorf("error reading file: %v", err)
@@ -220,9 +219,6 @@ func CleanupToml(inputFile string, outputFile string) error {
 	if err != nil {
 		return fmt.Errorf("error parsing TOML: %v", err)
 	}
-
-	// Recursively remove fields/paths that contain "out"
-	removeOutFields(tree)
 
 	// Write the result to a new file
 	dumpData, err := tree.ToTomlString()
@@ -238,42 +234,52 @@ func CleanupToml(inputFile string, outputFile string) error {
 	return nil
 }
 
-// removeOutFields recursively removes any table, array of tables, or key path containing "out"
-func removeOutFields(tree *toml.Tree) {
-	keys := tree.Keys()
-
-	for _, key := range keys {
-		value := tree.Get(key)
-
-		// If the key contains framework.OutputFieldNameTOML, delete the whole path
-		if hasOutputField(key) {
-			_ = tree.Delete(key)
-			continue
+// BuildDocker runs Docker commands to set up a local registry, build an image, and push it.
+func BuildDocker(dockerfile string, buildContext string, imageName string) error {
+	registryRunning := isContainerRunning("local-registry")
+	if registryRunning {
+		fmt.Println("Local registry container is already running.")
+	} else {
+		framework.L.Info().Msg("Starting local registry container...")
+		err := runCommand("docker", "run", "-d", "-p", "5050:5000", "--name", "local-registry", "registry:2")
+		if err != nil {
+			return fmt.Errorf("failed to start local registry: %w", err)
 		}
-
-		switch v := value.(type) {
-		// Handle regular tables recursively
-		case *toml.Tree:
-			removeOutFields(v)
-			if len(v.Keys()) == 0 {
-				_ = tree.Delete(key)
-			}
-		// Handle arrays of tables
-		case []*toml.Tree:
-			for i := len(v) - 1; i >= 0; i-- {
-				removeOutFields(v[i])
-				if len(v[i].Keys()) == 0 {
-					v = append(v[:i], v[i+1:]...)
-				}
-			}
-			if len(v) == 0 {
-				_ = tree.Delete(key)
-			}
-		}
+		framework.L.Info().Msg("Local registry started")
 	}
+
+	img := fmt.Sprintf("localhost:5050/%s:latest", imageName)
+	framework.L.Info().Str("DockerFile", dockerfile).Str("Context", buildContext).Msg("Building Docker image")
+	err := runCommand("docker", "build", "-t", fmt.Sprintf("localhost:5050/%s:latest", imageName), "-f", dockerfile, buildContext)
+	if err != nil {
+		return fmt.Errorf("failed to build Docker image: %w", err)
+	}
+	framework.L.Info().Msg("Docker image built successfully")
+
+	framework.L.Info().Str("Image", img).Msg("Pushing Docker image to local registry")
+	fmt.Println("Pushing Docker image to local registry...")
+	err = runCommand("docker", "push", img)
+	if err != nil {
+		return fmt.Errorf("failed to push Docker image: %w", err)
+	}
+	framework.L.Info().Msg("Docker image pushed successfully")
+	return nil
 }
 
-func hasOutputField(key string) bool {
-	return len(key) > 0 && (key == framework.OutputFieldNameTOML ||
-		len(key) > 3 && key[len(key)-3:] == framework.OutputFieldNameTOML)
+// isContainerRunning checks if a Docker container with the given name is running.
+func isContainerRunning(containerName string) bool {
+	cmd := exec.Command("docker", "ps", "--filter", fmt.Sprintf("name=%s", containerName), "--format", "{{.Names}}")
+	output, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(output), containerName)
+}
+
+// runCommand executes a command and prints the output.
+func runCommand(name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
