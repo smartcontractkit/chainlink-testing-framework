@@ -91,10 +91,11 @@ func parseTestResults(datas [][]byte) ([]reports.TestResult, error) {
 		scanner := bufio.NewScanner(bytes.NewReader(data))
 		for scanner.Scan() {
 			var entry struct {
-				Action  string `json:"Action"`
-				Test    string `json:"Test"`
-				Package string `json:"Package"`
-				Output  string `json:"Output"`
+				Action  string  `json:"Action"`
+				Test    string  `json:"Test"`
+				Package string  `json:"Package"`
+				Output  string  `json:"Output"`
+				Elapsed float64 `json:"Elapsed"`
 			}
 			if err := json.Unmarshal(scanner.Bytes(), &entry); err != nil {
 				return nil, fmt.Errorf("failed to parse json test output: %s, err: %w", scanner.Text(), err)
@@ -122,13 +123,16 @@ func parseTestResults(datas [][]byte) ([]reports.TestResult, error) {
 				result.Runs++
 			case "pass":
 				result.PassRatio = (result.PassRatio*float64(result.Runs-1) + 1) / float64(result.Runs)
+				result.Durations = append(result.Durations, entry.Elapsed)
 			case "output":
 				result.Outputs = append(result.Outputs, entry.Output)
 			case "fail":
 				result.PassRatio = (result.PassRatio * float64(result.Runs-1)) / float64(result.Runs)
+				result.Durations = append(result.Durations, entry.Elapsed)
 			case "skip":
 				result.Skipped = true
 				result.Runs++
+				result.Durations = append(result.Durations, entry.Elapsed)
 			}
 		}
 
