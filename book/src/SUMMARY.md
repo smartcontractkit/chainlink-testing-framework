@@ -34,10 +34,12 @@
       - [Chainlink]()
       - [RPC]()
       - [Loki]()
+- [Continuous Integration](ci/ci.md)
 - [Libraries](./libraries.md)
   - [Seth](./libs/seth.md)
   - [WASP](./libs/wasp.md)
   - [Havoc](./libs/havoc.md)
+  - [K8s Test Runner](k8s-test-runner/k8s-test-runner.md)
 
 ---
 
