@@ -2,17 +2,17 @@
 build:
 	solc --abi --overwrite -o contracts/abi contracts/NetworkDebugContract.sol
 	solc --bin --overwrite -o contracts/bin contracts/NetworkDebugContract.sol
-	abigen --bin=contracts/bin/NetworkDebugContract.bin --abi=contracts/abi/NetworkDebugContract.abi --pkg=network_debug_contract --out=contracts/bind/debug/NetworkDebugContract.go
+	abigen --bin=contracts/bin/NetworkDebugContract.bin --abi=contracts/abi/NetworkDebugContract.abi --pkg=network_debug_contract --out=contracts/bind/NetworkDebugContract/NetworkDebugContract.go
 	solc --abi --overwrite -o contracts/abi contracts/NetworkDebugSubContract.sol
 	solc --bin --overwrite -o contracts/bin contracts/NetworkDebugSubContract.sol
-	abigen --bin=contracts/bin/NetworkDebugSubContract.bin --abi=contracts/abi/NetworkDebugSubContract.abi --pkg=network_debug_sub_contract --out=contracts/bind/sub/NetworkDebugSubContract.go
+	abigen --bin=contracts/bin/NetworkDebugSubContract.bin --abi=contracts/abi/NetworkDebugSubContract.abi --pkg=network_debug_sub_contract --out=contracts/bind/NetworkDebugSubContract/NetworkDebugSubContract.go
 
 	solc --abi --overwrite -o contracts/abi contracts/TestContractOne.sol
 	solc --bin --overwrite -o contracts/bin contracts/TestContractOne.sol
-	abigen --bin=contracts/bin/TestContractOne.bin --abi=contracts/abi/TestContractOne.abi --pkg=unique_event_one --out=contracts/bind/unique_event_one/TestContractOne.go
+	abigen --bin=contracts/bin/TestContractOne.bin --abi=contracts/abi/TestContractOne.abi --pkg=unique_event_one --out=contracts/bind/TestContractOne/TestContractOne.go
 	solc --abi --overwrite -o contracts/abi contracts/TestContractTwo.sol
 	solc --bin --overwrite -o contracts/bin contracts/TestContractTwo.sol
-	abigen --bin=contracts/bin/TestContractTwo.bin --abi=contracts/abi/TestContractTwo.abi --pkg=unique_event_two --out=contracts/bind/unique_event_two/TestContractTwo.go
+	abigen --bin=contracts/bin/TestContractTwo.bin --abi=contracts/abi/TestContractTwo.abi --pkg=unique_event_two --out=contracts/bind/TestContractTwo/TestContractTwo.go
 
 .PHONY: AnvilSync
 AnvilSync:

@@ -17,11 +17,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/seth"
-	network_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/debug"
+	network_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/NetworkDebugContract"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/TestContractOne"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/TestContractTwo"
 	link_token "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/link"
 	"github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/link_token_interface"
-	"github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/unique_event_one"
-	"github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/unique_event_two"
 	"github.com/smartcontractkit/chainlink-testing-framework/seth/test_utils"
 )
 
@@ -1825,17 +1825,17 @@ func TestSameEventTwoABIs(t *testing.T) {
 	c := newClientWithContractMapFromEnv(t)
 	SkipAnvil(t, c)
 
-	contractAbi, err := unique_event_one.UniqueEventOneMetaData.GetAbi()
+	contractAbi, err := TestContractOne.UniqueEventOneMetaData.GetAbi()
 	require.NoError(t, err, "failed to get contract ABI")
-	oneData, err := c.DeployContract(c.NewTXOpts(), "TestContractOne", *contractAbi, common.FromHex(unique_event_one.UniqueEventOneMetaData.Bin))
+	oneData, err := c.DeployContract(c.NewTXOpts(), "TestContractOne", *contractAbi, common.FromHex(TestContractOne.UniqueEventOneMetaData.Bin))
 	require.NoError(t, err, "failed to deploy contract")
 
-	contractAbi, err = unique_event_two.UniqueEventTwoMetaData.GetAbi()
+	contractAbi, err = TestContractTwo.UniqueEventTwoMetaData.GetAbi()
 	require.NoError(t, err, "failed to get contract ABI")
-	_, err = c.DeployContract(c.NewTXOpts(), "TestContractTwo", *contractAbi, common.FromHex(unique_event_two.UniqueEventTwoMetaData.Bin))
+	_, err = c.DeployContract(c.NewTXOpts(), "TestContractTwo", *contractAbi, common.FromHex(TestContractTwo.UniqueEventTwoMetaData.Bin))
 	require.NoError(t, err, "failed to deploy contract")
 
-	oneInstance, err := unique_event_one.NewUniqueEventOne(oneData.Address, c.Client)
+	oneInstance, err := TestContractOne.NewUniqueEventOne(oneData.Address, c.Client)
 	require.NoError(t, err, "failed to create contract instance")
 	decoded, txErr := c.Decode(oneInstance.ExecuteFirstOperation(c.NewTXOpts(), big.NewInt(1), big.NewInt(2)))
 	require.NoError(t, txErr, "transaction should have succeeded")
