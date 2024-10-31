@@ -1,4 +1,11 @@
 services:
+  prometheus:
+    image: prom/prometheus:latest
+    privileged: true
+    volumes:
+      - ./conf/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
   loki:
     image: grafana/loki:2.5.0
     volumes:
