@@ -4533,7 +4533,7 @@ Use <code>make docker_prune</code> to clean up all pods and volumes</li>
 </style>
 <h2 id="how-to-run-the-same-environment-deployment-inside-k8s"><a class="header" href="#how-to-run-the-same-environment-deployment-inside-k8s">How to run the same environment deployment inside k8s</a></h2>
 <p>You can build a <code>Dockerfile</code> to run exactly the same environment interactions inside k8s in case you need to run long-running tests
-Base image is <a href="lib/k8s/Dockerfile.base">here</a></p>
+Base image is <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/lib/k8s/Dockerfile.base">here</a></p>
 <pre><code class="language-Dockerfile">FROM &lt;account number&gt;.dkr.ecr.us-west-2.amazonaws.com/test-base-image:latest
 COPY . .
 RUN env GOOS=linux GOARCH=amd64 go build -o test ./examples/remote-test-runner/env.go
@@ -5695,7 +5695,7 @@ echo ::add-mask::$BASE64_CONFIG_OVERRIDE
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>v2-more-docs</code></li>
-<li>Commit: <code>e8fa0a6</code></li>
+<li>Commit: <code>2726341</code></li>
 </ul>
 
                     </main>
