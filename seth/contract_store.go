@@ -44,6 +44,19 @@ func (c *ContractStore) GetABI(name string) (*abi.ABI, bool) {
 	return &abi, ok
 }
 
+func (c *ContractStore) GetAllABIs() []*abi.ABI {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	var allABIs []*abi.ABI
+	for _, a := range c.ABIs {
+		alias := a
+		allABIs = append(allABIs, &alias)
+	}
+
+	return allABIs
+}
+
 func (c *ContractStore) AddABI(name string, abi abi.ABI) {
 	if !strings.HasSuffix(name, ".abi") {
 		name = name + ".abi"
