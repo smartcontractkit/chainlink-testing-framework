@@ -14,10 +14,11 @@ import (
 )
 
 type Runner struct {
-	Verbose  bool // If true, provides detailed logging.
-	RunCount int  // Number of times to run the tests.
-	UseRace  bool // Enable race detector.
-	FailFast bool // Stop on first test failure.
+	ProjectPath string // Path to the Go project directory.
+	Verbose     bool   // If true, provides detailed logging.
+	RunCount    int    // Number of times to run the tests.
+	UseRace     bool   // Enable race detector.
+	FailFast    bool   // Stop on first test failure.
 }
 
 // RunTests executes the tests for each provided package and aggregates all results.
@@ -58,6 +59,7 @@ func (r *Runner) runTestPackage(testPackage string) ([]byte, bool, error) {
 		log.Printf("Running command: go %s\n", strings.Join(args, " "))
 	}
 	cmd := exec.Command("go", args...)
+	cmd.Dir = r.ProjectPath
 
 	// cmd.Env = append(cmd.Env, "GOFLAGS=-extldflags=-Wl,-ld_classic") // Ensure modules are enabled
 	var out bytes.Buffer
@@ -89,10 +91,11 @@ func parseTestResults(datas [][]byte) ([]reports.TestResult, error) {
 		scanner := bufio.NewScanner(bytes.NewReader(data))
 		for scanner.Scan() {
 			var entry struct {
-				Action  string `json:"Action"`
-				Test    string `json:"Test"`
-				Package string `json:"Package"`
-				Output  string `json:"Output"`
+				Action  string  `json:"Action"`
+				Test    string  `json:"Test"`
+				Package string  `json:"Package"`
+				Output  string  `json:"Output"`
+				Elapsed float64 `json:"Elapsed"`
 			}
 			if err := json.Unmarshal(scanner.Bytes(), &entry); err != nil {
 				return nil, fmt.Errorf("failed to parse json test output: %s, err: %w", scanner.Text(), err)
@@ -120,13 +123,16 @@ func parseTestResults(datas [][]byte) ([]reports.TestResult, error) {
 				result.Runs++
 			case "pass":
 				result.PassRatio = (result.PassRatio*float64(result.Runs-1) + 1) / float64(result.Runs)
+				result.Durations = append(result.Durations, entry.Elapsed)
 			case "output":
 				result.Outputs = append(result.Outputs, entry.Output)
 			case "fail":
 				result.PassRatio = (result.PassRatio * float64(result.Runs-1)) / float64(result.Runs)
+				result.Durations = append(result.Durations, entry.Elapsed)
 			case "skip":
 				result.Skipped = true
 				result.Runs++
+				result.Durations = append(result.Durations, entry.Elapsed)
 			}
 		}
 

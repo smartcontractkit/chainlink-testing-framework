@@ -4,9 +4,10 @@ type TestResult struct {
 	TestName    string
 	TestPackage string
 	PassRatio   float64
+	Skipped     bool // Indicates if the test was skipped
 	Runs        int
-	Outputs     []string // Stores outputs for a test
-	Skipped     bool     // Indicates if the test was skipped
+	Outputs     []string  // Stores outputs for a test
+	Durations   []float64 // Stores elapsed time in seconds for each run of the test
 }
 
 // FilterFailedTests returns a slice of TestResult where the pass ratio is below the specified threshold.
