@@ -1,7 +1,15 @@
 ## How to run the same environment deployment inside k8s
 
+<div class="warning">
+
+Managing k8s is challenging, so we've decided to separate `k8s` deployments here - [CRIB](https://github.com/smartcontractkit/crib)
+
+This documentation is outdated, and we are using it only internally to run our soak tests. For `v2` tests please check [this example](../crib.md) and read [CRIB docs](https://github.com/smartcontractkit/crib)
+</div>
+
+
 You can build a `Dockerfile` to run exactly the same environment interactions inside k8s in case you need to run long-running tests
-Base image is [here](Dockerfile.base)
+Base image is [here](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/lib/k8s/Dockerfile.base)
 
 ```Dockerfile
 FROM <account number>.dkr.ecr.us-west-2.amazonaws.com/test-base-image:latest

@@ -2,7 +2,7 @@
 
 `client/secretsmanager.go` has a simple API to read/write/delete secrets.
 
-It uses a struct to protect such secrets from accidental printing or marshalling, see an [example](client/secretsmanager_test.go) test
+It uses a struct to protect such secrets from accidental printing or marshalling, see an [example](../../lib/client/secretsmanager_test.go) test
 
 ## Using AWSSecretsManager via CLI
 

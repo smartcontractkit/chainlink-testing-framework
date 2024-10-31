@@ -2,9 +2,9 @@
 
 We use component caching to accelerate test development and enforce idempotent test actions.
 
-Each component is designed to be pure with defined inputs/outputs.
+Each component is isolated by means of inputs and outputs.
 
-You can use an environment variable to skip deployment steps and use cached outputs if your infrastructure is already running (locally or remotely):
+If cached config has any outputs with `use_cache = true` it will be used instead of deploying a component again.
 
 ```
 export CTF_CONFIGS=smoke-cache.toml
@@ -26,4 +26,4 @@ http_url = 'http://127.0.0.1:33447'
 docker_internal_ws_url = 'ws://anvil-3716a:8900'
 docker_internal_http_url = 'http://anvil-3716a:8900'
 ```
-Set flag `use_cache = true` on any component output and run your test again
+Set flag `use_cache = true` on any component output, change output fields as needed and run your test again.
