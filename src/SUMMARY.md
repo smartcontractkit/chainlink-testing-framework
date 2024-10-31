@@ -46,4 +46,12 @@
 - [Releasing modules](releasing_modules.md)
 
 ---
+- [Lib (Legacy, *Deprecated*)](lib.md)
+    - [Blockchain](lib/blockchain.md)
+    - [Kubernetes](lib/k8s/KUBERNETES.md)
+    - [K8s Remote Run](lib/k8s/REMOTE_RUN.md)
+    - [K8s Tutorial](lib/k8s/TUTORIAL.md)
+    - [Config](lib/config/config.md)
+
+---
 - [Build info](build_info.md)
