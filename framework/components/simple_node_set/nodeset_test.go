@@ -78,7 +78,7 @@ func TestDockerNodeSetSharedDB(t *testing.T) {
 				Type:      "anvil",
 				Image:     "f4hrenh9it/foundry",
 				PullImage: true,
-				Port:      "8545",
+				Port:      "8546",
 				ChainID:   "31337",
 			},
 			nodeSetInput: &ns.Input{
