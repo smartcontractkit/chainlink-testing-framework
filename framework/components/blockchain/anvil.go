@@ -3,6 +3,7 @@ package blockchain
 import (
 	"context"
 	"fmt"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/testcontainers/testcontainers-go"
@@ -28,7 +29,10 @@ func deployAnvil(in *Input) (*Output, error) {
 		Labels:          framework.DefaultTCLabels(),
 		Name:            containerName,
 		ExposedPorts:    []string{bindPort},
-		Networks:        []string{framework.DefaultNetworkName},
+		HostConfigModifier: func(h *container.HostConfig) {
+			h.PortBindings = framework.MapTheSamePort(bindPort)
+		},
+		Networks: []string{framework.DefaultNetworkName},
 		NetworkAliases: map[string][]string{
 			framework.DefaultNetworkName: {containerName},
 		},
