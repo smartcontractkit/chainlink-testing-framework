@@ -22,6 +22,7 @@
       - [Profiling](framework/observability/profiling.md)
       - [Traces]()
       - [Debugger]()
+    - [Blockscout](framework/observability/blockscout.md)
     - [Components](framework/components/overview.md)
         - [Blockchains](framework/components/blockchains/overview.md)
             - [Anvil](framework/components/blockchains/anvil.md)

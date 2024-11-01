@@ -1,5 +1,7 @@
 # Getting started
 
+## Test setup
+
 To start writing tests create a directory for your project with `go.mod` and pull the framework
 ```
 go get github.com/smartcontractkit/chainlink-testing-framework/framework
@@ -14,12 +16,6 @@ mv ~/go/bin/cmd ~/go/bin/ctf
 ```
 More CLI [docs](./cli.md)
 
-
-Spin up your local obserability stack
-```
-ctf obs up
-```
-
 Create an `.envrc` file and put common parameters there (you can use [direnv](https://direnv.net/) to sync them more easily)
 ```
 export CTF_LOG_LEVEL=info
@@ -31,3 +27,17 @@ export PRIVATE_KEY="ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2
 ```
 
 Now you are ready to write your [first test](./first_test.md)
+
+## Tools setup (Optional)
+
+This setup is optional, and it explains how to setup a local observability stack for on-chain and off-chain components.
+
+Spin up your local obserability stack (Grafana LGTM)
+```
+ctf obs up
+```
+
+Spin up your `Blockscout` stack
+```
+ctf bs up
+```
