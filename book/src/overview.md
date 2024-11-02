@@ -16,4 +16,4 @@ To get started with writing tests, refer to the [Framework](./framework/getting_
 - [Framework](framework/overview.md)
 - [Libraries](libraries.md)
 
-If you're a non-technical user or simply want to run a NodeSet, please refer to our [Interactive](framework/interactive.md) chapter.
+If you're a non-technical user or want to build integration with Chainlink not in `Golang`, please refer to our [Interactive](framework/interactive.md) chapter.
