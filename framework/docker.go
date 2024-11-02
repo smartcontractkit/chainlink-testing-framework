@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -12,6 +13,17 @@ import (
 	"strings"
 	"sync"
 )
+
+func IsDockerRunning() bool {
+	cli, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		return false
+	}
+	defer cli.Close()
+
+	_, err = cli.Ping(context.Background())
+	return err == nil
+}
 
 func GetHost(container tc.Container) (string, error) {
 	host, err := container.Host(context.Background())

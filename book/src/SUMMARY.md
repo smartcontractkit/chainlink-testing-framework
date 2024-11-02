@@ -36,6 +36,7 @@
       - [Chainlink]()
       - [RPC]()
       - [Loki]()
+- [Interactive](framework/interactive.md)
 - [Continuous Integration](ci/ci.md)
 - [Libraries](./libraries.md)
   - [Seth](./libs/seth.md)

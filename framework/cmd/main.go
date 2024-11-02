@@ -28,6 +28,21 @@ func main() {
 		UsageText: "'ctf' is a useful utility that can:\n- clean up test docker containers\n- modify test files\n- create a local observability stack with Grafana/Loki/Pyroscope",
 		Commands: []*cli.Command{
 			{
+				Name:    "build",
+				Aliases: []string{"b"},
+				Usage:   "Build an environment interactively, suitable for non-technical users",
+				Subcommands: []*cli.Command{
+					{
+						Name:    "node_set",
+						Aliases: []string{"ns"},
+						Usage:   "Builds a NodeSet and connect it to some networks",
+						Action: func(c *cli.Context) error {
+							return runSetupForm()
+						},
+					},
+				},
+			},
+			{
 				Name:    "config",
 				Aliases: []string{"c"},
 				Usage:   "Shapes your test config, removes outputs, formatting ,etc",

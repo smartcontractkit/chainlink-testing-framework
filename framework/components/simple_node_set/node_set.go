@@ -54,8 +54,8 @@ func NewSharedDBNodeSet(in *Input, bcOut *blockchain.Output, fakeUrl string) (*O
 }
 
 func printOut(out *Output) {
-	for _, n := range out.CLNodes {
-		framework.L.Info().Str("URL", n.Node.HostURL).Msg("Chainlink node url")
+	for i, n := range out.CLNodes {
+		framework.L.Info().Str(fmt.Sprintf("Node-%d", i), n.Node.HostURL).Msg("Chainlink node url")
 	}
 }
 
