@@ -17,7 +17,7 @@
     - [Caching](framework/components/caching.md)
     - [Secrets]()
     - [Observability Stack](framework/observability/observability_stack.md)
-      - [Metrics]()
+      - [Metrics](framework/observability/metrics.md)
       - [Logs](framework/observability/logs.md)
       - [Profiling](framework/observability/profiling.md)
       - [Traces]()
