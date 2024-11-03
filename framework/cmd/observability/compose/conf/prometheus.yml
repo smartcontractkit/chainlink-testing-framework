@@ -5,14 +5,9 @@ scrape_configs:
   - job_name: 'ctf'
     metrics_path: /metrics
     docker_sd_configs:
-      - host: "unix:///var/run/docker.sock"  # Use the Docker socket to access container info
-        refresh_interval: 10s               # Refresh interval for discovering new containers
+      - host: "unix:///var/run/docker.sock"
+        refresh_interval: 20s
     relabel_configs:
-      - source_labels: [ __meta_docker_container_label_com_docker_swarm_service_name ]
-        regex: ".*"
-        action: replace
-        target_label: "service"
-
-      - source_labels: [ __meta_docker_container_port ]
-        regex: '6688'                       # Only target containers exposing port 9090
+      - source_labels: [ __meta_docker_port_private ]
+        regex: '6688'
         action: keep

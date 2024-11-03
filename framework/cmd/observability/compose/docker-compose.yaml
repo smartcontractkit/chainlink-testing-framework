@@ -1,8 +1,9 @@
 services:
   prometheus:
     image: prom/prometheus:latest
-    privileged: true
+    user: "0:0"
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
       - ./conf/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
