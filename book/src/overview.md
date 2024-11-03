@@ -6,7 +6,7 @@ Its primary purpose is to help Chainlink developers create extensive integration
 
 It can also be helpful to those who just want to use chainlink oracles in their projects to help test their contracts, or even for those that aren't using chainlink.
 
-This documentation is for:
+This documentation is primarily for:
 - Developers looking to write end-to-end tests
 - Quality Assurance Engineers aiming to test locally
 
@@ -15,3 +15,5 @@ To get started with writing tests, refer to the [Framework](./framework/getting_
 [Repository](https://github.com/smartcontractkit/chainlink-testing-framework) contains two major pieces:
 - [Framework](framework/overview.md)
 - [Libraries](libraries.md)
+
+If you're a non-technical user or want to build integration with Chainlink not in `Golang`, please refer to our [Interactive](framework/interactive.md) chapter.

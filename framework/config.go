@@ -11,6 +11,7 @@ import (
 	"github.com/pelletier/go-toml/v2"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/network"
 	"os"
 	"path/filepath"
@@ -138,27 +139,29 @@ func Load[X any](t *testing.T) (*X, error) {
 	//		return nil, fmt.Errorf("failed to connect AWSSecretsManager: %w", err)
 	//	}
 	//}
-	err = DefaultNetwork(t, once)
+	err = DefaultNetwork(once)
+	require.NoError(t, err)
 	if err != nil {
 		return input, err
 	}
 	if os.Getenv(EnvVarLokiStream) == "true" {
-		err = NewLokiStreamer()
+		err = NewPromtail()
 		require.NoError(t, err)
 	}
 	return input, nil
 }
 
-func DefaultNetwork(t *testing.T, once *sync.Once) error {
+func DefaultNetwork(once *sync.Once) error {
+	var net *testcontainers.DockerNetwork
+	var err error
 	once.Do(func() {
-		net, err := network.New(
+		net, err = network.New(
 			context.Background(),
 			network.WithLabels(map[string]string{"framework": "ctf"}),
 		)
-		require.NoError(t, err)
 		DefaultNetworkName = net.Name
 	})
-	return nil
+	return err
 }
 
 func RenderTemplate(tmpl string, data interface{}) (string, error) {
