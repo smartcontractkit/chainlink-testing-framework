@@ -1,5 +1,9 @@
 # Getting started
 
+## Prerequisites
+- `Docker` ([OrbStack](https://orbstack.dev/) or [Docker Desktop](https://www.docker.com/products/docker-desktop/))
+- [Golang](https://go.dev/doc/install)
+
 ## Test setup
 
 To start writing tests create a directory for your project with `go.mod` and pull the framework
@@ -8,7 +12,6 @@ go get github.com/smartcontractkit/chainlink-testing-framework/framework
 ```
 
 Then download the CLI (runs from directory where you have `go.mod`)
-Make sure you have your GOPATH set: `export GOPATH=$HOME/go && export PATH=$PATH:$GOPATH/bin`
 ```
 go get github.com/smartcontractkit/chainlink-testing-framework/framework/cmd && \
 go install github.com/smartcontractkit/chainlink-testing-framework/framework/cmd && \
