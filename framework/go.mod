@@ -48,7 +48,8 @@ require (
 	github.com/catppuccin/go v0.2.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/charmbracelet/bubbles v0.20.0 // indirect
-	github.com/charmbracelet/bubbletea v1.1.0 // indirect
+	github.com/charmbracelet/bubbletea v1.1.1 // indirect
+	github.com/charmbracelet/huh/spinner v0.0.0-20241028115900-20a4d21717a8 // indirect
 	github.com/charmbracelet/lipgloss v0.13.0 // indirect
 	github.com/charmbracelet/x/ansi v0.2.3 // indirect
 	github.com/charmbracelet/x/exp/strings v0.0.0-20240722160745-212f7b056ed0 // indirect

@@ -145,7 +145,7 @@ func Load[X any](t *testing.T) (*X, error) {
 		return input, err
 	}
 	if os.Getenv(EnvVarLokiStream) == "true" {
-		err = NewLokiStreamer()
+		err = NewPromtail()
 		require.NoError(t, err)
 	}
 	return input, nil

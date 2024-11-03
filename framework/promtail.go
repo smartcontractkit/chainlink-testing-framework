@@ -104,7 +104,7 @@ scrape_configs:
 	return configFile.Name(), nil
 }
 
-func NewLokiStreamer() error {
+func NewPromtail() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
