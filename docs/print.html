@@ -401,12 +401,16 @@
 
 </style>
 <h1 id="getting-started"><a class="header" href="#getting-started">Getting started</a></h1>
+<h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
+<ul>
+<li><code>Docker</code> (<a href="https://orbstack.dev/">OrbStack</a> or <a href="https://www.docker.com/products/docker-desktop/">Docker Desktop</a>)</li>
+<li><a href="https://go.dev/doc/install">Golang</a></li>
+</ul>
 <h2 id="test-setup"><a class="header" href="#test-setup">Test setup</a></h2>
 <p>To start writing tests create a directory for your project with <code>go.mod</code> and pull the framework</p>
 <pre><code>go get github.com/smartcontractkit/chainlink-testing-framework/framework
 </code></pre>
-<p>Then download the CLI (runs from directory where you have <code>go.mod</code>)
-Make sure you have your GOPATH set: <code>export GOPATH=$HOME/go &amp;&amp; export PATH=$PATH:$GOPATH/bin</code></p>
+<p>Then download the CLI (runs from directory where you have <code>go.mod</code>)</p>
 <pre><code>go get github.com/smartcontractkit/chainlink-testing-framework/framework/cmd &amp;&amp; \
 go install github.com/smartcontractkit/chainlink-testing-framework/framework/cmd &amp;&amp; \
 mv ~/go/bin/cmd ~/go/bin/ctf
@@ -2407,6 +2411,7 @@ func TestDON(t *testing.T) {
 <p>Download the latest CLI <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.6">here</a></p>
 <pre><code>./framework build node_set
 </code></pre>
+<p>Press <code>Ctrl+C</code> to remove the stack.</p>
 <p><img src="framework/images/interactive-node-set.png" alt="img.png" /></p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
@@ -6058,8 +6063,8 @@ echo ::add-mask::$BASE64_CONFIG_OVERRIDE
 <h1 id="build-info"><a class="header" href="#build-info">Build info</a></h1>
 <p>This documentation was generated from:</p>
 <ul>
-<li>Branch <code>interactive</code></li>
-<li>Commit: <code>c8a6ee7</code></li>
+<li>Branch <code>main</code></li>
+<li>Commit: <code>c53b6e0</code></li>
 </ul>
 
                     </main>

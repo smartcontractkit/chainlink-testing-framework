@@ -14,4 +14,6 @@ Download the latest CLI [here](https://github.com/smartcontractkit/chainlink-tes
 ```
 ./framework build node_set
 ```
+Press `Ctrl+C` to remove the stack.
+
 ![img.png](images/interactive-node-set.png)
