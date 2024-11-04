@@ -257,16 +257,12 @@ mv ~/go/bin/cmd ~/go/bin/ctf
 </code></pre>
 <p>More CLI <a href="./cli.html">docs</a></p>
 <p>Create an <code>.envrc</code> file and put common parameters there (you can use <a href="https://direnv.net/">direnv</a> to sync them more easily)</p>
-<pre><code>export CTF_LOG_LEVEL=info
-export CTF_LOKI_STREAM=true
-export TESTCONTAINERS_RYUK_DISABLED=true
-
-export CTF_CONFIGS=smoke.toml
-export PRIVATE_KEY="ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+<pre><code>export TESTCONTAINERS_RYUK_DISABLED=true # do not remove containers while we develop locally
+export CTF_CONFIGS=smoke.toml            # our configuration file
 </code></pre>
 <p>Now you are ready to write your <a href="./first_test.html">first test</a></p>
 <h2 id="tools-setup-optional"><a class="header" href="#tools-setup-optional">Tools setup (Optional)</a></h2>
-<p>This setup is optional, and it explains how to setup a local observability stack for on-chain and off-chain components.</p>
+<p>This setup is optional, and it explains how to create a local observability stack for on-chain and off-chain components.</p>
 <p>Spin up your local obserability stack (Grafana LGTM)</p>
 <pre><code>ctf obs up
 </code></pre>

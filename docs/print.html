@@ -417,16 +417,12 @@ mv ~/go/bin/cmd ~/go/bin/ctf
 </code></pre>
 <p>More CLI <a href="framework/./cli.html">docs</a></p>
 <p>Create an <code>.envrc</code> file and put common parameters there (you can use <a href="https://direnv.net/">direnv</a> to sync them more easily)</p>
-<pre><code>export CTF_LOG_LEVEL=info
-export CTF_LOKI_STREAM=true
-export TESTCONTAINERS_RYUK_DISABLED=true
-
-export CTF_CONFIGS=smoke.toml
-export PRIVATE_KEY="ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+<pre><code>export TESTCONTAINERS_RYUK_DISABLED=true # do not remove containers while we develop locally
+export CTF_CONFIGS=smoke.toml            # our configuration file
 </code></pre>
 <p>Now you are ready to write your <a href="framework/./first_test.html">first test</a></p>
 <h2 id="tools-setup-optional"><a class="header" href="#tools-setup-optional">Tools setup (Optional)</a></h2>
-<p>This setup is optional, and it explains how to setup a local observability stack for on-chain and off-chain components.</p>
+<p>This setup is optional, and it explains how to create a local observability stack for on-chain and off-chain components.</p>
 <p>Spin up your local obserability stack (Grafana LGTM)</p>
 <pre><code>ctf obs up
 </code></pre>
@@ -1487,12 +1483,13 @@ fj293fbBnlQ!f9vNs
 <h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
 <h3 id="environment-variables"><a class="header" href="#environment-variables">Environment variables</a></h3>
 <div class="table-wrapper"><table><thead><tr><th style="text-align: center">Name</th><th style="text-align: center">Description</th><th style="text-align: right">Possible values</th><th style="text-align: center">Default</th><th style="text-align: center">Required?</th></tr></thead><tbody>
-<tr><td style="text-align: center">CTF_CONFIGS</td><td style="text-align: center">Path(s) to test config files. <br/>Can be more than one, ex.: smoke.toml,smoke_1.toml,smoke_2.toml.<br/>First filepath will hold all the merged values</td><td style="text-align: right">Any valid TOML file path</td><td style="text-align: center"></td><td style="text-align: center">✅</td></tr>
-<tr><td style="text-align: center">CTF_LOG_LEVEL</td><td style="text-align: center">Harness log level</td><td style="text-align: right"><code>info</code>, <code>debug</code>, <code>trace</code></td><td style="text-align: center"><code>info</code></td><td style="text-align: center">🚫</td></tr>
-<tr><td style="text-align: center">CTF_LOKI_STREAM</td><td style="text-align: center">Streams all components logs to <code>Loki</code>, see params below</td><td style="text-align: right"><code>true</code>, <code>false</code></td><td style="text-align: center"><code>false</code></td><td style="text-align: center">🚫</td></tr>
-<tr><td style="text-align: center">LOKI_URL</td><td style="text-align: center">URL to <code>Loki</code> push api, should be like<code>${host}/loki/api/v1/push</code></td><td style="text-align: right">URL</td><td style="text-align: center">-</td><td style="text-align: center">If you use <code>Loki</code> then ✅</td></tr>
-<tr><td style="text-align: center">LOKI_TENANT_ID</td><td style="text-align: center">Streams all components logs to <code>Loki</code>, see params below</td><td style="text-align: right"><code>true</code>, <code>false</code></td><td style="text-align: center">-</td><td style="text-align: center">If you use <code>Loki</code> then ✅</td></tr>
 <tr><td style="text-align: center">TESTCONTAINERS_RYUK_DISABLED</td><td style="text-align: center">Testcontainers-Go reaper container, removes all the containers after the test exit</td><td style="text-align: right"><code>true</code>, <code>false</code></td><td style="text-align: center"><code>false</code></td><td style="text-align: center">🚫</td></tr>
+<tr><td style="text-align: center">CTF_CONFIGS</td><td style="text-align: center">Path(s) to test config files. <br/>Can be more than one, ex.: smoke.toml,smoke_1.toml,smoke_2.toml.<br/>First filepath will hold all the merged values</td><td style="text-align: right">Any valid TOML file path</td><td style="text-align: center">-</td><td style="text-align: center">✅</td></tr>
+<tr><td style="text-align: center">CTF_LOG_LEVEL</td><td style="text-align: center">Harness log level</td><td style="text-align: right"><code>info</code>, <code>debug</code>, <code>trace</code></td><td style="text-align: center"><code>info</code></td><td style="text-align: center">🚫</td></tr>
+<tr><td style="text-align: center">CTF_PROMTAIL_DEBUG</td><td style="text-align: center">Set <code>true</code> if you are integrating with remote <code>Loki</code> push API to debug Promtail</td><td style="text-align: right"><code>true</code>, <code>false</code></td><td style="text-align: center"><code>false</code></td><td style="text-align: center">🚫</td></tr>
+<tr><td style="text-align: center">LOKI_URL</td><td style="text-align: center">URL to <code>Loki</code> push api, should be like<code>${host}/loki/api/v1/push</code></td><td style="text-align: right">URL</td><td style="text-align: center"><code>http://host.docker.internal:3030/loki/api/v1/push</code></td><td style="text-align: center">🚫</td></tr>
+<tr><td style="text-align: center">LOKI_TENANT_ID</td><td style="text-align: center">Streams all components logs to <code>Loki</code>, see params below</td><td style="text-align: right"><code>string</code></td><td style="text-align: center"><code>promtail</code></td><td style="text-align: center">🚫</td></tr>
+<tr><td style="text-align: center">LOKI_BASIC_AUTH</td><td style="text-align: center">Basic auth in format $user:$password</td><td style="text-align: right"><code>$user:$password</code></td><td style="text-align: center">-</td><td style="text-align: center">🚫</td></tr>
 <tr><td style="text-align: center">RESTY_DEBUG</td><td style="text-align: center">Log all Resty client HTTP calls</td><td style="text-align: right"><code>true</code>, <code>false</code></td><td style="text-align: center"><code>false</code></td><td style="text-align: center">🚫</td></tr>
 </tbody></table>
 </div><div style="break-before: page; page-break-before: always;"></div><style>
@@ -2409,6 +2406,8 @@ func TestDON(t *testing.T) {
 <p>If you're on OS X, we recommend to use <a href="https://orbstack.dev/">OrbStack</a>.</p>
 <p>For other platforms use <a href="https://www.docker.com/products/docker-desktop/">Docker Desktop</a>.</p>
 <p>Download the latest CLI <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.6">here</a></p>
+<p>Allow it to run in <code>System Settings -&gt; Security Settings</code> (OS X)</p>
+<p><img src="framework/images/img.png" alt="img.png" /></p>
 <pre><code>./framework build node_set
 </code></pre>
 <p>Press <code>Ctrl+C</code> to remove the stack.</p>
@@ -6064,7 +6063,7 @@ echo ::add-mask::$BASE64_CONFIG_OVERRIDE
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>c53b6e0</code></li>
+<li>Commit: <code>45cc193</code></li>
 </ul>
 
                     </main>

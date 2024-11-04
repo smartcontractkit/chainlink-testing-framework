@@ -11,6 +11,10 @@ For other platforms use [Docker Desktop](https://www.docker.com/products/docker-
 
 Download the latest CLI [here](https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.6)
 
+Allow it to run in `System Settings -> Security Settings` (OS X)
+
+![img.png](images/img.png)
+
 ```
 ./framework build node_set
 ```
