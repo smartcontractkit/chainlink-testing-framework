@@ -28,7 +28,6 @@ const (
 
 const (
 	EnvVarTestConfigs       = "CTF_CONFIGS"
-	EnvVarLokiStream        = "CTF_LOKI_STREAM"
 	EnvVarAWSSecretsManager = "CTF_AWS_SECRETS_MANAGER"
 	// EnvVarCI this is a default env variable many CI runners use so code can detect we run in CI
 	EnvVarCI = "CI"
@@ -141,13 +140,8 @@ func Load[X any](t *testing.T) (*X, error) {
 	//}
 	err = DefaultNetwork(once)
 	require.NoError(t, err)
-	if err != nil {
-		return input, err
-	}
-	if os.Getenv(EnvVarLokiStream) == "true" {
-		err = NewPromtail()
-		require.NoError(t, err)
-	}
+	err = NewPromtail()
+	require.NoError(t, err)
 	return input, nil
 }
 

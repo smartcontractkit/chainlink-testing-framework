@@ -58,8 +58,11 @@ scrape_configs:
 	lokiURL := os.Getenv("LOKI_URL")
 	lokiTenantID := os.Getenv("LOKI_TENANT_ID")
 
-	if lokiURL == "" || lokiTenantID == "" {
-		return "", errors.New("LOKI_URL or LOKI_TENANT_ID environment variable is missing")
+	if lokiURL == "" {
+		lokiURL = "http://host.docker.internal:3030/loki/api/v1/push"
+	}
+	if lokiTenantID == "" {
+		lokiTenantID = "promtail"
 	}
 
 	lokiBasicAuth := os.Getenv("LOKI_BASIC_AUTH")
@@ -99,8 +102,8 @@ scrape_configs:
 	if err != nil {
 		return "", fmt.Errorf("could not execute promtail config template: %w", err)
 	}
+	L.Debug().Str("Path", filePath).Msg("Promtail configuration written to")
 
-	fmt.Printf("Promtail config written to %s\n", filePath)
 	return configFile.Name(), nil
 }
 
@@ -115,7 +118,7 @@ func NewPromtail() error {
 
 	cmd := make([]string, 0)
 	cmd = append(cmd, "-config.file=/etc/promtail/promtail-config.yml")
-	if os.Getenv("CTF_LOKI_STREAM_DEBUG") != "" {
+	if os.Getenv("CTF_PROMTAIL_DEBUG") != "" {
 		cmd = append(cmd, "-log.level=debug")
 	}
 
