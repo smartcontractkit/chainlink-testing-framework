@@ -32,7 +32,10 @@ Linux `amd64`
 curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2F<!-- cmdrun git describe --tags --match "framework/v[0-9]*.[0-9]*.[0-9]*" --abbrev=0 | sed 's/^framework\///' -->/framework-<!-- cmdrun git describe --tags --match "framework/v[0-9]*.[0-9]*.[0-9]*" --abbrev=0 | sed 's/^framework\///' -->-linux-amd64.tar.gz | tar -xz
 ```
 
-More CLI [docs](./cli.md)
+Allow it to run in `System Settings -> Security Settings` (OS X)
+
+![img.png](images/img.png)
+
 
 Create an `.envrc` file and do `source .envrc`
 ```

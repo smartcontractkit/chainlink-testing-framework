@@ -242,13 +242,23 @@
 </style>
 <h1 id="interactive"><a class="header" href="#interactive">Interactive</a></h1>
 <p>For non-technical users or those building with Chainlink products outside of Golang, we offer an interactive method to deploy a NodeSet.</p>
-<p>The only requirement is to have Docker running.</p>
-<p>If you're on OS X, we recommend to use <a href="https://orbstack.dev/">OrbStack</a>.</p>
-<p>For other platforms use <a href="https://www.docker.com/products/docker-desktop/">Docker Desktop</a>.</p>
-<p>Download the latest CLI <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.7">here</a></p>
+<p>If you're on OS X, we recommend to use <a href="https://orbstack.dev/">OrbStack</a>, otherwise <a href="https://www.docker.com/products/docker-desktop/">Docker Desktop</a></p>
+<p>Download our <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8">CLI</a></p>
+<p>OS X <code>arm64</code> (M1/M2/M3 MacBooks)</p>
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.1.9/framework-v0.1.9-darwin-arm64.tar.gz | tar -xz
+</code></pre>
+<p>OS X <code>amd64</code> (old Intel chips)</p>
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.1.9/framework-v0.1.9-darwin-amd64.tar.gz | tar -xz
+</code></pre>
+<p>Linux <code>arm64</code></p>
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.1.9/framework-v0.1.9-linux-arm64.tar.gz | tar -xz
+</code></pre>
+<p>Linux <code>amd64</code></p>
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.1.9/framework-v0.1.9-linux-amd64.tar.gz | tar -xz
+</code></pre>
 <p>Allow it to run in <code>System Settings -&gt; Security Settings</code> (OS X)</p>
 <p><img src="images/img.png" alt="img.png" /></p>
-<pre><code>./framework build node_set
+<pre><code>./ctf b ns
 </code></pre>
 <p>Press <code>Ctrl+C</code> to remove the stack.</p>
 <p><img src="images/interactive-node-set.png" alt="img.png" /></p>
