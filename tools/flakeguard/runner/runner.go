@@ -142,11 +142,13 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 				result.Runs++
 			case "pass":
 				result.PassRatio = (result.PassRatio*float64(result.Runs-1) + 1) / float64(result.Runs)
+				result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
 				result.Durations = append(result.Durations, entry.Elapsed)
 			case "output":
 				result.Outputs = append(result.Outputs, entry.Output)
 			case "fail":
 				result.PassRatio = (result.PassRatio * float64(result.Runs-1)) / float64(result.Runs)
+				result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
 				result.Durations = append(result.Durations, entry.Elapsed)
 			case "skip":
 				result.Skipped = true
