@@ -2,6 +2,7 @@ package reports
 
 import (
 	"fmt"
+	"io"
 	"strings"
 )
 
@@ -49,19 +50,19 @@ func FilterSkippedTests(results []TestResult) []TestResult {
 }
 
 // PrintTests prints tests in a pretty format
-func PrintTests(tests []TestResult) {
+func PrintTests(tests []TestResult, w io.Writer) {
 	for i, test := range tests {
-		fmt.Printf("\n--- Test %d ---\n", i+1)
-		fmt.Printf("TestName: %s\n", test.TestName)
-		fmt.Printf("TestPackage: %s\n", test.TestPackage)
-		fmt.Printf("PassRatio: %.2f\n", test.PassRatio)
-		fmt.Printf("Skipped: %v\n", test.Skipped)
-		fmt.Printf("Runs: %d\n", test.Runs)
+		fmt.Fprintf(w, "\n--- Test %d ---\n", i+1)
+		fmt.Fprintf(w, "TestName: %s\n", test.TestName)
+		fmt.Fprintf(w, "TestPackage: %s\n", test.TestPackage)
+		fmt.Fprintf(w, "PassRatio: %.2f\n", test.PassRatio)
+		fmt.Fprintf(w, "Skipped: %v\n", test.Skipped)
+		fmt.Fprintf(w, "Runs: %d\n", test.Runs)
 		durationsStr := make([]string, len(test.Durations))
 		for i, duration := range test.Durations {
 			durationsStr[i] = fmt.Sprintf("%.2fs", duration)
 		}
-		fmt.Printf("Durations: %s\n", strings.Join(durationsStr, ", "))
-		fmt.Printf("Outputs:\n%s\n", strings.Join(test.Outputs, ""))
+		fmt.Fprintf(w, "Durations: %s\n", strings.Join(durationsStr, ", "))
+		fmt.Fprintf(w, "Outputs:\n%s\n", strings.Join(test.Outputs, ""))
 	}
 }

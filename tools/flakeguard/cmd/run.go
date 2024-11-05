@@ -57,7 +57,7 @@ var RunTestsCmd = &cobra.Command{
 		if len(failedTests) > 0 {
 			fmt.Printf("PassRatio threshold for flaky tests: %.2f\n", threshold)
 			fmt.Printf("%d failed tests:\n", len(failedTests))
-			reports.PrintTests(failedTests)
+			reports.PrintTests(failedTests, os.Stdout)
 		}
 
 		fmt.Printf("Summary: %d passed, %d skipped, %d failed\n", len(passedTests), len(skippedTests), len(failedTests))
