@@ -806,7 +806,7 @@ func TestNodeSet(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("test something", func(t *testing.T) {
-		for i, n := range out.CLNodes {
+		for _, n := range out.CLNodes {
 			require.NotEmpty(t, n.Node.HostURL)
 			require.NotEmpty(t, n.Node.HostP2PURL)
 		}
@@ -6367,7 +6367,7 @@ echo ::add-mask::$BASE64_CONFIG_OVERRIDE
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>component-docs-v2</code></li>
-<li>Commit: <code>be28945</code></li>
+<li>Commit: <code>0ffa346</code></li>
 </ul>
 
                     </main>
