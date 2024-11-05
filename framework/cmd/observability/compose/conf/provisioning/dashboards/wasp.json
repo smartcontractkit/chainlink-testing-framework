@@ -931,7 +931,7 @@
           "refId": "A"
         }
       ],
-      "title": "WASP Debug",
+      "title": "WASP Load Test",
       "type": "row"
     },
     {
@@ -1425,8 +1425,8 @@
     ]
   },
   "timezone": "",
-  "title": "WaspDebug",
-  "uid": "WaspDebug",
+  "title": "WASP Load Test",
+  "uid": "WASPLoadTests",
   "version": 11,
   "weekStart": ""
 }
