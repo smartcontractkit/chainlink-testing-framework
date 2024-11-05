@@ -17,7 +17,7 @@ const (
 	Password  = "thispasswordislongenough"
 	Port      = "5432"
 	Database  = "chainlink"
-	Databases = 20
+	Databases = 5
 )
 
 type Input struct {
