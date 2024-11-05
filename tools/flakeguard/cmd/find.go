@@ -154,9 +154,6 @@ func findAffectedPackages(baseRef, projectPath string, excludes []string, levels
 
 func outputResults(packages []string, jsonOutput bool) {
 	if jsonOutput {
-		if packages == nil {
-			packages = make([]string, 0) // Ensure the slice is initialized to an empty array
-		}
 		data, err := json.Marshal(packages)
 		if err != nil {
 			log.Fatalf("Error marshaling test files to JSON: %v", err)
