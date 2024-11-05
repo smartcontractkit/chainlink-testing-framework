@@ -2,6 +2,11 @@ package reports
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -107,5 +112,194 @@ func TestPrintTests(t *testing.T) {
 		if !strings.Contains(output, expected) {
 			t.Errorf("expected output to contain %q, but it did not", expected)
 		}
+	}
+}
+
+// Helper function to write temporary JSON files for testing
+func writeTempJSONFile(t *testing.T, dir string, filename string, data interface{}) string {
+	filePath := filepath.Join(dir, filename)
+	fileData, err := json.Marshal(data)
+	if err != nil {
+		t.Fatalf("Failed to marshal JSON: %v", err)
+	}
+	if err := ioutil.WriteFile(filePath, fileData, 0644); err != nil {
+		t.Fatalf("Failed to write JSON file: %v", err)
+	}
+	return filePath
+}
+
+func TestAggregateTestResults(t *testing.T) {
+	// Create a temporary directory for test JSON files
+	tempDir, err := os.MkdirTemp("", "aggregatetestresults")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Test cases
+	testCases := []struct {
+		description    string
+		inputFiles     []interface{}
+		expectedOutput []TestResult
+	}{
+		{
+			description: "Unique test results, no aggregation",
+			inputFiles: []interface{}{
+				[]TestResult{
+					{
+						TestName:            "TestA",
+						TestPackage:         "pkgA",
+						PassRatio:           1,
+						PassRatioPercentage: "100%",
+						Skipped:             false,
+						Runs:                2,
+						Durations:           []float64{0.01, 0.02},
+					},
+				},
+				[]TestResult{
+					{
+						TestName:            "TestB",
+						TestPackage:         "pkgB",
+						PassRatio:           0.5,
+						PassRatioPercentage: "50%",
+						Skipped:             false,
+						Runs:                4,
+						Durations:           []float64{0.05, 0.05, 0.05, 0.05},
+					},
+				},
+			},
+			expectedOutput: []TestResult{
+				{
+					TestName:            "TestA",
+					TestPackage:         "pkgA",
+					PassRatio:           1,
+					PassRatioPercentage: "100%",
+					Skipped:             false,
+					Runs:                2,
+					Durations:           []float64{0.01, 0.02},
+				},
+				{
+					TestName:            "TestB",
+					TestPackage:         "pkgB",
+					PassRatio:           0.5,
+					PassRatioPercentage: "50%",
+					Skipped:             false,
+					Runs:                4,
+					Durations:           []float64{0.05, 0.05, 0.05, 0.05},
+				},
+			},
+		},
+		{
+			description: "Duplicate test results, aggregation of PassRatio and Durations",
+			inputFiles: []interface{}{
+				[]TestResult{
+					{
+						TestName:            "TestC",
+						TestPackage:         "pkgC",
+						PassRatio:           1,
+						PassRatioPercentage: "100%",
+						Skipped:             false,
+						Runs:                2,
+						Durations:           []float64{0.1, 0.1},
+					},
+				},
+				[]TestResult{
+					{
+						TestName:            "TestC",
+						TestPackage:         "pkgC",
+						PassRatio:           0.5,
+						PassRatioPercentage: "50%",
+						Skipped:             false,
+						Runs:                2,
+						Durations:           []float64{0.2, 0.2},
+					},
+				},
+			},
+			expectedOutput: []TestResult{
+				{
+					TestName:            "TestC",
+					TestPackage:         "pkgC",
+					PassRatio:           0.75, // Calculated as (2*1 + 2*0.5) / 4
+					PassRatioPercentage: "75%",
+					Skipped:             false,
+					Runs:                4,
+					Durations:           []float64{0.1, 0.1, 0.2, 0.2},
+				},
+			},
+		},
+		{
+			description: "All Skipped test results",
+			inputFiles: []interface{}{
+				[]TestResult{
+					{
+						TestName:            "TestD",
+						TestPackage:         "pkgD",
+						PassRatio:           1,
+						PassRatioPercentage: "100%",
+						Skipped:             true,
+						Runs:                3,
+						Durations:           []float64{0.1, 0.2, 0.1},
+					},
+				},
+				[]TestResult{
+					{
+						TestName:            "TestD",
+						TestPackage:         "pkgD",
+						PassRatio:           1,
+						PassRatioPercentage: "100%",
+						Skipped:             true,
+						Runs:                2,
+						Durations:           []float64{0.15, 0.15},
+					},
+				},
+			},
+			expectedOutput: []TestResult{
+				{
+					TestName:            "TestD",
+					TestPackage:         "pkgD",
+					PassRatio:           1,
+					PassRatioPercentage: "100%",
+					Skipped:             true, // Should remain true as all runs are skipped
+					Runs:                5,
+					Durations:           []float64{0.1, 0.2, 0.1, 0.15, 0.15},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.description, func(t *testing.T) {
+			// Write input files to the temporary directory
+			for i, inputData := range tc.inputFiles {
+				writeTempJSONFile(t, tempDir, fmt.Sprintf("input%d.json", i), inputData)
+			}
+
+			// Run AggregateTestResults
+			result, err := AggregateTestResults(tempDir)
+			if err != nil {
+				t.Fatalf("AggregateTestResults failed: %v", err)
+			}
+
+			// Compare the result with the expected output
+			if len(result) != len(tc.expectedOutput) {
+				t.Fatalf("Expected %d results, got %d", len(tc.expectedOutput), len(result))
+			}
+
+			for i, expected := range tc.expectedOutput {
+				got := result[i]
+				if got.TestName != expected.TestName || got.TestPackage != expected.TestPackage || got.Runs != expected.Runs || got.Skipped != expected.Skipped {
+					t.Errorf("Result %d - expected %+v, got %+v", i, expected, got)
+				}
+				if got.PassRatio != expected.PassRatio {
+					t.Errorf("Result %d - expected PassRatio %f, got %f", i, expected.PassRatio, got.PassRatio)
+				}
+				if got.PassRatioPercentage != expected.PassRatioPercentage {
+					t.Errorf("Result %d - expected PassRatioPercentage %s, got %s", i, expected.PassRatioPercentage, got.PassRatioPercentage)
+				}
+				if len(got.Durations) != len(expected.Durations) {
+					t.Errorf("Result %d - expected %d durations, got %d", i, len(expected.Durations), len(got.Durations))
+				}
+			}
+		})
 	}
 }

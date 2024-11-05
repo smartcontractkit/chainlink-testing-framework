@@ -28,6 +28,7 @@ func init() {
 
 	rootCmd.AddCommand(cmd.FindTestsCmd)
 	rootCmd.AddCommand(cmd.RunTestsCmd)
+	rootCmd.AddCommand(cmd.AggregateFailedTestsCmd)
 }
 
 func main() {
