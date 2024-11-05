@@ -55,11 +55,9 @@ var RunTestsCmd = &cobra.Command{
 		skippedTests := reports.FilterSkippedTests(testResults)
 
 		if len(failedTests) > 0 {
-			jsonData, err := json.MarshalIndent(failedTests, "", "  ")
-			if err != nil {
-				log.Fatalf("Error marshaling test results to JSON: %v", err)
-			}
-			fmt.Printf("PassRatio threshold for flaky tests: %.2f\n%d failed tests:\n%s\n", threshold, len(failedTests), string(jsonData))
+			fmt.Printf("PassRatio threshold for flaky tests: %.2f\n", threshold)
+			fmt.Printf("%d failed tests:\n", len(failedTests))
+			reports.PrintTests(failedTests)
 		}
 
 		fmt.Printf("Summary: %d passed, %d skipped, %d failed\n", len(passedTests), len(skippedTests), len(failedTests))
