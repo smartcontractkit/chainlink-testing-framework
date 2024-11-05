@@ -126,10 +126,12 @@ jobs:
           else
             echo "CMD_ENTRYPOINT_EXISTS=false" >> "$GITHUB_ENV"
           fi
-      - name: Set the name for external CLI
+      - name: Set binary name based on PACKAGE_NAME
         run: |
           if [ "${{ env.PACKAGE_NAME }}" == "framework" ]; then
-            echo "PACKAGE_NAME=ctf" >> $GITHUB_ENV
+            echo "BINARY_NAME=ctf" >> $GITHUB_ENV
+          else
+            echo "BINARY_NAME=${{ env.PACKAGE_NAME }}" >> $GITHUB_ENV
           fi
       - name: Build binary release
         uses: wangyoucao577/go-release-action@v1
@@ -139,7 +141,7 @@ jobs:
           goversion: '1.22.6'
           goos: ${{ matrix.platform }}
           goarch: ${{ matrix.goarch }}
-          binary_name: ${{ env.PACKAGE_NAME }}
+          binary_name: ${{ env.BINARY_NAME }}
           release_name: ${{ env.PACKAGE_NAME }}
           release_tag: ${{ env.PACKAGE_NAME}}/${{ env.VERSION }}
           project_path: ${{ env.PACKAGE_NAME }}/cmd
