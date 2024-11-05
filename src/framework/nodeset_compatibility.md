@@ -82,7 +82,7 @@ You can reuse `smoke_test.go` from previous [setup](nodeset_environment.md)
 
 Run it
 ```bash
-go test -v -run TestNodeSet
+CTF_CONFIGS=smoke.toml go test -v -run TestNodeSet
 ```
 
 Summary:

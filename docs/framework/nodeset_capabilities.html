@@ -242,6 +242,10 @@
 </style>
 <h1 id="chainlink-node-set-environment-test"><a class="header" href="#chainlink-node-set-environment-test">Chainlink Node Set Environment Test</a></h1>
 <p>Let's use some external capability binaries in our tests and extend the <a href="nodeset_environment.html">previous one</a>.</p>
+<p>We'll use a private repository example, so you should be authorized with <a href="">gh</a></p>
+<pre><code>gh auth login
+gh auth setup-git
+</code></pre>
 <p>Download an example capability binary</p>
 <pre><code>export export GOPRIVATE=github.com/smartcontractkit/capabilities
 go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install github.com/smartcontractkit/capabilities/kvstore 
@@ -276,7 +280,7 @@ go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install gi
 
 </code></pre>
 <p>Run it</p>
-<pre><code class="language-bash">go test -v -run TestNodeSet
+<pre><code class="language-bash">CTF_CONFIGS=smoke.toml go test -v -run TestNodeSet
 </code></pre>
 <p>Now you can configure your capability using <code>clclient.CreateJobRaw($raw_toml)</code>.</p>
 <p>Capabilities are uploaded to <code>/home/capabilities</code> by default.</p>

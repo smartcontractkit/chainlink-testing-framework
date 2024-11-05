@@ -400,25 +400,25 @@
 }
 
 </style>
-<h1 id="getting-started"><a class="header" href="#getting-started">Getting started</a></h1>
+<h1 id="-getting-started"><a class="header" href="#-getting-started">🚀 Getting started</a></h1>
 <h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
 <ul>
-<li><code>Docker</code> (<a href="https://orbstack.dev/">OrbStack</a> or <a href="https://www.docker.com/products/docker-desktop/">Docker Desktop</a>)</li>
+<li><code>Docker</code> <a href="https://orbstack.dev/">OrbStack</a> or <a href="https://www.docker.com/products/docker-desktop/">Docker Desktop</a>, we recommend OrbStack (faster, smaller memory footprint)</li>
 <li><a href="https://go.dev/doc/install">Golang</a></li>
 </ul>
 <h2 id="test-setup"><a class="header" href="#test-setup">Test setup</a></h2>
 <p>To start writing tests create a directory for your project with <code>go.mod</code> and pull the framework</p>
 <pre><code>go get github.com/smartcontractkit/chainlink-testing-framework/framework
 </code></pre>
-<p>Then download the CLI (runs from directory where you have <code>go.mod</code>)</p>
+<p>Then download the CLI (runs from the directory where you have <code>go.mod</code>)</p>
 <pre><code>go get github.com/smartcontractkit/chainlink-testing-framework/framework/cmd &amp;&amp; \
 go install github.com/smartcontractkit/chainlink-testing-framework/framework/cmd &amp;&amp; \
 mv ~/go/bin/cmd ~/go/bin/ctf
 </code></pre>
+<p>Or download a binary release <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.7">here</a> and rename it to <code>ctf</code></p>
 <p>More CLI <a href="framework/./cli.html">docs</a></p>
-<p>Create an <code>.envrc</code> file and put common parameters there (you can use <a href="https://direnv.net/">direnv</a> to sync them more easily)</p>
+<p>Create an <code>.envrc</code> file and do <code>source .envrc</code></p>
 <pre><code>export TESTCONTAINERS_RYUK_DISABLED=true # do not remove containers while we develop locally
-export CTF_CONFIGS=smoke.toml            # our configuration file
 </code></pre>
 <p>Now you are ready to write your <a href="framework/./first_test.html">first test</a></p>
 <h2 id="tools-setup-optional"><a class="header" href="#tools-setup-optional">Tools setup (Optional)</a></h2>
@@ -426,9 +426,11 @@ export CTF_CONFIGS=smoke.toml            # our configuration file
 <p>Spin up your local obserability stack (Grafana LGTM)</p>
 <pre><code>ctf obs up
 </code></pre>
+<p>More <a href="framework/observability/observability_stack.html">docs</a></p>
 <p>Spin up your <code>Blockscout</code> stack</p>
 <pre><code>ctf bs up
 </code></pre>
+<p>More <a href="framework/observability/blockscout.html">docs</a></p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -532,8 +534,11 @@ func TestMe(t *testing.T) {
 	})
 }
 </code></pre>
-<p>Select your configuration by setting <code>CTF_CONFIGS=smoke.toml</code> and run it</p>
-<pre><code class="language-bash">go test -v -run TestMe
+<p>Run the test</p>
+<pre><code class="language-bash">CTF_CONFIGS=smoke.toml go test -v -run TestMe
+</code></pre>
+<p>Remove containers</p>
+<pre><code>ctf d rm
 </code></pre>
 <p>Summary:</p>
 <ul>
@@ -814,7 +819,7 @@ func TestNodeSet(t *testing.T) {
 }
 </code></pre>
 <p>Run it</p>
-<pre><code class="language-bash">go test -v -run TestNodeSet
+<pre><code class="language-bash">CTF_CONFIGS=smoke.toml go test -v -run TestNodeSet
 </code></pre>
 <p>You'll see something like, use any URL to access CL node</p>
 <pre><code class="language-bash">6:14PM INF Chainlink node url URL=http://127.0.0.1:34041
@@ -901,6 +906,10 @@ fj293fbBnlQ!f9vNs
 </style>
 <h1 id="chainlink-node-set-environment-test-1"><a class="header" href="#chainlink-node-set-environment-test-1">Chainlink Node Set Environment Test</a></h1>
 <p>Let's use some external capability binaries in our tests and extend the <a href="framework/nodeset_environment.html">previous one</a>.</p>
+<p>We'll use a private repository example, so you should be authorized with <a href="framework/">gh</a></p>
+<pre><code>gh auth login
+gh auth setup-git
+</code></pre>
 <p>Download an example capability binary</p>
 <pre><code>export export GOPRIVATE=github.com/smartcontractkit/capabilities
 go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install github.com/smartcontractkit/capabilities/kvstore 
@@ -935,7 +944,7 @@ go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install gi
 
 </code></pre>
 <p>Run it</p>
-<pre><code class="language-bash">go test -v -run TestNodeSet
+<pre><code class="language-bash">CTF_CONFIGS=smoke.toml go test -v -run TestNodeSet
 </code></pre>
 <p>Now you can configure your capability using <code>clclient.CreateJobRaw($raw_toml)</code>.</p>
 <p>Capabilities are uploaded to <code>/home/capabilities</code> by default.</p>
@@ -1187,7 +1196,7 @@ go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install gi
 </code></pre>
 <p>You can reuse <code>smoke_test.go</code> from previous <a href="framework/nodeset_environment.html">setup</a></p>
 <p>Run it</p>
-<pre><code class="language-bash">go test -v -run TestNodeSet
+<pre><code class="language-bash">CTF_CONFIGS=smoke.toml go test -v -run TestNodeSet
 </code></pre>
 <p>Summary:</p>
 <ul>
@@ -5178,7 +5187,7 @@ go run examples/remote-test-runner/env.go
 <li><a href="lib/k8s/TUTORIAL.html#coverage">Coverage</a></li>
 <li><a href="lib/k8s/./REMOTE_RUN.html">Remote run</a></li>
 </ul>
-<h2 id="getting-started-1"><a class="header" href="#getting-started-1">Getting started</a></h2>
+<h2 id="getting-started"><a class="header" href="#getting-started">Getting started</a></h2>
 <p>Read <a href="lib/k8s/KUBERNETES.html">here</a> about how to spin up a local cluster if you don't have one</p>
 <p>Let's create a simple environment by combining different deployment parts</p>
 <p>Create <code>examples/simple/env.go</code></p>
@@ -6219,8 +6228,8 @@ echo ::add-mask::$BASE64_CONFIG_OVERRIDE
 <h1 id="build-info"><a class="header" href="#build-info">Build info</a></h1>
 <p>This documentation was generated from:</p>
 <ul>
-<li>Branch <code>component-docs-v2</code></li>
-<li>Commit: <code>8a72e72</code></li>
+<li>Branch <code>main</code></li>
+<li>Commit: <code>d931474</code></li>
 </ul>
 
                     </main>
