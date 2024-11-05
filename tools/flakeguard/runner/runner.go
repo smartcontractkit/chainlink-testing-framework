@@ -14,22 +14,28 @@ import (
 )
 
 type Runner struct {
-	ProjectPath string   // Path to the Go project directory.
-	Verbose     bool     // If true, provides detailed logging.
-	RunCount    int      // Number of times to run the tests.
-	UseRace     bool     // Enable race detector.
-	FailFast    bool     // Stop on first test failure.
-	SkipTests   []string // Test names to exclude.
+	ProjectPath          string   // Path to the Go project directory.
+	Verbose              bool     // If true, provides detailed logging.
+	RunCount             int      // Number of times to run the tests.
+	UseRace              bool     // Enable race detector.
+	FailFast             bool     // Stop on first test failure.
+	SkipTests            []string // Test names to exclude.
+	RunAllTestPackages   bool     // Run all test packages if true.
+	SelectedTestPackages []string // Explicitly selected packages to run.
 }
 
 // RunTests executes the tests for each provided package and aggregates all results.
 // It returns all test results and any error encountered during testing.
-func (r *Runner) RunTests(packages []string) ([]reports.TestResult, error) {
+func (r *Runner) RunTests() ([]reports.TestResult, error) {
 	var jsonOutputs [][]byte
+	packages := r.SelectedTestPackages
+	if r.RunAllTestPackages {
+		packages = []string{"./..."}
+	}
 
 	for _, p := range packages {
 		for i := 0; i < r.RunCount; i++ {
-			jsonOutput, passed, err := r.runTestPackage(p)
+			jsonOutput, passed, err := r.runTests(p)
 			if err != nil {
 				return nil, fmt.Errorf("failed to run tests in package %s: %w", p, err)
 			}
@@ -49,19 +55,15 @@ type exitCoder interface {
 
 // runTestPackage executes the test command for a single test package.
 // It returns the command output, a boolean indicating success, and any error encountered.
-func (r *Runner) runTestPackage(testPackage string) ([]byte, bool, error) {
-	args := []string{"test", "-json", "-count=1"} // Enable JSON output
+func (r *Runner) runTests(packageName string) ([]byte, bool, error) {
+	args := []string{"test", packageName, "-json", "-count=1"} // Enable JSON output for parsing
 	if r.UseRace {
 		args = append(args, "-race")
 	}
-
-	// Construct regex pattern from ExcludedTests slice
 	if len(r.SkipTests) > 0 {
 		skipPattern := strings.Join(r.SkipTests, "|")
 		args = append(args, fmt.Sprintf("-skip=%s", skipPattern))
 	}
-
-	args = append(args, testPackage)
 
 	if r.Verbose {
 		log.Printf("Running command: go %s\n", strings.Join(args, " "))
@@ -79,7 +81,7 @@ func (r *Runner) runTestPackage(testPackage string) ([]byte, bool, error) {
 		var exErr exitCoder
 		// Check if the error is due to a non-zero exit code
 		if errors.As(err, &exErr) && exErr.ExitCode() == 0 {
-			return nil, false, fmt.Errorf("test command failed at %s: %w", testPackage, err)
+			return nil, false, fmt.Errorf("test command failed at %s: %w", packageName, err)
 		}
 		return out.Bytes(), false, nil // Test failed
 	}
