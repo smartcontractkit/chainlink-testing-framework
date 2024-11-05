@@ -8,7 +8,7 @@ Create your configuration in `smoke.toml`
 ```toml
 [blockchain_a]
   chain_id = "31337"
-  image = "f4hrenhe9i/foundry:latest"
+  image = "f4hrenh9it/foundry:latest"
   port = "8545"
   type = "anvil"
 ```
