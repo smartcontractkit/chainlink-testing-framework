@@ -2,11 +2,11 @@ package runner
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -27,7 +27,7 @@ type Runner struct {
 // RunTests executes the tests for each provided package and aggregates all results.
 // It returns all test results and any error encountered during testing.
 func (r *Runner) RunTests() ([]reports.TestResult, error) {
-	var jsonOutputs [][]byte
+	var jsonFilePaths []string
 	packages := r.SelectedTestPackages
 	if r.RunAllTestPackages {
 		packages = []string{"./..."}
@@ -35,28 +35,27 @@ func (r *Runner) RunTests() ([]reports.TestResult, error) {
 
 	for _, p := range packages {
 		for i := 0; i < r.RunCount; i++ {
-			jsonOutput, passed, err := r.runTests(p)
+			jsonFilePath, passed, err := r.runTests(p)
 			if err != nil {
 				return nil, fmt.Errorf("failed to run tests in package %s: %w", p, err)
 			}
-			jsonOutputs = append(jsonOutputs, jsonOutput)
+			jsonFilePaths = append(jsonFilePaths, jsonFilePath)
 			if !passed && r.FailFast {
 				break
 			}
 		}
 	}
 
-	return parseTestResults(jsonOutputs)
+	return parseTestResults(jsonFilePaths)
 }
 
 type exitCoder interface {
 	ExitCode() int
 }
 
-// runTestPackage executes the test command for a single test package.
-// It returns the command output, a boolean indicating success, and any error encountered.
-func (r *Runner) runTests(packageName string) ([]byte, bool, error) {
-	args := []string{"test", packageName, "-json", "-count=1"} // Enable JSON output for parsing
+// runTests runs the tests for a given package and returns the path to the output file.
+func (r *Runner) runTests(packageName string) (string, bool, error) {
+	args := []string{"test", packageName, "-json", "-count=1"} // Enable JSON output
 	if r.UseRace {
 		args = append(args, "-race")
 	}
@@ -68,36 +67,47 @@ func (r *Runner) runTests(packageName string) ([]byte, bool, error) {
 	if r.Verbose {
 		log.Printf("Running command: go %s\n", strings.Join(args, " "))
 	}
+
+	// Create a temporary file to store the output
+	tmpFile, err := os.CreateTemp("", "test-output-*.json")
+	if err != nil {
+		return "", false, fmt.Errorf("failed to create temp file: %w", err)
+	}
+	defer tmpFile.Close()
+
+	// Run the command with output directed to the file
 	cmd := exec.Command("go", args...)
 	cmd.Dir = r.ProjectPath
+	cmd.Stdout = tmpFile
+	cmd.Stderr = tmpFile
 
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-
-	// Run the command
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		var exErr exitCoder
 		// Check if the error is due to a non-zero exit code
 		if errors.As(err, &exErr) && exErr.ExitCode() == 0 {
-			return nil, false, fmt.Errorf("test command failed at %s: %w", packageName, err)
+			return "", false, fmt.Errorf("test command failed at %s: %w", packageName, err)
 		}
-		return out.Bytes(), false, nil // Test failed
+		return tmpFile.Name(), false, nil // Test failed
 	}
 
-	return out.Bytes(), true, nil // Test succeeded
+	return tmpFile.Name(), true, nil // Test succeeded
 }
 
-// parseTestResults analyzes multiple JSON outputs from 'go test -json' commands to determine test results.
-// It accepts a slice of []byte where each []byte represents a separate JSON output from a test run.
-// This function aggregates results across multiple test runs, summing runs and passes for each test.
-func parseTestResults(datas [][]byte) ([]reports.TestResult, error) {
+// parseTestResults reads the test output files and returns the parsed test results.
+func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 	testDetails := make(map[string]*reports.TestResult) // Holds run, pass counts, and other details for each test
 
-	// Process each data set
-	for _, data := range datas {
-		scanner := bufio.NewScanner(bytes.NewReader(data))
+	// Process each file
+	for _, filePath := range filePaths {
+		file, err := os.Open(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open test output file: %w", err)
+		}
+		defer os.Remove(filePath) // Clean up file after parsing
+		defer file.Close()
+
+		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
 			var entry struct {
 				Action  string  `json:"Action"`
@@ -146,7 +156,7 @@ func parseTestResults(datas [][]byte) ([]reports.TestResult, error) {
 		}
 
 		if err := scanner.Err(); err != nil {
-			return nil, fmt.Errorf("reading standard input: %w", err)
+			return nil, fmt.Errorf("reading test output file: %w", err)
 		}
 	}
 
