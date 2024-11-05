@@ -36,11 +36,10 @@ func createComponentsFromForm(form *nodeSetForm) error {
 	case "anvil":
 		f := func() {
 			bc, err = blockchain.NewBlockchainNetwork(&blockchain.Input{
-				Type:      "anvil",
-				Image:     "f4hrenh9it/foundry",
-				PullImage: true,
-				Port:      "8545",
-				ChainID:   "31337",
+				Type:    "anvil",
+				Image:   "f4hrenh9it/foundry",
+				Port:    "8545",
+				ChainID: "31337",
 			})
 		}
 		err = spinner.New().
@@ -54,12 +53,10 @@ func createComponentsFromForm(form *nodeSetForm) error {
 		for i := 0; i < form.Nodes; i++ {
 			nspecs = append(nspecs, &clnode.Input{
 				DbInput: &postgres.Input{
-					Image:     "postgres:15.6",
-					PullImage: true,
+					Image: "postgres:15.6",
 				},
 				Node: &clnode.NodeInput{
-					Image:     form.CLVersion,
-					PullImage: true,
+					Image: form.CLVersion,
 				},
 			})
 		}

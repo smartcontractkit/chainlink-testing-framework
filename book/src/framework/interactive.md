@@ -9,7 +9,7 @@ If you're on OS X, we recommend to use [OrbStack](https://orbstack.dev/).
 
 For other platforms use [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 
-Download the latest CLI [here](https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.6)
+Download the latest CLI [here](https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.7)
 
 Allow it to run in `System Settings -> Security Settings` (OS X)
 
