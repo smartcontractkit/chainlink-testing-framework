@@ -247,15 +247,22 @@
 <li><a href="https://go.dev/doc/install">Golang</a></li>
 </ul>
 <h2 id="test-setup"><a class="header" href="#test-setup">Test setup</a></h2>
-<p>To start writing tests create a directory for your project with <code>go.mod</code> and pull the framework</p>
+<p>To start writing tests create a directory for your project with <code>go.mod</code> and add a package</p>
 <pre><code>go get github.com/smartcontractkit/chainlink-testing-framework/framework
 </code></pre>
-<p>Then download the CLI (runs from the directory where you have <code>go.mod</code>)</p>
-<pre><code>go get github.com/smartcontractkit/chainlink-testing-framework/framework/cmd &amp;&amp; \
-go install github.com/smartcontractkit/chainlink-testing-framework/framework/cmd &amp;&amp; \
-mv ~/go/bin/cmd ~/go/bin/ctf
+<p>Download our <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8">CLI</a></p>
+<p>OS X <code>arm64</code> (M1/M2/M3 MacBooks)</p>
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2F/framework--darwin-arm64.tar.gz | tar -xz
 </code></pre>
-<p>Or download a binary release <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.7">here</a> and rename it to <code>ctf</code></p>
+<p>OS X <code>amd64</code> (old Intel chips)</p>
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2F/framework--darwin-amd64.tar.gz | tar -xz
+</code></pre>
+<p>Linux <code>arm64</code></p>
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2F/framework--linux-arm64.tar.gz | tar -xz
+</code></pre>
+<p>Linux <code>amd64</code></p>
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2F/framework--linux-amd64.tar.gz | tar -xz
+</code></pre>
 <p>More CLI <a href="./cli.html">docs</a></p>
 <p>Create an <code>.envrc</code> file and do <code>source .envrc</code></p>
 <pre><code>export TESTCONTAINERS_RYUK_DISABLED=true # do not remove containers while we develop locally

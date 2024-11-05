@@ -407,15 +407,22 @@
 <li><a href="https://go.dev/doc/install">Golang</a></li>
 </ul>
 <h2 id="test-setup"><a class="header" href="#test-setup">Test setup</a></h2>
-<p>To start writing tests create a directory for your project with <code>go.mod</code> and pull the framework</p>
+<p>To start writing tests create a directory for your project with <code>go.mod</code> and add a package</p>
 <pre><code>go get github.com/smartcontractkit/chainlink-testing-framework/framework
 </code></pre>
-<p>Then download the CLI (runs from the directory where you have <code>go.mod</code>)</p>
-<pre><code>go get github.com/smartcontractkit/chainlink-testing-framework/framework/cmd &amp;&amp; \
-go install github.com/smartcontractkit/chainlink-testing-framework/framework/cmd &amp;&amp; \
-mv ~/go/bin/cmd ~/go/bin/ctf
+<p>Download our <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8">CLI</a></p>
+<p>OS X <code>arm64</code> (M1/M2/M3 MacBooks)</p>
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2F/framework--darwin-arm64.tar.gz | tar -xz
 </code></pre>
-<p>Or download a binary release <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.7">here</a> and rename it to <code>ctf</code></p>
+<p>OS X <code>amd64</code> (old Intel chips)</p>
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2F/framework--darwin-amd64.tar.gz | tar -xz
+</code></pre>
+<p>Linux <code>arm64</code></p>
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2F/framework--linux-arm64.tar.gz | tar -xz
+</code></pre>
+<p>Linux <code>amd64</code></p>
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2F/framework--linux-amd64.tar.gz | tar -xz
+</code></pre>
 <p>More CLI <a href="framework/./cli.html">docs</a></p>
 <p>Create an <code>.envrc</code> file and do <code>source .envrc</code></p>
 <pre><code>export TESTCONTAINERS_RYUK_DISABLED=true # do not remove containers while we develop locally
@@ -2331,6 +2338,104 @@ func TestDON(t *testing.T) {
 
 </style>
 <h1 id="node"><a class="header" href="#node">Node</a></h1>
+<p>Here we provide <em>full</em> configuration parameters for <code>Node</code></p>
+<div class="warning">
+Here we provide full configuration reference, if you want to copy and run it, please remove all .out fields before!
+</div>
+<h2 id="configuration-2"><a class="header" href="#configuration-2">Configuration</a></h2>
+<pre><code class="language-toml">[cl_node]
+  # Optional URL for fake data provider URL
+  # usually set up in test with local mock server
+  data_provider_url = "http://example.com"
+
+  [cl_node.db]
+    # PostgreSQL image version and tag
+    image = "postgres:15.6"
+    # Pulls the image every time if set to 'true', used like that in CI. Can be set to 'false' to speed up local runs
+    pull_image = true
+
+  [cl_node.node]
+    # A list of paths to capability binaries
+    capabilities = ["./capability_1", "./capability_2"]
+    # Default capabilities directory inside container
+    capabilities_container_dir = "/home/capabilities"
+    # Image to use, you can either provide "image" or "docker_file" + "docker_ctx" fields
+    image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+    # Path to your Chainlink Dockerfile
+    docker_file = "../../core/chainlink.Dockerfile"
+    # Path to docker context that should be used to build from
+    docker_ctx = "../.."
+    # Optional name for image we build, default is "ctftmp"
+    docker_image_name = "ctftmp"
+    # Pulls the image every time if set to 'true', used like that in CI. Can be set to 'false' to speed up local runs
+    pull_image = true
+    # Overrides Chainlink node TOML configuration
+    # can be multiline, see example
+    user_config_overrides = """
+      [Log]
+      level = 'info'
+      """
+    # Overrides Chainlink node secrets TOML configuration
+    # you can only add fields, overriding existing fields is prohibited by Chainlink node
+    user_secrets_overrides = """
+      [AnotherSecret]
+      mySecret = 'a'
+      """
+
+  # Outputs are the results of deploying a component that can be used by another component
+  [cl_node.out]
+    # If 'use_cache' equals 'true' we skip component setup when we run the test and return the outputs
+    use_cache = true
+    # Describes deployed or external Chainlink node
+    [cl_node.out.node]
+      # Host Docker URLs the test uses
+      # in case of using external component you can replace these URLs with another deployment
+      p2p_url = "http://127.0.0.1:32812"
+      url = "http://127.0.0.1:32847"
+
+    # Describes deployed or external Chainlink node
+    [cl_node.out.postgresql]
+      # PostgreSQL connection string
+      # in case of using external database can be overriden
+      url = "postgresql://chainlink:thispasswordislongenough@127.0.0.1:32846/chainlink?sslmode=disable"
+</code></pre>
+<h2 id="usage-1"><a class="header" href="#usage-1">Usage</a></h2>
+<pre><code class="language-golang">package yourpackage_test
+
+import (
+	"fmt"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
+	"github.com/stretchr/testify/require"
+	"testing"
+)
+
+type Step2Cfg struct {
+	BlockchainA *blockchain.Input `toml:"blockchain_a" validate:"required"`
+	CLNode      *clnode.Input     `toml:"cl_node" validate:"required"`
+}
+
+func TestMe(t *testing.T) {
+	in, err := framework.Load[Step2Cfg](t)
+	require.NoError(t, err)
+
+	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
+	require.NoError(t, err)
+
+	networkCfg, err := clnode.NewNetworkCfgOneNetworkAllNodes(bc)
+	require.NoError(t, err)
+	in.CLNode.Node.TestConfigOverrides = networkCfg
+
+	output, err := clnode.NewNodeWithDB(in.CLNode)
+	require.NoError(t, err)
+
+	t.Run("test something", func(t *testing.T) {
+		fmt.Printf("node url: %s\n", output.Node.HostURL)
+		require.NotEmpty(t, output.Node.HostURL)
+	})
+}
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -2399,7 +2504,41 @@ func TestDON(t *testing.T) {
 
 </style>
 <h1 id="nodeset"><a class="header" href="#nodeset">NodeSet</a></h1>
-<h2 id="configuration-2"><a class="header" href="#configuration-2">Configuration</a></h2>
+<p>Here we provide <em>full</em> configuration parameters for <code>NodeSet</code></p>
+<div class="warning">
+Here we provide full configuration reference, if you want to copy and run it, please remove all .out fields before!
+</div>
+<h2 id="configuration-3"><a class="header" href="#configuration-3">Configuration</a></h2>
+<p>This component requires some Blockchain to be deployed, add this to config</p>
+<pre><code class="language-toml">[blockchain_a]
+  # Blockchain node type, can be "anvil" or "geth"
+  type = "anvil"
+  # Chain ID
+  chain_id = "31337"
+  # Anvil command line params, ex.: docker_cmd_params = ['--block-time=1', '...']
+  docker_cmd_params = []
+  # Docker image and tag
+  image = "f4hrenh9it/foundry:latest"
+  # External port to expose
+  port = "8545"
+  # Pulls the image every time if set to 'true', used like that in CI. Can be set to 'false' to speed up local runs
+  pull_image = false
+
+  # Outputs are the results of deploying a component that can be used by another component
+  [blockchain_a.out]
+    chain_id = "31337"
+    # If 'use_cache' equals 'true' we skip component setup when we run the test and return the outputs
+    use_cache = true
+
+    [[blockchain_a.out.nodes]]
+      # URLs to access the node(s) inside docker network, used by other components
+      docker_internal_http_url = "http://anvil-14411:8545"
+      docker_internal_ws_url = "ws://anvil-14411:8545"
+      # URLs to access the node(s) on your host machine or in CI
+      http_url = "http://127.0.0.1:33955"
+      ws_url = "ws://127.0.0.1:33955"
+</code></pre>
+<p>Then configure NodeSet</p>
 <pre><code class="language-toml">[nodeset]
   # amount of Chainlink nodes to spin up
   nodes = 5
@@ -2411,7 +2550,7 @@ func TestDON(t *testing.T) {
   [[nodeset.node_specs]]
     # Optional URL for fake data provider URL
     # usually set up in test with local mock server
-    data_provider_url = ""
+    data_provider_url = "http://example.com"
 
     [nodeset.node_specs.db]
       # PostgreSQL image version and tag
@@ -2474,29 +2613,41 @@ func TestDON(t *testing.T) {
       [nodeset.out.cl_nodes.postgresql]
     ...
 </code></pre>
-<h2 id="usage-1"><a class="header" href="#usage-1">Usage</a></h2>
-<pre><code class="language-golang">package yourpackage_test
+<h2 id="usage-2"><a class="header" href="#usage-2">Usage</a></h2>
+<pre><code class="language-golang">package capabilities_test
 
 import (
-	"fmt"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 type Config struct {
+	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
+	MockerDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
 	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
 }
 
-func TestNodeSet(t *testing.T) {
+func TestMe(t *testing.T) {
 	in, err := framework.Load[Config](t)
 	require.NoError(t, err)
 
+	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
+	require.NoError(t, err)
+	dp, err := fake.NewFakeDataProvider(in.MockerDataProvider)
+	require.NoError(t, err)
 	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc, dp.BaseURLDocker)
 	require.NoError(t, err)
 
-	...
+	t.Run("test something", func(t *testing.T) {
+		for _, n := range out.CLNodes {
+			require.NotEmpty(t, n.Node.HostURL)
+			require.NotEmpty(t, n.Node.HostP2PURL)
+		}
+	})
 }
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><style>
@@ -4513,7 +4664,7 @@ go run ./tools/breakingchanges/cmd/main.go --ignore tools,wasp,havoc,seth # to i
 </code></pre>
 <h3 id="running-tests-in-k8s"><a class="header" href="#running-tests-in-k8s">Running tests in k8s</a></h3>
 <p>To read how to run a test in k8s, read <a href="lib/k8s/REMOTE_RUN.html">here</a></p>
-<h3 id="usage-2"><a class="header" href="#usage-2">Usage</a></h3>
+<h3 id="usage-3"><a class="header" href="#usage-3">Usage</a></h3>
 <h4 id="with-env-vars-deprecated"><a class="header" href="#with-env-vars-deprecated">With env vars (deprecated)</a></h4>
 <p>Create an env in a separate file and run it</p>
 <pre><code class="language-sh">export CHAINLINK_IMAGE="public.ecr.aws/chainlink/chainlink"
@@ -4649,7 +4800,7 @@ cfg, err: = builder.
 <p>When you connect a container LogStream will create a new consumer and start a detached goroutine that listens to logs emitted by that container and which reconnects and re-requests logs if listening fails for whatever reason. Retry limit and timeout can both be configured using functional options. In most cases one container should have one consumer, but it's possible to have multiple consumers for one container.</p>
 <p>LogStream stores all logs in gob temporary file. To actually send/save them, you need to flush them. When you do it, LogStream will decode the file and send logs to configured targets. If log handling results in an error it won't be retried and processing of logs for given consumer will stop (if you think we should add a retry mechanism please let us know).</p>
 <p><em>Important:</em> Flushing and accepting logs is blocking operation. That's because they both share the same cursor to temporary file and otherwise it's position would be racey and could result in mixed up logs.</p>
-<h2 id="configuration-3"><a class="header" href="#configuration-3">Configuration</a></h2>
+<h2 id="configuration-4"><a class="header" href="#configuration-4">Configuration</a></h2>
 <p>Basic <code>LogStream</code> TOML configuration is following:</p>
 <pre><code class="language-toml">[LogStream]
 log_targets=["file"]
@@ -6229,7 +6380,7 @@ echo ::add-mask::$BASE64_CONFIG_OVERRIDE
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>aa22cd4</code></li>
+<li>Commit: <code>258e5a7</code></li>
 </ul>
 
                     </main>

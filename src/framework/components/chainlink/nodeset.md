@@ -1,6 +1,45 @@
 # NodeSet
 
+Here we provide *full* configuration parameters for `NodeSet`
+
+<div class="warning">
+Here we provide full configuration reference, if you want to copy and run it, please remove all .out fields before!
+</div>
+
 ## Configuration
+
+This component requires some Blockchain to be deployed, add this to config
+```toml
+[blockchain_a]
+  # Blockchain node type, can be "anvil" or "geth"
+  type = "anvil"
+  # Chain ID
+  chain_id = "31337"
+  # Anvil command line params, ex.: docker_cmd_params = ['--block-time=1', '...']
+  docker_cmd_params = []
+  # Docker image and tag
+  image = "f4hrenh9it/foundry:latest"
+  # External port to expose
+  port = "8545"
+  # Pulls the image every time if set to 'true', used like that in CI. Can be set to 'false' to speed up local runs
+  pull_image = false
+
+  # Outputs are the results of deploying a component that can be used by another component
+  [blockchain_a.out]
+    chain_id = "31337"
+    # If 'use_cache' equals 'true' we skip component setup when we run the test and return the outputs
+    use_cache = true
+
+    [[blockchain_a.out.nodes]]
+      # URLs to access the node(s) inside docker network, used by other components
+      docker_internal_http_url = "http://anvil-14411:8545"
+      docker_internal_ws_url = "ws://anvil-14411:8545"
+      # URLs to access the node(s) on your host machine or in CI
+      http_url = "http://127.0.0.1:33955"
+      ws_url = "ws://127.0.0.1:33955"
+```
+
+Then configure NodeSet
 ```toml
 [nodeset]
   # amount of Chainlink nodes to spin up
@@ -13,7 +52,7 @@
   [[nodeset.node_specs]]
     # Optional URL for fake data provider URL
     # usually set up in test with local mock server
-    data_provider_url = ""
+    data_provider_url = "http://example.com"
 
     [nodeset.node_specs.db]
       # PostgreSQL image version and tag
@@ -79,27 +118,39 @@
 
 ## Usage
 ```golang
-package yourpackage_test
+package capabilities_test
 
 import (
-	"fmt"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 type Config struct {
+	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
+	MockerDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
 	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
 }
 
-func TestNodeSet(t *testing.T) {
+func TestMe(t *testing.T) {
 	in, err := framework.Load[Config](t)
 	require.NoError(t, err)
 
+	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
+	require.NoError(t, err)
+	dp, err := fake.NewFakeDataProvider(in.MockerDataProvider)
+	require.NoError(t, err)
 	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc, dp.BaseURLDocker)
 	require.NoError(t, err)
 
-	...
+	t.Run("test something", func(t *testing.T) {
+		for _, n := range out.CLNodes {
+			require.NotEmpty(t, n.Node.HostURL)
+			require.NotEmpty(t, n.Node.HostP2PURL)
+		}
+	})
 }
 ```
