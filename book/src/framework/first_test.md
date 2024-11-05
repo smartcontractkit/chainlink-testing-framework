@@ -8,7 +8,7 @@ Create your configuration in `smoke.toml`
 ```toml
 [blockchain_a]
   chain_id = "31337"
-  image = "ghcr.io/gakonst/foundry:latest"
+  image = "f4hrenh9it/foundry:latest"
   port = "8545"
   type = "anvil"
 ```
@@ -41,9 +41,14 @@ func TestMe(t *testing.T) {
 }
 ```
 
-Select your configuration by setting `CTF_CONFIGS=smoke.toml` and run it
+Run the test
 ```bash
-go test -v -run TestMe
+CTF_CONFIGS=smoke.toml go test -v -run TestMe
+```
+
+Remove containers
+```
+ctf d rm
 ```
 
 Summary:

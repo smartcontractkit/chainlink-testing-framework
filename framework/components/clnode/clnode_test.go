@@ -33,13 +33,11 @@ func TestDockerNodeWithSharedDB(t *testing.T) {
 			input: &clnode.Input{
 				DataProviderURL: "http://example.com",
 				DbInput: &postgres.Input{
-					Image:     "postgres:15.6",
-					PullImage: true,
+					Image: "postgres:15.6",
 				},
 				Node: &clnode.NodeInput{
-					Image:     "public.ecr.aws/chainlink/chainlink:v2.17.0",
-					Name:      "cl-node-1",
-					PullImage: true,
+					Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",
+					Name:  "cl-node-1",
 				},
 			},
 			assertion: func(t *testing.T, output *clnode.Output) {
@@ -69,13 +67,11 @@ func TestDockerNodeWithDB(t *testing.T) {
 			input: &clnode.Input{
 				DataProviderURL: "http://example.com",
 				DbInput: &postgres.Input{
-					Image:     "postgres:15.6",
-					PullImage: true,
+					Image: "postgres:15.6",
 				},
 				Node: &clnode.NodeInput{
-					Image:     "public.ecr.aws/chainlink/chainlink:v2.17.0",
-					Name:      "cl-node-2",
-					PullImage: true,
+					Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",
+					Name:  "cl-node-2",
 				},
 			},
 			assertion: func(t *testing.T, output *clnode.Output) {

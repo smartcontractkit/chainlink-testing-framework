@@ -28,7 +28,7 @@ export CTF_CONFIGS=smoke.toml,smoke-fuji.toml
 
 Run it
 ```bash
-go test -v -run TestNodeSet
+CTF_CONFIGS=smoke.toml go test -v -run TestNodeSet
 ```
 
 Summary:

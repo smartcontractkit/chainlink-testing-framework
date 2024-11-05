@@ -6,7 +6,7 @@ Create a configuration file `smoke.toml`
 ```toml
 [blockchain_a]
   chain_id = "31337"
-  image = "ghcr.io/gakonst/foundry:latest"
+  image = "f4hrenh9it/foundry:latest"
   port = "8545"
   type = "anvil"
 
@@ -33,7 +33,6 @@ Create a file `smoke_test.go`
 package yourpackage_test
 
 import (
-	"fmt"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
@@ -60,7 +59,7 @@ func TestNodeSet(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("test something", func(t *testing.T) {
-		for i, n := range out.CLNodes {
+		for _, n := range out.CLNodes {
 			require.NotEmpty(t, n.Node.HostURL)
 			require.NotEmpty(t, n.Node.HostP2PURL)
 		}
@@ -70,7 +69,7 @@ func TestNodeSet(t *testing.T) {
 
 Run it
 ```bash
-go test -v -run TestNodeSet
+CTF_CONFIGS=smoke.toml go test -v -run TestNodeSet
 ```
 
 You'll see something like, use any URL to access CL node
