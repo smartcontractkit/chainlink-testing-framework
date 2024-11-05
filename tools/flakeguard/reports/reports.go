@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -53,7 +54,7 @@ func FilterSkippedTests(results []TestResult) []TestResult {
 	return skippedTests
 }
 
-// Helper function to aggregate all JSON test results from a folder
+// AggregateTestResults aggregates all JSON test results.
 func AggregateTestResults(folderPath string) ([]TestResult, error) {
 	// Map to hold unique tests based on their TestName and TestPackage
 	testMap := make(map[string]TestResult)
@@ -83,7 +84,7 @@ func AggregateTestResults(folderPath string) ([]TestResult, error) {
 					existingResult.Durations = append(existingResult.Durations, result.Durations...)
 					existingResult.Outputs = append(existingResult.Outputs, result.Outputs...)
 
-					// Calculate total successful runs and aggregate pass ratio
+					// Calculate total successful runs for correct pass ratio calculation
 					successfulRuns := existingResult.PassRatio*float64(existingResult.Runs) + result.PassRatio*float64(result.Runs)
 					existingResult.Runs = totalRuns
 					existingResult.PassRatio = successfulRuns / float64(totalRuns)
@@ -91,7 +92,6 @@ func AggregateTestResults(folderPath string) ([]TestResult, error) {
 
 					// Update the map with the aggregated result
 					testMap[key] = existingResult
-
 				} else {
 					// Add new entry to the map
 					testMap[key] = result
@@ -110,6 +110,12 @@ func AggregateTestResults(folderPath string) ([]TestResult, error) {
 		result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
 		aggregatedResults = append(aggregatedResults, result)
 	}
+
+	// Sort by PassRatio in ascending order
+	sort.Slice(aggregatedResults, func(i, j int) bool {
+		return aggregatedResults[i].PassRatio < aggregatedResults[j].PassRatio
+	})
+
 	return aggregatedResults, nil
 }
 

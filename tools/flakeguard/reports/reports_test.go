@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -115,14 +115,24 @@ func TestPrintTests(t *testing.T) {
 	}
 }
 
-// Helper function to write temporary JSON files for testing
+// Sorts TestResult slice by TestName and TestPackage for consistent comparison
+func sortTestResults(results []TestResult) {
+	sort.Slice(results, func(i, j int) bool {
+		if results[i].TestName == results[j].TestName {
+			return results[i].TestPackage < results[j].TestPackage
+		}
+		return results[i].TestName < results[j].TestName
+	})
+}
+
+// Helper function to write a JSON file for testing
 func writeTempJSONFile(t *testing.T, dir string, filename string, data interface{}) string {
 	filePath := filepath.Join(dir, filename)
 	fileData, err := json.Marshal(data)
 	if err != nil {
 		t.Fatalf("Failed to marshal JSON: %v", err)
 	}
-	if err := ioutil.WriteFile(filePath, fileData, 0644); err != nil {
+	if err := os.WriteFile(filePath, fileData, 0644); err != nil {
 		t.Fatalf("Failed to write JSON file: %v", err)
 	}
 	return filePath
@@ -143,7 +153,7 @@ func TestAggregateTestResults(t *testing.T) {
 		expectedOutput []TestResult
 	}{
 		{
-			description: "Unique test results, no aggregation",
+			description: "Unique test results without aggregation",
 			inputFiles: []interface{}{
 				[]TestResult{
 					{
@@ -154,6 +164,7 @@ func TestAggregateTestResults(t *testing.T) {
 						Skipped:             false,
 						Runs:                2,
 						Durations:           []float64{0.01, 0.02},
+						Outputs:             []string{"Output1", "Output2"},
 					},
 				},
 				[]TestResult{
@@ -165,6 +176,7 @@ func TestAggregateTestResults(t *testing.T) {
 						Skipped:             false,
 						Runs:                4,
 						Durations:           []float64{0.05, 0.05, 0.05, 0.05},
+						Outputs:             []string{"Output3", "Output4", "Output5", "Output6"},
 					},
 				},
 			},
@@ -177,6 +189,7 @@ func TestAggregateTestResults(t *testing.T) {
 					Skipped:             false,
 					Runs:                2,
 					Durations:           []float64{0.01, 0.02},
+					Outputs:             []string{"Output1", "Output2"},
 				},
 				{
 					TestName:            "TestB",
@@ -186,11 +199,12 @@ func TestAggregateTestResults(t *testing.T) {
 					Skipped:             false,
 					Runs:                4,
 					Durations:           []float64{0.05, 0.05, 0.05, 0.05},
+					Outputs:             []string{"Output3", "Output4", "Output5", "Output6"},
 				},
 			},
 		},
 		{
-			description: "Duplicate test results, aggregation of PassRatio and Durations",
+			description: "Duplicate test results with aggregation",
 			inputFiles: []interface{}{
 				[]TestResult{
 					{
@@ -201,6 +215,7 @@ func TestAggregateTestResults(t *testing.T) {
 						Skipped:             false,
 						Runs:                2,
 						Durations:           []float64{0.1, 0.1},
+						Outputs:             []string{"Output7", "Output8"},
 					},
 				},
 				[]TestResult{
@@ -212,6 +227,7 @@ func TestAggregateTestResults(t *testing.T) {
 						Skipped:             false,
 						Runs:                2,
 						Durations:           []float64{0.2, 0.2},
+						Outputs:             []string{"Output9", "Output10"},
 					},
 				},
 			},
@@ -224,6 +240,7 @@ func TestAggregateTestResults(t *testing.T) {
 					Skipped:             false,
 					Runs:                4,
 					Durations:           []float64{0.1, 0.1, 0.2, 0.2},
+					Outputs:             []string{"Output7", "Output8", "Output9", "Output10"},
 				},
 			},
 		},
@@ -239,6 +256,7 @@ func TestAggregateTestResults(t *testing.T) {
 						Skipped:             true,
 						Runs:                3,
 						Durations:           []float64{0.1, 0.2, 0.1},
+						Outputs:             []string{"Output11", "Output12", "Output13"},
 					},
 				},
 				[]TestResult{
@@ -250,6 +268,7 @@ func TestAggregateTestResults(t *testing.T) {
 						Skipped:             true,
 						Runs:                2,
 						Durations:           []float64{0.15, 0.15},
+						Outputs:             []string{"Output14", "Output15"},
 					},
 				},
 			},
@@ -262,6 +281,7 @@ func TestAggregateTestResults(t *testing.T) {
 					Skipped:             true, // Should remain true as all runs are skipped
 					Runs:                5,
 					Durations:           []float64{0.1, 0.2, 0.1, 0.15, 0.15},
+					Outputs:             []string{"Output11", "Output12", "Output13", "Output14", "Output15"},
 				},
 			},
 		},
@@ -279,6 +299,10 @@ func TestAggregateTestResults(t *testing.T) {
 			if err != nil {
 				t.Fatalf("AggregateTestResults failed: %v", err)
 			}
+
+			// Sort both result and expectedOutput for consistent comparison
+			sortTestResults(result)
+			sortTestResults(tc.expectedOutput)
 
 			// Compare the result with the expected output
 			if len(result) != len(tc.expectedOutput) {
@@ -298,6 +322,9 @@ func TestAggregateTestResults(t *testing.T) {
 				}
 				if len(got.Durations) != len(expected.Durations) {
 					t.Errorf("Result %d - expected %d durations, got %d", i, len(expected.Durations), len(got.Durations))
+				}
+				if len(got.Outputs) != len(expected.Outputs) {
+					t.Errorf("Result %d - expected %d outputs, got %d", i, len(expected.Outputs), len(got.Outputs))
 				}
 			}
 		})
