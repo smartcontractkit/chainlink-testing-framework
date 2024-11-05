@@ -3,8 +3,8 @@ name: GH Pages Deploy (Docs, mdbook)
 
 on:
   push:
-#    branches:
-#      - main
+    branches:
+      - main
 
 jobs:
   build-deploy:

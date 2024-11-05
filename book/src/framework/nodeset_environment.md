@@ -69,7 +69,7 @@ func TestNodeSet(t *testing.T) {
 
 Run it
 ```bash
-go test -v -run TestNodeSet
+CTF_CONFIGS=smoke.toml go test -v -run TestNodeSet
 ```
 
 You'll see something like, use any URL to access CL node

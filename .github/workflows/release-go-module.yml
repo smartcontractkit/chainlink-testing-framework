@@ -126,6 +126,11 @@ jobs:
           else
             echo "CMD_ENTRYPOINT_EXISTS=false" >> "$GITHUB_ENV"
           fi
+      - name: Set the name for external CLI
+        run: |
+          if [ "${{ env.PACKAGE_NAME }}" == "framework" ]; then
+            echo "PACKAGE_NAME=ctf" >> $GITHUB_ENV
+          fi
       - name: Build binary release
         uses: wangyoucao577/go-release-action@v1
         if: env.CMD_ENTRYPOINT_EXISTS == 'true'

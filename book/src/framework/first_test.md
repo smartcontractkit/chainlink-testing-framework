@@ -41,9 +41,14 @@ func TestMe(t *testing.T) {
 }
 ```
 
-Select your configuration by setting `CTF_CONFIGS=smoke.toml` and run it
+Run the test
 ```bash
-go test -v -run TestMe
+CTF_CONFIGS=smoke.toml go test -v -run TestMe
+```
+
+Remove containers
+```
+ctf d rm
 ```
 
 Summary:

@@ -2,6 +2,12 @@
 
 Let's use some external capability binaries in our tests and extend the [previous one](nodeset_environment.md).
 
+We'll use a private repository example, so you should be authorized with [gh]()
+```
+gh auth login
+gh auth setup-git
+```
+
 Download an example capability binary
 ```
 export export GOPRIVATE=github.com/smartcontractkit/capabilities
@@ -41,7 +47,7 @@ Create a configuration file `smoke.toml`
 
 Run it
 ```bash
-go test -v -run TestNodeSet
+CTF_CONFIGS=smoke.toml go test -v -run TestNodeSet
 ```
 
 Now you can configure your capability using `clclient.CreateJobRaw($raw_toml)`.
