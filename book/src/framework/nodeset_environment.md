@@ -33,7 +33,6 @@ Create a file `smoke_test.go`
 package yourpackage_test
 
 import (
-	"fmt"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
