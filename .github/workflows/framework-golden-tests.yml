@@ -9,6 +9,8 @@ jobs:
     defaults:
       run:
         working-directory: framework/examples/myproject
+    env:
+      CTF_CONFIGS: load.toml
     runs-on: ubuntu-latest
     permissions:
       id-token: write
