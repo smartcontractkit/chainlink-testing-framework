@@ -11,11 +11,18 @@ import (
 	"sync"
 )
 
+const (
+	DefaultHTTPPortStaticRangeStart = 10000
+	DefaultP2PStaticRangeStart      = 12000
+)
+
 type Input struct {
-	Nodes        int             `toml:"nodes" validate:"required"`
-	OverrideMode string          `toml:"override_mode" validate:"required,oneof=all each"`
-	NodeSpecs    []*clnode.Input `toml:"node_specs"`
-	Out          *Output         `toml:"out"`
+	Nodes              int             `toml:"nodes" validate:"required"`
+	HTTPPortRangeStart int             `toml:"http_port_range_start"`
+	P2PPortRangeStart  int             `toml:"p2p_port_range_start"`
+	OverrideMode       string          `toml:"override_mode" validate:"required,oneof=all each"`
+	NodeSpecs          []*clnode.Input `toml:"node_specs"`
+	Out                *Output         `toml:"out"`
 }
 
 type Output struct {
@@ -65,6 +72,18 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output, fakeUrl string, override
 		return nil, err
 	}
 	nodeOuts := make([]*clnode.Output, 0)
+
+	var (
+		httpPortRangeStart = DefaultHTTPPortStaticRangeStart
+		p2pPortRangeStart  = DefaultP2PStaticRangeStart
+	)
+	if in.HTTPPortRangeStart != 0 {
+		httpPortRangeStart = in.HTTPPortRangeStart
+	}
+	if in.P2PPortRangeStart != 0 {
+		p2pPortRangeStart = in.P2PPortRangeStart
+	}
+
 	eg := &errgroup.Group{}
 	mu := &sync.Mutex{}
 	for i := 0; i < in.Nodes; i++ {
@@ -89,8 +108,8 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output, fakeUrl string, override
 				DataProviderURL: fakeUrl,
 				DbInput:         in.NodeSpecs[overrideIdx].DbInput,
 				Node: &clnode.NodeInput{
-					HTTPPort:                in.NodeSpecs[overrideIdx].Node.HTTPPort + i,
-					P2PPort:                 in.NodeSpecs[overrideIdx].Node.P2PPort + i,
+					HTTPPort:                httpPortRangeStart + i,
+					P2PPort:                 p2pPortRangeStart + i,
 					Image:                   in.NodeSpecs[overrideIdx].Node.Image,
 					Name:                    nodeName,
 					PullImage:               in.NodeSpecs[overrideIdx].Node.PullImage,
