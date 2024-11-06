@@ -11,6 +11,8 @@ jobs:
         working-directory: framework/examples/myproject
     env:
       CTF_CONFIGS: load.toml
+      LOKI_TENANT_ID: promtail
+      LOKI_URL: http://localhost:3030/loki/api/v1/push
     runs-on: ubuntu-latest
     permissions:
       id-token: write
