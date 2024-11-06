@@ -10,8 +10,8 @@
 [![Seth tag](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework?filter=%2Aseth%2A)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
 [![Havoc tag](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework?filter=%2Ahavoc%2A)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
 
-![Tests](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/test.yaml/badge.svg)
-![Lint](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/lint.yaml/badge.svg)
+[![Tests](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/test.yaml/badge.svg)](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/test.yaml)
+[![Lints](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/lint.yaml/badge.svg)](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/lint.yaml)
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/smartcontractkit/chainlink-testing-framework)](https://goreportcard.com/report/github.com/smartcontractkit/chainlink-testing-framework)
 ![Go Version](https://img.shields.io/github/go-mod/go-version/smartcontractkit/chainlink-testing-framework?filename=./lib/go.mod)
