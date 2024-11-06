@@ -78,8 +78,10 @@ func TestDockerNodeSetSharedDB(t *testing.T) {
 				ChainID: "31337",
 			},
 			nodeSetInput: &ns.Input{
-				Nodes:        2,
-				OverrideMode: "each",
+				Nodes:              2,
+				OverrideMode:       "each",
+				HTTPPortRangeStart: 20000,
+				P2PPortRangeStart:  22000,
 				NodeSpecs: []*clnode.Input{
 					{
 						DataProviderURL: "http://example.com",
