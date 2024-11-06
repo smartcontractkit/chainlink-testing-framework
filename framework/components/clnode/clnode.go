@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
@@ -18,8 +19,8 @@ import (
 )
 
 const (
-	Port    = "6688"
-	P2PPort = "6690"
+	DefaultHTTPPort = "6688"
+	DefaultP2PPort  = "6690"
 )
 
 var (
@@ -48,6 +49,8 @@ type NodeInput struct {
 	UserConfigOverrides     string   `toml:"user_config_overrides"`
 	TestSecretsOverrides    string   `toml:"test_secrets_overrides"`
 	UserSecretsOverrides    string   `toml:"user_secrets_overrides"`
+	HTTPPort                int      `toml:"port"`
+	P2PPort                 int      `toml:"p2p_port"`
 }
 
 // Output represents Chainlink node output, nodes and databases connection URLs
@@ -141,8 +144,8 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		return nil, err
 	}
 
-	httpPort := fmt.Sprintf("%s/tcp", Port)
-	p2pPort := fmt.Sprintf("%s/udp", P2PPort)
+	httpPort := fmt.Sprintf("%s/tcp", DefaultHTTPPort)
+	p2pPort := fmt.Sprintf("%s/udp", DefaultP2PPort)
 	var containerName string
 	if in.Node.Name != "" {
 		containerName = in.Node.Name
@@ -165,6 +168,24 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 			"chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials",
 		},
 		WaitingFor: wait.ForLog("Listening and serving HTTP").WithStartupTimeout(2 * time.Minute),
+	}
+	if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {
+		req.HostConfigModifier = func(h *container.HostConfig) {
+			h.PortBindings = nat.PortMap{
+				"6688/tcp": []nat.PortBinding{
+					{
+						HostIP:   "0.0.0.0",
+						HostPort: fmt.Sprintf("%d/tcp", in.Node.HTTPPort),
+					},
+				},
+				"6690/udp": []nat.PortBinding{
+					{
+						HostIP:   "0.0.0.0",
+						HostPort: fmt.Sprintf("%d/udp", in.Node.P2PPort),
+					},
+				},
+			}
+		}
 	}
 	files := []tc.ContainerFile{
 		{
@@ -242,20 +263,33 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	if err != nil {
 		return nil, err
 	}
-	mp, err := c.MappedPort(ctx, nat.Port(httpPort))
-	if err != nil {
-		return nil, err
-	}
-	mpP2P, err := c.MappedPort(ctx, nat.Port(p2pPort))
-	if err != nil {
-		return nil, err
-	}
+	//var (
+	//	mp    nat.Port
+	//	mpP2P nat.Port
+	//)
+	//if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {
+	//	mp = nat.Port(fmt.Sprintf("%d/tcp", in.Node.HTTPPort))
+	//	mpP2P = nat.Port(fmt.Sprintf("%d/udp", in.Node.P2PPort))
+	//}
+	//else {
+	//	mp, err = c.MappedPort(ctx, nat.Port(httpPort))
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	mpP2P, err = c.MappedPort(ctx, nat.Port(p2pPort))
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//}
+
+	mp := nat.Port(fmt.Sprintf("%d/tcp", in.Node.HTTPPort))
+	mpP2P := nat.Port(fmt.Sprintf("%d/udp", in.Node.P2PPort))
 
 	return &NodeOut{
 		HostURL:      fmt.Sprintf("http://%s:%s", host, mp.Port()),
 		HostP2PURL:   fmt.Sprintf("http://%s:%s", host, mpP2P.Port()),
-		DockerURL:    fmt.Sprintf("http://%s:%s", containerName, Port),
-		DockerP2PUrl: fmt.Sprintf("http://%s:%s", containerName, P2PPort),
+		DockerURL:    fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
+		DockerP2PUrl: fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
 	}, nil
 }
 
@@ -266,7 +300,7 @@ type DefaultCLNodeConfig struct {
 
 func generateDefaultConfig(in *Input) (string, error) {
 	config := DefaultCLNodeConfig{
-		HTTPPort:      Port,
+		HTTPPort:      DefaultHTTPPort,
 		SecureCookies: false,
 	}
 	tmpl, err := template.New("toml").Parse(defaultConfigTmpl)

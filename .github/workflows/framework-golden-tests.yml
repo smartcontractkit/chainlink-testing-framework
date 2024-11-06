@@ -1,18 +1,37 @@
-name: Framework Docker Component Tests
+name: Framework Golden Tests Examples
 on:
   push:
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-framework
+  group: ${{ github.workflow }}-${{ github.ref }}-framework-golden-examples
   cancel-in-progress: true
+
 jobs:
   test:
     defaults:
       run:
-        working-directory: framework
+        working-directory: framework/examples/myproject
+    env:
+      LOKI_TENANT_ID: promtail
+      LOKI_URL: http://localhost:3030/loki/api/v1/push
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
+    strategy:
+      matrix:
+        test:
+          - name: TestSmoke
+            config: smoke.toml
+            count: 1
+            timeout: 10m
+          - name: TestLoad
+            config: load.toml
+            count: 1
+            timeout: 10m
+          - name: TestChaos
+            config: chaos.toml
+            count: 1
+            timeout: 10m
     steps:
       - name: Checkout repo
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
@@ -43,12 +62,14 @@ jobs:
           path: |
             ~/.cache/go-build
             ~/go/pkg/mod
-          key: go-modules-${{ hashFiles('**/go.sum') }}-${{ runner.os }}-framework
+          key: go-modules-${{ hashFiles('**/go.sum') }}-${{ runner.os }}-framework-golden-examples
           restore-keys: |
-            go-modules-${{ hashFiles('**/go.sum') }}-${{ runner.os }}-framework
+            go-modules-${{ hashFiles('**/go.sum') }}-${{ runner.os }}-framework-golden-examples
       - name: Install dependencies
         run: go mod download
       - name: Run Docker Component Tests
         if: steps.changes.outputs.src == 'true'
+        env:
+          CTF_CONFIGS: ${{ matrix.test.config }}
         run: |
-          go test -timeout 5m -v -count 1 -run TestDocker ./...
+          go test -timeout ${{ matrix.test.timeout }} -v -count ${{ matrix.test.count }} -run ${{ matrix.test.name }}

@@ -26,6 +26,8 @@ services:
       - grafana_plugins:/var/lib/grafana/plugins
       - ./conf/grafana.ini:/etc/grafana/grafana.ini
       - ./conf/provisioning:/etc/grafana/provisioning
+      - ./conf/provisioning/dashboards/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
+      - ./conf/provisioning/dashboards/wasp.json:/var/lib/grafana/dashboards/wasp.json
     ports:
       - "3000:3000"
   pyroscope:
