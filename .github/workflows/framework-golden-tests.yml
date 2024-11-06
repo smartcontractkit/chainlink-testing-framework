@@ -20,6 +20,8 @@ jobs:
     strategy:
       matrix:
         config-test:
+          - config-file: smoke.toml
+            test-name: TestSmoke
           - config-file: load.toml
             test-name: TestLoad
           - config-file: chaos.toml
