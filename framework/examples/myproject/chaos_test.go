@@ -34,7 +34,7 @@ func TestChaos(t *testing.T) {
 	t.Run("run the cluster and simulate slow network", func(t *testing.T) {
 		// example commands for Pumba:
 		// stop --duration=1s --restart re2:node0                                            # stop one container for 1s and restart
-		// "netem --tc-image=gaiadocker/iproute2 --duration=1m delay --time=300 re2:node.*   # slow network
+		// netem --tc-image=gaiadocker/iproute2 --duration=1m delay --time=300 re2:node.*   # slow network
 		_, err = chaos.ExecPumba("stop --duration=1s --restart re2:node0")
 		require.NoError(t, err)
 		_, _, err = c[0].ReadBridges()
