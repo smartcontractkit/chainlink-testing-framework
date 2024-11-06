@@ -39,12 +39,12 @@ func NewSharedDBNodeSet(in *Input, bcOut *blockchain.Output, fakeUrl string) (*O
 	}
 	switch in.OverrideMode {
 	case "all":
-		out, err = oneNodeSharedDBConfiguration(in, bcOut, fakeUrl, false)
+		out, err = sharedDBSetup(in, bcOut, fakeUrl, false)
 		if err != nil {
 			return nil, err
 		}
 	case "each":
-		out, err = oneNodeSharedDBConfiguration(in, bcOut, fakeUrl, true)
+		out, err = sharedDBSetup(in, bcOut, fakeUrl, true)
 		if err != nil {
 			return nil, err
 		}
@@ -59,65 +59,7 @@ func printOut(out *Output) {
 	}
 }
 
-// TODO: it seems we can use one DB for now
-// TODO: remove
-func NewNodeSet(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output, error) {
-	if in.Out != nil && in.Out.UseCache {
-		return in.Out, nil
-	}
-	nodeOuts := make([]*clnode.Output, 0)
-	eg := &errgroup.Group{}
-	mu := &sync.Mutex{}
-	for i := 0; i < in.Nodes; i++ {
-		i := i
-		eg.Go(func() error {
-			net, err := clnode.NewNetworkCfgOneNetworkAllNodes(bcOut)
-			if err != nil {
-				return err
-			}
-
-			nodeSpec := &clnode.Input{
-				DataProviderURL: fakeUrl,
-				DbInput:         in.NodeSpecs[i].DbInput,
-				Node: &clnode.NodeInput{
-					Image:                   in.NodeSpecs[i].Node.Image,
-					Name:                    fmt.Sprintf("node%d", i),
-					PullImage:               in.NodeSpecs[i].Node.PullImage,
-					CapabilitiesBinaryPaths: in.NodeSpecs[i].Node.CapabilitiesBinaryPaths,
-					CapabilityContainerDir:  in.NodeSpecs[i].Node.CapabilityContainerDir,
-					TestConfigOverrides:     net,
-					UserConfigOverrides:     in.NodeSpecs[i].Node.UserConfigOverrides,
-					TestSecretsOverrides:    in.NodeSpecs[i].Node.TestSecretsOverrides,
-					UserSecretsOverrides:    in.NodeSpecs[i].Node.UserSecretsOverrides,
-				},
-			}
-
-			dbOut, err := postgres.NewPostgreSQL(in.NodeSpecs[i].DbInput)
-			if err != nil {
-				return err
-			}
-			o, err := clnode.NewNode(nodeSpec, dbOut)
-			if err != nil {
-				return err
-			}
-			mu.Lock()
-			nodeOuts = append(nodeOuts, o)
-			mu.Unlock()
-			return nil
-		})
-	}
-	if err := eg.Wait(); err != nil {
-		return nil, err
-	}
-	out := &Output{
-		UseCache: true,
-		CLNodes:  nodeOuts,
-	}
-	in.Out = out
-	return out, nil
-}
-
-func oneNodeSharedDBConfiguration(in *Input, bcOut *blockchain.Output, fakeUrl string, overrideEach bool) (*Output, error) {
+func sharedDBSetup(in *Input, bcOut *blockchain.Output, fakeUrl string, overrideEach bool) (*Output, error) {
 	dbOut, err := postgres.NewPostgreSQL(in.NodeSpecs[0].DbInput)
 	if err != nil {
 		return nil, err
@@ -147,6 +89,8 @@ func oneNodeSharedDBConfiguration(in *Input, bcOut *blockchain.Output, fakeUrl s
 				DataProviderURL: fakeUrl,
 				DbInput:         in.NodeSpecs[overrideIdx].DbInput,
 				Node: &clnode.NodeInput{
+					HTTPPort:                in.NodeSpecs[overrideIdx].Node.HTTPPort + i,
+					P2PPort:                 in.NodeSpecs[overrideIdx].Node.P2PPort + i,
 					Image:                   in.NodeSpecs[overrideIdx].Node.Image,
 					Name:                    nodeName,
 					PullImage:               in.NodeSpecs[overrideIdx].Node.PullImage,

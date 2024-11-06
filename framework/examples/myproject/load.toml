@@ -21,3 +21,5 @@
     [nodeset.node_specs.node]
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
       pull_image = false
+      port = 5000
+      p2p_port = 5100

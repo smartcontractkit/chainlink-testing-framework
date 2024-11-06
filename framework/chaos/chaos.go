@@ -17,6 +17,7 @@ func ExecPumba(command string) (func(), error) {
 	pumbaReq := testcontainers.ContainerRequest{
 		Name:       fmt.Sprintf("chaos-%s", uuid.NewString()[0:5]),
 		Image:      "gaiaadm/pumba",
+		Labels:     framework.DefaultTCLabels(),
 		Privileged: true,
 		Cmd:        cmd,
 		HostConfigModifier: func(h *container.HostConfig) {

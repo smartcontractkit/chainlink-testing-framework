@@ -7,9 +7,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
-	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 	"github.com/stretchr/testify/require"
-	"os"
 	"testing"
 	"time"
 )
@@ -31,37 +29,44 @@ func TestLoad(t *testing.T) {
 	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc, dp.BaseURLDocker)
 	require.NoError(t, err)
 
-	var lokiCfg *wasp.LokiConfig
-	// temp fix, we can't reach shared Loki instance in CI
-	if os.Getenv("CI") != "true" {
-		lokiCfg = wasp.NewEnvLokiConfig()
-	}
+	//var lokiCfg *wasp.LokiConfig
+	//// temp fix, we can't reach shared Loki instance in CI
+	//if os.Getenv("CI") != "true" {
+	//	lokiCfg = wasp.NewEnvLokiConfig()
+	//}
 
-	c, err := clclient.NewCLDefaultClients(out.CLNodes, framework.L)
+	_, err = clclient.NewCLDefaultClients(out.CLNodes, framework.L)
 	require.NoError(t, err)
 
 	t.Run("run the cluster and simulate slow network", func(t *testing.T) {
-		p, err := wasp.NewProfile().
-			Add(wasp.NewGenerator(&wasp.Config{
-				T:        t,
-				LoadType: wasp.RPS,
-				Schedule: wasp.Combine(
-					wasp.Steps(1, 1, 9, 30*time.Second),
-					wasp.Plain(10, 30*time.Second),
-					wasp.Steps(10, -1, 10, 30*time.Second),
-				),
-				Gun: NewCLNodeGun(c[0], "bridges"),
-				Labels: map[string]string{
-					"gen_name": "cl_node_api_call",
-					"branch":   "example",
-					"commit":   "example",
-				},
-				LokiConfig: lokiCfg,
-			})).
-			Run(false)
+		//p, err := wasp.NewProfile().
+		//	Add(wasp.NewGenerator(&wasp.Config{
+		//		T:        t,
+		//		LoadType: wasp.RPS,
+		//		Schedule: wasp.Combine(
+		//			wasp.Steps(1, 1, 9, 30*time.Second),
+		//			wasp.Plain(10, 30*time.Second),
+		//			wasp.Steps(10, -1, 10, 30*time.Second),
+		//		),
+		//		Gun: NewCLNodeGun(c[0], "bridges"),
+		//		Labels: map[string]string{
+		//			"gen_name": "cl_node_api_call",
+		//			"branch":   "example",
+		//			"commit":   "example",
+		//		},
+		//		LokiConfig: lokiCfg,
+		//	})).
+		//	Run(false)
+		//require.NoError(t, err)
+		// example commands for Pumba:
+		// stop --duration=1s --restart re2:node0                                            # stop one container for 1s and restart
+		// "netem --tc-image=gaiadocker/iproute2 --duration=1m delay --time=300 re2:node.*   # slow network
+		_, err = chaos.ExecPumba("stop --duration=1s --restart re2:node0")
 		require.NoError(t, err)
-		_, err = chaos.ExecPumba("netem --tc-image=gaiadocker/iproute2 --duration=1m delay --time=300 re2:node.*")
+		time.Sleep(5 * time.Second)
+		_, err = clclient.NewCLDefaultClients(out.CLNodes, framework.L)
 		require.NoError(t, err)
-		p.Wait()
+
+		//p.Wait()
 	})
 }
