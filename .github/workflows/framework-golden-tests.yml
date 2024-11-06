@@ -4,19 +4,23 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-framework-golden-examples
   cancel-in-progress: true
+
 jobs:
   test:
     defaults:
       run:
         working-directory: framework/examples/myproject
     env:
-      CTF_CONFIGS: load.toml
       LOKI_TENANT_ID: promtail
       LOKI_URL: http://localhost:3030/loki/api/v1/push
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
+    strategy:
+      matrix:
+        config-file: [load.toml, chaos.toml]  # Configuration files
+        test-name: [TestLoad, TestChaos]      # Corresponding test names
     steps:
       - name: Checkout repo
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
@@ -54,5 +58,7 @@ jobs:
         run: go mod download
       - name: Run Docker Component Tests
         if: steps.changes.outputs.src == 'true'
+        env:
+          CTF_CONFIGS: ${{ matrix.config-file }}
         run: |
-          go test -timeout 5m -v -count 1 -run TestLoad
+          go test -timeout 5m -v -count 1 -run ${{ matrix.test-name }}
