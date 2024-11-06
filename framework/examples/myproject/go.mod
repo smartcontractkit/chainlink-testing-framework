@@ -5,6 +5,7 @@ go 1.22.7
 replace (
 	github.com/smartcontractkit/chainlink-testing-framework/framework => ../..
 	github.com/smartcontractkit/chainlink-testing-framework/framework/cmd => ../../cmd/
+	github.com/smartcontractkit/chainlink-testing-framework/framework/wasp => ../../wasp/
 )
 
 require (

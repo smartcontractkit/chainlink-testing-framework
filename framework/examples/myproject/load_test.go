@@ -9,6 +9,7 @@ import (
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 	"github.com/stretchr/testify/require"
+	"os"
 	"testing"
 	"time"
 )
@@ -30,6 +31,12 @@ func TestLoad(t *testing.T) {
 	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc, dp.BaseURLDocker)
 	require.NoError(t, err)
 
+	var lokiCfg *wasp.LokiConfig
+	// temp fix, we can't reach shared Loki instance in CI
+	if os.Getenv("CI") != "true" {
+		lokiCfg = wasp.NewEnvLokiConfig()
+	}
+
 	c, err := clclient.NewCLDefaultClients(out.CLNodes, framework.L)
 	require.NoError(t, err)
 
@@ -49,11 +56,11 @@ func TestLoad(t *testing.T) {
 					"branch":   "example",
 					"commit":   "example",
 				},
-				LokiConfig: wasp.NewEnvLokiConfig(),
+				LokiConfig: lokiCfg,
 			})).
 			Run(false)
 		require.NoError(t, err)
-		_, err = chaos.NewPumbaChaos("netem --tc-image=gaiadocker/iproute2 --duration=1m delay --time=300 re2:node.*")
+		_, err = chaos.ExecPumba("netem --tc-image=gaiadocker/iproute2 --duration=1m delay --time=300 re2:node.*")
 		require.NoError(t, err)
 		p.Wait()
 	})

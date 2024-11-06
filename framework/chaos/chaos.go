@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-func NewPumbaChaos(command string) (func(), error) {
+func ExecPumba(command string) (func(), error) {
 	ctx := context.Background()
 	cmd := strings.Split(command, " ")
 	pumbaReq := testcontainers.ContainerRequest{
