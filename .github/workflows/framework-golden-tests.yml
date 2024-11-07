@@ -15,6 +15,7 @@ jobs:
       id-token: write
       contents: read
     strategy:
+      fail-fast: false
       matrix:
         test:
           - name: TestSmoke
@@ -61,7 +62,8 @@ jobs:
             ~/go/pkg/mod
           key: go-modules-${{ hashFiles('**/go.sum') }}-${{ runner.os }}-framework-golden-examples
           restore-keys: |
-            go-modules-${{ hashFiles('**/go.sum') }}-${{ runner.os }}-framework-golden-examples
+            go-modules-${{ runner.os }}-framework-golden-examples
+            go-modules-${{ runner.os }}
       - name: Install dependencies
         run: go mod download
       - name: Run Docker Component Tests
