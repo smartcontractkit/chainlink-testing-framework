@@ -19,15 +19,16 @@ const (
 	Port              = "5432"
 	ExposedStaticPort = "13000"
 	Database          = "chainlink"
-	DatabaseDir       = "postgresql_data"
+	DBVolumeName      = "postgresql_data"
 )
 
 type Input struct {
-	Image     string  `toml:"image" validate:"required"`
-	Port      string  `toml:"port"`
-	Databases int     `toml:"databases"`
-	PullImage bool    `toml:"pull_image"`
-	Out       *Output `toml:"out"`
+	Image      string  `toml:"image" validate:"required"`
+	Port       string  `toml:"port"`
+	VolumeName string  `toml:"volume_name"`
+	Databases  int     `toml:"databases"`
+	PullImage  bool    `toml:"pull_image"`
+	Out        *Output `toml:"out"`
 }
 
 type Output struct {
@@ -86,7 +87,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 		Mounts: testcontainers.ContainerMounts{
 			{
 				Source: testcontainers.GenericVolumeMountSource{
-					Name: DatabaseDir,
+					Name: fmt.Sprintf("%s%s", DBVolumeName, in.VolumeName),
 				},
 				Target: "/var/lib/postgresql/data",
 			},
