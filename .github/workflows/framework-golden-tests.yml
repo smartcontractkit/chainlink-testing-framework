@@ -60,7 +60,7 @@ jobs:
           path: |
             ~/.cache/go-build
             ~/go/pkg/mod
-          key: go-modules-${{ hashFiles('**/go.sum') }}-${{ runner.os }}-framework-golden-examples
+          key: go-modules-${{ hashFiles('framework/examples/myproject/go.sum') }}-${{ runner.os }}-framework-golden-examples
           restore-keys: |
             go-modules-${{ runner.os }}-framework-golden-examples
             go-modules-${{ runner.os }}
