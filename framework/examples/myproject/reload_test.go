@@ -51,10 +51,9 @@ func TestReload(t *testing.T) {
 		   fetch -> parse -> multiply -> encode_tx -> submit_tx
 		"""`)
 	require.NoError(t, err)
-	time.Sleep(20 * time.Second)
 
 	// deploy second time
-	_, err = chaos.ExecPumba("rm --volumes=false re2:node.*|postgresql.*")
+	_, err = chaos.ExecPumba("rm --volumes=false re2:node.*|postgresql.*", 1*time.Second)
 	require.NoError(t, err)
 	ns.UpdateNodeConfigs(in.NodeSet, `
 [Log]

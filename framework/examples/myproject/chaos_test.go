@@ -9,6 +9,7 @@ import (
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
 
 type CfgChaos struct {
@@ -35,7 +36,7 @@ func TestChaos(t *testing.T) {
 		// example commands for Pumba:
 		// stop --duration=1s --restart re2:node0                                            # stop one container for 1s and restart
 		// netem --tc-image=gaiadocker/iproute2 --duration=1m delay --time=300 re2:node.*   # slow network
-		_, err = chaos.ExecPumba("stop --duration=1s --restart re2:node0")
+		_, err = chaos.ExecPumba("stop --duration=1s --restart re2:node0", 1*time.Second)
 		require.NoError(t, err)
 		_, _, err = c[0].ReadBridges()
 		require.NoError(t, err)
