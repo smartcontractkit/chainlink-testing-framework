@@ -33,7 +33,9 @@ func TestDockerNodeWithSharedDB(t *testing.T) {
 			input: &clnode.Input{
 				DataProviderURL: "http://example.com",
 				DbInput: &postgres.Input{
-					Image: "postgres:15.6",
+					Image:      "postgres:15.6",
+					Port:       16000,
+					VolumeName: "a",
 				},
 				Node: &clnode.NodeInput{
 					Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",
@@ -67,7 +69,9 @@ func TestDockerNodeWithDB(t *testing.T) {
 			input: &clnode.Input{
 				DataProviderURL: "http://example.com",
 				DbInput: &postgres.Input{
-					Image: "postgres:15.6",
+					Image:      "postgres:15.6",
+					Port:       15000,
+					VolumeName: "b",
 				},
 				Node: &clnode.NodeInput{
 					Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",

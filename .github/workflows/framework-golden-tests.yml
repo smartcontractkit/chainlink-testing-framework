@@ -1,9 +1,6 @@
 name: Framework Golden Tests Examples
 on:
   push:
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-framework-golden-examples
-  cancel-in-progress: true
 
 jobs:
   test:
@@ -18,6 +15,7 @@ jobs:
       id-token: write
       contents: read
     strategy:
+      fail-fast: false
       matrix:
         test:
           - name: TestSmoke
@@ -30,6 +28,10 @@ jobs:
             timeout: 10m
           - name: TestChaos
             config: chaos.toml
+            count: 1
+            timeout: 10m
+          - name: TestReload
+            config: reload.toml
             count: 1
             timeout: 10m
     steps:
@@ -62,9 +64,10 @@ jobs:
           path: |
             ~/.cache/go-build
             ~/go/pkg/mod
-          key: go-modules-${{ hashFiles('**/go.sum') }}-${{ runner.os }}-framework-golden-examples
+          key: go-modules-${{ hashFiles('framework/examples/myproject/go.sum') }}-${{ runner.os }}-framework-golden-examples
           restore-keys: |
-            go-modules-${{ hashFiles('**/go.sum') }}-${{ runner.os }}-framework-golden-examples
+            go-modules-${{ runner.os }}-framework-golden-examples
+            go-modules-${{ runner.os }}
       - name: Install dependencies
         run: go mod download
       - name: Run Docker Component Tests

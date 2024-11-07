@@ -9,9 +9,13 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/testcontainers/testcontainers-go"
 	"strings"
+	"time"
 )
 
-func ExecPumba(command string) (func(), error) {
+// ExecPumba executes Pumba (https://github.com/alexei-led/pumba) command
+// since handling various docker race conditions is hard and there is no easy API for that
+// for now you can provide time to wait until chaos is applied
+func ExecPumba(command string, wait time.Duration) (func(), error) {
 	ctx := context.Background()
 	cmd := strings.Split(command, " ")
 	pumbaReq := testcontainers.ContainerRequest{
@@ -38,7 +42,9 @@ func ExecPumba(command string) (func(), error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to start pumba chaos container: %w", err)
 	}
-	framework.L.Info().Msg("Pumba chaos started")
+	framework.L.Info().Str("Cmd", command).Msg("Pumba chaos has started")
+	time.Sleep(wait)
+	framework.L.Info().Msg("Pumba chaos has finished")
 	return func() {
 		_ = pumbaContainer.Terminate(ctx)
 	}, nil

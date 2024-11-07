@@ -87,6 +87,7 @@ func TestDockerNodeSetSharedDB(t *testing.T) {
 						DataProviderURL: "http://example.com",
 						DbInput: &postgres.Input{
 							Image: "postgres:15.6",
+							Port:  14000,
 						},
 						Node: &clnode.NodeInput{
 							Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",

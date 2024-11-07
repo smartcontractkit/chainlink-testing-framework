@@ -2,8 +2,6 @@
 
 Here we describe our good practices for structuring different types of tests in Continuous Integration (GitHub Actions).
 
-The simplest flow can look like:
-
 Set up secrets in your GitHub repository
 ```
 gh secret set CTF_SIMULATED_KEY_1 --body "..."
@@ -11,22 +9,58 @@ gh secret set CTF_SIMULATED_KEY_1 --body "..."
 
 Add a workflow
 ```yaml
-name: Run E2E tests
-
+name: Framework Golden Tests Examples
 on:
   push:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: framework/examples/myproject
     env:
-      CTF_CONFIGS: smoke.toml
-      CTF_LOG_LEVEL: info
-      CTF_LOKI_STREAM: "false"
-      PRIVATE_KEY: ${{ secrets.CTF_SIMULATED_KEY_1 }}
+      LOKI_TENANT_ID: promtail
+      LOKI_URL: http://localhost:3030/loki/api/v1/push
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - name: TestSmoke
+            config: smoke.toml
+            count: 1
+            timeout: 10m
+          - name: TestLoad
+            config: load.toml
+            count: 1
+            timeout: 10m
+          - name: TestChaos
+            config: chaos.toml
+            count: 1
+            timeout: 10m
     steps:
-      - name: Check out code
-        uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with:
+          role-to-assume: ${{ secrets.PUBLIC_AWS_ECR_ROLE }}
+          aws-region: us-east-1
+      - name: Authenticate to ECR Public
+        id: login-ecr-public
+        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
+        with:
+          registry-type: public
+      - name: Check for changes in Framework
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: changes
+        with:
+          filters: |
+            src:
+              - 'framework/**'
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
@@ -37,14 +71,18 @@ jobs:
           path: |
             ~/.cache/go-build
             ~/go/pkg/mod
-          key: go-modules-${{ hashFiles('**/go.sum') }}-${{ runner.os }}
+          key: go-modules-${{ hashFiles('framework/examples/myproject/go.sum') }}-${{ runner.os }}-framework-golden-examples
           restore-keys: |
-            go-modules-${{ hashFiles('**/go.sum') }}-${{ runner.os }}
+            go-modules-${{ runner.os }}-framework-golden-examples
+            go-modules-${{ runner.os }}
       - name: Install dependencies
         run: go mod download
-      - name: Run tests
-        working-directory: e2e/capabilities
-        run: go test -v -run TestDON
+      - name: Run Docker Component Tests
+        if: steps.changes.outputs.src == 'true'
+        env:
+          CTF_CONFIGS: ${{ matrix.test.config }}
+        run: |
+          go test -timeout ${{ matrix.test.timeout }} -v -count ${{ matrix.test.count }} -run ${{ matrix.test.name }}
 ```
 
 If you need to structure a lot of different end-to-end tests follow [this](https://github.com/smartcontractkit/.github/tree/main/.github/workflows) guide.
