@@ -3,7 +3,6 @@ package examples
 import (
 	"fmt"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/chaos"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
@@ -11,6 +10,25 @@ import (
 	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
+)
+
+const (
+	testJob = `
+		type            = "cron"
+		schemaVersion   = 1
+		schedule        = "CRON_TZ=UTC */10 * * * * *" # every 10 secs
+		observationSource   = """
+		   // data source 2
+		   fetch         [type=http method=GET url="https://min-api.cryptocompare.com/data/pricemultifull?fsyms=ETH&tsyms=USD"];
+		   parse       [type=jsonparse path="RAW,ETH,USD,PRICE"];
+		   multiply    [type="multiply" input="$(parse)" times=100]
+		   encode_tx   [type="ethabiencode"
+		                abi="submit(uint256 value)"
+		                data="{ \\"value\\": $(multiply) }"]
+		   submit_tx   [type="ethtx" to="0x859AAa51961284C94d970B47E82b8771942F1980" data="$(encode_tx)"]
+		
+		   fetch -> parse -> multiply -> encode_tx -> submit_tx
+		"""`
 )
 
 type CfgReload struct {
@@ -34,33 +52,23 @@ func TestReload(t *testing.T) {
 
 	c, err := clclient.NewCLDefaultClients(out.CLNodes, framework.L)
 	require.NoError(t, err)
-	_, _, err = c[0].CreateJobRaw(`
-		type            = "cron"
-		schemaVersion   = 1
-		schedule        = "CRON_TZ=UTC */10 * * * * *" # every 10 secs
-		observationSource   = """
-		   // data source 2
-		   fetch         [type=http method=GET url="https://min-api.cryptocompare.com/data/pricemultifull?fsyms=ETH&tsyms=USD"];
-		   parse       [type=jsonparse path="RAW,ETH,USD,PRICE"];
-		   multiply    [type="multiply" input="$(parse)" times=100]
-		   encode_tx   [type="ethabiencode"
-		                abi="submit(uint256 value)"
-		                data="{ \\"value\\": $(multiply) }"]
-		   submit_tx   [type="ethtx" to="0x859AAa51961284C94d970B47E82b8771942F1980" data="$(encode_tx)"]
-		
-		   fetch -> parse -> multiply -> encode_tx -> submit_tx
-		"""`)
+	_, _, err = c[0].CreateJobRaw(testJob)
 	require.NoError(t, err)
 
-	// deploy second time
-	_, err = chaos.ExecPumba("rm --volumes=false re2:node.*|postgresql.*", 5*time.Second)
+	in.NodeSet.NodeSpecs[0].Node.Image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+	in.NodeSet.NodeSpecs[0].Node.UserConfigOverrides = `
+										[Log]
+										level = 'info'
+`
+	in.NodeSet.NodeSpecs[4].Node.Image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+	in.NodeSet.NodeSpecs[4].Node.UserConfigOverrides = `
+										[Log]
+										level = 'info'
+`
+
+	out, err = ns.UpgradeNodeSet(in.NodeSet, bc, dp.BaseURLDocker, 10*time.Second)
 	require.NoError(t, err)
-	ns.UpdateNodeConfigs(in.NodeSet, `
-[Log]
-level = 'info'
-`)
-	out, err = ns.NewSharedDBNodeSet(in.NodeSet, bc, dp.BaseURLDocker)
-	require.NoError(t, err)
+
 	jobs, _, err := c[0].ReadJobs()
 	require.NoError(t, err)
 	fmt.Println(jobs)
