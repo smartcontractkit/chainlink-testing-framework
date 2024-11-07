@@ -19,8 +19,8 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/pkg/errors"
 
-	network_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/debug"
-	network_sub_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/sub"
+	network_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/NetworkDebugContract"
+	network_sub_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/NetworkDebugSubContract"
 )
 
 const (
@@ -51,6 +51,10 @@ func NewEphemeralKeys(addrs int64) ([]string, error) {
 
 // CalculateSubKeyFunding calculates all required params to split funds from the root key to N test keys
 func (m *Client) CalculateSubKeyFunding(addrs, gasPrice, rooKeyBuffer int64) (*FundingDetails, error) {
+	if err := m.validateAddressesKeyNum(0); err != nil {
+		return nil, err
+	}
+
 	balance, err := m.Client.BalanceAt(context.Background(), m.Addresses[0], nil)
 	if err != nil {
 		return nil, err

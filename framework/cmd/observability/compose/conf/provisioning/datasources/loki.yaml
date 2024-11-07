@@ -8,3 +8,9 @@ datasources:
     url: http://loki:3100
     jsonData:
       maxLines: 5000
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090  # Replace with your Prometheus URL
+    jsonData:
+      timeInterval: 5s  # Adjust this interval as needed

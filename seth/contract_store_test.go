@@ -22,23 +22,23 @@ func TestSmokeContractABIStore(t *testing.T) {
 		{
 			name:             "can load the ABI only from ABI files",
 			abiPath:          "./contracts/abi",
-			expectedABICount: 5,
+			expectedABICount: 8,
 		},
 		{
 			name:              "can load the ABI from ABI files and from gethwrappers",
 			abiPath:           "./contracts/abi",
 			gethWrappersPaths: []string{"./contracts/bind"},
-			expectedABICount:  10,
+			expectedABICount:  11,
 		},
 		{
 			name:              "can load the ABI only from gethwrappers",
 			gethWrappersPaths: []string{"./contracts/bind"},
-			expectedABICount:  5,
+			expectedABICount:  7,
 		},
 		{
 			name:              "can load the ABI from 2 gethwrappers folders",
 			gethWrappersPaths: []string{"./contracts/bind", "./contracts/bind2"},
-			expectedABICount:  6,
+			expectedABICount:  8,
 		},
 		{
 			name:    "can't open the ABI path",

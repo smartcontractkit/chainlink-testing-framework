@@ -54,8 +54,6 @@ func NewNetworkCfg(in *EVMNetworkConfig, out *blockchain.Output) (string, error)
 	if err != nil {
 		return "", err
 	}
-	fmt.Println("Configuring networks for CL node based on blockchain outputs:")
-	fmt.Println(resultCfg)
 	return resultCfg, nil
 }
 
@@ -78,7 +76,5 @@ func NewNetworkCfgOneNetworkAllNodes(out *blockchain.Output) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Println("Configuring networks for CL node based on blockchain outputs:")
-	fmt.Println(resultCfg)
 	return resultCfg, nil
 }

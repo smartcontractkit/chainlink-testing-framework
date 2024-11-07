@@ -211,7 +211,7 @@ func (m *Client) waitUntilMined(l zerolog.Logger, tx *types.Transaction) (*types
 			tx = replacementTx
 		}),
 		retry.DelayType(retry.FixedDelay),
-		// unless attempts is at least 1 retry.Do won't execute at all
+		// unless attempts is at least 1 retry.Do() won't execute at all
 		retry.Attempts(func() uint {
 			if m.Cfg.GasBumpRetries() == 0 {
 				return 1
@@ -425,7 +425,15 @@ func (m *Client) decodeTransaction(l zerolog.Logger, tx *types.Transaction, rece
 		for _, l := range receipt.Logs {
 			logsValues = append(logsValues, *l)
 		}
-		txEvents, err = m.decodeContractLogs(l, logsValues, abiResult.ABI)
+
+		var allABIs []*abi.ABI
+		if m.ContractStore == nil {
+			allABIs = append(allABIs, &abiResult.ABI)
+		} else {
+			allABIs = m.ContractStore.GetAllABIs()
+		}
+
+		txEvents, err = m.decodeContractLogs(l, logsValues, allABIs)
 		if err != nil {
 			return defaultTxn, err
 		}

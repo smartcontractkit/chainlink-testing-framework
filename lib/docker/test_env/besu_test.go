@@ -40,6 +40,30 @@ func TestBesuEth1(t *testing.T) {
 	require.NoError(t, err, "Couldn't close the client")
 }
 
+func TestBesuEth2(t *testing.T) {
+	l := logging.GetTestLogger(t)
+
+	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WithEthereumVersion(config_types.EthereumVersion_Eth2).
+		WithExecutionLayer(config_types.ExecutionLayer_Besu).
+		Build()
+	require.NoError(t, err, "Builder validation failed")
+
+	net, _, err := cfg.Start()
+	require.NoError(t, err, "Couldn't start PoS network")
+
+	c, err := blockchain.ConnectEVMClient(net, l)
+	require.NoError(t, err, "Couldn't connect to the evm client")
+
+	address := common.HexToAddress("0x90F8bf6A479f320ead074411a4B0e7944Ea8c9C1")
+	err = sendAndCompareBalances(testcontext.Get(t), c, address)
+	require.NoError(t, err, fmt.Sprintf("balance wasn't correctly updated for %s network", net.Name))
+
+	err = c.Close()
+	require.NoError(t, err, "Couldn't close the client")
+}
+
 func TestBesuEth2_Deneb(t *testing.T) {
 	l := logging.GetTestLogger(t)
 

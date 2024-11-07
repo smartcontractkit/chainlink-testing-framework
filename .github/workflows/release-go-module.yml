@@ -6,8 +6,7 @@ name: Release Go module
 on:
   push:
     tags:
-      - '*/v*.*.*' # Trigger only on tags with the format $package/vX.X.X
-      - '*/*/v*.*.*' # Trigger only on tags with the format $package/$subpackage/vX.X.X
+      - '**/v*.*.*' # Trigger on all tags ending with /vX.X.X
 
 permissions:
   contents: write
@@ -31,8 +30,8 @@ jobs:
         id: extract_package_name
         run: |
           TAG_REF="${GITHUB_REF#refs/tags/}"
-          PACKAGE_NAME=$(echo "$TAG_REF" | cut -d'/' -f1)
-          VERSION=$(echo "$TAG_REF" | cut -d'/' -f2)
+          PACKAGE_NAME="${TAG_REF%/*}"
+          VERSION="${TAG_REF##*/}"
           echo "Tag Reference: $TAG_REF"
           echo "Package Name: $PACKAGE_NAME"
           echo "Version: $VERSION"
@@ -42,11 +41,6 @@ jobs:
       - name: Find Last Tag for Package and Generate Release Notes
         id: generate_release_notes
         run: |
-          # Extract the package name and version from the tag
-          TAG_REF="${GITHUB_REF#refs/tags/}"
-          PACKAGE_NAME=$(echo "$TAG_REF" | cut -d'/' -f1)
-          VERSION=$(echo "$TAG_REF" | cut -d'/' -f2)
-
           # Find the latest tag for the same package that is not the current tag
           LAST_TAG=$(git describe --abbrev=0 --always --match "$PACKAGE_NAME/v*" --tags $(git rev-list --tags --skip=1 --max-count=1))
           echo "Last tag: ${LAST_TAG}"
@@ -57,7 +51,7 @@ jobs:
           fi
 
           # Extract the version part of the last tag
-          LAST_TAG_VERSION=$(echo "$LAST_TAG" | cut -d'/' -f2)
+          LAST_TAG_VERSION="${LAST_TAG##*/}"  
           echo "Last tag version: $LAST_TAG_VERSION"
           echo "LAST_TAG_VERSION=${LAST_TAG_VERSION}" >> "$GITHUB_ENV"
 
@@ -124,13 +118,20 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           sudo apt-get install -y gh
-          gh release create "${{ env.PACKAGE_NAME }}-${{ env.VERSION }}" --title "${{ env.PACKAGE_NAME }} ${{ env.VERSION }}" --notes "${{ env.FULL_RELEASE_NOTES }}" || true
+          gh release create "${{ env.PACKAGE_NAME }}/${{ env.VERSION }}" --title "${{ env.PACKAGE_NAME }}/${{ env.VERSION }}" --notes "${{ env.FULL_RELEASE_NOTES }}" || true
       - name: Check if 'cmd' directory exists and set environment variable
         run: |
           if [ -f "$GITHUB_WORKSPACE/${{ env.PACKAGE_NAME }}/cmd/main.go" ]; then
             echo "CMD_ENTRYPOINT_EXISTS=true" >> "$GITHUB_ENV"
           else
             echo "CMD_ENTRYPOINT_EXISTS=false" >> "$GITHUB_ENV"
+          fi
+      - name: Set binary name based on PACKAGE_NAME
+        run: |
+          if [ "${{ env.PACKAGE_NAME }}" == "framework" ]; then
+            echo "BINARY_NAME=ctf" >> $GITHUB_ENV
+          else
+            echo "BINARY_NAME=${{ env.PACKAGE_NAME }}" >> $GITHUB_ENV
           fi
       - name: Build binary release
         uses: wangyoucao577/go-release-action@v1
@@ -140,8 +141,8 @@ jobs:
           goversion: '1.22.6'
           goos: ${{ matrix.platform }}
           goarch: ${{ matrix.goarch }}
-          binary_name: ${{ env.PACKAGE_NAME }}
+          binary_name: ${{ env.BINARY_NAME }}
           release_name: ${{ env.PACKAGE_NAME }}
-          release_tag: ${{ env.PACKAGE_NAME}}-${{ env.VERSION }}
+          release_tag: ${{ env.PACKAGE_NAME}}/${{ env.VERSION }}
           project_path: ${{ env.PACKAGE_NAME }}/cmd
           asset_name: ${{ env.PACKAGE_NAME }}-${{ env.VERSION }}-${{ matrix.platform }}-${{ matrix.goarch }}

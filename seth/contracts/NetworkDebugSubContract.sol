@@ -18,6 +18,7 @@ contract NetworkDebugSubContract {
     event OneIndexEvent(uint indexed a);
     event TwoIndexEvent(uint256 indexed roundId, address indexed startedBy);
     event ThreeIndexEvent(uint256 indexed roundId, address indexed startedBy, uint256 startedAt);
+    event UniqueSubDebugEvent();
 
     /* Struct events */
 
@@ -48,6 +49,10 @@ contract NetworkDebugSubContract {
     function traceOneInt(int256 x) public returns (int256 r) {
         emit NoIndexEvent(msg.sender);
         return x + 3;
+    }
+
+    function traceUniqueEvent() public {
+        emit UniqueSubDebugEvent();
     }
 
     function alwaysRevertsCustomError(uint256 x, uint256 y) public {

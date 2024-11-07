@@ -17,7 +17,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/seth"
-	network_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/debug"
+	network_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/NetworkDebugContract"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/TestContractOne"
+	"github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/TestContractTwo"
 	link_token "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/link"
 	"github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/link_token_interface"
 	"github.com/smartcontractkit/chainlink-testing-framework/seth/test_utils"
@@ -1784,6 +1786,79 @@ func TestTraceVariousCallTypesAndNestingLevels(t *testing.T) {
 
 	require.Equal(t, "CALL", c.Tracer.GetDecodedCalls(decodedTx.Hash)[8].CallType, "expected call type to be CALL")
 	require.Equal(t, 4, c.Tracer.GetDecodedCalls(decodedTx.Hash)[8].NestingLevel, "expected nesting level to be 4")
+}
+
+func TestNestedEvents(t *testing.T) {
+	c := newClientWithContractMapFromEnv(t)
+	SkipAnvil(t, c)
+
+	tx, txErr := TestEnv.DebugContract.TraceNestedEvents(c.NewTXOpts())
+	require.NoError(t, txErr, "transaction should have succeeded")
+	decoded, decodeErr := c.Decode(tx, txErr)
+	require.NoError(t, decodeErr, "transaction should have succeeded")
+
+	expectedLogs := []seth.DecodedCommonLog{
+		{
+			Signature: "UniqueSubDebugEvent()",
+			Address:   TestEnv.DebugSubContractAddress,
+			EventData: map[string]interface{}{},
+			Topics:    []string{"0xe0b03c5e88196d907268b0babc690e041bdc7fcc1abf4bbf1e363e28c17e6b9b"},
+		},
+		{
+			Signature: "UniqueDebugEvent()",
+			Address:   TestEnv.DebugContractAddress,
+			EventData: map[string]interface{}{},
+			Topics:    []string{"0xa0f7c7c1fff15178b5db3e56860767f0889c56b591bd2d9ba3121b491347d74c"},
+		},
+	}
+
+	require.Equal(t, 2, len(decoded.Events), "expected 2 events")
+	var actualEvents []seth.DecodedCommonLog
+	for _, event := range decoded.Events {
+		actualEvents = append(actualEvents, event.DecodedCommonLog)
+	}
+
+	require.EqualValues(t, expectedLogs, actualEvents, "decoded events do not match")
+}
+
+func TestSameEventTwoABIs(t *testing.T) {
+	c := newClientWithContractMapFromEnv(t)
+	SkipAnvil(t, c)
+
+	contractAbi, err := TestContractOne.UniqueEventOneMetaData.GetAbi()
+	require.NoError(t, err, "failed to get contract ABI")
+	oneData, err := c.DeployContract(c.NewTXOpts(), "TestContractOne", *contractAbi, common.FromHex(TestContractOne.UniqueEventOneMetaData.Bin))
+	require.NoError(t, err, "failed to deploy contract")
+
+	contractAbi, err = TestContractTwo.UniqueEventTwoMetaData.GetAbi()
+	require.NoError(t, err, "failed to get contract ABI")
+	_, err = c.DeployContract(c.NewTXOpts(), "TestContractTwo", *contractAbi, common.FromHex(TestContractTwo.UniqueEventTwoMetaData.Bin))
+	require.NoError(t, err, "failed to deploy contract")
+
+	oneInstance, err := TestContractOne.NewUniqueEventOne(oneData.Address, c.Client)
+	require.NoError(t, err, "failed to create contract instance")
+	decoded, txErr := c.Decode(oneInstance.ExecuteFirstOperation(c.NewTXOpts(), big.NewInt(1), big.NewInt(2)))
+	require.NoError(t, txErr, "transaction should have succeeded")
+
+	expectedLogs := []seth.DecodedCommonLog{
+		{
+			Signature: "NonUniqueEvent(int256,int256)",
+			Address:   oneData.Address,
+			EventData: map[string]interface{}{
+				"a": big.NewInt(1),
+				"b": big.NewInt(2),
+			},
+			Topics: []string{"0x192aedde7837c0cbfb2275e082ba2391de36cf5a893681e9dac2cced6947614e", "0x0000000000000000000000000000000000000000000000000000000000000001", "0x0000000000000000000000000000000000000000000000000000000000000002"},
+		},
+	}
+
+	require.Equal(t, 1, len(decoded.Events), "expected 1 event")
+	var actualEvents []seth.DecodedCommonLog
+	for _, event := range decoded.Events {
+		actualEvents = append(actualEvents, event.DecodedCommonLog)
+	}
+
+	require.EqualValues(t, expectedLogs, actualEvents, "decoded events do not match")
 }
 
 func removeGasDataFromDecodedCalls(decodedCall map[string][]*seth.DecodedCall) {

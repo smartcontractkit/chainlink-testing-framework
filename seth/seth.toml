@@ -55,6 +55,11 @@ experiments_enabled = ["slow_funds_return", "eip_1559_fee_equalizer"]
 # to make sure transaction can be submitted and mined
 check_rpc_health_on_start = false
 
+# when enabled, upon creation Seth will validate that there are no private keys set, that node RPC health check is disabled
+# and that gas bumping is disabled, since all of these operations are "write" operations. This is useful for running Seth
+# only for tracing, when you want to make sure that no transactions are sent to the network.
+read_only = false
+
 [gas_bumps]
 # when > 0 then we will bump gas price for transactions that are stuck in the mempool
 # by default the bump step is controlled by gas_price_estimation_tx_priority (check readme.md for more details)

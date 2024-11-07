@@ -1,8 +1,11 @@
 package test_env
 
 import (
+	"bytes"
 	"fmt"
+	"os"
 	"strings"
+	"text/template"
 	"time"
 
 	config_types "github.com/smartcontractkit/chainlink-testing-framework/lib/config/types"
@@ -53,7 +56,7 @@ func NewBesuEth2(networks []string, chainConfig *config.EthereumChainConfig, gen
 func (g *Besu) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 	cmd := []string{
 		"--data-path=/opt/besu/execution-data",
-		fmt.Sprintf("--genesis-file=%s/besu.json", g.generatedDataContainerDir),
+		fmt.Sprintf("--genesis-file=%s/besu.json", "/opt/besu/execution-data"),
 		fmt.Sprintf("--network-id=%d", g.chainConfig.ChainID),
 		"--host-allowlist=*",
 		"--rpc-http-enabled=true",
@@ -99,6 +102,21 @@ func (g *Besu) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 		cmd = append(cmd, "--bonsai-limit-trie-logs-enabled=false")
 	}
 
+	initFile, err := os.CreateTemp("", "init.sh")
+	if err != nil {
+		return nil, err
+	}
+
+	initScriptContent, err := g.buildPosInitScript(strings.Join(cmd, " "))
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = initFile.WriteString(initScriptContent)
+	if err != nil {
+		return nil, err
+	}
+
 	return &tc.ContainerRequest{
 		Name:     g.ContainerName,
 		Image:    g.GetImageWithVersion(),
@@ -110,9 +128,19 @@ func (g *Besu) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 				WithPollInterval(1 * time.Second)).
 			WithStartupTimeoutDefault(g.StartupTimeout),
 		User: "0:0", //otherwise in CI we get "permission denied" error, when trying to access data from mounted volume
-		Cmd:  cmd,
+		Entrypoint: []string{
+			"sh",
+			"/init.sh",
+		},
 		Env: map[string]string{
 			"JAVA_OPTS": "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n",
+		},
+		Files: []tc.ContainerFile{
+			{
+				HostFilePath:      initFile.Name(),
+				ContainerFilePath: "/init.sh",
+				FileMode:          0744,
+			},
 		},
 		HostConfigModifier: func(hostConfig *container.HostConfig) {
 			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
@@ -129,4 +157,38 @@ func (g *Besu) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 			},
 		},
 	}, nil
+}
+
+func (g *Besu) buildPosInitScript(params string) (string, error) {
+	initTemplate := `#!/bin/bash
+	echo "Copied genesis file to {{.ExecutionDir}}"
+	mkdir -p {{.ExecutionDir}}
+	cp {{.GeneratedDataDir}}/besu.json {{.ExecutionDir}}/besu.json
+    # to avoid permission issues without diving into the details
+	chmod 777 {{.GeneratedDataDir}}/genesis.json
+
+	echo "Starting Besu..."
+	echo "Running command: {{.Command}}"
+	{{.Command}}`
+
+	data := struct {
+		GeneratedDataDir string
+		ExecutionDir     string
+		Command          string
+	}{
+		GeneratedDataDir: g.generatedDataContainerDir,
+		ExecutionDir:     "/opt/besu/execution-data",
+		Command:          fmt.Sprintf("/opt/besu/bin/besu %s", params),
+	}
+
+	t, err := template.New("init").Parse(initTemplate)
+	if err != nil {
+		fmt.Println("Error parsing template:", err)
+		os.Exit(1)
+	}
+
+	var buf bytes.Buffer
+	err = t.Execute(&buf, data)
+
+	return buf.String(), err
 }
