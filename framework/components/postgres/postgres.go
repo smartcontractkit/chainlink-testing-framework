@@ -17,14 +17,14 @@ const (
 	User              = "chainlink"
 	Password          = "thispasswordislongenough"
 	Port              = "5432"
-	ExposedStaticPort = "13000"
+	ExposedStaticPort = 13000
 	Database          = "chainlink"
 	DBVolumeName      = "postgresql_data"
 )
 
 type Input struct {
 	Image      string  `toml:"image" validate:"required"`
-	Port       string  `toml:"port"`
+	Port       int     `toml:"port"`
 	VolumeName string  `toml:"volume_name"`
 	Databases  int     `toml:"databases"`
 	PullImage  bool    `toml:"pull_image"`
@@ -97,18 +97,18 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 			WithStartupTimeout(20 * time.Second).
 			WithPollInterval(1 * time.Second),
 	}
-	var port string
-	if in.Port != "" {
-		port = in.Port
+	var portToExpose int
+	if in.Port != 0 {
+		portToExpose = in.Port
 	} else {
-		port = ExposedStaticPort
+		portToExpose = ExposedStaticPort
 	}
 	req.HostConfigModifier = func(h *container.HostConfig) {
 		h.PortBindings = nat.PortMap{
 			nat.Port(bindPort): []nat.PortBinding{
 				{
 					HostIP:   "0.0.0.0",
-					HostPort: fmt.Sprintf("%s/tcp", port),
+					HostPort: fmt.Sprintf("%d/tcp", portToExpose),
 				},
 			},
 		}
@@ -135,11 +135,11 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 			Database,
 		),
 		Url: fmt.Sprintf(
-			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
+			"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
 			User,
 			Password,
 			host,
-			ExposedStaticPort,
+			portToExpose,
 			Database,
 		),
 	}, nil

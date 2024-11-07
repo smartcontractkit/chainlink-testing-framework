@@ -263,24 +263,6 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	if err != nil {
 		return nil, err
 	}
-	//var (
-	//	mp    nat.Port
-	//	mpP2P nat.Port
-	//)
-	//if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {
-	//	mp = nat.Port(fmt.Sprintf("%d/tcp", in.Node.HTTPPort))
-	//	mpP2P = nat.Port(fmt.Sprintf("%d/udp", in.Node.P2PPort))
-	//}
-	//else {
-	//	mp, err = c.MappedPort(ctx, nat.Port(httpPort))
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	mpP2P, err = c.MappedPort(ctx, nat.Port(p2pPort))
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//}
 
 	mp := nat.Port(fmt.Sprintf("%d/tcp", in.Node.HTTPPort))
 	mpP2P := nat.Port(fmt.Sprintf("%d/udp", in.Node.P2PPort))

@@ -1,6 +1,6 @@
 ## Component caching
 
-We use component caching to accelerate test development and enforce idempotent test actions.
+We use component caching to accelerate test development and enforce idempotent test actions development.
 
 Each component is isolated by means of inputs and outputs.
 

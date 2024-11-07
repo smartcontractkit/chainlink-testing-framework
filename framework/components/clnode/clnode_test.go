@@ -34,7 +34,7 @@ func TestDockerNodeWithSharedDB(t *testing.T) {
 				DataProviderURL: "http://example.com",
 				DbInput: &postgres.Input{
 					Image:      "postgres:15.6",
-					Port:       "16000",
+					Port:       16000,
 					VolumeName: "a",
 				},
 				Node: &clnode.NodeInput{
@@ -70,7 +70,7 @@ func TestDockerNodeWithDB(t *testing.T) {
 				DataProviderURL: "http://example.com",
 				DbInput: &postgres.Input{
 					Image:      "postgres:15.6",
-					Port:       "15000",
+					Port:       15000,
 					VolumeName: "b",
 				},
 				Node: &clnode.NodeInput{
