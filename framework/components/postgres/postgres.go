@@ -21,6 +21,7 @@ const (
 	Port              = "5432"
 	ExposedStaticPort = "13000"
 	Database          = "chainlink"
+	DatabaseDir       = "postgresql_data"
 )
 
 type Input struct {
@@ -92,6 +93,8 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
+	_ = os.RemoveAll(filepath.Join(wd, DatabaseDir))
+	_ = os.Mkdir(DatabaseDir, os.ModePerm)
 	req.HostConfigModifier = func(h *container.HostConfig) {
 		h.PortBindings = nat.PortMap{
 			nat.Port(bindPort): []nat.PortBinding{
@@ -104,7 +107,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 		h.Mounts = []mount.Mount{
 			{
 				Type:   mount.TypeBind,
-				Source: filepath.Join(wd, "postgresql_data"),
+				Source: filepath.Join(wd, DatabaseDir),
 				Target: "/var/lib/postgresql/data",
 			},
 		}
