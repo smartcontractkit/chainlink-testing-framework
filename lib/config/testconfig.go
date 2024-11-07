@@ -231,14 +231,14 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		c.Network.RpcHttpUrls = rpcHttpUrls
 	}
 
-	rpcWsUrls := ReadEnvVarGroupedMap(E2E_TEST_RPC_WS_URL_ENV, E2E_TEST_RPC_WS_URLS_ENV)
-	if len(rpcWsUrls) > 0 {
-		if c.Network == nil {
-			c.Network = &NetworkConfig{}
-		}
-		logger.Info().Msgf("Using %s and/or %s env vars to override Network.RpcWsUrls", E2E_TEST_RPC_WS_URL_ENV, E2E_TEST_RPC_WS_URLS_ENV)
-		c.Network.RpcWsUrls = rpcWsUrls
-	}
+	// rpcWsUrls := ReadEnvVarGroupedMap(E2E_TEST_RPC_WS_URL_ENV, E2E_TEST_RPC_WS_URLS_ENV)
+	// if len(rpcWsUrls) > 0 {
+	// 	if c.Network == nil {
+	// 		c.Network = &NetworkConfig{}
+	// 	}
+	// 	logger.Info().Msgf("Using %s and/or %s env vars to override Network.RpcWsUrls", E2E_TEST_RPC_WS_URL_ENV, E2E_TEST_RPC_WS_URLS_ENV)
+	// 	c.Network.RpcWsUrls = rpcWsUrls
+	// }
 
 	chainlinkImage := MustReadEnvVar_String(E2E_TEST_CHAINLINK_IMAGE_ENV)
 	if chainlinkImage != "" {

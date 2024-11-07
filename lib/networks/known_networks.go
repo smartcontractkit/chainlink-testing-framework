@@ -1104,10 +1104,11 @@ func SetNetworks(networkCfg config.NetworkConfig) ([]blockchain.EVMNetwork, erro
 		// if network is not simulated or forked, use the rpc urls and wallet keys from config
 		if !strings.Contains(networkName, "SIMULATED") && !forked {
 			var ok bool
-			wsUrls, ok = networkCfg.RpcWsUrls[selectedNetworks[i]]
-			if !ok {
-				return nil, fmt.Errorf("no rpc ws urls found in config for '%s' network", selectedNetworks[i])
-			}
+
+			// wsUrls, ok = networkCfg.RpcWsUrls[selectedNetworks[i]]
+			// if !ok {
+			// 	return nil, fmt.Errorf("no rpc ws urls found in config for '%s' network", selectedNetworks[i])
+			// }
 
 			httpUrls, ok = networkCfg.RpcHttpUrls[selectedNetworks[i]]
 			if !ok {

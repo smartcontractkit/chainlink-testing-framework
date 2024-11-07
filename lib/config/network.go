@@ -146,9 +146,9 @@ func (n *NetworkConfig) Validate() error {
 			return fmt.Errorf("at least one HTTP RPC endpoint for %s network must be set", network)
 		}
 
-		if _, ok := n.RpcWsUrls[network]; !ok {
-			return fmt.Errorf("at least one WS RPC endpoint for %s network must be set", network)
-		}
+		// if _, ok := n.RpcWsUrls[network]; !ok {
+		// 	return fmt.Errorf("at least one WS RPC endpoint for %s network must be set", network)
+		// }
 
 		if _, ok := n.WalletKeys[network]; !ok {
 			return fmt.Errorf("at least one private key of funding wallet for %s network must be set", network)
