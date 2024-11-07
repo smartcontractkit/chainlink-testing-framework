@@ -1,43 +1,61 @@
-# Getting started
+# 🚀 Getting started
+
+## Prerequisites
+- `Docker` [OrbStack](https://orbstack.dev/) or [Docker Desktop](https://www.docker.com/products/docker-desktop/), we recommend OrbStack (faster, smaller memory footprint)
+- [Golang](https://go.dev/doc/install)
 
 ## Test setup
 
-To start writing tests create a directory for your project with `go.mod` and pull the framework
+To start writing tests create a directory for your project with `go.mod` and add a package
 ```
 go get github.com/smartcontractkit/chainlink-testing-framework/framework
 ```
 
-Then download the CLI (runs from directory where you have `go.mod`)
-Make sure you have your GOPATH set: `export GOPATH=$HOME/go && export PATH=$PATH:$GOPATH/bin`
-```
-go get github.com/smartcontractkit/chainlink-testing-framework/framework/cmd && \
-go install github.com/smartcontractkit/chainlink-testing-framework/framework/cmd && \
-mv ~/go/bin/cmd ~/go/bin/ctf
-```
-More CLI [docs](./cli.md)
+Download our [CLI](https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8)
 
-Create an `.envrc` file and put common parameters there (you can use [direnv](https://direnv.net/) to sync them more easily)
+OS X `arm64` (M1/M2/M3 MacBooks)
 ```
-export CTF_LOG_LEVEL=info
-export CTF_LOKI_STREAM=true
-export TESTCONTAINERS_RYUK_DISABLED=true
+curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2F<!-- cmdrun git describe --tags --match "framework/v[0-9]*.[0-9]*.[0-9]*" --abbrev=0 | sed 's/^framework\///' -->/framework-<!-- cmdrun git describe --tags --match "framework/v[0-9]*.[0-9]*.[0-9]*" --abbrev=0 | sed 's/^framework\///' -->-darwin-arm64.tar.gz | tar -xz
+```
 
-export CTF_CONFIGS=smoke.toml
-export PRIVATE_KEY="ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+OS X `amd64` (old Intel chips)
+```
+curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2F<!-- cmdrun git describe --tags --match "framework/v[0-9]*.[0-9]*.[0-9]*" --abbrev=0 | sed 's/^framework\///' -->/framework-<!-- cmdrun git describe --tags --match "framework/v[0-9]*.[0-9]*.[0-9]*" --abbrev=0 | sed 's/^framework\///' -->-darwin-amd64.tar.gz | tar -xz
+```
+Linux `arm64`
+```
+curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2F<!-- cmdrun git describe --tags --match "framework/v[0-9]*.[0-9]*.[0-9]*" --abbrev=0 | sed 's/^framework\///' -->/framework-<!-- cmdrun git describe --tags --match "framework/v[0-9]*.[0-9]*.[0-9]*" --abbrev=0 | sed 's/^framework\///' -->-linux-arm64.tar.gz | tar -xz
+```
+
+Linux `amd64`
+```
+curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2F<!-- cmdrun git describe --tags --match "framework/v[0-9]*.[0-9]*.[0-9]*" --abbrev=0 | sed 's/^framework\///' -->/framework-<!-- cmdrun git describe --tags --match "framework/v[0-9]*.[0-9]*.[0-9]*" --abbrev=0 | sed 's/^framework\///' -->-linux-amd64.tar.gz | tar -xz
+```
+
+Allow it to run in `System Settings -> Security Settings` (OS X)
+
+![img.png](images/img.png)
+
+
+Create an `.envrc` file and do `source .envrc`
+```
+export TESTCONTAINERS_RYUK_DISABLED=true # do not remove containers while we develop locally
 ```
 
 Now you are ready to write your [first test](./first_test.md)
 
 ## Tools setup (Optional)
 
-This setup is optional, and it explains how to setup a local observability stack for on-chain and off-chain components.
+This setup is optional, and it explains how to create a local observability stack for on-chain and off-chain components.
 
 Spin up your local obserability stack (Grafana LGTM)
 ```
 ctf obs up
 ```
+More [docs](observability/observability_stack.md)
 
 Spin up your `Blockscout` stack
 ```
 ctf bs up
 ```
+More [docs](observability/blockscout.md)

@@ -168,7 +168,7 @@ func GetFilePackages(files []string) ([]string, error) {
 }
 
 // Function to check if a package contains any test functions
-func hasTests(pkgName string) (bool, error) {
+var hasTests = func(pkgName string) (bool, error) {
 	cmd := exec.Command("go", "test", pkgName, "-run=^$", "-list", ".")
 
 	var out bytes.Buffer
@@ -184,7 +184,7 @@ func hasTests(pkgName string) (bool, error) {
 
 // Filter out test packages with no actual test functions
 func FilterPackagesWithTests(pkgs []string) []string {
-	var testPkgs []string
+	testPkgs := []string{}
 	for _, pkg := range pkgs {
 		hasT, err := hasTests(pkg)
 		if err != nil {

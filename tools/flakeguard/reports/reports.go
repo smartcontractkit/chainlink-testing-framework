@@ -1,5 +1,11 @@
 package reports
 
+import (
+	"fmt"
+	"io"
+	"strings"
+)
+
 type TestResult struct {
 	TestName    string
 	TestPackage string
@@ -41,4 +47,22 @@ func FilterSkippedTests(results []TestResult) []TestResult {
 		}
 	}
 	return skippedTests
+}
+
+// PrintTests prints tests in a pretty format
+func PrintTests(tests []TestResult, w io.Writer) {
+	for i, test := range tests {
+		fmt.Fprintf(w, "\n--- Test %d ---\n", i+1)
+		fmt.Fprintf(w, "TestName: %s\n", test.TestName)
+		fmt.Fprintf(w, "TestPackage: %s\n", test.TestPackage)
+		fmt.Fprintf(w, "PassRatio: %.2f\n", test.PassRatio)
+		fmt.Fprintf(w, "Skipped: %v\n", test.Skipped)
+		fmt.Fprintf(w, "Runs: %d\n", test.Runs)
+		durationsStr := make([]string, len(test.Durations))
+		for i, duration := range test.Durations {
+			durationsStr[i] = fmt.Sprintf("%.2fs", duration)
+		}
+		fmt.Fprintf(w, "Durations: %s\n", strings.Join(durationsStr, ", "))
+		fmt.Fprintf(w, "Outputs:\n%s\n", strings.Join(test.Outputs, ""))
+	}
 }

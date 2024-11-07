@@ -22,6 +22,8 @@ jobs:
             path: ./tools/ghlatestreleasechecker/
           - name: asciitable
             path: ./tools/asciitable/
+          - name: flakeguard
+            path: ./tools/flakeguard/            
           - name: workflowresultparser
             path: ./tools/workflowresultparser/
     runs-on: ubuntu-latest

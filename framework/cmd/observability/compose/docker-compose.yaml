@@ -1,8 +1,9 @@
 services:
   prometheus:
     image: prom/prometheus:latest
-    privileged: true
+    user: "0:0"
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
       - ./conf/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
@@ -25,6 +26,8 @@ services:
       - grafana_plugins:/var/lib/grafana/plugins
       - ./conf/grafana.ini:/etc/grafana/grafana.ini
       - ./conf/provisioning:/etc/grafana/provisioning
+      - ./conf/provisioning/dashboards/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
+      - ./conf/provisioning/dashboards/wasp.json:/var/lib/grafana/dashboards/wasp.json
     ports:
       - "3000:3000"
   pyroscope:

@@ -33,13 +33,13 @@ func TestDockerNodeWithSharedDB(t *testing.T) {
 			input: &clnode.Input{
 				DataProviderURL: "http://example.com",
 				DbInput: &postgres.Input{
-					Image:     "postgres:15.6",
-					PullImage: true,
+					Image:      "postgres:15.6",
+					Port:       16000,
+					VolumeName: "a",
 				},
 				Node: &clnode.NodeInput{
-					Image:     "public.ecr.aws/chainlink/chainlink:v2.17.0",
-					Name:      "cl-node-1",
-					PullImage: true,
+					Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",
+					Name:  "cl-node-1",
 				},
 			},
 			assertion: func(t *testing.T, output *clnode.Output) {
@@ -49,7 +49,7 @@ func TestDockerNodeWithSharedDB(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		err := framework.DefaultNetwork(t, &sync.Once{})
+		err := framework.DefaultNetwork(&sync.Once{})
 		require.NoError(t, err)
 
 		t.Run(tc.name, func(t *testing.T) {
@@ -69,13 +69,13 @@ func TestDockerNodeWithDB(t *testing.T) {
 			input: &clnode.Input{
 				DataProviderURL: "http://example.com",
 				DbInput: &postgres.Input{
-					Image:     "postgres:15.6",
-					PullImage: true,
+					Image:      "postgres:15.6",
+					Port:       15000,
+					VolumeName: "b",
 				},
 				Node: &clnode.NodeInput{
-					Image:     "public.ecr.aws/chainlink/chainlink:v2.17.0",
-					Name:      "cl-node-2",
-					PullImage: true,
+					Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",
+					Name:  "cl-node-2",
 				},
 			},
 			assertion: func(t *testing.T, output *clnode.Output) {
@@ -85,7 +85,7 @@ func TestDockerNodeWithDB(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		err := framework.DefaultNetwork(t, &sync.Once{})
+		err := framework.DefaultNetwork(&sync.Once{})
 		require.NoError(t, err)
 
 		t.Run(tc.name, func(t *testing.T) {

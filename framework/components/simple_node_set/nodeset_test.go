@@ -43,11 +43,10 @@ func TestDockerNodeSetSharedDB(t *testing.T) {
 			name:    "2 nodes cluster, override mode 'all'",
 			fakeURL: "http://example.com",
 			bcInput: &blockchain.Input{
-				Type:      "anvil",
-				Image:     "f4hrenh9it/foundry",
-				PullImage: true,
-				Port:      "8545",
-				ChainID:   "31337",
+				Type:    "anvil",
+				Image:   "f4hrenh9it/foundry",
+				Port:    "8545",
+				ChainID: "31337",
 			},
 			nodeSetInput: &ns.Input{
 				Nodes:        2,
@@ -56,13 +55,11 @@ func TestDockerNodeSetSharedDB(t *testing.T) {
 					{
 						DataProviderURL: "http://example.com",
 						DbInput: &postgres.Input{
-							Image:     "postgres:15.6",
-							PullImage: true,
+							Image: "postgres:15.6",
 						},
 						Node: &clnode.NodeInput{
-							Image:     "public.ecr.aws/chainlink/chainlink:v2.17.0",
-							Name:      "cl-node",
-							PullImage: true,
+							Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",
+							Name:  "cl-node",
 						},
 					},
 				},
@@ -75,26 +72,26 @@ func TestDockerNodeSetSharedDB(t *testing.T) {
 			name:    "2 nodes cluster, override mode 'each'",
 			fakeURL: "http://example.com",
 			bcInput: &blockchain.Input{
-				Type:      "anvil",
-				Image:     "f4hrenh9it/foundry",
-				PullImage: true,
-				Port:      "8546",
-				ChainID:   "31337",
+				Type:    "anvil",
+				Image:   "f4hrenh9it/foundry",
+				Port:    "8546",
+				ChainID: "31337",
 			},
 			nodeSetInput: &ns.Input{
-				Nodes:        2,
-				OverrideMode: "each",
+				Nodes:              2,
+				OverrideMode:       "each",
+				HTTPPortRangeStart: 20000,
+				P2PPortRangeStart:  22000,
 				NodeSpecs: []*clnode.Input{
 					{
 						DataProviderURL: "http://example.com",
 						DbInput: &postgres.Input{
-							Image:     "postgres:15.6",
-							PullImage: true,
+							Image: "postgres:15.6",
+							Port:  14000,
 						},
 						Node: &clnode.NodeInput{
-							Image:     "public.ecr.aws/chainlink/chainlink:v2.17.0",
-							Name:      "cl-node-1",
-							PullImage: true,
+							Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",
+							Name:  "cl-node-1",
 							UserConfigOverrides: `
 [Log]
 level = 'info'
@@ -104,13 +101,11 @@ level = 'info'
 					{
 						DataProviderURL: "http://example.com",
 						DbInput: &postgres.Input{
-							Image:     "postgres:15.6",
-							PullImage: true,
+							Image: "postgres:15.6",
 						},
 						Node: &clnode.NodeInput{
-							Image:     "public.ecr.aws/chainlink/chainlink:v2.17.0",
-							Name:      "cl-node-2",
-							PullImage: true,
+							Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",
+							Name:  "cl-node-2",
 							UserConfigOverrides: `
 [Log]
 level = 'info'
@@ -126,7 +121,7 @@ level = 'info'
 	}
 
 	for _, tc := range testCases {
-		err := framework.DefaultNetwork(t, &sync.Once{})
+		err := framework.DefaultNetwork(&sync.Once{})
 		require.NoError(t, err)
 
 		t.Run(tc.name, func(t *testing.T) {
