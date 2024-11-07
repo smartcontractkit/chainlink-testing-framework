@@ -1,9 +1,6 @@
 name: Framework Golden Tests Examples
 on:
   push:
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-framework-golden-examples
-  cancel-in-progress: true
 
 jobs:
   test:
