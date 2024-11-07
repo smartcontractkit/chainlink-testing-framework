@@ -53,7 +53,7 @@ func TestReload(t *testing.T) {
 	require.NoError(t, err)
 
 	// deploy second time
-	_, err = chaos.ExecPumba("rm --volumes=false re2:node.*|postgresql.*", 1*time.Second)
+	_, err = chaos.ExecPumba("rm --volumes=false re2:node.*|postgresql.*", 5*time.Second)
 	require.NoError(t, err)
 	ns.UpdateNodeConfigs(in.NodeSet, `
 [Log]
