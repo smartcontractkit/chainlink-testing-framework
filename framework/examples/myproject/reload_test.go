@@ -56,12 +56,10 @@ func TestReload(t *testing.T) {
 	// deploy second time
 	_, err = chaos.ExecPumba("rm --volumes=false re2:node.*|postgresql.*")
 	require.NoError(t, err)
-
-	in.NodeSet.NodeSpecs[0].Node.UserConfigOverrides = in.NodeSet.NodeSpecs[0].Node.UserConfigOverrides + `
+	ns.UpdateNodeConfigs(in.NodeSet, `
 [Log]
-Level = 'info'
-`
-	in.NodeSet.Out = nil
+level = 'info'
+`)
 	out, err = ns.NewSharedDBNodeSet(in.NodeSet, bc, dp.BaseURLDocker)
 	require.NoError(t, err)
 	jobs, _, err := c[0].ReadJobs()
