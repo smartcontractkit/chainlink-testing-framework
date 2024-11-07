@@ -3,25 +3,29 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/go-connections/nat"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
 const (
-	User      = "chainlink"
-	Password  = "thispasswordislongenough"
-	Port      = "5432"
-	Database  = "chainlink"
-	Databases = 5
+	User              = "chainlink"
+	Password          = "thispasswordislongenough"
+	Port              = "5432"
+	ExposedStaticPort = "13000"
+	Database          = "chainlink"
 )
 
 type Input struct {
 	Image     string  `toml:"image" validate:"required"`
+	Databases int     `toml:"databases"`
 	PullImage bool    `toml:"pull_image"`
 	Out       *Output `toml:"out"`
 }
@@ -35,11 +39,10 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 	ctx := context.Background()
 
 	bindPort := fmt.Sprintf("%s/tcp", Port)
-
 	containerName := framework.DefaultTCName("postgresql")
 
 	var sqlCommands []string
-	for i := 0; i <= Databases; i++ {
+	for i := 0; i <= in.Databases; i++ {
 		sqlCommands = append(sqlCommands, fmt.Sprintf("CREATE DATABASE db_%d;", i))
 	}
 	sqlCommands = append(sqlCommands, "ALTER USER chainlink WITH SUPERUSER;")
@@ -82,7 +85,29 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 		},
 		WaitingFor: tcwait.ForExec([]string{"psql", "-h", "127.0.0.1",
 			"-U", User, "-p", Port, "-c", "select", "1", "-d", Database}).
-			WithStartupTimeout(20 * time.Second),
+			WithStartupTimeout(20 * time.Second).
+			WithPollInterval(1 * time.Second),
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	req.HostConfigModifier = func(h *container.HostConfig) {
+		h.PortBindings = nat.PortMap{
+			nat.Port(bindPort): []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: fmt.Sprintf("%s/tcp", ExposedStaticPort),
+				},
+			},
+		}
+		h.Mounts = []mount.Mount{
+			{
+				Type:   mount.TypeBind,
+				Source: filepath.Join(wd, "postgresql_data"),
+				Target: "/var/lib/postgresql/data",
+			},
+		}
 	}
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
@@ -92,10 +117,6 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 		return nil, err
 	}
 	host, err := framework.GetHost(c)
-	if err != nil {
-		return nil, err
-	}
-	mp, err := c.MappedPort(ctx, nat.Port(bindPort))
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +134,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 			User,
 			Password,
 			host,
-			mp.Port(),
+			ExposedStaticPort,
 			Database,
 		),
 	}, nil

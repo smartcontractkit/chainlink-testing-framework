@@ -24,7 +24,6 @@ func cleanDockerResources() error {
 	if err != nil {
 		return fmt.Errorf("error running clean command: %s", string(output))
 	}
-	framework.L.Info().Msgf("Done")
 	return nil
 }
 

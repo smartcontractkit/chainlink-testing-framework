@@ -55,6 +55,6 @@ Summary:
 - We defined configuration for `BlockchainNetwork`
 - We've used one CTF component in test and checked if it's working
 
-You can learn more about [component design](./components/overview.md) or proceed with another example of [connecting Chainlink node](./connecting_chainlink_node.md)
+Now let's connect the [Chainlink](./connecting_chainlink_node.md) node!
 
 Learn more about [anvil](./components/blockchains/anvil.md) component.

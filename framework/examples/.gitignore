@@ -33,3 +33,5 @@ promtail-config.yml
 **/blockscout
 **/blockscout/*
 **/*cache.toml
+**/postgresql_data
+**/postgresql_data/*
