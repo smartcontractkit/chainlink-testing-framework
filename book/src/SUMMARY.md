@@ -16,6 +16,7 @@
     - [Test Configuration](./framework/test_configuration_overrides.md)
     - [Caching](framework/components/caching.md)
     - [Secrets]()
+    - [Docker](framework/docker.md)
     - [Observability Stack](framework/observability/observability_stack.md)
       - [Metrics](framework/observability/metrics.md)
       - [Logs](framework/observability/logs.md)

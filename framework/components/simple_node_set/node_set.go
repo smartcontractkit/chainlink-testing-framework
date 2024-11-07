@@ -66,13 +66,18 @@ func NewSharedDBNodeSet(in *Input, bcOut *blockchain.Output, fakeUrl string) (*O
 }
 
 func printURLs(out *Output) {
-	httpURLs, p2pURLs := make([]string, 0), make([]string, 0)
+	if out == nil {
+		return
+	}
+	httpURLs, p2pURLs, pgURLs := make([]string, 0), make([]string, 0), make([]string, 0)
 	for _, n := range out.CLNodes {
 		httpURLs = append(httpURLs, n.Node.HostURL)
 		p2pURLs = append(p2pURLs, n.Node.HostP2PURL)
+		pgURLs = append(pgURLs, n.PostgreSQL.Url)
 	}
 	framework.L.Info().Any("UI", httpURLs).Send()
 	framework.L.Debug().Any("P2P", p2pURLs).Send()
+	framework.L.Debug().Any("DB", pgURLs).Send()
 }
 
 func sharedDBSetup(in *Input, bcOut *blockchain.Output, fakeUrl string, overrideEach bool) (*Output, error) {
@@ -137,9 +142,10 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output, fakeUrl string, override
 				},
 			}
 
+			dbURLHost := strings.Replace(dbOut.Url, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i), -1)
 			dbURL := strings.Replace(dbOut.DockerInternalURL, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i), -1)
 			dbSpec := &postgres.Output{
-				Url:               dbOut.Url,
+				Url:               dbURLHost,
 				DockerInternalURL: dbURL,
 			}
 

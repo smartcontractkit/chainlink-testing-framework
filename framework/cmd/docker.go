@@ -14,7 +14,8 @@ func cleanDockerResources() error {
 	// Bash command for removing Docker containers and networks with "framework=ctf" label
 	cmd := exec.Command("bash", "-c", `
 		docker ps -aq --filter "label=framework=ctf" | xargs -r docker rm -f && \
-		docker network ls --filter "label=framework=ctf" -q | xargs -r docker network rm
+		docker network ls --filter "label=framework=ctf" -q | xargs -r docker network rm && \
+		docker volume rm postgresql_data
 	`)
 	framework.L.Debug().Msg("Running command")
 	if framework.L.GetLevel() == zerolog.DebugLevel {

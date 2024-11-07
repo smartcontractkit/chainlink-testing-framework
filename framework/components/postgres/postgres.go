@@ -4,13 +4,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/go-connections/nat"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -84,17 +82,19 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 				FileMode:          0644,
 			},
 		},
+		Mounts: testcontainers.ContainerMounts{
+			{
+				Source: testcontainers.GenericVolumeMountSource{
+					Name: DatabaseDir,
+				},
+				Target: "/var/lib/postgresql/data",
+			},
+		},
 		WaitingFor: tcwait.ForExec([]string{"psql", "-h", "127.0.0.1",
 			"-U", User, "-p", Port, "-c", "select", "1", "-d", Database}).
 			WithStartupTimeout(20 * time.Second).
 			WithPollInterval(1 * time.Second),
 	}
-	wd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	_ = os.RemoveAll(filepath.Join(wd, DatabaseDir))
-	_ = os.Mkdir(DatabaseDir, os.ModePerm)
 	req.HostConfigModifier = func(h *container.HostConfig) {
 		h.PortBindings = nat.PortMap{
 			nat.Port(bindPort): []nat.PortBinding{
@@ -104,17 +104,11 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 				},
 			},
 		}
-		h.Mounts = []mount.Mount{
-			{
-				Type:   mount.TypeBind,
-				Source: filepath.Join(wd, DatabaseDir),
-				Target: "/var/lib/postgresql/data",
-			},
-		}
 	}
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
+		Reuse:            true,
 	})
 	if err != nil {
 		return nil, err
