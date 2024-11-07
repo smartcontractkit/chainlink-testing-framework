@@ -24,6 +24,7 @@ const (
 
 type Input struct {
 	Image     string  `toml:"image" validate:"required"`
+	Port      string  `toml:"port"`
 	Databases int     `toml:"databases"`
 	PullImage bool    `toml:"pull_image"`
 	Out       *Output `toml:"out"`
@@ -95,12 +96,18 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 			WithStartupTimeout(20 * time.Second).
 			WithPollInterval(1 * time.Second),
 	}
+	var port string
+	if in.Port != "" {
+		port = in.Port
+	} else {
+		port = ExposedStaticPort
+	}
 	req.HostConfigModifier = func(h *container.HostConfig) {
 		h.PortBindings = nat.PortMap{
 			nat.Port(bindPort): []nat.PortBinding{
 				{
 					HostIP:   "0.0.0.0",
-					HostPort: fmt.Sprintf("%s/tcp", ExposedStaticPort),
+					HostPort: fmt.Sprintf("%s/tcp", port),
 				},
 			},
 		}
