@@ -16,6 +16,7 @@
     - [Test Configuration](./framework/test_configuration_overrides.md)
     - [Components Persistence](framework/components/state.md)
     - [Components Caching](framework/components/caching.md)
+    - [External Environment](framework/components/external.md)
     - [Secrets]()
     - [Docker](framework/docker.md)
     - [Observability Stack](framework/observability/observability_stack.md)
