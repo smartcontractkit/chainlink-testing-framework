@@ -239,6 +239,3 @@ func (l RangeGrafanaAnnotator) OnScheduleDeleted(chaos Schedule) {
 	}
 	l.chaosMap[chaos.Object.GetName()] = res.ID
 }
-
-func hey() {
-}

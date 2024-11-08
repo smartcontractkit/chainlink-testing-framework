@@ -16,12 +16,6 @@ The `havoc` package is designed to facilitate chaos testing within [Kubernetes](
 - [Go](https://go.dev/)
 - A Kubernetes cluster with [Chaos Mesh installed](https://chaos-mesh.org/docs/quick-start/)
 
-## Installation
-
-```sh
-go get -u github.com/smartcontractkit/chainlink-testing-framework/havoc
-```
-
 ## Active Monitoring
 
 `havoc` enhances chaos experiment observability through structured logging and Grafana annotations by implementing the [ChaosListener](https://pkg.go.dev/github.com/smartcontractkit/chainlink-testing-framework/havoc#ChaosListener) interface.
