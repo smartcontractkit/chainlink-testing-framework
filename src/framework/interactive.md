@@ -33,6 +33,8 @@ Allow it to run in `System Settings -> Security Settings` (OS X)
 ```
 ./ctf b ns
 ```
-Press `Ctrl+C` to remove the stack.
+Use `Tab/Shift+Tab` to select an option, use `<-`, `->` to change the option, `enter` to submit.
+
+Press `Ctrl+C` to remove the services.
 
 ![img.png](images/interactive-node-set.png)
