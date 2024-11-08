@@ -19,7 +19,8 @@ func NewGasEstimator(c *Client) *GasEstimator {
 	return &GasEstimator{Client: c}
 }
 
-// Stats prints gas stats
+// Stats calculates gas price and tip cap suggestions based on historical fee data over a specified number of blocks.
+// It computes quantiles for base fees and tip caps and provides suggested gas price and tip cap values.
 func (m *GasEstimator) Stats(fromNumber uint64, priorityPerc float64) (GasSuggestions, error) {
 	bn, err := m.Client.Client.BlockNumber(context.Background())
 	if err != nil {
