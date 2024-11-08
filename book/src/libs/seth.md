@@ -80,7 +80,7 @@ You can read more about how ABI finding and contract map works [here](../../../s
 
 ## Examples
 
-Check [examples](../../../seth/examples) folder
+Check [examples](https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/seth/examples) folder
 
 Lib provides a small amount of helpers for decoding handling that you can use with vanilla `go-ethereum` generated wrappers
 
