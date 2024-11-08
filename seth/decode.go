@@ -337,6 +337,7 @@ func (m *Client) handleDisabledTracing(l zerolog.Logger, decoded DecodedTransact
 	}
 }
 
+// MergeEventData merges new event data into the existing EventData map in the DecodedTransactionLog.
 func (d *DecodedCommonLog) MergeEventData(newEventData map[string]interface{}) {
 	if d.EventData == nil {
 		d.EventData = make(map[string]interface{})
@@ -541,6 +542,8 @@ func (m *Client) CallMsgFromTx(tx *types.Transaction) (ethereum.CallMsg, error) 
 	}, nil
 }
 
+// DownloadContractAndGetPragma retrieves the bytecode of a contract at a specified address and block,
+// then decodes it to extract the pragma version. Returns the pragma version or an error if retrieval or decoding fails.
 func (m *Client) DownloadContractAndGetPragma(address common.Address, block *big.Int) (Pragma, error) {
 	bytecode, err := m.Client.CodeAt(context.Background(), address, block)
 	if err != nil {
