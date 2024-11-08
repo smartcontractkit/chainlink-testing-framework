@@ -44,7 +44,6 @@
   - [Performance]()
   - [Chaos]()
 - [Interactive](framework/interactive.md)
-- [Continuous Integration](ci/ci.md)
 - [Libraries](./libraries.md)
   - [Seth](./libs/seth.md)
   - [WASP](./libs/wasp.md)

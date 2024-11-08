@@ -17,8 +17,6 @@ For example, to integrate with remote `k8s` environment you can use `CTF_CONFIGS
 
     [[blockchain_a.out.nodes]]
       # set up your RPC URLs
-      docker_internal_http_url = "http://anvil-2cfcf:8545"
-      docker_internal_ws_url = "ws://anvil-2cfcf:8545"
       http_url = "http://127.0.0.1:8545"
       ws_url = "ws://127.0.0.1:8545"
 
@@ -34,7 +32,6 @@ For example, to integrate with remote `k8s` environment you can use `CTF_CONFIGS
 
   [data_provider.out]
     # setup your data provider URLs
-    base_url_docker = "http://host.docker.internal:9111"
     base_url_host = "http://localhost:9111"
 
 [nodeset]
@@ -49,8 +46,6 @@ For example, to integrate with remote `k8s` environment you can use `CTF_CONFIGS
 
       [nodeset.out.cl_nodes.node]
         # set up each node URLs
-        docker_internal_url = "http://node0:6688"
-        p2p_docker_internal_url = "http://node0:6690"
         p2p_url = "http://127.0.0.1:12000"
         url = "http://127.0.0.1:10000"
 
