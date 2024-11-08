@@ -19,7 +19,7 @@ type CfgUpgradeAll struct {
 }
 
 func TestUpgradeAll(t *testing.T) {
-	in, err := framework.Load[CfgReload](t)
+	in, err := framework.Load[CfgUpgradeAll](t)
 	require.NoError(t, err)
 
 	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
@@ -42,7 +42,7 @@ func TestUpgradeAll(t *testing.T) {
 										level = 'info'
 `
 
-	out, err = ns.UpgradeNodeSet(in.NodeSet, bc, dp.BaseURLDocker, 10*time.Second)
+	out, err = ns.UpgradeNodeSet(in.NodeSet, bc, dp.BaseURLDocker, 5*time.Second)
 	require.NoError(t, err)
 
 	jobs, _, err := c[0].ReadJobs()

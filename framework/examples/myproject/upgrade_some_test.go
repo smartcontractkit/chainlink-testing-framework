@@ -37,7 +37,7 @@ type CfgReload struct {
 	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
 }
 
-func TestReload(t *testing.T) {
+func TestUpgradeSome(t *testing.T) {
 	in, err := framework.Load[CfgReload](t)
 	require.NoError(t, err)
 
@@ -66,7 +66,7 @@ func TestReload(t *testing.T) {
 										level = 'info'
 `
 
-	out, err = ns.UpgradeNodeSet(in.NodeSet, bc, dp.BaseURLDocker, 10*time.Second)
+	out, err = ns.UpgradeNodeSet(in.NodeSet, bc, dp.BaseURLDocker, 5*time.Second)
 	require.NoError(t, err)
 
 	jobs, _, err := c[0].ReadJobs()
