@@ -19,5 +19,5 @@
       pull_image = true
 
     [nodeset.node_specs.node]
-      image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+      image = "public.ecr.aws/chainlink/chainlink:v2.16.0"
       pull_image = false

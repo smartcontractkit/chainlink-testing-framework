@@ -30,8 +30,12 @@ jobs:
             config: chaos.toml
             count: 1
             timeout: 10m
-          - name: TestReload
-            config: reload.toml
+          - name: TestUpgradeAll
+            config: upgrade_all.toml
+            count: 1
+            timeout: 10m
+          - name: TestUpgradeSome
+            config: upgrade_some.toml
             count: 1
             timeout: 10m
     steps:
