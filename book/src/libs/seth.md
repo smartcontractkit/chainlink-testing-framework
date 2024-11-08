@@ -231,7 +231,7 @@ client, err := NewClientBuilder().
     WithEIP1559DynamicFees(true).
     WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
     WithGasPriceEstimations(true, 10, seth.Priority_Fast).
-// gas bumping: retries, max gas price, bumping strategy function
+    // gas bumping: retries, max gas price, bumping strategy function
     WithGasBumping(5, 100_000_000_000, PriorityBasedGasBumpingStrategyFn).
     Build()
 
