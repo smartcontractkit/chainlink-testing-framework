@@ -3305,6 +3305,9 @@ CTF_CONFIGS=upgrade_some.toml go test -v -run TestUpgradeSome
 <li><a href="libs/seth.html#bulk-transaction-tracing">Bulk transaction tracing</a></li>
 <li><a href="libs/seth.html#rpc-traffic-logging">RPC traffic logging</a></li>
 <li><a href="libs/seth.html#read-only-mode">Read-only mode</a></li>
+<li><a href="libs/seth.html#abi-finder">ABI Finder</a></li>
+<li><a href="libs/seth.html#contract-map">Contract Map</a></li>
+<li><a href="libs/seth.html#contract-store">Contract Store</a></li>
 </ol>
 <h2 id="goals"><a class="header" href="#goals">Goals</a></h2>
 <ul>
@@ -3373,7 +3376,7 @@ Gas bumping for slow transactions</li>
 </ul>
 <p>You can read more about how ABI finding and contract map works <a href="libs/../../../seth/docs/abi_finder_contract_map.html">here</a> and about contract store here <a href="libs/../../../seth/docs/contract_store.html">here</a>.</p>
 <h2 id="examples"><a class="header" href="#examples">Examples</a></h2>
-<p>Check <a href="libs/../../../seth/examples">examples</a> folder</p>
+<p>Check <a href="https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/seth/examples">examples</a> folder</p>
 <p>Lib provides a small amount of helpers for decoding handling that you can use with vanilla <code>go-ethereum</code> generated wrappers</p>
 <pre><code class="language-golang">// Decode waits for transaction and decode all the data/errors
 Decode(tx *types.Transaction, txErr error) (*DecodedTransaction, error)
@@ -3476,7 +3479,7 @@ if err != nil {
     WithEIP1559DynamicFees(true).
     WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
     WithGasPriceEstimations(true, 10, seth.Priority_Fast).
-// gas bumping: retries, max gas price, bumping strategy function
+    // gas bumping: retries, max gas price, bumping strategy function
     WithGasBumping(5, 100_000_000_000, PriorityBasedGasBumpingStrategyFn).
     Build()
 
@@ -3908,6 +3911,36 @@ max_tps = 8.0
 <li>pending nonce protection is disabled</li>
 <li>gas bumping is disabled</li>
 </ul>
+<h2 id="abi-finder"><a class="header" href="#abi-finder">ABI Finder</a></h2>
+<p>In order to be able to decode and trace transactions and calls between smart contracts we need their ABIs. Unfortunately it might happen that two or more contracts have methods with the same signatures, which might result in incorrect tracing. To make that problem less severe we have decided to add a single point of entry for contract deployment in Seth as that way we always know what contract is deployed at which address and thus avoid incorrect tracing due to potentially ambiguous method signatures.</p>
+<ol>
+<li>
+<p>We don’t know what contract (ABI) is located at a given address. Should be the case, when the contract either wasn’t uploaded via Seth or we haven’t supplied Seth with a contract map as part of its configuration (more on that later).</p>
+<p>a. We sequentially iterate over all known ABIs (map: <code>name -&gt; ABI_name</code>) checking whether it has a method with a given signature. Once we get a first match we will upsert that (<code>address -&gt; ABI_name</code>) data into the contract map and return the ABI.</p>
+<pre><code>The caveat here is that if the method we are searching for belongs is present in more than one ABI we might associate the address with an incorrect address (we will use the first match).
+</code></pre>
+<p>b. If no match is found we will return an error.</p>
+</li>
+<li>
+<p>We know what ABI is located at a given address. It should be the case, when we have either uploaded the contract via Seth, provided Seth with a contract map or already traced a transaction to that address and found an ABI with matching method signature.</p>
+<p>a. We fetch the corresponding ABIand check if it indeed contains the method we are looking for (as mentioned earlier in some cases it might not be the case).</p>
+<p>b. If it does, we return the ABI.</p>
+<p>c. If it doesn’t we iterate over all known ABIs, in the same way as in 1a. If we find a match we update the (<code>address -&gt; ABI_name</code>) association in the contract map and return the ABI.</p>
+<pre><code>It is possible that this will happen multiple times in case we have multiple contracts with multiple identical methods, but given a sufficiently diverse set of methods that were called we should eventually arrive at a fully correct contract map.
+</code></pre>
+<p>d. If no match is found we will return an error.</p>
+</li>
+</ol>
+<h3 id="example"><a class="header" href="#example">Example</a></h3>
+<p><img src="libs/./images/tracing_example.png" alt="tracing_example" /></p>
+<h2 id="contract-map"><a class="header" href="#contract-map">Contract Map</a></h2>
+<p>We support in-memory contract map and a TOML file contract map that keeps the association of (<code>address -&gt; ABI_name</code>). The latter map is only used for non-simulated networks. Every time we deploy a contract we save (<code>address -&gt; ABI_name</code>) entry in the in-memory map.If the network is not a simulated one we also save it in a file. That file can later be pointed to in Seth configuration and we will load the contract map from it (<strong>currently without validating whether we have all the ABIs mentioned in the file</strong>).</p>
+<p>When saving contract deployment information we will either generate filename for you (if you didn’t configure Seth to use a particular file) using the pattern of <code>deployed_contracts_${network_name}_${timestamp}.toml</code> or use the filename provided in Seth TOML configuration file.</p>
+<p>It has to be noted that the file contract map is currently updated only, when new contracts are deployed. There’s no mechanism for updating it if we found the mapping invalid (which might be the case if you manually created the entry in the file).</p>
+<h2 id="contract-store"><a class="header" href="#contract-store">Contract Store</a></h2>
+<p>Seth can be used with the contract store, but it would have very limited usage as transaction decoding and tracing cannot work with ABIs. Thus, when you initialise Seth with contract store it is necessary that it can load at least one ABI.</p>
+<p>Another use of Contract Store is simplified contract deployment. For that we also need the contract's bytecode. The contract store can be used to store the bytecode of the contract and then deploy it using the <code>DeployContractFromContractStore(auth *bind.TransactOpts, name string, backend bind.ContractBackend, params ...interface{})</code> method. When Seth is intialisied with the contract store and no bytecode files (<code>*.bin</code>) are provided, it will log a warning, but initialise successfully nonetheless.</p>
+<p>If bytecode file wasn't provided you need to use <code>DeployContract(auth *bind.TransactOpts, name string, abi abi.ABI, bytecode []byte, backend bind.ContractBackend, params ...interface{})</code> method, which expects you to provide contract name (best if equal to the name of the ABI file), bytecode and the ABI.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -4481,7 +4514,7 @@ MERCURY_TEST_LOG_LEVEL = "info"
 <li><code>test_config_file_path</code> is the path to the configuration file for the test (optional).</li>
 </ul>
 <h2 id="using-k8s-test-runner-on-ci"><a class="header" href="#using-k8s-test-runner-on-ci">Using K8s Test Runner on CI</a></h2>
-<h3 id="example"><a class="header" href="#example">Example</a></h3>
+<h3 id="example-1"><a class="header" href="#example-1">Example</a></h3>
 <p>This example demonstrates the process step by step. First, it shows how to download the Kubernetes Test Runner. Next, it details the use of the Test Runner to create a test binary specifically for the Mercury "e2e_tests/staging_prod/tests/load" test package. Finally, it describes executing the test in Kubernetes using a customized test runner configuration.</p>
 <pre><code>- name: Download K8s Test Runner
     run: |
@@ -6704,7 +6737,7 @@ echo ::add-mask::$BASE64_CONFIG_OVERRIDE
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>4a77370d</code></li>
+<li>Commit: <code>dc46d3be</code></li>
 </ul>
 
                     </main>
