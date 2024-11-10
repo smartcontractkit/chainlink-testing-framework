@@ -44,6 +44,8 @@ type NetworkConfig struct {
 	// RpcWsUrls is the RPC WS endpoints for each network,
 	// key is the network name as declared in selected_networks slice
 	RpcWsUrls map[string][]string `toml:"RpcWsUrls,omitempty"`
+	// ForceHttp, if true, skips validation of WS endpoints, requiring only HTTP endpoints
+	ForceHttp bool `toml:"force_http,omitempty"`
 	// WalletKeys is the private keys for the funding wallets for each network,
 	// key is the network name as declared in selected_networks slice
 	WalletKeys map[string][]string `toml:"WalletKeys,omitempty"`
@@ -146,9 +148,12 @@ func (n *NetworkConfig) Validate() error {
 			return fmt.Errorf("at least one HTTP RPC endpoint for %s network must be set", network)
 		}
 
-		// if _, ok := n.RpcWsUrls[network]; !ok {
-		// 	return fmt.Errorf("at least one WS RPC endpoint for %s network must be set", network)
-		// }
+		// Conditionally skip the WebSocket URL check if forceHttp is set to true
+		if !n.ForceHttp {
+			if _, ok := n.RpcWsUrls[network]; !ok {
+				return fmt.Errorf("at least one WS RPC endpoint for %s network must be set", network)
+			}
+		}
 
 		if _, ok := n.WalletKeys[network]; !ok {
 			return fmt.Errorf("at least one private key of funding wallet for %s network must be set", network)

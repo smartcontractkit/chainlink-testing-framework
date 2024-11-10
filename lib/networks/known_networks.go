@@ -1105,10 +1105,12 @@ func SetNetworks(networkCfg config.NetworkConfig) ([]blockchain.EVMNetwork, erro
 		if !strings.Contains(networkName, "SIMULATED") && !forked {
 			var ok bool
 
-			// wsUrls, ok = networkCfg.RpcWsUrls[selectedNetworks[i]]
-			// if !ok {
-			// 	return nil, fmt.Errorf("no rpc ws urls found in config for '%s' network", selectedNetworks[i])
-			// }
+			if !networkCfg.ForceHttp {
+				wsUrls, ok = networkCfg.RpcWsUrls[selectedNetworks[i]]
+				if !ok {
+					return nil, fmt.Errorf("no rpc ws urls found in config for '%s' network", selectedNetworks[i])
+				}
+			}
 
 			httpUrls, ok = networkCfg.RpcHttpUrls[selectedNetworks[i]]
 			if !ok {
@@ -1123,7 +1125,7 @@ func SetNetworks(networkCfg config.NetworkConfig) ([]blockchain.EVMNetwork, erro
 		// if evm_network config is found, use it
 		if networkCfg.EVMNetworks != nil {
 			if network, ok := networkCfg.EVMNetworks[networkName]; ok && network != nil {
-				if err := NewEVMNetwork(network, walletKeys, httpUrls, wsUrls); err != nil {
+				if err := NewEVMNetwork(network, walletKeys, httpUrls, wsUrls, networkCfg.ForceHttp); err != nil {
 					return nil, err
 				}
 				networks = append(networks, *network)
@@ -1132,7 +1134,7 @@ func SetNetworks(networkCfg config.NetworkConfig) ([]blockchain.EVMNetwork, erro
 		}
 		// if there is no evm_network config, use the known networks to find the network config from the map
 		if knownNetwork, valid := MappedNetworks[networkName]; valid {
-			err := NewEVMNetwork(&knownNetwork, walletKeys, httpUrls, wsUrls)
+			err := NewEVMNetwork(&knownNetwork, walletKeys, httpUrls, wsUrls, networkCfg.ForceHttp)
 			if err != nil {
 				return nil, err
 			}
@@ -1150,12 +1152,14 @@ func SetNetworks(networkCfg config.NetworkConfig) ([]blockchain.EVMNetwork, erro
 }
 
 // NewEVMNetwork sets the network's private key(s) and rpc urls
-func NewEVMNetwork(network *blockchain.EVMNetwork, walletKeys, httpUrls, wsUrls []string) error {
+func NewEVMNetwork(network *blockchain.EVMNetwork, walletKeys, httpUrls, wsUrls []string, forceHttp bool) error {
 	if len(httpUrls) > 0 {
 		network.HTTPURLs = httpUrls
 	}
-	if len(wsUrls) > 0 {
-		network.URLs = wsUrls
+	if !forceHttp {
+		if len(wsUrls) > 0 {
+			network.URLs = wsUrls
+		}
 	}
 	if len(walletKeys) > 0 {
 		if err := setKeys(network, walletKeys); err != nil {
