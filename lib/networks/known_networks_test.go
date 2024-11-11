@@ -39,7 +39,7 @@ func TestNewEVMNetwork(t *testing.T) {
 
 	t.Run("valid networkKey", func(t *testing.T) {
 		network := MappedNetworks["VALID_KEY"]
-		err := NewEVMNetwork(&network, nil, nil, nil, false)
+		err := NewEVMNetwork(&network, nil, nil, nil)
 		require.NoError(t, err)
 		require.Equal(t, MappedNetworks["VALID_KEY"].HTTPURLs, network.HTTPURLs)
 		require.Equal(t, MappedNetworks["VALID_KEY"].URLs, network.URLs)
@@ -50,8 +50,7 @@ func TestNewEVMNetwork(t *testing.T) {
 		httpUrls := []string{"http://newurl.com"}
 		wsUrls := []string{"ws://newwsurl.com"}
 		network := MappedNetworks["VALID_KEY"]
-		forceHttp := true
-		err := NewEVMNetwork(&network, walletKeys, httpUrls, wsUrls, forceHttp)
+		err := NewEVMNetwork(&network, walletKeys, httpUrls, wsUrls)
 		require.NoError(t, err)
 		require.Equal(t, httpUrls, network.HTTPURLs)
 		require.Equal(t, wsUrls, network.URLs)

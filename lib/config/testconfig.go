@@ -231,7 +231,7 @@ func (c *TestConfig) ReadFromEnvVar() error {
 		c.Network.RpcHttpUrls = rpcHttpUrls
 	}
 
-	if !c.Network.ForceHttp {
+	if !c.Network.ForceHttp || !c.Seth.ForceHTTP {
 		rpcWsUrls := ReadEnvVarGroupedMap(E2E_TEST_RPC_WS_URL_ENV, E2E_TEST_RPC_WS_URLS_ENV)
 		if len(rpcWsUrls) > 0 {
 			if c.Network == nil {

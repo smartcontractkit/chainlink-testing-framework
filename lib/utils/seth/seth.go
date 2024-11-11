@@ -174,10 +174,10 @@ func MergeSethAndEvmNetworkConfigs(evmNetwork blockchain.EVMNetwork, sethConfig 
 			break
 		} else if isSameNetwork(conf, evmNetwork) {
 			conf.PrivateKeys = evmNetwork.PrivateKeys
-			// forceHttp should override urlssecret
 			if sethConfig.ForceHTTP {
 				conf.URLs = evmNetwork.HTTPURLs
-			} else if len(conf.URLs) == 0 {
+			}
+			if len(conf.URLs) == 0 {
 				conf.URLs = evmNetwork.URLs
 			}
 
