@@ -3560,6 +3560,9 @@ These two options should be used with care, when <code>tracing_level</code> is s
 <pre><code class="language-toml">pending_nonce_protection_enabled = true
 pending_nonce_protection_timeout = "5m"
 </code></pre>
+<p>If you want to use HTTP instead of WS you can do so by setting to true:</p>
+<pre><code class="language-toml">force_http = false
+</code></pre>
 <p>You can add more networks like this:</p>
 <pre><code class="language-toml">[[Networks]]
 name = "Fuji"
@@ -6737,7 +6740,7 @@ echo ::add-mask::$BASE64_CONFIG_OVERRIDE
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>cb1a5a5f</code></li>
+<li>Commit: <code>3b0f987f</code></li>
 </ul>
 
                     </main>
