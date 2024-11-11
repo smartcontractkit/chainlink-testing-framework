@@ -53,8 +53,8 @@ func TestChaos(t *testing.T) {
 		verifyServices(t, c)
 
 		// Stress container CPU (TODO: it is not portable, works only in CI or Linux VM, cgroups are required)
-		_, err = chaos.ExecPumba(`stress --stress-image=alexeiled/stress-ng:latest-ubuntu --duration=30s --stressors="--cpu 1 --vm 2 --vm-bytes 1G" node0`, 30*time.Second)
-		require.NoError(t, err)
-		verifyServices(t, c)
+		//_, err = chaos.ExecPumba(`stress --stress-image=alexeiled/stress-ng:latest-ubuntu --duration=30s --stressors="--cpu 1 --vm 2 --vm-bytes 1G" node0`, 30*time.Second)
+		//require.NoError(t, err)
+		//verifyServices(t, c)
 	})
 }
