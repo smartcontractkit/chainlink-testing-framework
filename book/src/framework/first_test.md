@@ -46,7 +46,7 @@ Run the test
 CTF_CONFIGS=smoke.toml go test -v -run TestMe
 ```
 
-Remove containers
+Remove containers (read more about cleanup [here](components/cleanup.md))
 ```
 ctf d rm
 ```

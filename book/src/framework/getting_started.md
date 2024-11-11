@@ -37,7 +37,7 @@ Allow it to run in `System Settings -> Security Settings` (OS X)
 ![img.png](images/img.png)
 
 
-Create an `.envrc` file and do `source .envrc`
+Create an `.envrc` file and do `source .envrc` (we recommend to use [direnv](https://direnv.net/), so you don't need to load it every time)
 ```
 export TESTCONTAINERS_RYUK_DISABLED=true # do not remove containers while we develop locally
 ```
