@@ -15,7 +15,6 @@ import (
 	"path/filepath"
 	"sync"
 	"text/template"
-	"time"
 )
 
 const (
@@ -167,18 +166,18 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 			"/bin/sh", "-c",
 			"chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials",
 		},
-		WaitingFor: wait.ForLog("Listening and serving HTTP").WithStartupTimeout(2 * time.Minute),
+		WaitingFor: wait.ForHTTP("/").WithPort(DefaultHTTPPort),
 	}
 	if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {
 		req.HostConfigModifier = func(h *container.HostConfig) {
 			h.PortBindings = nat.PortMap{
-				"6688/tcp": []nat.PortBinding{
+				nat.Port(httpPort): []nat.PortBinding{
 					{
 						HostIP:   "0.0.0.0",
 						HostPort: fmt.Sprintf("%d/tcp", in.Node.HTTPPort),
 					},
 				},
-				"6690/udp": []nat.PortBinding{
+				nat.Port(p2pPort): []nat.PortBinding{
 					{
 						HostIP:   "0.0.0.0",
 						HostPort: fmt.Sprintf("%d/udp", in.Node.P2PPort),
