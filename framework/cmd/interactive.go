@@ -143,7 +143,11 @@ Docker Desktop (https://www.docker.com/products/docker-desktop/)
 			huh.NewSelect[string]().
 				Title("Choose Chainlink node version").
 				Options(
-					huh.NewOption("public.ecr.aws/chainlink/chainlink:v2.17.0", "public.ecr.aws/chainlink/chainlink:v2.17.0")).
+					huh.NewOption("public.ecr.aws/chainlink/chainlink:v2.17.0-arm64", "public.ecr.aws/chainlink/chainlink:v2.17.0-arm64"),
+					huh.NewOption("public.ecr.aws/chainlink/chainlink:v2.17.0", "public.ecr.aws/chainlink/chainlink:v2.17.0"),
+					huh.NewOption("public.ecr.aws/chainlink/chainlink:v2.16.0-arm64", "public.ecr.aws/chainlink/chainlink:v2.16.0-arm64"),
+					huh.NewOption("public.ecr.aws/chainlink/chainlink:v2.16.0", "public.ecr.aws/chainlink/chainlink:v2.16.0"),
+				).
 				Value(&f.CLVersion),
 			huh.NewConfirm().
 				Title("Do you need to spin up an observability stack?").
