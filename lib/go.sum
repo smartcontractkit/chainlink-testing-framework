@@ -1052,8 +1052,8 @@ github.com/slack-go/slack v0.15.0 h1:LE2lj2y9vqqiOf+qIIy0GvEoxgF1N5yLGZffmEZykt0
 github.com/slack-go/slack v0.15.0/go.mod h1:hlGi5oXA+Gt+yWTPP0plCdRKmjsDxecdHxYQdlMQKOw=
 github.com/smartcontractkit/chainlink-testing-framework/lib/grafana v1.50.0 h1:VIxK8u0Jd0Q/VuhmsNm6Bls6Tb31H/sA3A/rbc5hnhg=
 github.com/smartcontractkit/chainlink-testing-framework/lib/grafana v1.50.0/go.mod h1:lyAu+oMXdNUzEDScj2DXB2IueY+SDXPPfyl/kb63tMM=
-github.com/smartcontractkit/chainlink-testing-framework/seth v1.50.9-0.20241110203450-1ec78c4ad500 h1:tkQ4IE1gPiI/OSbR46mRZpzcKcYiU9DyK4R0hnX7G14=
-github.com/smartcontractkit/chainlink-testing-framework/seth v1.50.9-0.20241110203450-1ec78c4ad500/go.mod h1:lJk0atEJ5Zyo3Tqrmf1Pl9jUEe79EgDb9bD3K5OTUBI=
+github.com/smartcontractkit/chainlink-testing-framework/seth v1.50.9 h1:yB1x5UXvpZNka+5h57yo1/GrKfXKCqMzChCISpldZx4=
+github.com/smartcontractkit/chainlink-testing-framework/seth v1.50.9/go.mod h1:lJk0atEJ5Zyo3Tqrmf1Pl9jUEe79EgDb9bD3K5OTUBI=
 github.com/smartcontractkit/chainlink-testing-framework/wasp v1.50.1 h1:hbapxD2wjGJNkP9Re2LqzPDbejzRP25Yk5vKfuaHs6U=
 github.com/smartcontractkit/chainlink-testing-framework/wasp v1.50.1/go.mod h1:tMdjHVfgp1QBLfVieSTGNR0kem8cOnH2bOXXXiaTwZ0=
 github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d/go.mod h1:OnSkiWE9lh6wB0YB77sQom3nweQdgAjqCqsofrRNTgc=
