@@ -68,6 +68,7 @@ type Config struct {
 	BlockStatsConfig              *BlockStatsConfig `toml:"block_stats"`
 	GasBump                       *GasBumpConfig    `toml:"gas_bump"`
 	ReadOnly                      bool              `toml:"read_only"`
+	ForceHTTP                     bool              `toml:"force_http"`
 }
 
 type GasBumpConfig struct {

@@ -350,6 +350,12 @@ pending_nonce_protection_enabled = true
 pending_nonce_protection_timeout = "5m"
 ```
 
+If you want to use HTTP instead of WS you can do so by setting to true:
+
+```toml
+force_http = false
+```
+
 You can add more networks like this:
 
 ```toml
