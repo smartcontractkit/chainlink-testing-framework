@@ -17,7 +17,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/docker/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/mirror"
 )
 
 // NewNethermindEth2 starts a new Nethermin Eth2 node running in Docker
@@ -46,8 +45,6 @@ func NewNethermindEth2(networks []string, chainConfig *config.EthereumChainConfi
 		// set the container name again after applying functional options as version might have changed
 		g.EnvComponent.ContainerName = fmt.Sprintf("%s-%s-%s", "nethermind-eth2", strings.Replace(g.ContainerVersion, ".", "_", -1), uuid.NewString()[0:8])
 	}
-	// if the internal docker repo is set then add it to the version
-	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
 }
 

@@ -12,7 +12,6 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
 )
 
@@ -82,10 +81,9 @@ func (z *Zookeeper) StartContainer() error {
 }
 
 func (z *Zookeeper) getContainerRequest() (tc.ContainerRequest, error) {
-	zookeeperImage := mirror.AddMirrorToImageIfSet(defaultZookeeperImage)
 	return tc.ContainerRequest{
 		Name:         z.ContainerName,
-		Image:        zookeeperImage,
+		Image:        defaultZookeeperImage,
 		ExposedPorts: []string{"2181/tcp"},
 		Env: map[string]string{
 			"ZOOKEEPER_CLIENT_PORT": "2181",

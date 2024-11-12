@@ -94,7 +94,8 @@ const (
 	EnvVarRemoteRunnerMemUserDescription = "The mem limit and req for the remote runner"
 	EnvVarRemoteRunnerMemExample         = "1024Mi"
 
-	EnvVarInternalDockerRepo            = "INTERNAL_DOCKER_REPO"
+	// https://golang.testcontainers.org/features/image_name_substitution/#automatically-modifying-docker-hub-image-names
+	EnvVarInternalDockerRepo            = "TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX"
 	EnvVarInternalDockerRepoDescription = "Use internal docker repository for some images"
 	EnvVarInternalDockerRepoExample     = "public.ecr.aws"
 

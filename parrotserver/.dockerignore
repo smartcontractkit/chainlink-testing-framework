@@ -1,0 +1,13 @@
+Dockerfile
+*.md
+*.log
+.gitignore
+.golangci-lint.yml
+.goreleaser.yml
+.pre-commit-config.yaml
+*_test.go
+LICENSE
+.vscode/
+dist/
+.github/
+save.json
