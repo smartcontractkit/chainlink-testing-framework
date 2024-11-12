@@ -14,16 +14,17 @@ import (
 	"time"
 )
 
-type CfgLoad struct {
+type CfgScalability struct {
 	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
 	MockerDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
 	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
 }
 
-func TestPerformanceBaseline(t *testing.T) {
-	in, err := framework.Load[CfgLoad](t)
+func TestScalability(t *testing.T) {
+	in, err := framework.Load[CfgScalability](t)
 	require.NoError(t, err)
 
+	// TODO: these outputs of components come from CRIB staging environment
 	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
 	require.NoError(t, err)
 	dp, err := fake.NewFakeDataProvider(in.MockerDataProvider)
@@ -40,13 +41,13 @@ func TestPerformanceBaseline(t *testing.T) {
 	c, err := clclient.NewCLDefaultClients(out.CLNodes, framework.L)
 	require.NoError(t, err)
 
-	t.Run("performance baseline for your product", func(t *testing.T) {
+	t.Run("scalability test for your product", func(t *testing.T) {
 		_, err := wasp.NewProfile().
 			Add(wasp.NewGenerator(&wasp.Config{
 				T:        t,
 				LoadType: wasp.RPS,
 				Schedule: wasp.Combine(
-					wasp.Steps(1, 1, 9, 30*time.Second),
+					wasp.Steps(1, 10, 9, 30*time.Second),
 					wasp.Plain(10, 30*time.Second),
 					wasp.Steps(10, -1, 10, 30*time.Second),
 				),
