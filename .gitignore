@@ -46,9 +46,7 @@ suite/remote_runner_config.yaml
 *.csv
 
 # docs
-docs/_site/
-docs/.sass-cache/
-docs/Gemfile.lock
+book/docs/
 
 dist/
 
