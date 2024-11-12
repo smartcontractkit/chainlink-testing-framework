@@ -31,6 +31,8 @@ At this level, the focus is not on improving performance but on detecting any pe
 
 This pipeline runs as needed—nightly or before releases—enabling early detection of performance issues across all critical on-chain and off-chain functionality.
 
+This stage combines performance testing with observability enhancements. The team should have fundamental system-level performance tests in place, along with dashboards to monitor product-specific metrics.
+
 ## Level 4
 The team incorporates chaos engineering practices to test the system’s failure modes.
 
