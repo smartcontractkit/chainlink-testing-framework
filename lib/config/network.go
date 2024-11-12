@@ -141,11 +141,18 @@ func (n *NetworkConfig) Validate() error {
 				continue
 			}
 		}
-		// if the network is not forked, we need to validate RPC endpoints and private keys
-		if _, httpOk := n.RpcHttpUrls[network]; !httpOk {
-			if _, wsOk := n.RpcWsUrls[network]; !wsOk {
-				return fmt.Errorf("at least one HTTP or WS RPC endpoint for %s network must be set", network)
-			}
+
+		// If the network is not forked, we need to validate RPC endpoints and private keys
+		_, httpOk := n.RpcHttpUrls[network]
+		_, wsOk := n.RpcWsUrls[network]
+		// WS can be present but only if HTTP is also available
+		if wsOk && !httpOk {
+			return fmt.Errorf("WS RPC endpoint for %s network is set without an HTTP endpoint; only HTTP or both HTTP and WS are allowed", network)
+		}
+
+		// Validate that there is at least one HTTP endpoint
+		if !httpOk {
+			return fmt.Errorf("at least one HTTP RPC endpoint for %s network must be set", network)
 		}
 
 		if _, ok := n.WalletKeys[network]; !ok {
