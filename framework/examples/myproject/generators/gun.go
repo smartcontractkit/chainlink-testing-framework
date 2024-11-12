@@ -1,4 +1,4 @@
-package examples
+package generators
 
 import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
