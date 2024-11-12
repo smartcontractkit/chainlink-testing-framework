@@ -55,7 +55,6 @@ func TestNewEVMNetwork(t *testing.T) {
 		require.Equal(t, httpUrls, network.HTTPURLs)
 		require.Equal(t, wsUrls, network.URLs)
 		require.Equal(t, walletKeys, network.PrivateKeys)
-		require.Equal(t, walletKeys, network.PrivateKeys)
 	})
 }
 

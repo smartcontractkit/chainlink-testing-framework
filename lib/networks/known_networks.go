@@ -1104,17 +1104,15 @@ func SetNetworks(networkCfg config.NetworkConfig) ([]blockchain.EVMNetwork, erro
 		// if network is not simulated or forked, use the rpc urls and wallet keys from config
 		if !strings.Contains(networkName, "SIMULATED") && !forked {
 			var ok bool
-			// If we are forcinf htto but also have WSs available add them in case we need them
-			if !networkCfg.ForceHttp || (networkCfg.RpcWsUrls[selectedNetworks[i]] != nil && len(networkCfg.RpcWsUrls[selectedNetworks[i]]) > 0) {
-				wsUrls, ok = networkCfg.RpcWsUrls[selectedNetworks[i]]
-				if !ok {
-					return nil, fmt.Errorf("no rpc ws urls found in config for '%s' network", selectedNetworks[i])
-				}
-			}
+			var wsOk, httpOk bool
+			// Check for WS URLs
+			wsUrls, wsOk = networkCfg.RpcWsUrls[selectedNetworks[i]]
+			// Check for HTTP URLs
+			httpUrls, httpOk = networkCfg.RpcHttpUrls[selectedNetworks[i]]
 
-			httpUrls, ok = networkCfg.RpcHttpUrls[selectedNetworks[i]]
-			if !ok {
-				return nil, fmt.Errorf("no rpc http urls found in config for '%s' network", selectedNetworks[i])
+			// Ensure at least one of WS or HTTP URLs is available
+			if !wsOk && !httpOk {
+				return nil, fmt.Errorf("no RPC URLs found for '%s' network; at least one HTTP or WS RPC URL must be set", selectedNetworks[i])
 			}
 
 			walletKeys, ok = networkCfg.WalletKeys[selectedNetworks[i]]
