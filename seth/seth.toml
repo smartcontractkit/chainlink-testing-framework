@@ -60,6 +60,9 @@ check_rpc_health_on_start = false
 # only for tracing, when you want to make sure that no transactions are sent to the network.
 read_only = false
 
+# when enabled SETH will initialize using HTTP instead of WS
+force_http = false
+
 [gas_bumps]
 # when > 0 then we will bump gas price for transactions that are stuck in the mempool
 # by default the bump step is controlled by gas_price_estimation_tx_priority (check readme.md for more details)
@@ -77,7 +80,7 @@ key_sync_retries = 10
 
 [[networks]]
 name = "Anvil"
-dial_timeout="1m"
+dial_timeout = "1m"
 transaction_timeout = "30s"
 urls_secret = ["ws://localhost:8545"]
 transfer_gas_fee = 21_000
@@ -91,7 +94,7 @@ gas_tip_cap = 1_000_000_000
 
 [[networks]]
 name = "Geth"
-dial_timeout="1m"
+dial_timeout = "1m"
 transaction_timeout = "30s"
 urls_secret = ["ws://localhost:8546"]
 transfer_gas_fee = 21_000
@@ -105,7 +108,7 @@ gas_tip_cap = 3_000_000_000
 
 [[networks]]
 name = "Default"
-dial_timeout="1m"
+dial_timeout = "1m"
 transaction_timeout = "30s"
 # enable EIP-1559 transactions, because Seth will disable them if they are not supported
 eip_1559_dynamic_fees = true
@@ -122,7 +125,7 @@ gas_tip_cap = 50_000_000_000  #50 gwei
 
 [[networks]]
 name = "Fuji"
-dial_timeout="1m"
+dial_timeout = "1m"
 transaction_timeout = "30s"
 eip_1559_dynamic_fees = true
 
@@ -145,7 +148,7 @@ eip_1559_dynamic_fees = true
 
 [[networks]]
 name = "Sepolia"
-dial_timeout="1m"
+dial_timeout = "1m"
 transaction_timeout = "30s"
 eip_1559_dynamic_fees = true
 
@@ -169,7 +172,7 @@ gas_tip_cap = 5_000_000_000
 
 [[networks]]
 name = "Mumbai"
-dial_timeout="1m"
+dial_timeout = "1m"
 transaction_timeout = "30s"
 eip_1559_dynamic_fees = true
 
@@ -196,7 +199,7 @@ gas_tip_cap = 30460480806
 
 [[networks]]
 name = "zkEVM"
-dial_timeout="1m"
+dial_timeout = "1m"
 transaction_timeout = "30s"
 eip_1559_dynamic_fees = false
 
@@ -220,7 +223,7 @@ gas_tip_cap = 1_800_000_000
 
 [[networks]]
 name = "ARBITRUM_SEPOLIA"
-dial_timeout="1m"
+dial_timeout = "1m"
 transaction_timeout = "10m"
 transfer_gas_fee = 50_000
 # gas_limit = 15_000_000

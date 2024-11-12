@@ -22,20 +22,16 @@ jobs:
             config: smoke.toml
             count: 1
             timeout: 10m
-          - name: TestLoad
-            config: load.toml
+          - name: TestPerformanceBaseline
+            config: performance_baseline.toml
             count: 1
             timeout: 10m
           - name: TestChaos
             config: chaos.toml
             count: 1
             timeout: 10m
-          - name: TestUpgradeAll
-            config: upgrade_all.toml
-            count: 1
-            timeout: 10m
-          - name: TestUpgradeSome
-            config: upgrade_some.toml
+          - name: TestUpgrade
+            config: upgrade.toml
             count: 1
             timeout: 10m
     steps:

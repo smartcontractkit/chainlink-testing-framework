@@ -19,7 +19,7 @@ type CfgLoad struct {
 	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
 }
 
-func TestLoad(t *testing.T) {
+func TestPerformanceBaseline(t *testing.T) {
 	in, err := framework.Load[CfgLoad](t)
 	require.NoError(t, err)
 
