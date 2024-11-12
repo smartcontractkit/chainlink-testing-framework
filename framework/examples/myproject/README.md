@@ -7,11 +7,15 @@
 [![Scalability](https://img.shields.io/badge/Level_5-Scalability-blue?branch=maturity-model&job=TestSmoke)](https://github.com/smartcontractkit/chainlink-testing-framework/actions?query=workflow%3Aframework-golden-tests+branch%3Amaturity-mode)
 
 ## Level 1
-The team maintains a system-level smoke test where all components are deployed using docker.
+The team maintains a system-level smoke test where all components are deployed using `docker`.
+
+All on-chain changes are done through [chainlink-deployments](https://github.com/smartcontractkit/chainlink-deployments).
 
 The test is readable, and the README clearly explains its purpose.
 
-The test is reliable and stable when run with a count of 30. If your project includes multiple use cases and functionality suitable for end-to-end testing, you can add additional tests at this level.
+The test is reliable and stable when run with a count of 30.
+
+If your project includes multiple use cases and functionality suitable for end-to-end testing, you can add additional tests at this level.
 
 ## Level 2
 The team has an "upgrade" test to verify product compatibility with older versions.
