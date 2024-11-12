@@ -20,7 +20,6 @@ type Runner struct {
 	UseRace              bool     // Enable race detector.
 	FailFast             bool     // Stop on first test failure.
 	SkipTests            []string // Test names to exclude.
-	RunAllTestPackages   bool     // Run all test packages if true.
 	SelectedTestPackages []string // Explicitly selected packages to run.
 }
 
@@ -28,12 +27,7 @@ type Runner struct {
 // It returns all test results and any error encountered during testing.
 func (r *Runner) RunTests() ([]reports.TestResult, error) {
 	var jsonFilePaths []string
-	packages := r.SelectedTestPackages
-	if r.RunAllTestPackages {
-		packages = []string{"./..."}
-	}
-
-	for _, p := range packages {
+	for _, p := range r.SelectedTestPackages {
 		for i := 0; i < r.RunCount; i++ {
 			jsonFilePath, passed, err := r.runTests(p)
 			if err != nil {
