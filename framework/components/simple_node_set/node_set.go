@@ -7,22 +7,34 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 	"golang.org/x/sync/errgroup"
+	"slices"
 	"strings"
 	"sync"
 )
 
+const (
+	DefaultHTTPPortStaticRangeStart = 10000
+	DefaultP2PStaticRangeStart      = 12000
+)
+
+// Input is a node set configuration input
 type Input struct {
-	Nodes        int             `toml:"nodes" validate:"required"`
-	OverrideMode string          `toml:"override_mode" validate:"required,oneof=all each"`
-	NodeSpecs    []*clnode.Input `toml:"node_specs"`
-	Out          *Output         `toml:"out"`
+	Nodes              int             `toml:"nodes" validate:"required"`
+	HTTPPortRangeStart int             `toml:"http_port_range_start"`
+	P2PPortRangeStart  int             `toml:"p2p_port_range_start"`
+	OverrideMode       string          `toml:"override_mode" validate:"required,oneof=all each"`
+	NodeSpecs          []*clnode.Input `toml:"node_specs" validate:"required"`
+	Out                *Output         `toml:"out"`
 }
 
+// Output is a node set configuration output, used for caching or external components
 type Output struct {
 	UseCache bool             `toml:"use_cache"`
 	CLNodes  []*clnode.Output `toml:"cl_nodes"`
 }
 
+// NewSharedDBNodeSet create a new node set with a shared database instance
+// all the nodes have their own isolated database
 func NewSharedDBNodeSet(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
@@ -32,6 +44,7 @@ func NewSharedDBNodeSet(in *Input, bcOut *blockchain.Output, fakeUrl string) (*O
 		err error
 	)
 	defer func() {
+		printURLs(out)
 		in.Out = out
 	}()
 	if len(in.NodeSpecs) != in.Nodes && in.OverrideMode == "each" {
@@ -39,90 +52,55 @@ func NewSharedDBNodeSet(in *Input, bcOut *blockchain.Output, fakeUrl string) (*O
 	}
 	switch in.OverrideMode {
 	case "all":
-		out, err = oneNodeSharedDBConfiguration(in, bcOut, fakeUrl, false)
+		out, err = sharedDBSetup(in, bcOut, fakeUrl, false)
 		if err != nil {
 			return nil, err
 		}
 	case "each":
-		out, err = oneNodeSharedDBConfiguration(in, bcOut, fakeUrl, true)
+		out, err = sharedDBSetup(in, bcOut, fakeUrl, true)
 		if err != nil {
 			return nil, err
 		}
 	}
-	printOut(out)
 	return out, nil
 }
 
-func printOut(out *Output) {
-	for i, n := range out.CLNodes {
-		framework.L.Info().Str(fmt.Sprintf("Node-%d", i), n.Node.HostURL).Msg("Chainlink node url")
+func printURLs(out *Output) {
+	if out == nil {
+		return
 	}
+	httpURLs, p2pURLs, pgURLs := make([]string, 0), make([]string, 0), make([]string, 0)
+	for _, n := range out.CLNodes {
+		httpURLs = append(httpURLs, n.Node.HostURL)
+		p2pURLs = append(p2pURLs, n.Node.HostP2PURL)
+		pgURLs = append(pgURLs, n.PostgreSQL.Url)
+	}
+	framework.L.Info().Any("UI", httpURLs).Send()
+	framework.L.Debug().Any("P2P", p2pURLs).Send()
+	framework.L.Debug().Any("DB", pgURLs).Send()
 }
 
-// TODO: it seems we can use one DB for now
-// TODO: remove
-func NewNodeSet(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output, error) {
-	if in.Out != nil && in.Out.UseCache {
-		return in.Out, nil
-	}
-	nodeOuts := make([]*clnode.Output, 0)
-	eg := &errgroup.Group{}
-	mu := &sync.Mutex{}
-	for i := 0; i < in.Nodes; i++ {
-		i := i
-		eg.Go(func() error {
-			net, err := clnode.NewNetworkCfgOneNetworkAllNodes(bcOut)
-			if err != nil {
-				return err
-			}
-
-			nodeSpec := &clnode.Input{
-				DataProviderURL: fakeUrl,
-				DbInput:         in.NodeSpecs[i].DbInput,
-				Node: &clnode.NodeInput{
-					Image:                   in.NodeSpecs[i].Node.Image,
-					Name:                    fmt.Sprintf("node%d", i),
-					PullImage:               in.NodeSpecs[i].Node.PullImage,
-					CapabilitiesBinaryPaths: in.NodeSpecs[i].Node.CapabilitiesBinaryPaths,
-					CapabilityContainerDir:  in.NodeSpecs[i].Node.CapabilityContainerDir,
-					TestConfigOverrides:     net,
-					UserConfigOverrides:     in.NodeSpecs[i].Node.UserConfigOverrides,
-					TestSecretsOverrides:    in.NodeSpecs[i].Node.TestSecretsOverrides,
-					UserSecretsOverrides:    in.NodeSpecs[i].Node.UserSecretsOverrides,
-				},
-			}
-
-			dbOut, err := postgres.NewPostgreSQL(in.NodeSpecs[i].DbInput)
-			if err != nil {
-				return err
-			}
-			o, err := clnode.NewNode(nodeSpec, dbOut)
-			if err != nil {
-				return err
-			}
-			mu.Lock()
-			nodeOuts = append(nodeOuts, o)
-			mu.Unlock()
-			return nil
-		})
-	}
-	if err := eg.Wait(); err != nil {
-		return nil, err
-	}
-	out := &Output{
-		UseCache: true,
-		CLNodes:  nodeOuts,
-	}
-	in.Out = out
-	return out, nil
-}
-
-func oneNodeSharedDBConfiguration(in *Input, bcOut *blockchain.Output, fakeUrl string, overrideEach bool) (*Output, error) {
+func sharedDBSetup(in *Input, bcOut *blockchain.Output, fakeUrl string, overrideEach bool) (*Output, error) {
+	in.NodeSpecs[0].DbInput.Databases = in.Nodes
 	dbOut, err := postgres.NewPostgreSQL(in.NodeSpecs[0].DbInput)
 	if err != nil {
 		return nil, err
 	}
 	nodeOuts := make([]*clnode.Output, 0)
+
+	// to make it easier for chaos testing we use static ports
+	// there is no need to check them in advance since testcontainers-go returns a nice error
+	var (
+		httpPortRangeStart = DefaultHTTPPortStaticRangeStart
+		p2pPortRangeStart  = DefaultP2PStaticRangeStart
+	)
+	if in.HTTPPortRangeStart != 0 {
+		httpPortRangeStart = in.HTTPPortRangeStart
+	}
+	if in.P2PPortRangeStart != 0 {
+		p2pPortRangeStart = in.P2PPortRangeStart
+	}
+
 	eg := &errgroup.Group{}
 	mu := &sync.Mutex{}
 	for i := 0; i < in.Nodes; i++ {
@@ -147,6 +125,8 @@ func oneNodeSharedDBConfiguration(in *Input, bcOut *blockchain.Output, fakeUrl s
 				DataProviderURL: fakeUrl,
 				DbInput:         in.NodeSpecs[overrideIdx].DbInput,
 				Node: &clnode.NodeInput{
+					HTTPPort:                httpPortRangeStart + i,
+					P2PPort:                 p2pPortRangeStart + i,
 					Image:                   in.NodeSpecs[overrideIdx].Node.Image,
 					Name:                    nodeName,
 					PullImage:               in.NodeSpecs[overrideIdx].Node.PullImage,
@@ -162,9 +142,10 @@ func oneNodeSharedDBConfiguration(in *Input, bcOut *blockchain.Output, fakeUrl s
 				},
 			}
 
+			dbURLHost := strings.Replace(dbOut.Url, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i), -1)
 			dbURL := strings.Replace(dbOut.DockerInternalURL, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i), -1)
 			dbSpec := &postgres.Output{
-				Url:               dbOut.Url,
+				Url:               dbURLHost,
 				DockerInternalURL: dbURL,
 			}
 
@@ -181,8 +162,21 @@ func oneNodeSharedDBConfiguration(in *Input, bcOut *blockchain.Output, fakeUrl s
 	if err := eg.Wait(); err != nil {
 		return nil, err
 	}
+	sortNodeOutsByHostPort(nodeOuts)
 	return &Output{
 		UseCache: true,
 		CLNodes:  nodeOuts,
 	}, nil
+}
+
+func sortNodeOutsByHostPort(nodes []*clnode.Output) {
+	slices.SortFunc[[]*clnode.Output, *clnode.Output](nodes, func(a, b *clnode.Output) int {
+		aa := strings.Split(a.Node.HostURL, ":")
+		bb := strings.Split(b.Node.HostURL, ":")
+		if aa[len(aa)-1] < bb[len(bb)-1] {
+			return -1
+		} else {
+			return 1
+		}
+	})
 }

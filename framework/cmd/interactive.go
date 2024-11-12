@@ -131,14 +131,14 @@ Docker Desktop (https://www.docker.com/products/docker-desktop/)
 				Options(
 					huh.NewOption("Anvil", "anvil"),
 				).
-				Value(&f.Network), // stores the selected network
+				Value(&f.Network),
 
 			huh.NewSelect[int]().
 				Title("How many nodes do you need?").
 				Options(
 					huh.NewOption("5", 5),
 				).
-				Value(&f.Nodes), // stores the selected number of nodes
+				Value(&f.Nodes),
 
 			huh.NewSelect[string]().
 				Title("Choose Chainlink node version").
@@ -147,11 +147,11 @@ Docker Desktop (https://www.docker.com/products/docker-desktop/)
 				Value(&f.CLVersion),
 			huh.NewConfirm().
 				Title("Do you need to spin up an observability stack?").
-				Value(&f.Observability), // stores the observability option
+				Value(&f.Observability),
 
 			huh.NewConfirm().
 				Title("Do you need to spin up a Blockscout stack?").
-				Value(&f.Blockscout), // stores the Blockscout option
+				Value(&f.Blockscout),
 		),
 	)
 
@@ -167,13 +167,12 @@ Docker Desktop (https://www.docker.com/products/docker-desktop/)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-sigs
-		fmt.Println("\nReceived Ctrl+C, starting custom cleanup...")
 		err := cleanup(f)
 		if err != nil {
 			panic(err)
 		}
 		os.Exit(0)
 	}()
-	framework.L.Info().Msg("Press Ctrl+C to remove the stack..")
+	framework.L.Info().Msg("Services are up! Press Ctrl+C to remove them..")
 	select {}
 }

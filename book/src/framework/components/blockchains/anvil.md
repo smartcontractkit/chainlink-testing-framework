@@ -51,7 +51,6 @@ type Config struct {
 func TestDON(t *testing.T) {
 	in, err := framework.Load[Config](t)
 	require.NoError(t, err)
-	pkey := os.Getenv("PRIVATE_KEY")
 
 	// deploy anvil blockchain simulator
 	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)

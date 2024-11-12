@@ -17,11 +17,8 @@ func observabilityUp() error {
 	if err != nil {
 		return err
 	}
-	framework.L.Info().Msg("Done")
 	fmt.Println()
 	framework.L.Info().Msgf("Loki: %s", LocalLogsURL)
-	framework.L.Info().Msgf("All logs: %s", "{job=\"ctf\"}")
-	framework.L.Info().Msgf("By log level: %s", "{job=\"ctf\", container=~\"node.*\"} |= \"WARN|INFO|DEBUG\"")
 	framework.L.Info().Msgf("Pyroscope: %s", LocalPyroScopeURL)
 	return nil
 }
@@ -35,6 +32,5 @@ func observabilityDown() error {
 	if err != nil {
 		return err
 	}
-	framework.L.Info().Msg("Done")
 	return nil
 }

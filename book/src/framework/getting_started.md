@@ -6,20 +6,36 @@
 
 ## Test setup
 
-To start writing tests create a directory for your project with `go.mod` and pull the framework
+To start writing tests create a directory for your project with `go.mod` and add a package
 ```
 go get github.com/smartcontractkit/chainlink-testing-framework/framework
 ```
 
-Then download the CLI (runs from the directory where you have `go.mod`)
-```
-go get github.com/smartcontractkit/chainlink-testing-framework/framework/cmd && \
-go install github.com/smartcontractkit/chainlink-testing-framework/framework/cmd && \
-mv ~/go/bin/cmd ~/go/bin/ctf
-```
-Or download a binary release [here](https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.7) and rename it to `ctf`
+Download our [CLI](https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8)
 
-More CLI [docs](./cli.md)
+OS X `arm64` (M1/M2/M3 MacBooks)
+```
+curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2F<!-- cmdrun git describe --tags --match "framework/v[0-9]*.[0-9]*.[0-9]*" --abbrev=0 | sed 's/^framework\///' -->/framework-<!-- cmdrun git describe --tags --match "framework/v[0-9]*.[0-9]*.[0-9]*" --abbrev=0 | sed 's/^framework\///' -->-darwin-arm64.tar.gz | tar -xz
+```
+
+OS X `amd64` (old Intel chips)
+```
+curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2F<!-- cmdrun git describe --tags --match "framework/v[0-9]*.[0-9]*.[0-9]*" --abbrev=0 | sed 's/^framework\///' -->/framework-<!-- cmdrun git describe --tags --match "framework/v[0-9]*.[0-9]*.[0-9]*" --abbrev=0 | sed 's/^framework\///' -->-darwin-amd64.tar.gz | tar -xz
+```
+Linux `arm64`
+```
+curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2F<!-- cmdrun git describe --tags --match "framework/v[0-9]*.[0-9]*.[0-9]*" --abbrev=0 | sed 's/^framework\///' -->/framework-<!-- cmdrun git describe --tags --match "framework/v[0-9]*.[0-9]*.[0-9]*" --abbrev=0 | sed 's/^framework\///' -->-linux-arm64.tar.gz | tar -xz
+```
+
+Linux `amd64`
+```
+curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2F<!-- cmdrun git describe --tags --match "framework/v[0-9]*.[0-9]*.[0-9]*" --abbrev=0 | sed 's/^framework\///' -->/framework-<!-- cmdrun git describe --tags --match "framework/v[0-9]*.[0-9]*.[0-9]*" --abbrev=0 | sed 's/^framework\///' -->-linux-amd64.tar.gz | tar -xz
+```
+
+Allow it to run in `System Settings -> Security Settings` (OS X)
+
+![img.png](images/img.png)
+
 
 Create an `.envrc` file and do `source .envrc`
 ```
@@ -43,3 +59,7 @@ Spin up your `Blockscout` stack
 ctf bs up
 ```
 More [docs](observability/blockscout.md)
+
+## Interactive
+
+If you're a non-technical user or want to integrate with Chainlink using a language other than Golang, please follow our Interactive [setup](interactive.md) guide.
