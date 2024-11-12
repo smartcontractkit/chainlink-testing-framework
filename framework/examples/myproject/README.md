@@ -13,7 +13,7 @@ All on-chain changes are done through [chainlink-deployments](https://github.com
 
 The test is readable, and the README clearly explains its purpose.
 
-The test is reliable and stable when run with a count of 30.
+The test is reliable and stable when run with a `-count 30`.
 
 If your project includes multiple use cases and functionality suitable for end-to-end testing, you can add additional tests at this level.
 
