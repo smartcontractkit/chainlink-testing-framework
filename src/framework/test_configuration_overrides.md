@@ -1,4 +1,43 @@
-# Overriding Test Configuration
+# Test Configuration
+
+Since end-to-end system-level test configurations can become complex, we use a single, generic method to marshal any configuration.
+
+Here’s an example of how you can extend your configuration.
+
+```golang
+type Cfg struct {
+    // Usually you'll have basic components
+	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
+	MockerDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
+	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
+    // And some custom test-related data
+    MyCustomTestData   string            `toml:"my_custom_test_data" validate:"required"`
+}
+
+func TestSmoke(t *testing.T) {
+    in, err := framework.Load[Cfg](t)
+    require.NoError(t, err)
+    in.MyCustomTestData // do something
+    ...
+}
+```
+
+We use [validator](https://github.com/go-playground/validator) to make sure anyone can properly configure your test.
+
+All basic components configuration is described in our docs, but it’s recommended to comment on your configuration in TOML.
+
+Additionally, use `validate:"required"` or `validate:"required,oneof=anvil geth"` for fields with strict value options on your custom configuration.
+```
+# My custom config does X
+[MyCustomConfig]
+# Can be a number
+a = 1
+# Can be Y or Z
+b = "Z"
+```
+
+
+## Overriding Test Configuration
 
 To override any test configuration, we merge multiple files into a single struct.
 
