@@ -17,6 +17,7 @@ var AggregateFailedCmd = &cobra.Command{
 		resultsFolderPath, _ := cmd.Flags().GetString("results-path")
 		outputPath, _ := cmd.Flags().GetString("output-json")
 		threshold, _ := cmd.Flags().GetFloat64("threshold")
+		minPassRatio, _ := cmd.Flags().GetFloat64("min-pass-ratio")
 
 		// Aggregate all test results
 		allResults, err := reports.AggregateTestResults(resultsFolderPath)
@@ -24,10 +25,10 @@ var AggregateFailedCmd = &cobra.Command{
 			log.Fatalf("Error aggregating results: %v", err)
 		}
 
-		// Filter to only include failed tests based on threshold
+		// Filter to only include failed tests based on threshold and minPassRatio
 		var failedResults []reports.TestResult
 		for _, result := range allResults {
-			if result.PassRatio < threshold && !result.Skipped {
+			if result.PassRatio < threshold && result.PassRatio > minPassRatio && !result.Skipped {
 				failedResults = append(failedResults, result)
 			}
 		}
@@ -39,7 +40,7 @@ var AggregateFailedCmd = &cobra.Command{
 			}
 			fmt.Printf("Filtered failed test results saved to %s\n", outputPath)
 		} else {
-			fmt.Println("No failed tests found based on the specified threshold.")
+			fmt.Println("No failed tests found based on the specified threshold and min pass ratio.")
 		}
 	},
 }
@@ -48,6 +49,7 @@ func init() {
 	AggregateFailedCmd.Flags().String("results-path", "testresult/", "Path to the folder containing JSON test result files")
 	AggregateFailedCmd.Flags().String("output-json", "failed_tests.json", "Path to output the filtered failed test results in JSON format")
 	AggregateFailedCmd.Flags().Float64("threshold", 0.8, "Threshold for considering a test as failed")
+	AggregateFailedCmd.Flags().Float64("min-pass-ratio", 0.001, "Minimum pass ratio for considering a test as flaky. Used to distinguish between tests that are truly flaky (with inconsistent results) and those that are consistently failing.")
 }
 
 // Helper function to save results to JSON file
