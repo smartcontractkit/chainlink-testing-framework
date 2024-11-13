@@ -19,6 +19,7 @@
       pull_image = true
 
     [nodeset.node_specs.node]
+      custom_ports = [14000, 14001]
       image = "public.ecr.aws/chainlink/chainlink:v2.16.0"
       pull_image = false
 

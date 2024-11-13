@@ -6,14 +6,25 @@
 [![Resiliency](https://img.shields.io/badge/Level_4-Resiliency-blue?branch=maturity-model&job=TestSmoke)](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/framework-golden-tests.yml)
 [![Scalability](https://img.shields.io/badge/Level_5-Scalability-blue?branch=maturity-model&job=TestSmoke)](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/framework-golden-tests.yml)
 
+## Level 0
+
+The team creates and maintains a high-level test plan outlining the components involved and test cases in any format.
+
+If the team decides on minimal or no manual testing and the project is trivial, they can consolidate all test cases into `go test` cases, outline the required implementations and commit templates up front.
+
+The team identifies potential integration points with third-party software, blockchain, and external services and document any testing limitations.
+
+If new components are required, the team implements them following this guide: [Developing Components](https://smartcontractkit.github.io/chainlink-testing-framework/developing/developing_components.html).
+
+
 ## Level 1
 The team maintains a system-level smoke test where all components are deployed using `docker`.
 
 All on-chain changes are done through [chainlink-deployments](https://github.com/smartcontractkit/chainlink-deployments).
 
-The test is readable, and the README clearly explains its purpose.
+The test is readable, and the README clearly explains what is tested.
 
-The test is reliable and stable when run with a `-count 30`.
+The test is stable when run with a `-count 10`.
 
 If your project includes multiple use cases and functionality suitable for end-to-end testing, you can add additional tests at this level.
 
@@ -22,7 +33,7 @@ The team has an "upgrade" test to verify product compatibility with older versio
 
 While the number of compatible versions is team-determined, identifying incompatibilities at the system level early is a valuable, mature practice.
 
-This test deploys specific platform and plugin versions, performs an end-to-end smoke test, and then upgrades (or migrates) the plugin(s) or platform on the same database to ensure that users remain unaffected by the upgrade.
+This test deploys specific platform and plugin versions, performs an end-to-end smoke test, and then upgrades (or migrates) the plugin(s) or platform on the same database to ensure that users remain unaffected by the upgrade or, in case of breaking changes, migration process is tested.
 
 ## Level 3
 The team has a baseline performance testing suite.
@@ -42,6 +53,10 @@ This stage builds on [Level 3](#level-3), as it not only verifies that the syste
 The team has complete ownership of their persistent staging environment.
 
 They can perform upgrades, data migrations, and run advanced load tests to validate the scalability of their applications.
+
+## Explanation
+
+It's essential not to skip levels, as they help us manage complexity gradually and keep the focus on our product.
 
 ## Developing
 Run the tests locally
