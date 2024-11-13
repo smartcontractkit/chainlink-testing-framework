@@ -22,22 +22,23 @@ jobs:
             config: smoke.toml
             count: 1
             timeout: 10m
-          - name: TestLoad
-            config: load.toml
+          - name: TestUpgrade
+            config: upgrade.toml
+            count: 1
+            timeout: 10m
+          - name: TestPerformanceBaseline
+            config: performance_baseline.toml
             count: 1
             timeout: 10m
           - name: TestChaos
             config: chaos.toml
             count: 1
             timeout: 10m
-          - name: TestUpgradeAll
-            config: upgrade_all.toml
+          - name: TestScalability
+            config: scalability.toml
             count: 1
             timeout: 10m
-          - name: TestUpgradeSome
-            config: upgrade_some.toml
-            count: 1
-            timeout: 10m
+    name: ${{ matrix.test.name }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4

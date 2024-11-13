@@ -6,6 +6,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/examples/generators"
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -19,7 +20,7 @@ type CfgLoad struct {
 	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
 }
 
-func TestLoad(t *testing.T) {
+func TestPerformanceBaseline(t *testing.T) {
 	in, err := framework.Load[CfgLoad](t)
 	require.NoError(t, err)
 
@@ -39,7 +40,7 @@ func TestLoad(t *testing.T) {
 	c, err := clclient.NewCLDefaultClients(out.CLNodes, framework.L)
 	require.NoError(t, err)
 
-	t.Run("load test chainlink nodes", func(t *testing.T) {
+	t.Run("performance baseline for your product", func(t *testing.T) {
 		_, err := wasp.NewProfile().
 			Add(wasp.NewGenerator(&wasp.Config{
 				T:        t,
@@ -49,7 +50,7 @@ func TestLoad(t *testing.T) {
 					wasp.Plain(10, 30*time.Second),
 					wasp.Steps(10, -1, 10, 30*time.Second),
 				),
-				Gun: NewCLNodeGun(c[0], "bridges"),
+				Gun: generators.NewCLNodeGun(c[0], "bridges"),
 				Labels: map[string]string{
 					"gen_name": "cl_node_api_call",
 					"branch":   "example",
