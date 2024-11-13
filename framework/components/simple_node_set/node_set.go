@@ -20,7 +20,6 @@ const (
 // Input is a node set configuration input
 type Input struct {
 	Nodes              int             `toml:"nodes" validate:"required"`
-	SkipNetworkConfig  bool            `toml:"skip_network_config"`
 	HTTPPortRangeStart int             `toml:"http_port_range_start"`
 	P2PPortRangeStart  int             `toml:"p2p_port_range_start"`
 	OverrideMode       string          `toml:"override_mode" validate:"required,oneof=all each"`
@@ -118,11 +117,9 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output, fakeUrl string, override
 		}
 		eg.Go(func() error {
 			var net string
-			if !in.SkipNetworkConfig {
-				net, err = clnode.NewNetworkCfgOneNetworkAllNodes(bcOut)
-				if err != nil {
-					return err
-				}
+			net, err = clnode.NewNetworkCfgOneNetworkAllNodes(bcOut)
+			if err != nil {
+				return err
 			}
 
 			nodeSpec := &clnode.Input{

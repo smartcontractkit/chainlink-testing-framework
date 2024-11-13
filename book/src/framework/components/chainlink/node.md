@@ -21,6 +21,8 @@ Here we provide full configuration reference, if you want to copy and run it, pl
     pull_image = true
 
   [cl_node.node]
+    # custom ports that plugins may need to expose and map to the host machine
+    custom_ports = [14000, 140001]
     # A list of paths to capability binaries
     capabilities = ["./capability_1", "./capability_2"]
     # Default capabilities directory inside container

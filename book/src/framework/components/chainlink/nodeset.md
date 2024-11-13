@@ -68,6 +68,8 @@ Then configure NodeSet
       volume_name = ""
 
     [nodeset.node_specs.node]
+      # custom ports that plugins may need to expose and map to the host machine
+      custom_ports = [14000, 140001]
       # A list of paths to capability binaries
       capabilities = ["./capability_1", "./capability_2"]
       # Default capabilities directory inside container
