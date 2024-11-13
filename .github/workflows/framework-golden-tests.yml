@@ -1,9 +1,6 @@
 name: Framework Golden Tests Examples
 on:
   push:
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-framework-golden-examples
-  cancel-in-progress: true
 
 jobs:
   test:
@@ -18,20 +15,30 @@ jobs:
       id-token: write
       contents: read
     strategy:
+      fail-fast: false
       matrix:
         test:
           - name: TestSmoke
             config: smoke.toml
             count: 1
             timeout: 10m
-          - name: TestLoad
-            config: load.toml
+          - name: TestUpgrade
+            config: upgrade.toml
+            count: 1
+            timeout: 10m
+          - name: TestPerformanceBaseline
+            config: performance_baseline.toml
             count: 1
             timeout: 10m
           - name: TestChaos
             config: chaos.toml
             count: 1
             timeout: 10m
+          - name: TestScalability
+            config: scalability.toml
+            count: 1
+            timeout: 10m
+    name: ${{ matrix.test.name }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
@@ -62,9 +69,10 @@ jobs:
           path: |
             ~/.cache/go-build
             ~/go/pkg/mod
-          key: go-modules-${{ hashFiles('**/go.sum') }}-${{ runner.os }}-framework-golden-examples
+          key: go-modules-${{ hashFiles('framework/examples/myproject/go.sum') }}-${{ runner.os }}-framework-golden-examples
           restore-keys: |
-            go-modules-${{ hashFiles('**/go.sum') }}-${{ runner.os }}-framework-golden-examples
+            go-modules-${{ runner.os }}-framework-golden-examples
+            go-modules-${{ runner.os }}
       - name: Install dependencies
         run: go mod download
       - name: Run Docker Component Tests

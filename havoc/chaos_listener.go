@@ -1,5 +1,6 @@
 package havoc
 
+// ChaosListener is an interface that can be implemented by clients to listen to and react to chaos events.
 type ChaosListener interface {
 	OnChaosCreated(chaos Chaos)
 	OnChaosCreationFailed(chaos Chaos, reason error)

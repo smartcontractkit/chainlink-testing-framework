@@ -72,13 +72,9 @@ Run it
 CTF_CONFIGS=smoke.toml go test -v -run TestNodeSet
 ```
 
-You'll see something like, use any URL to access CL node
+Check the logs to access the UI
 ```bash
-6:14PM INF Chainlink node url URL=http://127.0.0.1:34041
-6:14PM INF Chainlink node url URL=http://127.0.0.1:34045
-6:14PM INF Chainlink node url URL=http://127.0.0.1:34044
-6:14PM INF Chainlink node url URL=http://127.0.0.1:34042
-6:14PM INF Chainlink node url URL=http://127.0.0.1:34043
+12:41AM INF UI=["http://127.0.0.1:10000","http://127.0.0.1:10001", ...]
 ```
 
 Use credentials to authorize:

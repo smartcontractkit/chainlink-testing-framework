@@ -48,6 +48,11 @@ Then configure NodeSet
   # defines how we override configs, either we apply first node fields to all of them
   # or we define each node custom configuration (used in compatibility testing)
   override_mode = "all"
+  # HTTP API port range start, each new node get port incremented (host machine)
+  http_port_range_start = 10000
+  # P2P API port range start, each new node get port incremented (host machine)
+  p2p_port_range_start = 12000
+
 
   [[nodeset.node_specs]]
     # Optional URL for fake data provider URL
@@ -59,6 +64,8 @@ Then configure NodeSet
       image = "postgres:15.6"
       # Pulls the image every time if set to 'true', used like that in CI. Can be set to 'false' to speed up local runs
       pull_image = true
+      # PostgreSQL volume name
+      volume_name = ""
 
     [nodeset.node_specs.node]
       # A list of paths to capability binaries

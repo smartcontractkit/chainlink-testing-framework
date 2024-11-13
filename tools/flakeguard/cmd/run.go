@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner"
@@ -23,6 +25,12 @@ var RunTestsCmd = &cobra.Command{
 		outputPath, _ := cmd.Flags().GetString("output-json")
 		threshold, _ := cmd.Flags().GetFloat64("threshold")
 		skipTests, _ := cmd.Flags().GetStringSlice("skip-tests")
+		printFailedTests, _ := cmd.Flags().GetBool("print-failed-tests")
+
+		// Check if project dependencies are correctly set up
+		if err := checkDependencies(projectPath); err != nil {
+			log.Fatalf("Error: %v", err)
+		}
 
 		var testPackages []string
 		if testPackagesJson != "" {
@@ -36,15 +44,16 @@ var RunTestsCmd = &cobra.Command{
 		}
 
 		runner := runner.Runner{
-			ProjectPath: projectPath,
-			Verbose:     true,
-			RunCount:    runCount,
-			UseRace:     useRace,
-			FailFast:    threshold == 1.0, // Fail test on first test run if threshold is 1.0
-			SkipTests:   skipTests,
+			ProjectPath:          projectPath,
+			Verbose:              true,
+			RunCount:             runCount,
+			UseRace:              useRace,
+			FailFast:             threshold == 1.0, // Fail test on first test run if threshold is 1.0
+			SkipTests:            skipTests,
+			SelectedTestPackages: testPackages,
 		}
 
-		testResults, err := runner.RunTests(testPackages)
+		testResults, err := runner.RunTests()
 		if err != nil {
 			fmt.Printf("Error running tests: %v\n", err)
 			os.Exit(1)
@@ -54,7 +63,7 @@ var RunTestsCmd = &cobra.Command{
 		failedTests := reports.FilterFailedTests(testResults, threshold)
 		skippedTests := reports.FilterSkippedTests(testResults)
 
-		if len(failedTests) > 0 {
+		if len(failedTests) > 0 && printFailedTests {
 			fmt.Printf("PassRatio threshold for flaky tests: %.2f\n", threshold)
 			fmt.Printf("%d failed tests:\n", len(failedTests))
 			reports.PrintTests(failedTests, os.Stdout)
@@ -87,10 +96,27 @@ func init() {
 	RunTestsCmd.Flags().StringP("project-path", "r", ".", "The path to the Go project. Default is the current directory. Useful for subprojects")
 	RunTestsCmd.Flags().String("test-packages-json", "", "JSON-encoded string of test packages")
 	RunTestsCmd.Flags().StringSlice("test-packages", nil, "Comma-separated list of test packages to run")
+	RunTestsCmd.Flags().Bool("run-all-packages", false, "Run all test packages in the project. This flag overrides --test-packages and --test-packages-json")
 	RunTestsCmd.Flags().IntP("run-count", "c", 1, "Number of times to run the tests")
 	RunTestsCmd.Flags().Bool("race", false, "Enable the race detector")
 	RunTestsCmd.Flags().Bool("fail-fast", false, "Stop on the first test failure")
 	RunTestsCmd.Flags().String("output-json", "", "Path to output the test results in JSON format")
 	RunTestsCmd.Flags().Float64("threshold", 0.8, "Threshold for considering a test as flaky")
 	RunTestsCmd.Flags().StringSlice("skip-tests", nil, "Comma-separated list of test names to skip from running")
+	RunTestsCmd.Flags().Bool("print-failed-tests", true, "Print failed test results to the console")
+}
+
+func checkDependencies(projectPath string) error {
+	cmd := exec.Command("go", "mod", "tidy")
+	cmd.Dir = projectPath
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("dependency check failed: %v\n%s\nPlease run 'go mod tidy' to fix missing or unused dependencies", err, out.String())
+	}
+
+	return nil
 }

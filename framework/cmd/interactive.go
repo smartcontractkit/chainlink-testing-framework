@@ -93,7 +93,7 @@ func createComponentsFromForm(form *nodeSetForm) error {
 func cleanup(form *nodeSetForm) error {
 	var err error
 	f := func() {
-		err = cleanDockerResources()
+		err = rmTestContainers()
 	}
 	err = spinner.New().
 		Title("Removing docker resources..").
@@ -131,27 +131,31 @@ Docker Desktop (https://www.docker.com/products/docker-desktop/)
 				Options(
 					huh.NewOption("Anvil", "anvil"),
 				).
-				Value(&f.Network), // stores the selected network
+				Value(&f.Network),
 
 			huh.NewSelect[int]().
 				Title("How many nodes do you need?").
 				Options(
 					huh.NewOption("5", 5),
 				).
-				Value(&f.Nodes), // stores the selected number of nodes
+				Value(&f.Nodes),
 
 			huh.NewSelect[string]().
 				Title("Choose Chainlink node version").
 				Options(
-					huh.NewOption("public.ecr.aws/chainlink/chainlink:v2.17.0", "public.ecr.aws/chainlink/chainlink:v2.17.0")).
+					huh.NewOption("public.ecr.aws/chainlink/chainlink:v2.17.0-arm64", "public.ecr.aws/chainlink/chainlink:v2.17.0-arm64"),
+					huh.NewOption("public.ecr.aws/chainlink/chainlink:v2.17.0", "public.ecr.aws/chainlink/chainlink:v2.17.0"),
+					huh.NewOption("public.ecr.aws/chainlink/chainlink:v2.16.0-arm64", "public.ecr.aws/chainlink/chainlink:v2.16.0-arm64"),
+					huh.NewOption("public.ecr.aws/chainlink/chainlink:v2.16.0", "public.ecr.aws/chainlink/chainlink:v2.16.0"),
+				).
 				Value(&f.CLVersion),
 			huh.NewConfirm().
 				Title("Do you need to spin up an observability stack?").
-				Value(&f.Observability), // stores the observability option
+				Value(&f.Observability),
 
 			huh.NewConfirm().
 				Title("Do you need to spin up a Blockscout stack?").
-				Value(&f.Blockscout), // stores the Blockscout option
+				Value(&f.Blockscout),
 		),
 	)
 
@@ -167,13 +171,12 @@ Docker Desktop (https://www.docker.com/products/docker-desktop/)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-sigs
-		fmt.Println("\nReceived Ctrl+C, starting custom cleanup...")
 		err := cleanup(f)
 		if err != nil {
 			panic(err)
 		}
 		os.Exit(0)
 	}()
-	framework.L.Info().Msg("Press Ctrl+C to remove the stack..")
+	framework.L.Info().Msg("Services are up! Press Ctrl+C to remove them..")
 	select {}
 }

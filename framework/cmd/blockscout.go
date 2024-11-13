@@ -18,7 +18,6 @@ func blockscoutUp() error {
 	if err != nil {
 		return err
 	}
-	framework.L.Info().Msg("Done")
 	fmt.Println()
 	framework.L.Info().Msgf("Blockscout is up at: %s", "http://localhost")
 	return nil
@@ -40,6 +39,5 @@ func blockscoutDown() error {
 		rm -rf redis-data && \
 		rm -rf stats-db-data
 	`, filepath.Join("blockscout", "services")))
-	framework.L.Info().Msg("Done")
 	return nil
 }
