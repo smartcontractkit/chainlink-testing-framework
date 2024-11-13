@@ -45,6 +45,9 @@ For example, to integrate with remote `k8s` environment you can use `CTF_CONFIGS
       use_cache = true
 
       [nodeset.out.cl_nodes.node]
+        # set up your user/password for API authorization
+        api_auth_user = 'notreal@fakeemail.ch'
+        api_auth_password = 'fj293fbBnlQ!f9vNs'
         # set up each node URLs
         p2p_url = "http://127.0.0.1:12000"
         url = "http://127.0.0.1:10000"
