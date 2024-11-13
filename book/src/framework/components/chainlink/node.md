@@ -56,6 +56,10 @@ Here we provide full configuration reference, if you want to copy and run it, pl
     use_cache = true
     # Describes deployed or external Chainlink node
     [cl_node.out.node]
+      # API user name
+      api_auth_user = 'notreal@fakeemail.ch'
+      # API password
+      api_auth_password = 'fj293fbBnlQ!f9vNs'
       # Host Docker URLs the test uses
       # in case of using external component you can replace these URLs with another deployment
       p2p_url = "http://127.0.0.1:32812"
