@@ -119,15 +119,21 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 				return nil, fmt.Errorf("failed to parse json test output: %s, err: %w", scanner.Text(), err)
 			}
 
-			// Skip processing if the test name is empty
-			if entry.Test == "" {
-				continue
+			// Determine the key based on whether Test is empty
+			var key string
+			if entry.Test != "" {
+				key = entry.Package + "/" + entry.Test
+			} else {
+				key = entry.Package // Package-level key
 			}
 
-			key := entry.Package + "/" + entry.Test // Create a unique key using package and test name
 			if _, exists := testDetails[key]; !exists {
+				testName := entry.Test
+				if testName == "" {
+					testName = "Package Level"
+				}
 				testDetails[key] = &reports.TestResult{
-					TestName:    entry.Test,
+					TestName:    testName,
 					TestPackage: entry.Package,
 					Runs:        0,
 					PassRatio:   0,
@@ -136,6 +142,12 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 			}
 
 			result := testDetails[key]
+
+			// Collect test outputs
+			if entry.Output != "" {
+				result.Outputs = append(result.Outputs, entry.Output)
+			}
+
 			switch entry.Action {
 			case "run":
 				result.Runs++
@@ -143,11 +155,15 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 				result.PassRatio = (result.PassRatio*float64(result.Runs-1) + 1) / float64(result.Runs)
 				result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
 				result.Durations = append(result.Durations, entry.Elapsed)
+			case "fail":
+				result.PassRatio = (result.PassRatio * float64(result.Runs-1)) / float64(result.Runs)
+				result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
+				result.Durations = append(result.Durations, entry.Elapsed)
 			case "output":
-				result.Outputs = append(result.Outputs, entry.Output)
+				// Output already handled above
 				if panicRe.MatchString(entry.Output) {
 					if entry.Test != "" {
-						// Test-level panic: treat it as a failing test
+						// Test-level panic
 						result.Panicked = true
 					} else {
 						// Package-level panic
@@ -157,10 +173,6 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 					result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
 					result.Durations = append(result.Durations, entry.Elapsed)
 				}
-			case "fail":
-				result.PassRatio = (result.PassRatio * float64(result.Runs-1)) / float64(result.Runs)
-				result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
-				result.Durations = append(result.Durations, entry.Elapsed)
 			case "skip":
 				result.Skipped = true
 				result.Runs++
