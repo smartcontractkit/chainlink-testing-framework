@@ -16,7 +16,7 @@ require (
 	github.com/docker/docker v27.3.1+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/ethereum/go-ethereum v1.13.8
-	github.com/go-resty/resty/v2 v2.15.3
+	github.com/go-resty/resty/v2 v2.16.0
 	github.com/google/go-github/v41 v41.0.0
 	github.com/google/uuid v1.6.0
 	github.com/imdario/mergo v0.3.16
