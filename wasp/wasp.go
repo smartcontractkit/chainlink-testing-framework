@@ -62,7 +62,11 @@ type VirtualUser interface {
 	StopChan() chan struct{}
 }
 
-// NewVUControl creates new base VU that allows us to control the schedule and bring VUs up and down
+// NewVUControl initializes and returns a new instance of VUControl. 
+// The returned VUControl contains a stop channel that can be used to signal 
+// when to stop operations. This function is typically used when creating 
+// new virtual users in various contexts, ensuring each user has its own 
+// control mechanism for managing execution flow.
 func NewVUControl() *VUControl {
 	return &VUControl{stop: make(chan struct{}, 1)}
 }
@@ -72,12 +76,19 @@ type VUControl struct {
 	stop chan struct{}
 }
 
-// Stop stops virtual user execution
+// Stop signals the VUControl to stop the associated generator. 
+// It sends a signal to the stop channel, which triggers the stopping process. 
+// This function does not return any value and is intended for use when 
+// the generator needs to be halted gracefully.
 func (m *VUControl) Stop(_ *Generator) {
 	m.stop <- struct{}{}
 }
 
-// StopChan returns stop chan
+// StopChan returns a channel that can be used to signal the stopping of the VUControl. 
+// This channel is typically used to coordinate the shutdown process, allowing other 
+// components to listen for stop signals and respond accordingly. 
+// The returned channel is a struct{} type, which is commonly used for signaling 
+// without carrying any data.
 func (m *VUControl) StopChan() chan struct{} {
 	return m.stop
 }
@@ -109,6 +120,11 @@ type Segment struct {
 	Duration time.Duration
 }
 
+// Validate checks the integrity of the Segment by ensuring that the starting point (From) is greater than zero 
+// and that the duration of the segment is not zero. 
+// It returns an error if either of these conditions is not met, 
+// allowing for early detection of invalid segment configurations. 
+// If both conditions are satisfied, it returns nil, indicating that the segment is valid.
 func (ls *Segment) Validate() error {
 	if ls.From <= 0 {
 		return ErrStartFrom
@@ -145,6 +161,12 @@ type Config struct {
 	nodeID string
 }
 
+// Validate checks the configuration values in the Config struct for correctness and completeness. 
+// It sets default values for any fields that are not explicitly defined. 
+// If mandatory fields are missing or invalid, it returns an appropriate error. 
+// Specifically, it ensures that at least one of Gun or VU is provided, 
+// that a valid Schedule is set, and that the LoadType is either RPS or VU. 
+// If all checks pass, it returns nil, indicating that the configuration is valid.
 func (lgc *Config) Validate() error {
 	if lgc.CallTimeout == 0 {
 		lgc.CallTimeout = DefaultCallTimeout
@@ -246,8 +268,11 @@ type Generator struct {
 	lokiResponsesChan  chan *Response
 }
 
-// NewGenerator creates a new generator,
-// shoots for scheduled RPS until timeout, test logic is defined through Gun or VirtualUser
+// NewGenerator creates a new Generator instance based on the provided configuration. 
+// It validates the configuration and its schedule, initializes necessary contexts, 
+// and sets up logging and response handling. 
+// If the configuration is nil or invalid, it returns an error. 
+// On success, it returns a pointer to the newly created Generator and a nil error.
 func NewGenerator(cfg *Config) (*Generator, error) {
 	if cfg == nil {
 		return nil, ErrNoCfg
@@ -326,7 +351,12 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 	return g, nil
 }
 
-// runExecuteLoop set up initial data for both RPS and VirtualUser load types
+// runExecuteLoop starts the execution loop for the load generator based on the configured load type. 
+// If the load type is RPS (Requests Per Second), it initiates a goroutine that continuously calls 
+// pacedCall until the context is done, managing the rate of requests according to the current RPS. 
+// If the load type is VU (Virtual Users), it locks the current segment, sets the number of active 
+// virtual users, and starts each virtual user instance in a loop. 
+// This function does not return any value and is intended to manage the execution of load generation.
 func (g *Generator) runExecuteLoop() {
 	g.currentSegment = g.scheduleSegments[0]
 	g.stats.LastSegment.Store(int64(len(g.scheduleSegments)))
@@ -360,7 +390,11 @@ func (g *Generator) runExecuteLoop() {
 	}
 }
 
-// runSetupWithTimeout runs setup with timeout
+// runSetupWithTimeout executes the setup process for a given VirtualUser with a specified timeout. 
+// It returns a boolean indicating whether the setup was successful. 
+// If the setup process exceeds the configured timeout, it sends a timeout error response and returns false. 
+// If the setup completes successfully within the timeout, it returns true. 
+// Any errors encountered during the setup are also sent as responses.
 func (g *Generator) runSetupWithTimeout(vu VirtualUser) bool {
 	startedAt := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), g.Cfg.SetupTimeout)
@@ -383,7 +417,11 @@ func (g *Generator) runSetupWithTimeout(vu VirtualUser) bool {
 	}
 }
 
-// runTeardownWithTimeout runs teardown with timeout
+// runTeardownWithTimeout executes the teardown process for a given VirtualUser with a specified timeout. 
+// It returns a boolean indicating whether the teardown was successful. 
+// If the teardown process exceeds the configured timeout, it sends a timeout error response and returns false. 
+// If the teardown completes successfully within the timeout, it returns true. 
+// The function also handles any errors that occur during the teardown, sending an appropriate response to the ResponsesChan.
 func (g *Generator) runTeardownWithTimeout(vu VirtualUser) bool {
 	startedAt := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), g.Cfg.TeardownTimeout)
@@ -406,7 +444,11 @@ func (g *Generator) runTeardownWithTimeout(vu VirtualUser) bool {
 	}
 }
 
-// runVU performs virtual user lifecycle
+// runVU starts a new goroutine for a given Virtual User (VU) to execute its call and handle responses. 
+// It manages the lifecycle of the VU, including setup and teardown, and monitors for cancellation signals 
+// or timeouts. The function ensures that the VU operates within the specified timeout and updates the 
+// response statistics accordingly. If the VU is stopped or if the context is done, it will clean up 
+// resources and exit gracefully. This function is intended to be called concurrently for multiple VUs.
 func (g *Generator) runVU(vu VirtualUser) {
 	g.ResponsesWaitGroup.Add(1)
 	go func() {
@@ -447,8 +489,10 @@ func (g *Generator) runVU(vu VirtualUser) {
 	}()
 }
 
-// processSegment change RPS or VUs accordingly
-// changing both internal and Stats values to report
+// processSegment updates the current segment and adjusts the virtual users (VUs) or rate limits based on the segment's configuration. 
+// It returns true if the current segment is the last segment, indicating that no further processing is needed. 
+// If the segment has changed, it modifies the internal state to reflect the new segment and may spawn or stop VUs accordingly. 
+// This function is typically called within a scheduling loop to manage the execution of load tests.
 func (g *Generator) processSegment() bool {
 	defer func() {
 		g.stats.RunStarted.Store(true)
@@ -496,8 +540,11 @@ func (g *Generator) processSegment() bool {
 	return false
 }
 
-// runScheduleLoop runs scheduling loop
-// processing segments inside the whole schedule
+// runScheduleLoop starts a goroutine that continuously processes schedule segments 
+// until the context is done. It logs the current statistics when the context is 
+// canceled and exits the scheduler. The function does not return any value. 
+// It is intended to be called as part of the load generation process to manage 
+// the execution of scheduled tasks.
 func (g *Generator) runScheduleLoop() {
 	go func() {
 		for {
@@ -520,7 +567,11 @@ func (g *Generator) runScheduleLoop() {
 	}()
 }
 
-// storeResponses stores local metrics for responses, pushed them to Loki stream too if Loki is on
+// storeResponses processes the given Response object, recording its outcome based on the generator's configuration and current statistics. 
+// If the response duration exceeds the configured timeout and is not marked as a timeout, it will be ignored. 
+// The function updates success and failure statistics, appends responses to the appropriate data structures, 
+// and logs errors if the response indicates a failure or timeout. 
+// If any errors occur and the configuration specifies to fail on errors, the generator will stop processing further requests.
 func (g *Generator) storeResponses(res *Response) {
 	if g.Cfg.CallTimeout > 0 && res.Duration > g.Cfg.CallTimeout && !res.Timeout {
 		return
@@ -561,7 +612,10 @@ func (g *Generator) storeResponses(res *Response) {
 	}
 }
 
-// collectVUResults collects CallResult from all the VUs
+// collectVUResults starts a goroutine that continuously collects results from the ResponsesChan channel. 
+// It calculates the duration of each response based on the time it started and marks the finish time when the response is processed. 
+// The function will exit gracefully when the context is done, ensuring that all collected data is stored appropriately. 
+// This function is intended to be called during the execution of the load generator to handle response data concurrently.
 func (g *Generator) collectVUResults() {
 	if g.Cfg.LoadType == RPS {
 		return
@@ -586,7 +640,10 @@ func (g *Generator) collectVUResults() {
 	}()
 }
 
-// pacedCall calls a gun according to a scheduleSegments or plain RPS
+// pacedCall initiates a controlled call to the generator's underlying service, ensuring that the call adheres to the configured rate limits and handles timeouts appropriately. 
+// It checks the current state of the generator to determine if the run has started, paused, or stopped before proceeding. 
+// The function launches a goroutine to execute the call and another to manage the response, storing the result or timeout information as necessary. 
+// This function does not return a value but modifies the internal state of the generator based on the outcome of the call.
 func (g *Generator) pacedCall() {
 	if !g.Stats().RunStarted.Load() {
 		return
@@ -624,7 +681,11 @@ func (g *Generator) pacedCall() {
 	}()
 }
 
-// Run runs load loop until timeout or stop
+// Run starts the load generator and manages its execution flow. 
+// It logs the initiation of the generator, prints statistics, and sends responses and stats to Loki if configured. 
+// The function runs the scheduling and execution loops, collects virtual user results, and optionally waits for completion based on the wait parameter. 
+// If wait is true, it returns the result of the Wait method along with a boolean indicating completion. 
+// If wait is false, it returns nil and false, indicating that the generator is still running.
 func (g *Generator) Run(wait bool) (interface{}, bool) {
 	g.Log.Info().Msg("Load generator started")
 	g.printStatsLoop()
@@ -641,20 +702,28 @@ func (g *Generator) Run(wait bool) (interface{}, bool) {
 	return nil, false
 }
 
-// Pause pauses execution of a generator
+// Pause pauses the generator and logs a warning message indicating that the generator has been paused. 
+// It updates the internal state to reflect that the generator is no longer running. 
+// This function is typically called when multiple generators need to be paused simultaneously.
 func (g *Generator) Pause() {
 	g.Log.Warn().Msg("Generator was paused")
 	g.stats.RunPaused.Store(true)
 }
 
-// Resume resumes execution of a generator
+// Resume resumes the operation of the generator. 
+// It logs a warning message indicating that the generator has been resumed 
+// and updates the internal state to reflect that the generator is no longer paused. 
+// This function is typically called when multiple generators need to be resumed 
+// as part of a larger operation.
 func (g *Generator) Resume() {
 	g.Log.Warn().Msg("Generator was resumed")
 	g.stats.RunPaused.Store(false)
 }
 
-// Stop stops load generator, waiting for all calls for either finish or timeout
-// this method is external so Gun/VU implementations can stop the generator
+// Stop gracefully halts the generator's operation. It checks if the generator is already stopped; if so, it returns nil and true. 
+// If not, it updates the internal state to indicate that the run has stopped and logs a warning message. 
+// It then cancels any ongoing responses and waits for all responses to finish, returning the result of the Wait function along with a boolean indicating if the run failed. 
+// This function is typically called when a stop condition is met, allowing for a clean shutdown of the generator's processes.
 func (g *Generator) Stop() (interface{}, bool) {
 	if g.stats.RunStopped.Load() {
 		return nil, true
@@ -667,7 +736,9 @@ func (g *Generator) Stop() (interface{}, bool) {
 	return g.Wait()
 }
 
-// Wait waits until test ends
+// Wait blocks until all responses have been processed and returns the collected data along with a boolean indicating if the run failed. 
+// It logs the waiting process, waits for the responses to finish, and if applicable, handles any cleanup related to Loki streaming. 
+// The function also updates statistics regarding the duration and current time unit before returning the results.
 func (g *Generator) Wait() (interface{}, bool) {
 	g.Log.Info().Msg("Waiting for all responses to finish")
 	g.ResponsesWaitGroup.Wait()
@@ -681,29 +752,41 @@ func (g *Generator) Wait() (interface{}, bool) {
 	return g.GetData(), g.stats.RunFailed.Load()
 }
 
-// InputSharedData returns the SharedData passed in Generator config
+// InputSharedData returns the shared data configured in the Generator. 
+// It retrieves the value from the Generator's configuration and returns it as an interface{}. 
+// This function allows access to the shared data used across different components of the Generator.
 func (g *Generator) InputSharedData() interface{} {
 	return g.Cfg.SharedData
 }
 
-// Errors get all calls errors
+// Errors returns a slice of strings containing all error messages 
+// that have been recorded by the Generator. If no errors have 
+// occurred, it will return an empty slice. This function is useful 
+// for retrieving and inspecting any issues that may have arisen 
+// during the operation of the Generator.
 func (g *Generator) Errors() []string {
 	return g.errs.Data
 }
 
-// GetData get all calls data
+// GetData returns a pointer to the ResponseData associated with the Generator. 
+// This data contains the responses collected during the execution of the Generator. 
+// It is intended to be used after all responses have been processed to retrieve the final results.
 func (g *Generator) GetData() *ResponseData {
 	return g.responsesData
 }
 
-// Stats get all load stats
+// Stats returns a pointer to the current statistics of the Generator. 
+// It provides information about the state of the generator, such as whether a run has started, paused, or stopped. 
+// This function is useful for monitoring and managing the generator's performance during its operation.
 func (g *Generator) Stats() *Stats {
 	return g.stats
 }
 
 /* Loki's methods to handle CallResult/Stats and stream it to Loki */
 
-// stopLokiStream stops the Loki stream client
+// stopLokiStream stops the Loki stream if the Loki configuration is set and the URL is not empty. 
+// It logs the stopping process and ensures that the Loki service is properly exited. 
+// This function is typically called when all responses have been processed and the generator is shutting down.
 func (g *Generator) stopLokiStream() {
 	if g.Cfg.LokiConfig != nil && g.Cfg.LokiConfig.URL != "" {
 		g.Log.Info().Msg("Stopping Loki")
@@ -712,8 +795,11 @@ func (g *Generator) stopLokiStream() {
 	}
 }
 
-// handleLokiResponsePayload handles CallResult payload with adding default labels
-// adding custom CallResult labels if present
+// handleLokiResponsePayload processes the response payload received from Loki. 
+// It merges the existing labels with additional metadata, including the response group. 
+// The function also clears the timestamps from the response to optimize the payload size 
+// before passing the modified response to the Loki handler. 
+// If an error occurs during handling, it logs the error and stops the generator.
 func (g *Generator) handleLokiResponsePayload(r *Response) {
 	labels := g.labels.Merge(model.LabelSet{
 		"test_data_type": "responses",
@@ -731,8 +817,9 @@ func (g *Generator) handleLokiResponsePayload(r *Response) {
 	}
 }
 
-// handleLokiStatsPayload handles StatsJSON payload with adding default labels
-// this stream serves as a debug data and shouldn't be customized with additional labels
+// handleLokiStatsPayload processes and sends the current statistics data to the Loki logging system. 
+// It merges predefined labels with a new label indicating the data type as "stats". 
+// If an error occurs during the handling of the statistics payload, it logs the error and stops the generator.
 func (g *Generator) handleLokiStatsPayload() {
 	ls := g.labels.Merge(model.LabelSet{
 		"test_data_type": "stats",
@@ -744,7 +831,10 @@ func (g *Generator) handleLokiStatsPayload() {
 	}
 }
 
-// sendResponsesToLoki pushes responses to Loki
+// sendResponsesToLoki starts a goroutine that listens for responses from Loki and processes them. 
+// It logs the URL and default labels configured for Loki. 
+// The function will continue to run until the context is done, at which point it logs an exit message. 
+// It ensures that the data processing is synchronized using a wait group.
 func (g *Generator) sendResponsesToLoki() {
 	g.Log.Info().
 		Str("URL", g.Cfg.LokiConfig.URL).
@@ -765,7 +855,11 @@ func (g *Generator) sendResponsesToLoki() {
 	}()
 }
 
-// sendStatsToLoki pushes stats to Loki
+// sendStatsToLoki starts a goroutine that periodically sends statistics to Loki. 
+// It continues to run until the context associated with the generator is done, 
+// at which point it logs an exit message and terminates. 
+// The frequency of sending statistics is determined by the StatsPollInterval configuration. 
+// This function is intended to be called when Loki integration is enabled.
 func (g *Generator) sendStatsToLoki() {
 	g.dataWaitGroup.Add(1)
 	go func() {
@@ -785,7 +879,13 @@ func (g *Generator) sendStatsToLoki() {
 
 /* Local logging methods */
 
-// StatsJSON get all load stats for export
+// StatsJSON returns a map containing various statistics related to the generator's performance. 
+// The returned map includes the node ID, current requests per second (RPS), 
+// the number of current instances, samples recorded, samples skipped, 
+// and flags indicating if the run has stopped or failed. 
+// Additionally, it provides counts of successful and failed operations, 
+// the number of call timeouts, the load duration, and the current time unit. 
+// This function is useful for monitoring and logging the generator's state.
 func (g *Generator) StatsJSON() map[string]interface{} {
 	return map[string]interface{}{
 		"node_id":           g.Cfg.nodeID,
@@ -803,7 +903,13 @@ func (g *Generator) StatsJSON() map[string]interface{} {
 	}
 }
 
-// printStatsLoop prints stats periodically, with Config.StatsPollInterval
+// printStatsLoop starts a goroutine that periodically logs the current load statistics 
+// of the generator, including the number of successful and failed responses, as well as 
+// the number of call timeouts. The logging occurs at intervals defined by the 
+// StatsPollInterval configuration. The loop will continue until the context associated 
+// with the generator is done, at which point it will log an exit message and terminate. 
+// This function is intended for use in conjunction with other generator operations to 
+// provide real-time insights into the generator's performance.
 func (g *Generator) printStatsLoop() {
 	g.ResponsesWaitGroup.Add(1)
 	go func() {
@@ -825,7 +931,10 @@ func (g *Generator) printStatsLoop() {
 	}()
 }
 
-// LabelsMapToModel create model.LabelSet from map of labels
+// LabelsMapToModel converts a map of string key-value pairs into a model.LabelSet. 
+// Each key in the input map is treated as a label name, and each corresponding value is treated as the label value. 
+// The resulting LabelSet can be used for further processing or validation in the context of metrics or logging. 
+// If the input map is empty, an empty LabelSet is returned.
 func LabelsMapToModel(m map[string]string) model.LabelSet {
 	ls := model.LabelSet{}
 	for k, v := range m {

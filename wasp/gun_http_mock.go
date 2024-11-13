@@ -14,7 +14,9 @@ type MockHTTPGun struct {
 	Data   []string
 }
 
-// NewHTTPMockGun create an HTTP mock gun
+// NewHTTPMockGun initializes a new instance of MockHTTPGun using the provided configuration.
+// It sets up an HTTP client and prepares an empty slice to store data. 
+// The returned MockHTTPGun can be used for testing purposes, simulating HTTP interactions without making real network calls.
 func NewHTTPMockGun(cfg *MockHTTPGunConfig) *MockHTTPGun {
 	return &MockHTTPGun{
 		client: resty.New(),
@@ -23,7 +25,11 @@ func NewHTTPMockGun(cfg *MockHTTPGunConfig) *MockHTTPGun {
 	}
 }
 
-// Call implements example gun call, assertions on response bodies should be done here
+// Call executes an HTTP GET request to the target URL configured in the MockHTTPGun. 
+// It returns a Response containing the result of the request. If the request encounters 
+// an error or does not return a status of "200 OK", the Response will include the error 
+// message. If the request is successful, the Response will contain the data retrieved 
+// from the target URL.
 func (m *MockHTTPGun) Call(l *Generator) *Response {
 	var result map[string]interface{}
 	r, err := m.client.R().
