@@ -2,9 +2,12 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/ptr"
 )
@@ -122,4 +125,107 @@ func TestReadConfigValuesFromEnvVars(t *testing.T) {
 
 func newString(s string) *string {
 	return &s
+}
+
+func TestValidateNetworkConfig(t *testing.T) {
+	testCases := []struct {
+		name          string
+		networkConfig NetworkConfig
+		expectedError error
+	}{
+		{
+			name: "Valid configuration with HTTP and WS URLs",
+			networkConfig: NetworkConfig{
+				SelectedNetworks: []string{"MAINNET"},
+				RpcHttpUrls: map[string][]string{
+					"MAINNET": {"http://localhost:8545"},
+				},
+				RpcWsUrls: map[string][]string{
+					"MAINNET": {"ws://localhost:8546"},
+				},
+				WalletKeys: map[string][]string{
+					"MAINNET": {"0xPrivateKey"},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "Valid configuration with only HTTP URL",
+			networkConfig: NetworkConfig{
+				SelectedNetworks: []string{"MAINNET"},
+				RpcHttpUrls: map[string][]string{
+					"MAINNET": {"http://localhost:8545"},
+				},
+				WalletKeys: map[string][]string{
+					"MAINNET": {"0xPrivateKey"},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "Invalid configuration with only WS URL",
+			networkConfig: NetworkConfig{
+				SelectedNetworks: []string{"MAINNET"},
+				RpcWsUrls: map[string][]string{
+					"MAINNET": {"ws://localhost:8546"},
+				},
+				WalletKeys: map[string][]string{
+					"MAINNET": {"0xPrivateKey"},
+				},
+			},
+			expectedError: fmt.Errorf("WS RPC endpoint for MAINNET network is set without an HTTP endpoint; only HTTP or both HTTP and WS are allowed"),
+		},
+		{
+			name: "Invalid configuration without HTTP or WS URLs",
+			networkConfig: NetworkConfig{
+				SelectedNetworks: []string{"MAINNET"},
+				WalletKeys: map[string][]string{
+					"MAINNET": {"0xPrivateKey"},
+				},
+			},
+			expectedError: fmt.Errorf("at least one HTTP RPC endpoint for MAINNET network must be set"),
+		},
+		{
+			name: "Valid simulated network without RPC URLs",
+			networkConfig: NetworkConfig{
+				SelectedNetworks: []string{"SIMULATED"},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "Valid forked network (Anvil) without RPC URLs",
+			networkConfig: NetworkConfig{
+				SelectedNetworks: []string{"MAINNET"},
+				AnvilConfigs: map[string]*AnvilConfig{
+					"MAINNET": {URL: ptr.Ptr("http://forked-node-url")},
+				},
+			},
+			expectedError: nil,
+		},
+		{
+			name: "Missing private key",
+			networkConfig: NetworkConfig{
+				SelectedNetworks: []string{"MAINNET"},
+				RpcHttpUrls: map[string][]string{
+					"MAINNET": {"http://localhost:8545"},
+				},
+				RpcWsUrls: map[string][]string{
+					"MAINNET": {"ws://localhost:8546"},
+				},
+			},
+			expectedError: fmt.Errorf("at least one private key of funding wallet for MAINNET network must be set"),
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc // capture range variable
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.networkConfig.Validate()
+			if tc.expectedError != nil {
+				require.EqualError(t, err, tc.expectedError.Error())
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
