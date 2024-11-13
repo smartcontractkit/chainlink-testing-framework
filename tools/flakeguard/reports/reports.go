@@ -13,6 +13,8 @@ import (
 type TestResult struct {
 	TestName            string
 	TestPackage         string
+	Panicked            bool    // Indicates a test-level panic
+	PackagePanicked     bool    // Indicates a package-level panic
 	PassRatio           float64 // Pass ratio in decimal format like 0.5
 	PassRatioPercentage string  // Pass ratio in percentage format like "50%"
 	Skipped             bool    // Indicates if the test was skipped

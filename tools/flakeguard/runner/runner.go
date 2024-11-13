@@ -8,9 +8,14 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
+)
+
+var (
+	panicRe = regexp.MustCompile(`^panic:`)
 )
 
 type Runner struct {
@@ -140,6 +145,18 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 				result.Durations = append(result.Durations, entry.Elapsed)
 			case "output":
 				result.Outputs = append(result.Outputs, entry.Output)
+				if panicRe.MatchString(entry.Output) {
+					if entry.Test != "" {
+						// Test-level panic: treat it as a failing test
+						result.Panicked = true
+					} else {
+						// Package-level panic
+						result.PackagePanicked = true
+					}
+					result.PassRatio = (result.PassRatio * float64(result.Runs-1)) / float64(result.Runs)
+					result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
+					result.Durations = append(result.Durations, entry.Elapsed)
+				}
 			case "fail":
 				result.PassRatio = (result.PassRatio * float64(result.Runs-1)) / float64(result.Runs)
 				result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
