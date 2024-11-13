@@ -1,6 +1,7 @@
 package examples
 
 import (
+	"fmt"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
@@ -8,6 +9,7 @@ import (
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
 
 const (
@@ -48,28 +50,28 @@ func TestUpgrade(t *testing.T) {
 	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc, dp.BaseURLDocker)
 	require.NoError(t, err)
 
-	c, err := clclient.NewCLDefaultClients(out.CLNodes, framework.L)
+	c, err := clclient.New(out.CLNodes)
 	require.NoError(t, err)
 	_, _, err = c[0].CreateJobRaw(testJob)
 	require.NoError(t, err)
 
-	//	in.NodeSet.NodeSpecs[0].Node.Image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
-	//	in.NodeSet.NodeSpecs[0].Node.UserConfigOverrides = `
-	//										[Log]
-	//										level = 'info'
-	//`
-	//	in.NodeSet.NodeSpecs[4].Node.Image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
-	//	in.NodeSet.NodeSpecs[4].Node.UserConfigOverrides = `
-	//										[Log]
-	//										level = 'info'
-	//`
-	//
-	//	out, err = ns.UpgradeNodeSet(in.NodeSet, bc, dp.BaseURLDocker, 3*time.Second)
-	//	require.NoError(t, err)
-	//
-	//	jobs, _, err := c[0].ReadJobs()
-	//	require.NoError(t, err)
-	//	fmt.Println(jobs)
+	in.NodeSet.NodeSpecs[0].Node.Image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+	in.NodeSet.NodeSpecs[0].Node.UserConfigOverrides = `
+											[Log]
+											level = 'info'
+	`
+	in.NodeSet.NodeSpecs[4].Node.Image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+	in.NodeSet.NodeSpecs[4].Node.UserConfigOverrides = `
+											[Log]
+											level = 'info'
+	`
+
+	out, err = ns.UpgradeNodeSet(in.NodeSet, bc, dp.BaseURLDocker, 3*time.Second)
+	require.NoError(t, err)
+
+	jobs, _, err := c[0].ReadJobs()
+	require.NoError(t, err)
+	fmt.Println(jobs)
 
 	t.Run("test something", func(t *testing.T) {
 		for _, n := range out.CLNodes {

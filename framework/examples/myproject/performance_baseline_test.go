@@ -37,7 +37,7 @@ func TestPerformanceBaseline(t *testing.T) {
 		lokiCfg = wasp.NewEnvLokiConfig()
 	}
 
-	c, err := clclient.NewCLDefaultClients(out.CLNodes, framework.L)
+	c, err := clclient.New(out.CLNodes)
 	require.NoError(t, err)
 
 	t.Run("performance baseline for your product", func(t *testing.T) {

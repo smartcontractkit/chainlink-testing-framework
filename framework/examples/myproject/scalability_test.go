@@ -38,7 +38,7 @@ func TestScalability(t *testing.T) {
 		lokiCfg = wasp.NewEnvLokiConfig()
 	}
 
-	c, err := clclient.NewCLDefaultClients(out.CLNodes, framework.L)
+	c, err := clclient.New(out.CLNodes)
 	require.NoError(t, err)
 
 	t.Run("scalability test for your product", func(t *testing.T) {

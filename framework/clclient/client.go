@@ -14,7 +14,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-resty/resty/v2"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 )
@@ -57,14 +56,13 @@ func NewChainlinkClient(c *Config) (*ChainlinkClient, error) {
 	}, nil
 }
 
-// NewCLDefaultClients connects all the clients using clnode.Output and default login/password
-func NewCLDefaultClients(outs []*clnode.Output, l zerolog.Logger) ([]*ChainlinkClient, error) {
+func New(outs []*clnode.Output) ([]*ChainlinkClient, error) {
 	clients := make([]*ChainlinkClient, 0)
 	for _, out := range outs {
 		c, err := NewChainlinkClient(&Config{
 			URL:      out.Node.HostURL,
-			Email:    clnode.DefaultAPIUser,
-			Password: clnode.DefaultAPIPassword,
+			Email:    out.Node.APIAuthUser,
+			Password: out.Node.APIAuthPassword,
 		})
 		if err != nil {
 			return nil, err

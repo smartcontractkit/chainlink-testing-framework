@@ -63,10 +63,12 @@ type Output struct {
 
 // NodeOut is CL node container output, URLs to connect
 type NodeOut struct {
-	HostURL      string `toml:"url"`
-	HostP2PURL   string `toml:"p2p_url"`
-	DockerURL    string `toml:"docker_internal_url"`
-	DockerP2PUrl string `toml:"p2p_docker_internal_url"`
+	APIAuthUser     string `toml:"api_auth_user"`
+	APIAuthPassword string `toml:"api_auth_password"`
+	HostURL         string `toml:"url"`
+	HostP2PURL      string `toml:"p2p_url"`
+	DockerURL       string `toml:"docker_internal_url"`
+	DockerP2PUrl    string `toml:"p2p_docker_internal_url"`
 }
 
 // NewNodeWithDB create a new Chainlink node with some image:tag and one or several configs
@@ -285,10 +287,12 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	mpP2P := nat.Port(fmt.Sprintf("%d/udp", in.Node.P2PPort))
 
 	return &NodeOut{
-		HostURL:      fmt.Sprintf("http://%s:%s", host, mp.Port()),
-		HostP2PURL:   fmt.Sprintf("http://%s:%s", host, mpP2P.Port()),
-		DockerURL:    fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
-		DockerP2PUrl: fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
+		APIAuthUser:     DefaultAPIUser,
+		APIAuthPassword: DefaultAPIPassword,
+		HostURL:         fmt.Sprintf("http://%s:%s", host, mp.Port()),
+		HostP2PURL:      fmt.Sprintf("http://%s:%s", host, mpP2P.Port()),
+		DockerURL:       fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
+		DockerP2PUrl:    fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
 	}, nil
 }
 
