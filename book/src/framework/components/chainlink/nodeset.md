@@ -69,7 +69,7 @@ Then configure NodeSet
 
     [nodeset.node_specs.node]
       # custom ports that plugins may need to expose and map to the host machine
-      custom_ports = [14000, 140001]
+      custom_ports = [14000, 14001]
       # A list of paths to capability binaries
       capabilities = ["./capability_1", "./capability_2"]
       # Default capabilities directory inside container
