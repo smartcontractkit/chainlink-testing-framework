@@ -21,6 +21,7 @@ type TestResult struct {
 	Runs                int
 	Outputs             []string  // Stores outputs for a test
 	Durations           []float64 // Stores elapsed time in seconds for each run of the test
+	PackageOutputs      []string  // Stores package-level outputs
 }
 
 // FilterFailedTests returns a slice of TestResult where the pass ratio is below the specified threshold.
