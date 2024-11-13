@@ -48,7 +48,6 @@ var RunTestsCmd = &cobra.Command{
 			Verbose:              true,
 			RunCount:             runCount,
 			UseRace:              useRace,
-			FailFast:             threshold == 1.0, // Fail test on first test run if threshold is 1.0
 			SkipTests:            skipTests,
 			SelectedTestPackages: testPackages,
 		}
