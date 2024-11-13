@@ -23,9 +23,9 @@ type MockGun struct {
 	Data []string
 }
 
-// NewMockGun creates and returns a new instance of MockGun initialized with the provided configuration. 
-// It sets up the internal data structure to hold string data, starting with an empty slice. 
-// The returned MockGun can be used to simulate gun-related operations in a testing environment.
+// NewMockGun creates a new instance of MockGun with the provided configuration.
+// It initializes the Data slice as an empty slice of strings.
+// The function returns a pointer to the newly created MockGun instance.
 func NewMockGun(cfg *MockGunConfig) *MockGun {
 	return &MockGun{
 		cfg:  cfg,
@@ -33,12 +33,11 @@ func NewMockGun(cfg *MockGunConfig) *MockGun {
 	}
 }
 
-// Call executes a request using the provided Generator and returns a Response. 
-// It may simulate a failure or a timeout based on the configuration settings of the MockGun. 
-// If the InternalStop configuration is enabled, it will stop the Generator before proceeding. 
-// The function will also respect the CallSleep duration specified in the configuration. 
-// The returned Response contains data indicating success or failure, along with an error message if applicable. 
-// If a timeout occurs, the Response will reflect that with a Timeout flag set to true.
+// Call simulates a request to a service using the provided Generator. It may
+// stop the Generator if configured to do so. The function introduces a delay
+// based on the configuration and can simulate failures or timeouts with
+// specified probabilities. It returns a Response indicating the result of the
+// call, which may include success, failure, or timeout information.
 func (m *MockGun) Call(l *Generator) *Response {
 	if m.cfg.InternalStop {
 		l.Stop()
@@ -61,11 +60,11 @@ func (m *MockGun) Call(l *Generator) *Response {
 	return &Response{Data: "successCallData"}
 }
 
-// convertResponsesData processes the generator's response data and returns three values: 
-// a slice of strings containing the successfully processed data, 
-// a slice of pointers to Response objects representing successful responses, 
-// and a slice of pointers to Response objects representing failed responses. 
-// The function ensures thread safety by locking the necessary mutexes during data access.
+// convertResponsesData retrieves and converts response data from the Generator.
+// It locks and unlocks the necessary mutexes to ensure thread safety while accessing
+// the response data. The function returns a slice of strings representing successful
+// data, a slice of pointers to Response for successful responses, and a slice of
+// pointers to Response for failed responses.
 func convertResponsesData(g *Generator) ([]string, []*Response, []*Response) {
 	g.responsesData.okDataMu.Lock()
 	defer g.responsesData.okDataMu.Unlock()

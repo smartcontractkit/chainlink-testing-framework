@@ -13,19 +13,16 @@ const (
 	LogLevelEnvVar = "WASP_LOG_LEVEL"
 )
 
-// init initializes the logging configuration for the application. 
-// It sets the log level based on the environment variable specified by LogLevelEnvVar. 
-// If the environment variable is not set, it defaults to "info". 
-// In case of an invalid log level, the function will panic, ensuring that the application does not start with an incorrect logging configuration.
+// init initializes the default logging configuration for the application.
+// It sets the logging level based on the environment variable LogLevelEnvVar,
+// defaulting to "info" if the variable is not set.
 func init() {
 	initDefaultLogging()
 }
 
-// initDefaultLogging initializes the logging configuration for the application. 
-// It retrieves the log level from the environment variable specified by LogLevelEnvVar. 
-// If the environment variable is not set, it defaults to the "info" level. 
-// The function sets up the logger to output to standard error with the specified log level. 
-// If the log level cannot be parsed, the function will panic, terminating the application.
+// initDefaultLogging initializes the default logging configuration for the application.
+// It sets the log level based on the environment variable specified by LogLevelEnvVar.
+// If the environment variable is not set, it defaults to the "info" level.
 func initDefaultLogging() {
 	lvlStr := os.Getenv(LogLevelEnvVar)
 	if lvlStr == "" {
@@ -38,11 +35,10 @@ func initDefaultLogging() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr}).Level(lvl)
 }
 
-// GetLogger returns a zerolog.Logger instance configured for logging. 
-// It sets the log level based on the environment variable specified by LogLevelEnvVar, defaulting to "info" if not set. 
-// If the provided testing.T pointer is not nil, the logger will be configured to write to the test output; 
-// otherwise, it will log to standard error. 
-// The logger will include a timestamp and a string field indicating the component name.
+// GetLogger returns a zerolog.Logger configured with the specified component name.
+// It sets the log level based on the LogLevelEnvVar environment variable, defaulting to "info".
+// If a testing.T object is provided, the logger outputs to a test writer; otherwise, it outputs to stderr.
+// The logger includes a timestamp and the component name in its context.
 func GetLogger(t *testing.T, componentName string) zerolog.Logger {
 	lvlStr := os.Getenv(LogLevelEnvVar)
 	if lvlStr == "" {

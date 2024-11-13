@@ -27,9 +27,8 @@ type MockVirtualUser struct {
 	Data []string
 }
 
-// NewMockVU creates and returns a new instance of MockVirtualUser initialized with the provided configuration. 
-// It sets up a VUControl for managing virtual user operations and initializes an empty slice for storing data. 
-// The returned MockVirtualUser can be used to simulate virtual user behavior in a testing environment.
+// NewMockVU creates a new instance of MockVirtualUser with the provided configuration.
+// It initializes the VUControl using NewVUControl and sets up an empty data slice.
 func NewMockVU(cfg *MockVirtualUserConfig) *MockVirtualUser {
 	return &MockVirtualUser{
 		VUControl: NewVUControl(),
@@ -38,10 +37,9 @@ func NewMockVU(cfg *MockVirtualUserConfig) *MockVirtualUser {
 	}
 }
 
-// Clone creates a new instance of MockVirtualUser, initializing it with a new VUControl and copying the configuration from the original instance. 
-// The Data field is also initialized as an empty slice of strings. 
-// This function is primarily used to generate multiple virtual user instances for load testing scenarios. 
-// The returned VirtualUser can be utilized independently of the original instance.
+// Clone creates a new instance of MockVirtualUser with a fresh VUControl and an empty data slice.
+// It retains the configuration from the original MockVirtualUser. This function is typically used
+// to generate multiple virtual users in scenarios where load testing requires concurrent execution.
 func (m *MockVirtualUser) Clone(_ *Generator) VirtualUser {
 	return &MockVirtualUser{
 		VUControl: NewVUControl(),
@@ -50,11 +48,9 @@ func (m *MockVirtualUser) Clone(_ *Generator) VirtualUser {
 	}
 }
 
-// Setup initializes the virtual user with the provided generator. 
-// It returns an error if the setup fails, which can occur based on the configuration settings. 
-// If the setup is successful, it may introduce a delay as specified in the configuration. 
-// The function is intended to be called in a context where a timeout may be necessary, 
-// allowing for graceful handling of setup failures or timeouts.
+// Setup initializes the MockVirtualUser using the provided Generator.
+// It simulates a setup process that may fail based on the configuration.
+// If the setup fails, it returns an error. Otherwise, it completes after a specified sleep duration.
 func (m *MockVirtualUser) Setup(_ *Generator) error {
 	if m.cfg.SetupFailure {
 		return errors.New("setup failure")
@@ -63,11 +59,9 @@ func (m *MockVirtualUser) Setup(_ *Generator) error {
 	return nil
 }
 
-// Teardown performs cleanup operations for the virtual user after the generator has completed its tasks. 
-// It returns an error if the teardown process fails, which can be configured through the virtual user's settings. 
-// If the teardown is successful, it will return nil after a specified sleep duration, allowing for any necessary 
-// delays before the function completes. This function is typically called in a separate goroutine to avoid 
-// blocking the main execution flow, and it can be subject to a timeout to ensure it does not hang indefinitely.
+// Teardown performs the teardown process for a MockVirtualUser. 
+// It returns an error if the teardown is configured to fail. 
+// Otherwise, it waits for a specified duration before completing successfully.
 func (m *MockVirtualUser) Teardown(_ *Generator) error {
 	if m.cfg.TeardownFailure {
 		return errors.New("teardown failure")
@@ -76,13 +70,11 @@ func (m *MockVirtualUser) Teardown(_ *Generator) error {
 	return nil
 }
 
-// Call simulates a virtual user making a call to the provided generator. 
-// It introduces a delay based on the configuration and may randomly fail or timeout 
-// according to the specified fail and timeout ratios. 
-// The function sends a response to the generator's ResponsesChan, indicating 
-// whether the call was successful or failed, along with the timestamp of when 
-// the call started. If the call fails, it includes an error message in the response. 
-// If a timeout occurs, the function will also handle that by sending a timeout response.
+// Call simulates a virtual user making a request to the Generator. 
+// It introduces a delay based on the configured CallSleep duration. 
+// The function can simulate failures and timeouts based on the configured 
+// FailRatio and TimeoutRatio, respectively. It sends a Response to the 
+// Generator's ResponsesChan, indicating success or failure of the call.
 func (m *MockVirtualUser) Call(l *Generator) {
 	startedAt := time.Now()
 	time.Sleep(m.cfg.CallSleep)

@@ -18,10 +18,9 @@ type HTTPMockServer struct {
 	Sleep time.Duration
 }
 
-// Run starts the HTTP mock server in a separate goroutine. 
-// It invokes the server's Run method, allowing it to handle incoming requests 
-// asynchronously. This function does not return any value and is intended 
-// to be called to initiate the server's operation.
+// Run starts the HTTPMockServer in a new goroutine. 
+// It invokes the Run method of the underlying server without handling any errors. 
+// This allows the server to operate concurrently with other processes.
 func (s *HTTPMockServer) Run() {
 	go func() {
 		//nolint
@@ -29,17 +28,15 @@ func (s *HTTPMockServer) Run() {
 	}()
 }
 
-// URL returns the base URL of the HTTP mock server as a string. 
-// This URL can be used to send requests to the mock server for testing purposes. 
-// The returned URL is fixed and points to "http://localhost:8080/1".
+// URL returns the base URL of the HTTPMockServer as a string.
+// It is typically used to construct full URLs for testing purposes.
 func (s *HTTPMockServer) URL() string {
 	return "http://localhost:8080/1"
 }
 
-// NewHTTPMockServer creates a new instance of HTTPMockServer with the provided configuration. 
-// If the configuration is nil, it initializes the server with default settings, including 
-// predefined latencies and HTTP response codes for two mock API endpoints. 
-// The returned HTTPMockServer can be used to simulate API responses for testing purposes.
+// NewHTTPMockServer creates and returns a new HTTPMockServer instance configured with the provided HTTPMockServerConfig.
+// If cfg is nil, it defaults to a configuration with 50ms latency and HTTP 200 status code for both API endpoints.
+// The server has two endpoints, "/1" and "/2", each responding with a JSON message "pong" after the specified latency.
 func NewHTTPMockServer(cfg *HTTPMockServerConfig) *HTTPMockServer {
 	if cfg == nil {
 		cfg = &HTTPMockServerConfig{

@@ -19,12 +19,8 @@ var (
 
 var once = &sync.Once{}
 
-// CPUCheckLoop initializes a goroutine that continuously monitors the CPU and memory usage on a Linux system. 
-// It checks the CPU idle percentage and the free memory percentage at regular intervals defined by 
-// ResourcesThresholdCheckInterval. If the CPU idle percentage falls below the specified CPUIdleThresholdPercentage 
-// or the free memory percentage falls below the MEMFreeThresholdPercentage, it logs a fatal error indicating 
-// that the resource threshold has been triggered. This function ensures that resource usage is monitored 
-// in a concurrent manner without blocking the main execution flow.
+// CPUCheckLoop initiates a monitoring loop that periodically checks CPU and memory usage on Linux systems.
+// It logs the CPU idle percentage and free memory percentage, and triggers a fatal log if either falls below predefined thresholds.
 func CPUCheckLoop() {
 	once.Do(func() {
 		//nolint
