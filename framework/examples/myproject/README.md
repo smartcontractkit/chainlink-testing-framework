@@ -56,7 +56,15 @@ They can perform upgrades, data migrations, and run advanced load tests to valid
 
 ## Explanation
 
-It's essential not to skip levels, as they help us manage complexity gradually and keep the focus on our product.
+It’s essential not to skip levels, as they enable us to manage complexity gradually and maintain focus on our product.
+
+`Level 0` is crucial for understanding what and how we’ll test, planning test levels, and distinguishing between what can be tested in low-level integrations versus system-level testing.
+
+`Level 1` centers on testing basic functionality end-to-end, analyzing configurability, and using the simplest infrastructure setup—Docker on a local machine.
+
+`Levels 2-4` help the team establish a pipeline for migrations and prepare the product for real-world scenarios, such as load and chaos testing. Even if the initial product iteration isn’t perfect, it's critical to start measuring and analyzing performance degradation and failures early.
+
+`Level 5` is the final stage before production. By this point, the product should be mature enough for stable staging, allowing the team to catch issues related to functionality, performance, failures, and incompatibilities before release. Staging is typically shared across the team; skipping levels and deploying early prototypes here can make debugging harder, risk disrupting other developers, and hinder quick, on-demand testing with low infrastructure complexity.
 
 ## Developing
 Run the tests locally
