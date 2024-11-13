@@ -50,21 +50,21 @@ func TestUpgrade(t *testing.T) {
 	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc, dp.BaseURLDocker)
 	require.NoError(t, err)
 
-	c, err := clclient.NewCLDefaultClients(out.CLNodes, framework.L)
+	c, err := clclient.New(out.CLNodes)
 	require.NoError(t, err)
 	_, _, err = c[0].CreateJobRaw(testJob)
 	require.NoError(t, err)
 
 	in.NodeSet.NodeSpecs[0].Node.Image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
 	in.NodeSet.NodeSpecs[0].Node.UserConfigOverrides = `
-										[Log]
-										level = 'info'
-`
+											[Log]
+											level = 'info'
+	`
 	in.NodeSet.NodeSpecs[4].Node.Image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
 	in.NodeSet.NodeSpecs[4].Node.UserConfigOverrides = `
-										[Log]
-										level = 'info'
-`
+											[Log]
+											level = 'info'
+	`
 
 	out, err = ns.UpgradeNodeSet(in.NodeSet, bc, dp.BaseURLDocker, 3*time.Second)
 	require.NoError(t, err)

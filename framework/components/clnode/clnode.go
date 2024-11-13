@@ -51,6 +51,7 @@ type NodeInput struct {
 	UserSecretsOverrides    string   `toml:"user_secrets_overrides"`
 	HTTPPort                int      `toml:"port"`
 	P2PPort                 int      `toml:"p2p_port"`
+	CustomPorts             []int    `toml:"custom_ports"`
 }
 
 // Output represents Chainlink node output, nodes and databases connection URLs
@@ -62,10 +63,12 @@ type Output struct {
 
 // NodeOut is CL node container output, URLs to connect
 type NodeOut struct {
-	HostURL      string `toml:"url"`
-	HostP2PURL   string `toml:"p2p_url"`
-	DockerURL    string `toml:"docker_internal_url"`
-	DockerP2PUrl string `toml:"p2p_docker_internal_url"`
+	APIAuthUser     string `toml:"api_auth_user"`
+	APIAuthPassword string `toml:"api_auth_password"`
+	HostURL         string `toml:"url"`
+	HostP2PURL      string `toml:"p2p_url"`
+	DockerURL       string `toml:"docker_internal_url"`
+	DockerP2PUrl    string `toml:"p2p_docker_internal_url"`
 }
 
 // NewNodeWithDB create a new Chainlink node with some image:tag and one or several configs
@@ -152,6 +155,35 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	} else {
 		containerName = framework.DefaultTCName("node")
 	}
+	customPorts := make([]string, 0)
+	for _, p := range in.Node.CustomPorts {
+		customPorts = append(customPorts, fmt.Sprintf("%d/tcp", p))
+	}
+	exposedPorts := []string{httpPort, p2pPort}
+	exposedPorts = append(exposedPorts, customPorts...)
+
+	portBindings := nat.PortMap{
+		nat.Port(httpPort): []nat.PortBinding{
+			{
+				HostIP:   "0.0.0.0",
+				HostPort: fmt.Sprintf("%d/tcp", in.Node.HTTPPort),
+			},
+		},
+		nat.Port(p2pPort): []nat.PortBinding{
+			{
+				HostIP:   "0.0.0.0",
+				HostPort: fmt.Sprintf("%d/udp", in.Node.P2PPort),
+			},
+		},
+	}
+	for _, p := range customPorts {
+		portBindings[nat.Port(p)] = []nat.PortBinding{
+			{
+				HostIP:   "0.0.0.0",
+				HostPort: p,
+			},
+		}
+	}
 
 	req := tc.ContainerRequest{
 		AlwaysPullImage: in.Node.PullImage,
@@ -162,7 +194,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		NetworkAliases: map[string][]string{
 			framework.DefaultNetworkName: {containerName},
 		},
-		ExposedPorts: []string{httpPort, p2pPort},
+		ExposedPorts: exposedPorts,
 		Entrypoint: []string{
 			"/bin/sh", "-c",
 			"chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials",
@@ -171,20 +203,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	}
 	if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {
 		req.HostConfigModifier = func(h *container.HostConfig) {
-			h.PortBindings = nat.PortMap{
-				nat.Port(httpPort): []nat.PortBinding{
-					{
-						HostIP:   "0.0.0.0",
-						HostPort: fmt.Sprintf("%d/tcp", in.Node.HTTPPort),
-					},
-				},
-				nat.Port(p2pPort): []nat.PortBinding{
-					{
-						HostIP:   "0.0.0.0",
-						HostPort: fmt.Sprintf("%d/udp", in.Node.P2PPort),
-					},
-				},
-			}
+			h.PortBindings = portBindings
 		}
 	}
 	files := []tc.ContainerFile{
@@ -268,10 +287,12 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	mpP2P := nat.Port(fmt.Sprintf("%d/udp", in.Node.P2PPort))
 
 	return &NodeOut{
-		HostURL:      fmt.Sprintf("http://%s:%s", host, mp.Port()),
-		HostP2PURL:   fmt.Sprintf("http://%s:%s", host, mpP2P.Port()),
-		DockerURL:    fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
-		DockerP2PUrl: fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
+		APIAuthUser:     DefaultAPIUser,
+		APIAuthPassword: DefaultAPIPassword,
+		HostURL:         fmt.Sprintf("http://%s:%s", host, mp.Port()),
+		HostP2PURL:      fmt.Sprintf("http://%s:%s", host, mpP2P.Port()),
+		DockerURL:       fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
+		DockerP2PUrl:    fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
 	}, nil
 }
 
