@@ -1110,7 +1110,7 @@ func SetNetworks(networkCfg config.NetworkConfig) ([]blockchain.EVMNetwork, erro
 			// Check for HTTP URLs
 			httpUrls, httpOk = networkCfg.RpcHttpUrls[selectedNetworks[i]]
 
-			// WS can be present but only if HTTP is also available, the CL node cannot funtion only on WS
+			// WS can be present but only if HTTP is also available, the CL node cannot function only on WS
 			if wsOk && !httpOk {
 				return nil, fmt.Errorf("WS RPC endpoint for %s network is set without an HTTP endpoint; only HTTP or both HTTP and WS are allowed", selectedNetworks[i])
 			}

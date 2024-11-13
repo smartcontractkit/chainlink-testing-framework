@@ -5,9 +5,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	pkg_seth "github.com/smartcontractkit/chainlink-testing-framework/seth"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/seth"
-	pkg_seth "github.com/smartcontractkit/chainlink-testing-framework/seth"
 )
 
 // Helper to create EVM networks with different configurations

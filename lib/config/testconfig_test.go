@@ -7,8 +7,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/ptr"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/ptr"
 )
 
 func TestReadConfigValuesFromEnvVars(t *testing.T) {
