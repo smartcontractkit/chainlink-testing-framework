@@ -197,8 +197,11 @@ func MergeSethAndEvmNetworkConfigs(evmNetwork blockchain.EVMNetwork, sethConfig 
 			if conf.Name == fmt.Sprint(pkg_seth.DefaultNetworkName) {
 				conf.Name = evmNetwork.Name
 				conf.PrivateKeys = evmNetwork.PrivateKeys
-				conf.URLs = evmNetwork.URLs
-
+				if len(evmNetwork.URLs) > 0 {
+					conf.URLs = evmNetwork.URLs
+				} else {
+					conf.URLs = evmNetwork.HTTPURLs
+				}
 				sethNetwork = conf
 				break
 			}
