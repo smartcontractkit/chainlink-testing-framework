@@ -25,6 +25,7 @@ var RunTestsCmd = &cobra.Command{
 		outputPath, _ := cmd.Flags().GetString("output-json")
 		threshold, _ := cmd.Flags().GetFloat64("threshold")
 		skipTests, _ := cmd.Flags().GetStringSlice("skip-tests")
+		printFailedTests, _ := cmd.Flags().GetBool("print-failed-tests")
 
 		// Check if project dependencies are correctly set up
 		if err := checkDependencies(projectPath); err != nil {
@@ -62,7 +63,7 @@ var RunTestsCmd = &cobra.Command{
 		failedTests := reports.FilterFailedTests(testResults, threshold)
 		skippedTests := reports.FilterSkippedTests(testResults)
 
-		if len(failedTests) > 0 {
+		if len(failedTests) > 0 && printFailedTests {
 			fmt.Printf("PassRatio threshold for flaky tests: %.2f\n", threshold)
 			fmt.Printf("%d failed tests:\n", len(failedTests))
 			reports.PrintTests(failedTests, os.Stdout)
@@ -102,6 +103,7 @@ func init() {
 	RunTestsCmd.Flags().String("output-json", "", "Path to output the test results in JSON format")
 	RunTestsCmd.Flags().Float64("threshold", 0.8, "Threshold for considering a test as flaky")
 	RunTestsCmd.Flags().StringSlice("skip-tests", nil, "Comma-separated list of test names to skip from running")
+	RunTestsCmd.Flags().Bool("print-failed-tests", true, "Print failed test results to the console")
 }
 
 func checkDependencies(projectPath string) error {
