@@ -1,10 +1,7 @@
 package cmd
 
 import (
-	"encoding/json"
-	"fmt"
 	"log"
-	"os"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/spf13/cobra"
@@ -15,7 +12,8 @@ var AggregateFailedCmd = &cobra.Command{
 	Short: "Aggregate all test results, then filter and output only failed tests based on a threshold",
 	Run: func(cmd *cobra.Command, args []string) {
 		resultsFolderPath, _ := cmd.Flags().GetString("results-path")
-		outputPath, _ := cmd.Flags().GetString("output-json")
+		outputResultsPath, _ := cmd.Flags().GetString("output-results")
+		outputLogsPath, _ := cmd.Flags().GetString("output-logs")
 		threshold, _ := cmd.Flags().GetFloat64("threshold")
 		minPassRatio, _ := cmd.Flags().GetFloat64("min-pass-ratio")
 
@@ -33,30 +31,17 @@ var AggregateFailedCmd = &cobra.Command{
 			}
 		}
 
-		// Output failed results to JSON file
-		if outputPath != "" && len(failedResults) > 0 {
-			if err := saveResults(outputPath, failedResults); err != nil {
-				log.Fatalf("Error writing failed results to file: %v", err)
-			}
-			fmt.Printf("Filtered failed test results saved to %s\n", outputPath)
-		} else {
-			fmt.Println("No failed tests found based on the specified threshold and min pass ratio.")
+		// Output results to JSON files
+		if len(failedResults) > 0 {
+			reports.SaveFilteredResultsAndLogs(outputResultsPath, outputLogsPath, failedResults)
 		}
 	},
 }
 
 func init() {
 	AggregateFailedCmd.Flags().String("results-path", "testresult/", "Path to the folder containing JSON test result files")
-	AggregateFailedCmd.Flags().String("output-json", "failed_tests.json", "Path to output the filtered failed test results in JSON format")
+	AggregateFailedCmd.Flags().String("output-results", "failed_tests.json", "Path to output the filtered failed test results in JSON format")
+	AggregateFailedCmd.Flags().String("output-logs", "failed_logs.json", "Path to output the filtered failed test logs in JSON format")
 	AggregateFailedCmd.Flags().Float64("threshold", 0.8, "Threshold for considering a test as failed")
 	AggregateFailedCmd.Flags().Float64("min-pass-ratio", 0.001, "Minimum pass ratio for considering a test as flaky. Used to distinguish between tests that are truly flaky (with inconsistent results) and those that are consistently failing.")
-}
-
-// Helper function to save results to JSON file
-func saveResults(filePath string, results []reports.TestResult) error {
-	data, err := json.MarshalIndent(results, "", "  ")
-	if err != nil {
-		return fmt.Errorf("error marshaling results: %v", err)
-	}
-	return os.WriteFile(filePath, data, 0644)
 }
