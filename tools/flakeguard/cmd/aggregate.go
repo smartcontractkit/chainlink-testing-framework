@@ -30,6 +30,6 @@ var AggregateAllCmd = &cobra.Command{
 
 func init() {
 	AggregateAllCmd.Flags().String("results-path", "testresult/", "Path to the folder containing JSON test result files")
-	AggregateFailedCmd.Flags().String("output-results", "failed_tests.json", "Path to output the filtered failed test results in JSON format")
-	AggregateFailedCmd.Flags().String("output-logs", "failed_logs.json", "Path to output the filtered failed test logs in JSON format")
+	AggregateAllCmd.Flags().String("output-results", "failed_tests.json", "Path to output the filtered failed test results in JSON format")
+	AggregateAllCmd.Flags().String("output-logs", "failed_logs.json", "Path to output the filtered failed test logs in JSON format")
 }
