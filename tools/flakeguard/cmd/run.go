@@ -26,6 +26,7 @@ var RunTestsCmd = &cobra.Command{
 		threshold, _ := cmd.Flags().GetFloat64("threshold")
 		skipTests, _ := cmd.Flags().GetStringSlice("skip-tests")
 		printFailedTests, _ := cmd.Flags().GetBool("print-failed-tests")
+		minPassRatio, _ := cmd.Flags().GetFloat64("min-pass-ratio")
 
 		// Check if project dependencies are correctly set up
 		if err := checkDependencies(projectPath); err != nil {
@@ -61,14 +62,17 @@ var RunTestsCmd = &cobra.Command{
 		passedTests := reports.FilterPassedTests(testResults, threshold)
 		failedTests := reports.FilterFailedTests(testResults, threshold)
 		skippedTests := reports.FilterSkippedTests(testResults)
+		flakyTests := reports.FilterFlakyTests(testResults, minPassRatio, threshold)
 
+		// Print all failed tests including flaky tests
 		if len(failedTests) > 0 && printFailedTests {
+			fmt.Printf("MinPassRatio threshold for flaky tests: %.2f\n", minPassRatio)
 			fmt.Printf("PassRatio threshold for flaky tests: %.2f\n", threshold)
 			fmt.Printf("%d failed tests:\n", len(failedTests))
 			reports.PrintTests(failedTests, os.Stdout)
 		}
 
-		fmt.Printf("Summary: %d passed, %d skipped, %d failed\n", len(passedTests), len(skippedTests), len(failedTests))
+		fmt.Printf("Summary: %d passed, %d skipped, %d failed, %d flaky\n", len(passedTests), len(skippedTests), len(failedTests), len(flakyTests))
 
 		// Save the test results in JSON format
 		if outputPath != "" && len(testResults) > 0 {
@@ -82,8 +86,8 @@ var RunTestsCmd = &cobra.Command{
 			fmt.Printf("All test results saved to %s\n", outputPath)
 		}
 
-		if len(failedTests) > 0 {
-			// Fail if any tests failed
+		if len(flakyTests) > 0 {
+			// Exit with error code if there are flaky tests
 			os.Exit(1)
 		} else if len(testResults) == 0 {
 			fmt.Printf("No tests were run for the specified packages.\n")
@@ -103,6 +107,7 @@ func init() {
 	RunTestsCmd.Flags().Float64("threshold", 0.8, "Threshold for considering a test as flaky")
 	RunTestsCmd.Flags().StringSlice("skip-tests", nil, "Comma-separated list of test names to skip from running")
 	RunTestsCmd.Flags().Bool("print-failed-tests", true, "Print failed test results to the console")
+	RunTestsCmd.Flags().Float64("min-pass-ratio", 0.001, "Minimum pass ratio for considering a test as flaky. Used to distinguish between tests that are truly flaky (with inconsistent results) and those that are consistently failing.")
 }
 
 func checkDependencies(projectPath string) error {

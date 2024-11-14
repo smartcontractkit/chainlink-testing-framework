@@ -36,6 +36,17 @@ func FilterFailedTests(results []TestResult, threshold float64) []TestResult {
 	return failedTests
 }
 
+// FilterFlakyTests returns a slice of TestResult where the pass ratio is between the min pass ratio and the threshold.
+func FilterFlakyTests(testResults []TestResult, minPassRatio, threshold float64) []TestResult {
+	var flakyTests []TestResult
+	for _, test := range testResults {
+		if test.PassRatio >= minPassRatio && test.PassRatio < threshold && !test.Skipped {
+			flakyTests = append(flakyTests, test)
+		}
+	}
+	return flakyTests
+}
+
 // FilterPassedTests returns a slice of TestResult where the tests passed and were not skipped.
 func FilterPassedTests(results []TestResult, threshold float64) []TestResult {
 	var passedTests []TestResult
