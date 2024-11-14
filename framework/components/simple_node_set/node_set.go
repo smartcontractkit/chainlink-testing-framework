@@ -117,6 +117,9 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output
 			if err != nil {
 				return err
 			}
+			if in.NodeSpecs[overrideIdx].Node.TestConfigOverrides != "" {
+				net = in.NodeSpecs[overrideIdx].Node.TestConfigOverrides
+			}
 
 			nodeSpec := &clnode.Input{
 				DataProviderURL: fakeUrl,
