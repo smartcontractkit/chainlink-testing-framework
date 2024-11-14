@@ -26,12 +26,9 @@ type Profile struct {
 	endTime      time.Time
 }
 
-// Run starts the Profile execution, handling bootstrap errors and ensuring synchronization readiness.
-// It records the start time, optionally annotates the run start on Grafana, and executes all associated generators.
-// If the wait parameter is true, it waits for all generators to complete. Before alert checking,
-// it may pause for a configured duration. Upon completion, it records the end time, optionally annotates
-// the run end on Grafana, checks for dashboard alerts if configured, and returns the updated Profile
-// or any encountered error.
+// Run executes the profile's generators, manages Grafana annotations, and handles alert checks.
+// If wait is true, it waits for all generators to complete before proceeding.
+// It returns the updated Profile and any encountered error.
 func (m *Profile) Run(wait bool) (*Profile, error) {
 	if m.bootstrapErr != nil {
 		return m, m.bootstrapErr
@@ -73,10 +70,9 @@ func (m *Profile) Run(wait bool) (*Profile, error) {
 	return m, nil
 }
 
-// printDashboardLink retrieves the Grafana dashboard URL for the current profile run and logs it.  
-// If the Grafana API is not configured or an error occurs while fetching the dashboard,  
-// appropriate warnings are logged instead. This function is typically called after a profiling  
-// run to provide a direct link to the associated Grafana dashboard for analysis.
+// printDashboardLink retrieves the Grafana dashboard URL for the current run
+// and logs it. It provides users with a direct link to monitor metrics and alerts
+// related to the profile execution.
 func (m *Profile) printDashboardLink() {
 	if m.grafanaAPI == nil {
 		log.Warn().Msg("Grafana API not set, skipping dashboard link print")
@@ -97,10 +93,9 @@ func (m *Profile) printDashboardLink() {
 	}
 }
 
-// annotateRunStartOnGrafana creates and posts a "Test Started" annotation to Grafana with profile details.
-// It includes the profile ID, start time, and a list of generators. If the Grafana API
-// is not configured, it logs a warning and skips the annotation. Any errors encountered
-// while posting the annotation are also logged.
+// annotateRunStartOnGrafana posts a run start annotation to the Grafana dashboard.
+// It includes run details for monitoring and tracking purposes.
+// Logs a warning if the Grafana API is not configured.
 func (m *Profile) annotateRunStartOnGrafana() {
 	if m.grafanaAPI == nil {
 		log.Warn().Msg("Grafana API not set, skipping annotations")
@@ -131,9 +126,9 @@ func (m *Profile) annotateRunStartOnGrafana() {
 	}
 }
 
-// annotateRunEndOnGrafana records the completion of a profile run by posting an annotation to Grafana.
-// It includes the profile ID, end time, and a list of generators used.
-// If the Grafana API is not configured or the annotation fails, a warning is logged.
+// annotateRunEndOnGrafana creates and posts an end-of-run annotation to Grafana,
+// including profile ID, end time, and generator details.
+// It is used to mark the completion of a profile run on the Grafana dashboard.
 func (m *Profile) annotateRunEndOnGrafana() {
 	if m.grafanaAPI == nil {
 		log.Warn().Msg("Grafana API not set, skipping annotations")
@@ -164,25 +159,23 @@ func (m *Profile) annotateRunEndOnGrafana() {
 	}
 }
 
-// Pause pauses all generators associated with the profile.
-// It iterates through each generator in the Profile and invokes their Pause method,
-// which logs a warning and updates their paused status.
+// Pause suspends all generators within the profile.
+// It is used to temporarily halt all generator operations managed by the profile.
 func (m *Profile) Pause() {
 	for _, g := range m.Generators {
 		g.Pause()
 	}
 }
 
-// Resume resumes all generators associated with the Profile.
+// Resume resumes all generators associated with the profile, allowing them to continue their operations.
 func (m *Profile) Resume() {
 	for _, g := range m.Generators {
 		g.Resume()
 	}
 }
 
-// Wait blocks until all generators associated with the Profile have completed their execution.
-// It launches a goroutine for each generator's Wait method and waits for all to finish.
-// This ensures that the Profile only proceeds once all generator processes are done.
+// Wait blocks until all generators associated with the Profile have finished executing,
+// ensuring all operations are complete before proceeding.
 func (m *Profile) Wait() {
 	for _, g := range m.Generators {
 		g := g
@@ -195,7 +188,10 @@ func (m *Profile) Wait() {
 	m.testEndedWg.Wait()
 }
 
-// NewProfile creates and returns a new Profile with a unique ProfileID, an empty slice of Generators, and an initialized sync.WaitGroup for managing test completion.
+// NewProfile creates and returns a new Profile instance.
+// It initializes the ProfileID with a unique identifier,
+// an empty slice of Generators, and a WaitGroup for synchronization.
+// Use it to instantiate profiles with default settings.
 func NewProfile() *Profile {
 	return &Profile{
 		ProfileID:   uuid.NewString()[0:5],
@@ -204,9 +200,7 @@ func NewProfile() *Profile {
 	}
 }
 
-// Add appends the provided Generator to the Profile's Generators slice.
-// If an error is supplied, it sets the Profile's bootstrapErr field instead.
-// It returns the updated Profile.
+// Add appends a Generator to the Profile. If an error is provided, it records the bootstrap error and does not add the Generator.
 func (m *Profile) Add(g *Generator, err error) *Profile {
 	if err != nil {
 		m.bootstrapErr = err
@@ -224,17 +218,17 @@ type GrafanaOpts struct {
 	CheckDashboardAlertsAfterRun string        `toml:"grafana_check_alerts_after_run_on_dashboard_uid"` // Grafana dashboardUID to check for alerts after run
 }
 
-// WithGrafana initializes the Profile with a Grafana client using the provided GrafanaOpts.
-// It sets the grafanaAPI and grafanaOpts fields and returns the updated Profile.
+// WithGrafana configures the Profile with Grafana settings.
+// It initializes the Grafana client using the provided options
+// and returns the updated Profile instance.
 func (m *Profile) WithGrafana(opts *GrafanaOpts) *Profile {
 	m.grafanaAPI = grafana.NewGrafanaClient(opts.GrafanaURL, opts.GrafanaToken)
 	m.grafanaOpts = *opts
 	return m
 }
 
-// waitSyncGroupReady waits for the synchronization group to be ready.
-// It checks the required environment variables and ensures the synchronization
-// process completes successfully. An error is returned if the synchronization fails.
+// waitSyncGroupReady waits for the synchronization group to be ready based on environment variables.
+// It ensures dependencies are initialized before proceeding with execution.
 func waitSyncGroupReady() error {
 	if os.Getenv("WASP_NODE_ID") != "" {
 		kc := NewK8sClient()

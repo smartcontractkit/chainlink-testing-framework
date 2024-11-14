@@ -27,8 +27,8 @@ type LokiLogWrapper struct {
 	client    *LokiClient
 }
 
-// NewLokiLogWrapper creates a new LokiLogWrapper with the specified maximum number of errors.
-// The wrapper initializes internal structures to track and manage error states, enabling effective error handling within LokiClient operations.
+// NewLokiLogWrapper initializes a LokiLogWrapper with the specified maximum number of errors.
+// It is used to track and limit error occurrences within the LokiClient.
 func NewLokiLogWrapper(maxErrors int) *LokiLogWrapper {
 	return &LokiLogWrapper{
 		MaxErrors: maxErrors,
@@ -36,16 +36,14 @@ func NewLokiLogWrapper(maxErrors int) *LokiLogWrapper {
 	}
 }
 
-// SetClient assigns the given LokiClient to the LokiLogWrapper.
-// It establishes the client used by the log wrapper to send logs to the Loki service.
+// SetClient assigns a LokiClient to the LokiLogWrapper.
+// Use it to link the log wrapper with a specific Loki client instance for managing log operations.
 func (m *LokiLogWrapper) SetClient(c *LokiClient) {
 	m.client = c
 }
 
-// Log processes the provided key-value pairs for logging with Loki.
-// It handles errors up to MaxErrors, logs malformed messages when insufficient data is provided,
-// appends encountered errors, and records internal trace logs.
-// Returns an error if logging fails.
+// Log processes and forwards log entries to Loki, handling malformed messages and recording errors.
+// It ensures error limits are respected and logs at appropriate levels for monitoring purposes.
 func (m *LokiLogWrapper) Log(kvars ...interface{}) error {
 	if len(m.errors) > m.MaxErrors {
 		return nil
@@ -75,7 +73,8 @@ type LokiClient struct {
 	lokiClient.Client
 }
 
-// Handle sends the string data `s` to Loki with the specified label set `ls` and timestamp `t`. If the number of recorded errors exceeds `MaxErrors`, it returns an error. On successful execution, it logs the operation at trace level and enqueues the entry for transmission to Loki.
+// Handle sends a log entry with the given labels, timestamp, and message to the Loki service.
+// It checks error thresholds and returns an error if sending fails or limits are exceeded.
 func (m *LokiClient) Handle(ls model.LabelSet, t time.Time, s string) error {
 	if m.logWrapper.MaxErrors != -1 && len(m.logWrapper.errors) > m.logWrapper.MaxErrors {
 		return fmt.Errorf("can't send data to Loki, errors: %v", m.logWrapper.errors)
@@ -89,8 +88,8 @@ func (m *LokiClient) Handle(ls model.LabelSet, t time.Time, s string) error {
 	return nil
 }
 
-// HandleStruct sends the provided struct to Loki using the specified label set and timestamp.
-// It formats the data for Loki ingestion and returns an error if the operation fails.
+// HandleStruct marshals the provided struct to JSON and sends it to Loki with the specified labels and timestamp.
+// Use this function to log structured data in a decentralized logging system.
 func (m *LokiClient) HandleStruct(ls model.LabelSet, t time.Time, st interface{}) error {
 	d, err := json.Marshal(st)
 	if err != nil {
@@ -99,8 +98,9 @@ func (m *LokiClient) HandleStruct(ls model.LabelSet, t time.Time, st interface{}
 	return m.Handle(ls, t, string(d))
 }
 
-// StopNow immediately stops the Loki client.
-// It terminates any ongoing operations and releases associated resources.
+// StopNow gracefully terminates the Loki client, ensuring all active streams
+// are closed and resources are released. Use this function to stop Loki when
+// shutting down services or when Loki is no longer needed.
 func (m *LokiClient) StopNow() {
 	m.Client.StopNow()
 }
@@ -139,7 +139,8 @@ type LokiConfig struct {
 	MaxLineSizeTruncate     bool
 }
 
-// DefaultLokiConfig returns a pointer to a LokiConfig initialized with default values for error handling, batching parameters, timeouts, and metrics exposure.
+// DefaultLokiConfig returns a LokiConfig initialized with default parameters.
+// It serves as a base configuration for Loki clients, allowing users to customize settings as needed.
 func DefaultLokiConfig() *LokiConfig {
 	return &LokiConfig{
 		MaxErrors:               5,
@@ -154,10 +155,7 @@ func DefaultLokiConfig() *LokiConfig {
 	}
 }
 
-// NewEnvLokiConfig initializes a LokiConfig using environment variables.
-// It sets TenantID, URL, Token, and BasicAuth from LOKI_TENANT_ID,
-// LOKI_URL, LOKI_TOKEN, and LOKI_BASIC_AUTH respectively.
-// The function returns the configured LokiConfig instance.
+// NewEnvLokiConfig creates a LokiConfig populated with settings from environment variables.
 func NewEnvLokiConfig() *LokiConfig {
 	d := DefaultLokiConfig()
 	d.TenantID = os.Getenv("LOKI_TENANT_ID")
@@ -167,9 +165,8 @@ func NewEnvLokiConfig() *LokiConfig {
 	return d
 }
 
-// NewLokiConfig initializes a new LokiConfig with optional parameters.
-// If endpoint, tenant, basicAuth, or token are provided and non-nil, they override the default configuration.
-// It returns a pointer to the configured LokiConfig instance.
+// NewLokiConfig initializes a LokiConfig with the provided endpoint, tenant, basicAuth, and token.
+// Use it to customize connection settings for the Loki logging service.
 func NewLokiConfig(endpoint *string, tenant *string, basicAuth *string, token *string) *LokiConfig {
 	d := DefaultLokiConfig()
 	if endpoint != nil {
@@ -187,10 +184,8 @@ func NewLokiConfig(endpoint *string, tenant *string, basicAuth *string, token *s
 	return d
 }
 
-// NewLokiClient initializes a new LokiClient using the given LokiConfig.
-// It validates the configuration parameters, sets up authentication if provided,
-// and establishes a connection to the Loki server. Returns the configured LokiClient
-// or an error if the configuration is invalid or the connection fails.
+// NewLokiClient initializes a new LokiClient with the given LokiConfig.
+// It validates the configuration, sets up authentication, and prepares the client for interacting with Loki for logging purposes.
 func NewLokiClient(extCfg *LokiConfig) (*LokiClient, error) {
 	_, err := http.Get(extCfg.URL)
 	if err != nil {

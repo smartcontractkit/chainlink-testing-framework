@@ -7,12 +7,15 @@ type SliceBuffer[T any] struct {
 	Data     []T
 }
 
-// NewSliceBuffer creates and returns a new SliceBuffer for elements of type T with the specified capacity.
+// NewSliceBuffer creates a new SliceBuffer with the specified capacity.
+// It provides an efficient way to store and manage a fixed number of elements,
+// enabling optimized access and manipulation in concurrent and decentralized applications.
 func NewSliceBuffer[T any](cap int) *SliceBuffer[T] {
 	return &SliceBuffer[T]{Capacity: cap, Data: make([]T, 0)}
 }
 
-// Append adds the element s to the SliceBuffer. If the buffer has not reached its capacity, s is appended to the data slice. Once the capacity is exceeded, Append overwrites the oldest element in the buffer. The internal index is incremented to track the next insertion point.
+// Append adds an element to the SliceBuffer. When the buffer reaches its capacity, it overwrites the oldest item.
+// This function is useful for maintaining a fixed-size, circular collection of elements.
 func (m *SliceBuffer[T]) Append(s T) {
 	if m.Idx >= m.Capacity {
 		m.Idx = 0

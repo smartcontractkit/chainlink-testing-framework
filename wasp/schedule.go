@@ -11,7 +11,8 @@ const (
 	DefaultStepChangePrecision = 10
 )
 
-// Plain returns a slice of Segment containing a single Segment initialized with the provided from time and duration.
+// Plain creates a slice containing a single Segment starting at `from` with the specified `duration`.
+// It is used to initialize basic segments with defined timing.
 func Plain(from int64, duration time.Duration) []*Segment {
 	return []*Segment{
 		{
@@ -21,9 +22,9 @@ func Plain(from int64, duration time.Duration) []*Segment {
 	}
 }
 
-// Steps generates a slice of Segment pointers, each starting from 'from' and incremented by 'increase'.
-// It creates 'steps' number of segments, dividing the total 'duration' equally across each segment.
-// The function returns the resulting slice of segments.
+// Steps generates a slice of Segment pointers starting from 'from', incremented by 'increase' for each of 'steps' steps.
+// Each Segment has a duration equal to the total duration divided by the number of steps.
+// Use this function to create uniformly distributed segments over a specified time period.
 func Steps(from, increase int64, steps int, duration time.Duration) []*Segment {
 	segments := make([]*Segment, 0)
 	perStepDuration := duration / time.Duration(steps)
@@ -37,9 +38,8 @@ func Steps(from, increase int64, steps int, duration time.Duration) []*Segment {
 	return segments
 }
 
-// Combine merges multiple slices of *Segment into a single slice.
-// It accepts a variable number of []*Segment and appends them in order.
-// The returned slice contains all segments from the provided slices.
+// Combine merges multiple slices of Segment pointers into a single slice.
+// It is useful for aggregating segment data from various sources.
 func Combine(segs ...[]*Segment) []*Segment {
 	acc := make([]*Segment, 0)
 	for _, ss := range segs {
@@ -48,9 +48,9 @@ func Combine(segs ...[]*Segment) []*Segment {
 	return acc
 }
 
-// CombineAndRepeat combines multiple Segment slices and repeats the combined sequence the specified number of times.
-// It panics with ErrNoSchedule if no segment slices are provided.
-// The returned slice contains all segments from each input slice, repeated `times` times.
+// CombineAndRepeat concatenates multiple Segment slices and repeats the combined sequence the specified number of times.
+// It returns a single slice containing the repeated segments.
+// Panics with ErrNoSchedule if no segments are provided.
 func CombineAndRepeat(times int, segs ...[]*Segment) []*Segment {
 	if len(segs) == 0 {
 		panic(ErrNoSchedule)

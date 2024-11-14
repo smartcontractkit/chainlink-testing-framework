@@ -23,9 +23,8 @@ type MockGun struct {
 	Data []string
 }
 
-// NewMockGun initializes a new MockGun with the provided configuration.
-// It sets the cfg field and initializes Data as an empty slice of strings.
-// Returns a pointer to the MockGun instance.
+// NewMockGun creates a new MockGun instance using the provided configuration.
+// It is used to simulate gun behavior for testing or development purposes.
 func NewMockGun(cfg *MockGunConfig) *MockGun {
 	return &MockGun{
 		cfg:  cfg,
@@ -33,9 +32,9 @@ func NewMockGun(cfg *MockGunConfig) *MockGun {
 	}
 }
 
-// Call performs a simulated service call using the provided Generator.
-// Depending on the MockGun's configuration, it may induce delays, fail the call, or cause a timeout.
-// It returns a Response that reflects the outcome of the simulated call.
+// Call simulates a request to the Generator.
+// Depending on MockGun's configuration, it may succeed, fail, or timeout,
+// allowing testing of various response scenarios.
 func (m *MockGun) Call(l *Generator) *Response {
 	if m.cfg.InternalStop {
 		l.Stop()
@@ -58,9 +57,8 @@ func (m *MockGun) Call(l *Generator) *Response {
 	return &Response{Data: "successCallData"}
 }
 
-// convertResponsesData safely retrieves the OK data as a slice of strings along with the corresponding OK and failed responses.
-// It locks the necessary mutexes to ensure thread-safe access to the responses data.
-// The function returns the extracted OK data, the OK responses, and the failed responses.
+// convertResponsesData extracts successful and failed response data from the Generator.
+// It returns a slice of successful response strings, OK responses, and failed responses.
 func convertResponsesData(g *Generator) ([]string, []*Response, []*Response) {
 	g.responsesData.okDataMu.Lock()
 	defer g.responsesData.okDataMu.Unlock()

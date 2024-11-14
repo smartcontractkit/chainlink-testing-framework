@@ -14,14 +14,14 @@ type Responses struct {
 	ch chan *Response
 }
 
-// NewResponses creates a new Responses that processes responses from the provided channel ch.
-// It returns a pointer to a Responses instance.
+// NewResponses creates a Responses instance using the provided channel.
+// It enables concurrent processing and management of Response objects.
 func NewResponses(ch chan *Response) *Responses {
 	return &Responses{ch}
 }
 
-// OK processes a successful resty.Response by sending a Response struct to the Responses channel.
-// It records the duration of the response, associates it with the specified group, and includes the response body data.
+// OK sends a successful resty.Response along with its duration and group to the Responses channel.
+// It is used to handle and process successful responses in a concurrent environment.
 func (m *Responses) OK(r *resty.Response, group string) {
 	m.ch <- &Response{
 		Duration: r.Time(),
@@ -30,8 +30,8 @@ func (m *Responses) OK(r *resty.Response, group string) {
 	}
 }
 
-// Err sends a failed Response to the Responses channel with the provided error, group, and resty.Response.
-// It marks the Response as failed, includes the error message, duration, group name, and response body.
+// Err sends a failed response, including error details and response data, to the Responses channel.
+// It is used to handle and propagate errors within the response processing workflow.
 func (m *Responses) Err(r *resty.Response, group string, err error) {
 	m.ch <- &Response{
 		Failed:   true,

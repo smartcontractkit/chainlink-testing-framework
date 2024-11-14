@@ -7,11 +7,9 @@ import (
 	"github.com/K-Phoen/grabana/timeseries/axis"
 )
 
-// RPSPanel generates a responses per second time series panel for the dashboard using the provided data source and query parameters.
-// It configures visualization settings including legend placement, transparency, span, height, and axis units.
-// The panel aggregates response counts from Prometheus, grouping them by node ID, test name, generator name, and call group.
-// This allows monitoring of response rates segmented by generator and call group within the specified time frame.
-// It returns a row.Option that can be integrated into a dashboard layout.
+// RPSPanel creates a time series panel displaying responses per second
+// grouped by generator and call group. It is used to monitor
+// response rates in the dashboard.
 func RPSPanel(dataSource string, query map[string]string) row.Option {
 	queryString := ""
 	for key, value := range query {
@@ -40,7 +38,8 @@ func RPSPanel(dataSource string, query map[string]string) row.Option {
 	)
 }
 
-// RPSVUPerScheduleSegmentsPanel creates a dashboard row panel that visualizes Requests Per Second (RPS) and Virtual Users (VUs) segmented by schedule. It utilizes the provided data source and query parameters to configure multiple time series widgets, fetching and displaying relevant performance metrics from Prometheus. This panel integrates seamlessly with other dashboard components to offer comprehensive insights into system performance across different schedule segments.
+// RPSVUPerScheduleSegmentsPanel creates a dashboard panel displaying Requests Per Second and Virtual Users segmented by schedule.
+// It is used to monitor performance metrics over time for different test configurations.
 func RPSVUPerScheduleSegmentsPanel(dataSource string, query map[string]string) row.Option {
 	queryString := ""
 	for key, value := range query {

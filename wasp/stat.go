@@ -19,10 +19,9 @@ var (
 
 var once = &sync.Once{}
 
-// CPUCheckLoop initializes a background goroutine that periodically monitors CPU idle and free memory percentages.
-// If the CPU idle falls below CPUIdleThresholdPercentage or free memory falls below MEMFreeThresholdPercentage,
-// it logs a fatal error, terminating the application. The monitoring loop is executed only once, regardless
-// of how many times CPUCheckLoop is called.
+// CPUCheckLoop continuously monitors CPU idle and memory free percentages.
+// It terminates the application if resource thresholds are exceeded.
+// Use it to ensure the system operates within defined resource limits.
 func CPUCheckLoop() {
 	once.Do(func() {
 		//nolint

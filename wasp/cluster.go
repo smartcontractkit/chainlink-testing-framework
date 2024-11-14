@@ -68,10 +68,8 @@ type ClusterConfig struct {
 	tmpHelmFilePath string
 }
 
-// Defaults initializes default settings for the ClusterConfig.
-// It populates HelmValues and sets necessary file paths if they are not already configured.
-// The parameter a allows for customization during the defaulting process.
-// Returns an error if any defaulting operation fails.
+// Defaults initializes ClusterConfig with default values for any unset fields.
+// It ensures all necessary configuration parameters are provided for proper cluster deployment.
 func (m *ClusterConfig) Defaults(a int) error {
 	// TODO: will it be more clear if we move Helm values to a struct
 	// TODO: or should it be like that for extensibility of a chart without reflection?
@@ -136,8 +134,8 @@ func (m *ClusterConfig) Defaults(a int) error {
 	return nil
 }
 
-// Validate checks that ClusterConfig has all required fields set.
-// It returns an error if Namespace is empty or if the "jobs" entry in HelmValues is missing.
+// Validate checks that the ClusterConfig has all required fields set.
+// It returns an error if any mandatory configuration is missing.
 func (m *ClusterConfig) Validate() (err error) {
 	if m.Namespace == "" {
 		err = errors.Join(err, ErrNoNamespace)
@@ -148,9 +146,9 @@ func (m *ClusterConfig) Validate() (err error) {
 	return
 }
 
-// parseECRImageURI parses an ECR image URI and returns the registry, repository, and tag.
-// It expects the URI to follow the format ${registry}/${repo}:${tag}.
-// If the URI does not match this format, an error is returned.
+// parseECRImageURI parses an ECR image URI into registry, repository, and tag.
+// It returns an error if the URI format is invalid.
+// Use it to extract components for building and deploying Docker images.
 func parseECRImageURI(uri string) (registry, repo, tag string, err error) {
 	re := regexp.MustCompile(`^([^/]+)/([^:]+):(.+)$`)
 	matches := re.FindStringSubmatch(uri)
@@ -168,11 +166,10 @@ type ClusterProfile struct {
 	Cancel context.CancelFunc
 }
 
-// NewClusterProfile creates a new ClusterProfile using the provided ClusterConfig.
-// It validates the configuration, sets default values, and initializes the Kubernetes client.
-// The function parses the test timeout duration and sets up a context with the specified timeout.
-// If UpdateImage is enabled in the configuration, it builds and pushes the image.
-// It returns the initialized ClusterProfile or an error if any step fails.
+// NewClusterProfile creates a new ClusterProfile from the provided ClusterConfig.
+// It validates the configuration, sets default values, and initializes necessary components.
+// Optionally, it builds and pushes images based on the configuration.
+// Use this function to initialize cluster management.
 func NewClusterProfile(cfg *ClusterConfig) (*ClusterProfile, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -198,9 +195,8 @@ func NewClusterProfile(cfg *ClusterConfig) (*ClusterProfile, error) {
 	return cp, nil
 }
 
-// buildAndPushImage builds and pushes a Docker image based on the ClusterProfile configuration.
-// It parses the ECR image URI, constructs the Docker build and push command,
-// executes the command, and returns any encountered error.
+// buildAndPushImage builds a Docker image using the cluster's configuration and pushes it to the specified registry.
+// It returns an error if the build or push operation fails.
 func (m *ClusterProfile) buildAndPushImage() error {
 	registry, repo, tag, err := parseECRImageURI(m.cfg.HelmValues["image"])
 	if err != nil {
@@ -219,10 +215,8 @@ func (m *ClusterProfile) buildAndPushImage() error {
 	return ExecCmd(cmd)
 }
 
-// deployHelm installs the Helm chart using the provided testName and the ClusterProfile's configuration.
-// It sets the necessary Helm values, namespace, and deployment timeout based on the configuration.
-// The function constructs the Helm install command, logs the execution, and runs the command.
-// Returns an error if the Helm deployment fails.
+// deployHelm installs a Helm chart using the provided test name and the ClusterProfile's configuration.
+// It constructs the Helm install command with specified values, namespace, and timeout, then executes it.
 func (m *ClusterProfile) deployHelm(testName string) error {
 	//nolint
 	defer os.Remove(m.cfg.tmpHelmFilePath)
@@ -237,9 +231,9 @@ func (m *ClusterProfile) deployHelm(testName string) error {
 	return ExecCmd(cmd.String())
 }
 
-// Run deploys the Helm chart using a generated test name and tracks the specified number of jobs.
-// It modifies the test name to ensure it starts with a letter and retrieves job configurations
-// from the cluster profile. Returns an error if deployment or job tracking fails.
+// Run deploys the Helm chart and tracks job execution for the ClusterProfile.
+// It generates a unique ID, deploys via Helm, and monitors jobs in the namespace.
+// Returns an error if deployment or tracking fails.
 func (m *ClusterProfile) Run() error {
 	testName := uuid.NewString()[0:8]
 	tn := []rune(testName)

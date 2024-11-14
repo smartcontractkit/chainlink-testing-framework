@@ -12,9 +12,9 @@ type Sampler struct {
 	cfg *SamplerConfig
 }
 
-// NewSampler creates a new Sampler with the provided configuration.
-// If cfg is nil, a default SamplerConfig is used.
-// It returns a pointer to the initialized Sampler.
+// NewSampler creates a Sampler using the provided SamplerConfig.
+// If cfg is nil, a default configuration is applied.
+// Use this to initialize sampling behavior for tracking successful call results.
 func NewSampler(cfg *SamplerConfig) *Sampler {
 	if cfg == nil {
 		cfg = &SamplerConfig{SuccessfulCallResultRecordRatio: 100}
@@ -22,9 +22,9 @@ func NewSampler(cfg *SamplerConfig) *Sampler {
 	return &Sampler{cfg: cfg}
 }
 
-// ShouldRecord determines whether a response should be recorded based on its error status and the sampler's configuration.
-// It updates the Stats by incrementing SamplesRecorded or SamplesSkipped accordingly.
-// Returns true if the response meets the criteria to be recorded, otherwise false.
+// ShouldRecord determines whether a Response should be recorded based on its status and the sampler's configuration.
+// It updates the provided Stats with the decision.
+// Returns true to record the response or false to skip it.
 func (m *Sampler) ShouldRecord(cr *Response, s *Stats) bool {
 	if cr.Error != "" || cr.Failed || cr.Timeout {
 		s.SamplesRecorded.Add(1)

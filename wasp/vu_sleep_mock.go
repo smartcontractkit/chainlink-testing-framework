@@ -28,8 +28,8 @@ type MockVirtualUser struct {
 }
 
 // NewMockVU creates a new MockVirtualUser with the provided configuration.
-// It initializes the virtual user controls and prepares data storage.
-// It returns a pointer to the initialized MockVirtualUser.
+// It initializes control structures and prepares data storage.
+// Use this function to simulate virtual users for testing decentralized services.
 func NewMockVU(cfg *MockVirtualUserConfig) *MockVirtualUser {
 	return &MockVirtualUser{
 		VUControl: NewVUControl(),
@@ -38,9 +38,8 @@ func NewMockVU(cfg *MockVirtualUserConfig) *MockVirtualUser {
 	}
 }
 
-// Clone creates and returns a new VirtualUser based on the MockVirtualUser.
-// The cloned user shares the original configuration and initializes a new VUControl.
-// This method is used to spawn additional virtual user instances within a Generator.
+// Clone returns a copy of the MockVirtualUser with a new VUControl and duplicated configuration.
+// It is used to create independent virtual user instances for load testing.
 func (m *MockVirtualUser) Clone(_ *Generator) VirtualUser {
 	return &MockVirtualUser{
 		VUControl: NewVUControl(),
@@ -49,9 +48,8 @@ func (m *MockVirtualUser) Clone(_ *Generator) VirtualUser {
 	}
 }
 
-// Setup initializes the MockVirtualUser using the provided Generator.
-// It returns an error if the setup is configured to fail.
-// Otherwise, it completes the setup process successfully.
+// Setup initializes the VirtualUser using the provided Generator.
+// It prepares necessary resources and returns an error if the setup process fails.
 func (m *MockVirtualUser) Setup(_ *Generator) error {
 	if m.cfg.SetupFailure {
 		return errors.New("setup failure")
@@ -60,9 +58,8 @@ func (m *MockVirtualUser) Setup(_ *Generator) error {
 	return nil
 }
 
-// Teardown performs the cleanup process for the VirtualUser.
-// It releases any allocated resources and ensures that the user is properly
-// disconnected. An error is returned if the teardown operation fails.
+// Teardown cleans up the VirtualUser by releasing resources and performing necessary shutdown procedures.
+// It returns an error if the teardown process fails, allowing callers to handle cleanup failures appropriately.
 func (m *MockVirtualUser) Teardown(_ *Generator) error {
 	if m.cfg.TeardownFailure {
 		return errors.New("teardown failure")
@@ -71,12 +68,8 @@ func (m *MockVirtualUser) Teardown(_ *Generator) error {
 	return nil
 }
 
-// Call executes a simulated operation for the MockVirtualUser.
-// It introduces a delay based on the CallSleep configuration.
-// Depending on FailRatio and TimeoutRatio settings, the call may randomly fail or timeout.
-// On failure, it sends a failed Response to the Generator's ResponsesChan.
-// If a timeout occurs, it delays further before sending the response.
-// On success, a successful Response is sent to the Generator's ResponsesChan.
+// Call simulates a virtual user's call to the Generator.
+// It sends a Response to the Generator's ResponsesChan, which may indicate success, failure, or timeout based on the mock configuration.
 func (m *MockVirtualUser) Call(l *Generator) {
 	startedAt := time.Now()
 	time.Sleep(m.cfg.CallSleep)

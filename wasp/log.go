@@ -13,17 +13,13 @@ const (
 	LogLevelEnvVar = "WASP_LOG_LEVEL"
 )
 
-// init initializes the application's default logging configuration.
-// It sets the logging level based on the LOG_LEVEL environment variable,
-// defaulting to "info" if the variable is not set.
-// If an invalid log level is provided, the application panics.
+// init initializes the default logging configuration for the package by setting the logging level and output destination.
 func init() {
 	initDefaultLogging()
 }
 
-// initDefaultLogging initializes the application's logging system.
-// It sets the log level based on the LOG_LEVEL environment variable, defaulting to "info" if not set,
-// and configures logs to be output to standard error.
+// initDefaultLogging configures the default logger using the LogLevelEnvVar environment variable.
+// It sets the logging output to standard error and defaults to the "info" level if the variable is unset.
 func initDefaultLogging() {
 	lvlStr := os.Getenv(LogLevelEnvVar)
 	if lvlStr == "" {
@@ -36,11 +32,9 @@ func initDefaultLogging() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr}).Level(lvl)
 }
 
-// GetLogger returns a zerolog.Logger configured for the specified component.
-// If the testing object t is non-nil, the logger integrates with the test output.
-// The log level is determined by the LogLevelEnvVar environment variable or defaults to "info".
-// The logger includes a timestamp and the component name as a field.
-// It outputs logs to standard error in a console-friendly format.
+// GetLogger returns a zerolog.Logger configured with the specified component name and log level.
+// If a *testing.T is provided, the logger integrates with test output.
+// Use it to enable consistent logging across components with environment-based log level control.
 func GetLogger(t *testing.T, componentName string) zerolog.Logger {
 	lvlStr := os.Getenv(LogLevelEnvVar)
 	if lvlStr == "" {

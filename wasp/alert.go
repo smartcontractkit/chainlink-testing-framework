@@ -23,9 +23,9 @@ type AlertChecker struct {
 	grafanaClient       *grafana.Client
 }
 
-// NewAlertChecker creates and initializes a new AlertChecker.
-// It retrieves GRAFANA_URL and GRAFANA_TOKEN from environment variables, panicking if they are not set.
-// The AlertChecker is configured with the provided testing.T, a Grafana client, and a logger.
+// NewAlertChecker creates a new AlertChecker using Grafana configurations from environment variables.
+// It retrieves GRAFANA_URL and GRAFANA_TOKEN, ensuring they are set.
+// Use this function to set up alert checking in tests.
 func NewAlertChecker(t *testing.T) *AlertChecker {
 	url := os.Getenv("GRAFANA_URL")
 	if url == "" {
@@ -46,9 +46,8 @@ func NewAlertChecker(t *testing.T) *AlertChecker {
 	}
 }
 
-// AnyAlerts retrieves alert groups from Grafana and scans for alerts matching the specified dashboardUUID and requirementLabelValue.
-// If matching alerts are found, it logs their details and marks the test as failed.
-// It returns all alert groups and any error encountered during retrieval.
+// AnyAlerts retrieves alert groups from Grafana and checks for alerts matching the specified dashboard UUID and requirement label value.
+// It returns the matching alert groups, enabling users to identify and respond to specific alert conditions.
 func (m *AlertChecker) AnyAlerts(dashboardUUID, requirementLabelValue string) ([]grafana.AlertGroupsResponse, error) {
 	raised := false
 	defer func() {
@@ -80,8 +79,9 @@ func (m *AlertChecker) AnyAlerts(dashboardUUID, requirementLabelValue string) ([
 	return alertGroups, nil
 }
 
-// CheckDashboardAlerts retrieves alert annotations from a Grafana dashboard identified by dashboardUID within the specified time range.
-// It returns a sorted slice of annotations and an error if the retrieval fails or any alert is in a firing state.
+// CheckDashboardAlerts retrieves alert annotations from a Grafana dashboard within the specified time range.
+// It returns the sorted alerts and an error if any alert is in the alerting state.
+// Use it to verify the status of dashboard alerts after a run.
 func CheckDashboardAlerts(grafanaClient *grafana.Client, from, to time.Time, dashboardUID string) ([]grafana.Annotation, error) {
 	annotationType := "alert"
 	alerts, _, err := grafanaClient.GetAnnotations(grafana.AnnotationsQueryParams{

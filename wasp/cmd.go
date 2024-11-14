@@ -9,17 +9,16 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// ExecCmd executes the specified shell command and logs its standard output.
-// It returns an error if the command fails to start or exits with a non-zero status.
+// ExecCmd executes the provided command string and logs its output.
+// It returns an error if the command fails to run or exits with a non-zero status.
 func ExecCmd(command string) error {
 	return ExecCmdWithStreamFunc(command, func(m string) {
 		log.Info().Str("Text", m).Msg("Command output")
 	})
 }
 
-// readStdPipe reads from the provided io.ReadCloser line by line and passes each line to streamFunc.
-// It continuously scans the pipe for newline-delimited input.
-// If streamFunc is nil, the input lines are ignored.
+// readStdPipe reads lines from the provided pipe and sends each line to streamFunc.
+// It is used to handle streaming output from command execution, such as stdout and stderr.
 func readStdPipe(pipe io.ReadCloser, streamFunc func(string)) {
 	scanner := bufio.NewScanner(pipe)
 	scanner.Split(bufio.ScanLines)
@@ -31,9 +30,8 @@ func readStdPipe(pipe io.ReadCloser, streamFunc func(string)) {
 	}
 }
 
-// ExecCmdWithStreamFunc executes the specified command and streams its output.
-// It splits the command string, starts the command, and sends each line from stdout and stderr to outputFunction.
-// Returns an error if the command fails to start or encounters an execution error.
+// ExecCmdWithStreamFunc runs the specified command and streams its output and error lines 
+// to the provided outputFunction. It enables real-time handling of command execution output.
 func ExecCmdWithStreamFunc(command string, outputFunction func(string)) error {
 	c := strings.Split(command, " ")
 	cmd := exec.Command(c[0], c[1:]...)
