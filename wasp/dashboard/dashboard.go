@@ -56,12 +56,11 @@ type Dashboard struct {
 	builder        dashboard.Builder
 }
 
-// NewDashboard initializes a new Dashboard instance using the provided WaspAlert
-// requirements and dashboard options. It retrieves necessary configuration from
-// environment variables such as DASHBOARD_NAME, DATA_SOURCE_NAME, DASHBOARD_FOLDER,
-// GRAFANA_URL, and GRAFANA_TOKEN. If any of these variables are missing, it returns
-// an error. The function builds the dashboard and returns it, or an error if the
-// build process fails.
+// NewDashboard creates a new Dashboard instance using the provided WaspAlert requirements and dashboard options.
+// It reads necessary configuration from environment variables including DASHBOARD_NAME, DATA_SOURCE_NAME,
+// DASHBOARD_FOLDER, GRAFANA_URL, and GRAFANA_TOKEN. The function initializes the Dashboard and builds it
+// with the given requirements. It returns the initialized Dashboard or an error if any required environment
+// variable is missing or if the dashboard construction fails.
 func NewDashboard(reqs []WaspAlert, opts []dashboard.Option) (*Dashboard, error) {
 	name := os.Getenv("DASHBOARD_NAME")
 	if name == "" {
@@ -98,10 +97,8 @@ func NewDashboard(reqs []WaspAlert, opts []dashboard.Option) (*Dashboard, error)
 	return dash, nil
 }
 
-// Deploy creates or updates a Grafana dashboard using the specified configuration.
-// It connects to the Grafana server using the provided URL and API token, and ensures
-// the target folder exists or creates it if necessary. It returns the deployed dashboard
-// and any error encountered during the process.
+// Deploy creates or updates the dashboard in Grafana within the specified folder.
+// It returns the deployed Dashboard and any error encountered.
 func (m *Dashboard) Deploy() (*grabana.Dashboard, error) {
 	ctx := context.Background()
 	client := grabana.NewClient(&http.Client{}, m.GrafanaURL, grabana.WithAPIToken(m.GrafanaToken))
@@ -113,10 +110,9 @@ func (m *Dashboard) Deploy() (*grabana.Dashboard, error) {
 	return client.UpsertDashboard(ctx, fo, m.builder)
 }
 
-// defaultStatWidget creates a stat widget with predefined settings.
-// It configures the widget with a name, data source, target query, and legend.
-// The widget is styled with horizontal orientation, default font sizes, and a span of 2.
-// It returns a row.Option configured with these settings for use in a dashboard row.
+// defaultStatWidget initializes a stat widget with the provided name, data source, Prometheus target query, and legend format.
+// It configures visual properties such as transparency, text display, orientation, font sizes, and span.
+// The function returns a row.Option that can be incorporated into a dashboard row for display.
 func defaultStatWidget(name, datasourceName, target, legend string) row.Option {
 	return row.WithStat(
 		name,
@@ -131,11 +127,9 @@ func defaultStatWidget(name, datasourceName, target, legend string) row.Option {
 	)
 }
 
-// defaultLastValueAlertWidget creates a timeseries.Option for a WaspAlert.
-// If a custom alert is provided, it returns the custom alert. Otherwise, it
-// constructs a default alert using the alert's name, description, tags, and
-// Loki query parameters. The alert is configured to trigger based on the last
-// value, with a specified evaluation frequency and error handling strategy.
+// defaultLastValueAlertWidget returns a timeseries.Option configured for the last value alert based on the provided WaspAlert.
+// If the WaspAlert includes a CustomAlert, it uses that; otherwise, it creates a default alert with predefined settings,
+// including name, description, tags, Loki query, condition, and evaluation interval.
 func defaultLastValueAlertWidget(a WaspAlert) timeseries.Option {
 	if a.CustomAlert != nil {
 		return a.CustomAlert
@@ -158,10 +152,9 @@ func defaultLastValueAlertWidget(a WaspAlert) timeseries.Option {
 	)
 }
 
-// defaultLabelValuesVar creates a dashboard option for querying label values.
-// It constructs a query using the provided variable name and datasource name,
-// enabling multiple selections and including all options. The query requests
-// label values for the specified name and sorts them in numerical ascending order.
+// defaultLabelValuesVar returns a dashboard.Option that defines a variable with the given name and data source.
+// The variable supports multiple selections, includes an "All" option, and sorts label values in numerical ascending order.
+// It queries the data source for label values based on the provided name.
 func defaultLabelValuesVar(name, datasourceName string) dashboard.Option {
 	return dashboard.VariableAsQuery(
 		name,
@@ -173,10 +166,9 @@ func defaultLabelValuesVar(name, datasourceName string) dashboard.Option {
 	)
 }
 
-// timeSeriesWithAlerts generates a slice of dashboard options by creating a time series for each alert definition.
-// It configures the time series with specified options such as transparency, span, height, and data source.
-// Each alert is represented as a row in the dashboard, with a title based on the alert's name and requirement group.
-// If the alert is not custom, it includes a Prometheus target for inline Loki alert parameters.
+// timeSeriesWithAlerts creates dashboard options for the specified datasource and alert definitions.
+// For each alert in alertDefs, it generates a separate dashboard row with configured time series settings and alert parameters.
+// The function returns a slice of dashboard.Option that can be integrated into a dashboard configuration.
 func timeSeriesWithAlerts(datasourceName string, alertDefs []WaspAlert) []dashboard.Option {
 	dashboardOpts := make([]dashboard.Option, 0)
 	for _, a := range alertDefs {
@@ -210,9 +202,9 @@ func timeSeriesWithAlerts(datasourceName string, alertDefs []WaspAlert) []dashbo
 	return dashboardOpts
 }
 
-// AddVariables generates a slice of dashboard options for predefined variable names.
-// It uses the provided datasourceName to create query-based variables for each name.
-// The returned options can be used to configure a dashboard with dynamic data sources.
+// AddVariables generates a slice of dashboard.Option for the specified datasource name.
+// It configures standard variables such as go_test_name, gen_name, branch, commit, and call_group.
+// These options enable the dashboard to include relevant label values from the datasource.
 func AddVariables(datasourceName string) []dashboard.Option {
 	opts := []dashboard.Option{
 		defaultLabelValuesVar("go_test_name", datasourceName),
@@ -224,9 +216,9 @@ func AddVariables(datasourceName string) []dashboard.Option {
 	return opts
 }
 
-// dashboard generates a list of dashboard options for a given datasource and requirements.
-// It includes default settings such as UID, auto-refresh, and time range, and appends
-// additional options for variables, load statistics, debug data, and time series with alerts.
+// dashboard generates a slice of dashboard.Option based on the provided datasource name and alert requirements.
+// It includes default settings, variables, load statistics, debug data, and time series with alerts.
+// The returned options are used to configure a dashboard instance.
 func (m *Dashboard) dashboard(datasourceName string, requirements []WaspAlert) []dashboard.Option {
 	panelQuery := map[string]string{
 		"branch": `=~"${branch:pipe}"`,
@@ -247,9 +239,9 @@ func (m *Dashboard) dashboard(datasourceName string, requirements []WaspAlert) [
 	return defaultOpts
 }
 
-// Build initializes a new dashboard using the specified dashboardName and datasourceName,
-// incorporating the provided requirements. It returns an error if the dashboard builder
-// creation fails. The constructed dashboard is stored in the builder field of the Dashboard.
+// Build initializes the Dashboard with the specified name, data source, and alert requirements.
+// It configures the internal builder to set up the dashboard based on these parameters.
+// Returns an error if the dashboard cannot be built successfully.
 func (m *Dashboard) Build(dashboardName, datasourceName string, requirements []WaspAlert) error {
 	b, err := dashboard.New(
 		dashboardName,
@@ -262,15 +254,15 @@ func (m *Dashboard) Build(dashboardName, datasourceName string, requirements []W
 	return nil
 }
 
-// JSON marshals the Dashboard into a JSON-encoded byte slice with indentation.
-// It returns the JSON byte slice and any error encountered during marshaling.
+// JSON serializes the Dashboard into an indented JSON format.
+// It returns the JSON byte slice and any error encountered during the marshaling process.
 func (m *Dashboard) JSON() ([]byte, error) {
 	return m.builder.MarshalIndentJSON()
 }
 
-// InlineLokiAlertParams generates a Loki query string based on the specified queryType, testName, and genName.
-// It supports different alert types such as quantile, errors, and timeouts, formatting the query accordingly.
-// The function returns a formatted string suitable for use in alerting configurations.
+// InlineLokiAlertParams returns a Loki query string based on the given queryType, testName, and genName.
+// It configures alerting conditions for metrics such as quantile99, errors, and timeouts.
+// The returned query string is used to set up alerts within monitoring dashboards and widgets.
 func InlineLokiAlertParams(queryType, testName, genName string) string {
 	switch queryType {
 	case AlertTypeQuantile99:
@@ -293,11 +285,9 @@ max_over_time({go_test_name="%s", test_data_type=~"stats", gen_name="%s"}
 	}
 }
 
-// WASPLoadStatsRow creates a dashboard row displaying WASP load statistics.
-// It uses the provided data source and query parameters to generate widgets
-// for metrics such as requests per second, virtual users, response rates,
-// and request success/failure counts. The function returns a dashboard.Option
-// that can be used to configure a dashboard with these metrics.
+// WASPLoadStatsRow creates a "WASP Load Stats" dashboard row with statistical widgets based on the given dataSource and query parameters.
+// It includes metrics such as RPS, VUs, response rates, and request outcomes.
+// The returned dashboard.Option can be integrated into a dashboard configuration to display load testing statistics.
 func WASPLoadStatsRow(dataSource string, query map[string]string) dashboard.Option {
 	queryString := ""
 	for key, value := range query {
@@ -420,11 +410,10 @@ func WASPLoadStatsRow(dataSource string, query map[string]string) dashboard.Opti
 	)
 }
 
-// WASPDebugDataRow creates a dashboard row for displaying WASP debug data.
-// It configures various panels including statistics, time series, and logs
-// using the provided data source and query parameters. The collapse parameter
-// determines if the row should be collapsible. It returns a dashboard.Option
-// that can be used to integrate the row into a larger dashboard configuration.
+// WASPDebugDataRow creates a "WASP Debug" dashboard row with statistics, time series, and log panels based on the specified dataSource and query parameters.
+// If collapse is true, the row will be collapsible.
+// It configures Prometheus and Loki targets to display debug-related metrics and logs, facilitating monitoring and analysis.
+// The function returns a dashboard.Option that can be integrated into a larger dashboard configuration.
 func WASPDebugDataRow(dataSource string, query map[string]string, collapse bool) dashboard.Option {
 	queryString := ""
 	for key, value := range query {

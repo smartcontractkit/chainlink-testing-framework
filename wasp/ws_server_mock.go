@@ -17,11 +17,8 @@ type MockWSServer struct {
 	Sleep time.Duration
 }
 
-// ServeHTTP handles HTTP requests by upgrading them to WebSocket connections.
-// It accepts a WebSocket connection and continuously sends a constant answer
-// until a normal closure is detected or an error occurs. Errors are logged
-// using the server's logging function. The connection is closed with an
-// internal error status if an error occurs during processing.
+// ServeHTTP upgrades the HTTP connection to a WebSocket and continuously processes messages using constantAnswer.
+// It logs any errors encountered and ensures the WebSocket connection is properly closed upon normal closure or error.
 func (s MockWSServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c, err := websocket.Accept(w, r, nil)
 	if err != nil {
@@ -43,8 +40,8 @@ func (s MockWSServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// constantAnswer sends a predefined JSON message with a constant answer to the given WebSocket connection after a specified sleep duration. 
-// It returns any error encountered during the message writing process.
+// constantAnswer sleeps for the specified duration and sends a predefined response over the websocket connection.
+// It returns an error if the write operation fails.
 func constantAnswer(sleep time.Duration, c *websocket.Conn) error {
 	time.Sleep(sleep)
 	return wsjson.Write(context.Background(), c, map[string]string{

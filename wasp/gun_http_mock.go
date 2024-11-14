@@ -14,9 +14,9 @@ type MockHTTPGun struct {
 	Data   []string
 }
 
-// NewHTTPMockGun creates a new instance of MockHTTPGun with the provided configuration.
-// It initializes a Resty client and an empty data slice. The function returns a pointer
-// to the newly created MockHTTPGun.
+// NewHTTPMockGun initializes and returns a new MockHTTPGun instance.
+// It sets up the REST client using resty and applies the provided configuration.
+// The Data field is initialized as an empty slice of strings.
 func NewHTTPMockGun(cfg *MockHTTPGunConfig) *MockHTTPGun {
 	return &MockHTTPGun{
 		client: resty.New(),
@@ -25,8 +25,8 @@ func NewHTTPMockGun(cfg *MockHTTPGunConfig) *MockHTTPGun {
 	}
 }
 
-// Call sends an HTTP GET request to the target URL specified in the MockHTTPGun's configuration.
-// It returns a Response containing the result of the request or an error if the request fails or the status is not "200 OK".
+// Call makes an HTTP GET request to the target URL using the provided Generator.
+// It returns a Response containing the retrieved data and any error encountered during the request.
 func (m *MockHTTPGun) Call(l *Generator) *Response {
 	var result map[string]interface{}
 	r, err := m.client.R().

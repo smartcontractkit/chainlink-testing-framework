@@ -4,9 +4,9 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp/dashboard"
 )
 
-// main initializes a default dashboard without non-functional requirements (NFRs) or extensions.
-// It creates a new dashboard instance and deploys it, using environment variables for configuration.
-// If an error occurs during dashboard creation or deployment, the function panics.
+// main initializes and deploys the default dashboard without NFRs or extensions.
+// It sets required environment variables and deploys the dashboard.
+// The function panics if dashboard creation or deployment fails.
 func main() {
 	// just default dashboard, no NFRs, no dashboard extensions
 	// see examples/alerts.go for an example extension

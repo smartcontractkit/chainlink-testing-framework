@@ -13,16 +13,17 @@ const (
 	LogLevelEnvVar = "WASP_LOG_LEVEL"
 )
 
-// init initializes the default logging configuration for the application.
-// It sets the logging level based on the environment variable LogLevelEnvVar,
+// init initializes the application's default logging configuration.
+// It sets the logging level based on the LOG_LEVEL environment variable,
 // defaulting to "info" if the variable is not set.
+// If an invalid log level is provided, the application panics.
 func init() {
 	initDefaultLogging()
 }
 
-// initDefaultLogging initializes the default logging configuration for the application.
-// It sets the log level based on the environment variable specified by LogLevelEnvVar.
-// If the environment variable is not set, it defaults to the "info" level.
+// initDefaultLogging initializes the application's logging system.
+// It sets the log level based on the LOG_LEVEL environment variable, defaulting to "info" if not set,
+// and configures logs to be output to standard error.
 func initDefaultLogging() {
 	lvlStr := os.Getenv(LogLevelEnvVar)
 	if lvlStr == "" {
@@ -35,10 +36,11 @@ func initDefaultLogging() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr}).Level(lvl)
 }
 
-// GetLogger returns a zerolog.Logger configured with the specified component name.
-// It sets the log level based on the LogLevelEnvVar environment variable, defaulting to "info".
-// If a testing.T object is provided, the logger outputs to a test writer; otherwise, it outputs to stderr.
-// The logger includes a timestamp and the component name in its context.
+// GetLogger returns a zerolog.Logger configured for the specified component.
+// If the testing object t is non-nil, the logger integrates with the test output.
+// The log level is determined by the LogLevelEnvVar environment variable or defaults to "info".
+// The logger includes a timestamp and the component name as a field.
+// It outputs logs to standard error in a console-friendly format.
 func GetLogger(t *testing.T, componentName string) zerolog.Logger {
 	lvlStr := os.Getenv(LogLevelEnvVar)
 	if lvlStr == "" {

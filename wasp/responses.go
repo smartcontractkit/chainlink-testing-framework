@@ -14,15 +14,14 @@ type Responses struct {
 	ch chan *Response
 }
 
-// NewResponses creates a new Responses instance with the provided channel for Response pointers.
-// It returns a pointer to the Responses struct initialized with the given channel.
+// NewResponses creates a new Responses that processes responses from the provided channel ch.
+// It returns a pointer to a Responses instance.
 func NewResponses(ch chan *Response) *Responses {
 	return &Responses{ch}
 }
 
-// OK sends a successful HTTP response to the channel m.ch.
-// It constructs a Response with the duration of the request,
-// the specified group, and the response body data.
+// OK processes a successful resty.Response by sending a Response struct to the Responses channel.
+// It records the duration of the response, associates it with the specified group, and includes the response body data.
 func (m *Responses) OK(r *resty.Response, group string) {
 	m.ch <- &Response{
 		Duration: r.Time(),
@@ -31,9 +30,8 @@ func (m *Responses) OK(r *resty.Response, group string) {
 	}
 }
 
-// Err processes a failed HTTP response and sends it to the channel m.ch.
-// It constructs a Response with failure status, error message, response duration,
-// group identifier, and response body.
+// Err sends a failed Response to the Responses channel with the provided error, group, and resty.Response.
+// It marks the Response as failed, includes the error message, duration, group name, and response body.
 func (m *Responses) Err(r *resty.Response, group string, err error) {
 	m.ch <- &Response{
 		Failed:   true,

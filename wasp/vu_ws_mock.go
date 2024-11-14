@@ -21,8 +21,8 @@ type WSMockVU struct {
 	Data []string
 }
 
-// NewWSMockVU creates a new instance of WSMockVU with the provided configuration.
-// It initializes the VUControl using NewVUControl and sets up an empty data slice.
+// NewWSMockVU creates a new WSMockVU instance using the provided WSMockVUConfig.
+// It initializes the VUControl and prepares the Data slice for storing mock data.
 func NewWSMockVU(cfg *WSMockVUConfig) *WSMockVU {
 	return &WSMockVU{
 		VUControl: NewVUControl(),
@@ -31,8 +31,7 @@ func NewWSMockVU(cfg *WSMockVUConfig) *WSMockVU {
 	}
 }
 
-// Clone creates a new instance of WSMockVU with a fresh VUControl and the same configuration as the original.
-// It initializes the Data field as an empty string slice and returns the new VirtualUser instance.
+// Clone creates and returns a new VirtualUser by duplicating the WSMockVU's configuration.
 func (m *WSMockVU) Clone(_ *Generator) VirtualUser {
 	return &WSMockVU{
 		VUControl: NewVUControl(),
@@ -41,8 +40,10 @@ func (m *WSMockVU) Clone(_ *Generator) VirtualUser {
 	}
 }
 
-// Setup establishes a WebSocket connection to the target URL specified in the configuration.
-// It returns an error if the connection attempt fails, logging the error and closing the connection.
+// Setup initializes the WebSocket connection for the WSMockVU using the provided Generator.
+// It attempts to dial the target URL specified in the configuration.
+// If the connection fails, it logs the error, closes the connection, and returns the encountered error.
+// On successful connection, it returns nil.
 func (m *WSMockVU) Setup(l *Generator) error {
 	var err error
 	m.conn, _, err = websocket.Dial(context.Background(), m.cfg.TargetURl, &websocket.DialOptions{})
@@ -55,15 +56,14 @@ func (m *WSMockVU) Setup(l *Generator) error {
 	return nil
 }
 
-// Teardown closes the WebSocket connection of the WSMockVU instance with an internal error status.
-// It is used to clean up resources associated with the virtual user after execution.
-// The function returns any error encountered during the closure of the connection.
+// Teardown closes the virtual user's connection and performs necessary cleanup.
+// It returns an error if the connection fails to close properly.
 func (m *WSMockVU) Teardown(_ *Generator) error {
 	return m.conn.Close(websocket.StatusInternalError, "")
 }
 
-// Call reads a WebSocket message from the virtual user connection and sends the response data to the Generator's ResponsesChan. 
-// It logs an error if reading the message fails. The response includes the time the call started and the message data.
+// Call reads a WebSocket message from the WSMockVU's connection and sends a Response containing the start time and data to the provided Generator.
+// If the read operation fails, it logs the encountered error.
 func (m *WSMockVU) Call(l *Generator) {
 	startedAt := time.Now()
 	v := map[string]string{}
