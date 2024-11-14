@@ -8,9 +8,14 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
+)
+
+var (
+	panicRe = regexp.MustCompile(`^panic:`)
 )
 
 type Runner struct {
@@ -114,40 +119,83 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 				return nil, fmt.Errorf("failed to parse json test output: %s, err: %w", scanner.Text(), err)
 			}
 
-			// Skip processing if the test name is empty
-			if entry.Test == "" {
-				continue
+			// Only create TestResult for test-level entries
+			var result *reports.TestResult
+			if entry.Test != "" {
+				// Determine the key
+				key := entry.Package + "/" + entry.Test
+
+				if _, exists := testDetails[key]; !exists {
+					testDetails[key] = &reports.TestResult{
+						TestName:       entry.Test,
+						TestPackage:    entry.Package,
+						Runs:           0,
+						PassRatio:      0,
+						Outputs:        []string{},
+						PackageOutputs: []string{},
+					}
+				}
+				result = testDetails[key]
 			}
 
-			key := entry.Package + "/" + entry.Test // Create a unique key using package and test name
-			if _, exists := testDetails[key]; !exists {
-				testDetails[key] = &reports.TestResult{
-					TestName:    entry.Test,
-					TestPackage: entry.Package,
-					Runs:        0,
-					PassRatio:   0,
-					Outputs:     []string{},
+			// Collect outputs
+			if entry.Output != "" {
+				if entry.Test != "" {
+					// Test-level output
+					result.Outputs = append(result.Outputs, entry.Output)
+				} else {
+					// Package-level output
+					// Append to PackageOutputs of all TestResults in the same package
+					for _, res := range testDetails {
+						if res.TestPackage == entry.Package {
+							res.PackageOutputs = append(res.PackageOutputs, entry.Output)
+						}
+					}
 				}
 			}
 
-			result := testDetails[key]
 			switch entry.Action {
 			case "run":
-				result.Runs++
+				if entry.Test != "" {
+					result.Runs++
+				}
 			case "pass":
-				result.PassRatio = (result.PassRatio*float64(result.Runs-1) + 1) / float64(result.Runs)
-				result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
-				result.Durations = append(result.Durations, entry.Elapsed)
-			case "output":
-				result.Outputs = append(result.Outputs, entry.Output)
+				if entry.Test != "" {
+					result.PassRatio = (result.PassRatio*float64(result.Runs-1) + 1) / float64(result.Runs)
+					result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
+					result.Durations = append(result.Durations, entry.Elapsed)
+				}
 			case "fail":
-				result.PassRatio = (result.PassRatio * float64(result.Runs-1)) / float64(result.Runs)
-				result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
-				result.Durations = append(result.Durations, entry.Elapsed)
+				if entry.Test != "" {
+					result.PassRatio = (result.PassRatio * float64(result.Runs-1)) / float64(result.Runs)
+					result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
+					result.Durations = append(result.Durations, entry.Elapsed)
+				}
+			case "output":
+				// Output already handled above
+				if panicRe.MatchString(entry.Output) {
+					if entry.Test != "" {
+						// Test-level panic
+						result.Panicked = true
+						result.PassRatio = (result.PassRatio * float64(result.Runs-1)) / float64(result.Runs)
+						result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
+						result.Durations = append(result.Durations, entry.Elapsed)
+					} else {
+						// Package-level panic
+						// Mark PackagePanicked for all TestResults in the package
+						for _, res := range testDetails {
+							if res.TestPackage == entry.Package {
+								res.PackagePanicked = true
+							}
+						}
+					}
+				}
 			case "skip":
-				result.Skipped = true
-				result.Runs++
-				result.Durations = append(result.Durations, entry.Elapsed)
+				if entry.Test != "" {
+					result.Skipped = true
+					result.Runs++
+					result.Durations = append(result.Durations, entry.Elapsed)
+				}
 			}
 		}
 
