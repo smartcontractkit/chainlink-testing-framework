@@ -14,7 +14,7 @@
     - [CLI](./framework/cli.md)
     - [Configuration](./framework/configuration.md)
     - [Test Configuration](./framework/test_configuration_overrides.md)
-    - [Components Persistence](framework/components/state.md)
+    - [Exposing Components](framework/components/state.md)
     - [Components Cleanup](framework/components/cleanup.md)
     - [Components Caching](framework/components/caching.md)
     - [External Environment](framework/components/external.md)

@@ -50,17 +50,9 @@ func NewSharedDBNodeSet(in *Input, bcOut *blockchain.Output, fakeUrl string) (*O
 	if len(in.NodeSpecs) != in.Nodes && in.OverrideMode == "each" {
 		return nil, fmt.Errorf("amount of 'nodes' must be equal to specs provided in override_mode='each'")
 	}
-	switch in.OverrideMode {
-	case "all":
-		out, err = sharedDBSetup(in, bcOut, fakeUrl, false)
-		if err != nil {
-			return nil, err
-		}
-	case "each":
-		out, err = sharedDBSetup(in, bcOut, fakeUrl, true)
-		if err != nil {
-			return nil, err
-		}
+	out, err = sharedDBSetup(in, bcOut, fakeUrl)
+	if err != nil {
+		return nil, err
 	}
 	return out, nil
 }
@@ -80,7 +72,7 @@ func printURLs(out *Output) {
 	framework.L.Debug().Any("DB", pgURLs).Send()
 }
 
-func sharedDBSetup(in *Input, bcOut *blockchain.Output, fakeUrl string, overrideEach bool) (*Output, error) {
+func sharedDBSetup(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output, error) {
 	in.NodeSpecs[0].DbInput.Databases = in.Nodes
 	dbOut, err := postgres.NewPostgreSQL(in.NodeSpecs[0].DbInput)
 	if err != nil {
@@ -107,16 +99,21 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output, fakeUrl string, override
 		i := i
 		var overrideIdx int
 		var nodeName string
-		if overrideEach {
+		switch in.OverrideMode {
+		case "each":
 			overrideIdx = i
-		} else {
+		case "all":
 			overrideIdx = 0
+			if len(in.NodeSpecs[overrideIdx].Node.CustomPorts) > 0 {
+				return nil, fmt.Errorf("custom_ports can be used only with override_mode = 'each'")
+			}
 		}
 		if in.NodeSpecs[overrideIdx].Node.Name == "" {
 			nodeName = fmt.Sprintf("node%d", i)
 		}
 		eg.Go(func() error {
-			net, err := clnode.NewNetworkCfgOneNetworkAllNodes(bcOut)
+			var net string
+			net, err = clnode.NewNetworkCfgOneNetworkAllNodes(bcOut)
 			if err != nil {
 				return err
 			}
@@ -127,6 +124,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output, fakeUrl string, override
 				Node: &clnode.NodeInput{
 					HTTPPort:                httpPortRangeStart + i,
 					P2PPort:                 p2pPortRangeStart + i,
+					CustomPorts:             in.NodeSpecs[overrideIdx].Node.CustomPorts,
 					Image:                   in.NodeSpecs[overrideIdx].Node.Image,
 					Name:                    nodeName,
 					PullImage:               in.NodeSpecs[overrideIdx].Node.PullImage,

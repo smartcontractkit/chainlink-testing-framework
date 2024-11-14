@@ -68,3 +68,14 @@ This helps reduce duplication in the configuration.
 
 > [!WARNING]  
 > When override slices remember that you should replace the full slice, it won't be extended by default!
+
+## Overriding Components Configuration
+
+The same override logic applies across components, files, and configuration fields in code, configs are applied in order:
+
+1. Implicit component defaults that are defined inside application
+2. Component defaults defined in the framework or external component, ex.: [CLNode](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/components/clnode/default.go)
+3. `Test.*Override`
+4. `user_.*_overrides`
+
+Use `Test.*Override` in test `code` to override component configurations, and `user_.*_overrides` in `TOML` for the same purpose.
