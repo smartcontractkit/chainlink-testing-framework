@@ -55,6 +55,7 @@ type exitCoder interface {
 // runTests runs the tests for a given package and returns the path to the output file.
 func (r *Runner) runTests(packageName string) (string, bool, error) {
 	args := []string{"test", packageName, "-json", "-count=1"} // Enable JSON output
+	args = append(args, "2>/dev/null")                         // Redirect stderr to null
 	if r.UseRace {
 		args = append(args, "-race")
 	}
