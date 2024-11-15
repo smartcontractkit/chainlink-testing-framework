@@ -1,0 +1,606 @@
+<!DOCTYPE HTML>
+<html lang="en" class="ayu sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Lib (Deprecated) - Chainlink Testing Framework</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "ayu";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('ayu')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Chainlink Testing Framework</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <style>
+.mdbook-alerts {
+  padding: 8px 16px;
+  margin-bottom: 16px;
+  border-left: 0.25em solid var(--mdbook-alerts-color);
+}
+
+.mdbook-alerts > *:first-child {
+  margin-top: 0;
+}
+
+.mdbook-alerts > *:last-child {
+  margin-bottom: 0;
+}
+
+.mdbook-alerts-title {
+  display: flex;
+  font-weight: 600;
+  align-items: center;
+  line-height: 1;
+  color: var(--mdbook-alerts-color);
+  text-transform: capitalize;
+}
+
+.mdbook-alerts-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.2em;
+  background-color: currentColor;
+  -webkit-mask: no-repeat center / 100%;
+  mask: no-repeat center / 100%;
+  -webkit-mask-image: var(--mdbook-alerts-icon);
+  mask-image: var(--mdbook-alerts-icon);
+}
+
+.mdbook-alerts-note {
+  --mdbook-alerts-color: rgb(9, 105, 218);
+  /* https://icon-sets.iconify.design/material-symbols/info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16v-4q0-.425-.288-.712T12 11q-.425 0-.712.288T11 12v4q0 .425.288.713T12 17m0-8q.425 0 .713-.288T13 8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8q0 .425.288.713T12 9m0 13q-2.075 0-3.9-.788t-3.175-2.137q-1.35-1.35-2.137-3.175T2 12q0-2.075.788-3.9t2.137-3.175q1.35-1.35 3.175-2.137T12 2q2.075 0 3.9.788t3.175 2.137q1.35 1.35 2.138 3.175T22 12q0 2.075-.788 3.9t-2.137 3.175q-1.35 1.35-3.175 2.138T12 22m0-2q3.35 0 5.675-2.325T20 12q0-3.35-2.325-5.675T12 4Q8.65 4 6.325 6.325T4 12q0 3.35 2.325 5.675T12 20m0-8"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-tip {
+  --mdbook-alerts-color: rgb(26, 127, 55);
+  /* https://icon-sets.iconify.design/material-symbols/lightbulb-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 22q-.825 0-1.412-.587T10 20h4q0 .825-.587 1.413T12 22m-3-3q-.425 0-.712-.288T8 18q0-.425.288-.712T9 17h6q.425 0 .713.288T16 18q0 .425-.288.713T15 19zm-.75-3q-1.725-1.025-2.738-2.75T4.5 9.5q0-3.125 2.188-5.312T12 2q3.125 0 5.313 2.188T19.5 9.5q0 2.025-1.012 3.75T15.75 16zm.6-2h6.3q1.125-.8 1.738-1.975T17.5 9.5q0-2.3-1.6-3.9T12 4Q9.7 4 8.1 5.6T6.5 9.5q0 1.35.613 2.525T8.85 14M12 14"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-important {
+  --mdbook-alerts-color: rgb(130, 80, 223);
+  /* https://icon-sets.iconify.design/material-symbols/chat-info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 7q.425 0 .713-.288T13 6q0-.425-.288-.712T12 5q-.425 0-.712.288T11 6q0 .425.288.713T12 7m0 8q.425 0 .713-.288T13 14v-4q0-.425-.288-.712T12 9q-.425 0-.712.288T11 10v4q0 .425.288.713T12 15m-6 3l-2.3 2.3q-.475.475-1.088.213T2 19.575V4q0-.825.588-1.412T4 2h16q.825 0 1.413.588T22 4v12q0 .825-.587 1.413T20 18zm-.85-2H20V4H4v13.125zM4 16V4z"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-warning {
+  --mdbook-alerts-color: rgb(154, 103, 0);
+  /* https://icon-sets.iconify.design/material-symbols/warning-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M2.725 21q-.275 0-.5-.137t-.35-.363q-.125-.225-.137-.488t.137-.512l9.25-16q.15-.25.388-.375T12 3q.25 0 .488.125t.387.375l9.25 16q.15.25.138.513t-.138.487q-.125.225-.35.363t-.5.137zm1.725-2h15.1L12 6zM12 18q.425 0 .713-.288T13 17q0-.425-.288-.712T12 16q-.425 0-.712.288T11 17q0 .425.288.713T12 18m0-3q.425 0 .713-.288T13 14v-3q0-.425-.288-.712T12 10q-.425 0-.712.288T11 11v3q0 .425.288.713T12 15m0-2.5"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-caution {
+  --mdbook-alerts-color: rgb(207, 34, 46);
+  /* https://icon-sets.iconify.design/material-symbols/brightness-alert-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16q0-.425-.288-.712T12 15q-.425 0-.712.288T11 16q0 .425.288.713T12 17m0-4q.425 0 .713-.288T13 12V8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8v4q0 .425.288.713T12 13m-3.35 7H6q-.825 0-1.412-.587T4 18v-2.65L2.075 13.4q-.275-.3-.425-.662T1.5 12q0-.375.15-.737t.425-.663L4 8.65V6q0-.825.588-1.412T6 4h2.65l1.95-1.925q.3-.275.663-.425T12 1.5q.375 0 .738.15t.662.425L15.35 4H18q.825 0 1.413.588T20 6v2.65l1.925 1.95q.275.3.425.663t.15.737q0 .375-.15.738t-.425.662L20 15.35V18q0 .825-.587 1.413T18 20h-2.65l-1.95 1.925q-.3.275-.662.425T12 22.5q-.375 0-.737-.15t-.663-.425zm.85-2l2.5 2.5l2.5-2.5H18v-3.5l2.5-2.5L18 9.5V6h-3.5L12 3.5L9.5 6H6v3.5L3.5 12L6 14.5V18zm2.5-6"%2F%3E%3C%2Fsvg%3E');
+}
+
+</style>
+<div align="center">
+<h1 id="framework-v1-deprecated"><a class="header" href="#framework-v1-deprecated">Framework v1 (Deprecated)</a></h1>
+<p><a href="https://github.com/smartcontractkit/chainlink-testing-framework/tags"><img src="https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework?filter=%2Alib%2A" alt="Lib tag" /></a>
+<a href="https://goreportcard.com/report/github.com/smartcontractkit/chainlink-testing-framework"><img src="https://goreportcard.com/badge/github.com/smartcontractkit/chainlink-testing-framework" alt="Go Report Card" /></a>
+<a href="https://pkg.go.dev/github.com/smartcontractkit/chainlink-testing-framework"><img src="https://pkg.go.dev/badge/github.com/smartcontractkit/chainlink-testing-framework.svg" alt="Go Reference" /></a>
+<a href="https://go.dev/"><img src="https://img.shields.io/github/go-mod/go-version/smartcontractkit/chainlink-testing-framework?filename=./lib/go.mod" alt="Go Version" /></a>
+<img src="https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/test.yaml/badge.svg" alt="Tests" />
+<img src="https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/lint.yaml/badge.svg" alt="Lint" /></p>
+</div>
+<p><strong>DEPRECATED: This is v1 version and it is not actively maintained</strong></p>
+<p>The purpose of this framework is to:</p>
+<ul>
+<li>Interact with different blockchains</li>
+<li>Configure CL jobs</li>
+<li>Deploy using <code>docker</code></li>
+<li>Deploy using <code>k8s</code></li>
+</ul>
+<p>If you're looking to implement a new chain integration for the testing framework, head over to the <a href="lib/blockchain.html">blockchain</a> directory for more info.</p>
+<h2 id="k8s-package"><a class="header" href="#k8s-package">k8s package</a></h2>
+<p>We have a k8s package we are using in tests, it provides:</p>
+<ul>
+<li><a href="https://cdk8s.io/">cdk8s</a> based wrappers</li>
+<li>High-level k8s API</li>
+<li>Automatic port forwarding</li>
+</ul>
+<p>You can also use this package to spin up standalone environments.</p>
+<h3 id="local-k8s-cluster"><a class="header" href="#local-k8s-cluster">Local k8s cluster</a></h3>
+<p>Read <a href="lib/k8s/KUBERNETES.html">here</a> about how to spin up a local cluster</p>
+<h4 id="install"><a class="header" href="#install">Install</a></h4>
+<p>Set up deps, you need to have <code>node 14.x.x</code>, <a href="https://helm.sh/docs/intro/install/">helm</a> and <a href="https://classic.yarnpkg.com/lang/en/docs/install/#mac-stable">yarn</a></p>
+<p>Then use</p>
+<pre><code class="language-shell">make install_deps
+</code></pre>
+<h5 id="optional-nix"><a class="header" href="#optional-nix">Optional Nix</a></h5>
+<p>We have setup a nix shell which will produce a reliable environment that will behave the same locally and in ci. To use it instead of the above you will need to <a href="https://nixos.org/download/">install nix</a></p>
+<p>To start the nix shell run:</p>
+<pre><code class="language-shell">make nix_shell
+</code></pre>
+<p>If you install <a href="https://github.com/direnv/direnv/blob/master/docs/installation.md">direnv</a> you will be able to have your environment start the nix shell as soon as you cd into it once you have allowed the directory via:</p>
+<pre><code class="language-shell">direnv allow
+</code></pre>
+<h3 id="running-tests-in-k8s"><a class="header" href="#running-tests-in-k8s">Running tests in k8s</a></h3>
+<p>To read how to run a test in k8s, read <a href="lib/k8s/REMOTE_RUN.html">here</a></p>
+<h3 id="usage"><a class="header" href="#usage">Usage</a></h3>
+<h4 id="with-env-vars-deprecated"><a class="header" href="#with-env-vars-deprecated">With env vars (deprecated)</a></h4>
+<p>Create an env in a separate file and run it</p>
+<pre><code class="language-sh">export CHAINLINK_IMAGE="public.ecr.aws/chainlink/chainlink"
+export CHAINLINK_TAG="1.4.0-root"
+export CHAINLINK_ENV_USER="Satoshi"
+go run k8s/examples/simple/env.go
+</code></pre>
+<p>For more features follow <a href="lib/k8s/TUTORIAL.html">tutorial</a></p>
+<h4 id="with-toml-config"><a class="header" href="#with-toml-config">With TOML config</a></h4>
+<p>It should be noted that using env vars for configuring CL nodes in k8s is deprecated. TOML config should be used instead:</p>
+<pre><code class="language-toml">[ChainlinkImage]
+image="public.ecr.aws/chainlink/chainlink"
+version="v2.8.0"
+</code></pre>
+<p>Check the example here: <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/lib/k8s/examples/simple_toml/env_toml_config.go">env.go</a></p>
+<h3 id="development"><a class="header" href="#development">Development</a></h3>
+<h4 id="running-standalone-example-environment"><a class="header" href="#running-standalone-example-environment">Running standalone example environment</a></h4>
+<pre><code class="language-shell">go run k8s/examples/simple/env.go
+</code></pre>
+<p>If you have another env of that type, you can connect by overriding environment name</p>
+<pre><code class="language-sh">ENV_NAMESPACE="..."  go run k8s/examples/chainlink/env.go
+</code></pre>
+<p>Add more presets <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/lib/k8s/presets">here</a></p>
+<p>Add more programmatic examples <a href="../../lib/k8s/examples/">here</a></p>
+<p>If you have <a href="https://chaos-mesh.org/">chaosmesh</a> installed in your cluster you can pull and generated CRD in go like that</p>
+<pre><code class="language-sh">make chaosmesh
+</code></pre>
+<p>If you need to check your system tests coverage, use <a href="../../lib/k8s/TUTORIAL.html#coverage">that</a></p>
+<h1 id="chainlink-charts"><a class="header" href="#chainlink-charts">Chainlink Charts</a></h1>
+<p>This repository contains helm charts used by the chainlink organization mostly in QA.</p>
+<h2 id="chart-repository"><a class="header" href="#chart-repository">Chart Repository</a></h2>
+<p>You can add the published chart repository by pointing helm to the <code>gh-pages</code> branch with a personal access token (PAT) that has at least read-only access to the repository.</p>
+<pre><code class="language-sh">helm repo add chainlink-qa https://raw.githubusercontent.com/smartcontractkit/qa-charts/gh-pages/
+helm search repo chainlink
+</code></pre>
+<h2 id="releasing-charts"><a class="header" href="#releasing-charts">Releasing Charts</a></h2>
+<p>The following cases will trigger a chart release once a PR is merged into the <code>main</code> branch.
+Modified packages or new packages get added and pushed to the <code>gh-pages</code> branch of the <a href="https://github.com/smartcontractkit/qa-charts">qa-charts</a> repository.</p>
+<ul>
+<li>An existing chart is version bumped</li>
+<li>A new chart is added</li>
+</ul>
+<p>Removed charts do not trigger a re-publish, the packages have to be removed and the index file regenerated in the <code>gh-pages</code> branch of the <a href="https://github.com/smartcontractkit/qa-charts">qa-charts</a> repository.</p>
+<p>Note: The qa-charts repository is scheduled to look for changes to the charts once every hour. This can be expedited by going to that repo and running the cd action via github UI.</p>
+<h1 id="simulated-evm-chains"><a class="header" href="#simulated-evm-chains">Simulated EVM chains</a></h1>
+<p>We have extended support for execution layer clients in simulated networks. Following ones are supported:</p>
+<ul>
+<li><code>Geth</code></li>
+<li><code>Nethermind</code></li>
+<li><code>Besu</code></li>
+<li><code>Erigon</code></li>
+</ul>
+<p>When it comes to consensus layer we currently support only <code>Prysm</code>.</p>
+<p>The easiest way to start a simulated network is to use a builder. It allows to configure the network in a fluent way and then start it. For example:</p>
+<pre><code class="language-go">builder := NewEthereumNetworkBuilder()
+cfg, err: = builder.
+    WithEthereumVersion(EthereumVersion_Eth2).
+    WithExecutionLayer(ExecutionLayer_Geth).
+    Build()
+</code></pre>
+<p>Since we support both <code>eth1</code> (aka pre-Merge) and <code>eth2</code> (aka post-Merge) client versions, you need to specify which one you want to use. You can do that by calling <code>WithEthereumVersion</code> method. There's no default provided. The only exception is when you use custom docker images (instead of default ones), because then we can determine which version it is based on the image version.</p>
+<p>If you want your test to execute as fast as possible go for <code>eth1</code> since it's either using a fake PoW or PoA consensus and is much faster than <code>eth2</code> which uses PoS consensus (where there is a minimum viable length of slot/block, which is 4 seconds; for <code>eth1</code> it's 1 second). If you want to test the latest features, changes or forks in the Ethereum network and have your tests running on a network which is as close as possible to Ethereum Mainnet, go for <code>eth2</code>.</p>
+<p>Every component has some default Docker image it uses, but builder has a method that allows to pass custom one:</p>
+<pre><code class="language-go">builder := NewEthereumNetworkBuilder()
+cfg, err: = builder.
+    WithEthereumVersion(EthereumVersion_Eth2).
+    WithConsensusLayer(ConsensusLayer_Prysm).
+    WithExecutionLayer(ExecutionLayer_Geth).
+    WithCustomDockerImages(map[ContainerType]string{
+        ContainerType_Geth: "my-custom-geth-pos-image:my-version"}).
+    Build()
+</code></pre>
+<p>When using a custom image you can even further simplify the builder by calling only <code>WithCustomDockerImages</code> method. Based on the image name and version we will determine which execution layer client it is and whether it's <code>eth1</code> or <code>eth2</code> client:</p>
+<pre><code class="language-go">builder := NewEthereumNetworkBuilder()
+cfg, err: = builder.
+    WithCustomDockerImages(map[ContainerType]string{
+        ContainerType_Geth: "ethereum/client-go:v1.13.10"}).
+    Build()
+</code></pre>
+<p>In the case above we would launch a <code>Geth</code> client with <code>eth2</code> network and <code>Prysm</code> consensus layer.</p>
+<p>You can also configure epochs at which hardforks will happen. Currently only <code>Deneb</code> is supported. Epoch must be &gt;= 1. Example:</p>
+<pre><code class="language-go">builder := NewEthereumNetworkBuilder()
+cfg, err: = builder.
+    WithConsensusType(ConsensusType_PoS).
+    WithConsensusLayer(ConsensusLayer_Prysm).
+    WithExecutionLayer(ExecutionLayer_Geth).
+    WithEthereumChainConfig(EthereumChainConfig{
+        HardForkEpochs: map[string]int{"Deneb": 1},
+    }).
+    Build()
+</code></pre>
+<h2 id="command-line"><a class="header" href="#command-line">Command line</a></h2>
+<p>You can start a simulated network with a single command:</p>
+<pre><code class="language-sh">go run docker/test_env/cmd/main.go start-test-env private-chain
+</code></pre>
+<p>By default it will start a network with 1 node running <code>Geth</code> and <code>Prysm</code>. It will use default chain id of <code>1337</code> and won't wait for the chain to finalize at least one epoch. Once the chain is started it will save the network configuration in a <code>JSON</code> file, which then you can use in your tests to connect to that chain (and thus save time it takes to start a new chain each time you run your test).</p>
+<p>Following cmd line flags are available:</p>
+<pre><code class="language-sh">  -c, --chain-id int             chain id (default 1337)
+  -l, --consensus-layer string   consensus layer (prysm) (default "prysm")
+  -t, --consensus-type string    consensus type (pow or pos) (default "pos")
+  -e, --execution-layer string   execution layer (geth, nethermind, besu or erigon) (default "geth")
+  -w, --wait-for-finalization    wait for finalization of at least 1 epoch (might take up to 5 minutes)
+      --consensus-client-image string   custom Docker image for consensus layer client
+      --execution-layer-image string    custom Docker image for execution layer client
+      --validator-image string          custom Docker image for validator
+</code></pre>
+<p>To connect to that environment in your tests use the following code:</p>
+<pre><code class="language-go">	builder := NewEthereumNetworkBuilder()
+	cfg, err := builder.
+		WithExistingConfigFromEnvVar().
+		Build()
+
+    if err != nil {
+        return err
+    }
+
+	net, rpc, err := cfg.Start()
+    if err != nil {
+        return err
+    }
+</code></pre>
+<p>Builder will read the location of chain configuration from env var named <code>PRIVATE_ETHEREUM_NETWORK_CONFIG_PATH</code> (it will be printed in the console once the chain starts).</p>
+<p><code>net</code> is an instance of <code>blockchain.EVMNetwork</code>, which contains characteristics of the network and can be used to connect to it using an EVM client. <code>rpc</code> variable contains arrays of public and private RPC endpoints, where "private" means URL that's accessible from the same Docker network as the chain is running in.</p>
+<h1 id="using-logstream"><a class="header" href="#using-logstream">Using LogStream</a></h1>
+<p>LogStream is a package that allows to connect to a Docker container and then flush logs to configured targets. Currently 3 targets are supported:</p>
+<ul>
+<li><code>file</code> - saves logs to a file in <code>./logs</code> folder</li>
+<li><code>loki</code> - sends logs to Loki</li>
+<li><code>in-memory</code> - stores logs in memory</li>
+</ul>
+<p>It can be configured to use multiple targets at once. If no target is specified, it becomes a no-op.</p>
+<p>LogStream has to be configured by passing an instance of <code>LoggingConfig</code> to the constructor.</p>
+<p>When you connect a container LogStream will create a new consumer and start a detached goroutine that listens to logs emitted by that container and which reconnects and re-requests logs if listening fails for whatever reason. Retry limit and timeout can both be configured using functional options. In most cases one container should have one consumer, but it's possible to have multiple consumers for one container.</p>
+<p>LogStream stores all logs in gob temporary file. To actually send/save them, you need to flush them. When you do it, LogStream will decode the file and send logs to configured targets. If log handling results in an error it won't be retried and processing of logs for given consumer will stop (if you think we should add a retry mechanism please let us know).</p>
+<p><em>Important:</em> Flushing and accepting logs is blocking operation. That's because they both share the same cursor to temporary file and otherwise it's position would be racey and could result in mixed up logs.</p>
+<h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
+<p>Basic <code>LogStream</code> TOML configuration is following:</p>
+<pre><code class="language-toml">[LogStream]
+log_targets=["file"]
+log_producer_timeout="10s"
+log_producer_retry_limit=10
+</code></pre>
+<p>You can find it here: <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/lib/config/tomls/logging_default.toml">logging_default.toml</a></p>
+<p>When using <code>in-memory</code> or <code>file</code> target no other configuration variables are required. When using <code>loki</code> target, following ones must be set:</p>
+<pre><code class="language-toml">[Logging.Loki]
+tenant_id="promtail"
+url="https://change.me"
+basic_auth_secret="my-secret-auth"
+bearer_token_secret="bearer-token"
+</code></pre>
+<p>Also, do remember that different URL should be used when running in CI and everywhere else. In CI it should be a public endpoint, while in local environment it should be a private one.</p>
+<p>If your test has a Grafana dashboard in order for the url to be correctly printed you should provide the following config:</p>
+<pre><code class="language-toml">[Logging.Grafana]
+url="http://grafana.somwhere.com/my_dashboard"
+</code></pre>
+<h2 id="initialisation"><a class="header" href="#initialisation">Initialisation</a></h2>
+<p>First you need to create a new instance:</p>
+<pre><code class="language-golang">// t - instance of *testing.T (can be nil)
+// testConfig.Logging - pointer to logging part of TestConfig
+ls := logstream.NewLogStream(t, testConfig.Logging)
+</code></pre>
+<h2 id="listening-to-logs"><a class="header" href="#listening-to-logs">Listening to logs</a></h2>
+<p>If using <code>testcontainers-go</code> Docker containers it is recommended to use life cycle hooks for connecting and disconnecting LogStream from the container. You can do that when creating <code>ContainerRequest</code> in the following way:</p>
+<pre><code class="language-golang">containerRequest := &amp;tc.ContainerRequest{
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{PostStarts: []tc.ContainerHook{
+				func(ctx context.Context, c tc.Container) error {
+					if ls != nil {
+						return n.ls.ConnectContainer(ctx, c, "custom-container-prefix-can-be-empty")
+					}
+					return nil
+				},
+			},
+				PostStops: []tc.ContainerHook{
+					func(ctx context.Context, c tc.Container) error {
+						if ls != nil {
+							return n.ls.DisconnectContainer(c)
+						}
+						return nil
+					},
+				}},
+		},
+	}
+</code></pre>
+<p>You can print log location for each target using this function: <code>(m *LogStream) PrintLogTargetsLocations()</code>. For <code>file</code> target it will print relative folder path, for <code>loki</code> it will print URL of a Grafana Dashboard scoped to current execution and container ids. For <code>in-memory</code> target it's no-op.</p>
+<p>It is recommended to shutdown LogStream at the end of your tests. Here's an example:</p>
+<pre><code class="language-golang">t.Cleanup(func() {
+    l.Warn().Msg("Shutting down Log Stream")
+
+    if t.Failed() || os.Getenv("TEST_LOG_COLLECT") == "true" {
+        // we can't do much if this fails, so we just log the error
+        _ = logStream.FlushLogsToTargets()
+        // this will log log locations for each target (for file it will be a folder, for Loki Grafana dashboard -- remember to provide it's url in config!)
+        logStream.PrintLogTargetsLocations()
+        // this will save log locations in test summary, so that they can be easily accessed in GH's step summary
+        logStream.SaveLogLocationInTestSummary()
+    }
+
+    // we can't do much if this fails, so we just log the error
+    _ = logStream.Shutdown(testcontext.Get(b.t))
+    })
+</code></pre>
+<p>or in a bit shorter way:</p>
+<pre><code class="language-golang">t.Cleanup(func() {
+    l.Warn().Msg("Shutting down Log Stream")
+
+    if t.Failed() || os.Getenv("TEST_LOG_COLLECT") == "true" {
+        // this will log log locations for each target (for file it will be a folder, for Loki Grafana dashboard -- remember to provide it's url in config!)
+        logStream.PrintLogTargetsLocations()
+        // this will save log locations in test summary, so that they can be easily accessed in GH's step summary
+    }
+
+    // we can't do much if this fails
+    _ = logStream.FlushAndShutdown()
+    })
+</code></pre>
+<h2 id="grouping-test-execution"><a class="header" href="#grouping-test-execution">Grouping test execution</a></h2>
+<p>When running tests in CI you're probably interested in grouping logs by test execution, so that you can easily find the logs in Loki. To do that your job should set <code>RUN_ID</code> environment variable. In GHA it's recommended to set it to workflow id. If that variable is not set, then a run id will be automatically generated and saved in <code>.run.id</code> file, so that it can be shared by tests that are part of the same execution, but are running in different processes.</p>
+<h2 id="test-summary"><a class="header" href="#test-summary">Test Summary</a></h2>
+<p>In order to facilitate displaying information in GH's step summary <code>testsummary</code> package was added. It exposes a single function <code>AddEntry(testName, key string, value interface{}) </code>. When you call it, it either creates a test summary JSON file or appends to it. The result is is a map of keys with values.</p>
+<p>Example:</p>
+<pre><code class="language-JSON">{
+   "file":[
+      {
+         "test_name":"TestOCRv2Basic",
+         "value":"./logs/TestOCRv2Basic-2023-12-01T18-00-59-TestOCRv2Basic-38ac1e52-d0a6-48"
+      }
+   ],
+   "loki":[
+      {
+         "test_name":"TestOCRv2Basic",
+         "value":"https://grafana.ops.prod.cldev.sh/d/ddf75041-1e39-42af-aa46-361fe4c36e9e/ci-e2e-tests-logs?orgId=1\u0026var-run_id=TestOCRv2Basic-38ac1e52-d0a6-48\u0026var-container_id=cl-node-a179ca7d\u0026var-container_id=cl-node-76798f87\u0026var-container_id=cl-node-9ff7c3ae\u0026var-container_id=cl-node-43409b09\u0026var-container_id=cl-node-3b6810bd\u0026var-container_id=cl-node-69fed256\u0026from=1701449851165\u0026to=1701450124925"
+      }
+   ]
+}
+</code></pre>
+<p>In GHA after tests have ended we can use tools like <code>jq</code> to extract the information we need and display it in step summary.</p>
+<h1 id="toml-config"><a class="header" href="#toml-config">TOML Config</a></h1>
+<p>Basic and universal building blocks for TOML-based config are provided by <code>config</code> package. For more information do read <a href="lib/config/config.html">this</a>.</p>
+<h1 id="ecr-mirror"><a class="header" href="#ecr-mirror">ECR Mirror</a></h1>
+<p>An ecr mirror can be used to push images used often in order to bypass rate limit issues from dockerhub. The list of image mirrors can be found in the <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/.github/workflows/update-internal-mirrors.yaml">matrix here</a>. This currently works with images with version numbers in dockerhub. Support for gcr is coming in the future. The images must also have a version number so putting <code>latest</code> will not work. We have a separate list for one offs we want that can be added to <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/.github/actions/update-internal-mirrors/scripts/mirror.json">here</a> that does work with gcr and latest images. Note however for <code>latest</code> it will only pull it once and will not update it in our mirror if the latest on the public repository has changed, in this case it is preferable to update it manually when you know that you need the new latest and the update will not break your tests.</p>
+<p>For images in the mirrors you can use the INTERNAL_DOCKER_REPO environment variable when running tests and it will use that mirror in place of the public repository.</p>
+<p>We have two ways to add new images to the ecr. The first two requirements are that you create the ecr repository with the same name as the one in dockerhub out in aws and then add that ecr to the infra permissions (ask TT if you don't know how to do this).</p>
+<ol>
+<li>If it does not have version numbers or is gcr then you can add it <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/.github/actions/update-internal-mirrors/scripts/mirror.json">here</a></li>
+<li>You can add to the <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/.github/actions/update-internal-mirrors/scripts/update_mirrors.sh">mirror matrix</a> the new image name and an expression to get the latest versions added when the workflow runs. You can check the postgres one used in there for an example but basically the expression should filter out only the latest image or 2 for that particular version when calling the dockerhub endpoint, example curl call <code>curl -s "https://hub.docker.com/v2/repositories/${image_name}/tags/?page_size=100" | jq -r '.results[].name' | grep -E ${image_expression}</code> where image_name could be <code>library/postgres</code> and image_expression could be <code>'^[0-9]+\.[0-9]+$'</code>. Adding your ecr to this matrix should make sure we always have the latest versions for that expression.</li>
+</ol>
+<h2 id="debugging-http-and-rpc-calls"><a class="header" href="#debugging-http-and-rpc-calls">Debugging HTTP and RPC calls</a></h2>
+<pre><code class="language-bash">export SETH_LOG_LEVEL=info
+export RESTY_DEBUG=true
+</code></pre>
+<h2 id="loki-client"><a class="header" href="#loki-client">Loki Client</a></h2>
+<p>The <code>LokiClient</code> allows you to easily query Loki logs from your tests. It supports basic authentication, custom queries, and can be configured for (Resty) debug mode.</p>
+<h3 id="debugging-resty-and-loki-client"><a class="header" href="#debugging-resty-and-loki-client">Debugging Resty and Loki Client</a></h3>
+<pre><code class="language-bash">export LOKI_CLIENT_LOG_LEVEL=info
+export RESTY_DEBUG=true
+</code></pre>
+<h3 id="example-usage"><a class="header" href="#example-usage">Example usage:</a></h3>
+<pre><code class="language-go">auth := LokiBasicAuth{
+    Username: os.Getenv("LOKI_LOGIN"),
+    Password: os.Getenv("LOKI_PASSWORD"),
+}
+
+queryParams := LokiQueryParams{
+		Query:     `{namespace="test"} |= "test"`,
+		StartTime: time.Now().AddDate(0, 0, -1),
+		EndTime:   time.Now(),
+		Limit:     100,
+	}
+
+lokiClient := NewLokiClient("https://loki.api.url", "my-tenant", auth, queryParams)
+logEntries, err := lokiClient.QueryLogs(context.Background())
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="releasing_modules.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="lib/blockchain.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="releasing_modules.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="lib/blockchain.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
