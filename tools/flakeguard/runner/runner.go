@@ -55,6 +55,7 @@ type exitCoder interface {
 // runTests runs the tests for a given package and returns the path to the output file.
 func (r *Runner) runTests(packageName string) (string, bool, error) {
 	args := []string{"test", packageName, "-json", "-count=1"} // Enable JSON output
+	args = append(args, "2>/dev/null")                         // Redirect stderr to null
 	if r.UseRace {
 		args = append(args, "-race")
 	}
@@ -107,7 +108,18 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 		defer file.Close()
 
 		scanner := bufio.NewScanner(file)
+		var precedingLines []string // Store preceding lines for context
+		var followingLines []string // To collect lines after an error
+
 		for scanner.Scan() {
+			line := scanner.Text()
+			precedingLines = append(precedingLines, line)
+
+			// Limit precedingLines to the last 15 lines
+			if len(precedingLines) > 15 {
+				precedingLines = precedingLines[1:]
+			}
+
 			var entry struct {
 				Action  string  `json:"Action"`
 				Test    string  `json:"Test"`
@@ -116,7 +128,14 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 				Elapsed float64 `json:"Elapsed"`
 			}
 			if err := json.Unmarshal(scanner.Bytes(), &entry); err != nil {
-				return nil, fmt.Errorf("failed to parse json test output: %s, err: %w", scanner.Text(), err)
+				// Collect 15 lines after the error for more context
+				for scanner.Scan() && len(followingLines) < 15 {
+					followingLines = append(followingLines, scanner.Text())
+				}
+
+				// Combine precedingLines and followingLines to provide 15 lines before and after
+				context := append(precedingLines, followingLines...)
+				return nil, fmt.Errorf("failed to parse json test output near lines:\n%s\nerror: %w", strings.Join(context, "\n"), err)
 			}
 
 			// Only create TestResult for test-level entries
