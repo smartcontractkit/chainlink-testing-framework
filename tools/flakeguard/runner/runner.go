@@ -23,6 +23,9 @@ type Runner struct {
 	Verbose              bool     // If true, provides detailed logging.
 	RunCount             int      // Number of times to run the tests.
 	UseRace              bool     // Enable race detector.
+	Count                int      // -test.count flag value.
+	UseShuffle           bool     // -test.shuffle flag value.
+	JsonOutput           bool     // -test.json flag value.
 	FailFast             bool     // Stop on first test failure.
 	SkipTests            []string // Test names to exclude.
 	SelectedTestPackages []string // Explicitly selected packages to run.
@@ -33,8 +36,13 @@ type Runner struct {
 func (r *Runner) RunTests() ([]reports.TestResult, error) {
 	var jsonFilePaths []string
 	for _, p := range r.SelectedTestPackages {
+		binaryPath, err := r.buildTestBinary(p)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build test binary for package %s: %w", p, err)
+		}
+		defer os.Remove(binaryPath) // Clean up test binary after running tests
 		for i := 0; i < r.RunCount; i++ {
-			jsonFilePath, passed, err := r.runTests(p)
+			jsonFilePath, passed, err := r.runTestBinary(binaryPath)
 			if err != nil {
 				return nil, fmt.Errorf("failed to run tests in package %s: %w", p, err)
 			}
@@ -52,19 +60,48 @@ type exitCoder interface {
 	ExitCode() int
 }
 
-// runTests runs the tests for a given package and returns the path to the output file.
-func (r *Runner) runTests(packageName string) (string, bool, error) {
-	args := []string{"test", packageName, "-json", "-count=1"} // Enable JSON output
+// buildTestBinary builds the test binary for a given package and returns the path to the binary.
+func (r *Runner) buildTestBinary(packageName string) (string, error) {
+	binaryPath := fmt.Sprintf("%s/test-binary-%s", os.TempDir(), strings.ReplaceAll(packageName, "/", "-"))
+	// Compile-time flags for building the binary
+	args := []string{"test", "-c", packageName, "-o", binaryPath}
 	if r.UseRace {
 		args = append(args, "-race")
 	}
+
+	if r.Verbose {
+		log.Printf("Building test binary with command: go %s\n", strings.Join(args, " "))
+	}
+
+	cmd := exec.Command("go", args...)
+	cmd.Dir = r.ProjectPath
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("failed to build test binary for %s: %w", packageName, err)
+	}
+
+	return binaryPath, nil
+}
+
+// runTestBinary runs the tests for a given package and returns the path to the output file.
+func (r *Runner) runTestBinary(binaryPath string) (string, bool, error) {
+	// Runtime flags for executing the binary
+	args := []string{binaryPath}
+	if r.UseShuffle {
+		args = append(args, "-test.shuffle=on")
+	}
+	if r.JsonOutput {
+		args = append(args, "-test.json")
+	}
+	if r.Count > 0 {
+		args = append(args, fmt.Sprintf("-test.count=%d", r.Count))
+	}
 	if len(r.SkipTests) > 0 {
 		skipPattern := strings.Join(r.SkipTests, "|")
-		args = append(args, fmt.Sprintf("-skip=%s", skipPattern))
+		args = append(args, fmt.Sprintf("-test.skip=%s", skipPattern))
 	}
 
 	if r.Verbose {
-		log.Printf("Running command: go %s\n", strings.Join(args, " "))
+		log.Printf("Running command: %s\n", strings.Join(args, " "))
 	}
 
 	// Create a temporary file to store the output
@@ -73,9 +110,7 @@ func (r *Runner) runTests(packageName string) (string, bool, error) {
 		return "", false, fmt.Errorf("failed to create temp file: %w", err)
 	}
 	defer tmpFile.Close()
-
-	// Run the command with output directed to the file
-	cmd := exec.Command("go", args...)
+	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Dir = r.ProjectPath
 	cmd.Stdout = tmpFile
 	cmd.Stderr = tmpFile
@@ -85,7 +120,7 @@ func (r *Runner) runTests(packageName string) (string, bool, error) {
 		var exErr exitCoder
 		// Check if the error is due to a non-zero exit code
 		if errors.As(err, &exErr) && exErr.ExitCode() == 0 {
-			return "", false, fmt.Errorf("test command failed at %s: %w", packageName, err)
+			return "", false, fmt.Errorf("test command failed for binary at %s: %w", binaryPath, err)
 		}
 		return tmpFile.Name(), false, nil // Test failed
 	}
