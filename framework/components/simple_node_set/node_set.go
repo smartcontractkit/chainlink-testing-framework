@@ -23,6 +23,7 @@ type Input struct {
 	HTTPPortRangeStart int             `toml:"http_port_range_start"`
 	P2PPortRangeStart  int             `toml:"p2p_port_range_start"`
 	OverrideMode       string          `toml:"override_mode" validate:"required,oneof=all each"`
+	DbInput            *postgres.Input `toml:"db" validate:"required"`
 	NodeSpecs          []*clnode.Input `toml:"node_specs" validate:"required"`
 	Out                *Output         `toml:"out"`
 }
@@ -35,7 +36,7 @@ type Output struct {
 
 // NewSharedDBNodeSet create a new node set with a shared database instance
 // all the nodes have their own isolated database
-func NewSharedDBNodeSet(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output, error) {
+func NewSharedDBNodeSet(in *Input, bcOut *blockchain.Output) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
@@ -50,7 +51,7 @@ func NewSharedDBNodeSet(in *Input, bcOut *blockchain.Output, fakeUrl string) (*O
 	if len(in.NodeSpecs) != in.Nodes && in.OverrideMode == "each" {
 		return nil, fmt.Errorf("amount of 'nodes' must be equal to specs provided in override_mode='each'")
 	}
-	out, err = sharedDBSetup(in, bcOut, fakeUrl)
+	out, err = sharedDBSetup(in, bcOut)
 	if err != nil {
 		return nil, err
 	}
@@ -72,9 +73,9 @@ func printURLs(out *Output) {
 	framework.L.Debug().Any("DB", pgURLs).Send()
 }
 
-func sharedDBSetup(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output, error) {
-	in.NodeSpecs[0].DbInput.Databases = in.Nodes
-	dbOut, err := postgres.NewPostgreSQL(in.NodeSpecs[0].DbInput)
+func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
+	in.DbInput.Databases = in.Nodes
+	dbOut, err := postgres.NewPostgreSQL(in.DbInput)
 	if err != nil {
 		return nil, err
 	}
@@ -122,8 +123,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output, fakeUrl string) (*Output
 			}
 
 			nodeSpec := &clnode.Input{
-				DataProviderURL: fakeUrl,
-				DbInput:         in.NodeSpecs[overrideIdx].DbInput,
+				DbInput: in.DbInput,
 				Node: &clnode.NodeInput{
 					HTTPPort:                httpPortRangeStart + i,
 					P2PPort:                 p2pPortRangeStart + i,

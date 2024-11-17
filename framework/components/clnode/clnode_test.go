@@ -31,7 +31,6 @@ func TestComponentDockerNodeWithSharedDB(t *testing.T) {
 		{
 			name: "basic use case",
 			input: &clnode.Input{
-				DataProviderURL: "http://example.com",
 				DbInput: &postgres.Input{
 					Image:      "postgres:15.6",
 					Port:       16000,
@@ -67,7 +66,6 @@ func TestComponentDockerNodeWithDB(t *testing.T) {
 		{
 			name: "basic use case",
 			input: &clnode.Input{
-				DataProviderURL: "http://example.com",
 				DbInput: &postgres.Input{
 					Image:      "postgres:15.6",
 					Port:       15000,

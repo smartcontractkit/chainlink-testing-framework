@@ -43,11 +43,11 @@ func TestUpgrade(t *testing.T) {
 
 	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
 	require.NoError(t, err)
-	dp, err := fake.NewFakeDataProvider(in.MockerDataProvider)
+	_, err = fake.NewFakeDataProvider(in.MockerDataProvider)
 	require.NoError(t, err)
 
 	// deploy first time
-	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc, dp.BaseURLDocker)
+	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc)
 	require.NoError(t, err)
 
 	c, err := clclient.New(out.CLNodes)
@@ -66,7 +66,7 @@ func TestUpgrade(t *testing.T) {
 											level = 'info'
 	`
 
-	out, err = ns.UpgradeNodeSet(in.NodeSet, bc, dp.BaseURLDocker, 3*time.Second)
+	out, err = ns.UpgradeNodeSet(in.NodeSet, bc, 3*time.Second)
 	require.NoError(t, err)
 
 	jobs, _, err := c[0].ReadJobs()

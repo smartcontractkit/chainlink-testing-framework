@@ -29,10 +29,9 @@ var (
 
 // Input represents Chainlink node input
 type Input struct {
-	DataProviderURL string          `toml:"data_provider_url" validate:"required"`
-	DbInput         *postgres.Input `toml:"db" validate:"required"`
-	Node            *NodeInput      `toml:"node" validate:"required"`
-	Out             *Output         `toml:"out"`
+	DbInput *postgres.Input `toml:"db" validate:"required"`
+	Node    *NodeInput      `toml:"node" validate:"required"`
+	Out     *Output         `toml:"out"`
 }
 
 // NodeInput is CL nod container inputs

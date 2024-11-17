@@ -51,9 +51,11 @@ func TestComponentDockerNodeSetSharedDB(t *testing.T) {
 			nodeSetInput: &ns.Input{
 				Nodes:        2,
 				OverrideMode: "all",
+				DbInput: &postgres.Input{
+					Image: "postgres:15.6",
+				},
 				NodeSpecs: []*clnode.Input{
 					{
-						DataProviderURL: "http://example.com",
 						DbInput: &postgres.Input{
 							Image: "postgres:15.6",
 						},
@@ -82,9 +84,12 @@ func TestComponentDockerNodeSetSharedDB(t *testing.T) {
 				OverrideMode:       "each",
 				HTTPPortRangeStart: 20000,
 				P2PPortRangeStart:  22000,
+				DbInput: &postgres.Input{
+					Image: "postgres:15.6",
+					Port:  14000,
+				},
 				NodeSpecs: []*clnode.Input{
 					{
-						DataProviderURL: "http://example.com",
 						DbInput: &postgres.Input{
 							Image: "postgres:15.6",
 							Port:  14000,
@@ -99,7 +104,6 @@ level = 'info'
 						},
 					},
 					{
-						DataProviderURL: "http://example.com",
 						DbInput: &postgres.Input{
 							Image: "postgres:15.6",
 						},
@@ -127,7 +131,7 @@ level = 'info'
 		t.Run(tc.name, func(t *testing.T) {
 			bc, err := blockchain.NewBlockchainNetwork(tc.bcInput)
 			require.NoError(t, err)
-			output, err := ns.NewSharedDBNodeSet(tc.nodeSetInput, bc, tc.fakeURL)
+			output, err := ns.NewSharedDBNodeSet(tc.nodeSetInput, bc)
 			require.NoError(t, err)
 			tc.assertion(t, output)
 		})
