@@ -23,15 +23,19 @@ type Record struct {
 }
 
 type Records struct {
-	r map[string][]*Record
+	Data map[string][]*Record
 }
 
 func NewRecords() *Records {
 	return &Records{make(map[string][]*Record)}
 }
 
-func (r *Records) Get(path string) ([]*Record, error) {
-	rec, ok := r.r[path]
+func RecordKey(method, path string) string {
+	return fmt.Sprintf("%s:%s", method, path)
+}
+
+func (r *Records) Get(method, path string) ([]*Record, error) {
+	rec, ok := r.Data[RecordKey(method, path)]
 	if !ok {
 		return nil, fmt.Errorf("no record was found for path: %s", path)
 	}
@@ -74,10 +78,11 @@ func recordMiddleware() gin.HandlerFunc {
 		// Capture response data
 		resBody := customWriter.body.String()
 		status := c.Writer.Status()
-		if R.r[c.Request.URL.Path] == nil {
-			R.r[c.Request.URL.Path] = make([]*Record, 0)
+		if R.Data[c.Request.URL.Path] == nil {
+			R.Data[c.Request.URL.Path] = make([]*Record, 0)
 		}
-		R.r[c.Request.URL.Path] = append(R.r[c.Request.URL.Path], &Record{
+		recKey := RecordKey(c.Request.Method, c.Request.URL.Path)
+		R.Data[recKey] = append(R.Data[recKey], &Record{
 			Method:  c.Request.Method,
 			Path:    c.Request.URL.Path,
 			Headers: c.Request.Header,

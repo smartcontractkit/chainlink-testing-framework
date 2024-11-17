@@ -17,6 +17,7 @@
     - [Exposing Components](framework/components/state.md)
     - [Components Cleanup](framework/components/cleanup.md)
     - [Components Caching](framework/components/caching.md)
+    - [Mocking Services](framework/components/mocking.md)
     - [External Environment](framework/components/external.md)
     - [Secrets]()
     - [Observability Stack](framework/observability/observability_stack.md)
