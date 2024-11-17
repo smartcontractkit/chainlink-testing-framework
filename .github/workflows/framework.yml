@@ -5,7 +5,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-framework
   cancel-in-progress: true
 jobs:
-  test:
+  framework-component-tests:
     defaults:
       run:
         working-directory: framework
@@ -51,4 +51,4 @@ jobs:
       - name: Run Docker Component Tests
         if: steps.changes.outputs.src == 'true'
         run: |
-          go test -timeout 5m -v -count 1 -run TestComponent ./...
+          go test -timeout 2m -v -count 1 -run TestComponent ./...
