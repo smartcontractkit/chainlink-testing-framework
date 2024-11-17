@@ -21,9 +21,9 @@ func TestSmoke(t *testing.T) {
 
 	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
 	require.NoError(t, err)
-	dp, err := fake.NewFakeDataProvider(in.MockerDataProvider)
+	_, err = fake.NewFakeDataProvider(in.MockerDataProvider)
 	require.NoError(t, err)
-	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc, dp.BaseURLDocker)
+	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc)
 	require.NoError(t, err)
 
 	t.Run("test something", func(t *testing.T) {

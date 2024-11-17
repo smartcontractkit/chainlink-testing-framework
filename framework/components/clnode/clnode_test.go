@@ -26,12 +26,11 @@ func checkBasicOutputs(t *testing.T, output *clnode.Output) {
 	require.Contains(t, output.PostgreSQL.DockerInternalURL, "postgresql://chainlink:thispasswordislongenough@postgresql-")
 }
 
-func TestDockerNodeWithSharedDB(t *testing.T) {
+func TestComponentDockerNodeWithSharedDB(t *testing.T) {
 	testCases := []testCase{
 		{
 			name: "basic use case",
 			input: &clnode.Input{
-				DataProviderURL: "http://example.com",
 				DbInput: &postgres.Input{
 					Image:      "postgres:15.6",
 					Port:       16000,
@@ -62,12 +61,11 @@ func TestDockerNodeWithSharedDB(t *testing.T) {
 	}
 }
 
-func TestDockerNodeWithDB(t *testing.T) {
+func TestComponentDockerNodeWithDB(t *testing.T) {
 	testCases := []testCase{
 		{
 			name: "basic use case",
 			input: &clnode.Input{
-				DataProviderURL: "http://example.com",
 				DbInput: &postgres.Input{
 					Image:      "postgres:15.6",
 					Port:       15000,

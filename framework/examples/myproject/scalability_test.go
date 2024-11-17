@@ -27,9 +27,9 @@ func TestScalability(t *testing.T) {
 	// TODO: these outputs of components come from CRIB staging environment
 	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
 	require.NoError(t, err)
-	dp, err := fake.NewFakeDataProvider(in.MockerDataProvider)
+	_, err = fake.NewFakeDataProvider(in.MockerDataProvider)
 	require.NoError(t, err)
-	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc, dp.BaseURLDocker)
+	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc)
 	require.NoError(t, err)
 
 	var lokiCfg *wasp.LokiConfig

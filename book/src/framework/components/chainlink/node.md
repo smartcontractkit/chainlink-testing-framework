@@ -10,15 +10,12 @@ Here we provide full configuration reference, if you want to copy and run it, pl
 ## Configuration
 ```toml
 [cl_node]
-  # Optional URL for fake data provider URL
-  # usually set up in test with local mock server
-  data_provider_url = "http://example.com"
 
   [cl_node.db]
     # PostgreSQL image version and tag
     image = "postgres:15.6"
     # Pulls the image every time if set to 'true', used like that in CI. Can be set to 'false' to speed up local runs
-    pull_image = true
+    pull_image = false
 
   [cl_node.node]
     # custom ports that plugins may need to expose and map to the host machine
@@ -36,7 +33,7 @@ Here we provide full configuration reference, if you want to copy and run it, pl
     # Optional name for image we build, default is "ctftmp"
     docker_image_name = "ctftmp"
     # Pulls the image every time if set to 'true', used like that in CI. Can be set to 'false' to speed up local runs
-    pull_image = true
+    pull_image = false
     # Overrides Chainlink node TOML configuration
     # can be multiline, see example
     user_config_overrides = """

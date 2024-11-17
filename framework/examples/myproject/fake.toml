@@ -5,7 +5,7 @@
   port = "8545"
   type = "anvil"
 
-[data_provider]
+[fake]
   port = 9111
 
 [nodeset]

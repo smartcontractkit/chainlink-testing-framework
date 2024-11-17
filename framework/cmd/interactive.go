@@ -65,7 +65,7 @@ func createComponentsFromForm(form *nodeSetForm) error {
 				Nodes:        5,
 				OverrideMode: "all",
 				NodeSpecs:    nspecs,
-			}, bc, "")
+			}, bc)
 		}
 		err = spinner.New().
 			Title("Creating node set..").

@@ -10,23 +10,18 @@ Create a configuration file `smoke.toml`
   port = "8545"
   type = "anvil"
 
-[data_provider]
-  port = 9111
-
 [nodeset]
   nodes = 5
   override_mode = "all"
+  
+  [nodeset.db]
+    image = "postgres:15.6"
 
   [[nodeset.node_specs]]
-
-    [nodeset.node_specs.db]
-      image = "postgres:15.6"
-      pull_image = true
 
     [nodeset.node_specs.node]
       docker_file = "../../core/chainlink.Dockerfile"
       docker_ctx = "../.."
-      pull_image = true
 ```
 
 These paths will work for `e2e/capabilities` in our main [repository](https://github.com/smartcontractkit/chainlink/tree/ctf-v2-tests/e2e/capabilities)
