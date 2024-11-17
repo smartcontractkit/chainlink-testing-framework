@@ -11,3 +11,4 @@ The framework aims to equip you with all the necessary tools to write end-to-end
 
 ## Usage
 
+See [full](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/fake_test.go) example.
