@@ -44,16 +44,14 @@ You can also define a custom set of ports for any node
 [nodeset]
   nodes = 5
   override_mode = "each"
+  
+  [nodeset.db]
+    image = "postgres:15.6"
 
   [[nodeset.node_specs]]
-
-    [nodeset.node_specs.db]
-      image = "postgres:15.6"
-      pull_image = true
 
     [nodeset.node_specs.node]
       # here we defined 2 new ports to listen and mapped them to our host machine
       custom_ports = [14000, 14001]
       image = "public.ecr.aws/chainlink/chainlink:v2.16.0"
-      pull_image = false
 ```
