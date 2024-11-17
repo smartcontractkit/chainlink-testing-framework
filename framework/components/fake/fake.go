@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"net/http"
 	"os"
 )
 
@@ -22,7 +21,7 @@ type Output struct {
 	BaseURLDocker string `toml:"base_url_docker"`
 }
 
-func FakeJSON(path string, response gin.H, statusCode int) error {
+func JSON(path string, response map[string]any, statusCode int) error {
 	if Service == nil {
 		return fmt.Errorf("mock service is not initialized, please set up NewFakeDataProvider in your tests")
 	}
@@ -32,23 +31,13 @@ func FakeJSON(path string, response gin.H, statusCode int) error {
 	return nil
 }
 
-func runMocks(in *Input) {
-	router := gin.Default()
-	router.GET("/mock1", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "This is a GET request response from the mock service.",
-		})
-	})
-	router.POST("/mock2", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "This is a POST request response from the mock service.",
-		})
-	})
-	_ = router.Run(fmt.Sprintf(":%d", in.Port))
-}
-
+// NewFakeDataProvider creates new fake data provider
 func NewFakeDataProvider(in *Input) (*Output, error) {
-	go runMocks(in)
+	Service = gin.Default()
+	Service.Use(recordMiddleware())
+	go func() {
+		_ = Service.Run(fmt.Sprintf(":%d", in.Port))
+	}()
 	out := &Output{
 		BaseURLHost: fmt.Sprintf("http://localhost:%d", in.Port),
 	}
