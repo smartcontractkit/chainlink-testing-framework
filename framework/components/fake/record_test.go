@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestRecord(t *testing.T) {
+func TestComponentFake(t *testing.T) {
 	cfg := &fake.Input{
 		Port: 9111,
 	}
