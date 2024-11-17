@@ -50,18 +50,20 @@ func TestComponentFake(t *testing.T) {
 
 		// get request and response
 		recordedData, err := fake.R.Get(apiPath)
-		require.Equal(t, &fake.Record{
-			Method: "POST",
-			Path:   apiPath,
-			Headers: http.Header{
-				"Accept-Encoding": []string{"gzip"},
-				"Content-Type":    []string{"application/json"},
-				"Content-Length":  []string{"25"},
-				"User-Agent":      []string{"go-resty/2.15.3 (https://github.com/go-resty/resty)"},
+		require.Equal(t, []*fake.Record{
+			{
+				Method: "POST",
+				Path:   apiPath,
+				Headers: http.Header{
+					"Accept-Encoding": []string{"gzip"},
+					"Content-Type":    []string{"application/json"},
+					"Content-Length":  []string{"25"},
+					"User-Agent":      []string{"go-resty/2.15.3 (https://github.com/go-resty/resty)"},
+				},
+				ReqBody: `{"some_data":"some_data"}`,
+				ResBody: `{"status":"ok"}`,
+				Status:  200,
 			},
-			ReqBody: `{"some_data":"some_data"}`,
-			ResBody: `{"status":"ok"}`,
-			Status:  200,
 		}, recordedData)
 	})
 }
