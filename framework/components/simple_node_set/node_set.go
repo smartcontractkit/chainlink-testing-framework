@@ -2,19 +2,22 @@ package simple_node_set
 
 import (
 	"fmt"
+	"slices"
+	"strings"
+	"sync"
+
+	"golang.org/x/sync/errgroup"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
-	"golang.org/x/sync/errgroup"
-	"slices"
-	"strings"
-	"sync"
 )
 
 const (
 	DefaultHTTPPortStaticRangeStart = 10000
 	DefaultP2PStaticRangeStart      = 12000
+	CLNodeDBContainerLabel          = "clnode"
 )
 
 // Input is a node set configuration input
@@ -75,6 +78,7 @@ func printURLs(out *Output) {
 
 func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 	in.DbInput.Databases = in.Nodes
+	in.DbInput.Name = CLNodeDBContainerLabel
 	dbOut, err := postgres.NewPostgreSQL(in.DbInput)
 	if err != nil {
 		return nil, err
