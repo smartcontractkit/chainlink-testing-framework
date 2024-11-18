@@ -9,6 +9,7 @@ When deploying a component, you can explicitly configure port ranges if the defa
 Defaults are:
 - [NodeSet](../components/chainlink/nodeset.md) (Node HTTP API): `10000..100XX`
 - [NodeSet](../components/chainlink/nodeset.md) (Node P2P API): `12000..120XX`
+- Shared `PostgreSQL` volume is called `postgresql_data`
 ```
 [nodeset]
   # HTTP API port range start, each new node get port incremented (host machine)
