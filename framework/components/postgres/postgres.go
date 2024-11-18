@@ -9,6 +9,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
+	"github.com/google/uuid"
 	"github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
@@ -44,6 +45,9 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 	ctx := context.Background()
 
 	bindPort := fmt.Sprintf("%s/tcp", Port)
+	if in.Name == "" {
+		in.Name = uuid.NewString()[0:5]
+	}
 	containerName := framework.DefaultTCName(fmt.Sprintf("%s-%s", DBContainerLabel, in.Name))
 
 	var sqlCommands []string
