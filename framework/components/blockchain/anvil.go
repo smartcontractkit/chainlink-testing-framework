@@ -55,8 +55,9 @@ func deployAnvil(in *Input) (*Output, error) {
 		return nil, err
 	}
 	return &Output{
-		UseCache: true,
-		ChainID:  in.ChainID,
+		UseCache:      true,
+		ChainID:       in.ChainID,
+		ContainerName: containerName,
 		Nodes: []*Node{
 			{
 				HostWSUrl:             fmt.Sprintf("ws://%s:%s", host, mp.Port()),
