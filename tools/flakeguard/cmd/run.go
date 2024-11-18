@@ -27,6 +27,8 @@ var RunTestsCmd = &cobra.Command{
 		skipTests, _ := cmd.Flags().GetStringSlice("skip-tests")
 		printFailedTests, _ := cmd.Flags().GetBool("print-failed-tests")
 		minPassRatio, _ := cmd.Flags().GetFloat64("min-pass-ratio")
+		useShuffle, _ := cmd.Flags().GetBool("shuffle")
+		shuffleSeed, _ := cmd.Flags().GetString("shuffle-seed")
 
 		// Check if project dependencies are correctly set up
 		if err := checkDependencies(projectPath); err != nil {
@@ -51,6 +53,8 @@ var RunTestsCmd = &cobra.Command{
 			UseRace:              useRace,
 			SkipTests:            skipTests,
 			SelectedTestPackages: testPackages,
+			UseShuffle:           useShuffle,
+			ShuffleSeed:          shuffleSeed,
 		}
 
 		testResults, err := runner.RunTests()
@@ -102,6 +106,8 @@ func init() {
 	RunTestsCmd.Flags().Bool("run-all-packages", false, "Run all test packages in the project. This flag overrides --test-packages and --test-packages-json")
 	RunTestsCmd.Flags().IntP("run-count", "c", 1, "Number of times to run the tests")
 	RunTestsCmd.Flags().Bool("race", false, "Enable the race detector")
+	RunTestsCmd.Flags().Bool("shuffle", false, "Enable test shuffling")
+	RunTestsCmd.Flags().String("shuffle-seed", "", "Set seed for test shuffling. Must be used with --shuffle")
 	RunTestsCmd.Flags().Bool("fail-fast", false, "Stop on the first test failure")
 	RunTestsCmd.Flags().String("output-json", "", "Path to output the test results in JSON format")
 	RunTestsCmd.Flags().Float64("threshold", 0.8, "Threshold for considering a test as flaky")

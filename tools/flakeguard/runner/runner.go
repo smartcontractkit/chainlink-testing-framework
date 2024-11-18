@@ -23,6 +23,8 @@ type Runner struct {
 	Verbose              bool     // If true, provides detailed logging.
 	RunCount             int      // Number of times to run the tests.
 	UseRace              bool     // Enable race detector.
+	UseShuffle           bool     // Enable test shuffling. -shuffle=on flag.
+	ShuffleSeed          string   // Set seed for test shuffling -shuffle={seed} flag. Must be used with UseShuffle.
 	FailFast             bool     // Stop on first test failure.
 	SkipTests            []string // Test names to exclude.
 	SelectedTestPackages []string // Explicitly selected packages to run.
@@ -59,6 +61,14 @@ func (r *Runner) runTests(packageName string) (string, bool, error) {
 	if r.UseRace {
 		args = append(args, "-race")
 	}
+	if r.UseShuffle {
+		if r.ShuffleSeed != "" {
+			args = append(args, fmt.Sprintf("-shuffle=%s", r.ShuffleSeed))
+		} else {
+			args = append(args, "-shuffle=on")
+		}
+	}
+
 	if len(r.SkipTests) > 0 {
 		skipPattern := strings.Join(r.SkipTests, "|")
 		args = append(args, fmt.Sprintf("-skip=%s", skipPattern))
