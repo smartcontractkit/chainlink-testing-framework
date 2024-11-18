@@ -61,35 +61,35 @@ func TestComponentDockerNodeWithSharedDB(t *testing.T) {
 	}
 }
 
-//func TestComponentDockerNodeWithDB(t *testing.T) {
-//	testCases := []testCase{
-//		{
-//			name: "basic use case",
-//			input: &clnode.Input{
-//				DbInput: &postgres.Input{
-//					Image:      "postgres:15.6",
-//					Port:       15000,
-//					VolumeName: "b",
-//				},
-//				Node: &clnode.NodeInput{
-//					Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",
-//					Name:  "cl-node-2",
-//				},
-//			},
-//			assertion: func(t *testing.T, output *clnode.Output) {
-//				checkBasicOutputs(t, output)
-//			},
-//		},
-//	}
-//
-//	for _, tc := range testCases {
-//		err := framework.DefaultNetwork(&sync.Once{})
-//		require.NoError(t, err)
-//
-//		t.Run(tc.name, func(t *testing.T) {
-//			output, err := clnode.NewNodeWithDB(tc.input)
-//			require.NoError(t, err)
-//			tc.assertion(t, output)
-//		})
-//	}
-//}
+func TestComponentDockerNodeWithDB(t *testing.T) {
+	testCases := []testCase{
+		{
+			name: "basic use case",
+			input: &clnode.Input{
+				DbInput: &postgres.Input{
+					Image:      "postgres:15.6",
+					Port:       15000,
+					VolumeName: "b",
+				},
+				Node: &clnode.NodeInput{
+					Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",
+					Name:  "cl-node-2",
+				},
+			},
+			assertion: func(t *testing.T, output *clnode.Output) {
+				checkBasicOutputs(t, output)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		err := framework.DefaultNetwork(&sync.Once{})
+		require.NoError(t, err)
+
+		t.Run(tc.name, func(t *testing.T) {
+			output, err := clnode.NewNodeWithDB(tc.input)
+			require.NoError(t, err)
+			tc.assertion(t, output)
+		})
+	}
+}
