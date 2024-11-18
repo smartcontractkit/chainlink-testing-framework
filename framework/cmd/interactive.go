@@ -52,9 +52,6 @@ func createComponentsFromForm(form *nodeSetForm) error {
 		nspecs := make([]*clnode.Input, 0)
 		for i := 0; i < form.Nodes; i++ {
 			nspecs = append(nspecs, &clnode.Input{
-				DbInput: &postgres.Input{
-					Image: "postgres:15.6",
-				},
 				Node: &clnode.NodeInput{
 					Image: form.CLVersion,
 				},
@@ -64,7 +61,10 @@ func createComponentsFromForm(form *nodeSetForm) error {
 			_, err = simple_node_set.NewSharedDBNodeSet(&simple_node_set.Input{
 				Nodes:        5,
 				OverrideMode: "all",
-				NodeSpecs:    nspecs,
+				DbInput: &postgres.Input{
+					Image: "postgres:15.6",
+				},
+				NodeSpecs: nspecs,
 			}, bc)
 		}
 		err = spinner.New().
