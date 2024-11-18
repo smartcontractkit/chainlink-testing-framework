@@ -64,6 +64,7 @@ type Output struct {
 type NodeOut struct {
 	APIAuthUser     string `toml:"api_auth_user"`
 	APIAuthPassword string `toml:"api_auth_password"`
+	ContainerName   string `toml:"container_name"`
 	HostURL         string `toml:"url"`
 	HostP2PURL      string `toml:"p2p_url"`
 	DockerURL       string `toml:"docker_internal_url"`
@@ -288,6 +289,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	return &NodeOut{
 		APIAuthUser:     DefaultAPIUser,
 		APIAuthPassword: DefaultAPIPassword,
+		ContainerName:   containerName,
 		HostURL:         fmt.Sprintf("http://%s:%s", host, mp.Port()),
 		HostP2PURL:      fmt.Sprintf("http://%s:%s", host, mpP2P.Port()),
 		DockerURL:       fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),

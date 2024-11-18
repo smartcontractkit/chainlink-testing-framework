@@ -33,6 +33,7 @@ type Input struct {
 
 type Output struct {
 	Url               string `toml:"url"`
+	ContainerName     string `toml:"container_name"`
 	DockerInternalURL string `toml:"docker_internal_url"`
 }
 
@@ -40,7 +41,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 	ctx := context.Background()
 
 	bindPort := fmt.Sprintf("%s/tcp", Port)
-	containerName := framework.DefaultTCName("postgresql")
+	containerName := "ns-postgresql"
 
 	var sqlCommands []string
 	for i := 0; i <= in.Databases; i++ {
@@ -126,6 +127,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 		return nil, err
 	}
 	return &Output{
+		ContainerName: containerName,
 		DockerInternalURL: fmt.Sprintf(
 			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
 			User,

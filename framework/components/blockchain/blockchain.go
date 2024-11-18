@@ -17,9 +17,10 @@ type Input struct {
 
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network
 type Output struct {
-	UseCache bool    `toml:"use_cache"`
-	ChainID  string  `toml:"chain_id"`
-	Nodes    []*Node `toml:"nodes"`
+	UseCache      bool    `toml:"use_cache"`
+	ContainerName string  `toml:"container_name"`
+	ChainID       string  `toml:"chain_id"`
+	Nodes         []*Node `toml:"nodes"`
 }
 
 // Node represents blockchain node output, URLs required for connection locally and inside docker network
