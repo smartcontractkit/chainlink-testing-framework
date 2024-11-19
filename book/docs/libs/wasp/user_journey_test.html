@@ -220,15 +220,15 @@
 
 </style>
 <h1 id="wasp---testing-user-journeys"><a class="header" href="#wasp---testing-user-journeys">WASP - Testing User Journeys</a></h1>
-<p>Let's look at a more complex scenario, where user needs to authenticate first to be able to perform some action.
-Also, we will introduce a slightly more complex load profile:</p>
+<p>Let's explore a more complex scenario where a user needs to authenticate first before performing an action. Additionally, we will introduce a slightly more advanced load profile:</p>
 <ul>
 <li>1 user for the first 30 seconds</li>
-<li>then 2 users for next 30 seconds</li>
-<li>and finally 3 users for the last 30 seconds</li>
+<li>2 users for the next 30 seconds</li>
+<li>3 users for the final 30 seconds</li>
 </ul>
-<p>Since it's a "user journey", we will use a <code>VirtualUser</code> implementation to represent a user.</p>
-<p>Again, let's start with defining the <code>VirtualUser</code> struct:</p>
+<p>Since this is a "user journey," we will use a <code>VirtualUser</code> implementation to represent a user.</p>
+<h3 id="defining-the-virtual-user"><a class="header" href="#defining-the-virtual-user">Defining the Virtual User</a></h3>
+<p>First, let's define the <code>VirtualUser</code> struct:</p>
 <pre><code class="language-go">type VirtualUser struct {
 	*wasp.VUControl
 	target    string
@@ -238,16 +238,18 @@ Also, we will introduce a slightly more complex load profile:</p>
 	client    *resty.Client
 }
 </code></pre>
-<p>We have added a rate limiter to the struct, which will be used to limit the number of requests per second, as otherwise we could easily overload the server.</p>
-<div class="mdbook-alerts mdbook-alerts-warning">
+<p>Here, we’ve added a rate limiter to the struct, which will help limit the number of requests per second. This is useful to prevent overloading the server, especially in this test scenario where the requests are simple and fast. Without a limiter, even a small number of Virtual Users (VUs) could result in a very high RPS.</p>
+<div class="mdbook-alerts mdbook-alerts-note">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
-  warning
+  note
 </p>
-<p>Contrary to a <code>Gun</code> the <code>VirtualUser</code> doesn't come with any kind of RPS control and you need to implement it yourself.</p>
+<p>Since <code>VirtualUser</code> does not inherently limit RPS (it depends on the server's processing speed), you should implement a rate-limiting mechanism if needed.</p>
 </div>
-<p>For brevity, let's skip the implementation of <code>Clone()</code> and <code>Teardown()</code> functions, as they are similar to the previous examples. Since we will be using HTTP, no <code>Setup()</code> is also necessary.</p>
-<p>Now, let's implement a request that will authenticate the user:</p>
+<p>For brevity, we'll skip the implementation of the <code>Clone()</code> and <code>Teardown()</code> functions, as they are similar to previous examples. Additionally, no <code>Setup()</code> is required because we are using HTTP.</p>
+<hr />
+<h3 id="implementing-requests"><a class="header" href="#implementing-requests">Implementing Requests</a></h3>
+<h4 id="user-authentication"><a class="header" href="#user-authentication">User Authentication</a></h4>
 <pre><code class="language-go">// requestOne represents user login
 func (m *VirtualUser) requestOne(l *wasp.Generator) {
 	var result map[string]interface{}
@@ -261,7 +263,7 @@ func (m *VirtualUser) requestOne(l *wasp.Generator) {
 	l.Responses.OK(r, GroupAuth)
 }
 </code></pre>
-<p>And an action that requires authentication, let's say a balance check:</p>
+<h4 id="authenticated-action-eg-balance-check"><a class="header" href="#authenticated-action-eg-balance-check">Authenticated Action (e.g., Balance Check)</a></h4>
 <pre><code class="language-go">// represents authenticated user action
 func (m *VirtualUser) requestTwo(l *wasp.Generator) {
 	var result map[string]interface{}
@@ -275,14 +277,16 @@ func (m *VirtualUser) requestTwo(l *wasp.Generator) {
 	l.Responses.OK(r, GroupUser)
 }
 </code></pre>
-<p>Now, let's use them:</p>
+<h4 id="combining-the-requests"><a class="header" href="#combining-the-requests">Combining the Requests</a></h4>
 <pre><code class="language-go">func (m *VirtualUser) Call(l *wasp.Generator) {
-	m.rl.Take() // rate limit
+	m.rl.Take() // apply rate limiting
 	m.requestOne(l)
 	m.requestTwo(l)
 }
 </code></pre>
-<p>Now, the test itself. Pay attention to how we define the 3 phases of the load profile under <code>Schedule</code>:</p>
+<hr />
+<h3 id="writing-the-test"><a class="header" href="#writing-the-test">Writing the Test</a></h3>
+<p>Now, let’s write the test. Pay attention to how the three phases of the load profile are defined under <code>Schedule</code>:</p>
 <pre><code class="language-go">func TestScenario(t *testing.T) {
 	srv := wasp.NewHTTPMockServer(nil)
 	srv.Run()
@@ -302,9 +306,17 @@ func (m *VirtualUser) requestTwo(l *wasp.Generator) {
 	require.NoError(t, err)
 }
 </code></pre>
-<p>And that's it! We have a test that simulates a user journey with authentication and an action that requires authentication. And it changes the load during execution!
-As always, you can find the full example code <a href="https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/scenario">here</a>.</p>
-<p>But, what if you wanted to combine multiple load generators or even a <code>Gun</code> with a <code>VirtualUser</code>. Could you to that? You'll find out in the <a href="./profile_test.html">next chapter</a>.</p>
+<h4 id="load-profile"><a class="header" href="#load-profile">Load Profile</a></h4>
+<p>We generate load in three phases:</p>
+<ol>
+<li>1 user for the first 30 seconds</li>
+<li>2 users for the next 30 seconds</li>
+<li>3 users for the final 30 seconds</li>
+</ol>
+<hr />
+<h3 id="conclusion"><a class="header" href="#conclusion">Conclusion</a></h3>
+<p>And that's it! We’ve created a test that simulates a user journey with authentication and an action requiring authentication, while varying the load during execution. You can find the full example code <a href="https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/scenario">here</a>.</p>
+<p>But what if you wanted to combine multiple load generators—or even mix a <code>Gun</code> with a <code>VirtualUser</code>? Could you do that? Find out in the <a href="./profile_test.html">next chapter</a>.</p>
 
                     </main>
 
@@ -368,6 +380,8 @@ As always, you can find the full example code <a href="https://github.com/smartc
         <script src="../../book.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="../../mermaid.min.js"></script>
+        <script src="../../mermaid-init.js"></script>
 
 
     </div>

@@ -219,8 +219,8 @@
 }
 
 </style>
-<h1 id="wasp---stateful-protocol-testing"><a class="header" href="#wasp---stateful-protocol-testing">WASP - Stateful protocol testing</a></h1>
-<p>WASP allows you to test stateful protocols, like <code>WebSocket</code>. They are a bit more complex than stateless protocols, which is reflected in slightly higher complexity of interface to be implemented, namely the <code>VirtualUser</code> interface:</p>
+<h1 id="wasp---stateful-protocol-testing"><a class="header" href="#wasp---stateful-protocol-testing">WASP - Stateful Protocol Testing</a></h1>
+<p>WASP allows you to test stateful protocols like <code>WebSocket</code>. These protocols are more complex than stateless protocols, which is reflected in the slightly higher complexity of the interface to be implemented: the <code>VirtualUser</code> interface.</p>
 <pre><code class="language-go">type VirtualUser interface {
 	Call(l *Generator)
 	Clone(l *Generator) VirtualUser
@@ -230,6 +230,7 @@
 	StopChan() chan struct{}
 }
 </code></pre>
+<h3 id="defining-the-virtual-user"><a class="header" href="#defining-the-virtual-user">Defining the Virtual User</a></h3>
 <p>As before, let's start by defining a struct that will hold our <code>VirtualUser</code> implementation:</p>
 <pre><code class="language-go">type WSVirtualUser struct {
 	target string
@@ -238,7 +239,8 @@
 	Data   []string
 }
 </code></pre>
-<p>We will start with implementing the <code>Clone()</code> function used by WASP for creating new instances of the <code>VirtualUser</code>:</p>
+<h3 id="implementing-the-clone-method"><a class="header" href="#implementing-the-clone-method">Implementing the Clone Method</a></h3>
+<p>We will begin by implementing the <code>Clone()</code> function, used by WASP to create new instances of the <code>VirtualUser</code>:</p>
 <pre><code class="language-go">func (m *WSVirtualUser) Clone(_ *wasp.Generator) wasp.VirtualUser {
 	return &amp;WSVirtualUser{
 		VUControl: wasp.NewVUControl(),
@@ -247,7 +249,8 @@
 	}
 }
 </code></pre>
-<p>Next, we will implement the <code>Setup()</code> function, which will be used to establish a connection to the WebSocket server:</p>
+<h3 id="implementing-the-setup-method"><a class="header" href="#implementing-the-setup-method">Implementing the Setup Method</a></h3>
+<p>Next, we implement the <code>Setup()</code> function, which establishes a connection to the WebSocket server:</p>
 <pre><code class="language-go">func (m *WSVirtualUser) Setup(l *wasp.Generator) error {
 	var err error
 	m.conn, _, err = websocket.Dial(context.Background(), m.target, &amp;websocket.DialOptions{})
@@ -259,9 +262,10 @@
 	return nil
 }
 </code></pre>
-<p>We will omit <code>Teardown()</code> for brevity, but it should be used to close the connection to the WebSocket server.
-Also, we don't have to implement neither <code>Stop()</code> nor <code>StopChan()</code> functions, as they are already implemented in the <code>VUControl</code> struct.</p>
-<p>Next, we will implement the <code>Call()</code> function, which will be used to receive messages from the WebSocket server:</p>
+<p>We will omit the <code>Teardown()</code> function for brevity, but it should be used to close the connection to the WebSocket server.<br />
+Additionally, we do not need to implement the <code>Stop()</code> or <code>StopChan()</code> functions because they are already implemented in the <code>VUControl</code> struct.</p>
+<h3 id="implementing-the-call-method"><a class="header" href="#implementing-the-call-method">Implementing the Call Method</a></h3>
+<p>Now, we implement the <code>Call()</code> function, which is used to receive messages from the WebSocket server:</p>
 <pre><code class="language-go">func (m *WSVirtualUser) Call(l *wasp.Generator) {
 	startedAt := time.Now()
 	v := map[string]string{}
@@ -274,22 +278,24 @@ Also, we don't have to implement neither <code>Stop()</code> nor <code>StopChan(
 	l.ResponsesChan &lt;- &amp;wasp.Response{StartedAt: &amp;startedAt, Data: v}
 }
 </code></pre>
-<p>As you can see, we are not returning a response directly from <code>Call()</code>, but sending it to the <code>ResponsesChan</code> channel.</p>
-<p>Now, let's write the test.</p>
+<p>As you can see, instead of returning a single response directly from <code>Call()</code>, we send it to the <code>ResponsesChan</code> channel.
+This is done, so that we can send each response independently to Loki instead of waiting for the whole call to finish.</p>
+<h3 id="writing-the-test"><a class="header" href="#writing-the-test">Writing the Test</a></h3>
+<p>Now, let's write the test:</p>
 <pre><code class="language-go">func TestVirtualUser(t *testing.T) {
-	// start mock ws server
+	// start mock WebSocket server
 	s := httptest.NewServer(wasp.MockWSServer{
 		Sleep: 50 * time.Millisecond,
 	})
 	defer s.Close()
 	time.Sleep(1 * time.Second)
-	
+
 	// some parts omitted for brevity
 
 	// create generator
 	gen, err := wasp.NewGenerator(&amp;wasp.Config{
 		LoadType: wasp.VU,
-		// just use plain line profile - 5 VUs for 60s
+		// plain line profile - 5 VUs for 60s
 		Schedule:   wasp.Plain(5, 60*time.Second),
 		VU:         NewExampleVirtualUser(url),
 		Labels:     labels,
@@ -298,12 +304,15 @@ Also, we don't have to implement neither <code>Stop()</code> nor <code>StopChan(
 	if err != nil {
 		panic(err)
 	}
-	// run the generator and wait until it finish
+	// run the generator and wait until it finishes
 	gen.Run(true)
 }
 </code></pre>
-<p>That wasn't so difficult, was it? You can now test your WebSocket server with WASP. You can find a full example <a href="https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/simple_vu">here</a>.</p>
-<p>Now, let's see how we can test a more complex scenario, where a <code>VirtualUser</code> needs to perform various operations.</p>
+<h3 id="conclusion"><a class="header" href="#conclusion">Conclusion</a></h3>
+<p>That wasn’t so difficult, was it? You can now test your WebSocket server with WASP. You can find a full example <a href="https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/simple_vu">here</a>.</p>
+<hr />
+<h3 id="whats-next"><a class="header" href="#whats-next">What’s Next?</a></h3>
+<p>Now, let’s explore how to test <a href="./user_journey_test.html">a more complex scenario</a> where a <code>VirtualUser</code> needs to perform various operations.</p>
 
                     </main>
 
@@ -367,6 +376,8 @@ Also, we don't have to implement neither <code>Stop()</code> nor <code>StopChan(
         <script src="../../book.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="../../mermaid.min.js"></script>
+        <script src="../../mermaid-init.js"></script>
 
 
     </div>

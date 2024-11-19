@@ -1,14 +1,16 @@
 # WASP - Testing User Journeys
 
-Let's look at a more complex scenario, where user needs to authenticate first to be able to perform some action. 
-Also, we will introduce a slightly more complex load profile:
+Let's explore a more complex scenario where a user needs to authenticate first before performing an action. Additionally, we will introduce a slightly more advanced load profile:
 * 1 user for the first 30 seconds
-* then 2 users for next 30 seconds
-* and finally 3 users for the last 30 seconds
+* 2 users for the next 30 seconds
+* 3 users for the final 30 seconds
 
-Since it's a "user journey", we will use a `VirtualUser` implementation to represent a user.
+Since this is a "user journey," we will use a `VirtualUser` implementation to represent a user.
 
-Again, let's start with defining the `VirtualUser` struct:
+### Defining the Virtual User
+
+First, let's define the `VirtualUser` struct:
+
 ```go
 type VirtualUser struct {
 	*wasp.VUControl
@@ -20,14 +22,18 @@ type VirtualUser struct {
 }
 ```
 
-We have added a rate limiter to the struct, which will be used to limit the number of requests per second, as otherwise we could easily overload the server.
+Here, we’ve added a rate limiter to the struct, which will help limit the number of requests per second. This is useful to prevent overloading the server, especially in this test scenario where the requests are simple and fast. Without a limiter, even a small number of Virtual Users (VUs) could result in a very high RPS.
 
-> [!WARNING]
-> Contrary to a `Gun` the `VirtualUser` doesn't come with any kind of RPS control and you need to implement it yourself.
+> [!NOTE]  
+> Since `VirtualUser` does not inherently limit RPS (it depends on the server's processing speed), you should implement a rate-limiting mechanism if needed.
 
-For brevity, let's skip the implementation of `Clone()` and `Teardown()` functions, as they are similar to the previous examples. Since we will be using HTTP, no `Setup()` is also necessary.
+For brevity, we'll skip the implementation of the `Clone()` and `Teardown()` functions, as they are similar to previous examples. Additionally, no `Setup()` is required because we are using HTTP.
 
-Now, let's implement a request that will authenticate the user:
+---
+
+### Implementing Requests
+
+#### User Authentication
 ```go
 // requestOne represents user login
 func (m *VirtualUser) requestOne(l *wasp.Generator) {
@@ -43,7 +49,7 @@ func (m *VirtualUser) requestOne(l *wasp.Generator) {
 }
 ```
 
-And an action that requires authentication, let's say a balance check:
+#### Authenticated Action (e.g., Balance Check)
 ```go
 // represents authenticated user action
 func (m *VirtualUser) requestTwo(l *wasp.Generator) {
@@ -59,16 +65,21 @@ func (m *VirtualUser) requestTwo(l *wasp.Generator) {
 }
 ```
 
-Now, let's use them:
+#### Combining the Requests
 ```go
 func (m *VirtualUser) Call(l *wasp.Generator) {
-	m.rl.Take() // rate limit
+	m.rl.Take() // apply rate limiting
 	m.requestOne(l)
 	m.requestTwo(l)
 }
 ```
 
-Now, the test itself. Pay attention to how we define the 3 phases of the load profile under `Schedule`:
+---
+
+### Writing the Test
+
+Now, let’s write the test. Pay attention to how the three phases of the load profile are defined under `Schedule`:
+
 ```go
 func TestScenario(t *testing.T) {
 	srv := wasp.NewHTTPMockServer(nil)
@@ -90,7 +101,16 @@ func TestScenario(t *testing.T) {
 }
 ```
 
-And that's it! We have a test that simulates a user journey with authentication and an action that requires authentication. And it changes the load during execution!
-As always, you can find the full example code [here](https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/scenario).
+#### Load Profile
+We generate load in three phases:
+1. 1 user for the first 30 seconds
+2. 2 users for the next 30 seconds
+3. 3 users for the final 30 seconds
 
-But, what if you wanted to combine multiple load generators or even a `Gun` with a `VirtualUser`. Could you to that? You'll find out in the [next chapter](./profile_test.md).
+---
+
+### Conclusion
+
+And that's it! We’ve created a test that simulates a user journey with authentication and an action requiring authentication, while varying the load during execution. You can find the full example code [here](https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/scenario).
+
+But what if you wanted to combine multiple load generators—or even mix a `Gun` with a `VirtualUser`? Could you do that? Find out in the [next chapter](./profile_test.md).

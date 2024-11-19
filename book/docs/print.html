@@ -4002,15 +4002,17 @@ max_tps = 8.0
 
 </style>
 <h1 id="wasp---overview"><a class="header" href="#wasp---overview">WASP - Overview</a></h1>
-<p>WASP is lightweight load testing harness that allows to easily compose load profiles of varying complexity using arbitrary <code>Go</code> code.</p>
-<h2 id="main-features"><a class="header" href="#main-features">Main features</a></h2>
+<p>WASP is a lightweight load testing harness that makes it easy to compose load profiles of varying complexity using arbitrary <code>Go</code> code.</p>
+<p><img src="libs/wasp/./images/wasp.png" alt="WASP" /></p>
+<h2 id="main-features"><a class="header" href="#main-features">Main Features</a></h2>
 <ul>
-<li>predictable performance footprint</li>
-<li>non-opinionated reporting that pushes any data to <code>Loki</code></li>
-<li>supports stateless and stateful protocols (e.g. user journeys)</li>
-<li>comes with default Grafana dashboard with resuable components</li>
+<li>Predictable performance footprint</li>
+<li>Flexible, non-opinionated reporting that pushes data to <code>Loki</code></li>
+<li>Supports both stateless and stateful protocols</li>
+<li>Compatible with open and closed load models</li>
+<li>Includes a default Grafana dashboard with reusable components</li>
 </ul>
-<p>Sounds interesting? Then <a href="libs/wasp/./getting_started.html">let's get started!</a></p>
+<p>Sounds interesting? <a href="libs/wasp/./getting_started.html">Let's get started!</a></p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -4079,12 +4081,12 @@ max_tps = 8.0
 
 </style>
 <h1 id="wasp---getting-started"><a class="header" href="#wasp---getting-started">WASP - Getting Started</a></h1>
-<h2 id="pre-requisites"><a class="header" href="#pre-requisites">Pre-requisites</a></h2>
+<h2 id="prerequisites-1"><a class="header" href="#prerequisites-1">Prerequisites</a></h2>
 <ul>
 <li><a href="https://go.dev/doc/install">Golang</a></li>
 </ul>
 <h2 id="setup-1"><a class="header" href="#setup-1">Setup</a></h2>
-<p>To start writing tests create a directory for your project with <code>go.mod</code> and add WASP package</p>
+<p>To start writing tests, create a directory for your project with a <code>go.mod</code> file, then add the WASP package:</p>
 <pre><code class="language-bash">go get github.com/smartcontractkit/chainlink-testing-framework/wasp
 </code></pre>
 <div class="mdbook-alerts mdbook-alerts-warning">
@@ -4092,9 +4094,10 @@ max_tps = 8.0
   <span class="mdbook-alerts-icon"></span>
   warning
 </p>
-<p>To execute any of the following examples you will also need access to Loki and Grafana. You can find instructions on how to set them up locally <a href="libs/wasp/./local_loki_grafana_stack.html">here</a>.</p>
+<p>To execute any of the tests from the next chapters, you need access to Loki and Grafana.<br />
+You can find instructions on setting them up locally <a href="libs/wasp/./how-to/start_local_observability_stack.html">here</a>.</p>
 </div>
-<p>That was simple, wasn't it? Time to write your <a href="libs/wasp/./first_test.html">first test</a></p>
+<p>That was simple, wasn't it? Time to write your <a href="libs/wasp/./first_test.html">first test</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -4162,98 +4165,29 @@ max_tps = 8.0
 }
 
 </style>
-<h1 id="wasp---local-grafana-and-loki-stack"><a class="header" href="#wasp---local-grafana-and-loki-stack">WASP - Local Grafana and Loki stack</a></h1>
-<p>Write how to start them and what ports they are working on.</p>
-<div style="break-before: page; page-break-before: always;"></div><style>
-.mdbook-alerts {
-  padding: 8px 16px;
-  margin-bottom: 16px;
-  border-left: 0.25em solid var(--mdbook-alerts-color);
-}
-
-.mdbook-alerts > *:first-child {
-  margin-top: 0;
-}
-
-.mdbook-alerts > *:last-child {
-  margin-bottom: 0;
-}
-
-.mdbook-alerts-title {
-  display: flex;
-  font-weight: 600;
-  align-items: center;
-  line-height: 1;
-  color: var(--mdbook-alerts-color);
-  text-transform: capitalize;
-}
-
-.mdbook-alerts-icon {
-  display: inline-block;
-  width: 1em;
-  height: 1em;
-  margin-right: 0.2em;
-  background-color: currentColor;
-  -webkit-mask: no-repeat center / 100%;
-  mask: no-repeat center / 100%;
-  -webkit-mask-image: var(--mdbook-alerts-icon);
-  mask-image: var(--mdbook-alerts-icon);
-}
-
-.mdbook-alerts-note {
-  --mdbook-alerts-color: rgb(9, 105, 218);
-  /* https://icon-sets.iconify.design/material-symbols/info-outline-rounded/ */
-  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16v-4q0-.425-.288-.712T12 11q-.425 0-.712.288T11 12v4q0 .425.288.713T12 17m0-8q.425 0 .713-.288T13 8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8q0 .425.288.713T12 9m0 13q-2.075 0-3.9-.788t-3.175-2.137q-1.35-1.35-2.137-3.175T2 12q0-2.075.788-3.9t2.137-3.175q1.35-1.35 3.175-2.137T12 2q2.075 0 3.9.788t3.175 2.137q1.35 1.35 2.138 3.175T22 12q0 2.075-.788 3.9t-2.137 3.175q-1.35 1.35-3.175 2.138T12 22m0-2q3.35 0 5.675-2.325T20 12q0-3.35-2.325-5.675T12 4Q8.65 4 6.325 6.325T4 12q0 3.35 2.325 5.675T12 20m0-8"%2F%3E%3C%2Fsvg%3E');
-}
-
-.mdbook-alerts-tip {
-  --mdbook-alerts-color: rgb(26, 127, 55);
-  /* https://icon-sets.iconify.design/material-symbols/lightbulb-outline-rounded/ */
-  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 22q-.825 0-1.412-.587T10 20h4q0 .825-.587 1.413T12 22m-3-3q-.425 0-.712-.288T8 18q0-.425.288-.712T9 17h6q.425 0 .713.288T16 18q0 .425-.288.713T15 19zm-.75-3q-1.725-1.025-2.738-2.75T4.5 9.5q0-3.125 2.188-5.312T12 2q3.125 0 5.313 2.188T19.5 9.5q0 2.025-1.012 3.75T15.75 16zm.6-2h6.3q1.125-.8 1.738-1.975T17.5 9.5q0-2.3-1.6-3.9T12 4Q9.7 4 8.1 5.6T6.5 9.5q0 1.35.613 2.525T8.85 14M12 14"%2F%3E%3C%2Fsvg%3E');
-}
-
-.mdbook-alerts-important {
-  --mdbook-alerts-color: rgb(130, 80, 223);
-  /* https://icon-sets.iconify.design/material-symbols/chat-info-outline-rounded/ */
-  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 7q.425 0 .713-.288T13 6q0-.425-.288-.712T12 5q-.425 0-.712.288T11 6q0 .425.288.713T12 7m0 8q.425 0 .713-.288T13 14v-4q0-.425-.288-.712T12 9q-.425 0-.712.288T11 10v4q0 .425.288.713T12 15m-6 3l-2.3 2.3q-.475.475-1.088.213T2 19.575V4q0-.825.588-1.412T4 2h16q.825 0 1.413.588T22 4v12q0 .825-.587 1.413T20 18zm-.85-2H20V4H4v13.125zM4 16V4z"%2F%3E%3C%2Fsvg%3E');
-}
-
-.mdbook-alerts-warning {
-  --mdbook-alerts-color: rgb(154, 103, 0);
-  /* https://icon-sets.iconify.design/material-symbols/warning-outline-rounded/ */
-  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M2.725 21q-.275 0-.5-.137t-.35-.363q-.125-.225-.137-.488t.137-.512l9.25-16q.15-.25.388-.375T12 3q.25 0 .488.125t.387.375l9.25 16q.15.25.138.513t-.138.487q-.125.225-.35.363t-.5.137zm1.725-2h15.1L12 6zM12 18q.425 0 .713-.288T13 17q0-.425-.288-.712T12 16q-.425 0-.712.288T11 17q0 .425.288.713T12 18m0-3q.425 0 .713-.288T13 14v-3q0-.425-.288-.712T12 10q-.425 0-.712.288T11 11v3q0 .425.288.713T12 15m0-2.5"%2F%3E%3C%2Fsvg%3E');
-}
-
-.mdbook-alerts-caution {
-  --mdbook-alerts-color: rgb(207, 34, 46);
-  /* https://icon-sets.iconify.design/material-symbols/brightness-alert-outline-rounded/ */
-  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16q0-.425-.288-.712T12 15q-.425 0-.712.288T11 16q0 .425.288.713T12 17m0-4q.425 0 .713-.288T13 12V8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8v4q0 .425.288.713T12 13m-3.35 7H6q-.825 0-1.412-.587T4 18v-2.65L2.075 13.4q-.275-.3-.425-.662T1.5 12q0-.375.15-.737t.425-.663L4 8.65V6q0-.825.588-1.412T6 4h2.65l1.95-1.925q.3-.275.663-.425T12 1.5q.375 0 .738.15t.662.425L15.35 4H18q.825 0 1.413.588T20 6v2.65l1.925 1.95q.275.3.425.663t.15.737q0 .375-.15.738t-.425.662L20 15.35V18q0 .825-.587 1.413T18 20h-2.65l-1.95 1.925q-.3.275-.662.425T12 22.5q-.375 0-.737-.15t-.663-.425zm.85-2l2.5 2.5l2.5-2.5H18v-3.5l2.5-2.5L18 9.5V6h-3.5L12 3.5L9.5 6H6v3.5L3.5 12L6 14.5V18zm2.5-6"%2F%3E%3C%2Fsvg%3E');
-}
-
-</style>
-<h1 id="wasp---first-test"><a class="header" href="#wasp---first-test">WASP - First Test</a></h1>
+<h1 id="wasp---first-test-rps-test"><a class="header" href="#wasp---first-test-rps-test">WASP - First Test (RPS Test)</a></h1>
 <h2 id="requirements"><a class="header" href="#requirements">Requirements</a></h2>
 <ul>
 <li>Go installed</li>
-<li>Loki instance running (read how to start a local instance <a href="libs/wasp/./local_loki_grafana_stack">here</a>)</li>
+<li>Loki</li>
 </ul>
-<p>Let's start by creating a very simple test that will send 5 HTTP requests per second for 60 seconds.</p>
-<p>We will use a <code>Gun</code> that's designed for stateless protocols like HTTP and situations where we execute a single operation.</p>
-<p>All that a <code>Gun</code> needs to do is implement this single-method interface:</p>
+<p>Let's start by creating a simple test that sends 5 HTTP requests per second for 60 seconds.</p>
+<p>We will use a <code>Gun</code>, which is designed for stateless protocols like HTTP or measuring throughput.</p>
+<p>A <code>Gun</code> only needs to implement this single-method interface:</p>
 <pre><code class="language-go">type Gun interface {
 	Call(l *Generator) *Response
 }
 </code></pre>
-<p>So here we go! First let's define a struct that will hold our <code>Gun</code> implementation:</p>
+<h3 id="defining-the-gun"><a class="header" href="#defining-the-gun">Defining the Gun</a></h3>
+<p>First, let's define a struct that will hold our <code>Gun</code> implementation:</p>
 <pre><code class="language-go">type ExampleGun struct {
 	target string
 	client *resty.Client
 	Data   []string
 }
 </code></pre>
-<p>Our gun will send a GET request to the target URL. if the request is successful, we will return <code>*wasp.Response</code> with the response data.
-If it fails or responds with HTTP code different than <code>200</code>, we will return <code>*wasp.Response</code> with the response and error.</p>
-<p>Let's implement the <code>Gun</code> interface:</p>
+<p>Our <code>Gun</code> will send a <code>GET</code> request to the target URL. If the request is successful, we return a <code>*wasp.Response</code> containing the response data. If it fails or responds with an HTTP status other than <code>200</code>, we also return a <code>*wasp.Response</code> with the response and an error.</p>
+<p>Here’s the implementation of the <code>Gun</code> interface:</p>
 <pre><code class="language-go">func (m *ExampleGun) Call(l *wasp.Generator) *wasp.Response {
 	var result map[string]interface{}
 	r, err := m.client.R().
@@ -4273,20 +4207,28 @@ If it fails or responds with HTTP code different than <code>200</code>, we will 
   <span class="mdbook-alerts-icon"></span>
   note
 </p>
-<p>By default, WASP stores both all successful and failed responses, but you can use a <code>Sampler</code> to store only some of the successful ones. You can read more about it <a href="libs/wasp/./using_sampler.html">here</a>.</p>
+<p>By default, WASP stores all successful and failed responses, but you can use a <code>Sampler</code> to store only some of the successful ones. You can read more about it <a href="libs/wasp/./components/sampler.html">here</a>.</p>
 </div>
-<p>Now that we have a gun, let's write the test:</p>
+<h3 id="writing-the-test"><a class="header" href="#writing-the-test">Writing the Test</a></h3>
+<p>Now that we have a <code>Gun</code>, let’s write the test:</p>
 <pre><code class="language-go">func TestGun(t *testing.T) {
-	// start mock http server
+	// start mock HTTP server
 	srv := wasp.NewHTTPMockServer(nil)
 	srv.Run()
 
-    // some parts omitted for brevity
-	
+	// define labels to differentiate one run from another
+	labels := map[string]string{
+		// check variables in dashboard/dashboard.go
+		"go_test_name": "TestGun",
+		"gen_name":     "test_gun",
+		"branch":       "my-awesome-branch",
+		"commit":       "f3729fa",
+	}
+
 	// create generator
 	gen, err := wasp.NewGenerator(&amp;wasp.Config{
 		LoadType: wasp.RPS,
-		// just use plain line profile - 5 RPS for 60s
+		// plain line profile - 5 RPS for 60s
 		Schedule:   wasp.Plain(5, 60*time.Second),
 		Gun:        NewExampleHTTPGun(srv.URL()),
 		Labels:     labels,
@@ -4295,7 +4237,7 @@ If it fails or responds with HTTP code different than <code>200</code>, we will 
 	if err != nil {
 		panic(err)
 	}
-	// run the generator and wait until it finish
+	// run the generator and wait until it finishes
 	gen.Run(true)
 }
 </code></pre>
@@ -4304,12 +4246,32 @@ If it fails or responds with HTTP code different than <code>200</code>, we will 
   <span class="mdbook-alerts-icon"></span>
   note
 </p>
-<p><code>wasp.NewEnvLokiConfig()</code> configures Loki via environments variables. You can read about them <a href="libs/wasp/./configuration.html">here</a>.</p>
+<p>We used the <code>LoadType</code> of <code>wasp.RPS</code> since this is the only type of load that a <code>Gun</code> can handle.<br />
+You can read more about load types <a href="libs/wasp/./how-to/chose_rps_vu.html">here</a>.</p>
 </div>
-<p>And that's it! You have just created your first test using WASP. You can now run it using <code>go test -v -run TestGun</code>.</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>You can learn more about different labels and their functions <a href="libs/wasp/./how-to/use_labels.html">here</a>.</p>
+</div>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p><code>wasp.NewEnvLokiConfig()</code> configures Loki using environment variables. You can read about them <a href="libs/wasp/./configuration.html">here</a>.</p>
+</div>
+<h3 id="conclusion"><a class="header" href="#conclusion">Conclusion</a></h3>
+<p>And that's it! You’ve just created your first test using WASP. You can now run it using:</p>
+<pre><code class="language-bash">go test -v -run TestGun
+</code></pre>
 <p>You can find the full example <a href="https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/simple_rps">here</a>.</p>
-<p>But, what if you want to test a more complex scenario?</p>
-<p>First, we will look at <a href="libs/wasp/./stateful_test.html">stateful protocol test</a>, like <code>WebSocket</code>. Then on a hypothetical <a href="libs/wasp/./user_journey_test.html">user journey test</a>, where multiple requests need to be executed.</p>
+<hr />
+<h3 id="whats-next"><a class="header" href="#whats-next">What’s Next?</a></h3>
+<p>What if you want to test a more complex scenario?</p>
+<p>First, we’ll look at a <a href="libs/wasp/./stateful_test.html">stateful protocol test</a>, like <code>WebSocket</code>. Then, we’ll explore a hypothetical <a href="libs/wasp/./user_journey_test.html">user journey test</a>, where multiple requests need to be executed.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -4377,8 +4339,8 @@ If it fails or responds with HTTP code different than <code>200</code>, we will 
 }
 
 </style>
-<h1 id="wasp---stateful-protocol-testing"><a class="header" href="#wasp---stateful-protocol-testing">WASP - Stateful protocol testing</a></h1>
-<p>WASP allows you to test stateful protocols, like <code>WebSocket</code>. They are a bit more complex than stateless protocols, which is reflected in slightly higher complexity of interface to be implemented, namely the <code>VirtualUser</code> interface:</p>
+<h1 id="wasp---stateful-protocol-testing"><a class="header" href="#wasp---stateful-protocol-testing">WASP - Stateful Protocol Testing</a></h1>
+<p>WASP allows you to test stateful protocols like <code>WebSocket</code>. These protocols are more complex than stateless protocols, which is reflected in the slightly higher complexity of the interface to be implemented: the <code>VirtualUser</code> interface.</p>
 <pre><code class="language-go">type VirtualUser interface {
 	Call(l *Generator)
 	Clone(l *Generator) VirtualUser
@@ -4388,6 +4350,7 @@ If it fails or responds with HTTP code different than <code>200</code>, we will 
 	StopChan() chan struct{}
 }
 </code></pre>
+<h3 id="defining-the-virtual-user"><a class="header" href="#defining-the-virtual-user">Defining the Virtual User</a></h3>
 <p>As before, let's start by defining a struct that will hold our <code>VirtualUser</code> implementation:</p>
 <pre><code class="language-go">type WSVirtualUser struct {
 	target string
@@ -4396,7 +4359,8 @@ If it fails or responds with HTTP code different than <code>200</code>, we will 
 	Data   []string
 }
 </code></pre>
-<p>We will start with implementing the <code>Clone()</code> function used by WASP for creating new instances of the <code>VirtualUser</code>:</p>
+<h3 id="implementing-the-clone-method"><a class="header" href="#implementing-the-clone-method">Implementing the Clone Method</a></h3>
+<p>We will begin by implementing the <code>Clone()</code> function, used by WASP to create new instances of the <code>VirtualUser</code>:</p>
 <pre><code class="language-go">func (m *WSVirtualUser) Clone(_ *wasp.Generator) wasp.VirtualUser {
 	return &amp;WSVirtualUser{
 		VUControl: wasp.NewVUControl(),
@@ -4405,7 +4369,8 @@ If it fails or responds with HTTP code different than <code>200</code>, we will 
 	}
 }
 </code></pre>
-<p>Next, we will implement the <code>Setup()</code> function, which will be used to establish a connection to the WebSocket server:</p>
+<h3 id="implementing-the-setup-method"><a class="header" href="#implementing-the-setup-method">Implementing the Setup Method</a></h3>
+<p>Next, we implement the <code>Setup()</code> function, which establishes a connection to the WebSocket server:</p>
 <pre><code class="language-go">func (m *WSVirtualUser) Setup(l *wasp.Generator) error {
 	var err error
 	m.conn, _, err = websocket.Dial(context.Background(), m.target, &amp;websocket.DialOptions{})
@@ -4417,9 +4382,10 @@ If it fails or responds with HTTP code different than <code>200</code>, we will 
 	return nil
 }
 </code></pre>
-<p>We will omit <code>Teardown()</code> for brevity, but it should be used to close the connection to the WebSocket server.
-Also, we don't have to implement neither <code>Stop()</code> nor <code>StopChan()</code> functions, as they are already implemented in the <code>VUControl</code> struct.</p>
-<p>Next, we will implement the <code>Call()</code> function, which will be used to receive messages from the WebSocket server:</p>
+<p>We will omit the <code>Teardown()</code> function for brevity, but it should be used to close the connection to the WebSocket server.<br />
+Additionally, we do not need to implement the <code>Stop()</code> or <code>StopChan()</code> functions because they are already implemented in the <code>VUControl</code> struct.</p>
+<h3 id="implementing-the-call-method"><a class="header" href="#implementing-the-call-method">Implementing the Call Method</a></h3>
+<p>Now, we implement the <code>Call()</code> function, which is used to receive messages from the WebSocket server:</p>
 <pre><code class="language-go">func (m *WSVirtualUser) Call(l *wasp.Generator) {
 	startedAt := time.Now()
 	v := map[string]string{}
@@ -4432,22 +4398,24 @@ Also, we don't have to implement neither <code>Stop()</code> nor <code>StopChan(
 	l.ResponsesChan &lt;- &amp;wasp.Response{StartedAt: &amp;startedAt, Data: v}
 }
 </code></pre>
-<p>As you can see, we are not returning a response directly from <code>Call()</code>, but sending it to the <code>ResponsesChan</code> channel.</p>
-<p>Now, let's write the test.</p>
+<p>As you can see, instead of returning a single response directly from <code>Call()</code>, we send it to the <code>ResponsesChan</code> channel.
+This is done, so that we can send each response independently to Loki instead of waiting for the whole call to finish.</p>
+<h3 id="writing-the-test-1"><a class="header" href="#writing-the-test-1">Writing the Test</a></h3>
+<p>Now, let's write the test:</p>
 <pre><code class="language-go">func TestVirtualUser(t *testing.T) {
-	// start mock ws server
+	// start mock WebSocket server
 	s := httptest.NewServer(wasp.MockWSServer{
 		Sleep: 50 * time.Millisecond,
 	})
 	defer s.Close()
 	time.Sleep(1 * time.Second)
-	
+
 	// some parts omitted for brevity
 
 	// create generator
 	gen, err := wasp.NewGenerator(&amp;wasp.Config{
 		LoadType: wasp.VU,
-		// just use plain line profile - 5 VUs for 60s
+		// plain line profile - 5 VUs for 60s
 		Schedule:   wasp.Plain(5, 60*time.Second),
 		VU:         NewExampleVirtualUser(url),
 		Labels:     labels,
@@ -4456,12 +4424,15 @@ Also, we don't have to implement neither <code>Stop()</code> nor <code>StopChan(
 	if err != nil {
 		panic(err)
 	}
-	// run the generator and wait until it finish
+	// run the generator and wait until it finishes
 	gen.Run(true)
 }
 </code></pre>
-<p>That wasn't so difficult, was it? You can now test your WebSocket server with WASP. You can find a full example <a href="https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/simple_vu">here</a>.</p>
-<p>Now, let's see how we can test a more complex scenario, where a <code>VirtualUser</code> needs to perform various operations.</p>
+<h3 id="conclusion-1"><a class="header" href="#conclusion-1">Conclusion</a></h3>
+<p>That wasn’t so difficult, was it? You can now test your WebSocket server with WASP. You can find a full example <a href="https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/simple_vu">here</a>.</p>
+<hr />
+<h3 id="whats-next-1"><a class="header" href="#whats-next-1">What’s Next?</a></h3>
+<p>Now, let’s explore how to test <a href="libs/wasp/./user_journey_test.html">a more complex scenario</a> where a <code>VirtualUser</code> needs to perform various operations.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -4530,15 +4501,15 @@ Also, we don't have to implement neither <code>Stop()</code> nor <code>StopChan(
 
 </style>
 <h1 id="wasp---testing-user-journeys"><a class="header" href="#wasp---testing-user-journeys">WASP - Testing User Journeys</a></h1>
-<p>Let's look at a more complex scenario, where user needs to authenticate first to be able to perform some action.
-Also, we will introduce a slightly more complex load profile:</p>
+<p>Let's explore a more complex scenario where a user needs to authenticate first before performing an action. Additionally, we will introduce a slightly more advanced load profile:</p>
 <ul>
 <li>1 user for the first 30 seconds</li>
-<li>then 2 users for next 30 seconds</li>
-<li>and finally 3 users for the last 30 seconds</li>
+<li>2 users for the next 30 seconds</li>
+<li>3 users for the final 30 seconds</li>
 </ul>
-<p>Since it's a "user journey", we will use a <code>VirtualUser</code> implementation to represent a user.</p>
-<p>Again, let's start with defining the <code>VirtualUser</code> struct:</p>
+<p>Since this is a "user journey," we will use a <code>VirtualUser</code> implementation to represent a user.</p>
+<h3 id="defining-the-virtual-user-1"><a class="header" href="#defining-the-virtual-user-1">Defining the Virtual User</a></h3>
+<p>First, let's define the <code>VirtualUser</code> struct:</p>
 <pre><code class="language-go">type VirtualUser struct {
 	*wasp.VUControl
 	target    string
@@ -4548,16 +4519,18 @@ Also, we will introduce a slightly more complex load profile:</p>
 	client    *resty.Client
 }
 </code></pre>
-<p>We have added a rate limiter to the struct, which will be used to limit the number of requests per second, as otherwise we could easily overload the server.</p>
-<div class="mdbook-alerts mdbook-alerts-warning">
+<p>Here, we’ve added a rate limiter to the struct, which will help limit the number of requests per second. This is useful to prevent overloading the server, especially in this test scenario where the requests are simple and fast. Without a limiter, even a small number of Virtual Users (VUs) could result in a very high RPS.</p>
+<div class="mdbook-alerts mdbook-alerts-note">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
-  warning
+  note
 </p>
-<p>Contrary to a <code>Gun</code> the <code>VirtualUser</code> doesn't come with any kind of RPS control and you need to implement it yourself.</p>
+<p>Since <code>VirtualUser</code> does not inherently limit RPS (it depends on the server's processing speed), you should implement a rate-limiting mechanism if needed.</p>
 </div>
-<p>For brevity, let's skip the implementation of <code>Clone()</code> and <code>Teardown()</code> functions, as they are similar to the previous examples. Since we will be using HTTP, no <code>Setup()</code> is also necessary.</p>
-<p>Now, let's implement a request that will authenticate the user:</p>
+<p>For brevity, we'll skip the implementation of the <code>Clone()</code> and <code>Teardown()</code> functions, as they are similar to previous examples. Additionally, no <code>Setup()</code> is required because we are using HTTP.</p>
+<hr />
+<h3 id="implementing-requests"><a class="header" href="#implementing-requests">Implementing Requests</a></h3>
+<h4 id="user-authentication"><a class="header" href="#user-authentication">User Authentication</a></h4>
 <pre><code class="language-go">// requestOne represents user login
 func (m *VirtualUser) requestOne(l *wasp.Generator) {
 	var result map[string]interface{}
@@ -4571,7 +4544,7 @@ func (m *VirtualUser) requestOne(l *wasp.Generator) {
 	l.Responses.OK(r, GroupAuth)
 }
 </code></pre>
-<p>And an action that requires authentication, let's say a balance check:</p>
+<h4 id="authenticated-action-eg-balance-check"><a class="header" href="#authenticated-action-eg-balance-check">Authenticated Action (e.g., Balance Check)</a></h4>
 <pre><code class="language-go">// represents authenticated user action
 func (m *VirtualUser) requestTwo(l *wasp.Generator) {
 	var result map[string]interface{}
@@ -4585,14 +4558,16 @@ func (m *VirtualUser) requestTwo(l *wasp.Generator) {
 	l.Responses.OK(r, GroupUser)
 }
 </code></pre>
-<p>Now, let's use them:</p>
+<h4 id="combining-the-requests"><a class="header" href="#combining-the-requests">Combining the Requests</a></h4>
 <pre><code class="language-go">func (m *VirtualUser) Call(l *wasp.Generator) {
-	m.rl.Take() // rate limit
+	m.rl.Take() // apply rate limiting
 	m.requestOne(l)
 	m.requestTwo(l)
 }
 </code></pre>
-<p>Now, the test itself. Pay attention to how we define the 3 phases of the load profile under <code>Schedule</code>:</p>
+<hr />
+<h3 id="writing-the-test-2"><a class="header" href="#writing-the-test-2">Writing the Test</a></h3>
+<p>Now, let’s write the test. Pay attention to how the three phases of the load profile are defined under <code>Schedule</code>:</p>
 <pre><code class="language-go">func TestScenario(t *testing.T) {
 	srv := wasp.NewHTTPMockServer(nil)
 	srv.Run()
@@ -4612,9 +4587,17 @@ func (m *VirtualUser) requestTwo(l *wasp.Generator) {
 	require.NoError(t, err)
 }
 </code></pre>
-<p>And that's it! We have a test that simulates a user journey with authentication and an action that requires authentication. And it changes the load during execution!
-As always, you can find the full example code <a href="https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/scenario">here</a>.</p>
-<p>But, what if you wanted to combine multiple load generators or even a <code>Gun</code> with a <code>VirtualUser</code>. Could you to that? You'll find out in the <a href="libs/wasp/./profile_test.html">next chapter</a>.</p>
+<h4 id="load-profile"><a class="header" href="#load-profile">Load Profile</a></h4>
+<p>We generate load in three phases:</p>
+<ol>
+<li>1 user for the first 30 seconds</li>
+<li>2 users for the next 30 seconds</li>
+<li>3 users for the final 30 seconds</li>
+</ol>
+<hr />
+<h3 id="conclusion-2"><a class="header" href="#conclusion-2">Conclusion</a></h3>
+<p>And that's it! We’ve created a test that simulates a user journey with authentication and an action requiring authentication, while varying the load during execution. You can find the full example code <a href="https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/scenario">here</a>.</p>
+<p>But what if you wanted to combine multiple load generators—or even mix a <code>Gun</code> with a <code>VirtualUser</code>? Could you do that? Find out in the <a href="libs/wasp/./profile_test.html">next chapter</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -4683,11 +4666,10 @@ As always, you can find the full example code <a href="https://github.com/smartc
 
 </style>
 <h1 id="wasp---using-profiles"><a class="header" href="#wasp---using-profiles">WASP - Using Profiles</a></h1>
-<p>Finally, let's look at the most complex scenario, where we will be using a <code>VirtualUser</code> to represent a user, and a <code>Gun</code> to represent some background load.
-Also, we will use a new load segment type, one that varies over time.</p>
-<p>In order to bind together different <code>Generators</code> (like a <code>Gun</code> or a <code>VirtualUser</code>) we will use a <code>Profile</code>. You can think of it as a highest-level abstraction that fully describes the load profile.</p>
-<p>We will skip defining both the <code>Gun</code> and the <code>VirtualUser</code> as they are identical to the previous examples. Well, almost.
-For the <code>VU</code> we will use a handy wrapper for sending <code>Response</code> back to the channel. See if you can spot it:</p>
+<p>In this section, we’ll explore the most complex scenario: using a <code>VirtualUser</code> to represent a user and a <code>Gun</code> to generate background load. We’ll also introduce a new load segment type that varies over time.</p>
+<p>To bind together different <code>Generators</code> (such as a <code>Gun</code> or a <code>VirtualUser</code>), we’ll use a <code>Profile</code>. Think of it as the highest-level abstraction that fully describes the load profile.</p>
+<h3 id="gun-and-virtualuser"><a class="header" href="#gun-and-virtualuser"><code>Gun</code> and <code>VirtualUser</code></a></h3>
+<p>We’ll skip defining both the <code>Gun</code> and the <code>VirtualUser</code>, as they are nearly identical to previous examples. However, for the <code>VirtualUser</code>, we’ll use a handy wrapper for sending <code>Response</code> back to the channel. See if you can spot it:</p>
 <pre><code class="language-go">// represents user login
 func (m *VirtualUser) requestOne(l *wasp.Generator) {
 	var result map[string]interface{}
@@ -4701,42 +4683,83 @@ func (m *VirtualUser) requestOne(l *wasp.Generator) {
 	l.Responses.OK(r, GroupAuth)
 }
 </code></pre>
-<p>Let's define our background load schedule for the RPS <code>Gun</code>. During first 10 seconds, it will increment the RPS by 2.5 every seconds, and then it will keep it at 5 RPS for 40 seconds:</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>You might have noticed <code>GroupAuth</code> constant passed to <code>OK()</code> and <code>Err()</code> methods. This is used to group responses in the dashboard.
+You can read more about it <a href="libs/wasp/./how-to/use_labels.html">here</a>.</p>
+</div>
+<hr />
+<h3 id="background-load-schedule-for-the-gun"><a class="header" href="#background-load-schedule-for-the-gun">Background Load Schedule for the <code>Gun</code></a></h3>
+<p>For the RPS <code>Gun</code>, we’ll define a schedule where:</p>
+<ol>
+<li>During the first 10 seconds, the RPS increases by 2.5 every second.</li>
+<li>For the next 40 seconds, it remains steady at 5 RPS.</li>
+</ol>
 <pre><code class="language-go">epsilonSchedule := wasp.Combine(
-    wasp.Steps(1, 1, 4, 10*time.Second), // start with 1 RPS, increment by 1 RPS in 4 steps during 10 seconds (increment of 1 every 2.5 seconds)
-    wasp.Plain(5, 40*time.Second)) // hold 5 RPS for 40 seconds
+    wasp.Steps(1, 1, 4, 10*time.Second), // Start at 1 RPS, increment by 1 RPS in 4 steps over 10 seconds (1 increment every 2.5 seconds)
+    wasp.Plain(5, 40*time.Second))       // Hold 5 RPS for 40 seconds
 </code></pre>
-<p>And our virtual user, will first do nothing for the first 10 seconds, waiting for the background load to reach the desired level and then add 1 virtual user every 3 seconds for 30 seconds, to finally wind down from 10 to 0 users in 10 seconds:</p>
-<pre><code class="language-go">	thetaSchedule := wasp.Combine(
-		wasp.Plain(0, 10*time.Second), // do nothing for 10 seconds
-		wasp.Steps(1, 1, 9, 30*time.Second), // start with 1 user, increment by 1 virtual user in 9 steps during 30 seconds (increment of 1 every ~3 seconds)
-        wasp.Steps(10, -1, 10, 10*time.Second)) // start with 10 users, decrement by 1 virtual user in 10 steps during 10 seconds (decrement of 1 every second)
+<hr />
+<h3 id="virtual-user-schedule"><a class="header" href="#virtual-user-schedule">Virtual User Schedule</a></h3>
+<p>For the <code>VirtualUser</code>, the schedule will:</p>
+<ol>
+<li>Start with 1 user for the first 10 seconds.</li>
+<li>Add 1 user every 3 seconds for 30 seconds.</li>
+<li>Gradually reduce from 10 users to 0 over 10 seconds.</li>
+</ol>
+<pre><code class="language-go">thetaSchedule := wasp.Combine(
+    wasp.Plain(1, 10*time.Second),         // 1 user for the first 10 seconds
+    wasp.Steps(1, 1, 9, 30*time.Second),  // Increment by 1 user every ~3 seconds over 30 seconds
+    wasp.Steps(10, -1, 10, 10*time.Second)) // Decrement by 1 user every second over 10 seconds
 </code></pre>
-<p>Now, let's define our <code>Profile</code>:</p>
-<pre><code class="language-go">	_, err := wasp.NewProfile().
-		Add(wasp.NewGenerator(&amp;wasp.Config{
-			T:          t,
-			LoadType:   wasp.VU,
-			GenName:    "Theta",
-			Schedule:   thetaSchedule,
-			VU:         NewExampleScenario(srv.URL()),
-			LokiConfig: wasp.NewEnvLokiConfig(),
-		})).
-		Add(wasp.NewGenerator(&amp;wasp.Config{
-			T:          t,
-			LoadType:   wasp.RPS,
-			GenName:    "Epsilon",
-			Schedule:   epsilonSchedule,
-			Gun:        NewExampleHTTPGun(srv.URL()),
-			LokiConfig: wasp.NewEnvLokiConfig(),
-		})).
-		Run(true)
+<hr />
+<h3 id="defining-the-profile"><a class="header" href="#defining-the-profile">Defining the Profile</a></h3>
+<p>We’ll now define our <code>Profile</code> to combine both the <code>Gun</code> and the <code>VirtualUser</code>:</p>
+<pre><code class="language-go">_, err := wasp.NewProfile().
+    Add(wasp.NewGenerator(&amp;wasp.Config{
+        T:          t,
+        LoadType:   wasp.VU,
+        GenName:    "Theta",
+        Schedule:   thetaSchedule,
+        VU:         NewExampleScenario(srv.URL()),
+        LokiConfig: wasp.NewEnvLokiConfig(),
+    })).
+    Add(wasp.NewGenerator(&amp;wasp.Config{
+        T:          t,
+        LoadType:   wasp.RPS,
+        GenName:    "Epsilon",
+        Schedule:   epsilonSchedule,
+        Gun:        NewExampleHTTPGun(srv.URL()),
+        LokiConfig: wasp.NewEnvLokiConfig(),
+    })).
+    Run(true)
 </code></pre>
-<p>And done! You have just created a complex load profile that will simulate a growing number of users and a background load that varies over time.
-Notice the handly <code>.Run(true)</code> method that will block until all of the <code>Profile</code>'s generators have finished.</p>
+<hr />
+<h3 id="conclusion-3"><a class="header" href="#conclusion-3">Conclusion</a></h3>
+<p>And that’s it! You’ve created a complex load profile that simulates a growing number of users alongside a background load that varies over time. Notice the <code>.Run(true)</code> method, which blocks until all the <code>Profile</code>'s generators have finished.</p>
 <p>You can find the full example <a href="https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/profiles">here</a>.</p>
-<p>Now that you know how to generate load, it's time to learn how to monitor it and assert on it. Let's move on to the next section: <a href="libs/wasp/./testing_alerts.html">Testing Alerts</a>.</p>
-<pre><code></code></pre>
+<hr />
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>The <code>error</code> returned by the <code>.Run(true)</code> method only indicates if any dashboard alerts were triggered.<br />
+To check for load generation errors, call the <code>Errors()</code> method on each <code>Generator</code> in the <code>Profile</code>.</p>
+</div>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>Currently, it’s not possible to have a "waiting" schedule that doesn’t generate any load. To implement such logic, start one <code>Profile</code> in a goroutine and use <code>time.Sleep</code> before starting the second <code>Profile</code>. An example of this can be found <a href="https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/profiles/node_background_load_test.go">here</a>.</p>
+</div>
+<hr />
+<h3 id="whats-next-2"><a class="header" href="#whats-next-2">What’s Next?</a></h3>
+<p>Now that you know how to generate load, it’s time to learn how to monitor and assert on it. Let’s move on to the next section: <a href="libs/wasp/./testing_alerts.html">Testing Alerts</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -4805,23 +4828,32 @@ Notice the handly <code>.Run(true)</code> method that will block until all of th
 
 </style>
 <h1 id="wasp---testing-alerts"><a class="header" href="#wasp---testing-alerts">WASP - Testing Alerts</a></h1>
-<p>Okay, you have your load profile set up and running. Now, let's see how you can monitor and assert on the metrics generated by the generated load.</p>
-<p>For that will need to use a Grafana dashboard. We will generate it and alerts programmatically, but if you already
-have a dashboard with alerts you can also use them to make assertions with WASP.</p>
-<div class="mdbook-alerts mdbook-alerts-note">
+<div class="mdbook-alerts mdbook-alerts-warning">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
-  note
+  warning
 </p>
-<p>Read more about asserting on Alerts for existing dashboard in the <a href="libs/wasp/./components/alert_checker.html">AlertChecker</a> component description.</p>
+<p>The API used to create and check alerts is unstable, and it’s possible that this section is out of date.</p>
 </div>
-<p>We will use a simple HTTP <code>Gun</code> that was used in previous examples, so we will skip its definition here for brevity.
-For the sake of this example, we will divide alerts into two groups:</p>
+<p>With your load profile set up and running, let’s explore how you can monitor and assert on the metrics generated by the load.</p>
+<p>This requires the use of a Grafana dashboard. For this example, we’ll generate the dashboard and alerts programmatically. However, in a real-world scenario, if you already have a dashboard with alerts, you can use them to make assertions with WASP.</p>
+<p>We’ll use a simple HTTP <code>Gun</code> from previous examples, so its definition is skipped here for brevity. For this example, we’ll divide alerts into two groups:</p>
 <ul>
-<li>baseline</li>
-<li>stress</li>
+<li><strong>Baseline</strong></li>
+<li><strong>Stress</strong></li>
 </ul>
-<p>Let's start with some constants that will be useful later on:</p>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<p>This example assumes you have a Grafana instance set up. If you don’t, please set it up before running the test.<br />
+You can find more information on setting up Grafana locally <a href="libs/wasp/./how-to/start_local_observability_stack.html">here</a>.<br />
+WASP reads Grafana configuration from environment variables. Learn more about them in the <a href="libs/wasp/./configuration.html">Configuration</a> section.</p>
+</div>
+<hr />
+<h3 id="constants-for-alert-groups"><a class="header" href="#constants-for-alert-groups">Constants for Alert Groups</a></h3>
+<p>Let’s start by defining some constants that will be useful later:</p>
 <pre><code class="language-go">const (
     FirstGenName                 = "first API"
     SecondGenName                = "second API"
@@ -4829,7 +4861,13 @@ For the sake of this example, we will divide alerts into two groups:</p>
     StressRequirementGroupName   = "stress"
 )
 </code></pre>
-<p>Now, let's define an alert that will trigger when the 99th percentile of the response time is greater than 50ms.</p>
+<hr />
+<h3 id="defining-alerts"><a class="header" href="#defining-alerts">Defining Alerts</a></h3>
+<h4 id="baseline-alerts"><a class="header" href="#baseline-alerts">Baseline Alerts</a></h4>
+<ol>
+<li><strong>99th Percentile Latency Alert</strong><br />
+This alert triggers when the 99th percentile of the response time exceeds 50ms.</li>
+</ol>
 <pre><code class="language-go">fiftyMsAlert := dashboard.WaspAlert{
     Name:                 "99th latency percentile is out of SLO for first API",
     AlertType:            dashboard.AlertTypeQuantile99,
@@ -4844,10 +4882,13 @@ For the sake of this example, we will divide alerts into two groups:</p>
   <span class="mdbook-alerts-icon"></span>
   note
 </p>
-<p>You can read more about various alert types supported by WASP in the <a href="libs/wasp/./components/alert_checker.html">AlertChecker</a> component description.</p>
+<p>Learn more about various alert types supported by WASP in the <a href="libs/wasp/./components/alert_checker.html">AlertChecker</a> documentation.</p>
 </div>
-<p>For the second API, let's define an alert that will fire if there were any errors, when calling the second generator:</p>
-<pre><code class="language-go">anyErrorsAlert := dashboard.WaspAlert{	
+<ol start="2">
+<li><strong>Error Alert for Second API</strong><br />
+This alert fires if any errors occur while calling the second generator:</li>
+</ol>
+<pre><code class="language-go">anyErrorsAlert := dashboard.WaspAlert{
     Name:                 "second API has errors",
     AlertType:            dashboard.AlertTypeErrors,
     TestName:             "TestBaselineRequirements",
@@ -4856,18 +4897,18 @@ For the sake of this example, we will divide alerts into two groups:</p>
     AlertIf:              alert.IsAbove(0),
 }
 </code></pre>
-<p>And finally, a more complex alert for the <code>stress</code> group of alerts:</p>
+<h4 id="stress-alerts"><a class="header" href="#stress-alerts">Stress Alerts</a></h4>
+<p>For the <code>stress</code> group, we’ll define a more complex custom alert:</p>
 <pre><code class="language-go">customAlert := dashboard.WaspAlert{
     RequirementGroupName: StressRequirementGroupName,
-    Name:                 "MyCustomALert",
+    Name:                 "MyCustomAlert",
     CustomAlert: timeseries.Alert(
-        "MyCustomAlert", 
-        alert.For("10s"),                             // let it alert for 10s, before considering it as a firing alert
-        alert.OnExecutionError(alert.ErrorAlerting),  // modify "alerting state" to "alerting" if there is an error, so we don't miss it
+        "MyCustomAlert",
+        alert.For("10s"),                             // Wait 10s before considering it a firing alert
+        alert.OnExecutionError(alert.ErrorAlerting),  // Set "alerting state" to "alerting" on errors
         alert.Description("My custom description"),
         alert.Tags(map[string]string{
             "service": "wasp",
-            // set group label so it can be filtered
             dashboard.DefaultRequirementLabelKey: StressRequirementGroupName,
         }),
         alert.WithLokiQuery(
@@ -4877,48 +4918,47 @@ max_over_time({go_test_name="%s", test_data_type=~"stats", gen_name="%s"}
 | json
 | unwrap failed [10s]) by (go_test_name, gen_name)`,
         ),
-        alert.If(alert.Last, "MyCustomAlert", alert.IsAbove(20)), // alert, if at least 20 matches were found
-        alert.EvaluateEvery("10s"),                               // in the last 10s
+        alert.If(alert.Last, "MyCustomAlert", alert.IsAbove(20)), // Trigger if ≥20 matches in the last 10s
+        alert.EvaluateEvery("10s"),                               // Evaluate every 10s
     ),
-},
+}
 </code></pre>
-<p>The Loki query filters logs by <code>go_test_name</code> and <code>gen_name</code> labels (added automatically by WASP), then parses them for JSON-formatted fields. Specifically, it monitors a <code>failed</code> field within the JSON logs and calculates the maximum count over the last 10 seconds for each combination of <code>go_test_name</code> and <code>gen_name</code>.
-The alert will trigger if there are at least 20 failed logs in the last 10 seconds.</p>
-<p>Now, let's build a default WASP dashboard with these alerts, and deploy it to Grafana:</p>
+<hr />
+<h3 id="building-and-deploying-the-dashboard"><a class="header" href="#building-and-deploying-the-dashboard">Building and Deploying the Dashboard</a></h3>
+<p>Next, we’ll build a default WASP dashboard with these alerts and deploy it to Grafana:</p>
 <pre><code class="language-go">func buildDashboard() (*dashboard.Dashboard, error) {
-    // build the dashboard
     d, err := dashboard.NewDashboard([]dashboard.WaspAlert{
         fiftyMsAlert,
         anyErrorsAlert,
         customAlert,
     })
-    
     if err != nil {
         return nil, err
     }
-    
-    // create in Grafana
-    return d.Deploy()
+    return d.Deploy() // Create in Grafana
 }
 </code></pre>
-<p>With dashboard deployed, <code>Gun</code> already defined, we can create the test:</p>
+<hr />
+<h3 id="writing-the-test-3"><a class="header" href="#writing-the-test-3">Writing the Test</a></h3>
+<p>With the dashboard deployed and the <code>Gun</code> already defined, we can create the test:</p>
 <pre><code class="language-go">func TestBaselineRequirements(t *testing.T) {
-    // start HTTP mock server
+    // Start HTTP mock server
     srv := wasp.NewHTTPMockServer(
         &amp;wasp.HTTPMockServerConfig{
             FirstAPILatency:   50 * time.Millisecond,
-			FirstAPIHTTPCode:  500,
+            FirstAPIHTTPCode:  500,
             SecondAPILatency:  50 * time.Millisecond,
-            SecondAPIHTTPCode: 500})
+            SecondAPIHTTPCode: 500,
+        },
+    )
+    srv.Run()
     
-	srv.Run()
-	
-	// build and deploy dashboard
+    // Build and deploy the dashboard
     dashboard, err := buildDashboard()
-	require.NoError(t, err)
-	
-	// define a profile with 2 load generators
-    _, err := wasp.NewProfile().
+    require.NoError(t, err)
+    
+    // Define a profile with 2 load generators
+    _, err = wasp.NewProfile().
         Add(wasp.NewGenerator(&amp;wasp.Config{
             T:          t,
             LoadType:   wasp.RPS,
@@ -4936,32 +4976,389 @@ The alert will trigger if there are at least 20 failed logs in the last 10 secon
             LokiConfig: wasp.NewEnvLokiConfig(),
         })).
         Run(true)
-    
     require.NoError(t, err)
 
-	// we are checking all active alerts for dashboard with UUID = "wasp" which have label "requirement_name" = "baseline"
-	// if any alerts of particular group, for example "baseline" were raised - we fail the test
-	// change some data in NewHTTPMockServer to make alerts disappear
-	_, err = wasp.NewAlertChecker(t).AnyAlerts(dashboard.DefaultDashboardUUID, BaselineRequirementGroupName)
-	require.NoError(t, err)
-	
-	// now let's check the "stress" alerts group
+    // Check alerts for the baseline group
+    _, err = wasp.NewAlertChecker(t).AnyAlerts(dashboard.DefaultDashboardUUID, BaselineRequirementGroupName)
+    require.NoError(t, err)
+
+    // Check alerts for the stress group
     _, err = wasp.NewAlertChecker(t).AnyAlerts(dashboard.DefaultDashboardUUID, StressRequirementGroupName)
     require.NoError(t, err)
 }
 </code></pre>
+<hr />
+<h3 id="handling-general-alert-checks"><a class="header" href="#handling-general-alert-checks">Handling General Alert Checks</a></h3>
+<p>If you want to fail the test for any triggered alerts (not group-specific), configure your profile with the following:</p>
+<pre><code class="language-go">_, err := wasp.NewProfile().
+    WithGrafana(&amp;wasp.GrafanaOpts{
+        GrafanaURL:                   os.Getenv("GRAFANA_URL"),
+        GrafanaToken:                 os.Getenv("GRAFANA_TOKEN"),
+        AnnotateDashboardUID:         os.Getenv("DASHBOARD_UID"),  // Annotate start/end of the test
+        CheckDashboardAlertsAfterRun: os.Getenv("DASHBOARD_UID"),  // Check alerts after test ends
+    }).
+    // Add generator definitions
+</code></pre>
+<p>This setup ensures the test fails if any alerts are triggered on the dashboard after the profile finishes.</p>
+<hr />
+<h3 id="conclusion-4"><a class="header" href="#conclusion-4">Conclusion</a></h3>
+<p>Now you know how to write load tests and make assertions on application behavior!<br />
+You can find the full example, including more alerts and assertions, <a href="https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/alerts">here</a>.</p>
+<div style="break-before: page; page-break-before: always;"></div><style>
+.mdbook-alerts {
+  padding: 8px 16px;
+  margin-bottom: 16px;
+  border-left: 0.25em solid var(--mdbook-alerts-color);
+}
+
+.mdbook-alerts > *:first-child {
+  margin-top: 0;
+}
+
+.mdbook-alerts > *:last-child {
+  margin-bottom: 0;
+}
+
+.mdbook-alerts-title {
+  display: flex;
+  font-weight: 600;
+  align-items: center;
+  line-height: 1;
+  color: var(--mdbook-alerts-color);
+  text-transform: capitalize;
+}
+
+.mdbook-alerts-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.2em;
+  background-color: currentColor;
+  -webkit-mask: no-repeat center / 100%;
+  mask: no-repeat center / 100%;
+  -webkit-mask-image: var(--mdbook-alerts-icon);
+  mask-image: var(--mdbook-alerts-icon);
+}
+
+.mdbook-alerts-note {
+  --mdbook-alerts-color: rgb(9, 105, 218);
+  /* https://icon-sets.iconify.design/material-symbols/info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16v-4q0-.425-.288-.712T12 11q-.425 0-.712.288T11 12v4q0 .425.288.713T12 17m0-8q.425 0 .713-.288T13 8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8q0 .425.288.713T12 9m0 13q-2.075 0-3.9-.788t-3.175-2.137q-1.35-1.35-2.137-3.175T2 12q0-2.075.788-3.9t2.137-3.175q1.35-1.35 3.175-2.137T12 2q2.075 0 3.9.788t3.175 2.137q1.35 1.35 2.138 3.175T22 12q0 2.075-.788 3.9t-2.137 3.175q-1.35 1.35-3.175 2.138T12 22m0-2q3.35 0 5.675-2.325T20 12q0-3.35-2.325-5.675T12 4Q8.65 4 6.325 6.325T4 12q0 3.35 2.325 5.675T12 20m0-8"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-tip {
+  --mdbook-alerts-color: rgb(26, 127, 55);
+  /* https://icon-sets.iconify.design/material-symbols/lightbulb-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 22q-.825 0-1.412-.587T10 20h4q0 .825-.587 1.413T12 22m-3-3q-.425 0-.712-.288T8 18q0-.425.288-.712T9 17h6q.425 0 .713.288T16 18q0 .425-.288.713T15 19zm-.75-3q-1.725-1.025-2.738-2.75T4.5 9.5q0-3.125 2.188-5.312T12 2q3.125 0 5.313 2.188T19.5 9.5q0 2.025-1.012 3.75T15.75 16zm.6-2h6.3q1.125-.8 1.738-1.975T17.5 9.5q0-2.3-1.6-3.9T12 4Q9.7 4 8.1 5.6T6.5 9.5q0 1.35.613 2.525T8.85 14M12 14"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-important {
+  --mdbook-alerts-color: rgb(130, 80, 223);
+  /* https://icon-sets.iconify.design/material-symbols/chat-info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 7q.425 0 .713-.288T13 6q0-.425-.288-.712T12 5q-.425 0-.712.288T11 6q0 .425.288.713T12 7m0 8q.425 0 .713-.288T13 14v-4q0-.425-.288-.712T12 9q-.425 0-.712.288T11 10v4q0 .425.288.713T12 15m-6 3l-2.3 2.3q-.475.475-1.088.213T2 19.575V4q0-.825.588-1.412T4 2h16q.825 0 1.413.588T22 4v12q0 .825-.587 1.413T20 18zm-.85-2H20V4H4v13.125zM4 16V4z"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-warning {
+  --mdbook-alerts-color: rgb(154, 103, 0);
+  /* https://icon-sets.iconify.design/material-symbols/warning-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M2.725 21q-.275 0-.5-.137t-.35-.363q-.125-.225-.137-.488t.137-.512l9.25-16q.15-.25.388-.375T12 3q.25 0 .488.125t.387.375l9.25 16q.15.25.138.513t-.138.487q-.125.225-.35.363t-.5.137zm1.725-2h15.1L12 6zM12 18q.425 0 .713-.288T13 17q0-.425-.288-.712T12 16q-.425 0-.712.288T11 17q0 .425.288.713T12 18m0-3q.425 0 .713-.288T13 14v-3q0-.425-.288-.712T12 10q-.425 0-.712.288T11 11v3q0 .425.288.713T12 15m0-2.5"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-caution {
+  --mdbook-alerts-color: rgb(207, 34, 46);
+  /* https://icon-sets.iconify.design/material-symbols/brightness-alert-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16q0-.425-.288-.712T12 15q-.425 0-.712.288T11 16q0 .425.288.713T12 17m0-4q.425 0 .713-.288T13 12V8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8v4q0 .425.288.713T12 13m-3.35 7H6q-.825 0-1.412-.587T4 18v-2.65L2.075 13.4q-.275-.3-.425-.662T1.5 12q0-.375.15-.737t.425-.663L4 8.65V6q0-.825.588-1.412T6 4h2.65l1.95-1.925q.3-.275.663-.425T12 1.5q.375 0 .738.15t.662.425L15.35 4H18q.825 0 1.413.588T20 6v2.65l1.925 1.95q.275.3.425.663t.15.737q0 .375-.15.738t-.425.662L20 15.35V18q0 .825-.587 1.413T18 20h-2.65l-1.95 1.925q-.3.275-.662.425T12 22.5q-.375 0-.737-.15t-.663-.425zm.85-2l2.5 2.5l2.5-2.5H18v-3.5l2.5-2.5L18 9.5V6h-3.5L12 3.5L9.5 6H6v3.5L3.5 12L6 14.5V18zm2.5-6"%2F%3E%3C%2Fsvg%3E');
+}
+
+</style>
+<h1 id="wasp---configuration"><a class="header" href="#wasp---configuration">WASP - Configuration</a></h1>
+<p>WASP can be configured using environment variables for most commonly used settings. However, to fully leverage the flexibility of WASP, you may need to use programmatic configuration for more advanced features.</p>
+<p>Optional variables are marked with the <code>(optional)</code> prefix.</p>
+<h3 id="required-environment-variables"><a class="header" href="#required-environment-variables">Required Environment Variables</a></h3>
+<p>At a minimum, you need to provide the following environment variables, as WASP requires Loki:</p>
+<ul>
+<li><code>LOKI_TENANT_ID</code> - <em>(optional)</em> A tenant ID that acts as a bucket identifier for logs, logically separating them from other sets of logs. If the tenant ID doesn't exist, Loki will create it. Can be empty if log separation is not a concern.</li>
+<li><code>LOKI_URL</code> - The Loki <strong>endpoint</strong> to which logs are pushed (e.g., <a href="http://localhost:3100/loki/api/v1/push">http://localhost:3100/loki/api/v1/push</a>).</li>
+<li><code>LOKI_TOKEN</code> - The authorization token.</li>
+<li><code>LOKI_BASIC_AUTH</code> - <em>(optional)</em> Basic authentication credentials.</li>
+</ul>
+<hr />
+<h3 id="alert-configuration"><a class="header" href="#alert-configuration">Alert Configuration</a></h3>
+<p>To enable alert checking, you need to provide the following additional environment variables, as alerts are an integral part of Grafana:</p>
+<ul>
+<li><code>GRAFANA_URL</code> - The base URL of the Grafana instance.</li>
+<li><code>GRAFANA_TOKEN</code> - An API token with permissions to access the following namespaces:<br />
+<code>/api/alertmanager/</code>, <code>/api/annotations/</code>, <code>/api/dashboard/</code>, <code>/api/datasources/</code>, <code>/api/v1/provisioning/</code>, and <code>/api/ruler/</code>.</li>
+</ul>
+<hr />
+<h3 id="grafana-dashboard-creation"><a class="header" href="#grafana-dashboard-creation">Grafana Dashboard Creation</a></h3>
+<p>If you want WASP to create a Grafana dashboard for you, provide the following environment variables:</p>
+<ul>
+<li><code>DATA_SOURCE_NAME</code> - The name of the data source (currently, only <code>Loki</code> is supported).</li>
+<li><code>DASHBOARD_FOLDER</code> - The folder in which to create the dashboard.</li>
+<li><code>DASHBOARD_NAME</code> - The name of the dashboard.</li>
+</ul>
+<hr />
+<h3 id="log-level-control"><a class="header" href="#log-level-control">Log Level Control</a></h3>
+<p>You can control the log level using this environment variable:</p>
+<ul>
+<li><code>WASP_LOG_LEVEL</code> - <em>(optional)</em> Sets the log level (<code>trace</code>, <code>debug</code>, <code>info</code>, <code>warn</code>, <code>error</code>; defaults to <code>info</code>).</li>
+</ul>
+<hr />
+<p>And that's it! You are now ready to start using WASP to its full potential.</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>Remember, WASP offers much more configurability through its programmatic API.</p>
+</div>
+<div style="break-before: page; page-break-before: always;"></div><style>
+.mdbook-alerts {
+  padding: 8px 16px;
+  margin-bottom: 16px;
+  border-left: 0.25em solid var(--mdbook-alerts-color);
+}
+
+.mdbook-alerts > *:first-child {
+  margin-top: 0;
+}
+
+.mdbook-alerts > *:last-child {
+  margin-bottom: 0;
+}
+
+.mdbook-alerts-title {
+  display: flex;
+  font-weight: 600;
+  align-items: center;
+  line-height: 1;
+  color: var(--mdbook-alerts-color);
+  text-transform: capitalize;
+}
+
+.mdbook-alerts-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.2em;
+  background-color: currentColor;
+  -webkit-mask: no-repeat center / 100%;
+  mask: no-repeat center / 100%;
+  -webkit-mask-image: var(--mdbook-alerts-icon);
+  mask-image: var(--mdbook-alerts-icon);
+}
+
+.mdbook-alerts-note {
+  --mdbook-alerts-color: rgb(9, 105, 218);
+  /* https://icon-sets.iconify.design/material-symbols/info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16v-4q0-.425-.288-.712T12 11q-.425 0-.712.288T11 12v4q0 .425.288.713T12 17m0-8q.425 0 .713-.288T13 8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8q0 .425.288.713T12 9m0 13q-2.075 0-3.9-.788t-3.175-2.137q-1.35-1.35-2.137-3.175T2 12q0-2.075.788-3.9t2.137-3.175q1.35-1.35 3.175-2.137T12 2q2.075 0 3.9.788t3.175 2.137q1.35 1.35 2.138 3.175T22 12q0 2.075-.788 3.9t-2.137 3.175q-1.35 1.35-3.175 2.138T12 22m0-2q3.35 0 5.675-2.325T20 12q0-3.35-2.325-5.675T12 4Q8.65 4 6.325 6.325T4 12q0 3.35 2.325 5.675T12 20m0-8"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-tip {
+  --mdbook-alerts-color: rgb(26, 127, 55);
+  /* https://icon-sets.iconify.design/material-symbols/lightbulb-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 22q-.825 0-1.412-.587T10 20h4q0 .825-.587 1.413T12 22m-3-3q-.425 0-.712-.288T8 18q0-.425.288-.712T9 17h6q.425 0 .713.288T16 18q0 .425-.288.713T15 19zm-.75-3q-1.725-1.025-2.738-2.75T4.5 9.5q0-3.125 2.188-5.312T12 2q3.125 0 5.313 2.188T19.5 9.5q0 2.025-1.012 3.75T15.75 16zm.6-2h6.3q1.125-.8 1.738-1.975T17.5 9.5q0-2.3-1.6-3.9T12 4Q9.7 4 8.1 5.6T6.5 9.5q0 1.35.613 2.525T8.85 14M12 14"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-important {
+  --mdbook-alerts-color: rgb(130, 80, 223);
+  /* https://icon-sets.iconify.design/material-symbols/chat-info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 7q.425 0 .713-.288T13 6q0-.425-.288-.712T12 5q-.425 0-.712.288T11 6q0 .425.288.713T12 7m0 8q.425 0 .713-.288T13 14v-4q0-.425-.288-.712T12 9q-.425 0-.712.288T11 10v4q0 .425.288.713T12 15m-6 3l-2.3 2.3q-.475.475-1.088.213T2 19.575V4q0-.825.588-1.412T4 2h16q.825 0 1.413.588T22 4v12q0 .825-.587 1.413T20 18zm-.85-2H20V4H4v13.125zM4 16V4z"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-warning {
+  --mdbook-alerts-color: rgb(154, 103, 0);
+  /* https://icon-sets.iconify.design/material-symbols/warning-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M2.725 21q-.275 0-.5-.137t-.35-.363q-.125-.225-.137-.488t.137-.512l9.25-16q.15-.25.388-.375T12 3q.25 0 .488.125t.387.375l9.25 16q.15.25.138.513t-.138.487q-.125.225-.35.363t-.5.137zm1.725-2h15.1L12 6zM12 18q.425 0 .713-.288T13 17q0-.425-.288-.712T12 16q-.425 0-.712.288T11 17q0 .425.288.713T12 18m0-3q.425 0 .713-.288T13 14v-3q0-.425-.288-.712T12 10q-.425 0-.712.288T11 11v3q0 .425.288.713T12 15m0-2.5"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-caution {
+  --mdbook-alerts-color: rgb(207, 34, 46);
+  /* https://icon-sets.iconify.design/material-symbols/brightness-alert-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16q0-.425-.288-.712T12 15q-.425 0-.712.288T11 16q0 .425.288.713T12 17m0-4q.425 0 .713-.288T13 12V8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8v4q0 .425.288.713T12 13m-3.35 7H6q-.825 0-1.412-.587T4 18v-2.65L2.075 13.4q-.275-.3-.425-.662T1.5 12q0-.375.15-.737t.425-.663L4 8.65V6q0-.825.588-1.412T6 4h2.65l1.95-1.925q.3-.275.663-.425T12 1.5q.375 0 .738.15t.662.425L15.35 4H18q.825 0 1.413.588T20 6v2.65l1.925 1.95q.275.3.425.663t.15.737q0 .375-.15.738t-.425.662L20 15.35V18q0 .825-.587 1.413T18 20h-2.65l-1.95 1.925q-.3.275-.662.425T12 22.5q-.375 0-.737-.15t-.663-.425zm.85-2l2.5 2.5l2.5-2.5H18v-3.5l2.5-2.5L18 9.5V6h-3.5L12 3.5L9.5 6H6v3.5L3.5 12L6 14.5V18zm2.5-6"%2F%3E%3C%2Fsvg%3E');
+}
+
+</style>
+<h1 id="wasp---k8s"><a class="header" href="#wasp---k8s">WASP - k8s</a></h1>
+<p>TBD</p>
+<div style="break-before: page; page-break-before: always;"></div><style>
+.mdbook-alerts {
+  padding: 8px 16px;
+  margin-bottom: 16px;
+  border-left: 0.25em solid var(--mdbook-alerts-color);
+}
+
+.mdbook-alerts > *:first-child {
+  margin-top: 0;
+}
+
+.mdbook-alerts > *:last-child {
+  margin-bottom: 0;
+}
+
+.mdbook-alerts-title {
+  display: flex;
+  font-weight: 600;
+  align-items: center;
+  line-height: 1;
+  color: var(--mdbook-alerts-color);
+  text-transform: capitalize;
+}
+
+.mdbook-alerts-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.2em;
+  background-color: currentColor;
+  -webkit-mask: no-repeat center / 100%;
+  mask: no-repeat center / 100%;
+  -webkit-mask-image: var(--mdbook-alerts-icon);
+  mask-image: var(--mdbook-alerts-icon);
+}
+
+.mdbook-alerts-note {
+  --mdbook-alerts-color: rgb(9, 105, 218);
+  /* https://icon-sets.iconify.design/material-symbols/info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16v-4q0-.425-.288-.712T12 11q-.425 0-.712.288T11 12v4q0 .425.288.713T12 17m0-8q.425 0 .713-.288T13 8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8q0 .425.288.713T12 9m0 13q-2.075 0-3.9-.788t-3.175-2.137q-1.35-1.35-2.137-3.175T2 12q0-2.075.788-3.9t2.137-3.175q1.35-1.35 3.175-2.137T12 2q2.075 0 3.9.788t3.175 2.137q1.35 1.35 2.138 3.175T22 12q0 2.075-.788 3.9t-2.137 3.175q-1.35 1.35-3.175 2.138T12 22m0-2q3.35 0 5.675-2.325T20 12q0-3.35-2.325-5.675T12 4Q8.65 4 6.325 6.325T4 12q0 3.35 2.325 5.675T12 20m0-8"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-tip {
+  --mdbook-alerts-color: rgb(26, 127, 55);
+  /* https://icon-sets.iconify.design/material-symbols/lightbulb-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 22q-.825 0-1.412-.587T10 20h4q0 .825-.587 1.413T12 22m-3-3q-.425 0-.712-.288T8 18q0-.425.288-.712T9 17h6q.425 0 .713.288T16 18q0 .425-.288.713T15 19zm-.75-3q-1.725-1.025-2.738-2.75T4.5 9.5q0-3.125 2.188-5.312T12 2q3.125 0 5.313 2.188T19.5 9.5q0 2.025-1.012 3.75T15.75 16zm.6-2h6.3q1.125-.8 1.738-1.975T17.5 9.5q0-2.3-1.6-3.9T12 4Q9.7 4 8.1 5.6T6.5 9.5q0 1.35.613 2.525T8.85 14M12 14"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-important {
+  --mdbook-alerts-color: rgb(130, 80, 223);
+  /* https://icon-sets.iconify.design/material-symbols/chat-info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 7q.425 0 .713-.288T13 6q0-.425-.288-.712T12 5q-.425 0-.712.288T11 6q0 .425.288.713T12 7m0 8q.425 0 .713-.288T13 14v-4q0-.425-.288-.712T12 9q-.425 0-.712.288T11 10v4q0 .425.288.713T12 15m-6 3l-2.3 2.3q-.475.475-1.088.213T2 19.575V4q0-.825.588-1.412T4 2h16q.825 0 1.413.588T22 4v12q0 .825-.587 1.413T20 18zm-.85-2H20V4H4v13.125zM4 16V4z"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-warning {
+  --mdbook-alerts-color: rgb(154, 103, 0);
+  /* https://icon-sets.iconify.design/material-symbols/warning-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M2.725 21q-.275 0-.5-.137t-.35-.363q-.125-.225-.137-.488t.137-.512l9.25-16q.15-.25.388-.375T12 3q.25 0 .488.125t.387.375l9.25 16q.15.25.138.513t-.138.487q-.125.225-.35.363t-.5.137zm1.725-2h15.1L12 6zM12 18q.425 0 .713-.288T13 17q0-.425-.288-.712T12 16q-.425 0-.712.288T11 17q0 .425.288.713T12 18m0-3q.425 0 .713-.288T13 14v-3q0-.425-.288-.712T12 10q-.425 0-.712.288T11 11v3q0 .425.288.713T12 15m0-2.5"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-caution {
+  --mdbook-alerts-color: rgb(207, 34, 46);
+  /* https://icon-sets.iconify.design/material-symbols/brightness-alert-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16q0-.425-.288-.712T12 15q-.425 0-.712.288T11 16q0 .425.288.713T12 17m0-4q.425 0 .713-.288T13 12V8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8v4q0 .425.288.713T12 13m-3.35 7H6q-.825 0-1.412-.587T4 18v-2.65L2.075 13.4q-.275-.3-.425-.662T1.5 12q0-.375.15-.737t.425-.663L4 8.65V6q0-.825.588-1.412T6 4h2.65l1.95-1.925q.3-.275.663-.425T12 1.5q.375 0 .738.15t.662.425L15.35 4H18q.825 0 1.413.588T20 6v2.65l1.925 1.95q.275.3.425.663t.15.737q0 .375-.15.738t-.425.662L20 15.35V18q0 .825-.587 1.413T18 20h-2.65l-1.95 1.925q-.3.275-.662.425T12 22.5q-.375 0-.737-.15t-.663-.425zm.85-2l2.5 2.5l2.5-2.5H18v-3.5l2.5-2.5L18 9.5V6h-3.5L12 3.5L9.5 6H6v3.5L3.5 12L6 14.5V18zm2.5-6"%2F%3E%3C%2Fsvg%3E');
+}
+
+</style>
+<h1 id="wasp---components"><a class="header" href="#wasp---components">WASP - Components</a></h1>
+<p>In this section, we will briefly describe the main <strong>logical</strong> components that are part of the WASP library:</p>
+<ul>
+<li><a href="libs/wasp/components/./alert_checker.html">AlertChecker</a></li>
+<li><a href="libs/wasp/components/./dashboard.html">Dashboard</a></li>
+<li><a href="libs/wasp/components/./generator.html">Generator</a></li>
+<li><a href="libs/wasp/components/./loki.html">Loki</a></li>
+<li><a href="libs/wasp/components/./profile.html">Profile</a></li>
+<li><a href="libs/wasp/components/./sampler.html">Sampler</a></li>
+<li><a href="libs/wasp/components/./schedule">Segment</a></li>
+</ul>
+<p>Brief overview of how WASP works and how different components interact with each other:
+<img src="libs/wasp/components/../images/how-it-works.png" alt="Overview" /></p>
+<div style="break-before: page; page-break-before: always;"></div><style>
+.mdbook-alerts {
+  padding: 8px 16px;
+  margin-bottom: 16px;
+  border-left: 0.25em solid var(--mdbook-alerts-color);
+}
+
+.mdbook-alerts > *:first-child {
+  margin-top: 0;
+}
+
+.mdbook-alerts > *:last-child {
+  margin-bottom: 0;
+}
+
+.mdbook-alerts-title {
+  display: flex;
+  font-weight: 600;
+  align-items: center;
+  line-height: 1;
+  color: var(--mdbook-alerts-color);
+  text-transform: capitalize;
+}
+
+.mdbook-alerts-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.2em;
+  background-color: currentColor;
+  -webkit-mask: no-repeat center / 100%;
+  mask: no-repeat center / 100%;
+  -webkit-mask-image: var(--mdbook-alerts-icon);
+  mask-image: var(--mdbook-alerts-icon);
+}
+
+.mdbook-alerts-note {
+  --mdbook-alerts-color: rgb(9, 105, 218);
+  /* https://icon-sets.iconify.design/material-symbols/info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16v-4q0-.425-.288-.712T12 11q-.425 0-.712.288T11 12v4q0 .425.288.713T12 17m0-8q.425 0 .713-.288T13 8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8q0 .425.288.713T12 9m0 13q-2.075 0-3.9-.788t-3.175-2.137q-1.35-1.35-2.137-3.175T2 12q0-2.075.788-3.9t2.137-3.175q1.35-1.35 3.175-2.137T12 2q2.075 0 3.9.788t3.175 2.137q1.35 1.35 2.138 3.175T22 12q0 2.075-.788 3.9t-2.137 3.175q-1.35 1.35-3.175 2.138T12 22m0-2q3.35 0 5.675-2.325T20 12q0-3.35-2.325-5.675T12 4Q8.65 4 6.325 6.325T4 12q0 3.35 2.325 5.675T12 20m0-8"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-tip {
+  --mdbook-alerts-color: rgb(26, 127, 55);
+  /* https://icon-sets.iconify.design/material-symbols/lightbulb-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 22q-.825 0-1.412-.587T10 20h4q0 .825-.587 1.413T12 22m-3-3q-.425 0-.712-.288T8 18q0-.425.288-.712T9 17h6q.425 0 .713.288T16 18q0 .425-.288.713T15 19zm-.75-3q-1.725-1.025-2.738-2.75T4.5 9.5q0-3.125 2.188-5.312T12 2q3.125 0 5.313 2.188T19.5 9.5q0 2.025-1.012 3.75T15.75 16zm.6-2h6.3q1.125-.8 1.738-1.975T17.5 9.5q0-2.3-1.6-3.9T12 4Q9.7 4 8.1 5.6T6.5 9.5q0 1.35.613 2.525T8.85 14M12 14"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-important {
+  --mdbook-alerts-color: rgb(130, 80, 223);
+  /* https://icon-sets.iconify.design/material-symbols/chat-info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 7q.425 0 .713-.288T13 6q0-.425-.288-.712T12 5q-.425 0-.712.288T11 6q0 .425.288.713T12 7m0 8q.425 0 .713-.288T13 14v-4q0-.425-.288-.712T12 9q-.425 0-.712.288T11 10v4q0 .425.288.713T12 15m-6 3l-2.3 2.3q-.475.475-1.088.213T2 19.575V4q0-.825.588-1.412T4 2h16q.825 0 1.413.588T22 4v12q0 .825-.587 1.413T20 18zm-.85-2H20V4H4v13.125zM4 16V4z"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-warning {
+  --mdbook-alerts-color: rgb(154, 103, 0);
+  /* https://icon-sets.iconify.design/material-symbols/warning-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M2.725 21q-.275 0-.5-.137t-.35-.363q-.125-.225-.137-.488t.137-.512l9.25-16q.15-.25.388-.375T12 3q.25 0 .488.125t.387.375l9.25 16q.15.25.138.513t-.138.487q-.125.225-.35.363t-.5.137zm1.725-2h15.1L12 6zM12 18q.425 0 .713-.288T13 17q0-.425-.288-.712T12 16q-.425 0-.712.288T11 17q0 .425.288.713T12 18m0-3q.425 0 .713-.288T13 14v-3q0-.425-.288-.712T12 10q-.425 0-.712.288T11 11v3q0 .425.288.713T12 15m0-2.5"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-caution {
+  --mdbook-alerts-color: rgb(207, 34, 46);
+  /* https://icon-sets.iconify.design/material-symbols/brightness-alert-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16q0-.425-.288-.712T12 15q-.425 0-.712.288T11 16q0 .425.288.713T12 17m0-4q.425 0 .713-.288T13 12V8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8v4q0 .425.288.713T12 13m-3.35 7H6q-.825 0-1.412-.587T4 18v-2.65L2.075 13.4q-.275-.3-.425-.662T1.5 12q0-.375.15-.737t.425-.663L4 8.65V6q0-.825.588-1.412T6 4h2.65l1.95-1.925q.3-.275.663-.425T12 1.5q.375 0 .738.15t.662.425L15.35 4H18q.825 0 1.413.588T20 6v2.65l1.925 1.95q.275.3.425.663t.15.737q0 .375-.15.738t-.425.662L20 15.35V18q0 .825-.587 1.413T18 20h-2.65l-1.95 1.925q-.3.275-.662.425T12 22.5q-.375 0-.737-.15t-.663-.425zm.85-2l2.5 2.5l2.5-2.5H18v-3.5l2.5-2.5L18 9.5V6h-3.5L12 3.5L9.5 6H6v3.5L3.5 12L6 14.5V18zm2.5-6"%2F%3E%3C%2Fsvg%3E');
+}
+
+</style>
+<h1 id="wasp---alert-checker"><a class="header" href="#wasp---alert-checker">WASP - Alert Checker</a></h1>
 <div class="mdbook-alerts mdbook-alerts-warning">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
   warning
 </p>
-<p>This example assumes that you have a Grafana instance setup. If you don't, please set it up, before executing the test.
-You can find more information on how to set up Grafana locally <a href="libs/wasp/./local_loki_grafana_stack.html">here</a>.</p>
-<p>WASP will try to read Grafana configuration from the environment variables. More about them in the <a href="libs/wasp/./configuration.html">Configuration</a> section.</p>
+<p>The API used by <code>AlertChecker</code> is unstable, and this section may be out of date.</p>
 </div>
-<p>This test will start two load generators, each simulating a different API. It will then assert that the alerts defined in the <code>baseline</code> group are not triggered. If any of them are, the test will fail.</p>
-<p>Now you know everything you need to know to start writing loads tests and making assertions on the application behaviour!</p>
-<p>You can find the full example that defines more alerts and assertions in the <a href="https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/alerts">here</a></p>
+<p><code>AlertChecker</code> is a simple yet powerful component that allows you to verify which alerts fired during test execution.</p>
+<p>It supports the following functionalities:</p>
+<ul>
+<li>Checking if <strong>any alert</strong> fired during a specified time range for a given dashboard.</li>
+<li>Checking if <strong>any group of alerts</strong> fired for a given dashboard.</li>
+</ul>
+<p>The first mode is more suitable for existing dashboards, while the second mode is ideal for dashboards created specifically for the test (as it does not support time range selection).</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>To use this component, you need to set certain Grafana-specific variables as described in the <a href="libs/wasp/components/../configuration.html">Configuration</a> section.</p>
+</div>
+<p>For a practical example of how to use <code>AlertChecker</code>, refer to the <a href="libs/wasp/components/../testing_alerts.html">Testing Alerts</a> section.</p>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<p>If you define alerts yourself, ensure they are grouped by adding a label named <code>requirement_name</code> with a value representing the alert group.</p>
+</div>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -5029,6 +5426,86 @@ You can find more information on how to set up Grafana locally <a href="libs/was
 }
 
 </style>
+<h1 id="wasp---dashboard"><a class="header" href="#wasp---dashboard">WASP - Dashboard</a></h1>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<p>The API used to check and create alerts is unstable, and the information related to them may be out of date.</p>
+</div>
+<p>WASP comes with a built-in dashboard that allows you to monitor test runs in real-time.<br />
+The dashboard includes several built-in metrics that integrate seamlessly with the <code>AlertChecker</code> component.</p>
+<p>It is built using the <a href="https://pkg.go.dev/github.com/K-Phoen/grabana">Grabana</a> library, which you can use to further customize and extend the dashboard by adding your own rows and panels.</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>To create new dashboards, you need to set certain dashboard-specific variables as described in the <a href="libs/wasp/components/../configuration.html">Configuration</a> section.</p>
+</div>
+<hr />
+<h3 id="predefined-alerts"><a class="header" href="#predefined-alerts">Predefined Alerts</a></h3>
+<p>WASP comes with predefined alerts for:</p>
+<ul>
+<li><strong>99th percentile of the response time</strong></li>
+<li><strong>Response errors</strong></li>
+<li><strong>Response timeouts</strong></li>
+</ul>
+<p>You can use these predefined metrics to add simple alerts to your dashboard for conditions such as:</p>
+<ul>
+<li>Values above or below a threshold</li>
+<li>Averages above or below a threshold</li>
+<li>Percentages of the total above or below a threshold</li>
+</ul>
+<p>For a complete list of available conditions, refer to Grabana's <a href="https://pkg.go.dev/github.com/K-Phoen/grabana@v0.21.18/alert#ConditionEvaluator">ConditionEvaluator</a>.</p>
+<hr />
+<h3 id="custom-alerts"><a class="header" href="#custom-alerts">Custom Alerts</a></h3>
+<p>Custom alerts can be composed of:</p>
+<ul>
+<li>The simple conditions mentioned above</li>
+<li>Arbitrary Loki queries</li>
+</ul>
+<p>Custom alerts use Grabana's <a href="https://pkg.go.dev/github.com/K-Phoen/grabana@v0.21.18/timeseries#Alert">timeseries.Alert</a> and must be timeseries-based.</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>Adding a built-in alert will also add a new row to the dashboard to display the monitored metric.<br />
+In contrast, custom alerts do not automatically add rows to the dashboard to prevent clutter.</p>
+</div>
+<p>Each generator has its own metrics, matched by the generator name.</p>
+<hr />
+<h3 id="default-dashboard-panels"><a class="header" href="#default-dashboard-panels">Default Dashboard Panels</a></h3>
+<p>The default dashboard includes the following panels:</p>
+<ul>
+<li>Current RPS/VUs (depending on the generator)</li>
+<li>Responses per second</li>
+<li>Total successful requests</li>
+<li>Total failed requests</li>
+<li>Total timeout requests</li>
+<li>RPS/VUs per schedule segment</li>
+<li>Responses per second</li>
+<li>Latency quantiles over groups (p99, p90, p50)</li>
+<li>Response latencies over time</li>
+<li>Logs size per second</li>
+<li>Sampling statistics</li>
+<li>Failed &amp; timed-out responses</li>
+<li>Logs of the statistics-pushing service</li>
+</ul>
+<p><img src="libs/wasp/components/../images/dashboard_basic.png" alt="Dashboard" /></p>
+<p>Where applicable, these panels group results by generator name (<code>gen_name</code> label) and call group (<code>call_group</code> label).</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>You can read more about using labels in the <a href="libs/wasp/components/../how-to/use_labels.html">Use labels</a> section.</p>
+</div>
+<hr />
+<h3 id="creating-a-new-dashboard-with-alerts"><a class="header" href="#creating-a-new-dashboard-with-alerts">Creating a New Dashboard with Alerts</a></h3>
+<p>For a practical example of how to create a new dashboard with alerts, see the <a href="libs/wasp/components/../testing_alerts.html">Testing Alerts</a> section.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -5096,6 +5573,80 @@ You can find more information on how to set up Grafana locally <a href="libs/was
 }
 
 </style>
+<h1 id="wasp---generator"><a class="header" href="#wasp---generator">WASP - Generator</a></h1>
+<p>A <strong>Generator</strong> is a component that encapsulates all the characteristics of load generation, including:</p>
+<ul>
+<li>Load type:
+<ul>
+<li>RPS (requests per second)</li>
+<li>VUs (virtual users)</li>
+</ul>
+</li>
+<li><a href="libs/wasp/components/./schedule.html">Load schedule</a></li>
+<li>Call logic</li>
+<li>Response data</li>
+<li><a href="libs/wasp/components/./sampler.html">Sampling</a></li>
+<li>Timeouts</li>
+</ul>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<p>RPS load type can only be used with a <code>Gun</code>, while VUs can only be used with a <code>VirtualUser</code>.</p>
+</div>
+<hr />
+<h3 id="choosing-between-gun-and-virtualuser"><a class="header" href="#choosing-between-gun-and-virtualuser">Choosing Between <code>Gun</code> and <code>VirtualUser</code></a></h3>
+<h4 id="gun"><a class="header" href="#gun"><strong><code>Gun</code></strong></a></h4>
+<ul>
+<li>Best for <strong>stateless protocols</strong> (e.g., HTTP).</li>
+<li>Simplistic in nature; ideal for executing a single operation that does not require setup or teardown.</li>
+<li>Operates using a <strong>closed model</strong>, where:
+<ul>
+<li>The number of requests is fixed.</li>
+<li>The load adjusts to meet the target RPS, regardless of the system's response time.</li>
+</ul>
+</li>
+<li>Recommended for scenarios focused on measuring <strong>throughput</strong>.</li>
+</ul>
+<h4 id="virtualuser"><a class="header" href="#virtualuser"><strong><code>VirtualUser</code></strong></a></h4>
+<ul>
+<li>Designed for <strong>stateful protocols</strong> (e.g., <code>WebSocket</code>) or workflows involving multiple operations (e.g., authenticating, executing tasks, and logging out).</li>
+<li>More complex, with dedicated methods for setup and teardown.</li>
+<li>Operates using an <strong>open model</strong>, where:
+<ul>
+<li>New iterations start only after the previous one completes.</li>
+<li>The RPS fluctuates based on the system's response time. Longer response times reduce RPS.</li>
+</ul>
+</li>
+</ul>
+<hr />
+<h3 id="closed-vs-open-models"><a class="header" href="#closed-vs-open-models">Closed vs. Open Models</a></h3>
+<ul>
+<li>
+<p>A <code>Gun</code> follows a <strong>closed model</strong>:</p>
+<ul>
+<li>It controls the rate of requests being sent.</li>
+<li>The system's response time does not impact the load generation rate.</li>
+</ul>
+</li>
+<li>
+<p>A <code>VirtualUser</code> follows an <strong>open model</strong>:</p>
+<ul>
+<li>It controls the rate of receiving responses.</li>
+<li>The system's response time directly impacts the load generation rate. If the system slows down, iterations take longer, reducing the RPS.</li>
+</ul>
+</li>
+</ul>
+<hr />
+<h3 id="summary"><a class="header" href="#summary">Summary</a></h3>
+<p>In simpler terms:</p>
+<ul>
+<li>A <strong><code>Gun</code></strong> limits the load during the <strong>sending</strong> phase, making it ideal for throughput measurements.</li>
+<li>A <strong><code>VirtualUser</code></strong> limits the load during the <strong>receiving</strong> phase, reflecting the system's performance under load.</li>
+</ul>
+<hr />
+<p>This distinction helps you decide which tool to use based on the protocol type and the goals of your test.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -5163,10 +5714,27 @@ You can find more information on how to set up Grafana locally <a href="libs/was
 }
 
 </style>
-<h1 id="wasp---alertchecker"><a class="header" href="#wasp---alertchecker">WASP - AlertChecker</a></h1>
-<p>Basically, if you have a dashboard you can either assert if any alert fired during a time range or if any group fired at all. Groups are defined by using label key `requirement_name.</p>
-<p>For built-in alerts, we create a new row on the dashboard for each alert.
-For the custom ones, we don't do it, so that we don't overload the dashboard.</p>
+<h1 id="wasp---loki"><a class="header" href="#wasp---loki">WASP - Loki</a></h1>
+<p>Loki is a component responsible for pushing batches of statistics to a Loki instance. It operates in the background using a <code>promtail</code> client.</p>
+<p>Key features include:</p>
+<ul>
+<li>Optional basic authentication support.</li>
+<li>Configurable batch sizes.</li>
+<li>Support for configurable backoff retries, among others.</li>
+</ul>
+<p>By default, a test will fail on the first error encountered while pushing data. You can modify this behavior by setting the maximum allowed errors:</p>
+<ul>
+<li>Setting the value to <code>-1</code> disables error checks entirely.</li>
+</ul>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>While it is technically possible to execute a WASP test without Loki, doing so means you won't have access to load-generation-related metrics.<br />
+Unless your sole interest is in the metrics sent by your application, it is highly recommended to use Loki.<br />
+For this reason, Loki is considered an integral part of the WASP stack.</p>
+</div>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -5234,6 +5802,21 @@ For the custom ones, we don't do it, so that we don't overload the dashboard.</p
 }
 
 </style>
+<h1 id="wasp---profile"><a class="header" href="#wasp---profile">WASP - Profile</a></h1>
+<p>A <strong>Profile</strong> allows you to combine load from different generators. Each generator operates according to its own schedule, and you can even mix RPS and VU load types, as shown in <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/wasp/examples/profiles/node_mixed_test.go">this example</a>.</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>The <code>error</code> returned by the <code>.Run(true)</code> function of a <code>Profile</code> only indicates if any dashboard alerts were triggered.<br />
+To check for errors during load generation, you need to call the <code>Errors()</code> method on each <code>Generator</code> within the <code>Profile</code>.</p>
+</div>
+<hr />
+<h3 id="timing-considerations"><a class="header" href="#timing-considerations">Timing Considerations</a></h3>
+<p>It is not possible to have different generators in the same <code>Profile</code> start load generation at different times.<br />
+If you need staggered start times, you must use separate <code>Profiles</code> and handle timing in your <code>Go</code> code.<br />
+An example demonstrating this can be found <a href="libs/wasp/components/../how-to/parallelise_load.html">here</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -5301,6 +5884,19 @@ For the custom ones, we don't do it, so that we don't overload the dashboard.</p
 }
 
 </style>
+<h1 id="wasp---sampler"><a class="header" href="#wasp---sampler">WASP - Sampler</a></h1>
+<p>By default, WASP saves all successful, failed, and timed-out responses in each <a href="libs/wasp/components/./generator.html">Generator</a>.<br />
+The <strong>Sampler</strong> component allows you to programmatically set the sampling ratio for successful responses (a value between 0 and 100).</p>
+<p>For example, if you set the sampling ratio to 10, only 10% of successful responses will be saved:</p>
+<pre><code class="language-go">samplerCfg := &amp;SamplerConfig{
+    SuccessfulCallResultRecordRatio: 10,
+}
+
+g := &amp;Generator{
+    sampler: NewSampler(samplerCfg),
+    // other fields
+}
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -5368,6 +5964,19 @@ For the custom ones, we don't do it, so that we don't overload the dashboard.</p
 }
 
 </style>
+<h1 id="wasp---schedule"><a class="header" href="#wasp---schedule">WASP - Schedule</a></h1>
+<p>The <strong>Schedule</strong> component allows you to define the load characteristics for each <a href="libs/wasp/components/./generator.html">Generator</a>.<br />
+A schedule is composed of various <code>Segments</code>, each characterized by the number of requests (or VUs) and duration.</p>
+<hr />
+<h3 id="helper-functions-for-defining-schedules"><a class="header" href="#helper-functions-for-defining-schedules">Helper Functions for Defining Schedules</a></h3>
+<p>WASP provides several helper functions to define schedules in a human-readable way:</p>
+<ul>
+<li><strong><code>Plain</code></strong>: Defines a segment with a stable load.</li>
+<li><strong><code>Steps</code></strong>: Defines a segment with increasing or decreasing load, using a specified step size.</li>
+</ul>
+<hr />
+<h3 id="custom-schedules"><a class="header" href="#custom-schedules">Custom Schedules</a></h3>
+<p>You can also define schedules programmatically by directly composing segments to suit your specific requirements.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -5435,6 +6044,19 @@ For the custom ones, we don't do it, so that we don't overload the dashboard.</p
 }
 
 </style>
+<h1 id="wasp---how-tos"><a class="header" href="#wasp---how-tos">WASP - How to's</a></h1>
+<p>In this section we will deal with the most common issues or questions:</p>
+<ul>
+<li><a href="libs/wasp/how-to/./start_local_observability_stack.html">How to start local observability stack?</a></li>
+<li><a href="libs/wasp/how-to/./run_included_tests.html">How to try some tests quickly?</a></li>
+<li><a href="libs/wasp/how-to/./chose_rps_vu.html">How to chose between RPS and VUs?</a></li>
+<li><a href="libs/wasp/how-to/./define_nfr_check_alerts.html">How to define NFRs and check alerts?</a></li>
+<li><a href="libs/wasp/how-to/./use_labels.html">How to use labels?</a></li>
+<li><a href="libs/wasp/how-to/./incorporate_load_tests.html">How to incorporate load tests in your workflow?</a></li>
+<li><a href="libs/wasp/how-to/./reuse_dashboard_components.html">How to reuse dashboard components?</a></li>
+<li><a href="libs/wasp/how-to/./parallelise_load.html">How to parallelize load?</a></li>
+<li><a href="libs/wasp/how-to/./debug_loki_errors.html">How to debug Loki errors?</a></li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -5502,6 +6124,65 @@ For the custom ones, we don't do it, so that we don't overload the dashboard.</p
 }
 
 </style>
+<h1 id="wasp---how-to-start-local-observability-stack"><a class="header" href="#wasp---how-to-start-local-observability-stack">WASP - How to Start Local Observability Stack</a></h1>
+<p>To execute all examples or tests locally, you need to configure a local observability stack. This stack includes <strong>Loki</strong>, <strong>Grafana</strong>, and <strong>Pyroscope</strong>.</p>
+<hr />
+<h2 id="prerequisites-2"><a class="header" href="#prerequisites-2">Prerequisites</a></h2>
+<p>Ensure you have the following installed:</p>
+<ul>
+<li><a href="https://docs.docker.com/get-docker/">Docker</a></li>
+</ul>
+<hr />
+<h2 id="grafana-and-loki"><a class="header" href="#grafana-and-loki">Grafana and Loki</a></h2>
+<p>To start the local observability stack, run the following command:</p>
+<pre><code class="language-bash">make start
+</code></pre>
+<p>This command will download and run Docker images for Loki and Grafana. Once completed, it will output something like:</p>
+<pre><code class="language-bash">Service account id: 2
+Grafana token: "&lt;grafana token&gt;"
+</code></pre>
+<h3 id="setting-up-environment-variables"><a class="header" href="#setting-up-environment-variables">Setting Up Environment Variables</a></h3>
+<p>Next, set up the required environment variables.</p>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<p>Replace <code>&lt;Grafana token&gt;</code> with the token provided in the previous step.</p>
+</div>
+<pre><code class="language-bash">export LOKI_TOKEN=
+export LOKI_URL=http://localhost:3030/loki/api/v1/push
+export GRAFANA_URL=http://localhost:3000
+export GRAFANA_TOKEN=&lt;Grafana token&gt;
+export DATA_SOURCE_NAME=Loki
+export DASHBOARD_FOLDER=LoadTests
+export DASHBOARD_NAME=Wasp
+</code></pre>
+<h3 id="accessing-services"><a class="header" href="#accessing-services">Accessing Services</a></h3>
+<ul>
+<li>Grafana: <a href="http://localhost:3000/">http://localhost:3000/</a></li>
+<li>Loki: <a href="http://localhost:3030/">http://localhost:3030/</a></li>
+</ul>
+<h3 id="stopping-the-containers"><a class="header" href="#stopping-the-containers">Stopping the Containers</a></h3>
+<p>To stop both containers, run:</p>
+<pre><code class="language-bash">make stop
+</code></pre>
+<hr />
+<h2 id="pyroscope"><a class="header" href="#pyroscope">Pyroscope</a></h2>
+<p>To start Pyroscope, execute:</p>
+<pre><code class="language-bash">make pyro_start
+</code></pre>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>Pyroscope is available at: <a href="http://localhost:4040/">http://localhost:4040/</a></p>
+</div>
+<h3 id="stopping-pyroscope"><a class="header" href="#stopping-pyroscope">Stopping Pyroscope</a></h3>
+<p>To stop Pyroscope, run:</p>
+<pre><code class="language-bash">make pyro_stop
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -5569,6 +6250,48 @@ For the custom ones, we don't do it, so that we don't overload the dashboard.</p
 }
 
 </style>
+<h1 id="wasp---try-it-out-quickly"><a class="header" href="#wasp---try-it-out-quickly">WASP - Try It Out Quickly</a></h1>
+<hr />
+<h2 id="prerequisites-3"><a class="header" href="#prerequisites-3">Prerequisites</a></h2>
+<p>Ensure you have the following installed:</p>
+<ul>
+<li><a href="https://go.dev/doc/install">Golang</a></li>
+<li><a href="https://docs.docker.com/get-docker/">Docker</a></li>
+<li><a href="https://nixos.org/manual/nix/stable/installation/installation.html">Nix</a></li>
+<li><a href="libs/wasp/how-to/./start_local_observability_stack.html">Loki and Grafana</a></li>
+<li><a href="libs/wasp/how-to/./start_local_observability_stack.html">Pyroscope</a></li>
+</ul>
+<hr />
+<h3 id="install-dependencies-with-nix"><a class="header" href="#install-dependencies-with-nix">Install Dependencies with Nix</a></h3>
+<p>To install dependencies with Nix, simply execute:</p>
+<pre><code class="language-bash">nix develop
+</code></pre>
+<hr />
+<h2 id="running-grafana-and-loki-tests"><a class="header" href="#running-grafana-and-loki-tests">Running Grafana and Loki Tests</a></h2>
+<p>Assuming you have already started and configured the local observability stack, you can run sample Loki and Grafana tests with:</p>
+<pre><code class="language-bash">make test_loki
+</code></pre>
+<p>Once the test is running, you can view the results in the <a href="http://localhost:3000/d/wasp/Wasp?orgId=1&amp;refresh=5s&amp;from=now-5m&amp;to=now">dashboard</a>.</p>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<p>If deploying to your own Grafana instance, verify the <code>DASHBOARD_FOLDER</code> and <code>DASHBOARD_NAME</code>.<br />
+Defaults are the <code>LoadTests</code> directory, and the dashboard is named <code>Wasp</code>.</p>
+</div>
+<hr />
+<h2 id="running-pyroscope-tests"><a class="header" href="#running-pyroscope-tests">Running Pyroscope Tests</a></h2>
+<p>If Grafana, Loki, and Pyroscope are already running, you can execute sample Pyroscope tests with:</p>
+<pre><code class="language-bash">make test_pyro_rps
+</code></pre>
+<p>or</p>
+<pre><code class="language-bash">make test_pyro_vu
+</code></pre>
+<p>During the test, you can view the results in the <a href="http://localhost:4040/">Pyroscope dashboard</a>.</p>
+<hr />
+<h3 id="additional-debugging-option"><a class="header" href="#additional-debugging-option">Additional Debugging Option</a></h3>
+<p>You can also add the <code>-trace trace.out</code> flag when running any of your tests with <code>go test</code> for additional tracing information.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -5636,6 +6359,955 @@ For the custom ones, we don't do it, so that we don't overload the dashboard.</p
 }
 
 </style>
+<h1 id="wasp---how-to-choose-between-rps-and-vus"><a class="header" href="#wasp---how-to-choose-between-rps-and-vus">WASP - How to Choose Between RPS and VUs</a></h1>
+<p>When writing a test, you need to decide whether to use <strong>RPS</strong> or <strong>VUs</strong> as your load type.</p>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<p>RPS load type can only be used with a <code>Gun</code>, and VUs can only be used with a <code>VirtualUser</code>.</p>
+</div>
+<hr />
+<h2 id="rps-requests-per-second"><a class="header" href="#rps-requests-per-second">RPS (Requests Per Second)</a></h2>
+<p>You should use <strong>RPS</strong> when your goal is to measure <strong>throughput</strong>. This load type implements a <strong>closed model</strong>, where:</p>
+<ul>
+<li>The number of requests is fixed.</li>
+<li>The load is adjusted to meet the target RPS.</li>
+<li>The system's response time has no impact on the rate of load generation.</li>
+</ul>
+<p>In an RPS-based test, new requests are sent continuously, regardless of how long previous requests take.</p>
+<h3 id="example-rps-test-diagram"><a class="header" href="#example-rps-test-diagram">Example RPS Test Diagram</a></h3>
+<pre class="mermaid">---
+title: RPS test
+---
+sequenceDiagram
+    participant Profile(Test)
+    participant Scheduler
+    participant Generator(Gun)
+    participant Promtail
+    participant Loki
+    participant Grafana
+    loop Test Execution
+        Profile(Test) -&gt;&gt; Generator(Gun): Start with (API, TestData)
+        loop Schedule
+            Scheduler -&gt;&gt; Scheduler: Process schedule segment
+            Scheduler -&gt;&gt; Generator(Gun): Set new RPS target
+            loop RPS load
+                Generator(Gun) -&gt;&gt; Generator(Gun): Execute Call() in parallel
+                Generator(Gun) -&gt;&gt; Promtail: Save CallResult
+            end
+            Promtail -&gt;&gt; Loki: Send batch&lt;br/&gt;when ready or timeout
+        end
+        Scheduler -&gt;&gt; Scheduler: All segments done&lt;br/&gt;wait all responses&lt;br/&gt;test ends
+        Profile(Test) -&gt;&gt; Grafana: Check alert groups&lt;br/&gt;FAIL or PASS the test
+    end
+</pre>
+<hr />
+<h2 id="virtualuser-vus"><a class="header" href="#virtualuser-vus">VirtualUser (VUs)</a></h2>
+<p>Use <strong>VUs</strong> when working with <strong>stateful protocols</strong> or workflows. With <code>VirtualUser</code>, the <strong>requests per second</strong> rate cannot be guaranteed because:</p>
+<ul>
+<li>Each iteration begins only after the previous one finishes.</li>
+<li>The load follows an <strong>open model</strong>, where the system's response time affects the RPS.</li>
+</ul>
+<p>If the system takes longer to respond, iterations take longer, and the RPS decreases.</p>
+<h3 id="example-vus-test-diagram"><a class="header" href="#example-vus-test-diagram">Example VUs Test Diagram</a></h3>
+<pre class="mermaid">---
+title: VUs test
+---
+sequenceDiagram
+    participant Profile(Test)
+    participant Scheduler
+    participant Generator(VUs)
+    participant VU1
+    participant VU2
+    participant Promtail
+    participant Loki
+    participant Grafana
+    loop Test Execution
+        Profile(Test) -&gt;&gt; Generator(VUs): Start with (API, TestData)
+        loop Schedule
+            Scheduler -&gt;&gt; Scheduler: Process schedule segment
+            Scheduler -&gt;&gt; Generator(VUs): Set new VUs target
+            loop VUs load
+                Generator(VUs) -&gt;&gt; Generator(VUs): Add/remove VUs
+                Generator(VUs) -&gt;&gt; VU1: Start/end
+                Generator(VUs) -&gt;&gt; VU2: Start/end
+                VU1 -&gt;&gt; VU1: Run loop, execute multiple calls
+                VU1 -&gt;&gt; Promtail: Save []CallResult
+                VU2 -&gt;&gt; VU2: Run loop, execute multiple calls
+                VU2 -&gt;&gt; Promtail: Save []CallResult
+                Promtail -&gt;&gt; Loki: Send batch&lt;br/&gt;when ready or timeout
+            end
+        end
+        Scheduler -&gt;&gt; Scheduler: All segments done&lt;br/&gt;wait all responses&lt;br/&gt;test ends
+        Profile(Test) -&gt;&gt; Grafana: Check alert groups&lt;br/&gt;FAIL or PASS the test
+    end
+</pre>
+<p>In this model, <code>VU2</code> starts only after <code>VU1</code> has finished its iteration.</p>
+<hr />
+<h2 id="summary-1"><a class="header" href="#summary-1">Summary</a></h2>
+<ul>
+<li>
+<p>Use <strong>RPS</strong> for:</p>
+<ul>
+<li>Stateless protocols.</li>
+<li>Measuring throughput.</li>
+<li>Scenarios where the load generation rate must remain constant.</li>
+</ul>
+</li>
+<li>
+<p>Use <strong>VUs</strong> for:</p>
+<ul>
+<li>Stateful protocols.</li>
+<li>Workflows that involve multiple steps.</li>
+<li>Scenarios where response time impacts the load generation rate.</li>
+</ul>
+</li>
+</ul>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>Learn more about open and closed models <a href="https://grafana.com/docs/k6/latest/using-k6/scenarios/concepts/open-vs-closed/">here</a>.</p>
+</div>
+<div style="break-before: page; page-break-before: always;"></div><style>
+.mdbook-alerts {
+  padding: 8px 16px;
+  margin-bottom: 16px;
+  border-left: 0.25em solid var(--mdbook-alerts-color);
+}
+
+.mdbook-alerts > *:first-child {
+  margin-top: 0;
+}
+
+.mdbook-alerts > *:last-child {
+  margin-bottom: 0;
+}
+
+.mdbook-alerts-title {
+  display: flex;
+  font-weight: 600;
+  align-items: center;
+  line-height: 1;
+  color: var(--mdbook-alerts-color);
+  text-transform: capitalize;
+}
+
+.mdbook-alerts-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.2em;
+  background-color: currentColor;
+  -webkit-mask: no-repeat center / 100%;
+  mask: no-repeat center / 100%;
+  -webkit-mask-image: var(--mdbook-alerts-icon);
+  mask-image: var(--mdbook-alerts-icon);
+}
+
+.mdbook-alerts-note {
+  --mdbook-alerts-color: rgb(9, 105, 218);
+  /* https://icon-sets.iconify.design/material-symbols/info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16v-4q0-.425-.288-.712T12 11q-.425 0-.712.288T11 12v4q0 .425.288.713T12 17m0-8q.425 0 .713-.288T13 8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8q0 .425.288.713T12 9m0 13q-2.075 0-3.9-.788t-3.175-2.137q-1.35-1.35-2.137-3.175T2 12q0-2.075.788-3.9t2.137-3.175q1.35-1.35 3.175-2.137T12 2q2.075 0 3.9.788t3.175 2.137q1.35 1.35 2.138 3.175T22 12q0 2.075-.788 3.9t-2.137 3.175q-1.35 1.35-3.175 2.138T12 22m0-2q3.35 0 5.675-2.325T20 12q0-3.35-2.325-5.675T12 4Q8.65 4 6.325 6.325T4 12q0 3.35 2.325 5.675T12 20m0-8"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-tip {
+  --mdbook-alerts-color: rgb(26, 127, 55);
+  /* https://icon-sets.iconify.design/material-symbols/lightbulb-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 22q-.825 0-1.412-.587T10 20h4q0 .825-.587 1.413T12 22m-3-3q-.425 0-.712-.288T8 18q0-.425.288-.712T9 17h6q.425 0 .713.288T16 18q0 .425-.288.713T15 19zm-.75-3q-1.725-1.025-2.738-2.75T4.5 9.5q0-3.125 2.188-5.312T12 2q3.125 0 5.313 2.188T19.5 9.5q0 2.025-1.012 3.75T15.75 16zm.6-2h6.3q1.125-.8 1.738-1.975T17.5 9.5q0-2.3-1.6-3.9T12 4Q9.7 4 8.1 5.6T6.5 9.5q0 1.35.613 2.525T8.85 14M12 14"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-important {
+  --mdbook-alerts-color: rgb(130, 80, 223);
+  /* https://icon-sets.iconify.design/material-symbols/chat-info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 7q.425 0 .713-.288T13 6q0-.425-.288-.712T12 5q-.425 0-.712.288T11 6q0 .425.288.713T12 7m0 8q.425 0 .713-.288T13 14v-4q0-.425-.288-.712T12 9q-.425 0-.712.288T11 10v4q0 .425.288.713T12 15m-6 3l-2.3 2.3q-.475.475-1.088.213T2 19.575V4q0-.825.588-1.412T4 2h16q.825 0 1.413.588T22 4v12q0 .825-.587 1.413T20 18zm-.85-2H20V4H4v13.125zM4 16V4z"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-warning {
+  --mdbook-alerts-color: rgb(154, 103, 0);
+  /* https://icon-sets.iconify.design/material-symbols/warning-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M2.725 21q-.275 0-.5-.137t-.35-.363q-.125-.225-.137-.488t.137-.512l9.25-16q.15-.25.388-.375T12 3q.25 0 .488.125t.387.375l9.25 16q.15.25.138.513t-.138.487q-.125.225-.35.363t-.5.137zm1.725-2h15.1L12 6zM12 18q.425 0 .713-.288T13 17q0-.425-.288-.712T12 16q-.425 0-.712.288T11 17q0 .425.288.713T12 18m0-3q.425 0 .713-.288T13 14v-3q0-.425-.288-.712T12 10q-.425 0-.712.288T11 11v3q0 .425.288.713T12 15m0-2.5"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-caution {
+  --mdbook-alerts-color: rgb(207, 34, 46);
+  /* https://icon-sets.iconify.design/material-symbols/brightness-alert-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16q0-.425-.288-.712T12 15q-.425 0-.712.288T11 16q0 .425.288.713T12 17m0-4q.425 0 .713-.288T13 12V8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8v4q0 .425.288.713T12 13m-3.35 7H6q-.825 0-1.412-.587T4 18v-2.65L2.075 13.4q-.275-.3-.425-.662T1.5 12q0-.375.15-.737t.425-.663L4 8.65V6q0-.825.588-1.412T6 4h2.65l1.95-1.925q.3-.275.663-.425T12 1.5q.375 0 .738.15t.662.425L15.35 4H18q.825 0 1.413.588T20 6v2.65l1.925 1.95q.275.3.425.663t.15.737q0 .375-.15.738t-.425.662L20 15.35V18q0 .825-.587 1.413T18 20h-2.65l-1.95 1.925q-.3.275-.662.425T12 22.5q-.375 0-.737-.15t-.663-.425zm.85-2l2.5 2.5l2.5-2.5H18v-3.5l2.5-2.5L18 9.5V6h-3.5L12 3.5L9.5 6H6v3.5L3.5 12L6 14.5V18zm2.5-6"%2F%3E%3C%2Fsvg%3E');
+}
+
+</style>
+<h1 id="wasp---how-to-define-nfrs-and-check-alerts"><a class="header" href="#wasp---how-to-define-nfrs-and-check-alerts">WASP - How to Define NFRs and Check Alerts</a></h1>
+<p>WASP allows you to define and monitor <strong>Non-Functional Requirements (NFRs)</strong> by grouping them into categories for independent checks. Ideally, these NFRs should be defined as dashboard-as-code and committed to your Git repository. However, you can also create them programmatically on an existing or new dashboard.</p>
+<hr />
+<h3 id="defining-alerts-1"><a class="header" href="#defining-alerts-1">Defining Alerts</a></h3>
+<p>WASP supports two types of alerts:</p>
+<h4 id="built-in-alerts"><a class="header" href="#built-in-alerts">Built-in Alerts</a></h4>
+<p>These alerts are automatically supported by every generator and are based on the following metrics:</p>
+<ul>
+<li><strong>99th quantile (p99)</strong></li>
+<li><strong>Errors</strong></li>
+<li><strong>Timeouts</strong></li>
+</ul>
+<p>You can specify simple alert conditions such as:</p>
+<ul>
+<li>Value above or below</li>
+<li>Average</li>
+<li>Median</li>
+</ul>
+<p>These conditions use Grabana's <a href="https://pkg.go.dev/github.com/K-Phoen/grabana@v0.21.18/alert#ConditionEvaluator">ConditionEvaluator</a>.</p>
+<hr />
+<h4 id="custom-alerts-1"><a class="header" href="#custom-alerts-1">Custom Alerts</a></h4>
+<p>Custom alerts can be much more complex and can:</p>
+<ul>
+<li>Combine multiple simple conditions.</li>
+<li>Execute Loki queries.</li>
+</ul>
+<p>Custom alerts use Grabana's <a href="https://pkg.go.dev/github.com/K-Phoen/grabana@v0.21.18/timeseries#Alert">timeseries.Alert</a> and must be timeseries-based.</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>For a programmatic example, check the <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/wasp/examples/alerts/main_test.go">alerts example</a>.</p>
+</div>
+<hr />
+<h3 id="checking-alerts"><a class="header" href="#checking-alerts">Checking Alerts</a></h3>
+<p>Once you have a dashboard with alerts, you can choose between two approaches:</p>
+<h4 id="1-automatic-checking-with-profile-and-grafanaopts"><a class="header" href="#1-automatic-checking-with-profile-and-grafanaopts">1. Automatic Checking with <code>Profile</code> and <code>GrafanaOpts</code></a></h4>
+<p>You can automatically check alerts and add dashboard annotations by utilizing the <code>WithGrafana()</code> function with a <code>wasp.Profile</code>. This approach integrates dashboard annotations and evaluates alerts after the test run.</p>
+<p><strong>Example</strong>:</p>
+<pre><code class="language-go">_, err = wasp.NewProfile().
+    WithGrafana(grafanaOpts).
+    Add(wasp.NewGenerator(getLatestReportByTimestampCfg)).
+    Run(true)
+require.NoError(t, err)
+</code></pre>
+<p>Where <code>GrafanaOpts</code> is defined as:</p>
+<pre><code class="language-go">type GrafanaOpts struct {
+	GrafanaURL                   string        `toml:"grafana_url"`
+	GrafanaToken                 string        `toml:"grafana_token_secret"`
+	WaitBeforeAlertCheck         time.Duration `toml:"grafana_wait_before_alert_check"`                  // Cooldown period before checking for alerts
+	AnnotateDashboardUIDs        []string      `toml:"grafana_annotate_dashboard_uids"`                  // Dashboard UIDs to annotate the start and end of the run
+	CheckDashboardAlertsAfterRun []string      `toml:"grafana_check_alerts_after_run_on_dashboard_uids"` // Dashboard UIDs to check for alerts after the run
+}
+</code></pre>
+<h4 id="2-manual-checking-with-alertchecker"><a class="header" href="#2-manual-checking-with-alertchecker">2. Manual Checking with <code>AlertChecker</code></a></h4>
+<p>You can manually check alerts using the <a href="libs/wasp/how-to/../components/alert_checker.html">AlertChecker</a> component.</p>
+<hr />
+<h3 id="summary-2"><a class="header" href="#summary-2">Summary</a></h3>
+<p>WASP provides flexibility in defining and monitoring NFRs:</p>
+<ul>
+<li>Use <strong>built-in alerts</strong> for standard metrics like p99, errors, and timeouts.</li>
+<li>Use <strong>custom alerts</strong> for complex conditions or Loki queries.</li>
+<li>Automate alert checks using <code>Profile</code> with <code>GrafanaOpts</code> or manually verify them with <code>AlertChecker</code>.</li>
+</ul>
+<p>By combining these tools, you can ensure your application's performance and reliability align with your NFRs.</p>
+<div style="break-before: page; page-break-before: always;"></div><style>
+.mdbook-alerts {
+  padding: 8px 16px;
+  margin-bottom: 16px;
+  border-left: 0.25em solid var(--mdbook-alerts-color);
+}
+
+.mdbook-alerts > *:first-child {
+  margin-top: 0;
+}
+
+.mdbook-alerts > *:last-child {
+  margin-bottom: 0;
+}
+
+.mdbook-alerts-title {
+  display: flex;
+  font-weight: 600;
+  align-items: center;
+  line-height: 1;
+  color: var(--mdbook-alerts-color);
+  text-transform: capitalize;
+}
+
+.mdbook-alerts-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.2em;
+  background-color: currentColor;
+  -webkit-mask: no-repeat center / 100%;
+  mask: no-repeat center / 100%;
+  -webkit-mask-image: var(--mdbook-alerts-icon);
+  mask-image: var(--mdbook-alerts-icon);
+}
+
+.mdbook-alerts-note {
+  --mdbook-alerts-color: rgb(9, 105, 218);
+  /* https://icon-sets.iconify.design/material-symbols/info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16v-4q0-.425-.288-.712T12 11q-.425 0-.712.288T11 12v4q0 .425.288.713T12 17m0-8q.425 0 .713-.288T13 8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8q0 .425.288.713T12 9m0 13q-2.075 0-3.9-.788t-3.175-2.137q-1.35-1.35-2.137-3.175T2 12q0-2.075.788-3.9t2.137-3.175q1.35-1.35 3.175-2.137T12 2q2.075 0 3.9.788t3.175 2.137q1.35 1.35 2.138 3.175T22 12q0 2.075-.788 3.9t-2.137 3.175q-1.35 1.35-3.175 2.138T12 22m0-2q3.35 0 5.675-2.325T20 12q0-3.35-2.325-5.675T12 4Q8.65 4 6.325 6.325T4 12q0 3.35 2.325 5.675T12 20m0-8"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-tip {
+  --mdbook-alerts-color: rgb(26, 127, 55);
+  /* https://icon-sets.iconify.design/material-symbols/lightbulb-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 22q-.825 0-1.412-.587T10 20h4q0 .825-.587 1.413T12 22m-3-3q-.425 0-.712-.288T8 18q0-.425.288-.712T9 17h6q.425 0 .713.288T16 18q0 .425-.288.713T15 19zm-.75-3q-1.725-1.025-2.738-2.75T4.5 9.5q0-3.125 2.188-5.312T12 2q3.125 0 5.313 2.188T19.5 9.5q0 2.025-1.012 3.75T15.75 16zm.6-2h6.3q1.125-.8 1.738-1.975T17.5 9.5q0-2.3-1.6-3.9T12 4Q9.7 4 8.1 5.6T6.5 9.5q0 1.35.613 2.525T8.85 14M12 14"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-important {
+  --mdbook-alerts-color: rgb(130, 80, 223);
+  /* https://icon-sets.iconify.design/material-symbols/chat-info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 7q.425 0 .713-.288T13 6q0-.425-.288-.712T12 5q-.425 0-.712.288T11 6q0 .425.288.713T12 7m0 8q.425 0 .713-.288T13 14v-4q0-.425-.288-.712T12 9q-.425 0-.712.288T11 10v4q0 .425.288.713T12 15m-6 3l-2.3 2.3q-.475.475-1.088.213T2 19.575V4q0-.825.588-1.412T4 2h16q.825 0 1.413.588T22 4v12q0 .825-.587 1.413T20 18zm-.85-2H20V4H4v13.125zM4 16V4z"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-warning {
+  --mdbook-alerts-color: rgb(154, 103, 0);
+  /* https://icon-sets.iconify.design/material-symbols/warning-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M2.725 21q-.275 0-.5-.137t-.35-.363q-.125-.225-.137-.488t.137-.512l9.25-16q.15-.25.388-.375T12 3q.25 0 .488.125t.387.375l9.25 16q.15.25.138.513t-.138.487q-.125.225-.35.363t-.5.137zm1.725-2h15.1L12 6zM12 18q.425 0 .713-.288T13 17q0-.425-.288-.712T12 16q-.425 0-.712.288T11 17q0 .425.288.713T12 18m0-3q.425 0 .713-.288T13 14v-3q0-.425-.288-.712T12 10q-.425 0-.712.288T11 11v3q0 .425.288.713T12 15m0-2.5"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-caution {
+  --mdbook-alerts-color: rgb(207, 34, 46);
+  /* https://icon-sets.iconify.design/material-symbols/brightness-alert-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16q0-.425-.288-.712T12 15q-.425 0-.712.288T11 16q0 .425.288.713T12 17m0-4q.425 0 .713-.288T13 12V8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8v4q0 .425.288.713T12 13m-3.35 7H6q-.825 0-1.412-.587T4 18v-2.65L2.075 13.4q-.275-.3-.425-.662T1.5 12q0-.375.15-.737t.425-.663L4 8.65V6q0-.825.588-1.412T6 4h2.65l1.95-1.925q.3-.275.663-.425T12 1.5q.375 0 .738.15t.662.425L15.35 4H18q.825 0 1.413.588T20 6v2.65l1.925 1.95q.275.3.425.663t.15.737q0 .375-.15.738t-.425.662L20 15.35V18q0 .825-.587 1.413T18 20h-2.65l-1.95 1.925q-.3.275-.662.425T12 22.5q-.375 0-.737-.15t-.663-.425zm.85-2l2.5 2.5l2.5-2.5H18v-3.5l2.5-2.5L18 9.5V6h-3.5L12 3.5L9.5 6H6v3.5L3.5 12L6 14.5V18zm2.5-6"%2F%3E%3C%2Fsvg%3E');
+}
+
+</style>
+<h1 id="wasp---how-to-use-labels"><a class="header" href="#wasp---how-to-use-labels">WASP - How to Use Labels</a></h1>
+<p>The default WASP dashboard utilizes the following labels to differentiate between various generators and requests:</p>
+<ul>
+<li><code>go_test_name</code></li>
+<li><code>gen_name</code></li>
+<li><code>branch</code></li>
+<li><code>commit</code></li>
+<li><code>call_group</code></li>
+</ul>
+<hr />
+<h2 id="go_test_name"><a class="header" href="#go_test_name"><code>go_test_name</code></a></h2>
+<p>This label is used to differentiate between different tests. If an instance of <code>*testing.T</code> is passed to the generator configuration, the test name will automatically be added to the <code>go_test_name</code> label:</p>
+<pre><code class="language-go">gen, err := wasp.NewGenerator(&amp;wasp.Config{
+    LoadType:   wasp.RPS,
+    T:          t,                                  // &lt; ----------------------- HERE
+    Schedule:   wasp.Plain(5, 60*time.Second),
+    Gun:        NewExampleHTTPGun(srv.URL()),
+    Labels:     labels,
+    LokiConfig: wasp.NewEnvLokiConfig(),
+})
+</code></pre>
+<hr />
+<h2 id="gen_name"><a class="header" href="#gen_name"><code>gen_name</code></a></h2>
+<p>This label differentiates between different generators:</p>
+<pre><code class="language-go">gen, err := wasp.NewGenerator(&amp;wasp.Config{
+    LoadType:   wasp.RPS,
+    T:          t,
+    GenName:    "my_super_generator",                // &lt; ----------------------- HERE
+    Schedule:   wasp.Plain(5, 60*time.Second),
+    Gun:        NewExampleHTTPGun(srv.URL()),
+    Labels:     labels,
+    LokiConfig: wasp.NewEnvLokiConfig(),
+})
+</code></pre>
+<hr />
+<h2 id="branch-and-commit"><a class="header" href="#branch-and-commit"><code>branch</code> and <code>commit</code></a></h2>
+<p>These labels are primarily used to distinguish between different branches and commits when running tests in CI.<br />
+Since there is no automated way to fetch this data, it must be passed manually:</p>
+<pre><code class="language-go">branch := os.Getenv("BRANCH")
+commit := os.Getenv("COMMIT")
+
+labels := map[string]string{
+    "branch":      branch,                       // &lt; ----------------------- HERE
+    "commit":      commit,                       // &lt; ----------------------- HERE
+}
+
+gen, err := wasp.NewGenerator(&amp;wasp.Config{
+    LoadType:   wasp.RPS,
+    T:          t,
+    GenName:    "my_super_generator",
+    Schedule:   wasp.Plain(5, 60*time.Second),
+    Gun:        NewExampleHTTPGun(srv.URL()),
+    Labels:     labels,                         // &lt; ----------------------- HERE
+    LokiConfig: wasp.NewEnvLokiConfig(),
+})
+</code></pre>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>Make sure to set the <code>BRANCH</code> and <code>COMMIT</code> environment variables in your CI workflow.</p>
+</div>
+<hr />
+<h2 id="call_group"><a class="header" href="#call_group"><code>call_group</code></a></h2>
+<p>This label allows differentiation between different requests within a Virtual User's <code>Call()</code> function.</p>
+<h3 id="example-1"><a class="header" href="#example-1">Example:</a></h3>
+<pre><code class="language-go">// represents user login
+func (m *VirtualUser) requestOne(l *wasp.Generator) {
+	var result map[string]interface{}
+	r, err := m.client.R().
+		SetResult(&amp;result).
+		Get(m.target)
+	if err != nil {
+		l.Responses.Err(r, "auth", err) // &lt; ----------------------- HERE
+		return
+	}
+	l.Responses.OK(r, "auth")         // &lt; ----------------------- HERE
+}
+
+// represents authenticated user action
+func (m *VirtualUser) requestTwo(l *wasp.Generator) {
+    var result map[string]interface{}
+    r, err := m.client.R().
+        SetResult(&amp;result).
+        Get(m.target)
+    if err != nil {
+        l.Responses.Err(r, "user", err) // &lt; ----------------------- HERE
+        return
+    }
+    l.Responses.OK(r, "user")         // &lt; ----------------------- HERE
+}
+</code></pre>
+<p>In this example, the authentication request and the user action request are differentiated by the <code>call_group</code> label.</p>
+<hr />
+<h2 id="custom-labels"><a class="header" href="#custom-labels">Custom Labels</a></h2>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>You can add as many custom labels as needed for use with your dashboard.</p>
+</div>
+<pre><code class="language-go">labels := map[string]string{
+    "custom_label_1": "value1",
+    "custom_label_2": "value2",
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><style>
+.mdbook-alerts {
+  padding: 8px 16px;
+  margin-bottom: 16px;
+  border-left: 0.25em solid var(--mdbook-alerts-color);
+}
+
+.mdbook-alerts > *:first-child {
+  margin-top: 0;
+}
+
+.mdbook-alerts > *:last-child {
+  margin-bottom: 0;
+}
+
+.mdbook-alerts-title {
+  display: flex;
+  font-weight: 600;
+  align-items: center;
+  line-height: 1;
+  color: var(--mdbook-alerts-color);
+  text-transform: capitalize;
+}
+
+.mdbook-alerts-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.2em;
+  background-color: currentColor;
+  -webkit-mask: no-repeat center / 100%;
+  mask: no-repeat center / 100%;
+  -webkit-mask-image: var(--mdbook-alerts-icon);
+  mask-image: var(--mdbook-alerts-icon);
+}
+
+.mdbook-alerts-note {
+  --mdbook-alerts-color: rgb(9, 105, 218);
+  /* https://icon-sets.iconify.design/material-symbols/info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16v-4q0-.425-.288-.712T12 11q-.425 0-.712.288T11 12v4q0 .425.288.713T12 17m0-8q.425 0 .713-.288T13 8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8q0 .425.288.713T12 9m0 13q-2.075 0-3.9-.788t-3.175-2.137q-1.35-1.35-2.137-3.175T2 12q0-2.075.788-3.9t2.137-3.175q1.35-1.35 3.175-2.137T12 2q2.075 0 3.9.788t3.175 2.137q1.35 1.35 2.138 3.175T22 12q0 2.075-.788 3.9t-2.137 3.175q-1.35 1.35-3.175 2.138T12 22m0-2q3.35 0 5.675-2.325T20 12q0-3.35-2.325-5.675T12 4Q8.65 4 6.325 6.325T4 12q0 3.35 2.325 5.675T12 20m0-8"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-tip {
+  --mdbook-alerts-color: rgb(26, 127, 55);
+  /* https://icon-sets.iconify.design/material-symbols/lightbulb-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 22q-.825 0-1.412-.587T10 20h4q0 .825-.587 1.413T12 22m-3-3q-.425 0-.712-.288T8 18q0-.425.288-.712T9 17h6q.425 0 .713.288T16 18q0 .425-.288.713T15 19zm-.75-3q-1.725-1.025-2.738-2.75T4.5 9.5q0-3.125 2.188-5.312T12 2q3.125 0 5.313 2.188T19.5 9.5q0 2.025-1.012 3.75T15.75 16zm.6-2h6.3q1.125-.8 1.738-1.975T17.5 9.5q0-2.3-1.6-3.9T12 4Q9.7 4 8.1 5.6T6.5 9.5q0 1.35.613 2.525T8.85 14M12 14"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-important {
+  --mdbook-alerts-color: rgb(130, 80, 223);
+  /* https://icon-sets.iconify.design/material-symbols/chat-info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 7q.425 0 .713-.288T13 6q0-.425-.288-.712T12 5q-.425 0-.712.288T11 6q0 .425.288.713T12 7m0 8q.425 0 .713-.288T13 14v-4q0-.425-.288-.712T12 9q-.425 0-.712.288T11 10v4q0 .425.288.713T12 15m-6 3l-2.3 2.3q-.475.475-1.088.213T2 19.575V4q0-.825.588-1.412T4 2h16q.825 0 1.413.588T22 4v12q0 .825-.587 1.413T20 18zm-.85-2H20V4H4v13.125zM4 16V4z"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-warning {
+  --mdbook-alerts-color: rgb(154, 103, 0);
+  /* https://icon-sets.iconify.design/material-symbols/warning-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M2.725 21q-.275 0-.5-.137t-.35-.363q-.125-.225-.137-.488t.137-.512l9.25-16q.15-.25.388-.375T12 3q.25 0 .488.125t.387.375l9.25 16q.15.25.138.513t-.138.487q-.125.225-.35.363t-.5.137zm1.725-2h15.1L12 6zM12 18q.425 0 .713-.288T13 17q0-.425-.288-.712T12 16q-.425 0-.712.288T11 17q0 .425.288.713T12 18m0-3q.425 0 .713-.288T13 14v-3q0-.425-.288-.712T12 10q-.425 0-.712.288T11 11v3q0 .425.288.713T12 15m0-2.5"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-caution {
+  --mdbook-alerts-color: rgb(207, 34, 46);
+  /* https://icon-sets.iconify.design/material-symbols/brightness-alert-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16q0-.425-.288-.712T12 15q-.425 0-.712.288T11 16q0 .425.288.713T12 17m0-4q.425 0 .713-.288T13 12V8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8v4q0 .425.288.713T12 13m-3.35 7H6q-.825 0-1.412-.587T4 18v-2.65L2.075 13.4q-.275-.3-.425-.662T1.5 12q0-.375.15-.737t.425-.663L4 8.65V6q0-.825.588-1.412T6 4h2.65l1.95-1.925q.3-.275.663-.425T12 1.5q.375 0 .738.15t.662.425L15.35 4H18q.825 0 1.413.588T20 6v2.65l1.925 1.95q.275.3.425.663t.15.737q0 .375-.15.738t-.425.662L20 15.35V18q0 .825-.587 1.413T18 20h-2.65l-1.95 1.925q-.3.275-.662.425T12 22.5q-.375 0-.737-.15t-.663-.425zm.85-2l2.5 2.5l2.5-2.5H18v-3.5l2.5-2.5L18 9.5V6h-3.5L12 3.5L9.5 6H6v3.5L3.5 12L6 14.5V18zm2.5-6"%2F%3E%3C%2Fsvg%3E');
+}
+
+</style>
+<h1 id="wasp---how-to-incorporate-load-tests-in-your-workflow"><a class="header" href="#wasp---how-to-incorporate-load-tests-in-your-workflow">WASP - How to Incorporate Load Tests in Your Workflow</a></h1>
+<p>You might be wondering where load tests belong in the Software Development Life Cycle (SDLC) and how to incorporate them effectively. The diagram below illustrates the recommended approach:</p>
+<pre class="mermaid">---
+title: Workload execution. P - Profile, G - Generator, VU - VirtualUser
+---
+sequenceDiagram
+    participant Product repo
+    participant Runner
+    participant K8s
+    participant Loki
+    participant Grafana
+    participant Devs
+    Product repo-&gt;&gt;Product repo: Define NFR for different workloads&lt;br/&gt;Define application dashboard&lt;br/&gt;Define dashboard alerts&lt;br/&gt;Define load tests
+    Product repo-&gt;&gt;Grafana: Upload app dashboard&lt;br/&gt;Alerts have &quot;requirement_name&quot; label&lt;br/&gt;Each &quot;requirement_name&quot; group is based on some NFR
+    loop CI runs
+    Product repo-&gt;&gt;Runner: CI runs small load test
+    Runner-&gt;&gt;Runner: Execute load test logic&lt;br/&gt;Run multiple generators
+    Runner-&gt;&gt;Loki: Stream load test data
+    Runner-&gt;&gt;Grafana: Check alerts for &quot;requirement_name&quot;: &quot;baseline&quot;
+    Grafana-&gt;&gt;Devs: Notify devs (Dashboard URL/Alert groups)
+    Product repo-&gt;&gt;Runner: CI runs large load test
+    Runner-&gt;&gt;K8s: Split workload into multiple jobs&lt;br/&gt;Monitor job statuses
+    K8s-&gt;&gt;Loki: Stream load test data
+    Runner-&gt;&gt;Grafana: Check alerts for &quot;requirement_name&quot;: &quot;stress&quot;
+    Grafana-&gt;&gt;Devs: Notify devs (Dashboard URL/Alert groups)
+    end
+</pre>
+<hr />
+<h3 id="workflow-explanation"><a class="header" href="#workflow-explanation">Workflow Explanation</a></h3>
+<ol>
+<li>
+<p><strong>Define Requirements and Dashboards:</strong></p>
+<ul>
+<li>Define <strong>NFRs</strong> (Non-Functional Requirements) for different workloads.</li>
+<li>Create an application dashboard and define alerts grouped by <code>requirement_name</code>.<br />
+Each <code>requirement_name</code> group corresponds to a specific NFR.</li>
+</ul>
+</li>
+<li>
+<p><strong>Integrate into CI/CD:</strong></p>
+<ul>
+<li><strong>Small Load Tests:</strong><br />
+Run small load tests as part of your CI pipeline:
+<ul>
+<li>Execute load test logic with multiple generators.</li>
+<li>Stream test data to Loki.</li>
+<li>Check Grafana alerts for the "baseline" group.</li>
+<li>Notify developers with dashboard URLs and alert group details.</li>
+</ul>
+</li>
+<li><strong>Large Load Tests:</strong><br />
+For stress testing:
+<ul>
+<li>Split the workload into multiple Kubernetes jobs and monitor their statuses.</li>
+<li>Stream test data to Loki.</li>
+<li>Check Grafana alerts for the "stress" group.</li>
+<li>Notify developers with dashboard URLs and alert group details.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>
+<p><strong>Notification and Iteration:</strong></p>
+<ul>
+<li>Alerts notify developers about potential issues, directing them to relevant dashboards and alert groups.</li>
+</ul>
+</li>
+</ol>
+<hr />
+<h3 id="key-points"><a class="header" href="#key-points">Key Points</a></h3>
+<ul>
+<li><strong>Scalable Testing:</strong> Use small load tests for quick validation in CI and larger tests for stress validation.</li>
+<li><strong>Real-Time Monitoring:</strong> Leverage Grafana to monitor metrics and alerts during test execution.</li>
+<li><strong>Team Collaboration:</strong> Automate notifications to keep the team informed of any issues.</li>
+</ul>
+<p>This approach ensures that load testing is seamlessly integrated into your SDLC and provides actionable insights for maintaining performance and reliability.</p>
+<div style="break-before: page; page-break-before: always;"></div><style>
+.mdbook-alerts {
+  padding: 8px 16px;
+  margin-bottom: 16px;
+  border-left: 0.25em solid var(--mdbook-alerts-color);
+}
+
+.mdbook-alerts > *:first-child {
+  margin-top: 0;
+}
+
+.mdbook-alerts > *:last-child {
+  margin-bottom: 0;
+}
+
+.mdbook-alerts-title {
+  display: flex;
+  font-weight: 600;
+  align-items: center;
+  line-height: 1;
+  color: var(--mdbook-alerts-color);
+  text-transform: capitalize;
+}
+
+.mdbook-alerts-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.2em;
+  background-color: currentColor;
+  -webkit-mask: no-repeat center / 100%;
+  mask: no-repeat center / 100%;
+  -webkit-mask-image: var(--mdbook-alerts-icon);
+  mask-image: var(--mdbook-alerts-icon);
+}
+
+.mdbook-alerts-note {
+  --mdbook-alerts-color: rgb(9, 105, 218);
+  /* https://icon-sets.iconify.design/material-symbols/info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16v-4q0-.425-.288-.712T12 11q-.425 0-.712.288T11 12v4q0 .425.288.713T12 17m0-8q.425 0 .713-.288T13 8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8q0 .425.288.713T12 9m0 13q-2.075 0-3.9-.788t-3.175-2.137q-1.35-1.35-2.137-3.175T2 12q0-2.075.788-3.9t2.137-3.175q1.35-1.35 3.175-2.137T12 2q2.075 0 3.9.788t3.175 2.137q1.35 1.35 2.138 3.175T22 12q0 2.075-.788 3.9t-2.137 3.175q-1.35 1.35-3.175 2.138T12 22m0-2q3.35 0 5.675-2.325T20 12q0-3.35-2.325-5.675T12 4Q8.65 4 6.325 6.325T4 12q0 3.35 2.325 5.675T12 20m0-8"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-tip {
+  --mdbook-alerts-color: rgb(26, 127, 55);
+  /* https://icon-sets.iconify.design/material-symbols/lightbulb-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 22q-.825 0-1.412-.587T10 20h4q0 .825-.587 1.413T12 22m-3-3q-.425 0-.712-.288T8 18q0-.425.288-.712T9 17h6q.425 0 .713.288T16 18q0 .425-.288.713T15 19zm-.75-3q-1.725-1.025-2.738-2.75T4.5 9.5q0-3.125 2.188-5.312T12 2q3.125 0 5.313 2.188T19.5 9.5q0 2.025-1.012 3.75T15.75 16zm.6-2h6.3q1.125-.8 1.738-1.975T17.5 9.5q0-2.3-1.6-3.9T12 4Q9.7 4 8.1 5.6T6.5 9.5q0 1.35.613 2.525T8.85 14M12 14"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-important {
+  --mdbook-alerts-color: rgb(130, 80, 223);
+  /* https://icon-sets.iconify.design/material-symbols/chat-info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 7q.425 0 .713-.288T13 6q0-.425-.288-.712T12 5q-.425 0-.712.288T11 6q0 .425.288.713T12 7m0 8q.425 0 .713-.288T13 14v-4q0-.425-.288-.712T12 9q-.425 0-.712.288T11 10v4q0 .425.288.713T12 15m-6 3l-2.3 2.3q-.475.475-1.088.213T2 19.575V4q0-.825.588-1.412T4 2h16q.825 0 1.413.588T22 4v12q0 .825-.587 1.413T20 18zm-.85-2H20V4H4v13.125zM4 16V4z"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-warning {
+  --mdbook-alerts-color: rgb(154, 103, 0);
+  /* https://icon-sets.iconify.design/material-symbols/warning-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M2.725 21q-.275 0-.5-.137t-.35-.363q-.125-.225-.137-.488t.137-.512l9.25-16q.15-.25.388-.375T12 3q.25 0 .488.125t.387.375l9.25 16q.15.25.138.513t-.138.487q-.125.225-.35.363t-.5.137zm1.725-2h15.1L12 6zM12 18q.425 0 .713-.288T13 17q0-.425-.288-.712T12 16q-.425 0-.712.288T11 17q0 .425.288.713T12 18m0-3q.425 0 .713-.288T13 14v-3q0-.425-.288-.712T12 10q-.425 0-.712.288T11 11v3q0 .425.288.713T12 15m0-2.5"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-caution {
+  --mdbook-alerts-color: rgb(207, 34, 46);
+  /* https://icon-sets.iconify.design/material-symbols/brightness-alert-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16q0-.425-.288-.712T12 15q-.425 0-.712.288T11 16q0 .425.288.713T12 17m0-4q.425 0 .713-.288T13 12V8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8v4q0 .425.288.713T12 13m-3.35 7H6q-.825 0-1.412-.587T4 18v-2.65L2.075 13.4q-.275-.3-.425-.662T1.5 12q0-.375.15-.737t.425-.663L4 8.65V6q0-.825.588-1.412T6 4h2.65l1.95-1.925q.3-.275.663-.425T12 1.5q.375 0 .738.15t.662.425L15.35 4H18q.825 0 1.413.588T20 6v2.65l1.925 1.95q.275.3.425.663t.15.737q0 .375-.15.738t-.425.662L20 15.35V18q0 .825-.587 1.413T18 20h-2.65l-1.95 1.925q-.3.275-.662.425T12 22.5q-.375 0-.737-.15t-.663-.425zm.85-2l2.5 2.5l2.5-2.5H18v-3.5l2.5-2.5L18 9.5V6h-3.5L12 3.5L9.5 6H6v3.5L3.5 12L6 14.5V18zm2.5-6"%2F%3E%3C%2Fsvg%3E');
+}
+
+</style>
+<h1 id="wasp---how-to-reuse-wasp-components-in-your-own-dashboard"><a class="header" href="#wasp---how-to-reuse-wasp-components-in-your-own-dashboard">WASP - How to Reuse WASP Components in Your Own Dashboard</a></h1>
+<p>You can reuse components from the default WASP dashboard to build your custom dashboard. Here’s an example:</p>
+<pre><code class="language-go">import (
+    waspdashboard "github.com/smartcontractkit/wasp/dashboard"
+    "github.com/K-Phoen/grabana/dashboard"
+)
+
+func BuildCustomLoadTestDashboard(dashboardName string) (dashboard.Builder, error) {
+    // Custom key-value pairs used to query panels
+    panelQuery := map[string]string{
+        "branch":       `=~"${branch:pipe}"`,
+        "commit":       `=~"${commit:pipe}"`,
+        "network_type": `="testnet"`,
+    }
+
+    return dashboard.New(
+        dashboardName,
+        waspdashboard.WASPLoadStatsRow("Loki", panelQuery),      // WASP component
+        waspdashboard.WASPDebugDataRow("Loki", panelQuery, true), // WASP component
+        // Your custom panels and rows go here
+    )
+}
+</code></pre>
+<hr />
+<h3 id="available-components"><a class="header" href="#available-components">Available Components</a></h3>
+<p>You can find all reusable components in the following files:</p>
+<ul>
+<li><a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/wasp/dashboard/grafanasdk/panels.go">grafanasdk/panels.go</a></li>
+<li><a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/wasp/dashboard/panels.go">panels.go</a></li>
+</ul>
+<hr />
+<h3 id="key-points-1"><a class="header" href="#key-points-1">Key Points</a></h3>
+<ul>
+<li>WASP components like <code>WASPLoadStatsRow</code> and <code>WASPDebugDataRow</code> can be directly included in your dashboard.</li>
+<li>Customize panel queries using key-value pairs specific to your setup.</li>
+<li>Extend the default dashboard by adding your own rows and panels alongside WASP components.</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><style>
+.mdbook-alerts {
+  padding: 8px 16px;
+  margin-bottom: 16px;
+  border-left: 0.25em solid var(--mdbook-alerts-color);
+}
+
+.mdbook-alerts > *:first-child {
+  margin-top: 0;
+}
+
+.mdbook-alerts > *:last-child {
+  margin-bottom: 0;
+}
+
+.mdbook-alerts-title {
+  display: flex;
+  font-weight: 600;
+  align-items: center;
+  line-height: 1;
+  color: var(--mdbook-alerts-color);
+  text-transform: capitalize;
+}
+
+.mdbook-alerts-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.2em;
+  background-color: currentColor;
+  -webkit-mask: no-repeat center / 100%;
+  mask: no-repeat center / 100%;
+  -webkit-mask-image: var(--mdbook-alerts-icon);
+  mask-image: var(--mdbook-alerts-icon);
+}
+
+.mdbook-alerts-note {
+  --mdbook-alerts-color: rgb(9, 105, 218);
+  /* https://icon-sets.iconify.design/material-symbols/info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16v-4q0-.425-.288-.712T12 11q-.425 0-.712.288T11 12v4q0 .425.288.713T12 17m0-8q.425 0 .713-.288T13 8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8q0 .425.288.713T12 9m0 13q-2.075 0-3.9-.788t-3.175-2.137q-1.35-1.35-2.137-3.175T2 12q0-2.075.788-3.9t2.137-3.175q1.35-1.35 3.175-2.137T12 2q2.075 0 3.9.788t3.175 2.137q1.35 1.35 2.138 3.175T22 12q0 2.075-.788 3.9t-2.137 3.175q-1.35 1.35-3.175 2.138T12 22m0-2q3.35 0 5.675-2.325T20 12q0-3.35-2.325-5.675T12 4Q8.65 4 6.325 6.325T4 12q0 3.35 2.325 5.675T12 20m0-8"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-tip {
+  --mdbook-alerts-color: rgb(26, 127, 55);
+  /* https://icon-sets.iconify.design/material-symbols/lightbulb-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 22q-.825 0-1.412-.587T10 20h4q0 .825-.587 1.413T12 22m-3-3q-.425 0-.712-.288T8 18q0-.425.288-.712T9 17h6q.425 0 .713.288T16 18q0 .425-.288.713T15 19zm-.75-3q-1.725-1.025-2.738-2.75T4.5 9.5q0-3.125 2.188-5.312T12 2q3.125 0 5.313 2.188T19.5 9.5q0 2.025-1.012 3.75T15.75 16zm.6-2h6.3q1.125-.8 1.738-1.975T17.5 9.5q0-2.3-1.6-3.9T12 4Q9.7 4 8.1 5.6T6.5 9.5q0 1.35.613 2.525T8.85 14M12 14"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-important {
+  --mdbook-alerts-color: rgb(130, 80, 223);
+  /* https://icon-sets.iconify.design/material-symbols/chat-info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 7q.425 0 .713-.288T13 6q0-.425-.288-.712T12 5q-.425 0-.712.288T11 6q0 .425.288.713T12 7m0 8q.425 0 .713-.288T13 14v-4q0-.425-.288-.712T12 9q-.425 0-.712.288T11 10v4q0 .425.288.713T12 15m-6 3l-2.3 2.3q-.475.475-1.088.213T2 19.575V4q0-.825.588-1.412T4 2h16q.825 0 1.413.588T22 4v12q0 .825-.587 1.413T20 18zm-.85-2H20V4H4v13.125zM4 16V4z"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-warning {
+  --mdbook-alerts-color: rgb(154, 103, 0);
+  /* https://icon-sets.iconify.design/material-symbols/warning-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M2.725 21q-.275 0-.5-.137t-.35-.363q-.125-.225-.137-.488t.137-.512l9.25-16q.15-.25.388-.375T12 3q.25 0 .488.125t.387.375l9.25 16q.15.25.138.513t-.138.487q-.125.225-.35.363t-.5.137zm1.725-2h15.1L12 6zM12 18q.425 0 .713-.288T13 17q0-.425-.288-.712T12 16q-.425 0-.712.288T11 17q0 .425.288.713T12 18m0-3q.425 0 .713-.288T13 14v-3q0-.425-.288-.712T12 10q-.425 0-.712.288T11 11v3q0 .425.288.713T12 15m0-2.5"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-caution {
+  --mdbook-alerts-color: rgb(207, 34, 46);
+  /* https://icon-sets.iconify.design/material-symbols/brightness-alert-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16q0-.425-.288-.712T12 15q-.425 0-.712.288T11 16q0 .425.288.713T12 17m0-4q.425 0 .713-.288T13 12V8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8v4q0 .425.288.713T12 13m-3.35 7H6q-.825 0-1.412-.587T4 18v-2.65L2.075 13.4q-.275-.3-.425-.662T1.5 12q0-.375.15-.737t.425-.663L4 8.65V6q0-.825.588-1.412T6 4h2.65l1.95-1.925q.3-.275.663-.425T12 1.5q.375 0 .738.15t.662.425L15.35 4H18q.825 0 1.413.588T20 6v2.65l1.925 1.95q.275.3.425.663t.15.737q0 .375-.15.738t-.425.662L20 15.35V18q0 .825-.587 1.413T18 20h-2.65l-1.95 1.925q-.3.275-.662.425T12 22.5q-.375 0-.737-.15t-.663-.425zm.85-2l2.5 2.5l2.5-2.5H18v-3.5l2.5-2.5L18 9.5V6h-3.5L12 3.5L9.5 6H6v3.5L3.5 12L6 14.5V18zm2.5-6"%2F%3E%3C%2Fsvg%3E');
+}
+
+</style>
+<h1 id="wasp---how-to-parallelize-load"><a class="header" href="#wasp---how-to-parallelize-load">WASP - How to Parallelize Load</a></h1>
+<p>Parallelizing load can be achieved using the <strong><code>Profile</code></strong> component, which allows you to combine multiple generators. However, this approach works only if all generators start at the same time. If you need to space out the generators for various reasons, you must use native Go concurrency primitives like <code>goroutines</code> and <code>channels</code>.</p>
+<hr />
+<h3 id="concept"><a class="header" href="#concept">Concept</a></h3>
+<p>To parallelize load:</p>
+<ol>
+<li>Split the load into multiple parts.</li>
+<li>Run each part in separate <code>goroutines</code>, either using a <code>Profile</code> or directly with <code>Generator</code>.</li>
+<li>Use <code>channels</code> to coordinate the timing and synchronization between the goroutines.</li>
+</ol>
+<hr />
+<h3 id="example-scenario"><a class="header" href="#example-scenario">Example Scenario</a></h3>
+<p>Suppose you want to execute the following scenario:</p>
+<ol>
+<li>Gradually ramp up an <strong>RPS load</strong> over 10 seconds from 1 to 10 RPS and hold it for 50 seconds.</li>
+<li>When RPS reaches 10, gradually ramp up a <strong>VU load</strong> over 16 seconds from 2 to 8 VUs (<code>VU'</code>) and hold it for 30 seconds.</li>
+<li>Once <code>VU'</code> reaches 8, introduce another user interaction and ramp up a <strong>VU load</strong> over 14 seconds from 3 to 9 VUs (<code>VU''</code>) and hold it for 20 seconds.</li>
+</ol>
+<p>Here’s how you can achieve this:</p>
+<pre><code class="language-go">func TestParallelLoad(t *testing.T) {
+    labels := map[string]string{
+        "branch": "parallel_load",
+        "commit": "parallel_load",
+    }
+
+    // Define RPS schedule
+    rpsSchedule := wasp.Combine(
+        wasp.Steps(1, 1, 9, 10*time.Second), // Start with 1 RPS, increment by 1 RPS in 9 steps over 10 seconds
+        wasp.Plain(9, 50*time.Second),       // Hold 9 RPS for 50 seconds
+    )
+
+    // Define VU' schedule
+    vuSchedule := wasp.Combine(
+        wasp.Steps(2, 1, 8, 16*time.Second), // Start with 2 VUs, increment by 1 VU in 8 steps over 16 seconds
+        wasp.Plain(10, 30*time.Second),      // Hold 10 VUs for 30 seconds
+    )
+
+    // Define VU'' schedule
+    vu2Schedule := wasp.Combine(
+        wasp.Steps(3, 1, 6, 14*time.Second), // Start with 3 VUs, increment by 1 VU in 6 steps over 14 seconds
+        wasp.Plain(9, 20*time.Second),       // Hold 9 VUs for 20 seconds
+    )
+
+    // Create generators
+    rpsGen, err := wasp.NewGenerator(&amp;wasp.Config{
+        LoadType:   wasp.RPS,
+        Schedule:   rpsSchedule,
+        GenName:    "Kappa",
+        Labels:     labels,
+        Gun:        NewExampleHTTPGun(srv.URL()),
+        LokiConfig: wasp.NewEnvLokiConfig(),
+    })
+    require.NoError(t, err)
+
+    vuGen, err := wasp.NewGenerator(&amp;wasp.Config{
+        LoadType:   wasp.VU,
+        Schedule:   vuSchedule,
+        GenName:    "Lambda",
+        Labels:     labels,
+        VU:         NewExampleScenario(srv.URL()),
+        LokiConfig: wasp.NewEnvLokiConfig(),
+    })
+    require.NoError(t, err)
+
+    vu2Gen, err := wasp.NewGenerator(&amp;wasp.Config{
+        LoadType: wasp.VU,
+        Schedule: vu2Schedule,
+        GenName:  "Mu",
+        Labels:   labels,
+        VU:       NewExampleScenario(srv.URL()), // Use the same VirtualUser implementation for simplicity
+        LokiConfig: wasp.NewEnvLokiConfig(),
+    })
+    require.NoError(t, err)
+
+    wg := sync.WaitGroup{}
+
+    // Run RPS load in a separate goroutine
+    go func() {
+        wg.Add(1)
+        rpsGen.Run(true)
+        wg.Done()
+    }()
+
+    // Wait for RPS load to stabilize
+    time.Sleep(10 * time.Second)
+
+    // Run VU' load in a separate goroutine
+    go func() {
+        wg.Add(1)
+        vuGen.Run(true)
+        wg.Done()
+    }()
+
+    // Wait for VU' load to stabilize
+    time.Sleep(16 * time.Second)
+
+    // Run VU'' load
+    vu2Gen.Run(true)
+
+    // Wait for all goroutines to complete
+    wg.Wait()
+
+    // Check for load generation errors
+    require.Equal(t, 0, len(rpsGen.Errors()), "RPS generator errors")
+    require.Equal(t, 0, len(vuGen.Errors()), "VU generator errors")
+    require.Equal(t, 0, len(vu2Gen.Errors()), "VU'' generator errors")
+}
+</code></pre>
+<hr />
+<h3 id="key-points-2"><a class="header" href="#key-points-2">Key Points</a></h3>
+<ul>
+<li><strong>Parallel Execution:</strong> Run each generator in its own <code>goroutine</code>.</li>
+<li><strong>Synchronization:</strong> Use <code>time.Sleep</code> or channels to coordinate timing between load segments.</li>
+<li><strong>Error Handling:</strong> Always check for errors in load generation, though they may not necessarily indicate a problem (e.g., aggressive load tests).</li>
+</ul>
+<hr />
+<h3 id="full-example"><a class="header" href="#full-example">Full Example</a></h3>
+<p>For a complete example, refer to <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/wasp/examples/profiles/node_background_load_test.go">this file</a>.</p>
+<div style="break-before: page; page-break-before: always;"></div><style>
+.mdbook-alerts {
+  padding: 8px 16px;
+  margin-bottom: 16px;
+  border-left: 0.25em solid var(--mdbook-alerts-color);
+}
+
+.mdbook-alerts > *:first-child {
+  margin-top: 0;
+}
+
+.mdbook-alerts > *:last-child {
+  margin-bottom: 0;
+}
+
+.mdbook-alerts-title {
+  display: flex;
+  font-weight: 600;
+  align-items: center;
+  line-height: 1;
+  color: var(--mdbook-alerts-color);
+  text-transform: capitalize;
+}
+
+.mdbook-alerts-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.2em;
+  background-color: currentColor;
+  -webkit-mask: no-repeat center / 100%;
+  mask: no-repeat center / 100%;
+  -webkit-mask-image: var(--mdbook-alerts-icon);
+  mask-image: var(--mdbook-alerts-icon);
+}
+
+.mdbook-alerts-note {
+  --mdbook-alerts-color: rgb(9, 105, 218);
+  /* https://icon-sets.iconify.design/material-symbols/info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16v-4q0-.425-.288-.712T12 11q-.425 0-.712.288T11 12v4q0 .425.288.713T12 17m0-8q.425 0 .713-.288T13 8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8q0 .425.288.713T12 9m0 13q-2.075 0-3.9-.788t-3.175-2.137q-1.35-1.35-2.137-3.175T2 12q0-2.075.788-3.9t2.137-3.175q1.35-1.35 3.175-2.137T12 2q2.075 0 3.9.788t3.175 2.137q1.35 1.35 2.138 3.175T22 12q0 2.075-.788 3.9t-2.137 3.175q-1.35 1.35-3.175 2.138T12 22m0-2q3.35 0 5.675-2.325T20 12q0-3.35-2.325-5.675T12 4Q8.65 4 6.325 6.325T4 12q0 3.35 2.325 5.675T12 20m0-8"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-tip {
+  --mdbook-alerts-color: rgb(26, 127, 55);
+  /* https://icon-sets.iconify.design/material-symbols/lightbulb-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 22q-.825 0-1.412-.587T10 20h4q0 .825-.587 1.413T12 22m-3-3q-.425 0-.712-.288T8 18q0-.425.288-.712T9 17h6q.425 0 .713.288T16 18q0 .425-.288.713T15 19zm-.75-3q-1.725-1.025-2.738-2.75T4.5 9.5q0-3.125 2.188-5.312T12 2q3.125 0 5.313 2.188T19.5 9.5q0 2.025-1.012 3.75T15.75 16zm.6-2h6.3q1.125-.8 1.738-1.975T17.5 9.5q0-2.3-1.6-3.9T12 4Q9.7 4 8.1 5.6T6.5 9.5q0 1.35.613 2.525T8.85 14M12 14"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-important {
+  --mdbook-alerts-color: rgb(130, 80, 223);
+  /* https://icon-sets.iconify.design/material-symbols/chat-info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 7q.425 0 .713-.288T13 6q0-.425-.288-.712T12 5q-.425 0-.712.288T11 6q0 .425.288.713T12 7m0 8q.425 0 .713-.288T13 14v-4q0-.425-.288-.712T12 9q-.425 0-.712.288T11 10v4q0 .425.288.713T12 15m-6 3l-2.3 2.3q-.475.475-1.088.213T2 19.575V4q0-.825.588-1.412T4 2h16q.825 0 1.413.588T22 4v12q0 .825-.587 1.413T20 18zm-.85-2H20V4H4v13.125zM4 16V4z"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-warning {
+  --mdbook-alerts-color: rgb(154, 103, 0);
+  /* https://icon-sets.iconify.design/material-symbols/warning-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M2.725 21q-.275 0-.5-.137t-.35-.363q-.125-.225-.137-.488t.137-.512l9.25-16q.15-.25.388-.375T12 3q.25 0 .488.125t.387.375l9.25 16q.15.25.138.513t-.138.487q-.125.225-.35.363t-.5.137zm1.725-2h15.1L12 6zM12 18q.425 0 .713-.288T13 17q0-.425-.288-.712T12 16q-.425 0-.712.288T11 17q0 .425.288.713T12 18m0-3q.425 0 .713-.288T13 14v-3q0-.425-.288-.712T12 10q-.425 0-.712.288T11 11v3q0 .425.288.713T12 15m0-2.5"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-caution {
+  --mdbook-alerts-color: rgb(207, 34, 46);
+  /* https://icon-sets.iconify.design/material-symbols/brightness-alert-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16q0-.425-.288-.712T12 15q-.425 0-.712.288T11 16q0 .425.288.713T12 17m0-4q.425 0 .713-.288T13 12V8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8v4q0 .425.288.713T12 13m-3.35 7H6q-.825 0-1.412-.587T4 18v-2.65L2.075 13.4q-.275-.3-.425-.662T1.5 12q0-.375.15-.737t.425-.663L4 8.65V6q0-.825.588-1.412T6 4h2.65l1.95-1.925q.3-.275.663-.425T12 1.5q.375 0 .738.15t.662.425L15.35 4H18q.825 0 1.413.588T20 6v2.65l1.925 1.95q.275.3.425.663t.15.737q0 .375-.15.738t-.425.662L20 15.35V18q0 .825-.587 1.413T18 20h-2.65l-1.95 1.925q-.3.275-.662.425T12 22.5q-.375 0-.737-.15t-.663-.425zm.85-2l2.5 2.5l2.5-2.5H18v-3.5l2.5-2.5L18 9.5V6h-3.5L12 3.5L9.5 6H6v3.5L3.5 12L6 14.5V18zm2.5-6"%2F%3E%3C%2Fsvg%3E');
+}
+
+</style>
+<h1 id="wasp---how-to-debug-loki-push-errors"><a class="header" href="#wasp---how-to-debug-loki-push-errors">WASP - How to Debug Loki Push Errors</a></h1>
+<p>To troubleshoot Loki push errors, follow these steps:</p>
+<hr />
+<h3 id="step-1-enable-trace-logging"><a class="header" href="#step-1-enable-trace-logging">Step 1: Enable Trace Logging</a></h3>
+<p>Set the logging level to <code>trace</code> to see all messages sent to Loki:</p>
+<pre><code class="language-bash">WASP_LOG_LEVEL=trace
+</code></pre>
+<hr />
+<h3 id="step-2-adjust-error-limits"><a class="header" href="#step-2-adjust-error-limits">Step 2: Adjust Error Limits</a></h3>
+<p>If the Loki client fails to deliver a batch, the test will continue until the maximum number of errors is reached.<br />
+You can control this using <code>LokiConfig.MaxErrors</code>:</p>
+<ul>
+<li>Set <code>LokiConfig.MaxErrors</code> to a desired limit.</li>
+<li>Set it to <code>-1</code> to disable error checks entirely.</li>
+</ul>
+<p>Often, simply increasing <code>LokiConfig.Timeout</code> can resolve the issue.</p>
+<hr />
+<h3 id="step-3-handle-specific-errors"><a class="header" href="#step-3-handle-specific-errors">Step 3: Handle Specific Errors</a></h3>
+<p>If you encounter errors like the following:</p>
+<pre><code>ERR Malformed promtail log message, skipping Line=["level",{},"component","client","host","...","msg","batch add err","tenant","","error",{}]
+</code></pre>
+<p>Take the following actions:</p>
+<ol>
+<li>Increase <code>LokiConfig.MaxStreams</code>.</li>
+<li>Verify the validity of your Loki configuration.</li>
+</ol>
+<hr />
+<p>Since <code>LokiConfig</code> is specific for each <code>Generator</code> remember to adjust the configuration for all of your generators.</p>
+<p>By following these steps, you can effectively debug and resolve Loki push errors.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -6012,7 +7684,7 @@ MERCURY_TEST_LOG_LEVEL = "info"
 <li><code>test_config_file_path</code> is the path to the configuration file for the test (optional).</li>
 </ul>
 <h2 id="using-k8s-test-runner-on-ci"><a class="header" href="#using-k8s-test-runner-on-ci">Using K8s Test Runner on CI</a></h2>
-<h3 id="example-1"><a class="header" href="#example-1">Example</a></h3>
+<h3 id="example-2"><a class="header" href="#example-2">Example</a></h3>
 <p>This example demonstrates the process step by step. First, it shows how to download the Kubernetes Test Runner. Next, it details the use of the Test Runner to create a test binary specifically for the Mercury "e2e_tests/staging_prod/tests/load" test package. Finally, it describes executing the test in Kubernetes using a customized test runner configuration.</p>
 <pre><code>- name: Download K8s Test Runner
     run: |
@@ -8234,8 +9906,8 @@ echo ::add-mask::$BASE64_CONFIG_OVERRIDE
 <h1 id="build-info"><a class="header" href="#build-info">Build info</a></h1>
 <p>This documentation was generated from:</p>
 <ul>
-<li>Branch <code>tt-1722-wasp-doc</code></li>
-<li>Commit: <code>babb831e</code></li>
+<li>Branch <code>HEAD</code></li>
+<li>Commit: <code>9d17f8b3</code></li>
 </ul>
 
                     </main>
@@ -8288,6 +9960,8 @@ echo ::add-mask::$BASE64_CONFIG_OVERRIDE
         <script src="book.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="mermaid.min.js"></script>
+        <script src="mermaid-init.js"></script>
 
         <script>
         window.addEventListener('load', function() {

@@ -3,7 +3,8 @@ Install [mdbook](https://github.com/rust-lang/mdBook)
 ```
 cargo install mdbook && \
 cargo install mdbook-alerts && \
-cargo install mdbook-cmdrun
+cargo install mdbook-cmdrun &&
+cargo install mdbook-mermaid
 ```
 
 Run it locally

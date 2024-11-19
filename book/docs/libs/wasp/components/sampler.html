@@ -219,6 +219,19 @@
 }
 
 </style>
+<h1 id="wasp---sampler"><a class="header" href="#wasp---sampler">WASP - Sampler</a></h1>
+<p>By default, WASP saves all successful, failed, and timed-out responses in each <a href="./generator.html">Generator</a>.<br />
+The <strong>Sampler</strong> component allows you to programmatically set the sampling ratio for successful responses (a value between 0 and 100).</p>
+<p>For example, if you set the sampling ratio to 10, only 10% of successful responses will be saved:</p>
+<pre><code class="language-go">samplerCfg := &amp;SamplerConfig{
+    SuccessfulCallResultRecordRatio: 10,
+}
+
+g := &amp;Generator{
+    sampler: NewSampler(samplerCfg),
+    // other fields
+}
+</code></pre>
 
                     </main>
 
@@ -228,7 +241,7 @@
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../../../libs/wasp/components/segment.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../../../libs/wasp/components/schedule.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -242,7 +255,7 @@
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../../../libs/wasp/components/segment.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../../../libs/wasp/components/schedule.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
@@ -282,6 +295,8 @@
         <script src="../../../book.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="../../../mermaid.min.js"></script>
+        <script src="../../../mermaid-init.js"></script>
 
 
     </div>

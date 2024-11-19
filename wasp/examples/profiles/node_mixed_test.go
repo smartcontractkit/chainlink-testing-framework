@@ -17,8 +17,7 @@ func TestNodeMixed(t *testing.T) {
 	}
 
 	thetaSchedule := wasp.Combine(
-		wasp.Plain(0, 10*time.Second),
-		wasp.Steps(1, 1, 10, 30*time.Second),
+		wasp.Steps(1, 1, 10, 40*time.Second),
 		wasp.Steps(10, -1, 10, 10*time.Second))
 
 	epsilonSchedule := wasp.Combine(

@@ -219,6 +219,27 @@
 }
 
 </style>
+<h1 id="wasp---loki"><a class="header" href="#wasp---loki">WASP - Loki</a></h1>
+<p>Loki is a component responsible for pushing batches of statistics to a Loki instance. It operates in the background using a <code>promtail</code> client.</p>
+<p>Key features include:</p>
+<ul>
+<li>Optional basic authentication support.</li>
+<li>Configurable batch sizes.</li>
+<li>Support for configurable backoff retries, among others.</li>
+</ul>
+<p>By default, a test will fail on the first error encountered while pushing data. You can modify this behavior by setting the maximum allowed errors:</p>
+<ul>
+<li>Setting the value to <code>-1</code> disables error checks entirely.</li>
+</ul>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>While it is technically possible to execute a WASP test without Loki, doing so means you won't have access to load-generation-related metrics.<br />
+Unless your sole interest is in the metrics sent by your application, it is highly recommended to use Loki.<br />
+For this reason, Loki is considered an integral part of the WASP stack.</p>
+</div>
 
                     </main>
 
@@ -282,6 +303,8 @@
         <script src="../../../book.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="../../../mermaid.min.js"></script>
+        <script src="../../../mermaid-init.js"></script>
 
 
     </div>

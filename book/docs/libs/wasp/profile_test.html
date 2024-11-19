@@ -220,11 +220,10 @@
 
 </style>
 <h1 id="wasp---using-profiles"><a class="header" href="#wasp---using-profiles">WASP - Using Profiles</a></h1>
-<p>Finally, let's look at the most complex scenario, where we will be using a <code>VirtualUser</code> to represent a user, and a <code>Gun</code> to represent some background load.
-Also, we will use a new load segment type, one that varies over time.</p>
-<p>In order to bind together different <code>Generators</code> (like a <code>Gun</code> or a <code>VirtualUser</code>) we will use a <code>Profile</code>. You can think of it as a highest-level abstraction that fully describes the load profile.</p>
-<p>We will skip defining both the <code>Gun</code> and the <code>VirtualUser</code> as they are identical to the previous examples. Well, almost.
-For the <code>VU</code> we will use a handy wrapper for sending <code>Response</code> back to the channel. See if you can spot it:</p>
+<p>In this section, we’ll explore the most complex scenario: using a <code>VirtualUser</code> to represent a user and a <code>Gun</code> to generate background load. We’ll also introduce a new load segment type that varies over time.</p>
+<p>To bind together different <code>Generators</code> (such as a <code>Gun</code> or a <code>VirtualUser</code>), we’ll use a <code>Profile</code>. Think of it as the highest-level abstraction that fully describes the load profile.</p>
+<h3 id="gun-and-virtualuser"><a class="header" href="#gun-and-virtualuser"><code>Gun</code> and <code>VirtualUser</code></a></h3>
+<p>We’ll skip defining both the <code>Gun</code> and the <code>VirtualUser</code>, as they are nearly identical to previous examples. However, for the <code>VirtualUser</code>, we’ll use a handy wrapper for sending <code>Response</code> back to the channel. See if you can spot it:</p>
 <pre><code class="language-go">// represents user login
 func (m *VirtualUser) requestOne(l *wasp.Generator) {
 	var result map[string]interface{}
@@ -238,42 +237,83 @@ func (m *VirtualUser) requestOne(l *wasp.Generator) {
 	l.Responses.OK(r, GroupAuth)
 }
 </code></pre>
-<p>Let's define our background load schedule for the RPS <code>Gun</code>. During first 10 seconds, it will increment the RPS by 2.5 every seconds, and then it will keep it at 5 RPS for 40 seconds:</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>You might have noticed <code>GroupAuth</code> constant passed to <code>OK()</code> and <code>Err()</code> methods. This is used to group responses in the dashboard.
+You can read more about it <a href="./how-to/use_labels.html">here</a>.</p>
+</div>
+<hr />
+<h3 id="background-load-schedule-for-the-gun"><a class="header" href="#background-load-schedule-for-the-gun">Background Load Schedule for the <code>Gun</code></a></h3>
+<p>For the RPS <code>Gun</code>, we’ll define a schedule where:</p>
+<ol>
+<li>During the first 10 seconds, the RPS increases by 2.5 every second.</li>
+<li>For the next 40 seconds, it remains steady at 5 RPS.</li>
+</ol>
 <pre><code class="language-go">epsilonSchedule := wasp.Combine(
-    wasp.Steps(1, 1, 4, 10*time.Second), // start with 1 RPS, increment by 1 RPS in 4 steps during 10 seconds (increment of 1 every 2.5 seconds)
-    wasp.Plain(5, 40*time.Second)) // hold 5 RPS for 40 seconds
+    wasp.Steps(1, 1, 4, 10*time.Second), // Start at 1 RPS, increment by 1 RPS in 4 steps over 10 seconds (1 increment every 2.5 seconds)
+    wasp.Plain(5, 40*time.Second))       // Hold 5 RPS for 40 seconds
 </code></pre>
-<p>And our virtual user, will first do nothing for the first 10 seconds, waiting for the background load to reach the desired level and then add 1 virtual user every 3 seconds for 30 seconds, to finally wind down from 10 to 0 users in 10 seconds:</p>
-<pre><code class="language-go">	thetaSchedule := wasp.Combine(
-		wasp.Plain(0, 10*time.Second), // do nothing for 10 seconds
-		wasp.Steps(1, 1, 9, 30*time.Second), // start with 1 user, increment by 1 virtual user in 9 steps during 30 seconds (increment of 1 every ~3 seconds)
-        wasp.Steps(10, -1, 10, 10*time.Second)) // start with 10 users, decrement by 1 virtual user in 10 steps during 10 seconds (decrement of 1 every second)
+<hr />
+<h3 id="virtual-user-schedule"><a class="header" href="#virtual-user-schedule">Virtual User Schedule</a></h3>
+<p>For the <code>VirtualUser</code>, the schedule will:</p>
+<ol>
+<li>Start with 1 user for the first 10 seconds.</li>
+<li>Add 1 user every 3 seconds for 30 seconds.</li>
+<li>Gradually reduce from 10 users to 0 over 10 seconds.</li>
+</ol>
+<pre><code class="language-go">thetaSchedule := wasp.Combine(
+    wasp.Plain(1, 10*time.Second),         // 1 user for the first 10 seconds
+    wasp.Steps(1, 1, 9, 30*time.Second),  // Increment by 1 user every ~3 seconds over 30 seconds
+    wasp.Steps(10, -1, 10, 10*time.Second)) // Decrement by 1 user every second over 10 seconds
 </code></pre>
-<p>Now, let's define our <code>Profile</code>:</p>
-<pre><code class="language-go">	_, err := wasp.NewProfile().
-		Add(wasp.NewGenerator(&amp;wasp.Config{
-			T:          t,
-			LoadType:   wasp.VU,
-			GenName:    "Theta",
-			Schedule:   thetaSchedule,
-			VU:         NewExampleScenario(srv.URL()),
-			LokiConfig: wasp.NewEnvLokiConfig(),
-		})).
-		Add(wasp.NewGenerator(&amp;wasp.Config{
-			T:          t,
-			LoadType:   wasp.RPS,
-			GenName:    "Epsilon",
-			Schedule:   epsilonSchedule,
-			Gun:        NewExampleHTTPGun(srv.URL()),
-			LokiConfig: wasp.NewEnvLokiConfig(),
-		})).
-		Run(true)
+<hr />
+<h3 id="defining-the-profile"><a class="header" href="#defining-the-profile">Defining the Profile</a></h3>
+<p>We’ll now define our <code>Profile</code> to combine both the <code>Gun</code> and the <code>VirtualUser</code>:</p>
+<pre><code class="language-go">_, err := wasp.NewProfile().
+    Add(wasp.NewGenerator(&amp;wasp.Config{
+        T:          t,
+        LoadType:   wasp.VU,
+        GenName:    "Theta",
+        Schedule:   thetaSchedule,
+        VU:         NewExampleScenario(srv.URL()),
+        LokiConfig: wasp.NewEnvLokiConfig(),
+    })).
+    Add(wasp.NewGenerator(&amp;wasp.Config{
+        T:          t,
+        LoadType:   wasp.RPS,
+        GenName:    "Epsilon",
+        Schedule:   epsilonSchedule,
+        Gun:        NewExampleHTTPGun(srv.URL()),
+        LokiConfig: wasp.NewEnvLokiConfig(),
+    })).
+    Run(true)
 </code></pre>
-<p>And done! You have just created a complex load profile that will simulate a growing number of users and a background load that varies over time.
-Notice the handly <code>.Run(true)</code> method that will block until all of the <code>Profile</code>'s generators have finished.</p>
+<hr />
+<h3 id="conclusion"><a class="header" href="#conclusion">Conclusion</a></h3>
+<p>And that’s it! You’ve created a complex load profile that simulates a growing number of users alongside a background load that varies over time. Notice the <code>.Run(true)</code> method, which blocks until all the <code>Profile</code>'s generators have finished.</p>
 <p>You can find the full example <a href="https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/profiles">here</a>.</p>
-<p>Now that you know how to generate load, it's time to learn how to monitor it and assert on it. Let's move on to the next section: <a href="./testing_alerts.html">Testing Alerts</a>.</p>
-<pre><code></code></pre>
+<hr />
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>The <code>error</code> returned by the <code>.Run(true)</code> method only indicates if any dashboard alerts were triggered.<br />
+To check for load generation errors, call the <code>Errors()</code> method on each <code>Generator</code> in the <code>Profile</code>.</p>
+</div>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>Currently, it’s not possible to have a "waiting" schedule that doesn’t generate any load. To implement such logic, start one <code>Profile</code> in a goroutine and use <code>time.Sleep</code> before starting the second <code>Profile</code>. An example of this can be found <a href="https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/profiles/node_background_load_test.go">here</a>.</p>
+</div>
+<hr />
+<h3 id="whats-next"><a class="header" href="#whats-next">What’s Next?</a></h3>
+<p>Now that you know how to generate load, it’s time to learn how to monitor and assert on it. Let’s move on to the next section: <a href="./testing_alerts.html">Testing Alerts</a>.</p>
 
                     </main>
 
@@ -337,6 +377,8 @@ Notice the handly <code>.Run(true)</code> method that will block until all of th
         <script src="../../book.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="../../mermaid.min.js"></script>
+        <script src="../../mermaid-init.js"></script>
 
 
     </div>

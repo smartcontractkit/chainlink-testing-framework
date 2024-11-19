@@ -1,12 +1,13 @@
 # WASP - Using Profiles
 
-Finally, let's look at the most complex scenario, where we will be using a `VirtualUser` to represent a user, and a `Gun` to represent some background load.
-Also, we will use a new load segment type, one that varies over time.
+In this section, we’ll explore the most complex scenario: using a `VirtualUser` to represent a user and a `Gun` to generate background load. We’ll also introduce a new load segment type that varies over time.
 
-In order to bind together different `Generators` (like a `Gun` or a `VirtualUser`) we will use a `Profile`. You can think of it as a highest-level abstraction that fully describes the load profile.
+To bind together different `Generators` (such as a `Gun` or a `VirtualUser`), we’ll use a `Profile`. Think of it as the highest-level abstraction that fully describes the load profile.
 
-We will skip defining both the `Gun` and the `VirtualUser` as they are identical to the previous examples. Well, almost.
-For the `VU` we will use a handy wrapper for sending `Response` back to the channel. See if you can spot it:
+### `Gun` and `VirtualUser`
+
+We’ll skip defining both the `Gun` and the `VirtualUser`, as they are nearly identical to previous examples. However, for the `VirtualUser`, we’ll use a handy wrapper for sending `Response` back to the channel. See if you can spot it:
+
 ```go
 // represents user login
 func (m *VirtualUser) requestOne(l *wasp.Generator) {
@@ -22,47 +23,86 @@ func (m *VirtualUser) requestOne(l *wasp.Generator) {
 }
 ```
 
-Let's define our background load schedule for the RPS `Gun`. During first 10 seconds, it will increment the RPS by 2.5 every seconds, and then it will keep it at 5 RPS for 40 seconds: 
+> [!NOTE]
+> You might have noticed `GroupAuth` constant passed to `OK()` and `Err()` methods. This is used to group responses in the dashboard. 
+> You can read more about it [here](./how-to/use_labels.md).
+
+---
+
+### Background Load Schedule for the `Gun`
+
+For the RPS `Gun`, we’ll define a schedule where:
+1. During the first 10 seconds, the RPS increases by 2.5 every second.
+2. For the next 40 seconds, it remains steady at 5 RPS.
+
 ```go
 epsilonSchedule := wasp.Combine(
-    wasp.Steps(1, 1, 4, 10*time.Second), // start with 1 RPS, increment by 1 RPS in 4 steps during 10 seconds (increment of 1 every 2.5 seconds)
-    wasp.Plain(5, 40*time.Second)) // hold 5 RPS for 40 seconds
+    wasp.Steps(1, 1, 4, 10*time.Second), // Start at 1 RPS, increment by 1 RPS in 4 steps over 10 seconds (1 increment every 2.5 seconds)
+    wasp.Plain(5, 40*time.Second))       // Hold 5 RPS for 40 seconds
 ```
 
-And our virtual user, will first do nothing for the first 10 seconds, waiting for the background load to reach the desired level and then add 1 virtual user every 3 seconds for 30 seconds, to finally wind down from 10 to 0 users in 10 seconds:
+---
+
+### Virtual User Schedule
+
+For the `VirtualUser`, the schedule will:
+1. Start with 1 user for the first 10 seconds.
+2. Add 1 user every 3 seconds for 30 seconds.
+3. Gradually reduce from 10 users to 0 over 10 seconds.
+
 ```go
-	thetaSchedule := wasp.Combine(
-		wasp.Plain(0, 10*time.Second), // do nothing for 10 seconds
-		wasp.Steps(1, 1, 9, 30*time.Second), // start with 1 user, increment by 1 virtual user in 9 steps during 30 seconds (increment of 1 every ~3 seconds)
-        wasp.Steps(10, -1, 10, 10*time.Second)) // start with 10 users, decrement by 1 virtual user in 10 steps during 10 seconds (decrement of 1 every second)
+thetaSchedule := wasp.Combine(
+    wasp.Plain(1, 10*time.Second),         // 1 user for the first 10 seconds
+    wasp.Steps(1, 1, 9, 30*time.Second),  // Increment by 1 user every ~3 seconds over 30 seconds
+    wasp.Steps(10, -1, 10, 10*time.Second)) // Decrement by 1 user every second over 10 seconds
 ```
 
-Now, let's define our `Profile`:
+---
+
+### Defining the Profile
+
+We’ll now define our `Profile` to combine both the `Gun` and the `VirtualUser`:
+
 ```go
-	_, err := wasp.NewProfile().
-		Add(wasp.NewGenerator(&wasp.Config{
-			T:          t,
-			LoadType:   wasp.VU,
-			GenName:    "Theta",
-			Schedule:   thetaSchedule,
-			VU:         NewExampleScenario(srv.URL()),
-			LokiConfig: wasp.NewEnvLokiConfig(),
-		})).
-		Add(wasp.NewGenerator(&wasp.Config{
-			T:          t,
-			LoadType:   wasp.RPS,
-			GenName:    "Epsilon",
-			Schedule:   epsilonSchedule,
-			Gun:        NewExampleHTTPGun(srv.URL()),
-			LokiConfig: wasp.NewEnvLokiConfig(),
-		})).
-		Run(true)
+_, err := wasp.NewProfile().
+    Add(wasp.NewGenerator(&wasp.Config{
+        T:          t,
+        LoadType:   wasp.VU,
+        GenName:    "Theta",
+        Schedule:   thetaSchedule,
+        VU:         NewExampleScenario(srv.URL()),
+        LokiConfig: wasp.NewEnvLokiConfig(),
+    })).
+    Add(wasp.NewGenerator(&wasp.Config{
+        T:          t,
+        LoadType:   wasp.RPS,
+        GenName:    "Epsilon",
+        Schedule:   epsilonSchedule,
+        Gun:        NewExampleHTTPGun(srv.URL()),
+        LokiConfig: wasp.NewEnvLokiConfig(),
+    })).
+    Run(true)
 ```
 
-And done! You have just created a complex load profile that will simulate a growing number of users and a background load that varies over time.
-Notice the handly `.Run(true)` method that will block until all of the `Profile`'s generators have finished.
+---
+
+### Conclusion
+
+And that’s it! You’ve created a complex load profile that simulates a growing number of users alongside a background load that varies over time. Notice the `.Run(true)` method, which blocks until all the `Profile`'s generators have finished.
 
 You can find the full example [here](https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/profiles).
 
-Now that you know how to generate load, it's time to learn how to monitor it and assert on it. Let's move on to the next section: [Testing Alerts](./testing_alerts.md).
-```
+---
+
+> [!NOTE]  
+> The `error` returned by the `.Run(true)` method only indicates if any dashboard alerts were triggered.  
+> To check for load generation errors, call the `Errors()` method on each `Generator` in the `Profile`.
+
+> [!NOTE]  
+> Currently, it’s not possible to have a "waiting" schedule that doesn’t generate any load. To implement such logic, start one `Profile` in a goroutine and use `time.Sleep` before starting the second `Profile`. An example of this can be found [here](https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/profiles/node_background_load_test.go).
+
+---
+
+### What’s Next?
+
+Now that you know how to generate load, it’s time to learn how to monitor and assert on it. Let’s move on to the next section: [Testing Alerts](./testing_alerts.md).
