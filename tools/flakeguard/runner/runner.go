@@ -55,7 +55,6 @@ type exitCoder interface {
 // runTests runs the tests for a given package and returns the path to the output file.
 func (r *Runner) runTests(packageName string) (string, bool, error) {
 	args := []string{"test", packageName, "-json", "-count=1"} // Enable JSON output
-	args = append(args, "2>/dev/null")                         // Redirect stderr to null
 	if r.UseRace {
 		args = append(args, "-race")
 	}
@@ -63,6 +62,8 @@ func (r *Runner) runTests(packageName string) (string, bool, error) {
 		skipPattern := strings.Join(r.SkipTests, "|")
 		args = append(args, fmt.Sprintf("-skip=%s", skipPattern))
 	}
+	// The last arg redirects stderr to null
+	args = append(args, "2>/dev/null")
 
 	if r.Verbose {
 		log.Printf("Running command: go %s\n", strings.Join(args, " "))
