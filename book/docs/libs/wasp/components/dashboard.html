@@ -219,12 +219,92 @@
 }
 
 </style>
+<h1 id="wasp---dashboard"><a class="header" href="#wasp---dashboard">WASP - Dashboard</a></h1>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<p>The API used to check and create alerts is unstable, and the information related to them may be out of date.</p>
+</div>
+<p>WASP comes with a built-in dashboard that allows you to monitor test runs in real-time.<br />
+The dashboard includes several built-in metrics that integrate seamlessly with the <code>AlertChecker</code> component.</p>
+<p>It is built using the <a href="https://pkg.go.dev/github.com/K-Phoen/grabana">Grabana</a> library, which you can use to further customize and extend the dashboard by adding your own rows and panels.</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>To create new dashboards, you need to set certain dashboard-specific variables as described in the <a href="../configuration.html">Configuration</a> section.</p>
+</div>
+<hr />
+<h3 id="predefined-alerts"><a class="header" href="#predefined-alerts">Predefined Alerts</a></h3>
+<p>WASP comes with predefined alerts for:</p>
+<ul>
+<li><strong>99th percentile of the response time</strong></li>
+<li><strong>Response errors</strong></li>
+<li><strong>Response timeouts</strong></li>
+</ul>
+<p>You can use these predefined metrics to add simple alerts to your dashboard for conditions such as:</p>
+<ul>
+<li>Values above or below a threshold</li>
+<li>Averages above or below a threshold</li>
+<li>Percentages of the total above or below a threshold</li>
+</ul>
+<p>For a complete list of available conditions, refer to Grabana's <a href="https://pkg.go.dev/github.com/K-Phoen/grabana@v0.21.18/alert#ConditionEvaluator">ConditionEvaluator</a>.</p>
+<hr />
+<h3 id="custom-alerts"><a class="header" href="#custom-alerts">Custom Alerts</a></h3>
+<p>Custom alerts can be composed of:</p>
+<ul>
+<li>The simple conditions mentioned above</li>
+<li>Arbitrary Loki queries</li>
+</ul>
+<p>Custom alerts use Grabana's <a href="https://pkg.go.dev/github.com/K-Phoen/grabana@v0.21.18/timeseries#Alert">timeseries.Alert</a> and must be timeseries-based.</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>Adding a built-in alert will also add a new row to the dashboard to display the monitored metric.<br />
+In contrast, custom alerts do not automatically add rows to the dashboard to prevent clutter.</p>
+</div>
+<p>Each generator has its own metrics, matched by the generator name.</p>
+<hr />
+<h3 id="default-dashboard-panels"><a class="header" href="#default-dashboard-panels">Default Dashboard Panels</a></h3>
+<p>The default dashboard includes the following panels:</p>
+<ul>
+<li>Current RPS/VUs (depending on the generator)</li>
+<li>Responses per second</li>
+<li>Total successful requests</li>
+<li>Total failed requests</li>
+<li>Total timeout requests</li>
+<li>RPS/VUs per schedule segment</li>
+<li>Responses per second</li>
+<li>Latency quantiles over groups (p99, p90, p50)</li>
+<li>Response latencies over time</li>
+<li>Logs size per second</li>
+<li>Sampling statistics</li>
+<li>Failed &amp; timed-out responses</li>
+<li>Logs of the statistics-pushing service</li>
+</ul>
+<p><img src="../images/dashboard_basic.png" alt="Dashboard" /></p>
+<p>Where applicable, these panels group results by generator name (<code>gen_name</code> label) and call group (<code>call_group</code> label).</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>You can read more about using labels in the <a href="../how-to/use_labels.html">Use labels</a> section.</p>
+</div>
+<hr />
+<h3 id="creating-a-new-dashboard-with-alerts"><a class="header" href="#creating-a-new-dashboard-with-alerts">Creating a New Dashboard with Alerts</a></h3>
+<p>For a practical example of how to create a new dashboard with alerts, see the <a href="../testing_alerts.html">Testing Alerts</a> section.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../../../libs/wasp/components/cluster.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../../../libs/wasp/components/alert_checker.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
@@ -238,7 +318,7 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../../../libs/wasp/components/cluster.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../../../libs/wasp/components/alert_checker.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
@@ -282,6 +362,8 @@
         <script src="../../../book.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="../../../mermaid.min.js"></script>
+        <script src="../../../mermaid-init.js"></script>
 
 
     </div>

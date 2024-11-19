@@ -34,7 +34,8 @@ dashboard:
 .PHONY: start
 start:
 	docker compose -f compose/docker-compose.yaml up -d
-	sleep 5 && curl -X POST -H "Content-Type: application/json" -d '{"name":"test", "role": "Admin"}' http://localhost:3000/api/auth/keys | jq .key
+	sleep 5
+	@./scripts/generate_grafana_token.sh
 
 .PHONY: stop
 stop:

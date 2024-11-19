@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Segment - Chainlink Testing Framework</title>
+        <title>Chose between RPS and VUs - Chainlink Testing Framework</title>
 
 
         <!-- Custom HTML head -->
@@ -219,16 +219,129 @@
 }
 
 </style>
+<h1 id="wasp---how-to-choose-between-rps-and-vus"><a class="header" href="#wasp---how-to-choose-between-rps-and-vus">WASP - How to Choose Between RPS and VUs</a></h1>
+<p>When writing a test, you need to decide whether to use <strong>RPS</strong> or <strong>VUs</strong> as your load type.</p>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<p>RPS load type can only be used with a <code>Gun</code>, and VUs can only be used with a <code>VirtualUser</code>.</p>
+</div>
+<hr />
+<h2 id="rps-requests-per-second"><a class="header" href="#rps-requests-per-second">RPS (Requests Per Second)</a></h2>
+<p>You should use <strong>RPS</strong> when your goal is to measure <strong>throughput</strong>. This load type implements a <strong>closed model</strong>, where:</p>
+<ul>
+<li>The number of requests is fixed.</li>
+<li>The load is adjusted to meet the target RPS.</li>
+<li>The system's response time has no impact on the rate of load generation.</li>
+</ul>
+<p>In an RPS-based test, new requests are sent continuously, regardless of how long previous requests take.</p>
+<h3 id="example-rps-test-diagram"><a class="header" href="#example-rps-test-diagram">Example RPS Test Diagram</a></h3>
+<pre class="mermaid">---
+title: RPS test
+---
+sequenceDiagram
+    participant Profile(Test)
+    participant Scheduler
+    participant Generator(Gun)
+    participant Promtail
+    participant Loki
+    participant Grafana
+    loop Test Execution
+        Profile(Test) -&gt;&gt; Generator(Gun): Start with (API, TestData)
+        loop Schedule
+            Scheduler -&gt;&gt; Scheduler: Process schedule segment
+            Scheduler -&gt;&gt; Generator(Gun): Set new RPS target
+            loop RPS load
+                Generator(Gun) -&gt;&gt; Generator(Gun): Execute Call() in parallel
+                Generator(Gun) -&gt;&gt; Promtail: Save CallResult
+            end
+            Promtail -&gt;&gt; Loki: Send batch&lt;br/&gt;when ready or timeout
+        end
+        Scheduler -&gt;&gt; Scheduler: All segments done&lt;br/&gt;wait all responses&lt;br/&gt;test ends
+        Profile(Test) -&gt;&gt; Grafana: Check alert groups&lt;br/&gt;FAIL or PASS the test
+    end
+</pre>
+<hr />
+<h2 id="virtualuser-vus"><a class="header" href="#virtualuser-vus">VirtualUser (VUs)</a></h2>
+<p>Use <strong>VUs</strong> when working with <strong>stateful protocols</strong> or workflows. With <code>VirtualUser</code>, the <strong>requests per second</strong> rate cannot be guaranteed because:</p>
+<ul>
+<li>Each iteration begins only after the previous one finishes.</li>
+<li>The load follows an <strong>open model</strong>, where the system's response time affects the RPS.</li>
+</ul>
+<p>If the system takes longer to respond, iterations take longer, and the RPS decreases.</p>
+<h3 id="example-vus-test-diagram"><a class="header" href="#example-vus-test-diagram">Example VUs Test Diagram</a></h3>
+<pre class="mermaid">---
+title: VUs test
+---
+sequenceDiagram
+    participant Profile(Test)
+    participant Scheduler
+    participant Generator(VUs)
+    participant VU1
+    participant VU2
+    participant Promtail
+    participant Loki
+    participant Grafana
+    loop Test Execution
+        Profile(Test) -&gt;&gt; Generator(VUs): Start with (API, TestData)
+        loop Schedule
+            Scheduler -&gt;&gt; Scheduler: Process schedule segment
+            Scheduler -&gt;&gt; Generator(VUs): Set new VUs target
+            loop VUs load
+                Generator(VUs) -&gt;&gt; Generator(VUs): Add/remove VUs
+                Generator(VUs) -&gt;&gt; VU1: Start/end
+                Generator(VUs) -&gt;&gt; VU2: Start/end
+                VU1 -&gt;&gt; VU1: Run loop, execute multiple calls
+                VU1 -&gt;&gt; Promtail: Save []CallResult
+                VU2 -&gt;&gt; VU2: Run loop, execute multiple calls
+                VU2 -&gt;&gt; Promtail: Save []CallResult
+                Promtail -&gt;&gt; Loki: Send batch&lt;br/&gt;when ready or timeout
+            end
+        end
+        Scheduler -&gt;&gt; Scheduler: All segments done&lt;br/&gt;wait all responses&lt;br/&gt;test ends
+        Profile(Test) -&gt;&gt; Grafana: Check alert groups&lt;br/&gt;FAIL or PASS the test
+    end
+</pre>
+<p>In this model, <code>VU2</code> starts only after <code>VU1</code> has finished its iteration.</p>
+<hr />
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>
+<p>Use <strong>RPS</strong> for:</p>
+<ul>
+<li>Stateless protocols.</li>
+<li>Measuring throughput.</li>
+<li>Scenarios where the load generation rate must remain constant.</li>
+</ul>
+</li>
+<li>
+<p>Use <strong>VUs</strong> for:</p>
+<ul>
+<li>Stateful protocols.</li>
+<li>Workflows that involve multiple steps.</li>
+<li>Scenarios where response time impacts the load generation rate.</li>
+</ul>
+</li>
+</ul>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>Learn more about open and closed models <a href="https://grafana.com/docs/k6/latest/using-k6/scenarios/concepts/open-vs-closed/">here</a>.</p>
+</div>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../../../libs/wasp/components/sampler.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../../../libs/wasp/how-to/run_included_tests.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../../../libs/havoc.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../../../libs/wasp/how-to/define_nfr_check_alerts.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -238,11 +351,11 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../../../libs/wasp/components/sampler.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../../../libs/wasp/how-to/run_included_tests.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../../../libs/havoc.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../../../libs/wasp/how-to/define_nfr_check_alerts.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
@@ -282,6 +395,8 @@
         <script src="../../../book.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="../../../mermaid.min.js"></script>
+        <script src="../../../mermaid-init.js"></script>
 
 
     </div>

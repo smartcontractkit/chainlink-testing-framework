@@ -1,21 +1,25 @@
-# WASP - First Test
+# WASP - First Test (RPS Test)
 
 ## Requirements
 * Go installed
-* Loki instance running (read how to start a local instance [here](./local_loki_grafana_stack))
+* Loki
 
-Let's start by creating a very simple test that will send 5 HTTP requests per second for 60 seconds.
+Let's start by creating a simple test that sends 5 HTTP requests per second for 60 seconds.
 
-We will use a `Gun` that's designed for stateless protocols like HTTP and situations where we execute a single operation.
+We will use a `Gun`, which is designed for stateless protocols like HTTP or measuring throughput.
 
-All that a `Gun` needs to do is implement this single-method interface:
+A `Gun` only needs to implement this single-method interface:
+
 ```go
 type Gun interface {
 	Call(l *Generator) *Response
 }
 ```
 
-So here we go! First let's define a struct that will hold our `Gun` implementation:
+### Defining the Gun
+
+First, let's define a struct that will hold our `Gun` implementation:
+
 ```go
 type ExampleGun struct {
 	target string
@@ -23,10 +27,11 @@ type ExampleGun struct {
 	Data   []string
 }
 ```
-Our gun will send a GET request to the target URL. if the request is successful, we will return `*wasp.Response` with the response data.
-If it fails or responds with HTTP code different than `200`, we will return `*wasp.Response` with the response and error.
 
-Let's implement the `Gun` interface:
+Our `Gun` will send a `GET` request to the target URL. If the request is successful, we return a `*wasp.Response` containing the response data. If it fails or responds with an HTTP status other than `200`, we also return a `*wasp.Response` with the response and an error.
+
+Here’s the implementation of the `Gun` interface:
+
 ```go
 func (m *ExampleGun) Call(l *wasp.Generator) *wasp.Response {
 	var result map[string]interface{}
@@ -43,22 +48,32 @@ func (m *ExampleGun) Call(l *wasp.Generator) *wasp.Response {
 }
 ```
 
-> [!NOTE]
-> By default, WASP stores both all successful and failed responses, but you can use a `Sampler` to store only some of the successful ones. You can read more about it [here](./using_sampler.md).
+> [!NOTE]  
+> By default, WASP stores all successful and failed responses, but you can use a `Sampler` to store only some of the successful ones. You can read more about it [here](./components/sampler.md).
 
-Now that we have a gun, let's write the test:
+### Writing the Test
+
+Now that we have a `Gun`, let’s write the test:
+
 ```go
 func TestGun(t *testing.T) {
-	// start mock http server
+	// start mock HTTP server
 	srv := wasp.NewHTTPMockServer(nil)
 	srv.Run()
 
-    // some parts omitted for brevity
-	
+	// define labels to differentiate one run from another
+	labels := map[string]string{
+		// check variables in dashboard/dashboard.go
+		"go_test_name": "TestGun",
+		"gen_name":     "test_gun",
+		"branch":       "my-awesome-branch",
+		"commit":       "f3729fa",
+	}
+
 	// create generator
 	gen, err := wasp.NewGenerator(&wasp.Config{
 		LoadType: wasp.RPS,
-		// just use plain line profile - 5 RPS for 60s
+		// plain line profile - 5 RPS for 60s
 		Schedule:   wasp.Plain(5, 60*time.Second),
 		Gun:        NewExampleHTTPGun(srv.URL()),
 		Labels:     labels,
@@ -67,19 +82,35 @@ func TestGun(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	// run the generator and wait until it finish
+	// run the generator and wait until it finishes
 	gen.Run(true)
 }
 ```
 
-> [!NOTE]
-> `wasp.NewEnvLokiConfig()` configures Loki via environments variables. You can read about them [here](./configuration.md).
+> [!NOTE]  
+> We used the `LoadType` of `wasp.RPS` since this is the only type of load that a `Gun` can handle.  
+> You can read more about load types [here](./how-to/chose_rps_vu.md).
 
-And that's it! You have just created your first test using WASP. You can now run it using `go test -v -run TestGun`.
+> [!NOTE]  
+> You can learn more about different labels and their functions [here](./how-to/use_labels.md).
+
+> [!NOTE]  
+> `wasp.NewEnvLokiConfig()` configures Loki using environment variables. You can read about them [here](./configuration.md).
+
+### Conclusion
+
+And that's it! You’ve just created your first test using WASP. You can now run it using:
+
+```bash
+go test -v -run TestGun
+```
 
 You can find the full example [here](https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/simple_rps).
 
+---
 
-But, what if you want to test a more complex scenario?
+### What’s Next?
 
-First, we will look at [stateful protocol test](./stateful_test.md), like `WebSocket`. Then on a hypothetical [user journey test](./user_journey_test.md), where multiple requests need to be executed.
+What if you want to test a more complex scenario?
+
+First, we’ll look at a [stateful protocol test](./stateful_test.md), like `WebSocket`. Then, we’ll explore a hypothetical [user journey test](./user_journey_test.md), where multiple requests need to be executed.

@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>First test - Chainlink Testing Framework</title>
+        <title>First test (RPS test) - Chainlink Testing Framework</title>
 
 
         <!-- Custom HTML head -->
@@ -219,29 +219,29 @@
 }
 
 </style>
-<h1 id="wasp---first-test"><a class="header" href="#wasp---first-test">WASP - First Test</a></h1>
+<h1 id="wasp---first-test-rps-test"><a class="header" href="#wasp---first-test-rps-test">WASP - First Test (RPS Test)</a></h1>
 <h2 id="requirements"><a class="header" href="#requirements">Requirements</a></h2>
 <ul>
 <li>Go installed</li>
-<li>Loki instance running (read how to start a local instance <a href="./local_loki_grafana_stack">here</a>)</li>
+<li>Loki</li>
 </ul>
-<p>Let's start by creating a very simple test that will send 5 HTTP requests per second for 60 seconds.</p>
-<p>We will use a <code>Gun</code> that's designed for stateless protocols like HTTP and situations where we execute a single operation.</p>
-<p>All that a <code>Gun</code> needs to do is implement this single-method interface:</p>
+<p>Let's start by creating a simple test that sends 5 HTTP requests per second for 60 seconds.</p>
+<p>We will use a <code>Gun</code>, which is designed for stateless protocols like HTTP or measuring throughput.</p>
+<p>A <code>Gun</code> only needs to implement this single-method interface:</p>
 <pre><code class="language-go">type Gun interface {
 	Call(l *Generator) *Response
 }
 </code></pre>
-<p>So here we go! First let's define a struct that will hold our <code>Gun</code> implementation:</p>
+<h3 id="defining-the-gun"><a class="header" href="#defining-the-gun">Defining the Gun</a></h3>
+<p>First, let's define a struct that will hold our <code>Gun</code> implementation:</p>
 <pre><code class="language-go">type ExampleGun struct {
 	target string
 	client *resty.Client
 	Data   []string
 }
 </code></pre>
-<p>Our gun will send a GET request to the target URL. if the request is successful, we will return <code>*wasp.Response</code> with the response data.
-If it fails or responds with HTTP code different than <code>200</code>, we will return <code>*wasp.Response</code> with the response and error.</p>
-<p>Let's implement the <code>Gun</code> interface:</p>
+<p>Our <code>Gun</code> will send a <code>GET</code> request to the target URL. If the request is successful, we return a <code>*wasp.Response</code> containing the response data. If it fails or responds with an HTTP status other than <code>200</code>, we also return a <code>*wasp.Response</code> with the response and an error.</p>
+<p>Here’s the implementation of the <code>Gun</code> interface:</p>
 <pre><code class="language-go">func (m *ExampleGun) Call(l *wasp.Generator) *wasp.Response {
 	var result map[string]interface{}
 	r, err := m.client.R().
@@ -261,20 +261,28 @@ If it fails or responds with HTTP code different than <code>200</code>, we will 
   <span class="mdbook-alerts-icon"></span>
   note
 </p>
-<p>By default, WASP stores both all successful and failed responses, but you can use a <code>Sampler</code> to store only some of the successful ones. You can read more about it <a href="./using_sampler.html">here</a>.</p>
+<p>By default, WASP stores all successful and failed responses, but you can use a <code>Sampler</code> to store only some of the successful ones. You can read more about it <a href="./components/sampler.html">here</a>.</p>
 </div>
-<p>Now that we have a gun, let's write the test:</p>
+<h3 id="writing-the-test"><a class="header" href="#writing-the-test">Writing the Test</a></h3>
+<p>Now that we have a <code>Gun</code>, let’s write the test:</p>
 <pre><code class="language-go">func TestGun(t *testing.T) {
-	// start mock http server
+	// start mock HTTP server
 	srv := wasp.NewHTTPMockServer(nil)
 	srv.Run()
 
-    // some parts omitted for brevity
-	
+	// define labels to differentiate one run from another
+	labels := map[string]string{
+		// check variables in dashboard/dashboard.go
+		"go_test_name": "TestGun",
+		"gen_name":     "test_gun",
+		"branch":       "my-awesome-branch",
+		"commit":       "f3729fa",
+	}
+
 	// create generator
 	gen, err := wasp.NewGenerator(&amp;wasp.Config{
 		LoadType: wasp.RPS,
-		// just use plain line profile - 5 RPS for 60s
+		// plain line profile - 5 RPS for 60s
 		Schedule:   wasp.Plain(5, 60*time.Second),
 		Gun:        NewExampleHTTPGun(srv.URL()),
 		Labels:     labels,
@@ -283,7 +291,7 @@ If it fails or responds with HTTP code different than <code>200</code>, we will 
 	if err != nil {
 		panic(err)
 	}
-	// run the generator and wait until it finish
+	// run the generator and wait until it finishes
 	gen.Run(true)
 }
 </code></pre>
@@ -292,18 +300,38 @@ If it fails or responds with HTTP code different than <code>200</code>, we will 
   <span class="mdbook-alerts-icon"></span>
   note
 </p>
-<p><code>wasp.NewEnvLokiConfig()</code> configures Loki via environments variables. You can read about them <a href="./configuration.html">here</a>.</p>
+<p>We used the <code>LoadType</code> of <code>wasp.RPS</code> since this is the only type of load that a <code>Gun</code> can handle.<br />
+You can read more about load types <a href="./how-to/chose_rps_vu.html">here</a>.</p>
 </div>
-<p>And that's it! You have just created your first test using WASP. You can now run it using <code>go test -v -run TestGun</code>.</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>You can learn more about different labels and their functions <a href="./how-to/use_labels.html">here</a>.</p>
+</div>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p><code>wasp.NewEnvLokiConfig()</code> configures Loki using environment variables. You can read about them <a href="./configuration.html">here</a>.</p>
+</div>
+<h3 id="conclusion"><a class="header" href="#conclusion">Conclusion</a></h3>
+<p>And that's it! You’ve just created your first test using WASP. You can now run it using:</p>
+<pre><code class="language-bash">go test -v -run TestGun
+</code></pre>
 <p>You can find the full example <a href="https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/simple_rps">here</a>.</p>
-<p>But, what if you want to test a more complex scenario?</p>
-<p>First, we will look at <a href="./stateful_test.html">stateful protocol test</a>, like <code>WebSocket</code>. Then on a hypothetical <a href="./user_journey_test.html">user journey test</a>, where multiple requests need to be executed.</p>
+<hr />
+<h3 id="whats-next"><a class="header" href="#whats-next">What’s Next?</a></h3>
+<p>What if you want to test a more complex scenario?</p>
+<p>First, we’ll look at a <a href="./stateful_test.html">stateful protocol test</a>, like <code>WebSocket</code>. Then, we’ll explore a hypothetical <a href="./user_journey_test.html">user journey test</a>, where multiple requests need to be executed.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../../libs/wasp/local_loki_grafana_stack.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../../libs/wasp/getting_started.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
@@ -317,7 +345,7 @@ If it fails or responds with HTTP code different than <code>200</code>, we will 
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../../libs/wasp/local_loki_grafana_stack.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../../libs/wasp/getting_started.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
@@ -361,6 +389,8 @@ If it fails or responds with HTTP code different than <code>200</code>, we will 
         <script src="../../book.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="../../mermaid.min.js"></script>
+        <script src="../../mermaid-init.js"></script>
 
 
     </div>

@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>AlertChecker - Chainlink Testing Framework</title>
+        <title>Alert Checker - Chainlink Testing Framework</title>
 
 
         <!-- Custom HTML head -->
@@ -219,10 +219,36 @@
 }
 
 </style>
-<h1 id="wasp---alertchecker"><a class="header" href="#wasp---alertchecker">WASP - AlertChecker</a></h1>
-<p>Basically, if you have a dashboard you can either assert if any alert fired during a time range or if any group fired at all. Groups are defined by using label key `requirement_name.</p>
-<p>For built-in alerts, we create a new row on the dashboard for each alert.
-For the custom ones, we don't do it, so that we don't overload the dashboard.</p>
+<h1 id="wasp---alert-checker"><a class="header" href="#wasp---alert-checker">WASP - Alert Checker</a></h1>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<p>The API used by <code>AlertChecker</code> is unstable, and this section may be out of date.</p>
+</div>
+<p><code>AlertChecker</code> is a simple yet powerful component that allows you to verify which alerts fired during test execution.</p>
+<p>It supports the following functionalities:</p>
+<ul>
+<li>Checking if <strong>any alert</strong> fired during a specified time range for a given dashboard.</li>
+<li>Checking if <strong>any group of alerts</strong> fired for a given dashboard.</li>
+</ul>
+<p>The first mode is more suitable for existing dashboards, while the second mode is ideal for dashboards created specifically for the test (as it does not support time range selection).</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>To use this component, you need to set certain Grafana-specific variables as described in the <a href="../configuration.html">Configuration</a> section.</p>
+</div>
+<p>For a practical example of how to use <code>AlertChecker</code>, refer to the <a href="../testing_alerts.html">Testing Alerts</a> section.</p>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<p>If you define alerts yourself, ensure they are grouped by adding a label named <code>requirement_name</code> with a value representing the alert group.</p>
+</div>
 
                     </main>
 
@@ -232,7 +258,7 @@ For the custom ones, we don't do it, so that we don't overload the dashboard.</p
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../../../libs/wasp/components/cluster.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../../../libs/wasp/components/dashboard.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -246,7 +272,7 @@ For the custom ones, we don't do it, so that we don't overload the dashboard.</p
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../../../libs/wasp/components/cluster.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../../../libs/wasp/components/dashboard.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
@@ -286,6 +312,8 @@ For the custom ones, we don't do it, so that we don't overload the dashboard.</p
         <script src="../../../book.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="../../../mermaid.min.js"></script>
+        <script src="../../../mermaid-init.js"></script>
 
 
     </div>

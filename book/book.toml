@@ -10,6 +10,10 @@ build-dir = "docs"
 
 [output.html]
 default-theme = "ayu"
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
 
 [preprocessor.alerts]
 [preprocessor.cmdrun]
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"

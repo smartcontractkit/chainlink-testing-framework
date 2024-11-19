@@ -219,6 +219,80 @@
 }
 
 </style>
+<h1 id="wasp---generator"><a class="header" href="#wasp---generator">WASP - Generator</a></h1>
+<p>A <strong>Generator</strong> is a component that encapsulates all the characteristics of load generation, including:</p>
+<ul>
+<li>Load type:
+<ul>
+<li>RPS (requests per second)</li>
+<li>VUs (virtual users)</li>
+</ul>
+</li>
+<li><a href="./schedule.html">Load schedule</a></li>
+<li>Call logic</li>
+<li>Response data</li>
+<li><a href="./sampler.html">Sampling</a></li>
+<li>Timeouts</li>
+</ul>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<p>RPS load type can only be used with a <code>Gun</code>, while VUs can only be used with a <code>VirtualUser</code>.</p>
+</div>
+<hr />
+<h3 id="choosing-between-gun-and-virtualuser"><a class="header" href="#choosing-between-gun-and-virtualuser">Choosing Between <code>Gun</code> and <code>VirtualUser</code></a></h3>
+<h4 id="gun"><a class="header" href="#gun"><strong><code>Gun</code></strong></a></h4>
+<ul>
+<li>Best for <strong>stateless protocols</strong> (e.g., HTTP).</li>
+<li>Simplistic in nature; ideal for executing a single operation that does not require setup or teardown.</li>
+<li>Operates using a <strong>closed model</strong>, where:
+<ul>
+<li>The number of requests is fixed.</li>
+<li>The load adjusts to meet the target RPS, regardless of the system's response time.</li>
+</ul>
+</li>
+<li>Recommended for scenarios focused on measuring <strong>throughput</strong>.</li>
+</ul>
+<h4 id="virtualuser"><a class="header" href="#virtualuser"><strong><code>VirtualUser</code></strong></a></h4>
+<ul>
+<li>Designed for <strong>stateful protocols</strong> (e.g., <code>WebSocket</code>) or workflows involving multiple operations (e.g., authenticating, executing tasks, and logging out).</li>
+<li>More complex, with dedicated methods for setup and teardown.</li>
+<li>Operates using an <strong>open model</strong>, where:
+<ul>
+<li>New iterations start only after the previous one completes.</li>
+<li>The RPS fluctuates based on the system's response time. Longer response times reduce RPS.</li>
+</ul>
+</li>
+</ul>
+<hr />
+<h3 id="closed-vs-open-models"><a class="header" href="#closed-vs-open-models">Closed vs. Open Models</a></h3>
+<ul>
+<li>
+<p>A <code>Gun</code> follows a <strong>closed model</strong>:</p>
+<ul>
+<li>It controls the rate of requests being sent.</li>
+<li>The system's response time does not impact the load generation rate.</li>
+</ul>
+</li>
+<li>
+<p>A <code>VirtualUser</code> follows an <strong>open model</strong>:</p>
+<ul>
+<li>It controls the rate of receiving responses.</li>
+<li>The system's response time directly impacts the load generation rate. If the system slows down, iterations take longer, reducing the RPS.</li>
+</ul>
+</li>
+</ul>
+<hr />
+<h3 id="summary"><a class="header" href="#summary">Summary</a></h3>
+<p>In simpler terms:</p>
+<ul>
+<li>A <strong><code>Gun</code></strong> limits the load during the <strong>sending</strong> phase, making it ideal for throughput measurements.</li>
+<li>A <strong><code>VirtualUser</code></strong> limits the load during the <strong>receiving</strong> phase, reflecting the system's performance under load.</li>
+</ul>
+<hr />
+<p>This distinction helps you decide which tool to use based on the protocol type and the goals of your test.</p>
 
                     </main>
 
@@ -282,6 +356,8 @@
         <script src="../../../book.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="../../../mermaid.min.js"></script>
+        <script src="../../../mermaid-init.js"></script>
 
 
     </div>

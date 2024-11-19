@@ -1,10 +1,14 @@
 # WASP - Overview
 
-WASP is lightweight load testing harness that allows to easily compose load profiles of varying complexity using arbitrary `Go` code.
-## Main features
-* predictable performance footprint
-* non-opinionated reporting that pushes any data to `Loki`
-* supports stateless and stateful protocols (e.g. user journeys)
-* comes with default Grafana dashboard with resuable components
+WASP is a lightweight load testing harness that makes it easy to compose load profiles of varying complexity using arbitrary `Go` code.
 
-Sounds interesting? Then [let's get started!](./getting_started.md)
+![WASP](./images/wasp.png)
+
+## Main Features
+* Predictable performance footprint
+* Flexible, non-opinionated reporting that pushes data to `Loki`
+* Supports both stateless and stateful protocols
+* Compatible with open and closed load models
+* Includes a default Grafana dashboard with reusable components
+
+Sounds interesting? [Let's get started!](./getting_started.md)

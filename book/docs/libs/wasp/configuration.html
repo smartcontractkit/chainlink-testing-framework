@@ -219,6 +219,48 @@
 }
 
 </style>
+<h1 id="wasp---configuration"><a class="header" href="#wasp---configuration">WASP - Configuration</a></h1>
+<p>WASP can be configured using environment variables for most commonly used settings. However, to fully leverage the flexibility of WASP, you may need to use programmatic configuration for more advanced features.</p>
+<p>Optional variables are marked with the <code>(optional)</code> prefix.</p>
+<h3 id="required-environment-variables"><a class="header" href="#required-environment-variables">Required Environment Variables</a></h3>
+<p>At a minimum, you need to provide the following environment variables, as WASP requires Loki:</p>
+<ul>
+<li><code>LOKI_TENANT_ID</code> - <em>(optional)</em> A tenant ID that acts as a bucket identifier for logs, logically separating them from other sets of logs. If the tenant ID doesn't exist, Loki will create it. Can be empty if log separation is not a concern.</li>
+<li><code>LOKI_URL</code> - The Loki <strong>endpoint</strong> to which logs are pushed (e.g., <a href="http://localhost:3100/loki/api/v1/push">http://localhost:3100/loki/api/v1/push</a>).</li>
+<li><code>LOKI_TOKEN</code> - The authorization token.</li>
+<li><code>LOKI_BASIC_AUTH</code> - <em>(optional)</em> Basic authentication credentials.</li>
+</ul>
+<hr />
+<h3 id="alert-configuration"><a class="header" href="#alert-configuration">Alert Configuration</a></h3>
+<p>To enable alert checking, you need to provide the following additional environment variables, as alerts are an integral part of Grafana:</p>
+<ul>
+<li><code>GRAFANA_URL</code> - The base URL of the Grafana instance.</li>
+<li><code>GRAFANA_TOKEN</code> - An API token with permissions to access the following namespaces:<br />
+<code>/api/alertmanager/</code>, <code>/api/annotations/</code>, <code>/api/dashboard/</code>, <code>/api/datasources/</code>, <code>/api/v1/provisioning/</code>, and <code>/api/ruler/</code>.</li>
+</ul>
+<hr />
+<h3 id="grafana-dashboard-creation"><a class="header" href="#grafana-dashboard-creation">Grafana Dashboard Creation</a></h3>
+<p>If you want WASP to create a Grafana dashboard for you, provide the following environment variables:</p>
+<ul>
+<li><code>DATA_SOURCE_NAME</code> - The name of the data source (currently, only <code>Loki</code> is supported).</li>
+<li><code>DASHBOARD_FOLDER</code> - The folder in which to create the dashboard.</li>
+<li><code>DASHBOARD_NAME</code> - The name of the dashboard.</li>
+</ul>
+<hr />
+<h3 id="log-level-control"><a class="header" href="#log-level-control">Log Level Control</a></h3>
+<p>You can control the log level using this environment variable:</p>
+<ul>
+<li><code>WASP_LOG_LEVEL</code> - <em>(optional)</em> Sets the log level (<code>trace</code>, <code>debug</code>, <code>info</code>, <code>warn</code>, <code>error</code>; defaults to <code>info</code>).</li>
+</ul>
+<hr />
+<p>And that's it! You are now ready to start using WASP to its full potential.</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>Remember, WASP offers much more configurability through its programmatic API.</p>
+</div>
 
                     </main>
 
@@ -228,7 +270,7 @@
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../../libs/wasp/components/overview.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../../libs/wasp/k8s.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -242,7 +284,7 @@
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../../libs/wasp/components/overview.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../../libs/wasp/k8s.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
@@ -282,6 +324,8 @@
         <script src="../../book.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="../../mermaid.min.js"></script>
+        <script src="../../mermaid-init.js"></script>
 
 
     </div>
