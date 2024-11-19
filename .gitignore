@@ -79,3 +79,6 @@ __debug*
 
 import_keys_test.go
 tag.py
+
+# ignore generated mdbook
+book/docs/
