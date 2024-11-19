@@ -39,9 +39,9 @@ var AggregateFailedCmd = &cobra.Command{
 }
 
 func init() {
-	AggregateFailedCmd.Flags().String("results-path", "testresult/", "Path to the folder containing JSON test result files")
-	AggregateFailedCmd.Flags().String("output-results", "failed_tests.json", "Path to output the filtered failed test results in JSON format")
-	AggregateFailedCmd.Flags().String("output-logs", "failed_logs.json", "Path to output the filtered failed test logs in JSON format")
+	AggregateFailedCmd.Flags().String("results-path", "", "Path to the folder containing JSON test result files")
+	AggregateFailedCmd.Flags().String("output-results", "./failed_tests.json", "Path to output the filtered failed test results in JSON format")
+	AggregateFailedCmd.Flags().String("output-logs", "./failed_logs.json", "Path to output the filtered failed test logs in JSON format")
 	AggregateFailedCmd.Flags().Float64("threshold", 0.8, "Threshold for considering a test as failed")
 	AggregateFailedCmd.Flags().Float64("min-pass-ratio", 0.001, "Minimum pass ratio for considering a test as flaky. Used to distinguish between tests that are truly flaky (with inconsistent results) and those that are consistently failing.")
 }

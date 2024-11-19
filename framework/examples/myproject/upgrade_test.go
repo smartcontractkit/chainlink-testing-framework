@@ -76,7 +76,6 @@ func TestUpgrade(t *testing.T) {
 	t.Run("test something", func(t *testing.T) {
 		for _, n := range out.CLNodes {
 			require.NotEmpty(t, n.Node.HostURL)
-			require.NotEmpty(t, n.Node.HostP2PURL)
 		}
 	})
 }

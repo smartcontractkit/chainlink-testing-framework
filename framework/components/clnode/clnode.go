@@ -67,8 +67,8 @@ type Output struct {
 type NodeOut struct {
 	APIAuthUser     string `toml:"api_auth_user"`
 	APIAuthPassword string `toml:"api_auth_password"`
+	ContainerName   string `toml:"container_name"`
 	HostURL         string `toml:"url"`
-	HostP2PURL      string `toml:"p2p_url"`
 	DockerURL       string `toml:"docker_internal_url"`
 	DockerP2PUrl    string `toml:"p2p_docker_internal_url"`
 }
@@ -124,7 +124,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfgPath, err := writeDefaultConfig(in)
+	cfgPath, err := writeDefaultConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +150,6 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	}
 
 	httpPort := fmt.Sprintf("%s/tcp", DefaultHTTPPort)
-	p2pPort := fmt.Sprintf("%s/udp", DefaultP2PPort)
 	var containerName string
 	if in.Node.Name != "" {
 		containerName = in.Node.Name
@@ -161,7 +160,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	for _, p := range in.Node.CustomPorts {
 		customPorts = append(customPorts, fmt.Sprintf("%d/tcp", p))
 	}
-	exposedPorts := []string{httpPort, p2pPort}
+	exposedPorts := []string{httpPort}
 	exposedPorts = append(exposedPorts, customPorts...)
 
 	portBindings := nat.PortMap{
@@ -169,12 +168,6 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 			{
 				HostIP:   "0.0.0.0",
 				HostPort: fmt.Sprintf("%d/tcp", in.Node.HTTPPort),
-			},
-		},
-		nat.Port(p2pPort): []nat.PortBinding{
-			{
-				HostIP:   "0.0.0.0",
-				HostPort: fmt.Sprintf("%d/udp", in.Node.P2PPort),
 			},
 		},
 	}
@@ -286,13 +279,12 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	}
 
 	mp := nat.Port(fmt.Sprintf("%d/tcp", in.Node.HTTPPort))
-	mpP2P := nat.Port(fmt.Sprintf("%d/udp", in.Node.P2PPort))
 
 	return &NodeOut{
 		APIAuthUser:     DefaultAPIUser,
 		APIAuthPassword: DefaultAPIPassword,
+		ContainerName:   containerName,
 		HostURL:         fmt.Sprintf("http://%s:%s", host, mp.Port()),
-		HostP2PURL:      fmt.Sprintf("http://%s:%s", host, mpP2P.Port()),
 		DockerURL:       fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
 		DockerP2PUrl:    fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
 	}, nil
@@ -303,7 +295,7 @@ type DefaultCLNodeConfig struct {
 	SecureCookies bool
 }
 
-func generateDefaultConfig(in *Input) (string, error) {
+func generateDefaultConfig() (string, error) {
 	config := DefaultCLNodeConfig{
 		HTTPPort:      DefaultHTTPPort,
 		SecureCookies: false,
@@ -351,8 +343,8 @@ func writeDefaultSecrets(pgOut *postgres.Output) (*os.File, error) {
 	return WriteTmpFile(secretsOverrides, "secrets.toml")
 }
 
-func writeDefaultConfig(in *Input) (*os.File, error) {
-	cfg, err := generateDefaultConfig(in)
+func writeDefaultConfig() (*os.File, error) {
+	cfg, err := generateDefaultConfig()
 	if err != nil {
 		return nil, err
 	}

@@ -158,7 +158,7 @@ func SaveFilteredResultsAndLogs(outputResultsPath, outputLogsPath string, failed
 		if err := saveResults(outputResultsPath, failedResults); err != nil {
 			log.Fatalf("Error writing failed results to file: %v", err)
 		}
-		fmt.Printf("Filtered failed test results saved to %s\n", outputResultsPath)
+		fmt.Printf("Test results saved to %s\n", outputResultsPath)
 	} else {
 		fmt.Println("No failed tests found based on the specified threshold and min pass ratio.")
 	}
@@ -167,7 +167,7 @@ func SaveFilteredResultsAndLogs(outputResultsPath, outputLogsPath string, failed
 		if err := saveTestOutputs(outputLogsPath, failedResults); err != nil {
 			log.Fatalf("Error writing failed logs to file: %v", err)
 		}
-		fmt.Printf("Filtered failed test logs saved to %s\n", outputLogsPath)
+		fmt.Printf("Test logs saved to %s\n", outputLogsPath)
 	}
 }
 

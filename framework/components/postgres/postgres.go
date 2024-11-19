@@ -38,6 +38,7 @@ type Input struct {
 
 type Output struct {
 	Url               string `toml:"url"`
+	ContainerName     string `toml:"container_name"`
 	DockerInternalURL string `toml:"docker_internal_url"`
 }
 
@@ -134,6 +135,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 		return nil, err
 	}
 	return &Output{
+		ContainerName: containerName,
 		DockerInternalURL: fmt.Sprintf(
 			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
 			User,

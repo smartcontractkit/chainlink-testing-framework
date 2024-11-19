@@ -8,7 +8,8 @@ replace (
 )
 
 require (
-	github.com/smartcontractkit/chainlink-testing-framework/framework v0.2.0
+	github.com/go-resty/resty/v2 v2.15.3
+	github.com/smartcontractkit/chainlink-testing-framework/framework v0.2.5
 	github.com/smartcontractkit/chainlink-testing-framework/wasp v1.50.2
 	github.com/stretchr/testify v1.9.0
 )
@@ -98,7 +99,6 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.22.1 // indirect
 	github.com/go-redis/redis/v8 v8.11.5 // indirect
-	github.com/go-resty/resty/v2 v2.15.3 // indirect
 	github.com/goccy/go-json v0.10.3 // indirect
 	github.com/gogo/googleapis v1.4.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect

@@ -23,7 +23,7 @@ func checkBasicOutputs(t *testing.T, output *clnode.Output) {
 	require.Contains(t, output.Node.DockerP2PUrl, "cl-node")
 	require.NotNil(t, output.PostgreSQL)
 	require.Contains(t, output.PostgreSQL.Url, "postgresql://chainlink:thispasswordislongenough@127.0.0.1")
-	require.Contains(t, output.PostgreSQL.DockerInternalURL, "postgresql://chainlink:thispasswordislongenough@postgresql-")
+	require.Contains(t, output.PostgreSQL.DockerInternalURL, "postgresql://chainlink:thispasswordislongenough@ns-postgresql")
 }
 
 func TestComponentDockerNodeWithSharedDB(t *testing.T) {
