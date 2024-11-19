@@ -10,70 +10,45 @@ Create a configuration file `smoke.toml`
   port = "8545"
   type = "anvil"
 
-[data_provider]
-  port = 9111
-
 [nodeset]
   nodes = 5
   override_mode = "each"
 
-  [[nodeset.node_specs]]
+  [nodeset.db]
+    image = "postgres:15.6"
 
-    [nodeset.node_specs.db]
-      image = "postgres:15.6"
-      pull_image = true
+  [[nodeset.node_specs]]
 
     [nodeset.node_specs.node]
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
-      pull_image = true
       user_config_overrides = "      [Log]\n      level = 'info'\n      "
       user_secrets_overrides = ""
 
   [[nodeset.node_specs]]
 
-    [nodeset.node_specs.db]
-      image = "postgres:15.6"
-      pull_image = true
-
     [nodeset.node_specs.node]
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
-      pull_image = true
       user_config_overrides = "      [Log]\n      level = 'info'\n      "
       user_secrets_overrides = ""
 
   [[nodeset.node_specs]]
 
-    [nodeset.node_specs.db]
-      image = "postgres:15.6"
-      pull_image = true
-
     [nodeset.node_specs.node]
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
-      pull_image = true
       user_config_overrides = "      [Log]\n      level = 'info'\n      "
       user_secrets_overrides = ""
 
   [[nodeset.node_specs]]
 
-    [nodeset.node_specs.db]
-      image = "postgres:15.6"
-      pull_image = true
-
     [nodeset.node_specs.node]
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
-      pull_image = true
       user_config_overrides = "      [Log]\n      level = 'info'\n      "
       user_secrets_overrides = ""
 
   [[nodeset.node_specs]]
 
-    [nodeset.node_specs.db]
-      image = "postgres:15.6"
-      pull_image = true
-
     [nodeset.node_specs.node]
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
-      pull_image = true
       user_config_overrides = "      [Log]\n      level = 'info'\n      "
       user_secrets_overrides = ""
 ```

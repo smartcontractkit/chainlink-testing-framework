@@ -52,22 +52,20 @@ Then configure NodeSet
   http_port_range_start = 10000
   # P2P API port range start, each new node get port incremented (host machine)
   p2p_port_range_start = 12000
-
+  
+  [nodeset.db]
+    # PostgreSQL image version and tag
+    image = "postgres:15.6"
+    # Pulls the image every time if set to 'true', used like that in CI. Can be set to 'false' to speed up local runs
+    pull_image = false
+    # PostgreSQL volume name
+    volume_name = ""
 
   [[nodeset.node_specs]]
-    # Optional URL for fake data provider URL
-    # usually set up in test with local mock server
-    data_provider_url = "http://example.com"
-
-    [nodeset.node_specs.db]
-      # PostgreSQL image version and tag
-      image = "postgres:15.6"
-      # Pulls the image every time if set to 'true', used like that in CI. Can be set to 'false' to speed up local runs
-      pull_image = true
-      # PostgreSQL volume name
-      volume_name = ""
 
     [nodeset.node_specs.node]
+      # custom ports that plugins may need to expose and map to the host machine
+      custom_ports = [14000, 14001]
       # A list of paths to capability binaries
       capabilities = ["./capability_1", "./capability_2"]
       # Default capabilities directory inside container
@@ -81,7 +79,7 @@ Then configure NodeSet
       # Optional name for image we build, default is "ctftmp"
       docker_image_name = "ctftmp"
       # Pulls the image every time if set to 'true', used like that in CI. Can be set to 'false' to speed up local runs
-      pull_image = true
+      pull_image = false
       # Overrides Chainlink node TOML configuration
       # can be multiline, see example
       user_config_overrides = """
@@ -106,6 +104,10 @@ Then configure NodeSet
 
       # Describes deployed or external Chainlink node
       [nodeset.out.cl_nodes.node]
+        # API user name
+        api_auth_user = 'notreal@fakeemail.ch'
+        # API password
+        api_auth_password = 'fj293fbBnlQ!f9vNs'
         # Host Docker URLs the test uses
         # in case of using external component you can replace these URLs with another deployment
         p2p_url = "http://127.0.0.1:32996"
@@ -130,7 +132,6 @@ package capabilities_test
 import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -138,7 +139,6 @@ import (
 
 type Config struct {
 	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
-	MockerDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
 	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
 }
 
@@ -148,9 +148,7 @@ func TestMe(t *testing.T) {
 
 	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
 	require.NoError(t, err)
-	dp, err := fake.NewFakeDataProvider(in.MockerDataProvider)
-	require.NoError(t, err)
-	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc, dp.BaseURLDocker)
+	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc)
 	require.NoError(t, err)
 
 	t.Run("test something", func(t *testing.T) {

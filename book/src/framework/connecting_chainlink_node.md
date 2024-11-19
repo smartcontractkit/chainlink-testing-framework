@@ -11,15 +11,12 @@ Create your configuration in `smoke.toml`
   type = "anvil"
 
 [cl_node]
-  data_provider_url = "http://example.com"
 
   [cl_node.db]
     image = "postgres:15.6"
-    pull_image = true
 
   [cl_node.node]
     image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
-    pull_image = true
 ```
 
 Create your test in `smoke_test.go`

@@ -1101,17 +1101,23 @@ func SetNetworks(networkCfg config.NetworkConfig) ([]blockchain.EVMNetwork, erro
 		if networkCfg.AnvilConfigs != nil {
 			_, forked = networkCfg.AnvilConfigs[networkName]
 		}
+
 		// if network is not simulated or forked, use the rpc urls and wallet keys from config
 		if !strings.Contains(networkName, "SIMULATED") && !forked {
-			var ok bool
-			wsUrls, ok = networkCfg.RpcWsUrls[selectedNetworks[i]]
-			if !ok {
-				return nil, fmt.Errorf("no rpc ws urls found in config for '%s' network", selectedNetworks[i])
+			var ok, wsOk, httpOk bool
+			// Check for WS URLs
+			wsUrls, wsOk = networkCfg.RpcWsUrls[selectedNetworks[i]]
+			// Check for HTTP URLs
+			httpUrls, httpOk = networkCfg.RpcHttpUrls[selectedNetworks[i]]
+
+			// WS can be present but only if HTTP is also available, the CL node cannot function only on WS
+			if wsOk && !httpOk {
+				return nil, fmt.Errorf("WS RPC endpoint for %s network is set without an HTTP endpoint; only HTTP or both HTTP and WS are allowed", selectedNetworks[i])
 			}
 
-			httpUrls, ok = networkCfg.RpcHttpUrls[selectedNetworks[i]]
-			if !ok {
-				return nil, fmt.Errorf("no rpc http urls found in config for '%s' network", selectedNetworks[i])
+			// Validate that there is at least one HTTP endpoint
+			if !httpOk {
+				return nil, fmt.Errorf("at least one HTTP RPC endpoint for %s network must be set", selectedNetworks[i])
 			}
 
 			walletKeys, ok = networkCfg.WalletKeys[selectedNetworks[i]]

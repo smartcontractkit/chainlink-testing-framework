@@ -20,23 +20,10 @@ For example, to integrate with remote `k8s` environment you can use `CTF_CONFIGS
       http_url = "http://127.0.0.1:8545"
       ws_url = "ws://127.0.0.1:8545"
 
-[contracts]
-
-  [contracts.out]
-    # set up your contracts
-    addresses = ["0x5fbdb2315678afecb367f032d93f642f64180aa3"]
-    use_cache = true
-
-[data_provider]
-  port = 9111
-
-  [data_provider.out]
-    # setup your data provider URLs
-    base_url_host = "http://localhost:9111"
-
 [nodeset]
 
   [[nodeset.node_specs]]
+  ...
 
   [nodeset.out]
     use_cache = true
@@ -45,6 +32,9 @@ For example, to integrate with remote `k8s` environment you can use `CTF_CONFIGS
       use_cache = true
 
       [nodeset.out.cl_nodes.node]
+        # set up your user/password for API authorization
+        api_auth_user = 'notreal@fakeemail.ch'
+        api_auth_password = 'fj293fbBnlQ!f9vNs'
         # set up each node URLs
         p2p_url = "http://127.0.0.1:12000"
         url = "http://127.0.0.1:10000"

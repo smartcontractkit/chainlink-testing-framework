@@ -29,12 +29,12 @@ func TestChaos(t *testing.T) {
 
 	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
 	require.NoError(t, err)
-	dp, err := fake.NewFakeDataProvider(in.MockerDataProvider)
+	_, err = fake.NewFakeDataProvider(in.MockerDataProvider)
 	require.NoError(t, err)
-	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc, dp.BaseURLDocker)
+	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc)
 	require.NoError(t, err)
 
-	c, err := clclient.NewCLDefaultClients(out.CLNodes, framework.L)
+	c, err := clclient.New(out.CLNodes)
 	require.NoError(t, err)
 
 	t.Run("run the cluster and test various chaos scenarios", func(t *testing.T) {
