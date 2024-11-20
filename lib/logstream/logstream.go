@@ -456,8 +456,10 @@ func (g *ContainerLogConsumer) stop() error {
 func (m *LogStream) DisconnectContainer(container LogProducingContainer) error {
 	var err error
 
+	m.log.Info().Str("Container", container.GetContainerID()).Msg("Disconnecting container")
+
 	if container.IsRunning() {
-		m.log.Trace().Str("container", container.GetContainerID()).Msg("Disconnecting container")
+		m.log.Info().Str("Container", container.GetContainerID()).Msg("Stopping log producer")
 		err = container.StopLogProducer()
 	}
 
