@@ -477,13 +477,6 @@ func (m *LogStream) DisconnectContainer(container LogProducingContainer) error {
 
 	m.log.Info().Str("Container", container.GetContainerID()).Msg("Disconnecting container")
 
-	if container.IsRunning() {
-		m.log.Info().Str("Container", container.GetContainerID()).Msg("Container is running")
-	}
-
-	m.log.Info().Str("Container", container.GetContainerID()).Msg("Stopping log producer")
-	err = container.StopLogProducer()
-
 	consumerFound := false
 	m.consumerMutex.RLock()
 	for _, consumer := range m.consumers {
