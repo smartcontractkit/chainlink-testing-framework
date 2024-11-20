@@ -51,13 +51,30 @@ func (m Chart) ExportData(e *Environment) error {
 }
 
 func (m Chart) GetLabels() map[string]string {
-	return map[string]string{
-		"chain.link/component": "k8s-test-runner-legacy",
+	if m.GetProps() == nil {
+		return nil
 	}
+
+	if props, ok := m.GetProps().(*Props); ok {
+		if props == nil {
+			return nil
+		}
+		labels := make(map[string]string)
+		for k, v := range *props.Labels {
+			if v == nil {
+				continue
+			}
+			labels[k] = *v
+		}
+	}
+
+	return nil
 }
 
 func NewRunner(props *Props) func(root cdk8s.Chart) ConnectedChart {
 	return func(root cdk8s.Chart) ConnectedChart {
+		labels := *props.Labels
+		labels["chain.link/component"] = ptr.Ptr("k8s-test-runner-legacy")
 		c := &Chart{
 			Props: props,
 		}
@@ -80,6 +97,7 @@ func NewRunner(props *Props) func(root cdk8s.Chart) ConnectedChart {
 func DataFromRunner(props *Props) func(root cdk8s.Chart) ConnectedChart {
 	labels := *props.Labels
 	labels["app"] = ptr.Ptr("runner-data")
+	labels["chain.link/component"] = ptr.Ptr("k8s-test-runner-data-legacy")
 	return func(root cdk8s.Chart) ConnectedChart {
 		c := &Chart{
 			Props: props,
@@ -264,7 +282,8 @@ func job(chart cdk8s.Chart, props *Props) {
 		ptr.Ptr(fmt.Sprintf("%s-job", props.BaseName)),
 		&k8s.KubeJobProps{
 			Metadata: &k8s.ObjectMeta{
-				Name: ptr.Ptr(props.BaseName),
+				Name:   ptr.Ptr(props.BaseName),
+				Labels: props.Labels,
 			},
 			Spec: &k8s.JobSpec{
 				Template: &k8s.PodTemplateSpec{

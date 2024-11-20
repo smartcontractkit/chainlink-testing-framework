@@ -263,6 +263,7 @@ func (m *Environment) validateRequiredChainLinkLabels() error {
 	}
 
 	for _, child := range *children {
+		// most of our workloads are Helm charts
 		if h, ok := child.(cdk8s.Helm); ok {
 			for _, ao := range *h.ApiObjects() {
 				switch *ao.Kind() {
@@ -273,6 +274,19 @@ func (m *Environment) validateRequiredChainLinkLabels() error {
 							missingWorkloadLabels[*ao.Name()] = append(missingWorkloadLabels[*ao.Name()], l)
 						}
 					}
+				}
+			}
+		}
+		// but legacy runners have no Helm charts, but are programmatically defined as KubeJobs
+		if j, ok := child.(k8s.KubeJob); ok {
+			// but secrets or role bindings can also be cast to KubeJob, so we need to check if kind is Job
+			if j.Kind() == nil || *j.Kind() != "Job" {
+				continue
+			}
+			for _, l := range requiredChainLinkWorkloadLabels {
+				maybeLabel := j.Metadata().GetLabel(&l)
+				if maybeLabel == nil {
+					missingWorkloadLabels[*j.Name()] = append(missingWorkloadLabels[*j.Name()], l)
 				}
 			}
 		}
@@ -380,25 +394,7 @@ func (m *Environment) AddChart(f func(root cdk8s.Chart) ConnectedChart) *Environ
 	}
 	config.JSIIGlobalMu.Lock()
 	defer config.JSIIGlobalMu.Unlock()
-	chart := f(m.root)
-
-	h := cdk8s.NewHelm(m.root, ptr.Ptr(chart.GetName()), &cdk8s.HelmProps{
-		Chart: ptr.Ptr(chart.GetPath()),
-		HelmFlags: &[]*string{
-			ptr.Ptr("--namespace"),
-			ptr.Ptr(m.Cfg.Namespace),
-		},
-		ReleaseName: ptr.Ptr(chart.GetName()),
-		Values:      chart.GetValues(),
-	})
-
-	componentLabels, err := getComponentLabels(m.Cfg.WorkloadLabels, chart.GetLabels())
-	if err != nil {
-		m.err = err
-	}
-
-	addRequiredChainLinkLabels(h, componentLabels)
-	m.Charts = append(m.Charts, chart)
+	m.Charts = append(m.Charts, f(m.root))
 	return m
 }
 
