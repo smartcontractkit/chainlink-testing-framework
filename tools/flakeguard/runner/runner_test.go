@@ -25,9 +25,10 @@ const (
 
 func TestRun(t *testing.T) {
 	testCases := []struct {
-		name     string
-		runner   Runner
-		expected map[string]*expectedTestResult
+		name            string
+		runner          Runner
+		expectedRuns    int
+		expectedResults map[string]*expectedTestResult
 	}{
 		{
 			name: "default",
@@ -41,7 +42,8 @@ func TestRun(t *testing.T) {
 				SelectedTestPackages: []string{flakyTestPackagePath},
 				CollectRawOutput:     true,
 			},
-			expected: map[string]*expectedTestResult{
+			expectedRuns: defaultRuns,
+			expectedResults: map[string]*expectedTestResult{
 				"TestFlaky": {
 					TestResult: &reports.TestResult{
 						TestName: "TestFlaky",
@@ -98,7 +100,8 @@ func TestRun(t *testing.T) {
 				SelectedTestPackages: []string{flakyTestPackagePath},
 				CollectRawOutput:     true,
 			},
-			expected: map[string]*expectedTestResult{
+			expectedRuns: defaultRuns,
+			expectedResults: map[string]*expectedTestResult{
 				"TestFlaky": {
 					TestResult: &reports.TestResult{
 						TestName: "TestFlaky",
@@ -155,14 +158,73 @@ func TestRun(t *testing.T) {
 			runner: Runner{
 				ProjectPath:          "./",
 				Verbose:              true,
-				RunCount:             defaultRuns,
+				RunCount:             defaultRuns * 2,
 				UseRace:              true,
 				SkipTests:            []string{"TestPanic"},
 				FailFast:             false,
 				SelectedTestPackages: []string{flakyTestPackagePath},
 				CollectRawOutput:     true,
 			},
-			expected: map[string]*expectedTestResult{
+			expectedRuns: defaultRuns * 2,
+			expectedResults: map[string]*expectedTestResult{
+				"TestFlaky": {
+					TestResult: &reports.TestResult{
+						TestName: "TestFlaky",
+						Panicked: false,
+						Skipped:  false,
+					},
+				},
+				"TestFail": {
+					TestResult: &reports.TestResult{
+						TestName:  "TestFail",
+						Panicked:  false,
+						Skipped:   false,
+						PassRatio: 0,
+						Failures:  defaultRuns,
+					},
+				},
+				"TestPass": {
+					TestResult: &reports.TestResult{
+						TestName:  "TestPass",
+						Panicked:  false,
+						Skipped:   false,
+						PassRatio: 1,
+						Successes: defaultRuns,
+					},
+				},
+				"TestSkipped": {
+					TestResult: &reports.TestResult{
+						TestName:  "TestSkipped",
+						Panicked:  false,
+						Skipped:   true,
+						PassRatio: 0,
+					},
+				},
+				"TestRace": {
+					TestResult: &reports.TestResult{
+						TestName:  "TestPass",
+						Panicked:  false,
+						Skipped:   false,
+						PassRatio: 0,
+						Failures:  defaultRuns,
+					},
+				},
+			},
+		},
+		{
+			name: "failfast",
+			runner: Runner{
+				ProjectPath:          "./",
+				Verbose:              true,
+				RunCount:             defaultRuns,
+				UseRace:              false,
+				SkipTests:            []string{"TestPanic"},
+				FailFast:             true,
+				SelectedTestPackages: []string{flakyTestPackagePath},
+				CollectRawOutput:     true,
+			},
+			expectedRuns: 1,
+			expectedResults: map[string]*expectedTestResult{
 				"TestFlaky": {
 					TestResult: &reports.TestResult{
 						TestName: "TestFlaky",
@@ -217,12 +279,12 @@ func TestRun(t *testing.T) {
 
 			for _, result := range testResults {
 				t.Run(fmt.Sprintf("checking results of %s", result.TestName), func(t *testing.T) {
-					expected, ok := tc.expected[result.TestName]
+					expected, ok := tc.expectedResults[result.TestName]
 					require.True(t, ok, "unexpected test result: %s", result.TestName)
 					require.False(t, expected.seen, "test '%s' was seen multiple times", result.TestName)
 					expected.seen = true
 
-					assert.Equal(t, defaultRuns, result.Runs, "test '%s' had an unexpected number of runs", result.TestName)
+					assert.Equal(t, tc.expectedRuns, result.Runs, "test '%s' had an unexpected number of runs", result.TestName)
 					assert.Len(t, result.Durations, result.Runs, "test '%s' has a mismatch of runs and duration counts", result.TestName, defaultRuns)
 					resultCounts := result.Successes + result.Failures + result.Panics + result.Skips
 					assert.Equal(t, result.Runs, resultCounts,
@@ -245,7 +307,7 @@ func TestRun(t *testing.T) {
 				})
 			}
 
-			for _, expected := range tc.expected {
+			for _, expected := range tc.expectedResults {
 				assert.True(t, expected.seen, "expected test '%s' not found in test runs", expected.TestResult.TestName)
 			}
 		})
