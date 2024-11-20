@@ -229,6 +229,14 @@ func (m *LogStream) ConnectContainer(ctx context.Context, container LogProducing
 			select {
 			case logErr := <-container.GetLogProductionErrorChannel():
 				if logErr != nil {
+					// Check if the container is not stopped or terminated
+					if !container.IsRunning() {
+						m.log.Info().
+							Str("Container name", name).
+							Msg("Skipping log producer error as the container is not running anymore")
+						break
+					}
+
 					m.log.Error().
 						Err(err).
 						Str("Container name", name).
