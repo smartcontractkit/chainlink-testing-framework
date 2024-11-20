@@ -6,6 +6,9 @@ metadata:
   namespace: {{ $.Release.Namespace }}
   labels:
     sync: "{{ $.Values.sync }}"
+    {{- range $key, $val :=  $.Values.metadata.labels }}
+    {{- $e.key }}: "{{ $e.value }}"
+    {{- end }}
 spec:
   backoffLimit: 0
   ttlSecondsAfterFinished: {{ $.Values.ttlSecondsAfterFinished }}

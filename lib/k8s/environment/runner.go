@@ -52,7 +52,7 @@ func (m Chart) ExportData(e *Environment) error {
 
 func (m Chart) GetLabels() map[string]string {
 	return map[string]string{
-		"chain.link/component": "k8s-legacy-test-runner",
+		"chain.link/component": "k8s-test-runner-legacy",
 	}
 }
 

@@ -45,6 +45,7 @@ The TOML config should specify the test runner configuration as follows:
 ```
 namespace = "e2e-tests"
 rbac_role_name = "" # RBAC role name for the chart
+rbac_service_account_name = "" # RBAC service account name for the chart
 image_registry_url = "" # URL to the ECR containing the test binary image, e.g., staging ECR URL
 image_name = "k8s-test-runner"
 image_tag = ""  # The image tag to use, like "mercury-load-tests" (see readme above)
@@ -61,7 +62,15 @@ resources_limits_memory = "1024Mi"
 WASP_LOG_LEVEL = "info"
 TEST_LOG_LEVEL = "info"
 MERCURY_TEST_LOG_LEVEL = "info"
+[metadata.labels]
+"chain.link/component" = "k8s-test-runner"
+"chain.link/product" = "<your-product-name>"
+"chain.link/team" = "<name–of-the-team-you're-running-the-test-for>"
+"chain.link/cost-center" = "<sensible-identifier:eg: product-testType-test>"
 ```
+
+> [NOTE]
+> Make sure to quote labels with "/" as otherwise parsing them will fail.
 
 Where:
 
@@ -113,6 +122,7 @@ Then:
         cat << EOF > config.toml
         namespace = "e2e-tests"
         rbac_role_name = "" # RBAC role name for the chart
+        rbac_service_account_name = "" # RBAC service account name for the chart
         image_registry_url = "${{ secrets.AWS_ACCOUNT_ID_STAGING }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com"
         image_name = "k8s-test-runner"
         image_tag = "mercury-load-test"
@@ -130,6 +140,11 @@ Then:
         WASP_LOG_LEVEL = "info"
         TEST_LOG_LEVEL = "info"
         MERCURY_TEST_LOG_LEVEL = "info"
+        [metadata.labels]
+        "chain.link/component" = "k8s-test-runner"
+        "chain.link/product" = "data-streamsv0.3"
+        "chain.link/team" = "Data Streams"
+        "chain.link/cost-center" = "data-streamsv0.3-load-test"
         EOF
 
         ./k8s-test-runner-linux-amd64 run -c config.toml

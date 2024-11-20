@@ -85,6 +85,11 @@ func getChartOverrides(c config.Runner) map[string]interface{} {
 	}
 	envMap[c.TestConfigBase64EnvName] = c.TestConfigBase64
 
+	labelsMap := c.Metadata.Labels
+	if labelsMap == nil {
+		labelsMap = make(map[string]string)
+	}
+
 	return map[string]interface{}{
 		"namespace": c.Namespace,
 		"rbac": map[string]interface{}{
@@ -102,7 +107,10 @@ func getChartOverrides(c config.Runner) map[string]interface{} {
 		"imagePullPolicy": "Always",
 		"labels":          map[string]interface{}{},
 		"annotations":     map[string]interface{}{}, // Add specific annotations if needed
-		"env":             envMap,
+		"metadata": map[string]interface{}{
+			"labels": labelsMap,
+		},
+		"env": envMap,
 		"resources": map[string]interface{}{
 			"requests": map[string]interface{}{
 				"cpu":    c.ResourcesRequestsCPU,
