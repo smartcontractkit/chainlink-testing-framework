@@ -1,4 +1,4 @@
-package flakytestpackage
+package exampletestpackage
 
 import (
 	"os"
