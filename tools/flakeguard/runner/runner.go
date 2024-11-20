@@ -29,7 +29,7 @@ type Runner struct {
 	SkipTests            []string // Test names to exclude.
 	SelectedTestPackages []string // Explicitly selected packages to run.
 	CollectRawOutput     bool     // Collect test output for later inspection.
-	rawOutput            bytes.Buffer
+	rawOutputs           map[string]*bytes.Buffer
 }
 
 // RunTests executes the tests for each provided package and aggregates all results.
@@ -53,8 +53,9 @@ func (r *Runner) RunTests() ([]reports.TestResult, error) {
 }
 
 // RawOutput retrieves the raw output from the test runs, if CollectRawOutput enabled.
-func (r *Runner) RawOutput() bytes.Buffer {
-	return r.rawOutput
+// packageName : raw output
+func (r *Runner) RawOutputs() map[string]*bytes.Buffer {
+	return r.rawOutputs
 }
 
 type exitCoder interface {
@@ -87,14 +88,16 @@ func (r *Runner) runTests(packageName string) (string, bool, error) {
 	cmd := exec.Command("go", args...)
 	cmd.Dir = r.ProjectPath
 	if r.CollectRawOutput {
-		cmd.Stdout = io.MultiWriter(tmpFile, &r.rawOutput)
-		cmd.Stderr = io.MultiWriter(tmpFile, &r.rawOutput)
+		if r.rawOutputs == nil {
+			r.rawOutputs = make(map[string]*bytes.Buffer)
+		}
+		r.rawOutputs[packageName] = &bytes.Buffer{}
+		cmd.Stdout = io.MultiWriter(tmpFile, r.rawOutputs[packageName])
+		cmd.Stderr = io.MultiWriter(tmpFile, r.rawOutputs[packageName])
 	} else {
 		cmd.Stdout = tmpFile
 		cmd.Stderr = tmpFile
 	}
-	cmd.Stdout = tmpFile
-	cmd.Stderr = tmpFile
 
 	err = cmd.Run()
 	if err != nil {
@@ -201,7 +204,7 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 					result.Failures++
 				}
 			case "output":
-				// Output already handled above
+				// plain output already handled above
 				if panicRe.MatchString(entry.Output) {
 					if entry.Test != "" {
 						// Test-level panic

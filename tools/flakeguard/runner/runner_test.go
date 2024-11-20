@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
@@ -11,22 +12,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type MockGoRunner struct {
-	RunFunc func(dir string, args []string) (string, bool, error)
-}
-
-func (m MockGoRunner) RunCommand(dir string, args []string) (string, bool, error) {
-	return m.RunFunc(dir, args)
-}
-
 type expectedTestResult struct {
 	TestResult *reports.TestResult
 	seen       bool
 }
 
 var (
-	defaultRuns       = 5
-	defaultTestRunner = Runner{
+	defaultRuns = 5
+)
+
+func TestRunDefault(t *testing.T) {
+	defaultTestRunner := Runner{
 		ProjectPath:          "./",
 		Verbose:              true,
 		RunCount:             defaultRuns,
@@ -36,9 +32,7 @@ var (
 		SelectedTestPackages: []string{"./flaky_test_package"},
 		CollectRawOutput:     true,
 	}
-)
 
-func TestRunDefault(t *testing.T) {
 	expectedResults := map[string]*expectedTestResult{
 		"TestFlaky": {
 			TestResult: &reports.TestResult{
@@ -77,16 +71,7 @@ func TestRunDefault(t *testing.T) {
 
 	testResults, err := defaultTestRunner.RunTests()
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if t.Failed() {
-			resultsFileName := fmt.Sprintf("flaky_test_results_%s.json", t.Name())
-			t.Logf("Writing test results to %s", resultsFileName)
-			jsonResults, err := json.Marshal(testResults)
-			require.NoError(t, err)
-			err = os.WriteFile(resultsFileName, jsonResults, 0644) //nolint:gosec
-			require.NoError(t, err)
-		}
-	})
+	cleanup(t, testResults, defaultTestRunner)
 
 	for _, result := range testResults {
 		t.Run(fmt.Sprintf("checking results of %s", result.TestName), func(t *testing.T) {
@@ -124,8 +109,16 @@ func TestRunDefault(t *testing.T) {
 }
 
 func TestRunWithPanics(t *testing.T) {
-	panicRunner := defaultTestRunner
-	panicRunner.SkipTests = []string{}
+	panicTestRunner := Runner{
+		ProjectPath:          "./",
+		Verbose:              true,
+		RunCount:             defaultRuns,
+		UseRace:              false,
+		SkipTests:            []string{},
+		FailFast:             false,
+		SelectedTestPackages: []string{"./flaky_test_package"},
+		CollectRawOutput:     true,
+	}
 
 	expectedResults := map[string]*expectedTestResult{
 		"TestFlaky": {
@@ -170,18 +163,9 @@ func TestRunWithPanics(t *testing.T) {
 		},
 	}
 
-	testResults, err := panicRunner.RunTests()
+	testResults, err := panicTestRunner.RunTests()
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		if t.Failed() {
-			resultsFileName := fmt.Sprintf("flaky_test_results_%s.json", t.Name())
-			t.Logf("Writing test results to %s", resultsFileName)
-			jsonResults, err := json.Marshal(testResults)
-			require.NoError(t, err)
-			err = os.WriteFile(resultsFileName, jsonResults, 0644) //nolint:gosec
-			require.NoError(t, err)
-		}
-	})
+	cleanup(t, testResults, panicTestRunner)
 
 	for _, result := range testResults {
 		t.Run(fmt.Sprintf("checking results of %s", result.TestName), func(t *testing.T) {
@@ -217,4 +201,35 @@ func TestRunWithPanics(t *testing.T) {
 	for _, expected := range expectedResults {
 		assert.True(t, expected.seen, "expected test '%s' not found in test runs", expected.TestResult.TestName)
 	}
+}
+
+func cleanup(t *testing.T, testResults []reports.TestResult, runner Runner) {
+	t.Helper()
+
+	t.Cleanup(func() {
+		if t.Failed() {
+			resultsFileName := fmt.Sprintf("debug_test_results_%s.json", t.Name())
+			t.Logf("Writing test results to %s", resultsFileName)
+			jsonResults, err := json.Marshal(testResults)
+			if err != nil {
+				t.Logf("error marshalling test results: %v", err)
+			}
+			err = os.WriteFile(resultsFileName, jsonResults, 0644) //nolint:gosec
+			if err != nil {
+				t.Logf("error writing test results: %v", err)
+			}
+			if len(runner.RawOutputs()) == 0 {
+				t.Logf("WARN: no raw output to write")
+			}
+			for packageName, rawOutput := range runner.RawOutputs() {
+				saniPackageName := filepath.Base(packageName)
+				rawOutputFileName := fmt.Sprintf("debug_raw_output_%s_%s.json", t.Name(), saniPackageName)
+				t.Logf("Writing raw output to %s", rawOutputFileName)
+				err = os.WriteFile(rawOutputFileName, rawOutput.Bytes(), 0644) //nolint:gosec
+				if err != nil {
+					t.Logf("error writing raw output: %v", err)
+				}
+			}
+		}
+	})
 }
