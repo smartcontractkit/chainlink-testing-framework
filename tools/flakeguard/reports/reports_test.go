@@ -132,7 +132,7 @@ func writeTempJSONFile(t *testing.T, dir string, filename string, data interface
 	if err != nil {
 		t.Fatalf("Failed to marshal JSON: %v", err)
 	}
-	if err := os.WriteFile(filePath, fileData, 0644); err != nil {
+	if err := os.WriteFile(filePath, fileData, 0644); err != nil { //nolint:gosec
 		t.Fatalf("Failed to write JSON file: %v", err)
 	}
 	return filePath

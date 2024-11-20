@@ -11,15 +11,20 @@ import (
 	"strings"
 )
 
+// TestResult represents the result of a single test being run through flakeguard.
 type TestResult struct {
 	TestName            string
 	TestPackage         string
-	Panicked            bool    // Indicates a test-level panic
-	PackagePanicked     bool    // Indicates a package-level panic
-	PassRatio           float64 // Pass ratio in decimal format like 0.5
-	PassRatioPercentage string  // Pass ratio in percentage format like "50%"
-	Skipped             bool    // Indicates if the test was skipped
-	Runs                int
+	Panicked            bool      // Indicates a test-level panic
+	PackagePanicked     bool      // Indicates a package-level panic
+	PassRatio           float64   // Pass ratio in decimal format like 0.5
+	PassRatioPercentage string    // Pass ratio in percentage format like "50%"
+	Skipped             bool      // Indicates if the test was skipped
+	Runs                int       // Count of how many times the test was run
+	Failures            int       // Count of how many times the test failed
+	Successes           int       // Count of how many times the test passed
+	Panics              int       // Count of how many times the test panicked
+	Skips               int       // Count of how many times the test was skipped
 	Outputs             []string  // Stores outputs for a test
 	Durations           []float64 // Stores elapsed time in seconds for each run of the test
 	PackageOutputs      []string  // Stores package-level outputs
@@ -205,7 +210,7 @@ func saveResults(filePath string, results []TestResult) error {
 	if err != nil {
 		return fmt.Errorf("error marshaling results: %v", err)
 	}
-	return os.WriteFile(filePath, data, 0644)
+	return os.WriteFile(filePath, data, 0644) //nolint:gosec
 }
 
 // Helper function to save test names, packages, and outputs to JSON file
@@ -233,5 +238,5 @@ func saveTestOutputs(filePath string, results []TestResult) error {
 	if err != nil {
 		return fmt.Errorf("error marshaling outputs: %v", err)
 	}
-	return os.WriteFile(filePath, data, 0644)
+	return os.WriteFile(filePath, data, 0644) //nolint:gosec
 }

@@ -54,7 +54,7 @@ type exitCoder interface {
 
 // runTests runs the tests for a given package and returns the path to the output file.
 func (r *Runner) runTests(packageName string) (string, bool, error) {
-	args := []string{"test", packageName, "-json", "-count=1"} // Enable JSON output
+	args := []string{"test", packageName, "-json", "-count=1"}
 	if r.UseRace {
 		args = append(args, "-race")
 	}
@@ -62,8 +62,6 @@ func (r *Runner) runTests(packageName string) (string, bool, error) {
 		skipPattern := strings.Join(r.SkipTests, "|")
 		args = append(args, fmt.Sprintf("-skip=%s", skipPattern))
 	}
-	// The last arg redirects stderr to null
-	args = append(args, "2>/dev/null")
 
 	if r.Verbose {
 		log.Printf("Running command: go %s\n", strings.Join(args, " "))
@@ -105,8 +103,6 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to open test output file: %w", err)
 		}
-		defer os.Remove(filePath) // Clean up file after parsing
-		defer file.Close()
 
 		scanner := bufio.NewScanner(file)
 		var precedingLines []string // Store preceding lines for context
@@ -149,7 +145,6 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 					testDetails[key] = &reports.TestResult{
 						TestName:       entry.Test,
 						TestPackage:    entry.Package,
-						Runs:           0,
 						PassRatio:      0,
 						Outputs:        []string{},
 						PackageOutputs: []string{},
@@ -181,15 +176,13 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 				}
 			case "pass":
 				if entry.Test != "" {
-					result.PassRatio = (result.PassRatio*float64(result.Runs-1) + 1) / float64(result.Runs)
-					result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
 					result.Durations = append(result.Durations, entry.Elapsed)
+					result.Successes++
 				}
 			case "fail":
 				if entry.Test != "" {
-					result.PassRatio = (result.PassRatio * float64(result.Runs-1)) / float64(result.Runs)
-					result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
 					result.Durations = append(result.Durations, entry.Elapsed)
+					result.Failures++
 				}
 			case "output":
 				// Output already handled above
@@ -197,9 +190,8 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 					if entry.Test != "" {
 						// Test-level panic
 						result.Panicked = true
-						result.PassRatio = (result.PassRatio * float64(result.Runs-1)) / float64(result.Runs)
-						result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
 						result.Durations = append(result.Durations, entry.Elapsed)
+						result.Panics++
 					} else {
 						// Package-level panic
 						// Mark PackagePanicked for all TestResults in the package
@@ -213,14 +205,25 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 			case "skip":
 				if entry.Test != "" {
 					result.Skipped = true
-					result.Runs++
+					result.Skips++
 					result.Durations = append(result.Durations, entry.Elapsed)
 				}
+			}
+			if entry.Test != "" {
+				result.PassRatio = float64(result.Successes) / float64(result.Runs)
+				result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
 			}
 		}
 
 		if err := scanner.Err(); err != nil {
 			return nil, fmt.Errorf("reading test output file: %w", err)
+		}
+		// Clean up file after parsing
+		if err = file.Close(); err != nil {
+			log.Printf("WARN: failed to close file: %v", err)
+		}
+		if err = os.Remove(filePath); err != nil {
+			log.Printf("WARN: failed to delete file: %v", err)
 		}
 	}
 

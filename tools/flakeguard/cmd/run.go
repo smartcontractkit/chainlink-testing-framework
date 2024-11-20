@@ -80,7 +80,7 @@ var RunTestsCmd = &cobra.Command{
 			if err != nil {
 				log.Fatalf("Error marshaling test results to JSON: %v", err)
 			}
-			if err := os.WriteFile(outputPath, jsonData, 0644); err != nil {
+			if err := os.WriteFile(outputPath, jsonData, 0644); err != nil { //nolint:gosec
 				log.Fatalf("Error writing test results to file: %v", err)
 			}
 			fmt.Printf("All test results saved to %s\n", outputPath)
