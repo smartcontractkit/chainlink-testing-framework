@@ -2,9 +2,11 @@ package runner
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -26,6 +28,8 @@ type Runner struct {
 	FailFast             bool     // Stop on first test failure.
 	SkipTests            []string // Test names to exclude.
 	SelectedTestPackages []string // Explicitly selected packages to run.
+	CollectRawOutput     bool     // Collect test output for later inspection.
+	rawOutput            bytes.Buffer
 }
 
 // RunTests executes the tests for each provided package and aggregates all results.
@@ -46,6 +50,11 @@ func (r *Runner) RunTests() ([]reports.TestResult, error) {
 	}
 
 	return parseTestResults(jsonFilePaths)
+}
+
+// RawOutput retrieves the raw output from the test runs, if CollectRawOutput enabled.
+func (r *Runner) RawOutput() bytes.Buffer {
+	return r.rawOutput
 }
 
 type exitCoder interface {
@@ -77,6 +86,13 @@ func (r *Runner) runTests(packageName string) (string, bool, error) {
 	// Run the command with output directed to the file
 	cmd := exec.Command("go", args...)
 	cmd.Dir = r.ProjectPath
+	if r.CollectRawOutput {
+		cmd.Stdout = io.MultiWriter(tmpFile, &r.rawOutput)
+		cmd.Stderr = io.MultiWriter(tmpFile, &r.rawOutput)
+	} else {
+		cmd.Stdout = tmpFile
+		cmd.Stderr = tmpFile
+	}
 	cmd.Stdout = tmpFile
 	cmd.Stderr = tmpFile
 
@@ -157,7 +173,7 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 			if entry.Output != "" {
 				if entry.Test != "" {
 					// Test-level output
-					result.Outputs = append(result.Outputs, entry.Output)
+					result.Outputs = append(result.Outputs, strings.TrimSpace(entry.Output))
 				} else {
 					// Package-level output
 					// Append to PackageOutputs of all TestResults in the same package

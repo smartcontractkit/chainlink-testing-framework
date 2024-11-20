@@ -45,7 +45,7 @@ func TestSkipped(t *testing.T) {
 	t.Skip("This test is intentionally skipped")
 }
 
-// func TestPanic(t *testing.T) {
-// 	t.Parallel()
-// 	panic("This test intentionally panics")
-// }
+func TestPanic(t *testing.T) {
+	t.Parallel()
+	panic("This test intentionally panics")
+}
