@@ -808,6 +808,11 @@ func (g *ContainerLogConsumer) Accept(l tc.Log) {
 
 	if g.IsStopped() {
 		// if the consumer is stopped, we don't want to accept any more logs
+		g.ls.log.Error().
+			Str("Test", g.ls.testName).
+			Str("Container", g.name).
+			Str("Log", string(l.Content)).
+			Msg("Consumer has finished, but you are still trying to accept logs. This should never happen")
 		return
 	}
 
