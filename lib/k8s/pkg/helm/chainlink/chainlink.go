@@ -57,6 +57,12 @@ func (m Chart) GetValues() *map[string]any {
 	return m.Values
 }
 
+func (m Chart) GetLabels() map[string]string {
+	return map[string]string{
+		"chain.link/component": "chainlink",
+	}
+}
+
 func (m Chart) ExportData(e *environment.Environment) error {
 	// fetching all apps with label app=chainlink-${deploymentIndex}:${instanceIndex}
 	pods, err := e.Fwd.Client.ListPods(e.Cfg.Namespace, fmt.Sprintf("app=%s", m.Name))

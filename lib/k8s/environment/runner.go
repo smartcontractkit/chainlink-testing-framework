@@ -50,6 +50,12 @@ func (m Chart) ExportData(e *Environment) error {
 	return nil
 }
 
+func (m Chart) GetLabels() map[string]string {
+	return map[string]string{
+		"chain.link/component": "k8s-legacy-test-runner",
+	}
+}
+
 func NewRunner(props *Props) func(root cdk8s.Chart) ConnectedChart {
 	return func(root cdk8s.Chart) ConnectedChart {
 		c := &Chart{

@@ -66,6 +66,8 @@ type ConnectedChart interface {
 	GetValues() *map[string]any
 	// ExportData export deployment part data in the env
 	ExportData(e *Environment) error
+	// GetLabels returns labels for the component
+	GetLabels() map[string]string
 }
 
 // Config is an environment common configuration, labels, annotations, connection types, readiness check, etc.
@@ -80,6 +82,8 @@ type Config struct {
 	Labels []string
 	// PodLabels is a set of labels applied to every pod in the namespace
 	PodLabels map[string]string
+	// WorkloadLabels is a set of labels applied to every workload in the namespace (job, deployment, replicaset), including service and ingress
+	WorkloadLabels map[string]string
 	// PreventPodEviction if true sets a k8s annotation safe-to-evict=false to prevent pods from being evicted
 	// Note: This should only be used if your test is completely incapable of handling things like K8s rebalances without failing.
 	// If that is the case, it's worth the effort to make your test fault-tolerant soon. The alternative is expensive and infuriating.
@@ -234,6 +238,59 @@ func New(cfg *Config) *Environment {
 		}
 	}
 	return e
+}
+
+var requiredChainLinkNsLabels = []string{"chain.link/team", "chain.link/cost-center", "chain.link/product"}
+var requiredChainLinkWorkloadLabels = append([]string{}, append(requiredChainLinkNsLabels, "chain.link/component")...)
+
+func (m *Environment) validateRequiredChainLinkLabels() error {
+	if m.root.Labels() == nil {
+		return fmt.Errorf("namespace labels are nil, but it should contain at least '%s' labels. Please add them to your environment config under 'Labels' key", strings.Join(requiredChainLinkNsLabels, ", "))
+	}
+
+	var missingNsLabels []string
+	for _, l := range requiredChainLinkNsLabels {
+		if _, ok := (*m.root.Labels())[l]; !ok {
+			missingNsLabels = append(missingNsLabels, l)
+		}
+	}
+
+	children := m.root.Node().Children()
+	missingWorkloadLabels := make(map[string][]string)
+
+	if children == nil {
+		return nil
+	}
+
+	for _, child := range *children {
+		if h, ok := child.(cdk8s.Helm); ok {
+			for _, ao := range *h.ApiObjects() {
+				switch *ao.Kind() {
+				case "Deployment", "ReplicaSet", "StatefulSet", "Service", "Job", "DaemonSet", "Ingress":
+					for _, l := range requiredChainLinkWorkloadLabels {
+						maybeLabel := ao.Metadata().GetLabel(&l)
+						if maybeLabel == nil {
+							missingWorkloadLabels[*ao.Name()] = append(missingWorkloadLabels[*ao.Name()], l)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if len(missingWorkloadLabels) > 0 {
+		sb := strings.Builder{}
+		sb.WriteString("missing required labels for workloads:\n")
+		for chart, missingLabels := range missingWorkloadLabels {
+			for _, label := range missingLabels {
+				sb.WriteString(fmt.Sprintf("\t'%s': '%s'\n", chart, label))
+			}
+		}
+		sb.WriteString("Please add them to your environment configuration under 'WorkloadLabels' key. And check whether every chart has 'chain.link/component' label defined.")
+		return errors.New(sb.String())
+	}
+
+	return nil
 }
 
 func (m *Environment) initApp() error {
@@ -435,6 +492,17 @@ func addDefaultPodAnnotationsAndLabels(h cdk8s.Helm, annotations, labels map[str
 	}
 }
 
+func addRequiredChainLinkLabels(h cdk8s.Helm, labels map[string]string) {
+	for _, ao := range *h.ApiObjects() {
+		switch *ao.Kind() {
+		case "Deployment", "ReplicaSet", "StatefulSet", "Service", "Job", "DaemonSet", "Ingress":
+			for k, v := range labels {
+				ao.Metadata().AddLabel(&k, &v)
+			}
+		}
+	}
+}
+
 // UpdateHelm update a helm chart with new values. The pod will launch with an `updated=true` label if it's a Chainlink node.
 // Note: If you're modifying ConfigMap values, you'll probably need to use RollOutStatefulSets to apply the changes to the pods.
 // https://stackoverflow.com/questions/57356521/rollingupdate-for-stateful-set-doesnt-restart-pods-and-changes-from-updated-con
@@ -508,9 +576,30 @@ func (m *Environment) AddHelm(chart ConnectedChart) *Environment {
 		ReleaseName: ptr.Ptr(chart.GetName()),
 		Values:      values,
 	})
+
+	componentLabels, err := getComponentLabels(m.Cfg.WorkloadLabels, chart.GetLabels())
+	if err != nil {
+		m.err = err
+	}
+
+	addRequiredChainLinkLabels(h, componentLabels)
 	addDefaultPodAnnotationsAndLabels(h, markNotSafeToEvict(m.Cfg.PreventPodEviction, nil), m.Cfg.PodLabels)
 	m.Charts = append(m.Charts, chart)
 	return m
+}
+
+func getComponentLabels(podLabels, chartLabels map[string]string) (map[string]string, error) {
+	componentLabels := make(map[string]string)
+	err := mergo.Merge(&componentLabels, podLabels, mergo.WithOverride)
+	if err != nil {
+		return nil, err
+	}
+	err = mergo.Merge(&componentLabels, chartLabels, mergo.WithOverride)
+	if err != nil {
+		return nil, err
+	}
+
+	return componentLabels, nil
 }
 
 // PullOCIChart handles working with OCI format repositories
@@ -674,6 +763,12 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 		m.Cfg.SkipManifestUpdate = mu
 	}
 	log.Debug().Bool("ManifestUpdate", m.Cfg.SkipManifestUpdate).Msg("Update mode")
+
+	// make sure all required chain.link labels are present in the final manifest
+	if err := m.validateRequiredChainLinkLabels(); err != nil {
+		return err
+	}
+
 	if !m.Cfg.SkipManifestUpdate || m.Cfg.JobImage != "" {
 		if err := m.DeployCustomReadyConditions(customCheck, podCount); err != nil {
 			log.Error().Err(err).Msg("Error deploying environment")
@@ -1083,4 +1178,40 @@ func markNotSafeToEvict(preventPodEviction bool, m map[string]string) map[string
 	}
 
 	return m
+}
+
+func GetRequiredChainLinkNamespaceLabels(product, testType string) ([]string, error) {
+	var nsLabels []string
+	createdLabels, err := createRequiredChainLinkLabels(product, testType)
+	if err != nil {
+		return nsLabels, err
+	}
+
+	for k, v := range createdLabels {
+		nsLabels = append(nsLabels, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	return nsLabels, nil
+}
+
+func GetRequiredChainLinkWorkloadLabels(product, testType string) (map[string]string, error) {
+	createdLabels, err := createRequiredChainLinkLabels(product, testType)
+	if err != nil {
+		return nil, err
+	}
+
+	return createdLabels, nil
+}
+
+func createRequiredChainLinkLabels(product, testType string) (map[string]string, error) {
+	team := os.Getenv(config.EnvVarTeam)
+	if team == "" {
+		return nil, fmt.Errorf("missing team environment variable, please set %s to your team name or if you are seeing this in CI please either add a new input with team name or hardcode it if this jobs is only run by a single team", config.EnvVarUser)
+	}
+
+	return map[string]string{
+		"chain.link/product":     product,
+		"chain.link/team":        team,
+		"chain.link/cost-center": fmt.Sprintf("%s-%s-test", team, testType),
+	}, nil
 }
