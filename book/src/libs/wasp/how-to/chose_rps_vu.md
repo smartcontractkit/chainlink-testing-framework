@@ -9,7 +9,7 @@ When writing a test, you need to decide whether to use **RPS** or **VUs** as you
 
 ## RPS (Requests Per Second)
 
-You should use **RPS** when your goal is to measure **throughput**. This load type implements a **closed model**, where:
+You should use **RPS** when your goal is to measure **throughput**. This load type implements an **open model**, where:
 * The number of requests is fixed.
 * The load is adjusted to meet the target RPS.
 * The system's response time has no impact on the rate of load generation.
@@ -50,7 +50,7 @@ sequenceDiagram
 
 Use **VUs** when working with **stateful protocols** or workflows. With `VirtualUser`, the **requests per second** rate cannot be guaranteed because:
 * Each iteration begins only after the previous one finishes.
-* The load follows an **open model**, where the system's response time affects the RPS.
+* The load follows a **closed model**, where the system's response time affects the RPS.
 
 If the system takes longer to respond, iterations take longer, and the RPS decreases.
 

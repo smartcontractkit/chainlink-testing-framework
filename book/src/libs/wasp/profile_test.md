@@ -95,11 +95,15 @@ You can find the full example [here](https://github.com/smartcontractkit/chainli
 ---
 
 > [!NOTE]  
-> The `error` returned by the `.Run(true)` method only indicates if any dashboard alerts were triggered.  
-> To check for load generation errors, call the `Errors()` method on each `Generator` in the `Profile`.
+> The `error` returned by the `.Run(true)` function of a `Profile` might indicate the following:
+> * load generator did not start and instead returned an error
+> * or **if** `Profile` was created with `WithGrafana` option that enabled `CheckDashboardAlertsAfterRun` that at some alerts fired.
+> To check for errors during load generation, you need to call the `Errors()` method on each `Generator` within the `Profile`.
 
 > [!NOTE]  
-> Currently, it’s not possible to have a "waiting" schedule that doesn’t generate any load. To implement such logic, start one `Profile` in a goroutine and use `time.Sleep` before starting the second `Profile`. An example of this can be found [here](https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/profiles/node_background_load_test.go).
+> Currently, it’s not possible to have a "waiting" schedule that doesn’t generate any load. 
+> To implement such logic, start one `Profile` in a goroutine and use `time.Sleep` before starting the second `Profile` or start use a combination `.Run(false)` and `.Wait()` methods.
+> Both examples of can be found [here](https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/profiles/node_background_load_test.go).
 
 ---
 

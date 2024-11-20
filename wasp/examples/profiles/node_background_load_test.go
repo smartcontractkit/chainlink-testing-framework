@@ -8,13 +8,87 @@ import (
 	"time"
 )
 
-func TestBackgroundLoad(t *testing.T) {
+func TestBackgroundLoadSimple(t *testing.T) {
 	srv := wasp.NewHTTPMockServer(nil)
 	srv.Run()
 
 	labels := map[string]string{
-		"branch": "background_load",
-		"commit": "background_load",
+		"branch": "background_load_simple",
+		"commit": "background_load_simple",
+	}
+
+	zetaSchedule := wasp.Combine(
+		wasp.Steps(1, 1, 4, 20*time.Second),
+		wasp.Plain(5, 50*time.Second),
+		wasp.Steps(5, -1, 4, 20*time.Second))
+
+	rpsProfile := wasp.NewProfile().
+		Add(wasp.NewGenerator(&wasp.Config{
+			T:          t,
+			LoadType:   wasp.RPS,
+			GenName:    "Zeta",
+			Schedule:   zetaSchedule,
+			Gun:        NewExampleHTTPGun(srv.URL()),
+			Labels:     labels,
+			LokiConfig: wasp.NewEnvLokiConfig(),
+		}))
+
+	// start load generation without waiting for it to finish
+	_, err := rpsProfile.Run(false)
+
+	// Wait for the first generator enter the steady state
+	time.Sleep(20 * time.Second)
+
+	etaSchedule := wasp.Combine(
+		wasp.Steps(1, 1, 10, 20*time.Second),
+		wasp.Plain(10, 20*time.Second),
+		wasp.Steps(10, -1, 10, 10*time.Second))
+
+	iotaSchedule := wasp.Combine(
+		wasp.Steps(1, 1, 10, 20*time.Second),
+		wasp.Plain(10, 20*time.Second),
+		wasp.Steps(10, -1, 10, 10*time.Second))
+
+	vuProfile, err := wasp.NewProfile().
+		Add(wasp.NewGenerator(&wasp.Config{
+			T:          t,
+			LoadType:   wasp.VU,
+			GenName:    "Eta",
+			Schedule:   etaSchedule,
+			VU:         NewExampleScenario(srv.URL()),
+			Labels:     labels,
+			LokiConfig: wasp.NewEnvLokiConfig(),
+		})).
+		Add(wasp.NewGenerator(&wasp.Config{
+			T:          t,
+			LoadType:   wasp.VU,
+			GenName:    "Iota",
+			Schedule:   iotaSchedule,
+			VU:         NewExampleScenario(srv.URL()),
+			Labels:     labels,
+			LokiConfig: wasp.NewEnvLokiConfig(),
+		})).
+		Run(true)
+	// check if VU Profile did not return an error (e.g. due to invalid configuration or alerts triggered)
+	require.NoError(t, err)
+
+	// wait until RPS Profile finishes
+	rpsProfile.Wait()
+	// check if RPS Profile did not return an error (e.g. due to invalid configuration or alerts triggered)
+	require.NoError(t, err)
+
+	require.Equal(t, 0, len(rpsProfile.Generators[0].Errors()), "RPS generator had errors errors")
+	require.Equal(t, 0, len(vuProfile.Generators[0].Errors()), "first VU generator had errors")
+	require.Equal(t, 0, len(vuProfile.Generators[1].Errors()), "second VU generator had errors")
+}
+
+func TestBackgroundLoadGoRoutines(t *testing.T) {
+	srv := wasp.NewHTTPMockServer(nil)
+	srv.Run()
+
+	labels := map[string]string{
+		"branch": "background_load_goroutines",
+		"commit": "background_load_goroutines",
 	}
 
 	zetaSchedule := wasp.Combine(
