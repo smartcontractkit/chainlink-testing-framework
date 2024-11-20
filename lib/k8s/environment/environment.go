@@ -380,7 +380,25 @@ func (m *Environment) AddChart(f func(root cdk8s.Chart) ConnectedChart) *Environ
 	}
 	config.JSIIGlobalMu.Lock()
 	defer config.JSIIGlobalMu.Unlock()
-	m.Charts = append(m.Charts, f(m.root))
+	chart := f(m.root)
+
+	h := cdk8s.NewHelm(m.root, ptr.Ptr(chart.GetName()), &cdk8s.HelmProps{
+		Chart: ptr.Ptr(chart.GetPath()),
+		HelmFlags: &[]*string{
+			ptr.Ptr("--namespace"),
+			ptr.Ptr(m.Cfg.Namespace),
+		},
+		ReleaseName: ptr.Ptr(chart.GetName()),
+		Values:      chart.GetValues(),
+	})
+
+	componentLabels, err := getComponentLabels(m.Cfg.WorkloadLabels, chart.GetLabels())
+	if err != nil {
+		m.err = err
+	}
+
+	addRequiredChainLinkLabels(h, componentLabels)
+	m.Charts = append(m.Charts, chart)
 	return m
 }
 
@@ -1180,6 +1198,8 @@ func markNotSafeToEvict(preventPodEviction bool, m map[string]string) map[string
 	return m
 }
 
+// GetRequiredChainLinkNamespaceLabels returns the required chain.link namespace labels
+// if `CHAINLINK_USER_TEAM` env var is not set it will return an error
 func GetRequiredChainLinkNamespaceLabels(product, testType string) ([]string, error) {
 	var nsLabels []string
 	createdLabels, err := createRequiredChainLinkLabels(product, testType)
@@ -1194,6 +1214,8 @@ func GetRequiredChainLinkNamespaceLabels(product, testType string) ([]string, er
 	return nsLabels, nil
 }
 
+// GetRequiredChainLinkWorkloadLabels returns the required chain.link workload labels
+// if `CHAINLINK_USER_TEAM` env var is not set it will return an error
 func GetRequiredChainLinkWorkloadLabels(product, testType string) (map[string]string, error) {
 	createdLabels, err := createRequiredChainLinkLabels(product, testType)
 	if err != nil {
