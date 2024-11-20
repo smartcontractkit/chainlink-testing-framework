@@ -468,6 +468,7 @@ func (m *LogStream) DisconnectContainer(container LogProducingContainer) error {
 	for _, consumer := range m.consumers {
 		if consumer.container.GetContainerID() == container.GetContainerID() {
 			consumerFound = true
+			m.log.Info().Str("Container", consumer.name).Msg("Stopping consumer")
 			if stopErr := consumer.stop(); err != nil {
 				m.log.Error().
 					Err(stopErr).
@@ -787,11 +788,6 @@ func (g *ContainerLogConsumer) Accept(l tc.Log) {
 	}
 
 	if g.isDone {
-		g.ls.log.Error().
-			Str("Test", g.ls.testName).
-			Str("Container", g.name).
-			Str("Log", string(l.Content)).
-			Msg("Consumer has finished, but you are still trying to accept logs. This should never happen")
 		return
 	}
 
