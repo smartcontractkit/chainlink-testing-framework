@@ -1206,7 +1206,7 @@ func GetRequiredChainLinkWorkloadLabels(product, testType string) (map[string]st
 func createRequiredChainLinkLabels(product, testType string) (map[string]string, error) {
 	team := os.Getenv(config.EnvVarTeam)
 	if team == "" {
-		return nil, fmt.Errorf("missing team environment variable, please set %s to your team name or if you are seeing this in CI please either add a new input with team name or hardcode it if this jobs is only run by a single team", config.EnvVarUser)
+		return nil, fmt.Errorf("missing team environment variable, please set %s to your team name or if you are seeing this in CI please either add a new input with team name or hardcode it if this jobs is only run by a single team", config.EnvVarTeam)
 	}
 
 	return map[string]string{

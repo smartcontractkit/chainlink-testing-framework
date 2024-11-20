@@ -400,6 +400,7 @@ func jobEnvVars(props *Props) *[]*k8s.EnvVar {
 		config.EnvVarSlackKey,
 		config.EnvVarSlackUser,
 		config.EnvVarUser,
+		config.EnvVarTeam,
 		config.EnvVarNodeSelector,
 		config.EnvVarDBURL,
 		config.EnvVarInternalDockerRepo,
