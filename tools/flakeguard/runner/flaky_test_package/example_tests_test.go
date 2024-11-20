@@ -2,6 +2,7 @@ package flakytestpackage
 
 import (
 	"os"
+	"sync"
 	"testing"
 )
 
@@ -48,4 +49,33 @@ func TestSkipped(t *testing.T) {
 func TestPanic(t *testing.T) {
 	t.Parallel()
 	panic("This test intentionally panics")
+}
+
+func TestRace(t *testing.T) {
+	t.Parallel()
+	t.Logf("This test should trigger a failure if run with the -race flag, but otherwise pass")
+
+	var sharedCounter int
+	var wg sync.WaitGroup
+
+	// Define a worker function that accesses sharedCounter without synchronization
+	worker := func() {
+		defer wg.Done()
+		for i := 0; i < 1000; i++ {
+			sharedCounter++
+		}
+	}
+
+	// Start multiple goroutines to introduce a race condition
+	const numGoroutines = 10
+	wg.Add(numGoroutines)
+	for i := 0; i < numGoroutines; i++ {
+		go worker()
+	}
+
+	// Wait for all goroutines to complete
+	wg.Wait()
+
+	// Log the result
+	t.Logf("Final value of sharedCounter: %d", sharedCounter)
 }
