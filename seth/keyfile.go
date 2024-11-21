@@ -55,7 +55,7 @@ func ReturnFunds(c *Client, toAddr string) error {
 	}
 
 	for i := 1; i < len(c.Addresses); i++ {
-		idx := i
+		idx := i //nolint
 		eg.Go(func() error {
 			ctx, balanceCancel := context.WithTimeout(egCtx, c.Cfg.Network.TxnTimeout.Duration())
 			balance, err := c.Client.BalanceAt(ctx, c.Addresses[idx], nil)
