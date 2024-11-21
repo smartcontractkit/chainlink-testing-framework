@@ -51,6 +51,27 @@ func TestPanic(t *testing.T) {
 	panic("This test intentionally panics")
 }
 
+// func TestFlakyPanic(t *testing.T) {
+// 	t.Parallel()
+
+// 	// Track if the test has run before
+// 	stateFile := "tmp_test_flaky_panic_state"
+
+// 	// If the state file does not exist, create it and fail the test
+// 	if _, err := os.Stat(stateFile); os.IsNotExist(err) {
+// 		if err := os.WriteFile(stateFile, []byte("run once"), 0644); err != nil { //nolint:gosec
+// 			t.Fatalf("THIS IS UNEXPECTED: failed to create state file: %v", err)
+// 		}
+// 		panic("This is a designed flaky test panicking as intended")
+// 	}
+// 	t.Cleanup(func() {
+// 		err := os.Remove(stateFile)
+// 		if err != nil {
+// 			t.Fatalf("THIS IS UNEXPECTED: failed to remove state file: %v", err)
+// 		}
+// 	})
+// }
+
 func TestRace(t *testing.T) {
 	t.Parallel()
 	t.Logf("This test should trigger a failure if run with the -race flag, but otherwise pass")

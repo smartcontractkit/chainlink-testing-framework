@@ -63,6 +63,16 @@ func (r *Runner) RunTests() ([]reports.TestResult, error) {
 		}
 	}
 
+	reports, err := parseTestResults(jsonFilePaths)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse test results: %w", err)
+	}
+	for _, report := range reports {
+		if report.Panics >= report.Runs { // This feels hacky, but there aren't any elegant solutions
+			report.Failures = 0 // We can sometimes double-count panics as failures
+			report.Panics = report.Runs
+		}
+	}
 	return parseTestResults(jsonFilePaths)
 }
 
@@ -129,6 +139,10 @@ type entry struct {
 	Package string  `json:"Package"`
 	Output  string  `json:"Output"`
 	Elapsed float64 `json:"Elapsed"` // Decimal value in seconds
+}
+
+func (e entry) String() string {
+	return fmt.Sprintf("Action: %s, Test: %s, Package: %s, Output: %s, Elapsed: %f", e.Action, e.Test, e.Package, e.Output, e.Elapsed)
 }
 
 // parseTestResults reads the test output files and returns the parsed test results.
