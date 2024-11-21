@@ -15,7 +15,7 @@ require (
 	github.com/chaos-mesh/chaos-mesh/api v0.0.0-20240709130330-9f4feec7553f
 	github.com/docker/docker v27.3.1+incompatible
 	github.com/docker/go-connections v0.5.0
-	github.com/ethereum/go-ethereum v1.13.8
+	github.com/ethereum/go-ethereum v1.14.11
 	github.com/go-resty/resty/v2 v2.15.3
 	github.com/google/go-github/v41 v41.0.0
 	github.com/google/uuid v1.6.0
@@ -51,7 +51,11 @@ require (
 	k8s.io/kubectl v0.31.2
 )
 
-require github.com/smartcontractkit/chainlink-testing-framework/lib/grafana v1.50.0 // indirect
+require (
+	github.com/cockroachdb/fifo v0.0.0-20240606204812-0bbfbd93a7ce // indirect
+	github.com/ethereum/go-verkle v0.1.1-0.20240829091221-dffa7562dbe9 // indirect
+	github.com/smartcontractkit/chainlink-testing-framework/lib/grafana v1.50.0 // indirect
+)
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.7.0 // indirect
@@ -65,7 +69,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/OneOfOne/xxhash v1.2.8 // indirect
-	github.com/VictoriaMetrics/fastcache v1.12.1 // indirect
+	github.com/VictoriaMetrics/fastcache v1.12.2 // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
@@ -85,9 +89,9 @@ require (
 	github.com/aws/smithy-go v1.22.0 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/bits-and-blooms/bitset v1.10.0 // indirect
+	github.com/bits-and-blooms/bitset v1.13.0 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
-	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
+	github.com/btcsuite/btcd/btcec/v2 v2.3.4 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/bytedance/sonic v1.9.1 // indirect
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b // indirect
@@ -97,10 +101,10 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chai2010/gettext-go v1.0.2 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
-	github.com/cockroachdb/errors v1.9.1 // indirect
+	github.com/cockroachdb/errors v1.11.3 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
-	github.com/cockroachdb/pebble v0.0.0-20230928194634-aa077af62593 // indirect
-	github.com/cockroachdb/redact v1.1.3 // indirect
+	github.com/cockroachdb/pebble v1.1.2 // indirect
+	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
 	github.com/consensys/bavard v0.1.13 // indirect
 	github.com/consensys/gnark-crypto v0.12.1 // indirect
@@ -109,10 +113,10 @@ require (
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/cpuguy83/dockercfg v0.3.2 // indirect
-	github.com/crate-crypto/go-ipa v0.0.0-20231025140028-3c0104f4b233 // indirect
-	github.com/crate-crypto/go-kzg-4844 v0.7.0 // indirect
+	github.com/crate-crypto/go-ipa v0.0.0-20240223125850-b1e8a79f509c // indirect
+	github.com/crate-crypto/go-kzg-4844 v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
-	github.com/deckarep/golang-set/v2 v2.3.0 // indirect
+	github.com/deckarep/golang-set/v2 v2.6.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/dennwc/varint v1.0.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
@@ -121,7 +125,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
-	github.com/ethereum/c-kzg-4844 v0.4.0 // indirect
+	github.com/ethereum/c-kzg-4844 v1.0.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f // indirect
 	github.com/facette/natsort v0.0.0-20181210072756-2cd4dd1e2dcb // indirect
@@ -131,8 +135,7 @@ require (
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
-	github.com/gballet/go-verkle v0.1.1-0.20231031103413-a67434b50f46 // indirect
-	github.com/getsentry/sentry-go v0.19.0 // indirect
+	github.com/getsentry/sentry-go v0.27.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.9.1 // indirect
 	github.com/go-errors/errors v1.4.2 // indirect
@@ -140,7 +143,7 @@ require (
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-openapi/analysis v0.21.4 // indirect
 	github.com/go-openapi/errors v0.20.4 // indirect
 	github.com/go-openapi/jsonpointer v0.20.0 // indirect
@@ -267,7 +270,7 @@ require (
 	github.com/sony/gobreaker v0.5.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
-	github.com/supranational/blst v0.3.11 // indirect
+	github.com/supranational/blst v0.3.13 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect

@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/seth"
+	network_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/NetworkDebugContract"
 	"github.com/smartcontractkit/chainlink-testing-framework/seth/test_utils"
-	network_debug_contract "github.com/smartcontractkit/seth/contracts/bind/debug"
 )
 
 func commonEnvVars(t *testing.T) {
