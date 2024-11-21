@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
+	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 	testToken "github.com/smartcontractkit/chainlink-testing-framework/framework/examples/example_components/gethwrappers"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/examples/example_components/onchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
@@ -12,15 +14,17 @@ import (
 	"testing"
 )
 
-type CfgForkChains struct {
+type CfgForkChainsOffChain struct {
 	ContractsSrc  *onchain.Input    `toml:"contracts_src" validate:"required"`
 	ContractsDst  *onchain.Input    `toml:"contracts_dst" validate:"required"`
 	BlockchainSrc *blockchain.Input `toml:"blockchain_src" validate:"required"`
 	BlockchainDst *blockchain.Input `toml:"blockchain_dst" validate:"required"`
+	// off-chain components
+	NodeSet *ns.Input `toml:"nodeset" validate:"required"`
 }
 
-func TestFork(t *testing.T) {
-	in, err := framework.Load[CfgForkChains](t)
+func TestOffChainAndFork(t *testing.T) {
+	in, err := framework.Load[CfgForkChainsOffChain](t)
 	require.NoError(t, err)
 
 	// spin up 2 anvils
@@ -28,6 +32,36 @@ func TestFork(t *testing.T) {
 	require.NoError(t, err)
 
 	bcDst, err := blockchain.NewBlockchainNetwork(in.BlockchainDst)
+	require.NoError(t, err)
+
+	// create configs for 2 EVM networks
+	srcNetworkCfg, err := clnode.NewNetworkCfg(&clnode.EVMNetworkConfig{
+		MinIncomingConfirmations: 1,
+		MinContractPayment:       "0.00001 link",
+		ChainID:                  bcSrc.ChainID,
+		EVMNodes: []*clnode.EVMNode{
+			{
+				SendOnly: false,
+				Order:    100,
+			},
+		},
+	}, bcSrc)
+	dstNetworkConfig, err := clnode.NewNetworkCfg(&clnode.EVMNetworkConfig{
+		MinIncomingConfirmations: 1,
+		MinContractPayment:       "0.00001 link",
+		ChainID:                  bcSrc.ChainID,
+		EVMNodes: []*clnode.EVMNode{
+			{
+				SendOnly: false,
+				Order:    100,
+			},
+		},
+	}, bcDst)
+	// override the configuration
+	in.NodeSet.NodeSpecs[0].Node.TestConfigOverrides = srcNetworkCfg + dstNetworkConfig
+
+	// create a node set
+	_, err = ns.NewSharedDBNodeSet(in.NodeSet, bcSrc)
 	require.NoError(t, err)
 
 	// connect 2 clients
@@ -45,7 +79,7 @@ func TestFork(t *testing.T) {
 		Build()
 
 	// deploy 2 example product contracts
-	// you can replace it with chainlink-deployments
+	// you should replace it with chainlink-deployments
 	in.ContractsSrc.URL = bcSrc.Nodes[0].HostWSUrl
 	contractsSrc, err := onchain.NewProductOnChainDeployment(in.ContractsSrc)
 	require.NoError(t, err)
@@ -54,15 +88,15 @@ func TestFork(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("test some contracts with fork", func(t *testing.T) {
-		// interact with source chain
+		// interact with a source chain
 		i, err := testToken.NewBurnMintERC677(contractsSrc.Addresses[0], scSrc.Client)
 		require.NoError(t, err)
 		balance, err := i.BalanceOf(scSrc.NewCallOpts(), contractsSrc.Addresses[0])
 		require.NoError(t, err)
 		fmt.Println(balance)
 
-		// interact with destination chain
-		i, err = testToken.NewBurnMintERC677(contractsDst.Addresses[0], scSrc.Client)
+		// interact with a destination chain
+		i, err = testToken.NewBurnMintERC677(contractsDst.Addresses[0], scDst.Client)
 		require.NoError(t, err)
 		balance, err = i.BalanceOf(scDst.NewCallOpts(), contractsDst.Addresses[0])
 		require.NoError(t, err)

@@ -44,6 +44,7 @@ func New(url string, headers http.Header) *RPCClient {
 	}
 }
 
+// AnvilAutoImpersonate sets auto impersonification to true or false
 func (m *RPCClient) AnvilAutoImpersonate(b bool) error {
 	rInt := rand.Int()
 	payload := map[string]interface{}{
