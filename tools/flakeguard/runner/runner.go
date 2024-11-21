@@ -11,7 +11,9 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 )
@@ -141,7 +143,7 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 				Test    string  `json:"Test"`
 				Package string  `json:"Package"`
 				Output  string  `json:"Output"`
-				Elapsed float64 `json:"Elapsed"`
+				Elapsed float64 `json:"Elapsed"` // Decimal value in seconds
 			}
 			if err := json.Unmarshal(scanner.Bytes(), &entry); err != nil {
 				// Collect 15 lines after the error for more context
@@ -195,21 +197,33 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 				}
 			case "pass":
 				if entry.Test != "" {
-					result.Durations = append(result.Durations, entry.Elapsed)
+					duration, err := time.ParseDuration(strconv.FormatFloat(entry.Elapsed, 'f', -1, 64) + "s")
+					if err != nil {
+						return nil, fmt.Errorf("failed to parse duration: %w", err)
+					}
+					result.Durations = append(result.Durations, duration)
 					result.Successes++
 				}
 			case "fail":
 				if entry.Test != "" {
-					result.Durations = append(result.Durations, entry.Elapsed)
+					duration, err := time.ParseDuration(strconv.FormatFloat(entry.Elapsed, 'f', -1, 64) + "s")
+					if err != nil {
+						return nil, fmt.Errorf("failed to parse duration: %w", err)
+					}
+					result.Durations = append(result.Durations, duration)
 					result.Failures++
 				}
 			case "output":
 				// plain output already handled above
 				if panicRe.MatchString(entry.Output) {
 					if entry.Test != "" {
+						duration, err := time.ParseDuration(strconv.FormatFloat(entry.Elapsed, 'f', -1, 64) + "s")
+						if err != nil {
+							return nil, fmt.Errorf("failed to parse duration: %w", err)
+						}
+						result.Durations = append(result.Durations, duration)
 						// Test-level panic
 						result.Panicked = true
-						result.Durations = append(result.Durations, entry.Elapsed)
 						result.Panics++
 					} else {
 						// Package-level panic
@@ -223,9 +237,13 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 				}
 			case "skip":
 				if entry.Test != "" {
+					duration, err := time.ParseDuration(strconv.FormatFloat(entry.Elapsed, 'f', -1, 64) + "s")
+					if err != nil {
+						return nil, fmt.Errorf("failed to parse duration: %w", err)
+					}
+					result.Durations = append(result.Durations, duration)
 					result.Skipped = true
 					result.Skips++
-					result.Durations = append(result.Durations, entry.Elapsed)
 				}
 			}
 			if entry.Test != "" {

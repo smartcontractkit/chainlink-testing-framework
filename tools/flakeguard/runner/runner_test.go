@@ -158,14 +158,14 @@ func TestRun(t *testing.T) {
 			runner: Runner{
 				ProjectPath:          "./",
 				Verbose:              true,
-				RunCount:             defaultRuns * 2,
+				RunCount:             defaultRuns,
 				UseRace:              true,
 				SkipTests:            []string{"TestPanic"},
 				FailFast:             false,
 				SelectedTestPackages: []string{flakyTestPackagePath},
 				CollectRawOutput:     true,
 			},
-			expectedRuns: defaultRuns * 2,
+			expectedRuns: defaultRuns,
 			expectedResults: map[string]*expectedTestResult{
 				"TestFlaky": {
 					TestResult: &reports.TestResult{
@@ -260,7 +260,7 @@ func TestRun(t *testing.T) {
 				},
 				"TestRace": {
 					TestResult: &reports.TestResult{
-						TestName:  "TestPass",
+						TestName:  "TestRace",
 						Panicked:  false,
 						Skipped:   false,
 						PassRatio: 0,

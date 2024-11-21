@@ -9,25 +9,26 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
 // TestResult represents the result of a single test being run through flakeguard.
 type TestResult struct {
 	TestName            string
 	TestPackage         string
-	Panicked            bool      // Indicates a test-level panic
-	PackagePanicked     bool      // Indicates a package-level panic
-	PassRatio           float64   // Pass ratio in decimal format like 0.5
-	PassRatioPercentage string    // Pass ratio in percentage format like "50%"
-	Skipped             bool      // Indicates if the test was skipped
-	Runs                int       // Count of how many times the test was run
-	Failures            int       // Count of how many times the test failed
-	Successes           int       // Count of how many times the test passed
-	Panics              int       // Count of how many times the test panicked
-	Skips               int       // Count of how many times the test was skipped
-	Outputs             []string  // Stores outputs for a test
-	Durations           []float64 // Stores elapsed time in seconds for each run of the test
-	PackageOutputs      []string  // Stores package-level outputs
+	Panicked            bool            // Indicates a test-level panic
+	PackagePanicked     bool            // Indicates a package-level panic
+	PassRatio           float64         // Pass ratio in decimal format like 0.5
+	PassRatioPercentage string          // Pass ratio in percentage format like "50%"
+	Skipped             bool            // Indicates if the test was skipped
+	Runs                int             // Count of how many times the test was run
+	Failures            int             // Count of how many times the test failed
+	Successes           int             // Count of how many times the test passed
+	Panics              int             // Count of how many times the test panicked
+	Skips               int             // Count of how many times the test was skipped
+	Outputs             []string        // Stores outputs for a test
+	Durations           []time.Duration // Stores elapsed time for each run of the test
+	PackageOutputs      []string        // Stores package-level outputs
 }
 
 // FilterFailedTests returns a slice of TestResult where the pass ratio is below the specified threshold.
@@ -150,7 +151,7 @@ func PrintTests(tests []TestResult, w io.Writer) {
 		fmt.Fprintf(w, "Runs: %d\n", test.Runs)
 		durationsStr := make([]string, len(test.Durations))
 		for i, duration := range test.Durations {
-			durationsStr[i] = fmt.Sprintf("%.2fs", duration)
+			durationsStr[i] = duration.String()
 		}
 		fmt.Fprintf(w, "Durations: %s\n", strings.Join(durationsStr, ", "))
 		fmt.Fprintf(w, "Outputs:\n%s\n", strings.Join(test.Outputs, ""))
@@ -188,7 +189,7 @@ func saveResults(filePath string, results []TestResult) error {
 		PassRatioPercentage string
 		Skipped             bool
 		Runs                int
-		Durations           []float64
+		Durations           []time.Duration
 	}
 
 	var filteredResults []filteredTestResult

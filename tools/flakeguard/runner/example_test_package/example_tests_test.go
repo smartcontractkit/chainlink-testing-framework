@@ -55,25 +55,25 @@ func TestRace(t *testing.T) {
 	t.Parallel()
 	t.Logf("This test should trigger a failure if run with the -race flag, but otherwise pass")
 
-	var sharedCounter int
-	var wg sync.WaitGroup
+	var (
+		numGoroutines = 100
+		sharedCounter int
+		wg            sync.WaitGroup
+	)
 
-	// Define a worker function that accesses sharedCounter without synchronization
-	worker := func() {
+	worker := func(id int) {
 		defer wg.Done()
 		for i := 0; i < 1000; i++ {
 			sharedCounter++
+			_ = sharedCounter * id
 		}
 	}
 
-	// Start multiple goroutines to introduce a race condition
-	const numGoroutines = 10
 	wg.Add(numGoroutines)
 	for i := 0; i < numGoroutines; i++ {
-		go worker()
+		go worker(i)
 	}
 
-	// Wait for all goroutines to complete
 	wg.Wait()
 
 	// Log the result

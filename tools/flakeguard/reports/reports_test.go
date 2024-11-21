@@ -7,8 +7,11 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFilterFailedTests(t *testing.T) {
@@ -22,14 +25,10 @@ func TestFilterFailedTests(t *testing.T) {
 	failedTests := FilterFailedTests(results, 0.6)
 	expected := []string{"Test1", "Test3"}
 
-	if len(failedTests) != len(expected) {
-		t.Fatalf("expected %d failed tests, got %d", len(expected), len(failedTests))
-	}
+	require.Equal(t, len(expected), len(failedTests), "not as many failed tests as expected")
 
 	for i, test := range failedTests {
-		if test.TestName != expected[i] {
-			t.Errorf("expected test %s, got %s", expected[i], test.TestName)
-		}
+		assert.Equal(t, expected[i], test.TestName, "wrong test name")
 	}
 }
 
@@ -44,14 +43,10 @@ func TestFilterPassedTests(t *testing.T) {
 	passedTests := FilterPassedTests(results, 0.6)
 	expected := []string{"Test1", "Test2"}
 
-	if len(passedTests) != len(expected) {
-		t.Fatalf("expected %d passed tests, got %d", len(expected), len(passedTests))
-	}
+	require.Equal(t, len(expected), len(passedTests), "not as many passed tests as expected")
 
 	for i, test := range passedTests {
-		if test.TestName != expected[i] {
-			t.Errorf("expected test %s, got %s", expected[i], test.TestName)
-		}
+		assert.Equal(t, expected[i], test.TestName, "wrong test name")
 	}
 }
 
@@ -66,14 +61,10 @@ func TestFilterSkippedTests(t *testing.T) {
 	skippedTests := FilterSkippedTests(results)
 	expected := []string{"Test2", "Test4"}
 
-	if len(skippedTests) != len(expected) {
-		t.Fatalf("expected %d skipped tests, got %d", len(expected), len(skippedTests))
-	}
+	require.Equal(t, len(expected), len(skippedTests), "not as many skipped tests as expected")
 
 	for i, test := range skippedTests {
-		if test.TestName != expected[i] {
-			t.Errorf("expected test %s, got %s", expected[i], test.TestName)
-		}
+		assert.Equal(t, expected[i], test.TestName, "wrong test name")
 	}
 }
 
@@ -86,7 +77,7 @@ func TestPrintTests(t *testing.T) {
 			Skipped:     false,
 			Runs:        4,
 			Outputs:     []string{"Output1", "Output2"},
-			Durations:   []float64{1.2, 0.9, 1.1, 1.0},
+			Durations:   []time.Duration{time.Millisecond * 1200, time.Millisecond * 900, time.Millisecond * 1100, time.Second},
 		},
 	}
 
@@ -104,14 +95,12 @@ func TestPrintTests(t *testing.T) {
 		"PassRatio: 0.75",
 		"Skipped: false",
 		"Runs: 4",
-		"Durations: 1.20s, 0.90s, 1.10s, 1.00s",
+		"Durations: 1.2s, 900ms, 1.1s, 1s",
 		"Outputs:\nOutput1Output2",
 	}
 
 	for _, expected := range expectedContains {
-		if !strings.Contains(output, expected) {
-			t.Errorf("expected output to contain %q, but it did not", expected)
-		}
+		assert.Contains(t, output, expected, "printed test output doesn't contain expected string")
 	}
 }
 
@@ -127,14 +116,13 @@ func sortTestResults(results []TestResult) {
 
 // Helper function to write a JSON file for testing
 func writeTempJSONFile(t *testing.T, dir string, filename string, data interface{}) string {
+	t.Helper()
+
 	filePath := filepath.Join(dir, filename)
 	fileData, err := json.Marshal(data)
-	if err != nil {
-		t.Fatalf("Failed to marshal JSON: %v", err)
-	}
-	if err := os.WriteFile(filePath, fileData, 0644); err != nil { //nolint:gosec
-		t.Fatalf("Failed to write JSON file: %v", err)
-	}
+	require.NoError(t, err)
+	err = os.WriteFile(filePath, fileData, 0644) //nolint:gosec
+	require.NoError(t, err)
 	return filePath
 }
 
@@ -163,7 +151,7 @@ func TestAggregateTestResults(t *testing.T) {
 						PassRatioPercentage: "100%",
 						Skipped:             false,
 						Runs:                2,
-						Durations:           []float64{0.01, 0.02},
+						Durations:           []time.Duration{time.Millisecond * 10, time.Millisecond * 20},
 						Outputs:             []string{"Output1", "Output2"},
 					},
 				},
@@ -175,7 +163,7 @@ func TestAggregateTestResults(t *testing.T) {
 						PassRatioPercentage: "50%",
 						Skipped:             false,
 						Runs:                4,
-						Durations:           []float64{0.05, 0.05, 0.05, 0.05},
+						Durations:           []time.Duration{time.Millisecond * 50, time.Millisecond * 50, time.Millisecond * 50, time.Millisecond * 50},
 						Outputs:             []string{"Output3", "Output4", "Output5", "Output6"},
 					},
 				},
@@ -188,7 +176,7 @@ func TestAggregateTestResults(t *testing.T) {
 					PassRatioPercentage: "100%",
 					Skipped:             false,
 					Runs:                2,
-					Durations:           []float64{0.01, 0.02},
+					Durations:           []time.Duration{time.Millisecond * 10, time.Millisecond * 20},
 					Outputs:             []string{"Output1", "Output2"},
 				},
 				{
@@ -198,7 +186,7 @@ func TestAggregateTestResults(t *testing.T) {
 					PassRatioPercentage: "50%",
 					Skipped:             false,
 					Runs:                4,
-					Durations:           []float64{0.05, 0.05, 0.05, 0.05},
+					Durations:           []time.Duration{time.Millisecond * 50, time.Millisecond * 50, time.Millisecond * 50, time.Millisecond * 50},
 					Outputs:             []string{"Output3", "Output4", "Output5", "Output6"},
 				},
 			},
@@ -214,7 +202,7 @@ func TestAggregateTestResults(t *testing.T) {
 						PassRatioPercentage: "100%",
 						Skipped:             false,
 						Runs:                2,
-						Durations:           []float64{0.1, 0.1},
+						Durations:           []time.Duration{time.Millisecond * 100, time.Millisecond * 100},
 						Outputs:             []string{"Output7", "Output8"},
 					},
 				},
@@ -226,7 +214,7 @@ func TestAggregateTestResults(t *testing.T) {
 						PassRatioPercentage: "50%",
 						Skipped:             false,
 						Runs:                2,
-						Durations:           []float64{0.2, 0.2},
+						Durations:           []time.Duration{time.Millisecond * 200, time.Millisecond * 200},
 						Outputs:             []string{"Output9", "Output10"},
 					},
 				},
@@ -239,7 +227,7 @@ func TestAggregateTestResults(t *testing.T) {
 					PassRatioPercentage: "75%",
 					Skipped:             false,
 					Runs:                4,
-					Durations:           []float64{0.1, 0.1, 0.2, 0.2},
+					Durations:           []time.Duration{time.Millisecond * 100, time.Millisecond * 100, time.Millisecond * 200, time.Millisecond * 200},
 					Outputs:             []string{"Output7", "Output8", "Output9", "Output10"},
 				},
 			},
@@ -255,7 +243,7 @@ func TestAggregateTestResults(t *testing.T) {
 						PassRatioPercentage: "100%",
 						Skipped:             true,
 						Runs:                3,
-						Durations:           []float64{0.1, 0.2, 0.1},
+						Durations:           []time.Duration{time.Millisecond * 100, time.Millisecond * 200, time.Millisecond * 100},
 						Outputs:             []string{"Output11", "Output12", "Output13"},
 					},
 				},
@@ -267,7 +255,7 @@ func TestAggregateTestResults(t *testing.T) {
 						PassRatioPercentage: "100%",
 						Skipped:             true,
 						Runs:                2,
-						Durations:           []float64{0.15, 0.15},
+						Durations:           []time.Duration{time.Millisecond * 150, time.Millisecond * 150},
 						Outputs:             []string{"Output14", "Output15"},
 					},
 				},
@@ -280,7 +268,7 @@ func TestAggregateTestResults(t *testing.T) {
 					PassRatioPercentage: "100%",
 					Skipped:             true, // Should remain true as all runs are skipped
 					Runs:                5,
-					Durations:           []float64{0.1, 0.2, 0.1, 0.15, 0.15},
+					Durations:           []time.Duration{time.Millisecond * 100, time.Millisecond * 200, time.Millisecond * 100, time.Millisecond * 150, time.Millisecond * 150},
 					Outputs:             []string{"Output11", "Output12", "Output13", "Output14", "Output15"},
 				},
 			},
@@ -305,27 +293,18 @@ func TestAggregateTestResults(t *testing.T) {
 			sortTestResults(tc.expectedOutput)
 
 			// Compare the result with the expected output
-			if len(result) != len(tc.expectedOutput) {
-				t.Fatalf("Expected %d results, got %d", len(tc.expectedOutput), len(result))
-			}
+			require.Equal(t, len(tc.expectedOutput), len(result), "number of results mismatch")
 
 			for i, expected := range tc.expectedOutput {
 				got := result[i]
-				if got.TestName != expected.TestName || got.TestPackage != expected.TestPackage || got.Runs != expected.Runs || got.Skipped != expected.Skipped {
-					t.Errorf("Result %d - expected %+v, got %+v", i, expected, got)
-				}
-				if got.PassRatio != expected.PassRatio {
-					t.Errorf("Result %d - expected PassRatio %f, got %f", i, expected.PassRatio, got.PassRatio)
-				}
-				if got.PassRatioPercentage != expected.PassRatioPercentage {
-					t.Errorf("Result %d - expected PassRatioPercentage %s, got %s", i, expected.PassRatioPercentage, got.PassRatioPercentage)
-				}
-				if len(got.Durations) != len(expected.Durations) {
-					t.Errorf("Result %d - expected %d durations, got %d", i, len(expected.Durations), len(got.Durations))
-				}
-				if len(got.Outputs) != len(expected.Outputs) {
-					t.Errorf("Result %d - expected %d outputs, got %d", i, len(expected.Outputs), len(got.Outputs))
-				}
+				assert.Equal(t, expected.TestName, got.TestName, "TestName mismatch")
+				assert.Equal(t, expected.TestPackage, got.TestPackage, "TestPackage mismatch")
+				assert.Equal(t, expected.Runs, got.Runs, "Runs mismatch")
+				assert.Equal(t, expected.Skipped, got.Skipped, "Skipped mismatch")
+				assert.Equal(t, expected.PassRatio, got.PassRatio, "PassRatio mismatch")
+				assert.Equal(t, expected.PassRatioPercentage, got.PassRatioPercentage, "PassRatioPercentage mismatch")
+				assert.Equal(t, len(expected.Durations), len(got.Durations), "Durations mismatch")
+				assert.Equal(t, len(expected.Outputs), len(got.Outputs), "Outputs mismatch")
 			}
 		})
 	}
