@@ -67,13 +67,14 @@ func (r *Runner) RunTests() ([]reports.TestResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
-	for _, report := range reports {
-		if report.Panics >= report.Runs { // This feels hacky, but there aren't any elegant solutions
-			report.Failures = 0 // We can sometimes double-count panics as failures
-			report.Panics = report.Runs
+	for index, report := range reports {
+		if report.Panics >= r.RunCount { // This feels hacky, but there aren't any elegant solutions
+			reports[index].Failures = 0 // We can sometimes double-count panics as failures
+			reports[index].Panics = r.RunCount
+			reports[index].Runs = r.RunCount
 		}
 	}
-	return parseTestResults(jsonFilePaths)
+	return reports, nil
 }
 
 // RawOutput retrieves the raw output from the test runs, if CollectRawOutput enabled.
@@ -242,11 +243,12 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 					testDetails[panicTestKey].Panicked = true
 					testDetails[panicTestKey].Panics++
 					testDetails[panicTestKey].Runs++
-					duration, err := time.ParseDuration(strconv.FormatFloat(entryLine.Elapsed, 'f', -1, 64) + "s")
-					if err != nil {
-						return nil, fmt.Errorf("failed to parse duration: %w", err)
-					}
-					testDetails[panicTestKey].Durations = append(testDetails[panicTestKey].Durations, duration)
+					// TODO: durations and panics are weird in the same way as Runs: lots of double-counting
+					// duration, err := time.ParseDuration(strconv.FormatFloat(entryLine.Elapsed, 'f', -1, 64) + "s")
+					// if err != nil {
+					// 	return nil, fmt.Errorf("failed to parse duration: %w", err)
+					// }
+					// testDetails[raceTestKey].Durations = append(testDetails[raceTestKey].Durations, duration)
 					testDetails[panicTestKey].Outputs = append(testDetails[panicTestKey].Outputs, entryLine.Output)
 					for _, entry := range detectedEntries {
 						if entry.Test == "" {
@@ -263,11 +265,12 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 					raceTestKey := fmt.Sprintf("%s/%s", entryLine.Package, raceTest)
 					testDetails[raceTestKey].Races++
 					testDetails[raceTestKey].Runs++
-					duration, err := time.ParseDuration(strconv.FormatFloat(entryLine.Elapsed, 'f', -1, 64) + "s")
-					if err != nil {
-						return nil, fmt.Errorf("failed to parse duration: %w", err)
-					}
-					testDetails[raceTestKey].Durations = append(testDetails[raceTestKey].Durations, duration)
+					// TODO: durations and races are weird in the same way as Runs: lots of double-counting
+					// duration, err := time.ParseDuration(strconv.FormatFloat(entryLine.Elapsed, 'f', -1, 64) + "s")
+					// if err != nil {
+					// 	return nil, fmt.Errorf("failed to parse duration: %w", err)
+					// }
+					// testDetails[raceTestKey].Durations = append(testDetails[raceTestKey].Durations, duration)
 					testDetails[raceTestKey].Outputs = append(testDetails[raceTestKey].Outputs, entryLine.Output)
 					for _, entry := range detectedEntries {
 						if entry.Test == "" {
