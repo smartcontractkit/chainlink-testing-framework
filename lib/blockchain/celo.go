@@ -3,6 +3,7 @@ package blockchain
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/big"
 	"strings"
 
@@ -82,6 +83,9 @@ func (e *CeloClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOpts, 
 	nonce, err := e.GetNonce(context.Background(), common.HexToAddress(from.Address()))
 	if err != nil {
 		return nil, err
+	}
+	if nonce > math.MaxInt64 {
+		return nil, fmt.Errorf("nonce value %d exceeds int64 range", nonce)
 	}
 	opts.Nonce = big.NewInt(int64(nonce))
 

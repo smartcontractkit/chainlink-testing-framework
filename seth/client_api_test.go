@@ -230,15 +230,14 @@ func TestAPIKeys(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			wg := &sync.WaitGroup{}
 			for i := 1; i < 61; i++ {
-				i := i
 				wg.Add(1)
-				go func() {
+				go func(i int) {
 					defer wg.Done()
 					_, err := c.Decode(
 						TestEnv.DebugContract.AddCounter(c.NewTXKeyOpts(i), big.NewInt(0), big.NewInt(1)),
 					)
 					require.NoError(t, err)
-				}()
+				}(i)
 			}
 			wg.Wait()
 			for i := 1; i < 61; i++ {
