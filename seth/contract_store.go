@@ -50,8 +50,7 @@ func (c *ContractStore) GetAllABIs() []*abi.ABI {
 
 	var allABIs []*abi.ABI
 	for _, a := range c.ABIs {
-		alias := a
-		allABIs = append(allABIs, &alias)
+		allABIs = append(allABIs, &a)
 	}
 
 	return allABIs
