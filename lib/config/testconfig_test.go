@@ -218,7 +218,7 @@ func TestValidateNetworkConfig(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc // capture range variable
+		tc := tc //nolint capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.networkConfig.Validate()
 			if tc.expectedError != nil {

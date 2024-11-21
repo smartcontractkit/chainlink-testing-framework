@@ -5,7 +5,7 @@ pkgs.mkShell {
     foundry-bin
     go-ethereum
     solc-select
-    go
+    go_1_21
     gopls
     delve
     gotools

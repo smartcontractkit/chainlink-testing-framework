@@ -154,7 +154,7 @@ func (g *Gauntlet) ExecCommandWithRetries(args []string, options ExecCommandOpti
 		},
 		retry.Delay(options.RetryDelay),
 		retry.MaxDelay(options.RetryDelay),
-		retry.Attempts(uint(options.RetryCount)),
+		retry.Attempts(uint(options.RetryCount)), //nolint
 	)
 
 	return output, err
