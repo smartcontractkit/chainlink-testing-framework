@@ -10,6 +10,7 @@
     - [NodeSet with Capabilities](./framework/nodeset_capabilities.md)
     - [NodeSet (Local Docker builds)](./framework/nodeset_docker_rebuild.md)
     - [NodeSet Compat Environment](./framework/nodeset_compatibility.md)
+    - [Fork Testing](./framework/fork.md)
     - [NodeSet with External Blockchain]()
     - [CLI](./framework/cli.md)
     - [Configuration](./framework/configuration.md)
