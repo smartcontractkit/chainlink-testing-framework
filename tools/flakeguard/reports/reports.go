@@ -27,9 +27,9 @@ type TestResult struct {
 	Panics              int             // Count of how many times the test panicked
 	Races               int             // Count of how many times the test encountered a data race
 	Skips               int             // Count of how many times the test was skipped
-	Outputs             []string        // Stores outputs for a test
+	Outputs             []string        `json:"outputs,omitempty"` // Stores outputs for a test
 	Durations           []time.Duration // Stores elapsed time for each run of the test
-	PackageOutputs      []string        // Stores package-level outputs
+	PackageOutputs      []string        `json:"package_outputs,omitempty"` // Stores package-level outputs
 }
 
 // FilterFailedTests returns a slice of TestResult where the pass ratio is below the specified threshold.
@@ -142,6 +142,7 @@ func AggregateTestResults(folderPath string) ([]TestResult, error) {
 }
 
 // PrintTests prints tests in a pretty format
+// TODO: Update this with new fields
 func PrintTests(tests []TestResult, w io.Writer) {
 	for i, test := range tests {
 		fmt.Fprintf(w, "\n--- Test %d ---\n", i+1)
@@ -150,6 +151,11 @@ func PrintTests(tests []TestResult, w io.Writer) {
 		fmt.Fprintf(w, "PassRatio: %.2f\n", test.PassRatio)
 		fmt.Fprintf(w, "Skipped: %v\n", test.Skipped)
 		fmt.Fprintf(w, "Runs: %d\n", test.Runs)
+		fmt.Fprintf(w, "Successes: %d\n", test.Successes)
+		fmt.Fprintf(w, "Failures: %d\n", test.Failures)
+		fmt.Fprintf(w, "Panics: %d\n", test.Panics)
+		fmt.Fprintf(w, "Races: %d\n", test.Races)
+		fmt.Fprintf(w, "Skips: %d\n", test.Skips)
 		durationsStr := make([]string, len(test.Durations))
 		for i, duration := range test.Durations {
 			durationsStr[i] = duration.String()
@@ -180,32 +186,12 @@ func SaveFilteredResultsAndLogs(outputResultsPath, outputLogsPath string, failed
 
 // Helper function to save results to JSON file
 func saveResults(filePath string, results []TestResult) error {
-	// Define a struct type without Outputs and PackageOutputs
-	type filteredTestResult struct {
-		TestName            string
-		TestPackage         string
-		Panicked            bool
-		PackagePanicked     bool
-		PassRatio           float64
-		PassRatioPercentage string
-		Skipped             bool
-		Runs                int
-		Durations           []time.Duration
-	}
-
-	var filteredResults []filteredTestResult
+	var filteredResults []TestResult
 	for _, r := range results {
-		filteredResults = append(filteredResults, filteredTestResult{
-			TestName:            r.TestName,
-			TestPackage:         r.TestPackage,
-			Panicked:            r.Panicked,
-			PackagePanicked:     r.PackagePanicked,
-			PassRatio:           r.PassRatio,
-			PassRatioPercentage: r.PassRatioPercentage,
-			Skipped:             r.Skipped,
-			Runs:                r.Runs,
-			Durations:           r.Durations,
-		})
+		filteredResult := r
+		filteredResult.Outputs = nil
+		filteredResult.PackageOutputs = nil
+		filteredResults = append(filteredResults, filteredResult)
 	}
 
 	data, err := json.MarshalIndent(filteredResults, "", "  ")

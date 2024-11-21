@@ -13,23 +13,40 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
+var (
 	defaultRuns          = 5
 	flakyTestPackagePath = "./example_test_package"
 	debugDir             = "debug_outputs"
 )
 
 type expectedTestResult struct {
-	TestResult *reports.TestResult
-	seen       bool
+	allSuccesses bool
+	allFailures  bool
+	allPanics    bool
+	allSkips     bool
+	allRaces     bool
+	packagePanic bool
+	maximumRuns  int
+
+	exactRuns       *int
+	minimumRuns     *int
+	exactPassRate   *float64
+	minimumPassRate *float64
+	maximumPassRate *float64
+
+	seen bool
 }
 
 func TestRun(t *testing.T) {
+	var (
+		oneRun          = 1
+		successPassRate = 1.0
+		failPassRate    = 0.0
+	)
 	testCases := []struct {
-		name            string
-		runner          Runner
-		expectedRuns    int
-		expectedResults map[string]*expectedTestResult
+		name          string
+		runner        Runner
+		expectedTests map[string]*expectedTestResult
 	}{
 		{
 			name: "default",
@@ -43,50 +60,36 @@ func TestRun(t *testing.T) {
 				SelectedTestPackages: []string{flakyTestPackagePath},
 				CollectRawOutput:     true,
 			},
-			expectedRuns: defaultRuns,
-			expectedResults: map[string]*expectedTestResult{
+			expectedTests: map[string]*expectedTestResult{
 				"TestFlaky": {
-					TestResult: &reports.TestResult{
-						TestName: "TestFlaky",
-						Panicked: false,
-						Skipped:  false,
-					},
+					exactRuns:       &defaultRuns,
+					minimumPassRate: &failPassRate,
+					maximumPassRate: &successPassRate,
+					maximumRuns:     defaultRuns,
 				},
 				"TestFail": {
-					TestResult: &reports.TestResult{
-						TestName:  "TestFail",
-						Panicked:  false,
-						Skipped:   false,
-						PassRatio: 0,
-						Failures:  defaultRuns,
-					},
+					exactRuns:     &defaultRuns,
+					exactPassRate: &failPassRate,
+					allFailures:   true,
+					maximumRuns:   defaultRuns,
 				},
 				"TestPass": {
-					TestResult: &reports.TestResult{
-						TestName:  "TestPass",
-						Panicked:  false,
-						Skipped:   false,
-						PassRatio: 1,
-						Successes: defaultRuns,
-					},
+					exactRuns:     &defaultRuns,
+					exactPassRate: &successPassRate,
+					allSuccesses:  true,
+					maximumRuns:   defaultRuns,
 				},
 				"TestSkipped": {
-					TestResult: &reports.TestResult{
-						TestName:  "TestSkipped",
-						Panicked:  false,
-						Skipped:   true,
-						PassRatio: 0,
-						Skips:     defaultRuns,
-					},
+					exactRuns:     &defaultRuns,
+					exactPassRate: &failPassRate,
+					allSkips:      true,
+					maximumRuns:   defaultRuns,
 				},
 				"TestRace": {
-					TestResult: &reports.TestResult{
-						TestName:  "TestPass",
-						Panicked:  false,
-						Skipped:   false,
-						PassRatio: 1,
-						Successes: defaultRuns,
-					},
+					exactRuns:     &defaultRuns,
+					exactPassRate: &successPassRate,
+					allSuccesses:  true,
+					maximumRuns:   defaultRuns,
 				},
 			},
 		},
@@ -102,55 +105,35 @@ func TestRun(t *testing.T) {
 				SelectedTestPackages: []string{flakyTestPackagePath},
 				CollectRawOutput:     true,
 			},
-			expectedRuns: defaultRuns,
-			expectedResults: map[string]*expectedTestResult{
+			expectedTests: map[string]*expectedTestResult{
 				"TestFlaky": {
-					TestResult: &reports.TestResult{
-						TestName: "TestFlaky",
-						Panicked: true,
-						Skipped:  false,
-					},
+					packagePanic: true,
+					maximumRuns:  defaultRuns,
 				},
 				"TestFail": {
-					TestResult: &reports.TestResult{
-						TestName:  "TestFail",
-						Panicked:  false,
-						Skipped:   false,
-						PassRatio: 0,
-						Failures:  defaultRuns,
-					},
+					allFailures:  true,
+					packagePanic: true,
+					maximumRuns:  defaultRuns,
 				},
 				"TestPass": {
-					TestResult: &reports.TestResult{
-						TestName:  "TestPass",
-						Panicked:  true,
-						Skipped:   false,
-						PassRatio: 1,
-					},
+					allSuccesses: true,
+					packagePanic: true,
+					maximumRuns:  defaultRuns,
 				},
 				"TestSkipped": {
-					TestResult: &reports.TestResult{
-						TestName:  "TestSkipped",
-						Panicked:  true,
-						Skipped:   true,
-						PassRatio: 0,
-					},
-				},
-				"TestPanic": {
-					TestResult: &reports.TestResult{
-						TestName: "TestPanic",
-						Panicked: true,
-						Skipped:  false,
-						Panics:   defaultRuns,
-					},
+					allSkips:     true,
+					packagePanic: true,
+					maximumRuns:  defaultRuns,
 				},
 				"TestRace": {
-					TestResult: &reports.TestResult{
-						TestName:  "TestPass",
-						Panicked:  false,
-						Skipped:   false,
-						PassRatio: 1,
-					},
+					allSuccesses: true,
+					packagePanic: true,
+					maximumRuns:  defaultRuns,
+				},
+				"TestPanic": {
+					allPanics:    true,
+					packagePanic: true,
+					maximumRuns:  defaultRuns,
 				},
 			},
 		},
@@ -166,49 +149,25 @@ func TestRun(t *testing.T) {
 				SelectedTestPackages: []string{flakyTestPackagePath},
 				CollectRawOutput:     true,
 			},
-			expectedRuns: defaultRuns,
-			expectedResults: map[string]*expectedTestResult{
+			expectedTests: map[string]*expectedTestResult{
 				"TestFlaky": {
-					TestResult: &reports.TestResult{
-						TestName: "TestFlaky",
-						Panicked: false,
-						Skipped:  false,
-					},
+					maximumRuns: defaultRuns,
 				},
 				"TestFail": {
-					TestResult: &reports.TestResult{
-						TestName:  "TestFail",
-						Panicked:  false,
-						Skipped:   false,
-						PassRatio: 0,
-						Failures:  defaultRuns,
-					},
+					allFailures: true,
+					maximumRuns: defaultRuns,
 				},
 				"TestPass": {
-					TestResult: &reports.TestResult{
-						TestName:  "TestPass",
-						Panicked:  false,
-						Skipped:   false,
-						PassRatio: 1,
-						Successes: defaultRuns,
-					},
+					allSuccesses: true,
+					maximumRuns:  defaultRuns,
 				},
 				"TestSkipped": {
-					TestResult: &reports.TestResult{
-						TestName:  "TestSkipped",
-						Panicked:  false,
-						Skipped:   true,
-						PassRatio: 0,
-					},
+					allSkips:    true,
+					maximumRuns: defaultRuns,
 				},
 				"TestRace": {
-					TestResult: &reports.TestResult{
-						TestName:  "TestPass",
-						Panicked:  false,
-						Skipped:   false,
-						PassRatio: 0,
-						Failures:  defaultRuns,
-					},
+					maximumRuns: defaultRuns,
+					allRaces:    true,
 				},
 			},
 		},
@@ -224,43 +183,26 @@ func TestRun(t *testing.T) {
 				SelectedTestPackages: []string{flakyTestPackagePath},
 				CollectRawOutput:     true,
 			},
-			expectedRuns: 1,
-			expectedResults: map[string]*expectedTestResult{
+			expectedTests: map[string]*expectedTestResult{
 				"TestFail": {
-					TestResult: &reports.TestResult{
-						TestName:  "TestFail",
-						Panicked:  false,
-						Skipped:   false,
-						PassRatio: 0,
-						Failures:  1,
-					},
+					exactRuns:   &oneRun,
+					allFailures: true,
+					maximumRuns: defaultRuns,
 				},
 				"TestPass": {
-					TestResult: &reports.TestResult{
-						TestName:  "TestPass",
-						Panicked:  false,
-						Skipped:   false,
-						PassRatio: 1,
-						Successes: 1,
-					},
+					exactRuns:    &oneRun,
+					allSuccesses: true,
+					maximumRuns:  defaultRuns,
 				},
 				"TestSkipped": {
-					TestResult: &reports.TestResult{
-						TestName:  "TestSkipped",
-						Panicked:  false,
-						Skipped:   true,
-						PassRatio: 0,
-						Skips:     1,
-					},
+					exactRuns:   &oneRun,
+					allSkips:    true,
+					maximumRuns: defaultRuns,
 				},
 				"TestRace": {
-					TestResult: &reports.TestResult{
-						TestName:  "TestRace",
-						Panicked:  false,
-						Skipped:   false,
-						PassRatio: 1,
-						Successes: 1,
-					},
+					exactRuns:    &oneRun,
+					allSuccesses: true,
+					maximumRuns:  defaultRuns,
 				},
 			},
 		},
@@ -284,6 +226,9 @@ func TestRun(t *testing.T) {
 				jsonResults, err := json.Marshal(testResults)
 				if err != nil {
 					t.Logf("error marshalling test results: %v", err)
+					for _, testResult := range testResults {
+						t.Logf("%+v", testResult)
+					}
 					return
 				}
 				err = os.WriteFile(resultsFileName, jsonResults, 0644) //nolint:gosec
@@ -303,7 +248,8 @@ func TestRun(t *testing.T) {
 
 			for _, result := range testResults {
 				t.Run(fmt.Sprintf("checking results of %s", result.TestName), func(t *testing.T) {
-					expected, ok := tc.expectedResults[result.TestName]
+					require.NotNil(t, result, "test result was nil")
+					expected, ok := tc.expectedTests[result.TestName]
 					require.True(t, ok, "unexpected test result: %s", result.TestName)
 					require.False(t, expected.seen, "test '%s' was seen multiple times", result.TestName)
 					expected.seen = true
@@ -311,35 +257,57 @@ func TestRun(t *testing.T) {
 					assert.Len(t, result.Durations, result.Runs, "test '%s' has a mismatch of runs and duration counts", result.TestName, defaultRuns)
 					resultCounts := result.Successes + result.Failures + result.Panics + result.Skips
 					assert.Equal(t, result.Runs, resultCounts,
-						"test '%s' doesn't match Runs count with results counts\nRuns: %d\nSuccesses: %d\nFailures: %d\nPanics: %d\nSkips: %d\nTotal: %d",
-						result.TestName, result.Runs, result.Successes, result.Failures, result.Panics, result.Skips, resultCounts,
+						"test '%s' doesn't match Runs count with results counts\n%s", result.TestName, resultsString(result),
 					)
-					assert.Equal(t, expected.TestResult.Panicked, result.Panicked, "test '%s' had an unexpected panic result", result.TestName)
-					assert.Equal(t, expected.TestResult.Skipped, result.Skipped, "test '%s' had an unexpected skipped result", result.TestName)
-					assert.Equal(t, expected.TestResult.Panics, result.Panics, "test '%s' had an unexpected number of panics", result.TestName)
-					assert.Equal(t, expected.TestResult.Skips, result.Skips, "test '%s' had an unexpected number of skips", result.TestName)
+					assert.LessOrEqual(t, result.Runs, expected.maximumRuns, "test '%s' had more runs than expected", result.TestName)
 
-					if tc.name == "panic" {
-						assert.True(t, result.PackagePanicked, "test '%s' should have package panicked", result.TestName)
-					} else if result.TestName == "TestFlaky" {
-						assert.Greater(t, result.Successes, 0, "flaky test '%s' should have passed some", result.TestName)
-						assert.Greater(t, result.Failures, 0, "flaky test '%s' should have failed some", result.TestName)
-						assert.Greater(t, result.PassRatio, float64(0), "flaky test '%s' should have a flaky pass ratio", result.TestName)
-						assert.Less(t, result.PassRatio, float64(1), "flaky test '%s' should have a flaky pass ratio", result.TestName)
-					} else {
-						assert.Equal(t, tc.expectedRuns, result.Runs, "test '%s' had an unexpected number of runs", result.TestName)
-						assert.Equal(t, expected.TestResult.PassRatio, result.PassRatio, "test '%s' had an unexpected pass ratio", result.TestName)
-						assert.Equal(t, expected.TestResult.Successes, result.Successes, "test '%s' had an unexpected number of successes", result.TestName)
-						assert.Equal(t, expected.TestResult.Failures, result.Failures, "test '%s' had an unexpected number of failures", result.TestName)
+					if expected.minimumRuns != nil {
+						assert.GreaterOrEqual(t, result.Runs, *expected.minimumRuns, "test '%s' had fewer runs than expected", result.TestName)
+					}
+					if expected.exactRuns != nil {
+						assert.Equal(t, *expected.exactRuns, result.Runs, "test '%s' had an unexpected number of runs", result.TestName)
+					}
+					if expected.exactPassRate != nil {
+						assert.Equal(t, *expected.exactPassRate, result.PassRatio, "test '%s' had an unexpected pass ratio", result.TestName)
+					}
+					if expected.minimumPassRate != nil {
+						assert.Greater(t, result.PassRatio, *expected.minimumPassRate, "test '%s' had a pass ratio below the minimum", result.TestName)
+					}
+					if expected.maximumPassRate != nil {
+						assert.Less(t, result.PassRatio, *expected.maximumPassRate, "test '%s' had a pass ratio above the maximum", result.TestName)
+					}
+					if expected.allSuccesses {
+						assert.Equal(t, result.Successes, result.Runs, "test '%s' has %d total runs and should have passed all runs, only passed %d\n%s", result.TestName, result.Runs, result.Successes, resultsString(result))
+					}
+					if expected.allFailures {
+						assert.Equal(t, result.Failures, result.Runs, "test '%s' has %d total runs and should have failed all runs, only failed %d\n%s", result.TestName, result.Runs, result.Failures, resultsString(result))
+					}
+					if expected.allPanics {
+						assert.Equal(t, result.Panics, result.Runs, "test '%s' has %d total runs and should have panicked all runs, only panicked %d\n%s", result.TestName, result.Runs, result.Panics, resultsString(result))
+					}
+					if expected.allSkips {
+						assert.Equal(t, result.Skips, result.Runs, "test '%s' has %d total runs and should have skipped all runs, only skipped %d\n%s", result.TestName, result.Runs, result.Skips, resultsString(result))
+					}
+					if expected.allRaces {
+						assert.Equal(t, result.Races, result.Runs, "test '%s' has %d total runs and should have raced all runs, only raced %d\n%s", result.TestName, result.Runs, result.Races, resultsString(result))
+					}
+					if expected.packagePanic {
+						assert.True(t, result.PackagePanicked, "test '%s' has %d total runs and should have package panicked", result.TestName, result.Runs)
 					}
 				})
 			}
 
-			for _, expected := range tc.expectedResults {
-				assert.True(t, expected.seen, "expected test '%s' not found in test runs", expected.TestResult.TestName)
+			for testName, expected := range tc.expectedTests {
+				assert.True(t, expected.seen, "expected test '%s' not found in test runs", testName)
 			}
 		})
 	}
+}
+
+func resultsString(result reports.TestResult) string {
+	resultCounts := result.Successes + result.Failures + result.Panics + result.Skips
+	return fmt.Sprintf("Runs: %d\nSuccesses: %d\nFailures: %d\nPanics: %d\nSkips: %d\nRaces: %d\nTotal Results: %d",
+		result.Runs, result.Successes, result.Failures, result.Panics, result.Skips, result.Races, resultCounts)
 }
 
 func TestAttributePanicToTest(t *testing.T) {

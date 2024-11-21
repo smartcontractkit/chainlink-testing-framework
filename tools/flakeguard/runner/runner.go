@@ -50,7 +50,7 @@ func (r *Runner) RunTests() ([]reports.TestResult, error) {
 					r.rawOutputs[p] = &bytes.Buffer{}
 				}
 				separator := strings.Repeat("-", 80)
-				r.rawOutputs[p].WriteString(fmt.Sprintf("%d%s\n", i, separator))
+				r.rawOutputs[p].WriteString(fmt.Sprintf("Run %d%s\n", i+1, separator))
 			}
 			jsonFilePath, passed, err := r.runTests(p)
 			if err != nil {
@@ -193,37 +193,11 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 				result = testDetails[key]
 			}
 
-			// TODO: This is a bit of a logical mess, refactor
+			// TODO: This is a bit of a logical mess, probably worth a refactor
 			if entryLine.Output != "" {
 				if panicDetectionMode || raceDetectionMode { // currently collecting panic or race output
 					detectedEntries = append(detectedEntries, entryLine)
-					if entryLine.Action == "fail" { // End of panic output
-						if panicDetectionMode {
-							panicTest, err := attributePanicToTest(entryLine.Package, detectedEntries)
-							if err != nil {
-								return nil, err
-							}
-							panicTestKey := fmt.Sprintf("%s/%s", entryLine.Package, panicTest)
-							testDetails[panicTestKey].Panicked = true
-							testDetails[panicTestKey].Panics++
-							testDetails[panicTestKey].Runs++
-							testDetails[panicTestKey].Outputs = append(testDetails[panicTestKey].Outputs, entryLine.Output)
-						} else if raceDetectionMode {
-							raceTest, err := attributeRaceToTest(entryLine.Package, detectedEntries)
-							if err != nil {
-								return nil, err
-							}
-							raceTestKey := fmt.Sprintf("%s/%s", entryLine.Package, raceTest)
-							testDetails[raceTestKey].Races++
-							testDetails[raceTestKey].Runs++
-							testDetails[raceTestKey].Outputs = append(testDetails[raceTestKey].Outputs, entryLine.Output)
-						}
-
-						detectedEntries = []entry{}
-						panicDetectionMode = false
-						raceDetectionMode = false
-					}
-					continue // Don't process this entry further
+					continue
 				} else if startPanicRe.MatchString(entryLine.Output) { // found a panic, start collecting output
 					panickedPackages[entryLine.Package] = struct{}{}
 					detectedEntries = append(detectedEntries, entryLine)
@@ -242,6 +216,58 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 				} else if entryLine.Test != "" {
 					result.Outputs = append(result.Outputs, entryLine.Output)
 				}
+			}
+
+			if (panicDetectionMode || raceDetectionMode) && entryLine.Action == "fail" { // End of panic or race output
+				if panicDetectionMode {
+					panicTest, err := attributePanicToTest(entryLine.Package, detectedEntries)
+					if err != nil {
+						return nil, err
+					}
+					panicTestKey := fmt.Sprintf("%s/%s", entryLine.Package, panicTest)
+					testDetails[panicTestKey].Panicked = true
+					testDetails[panicTestKey].Panics++
+					testDetails[panicTestKey].Runs++
+					duration, err := time.ParseDuration(strconv.FormatFloat(entryLine.Elapsed, 'f', -1, 64) + "s")
+					if err != nil {
+						return nil, fmt.Errorf("failed to parse duration: %w", err)
+					}
+					testDetails[panicTestKey].Durations = append(testDetails[panicTestKey].Durations, duration)
+					testDetails[panicTestKey].Outputs = append(testDetails[panicTestKey].Outputs, entryLine.Output)
+					for _, entry := range detectedEntries {
+						if entry.Test == "" {
+							testDetails[panicTestKey].PackageOutputs = append(testDetails[panicTestKey].PackageOutputs, entry.Output)
+						} else {
+							testDetails[panicTestKey].Outputs = append(testDetails[panicTestKey].Outputs, entry.Output)
+						}
+					}
+				} else if raceDetectionMode {
+					raceTest, err := attributeRaceToTest(entryLine.Package, detectedEntries)
+					if err != nil {
+						return nil, err
+					}
+					raceTestKey := fmt.Sprintf("%s/%s", entryLine.Package, raceTest)
+					testDetails[raceTestKey].Races++
+					testDetails[raceTestKey].Runs++
+					duration, err := time.ParseDuration(strconv.FormatFloat(entryLine.Elapsed, 'f', -1, 64) + "s")
+					if err != nil {
+						return nil, fmt.Errorf("failed to parse duration: %w", err)
+					}
+					testDetails[raceTestKey].Durations = append(testDetails[raceTestKey].Durations, duration)
+					testDetails[raceTestKey].Outputs = append(testDetails[raceTestKey].Outputs, entryLine.Output)
+					for _, entry := range detectedEntries {
+						if entry.Test == "" {
+							testDetails[raceTestKey].PackageOutputs = append(testDetails[raceTestKey].PackageOutputs, entry.Output)
+						} else {
+							testDetails[raceTestKey].Outputs = append(testDetails[raceTestKey].Outputs, entry.Output)
+						}
+					}
+				}
+
+				detectedEntries = []entry{}
+				panicDetectionMode = false
+				raceDetectionMode = false
+				continue
 			}
 
 			switch entryLine.Action {
@@ -277,7 +303,7 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 					result.Runs++
 				}
 			}
-			if entryLine.Test != "" {
+			if entryLine.Test != "" && result.Runs > 0 {
 				result.PassRatio = float64(result.Successes) / float64(result.Runs)
 				result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
 			}
@@ -297,13 +323,13 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 
 	var results []reports.TestResult
 	for _, result := range testDetails {
-		results = append(results, *result)
 		if _, panicked := panickedPackages[result.TestPackage]; panicked {
 			result.PackagePanicked = true
 		}
 		if outputs, exists := packageLevelOutputs[result.TestPackage]; exists {
 			result.PackageOutputs = outputs
 		}
+		results = append(results, *result)
 	}
 
 	return results, nil
