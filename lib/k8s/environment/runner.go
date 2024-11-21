@@ -107,7 +107,8 @@ func DataFromRunner(props *Props) func(root cdk8s.Chart) ConnectedChart {
 			ptr.Ptr(fmt.Sprintf("%s-data", props.BaseName)),
 			&k8s.KubeDeploymentProps{
 				Metadata: &k8s.ObjectMeta{
-					Name: ptr.Ptr(fmt.Sprintf("%s-data", props.BaseName)),
+					Name:   ptr.Ptr(fmt.Sprintf("%s-data", props.BaseName)),
+					Labels: &labels,
 				},
 				Spec: &k8s.DeploymentSpec{
 					Selector: &k8s.LabelSelector{
@@ -186,7 +187,8 @@ func role(chart cdk8s.Chart, props *Props) {
 		ptr.Ptr(fmt.Sprintf("%s-role", props.BaseName)),
 		&k8s.KubeRoleProps{
 			Metadata: &k8s.ObjectMeta{
-				Name: ptr.Ptr(props.BaseName),
+				Name:   ptr.Ptr(props.BaseName),
+				Labels: props.Labels,
 			},
 			Rules: &[]*k8s.PolicyRule{
 				{
@@ -220,7 +222,9 @@ func role(chart cdk8s.Chart, props *Props) {
 				Kind:     ptr.Ptr("Role"),
 				Name:     ptr.Ptr("remote-test-runner"),
 			},
-			Metadata: nil,
+			Metadata: &k8s.ObjectMeta{
+				Labels: props.Labels,
+			},
 			Subjects: &[]*k8s.Subject{
 				{
 					Kind:      ptr.Ptr("ServiceAccount"),
@@ -232,13 +236,14 @@ func role(chart cdk8s.Chart, props *Props) {
 	)
 }
 
-func kubeSecret(chart cdk8s.Chart, _ *Props) {
+func kubeSecret(chart cdk8s.Chart, props *Props) {
 	k8s.NewKubeSecret(
 		chart,
 		ptr.Ptr("ts-secret"),
 		&k8s.KubeSecretProps{
 			Metadata: &k8s.ObjectMeta{
-				Name: ptr.Ptr("ts-secret"),
+				Name:   ptr.Ptr("ts-secret"),
+				Labels: props.Labels,
 			},
 			Type: ptr.Ptr("Opaque"), // Typical for storing arbitrary user-defined data
 			StringData: &map[string]*string{
@@ -345,15 +350,18 @@ func container(props *Props) *[]*k8s.Container {
 }
 
 func pvcVolume(chart cdk8s.Chart, props *Props) {
+	labels := make(map[string]*string)
+	for k, v := range *props.Labels {
+		labels[k] = v
+	}
+	labels["type"] = ptr.Ptr("local")
 	k8s.NewKubePersistentVolume(
 		chart,
 		ptr.Ptr(fmt.Sprintf("%s-data-pv-volume", props.BaseName)),
 		&k8s.KubePersistentVolumeProps{
 			Metadata: &k8s.ObjectMeta{
-				Name: ptr.Ptr(fmt.Sprintf("%s-data-pv-volume", props.BaseName)),
-				Labels: &map[string]*string{
-					"type": ptr.Ptr("local"),
-				},
+				Name:   ptr.Ptr(fmt.Sprintf("%s-data-pv-volume", props.BaseName)),
+				Labels: &labels,
 			},
 			Spec: &k8s.PersistentVolumeSpec{
 				AccessModes: ptr.Ptr([]*string{ptr.Ptr("ReadWriteOnce")}),
@@ -372,7 +380,8 @@ func pvcVolume(chart cdk8s.Chart, props *Props) {
 		ptr.Ptr(fmt.Sprintf("%s-data-pvc", props.BaseName)),
 		&k8s.KubePersistentVolumeClaimProps{
 			Metadata: &k8s.ObjectMeta{
-				Name: ptr.Ptr(fmt.Sprintf("%s-data-pvc", props.BaseName)),
+				Name:   ptr.Ptr(fmt.Sprintf("%s-data-pvc", props.BaseName)),
+				Labels: props.Labels,
 			},
 			Spec: &k8s.PersistentVolumeClaimSpec{
 				AccessModes: ptr.Ptr([]*string{ptr.Ptr("ReadWriteOnce")}),
