@@ -69,22 +69,21 @@ func TestFilterSkippedTests(t *testing.T) {
 }
 
 func TestPrintTests(t *testing.T) {
-	tests := []TestResult{
-		{
-			TestName:    "Test1",
-			TestPackage: "package1",
-			PassRatio:   0.75,
-			Skipped:     false,
-			Runs:        4,
-			Outputs:     []string{"Output1", "Output2"},
-			Durations:   []time.Duration{time.Millisecond * 1200, time.Millisecond * 900, time.Millisecond * 1100, time.Second},
-		},
-	}
+	var (
+		tests = []TestResult{
+			{
+				TestName:    "Test1",
+				TestPackage: "package1",
+				PassRatio:   0.75,
+				Skipped:     false,
+				Runs:        4,
+				Outputs:     []string{"Output1", "Output2"},
+				Durations:   []time.Duration{time.Millisecond * 1200, time.Millisecond * 900, time.Millisecond * 1100, time.Second},
+			},
+		}
+		buf bytes.Buffer
+	)
 
-	// Use a buffer to capture the output
-	var buf bytes.Buffer
-
-	// Call PrintTests with the buffer
 	PrintTests(tests, &buf)
 
 	// Get the output as a string

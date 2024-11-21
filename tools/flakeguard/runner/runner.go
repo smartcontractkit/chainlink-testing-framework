@@ -74,6 +74,7 @@ func (r *Runner) runTests(packageName string) (string, bool, error) {
 		skipPattern := strings.Join(r.SkipTests, "|")
 		args = append(args, fmt.Sprintf("-skip=%s", skipPattern))
 	}
+	args = append(args, "2>/dev/null")
 
 	if r.Verbose {
 		log.Printf("Running command: go %s\n", strings.Join(args, " "))

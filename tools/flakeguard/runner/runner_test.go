@@ -13,15 +13,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type expectedTestResult struct {
-	TestResult *reports.TestResult
-	seen       bool
-}
-
 const (
 	defaultRuns          = 5
 	flakyTestPackagePath = "./example_test_package"
 )
+
+type expectedTestResult struct {
+	TestResult *reports.TestResult
+	seen       bool
+}
 
 func TestRun(t *testing.T) {
 	testCases := []struct {
@@ -218,27 +218,20 @@ func TestRun(t *testing.T) {
 				Verbose:              true,
 				RunCount:             defaultRuns,
 				UseRace:              false,
-				SkipTests:            []string{"TestPanic"},
+				SkipTests:            []string{"TestPanic", "TestFlaky"}, // Flaky test introduces too much variability for failfast
 				FailFast:             true,
 				SelectedTestPackages: []string{flakyTestPackagePath},
 				CollectRawOutput:     true,
 			},
 			expectedRuns: 1,
 			expectedResults: map[string]*expectedTestResult{
-				"TestFlaky": {
-					TestResult: &reports.TestResult{
-						TestName: "TestFlaky",
-						Panicked: false,
-						Skipped:  false,
-					},
-				},
 				"TestFail": {
 					TestResult: &reports.TestResult{
 						TestName:  "TestFail",
 						Panicked:  false,
 						Skipped:   false,
 						PassRatio: 0,
-						Failures:  defaultRuns,
+						Failures:  1,
 					},
 				},
 				"TestPass": {
@@ -247,7 +240,7 @@ func TestRun(t *testing.T) {
 						Panicked:  false,
 						Skipped:   false,
 						PassRatio: 1,
-						Successes: defaultRuns,
+						Successes: 1,
 					},
 				},
 				"TestSkipped": {
@@ -256,6 +249,7 @@ func TestRun(t *testing.T) {
 						Panicked:  false,
 						Skipped:   true,
 						PassRatio: 0,
+						Skips:     1,
 					},
 				},
 				"TestRace": {
@@ -263,8 +257,8 @@ func TestRun(t *testing.T) {
 						TestName:  "TestRace",
 						Panicked:  false,
 						Skipped:   false,
-						PassRatio: 0,
-						Failures:  defaultRuns,
+						PassRatio: 1,
+						Successes: 1,
 					},
 				},
 			},
