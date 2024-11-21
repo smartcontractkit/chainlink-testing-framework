@@ -233,7 +233,7 @@ func (m *LogStream) ConnectContainer(ctx context.Context, container LogProducing
 					if !container.IsRunning() {
 						m.log.Info().
 							Str("Container name", name).
-							Msg("Skipping log producer error as the container is not running anymore")
+							Msg("Skipping log producer retrying, because the container is not running anymore")
 						break
 					}
 
