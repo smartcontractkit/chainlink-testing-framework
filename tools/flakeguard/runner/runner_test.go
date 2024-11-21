@@ -286,27 +286,47 @@ func TestRun(t *testing.T) {
 					}
 					if expected.allSuccesses {
 						assert.Equal(t, result.Successes, result.Runs, "test '%s' has %d total runs and should have passed all runs, only passed %d\n%s", result.TestName, result.Runs, result.Successes, resultsString(result))
+						assert.Zero(t, result.Failures, "test '%s' has %d total runs and should have passed all runs, but failed some\n%s", result.TestName, result.Runs, resultsString(result))
+						assert.Zero(t, result.Panics, "test '%s' has %d total runs and should have passed all runs, but panicked some\n%s", result.TestName, result.Runs, resultsString(result))
+						assert.Zero(t, result.Skips, "test '%s' has %d total runs and should have passed all runs, but skipped some\n%s", result.TestName, result.Runs, resultsString(result))
+						assert.Zero(t, result.Races, "test '%s' has %d total runs and should have passed all runs, but raced some\n%s", result.TestName, result.Runs, resultsString(result))
 					}
 					if expected.someSuccesses {
 						assert.Greater(t, result.Successes, 0, "test '%s' has %d total runs and should have passed some runs, passed none\n%s", result.TestName, result.Runs, resultsString(result))
 					}
 					if expected.allFailures {
 						assert.Equal(t, result.Failures, result.Runs, "test '%s' has %d total runs and should have failed all runs, only failed %d\n%s", result.TestName, result.Runs, result.Failures, resultsString(result))
+						assert.Zero(t, result.Successes, "test '%s' has %d total runs and should have failed all runs, but succeeded some\n%s", result.TestName, result.Runs, resultsString(result))
+						assert.Zero(t, result.Panics, "test '%s' has %d total runs and should have failed all runs, but panicked some\n%s", result.TestName, result.Runs, resultsString(result))
+						assert.Zero(t, result.Skips, "test '%s' has %d total runs and should have failed all runs, but skipped some\n%s", result.TestName, result.Runs, resultsString(result))
+						assert.Zero(t, result.Races, "test '%s' has %d total runs and should have failed all runs, but raced some\n%s", result.TestName, result.Runs, resultsString(result))
 					}
 					if expected.someFailures {
 						assert.Greater(t, result.Failures, 0, "test '%s' has %d total runs and should have failed some runs, failed none\n%s", result.TestName, result.Runs, resultsString(result))
 					}
 					if expected.allPanics {
 						assert.Equal(t, result.Panics, result.Runs, "test '%s' has %d total runs and should have panicked all runs, only panicked %d\n%s", result.TestName, result.Runs, result.Panics, resultsString(result))
+						assert.Zero(t, result.Successes, "test '%s' has %d total runs and should have panicked all runs, but succeeded some\n%s", result.TestName, result.Runs, resultsString(result))
+						assert.Zero(t, result.Failures, "test '%s' has %d total runs and should have panicked all runs, but failed some\n%s", result.TestName, result.Runs, resultsString(result))
+						assert.Zero(t, result.Skips, "test '%s' has %d total runs and should have panicked all runs, but skipped some\n%s", result.TestName, result.Runs, resultsString(result))
+						assert.Zero(t, result.Races, "test '%s' has %d total runs and should have panicked all runs, but raced some\n%s", result.TestName, result.Runs, resultsString(result))
 					}
 					if expected.somePanics {
 						assert.Greater(t, result.Panics, 0, "test '%s' has %d total runs and should have panicked some runs, panicked none\n%s", result.TestName, result.Runs, resultsString(result))
 					}
 					if expected.allSkips {
 						assert.Equal(t, result.Skips, result.Runs, "test '%s' has %d total runs and should have skipped all runs, only skipped %d\n%s", result.TestName, result.Runs, result.Skips, resultsString(result))
+						assert.Zero(t, result.Successes, "test '%s' has %d total runs and should have skipped all runs, but succeeded some\n%s", result.TestName, result.Runs, resultsString(result))
+						assert.Zero(t, result.Failures, "test '%s' has %d total runs and should have skipped all runs, but panicked some\n%s", result.TestName, result.Runs, resultsString(result))
+						assert.Zero(t, result.Panics, "test '%s' has %d total runs and should have skipped all runs, but panicked some\n%s", result.TestName, result.Runs, resultsString(result))
+						assert.Zero(t, result.Races, "test '%s' has %d total runs and should have skipped all runs, but raced some\n%s", result.TestName, result.Runs, resultsString(result))
 					}
 					if expected.allRaces {
 						assert.Equal(t, result.Races, result.Runs, "test '%s' has %d total runs and should have raced all runs, only raced %d\n%s", result.TestName, result.Runs, result.Races, resultsString(result))
+						assert.Zero(t, result.Successes, "test '%s' has %d total runs and should have raced all runs, but succeeded some\n%s", result.TestName, result.Runs, resultsString(result))
+						assert.Zero(t, result.Failures, "test '%s' has %d total runs and should have raced all runs, but panicked some\n%s", result.TestName, result.Runs, resultsString(result))
+						assert.Zero(t, result.Skips, "test '%s' has %d total runs and should have raced all runs, but skipped some\n%s", result.TestName, result.Runs, resultsString(result))
+						assert.Zero(t, result.Skips, "test '%s' has %d total runs and should have raced all runs, but panicked some\n%s", result.TestName, result.Runs, resultsString(result))
 					}
 					if expected.packagePanic {
 						assert.True(t, result.PackagePanicked, "test '%s' has %d total runs and should have package panicked", result.TestName, result.Runs)
