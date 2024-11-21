@@ -40,7 +40,7 @@ func (ct *CustomT) Write(p []byte) (n int, err error) {
 	}
 	if ct.ended {
 		l := GetTestLogger(nil)
-		l.Info().Msgf("%s %s: %s", afterTestEndedMsg, ct.Name(), string(p))
+		l.Warn().Msgf("%s %s: %s", afterTestEndedMsg, ct.Name(), string(p))
 		return len(p), nil
 	}
 	ct.T.Log(strings.TrimSuffix(str, "\n"))
@@ -53,7 +53,7 @@ func (ct CustomT) Printf(format string, v ...interface{}) {
 		s := "%s: "
 		formatted := fmt.Sprintf("%s %s%s", afterTestEndedMsg, s, format)
 		l := GetTestLogger(nil)
-		l.Info().Msgf(formatted, ct.Name(), v)
+		l.Warn().Msgf(formatted, ct.Name(), v)
 	} else {
 		ct.L.Info().Msgf(format, v...)
 	}
