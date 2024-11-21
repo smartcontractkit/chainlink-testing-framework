@@ -17,14 +17,15 @@ type TestResult struct {
 	TestName            string
 	TestPackage         string
 	Panicked            bool            // Indicates a test-level panic
+	Skipped             bool            // Indicates if the test was skipped
 	PackagePanicked     bool            // Indicates a package-level panic
 	PassRatio           float64         // Pass ratio in decimal format like 0.5
 	PassRatioPercentage string          // Pass ratio in percentage format like "50%"
-	Skipped             bool            // Indicates if the test was skipped
 	Runs                int             // Count of how many times the test was run
 	Failures            int             // Count of how many times the test failed
 	Successes           int             // Count of how many times the test passed
 	Panics              int             // Count of how many times the test panicked
+	Races               int             // Count of how many times the test encountered a data race
 	Skips               int             // Count of how many times the test was skipped
 	Outputs             []string        // Stores outputs for a test
 	Durations           []time.Duration // Stores elapsed time for each run of the test
