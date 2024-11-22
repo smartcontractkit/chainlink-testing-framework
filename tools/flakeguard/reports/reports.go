@@ -33,10 +33,10 @@ type TestResult struct {
 }
 
 // FilterFailedTests returns a slice of TestResult where the pass ratio is below the specified threshold.
-func FilterFailedTests(results []TestResult, threshold float64) []TestResult {
+func FilterFailedTests(results []TestResult, maxPassRatio float64) []TestResult {
 	var failedTests []TestResult
 	for _, result := range results {
-		if !result.Skipped && result.PassRatio < threshold {
+		if !result.Skipped && result.PassRatio < maxPassRatio {
 			failedTests = append(failedTests, result)
 		}
 	}
@@ -44,10 +44,10 @@ func FilterFailedTests(results []TestResult, threshold float64) []TestResult {
 }
 
 // FilterFlakyTests returns a slice of TestResult where the pass ratio is between the min pass ratio and the threshold.
-func FilterFlakyTests(testResults []TestResult, minPassRatio, threshold float64) []TestResult {
+func FilterFlakyTests(testResults []TestResult, maxPassRatio float64) []TestResult {
 	var flakyTests []TestResult
 	for _, test := range testResults {
-		if test.PassRatio >= minPassRatio && test.PassRatio < threshold && !test.Skipped {
+		if test.PassRatio < maxPassRatio && !test.Skipped {
 			flakyTests = append(flakyTests, test)
 		}
 	}
@@ -55,10 +55,10 @@ func FilterFlakyTests(testResults []TestResult, minPassRatio, threshold float64)
 }
 
 // FilterPassedTests returns a slice of TestResult where the tests passed and were not skipped.
-func FilterPassedTests(results []TestResult, threshold float64) []TestResult {
+func FilterPassedTests(results []TestResult, maxPassRatio float64) []TestResult {
 	var passedTests []TestResult
 	for _, result := range results {
-		if !result.Skipped && result.PassRatio >= threshold {
+		if !result.Skipped && result.PassRatio >= maxPassRatio {
 			passedTests = append(passedTests, result)
 		}
 	}
@@ -142,7 +142,6 @@ func AggregateTestResults(folderPath string) ([]TestResult, error) {
 }
 
 // PrintTests prints tests in a pretty format
-// TODO: Update this with new fields
 func PrintTests(tests []TestResult, w io.Writer) {
 	for i, test := range tests {
 		fmt.Fprintf(w, "\n--- Test %d ---\n", i+1)
@@ -184,7 +183,7 @@ func SaveFilteredResultsAndLogs(outputResultsPath, outputLogsPath string, failed
 	}
 }
 
-// Helper function to save results to JSON file
+// Helper function to save results to JSON file without outputs
 func saveResults(filePath string, results []TestResult) error {
 	var filteredResults []TestResult
 	for _, r := range results {
