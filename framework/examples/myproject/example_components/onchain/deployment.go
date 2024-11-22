@@ -1,12 +1,9 @@
 package onchain
 
 import (
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/ethereum/go-ethereum/common"
 	testToken "github.com/smartcontractkit/chainlink-testing-framework/framework/examples/example_components/gethwrappers"
 	"math/big"
-	"time"
-
-	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/seth"
 )
@@ -21,25 +18,12 @@ type Output struct {
 	Addresses []common.Address `toml:"addresses"`
 }
 
-func NewProductOnChainDeployment(in *Input) (*Output, error) {
+func NewProductOnChainDeployment(c *seth.Client, in *Input) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
 
 	// deploy your contracts here, example
-
-	t := seth.Duration{D: 2 * time.Minute}
-
-	c, err := seth.NewClientBuilder().
-		WithRpcUrl(in.URL).
-		WithProtections(true, false, &t).
-		WithGasPriceEstimations(true, 0, seth.Priority_Fast).
-		WithTracing(seth.TracingLevel_All, []string{seth.TraceOutput_Console}).
-		WithPrivateKeys([]string{blockchain.DefaultAnvilPrivateKey}).
-		Build()
-	if err != nil {
-		return nil, err
-	}
 
 	contractABI, err := testToken.BurnMintERC677MetaData.GetAbi()
 	if err != nil {
@@ -64,6 +48,6 @@ func NewProductOnChainDeployment(in *Input) (*Output, error) {
 		// save all the addresses to output, so it can be cached
 		Addresses: []common.Address{dd.Address},
 	}
-	in.Out = out
+	//in.Out = out
 	return out, nil
 }
