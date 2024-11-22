@@ -23,10 +23,9 @@ var RunTestsCmd = &cobra.Command{
 		runCount, _ := cmd.Flags().GetInt("run-count")
 		useRace, _ := cmd.Flags().GetBool("race")
 		outputPath, _ := cmd.Flags().GetString("output-json")
-		threshold, _ := cmd.Flags().GetFloat64("threshold")
+		maxPassRatio, _ := cmd.Flags().GetFloat64("max-pass-ratio")
 		skipTests, _ := cmd.Flags().GetStringSlice("skip-tests")
 		printFailedTests, _ := cmd.Flags().GetBool("print-failed-tests")
-		minPassRatio, _ := cmd.Flags().GetFloat64("min-pass-ratio")
 
 		// Check if project dependencies are correctly set up
 		if err := checkDependencies(projectPath); err != nil {
@@ -59,15 +58,15 @@ var RunTestsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		passedTests := reports.FilterPassedTests(testResults, threshold)
-		failedTests := reports.FilterFailedTests(testResults, threshold)
+		passedTests := reports.FilterPassedTests(testResults, maxPassRatio)
+		failedTests := reports.FilterFailedTests(testResults, maxPassRatio)
 		skippedTests := reports.FilterSkippedTests(testResults)
-		flakyTests := reports.FilterFlakyTests(testResults, minPassRatio, threshold)
+		flakyTests := reports.FilterFlakyTests(testResults, maxPassRatio)
 
 		// Print all failed tests including flaky tests
 		if len(failedTests) > 0 && printFailedTests {
-			fmt.Printf("MinPassRatio threshold for flaky tests: %.2f\n", minPassRatio)
-			fmt.Printf("PassRatio threshold for flaky tests: %.2f\n", threshold)
+			fmt.Printf("Maximum threshold for flaky tests: %.2f\n", maxPassRatio)
+			fmt.Printf("PassRatio threshold for flaky tests: %.2f\n", maxPassRatio)
 			fmt.Printf("%d failed tests:\n", len(failedTests))
 			reports.PrintTests(failedTests, os.Stdout)
 		}
@@ -80,7 +79,7 @@ var RunTestsCmd = &cobra.Command{
 			if err != nil {
 				log.Fatalf("Error marshaling test results to JSON: %v", err)
 			}
-			if err := os.WriteFile(outputPath, jsonData, 0644); err != nil {
+			if err := os.WriteFile(outputPath, jsonData, 0644); err != nil { //nolint:gosec
 				log.Fatalf("Error writing test results to file: %v", err)
 			}
 			fmt.Printf("All test results saved to %s\n", outputPath)
@@ -104,10 +103,9 @@ func init() {
 	RunTestsCmd.Flags().Bool("race", false, "Enable the race detector")
 	RunTestsCmd.Flags().Bool("fail-fast", false, "Stop on the first test failure")
 	RunTestsCmd.Flags().String("output-json", "", "Path to output the test results in JSON format")
-	RunTestsCmd.Flags().Float64("threshold", 0.8, "Threshold for considering a test as flaky")
 	RunTestsCmd.Flags().StringSlice("skip-tests", nil, "Comma-separated list of test names to skip from running")
 	RunTestsCmd.Flags().Bool("print-failed-tests", true, "Print failed test results to the console")
-	RunTestsCmd.Flags().Float64("min-pass-ratio", 0.001, "Minimum pass ratio for considering a test as flaky. Used to distinguish between tests that are truly flaky (with inconsistent results) and those that are consistently failing.")
+	RunTestsCmd.Flags().Float64("max-pass-ratio", 1.0, "The maximum (non-inclusive) pass ratio threshold for a test to be considered a failure. Any tests below this pass rate will be considered flaky.")
 }
 
 func checkDependencies(projectPath string) error {
