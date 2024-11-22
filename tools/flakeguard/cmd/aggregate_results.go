@@ -48,7 +48,7 @@ func init() {
 	AggregateResultsCmd.Flags().String("results-path", "", "Path to the folder containing JSON test result files")
 	AggregateResultsCmd.Flags().String("output-results", "./results.json", "Path to output the aggregated or filtered test results in JSON format")
 	AggregateResultsCmd.Flags().String("output-logs", "", "Path to output the filtered test logs in JSON format")
-	AggregateResultsCmd.Flags().Float64("threshold", 0.8, "Threshold for considering a test as failed (used with --filter-failed)")
+	AggregateResultsCmd.Flags().Float64("threshold", 1.0, "Minimum pass ratio for considering a test as flaky (used with --filter-failed)")
 	AggregateResultsCmd.Flags().Float64("min-pass-ratio", 0.001, "Minimum pass ratio for considering a test as flaky (used with --filter-failed)")
 	AggregateResultsCmd.Flags().Bool("filter-failed", false, "If true, filter and output only failed tests based on the threshold")
 }
