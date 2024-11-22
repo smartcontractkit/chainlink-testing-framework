@@ -242,7 +242,6 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 					panicTestKey := fmt.Sprintf("%s/%s", entryLine.Package, panicTest)
 					testDetails[panicTestKey].Panicked = true
 					testDetails[panicTestKey].Panics++
-					testDetails[panicTestKey].Runs++
 					// TODO: durations and panics are weird in the same way as Runs: lots of double-counting
 					// duration, err := time.ParseDuration(strconv.FormatFloat(entryLine.Elapsed, 'f', -1, 64) + "s")
 					// if err != nil {
@@ -264,7 +263,6 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 					}
 					raceTestKey := fmt.Sprintf("%s/%s", entryLine.Package, raceTest)
 					testDetails[raceTestKey].Races++
-					testDetails[raceTestKey].Runs++
 					// TODO: durations and races are weird in the same way as Runs: lots of double-counting
 					// duration, err := time.ParseDuration(strconv.FormatFloat(entryLine.Elapsed, 'f', -1, 64) + "s")
 					// if err != nil {
@@ -296,7 +294,6 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 					}
 					result.Durations = append(result.Durations, duration)
 					result.Successes++
-					result.Runs++
 				}
 			case "fail":
 				if entryLine.Test != "" {
@@ -306,7 +303,6 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 					}
 					result.Durations = append(result.Durations, duration)
 					result.Failures++
-					result.Runs++
 				}
 			case "skip":
 				if entryLine.Test != "" {
@@ -317,11 +313,13 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 					result.Durations = append(result.Durations, duration)
 					result.Skipped = true
 					result.Skips++
-					result.Runs++
 				}
 			}
-			if entryLine.Test != "" && result.Runs > 0 {
-				result.PassRatio = float64(result.Successes) / float64(result.Runs)
+			if entryLine.Test != "" {
+				result.Runs = result.Successes + result.Failures + result.Panics + result.Races + result.Skips
+				if result.Runs > 0 {
+					result.PassRatio = float64(result.Successes) / float64(result.Runs)
+				}
 				result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
 			}
 		}

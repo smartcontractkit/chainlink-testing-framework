@@ -102,14 +102,17 @@ func AggregateTestResults(folderPath string) ([]TestResult, error) {
 				key := result.TestName + "|" + result.TestPackage
 				if existingResult, found := testMap[key]; found {
 					// Aggregate runs, durations, and outputs
-					totalRuns := existingResult.Runs + result.Runs
+					existingResult.Runs = existingResult.Runs + result.Runs
 					existingResult.Durations = append(existingResult.Durations, result.Durations...)
 					existingResult.Outputs = append(existingResult.Outputs, result.Outputs...)
+					existingResult.PackageOutputs = append(existingResult.PackageOutputs, result.PackageOutputs...)
+					existingResult.Successes += result.Successes
+					existingResult.Failures += result.Failures
+					existingResult.Panics += result.Panics
+					existingResult.Races += result.Races
+					existingResult.Skips += result.Skips
+					existingResult.PassRatio = float64(existingResult.Successes) / float64(existingResult.Runs)
 
-					// Calculate total successful runs for correct pass ratio calculation
-					successfulRuns := existingResult.PassRatio*float64(existingResult.Runs) + result.PassRatio*float64(result.Runs)
-					existingResult.Runs = totalRuns
-					existingResult.PassRatio = successfulRuns / float64(totalRuns)
 					existingResult.Skipped = existingResult.Skipped && result.Skipped // Mark as skipped only if all occurrences are skipped
 
 					// Update the map with the aggregated result
