@@ -43,7 +43,7 @@ func TestQuickDeploy(t *testing.T) {
 	c, err := ethclient.Dial(bcSrc.Nodes[0].HostWSUrl)
 	require.NoError(t, err)
 
-	t.Run("test some contracts with fork", func(t *testing.T) {
+	t.Run("make 100 transactions with 0s blocks then control the speed", func(t *testing.T) {
 		for i := 0; i < 100; i++ {
 			ra, err := randAddr()
 			require.NoError(t, err)
