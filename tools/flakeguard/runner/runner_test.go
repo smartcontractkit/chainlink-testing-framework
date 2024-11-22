@@ -260,9 +260,11 @@ func TestRun(t *testing.T) {
 					require.False(t, expected.seen, "test '%s' was seen multiple times", result.TestName)
 					expected.seen = true
 
-					assert.Len(t, result.Durations, result.Runs, "test '%s' has a mismatch of runs and duration counts\nIf this is a panic test, this is expected (but strange and buggy) behavior",
-						result.TestName, defaultRuns,
-					)
+					if !expected.allPanics && !expected.somePanics { // Panics end up wrecking durations
+						assert.Len(t, result.Durations, result.Runs, "test '%s' has a mismatch of runs and duration counts",
+							result.TestName, defaultRuns,
+						)
+					}
 					resultCounts := result.Successes + result.Failures + result.Panics + result.Skips
 					assert.Equal(t, result.Runs, resultCounts,
 						"test '%s' doesn't match Runs count with results counts\n%s", result.TestName, resultsString(result),

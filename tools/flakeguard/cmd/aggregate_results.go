@@ -7,17 +7,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	resultsFolderPath string
+	outputResultsPath string
+	outputLogsPath    string
+	maxPassRatio      float64
+	filterFailed      bool
+)
+
 var AggregateResultsCmd = &cobra.Command{
 	Use:   "aggregate-results",
 	Short: "Aggregate test results and optionally filter failed tests based on a threshold",
 	Run: func(cmd *cobra.Command, args []string) {
-		resultsFolderPath, _ := cmd.Flags().GetString("results-path")
-		outputResultsPath, _ := cmd.Flags().GetString("output-results")
-		outputLogsPath, _ := cmd.Flags().GetString("output-logs")
-		threshold, _ := cmd.Flags().GetFloat64("threshold")
-		minPassRatio, _ := cmd.Flags().GetFloat64("min-pass-ratio")
-		filterFailed, _ := cmd.Flags().GetBool("filter-failed")
-
 		// Aggregate all test results
 		allResults, err := reports.AggregateTestResults(resultsFolderPath)
 		if err != nil {
@@ -27,9 +28,9 @@ var AggregateResultsCmd = &cobra.Command{
 		var resultsToSave []reports.TestResult
 
 		if filterFailed {
-			// Filter to only include failed tests based on threshold and minPassRatio
+			// Filter to only include tests that failed below the threshold
 			for _, result := range allResults {
-				if result.PassRatio < threshold && result.PassRatio > minPassRatio && !result.Skipped {
+				if result.PassRatio < maxPassRatio && !result.Skipped {
 					resultsToSave = append(resultsToSave, result)
 				}
 			}
@@ -45,10 +46,9 @@ var AggregateResultsCmd = &cobra.Command{
 }
 
 func init() {
-	AggregateResultsCmd.Flags().String("results-path", "", "Path to the folder containing JSON test result files")
-	AggregateResultsCmd.Flags().String("output-results", "./results.json", "Path to output the aggregated or filtered test results in JSON format")
-	AggregateResultsCmd.Flags().String("output-logs", "", "Path to output the filtered test logs in JSON format")
-	AggregateResultsCmd.Flags().Float64("threshold", 1.0, "Minimum pass ratio for considering a test as flaky (used with --filter-failed)")
-	AggregateResultsCmd.Flags().Float64("min-pass-ratio", 0.001, "Minimum pass ratio for considering a test as flaky (used with --filter-failed)")
-	AggregateResultsCmd.Flags().Bool("filter-failed", false, "If true, filter and output only failed tests based on the threshold")
+	AggregateResultsCmd.Flags().StringVarP(&resultsFolderPath, "results-path", "p", "", "Path to the folder containing JSON test result files")
+	AggregateResultsCmd.Flags().StringVarP(&outputResultsPath, "output-results", "o", "./results.json", "Path to output the aggregated or filtered test results in JSON format")
+	AggregateResultsCmd.Flags().StringVarP(&outputLogsPath, "output-logs", "l", "", "Path to output the filtered test logs in JSON format")
+	AggregateResultsCmd.Flags().Float64VarP(&maxPassRatio, "max-pass-ratio", "m", 1.0, "The maximum (non-inclusive) pass ratio threshold for a test to be considered a failure")
+	AggregateResultsCmd.Flags().BoolVarP(&filterFailed, "filter-failed", "f", false, "If true, filter and output only failed tests based on the min-pass-ratio threshold")
 }
