@@ -1,3 +1,4 @@
+// nolint
 package networks
 
 import (
@@ -82,10 +83,6 @@ func TestVariousNetworkConfig(t *testing.T) {
 	}
 	httpOnlyNetwork := newNetwork
 	httpOnlyNetwork.URLs = nil
-	forkedNetwork := newNetwork
-	forkedNetwork.HTTPURLs = nil
-	forkedNetwork.URLs = nil
-	forkedNetwork.PrivateKeys = nil
 	t.Cleanup(func() {
 		ArbitrumGoerli.URLs = []string{}
 		ArbitrumGoerli.HTTPURLs = []string{}

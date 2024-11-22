@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   smart-contract-verifier:
-    image: ghcr.io/blockscout/smart-contract-verifier:${SMART_CONTRACT_VERIFIER_DOCKER_TAG:-latest}
+    image: ghcr.io/blockscout/smart-contract-verifier:v1.9.2
     pull_policy: always
     platform: linux/amd64
     restart: always

@@ -1,5 +1,4 @@
-// nolint
-package client
+package rpc
 
 import (
 	"context"
@@ -106,7 +105,7 @@ func TestRPCAPI(t *testing.T) {
 		bnBefore, err := client.BlockNumber(context.Background())
 		require.NoError(t, err)
 
-		ac := NewRPCClient(url, nil)
+		ac := New(url, nil)
 		err = ac.GethSetHead(10)
 		require.NoError(t, err)
 		bnAfter, err := client.BlockNumber(context.Background())
@@ -123,7 +122,7 @@ func TestRPCAPI(t *testing.T) {
 		tx, err := sendTestTransaction(t, client, big.NewInt(1e9), big.NewInt(1e9), false)
 		require.NoError(t, err)
 
-		anvilClient := NewRPCClient(ac.URL, nil)
+		anvilClient := New(ac.URL, nil)
 		err = anvilClient.AnvilDropTransaction([]interface{}{tx.Hash().String()})
 		require.NoError(t, err)
 		status, err := anvilClient.AnvilTxPoolStatus(nil)
@@ -141,7 +140,7 @@ func TestRPCAPI(t *testing.T) {
 		randomAddress := common.HexToAddress("0x0d2026b3EE6eC71FC6746ADb6311F6d3Ba1C000B")
 		storeValue := "0x0000000000000000000000000000000000000000000000000000000000000001"
 
-		anvilClient := NewRPCClient(ac.URL, nil)
+		anvilClient := New(ac.URL, nil)
 		err = anvilClient.AnvilSetStorageAt([]interface{}{randomAddress.Hex(), "0x0", storeValue})
 		require.NoError(t, err, "unable to set storage at address")
 
@@ -160,7 +159,7 @@ func TestRPCAPI(t *testing.T) {
 		client, err := ethclient.Dial(ac.URL)
 		require.NoError(t, err)
 
-		anvilClient := NewRPCClient(ac.URL, nil)
+		anvilClient := New(ac.URL, nil)
 		err = anvilClient.AnvilSetBlockGasLimit([]interface{}{"1"})
 		require.NoError(t, err)
 
@@ -181,7 +180,7 @@ func TestRPCAPI(t *testing.T) {
 		require.NoError(t, err)
 		printGasPrices(t, client)
 
-		anvilClient := NewRPCClient(ac.URL, nil)
+		anvilClient := New(ac.URL, nil)
 		err = anvilClient.AnvilSetNextBlockBaseFeePerGas([]interface{}{"10000000000"})
 		require.NoError(t, err)
 		printGasPrices(t, client)

@@ -1,16 +1,14 @@
-// nolint
-package client
+package rpc
 
 import (
 	"context"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"math/big"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
-
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
 )
 
 func TestRPCSuite(t *testing.T) {
@@ -21,7 +19,7 @@ func TestRPCSuite(t *testing.T) {
 		require.NoError(t, err)
 		printGasPrices(t, client)
 		// set a base fee
-		anvilClient := NewRPCClient(ac.URL, nil)
+		anvilClient := New(ac.URL, nil)
 		// set fee for the next block
 		err = anvilClient.AnvilSetNextBlockBaseFeePerGas([]interface{}{"2000000000"})
 		require.NoError(t, err)
@@ -34,8 +32,7 @@ func TestRPCSuite(t *testing.T) {
 		require.NoError(t, err)
 		// check the base fee of the block
 		require.Equal(t, "2000000000", block.BaseFee().String(), "expected base fee to be 20 gwei")
-		logger := logging.GetTestLogger(t)
-		err = anvilClient.ModulateBaseFeeOverDuration(logger, 2000000000, 0.5, 20*time.Second, true)
+		err = anvilClient.ModulateBaseFeeOverDuration(framework.L, 2000000000, 0.5, 20*time.Second, true)
 		require.NoError(t, err)
 		// mine a block
 		err = anvilClient.AnvilMine(nil)
@@ -46,7 +43,7 @@ func TestRPCSuite(t *testing.T) {
 		require.NoError(t, err)
 		// check the base fee of the block
 		require.Equal(t, "3000000000", block.BaseFee().String(), "expected base fee to be 30 gwei")
-		err = anvilClient.ModulateBaseFeeOverDuration(logger, 3000000000, 0.25, 15*time.Second, false)
+		err = anvilClient.ModulateBaseFeeOverDuration(framework.L, 3000000000, 0.25, 15*time.Second, false)
 		require.NoError(t, err)
 		// mine a block
 		err = anvilClient.AnvilMine(nil)

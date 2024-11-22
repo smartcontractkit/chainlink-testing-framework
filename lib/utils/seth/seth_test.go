@@ -196,7 +196,7 @@ func TestMergeSethAndEvmNetworkConfigs(t *testing.T) {
 
 	// Run test cases
 	for _, tc := range testCases {
-		tc := tc // capture range variable
+		tc := tc //nolint capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			mergedConfig, err := seth.MergeSethAndEvmNetworkConfigs(tc.evmNetwork, tc.sethConfig)
 
