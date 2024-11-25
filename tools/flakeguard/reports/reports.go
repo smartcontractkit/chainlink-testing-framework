@@ -311,9 +311,9 @@ func SaveFilteredResultsAndLogs(outputResultsPath, outputLogsPath string, report
 		if err := saveReportNoLogs(jsonFileName, report); err != nil {
 			return fmt.Errorf("error writing filtered results to file: %w", err)
 		}
-		summaryFile, err := os.Open(mdFileName)
+		summaryFile, err := os.Create(mdFileName)
 		if err != nil {
-			return fmt.Errorf("error opening markdown file: %w", err)
+			return fmt.Errorf("error creating markdown file: %w", err)
 		}
 		defer summaryFile.Close()
 		MarkdownSummary(summaryFile, report, 1.0)
