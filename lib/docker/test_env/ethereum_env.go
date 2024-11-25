@@ -584,7 +584,7 @@ func (en *EthereumNetwork) startEth1() (blockchain.EVMNetwork, RpcProvider, erro
 	var clientErr error
 	switch *en.ExecutionLayer {
 	case config_types.ExecutionLayer_Geth:
-		client = NewGethEth1(dockerNetworks, en.EthereumChainConfig, opts...)
+		client, clientErr = NewGethEth1(dockerNetworks, en.EthereumChainConfig, opts...)
 	case config_types.ExecutionLayer_Besu:
 		client, clientErr = NewBesuEth1(dockerNetworks, en.EthereumChainConfig, opts...)
 	case config_types.ExecutionLayer_Erigon:
@@ -683,7 +683,14 @@ func (en *EthereumNetwork) generateGenesisAndFoldersIfNeeded(baseEthereumFork et
 
 		generatedDataContainerDir = genesis.GetGeneratedDataContainerDir()
 
-		initHelper := NewInitHelper(*en.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir).WithTestInstance(en.t)
+		var initHelper *AfterGenesisHelper
+
+		initHelper, err = NewInitHelper(*en.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir)
+		if err != nil {
+			err = errors.Wrap(err, "failed to create init helper")
+			return
+		}
+		initHelper.WithTestInstance(en.t)
 		err = initHelper.StartContainer()
 		if err != nil {
 			err = errors.Wrap(err, "failed to start init helper")

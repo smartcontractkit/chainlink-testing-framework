@@ -79,7 +79,7 @@ type KillgraveAdapterResult struct {
 	Result interface{} `json:"result"`
 }
 
-func NewKillgrave(networks []string, impostersDirectoryPath string, opts ...EnvComponentOption) *Killgrave {
+func NewKillgrave(networks []string, impostersDirectoryPath string, opts ...EnvComponentOption) (*Killgrave, error) {
 	k := &Killgrave{
 		EnvComponent: EnvComponent{
 			ContainerName:  fmt.Sprintf("%s-%s", "killgrave", uuid.NewString()[0:3]),
@@ -90,11 +90,15 @@ func NewKillgrave(networks []string, impostersDirectoryPath string, opts ...EnvC
 		impostersPath: impostersDirectoryPath,
 		l:             log.Logger,
 	}
-	k.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&k.EnvComponent)
 	}
-	return k
+	err := k.InitLogConsumerConfig(k.l)
+	if err != nil {
+		return nil, err
+	}
+
+	return k, nil
 }
 
 func (k *Killgrave) WithTestInstance(t *testing.T) *Killgrave {
@@ -176,13 +180,8 @@ func (k *Killgrave) getContainerRequest() (tc.ContainerRequest, error) {
 				ReadOnly: false,
 			})
 		},
-		WaitingFor: wait.ForLog("The fake server is on tap now").WithStartupTimeout(k.StartupTimeout),
-		LifecycleHooks: []tc.ContainerLifecycleHooks{
-			{
-				PostStarts: k.PostStartsHooks,
-				PostStops:  k.PostStopsHooks,
-			},
-		},
+		WaitingFor:     wait.ForLog("The fake server is on tap now").WithStartupTimeout(k.StartupTimeout),
+		LogConsumerCfg: k.LogConsumerConfig,
 	}, nil
 }
 

@@ -68,10 +68,14 @@ func NewPrysmBeaconChain(networks []string, chainConfig *config.EthereumChainCon
 		gethInternalExecutionURL: gethExecutionURL,
 		l:                        logging.GetTestLogger(nil),
 	}
-	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
+	err := g.InitLogConsumerConfig(g.l)
+	if err != nil {
+		return nil, err
+	}
+
 	// if the internal docker repo is set then add it to the version
 	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
@@ -168,12 +172,7 @@ func (g *PrysmBeaconChain) getContainerRequest(networks []string) (*tc.Container
 				ReadOnly: false,
 			})
 		},
-		LifecycleHooks: []tc.ContainerLifecycleHooks{
-			{
-				PostStarts: g.PostStartsHooks,
-				PostStops:  g.PostStopsHooks,
-			},
-		},
+		LogConsumerCfg: g.LogConsumerConfig,
 	}, nil
 }
 
@@ -206,10 +205,15 @@ func NewPrysmValidator(networks []string, chainConfig *config.EthereumChainConfi
 		internalBeaconRpcProvider: internalBeaconRpcProvider,
 		l:                         logging.GetTestLogger(nil),
 	}
-	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
+
+	err := g.InitLogConsumerConfig(g.l)
+	if err != nil {
+		return nil, err
+	}
+
 	// if the internal docker repo is set then add it to the version
 	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
@@ -279,11 +283,6 @@ func (g *PrysmValidator) getContainerRequest(networks []string) (*tc.ContainerRe
 				ReadOnly: false,
 			})
 		},
-		LifecycleHooks: []tc.ContainerLifecycleHooks{
-			{
-				PostStarts: g.PostStartsHooks,
-				PostStops:  g.PostStopsHooks,
-			},
-		},
+		LogConsumerCfg: g.LogConsumerConfig,
 	}, nil
 }

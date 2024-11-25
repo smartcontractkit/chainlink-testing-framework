@@ -19,19 +19,20 @@ const (
 )
 
 type EnvComponent struct {
-	ContainerName      string               `json:"containerName"`
-	ContainerImage     string               `json:"containerImage"`
-	ContainerVersion   string               `json:"containerVersion"`
-	ContainerEnvs      map[string]string    `json:"containerEnvs"`
-	WasRecreated       bool                 `json:"wasRecreated"`
-	Networks           []string             `json:"networks"`
-	Container          tc.Container         `json:"-"`
-	LogStream          *logstream.LogStream `json:"-"`
-	PostStartsHooks    []tc.ContainerHook   `json:"-"`
-	PostStopsHooks     []tc.ContainerHook   `json:"-"`
-	PreTerminatesHooks []tc.ContainerHook   `json:"-"`
-	LogLevel           string               `json:"-"`
-	StartupTimeout     time.Duration        `json:"-"`
+	ContainerName      string                `json:"containerName"`
+	ContainerImage     string                `json:"containerImage"`
+	ContainerVersion   string                `json:"containerVersion"`
+	ContainerEnvs      map[string]string     `json:"containerEnvs"`
+	WasRecreated       bool                  `json:"wasRecreated"`
+	Networks           []string              `json:"networks"`
+	Container          tc.Container          `json:"-"`
+	LogStream          *logstream.LogStream  `json:"-"`
+	PostStartsHooks    []tc.ContainerHook    `json:"-"`
+	PostStopsHooks     []tc.ContainerHook    `json:"-"`
+	PreTerminatesHooks []tc.ContainerHook    `json:"-"`
+	LogLevel           string                `json:"-"`
+	StartupTimeout     time.Duration         `json:"-"`
+	LogConsumerConfig  *tc.LogConsumerConfig `json:"-"`
 }
 
 type EnvComponentOption = func(c *EnvComponent)
@@ -94,6 +95,24 @@ func WithPreTerminatesHooks(hooks ...tc.ContainerHook) EnvComponentOption {
 	}
 }
 
+func (ec *EnvComponent) InitLogConsumerConfig(l zerolog.Logger) error {
+	if ec.LogStream == nil {
+		l.Warn().Msg("LogStream is nil, cannot initialize LogConsumerConfig. Check your lifecycle and make sure to set LogStream before calling this function")
+		return nil
+	}
+
+	logConsumer, err := ec.LogStream.LogConsumerForContainer(ec.ContainerName, "")
+	if err != nil {
+		return err
+	}
+
+	ec.LogConsumerConfig = &tc.LogConsumerConfig{Consumers: []tc.LogConsumer{logConsumer}, Opts: []tc.LogProductionOption{tc.WithLogProductionTimeout(ec.LogStream.GetLogProducerTimeout())}}
+
+	return nil
+}
+
+// SetDefaultHooks sets default hooks that connect the container to the log stream and manage log production cycle
+// Deprecated: use InitLogConsumerConfig() to use default log production lifecycle
 func (ec *EnvComponent) SetDefaultHooks() {
 	ec.PostStartsHooks = []tc.ContainerHook{
 		func(ctx context.Context, c tc.Container) error {
@@ -103,6 +122,7 @@ func (ec *EnvComponent) SetDefaultHooks() {
 			return nil
 		},
 	}
+	// maybe we could use this step to automatically flush all logs, but we don't know at this point if we should do that (as we don't know if the test has failed)
 	ec.PostStopsHooks = []tc.ContainerHook{
 		func(ctx context.Context, c tc.Container) error {
 			if ec.LogStream != nil {

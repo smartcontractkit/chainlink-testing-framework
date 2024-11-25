@@ -32,7 +32,7 @@ type MockServer struct {
 	l                zerolog.Logger
 }
 
-func NewMockServer(networks []string, opts ...EnvComponentOption) *MockServer {
+func NewMockServer(networks []string, opts ...EnvComponentOption) (*MockServer, error) {
 	ms := &MockServer{
 		EnvComponent: EnvComponent{
 			ContainerName:  fmt.Sprintf("%s-%s", "mockserver", uuid.NewString()[0:8]),
@@ -44,7 +44,12 @@ func NewMockServer(networks []string, opts ...EnvComponentOption) *MockServer {
 	for _, opt := range opts {
 		opt(&ms.EnvComponent)
 	}
-	return ms
+	err := ms.InitLogConsumerConfig(ms.l)
+	if err != nil {
+		return nil, err
+	}
+
+	return ms, nil
 }
 
 func (ms *MockServer) WithTestInstance(t *testing.T) *MockServer {
@@ -122,11 +127,6 @@ func (ms *MockServer) getContainerRequest() (tc.ContainerRequest, error) {
 		Networks: ms.Networks,
 		WaitingFor: tcwait.ForLog("INFO 1080 started on port: 1080").
 			WithPollInterval(100 * time.Millisecond).WithStartupTimeout(ms.StartupTimeout),
-		LifecycleHooks: []tc.ContainerLifecycleHooks{
-			{
-				PostStarts: ms.PostStartsHooks,
-				PostStops:  ms.PostStopsHooks,
-			},
-		},
+		LogConsumerCfg: ms.LogConsumerConfig,
 	}, nil
 }

@@ -18,8 +18,9 @@ func TestMockServerSetStringValue(t *testing.T) {
 	network, err := docker.CreateNetwork(l)
 	require.NoError(t, err)
 
-	m := NewMockServer([]string{network.Name}).
-		WithTestInstance(t)
+	m, err := NewMockServer([]string{network.Name})
+	require.NoError(t, err)
+	m.WithTestInstance(t)
 	err = m.StartContainer()
 	require.NoError(t, err)
 

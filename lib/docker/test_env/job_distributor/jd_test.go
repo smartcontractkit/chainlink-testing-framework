@@ -28,12 +28,14 @@ func TestJDSpinUp(t *testing.T) {
 	err = pg.StartContainer()
 	require.NoError(t, err)
 
-	jd := New([]string{network.Name},
+	jd, err := New([]string{network.Name},
 		//TODO: replace with actual image
 		WithImage("localhost:5001/jd"),
 		WithVersion("latest"),
 		WithDBURL(pg.InternalURL.String()),
 	)
+
+	require.NoError(t, err)
 
 	err = jd.StartContainer()
 	require.NoError(t, err)

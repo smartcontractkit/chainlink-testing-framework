@@ -44,9 +44,12 @@ func NewValKeysGeneretor(chainConfig *config.EthereumChainConfig, valKeysHostDat
 		l:                  log.Logger,
 		addressesToFund:    []string{},
 	}
-	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
+	}
+	err := g.InitLogConsumerConfig(g.l)
+	if err != nil {
+		return nil, err
 	}
 
 	// if the internal docker repo is set then add it to the version
@@ -109,11 +112,6 @@ func (g *ValKeysGenerator) getContainerRequest(networks []string) (*tc.Container
 				ReadOnly: false,
 			})
 		},
-		LifecycleHooks: []tc.ContainerLifecycleHooks{
-			{
-				PostStarts: g.PostStartsHooks,
-				PostStops:  g.PostStopsHooks,
-			},
-		},
+		LogConsumerCfg: g.LogConsumerConfig,
 	}, nil
 }

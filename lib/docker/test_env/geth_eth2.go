@@ -39,9 +39,12 @@ func NewGethEth2(networks []string, chainConfig *config.EthereumChainConfig, gen
 		l:                    logging.GetTestLogger(nil),
 		ethereumVersion:      config_types.EthereumVersion_Eth2,
 	}
-	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
+	}
+	err := g.InitLogConsumerConfig(g.l)
+	if err != nil {
+		return nil, err
 	}
 
 	if !g.WasRecreated {
@@ -98,12 +101,7 @@ func (g *Geth) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 				ReadOnly: false,
 			})
 		},
-		LifecycleHooks: []tc.ContainerLifecycleHooks{
-			{
-				PostStarts: g.PostStartsHooks,
-				PostStops:  g.PostStopsHooks,
-			},
-		},
+		LogConsumerCfg: g.LogConsumerConfig,
 	}, nil
 }
 

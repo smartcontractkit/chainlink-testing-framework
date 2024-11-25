@@ -29,7 +29,7 @@ type AfterGenesisHelper struct {
 	posContainerSettings
 }
 
-func NewInitHelper(chainConfig config.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir string, opts ...EnvComponentOption) *AfterGenesisHelper {
+func NewInitHelper(chainConfig config.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir string, opts ...EnvComponentOption) (*AfterGenesisHelper, error) {
 	g := &AfterGenesisHelper{
 		EnvComponent: EnvComponent{
 			ContainerName:  fmt.Sprintf("%s-%s", "after-genesis-helper", uuid.NewString()[0:8]),
@@ -40,11 +40,15 @@ func NewInitHelper(chainConfig config.EthereumChainConfig, generatedDataHostDir,
 		l:                    log.Logger,
 		addressesToFund:      []string{},
 	}
-	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
-	return g
+	err := g.InitLogConsumerConfig(g.l)
+	if err != nil {
+		return nil, err
+	}
+
+	return g, nil
 }
 
 func (g *AfterGenesisHelper) WithTestInstance(t *testing.T) *AfterGenesisHelper {
@@ -115,12 +119,7 @@ func (g *AfterGenesisHelper) getContainerRequest(networks []string) (*tc.Contain
 				ReadOnly: false,
 			})
 		},
-		LifecycleHooks: []tc.ContainerLifecycleHooks{
-			{
-				PostStarts: g.PostStartsHooks,
-				PostStops:  g.PostStopsHooks,
-			},
-		},
+		LogConsumerCfg: g.LogConsumerConfig,
 	}, nil
 }
 

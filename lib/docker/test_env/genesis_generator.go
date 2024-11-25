@@ -65,10 +65,15 @@ func NewEthGenesisGenerator(chainConfig config.EthereumChainConfig, generatedDat
 		generatedDataContainerDir: generatedDataContainerDir,
 		l:                         log.Logger,
 	}
-	g.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&g.EnvComponent)
 	}
+
+	err := g.InitLogConsumerConfig(g.l)
+	if err != nil {
+		return nil, err
+	}
+
 	// if the internal docker repo is set then add it to the version
 	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
 	return g, nil
@@ -186,12 +191,7 @@ func (g *EthGenesisGenerator) getContainerRequest(networks []string) (*tc.Contai
 				ReadOnly: false,
 			})
 		},
-		LifecycleHooks: []tc.ContainerLifecycleHooks{
-			{
-				PostStarts: g.PostStartsHooks,
-				PostStops:  g.PostStopsHooks,
-			},
-		},
+		LogConsumerCfg: g.LogConsumerConfig,
 	}, nil
 }
 

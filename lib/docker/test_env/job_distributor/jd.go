@@ -104,12 +104,7 @@ func (j *Component) getContainerRequest() *tc.ContainerRequest {
 			tcwait.ForListeningPort(test_env.NatPort(j.containerPort)),
 			tcwait.ForListeningPort(test_env.NatPort(j.wsrpcPort)),
 		),
-		LifecycleHooks: []tc.ContainerLifecycleHooks{
-			{
-				PostStarts: j.PostStartsHooks,
-				PostStops:  j.PostStopsHooks,
-			},
-		},
+		LogConsumerCfg: j.LogConsumerConfig,
 	}
 }
 
@@ -121,7 +116,7 @@ func (j *Component) RestartContainer() error {
 	return j.startOrRestartContainer(true)
 }
 
-func New(networks []string, opts ...Option) *Component {
+func New(networks []string, opts ...Option) (*Component, error) {
 	id, _ := uuid.NewRandom()
 	j := &Component{
 		EnvComponent: test_env.EnvComponent{
@@ -134,11 +129,15 @@ func New(networks []string, opts ...Option) *Component {
 		csaKeyEncryptionKey: DEFAULTCSAKeyEncryptionKey,
 		l:                   log.Logger,
 	}
-	j.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(j)
 	}
-	return j
+	err := j.InitLogConsumerConfig(j.l)
+	if err != nil {
+		return nil, err
+	}
+
+	return j, nil
 }
 
 func WithTestInstance(t *testing.T) Option {

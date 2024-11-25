@@ -105,10 +105,12 @@ func NewPostgresDb(networks []string, opts ...PostgresDbOption) (*PostgresDb, er
 		InternalPort: "5432",
 		l:            log.Logger,
 	}
-
-	pg.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(pg)
+	}
+	err := pg.InitLogConsumerConfig(pg.l)
+	if err != nil {
+		return nil, err
 	}
 
 	// if the internal docker repo is set then add it to the version
@@ -235,11 +237,6 @@ func (pg *PostgresDb) getContainerRequest() *tc.ContainerRequest {
 		WaitingFor: tcwait.ForExec([]string{"psql", "-h", "127.0.0.1",
 			"-U", pg.User, "-c", "select", "1", "-d", pg.DbName}).
 			WithStartupTimeout(pg.StartupTimeout),
-		LifecycleHooks: []tc.ContainerLifecycleHooks{
-			{
-				PostStarts: pg.PostStartsHooks,
-				PostStops:  pg.PostStopsHooks,
-			},
-		},
+		LogConsumerCfg: pg.LogConsumerConfig,
 	}
 }

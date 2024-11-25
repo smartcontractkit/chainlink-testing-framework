@@ -25,7 +25,7 @@ type Zookeeper struct {
 	t           *testing.T
 }
 
-func NewZookeeper(networks []string) *Zookeeper {
+func NewZookeeper(networks []string) (*Zookeeper, error) {
 	id, _ := uuid.NewRandom()
 	z := &Zookeeper{
 		EnvComponent: EnvComponent{
@@ -34,8 +34,8 @@ func NewZookeeper(networks []string) *Zookeeper {
 			StartupTimeout: 1 * time.Minute,
 		},
 	}
-	z.SetDefaultHooks()
-	return z
+
+	return z, nil
 }
 
 func (z *Zookeeper) WithTestInstance(t *testing.T) *Zookeeper {
@@ -95,11 +95,6 @@ func (z *Zookeeper) getContainerRequest() (tc.ContainerRequest, error) {
 		WaitingFor: tcwait.ForLog("ZooKeeper audit is disabled.").
 			WithStartupTimeout(z.StartupTimeout).
 			WithPollInterval(100 * time.Millisecond),
-		LifecycleHooks: []tc.ContainerLifecycleHooks{
-			{
-				PostStarts: z.PostStartsHooks,
-				PostStops:  z.PostStopsHooks,
-			},
-		},
+		LogConsumerCfg: z.LogConsumerConfig,
 	}, nil
 }

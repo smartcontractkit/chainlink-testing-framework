@@ -173,7 +173,39 @@ func fibonacci(n int) int {
 	return fibonacci(n-1) + fibonacci(n-2)
 }
 
-// ConnectContainer connects consumer to selected container, starts testcontainers.LogProducer and listens to it's failures in a detached goroutine
+func (m *LogStream) LogConsumerForContainer(containerName string, prefix string) (*ContainerLogConsumer, error) {
+	containerName = strings.Replace(containerName, "/", "", 1)
+	prefix = strings.Replace(prefix, "/", "", 1)
+
+	if prefix == "" {
+		prefix = containerName
+	}
+
+	enabledLogTargets := make([]LogTarget, 0)
+	for logTarget := range m.logTargetHandlers {
+		enabledLogTargets = append(enabledLogTargets, logTarget)
+	}
+
+	consumer, err := newContainerLogConsumerNewLifeCycle(containerName, m, prefix, enabledLogTargets...)
+	if err != nil {
+		return nil, err
+	}
+
+	m.log.Trace().
+		Str("Prefix", prefix).
+		Str("Name", containerName).
+		Str("Timeout", m.loggingConfig.LogStream.LogProducerTimeout.String()).
+		Msg("Created new container log consumer")
+
+	m.consumerMutex.Lock()
+	defer m.consumerMutex.Unlock()
+	m.consumers[containerName] = consumer
+
+	return consumer, nil
+}
+
+// ConnectContainer connects consumer to selected container, starts testcontainers.LogProducer and listens to its failures in a detached goroutine
+// Deprecated: testcontainers-go now automatically manges this connection, if `LogConsumerConfig` is passed to `ContainerRequest`. Use `InitLogConsumerConfig()` to get it.
 func (m *LogStream) ConnectContainer(ctx context.Context, container LogProducingContainer, prefix string) error {
 	name, err := container.Name(ctx)
 	if err != nil {
@@ -348,6 +380,9 @@ func (m *LogStream) shutdownWithFunction(context context.Context, postDisconnect
 
 	// first disconnect all containers, so that no new logs are accepted
 	for _, container := range containers {
+		if container == nil {
+			continue
+		}
 		name, err := container.Name(context)
 		if err != nil {
 			m.log.Error().
@@ -425,6 +460,10 @@ func (m *LogStream) GetLogLocation() string {
 	return logLocation
 }
 
+func (m *LogStream) GetLogProducerTimeout() time.Duration {
+	return m.loggingConfig.LogStream.LogProducerTimeout.Duration
+}
+
 // SaveLogTargetsLocations saves all log targets given writer
 func (m *LogStream) SaveLogTargetsLocations(writer LogWriter) {
 	for _, handler := range m.logTargetHandlers {
@@ -480,18 +519,25 @@ func (g *ContainerLogConsumer) IsStopped() bool {
 }
 
 // DisconnectContainer disconnects particular container
+// Deprecated: testcontainers-go now automatically manges container disconnection, if `LogConsumerConfig` is passed to `ContainerRequest`. Use `InitLogConsumerConfig()` to get it.
 func (m *LogStream) DisconnectContainer(container LogProducingContainer) error {
 	var err error
+	if container == nil {
+		return err
+	}
 
 	m.log.Info().Str("Container", container.GetContainerID()).Msg("Disconnecting container")
 
 	consumerFound := false
 	m.consumerMutex.RLock()
 	for _, consumer := range m.consumers {
+		if consumer.container == nil {
+			continue
+		}
 		if consumer.container.GetContainerID() == container.GetContainerID() {
 			consumerFound = true
 			m.log.Info().Str("Container", consumer.name).Msg("Stopping consumer")
-			if stopErr := consumer.stop(); err != nil {
+			if stopErr := consumer.stop(); stopErr != nil {
 				m.log.Error().
 					Err(stopErr).
 					Str("Name", consumer.name).
@@ -728,6 +774,35 @@ type ContainerLogConsumer struct {
 	logListeningDone chan struct{}
 	container        LogProducingContainer
 	firstLogTs       time.Time
+}
+
+// newContainerLogConsumer creates new log consumer for a container that saves logs to a temp file
+func newContainerLogConsumerNewLifeCycle(containerName string, lw *LogStream, prefix string, logTargets ...LogTarget) (*ContainerLogConsumer, error) {
+	containerName = strings.Replace(containerName, "/", "", 1)
+
+	consumer := &ContainerLogConsumer{
+		name:             containerName,
+		prefix:           prefix,
+		logTargets:       logTargets,
+		ls:               lw,
+		hasErrored:       false,
+		logListeningDone: make(chan struct{}, 1),
+		firstLogTs:       time.Now(),
+	}
+
+	if len(logTargets) == 0 {
+		return consumer, nil
+	}
+
+	tempFile, err := os.CreateTemp("", fmt.Sprintf("%s-%s-datafile.gob", containerName, uuid.NewString()[0:8]))
+	if err != nil {
+		return nil, err
+	}
+
+	consumer.tempFile = tempFile
+	consumer.encoder = gob.NewEncoder(tempFile)
+
+	return consumer, nil
 }
 
 // newContainerLogConsumer creates new log consumer for a container that saves logs to a temp file
