@@ -1,3 +1,5 @@
 tmp_test_flaky_state
 test_results_*.json
 debug_outputs/
+example_results.json
+example_results.md

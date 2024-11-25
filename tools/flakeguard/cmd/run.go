@@ -58,24 +58,15 @@ var RunTestsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		passedTests := reports.FilterPassedTests(testReport.Results, maxPassRatio)
-		failedTests := reports.FilterFailedTests(testReport.Results, maxPassRatio)
-		skippedTests := reports.FilterSkippedTests(testReport.Results)
-		flakyTests := reports.FilterFlakyTests(testReport.Results, maxPassRatio)
-
 		// Print all failed tests including flaky tests
-		if len(failedTests) > 0 && printFailedTests {
-			fmt.Printf("Maximum threshold for flaky tests: %.2f\n", maxPassRatio)
+		if printFailedTests {
 			fmt.Printf("PassRatio threshold for flaky tests: %.2f\n", maxPassRatio)
-			fmt.Printf("%d failed tests:\n", len(failedTests))
-			reports.PrintTests(os.Stdout, failedTests, 0.0)
+			reports.PrintTests(os.Stdout, testReport.Results, maxPassRatio)
 		}
-
-		fmt.Printf("Summary: %d passed, %d skipped, %d failed, %d flaky\n", len(passedTests), len(skippedTests), len(failedTests), len(flakyTests))
 
 		// Save the test results in JSON format
 		if outputPath != "" && len(testReport.Results) > 0 {
-			jsonData, err := json.MarshalIndent(testReport.Results, "", "  ")
+			jsonData, err := json.MarshalIndent(testReport, "", "  ")
 			if err != nil {
 				log.Fatalf("Error marshaling test results to JSON: %v", err)
 			}
@@ -85,6 +76,7 @@ var RunTestsCmd = &cobra.Command{
 			fmt.Printf("All test results saved to %s\n", outputPath)
 		}
 
+		flakyTests := reports.FilterFlakyTests(testReport.Results, maxPassRatio)
 		if len(flakyTests) > 0 {
 			// Exit with error code if there are flaky tests
 			os.Exit(1)

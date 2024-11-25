@@ -320,6 +320,8 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 				result.Runs = result.Successes + result.Failures + result.Panics + result.Races
 				if result.Runs > 0 {
 					result.PassRatio = float64(result.Successes) / float64(result.Runs)
+				} else {
+					result.PassRatio = 1
 				}
 			}
 		}
