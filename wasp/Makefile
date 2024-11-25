@@ -34,7 +34,6 @@ dashboard:
 .PHONY: start
 start:
 	docker compose -f compose/docker-compose.yaml up -d
-	sleep 5
 	@./scripts/generate_grafana_token.sh
 
 .PHONY: stop

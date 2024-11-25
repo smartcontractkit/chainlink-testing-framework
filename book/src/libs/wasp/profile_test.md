@@ -37,7 +37,9 @@ For the RPS `Gun`, we’ll define a schedule where:
 
 ```go
 epsilonSchedule := wasp.Combine(
+    // wasp.Steps(from, increase, steps, duration)	
     wasp.Steps(1, 1, 4, 10*time.Second), // Start at 1 RPS, increment by 1 RPS in 4 steps over 10 seconds (1 increment every 2.5 seconds)
+    // wasp.Plain(count, duration)
     wasp.Plain(5, 40*time.Second))       // Hold 5 RPS for 40 seconds
 ```
 
@@ -52,8 +54,11 @@ For the `VirtualUser`, the schedule will:
 
 ```go
 thetaSchedule := wasp.Combine(
+    // wasp.Plain(count, duration)
     wasp.Plain(1, 10*time.Second),         // 1 user for the first 10 seconds
+    // wasp.Steps(from, increase, steps, duration)
     wasp.Steps(1, 1, 9, 30*time.Second),  // Increment by 1 user every ~3 seconds over 30 seconds
+    // wasp.Steps(from, increase, steps, duration)
     wasp.Steps(10, -1, 10, 10*time.Second)) // Decrement by 1 user every second over 10 seconds
 ```
 

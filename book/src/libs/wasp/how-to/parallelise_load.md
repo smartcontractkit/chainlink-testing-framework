@@ -31,19 +31,25 @@ func TestParallelLoad(t *testing.T) {
 
     // Define RPS schedule
     rpsSchedule := wasp.Combine(
+		// wasp.Steps(from, increase, steps, duration)
         wasp.Steps(1, 1, 9, 10*time.Second), // Start with 1 RPS, increment by 1 RPS in 9 steps over 10 seconds
+        // wasp.Plain(count, duration)		
         wasp.Plain(9, 50*time.Second),       // Hold 9 RPS for 50 seconds
     )
 
     // Define VU' schedule
     vuSchedule := wasp.Combine(
+        // wasp.Steps(from, increase, steps, duration)
         wasp.Steps(2, 1, 8, 16*time.Second), // Start with 2 VUs, increment by 1 VU in 8 steps over 16 seconds
+        // wasp.Plain(count, duration)
         wasp.Plain(10, 30*time.Second),      // Hold 10 VUs for 30 seconds
     )
 
     // Define VU'' schedule
     vu2Schedule := wasp.Combine(
+        // wasp.Steps(from, increase, steps, duration)
         wasp.Steps(3, 1, 6, 14*time.Second), // Start with 3 VUs, increment by 1 VU in 6 steps over 14 seconds
+		// wasp.Plain(count, duration)
         wasp.Plain(9, 20*time.Second),       // Hold 9 VUs for 20 seconds
     )
 

@@ -2,16 +2,16 @@
 
 WASP can be configured using environment variables for most commonly used settings. However, to fully leverage the flexibility of WASP, you may need to use programmatic configuration for more advanced features.
 
-Optional variables are marked with the `(optional)` prefix.
-
 ### Required Environment Variables
 
 At a minimum, you need to provide the following environment variables, as WASP requires Loki:
 
-* `LOKI_TENANT_ID` - *(optional)* A tenant ID that acts as a bucket identifier for logs, logically separating them from other sets of logs. If the tenant ID doesn't exist, Loki will create it. Can be empty if log separation is not a concern.
 * `LOKI_URL` - The Loki **endpoint** to which logs are pushed (e.g., [http://localhost:3100/loki/api/v1/push](http://localhost:3100/loki/api/v1/push)).
 * `LOKI_TOKEN` - The authorization token.
-* `LOKI_BASIC_AUTH` - *(optional)* Basic authentication credentials.
+
+Optionally, you can also provide the following:
+* `LOKI_TENANT_ID` - A tenant ID that acts as a bucket identifier for logs, logically separating them from other sets of logs. If the tenant ID doesn't exist, Loki will create it. Can be empty if log separation is not a concern.
+* `LOKI_BASIC_AUTH` -  Basic authentication credentials.
 
 ---
 
@@ -39,7 +39,7 @@ If you want WASP to create a Grafana dashboard for you, provide the following en
 
 You can control the log level using this environment variable:
 
-* `WASP_LOG_LEVEL` - *(optional)* Sets the log level (`trace`, `debug`, `info`, `warn`, `error`; defaults to `info`).
+* `WASP_LOG_LEVEL` - Sets the log level (`trace`, `debug`, `info`, `warn`, `error`; defaults to `info`).
 
 ---
 
