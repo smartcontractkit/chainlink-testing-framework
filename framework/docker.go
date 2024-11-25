@@ -76,6 +76,9 @@ func BuildAndPublishLocalDockerImage(once *sync.Once, dockerfile string, buildCo
 		if registryRunning {
 			fmt.Println("Local registry container is already running.")
 		} else {
+			L.Info().Msg("Removing local registry")
+			_ = runCommand("docker", "stop", "local-registry")
+			_ = runCommand("docker", "rm", "local-registry")
 			L.Info().Msg("Starting local registry container...")
 			err := runCommand("docker", "run", "-d", "-p", "5050:5000", "--name", "local-registry", "registry:2")
 			if err != nil {

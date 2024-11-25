@@ -81,10 +81,10 @@ func TestOffChainAndFork(t *testing.T) {
 	// deploy 2 example product contracts
 	// you should replace it with chainlink-deployments
 	in.ContractsSrc.URL = bcSrc.Nodes[0].HostWSUrl
-	contractsSrc, err := onchain.NewProductOnChainDeployment(in.ContractsSrc)
+	contractsSrc, err := onchain.NewProductOnChainDeployment(scSrc, in.ContractsSrc)
 	require.NoError(t, err)
 	in.ContractsDst.URL = bcDst.Nodes[0].HostWSUrl
-	contractsDst, err := onchain.NewProductOnChainDeployment(in.ContractsDst)
+	contractsDst, err := onchain.NewProductOnChainDeployment(scDst, in.ContractsDst)
 	require.NoError(t, err)
 
 	t.Run("test some contracts with fork", func(t *testing.T) {
