@@ -52,30 +52,30 @@ var RunTestsCmd = &cobra.Command{
 			SelectedTestPackages: testPackages,
 		}
 
-		testResults, err := runner.RunTests()
+		testReport, err := runner.RunTests()
 		if err != nil {
 			fmt.Printf("Error running tests: %v\n", err)
 			os.Exit(1)
 		}
 
-		passedTests := reports.FilterPassedTests(testResults, maxPassRatio)
-		failedTests := reports.FilterFailedTests(testResults, maxPassRatio)
-		skippedTests := reports.FilterSkippedTests(testResults)
-		flakyTests := reports.FilterFlakyTests(testResults, maxPassRatio)
+		passedTests := reports.FilterPassedTests(testReport.Results, maxPassRatio)
+		failedTests := reports.FilterFailedTests(testReport.Results, maxPassRatio)
+		skippedTests := reports.FilterSkippedTests(testReport.Results)
+		flakyTests := reports.FilterFlakyTests(testReport.Results, maxPassRatio)
 
 		// Print all failed tests including flaky tests
 		if len(failedTests) > 0 && printFailedTests {
 			fmt.Printf("Maximum threshold for flaky tests: %.2f\n", maxPassRatio)
 			fmt.Printf("PassRatio threshold for flaky tests: %.2f\n", maxPassRatio)
 			fmt.Printf("%d failed tests:\n", len(failedTests))
-			reports.PrintTests(failedTests, os.Stdout)
+			reports.PrintTests(os.Stdout, failedTests, 0.0)
 		}
 
 		fmt.Printf("Summary: %d passed, %d skipped, %d failed, %d flaky\n", len(passedTests), len(skippedTests), len(failedTests), len(flakyTests))
 
 		// Save the test results in JSON format
-		if outputPath != "" && len(testResults) > 0 {
-			jsonData, err := json.MarshalIndent(testResults, "", "  ")
+		if outputPath != "" && len(testReport.Results) > 0 {
+			jsonData, err := json.MarshalIndent(testReport.Results, "", "  ")
 			if err != nil {
 				log.Fatalf("Error marshaling test results to JSON: %v", err)
 			}
@@ -88,7 +88,7 @@ var RunTestsCmd = &cobra.Command{
 		if len(flakyTests) > 0 {
 			// Exit with error code if there are flaky tests
 			os.Exit(1)
-		} else if len(testResults) == 0 {
+		} else if len(testReport.Results) == 0 {
 			fmt.Printf("No tests were run for the specified packages.\n")
 		}
 	},

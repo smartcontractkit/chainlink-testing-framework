@@ -1,10 +1,10 @@
 package reports
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -12,24 +12,32 @@ import (
 	"time"
 )
 
+// TestReport represents the report of all tests run through flakeguard.
+type TestReport struct {
+	GoProject     string
+	TestRunCount  int
+	RaceDetection bool
+	ExcludedTests []string
+	Results       []TestResult
+}
+
 // TestResult represents the result of a single test being run through flakeguard.
 type TestResult struct {
-	TestName            string
-	TestPackage         string
-	Panicked            bool            // Indicates a test-level panic
-	Skipped             bool            // Indicates if the test was skipped
-	PackagePanicked     bool            // Indicates a package-level panic
-	PassRatio           float64         // Pass ratio in decimal format like 0.5
-	PassRatioPercentage string          // Pass ratio in percentage format like "50%"
-	Runs                int             // Count of how many times the test was run
-	Failures            int             // Count of how many times the test failed
-	Successes           int             // Count of how many times the test passed
-	Panics              int             // Count of how many times the test panicked
-	Races               int             // Count of how many times the test encountered a data race
-	Skips               int             // Count of how many times the test was skipped
-	Outputs             []string        `json:"outputs,omitempty"` // Stores outputs for a test
-	Durations           []time.Duration // Stores elapsed time for each run of the test
-	PackageOutputs      []string        `json:"package_outputs,omitempty"` // Stores package-level outputs
+	TestName        string
+	TestPackage     string
+	Panicked        bool            // Indicates a test-level panic
+	Skipped         bool            // Indicates if the test was skipped
+	PackagePanicked bool            // Indicates a package-level panic
+	PassRatio       float64         // Pass ratio in decimal format like 0.5
+	Runs            int             // Count of how many times the test was run
+	Failures        int             // Count of how many times the test failed
+	Successes       int             // Count of how many times the test passed
+	Panics          int             // Count of how many times the test panicked
+	Races           int             // Count of how many times the test encountered a data race
+	Skips           int             // Count of how many times the test was skipped
+	Outputs         []string        `json:"outputs,omitempty"` // Stores outputs for a test
+	Durations       []time.Duration // Stores elapsed time for each run of the test
+	PackageOutputs  []string        `json:"package_outputs,omitempty"` // Stores package-level outputs
 }
 
 // FilterFailedTests returns a slice of TestResult where the pass ratio is below the specified threshold.
@@ -77,10 +85,16 @@ func FilterSkippedTests(results []TestResult) []TestResult {
 }
 
 // AggregateTestResults aggregates all JSON test results.
-func AggregateTestResults(folderPath string) ([]TestResult, error) {
-	// Map to hold unique tests based on their TestName and TestPackage
-	testMap := make(map[string]TestResult)
+func AggregateTestResults(folderPath string) (*TestReport, error) {
+	var (
+		// Map to hold unique tests based on their TestName and TestPackage
+		// Key: TestName|TestPackage, Value: TestResult
+		testMap       = make(map[string]TestResult)
+		fullReport    = &TestReport{}
+		excludedTests = map[string]struct{}{}
+	)
 
+	// Read all JSON files in the folder
 	err := filepath.Walk(folderPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -91,13 +105,22 @@ func AggregateTestResults(folderPath string) ([]TestResult, error) {
 			if readErr != nil {
 				return readErr
 			}
-			// Parse JSON data into TestResult slice
-			var results []TestResult
-			if jsonErr := json.Unmarshal(data, &results); jsonErr != nil {
+			var report TestReport
+			if jsonErr := json.Unmarshal(data, &report); jsonErr != nil {
 				return jsonErr
 			}
-			// Process each result
-			for _, result := range results {
+			if fullReport.GoProject == "" {
+				fullReport.GoProject = report.GoProject
+			} else if fullReport.GoProject != report.GoProject {
+				return fmt.Errorf("multiple projects found in the results folder, expected %s, got %s", fullReport.GoProject, report.GoProject)
+			}
+			fullReport.TestRunCount += report.TestRunCount
+			fullReport.RaceDetection = report.RaceDetection && fullReport.RaceDetection
+			for _, test := range report.ExcludedTests {
+				excludedTests[test] = struct{}{}
+			}
+			// Process each test result
+			for _, result := range report.Results {
 				// Unique key for each test based on TestName and TestPackage
 				key := result.TestName + "|" + result.TestPackage
 				if existingResult, found := testMap[key]; found {
@@ -111,7 +134,10 @@ func AggregateTestResults(folderPath string) ([]TestResult, error) {
 					existingResult.Panics += result.Panics
 					existingResult.Races += result.Races
 					existingResult.Skips += result.Skips
-					existingResult.PassRatio = float64(existingResult.Successes) / float64(existingResult.Runs)
+					existingResult.PassRatio = 1.0
+					if existingResult.Runs > 0 {
+						existingResult.PassRatio = float64(existingResult.Successes) / float64(existingResult.Runs)
+					}
 
 					existingResult.Skipped = existingResult.Skipped && result.Skipped // Mark as skipped only if all occurrences are skipped
 
@@ -128,105 +154,173 @@ func AggregateTestResults(folderPath string) ([]TestResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error reading files: %v", err)
 	}
+	// Aggregate
+	for test := range excludedTests {
+		fullReport.ExcludedTests = append(fullReport.ExcludedTests, test)
+	}
 
-	// Convert map to slice of TestResult and set PassRatioPercentage
-	aggregatedResults := make([]TestResult, 0, len(testMap))
+	var (
+		aggregatedResults = make([]TestResult, 0, len(testMap))
+		allSuccesses      int
+	)
 	for _, result := range testMap {
-		result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
 		aggregatedResults = append(aggregatedResults, result)
+		allSuccesses += result.Successes
 	}
 
 	// Sort by PassRatio in ascending order
 	sort.Slice(aggregatedResults, func(i, j int) bool {
 		return aggregatedResults[i].PassRatio < aggregatedResults[j].PassRatio
 	})
+	fullReport.Results = aggregatedResults
 
-	return aggregatedResults, nil
+	return fullReport, nil
 }
 
 // PrintTests prints tests in a pretty format
-func PrintTests(tests []TestResult, w io.Writer) {
-	for i, test := range tests {
-		fmt.Fprintf(w, "\n--- Test %d ---\n", i+1)
-		fmt.Fprintf(w, "TestName: %s\n", test.TestName)
-		fmt.Fprintf(w, "TestPackage: %s\n", test.TestPackage)
-		fmt.Fprintf(w, "PassRatio: %.2f\n", test.PassRatio)
-		fmt.Fprintf(w, "Skipped: %v\n", test.Skipped)
-		fmt.Fprintf(w, "Runs: %d\n", test.Runs)
-		fmt.Fprintf(w, "Successes: %d\n", test.Successes)
-		fmt.Fprintf(w, "Failures: %d\n", test.Failures)
-		fmt.Fprintf(w, "Panics: %d\n", test.Panics)
-		fmt.Fprintf(w, "Races: %d\n", test.Races)
-		fmt.Fprintf(w, "Skips: %d\n", test.Skips)
-		durationsStr := make([]string, len(test.Durations))
-		for i, duration := range test.Durations {
-			durationsStr[i] = duration.String()
+func PrintTests(w io.Writer, tests []TestResult, maxPassRatio float64) (allRuns, passes, fails, skips, races, panics, flakes int) {
+	fmt.Fprintln(w, "| Test Name | Test Package | Pass Ratio | Skipped | Runs | Successes | Failures | Panics | Races | Skips | Avg Duration |")
+	fmt.Fprintln(w, "|-----------|--------------|------------|---------|------|-----------|----------|--------|-------|-------|--------------|")
+	for _, test := range tests {
+		if test.PassRatio >= maxPassRatio {
+			continue
 		}
-		fmt.Fprintf(w, "Durations: %s\n", strings.Join(durationsStr, ", "))
-		fmt.Fprintf(w, "Outputs:\n%s\n", strings.Join(test.Outputs, ""))
+		fmt.Fprintf(w, "| %s | %s | %.2f%% | %v | %d | %d | %d | %d | %d | %d | %s |\n",
+			test.TestName, test.TestPackage, test.PassRatio*100, test.Skipped, test.Runs, test.Successes, test.Failures, test.Panics, test.Races, test.Skips, avgDuration(test.Durations).String())
+		allRuns += test.Runs
+		passes += test.Successes
+		fails += test.Failures
+		skips += test.Skips
+		races += test.Races
+		panics += test.Panics
+		flakes += fails + races + panics
+	}
+	return
+}
+
+// TestsSummary builds a summary of test results in markdown format, handy for reporting in CI and Slack
+func TestsSummary(w io.Writer, testReport *TestReport, maxPassRatio float64) {
+	tests := testReport.Results
+	fmt.Fprintln(w, "# Flakeguard Summary")
+	fmt.Fprintln(w, "| **Setting** | **Value** |")
+	fmt.Fprintln(w, "|-------------|-----------|")
+	fmt.Fprintf(w, "| Go Project | %s |\n", testReport.GoProject)
+	fmt.Fprintf(w, "| Max Pass Ratio | %.2f%% |\n", maxPassRatio*100)
+	fmt.Fprintf(w, "| Test Run Count | %d |\n", testReport.TestRunCount)
+	fmt.Fprintf(w, "| Race Detection | %t |\n", testReport.RaceDetection)
+	fmt.Fprintf(w, "| Excluded Tests | %s |\n", strings.Join(testReport.ExcludedTests, ", "))
+	fmt.Fprintln(w, "|-------------|-----------|")
+	if len(tests) == 0 {
+		fmt.Fprintln(w, "## No tests ran :warning:")
+		return
+	}
+	var (
+		avgPassRatio = 1.0
+		testsData    = bytes.NewBuffer(nil)
+	)
+	for _, test := range tests {
+		fmt.Fprintf(testsData, "| %s | %s | %.2f%% | %v | %d | %d | %d | %d | %d | %d | %s |\n",
+			test.TestName, test.TestPackage, test.PassRatio*100, test.Skipped, test.Runs, test.Successes,
+			test.Failures, test.Panics, test.Races, test.Skips, avgDuration(test.Durations).String(),
+		)
+	}
+	allRuns, passes, fails, skips, races, panics, flakes := PrintTests(testsData, tests, maxPassRatio)
+	if allRuns > 0 {
+		avgPassRatio = float64(passes) / float64(allRuns)
+	}
+	if avgPassRatio < maxPassRatio {
+		fmt.Fprintln(w, "## Found Flaky Tests :x:")
+	} else {
+		fmt.Fprintln(w, "## No Flakes Found :white_check_mark:")
+	}
+	fmt.Fprintf(w, "Ran `%d` tests `%d` times with a `%.2f%%` pass ratio and found `%d` flaky tests\n", len(tests), allRuns, avgPassRatio*100, flakes)
+	fmt.Fprintf(w, "### Results")
+	separator := "|----------------|------------------|--------------------|------------------|-----------------|-----------------|"
+	fmt.Fprintln(w, "| **Total Runs** | **Total Passes** | **Total Failures** | **Total Panics** | **Total Races** | **Total Skips** |")
+	fmt.Fprintln(w, separator)
+	fmt.Fprintf(w, "| %d | %d | %d | %d | %d | %d |\n", allRuns, passes, fails, panics, races, skips)
+	fmt.Fprintln(w, separator)
+	if avgPassRatio < maxPassRatio {
+		fmt.Fprintln(w, "### Flakes")
+		separator = "|---------------|------------------|----------------|-------------|----------|---------------|--------------|------------|-----------|-----------|------------------|"
+		fmt.Fprintln(w, "| **Test Name** | **Test Package** | **Pass Ratio** | **Skipped** | **Runs** | **Successes** | **Failures** | **Panics** | **Races** | **Skips** | **Avg Duration** |")
+		fmt.Fprintln(w, separator)
+		fmt.Fprint(w, testsData.String())
+		fmt.Fprintln(w, separator)
 	}
 }
 
 // Helper function to save filtered results and logs to specified paths
-func SaveFilteredResultsAndLogs(outputResultsPath, outputLogsPath string, failedResults []TestResult) {
+func SaveFilteredResultsAndLogs(outputResultsPath, outputLogsPath string, report *TestReport) error {
 	if outputResultsPath != "" {
-		if err := saveResults(outputResultsPath, failedResults); err != nil {
-			log.Fatalf("Error writing failed results to file: %v", err)
+		if err := os.MkdirAll(filepath.Dir(outputResultsPath), 0755); err != nil { //nolint:gosec
+			return fmt.Errorf("error creating output directory: %w", err)
 		}
-		fmt.Printf("Test results saved to %s\n", outputResultsPath)
+		jsonFileName := strings.TrimSuffix(outputResultsPath, filepath.Ext(outputResultsPath)) + ".json"
+		mdFileName := strings.TrimSuffix(outputResultsPath, filepath.Ext(outputResultsPath)) + ".md"
+		if err := saveReportNoLogs(jsonFileName, report); err != nil {
+			return fmt.Errorf("error writing filtered results to file: %w", err)
+		}
+		summaryFile, err := os.Open(mdFileName)
+		if err != nil {
+			return fmt.Errorf("error opening markdown file: %w", err)
+		}
+		defer summaryFile.Close()
+		TestsSummary(summaryFile, report, 1.0)
+		fmt.Printf("Test results saved to %s and summary to %s\n", jsonFileName, mdFileName)
 	} else {
 		fmt.Println("No failed tests found based on the specified threshold and min pass ratio.")
 	}
 
 	if outputLogsPath != "" {
-		if err := saveTestOutputs(outputLogsPath, failedResults); err != nil {
-			log.Fatalf("Error writing failed logs to file: %v", err)
+		if err := os.MkdirAll(filepath.Dir(outputLogsPath), 0755); err != nil { //nolint:gosec
+			return fmt.Errorf("error creating output directory: %w", err)
+		}
+		if err := saveReport(outputLogsPath, report); err != nil {
+			return fmt.Errorf("error writing filtered logs to file: %w", err)
 		}
 		fmt.Printf("Test logs saved to %s\n", outputLogsPath)
 	}
+	return nil
 }
 
-// Helper function to save results to JSON file without outputs
-func saveResults(filePath string, results []TestResult) error {
+// saveReportNoLogs saves the test results to JSON without logs
+// as outputs can take up a lot of space and are not always needed.
+// Outputs can be saved separately using saveTestOutputs
+func saveReportNoLogs(filePath string, report *TestReport) error {
 	var filteredResults []TestResult
-	for _, r := range results {
+	for _, r := range report.Results {
 		filteredResult := r
 		filteredResult.Outputs = nil
 		filteredResult.PackageOutputs = nil
 		filteredResults = append(filteredResults, filteredResult)
 	}
+	report.Results = filteredResults
 
-	data, err := json.MarshalIndent(filteredResults, "", "  ")
+	data, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling results: %v", err)
 	}
 	return os.WriteFile(filePath, data, 0644) //nolint:gosec
 }
 
-// Helper function to save test names, packages, and outputs to JSON file
-func saveTestOutputs(filePath string, results []TestResult) error {
-	// Define a struct type with only the required fields
-	type outputOnlyResult struct {
-		TestName       string
-		TestPackage    string
-		Outputs        []string
-		PackageOutputs []string
-	}
-
-	// Convert results to the filtered struct
-	var outputResults []outputOnlyResult
-	for _, r := range results {
-		outputResults = append(outputResults, outputOnlyResult{
-			TestName:       r.TestName,
-			TestPackage:    r.TestPackage,
-			Outputs:        r.Outputs,
-			PackageOutputs: r.PackageOutputs,
-		})
-	}
-
-	data, err := json.MarshalIndent(outputResults, "", "  ")
+// saveReport saves the test results to JSON
+func saveReport(filePath string, report *TestReport) error {
+	data, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling outputs: %v", err)
 	}
 	return os.WriteFile(filePath, data, 0644) //nolint:gosec
+}
+
+// avgDuration calculates the average duration from a slice of time.Duration
+func avgDuration(durations []time.Duration) time.Duration {
+	if len(durations) == 0 {
+		return 0
+	}
+	var total time.Duration
+	for _, d := range durations {
+		total += d
+	}
+	return total / time.Duration(len(durations))
 }

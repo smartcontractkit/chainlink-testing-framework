@@ -38,7 +38,7 @@ type Runner struct {
 
 // RunTests executes the tests for each provided package and aggregates all results.
 // It returns all test results and any error encountered during testing.
-func (r *Runner) RunTests() ([]reports.TestResult, error) {
+func (r *Runner) RunTests() (*reports.TestReport, error) {
 	var jsonFilePaths []string
 	for _, p := range r.SelectedTestPackages {
 		for i := 0; i < r.RunCount; i++ {
@@ -63,18 +63,24 @@ func (r *Runner) RunTests() ([]reports.TestResult, error) {
 		}
 	}
 
-	reports, err := parseTestResults(jsonFilePaths)
+	results, err := parseTestResults(jsonFilePaths)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
-	for index, report := range reports {
+	for index, report := range results {
 		if report.Panics >= r.RunCount { // This feels hacky, but there aren't any elegant solutions
-			reports[index].Failures = 0 // We can sometimes double-count panics as failures
-			reports[index].Panics = r.RunCount
-			reports[index].Runs = r.RunCount
+			results[index].Failures = 0 // We can sometimes double-count panics as failures
+			results[index].Panics = r.RunCount
+			results[index].Runs = r.RunCount
 		}
 	}
-	return reports, nil
+	return &reports.TestReport{
+		GoProject:     r.ProjectPath,
+		TestRunCount:  r.RunCount,
+		RaceDetection: r.UseRace,
+		ExcludedTests: r.SkipTests,
+		Results:       results,
+	}, nil
 }
 
 // RawOutput retrieves the raw output from the test runs, if CollectRawOutput enabled.
@@ -306,21 +312,15 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 				}
 			case "skip":
 				if entryLine.Test != "" {
-					duration, err := time.ParseDuration(strconv.FormatFloat(entryLine.Elapsed, 'f', -1, 64) + "s")
-					if err != nil {
-						return nil, fmt.Errorf("failed to parse duration: %w", err)
-					}
-					result.Durations = append(result.Durations, duration)
 					result.Skipped = true
 					result.Skips++
 				}
 			}
 			if entryLine.Test != "" {
-				result.Runs = result.Successes + result.Failures + result.Panics + result.Races + result.Skips
+				result.Runs = result.Successes + result.Failures + result.Panics + result.Races
 				if result.Runs > 0 {
 					result.PassRatio = float64(result.Successes) / float64(result.Runs)
 				}
-				result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
 			}
 		}
 

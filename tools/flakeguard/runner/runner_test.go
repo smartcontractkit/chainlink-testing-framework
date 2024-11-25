@@ -42,6 +42,7 @@ type expectedTestResult struct {
 
 func TestRun(t *testing.T) {
 	var (
+		zeroRuns        = 0
 		oneRun          = 1
 		successPassRate = 1.0
 		failPassRate    = 0.0
@@ -85,7 +86,7 @@ func TestRun(t *testing.T) {
 					maximumRuns:   defaultRuns,
 				},
 				"TestSkipped": {
-					exactRuns:     &defaultRuns,
+					exactRuns:     &zeroRuns,
 					exactPassRate: &failPassRate,
 					allSkips:      true,
 					maximumRuns:   defaultRuns,
@@ -201,7 +202,7 @@ func TestRun(t *testing.T) {
 					maximumRuns:  defaultRuns,
 				},
 				"TestSkipped": {
-					exactRuns:   &oneRun,
+					exactRuns:   &zeroRuns,
 					allSkips:    true,
 					maximumRuns: defaultRuns,
 				},
@@ -216,7 +217,7 @@ func TestRun(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			testResults, err := tc.runner.RunTests()
+			testReport, err := tc.runner.RunTests()
 			require.NoError(t, err)
 
 			t.Cleanup(func() {
@@ -229,12 +230,9 @@ func TestRun(t *testing.T) {
 				}
 				saniTName := strings.ReplaceAll(t.Name(), "/", "_")
 				resultsFileName := filepath.Join(debugDir, fmt.Sprintf("test_results_%s.json", saniTName))
-				jsonResults, err := json.Marshal(testResults)
+				jsonResults, err := json.Marshal(testReport)
 				if err != nil {
-					t.Logf("error marshalling test results: %v", err)
-					for _, testResult := range testResults {
-						t.Logf("%+v", testResult)
-					}
+					t.Logf("error marshalling test report: %v", err)
 					return
 				}
 				err = os.WriteFile(resultsFileName, jsonResults, 0644) //nolint:gosec
@@ -252,7 +250,11 @@ func TestRun(t *testing.T) {
 				}
 			})
 
-			for _, result := range testResults {
+			require.Equal(t, tc.runner.RunCount, testReport.TestRunCount, "unexpected number of test runs")
+			require.Equal(t, tc.runner.UseRace, testReport.RaceDetection, "unexpected race usage")
+
+			require.Equal(t, len(tc.expectedTests), len(testReport.Results), "unexpected number of test results")
+			for _, result := range testReport.Results {
 				t.Run(fmt.Sprintf("checking results of %s", result.TestName), func(t *testing.T) {
 					require.NotNil(t, result, "test result was nil")
 					expected, ok := tc.expectedTests[result.TestName]
@@ -261,11 +263,11 @@ func TestRun(t *testing.T) {
 					expected.seen = true
 
 					if !expected.allPanics && !expected.somePanics { // Panics end up wrecking durations
-						assert.Len(t, result.Durations, result.Runs, "test '%s' has a mismatch of runs and duration counts",
-							result.TestName, defaultRuns,
+						assert.Len(t, result.Durations, result.Runs, "test '%s' has a mismatch of runs %d and duration counts %d",
+							result.TestName, result.Runs, len(result.Durations),
 						)
 					}
-					resultCounts := result.Successes + result.Failures + result.Panics + result.Skips
+					resultCounts := result.Successes + result.Failures + result.Panics
 					assert.Equal(t, result.Runs, resultCounts,
 						"test '%s' doesn't match Runs count with results counts\n%s", result.TestName, resultsString(result),
 					)
@@ -317,7 +319,7 @@ func TestRun(t *testing.T) {
 						assert.Greater(t, result.Panics, 0, "test '%s' has %d total runs and should have panicked some runs, panicked none\n%s", result.TestName, result.Runs, resultsString(result))
 					}
 					if expected.allSkips {
-						assert.Equal(t, result.Skips, result.Runs, "test '%s' has %d total runs and should have skipped all runs, only skipped %d\n%s", result.TestName, result.Runs, result.Skips, resultsString(result))
+						assert.Equal(t, 0, result.Runs, "test '%s' has %d total runs and should have skipped all of them, no runs expected\n%s", result.TestName, result.Runs, resultsString(result))
 						assert.Zero(t, result.Successes, "test '%s' has %d total runs and should have skipped all runs, but succeeded some\n%s", result.TestName, result.Runs, resultsString(result))
 						assert.Zero(t, result.Failures, "test '%s' has %d total runs and should have skipped all runs, but panicked some\n%s", result.TestName, result.Runs, resultsString(result))
 						assert.Zero(t, result.Panics, "test '%s' has %d total runs and should have skipped all runs, but panicked some\n%s", result.TestName, result.Runs, resultsString(result))
