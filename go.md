@@ -8,6 +8,7 @@ flowchart LR
 	chainlink-testing-framework/framework
 	click chainlink-testing-framework/framework href "https://github.com/smartcontractkit/chainlink-testing-framework"
 	chainlink-testing-framework/framework/examples --> chainlink-testing-framework/framework
+	chainlink-testing-framework/framework/examples --> chainlink-testing-framework/seth
 	chainlink-testing-framework/framework/examples --> chainlink-testing-framework/wasp
 	click chainlink-testing-framework/framework/examples href "https://github.com/smartcontractkit/chainlink-testing-framework"
 	chainlink-testing-framework/grafana
