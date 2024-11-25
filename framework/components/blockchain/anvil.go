@@ -8,6 +8,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"strings"
 	"time"
 )
 
@@ -18,8 +19,11 @@ const (
 // deployAnvil deploy foundry anvil node
 func deployAnvil(in *Input) (*Output, error) {
 	ctx := context.Background()
-	entryPoint := []string{"anvil", "--host", "0.0.0.0", "--port", in.Port, "--chain-id", in.ChainID, "-b", "1"}
+	entryPoint := []string{"anvil"}
+	defaultCmd := []string{"--host", "0.0.0.0", "--port", in.Port, "--chain-id", in.ChainID}
+	entryPoint = append(entryPoint, defaultCmd...)
 	entryPoint = append(entryPoint, in.DockerCmdParamsOverrides...)
+	framework.L.Info().Any("Cmd", strings.Join(entryPoint, " ")).Msg("Creating anvil with command")
 	bindPort := fmt.Sprintf("%s/tcp", in.Port)
 	containerName := framework.DefaultTCName("anvil")
 
@@ -55,8 +59,9 @@ func deployAnvil(in *Input) (*Output, error) {
 		return nil, err
 	}
 	return &Output{
-		UseCache: true,
-		ChainID:  in.ChainID,
+		UseCache:      true,
+		ChainID:       in.ChainID,
+		ContainerName: containerName,
 		Nodes: []*Node{
 			{
 				HostWSUrl:             fmt.Sprintf("ws://%s:%s", host, mp.Port()),

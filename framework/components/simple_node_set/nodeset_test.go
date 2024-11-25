@@ -13,7 +13,6 @@ import (
 
 type testCase struct {
 	name         string
-	fakeURL      string
 	funding      float64
 	bcInput      *blockchain.Input
 	nodeSetInput *ns.Input
@@ -25,13 +24,13 @@ func checkBasicOutputs(t *testing.T, output *ns.Output) {
 	require.NotNil(t, output.CLNodes)
 	require.Len(t, output.CLNodes, 2)
 	require.Contains(t, output.CLNodes[0].PostgreSQL.Url, "postgresql://chainlink:thispasswordislongenough@127.0.0.1")
-	require.Contains(t, output.CLNodes[0].PostgreSQL.DockerInternalURL, "postgresql://chainlink:thispasswordislongenough@postgresql-")
+	require.Contains(t, output.CLNodes[0].PostgreSQL.DockerInternalURL, "postgresql://chainlink:thispasswordislongenough@ns-postgresql-")
 	require.Contains(t, output.CLNodes[0].Node.HostURL, "127.0.0.1")
 	require.Contains(t, output.CLNodes[0].Node.DockerURL, "node")
 	require.Contains(t, output.CLNodes[0].Node.DockerP2PUrl, "node")
 
 	require.Contains(t, output.CLNodes[1].PostgreSQL.Url, "postgresql://chainlink:thispasswordislongenough@127.0.0.1")
-	require.Contains(t, output.CLNodes[1].PostgreSQL.DockerInternalURL, "postgresql://chainlink:thispasswordislongenough@postgresql-")
+	require.Contains(t, output.CLNodes[1].PostgreSQL.DockerInternalURL, "postgresql://chainlink:thispasswordislongenough@ns-postgresql-")
 	require.Contains(t, output.CLNodes[1].Node.HostURL, "127.0.0.1")
 	require.Contains(t, output.CLNodes[1].Node.DockerURL, "node")
 	require.Contains(t, output.CLNodes[1].Node.DockerP2PUrl, "node")
@@ -40,8 +39,7 @@ func checkBasicOutputs(t *testing.T, output *ns.Output) {
 func TestComponentDockerNodeSetSharedDB(t *testing.T) {
 	testCases := []testCase{
 		{
-			name:    "2 nodes cluster, override mode 'all'",
-			fakeURL: "http://example.com",
+			name: "2 nodes cluster, override mode 'all'",
 			bcInput: &blockchain.Input{
 				Type:    "anvil",
 				Image:   "f4hrenh9it/foundry",
@@ -56,9 +54,6 @@ func TestComponentDockerNodeSetSharedDB(t *testing.T) {
 				},
 				NodeSpecs: []*clnode.Input{
 					{
-						DbInput: &postgres.Input{
-							Image: "postgres:15.6",
-						},
 						Node: &clnode.NodeInput{
 							Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",
 							Name:  "cl-node",
@@ -71,8 +66,7 @@ func TestComponentDockerNodeSetSharedDB(t *testing.T) {
 			},
 		},
 		{
-			name:    "2 nodes cluster, override mode 'each'",
-			fakeURL: "http://example.com",
+			name: "2 nodes cluster, override mode 'each'",
 			bcInput: &blockchain.Input{
 				Type:    "anvil",
 				Image:   "f4hrenh9it/foundry",
@@ -90,10 +84,6 @@ func TestComponentDockerNodeSetSharedDB(t *testing.T) {
 				},
 				NodeSpecs: []*clnode.Input{
 					{
-						DbInput: &postgres.Input{
-							Image: "postgres:15.6",
-							Port:  14000,
-						},
 						Node: &clnode.NodeInput{
 							Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",
 							Name:  "cl-node-1",
@@ -104,9 +94,6 @@ level = 'info'
 						},
 					},
 					{
-						DbInput: &postgres.Input{
-							Image: "postgres:15.6",
-						},
 						Node: &clnode.NodeInput{
 							Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",
 							Name:  "cl-node-2",

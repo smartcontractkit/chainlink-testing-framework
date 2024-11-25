@@ -20,7 +20,8 @@ go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakegu
 
 ## Usage
 
-Flakeguard offers two main commands: 
+Flakeguard offers two main commands:
+
 - `find` identifies test packages affected by recent changes.
 - `run` executes tests multiple times to identify flaky tests
 

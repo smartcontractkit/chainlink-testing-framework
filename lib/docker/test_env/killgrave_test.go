@@ -1,3 +1,4 @@
+// nolint
 package test_env
 
 import (
