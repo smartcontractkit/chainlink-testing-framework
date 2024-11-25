@@ -7,6 +7,7 @@
   image = "f4hrenh9it/foundry:latest"
   port = "8545"
   type = "anvil"
+  docker_cmd_params = ["-b", "1"]
 
 [blockchain_src]
   chain_id = "3337"
@@ -14,3 +15,4 @@
   image = "f4hrenh9it/foundry:latest"
   port = "8555"
   type = "anvil"
+  docker_cmd_params = ["-b", "1"]

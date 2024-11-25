@@ -9,6 +9,8 @@ Create a configuration file `smoke.toml`
   image = "f4hrenh9it/foundry:latest"
   port = "8545"
   type = "anvil"
+  docker_cmd_params = ["-b", "1"]
+
 
 [nodeset]
   nodes = 5
