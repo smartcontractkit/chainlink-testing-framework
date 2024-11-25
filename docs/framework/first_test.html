@@ -249,6 +249,7 @@
   image = "f4hrenh9it/foundry:latest"
   port = "8545"
   type = "anvil"
+  docker_cmd_params = ["-b", "1"]
 </code></pre>
 <p>Create your test in <code>smoke_test.go</code></p>
 <pre><code class="language-golang">package mymodule_test

@@ -534,6 +534,7 @@ It enables tests to run in any environment and serves as a single source of trut
   image = "f4hrenh9it/foundry:latest"
   port = "8545"
   type = "anvil"
+  docker_cmd_params = ["-b", "1"]
 </code></pre>
 <p>Create your test in <code>smoke_test.go</code></p>
 <pre><code class="language-golang">package mymodule_test
@@ -649,6 +650,8 @@ func TestMe(t *testing.T) {
   image = "f4hrenh9it/foundry:latest"
   port = "8545"
   type = "anvil"
+  docker_cmd_params = ["-b", "1"]
+
 
 [cl_node]
 
@@ -787,6 +790,8 @@ fj293fbBnlQ!f9vNs
   image = "f4hrenh9it/foundry:latest"
   port = "8545"
   type = "anvil"
+  docker_cmd_params = ["-b", "1"]
+
 
 [nodeset]
   nodes = 5
@@ -931,6 +936,7 @@ go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install gi
   image = "f4hrenh9it/foundry:latest"
   port = "8545"
   type = "anvil"
+  docker_cmd_params = ["-b", "1"]
 
 [nodeset]
   nodes = 5
@@ -1032,6 +1038,7 @@ go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install gi
   image = "f4hrenh9it/foundry:latest"
   port = "8545"
   type = "anvil"
+  docker_cmd_params = ["-b", "1"]
 
 [nodeset]
   nodes = 5
@@ -1126,6 +1133,7 @@ go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install gi
   image = "f4hrenh9it/foundry:latest"
   port = "8545"
   type = "anvil"
+  docker_cmd_params = ["-b", "1"]
 
 [nodeset]
   nodes = 5
@@ -6825,7 +6833,7 @@ echo ::add-mask::$BASE64_CONFIG_OVERRIDE
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>dd986d80</code></li>
+<li>Commit: <code>a5d48c9e</code></li>
 </ul>
 
                     </main>
