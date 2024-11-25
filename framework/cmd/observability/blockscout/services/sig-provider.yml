@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   sig-provider:
-    image: ghcr.io/blockscout/sig-provider:${SIG_PROVIDER_DOCKER_TAG:-latest}
+    image: ghcr.io/blockscout/sig-provider:v1.1.1
     pull_policy: always
     platform: linux/amd64
     restart: always

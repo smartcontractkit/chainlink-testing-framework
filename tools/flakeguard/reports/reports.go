@@ -9,27 +9,34 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
+// TestResult represents the result of a single test being run through flakeguard.
 type TestResult struct {
 	TestName            string
 	TestPackage         string
-	Panicked            bool    // Indicates a test-level panic
-	PackagePanicked     bool    // Indicates a package-level panic
-	PassRatio           float64 // Pass ratio in decimal format like 0.5
-	PassRatioPercentage string  // Pass ratio in percentage format like "50%"
-	Skipped             bool    // Indicates if the test was skipped
-	Runs                int
-	Outputs             []string  // Stores outputs for a test
-	Durations           []float64 // Stores elapsed time in seconds for each run of the test
-	PackageOutputs      []string  // Stores package-level outputs
+	Panicked            bool            // Indicates a test-level panic
+	Skipped             bool            // Indicates if the test was skipped
+	PackagePanicked     bool            // Indicates a package-level panic
+	PassRatio           float64         // Pass ratio in decimal format like 0.5
+	PassRatioPercentage string          // Pass ratio in percentage format like "50%"
+	Runs                int             // Count of how many times the test was run
+	Failures            int             // Count of how many times the test failed
+	Successes           int             // Count of how many times the test passed
+	Panics              int             // Count of how many times the test panicked
+	Races               int             // Count of how many times the test encountered a data race
+	Skips               int             // Count of how many times the test was skipped
+	Outputs             []string        `json:"outputs,omitempty"` // Stores outputs for a test
+	Durations           []time.Duration // Stores elapsed time for each run of the test
+	PackageOutputs      []string        `json:"package_outputs,omitempty"` // Stores package-level outputs
 }
 
 // FilterFailedTests returns a slice of TestResult where the pass ratio is below the specified threshold.
-func FilterFailedTests(results []TestResult, threshold float64) []TestResult {
+func FilterFailedTests(results []TestResult, maxPassRatio float64) []TestResult {
 	var failedTests []TestResult
 	for _, result := range results {
-		if !result.Skipped && result.PassRatio < threshold {
+		if !result.Skipped && result.PassRatio < maxPassRatio {
 			failedTests = append(failedTests, result)
 		}
 	}
@@ -37,10 +44,10 @@ func FilterFailedTests(results []TestResult, threshold float64) []TestResult {
 }
 
 // FilterFlakyTests returns a slice of TestResult where the pass ratio is between the min pass ratio and the threshold.
-func FilterFlakyTests(testResults []TestResult, minPassRatio, threshold float64) []TestResult {
+func FilterFlakyTests(testResults []TestResult, maxPassRatio float64) []TestResult {
 	var flakyTests []TestResult
 	for _, test := range testResults {
-		if test.PassRatio >= minPassRatio && test.PassRatio < threshold && !test.Skipped {
+		if test.PassRatio < maxPassRatio && !test.Skipped {
 			flakyTests = append(flakyTests, test)
 		}
 	}
@@ -48,10 +55,10 @@ func FilterFlakyTests(testResults []TestResult, minPassRatio, threshold float64)
 }
 
 // FilterPassedTests returns a slice of TestResult where the tests passed and were not skipped.
-func FilterPassedTests(results []TestResult, threshold float64) []TestResult {
+func FilterPassedTests(results []TestResult, maxPassRatio float64) []TestResult {
 	var passedTests []TestResult
 	for _, result := range results {
-		if !result.Skipped && result.PassRatio >= threshold {
+		if !result.Skipped && result.PassRatio >= maxPassRatio {
 			passedTests = append(passedTests, result)
 		}
 	}
@@ -143,9 +150,14 @@ func PrintTests(tests []TestResult, w io.Writer) {
 		fmt.Fprintf(w, "PassRatio: %.2f\n", test.PassRatio)
 		fmt.Fprintf(w, "Skipped: %v\n", test.Skipped)
 		fmt.Fprintf(w, "Runs: %d\n", test.Runs)
+		fmt.Fprintf(w, "Successes: %d\n", test.Successes)
+		fmt.Fprintf(w, "Failures: %d\n", test.Failures)
+		fmt.Fprintf(w, "Panics: %d\n", test.Panics)
+		fmt.Fprintf(w, "Races: %d\n", test.Races)
+		fmt.Fprintf(w, "Skips: %d\n", test.Skips)
 		durationsStr := make([]string, len(test.Durations))
 		for i, duration := range test.Durations {
-			durationsStr[i] = fmt.Sprintf("%.2fs", duration)
+			durationsStr[i] = duration.String()
 		}
 		fmt.Fprintf(w, "Durations: %s\n", strings.Join(durationsStr, ", "))
 		fmt.Fprintf(w, "Outputs:\n%s\n", strings.Join(test.Outputs, ""))
@@ -171,41 +183,21 @@ func SaveFilteredResultsAndLogs(outputResultsPath, outputLogsPath string, failed
 	}
 }
 
-// Helper function to save results to JSON file
+// Helper function to save results to JSON file without outputs
 func saveResults(filePath string, results []TestResult) error {
-	// Define a struct type without Outputs and PackageOutputs
-	type filteredTestResult struct {
-		TestName            string
-		TestPackage         string
-		Panicked            bool
-		PackagePanicked     bool
-		PassRatio           float64
-		PassRatioPercentage string
-		Skipped             bool
-		Runs                int
-		Durations           []float64
-	}
-
-	var filteredResults []filteredTestResult
+	var filteredResults []TestResult
 	for _, r := range results {
-		filteredResults = append(filteredResults, filteredTestResult{
-			TestName:            r.TestName,
-			TestPackage:         r.TestPackage,
-			Panicked:            r.Panicked,
-			PackagePanicked:     r.PackagePanicked,
-			PassRatio:           r.PassRatio,
-			PassRatioPercentage: r.PassRatioPercentage,
-			Skipped:             r.Skipped,
-			Runs:                r.Runs,
-			Durations:           r.Durations,
-		})
+		filteredResult := r
+		filteredResult.Outputs = nil
+		filteredResult.PackageOutputs = nil
+		filteredResults = append(filteredResults, filteredResult)
 	}
 
 	data, err := json.MarshalIndent(filteredResults, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling results: %v", err)
 	}
-	return os.WriteFile(filePath, data, 0644)
+	return os.WriteFile(filePath, data, 0644) //nolint:gosec
 }
 
 // Helper function to save test names, packages, and outputs to JSON file
@@ -233,5 +225,5 @@ func saveTestOutputs(filePath string, results []TestResult) error {
 	if err != nil {
 		return fmt.Errorf("error marshaling outputs: %v", err)
 	}
-	return os.WriteFile(filePath, data, 0644)
+	return os.WriteFile(filePath, data, 0644) //nolint:gosec
 }

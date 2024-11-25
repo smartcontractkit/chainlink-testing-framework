@@ -549,12 +549,11 @@ func (t *Tracer) checkForMissingCalls(trace Trace) []*DecodedCall {
 
 		for _, missingSig := range missingSignatures {
 			byteSignature := common.Hex2Bytes(strings.TrimPrefix(missingSig, "0x"))
-			humanName := missingSig
 
 			abiResult, err := t.ABIFinder.FindABIByMethod(UNKNOWN, byteSignature)
 			if err != nil {
 				L.Info().
-					Str("Signature", humanName).
+					Str("Signature", missingSig).
 					Msg("Method not found in any ABI instance. Unable to provide any more tracing information")
 
 				missedCalls = append(missedCalls, unknownCall)
@@ -569,7 +568,7 @@ func (t *Tracer) checkForMissingCalls(trace Trace) []*DecodedCall {
 
 			missedCalls = append(missedCalls, &DecodedCall{
 				CommonData: CommonData{
-					Signature: humanName,
+					Signature: missingSig,
 					Method:    abiResult.Method.Name,
 					Input:     map[string]interface{}{"warning": NO_DATA},
 					Output:    map[string]interface{}{"warning": NO_DATA},
