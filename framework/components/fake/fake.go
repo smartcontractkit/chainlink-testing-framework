@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"os"
 	"regexp"
 )
 
@@ -67,12 +66,8 @@ func NewFakeDataProvider(in *Input) (*Output, error) {
 		_ = Service.Run(fmt.Sprintf(":%d", in.Port))
 	}()
 	out := &Output{
-		BaseURLHost: fmt.Sprintf("http://localhost:%d", in.Port),
-	}
-	if os.Getenv(framework.EnvVarCI) == "true" {
-		out.BaseURLDocker = fmt.Sprintf("http://172.17.0.1:%d", in.Port)
-	} else {
-		out.BaseURLDocker = fmt.Sprintf("http://host.docker.internal:%d", in.Port)
+		BaseURLHost:   fmt.Sprintf("http://localhost:%d", in.Port),
+		BaseURLDocker: fmt.Sprintf("%s:%d", framework.HostDockerInternal(), in.Port),
 	}
 	in.Out = out
 	return out, nil

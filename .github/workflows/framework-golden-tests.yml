@@ -38,6 +38,10 @@ jobs:
             config: scalability.toml
             count: 1
             timeout: 10m
+          - name: TestFakes
+            config: fake.toml
+            count: 1
+            timeout: 10m
     name: ${{ matrix.test.name }}
     steps:
       - name: Checkout repo

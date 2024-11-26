@@ -123,6 +123,7 @@ func runCommand(name string, args ...string) error {
 	return cmd.Run()
 }
 
+// TODO: use tc.NewDockerProvider().BuildImage() to skip managing the registry container
 // RebuildDockerImage rebuilds docker image if necessary
 func RebuildDockerImage(once *sync.Once, dockerfile string, buildContext string, imageName string) (string, error) {
 	if dockerfile == "" {
