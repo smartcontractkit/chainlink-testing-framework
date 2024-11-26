@@ -26,7 +26,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
 )
 
-const defaultPostgresImage = "postgres:15.6"
+const defaultPostgresImage = "postgres:12.0"
 
 type PostgresDb struct {
 	EnvComponent

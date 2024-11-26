@@ -156,7 +156,7 @@ func defaultProps() map[string]any {
 		"db": map[string]any{
 			"image": map[string]any{
 				"image":   postgresImage,
-				"version": "12.18",
+				"version": "12.0",
 			},
 			"stateful":                         false,
 			"enablePrometheusPostgresExporter": false,
