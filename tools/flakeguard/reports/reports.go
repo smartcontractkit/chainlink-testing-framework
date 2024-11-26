@@ -185,22 +185,21 @@ func PrintTests(w io.Writer, tests []TestResult, maxPassRatio float64) (allRuns,
 	rows := [][]string{}
 
 	for _, test := range tests {
-		if test.PassRatio >= maxPassRatio {
-			continue
+		if test.PassRatio < maxPassRatio {
+			rows = append(rows, []string{
+				test.TestName,
+				test.TestPackage,
+				fmt.Sprintf("%.2f%%", test.PassRatio*100),
+				fmt.Sprintf("%v", test.Skipped),
+				fmt.Sprintf("%d", test.Runs),
+				fmt.Sprintf("%d", test.Successes),
+				fmt.Sprintf("%d", test.Failures),
+				fmt.Sprintf("%d", test.Panics),
+				fmt.Sprintf("%d", test.Races),
+				fmt.Sprintf("%d", test.Skips),
+				avgDuration(test.Durations).String(),
+			})
 		}
-		rows = append(rows, []string{
-			test.TestName,
-			test.TestPackage,
-			fmt.Sprintf("%.2f%%", test.PassRatio*100),
-			fmt.Sprintf("%v", test.Skipped),
-			fmt.Sprintf("%d", test.Runs),
-			fmt.Sprintf("%d", test.Successes),
-			fmt.Sprintf("%d", test.Failures),
-			fmt.Sprintf("%d", test.Panics),
-			fmt.Sprintf("%d", test.Races),
-			fmt.Sprintf("%d", test.Skips),
-			avgDuration(test.Durations).String(),
-		})
 
 		allRuns += test.Runs
 		passes += test.Successes
@@ -211,7 +210,7 @@ func PrintTests(w io.Writer, tests []TestResult, maxPassRatio float64) (allRuns,
 		flakes += fails + races + panics
 	}
 
-	// Determine column widths
+	// Determine column widths for clean printing
 	colWidths := make([]int, len(headers))
 	for i, header := range headers {
 		colWidths[i] = len(header)
@@ -224,7 +223,6 @@ func PrintTests(w io.Writer, tests []TestResult, maxPassRatio float64) (allRuns,
 		}
 	}
 
-	// Helper function to print a row
 	printRow := func(cells []string) {
 		var buffer bytes.Buffer
 		for i, cell := range cells {
@@ -233,7 +231,6 @@ func PrintTests(w io.Writer, tests []TestResult, maxPassRatio float64) (allRuns,
 		fmt.Fprintln(w, "|"+buffer.String())
 	}
 
-	// Print header separator
 	printSeparator := func() {
 		var buffer bytes.Buffer
 		for _, width := range colWidths {
@@ -259,30 +256,52 @@ func PrintTests(w io.Writer, tests []TestResult, maxPassRatio float64) (allRuns,
 
 // MarkdownSummary builds a summary of test results in markdown format, handy for reporting in CI and Slack
 func MarkdownSummary(w io.Writer, testReport *TestReport, maxPassRatio float64) {
-	tests := testReport.Results
-	fmt.Fprintln(w, "# Flakeguard Summary")
-	fmt.Fprintln(w, "| **Setting** | **Value** |")
-	fmt.Fprintln(w, "|-------------|-----------|")
-	fmt.Fprintf(w, "| Go Project | %s |\n", testReport.GoProject)
-	fmt.Fprintf(w, "| Max Pass Ratio | %.2f%% |\n", maxPassRatio*100)
-	fmt.Fprintf(w, "| Test Run Count | %d |\n", testReport.TestRunCount)
-	fmt.Fprintf(w, "| Race Detection | %t |\n", testReport.RaceDetection)
-	fmt.Fprintf(w, "| Excluded Tests | %s |\n", strings.Join(testReport.ExcludedTests, ", "))
-	fmt.Fprintln(w, "|-------------|-----------|")
+	var (
+		avgPassRatio = 1.0
+		testsData    = bytes.NewBuffer(nil)
+		tests        = testReport.Results
+	)
+
+	rows := [][]string{
+		{"**Setting**", "**Value**"},
+		{"Go Project", testReport.GoProject},
+		{"Max Pass Ratio", fmt.Sprintf("%.2f%%", maxPassRatio*100)},
+		{"Test Run Count", fmt.Sprintf("%d", testReport.TestRunCount)},
+		{"Race Detection", fmt.Sprintf("%t", testReport.RaceDetection)},
+		{"Excluded Tests", strings.Join(testReport.ExcludedTests, ", ")},
+	}
+	colWidths := make([]int, len(rows[0]))
+
+	// Calculate column widths
+	for _, row := range rows {
+		for i, cell := range row {
+			if len(cell) > colWidths[i] {
+				colWidths[i] = len(cell)
+			}
+		}
+	}
+
+	printRow := func(cells []string) {
+		fmt.Fprintf(w, "| %-*s | %-*s |\n", colWidths[0], cells[0], colWidths[1], cells[1])
+	}
+	printSeparator := func() {
+		fmt.Fprintf(w, "|-%s-|-%s-|\n", strings.Repeat("-", colWidths[0]), strings.Repeat("-", colWidths[1]))
+	}
+	fmt.Fprint(w, "# Flakeguard Summary\n\n")
+	// Print settings data
+	printRow(rows[0])
+	printSeparator()
+	for _, row := range rows[1:] {
+		printRow(row)
+	}
+	printSeparator()
+	fmt.Fprintln(w)
+
 	if len(tests) == 0 {
 		fmt.Fprintln(w, "## No tests ran :warning:")
 		return
 	}
-	var (
-		avgPassRatio = 1.0
-		testsData    = bytes.NewBuffer(nil)
-	)
-	for _, test := range tests {
-		fmt.Fprintf(testsData, "| %s | %s | %.2f%% | %v | %d | %d | %d | %d | %d | %d | %s |\n",
-			test.TestName, test.TestPackage, test.PassRatio*100, test.Skipped, test.Runs, test.Successes,
-			test.Failures, test.Panics, test.Races, test.Skips, avgDuration(test.Durations).String(),
-		)
-	}
+
 	allRuns, passes, _, _, _, _, flakes := PrintTests(testsData, tests, maxPassRatio)
 	if allRuns > 0 {
 		avgPassRatio = float64(passes) / float64(allRuns)
@@ -292,10 +311,9 @@ func MarkdownSummary(w io.Writer, testReport *TestReport, maxPassRatio float64) 
 	} else {
 		fmt.Fprintln(w, "## No Flakes Found :white_check_mark:")
 	}
-	fmt.Fprintf(w, "Ran `%d` tests `%d` times with a `%.2f%%` pass ratio and found `%d` flaky tests\n", len(tests), allRuns, avgPassRatio*100, flakes)
-	fmt.Fprintf(w, "### Results")
+	fmt.Fprintf(w, "Ran `%d` tests `%d` times with a `%.2f%%` pass ratio and found `%d` flaky tests\n\n", len(tests), allRuns, avgPassRatio*100, flakes)
 	if avgPassRatio < maxPassRatio {
-		fmt.Fprintln(w, "### Flakes")
+		fmt.Fprint(w, "### Flakes\n\n")
 		fmt.Fprint(w, testsData.String())
 	}
 }
