@@ -16,7 +16,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/common v0.60.0
 	github.com/rs/zerolog v1.33.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	go.uber.org/ratelimit v0.3.1
 	google.golang.org/grpc v1.67.1 // indirect
 	k8s.io/api v0.31.2
