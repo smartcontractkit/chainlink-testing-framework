@@ -62,7 +62,7 @@ func createComponentsFromForm(form *nodeSetForm) error {
 				Nodes:        5,
 				OverrideMode: "all",
 				DbInput: &postgres.Input{
-					Image: "postgres:15.6",
+					Image: "postgres:12.0",
 				},
 				NodeSpecs: nspecs,
 			}, bc)
