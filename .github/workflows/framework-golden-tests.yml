@@ -59,6 +59,7 @@ jobs:
           filters: |
             src:
               - 'framework/**'
+              - '.github/workflows/framework-golden-tests.yml'
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
