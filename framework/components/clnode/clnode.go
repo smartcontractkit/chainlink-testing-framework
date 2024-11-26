@@ -184,9 +184,9 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		Name:            containerName,
 		Labels:          framework.DefaultTCLabels(),
 		Networks:        []string{framework.DefaultNetworkName},
-		//NetworkAliases: map[string][]string{
-		//	framework.DefaultNetworkName: {containerName},
-		//},
+		NetworkAliases: map[string][]string{
+			framework.DefaultNetworkName: {containerName},
+		},
 		ExposedPorts: exposedPorts,
 		Entrypoint: []string{
 			"/bin/sh", "-c",
@@ -295,8 +295,8 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		ContainerName:   containerName,
 		InternalIP:      ip,
 		HostURL:         fmt.Sprintf("http://%s:%s", host, mp.Port()),
-		DockerURL:       fmt.Sprintf("http://%s:%s", ip, DefaultHTTPPort),
-		DockerP2PUrl:    fmt.Sprintf("http://%s:%s", ip, DefaultP2PPort),
+		DockerURL:       fmt.Sprintf("http://%s:%s", host, DefaultHTTPPort),
+		DockerP2PUrl:    fmt.Sprintf("http://%s:%s", host, DefaultP2PPort),
 	}, nil
 }
 
