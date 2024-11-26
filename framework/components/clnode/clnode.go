@@ -282,6 +282,12 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	if err != nil {
 		return nil, err
 	}
+	ips, err := c.ContainerIPs(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	framework.L.Warn().Strs("IPs", ips).Send()
 
 	return &NodeOut{
 		APIAuthUser:     DefaultAPIUser,
