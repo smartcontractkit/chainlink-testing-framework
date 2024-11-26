@@ -65,6 +65,7 @@ type NodeOut struct {
 	APIAuthUser     string `toml:"api_auth_user"`
 	APIAuthPassword string `toml:"api_auth_password"`
 	ContainerName   string `toml:"container_name"`
+	InternalIP      string `toml:"internal_ip"`
 	HostURL         string `toml:"url"`
 	DockerURL       string `toml:"docker_internal_url"`
 	DockerP2PUrl    string `toml:"p2p_docker_internal_url"`
@@ -277,13 +278,19 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 
 	mp := nat.Port(fmt.Sprintf("%d/tcp", in.Node.HTTPPort))
 
+	ip, err := c.ContainerIP(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	return &NodeOut{
 		APIAuthUser:     DefaultAPIUser,
 		APIAuthPassword: DefaultAPIPassword,
 		ContainerName:   containerName,
+		InternalIP:      ip,
 		HostURL:         fmt.Sprintf("http://%s:%s", host, mp.Port()),
 		DockerURL:       fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
-		DockerP2PUrl:    fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
+		DockerP2PUrl:    fmt.Sprintf("http://%s:%s", ip, DefaultP2PPort),
 	}, nil
 }
 
