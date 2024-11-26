@@ -47,7 +47,7 @@ You can also define a custom set of ports for any node
   override_mode = "each"
   
   [nodeset.db]
-    image = "postgres:15.6"
+    image = "postgres:12.0"
 
   [[nodeset.node_specs]]
 

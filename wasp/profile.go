@@ -52,8 +52,9 @@ func (m *Profile) Run(wait bool) (*Profile, error) {
 	if len(m.grafanaOpts.AnnotateDashboardUID) > 0 {
 		m.annotateRunEndOnGrafana()
 	}
+	m.printProfileId()
+	m.printDashboardLink()
 	if m.grafanaOpts.CheckDashboardAlertsAfterRun != "" {
-		m.printDashboardLink()
 		alerts, err := CheckDashboardAlerts(m.grafanaAPI, m.startTime, time.Now(), m.grafanaOpts.CheckDashboardAlertsAfterRun)
 		if len(alerts) > 0 {
 			log.Info().Msgf("Alerts found\n%s", grafana.FormatAlertsTable(alerts))
@@ -61,11 +62,12 @@ func (m *Profile) Run(wait bool) (*Profile, error) {
 		if err != nil {
 			return m, err
 		}
-	} else {
-		m.printDashboardLink()
 	}
-
 	return m, nil
+}
+
+func (m *Profile) printProfileId() {
+	log.Info().Msgf("Profile ID: %s", m.ProfileID)
 }
 
 func (m *Profile) printDashboardLink() {
@@ -76,16 +78,17 @@ func (m *Profile) printDashboardLink() {
 	d, _, err := m.grafanaAPI.GetDashboard(m.grafanaOpts.AnnotateDashboardUID)
 	if err != nil {
 		log.Warn().Msgf("could not get dashboard link: %s", err)
+		return
+	}
+	if d.Meta == nil || d.Meta["ur"] == nil {
+		log.Warn().Msgf("nil dasbhoard metadata returned from Grafana API with uid %s", m.grafanaOpts.AnnotateDashboardUID)
+		return
 	}
 	from := m.startTime.Add(-time.Second * 10).UnixMilli()
 	to := m.endTime.Add(time.Second * 10).Add(m.grafanaOpts.WaitBeforeAlertCheck).UnixMilli()
 	url := fmt.Sprintf("%s%s?from=%d&to=%d", m.grafanaOpts.GrafanaURL, d.Meta["url"].(string), from, to)
 
-	if err != nil {
-		log.Warn().Msgf("could not get dashboard link: %s", err)
-	} else {
-		log.Info().Msgf("Dashboard URL: %s", url)
-	}
+	log.Info().Msgf("Dashboard URL: %s", url)
 }
 
 func (m *Profile) annotateRunStartOnGrafana() {

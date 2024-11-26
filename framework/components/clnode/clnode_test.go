@@ -32,7 +32,7 @@ func TestComponentDockerNodeWithSharedDB(t *testing.T) {
 			name: "basic use case",
 			input: &clnode.Input{
 				DbInput: &postgres.Input{
-					Image:      "postgres:15.6",
+					Image:      "postgres:12.0",
 					Port:       16000,
 					VolumeName: "a",
 				},
@@ -67,7 +67,7 @@ func TestComponentDockerNodeWithDB(t *testing.T) {
 			name: "basic use case",
 			input: &clnode.Input{
 				DbInput: &postgres.Input{
-					Image:      "postgres:15.6",
+					Image:      "postgres:12.0",
 					Port:       15000,
 					VolumeName: "b",
 				},
