@@ -47,6 +47,12 @@ func (m Chart) GetValues() *map[string]interface{} {
 	return nil
 }
 
+func (m Chart) GetLabels() map[string]string {
+	return map[string]string{
+		"chain.link/component": "blockscout",
+	}
+}
+
 func (m Chart) ExportData(e *environment.Environment) error {
 	bsURL, err := e.Fwd.FindPort("blockscout:0", "blockscout-node", "explorer").As(client.LocalConnection, client.HTTP)
 	if err != nil {
