@@ -14,8 +14,8 @@ func main() {
 	// in actual implementation here you should read the config from TOML file instead of creating structs manually
 	chainlinkConfig := ctf_config.ChainlinkImageConfig{
 		Image:           ptr.Ptr("public.ecr.aws/chainlink/chainlink"),
-		Version:         ptr.Ptr("v2.8.0"),
-		PostgresVersion: ptr.Ptr("15.6"),
+		Version:         ptr.Ptr("2.18.0"),
+		PostgresVersion: ptr.Ptr("12.0"),
 	}
 
 	pyroscope := ctf_config.PyroscopeConfig{
