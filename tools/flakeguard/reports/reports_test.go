@@ -69,27 +69,65 @@ func TestFilterSkippedTests(t *testing.T) {
 }
 
 func TestPrintTests(t *testing.T) {
-	var (
-		tests = []TestResult{
-			{
-				TestName:    "Test1",
-				TestPackage: "package1",
-				PassRatio:   0.75,
-				Skipped:     false,
-				Runs:        4,
-				Outputs:     []string{"Output1", "Output2"},
-				Durations:   []time.Duration{time.Millisecond * 1200, time.Millisecond * 900, time.Millisecond * 1100, time.Second},
+	testcases := []struct {
+		name                   string
+		testResults            []TestResult
+		expectedRuns           int
+		expectedPasses         int
+		expectedFails          int
+		expectedSkippedTests   int
+		expectedPanickedTests  int
+		expectedRacedTests     int
+		expectedFlakyTests     int
+		expectedStringsContain []string
+	}{
+		{
+			name: "single flaky test",
+			testResults: []TestResult{
+				{
+					TestName:    "Test1",
+					TestPackage: "package1",
+					PassRatio:   0.75,
+					Skipped:     false,
+					Runs:        4,
+					Durations:   []time.Duration{time.Millisecond * 1200, time.Millisecond * 900, time.Millisecond * 1100, time.Second},
+				},
 			},
-		}
-		buf bytes.Buffer
-	)
+			expectedRuns:           4,
+			expectedPasses:         3,
+			expectedFails:          1,
+			expectedSkippedTests:   0,
+			expectedPanickedTests:  0,
+			expectedRacedTests:     0,
+			expectedFlakyTests:     1,
+			expectedStringsContain: []string{"Test1", "package1", "75.00%", "false", "1.05s", "4", "0"},
+		},
+	}
 
-	PrintTests(&buf, tests, 1.0)
+	for _, testCase := range testcases {
+		tc := testCase
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			var buf bytes.Buffer
 
-	// Get the output as a string
-	output := buf.String()
-	expectedContains := "| Test1 | package1 | 75.00% | false | 4 | 0 | 0 | 0 | 0 | 0 | 1.05s |"
-	assert.Contains(t, output, expectedContains, "output does not contain expected string")
+			runs, passes, fails, skips, panickedTests, racedTests, flakyTests := PrintTests(&buf, tc.testResults, 1.0)
+			assert.Equal(t, tc.expectedRuns, runs, "wrong number of runs")
+			assert.Equal(t, tc.expectedPasses, passes, "wrong number of passes")
+			assert.Equal(t, tc.expectedFails, fails, "wrong number of failures")
+			assert.Equal(t, tc.expectedSkippedTests, skips, "wrong number of skips")
+			assert.Equal(t, tc.expectedPanickedTests, panickedTests, "wrong number of panicked tests")
+			assert.Equal(t, tc.expectedRacedTests, racedTests, "wrong number of raced tests")
+			assert.Equal(t, tc.expectedFlakyTests, flakyTests, "wrong number of flaky tests")
+
+			// Get the output as a string
+			output := buf.String()
+			expectedContains := []string{"Test1", "package1", "75.00%", "false", "1.05s", "4", "0"}
+			for _, expected := range expectedContains {
+				assert.Contains(t, output, expected, "output does not contain expected string")
+			}
+		})
+	}
+
 }
 
 // Sorts TestResult slice by TestName and TestPackage for consistent comparison
