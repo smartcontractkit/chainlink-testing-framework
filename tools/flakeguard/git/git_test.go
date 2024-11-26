@@ -8,6 +8,8 @@ import (
 )
 
 func TestGetChangedGoPackagesFromDiff(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name        string
 		out         string

@@ -1,3 +1,4 @@
+// nolint
 package logstream_test
 
 import (
