@@ -86,6 +86,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: container-logs
+          name: container-logs-${{ matrix.test.name }}
           path: framework/examples/myproject/logs
           retention-days: 1
