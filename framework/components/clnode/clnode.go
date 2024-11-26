@@ -289,7 +289,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		ContainerName:   containerName,
 		InternalIP:      ip,
 		HostURL:         fmt.Sprintf("http://%s:%s", host, mp.Port()),
-		DockerURL:       fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
+		DockerURL:       fmt.Sprintf("http://%s:%s", ip, DefaultHTTPPort),
 		DockerP2PUrl:    fmt.Sprintf("http://%s:%s", ip, DefaultP2PPort),
 	}, nil
 }
