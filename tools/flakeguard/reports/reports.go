@@ -119,7 +119,7 @@ func AggregateTestResults(folderPath string) (*TestReport, error) {
 			for _, test := range report.ExcludedTests {
 				excludedTests[test] = struct{}{}
 			}
-			// Process each test result
+			// Process each test results
 			for _, result := range report.Results {
 				// Unique key for each test based on TestName and TestPackage
 				key := result.TestName + "|" + result.TestPackage
@@ -180,7 +180,7 @@ func AggregateTestResults(folderPath string) (*TestReport, error) {
 // PrintTests prints tests in a pretty format
 func PrintTests(w io.Writer, tests []TestResult, maxPassRatio float64) (allRuns, passes, fails, panics, skips, races, flakes int) {
 	headers := []string{
-		"Test Name", "Test Package", "Pass Ratio", "Skipped", "Runs", "Successes", "Failures", "Panics", "Races", "Skips", "Avg Duration",
+		"**Test Name**", "**Test Package**", "**Package Panicked**", "**Pass Ratio**", "**Runs**", "**Successes**", "**Failures**", "**Panics**", "**Races**", "**Skips**", "**Avg Duration**",
 	}
 
 	// Build test rows and summary data
@@ -190,8 +190,8 @@ func PrintTests(w io.Writer, tests []TestResult, maxPassRatio float64) (allRuns,
 			rows = append(rows, []string{
 				test.TestName,
 				test.TestPackage,
+				fmt.Sprintf("%t", test.PackagePanicked),
 				fmt.Sprintf("%.2f%%", test.PassRatio*100),
-				fmt.Sprintf("%v", test.Skipped),
 				fmt.Sprintf("%d", test.Runs),
 				fmt.Sprintf("%d", test.Successes),
 				fmt.Sprintf("%d", test.Failures),
@@ -208,19 +208,21 @@ func PrintTests(w io.Writer, tests []TestResult, maxPassRatio float64) (allRuns,
 		skips += test.Skips
 		races += test.Races
 		panics += test.Panics
-		flakes += fails + races + panics
+		if test.PassRatio < maxPassRatio {
+			flakes++
+		}
 	}
 
 	// Print out summary data
 	summaryData := [][]string{
-		{"**Summary**", "**Value**"},
-		{"Runs", fmt.Sprint(allRuns)},
-		{"Passes", fmt.Sprint(passes)},
-		{"Failures", fmt.Sprint(fails)},
-		{"Panics", fmt.Sprint(panics)},
-		{"Skips", fmt.Sprint(skips)},
-		{"Races", fmt.Sprint(races)},
-		{"Flakes", fmt.Sprint(flakes)},
+		{"**Category**", "**Total**"},
+		{"**Runs**", fmt.Sprint(allRuns)},
+		{"**Passes**", fmt.Sprint(passes)},
+		{"**Failures**", fmt.Sprint(fails)},
+		{"**Panics**", fmt.Sprint(panics)},
+		{"**Skips**", fmt.Sprint(skips)},
+		{"**Races**", fmt.Sprint(races)},
+		{"**Flaky Tests**", fmt.Sprint(flakes)},
 	}
 	colWidths := make([]int, len(rows[0]))
 
@@ -238,13 +240,11 @@ func PrintTests(w io.Writer, tests []TestResult, maxPassRatio float64) (allRuns,
 	printSeparator := func() {
 		fmt.Fprintf(w, "|-%s-|-%s-|\n", strings.Repeat("-", colWidths[0]), strings.Repeat("-", colWidths[1]))
 	}
-	printSeparator()
 	printRow(summaryData[0])
 	printSeparator()
 	for _, row := range summaryData[1:] {
 		printRow(row)
 	}
-	printSeparator()
 	fmt.Fprintln(w)
 
 	// Print out test data
@@ -277,17 +277,11 @@ func PrintTests(w io.Writer, tests []TestResult, maxPassRatio float64) (allRuns,
 	}
 
 	// Print table
-	printSeparator()
 	printRow(headers)
 	printSeparator()
 	for _, row := range rows {
 		printRow(row)
 	}
-	printSeparator()
-
-	// Print totals
-	fmt.Fprintf(w, "\nSummary:\n")
-	fmt.Fprintf(w, "Total Runs: %d, Passes: %d, Failures: %d, Panics: %d, Races: %d, Skips: %d\n", allRuns, passes, fails, panics, races, skips)
 	return
 }
 
@@ -326,13 +320,11 @@ func MarkdownSummary(w io.Writer, testReport *TestReport, maxPassRatio float64) 
 	}
 	fmt.Fprint(w, "# Flakeguard Summary\n\n")
 	// Print settings data
-	printSeparator()
 	printRow(rows[0])
 	printSeparator()
 	for _, row := range rows[1:] {
 		printRow(row)
 	}
-	printSeparator()
 	fmt.Fprintln(w)
 
 	if len(tests) == 0 {
@@ -345,11 +337,11 @@ func MarkdownSummary(w io.Writer, testReport *TestReport, maxPassRatio float64) 
 		avgPassRatio = float64(passes) / float64(allRuns)
 	}
 	if avgPassRatio < maxPassRatio {
-		fmt.Fprintln(w, "## Found Flaky Tests :x:")
+		fmt.Fprint(w, "## Found Flaky Tests :x:\n\n")
 	} else {
-		fmt.Fprintln(w, "## No Flakes Found :white_check_mark:")
+		fmt.Fprint(w, "## No Flakes Found :white_check_mark:\n\n")
 	}
-	fmt.Fprintf(w, "Ran `%d` tests `%d` times with a `%.2f%%` pass ratio and found `%d` flaky tests\n\n", len(tests), allRuns, avgPassRatio*100, flakes)
+	fmt.Fprintf(w, "Ran `%d` tests `%d` times, and found `%d` flaky tests with an overall `%.2f%%` pass ratio\n\n", len(tests), testReport.TestRunCount, flakes, avgPassRatio*100)
 	if avgPassRatio < maxPassRatio {
 		fmt.Fprint(w, "### Flakes\n\n")
 		fmt.Fprint(w, testsData.String())

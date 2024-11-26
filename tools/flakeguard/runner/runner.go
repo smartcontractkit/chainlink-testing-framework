@@ -70,10 +70,14 @@ func (r *Runner) RunTests() (*reports.TestReport, error) {
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
 	for index, report := range results {
-		if report.Panics >= r.RunCount { // This feels hacky, but there aren't any elegant solutions
-			results[index].Failures = 0 // We can sometimes double-count panics as failures
-			results[index].Panics = r.RunCount
-			results[index].Runs = r.RunCount
+		if report.Runs > r.RunCount { // Panics can introduce double-counting test runs and mask panics as failures, this is a bit of a hacky way around it
+			if report.Panics > 0 {
+				results[index].Failures = 0 // We can sometimes double-count panics as failures
+				results[index].Panics = r.RunCount
+				results[index].Runs = r.RunCount
+			} else {
+				log.Printf("WARN: %s is reporting it ran %d times but it should have only ran %d", report.TestName, report.Runs, r.RunCount)
+			}
 		}
 	}
 	return &reports.TestReport{
