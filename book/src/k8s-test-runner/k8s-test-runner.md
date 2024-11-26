@@ -63,10 +63,10 @@ WASP_LOG_LEVEL = "info"
 TEST_LOG_LEVEL = "info"
 MERCURY_TEST_LOG_LEVEL = "info"
 [metadata.labels]
-"chain.link/component" = "k8s-test-runner"
+"chain.link/component" = "test-runner"
 "chain.link/product" = "<your-product-name>"
 "chain.link/team" = "<name–of-the-team-you're-running-the-test-for>"
-"chain.link/cost-center" = "<sensible-identifier:eg: product-testType-test>"
+"chain.link/cost-center" = "test-tooling-<testType>-test"
 ```
 
 > [NOTE]
@@ -141,10 +141,10 @@ Then:
         TEST_LOG_LEVEL = "info"
         MERCURY_TEST_LOG_LEVEL = "info"
         [metadata.labels]
-        "chain.link/component" = "k8s-test-runner"
+        "chain.link/component" = "test-runner"
         "chain.link/product" = "data-streamsv0.3"
         "chain.link/team" = "Data Streams"
-        "chain.link/cost-center" = "data-streamsv0.3-load-test"
+        "chain.link/cost-center" = "test-tooling-load-test"
         EOF
 
         ./k8s-test-runner-linux-amd64 run -c config.toml

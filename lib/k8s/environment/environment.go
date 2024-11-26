@@ -1317,7 +1317,7 @@ func createRequiredChainLinkLabels(product, testType string) (map[string]string,
 	return map[string]string{
 		"chain.link/product":     product,
 		"chain.link/team":        team,
-		"chain.link/cost-center": fmt.Sprintf("%s-%s-test", team, testType),
+		"chain.link/cost-center": fmt.Sprintf("test-tooling-%s-test", testType),
 	}, nil
 }
 

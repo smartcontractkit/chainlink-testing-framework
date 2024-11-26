@@ -74,7 +74,7 @@ func (m Chart) GetLabels() map[string]string {
 func NewRunner(props *Props) func(root cdk8s.Chart) ConnectedChart {
 	return func(root cdk8s.Chart) ConnectedChart {
 		labels := *props.Labels
-		labels["chain.link/component"] = ptr.Ptr("k8s-test-runner-legacy")
+		labels["chain.link/component"] = ptr.Ptr("test-runner")
 		c := &Chart{
 			Props: props,
 		}
@@ -97,7 +97,7 @@ func NewRunner(props *Props) func(root cdk8s.Chart) ConnectedChart {
 func DataFromRunner(props *Props) func(root cdk8s.Chart) ConnectedChart {
 	labels := *props.Labels
 	labels["app"] = ptr.Ptr("runner-data")
-	labels["chain.link/component"] = ptr.Ptr("k8s-test-runner-data-legacy")
+	labels["chain.link/component"] = ptr.Ptr("test-runner")
 	return func(root cdk8s.Chart) ConnectedChart {
 		c := &Chart{
 			Props: props,
