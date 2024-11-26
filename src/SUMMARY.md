@@ -11,6 +11,7 @@
     - [NodeSet (Local Docker builds)](./framework/nodeset_docker_rebuild.md)
     - [NodeSet Compat Environment](./framework/nodeset_compatibility.md)
     - [Fork Testing](./framework/fork.md)
+    - [Quick Contracts Deployment](./framework/quick_deployment.md)
     - [NodeSet with External Blockchain]()
     - [CLI](./framework/cli.md)
     - [Configuration](./framework/configuration.md)
