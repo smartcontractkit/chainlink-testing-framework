@@ -11,8 +11,6 @@ import (
 	"github.com/pelletier/go-toml/v2"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/network"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,6 +18,8 @@ import (
 	"testing"
 	"text/template"
 	"time"
+
+	tc "github.com/testcontainers/testcontainers-go"
 )
 
 const (
@@ -146,14 +146,22 @@ func Load[X any](t *testing.T) (*X, error) {
 }
 
 func DefaultNetwork(once *sync.Once) error {
-	var net *testcontainers.DockerNetwork
 	var err error
+	name := "ctf"
 	once.Do(func() {
-		net, err = network.New(
-			context.Background(),
-			network.WithLabels(map[string]string{"framework": "ctf"}),
-		)
-		DefaultNetworkName = net.Name
+		f := false
+		//nolint:staticcheck
+		_, err := tc.GenericNetwork(context.Background(), tc.GenericNetworkRequest{
+			//nolint:staticcheck
+			NetworkRequest: tc.NetworkRequest{
+				Name:       name,
+				EnableIPv6: &f,
+			},
+		})
+		if err != nil {
+			panic(fmt.Errorf("failed to create default network: %w", err))
+		}
+		DefaultNetworkName = name
 	})
 	return err
 }
