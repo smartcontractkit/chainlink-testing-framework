@@ -20,7 +20,7 @@ const (
 func deployAnvil(in *Input) (*Output, error) {
 	ctx := context.Background()
 	entryPoint := []string{"anvil"}
-	defaultCmd := []string{"--host", "0.0.0.0", "--port", in.Port, "--chain-id", in.ChainID, "-b", "1"}
+	defaultCmd := []string{"--host", "0.0.0.0", "--port", in.Port, "--chain-id", in.ChainID}
 	entryPoint = append(entryPoint, defaultCmd...)
 	entryPoint = append(entryPoint, in.DockerCmdParamsOverrides...)
 	framework.L.Info().Any("Cmd", strings.Join(entryPoint, " ")).Msg("Creating anvil with command")

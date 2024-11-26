@@ -2,6 +2,8 @@ module github.com/smartcontractkit/chainlink-testing-framework/framework
 
 go 1.22
 
+replace github.com/smartcontractkit/chainlink-testing-framework/seth => ../seth
+
 require (
 	github.com/aws/aws-sdk-go-v2/config v1.27.39
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.33.3
