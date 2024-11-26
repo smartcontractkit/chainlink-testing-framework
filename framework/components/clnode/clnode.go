@@ -184,9 +184,9 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		Name:            containerName,
 		Labels:          framework.DefaultTCLabels(),
 		Networks:        []string{framework.DefaultNetworkName},
-		NetworkAliases: map[string][]string{
-			framework.DefaultNetworkName: {containerName},
-		},
+		//NetworkAliases: map[string][]string{
+		//	framework.DefaultNetworkName: {containerName},
+		//},
 		ExposedPorts: exposedPorts,
 		Entrypoint: []string{
 			"/bin/sh", "-c",
