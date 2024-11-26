@@ -12,11 +12,14 @@ import (
 	"math/big"
 	"testing"
 	"time"
+
+	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 )
 
 type CfgQuickDeploy struct {
 	ContractsSrc  *onchain.Input    `toml:"contracts_src" validate:"required"`
 	BlockchainSrc *blockchain.Input `toml:"blockchain_src" validate:"required"`
+	NodeSet       *ns.Input         `toml:"nodeset" validate:"required"`
 }
 
 func randAddr() (string, error) {
@@ -37,23 +40,25 @@ func TestQuickDeploy(t *testing.T) {
 	bcSrc, err := blockchain.NewBlockchainNetwork(in.BlockchainSrc)
 	require.NoError(t, err)
 
-	// deploy 2 example product contracts
-	// you can replace it with chainlink-deployments
+	_, err = ns.NewSharedDBNodeSet(in.NodeSet, bcSrc)
+	require.NoError(t, err)
+
+	// deploy all the contracts and start periodic mining in tests later
 	in.ContractsSrc.URL = bcSrc.Nodes[0].HostWSUrl
 	c, err := ethclient.Dial(bcSrc.Nodes[0].HostWSUrl)
 	require.NoError(t, err)
 
-	t.Run("make 100 transactions with 0s blocks then control the speed", func(t *testing.T) {
-		for i := 0; i < 100; i++ {
-			ra, err := randAddr()
-			require.NoError(t, err)
-			err = simple_node_set.SendETH(c, blockchain.DefaultAnvilPrivateKey, ra, big.NewFloat(0.1))
-			require.NoError(t, err)
-		}
-		t.Log("now mining")
+	for i := 0; i < 100; i++ {
+		ra, err := randAddr()
+		require.NoError(t, err)
+		err = simple_node_set.SendETH(c, blockchain.DefaultAnvilPrivateKey, ra, big.NewFloat(0.1))
+		require.NoError(t, err)
+	}
+	// start periodic mining so nodes can receive heads (async)
+	miner := rpc.NewRemoteAnvilMiner(bcSrc.Nodes[0].HostHTTPUrl, nil)
+	miner.MinePeriodically(5 * time.Second)
 
-		miner := rpc.NewRemoteAnvilMiner(bcSrc.Nodes[0].HostHTTPUrl, nil)
-		miner.MinePeriodically(200 * time.Millisecond)
-		time.Sleep(10 * time.Second)
+	t.Run("quickly deploy contracts then test with some block speed", func(t *testing.T) {
+		// test your on-chain + off-chain
 	})
 }

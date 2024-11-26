@@ -7,6 +7,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
+	components "github.com/smartcontractkit/chainlink-testing-framework/framework/examples/example_components"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -67,5 +68,20 @@ func TestFakes(t *testing.T) {
 
 		// use docker URL and path of your fake
 		_ = fmt.Sprintf("%s%s", fakeOut.BaseURLDocker, myFakeAPI)
+	})
+
+	t.Run("verify that containers can access internally both locally and in CI", func(t *testing.T) {
+		myFakeAPI := "/fake/api/internal"
+		// use fake.Func if you need full control over response
+		err = fake.JSON(
+			"GET",
+			myFakeAPI,
+			map[string]any{
+				"data": "some_data",
+			}, 200,
+		)
+		require.NoError(t, err)
+		err := components.NewDockerFakeTester(fmt.Sprintf("%s%s", fakeOut.BaseURLDocker, myFakeAPI))
+		require.NoError(t, err)
 	})
 }

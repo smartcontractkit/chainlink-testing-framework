@@ -37,7 +37,7 @@ func (m *RemoteAnvilMiner) MinePeriodically(interval time.Duration) {
 				log.Info().Msg("anvil miner exiting")
 				return
 			default:
-				if err := m.Client.AnvilMine(nil); err != nil {
+				if err := m.Client.AnvilMine([]interface{}{1}); err != nil {
 					log.Err(err).Send()
 				}
 			}
