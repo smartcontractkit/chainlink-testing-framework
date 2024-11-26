@@ -243,7 +243,7 @@ func PrintTests(
 		{"**Failures**", fmt.Sprint(fails)},
 		{"**Skips**", fmt.Sprint(skips)},
 	}
-	colWidths := make([]int, len(rows[0]))
+	colWidths := make([]int, len(summaryData[0]))
 
 	for _, row := range summaryData {
 		for i, cell := range row {
@@ -251,6 +251,11 @@ func PrintTests(
 				colWidths[i] = len(cell)
 			}
 		}
+	}
+
+	if len(rows) == 0 {
+		fmt.Fprintf(w, "No tests found under pass ratio of %.2f%%\n", maxPassRatio*100)
+		return
 	}
 
 	printRow := func(cells []string) {
@@ -295,12 +300,10 @@ func PrintTests(
 		fmt.Fprintln(w, "|"+buffer.String())
 	}
 
-	if len(rows) == 0 {
-		printRow(headers)
-		printSeparator()
-		for _, row := range rows {
-			printRow(row)
-		}
+	printRow(headers)
+	printSeparator()
+	for _, row := range rows {
+		printRow(row)
 	}
 	return
 }

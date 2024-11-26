@@ -72,6 +72,7 @@ func TestPrintTests(t *testing.T) {
 	testcases := []struct {
 		name                   string
 		testResults            []TestResult
+		maxPassRatio           float64
 		expectedRuns           int
 		expectedPasses         int
 		expectedFails          int
@@ -88,11 +89,14 @@ func TestPrintTests(t *testing.T) {
 					TestName:    "Test1",
 					TestPackage: "package1",
 					PassRatio:   0.75,
+					Successes:   3,
+					Failures:    1,
 					Skipped:     false,
 					Runs:        4,
 					Durations:   []time.Duration{time.Millisecond * 1200, time.Millisecond * 900, time.Millisecond * 1100, time.Second},
 				},
 			},
+			maxPassRatio:           1.0,
 			expectedRuns:           4,
 			expectedPasses:         3,
 			expectedFails:          1,
@@ -102,6 +106,38 @@ func TestPrintTests(t *testing.T) {
 			expectedFlakyTests:     1,
 			expectedStringsContain: []string{"Test1", "package1", "75.00%", "false", "1.05s", "4", "0"},
 		},
+		{
+			name: "multiple passing tests",
+			testResults: []TestResult{
+				{
+					TestName:    "Test1",
+					TestPackage: "package1",
+					PassRatio:   1.0,
+					Skipped:     false,
+					Successes:   4,
+					Runs:        4,
+					Durations:   []time.Duration{time.Millisecond * 1200, time.Millisecond * 900, time.Millisecond * 1100, time.Second},
+				},
+				{
+					TestName:    "Test2",
+					TestPackage: "package1",
+					PassRatio:   1.0,
+					Skipped:     false,
+					Successes:   4,
+					Runs:        4,
+					Durations:   []time.Duration{time.Millisecond * 1200, time.Millisecond * 900, time.Millisecond * 1100, time.Second},
+				},
+			},
+			maxPassRatio:           1.0,
+			expectedRuns:           8,
+			expectedPasses:         8,
+			expectedFails:          0,
+			expectedSkippedTests:   0,
+			expectedPanickedTests:  0,
+			expectedRacedTests:     0,
+			expectedFlakyTests:     0,
+			expectedStringsContain: []string{},
+		},
 	}
 
 	for _, testCase := range testcases {
@@ -110,7 +146,7 @@ func TestPrintTests(t *testing.T) {
 			t.Parallel()
 			var buf bytes.Buffer
 
-			runs, passes, fails, skips, panickedTests, racedTests, flakyTests := PrintTests(&buf, tc.testResults, 1.0)
+			runs, passes, fails, skips, panickedTests, racedTests, flakyTests := PrintTests(&buf, tc.testResults, tc.maxPassRatio)
 			assert.Equal(t, tc.expectedRuns, runs, "wrong number of runs")
 			assert.Equal(t, tc.expectedPasses, passes, "wrong number of passes")
 			assert.Equal(t, tc.expectedFails, fails, "wrong number of failures")
@@ -121,8 +157,7 @@ func TestPrintTests(t *testing.T) {
 
 			// Get the output as a string
 			output := buf.String()
-			expectedContains := []string{"Test1", "package1", "75.00%", "false", "1.05s", "4", "0"}
-			for _, expected := range expectedContains {
+			for _, expected := range tc.expectedStringsContain {
 				assert.Contains(t, output, expected, "output does not contain expected string")
 			}
 		})
