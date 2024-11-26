@@ -9,9 +9,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.28.0
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.34.2
 	github.com/aws/constructs-go/constructs/v10 v10.4.2
-	github.com/aws/jsii-runtime-go v1.104.0
+	github.com/aws/jsii-runtime-go v1.105.0
 	github.com/barkimedes/go-deepcopy v0.0.0-20220514131651-17c30cfc62df
-	github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.7.5
+	github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.69.20
 	github.com/chaos-mesh/chaos-mesh/api v0.0.0-20240709130330-9f4feec7553f
 	github.com/docker/docker v27.3.1+incompatible
 	github.com/docker/go-connections v0.5.0
@@ -40,10 +40,10 @@ require (
 	github.com/testcontainers/testcontainers-go v0.34.0
 	go.uber.org/atomic v1.11.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/net v0.30.0
+	golang.org/x/net v0.31.0
 	golang.org/x/oauth2 v0.23.0
-	golang.org/x/sync v0.8.0
-	golang.org/x/text v0.19.0
+	golang.org/x/sync v0.9.0
+	golang.org/x/text v0.20.0
 	k8s.io/api v0.31.2
 	k8s.io/apimachinery v0.31.2
 	k8s.io/cli-runtime v0.31.2
@@ -130,7 +130,7 @@ require (
 	github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f // indirect
 	github.com/facette/natsort v0.0.0-20181210072756-2cd4dd1e2dcb // indirect
 	github.com/fatih/camelcase v1.0.0 // indirect
-	github.com/fatih/color v1.17.0 // indirect
+	github.com/fatih/color v1.18.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
@@ -298,13 +298,13 @@ require (
 	go.uber.org/ratelimit v0.3.1 // indirect
 	go4.org/netipx v0.0.0-20230125063823-8449b0a6169f // indirect
 	golang.org/x/arch v0.4.0 // indirect
-	golang.org/x/crypto v0.28.0 // indirect
+	golang.org/x/crypto v0.29.0 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
-	golang.org/x/mod v0.21.0 // indirect
-	golang.org/x/sys v0.26.0 // indirect
-	golang.org/x/term v0.25.0 // indirect
+	golang.org/x/mod v0.22.0 // indirect
+	golang.org/x/sys v0.27.0 // indirect
+	golang.org/x/term v0.26.0 // indirect
 	golang.org/x/time v0.6.0 // indirect
-	golang.org/x/tools v0.26.0 // indirect
+	golang.org/x/tools v0.27.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240528184218-531527333157 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240701130421-f6361c86f094 // indirect
