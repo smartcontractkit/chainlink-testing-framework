@@ -14,7 +14,7 @@ require (
 	github.com/grafana/loki v1.6.2-0.20231215164305-b51b7d7b5503
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/common v0.60.0
+	github.com/prometheus/common v0.60.1
 	github.com/rs/zerolog v1.33.0
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/ratelimit v0.3.1
