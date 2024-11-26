@@ -1,22 +1,16 @@
 package main
 
 import (
-	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
-	"strings"
 )
 
 func TestVirtualUser(t *testing.T) {
 	// start mock http server
-	s := httptest.NewServer(wasp.MockWSServer{
-		Sleep: 50 * time.Millisecond,
-	})
-	defer s.Close()
-	time.Sleep(1 * time.Second)
+	srv := wasp.NewHTTPMockServer(nil)
+	srv.Run()
 
 	// define labels for differentiate one run from another
 	labels := map[string]string{
@@ -26,15 +20,12 @@ func TestVirtualUser(t *testing.T) {
 		"commit":       "generator_healthcheck",
 	}
 
-	url := strings.Replace(s.URL, "http", "ws", -1)
-	log.Warn().Interface("URL", url).Send()
-
 	// create generator
 	gen, err := wasp.NewGenerator(&wasp.Config{
 		LoadType: wasp.VU,
-		// just use plain line profile - 5 VUs for 10s
-		Schedule:   wasp.Plain(5, 10*time.Second),
-		VU:         NewExampleWSVirtualUser(url),
+		// just use plain line profile - 5 VUs for 60s
+		Schedule:   wasp.Plain(5, 60*time.Second),
+		VU:         NewExampleWSVirtualUser(srv.URL()),
 		Labels:     labels,
 		LokiConfig: wasp.NewEnvLokiConfig(),
 	})
