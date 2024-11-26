@@ -178,12 +178,13 @@ func AggregateTestResults(folderPath string) (*TestReport, error) {
 }
 
 // PrintTests prints tests in a pretty format
-func PrintTests(w io.Writer, tests []TestResult, maxPassRatio float64) (allRuns, passes, fails, skips, races, panics, flakes int) {
+func PrintTests(w io.Writer, tests []TestResult, maxPassRatio float64) (allRuns, passes, fails, panics, skips, races, flakes int) {
 	headers := []string{
 		"Test Name", "Test Package", "Pass Ratio", "Skipped", "Runs", "Successes", "Failures", "Panics", "Races", "Skips", "Avg Duration",
 	}
-	rows := [][]string{}
 
+	// Build test rows and summary data
+	rows := [][]string{}
 	for _, test := range tests {
 		if test.PassRatio < maxPassRatio {
 			rows = append(rows, []string{
@@ -210,8 +211,44 @@ func PrintTests(w io.Writer, tests []TestResult, maxPassRatio float64) (allRuns,
 		flakes += fails + races + panics
 	}
 
-	// Determine column widths for clean printing
-	colWidths := make([]int, len(headers))
+	// Print out summary data
+	summaryData := [][]string{
+		{"**Summary**", "**Value**"},
+		{"Runs", fmt.Sprint(allRuns)},
+		{"Passes", fmt.Sprint(passes)},
+		{"Failures", fmt.Sprint(fails)},
+		{"Panics", fmt.Sprint(panics)},
+		{"Skips", fmt.Sprint(skips)},
+		{"Races", fmt.Sprint(races)},
+		{"Flakes", fmt.Sprint(flakes)},
+	}
+	colWidths := make([]int, len(rows[0]))
+
+	for _, row := range summaryData {
+		for i, cell := range row {
+			if len(cell) > colWidths[i] {
+				colWidths[i] = len(cell)
+			}
+		}
+	}
+
+	printRow := func(cells []string) {
+		fmt.Fprintf(w, "| %-*s | %-*s |\n", colWidths[0], cells[0], colWidths[1], cells[1])
+	}
+	printSeparator := func() {
+		fmt.Fprintf(w, "|-%s-|-%s-|\n", strings.Repeat("-", colWidths[0]), strings.Repeat("-", colWidths[1]))
+	}
+	printSeparator()
+	printRow(summaryData[0])
+	printSeparator()
+	for _, row := range summaryData[1:] {
+		printRow(row)
+	}
+	printSeparator()
+	fmt.Fprintln(w)
+
+	// Print out test data
+	colWidths = make([]int, len(headers))
 	for i, header := range headers {
 		colWidths[i] = len(header)
 	}
@@ -223,7 +260,7 @@ func PrintTests(w io.Writer, tests []TestResult, maxPassRatio float64) (allRuns,
 		}
 	}
 
-	printRow := func(cells []string) {
+	printRow = func(cells []string) {
 		var buffer bytes.Buffer
 		for i, cell := range cells {
 			buffer.WriteString(fmt.Sprintf(" %-*s |", colWidths[i], cell))
@@ -231,7 +268,7 @@ func PrintTests(w io.Writer, tests []TestResult, maxPassRatio float64) (allRuns,
 		fmt.Fprintln(w, "|"+buffer.String())
 	}
 
-	printSeparator := func() {
+	printSeparator = func() {
 		var buffer bytes.Buffer
 		for _, width := range colWidths {
 			buffer.WriteString(" " + strings.Repeat("-", width) + " |")
@@ -289,6 +326,7 @@ func MarkdownSummary(w io.Writer, testReport *TestReport, maxPassRatio float64) 
 	}
 	fmt.Fprint(w, "# Flakeguard Summary\n\n")
 	// Print settings data
+	printSeparator()
 	printRow(rows[0])
 	printSeparator()
 	for _, row := range rows[1:] {
