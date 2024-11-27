@@ -23,6 +23,7 @@
     - [Mocking Services](framework/components/mocking.md)
     - [Copying Files](framework/copying_files.md)
     - [External Environment](framework/components/external.md)
+    - [Troubleshooting](framework/components/troubleshooting.md)
     - [Secrets]()
     - [Observability Stack](framework/observability/observability_stack.md)
       - [Metrics](framework/observability/metrics.md)

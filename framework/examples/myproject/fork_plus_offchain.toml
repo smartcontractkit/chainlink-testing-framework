@@ -1,21 +1,23 @@
-[contracts_src]
-[contracts_dst]
 
 [blockchain_dst]
   chain_id = "2337"
-#  docker_cmd_params = ["--fork-url", "wss://avalanche-fuji-c-chain-rpc.publicnode.com", "--auto-impersonate"]
+#  docker_cmd_params = ["--fork-url", "wss://avalanche-fuji-c-chain-rpc.publicnode.com", "--auto-impersonate", "-b", "1"]
+  docker_cmd_params = ["-b", "1"]
   image = "f4hrenh9it/foundry:latest"
   port = "8545"
   type = "anvil"
-  docker_cmd_params = ["-b", "1"]
 
 [blockchain_src]
   chain_id = "3337"
-#  docker_cmd_params = ["--fork-url", "wss://avalanche-fuji-c-chain-rpc.publicnode.com", "--auto-impersonate"]
+#  docker_cmd_params = ["--fork-url", "wss://avalanche-fuji-c-chain-rpc.publicnode.com", "--auto-impersonate", "-b", "1"]
+  docker_cmd_params = ["-b", "1"]
   image = "f4hrenh9it/foundry:latest"
   port = "8555"
   type = "anvil"
-  docker_cmd_params = ["-b", "1"]
+
+[contracts_dst]
+
+[contracts_src]
 
 [nodeset]
   nodes = 5

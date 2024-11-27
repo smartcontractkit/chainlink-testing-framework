@@ -62,13 +62,12 @@ func printURLs(out *Output) {
 	if out == nil {
 		return
 	}
-	httpURLs, p2pURLs, pgURLs := make([]string, 0), make([]string, 0), make([]string, 0)
+	httpURLs, _, pgURLs := make([]string, 0), make([]string, 0), make([]string, 0)
 	for _, n := range out.CLNodes {
 		httpURLs = append(httpURLs, n.Node.HostURL)
 		pgURLs = append(pgURLs, n.PostgreSQL.Url)
 	}
 	framework.L.Info().Any("UI", httpURLs).Send()
-	framework.L.Debug().Any("P2P", p2pURLs).Send()
 	framework.L.Debug().Any("DB", pgURLs).Send()
 }
 
