@@ -53,6 +53,12 @@ func (m Chart) GetValues() *map[string]interface{} {
 	return m.Values
 }
 
+func (m Chart) GetLabels() map[string]string {
+	return map[string]string{
+		"chain.link/component": "mock-adapter",
+	}
+}
+
 func (m Chart) ExportData(e *environment.Environment) error {
 	mockLocal, err := e.Fwd.FindPort("qa-mock-adapter:0", "qa-mock-adapter", "serviceport").As(client.LocalConnection, client.HTTP)
 	if err != nil {

@@ -46,6 +46,10 @@ const (
 	EnvVarUserDescription = "Owner of an environment"
 	EnvVarUserExample     = "Satoshi"
 
+	EnvVarTeam            = "CHAINLINK_USER_TEAM"
+	EnvVarTeamDescription = "Team to, which owner of the environment belongs to"
+	EnvVarTeamExample     = "BIX, CCIP, BCM"
+
 	EnvVarCLCommitSha            = "CHAINLINK_COMMIT_SHA"
 	EnvVarCLCommitShaDescription = "The sha of the commit that you're running tests on. Mostly used for CI"
 	EnvVarCLCommitShaExample     = "${{ github.sha }}"

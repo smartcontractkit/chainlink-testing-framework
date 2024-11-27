@@ -15,6 +15,9 @@ labels:
 annotations: {}
 env:
   # TEST_LOG_LEVEL: ''
+metadata:
+  labels:
+    # label: value
 resources:
   requests:
     cpu: 1000m
