@@ -7628,6 +7628,7 @@ You can control this using <code>LokiConfig.MaxErrors</code>:</p>
 <p>The TOML config should specify the test runner configuration as follows:</p>
 <pre><code>namespace = "e2e-tests"
 rbac_role_name = "" # RBAC role name for the chart
+rbac_service_account_name = "" # RBAC service account name for the chart
 image_registry_url = "" # URL to the ECR containing the test binary image, e.g., staging ECR URL
 image_name = "k8s-test-runner"
 image_tag = ""  # The image tag to use, like "mercury-load-tests" (see readme above)
@@ -7644,7 +7645,16 @@ resources_limits_memory = "1024Mi"
 WASP_LOG_LEVEL = "info"
 TEST_LOG_LEVEL = "info"
 MERCURY_TEST_LOG_LEVEL = "info"
+[metadata.labels]
+"chain.link/component" = "test-runner"
+"chain.link/product" = "&lt;your-product-name&gt;"
+"chain.link/team" = "&lt;name–of-the-team-you're-running-the-test-for&gt;"
+"chain.link/cost-center" = "test-tooling-&lt;testType&gt;-test"
 </code></pre>
+<blockquote>
+<p>[NOTE]
+Make sure to quote labels with "/" as otherwise parsing them will fail.</p>
+</blockquote>
 <p>Where:</p>
 <ul>
 <li><code>test_name</code> is the name of the test to run (must be included in the test binary).</li>
@@ -7685,6 +7695,7 @@ MERCURY_TEST_LOG_LEVEL = "info"
         cat &lt;&lt; EOF &gt; config.toml
         namespace = "e2e-tests"
         rbac_role_name = "" # RBAC role name for the chart
+        rbac_service_account_name = "" # RBAC service account name for the chart
         image_registry_url = "${{ secrets.AWS_ACCOUNT_ID_STAGING }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com"
         image_name = "k8s-test-runner"
         image_tag = "mercury-load-test"
@@ -7702,6 +7713,11 @@ MERCURY_TEST_LOG_LEVEL = "info"
         WASP_LOG_LEVEL = "info"
         TEST_LOG_LEVEL = "info"
         MERCURY_TEST_LOG_LEVEL = "info"
+        [metadata.labels]
+        "chain.link/component" = "test-runner"
+        "chain.link/product" = "data-streamsv0.3"
+        "chain.link/team" = "Data Streams"
+        "chain.link/cost-center" = "test-tooling-load-test"
         EOF
 
         ./k8s-test-runner-linux-amd64 run -c config.toml
@@ -9875,7 +9891,7 @@ echo ::add-mask::$BASE64_CONFIG_OVERRIDE
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>2f0c331c</code></li>
+<li>Commit: <code>4bb98ca4</code></li>
 </ul>
 
                     </main>
