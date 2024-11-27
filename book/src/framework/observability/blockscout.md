@@ -12,6 +12,14 @@ To remove it, we also clean up all Blockscout databases to prevent stale data wh
 ctf bs down
 ```
 
+## Selecting Blockchain Node
+
+By default, we connect to the first `anvil` node, but you can select the node explicitly
+```
+ctf bs -r http://host.docker.internal:8545 d
+ctf bs -r http://host.docker.internal:8555 d
+```
+
 <div class="warning">
 
 Blockscout isn’t ideal for local, ephemeral environments, as it won’t re-index blocks and transactions on test reruns. The easiest approach is to set up Blockscout first, initialize the test environment, switch to the [cache](../components/caching.md) config, and run tests without restarting RPC nodes. 
