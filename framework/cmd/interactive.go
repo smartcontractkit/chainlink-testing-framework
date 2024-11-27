@@ -94,7 +94,7 @@ func createComponentsFromForm(form *nodeSetForm) error {
 func cleanup(form *nodeSetForm) error {
 	var err error
 	f := func() {
-		err = rmTestContainers()
+		err = removeTestContainers()
 	}
 	err = spinner.New().
 		Title("Removing docker resources..").

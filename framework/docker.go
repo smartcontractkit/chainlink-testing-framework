@@ -15,7 +15,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -68,84 +67,6 @@ func DefaultTCLabels() map[string]string {
 
 func DefaultTCName(name string) string {
 	return fmt.Sprintf("%s-%s", name, uuid.NewString()[0:5])
-}
-
-// BuildAndPublishLocalDockerImage runs Docker commands to set up a local registry, build an image, and push it.
-func BuildAndPublishLocalDockerImage(once *sync.Once, dockerfile string, buildContext string, imageName string) error {
-	var retErr error
-	once.Do(func() {
-		L.Info().
-			Str("Dockerfile", dockerfile).
-			Str("Ctx", buildContext).
-			Str("ImageName", imageName).
-			Msg("Building local docker file")
-		registryRunning := isContainerRunning("local-registry")
-		if registryRunning {
-			fmt.Println("Local registry container is already running.")
-		} else {
-			L.Info().Msg("Removing local registry")
-			_ = runCommand("docker", "stop", "local-registry")
-			_ = runCommand("docker", "rm", "local-registry")
-			L.Info().Msg("Starting local registry container...")
-			err := runCommand("docker", "run", "-d", "-p", "5050:5000", "--name", "local-registry", "registry:2")
-			if err != nil {
-				retErr = fmt.Errorf("failed to start local registry: %w", err)
-			}
-			L.Info().Msg("Local registry started")
-		}
-
-		img := fmt.Sprintf("localhost:5050/%s:latest", imageName)
-		err := runCommand("docker", "build", "-t", fmt.Sprintf("localhost:5050/%s:latest", imageName), "-f", dockerfile, buildContext)
-		if err != nil {
-			retErr = fmt.Errorf("failed to build Docker image: %w", err)
-		}
-		L.Info().Msg("Docker image built successfully")
-
-		L.Info().Str("Image", img).Msg("Pushing Docker image to local registry")
-		fmt.Println("Pushing Docker image to local registry...")
-		err = runCommand("docker", "push", img)
-		if err != nil {
-			retErr = fmt.Errorf("failed to push Docker image: %w", err)
-		}
-		L.Info().Msg("Docker image pushed successfully")
-	})
-	return retErr
-}
-
-// isContainerRunning checks if a Docker container with the given name is running.
-func isContainerRunning(containerName string) bool {
-	cmd := exec.Command("docker", "ps", "--filter", fmt.Sprintf("name=%s", containerName), "--format", "{{.Names}}")
-	output, err := cmd.Output()
-	if err != nil {
-		return false
-	}
-	return strings.Contains(string(output), containerName)
-}
-
-// runCommand executes a command and prints the output.
-func runCommand(name string, args ...string) error {
-	cmd := exec.Command(name, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
-// TODO: use tc.NewDockerProvider().BuildImage() to skip managing the registry container
-// RebuildDockerImage rebuilds docker image if necessary
-func RebuildDockerImage(once *sync.Once, dockerfile string, buildContext string, imageName string) (string, error) {
-	if dockerfile == "" {
-		return "", errors.New("docker_file path must be provided")
-	}
-	if buildContext == "" {
-		return "", errors.New("docker_ctx path must be provided")
-	}
-	if imageName == "" {
-		imageName = "ctftmp"
-	}
-	if err := BuildAndPublishLocalDockerImage(once, dockerfile, buildContext, imageName); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("localhost:5050/%s:latest", imageName), nil
 }
 
 // DockerClient wraps a Docker API client and provides convenience methods
@@ -319,4 +240,31 @@ func WriteAllContainersLogs() error {
 		})
 	}
 	return eg.Wait()
+}
+
+func BuildImageOnce(ctx context.Context, once *sync.Once, dctx, dfile, nameAndTag string) error {
+	var (
+		p         *tc.DockerProvider
+		dockerCtx string
+		err       error
+	)
+	once.Do(func() {
+		nt := strings.Split(nameAndTag, ":")
+		if len(nt) != 2 {
+			err = errors.New("BuildImageOnce, tag must be in 'repo:tag' format")
+			return
+		}
+		p, err = tc.NewDockerProvider()
+		dockerCtx, err = filepath.Abs(dctx)
+		_, err = p.BuildImage(ctx, &tc.ContainerRequest{
+			FromDockerfile: tc.FromDockerfile{
+				Repo:          nt[0],
+				Tag:           nt[1],
+				Context:       dockerCtx,
+				Dockerfile:    dfile,
+				PrintBuildLog: true,
+			},
+		})
+	})
+	return err
 }
