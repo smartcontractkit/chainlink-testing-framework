@@ -412,12 +412,14 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 func attributePanicToTest(panicPackage string, panicEntries []entry) (string, error) {
 	regexSanitizePanicPackage := filepath.Base(panicPackage)
 	panicAttributionRe := regexp.MustCompile(fmt.Sprintf(`%s\.(Test[^\.\(]+)`, regexSanitizePanicPackage))
+	entriesOutputs := []string{}
 	for _, entry := range panicEntries {
+		entriesOutputs = append(entriesOutputs, entry.Output)
 		if matches := panicAttributionRe.FindStringSubmatch(entry.Output); len(matches) > 1 {
 			return matches[1], nil
 		}
 	}
-	return "", fmt.Errorf("failed to attribute panic to test, using regex %s on '%s'", panicAttributionRe.String(), regexSanitizePanicPackage)
+	return "", fmt.Errorf("failed to attribute panic to test, using regex %s on these strings:\n%s", panicAttributionRe.String(), strings.Join(entriesOutputs, "\n"))
 }
 
 // properly attributes races to the test that caused them
@@ -425,12 +427,14 @@ func attributePanicToTest(panicPackage string, panicEntries []entry) (string, er
 func attributeRaceToTest(racePackage string, raceEntries []entry) (string, error) {
 	regexSanitizeRacePackage := filepath.Base(racePackage)
 	raceAttributionRe := regexp.MustCompile(fmt.Sprintf(`%s\.(Test[^\.\(]+)`, regexSanitizeRacePackage))
+	entriesOutputs := []string{}
 	for _, entry := range raceEntries {
+		entriesOutputs = append(entriesOutputs, entry.Output)
 		if matches := raceAttributionRe.FindStringSubmatch(entry.Output); len(matches) > 1 {
 			return matches[1], nil
 		}
 	}
-	return "", fmt.Errorf("failed to attribute race to test, using regex: %s on '%s'", raceAttributionRe.String(), regexSanitizeRacePackage)
+	return "", fmt.Errorf("failed to attribute race to test, using regex: %s on these strings:\n%s", raceAttributionRe.String(), strings.Join(entriesOutputs, "\n"))
 }
 
 // parseSubTest checks if a test name is a subtest and returns the parent and sub names
