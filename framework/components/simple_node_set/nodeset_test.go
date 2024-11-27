@@ -50,7 +50,7 @@ func TestComponentDockerNodeSetSharedDB(t *testing.T) {
 				Nodes:        2,
 				OverrideMode: "all",
 				DbInput: &postgres.Input{
-					Image: "postgres:15.6",
+					Image: "postgres:12.0",
 				},
 				NodeSpecs: []*clnode.Input{
 					{
@@ -79,7 +79,7 @@ func TestComponentDockerNodeSetSharedDB(t *testing.T) {
 				HTTPPortRangeStart: 20000,
 				P2PPortRangeStart:  22000,
 				DbInput: &postgres.Input{
-					Image: "postgres:15.6",
+					Image: "postgres:12.0",
 					Port:  14000,
 				},
 				NodeSpecs: []*clnode.Input{

@@ -24,7 +24,7 @@ func TestPostgresCustomImageVersionNotInMirror(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestPostgresWithMirror(t *testing.T) {
+func TestPostgresLowestCompatibleVersion(t *testing.T) {
 	// requires internal docker repo to be set
 	if os.Getenv(config.EnvVarInternalDockerRepo) == "" {
 		t.Skipf("Skipping test because %s is not set", config.EnvVarInternalDockerRepo)
@@ -34,6 +34,22 @@ func TestPostgresWithMirror(t *testing.T) {
 	require.NoError(t, err)
 
 	pg, err := NewPostgresDb([]string{network.Name})
+	require.NoError(t, err)
+	err = pg.StartContainer()
+	require.NoError(t, err)
+}
+
+func TestPostgresModernVersion(t *testing.T) {
+	// requires internal docker repo to be set
+	if os.Getenv(config.EnvVarInternalDockerRepo) == "" {
+		t.Skipf("Skipping test because %s is not set", config.EnvVarInternalDockerRepo)
+	}
+	l := logging.GetTestLogger(t)
+	network, err := docker.CreateNetwork(l)
+	require.NoError(t, err)
+
+	pgOpt := WithPostgresImageVersion("15.6")
+	pg, err := NewPostgresDb([]string{network.Name}, pgOpt)
 	require.NoError(t, err)
 	err = pg.StartContainer()
 	require.NoError(t, err)

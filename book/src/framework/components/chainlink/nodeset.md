@@ -55,7 +55,7 @@ Then configure NodeSet
   
   [nodeset.db]
     # PostgreSQL image version and tag
-    image = "postgres:15.6"
+    image = "postgres:12.0"
     # Pulls the image every time if set to 'true', used like that in CI. Can be set to 'false' to speed up local runs
     pull_image = false
     # PostgreSQL volume name

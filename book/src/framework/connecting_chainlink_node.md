@@ -15,7 +15,7 @@ Create your configuration in `smoke.toml`
 [cl_node]
 
   [cl_node.db]
-    image = "postgres:15.6"
+    image = "postgres:12.0"
 
   [cl_node.node]
     image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
