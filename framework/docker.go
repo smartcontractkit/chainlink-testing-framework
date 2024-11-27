@@ -22,7 +22,6 @@ import (
 )
 
 const (
-	EnvVarSaveLogs    = "CTF_SAVE_LOGS"
 	DefaultCTFLogsDir = "logs"
 )
 
