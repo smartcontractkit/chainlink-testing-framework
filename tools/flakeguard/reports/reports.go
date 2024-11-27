@@ -11,6 +11,9 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
 // TestReport represents the report of all tests run through flakeguard.
@@ -189,14 +192,15 @@ func PrintTests(
 	tests []TestResult,
 	maxPassRatio float64,
 ) (runs, passes, fails, skips, panickedTests, racedTests, flakyTests int) {
+	p := message.NewPrinter(language.English) // For formatting numbers
 	sortTestResults(tests)
 	headers := []string{
 		"**Name**",
 		"**Pass Ratio**",
-		"**Runs**",
 		"**Panicked?**",
 		"**Timed Out?**",
 		"**Race?**",
+		"**Runs**",
 		"**Successes**",
 		"**Failures**",
 		"**Skips**",
@@ -212,13 +216,13 @@ func PrintTests(
 			rows = append(rows, []string{
 				test.TestName,
 				fmt.Sprintf("%.2f%%", test.PassRatio*100),
-				fmt.Sprintf("%d", test.Runs),
 				fmt.Sprintf("%t", test.Panic),
 				fmt.Sprintf("%t", test.Timeout),
 				fmt.Sprintf("%t", test.Race),
-				fmt.Sprintf("%d", test.Successes),
-				fmt.Sprintf("%d", test.Failures),
-				fmt.Sprintf("%d", test.Skips),
+				p.Sprintf("%d", test.Runs),
+				p.Sprintf("%d", test.Successes),
+				p.Sprintf("%d", test.Failures),
+				p.Sprintf("%d", test.Skips),
 				test.TestPackage,
 				fmt.Sprintf("%t", test.PackagePanic),
 				avgDuration(test.Durations).String(),
@@ -259,15 +263,15 @@ func PrintTests(
 	// Print out summary data
 	summaryData := [][]string{
 		{"**Category**", "**Total**"},
-		{"**Tests**", fmt.Sprint(len(tests))},
-		{"**Panicked Tests**", fmt.Sprint(panickedTests)},
-		{"**Raced Tests**", fmt.Sprint(racedTests)},
-		{"**Flaky Tests**", fmt.Sprint(flakyTests)},
+		{"**Tests**", p.Sprint(len(tests))},
+		{"**Panicked Tests**", p.Sprint(panickedTests)},
+		{"**Raced Tests**", p.Sprint(racedTests)},
+		{"**Flaky Tests**", p.Sprint(flakyTests)},
 		{"**Flaky Test Ratio**", flakeRatioStr},
-		{"**Runs**", fmt.Sprint(runs)},
-		{"**Passes**", fmt.Sprint(passes)},
-		{"**Failures**", fmt.Sprint(fails)},
-		{"**Skips**", fmt.Sprint(skips)},
+		{"**Runs**", p.Sprint(runs)},
+		{"**Passes**", p.Sprint(passes)},
+		{"**Failures**", p.Sprint(fails)},
+		{"**Skips**", p.Sprint(skips)},
 		{"**Pass Ratio**", passRatioStr},
 	}
 	colWidths := make([]int, len(summaryData[0]))
