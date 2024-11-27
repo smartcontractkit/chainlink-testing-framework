@@ -194,9 +194,9 @@ func PrintTests(
 		"**Test**",
 		"**Pass Ratio**",
 		"**Runs**",
-		"**Test Panicked?**",
-		"**Test Timed Out?**",
-		"**Test Race?**",
+		"**Panicked?**",
+		"**Timed Out?**",
+		"**Race?**",
 		"**Successes**",
 		"**Failures**",
 		"**Skips**",
@@ -468,15 +468,15 @@ func avgDuration(durations []time.Duration) time.Duration {
 	return total / time.Duration(len(durations))
 }
 
-// sortTestResults sorts results by PassRatio, TestPackage, and TestName for consistent comparison and pretty printing
+// sortTestResults sorts results by TestPackage, TestName, and PassRatio for consistent comparison and pretty printing
 func sortTestResults(results []TestResult) {
 	sort.Slice(results, func(i, j int) bool {
-		if results[i].PassRatio != results[j].PassRatio {
-			return results[i].PassRatio < results[j].PassRatio
-		}
-		if results[i].TestName == results[j].TestName {
+		if results[i].TestPackage != results[j].TestPackage {
 			return results[i].TestPackage < results[j].TestPackage
 		}
-		return results[i].TestName < results[j].TestName
+		if results[i].TestName != results[j].TestName {
+			return results[i].TestName < results[j].TestName
+		}
+		return results[i].PassRatio < results[j].PassRatio
 	})
 }
