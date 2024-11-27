@@ -45,6 +45,12 @@ func (m Chart) GetValues() *map[string]interface{} {
 	return nil
 }
 
+func (m Chart) GetLabels() map[string]string {
+	return map[string]string{
+		"chain.link/component": "http_dummy",
+	}
+}
+
 func (m Chart) ExportData(e *environment.Environment) error {
 	url, err := e.Fwd.FindPort(
 		fmt.Sprintf("%s:0", m.GetName()),
