@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -18,6 +19,7 @@ type TestReport struct {
 	TestRunCount  int
 	RaceDetection bool
 	ExcludedTests []string
+	SelectedTests []string
 	Results       []TestResult
 }
 
@@ -27,6 +29,7 @@ type TestResult struct {
 	TestPackage    string
 	PackagePanic   bool            // Indicates a package-level panic
 	Panic          bool            // Indicates a test-level panic
+	Timeout        bool            // Indicates if the test timed out
 	Race           bool            // Indicates if the test caused a data race
 	Skipped        bool            // Indicates if the test was skipped
 	PassRatio      float64         // Pass ratio in decimal format like 0.5
@@ -91,6 +94,7 @@ func AggregateTestResults(folderPath string) (*TestReport, error) {
 		testMap       = make(map[string]TestResult)
 		fullReport    = &TestReport{}
 		excludedTests = map[string]struct{}{}
+		selectedTests = map[string]struct{}{}
 	)
 
 	// Read all JSON files in the folder
@@ -117,6 +121,9 @@ func AggregateTestResults(folderPath string) (*TestReport, error) {
 			fullReport.RaceDetection = report.RaceDetection && fullReport.RaceDetection
 			for _, test := range report.ExcludedTests {
 				excludedTests[test] = struct{}{}
+			}
+			for _, test := range report.SelectedTests {
+				selectedTests[test] = struct{}{}
 			}
 			// Process each test results
 			for _, result := range report.Results {
@@ -157,6 +164,9 @@ func AggregateTestResults(folderPath string) (*TestReport, error) {
 	for test := range excludedTests {
 		fullReport.ExcludedTests = append(fullReport.ExcludedTests, test)
 	}
+	for test := range selectedTests {
+		fullReport.SelectedTests = append(fullReport.SelectedTests, test)
+	}
 
 	var (
 		aggregatedResults = make([]TestResult, 0, len(testMap))
@@ -185,6 +195,7 @@ func PrintTests(
 		"**Pass Ratio**",
 		"**Runs**",
 		"**Test Panicked?**",
+		"**Test Timed Out?**",
 		"**Test Race?**",
 		"**Successes**",
 		"**Failures**",
@@ -203,6 +214,7 @@ func PrintTests(
 				fmt.Sprintf("%.2f%%", test.PassRatio*100),
 				fmt.Sprintf("%d", test.Runs),
 				fmt.Sprintf("%t", test.Panic),
+				fmt.Sprintf("%t", test.Timeout),
 				fmt.Sprintf("%t", test.Race),
 				fmt.Sprintf("%d", test.Successes),
 				fmt.Sprintf("%d", test.Failures),
@@ -228,6 +240,15 @@ func PrintTests(
 		}
 	}
 
+	var passRatioStr string
+	if runs == 0 || passes == runs {
+		passRatioStr = "100%"
+	} else {
+		percentage := float64(passes) / float64(runs) * 100
+		truncatedPercentage := math.Floor(percentage*100) / 100 // Truncate to 2 decimal places
+		passRatioStr = fmt.Sprintf("%.2f%%", truncatedPercentage)
+	}
+
 	// Print out summary data
 	summaryData := [][]string{
 		{"**Category**", "**Total**"},
@@ -235,7 +256,7 @@ func PrintTests(
 		{"**Panicked Tests**", fmt.Sprint(panickedTests)},
 		{"**Raced Tests**", fmt.Sprint(racedTests)},
 		{"**Flaky Tests**", fmt.Sprint(flakyTests)},
-		{"**Pass Ratio**", fmt.Sprintf("%.2f%%", float64(passes)/float64(runs)*100)},
+		{"**Pass Ratio**", passRatioStr},
 		{"**Runs**", fmt.Sprint(runs)},
 		{"**Passes**", fmt.Sprint(passes)},
 		{"**Failures**", fmt.Sprint(fails)},
@@ -320,7 +341,12 @@ func MarkdownSummary(w io.Writer, testReport *TestReport, maxPassRatio float64) 
 		{"Max Pass Ratio", fmt.Sprintf("%.2f%%", maxPassRatio*100)},
 		{"Test Run Count", fmt.Sprintf("%d", testReport.TestRunCount)},
 		{"Race Detection", fmt.Sprintf("%t", testReport.RaceDetection)},
-		{"Excluded Tests", strings.Join(testReport.ExcludedTests, ", ")},
+	}
+	if len(testReport.ExcludedTests) > 0 {
+		rows = append(rows, []string{"Excluded Tests", strings.Join(testReport.ExcludedTests, ", ")})
+	}
+	if len(testReport.SelectedTests) > 0 {
+		rows = append(rows, []string{"Selected Tests", strings.Join(testReport.SelectedTests, ", ")})
 	}
 	colWidths := make([]int, len(rows[0]))
 

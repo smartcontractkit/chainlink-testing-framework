@@ -21,6 +21,8 @@ var RunTestsCmd = &cobra.Command{
 		testPackagesJson, _ := cmd.Flags().GetString("test-packages-json")
 		testPackagesArg, _ := cmd.Flags().GetStringSlice("test-packages")
 		runCount, _ := cmd.Flags().GetInt("run-count")
+		timeout, _ := cmd.Flags().GetDuration("timeout")
+		tags, _ := cmd.Flags().GetStringArray("tags")
 		useRace, _ := cmd.Flags().GetBool("race")
 		outputPath, _ := cmd.Flags().GetString("output-json")
 		maxPassRatio, _ := cmd.Flags().GetFloat64("max-pass-ratio")
@@ -50,6 +52,8 @@ var RunTestsCmd = &cobra.Command{
 			ProjectPath:          projectPath,
 			Verbose:              true,
 			RunCount:             runCount,
+			Timeout:              timeout,
+			Tags:                 tags,
 			UseRace:              useRace,
 			SkipTests:            skipTests,
 			SelectTests:          selectTests,
@@ -98,6 +102,8 @@ func init() {
 	RunTestsCmd.Flags().StringSlice("test-packages", nil, "Comma-separated list of test packages to run")
 	RunTestsCmd.Flags().Bool("run-all-packages", false, "Run all test packages in the project. This flag overrides --test-packages and --test-packages-json")
 	RunTestsCmd.Flags().IntP("run-count", "c", 1, "Number of times to run the tests")
+	RunTestsCmd.Flags().Duration("timeout", 0, "Passed on to the 'go test' command as the -timeout flag")
+	RunTestsCmd.Flags().StringArray("tags", nil, "Passed on to the 'go test' command as the -tags flag")
 	RunTestsCmd.Flags().Bool("race", false, "Enable the race detector")
 	RunTestsCmd.Flags().Bool("shuffle", false, "Enable test shuffling")
 	RunTestsCmd.Flags().String("shuffle-seed", "", "Set seed for test shuffling. Must be used with --shuffle")

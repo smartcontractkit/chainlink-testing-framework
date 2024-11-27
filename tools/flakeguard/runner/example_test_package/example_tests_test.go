@@ -1,9 +1,11 @@
 package exampletestpackage
 
 import (
+	"log"
 	"os"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestPass(t *testing.T) {
@@ -187,4 +189,18 @@ func TestRace(t *testing.T) {
 
 	// Log the result
 	t.Logf("Final value of sharedCounter: %d", sharedCounter)
+}
+
+func TestTimeout(t *testing.T) {
+	t.Parallel()
+
+	deadline, ok := t.Deadline()
+	if !ok {
+		log.Fatal("This test should have a deadline")
+	}
+
+	t.Logf("This test will sleep %s in order to timeout", time.Until(deadline).String())
+	// Sleep until the deadline
+	time.Sleep(time.Until(deadline))
+	t.Logf("This test should have timed out")
 }

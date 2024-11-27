@@ -25,18 +25,20 @@ var (
 )
 
 type Runner struct {
-	ProjectPath          string   // Path to the Go project directory.
-	prettyProjectPath    string   // Go project package path, formatted for pretty printing.
-	Verbose              bool     // If true, provides detailed logging.
-	RunCount             int      // Number of times to run the tests.
-	UseRace              bool     // Enable race detector.
-	UseShuffle           bool     // Enable test shuffling. -shuffle=on flag.
-	ShuffleSeed          string   // Set seed for test shuffling -shuffle={seed} flag. Must be used with UseShuffle.
-	FailFast             bool     // Stop on first test failure.
-	SkipTests            []string // Test names to exclude.
-	SelectTests          []string // Test names to include.
-	SelectedTestPackages []string // Explicitly selected packages to run.
-	CollectRawOutput     bool     // Set to true to collect test output for later inspection.
+	ProjectPath          string        // Path to the Go project directory.
+	prettyProjectPath    string        // Go project package path, formatted for pretty printing.
+	Verbose              bool          // If true, provides detailed logging.
+	RunCount             int           // Number of times to run the tests.
+	UseRace              bool          // Enable race detector.
+	Timeout              time.Duration // Test timeout
+	Tags                 []string      // Build tags.
+	UseShuffle           bool          // Enable test shuffling. -shuffle=on flag.
+	ShuffleSeed          string        // Set seed for test shuffling -shuffle={seed} flag. Must be used with UseShuffle.
+	FailFast             bool          // Stop on first test failure.
+	SkipTests            []string      // Test names to exclude.
+	SelectTests          []string      // Test names to include.
+	SelectedTestPackages []string      // Explicitly selected packages to run.
+	CollectRawOutput     bool          // Set to true to collect test output for later inspection.
 	rawOutputs           map[string]*bytes.Buffer
 }
 
@@ -76,6 +78,7 @@ func (r *Runner) RunTests() (*reports.TestReport, error) {
 		TestRunCount:  r.RunCount,
 		RaceDetection: r.UseRace,
 		ExcludedTests: r.SkipTests,
+		SelectedTests: r.SelectTests,
 		Results:       results,
 	}, nil
 }
@@ -95,6 +98,12 @@ func (r *Runner) runTests(packageName string) (string, bool, error) {
 	args := []string{"test", packageName, "-json", "-count=1"}
 	if r.UseRace {
 		args = append(args, "-race")
+	}
+	if r.Timeout > 0 {
+		args = append(args, fmt.Sprintf("-timeout=%s", r.Timeout.String()))
+	}
+	if len(r.Tags) > 0 {
+		args = append(args, fmt.Sprintf("-tags=%s", strings.Join(r.Tags, ",")))
 	}
 	if r.UseShuffle {
 		if r.ShuffleSeed != "" {
@@ -126,7 +135,8 @@ func (r *Runner) runTests(packageName string) (string, bool, error) {
 
 	r.prettyProjectPath, err = prettyProjectPath(r.ProjectPath)
 	if err != nil {
-		return "", false, fmt.Errorf("failed to get pretty project path: %w", err)
+		r.prettyProjectPath = r.ProjectPath
+		log.Printf("WARN: failed to get pretty project path: %v", err)
 	}
 	// Run the command with output directed to the file
 	cmd := exec.Command("go", args...)
@@ -268,12 +278,13 @@ func parseTestResults(expectedRuns int, filePaths []string) ([]reports.TestResul
 
 			if (panicDetectionMode || raceDetectionMode) && entryLine.Action == "fail" { // End of panic or race output
 				if panicDetectionMode {
-					panicTest, err := attributePanicToTest(entryLine.Package, detectedEntries)
+					panicTest, timeout, err := attributePanicToTest(entryLine.Package, detectedEntries)
 					if err != nil {
 						return nil, err
 					}
 					panicTestKey := fmt.Sprintf("%s/%s", entryLine.Package, panicTest)
 					testDetails[panicTestKey].Panic = true
+					testDetails[panicTestKey].Timeout = timeout
 					testDetails[panicTestKey].Failures++
 					testDetails[panicTestKey].Runs++
 					// TODO: durations and panics are weird in the same way as Runs: lots of double-counting
@@ -413,17 +424,21 @@ func parseTestResults(expectedRuns int, filePaths []string) ([]reports.TestResul
 
 // properly attributes panics to the test that caused them
 // Go JSON output gets confused, especially when tests are run in parallel
-func attributePanicToTest(panicPackage string, panicEntries []entry) (string, error) {
+func attributePanicToTest(panicPackage string, panicEntries []entry) (test string, timeout bool, err error) {
 	regexSanitizePanicPackage := filepath.Base(panicPackage)
 	panicAttributionRe := regexp.MustCompile(fmt.Sprintf(`%s\.(Test[^\.\(]+)`, regexSanitizePanicPackage))
+	timeoutAttributionRe := regexp.MustCompile(`(Test.*?)\W+\(.*\)`)
 	entriesOutputs := []string{}
 	for _, entry := range panicEntries {
 		entriesOutputs = append(entriesOutputs, entry.Output)
 		if matches := panicAttributionRe.FindStringSubmatch(entry.Output); len(matches) > 1 {
-			return matches[1], nil
+			return matches[1], false, nil
+		}
+		if matches := timeoutAttributionRe.FindStringSubmatch(entry.Output); len(matches) > 1 {
+			return matches[1], true, nil
 		}
 	}
-	return "", fmt.Errorf("failed to attribute panic to test, using regex %s on these strings:\n%s", panicAttributionRe.String(), strings.Join(entriesOutputs, "\n"))
+	return "", false, fmt.Errorf("failed to attribute panic to test, using regex %s on these strings:\n%s", panicAttributionRe.String(), strings.Join(entriesOutputs, ""))
 }
 
 // properly attributes races to the test that caused them
@@ -438,7 +453,7 @@ func attributeRaceToTest(racePackage string, raceEntries []entry) (string, error
 			return matches[1], nil
 		}
 	}
-	return "", fmt.Errorf("failed to attribute race to test, using regex: %s on these strings:\n%s", raceAttributionRe.String(), strings.Join(entriesOutputs, "\n"))
+	return "", fmt.Errorf("failed to attribute race to test, using regex: %s on these strings:\n%s", raceAttributionRe.String(), strings.Join(entriesOutputs, ""))
 }
 
 // parseSubTest checks if a test name is a subtest and returns the parent and sub names
