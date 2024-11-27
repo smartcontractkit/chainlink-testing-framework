@@ -167,10 +167,7 @@ func AggregateTestResults(folderPath string) (*TestReport, error) {
 		allSuccesses += result.Successes
 	}
 
-	// Sort by PassRatio in ascending order
-	sort.Slice(aggregatedResults, func(i, j int) bool {
-		return aggregatedResults[i].PassRatio < aggregatedResults[j].PassRatio
-	})
+	sortTestResults(aggregatedResults)
 	fullReport.Results = aggregatedResults
 
 	return fullReport, nil
@@ -182,6 +179,7 @@ func PrintTests(
 	tests []TestResult,
 	maxPassRatio float64,
 ) (runs, passes, fails, skips, panickedTests, racedTests, flakyTests int) {
+	sortTestResults(tests)
 	headers := []string{
 		"**Test**",
 		"**Pass Ratio**",
@@ -318,7 +316,7 @@ func MarkdownSummary(w io.Writer, testReport *TestReport, maxPassRatio float64) 
 
 	rows := [][]string{
 		{"**Setting**", "**Value**"},
-		{"Go Project", testReport.GoProject},
+		{"Project", testReport.GoProject},
 		{"Max Pass Ratio", fmt.Sprintf("%.2f%%", maxPassRatio*100)},
 		{"Test Run Count", fmt.Sprintf("%d", testReport.TestRunCount)},
 		{"Race Detection", fmt.Sprintf("%t", testReport.RaceDetection)},
@@ -442,4 +440,17 @@ func avgDuration(durations []time.Duration) time.Duration {
 		total += d
 	}
 	return total / time.Duration(len(durations))
+}
+
+// sortTestResults sorts results by PassRatio, TestPackage, and TestName for consistent comparison and pretty printing
+func sortTestResults(results []TestResult) {
+	sort.Slice(results, func(i, j int) bool {
+		if results[i].PassRatio != results[j].PassRatio {
+			return results[i].PassRatio < results[j].PassRatio
+		}
+		if results[i].TestName == results[j].TestName {
+			return results[i].TestPackage < results[j].TestPackage
+		}
+		return results[i].TestName < results[j].TestName
+	})
 }

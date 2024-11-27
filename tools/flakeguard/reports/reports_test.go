@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"testing"
 	"time"
 
@@ -163,16 +162,6 @@ func TestPrintTests(t *testing.T) {
 		})
 	}
 
-}
-
-// Sorts TestResult slice by TestName and TestPackage for consistent comparison
-func sortTestResults(results []TestResult) {
-	sort.Slice(results, func(i, j int) bool {
-		if results[i].TestName == results[j].TestName {
-			return results[i].TestPackage < results[j].TestPackage
-		}
-		return results[i].TestName < results[j].TestName
-	})
 }
 
 // Helper function to write a JSON file for testing

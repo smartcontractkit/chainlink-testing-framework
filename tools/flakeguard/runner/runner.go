@@ -26,6 +26,7 @@ var (
 
 type Runner struct {
 	ProjectPath          string   // Path to the Go project directory.
+	prettyProjectPath    string   // Go project package path, formatted for pretty printing.
 	Verbose              bool     // If true, provides detailed logging.
 	RunCount             int      // Number of times to run the tests.
 	UseRace              bool     // Enable race detector.
@@ -66,21 +67,12 @@ func (r *Runner) RunTests() (*reports.TestReport, error) {
 		}
 	}
 
-	results, err := parseTestResults(jsonFilePaths)
+	results, err := parseTestResults(r.RunCount, jsonFilePaths)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
-	for index, report := range results {
-		if report.Runs > r.RunCount { // Panics can introduce double-counting test failures, this is a hacky correction for it
-			if report.Panic && report.Failures > report.Runs {
-				results[index].Failures = report.Runs
-			} else {
-				fmt.Printf("WARN: '%s' has %d test runs, exceeding expected amount in an unexpected way, this may be due to oddly presented panics\n", report.TestName, report.Runs)
-			}
-		}
-	}
 	return &reports.TestReport{
-		GoProject:     r.ProjectPath,
+		GoProject:     r.prettyProjectPath,
 		TestRunCount:  r.RunCount,
 		RaceDetection: r.UseRace,
 		ExcludedTests: r.SkipTests,
@@ -132,6 +124,10 @@ func (r *Runner) runTests(packageName string) (string, bool, error) {
 	}
 	defer tmpFile.Close()
 
+	r.prettyProjectPath, err = prettyProjectPath(r.ProjectPath)
+	if err != nil {
+		return "", false, fmt.Errorf("failed to get pretty project path: %w", err)
+	}
 	// Run the command with output directed to the file
 	cmd := exec.Command("go", args...)
 	cmd.Dir = r.ProjectPath
@@ -179,7 +175,7 @@ func (e entry) String() string {
 // panics and failures at that point.
 // Subtests add more complexity, as panics in subtests are only reported in their parent's output,
 // and cannot be accurately attributed to the subtest that caused them.
-func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
+func parseTestResults(expectedRuns int, filePaths []string) ([]reports.TestResult, error) {
 	var (
 		testDetails         = make(map[string]*reports.TestResult) // Holds run, pass counts, and other details for each test
 		panickedPackages    = map[string]struct{}{}                // Packages with tests that panicked
@@ -385,15 +381,23 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 							testDetails[subTestKey].Outputs = append(testDetails[subTestKey].Outputs, "Panic in parent test")
 						}
 					} else {
-						fmt.Printf("WARN: subtest %s has no results\n", subTestKey)
+						fmt.Printf("WARN: expected to fine subtest '%s' inside parent test '%s', but not found\n", parentTestKey, subTestKey)
 					}
 				}
 			}
 		} else {
-			fmt.Printf("WARN: parent test %s has no results\n", parentTestKey)
+			fmt.Printf("WARN: expected to find parent test '%s' for sub tests, but not found\n", parentTestKey)
 		}
 	}
 	for _, result := range testDetails {
+		if result.Runs > expectedRuns { // Panics can introduce double-counting test failures, this is a hacky correction for it
+			if result.Panic {
+				result.Failures = expectedRuns
+				result.Runs = expectedRuns
+			} else {
+				fmt.Printf("WARN: '%s' has %d test runs, exceeding expected amount of %d in an unexpected way, this may be due to oddly presented panics\n", result.TestName, result.Runs, expectedRuns)
+			}
+		}
 		// If a package panicked, all tests in that package will be marked as panicking
 		if _, panicked := panickedPackages[result.TestPackage]; panicked {
 			result.PackagePanic = true
@@ -444,4 +448,42 @@ func parseSubTest(testName string) (parentTestName, subTestName string) {
 		return parts[0], ""
 	}
 	return parts[0], parts[1]
+}
+
+// prettyProjectPath returns the project path formatted for pretty printing in results
+func prettyProjectPath(projectPath string) (string, error) {
+	// Walk up the directory structure to find go.mod
+	absPath, err := filepath.Abs(projectPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve absolute path: %w", err)
+	}
+	dir := absPath
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			break
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir { // Reached the root without finding go.mod
+			return "", fmt.Errorf("go.mod not found in project path, started at %s, ended at %s", projectPath, dir)
+		}
+		dir = parent
+	}
+
+	// Read go.mod to extract the module path
+	goModPath := filepath.Join(dir, "go.mod")
+	goModData, err := os.ReadFile(goModPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read go.mod: %w", err)
+	}
+
+	for _, line := range strings.Split(string(goModData), "\n") {
+		if strings.HasPrefix(line, "module ") {
+			goProject := strings.TrimSpace(strings.TrimPrefix(line, "module "))
+			projectPath = strings.TrimPrefix(projectPath, goProject)
+			return filepath.Join(goProject, projectPath), nil
+		}
+	}
+
+	return "", fmt.Errorf("module path not found in go.mod")
 }
