@@ -240,13 +240,20 @@ func PrintTests(
 		}
 	}
 
-	var passRatioStr string
+	var (
+		passRatioStr  string
+		flakeRatioStr string
+	)
 	if runs == 0 || passes == runs {
 		passRatioStr = "100%"
+		flakeRatioStr = "0%"
 	} else {
-		percentage := float64(passes) / float64(runs) * 100
-		truncatedPercentage := math.Floor(percentage*100) / 100 // Truncate to 2 decimal places
-		passRatioStr = fmt.Sprintf("%.2f%%", truncatedPercentage)
+		passPercentage := float64(passes) / float64(runs) * 100
+		truncatedPassPercentage := math.Floor(passPercentage*100) / 100 // Truncate to 2 decimal places
+		flakePercentage := float64(flakyTests) / float64(len(tests)) * 100
+		truncatedFlakePercentage := math.Floor(flakePercentage*100) / 100 // Truncate to 2 decimal places
+		passRatioStr = fmt.Sprintf("%.2f%%", truncatedPassPercentage)
+		flakeRatioStr = fmt.Sprintf("%.2f%%", truncatedFlakePercentage)
 	}
 
 	// Print out summary data
@@ -256,11 +263,12 @@ func PrintTests(
 		{"**Panicked Tests**", fmt.Sprint(panickedTests)},
 		{"**Raced Tests**", fmt.Sprint(racedTests)},
 		{"**Flaky Tests**", fmt.Sprint(flakyTests)},
-		{"**Pass Ratio**", passRatioStr},
+		{"**Flaky Test Ratio**", flakeRatioStr},
 		{"**Runs**", fmt.Sprint(runs)},
 		{"**Passes**", fmt.Sprint(passes)},
 		{"**Failures**", fmt.Sprint(fails)},
 		{"**Skips**", fmt.Sprint(skips)},
+		{"**Pass Ratio**", passRatioStr},
 	}
 	colWidths := make([]int, len(summaryData[0]))
 
