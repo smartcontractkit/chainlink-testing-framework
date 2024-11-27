@@ -65,7 +65,7 @@ func (m *RPCClient) AnvilMine(params []interface{}) error {
 	rInt := rand.Int()
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
-		"method":  "evm_mine",
+		"method":  "anvil_mine",
 		"params":  params,
 		"id":      rInt,
 	}

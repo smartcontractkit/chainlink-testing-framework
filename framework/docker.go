@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/docker/docker/api/types/container"
@@ -14,8 +15,13 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
+)
+
+const (
+	DefaultCTFLogsDir = "logs"
 )
 
 func IsDockerRunning() bool {
@@ -123,6 +129,7 @@ func runCommand(name string, args ...string) error {
 	return cmd.Run()
 }
 
+// TODO: use tc.NewDockerProvider().BuildImage() to skip managing the registry container
 // RebuildDockerImage rebuilds docker image if necessary
 func RebuildDockerImage(once *sync.Once, dockerfile string, buildContext string, imageName string) (string, error) {
 	if dockerfile == "" {
@@ -219,6 +226,70 @@ func (dc *DockerClient) copyToContainer(containerID, sourceFile, targetPath stri
 	})
 	if err != nil {
 		return fmt.Errorf("could not copy file to container: %w", err)
+	}
+	return nil
+}
+
+// WriteAllContainersLogs writes all Docker container logs to the default logs directory
+func WriteAllContainersLogs() error {
+	L.Info().Msg("Writing Docker containers logs")
+	if _, err := os.Stat(DefaultCTFLogsDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(DefaultCTFLogsDir, 0755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", DefaultCTFLogsDir, err)
+		}
+	}
+	provider, err := tc.NewDockerProvider()
+	if err != nil {
+		return fmt.Errorf("failed to create Docker provider: %w", err)
+	}
+	containers, err := provider.Client().ContainerList(context.Background(), container.ListOptions{All: true})
+	if err != nil {
+		return fmt.Errorf("failed to list Docker containers: %w", err)
+	}
+
+	for _, containerInfo := range containers {
+		containerName := containerInfo.Names[0]
+		logOptions := container.LogsOptions{ShowStdout: true, ShowStderr: true}
+		logs, err := provider.Client().ContainerLogs(context.Background(), containerInfo.ID, logOptions)
+		if err != nil {
+			L.Error().Err(err).Str("Container", containerName).Msg("failed to fetch logs for container")
+			continue
+		}
+		logFilePath := filepath.Join(DefaultCTFLogsDir, fmt.Sprintf("%s.log", containerName))
+		logFile, err := os.Create(logFilePath)
+		if err != nil {
+			L.Error().Err(err).Str("Container", containerName).Msg("failed to create container log file")
+			continue
+		}
+		// Parse and write logs
+		header := make([]byte, 8) // Docker stream header is 8 bytes
+		for {
+			_, err := io.ReadFull(logs, header)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				L.Error().Err(err).Str("Container", containerName).Msg("failed to read log stream header")
+				break
+			}
+
+			// Extract log message size
+			msgSize := binary.BigEndian.Uint32(header[4:8])
+
+			// Read the log message
+			msg := make([]byte, msgSize)
+			_, err = io.ReadFull(logs, msg)
+			if err != nil {
+				L.Error().Err(err).Str("Container", containerName).Msg("failed to read log message")
+				break
+			}
+
+			// Write the log message to the file
+			if _, err := logFile.Write(msg); err != nil {
+				L.Error().Err(err).Str("Container", containerName).Msg("failed to write log message to file")
+				break
+			}
+		}
 	}
 	return nil
 }
