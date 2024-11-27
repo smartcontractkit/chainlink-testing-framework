@@ -16,11 +16,12 @@ import (
 )
 
 type nodeSetForm struct {
-	Network       string
-	CLVersion     string
-	Nodes         int
-	Observability bool
-	Blockscout    bool
+	Network          string
+	CLVersion        string
+	Nodes            int
+	Observability    bool
+	Blockscout       bool
+	BlockscoutRPCURL string
 }
 
 func createComponentsFromForm(form *nodeSetForm) error {
@@ -83,7 +84,7 @@ func createComponentsFromForm(form *nodeSetForm) error {
 	}
 	switch form.Blockscout {
 	case true:
-		if err := blockscoutUp(); err != nil {
+		if err := blockscoutUp(form.BlockscoutRPCURL); err != nil {
 			return err
 		}
 	}
@@ -107,7 +108,7 @@ func cleanup(form *nodeSetForm) error {
 	}
 	switch form.Blockscout {
 	case true:
-		if err := blockscoutDown(); err != nil {
+		if err := blockscoutDown(form.BlockscoutRPCURL); err != nil {
 			return err
 		}
 	}
@@ -156,6 +157,13 @@ Docker Desktop (https://www.docker.com/products/docker-desktop/)
 			huh.NewConfirm().
 				Title("Do you need to spin up a Blockscout stack?").
 				Value(&f.Blockscout),
+			huh.NewSelect[string]().
+				Title("To which blockchain node you want Blockscout to connect?").
+				Options(
+					huh.NewOption("Network 1", "http://host.docker.internal:8545"),
+					huh.NewOption("Network 2", "http://host.docker.internal:8550"),
+				).
+				Value(&f.BlockscoutRPCURL),
 		),
 	)
 

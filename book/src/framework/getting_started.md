@@ -4,6 +4,12 @@
 - `Docker` [OrbStack](https://orbstack.dev/) or [Docker Desktop](https://www.docker.com/products/docker-desktop/), we recommend OrbStack (faster, smaller memory footprint)
 - [Golang](https://go.dev/doc/install)
 
+Tested with
+```
+Docker version 27.3.1
+OrbStack Version: 1.8.2 (1080200)
+```
+
 ## Test setup
 
 To start writing tests create a directory for your project with `go.mod` and add a package

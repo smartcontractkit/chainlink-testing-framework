@@ -71,12 +71,14 @@ func TestOffChainAndFork(t *testing.T) {
 		WithTracing(seth.TracingLevel_All, []string{seth.TraceOutput_Console}).
 		WithPrivateKeys([]string{blockchain.DefaultAnvilPrivateKey}).
 		Build()
+	require.NoError(t, err)
 	scDst, err := seth.NewClientBuilder().
 		WithRpcUrl(bcDst.Nodes[0].HostWSUrl).
 		WithGasPriceEstimations(true, 0, seth.Priority_Fast).
 		WithTracing(seth.TracingLevel_All, []string{seth.TraceOutput_Console}).
 		WithPrivateKeys([]string{blockchain.DefaultAnvilPrivateKey}).
 		Build()
+	require.NoError(t, err)
 
 	// deploy 2 example product contracts
 	// you should replace it with chainlink-deployments
