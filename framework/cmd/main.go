@@ -80,7 +80,7 @@ func main() {
 						Aliases: []string{"rm"},
 						Usage:   "Remove Docker containers and networks with 'framework=ctf' label",
 						Action: func(c *cli.Context) error {
-							err := rmTestContainers()
+							err := removeTestContainers()
 							if err != nil {
 								return fmt.Errorf("failed to clean Docker resources: %w", err)
 							}
