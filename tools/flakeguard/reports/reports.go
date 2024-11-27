@@ -483,12 +483,28 @@ func avgDuration(durations []time.Duration) time.Duration {
 // sortTestResults sorts results by TestPackage, TestName, and PassRatio for consistent comparison and pretty printing
 func sortTestResults(results []TestResult) {
 	sort.Slice(results, func(i, j int) bool {
+		// Compare TestPackage first
 		if results[i].TestPackage != results[j].TestPackage {
 			return results[i].TestPackage < results[j].TestPackage
 		}
-		if results[i].TestName != results[j].TestName {
-			return results[i].TestName < results[j].TestName
+
+		// Split TestName into components for hierarchical comparison
+		iParts := strings.Split(results[i].TestName, "/")
+		jParts := strings.Split(results[j].TestName, "/")
+
+		// Compare each part of the TestName hierarchically
+		for k := 0; k < len(iParts) && k < len(jParts); k++ {
+			if iParts[k] != jParts[k] {
+				return iParts[k] < jParts[k]
+			}
 		}
+
+		// If all compared parts are equal, the shorter name (parent) comes first
+		if len(iParts) != len(jParts) {
+			return len(iParts) < len(jParts)
+		}
+
+		// Finally, compare PassRatio if everything else is equal
 		return results[i].PassRatio < results[j].PassRatio
 	})
 }
