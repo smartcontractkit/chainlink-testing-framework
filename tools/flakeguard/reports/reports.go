@@ -191,7 +191,7 @@ func PrintTests(
 ) (runs, passes, fails, skips, panickedTests, racedTests, flakyTests int) {
 	sortTestResults(tests)
 	headers := []string{
-		"**Test**",
+		"**Name**",
 		"**Pass Ratio**",
 		"**Runs**",
 		"**Panicked?**",
