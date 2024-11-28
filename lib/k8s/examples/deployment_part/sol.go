@@ -50,6 +50,12 @@ func (m Chart) GetValues() *map[string]interface{} {
 	return m.HelmProps.Values
 }
 
+func (m Chart) GetLabels() map[string]string {
+	return map[string]string{
+		"chain.link/component": "solana-validator",
+	}
+}
+
 func (m Chart) ExportData(e *environment.Environment) error {
 	netLocal, err := e.Fwd.FindPort("sol:0", "sol-val", "http-rpc").As(client.LocalConnection, client.HTTP)
 	if err != nil {

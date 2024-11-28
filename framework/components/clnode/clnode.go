@@ -21,6 +21,7 @@ import (
 const (
 	DefaultHTTPPort = "6688"
 	DefaultP2PPort  = "6690"
+	TmpImageName    = "chainlink-tmp:latest"
 )
 
 var (
@@ -257,8 +258,8 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		return nil, errors.New("you provided both 'image' and one of 'docker_file', 'docker_ctx' fields. Please provide either 'image' or params to build a local one")
 	}
 	if req.Image == "" {
-		req.Image, err = framework.RebuildDockerImage(once, in.Node.DockerFilePath, in.Node.DockerContext, in.Node.DockerImageName)
-		if err != nil {
+		req.Image = TmpImageName
+		if err := framework.BuildImageOnce(ctx, once, in.Node.DockerContext, in.Node.DockerFilePath, req.Image); err != nil {
 			return nil, err
 		}
 		req.KeepImage = false

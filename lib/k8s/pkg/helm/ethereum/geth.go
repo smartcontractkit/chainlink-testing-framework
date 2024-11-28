@@ -57,6 +57,12 @@ func (m Chart) GetValues() *map[string]interface{} {
 	return m.HelmProps.Values
 }
 
+func (m Chart) GetLabels() map[string]string {
+	return map[string]string{
+		"chain.link/component": "geth",
+	}
+}
+
 func (m Chart) ExportData(e *environment.Environment) error {
 	if m.Props.Simulated {
 		gethLocalHttp, err := e.Fwd.FindPort("geth:0", "geth-network", "http-rpc").As(client.LocalConnection, client.HTTP)
