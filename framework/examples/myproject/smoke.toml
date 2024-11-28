@@ -2,7 +2,7 @@
 [blockchain_a]
   # choose "anvil", "geth" or "besu"
   # uncomment the second line for "anvil"
-  type = "besu"
+  type = "geth"
 #  docker_cmd_params = ["-b", "1"]
 
 [data_provider]
