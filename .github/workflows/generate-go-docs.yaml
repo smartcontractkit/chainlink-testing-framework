@@ -9,7 +9,7 @@ on:
 
 jobs:
   generate_docs_new_pr:
-    if: ${{ github.event.pull_request.labels || contains(github.event.issue.labels.*.name, 'generate_go_docs') }}
+    if: ${{ contains(github.event.issue.labels.*.name, 'generate_go_docs') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
