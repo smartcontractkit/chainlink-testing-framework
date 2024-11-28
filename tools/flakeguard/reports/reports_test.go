@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"testing"
 	"time"
 
@@ -69,48 +68,100 @@ func TestFilterSkippedTests(t *testing.T) {
 }
 
 func TestPrintTests(t *testing.T) {
-	var (
-		tests = []TestResult{
-			{
-				TestName:    "Test1",
-				TestPackage: "package1",
-				PassRatio:   0.75,
-				Skipped:     false,
-				Runs:        4,
-				Outputs:     []string{"Output1", "Output2"},
-				Durations:   []time.Duration{time.Millisecond * 1200, time.Millisecond * 900, time.Millisecond * 1100, time.Second},
+	testcases := []struct {
+		name                   string
+		testResults            []TestResult
+		maxPassRatio           float64
+		expectedRuns           int
+		expectedPasses         int
+		expectedFails          int
+		expectedSkippedTests   int
+		expectedPanickedTests  int
+		expectedRacedTests     int
+		expectedFlakyTests     int
+		expectedStringsContain []string
+	}{
+		{
+			name: "single flaky test",
+			testResults: []TestResult{
+				{
+					TestName:    "Test1",
+					TestPackage: "package1",
+					PassRatio:   0.75,
+					Successes:   3,
+					Failures:    1,
+					Skipped:     false,
+					Runs:        4,
+					Durations:   []time.Duration{time.Millisecond * 1200, time.Millisecond * 900, time.Millisecond * 1100, time.Second},
+				},
 			},
-		}
-		buf bytes.Buffer
-	)
-
-	PrintTests(tests, &buf)
-
-	// Get the output as a string
-	output := buf.String()
-	expectedContains := []string{
-		"TestName: Test1",
-		"TestPackage: package1",
-		"PassRatio: 0.75",
-		"Skipped: false",
-		"Runs: 4",
-		"Durations: 1.2s, 900ms, 1.1s, 1s",
-		"Outputs:\nOutput1Output2",
+			maxPassRatio:           1.0,
+			expectedRuns:           4,
+			expectedPasses:         3,
+			expectedFails:          1,
+			expectedSkippedTests:   0,
+			expectedPanickedTests:  0,
+			expectedRacedTests:     0,
+			expectedFlakyTests:     1,
+			expectedStringsContain: []string{"Test1", "package1", "75.00%", "false", "1.05s", "4", "0"},
+		},
+		{
+			name: "multiple passing tests",
+			testResults: []TestResult{
+				{
+					TestName:    "Test1",
+					TestPackage: "package1",
+					PassRatio:   1.0,
+					Skipped:     false,
+					Successes:   4,
+					Runs:        4,
+					Durations:   []time.Duration{time.Millisecond * 1200, time.Millisecond * 900, time.Millisecond * 1100, time.Second},
+				},
+				{
+					TestName:    "Test2",
+					TestPackage: "package1",
+					PassRatio:   1.0,
+					Skipped:     false,
+					Successes:   4,
+					Runs:        4,
+					Durations:   []time.Duration{time.Millisecond * 1200, time.Millisecond * 900, time.Millisecond * 1100, time.Second},
+				},
+			},
+			maxPassRatio:           1.0,
+			expectedRuns:           8,
+			expectedPasses:         8,
+			expectedFails:          0,
+			expectedSkippedTests:   0,
+			expectedPanickedTests:  0,
+			expectedRacedTests:     0,
+			expectedFlakyTests:     0,
+			expectedStringsContain: []string{},
+		},
 	}
 
-	for _, expected := range expectedContains {
-		assert.Contains(t, output, expected, "printed test output doesn't contain expected string")
-	}
-}
+	for _, testCase := range testcases {
+		tc := testCase
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			var buf bytes.Buffer
 
-// Sorts TestResult slice by TestName and TestPackage for consistent comparison
-func sortTestResults(results []TestResult) {
-	sort.Slice(results, func(i, j int) bool {
-		if results[i].TestName == results[j].TestName {
-			return results[i].TestPackage < results[j].TestPackage
-		}
-		return results[i].TestName < results[j].TestName
-	})
+			runs, passes, fails, skips, panickedTests, racedTests, flakyTests := PrintTests(&buf, tc.testResults, tc.maxPassRatio)
+			assert.Equal(t, tc.expectedRuns, runs, "wrong number of runs")
+			assert.Equal(t, tc.expectedPasses, passes, "wrong number of passes")
+			assert.Equal(t, tc.expectedFails, fails, "wrong number of failures")
+			assert.Equal(t, tc.expectedSkippedTests, skips, "wrong number of skips")
+			assert.Equal(t, tc.expectedPanickedTests, panickedTests, "wrong number of panicked tests")
+			assert.Equal(t, tc.expectedRacedTests, racedTests, "wrong number of raced tests")
+			assert.Equal(t, tc.expectedFlakyTests, flakyTests, "wrong number of flaky tests")
+
+			// Get the output as a string
+			output := buf.String()
+			for _, expected := range tc.expectedStringsContain {
+				assert.Contains(t, output, expected, "output does not contain expected string")
+			}
+		})
+	}
+
 }
 
 // Helper function to write a JSON file for testing
@@ -128,147 +179,191 @@ func writeTempJSONFile(t *testing.T, dir string, filename string, data interface
 func TestAggregateTestResults(t *testing.T) {
 	// Create a temporary directory for test JSON files
 	tempDir, err := os.MkdirTemp("", "aggregatetestresults")
-	if err != nil {
-		t.Fatalf("Failed to create temp directory: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		os.RemoveAll(tempDir)
+	})
 
 	// Test cases
 	testCases := []struct {
 		description    string
-		inputFiles     []interface{}
-		expectedOutput []TestResult
+		inputReports   []*TestReport
+		expectedReport *TestReport
 	}{
 		{
-			description: "Unique test results without aggregation",
-			inputFiles: []interface{}{
-				[]TestResult{
-					{
-						TestName:            "TestA",
-						TestPackage:         "pkgA",
-						PassRatio:           1,
-						PassRatioPercentage: "100%",
-						Skipped:             false,
-						Runs:                2,
-						Durations:           []time.Duration{time.Millisecond * 10, time.Millisecond * 20},
-						Outputs:             []string{"Output1", "Output2"},
+			description: "Unique test results",
+			inputReports: []*TestReport{
+				{
+					TestRunCount:  2, // 2 runs of A and 4 runs of B will add up to 6 total runs. Not quite ideal.
+					GoProject:     "project1",
+					RaceDetection: false,
+					Results: []TestResult{
+						{
+							TestName:    "TestA",
+							TestPackage: "pkgA",
+							PassRatio:   1,
+							Skipped:     false,
+							Runs:        2,
+							Successes:   2,
+							Durations:   []time.Duration{time.Millisecond * 10, time.Millisecond * 20},
+							Outputs:     []string{"Output1", "Output2"},
+						},
 					},
 				},
-				[]TestResult{
-					{
-						TestName:            "TestB",
-						TestPackage:         "pkgB",
-						PassRatio:           0.5,
-						PassRatioPercentage: "50%",
-						Skipped:             false,
-						Runs:                4,
-						Durations:           []time.Duration{time.Millisecond * 50, time.Millisecond * 50, time.Millisecond * 50, time.Millisecond * 50},
-						Outputs:             []string{"Output3", "Output4", "Output5", "Output6"},
+				{
+					TestRunCount:  4,
+					GoProject:     "project1",
+					RaceDetection: false,
+					Results: []TestResult{
+						{
+							TestName:    "TestB",
+							TestPackage: "pkgB",
+							PassRatio:   0.5,
+							Skipped:     false,
+							Runs:        4,
+							Successes:   2,
+							Failures:    2,
+							Durations:   []time.Duration{time.Millisecond * 50, time.Millisecond * 50, time.Millisecond * 50, time.Millisecond * 50},
+							Outputs:     []string{"Output3", "Output4", "Output5", "Output6"},
+						},
 					},
 				},
 			},
-			expectedOutput: []TestResult{
-				{
-					TestName:            "TestA",
-					TestPackage:         "pkgA",
-					PassRatio:           1,
-					PassRatioPercentage: "100%",
-					Skipped:             false,
-					Runs:                2,
-					Durations:           []time.Duration{time.Millisecond * 10, time.Millisecond * 20},
-					Outputs:             []string{"Output1", "Output2"},
-				},
-				{
-					TestName:            "TestB",
-					TestPackage:         "pkgB",
-					PassRatio:           0.5,
-					PassRatioPercentage: "50%",
-					Skipped:             false,
-					Runs:                4,
-					Durations:           []time.Duration{time.Millisecond * 50, time.Millisecond * 50, time.Millisecond * 50, time.Millisecond * 50},
-					Outputs:             []string{"Output3", "Output4", "Output5", "Output6"},
+			expectedReport: &TestReport{
+				TestRunCount:  6,
+				GoProject:     "project1",
+				RaceDetection: false,
+				Results: []TestResult{
+					{
+						TestName:    "TestA",
+						TestPackage: "pkgA",
+						PassRatio:   1,
+						Skipped:     false,
+						Runs:        2,
+						Successes:   2,
+						Durations:   []time.Duration{time.Millisecond * 10, time.Millisecond * 20},
+						Outputs:     []string{"Output1", "Output2"},
+					},
+					{
+						TestName:    "TestB",
+						TestPackage: "pkgB",
+						PassRatio:   0.5,
+						Skipped:     false,
+						Runs:        4,
+						Successes:   2,
+						Failures:    2,
+						Durations:   []time.Duration{time.Millisecond * 50, time.Millisecond * 50, time.Millisecond * 50, time.Millisecond * 50},
+						Outputs:     []string{"Output3", "Output4", "Output5", "Output6"},
+					},
 				},
 			},
 		},
 		{
 			description: "Duplicate test results with aggregation",
-			inputFiles: []interface{}{
-				[]TestResult{
-					{
-						TestName:            "TestC",
-						TestPackage:         "pkgC",
-						PassRatio:           1,
-						PassRatioPercentage: "100%",
-						Skipped:             false,
-						Runs:                2,
-						Durations:           []time.Duration{time.Millisecond * 100, time.Millisecond * 100},
-						Outputs:             []string{"Output7", "Output8"},
+			inputReports: []*TestReport{
+				{
+					TestRunCount:  2,
+					GoProject:     "project2",
+					RaceDetection: false,
+					Results: []TestResult{
+						{
+							TestName:    "TestC",
+							TestPackage: "pkgC",
+							PassRatio:   1,
+							Skipped:     false,
+							Runs:        2,
+							Successes:   2,
+							Durations:   []time.Duration{time.Millisecond * 100, time.Millisecond * 100},
+							Outputs:     []string{"Output7", "Output8"},
+						},
 					},
 				},
-				[]TestResult{
-					{
-						TestName:            "TestC",
-						TestPackage:         "pkgC",
-						PassRatio:           0.5,
-						PassRatioPercentage: "50%",
-						Skipped:             false,
-						Runs:                2,
-						Durations:           []time.Duration{time.Millisecond * 200, time.Millisecond * 200},
-						Outputs:             []string{"Output9", "Output10"},
+				{
+					TestRunCount:  2,
+					GoProject:     "project2",
+					RaceDetection: false,
+					Results: []TestResult{
+						{
+							TestName:    "TestC",
+							TestPackage: "pkgC",
+							PassRatio:   1,
+							Skipped:     false,
+							Runs:        0,
+							Skips:       2,
+							Durations:   []time.Duration{time.Millisecond * 200, time.Millisecond * 200},
+							Outputs:     []string{"Output9", "Output10"},
+						},
 					},
 				},
 			},
-			expectedOutput: []TestResult{
-				{
-					TestName:            "TestC",
-					TestPackage:         "pkgC",
-					PassRatio:           0.75, // Calculated as (2*1 + 2*0.5) / 4
-					PassRatioPercentage: "75%",
-					Skipped:             false,
-					Runs:                4,
-					Durations:           []time.Duration{time.Millisecond * 100, time.Millisecond * 100, time.Millisecond * 200, time.Millisecond * 200},
-					Outputs:             []string{"Output7", "Output8", "Output9", "Output10"},
+			expectedReport: &TestReport{
+				TestRunCount:  4,
+				GoProject:     "project2",
+				RaceDetection: false,
+				Results: []TestResult{
+					{
+						TestName:    "TestC",
+						TestPackage: "pkgC",
+						PassRatio:   1.0,
+						Skipped:     false,
+						Runs:        2,
+						Successes:   2,
+						Durations:   []time.Duration{time.Millisecond * 100, time.Millisecond * 100, time.Millisecond * 200, time.Millisecond * 200},
+						Outputs:     []string{"Output7", "Output8", "Output9", "Output10"},
+					},
 				},
 			},
 		},
 		{
 			description: "All Skipped test results",
-			inputFiles: []interface{}{
-				[]TestResult{
-					{
-						TestName:            "TestD",
-						TestPackage:         "pkgD",
-						PassRatio:           1,
-						PassRatioPercentage: "100%",
-						Skipped:             true,
-						Runs:                3,
-						Durations:           []time.Duration{time.Millisecond * 100, time.Millisecond * 200, time.Millisecond * 100},
-						Outputs:             []string{"Output11", "Output12", "Output13"},
+			inputReports: []*TestReport{
+				{
+					TestRunCount:  3,
+					GoProject:     "project3",
+					RaceDetection: false,
+					Results: []TestResult{
+						{
+							TestName:    "TestD",
+							TestPackage: "pkgD",
+							PassRatio:   1,
+							Skipped:     true,
+							Runs:        0,
+							Durations:   []time.Duration{time.Millisecond * 100, time.Millisecond * 200, time.Millisecond * 100},
+							Outputs:     []string{"Output11", "Output12", "Output13"},
+						},
 					},
 				},
-				[]TestResult{
-					{
-						TestName:            "TestD",
-						TestPackage:         "pkgD",
-						PassRatio:           1,
-						PassRatioPercentage: "100%",
-						Skipped:             true,
-						Runs:                2,
-						Durations:           []time.Duration{time.Millisecond * 150, time.Millisecond * 150},
-						Outputs:             []string{"Output14", "Output15"},
+				{
+					TestRunCount:  2,
+					GoProject:     "project3",
+					RaceDetection: false,
+					Results: []TestResult{
+						{
+							TestName:    "TestD",
+							TestPackage: "pkgD",
+							PassRatio:   1,
+							Skipped:     true,
+							Runs:        0,
+							Durations:   []time.Duration{time.Millisecond * 150, time.Millisecond * 150},
+							Outputs:     []string{"Output14", "Output15"},
+						},
 					},
 				},
 			},
-			expectedOutput: []TestResult{
-				{
-					TestName:            "TestD",
-					TestPackage:         "pkgD",
-					PassRatio:           1,
-					PassRatioPercentage: "100%",
-					Skipped:             true, // Should remain true as all runs are skipped
-					Runs:                5,
-					Durations:           []time.Duration{time.Millisecond * 100, time.Millisecond * 200, time.Millisecond * 100, time.Millisecond * 150, time.Millisecond * 150},
-					Outputs:             []string{"Output11", "Output12", "Output13", "Output14", "Output15"},
+			expectedReport: &TestReport{
+				TestRunCount:  5,
+				GoProject:     "project3",
+				RaceDetection: false,
+				Results: []TestResult{
+					{
+						TestName:    "TestD",
+						TestPackage: "pkgD",
+						PassRatio:   1,
+						Skipped:     true, // Should remain true as all runs are skipped
+						Runs:        0,
+						Durations:   []time.Duration{time.Millisecond * 100, time.Millisecond * 200, time.Millisecond * 100, time.Millisecond * 150, time.Millisecond * 150},
+						Outputs:     []string{"Output11", "Output12", "Output13", "Output14", "Output15"},
+					},
 				},
 			},
 		},
@@ -276,32 +371,30 @@ func TestAggregateTestResults(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			// Write input files to the temporary directory
-			for i, inputData := range tc.inputFiles {
+			for i, inputData := range tc.inputReports {
 				writeTempJSONFile(t, tempDir, fmt.Sprintf("input%d.json", i), inputData)
 			}
 
-			// Run AggregateTestResults
-			result, err := AggregateTestResults(tempDir)
+			finalReport, err := AggregateTestResults(tempDir)
 			if err != nil {
 				t.Fatalf("AggregateTestResults failed: %v", err)
 			}
 
-			// Sort both result and expectedOutput for consistent comparison
-			sortTestResults(result)
-			sortTestResults(tc.expectedOutput)
+			sortTestResults(finalReport.Results)
+			sortTestResults(tc.expectedReport.Results)
 
-			// Compare the result with the expected output
-			require.Equal(t, len(tc.expectedOutput), len(result), "number of results mismatch")
+			assert.Equal(t, tc.expectedReport.TestRunCount, finalReport.TestRunCount, "TestRunCount mismatch")
+			assert.Equal(t, tc.expectedReport.GoProject, finalReport.GoProject, "GoProject mismatch")
+			assert.Equal(t, tc.expectedReport.RaceDetection, finalReport.RaceDetection, "RaceDetection mismatch")
 
-			for i, expected := range tc.expectedOutput {
-				got := result[i]
+			require.Equal(t, len(tc.expectedReport.Results), len(finalReport.Results), "number of results mismatch")
+			for i, expected := range tc.expectedReport.Results {
+				got := finalReport.Results[i]
 				assert.Equal(t, expected.TestName, got.TestName, "TestName mismatch")
 				assert.Equal(t, expected.TestPackage, got.TestPackage, "TestPackage mismatch")
 				assert.Equal(t, expected.Runs, got.Runs, "Runs mismatch")
 				assert.Equal(t, expected.Skipped, got.Skipped, "Skipped mismatch")
 				assert.Equal(t, expected.PassRatio, got.PassRatio, "PassRatio mismatch")
-				assert.Equal(t, expected.PassRatioPercentage, got.PassRatioPercentage, "PassRatioPercentage mismatch")
 				assert.Equal(t, len(expected.Durations), len(got.Durations), "Durations mismatch")
 				assert.Equal(t, len(expected.Outputs), len(got.Outputs), "Outputs mismatch")
 			}

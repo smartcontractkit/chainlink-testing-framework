@@ -21,10 +21,13 @@ var RunTestsCmd = &cobra.Command{
 		testPackagesJson, _ := cmd.Flags().GetString("test-packages-json")
 		testPackagesArg, _ := cmd.Flags().GetStringSlice("test-packages")
 		runCount, _ := cmd.Flags().GetInt("run-count")
+		timeout, _ := cmd.Flags().GetDuration("timeout")
+		tags, _ := cmd.Flags().GetStringArray("tags")
 		useRace, _ := cmd.Flags().GetBool("race")
 		outputPath, _ := cmd.Flags().GetString("output-json")
 		maxPassRatio, _ := cmd.Flags().GetFloat64("max-pass-ratio")
 		skipTests, _ := cmd.Flags().GetStringSlice("skip-tests")
+		selectTests, _ := cmd.Flags().GetStringSlice("select-tests")
 		printFailedTests, _ := cmd.Flags().GetBool("print-failed-tests")
 		useShuffle, _ := cmd.Flags().GetBool("shuffle")
 		shuffleSeed, _ := cmd.Flags().GetString("shuffle-seed")
@@ -49,37 +52,31 @@ var RunTestsCmd = &cobra.Command{
 			ProjectPath:          projectPath,
 			Verbose:              true,
 			RunCount:             runCount,
+			Timeout:              timeout,
+			Tags:                 tags,
 			UseRace:              useRace,
 			SkipTests:            skipTests,
+			SelectTests:          selectTests,
 			SelectedTestPackages: testPackages,
 			UseShuffle:           useShuffle,
 			ShuffleSeed:          shuffleSeed,
 		}
 
-		testResults, err := runner.RunTests()
+		testReport, err := runner.RunTests()
 		if err != nil {
 			fmt.Printf("Error running tests: %v\n", err)
 			os.Exit(1)
 		}
 
-		passedTests := reports.FilterPassedTests(testResults, maxPassRatio)
-		failedTests := reports.FilterFailedTests(testResults, maxPassRatio)
-		skippedTests := reports.FilterSkippedTests(testResults)
-		flakyTests := reports.FilterFlakyTests(testResults, maxPassRatio)
-
 		// Print all failed tests including flaky tests
-		if len(failedTests) > 0 && printFailedTests {
-			fmt.Printf("Maximum threshold for flaky tests: %.2f\n", maxPassRatio)
+		if printFailedTests {
 			fmt.Printf("PassRatio threshold for flaky tests: %.2f\n", maxPassRatio)
-			fmt.Printf("%d failed tests:\n", len(failedTests))
-			reports.PrintTests(failedTests, os.Stdout)
+			reports.PrintTests(os.Stdout, testReport.Results, maxPassRatio)
 		}
 
-		fmt.Printf("Summary: %d passed, %d skipped, %d failed, %d flaky\n", len(passedTests), len(skippedTests), len(failedTests), len(flakyTests))
-
 		// Save the test results in JSON format
-		if outputPath != "" && len(testResults) > 0 {
-			jsonData, err := json.MarshalIndent(testResults, "", "  ")
+		if outputPath != "" && len(testReport.Results) > 0 {
+			jsonData, err := json.MarshalIndent(testReport, "", "  ")
 			if err != nil {
 				log.Fatalf("Error marshaling test results to JSON: %v", err)
 			}
@@ -89,10 +86,11 @@ var RunTestsCmd = &cobra.Command{
 			fmt.Printf("All test results saved to %s\n", outputPath)
 		}
 
+		flakyTests := reports.FilterFlakyTests(testReport.Results, maxPassRatio)
 		if len(flakyTests) > 0 {
 			// Exit with error code if there are flaky tests
 			os.Exit(1)
-		} else if len(testResults) == 0 {
+		} else if len(testReport.Results) == 0 {
 			fmt.Printf("No tests were run for the specified packages.\n")
 		}
 	},
@@ -104,12 +102,15 @@ func init() {
 	RunTestsCmd.Flags().StringSlice("test-packages", nil, "Comma-separated list of test packages to run")
 	RunTestsCmd.Flags().Bool("run-all-packages", false, "Run all test packages in the project. This flag overrides --test-packages and --test-packages-json")
 	RunTestsCmd.Flags().IntP("run-count", "c", 1, "Number of times to run the tests")
+	RunTestsCmd.Flags().Duration("timeout", 0, "Passed on to the 'go test' command as the -timeout flag")
+	RunTestsCmd.Flags().StringArray("tags", nil, "Passed on to the 'go test' command as the -tags flag")
 	RunTestsCmd.Flags().Bool("race", false, "Enable the race detector")
 	RunTestsCmd.Flags().Bool("shuffle", false, "Enable test shuffling")
 	RunTestsCmd.Flags().String("shuffle-seed", "", "Set seed for test shuffling. Must be used with --shuffle")
 	RunTestsCmd.Flags().Bool("fail-fast", false, "Stop on the first test failure")
 	RunTestsCmd.Flags().String("output-json", "", "Path to output the test results in JSON format")
 	RunTestsCmd.Flags().StringSlice("skip-tests", nil, "Comma-separated list of test names to skip from running")
+	RunTestsCmd.Flags().StringSlice("select-tests", nil, "Comma-separated list of test names to specifically run")
 	RunTestsCmd.Flags().Bool("print-failed-tests", true, "Print failed test results to the console")
 	RunTestsCmd.Flags().Float64("max-pass-ratio", 1.0, "The maximum (non-inclusive) pass ratio threshold for a test to be considered a failure. Any tests below this pass rate will be considered flaky.")
 }
