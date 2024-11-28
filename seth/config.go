@@ -15,6 +15,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+func MyAmazingNewFunction() string {
+	return "bla bla bla"
+}
+
 const (
 	ErrReadSethConfig      = "failed to read TOML config for seth"
 	ErrUnmarshalSethConfig = "failed to unmarshal TOML config for seth"
