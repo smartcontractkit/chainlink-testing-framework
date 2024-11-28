@@ -14,7 +14,7 @@ This component requires some Blockchain to be deployed, add this to config
   # Blockchain node type, can be "anvil" or "geth"
   type = "anvil"
   # Chain ID
-  chain_id = "31337"
+  chain_id = "1337"
   # Anvil command line params, ex.: docker_cmd_params = ['--block-time=1', '...']
   docker_cmd_params = []
   # Docker image and tag
@@ -26,7 +26,7 @@ This component requires some Blockchain to be deployed, add this to config
 
   # Outputs are the results of deploying a component that can be used by another component
   [blockchain_a.out]
-    chain_id = "31337"
+    chain_id = "1337"
     # If 'use_cache' equals 'true' we skip component setup when we run the test and return the outputs
     use_cache = true
 
