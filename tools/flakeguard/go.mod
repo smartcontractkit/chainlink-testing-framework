@@ -2,7 +2,10 @@ module github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard
 
 go 1.21.9
 
-require github.com/spf13/cobra v1.8.1
+require (
+	github.com/spf13/cobra v1.8.1
+	golang.org/x/text v0.20.0
+)
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
