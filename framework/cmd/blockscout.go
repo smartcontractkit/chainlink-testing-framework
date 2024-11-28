@@ -3,14 +3,16 @@ package main
 import (
 	"fmt"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"os"
 	"path/filepath"
 )
 
-func blockscoutUp() error {
+func blockscoutUp(url string) error {
 	framework.L.Info().Msg("Creating local Blockscout stack")
 	if err := extractAllFiles("observability"); err != nil {
 		return err
 	}
+	os.Setenv("BLOCKSCOUT_RPC_URL", url)
 	err := runCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
 		docker compose up -d
@@ -23,8 +25,9 @@ func blockscoutUp() error {
 	return nil
 }
 
-func blockscoutDown() error {
+func blockscoutDown(url string) error {
 	framework.L.Info().Msg("Removing local Blockscout stack")
+	os.Setenv("BLOCKSCOUT_RPC_URL", url)
 	err := runCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
 		docker compose down -v
