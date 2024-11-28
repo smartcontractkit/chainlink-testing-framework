@@ -1,0 +1,78 @@
+name: Generate go-docs
+
+on:
+  pull_request:
+    types:
+      - labeled
+      - reopened
+      - synchronize
+
+jobs:
+  generate_docs_new_pr:
+    if: ${{ contains(github.event.issue.labels.*.name, 'generate_go_docs') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      repository-projects: read
+
+    steps:
+      - name: Checkout current branch
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"              
+
+      - name: Get PR details
+        id: pr-details
+        run: |
+          echo "pr_number=$(jq -r .pull_request.number <<< "$GITHUB_EVENT_PATH")" >> $GITHUB_OUTPUT
+          echo "pr_branch=$(jq -r .pull_request.head.ref <<< "$GITHUB_EVENT_PATH")" >> $GITHUB_OUTPUT
+          echo "base_commit=${{ github.event.pull_request.base.sha }}" >> $GITHUB_OUTPUT
+          echo "head_commit=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT          
+
+      - name: Install go doc generator
+        shell: bash
+        run: |
+          go install github.com/smartcontractkit/generate-go-function-docs@latest
+
+      - name: Install gopls
+        shell: bash
+        run: |
+          go install golang.org/x/tools/gopls@latest
+
+      - name: Create a new branch
+        run: |
+          git checkout -b ${{ steps.pr-details.outputs.pr_branch }}-docs
+
+      - name: Generate go docs
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          generate-go-function-docs diff -b ${{ steps.pr-details.outputs.base_commit }} -c ${{ steps.pr-details.outputs.head_commit }} -g fake_slash
+
+      - name: Make sure code still compiles
+        run: |
+          go mod tidy
+          go mod vendor
+          go build ./...
+
+      - name: Commit changes
+        run: |
+          git add .
+          git commit -m "Add automatically generated go documentation"
+          git push origin ${{ steps.pr-details.outputs.pr_branch }}-docs
+
+      - name: Create a new PR targeting current PR
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: ${{ env.pr_branch }}
+          branch: ${{ steps.pr-details.outputs.pr_branch }}-docs
+          title: "Go docs for PR#${{ env.pr_number }}"
+          body: "This PR contains automatically generated go documentation for the PR#${{ env.pr_number }}. Please review the changes."

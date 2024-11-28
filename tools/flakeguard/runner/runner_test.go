@@ -24,11 +24,10 @@ type expectedTestResult struct {
 	someSuccesses bool
 	allFailures   bool
 	someFailures  bool
-	allPanics     bool
-	somePanics    bool
 	allSkips      bool
-	allRaces      bool
+	testPanic     bool
 	packagePanic  bool
+	race          bool
 	maximumRuns   int
 
 	exactRuns       *int
@@ -40,8 +39,17 @@ type expectedTestResult struct {
 	seen bool
 }
 
+func TestPrettyProjectPath(t *testing.T) {
+	t.Parallel()
+
+	prettyPath, err := prettyProjectPath("./")
+	require.NoError(t, err)
+	assert.Equal(t, "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard", prettyPath)
+}
+
 func TestRun(t *testing.T) {
 	var (
+		zeroRuns        = 0
 		oneRun          = 1
 		successPassRate = 1.0
 		failPassRate    = 0.0
@@ -58,7 +66,7 @@ func TestRun(t *testing.T) {
 				Verbose:              true,
 				RunCount:             defaultRuns,
 				UseRace:              false,
-				SkipTests:            []string{"TestPanic", "TestFlakyPanic"},
+				SkipTests:            []string{"TestPanic", "TestFlakyPanic", "TestSubTestsSomePanic", "TestTimeout"},
 				FailFast:             false,
 				SelectedTestPackages: []string{flakyTestPackagePath},
 				CollectRawOutput:     true,
@@ -70,113 +78,154 @@ func TestRun(t *testing.T) {
 					maximumPassRate: &successPassRate,
 					someSuccesses:   true,
 					someFailures:    true,
-					maximumRuns:     defaultRuns,
 				},
 				"TestFail": {
 					exactRuns:     &defaultRuns,
 					exactPassRate: &failPassRate,
 					allFailures:   true,
-					maximumRuns:   defaultRuns,
 				},
 				"TestPass": {
 					exactRuns:     &defaultRuns,
 					exactPassRate: &successPassRate,
 					allSuccesses:  true,
-					maximumRuns:   defaultRuns,
 				},
 				"TestSkipped": {
-					exactRuns:     &defaultRuns,
-					exactPassRate: &failPassRate,
+					exactRuns:     &zeroRuns,
+					exactPassRate: &successPassRate,
 					allSkips:      true,
-					maximumRuns:   defaultRuns,
 				},
 				"TestRace": {
 					exactRuns:     &defaultRuns,
 					exactPassRate: &successPassRate,
 					allSuccesses:  true,
-					maximumRuns:   defaultRuns,
+				},
+				"TestSubTestsAllPass": {
+					exactRuns:    &defaultRuns,
+					allSuccesses: true,
+				},
+				"TestFailInParentAfterSubTests": {
+					exactRuns:   &defaultRuns,
+					allFailures: true,
+				},
+				"TestFailInParentAfterSubTests/Pass1": {
+					exactRuns:    &defaultRuns,
+					allSuccesses: true,
+				},
+				"TestFailInParentAfterSubTests/Pass2": {
+					exactRuns:    &defaultRuns,
+					allSuccesses: true,
+				},
+				"TestFailInParentBeforeSubTests": {
+					exactRuns:   &defaultRuns,
+					allFailures: true,
+				},
+				"TestSubTestsAllPass/Pass1": {
+					exactRuns:    &defaultRuns,
+					allSuccesses: true,
+				},
+				"TestSubTestsAllPass/Pass2": {
+					exactRuns:    &defaultRuns,
+					allSuccesses: true,
+				},
+				"TestSubTestsAllFail": {
+					exactRuns:   &defaultRuns,
+					allFailures: true,
+				},
+				"TestSubTestsAllFail/Fail1": {
+					exactRuns:   &defaultRuns,
+					allFailures: true,
+				},
+				"TestSubTestsAllFail/Fail2": {
+					exactRuns:   &defaultRuns,
+					allFailures: true,
+				},
+				"TestSubTestsSomeFail": {
+					exactRuns:   &defaultRuns,
+					allFailures: true,
+				},
+				"TestSubTestsSomeFail/Pass": {
+					exactRuns:    &defaultRuns,
+					allSuccesses: true,
+				},
+				"TestSubTestsSomeFail/Fail": {
+					exactRuns:   &defaultRuns,
+					allFailures: true,
 				},
 			},
 		},
 		{
-			name: "panic",
+			name: "always panic",
 			runner: Runner{
 				ProjectPath:          "./",
 				Verbose:              true,
 				RunCount:             defaultRuns,
 				UseRace:              false,
 				SkipTests:            []string{},
+				SelectTests:          []string{"TestPanic"},
 				FailFast:             false,
 				SelectedTestPackages: []string{flakyTestPackagePath},
 				CollectRawOutput:     true,
 			},
 			expectedTests: map[string]*expectedTestResult{
-				"TestFlaky": {
-					packagePanic: true,
-					maximumRuns:  defaultRuns,
-				},
-				"TestFail": {
-					allFailures:  true,
-					packagePanic: true,
-					maximumRuns:  defaultRuns,
-				},
-				"TestPass": {
-					allSuccesses: true,
-					packagePanic: true,
-					maximumRuns:  defaultRuns,
-				},
-				"TestSkipped": {
-					allSkips:     true,
-					packagePanic: true,
-					maximumRuns:  defaultRuns,
-				},
-				"TestRace": {
-					allSuccesses: true,
-					packagePanic: true,
-					maximumRuns:  defaultRuns,
-				},
 				"TestPanic": {
-					allPanics:    true,
 					packagePanic: true,
+					testPanic:    true,
 					maximumRuns:  defaultRuns,
 				},
 			},
 		},
-		// TODO: Race detection not quite working as expected
-		// {
-		// 	name: "race",
-		// 	runner: Runner{
-		// 		ProjectPath:          "./",
-		// 		Verbose:              true,
-		// 		RunCount:             defaultRuns,
-		// 		UseRace:              true,
-		// 		SkipTests:            []string{"TestPanic"},
-		// 		FailFast:             false,
-		// 		SelectedTestPackages: []string{flakyTestPackagePath},
-		// 		CollectRawOutput:     true,
-		// 	},
-		// 	expectedTests: map[string]*expectedTestResult{
-		// 		"TestFlaky": {
-		// 			maximumRuns: defaultRuns,
-		// 		},
-		// 		"TestFail": {
-		// 			allFailures: true,
-		// 			maximumRuns: defaultRuns,
-		// 		},
-		// 		"TestPass": {
-		// 			allSuccesses: true,
-		// 			maximumRuns:  defaultRuns,
-		// 		},
-		// 		"TestSkipped": {
-		// 			allSkips:    true,
-		// 			maximumRuns: defaultRuns,
-		// 		},
-		// 		"TestRace": {
-		// 			maximumRuns: defaultRuns,
-		// 			allRaces:    true,
-		// 		},
-		// 	},
-		// },
+		{
+			name: "flaky panic",
+			runner: Runner{
+				ProjectPath:          "./",
+				Verbose:              true,
+				RunCount:             defaultRuns,
+				UseRace:              false,
+				SkipTests:            []string{},
+				SelectTests:          []string{"TestFlakyPanic"},
+				FailFast:             false,
+				SelectedTestPackages: []string{flakyTestPackagePath},
+				CollectRawOutput:     true,
+			},
+			expectedTests: map[string]*expectedTestResult{
+				"TestFlakyPanic": {
+					packagePanic: true,
+					testPanic:    true,
+					maximumRuns:  defaultRuns,
+				},
+			},
+		},
+		{
+			name: "subtest panic",
+			runner: Runner{
+				ProjectPath:          "./",
+				Verbose:              true,
+				RunCount:             defaultRuns,
+				UseRace:              false,
+				SkipTests:            []string{},
+				SelectTests:          []string{"TestSubTestsSomePanic"},
+				FailFast:             false,
+				SelectedTestPackages: []string{flakyTestPackagePath},
+				CollectRawOutput:     true,
+			},
+			expectedTests: map[string]*expectedTestResult{
+				"TestSubTestsSomePanic": {
+					packagePanic: true,
+					testPanic:    true,
+					maximumRuns:  defaultRuns,
+				},
+				"TestSubTestsSomePanic/Pass": {
+					packagePanic: true,
+					allSuccesses: true,
+					maximumRuns:  defaultRuns,
+				},
+				"TestSubTestsSomePanic/Panic": {
+					packagePanic: true,
+					testPanic:    true,
+					maximumRuns:  defaultRuns,
+				},
+			},
+		},
 		{
 			name: "failfast",
 			runner: Runner{
@@ -184,7 +233,8 @@ func TestRun(t *testing.T) {
 				Verbose:              true,
 				RunCount:             defaultRuns,
 				UseRace:              false,
-				SkipTests:            []string{"TestPanic", "TestFlaky", "TestFlakyPanic"}, // Flaky test introduces too much variability for failfast
+				SkipTests:            []string{},
+				SelectTests:          []string{"TestFail", "TestPass"},
 				FailFast:             true,
 				SelectedTestPackages: []string{flakyTestPackagePath},
 				CollectRawOutput:     true,
@@ -193,22 +243,10 @@ func TestRun(t *testing.T) {
 				"TestFail": {
 					exactRuns:   &oneRun,
 					allFailures: true,
-					maximumRuns: defaultRuns,
 				},
 				"TestPass": {
 					exactRuns:    &oneRun,
 					allSuccesses: true,
-					maximumRuns:  defaultRuns,
-				},
-				"TestSkipped": {
-					exactRuns:   &oneRun,
-					allSkips:    true,
-					maximumRuns: defaultRuns,
-				},
-				"TestRace": {
-					exactRuns:    &oneRun,
-					allSuccesses: true,
-					maximumRuns:  defaultRuns,
 				},
 			},
 		},
@@ -216,7 +254,7 @@ func TestRun(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			testResults, err := tc.runner.RunTests()
+			testReport, err := tc.runner.RunTests()
 			require.NoError(t, err)
 
 			t.Cleanup(func() {
@@ -229,12 +267,9 @@ func TestRun(t *testing.T) {
 				}
 				saniTName := strings.ReplaceAll(t.Name(), "/", "_")
 				resultsFileName := filepath.Join(debugDir, fmt.Sprintf("test_results_%s.json", saniTName))
-				jsonResults, err := json.Marshal(testResults)
+				jsonResults, err := json.Marshal(testReport)
 				if err != nil {
-					t.Logf("error marshalling test results: %v", err)
-					for _, testResult := range testResults {
-						t.Logf("%+v", testResult)
-					}
+					t.Logf("error marshalling test report: %v", err)
 					return
 				}
 				err = os.WriteFile(resultsFileName, jsonResults, 0644) //nolint:gosec
@@ -252,30 +287,36 @@ func TestRun(t *testing.T) {
 				}
 			})
 
-			for _, result := range testResults {
+			require.Equal(t, tc.runner.RunCount, testReport.TestRunCount, "unexpected number of test runs")
+			require.Equal(t, tc.runner.UseRace, testReport.RaceDetection, "unexpected race usage")
+
+			assert.Equal(t, len(tc.expectedTests), len(testReport.Results), "unexpected number of test results")
+			for _, result := range testReport.Results {
 				t.Run(fmt.Sprintf("checking results of %s", result.TestName), func(t *testing.T) {
 					require.NotNil(t, result, "test result was nil")
 					expected, ok := tc.expectedTests[result.TestName]
-					require.True(t, ok, "unexpected test result: %s", result.TestName)
+					require.True(t, ok, "unexpected test name: %s", result.TestName)
 					require.False(t, expected.seen, "test '%s' was seen multiple times", result.TestName)
 					expected.seen = true
 
-					if !expected.allPanics && !expected.somePanics { // Panics end up wrecking durations
-						assert.Len(t, result.Durations, result.Runs, "test '%s' has a mismatch of runs and duration counts",
-							result.TestName, defaultRuns,
+					if !expected.testPanic { // Panics end up wrecking durations
+						assert.Len(t, result.Durations, result.Runs, "test '%s' has a mismatch of runs %d and duration counts %d",
+							result.TestName, result.Runs, len(result.Durations),
 						)
+						assert.False(t, result.Panic, "test '%s' should not have panicked", result.TestName)
 					}
-					resultCounts := result.Successes + result.Failures + result.Panics + result.Skips
+					resultCounts := result.Successes + result.Failures
 					assert.Equal(t, result.Runs, resultCounts,
 						"test '%s' doesn't match Runs count with results counts\n%s", result.TestName, resultsString(result),
 					)
-					assert.LessOrEqual(t, result.Runs, expected.maximumRuns, "test '%s' had more runs than expected", result.TestName)
 
 					if expected.minimumRuns != nil {
 						assert.GreaterOrEqual(t, result.Runs, *expected.minimumRuns, "test '%s' had fewer runs than expected", result.TestName)
 					}
 					if expected.exactRuns != nil {
 						assert.Equal(t, *expected.exactRuns, result.Runs, "test '%s' had an unexpected number of runs", result.TestName)
+					} else {
+						assert.LessOrEqual(t, result.Runs, expected.maximumRuns, "test '%s' had more runs than expected", result.TestName)
 					}
 					if expected.exactPassRate != nil {
 						assert.Equal(t, *expected.exactPassRate, result.PassRatio, "test '%s' had an unexpected pass ratio", result.TestName)
@@ -289,9 +330,9 @@ func TestRun(t *testing.T) {
 					if expected.allSuccesses {
 						assert.Equal(t, result.Successes, result.Runs, "test '%s' has %d total runs and should have passed all runs, only passed %d\n%s", result.TestName, result.Runs, result.Successes, resultsString(result))
 						assert.Zero(t, result.Failures, "test '%s' has %d total runs and should have passed all runs, but failed some\n%s", result.TestName, result.Runs, resultsString(result))
-						assert.Zero(t, result.Panics, "test '%s' has %d total runs and should have passed all runs, but panicked some\n%s", result.TestName, result.Runs, resultsString(result))
 						assert.Zero(t, result.Skips, "test '%s' has %d total runs and should have passed all runs, but skipped some\n%s", result.TestName, result.Runs, resultsString(result))
-						assert.Zero(t, result.Races, "test '%s' has %d total runs and should have passed all runs, but raced some\n%s", result.TestName, result.Runs, resultsString(result))
+						assert.False(t, result.Panic, "test '%s' should not have panicked\n%s", result.TestName, resultsString(result))
+						assert.False(t, result.Race, "test '%s' should not have raced\n%s", result.TestName, resultsString(result))
 					}
 					if expected.someSuccesses {
 						assert.Greater(t, result.Successes, 0, "test '%s' has %d total runs and should have passed some runs, passed none\n%s", result.TestName, result.Runs, resultsString(result))
@@ -299,54 +340,55 @@ func TestRun(t *testing.T) {
 					if expected.allFailures {
 						assert.Equal(t, result.Failures, result.Runs, "test '%s' has %d total runs and should have failed all runs, only failed %d\n%s", result.TestName, result.Runs, result.Failures, resultsString(result))
 						assert.Zero(t, result.Successes, "test '%s' has %d total runs and should have failed all runs, but succeeded some\n%s", result.TestName, result.Runs, resultsString(result))
-						assert.Zero(t, result.Panics, "test '%s' has %d total runs and should have failed all runs, but panicked some\n%s", result.TestName, result.Runs, resultsString(result))
 						assert.Zero(t, result.Skips, "test '%s' has %d total runs and should have failed all runs, but skipped some\n%s", result.TestName, result.Runs, resultsString(result))
-						assert.Zero(t, result.Races, "test '%s' has %d total runs and should have failed all runs, but raced some\n%s", result.TestName, result.Runs, resultsString(result))
+						assert.False(t, result.Race, "test '%s' should not have raced\n%s", result.TestName, resultsString(result))
+					}
+					if expected.packagePanic {
+						assert.True(t, result.PackagePanic, "test '%s' should have package panicked", result.TestName)
+					}
+					if expected.testPanic {
+						assert.True(t, result.Panic, "test '%s' should have panicked", result.TestName)
+						assert.True(t, result.PackagePanic, "test '%s' should have package panicked", result.TestName)
+						expected.someFailures = true
 					}
 					if expected.someFailures {
 						assert.Greater(t, result.Failures, 0, "test '%s' has %d total runs and should have failed some runs, failed none\n%s", result.TestName, result.Runs, resultsString(result))
 					}
-					if expected.allPanics {
-						assert.Equal(t, result.Panics, result.Runs, "test '%s' has %d total runs and should have panicked all runs, only panicked %d\n%s", result.TestName, result.Runs, result.Panics, resultsString(result))
-						assert.Zero(t, result.Successes, "test '%s' has %d total runs and should have panicked all runs, but succeeded some\n%s", result.TestName, result.Runs, resultsString(result))
-						assert.Zero(t, result.Failures, "test '%s' has %d total runs and should have panicked all runs, but failed some\n%s", result.TestName, result.Runs, resultsString(result))
-						assert.Zero(t, result.Skips, "test '%s' has %d total runs and should have panicked all runs, but skipped some\n%s", result.TestName, result.Runs, resultsString(result))
-						assert.Zero(t, result.Races, "test '%s' has %d total runs and should have panicked all runs, but raced some\n%s", result.TestName, result.Runs, resultsString(result))
-					}
-					if expected.somePanics {
-						assert.Greater(t, result.Panics, 0, "test '%s' has %d total runs and should have panicked some runs, panicked none\n%s", result.TestName, result.Runs, resultsString(result))
-					}
 					if expected.allSkips {
-						assert.Equal(t, result.Skips, result.Runs, "test '%s' has %d total runs and should have skipped all runs, only skipped %d\n%s", result.TestName, result.Runs, result.Skips, resultsString(result))
+						assert.Equal(t, 0, result.Runs, "test '%s' has %d total runs and should have skipped all of them, no runs expected\n%s", result.TestName, result.Runs, resultsString(result))
 						assert.Zero(t, result.Successes, "test '%s' has %d total runs and should have skipped all runs, but succeeded some\n%s", result.TestName, result.Runs, resultsString(result))
 						assert.Zero(t, result.Failures, "test '%s' has %d total runs and should have skipped all runs, but panicked some\n%s", result.TestName, result.Runs, resultsString(result))
-						assert.Zero(t, result.Panics, "test '%s' has %d total runs and should have skipped all runs, but panicked some\n%s", result.TestName, result.Runs, resultsString(result))
-						assert.Zero(t, result.Races, "test '%s' has %d total runs and should have skipped all runs, but raced some\n%s", result.TestName, result.Runs, resultsString(result))
+						assert.False(t, result.Panic, "test '%s' should not have panicked\n%s", result.TestName, resultsString(result))
+						assert.False(t, result.Race, "test '%s' should not have raced\n%s", result.TestName, resultsString(result))
 					}
-					if expected.allRaces {
-						assert.Equal(t, result.Races, result.Runs, "test '%s' has %d total runs and should have raced all runs, only raced %d\n%s", result.TestName, result.Runs, result.Races, resultsString(result))
+					if expected.race {
+						assert.True(t, result.Race, "test '%s' should have a data race\n%s", result.TestName, resultsString(result))
+						assert.False(t, result.Panic, "test '%s' should not have panicked\n%s", result.TestName, resultsString(result))
 						assert.Zero(t, result.Successes, "test '%s' has %d total runs and should have raced all runs, but succeeded some\n%s", result.TestName, result.Runs, resultsString(result))
 						assert.Zero(t, result.Failures, "test '%s' has %d total runs and should have raced all runs, but panicked some\n%s", result.TestName, result.Runs, resultsString(result))
 						assert.Zero(t, result.Skips, "test '%s' has %d total runs and should have raced all runs, but skipped some\n%s", result.TestName, result.Runs, resultsString(result))
 						assert.Zero(t, result.Skips, "test '%s' has %d total runs and should have raced all runs, but panicked some\n%s", result.TestName, result.Runs, resultsString(result))
 					}
-					if expected.packagePanic {
-						assert.True(t, result.PackagePanicked, "test '%s' has %d total runs and should have package panicked", result.TestName, result.Runs)
-					}
 				})
 			}
 
+			allTestsRun := []string{}
 			for testName, expected := range tc.expectedTests {
-				assert.True(t, expected.seen, "expected test '%s' not found in test runs", testName)
+				if expected.seen {
+					allTestsRun = append(allTestsRun, testName)
+				}
+			}
+			for testName, expected := range tc.expectedTests {
+				require.True(t, expected.seen, "expected test '%s' not found in test runs\nAll tests run: %s", testName, strings.Join(allTestsRun, ", "))
 			}
 		})
 	}
 }
 
 func resultsString(result reports.TestResult) string {
-	resultCounts := result.Successes + result.Failures + result.Panics + result.Skips
-	return fmt.Sprintf("Runs: %d\nSuccesses: %d\nFailures: %d\nPanics: %d\nSkips: %d\nRaces: %d\nTotal Results: %d",
-		result.Runs, result.Successes, result.Failures, result.Panics, result.Skips, result.Races, resultCounts)
+	resultCounts := result.Successes + result.Failures + result.Skips
+	return fmt.Sprintf("Runs: %d\nPanicked: %t\nRace: %t\nSuccesses: %d\nFailures: %d\nSkips: %d\nTotal Results: %d",
+		result.Runs, result.Panic, result.Race, result.Successes, result.Failures, result.Skips, resultCounts)
 }
 
 func TestAttributePanicToTest(t *testing.T) {
@@ -356,6 +398,7 @@ func TestAttributePanicToTest(t *testing.T) {
 		name             string
 		packageName      string
 		expectedTestName string
+		expectedTimeout  bool
 		panicEntries     []entry
 	}{
 		{
@@ -371,16 +414,22 @@ func TestAttributePanicToTest(t *testing.T) {
 			panicEntries:     improperlyAttributedPanicEntries,
 		},
 		{
-			name:         "no panic",
-			packageName:  "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/example_test_package",
-			panicEntries: noPanicRaceEntries,
+			name:             "timeout panic",
+			expectedTestName: "TestTimedOut",
+			expectedTimeout:  true,
+			packageName:      "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/example_test_package",
+			panicEntries:     timedOutPanicEntries,
 		},
 		{
-			name:        "empty",
-			packageName: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/example_test_package",
-			panicEntries: []entry{
-				{},
-			},
+			name:             "subtest panic",
+			expectedTestName: "TestSubTestsSomePanic",
+			packageName:      "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/example_test_package",
+			panicEntries:     subTestPanicEntries,
+		},
+		{
+			name:         "empty",
+			packageName:  "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/example_test_package",
+			panicEntries: []entry{},
 		},
 	}
 
@@ -389,7 +438,8 @@ func TestAttributePanicToTest(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			testName, err := attributePanicToTest(tc.packageName, tc.panicEntries)
+			testName, timeout, err := attributePanicToTest(tc.packageName, tc.panicEntries)
+			assert.Equal(t, tc.expectedTimeout, timeout, "test timeout not correctly discovered")
 			if tc.expectedTestName == "" {
 				require.Error(t, err)
 			} else {
@@ -420,11 +470,6 @@ func TestAttributeRaceToTest(t *testing.T) {
 			expectedTestName: "TestRace",
 			packageName:      "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/example_test_package",
 			raceEntries:      improperlyAttributedRaceEntries,
-		},
-		{
-			name:        "no race",
-			packageName: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/example_test_package",
-			raceEntries: noPanicRaceEntries,
 		},
 		{
 			name:        "empty",
@@ -492,57 +537,32 @@ var (
 		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Output: "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.170s\n"},
 		{Action: "fail", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Elapsed: 0.171},
 	}
-	noPanicRaceEntries = []entry{
-		{Action: "start", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package"},
-		{Action: "run", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestPass"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestPass", Output: "=== RUN   TestPass\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestPass", Output: "=== PAUSE TestPass\n"},
-		{Action: "pause", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestPass"},
-		{Action: "run", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFail"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFail", Output: "=== RUN   TestFail\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFail", Output: "=== PAUSE TestFail\n"},
-		{Action: "pause", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFail"},
-		{Action: "run", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFlaky"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFlaky", Output: "=== RUN   TestFlaky\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFlaky", Output: "=== PAUSE TestFlaky\n"},
-		{Action: "pause", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFlaky"},
-		{Action: "run", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSkipped"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSkipped", Output: "=== RUN   TestSkipped\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSkipped", Output: "=== PAUSE TestSkipped\n"},
-		{Action: "pause", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSkipped"},
-		{Action: "run", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "=== RUN   TestRace\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "=== PAUSE TestRace\n"},
-		{Action: "pause", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace"},
-		{Action: "cont", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestPass"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestPass", Output: "=== CONT  TestPass\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestPass", Output: "    example_tests_test.go:11: This test always passes\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestPass", Output: "--- PASS: TestPass (0.00s)\n"},
-		{Action: "pass", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestPass", Elapsed: 0},
-		{Action: "cont", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFail"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFail", Output: "=== CONT  TestFail\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFail", Output: "    example_tests_test.go:16: This test always fails\n"},
-		{Action: "cont", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSkipped"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSkipped", Output: "=== CONT  TestSkipped\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFail", Output: "--- FAIL: TestFail (0.00s)\n"},
-		{Action: "fail", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFail", Elapsed: 0},
-		{Action: "cont", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "=== CONT  TestRace\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "    example_tests_test.go:56: This test should trigger a failure if run with the -race flag, but otherwise pass\n"},
-		{Action: "cont", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFlaky"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFlaky", Output: "=== CONT  TestFlaky\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSkipped", Output: "    example_tests_test.go:46: This test is intentionally skipped\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSkipped", Output: "--- SKIP: TestSkipped (0.00s)\n"},
-		{Action: "skip", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSkipped", Elapsed: 0},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "    example_tests_test.go:80: Final value of sharedCounter: 46430\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "--- PASS: TestRace (0.00s)\n"},
-		{Action: "pass", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Elapsed: 0},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFlaky", Output: "    example_tests_test.go:31: This is a designed flaky test working as intended\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFlaky", Output: "--- FAIL: TestFlaky (0.00s)\n"},
-		{Action: "fail", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFlaky", Elapsed: 0},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Output: "FAIL\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Output: "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.138s\n"},
-		{Action: "fail", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Elapsed: 0.138},
+	subTestPanicEntries = []entry{
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSubTestsAllPass/Pass2", Output: "panic: This subtest always panics [recovered]"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSubTestsAllPass/Pass2", Output: "panic: This subtest always panics"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSubTestsAllPass/Pass2", Output: "goroutine 23 [running]:"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSubTestsAllPass/Pass2", Output: "testing.tRunner.func1.2({0x100489e80, 0x1004b3e30})"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSubTestsAllPass/Pass2", Output: "	/opt/homebrew/Cellar/go/1.23.2/libexec/src/testing/testing.go:1632 +0x1bc"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSubTestsAllPass/Pass2", Output: "testing.tRunner.func1()"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSubTestsAllPass/Pass2", Output: "	/opt/homebrew/Cellar/go/1.23.2/libexec/src/testing/testing.go:1635 +0x334"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSubTestsAllPass/Pass2", Output: "panic({0x100489e80?, 0x1004b3e30?})"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSubTestsAllPass/Pass2", Output: "	/opt/homebrew/Cellar/go/1.23.2/libexec/src/runtime/panic.go:785 +0x124"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSubTestsAllPass/Pass2", Output: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package.TestSubTestsSomePanic.func2(0x140000c81a0?)"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSubTestsAllPass/Pass2", Output: "	/Users/adamhamrick/Projects/chainlink-testing-framework/tools/flakeguard/runner/example_test_package/example_tests_test.go:43 +0x30"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSubTestsAllPass/Pass2", Output: "testing.tRunner(0x140000c81a0, 0x1004b34d0)"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSubTestsAllPass/Pass2", Output: "	/opt/homebrew/Cellar/go/1.23.2/libexec/src/testing/testing.go:1690 +0xe4"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSubTestsAllPass/Pass2", Output: "created by testing.(*T).Run in goroutine 6"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestSubTestsAllPass/Pass2", Output: "	/opt/homebrew/Cellar/go/1.23.2/libexec/src/testing/testing.go:1743 +0x314"},
+	}
+	timedOutPanicEntries = []entry{
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestTimeout", Output: "panic: test timed out after 10m0s"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestTimeout", Output: "running tests"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestTimeout", Output: "TestTimedOut (10m0s)"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestTimeout", Output: "goroutine 397631 [running]:"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestTimeout", Output: "testing.(*M).startAlarm.func1()"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestTimeout", Output: "	/opt/hostedtoolcache/go/1.23.3/x64/src/testing/testing.go:2373 +0x385"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestTimeout", Output: "created by time.goFunc"},
+		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestTimeout", Output: "/opt/hostedtoolcache/go/1.23.3/x64/src/time/sleep.go:215 +0x2d"},
 	}
 
 	improperlyAttributedRaceEntries = []entry{
@@ -638,7 +658,6 @@ var (
 		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFlaky", Output: "==================\n"},
 		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFlaky", Output: "    testing.go:1399: race detected during execution of test\n"},
 	}
-
 	properlyAttributedRaceEntries = []entry{
 		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "==================\n"},
 		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "WARNING: DATA RACE\n"},
