@@ -5,9 +5,6 @@ In addition to [this common setup](nodeset_environment.md) you can also provide 
 Create a configuration file `smoke.toml`
 ```toml
 [blockchain_a]
-  chain_id = "31337"
-  image = "f4hrenh9it/foundry:latest"
-  port = "8545"
   type = "anvil"
   docker_cmd_params = ["-b", "1"]
 
@@ -21,7 +18,8 @@ Create a configuration file `smoke.toml`
   [[nodeset.node_specs]]
 
     [nodeset.node_specs.node]
-      docker_file = "../../core/chainlink.Dockerfile"
+      # Dockerfile path is relative to "docker_ctx"
+      docker_file = "core/chainlink.Dockerfile"
       docker_ctx = "../.."
 ```
 

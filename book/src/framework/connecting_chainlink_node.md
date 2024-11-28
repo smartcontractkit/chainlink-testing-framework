@@ -5,12 +5,8 @@ Now let's have an example of Chainlink node connected to some local blockchain.
 Create your configuration in `smoke.toml`
 ```toml
 [blockchain_a]
-  chain_id = "31337"
-  image = "f4hrenh9it/foundry:latest"
-  port = "8545"
   type = "anvil"
   docker_cmd_params = ["-b", "1"]
-
 
 [cl_node]
 

@@ -5,12 +5,8 @@ Let's create a full-fledged set of Chainlink nodes connected to some blockchain.
 Create a configuration file `smoke.toml`
 ```toml
 [blockchain_a]
-  chain_id = "31337"
-  image = "f4hrenh9it/foundry:latest"
-  port = "8545"
   type = "anvil"
   docker_cmd_params = ["-b", "1"]
-
 
 [nodeset]
   nodes = 5

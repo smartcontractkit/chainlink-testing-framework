@@ -34,7 +34,7 @@ func TestDON(t *testing.T) {
 In `TOML`:
 ```
 [blockchain_a]
-chain_id = "31337"
+chain_id = "1337"
 image = "f4hrenh9it/foundry:latest"
 port = "8500"
 type = "anvil"
