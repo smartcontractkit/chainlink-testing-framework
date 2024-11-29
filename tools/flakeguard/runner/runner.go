@@ -143,10 +143,8 @@ func (r *Runner) runTests(packageName string) (string, bool, error) {
 	cmd.Dir = r.ProjectPath
 	if r.CollectRawOutput {
 		cmd.Stdout = io.MultiWriter(tmpFile, r.rawOutputs[packageName])
-		cmd.Stderr = io.MultiWriter(tmpFile, r.rawOutputs[packageName])
 	} else {
 		cmd.Stdout = tmpFile
-		cmd.Stderr = tmpFile
 	}
 
 	err = cmd.Run()
