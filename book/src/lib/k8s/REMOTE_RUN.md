@@ -39,6 +39,9 @@ export TEST_ENV_VAR=myTestVarForAJob
 # your image to run as a k8s job
 ACCOUNT=$(aws sts get-caller-identity | jq -r .Account)
 export ENV_JOB_IMAGE="${ACCOUNT}.dkr.ecr.us-west-2.amazonaws.com/core-integration-tests:v1.1"
+export DETACH_RUNNER=true # if you want the test job to run in the background after it has started
+export CHAINLINK_ENV_USER=yourUser # user to run the tests
+export CHAINLINK_USER_TEAM=yourTeam # team to run the tests for
 # your example test file to run inside k8s
 # if ENV_JOB_IMAGE is present it will create a job, wait until it finished and get logs
 go run examples/remote-test-runner/env.go
