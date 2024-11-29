@@ -44,7 +44,7 @@ type TestResult struct {
 	Durations      []time.Duration // Stores elapsed time for each run of the test
 	PackageOutputs []string        `json:"package_outputs,omitempty"` // Stores package-level outputs
 	TestPath       string          // Path to the test file
-	TestOwners     []string        // Owners of the test
+	CodeOwners     []string        // Owners of the test
 }
 
 // FilterFailedTests returns a slice of TestResult where the pass ratio is below the specified threshold.
@@ -210,7 +210,7 @@ func PrintTests(
 		"**Package**",
 		"**Package Panicked?**",
 		"**Avg Duration**",
-		"**Test Owners**",
+		"**Code Owners**",
 	}
 
 	// Build test rows and summary data
@@ -218,8 +218,8 @@ func PrintTests(
 	for _, test := range tests {
 		if test.PassRatio < maxPassRatio {
 			owners := "None"
-			if len(test.TestOwners) > 0 {
-				owners = strings.Join(test.TestOwners, ", ")
+			if len(test.CodeOwners) > 0 {
+				owners = strings.Join(test.CodeOwners, ", ")
 			}
 
 			rows = append(rows, []string{

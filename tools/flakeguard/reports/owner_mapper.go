@@ -13,10 +13,10 @@ func MapTestResultsToOwners(report *TestReport, codeOwnersPath string) error {
 	// Assign owners to each test result
 	for i, result := range report.Results {
 		if result.TestPath != "NOT FOUND" {
-			report.Results[i].TestOwners = codeowners.FindOwners(result.TestPath, codeOwnerPatterns)
+			report.Results[i].CodeOwners = codeowners.FindOwners(result.TestPath, codeOwnerPatterns)
 		} else {
 			// Mark owners as unknown for unmapped tests
-			report.Results[i].TestOwners = []string{"UNKNOWN"}
+			report.Results[i].CodeOwners = []string{"UNKNOWN"}
 		}
 	}
 
