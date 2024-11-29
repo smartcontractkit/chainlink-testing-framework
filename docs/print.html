@@ -1494,6 +1494,7 @@ go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install gi
 <tr><td style="text-align: center">LOKI_TENANT_ID</td><td style="text-align: center">Streams all components logs to <code>Loki</code>, see params below</td><td style="text-align: right"><code>string</code></td><td style="text-align: center"><code>promtail</code></td><td style="text-align: center">🚫</td></tr>
 <tr><td style="text-align: center">LOKI_BASIC_AUTH</td><td style="text-align: center">Basic auth in format $user:$password</td><td style="text-align: right"><code>$user:$password</code></td><td style="text-align: center">-</td><td style="text-align: center">🚫</td></tr>
 <tr><td style="text-align: center">RESTY_DEBUG</td><td style="text-align: center">Log all Resty client HTTP calls</td><td style="text-align: right"><code>true</code>, <code>false</code></td><td style="text-align: center"><code>false</code></td><td style="text-align: center">🚫</td></tr>
+<tr><td style="text-align: center">CTF_IGNORE_CRITICAL_LOGS</td><td style="text-align: center">Ignore all logs that has CRIT,FATAL or PANIC levels (Chainlink nodes only!)</td><td style="text-align: right"><code>true</code>, <code>false</code></td><td style="text-align: center"><code>false</code></td><td style="text-align: center">🚫</td></tr>
 </tbody></table>
 </div><div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
@@ -9965,7 +9966,7 @@ echo ::add-mask::$BASE64_CONFIG_OVERRIDE
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>f3e38d04</code></li>
+<li>Commit: <code>ef81a77c</code></li>
 </ul>
 
                     </main>
