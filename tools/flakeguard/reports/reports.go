@@ -217,7 +217,7 @@ func PrintTests(
 	rows := [][]string{}
 	for _, test := range tests {
 		if test.PassRatio < maxPassRatio {
-			owners := "None"
+			owners := "Unknown"
 			if len(test.CodeOwners) > 0 {
 				owners = strings.Join(test.CodeOwners, ", ")
 			}
