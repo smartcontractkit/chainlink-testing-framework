@@ -8,8 +8,16 @@ import (
 	"regexp"
 )
 
+const (
+	EnvVarIgnoreCriticalLogs = "CTF_IGNORE_CRITICAL_LOGS"
+)
+
 // checkNodeLogsErrors check Chainlink nodes logs for error levels
 func checkNodeLogErrors(dir string) error {
+	if os.Getenv(EnvVarIgnoreCriticalLogs) == "true" {
+		L.Warn().Msg(`CTF_IGNORE_CRITICAL_LOGS is set to true, we ignore all CRIT|FATAL|PANIC errors in node logs!`)
+		return nil
+	}
 	fileRegex := regexp.MustCompile(`^node.*\.log$`)
 	logLevelRegex := regexp.MustCompile(`(CRIT|PANIC|FATAL)`)
 
