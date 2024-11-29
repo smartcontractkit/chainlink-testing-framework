@@ -6,11 +6,12 @@ import (
 
 // Input is a blockchain network configuration params
 type Input struct {
-	Type                     string   `toml:"type" validate:"required,oneof=anvil geth" envconfig:"net_type"`
-	Image                    string   `toml:"image" validate:"required"`
+	Type                     string   `toml:"type" validate:"required,oneof=anvil geth besu" envconfig:"net_type"`
+	Image                    string   `toml:"image"`
 	PullImage                bool     `toml:"pull_image"`
-	Port                     string   `toml:"port" validate:"required"`
-	ChainID                  string   `toml:"chain_id" validate:"required"`
+	Port                     string   `toml:"port"`
+	WSPort                   string   `toml:"port_ws"`
+	ChainID                  string   `toml:"chain_id"`
 	DockerCmdParamsOverrides []string `toml:"docker_cmd_params"`
 	Out                      *Output  `toml:"out"`
 }
@@ -18,6 +19,7 @@ type Input struct {
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network
 type Output struct {
 	UseCache      bool    `toml:"use_cache"`
+	Family        string  `toml:"family"`
 	ContainerName string  `toml:"container_name"`
 	ChainID       string  `toml:"chain_id"`
 	Nodes         []*Node `toml:"nodes"`
@@ -42,12 +44,16 @@ func NewBlockchainNetwork(in *Input) (*Output, error) {
 	var err error
 	switch in.Type {
 	case "anvil":
-		out, err = deployAnvil(in)
-		if err != nil {
-			return nil, err
-		}
+		out, err = newAnvil(in)
+	case "geth":
+		out, err = newGeth(in)
+	case "besu":
+		out, err = newBesu(in)
 	default:
-		return nil, fmt.Errorf("blockchain type is not supported or empty")
+		return nil, fmt.Errorf("blockchain type is not supported or empty, must be 'anvil' or 'geth'")
+	}
+	if err != nil {
+		return nil, err
 	}
 	in.Out = out
 	return out, nil
