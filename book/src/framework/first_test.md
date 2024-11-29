@@ -7,11 +7,8 @@ Let's spin up a simple component.
 Create your configuration in `smoke.toml`
 ```toml
 [blockchain_a]
-  chain_id = "31337"
-  image = "f4hrenh9it/foundry:latest"
-  port = "8545"
+  # choose between "anvil", "geth" or "besu"
   type = "anvil"
-  docker_cmd_params = ["-b", "1"]
 ```
 
 Create your test in `smoke_test.go`
@@ -58,4 +55,4 @@ Summary:
 
 Now let's connect the [Chainlink](./connecting_chainlink_node.md) node!
 
-Learn more about [anvil](./components/blockchains/anvil.md) component.
+Learn more about [EVM Client](./components/blockchains/evm.md) component.

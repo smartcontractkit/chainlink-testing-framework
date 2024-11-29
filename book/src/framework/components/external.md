@@ -12,7 +12,7 @@ For example, to integrate with remote `k8s` environment you can use `CTF_CONFIGS
 [blockchain_a]
 
   [blockchain_a.out]
-    chain_id = "31337"
+    chain_id = "1337"
     use_cache = true
 
     [[blockchain_a.out.nodes]]
