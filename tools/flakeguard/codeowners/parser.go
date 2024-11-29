@@ -2,7 +2,9 @@ package codeowners
 
 import (
 	"bufio"
+	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -35,7 +37,7 @@ func Parse(filePath string) ([]PatternOwner, error) {
 		fields := strings.Fields(line)
 		if len(fields) > 1 {
 			patterns = append(patterns, PatternOwner{
-				Pattern: fields[0],
+				Pattern: filepath.ToSlash(fields[0]), // Normalize to Unix-style
 				Owners:  fields[1:],
 			})
 		}
@@ -43,21 +45,41 @@ func Parse(filePath string) ([]PatternOwner, error) {
 	return patterns, scanner.Err()
 }
 
-// FindOwners determines the owners for a given file path based on patterns
+func IsWildcardPattern(pattern string) bool {
+	return strings.ContainsAny(pattern, "*?[")
+}
+
+// FindOwners finds the owners of a file based on the CODEOWNERS patterns
 func FindOwners(filePath string, patterns []PatternOwner) []string {
-	// Convert filePath to Unix-style for matching
+	// Normalize the file path to Unix-style
 	relFilePath := filepath.ToSlash(filePath)
 
 	var matchedOwners []string
 	for _, pattern := range patterns {
-		// Ensure the pattern is also converted to Unix-style
-		patternPath := strings.TrimPrefix(pattern.Pattern, "/")
-		patternPath = strings.TrimSuffix(patternPath, "/")
+		// Normalize the pattern to Unix-style and remove leading and trailing slashes
+		normalizedPattern := filepath.ToSlash(strings.TrimPrefix(pattern.Pattern, "/"))
+		normalizedPattern = strings.TrimSuffix(normalizedPattern, "/")
 
-		// Match if the file is in the directory or is an exact match
-		if strings.HasPrefix(relFilePath, patternPath) || relFilePath == patternPath {
-			matchedOwners = pattern.Owners
+		if IsWildcardPattern(normalizedPattern) {
+			matched, err := path.Match(normalizedPattern, relFilePath)
+			if err != nil {
+				fmt.Printf("Error matching pattern: %s to file: %s, error: %v\n", normalizedPattern, relFilePath, err)
+				continue
+			}
+
+			if matched {
+				matchedOwners = pattern.Owners
+			}
+		} else {
+			if relFilePath == normalizedPattern {
+				// Exact file or directory match
+				matchedOwners = pattern.Owners
+			} else if strings.HasPrefix(relFilePath, normalizedPattern+"/") {
+				// File is under the directory pattern
+				matchedOwners = pattern.Owners
+			}
 		}
 	}
+
 	return matchedOwners
 }
