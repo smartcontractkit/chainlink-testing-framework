@@ -95,7 +95,7 @@ type exitCoder interface {
 
 // runTests runs the tests for a given package and returns the path to the output file.
 func (r *Runner) runTests(packageName string) (string, bool, error) {
-	args := []string{"test", packageName, "-json", "-count=1"}
+	args := []string{"test", packageName, "-json", "-count=1", "-ldflags=-w -s"}
 	if r.UseRace {
 		args = append(args, "-race")
 	}
@@ -143,10 +143,8 @@ func (r *Runner) runTests(packageName string) (string, bool, error) {
 	cmd.Dir = r.ProjectPath
 	if r.CollectRawOutput {
 		cmd.Stdout = io.MultiWriter(tmpFile, r.rawOutputs[packageName])
-		cmd.Stderr = io.MultiWriter(tmpFile, r.rawOutputs[packageName])
 	} else {
 		cmd.Stdout = tmpFile
-		cmd.Stderr = tmpFile
 	}
 
 	err = cmd.Run()
