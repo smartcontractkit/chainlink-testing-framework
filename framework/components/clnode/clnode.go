@@ -41,7 +41,6 @@ type NodeInput struct {
 	Name                    string   `toml:"name"`
 	DockerFilePath          string   `toml:"docker_file"`
 	DockerContext           string   `toml:"docker_ctx"`
-	DockerImageName         string   `toml:"docker_image_name"`
 	PullImage               bool     `toml:"pull_image"`
 	CapabilitiesBinaryPaths []string `toml:"capabilities"`
 	CapabilityContainerDir  string   `toml:"capabilities_container_dir"`
