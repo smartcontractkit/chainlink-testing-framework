@@ -55,6 +55,8 @@ jobs:
       - name: Build and Load Docker Image
         uses: docker/build-push-action@v4
         with:
+          cache-from: type=gha,scope=ctf
+          cache-to: type=gha,scope=ctf,mode=max
           context: /home/runner/work/chainlink-testing-framework/chainlink-testing-framework/chainlink-repo
           file: /home/runner/work/chainlink-testing-framework/chainlink-testing-framework/chainlink-repo/plugins/chainlink.Dockerfile
           load: true
