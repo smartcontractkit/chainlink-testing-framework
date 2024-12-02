@@ -71,6 +71,7 @@ func DefaultTCName(name string) string {
 
 // runCommand executes a command and prints the output.
 func runCommand(name string, args ...string) error {
+	L.Info().Str("Command", name).Strs("Args", args).Msg("Executing os command")
 	cmd := exec.Command(name, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -79,6 +80,7 @@ func runCommand(name string, args ...string) error {
 
 // RunCommandDir executes a command in some directory and prints the output
 func RunCommandDir(dir, name string, args ...string) error {
+	L.Info().Str("Command", name).Strs("Args", args).Msg("Executing os command")
 	cmd := exec.Command(name, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -268,8 +270,8 @@ func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string) error {
 		err = runCommand(
 			"docker",
 			"build",
-			"--cache-from=type=gha,scope=tmp-cache-ctf",
-			"--cache-to=type=gha,scope=tmp-cache-ctf,mode=max",
+			"--cache-from=type=gha,scope=ctfdocker",
+			"--cache-to=type=gha,scope=ctfdocker,mode=max",
 			"-t",
 			nameAndTag,
 			"-f",
