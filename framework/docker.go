@@ -283,6 +283,7 @@ func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string) error {
 			"docker",
 			"buildx",
 			"build",
+			"--load",
 			"--cache-from",
 			fmt.Sprintf("type=gha,url=%s,token=%s,scope=ctfdocker", cacheURL, githubToken),
 			"--cache-to",

@@ -50,6 +50,8 @@ jobs:
         with:
           repository: smartcontractkit/chainlink
           path: chainlink-repo
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
       - name: Set up Environment Variables
         run: |
           echo "GITHUB_SERVER_URL=${{ github.server_url }}" >> $GITHUB_ENV
