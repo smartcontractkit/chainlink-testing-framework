@@ -52,6 +52,9 @@ func main() {
 	err := environment.New(&environment.Config{
       KeepConnection:    false,
       RemoveOnInterrupt: false,
+	  Labels: []string{"chain.link/product=myProduct", "chain.link/team=my-team", "chain.link/cost-center=test-tooling-load-test"},
+	  WorkloadLabels: map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
+      PodLabels: map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
     }).
 		AddHelm(ethereum.New(nil)).
 		AddHelm(chainlink.New(0, nil)).
@@ -65,6 +68,11 @@ func main() {
 Then run `go run examples/simple/env.go`
 
 Now you have your environment running, you can [connect](#connect-to-environment) to it later
+
+> [!NOTE]
+> `chain.link/*` labels are used for internal reporting and cost allocation. They are strictly required and validated. You won't be able to create a new environment without them.
+> In this tutorial we create almost all of them manually, but there are convenience functions to do it for you.
+> You can read more about labels [here](./labels.md)
 
 ## Connect to environment
 
@@ -84,7 +92,7 @@ You can get the namespace name from logs on creation time
 
 ## Debugging a new integration environment
 
-You can spin up environment and block on forwarder if you'd like to run some other code
+You can spin up environment and block on forwarder if you'd like to run some other code. Let's use convenience functions for creating `chain.link` labels.
 
 ```golang
 package main
@@ -96,8 +104,17 @@ import (
 )
 
 func main() {
+	nsLabels, err := GetRequiredChainLinkNamespaceLabels("my-product", "load")
+	require.NoError(t, err, "Error creating required chain.link labels for namespace")
+
+	workloadPodLabels, err := GetRequiredChainLinkWorkloadAndPodLabels("my-product", "load")
+	require.NoError(t, err, "Error creating required chain.link labels for workloads and pods")
+
+	nsLabels := append(nsLabel,s "type=construction-in-progress")
 	err := environment.New(&environment.Config{
-		Labels:            []string{"type=construction-in-progress"},
+		Labels:            nsLabels,
+        WorkloadLabels:    workloadPodLabels
+        PodLabels:	   workloadPodLabels
 		NamespacePrefix:   "new-environment",
 		KeepConnection:    true,
 		RemoveOnInterrupt: true,
@@ -134,6 +151,8 @@ type ConnectedChart interface {
 	GetValues() *map[string]any
 	// ExportData export deployment part data in the env
 	ExportData(e *Environment) error
+	// GetLabels get labels for component, it must return `chain.link/component` label
+	GetLabels() map[string]string
 }
 ```
 
@@ -153,6 +172,12 @@ func New(props *Props) environment.ConnectedChart {
 		Props: props,
 	}
 }
+
+func (m NewDeploymentPart) GetLabels() map[string]string {
+	return map[string]string{
+        "chain.link/component": "new-deployment-part",
+    }
+}
 ```
 
 Now let's tie them together
@@ -169,6 +194,9 @@ import (
 
 func main() {
 	e := environment.New(&environment.Config{
+        Labels: 	   []string{"chain.link/product=myProduct", "chain.link/team=my-team", "chain.link/cost-center=test-tooling-load-test"},
+        WorkloadLabels:	   map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
+        PodLabels:	   map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
 		NamespacePrefix:   "adding-new-deployment-part",
 		TTL:               3 * time.Hour,
 		KeepConnection:    true,
@@ -220,6 +248,8 @@ type ConnectedChart interface {
 	GetValues() *map[string]any
 	// ExportData export deployment part data in the env
 	ExportData(e *Environment) error
+    // GetLabels get labels for component, it must return `chain.link/component` label
+    GetLabels() map[string]string	
 }
 ```
 
@@ -269,7 +299,12 @@ import (
 )
 
 func main() {
-	e := environment.New(nil)
+    envConfig := &environment.Config{
+		Labels:         []string{"chain.link/product=myProduct", "chain.link/team=my-team", "chain.link/cost-center=test-tooling-load-test"},
+		WorkloadLabels: map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
+		PodLabels:      map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"}
+	}
+	e := environment.New(envConfig)
 	err := e.
 		AddChart(blockscout.New(&blockscout.Props{})). // you can also add cdk8s charts if you like Go code
 		AddHelm(ethereum.New(nil)).
@@ -322,10 +357,13 @@ import (
 )
 
 func main() {
-	e := environment.New(&environment.Config{
-		NamespacePrefix: "modified-env",
-		Labels:          []string{fmt.Sprintf("envType=Modified")},
-	}).
+	modifiedEnvConfig := &environment.Config{
+        NamespacePrefix: "modified-env",
+		Labels:         []string{"envType=Modified", "chain.link/product=myProduct", "chain.link/team=my-team", "chain.link/cost-center=test-tooling-load-test"},
+		WorkloadLabels: map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
+		PodLabels:      map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"}
+	}
+	e := environment.New(modifiedEnvConfig).
 		AddChart(blockscout.New(&blockscout.Props{
 			WsURL:   "ws://geth:8546",
 			HttpURL: "http://geth:8544",
@@ -371,16 +409,19 @@ import (
 )
 
 func main() {
-	e := environment.New(&environment.Config{
-		NamespacePrefix: "modified-env",
-		Labels:          []string{fmt.Sprintf("envType=Modified")},
-	}).
-		AddHelm(mockservercfg.New(nil)).
-		AddHelm(mockserver.New(nil)).
-		AddHelm(ethereum.New(nil)).
-		AddHelm(chainlink.New(0, map[string]any{
-			"replicas": 1,
-		}))
+    modifiedEnvConfig := &environment.Config{
+      NamespacePrefix: "modified-env",
+      Labels:         []string{"envType=Modified", "chain.link/product=myProduct", "chain.link/team=my-team", "chain.link/cost-center=test-tooling-load-test"},
+      WorkloadLabels: map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
+      PodLabels:      map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"}
+    }
+    e := environment.New(modifiedEnvConfig).
+      AddHelm(mockservercfg.New(nil)).
+      AddHelm(mockserver.New(nil)).
+      AddHelm(ethereum.New(nil)).
+      AddHelm(chainlink.New(0, map[string]any{
+          "replicas": 1,
+      }))
 	err := e.Run()
 	if err != nil {
 		panic(err)
@@ -427,6 +468,10 @@ const (
 	EnvVarUserDescription = "Owner of an environment"
 	EnvVarUserExample     = "Satoshi"
 
+    EnvVarTeam            = "CHAINLINK_USER_TEAM"
+    EnvVarTeamDescription = "Team to, which owner of the environment belongs to"
+    EnvVarTeamExample     = "BIX, CCIP, BCM"	
+
 	EnvVarCLCommitSha            = "CHAINLINK_COMMIT_SHA"
 	EnvVarCLCommitShaDescription = "The sha of the commit that you're running tests on. Mostly used for CI"
 	EnvVarCLCommitShaExample     = "${{ github.sha }}"
@@ -466,22 +511,55 @@ type Config struct {
 	Namespace string
 	// Labels is a set of labels applied to the namespace in a format of "key=value"
 	Labels            []string
-	nsLabels          *map[string]*string
-	// ReadyCheckData is settings for readiness probes checks for all deployment components
-	// checking that all pods are ready by default with 8 minutes timeout
-	//	&client.ReadyCheckData{
-	//		ReadinessProbeCheckSelector: "",
-	//		Timeout:                     15 * time.Minute,
-	//	}
-	ReadyCheckData    *client.ReadyCheckData
-	// DryRun if true, app will just generate a manifest in local dir
-	DryRun            bool
-	// InsideK8s used for long-running soak tests where you connect to env from the inside
-	InsideK8s         bool
-	// KeepConnection keeps connection until interrupted with a signal, useful when prototyping and debugging a new env
-	KeepConnection    bool
-	// RemoveOnInterrupt automatically removes an environment on interrupt
-	RemoveOnInterrupt bool
+    // PodLabels is a set of labels applied to every pod in the namespace
+    PodLabels map[string]string
+    // WorkloadLabels is a set of labels applied to every workload in the namespace
+    WorkloadLabels map[string]string
+    // PreventPodEviction if true sets a k8s annotation safe-to-evict=false to prevent pods from being evicted
+    // Note: This should only be used if your test is completely incapable of handling things like K8s rebalances without failing.
+    // If that is the case, it's worth the effort to make your test fault-tolerant soon. The alternative is expensive and infuriating.
+    PreventPodEviction bool
+    // Allow deployment to nodes with these tolerances
+    Tolerations []map[string]string
+    // Restrict deployment to only nodes matching a particular node role
+    NodeSelector map[string]string
+    // ReadyCheckData is settings for readiness probes checks for all deployment components
+    // checking that all pods are ready by default with 8 minutes timeout
+    //	&client.ReadyCheckData{
+    //		ReadinessProbeCheckSelector: "",
+    //		Timeout:                     15 * time.Minute,
+    //	}
+    ReadyCheckData *client.ReadyCheckData
+    // DryRun if true, app will just generate a manifest in local dir
+    DryRun bool
+    // InsideK8s used for long-running soak tests where you connect to env from the inside
+    InsideK8s bool
+    // SkipManifestUpdate will skip updating the manifest upon connecting to the environment. Should be true if you wish to update the manifest (e.g. upgrade pods)
+    SkipManifestUpdate bool
+    // KeepConnection keeps connection until interrupted with a signal, useful when prototyping and debugging a new env
+    KeepConnection bool
+    // RemoveOnInterrupt automatically removes an environment on interrupt
+    RemoveOnInterrupt bool
+    // UpdateWaitInterval an interval to wait for deployment update started
+    UpdateWaitInterval time.Duration
+    
+    // Remote Runner Specific Variables //
+    // JobImage an image to run environment as a job inside k8s
+    JobImage string
+    // Specify only if you want remote-runner to start with a specific name
+    RunnerName string
+    // Specify only if you want to mount reports from test run in remote runner
+    ReportPath string
+    // JobLogFunction a function that will be run on each log
+    JobLogFunction func(*Environment, string)
+    // Test the testing library current Test struct
+    Test *testing.T
+    // jobDeployed used to limit us to 1 remote runner deploy
+    jobDeployed bool
+    // detachRunner should we detach the remote runner after starting the test
+    detachRunner bool
+    // fundReturnFailed the status of a fund return
+    fundReturnFailed bool
 }
 ```
 
@@ -501,7 +579,11 @@ import (
 )
 
 func main() {
-	e := environment.New(nil).
+	e := environment.New(&environment.Config{
+        Labels:         []string{"chain.link/product=myProduct", "chain.link/team=my-team", "chain.link/cost-center=test-tooling-load-test"},
+        WorkloadLabels: map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
+        PodLabels:      map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"}
+      }).
 		AddHelm(ethereum.New(nil)).
 		AddHelm(chainlink.New(0, nil))
 	if err := e.Run(); err != nil {
@@ -530,9 +612,11 @@ import (
 )
 
 func main() {
-	e := environment.New(&environment.Config{
-		Labels: []string{fmt.Sprintf("envType=%s", pkg.EnvTypeEVM5)},
-	}).
+  e := environment.New(&environment.Config{
+    Labels:         []string{fmt.Sprintf("envType=%s", pkg.EnvTypeEVM5), "chain.link/product=myProduct", "chain.link/team=my-team", "chain.link/cost-center=test-tooling-load-test"},
+    WorkloadLabels: map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
+    PodLabels:      map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"}
+  }).
 		AddHelm(ethereum.New(nil)).
 		AddHelm(chainlink.New(0, nil))
 	err := e.Run()
@@ -583,7 +667,12 @@ import (
 )
 
 func main() {
-  e := environment.New(nil).
+	envConfig := &environment.Config{
+      Labels:         []string{"chain.link/product=myProduct", "chain.link/team=my-team", "chain.link/cost-center=test-tooling-load-test"},
+      WorkloadLabels: map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
+      PodLabels:      map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"}
+    }
+  e := environment.New(envConfig).
     AddChart(goc.New()).
     AddChart(dummy.New())
   if err := e.Run(); err != nil {
