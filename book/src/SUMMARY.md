@@ -13,6 +13,7 @@
     - [Creating your own components](./developing/developing_components.md)
     - [Fork Testing](./framework/fork.md)
     - [Quick Contracts Deployment](./framework/quick_deployment.md)
+    - [Verifying Contracts](./framework/verify.md)
     - [NodeSet with External Blockchain]()
     - [CLI](./framework/cli.md)
     - [Configuration](./framework/configuration.md)
