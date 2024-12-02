@@ -265,7 +265,17 @@ func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string) error {
 	var err error
 	once.Do(func() {
 		dfilePath := filepath.Join(dctx, dfile)
-		err = runCommand("docker", "build", "-t", nameAndTag, "-f", dfilePath, dctx)
+		err = runCommand(
+			"docker",
+			"build",
+			"--cache-from=type=gha,scope=tmp-cache-ctf",
+			"--cache-to=type=gha,scope=tmp-cache-ctf,mode=max",
+			"-t",
+			nameAndTag,
+			"-f",
+			dfilePath,
+			dctx,
+		)
 		if err != nil {
 			err = fmt.Errorf("failed to build Docker image: %w", err)
 		}
