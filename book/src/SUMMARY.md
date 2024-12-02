@@ -92,6 +92,7 @@
     - [Kubernetes](lib/k8s/KUBERNETES.md)
     - [K8s Remote Run](lib/k8s/REMOTE_RUN.md)
     - [K8s Tutorial](lib/k8s/TUTORIAL.md)
+    - [k8s chain.link labels](lib/k8s/labels.md)
     - [Config](lib/config/config.md)
     - [CRIB Connector](lib/crib.md)
 ---
