@@ -7,6 +7,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/seth"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
 
 type VerifyCfg struct {
@@ -21,25 +22,23 @@ func TestVerify(t *testing.T) {
 	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
 	require.NoError(t, err)
 
-	// connect 2 clients
 	scSrc, err := seth.NewClientBuilder().
 		WithRpcUrl(bc.Nodes[0].HostWSUrl).
-		WithGasPriceEstimations(true, 0, seth.Priority_Fast).
-		WithTracing(seth.TracingLevel_All, []string{seth.TraceOutput_Console}).
 		WithPrivateKeys([]string{blockchain.DefaultAnvilPrivateKey}).
 		Build()
 	require.NoError(t, err)
 	in.ContractsSrc.URL = bc.Nodes[0].HostWSUrl
-	c, err := onchain.NewProductOnChainDeployment(scSrc, in.ContractsSrc)
+	c, err := onchain.NewCounterDeployment(scSrc, in.ContractsSrc)
 	require.NoError(t, err)
 
-	t.Run("test something", func(t *testing.T) {
-		err := framework.VerifyContract(
-			bc.Nodes[0].HostHTTPUrl,
-			c.Addresses[0].String(),
-			"/Users/fahrenheit/GolandProjects/chainlink-testing-framework/framework/examples/myproject/example_components/onchain/src/Counter.sol",
+	t.Run("verify contract and test with debug", func(t *testing.T) {
+		// give Blockscout some time to index your transactions
+		// there is no API for that
+		time.Sleep(10 * time.Second)
+		err := blockchain.VerifyContract(bc, c.Addresses[0].String(),
+			"example_components/onchain",
+			"src/Counter.sol",
 			"Counter",
-			"http://localhost",
 		)
 		require.NoError(t, err)
 	})

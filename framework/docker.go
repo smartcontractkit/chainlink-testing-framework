@@ -77,6 +77,17 @@ func runCommand(name string, args ...string) error {
 	return cmd.Run()
 }
 
+// RunCommandDir executes a command in some directory and prints the output
+func RunCommandDir(dir, name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if dir != "" {
+		cmd.Dir = dir
+	}
+	return cmd.Run()
+}
+
 // DockerClient wraps a Docker API client and provides convenience methods
 type DockerClient struct {
 	cli *client.Client
