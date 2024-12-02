@@ -80,7 +80,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 	}
 	nodeOuts := make([]*clnode.Output, 0)
 
-	envImage := os.Getenv("CHAINLINK_IMAGE")
+	envImage := os.Getenv("CTF_CHAINLINK_IMAGE")
 
 	// to make it easier for chaos testing we use static ports
 	// there is no need to check them in advance since testcontainers-go returns a nice error
