@@ -171,7 +171,17 @@ func (lc *LokiClient) extractRawLogEntries(lokiResp LokiResponse) []LokiLogEntry
 
 	for _, result := range lokiResp.Data.Result {
 		for _, entry := range result.Values {
-			timestamp := entry[0].(string)
+			var timestamp string
+			if timestampString, ok := entry[0].(string); ok {
+				timestamp = timestampString
+			} else if timestampInt, ok := entry[0].(int); ok {
+				timestamp = fmt.Sprintf("%d", timestampInt)
+			} else if timestampFloat, ok := entry[0].(float64); ok {
+				timestamp = fmt.Sprintf("%f", timestampFloat)
+			} else {
+				lc.Logger.Error().Msg("Error parsing timestamp")
+				continue
+			}
 			logLine := entry[1].(string)
 			logEntries = append(logEntries, LokiLogEntry{
 				Timestamp: timestamp,

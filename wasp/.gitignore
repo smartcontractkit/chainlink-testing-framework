@@ -2,7 +2,7 @@ bin/
 .vscode/
 .idea/
 .direnv/
-
+performance_reports/
 k3dvolume/
 .private.env
 .envrc.ci

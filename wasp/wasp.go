@@ -105,8 +105,8 @@ const (
 
 // Segment load test schedule segment
 type Segment struct {
-	From     int64
-	Duration time.Duration
+	From     int64         `json:"from"`
+	Duration time.Duration `json:"duration"`
 }
 
 func (ls *Segment) Validate() error {
@@ -121,24 +121,24 @@ func (ls *Segment) Validate() error {
 
 // Config is for shared load test data and configuration
 type Config struct {
-	T                     *testing.T
-	GenName               string
-	LoadType              ScheduleType
-	Labels                map[string]string
-	LokiConfig            *LokiConfig
-	Schedule              []*Segment
-	RateLimitUnitDuration time.Duration
-	CallResultBufLen      int
-	StatsPollInterval     time.Duration
-	CallTimeout           time.Duration
-	SetupTimeout          time.Duration
-	TeardownTimeout       time.Duration
-	FailOnErr             bool
-	Gun                   Gun
-	VU                    VirtualUser
-	Logger                zerolog.Logger
-	SharedData            interface{}
-	SamplerConfig         *SamplerConfig
+	T                     *testing.T        `json:"-"`
+	GenName               string            `json:"generator_name"`
+	LoadType              ScheduleType      `json:"load_type"`
+	Labels                map[string]string `json:"-"`
+	LokiConfig            *LokiConfig       `json:"-"`
+	Schedule              []*Segment        `json:"schedule"`
+	RateLimitUnitDuration time.Duration     `json:"rate_limit_unit_duration"`
+	CallResultBufLen      int               `json:"-"`
+	StatsPollInterval     time.Duration     `json:"-"`
+	CallTimeout           time.Duration     `json:"call_timeout"`
+	SetupTimeout          time.Duration     `json:"-"`
+	TeardownTimeout       time.Duration     `json:"-"`
+	FailOnErr             bool              `json:"-"`
+	Gun                   Gun               `json:"-"`
+	VU                    VirtualUser       `json:"-"`
+	Logger                zerolog.Logger    `json:"-"`
+	SharedData            interface{}       `json:"-"`
+	SamplerConfig         *SamplerConfig    `json:"-"`
 	// calculated fields
 	duration time.Duration
 	// only available in cluster mode
