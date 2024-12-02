@@ -50,6 +50,11 @@ jobs:
         with:
           repository: smartcontractkit/chainlink
           path: chainlink-repo
+      - name: Set up Environment Variables
+        run: |
+          echo "GITHUB_SERVER_URL=${{ github.server_url }}" >> $GITHUB_ENV
+          echo "GITHUB_REPOSITORY=${{ github.repository }}" >> $GITHUB_ENV
+          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
       - name: Run System Tests
         env:
           CTF_CONFIGS: ${{ matrix.test.config }}
