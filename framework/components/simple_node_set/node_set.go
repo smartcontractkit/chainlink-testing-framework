@@ -7,6 +7,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 	"golang.org/x/sync/errgroup"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -79,6 +80,8 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 	}
 	nodeOuts := make([]*clnode.Output, 0)
 
+	envImage := os.Getenv("CHAINLINK_IMAGE")
+
 	// to make it easier for chaos testing we use static ports
 	// there is no need to check them in advance since testcontainers-go returns a nice error
 	var (
@@ -131,7 +134,6 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 					PullImage:               in.NodeSpecs[overrideIdx].Node.PullImage,
 					DockerFilePath:          in.NodeSpecs[overrideIdx].Node.DockerFilePath,
 					DockerContext:           in.NodeSpecs[overrideIdx].Node.DockerContext,
-					DockerImageName:         in.NodeSpecs[overrideIdx].Node.DockerImageName,
 					CapabilitiesBinaryPaths: in.NodeSpecs[overrideIdx].Node.CapabilitiesBinaryPaths,
 					CapabilityContainerDir:  in.NodeSpecs[overrideIdx].Node.CapabilityContainerDir,
 					TestConfigOverrides:     net,
@@ -139,6 +141,10 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 					TestSecretsOverrides:    in.NodeSpecs[overrideIdx].Node.TestSecretsOverrides,
 					UserSecretsOverrides:    in.NodeSpecs[overrideIdx].Node.UserSecretsOverrides,
 				},
+			}
+
+			if envImage != "" {
+				nodeSpec.Node.Image = envImage
 			}
 
 			dbURLHost := strings.Replace(dbOut.Url, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i), -1)

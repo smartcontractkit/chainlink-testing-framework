@@ -25,5 +25,7 @@ Create a configuration file `smoke.toml`
 
 These paths will work for `e2e/capabilities` in our main [repository](https://github.com/smartcontractkit/chainlink/tree/ctf-v2-tests/e2e/capabilities)
 
+Also check how you can add rebuild to your [components](../developing/developing_components.md#building-local-images).
+
 Summary:
 - We learned how we can quickly re-build local docker image for CL node

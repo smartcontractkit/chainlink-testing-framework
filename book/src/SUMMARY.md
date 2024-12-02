@@ -10,6 +10,7 @@
     - [NodeSet with Capabilities](./framework/nodeset_capabilities.md)
     - [NodeSet (Local Docker builds)](./framework/nodeset_docker_rebuild.md)
     - [NodeSet Compat Environment](./framework/nodeset_compatibility.md)
+    - [Creating your own components](./developing/developing_components.md)
     - [Fork Testing](./framework/fork.md)
     - [Quick Contracts Deployment](./framework/quick_deployment.md)
     - [NodeSet with External Blockchain]()
@@ -82,8 +83,6 @@
 
 ---
 
-- [Developing](developing.md)
-  - [Components](developing/developing_components.md)
 - [Releasing modules](releasing_modules.md)
 
 ---
