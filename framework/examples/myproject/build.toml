@@ -16,5 +16,5 @@
   [[nodeset.node_specs]]
 
     [nodeset.node_specs.node]
-      docker_ctx = "/home/runner/work/chainlink-testing-framework/chainlink-repo"
+      docker_ctx = "/home/runner/work/chainlink-testing-framework/chainlink-testing-framework/chainlink-repo"
       docker_file = "plugins/chainlink.Dockerfile"
