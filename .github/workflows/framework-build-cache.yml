@@ -16,6 +16,7 @@ jobs:
     permissions:
       id-token: write
       contents: write
+      actions: write
     strategy:
       fail-fast: false
       matrix:
