@@ -11,6 +11,7 @@ jobs:
       LOKI_TENANT_ID: promtail
       LOKI_URL: http://localhost:3030/loki/api/v1/push
       DOCKER_BUILDKIT: 1
+      DOCKER_CLI_EXPERIMENTAL: enabled
     runs-on: ubuntu-latest
     permissions:
       id-token: write
