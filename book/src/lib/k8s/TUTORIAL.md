@@ -114,7 +114,7 @@ func main() {
 	err := environment.New(&environment.Config{
 		Labels:            nsLabels,
         WorkloadLabels:    workloadPodLabels
-        PodLabels: 		   workloadPodLabels
+        PodLabels:	   workloadPodLabels
 		NamespacePrefix:   "new-environment",
 		KeepConnection:    true,
 		RemoveOnInterrupt: true,
@@ -194,9 +194,9 @@ import (
 
 func main() {
 	e := environment.New(&environment.Config{
-        Labels: []string{"chain.link/product=myProduct", "chain.link/team=my-team", "chain.link/cost-center=test-tooling-load-test"},
-        WorkloadLabels: map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
-        PodLabels: map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},		
+        Labels: 	   []string{"chain.link/product=myProduct", "chain.link/team=my-team", "chain.link/cost-center=test-tooling-load-test"},
+        WorkloadLabels:	   map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
+        PodLabels:	   map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
 		NamespacePrefix:   "adding-new-deployment-part",
 		TTL:               3 * time.Hour,
 		KeepConnection:    true,
