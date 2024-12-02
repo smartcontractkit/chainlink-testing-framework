@@ -269,6 +269,7 @@ func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string) error {
 		dfilePath := filepath.Join(dctx, dfile)
 		err = runCommand(
 			"docker",
+			"buildx",
 			"build",
 			"--cache-from=type=gha,scope=ctfdocker",
 			"--cache-to=type=gha,scope=ctfdocker,mode=max",
