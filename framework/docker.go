@@ -267,33 +267,7 @@ func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string) error {
 	var err error
 	once.Do(func() {
 		dfilePath := filepath.Join(dctx, dfile)
-
-		githubServerURL := os.Getenv("GITHUB_SERVER_URL")
-		githubRepository := os.Getenv("GITHUB_REPOSITORY")
-		githubToken := os.Getenv("GITHUB_TOKEN")
-
-		if githubServerURL == "" || githubRepository == "" || githubToken == "" {
-			L.Fatal().Err(err).Msg("Required environment variables are missing: GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_TOKEN")
-			return
-		}
-
-		// Construct the cache URL
-		cacheURL := fmt.Sprintf("%s/%s", githubServerURL, githubRepository)
-		err = runCommand(
-			"docker",
-			"buildx",
-			"build",
-			"--load",
-			"--cache-from",
-			fmt.Sprintf("type=gha,url=%s,token=%s,scope=ctfdocker", cacheURL, githubToken),
-			"--cache-to",
-			fmt.Sprintf("type=gha,url=%s,token=%s,scope=ctfdocker,mode=max", cacheURL, githubToken),
-			"-t",
-			nameAndTag,
-			"-f",
-			dfilePath,
-			dctx,
-		)
+		err = runCommand("docker", "build", "-t", nameAndTag, "-f", dfilePath, dctx)
 		if err != nil {
 			err = fmt.Errorf("failed to build Docker image: %w", err)
 		}

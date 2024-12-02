@@ -11,7 +11,7 @@ jobs:
       LOKI_TENANT_ID: promtail
       LOKI_URL: http://localhost:3030/loki/api/v1/push
       DOCKER_BUILDKIT: 1
-      DOCKER_CLI_EXPERIMENTAL: enabled
+      CTF_CHAINLINK_IMAGE: chainlink-local-image:latest
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -52,11 +52,13 @@ jobs:
           path: chainlink-repo
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: Set up Environment Variables
-        run: |
-          echo "GITHUB_SERVER_URL=${{ github.server_url }}" >> $GITHUB_ENV
-          echo "GITHUB_REPOSITORY=${{ github.repository }}" >> $GITHUB_ENV
-          echo "GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+      - name: Build and Load Docker Image
+        uses: docker/build-push-action@v4
+        with:
+          context: /home/runner/work/chainlink-testing-framework/chainlink-testing-framework/chainlink-repo
+          file: /home/runner/work/chainlink-testing-framework/chainlink-testing-framework/chainlink-repo/plugins/chainlink.Dockerfile
+          load: true
+          tags: ${{ env.CTF_CHAINLINK_IMAGE }}
       - name: Run System Tests
         env:
           CTF_CONFIGS: ${{ matrix.test.config }}
