@@ -281,6 +281,7 @@ func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string) error {
 		cacheURL := fmt.Sprintf("%s/%s", githubServerURL, githubRepository)
 		err = runCommand(
 			"docker",
+			"buildx",
 			"build",
 			"--cache-from",
 			fmt.Sprintf("type=gha,url=%s,token=%s,scope=ctfdocker", cacheURL, githubToken),
