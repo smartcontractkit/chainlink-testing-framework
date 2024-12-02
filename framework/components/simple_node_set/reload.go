@@ -9,7 +9,7 @@ import (
 // UpgradeNodeSet updates nodes configuration TOML files
 // this API is discouraged, however, you can use it if nodes require restart or configuration updates, temporarily!
 func UpgradeNodeSet(in *Input, bc *blockchain.Output, wait time.Duration) (*Output, error) {
-	_, err := chaos.ExecPumba("rm --volumes=false re2:node.*|ns-postgresql.*", wait)
+	_, err := chaos.ExecPumba("rm --volumes=false re2:^node.*|ns-postgresql.*", wait)
 	if err != nil {
 		return nil, err
 	}
