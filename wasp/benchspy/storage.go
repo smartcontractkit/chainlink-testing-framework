@@ -16,17 +16,17 @@ import (
 
 const DEFAULT_DIRECTORY = "performance_reports"
 
-type LocalReportStorage struct {
+type LocalStorage struct {
 	Directory string `json:"directory"`
 }
 
-func (l *LocalReportStorage) defaultDirectoryIfEmpty() {
+func (l *LocalStorage) defaultDirectoryIfEmpty() {
 	if l.Directory == "" {
 		l.Directory = DEFAULT_DIRECTORY
 	}
 }
 
-func (l *LocalReportStorage) Store(testName, commitOrTag string, report interface{}) (string, error) {
+func (l *LocalStorage) Store(testName, commitOrTag string, report interface{}) (string, error) {
 	l.defaultDirectoryIfEmpty()
 	asJson, err := json.MarshalIndent(report, "", " ")
 	if err != nil {
@@ -60,7 +60,7 @@ func (l *LocalReportStorage) Store(testName, commitOrTag string, report interfac
 	return abs, nil
 }
 
-func (l *LocalReportStorage) Load(testName, commitOrTag string, report interface{}) error {
+func (l *LocalStorage) Load(testName, commitOrTag string, report interface{}) error {
 	l.defaultDirectoryIfEmpty()
 	if testName == "" {
 		return errors.New("test name is empty. Please set it and try again")

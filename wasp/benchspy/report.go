@@ -11,17 +11,17 @@ import (
 // StandardReport is a report that contains all the necessary data for a performance test
 type StandardReport struct {
 	BasicData
-	LocalReportStorage
+	LocalStorage
 	ResourceReporter
 	QueryExecutors []QueryExecutor `json:"query_executors"`
 }
 
 func (b *StandardReport) Store() (string, error) {
-	return b.LocalReportStorage.Store(b.TestName, b.CommitOrTag, b)
+	return b.LocalStorage.Store(b.TestName, b.CommitOrTag, b)
 }
 
 func (b *StandardReport) Load() error {
-	return b.LocalReportStorage.Load(b.TestName, b.CommitOrTag, b)
+	return b.LocalStorage.Load(b.TestName, b.CommitOrTag, b)
 }
 
 func (b *StandardReport) Fetch(ctx context.Context) error {
@@ -107,7 +107,7 @@ func (s *StandardReport) UnmarshalJSON(data []byte) error {
 		var executor QueryExecutor
 		switch typeIndicator.Kind {
 		case "loki":
-			executor = &LokiQuery{}
+			executor = &LokiQueryExecutor{}
 		default:
 			return fmt.Errorf("unknown query executor type: %s", typeIndicator.Kind)
 		}

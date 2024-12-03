@@ -52,7 +52,7 @@ func TestBenchSpyWithLokiQuery(t *testing.T) {
 		},
 	}
 
-	lokiQueryExecutor := benchspy.NewLokiQuery(
+	lokiQueryExecutor := benchspy.NewLokiQueryExecutor(
 		map[string]string{
 			"vu_over_time": fmt.Sprintf("max_over_time({branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"stats\", gen_name=~\"%s\"} | json | unwrap current_instances [10s]) by (node_id, go_test_name, gen_name)", label, label, t.Name(), gen.Cfg.GenName),
 		},
@@ -77,7 +77,7 @@ func TestBenchSpyWithLokiQuery(t *testing.T) {
 			TestName:    t.Name(),
 			CommitOrTag: "e7fc5826a572c09f8b93df3b9f674113372ce924",
 		},
-		LocalReportStorage: benchspy.LocalReportStorage{
+		LocalStorage: benchspy.LocalStorage{
 			Directory: "test_performance_reports",
 		},
 	}
@@ -154,7 +154,7 @@ func TestBenchSpyWithTwoLokiQueries(t *testing.T) {
 		},
 	}
 
-	lokiQueryExecutor := benchspy.NewLokiQuery(
+	lokiQueryExecutor := benchspy.NewLokiQueryExecutor(
 		map[string]string{
 			"vu_over_time":        fmt.Sprintf("max_over_time({branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"stats\", gen_name=~\"%s\"} | json | unwrap current_instances [10s]) by (node_id, go_test_name, gen_name)", label, label, t.Name(), gen.Cfg.GenName),
 			"responses_over_time": fmt.Sprintf("sum(count_over_time({branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"responses\", gen_name=~\"%s\"} [1s])) by (node_id, go_test_name, gen_name)", label, label, t.Name(), gen.Cfg.GenName),
@@ -180,7 +180,7 @@ func TestBenchSpyWithTwoLokiQueries(t *testing.T) {
 			TestName:    t.Name(),
 			CommitOrTag: "e7fc5826a572c09f8b93df3b9f674113372ce924",
 		},
-		LocalReportStorage: benchspy.LocalReportStorage{
+		LocalStorage: benchspy.LocalStorage{
 			Directory: "test_performance_reports",
 		},
 	}

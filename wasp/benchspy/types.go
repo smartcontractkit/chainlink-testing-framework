@@ -5,15 +5,27 @@ import (
 	"time"
 )
 
-type Report interface {
+type Storer interface {
 	// Store stores the report in a persistent storage and returns the path to it, or an error
 	Store() (string, error)
 	// Load loads the report from a persistent storage and returns it, or an error
 	Load() error
+}
+
+type Fetcher interface {
 	// Fetch populates the report with the data from the test
 	Fetch() error
+}
+
+type Comparator interface {
 	// IsComparable checks whether both reports can be compared (e.g. test config is the same, app's resources are the same, queries or metrics used are the same, etc.), and an error if any difference is found
-	IsComparable(otherReport Report) error
+	IsComparable(otherReport Reporter) error
+}
+
+type Reporter interface {
+	Storer
+	Fetcher
+	Comparator
 }
 
 type QueryExecutor interface {

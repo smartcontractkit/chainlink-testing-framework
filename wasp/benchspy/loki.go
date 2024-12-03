@@ -14,8 +14,8 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func NewLokiQuery(queries map[string]string, lokiConfig *wasp.LokiConfig) *LokiQuery {
-	return &LokiQuery{
+func NewLokiQueryExecutor(queries map[string]string, lokiConfig *wasp.LokiConfig) *LokiQueryExecutor {
+	return &LokiQueryExecutor{
 		Kind:         "loki",
 		Queries:      queries,
 		LokiConfig:   lokiConfig,
@@ -23,7 +23,7 @@ func NewLokiQuery(queries map[string]string, lokiConfig *wasp.LokiConfig) *LokiQ
 	}
 }
 
-type LokiQuery struct {
+type LokiQueryExecutor struct {
 	Kind string `json:"kind"`
 	// Test metrics
 	StartTime time.Time `json:"start_time"`
@@ -35,27 +35,27 @@ type LokiQuery struct {
 	// Performance queries results
 	// can be anything, avg RPS, amount of errors, 95th percentile of CPU utilization, etc
 	QueryResults map[string][]string `json:"query_results"`
-	// In case something went wrong
+	// In case something went wrong, but sure we need it
 	Errors []error `json:"errors"`
 
 	LokiConfig *wasp.LokiConfig `json:"-"`
 }
 
-func (l *LokiQuery) Results() map[string][]string {
+func (l *LokiQueryExecutor) Results() map[string][]string {
 	return l.QueryResults
 }
 
-func (l *LokiQuery) IsComparable(otherQueryExecutor QueryExecutor) error {
+func (l *LokiQueryExecutor) IsComparable(otherQueryExecutor QueryExecutor) error {
 	otherType := reflect.TypeOf(otherQueryExecutor)
 
 	if otherType != reflect.TypeOf(l) {
 		return fmt.Errorf("expected type %s, got %s", reflect.TypeOf(l), otherType)
 	}
 
-	return l.compareLokiQueries(otherQueryExecutor.(*LokiQuery).Queries)
+	return l.compareLokiQueries(otherQueryExecutor.(*LokiQueryExecutor).Queries)
 }
 
-func (l *LokiQuery) Validate() error {
+func (l *LokiQueryExecutor) Validate() error {
 	if len(l.Queries) == 0 {
 		return errors.New("there are no Loki queries, there's nothing to fetch. Please set them and try again")
 	}
@@ -66,7 +66,7 @@ func (l *LokiQuery) Validate() error {
 	return nil
 }
 
-func (l *LokiQuery) Execute(ctx context.Context) error {
+func (l *LokiQueryExecutor) Execute(ctx context.Context) error {
 	splitAuth := strings.Split(l.LokiConfig.BasicAuth, ":")
 	var basicAuth client.LokiBasicAuth
 	if len(splitAuth) == 2 {
@@ -130,7 +130,7 @@ func (l *LokiQuery) Execute(ctx context.Context) error {
 	return nil
 }
 
-func (l *LokiQuery) compareLokiQueries(other map[string]string) error {
+func (l *LokiQueryExecutor) compareLokiQueries(other map[string]string) error {
 	this := l.Queries
 	if len(this) != len(other) {
 		return fmt.Errorf("queries count is different. Expected %d, got %d", len(this), len(other))
@@ -155,7 +155,7 @@ func (l *LokiQuery) compareLokiQueries(other map[string]string) error {
 	return nil
 }
 
-func (l *LokiQuery) TimeRange(start, end time.Time) {
+func (l *LokiQueryExecutor) TimeRange(start, end time.Time) {
 	l.StartTime = start
 	l.EndTime = end
 }
