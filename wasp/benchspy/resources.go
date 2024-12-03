@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"sync"
-	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/pkg/errors"
@@ -49,14 +47,14 @@ type PodResources struct {
 	LimitsMemory   int64
 }
 
-func (r *ResourceReporter) FetchResources() error {
+func (r *ResourceReporter) FetchResources(ctx context.Context) error {
 	if r.ExecutionEnvironment == ExecutionEnvironment_Docker {
-		err := r.fetchDockerResources()
+		err := r.fetchDockerResources(ctx)
 		if err != nil {
 			return err
 		}
 	} else {
-		err := r.fetchK8sResources()
+		err := r.fetchK8sResources(ctx)
 		if err != nil {
 			return err
 		}
@@ -65,7 +63,7 @@ func (r *ResourceReporter) FetchResources() error {
 	return nil
 }
 
-func (r *ResourceReporter) fetchK8sResources() error {
+func (r *ResourceReporter) fetchK8sResources(ctx context.Context) error {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return errors.Wrapf(err, "failed to get in-cluster config, are you sure this is running in a k8s cluster?")
@@ -82,9 +80,9 @@ func (r *ResourceReporter) fetchK8sResources() error {
 		return errors.Wrapf(err, "failed to read namespace file %s", namespaceFile)
 	}
 
-	pods, err := clientset.CoreV1().Pods(string(namespace)).List(context.TODO(), metav1.ListOptions{})
+	pods, err := clientset.CoreV1().Pods(string(namespace)).List(ctx, metav1.ListOptions{})
 	if err != nil {
-		panic(err)
+		return errors.Wrapf(err, "failed to list pods in namespace %s", namespace)
 	}
 
 	r.PodsResources = make(map[string]*PodResources)
@@ -101,22 +99,21 @@ func (r *ResourceReporter) fetchK8sResources() error {
 	return nil
 }
 
-func (r *ResourceReporter) fetchDockerResources() error {
+func (r *ResourceReporter) fetchDockerResources(ctx context.Context) error {
 	provider, err := tc.NewDockerProvider()
 	if err != nil {
 		return fmt.Errorf("failed to create Docker provider: %w", err)
 	}
 
-	containers, err := provider.Client().ContainerList(context.Background(), container.ListOptions{All: true})
+	containers, err := provider.Client().ContainerList(ctx, container.ListOptions{All: true})
 	if err != nil {
 		return fmt.Errorf("failed to list Docker containers: %w", err)
 	}
 
-	eg := &errgroup.Group{}
+	eg, errCtx := errgroup.WithContext(ctx)
 	pattern := regexp.MustCompile(r.ResourceSelectionPattern)
 
-	var dockerResources = make(map[string]*DockerResources)
-	resourceMutex := sync.Mutex{}
+	resultCh := make(chan map[string]*DockerResources, len(containers))
 
 	for _, containerInfo := range containers {
 		eg.Go(func() error {
@@ -125,24 +122,25 @@ func (r *ResourceReporter) fetchDockerResources() error {
 				return nil
 			}
 
-			ctx, cancelFn := context.WithTimeout(context.Background(), 30*time.Second)
-			info, err := provider.Client().ContainerInspect(ctx, containerInfo.ID)
+			info, err := provider.Client().ContainerInspect(errCtx, containerInfo.ID)
 			if err != nil {
-				cancelFn()
 				return errors.Wrapf(err, "failed to inspect container %s", containerName)
 			}
 
-			cancelFn()
-			resourceMutex.Lock()
-			dockerResources[containerName] = &DockerResources{
+			result := make(map[string]*DockerResources)
+			result[containerName] = &DockerResources{
 				NanoCPUs:   info.HostConfig.NanoCPUs,
 				CpuShares:  info.HostConfig.CPUShares,
 				Memory:     info.HostConfig.Memory,
 				MemorySwap: info.HostConfig.MemorySwap,
 			}
-			resourceMutex.Unlock()
 
-			return nil
+			select {
+			case resultCh <- result:
+				return nil
+			case <-errCtx.Done():
+				return errCtx.Err() // Allows goroutine to exit if timeout occurs
+			}
 		})
 	}
 
@@ -150,7 +148,14 @@ func (r *ResourceReporter) fetchDockerResources() error {
 		return errors.Wrapf(err, "failed to fetch Docker resources")
 	}
 
-	r.ContainerResources = dockerResources
+	r.ContainerResources = make(map[string]*DockerResources)
+
+	for i := 0; i < len(containers); i++ {
+		result := <-resultCh
+		for name, res := range result {
+			r.ContainerResources[name] = res
+		}
+	}
 
 	return nil
 }

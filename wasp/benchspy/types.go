@@ -1,6 +1,9 @@
 package benchspy
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type Report interface {
 	// Store stores the report in a persistent storage and returns the path to it, or an error
@@ -17,7 +20,7 @@ type QueryExecutor interface {
 	// Validate checks if the QueryExecutor has all the necessary data and configuration to execute the queries
 	Validate() error
 	// Execute executes the queries and populates the QueryExecutor with the results
-	Execute() error
+	Execute(ctx context.Context) error
 	// Results returns the results of the queries, where key is the name of the query and value is the result
 	Results() map[string][]string
 	// IsComparable checks whether both QueryExecutors can be compared (e.g. they have the same type, queries are the same, etc.), and returns an error (if any difference is found)

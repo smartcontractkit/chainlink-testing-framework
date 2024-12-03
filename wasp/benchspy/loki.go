@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
+	"golang.org/x/sync/errgroup"
 )
 
 func NewLokiQuery(queries map[string]string, lokiConfig *wasp.LokiConfig) *LokiQuery {
@@ -65,7 +66,7 @@ func (l *LokiQuery) Validate() error {
 	return nil
 }
 
-func (l *LokiQuery) Execute() error {
+func (l *LokiQuery) Execute(ctx context.Context) error {
 	splitAuth := strings.Split(l.LokiConfig.BasicAuth, ":")
 	var basicAuth client.LokiBasicAuth
 	if len(splitAuth) == 2 {
@@ -76,41 +77,54 @@ func (l *LokiQuery) Execute() error {
 	}
 
 	l.QueryResults = make(map[string][]string)
+	resultCh := make(chan map[string][]string, len(l.Queries))
+	errGroup, errCtx := errgroup.WithContext(ctx)
 
-	// TODO this can also be parallelized, just remember to add a mutex for writing to results map
 	for name, query := range l.Queries {
-		queryParams := client.LokiQueryParams{
-			Query:     query,
-			StartTime: l.StartTime,
-			EndTime:   l.EndTime,
-			Limit:     1000, //TODO make this configurable
-		}
+		errGroup.Go(func() error {
+			queryParams := client.LokiQueryParams{
+				Query:     query,
+				StartTime: l.StartTime,
+				EndTime:   l.EndTime,
+				Limit:     1000, //TODO make this configurable
+			}
 
-		parsedLokiUrl, err := url.Parse(l.LokiConfig.URL)
-		if err != nil {
-			return errors.Wrapf(err, "failed to parse Loki URL %s", l.LokiConfig.URL)
-		}
+			parsedLokiUrl, err := url.Parse(l.LokiConfig.URL)
+			if err != nil {
+				return errors.Wrapf(err, "failed to parse Loki URL %s", l.LokiConfig.URL)
+			}
 
-		lokiUrl := parsedLokiUrl.Scheme + "://" + parsedLokiUrl.Host
-		lokiClient := client.NewLokiClient(lokiUrl, l.LokiConfig.TenantID, basicAuth, queryParams)
+			lokiUrl := parsedLokiUrl.Scheme + "://" + parsedLokiUrl.Host
+			lokiClient := client.NewLokiClient(lokiUrl, l.LokiConfig.TenantID, basicAuth, queryParams)
 
-		ctx, cancelFn := context.WithTimeout(context.Background(), l.LokiConfig.Timeout)
-		rawLogs, err := lokiClient.QueryLogs(ctx)
-		if err != nil {
-			l.Errors = append(l.Errors, err)
-			cancelFn()
-			continue
-		}
+			rawLogs, err := lokiClient.QueryLogs(errCtx)
+			if err != nil {
+				return errors.Wrapf(err, "failed to query logs for %s", name)
+			}
 
-		cancelFn()
-		l.QueryResults[name] = []string{}
-		for _, log := range rawLogs {
-			l.QueryResults[name] = append(l.QueryResults[name], log.Log)
-		}
+			resultMap := make(map[string][]string)
+			for _, log := range rawLogs {
+				resultMap[name] = append(resultMap[name], log.Log)
+			}
+
+			select {
+			case resultCh <- resultMap:
+				return nil
+			case <-errCtx.Done():
+				return errCtx.Err() // Allows goroutine to exit if timeout occurs
+			}
+		})
 	}
 
-	if len(l.Errors) > 0 {
-		return errors.New("there were errors while fetching the results. Please check the errors and try again")
+	if err := errGroup.Wait(); err != nil {
+		return errors.Wrap(err, "failed to execute Loki queries")
+	}
+
+	for i := 0; i < len(l.Queries); i++ {
+		result := <-resultCh
+		for name, logs := range result {
+			l.QueryResults[name] = logs
+		}
 	}
 
 	return nil

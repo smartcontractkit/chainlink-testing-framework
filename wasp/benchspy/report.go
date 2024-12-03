@@ -1,8 +1,11 @@
 package benchspy
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // StandardReport is a report that contains all the necessary data for a performance test
@@ -21,26 +24,35 @@ func (b *StandardReport) Load() error {
 	return b.LocalReportStorage.Load(b.TestName, b.CommitOrTag, b)
 }
 
-func (b *StandardReport) Fetch() error {
+func (b *StandardReport) Fetch(ctx context.Context) error {
 	basicErr := b.BasicData.Validate()
 	if basicErr != nil {
 		return basicErr
 	}
 
-	// TODO parallelize it
+	errGroup, errCtx := errgroup.WithContext(ctx)
+
 	for _, queryExecutor := range b.QueryExecutors {
-		queryExecutor.TimeRange(b.TestStart, b.TestEnd)
+		errGroup.Go(func() error {
+			queryExecutor.TimeRange(b.TestStart, b.TestEnd)
 
-		if validateErr := queryExecutor.Validate(); validateErr != nil {
-			return validateErr
-		}
+			if validateErr := queryExecutor.Validate(); validateErr != nil {
+				return validateErr
+			}
 
-		if execErr := queryExecutor.Execute(); execErr != nil {
-			return execErr
-		}
+			if execErr := queryExecutor.Execute(errCtx); execErr != nil {
+				return execErr
+			}
+
+			return nil
+		})
 	}
 
-	resourceErr := b.FetchResources()
+	if err := errGroup.Wait(); err != nil {
+		return err
+	}
+
+	resourceErr := b.FetchResources(ctx)
 	if resourceErr != nil {
 		return resourceErr
 	}
