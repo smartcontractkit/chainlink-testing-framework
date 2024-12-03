@@ -31,7 +31,7 @@ jobs:
 
       - name: Configure git for private repository and install go doc generator
         env:
-          GOPRIVATE: github.com/smartcontractkit/generate-go-function
+          GOPRIVATE: github.com/smartcontractkit/generate-go-function-docs
         run: |
           git config --global \
           url."https://x-access-token:${{ steps.setup-github-token-read.outputs.access-token }}@github.com/".insteadOf "https://github.com/"
