@@ -56,7 +56,7 @@ var AggregateResultsCmd = &cobra.Command{
 
 		// Output results to JSON files
 		if len(resultsToSave) > 0 {
-			return reports.SaveFilteredResultsAndLogs(outputResultsPath, outputLogsPath, allReport)
+			return reports.SaveFilteredResultsAndLogs(outputResultsPath, outputLogsPath, allReport, codeOwnersPath != "")
 		}
 		return nil
 	},
@@ -70,5 +70,4 @@ func init() {
 	AggregateResultsCmd.Flags().BoolVarP(&filterFailed, "filter-failed", "f", false, "If true, filter and output only failed tests based on the max-pass-ratio threshold")
 	AggregateResultsCmd.Flags().StringVarP(&codeOwnersPath, "codeowners-path", "c", "", "Path to the CODEOWNERS file")
 	AggregateResultsCmd.Flags().StringVarP(&projectPath, "project-path", "r", ".", "The path to the Go project. Default is the current directory. Useful for subprojects")
-
 }

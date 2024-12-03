@@ -193,6 +193,7 @@ func PrintTests(
 	w io.Writer,
 	tests []TestResult,
 	maxPassRatio float64,
+	includeCodeOwners bool, // Include code owners in the output. Set to true if test results have code owners
 ) (runs, passes, fails, skips, panickedTests, racedTests, flakyTests int) {
 	p := message.NewPrinter(language.English) // For formatting numbers
 	sortTestResults(tests)
@@ -210,19 +211,17 @@ func PrintTests(
 		"**Package**",
 		"**Package Panicked?**",
 		"**Avg Duration**",
-		"**Code Owners**",
+	}
+
+	if includeCodeOwners {
+		headers = append(headers, "**Code Owners**")
 	}
 
 	// Build test rows and summary data
 	rows := [][]string{}
 	for _, test := range tests {
 		if test.PassRatio < maxPassRatio {
-			owners := "Unknown"
-			if len(test.CodeOwners) > 0 {
-				owners = strings.Join(test.CodeOwners, ", ")
-			}
-
-			rows = append(rows, []string{
+			row := []string{
 				test.TestName,
 				fmt.Sprintf("%.2f%%", test.PassRatio*100),
 				fmt.Sprintf("%t", test.Panic),
@@ -235,8 +234,17 @@ func PrintTests(
 				test.TestPackage,
 				fmt.Sprintf("%t", test.PackagePanic),
 				avgDuration(test.Durations).String(),
-				owners,
-			})
+			}
+
+			if includeCodeOwners {
+				owners := "Unknown"
+				if len(test.CodeOwners) > 0 {
+					owners = strings.Join(test.CodeOwners, ", ")
+				}
+				row = append(row, owners)
+			}
+
+			rows = append(rows, row)
 		}
 
 		runs += test.Runs
@@ -350,7 +358,7 @@ func PrintTests(
 }
 
 // MarkdownSummary builds a summary of test results in markdown format, handy for reporting in CI and Slack
-func MarkdownSummary(w io.Writer, testReport *TestReport, maxPassRatio float64) {
+func MarkdownSummary(w io.Writer, testReport *TestReport, maxPassRatio float64, includeCodeOwners bool) {
 	var (
 		avgPassRatio = 1.0
 		testsData    = bytes.NewBuffer(nil)
@@ -401,7 +409,7 @@ func MarkdownSummary(w io.Writer, testReport *TestReport, maxPassRatio float64) 
 		return
 	}
 
-	allRuns, passes, _, _, _, _, _ := PrintTests(testsData, tests, maxPassRatio)
+	allRuns, passes, _, _, _, _, _ := PrintTests(testsData, tests, maxPassRatio, includeCodeOwners)
 	if allRuns > 0 {
 		avgPassRatio = float64(passes) / float64(allRuns)
 	}
@@ -414,7 +422,7 @@ func MarkdownSummary(w io.Writer, testReport *TestReport, maxPassRatio float64) 
 }
 
 // Helper function to save filtered results and logs to specified paths
-func SaveFilteredResultsAndLogs(outputResultsPath, outputLogsPath string, report *TestReport) error {
+func SaveFilteredResultsAndLogs(outputResultsPath, outputLogsPath string, report *TestReport, includeCodeOwners bool) error {
 	if outputResultsPath != "" {
 		if err := os.MkdirAll(filepath.Dir(outputResultsPath), 0755); err != nil { //nolint:gosec
 			return fmt.Errorf("error creating output directory: %w", err)
@@ -430,7 +438,7 @@ func SaveFilteredResultsAndLogs(outputResultsPath, outputLogsPath string, report
 			return fmt.Errorf("error creating markdown file: %w", err)
 		}
 		defer summaryFile.Close()
-		MarkdownSummary(summaryFile, report, 1.0)
+		MarkdownSummary(summaryFile, report, 1.0, includeCodeOwners)
 		fmt.Printf("Test results saved to %s and summary to %s\n", jsonFileName, mdFileName)
 	} else {
 		fmt.Println("No failed tests found based on the specified threshold and min pass ratio.")
