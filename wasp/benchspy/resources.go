@@ -1,10 +1,11 @@
-package comparator
+package benchspy
 
 import (
 	"context"
 	"fmt"
 	"os"
 	"regexp"
+	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -20,7 +21,7 @@ type ExecutionEnvironment string
 
 const (
 	ExecutionEnvironment_Docker                  ExecutionEnvironment = "docker"
-	ExecutionEnvironment_k8sExecutionEnvironment                      = "k8s"
+	ExecutionEnvironment_k8sExecutionEnvironment ExecutionEnvironment = "k8s"
 )
 
 type ResourceReporter struct {
@@ -115,6 +116,7 @@ func (r *ResourceReporter) fetchDockerResources() error {
 	pattern := regexp.MustCompile(r.ResourceSelectionPattern)
 
 	var dockerResources = make(map[string]*DockerResources)
+	resourceMutex := sync.Mutex{}
 
 	for _, containerInfo := range containers {
 		eg.Go(func() error {
@@ -131,12 +133,14 @@ func (r *ResourceReporter) fetchDockerResources() error {
 			}
 
 			cancelFn()
+			resourceMutex.Lock()
 			dockerResources[containerName] = &DockerResources{
 				NanoCPUs:   info.HostConfig.NanoCPUs,
 				CpuShares:  info.HostConfig.CPUShares,
 				Memory:     info.HostConfig.Memory,
 				MemorySwap: info.HostConfig.MemorySwap,
 			}
+			resourceMutex.Unlock()
 
 			return nil
 		})

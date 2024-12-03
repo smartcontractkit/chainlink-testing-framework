@@ -1,4 +1,4 @@
-package comparator
+package benchspy
 
 import (
 	"bytes"
@@ -14,21 +14,32 @@ import (
 	"github.com/pkg/errors"
 )
 
-type LocalReportStorage struct{}
+const DEFAULT_DIRECTORY = "performance_reports"
+
+type LocalReportStorage struct {
+	Directory string `json:"directory"`
+}
+
+func (l *LocalReportStorage) defaultDirectoryIfEmpty() {
+	if l.Directory == "" {
+		l.Directory = DEFAULT_DIRECTORY
+	}
+}
 
 func (l *LocalReportStorage) Store(testName, commitOrTag string, report interface{}) (string, error) {
+	l.defaultDirectoryIfEmpty()
 	asJson, err := json.MarshalIndent(report, "", " ")
 	if err != nil {
 		return "", err
 	}
 
-	if _, err := os.Stat(directory); os.IsNotExist(err) {
-		if err := os.MkdirAll(directory, 0755); err != nil {
-			return "", errors.Wrapf(err, "failed to create directory %s", directory)
+	if _, err := os.Stat(l.Directory); os.IsNotExist(err) {
+		if err := os.MkdirAll(l.Directory, 0755); err != nil {
+			return "", errors.Wrapf(err, "failed to create directory %s", l.Directory)
 		}
 	}
 
-	reportFilePath := filepath.Join(directory, fmt.Sprintf("%s-%s.json", testName, commitOrTag))
+	reportFilePath := filepath.Join(l.Directory, fmt.Sprintf("%s-%s.json", testName, commitOrTag))
 	reportFile, err := os.Create(reportFilePath)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create file %s", reportFilePath)
@@ -50,12 +61,13 @@ func (l *LocalReportStorage) Store(testName, commitOrTag string, report interfac
 }
 
 func (l *LocalReportStorage) Load(testName, commitOrTag string, report interface{}) error {
+	l.defaultDirectoryIfEmpty()
 	if testName == "" {
 		return errors.New("test name is empty. Please set it and try again")
 	}
 
 	if commitOrTag == "" {
-		tagsOrCommits, tagErr := extractTagsOrCommits(directory)
+		tagsOrCommits, tagErr := extractTagsOrCommits(l.Directory)
 		if tagErr != nil {
 			return tagErr
 		}
@@ -66,7 +78,7 @@ func (l *LocalReportStorage) Load(testName, commitOrTag string, report interface
 		}
 		commitOrTag = latestCommit
 	}
-	reportFilePath := filepath.Join(directory, fmt.Sprintf("%s-%s.json", testName, commitOrTag))
+	reportFilePath := filepath.Join(l.Directory, fmt.Sprintf("%s-%s.json", testName, commitOrTag))
 
 	reportFile, err := os.Open(reportFilePath)
 	if err != nil {
