@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
@@ -25,6 +26,8 @@ var AggregateResultsCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("Error aggregating results: %v", err)
 		}
+
+		fmt.Printf("PROJECT PATH: %s\n", projectPath)
 
 		// Map test results to paths
 		err = reports.MapTestResultsToPaths(allReport, projectPath)
@@ -70,5 +73,4 @@ func init() {
 	AggregateResultsCmd.Flags().BoolVarP(&filterFailed, "filter-failed", "f", false, "If true, filter and output only failed tests based on the max-pass-ratio threshold")
 	AggregateResultsCmd.Flags().StringVarP(&codeOwnersPath, "codeowners-path", "c", "", "Path to the CODEOWNERS file")
 	AggregateResultsCmd.Flags().StringVarP(&projectPath, "project-path", "r", ".", "The path to the Go project. Default is the current directory. Useful for subprojects")
-
 }
