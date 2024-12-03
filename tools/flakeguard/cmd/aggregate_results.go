@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
@@ -26,8 +25,6 @@ var AggregateResultsCmd = &cobra.Command{
 		if err != nil {
 			log.Fatalf("Error aggregating results: %v", err)
 		}
-
-		fmt.Printf("PROJECT PATH: %s\n", projectPath)
 
 		// Map test results to paths
 		err = reports.MapTestResultsToPaths(allReport, projectPath)
