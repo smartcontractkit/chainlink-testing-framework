@@ -11,6 +11,9 @@ jobs:
   generate_docs_new_pr:
     if: ${{ contains(github.event.pull_request.labels.*.name, 'generate_go_docs') }}
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read    
 
     steps:
       - name: Setup GitHub Token for reading Generate Go Doc Repo
