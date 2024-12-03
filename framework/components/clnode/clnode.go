@@ -13,15 +13,17 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"text/template"
 	"time"
 )
 
 const (
-	DefaultHTTPPort = "6688"
-	DefaultP2PPort  = "6690"
-	TmpImageName    = "chainlink-tmp:latest"
+	DefaultHTTPPort     = "6688"
+	DefaultP2PPort      = "6690"
+	TmpImageName        = "chainlink-tmp:latest"
+	CustomPortSeparator = ":"
 )
 
 var (
@@ -50,7 +52,7 @@ type NodeInput struct {
 	UserSecretsOverrides    string   `toml:"user_secrets_overrides"`
 	HTTPPort                int      `toml:"port"`
 	P2PPort                 int      `toml:"p2p_port"`
-	CustomPorts             []int    `toml:"custom_ports"`
+	CustomPorts             []string `toml:"custom_ports"`
 }
 
 // Output represents Chainlink node output, nodes and databases connection URLs
@@ -153,12 +155,6 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	} else {
 		containerName = framework.DefaultTCName("node")
 	}
-	customPorts := make([]string, 0)
-	for _, p := range in.Node.CustomPorts {
-		customPorts = append(customPorts, fmt.Sprintf("%d/tcp", p))
-	}
-	exposedPorts := []string{httpPort}
-	exposedPorts = append(exposedPorts, customPorts...)
 
 	portBindings := nat.PortMap{
 		nat.Port(httpPort): []nat.PortBinding{
@@ -168,14 +164,35 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 			},
 		},
 	}
-	for _, p := range customPorts {
-		portBindings[nat.Port(p)] = []nat.PortBinding{
-			{
-				HostIP:   "0.0.0.0",
-				HostPort: p,
-			},
+	customPorts := make([]string, 0)
+	for _, p := range in.Node.CustomPorts {
+		if strings.Contains(p, CustomPortSeparator) {
+			pp := strings.Split(p, CustomPortSeparator)
+			if len(pp) != 2 {
+				return nil, errors.New("custom_ports has ':' but you must provide both ports")
+			}
+			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", pp[1]))
+			portBindings[nat.Port(fmt.Sprintf("%s/tcp", pp[1]))] = []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: fmt.Sprintf("%s/tcp", pp[0]),
+				},
+			}
+			framework.L.Warn().Str("PortHost", pp[0]).Str("PortInternal", pp[1]).Send()
+		} else {
+			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", p))
+			framework.L.Warn().Str("Port", p).Send()
+			portBindings[nat.Port(fmt.Sprintf("%s/tcp", p))] = []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: fmt.Sprintf("%s/tcp", p),
+				},
+			}
 		}
 	}
+	exposedPorts := []string{httpPort}
+	exposedPorts = append(exposedPorts, customPorts...)
+	framework.L.Warn().Any("ExposedPorts", exposedPorts).Send()
 
 	req := tc.ContainerRequest{
 		AlwaysPullImage: in.Node.PullImage,
