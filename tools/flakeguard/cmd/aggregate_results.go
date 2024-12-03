@@ -56,7 +56,7 @@ var AggregateResultsCmd = &cobra.Command{
 
 		// Output results to JSON files
 		if len(resultsToSave) > 0 {
-			return reports.SaveFilteredResultsAndLogs(outputResultsPath, outputLogsPath, allReport)
+			return reports.SaveFilteredResultsAndLogs(outputResultsPath, outputLogsPath, allReport, codeOwnersPath != "")
 		}
 		return nil
 	},
