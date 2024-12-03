@@ -36,17 +36,21 @@ func TestLokiComparator(t *testing.T) {
 	require.NoError(t, err)
 
 	currentReport := comparator.BasicReport{
-		GeneratorConfigs: map[string]*wasp.Config{
-			gen.Cfg.GenName: gen.Cfg,
+		BasicData: comparator.BasicData{
+			GeneratorConfigs: map[string]*wasp.Config{
+				gen.Cfg.GenName: gen.Cfg,
+			},
+			TestName:    "TestLokiComparator",
+			TestStart:   time.Now(),
+			CommitOrTag: "e7fc5826a572c09f8b93df3b9f674113372ce923",
 		},
-		ExecutionEnvironment: comparator.ExecutionEnvironment_Docker,
-		LokiConfig:           gen.Cfg.LokiConfig,
+		ResourceReporter: comparator.ResourceReporter{
+			ExecutionEnvironment: comparator.ExecutionEnvironment_Docker,
+		},
+		LokiConfig: gen.Cfg.LokiConfig,
 		LokiQueries: map[string]string{
 			"vu_over_time": fmt.Sprintf("max_over_time({branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"stats\", gen_name=~\"%s\"} | json | unwrap current_instances [10s]) by (node_id, go_test_name, gen_name)", label, label, t.Name(), gen.Cfg.GenName),
 		},
-		TestName:    "TestLokiComparator",
-		TestStart:   time.Now(),
-		CommitOrTag: "e7fc5826a572c09f8b93df3b9f674113372ce923",
 	}
 
 	gen.Run(true)
@@ -59,7 +63,9 @@ func TestLokiComparator(t *testing.T) {
 	require.NoError(t, storeErr, "failed to store current report", path)
 
 	previousReport := comparator.BasicReport{
-		TestName: "TestLokiComparator",
+		BasicData: comparator.BasicData{
+			TestName: "TestLokiComparator",
+		},
 	}
 	loadErr := previousReport.Load()
 	require.NoError(t, loadErr, "failed to load previous report")
