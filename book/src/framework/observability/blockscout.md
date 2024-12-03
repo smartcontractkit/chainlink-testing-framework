@@ -26,8 +26,3 @@ Blockscout isn’t ideal for local, ephemeral environments, as it won’t re-ind
 
 Otherwise, use `ctf bs r` each time you restart your test with a fresh docker environment.
 </div>
-
-<div class="warning">
-
-Blockscout integration is still WIP, for now Blockscout reads only one node that is on `:8545`, all our blockchain implementation expose this port by default.
-</div>

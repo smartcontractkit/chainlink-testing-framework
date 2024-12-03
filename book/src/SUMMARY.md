@@ -10,8 +10,10 @@
     - [NodeSet with Capabilities](./framework/nodeset_capabilities.md)
     - [NodeSet (Local Docker builds)](./framework/nodeset_docker_rebuild.md)
     - [NodeSet Compat Environment](./framework/nodeset_compatibility.md)
+    - [Creating your own components](./developing/developing_components.md)
     - [Fork Testing](./framework/fork.md)
     - [Quick Contracts Deployment](./framework/quick_deployment.md)
+    - [Verifying Contracts](./framework/verify.md)
     - [NodeSet with External Blockchain]()
     - [CLI](./framework/cli.md)
     - [Configuration](./framework/configuration.md)
@@ -33,8 +35,7 @@
     - [Blockscout](framework/observability/blockscout.md)
     - [Components](framework/components/overview.md)
         - [Blockchains](framework/components/blockchains/overview.md)
-            - [Anvil](framework/components/blockchains/anvil.md)
-            - [Geth]()
+            - [EVM](framework/components/blockchains/evm.md)
             - [Optimism Stack]()
             - [Arbitrum Stack]()
         - [Chainlink](framework/components/chainlink.md)
@@ -83,8 +84,6 @@
 
 ---
 
-- [Developing](developing.md)
-  - [Components](developing/developing_components.md)
 - [Releasing modules](releasing_modules.md)
 
 ---
@@ -93,6 +92,7 @@
     - [Kubernetes](lib/k8s/KUBERNETES.md)
     - [K8s Remote Run](lib/k8s/REMOTE_RUN.md)
     - [K8s Tutorial](lib/k8s/TUTORIAL.md)
+    - [k8s chain.link labels](lib/k8s/labels.md)
     - [Config](lib/config/config.md)
     - [CRIB Connector](lib/crib.md)
 ---

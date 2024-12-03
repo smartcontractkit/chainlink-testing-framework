@@ -56,6 +56,14 @@ func main() {
 							return PrettyPrintTOML(in, in)
 						},
 					},
+					{
+						Name:    "clean",
+						Aliases: []string{"c"},
+						Usage:   "Removes all cache files",
+						Action: func(c *cli.Context) error {
+							return RemoveCacheFiles()
+						},
+					},
 				},
 			},
 			{
@@ -239,5 +247,29 @@ func PrettyPrintTOML(inputFile string, outputFile string) error {
 		return fmt.Errorf("error writing to output file: %v", err)
 	}
 	framework.L.Info().Str("File", outputFile).Msg("File cleaned up and saved")
+	return nil
+}
+
+func RemoveCacheFiles() error {
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current directory: %w", err)
+	}
+	err = filepath.Walk(currentDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("error accessing path %s: %w", path, err)
+		}
+		if !info.IsDir() && strings.HasSuffix(info.Name(), "-cache.toml") {
+			err := os.Remove(path)
+			if err != nil {
+				return fmt.Errorf("failed to remove file %s: %w", path, err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	framework.L.Info().Msg("All cache files has been removed")
 	return nil
 }

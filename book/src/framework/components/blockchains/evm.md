@@ -1,27 +1,33 @@
-# Anvil
-[Anvil](https://book.getfoundry.sh/anvil/) is a Foundry local EVM blockchain simulator
+# EVM Blockchain Clients
+
+We support 3 EVM clients at the moment: [Geth](https://geth.ethereum.org/docs/fundamentals/command-line-options), [Anvil](https://book.getfoundry.sh/anvil/) and [Besu](https://besu.hyperledger.org/)
 
 ## Configuration
 ```toml
 [blockchain_a]
-  # Blockchain node type, can be "anvil" or "geth"
+  # Blockchain node type, can be "anvil", "geth" or "besu
   type = "anvil"
   # Chain ID
-  chain_id = "31337"
+  chain_id = "1337"
   # Anvil command line params, ex.: docker_cmd_params = ['--block-time=1', '...']
   docker_cmd_params = []
   # Docker image and tag
   image = "f4hrenh9it/foundry:latest"
-  # External port to expose
+  # External port to expose (HTTP API)
   port = "8545"
+  # External port to expose (WS API)
+  port_ws = "8546"
   # Pulls the image every time if set to 'true', used like that in CI. Can be set to 'false' to speed up local runs
   pull_image = false
 
   # Outputs are the results of deploying a component that can be used by another component
   [blockchain_a.out]
-    chain_id = "31337"
     # If 'use_cache' equals 'true' we skip component setup when we run the test and return the outputs
     use_cache = true
+    # Chain ID
+    chain_id = "1337"
+    # Chain family, "evm", "solana", "cosmos", "op", "arb"
+    family = "evm"
 
     [[blockchain_a.out.nodes]]
       # URLs to access the node(s) inside docker network, used by other components
@@ -57,4 +63,14 @@ func TestDON(t *testing.T) {
 	require.NoError(t, err)
 }
 ```
+
+## Test Private Keys
+
+For `Geth` and `Anvil` we use the same key
+```
+Public: 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
+Private: ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+```
+
+Test keys for `Besu` can be found [here](https://besu.hyperledger.org/23.4.1/private-networks/reference/accounts-for-testing)
 

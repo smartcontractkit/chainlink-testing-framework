@@ -25,22 +25,26 @@ var (
 )
 
 type Runner struct {
-	ProjectPath          string   // Path to the Go project directory.
-	Verbose              bool     // If true, provides detailed logging.
-	RunCount             int      // Number of times to run the tests.
-	UseRace              bool     // Enable race detector.
-	UseShuffle           bool     // Enable test shuffling. -shuffle=on flag.
-	ShuffleSeed          string   // Set seed for test shuffling -shuffle={seed} flag. Must be used with UseShuffle.
-	FailFast             bool     // Stop on first test failure.
-	SkipTests            []string // Test names to exclude.
-	SelectedTestPackages []string // Explicitly selected packages to run.
-	CollectRawOutput     bool     // Collect test output for later inspection.
+	ProjectPath          string        // Path to the Go project directory.
+	prettyProjectPath    string        // Go project package path, formatted for pretty printing.
+	Verbose              bool          // If true, provides detailed logging.
+	RunCount             int           // Number of times to run the tests.
+	UseRace              bool          // Enable race detector.
+	Timeout              time.Duration // Test timeout
+	Tags                 []string      // Build tags.
+	UseShuffle           bool          // Enable test shuffling. -shuffle=on flag.
+	ShuffleSeed          string        // Set seed for test shuffling -shuffle={seed} flag. Must be used with UseShuffle.
+	FailFast             bool          // Stop on first test failure.
+	SkipTests            []string      // Test names to exclude.
+	SelectTests          []string      // Test names to include.
+	SelectedTestPackages []string      // Explicitly selected packages to run.
+	CollectRawOutput     bool          // Set to true to collect test output for later inspection.
 	rawOutputs           map[string]*bytes.Buffer
 }
 
 // RunTests executes the tests for each provided package and aggregates all results.
 // It returns all test results and any error encountered during testing.
-func (r *Runner) RunTests() ([]reports.TestResult, error) {
+func (r *Runner) RunTests() (*reports.TestReport, error) {
 	var jsonFilePaths []string
 	for _, p := range r.SelectedTestPackages {
 		for i := 0; i < r.RunCount; i++ {
@@ -65,18 +69,18 @@ func (r *Runner) RunTests() ([]reports.TestResult, error) {
 		}
 	}
 
-	reports, err := parseTestResults(jsonFilePaths)
+	results, err := parseTestResults(r.RunCount, jsonFilePaths)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
-	for index, report := range reports {
-		if report.Panics >= r.RunCount { // This feels hacky, but there aren't any elegant solutions
-			reports[index].Failures = 0 // We can sometimes double-count panics as failures
-			reports[index].Panics = r.RunCount
-			reports[index].Runs = r.RunCount
-		}
-	}
-	return reports, nil
+	return &reports.TestReport{
+		GoProject:     r.prettyProjectPath,
+		TestRunCount:  r.RunCount,
+		RaceDetection: r.UseRace,
+		ExcludedTests: r.SkipTests,
+		SelectedTests: r.SelectTests,
+		Results:       results,
+	}, nil
 }
 
 // RawOutput retrieves the raw output from the test runs, if CollectRawOutput enabled.
@@ -95,6 +99,12 @@ func (r *Runner) runTests(packageName string) (string, bool, error) {
 	if r.UseRace {
 		args = append(args, "-race")
 	}
+	if r.Timeout > 0 {
+		args = append(args, fmt.Sprintf("-timeout=%s", r.Timeout.String()))
+	}
+	if len(r.Tags) > 0 {
+		args = append(args, fmt.Sprintf("-tags=%s", strings.Join(r.Tags, ",")))
+	}
 	if r.UseShuffle {
 		if r.ShuffleSeed != "" {
 			args = append(args, fmt.Sprintf("-shuffle=%s", r.ShuffleSeed))
@@ -105,6 +115,10 @@ func (r *Runner) runTests(packageName string) (string, bool, error) {
 	if len(r.SkipTests) > 0 {
 		skipPattern := strings.Join(r.SkipTests, "|")
 		args = append(args, fmt.Sprintf("-skip=%s", skipPattern))
+	}
+	if len(r.SelectTests) > 0 {
+		selectPattern := strings.Join(r.SelectTests, "$|^")
+		args = append(args, fmt.Sprintf("-run=^%s$", selectPattern))
 	}
 	args = append(args, "2>/dev/null")
 
@@ -119,15 +133,18 @@ func (r *Runner) runTests(packageName string) (string, bool, error) {
 	}
 	defer tmpFile.Close()
 
+	r.prettyProjectPath, err = prettyProjectPath(r.ProjectPath)
+	if err != nil {
+		r.prettyProjectPath = r.ProjectPath
+		log.Printf("WARN: failed to get pretty project path: %v", err)
+	}
 	// Run the command with output directed to the file
 	cmd := exec.Command("go", args...)
 	cmd.Dir = r.ProjectPath
 	if r.CollectRawOutput {
 		cmd.Stdout = io.MultiWriter(tmpFile, r.rawOutputs[packageName])
-		cmd.Stderr = io.MultiWriter(tmpFile, r.rawOutputs[packageName])
 	} else {
 		cmd.Stdout = tmpFile
-		cmd.Stderr = tmpFile
 	}
 
 	err = cmd.Run()
@@ -155,13 +172,24 @@ func (e entry) String() string {
 	return fmt.Sprintf("Action: %s, Test: %s, Package: %s, Output: %s, Elapsed: %f", e.Action, e.Test, e.Package, e.Output, e.Elapsed)
 }
 
-// parseTestResults reads the test output files and returns the parsed test results.
-func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
+// parseTestResults reads the test output Go test json output files and returns processed TestResults.
+//
+// Go test results have a lot of edge cases and strange behavior, especially when running in parallel,
+// and any panic throws the whole thing into disarray.
+// If any test in packageA panics, all tests in packageA will stop running and never report their results.
+// The test that panicked will report its panic in Go test output, but will often misattribute the panic to a different test.
+// It will also sometimes mark the test with both a panic and a failure, double-counting the test run.
+// It's possible to properly attribute panics to the test that caused them, but it's not possible to distinguish between
+// panics and failures at that point.
+// Subtests add more complexity, as panics in subtests are only reported in their parent's output,
+// and cannot be accurately attributed to the subtest that caused them.
+func parseTestResults(expectedRuns int, filePaths []string) ([]reports.TestResult, error) {
 	var (
 		testDetails         = make(map[string]*reports.TestResult) // Holds run, pass counts, and other details for each test
 		panickedPackages    = map[string]struct{}{}                // Packages with tests that panicked
 		racePackages        = map[string]struct{}{}                // Packages with tests that raced
 		packageLevelOutputs = map[string][]string{}                // Package-level outputs
+		testsWithSubTests   = map[string][]string{}                // Parent tests that have subtests
 		panicDetectionMode  = false
 		raceDetectionMode   = false
 		detectedEntries     = []entry{} // race or panic entries
@@ -199,11 +227,15 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 				return nil, fmt.Errorf("failed to parse json test output near lines:\n%s\nerror: %w", strings.Join(context, "\n"), err)
 			}
 
-			// Only create TestResult for test-level entries
 			var result *reports.TestResult
 			if entryLine.Test != "" {
-				// Determine the key
+				// If it's a subtest, associate it with its parent for easier processing of panics later
 				key := fmt.Sprintf("%s/%s", entryLine.Package, entryLine.Test)
+				parentTestName, subTestName := parseSubTest(entryLine.Test)
+				if subTestName != "" {
+					parentTestKey := fmt.Sprintf("%s/%s", entryLine.Package, parentTestName)
+					testsWithSubTests[parentTestKey] = append(testsWithSubTests[parentTestKey], subTestName)
+				}
 
 				if _, exists := testDetails[key]; !exists {
 					testDetails[key] = &reports.TestResult{
@@ -244,20 +276,21 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 
 			if (panicDetectionMode || raceDetectionMode) && entryLine.Action == "fail" { // End of panic or race output
 				if panicDetectionMode {
-					panicTest, err := attributePanicToTest(entryLine.Package, detectedEntries)
+					panicTest, timeout, err := attributePanicToTest(entryLine.Package, detectedEntries)
 					if err != nil {
 						return nil, err
 					}
 					panicTestKey := fmt.Sprintf("%s/%s", entryLine.Package, panicTest)
-					testDetails[panicTestKey].Panicked = true
-					testDetails[panicTestKey].Panics++
+					testDetails[panicTestKey].Panic = true
+					testDetails[panicTestKey].Timeout = timeout
+					testDetails[panicTestKey].Failures++
 					testDetails[panicTestKey].Runs++
 					// TODO: durations and panics are weird in the same way as Runs: lots of double-counting
 					// duration, err := time.ParseDuration(strconv.FormatFloat(entryLine.Elapsed, 'f', -1, 64) + "s")
 					// if err != nil {
 					// 	return nil, fmt.Errorf("failed to parse duration: %w", err)
 					// }
-					// testDetails[raceTestKey].Durations = append(testDetails[raceTestKey].Durations, duration)
+					// testDetails[panicTestKey].Durations = append(testDetails[panicTestKey].Durations, duration)
 					testDetails[panicTestKey].Outputs = append(testDetails[panicTestKey].Outputs, entryLine.Output)
 					for _, entry := range detectedEntries {
 						if entry.Test == "" {
@@ -272,7 +305,8 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 						return nil, err
 					}
 					raceTestKey := fmt.Sprintf("%s/%s", entryLine.Package, raceTest)
-					testDetails[raceTestKey].Races++
+					testDetails[raceTestKey].Race = true
+					testDetails[raceTestKey].Failures++
 					testDetails[raceTestKey].Runs++
 					// TODO: durations and races are weird in the same way as Runs: lots of double-counting
 					// duration, err := time.ParseDuration(strconv.FormatFloat(entryLine.Elapsed, 'f', -1, 64) + "s")
@@ -305,7 +339,6 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 					}
 					result.Durations = append(result.Durations, duration)
 					result.Successes++
-					result.Runs++
 				}
 			case "fail":
 				if entryLine.Test != "" {
@@ -315,23 +348,20 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 					}
 					result.Durations = append(result.Durations, duration)
 					result.Failures++
-					result.Runs++
 				}
 			case "skip":
 				if entryLine.Test != "" {
-					duration, err := time.ParseDuration(strconv.FormatFloat(entryLine.Elapsed, 'f', -1, 64) + "s")
-					if err != nil {
-						return nil, fmt.Errorf("failed to parse duration: %w", err)
-					}
-					result.Durations = append(result.Durations, duration)
 					result.Skipped = true
 					result.Skips++
-					result.Runs++
 				}
 			}
-			if entryLine.Test != "" && result.Runs > 0 {
-				result.PassRatio = float64(result.Successes) / float64(result.Runs)
-				result.PassRatioPercentage = fmt.Sprintf("%.0f%%", result.PassRatio*100)
+			if entryLine.Test != "" {
+				result.Runs = result.Successes + result.Failures
+				if result.Runs > 0 {
+					result.PassRatio = float64(result.Successes) / float64(result.Runs)
+				} else {
+					result.PassRatio = 1
+				}
 			}
 		}
 
@@ -348,9 +378,38 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 	}
 
 	var results []reports.TestResult
+	// Check through parent tests for panics, and bubble possible panics down
+	for parentTestKey, subTests := range testsWithSubTests {
+		if parentTestResult, exists := testDetails[parentTestKey]; exists {
+			if parentTestResult.Panic {
+				for _, subTest := range subTests {
+					subTestKey := fmt.Sprintf("%s/%s", parentTestKey, subTest)
+					if _, exists := testDetails[subTestKey]; exists {
+						if testDetails[subTestKey].Failures > 0 { // If the parent test panicked, any of its subtests that failed could be the culprit
+							testDetails[subTestKey].Panic = true
+							testDetails[subTestKey].Outputs = append(testDetails[subTestKey].Outputs, "Panic in parent test")
+						}
+					} else {
+						fmt.Printf("WARN: expected to fine subtest '%s' inside parent test '%s', but not found\n", parentTestKey, subTestKey)
+					}
+				}
+			}
+		} else {
+			fmt.Printf("WARN: expected to find parent test '%s' for sub tests, but not found\n", parentTestKey)
+		}
+	}
 	for _, result := range testDetails {
+		if result.Runs > expectedRuns { // Panics can introduce double-counting test failures, this is a hacky correction for it
+			if result.Panic {
+				result.Failures = expectedRuns
+				result.Runs = expectedRuns
+			} else {
+				fmt.Printf("WARN: '%s' has %d test runs, exceeding expected amount of %d in an unexpected way, this may be due to oddly presented panics\n", result.TestName, result.Runs, expectedRuns)
+			}
+		}
+		// If a package panicked, all tests in that package will be marked as panicking
 		if _, panicked := panickedPackages[result.TestPackage]; panicked {
-			result.PackagePanicked = true
+			result.PackagePanic = true
 		}
 		if outputs, exists := packageLevelOutputs[result.TestPackage]; exists {
 			result.PackageOutputs = outputs
@@ -363,26 +422,81 @@ func parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 
 // properly attributes panics to the test that caused them
 // Go JSON output gets confused, especially when tests are run in parallel
-func attributePanicToTest(panicPackage string, panicEntries []entry) (string, error) {
+func attributePanicToTest(panicPackage string, panicEntries []entry) (test string, timeout bool, err error) {
 	regexSanitizePanicPackage := filepath.Base(panicPackage)
-	panicAttributionRe := regexp.MustCompile(fmt.Sprintf(`%s\.(Test.*?)\(.*\)`, regexSanitizePanicPackage))
+	panicAttributionRe := regexp.MustCompile(fmt.Sprintf(`%s\.(Test[^\.\(]+)`, regexSanitizePanicPackage))
+	timeoutAttributionRe := regexp.MustCompile(`(Test.*?)\W+\(.*\)`)
+	entriesOutputs := []string{}
 	for _, entry := range panicEntries {
+		entriesOutputs = append(entriesOutputs, entry.Output)
 		if matches := panicAttributionRe.FindStringSubmatch(entry.Output); len(matches) > 1 {
-			return matches[1], nil
+			return matches[1], false, nil
+		}
+		if matches := timeoutAttributionRe.FindStringSubmatch(entry.Output); len(matches) > 1 {
+			return matches[1], true, nil
 		}
 	}
-	return "", fmt.Errorf("failed to attribute panic to test, using regex: %s", panicAttributionRe.String())
+	return "", false, fmt.Errorf("failed to attribute panic to test, using regex %s on these strings:\n%s", panicAttributionRe.String(), strings.Join(entriesOutputs, ""))
 }
 
 // properly attributes races to the test that caused them
 // Go JSON output gets confused, especially when tests are run in parallel
 func attributeRaceToTest(racePackage string, raceEntries []entry) (string, error) {
 	regexSanitizeRacePackage := filepath.Base(racePackage)
-	raceAttributionRe := regexp.MustCompile(fmt.Sprintf(`%s\.(Test[^\.]+?)\(.*\)`, regexSanitizeRacePackage))
+	raceAttributionRe := regexp.MustCompile(fmt.Sprintf(`%s\.(Test[^\.\(]+)`, regexSanitizeRacePackage))
+	entriesOutputs := []string{}
 	for _, entry := range raceEntries {
+		entriesOutputs = append(entriesOutputs, entry.Output)
 		if matches := raceAttributionRe.FindStringSubmatch(entry.Output); len(matches) > 1 {
 			return matches[1], nil
 		}
 	}
-	return "", fmt.Errorf("failed to attribute race to test, using regex: %s", raceAttributionRe.String())
+	return "", fmt.Errorf("failed to attribute race to test, using regex: %s on these strings:\n%s", raceAttributionRe.String(), strings.Join(entriesOutputs, ""))
+}
+
+// parseSubTest checks if a test name is a subtest and returns the parent and sub names
+func parseSubTest(testName string) (parentTestName, subTestName string) {
+	parts := strings.SplitN(testName, "/", 2)
+	if len(parts) == 1 {
+		return parts[0], ""
+	}
+	return parts[0], parts[1]
+}
+
+// prettyProjectPath returns the project path formatted for pretty printing in results
+func prettyProjectPath(projectPath string) (string, error) {
+	// Walk up the directory structure to find go.mod
+	absPath, err := filepath.Abs(projectPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve absolute path: %w", err)
+	}
+	dir := absPath
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			break
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir { // Reached the root without finding go.mod
+			return "", fmt.Errorf("go.mod not found in project path, started at %s, ended at %s", projectPath, dir)
+		}
+		dir = parent
+	}
+
+	// Read go.mod to extract the module path
+	goModPath := filepath.Join(dir, "go.mod")
+	goModData, err := os.ReadFile(goModPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read go.mod: %w", err)
+	}
+
+	for _, line := range strings.Split(string(goModData), "\n") {
+		if strings.HasPrefix(line, "module ") {
+			goProject := strings.TrimSpace(strings.TrimPrefix(line, "module "))
+			projectPath = strings.TrimPrefix(projectPath, goProject)
+			return filepath.Join(goProject, projectPath), nil
+		}
+	}
+
+	return "", fmt.Errorf("module path not found in go.mod")
 }

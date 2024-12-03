@@ -30,3 +30,13 @@ Run with `--help` to see all flags for the commands.
 ### JSON Output
 
 Both `find` and `run` commands support JSON output `--json`, making it easy to integrate Flakeguard with CI/CD pipelines and reporting tools.
+
+### Example Run
+
+You can find example usage and see outputs with:
+
+```sh
+make example       # Run an example flow of running tests and aggregating results
+make example_panic # Run example flow with panicking tests
+ls example_results # See results of each run and aggregation
+```

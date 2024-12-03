@@ -1,0 +1,4 @@
+[contracts_src]
+[blockchain_a]
+  type = "anvil"
+  docker_cmd_params = ["-b", "1"]
