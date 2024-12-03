@@ -5,18 +5,22 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/docker/docker/api/types/container"
-	tc "github.com/testcontainers/testcontainers-go"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
 	"github.com/pkg/errors"
+	tc "github.com/testcontainers/testcontainers-go"
+	"golang.org/x/sync/errgroup"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
@@ -38,14 +42,13 @@ type Report interface {
 	Fetch() error
 	// IsComparable checks whether both reports can be compared (e.g. test config is the same, app's resources are the same, queries or metrics used are the same, etc.), and returns a map of the differences and an error (if any difference is found)
 	IsComparable(otherReport Report) (bool, map[string]string, error)
-	//// Compare compares two reports and returns a map of the differences and an error (if any difference is found). You should call it only after IsComparable returns true
-	//Compare(other Report) (bool, map[string]string, error)
 }
 
 var directory = "performance_reports"
 
 type BasicReport struct {
-	TestName             string               `json:"test_name"`
+	TestName string `json:"test_name"`
+	// either k8s or docker
 	ExecutionEnvironment ExecutionEnvironment `json:"execution_environment"`
 
 	// Test metrics
@@ -57,12 +60,13 @@ type BasicReport struct {
 	GeneratorConfigs map[string]*wasp.Config `json:"generator_configs"`
 
 	// AUT metrics
-	PodsResources            map[string]*PodResources    `json:"pods_resources"`
-	ContainerResources       map[string]*DockerResources `json:"container_resources"`
-	ResourceSelectionPattern string                      `json:"resource_selection_pattern"`
+	PodsResources      map[string]*PodResources    `json:"pods_resources"`
+	ContainerResources map[string]*DockerResources `json:"container_resources"`
+	// regex pattern to select the resources we want to fetch
+	ResourceSelectionPattern string `json:"resource_selection_pattern"`
 
 	// Performance queries
-	// a map of name to query template, ex: avg(rate(cpu_usage_seconds_total[5m])) @ 1663915200
+	// a map of name to query template, ex: "average cpu usage": "avg(rate(cpu_usage_seconds_total[5m]))"
 	LokiQueries map[string]string `json:"loki_queries"`
 	// Performance queries results
 	// can be anything, avg RPS, amount of errors, 95th percentile of CPU utilization, etc
@@ -81,8 +85,10 @@ type DockerResources struct {
 }
 
 type PodResources struct {
-	CPU    int64
-	Memory int64
+	RequestsCPU    int64
+	RequestsMemory int64
+	LimitsCPU      int64
+	LimitsMemory   int64
 }
 
 func (b *BasicReport) Store() (string, error) {
@@ -123,14 +129,19 @@ func (b *BasicReport) Load() error {
 		return errors.New("test name is empty. Please set it and try again")
 	}
 
-	var reportFilePath string
 	if b.CommitOrTag == "" {
-		// TODO load the latest one, but we need to think how to know which one is the latest one
-		// with tags it is easy, just use semver, but with commits not so straightforward, although we could probably comb the repo to find the commit and then its commit date
-		panic("not implemented")
-	} else {
-		reportFilePath = filepath.Join(directory, fmt.Sprintf("%s-%s.json", b.TestName, b.CommitOrTag))
+		tagsOrCommits, tagErr := extractTagsOrCommits(directory)
+		if tagErr != nil {
+			return tagErr
+		}
+
+		latestCommit, commitErr := findLatestCommit(tagsOrCommits)
+		if commitErr != nil {
+			return commitErr
+		}
+		b.CommitOrTag = latestCommit
 	}
+	reportFilePath := filepath.Join(directory, fmt.Sprintf("%s-%s.json", b.TestName, b.CommitOrTag))
 
 	reportFile, err := os.Open(reportFilePath)
 	if err != nil {
@@ -143,6 +154,50 @@ func (b *BasicReport) Load() error {
 	}
 
 	return nil
+}
+
+func extractTagsOrCommits(directory string) ([]string, error) {
+	pattern := regexp.MustCompile(`.+-(.+)\.json$`)
+
+	files, err := os.ReadDir(directory)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to read directory %s", directory)
+	}
+
+	var tagsOrCommits []string
+
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		matches := pattern.FindStringSubmatch(file.Name())
+		if len(matches) == 2 {
+			tagsOrCommits = append(tagsOrCommits, matches[1])
+		}
+	}
+
+	return tagsOrCommits, nil
+}
+
+func findLatestCommit(references []string) (string, error) {
+	refList := strings.Join(references, " ")
+
+	cmd := exec.Command("git", "rev-list", "--topo-order", "--date-order", "-n", "1", refList)
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("failed to run git rev-list: %s, error: %v", stderr.String(), err)
+	}
+
+	latestCommit := strings.TrimSpace(stdout.String())
+	if latestCommit == "" {
+		return "", fmt.Errorf("no latest commit found")
+	}
+
+	return latestCommit, nil
 }
 
 func (b *BasicReport) Fetch() error {
@@ -216,11 +271,49 @@ func (b *BasicReport) Fetch() error {
 func (b *BasicReport) fetchResources() error {
 	//TODO in both cases we'd need to know some mask to filter out the resources we need
 	if b.ExecutionEnvironment == ExecutionEnvironment_Docker {
-		// fetch docker resources
-		// get all containers and their resources
+		err := b.fetchDockerResources()
+		if err != nil {
+			return err
+		}
 	} else {
 		// fetch k8s resources
 		// get all pods and their resources
+	}
+
+	return nil
+}
+
+func (b *BasicReport) fetchK8sResources() error {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return errors.Wrapf(err, "failed to get in-cluster config, are you sure this is running in a k8s cluster?")
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return errors.Wrapf(err, "failed to create k8s clientset")
+	}
+
+	namespaceFile := "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+	namespace, err := os.ReadFile(namespaceFile)
+	if err != nil {
+		return errors.Wrapf(err, "failed to read namespace file %s", namespaceFile)
+	}
+
+	pods, err := clientset.CoreV1().Pods(string(namespace)).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		panic(err)
+	}
+
+	b.PodsResources = make(map[string]*PodResources)
+
+	for _, pod := range pods.Items {
+		b.PodsResources[pod.Name] = &PodResources{
+			RequestsCPU:    pod.Spec.Containers[0].Resources.Requests.Cpu().MilliValue(),
+			RequestsMemory: pod.Spec.Containers[0].Resources.Requests.Memory().Value(),
+			LimitsCPU:      pod.Spec.Containers[0].Resources.Limits.Cpu().MilliValue(),
+			LimitsMemory:   pod.Spec.Containers[0].Resources.Limits.Memory().Value(),
+		}
 	}
 
 	return nil
@@ -457,64 +550,3 @@ func mustMarshallSegment(segment *wasp.Segment) string {
 
 	return string(segmentBytes)
 }
-
-//type DifferentResult struct {
-//	Expected []string
-//	Actual   []string
-//}
-//
-//// this could also just be a generic var, so we don't couple Result with this struct
-//type ComparisonReport struct {
-//	missingResults    []string
-//	unexpectedResults []string
-//	differentResults  map[string]DifferentResult
-//}
-//
-//func (c *ComparisonReport) HasDifferences() bool {
-//	return len(c.missingResults) > 0 || len(c.unexpectedResults) > 0 || len(c.differentResults) > 0
-//}
-//
-//func (c *ComparisonReport) MissingResults() []string {
-//	return c.missingResults
-//}
-//
-//func (c *ComparisonReport) UnexpectedResults() []string {
-//	return c.unexpectedResults
-//}
-//
-//func (c *ComparisonReport) DifferentResults() map[string]DifferentResult {
-//	return c.differentResults
-//}
-//
-//func (b *BasicReport) Compare(other BasicReport) (bool, ComparisonReport, error) {
-//	// check if there are no errors
-//
-//	// check if results are the same
-//	if len(b.Results) != len(other.Results) {
-//		return false, ComparisonReport{}, fmt.Errorf("result count is different. Expected %d, got %d", len(b.Results), len(other.Results))
-//	}
-//
-//	comparisonReport := ComparisonReport{
-//		differentResults: make(map[string]DifferentResult),
-//	}
-//
-//	for name, result := range b.Results {
-//		if otherResult, ok := other.Results[name]; !ok {
-//			comparisonReport.missingResults = append(comparisonReport.missingResults, name)
-//		} else {
-//
-//			comparisonReport.differentResults[name] = DifferentResult{
-//				Expected: result,
-//				Actual:   otherResult,
-//			}
-//		}
-//	}
-//
-//	for name, otherResult := range other.Results {
-//		if _, ok := b.Results[name]; !ok {
-//			comparisonReport.unexpectedResults[name] = otherResult
-//		}
-//	}
-//
-//	return comparisonReport.HasDifferences(), comparisonReport, nil
-//}
