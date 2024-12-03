@@ -58,8 +58,9 @@ jobs:
         run: |
           # Add go binary to PATH
           PATH=$PATH:$(go env GOPATH)/bin
-          export PATH 
-          generate-go-function-docs diff -b ${{ github.event.pull_request.base.sha }} -c ${{ github.event.pull_request.head.sha }} -g fake_slash
+          export PATH
+          # TODO check why this flag is needed, if it has a default!
+          generate-go-function-docs diff -b ${{ github.event.pull_request.base.sha }} -c ${{ github.event.pull_request.head.sha }} -g fake_slash -f .
 
       - name: Make sure code still compiles
         run: |
