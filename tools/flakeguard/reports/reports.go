@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -261,8 +262,66 @@ func PrintTests(
 		}
 	}
 
-	// Adjust column widths and print
-	colWidths := make([]int, len(headers))
+	var (
+		passRatioStr  string
+		flakeRatioStr string
+	)
+	if runs == 0 || passes == runs {
+		passRatioStr = "100%"
+		flakeRatioStr = "0%"
+	} else {
+		passPercentage := float64(passes) / float64(runs) * 100
+		truncatedPassPercentage := math.Floor(passPercentage*100) / 100 // Truncate to 2 decimal places
+		flakePercentage := float64(flakyTests) / float64(len(tests)) * 100
+		truncatedFlakePercentage := math.Floor(flakePercentage*100) / 100 // Truncate to 2 decimal places
+		passRatioStr = fmt.Sprintf("%.2f%%", truncatedPassPercentage)
+		flakeRatioStr = fmt.Sprintf("%.2f%%", truncatedFlakePercentage)
+	}
+
+	// Print out summary data
+	summaryData := [][]string{
+		{"**Category**", "**Total**"},
+		{"**Tests**", p.Sprint(len(tests))},
+		{"**Panicked Tests**", p.Sprint(panickedTests)},
+		{"**Raced Tests**", p.Sprint(racedTests)},
+		{"**Flaky Tests**", p.Sprint(flakyTests)},
+		{"**Flaky Test Ratio**", flakeRatioStr},
+		{"**Runs**", p.Sprint(runs)},
+		{"**Passes**", p.Sprint(passes)},
+		{"**Failures**", p.Sprint(fails)},
+		{"**Skips**", p.Sprint(skips)},
+		{"**Pass Ratio**", passRatioStr},
+	}
+	colWidths := make([]int, len(summaryData[0]))
+
+	for _, row := range summaryData {
+		for i, cell := range row {
+			if len(cell) > colWidths[i] {
+				colWidths[i] = len(cell)
+			}
+		}
+	}
+
+	if len(rows) == 0 {
+		fmt.Fprintf(w, "No tests found under pass ratio of %.2f%%\n", maxPassRatio*100)
+		return
+	}
+
+	printRow := func(cells []string) {
+		fmt.Fprintf(w, "| %-*s | %-*s |\n", colWidths[0], cells[0], colWidths[1], cells[1])
+	}
+	printSeparator := func() {
+		fmt.Fprintf(w, "|-%s-|-%s-|\n", strings.Repeat("-", colWidths[0]), strings.Repeat("-", colWidths[1]))
+	}
+	printRow(summaryData[0])
+	printSeparator()
+	for _, row := range summaryData[1:] {
+		printRow(row)
+	}
+	fmt.Fprintln(w)
+
+	// Print out test data
+	colWidths = make([]int, len(headers))
 	for i, header := range headers {
 		colWidths[i] = len(header)
 	}
@@ -274,7 +333,7 @@ func PrintTests(
 		}
 	}
 
-	printRow := func(cells []string) {
+	printRow = func(cells []string) {
 		var buffer bytes.Buffer
 		for i, cell := range cells {
 			buffer.WriteString(fmt.Sprintf(" %-*s |", colWidths[i], cell))
@@ -282,7 +341,7 @@ func PrintTests(
 		fmt.Fprintln(w, "|"+buffer.String())
 	}
 
-	printSeparator := func() {
+	printSeparator = func() {
 		var buffer bytes.Buffer
 		for _, width := range colWidths {
 			buffer.WriteString(" " + strings.Repeat("-", width) + " |")
