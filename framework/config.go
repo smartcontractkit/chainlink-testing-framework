@@ -132,6 +132,8 @@ func Load[X any](t *testing.T) (*X, error) {
 		require.NoError(t, err)
 		err = WriteAllContainersLogs()
 		require.NoError(t, err)
+		err = checkNodeLogErrors(DefaultCTFLogsDir)
+		require.NoError(t, err)
 	})
 	// TODO: not all the people have AWS access, sadly enough, uncomment when granted
 	//if os.Getenv(EnvVarAWSSecretsManager) == "true" {

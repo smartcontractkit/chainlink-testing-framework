@@ -47,13 +47,13 @@ Each component can define inputs and outputs, following these rules:
 - If your component is used for side effects output can be omitted.
 - `input.Out.UseCache` should be added if you'd like to use caching, see more [here](caching)
 
+### Building Local Images
+
+Use `framework.BuildImage` or `framework.BuildImageOnce` to build the docker image.
+
+Do not use `testcontainers.NewDockerProvider()` methods, see issues: [#1](https://github.com/testcontainers/testcontainers-go/pull/2482), [#2](https://github.com/testcontainers/testcontainers-go/issues/1484)
+
 ### Docker components good practices for [testcontainers-go](https://golang.testcontainers.org/):
-
-An example [simple component](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/components/blockchain/anvil.go)
-
-An example of [complex component](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/components/clnode/clnode.go)
-
-An example of [composite component](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/components/simple_node_set/node_set.go)
 
 - Inputs should include at least `image`, `tag` and `pull_image` field
 ```golang
@@ -94,3 +94,10 @@ An example of [composite component](https://github.com/smartcontractkit/chainlin
 		HostURL:   fmt.Sprintf("http://%s:%s", host, mp.Port()),
 	}, nil
 ```
+
+An example [simple component](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/components/blockchain/anvil.go)
+
+An example of [complex component](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/components/clnode/clnode.go)
+
+An example of [composite component](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/components/simple_node_set/node_set.go)
+

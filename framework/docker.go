@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
@@ -15,6 +14,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -67,6 +67,25 @@ func DefaultTCLabels() map[string]string {
 
 func DefaultTCName(name string) string {
 	return fmt.Sprintf("%s-%s", name, uuid.NewString()[0:5])
+}
+
+// runCommand executes a command and prints the output.
+func runCommand(name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+// RunCommandDir executes a command in some directory and prints the output
+func RunCommandDir(dir, name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if dir != "" {
+		cmd.Dir = dir
+	}
+	return cmd.Run()
 }
 
 // DockerClient wraps a Docker API client and provides convenience methods
@@ -242,29 +261,19 @@ func WriteAllContainersLogs() error {
 	return eg.Wait()
 }
 
-func BuildImageOnce(ctx context.Context, once *sync.Once, dctx, dfile, nameAndTag string) error {
-	var (
-		p         *tc.DockerProvider
-		dockerCtx string
-		err       error
-	)
+func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string) error {
+	var err error
 	once.Do(func() {
-		nt := strings.Split(nameAndTag, ":")
-		if len(nt) != 2 {
-			err = errors.New("BuildImageOnce, tag must be in 'repo:tag' format")
-			return
+		dfilePath := filepath.Join(dctx, dfile)
+		err = runCommand("docker", "build", "-t", nameAndTag, "-f", dfilePath, dctx)
+		if err != nil {
+			err = fmt.Errorf("failed to build Docker image: %w", err)
 		}
-		p, err = tc.NewDockerProvider()
-		dockerCtx, err = filepath.Abs(dctx)
-		_, err = p.BuildImage(ctx, &tc.ContainerRequest{
-			FromDockerfile: tc.FromDockerfile{
-				Repo:          nt[0],
-				Tag:           nt[1],
-				Context:       dockerCtx,
-				Dockerfile:    dfile,
-				PrintBuildLog: true,
-			},
-		})
 	})
 	return err
+}
+
+func BuildImage(dctx, dfile, nameAndTag string) error {
+	dfilePath := filepath.Join(dctx, dfile)
+	return runCommand("docker", "build", "-t", nameAndTag, "-f", dfilePath, dctx)
 }
