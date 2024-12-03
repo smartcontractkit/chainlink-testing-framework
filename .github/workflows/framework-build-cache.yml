@@ -12,7 +12,7 @@ jobs:
       LOKI_URL: http://localhost:3030/loki/api/v1/push
       DOCKER_BUILDKIT: 1
       CTF_CHAINLINK_IMAGE: chainlink-local-image:latest
-    runs-on: ubuntu-latest
+    runs-on: ubuntu22.04-8cores-32GB
     permissions:
       id-token: write
       contents: write
