@@ -29,6 +29,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Configure git for private repository and install go doc generator
+        env:
+          GOPRIVATE: github.com/smartcontractkit/generate-go-function
+        run: |
+          git config --global url.ssh://git@github.com/.insteadOf https://github.com/
+          go install github.com/smartcontractkit/generate-go-function-docs@latest
+
+      - name: Install gopls
+        shell: bash
+        run: |
+          go install golang.org/x/tools/gopls@latest             
+
       - name: Setup Git
         run: |
           git config user.name "github-actions[bot]"
@@ -41,16 +53,6 @@ jobs:
           echo "pr_branch=$(jq -r .pull_request.head.ref <<< "$GITHUB_EVENT_PATH")" >> $GITHUB_OUTPUT
           echo "base_commit=${{ github.event.pull_request.base.sha }}" >> $GITHUB_OUTPUT
           echo "head_commit=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT          
-
-      - name: Install go doc generator
-        shell: bash
-        run: |
-          go install github.com/smartcontractkit/generate-go-function-docs@latest
-
-      - name: Install gopls
-        shell: bash
-        run: |
-          go install golang.org/x/tools/gopls@latest
 
       - name: Create a new branch
         run: |
