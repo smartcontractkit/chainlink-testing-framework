@@ -12,9 +12,9 @@ type Storer interface {
 	Load() error
 }
 
-type Fetcher interface {
+type DataFetcher interface {
 	// Fetch populates the report with the data from the test
-	Fetch() error
+	FetchData(ctx context.Context) error
 }
 
 type Comparator interface {
@@ -22,9 +22,15 @@ type Comparator interface {
 	IsComparable(otherReport Reporter) error
 }
 
+type ResourceFetcher interface {
+	// FetchResources fetches the resources used by the AUT (e.g. CPU, memory, etc.)
+	FetchResources(ctx context.Context) error
+}
+
 type Reporter interface {
 	Storer
-	Fetcher
+	DataFetcher
+	ResourceFetcher
 	Comparator
 }
 

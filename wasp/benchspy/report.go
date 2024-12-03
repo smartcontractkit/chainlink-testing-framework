@@ -24,7 +24,7 @@ func (b *StandardReport) Load() error {
 	return b.LocalStorage.Load(b.TestName, b.CommitOrTag, b)
 }
 
-func (b *StandardReport) Fetch(ctx context.Context) error {
+func (b *StandardReport) FetchData(ctx context.Context) error {
 	basicErr := b.BasicData.Validate()
 	if basicErr != nil {
 		return basicErr
@@ -60,18 +60,24 @@ func (b *StandardReport) Fetch(ctx context.Context) error {
 	return nil
 }
 
-func (b *StandardReport) IsComparable(otherReport StandardReport) error {
-	basicErr := b.BasicData.IsComparable(otherReport.BasicData)
+func (b *StandardReport) IsComparable(otherReport Reporter) error {
+	if _, ok := otherReport.(*StandardReport); !ok {
+		return fmt.Errorf("expected type %s, got %T", "*StandardReport", otherReport)
+	}
+
+	asStandardReport := otherReport.(*StandardReport)
+
+	basicErr := b.BasicData.IsComparable(asStandardReport.BasicData)
 	if basicErr != nil {
 		return basicErr
 	}
 
-	if resourceErr := b.CompareResources(&otherReport.ResourceReporter); resourceErr != nil {
+	if resourceErr := b.CompareResources(&asStandardReport.ResourceReporter); resourceErr != nil {
 		return resourceErr
 	}
 
 	for i, queryExecutor := range b.QueryExecutors {
-		queryErr := queryExecutor.IsComparable(otherReport.QueryExecutors[i])
+		queryErr := queryExecutor.IsComparable(asStandardReport.QueryExecutors[i])
 		if queryErr != nil {
 			return queryErr
 		}

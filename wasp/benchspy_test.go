@@ -66,7 +66,7 @@ func TestBenchSpyWithLokiQuery(t *testing.T) {
 	fetchCtx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancelFn()
 
-	fetchErr := currentReport.Fetch(fetchCtx)
+	fetchErr := currentReport.FetchData(fetchCtx)
 	require.NoError(t, fetchErr, "failed to fetch current report")
 
 	// path, storeErr := currentReport.Store()
@@ -84,7 +84,7 @@ func TestBenchSpyWithLokiQuery(t *testing.T) {
 	loadErr := previousReport.Load()
 	require.NoError(t, loadErr, "failed to load previous report")
 
-	isComparableErrs := previousReport.IsComparable(currentReport)
+	isComparableErrs := previousReport.IsComparable(&currentReport)
 	require.Empty(t, isComparableErrs, "reports were not comparable", isComparableErrs)
 	require.NotEmpty(t, currentReport.QueryExecutors[0].Results()["vu_over_time"], "vu_over_time results were missing from current report")
 	require.NotEmpty(t, previousReport.QueryExecutors[0].Results()["vu_over_time"], "vu_over_time results were missing from current report")
@@ -169,7 +169,7 @@ func TestBenchSpyWithTwoLokiQueries(t *testing.T) {
 	fetchCtx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancelFn()
 
-	fetchErr := currentReport.Fetch(fetchCtx)
+	fetchErr := currentReport.FetchData(fetchCtx)
 	require.NoError(t, fetchErr, "failed to fetch current report")
 
 	// path, storeErr := currentReport.Store()
@@ -187,7 +187,7 @@ func TestBenchSpyWithTwoLokiQueries(t *testing.T) {
 	loadErr := previousReport.Load()
 	require.NoError(t, loadErr, "failed to load previous report")
 
-	isComparableErrs := previousReport.IsComparable(currentReport)
+	isComparableErrs := previousReport.IsComparable(&currentReport)
 	require.Empty(t, isComparableErrs, "reports were not comparable", isComparableErrs)
 	// vu over time
 	require.NotEmpty(t, currentReport.QueryExecutors[0].Results()["vu_over_time"], "vu_over_time results were missing from current report")
