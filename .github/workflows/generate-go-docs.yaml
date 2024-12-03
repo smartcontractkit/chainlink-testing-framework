@@ -32,9 +32,9 @@ jobs:
       - name: Configure git for private repository and install go doc generator
         env:
           GOPRIVATE: github.com/smartcontractkit/generate-go-function
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}         
         run: |
-          git config --global url."https://$GITHUB_TOKEN@github.com/".insteadOf "https://github.com/"
+          git config --global \
+          url."https://x-access-token:${{ steps.setup-github-token-read.outputs.access-token }}@github.com/".insteadOf "https://github.com/"
           go install github.com/smartcontractkit/generate-go-function-docs@latest
 
       - name: Install gopls
