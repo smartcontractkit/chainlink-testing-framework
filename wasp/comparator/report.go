@@ -181,9 +181,12 @@ func extractTagsOrCommits(directory string) ([]string, error) {
 }
 
 func findLatestCommit(references []string) (string, error) {
-	refList := strings.Join(references, " ")
+	if len(references) == 0 {
+		return "", fmt.Errorf("no references provided")
+	}
 
-	cmd := exec.Command("git", "rev-list", "--topo-order", "--date-order", "-n", "1", refList)
+	args := append([]string{"rev-list", "--topo-order", "--date-order", "-n", "1"}, references...)
+	cmd := exec.Command("git", args...)
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

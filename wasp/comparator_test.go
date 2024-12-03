@@ -46,7 +46,7 @@ func TestLokiComparator(t *testing.T) {
 		},
 		TestName:    "TestLokiComparator",
 		TestStart:   time.Now(),
-		CommitOrTag: "current",
+		CommitOrTag: "e7fc5826a572c09f8b93df3b9f674113372ce923",
 	}
 
 	gen.Run(true)
@@ -58,13 +58,11 @@ func TestLokiComparator(t *testing.T) {
 	path, storeErr := currentReport.Store()
 	require.NoError(t, storeErr, "failed to store current report", path)
 
-	previousRelease := "old-one"
 	previousReport := comparator.BasicReport{
-		CommitOrTag: previousRelease,
-		TestName:    "TestLokiComparator",
+		TestName: "TestLokiComparator",
 	}
 	loadErr := previousReport.Load()
-	require.NoError(t, loadErr, "failed to load previous report", previousRelease)
+	require.NoError(t, loadErr, "failed to load previous report")
 
 	isComparable, isComparableErrs := previousReport.IsComparable(currentReport)
 	require.True(t, isComparable, "reports are not comparable", isComparableErrs)
@@ -75,15 +73,4 @@ func TestLokiComparator(t *testing.T) {
 	for i := range currentReport.Results["vu_over_time"] {
 		require.Equal(t, currentReport.Results["vu_over_time"][i], previousReport.Results["vu_over_time"][i], "vu_over_time results are not the same for given index")
 	}
-
-	//get previous release
-	//previousRelease := "something"
-	//previousReport := comparator.BasicReport{}
-	//loadErr := previousReport.Load()
-	//require.NoError(t, loadErr, "failed to load previous report", previousRelease)
-
-	//
-	//areTheSame, perfDiffs, compareErr := previousReport.Compare(&currentReport)
-	//require.NoError(t, compareErr, "failed to compare reports")
-	//require.True(t, areTheSame, "performance of both reports is not the same", perfDiffs)
 }
