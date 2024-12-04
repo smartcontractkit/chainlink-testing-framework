@@ -10,6 +10,7 @@ jobs:
     env:
       LOKI_TENANT_ID: promtail
       LOKI_URL: http://localhost:3030/loki/api/v1/push
+      CTF_JD_IMAGE: ${{ secrets.CTF_JD_IMAGE }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
