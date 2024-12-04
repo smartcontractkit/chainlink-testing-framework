@@ -170,15 +170,13 @@ func Aggregate(reportsToAggregate ...*TestReport) (*TestReport, error) {
 	return fullReport, nil
 }
 
-// PrintTests prints tests in a pretty format
-func PrintTests(
-	w io.Writer,
-	tests []TestResult,
-	maxPassRatio float64,
-	includeCodeOwners bool, // Include code owners in the output. Set to true if test results have code owners
-) (runs, passes, fails, skips, panickedTests, racedTests, flakyTests int) {
+func TestResultsTable(
+	results []TestResult,
+	expectedPassRatio float64,
+	includeCodeOwners bool,
+) (resultsTable [][]string, runs, passes, fails, skips, panickedTests, racedTests, flakyTests int) {
 	p := message.NewPrinter(language.English) // For formatting numbers
-	sortTestResults(tests)
+	sortTestResults(results)
 
 	headers := []string{
 		"**Name**",
@@ -199,55 +197,68 @@ func PrintTests(
 		headers = append(headers, "**Code Owners**")
 	}
 
-	// Build test rows and summary data
-	rows := [][]string{}
-	for _, test := range tests {
-		if test.PassRatio < maxPassRatio {
+	resultsTable = [][]string{}
+	resultsTable = append(resultsTable, headers)
+	for _, result := range results {
+		if result.PassRatio < expectedPassRatio {
 			row := []string{
-				test.TestName,
-				fmt.Sprintf("%.2f%%", test.PassRatio*100),
-				fmt.Sprintf("%t", test.Panic),
-				fmt.Sprintf("%t", test.Timeout),
-				fmt.Sprintf("%t", test.Race),
-				p.Sprintf("%d", test.Runs),
-				p.Sprintf("%d", test.Successes),
-				p.Sprintf("%d", test.Failures),
-				p.Sprintf("%d", test.Skips),
-				test.TestPackage,
-				fmt.Sprintf("%t", test.PackagePanic),
-				avgDuration(test.Durations).String(),
+				result.TestName,
+				fmt.Sprintf("%.2f%%", result.PassRatio*100),
+				fmt.Sprintf("%t", result.Panic),
+				fmt.Sprintf("%t", result.Timeout),
+				fmt.Sprintf("%t", result.Race),
+				p.Sprintf("%d", result.Runs),
+				p.Sprintf("%d", result.Successes),
+				p.Sprintf("%d", result.Failures),
+				p.Sprintf("%d", result.Skips),
+				result.TestPackage,
+				fmt.Sprintf("%t", result.PackagePanic),
+				avgDuration(result.Durations).String(),
 			}
 
 			if includeCodeOwners {
 				owners := "Unknown"
-				if len(test.CodeOwners) > 0 {
-					owners = strings.Join(test.CodeOwners, ", ")
+				if len(result.CodeOwners) > 0 {
+					owners = strings.Join(result.CodeOwners, ", ")
 				}
 				row = append(row, owners)
 			}
 
-			rows = append(rows, row)
+			resultsTable = append(resultsTable, row)
 		}
 
-		runs += test.Runs
-		passes += test.Successes
-		fails += test.Failures
-		skips += test.Skips
-		if test.Panic {
+		runs += result.Runs
+		passes += result.Successes
+		fails += result.Failures
+		skips += result.Skips
+		if result.Panic {
 			panickedTests++
 			flakyTests++
-		} else if test.Race {
+		} else if result.Race {
 			racedTests++
 			flakyTests++
-		} else if test.PassRatio < maxPassRatio {
+		} else if result.PassRatio < expectedPassRatio {
 			flakyTests++
 		}
 	}
+	return
+}
 
+// PrintTests prints tests in a pretty format
+func PrintResults(
+	w io.Writer,
+	tests []TestResult,
+	maxPassRatio float64,
+	includeCodeOwners bool, // Include code owners in the output. Set to true if test results have code owners
+) (runs, passes, fails, skips, panickedTests, racedTests, flakyTests int) {
 	var (
+		resultsTable  [][]string
 		passRatioStr  string
 		flakeRatioStr string
+		p             = message.NewPrinter(language.English) // For formatting numbers
 	)
+	resultsTable, runs, passes, fails, skips, panickedTests, racedTests, flakyTests = TestResultsTable(tests, maxPassRatio, includeCodeOwners)
+	// Print out summary data
 	if runs == 0 || passes == runs {
 		passRatioStr = "100%"
 		flakeRatioStr = "0%"
@@ -259,8 +270,6 @@ func PrintTests(
 		passRatioStr = fmt.Sprintf("%.2f%%", truncatedPassPercentage)
 		flakeRatioStr = fmt.Sprintf("%.2f%%", truncatedFlakePercentage)
 	}
-
-	// Print out summary data
 	summaryData := [][]string{
 		{"**Category**", "**Total**"},
 		{"**Tests**", p.Sprint(len(tests))},
@@ -274,6 +283,7 @@ func PrintTests(
 		{"**Skips**", p.Sprint(skips)},
 		{"**Pass Ratio**", passRatioStr},
 	}
+
 	colWidths := make([]int, len(summaryData[0]))
 
 	for _, row := range summaryData {
@@ -283,8 +293,7 @@ func PrintTests(
 			}
 		}
 	}
-
-	if len(rows) == 0 {
+	if len(resultsTable) <= 1 {
 		fmt.Fprintf(w, "No tests found under pass ratio of %.2f%%\n", maxPassRatio*100)
 		return
 	}
@@ -303,12 +312,13 @@ func PrintTests(
 	fmt.Fprintln(w)
 
 	// Print out test data
-	colWidths = make([]int, len(headers))
-	for i, header := range headers {
+	resultsHeaders := resultsTable[0]
+	colWidths = make([]int, len(resultsHeaders))
+	for i, header := range resultsHeaders {
 		colWidths[i] = len(header)
 	}
-	for _, row := range rows {
-		for i, cell := range row {
+	for rowNum := 1; rowNum < len(resultsTable); rowNum++ {
+		for i, cell := range resultsTable[rowNum] {
 			if len(cell) > colWidths[i] {
 				colWidths[i] = len(cell)
 			}
@@ -331,10 +341,10 @@ func PrintTests(
 		fmt.Fprintln(w, "|"+buffer.String())
 	}
 
-	printRow(headers)
+	printRow(resultsHeaders)
 	printSeparator()
-	for _, row := range rows {
-		printRow(row)
+	for rowNum := 1; rowNum < len(resultsTable); rowNum++ {
+		printRow(resultsTable[rowNum])
 	}
 	return
 }
@@ -391,7 +401,7 @@ func MarkdownSummary(w io.Writer, testReport *TestReport, maxPassRatio float64, 
 		return
 	}
 
-	allRuns, passes, _, _, _, _, _ := PrintTests(testsData, tests, maxPassRatio, includeCodeOwners)
+	allRuns, passes, _, _, _, _, _ := PrintResults(testsData, tests, maxPassRatio, includeCodeOwners)
 	if allRuns > 0 {
 		avgPassRatio = float64(passes) / float64(allRuns)
 	}

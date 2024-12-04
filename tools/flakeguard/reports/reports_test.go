@@ -142,7 +142,7 @@ func TestPrintTests(t *testing.T) {
 			t.Parallel()
 			var buf bytes.Buffer
 
-			runs, passes, fails, skips, panickedTests, racedTests, flakyTests := PrintTests(&buf, tc.testResults, tc.maxPassRatio, false)
+			runs, passes, fails, skips, panickedTests, racedTests, flakyTests := PrintResults(&buf, tc.testResults, tc.maxPassRatio, false)
 			assert.Equal(t, tc.expectedRuns, runs, "wrong number of runs")
 			assert.Equal(t, tc.expectedPasses, passes, "wrong number of passes")
 			assert.Equal(t, tc.expectedFails, fails, "wrong number of failures")
