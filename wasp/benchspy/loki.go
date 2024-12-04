@@ -35,8 +35,6 @@ type LokiQueryExecutor struct {
 	// Performance queries results
 	// can be anything, avg RPS, amount of errors, 95th percentile of CPU utilization, etc
 	QueryResults map[string][]string `json:"query_results"`
-	// In case something went wrong, but sure we need it
-	Errors []error `json:"errors"`
 
 	LokiConfig *wasp.LokiConfig `json:"-"`
 }
@@ -192,6 +190,8 @@ func standardQuery(standardMetric StandardMetric, testName, generatorName, branc
 		return fmt.Sprintf("quantile_over_time(0.95, {branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"responses\", gen_name=~\"%s\"} | json| unwrap duration [10s]) by (go_test_name, gen_name) / 1e6", branch, commit, testName, generatorName), nil
 	case ErrorRate:
 		queryRange := calculateTimeRange(startTime, endTime)
+		// this becomes problematic if we want to only consider plain segments, because each might have a different length and thus should have a different range window for accurate calculation
+		// unless... we will are only interested in comparing the differences between reports, not the actual values, then it won't matter that error rate is skewed (calculated over ranges longer than query interval)
 		return fmt.Sprintf("sum(max_over_time({branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"stats\", gen_name=~\"%s\"} | json| unwrap failed [%s]) by (node_id, go_test_name, gen_name)) by (__stream_shard__)", branch, commit, testName, generatorName, queryRange), nil
 	default:
 		return "", fmt.Errorf("unsupported standard metric %s", standardMetric)

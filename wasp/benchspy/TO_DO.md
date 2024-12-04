@@ -6,6 +6,4 @@ Known things to do:
 - [ ] test with k8s app (focus: resources)
 - [ ] add report builder (?)
 - [ ] add wrapper function for executing some code and then creating a report
-- [ ] think what to do with errors... do we really need a slice?
-- [ ] if TestEnd is zero, default to `time.Now()`?
 - [ ] add helper method for a profile what would create a report based on all generators?

@@ -47,6 +47,11 @@ func (b *StandardReport) FetchData(ctx context.Context) error {
 
 	for _, queryExecutor := range b.QueryExecutors {
 		errGroup.Go(func() error {
+			// feature: PLAIN SEGEMENT ONLY
+			// go over all schedules and execute the code below only for ones with type "plain"
+			// and then concatenate that data and return that; if parallelizing then we should first
+			// create a slice of plain segments and then, when sending results over channel include the index,
+			// so that we can concatenate them in the right order
 			queryExecutor.TimeRange(b.TestStart, b.TestEnd)
 
 			if validateErr := queryExecutor.Validate(); validateErr != nil {
