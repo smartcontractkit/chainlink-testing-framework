@@ -1,5 +1,5 @@
-// File: event_poller_service/event_poller_service_test.go
-package event_poller_service_test
+// File: chain_poller_service/chain_poller_service_test.go
+package chain_poller_service_test
 
 import (
 	"context"
@@ -12,10 +12,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/chain_poller"
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/event_poller_service"
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/internal"
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/subscription_manager"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/sentinel/chain_poller"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/sentinel/chain_poller_service"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/sentinel/internal"
 )
 
 // MockChainPoller implements the ChainPollerInterface for testing.
@@ -34,167 +33,139 @@ func (m *MockChainPoller) Poll(ctx context.Context, filterQueries []internal.Fil
 // Ensure MockChainPoller implements ChainPollerInterface
 var _ chain_poller.ChainPollerInterface = (*MockChainPoller)(nil)
 
-// MockBlockchainClient implements the internal.BlockchainClient interface for testing.
-type MockBlockchainClient struct {
-	mock.Mock
-}
-
-func (m *MockBlockchainClient) BlockNumber(ctx context.Context) (uint64, error) {
-	args := m.Called(ctx)
-	return args.Get(0).(uint64), args.Error(1)
-}
-
-func (m *MockBlockchainClient) FilterLogs(ctx context.Context, query internal.FilterQuery) ([]internal.Log, error) {
-	args := m.Called(ctx, query)
-	return args.Get(0).([]internal.Log), args.Error(1)
-}
-
-// Ensure MockBlockchainClient implements BlockchainClient interface
-var _ internal.BlockchainClient = (*MockBlockchainClient)(nil)
-
-func TestEventPollerService_Initialization(t *testing.T) {
+func TestChainPollerService_Initialization(t *testing.T) {
 	mockChainPoller := new(MockChainPoller)
-	mockBlockchainClient := new(MockBlockchainClient)
+	mockBlockchainClient := new(internal.MockBlockchainClient)
 	mockLogger := internal.NewMockLogger()
-	subManager := subscription_manager.NewSubscriptionManager(mockLogger, 1)
 
 	// Mock BlockchainClient.BlockNumber during initialization
 	initialLastBlockNum := uint64(100)
 	mockBlockchainClient.On("BlockNumber", mock.Anything).Return(initialLastBlockNum, nil).Once()
 
-	config := event_poller_service.EventPollerServiceConfig{
+	config := chain_poller_service.ChainPollerServiceConfig{
 		PollInterval:     100 * time.Millisecond,
 		ChainPoller:      mockChainPoller,
-		SubscriptionMgr:  subManager,
 		Logger:           mockLogger,
 		ChainID:          1,
 		BlockchainClient: mockBlockchainClient,
 	}
 
-	eventPollerService, err := event_poller_service.NewEventPollerService(config)
+	chainPollerService, err := chain_poller_service.NewChainPollerService(config)
 	require.NoError(t, err)
-	require.NotNil(t, eventPollerService)
+	require.NotNil(t, chainPollerService)
 
 	// Verify initial LastBlock is set correctly
-	assert.Equal(t, big.NewInt(99), eventPollerService.LastBlock)
+	assert.Equal(t, big.NewInt(99), chainPollerService.LastBlock)
 
 	// Assert that BlockNumber was called once
 	mockBlockchainClient.AssertCalled(t, "BlockNumber", mock.Anything)
 }
 
-func TestEventPollerService_Initialization_InvalidConfig(t *testing.T) {
+func TestChainPollerService_Initialization_InvalidConfig(t *testing.T) {
 	mockLogger := internal.NewMockLogger()
-	subManager := subscription_manager.NewSubscriptionManager(mockLogger, 1)
 
-	config := event_poller_service.EventPollerServiceConfig{
-		PollInterval:    100 * time.Millisecond,
-		ChainPoller:     nil, // Invalid
-		SubscriptionMgr: subManager,
-		Logger:          mockLogger,
-		ChainID:         1,
+	config := chain_poller_service.ChainPollerServiceConfig{
+		PollInterval: 100 * time.Millisecond,
+		ChainPoller:  nil, // Invalid
+		Logger:       mockLogger,
+		ChainID:      1,
 		// BlockchainClient is missing
 	}
 
-	eventPollerService, err := event_poller_service.NewEventPollerService(config)
+	chainPollerService, err := chain_poller_service.NewChainPollerService(config)
 	require.Error(t, err)
-	assert.Nil(t, eventPollerService)
+	assert.Nil(t, chainPollerService)
 	assert.Equal(t, "chain poller cannot be nil", err.Error())
 }
 
-func TestEventPollerService_Initialization_InvalidBlockchainClient(t *testing.T) {
+func TestChainPollerService_Initialization_InvalidBlockchainClient(t *testing.T) {
 	mockChainPoller := new(MockChainPoller)
 	mockLogger := internal.NewMockLogger()
-	subManager := subscription_manager.NewSubscriptionManager(mockLogger, 1)
 
-	config := event_poller_service.EventPollerServiceConfig{
+	config := chain_poller_service.ChainPollerServiceConfig{
 		PollInterval:     100 * time.Millisecond,
 		ChainPoller:      mockChainPoller,
-		SubscriptionMgr:  subManager,
 		Logger:           mockLogger,
 		ChainID:          1,
 		BlockchainClient: nil,
 	}
 
-	eventPollerService, err := event_poller_service.NewEventPollerService(config)
+	chainPollerService, err := chain_poller_service.NewChainPollerService(config)
 	require.Error(t, err)
-	assert.Nil(t, eventPollerService)
+	assert.Nil(t, chainPollerService)
 	assert.Equal(t, "blockchain client cannot be nil", err.Error())
 }
 
-func TestEventPollerService_StartAndStop(t *testing.T) {
+func TestChainPollerService_StartAndStop(t *testing.T) {
 	mockChainPoller := new(MockChainPoller)
-	mockBlockchainClient := new(MockBlockchainClient)
+	mockBlockchainClient := new(internal.MockBlockchainClient)
 	mockLogger := internal.NewMockLogger()
-	subManager := subscription_manager.NewSubscriptionManager(mockLogger, 1)
 
 	// Mock BlockchainClient.BlockNumber during initialization
 	initialLastBlockNum := uint64(100)
 	mockBlockchainClient.On("BlockNumber", mock.Anything).Return(initialLastBlockNum, nil).Once()
 
-	config := event_poller_service.EventPollerServiceConfig{
+	config := chain_poller_service.ChainPollerServiceConfig{
 		PollInterval:     100 * time.Millisecond,
 		ChainPoller:      mockChainPoller,
-		SubscriptionMgr:  subManager,
 		Logger:           mockLogger,
 		ChainID:          1,
 		BlockchainClient: mockBlockchainClient,
 	}
 
-	eventPollerService, err := event_poller_service.NewEventPollerService(config)
+	chainPollerService, err := chain_poller_service.NewChainPollerService(config)
 	require.NoError(t, err)
-	require.NotNil(t, eventPollerService)
+	require.NotNil(t, chainPollerService)
 
 	// Start the service
-	eventPollerService.Start()
+	chainPollerService.Start()
 
 	// Allow some time for polling loop to start
 	time.Sleep(10 * time.Millisecond)
 
 	// Stop the service
-	eventPollerService.Stop()
+	chainPollerService.Stop()
 
-	assert.True(t, mockLogger.ContainsLog("EventPollerService started with poll interval: 100ms"))
+	assert.True(t, mockLogger.ContainsLog("ChainPollerService started with poll interval: 100ms"))
 	assert.True(t, mockLogger.ContainsLog("Polling loop terminating"))
-	assert.True(t, mockLogger.ContainsLog("EventPollerService stopped"))
+	assert.True(t, mockLogger.ContainsLog("ChainPollerService stopped"))
 }
 
-func TestEventPollerService_PollCycle_FetchAndBroadcast(t *testing.T) {
+func TestChainPollerService_PollCycle_FetchAndBroadcast(t *testing.T) {
 	mockChainPoller := new(MockChainPoller)
-	mockBlockchainClient := new(MockBlockchainClient)
+	mockBlockchainClient := new(internal.MockBlockchainClient)
 	mockLogger := internal.NewMockLogger()
-	subManager := subscription_manager.NewSubscriptionManager(mockLogger, 1)
 
 	// Mock BlockchainClient.BlockNumber during initialization
 	initialLastBlockNum := uint64(100)
 	mockBlockchainClient.On("BlockNumber", mock.Anything).Return(initialLastBlockNum, nil).Once()
 
-	// Initialize EventPollerService
-	config := event_poller_service.EventPollerServiceConfig{
+	// Initialize ChainPollerService
+	config := chain_poller_service.ChainPollerServiceConfig{
 		PollInterval:     100 * time.Millisecond,
 		ChainPoller:      mockChainPoller,
-		SubscriptionMgr:  subManager,
 		Logger:           mockLogger,
 		ChainID:          1,
 		BlockchainClient: mockBlockchainClient,
 	}
 
-	eventPollerService, err := event_poller_service.NewEventPollerService(config)
+	chainPollerService, err := chain_poller_service.NewChainPollerService(config)
 	require.NoError(t, err)
-	require.NotNil(t, eventPollerService)
+	require.NotNil(t, chainPollerService)
 
 	// Setup a subscriber
 	address := common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678")
 	topic := common.HexToHash("0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd")
-	logCh, err := subManager.Subscribe(address, topic)
+	logCh, err := chainPollerService.SubscriptionMgr.Subscribe(address, topic)
 	require.NoError(t, err)
-	defer subManager.Unsubscribe(address, topic, logCh)
+	defer chainPollerService.SubscriptionMgr.Unsubscribe(address, topic, logCh)
 
 	// Define the expected toBlock
 	toBlock := uint64(110)
 
 	// Define the expected filter query
 	filterQuery := internal.FilterQuery{
-		FromBlock: eventPollerService.LastBlock.Uint64() + 1,
+		FromBlock: chainPollerService.LastBlock.Uint64() + 1,
 		ToBlock:   toBlock,
 		Addresses: []common.Address{address},
 		Topics:    [][]common.Hash{{topic}},
@@ -218,13 +189,13 @@ func TestEventPollerService_PollCycle_FetchAndBroadcast(t *testing.T) {
 	mockBlockchainClient.On("BlockNumber", mock.Anything).Return(toBlock, nil).Once()
 
 	// Start the polling service
-	eventPollerService.Start()
+	chainPollerService.Start()
 
 	// Allow some time for polling cycle to execute
 	time.Sleep(150 * time.Millisecond)
 
 	// Stop the polling service
-	eventPollerService.Stop()
+	chainPollerService.Stop()
 
 	// Assert that the fetched log was broadcasted to the subscriber
 	select {
@@ -234,48 +205,46 @@ func TestEventPollerService_PollCycle_FetchAndBroadcast(t *testing.T) {
 		t.Fatal("Did not receive the expected log")
 	}
 
-	assert.True(t, mockLogger.ContainsLog("EventPollerService started with poll interval: 100ms"))
+	assert.True(t, mockLogger.ContainsLog("ChainPollerService started with poll interval: 100ms"))
 	assert.True(t, mockLogger.ContainsLog("Starting polling cycle"))
 	assert.True(t, mockLogger.ContainsLog("Fetched 1 logs from blockchain"))
 	assert.True(t, mockLogger.ContainsLog("Completed polling cycle in"))
 }
 
-func TestEventPollerService_PollCycle_NoSubscriptions(t *testing.T) {
+func TestChainPollerService_PollCycle_NoSubscriptions(t *testing.T) {
 	mockChainPoller := new(MockChainPoller)
-	mockBlockchainClient := new(MockBlockchainClient)
+	mockBlockchainClient := new(internal.MockBlockchainClient)
 	mockLogger := internal.NewMockLogger()
-	subManager := subscription_manager.NewSubscriptionManager(mockLogger, 1)
 
 	// Mock BlockchainClient.BlockNumber during initialization
 	initialLastBlockNum := uint64(100)
 	mockBlockchainClient.On("BlockNumber", mock.Anything).Return(initialLastBlockNum, nil).Once()
 
-	// Initialize EventPollerService
-	config := event_poller_service.EventPollerServiceConfig{
+	// Initialize ChainPollerService
+	config := chain_poller_service.ChainPollerServiceConfig{
 		PollInterval:     100 * time.Millisecond,
 		ChainPoller:      mockChainPoller,
-		SubscriptionMgr:  subManager,
 		Logger:           mockLogger,
 		ChainID:          1,
 		BlockchainClient: mockBlockchainClient,
 	}
 
-	eventPollerService, err := event_poller_service.NewEventPollerService(config)
+	chainPollerService, err := chain_poller_service.NewChainPollerService(config)
 	require.NoError(t, err)
-	require.NotNil(t, eventPollerService)
+	require.NotNil(t, chainPollerService)
 
 	// Mock BlockchainClient.BlockNumber for the next poll
 	toBlock := uint64(110)
 	mockBlockchainClient.On("BlockNumber", mock.Anything).Return(toBlock, nil).Once()
 
 	// Start the polling service
-	eventPollerService.Start()
+	chainPollerService.Start()
 
 	// Allow some time for polling cycle to execute
 	time.Sleep(150 * time.Millisecond)
 
 	// Stop the polling service
-	eventPollerService.Stop()
+	chainPollerService.Stop()
 
 	// Assert that Poll was not called
 	mockChainPoller.AssertNotCalled(t, "Poll", mock.Anything, mock.Anything)
@@ -284,44 +253,42 @@ func TestEventPollerService_PollCycle_NoSubscriptions(t *testing.T) {
 	assert.True(t, mockLogger.ContainsLog("No active subscriptions, skipping polling cycle"))
 }
 
-func TestEventPollerService_PollCycle_MultipleLogs(t *testing.T) {
+func TestChainPollerService_PollCycle_MultipleLogs(t *testing.T) {
 	mockChainPoller := new(MockChainPoller)
-	mockBlockchainClient := new(MockBlockchainClient)
+	mockBlockchainClient := new(internal.MockBlockchainClient)
 	mockLogger := internal.NewMockLogger()
-	subManager := subscription_manager.NewSubscriptionManager(mockLogger, 1)
 
 	// Mock BlockchainClient.BlockNumber during initialization
 	initialLastBlockNum := uint64(100)
 	mockBlockchainClient.On("BlockNumber", mock.Anything).Return(initialLastBlockNum, nil).Once()
 
-	// Initialize EventPollerService
-	config := event_poller_service.EventPollerServiceConfig{
+	// Initialize ChainPollerService
+	config := chain_poller_service.ChainPollerServiceConfig{
 		PollInterval:     100 * time.Millisecond,
 		ChainPoller:      mockChainPoller,
-		SubscriptionMgr:  subManager,
 		Logger:           mockLogger,
 		ChainID:          1,
 		BlockchainClient: mockBlockchainClient,
 	}
 
-	eventPollerService, err := event_poller_service.NewEventPollerService(config)
+	chainPollerService, err := chain_poller_service.NewChainPollerService(config)
 	require.NoError(t, err)
-	require.NotNil(t, eventPollerService)
+	require.NotNil(t, chainPollerService)
 
 	// Verify initial LastBlock is set correctly
-	assert.Equal(t, big.NewInt(99), eventPollerService.LastBlock)
+	assert.Equal(t, big.NewInt(99), chainPollerService.LastBlock)
 
 	// Setup subscribers
 	address := common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678")
 	topic1 := common.HexToHash("0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd")
 	topic2 := common.HexToHash("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
-	logCh1, err := subManager.Subscribe(address, topic1)
+	logCh1, err := chainPollerService.SubscriptionMgr.Subscribe(address, topic1)
 	require.NoError(t, err)
-	defer subManager.Unsubscribe(address, topic1, logCh1)
+	defer chainPollerService.SubscriptionMgr.Unsubscribe(address, topic1, logCh1)
 
-	logCh2, err := subManager.Subscribe(address, topic2)
+	logCh2, err := chainPollerService.SubscriptionMgr.Subscribe(address, topic2)
 	require.NoError(t, err)
-	defer subManager.Unsubscribe(address, topic2, logCh2)
+	defer chainPollerService.SubscriptionMgr.Unsubscribe(address, topic2, logCh2)
 
 	// Define the expected toBlock
 	toBlock := uint64(110)
@@ -369,11 +336,11 @@ func TestEventPollerService_PollCycle_MultipleLogs(t *testing.T) {
 	mockBlockchainClient.On("BlockNumber", mock.Anything).Return(toBlock, nil).Once()
 
 	// Start the polling service
-	eventPollerService.Start()
+	chainPollerService.Start()
 
 	// Allow some time for polling cycle to execute
 	time.Sleep(150 * time.Millisecond)
-	eventPollerService.Stop()
+	chainPollerService.Stop()
 
 	// Assert that the fetched logs were broadcasted to the subscribers
 	select {
@@ -398,70 +365,66 @@ func TestEventPollerService_PollCycle_MultipleLogs(t *testing.T) {
 	assert.True(t, mockLogger.ContainsLog("Completed polling cycle in"))
 }
 
-func TestEventPollerService_StopWithoutStart(t *testing.T) {
+func TestChainPollerService_StopWithoutStart(t *testing.T) {
 	mockChainPoller := new(MockChainPoller)
-	mockBlockchainClient := new(MockBlockchainClient)
+	mockBlockchainClient := new(internal.MockBlockchainClient)
 	mockLogger := internal.NewMockLogger()
-	subManager := subscription_manager.NewSubscriptionManager(mockLogger, 1)
 
 	// Mock BlockchainClient.BlockNumber during initialization
 	initialLastBlockNum := uint64(100)
 	mockBlockchainClient.On("BlockNumber", mock.Anything).Return(initialLastBlockNum, nil).Once()
 
-	// Initialize EventPollerService
-	config := event_poller_service.EventPollerServiceConfig{
+	// Initialize ChainPollerService
+	config := chain_poller_service.ChainPollerServiceConfig{
 		PollInterval:     100 * time.Millisecond,
 		ChainPoller:      mockChainPoller,
-		SubscriptionMgr:  subManager,
 		Logger:           mockLogger,
 		ChainID:          1,
 		BlockchainClient: mockBlockchainClient,
 	}
 
-	eventPollerService, err := event_poller_service.NewEventPollerService(config)
+	chainPollerService, err := chain_poller_service.NewChainPollerService(config)
 	require.NoError(t, err)
-	require.NotNil(t, eventPollerService)
+	require.NotNil(t, chainPollerService)
 
 	// Attempt to stop without starting
-	eventPollerService.Stop()
+	chainPollerService.Stop()
 	// Verify that no logger calls were made
 	assert.Equal(t, 0, mockLogger.NumLogs())
 }
 
-func TestEventPollerService_MultipleStartCalls(t *testing.T) {
+func TestChainPollerService_MultipleStartCalls(t *testing.T) {
 	mockChainPoller := new(MockChainPoller)
-	mockBlockchainClient := new(MockBlockchainClient)
+	mockBlockchainClient := new(internal.MockBlockchainClient)
 	mockLogger := internal.NewMockLogger()
-	subManager := subscription_manager.NewSubscriptionManager(mockLogger, 1)
 
 	// Mock BlockchainClient.BlockNumber during initialization
 	initialLastBlockNum := uint64(100)
 	mockBlockchainClient.On("BlockNumber", mock.Anything).Return(initialLastBlockNum, nil).Once()
 
-	config := event_poller_service.EventPollerServiceConfig{
+	config := chain_poller_service.ChainPollerServiceConfig{
 		PollInterval:     100 * time.Millisecond,
 		ChainPoller:      mockChainPoller,
-		SubscriptionMgr:  subManager,
 		Logger:           mockLogger,
 		ChainID:          1,
 		BlockchainClient: mockBlockchainClient,
 	}
 
-	eventPollerService, err := event_poller_service.NewEventPollerService(config)
+	chainPollerService, err := chain_poller_service.NewChainPollerService(config)
 	require.NoError(t, err)
-	require.NotNil(t, eventPollerService)
+	require.NotNil(t, chainPollerService)
 
 	// Start the service first time
-	eventPollerService.Start()
+	chainPollerService.Start()
 
 	// Start the service second time
-	eventPollerService.Start()
+	chainPollerService.Start()
 
 	// Stop the service
-	eventPollerService.Stop()
+	chainPollerService.Stop()
 
-	assert.True(t, mockLogger.ContainsLog("EventPollerService started with poll interval: 100ms"))
-	assert.True(t, mockLogger.ContainsLog("EventPollerService already started"))
+	assert.True(t, mockLogger.ContainsLog("ChainPollerService started with poll interval: 100ms"))
+	assert.True(t, mockLogger.ContainsLog("ChainPollerService already started"))
 	assert.True(t, mockLogger.ContainsLog("Polling loop terminating"))
-	assert.True(t, mockLogger.ContainsLog("EventPollerService stopped"))
+	assert.True(t, mockLogger.ContainsLog("ChainPollerService stopped"))
 }
