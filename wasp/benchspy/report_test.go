@@ -344,7 +344,7 @@ func TestBenchSpy_StandardReport_FetchData(t *testing.T) {
 	})
 }
 
-func TestStandardReport_IsComparable(t *testing.T) {
+func TestBenchSpy_StandardReport_IsComparable(t *testing.T) {
 	baseTime := time.Now()
 	basicGen := &wasp.Generator{
 		Cfg: &wasp.Config{

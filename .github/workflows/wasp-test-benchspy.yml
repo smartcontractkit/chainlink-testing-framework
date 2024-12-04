@@ -1,0 +1,33 @@
+name: WASP's BenchSpy Go Tests
+on: [push]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    defaults:
+      run:
+        working-directory: wasp
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            src:
+              - 'wasp/benchspy/**'
+      - uses: cachix/install-nix-action@08dcb3a5e62fa31e2da3d490afc4176ef55ecd72 # v30
+        if: steps.changes.outputs.src == 'true'
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - name: Run tests
+        if: steps.changes.outputs.src == 'true'
+        run: |-
+          nix develop -c make test_benchspy_race
+          coverage=$(go tool cover -func=cover.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
+          if (( $(echo "$coverage < 85" | bc -l) )); then
+            echo "Test coverage $coverage% is below minimum 85%"
+            exit 1
+          fi
+          echo "Test coverage: $coverage%"

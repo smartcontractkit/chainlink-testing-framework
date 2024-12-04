@@ -182,26 +182,3 @@ func extractTagsOrCommits(directory string) ([]string, error) {
 
 	return tagsOrCommits, nil
 }
-
-func findLatestCommit(references []string) (string, error) {
-	if len(references) == 0 {
-		return "", fmt.Errorf("no references provided")
-	}
-
-	args := append([]string{"rev-list", "--topo-order", "--date-order", "-n", "1"}, references...)
-	cmd := exec.Command("git", args...)
-
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("failed to run git rev-list: %s, error: %v", stderr.String(), err)
-	}
-
-	latestCommit := strings.TrimSpace(stdout.String())
-	if latestCommit == "" {
-		return "", fmt.Errorf("no latest commit found")
-	}
-
-	return latestCommit, nil
-}
