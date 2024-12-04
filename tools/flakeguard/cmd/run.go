@@ -71,7 +71,7 @@ var RunTestsCmd = &cobra.Command{
 		// Print all failed tests including flaky tests
 		if printFailedTests {
 			fmt.Printf("PassRatio threshold for flaky tests: %.2f\n", maxPassRatio)
-			reports.PrintTests(os.Stdout, testReport.Results, maxPassRatio, false)
+			reports.PrintResults(os.Stdout, testReport.Results, maxPassRatio, false, false)
 		}
 
 		// Save the test results in JSON format

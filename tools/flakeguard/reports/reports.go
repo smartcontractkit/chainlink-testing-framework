@@ -91,8 +91,8 @@ func FilterSkippedTests(results []TestResult) []TestResult {
 	return skippedTests
 }
 
-// AggregateTestResults aggregates all JSON test results.
-func AggregateTestResults(folderPath string) (*TestReport, error) {
+// Aggregate aggregates multiple test reports into a single report.
+func Aggregate(reportsToAggregate ...*TestReport) (*TestReport, error) {
 	var (
 		// Map to hold unique tests based on their TestName and TestPackage
 		// Key: TestName|TestPackage, Value: TestResult
@@ -103,67 +103,49 @@ func AggregateTestResults(folderPath string) (*TestReport, error) {
 	)
 
 	// Read all JSON files in the folder
-	err := filepath.Walk(folderPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
+	for _, report := range reportsToAggregate {
+		if fullReport.GoProject == "" {
+			fullReport.GoProject = report.GoProject
+		} else if fullReport.GoProject != report.GoProject {
+			return nil, fmt.Errorf("reports with different Go projects found, expected %s, got %s", fullReport.GoProject, report.GoProject)
 		}
-		if !info.IsDir() && filepath.Ext(path) == ".json" {
-			// Read file content
-			data, readErr := os.ReadFile(path)
-			if readErr != nil {
-				return readErr
-			}
-			var report TestReport
-			if jsonErr := json.Unmarshal(data, &report); jsonErr != nil {
-				return jsonErr
-			}
-			if fullReport.GoProject == "" {
-				fullReport.GoProject = report.GoProject
-			} else if fullReport.GoProject != report.GoProject {
-				return fmt.Errorf("multiple projects found in the results folder, expected %s, got %s", fullReport.GoProject, report.GoProject)
-			}
-			fullReport.TestRunCount += report.TestRunCount
-			fullReport.RaceDetection = report.RaceDetection && fullReport.RaceDetection
-			for _, test := range report.ExcludedTests {
-				excludedTests[test] = struct{}{}
-			}
-			for _, test := range report.SelectedTests {
-				selectedTests[test] = struct{}{}
-			}
-			// Process each test results
-			for _, result := range report.Results {
-				// Unique key for each test based on TestName and TestPackage
-				key := result.TestName + "|" + result.TestPackage
-				if existingResult, found := testMap[key]; found {
-					// Aggregate runs, durations, and outputs
-					existingResult.Runs = existingResult.Runs + result.Runs
-					existingResult.Durations = append(existingResult.Durations, result.Durations...)
-					existingResult.Outputs = append(existingResult.Outputs, result.Outputs...)
-					existingResult.PackageOutputs = append(existingResult.PackageOutputs, result.PackageOutputs...)
-					existingResult.Successes += result.Successes
-					existingResult.Failures += result.Failures
-					existingResult.Panic = existingResult.Panic || result.Panic
-					existingResult.Race = existingResult.Race || result.Race
-					existingResult.Skips += result.Skips
-					existingResult.PassRatio = 1.0
-					if existingResult.Runs > 0 {
-						existingResult.PassRatio = float64(existingResult.Successes) / float64(existingResult.Runs)
-					}
-
-					existingResult.Skipped = existingResult.Skipped && result.Skipped // Mark as skipped only if all occurrences are skipped
-
-					// Update the map with the aggregated result
-					testMap[key] = existingResult
-				} else {
-					// Add new entry to the map
-					testMap[key] = result
+		fullReport.TestRunCount += report.TestRunCount
+		fullReport.RaceDetection = report.RaceDetection && fullReport.RaceDetection
+		for _, test := range report.ExcludedTests {
+			excludedTests[test] = struct{}{}
+		}
+		for _, test := range report.SelectedTests {
+			selectedTests[test] = struct{}{}
+		}
+		// Process each test results
+		for _, result := range report.Results {
+			// Unique key for each test based on TestName and TestPackage
+			key := result.TestName + "|" + result.TestPackage
+			if existingResult, found := testMap[key]; found {
+				// Aggregate runs, durations, and outputs
+				existingResult.Runs = existingResult.Runs + result.Runs
+				existingResult.Durations = append(existingResult.Durations, result.Durations...)
+				existingResult.Outputs = append(existingResult.Outputs, result.Outputs...)
+				existingResult.PackageOutputs = append(existingResult.PackageOutputs, result.PackageOutputs...)
+				existingResult.Successes += result.Successes
+				existingResult.Failures += result.Failures
+				existingResult.Panic = existingResult.Panic || result.Panic
+				existingResult.Race = existingResult.Race || result.Race
+				existingResult.Skips += result.Skips
+				existingResult.PassRatio = 1.0
+				if existingResult.Runs > 0 {
+					existingResult.PassRatio = float64(existingResult.Successes) / float64(existingResult.Runs)
 				}
+
+				existingResult.Skipped = existingResult.Skipped && result.Skipped // Mark as skipped only if all occurrences are skipped
+
+				// Update the map with the aggregated result
+				testMap[key] = existingResult
+			} else {
+				// Add new entry to the map
+				testMap[key] = result
 			}
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("error reading files: %v", err)
 	}
 	// Aggregate
 	for test := range excludedTests {
@@ -188,84 +170,102 @@ func AggregateTestResults(folderPath string) (*TestReport, error) {
 	return fullReport, nil
 }
 
-// PrintTests prints tests in a pretty format
-func PrintTests(
-	w io.Writer,
-	tests []TestResult,
-	maxPassRatio float64,
-	includeCodeOwners bool, // Include code owners in the output. Set to true if test results have code owners
-) (runs, passes, fails, skips, panickedTests, racedTests, flakyTests int) {
+func TestResultsTable(
+	results []TestResult,
+	expectedPassRatio float64,
+	includeCodeOwners bool,
+	markdown bool,
+) (resultsTable [][]string, runs, passes, fails, skips, panickedTests, racedTests, flakyTests int) {
 	p := message.NewPrinter(language.English) // For formatting numbers
-	sortTestResults(tests)
+	sortTestResults(results)
 
 	headers := []string{
-		"**Name**",
-		"**Pass Ratio**",
-		"**Panicked?**",
-		"**Timed Out?**",
-		"**Race?**",
-		"**Runs**",
-		"**Successes**",
-		"**Failures**",
-		"**Skips**",
-		"**Package**",
-		"**Package Panicked?**",
-		"**Avg Duration**",
+		"Name",
+		"Pass Ratio",
+		"Panicked?",
+		"Timed Out?",
+		"Race?",
+		"Runs",
+		"Successes",
+		"Failures",
+		"Skips",
+		"Package",
+		"Package Panicked?",
+		"Avg Duration",
 	}
 
 	if includeCodeOwners {
-		headers = append(headers, "**Code Owners**")
+		headers = append(headers, "Code Owners")
+	}
+	if markdown {
+		for i, header := range headers {
+			headers[i] = fmt.Sprintf("**%s**", header)
+		}
 	}
 
-	// Build test rows and summary data
-	rows := [][]string{}
-	for _, test := range tests {
-		if test.PassRatio < maxPassRatio {
+	resultsTable = [][]string{}
+	resultsTable = append(resultsTable, headers)
+	for _, result := range results {
+		if result.PassRatio < expectedPassRatio {
 			row := []string{
-				test.TestName,
-				fmt.Sprintf("%.2f%%", test.PassRatio*100),
-				fmt.Sprintf("%t", test.Panic),
-				fmt.Sprintf("%t", test.Timeout),
-				fmt.Sprintf("%t", test.Race),
-				p.Sprintf("%d", test.Runs),
-				p.Sprintf("%d", test.Successes),
-				p.Sprintf("%d", test.Failures),
-				p.Sprintf("%d", test.Skips),
-				test.TestPackage,
-				fmt.Sprintf("%t", test.PackagePanic),
-				avgDuration(test.Durations).String(),
+				result.TestName,
+				fmt.Sprintf("%.2f%%", result.PassRatio*100),
+				fmt.Sprintf("%t", result.Panic),
+				fmt.Sprintf("%t", result.Timeout),
+				fmt.Sprintf("%t", result.Race),
+				p.Sprintf("%d", result.Runs),
+				p.Sprintf("%d", result.Successes),
+				p.Sprintf("%d", result.Failures),
+				p.Sprintf("%d", result.Skips),
+				result.TestPackage,
+				fmt.Sprintf("%t", result.PackagePanic),
+				avgDuration(result.Durations).String(),
 			}
 
 			if includeCodeOwners {
 				owners := "Unknown"
-				if len(test.CodeOwners) > 0 {
-					owners = strings.Join(test.CodeOwners, ", ")
+				if len(result.CodeOwners) > 0 {
+					owners = strings.Join(result.CodeOwners, ", ")
 				}
 				row = append(row, owners)
 			}
 
-			rows = append(rows, row)
+			resultsTable = append(resultsTable, row)
 		}
 
-		runs += test.Runs
-		passes += test.Successes
-		fails += test.Failures
-		skips += test.Skips
-		if test.Panic {
+		runs += result.Runs
+		passes += result.Successes
+		fails += result.Failures
+		skips += result.Skips
+		if result.Panic {
 			panickedTests++
 			flakyTests++
-		} else if test.Race {
+		} else if result.Race {
 			racedTests++
 			flakyTests++
-		} else if test.PassRatio < maxPassRatio {
+		} else if result.PassRatio < expectedPassRatio {
 			flakyTests++
 		}
 	}
+	return
+}
 
+// PrintTests prints tests in a pretty format
+func PrintResults(
+	w io.Writer,
+	tests []TestResult,
+	maxPassRatio float64,
+	markdown bool,
+	includeCodeOwners bool, // Include code owners in the output. Set to true if test results have code owners
+) (runs, passes, fails, skips, panickedTests, racedTests, flakyTests int) {
 	var (
+		resultsTable  [][]string
 		passRatioStr  string
 		flakeRatioStr string
+		p             = message.NewPrinter(language.English) // For formatting numbers
 	)
+	resultsTable, runs, passes, fails, skips, panickedTests, racedTests, flakyTests = TestResultsTable(tests, maxPassRatio, markdown, includeCodeOwners)
+	// Print out summary data
 	if runs == 0 || passes == runs {
 		passRatioStr = "100%"
 		flakeRatioStr = "0%"
@@ -277,21 +277,29 @@ func PrintTests(
 		passRatioStr = fmt.Sprintf("%.2f%%", truncatedPassPercentage)
 		flakeRatioStr = fmt.Sprintf("%.2f%%", truncatedFlakePercentage)
 	}
-
-	// Print out summary data
 	summaryData := [][]string{
-		{"**Category**", "**Total**"},
-		{"**Tests**", p.Sprint(len(tests))},
-		{"**Panicked Tests**", p.Sprint(panickedTests)},
-		{"**Raced Tests**", p.Sprint(racedTests)},
-		{"**Flaky Tests**", p.Sprint(flakyTests)},
-		{"**Flaky Test Ratio**", flakeRatioStr},
-		{"**Runs**", p.Sprint(runs)},
-		{"**Passes**", p.Sprint(passes)},
-		{"**Failures**", p.Sprint(fails)},
-		{"**Skips**", p.Sprint(skips)},
-		{"**Pass Ratio**", passRatioStr},
+		{"Category", "Total"},
+		{"Tests", p.Sprint(len(tests))},
+		{"Panicked Tests", p.Sprint(panickedTests)},
+		{"Raced Tests", p.Sprint(racedTests)},
+		{"Flaky Tests", p.Sprint(flakyTests)},
+		{"Flaky Test Ratio", flakeRatioStr},
+		{"Runs", p.Sprint(runs)},
+		{"Passes", p.Sprint(passes)},
+		{"Failures", p.Sprint(fails)},
+		{"Skips", p.Sprint(skips)},
+		{"Pass Ratio", passRatioStr},
 	}
+	if markdown {
+		for i, row := range summaryData {
+			if i == 0 {
+				summaryData[i] = []string{"**Category**", "**Total**"}
+			} else {
+				summaryData[i] = []string{fmt.Sprintf("**%s**", row[0]), row[1]}
+			}
+		}
+	}
+
 	colWidths := make([]int, len(summaryData[0]))
 
 	for _, row := range summaryData {
@@ -301,8 +309,7 @@ func PrintTests(
 			}
 		}
 	}
-
-	if len(rows) == 0 {
+	if len(resultsTable) <= 1 {
 		fmt.Fprintf(w, "No tests found under pass ratio of %.2f%%\n", maxPassRatio*100)
 		return
 	}
@@ -321,12 +328,13 @@ func PrintTests(
 	fmt.Fprintln(w)
 
 	// Print out test data
-	colWidths = make([]int, len(headers))
-	for i, header := range headers {
+	resultsHeaders := resultsTable[0]
+	colWidths = make([]int, len(resultsHeaders))
+	for i, header := range resultsHeaders {
 		colWidths[i] = len(header)
 	}
-	for _, row := range rows {
-		for i, cell := range row {
+	for rowNum := 1; rowNum < len(resultsTable); rowNum++ {
+		for i, cell := range resultsTable[rowNum] {
 			if len(cell) > colWidths[i] {
 				colWidths[i] = len(cell)
 			}
@@ -349,10 +357,10 @@ func PrintTests(
 		fmt.Fprintln(w, "|"+buffer.String())
 	}
 
-	printRow(headers)
+	printRow(resultsHeaders)
 	printSeparator()
-	for _, row := range rows {
-		printRow(row)
+	for rowNum := 1; rowNum < len(resultsTable); rowNum++ {
+		printRow(resultsTable[rowNum])
 	}
 	return
 }
@@ -409,7 +417,7 @@ func MarkdownSummary(w io.Writer, testReport *TestReport, maxPassRatio float64, 
 		return
 	}
 
-	allRuns, passes, _, _, _, _, _ := PrintTests(testsData, tests, maxPassRatio, includeCodeOwners)
+	allRuns, passes, _, _, _, _, _ := PrintResults(testsData, tests, maxPassRatio, true, includeCodeOwners)
 	if allRuns > 0 {
 		avgPassRatio = float64(passes) / float64(allRuns)
 	}
