@@ -6,6 +6,10 @@ test:
 test_race:
 	go test -v -race -count 1 `go list ./... | grep -v examples` -run TestSmoke
 
+.PHONY: test_benchspy_race
+test_benchspy_race:
+	go test -v -race -count 1 `go list ./... | grep -v examples | grep benchspy` -run TestBenchSpy
+
 .PHONY: test_bench
 test_bench:
 	go test -bench=. -benchmem -count 1 -run=^#

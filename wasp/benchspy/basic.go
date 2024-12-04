@@ -58,6 +58,10 @@ func (b *BasicData) FillStartEndTimes() error {
 	var latestTime time.Time
 
 	for _, cfg := range b.GeneratorConfigs {
+		if len(cfg.Schedule) == 0 {
+			return fmt.Errorf("schedule is empty for generator %s", cfg.GenName)
+		}
+
 		for _, segment := range cfg.Schedule {
 			if segment.StartTime.IsZero() {
 				return fmt.Errorf("start time is missing in one of the segments belonging to generator %s. Did that generator run?", cfg.GenName)
@@ -111,16 +115,13 @@ func (b *BasicData) IsComparable(otherData BasicData) error {
 		}
 	}
 
-	for name2 := range otherData.GeneratorConfigs {
-		if _, ok := b.GeneratorConfigs[name2]; !ok {
-			return fmt.Errorf("generator config %s is missing from the current report", name2)
-		}
-	}
-
 	return nil
 }
 
 func compareGeneratorConfigs(cfg1, cfg2 *wasp.Config) error {
+	if cfg1.GenName != cfg2.GenName {
+		return fmt.Errorf("generator names are different. Expected %s, got %s", cfg1.GenName, cfg2.GenName)
+	}
 	if cfg1.LoadType != cfg2.LoadType {
 		return fmt.Errorf("load types are different. Expected %s, got %s", cfg1.LoadType, cfg2.LoadType)
 	}
@@ -136,13 +137,13 @@ func compareGeneratorConfigs(cfg1, cfg2 *wasp.Config) error {
 	for i, segment1 := range cfg1.Schedule {
 		segment2 := cfg2.Schedule[i]
 		if segment1 == nil {
-			return fmt.Errorf("schedule at index %d is nil in the current report", i)
+			return fmt.Errorf("segment at index %d is nil in the current report", i)
 		}
 		if segment2 == nil {
-			return fmt.Errorf("schedule at index %d is nil in the other report", i)
+			return fmt.Errorf("segment at index %d is nil in the other report", i)
 		}
 		if !areSegmentsEqual(segment1, segment2) {
-			return fmt.Errorf("schedules at index %d are different. Expected %s, got %s", i, mustMarshallSegment(segment1), mustMarshallSegment(segment2))
+			return fmt.Errorf("segments at index %d are different. Expected %s segment(s), got %s segment(s)", i, mustMarshallSegment(segment1), mustMarshallSegment(segment2))
 		}
 	}
 

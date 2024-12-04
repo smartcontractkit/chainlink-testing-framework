@@ -18,7 +18,7 @@ func NewLokiQueryExecutor(queries map[string]string, lokiConfig *wasp.LokiConfig
 	return &LokiQueryExecutor{
 		Kind:         "loki",
 		Queries:      queries,
-		LokiConfig:   lokiConfig,
+		Config:       lokiConfig,
 		QueryResults: make(map[string][]string),
 	}
 }
@@ -36,7 +36,7 @@ type LokiQueryExecutor struct {
 	// can be anything, avg RPS, amount of errors, 95th percentile of CPU utilization, etc
 	QueryResults map[string][]string `json:"query_results"`
 
-	LokiConfig *wasp.LokiConfig `json:"-"`
+	Config *wasp.LokiConfig `json:"-"`
 }
 
 func (l *LokiQueryExecutor) Results() map[string][]string {
@@ -57,7 +57,7 @@ func (l *LokiQueryExecutor) Validate() error {
 	if len(l.Queries) == 0 {
 		return errors.New("there are no Loki queries, there's nothing to fetch. Please set them and try again")
 	}
-	if l.LokiConfig == nil {
+	if l.Config == nil {
 		return errors.New("loki config is missing. Please set it and try again")
 	}
 
@@ -65,7 +65,7 @@ func (l *LokiQueryExecutor) Validate() error {
 }
 
 func (l *LokiQueryExecutor) Execute(ctx context.Context) error {
-	splitAuth := strings.Split(l.LokiConfig.BasicAuth, ":")
+	splitAuth := strings.Split(l.Config.BasicAuth, ":")
 	var basicAuth client.LokiBasicAuth
 	if len(splitAuth) == 2 {
 		basicAuth = client.LokiBasicAuth{
@@ -87,13 +87,13 @@ func (l *LokiQueryExecutor) Execute(ctx context.Context) error {
 				Limit:     1000, //TODO make this configurable
 			}
 
-			parsedLokiUrl, err := url.Parse(l.LokiConfig.URL)
+			parsedLokiUrl, err := url.Parse(l.Config.URL)
 			if err != nil {
-				return errors.Wrapf(err, "failed to parse Loki URL %s", l.LokiConfig.URL)
+				return errors.Wrapf(err, "failed to parse Loki URL %s", l.Config.URL)
 			}
 
 			lokiUrl := parsedLokiUrl.Scheme + "://" + parsedLokiUrl.Host
-			lokiClient := client.NewLokiClient(lokiUrl, l.LokiConfig.TenantID, basicAuth, queryParams)
+			lokiClient := client.NewLokiClient(lokiUrl, l.Config.TenantID, basicAuth, queryParams)
 
 			rawLogs, err := lokiClient.QueryLogs(errCtx)
 			if err != nil {
@@ -144,12 +144,6 @@ func (l *LokiQueryExecutor) compareLokiQueries(other map[string]string) error {
 		}
 	}
 
-	for name2 := range other {
-		if _, ok := this[name2]; !ok {
-			return fmt.Errorf("query %s is missing from the current report", name2)
-		}
-	}
-
 	return nil
 }
 
@@ -177,7 +171,7 @@ func NewStandardMetricsLokiExecutor(lokiConfig *wasp.LokiConfig, testName, gener
 	return &LokiQueryExecutor{
 		Kind:         "loki",
 		Queries:      standardQueries,
-		LokiConfig:   lokiConfig,
+		Config:       lokiConfig,
 		QueryResults: make(map[string][]string),
 	}, nil
 }

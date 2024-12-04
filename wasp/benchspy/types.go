@@ -46,5 +46,5 @@ type QueryExecutor interface {
 	// IsComparable checks whether both QueryExecutors can be compared (e.g. they have the same type, queries are the same, etc.), and returns an error (if any difference is found)
 	IsComparable(other QueryExecutor) error
 	// TimeRange sets the time range for the queries
-	TimeRange(time.Time, time.Time)
+	TimeRange(startTime, endTime time.Time)
 }
