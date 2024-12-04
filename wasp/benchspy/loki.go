@@ -159,3 +159,70 @@ func (l *LokiQueryExecutor) TimeRange(start, end time.Time) {
 	l.StartTime = start
 	l.EndTime = end
 }
+
+type StandardMetric string
+
+const (
+	AverageLatency      StandardMetric = "average_latency"
+	Percentile95Latency StandardMetric = "95th_percentile_latency"
+	ErrorRate           StandardMetric = "error_rate"
+)
+
+var standardMetrics = []StandardMetric{AverageLatency, Percentile95Latency, ErrorRate}
+
+func NewStandardMetricsLokiExecutor(lokiConfig *wasp.LokiConfig, testName, generatorName, branch, commit string, startTime, endTime time.Time) (*LokiQueryExecutor, error) {
+	standardQueries, queryErr := generateStandardLokiQueries(testName, generatorName, branch, commit, startTime, endTime)
+	if queryErr != nil {
+		return nil, queryErr
+	}
+
+	return &LokiQueryExecutor{
+		Kind:         "loki",
+		Queries:      standardQueries,
+		LokiConfig:   lokiConfig,
+		QueryResults: make(map[string][]string),
+	}, nil
+}
+
+func standardQuery(standardMetric StandardMetric, testName, generatorName, branch, commit string, startTime, endTime time.Time) (string, error) {
+	switch standardMetric {
+	case AverageLatency:
+		return fmt.Sprintf("avg_over_time({branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"responses\", gen_name=~\"%s\"} | json| unwrap duration [10s]) by (go_test_name, gen_name) / 1e6", branch, commit, testName, generatorName), nil
+	case Percentile95Latency:
+		return fmt.Sprintf("quantile_over_time(0.95, {branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"responses\", gen_name=~\"%s\"} | json| unwrap duration [10s]) by (go_test_name, gen_name) / 1e6", branch, commit, testName, generatorName), nil
+	case ErrorRate:
+		queryRange := calculateTimeRange(startTime, endTime)
+		return fmt.Sprintf("sum(max_over_time({branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"stats\", gen_name=~\"%s\"} | json| unwrap failed [%s]) by (node_id, go_test_name, gen_name)) by (__stream_shard__)", branch, commit, testName, generatorName, queryRange), nil
+	default:
+		return "", fmt.Errorf("unsupported standard metric %s", standardMetric)
+	}
+}
+
+func generateStandardLokiQueries(testName, generatorName, branch, commit string, startTime, endTime time.Time) (map[string]string, error) {
+	standardQueries := make(map[string]string)
+
+	for _, metric := range standardMetrics {
+		query, err := standardQuery(metric, testName, generatorName, branch, commit, startTime, endTime)
+		if err != nil {
+			return nil, err
+		}
+		standardQueries[string(metric)] = query
+	}
+
+	return standardQueries, nil
+}
+
+func calculateTimeRange(startTime, endTime time.Time) string {
+	totalSeconds := int(endTime.Sub(startTime).Seconds())
+
+	var rangeStr string
+	if totalSeconds%3600 == 0 { // Exact hours
+		rangeStr = fmt.Sprintf("%dh", totalSeconds/3600)
+	} else if totalSeconds%60 == 0 { // Exact minutes
+		rangeStr = fmt.Sprintf("%dm", totalSeconds/60)
+	} else { // Use seconds for uneven intervals
+		rangeStr = fmt.Sprintf("%ds", totalSeconds)
+	}
+
+	return rangeStr
+}

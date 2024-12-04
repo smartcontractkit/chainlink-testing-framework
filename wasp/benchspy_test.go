@@ -61,7 +61,6 @@ func TestBenchSpyWithLokiQuery(t *testing.T) {
 	currentReport.QueryExecutors = append(currentReport.QueryExecutors, lokiQueryExecutor)
 
 	gen.Run(true)
-	currentReport.TestEnd = time.Now()
 
 	fetchCtx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancelFn()
@@ -72,16 +71,14 @@ func TestBenchSpyWithLokiQuery(t *testing.T) {
 	// path, storeErr := currentReport.Store()
 	// require.NoError(t, storeErr, "failed to store current report", path)
 
+	// this is only needed, because we are using a non-standard directory
+	// otherwise, the Load method would be able to find the file
 	previousReport := benchspy.StandardReport{
-		BasicData: benchspy.BasicData{
-			TestName:    t.Name(),
-			CommitOrTag: "e7fc5826a572c09f8b93df3b9f674113372ce924",
-		},
 		LocalStorage: benchspy.LocalStorage{
 			Directory: "test_performance_reports",
 		},
 	}
-	loadErr := previousReport.Load()
+	loadErr := previousReport.Load(t.Name(), "e7fc5826a572c09f8b93df3b9f674113372ce924")
 	require.NoError(t, loadErr, "failed to load previous report")
 
 	isComparableErrs := previousReport.IsComparable(&currentReport)
@@ -110,7 +107,7 @@ func TestBenchSpyWithLokiQuery(t *testing.T) {
 		require.NoError(t, err, "failed to parse float")
 		previousSum += asFloat
 	}
-	previousAverage := currentSum / float64(len(previousReport.QueryExecutors[0].Results()["vu_over_time"]))
+	previousAverage := previousSum / float64(len(previousReport.QueryExecutors[0].Results()["vu_over_time"]))
 
 	require.Equal(t, currentAverage, previousAverage, "vu_over_time averages are not the same")
 }
@@ -167,16 +164,14 @@ func TestBenchSpyWithTwoLokiQueries(t *testing.T) {
 	// path, storeErr := currentReport.Store()
 	// require.NoError(t, storeErr, "failed to store current report", path)
 
+	// this is only needed, because we are using a non-standard directory
+	// otherwise, the Load method would be able to find the file
 	previousReport := benchspy.StandardReport{
-		BasicData: benchspy.BasicData{
-			TestName:    t.Name(),
-			CommitOrTag: "e7fc5826a572c09f8b93df3b9f674113372ce924",
-		},
 		LocalStorage: benchspy.LocalStorage{
 			Directory: "test_performance_reports",
 		},
 	}
-	loadErr := previousReport.Load()
+	loadErr := previousReport.Load(t.Name(), "e7fc5826a572c09f8b93df3b9f674113372ce924")
 	require.NoError(t, loadErr, "failed to load previous report")
 
 	isComparableErrs := previousReport.IsComparable(&currentReport)
@@ -234,4 +229,91 @@ func TestBenchSpyWithTwoLokiQueries(t *testing.T) {
 
 	diffPrecentage := (currentRespAverage - previousRespAverage) / previousRespAverage * 100
 	require.LessOrEqual(t, math.Abs(diffPrecentage), 1.0, "responses_over_time averages are more than 1% different", fmt.Sprintf("%.4f", diffPrecentage))
+}
+
+func TestBenchSpyWithStandardLokiMetrics(t *testing.T) {
+	label := "benchspy-std"
+
+	gen, err := wasp.NewGenerator(&wasp.Config{
+		T:          t,
+		LokiConfig: wasp.NewEnvLokiConfig(),
+		GenName:    "vu",
+		Labels: map[string]string{
+			"branch": label,
+			"commit": label,
+		},
+		CallTimeout: 100 * time.Millisecond,
+		LoadType:    wasp.VU,
+		Schedule: wasp.CombineAndRepeat(
+			2,
+			wasp.Steps(10, 1, 10, 10*time.Second),
+			wasp.Plain(30, 15*time.Second),
+			wasp.Steps(20, -1, 10, 5*time.Second),
+		),
+		VU: wasp.NewMockVU(&wasp.MockVirtualUserConfig{
+			CallSleep: 50 * time.Millisecond,
+		}),
+	})
+	require.NoError(t, err)
+
+	gen.Run(true)
+
+	currentReport, err := benchspy.NewStandardReport("e7fc5826a572c09f8b93df3b9f674113372ce925", benchspy.ExecutionEnvironment_Docker, gen)
+	require.NoError(t, err)
+
+	fetchCtx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancelFn()
+
+	fetchErr := currentReport.FetchData(fetchCtx)
+	require.NoError(t, fetchErr, "failed to fetch current report")
+
+	// path, storeErr := currentReport.Store()
+	// require.NoError(t, storeErr, "failed to store current report", path)
+
+	// this is only needed, because we are using a non-standard directory
+	// otherwise, the Load method would be able to find the file
+	previousReport := benchspy.StandardReport{
+		LocalStorage: benchspy.LocalStorage{
+			Directory: "test_performance_reports",
+		},
+	}
+	loadErr := previousReport.Load(t.Name(), "e7fc5826a572c09f8b93df3b9f674113372ce924")
+	require.NoError(t, loadErr, "failed to load previous report")
+
+	isComparableErrs := previousReport.IsComparable(currentReport)
+	require.Empty(t, isComparableErrs, "reports were not comparable", isComparableErrs)
+
+	var compareAverages = func(metricName benchspy.StandardMetric) {
+		require.NotEmpty(t, currentReport.QueryExecutors[0].Results()[string(metricName)], "%s results were missing from current report", string(metricName))
+		require.NotEmpty(t, previousReport.QueryExecutors[0].Results()[string(metricName)], "%s results were missing from previous report", string(metricName))
+		require.Equal(t, len(currentReport.QueryExecutors[0].Results()[string(metricName)]), len(previousReport.QueryExecutors[0].Results()[string(metricName)]), "%s results are not the same length", string(metricName))
+
+		var currentAvgSum float64
+		for _, value := range currentReport.QueryExecutors[0].Results()[string(metricName)] {
+			asFloat, err := strconv.ParseFloat(value, 64)
+			require.NoError(t, err, "failed to parse float")
+			currentAvgSum += asFloat
+		}
+		currentAvgAverage := currentAvgSum / float64(len(currentReport.QueryExecutors[0].Results()[string(metricName)]))
+
+		var previousAvgSum float64
+		for _, value := range previousReport.QueryExecutors[0].Results()[string(metricName)] {
+			asFloat, err := strconv.ParseFloat(value, 64)
+			require.NoError(t, err, "failed to parse float")
+			previousAvgSum += asFloat
+		}
+		previousAvgAverage := previousAvgSum / float64(len(previousReport.QueryExecutors[0].Results()[string(metricName)]))
+
+		var diffPrecentage float64
+		if previousAvgAverage != 0 {
+			diffPrecentage = (currentAvgAverage - previousAvgAverage) / previousAvgAverage * 100
+		} else {
+			diffPrecentage = currentAvgAverage * 100
+		}
+		require.LessOrEqual(t, math.Abs(diffPrecentage), 1.0, "%s averages are more than 1% different", string(metricName), fmt.Sprintf("%.4f", diffPrecentage))
+	}
+
+	compareAverages(benchspy.AverageLatency)
+	compareAverages(benchspy.Percentile95Latency)
+	compareAverages(benchspy.ErrorRate)
 }

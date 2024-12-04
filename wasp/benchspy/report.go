@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/pkg/errors"
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -20,14 +22,20 @@ func (b *StandardReport) Store() (string, error) {
 	return b.LocalStorage.Store(b.TestName, b.CommitOrTag, b)
 }
 
-func (b *StandardReport) Load() error {
-	return b.LocalStorage.Load(b.TestName, b.CommitOrTag, b)
+func (b *StandardReport) Load(testName, commitOrTag string) error {
+	return b.LocalStorage.Load(testName, commitOrTag, b)
+}
+
+func (b *StandardReport) LoadLatest(testName string) error {
+	return b.LocalStorage.Load(testName, "", b)
 }
 
 func (b *StandardReport) FetchData(ctx context.Context) error {
-	startEndErr := b.BasicData.FillStartEndTimes()
-	if startEndErr != nil {
-		return startEndErr
+	if b.TestStart.IsZero() || b.TestEnd.IsZero() {
+		startEndErr := b.BasicData.FillStartEndTimes()
+		if startEndErr != nil {
+			return startEndErr
+		}
 	}
 
 	basicErr := b.BasicData.Validate()
@@ -89,6 +97,42 @@ func (b *StandardReport) IsComparable(otherReport Reporter) error {
 	}
 
 	return nil
+}
+
+func NewStandardReport(commitOrTag string, executionEnvironment ExecutionEnvironment, generators ...*wasp.Generator) (*StandardReport, error) {
+	basicData, basicErr := NewBasicData(commitOrTag, generators...)
+	if basicErr != nil {
+		return nil, errors.Wrapf(basicErr, "failed to create basic data for generators %v", generators)
+	}
+
+	startEndErr := basicData.FillStartEndTimes()
+	if startEndErr != nil {
+		return nil, startEndErr
+	}
+
+	var queryExecutors []QueryExecutor
+	for _, g := range generators {
+		if !generatorHasLabels(g) {
+			return nil, fmt.Errorf("generator %s is missing branch or commit labels", g.Cfg.GenName)
+		}
+		executor, executorErr := NewStandardMetricsLokiExecutor(g.Cfg.LokiConfig, basicData.TestName, g.Cfg.GenName, g.Cfg.Labels["branch"], g.Cfg.Labels["commit"], basicData.TestStart, basicData.TestEnd)
+		if executorErr != nil {
+			return nil, errors.Wrapf(executorErr, "failed to create standard Loki query executor for generator %s", g.Cfg.GenName)
+		}
+		queryExecutors = append(queryExecutors, executor)
+	}
+
+	return &StandardReport{
+		BasicData:      *basicData,
+		QueryExecutors: queryExecutors,
+		ResourceReporter: ResourceReporter{
+			ExecutionEnvironment: executionEnvironment,
+		},
+	}, nil
+}
+
+func generatorHasLabels(g *wasp.Generator) bool {
+	return g.Cfg.Labels["branch"] != "" && g.Cfg.Labels["commit"] != ""
 }
 
 func (s *StandardReport) UnmarshalJSON(data []byte) error {

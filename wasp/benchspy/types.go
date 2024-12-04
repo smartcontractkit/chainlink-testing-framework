@@ -9,7 +9,9 @@ type Storer interface {
 	// Store stores the report in a persistent storage and returns the path to it, or an error
 	Store() (string, error)
 	// Load loads the report from a persistent storage and returns it, or an error
-	Load() error
+	Load(testName, commitOrTag string) error
+	// LoadLatest loads the latest report from a persistent storage and returns it, or an error
+	LoadLatest(testName string) error
 }
 
 type DataFetcher interface {

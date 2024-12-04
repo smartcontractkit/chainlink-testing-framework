@@ -2,8 +2,6 @@ module github.com/smartcontractkit/chainlink-testing-framework/wasp
 
 go 1.23
 
-toolchain go1.23.3
-
 require (
 	github.com/K-Phoen/grabana v0.22.2
 	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8
