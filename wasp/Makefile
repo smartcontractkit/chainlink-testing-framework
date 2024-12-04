@@ -8,7 +8,7 @@ test_race:
 
 .PHONY: test_benchspy_race
 test_benchspy_race:
-	go test -v -race -coverprofile cover.out -count 1 `go list ./... | grep -v examples | grep benchspy` -run TestBenchSpy
+	@./scripts/run_benchspy_tests.sh
 
 .PHONY: test_bench
 test_bench:

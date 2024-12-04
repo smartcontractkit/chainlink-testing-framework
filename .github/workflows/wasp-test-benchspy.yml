@@ -25,9 +25,3 @@ jobs:
         if: steps.changes.outputs.src == 'true'
         run: |-
           nix develop -c make test_benchspy_race
-          coverage=$(go tool cover -func=cover.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
-          if (( $(echo "$coverage < 85" | bc -l) )); then
-            echo "Test coverage $coverage% is below minimum 85%"
-            exit 1
-          fi
-          echo "Test coverage: $coverage%"
