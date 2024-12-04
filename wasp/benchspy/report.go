@@ -90,10 +90,6 @@ func (b *StandardReport) IsComparable(otherReport Reporter) error {
 		return basicErr
 	}
 
-	if resourceErr := b.CompareResources(&asStandardReport.ResourceReporter); resourceErr != nil {
-		return resourceErr
-	}
-
 	for i, queryExecutor := range b.QueryExecutors {
 		queryErr := queryExecutor.IsComparable(asStandardReport.QueryExecutors[i])
 		if queryErr != nil {
