@@ -11,27 +11,12 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/chain_poller"
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/internal"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/sentinel/chain_poller"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/sentinel/internal"
 )
 
-// MockBlockchainClient implements the BlockchainClient interface for testing.
-type MockBlockchainClient struct {
-	mock.Mock
-}
-
-func (m *MockBlockchainClient) BlockNumber(ctx context.Context) (uint64, error) {
-	args := m.Called(ctx)
-	return args.Get(0).(uint64), args.Error(1)
-}
-
-func (m *MockBlockchainClient) FilterLogs(ctx context.Context, query internal.FilterQuery) ([]internal.Log, error) {
-	args := m.Called(ctx, query)
-	return args.Get(0).([]internal.Log), args.Error(1)
-}
-
 func TestNewChainPoller_Success(t *testing.T) {
-	mockClient := new(MockBlockchainClient)
+	mockClient := new(internal.MockBlockchainClient)
 	mockLogger := internal.NewMockLogger()
 
 	config := chain_poller.ChainPollerConfig{
@@ -61,7 +46,7 @@ func TestNewChainPoller_NilBlockchainClient(t *testing.T) {
 }
 
 func TestNewChainPoller_NilLogger(t *testing.T) {
-	mockClient := new(MockBlockchainClient)
+	mockClient := new(internal.MockBlockchainClient)
 
 	config := chain_poller.ChainPollerConfig{
 		BlockchainClient: mockClient,
@@ -76,7 +61,7 @@ func TestNewChainPoller_NilLogger(t *testing.T) {
 }
 
 func TestChainPoller_Poll_SingleFilterQueryWithLogs(t *testing.T) {
-	mockClient := new(MockBlockchainClient)
+	mockClient := new(internal.MockBlockchainClient)
 	mockLogger := internal.NewMockLogger()
 
 	config := chain_poller.ChainPollerConfig{
@@ -137,7 +122,7 @@ func TestChainPoller_Poll_SingleFilterQueryWithLogs(t *testing.T) {
 }
 
 func TestChainPoller_Poll_MultipleFilterQueries(t *testing.T) {
-	mockClient := new(MockBlockchainClient)
+	mockClient := new(internal.MockBlockchainClient)
 	mockLogger := internal.NewMockLogger()
 
 	config := chain_poller.ChainPollerConfig{
@@ -218,7 +203,7 @@ func TestChainPoller_Poll_MultipleFilterQueries(t *testing.T) {
 }
 
 func TestChainPoller_Poll_NoLogs(t *testing.T) {
-	mockClient := new(MockBlockchainClient)
+	mockClient := new(internal.MockBlockchainClient)
 	mockLogger := internal.NewMockLogger()
 
 	config := chain_poller.ChainPollerConfig{
@@ -258,7 +243,7 @@ func TestChainPoller_Poll_NoLogs(t *testing.T) {
 }
 
 func TestChainPoller_Poll_FilterLogsError(t *testing.T) {
-	mockClient := new(MockBlockchainClient)
+	mockClient := new(internal.MockBlockchainClient)
 	mockLogger := internal.NewMockLogger()
 
 	config := chain_poller.ChainPollerConfig{

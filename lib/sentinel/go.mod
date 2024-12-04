@@ -1,4 +1,4 @@
-module github.com/smartcontractkit/chainlink-testing-framework/sentinel
+module github.com/smartcontractkit/chainlink-testing-framework/lib/sentinel
 
 go 1.22.5
 

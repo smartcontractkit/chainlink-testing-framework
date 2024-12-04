@@ -5,12 +5,12 @@ import (
 	"context"
 	"errors"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/internal"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/sentinel/internal"
 )
 
 // ChainPollerConfig holds the configuration for the ChainPoller.
 type ChainPollerConfig struct {
-	BlockchainClient BlockchainClient
+	BlockchainClient internal.BlockchainClient
 	Logger           internal.Logger
 	ChainID          int64
 }

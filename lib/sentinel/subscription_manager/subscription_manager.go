@@ -4,8 +4,9 @@ package subscription_manager
 import (
 	"errors"
 	"sync"
+	"time"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/internal"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/sentinel/internal"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -84,7 +85,6 @@ func (sm *SubscriptionManager) Unsubscribe(address common.Address, topic common.
 		if subscriber == ch {
 			// Remove the subscriber from the list
 			sm.registry[eventKey] = append(subscribers[:i], subscribers[i+1:]...)
-			close(ch)
 			sm.logger.Infof("ChainID=%d Address=%s Topic=%s RemainingSubscribers=%d Subscription removed",
 				sm.chainID, address.Hex(), topic.Hex(), len(sm.registry[eventKey]))
 			found = true
@@ -106,8 +106,16 @@ func (sm *SubscriptionManager) Unsubscribe(address common.Address, topic common.
 			sm.chainID, address.Hex(), topic.Hex())
 	}
 
-	sm.invalidateCache()
+	sm.cond.L.Lock()
+	for sm.activeSends > 0 {
+		sm.cond.Wait() // Wait for active broadcasts to complete
+	}
+	sm.cond.L.Unlock()
 
+	close(ch) // Safely close the channel
+	sm.logger.Infof("ChainID=%d Address=%s Topic=%s Subscription removed", sm.chainID, address.Hex(), topic.Hex())
+
+	sm.invalidateCache()
 	return nil
 }
 
@@ -121,6 +129,7 @@ func (sm *SubscriptionManager) BroadcastLog(eventKey internal.EventKey, log inte
 		return
 	}
 
+	var wg sync.WaitGroup
 	for _, ch := range subscribers {
 		sm.cond.L.Lock()
 		if sm.closing {
@@ -130,17 +139,23 @@ func (sm *SubscriptionManager) BroadcastLog(eventKey internal.EventKey, log inte
 		}
 		sm.activeSends++
 		sm.cond.L.Unlock()
+		wg.Add(1)
 		go func(ch chan internal.Log) {
 			defer func() {
 				sm.cond.L.Lock()
 				sm.activeSends--
 				sm.cond.Broadcast() // Notify Close() when all sends are done
 				sm.cond.L.Unlock()
+				wg.Done()
 			}()
-			ch <- log
+			select {
+			case ch <- log:
+			case <-time.After(100 * time.Millisecond): // Prevent blocking forever
+				sm.logger.Warnf("ChainID=%d Log broadcast to channel timed out", sm.chainID)
+			}
 		}(ch)
 	}
-
+	wg.Wait() // Wait for all sends to complete before returning
 	sm.logger.Debugf("ChainID=%d Address=%s Topic=%s Log broadcasted to all subscribers",
 		sm.chainID, eventKey.Address.Hex(), eventKey.Topic.Hex())
 }

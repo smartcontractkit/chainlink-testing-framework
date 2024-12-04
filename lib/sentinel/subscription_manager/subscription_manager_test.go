@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/internal"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/sentinel/internal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

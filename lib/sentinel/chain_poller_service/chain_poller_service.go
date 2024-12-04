@@ -1,5 +1,5 @@
-// File: event_poller_service/event_poller_service.go
-package event_poller_service
+// File: chain_poller_service/chain_poller_service.go
+package chain_poller_service
 
 import (
 	"context"
@@ -10,39 +10,41 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/chain_poller"
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/internal"
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/subscription_manager"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/sentinel/chain_poller"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/sentinel/internal"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/sentinel/subscription_manager"
 )
 
-// EventPollerServiceConfig holds the configuration for the EventPollerService.
-type EventPollerServiceConfig struct {
+// ChainPollerServiceConfig holds the configuration for the ChainPollerService.
+type ChainPollerServiceConfig struct {
 	PollInterval     time.Duration
 	ChainPoller      chain_poller.ChainPollerInterface
-	SubscriptionMgr  *subscription_manager.SubscriptionManager
 	Logger           internal.Logger
-	ChainID          int64
 	BlockchainClient internal.BlockchainClient
+	ChainID          int64
 }
 
-// EventPollerService orchestrates the polling process and log broadcasting.
-type EventPollerService struct {
-	config    EventPollerServiceConfig
-	LastBlock *big.Int
-	ctx       context.Context
-	cancel    context.CancelFunc
-	wg        sync.WaitGroup
-	started   bool
-	mu        sync.Mutex
+// ChainPollerService orchestrates the polling process and log broadcasting.
+type ChainPollerService struct {
+	config          ChainPollerServiceConfig
+	SubscriptionMgr *subscription_manager.SubscriptionManager
+	ChainID         int64
+	LastBlock       *big.Int
+	ctx             context.Context
+	cancel          context.CancelFunc
+	wg              sync.WaitGroup
+	started         bool
+	mu              sync.Mutex
 }
 
-// NewEventPollerService initializes a new EventPollerService.
-func NewEventPollerService(cfg EventPollerServiceConfig) (*EventPollerService, error) {
+func (eps *ChainPollerService) SubscriptionManager() *subscription_manager.SubscriptionManager {
+	return eps.SubscriptionMgr
+}
+
+// NewChainPollerService initializes a new ChainPollerService.
+func NewChainPollerService(cfg ChainPollerServiceConfig) (*ChainPollerService, error) {
 	if cfg.ChainPoller == nil {
 		return nil, fmt.Errorf("chain poller cannot be nil")
-	}
-	if cfg.SubscriptionMgr == nil {
-		return nil, fmt.Errorf("subscription manager cannot be nil")
 	}
 	if cfg.Logger == nil {
 		return nil, fmt.Errorf("logger cannot be nil")
@@ -53,6 +55,8 @@ func NewEventPollerService(cfg EventPollerServiceConfig) (*EventPollerService, e
 	if cfg.BlockchainClient == nil {
 		return nil, fmt.Errorf("blockchain client cannot be nil")
 	}
+	// Create a subscrition manager
+	subscription_manager := subscription_manager.NewSubscriptionManager(cfg.Logger, cfg.ChainID)
 
 	// Initialize lastBlock as the latest block at startup
 	latestBlock, err := cfg.BlockchainClient.BlockNumber(context.Background())
@@ -65,19 +69,21 @@ func NewEventPollerService(cfg EventPollerServiceConfig) (*EventPollerService, e
 	}
 	lastBlock := new(big.Int).Sub(new(big.Int).SetUint64(latestBlock), big.NewInt(1))
 
-	return &EventPollerService{
-		config:    cfg,
-		LastBlock: lastBlock,
+	return &ChainPollerService{
+		config:          cfg,
+		SubscriptionMgr: subscription_manager,
+		ChainID:         cfg.ChainID,
+		LastBlock:       lastBlock,
 	}, nil
 }
 
 // Start begins the polling loop.
-func (eps *EventPollerService) Start() {
+func (eps *ChainPollerService) Start() {
 	eps.mu.Lock()
 	defer eps.mu.Unlock()
 
 	if eps.started {
-		eps.config.Logger.Warn("EventPollerService already started")
+		eps.config.Logger.Warn("ChainPollerService already started")
 		return
 	}
 
@@ -86,11 +92,11 @@ func (eps *EventPollerService) Start() {
 	eps.wg.Add(1)
 	go eps.pollingLoop()
 
-	eps.config.Logger.Info(fmt.Sprintf("EventPollerService started with poll interval: %s", eps.config.PollInterval.String()))
+	eps.config.Logger.Info(fmt.Sprintf("ChainPollerService started with poll interval: %s", eps.config.PollInterval.String()))
 }
 
 // Stop gracefully stops the polling loop.
-func (eps *EventPollerService) Stop() {
+func (eps *ChainPollerService) Stop() {
 	eps.mu.Lock()
 	defer eps.mu.Unlock()
 
@@ -102,11 +108,11 @@ func (eps *EventPollerService) Stop() {
 	eps.wg.Wait()
 	eps.started = false
 
-	eps.config.Logger.Info("EventPollerService stopped")
+	eps.config.Logger.Info("ChainPollerService stopped")
 }
 
 // pollingLoop runs the periodic polling process.
-func (eps *EventPollerService) pollingLoop() {
+func (eps *ChainPollerService) pollingLoop() {
 	defer eps.wg.Done()
 
 	ticker := time.NewTicker(eps.config.PollInterval)
@@ -124,7 +130,7 @@ func (eps *EventPollerService) pollingLoop() {
 }
 
 // pollCycle performs a single polling cycle: fetching logs and broadcasting them.
-func (eps *EventPollerService) pollCycle() {
+func (eps *ChainPollerService) pollCycle() {
 	startTime := time.Now()
 	eps.config.Logger.Debug("Starting polling cycle")
 
@@ -145,7 +151,7 @@ func (eps *EventPollerService) pollCycle() {
 	}
 
 	// Get current subscriptions
-	subscriptions := eps.config.SubscriptionMgr.GetAddressesAndTopics()
+	subscriptions := eps.SubscriptionMgr.GetAddressesAndTopics()
 
 	if len(subscriptions) == 0 {
 		// Update the last processed block to toBlock
@@ -173,7 +179,7 @@ func (eps *EventPollerService) pollCycle() {
 
 	logs, err := eps.config.ChainPoller.Poll(ctx, filterQueries)
 	if err != nil {
-		eps.config.Logger.Error("Error during polling", "error", err)
+		eps.config.Logger.Error("Error during po lling", "error", err)
 		return
 	}
 
@@ -190,7 +196,7 @@ func (eps *EventPollerService) pollCycle() {
 				Address: log.Address,
 				Topic:   topic,
 			}
-			eps.config.SubscriptionMgr.BroadcastLog(eventKey, log)
+			eps.SubscriptionMgr.BroadcastLog(eventKey, log)
 		}
 	}
 
