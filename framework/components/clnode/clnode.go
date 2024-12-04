@@ -112,6 +112,54 @@ func NewNode(in *Input, pgOut *postgres.Output) (*Output, error) {
 	return out, nil
 }
 
+// generatePortBindings generates exposed ports and port bindings
+// exposes default CL node port
+// exposes custom_ports in format "host:docker" or map 1-to-1 if only "host" port is provided
+func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
+	httpPort := fmt.Sprintf("%s/tcp", DefaultHTTPPort)
+	portBindings := nat.PortMap{
+		nat.Port(httpPort): []nat.PortBinding{
+			{
+				HostIP:   "0.0.0.0",
+				HostPort: fmt.Sprintf("%d/tcp", in.Node.HTTPPort),
+			},
+		},
+	}
+	customPorts := make([]string, 0)
+	for _, p := range in.Node.CustomPorts {
+		if strings.Contains(p, CustomPortSeparator) {
+			pp := strings.Split(p, CustomPortSeparator)
+			if len(pp) != 2 {
+				return nil, nil, errors.New("custom_ports has ':' but you must provide both ports")
+			}
+			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", pp[1]))
+
+			dockerPort := nat.Port(fmt.Sprintf("%s/tcp", pp[1]))
+			hostPort := fmt.Sprintf("%s/tcp", pp[0])
+			portBindings[dockerPort] = []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: hostPort,
+				},
+			}
+		} else {
+			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", p))
+
+			dockerPort := nat.Port(fmt.Sprintf("%s/tcp", p))
+			hostPort := fmt.Sprintf("%s/tcp", p)
+			portBindings[dockerPort] = []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: hostPort,
+				},
+			}
+		}
+	}
+	exposedPorts := []string{httpPort}
+	exposedPorts = append(exposedPorts, customPorts...)
+	return exposedPorts, portBindings, nil
+}
+
 func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	ctx := context.Background()
 
@@ -148,7 +196,6 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		return nil, err
 	}
 
-	httpPort := fmt.Sprintf("%s/tcp", DefaultHTTPPort)
 	var containerName string
 	if in.Node.Name != "" {
 		containerName = in.Node.Name
@@ -156,44 +203,10 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		containerName = framework.DefaultTCName("node")
 	}
 
-	portBindings := nat.PortMap{
-		nat.Port(httpPort): []nat.PortBinding{
-			{
-				HostIP:   "0.0.0.0",
-				HostPort: fmt.Sprintf("%d/tcp", in.Node.HTTPPort),
-			},
-		},
+	exposedPorts, portBindings, err := generatePortBindings(in)
+	if err != nil {
+		return nil, err
 	}
-	customPorts := make([]string, 0)
-	for _, p := range in.Node.CustomPorts {
-		if strings.Contains(p, CustomPortSeparator) {
-			pp := strings.Split(p, CustomPortSeparator)
-			if len(pp) != 2 {
-				return nil, errors.New("custom_ports has ':' but you must provide both ports")
-			}
-			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", pp[1]))
-			portBindings[nat.Port(fmt.Sprintf("%s/tcp", pp[1]))] = []nat.PortBinding{
-				{
-					HostIP:   "0.0.0.0",
-					HostPort: fmt.Sprintf("%s/tcp", pp[0]),
-				},
-			}
-			framework.L.Warn().Str("PortHost", pp[0]).Str("PortInternal", pp[1]).Send()
-		} else {
-			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", p))
-			framework.L.Warn().Str("Port", p).Send()
-			portBindings[nat.Port(fmt.Sprintf("%s/tcp", p))] = []nat.PortBinding{
-				{
-					HostIP:   "0.0.0.0",
-					HostPort: fmt.Sprintf("%s/tcp", p),
-				},
-			}
-		}
-	}
-	exposedPorts := []string{httpPort}
-	exposedPorts = append(exposedPorts, customPorts...)
-	framework.L.Warn().Any("ExposedPorts", exposedPorts).Send()
-
 	req := tc.ContainerRequest{
 		AlwaysPullImage: in.Node.PullImage,
 		Image:           in.Node.Image,
