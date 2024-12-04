@@ -8,11 +8,11 @@ Dynamic settings are usually used to connect Docker components together
 
 const (
 	DefaultTestKeystorePassword = "thispasswordislongenough"
-	DefaultPasswordTxt          = `T.tLHkcmwePT/p,]sYuntjwHKAsrhm#4eRs4LuKHwvHejWYAC2JP4M8HimwgmbaZ`
+	DefaultPasswordTxt          = `T.tLHkcmwePT/p,]sYuntjwHKAsrhm#4eRs4LuKHwvHejWYAC2JP4M8HimwgmbaZ` //nolint:gosec
 	DefaultAPICredentials       = `notreal@fakeemail.ch
 fj293fbBnlQ!f9vNs`
 	DefaultAPIUser     = `notreal@fakeemail.ch`
-	DefaultAPIPassword = `fj293fbBnlQ!f9vNs`
+	DefaultAPIPassword = `fj293fbBnlQ!f9vNs` //nolint:gosec
 )
 
 const defaultConfigTmpl = `

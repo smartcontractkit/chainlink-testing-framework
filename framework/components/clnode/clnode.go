@@ -5,18 +5,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
-	tc "github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"text/template"
 	"time"
+
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/go-connections/nat"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
+	tc "github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 const (
@@ -164,10 +165,10 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	ctx := context.Background()
 
 	passwordPath, err := WriteTmpFile(DefaultPasswordTxt, "password.txt")
-	apiCredentialsPath, err := WriteTmpFile(DefaultAPICredentials, "apicredentials")
 	if err != nil {
 		return nil, err
 	}
+	apiCredentialsPath, err := WriteTmpFile(DefaultAPICredentials, "apicredentials")
 	if err != nil {
 		return nil, err
 	}
