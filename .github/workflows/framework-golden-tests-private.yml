@@ -10,9 +10,6 @@ jobs:
     env:
       LOKI_TENANT_ID: promtail
       LOKI_URL: http://localhost:3030/loki/api/v1/push
-      # this is not the best practice, and it must be fixed, run your tests WITHOUT IT!
-      # however, on current latest image we must use this flag
-      CTF_IGNORE_CRITICAL_LOGS: true
     runs-on: ubuntu-latest
     permissions:
       id-token: write
