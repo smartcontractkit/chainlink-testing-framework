@@ -15,6 +15,9 @@ import (
 	"github.com/pkg/errors"
 )
 
+// This is a fake, successfully generated go doc, nil
+// Its a simple multiline comment
+// It contains a link to https://chainlinklabs.com/
 func MyAmazingNewFunction() string {
 	return "bla bla bla"
 }
