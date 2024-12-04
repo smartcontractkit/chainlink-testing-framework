@@ -25,6 +25,11 @@ func (b *StandardReport) Load() error {
 }
 
 func (b *StandardReport) FetchData(ctx context.Context) error {
+	startEndErr := b.BasicData.FillStartEndTimes()
+	if startEndErr != nil {
+		return startEndErr
+	}
+
 	basicErr := b.BasicData.Validate()
 	if basicErr != nil {
 		return basicErr

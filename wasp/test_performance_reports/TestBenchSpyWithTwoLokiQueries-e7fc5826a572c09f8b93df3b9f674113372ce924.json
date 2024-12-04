@@ -1,8 +1,8 @@
 {
  "test_name": "TestBenchSpyWithTwoLokiQueries",
  "commit_or_tag": "e7fc5826a572c09f8b93df3b9f674113372ce924",
- "test_start_timestamp": "2024-12-03T14:59:12.662483+01:00",
- "test_end_timestamp": "2024-12-03T15:00:17.683658+01:00",
+ "test_start_timestamp": "2024-12-04T12:09:35.791136+01:00",
+ "test_end_timestamp": "2024-12-04T12:10:05.814921+01:00",
  "generator_configs": {
   "vu": {
    "generator_name": "vu",
@@ -10,171 +10,213 @@
    "schedule": [
     {
      "from": 10,
-     "duration": 1000000000
+     "duration": 1000000000,
+     "type": "steps"
     },
     {
      "from": 11,
-     "duration": 1000000000
+     "duration": 1000000000,
+     "type": "steps"
     },
     {
      "from": 12,
-     "duration": 1000000000
+     "duration": 1000000000,
+     "type": "steps"
     },
     {
      "from": 13,
-     "duration": 1000000000
+     "duration": 1000000000,
+     "type": "steps"
     },
     {
      "from": 14,
-     "duration": 1000000000
+     "duration": 1000000000,
+     "type": "steps"
     },
     {
      "from": 15,
-     "duration": 1000000000
+     "duration": 1000000000,
+     "type": "steps"
     },
     {
      "from": 16,
-     "duration": 1000000000
+     "duration": 1000000000,
+     "type": "steps"
     },
     {
      "from": 17,
-     "duration": 1000000000
+     "duration": 1000000000,
+     "type": "steps"
     },
     {
      "from": 18,
-     "duration": 1000000000
+     "duration": 1000000000,
+     "type": "steps"
     },
     {
      "from": 19,
-     "duration": 1000000000
+     "duration": 1000000000,
+     "type": "steps"
     },
     {
      "from": 30,
-     "duration": 15000000000
+     "duration": 15000000000,
+     "type": "plain"
     },
     {
      "from": 20,
-     "duration": 500000000
+     "duration": 500000000,
+     "type": "steps"
     },
     {
      "from": 19,
-     "duration": 500000000
+     "duration": 500000000,
+     "type": "steps"
     },
     {
      "from": 18,
-     "duration": 500000000
+     "duration": 500000000,
+     "type": "steps"
     },
     {
      "from": 17,
-     "duration": 500000000
+     "duration": 500000000,
+     "type": "steps"
     },
     {
      "from": 16,
-     "duration": 500000000
+     "duration": 500000000,
+     "type": "steps"
     },
     {
      "from": 15,
-     "duration": 500000000
+     "duration": 500000000,
+     "type": "steps"
     },
     {
      "from": 14,
-     "duration": 500000000
+     "duration": 500000000,
+     "type": "steps"
     },
     {
      "from": 13,
-     "duration": 500000000
+     "duration": 500000000,
+     "type": "steps"
     },
     {
      "from": 12,
-     "duration": 500000000
+     "duration": 500000000,
+     "type": "steps"
     },
     {
      "from": 11,
-     "duration": 500000000
+     "duration": 500000000,
+     "type": "steps"
     },
     {
      "from": 10,
-     "duration": 1000000000
+     "duration": 1000000000,
+     "type": "steps"
     },
     {
      "from": 11,
-     "duration": 1000000000
+     "duration": 1000000000,
+     "type": "steps"
     },
     {
      "from": 12,
-     "duration": 1000000000
+     "duration": 1000000000,
+     "type": "steps"
     },
     {
      "from": 13,
-     "duration": 1000000000
+     "duration": 1000000000,
+     "type": "steps"
     },
     {
      "from": 14,
-     "duration": 1000000000
+     "duration": 1000000000,
+     "type": "steps"
     },
     {
      "from": 15,
-     "duration": 1000000000
+     "duration": 1000000000,
+     "type": "steps"
     },
     {
      "from": 16,
-     "duration": 1000000000
+     "duration": 1000000000,
+     "type": "steps"
     },
     {
      "from": 17,
-     "duration": 1000000000
+     "duration": 1000000000,
+     "type": "steps"
     },
     {
      "from": 18,
-     "duration": 1000000000
+     "duration": 1000000000,
+     "type": "steps"
     },
     {
      "from": 19,
-     "duration": 1000000000
+     "duration": 1000000000,
+     "type": "steps"
     },
     {
      "from": 30,
-     "duration": 15000000000
+     "duration": 15000000000,
+     "type": "plain"
     },
     {
      "from": 20,
-     "duration": 500000000
+     "duration": 500000000,
+     "type": "steps"
     },
     {
      "from": 19,
-     "duration": 500000000
+     "duration": 500000000,
+     "type": "steps"
     },
     {
      "from": 18,
-     "duration": 500000000
+     "duration": 500000000,
+     "type": "steps"
     },
     {
      "from": 17,
-     "duration": 500000000
+     "duration": 500000000,
+     "type": "steps"
     },
     {
      "from": 16,
-     "duration": 500000000
+     "duration": 500000000,
+     "type": "steps"
     },
     {
      "from": 15,
-     "duration": 500000000
+     "duration": 500000000,
+     "type": "steps"
     },
     {
      "from": 14,
-     "duration": 500000000
+     "duration": 500000000,
+     "type": "steps"
     },
     {
      "from": 13,
-     "duration": 500000000
+     "duration": 500000000,
+     "type": "steps"
     },
     {
      "from": 12,
-     "duration": 500000000
+     "duration": 500000000,
+     "type": "steps"
     },
     {
      "from": 11,
-     "duration": 500000000
+     "duration": 500000000,
+     "type": "steps"
     }
    ],
    "rate_limit_unit_duration": 1000000000,
@@ -202,101 +244,48 @@
  "query_executors": [
   {
    "kind": "loki",
-   "start_time": "2024-12-03T14:59:12.662483+01:00",
-   "end_time": "2024-12-03T15:00:17.683658+01:00",
+   "start_time": "2024-12-04T12:09:35.791136+01:00",
+   "end_time": "2024-12-04T12:10:05.814921+01:00",
    "queries": {
     "responses_over_time": "sum(count_over_time({branch=~\"benchspy2\", commit=~\"benchspy2\", go_test_name=~\"TestBenchSpyWithTwoLokiQueries\", test_data_type=~\"responses\", gen_name=~\"vu\"} [1s])) by (node_id, go_test_name, gen_name)",
     "vu_over_time": "max_over_time({branch=~\"benchspy2\", commit=~\"benchspy2\", go_test_name=~\"TestBenchSpyWithTwoLokiQueries\", test_data_type=~\"stats\", gen_name=~\"vu\"} | json | unwrap current_instances [10s]) by (node_id, go_test_name, gen_name)"
    },
    "query_results": {
     "responses_over_time": [
-     "60",
-     "206",
-     "226",
-     "246",
-     "255",
-     "285",
-     "305",
-     "325",
-     "335",
-     "366",
-     "446",
-     "595",
-     "597",
-     "578",
+     "262",
+     "224",
+     "204",
+     "213",
+     "243",
+     "263",
+     "282",
+     "304",
+     "310",
+     "342",
+     "363",
+     "411",
      "600",
-     "600",
-     "595",
-     "597",
-     "578",
-     "600",
-     "600",
-     "595",
-     "577",
+     "586",
      "598",
      "600",
-     "535",
-     "380",
-     "325",
-     "299",
-     "258",
-     "220",
-     "206",
-     "223",
-     "237",
-     "265",
-     "285",
-     "305",
-     "314",
-     "345",
-     "363",
-     "445",
-     "587",
+     "586",
      "600",
-     "587",
+     "584",
      "600",
      "600",
-     "583",
-     "587",
+     "586",
      "600",
+     "584",
      "600",
-     "583",
-     "600",
-     "587",
-     "600",
-     "600",
-     "533",
-     "380",
-     "338",
-     "300",
-     "260",
-     "148"
+     "586",
+     "570",
+     "384",
+     "341",
+     "304",
+     "252",
+     "184"
     ],
     "vu_over_time": [
-     "14",
-     "14",
-     "14",
-     "14",
-     "14",
-     "19",
-     "19",
-     "19",
-     "19",
-     "19",
-     "30",
-     "30",
-     "30",
-     "30",
-     "30",
-     "30",
-     "30",
-     "30",
-     "30",
-     "30",
-     "30",
-     "30",
-     "30",
-     "30",
      "30",
      "30",
      "30",
@@ -328,12 +317,7 @@
      "30",
      "30",
      "30",
-     "30",
-     "30",
-     "30",
-     "30",
-     "30",
-     "11"
+     "30"
     ]
    },
    "errors": null

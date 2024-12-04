@@ -22,6 +22,64 @@ type BasicData struct {
 	GeneratorConfigs map[string]*wasp.Config `json:"generator_configs"`
 }
 
+func MustNewBasicData(commitOrTag string, generators ...*wasp.Generator) BasicData {
+	b, err := NewBasicData(commitOrTag, generators...)
+	if err != nil {
+		panic(err)
+	}
+
+	return *b
+}
+
+func NewBasicData(commitOrTag string, generators ...*wasp.Generator) (*BasicData, error) {
+	if len(generators) == 0 {
+		return nil, errors.New("at least one generator is required")
+	}
+
+	if generators[0].Cfg.T == nil {
+		return nil, errors.New("generators are not associated with a testing.T instance. Please set it as generator.Cfg.T and try again")
+	}
+
+	b := &BasicData{
+		TestName:         generators[0].Cfg.T.Name(),
+		CommitOrTag:      commitOrTag,
+		GeneratorConfigs: make(map[string]*wasp.Config),
+	}
+
+	for _, g := range generators {
+		b.GeneratorConfigs[g.Cfg.GenName] = g.Cfg
+	}
+
+	return b, nil
+}
+
+func (b *BasicData) FillStartEndTimes() error {
+	earliestTime := time.Now()
+	var latestTime time.Time
+
+	for _, cfg := range b.GeneratorConfigs {
+		for _, segment := range cfg.Schedule {
+			if segment.StartTime.IsZero() {
+				return fmt.Errorf("start time is missing in one of the segments belonging to generator %s. Did that generator run?", cfg.GenName)
+			}
+			if segment.StartTime.Before(earliestTime) {
+				earliestTime = segment.StartTime
+			}
+			if segment.EndTime.IsZero() {
+				return fmt.Errorf("end time is missing in one of the segments belonging to generator %s. Did that generator finish running?", cfg.GenName)
+			}
+			if segment.EndTime.After(latestTime) {
+				latestTime = segment.EndTime
+			}
+		}
+	}
+
+	b.TestStart = earliestTime
+	b.TestEnd = latestTime
+
+	return nil
+}
+
 func (b *BasicData) Validate() error {
 	if b.TestStart.IsZero() {
 		return errors.New("test start time is missing. We cannot query Loki without a time range. Please set it and try again")
@@ -59,8 +117,6 @@ func (b *BasicData) IsComparable(otherData BasicData) error {
 		}
 	}
 
-	// TODO: would be good to be able to check if Gun and VU are the same, but idk yet how we could do that easily [hash the code?]
-
 	return nil
 }
 
@@ -73,6 +129,10 @@ func compareGeneratorConfigs(cfg1, cfg2 *wasp.Config) error {
 		return fmt.Errorf("schedules are different. Expected %d, got %d", len(cfg1.Schedule), len(cfg2.Schedule))
 	}
 
+	var areSegmentsEqual = func(segment1, segment2 *wasp.Segment) bool {
+		return segment1.From == segment2.From && segment1.Duration == segment2.Duration && segment1.Type == segment2.Type
+	}
+
 	for i, segment1 := range cfg1.Schedule {
 		segment2 := cfg2.Schedule[i]
 		if segment1 == nil {
@@ -81,7 +141,7 @@ func compareGeneratorConfigs(cfg1, cfg2 *wasp.Config) error {
 		if segment2 == nil {
 			return fmt.Errorf("schedule at index %d is nil in the other report", i)
 		}
-		if *segment1 != *segment2 {
+		if !areSegmentsEqual(segment1, segment2) {
 			return fmt.Errorf("schedules at index %d are different. Expected %s, got %s", i, mustMarshallSegment(segment1), mustMarshallSegment(segment2))
 		}
 	}

@@ -141,14 +141,7 @@ func TestBenchSpyWithTwoLokiQueries(t *testing.T) {
 	require.NoError(t, err)
 
 	currentReport := benchspy.StandardReport{
-		BasicData: benchspy.BasicData{
-			GeneratorConfigs: map[string]*wasp.Config{
-				gen.Cfg.GenName: gen.Cfg,
-			},
-			TestName:    t.Name(),
-			TestStart:   time.Now(),
-			CommitOrTag: "e7fc5826a572c09f8b93df3b9f674113372ce924",
-		},
+		BasicData: benchspy.MustNewBasicData("e7fc5826a572c09f8b93df3b9f674113372ce924", gen),
 		ResourceReporter: benchspy.ResourceReporter{
 			ExecutionEnvironment: benchspy.ExecutionEnvironment_Docker,
 		},
@@ -164,7 +157,6 @@ func TestBenchSpyWithTwoLokiQueries(t *testing.T) {
 	currentReport.QueryExecutors = append(currentReport.QueryExecutors, lokiQueryExecutor)
 
 	gen.Run(true)
-	currentReport.TestEnd = time.Now()
 
 	fetchCtx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancelFn()

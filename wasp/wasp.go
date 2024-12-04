@@ -38,6 +38,7 @@ var (
 	ErrTeardown               = errors.New("generator request teardown error")
 	ErrStartFrom              = errors.New("from must be > 0")
 	ErrInvalidSegmentDuration = errors.New("SegmentDuration must be defined")
+	ErrMissingSegmentType     = errors.New("Segment Type myst be set")
 	ErrNoGun                  = errors.New("rps load scheduleSegments selected but gun implementation is nil")
 	ErrNoVU                   = errors.New("vu load scheduleSegments selected but vu implementation is nil")
 	ErrInvalidLabels          = errors.New("invalid Loki labels, labels should be [a-z][A-Z][0-9] and _")
@@ -103,10 +104,20 @@ const (
 	VU  ScheduleType = "vu_schedule"
 )
 
+type SegmentType string
+
+const (
+	SegmentType_Plain SegmentType = "plain"
+	SegmentType_Steps SegmentType = "steps"
+)
+
 // Segment load test schedule segment
 type Segment struct {
-	From     int64         `json:"from"`
-	Duration time.Duration `json:"duration"`
+	From      int64         `json:"from"`
+	Duration  time.Duration `json:"duration"`
+	Type      SegmentType   `json:"type"`
+	StartTime time.Time     `json:"time_start"`
+	EndTime   time.Time     `json:"time_end"`
 }
 
 func (ls *Segment) Validate() error {
@@ -116,6 +127,10 @@ func (ls *Segment) Validate() error {
 	if ls.Duration == 0 {
 		return ErrInvalidSegmentDuration
 	}
+	if ls.Type == "" {
+		return ErrMissingSegmentType
+	}
+
 	return nil
 }
 
@@ -463,6 +478,7 @@ func (g *Generator) processSegment() bool {
 	}
 	g.currentSegmentMu.Lock()
 	g.currentSegment = g.scheduleSegments[g.stats.CurrentSegment.Load()]
+	g.currentSegment.StartTime = time.Now()
 	g.currentSegmentMu.Unlock()
 	g.stats.CurrentSegment.Add(1)
 	switch g.Cfg.LoadType {
@@ -515,6 +531,7 @@ func (g *Generator) runScheduleLoop() {
 					return
 				}
 				time.Sleep(g.currentSegment.Duration)
+				g.currentSegment.EndTime = time.Now()
 			}
 		}
 	}()
