@@ -174,6 +174,7 @@ func TestResultsTable(
 	results []TestResult,
 	expectedPassRatio float64,
 	includeCodeOwners bool,
+	markdown bool,
 ) (resultsTable [][]string, runs, passes, fails, skips, panickedTests, racedTests, flakyTests int) {
 	p := message.NewPrinter(language.English) // For formatting numbers
 	sortTestResults(results)
@@ -195,6 +196,11 @@ func TestResultsTable(
 
 	if includeCodeOwners {
 		headers = append(headers, "Code Owners")
+	}
+	if markdown {
+		for i, header := range headers {
+			headers[i] = fmt.Sprintf("**%s**", header)
+		}
 	}
 
 	resultsTable = [][]string{}
@@ -249,6 +255,7 @@ func PrintResults(
 	w io.Writer,
 	tests []TestResult,
 	maxPassRatio float64,
+	markdown bool,
 	includeCodeOwners bool, // Include code owners in the output. Set to true if test results have code owners
 ) (runs, passes, fails, skips, panickedTests, racedTests, flakyTests int) {
 	var (
@@ -257,7 +264,7 @@ func PrintResults(
 		flakeRatioStr string
 		p             = message.NewPrinter(language.English) // For formatting numbers
 	)
-	resultsTable, runs, passes, fails, skips, panickedTests, racedTests, flakyTests = TestResultsTable(tests, maxPassRatio, includeCodeOwners)
+	resultsTable, runs, passes, fails, skips, panickedTests, racedTests, flakyTests = TestResultsTable(tests, maxPassRatio, markdown, includeCodeOwners)
 	// Print out summary data
 	if runs == 0 || passes == runs {
 		passRatioStr = "100%"
@@ -282,6 +289,15 @@ func PrintResults(
 		{"Failures", p.Sprint(fails)},
 		{"Skips", p.Sprint(skips)},
 		{"Pass Ratio", passRatioStr},
+	}
+	if markdown {
+		for i, row := range summaryData {
+			if i == 0 {
+				summaryData[i] = []string{"**Category**", "**Total**"}
+			} else {
+				summaryData[i] = []string{fmt.Sprintf("**%s**", row[0]), row[1]}
+			}
+		}
 	}
 
 	colWidths := make([]int, len(summaryData[0]))
@@ -401,7 +417,7 @@ func MarkdownSummary(w io.Writer, testReport *TestReport, maxPassRatio float64, 
 		return
 	}
 
-	allRuns, passes, _, _, _, _, _ := PrintResults(testsData, tests, maxPassRatio, includeCodeOwners)
+	allRuns, passes, _, _, _, _, _ := PrintResults(testsData, tests, maxPassRatio, true, includeCodeOwners)
 	if allRuns > 0 {
 		avgPassRatio = float64(passes) / float64(allRuns)
 	}
