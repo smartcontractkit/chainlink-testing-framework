@@ -3,7 +3,6 @@ package reports
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -145,7 +144,7 @@ func TestPrintTests(t *testing.T) {
 			t.Parallel()
 			var buf bytes.Buffer
 
-			runs, passes, fails, skips, panickedTests, racedTests, flakyTests := PrintTests(&buf, tc.testResults, tc.maxPassRatio)
+			runs, passes, fails, skips, panickedTests, racedTests, flakyTests := PrintTests(&buf, tc.testResults, tc.maxPassRatio, false)
 			assert.Equal(t, tc.expectedRuns, runs, "wrong number of runs")
 			assert.Equal(t, tc.expectedPasses, passes, "wrong number of passes")
 			assert.Equal(t, tc.expectedFails, fails, "wrong number of failures")
@@ -371,11 +370,7 @@ func TestAggregateTestResults(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			for i, inputData := range tc.inputReports {
-				writeTempJSONFile(t, tempDir, fmt.Sprintf("input%d.json", i), inputData)
-			}
-
-			finalReport, err := AggregateTestResults(tempDir)
+			finalReport, err := AggregateTestReports(tc.inputReports...)
 			if err != nil {
 				t.Fatalf("AggregateTestResults failed: %v", err)
 			}

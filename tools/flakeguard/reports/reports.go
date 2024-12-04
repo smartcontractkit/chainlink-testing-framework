@@ -91,8 +91,8 @@ func FilterSkippedTests(results []TestResult) []TestResult {
 	return skippedTests
 }
 
-// AggregateTestResults aggregates all JSON test results.
-func AggregateTestResults(folderPath string) (*TestReport, error) {
+// AggregateTestReports aggregates multiple test reports into a single report.
+func AggregateTestReports(reportsToAggregate ...*TestReport) (*TestReport, error) {
 	var (
 		// Map to hold unique tests based on their TestName and TestPackage
 		// Key: TestName|TestPackage, Value: TestResult
@@ -103,67 +103,49 @@ func AggregateTestResults(folderPath string) (*TestReport, error) {
 	)
 
 	// Read all JSON files in the folder
-	err := filepath.Walk(folderPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
+	for _, report := range reportsToAggregate {
+		if fullReport.GoProject == "" {
+			fullReport.GoProject = report.GoProject
+		} else if fullReport.GoProject != report.GoProject {
+			return nil, fmt.Errorf("reports with different Go projects found, expected %s, got %s", fullReport.GoProject, report.GoProject)
 		}
-		if !info.IsDir() && filepath.Ext(path) == ".json" {
-			// Read file content
-			data, readErr := os.ReadFile(path)
-			if readErr != nil {
-				return readErr
-			}
-			var report TestReport
-			if jsonErr := json.Unmarshal(data, &report); jsonErr != nil {
-				return jsonErr
-			}
-			if fullReport.GoProject == "" {
-				fullReport.GoProject = report.GoProject
-			} else if fullReport.GoProject != report.GoProject {
-				return fmt.Errorf("multiple projects found in the results folder, expected %s, got %s", fullReport.GoProject, report.GoProject)
-			}
-			fullReport.TestRunCount += report.TestRunCount
-			fullReport.RaceDetection = report.RaceDetection && fullReport.RaceDetection
-			for _, test := range report.ExcludedTests {
-				excludedTests[test] = struct{}{}
-			}
-			for _, test := range report.SelectedTests {
-				selectedTests[test] = struct{}{}
-			}
-			// Process each test results
-			for _, result := range report.Results {
-				// Unique key for each test based on TestName and TestPackage
-				key := result.TestName + "|" + result.TestPackage
-				if existingResult, found := testMap[key]; found {
-					// Aggregate runs, durations, and outputs
-					existingResult.Runs = existingResult.Runs + result.Runs
-					existingResult.Durations = append(existingResult.Durations, result.Durations...)
-					existingResult.Outputs = append(existingResult.Outputs, result.Outputs...)
-					existingResult.PackageOutputs = append(existingResult.PackageOutputs, result.PackageOutputs...)
-					existingResult.Successes += result.Successes
-					existingResult.Failures += result.Failures
-					existingResult.Panic = existingResult.Panic || result.Panic
-					existingResult.Race = existingResult.Race || result.Race
-					existingResult.Skips += result.Skips
-					existingResult.PassRatio = 1.0
-					if existingResult.Runs > 0 {
-						existingResult.PassRatio = float64(existingResult.Successes) / float64(existingResult.Runs)
-					}
-
-					existingResult.Skipped = existingResult.Skipped && result.Skipped // Mark as skipped only if all occurrences are skipped
-
-					// Update the map with the aggregated result
-					testMap[key] = existingResult
-				} else {
-					// Add new entry to the map
-					testMap[key] = result
+		fullReport.TestRunCount += report.TestRunCount
+		fullReport.RaceDetection = report.RaceDetection && fullReport.RaceDetection
+		for _, test := range report.ExcludedTests {
+			excludedTests[test] = struct{}{}
+		}
+		for _, test := range report.SelectedTests {
+			selectedTests[test] = struct{}{}
+		}
+		// Process each test results
+		for _, result := range report.Results {
+			// Unique key for each test based on TestName and TestPackage
+			key := result.TestName + "|" + result.TestPackage
+			if existingResult, found := testMap[key]; found {
+				// Aggregate runs, durations, and outputs
+				existingResult.Runs = existingResult.Runs + result.Runs
+				existingResult.Durations = append(existingResult.Durations, result.Durations...)
+				existingResult.Outputs = append(existingResult.Outputs, result.Outputs...)
+				existingResult.PackageOutputs = append(existingResult.PackageOutputs, result.PackageOutputs...)
+				existingResult.Successes += result.Successes
+				existingResult.Failures += result.Failures
+				existingResult.Panic = existingResult.Panic || result.Panic
+				existingResult.Race = existingResult.Race || result.Race
+				existingResult.Skips += result.Skips
+				existingResult.PassRatio = 1.0
+				if existingResult.Runs > 0 {
+					existingResult.PassRatio = float64(existingResult.Successes) / float64(existingResult.Runs)
 				}
+
+				existingResult.Skipped = existingResult.Skipped && result.Skipped // Mark as skipped only if all occurrences are skipped
+
+				// Update the map with the aggregated result
+				testMap[key] = existingResult
+			} else {
+				// Add new entry to the map
+				testMap[key] = result
 			}
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("error reading files: %v", err)
 	}
 	// Aggregate
 	for test := range excludedTests {

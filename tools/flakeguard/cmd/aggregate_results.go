@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"encoding/json"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/spf13/cobra"
@@ -21,7 +24,31 @@ var AggregateResultsCmd = &cobra.Command{
 	Use:   "aggregate-results",
 	Short: "Aggregate test results and optionally filter failed tests based on a threshold",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		allReport, err := reports.AggregateTestResults(resultsFolderPath)
+		// Read test reports from files
+		var testReports []*reports.TestReport
+		err := filepath.Walk(resultsFolderPath, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() && filepath.Ext(path) == ".json" {
+				// Read file content
+				data, readErr := os.ReadFile(path)
+				if readErr != nil {
+					return readErr
+				}
+				var report *reports.TestReport
+				if jsonErr := json.Unmarshal(data, &report); jsonErr != nil {
+					return jsonErr
+				}
+				testReports = append(testReports, report)
+			}
+			return nil
+		})
+		if err != nil {
+			log.Fatalf("Error reading test reports: %v", err)
+		}
+
+		allReport, err := reports.AggregateTestReports(testReports...)
 		if err != nil {
 			log.Fatalf("Error aggregating results: %v", err)
 		}
