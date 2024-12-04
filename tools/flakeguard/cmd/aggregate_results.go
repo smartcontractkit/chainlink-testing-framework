@@ -48,7 +48,7 @@ var AggregateResultsCmd = &cobra.Command{
 			log.Fatalf("Error reading test reports: %v", err)
 		}
 
-		allReport, err := reports.AggregateTestReports(testReports...)
+		allReport, err := reports.Aggregate(testReports...)
 		if err != nil {
 			log.Fatalf("Error aggregating results: %v", err)
 		}

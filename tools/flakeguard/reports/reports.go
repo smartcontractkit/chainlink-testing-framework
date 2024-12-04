@@ -91,8 +91,8 @@ func FilterSkippedTests(results []TestResult) []TestResult {
 	return skippedTests
 }
 
-// AggregateTestReports aggregates multiple test reports into a single report.
-func AggregateTestReports(reportsToAggregate ...*TestReport) (*TestReport, error) {
+// Aggregate aggregates multiple test reports into a single report.
+func Aggregate(reportsToAggregate ...*TestReport) (*TestReport, error) {
 	var (
 		// Map to hold unique tests based on their TestName and TestPackage
 		// Key: TestName|TestPackage, Value: TestResult

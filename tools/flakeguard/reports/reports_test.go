@@ -2,9 +2,7 @@ package reports
 
 import (
 	"bytes"
-	"encoding/json"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -161,18 +159,6 @@ func TestPrintTests(t *testing.T) {
 		})
 	}
 
-}
-
-// Helper function to write a JSON file for testing
-func writeTempJSONFile(t *testing.T, dir string, filename string, data interface{}) string {
-	t.Helper()
-
-	filePath := filepath.Join(dir, filename)
-	fileData, err := json.Marshal(data)
-	require.NoError(t, err)
-	err = os.WriteFile(filePath, fileData, 0644) //nolint:gosec
-	require.NoError(t, err)
-	return filePath
 }
 
 func TestAggregateTestResults(t *testing.T) {
@@ -370,7 +356,7 @@ func TestAggregateTestResults(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.description, func(t *testing.T) {
-			finalReport, err := AggregateTestReports(tc.inputReports...)
+			finalReport, err := Aggregate(tc.inputReports...)
 			if err != nil {
 				t.Fatalf("AggregateTestResults failed: %v", err)
 			}
