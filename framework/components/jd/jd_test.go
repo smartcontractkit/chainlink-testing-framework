@@ -13,7 +13,8 @@ import (
 // here we only test that we can boot up JD
 // client examples are under "examples" dir
 // since JD is private this env var should be set locally and in CI
-func TestComponentDockerJD(t *testing.T) {
+// TODO: add ComponentDocker prefix to turn this on when we'll have access to ECRs
+func TestJD(t *testing.T) {
 	err := framework.DefaultNetwork(&sync.Once{})
 	require.NoError(t, err)
 	pgOut, err := postgres.NewPostgreSQL(&postgres.Input{
