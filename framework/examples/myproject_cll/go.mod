@@ -1,4 +1,4 @@
-module github.com/smartcontractkit/chainlink-testing-framework/framework/examples
+module github.com/smartcontractkit/chainlink-testing-framework/framework/examples_cll
 
 go 1.23.1
 
