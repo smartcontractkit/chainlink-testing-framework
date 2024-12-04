@@ -29,5 +29,5 @@ tidy:
 go_mod:
 	go mod download
 
-test_unit: go_mod
-	go test -timeout 5m -count 1 -run TestDocker
+test_component: go_mod
+	go test -timeout 5m -count 1 -run TestComponentDocker ./...
