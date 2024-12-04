@@ -179,22 +179,22 @@ func TestResultsTable(
 	sortTestResults(results)
 
 	headers := []string{
-		"**Name**",
-		"**Pass Ratio**",
-		"**Panicked?**",
-		"**Timed Out?**",
-		"**Race?**",
-		"**Runs**",
-		"**Successes**",
-		"**Failures**",
-		"**Skips**",
-		"**Package**",
-		"**Package Panicked?**",
-		"**Avg Duration**",
+		"Name",
+		"Pass Ratio",
+		"Panicked?",
+		"Timed Out?",
+		"Race?",
+		"Runs",
+		"Successes",
+		"Failures",
+		"Skips",
+		"Package",
+		"Package Panicked?",
+		"Avg Duration",
 	}
 
 	if includeCodeOwners {
-		headers = append(headers, "**Code Owners**")
+		headers = append(headers, "Code Owners")
 	}
 
 	resultsTable = [][]string{}
@@ -271,17 +271,17 @@ func PrintResults(
 		flakeRatioStr = fmt.Sprintf("%.2f%%", truncatedFlakePercentage)
 	}
 	summaryData := [][]string{
-		{"**Category**", "**Total**"},
-		{"**Tests**", p.Sprint(len(tests))},
-		{"**Panicked Tests**", p.Sprint(panickedTests)},
-		{"**Raced Tests**", p.Sprint(racedTests)},
-		{"**Flaky Tests**", p.Sprint(flakyTests)},
-		{"**Flaky Test Ratio**", flakeRatioStr},
-		{"**Runs**", p.Sprint(runs)},
-		{"**Passes**", p.Sprint(passes)},
-		{"**Failures**", p.Sprint(fails)},
-		{"**Skips**", p.Sprint(skips)},
-		{"**Pass Ratio**", passRatioStr},
+		{"Category", "Total"},
+		{"Tests", p.Sprint(len(tests))},
+		{"Panicked Tests", p.Sprint(panickedTests)},
+		{"Raced Tests", p.Sprint(racedTests)},
+		{"Flaky Tests", p.Sprint(flakyTests)},
+		{"Flaky Test Ratio", flakeRatioStr},
+		{"Runs", p.Sprint(runs)},
+		{"Passes", p.Sprint(passes)},
+		{"Failures", p.Sprint(fails)},
+		{"Skips", p.Sprint(skips)},
+		{"Pass Ratio", passRatioStr},
 	}
 
 	colWidths := make([]int, len(summaryData[0]))
