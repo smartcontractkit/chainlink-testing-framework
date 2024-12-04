@@ -10,7 +10,7 @@ replace (
 )
 
 require (
-	github.com/smartcontractkit/chainlink-testing-framework/framework v0.3.0
+	github.com/smartcontractkit/chainlink-testing-framework/framework v0.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.10.0
 )
 
