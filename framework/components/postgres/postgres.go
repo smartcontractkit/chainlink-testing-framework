@@ -32,9 +32,11 @@ type Input struct {
 }
 
 type Output struct {
-	Url               string `toml:"url"`
-	ContainerName     string `toml:"container_name"`
-	DockerInternalURL string `toml:"docker_internal_url"`
+	Url                 string `toml:"url"`
+	ContainerName       string `toml:"container_name"`
+	DockerInternalURL   string `toml:"docker_internal_url"`
+	JDUrl               string `toml:"jd_url"`
+	JDDockerInternalURL string `toml:"jd_docker_internal_url"`
 }
 
 func NewPostgreSQL(in *Input) (*Output, error) {
@@ -47,6 +49,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 	for i := 0; i <= in.Databases; i++ {
 		sqlCommands = append(sqlCommands, fmt.Sprintf("CREATE DATABASE db_%d;", i))
 	}
+	sqlCommands = append(sqlCommands, "CREATE DATABASE jd;")
 	sqlCommands = append(sqlCommands, "ALTER USER chainlink WITH SUPERUSER;")
 	initSQL := strings.Join(sqlCommands, "\n")
 	initFile, err := os.CreateTemp("", "init-*.sql")
@@ -143,6 +146,22 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 			host,
 			portToExpose,
 			Database,
+		),
+		JDDockerInternalURL: fmt.Sprintf(
+			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
+			User,
+			Password,
+			containerName,
+			Port,
+			"jd",
+		),
+		JDUrl: fmt.Sprintf(
+			"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
+			User,
+			Password,
+			host,
+			portToExpose,
+			"jd",
 		),
 	}, nil
 }
