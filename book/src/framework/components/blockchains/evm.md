@@ -72,5 +72,17 @@ Public: 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
 Private: ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 ```
 
-Test keys for `Besu` can be found [here](https://besu.hyperledger.org/23.4.1/private-networks/reference/accounts-for-testing)
+For `Besu` keys are
+```
+Public: 0xfe3b557e8fb62b89f4916b721be55ceb828dbd73
+Private: 0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63
+
+Public: 0x627306090abaB3A6e1400e9345bC60c78a8BEf57
+Private: 0xc87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3
+
+Public: 0xf17f52151EbEF6C7334FAD080c5704D77216b732
+Private: 0xae6ae8e5ccbfb04590405997ee2d52d2b330726137b875053c36d94e974d162f
+```
+
+More docs for `Besu` can be found [here](https://besu.hyperledger.org/private-networks/reference/accounts-for-testing)
 
