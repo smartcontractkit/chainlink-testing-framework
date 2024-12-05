@@ -42,15 +42,6 @@ jobs:
         with:
           fetch-depth: 0             
 
-      # - name: Setup Git to use GitHub Actions bot
-      #   run: |
-      #     git config user.name "github-actions[bot]"
-      #     git config user.email "github-actions[bot]@users.noreply.github.com"          
-
-      # - name: Create a new branch
-      #   run: |
-      #     git checkout -b ${{ github.event.pull_request.head.ref }}-docs
-
       - name: Generate go docs
         shell: bash
         env:
@@ -61,7 +52,7 @@ jobs:
           export PATH
           # TODO check why this flag is needed, if it has a default!
           # TODO we need a way to determine which modules have changes and run this command for all of them
-          generate-go-function-docs diff -b ${{ github.event.pull_request.base.sha }} -c ${{ github.event.pull_request.head.sha }} -g fake_slash -f ./seth --goModLocation ./seth/go.mod
+          generate-go-function-docs diff -b ${{ github.event.pull_request.base.sha }} -c ${{ github.event.pull_request.head.sha }} -g chatgpt -f ./seth --goModLocation ./seth/go.mod
 
       - name: Make sure code still compiles
         run: |
@@ -70,12 +61,12 @@ jobs:
           go mod tidy
           go build ./...
 
-      - name: Setup branch names
-        id: branch-names
-        shell: bash
-        run: |
-          echo "base_branch=${{ github.head_ref }}" >> $GITHUB_OUTPUT
-          echo "new_branch=${{ github.head_ref }}-docs" >> $GITHUB_OUTPUT
+      # - name: Export branch names
+      #   id: branch-names
+      #   shell: bash
+      #   run: |
+      #     echo "base_branch=${{ github.head_ref }}" >> $GITHUB_OUTPUT
+      #     echo "new_branch=${{ github.head_ref }}-docs" >> $GITHUB_OUTPUT
 
       - name: Setup GitHub Token for creating a new PR
         id: setup-github-token-write
@@ -85,35 +76,12 @@ jobs:
           aws-lambda-url: ${{ secrets.GATI_LAMBDA_TT_URL }}
           aws-region: ${{ secrets.AWS_REGION }}          
 
-      # - name: Checkout new branch
-      #   uses: peterjgrainger/action-create-branch@10c7d268152480ae859347db45dc69086cef1d9c # v3.0.0
-      #   env:
-      #     GITHUB_TOKEN: ${{ steps.setup-github-token-write.outputs.access-token }}
-      #   with:
-      #     branch: ${{ steps.branch-names.outputs.new_branch }}
-
-      # - name: Commit changes            
-      #   uses: planetscale/ghcommit-action@13a844326508cdefc72235201bb0446d6d10a85f # v0.1.6
-      #   with:
-      #     commit_message: "[Bot] Add automatically generated go documentation"
-      #     repo: ${{ github.repository }}
-      #     branch: ${{ steps.branch-names.outputs.new_branch }}
-      #     # TODO we need a way to determine which modules have changes and run this command for all of them
-      #     file_pattern: "seth/*"
-      #   env:
-      #     GITHUB_TOKEN: ${{ steps.setup-github-token-write.outputs.access-token }}
-
-      # - name: Fetch repository changes
-      #   uses: actions/checkout@v3
-      #   with:
-      #     fetch-depth: 0            
-
       - name: Create a new PR targeting current PR
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@5e914681df9dc83aa4e4905692ca88beb2f9e91f # v7.0.5
         with:
           token: ${{ steps.setup-github-token-write.outputs.access-token }}
-          branch: ${{ steps.branch-names.outputs.new_branch }}
-          base: ${{ steps.branch-names.outputs.base_branch }}
+          branch: ${{ github.head_ref }}-docs
+          base: ${{ github.head_ref }}
           title: "Go docs for PR#${{ github.event.pull_request.number }}"
           body: "This PR contains automatically generated go documentation for the PR#${{ github.event.pull_request.number }}. Please review the changes."
           commit-message: "[Bot] Add automatically generated go documentation"
