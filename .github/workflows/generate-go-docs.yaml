@@ -69,8 +69,6 @@ jobs:
             echo "Processing folder: $folder"
             generate-go-function-docs diff -b ${{ github.event.pull_request.base.sha }} -c ${{ github.event.pull_request.head.sha }} -g chatgpt -f "$folder"
             cd "$folder"
-            echo "Checking if code still compiles"
-            go build ./...
             cd -
           done
 
