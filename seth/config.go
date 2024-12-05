@@ -15,6 +15,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// MyAmazingNewFunction returns a string containing a predefined message.
+// It can be used to provide a simple response or placeholder text in applications.
 func MyAmazingNewFunction() string {
 	return "bla bla bla"
 }
