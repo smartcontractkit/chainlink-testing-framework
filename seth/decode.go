@@ -105,6 +105,8 @@ func (m *Client) Decode(tx *types.Transaction, txErr error) (*DecodedTransaction
 		return nil, verr.Join(m.Errors...)
 	}
 
+	_ = MyAmazingNewFunction()
+
 	if decodedErr := m.DecodeSendErr(txErr); decodedErr != nil {
 		return nil, decodedErr
 	}
