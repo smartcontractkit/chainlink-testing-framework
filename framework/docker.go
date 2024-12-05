@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	DefaultCTFLogsDir = "logs"
+	DefaultCTFLogsDir = "logs/docker"
 )
 
 func IsDockerRunning() bool {
