@@ -1,0 +1,68 @@
+[
+  {
+    "folder": "framework"
+  },
+  {
+    "folder": "framework/examples/myproject"
+  },
+  {
+    "folder": "framework/examples/myproject_cll"
+  },
+  {
+    "folder": "havoc"
+  },
+  {
+    "folder": "k8s-test-runner"
+  },
+  {
+    "folder": "lib"
+  },
+  {
+    "folder": "lib/grafana"
+  },
+  {
+    "folder": "seth"
+  },
+  {
+    "folder": "seth/examples_wasp"
+  },
+  {
+    "folder": "tools/asciitable"
+  },
+  {
+    "folder": "tools/breakingchanges"
+  },
+  {
+    "folder": "tools/citool"
+  },
+  {
+    "folder": "tools/ecrimagefetcher"
+  },
+  {
+    "folder": "tools/envresolve"
+  },
+  {
+    "folder": "tools/flakeguard"
+  },
+  {
+    "folder": "tools/ghlatestreleasechecker"
+  },
+  {
+    "folder": "tools/ghsecrets"
+  },
+  {
+    "folder": "tools/gotestloghelper"
+  },
+  {
+    "folder": "tools/testlistgenerator"
+  },
+  {
+    "folder": "tools/workflowresultparser"
+  },
+  {
+    "folder": "wasp"
+  },
+  {
+    "folder": "wasp/examples"
+  }
+]

@@ -188,12 +188,15 @@ func AggregateTestResults(folderPath string) (*TestReport, error) {
 	return fullReport, nil
 }
 
-// PrintTests prints tests in a pretty format
-func PrintTests(
-	w io.Writer,
-	tests []TestResult,
-	maxPassRatio float64,
-) (runs, passes, fails, skips, panickedTests, racedTests, flakyTests int) {
+// TestResultsTable generates a formatted table of test results, filtering by a specified pass ratio.
+// It returns the table along with counts of runs, passes, failures, skips, and various test states.
+// This function is useful for summarizing and analyzing test outcomes in a structured format.
+func TestResultsTable(
+	results []TestResult,
+	expectedPassRatio float64,
+	includeCodeOwners bool,
+	markdown bool,
+) (resultsTable [][]string, runs, passes, fails, skips, panickedTests, racedTests, flakyTests int) {
 	p := message.NewPrinter(language.English) // For formatting numbers
 	sortTestResults(tests)
 
