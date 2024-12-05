@@ -8,91 +8,66 @@ import (
 	"time"
 )
 
-// TestGenerateResultsTable tests the GenerateResultsTable function.
-func TestGenerateResultsTable(t *testing.T) {
-	testResults := []TestResult{
+func TestGenerateFlakyTestsTable(t *testing.T) {
+	results := []TestResult{
 		{
-			TestName:     "TestA",
-			PassRatio:    0.8,
-			Panic:        false,
-			Timeout:      false,
-			Race:         false,
-			Runs:         5,
-			Successes:    4,
-			Failures:     1,
-			Skips:        0,
-			TestPackage:  "pkg1",
-			PackagePanic: false,
-			Durations:    []time.Duration{time.Second, time.Second, time.Second, time.Second, time.Second},
-			CodeOwners:   []string{"owner1"},
+			TestName:    "TestFlaky",
+			PassRatio:   0.5,
+			Skipped:     false,
+			Runs:        2,
+			Successes:   1,
+			Failures:    1,
+			TestPackage: "pkg1",
+			CodeOwners:  []string{"owner1"},
 		},
 		{
-			TestName:     "TestB",
-			PassRatio:    1.0,
-			Panic:        false,
-			Timeout:      false,
-			Race:         false,
-			Runs:         3,
-			Successes:    3,
-			Failures:     0,
-			Skips:        0,
-			TestPackage:  "pkg2",
-			PackagePanic: false,
-			Durations:    []time.Duration{2 * time.Second, 2 * time.Second, 2 * time.Second},
-			CodeOwners:   []string{"owner2"},
+			TestName:    "TestSkipped",
+			PassRatio:   -1.0,
+			Skipped:     true,
+			Runs:        0,
+			Skips:       1,
+			TestPackage: "pkg2",
+			CodeOwners:  []string{"owner2"},
 		},
 	}
 
 	expectedPassRatio := 0.9
 	markdown := false
 
-	table := GenerateResultsTable(testResults, expectedPassRatio, markdown)
+	table := GenerateFlakyTestsTable(results, expectedPassRatio, markdown)
 
-	// Only TestA should be included since its PassRatio is below 0.9
-	if len(table) != 2 {
+	// Verify headers
+	expectedHeaders := []string{
+		"Name", "Pass Ratio", "Panicked?", "Timed Out?", "Race?", "Runs",
+		"Successes", "Failures", "Skips", "Package", "Package Panicked?",
+		"Avg Duration", "Code Owners",
+	}
+	if !reflect.DeepEqual(table[0], expectedHeaders) {
+		t.Errorf("Expected headers %+v, got %+v", expectedHeaders, table[0])
+	}
+
+	// Verify rows (only TestFlaky should appear)
+	if len(table) != 2 { // 1 header row + 1 data row
 		t.Fatalf("Expected table length 2 (headers + 1 row), got %d", len(table))
 	}
 
-	// Verify headers
-	headers := table[0]
-	expectedHeaders := []string{
-		"Name",
-		"Pass Ratio",
-		"Panicked?",
-		"Timed Out?",
-		"Race?",
-		"Runs",
-		"Successes",
-		"Failures",
-		"Skips",
-		"Package",
-		"Package Panicked?",
-		"Avg Duration",
-		"Code Owners",
-	}
-	if !reflect.DeepEqual(headers, expectedHeaders) {
-		t.Errorf("Expected headers %+v, got %+v", expectedHeaders, headers)
-	}
-
-	// Verify row data
-	row := table[1]
 	expectedRow := []string{
-		"TestA",
-		"80.00%",
+		"TestFlaky",
+		"50.00%",
 		"false",
 		"false",
 		"false",
-		"5",
-		"4",
+		"2",
+		"1",
 		"1",
 		"0",
 		"pkg1",
 		"false",
-		"1s",
+		"0s",
 		"owner1",
 	}
-	if !reflect.DeepEqual(row, expectedRow) {
-		t.Errorf("Expected row %+v, got %+v", expectedRow, row)
+	if !reflect.DeepEqual(table[1], expectedRow) {
+		t.Errorf("Expected row %+v, got %+v", expectedRow, table[1])
 	}
 }
 

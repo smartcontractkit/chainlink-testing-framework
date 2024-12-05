@@ -388,7 +388,7 @@ func TestAggregate_AllSkippedTests(t *testing.T) {
 				Skipped:     true,
 				Runs:        0,
 				Skips:       3,
-				PassRatio:   0.0, // Or set to -1 to indicate undefined
+				PassRatio:   -1, // 1 indicate undefined
 			},
 		},
 	}
@@ -403,7 +403,7 @@ func TestAggregate_AllSkippedTests(t *testing.T) {
 				Skipped:     true,
 				Runs:        0,
 				Skips:       2,
-				PassRatio:   0.0,
+				PassRatio:   -1,
 			},
 		},
 	}
@@ -419,7 +419,7 @@ func TestAggregate_AllSkippedTests(t *testing.T) {
 		Skipped:     true,
 		Runs:        0,
 		Skips:       5,
-		PassRatio:   0.0,
+		PassRatio:   -1,
 	}
 
 	if len(aggregatedReport.Results) != 1 {

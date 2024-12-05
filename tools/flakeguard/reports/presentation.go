@@ -10,7 +10,7 @@ import (
 	"golang.org/x/text/message"
 )
 
-func GenerateResultsTable(
+func GenerateFlakyTestsTable(
 	results []TestResult,
 	expectedPassRatio float64,
 	markdown bool,
@@ -18,6 +18,7 @@ func GenerateResultsTable(
 	p := message.NewPrinter(language.English)
 	sortTestResults(results)
 
+	// Headers in the requested order
 	headers := []string{
 		"Name",
 		"Pass Ratio",
@@ -34,18 +35,22 @@ func GenerateResultsTable(
 		"Code Owners",
 	}
 
+	// Format headers for Markdown if needed
 	if markdown {
 		for i, header := range headers {
 			headers[i] = fmt.Sprintf("**%s**", header)
 		}
 	}
 
+	// Initialize the table with headers
 	table := [][]string{headers}
+
 	for _, result := range results {
-		if result.PassRatio < expectedPassRatio {
+		// Exclude skipped tests and only include tests below the expected pass ratio
+		if !result.Skipped && result.PassRatio < expectedPassRatio {
 			row := []string{
 				result.TestName,
-				fmt.Sprintf("%.2f%%", result.PassRatio*100),
+				formatPassRatio(result.PassRatio),
 				fmt.Sprintf("%t", result.Panic),
 				fmt.Sprintf("%t", result.Timeout),
 				fmt.Sprintf("%t", result.Race),
@@ -58,7 +63,7 @@ func GenerateResultsTable(
 				avgDuration(result.Durations).String(),
 			}
 
-			// Code owners
+			// Add code owners
 			owners := "Unknown"
 			if len(result.CodeOwners) > 0 {
 				owners = strings.Join(result.CodeOwners, ", ")
@@ -69,6 +74,13 @@ func GenerateResultsTable(
 		}
 	}
 	return table
+}
+
+func formatPassRatio(passRatio float64) string {
+	if passRatio < 0 {
+		return "N/A" // Handle undefined pass ratios (e.g., skipped tests)
+	}
+	return fmt.Sprintf("%.2f%%", passRatio*100)
 }
 
 func GenerateMarkdownSummary(w io.Writer, testReport *TestReport, maxPassRatio float64) {
@@ -115,7 +127,7 @@ func RenderResults(
 	maxPassRatio float64,
 	markdown bool,
 ) {
-	resultsTable := GenerateResultsTable(tests, maxPassRatio, markdown)
+	resultsTable := GenerateFlakyTestsTable(tests, maxPassRatio, markdown)
 	summary := GenerateSummaryData(tests, maxPassRatio)
 	renderSummaryTable(w, summary, markdown)
 	renderTestResultsTable(w, resultsTable, markdown)

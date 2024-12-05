@@ -63,13 +63,15 @@ func GenerateSummaryData(tests []TestResult, maxPassRatio float64) SummaryData {
 		passes += result.Successes
 		fails += result.Failures
 		skips += result.Skips
+
 		if result.Panic {
 			panickedTests++
 			flakyTests++
 		} else if result.Race {
 			racedTests++
 			flakyTests++
-		} else if result.PassRatio < maxPassRatio {
+		} else if !result.Skipped && result.Runs > 0 && result.PassRatio < maxPassRatio {
+			// Exclude skipped tests and tests with no runs
 			flakyTests++
 		}
 	}
@@ -82,12 +84,14 @@ func GenerateSummaryData(tests []TestResult, maxPassRatio float64) SummaryData {
 		passPercentage = math.Round((float64(passes)/float64(runs)*100)*100) / 100
 		averagePassRatio = float64(passes) / float64(runs)
 	}
-	if len(tests) > 0 {
-		flakePercentage = math.Round((float64(flakyTests)/float64(len(tests))*100)*100) / 100
+	totalTests := len(tests)                 // Include skipped tests in total tests
+	totalExecutedTests := totalTests - skips // Tests that were actually executed
+	if totalExecutedTests > 0 {
+		flakePercentage = math.Round((float64(flakyTests)/float64(totalExecutedTests)*100)*100) / 100
 	}
 
 	return SummaryData{
-		TotalTests:       len(tests),
+		TotalTests:       totalTests,
 		PanickedTests:    panickedTests,
 		RacedTests:       racedTests,
 		FlakyTests:       flakyTests,
@@ -184,7 +188,7 @@ func mergeTestResults(a, b TestResult) TestResult {
 	if a.Runs > 0 {
 		a.PassRatio = float64(a.Successes) / float64(a.Runs)
 	} else {
-		a.PassRatio = 0.0
+		a.PassRatio = -1.0 // Indicate undefined pass ratio for skipped tests
 	}
 
 	return a
