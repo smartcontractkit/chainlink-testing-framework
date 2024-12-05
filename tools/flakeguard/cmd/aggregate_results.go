@@ -1,100 +1,90 @@
 package cmd
 
 import (
-	"encoding/json"
-	"log"
-	"os"
-	"path/filepath"
+	"fmt"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/spf13/cobra"
 )
 
-var (
-	resultsFolderPath string
-	outputResultsPath string
-	outputLogsPath    string
-	codeOwnersPath    string
-	projectPath       string
-	maxPassRatio      float64
-	filterFailed      bool
-)
-
 var AggregateResultsCmd = &cobra.Command{
 	Use:   "aggregate-results",
-	Short: "Aggregate test results and optionally filter failed tests based on a threshold",
+	Short: "Aggregate test results into a single report, with optional filtering and code owners mapping",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Read test reports from files
-		var testReports []*reports.TestReport
-		err := filepath.Walk(resultsFolderPath, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			if !info.IsDir() && filepath.Ext(path) == ".json" {
-				// Read file content
-				data, readErr := os.ReadFile(path)
-				if readErr != nil {
-					return readErr
-				}
-				var report *reports.TestReport
-				if jsonErr := json.Unmarshal(data, &report); jsonErr != nil {
-					return jsonErr
-				}
-				testReports = append(testReports, report)
-			}
-			return nil
-		})
+		// Get flag values
+		aggregateResultsPath, _ := cmd.Flags().GetString("results-path")
+		aggregateOutputPath, _ := cmd.Flags().GetString("output-path")
+		includeOutputs, _ := cmd.Flags().GetBool("include-outputs")
+		includePackageOutputs, _ := cmd.Flags().GetBool("include-package-outputs")
+		filterFailed, _ := cmd.Flags().GetBool("filter-failed")
+		maxPassRatio, _ := cmd.Flags().GetFloat64("max-pass-ratio")
+		codeOwnersPath, _ := cmd.Flags().GetString("codeowners-path")
+		repoPath, _ := cmd.Flags().GetString("repo-path")
+
+		// Load test reports from JSON files
+		testReports, err := reports.LoadReports(aggregateResultsPath)
 		if err != nil {
-			log.Fatalf("Error reading test reports: %v", err)
+			return fmt.Errorf("error loading test reports: %w", err)
 		}
 
-		allReport, err := reports.Aggregate(testReports...)
+		// Aggregate the reports
+		aggregatedReport, err := reports.Aggregate(testReports...)
 		if err != nil {
-			log.Fatalf("Error aggregating results: %v", err)
+			return fmt.Errorf("error aggregating test reports: %w", err)
 		}
 
-		// Map test results to paths
-		err = reports.MapTestResultsToPaths(allReport, projectPath)
+		// Map test results to test paths
+		err = reports.MapTestResultsToPaths(aggregatedReport, repoPath)
 		if err != nil {
-			log.Fatalf("Error mapping test results to paths: %v", err)
+			return fmt.Errorf("error mapping test results to paths: %w", err)
 		}
 
-		// Map test results to owners if CODEOWNERS path is provided
+		// Map test results to code owners if codeOwnersPath is provided
 		if codeOwnersPath != "" {
-			err = reports.MapTestResultsToOwners(allReport, codeOwnersPath)
+			err = reports.MapTestResultsToOwners(aggregatedReport, codeOwnersPath)
 			if err != nil {
-				log.Fatalf("Error mapping test results to owners: %v", err)
+				return fmt.Errorf("error mapping test results to code owners: %w", err)
 			}
 		}
 
-		var resultsToSave []reports.TestResult
-
+		// Filter results if needed
 		if filterFailed {
-			// Filter to only include tests that failed below the threshold
-			for _, result := range allReport.Results {
-				if result.PassRatio < maxPassRatio && !result.Skipped {
-					resultsToSave = append(resultsToSave, result)
+			aggregatedReport.Results = reports.FilterTests(aggregatedReport.Results, func(tr reports.TestResult) bool {
+				return !tr.Skipped && tr.PassRatio < maxPassRatio
+			})
+		}
+
+		// Process the aggregated results based on the flags
+		if !includeOutputs || !includePackageOutputs {
+			for i := range aggregatedReport.Results {
+				if !includeOutputs {
+					aggregatedReport.Results[i].Outputs = nil
+				}
+				if !includePackageOutputs {
+					aggregatedReport.Results[i].PackageOutputs = nil
 				}
 			}
-		} else {
-			resultsToSave = allReport.Results
 		}
-		allReport.Results = resultsToSave
 
-		// Output results to JSON files
-		if len(resultsToSave) > 0 {
-			return reports.SaveFilteredResultsAndLogs(outputResultsPath, outputLogsPath, allReport, codeOwnersPath != "")
+		// Save the aggregated report
+		if err := reports.SaveReport(reports.OSFileSystem{}, aggregateOutputPath, *aggregatedReport); err != nil {
+			return fmt.Errorf("error saving aggregated report: %w", err)
 		}
+
+		fmt.Printf("Aggregated report saved to %s\n", aggregateOutputPath)
 		return nil
 	},
 }
 
 func init() {
-	AggregateResultsCmd.Flags().StringVarP(&resultsFolderPath, "results-path", "p", "", "Path to the folder containing JSON test result files")
-	AggregateResultsCmd.Flags().StringVarP(&outputResultsPath, "output-results", "o", "./results", "Path to output the aggregated or filtered test results in JSON and markdown format")
-	AggregateResultsCmd.Flags().StringVarP(&outputLogsPath, "output-logs", "l", "", "Path to output the filtered test logs in JSON format")
-	AggregateResultsCmd.Flags().Float64VarP(&maxPassRatio, "max-pass-ratio", "m", 1.0, "The maximum (non-inclusive) pass ratio threshold for a test to be considered a failure. Any tests below this pass rate will be considered flaky.")
-	AggregateResultsCmd.Flags().BoolVarP(&filterFailed, "filter-failed", "f", false, "If true, filter and output only failed tests based on the max-pass-ratio threshold")
-	AggregateResultsCmd.Flags().StringVarP(&codeOwnersPath, "codeowners-path", "c", "", "Path to the CODEOWNERS file")
-	AggregateResultsCmd.Flags().StringVarP(&projectPath, "project-path", "r", ".", "The path to the Go project. Default is the current directory. Useful for subprojects")
+	AggregateResultsCmd.Flags().StringP("results-path", "p", "", "Path to the folder containing JSON test result files (required)")
+	AggregateResultsCmd.Flags().StringP("output-path", "o", "./aggregated-results.json", "Path to output the aggregated test results")
+	AggregateResultsCmd.Flags().Bool("include-outputs", false, "Include test outputs in the aggregated test results")
+	AggregateResultsCmd.Flags().Bool("include-package-outputs", false, "Include test package outputs in the aggregated test results")
+	AggregateResultsCmd.Flags().Bool("filter-failed", false, "If true, filter and output only failed tests based on the max-pass-ratio threshold")
+	AggregateResultsCmd.Flags().Float64("max-pass-ratio", 1.0, "The maximum pass ratio threshold for a test to be considered flaky. Any tests below this pass rate will be considered flaky.")
+	AggregateResultsCmd.Flags().String("codeowners-path", "", "Path to the CODEOWNERS file")
+	AggregateResultsCmd.Flags().String("repo-path", ".", "The path to the root of the repository/project")
+	AggregateResultsCmd.MarkFlagRequired("results-path")
+	AggregateResultsCmd.MarkFlagRequired("repo-path")
 }

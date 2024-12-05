@@ -1,0 +1,267 @@
+package reports
+
+import (
+	"bytes"
+	"reflect"
+	"strings"
+	"testing"
+	"time"
+)
+
+// TestGenerateResultsTable tests the GenerateResultsTable function.
+func TestGenerateResultsTable(t *testing.T) {
+	testResults := []TestResult{
+		{
+			TestName:     "TestA",
+			PassRatio:    0.8,
+			Panic:        false,
+			Timeout:      false,
+			Race:         false,
+			Runs:         5,
+			Successes:    4,
+			Failures:     1,
+			Skips:        0,
+			TestPackage:  "pkg1",
+			PackagePanic: false,
+			Durations:    []time.Duration{time.Second, time.Second, time.Second, time.Second, time.Second},
+			CodeOwners:   []string{"owner1"},
+		},
+		{
+			TestName:     "TestB",
+			PassRatio:    1.0,
+			Panic:        false,
+			Timeout:      false,
+			Race:         false,
+			Runs:         3,
+			Successes:    3,
+			Failures:     0,
+			Skips:        0,
+			TestPackage:  "pkg2",
+			PackagePanic: false,
+			Durations:    []time.Duration{2 * time.Second, 2 * time.Second, 2 * time.Second},
+			CodeOwners:   []string{"owner2"},
+		},
+	}
+
+	expectedPassRatio := 0.9
+	markdown := false
+
+	table := GenerateResultsTable(testResults, expectedPassRatio, markdown)
+
+	// Only TestA should be included since its PassRatio is below 0.9
+	if len(table) != 2 {
+		t.Fatalf("Expected table length 2 (headers + 1 row), got %d", len(table))
+	}
+
+	// Verify headers
+	headers := table[0]
+	expectedHeaders := []string{
+		"Name",
+		"Pass Ratio",
+		"Panicked?",
+		"Timed Out?",
+		"Race?",
+		"Runs",
+		"Successes",
+		"Failures",
+		"Skips",
+		"Package",
+		"Package Panicked?",
+		"Avg Duration",
+		"Code Owners",
+	}
+	if !reflect.DeepEqual(headers, expectedHeaders) {
+		t.Errorf("Expected headers %+v, got %+v", expectedHeaders, headers)
+	}
+
+	// Verify row data
+	row := table[1]
+	expectedRow := []string{
+		"TestA",
+		"80.00%",
+		"false",
+		"false",
+		"false",
+		"5",
+		"4",
+		"1",
+		"0",
+		"pkg1",
+		"false",
+		"1s",
+		"owner1",
+	}
+	if !reflect.DeepEqual(row, expectedRow) {
+		t.Errorf("Expected row %+v, got %+v", expectedRow, row)
+	}
+}
+
+// TestGenerateMarkdownSummary tests the GenerateMarkdownSummary function.
+func TestGenerateMarkdownSummary(t *testing.T) {
+	testReport := &TestReport{
+		GoProject:     "ProjectX",
+		TestRunCount:  3,
+		RaceDetection: true,
+		Results: []TestResult{
+			{
+				TestName:    "TestA",
+				PassRatio:   0.8,
+				Runs:        5,
+				Successes:   4,
+				Failures:    1,
+				TestPackage: "pkg1",
+				CodeOwners:  []string{"owner1"},
+				Durations:   []time.Duration{time.Second, time.Second, time.Second, time.Second, time.Second},
+			},
+			{
+				TestName:    "TestB",
+				PassRatio:   1.0,
+				Runs:        3,
+				Successes:   3,
+				Failures:    0,
+				TestPackage: "pkg2",
+				CodeOwners:  []string{"owner2"},
+				Durations:   []time.Duration{2 * time.Second, 2 * time.Second, 2 * time.Second},
+			},
+		},
+	}
+
+	var buffer bytes.Buffer
+	maxPassRatio := 0.9
+
+	GenerateMarkdownSummary(&buffer, testReport, maxPassRatio)
+
+	output := buffer.String()
+
+	// Check that the summary includes the expected headings
+	if !strings.Contains(output, "# Flakeguard Summary") {
+		t.Error("Expected markdown summary to contain '# Flakeguard Summary'")
+	}
+	if !strings.Contains(output, "## Found Flaky Tests :x:") {
+		t.Error("Expected markdown summary to contain '## Found Flaky Tests :x:'")
+	}
+	if !strings.Contains(output, "| **Name**") {
+		t.Error("Expected markdown table headers for test results")
+	}
+	if !strings.Contains(output, "| TestA ") {
+		t.Error("Expected markdown table to include TestA")
+	}
+	if strings.Contains(output, "| TestB ") {
+		t.Error("Did not expect markdown table to include TestB since its pass ratio is above the threshold")
+	}
+}
+
+// TestPrintTable tests the printTable function.
+func TestPrintTable(t *testing.T) {
+	table := [][]string{
+		{"Header1", "Header2", "Header3"},
+		{"Row1Col1", "Row1Col2", "Row1Col3"},
+		{"Row2Col1", "Row2Col2", "Row2Col3"},
+	}
+
+	var buffer bytes.Buffer
+	printTable(&buffer, table)
+
+	output := buffer.String()
+
+	expected := `| Header1  | Header2  | Header3  |
+|----------|----------|----------|
+| Row1Col1 | Row1Col2 | Row1Col3 |
+| Row2Col1 | Row2Col2 | Row2Col3 |
+`
+
+	if output != expected {
+		t.Errorf("Expected output:\n%s\nGot:\n%s", expected, output)
+	}
+}
+
+func TestRenderResults(t *testing.T) {
+	testcases := []struct {
+		name                   string
+		testResults            []TestResult
+		maxPassRatio           float64
+		expectedSummary        SummaryData
+		expectedStringsContain []string
+	}{
+		{
+			name: "single flaky test",
+			testResults: []TestResult{
+				{
+					TestName:    "Test1",
+					TestPackage: "package1",
+					PassRatio:   0.75,
+					Successes:   3,
+					Failures:    1,
+					Skipped:     false,
+					Runs:        4,
+					Durations: []time.Duration{
+						time.Millisecond * 1200,
+						time.Millisecond * 900,
+						time.Millisecond * 1100,
+						time.Second,
+					},
+				},
+			},
+			maxPassRatio: 0.9,
+			expectedSummary: SummaryData{
+				TotalTests:       1,
+				PanickedTests:    0,
+				RacedTests:       0,
+				FlakyTests:       1,
+				FlakyTestRatio:   "100.00%",
+				TotalRuns:        4,
+				PassedRuns:       3,
+				FailedRuns:       1,
+				SkippedRuns:      0,
+				PassRatio:        "75.00%",
+				MaxPassRatio:     0.9,
+				AveragePassRatio: 0.75,
+			},
+			expectedStringsContain: []string{"Test1", "package1", "75.00%", "false", "1.05s", "4", "0"},
+		},
+		// Add more test cases as needed
+	}
+
+	for _, tc := range testcases {
+		tc := tc // capture range variable
+		t.Run(tc.name, func(t *testing.T) {
+			var buf bytes.Buffer
+
+			RenderResults(&buf, tc.testResults, tc.maxPassRatio, false)
+			output := buf.String()
+
+			// Generate the summary data
+			summary := GenerateSummaryData(tc.testResults, tc.maxPassRatio)
+
+			// Verify summary data
+			if summary.TotalTests != tc.expectedSummary.TotalTests {
+				t.Errorf("Expected TotalTests %v, got %v", tc.expectedSummary.TotalTests, summary.TotalTests)
+			}
+			if summary.TotalRuns != tc.expectedSummary.TotalRuns {
+				t.Errorf("Expected TotalRuns %v, got %v", tc.expectedSummary.TotalRuns, summary.TotalRuns)
+			}
+			if summary.PassedRuns != tc.expectedSummary.PassedRuns {
+				t.Errorf("Expected PassedRuns %v, got %v", tc.expectedSummary.PassedRuns, summary.PassedRuns)
+			}
+			if summary.FailedRuns != tc.expectedSummary.FailedRuns {
+				t.Errorf("Expected FailedRuns %v, got %v", tc.expectedSummary.FailedRuns, summary.FailedRuns)
+			}
+			if summary.FlakyTests != tc.expectedSummary.FlakyTests {
+				t.Errorf("Expected FlakyTests %v, got %v", tc.expectedSummary.FlakyTests, summary.FlakyTests)
+			}
+			if summary.PassRatio != tc.expectedSummary.PassRatio {
+				t.Errorf("Expected PassRatio %v, got %v", tc.expectedSummary.PassRatio, summary.PassRatio)
+			}
+			if summary.AveragePassRatio != tc.expectedSummary.AveragePassRatio {
+				t.Errorf("Expected AveragePassRatio %v, got %v", tc.expectedSummary.AveragePassRatio, summary.AveragePassRatio)
+			}
+
+			// Verify output content
+			for _, expected := range tc.expectedStringsContain {
+				if !strings.Contains(output, expected) {
+					t.Errorf("Expected output to contain %q, but it did not", expected)
+				}
+			}
+		})
+	}
+}
