@@ -9,11 +9,11 @@ on:
 
 jobs:
   generate_docs_new_pr:
-    if: ${{ contains(github.event.pull_request.labels.*.name, 'generate_go_docs') }}
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'generate_go_docs') }}    
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-      contents: read    
+      contents: read 
 
     steps:
       - name: Setup GitHub Token for reading Generate Go Doc Repo
@@ -24,25 +24,39 @@ jobs:
           aws-lambda-url: ${{ secrets.GATI_LAMBDA_TT_URL }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Configure git for private repository and install go doc generator
+      - name: Configure git for private repository and install go tools
         env:
           GOPRIVATE: github.com/smartcontractkit/generate-go-function-docs
         run: |
           git config --global \
           url."https://x-access-token:${{ steps.setup-github-token-read.outputs.access-token }}@github.com/".insteadOf "https://github.com/"
           go install github.com/smartcontractkit/generate-go-function-docs@latest
-
-      - name: Install gopls
-        shell: bash
-        run: |
-          go install golang.org/x/tools/gopls@latest             
+          go install github.com/jmank88/gomods@v0.1.3
+          go install golang.org/x/tools/gopls@latest
 
       - name: Checkout current branch
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0             
+          fetch-depth: 0
 
-      - name: Generate go docs
+      - name: Find all go modules
+        shell: bash
+        id: go-modules
+        run: |
+          PATH=$PATH:$(go env GOPATH)/bin
+          export PATH        
+          gomods_output=$(gomods 2>&1)
+
+          # Extract the parent directories of go.mod files
+          parent_folders=$(echo "$gomods_output" | grep 'go\.mod$' | sed 's/\/go\.mod//' | sed 's/^[ \t]*//;s/[ \t]*$//' | xargs -n 1)
+
+          # Convert parent directories into a JSON matrix
+          echo "$parent_folders" | jq -R -s 'split("\n") | map(select(length > 0)) | map({folder: .})' > folders.json
+
+          echo "Folder List JSON"
+          cat folders.json
+
+      - name: Generate go docs for all projects
         shell: bash
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -50,16 +64,15 @@ jobs:
           # Add go binary to PATH
           PATH=$PATH:$(go env GOPATH)/bin
           export PATH
-          # TODO check why this flag is needed, if it has a default!
-          # TODO we need a way to determine which modules have changes and run this command for all of them
-          generate-go-function-docs diff -b ${{ github.event.pull_request.base.sha }} -c ${{ github.event.pull_request.head.sha }} -g chatgpt -f ./seth --goModLocation ./seth/go.mod
-
-      - name: Make sure code still compiles
-        run: |
-          # TODO we need a way to determine which modules have changes and run this command for all of them
-          cd seth
-          go mod tidy
-          go build ./...
+          cat folders.json | jq -c '.[]' | while read -r item; do
+            folder=$(echo "$item" | jq -r '.folder')
+            echo "Processing folder: $folder"
+            generate-go-function-docs diff -b ${{ github.event.pull_request.base.sha }} -c ${{ github.event.pull_request.head.sha }} -g chatgpt -f "$folder"
+            cd "$folder"
+            echo "Checking if code still compiles"
+            go build ./...
+            cd -
+          done
 
       - name: Setup GitHub Token for creating a new PR
         id: setup-github-token-write
