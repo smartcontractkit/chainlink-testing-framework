@@ -71,6 +71,7 @@ jobs:
             cd "$folder"
             cd -
           done
+          rm folders.json
 
       - name: Setup GitHub Token for creating a new PR
         id: setup-github-token-write
