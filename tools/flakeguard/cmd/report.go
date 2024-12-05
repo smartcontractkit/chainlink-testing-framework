@@ -17,7 +17,7 @@ var ReportCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fs := reports.OSFileSystem{}
 
-		// Get flag values directly using cmd.Flags().Get* methods
+		// Get flag values
 		reportResultsPath, _ := cmd.Flags().GetString("results-path")
 		reportOutputPath, _ := cmd.Flags().GetString("output-path")
 		reportFormats, _ := cmd.Flags().GetString("format")
@@ -104,18 +104,19 @@ var ReportCmd = &cobra.Command{
 		}
 		fmt.Printf("All tests report saved to %s\n", allTestsReportPath)
 
-		// Generate and save the reports (all tests) in specified formats
+		// Generate and save the summary reports (all tests) in specified formats
 		for _, format := range formats {
+			format = strings.ToLower(strings.TrimSpace(format))
 			s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-			s.Suffix = fmt.Sprintf(" Generating all tests report in format %s...", format)
+			s.Suffix = fmt.Sprintf(" Generating all tests summary in format %s...", format)
 			s.Start()
 
 			if err := generateReport(aggregatedReport, format, filepath.Join(outputDir, "all-tests")); err != nil {
 				s.Stop()
-				return fmt.Errorf("error generating all tests report in format %s: %w", format, err)
+				return fmt.Errorf("error generating all tests summary in format %s: %w", format, err)
 			}
 			s.Stop()
-			fmt.Printf("All tests report in format %s generated successfully.\n", format)
+			fmt.Printf("All tests summary in format %s generated successfully.\n", format)
 		}
 
 		// Filter failed tests (PassRatio < maxPassRatio and not skipped)
@@ -153,20 +154,6 @@ var ReportCmd = &cobra.Command{
 		}
 		fmt.Printf("Failed tests report saved to %s\n", failedTestsReportPath)
 
-		// Generate and save the reports for failed tests in specified formats
-		for _, format := range formats {
-			s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-			s.Suffix = fmt.Sprintf(" Generating failed tests report in format %s...", format)
-			s.Start()
-
-			if err := generateReport(failedReport, format, filepath.Join(outputDir, "failed-tests")); err != nil {
-				s.Stop()
-				return fmt.Errorf("error generating failed tests report in format %s: %w", format, err)
-			}
-			s.Stop()
-			fmt.Printf("Failed tests report in format %s generated successfully.\n", format)
-		}
-
 		fmt.Printf("Reports generated at: %s\n", reportOutputPath)
 
 		return nil
@@ -176,7 +163,7 @@ var ReportCmd = &cobra.Command{
 func init() {
 	ReportCmd.Flags().StringP("results-path", "p", "", "Path to the folder containing JSON test result files (required)")
 	ReportCmd.Flags().StringP("output-path", "o", "./report", "Path to output the generated report files")
-	ReportCmd.Flags().StringP("format", "f", "markdown,json", "Comma-separated list of report formats (markdown,json)")
+	ReportCmd.Flags().StringP("format", "f", "markdown,json", "Comma-separated list of summary report formats (markdown,json)")
 	ReportCmd.Flags().Float64P("max-pass-ratio", "", 1.0, "The maximum pass ratio threshold for a test to be considered flaky")
 	ReportCmd.Flags().StringP("codeowners-path", "", "", "Path to the CODEOWNERS file")
 	ReportCmd.Flags().StringP("repo-path", "", ".", "The path to the root of the repository/project")
@@ -186,9 +173,11 @@ func init() {
 func generateReport(report *reports.TestReport, format, outputPath string) error {
 	fs := reports.OSFileSystem{}
 	format = strings.ToLower(strings.TrimSpace(format))
+
 	switch format {
 	case "markdown":
-		mdFileName := outputPath + ".md"
+		// Adjust the markdown filename to include "-summary"
+		mdFileName := outputPath + "-summary.md"
 		mdFile, err := fs.Create(mdFileName)
 		if err != nil {
 			return fmt.Errorf("error creating markdown file: %w", err)
@@ -196,19 +185,14 @@ func generateReport(report *reports.TestReport, format, outputPath string) error
 		defer mdFile.Close()
 		reports.GenerateMarkdownSummary(mdFile, report, 1.0)
 	case "json":
-		jsonFileName := outputPath + ".json"
-		if err := reports.SaveReportNoLogs(fs, jsonFileName, *report); err != nil {
-			return fmt.Errorf("error saving JSON report: %w", err)
+		// Generate summary JSON
+		summaryData := reports.GenerateSummaryData(report.Results, 1.0)
+		summaryFileName := outputPath + "-summary.json"
+		if err := reports.SaveSummaryAsJSON(fs, summaryFileName, summaryData); err != nil {
+			return fmt.Errorf("error saving summary JSON: %w", err)
 		}
 	default:
-		return fmt.Errorf("unsupported report format: %s", format)
-	}
-
-	// Generate summary JSON
-	summaryData := reports.GenerateSummaryData(report.Results, 1.0)
-	summaryFileName := outputPath + "-summary.json"
-	if err := reports.SaveSummaryAsJSON(fs, summaryFileName, summaryData); err != nil {
-		return fmt.Errorf("error saving summary JSON: %w", err)
+		return fmt.Errorf("unsupported summary report format: %s", format)
 	}
 
 	return nil
