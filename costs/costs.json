@@ -1,0 +1,8 @@
+{
+ "tokens": {
+  "input_tokens": 394,
+  "completion_tokens": 28,
+  "model": "gpt-4o-mini"
+ },
+ "cost": 0.000022709999999999998
+}
