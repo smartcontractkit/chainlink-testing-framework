@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 	"testing"
 	"time"
@@ -283,37 +284,56 @@ func TestBenchSpyWithStandardLokiMetrics(t *testing.T) {
 	isComparableErrs := previousReport.IsComparable(currentReport)
 	require.Empty(t, isComparableErrs, "reports were not comparable", isComparableErrs)
 
-	var compareAverages = func(metricName benchspy.StandardMetric) {
+	var compareMedian = func(metricName benchspy.StandardMetric) {
 		require.NotEmpty(t, currentReport.QueryExecutors[0].Results()[string(metricName)], "%s results were missing from current report", string(metricName))
 		require.NotEmpty(t, previousReport.QueryExecutors[0].Results()[string(metricName)], "%s results were missing from previous report", string(metricName))
 		require.Equal(t, len(currentReport.QueryExecutors[0].Results()[string(metricName)]), len(previousReport.QueryExecutors[0].Results()[string(metricName)]), "%s results are not the same length", string(metricName))
 
-		var currentAvgSum float64
-		for _, value := range currentReport.QueryExecutors[0].Results()[string(metricName)] {
-			asFloat, err := strconv.ParseFloat(value, 64)
-			require.NoError(t, err, "failed to parse float")
-			currentAvgSum += asFloat
-		}
-		currentAvgAverage := currentAvgSum / float64(len(currentReport.QueryExecutors[0].Results()[string(metricName)]))
+		currentFloatSlice := mustStringSliceToFloat64Slice(currentReport.QueryExecutors[0].Results()[string(metricName)])
+		currentMedian := calculateMedian(currentFloatSlice)
 
-		var previousAvgSum float64
-		for _, value := range previousReport.QueryExecutors[0].Results()[string(metricName)] {
-			asFloat, err := strconv.ParseFloat(value, 64)
-			require.NoError(t, err, "failed to parse float")
-			previousAvgSum += asFloat
-		}
-		previousAvgAverage := previousAvgSum / float64(len(previousReport.QueryExecutors[0].Results()[string(metricName)]))
+		previousFloatSlice := mustStringSliceToFloat64Slice(previousReport.QueryExecutors[0].Results()[string(metricName)])
+		previousMedian := calculateMedian(previousFloatSlice)
 
 		var diffPrecentage float64
-		if previousAvgAverage != 0 {
-			diffPrecentage = (currentAvgAverage - previousAvgAverage) / previousAvgAverage * 100
+		if previousMedian != 0 {
+			diffPrecentage = (currentMedian - previousMedian) / previousMedian * 100
 		} else {
-			diffPrecentage = currentAvgAverage * 100
+			diffPrecentage = currentMedian * 100
 		}
-		require.LessOrEqual(t, math.Abs(diffPrecentage), 1.0, "%s averages are more than 1% different", string(metricName), fmt.Sprintf("%.4f", diffPrecentage))
+		require.LessOrEqual(t, math.Abs(diffPrecentage), 1.0, "%s medians are more than 1% different", string(metricName), fmt.Sprintf("%.4f", diffPrecentage))
 	}
 
-	compareAverages(benchspy.AverageLatency)
-	compareAverages(benchspy.Percentile95Latency)
-	compareAverages(benchspy.ErrorRate)
+	compareMedian(benchspy.MedianLatency)
+	compareMedian(benchspy.Percentile95Latency)
+	compareMedian(benchspy.ErrorRate)
+}
+
+func mustStringSliceToFloat64Slice(s []string) []float64 {
+	numbers := make([]float64, len(s))
+	for i, str := range s {
+		var err error
+		numbers[i], err = strconv.ParseFloat(str, 64)
+		if err != nil {
+			panic(err)
+		}
+	}
+	return numbers
+}
+
+func calculateMedian(numbers []float64) float64 {
+	sort.Float64s(numbers)
+
+	n := len(numbers)
+	if n == 0 {
+		panic("cannot calculate median of an empty slice")
+	}
+
+	if n%2 == 1 {
+		// Odd length: return the middle element
+		return numbers[n/2]
+	}
+	// Even length: return the average of the two middle elements
+	mid1, mid2 := numbers[n/2-1], numbers[n/2]
+	return (mid1 + mid2) / 2.0
 }

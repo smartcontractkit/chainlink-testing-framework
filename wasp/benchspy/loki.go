@@ -155,12 +155,12 @@ func (l *LokiQueryExecutor) TimeRange(start, end time.Time) {
 type StandardMetric string
 
 const (
-	AverageLatency      StandardMetric = "average_latency"
+	MedianLatency       StandardMetric = "median_latency"
 	Percentile95Latency StandardMetric = "95th_percentile_latency"
 	ErrorRate           StandardMetric = "error_rate"
 )
 
-var standardMetrics = []StandardMetric{AverageLatency, Percentile95Latency, ErrorRate}
+var standardMetrics = []StandardMetric{MedianLatency, Percentile95Latency, ErrorRate}
 
 func NewStandardMetricsLokiExecutor(lokiConfig *wasp.LokiConfig, testName, generatorName, branch, commit string, startTime, endTime time.Time) (*LokiQueryExecutor, error) {
 	standardQueries, queryErr := generateStandardLokiQueries(testName, generatorName, branch, commit, startTime, endTime)
@@ -178,8 +178,8 @@ func NewStandardMetricsLokiExecutor(lokiConfig *wasp.LokiConfig, testName, gener
 
 func standardQuery(standardMetric StandardMetric, testName, generatorName, branch, commit string, startTime, endTime time.Time) (string, error) {
 	switch standardMetric {
-	case AverageLatency:
-		return fmt.Sprintf("avg_over_time({branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"responses\", gen_name=~\"%s\"} | json| unwrap duration [10s]) by (go_test_name, gen_name) / 1e6", branch, commit, testName, generatorName), nil
+	case MedianLatency:
+		return fmt.Sprintf("quantile_over_time(0.5, {branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"responses\", gen_name=~\"%s\"} | json| unwrap duration [10s]) by (go_test_name, gen_name) / 1e6", branch, commit, testName, generatorName), nil
 	case Percentile95Latency:
 		return fmt.Sprintf("quantile_over_time(0.95, {branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"responses\", gen_name=~\"%s\"} | json| unwrap duration [10s]) by (go_test_name, gen_name) / 1e6", branch, commit, testName, generatorName), nil
 	case ErrorRate:
