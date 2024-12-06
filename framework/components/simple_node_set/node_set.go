@@ -7,6 +7,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 	"golang.org/x/sync/errgroup"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -31,6 +32,7 @@ type Input struct {
 // Output is a node set configuration output, used for caching or external components
 type Output struct {
 	UseCache bool             `toml:"use_cache"`
+	DBOut    *postgres.Output `toml:"db_out"`
 	CLNodes  []*clnode.Output `toml:"cl_nodes"`
 }
 
@@ -62,13 +64,12 @@ func printURLs(out *Output) {
 	if out == nil {
 		return
 	}
-	httpURLs, p2pURLs, pgURLs := make([]string, 0), make([]string, 0), make([]string, 0)
+	httpURLs, _, pgURLs := make([]string, 0), make([]string, 0), make([]string, 0)
 	for _, n := range out.CLNodes {
 		httpURLs = append(httpURLs, n.Node.HostURL)
 		pgURLs = append(pgURLs, n.PostgreSQL.Url)
 	}
 	framework.L.Info().Any("UI", httpURLs).Send()
-	framework.L.Debug().Any("P2P", p2pURLs).Send()
 	framework.L.Debug().Any("DB", pgURLs).Send()
 }
 
@@ -79,6 +80,8 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 		return nil, err
 	}
 	nodeOuts := make([]*clnode.Output, 0)
+
+	envImage := os.Getenv("CTF_CHAINLINK_IMAGE")
 
 	// to make it easier for chaos testing we use static ports
 	// there is no need to check them in advance since testcontainers-go returns a nice error
@@ -132,7 +135,6 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 					PullImage:               in.NodeSpecs[overrideIdx].Node.PullImage,
 					DockerFilePath:          in.NodeSpecs[overrideIdx].Node.DockerFilePath,
 					DockerContext:           in.NodeSpecs[overrideIdx].Node.DockerContext,
-					DockerImageName:         in.NodeSpecs[overrideIdx].Node.DockerImageName,
 					CapabilitiesBinaryPaths: in.NodeSpecs[overrideIdx].Node.CapabilitiesBinaryPaths,
 					CapabilityContainerDir:  in.NodeSpecs[overrideIdx].Node.CapabilityContainerDir,
 					TestConfigOverrides:     net,
@@ -140,6 +142,10 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 					TestSecretsOverrides:    in.NodeSpecs[overrideIdx].Node.TestSecretsOverrides,
 					UserSecretsOverrides:    in.NodeSpecs[overrideIdx].Node.UserSecretsOverrides,
 				},
+			}
+
+			if envImage != "" {
+				nodeSpec.Node.Image = envImage
 			}
 
 			dbURLHost := strings.Replace(dbOut.Url, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i), -1)
@@ -165,6 +171,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 	sortNodeOutsByHostPort(nodeOuts)
 	return &Output{
 		UseCache: true,
+		DBOut:    dbOut,
 		CLNodes:  nodeOuts,
 	}, nil
 }

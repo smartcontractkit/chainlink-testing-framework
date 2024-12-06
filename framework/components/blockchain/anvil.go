@@ -8,6 +8,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"strings"
 	"time"
 )
 
@@ -15,13 +16,29 @@ const (
 	DefaultAnvilPrivateKey = `ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
 )
 
-// deployAnvil deploy foundry anvil node
-func deployAnvil(in *Input) (*Output, error) {
+func defaultAnvil(in *Input) {
+	if in.Image == "" {
+		in.Image = "f4hrenh9it/foundry:latest"
+	}
+	if in.ChainID == "" {
+		in.ChainID = "1337"
+	}
+	if in.Port == "" {
+		in.Port = "8545"
+	}
+}
+
+// newAnvil deploy foundry anvil node
+func newAnvil(in *Input) (*Output, error) {
+	defaultAnvil(in)
 	ctx := context.Background()
-	entryPoint := []string{"anvil", "--host", "0.0.0.0", "--port", in.Port, "--chain-id", in.ChainID, "-b", "1"}
+	entryPoint := []string{"anvil"}
+	defaultCmd := []string{"--host", "0.0.0.0", "--port", in.Port, "--chain-id", in.ChainID}
+	entryPoint = append(entryPoint, defaultCmd...)
 	entryPoint = append(entryPoint, in.DockerCmdParamsOverrides...)
+	framework.L.Info().Any("Cmd", strings.Join(entryPoint, " ")).Msg("Creating anvil with command")
 	bindPort := fmt.Sprintf("%s/tcp", in.Port)
-	containerName := framework.DefaultTCName("anvil")
+	containerName := framework.DefaultTCName("blockchain-node")
 
 	req := testcontainers.ContainerRequest{
 		AlwaysPullImage: in.PullImage,
@@ -56,6 +73,7 @@ func deployAnvil(in *Input) (*Output, error) {
 	}
 	return &Output{
 		UseCache:      true,
+		Family:        "evm",
 		ChainID:       in.ChainID,
 		ContainerName: containerName,
 		Nodes: []*Node{

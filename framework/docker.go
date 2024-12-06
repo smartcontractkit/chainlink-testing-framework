@@ -4,18 +4,24 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
-	"errors"
+	"encoding/binary"
 	"fmt"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
 	tc "github.com/testcontainers/testcontainers-go"
+	"golang.org/x/sync/errgroup"
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
+)
+
+const (
+	DefaultCTFLogsDir = "logs/docker"
 )
 
 func IsDockerRunning() bool {
@@ -63,55 +69,6 @@ func DefaultTCName(name string) string {
 	return fmt.Sprintf("%s-%s", name, uuid.NewString()[0:5])
 }
 
-// BuildAndPublishLocalDockerImage runs Docker commands to set up a local registry, build an image, and push it.
-func BuildAndPublishLocalDockerImage(once *sync.Once, dockerfile string, buildContext string, imageName string) error {
-	var retErr error
-	once.Do(func() {
-		L.Info().
-			Str("Dockerfile", dockerfile).
-			Str("Ctx", buildContext).
-			Str("ImageName", imageName).
-			Msg("Building local docker file")
-		registryRunning := isContainerRunning("local-registry")
-		if registryRunning {
-			fmt.Println("Local registry container is already running.")
-		} else {
-			L.Info().Msg("Starting local registry container...")
-			err := runCommand("docker", "run", "-d", "-p", "5050:5000", "--name", "local-registry", "registry:2")
-			if err != nil {
-				retErr = fmt.Errorf("failed to start local registry: %w", err)
-			}
-			L.Info().Msg("Local registry started")
-		}
-
-		img := fmt.Sprintf("localhost:5050/%s:latest", imageName)
-		err := runCommand("docker", "build", "-t", fmt.Sprintf("localhost:5050/%s:latest", imageName), "-f", dockerfile, buildContext)
-		if err != nil {
-			retErr = fmt.Errorf("failed to build Docker image: %w", err)
-		}
-		L.Info().Msg("Docker image built successfully")
-
-		L.Info().Str("Image", img).Msg("Pushing Docker image to local registry")
-		fmt.Println("Pushing Docker image to local registry...")
-		err = runCommand("docker", "push", img)
-		if err != nil {
-			retErr = fmt.Errorf("failed to push Docker image: %w", err)
-		}
-		L.Info().Msg("Docker image pushed successfully")
-	})
-	return retErr
-}
-
-// isContainerRunning checks if a Docker container with the given name is running.
-func isContainerRunning(containerName string) bool {
-	cmd := exec.Command("docker", "ps", "--filter", fmt.Sprintf("name=%s", containerName), "--format", "{{.Names}}")
-	output, err := cmd.Output()
-	if err != nil {
-		return false
-	}
-	return strings.Contains(string(output), containerName)
-}
-
 // runCommand executes a command and prints the output.
 func runCommand(name string, args ...string) error {
 	cmd := exec.Command(name, args...)
@@ -120,21 +77,15 @@ func runCommand(name string, args ...string) error {
 	return cmd.Run()
 }
 
-// RebuildDockerImage rebuilds docker image if necessary
-func RebuildDockerImage(once *sync.Once, dockerfile string, buildContext string, imageName string) (string, error) {
-	if dockerfile == "" {
-		return "", errors.New("docker_file path must be provided")
+// RunCommandDir executes a command in some directory and prints the output
+func RunCommandDir(dir, name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if dir != "" {
+		cmd.Dir = dir
 	}
-	if buildContext == "" {
-		return "", errors.New("docker_ctx path must be provided")
-	}
-	if imageName == "" {
-		imageName = "ctftmp"
-	}
-	if err := BuildAndPublishLocalDockerImage(once, dockerfile, buildContext, imageName); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("localhost:5050/%s:latest", imageName), nil
+	return cmd.Run()
 }
 
 // DockerClient wraps a Docker API client and provides convenience methods
@@ -218,4 +169,111 @@ func (dc *DockerClient) copyToContainer(containerID, sourceFile, targetPath stri
 		return fmt.Errorf("could not copy file to container: %w", err)
 	}
 	return nil
+}
+
+func in(s string, substrings []string) bool {
+	for _, substr := range substrings {
+		if strings.Contains(s, substr) {
+			return true
+		}
+	}
+	return false
+}
+
+func isLocalToolDockerContainer(containerName string) bool {
+	if in(containerName, []string{"/sig-provider", "/stats", "/stats-db", "/db", "/backend", "/promtail", "/compose", "/blockscout", "/frontend", "/user-ops-indexer", "/visualizer", "/redis-db", "/proxy"}) {
+		L.Debug().Str("Container", containerName).Msg("Ignoring local tool container output")
+		return true
+	}
+	return false
+}
+
+// WriteAllContainersLogs writes all Docker container logs to the default logs directory
+func WriteAllContainersLogs(dir string) error {
+	L.Info().Msg("Writing Docker containers logs")
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", dir, err)
+		}
+	}
+	provider, err := tc.NewDockerProvider()
+	if err != nil {
+		return fmt.Errorf("failed to create Docker provider: %w", err)
+	}
+	containers, err := provider.Client().ContainerList(context.Background(), container.ListOptions{All: true})
+	if err != nil {
+		return fmt.Errorf("failed to list Docker containers: %w", err)
+	}
+
+	eg := &errgroup.Group{}
+
+	for _, containerInfo := range containers {
+		eg.Go(func() error {
+			containerName := containerInfo.Names[0]
+			if isLocalToolDockerContainer(containerName) {
+				return nil
+			}
+			L.Debug().Str("Container", containerName).Msg("Collecting logs")
+			logOptions := container.LogsOptions{ShowStdout: true, ShowStderr: true}
+			logs, err := provider.Client().ContainerLogs(context.Background(), containerInfo.ID, logOptions)
+			if err != nil {
+				L.Error().Err(err).Str("Container", containerName).Msg("failed to fetch logs for container")
+				return err
+			}
+			logFilePath := filepath.Join(dir, fmt.Sprintf("%s.log", containerName))
+			logFile, err := os.Create(logFilePath)
+			if err != nil {
+				L.Error().Err(err).Str("Container", containerName).Msg("failed to create container log file")
+				return err
+			}
+			// Parse and write logs
+			header := make([]byte, 8) // Docker stream header is 8 bytes
+			for {
+				_, err := io.ReadFull(logs, header)
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					L.Error().Err(err).Str("Container", containerName).Msg("failed to read log stream header")
+					break
+				}
+
+				// Extract log message size
+				msgSize := binary.BigEndian.Uint32(header[4:8])
+
+				// Read the log message
+				msg := make([]byte, msgSize)
+				_, err = io.ReadFull(logs, msg)
+				if err != nil {
+					L.Error().Err(err).Str("Container", containerName).Msg("failed to read log message")
+					break
+				}
+
+				// Write the log message to the file
+				if _, err := logFile.Write(msg); err != nil {
+					L.Error().Err(err).Str("Container", containerName).Msg("failed to write log message to file")
+					break
+				}
+			}
+			return nil
+		})
+	}
+	return eg.Wait()
+}
+
+func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string) error {
+	var err error
+	once.Do(func() {
+		dfilePath := filepath.Join(dctx, dfile)
+		err = runCommand("docker", "build", "-t", nameAndTag, "-f", dfilePath, dctx)
+		if err != nil {
+			err = fmt.Errorf("failed to build Docker image: %w", err)
+		}
+	})
+	return err
+}
+
+func BuildImage(dctx, dfile, nameAndTag string) error {
+	dfilePath := filepath.Join(dctx, dfile)
+	return runCommand("docker", "build", "-t", nameAndTag, "-f", dfilePath, dctx)
 }

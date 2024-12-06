@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"regexp"
 	"strconv"
@@ -263,7 +264,11 @@ func (e *EthereumClient) HeaderTimestampByNumber(ctx context.Context, bn *big.In
 	if err != nil {
 		return 0, err
 	}
-	return uint64(h.Timestamp.UTC().Unix()), nil
+	timestamp := h.Timestamp.UTC().Unix()
+	if timestamp < 0 {
+		return 0, fmt.Errorf("negative timestamp value: %d", timestamp)
+	}
+	return uint64(timestamp), nil
 }
 
 // BlockNumber gets latest block number
@@ -539,7 +544,7 @@ func (e *EthereumClient) TransactionOpts(from *EthereumWallet) (*bind.TransactOp
 	if err != nil {
 		return nil, err
 	}
-	opts.Nonce = big.NewInt(int64(nonce))
+	opts.Nonce = big.NewInt(0).SetUint64(nonce)
 
 	if e.NetworkConfig.MinimumConfirmations <= 0 { // Wait for your turn to send on an L2 chain
 		<-e.NonceSettings.registerInstantTransaction(from.Address(), nonce)
@@ -708,7 +713,7 @@ func (e *EthereumClient) WaitForFinalizedTx(txHash common.Hash) (*big.Int, time.
 func (e *EthereumClient) IsTxHeadFinalized(txHdr, header *SafeEVMHeader) (bool, *big.Int, time.Time, error) {
 	if e.NetworkConfig.FinalityDepth > 0 {
 		if header.Number.Cmp(new(big.Int).Add(txHdr.Number,
-			big.NewInt(int64(e.NetworkConfig.FinalityDepth)))) > 0 {
+			big.NewInt(0).SetUint64(e.NetworkConfig.FinalityDepth))) > 0 {
 			return true, header.Number, header.Timestamp, nil
 		}
 		return false, nil, time.Time{}, nil
@@ -1058,8 +1063,6 @@ func (e *EthereumClient) WaitForEvents() error {
 	g := errgroup.Group{}
 
 	for subName, sub := range queuedEvents {
-		subName := subName
-		sub := sub
 		g.Go(func() error {
 			defer func() {
 				// if the subscription is complete, delete it from the queue
@@ -1100,6 +1103,9 @@ func (e *EthereumClient) GetLatestFinalizedBlockHeader(ctx context.Context) (*ty
 	}
 	latestBlockNumber := header.Number.Uint64()
 	finalizedBlockNumber := latestBlockNumber - e.NetworkConfig.FinalityDepth
+	if finalizedBlockNumber > math.MaxInt64 {
+		return nil, fmt.Errorf("finalized block number %d exceeds int64 range", finalizedBlockNumber)
+	}
 	return e.Client.HeaderByNumber(ctx, big.NewInt(int64(finalizedBlockNumber)))
 }
 
@@ -1121,7 +1127,7 @@ func (e *EthereumClient) EstimatedFinalizationTime(ctx context.Context) (time.Du
 	if e.NetworkConfig.FinalityDepth == 0 {
 		return 0, fmt.Errorf("finality depth is 0 and finality tag is not enabled")
 	}
-	timeBetween := time.Duration(e.NetworkConfig.FinalityDepth) * blckTime
+	timeBetween := time.Duration(e.NetworkConfig.FinalityDepth) * blckTime //nolint
 	e.l.Info().
 		Str("Time", timeBetween.String()).
 		Str("Network", e.GetNetworkName()).
@@ -1159,7 +1165,7 @@ func (e *EthereumClient) TimeBetweenFinalizedBlocks(ctx context.Context, maxTime
 				return 0, err
 			}
 			if nextFinalizedHeader.Number.Cmp(currentFinalizedHeader.Number) > 0 {
-				timeBetween := time.Unix(int64(nextFinalizedHeader.Time), 0).Sub(time.Unix(int64(currentFinalizedHeader.Time), 0))
+				timeBetween := time.Unix(int64(nextFinalizedHeader.Time), 0).Sub(time.Unix(int64(currentFinalizedHeader.Time), 0)) //nolint
 				e.l.Info().
 					Str("Time", timeBetween.String()).
 					Str("Network", e.GetNetworkName()).
@@ -1190,24 +1196,24 @@ func (e *EthereumClient) AvgBlockTime(ctx context.Context) (time.Duration, error
 	}
 	totalTime := time.Duration(0)
 	var previousHeader *types.Header
-	previousHeader, err = e.Client.HeaderByNumber(ctx, big.NewInt(int64(startBlockNumber-1)))
+	previousHeader, err = e.Client.HeaderByNumber(ctx, big.NewInt(int64(startBlockNumber-1))) //nolint
 	if err != nil {
 		return totalTime, err
 	}
 	for i := startBlockNumber; i <= latestBlockNumber; i++ {
-		hdr, err := e.Client.HeaderByNumber(ctx, big.NewInt(int64(i)))
+		hdr, err := e.Client.HeaderByNumber(ctx, big.NewInt(int64(i))) //nolint
 		if err != nil {
 			return totalTime, err
 		}
 
-		blockTime := time.Unix(int64(hdr.Time), 0)
-		previousBlockTime := time.Unix(int64(previousHeader.Time), 0)
+		blockTime := time.Unix(int64(hdr.Time), 0)                    //nolint
+		previousBlockTime := time.Unix(int64(previousHeader.Time), 0) //nolint
 		blockDuration := blockTime.Sub(previousBlockTime)
 		totalTime += blockDuration
 		previousHeader = hdr
 	}
 
-	averageBlockTime := totalTime / time.Duration(numBlocks)
+	averageBlockTime := totalTime / time.Duration(numBlocks) //nolint
 
 	return averageBlockTime, nil
 }
@@ -1730,7 +1736,6 @@ func (e *EthereumMultinodeClient) DeleteHeaderEventSubscription(key string) {
 func (e *EthereumMultinodeClient) WaitForEvents() error {
 	g := errgroup.Group{}
 	for _, c := range e.Clients {
-		c := c
 		g.Go(func() error {
 			return c.WaitForEvents()
 		})

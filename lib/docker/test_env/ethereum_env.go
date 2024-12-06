@@ -17,7 +17,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/docker/ethereum"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/logstream"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
 	toml_utils "github.com/smartcontractkit/chainlink-testing-framework/lib/utils/toml"
 )
@@ -35,7 +34,6 @@ var MsgMismatchedExecutionClient = "you provided a custom docker image for %s ex
 
 type EthereumNetworkBuilder struct {
 	t                   *testing.T
-	ls                  *logstream.LogStream
 	dockerNetworks      []string
 	ethereumVersion     config_types.EthereumVersion
 	consensusLayer      *config.ConsensusLayer
@@ -117,11 +115,6 @@ func (b *EthereumNetworkBuilder) WithTest(t *testing.T) *EthereumNetworkBuilder 
 	return b
 }
 
-func (b *EthereumNetworkBuilder) WithLogStream(ls *logstream.LogStream) *EthereumNetworkBuilder {
-	b.ls = ls
-	return b
-}
-
 func (b *EthereumNetworkBuilder) WithCustomDockerImages(newImages map[config.ContainerType]string) *EthereumNetworkBuilder {
 	b.customDockerImages = newImages
 	return b
@@ -154,7 +147,6 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 	n.EthereumNetworkConfig.CustomDockerImages = b.customDockerImages
 	n.NodeLogLevel = &b.nodeLogLevel
 	n.t = b.t
-	n.ls = b.ls
 
 	return n
 }
@@ -398,7 +390,6 @@ type EthereumNetwork struct {
 	config.EthereumNetworkConfig
 	isRecreated bool
 	t           *testing.T
-	ls          *logstream.LogStream
 }
 
 func (en *EthereumNetwork) Start() (blockchain.EVMNetwork, RpcProvider, error) {
@@ -775,7 +766,6 @@ func (en *EthereumNetwork) getExecutionLayerEnvComponentOpts() []EnvComponentOpt
 	opts := []EnvComponentOption{}
 	opts = append(opts, en.getImageOverrideOpts(config.ContainerType_ExecutionLayer)...)
 	opts = append(opts, en.setExistingContainerName(config.ContainerType_ExecutionLayer))
-	opts = append(opts, WithLogStream(en.ls))
 
 	if en.NodeLogLevel != nil && *en.NodeLogLevel != "" {
 		opts = append(opts, WithLogLevel(strings.ToLower(*en.NodeLogLevel)))

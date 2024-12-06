@@ -1,0 +1,6 @@
+tmp_test_flaky*
+test_results_*.json
+debug_outputs
+example_results/
+example*.json
+example*.md

@@ -56,6 +56,14 @@ func main() {
 							return PrettyPrintTOML(in, in)
 						},
 					},
+					{
+						Name:    "clean",
+						Aliases: []string{"c"},
+						Usage:   "Removes all cache files",
+						Action: func(c *cli.Context) error {
+							return RemoveCacheFiles()
+						},
+					},
 				},
 			},
 			{
@@ -80,7 +88,7 @@ func main() {
 						Aliases: []string{"rm"},
 						Usage:   "Remove Docker containers and networks with 'framework=ctf' label",
 						Action: func(c *cli.Context) error {
-							err := rmTestContainers()
+							err := removeTestContainers()
 							if err != nil {
 								return fmt.Errorf("failed to clean Docker resources: %w", err)
 							}
@@ -114,20 +122,32 @@ func main() {
 				Name:    "blockscout",
 				Aliases: []string{"bs"},
 				Usage:   "Controls local Blockscout stack",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "rpc",
+						Aliases: []string{"r"},
+						Usage:   "RPC URL for blockchain node to index",
+						Value:   "http://host.docker.internal:8545",
+					},
+				},
 				Subcommands: []*cli.Command{
 					{
 						Name:        "up",
 						Usage:       "ctf bs up",
 						Aliases:     []string{"u"},
 						Description: "Spins up Blockscout stack",
-						Action:      func(c *cli.Context) error { return blockscoutUp() },
+						Action: func(c *cli.Context) error {
+							return blockscoutUp(c.String("rpc"))
+						},
 					},
 					{
 						Name:        "down",
 						Usage:       "ctf bs down",
 						Aliases:     []string{"d"},
 						Description: "Removes Blockscout stack, wipes all Blockscout databases data",
-						Action:      func(c *cli.Context) error { return blockscoutDown() },
+						Action: func(c *cli.Context) error {
+							return blockscoutDown(c.String("rpc"))
+						},
 					},
 					{
 						Name:        "reboot",
@@ -135,10 +155,11 @@ func main() {
 						Aliases:     []string{"r"},
 						Description: "Reboots Blockscout stack",
 						Action: func(c *cli.Context) error {
-							if err := blockscoutDown(); err != nil {
+							rpc := c.String("rpc")
+							if err := blockscoutDown(rpc); err != nil {
 								return err
 							}
-							return blockscoutUp()
+							return blockscoutUp(rpc)
 						},
 					},
 				},
@@ -226,5 +247,29 @@ func PrettyPrintTOML(inputFile string, outputFile string) error {
 		return fmt.Errorf("error writing to output file: %v", err)
 	}
 	framework.L.Info().Str("File", outputFile).Msg("File cleaned up and saved")
+	return nil
+}
+
+func RemoveCacheFiles() error {
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current directory: %w", err)
+	}
+	err = filepath.Walk(currentDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("error accessing path %s: %w", path, err)
+		}
+		if !info.IsDir() && strings.HasSuffix(info.Name(), "-cache.toml") {
+			err := os.Remove(path)
+			if err != nil {
+				return fmt.Errorf("failed to remove file %s: %w", path, err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	framework.L.Info().Msg("All cache files has been removed")
 	return nil
 }

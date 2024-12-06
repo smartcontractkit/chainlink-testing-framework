@@ -59,6 +59,7 @@ jobs:
           filters: |
             src:
               - 'framework/**'
+              - '.github/workflows/framework-golden-tests.yml'
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
@@ -81,3 +82,10 @@ jobs:
           CTF_CONFIGS: ${{ matrix.test.config }}
         run: |
           go test -timeout ${{ matrix.test.timeout }} -v -count ${{ matrix.test.count }} -run ${{ matrix.test.name }}
+      - name: Upload Logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: container-logs-${{ matrix.test.name }}
+          path: framework/examples/myproject/logs
+          retention-days: 1

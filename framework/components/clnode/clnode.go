@@ -5,22 +5,26 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"text/template"
+	"time"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"os"
-	"path/filepath"
-	"sync"
-	"text/template"
-	"time"
 )
 
 const (
-	DefaultHTTPPort = "6688"
-	DefaultP2PPort  = "6690"
+	DefaultHTTPPort     = "6688"
+	DefaultP2PPort      = "6690"
+	TmpImageName        = "chainlink-tmp:latest"
+	CustomPortSeparator = ":"
 )
 
 var (
@@ -40,7 +44,6 @@ type NodeInput struct {
 	Name                    string   `toml:"name"`
 	DockerFilePath          string   `toml:"docker_file"`
 	DockerContext           string   `toml:"docker_ctx"`
-	DockerImageName         string   `toml:"docker_image_name"`
 	PullImage               bool     `toml:"pull_image"`
 	CapabilitiesBinaryPaths []string `toml:"capabilities"`
 	CapabilityContainerDir  string   `toml:"capabilities_container_dir"`
@@ -50,7 +53,7 @@ type NodeInput struct {
 	UserSecretsOverrides    string   `toml:"user_secrets_overrides"`
 	HTTPPort                int      `toml:"port"`
 	P2PPort                 int      `toml:"p2p_port"`
-	CustomPorts             []int    `toml:"custom_ports"`
+	CustomPorts             []string `toml:"custom_ports"`
 }
 
 // Output represents Chainlink node output, nodes and databases connection URLs
@@ -110,14 +113,62 @@ func NewNode(in *Input, pgOut *postgres.Output) (*Output, error) {
 	return out, nil
 }
 
+// generatePortBindings generates exposed ports and port bindings
+// exposes default CL node port
+// exposes custom_ports in format "host:docker" or map 1-to-1 if only "host" port is provided
+func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
+	httpPort := fmt.Sprintf("%s/tcp", DefaultHTTPPort)
+	portBindings := nat.PortMap{
+		nat.Port(httpPort): []nat.PortBinding{
+			{
+				HostIP:   "0.0.0.0",
+				HostPort: fmt.Sprintf("%d/tcp", in.Node.HTTPPort),
+			},
+		},
+	}
+	customPorts := make([]string, 0)
+	for _, p := range in.Node.CustomPorts {
+		if strings.Contains(p, CustomPortSeparator) {
+			pp := strings.Split(p, CustomPortSeparator)
+			if len(pp) != 2 {
+				return nil, nil, errors.New("custom_ports has ':' but you must provide both ports")
+			}
+			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", pp[1]))
+
+			dockerPort := nat.Port(fmt.Sprintf("%s/tcp", pp[1]))
+			hostPort := fmt.Sprintf("%s/tcp", pp[0])
+			portBindings[dockerPort] = []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: hostPort,
+				},
+			}
+		} else {
+			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", p))
+
+			dockerPort := nat.Port(fmt.Sprintf("%s/tcp", p))
+			hostPort := fmt.Sprintf("%s/tcp", p)
+			portBindings[dockerPort] = []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: hostPort,
+				},
+			}
+		}
+	}
+	exposedPorts := []string{httpPort}
+	exposedPorts = append(exposedPorts, customPorts...)
+	return exposedPorts, portBindings, nil
+}
+
 func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	ctx := context.Background()
 
 	passwordPath, err := WriteTmpFile(DefaultPasswordTxt, "password.txt")
-	apiCredentialsPath, err := WriteTmpFile(DefaultAPICredentials, "apicredentials")
 	if err != nil {
 		return nil, err
 	}
+	apiCredentialsPath, err := WriteTmpFile(DefaultAPICredentials, "apicredentials")
 	if err != nil {
 		return nil, err
 	}
@@ -146,37 +197,17 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		return nil, err
 	}
 
-	httpPort := fmt.Sprintf("%s/tcp", DefaultHTTPPort)
 	var containerName string
 	if in.Node.Name != "" {
 		containerName = in.Node.Name
 	} else {
 		containerName = framework.DefaultTCName("node")
 	}
-	customPorts := make([]string, 0)
-	for _, p := range in.Node.CustomPorts {
-		customPorts = append(customPorts, fmt.Sprintf("%d/tcp", p))
-	}
-	exposedPorts := []string{httpPort}
-	exposedPorts = append(exposedPorts, customPorts...)
 
-	portBindings := nat.PortMap{
-		nat.Port(httpPort): []nat.PortBinding{
-			{
-				HostIP:   "0.0.0.0",
-				HostPort: fmt.Sprintf("%d/tcp", in.Node.HTTPPort),
-			},
-		},
+	exposedPorts, portBindings, err := generatePortBindings(in)
+	if err != nil {
+		return nil, err
 	}
-	for _, p := range customPorts {
-		portBindings[nat.Port(p)] = []nat.PortBinding{
-			{
-				HostIP:   "0.0.0.0",
-				HostPort: p,
-			},
-		}
-	}
-
 	req := tc.ContainerRequest{
 		AlwaysPullImage: in.Node.PullImage,
 		Image:           in.Node.Image,
@@ -257,8 +288,8 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		return nil, errors.New("you provided both 'image' and one of 'docker_file', 'docker_ctx' fields. Please provide either 'image' or params to build a local one")
 	}
 	if req.Image == "" {
-		req.Image, err = framework.RebuildDockerImage(once, in.Node.DockerFilePath, in.Node.DockerContext, in.Node.DockerImageName)
-		if err != nil {
+		req.Image = TmpImageName
+		if err := framework.BuildImageOnce(once, in.Node.DockerContext, in.Node.DockerFilePath, req.Image); err != nil {
 			return nil, err
 		}
 		req.KeepImage = false

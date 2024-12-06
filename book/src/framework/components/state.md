@@ -40,19 +40,20 @@ One node set is enough for any kind of testing, if you need more nodes consider 
 
 ## Custom ports
 
-You can also define a custom set of ports for any node
+You can also define a custom set of ports for any node.
 ```toml
 [nodeset]
   nodes = 5
   override_mode = "each"
   
   [nodeset.db]
-    image = "postgres:15.6"
+    image = "postgres:12.0"
 
   [[nodeset.node_specs]]
 
     [nodeset.node_specs.node]
       # here we defined 2 new ports to listen and mapped them to our host machine
-      custom_ports = [14000, 14001]
+      # syntax is "host:docker", if you provide only host port then we map 1-to-1
+      custom_ports = ["14000:15000", "20000"]
       image = "public.ecr.aws/chainlink/chainlink:v2.16.0"
 ```

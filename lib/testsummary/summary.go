@@ -8,29 +8,20 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/runid"
 )
 
 var (
 	SUMMARY_FOLDER = ".test_summary"
-	SUMMARY_FILE   string
 	mu             sync.Mutex
 )
+
+var SUMMARY_FILE = fmt.Sprintf("%s/test_summary-%s.json", SUMMARY_FOLDER, time.Now().Format("2006-01-02T15-04-05"))
 
 type SummaryKeys map[string][]KeyContent
 
 type KeyContent struct {
 	TestName string `json:"test_name"`
 	Value    string `json:"value"`
-}
-
-func init() {
-	runId, err := runid.GetOrGenerateRunId(nil)
-	if err != nil {
-		panic(err)
-	}
-	SUMMARY_FILE = fmt.Sprintf("%s/test_summary-%s-%s.json", SUMMARY_FOLDER, time.Now().Format("2006-01-02T15-04-05"), runId)
 }
 
 // TODO in future allow value to be also []string or map[string]string?

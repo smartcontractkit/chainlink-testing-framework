@@ -34,12 +34,11 @@ func TestDON(t *testing.T) {
 In `TOML`:
 ```
 [blockchain_a]
-chain_id = "31337"
-docker_cmd_params = ["--block-time=1"]
-image = "f4hrenh9it/foundry"
+chain_id = "1337"
+image = "f4hrenh9it/foundry:latest"
 port = "8500"
-tag = "latest"
 type = "anvil"
+docker_cmd_params = ["-b", "1"]
 ```
 
 ### Best practices for configuration and validation

@@ -17,17 +17,15 @@ go get github.com/smartcontractkit/capabilities/kvstore && go install github.com
 Create a configuration file `smoke.toml`
 ```toml
 [blockchain_a]
-  chain_id = "31337"
-  image = "f4hrenh9it/foundry:latest"
-  port = "8545"
   type = "anvil"
+  docker_cmd_params = ["-b", "1"]
 
 [nodeset]
   nodes = 5
   override_mode = "all"
   
   [nodeset.db]
-    image = "postgres:15.6"
+    image = "postgres:12.0"
 
   [[nodeset.node_specs]]
 

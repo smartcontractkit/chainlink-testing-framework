@@ -13,7 +13,7 @@ linters:
     - unused
     # extra
     - exhaustive
-    - exportloopref
+    - copyloopvar
     - revive
     - goimports
     - gosec

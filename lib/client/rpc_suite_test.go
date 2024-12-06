@@ -1,3 +1,4 @@
+// nolint
 package client
 
 import (

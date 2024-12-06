@@ -130,6 +130,10 @@ func Load[X any](t *testing.T) (*X, error) {
 	t.Cleanup(func() {
 		err := Store[X](input)
 		require.NoError(t, err)
+		err = WriteAllContainersLogs(DefaultCTFLogsDir)
+		require.NoError(t, err)
+		err = checkAllNodeLogErrors()
+		require.NoError(t, err)
 	})
 	// TODO: not all the people have AWS access, sadly enough, uncomment when granted
 	//if os.Getenv(EnvVarAWSSecretsManager) == "true" {
@@ -140,8 +144,10 @@ func Load[X any](t *testing.T) (*X, error) {
 	//}
 	err = DefaultNetwork(once)
 	require.NoError(t, err)
-	err = NewPromtail()
-	require.NoError(t, err)
+	if os.Getenv(EnvVarCI) != "true" {
+		err = NewPromtail()
+		require.NoError(t, err)
+	}
 	return input, nil
 }
 

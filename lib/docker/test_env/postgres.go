@@ -21,12 +21,11 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/logstream"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
 )
 
-const defaultPostgresImage = "postgres:15.6"
+const defaultPostgresImage = "postgres:12.0"
 
 type PostgresDb struct {
 	EnvComponent
@@ -57,12 +56,6 @@ func WithPostgresImageName(imageName string) PostgresDbOption {
 		if imageName != "" {
 			c.ContainerImage = imageName
 		}
-	}
-}
-
-func WithPostgresDbLogStream(ls *logstream.LogStream) PostgresDbOption {
-	return func(c *PostgresDb) {
-		c.LogStream = ls
 	}
 }
 
