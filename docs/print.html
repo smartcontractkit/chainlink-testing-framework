@@ -8393,27 +8393,11 @@ cfg, err: = builder.
 </code></pre>
 <p>Builder will read the location of chain configuration from env var named <code>PRIVATE_ETHEREUM_NETWORK_CONFIG_PATH</code> (it will be printed in the console once the chain starts).</p>
 <p><code>net</code> is an instance of <code>blockchain.EVMNetwork</code>, which contains characteristics of the network and can be used to connect to it using an EVM client. <code>rpc</code> variable contains arrays of public and private RPC endpoints, where "private" means URL that's accessible from the same Docker network as the chain is running in.</p>
-<h1 id="using-logstream"><a class="header" href="#using-logstream">Using LogStream</a></h1>
-<p>LogStream is a package that allows to connect to a Docker container and then flush logs to configured targets. Currently 3 targets are supported:</p>
-<ul>
-<li><code>file</code> - saves logs to a file in <code>./logs</code> folder</li>
-<li><code>loki</code> - sends logs to Loki</li>
-<li><code>in-memory</code> - stores logs in memory</li>
-</ul>
-<p>It can be configured to use multiple targets at once. If no target is specified, it becomes a no-op.</p>
-<p>LogStream has to be configured by passing an instance of <code>LoggingConfig</code> to the constructor.</p>
-<p>When you connect a container LogStream will create a new consumer and start a detached goroutine that listens to logs emitted by that container and which reconnects and re-requests logs if listening fails for whatever reason. Retry limit and timeout can both be configured using functional options. In most cases one container should have one consumer, but it's possible to have multiple consumers for one container.</p>
-<p>LogStream stores all logs in gob temporary file. To actually send/save them, you need to flush them. When you do it, LogStream will decode the file and send logs to configured targets. If log handling results in an error it won't be retried and processing of logs for given consumer will stop (if you think we should add a retry mechanism please let us know).</p>
-<p><em>Important:</em> Flushing and accepting logs is blocking operation. That's because they both share the same cursor to temporary file and otherwise it's position would be racey and could result in mixed up logs.</p>
-<h2 id="configuration-5"><a class="header" href="#configuration-5">Configuration</a></h2>
-<p>Basic <code>LogStream</code> TOML configuration is following:</p>
-<pre><code class="language-toml">[LogStream]
-log_targets=["file"]
-log_producer_timeout="10s"
-log_producer_retry_limit=10
-</code></pre>
-<p>You can find it here: <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/lib/config/tomls/logging_default.toml">logging_default.toml</a></p>
-<p>When using <code>in-memory</code> or <code>file</code> target no other configuration variables are required. When using <code>loki</code> target, following ones must be set:</p>
+<h2 id="logs-1"><a class="header" href="#logs-1">Logs</a></h2>
+<p>By default, we will save logs of all Docker containers running on the host machine, when the test ends (regardless whether it failed or succeeded). They will be available in the <code>./logs/&lt;test-name&gt;&lt;date&gt;</code> directory. Same goes for dumping the databases of PostgresDBs
+used by the Chainlink nodes. These will be saves in the <code>./db_dumps/&lt;test-name&gt;&lt;date&gt;</code> directory.</p>
+<h2 id="loki-and-grafana"><a class="header" href="#loki-and-grafana">Loki and Grafana</a></h2>
+<p>If you need to pass Loki or Grafana configuration to your tests you can do that by providing the following config:</p>
 <pre><code class="language-toml">[Logging.Loki]
 tenant_id="promtail"
 url="https://change.me"
@@ -8421,70 +8405,11 @@ basic_auth_secret="my-secret-auth"
 bearer_token_secret="bearer-token"
 </code></pre>
 <p>Also, do remember that different URL should be used when running in CI and everywhere else. In CI it should be a public endpoint, while in local environment it should be a private one.</p>
-<p>If your test has a Grafana dashboard in order for the url to be correctly printed you should provide the following config:</p>
+<p>If your test has a Grafana dashboard you should provide the following config:</p>
 <pre><code class="language-toml">[Logging.Grafana]
-url="http://grafana.somwhere.com/my_dashboard"
-</code></pre>
-<h2 id="initialisation"><a class="header" href="#initialisation">Initialisation</a></h2>
-<p>First you need to create a new instance:</p>
-<pre><code class="language-golang">// t - instance of *testing.T (can be nil)
-// testConfig.Logging - pointer to logging part of TestConfig
-ls := logstream.NewLogStream(t, testConfig.Logging)
-</code></pre>
-<h2 id="listening-to-logs"><a class="header" href="#listening-to-logs">Listening to logs</a></h2>
-<p>If using <code>testcontainers-go</code> Docker containers it is recommended to use life cycle hooks for connecting and disconnecting LogStream from the container. You can do that when creating <code>ContainerRequest</code> in the following way:</p>
-<pre><code class="language-golang">containerRequest := &amp;tc.ContainerRequest{
-		LifecycleHooks: []tc.ContainerLifecycleHooks{
-			{PostStarts: []tc.ContainerHook{
-				func(ctx context.Context, c tc.Container) error {
-					if ls != nil {
-						return n.ls.ConnectContainer(ctx, c, "custom-container-prefix-can-be-empty")
-					}
-					return nil
-				},
-			},
-				PostStops: []tc.ContainerHook{
-					func(ctx context.Context, c tc.Container) error {
-						if ls != nil {
-							return n.ls.DisconnectContainer(c)
-						}
-						return nil
-					},
-				}},
-		},
-	}
-</code></pre>
-<p>You can print log location for each target using this function: <code>(m *LogStream) PrintLogTargetsLocations()</code>. For <code>file</code> target it will print relative folder path, for <code>loki</code> it will print URL of a Grafana Dashboard scoped to current execution and container ids. For <code>in-memory</code> target it's no-op.</p>
-<p>It is recommended to shutdown LogStream at the end of your tests. Here's an example:</p>
-<pre><code class="language-golang">t.Cleanup(func() {
-    l.Warn().Msg("Shutting down Log Stream")
-
-    if t.Failed() || os.Getenv("TEST_LOG_COLLECT") == "true" {
-        // we can't do much if this fails, so we just log the error
-        _ = logStream.FlushLogsToTargets()
-        // this will log log locations for each target (for file it will be a folder, for Loki Grafana dashboard -- remember to provide it's url in config!)
-        logStream.PrintLogTargetsLocations()
-        // this will save log locations in test summary, so that they can be easily accessed in GH's step summary
-        logStream.SaveLogLocationInTestSummary()
-    }
-
-    // we can't do much if this fails, so we just log the error
-    _ = logStream.Shutdown(testcontext.Get(b.t))
-    })
-</code></pre>
-<p>or in a bit shorter way:</p>
-<pre><code class="language-golang">t.Cleanup(func() {
-    l.Warn().Msg("Shutting down Log Stream")
-
-    if t.Failed() || os.Getenv("TEST_LOG_COLLECT") == "true" {
-        // this will log log locations for each target (for file it will be a folder, for Loki Grafana dashboard -- remember to provide it's url in config!)
-        logStream.PrintLogTargetsLocations()
-        // this will save log locations in test summary, so that they can be easily accessed in GH's step summary
-    }
-
-    // we can't do much if this fails
-    _ = logStream.FlushAndShutdown()
-    })
+base_url="https://your-grafana-url"
+dashboard_url="/my-dashboard"
+dashboard_uid="my-dashboard-uid" # optional
 </code></pre>
 <h2 id="grouping-test-execution"><a class="header" href="#grouping-test-execution">Grouping test execution</a></h2>
 <p>When running tests in CI you're probably interested in grouping logs by test execution, so that you can easily find the logs in Loki. To do that your job should set <code>RUN_ID</code> environment variable. In GHA it's recommended to set it to workflow id. If that variable is not set, then a run id will be automatically generated and saved in <code>.run.id</code> file, so that it can be shared by tests that are part of the same execution, but are running in different processes.</p>
@@ -9984,7 +9909,6 @@ new_network = ["ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 }
 
 selected_networks=$(convert_to_toml_array "$SELECTED_NETWORKS")
-log_targets=$(convert_to_toml_array "$LOGSTREAM_LOG_TARGETS")
 
 if [ -n "$PYROSCOPE_SERVER" ]; then
 	pyroscope_enabled=true
@@ -9996,12 +9920,6 @@ if [ -n "$ETH2_EL_CLIENT" ]; then
 	execution_layer="$ETH2_EL_CLIENT"
 else
 	execution_layer="geth"
-fi
-
-if [ -n "$TEST_LOG_COLLECT" ]; then
-	test_log_collect=true
-else
-	test_log_collect=false
 fi
 
 cat &lt;&lt; EOF &gt; config.toml
@@ -10017,13 +9935,6 @@ enabled=$pyroscope_enabled
 server_url="$PYROSCOPE_SERVER"
 environment="$PYROSCOPE_ENVIRONMENT"
 key_secret="$PYROSCOPE_KEY"
-
-[Logging]
-test_log_collect=$test_log_collect
-run_id="$RUN_ID"
-
-[Logging.LogStream]
-log_targets=$log_targets
 
 [Logging.Loki]
 tenant_id="$LOKI_TENANT_ID"
@@ -10211,7 +10122,7 @@ echo ::add-mask::$BASE64_CONFIG_OVERRIDE
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>a85e897d</code></li>
+<li>Commit: <code>dce4e1c5</code></li>
 </ul>
 
                     </main>
