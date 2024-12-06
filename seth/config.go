@@ -15,6 +15,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+// MyAmazingNewFunction returns a predefined string value. 
+// It can be used in various contexts where a consistent string output is needed for logging or messaging purposes.
 func MyAmazingNewFunction() string {
 	return "bla bla bla"
 }
