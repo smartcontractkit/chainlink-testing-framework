@@ -20,13 +20,10 @@ var ReportCmd = &cobra.Command{
 		// Get flag values
 		reportResultsPath, _ := cmd.Flags().GetString("results-path")
 		reportOutputPath, _ := cmd.Flags().GetString("output-path")
-		reportFormats, _ := cmd.Flags().GetString("format")
 		reportMaxPassRatio, _ := cmd.Flags().GetFloat64("max-pass-ratio")
 		reportCodeOwnersPath, _ := cmd.Flags().GetString("codeowners-path")
 		reportRepoPath, _ := cmd.Flags().GetString("repo-path")
-
-		// Split the formats into a slice
-		formats := strings.Split(reportFormats, ",")
+		generatePRComment, _ := cmd.Flags().GetBool("generate-pr-comment")
 
 		// Start spinner for loading test reports
 		s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
@@ -104,19 +101,57 @@ var ReportCmd = &cobra.Command{
 		}
 		fmt.Printf("All tests report saved to %s\n", allTestsReportPath)
 
-		// Generate and save the summary reports (all tests) in specified formats
-		for _, format := range formats {
-			format = strings.ToLower(strings.TrimSpace(format))
+		// Generate GitHub summary markdown
+		s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
+		s.Suffix = " Generating GitHub summary markdown..."
+		s.Start()
+
+		err = generateGitHubSummaryMarkdown(aggregatedReport, filepath.Join(outputDir, "all-tests"))
+		if err != nil {
+			s.Stop()
+			return fmt.Errorf("error generating GitHub summary markdown: %w", err)
+		}
+		s.Stop()
+		fmt.Println("GitHub summary markdown generated successfully.")
+
+		if generatePRComment {
+			// Retrieve required flags
+			currentBranch, _ := cmd.Flags().GetString("current-branch")
+			currentCommitSHA, _ := cmd.Flags().GetString("current-commit-sha")
+			baseBranch, _ := cmd.Flags().GetString("base-branch")
+			repoURL, _ := cmd.Flags().GetString("repo-url")
+			actionRunID, _ := cmd.Flags().GetString("action-run-id")
+
+			// Validate that required flags are provided
+			missingFlags := []string{}
+			if currentBranch == "" {
+				missingFlags = append(missingFlags, "--current-branch")
+			}
+			if currentCommitSHA == "" {
+				missingFlags = append(missingFlags, "--current-commit-sha")
+			}
+			if repoURL == "" {
+				missingFlags = append(missingFlags, "--repo-url")
+			}
+			if actionRunID == "" {
+				missingFlags = append(missingFlags, "--action-run-id")
+			}
+			if len(missingFlags) > 0 {
+				return fmt.Errorf("the following flags are required when --generate-pr-comment is set: %s", strings.Join(missingFlags, ", "))
+			}
+
+			// Generate PR comment markdown
 			s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-			s.Suffix = fmt.Sprintf(" Generating all tests summary in format %s...", format)
+			s.Suffix = " Generating PR comment markdown..."
 			s.Start()
 
-			if err := generateReport(aggregatedReport, format, filepath.Join(outputDir, "all-tests")); err != nil {
+			err = generatePRCommentMarkdown(aggregatedReport, filepath.Join(outputDir, "all-tests"), baseBranch, currentBranch, currentCommitSHA, repoURL, actionRunID)
+			if err != nil {
 				s.Stop()
-				return fmt.Errorf("error generating all tests summary in format %s: %w", format, err)
+				return fmt.Errorf("error generating PR comment markdown: %w", err)
 			}
 			s.Stop()
-			fmt.Printf("All tests summary in format %s generated successfully.\n", format)
+			fmt.Println("PR comment markdown generated successfully.")
 		}
 
 		// Filter failed tests (PassRatio < maxPassRatio and not skipped)
@@ -163,38 +198,40 @@ var ReportCmd = &cobra.Command{
 func init() {
 	ReportCmd.Flags().StringP("results-path", "p", "", "Path to the folder containing JSON test result files (required)")
 	ReportCmd.Flags().StringP("output-path", "o", "./report", "Path to output the generated report files")
-	ReportCmd.Flags().StringP("format", "f", "markdown,json", "Comma-separated list of summary report formats (markdown,json)")
 	ReportCmd.Flags().Float64P("max-pass-ratio", "", 1.0, "The maximum pass ratio threshold for a test to be considered flaky")
 	ReportCmd.Flags().StringP("codeowners-path", "", "", "Path to the CODEOWNERS file")
 	ReportCmd.Flags().StringP("repo-path", "", ".", "The path to the root of the repository/project")
+	ReportCmd.Flags().Bool("generate-pr-comment", false, "Set to true to generate PR comment markdown")
+	ReportCmd.Flags().String("base-branch", "develop", "The base branch to compare against (used in PR comment)")
+	ReportCmd.Flags().String("current-branch", "", "The current branch name (required if generate-pr-comment is set)")
+	ReportCmd.Flags().String("current-commit-sha", "", "The current commit SHA (required if generate-pr-comment is set)")
+	ReportCmd.Flags().String("repo-url", "", "The repository URL (required if generate-pr-comment is set)")
+	ReportCmd.Flags().String("action-run-id", "", "The GitHub Actions run ID (required if generate-pr-comment is set)")
+
 	ReportCmd.MarkFlagRequired("results-path")
 }
 
-func generateReport(report *reports.TestReport, format, outputPath string) error {
+func generateGitHubSummaryMarkdown(report *reports.TestReport, outputPath string) error {
 	fs := reports.OSFileSystem{}
-	format = strings.ToLower(strings.TrimSpace(format))
-
-	switch format {
-	case "markdown":
-		// Adjust the markdown filename to include "-summary"
-		mdFileName := outputPath + "-summary.md"
-		mdFile, err := fs.Create(mdFileName)
-		if err != nil {
-			return fmt.Errorf("error creating markdown file: %w", err)
-		}
-		defer mdFile.Close()
-		reports.GenerateMarkdownSummary(mdFile, report, 1.0)
-	case "json":
-		// Generate summary JSON
-		summaryData := reports.GenerateSummaryData(report.Results, 1.0)
-		summaryFileName := outputPath + "-summary.json"
-		if err := reports.SaveSummaryAsJSON(fs, summaryFileName, summaryData); err != nil {
-			return fmt.Errorf("error saving summary JSON: %w", err)
-		}
-	default:
-		return fmt.Errorf("unsupported summary report format: %s", format)
+	mdFileName := outputPath + "-summary.md"
+	mdFile, err := fs.Create(mdFileName)
+	if err != nil {
+		return fmt.Errorf("error creating GitHub summary markdown file: %w", err)
 	}
+	defer mdFile.Close()
+	reports.GenerateGitHubSummaryMarkdown(mdFile, report, 1.0)
+	return nil
+}
 
+func generatePRCommentMarkdown(report *reports.TestReport, outputPath, baseBranch, currentBranch, currentCommitSHA, repoURL, actionRunID string) error {
+	fs := reports.OSFileSystem{}
+	mdFileName := outputPath + "-pr-comment.md"
+	mdFile, err := fs.Create(mdFileName)
+	if err != nil {
+		return fmt.Errorf("error creating PR comment markdown file: %w", err)
+	}
+	defer mdFile.Close()
+	reports.GeneratePRCommentMarkdown(mdFile, report, 1.0, baseBranch, currentBranch, currentCommitSHA, repoURL, actionRunID)
 	return nil
 }
 

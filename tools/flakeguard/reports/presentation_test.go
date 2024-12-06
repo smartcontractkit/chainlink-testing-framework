@@ -2,6 +2,7 @@ package reports
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -71,8 +72,8 @@ func TestGenerateFlakyTestsTable(t *testing.T) {
 	}
 }
 
-// TestGenerateMarkdownSummary tests the GenerateMarkdownSummary function.
-func TestGenerateMarkdownSummary(t *testing.T) {
+// TestGenerateGitHubSummaryMarkdown tests the GenerateGitHubSummaryMarkdown function.
+func TestGenerateGitHubSummaryMarkdown(t *testing.T) {
 	testReport := &TestReport{
 		GoProject:     "ProjectX",
 		TestRunCount:  3,
@@ -104,13 +105,84 @@ func TestGenerateMarkdownSummary(t *testing.T) {
 	var buffer bytes.Buffer
 	maxPassRatio := 0.9
 
-	GenerateMarkdownSummary(&buffer, testReport, maxPassRatio)
+	GenerateGitHubSummaryMarkdown(&buffer, testReport, maxPassRatio)
 
 	output := buffer.String()
 
 	// Check that the summary includes the expected headings
 	if !strings.Contains(output, "# Flakeguard Summary") {
 		t.Error("Expected markdown summary to contain '# Flakeguard Summary'")
+	}
+	if !strings.Contains(output, "## Found Flaky Tests :x:") {
+		t.Error("Expected markdown summary to contain '## Found Flaky Tests :x:'")
+	}
+	if !strings.Contains(output, "| **Name**") {
+		t.Error("Expected markdown table headers for test results")
+	}
+	if !strings.Contains(output, "| TestA ") {
+		t.Error("Expected markdown table to include TestA")
+	}
+	if strings.Contains(output, "| TestB ") {
+		t.Error("Did not expect markdown table to include TestB since its pass ratio is above the threshold")
+	}
+}
+
+// TestGeneratePRCommentMarkdown tests the GeneratePRCommentMarkdown function.
+func TestGeneratePRCommentMarkdown(t *testing.T) {
+	testReport := &TestReport{
+		GoProject:     "ProjectX",
+		TestRunCount:  3,
+		RaceDetection: true,
+		Results: []TestResult{
+			{
+				TestName:    "TestA",
+				PassRatio:   0.8,
+				Runs:        5,
+				Successes:   4,
+				Failures:    1,
+				TestPackage: "pkg1",
+				CodeOwners:  []string{"owner1"},
+				Durations:   []time.Duration{time.Second, time.Second, time.Second, time.Second, time.Second},
+			},
+			{
+				TestName:    "TestB",
+				PassRatio:   1.0,
+				Runs:        3,
+				Successes:   3,
+				Failures:    0,
+				TestPackage: "pkg2",
+				CodeOwners:  []string{"owner2"},
+				Durations:   []time.Duration{2 * time.Second, 2 * time.Second, 2 * time.Second},
+			},
+		},
+	}
+
+	var buffer bytes.Buffer
+	maxPassRatio := 0.9
+	baseBranch := "develop"
+	currentBranch := "feature-branch"
+	currentCommitSHA := "abcdef1234567890"
+	repoURL := "https://github.com/example/repo"
+	actionRunID := "123456789"
+
+	GeneratePRCommentMarkdown(&buffer, testReport, maxPassRatio, baseBranch, currentBranch, currentCommitSHA, repoURL, actionRunID)
+
+	output := buffer.String()
+
+	fmt.Println(output)
+
+	// Check that the output includes the expected headings and links
+	if !strings.Contains(output, "# Flakeguard Summary") {
+		t.Error("Expected markdown summary to contain '# Flakeguard Summary'")
+	}
+	if !strings.Contains(output, fmt.Sprintf("Ran new or updated tests between `%s` and %s (`%s`).", baseBranch, currentCommitSHA, currentBranch)) {
+		t.Error("Expected markdown to contain the additional info line with branches and commit SHA")
+	}
+	if !strings.Contains(output, fmt.Sprintf("[View Flaky Detector Details](%s/actions/runs/%s)", repoURL, actionRunID)) {
+		t.Error("Expected markdown to contain the 'View Flaky Detector Details' link")
+	}
+	if !strings.Contains(output, fmt.Sprintf("[Compare Changes](%s/compare/%s...%s#files_bucket)", repoURL, baseBranch, currentCommitSHA)) {
+		t.Error("Expected markdown to contain the 'Compare Changes' link")
 	}
 	if !strings.Contains(output, "## Found Flaky Tests :x:") {
 		t.Error("Expected markdown summary to contain '## Found Flaky Tests :x:'")

@@ -83,11 +83,50 @@ func formatPassRatio(passRatio float64) string {
 	return fmt.Sprintf("%.2f%%", passRatio*100)
 }
 
-func GenerateMarkdownSummary(w io.Writer, testReport *TestReport, maxPassRatio float64) {
+func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassRatio float64) {
 	settingsTable := buildSettingsTable(testReport, maxPassRatio)
 	fmt.Fprint(w, "# Flakeguard Summary\n\n")
 	printTable(w, settingsTable)
 	fmt.Fprintln(w)
+
+	if len(testReport.Results) == 0 {
+		fmt.Fprintln(w, "## No tests ran :warning:")
+		return
+	}
+
+	summary := GenerateSummaryData(testReport.Results, maxPassRatio)
+	if summary.AveragePassRatio < maxPassRatio {
+		fmt.Fprintln(w, "## Found Flaky Tests :x:")
+	} else {
+		fmt.Fprintln(w, "## No Flakes Found :white_check_mark:")
+	}
+
+	RenderResults(w, testReport.Results, maxPassRatio, true)
+}
+
+func GeneratePRCommentMarkdown(w io.Writer, testReport *TestReport, maxPassRatio float64, baseBranch, currentBranch, currentCommitSHA, repoURL, actionRunID string) {
+	fmt.Fprint(w, "# Flakeguard Summary\n\n")
+
+	// Construct additionalInfo inside the function
+	additionalInfo := fmt.Sprintf(
+		"Ran new or updated tests between `%s` and %s (`%s`).",
+		baseBranch,
+		currentCommitSHA,
+		currentBranch,
+	)
+
+	// Construct the links
+	viewDetailsLink := fmt.Sprintf("[View Flaky Detector Details](%s/actions/runs/%s)", repoURL, actionRunID)
+	compareChangesLink := fmt.Sprintf("[Compare Changes](%s/compare/%s...%s#files_bucket)", repoURL, baseBranch, currentCommitSHA)
+	linksLine := fmt.Sprintf("%s | %s", viewDetailsLink, compareChangesLink)
+
+	// Include additional information
+	fmt.Fprintln(w, additionalInfo)
+	fmt.Fprintln(w) // Add an extra newline for formatting
+
+	// Include the links
+	fmt.Fprintln(w, linksLine)
+	fmt.Fprintln(w) // Add an extra newline for formatting
 
 	if len(testReport.Results) == 0 {
 		fmt.Fprintln(w, "## No tests ran :warning:")
