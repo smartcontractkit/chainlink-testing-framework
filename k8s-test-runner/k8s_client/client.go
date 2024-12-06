@@ -85,10 +85,6 @@ func retryK8sCall(operation k8sOperation, retryPolicy wait.Backoff) error {
 	return nil
 }
 
-func IDoNothing() {
-	//I really do nothing
-}
-
 func (m *Client) ListPods(ctx context.Context, namespace, syncLabel string) (*v1.PodList, error) {
 	var pods *v1.PodList
 	timeout := int64(30)
