@@ -72,37 +72,22 @@ var RunTestsCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		// Print all failed tests including flaky tests
-		if printFailedTests {
-			fmt.Printf("PassRatio threshold for flaky tests: %.2f\n", maxPassRatio)
-			// Use RenderResults instead of PrintResults
-			reports.RenderResults(os.Stdout, testReport.Results, maxPassRatio, false)
-		}
-
 		// Save the test results in JSON format
 		if outputPath != "" && len(testReport.Results) > 0 {
 			jsonData, err := json.MarshalIndent(testReport, "", "  ")
 			if err != nil {
 				log.Fatalf("Error marshaling test results to JSON: %v", err)
 			}
-			if err := os.WriteFile(outputPath, jsonData, 0644); err != nil {
+			if err := os.WriteFile(outputPath, jsonData, 0600); err != nil {
 				log.Fatalf("Error writing test results to file: %v", err)
 			}
 			fmt.Printf("All test results saved to %s\n", outputPath)
 		}
 
-		// Filter flaky tests using FilterTests
-		flakyTests := reports.FilterTests(testReport.Results, func(tr reports.TestResult) bool {
-			return !tr.Skipped && tr.PassRatio < maxPassRatio
-		})
-
-		if len(flakyTests) > 0 {
-			fmt.Printf("Found %d flaky tests below the pass ratio threshold of %.2f:\n", len(flakyTests), maxPassRatio)
-			reports.RenderResults(os.Stdout, flakyTests, maxPassRatio, false)
-			// Exit with error code if there are flaky tests
-			os.Exit(1)
-		} else if len(testReport.Results) == 0 {
-			fmt.Printf("No tests were run for the specified packages.\n")
+		// Print all failed tests including flaky tests
+		if printFailedTests {
+			fmt.Printf("\nFlakeguard Summary\n")
+			reports.RenderResults(os.Stdout, testReport.Results, maxPassRatio, false)
 		}
 	},
 }
