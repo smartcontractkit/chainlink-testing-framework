@@ -20,6 +20,8 @@ var CheckTestOwnersCmd = &cobra.Command{
 	Use:   "check-test-owners",
 	Short: "Check which tests in the project do not have code owners",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		projectPath, _ := cmd.Flags().GetString("project-path")
+
 		// Scan project for test functions
 		testFileMap, err := reports.ScanTestFiles(projectPath)
 		if err != nil {
@@ -79,7 +81,7 @@ var CheckTestOwnersCmd = &cobra.Command{
 }
 
 func init() {
-	CheckTestOwnersCmd.Flags().StringVarP(&projectPath, "project-path", "p", ".", "Path to the root of the project")
+	CheckTestOwnersCmd.Flags().StringP("project-path", "p", ".", "Path to the root of the project")
 	CheckTestOwnersCmd.Flags().StringVarP(&codeownersPath, "codeowners-path", "c", ".github/CODEOWNERS", "Path to the CODEOWNERS file")
 	CheckTestOwnersCmd.Flags().BoolVarP(&printTestFunctions, "print-test-functions", "t", false, "Print all test functions without owners")
 }

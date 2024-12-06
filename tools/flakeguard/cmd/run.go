@@ -17,6 +17,7 @@ var RunTestsCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run tests to check if they are flaky",
 	Run: func(cmd *cobra.Command, args []string) {
+		// Retrieve flags
 		projectPath, _ := cmd.Flags().GetString("project-path")
 		testPackagesJson, _ := cmd.Flags().GetString("test-packages-json")
 		testPackagesArg, _ := cmd.Flags().GetStringSlice("test-packages")
@@ -28,7 +29,6 @@ var RunTestsCmd = &cobra.Command{
 		maxPassRatio, _ := cmd.Flags().GetFloat64("max-pass-ratio")
 		skipTests, _ := cmd.Flags().GetStringSlice("skip-tests")
 		selectTests, _ := cmd.Flags().GetStringSlice("select-tests")
-		printFailedTests, _ := cmd.Flags().GetBool("print-failed-tests")
 		useShuffle, _ := cmd.Flags().GetBool("shuffle")
 		shuffleSeed, _ := cmd.Flags().GetString("shuffle-seed")
 
@@ -37,6 +37,7 @@ var RunTestsCmd = &cobra.Command{
 			log.Fatalf("Error: %v", err)
 		}
 
+		// Determine test packages
 		var testPackages []string
 		if testPackagesJson != "" {
 			if err := json.Unmarshal([]byte(testPackagesJson), &testPackages); err != nil {
@@ -48,7 +49,8 @@ var RunTestsCmd = &cobra.Command{
 			log.Fatalf("Error: must specify either --test-packages-json or --test-packages")
 		}
 
-		runner := runner.Runner{
+		// Initialize the runner
+		testRunner := runner.Runner{
 			ProjectPath:          projectPath,
 			Verbose:              true,
 			RunCount:             runCount,
@@ -62,16 +64,11 @@ var RunTestsCmd = &cobra.Command{
 			ShuffleSeed:          shuffleSeed,
 		}
 
-		testReport, err := runner.RunTests()
+		// Run the tests
+		testReport, err := testRunner.RunTests()
 		if err != nil {
 			fmt.Printf("Error running tests: %v\n", err)
 			os.Exit(1)
-		}
-
-		// Print all failed tests including flaky tests
-		if printFailedTests {
-			fmt.Printf("PassRatio threshold for flaky tests: %.2f\n", maxPassRatio)
-			reports.PrintResults(os.Stdout, testReport.Results, maxPassRatio, false, false)
 		}
 
 		// Save the test results in JSON format
@@ -80,18 +77,28 @@ var RunTestsCmd = &cobra.Command{
 			if err != nil {
 				log.Fatalf("Error marshaling test results to JSON: %v", err)
 			}
-			if err := os.WriteFile(outputPath, jsonData, 0644); err != nil { //nolint:gosec
+			if err := os.WriteFile(outputPath, jsonData, 0600); err != nil {
 				log.Fatalf("Error writing test results to file: %v", err)
 			}
 			fmt.Printf("All test results saved to %s\n", outputPath)
 		}
 
-		flakyTests := reports.FilterFlakyTests(testReport.Results, maxPassRatio)
+		if len(testReport.Results) == 0 {
+			fmt.Printf("No tests were run for the specified packages.\n")
+			return
+		}
+
+		// Filter flaky tests using FilterTests
+		flakyTests := reports.FilterTests(testReport.Results, func(tr reports.TestResult) bool {
+			return !tr.Skipped && tr.PassRatio < maxPassRatio
+		})
+
 		if len(flakyTests) > 0 {
+			fmt.Printf("Found %d flaky tests below the pass ratio threshold of %.2f:\n", len(flakyTests), maxPassRatio)
+			fmt.Printf("\nFlakeguard Summary\n")
+			reports.RenderResults(os.Stdout, flakyTests, maxPassRatio, false)
 			// Exit with error code if there are flaky tests
 			os.Exit(1)
-		} else if len(testReport.Results) == 0 {
-			fmt.Printf("No tests were run for the specified packages.\n")
 		}
 	},
 }
@@ -111,8 +118,7 @@ func init() {
 	RunTestsCmd.Flags().String("output-json", "", "Path to output the test results in JSON format")
 	RunTestsCmd.Flags().StringSlice("skip-tests", nil, "Comma-separated list of test names to skip from running")
 	RunTestsCmd.Flags().StringSlice("select-tests", nil, "Comma-separated list of test names to specifically run")
-	RunTestsCmd.Flags().Bool("print-failed-tests", true, "Print failed test results to the console")
-	RunTestsCmd.Flags().Float64("max-pass-ratio", 1.0, "The maximum (non-inclusive) pass ratio threshold for a test to be considered a failure. Any tests below this pass rate will be considered flaky.")
+	RunTestsCmd.Flags().Float64("max-pass-ratio", 1.0, "The maximum pass ratio threshold for a test to be considered flaky. Any tests below this pass rate will be considered flaky.")
 }
 
 func checkDependencies(projectPath string) error {
