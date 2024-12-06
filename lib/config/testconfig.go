@@ -54,36 +54,6 @@ type TestConfig struct {
 func (c *TestConfig) ReadFromEnvVar() error {
 	logger := logging.GetTestLogger(nil)
 
-	testLogCollect := MustReadEnvVar_Boolean(E2E_TEST_LOG_COLLECT_ENV)
-	if testLogCollect != nil {
-		if c.Logging == nil {
-			c.Logging = &LoggingConfig{}
-		}
-		logger.Debug().Msgf("Using %s env var to override Logging.TestLogCollect", E2E_TEST_LOG_COLLECT_ENV)
-		c.Logging.TestLogCollect = testLogCollect
-	}
-
-	loggingRunID := MustReadEnvVar_String(E2E_TEST_LOGGING_RUN_ID_ENV)
-	if loggingRunID != "" {
-		if c.Logging == nil {
-			c.Logging = &LoggingConfig{}
-		}
-		logger.Debug().Msgf("Using %s env var to override Logging.RunID", E2E_TEST_LOGGING_RUN_ID_ENV)
-		c.Logging.RunId = &loggingRunID
-	}
-
-	logstreamLogTargets := MustReadEnvVar_Strings(E2E_TEST_LOG_STREAM_LOG_TARGETS_ENV, ",")
-	if len(logstreamLogTargets) > 0 {
-		if c.Logging == nil {
-			c.Logging = &LoggingConfig{}
-		}
-		if c.Logging.LogStream == nil {
-			c.Logging.LogStream = &LogStreamConfig{}
-		}
-		logger.Debug().Msgf("Using %s env var to override Logging.LogStream.LogTargets", E2E_TEST_LOG_STREAM_LOG_TARGETS_ENV)
-		c.Logging.LogStream.LogTargets = logstreamLogTargets
-	}
-
 	lokiTenantID := MustReadEnvVar_String(E2E_TEST_LOKI_TENANT_ID_ENV)
 	if lokiTenantID != "" {
 		if c.Logging == nil {

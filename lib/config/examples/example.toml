@@ -1,17 +1,6 @@
 # Example of full config with all fields
 # General part
 [Logging]
-# if set to true will save logs even if test did not fail
-test_log_collect=false
-
-[Logging.LogStream]
-# supported targets: file, loki, in-memory. if empty no logs will be persistet
-log_targets=["file"]
-# context timeout for starting log producer and also time-frame for requesting logs
-log_producer_timeout="10s"
-# number of retries before log producer gives up and stops listening to logs
-log_producer_retry_limit=10
-
 [Logging.Loki]
 tenant_id="tenant_id"
 # full URL of Loki ingest endpoint
@@ -21,7 +10,6 @@ basic_auth_secret="loki-basic-auth"
 # only needed for cloud grafana
 bearer_token_secret="bearer_token"
 
-# LogStream will try to shorten Grafana URLs by default (if all 3 variables are set)
 [Logging.Grafana]
 # grafana url (trailing "/" will be stripped)
 base_url="http://grafana.url"

@@ -278,7 +278,6 @@ convert_to_toml_array() {
 }
 
 selected_networks=$(convert_to_toml_array "$SELECTED_NETWORKS")
-log_targets=$(convert_to_toml_array "$LOGSTREAM_LOG_TARGETS")
 
 if [ -n "$PYROSCOPE_SERVER" ]; then
 	pyroscope_enabled=true
@@ -290,12 +289,6 @@ if [ -n "$ETH2_EL_CLIENT" ]; then
 	execution_layer="$ETH2_EL_CLIENT"
 else
 	execution_layer="geth"
-fi
-
-if [ -n "$TEST_LOG_COLLECT" ]; then
-	test_log_collect=true
-else
-	test_log_collect=false
 fi
 
 cat << EOF > config.toml
@@ -311,13 +304,6 @@ enabled=$pyroscope_enabled
 server_url="$PYROSCOPE_SERVER"
 environment="$PYROSCOPE_ENVIRONMENT"
 key_secret="$PYROSCOPE_KEY"
-
-[Logging]
-test_log_collect=$test_log_collect
-run_id="$RUN_ID"
-
-[Logging.LogStream]
-log_targets=$log_targets
 
 [Logging.Loki]
 tenant_id="$LOKI_TENANT_ID"

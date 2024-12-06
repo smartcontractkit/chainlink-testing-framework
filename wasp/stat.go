@@ -19,7 +19,9 @@ var (
 
 var once = &sync.Once{}
 
-// CPUCheckLoop is called once by any generator, makes sense only in cluster runs on Linux
+// CPUCheckLoop continuously monitors CPU idle and memory free percentages.
+// It terminates the application if resource thresholds are exceeded.
+// Use it to ensure the system operates within defined resource limits.
 func CPUCheckLoop() {
 	once.Do(func() {
 		//nolint
