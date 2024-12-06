@@ -401,9 +401,10 @@ func parseTestResults(expectedRuns int, filePaths []string) ([]reports.TestResul
 		if parentTestResult, exists := testDetails[parentTestKey]; exists {
 			if parentTestResult.Panic {
 				for _, subTest := range subTests {
-					subTestKey := fmt.Sprintf("%s/%s", parentTestResult.TestPackage, subTest)
+					// Include parent test name in subTestKey
+					subTestKey := fmt.Sprintf("%s/%s/%s", parentTestResult.TestPackage, parentTestResult.TestName, subTest)
 					if subTestResult, exists := testDetails[subTestKey]; exists {
-						if subTestResult.Failures > 0 { // If the parent test panicked, any of its subtests that failed could be the culprit
+						if subTestResult.Failures > 0 {
 							subTestResult.Panic = true
 							subTestResult.Outputs = append(subTestResult.Outputs, "Panic in parent test")
 						}
