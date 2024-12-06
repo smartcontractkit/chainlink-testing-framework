@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -113,6 +114,19 @@ var ReportCmd = &cobra.Command{
 		}
 		s.Stop()
 		fmt.Println("GitHub summary markdown generated successfully.")
+
+		// Generate all-tests-summary.json
+		s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
+		s.Suffix = " Generating all-tests-summary.json..."
+		s.Start()
+
+		err = generateAllTestsSummaryJSON(aggregatedReport, filepath.Join(outputDir, "all-tests-summary.json"), reportMaxPassRatio)
+		if err != nil {
+			s.Stop()
+			return fmt.Errorf("error generating all-tests-summary.json: %w", err)
+		}
+		s.Stop()
+		fmt.Println("all-tests-summary.json generated successfully.")
 
 		if generatePRComment {
 			// Retrieve required flags
@@ -232,6 +246,29 @@ func generatePRCommentMarkdown(report *reports.TestReport, outputPath, baseBranc
 	}
 	defer mdFile.Close()
 	reports.GeneratePRCommentMarkdown(mdFile, report, 1.0, baseBranch, currentBranch, currentCommitSHA, repoURL, actionRunID)
+	return nil
+}
+
+// New function to generate all-tests-summary.json
+func generateAllTestsSummaryJSON(report *reports.TestReport, outputPath string, maxPassRatio float64) error {
+	summary := reports.GenerateSummaryData(report.Results, maxPassRatio)
+	data, err := json.Marshal(summary)
+	if err != nil {
+		return fmt.Errorf("error marshaling summary data to JSON: %w", err)
+	}
+
+	fs := reports.OSFileSystem{}
+	jsonFile, err := fs.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("error creating all-tests-summary.json file: %w", err)
+	}
+	defer jsonFile.Close()
+
+	_, err = jsonFile.Write(data)
+	if err != nil {
+		return fmt.Errorf("error writing summary data to all-tests-summary.json: %w", err)
+	}
+
 	return nil
 }
 
