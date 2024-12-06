@@ -96,7 +96,7 @@ var ReportCmd = &cobra.Command{
 		}
 
 		// Save the aggregated report (all tests)
-		allTestsReportPath := filepath.Join(outputDir, "all-tests-report.json")
+		allTestsReportPath := filepath.Join(outputDir, "all-test-results.json")
 		if err := reports.SaveReport(fs, allTestsReportPath, *aggregatedReport); err != nil {
 			return fmt.Errorf("error saving all tests report: %w", err)
 		}
@@ -107,7 +107,7 @@ var ReportCmd = &cobra.Command{
 		s.Suffix = " Generating GitHub summary markdown..."
 		s.Start()
 
-		err = generateGitHubSummaryMarkdown(aggregatedReport, filepath.Join(outputDir, "all-tests"))
+		err = generateGitHubSummaryMarkdown(aggregatedReport, filepath.Join(outputDir, "all-test"))
 		if err != nil {
 			s.Stop()
 			return fmt.Errorf("error generating GitHub summary markdown: %w", err)
@@ -117,16 +117,16 @@ var ReportCmd = &cobra.Command{
 
 		// Generate all-tests-summary.json
 		s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-		s.Suffix = " Generating all-tests-summary.json..."
+		s.Suffix = " Generating all-test-summary.json..."
 		s.Start()
 
-		err = generateAllTestsSummaryJSON(aggregatedReport, filepath.Join(outputDir, "all-tests-summary.json"), reportMaxPassRatio)
+		err = generateAllTestsSummaryJSON(aggregatedReport, filepath.Join(outputDir, "all-test-summary.json"), reportMaxPassRatio)
 		if err != nil {
 			s.Stop()
-			return fmt.Errorf("error generating all-tests-summary.json: %w", err)
+			return fmt.Errorf("error generating all-test-summary.json: %w", err)
 		}
 		s.Stop()
-		fmt.Println("all-tests-summary.json generated successfully.")
+		fmt.Println("all-test-summary.json generated successfully.")
 
 		if generatePRComment {
 			// Retrieve required flags
@@ -159,7 +159,7 @@ var ReportCmd = &cobra.Command{
 			s.Suffix = " Generating PR comment markdown..."
 			s.Start()
 
-			err = generatePRCommentMarkdown(aggregatedReport, filepath.Join(outputDir, "all-tests"), baseBranch, currentBranch, currentCommitSHA, repoURL, actionRunID)
+			err = generatePRCommentMarkdown(aggregatedReport, filepath.Join(outputDir, "all-test"), baseBranch, currentBranch, currentCommitSHA, repoURL, actionRunID)
 			if err != nil {
 				s.Stop()
 				return fmt.Errorf("error generating PR comment markdown: %w", err)
@@ -179,7 +179,24 @@ var ReportCmd = &cobra.Command{
 		s.Stop()
 		fmt.Println("Failed tests filtered successfully.")
 
-		// For failed tests, include outputs and package outputs
+		// Create a new report for failed tests
+		failedReportNoLogs := &reports.TestReport{
+			GoProject:     aggregatedReport.GoProject,
+			TestRunCount:  aggregatedReport.TestRunCount,
+			RaceDetection: aggregatedReport.RaceDetection,
+			ExcludedTests: aggregatedReport.ExcludedTests,
+			SelectedTests: aggregatedReport.SelectedTests,
+			Results:       failedTests,
+		}
+
+		// Save the failed tests report with no logs
+		failedTestsReportNoLogsPath := filepath.Join(outputDir, "failed-test-results.json")
+		if err := reports.SaveReport(fs, failedTestsReportNoLogsPath, *failedReportNoLogs); err != nil {
+			return fmt.Errorf("error saving failed tests report: %w", err)
+		}
+		fmt.Printf("Failed tests report without logs saved to %s\n", failedTestsReportNoLogsPath)
+
+		// Retrieve outputs and package outputs for failed tests
 		for i := range failedTests {
 			// Retrieve outputs and package outputs from original reports
 			failedTests[i].Outputs = getOriginalOutputs(testReports, failedTests[i].TestName, failedTests[i].TestPackage)
@@ -187,7 +204,7 @@ var ReportCmd = &cobra.Command{
 		}
 
 		// Create a new report for failed tests
-		failedReport := &reports.TestReport{
+		failedReportWithLogs := &reports.TestReport{
 			GoProject:     aggregatedReport.GoProject,
 			TestRunCount:  aggregatedReport.TestRunCount,
 			RaceDetection: aggregatedReport.RaceDetection,
@@ -197,11 +214,11 @@ var ReportCmd = &cobra.Command{
 		}
 
 		// Save the failed tests report
-		failedTestsReportPath := filepath.Join(outputDir, "failed-tests-report.json")
-		if err := reports.SaveReport(fs, failedTestsReportPath, *failedReport); err != nil {
+		failedTestsReportWithLogsPath := filepath.Join(outputDir, "failed-test-results-with-logs.json")
+		if err := reports.SaveReport(fs, failedTestsReportWithLogsPath, *failedReportWithLogs); err != nil {
 			return fmt.Errorf("error saving failed tests report: %w", err)
 		}
-		fmt.Printf("Failed tests report saved to %s\n", failedTestsReportPath)
+		fmt.Printf("Failed tests report with logs saved to %s\n", failedTestsReportWithLogsPath)
 
 		fmt.Printf("Reports generated at: %s\n", reportOutputPath)
 
@@ -260,13 +277,13 @@ func generateAllTestsSummaryJSON(report *reports.TestReport, outputPath string, 
 	fs := reports.OSFileSystem{}
 	jsonFile, err := fs.Create(outputPath)
 	if err != nil {
-		return fmt.Errorf("error creating all-tests-summary.json file: %w", err)
+		return fmt.Errorf("error creating file: %w", err)
 	}
 	defer jsonFile.Close()
 
 	_, err = jsonFile.Write(data)
 	if err != nil {
-		return fmt.Errorf("error writing summary data to all-tests-summary.json: %w", err)
+		return fmt.Errorf("error writing data to file: %w", err)
 	}
 
 	return nil
