@@ -23,7 +23,8 @@ type K8sClient struct {
 	RESTConfig *rest.Config
 }
 
-// GetLocalK8sDeps get local k8s context config
+// GetLocalK8sDeps retrieves the local Kubernetes Clientset and REST configuration.
+// It is used to initialize a Kubernetes client for interacting with the cluster.
 func GetLocalK8sDeps() (*kubernetes.Clientset, *rest.Config, error) {
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, &clientcmd.ConfigOverrides{})
@@ -38,7 +39,8 @@ func GetLocalK8sDeps() (*kubernetes.Clientset, *rest.Config, error) {
 	return k8sClient, k8sConfig, nil
 }
 
-// NewK8sClient creates a new k8s client with a REST config
+// NewK8sClient initializes and returns a new K8sClient for interacting with the local Kubernetes cluster.
+// It is used to perform operations such as synchronizing groups and managing cluster profiles.
 func NewK8sClient() *K8sClient {
 	cs, cfg, err := GetLocalK8sDeps()
 	if err != nil {
@@ -50,18 +52,27 @@ func NewK8sClient() *K8sClient {
 	}
 }
 
+// jobPods returns a list of pods in the specified namespace matching the sync label.
+// It is used to track and manage job-related pods within Kubernetes environments.
 func (m *K8sClient) jobPods(ctx context.Context, nsName, syncLabel string) (*v1.PodList, error) {
 	return m.ClientSet.CoreV1().Pods(nsName).List(ctx, metaV1.ListOptions{LabelSelector: syncSelector(syncLabel)})
 }
 
+// jobs retrieves the list of Kubernetes jobs within the specified namespace
+// that match the provided synchronization label.
+// It returns a JobList and an error if the operation fails.
 func (m *K8sClient) jobs(ctx context.Context, nsName, syncLabel string) (*batchV1.JobList, error) {
 	return m.ClientSet.BatchV1().Jobs(nsName).List(ctx, metaV1.ListOptions{LabelSelector: syncSelector(syncLabel)})
 }
 
+// syncSelector formats a sync label into a label selector string.
+// It is used to filter Kubernetes jobs and pods based on the specified synchronization label.
 func syncSelector(s string) string {
 	return fmt.Sprintf("sync=%s", s)
 }
 
+// removeJobs deletes all jobs in the given JobList within the specified namespace.
+// It is used to clean up job resources after they have completed or failed.
 func (m *K8sClient) removeJobs(ctx context.Context, nsName string, jobs *batchV1.JobList) error {
 	log.Info().Msg("Removing jobs")
 	for _, j := range jobs.Items {
@@ -75,6 +86,8 @@ func (m *K8sClient) removeJobs(ctx context.Context, nsName string, jobs *batchV1
 	return nil
 }
 
+// waitSyncGroup waits until the specified namespace has jobNum pods with the given syncLabel running.
+// It ensures that all required pods are synchronized and operational before proceeding.
 func (m *K8sClient) waitSyncGroup(ctx context.Context, nsName string, syncLabel string, jobNum int) error {
 outer:
 	for {
@@ -97,7 +110,8 @@ outer:
 	}
 }
 
-// TrackJobs tracks both jobs and their pods until they succeed or fail
+// TrackJobs monitors Kubernetes jobs in the specified namespace and label selector until the desired number succeed or a failure occurs.
+// It optionally removes jobs upon completion based on the keepJobs flag.
 func (m *K8sClient) TrackJobs(ctx context.Context, nsName, syncLabel string, jobNum int, keepJobs bool) error {
 	log.Debug().Str("LabelSelector", syncSelector(syncLabel)).Msg("Searching for jobs/pods")
 	for {

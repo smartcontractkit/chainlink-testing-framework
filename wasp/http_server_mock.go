@@ -18,6 +18,8 @@ type HTTPMockServer struct {
 	Sleep time.Duration
 }
 
+// Run starts the HTTPMockServer in a separate goroutine.
+// It enables the server to handle incoming HTTP requests concurrently.
 func (s *HTTPMockServer) Run() {
 	go func() {
 		//nolint
@@ -25,10 +27,15 @@ func (s *HTTPMockServer) Run() {
 	}()
 }
 
+// URL returns the base URL of the HTTPMockServer.
+// Use it to configure clients to send requests to the mock server during testing.
 func (s *HTTPMockServer) URL() string {
 	return "http://localhost:8080/1"
 }
 
+// NewHTTPMockServer initializes an HTTP mock server with configurable latencies and response codes.
+// If cfg is nil, default settings are applied.
+// Use it to simulate HTTP endpoints for testing purposes.
 func NewHTTPMockServer(cfg *HTTPMockServerConfig) *HTTPMockServer {
 	if cfg == nil {
 		cfg = &HTTPMockServerConfig{

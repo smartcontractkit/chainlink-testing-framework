@@ -1,12 +1,13 @@
 package clnode_test
 
 import (
+	"sync"
+	"testing"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 	"github.com/stretchr/testify/require"
-	"sync"
-	"testing"
 )
 
 type testCase struct {

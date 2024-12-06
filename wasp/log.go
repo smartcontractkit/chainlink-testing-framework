@@ -13,10 +13,13 @@ const (
 	LogLevelEnvVar = "WASP_LOG_LEVEL"
 )
 
+// init initializes the default logging configuration for the package by setting the logging level and output destination.
 func init() {
 	initDefaultLogging()
 }
 
+// initDefaultLogging configures the default logger using the LogLevelEnvVar environment variable.
+// It sets the logging output to standard error and defaults to the "info" level if the variable is unset.
 func initDefaultLogging() {
 	lvlStr := os.Getenv(LogLevelEnvVar)
 	if lvlStr == "" {
@@ -29,7 +32,9 @@ func initDefaultLogging() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr}).Level(lvl)
 }
 
-// GetLogger instantiates a logger that takes into account the test context and the log level
+// GetLogger returns a zerolog.Logger configured with the specified component name and log level.
+// If a *testing.T is provided, the logger integrates with test output.
+// Use it to enable consistent logging across components with environment-based log level control.
 func GetLogger(t *testing.T, componentName string) zerolog.Logger {
 	lvlStr := os.Getenv(LogLevelEnvVar)
 	if lvlStr == "" {
