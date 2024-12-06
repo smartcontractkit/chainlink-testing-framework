@@ -107,7 +107,7 @@ func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassR
 func GeneratePRCommentMarkdown(w io.Writer, testReport *TestReport, maxPassRatio float64, baseBranch, currentBranch, currentCommitSHA, repoURL, actionRunID string) {
 	fmt.Fprint(w, "# Flakeguard Summary\n\n")
 
-	// Construct additionalInfo inside the function
+	// Construct additional info
 	additionalInfo := fmt.Sprintf(
 		"Ran new or updated tests between `%s` and %s (`%s`).",
 		baseBranch,
@@ -133,14 +133,15 @@ func GeneratePRCommentMarkdown(w io.Writer, testReport *TestReport, maxPassRatio
 		return
 	}
 
-	summary := GenerateSummaryData(testReport.Results, maxPassRatio)
-	if summary.AveragePassRatio < maxPassRatio {
+	// Add the flaky tests section
+	if GenerateSummaryData(testReport.Results, maxPassRatio).AveragePassRatio < maxPassRatio {
 		fmt.Fprintln(w, "## Found Flaky Tests :x:")
 	} else {
 		fmt.Fprintln(w, "## No Flakes Found :white_check_mark:")
 	}
 
-	RenderResults(w, testReport.Results, maxPassRatio, true)
+	resultsTable := GenerateFlakyTestsTable(testReport.Results, maxPassRatio, true)
+	renderTestResultsTable(w, resultsTable, true)
 }
 
 func buildSettingsTable(testReport *TestReport, maxPassRatio float64) [][]string {
