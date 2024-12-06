@@ -83,6 +83,11 @@ var RunTestsCmd = &cobra.Command{
 			fmt.Printf("All test results saved to %s\n", outputPath)
 		}
 
+		if len(testReport.Results) == 0 {
+			fmt.Printf("No tests were run for the specified packages.\n")
+			return
+		}
+
 		// Filter flaky tests using FilterTests
 		flakyTests := reports.FilterTests(testReport.Results, func(tr reports.TestResult) bool {
 			return !tr.Skipped && tr.PassRatio < maxPassRatio
@@ -94,8 +99,6 @@ var RunTestsCmd = &cobra.Command{
 			reports.RenderResults(os.Stdout, flakyTests, maxPassRatio, false)
 			// Exit with error code if there are flaky tests
 			os.Exit(1)
-		} else if len(testReport.Results) == 0 {
-			fmt.Printf("No tests were run for the specified packages.\n")
 		}
 	},
 }
