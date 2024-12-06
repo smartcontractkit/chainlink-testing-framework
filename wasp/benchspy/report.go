@@ -100,7 +100,7 @@ func (b *StandardReport) IsComparable(otherReport Reporter) error {
 	return nil
 }
 
-func NewStandardReport(commitOrTag string, executionEnvironment ExecutionEnvironment, generators ...*wasp.Generator) (*StandardReport, error) {
+func NewStandardReport(commitOrTag string, executionEnvironment ExecutionEnvironment, standardQueryExecutorType StandardQueryExecutorType, generators ...*wasp.Generator) (*StandardReport, error) {
 	basicData, basicErr := NewBasicData(commitOrTag, generators...)
 	if basicErr != nil {
 		return nil, errors.Wrapf(basicErr, "failed to create basic data for generators %v", generators)
@@ -113,12 +113,9 @@ func NewStandardReport(commitOrTag string, executionEnvironment ExecutionEnviron
 
 	var queryExecutors []QueryExecutor
 	for _, g := range generators {
-		if !generatorHasLabels(g) {
-			return nil, fmt.Errorf("generator %s is missing branch or commit labels", g.Cfg.GenName)
-		}
-		executor, executorErr := NewStandardMetricsLokiExecutor(g.Cfg.LokiConfig, basicData.TestName, g.Cfg.GenName, g.Cfg.Labels["branch"], g.Cfg.Labels["commit"], basicData.TestStart, basicData.TestEnd)
+		executor, executorErr := initStandardQueryExecutor(standardQueryExecutorType, basicData, g)
 		if executorErr != nil {
-			return nil, errors.Wrapf(executorErr, "failed to create standard Loki query executor for generator %s", g.Cfg.GenName)
+			return nil, errors.Wrapf(executorErr, "failed to create standard %s query executor for generator %s", standardQueryExecutorType, g.Cfg.GenName)
 		}
 		queryExecutors = append(queryExecutors, executor)
 	}
@@ -130,6 +127,28 @@ func NewStandardReport(commitOrTag string, executionEnvironment ExecutionEnviron
 			ExecutionEnvironment: executionEnvironment,
 		},
 	}, nil
+}
+
+func initStandardQueryExecutor(kind StandardQueryExecutorType, basicData *BasicData, g *wasp.Generator) (QueryExecutor, error) {
+	switch kind {
+	case StandardQueryExecutor_Loki:
+		if !generatorHasLabels(g) {
+			return nil, fmt.Errorf("generator %s is missing branch or commit labels", g.Cfg.GenName)
+		}
+		executor, executorErr := NewStandardMetricsLokiExecutor(g.Cfg.LokiConfig, basicData.TestName, g.Cfg.GenName, g.Cfg.Labels["branch"], g.Cfg.Labels["commit"], basicData.TestStart, basicData.TestEnd)
+		if executorErr != nil {
+			return nil, errors.Wrapf(executorErr, "failed to create standard Loki query executor for generator %s", g.Cfg.GenName)
+		}
+		return executor, nil
+	case StandardQueryExecutor_Generator:
+		executor, executorErr := NewGeneratorQueryExecutor(g)
+		if executorErr != nil {
+			return nil, errors.Wrapf(executorErr, "failed to create standard generator query executor for generator %s", g.Cfg.GenName)
+		}
+		return executor, nil
+	default:
+		return nil, fmt.Errorf("unknown standard query executor type: %s", kind)
+	}
 }
 
 func generatorHasLabels(g *wasp.Generator) bool {
@@ -164,8 +183,10 @@ func (s *StandardReport) UnmarshalJSON(data []byte) error {
 		switch typeIndicator.Kind {
 		case "loki":
 			executor = &LokiQueryExecutor{}
+		case "generator":
+			executor = &GeneratorQueryExecutor{}
 		default:
-			return fmt.Errorf("unknown query executor type: %s", typeIndicator.Kind)
+			return fmt.Errorf("unknown query executor type: %s\nIf you added a new query executor make sure to add a custom JSON unmarshaller to StandardReport.UnmarshalJSON()", typeIndicator.Kind)
 		}
 
 		if err := json.Unmarshal(rawExecutor, executor); err != nil {

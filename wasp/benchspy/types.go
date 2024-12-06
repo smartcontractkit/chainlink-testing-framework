@@ -48,3 +48,20 @@ type QueryExecutor interface {
 	// TimeRange sets the time range for the queries
 	TimeRange(startTime, endTime time.Time)
 }
+
+type StandardQueryExecutorType string
+
+const (
+	StandardQueryExecutor_Loki      StandardQueryExecutorType = "loki"
+	StandardQueryExecutor_Generator StandardQueryExecutorType = "generator"
+)
+
+type StandardMetric string
+
+const (
+	MedianLatency       StandardMetric = "median_latency"
+	Percentile95Latency StandardMetric = "95th_percentile_latency"
+	ErrorRate           StandardMetric = "error_rate"
+)
+
+var standardMetrics = []StandardMetric{MedianLatency, Percentile95Latency, ErrorRate}

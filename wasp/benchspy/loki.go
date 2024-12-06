@@ -50,7 +50,7 @@ func (l *LokiQueryExecutor) IsComparable(otherQueryExecutor QueryExecutor) error
 		return fmt.Errorf("expected type %s, got %s", reflect.TypeOf(l), otherType)
 	}
 
-	return l.compareLokiQueries(otherQueryExecutor.(*LokiQueryExecutor).Queries)
+	return l.compareQueries(otherQueryExecutor.(*LokiQueryExecutor).Queries)
 }
 
 func (l *LokiQueryExecutor) Validate() error {
@@ -128,7 +128,7 @@ func (l *LokiQueryExecutor) Execute(ctx context.Context) error {
 	return nil
 }
 
-func (l *LokiQueryExecutor) compareLokiQueries(other map[string]string) error {
+func (l *LokiQueryExecutor) compareQueries(other map[string]string) error {
 	this := l.Queries
 	if len(this) != len(other) {
 		return fmt.Errorf("queries count is different. Expected %d, got %d", len(this), len(other))
@@ -152,31 +152,24 @@ func (l *LokiQueryExecutor) TimeRange(start, end time.Time) {
 	l.EndTime = end
 }
 
-type StandardMetric string
-
-const (
-	MedianLatency       StandardMetric = "median_latency"
-	Percentile95Latency StandardMetric = "95th_percentile_latency"
-	ErrorRate           StandardMetric = "error_rate"
-)
-
-var standardMetrics = []StandardMetric{MedianLatency, Percentile95Latency, ErrorRate}
-
 func NewStandardMetricsLokiExecutor(lokiConfig *wasp.LokiConfig, testName, generatorName, branch, commit string, startTime, endTime time.Time) (*LokiQueryExecutor, error) {
-	standardQueries, queryErr := generateStandardLokiQueries(testName, generatorName, branch, commit, startTime, endTime)
+	lq := &LokiQueryExecutor{
+		Kind:         "loki",
+		Config:       lokiConfig,
+		QueryResults: make(map[string][]string),
+	}
+
+	standardQueries, queryErr := lq.generateStandardQueries(testName, generatorName, branch, commit, startTime, endTime)
 	if queryErr != nil {
 		return nil, queryErr
 	}
 
-	return &LokiQueryExecutor{
-		Kind:         "loki",
-		Queries:      standardQueries,
-		Config:       lokiConfig,
-		QueryResults: make(map[string][]string),
-	}, nil
+	lq.Queries = standardQueries
+
+	return lq, nil
 }
 
-func standardQuery(standardMetric StandardMetric, testName, generatorName, branch, commit string, startTime, endTime time.Time) (string, error) {
+func (l *LokiQueryExecutor) standardQuery(standardMetric StandardMetric, testName, generatorName, branch, commit string, startTime, endTime time.Time) (string, error) {
 	switch standardMetric {
 	case MedianLatency:
 		return fmt.Sprintf("quantile_over_time(0.5, {branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"responses\", gen_name=~\"%s\"} | json| unwrap duration [10s]) by (go_test_name, gen_name) / 1e6", branch, commit, testName, generatorName), nil
@@ -192,11 +185,11 @@ func standardQuery(standardMetric StandardMetric, testName, generatorName, branc
 	}
 }
 
-func generateStandardLokiQueries(testName, generatorName, branch, commit string, startTime, endTime time.Time) (map[string]string, error) {
+func (l *LokiQueryExecutor) generateStandardQueries(testName, generatorName, branch, commit string, startTime, endTime time.Time) (map[string]string, error) {
 	standardQueries := make(map[string]string)
 
 	for _, metric := range standardMetrics {
-		query, err := standardQuery(metric, testName, generatorName, branch, commit, startTime, endTime)
+		query, err := l.standardQuery(metric, testName, generatorName, branch, commit, startTime, endTime)
 		if err != nil {
 			return nil, err
 		}
