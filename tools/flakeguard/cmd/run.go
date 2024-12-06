@@ -29,7 +29,6 @@ var RunTestsCmd = &cobra.Command{
 		maxPassRatio, _ := cmd.Flags().GetFloat64("max-pass-ratio")
 		skipTests, _ := cmd.Flags().GetStringSlice("skip-tests")
 		selectTests, _ := cmd.Flags().GetStringSlice("select-tests")
-		printFailedTests, _ := cmd.Flags().GetBool("print-failed-tests")
 		useShuffle, _ := cmd.Flags().GetBool("shuffle")
 		shuffleSeed, _ := cmd.Flags().GetString("shuffle-seed")
 
@@ -84,10 +83,17 @@ var RunTestsCmd = &cobra.Command{
 			fmt.Printf("All test results saved to %s\n", outputPath)
 		}
 
-		// Print all failed tests including flaky tests
-		if printFailedTests {
+		// Filter flaky tests using FilterTests
+		flakyTests := reports.FilterTests(testReport.Results, func(tr reports.TestResult) bool {
+			return !tr.Skipped && tr.PassRatio < maxPassRatio
+		})
+
+		if len(flakyTests) > 0 {
+			fmt.Printf("Found %d flaky tests below the pass ratio threshold of %.2f:\n", len(flakyTests), maxPassRatio)
 			fmt.Printf("\nFlakeguard Summary\n")
-			reports.RenderResults(os.Stdout, testReport.Results, maxPassRatio, false)
+			reports.RenderResults(os.Stdout, flakyTests, maxPassRatio, false)
+			// Exit with error code if there are flaky tests
+			os.Exit(1)
 		}
 	},
 }
@@ -107,7 +113,6 @@ func init() {
 	RunTestsCmd.Flags().String("output-json", "", "Path to output the test results in JSON format")
 	RunTestsCmd.Flags().StringSlice("skip-tests", nil, "Comma-separated list of test names to skip from running")
 	RunTestsCmd.Flags().StringSlice("select-tests", nil, "Comma-separated list of test names to specifically run")
-	RunTestsCmd.Flags().Bool("print-failed-tests", true, "Print failed test results to the console")
 	RunTestsCmd.Flags().Float64("max-pass-ratio", 1.0, "The maximum pass ratio threshold for a test to be considered flaky. Any tests below this pass rate will be considered flaky.")
 }
 
