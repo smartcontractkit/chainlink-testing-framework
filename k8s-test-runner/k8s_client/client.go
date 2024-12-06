@@ -85,6 +85,8 @@ func retryK8sCall(operation k8sOperation, retryPolicy wait.Backoff) error {
 	return nil
 }
 
+// IDoNothing is a placeholder function that performs no operations. 
+// It can be used for testing or as a stub in code where a function is required but no action is needed.
 func IDoNothing() {
 	//I really do nothing
 }
