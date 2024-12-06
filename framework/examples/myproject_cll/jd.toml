@@ -1,12 +1,9 @@
 
 [blockchain_a]
-  # choose "anvil", "geth" or "besu"
-  # uncomment the second line for "anvil"
-  type = "besu"
-#  docker_cmd_params = ["-b", "1"]
+  type = "anvil"
+  docker_cmd_params = ["-b", "1"]
 
-[data_provider]
-  port = 9111
+[jd]
 
 [nodeset]
   nodes = 5

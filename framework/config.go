@@ -130,9 +130,9 @@ func Load[X any](t *testing.T) (*X, error) {
 	t.Cleanup(func() {
 		err := Store[X](input)
 		require.NoError(t, err)
-		err = WriteAllContainersLogs()
+		err = WriteAllContainersLogs(DefaultCTFLogsDir)
 		require.NoError(t, err)
-		err = checkNodeLogErrors(DefaultCTFLogsDir)
+		err = checkAllNodeLogErrors()
 		require.NoError(t, err)
 	})
 	// TODO: not all the people have AWS access, sadly enough, uncomment when granted
