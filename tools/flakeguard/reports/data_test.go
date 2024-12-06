@@ -340,6 +340,128 @@ func TestAggregate(t *testing.T) {
 	}
 }
 
+func TestAggregateOutputs(t *testing.T) {
+	report1 := &TestReport{
+		GoProject:    "ProjectX",
+		TestRunCount: 1,
+		Results: []TestResult{
+			{
+				TestName:       "TestOutput",
+				TestPackage:    "pkg1",
+				Runs:           1,
+				Successes:      1,
+				Outputs:        []string{"Output from report1 test run"},
+				PackageOutputs: []string{"Package output from report1"},
+			},
+		},
+	}
+
+	report2 := &TestReport{
+		GoProject:    "ProjectX",
+		TestRunCount: 1,
+		Results: []TestResult{
+			{
+				TestName:       "TestOutput",
+				TestPackage:    "pkg1",
+				Runs:           1,
+				Successes:      1,
+				Outputs:        []string{"Output from report2 test run"},
+				PackageOutputs: []string{"Package output from report2"},
+			},
+		},
+	}
+
+	aggregatedReport, err := Aggregate(report1, report2)
+	if err != nil {
+		t.Fatalf("Error aggregating reports: %v", err)
+	}
+
+	if len(aggregatedReport.Results) != 1 {
+		t.Fatalf("Expected 1 result, got %d", len(aggregatedReport.Results))
+	}
+
+	result := aggregatedReport.Results[0]
+
+	// Expected outputs
+	expectedOutputs := []string{
+		"Output from report1 test run",
+		"Output from report2 test run",
+	}
+	expectedPackageOutputs := []string{
+		"Package output from report1",
+		"Package output from report2",
+	}
+
+	if !reflect.DeepEqual(result.Outputs, expectedOutputs) {
+		t.Errorf("Expected Outputs %v, got %v", expectedOutputs, result.Outputs)
+	}
+
+	if !reflect.DeepEqual(result.PackageOutputs, expectedPackageOutputs) {
+		t.Errorf("Expected PackageOutputs %v, got %v", expectedPackageOutputs, result.PackageOutputs)
+	}
+}
+
+func TestAggregateIdenticalOutputs(t *testing.T) {
+	report1 := &TestReport{
+		GoProject:    "ProjectX",
+		TestRunCount: 1,
+		Results: []TestResult{
+			{
+				TestName:       "TestIdenticalOutput",
+				TestPackage:    "pkg1",
+				Runs:           1,
+				Successes:      1,
+				Outputs:        []string{"Identical output"},
+				PackageOutputs: []string{"Identical package output"},
+			},
+		},
+	}
+
+	report2 := &TestReport{
+		GoProject:    "ProjectX",
+		TestRunCount: 1,
+		Results: []TestResult{
+			{
+				TestName:       "TestIdenticalOutput",
+				TestPackage:    "pkg1",
+				Runs:           1,
+				Successes:      1,
+				Outputs:        []string{"Identical output"},
+				PackageOutputs: []string{"Identical package output"},
+			},
+		},
+	}
+
+	aggregatedReport, err := Aggregate(report1, report2)
+	if err != nil {
+		t.Fatalf("Error aggregating reports: %v", err)
+	}
+
+	if len(aggregatedReport.Results) != 1 {
+		t.Fatalf("Expected 1 result, got %d", len(aggregatedReport.Results))
+	}
+
+	result := aggregatedReport.Results[0]
+
+	// Expected outputs
+	expectedOutputs := []string{
+		"Identical output",
+		"Identical output",
+	}
+	expectedPackageOutputs := []string{
+		"Identical package output",
+		"Identical package output",
+	}
+
+	if !reflect.DeepEqual(result.Outputs, expectedOutputs) {
+		t.Errorf("Expected Outputs %v, got %v", expectedOutputs, result.Outputs)
+	}
+
+	if !reflect.DeepEqual(result.PackageOutputs, expectedPackageOutputs) {
+		t.Errorf("Expected PackageOutputs %v, got %v", expectedPackageOutputs, result.PackageOutputs)
+	}
+}
+
 // TestMergeTestResults tests the mergeTestResults function.
 func TestMergeTestResults(t *testing.T) {
 	a := TestResult{

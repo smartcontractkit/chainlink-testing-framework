@@ -83,19 +83,51 @@ var ReportCmd = &cobra.Command{
 			fmt.Println("Test results mapped to code owners successfully.")
 		}
 
-		// Exclude outputs and package outputs from the aggregated report of all tests
-		for i := range aggregatedReport.Results {
-			aggregatedReport.Results[i].Outputs = nil
-			aggregatedReport.Results[i].PackageOutputs = nil
-		}
-
 		// Create output directory if it doesn't exist
 		outputDir := reportOutputPath
 		if err := fs.MkdirAll(outputDir, 0755); err != nil {
 			return fmt.Errorf("error creating output directory: %w", err)
 		}
 
-		// Save the aggregated report (all tests)
+		// Filter failed tests (PassRatio < maxPassRatio and not skipped)
+		s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
+		s.Suffix = " Filtering failed tests..."
+		s.Start()
+
+		failedTests := reports.FilterTests(aggregatedReport.Results, func(tr reports.TestResult) bool {
+			return !tr.Skipped && tr.PassRatio < reportMaxPassRatio
+		})
+		s.Stop()
+		fmt.Println("Failed tests filtered successfully.")
+
+		// Create a new report for failed tests with logs
+		failedReportWithLogs := &reports.TestReport{
+			GoProject:     aggregatedReport.GoProject,
+			TestRunCount:  aggregatedReport.TestRunCount,
+			RaceDetection: aggregatedReport.RaceDetection,
+			ExcludedTests: aggregatedReport.ExcludedTests,
+			SelectedTests: aggregatedReport.SelectedTests,
+			Results:       failedTests,
+		}
+
+		// Save the failed tests report with logs
+		failedTestsReportWithLogsPath := filepath.Join(outputDir, "failed-test-results-with-logs.json")
+		if err := reports.SaveReport(fs, failedTestsReportWithLogsPath, *failedReportWithLogs); err != nil {
+			return fmt.Errorf("error saving failed tests report with logs: %w", err)
+		}
+		fmt.Printf("Failed tests report with logs saved to %s\n", failedTestsReportWithLogsPath)
+
+		// Set Outputs and PackageOutputs to nil for reports without logs
+		for i := range aggregatedReport.Results {
+			aggregatedReport.Results[i].Outputs = nil
+			aggregatedReport.Results[i].PackageOutputs = nil
+		}
+		for i := range failedTests {
+			failedTests[i].Outputs = nil
+			failedTests[i].PackageOutputs = nil
+		}
+
+		// Save the aggregated report (all tests) without logs
 		allTestsReportPath := filepath.Join(outputDir, "all-test-results.json")
 		if err := reports.SaveReport(fs, allTestsReportPath, *aggregatedReport); err != nil {
 			return fmt.Errorf("error saving all tests report: %w", err)
@@ -168,18 +200,7 @@ var ReportCmd = &cobra.Command{
 			fmt.Println("PR comment markdown generated successfully.")
 		}
 
-		// Filter failed tests (PassRatio < maxPassRatio and not skipped)
-		s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-		s.Suffix = " Filtering failed tests..."
-		s.Start()
-
-		failedTests := reports.FilterTests(aggregatedReport.Results, func(tr reports.TestResult) bool {
-			return !tr.Skipped && tr.PassRatio < reportMaxPassRatio
-		})
-		s.Stop()
-		fmt.Println("Failed tests filtered successfully.")
-
-		// Create a new report for failed tests
+		// Create a new report for failed tests without logs
 		failedReportNoLogs := &reports.TestReport{
 			GoProject:     aggregatedReport.GoProject,
 			TestRunCount:  aggregatedReport.TestRunCount,
@@ -189,36 +210,12 @@ var ReportCmd = &cobra.Command{
 			Results:       failedTests,
 		}
 
-		// Save the failed tests report with no logs
+		// Save the failed tests report without logs
 		failedTestsReportNoLogsPath := filepath.Join(outputDir, "failed-test-results.json")
 		if err := reports.SaveReport(fs, failedTestsReportNoLogsPath, *failedReportNoLogs); err != nil {
-			return fmt.Errorf("error saving failed tests report: %w", err)
+			return fmt.Errorf("error saving failed tests report without logs: %w", err)
 		}
 		fmt.Printf("Failed tests report without logs saved to %s\n", failedTestsReportNoLogsPath)
-
-		// Retrieve outputs and package outputs for failed tests
-		for i := range failedTests {
-			// Retrieve outputs and package outputs from original reports
-			failedTests[i].Outputs = getOriginalOutputs(testReports, failedTests[i].TestName, failedTests[i].TestPackage)
-			failedTests[i].PackageOutputs = getOriginalPackageOutputs(testReports, failedTests[i].TestName, failedTests[i].TestPackage)
-		}
-
-		// Create a new report for failed tests
-		failedReportWithLogs := &reports.TestReport{
-			GoProject:     aggregatedReport.GoProject,
-			TestRunCount:  aggregatedReport.TestRunCount,
-			RaceDetection: aggregatedReport.RaceDetection,
-			ExcludedTests: aggregatedReport.ExcludedTests,
-			SelectedTests: aggregatedReport.SelectedTests,
-			Results:       failedTests,
-		}
-
-		// Save the failed tests report
-		failedTestsReportWithLogsPath := filepath.Join(outputDir, "failed-test-results-with-logs.json")
-		if err := reports.SaveReport(fs, failedTestsReportWithLogsPath, *failedReportWithLogs); err != nil {
-			return fmt.Errorf("error saving failed tests report: %w", err)
-		}
-		fmt.Printf("Failed tests report with logs saved to %s\n", failedTestsReportWithLogsPath)
 
 		fmt.Printf("Reports generated at: %s\n", reportOutputPath)
 
@@ -286,28 +283,5 @@ func generateAllTestsSummaryJSON(report *reports.TestReport, outputPath string, 
 		return fmt.Errorf("error writing data to file: %w", err)
 	}
 
-	return nil
-}
-
-// Helper functions to retrieve original outputs and package outputs
-func getOriginalOutputs(reports []*reports.TestReport, testName, testPackage string) []string {
-	for _, report := range reports {
-		for _, result := range report.Results {
-			if result.TestName == testName && result.TestPackage == testPackage {
-				return result.Outputs
-			}
-		}
-	}
-	return nil
-}
-
-func getOriginalPackageOutputs(reports []*reports.TestReport, testName, testPackage string) []string {
-	for _, report := range reports {
-		for _, result := range report.Results {
-			if result.TestName == testName && result.TestPackage == testPackage {
-				return result.PackageOutputs
-			}
-		}
-	}
 	return nil
 }
