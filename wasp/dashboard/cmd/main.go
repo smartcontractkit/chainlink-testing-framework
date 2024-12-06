@@ -4,6 +4,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp/dashboard"
 )
 
+// main creates and deploys a default dashboard using environment variables for configuration.
+// It sets up the dashboard without extensions or non-functional requirements, enabling straightforward deployment.
 func main() {
 	// just default dashboard, no NFRs, no dashboard extensions
 	// see examples/alerts.go for an example extension

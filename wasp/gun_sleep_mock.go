@@ -23,7 +23,8 @@ type MockGun struct {
 	Data []string
 }
 
-// NewMockGun create a mock gun
+// NewMockGun creates a new MockGun instance using the provided configuration.
+// It is used to simulate gun behavior for testing or development purposes.
 func NewMockGun(cfg *MockGunConfig) *MockGun {
 	return &MockGun{
 		cfg:  cfg,
@@ -31,7 +32,9 @@ func NewMockGun(cfg *MockGunConfig) *MockGun {
 	}
 }
 
-// Call implements example gun call, assertions on response bodies should be done here
+// Call simulates a request to the Generator.
+// Depending on MockGun's configuration, it may succeed, fail, or timeout,
+// allowing testing of various response scenarios.
 func (m *MockGun) Call(l *Generator) *Response {
 	if m.cfg.InternalStop {
 		l.Stop()
@@ -54,6 +57,8 @@ func (m *MockGun) Call(l *Generator) *Response {
 	return &Response{Data: "successCallData"}
 }
 
+// convertResponsesData extracts successful and failed response data from the Generator.
+// It returns a slice of successful response strings, OK responses, and failed responses.
 func convertResponsesData(g *Generator) ([]string, []*Response, []*Response) {
 	g.responsesData.okDataMu.Lock()
 	defer g.responsesData.okDataMu.Unlock()
