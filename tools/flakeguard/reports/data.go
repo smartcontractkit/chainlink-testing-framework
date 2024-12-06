@@ -40,29 +40,33 @@ type TestResult struct {
 }
 
 type SummaryData struct {
-	TotalTests       int     `json:"total_tests"`
-	PanickedTests    int     `json:"panicked_tests"`
-	RacedTests       int     `json:"raced_tests"`
-	FlakyTests       int     `json:"flaky_tests"`
-	FlakyTestRatio   string  `json:"flaky_test_ratio"`
-	TotalRuns        int     `json:"total_runs"`
-	PassedRuns       int     `json:"passed_runs"`
-	FailedRuns       int     `json:"failed_runs"`
-	SkippedRuns      int     `json:"skipped_runs"`
-	PassRatio        string  `json:"pass_ratio"`
-	MaxPassRatio     float64 `json:"max_pass_ratio"`
-	AveragePassRatio float64 `json:"average_pass_ratio"`
+	TotalTests     int     `json:"total_tests"`
+	PanickedTests  int     `json:"panicked_tests"`
+	RacedTests     int     `json:"raced_tests"`
+	FlakyTests     int     `json:"flaky_tests"`
+	FlakyTestRatio string  `json:"flaky_test_ratio"`
+	TotalRuns      int     `json:"total_runs"`
+	PassedRuns     int     `json:"passed_runs"`
+	FailedRuns     int     `json:"failed_runs"`
+	SkippedRuns    int     `json:"skipped_runs"`
+	PassRatio      string  `json:"pass_ratio"`
+	MaxPassRatio   float64 `json:"max_pass_ratio"`
 }
 
 // Data Processing Functions
 
 func GenerateSummaryData(tests []TestResult, maxPassRatio float64) SummaryData {
-	var runs, passes, fails, skips, panickedTests, racedTests, flakyTests int
+	var runs, passes, fails, skips, panickedTests, racedTests, flakyTests, skippedTests int
 	for _, result := range tests {
 		runs += result.Runs
 		passes += result.Successes
 		fails += result.Failures
 		skips += result.Skips
+
+		// Count tests that were entirely skipped
+		if result.Runs == 0 && result.Skipped {
+			skippedTests++
+		}
 
 		if result.Panic {
 			panickedTests++
@@ -71,38 +75,34 @@ func GenerateSummaryData(tests []TestResult, maxPassRatio float64) SummaryData {
 			racedTests++
 			flakyTests++
 		} else if !result.Skipped && result.Runs > 0 && result.PassRatio < maxPassRatio {
-			// Exclude skipped tests and tests with no runs
 			flakyTests++
 		}
 	}
 
 	passPercentage := 100.0
 	flakePercentage := 0.0
-	averagePassRatio := 1.0
 
 	if runs > 0 {
-		passPercentage = math.Round((float64(passes)/float64(runs)*100)*100) / 100
-		averagePassRatio = float64(passes) / float64(runs)
+		passPercentage = math.Floor((float64(passes)/float64(runs)*100)*100) / 100 // Truncate to 2 decimal places
 	}
-	totalTests := len(tests)                 // Include skipped tests in total tests
-	totalExecutedTests := totalTests - skips // Tests that were actually executed
-	if totalExecutedTests > 0 {
-		flakePercentage = math.Round((float64(flakyTests)/float64(totalExecutedTests)*100)*100) / 100
+
+	totalTests := len(tests)
+	if totalTests > 0 {
+		flakePercentage = math.Floor((float64(flakyTests)/float64(totalTests)*100)*100) / 100 // Truncate to 2 decimal places
 	}
 
 	return SummaryData{
-		TotalTests:       totalTests,
-		PanickedTests:    panickedTests,
-		RacedTests:       racedTests,
-		FlakyTests:       flakyTests,
-		FlakyTestRatio:   fmt.Sprintf("%.2f%%", flakePercentage),
-		TotalRuns:        runs,
-		PassedRuns:       passes,
-		FailedRuns:       fails,
-		SkippedRuns:      skips,
-		PassRatio:        fmt.Sprintf("%.2f%%", passPercentage),
-		MaxPassRatio:     maxPassRatio,
-		AveragePassRatio: averagePassRatio,
+		TotalTests:     totalTests,
+		PanickedTests:  panickedTests,
+		RacedTests:     racedTests,
+		FlakyTests:     flakyTests,
+		FlakyTestRatio: fmt.Sprintf("%.2f%%", flakePercentage),
+		TotalRuns:      runs,
+		PassedRuns:     passes,
+		FailedRuns:     fails,
+		SkippedRuns:    skips,
+		PassRatio:      fmt.Sprintf("%.2f%%", passPercentage),
+		MaxPassRatio:   maxPassRatio,
 	}
 }
 

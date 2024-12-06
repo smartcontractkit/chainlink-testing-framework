@@ -169,8 +169,6 @@ func TestGeneratePRCommentMarkdown(t *testing.T) {
 
 	output := buffer.String()
 
-	fmt.Println(output)
-
 	// Check that the output includes the expected headings and links
 	if !strings.Contains(output, "# Flakeguard Summary") {
 		t.Error("Expected markdown summary to contain '# Flakeguard Summary'")
@@ -251,18 +249,17 @@ func TestRenderResults(t *testing.T) {
 			},
 			maxPassRatio: 0.9,
 			expectedSummary: SummaryData{
-				TotalTests:       1,
-				PanickedTests:    0,
-				RacedTests:       0,
-				FlakyTests:       1,
-				FlakyTestRatio:   "100.00%",
-				TotalRuns:        4,
-				PassedRuns:       3,
-				FailedRuns:       1,
-				SkippedRuns:      0,
-				PassRatio:        "75.00%",
-				MaxPassRatio:     0.9,
-				AveragePassRatio: 0.75,
+				TotalTests:     1,
+				PanickedTests:  0,
+				RacedTests:     0,
+				FlakyTests:     1,
+				FlakyTestRatio: "100.00%",
+				TotalRuns:      4,
+				PassedRuns:     3,
+				FailedRuns:     1,
+				SkippedRuns:    0,
+				PassRatio:      "75.00%",
+				MaxPassRatio:   0.9,
 			},
 			expectedStringsContain: []string{"Test1", "package1", "75.00%", "false", "1.05s", "4", "0"},
 		},
@@ -298,9 +295,6 @@ func TestRenderResults(t *testing.T) {
 			}
 			if summary.PassRatio != tc.expectedSummary.PassRatio {
 				t.Errorf("Expected PassRatio %v, got %v", tc.expectedSummary.PassRatio, summary.PassRatio)
-			}
-			if summary.AveragePassRatio != tc.expectedSummary.AveragePassRatio {
-				t.Errorf("Expected AveragePassRatio %v, got %v", tc.expectedSummary.AveragePassRatio, summary.AveragePassRatio)
 			}
 
 			// Verify output content

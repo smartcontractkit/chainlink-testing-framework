@@ -95,7 +95,7 @@ func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassR
 	}
 
 	summary := GenerateSummaryData(testReport.Results, maxPassRatio)
-	if summary.AveragePassRatio < maxPassRatio {
+	if summary.FlakyTests > 0 {
 		fmt.Fprintln(w, "## Found Flaky Tests :x:")
 	} else {
 		fmt.Fprintln(w, "## No Flakes Found :white_check_mark:")
@@ -134,7 +134,7 @@ func GeneratePRCommentMarkdown(w io.Writer, testReport *TestReport, maxPassRatio
 	}
 
 	// Add the flaky tests section
-	if GenerateSummaryData(testReport.Results, maxPassRatio).AveragePassRatio < maxPassRatio {
+	if GenerateSummaryData(testReport.Results, maxPassRatio).FlakyTests > 0 {
 		fmt.Fprintln(w, "## Found Flaky Tests :x:")
 	} else {
 		fmt.Fprintln(w, "## No Flakes Found :white_check_mark:")
