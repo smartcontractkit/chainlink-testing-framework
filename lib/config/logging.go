@@ -5,27 +5,17 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/net"
 )
 
 type LoggingConfig struct {
-	TestLogCollect         *bool            `toml:"test_log_collect,omitempty"`
-	ShowHTMLCoverageReport *bool            `toml:"show_html_coverage_report,omitempty"` // Show reports with go coverage data
-	RunId                  *string          `toml:"run_id,omitempty"`
-	Loki                   *LokiConfig      `toml:"-"`
-	Grafana                *GrafanaConfig   `toml:"Grafana,omitempty"`
-	LogStream              *LogStreamConfig `toml:"LogStream,omitempty"`
+	ShowHTMLCoverageReport *bool          `toml:"show_html_coverage_report,omitempty"` // Show reports with go coverage data
+	Loki                   *LokiConfig    `toml:"-"`
+	Grafana                *GrafanaConfig `toml:"Grafana,omitempty"`
 }
 
-// Validate executes config validation for LogStream, Grafana and Loki
+// Validate executes config validation for Grafana and Loki
 func (l *LoggingConfig) Validate() error {
-	if l.LogStream != nil {
-		if err := l.LogStream.Validate(); err != nil {
-			return fmt.Errorf("invalid log stream config: %w", err)
-		}
-	}
-
 	if l.Grafana != nil {
 		if err := l.Grafana.Validate(); err != nil {
 			return fmt.Errorf("invalid grafana config: %w", err)
@@ -35,32 +25,6 @@ func (l *LoggingConfig) Validate() error {
 	if l.Loki != nil {
 		if err := l.Loki.Validate(); err != nil {
 			return fmt.Errorf("invalid loki config: %w", err)
-		}
-	}
-
-	return nil
-}
-
-type LogStreamConfig struct {
-	LogTargets            []string                `toml:"log_targets"`
-	LogProducerTimeout    *blockchain.StrDuration `toml:"log_producer_timeout"`
-	LogProducerRetryLimit *uint                   `toml:"log_producer_retry_limit"`
-}
-
-// Validate checks that the log stream config is valid, which means that
-// log targets are valid and log producer timeout is greater than 0
-func (l *LogStreamConfig) Validate() error {
-	if len(l.LogTargets) > 0 {
-		for _, target := range l.LogTargets {
-			if target != "loki" && target != "file" && target != "in-memory" {
-				return fmt.Errorf("invalid log target %s", target)
-			}
-		}
-	}
-
-	if l.LogProducerTimeout != nil {
-		if l.LogProducerTimeout.Duration == 0 {
-			return errors.New("log producer timeout must be greater than 0")
 		}
 	}
 

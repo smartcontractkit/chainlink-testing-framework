@@ -2,6 +2,7 @@ package clnode
 
 import (
 	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"

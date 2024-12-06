@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	DefaultCTFLogsDir = "logs"
+	DefaultCTFLogsDir = "logs/docker"
 )
 
 func IsDockerRunning() bool {
@@ -74,6 +74,17 @@ func runCommand(name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+// RunCommandDir executes a command in some directory and prints the output
+func RunCommandDir(dir, name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if dir != "" {
+		cmd.Dir = dir
+	}
 	return cmd.Run()
 }
 
@@ -178,11 +189,11 @@ func isLocalToolDockerContainer(containerName string) bool {
 }
 
 // WriteAllContainersLogs writes all Docker container logs to the default logs directory
-func WriteAllContainersLogs() error {
+func WriteAllContainersLogs(dir string) error {
 	L.Info().Msg("Writing Docker containers logs")
-	if _, err := os.Stat(DefaultCTFLogsDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(DefaultCTFLogsDir, 0755); err != nil {
-			return fmt.Errorf("failed to create directory %s: %w", DefaultCTFLogsDir, err)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", dir, err)
 		}
 	}
 	provider, err := tc.NewDockerProvider()
@@ -209,7 +220,7 @@ func WriteAllContainersLogs() error {
 				L.Error().Err(err).Str("Container", containerName).Msg("failed to fetch logs for container")
 				return err
 			}
-			logFilePath := filepath.Join(DefaultCTFLogsDir, fmt.Sprintf("%s.log", containerName))
+			logFilePath := filepath.Join(dir, fmt.Sprintf("%s.log", containerName))
 			logFile, err := os.Create(logFilePath)
 			if err != nil {
 				L.Error().Err(err).Str("Container", containerName).Msg("failed to create container log file")

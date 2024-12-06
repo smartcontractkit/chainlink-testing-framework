@@ -1,8 +1,6 @@
 package reports
 
 import (
-	"fmt"
-	"path/filepath"
 	"strings"
 )
 
@@ -30,13 +28,8 @@ func MapTestResultsToPaths(report *TestReport, rootDir string) error {
 			filePath = path
 		}
 
-		// Normalize filePath to be relative to the project root
 		if filePath != "" {
-			relFilePath, err := filepath.Rel(rootDir, filePath)
-			if err != nil {
-				return fmt.Errorf("error getting relative path: %v", err)
-			}
-			report.Results[i].TestPath = relFilePath
+			report.Results[i].TestPath = filePath
 		} else {
 			// Log or mark tests not found in the codebase
 			report.Results[i].TestPath = "NOT FOUND"

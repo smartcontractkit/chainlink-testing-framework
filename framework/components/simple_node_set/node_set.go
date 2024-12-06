@@ -32,6 +32,7 @@ type Input struct {
 // Output is a node set configuration output, used for caching or external components
 type Output struct {
 	UseCache bool             `toml:"use_cache"`
+	DBOut    *postgres.Output `toml:"db_out"`
 	CLNodes  []*clnode.Output `toml:"cl_nodes"`
 }
 
@@ -80,7 +81,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 	}
 	nodeOuts := make([]*clnode.Output, 0)
 
-	envImage := os.Getenv("CHAINLINK_IMAGE")
+	envImage := os.Getenv("CTF_CHAINLINK_IMAGE")
 
 	// to make it easier for chaos testing we use static ports
 	// there is no need to check them in advance since testcontainers-go returns a nice error
@@ -170,6 +171,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 	sortNodeOutsByHostPort(nodeOuts)
 	return &Output{
 		UseCache: true,
+		DBOut:    dbOut,
 		CLNodes:  nodeOuts,
 	}, nil
 }

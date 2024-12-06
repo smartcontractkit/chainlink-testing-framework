@@ -1,0 +1,7 @@
+[profile.default]
+chain_id = "1337"
+src = "src"
+out = "out"
+libs = ["lib"]
+
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
