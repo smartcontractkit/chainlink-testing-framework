@@ -7,14 +7,20 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/api"
 	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/internal"
 
 	"github.com/ethereum/go-ethereum/common"
 )
 
+type SubscriptionManagerConfig struct {
+	Logger  *zerolog.Logger
+	ChainID int64
+}
+
 // SubscriptionManager manages subscriptions for a specific chain.
 type SubscriptionManager struct {
-	registry          map[internal.EventKey][]chan internal.Log
+	registry          map[internal.EventKey][]chan api.Log
 	registryMutex     sync.RWMutex
 	logger            zerolog.Logger
 	chainID           int64
@@ -29,21 +35,21 @@ type SubscriptionManager struct {
 }
 
 // NewSubscriptionManager initializes a new SubscriptionManager.
-func NewSubscriptionManager(logger zerolog.Logger, chainID int64) *SubscriptionManager {
-	subscriptionManagerLogger := logger.With().Str("component", "SubscriptionManager").Logger()
+func NewSubscriptionManager(cfg SubscriptionManagerConfig) *SubscriptionManager {
+	subscriptionManagerLogger := cfg.Logger.With().Str("component", "SubscriptionManager").Logger()
 	mu := &sync.Mutex{}
 
 	return &SubscriptionManager{
-		registry:          make(map[internal.EventKey][]chan internal.Log),
+		registry:          make(map[internal.EventKey][]chan api.Log),
 		logger:            subscriptionManagerLogger,
-		chainID:           chainID,
+		chainID:           cfg.ChainID,
 		channelBufferSize: 3,
 		cond:              sync.NewCond(mu),
 	}
 }
 
 // Subscribe registers a new subscription and returns a channel for events.
-func (sm *SubscriptionManager) Subscribe(address common.Address, topic common.Hash) (chan internal.Log, error) {
+func (sm *SubscriptionManager) Subscribe(address common.Address, topic common.Hash) (chan api.Log, error) {
 	if address == (common.Address{}) {
 		sm.logger.Warn().Msg("Attempted to subscribe with an empty address")
 		return nil, errors.New("address cannot be empty")
@@ -56,11 +62,11 @@ func (sm *SubscriptionManager) Subscribe(address common.Address, topic common.Ha
 	sm.registryMutex.Lock()
 	defer sm.registryMutex.Unlock()
 
-	eventKey := internal.EventKey{Address: address, Topic: topic}
-	newChan := make(chan internal.Log, sm.channelBufferSize)
-	sm.registry[eventKey] = append(sm.registry[eventKey], newChan)
-
 	sm.invalidateCache()
+
+	eventKey := internal.EventKey{Address: address, Topic: topic}
+	newChan := make(chan api.Log, sm.channelBufferSize)
+	sm.registry[eventKey] = append(sm.registry[eventKey], newChan)
 
 	sm.logger.Info().
 		Int64("ChainID", sm.chainID).
@@ -73,7 +79,7 @@ func (sm *SubscriptionManager) Subscribe(address common.Address, topic common.Ha
 }
 
 // Unsubscribe removes a subscription and closes the channel.
-func (sm *SubscriptionManager) Unsubscribe(address common.Address, topic common.Hash, ch chan internal.Log) error {
+func (sm *SubscriptionManager) Unsubscribe(address common.Address, topic common.Hash, ch chan api.Log) error {
 	sm.registryMutex.Lock()
 	defer sm.registryMutex.Unlock()
 
@@ -92,6 +98,7 @@ func (sm *SubscriptionManager) Unsubscribe(address common.Address, topic common.
 
 	for i, subscriber := range subscribers {
 		if subscriber == ch {
+			sm.invalidateCache()
 			// Remove the subscriber from the list
 			sm.registry[eventKey] = append(subscribers[:i], subscribers[i+1:]...)
 			sm.logger.Info().
@@ -137,18 +144,19 @@ func (sm *SubscriptionManager) Unsubscribe(address common.Address, topic common.
 		Hex("Address", []byte(address.Hex())).
 		Hex("Topic", []byte(topic.Hex())).
 		Msg("Subscription removed")
-
-	sm.invalidateCache()
 	return nil
 }
 
 // BroadcastLog sends the log event to all relevant subscribers.
-func (sm *SubscriptionManager) BroadcastLog(eventKey internal.EventKey, log internal.Log) {
+func (sm *SubscriptionManager) BroadcastLog(eventKey internal.EventKey, log api.Log) {
 	sm.registryMutex.RLock()
 	subscribers, exists := sm.registry[eventKey]
 	sm.registryMutex.RUnlock()
 
 	if !exists {
+		sm.logger.Error().
+			Interface("EventKey", eventKey).
+			Msg("EventKey not found in registry")
 		return
 	}
 
@@ -157,13 +165,13 @@ func (sm *SubscriptionManager) BroadcastLog(eventKey internal.EventKey, log inte
 		sm.cond.L.Lock()
 		if sm.closing {
 			// If the manager is closing, skip sending logs
-			sm.cond.L.Unlock()
+			defer sm.cond.L.Unlock()
 			return
 		}
 		sm.activeSends++
 		sm.cond.L.Unlock()
 		wg.Add(1)
-		go func(ch chan internal.Log) {
+		go func(ch chan api.Log) {
 			defer func() {
 				sm.cond.L.Lock()
 				sm.activeSends--
@@ -183,6 +191,8 @@ func (sm *SubscriptionManager) BroadcastLog(eventKey internal.EventKey, log inte
 	wg.Wait() // Wait for all sends to complete before returning
 	sm.logger.Debug().
 		Int64("ChainID", sm.chainID).
+		Int("Subscribers", len(subscribers)).
+		Hex("Address", []byte(eventKey.Address.Hex())).
 		Hex("Topic", []byte(eventKey.Topic.Hex())).
 		Msg("Log broadcasted to all subscribers")
 }

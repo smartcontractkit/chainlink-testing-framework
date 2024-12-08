@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/chain_poller"
+	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/api"
 	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/chain_poller_service"
 	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/internal"
 )
@@ -23,16 +23,13 @@ type MockChainPoller struct {
 	mock.Mock
 }
 
-func (m *MockChainPoller) Poll(ctx context.Context, filterQueries []internal.FilterQuery) ([]internal.Log, error) {
+func (m *MockChainPoller) FilterLogs(ctx context.Context, filterQueries []api.FilterQuery) ([]api.Log, error) {
 	args := m.Called(ctx, filterQueries)
-	if logs, ok := args.Get(0).([]internal.Log); ok {
+	if logs, ok := args.Get(0).([]api.Log); ok {
 		return logs, args.Error(1)
 	}
 	return nil, args.Error(1)
 }
-
-// Ensure MockChainPoller implements ChainPollerInterface
-var _ chain_poller.ChainPollerInterface = (*MockChainPoller)(nil)
 
 func setup(t *testing.T) (chain_poller_service.ChainPollerServiceConfig, *internal.MockBlockchainClient) {
 	mockBlockchainClient := new(internal.MockBlockchainClient)
@@ -44,7 +41,7 @@ func setup(t *testing.T) (chain_poller_service.ChainPollerServiceConfig, *intern
 
 	config := chain_poller_service.ChainPollerServiceConfig{
 		PollInterval:     100 * time.Millisecond,
-		Logger:           testLogger,
+		Logger:           &testLogger,
 		ChainID:          1,
 		BlockchainClient: mockBlockchainClient,
 	}
@@ -71,7 +68,7 @@ func TestChainPollerService_Initialization_InvalidBlockchainClient(t *testing.T)
 
 	config := chain_poller_service.ChainPollerServiceConfig{
 		PollInterval:     100 * time.Millisecond,
-		Logger:           testLogger,
+		Logger:           &testLogger,
 		ChainID:          1,
 		BlockchainClient: nil,
 	}
@@ -117,7 +114,7 @@ func TestChainPollerService_PollCycle_FetchAndBroadcast(t *testing.T) {
 	toBlock := uint64(110)
 
 	// Define the expected filter query
-	filterQuery := internal.FilterQuery{
+	filterQuery := api.FilterQuery{
 		FromBlock: chainPollerService.LastBlock.Uint64() + 1,
 		ToBlock:   toBlock,
 		Addresses: []common.Address{address},
@@ -125,7 +122,7 @@ func TestChainPollerService_PollCycle_FetchAndBroadcast(t *testing.T) {
 	}
 
 	// Define fetched logs
-	fetchedLogs := []internal.Log{
+	fetchedLogs := []api.Log{
 		{
 			BlockNumber: 105,
 			TxHash:      common.HexToHash("0xdeadbeef"),

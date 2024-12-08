@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/api"
 	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/internal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,7 +15,7 @@ import (
 // setupSubscriptionManager initializes a SubscriptionManager with a MockLogger for testing.
 func setupSubscriptionManager(t *testing.T) *SubscriptionManager {
 	testLogger := logging.GetTestLogger(t)
-	return NewSubscriptionManager(testLogger, 1)
+	return NewSubscriptionManager(SubscriptionManagerConfig{Logger: &testLogger, ChainID: 1})
 }
 
 func TestSubscriptionManager_Subscribe(t *testing.T) {
@@ -65,7 +66,7 @@ func TestSubscriptionManager_MultipleSubscribers(t *testing.T) {
 	assert.Len(t, subscribers, 2, "There should be two channels subscribed to the EventKey")
 
 	// Broadcast a log and ensure both channels receive it
-	logEvent := internal.Log{
+	logEvent := api.Log{
 		BlockNumber: 1,
 		TxHash:      common.HexToHash("0x1234"),
 		Data:        []byte("log data"),
@@ -103,7 +104,7 @@ func TestSubscriptionManager_Unsubscribe(t *testing.T) {
 	assert.Error(t, err)
 
 	// Unsubscribe non-existent event key
-	otherCh := make(chan internal.Log)
+	otherCh := make(chan api.Log)
 	err = manager.Unsubscribe(address, topic, otherCh)
 	assert.Error(t, err)
 
@@ -162,7 +163,7 @@ func TestSubscriptionManager_BroadcastLog(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, ch)
 
-	logEvent := internal.Log{
+	logEvent := api.Log{
 		BlockNumber: 1,
 		TxHash:      common.HexToHash("0x1234"),
 		Data:        []byte("log data"),
@@ -182,38 +183,52 @@ func TestSubscriptionManager_BroadcastLog(t *testing.T) {
 func TestSubscriptionManager_BroadcastToAllSubscribers(t *testing.T) {
 	manager := setupSubscriptionManager(t)
 
-	address := common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678")
-	topic := common.HexToHash("0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd")
-	eventKey := internal.EventKey{Address: address, Topic: topic}
+	address1 := common.HexToAddress("0x9999567890abcdef1234567890abcdef12345678")
+	topic1 := common.HexToHash("0xaaadefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd")
+	eventKey1 := internal.EventKey{Address: address1, Topic: topic1}
 
-	ch1, err := manager.Subscribe(address, topic)
+	address2 := common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678")
+	topic2 := common.HexToHash("0xaaadefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd")
+	eventKey2 := internal.EventKey{Address: address2, Topic: topic2}
+
+	ch1, err := manager.Subscribe(address1, topic1)
 	require.NoError(t, err)
 
-	ch2, err := manager.Subscribe(address, topic)
+	ch2, err := manager.Subscribe(address2, topic2)
 	require.NoError(t, err)
 
-	ch3, err := manager.Subscribe(address, topic)
+	ch3, err := manager.Subscribe(address1, topic1)
 	require.NoError(t, err)
 
 	// Broadcast a log and ensure all channels receive it
-	logEvent := internal.Log{
+	logEvent1 := api.Log{
 		BlockNumber: 2,
 		TxHash:      common.HexToHash("0x5678"),
 		Data:        []byte("another log data"),
-		Address:     address,
-		Topics:      []common.Hash{topic},
+		Address:     address1,
+		Topics:      []common.Hash{topic1},
 		Index:       0,
 	}
 
-	manager.BroadcastLog(eventKey, logEvent)
+	logEvent2 := api.Log{
+		BlockNumber: 3,
+		TxHash:      common.HexToHash("0x2345"),
+		Data:        []byte("another log data 2"),
+		Address:     address2,
+		Topics:      []common.Hash{topic2},
+		Index:       0,
+	}
+
+	manager.BroadcastLog(eventKey1, logEvent1)
+	manager.BroadcastLog(eventKey2, logEvent2)
 
 	receivedLog1 := <-ch1
 	receivedLog2 := <-ch2
 	receivedLog3 := <-ch3
 
-	assert.Equal(t, logEvent, receivedLog1, "Subscriber 1 should receive the log")
-	assert.Equal(t, logEvent, receivedLog2, "Subscriber 2 should receive the log")
-	assert.Equal(t, logEvent, receivedLog3, "Subscriber 3 should receive the log")
+	assert.Equal(t, logEvent1, receivedLog1, "Subscriber 1 should receive the log")
+	assert.Equal(t, logEvent2, receivedLog2, "Subscriber 2 should receive the log")
+	assert.Equal(t, logEvent1, receivedLog3, "Subscriber 3 should receive the log")
 }
 
 func TestSubscriptionManager_GetAddressesAndTopics(t *testing.T) {
@@ -235,14 +250,17 @@ func TestSubscriptionManager_GetAddressesAndTopics(t *testing.T) {
 	result := manager.GetAddressesAndTopics()
 
 	// Verify addresses and topics
-	assert.Contains(t, result, address1, "Address1 should be in the cache")
-	assert.Contains(t, result, address2, "Address2 should be in the cache")
-	assert.ElementsMatch(t, result[address1], []common.Hash{topic1}, "Cache should contain topic1 for address1")
-	assert.ElementsMatch(t, result[address2], []common.Hash{topic2}, "Cache should contain topic2 for address2")
+	assert.Contains(t, result, address1, "Address1 should be in map")
+	assert.Contains(t, result, address2, "Address2 should be in map")
+	assert.ElementsMatch(t, result[address1], []common.Hash{topic1}, "Address1 should contain topic1")
+	assert.ElementsMatch(t, result[address2], []common.Hash{topic2}, "Address2 should contain topic2")
+	assert.NotContains(t, result[address1], topic2, "Topic2 should not be in address1")
+	assert.NotContains(t, result[address2], topic1, "Topic1 should not be in address2")
 }
 
-func TestSubscriptionManager_CacheInvalidation(t *testing.T) {
+func TestSubscriptionManager_Cache(t *testing.T) {
 	manager := setupSubscriptionManager(t)
+	assert.False(t, manager.cacheInitialized, "Cache should not be initialized when Subscription Manager is initialized.")
 
 	address1 := common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678")
 	topic1 := common.HexToHash("0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd")
@@ -250,34 +268,77 @@ func TestSubscriptionManager_CacheInvalidation(t *testing.T) {
 	address2 := common.HexToAddress("0xabcdefabcdefabcdefabcdefabcdefabcdefabcdef")
 	topic2 := common.HexToHash("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
 
-	// Subscribe to an initial event
+	// Initialize expected structure
+	expectedCache := make(map[common.Address][]common.Hash)
+
+	// Step 1: Subscribe to an event
 	_, err := manager.Subscribe(address1, topic1)
 	require.NoError(t, err)
+	assert.False(t, manager.cacheInitialized, "Cache should not be initialized after Subscribe.")
 
-	// Add another subscription and ensure cache invalidation
+	// Update expected structure
+	expectedCache[address1] = []common.Hash{topic1}
+
+	// Verify cache matches expected structure
+	cache := manager.GetAddressesAndTopics()
+	assert.True(t, manager.cacheInitialized, "Cache should be initialized after GetAddressesAndTopics() is called.")
+	assert.Equal(t, expectedCache, cache, "Cache should match the expected structure.")
+
+	// Step 2: Add another subscription
 	ch, err := manager.Subscribe(address2, topic2)
 	require.NoError(t, err)
+	assert.False(t, manager.cacheInitialized, "Cache should be invalidated after Subscribe.")
 
-	// Check updated cache
-	updatedCache := manager.GetAddressesAndTopics()
-	require.Contains(t, updatedCache, address1, "Address1 should still be in the cache")
-	require.Contains(t, updatedCache, address2, "Address2 should now be in the cache")
-	assert.ElementsMatch(t, updatedCache[address1], []common.Hash{topic1}, "Cache should still contain topic1 for address1")
-	assert.ElementsMatch(t, updatedCache[address2], []common.Hash{topic2}, "Cache should contain topic2 for address2")
+	// Update expected structure
+	expectedCache[address2] = []common.Hash{topic2}
 
-	// Add an extra subscription for address1/topic1
-	_, err = manager.Subscribe(address1, topic1)
+	// Verify cache matches updated structure
+	cache = manager.GetAddressesAndTopics()
+	assert.True(t, manager.cacheInitialized, "Cache should be reinitialized after GetAddressesAndTopics() is called.")
+	assert.Equal(t, expectedCache, cache, "Cache should match the updated structure.")
+
+	// Step 3: Add a duplicate subscription for address1/topic1
+	ch2, err := manager.Subscribe(address1, topic1)
 	require.NoError(t, err)
+	assert.False(t, manager.cacheInitialized, "Cache should be invalidated after Subscribe.")
 
-	// Unsubscribe from address2/topic2
+	// No change to expected structure since it's a duplicate subscription
+	cache = manager.GetAddressesAndTopics()
+	assert.True(t, manager.cacheInitialized, "Cache should be reinitialized after GetAddressesAndTopics() is called.")
+	assert.Equal(t, expectedCache, cache, "Cache should remain unchanged for duplicate subscriptions.")
+
+	// Step 4: Unsubscribe from address2/topic2
 	err = manager.Unsubscribe(address2, topic2, ch)
 	require.NoError(t, err)
+	assert.False(t, manager.cacheInitialized, "Cache should be invalidated after Unsubscribe.")
 
-	// Check final cache
-	finalCache := manager.GetAddressesAndTopics()
-	require.Contains(t, finalCache, address1, "Address1 should still be in the cache")
-	assert.ElementsMatch(t, finalCache[address1], []common.Hash{topic1}, "Cache should still contain topic1 for address1")
-	require.NotContains(t, finalCache[address2], topic2, "Topic2 should be removed for address2 after unsubscription")
+	// Update expected structure
+	delete(expectedCache, address2)
+
+	// Verify cache matches updated structure
+	cache = manager.GetAddressesAndTopics()
+	assert.True(t, manager.cacheInitialized, "Cache should be reinitialized after GetAddressesAndTopics() is called.")
+	assert.Equal(t, expectedCache, cache, "Cache should match the updated structure after unsubscription.")
+
+	// Step 5: Unsubscribe from non-existent subscription
+	err = manager.Unsubscribe(address2, topic2, ch)
+	assert.Error(t, err, "Unsubscribing a non-existent subscription should return an error.")
+
+	// Ensure expected structure remains unchanged
+	cache = manager.GetAddressesAndTopics()
+	assert.True(t, manager.cacheInitialized, "Cache should remain initialized after an invalid unsubscribe attempt.")
+	assert.Equal(t, expectedCache, cache, "Cache should remain unchanged for invalid unsubscribe attempts.")
+	assert.Len(t, manager.registry[internal.EventKey{Address: address1, Topic: topic1}], 2, "EventKey should have two subscribers")
+
+	// Step 6: Unsubscribe from address1, topic1, ch2
+	err = manager.Unsubscribe(address1, topic1, ch2)
+	require.NoError(t, err)
+	assert.False(t, manager.cacheInitialized, "Cache should be invalidated after Unsubscribe.")
+
+	cache = manager.GetAddressesAndTopics()
+	assert.True(t, manager.cacheInitialized, "Cache should be reinitialized after GetAddressesAndTopics() is called.")
+	assert.Equal(t, expectedCache, cache, "Cache should remain unchanged for duplicate subscriptions.")
+	assert.Len(t, manager.registry[internal.EventKey{Address: address1, Topic: topic1}], 1, "EventKey should have two subscribers")
 }
 
 func TestSubscriptionManager_Close(t *testing.T) {

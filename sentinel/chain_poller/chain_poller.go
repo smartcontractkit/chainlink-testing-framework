@@ -6,19 +6,21 @@ import (
 	"errors"
 
 	"github.com/rs/zerolog"
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/internal"
+	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/api"
 )
 
 // ChainPollerConfig holds the configuration for the ChainPoller.
 type ChainPollerConfig struct {
-	BlockchainClient internal.BlockchainClient
-	Logger           zerolog.Logger
+	BlockchainClient api.BlockchainClient
+	Logger           *zerolog.Logger
 	ChainID          int64
 }
 
 // ChainPoller is responsible for polling logs from the blockchain.
 type ChainPoller struct {
-	Config ChainPollerConfig
+	blockchainClient api.BlockchainClient
+	logger           zerolog.Logger
+	chainID          int64
 }
 
 // NewChainPoller initializes a new ChainPoller.
@@ -26,25 +28,30 @@ func NewChainPoller(cfg ChainPollerConfig) (*ChainPoller, error) {
 	if cfg.BlockchainClient == nil {
 		return nil, errors.New("blockchain client cannot be nil")
 	}
-	if cfg.Logger.GetLevel() == zerolog.NoLevel {
-		return nil, errors.New("logger cannot be nil")
+	if cfg.Logger == nil {
+		return nil, errors.New("no logger passed")
+	}
+	if cfg.ChainID < 1 {
+		return nil, errors.New("chain ID not set")
 	}
 
-	cfg.Logger = cfg.Logger.With().Str("component", "ChainPoller").Logger().With().Int64("ChainID", cfg.ChainID).Logger()
+	logger := cfg.Logger.With().Str("component", "ChainPoller").Logger().With().Int64("ChainID", cfg.ChainID).Logger()
 
 	return &ChainPoller{
-		Config: cfg,
+		blockchainClient: cfg.BlockchainClient,
+		logger:           logger,
+		chainID:          cfg.ChainID,
 	}, nil
 }
 
 // Poll fetches logs from the blockchain based on the provided filter queries.
-func (cp *ChainPoller) Poll(ctx context.Context, filterQueries []internal.FilterQuery) ([]internal.Log, error) {
-	var allLogs []internal.Log
+func (cp *ChainPoller) FilterLogs(ctx context.Context, filterQueries []api.FilterQuery) ([]api.Log, error) {
+	var allLogs []api.Log
 
 	for _, query := range filterQueries {
-		logs, err := cp.Config.BlockchainClient.FilterLogs(ctx, query)
+		logs, err := cp.blockchainClient.FilterLogs(ctx, query)
 		if err != nil {
-			cp.Config.Logger.Error().Err(err).Interface("query", query).Msg("Failed to filter logs")
+			cp.logger.Error().Err(err).Interface("query", query).Msg("Failed to filter logs")
 			continue
 		}
 		allLogs = append(allLogs, logs...)
@@ -52,5 +59,3 @@ func (cp *ChainPoller) Poll(ctx context.Context, filterQueries []internal.Filter
 
 	return allLogs, nil
 }
-
-var _ ChainPollerInterface = (*ChainPoller)(nil)

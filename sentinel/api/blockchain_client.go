@@ -1,5 +1,5 @@
-// File: internal/interface.go
-package internal
+// File: api/blockchain_client.go
+package api
 
 import (
 	"context"

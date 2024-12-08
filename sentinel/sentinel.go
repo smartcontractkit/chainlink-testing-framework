@@ -4,16 +4,23 @@ package sentinel
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog"
+	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/api"
 	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/chain_poller_service"
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/internal"
 )
 
 // SentinelConfig holds configuration for the Sentinel.
 type SentinelConfig struct {
 	Logger zerolog.Logger
+}
+
+type AddChainConfig struct {
+	ChainID          int64
+	PollInterval     time.Duration
+	BlockchainClient api.BlockchainClient
 }
 
 type Sentinel struct {
@@ -33,12 +40,19 @@ func NewSentinel(cfg SentinelConfig) *Sentinel {
 }
 
 // AddChain adds a new chain to Sentinel.
-func (s *Sentinel) AddChain(cfg chain_poller_service.ChainPollerServiceConfig) error {
+func (s *Sentinel) AddChain(acc AddChainConfig) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, exists := s.services[cfg.ChainID]; exists {
-		return fmt.Errorf("chain with ID %d already exists", cfg.ChainID)
+	if _, exists := s.services[acc.ChainID]; exists {
+		return fmt.Errorf("chain with ID %d already exists", acc.ChainID)
+	}
+
+	cfg := chain_poller_service.ChainPollerServiceConfig{
+		PollInterval:     acc.PollInterval,
+		ChainID:          acc.ChainID,
+		Logger:           &s.config.Logger,
+		BlockchainClient: acc.BlockchainClient,
 	}
 
 	eps, err := chain_poller_service.NewChainPollerService(cfg)
@@ -68,7 +82,7 @@ func (s *Sentinel) RemoveChain(chainID int64) error {
 }
 
 // Subscribe subscribes to events for a specific chain.
-func (s *Sentinel) Subscribe(chainID int64, address common.Address, topic common.Hash) (chan internal.Log, error) {
+func (s *Sentinel) Subscribe(chainID int64, address common.Address, topic common.Hash) (chan api.Log, error) {
 	s.mu.RLock()
 	eps, exists := s.services[chainID]
 	s.mu.RUnlock()
@@ -81,7 +95,7 @@ func (s *Sentinel) Subscribe(chainID int64, address common.Address, topic common
 }
 
 // Unsubscribe unsubscribes from events for a specific chain.
-func (s *Sentinel) Unsubscribe(chainID int64, address common.Address, topic common.Hash, ch chan internal.Log) error {
+func (s *Sentinel) Unsubscribe(chainID int64, address common.Address, topic common.Hash, ch chan api.Log) error {
 	s.mu.RLock()
 	eps, exists := s.services[chainID]
 	s.mu.RUnlock()

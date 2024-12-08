@@ -1,5 +1,5 @@
-// File: sentinel_test.go
-package sentinel_test
+// File: sentinel.go
+package sentinel
 
 import (
 	"context"
@@ -13,9 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel"
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/chain_poller"
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/chain_poller_service"
+	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/api"
 	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/internal"
 )
 
@@ -24,34 +22,30 @@ type MockChainPoller struct {
 	mock.Mock
 }
 
-func (m *MockChainPoller) Poll(ctx context.Context, filterQueries []internal.FilterQuery) ([]internal.Log, error) {
+func (m *MockChainPoller) FilterLogs(ctx context.Context, filterQueries []api.FilterQuery) ([]api.Log, error) {
 	args := m.Called(ctx, filterQueries)
-	if logs, ok := args.Get(0).([]internal.Log); ok {
+	if logs, ok := args.Get(0).([]api.Log); ok {
 		return logs, args.Error(1)
 	}
 	return nil, args.Error(1)
 }
 
-// Ensure MockChainPoller implements ChainPollerInterface
-var _ chain_poller.ChainPollerInterface = (*MockChainPoller)(nil)
-
-func setupSentinel(t *testing.T) (*sentinel.Sentinel, *zerolog.Logger) {
+func setupSentinel(t *testing.T) (*Sentinel, *zerolog.Logger) {
 	logger := logging.GetTestLogger(t)
-	s := sentinel.NewSentinel(sentinel.SentinelConfig{
+	s := NewSentinel(SentinelConfig{
 		Logger: logger,
 	})
 
 	return s, &logger
 }
 
-func setupChainPollerServiceConfig(l *zerolog.Logger, chainID int64) (*chain_poller_service.ChainPollerServiceConfig, *internal.MockBlockchainClient) {
+func setupChainPollerServiceConfig(l *zerolog.Logger, chainID int64) (*AddChainConfig, *internal.MockBlockchainClient) {
 	mockBlockchainClient := new(internal.MockBlockchainClient)
 
-	return &chain_poller_service.ChainPollerServiceConfig{
-		PollInterval:     100 * time.Millisecond,
-		Logger:           *l,
-		ChainID:          chainID,
+	return &AddChainConfig{
 		BlockchainClient: mockBlockchainClient,
+		PollInterval:     100 * time.Millisecond,
+		ChainID:          chainID,
 	}, mockBlockchainClient
 }
 
@@ -100,7 +94,7 @@ func TestAddChain_SubscribeUnsubscribeEvent(t *testing.T) {
 
 	// Simulate log broadcast
 	eventKey := internal.EventKey{Address: address, Topic: topic}
-	log := internal.Log{Address: address, Topics: []common.Hash{topic}, Data: []byte("event data")}
+	log := api.Log{Address: address, Topics: []common.Hash{topic}, Data: []byte("event data")}
 
 	chainService, exists := s.GetService(1) // Add a helper to retrieve the service.
 	require.True(t, exists, "Chain service should exist")
@@ -155,13 +149,13 @@ func TestAddChains_MultipleConsumers(t *testing.T) {
 
 	// Broadcast events
 	eventKey1 := internal.EventKey{Address: address1, Topic: topic1}
-	log1 := internal.Log{Address: address1, Topics: []common.Hash{topic1}, Data: []byte("log1")}
+	log1 := api.Log{Address: address1, Topics: []common.Hash{topic1}, Data: []byte("log1")}
 	chainService, exists := s.GetService(1)
 	require.True(t, exists, "Chain service should exist")
 	chainService.SubscriptionMgr.BroadcastLog(eventKey1, log1)
 
 	eventKey3 := internal.EventKey{Address: address3, Topic: topic3}
-	log3 := internal.Log{Address: address3, Topics: []common.Hash{topic3}, Data: []byte("log3")}
+	log3 := api.Log{Address: address3, Topics: []common.Hash{topic3}, Data: []byte("log3")}
 	chainService2, exists := s.GetService(2)
 	require.True(t, exists, "Chain service should exist")
 	chainService2.SubscriptionMgr.BroadcastLog(eventKey3, log3)

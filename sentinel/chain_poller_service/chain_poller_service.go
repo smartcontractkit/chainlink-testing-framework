@@ -11,6 +11,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog"
+	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/api"
 	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/chain_poller"
 	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/internal"
 	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/subscription_manager"
@@ -19,8 +20,8 @@ import (
 // ChainPollerServiceConfig holds the configuration for the ChainPollerService.
 type ChainPollerServiceConfig struct {
 	PollInterval     time.Duration
-	Logger           zerolog.Logger
-	BlockchainClient internal.BlockchainClient
+	Logger           *zerolog.Logger
+	BlockchainClient api.BlockchainClient
 	ChainID          int64
 }
 
@@ -50,9 +51,15 @@ func NewChainPollerService(cfg ChainPollerServiceConfig) (*ChainPollerService, e
 	if cfg.BlockchainClient == nil {
 		return nil, fmt.Errorf("blockchain client cannot be nil")
 	}
+	if cfg.ChainID < 1 {
+		return nil, fmt.Errorf("chainid missing")
+	}
+	if cfg.Logger == nil {
+		return nil, fmt.Errorf("logger cannot be nil")
+	}
 
 	// Create a subscrition manager
-	subscription_manager := subscription_manager.NewSubscriptionManager(cfg.Logger, cfg.ChainID)
+	subscription_manager := subscription_manager.NewSubscriptionManager(subscription_manager.SubscriptionManagerConfig{Logger: cfg.Logger, ChainID: cfg.ChainID})
 	chain_poller, err := chain_poller.NewChainPoller(chain_poller.ChainPollerConfig{
 		BlockchainClient: cfg.BlockchainClient,
 		Logger:           cfg.Logger,
@@ -62,7 +69,9 @@ func NewChainPollerService(cfg ChainPollerServiceConfig) (*ChainPollerService, e
 		return nil, fmt.Errorf("failed to initialize ChainPoller: %w", err)
 	}
 
-	cfg.Logger = cfg.Logger.With().Str("component", "ChainPollerService").Logger().With().Int64("ChainID", cfg.ChainID).Logger()
+	l := cfg.Logger.With().Str("component", "ChainPollerService").Logger().With().Int64("ChainID", cfg.ChainID).Logger()
+
+	cfg.Logger = &l
 
 	// Initialize lastBlock as the latest block at startup
 	latestBlock, err := cfg.BlockchainClient.BlockNumber(context.Background())
@@ -167,10 +176,10 @@ func (eps *ChainPollerService) pollCycle() {
 	}
 
 	// Construct filter queries with the same fromBlock and toBlock
-	var filterQueries []internal.FilterQuery
+	var filterQueries []api.FilterQuery
 	for address, topics := range subscriptions { // 'topics' is []common.Hash
 		for _, topic := range topics { // Iterate over each topic
-			filterQueries = append(filterQueries, internal.FilterQuery{
+			filterQueries = append(filterQueries, api.FilterQuery{
 				FromBlock: fromBlock.Uint64(),
 				ToBlock:   toBlock,
 				Addresses: []common.Address{address},
@@ -183,7 +192,7 @@ func (eps *ChainPollerService) pollCycle() {
 	ctx, cancel := context.WithTimeout(eps.ctx, 10*time.Second)
 	defer cancel()
 
-	logs, err := eps.ChainPoller.Poll(ctx, filterQueries)
+	logs, err := eps.ChainPoller.FilterLogs(ctx, filterQueries)
 	if err != nil {
 		eps.config.Logger.Error().Err(err).Msg("Error during polling")
 		return
