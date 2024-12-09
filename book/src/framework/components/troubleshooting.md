@@ -13,6 +13,11 @@ Update your docker to `Docker version 27.3.1, build ce12230`
 
 ## Can't see any docker metrics with Cadvisor
 
+Cadvisor container can't mount some layers
+```
+E1209 13:14:49.908130       1 manager.go:1116] Failed to create existing container: /docker/aa40875c382af890861447fa8aaf6908978041b9077bb81029971d23929f8c4d: failed to identify the read-write layer ID for container "aa40875c382af890861447fa8aaf6908978041b9077bb81029971d23929f8c4d". - open /rootfs/var/lib/docker/image/overlayfs/layerdb/mounts/aa40875c382af890861447fa8aaf6908978041b9077bb81029971d23929f8c4d/mount-id: no such file or directory
+```
+
 Disable `containerd` images ( Settings -> General ), see [issue](https://github.com/google/cadvisor/pull/3569).
 
 ![img.png](img.png)
