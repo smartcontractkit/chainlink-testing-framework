@@ -127,3 +127,43 @@ jobs:
           title: "Go docs for PR#${{ github.event.pull_request.number }}"
           body: "This PR contains automatically generated go documentation for the PR#${{ github.event.pull_request.number }}. Please review the changes."
           commit-message: "[Bot] Add automatically generated go documentation"
+
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
+        if: failure() 
+        id: slack
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.QA_SLACK_API_KEY }}
+        with:
+          channel-id: 'C049X3353K2'
+          payload: |
+            {
+              "attachments": [
+                {
+                  "color": "#C62828",
+                  "blocks": [
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "mrkdwn",
+                        "text": "Go doc generation - Failed :x:"
+                      }
+                    },
+                    {
+                        "type": "section",
+                        "text": {
+                          "type": "mrkdwn",
+                          "text": "<@U060CGGPY8H>, please have a look."
+                        }
+                    },                    
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "mrkdwn",
+                        "text": "<${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|PR#${{ github.event.pull_request.number }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run Details>"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
