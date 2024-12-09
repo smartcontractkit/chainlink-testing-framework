@@ -2,99 +2,197 @@ package cmd
 
 import (
 	"encoding/json"
-	"log"
-	"os"
+	"fmt"
 	"path/filepath"
+	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/spf13/cobra"
 )
 
-var (
-	resultsFolderPath string
-	outputResultsPath string
-	outputLogsPath    string
-	codeOwnersPath    string
-	projectPath       string
-	maxPassRatio      float64
-	filterFailed      bool
-)
-
 var AggregateResultsCmd = &cobra.Command{
 	Use:   "aggregate-results",
-	Short: "Aggregate test results and optionally filter failed tests based on a threshold",
+	Short: "Aggregate test results into a single JSON report",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Read test reports from files
-		var testReports []*reports.TestReport
-		err := filepath.Walk(resultsFolderPath, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			if !info.IsDir() && filepath.Ext(path) == ".json" {
-				// Read file content
-				data, readErr := os.ReadFile(path)
-				if readErr != nil {
-					return readErr
-				}
-				var report *reports.TestReport
-				if jsonErr := json.Unmarshal(data, &report); jsonErr != nil {
-					return jsonErr
-				}
-				testReports = append(testReports, report)
-			}
-			return nil
-		})
-		if err != nil {
-			log.Fatalf("Error reading test reports: %v", err)
+		fs := reports.OSFileSystem{}
+
+		// Get flag values
+		resultsPath, _ := cmd.Flags().GetString("results-path")
+		outputDir, _ := cmd.Flags().GetString("output-path")
+		summaryFileName, _ := cmd.Flags().GetString("summary-file-name")
+		maxPassRatio, _ := cmd.Flags().GetFloat64("max-pass-ratio")
+		codeOwnersPath, _ := cmd.Flags().GetString("codeowners-path")
+		repoPath, _ := cmd.Flags().GetString("repo-path")
+
+		// Ensure the output directory exists
+		if err := fs.MkdirAll(outputDir, 0755); err != nil {
+			return fmt.Errorf("error creating output directory: %w", err)
 		}
 
-		allReport, err := reports.Aggregate(testReports...)
-		if err != nil {
-			log.Fatalf("Error aggregating results: %v", err)
-		}
+		// Start spinner for loading test reports
+		s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
+		s.Suffix = " Loading test reports..."
+		s.Start()
 
-		// Map test results to paths
-		err = reports.MapTestResultsToPaths(allReport, projectPath)
+		// Load test reports from JSON files
+		testReports, err := reports.LoadReports(resultsPath)
 		if err != nil {
-			log.Fatalf("Error mapping test results to paths: %v", err)
+			s.Stop()
+			return fmt.Errorf("error loading test reports: %w", err)
 		}
+		s.Stop()
+		fmt.Println("Test reports loaded successfully.")
 
-		// Map test results to owners if CODEOWNERS path is provided
+		// Start spinner for aggregating reports
+		s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
+		s.Suffix = " Aggregating test reports..."
+		s.Start()
+
+		// Aggregate the reports
+		aggregatedReport, err := reports.Aggregate(testReports...)
+		if err != nil {
+			s.Stop()
+			return fmt.Errorf("error aggregating test reports: %w", err)
+		}
+		s.Stop()
+		fmt.Println("Test reports aggregated successfully.")
+
+		// Start spinner for mapping test results to paths
+		s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
+		s.Suffix = " Mapping test results to paths..."
+		s.Start()
+
+		// Map test results to test paths
+		err = reports.MapTestResultsToPaths(aggregatedReport, repoPath)
+		if err != nil {
+			s.Stop()
+			return fmt.Errorf("error mapping test results to paths: %w", err)
+		}
+		s.Stop()
+		fmt.Println("Test results mapped to paths successfully.")
+
+		// Map test results to code owners if codeOwnersPath is provided
 		if codeOwnersPath != "" {
-			err = reports.MapTestResultsToOwners(allReport, codeOwnersPath)
+			s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
+			s.Suffix = " Mapping test results to code owners..."
+			s.Start()
+
+			err = reports.MapTestResultsToOwners(aggregatedReport, codeOwnersPath)
 			if err != nil {
-				log.Fatalf("Error mapping test results to owners: %v", err)
+				s.Stop()
+				return fmt.Errorf("error mapping test results to code owners: %w", err)
 			}
+			s.Stop()
+			fmt.Println("Test results mapped to code owners successfully.")
 		}
 
-		var resultsToSave []reports.TestResult
+		// Save the aggregated report to the output directory
+		aggregatedReportPath := filepath.Join(outputDir, "all-test-results.json")
+		if err := reports.SaveReport(fs, aggregatedReportPath, *aggregatedReport); err != nil {
+			return fmt.Errorf("error saving aggregated test report: %w", err)
+		}
+		fmt.Printf("Aggregated test report saved to %s\n", aggregatedReportPath)
 
-		if filterFailed {
-			// Filter to only include tests that failed below the threshold
-			for _, result := range allReport.Results {
-				if result.PassRatio < maxPassRatio && !result.Skipped {
-					resultsToSave = append(resultsToSave, result)
-				}
+		// Filter failed tests (PassRatio < maxPassRatio and not skipped)
+		s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
+		s.Suffix = " Filtering failed tests..."
+		s.Start()
+
+		failedTests := reports.FilterTests(aggregatedReport.Results, func(tr reports.TestResult) bool {
+			return !tr.Skipped && tr.PassRatio < maxPassRatio
+		})
+		s.Stop()
+
+		// Check if there are any failed tests
+		if len(failedTests) > 0 {
+			fmt.Printf("Found %d failed test(s).\n", len(failedTests))
+
+			// Create a new report for failed tests with logs
+			failedReportWithLogs := &reports.TestReport{
+				GoProject:     aggregatedReport.GoProject,
+				TestRunCount:  aggregatedReport.TestRunCount,
+				RaceDetection: aggregatedReport.RaceDetection,
+				ExcludedTests: aggregatedReport.ExcludedTests,
+				SelectedTests: aggregatedReport.SelectedTests,
+				Results:       failedTests,
 			}
+
+			// Save the failed tests report with logs
+			failedTestsReportWithLogsPath := filepath.Join(outputDir, "failed-test-results-with-logs.json")
+			if err := reports.SaveReport(fs, failedTestsReportWithLogsPath, *failedReportWithLogs); err != nil {
+				return fmt.Errorf("error saving failed tests report with logs: %w", err)
+			}
+			fmt.Printf("Failed tests report with logs saved to %s\n", failedTestsReportWithLogsPath)
+
+			// Remove logs from test results for the report without logs
+			for i := range failedReportWithLogs.Results {
+				failedReportWithLogs.Results[i].Outputs = nil
+				failedReportWithLogs.Results[i].PackageOutputs = nil
+			}
+
+			// Save the failed tests report without logs
+			failedTestsReportNoLogsPath := filepath.Join(outputDir, "failed-test-results.json")
+			if err := reports.SaveReport(fs, failedTestsReportNoLogsPath, *failedReportWithLogs); err != nil {
+				return fmt.Errorf("error saving failed tests report without logs: %w", err)
+			}
+			fmt.Printf("Failed tests report without logs saved to %s\n", failedTestsReportNoLogsPath)
 		} else {
-			resultsToSave = allReport.Results
+			fmt.Println("No failed tests found. Skipping generation of failed tests reports.")
 		}
-		allReport.Results = resultsToSave
 
-		// Output results to JSON files
-		if len(resultsToSave) > 0 {
-			return reports.SaveFilteredResultsAndLogs(outputResultsPath, outputLogsPath, allReport, codeOwnersPath != "")
+		// Generate all-tests-summary.json
+		if summaryFileName != "" {
+			s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
+			s.Suffix = " Generating summary json..."
+			s.Start()
+
+			summaryFilePath := filepath.Join(outputDir, summaryFileName)
+			err = generateAllTestsSummaryJSON(aggregatedReport, summaryFilePath, maxPassRatio)
+			if err != nil {
+				s.Stop()
+				return fmt.Errorf("error generating summary json: %w", err)
+			}
+			s.Stop()
+			fmt.Printf("Summary generated at %s\n", summaryFilePath)
 		}
+
+		fmt.Println("Aggregation complete.")
+
 		return nil
 	},
 }
 
 func init() {
-	AggregateResultsCmd.Flags().StringVarP(&resultsFolderPath, "results-path", "p", "", "Path to the folder containing JSON test result files")
-	AggregateResultsCmd.Flags().StringVarP(&outputResultsPath, "output-results", "o", "./results", "Path to output the aggregated or filtered test results in JSON and markdown format")
-	AggregateResultsCmd.Flags().StringVarP(&outputLogsPath, "output-logs", "l", "", "Path to output the filtered test logs in JSON format")
-	AggregateResultsCmd.Flags().Float64VarP(&maxPassRatio, "max-pass-ratio", "m", 1.0, "The maximum (non-inclusive) pass ratio threshold for a test to be considered a failure. Any tests below this pass rate will be considered flaky.")
-	AggregateResultsCmd.Flags().BoolVarP(&filterFailed, "filter-failed", "f", false, "If true, filter and output only failed tests based on the max-pass-ratio threshold")
-	AggregateResultsCmd.Flags().StringVarP(&codeOwnersPath, "codeowners-path", "c", "", "Path to the CODEOWNERS file")
-	AggregateResultsCmd.Flags().StringVarP(&projectPath, "project-path", "r", ".", "The path to the Go project. Default is the current directory. Useful for subprojects")
+	AggregateResultsCmd.Flags().StringP("results-path", "p", "", "Path to the folder containing JSON test result files (required)")
+	AggregateResultsCmd.Flags().StringP("output-path", "o", "./report", "Path to output the aggregated results (directory)")
+	AggregateResultsCmd.Flags().StringP("summary-file-name", "s", "all-test-summary.json", "Name of the summary JSON file")
+	AggregateResultsCmd.Flags().Float64P("max-pass-ratio", "", 1.0, "The maximum pass ratio threshold for a test to be considered flaky")
+	AggregateResultsCmd.Flags().StringP("codeowners-path", "", "", "Path to the CODEOWNERS file")
+	AggregateResultsCmd.Flags().StringP("repo-path", "", ".", "The path to the root of the repository/project")
+
+	AggregateResultsCmd.MarkFlagRequired("results-path")
+}
+
+// New function to generate all-tests-summary.json
+func generateAllTestsSummaryJSON(report *reports.TestReport, outputPath string, maxPassRatio float64) error {
+	summary := reports.GenerateSummaryData(report.Results, maxPassRatio)
+	data, err := json.Marshal(summary)
+	if err != nil {
+		return fmt.Errorf("error marshaling summary data to JSON: %w", err)
+	}
+
+	fs := reports.OSFileSystem{}
+	jsonFile, err := fs.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("error creating file: %w", err)
+	}
+	defer jsonFile.Close()
+
+	_, err = jsonFile.Write(data)
+	if err != nil {
+		return fmt.Errorf("error writing data to file: %w", err)
+	}
+
+	return nil
 }
