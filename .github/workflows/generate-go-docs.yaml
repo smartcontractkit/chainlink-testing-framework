@@ -94,9 +94,7 @@ jobs:
           cat filtered_folders.json | jq -c '.[]' | while read -r item; do
             folder=$(echo "$item" | jq -r '.folder')
             echo "Processing folder: $folder"
-            generate-go-function-docs diff -b ${{ github.event.pull_request.base.sha }} -c ${{ github.event.pull_request.head.sha }} --saveCosts --generator chatgpt --folder "$folder"
-            cd "$folder"
-            cd -
+            generate-go-function-docs diff -b ${{ github.event.pull_request.base.sha }} -c ${{ github.event.pull_request.head.sha }} --saveCosts --generator chatgpt --generatorSubType ${{ vars.GO_DOC_GEN_CHATGPT_MODEL }} --folder "$folder"
           done
           rm filtered_folders.json
 
@@ -120,6 +118,7 @@ jobs:
 
       - name: Create a new PR targeting current PR
         uses: peter-evans/create-pull-request@5e914681df9dc83aa4e4905692ca88beb2f9e91f # v7.0.5
+        id: create-pr
         with:
           token: ${{ steps.setup-github-token-write.outputs.access-token }}
           branch: ${{ github.head_ref }}-docs
@@ -127,6 +126,23 @@ jobs:
           title: "Go docs for PR#${{ github.event.pull_request.number }}"
           body: "This PR contains automatically generated go documentation for the PR#${{ github.event.pull_request.number }}. Please review the changes."
           commit-message: "[Bot] Add automatically generated go documentation"
+
+      - name: Find comment with PR link
+        uses: peter-evans/find-comment@3eae4d37986fb5a8592848f6a574fdf654e61f9e # v3.1.0
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-includes: Go doc generation
+
+      - name: Create comment in the original PR
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
+        if: steps.fc.outputs.comment-id == 0
+        with:
+          token: ${{ steps.setup-github-token-write.outputs.access-token }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ## Go doc generation
+            Hey @${{ github.actor }}, you can check generated Go function documentation [here](${{ steps.create-pr.outputs.pull-request-url }}). Please review them and merge to this PR once you're satisfied with them.
 
       - name: Send Slack notification
         uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
