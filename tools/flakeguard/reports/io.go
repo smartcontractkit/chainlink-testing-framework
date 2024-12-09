@@ -101,6 +101,9 @@ func SaveReportNoLogs(fs FileSystem, filePath string, report TestReport) error {
 	return fs.WriteFile(filePath, data, 0644)
 }
 
+// SaveReport saves a TestReport to a specified file path in JSON format.
+// It ensures the file is created or truncated and handles any errors during
+// file operations, providing a reliable way to persist test results.
 func SaveReport(fs FileSystem, filePath string, report TestReport) error {
 	// Open the file with truncation mode
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
