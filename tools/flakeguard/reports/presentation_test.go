@@ -105,7 +105,7 @@ func TestGenerateGitHubSummaryMarkdown(t *testing.T) {
 	var buffer bytes.Buffer
 	maxPassRatio := 0.9
 
-	GenerateGitHubSummaryMarkdown(&buffer, testReport, maxPassRatio)
+	GenerateGitHubSummaryMarkdown(&buffer, testReport, maxPassRatio, "", "")
 
 	output := buffer.String()
 
@@ -165,7 +165,7 @@ func TestGeneratePRCommentMarkdown(t *testing.T) {
 	repoURL := "https://github.com/example/repo"
 	actionRunID := "123456789"
 
-	GeneratePRCommentMarkdown(&buffer, testReport, maxPassRatio, baseBranch, currentBranch, currentCommitSHA, repoURL, actionRunID)
+	GeneratePRCommentMarkdown(&buffer, testReport, maxPassRatio, baseBranch, currentBranch, currentCommitSHA, repoURL, actionRunID, "", "")
 
 	output := buffer.String()
 

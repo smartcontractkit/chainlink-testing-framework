@@ -83,7 +83,7 @@ func formatPassRatio(passRatio float64) string {
 	return fmt.Sprintf("%.2f%%", passRatio*100)
 }
 
-func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassRatio float64) {
+func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassRatio float64, artifactName, artifactLink string) {
 	settingsTable := buildSettingsTable(testReport, maxPassRatio)
 	fmt.Fprint(w, "# Flakeguard Summary\n\n")
 	printTable(w, settingsTable)
@@ -102,9 +102,13 @@ func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassR
 	}
 
 	RenderResults(w, testReport.Results, maxPassRatio, true)
+
+	if artifactLink != "" {
+		renderArtifactSection(w, artifactName, artifactLink)
+	}
 }
 
-func GeneratePRCommentMarkdown(w io.Writer, testReport *TestReport, maxPassRatio float64, baseBranch, currentBranch, currentCommitSHA, repoURL, actionRunID string) {
+func GeneratePRCommentMarkdown(w io.Writer, testReport *TestReport, maxPassRatio float64, baseBranch, currentBranch, currentCommitSHA, repoURL, actionRunID, artifactName, artifactLink string) {
 	fmt.Fprint(w, "# Flakeguard Summary\n\n")
 
 	// Construct additional info
@@ -142,6 +146,10 @@ func GeneratePRCommentMarkdown(w io.Writer, testReport *TestReport, maxPassRatio
 
 	resultsTable := GenerateFlakyTestsTable(testReport.Results, maxPassRatio, true)
 	renderTestResultsTable(w, resultsTable, true)
+
+	if artifactLink != "" {
+		renderArtifactSection(w, artifactName, artifactLink)
+	}
 }
 
 func buildSettingsTable(testReport *TestReport, maxPassRatio float64) [][]string {
@@ -206,6 +214,16 @@ func renderTestResultsTable(w io.Writer, table [][]string, markdown bool) {
 		return
 	}
 	printTable(w, table)
+}
+
+func renderArtifactSection(w io.Writer, artifactName, artifactLink string) {
+	if artifactLink != "" {
+		fmt.Fprintln(w)
+		fmt.Fprintln(w, "## Artifacts")
+		fmt.Fprintln(w)
+		fmt.Fprintf(w, "For detailed logs of the failed tests, please refer to the artifact [%s](%s).\n", artifactName, artifactLink)
+		fmt.Fprintln(w, "This artifact contains all outputs from failed tests.")
+	}
 }
 
 func printTable(w io.Writer, table [][]string) {
