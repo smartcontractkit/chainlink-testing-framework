@@ -84,15 +84,16 @@ func formatPassRatio(passRatio float64) string {
 }
 
 func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassRatio float64, artifactName, artifactLink string) {
-	settingsTable := buildSettingsTable(testReport, maxPassRatio)
 	fmt.Fprint(w, "# Flakeguard Summary\n\n")
-	printTable(w, settingsTable)
-	fmt.Fprintln(w)
 
 	if len(testReport.Results) == 0 {
-		fmt.Fprintln(w, "## No tests ran :warning:")
+		fmt.Fprintln(w, "No tests were executed.")
 		return
 	}
+
+	settingsTable := buildSettingsTable(testReport, maxPassRatio)
+	printTable(w, settingsTable)
+	fmt.Fprintln(w)
 
 	summary := GenerateSummaryData(testReport.Results, maxPassRatio)
 	if summary.FlakyTests > 0 {
@@ -110,6 +111,11 @@ func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassR
 
 func GeneratePRCommentMarkdown(w io.Writer, testReport *TestReport, maxPassRatio float64, baseBranch, currentBranch, currentCommitSHA, repoURL, actionRunID, artifactName, artifactLink string) {
 	fmt.Fprint(w, "# Flakeguard Summary\n\n")
+
+	if len(testReport.Results) == 0 {
+		fmt.Fprintln(w, "No tests were executed.")
+		return
+	}
 
 	// Construct additional info
 	additionalInfo := fmt.Sprintf(
@@ -131,11 +137,6 @@ func GeneratePRCommentMarkdown(w io.Writer, testReport *TestReport, maxPassRatio
 	// Include the links
 	fmt.Fprintln(w, linksLine)
 	fmt.Fprintln(w) // Add an extra newline for formatting
-
-	if len(testReport.Results) == 0 {
-		fmt.Fprintln(w, "## No tests ran :warning:")
-		return
-	}
 
 	// Add the flaky tests section
 	if GenerateSummaryData(testReport.Results, maxPassRatio).FlakyTests > 0 {
