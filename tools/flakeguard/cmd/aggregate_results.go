@@ -87,18 +87,6 @@ var AggregateResultsCmd = &cobra.Command{
 			fmt.Println("Test results mapped to code owners successfully.")
 		}
 
-		// Save the aggregated report to the output directory
-		aggregatedReportPath := filepath.Join(outputDir, "all-test-results.json")
-		if err := reports.SaveReport(fs, aggregatedReportPath, *aggregatedReport); err != nil {
-			return fmt.Errorf("error saving aggregated test report: %w", err)
-		}
-		fmt.Printf("Aggregated test report saved to %s\n", aggregatedReportPath)
-
-		// Filter failed tests (PassRatio < maxPassRatio and not skipped)
-		s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-		s.Suffix = " Filtering failed tests..."
-		s.Start()
-
 		failedTests := reports.FilterTests(aggregatedReport.Results, func(tr reports.TestResult) bool {
 			return !tr.Skipped && tr.PassRatio < maxPassRatio
 		})
@@ -140,6 +128,19 @@ var AggregateResultsCmd = &cobra.Command{
 		} else {
 			fmt.Println("No failed tests found. Skipping generation of failed tests reports.")
 		}
+
+		// Remove logs from test results for the aggregated report
+		for i := range aggregatedReport.Results {
+			aggregatedReport.Results[i].Outputs = nil
+			aggregatedReport.Results[i].PackageOutputs = nil
+		}
+
+		// Save the aggregated report to the output directory
+		aggregatedReportPath := filepath.Join(outputDir, "all-test-results.json")
+		if err := reports.SaveReport(fs, aggregatedReportPath, *aggregatedReport); err != nil {
+			return fmt.Errorf("error saving aggregated test report: %w", err)
+		}
+		fmt.Printf("Aggregated test report saved to %s\n", aggregatedReportPath)
 
 		// Generate all-tests-summary.json
 		if summaryFileName != "" {
