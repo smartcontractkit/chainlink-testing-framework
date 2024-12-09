@@ -133,7 +133,6 @@ jobs:
         id: fc
         with:
           issue-number: ${{ github.event.pull_request.number }}
-          comment-author: 'github-actions[bot]'
           body-includes: you can check generated Go function generation
 
       - name: Create comment in the original PR
@@ -144,9 +143,7 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             ## Go doc generation
-            Hey @${{ github.actor }}, you can check generated Go function generation [here](${{ steps.create-pr.outputs.pull-request-url }}).
-            <br/>
-            Please review them and merge to this PR once you're satisfied with them.
+            Hey @${{ github.actor }}, you can check generated Go function generation [here](${{ steps.create-pr.outputs.pull-request-url }}). Please review them and merge to this PR once you're satisfied with them.
 
       # - name: Send Slack notification
       #   uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
