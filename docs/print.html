@@ -2590,6 +2590,9 @@ rosetta error: Rosetta is only intended to run on Apple Silicon with a macOS hos
 </code></pre>
 <h4 id="solution"><a class="header" href="#solution">Solution</a></h4>
 <p>Update your docker to <code>Docker version 27.3.1, build ce12230</code></p>
+<h2 id="cant-see-any-docker-metrics-with-cadvisor"><a class="header" href="#cant-see-any-docker-metrics-with-cadvisor">Can't see any docker metrics with Cadvisor</a></h2>
+<p>Disable <code>containerd</code> images ( Settings -&gt; General ), see <a href="https://github.com/google/cadvisor/pull/3569">issue</a>.</p>
+<p><img src="framework/components/img.png" alt="img.png" /></p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -10126,7 +10129,7 @@ echo ::add-mask::$BASE64_CONFIG_OVERRIDE
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>8ab91a5f</code></li>
+<li>Commit: <code>78c1b7a4</code></li>
 </ul>
 
                     </main>
