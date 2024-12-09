@@ -95,8 +95,6 @@ jobs:
             folder=$(echo "$item" | jq -r '.folder')
             echo "Processing folder: $folder"
             generate-go-function-docs diff -b ${{ github.event.pull_request.base.sha }} -c ${{ github.event.pull_request.head.sha }} --saveCosts --generator chatgpt --generatorSubType ${{ vars.GO_DOC_GEN_CHATGPT_MODEL }} --folder "$folder"
-            cd "$folder"
-            cd -
           done
           rm filtered_folders.json
 
@@ -134,19 +132,17 @@ jobs:
         id: fc
         with:
           issue-number: ${{ github.event.pull_request.number }}
-          comment-author: 'github-actions[bot]'
-          body-includes: Go doc generation 
+          body-includes: Go doc generation
 
       - name: Create comment in the original PR
         uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
-        if: ${{ steps.fc.outputs.comment-id }} == ''
+        if: steps.fc.outputs.comment-id == 0
         with:
           token: ${{ steps.setup-github-token-write.outputs.access-token }}
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             ## Go doc generation
-            Hey @${{ github.actor }}, you can check generated Go function generation [here](${{ steps.create-pr.outputs.pull-request-url }}).
-            Please review them and merge to this PR once you're satisfied with them.
+            Hey @${{ github.actor }}, you can check generated Go function documentation [here](${{ steps.create-pr.outputs.pull-request-url }}). Please review them and merge to this PR once you're satisfied with them.
 
       - name: Send Slack notification
         uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
