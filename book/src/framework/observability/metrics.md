@@ -9,3 +9,7 @@ Queries:
 ```json
 {job="ctf"}
 ```
+
+## Docker Resources
+
+We are using [cadvisor](https://github.com/google/cadvisor) to monitor resources of test [containers](http://localhost:3000/d/pMEd7m0Mz/cadvisor-exporter?orgId=1).
