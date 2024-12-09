@@ -11,7 +11,8 @@ const (
 	DefaultStepChangePrecision = 10
 )
 
-// Plain create a constant workload Segment
+// Plain creates a slice containing a single Segment starting at `from` with the specified `duration`.
+// It is used to initialize basic segments with defined timing.
 func Plain(from int64, duration time.Duration) []*Segment {
 	return []*Segment{
 		{
@@ -22,7 +23,9 @@ func Plain(from int64, duration time.Duration) []*Segment {
 	}
 }
 
-// Steps creates a series of increasing/decreasing Segments
+// Steps generates a slice of Segment pointers starting from 'from', incremented by 'increase' for each of 'steps' steps.
+// Each Segment has a duration equal to the total duration divided by the number of steps.
+// Use this function to create uniformly distributed segments over a specified time period.
 func Steps(from, increase int64, steps int, duration time.Duration) []*Segment {
 	segments := make([]*Segment, 0)
 	perStepDuration := duration / time.Duration(steps)
@@ -37,7 +40,8 @@ func Steps(from, increase int64, steps int, duration time.Duration) []*Segment {
 	return segments
 }
 
-// Combine combines profile segments
+// Combine merges multiple slices of Segment pointers into a single slice.
+// It is useful for aggregating segment data from various sources.
 func Combine(segs ...[]*Segment) []*Segment {
 	acc := make([]*Segment, 0)
 	for _, ss := range segs {
@@ -46,7 +50,9 @@ func Combine(segs ...[]*Segment) []*Segment {
 	return acc
 }
 
-// CombineAndRepeat combines and repeats profile segments
+// CombineAndRepeat concatenates multiple Segment slices and repeats the combined sequence the specified number of times.
+// It returns a single slice containing the repeated segments.
+// Panics with ErrNoSchedule if no segments are provided.
 func CombineAndRepeat(times int, segs ...[]*Segment) []*Segment {
 	if len(segs) == 0 {
 		panic(ErrNoSchedule)
