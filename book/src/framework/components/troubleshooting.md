@@ -10,3 +10,9 @@ rosetta error: Rosetta is only intended to run on Apple Silicon with a macOS hos
 #### Solution
 
 Update your docker to `Docker version 27.3.1, build ce12230`
+
+## Can't see any docker metrics with Cadvisor
+
+Disable `containerd` images ( Settings -> General ), see [issue](https://github.com/google/cadvisor/pull/3569).
+
+![img.png](img.png)
