@@ -1,6 +1,7 @@
 package reports
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -100,10 +101,37 @@ func SaveReportNoLogs(fs FileSystem, filePath string, report TestReport) error {
 	return fs.WriteFile(filePath, data, 0644)
 }
 
+// SaveReport saves a TestReport to a specified file path in JSON format.
+// It ensures the file is created or truncated and handles any errors during
+// file operations, providing a reliable way to persist test results.
 func SaveReport(fs FileSystem, filePath string, report TestReport) error {
-	data, err := json.MarshalIndent(report, "", "  ")
+	// Open the file with truncation mode
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		return fmt.Errorf("error marshaling outputs: %v", err)
+		return fmt.Errorf("error opening file: %v", err)
 	}
-	return fs.WriteFile(filePath, data, 0644)
+	defer func() {
+		if cerr := file.Close(); cerr != nil {
+			err = fmt.Errorf("error closing file: %v", cerr)
+		}
+	}()
+
+	// Use a buffered writer for better performance
+	bufferedWriter := bufio.NewWriter(file)
+	defer func() {
+		if err := bufferedWriter.Flush(); err != nil {
+			fmt.Printf("error flushing buffer: %v\n", err)
+		}
+	}()
+
+	// Create a JSON encoder with the buffered writer
+	encoder := json.NewEncoder(bufferedWriter)
+	encoder.SetIndent("", "  ")
+
+	// Encode the report
+	if err := encoder.Encode(report); err != nil {
+		return fmt.Errorf("error encoding JSON: %v", err)
+	}
+
+	return nil
 }
