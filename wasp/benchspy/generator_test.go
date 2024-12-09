@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -13,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewGeneratorQueryExecutor(t *testing.T) {
+func TestBenchSpy_NewGeneratorQueryExecutor(t *testing.T) {
 	t.Run("success case", func(t *testing.T) {
 		gen := &wasp.Generator{
 			Cfg: &wasp.Config{
@@ -47,7 +48,7 @@ func TestNewGeneratorQueryExecutor(t *testing.T) {
 	})
 }
 
-func TestGeneratorQueryExecutor_Results(t *testing.T) {
+func TestBenchSpy_GeneratorQueryExecutor_Results(t *testing.T) {
 	expected := map[string][]string{
 		"test": {"result"},
 	}
@@ -57,7 +58,7 @@ func TestGeneratorQueryExecutor_Results(t *testing.T) {
 	assert.Equal(t, expected, executor.Results())
 }
 
-func TestGeneratorQueryExecutor_IsComparable(t *testing.T) {
+func TestBenchSpy_GeneratorQueryExecutor_IsComparable(t *testing.T) {
 	baseGen := &wasp.Generator{
 		Cfg: &wasp.Config{
 			GenName: "my_gen",
@@ -118,7 +119,7 @@ func TestGeneratorQueryExecutor_IsComparable(t *testing.T) {
 	})
 }
 
-func TestGeneratorQueryExecutor_Validate(t *testing.T) {
+func TestBenchSpy_GeneratorQueryExecutor_Validate(t *testing.T) {
 	t.Run("valid case", func(t *testing.T) {
 		executor, _ := NewGeneratorQueryExecutor(&wasp.Generator{
 			Cfg: &wasp.Config{},
@@ -187,23 +188,23 @@ func (f *fakeGun) Call(l *wasp.Generator) *wasp.Response {
 		}
 	}
 
-	panic("fakeGun.Call called too many times. do adjust your settings (sum of maxSuccesses and maxFilure should be more than the duration of the segment in seconds)")
+	panic("fakeGun.Call called too many times. do adjust your settings (sum of maxSuccesses and maxFilure should be greater than the duration of the segment in seconds)")
 }
 
-func TestGeneratorQueryExecutor_Execute(t *testing.T) {
-	cfg := &wasp.Config{
-		GenName:  "my_gen",
-		LoadType: wasp.RPS,
-		Schedule: []*wasp.Segment{
-			{
-				Type:     "plain",
-				From:     1,
-				Duration: 5 * time.Second,
-			},
-		},
-	}
-
+func TestBenchSpy_GeneratorQueryExecutor_Execute(t *testing.T) {
 	t.Run("success case with mixed responses", func(t *testing.T) {
+		cfg := &wasp.Config{
+			GenName:  "my_gen",
+			LoadType: wasp.RPS,
+			Schedule: []*wasp.Segment{
+				{
+					Type:     "plain",
+					From:     1,
+					Duration: 5 * time.Second,
+				},
+			},
+		}
+
 		fakeGun := &fakeGun{
 			maxSuccesses: 4,
 			maxFailures:  3,
@@ -231,17 +232,23 @@ func TestGeneratorQueryExecutor_Execute(t *testing.T) {
 		results := executor.Results()
 		assert.NotEmpty(t, results)
 
-		// 4 responses with 151ms latency (150 sleep + some execution overhead)
-		// and 2-3 responses with 201ms latency (200 sleep + some execution overhead)
-		// expected median latency: 151ms
+		// 4 responses with ~150ms latency (150ms sleep + some execution overhead)
+		// and 2-3 responses with ~200ms latency (200ms sleep + some execution overhead)
+		// expected median latency: (150ms, 151ms>
 		medianLatency, exists := results[string(MedianLatency)]
 		assert.True(t, exists)
-		assert.Equal(t, []string{"151.0000"}, medianLatency)
 
-		// since we have 2-3 responses with 201ms latency, the 95th percentile should be 201ms
+		medianLatencyFloat, err := strconv.ParseFloat(medianLatency[0], 64)
+		assert.NoError(t, err)
+		require.InDelta(t, 151.0, medianLatencyFloat, 1.0)
+
 		p95Latency, exists := results[string(Percentile95Latency)]
 		assert.True(t, exists)
-		assert.Equal(t, []string{"201.0000"}, p95Latency)
+
+		// since we have 2-3 responses with 200-201ms latency, the 95th percentile should be (200ms, 201ms>
+		p95LatencyFloat, err := strconv.ParseFloat(p95Latency[0], 64)
+		assert.NoError(t, err)
+		require.InDelta(t, 201.0, p95LatencyFloat, 1.0)
 
 		errorRate, exists := results[string(ErrorRate)]
 		assert.True(t, exists)
@@ -252,6 +259,18 @@ func TestGeneratorQueryExecutor_Execute(t *testing.T) {
 	})
 
 	t.Run("all responses failed", func(t *testing.T) {
+		cfg := &wasp.Config{
+			GenName:  "my_gen",
+			LoadType: wasp.RPS,
+			Schedule: []*wasp.Segment{
+				{
+					Type:     "plain",
+					From:     1,
+					Duration: 5 * time.Second,
+				},
+			},
+		}
+
 		fakeGun := &fakeGun{
 			maxSuccesses: 0,
 			maxFailures:  6,
@@ -283,6 +302,18 @@ func TestGeneratorQueryExecutor_Execute(t *testing.T) {
 	})
 
 	t.Run("no responses", func(t *testing.T) {
+		cfg := &wasp.Config{
+			GenName:  "my_gen",
+			LoadType: wasp.RPS,
+			Schedule: []*wasp.Segment{
+				{
+					Type:     "plain",
+					From:     1,
+					Duration: 5 * time.Second,
+				},
+			},
+		}
+
 		fakeGun := &fakeGun{
 			maxSuccesses: 0,
 			maxFailures:  0,
@@ -299,7 +330,7 @@ func TestGeneratorQueryExecutor_Execute(t *testing.T) {
 	})
 }
 
-func TestGeneratorQueryExecutor_MarshalJSON(t *testing.T) {
+func TestBenchSpy_GeneratorQueryExecutor_MarshalJSON(t *testing.T) {
 	t.Run("marshal/unmarshal round trip", func(t *testing.T) {
 		gen := &wasp.Generator{
 			Cfg: &wasp.Config{
@@ -352,7 +383,7 @@ func TestGeneratorQueryExecutor_MarshalJSON(t *testing.T) {
 	})
 }
 
-func TestGeneratorQueryExecutor_TimeRange(t *testing.T) {
+func TestBenchSpy_GeneratorQueryExecutor_TimeRange(t *testing.T) {
 	executor := &GeneratorQueryExecutor{}
 	start := time.Now()
 	end := start.Add(time.Hour)

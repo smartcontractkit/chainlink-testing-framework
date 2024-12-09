@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCalculatePercentile(t *testing.T) {
+func TestBenchSpy_CalculatePercentile(t *testing.T) {
 	t.Run("basic percentile calculations", func(t *testing.T) {
 		numbers := []float64{1, 2, 3, 4, 5}
 
@@ -75,7 +75,7 @@ func TestCalculatePercentile(t *testing.T) {
 	})
 }
 
-func TestStringSliceToFloat64Slice(t *testing.T) {
+func TestBenchSpy_StringSliceToFloat64Slice(t *testing.T) {
 	t.Run("valid conversion", func(t *testing.T) {
 		input := []string{"1.0", "2.5", "3.14"}
 		expected := []float64{1.0, 2.5, 3.14}
