@@ -11,6 +11,7 @@ jobs:
   generate_docs_new_pr:
     if: ${{ contains(github.event.pull_request.labels.*.name, 'generate_go_docs') }}    
     runs-on: ubuntu-latest
+    environment: integration
     permissions:
       id-token: write
       contents: read 
@@ -108,7 +109,10 @@ jobs:
 
       - name: Remove costs before committing
         shell: bash
-        run: rm -rf costs
+        run: | 
+          rm -rf costs
+          # remove after testing
+          exit 1 
 
       - name: Setup GitHub Token for creating a new PR
         id: setup-github-token-write
@@ -127,3 +131,57 @@ jobs:
           title: "Go docs for PR#${{ github.event.pull_request.number }}"
           body: "This PR contains automatically generated go documentation for the PR#${{ github.event.pull_request.number }}. Please review the changes."
           commit-message: "[Bot] Add automatically generated go documentation"
+
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
+        if: failure() || cancelled()
+        id: slack
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.QA_SLACK_API_KEY }}
+        with:
+          channel-id: 'C049X3353K2'
+          payload: |
+            {
+              "attachments": [
+                {
+                  "color": "${{ contains(join(needs.*.result, ','), 'failure') && '#C62828' || contains(join(needs.*.result, ','), 'cancelled') && '#FFA000' || '2E7D32' }}",
+                  "blocks": [
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "mrkdwn",
+                        "text": "Go doc generation - ${{ contains(join(needs.*.result, ','), 'failure') && 'Failed :x:' || contains(join(needs.*.result, ','), 'cancelled') && 'Cancelled :warning:' }}"
+                      }
+                    },
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "mrkdwn",
+                        "text": "${{ github.ref_name }} | <${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|PR#${{ github.event.pull_request.number }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Details>"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+
+      - name: Notify user in Slack message if tests failed
+        if: failure() || cancelled()
+        uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.QA_SLACK_API_KEY }}
+        with:
+          channel-id: 'C049X3353K2'
+          payload: |
+            {
+              "thread_ts": "${{ steps.slack.outputs.thread_ts }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "Notifying <@U060CGGPY8H>, please check doc generation log."
+                  }
+                }
+              ]
+            }          
