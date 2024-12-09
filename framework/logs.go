@@ -6,11 +6,43 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 )
 
 const (
 	EnvVarIgnoreCriticalLogs = "CTF_IGNORE_CRITICAL_LOGS"
 )
+
+func getLogDirectories() ([]string, error) {
+	logDirs := make([]string, 0)
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current directory: %w", err)
+	}
+	entries, err := os.ReadDir(currentDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read directory: %w", err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() && strings.HasPrefix(entry.Name(), "logs-") {
+			logDirs = append(logDirs, filepath.Join(currentDir, entry.Name()))
+		}
+	}
+	return logDirs, nil
+}
+
+func checkAllNodeLogErrors() error {
+	dirs, err := getLogDirectories()
+	if err != nil {
+		return err
+	}
+	for _, dd := range dirs {
+		if err := checkNodeLogErrors(dd); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // checkNodeLogsErrors check Chainlink nodes logs for error levels
 func checkNodeLogErrors(dir string) error {

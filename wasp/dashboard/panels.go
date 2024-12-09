@@ -7,6 +7,9 @@ import (
 	"github.com/K-Phoen/grabana/timeseries/axis"
 )
 
+// RPSPanel creates a time series panel displaying responses per second
+// grouped by generator and call group. It is used to monitor
+// response rates in the dashboard.
 func RPSPanel(dataSource string, query map[string]string) row.Option {
 	queryString := ""
 	for key, value := range query {
@@ -35,6 +38,8 @@ func RPSPanel(dataSource string, query map[string]string) row.Option {
 	)
 }
 
+// RPSVUPerScheduleSegmentsPanel creates a dashboard panel displaying Requests Per Second and Virtual Users segmented by schedule.
+// It is used to monitor performance metrics over time for different test configurations.
 func RPSVUPerScheduleSegmentsPanel(dataSource string, query map[string]string) row.Option {
 	queryString := ""
 	for key, value := range query {

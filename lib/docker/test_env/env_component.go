@@ -1,7 +1,6 @@
 package test_env
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/logstream"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/osutil"
 )
 
@@ -19,19 +17,18 @@ const (
 )
 
 type EnvComponent struct {
-	ContainerName      string               `json:"containerName"`
-	ContainerImage     string               `json:"containerImage"`
-	ContainerVersion   string               `json:"containerVersion"`
-	ContainerEnvs      map[string]string    `json:"containerEnvs"`
-	WasRecreated       bool                 `json:"wasRecreated"`
-	Networks           []string             `json:"networks"`
-	Container          tc.Container         `json:"-"`
-	LogStream          *logstream.LogStream `json:"-"`
-	PostStartsHooks    []tc.ContainerHook   `json:"-"`
-	PostStopsHooks     []tc.ContainerHook   `json:"-"`
-	PreTerminatesHooks []tc.ContainerHook   `json:"-"`
-	LogLevel           string               `json:"-"`
-	StartupTimeout     time.Duration        `json:"-"`
+	ContainerName      string             `json:"containerName"`
+	ContainerImage     string             `json:"containerImage"`
+	ContainerVersion   string             `json:"containerVersion"`
+	ContainerEnvs      map[string]string  `json:"containerEnvs"`
+	WasRecreated       bool               `json:"wasRecreated"`
+	Networks           []string           `json:"networks"`
+	Container          tc.Container       `json:"-"`
+	PostStartsHooks    []tc.ContainerHook `json:"-"`
+	PostStopsHooks     []tc.ContainerHook `json:"-"`
+	PreTerminatesHooks []tc.ContainerHook `json:"-"`
+	LogLevel           string             `json:"-"`
+	StartupTimeout     time.Duration      `json:"-"`
 }
 
 type EnvComponentOption = func(c *EnvComponent)
@@ -70,12 +67,6 @@ func WithLogLevel(logLevel string) EnvComponentOption {
 	}
 }
 
-func WithLogStream(ls *logstream.LogStream) EnvComponentOption {
-	return func(c *EnvComponent) {
-		c.LogStream = ls
-	}
-}
-
 func WithPostStartsHooks(hooks ...tc.ContainerHook) EnvComponentOption {
 	return func(c *EnvComponent) {
 		c.PostStartsHooks = hooks
@@ -95,22 +86,7 @@ func WithPreTerminatesHooks(hooks ...tc.ContainerHook) EnvComponentOption {
 }
 
 func (ec *EnvComponent) SetDefaultHooks() {
-	ec.PostStartsHooks = []tc.ContainerHook{
-		func(ctx context.Context, c tc.Container) error {
-			if ec.LogStream != nil {
-				return ec.LogStream.ConnectContainer(ctx, c, "")
-			}
-			return nil
-		},
-	}
-	ec.PostStopsHooks = []tc.ContainerHook{
-		func(ctx context.Context, c tc.Container) error {
-			if ec.LogStream != nil {
-				return ec.LogStream.DisconnectContainer(c)
-			}
-			return nil
-		},
-	}
+	// no default hooks
 }
 
 func (ec *EnvComponent) GetImageWithVersion() string {
