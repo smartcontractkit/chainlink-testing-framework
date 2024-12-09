@@ -134,7 +134,7 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-author: 'github-actions[bot]'
-          body-includes: Go doc generation 
+          body-includes: you can check generated Go function generation
 
       - name: Create comment in the original PR
         uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
@@ -145,6 +145,7 @@ jobs:
           body: |
             ## Go doc generation
             Hey @${{ github.actor }}, you can check generated Go function generation [here](${{ steps.create-pr.outputs.pull-request-url }}).
+            <br/>
             Please review them and merge to this PR once you're satisfied with them.
 
       # - name: Send Slack notification
