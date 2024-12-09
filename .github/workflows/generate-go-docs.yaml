@@ -55,6 +55,8 @@ jobs:
               - 'k8s-test-runner/**/*.go'
             framework:
               - 'framework/**/*.go'
+            flakeguard:
+              - 'tools/flakeguard/**/*.go'              
             # later add tools here or, if possible, make this filter dynamic so that it's created based on the go modules in the repository
 
       - name: Find all go modules in the repository and filter the ones that changed
