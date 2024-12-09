@@ -223,7 +223,6 @@ func renderArtifactSection(w io.Writer, artifactName, artifactLink string) {
 		fmt.Fprintln(w, "## Artifacts")
 		fmt.Fprintln(w)
 		fmt.Fprintf(w, "For detailed logs of the failed tests, please refer to the artifact [%s](%s).\n", artifactName, artifactLink)
-		fmt.Fprintln(w, "This artifact contains all outputs from failed tests.")
 	}
 }
 
