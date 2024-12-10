@@ -38,6 +38,7 @@ var (
 	ErrTeardown               = errors.New("generator request teardown error")
 	ErrStartFrom              = errors.New("from must be > 0")
 	ErrInvalidSegmentDuration = errors.New("SegmentDuration must be defined")
+	ErrMissingSegmentType     = errors.New("Segment Type myst be set")
 	ErrNoGun                  = errors.New("rps load scheduleSegments selected but gun implementation is nil")
 	ErrNoVU                   = errors.New("vu load scheduleSegments selected but vu implementation is nil")
 	ErrInvalidLabels          = errors.New("invalid Loki labels, labels should be [a-z][A-Z][0-9] and _")
@@ -104,10 +105,20 @@ const (
 	VU  ScheduleType = "vu_schedule"
 )
 
+type SegmentType string
+
+const (
+	SegmentType_Plain SegmentType = "plain"
+	SegmentType_Steps SegmentType = "steps"
+)
+
 // Segment load test schedule segment
 type Segment struct {
-	From     int64
-	Duration time.Duration
+	From      int64         `json:"from"`
+	Duration  time.Duration `json:"duration"`
+	Type      SegmentType   `json:"type"`
+	StartTime time.Time     `json:"time_start"`
+	EndTime   time.Time     `json:"time_end"`
 }
 
 // Validate checks that the Segment has a valid starting point and duration.
@@ -120,29 +131,33 @@ func (ls *Segment) Validate() error {
 	if ls.Duration == 0 {
 		return ErrInvalidSegmentDuration
 	}
+	if ls.Type == "" {
+		return ErrMissingSegmentType
+	}
+
 	return nil
 }
 
 // Config is for shared load test data and configuration
 type Config struct {
-	T                     *testing.T
-	GenName               string
-	LoadType              ScheduleType
-	Labels                map[string]string
-	LokiConfig            *LokiConfig
-	Schedule              []*Segment
-	RateLimitUnitDuration time.Duration
-	CallResultBufLen      int
-	StatsPollInterval     time.Duration
-	CallTimeout           time.Duration
-	SetupTimeout          time.Duration
-	TeardownTimeout       time.Duration
-	FailOnErr             bool
-	Gun                   Gun
-	VU                    VirtualUser
-	Logger                zerolog.Logger
-	SharedData            interface{}
-	SamplerConfig         *SamplerConfig
+	T                     *testing.T        `json:"-"`
+	GenName               string            `json:"generator_name"`
+	LoadType              ScheduleType      `json:"load_type"`
+	Labels                map[string]string `json:"-"`
+	LokiConfig            *LokiConfig       `json:"-"`
+	Schedule              []*Segment        `json:"schedule"`
+	RateLimitUnitDuration time.Duration     `json:"rate_limit_unit_duration"`
+	CallResultBufLen      int               `json:"-"`
+	StatsPollInterval     time.Duration     `json:"-"`
+	CallTimeout           time.Duration     `json:"call_timeout"`
+	SetupTimeout          time.Duration     `json:"-"`
+	TeardownTimeout       time.Duration     `json:"-"`
+	FailOnErr             bool              `json:"-"`
+	Gun                   Gun               `json:"-"`
+	VU                    VirtualUser       `json:"-"`
+	Logger                zerolog.Logger    `json:"-"`
+	SharedData            interface{}       `json:"-"`
+	SamplerConfig         *SamplerConfig    `json:"-"`
 	// calculated fields
 	duration time.Duration
 	// only available in cluster mode
@@ -475,6 +490,7 @@ func (g *Generator) processSegment() bool {
 	}
 	g.currentSegmentMu.Lock()
 	g.currentSegment = g.scheduleSegments[g.stats.CurrentSegment.Load()]
+	g.currentSegment.StartTime = time.Now()
 	g.currentSegmentMu.Unlock()
 	g.stats.CurrentSegment.Add(1)
 	switch g.Cfg.LoadType {
@@ -527,6 +543,7 @@ func (g *Generator) runScheduleLoop() {
 					return
 				}
 				time.Sleep(g.currentSegment.Duration)
+				g.currentSegment.EndTime = time.Now()
 			}
 		}
 	}()
