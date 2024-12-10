@@ -9,12 +9,12 @@ on:
 
 jobs:
   generate_docs_new_pr:
-    if: ${{ contains(github.event.pull_request.labels.*.name, 'generate_go_docs') }}    
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'generate_go_docs') }}
     runs-on: ubuntu-latest
     environment: integration
     permissions:
       id-token: write
-      contents: read 
+      contents: read
 
     steps:
       - name: Setup GitHub Token for reading Generate Go Doc Repo
@@ -56,18 +56,38 @@ jobs:
               - 'k8s-test-runner/**/*.go'
             framework:
               - 'framework/**/*.go'
+            tools/asciitable:
+              - 'tools/asciitable/**/*.go'
+            tools/breakingchanges:
+              - 'tools/breakingchanges/**/*.go'
+            tools/citool:
+              - 'tools/citool/**/*.go'
+            tools/ecrimagefetcher:
+              - 'tools/ecrimagefetcher/**/*.go'
+            tools/envresolve:
+              - 'tools/envresolve/**/*.go'
             tools/flakeguard:
-              - 'tools/flakeguard/**/*.go'              
-            # later add tools here or, if possible, make this filter dynamic so that it's created based on the go modules in the repository
+              - 'tools/flakeguard/**/*.go'
+            tools/ghlatestreleasechecker:
+              - 'tools/ghlatestreleasechecker/**/*.go'
+            tools/ghsecrets:
+              - 'tools/ghsecrets/**/*.go'
+            tools/gotestloghelper:
+              - 'tools/gotestloghelper/**/*.go'
+            tools/testlistgenerator:
+              - 'tools/testlistgenerator/**/*.go'
+            tools/workflowresultparser:
+              - 'tools/workflowresultparser/**/*.go'
+            # add more projects here
 
       - name: Find all go modules in the repository and filter the ones that changed
         shell: bash
         id: go-modules
         env:
-          FILTERS: ${{ steps.changes.outputs.changes }}        
+          FILTERS: ${{ steps.changes.outputs.changes }}
         run: |
           PATH=$PATH:$(go env GOPATH)/bin
-          export PATH                  
+          export PATH
 
           # Find all go projects
           gomods_output=$(gomods 2>&1)
@@ -117,7 +137,7 @@ jobs:
         with:
           aws-role-arn: ${{ secrets.AWS_ROLE_ARN_CREATE_PR }}
           aws-lambda-url: ${{ secrets.GATI_LAMBDA_TT_URL }}
-          aws-region: ${{ secrets.AWS_REGION }}          
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Create a new PR targeting current PR
         uses: peter-evans/create-pull-request@5e914681df9dc83aa4e4905692ca88beb2f9e91f # v7.0.5
@@ -130,6 +150,11 @@ jobs:
           body: "This PR contains automatically generated go documentation for the PR#${{ github.event.pull_request.number }}. Please review the changes."
           commit-message: "[Bot] Add automatically generated go documentation"
 
+      - name: Check outputs
+        run: |
+          echo "new: ${{ steps.create-pr.outputs.pull-request-number }}"
+          echo "old: ${{ github.event.pull_request.number }}"
+
       - name: Find comment with PR link
         uses: peter-evans/find-comment@3eae4d37986fb5a8592848f6a574fdf654e61f9e # v3.1.0
         id: fc
@@ -137,19 +162,33 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           body-includes: Go doc generation
 
-      - name: Create comment in the original PR
+      - name: Create comment in the original PR with link to the new PR
         uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
-        if: steps.fc.outputs.comment-id == 0
+        if: steps.create-pr.outputs.pull-request-number != ''
         with:
           token: ${{ steps.setup-github-token-write.outputs.access-token }}
           issue-number: ${{ github.event.pull_request.number }}
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          edit-mode: replace
           body: |
             ## Go doc generation
             Hey @${{ github.actor }}, you can check generated Go function documentation [here](${{ steps.create-pr.outputs.pull-request-url }}). Please review them and merge to this PR once you're satisfied with them.
 
+      - name: Create comment in the original PR to notify about no new docs
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
+        if: steps.create-pr.outputs.pull-request-number == ''
+        with:
+          token: ${{ steps.setup-github-token-write.outputs.access-token }}
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          edit-mode: replace
+          body: |
+            ## Go doc generation
+            Hey @${{ github.actor }}, no documentation was generated. Are you sure that you made changes to public functions without existing comments in your PR?
+
       - name: Send Slack notification
         uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
-        if: failure() 
+        if: failure()
         id: slack
         env:
           SLACK_BOT_TOKEN: ${{ secrets.QA_SLACK_API_KEY }}
@@ -174,7 +213,7 @@ jobs:
                           "type": "mrkdwn",
                           "text": "<@U060CGGPY8H>, please have a look."
                         }
-                    },                    
+                    },
                     {
                       "type": "section",
                       "text": {
