@@ -20,6 +20,9 @@ const (
 	Reset  = "\033[0m"
 )
 
+// SuchABreakingChange indicates a significant alteration in functionality.
+// It notifies users that the current implementation may not be compatible 
+// with previous versions, prompting necessary adjustments in their code.
 func SuchABreakingChange() {
 	fmt.Println("This is a breaking change")
 }
