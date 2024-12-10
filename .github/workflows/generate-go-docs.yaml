@@ -179,7 +179,8 @@ jobs:
         # we want to post this warning only, if it is the first time we are running this action on the PR
         # it is entirely valid to have (some) subsequent commits without new docs as long as at least
         # one commit introduced changes to public functions without existing comments
-        if: steps.create-pr.outputs.pull-request-number == '' && steps.fc.outputs.comment-id == 0
+        #  && steps.fc.outputs.comment-id == 0
+        if: steps.create-pr.outputs.pull-request-number == ''
         with:
           token: ${{ steps.setup-github-token-write.outputs.access-token }}
           issue-number: ${{ github.event.pull_request.number }}
