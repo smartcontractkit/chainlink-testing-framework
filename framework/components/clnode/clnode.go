@@ -209,6 +209,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		return nil, err
 	}
 	req := tc.ContainerRequest{
+		Privileged:      true,
 		AlwaysPullImage: in.Node.PullImage,
 		Image:           in.Node.Image,
 		Name:            containerName,
