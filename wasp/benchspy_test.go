@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/common/model"
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp/benchspy"
 	"github.com/stretchr/testify/require"
@@ -46,9 +47,6 @@ func TestBenchSpyWithLokiQuery(t *testing.T) {
 			TestName:    t.Name(),
 			TestStart:   time.Now(),
 			CommitOrTag: "e7fc5826a572c09f8b93df3b9f674113372ce925",
-		},
-		ResourceReporter: benchspy.ResourceReporter{
-			ExecutionEnvironment: benchspy.ExecutionEnvironment_Docker,
 		},
 	}
 
@@ -139,9 +137,6 @@ func TestBenchSpyWithTwoLokiQueries(t *testing.T) {
 
 	currentReport := benchspy.StandardReport{
 		BasicData: benchspy.MustNewBasicData("e7fc5826a572c09f8b93df3b9f674113372ce924", gen),
-		ResourceReporter: benchspy.ResourceReporter{
-			ExecutionEnvironment: benchspy.ExecutionEnvironment_Docker,
-		},
 	}
 
 	lokiQueryExecutor := benchspy.NewLokiQueryExecutor(
@@ -258,7 +253,7 @@ func TestBenchSpyWithStandardLokiMetrics(t *testing.T) {
 
 	gen.Run(true)
 
-	currentReport, err := benchspy.NewStandardReport("e7fc5826a572c09f8b93df3b9f674113372ce925", benchspy.ExecutionEnvironment_Docker, benchspy.StandardQueryExecutor_Loki, gen)
+	currentReport, err := benchspy.NewStandardReport("e7fc5826a572c09f8b93df3b9f674113372ce925", benchspy.WithStandardQueryExecutorType(benchspy.StandardQueryExecutor_Loki), benchspy.WithGenerators(gen))
 	require.NoError(t, err)
 
 	fetchCtx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
@@ -283,7 +278,7 @@ func TestBenchSpyWithStandardLokiMetrics(t *testing.T) {
 	isComparableErrs := previousReport.IsComparable(currentReport)
 	require.Empty(t, isComparableErrs, "reports were not comparable", isComparableErrs)
 
-	var compareMedian = func(metricName benchspy.StandardMetric) {
+	var compareMedian = func(metricName benchspy.StandardLoadMetric) {
 		require.NotEmpty(t, currentReport.QueryExecutors[0].Results()[string(metricName)], "%s results were missing from current report", string(metricName))
 		require.NotEmpty(t, previousReport.QueryExecutors[0].Results()[string(metricName)], "%s results were missing from previous report", string(metricName))
 		require.Equal(t, len(currentReport.QueryExecutors[0].Results()[string(metricName)]), len(previousReport.QueryExecutors[0].Results()[string(metricName)]), "%s results are not the same length", string(metricName))
@@ -331,7 +326,7 @@ func TestBenchSpyWithStandardGeneratorMetrics(t *testing.T) {
 
 	gen.Run(true)
 
-	currentReport, err := benchspy.NewStandardReport("e7fc5826a572c09f8b93df3b9f674113372ce925", benchspy.ExecutionEnvironment_Docker, benchspy.StandardQueryExecutor_Generator, gen)
+	currentReport, err := benchspy.NewStandardReport("e7fc5826a572c09f8b93df3b9f674113372ce925", benchspy.WithStandardQueryExecutorType(benchspy.StandardQueryExecutor_Loki), benchspy.WithGenerators(gen))
 	require.NoError(t, err)
 
 	// context is not really needed, since we are using a generator, but it's required by the FetchData method
@@ -354,7 +349,107 @@ func TestBenchSpyWithStandardGeneratorMetrics(t *testing.T) {
 	isComparableErrs := previousReport.IsComparable(currentReport)
 	require.Empty(t, isComparableErrs, "reports were not comparable", isComparableErrs)
 
-	var compareMedian = func(metricName benchspy.StandardMetric) {
+	var compareMedian = func(metricName benchspy.StandardLoadMetric) {
+		require.NotEmpty(t, currentReport.QueryExecutors[0].Results()[string(metricName)], "%s results were missing from current report", string(metricName))
+		require.NotEmpty(t, previousReport.QueryExecutors[0].Results()[string(metricName)], "%s results were missing from previous report", string(metricName))
+		require.Equal(t, len(currentReport.QueryExecutors[0].Results()[string(metricName)]), len(previousReport.QueryExecutors[0].Results()[string(metricName)]), "%s results are not the same length", string(metricName))
+
+		currentFloatSlice, err := benchspy.StringSliceToFloat64Slice(currentReport.QueryExecutors[0].Results()[string(metricName)])
+		require.NoError(t, err, "failed to convert %s results to float64 slice", string(metricName))
+		currentMedian := benchspy.CalculatePercentile(currentFloatSlice, 0.5)
+
+		previousFloatSlice, err := benchspy.StringSliceToFloat64Slice(previousReport.QueryExecutors[0].Results()[string(metricName)])
+		require.NoError(t, err, "failed to convert %s results to float64 slice", string(metricName))
+		previousMedian := benchspy.CalculatePercentile(previousFloatSlice, 0.5)
+
+		var diffPrecentage float64
+		if previousMedian != 0 {
+			diffPrecentage = (currentMedian - previousMedian) / previousMedian * 100
+		} else {
+			diffPrecentage = currentMedian * 100
+		}
+		require.LessOrEqual(t, math.Abs(diffPrecentage), 1.0, "%s medians are more than 1% different", string(metricName), fmt.Sprintf("%.4f", diffPrecentage))
+	}
+
+	compareMedian(benchspy.MedianLatency)
+	compareMedian(benchspy.Percentile95Latency)
+	compareMedian(benchspy.ErrorRate)
+}
+
+func TestBenchSpy_Prometheus(t *testing.T) {
+	t.Skip("skipping test, since it requires a running CTFv2 node_set and observability stack [start it manually and run the test]")
+
+	before := time.Now().Add(-5 * time.Minute)
+	// exclude bootstrap node
+	prometheusNodeReporter, err := benchspy.NewStandardPrometheusResourceReporter("http://localhost:9090", before, time.Now(), `node[^0]`)
+	require.NoError(t, err)
+
+	fetchErr := prometheusNodeReporter.Fetch(context.Background())
+	require.NoError(t, fetchErr, "failed to fetch prometheus node resources")
+
+	resourcesAsValue := prometheusNodeReporter.MustResourcesAsValue()
+	medianCpuUsagePerNode := resourcesAsValue[string(benchspy.MedianCPUUsage)]
+	require.Equal(t, medianCpuUsagePerNode.Type(), model.ValVector, "median cpu usage per node should be a vector")
+
+	medianCpuUsagePerNodeVector := medianCpuUsagePerNode.(model.Vector)
+	require.NotEmpty(t, medianCpuUsagePerNodeVector, "median cpu usage per node vector should not be empty")
+	require.Equal(t, 4, len(medianCpuUsagePerNodeVector), "median cpu usage per node vector should have 4 elements")
+
+	for _, sample := range medianCpuUsagePerNodeVector {
+		require.NotZero(t, sample.Value, "median cpu usage per node should not be zero")
+	}
+}
+
+func TestBenchSpy_OCRv2Burst(t *testing.T) {
+	// TODO use real app here
+	// deploy node set and chain using ctfv2
+	// upload some contracts
+	// run some tests
+	// could even be a stupid OCR test
+	gen, err := wasp.NewGenerator(&wasp.Config{
+		T: t,
+		// notice lack of Loki config
+		GenName:     "vu",
+		CallTimeout: 100 * time.Millisecond,
+		LoadType:    wasp.VU,
+		Schedule: wasp.CombineAndRepeat(
+			2,
+			wasp.Steps(10, 1, 10, 10*time.Second),
+			wasp.Plain(30, 15*time.Second),
+			wasp.Steps(20, -1, 10, 5*time.Second),
+		),
+		VU: wasp.NewMockVU(&wasp.MockVirtualUserConfig{
+			CallSleep: 50 * time.Millisecond,
+		}),
+	})
+	require.NoError(t, err)
+
+	gen.Run(true)
+
+	currentReport, err := benchspy.NewStandardReport("e7fc5826a572c09f8b93df3b9f674113372ce925", benchspy.WithStandardQueryExecutorType(benchspy.StandardQueryExecutor_Loki), benchspy.WithGenerators(gen))
+	require.NoError(t, err)
+
+	// context is not really needed, since we are using a generator, but it's required by the FetchData method
+	fetchErr := currentReport.FetchData(context.Background())
+	require.NoError(t, fetchErr, "failed to fetch current report")
+
+	// path, storeErr := currentReport.Store()
+	// require.NoError(t, storeErr, "failed to store current report", path)
+
+	// this is only needed, because we are using a non-standard directory
+	// otherwise, the Load method would be able to find the file
+	previousReport := benchspy.StandardReport{
+		LocalStorage: benchspy.LocalStorage{
+			Directory: "test_performance_reports",
+		},
+	}
+	loadErr := previousReport.Load(t.Name(), "e7fc5826a572c09f8b93df3b9f674113372ce924")
+	require.NoError(t, loadErr, "failed to load previous report")
+
+	isComparableErrs := previousReport.IsComparable(currentReport)
+	require.Empty(t, isComparableErrs, "reports were not comparable", isComparableErrs)
+
+	var compareMedian = func(metricName benchspy.StandardLoadMetric) {
 		require.NotEmpty(t, currentReport.QueryExecutors[0].Results()[string(metricName)], "%s results were missing from current report", string(metricName))
 		require.NotEmpty(t, previousReport.QueryExecutors[0].Results()[string(metricName)], "%s results were missing from previous report", string(metricName))
 		require.Equal(t, len(currentReport.QueryExecutors[0].Results()[string(metricName)]), len(previousReport.QueryExecutors[0].Results()[string(metricName)]), "%s results are not the same length", string(metricName))

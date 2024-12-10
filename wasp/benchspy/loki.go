@@ -169,7 +169,7 @@ func NewStandardMetricsLokiExecutor(lokiConfig *wasp.LokiConfig, testName, gener
 	return lq, nil
 }
 
-func (l *LokiQueryExecutor) standardQuery(standardMetric StandardMetric, testName, generatorName, branch, commit string, startTime, endTime time.Time) (string, error) {
+func (l *LokiQueryExecutor) standardQuery(standardMetric StandardLoadMetric, testName, generatorName, branch, commit string, startTime, endTime time.Time) (string, error) {
 	switch standardMetric {
 	case MedianLatency:
 		return fmt.Sprintf("quantile_over_time(0.5, {branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"responses\", gen_name=~\"%s\"} | json| unwrap duration [10s]) by (go_test_name, gen_name) / 1e6", branch, commit, testName, generatorName), nil
@@ -188,7 +188,7 @@ func (l *LokiQueryExecutor) standardQuery(standardMetric StandardMetric, testNam
 func (l *LokiQueryExecutor) generateStandardQueries(testName, generatorName, branch, commit string, startTime, endTime time.Time) (map[string]string, error) {
 	standardQueries := make(map[string]string)
 
-	for _, metric := range standardMetrics {
+	for _, metric := range standardLoadMetrics {
 		query, err := l.standardQuery(metric, testName, generatorName, branch, commit, startTime, endTime)
 		if err != nil {
 			return nil, err

@@ -126,7 +126,7 @@ func (g *GeneratorQueryExecutor) TimeRange(_, _ time.Time) {
 func (g *GeneratorQueryExecutor) generateStandardQueries() (map[string]GeneratorQueryFn, error) {
 	standardQueries := make(map[string]GeneratorQueryFn)
 
-	for _, metric := range standardMetrics {
+	for _, metric := range standardLoadMetrics {
 		query, err := g.standardQuery(metric)
 		if err != nil {
 			return nil, err
@@ -137,7 +137,7 @@ func (g *GeneratorQueryExecutor) generateStandardQueries() (map[string]Generator
 	return standardQueries, nil
 }
 
-func (g *GeneratorQueryExecutor) standardQuery(standardMetric StandardMetric) (GeneratorQueryFn, error) {
+func (g *GeneratorQueryExecutor) standardQuery(standardMetric StandardLoadMetric) (GeneratorQueryFn, error) {
 	switch standardMetric {
 	case MedianLatency:
 		medianFn := func(responses *wasp.SliceBuffer[wasp.Response]) (string, error) {

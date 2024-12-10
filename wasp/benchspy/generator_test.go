@@ -188,7 +188,7 @@ func (f *fakeGun) Call(l *wasp.Generator) *wasp.Response {
 		}
 	}
 
-	panic("fakeGun.Call called too many times. do adjust your settings (sum of maxSuccesses and maxFilure should be greater than the duration of the segment in seconds)")
+	panic(fmt.Sprintf("fakeGun.Call called too many times (%d vs %d). Expected maxFailures: %d. Expected maxSuccesses: %d. do adjust your settings (sum of maxSuccesses and maxFilure should be greater than the duration of the segment in seconds)", f.maxFailures+f.maxSuccesses, f.maxFailures+f.maxSuccesses+1, f.maxFailures, f.maxSuccesses))
 }
 
 func TestBenchSpy_GeneratorQueryExecutor_Execute(t *testing.T) {

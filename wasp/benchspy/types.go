@@ -24,16 +24,23 @@ type Comparator interface {
 	IsComparable(otherReport Reporter) error
 }
 
-type ResourceFetcher interface {
-	// FetchResources fetches the resources used by the AUT (e.g. CPU, memory, etc.)
-	FetchResources(ctx context.Context) error
-}
-
 type Reporter interface {
 	Storer
 	DataFetcher
-	ResourceFetcher
 	Comparator
+}
+
+type ResourceMonitor interface {
+	// Validate checks if the ResourceFetcher has all the necessary data and configuration to fetch resource usage
+	Validate() error
+	// Fetch fetches the resources used by the AUT (e.g. CPU, memory, etc.)
+	Fetch(ctx context.Context) error
+	// Results returns the results of the queries, where key is the name of the query and value is the result
+	Resources() map[string]interface{}
+	// IsComparable checks whether both ResourceFetcher can be compared (e.g. they have the same type, queries are the same, etc.), and returns an error (if any difference is found)
+	IsComparable(other ResourceMonitor) error
+	// TimeRange sets the time range for the queries
+	TimeRange(startTime, endTime time.Time)
 }
 
 type QueryExecutor interface {
@@ -56,12 +63,29 @@ const (
 	StandardQueryExecutor_Generator StandardQueryExecutorType = "generator"
 )
 
-type StandardMetric string
+type StandardResourceMonitorType string
 
 const (
-	MedianLatency       StandardMetric = "median_latency"
-	Percentile95Latency StandardMetric = "95th_percentile_latency"
-	ErrorRate           StandardMetric = "error_rate"
+	StandardResourceMonitor_Prometheus StandardResourceMonitorType = "prometheus"
 )
 
-var standardMetrics = []StandardMetric{MedianLatency, Percentile95Latency, ErrorRate}
+type StandardLoadMetric string
+
+const (
+	MedianLatency       StandardLoadMetric = "median_latency"
+	Percentile95Latency StandardLoadMetric = "95th_percentile_latency"
+	ErrorRate           StandardLoadMetric = "error_rate"
+)
+
+var standardLoadMetrics = []StandardLoadMetric{MedianLatency, Percentile95Latency, ErrorRate}
+
+type StandardResourceMetric string
+
+const (
+	MedianCPUUsage StandardResourceMetric = "median_cpu_usage"
+	MedianMemUsage StandardResourceMetric = "median_mem_usage"
+	P95CPUUsage    StandardResourceMetric = "p95_cpu_usage"
+	P95MemUsage    StandardResourceMetric = "p95_mem_usage"
+)
+
+var standardResourceMetrics = []StandardResourceMetric{MedianCPUUsage, MedianMemUsage, P95CPUUsage, P95MemUsage}
