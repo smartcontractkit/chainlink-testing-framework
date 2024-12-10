@@ -24,7 +24,7 @@ type SubscriptionManager struct {
 	registryMutex     sync.RWMutex
 	logger            zerolog.Logger
 	chainID           int64
-	addressTopicCache map[common.Address][]common.Hash
+	cachedEventKeys   []internal.EventKey
 	cacheInitialized  bool
 	cacheMutex        sync.RWMutex
 	channelBufferSize int
@@ -154,7 +154,7 @@ func (sm *SubscriptionManager) BroadcastLog(eventKey internal.EventKey, log api.
 	sm.registryMutex.RUnlock()
 
 	if !exists {
-		sm.logger.Error().
+		sm.logger.Debug().
 			Interface("EventKey", eventKey).
 			Msg("EventKey not found in registry")
 		return
@@ -197,59 +197,44 @@ func (sm *SubscriptionManager) BroadcastLog(eventKey internal.EventKey, log api.
 		Msg("Log broadcasted to all subscribers")
 }
 
-// GetAddressesAndTopics retrieves all unique addresses and their associated topics.
+// GetAddressesAndTopics retrieves all unique EventKeys.
 // Implements caching: caches the result after the first call and invalidates it upon subscription changes.
-// Returns a map where each key is an address and the value is a slice of topics.
-func (sm *SubscriptionManager) GetAddressesAndTopics() map[common.Address][]common.Hash {
+// Returns a slice of EventKeys, each containing a unique address-topic pair.
+func (sm *SubscriptionManager) GetAddressesAndTopics() []internal.EventKey {
 	sm.cacheMutex.RLock()
 	if sm.cacheInitialized {
 		defer sm.cacheMutex.RUnlock()
-		return sm.addressTopicCache
+		return sm.cachedEventKeys
 	}
 	sm.cacheMutex.RUnlock()
 
 	sm.registryMutex.RLock()
 	defer sm.registryMutex.RUnlock()
 
-	addressTopicMap := make(map[common.Address]map[common.Hash]struct{})
-
+	eventKeys := make([]internal.EventKey, 0, len(sm.registry))
 	for eventKey := range sm.registry {
-		topicSet, exists := addressTopicMap[eventKey.Address]
-		if !exists {
-			topicSet = make(map[common.Hash]struct{})
-			addressTopicMap[eventKey.Address] = topicSet
-		}
-		topicSet[eventKey.Topic] = struct{}{}
+		eventKeys = append(eventKeys, eventKey)
 	}
 
-	result := make(map[common.Address][]common.Hash)
-	for addr, topics := range addressTopicMap {
-		topicList := make([]common.Hash, 0, len(topics))
-		for topic := range topics {
-			topicList = append(topicList, topic)
-		}
-		result[addr] = topicList
-	}
-
-	// Update cache
+	// Update the cache
 	sm.cacheMutex.Lock()
-	sm.addressTopicCache = result
+	sm.cachedEventKeys = eventKeys
 	sm.cacheInitialized = true
 	sm.cacheMutex.Unlock()
 
 	sm.logger.Debug().
 		Int64("ChainID", sm.chainID).
-		Int("UniqueAddresses", len(sm.addressTopicCache)).
-		Msg("Cached address-topic pairs")
+		Int("UniqueEventKeys", len(sm.cachedEventKeys)).
+		Msg("Cached EventKeys")
 
-	return sm.addressTopicCache
+	return sm.cachedEventKeys
 }
 
 // invalidateCache invalidates the cached addresses and topics.
 func (sm *SubscriptionManager) invalidateCache() {
 	sm.cacheMutex.Lock()
 	sm.cacheInitialized = false
-	sm.addressTopicCache = nil
+	sm.cachedEventKeys = nil
 	sm.cacheMutex.Unlock()
 
 	sm.logger.Debug().

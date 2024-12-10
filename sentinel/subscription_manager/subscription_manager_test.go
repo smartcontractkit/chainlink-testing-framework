@@ -240,22 +240,22 @@ func TestSubscriptionManager_GetAddressesAndTopics(t *testing.T) {
 	address2 := common.HexToAddress("0xabcdefabcdefabcdefabcdefabcdefabcdefabcdef")
 	topic2 := common.HexToHash("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
 
+	ek1 := internal.EventKey{Address: address1, Topic: topic1}
+	ek2 := internal.EventKey{Address: address2, Topic: topic2}
+
 	_, err := manager.Subscribe(address1, topic1)
 	require.NoError(t, err)
 
 	_, err = manager.Subscribe(address2, topic2)
 	require.NoError(t, err)
 
-	// Fetch addresses and topics
+	// Fetch addresses and topics as EventKeys
 	result := manager.GetAddressesAndTopics()
 
-	// Verify addresses and topics
-	assert.Contains(t, result, address1, "Address1 should be in map")
-	assert.Contains(t, result, address2, "Address2 should be in map")
-	assert.ElementsMatch(t, result[address1], []common.Hash{topic1}, "Address1 should contain topic1")
-	assert.ElementsMatch(t, result[address2], []common.Hash{topic2}, "Address2 should contain topic2")
-	assert.NotContains(t, result[address1], topic2, "Topic2 should not be in address1")
-	assert.NotContains(t, result[address2], topic1, "Topic1 should not be in address2")
+	// Verify the slice contains the expected EventKeys
+	assert.Contains(t, result, ek1, "EventKey1 should be in the result")
+	assert.Contains(t, result, ek2, "EventKey2 should be in the result")
+	assert.Len(t, result, 2, "There should be two unique EventKeys")
 }
 
 func TestSubscriptionManager_Cache(t *testing.T) {
@@ -268,77 +268,101 @@ func TestSubscriptionManager_Cache(t *testing.T) {
 	address2 := common.HexToAddress("0xabcdefabcdefabcdefabcdefabcdefabcdefabcdef")
 	topic2 := common.HexToHash("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
 
-	// Initialize expected structure
-	expectedCache := make(map[common.Address][]common.Hash)
+	ek1 := internal.EventKey{Address: address1, Topic: topic1}
+	ek2 := internal.EventKey{Address: address2, Topic: topic2}
+
+	// Initialize expected slice of EventKeys
+	expectedCache := []internal.EventKey{}
 
 	// Step 1: Subscribe to an event
 	_, err := manager.Subscribe(address1, topic1)
 	require.NoError(t, err)
 	assert.False(t, manager.cacheInitialized, "Cache should not be initialized after Subscribe.")
 
-	// Update expected structure
-	expectedCache[address1] = []common.Hash{topic1}
+	// Update expected slice
+	expectedCache = append(expectedCache, ek1)
 
-	// Verify cache matches expected structure
+	// Verify cache matches expected slice
 	cache := manager.GetAddressesAndTopics()
 	assert.True(t, manager.cacheInitialized, "Cache should be initialized after GetAddressesAndTopics() is called.")
-	assert.Equal(t, expectedCache, cache, "Cache should match the expected structure.")
+	assert.ElementsMatch(t, expectedCache, cache, "Cache should match the expected slice of EventKeys.")
 
 	// Step 2: Add another subscription
-	ch, err := manager.Subscribe(address2, topic2)
+	_, err = manager.Subscribe(address2, topic2)
 	require.NoError(t, err)
 	assert.False(t, manager.cacheInitialized, "Cache should be invalidated after Subscribe.")
 
-	// Update expected structure
-	expectedCache[address2] = []common.Hash{topic2}
+	// Update expected slice
+	expectedCache = append(expectedCache, ek2)
 
-	// Verify cache matches updated structure
+	// Verify cache matches updated slice
 	cache = manager.GetAddressesAndTopics()
 	assert.True(t, manager.cacheInitialized, "Cache should be reinitialized after GetAddressesAndTopics() is called.")
-	assert.Equal(t, expectedCache, cache, "Cache should match the updated structure.")
+	assert.ElementsMatch(t, expectedCache, cache, "Cache should match the updated slice of EventKeys.")
 
 	// Step 3: Add a duplicate subscription for address1/topic1
-	ch2, err := manager.Subscribe(address1, topic1)
+	_, err = manager.Subscribe(address1, topic1)
 	require.NoError(t, err)
 	assert.False(t, manager.cacheInitialized, "Cache should be invalidated after Subscribe.")
 
-	// No change to expected structure since it's a duplicate subscription
+	// No change to expected slice since it's a duplicate subscription
 	cache = manager.GetAddressesAndTopics()
 	assert.True(t, manager.cacheInitialized, "Cache should be reinitialized after GetAddressesAndTopics() is called.")
-	assert.Equal(t, expectedCache, cache, "Cache should remain unchanged for duplicate subscriptions.")
+	assert.ElementsMatch(t, expectedCache, cache, "Cache should remain unchanged for duplicate subscriptions.")
 
 	// Step 4: Unsubscribe from address2/topic2
+	// Retrieve the subscriber channel for ek2
+	manager.registryMutex.RLock()
+	ch := manager.registry[ek2][0]
+	manager.registryMutex.RUnlock()
+
 	err = manager.Unsubscribe(address2, topic2, ch)
 	require.NoError(t, err)
 	assert.False(t, manager.cacheInitialized, "Cache should be invalidated after Unsubscribe.")
 
-	// Update expected structure
-	delete(expectedCache, address2)
+	// Update expected slice
+	// Remove ek2 from expectedCache
+	for i, ek := range expectedCache {
+		if ek.Address == ek2.Address && ek.Topic == ek2.Topic {
+			expectedCache = append(expectedCache[:i], expectedCache[i+1:]...)
+			break
+		}
+	}
 
-	// Verify cache matches updated structure
+	// Verify cache matches updated slice
 	cache = manager.GetAddressesAndTopics()
 	assert.True(t, manager.cacheInitialized, "Cache should be reinitialized after GetAddressesAndTopics() is called.")
-	assert.Equal(t, expectedCache, cache, "Cache should match the updated structure after unsubscription.")
+	assert.ElementsMatch(t, expectedCache, cache, "Cache should match the updated slice of EventKeys after unsubscription.")
 
 	// Step 5: Unsubscribe from non-existent subscription
 	err = manager.Unsubscribe(address2, topic2, ch)
 	assert.Error(t, err, "Unsubscribing a non-existent subscription should return an error.")
 
-	// Ensure expected structure remains unchanged
+	// Ensure expected slice remains unchanged
 	cache = manager.GetAddressesAndTopics()
 	assert.True(t, manager.cacheInitialized, "Cache should remain initialized after an invalid unsubscribe attempt.")
-	assert.Equal(t, expectedCache, cache, "Cache should remain unchanged for invalid unsubscribe attempts.")
-	assert.Len(t, manager.registry[internal.EventKey{Address: address1, Topic: topic1}], 2, "EventKey should have two subscribers")
+	assert.ElementsMatch(t, expectedCache, cache, "Cache should remain unchanged for invalid unsubscribe attempts.")
+	manager.registryMutex.RLock()
+	assert.Len(t, manager.registry[ek1], 2, "EventKey should have two subscribers")
+	manager.registryMutex.RUnlock()
 
 	// Step 6: Unsubscribe from address1, topic1, ch2
+	// Retrieve the second subscriber's channel for ek1
+	manager.registryMutex.RLock()
+	ch2 := manager.registry[ek1][1]
+	manager.registryMutex.RUnlock()
+
 	err = manager.Unsubscribe(address1, topic1, ch2)
 	require.NoError(t, err)
 	assert.False(t, manager.cacheInitialized, "Cache should be invalidated after Unsubscribe.")
 
+	// Verify cache remains unchanged for the remaining subscriber
 	cache = manager.GetAddressesAndTopics()
 	assert.True(t, manager.cacheInitialized, "Cache should be reinitialized after GetAddressesAndTopics() is called.")
-	assert.Equal(t, expectedCache, cache, "Cache should remain unchanged for duplicate subscriptions.")
-	assert.Len(t, manager.registry[internal.EventKey{Address: address1, Topic: topic1}], 1, "EventKey should have two subscribers")
+	assert.ElementsMatch(t, expectedCache, cache, "Cache should remain unchanged for duplicate subscriptions.")
+	manager.registryMutex.RLock()
+	assert.Len(t, manager.registry[ek1], 1, "EventKey should have one remaining subscriber")
+	manager.registryMutex.RUnlock()
 }
 
 func TestSubscriptionManager_Close(t *testing.T) {

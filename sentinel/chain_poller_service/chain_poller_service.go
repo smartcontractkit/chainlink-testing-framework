@@ -177,15 +177,13 @@ func (eps *ChainPollerService) pollCycle() {
 
 	// Construct filter queries with the same fromBlock and toBlock
 	var filterQueries []api.FilterQuery
-	for address, topics := range subscriptions { // 'topics' is []common.Hash
-		for _, topic := range topics { // Iterate over each topic
-			filterQueries = append(filterQueries, api.FilterQuery{
-				FromBlock: fromBlock.Uint64(),
-				ToBlock:   toBlock,
-				Addresses: []common.Address{address},
-				Topics:    [][]common.Hash{{topic}}, // Separate query per topic
-			})
-		}
+	for _, eventKey := range subscriptions {
+		filterQueries = append(filterQueries, api.FilterQuery{
+			FromBlock: fromBlock.Uint64(),
+			ToBlock:   toBlock,
+			Addresses: []common.Address{eventKey.Address},
+			Topics:    [][]common.Hash{{eventKey.Topic}},
+		})
 	}
 
 	// Fetch logs using the Chain Poller

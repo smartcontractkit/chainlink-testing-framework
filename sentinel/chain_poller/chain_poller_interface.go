@@ -7,7 +7,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/api"
 )
 
-// ChainPollerInterface defines the methods that ChainPoller must implement.
 type ChainPollerInterface interface {
 	FilterLogs(ctx context.Context, filterQueries []api.FilterQuery) ([]api.Log, error)
 }
