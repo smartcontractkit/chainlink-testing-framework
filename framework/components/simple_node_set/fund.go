@@ -58,7 +58,7 @@ func SendETH(client *ethclient.Client, privateKeyHex string, toAddress string, a
 		return fmt.Errorf("failed to send transaction: %v", err)
 	}
 	framework.L.Info().Msgf("Transaction sent: %s", signedTx.Hash().Hex())
-	_, err = bind.WaitMined(context.Background(), client, tx)
+	_, err = bind.WaitMined(context.Background(), client, signedTx)
 	return err
 }
 
