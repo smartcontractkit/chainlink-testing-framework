@@ -22,10 +22,6 @@ var csvExportCmd = &cobra.Command{
 	},
 }
 
-func OhMyGod() {
-	fmt.Println("Oh my god!")
-}
-
 func init() {
 	csvExportCmd.Flags().StringP("file", "f", "", "Path to YML file")
 	err := csvExportCmd.MarkFlagRequired("file")
