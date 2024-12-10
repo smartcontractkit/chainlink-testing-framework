@@ -20,10 +20,6 @@ const (
 	Reset  = "\033[0m"
 )
 
-func SuchABreakingChange() {
-	fmt.Println("This is a breaking change")
-}
-
 func findGoModDirs(rootFolder, subDir string) ([]string, error) {
 	var goModDirs []string
 
