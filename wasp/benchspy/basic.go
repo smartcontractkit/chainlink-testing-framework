@@ -50,6 +50,11 @@ func NewBasicData(commitOrTag string, generators ...*wasp.Generator) (*BasicData
 		b.GeneratorConfigs[g.Cfg.GenName] = g.Cfg
 	}
 
+	timeErr := b.FillStartEndTimes()
+	if timeErr != nil {
+		return nil, timeErr
+	}
+
 	return b, nil
 }
 

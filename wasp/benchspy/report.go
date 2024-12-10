@@ -30,25 +30,46 @@ func (b *StandardReport) LoadLatest(testName string) error {
 	return b.LocalStorage.Load(testName, "", b)
 }
 
-func ResultsAs[Type any](newType Type, queryExecutors []QueryExecutor, queryExecutorType StandardQueryExecutorType, queryNames ...string) map[string]Type {
+func convertSlice[T any, U any](input []T, convert func(T) (U, error)) ([]U, error) {
+	var result []U
+	for _, v := range input {
+		converted, err := convert(v)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, converted)
+	}
+	return result, nil
+}
+
+func ResultsAs[Type any](newType Type, queryExecutors []QueryExecutor, queryExecutorType StandardQueryExecutorType, queryNames ...string) (map[string]Type, error) {
 	results := make(map[string]Type)
+
 	for _, queryExecutor := range queryExecutors {
 		if strings.EqualFold(queryExecutor.Kind(), string(queryExecutorType)) {
 			if len(queryNames) > 0 {
 				for _, queryName := range queryNames {
 					if result, ok := queryExecutor.Results()[queryName]; ok {
-						results[queryName] = result.(Type)
+						if asType, ok := result.(Type); ok {
+							results[queryName] = asType
+						} else {
+							return nil, fmt.Errorf("failed to cast result to type %T. It's actual type is: %T", newType, result)
+						}
 					}
 				}
 			} else {
 				for queryName, result := range queryExecutor.Results() {
-					results[queryName] = result.(Type)
+					if asType, ok := result.(Type); ok {
+						results[queryName] = asType
+					} else {
+						return nil, fmt.Errorf("failed to cast result to type %T. It's actual type is: %T", newType, result)
+					}
 				}
 			}
 		}
 	}
 
-	return results
+	return results, nil
 }
 
 func (b *StandardReport) FetchData(ctx context.Context) error {
@@ -67,11 +88,12 @@ func (b *StandardReport) FetchData(ctx context.Context) error {
 			// and then concatenate that data and return that; if parallelizing then we should first
 			// create a slice of plain segments and then, when sending results over channel include the index,
 			// so that we can concatenate them in the right order
-			// queryExecutor.TimeRange(b.TestStart, b.TestEnd)
+			queryExecutor.TimeRange(b.TestStart, b.TestEnd)
 
-			// if validateErr := queryExecutor.ValidateQueries(); validateErr != nil {
-			// 	return validateErr
-			// }
+			// in case someone skipped helper functions and didn't set the start and end times
+			if validateErr := queryExecutor.Validate(); validateErr != nil {
+				return validateErr
+			}
 
 			if execErr := queryExecutor.Execute(errCtx); execErr != nil {
 				return execErr
@@ -168,59 +190,6 @@ func (c *standardReportConfig) validate() error {
 	return nil
 }
 
-// func NewStandardReport(commitOrTag string, standardQueryExecutorType StandardQueryExecutorType, generators []*wasp.Generator, prometheusConfig *PrometheusConfig) (*StandardReport, error) {
-// 	basicData, basicErr := NewBasicData(commitOrTag, generators...)
-// 	if basicErr != nil {
-// 		return nil, errors.Wrapf(basicErr, "failed to create basic data for generators %v", generators)
-// 	}
-
-// 	startEndErr := basicData.FillStartEndTimes()
-// 	if startEndErr != nil {
-// 		return nil, startEndErr
-// 	}
-
-// 	basicValidateErr := basicData.Validate()
-// 	if basicValidateErr != nil {
-// 		return nil, basicValidateErr
-// 	}
-
-// 	var queryExecutors []QueryExecutor
-// 	for _, g := range generators {
-// 		executor, executorErr := initStandardQueryExecutor(standardQueryExecutorType, basicData, g)
-// 		if executorErr != nil {
-// 			return nil, errors.Wrapf(executorErr, "failed to create standard %s query executor for generator %s", standardQueryExecutorType, g.Cfg.GenName)
-// 		}
-
-// 		validateErr := executor.Validate()
-// 		if validateErr != nil {
-// 			return nil, errors.Wrapf(validateErr, "failed to validate queries for generator %s", g.Cfg.GenName)
-// 		}
-
-// 		queryExecutors = append(queryExecutors, executor)
-// 	}
-
-// 	var resourceFetchers []ResourceFetcher
-// 	if prometheusConfig != nil {
-// 		for _, nameRegexPattern := range prometheusConfig.nameRegexPatterns {
-// 			resourceFetcher, prometheusErr := NewStandardPrometheusResourceReporter(prometheusConfig.url, basicData.TestStart, basicData.TestEnd, nameRegexPattern)
-// 			if prometheusErr != nil {
-// 				return nil, errors.Wrapf(prometheusErr, "failed to create Prometheus resource reporter for name %s", nameRegexPattern)
-// 			}
-// 			validateErr := resourceFetcher.Validate()
-// 			if validateErr != nil {
-// 				return nil, errors.Wrapf(validateErr, "failed to validate resources for name %s", nameRegexPattern)
-// 			}
-// 			resourceFetchers = append(resourceFetchers, resourceFetcher)
-// 		}
-// 	}
-
-// 	return &StandardReport{
-// 		BasicData:        *basicData,
-// 		QueryExecutors:   queryExecutors,
-// 		ResourceFetchers: resourceFetchers,
-// 	}, nil
-// }
-
 func NewStandardReport(commitOrTag string, opts ...StandardReportOption) (*StandardReport, error) {
 	config := standardReportConfig{}
 	for _, opt := range opts {
@@ -239,11 +208,6 @@ func NewStandardReport(commitOrTag string, opts ...StandardReportOption) (*Stand
 	configErr := config.validate()
 	if configErr != nil {
 		return nil, configErr
-	}
-
-	startEndErr := basicData.FillStartEndTimes()
-	if startEndErr != nil {
-		return nil, startEndErr
 	}
 
 	basicValidateErr := basicData.Validate()
@@ -326,34 +290,6 @@ func (s *StandardReport) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	// var queryExecutors []QueryExecutor
-
-	// // manually decide, which QueryExecutor implementation to use based on the "kind" field
-	// for _, rawExecutor := range raw.QueryExecutors {
-	// 	var typeIndicator struct {
-	// 		Kind string `json:"kind"`
-	// 	}
-	// 	if err := json.Unmarshal(rawExecutor, &typeIndicator); err != nil {
-	// 		return err
-	// 	}
-
-	// 	var executor QueryExecutor
-	// 	switch typeIndicator.Kind {
-	// 	case "loki":
-	// 		executor = &LokiQueryExecutor{}
-	// 	case "generator":
-	// 		executor = &GeneratorQueryExecutor{}
-	// 	default:
-	// 		return fmt.Errorf("unknown query executor type: %s\nIf you added a new query executor make sure to add a custom JSON unmarshaller to StandardReport.UnmarshalJSON()", typeIndicator.Kind)
-	// 	}
-
-	// 	if err := json.Unmarshal(rawExecutor, executor); err != nil {
-	// 		return err
-	// 	}
-
-	// 	queryExecutors = append(s.QueryExecutors, executor)
-	// }
-
 	queryExecutors, queryErr := unmarshallQueryExecutors(raw.QueryExecutors)
 	if queryErr != nil {
 		return queryErr
@@ -376,6 +312,10 @@ func unmarshallQueryExecutors(raw []json.RawMessage) ([]QueryExecutor, error) {
 			return nil, err
 		}
 
+		// each new implementation of QueryExecutor might need a custom JSON unmarshaller
+		// especially if it's using interface{} fields and when unmarhsalling you would like them
+		// to have actual types (e.g. []string instead of []interface{}) as that will help
+		// with type safety and readability
 		var executor QueryExecutor
 		switch typeIndicator.Kind {
 		case "loki":
@@ -388,12 +328,68 @@ func unmarshallQueryExecutors(raw []json.RawMessage) ([]QueryExecutor, error) {
 			return nil, fmt.Errorf("unknown query executor type: %s\nIf you added a new query executor make sure to add a custom JSON unmarshaller to StandardReport.UnmarshalJSON()", typeIndicator.Kind)
 		}
 
-		if err := json.Unmarshal(rawExecutor, executor); err != nil {
-			return nil, err
+		if unmarshalErr := json.Unmarshal(rawExecutor, executor); unmarshalErr != nil {
+			return nil, unmarshalErr
 		}
 
 		queryExecutors = append(queryExecutors, executor)
 	}
 
 	return queryExecutors, nil
+}
+
+func convertQueryResults(results map[string]interface{}) (map[string]interface{}, error) {
+	converted := make(map[string]interface{})
+
+	for key, value := range results {
+		switch v := value.(type) {
+		case string, int, float64:
+			converted[key] = v
+		case []interface{}:
+			if len(v) == 0 {
+				converted[key] = v
+				continue
+			}
+			// Convert first element to determine slice type
+			switch v[0].(type) {
+			case string:
+				strSlice := make([]string, len(v))
+				for i, elem := range v {
+					str, ok := elem.(string)
+					if !ok {
+						return nil, fmt.Errorf("cannot convert element %d to string", i)
+					}
+					strSlice[i] = str
+				}
+				converted[key] = strSlice
+			case int:
+				intSlice := make([]int, len(v))
+				for i, elem := range v {
+					num, ok := elem.(int)
+					if !ok {
+						return nil, fmt.Errorf("cannot convert element %d to int", i)
+					}
+					intSlice[i] = num
+				}
+				converted[key] = intSlice
+			case float64:
+				floatSlice := make([]float64, len(v))
+				for i, elem := range v {
+					f, ok := elem.(float64)
+					if !ok {
+						return nil, fmt.Errorf("cannot convert element %d to float64", i)
+					}
+					floatSlice[i] = f
+				}
+				converted[key] = floatSlice
+			default:
+				// do nothing if it's not a type we can convert
+				converted[key] = v
+			}
+		default:
+			// do nothing if it's not a type we can convert
+			converted[key] = v
+		}
+	}
+	return converted, nil
 }

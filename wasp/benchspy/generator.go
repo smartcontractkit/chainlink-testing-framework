@@ -214,12 +214,14 @@ func (g *GeneratorQueryExecutor) MarshalJSON() ([]byte, error) {
 }
 
 func (g *GeneratorQueryExecutor) UnmarshalJSON(data []byte) error {
-	// helper struct with QueryExecutors as json.RawMessage
+	// helper struct with QueryExecutors as json.RawMessage and QueryResults as map[string]interface{}
+	// and as actual types
 	type Alias GeneratorQueryExecutor
 	var raw struct {
 		Alias
-		GeneratorCfg wasp.Config       `json:"generator_config"`
-		Queries      []json.RawMessage `json:"queries"`
+		GeneratorCfg wasp.Config            `json:"generator_config"`
+		Queries      []json.RawMessage      `json:"queries"`
+		QueryResults map[string]interface{} `json:"query_results"`
 	}
 
 	// unmarshal into the helper struct to populate other fields automatically
@@ -239,8 +241,15 @@ func (g *GeneratorQueryExecutor) UnmarshalJSON(data []byte) error {
 		queries[queryName] = nil
 	}
 
+	// convert map[string]interface{} to map[string]actualType
+	convertedTypes, conversionErr := convertQueryResults(raw.QueryResults)
+	if conversionErr != nil {
+		return conversionErr
+	}
+
 	*g = GeneratorQueryExecutor(raw.Alias)
 	g.Queries = queries
+	g.QueryResults = convertedTypes
 	g.Generator = &wasp.Generator{
 		Cfg: &raw.GeneratorCfg,
 	}

@@ -2,6 +2,7 @@ package benchspy
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"time"
@@ -18,7 +19,7 @@ type PrometheusQueryExecutor struct {
 	startTime, endTime time.Time              `json:"-"`
 	client             *client.Prometheus     `json:"-"`
 	Queries            map[string]string      `json:"queries"`
-	ResourceResults    map[string]interface{} `json:"resources"`
+	QueryResults       map[string]interface{} `json:"query_results"`
 	warnings           map[string]v1.Warnings `json:"-"`
 }
 
@@ -30,12 +31,12 @@ func NewPrometheusQueryExecutor(url string, startTime, endTime time.Time, querie
 	}
 
 	return &PrometheusQueryExecutor{
-		KindName:        string(StandardQueryExecutor_Prometheus),
-		client:          c,
-		Queries:         queries,
-		startTime:       startTime,
-		endTime:         endTime,
-		ResourceResults: make(map[string]interface{}),
+		KindName:     string(StandardQueryExecutor_Prometheus),
+		client:       c,
+		Queries:      queries,
+		startTime:    startTime,
+		endTime:      endTime,
+		QueryResults: make(map[string]interface{}),
 	}, nil
 }
 
@@ -51,11 +52,11 @@ func NewStandardPrometheusQueryExecutor(url string, startTime, endTime time.Time
 	}
 
 	return &PrometheusQueryExecutor{
-		client:          c,
-		Queries:         standardQueries,
-		startTime:       startTime,
-		endTime:         endTime,
-		ResourceResults: make(map[string]interface{}),
+		client:       c,
+		Queries:      standardQueries,
+		startTime:    startTime,
+		endTime:      endTime,
+		QueryResults: make(map[string]interface{}),
 	}, nil
 }
 
@@ -70,14 +71,14 @@ func (r *PrometheusQueryExecutor) Execute(ctx context.Context) error {
 			r.warnings[name] = warnings
 		}
 
-		r.ResourceResults[name] = result
+		r.QueryResults[name] = result
 	}
 
 	return nil
 }
 
 func (r *PrometheusQueryExecutor) Results() map[string]interface{} {
-	return r.ResourceResults
+	return r.QueryResults
 }
 
 func (l *PrometheusQueryExecutor) Kind() string {
@@ -138,12 +139,12 @@ func (r *PrometheusQueryExecutor) Warnings() map[string]v1.Warnings {
 	return r.warnings
 }
 
-func (r *PrometheusQueryExecutor) MustResourcesAsValue() map[string]model.Value {
-	resources := make(map[string]model.Value)
-	for name, resource := range r.ResourceResults {
-		resources[name] = resource.(model.Value)
+func (r *PrometheusQueryExecutor) MustResultsAsValue() map[string]model.Value {
+	results := make(map[string]model.Value)
+	for name, result := range r.QueryResults {
+		results[name] = result.(model.Value)
 	}
-	return resources
+	return results
 }
 
 func (r *PrometheusQueryExecutor) TimeRange(startTime, endTime time.Time) {
@@ -183,4 +184,28 @@ func (r *PrometheusQueryExecutor) generateStandardQueries(nameRegexPattern strin
 	}
 
 	return standardQueries, nil
+}
+
+func (r *PrometheusQueryExecutor) UnmarshalJSON(data []byte) error {
+	// helper struct with QueryResults map[string]interface{}
+	type Alias PrometheusQueryExecutor
+	var raw struct {
+		Alias
+		QueryResults map[string]interface{} `json:"query_results"`
+	}
+
+	// unmarshal into the helper struct to populate other fields automatically
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	// convert map[string]interface{} to map[string]actualType
+	convertedTypes, conversionErr := convertQueryResults(raw.QueryResults)
+	if conversionErr != nil {
+		return conversionErr
+	}
+
+	*r = PrometheusQueryExecutor(raw.Alias)
+	r.QueryResults = convertedTypes
+	return nil
 }

@@ -235,7 +235,8 @@ func TestBenchSpy_GeneratorQueryExecutor_Execute(t *testing.T) {
 		// 4 responses with ~150ms latency (150ms sleep + some execution overhead)
 		// and 2-3 responses with ~200ms latency (200ms sleep + some execution overhead)
 		// expected median latency: (150ms, 151ms>
-		resultsAsStrings := ResultsAs("string", []QueryExecutor{executor}, StandardQueryExecutor_Generator, string(MedianLatency), string(Percentile95Latency), string(ErrorRate))
+		resultsAsStrings, err := ResultsAs("string", []QueryExecutor{executor}, StandardQueryExecutor_Generator, string(MedianLatency), string(Percentile95Latency), string(ErrorRate))
+		assert.NoError(t, err)
 		require.Equal(t, 3, len(resultsAsStrings))
 
 		medianLatencyFloat, err := strconv.ParseFloat(resultsAsStrings[string(MedianLatency)], 64)
@@ -361,7 +362,7 @@ func TestBenchSpy_GeneratorQueryExecutor_MarshalJSON(t *testing.T) {
 		err = json.Unmarshal(data, &recovered)
 		assert.NoError(t, err)
 
-		assert.Equal(t, original.Kind, recovered.Kind)
+		assert.Equal(t, original.KindName, recovered.KindName)
 		assert.Equal(t, original.QueryResults, recovered.QueryResults)
 		assert.Equal(t, len(original.Queries), len(recovered.Queries))
 	})

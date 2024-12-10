@@ -1,6 +1,8 @@
 Known things to do:
 - [ ] add logger
-- [ ] add tests
+- [ ] add unit tests for prometheus
+- [ ] add wasp test for prometheus only
+- [ ] add e2e OCRv2 test with CTFv2
 - [ ] write documentation
 - [ ] add report builder (?)
 - [ ] add wrapper function for executing some code and then creating a report

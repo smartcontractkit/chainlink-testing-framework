@@ -1,8 +1,8 @@
 {
  "test_name": "TestBenchSpyWithTwoLokiQueries",
  "commit_or_tag": "e7fc5826a572c09f8b93df3b9f674113372ce924",
- "test_start_timestamp": "2024-12-04T12:09:35.791136+01:00",
- "test_end_timestamp": "2024-12-04T12:10:05.814921+01:00",
+ "test_start_timestamp": "2024-12-10T18:14:45.551831+01:00",
+ "test_end_timestamp": "2024-12-10T18:15:15.570465+01:00",
  "generator_configs": {
   "vu": {
    "generator_name": "vu",
@@ -11,212 +11,296 @@
     {
      "from": 10,
      "duration": 1000000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:14:45.551831+01:00",
+     "time_end": "2024-12-10T18:14:46.553044+01:00"
     },
     {
      "from": 11,
      "duration": 1000000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:14:46.553046+01:00",
+     "time_end": "2024-12-10T18:14:47.553432+01:00"
     },
     {
      "from": 12,
      "duration": 1000000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:14:47.553439+01:00",
+     "time_end": "2024-12-10T18:14:48.554659+01:00"
     },
     {
      "from": 13,
      "duration": 1000000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:14:48.554665+01:00",
+     "time_end": "2024-12-10T18:14:49.556069+01:00"
     },
     {
      "from": 14,
      "duration": 1000000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:14:49.556072+01:00",
+     "time_end": "2024-12-10T18:14:50.557343+01:00"
     },
     {
      "from": 15,
      "duration": 1000000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:14:50.557346+01:00",
+     "time_end": "2024-12-10T18:14:51.558242+01:00"
     },
     {
      "from": 16,
      "duration": 1000000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:14:51.558245+01:00",
+     "time_end": "2024-12-10T18:14:52.559482+01:00"
     },
     {
      "from": 17,
      "duration": 1000000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:14:52.559484+01:00",
+     "time_end": "2024-12-10T18:14:53.560174+01:00"
     },
     {
      "from": 18,
      "duration": 1000000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:14:53.560176+01:00",
+     "time_end": "2024-12-10T18:14:54.561352+01:00"
     },
     {
      "from": 19,
      "duration": 1000000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:14:54.561354+01:00",
+     "time_end": "2024-12-10T18:14:55.561868+01:00"
     },
     {
      "from": 30,
      "duration": 15000000000,
-     "type": "plain"
+     "type": "plain",
+     "time_start": "2024-12-10T18:14:55.561869+01:00",
+     "time_end": "2024-12-10T18:15:10.563167+01:00"
     },
     {
      "from": 20,
      "duration": 500000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:15:10.563168+01:00",
+     "time_end": "2024-12-10T18:15:11.064155+01:00"
     },
     {
      "from": 19,
      "duration": 500000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:15:11.064157+01:00",
+     "time_end": "2024-12-10T18:15:11.564741+01:00"
     },
     {
      "from": 18,
      "duration": 500000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:15:11.564742+01:00",
+     "time_end": "2024-12-10T18:15:12.065341+01:00"
     },
     {
      "from": 17,
      "duration": 500000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:15:12.065343+01:00",
+     "time_end": "2024-12-10T18:15:12.566072+01:00"
     },
     {
      "from": 16,
      "duration": 500000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:15:12.566078+01:00",
+     "time_end": "2024-12-10T18:15:13.066295+01:00"
     },
     {
      "from": 15,
      "duration": 500000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:15:13.066296+01:00",
+     "time_end": "2024-12-10T18:15:13.567224+01:00"
     },
     {
      "from": 14,
      "duration": 500000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:15:13.567227+01:00",
+     "time_end": "2024-12-10T18:15:14.067552+01:00"
     },
     {
      "from": 13,
      "duration": 500000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:15:14.067556+01:00",
+     "time_end": "2024-12-10T18:15:14.568822+01:00"
     },
     {
      "from": 12,
      "duration": 500000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:15:14.568827+01:00",
+     "time_end": "2024-12-10T18:15:15.070084+01:00"
     },
     {
      "from": 11,
      "duration": 500000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:15:15.070087+01:00",
+     "time_end": "2024-12-10T18:15:15.570465+01:00"
     },
     {
      "from": 10,
      "duration": 1000000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:14:45.551831+01:00",
+     "time_end": "2024-12-10T18:14:46.553044+01:00"
     },
     {
      "from": 11,
      "duration": 1000000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:14:46.553046+01:00",
+     "time_end": "2024-12-10T18:14:47.553432+01:00"
     },
     {
      "from": 12,
      "duration": 1000000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:14:47.553439+01:00",
+     "time_end": "2024-12-10T18:14:48.554659+01:00"
     },
     {
      "from": 13,
      "duration": 1000000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:14:48.554665+01:00",
+     "time_end": "2024-12-10T18:14:49.556069+01:00"
     },
     {
      "from": 14,
      "duration": 1000000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:14:49.556072+01:00",
+     "time_end": "2024-12-10T18:14:50.557343+01:00"
     },
     {
      "from": 15,
      "duration": 1000000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:14:50.557346+01:00",
+     "time_end": "2024-12-10T18:14:51.558242+01:00"
     },
     {
      "from": 16,
      "duration": 1000000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:14:51.558245+01:00",
+     "time_end": "2024-12-10T18:14:52.559482+01:00"
     },
     {
      "from": 17,
      "duration": 1000000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:14:52.559484+01:00",
+     "time_end": "2024-12-10T18:14:53.560174+01:00"
     },
     {
      "from": 18,
      "duration": 1000000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:14:53.560176+01:00",
+     "time_end": "2024-12-10T18:14:54.561352+01:00"
     },
     {
      "from": 19,
      "duration": 1000000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:14:54.561354+01:00",
+     "time_end": "2024-12-10T18:14:55.561868+01:00"
     },
     {
      "from": 30,
      "duration": 15000000000,
-     "type": "plain"
+     "type": "plain",
+     "time_start": "2024-12-10T18:14:55.561869+01:00",
+     "time_end": "2024-12-10T18:15:10.563167+01:00"
     },
     {
      "from": 20,
      "duration": 500000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:15:10.563168+01:00",
+     "time_end": "2024-12-10T18:15:11.064155+01:00"
     },
     {
      "from": 19,
      "duration": 500000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:15:11.064157+01:00",
+     "time_end": "2024-12-10T18:15:11.564741+01:00"
     },
     {
      "from": 18,
      "duration": 500000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:15:11.564742+01:00",
+     "time_end": "2024-12-10T18:15:12.065341+01:00"
     },
     {
      "from": 17,
      "duration": 500000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:15:12.065343+01:00",
+     "time_end": "2024-12-10T18:15:12.566072+01:00"
     },
     {
      "from": 16,
      "duration": 500000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:15:12.566078+01:00",
+     "time_end": "2024-12-10T18:15:13.066295+01:00"
     },
     {
      "from": 15,
      "duration": 500000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:15:13.066296+01:00",
+     "time_end": "2024-12-10T18:15:13.567224+01:00"
     },
     {
      "from": 14,
      "duration": 500000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:15:13.567227+01:00",
+     "time_end": "2024-12-10T18:15:14.067552+01:00"
     },
     {
      "from": 13,
      "duration": 500000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:15:14.067556+01:00",
+     "time_end": "2024-12-10T18:15:14.568822+01:00"
     },
     {
      "from": 12,
      "duration": 500000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:15:14.568827+01:00",
+     "time_end": "2024-12-10T18:15:15.070084+01:00"
     },
     {
      "from": 11,
      "duration": 500000000,
-     "type": "steps"
+     "type": "steps",
+     "time_start": "2024-12-10T18:15:15.070087+01:00",
+     "time_end": "2024-12-10T18:15:15.570465+01:00"
     }
    ],
    "rate_limit_unit_duration": 1000000000,
@@ -224,66 +308,49 @@
   }
  },
  "directory": "performance_reports",
- "execution_environment": "docker",
- "pods_resources": null,
- "container_resources": {
-  "/compose-grafana-1": {
-   "NanoCPUs": 0,
-   "CpuShares": 0,
-   "Memory": 0,
-   "MemorySwap": 0
-  },
-  "/compose-loki-1": {
-   "NanoCPUs": 0,
-   "CpuShares": 0,
-   "Memory": 0,
-   "MemorySwap": 0
-  }
- },
- "resource_selection_pattern": "",
  "query_executors": [
   {
    "kind": "loki",
-   "start_time": "2024-12-04T12:09:35.791136+01:00",
-   "end_time": "2024-12-04T12:10:05.814921+01:00",
+   "start_time": "2024-12-10T18:14:45.551831+01:00",
+   "end_time": "2024-12-10T18:15:15.570465+01:00",
    "queries": {
     "responses_over_time": "sum(count_over_time({branch=~\"benchspy2\", commit=~\"benchspy2\", go_test_name=~\"TestBenchSpyWithTwoLokiQueries\", test_data_type=~\"responses\", gen_name=~\"vu\"} [1s])) by (node_id, go_test_name, gen_name)",
     "vu_over_time": "max_over_time({branch=~\"benchspy2\", commit=~\"benchspy2\", go_test_name=~\"TestBenchSpyWithTwoLokiQueries\", test_data_type=~\"stats\", gen_name=~\"vu\"} | json | unwrap current_instances [10s]) by (node_id, go_test_name, gen_name)"
    },
    "query_results": {
     "responses_over_time": [
-     "262",
-     "224",
-     "204",
-     "213",
-     "243",
-     "263",
-     "282",
-     "304",
-     "310",
-     "342",
-     "363",
-     "411",
+     "251",
+     "214",
+     "208",
+     "218",
+     "248",
+     "268",
+     "288",
+     "307",
+     "316",
+     "348",
+     "366",
+     "468",
+     "597",
      "600",
      "586",
-     "598",
+     "587",
      "600",
+     "597",
      "586",
      "600",
-     "584",
+     "587",
      "600",
-     "600",
+     "597",
      "586",
      "600",
-     "584",
      "600",
-     "586",
-     "570",
-     "384",
-     "341",
-     "304",
-     "252",
-     "184"
+     "507",
+     "372",
+     "332",
+     "294",
+     "254",
+     "112"
     ],
     "vu_over_time": [
      "30",
@@ -319,8 +386,7 @@
      "30",
      "30"
     ]
-   },
-   "errors": null
+   }
   }
  ]
 }

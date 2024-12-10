@@ -2,6 +2,7 @@ package benchspy
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -161,6 +162,30 @@ func (l *LokiQueryExecutor) compareQueries(other map[string]string) error {
 func (l *LokiQueryExecutor) TimeRange(start, end time.Time) {
 	l.StartTime = start
 	l.EndTime = end
+}
+
+func (l *LokiQueryExecutor) UnmarshalJSON(data []byte) error {
+	// helper struct with QueryResults map[string]interface{}
+	type Alias LokiQueryExecutor
+	var raw struct {
+		Alias
+		QueryResults map[string]interface{} `json:"query_results"`
+	}
+
+	// unmarshal into the helper struct to populate other fields automatically
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	// convert map[string]interface{} to map[string]actualType
+	convertedTypes, conversionErr := convertQueryResults(raw.QueryResults)
+	if conversionErr != nil {
+		return conversionErr
+	}
+
+	*l = LokiQueryExecutor(raw.Alias)
+	l.QueryResults = convertedTypes
+	return nil
 }
 
 func NewStandardMetricsLokiExecutor(lokiConfig *wasp.LokiConfig, testName, generatorName, branch, commit string, startTime, endTime time.Time) (*LokiQueryExecutor, error) {
