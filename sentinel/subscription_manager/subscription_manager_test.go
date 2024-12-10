@@ -12,36 +12,90 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// setupSubscriptionManager initializes a SubscriptionManager with a MockLogger for testing.
+// Helper function to initialize a SubscriptionManager for testing
 func setupSubscriptionManager(t *testing.T) *SubscriptionManager {
+	t.Helper()
 	testLogger := logging.GetTestLogger(t)
 	return NewSubscriptionManager(SubscriptionManagerConfig{Logger: &testLogger, ChainID: 1})
+}
+
+// Helper function to create an EventKey
+func createEventKey(address common.Address, topic common.Hash) internal.EventKey {
+	return internal.EventKey{Address: address, Topic: topic}
+}
+
+// Helper function to create a log event
+func createLog(blockNumber uint64, txHash common.Hash, address common.Address, topics []common.Hash, data []byte, index uint) api.Log {
+	return api.Log{
+		BlockNumber: blockNumber,
+		TxHash:      txHash,
+		Address:     address,
+		Topics:      topics,
+		Data:        data,
+		Index:       index,
+	}
+}
+
+// Helper function to assert registry state
+func assertRegistryState(t *testing.T, manager *SubscriptionManager, expectedLength int, expectedEventKeys map[internal.EventKey]int) {
+	t.Helper()
+	manager.mu.RLock()
+	defer manager.mu.RUnlock()
+	assert.Len(t, manager.registry, expectedLength, "Registry should have the expected number of EventKeys")
+	for ek, expectedCount := range expectedEventKeys {
+		actualCount, exists := manager.registry[ek]
+		assert.True(t, exists, "Expected EventKey %v to exist", ek)
+		assert.Len(t, actualCount, expectedCount, "Expected %d subscribers for EventKey %v, got %d", expectedCount, ek, len(actualCount))
+	}
 }
 
 func TestSubscriptionManager_Subscribe(t *testing.T) {
 	manager := setupSubscriptionManager(t)
 
-	address := common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678")
-	topic := common.HexToHash("0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd")
+	tests := []struct {
+		name      string
+		address   common.Address
+		topic     common.Hash
+		expectErr bool
+	}{
+		{
+			name:      "Valid subscription",
+			address:   common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678"),
+			topic:     common.HexToHash("0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"),
+			expectErr: false,
+		},
+		{
+			name:      "Invalid subscription with empty address",
+			address:   common.Address{},
+			topic:     common.HexToHash("0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"),
+			expectErr: true,
+		},
+		{
+			name:      "Invalid subscription with empty topic",
+			address:   common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678"),
+			topic:     common.Hash{},
+			expectErr: true,
+		},
+	}
 
-	// Valid subscription
-	ch, err := manager.Subscribe(address, topic)
-	require.NoError(t, err)
-	assert.NotNil(t, ch)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ch, err := manager.Subscribe(tt.address, tt.topic)
+			if tt.expectErr {
+				require.Error(t, err)
+				assert.Nil(t, ch)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, ch)
+			}
+		})
+	}
 
-	// Invalid subscription with empty address
-	_, err = manager.Subscribe(common.Address{}, topic)
-	assert.Error(t, err)
-
-	// Invalid subscription with empty topic
-	_, err = manager.Subscribe(address, common.Hash{})
-	assert.Error(t, err)
-
-	// Check registry state
-	manager.registryMutex.RLock()
-	defer manager.registryMutex.RUnlock()
-	assert.Len(t, manager.registry, 1, "Registry should contain one event key")
-	assert.Len(t, manager.registry[internal.EventKey{Address: address, Topic: topic}], 1, "EventKey should have one subscriber")
+	// After subscriptions, check registry state
+	expectedEventKeys := map[internal.EventKey]int{
+		createEventKey(common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678"), common.HexToHash("0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd")): 1,
+	}
+	assertRegistryState(t, manager, 1, expectedEventKeys)
 }
 
 func TestSubscriptionManager_MultipleSubscribers(t *testing.T) {
@@ -49,7 +103,7 @@ func TestSubscriptionManager_MultipleSubscribers(t *testing.T) {
 
 	address := common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678")
 	topic := common.HexToHash("0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd")
-	eventKey := internal.EventKey{Address: address, Topic: topic}
+	eventKey := createEventKey(address, topic)
 
 	// Subscribe first consumer
 	ch1, err := manager.Subscribe(address, topic)
@@ -60,20 +114,20 @@ func TestSubscriptionManager_MultipleSubscribers(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify that the list of channels grows
-	manager.registryMutex.RLock()
-	subscribers := manager.registry[eventKey]
-	manager.registryMutex.RUnlock()
-	assert.Len(t, subscribers, 2, "There should be two channels subscribed to the EventKey")
+	expectedEventKeys := map[internal.EventKey]int{
+		eventKey: 2,
+	}
+	assertRegistryState(t, manager, 1, expectedEventKeys)
 
 	// Broadcast a log and ensure both channels receive it
-	logEvent := api.Log{
-		BlockNumber: 1,
-		TxHash:      common.HexToHash("0x1234"),
-		Data:        []byte("log data"),
-		Address:     address,
-		Topics:      []common.Hash{topic},
-		Index:       0,
-	}
+	logEvent := createLog(
+		1,
+		common.HexToHash("0x1234"),
+		address,
+		[]common.Hash{topic},
+		[]byte("log data"),
+		0,
+	)
 
 	manager.BroadcastLog(eventKey, logEvent)
 
@@ -109,9 +163,8 @@ func TestSubscriptionManager_Unsubscribe(t *testing.T) {
 	assert.Error(t, err)
 
 	// Check registry state
-	manager.registryMutex.RLock()
-	defer manager.registryMutex.RUnlock()
-	assert.Len(t, manager.registry, 0, "Registry should be empty after unsubscribing")
+	expectedEventKeys := map[internal.EventKey]int{}
+	assertRegistryState(t, manager, 0, expectedEventKeys)
 }
 
 func TestSubscriptionManager_UnsubscribeSelective(t *testing.T) {
@@ -119,7 +172,7 @@ func TestSubscriptionManager_UnsubscribeSelective(t *testing.T) {
 
 	address := common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678")
 	topic := common.HexToHash("0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd")
-	eventKey := internal.EventKey{Address: address, Topic: topic}
+	eventKey := createEventKey(address, topic)
 
 	ch1, err := manager.Subscribe(address, topic)
 	require.NoError(t, err)
@@ -132,23 +185,17 @@ func TestSubscriptionManager_UnsubscribeSelective(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check registry state
-	manager.registryMutex.RLock()
-	subscribers := manager.registry[eventKey]
-	manager.registryMutex.RUnlock()
-
-	assert.Len(t, subscribers, 1, "There should be one remaining channel after unsubscription")
-	assert.Equal(t, ch2, subscribers[0], "The remaining channel should be the second subscriber")
+	expectedEventKeys := map[internal.EventKey]int{
+		eventKey: 1,
+	}
+	assertRegistryState(t, manager, 1, expectedEventKeys)
 
 	// Unsubscribe the last consumer and ensure the registry is cleaned up
 	err = manager.Unsubscribe(address, topic, ch2)
 	require.NoError(t, err)
 
-	// Check registry state
-	manager.registryMutex.RLock()
-	_, exists := manager.registry[eventKey]
-	manager.registryMutex.RUnlock()
-
-	assert.False(t, exists, "The EventKey should no longer exist in the registry after the last subscriber unsubscribes")
+	expectedEventKeys = map[internal.EventKey]int{}
+	assertRegistryState(t, manager, 0, expectedEventKeys)
 }
 
 func TestSubscriptionManager_BroadcastLog(t *testing.T) {
@@ -156,21 +203,21 @@ func TestSubscriptionManager_BroadcastLog(t *testing.T) {
 
 	address := common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678")
 	topic := common.HexToHash("0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd")
-	eventKey := internal.EventKey{Address: address, Topic: topic}
+	eventKey := createEventKey(address, topic)
 
 	// Subscribe to an event
 	ch, err := manager.Subscribe(address, topic)
 	require.NoError(t, err)
 	assert.NotNil(t, ch)
 
-	logEvent := api.Log{
-		BlockNumber: 1,
-		TxHash:      common.HexToHash("0x1234"),
-		Data:        []byte("log data"),
-		Address:     address,
-		Topics:      []common.Hash{topic},
-		Index:       0,
-	}
+	logEvent := createLog(
+		1,
+		common.HexToHash("0x1234"),
+		address,
+		[]common.Hash{topic},
+		[]byte("log data"),
+		0,
+	)
 
 	// Broadcast log event
 	manager.BroadcastLog(eventKey, logEvent)
@@ -185,11 +232,11 @@ func TestSubscriptionManager_BroadcastToAllSubscribers(t *testing.T) {
 
 	address1 := common.HexToAddress("0x9999567890abcdef1234567890abcdef12345678")
 	topic1 := common.HexToHash("0xaaadefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd")
-	eventKey1 := internal.EventKey{Address: address1, Topic: topic1}
+	eventKey1 := createEventKey(address1, topic1)
 
 	address2 := common.HexToAddress("0x1234567890abcdef1234567890abcdef12345678")
 	topic2 := common.HexToHash("0xaaadefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd")
-	eventKey2 := internal.EventKey{Address: address2, Topic: topic2}
+	eventKey2 := createEventKey(address2, topic2)
 
 	ch1, err := manager.Subscribe(address1, topic1)
 	require.NoError(t, err)
@@ -201,23 +248,23 @@ func TestSubscriptionManager_BroadcastToAllSubscribers(t *testing.T) {
 	require.NoError(t, err)
 
 	// Broadcast a log and ensure all channels receive it
-	logEvent1 := api.Log{
-		BlockNumber: 2,
-		TxHash:      common.HexToHash("0x5678"),
-		Data:        []byte("another log data"),
-		Address:     address1,
-		Topics:      []common.Hash{topic1},
-		Index:       0,
-	}
+	logEvent1 := createLog(
+		2,
+		common.HexToHash("0x5678"),
+		address1,
+		[]common.Hash{topic1},
+		[]byte("another log data"),
+		0,
+	)
 
-	logEvent2 := api.Log{
-		BlockNumber: 3,
-		TxHash:      common.HexToHash("0x2345"),
-		Data:        []byte("another log data 2"),
-		Address:     address2,
-		Topics:      []common.Hash{topic2},
-		Index:       0,
-	}
+	logEvent2 := createLog(
+		3,
+		common.HexToHash("0x2345"),
+		address2,
+		[]common.Hash{topic2},
+		[]byte("another log data 2"),
+		0,
+	)
 
 	manager.BroadcastLog(eventKey1, logEvent1)
 	manager.BroadcastLog(eventKey2, logEvent2)
@@ -240,8 +287,8 @@ func TestSubscriptionManager_GetAddressesAndTopics(t *testing.T) {
 	address2 := common.HexToAddress("0xabcdefabcdefabcdefabcdefabcdefabcdefabcdef")
 	topic2 := common.HexToHash("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
 
-	ek1 := internal.EventKey{Address: address1, Topic: topic1}
-	ek2 := internal.EventKey{Address: address2, Topic: topic2}
+	ek1 := createEventKey(address1, topic1)
+	ek2 := createEventKey(address2, topic2)
 
 	_, err := manager.Subscribe(address1, topic1)
 	require.NoError(t, err)
@@ -268,8 +315,8 @@ func TestSubscriptionManager_Cache(t *testing.T) {
 	address2 := common.HexToAddress("0xabcdefabcdefabcdefabcdefabcdefabcdefabcdef")
 	topic2 := common.HexToHash("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")
 
-	ek1 := internal.EventKey{Address: address1, Topic: topic1}
-	ek2 := internal.EventKey{Address: address2, Topic: topic2}
+	ek1 := createEventKey(address1, topic1)
+	ek2 := createEventKey(address2, topic2)
 
 	// Initialize expected slice of EventKeys
 	expectedCache := []internal.EventKey{}
@@ -306,15 +353,16 @@ func TestSubscriptionManager_Cache(t *testing.T) {
 	assert.False(t, manager.cacheInitialized, "Cache should be invalidated after Subscribe.")
 
 	// No change to expected slice since it's a duplicate subscription
+
 	cache = manager.GetAddressesAndTopics()
 	assert.True(t, manager.cacheInitialized, "Cache should be reinitialized after GetAddressesAndTopics() is called.")
 	assert.ElementsMatch(t, expectedCache, cache, "Cache should remain unchanged for duplicate subscriptions.")
 
 	// Step 4: Unsubscribe from address2/topic2
 	// Retrieve the subscriber channel for ek2
-	manager.registryMutex.RLock()
+	manager.mu.RLock()
 	ch := manager.registry[ek2][0]
-	manager.registryMutex.RUnlock()
+	manager.mu.RUnlock()
 
 	err = manager.Unsubscribe(address2, topic2, ch)
 	require.NoError(t, err)
@@ -342,15 +390,15 @@ func TestSubscriptionManager_Cache(t *testing.T) {
 	cache = manager.GetAddressesAndTopics()
 	assert.True(t, manager.cacheInitialized, "Cache should remain initialized after an invalid unsubscribe attempt.")
 	assert.ElementsMatch(t, expectedCache, cache, "Cache should remain unchanged for invalid unsubscribe attempts.")
-	manager.registryMutex.RLock()
+	manager.mu.RLock()
 	assert.Len(t, manager.registry[ek1], 2, "EventKey should have two subscribers")
-	manager.registryMutex.RUnlock()
+	manager.mu.RUnlock()
 
 	// Step 6: Unsubscribe from address1, topic1, ch2
 	// Retrieve the second subscriber's channel for ek1
-	manager.registryMutex.RLock()
+	manager.mu.RLock()
 	ch2 := manager.registry[ek1][1]
-	manager.registryMutex.RUnlock()
+	manager.mu.RUnlock()
 
 	err = manager.Unsubscribe(address1, topic1, ch2)
 	require.NoError(t, err)
@@ -360,9 +408,9 @@ func TestSubscriptionManager_Cache(t *testing.T) {
 	cache = manager.GetAddressesAndTopics()
 	assert.True(t, manager.cacheInitialized, "Cache should be reinitialized after GetAddressesAndTopics() is called.")
 	assert.ElementsMatch(t, expectedCache, cache, "Cache should remain unchanged for duplicate subscriptions.")
-	manager.registryMutex.RLock()
+	manager.mu.RLock()
 	assert.Len(t, manager.registry[ek1], 1, "EventKey should have one remaining subscriber")
-	manager.registryMutex.RUnlock()
+	manager.mu.RUnlock()
 }
 
 func TestSubscriptionManager_Close(t *testing.T) {
@@ -384,7 +432,7 @@ func TestSubscriptionManager_Close(t *testing.T) {
 	assert.False(t, open, "Channel should be closed after Close()")
 
 	// Verify registry is empty
-	manager.registryMutex.RLock()
-	defer manager.registryMutex.RUnlock()
+	manager.mu.RLock()
+	defer manager.mu.RUnlock()
 	assert.Len(t, manager.registry, 0, "Registry should be empty after Close()")
 }

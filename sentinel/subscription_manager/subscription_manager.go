@@ -20,31 +20,26 @@ type SubscriptionManagerConfig struct {
 
 // SubscriptionManager manages subscriptions for a specific chain.
 type SubscriptionManager struct {
+	mu                sync.RWMutex // Protects all shared fields below
 	registry          map[internal.EventKey][]chan api.Log
-	registryMutex     sync.RWMutex
 	logger            zerolog.Logger
 	chainID           int64
 	cachedEventKeys   []internal.EventKey
 	cacheInitialized  bool
-	cacheMutex        sync.RWMutex
 	channelBufferSize int
-
-	closing     bool       // Indicates if the manager is shutting down
-	activeSends int        // Tracks active sends in BroadcastLog
-	cond        *sync.Cond // Used to coordinate between BroadcastLog and Close
+	closing           bool // Indicates if the manager is shutting down
+	wg                sync.WaitGroup
 }
 
 // NewSubscriptionManager initializes a new SubscriptionManager.
 func NewSubscriptionManager(cfg SubscriptionManagerConfig) *SubscriptionManager {
 	subscriptionManagerLogger := cfg.Logger.With().Str("component", "SubscriptionManager").Logger()
-	mu := &sync.Mutex{}
 
 	return &SubscriptionManager{
 		registry:          make(map[internal.EventKey][]chan api.Log),
 		logger:            subscriptionManagerLogger,
 		chainID:           cfg.ChainID,
 		channelBufferSize: 3,
-		cond:              sync.NewCond(mu),
 	}
 }
 
@@ -59,10 +54,10 @@ func (sm *SubscriptionManager) Subscribe(address common.Address, topic common.Ha
 		return nil, errors.New("topic cannot be empty")
 	}
 
-	sm.registryMutex.Lock()
-	defer sm.registryMutex.Unlock()
-
 	sm.invalidateCache()
+
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
 
 	eventKey := internal.EventKey{Address: address, Topic: topic}
 	newChan := make(chan api.Log, sm.channelBufferSize)
@@ -80,11 +75,10 @@ func (sm *SubscriptionManager) Subscribe(address common.Address, topic common.Ha
 
 // Unsubscribe removes a subscription and closes the channel.
 func (sm *SubscriptionManager) Unsubscribe(address common.Address, topic common.Hash, ch chan api.Log) error {
-	sm.registryMutex.Lock()
-	defer sm.registryMutex.Unlock()
-
 	eventKey := internal.EventKey{Address: address, Topic: topic}
+	sm.mu.RLock()
 	subscribers, exists := sm.registry[eventKey]
+	sm.mu.RUnlock()
 	if !exists {
 		sm.logger.Warn().
 			Int64("ChainID", sm.chainID).
@@ -100,7 +94,9 @@ func (sm *SubscriptionManager) Unsubscribe(address common.Address, topic common.
 		if subscriber == ch {
 			sm.invalidateCache()
 			// Remove the subscriber from the list
+			sm.mu.Lock()
 			sm.registry[eventKey] = append(subscribers[:i], subscribers[i+1:]...)
+			sm.mu.Unlock()
 			sm.logger.Info().
 				Int64("ChainID", sm.chainID).
 				Hex("Address", []byte(address.Hex())).
@@ -122,6 +118,7 @@ func (sm *SubscriptionManager) Unsubscribe(address common.Address, topic common.
 		return errors.New("subscriber channel not found")
 	}
 
+	sm.mu.Lock()
 	if len(sm.registry[eventKey]) == 0 {
 		// Clean up the map if there are no more subscribers
 		delete(sm.registry, eventKey)
@@ -131,27 +128,27 @@ func (sm *SubscriptionManager) Unsubscribe(address common.Address, topic common.
 			Hex("Topic", []byte(topic.Hex())).
 			Msg("No remaining subscribers, removing EventKey from registry")
 	}
-
-	sm.cond.L.Lock()
-	for sm.activeSends > 0 {
-		sm.cond.Wait() // Wait for active broadcasts to complete
-	}
-	sm.cond.L.Unlock()
+	sm.mu.Unlock()
+	sm.wg.Wait() // Wait for all sends to complete before closing the channel
 
 	close(ch) // Safely close the channel
-	sm.logger.Info().
-		Int64("ChainID", sm.chainID).
-		Hex("Address", []byte(address.Hex())).
-		Hex("Topic", []byte(topic.Hex())).
-		Msg("Subscription removed")
 	return nil
 }
 
 // BroadcastLog sends the log event to all relevant subscribers.
 func (sm *SubscriptionManager) BroadcastLog(eventKey internal.EventKey, log api.Log) {
-	sm.registryMutex.RLock()
+	// Check if the manager is closing
+	sm.mu.RLock()
+	if sm.closing {
+		defer sm.mu.RUnlock()
+		sm.logger.Debug().
+			Interface("EventKey", eventKey).
+			Msg("SubscriptionManager is closing, skipping broadcast")
+		return
+	}
+	// Retrieve subscribers
 	subscribers, exists := sm.registry[eventKey]
-	sm.registryMutex.RUnlock()
+	sm.mu.RUnlock()
 
 	if !exists {
 		sm.logger.Debug().
@@ -160,25 +157,10 @@ func (sm *SubscriptionManager) BroadcastLog(eventKey internal.EventKey, log api.
 		return
 	}
 
-	var wg sync.WaitGroup
 	for _, ch := range subscribers {
-		sm.cond.L.Lock()
-		if sm.closing {
-			// If the manager is closing, skip sending logs
-			defer sm.cond.L.Unlock()
-			return
-		}
-		sm.activeSends++
-		sm.cond.L.Unlock()
-		wg.Add(1)
+		sm.wg.Add(1)
 		go func(ch chan api.Log) {
-			defer func() {
-				sm.cond.L.Lock()
-				sm.activeSends--
-				sm.cond.Broadcast() // Notify Close() when all sends are done
-				sm.cond.L.Unlock()
-				wg.Done()
-			}()
+			defer sm.wg.Done()
 			select {
 			case ch <- log:
 			case <-time.After(100 * time.Millisecond): // Prevent blocking forever
@@ -188,7 +170,6 @@ func (sm *SubscriptionManager) BroadcastLog(eventKey internal.EventKey, log api.
 			}
 		}(ch)
 	}
-	wg.Wait() // Wait for all sends to complete before returning
 	sm.logger.Debug().
 		Int64("ChainID", sm.chainID).
 		Int("Subscribers", len(subscribers)).
@@ -201,15 +182,15 @@ func (sm *SubscriptionManager) BroadcastLog(eventKey internal.EventKey, log api.
 // Implements caching: caches the result after the first call and invalidates it upon subscription changes.
 // Returns a slice of EventKeys, each containing a unique address-topic pair.
 func (sm *SubscriptionManager) GetAddressesAndTopics() []internal.EventKey {
-	sm.cacheMutex.RLock()
+	sm.mu.RLock()
 	if sm.cacheInitialized {
-		defer sm.cacheMutex.RUnlock()
+		defer sm.mu.RUnlock()
 		return sm.cachedEventKeys
 	}
-	sm.cacheMutex.RUnlock()
+	sm.mu.RUnlock()
 
-	sm.registryMutex.RLock()
-	defer sm.registryMutex.RUnlock()
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
 
 	eventKeys := make([]internal.EventKey, 0, len(sm.registry))
 	for eventKey := range sm.registry {
@@ -217,10 +198,8 @@ func (sm *SubscriptionManager) GetAddressesAndTopics() []internal.EventKey {
 	}
 
 	// Update the cache
-	sm.cacheMutex.Lock()
 	sm.cachedEventKeys = eventKeys
 	sm.cacheInitialized = true
-	sm.cacheMutex.Unlock()
 
 	sm.logger.Debug().
 		Int64("ChainID", sm.chainID).
@@ -232,10 +211,10 @@ func (sm *SubscriptionManager) GetAddressesAndTopics() []internal.EventKey {
 
 // invalidateCache invalidates the cached addresses and topics.
 func (sm *SubscriptionManager) invalidateCache() {
-	sm.cacheMutex.Lock()
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
 	sm.cacheInitialized = false
 	sm.cachedEventKeys = nil
-	sm.cacheMutex.Unlock()
 
 	sm.logger.Debug().
 		Int64("ChainID", sm.chainID).
@@ -244,27 +223,21 @@ func (sm *SubscriptionManager) invalidateCache() {
 
 // Close gracefully shuts down the SubscriptionManager by closing all subscriber channels.
 func (sm *SubscriptionManager) Close() {
-	sm.registryMutex.Lock()
+	// Set the closing flag under sendMutex
+	sm.mu.Lock()
 	sm.closing = true // Signal that the manager is closing
-	sm.registryMutex.Unlock()
+	sm.mu.Unlock()
 
-	// Wait for all active sends to complete
-	sm.cond.L.Lock()
-	for sm.activeSends > 0 {
-		sm.cond.Wait()
-	}
-	sm.cond.L.Unlock()
+	sm.wg.Wait() // Wait for all sends to complete before closing the channels
 
-	sm.registryMutex.Lock()
-	defer sm.registryMutex.Unlock()
-
+	sm.mu.Lock()
 	for eventKey, subscribers := range sm.registry {
 		for _, ch := range subscribers {
 			close(ch)
 		}
 		delete(sm.registry, eventKey)
 	}
-
+	sm.mu.Unlock()
 	sm.invalidateCache()
 
 	sm.logger.Info().

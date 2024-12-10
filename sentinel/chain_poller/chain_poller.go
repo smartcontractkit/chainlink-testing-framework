@@ -51,6 +51,12 @@ func (cp *ChainPoller) FilterLogs(ctx context.Context, filterQueries []api.Filte
 	for _, query := range filterQueries {
 		logs, err := cp.blockchainClient.FilterLogs(ctx, query)
 		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				cp.logger.Debug().
+					Int64("ChainID", cp.chainID).
+					Msg("Log filtering canceled due to shutdown")
+				return allLogs, nil
+			}
 			cp.logger.Error().Err(err).Interface("query", query).Msg("Failed to filter logs")
 			continue
 		}

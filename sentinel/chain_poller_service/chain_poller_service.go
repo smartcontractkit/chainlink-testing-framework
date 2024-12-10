@@ -118,7 +118,7 @@ func (eps *ChainPollerService) Stop() {
 	if !eps.started {
 		return
 	}
-
+	eps.SubscriptionMgr.Close()
 	eps.cancel()
 	eps.wg.Wait()
 	eps.started = false
