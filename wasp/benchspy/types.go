@@ -30,26 +30,15 @@ type Reporter interface {
 	Comparator
 }
 
-type ResourceMonitor interface {
-	// Validate checks if the ResourceFetcher has all the necessary data and configuration to fetch resource usage
-	Validate() error
-	// Fetch fetches the resources used by the AUT (e.g. CPU, memory, etc.)
-	Fetch(ctx context.Context) error
-	// Results returns the results of the queries, where key is the name of the query and value is the result
-	Resources() map[string]interface{}
-	// IsComparable checks whether both ResourceFetcher can be compared (e.g. they have the same type, queries are the same, etc.), and returns an error (if any difference is found)
-	IsComparable(other ResourceMonitor) error
-	// TimeRange sets the time range for the queries
-	TimeRange(startTime, endTime time.Time)
-}
-
 type QueryExecutor interface {
+	// Kind returns the type of the QueryExecutor
+	Kind() string
 	// Validate checks if the QueryExecutor has all the necessary data and configuration to execute the queries
 	Validate() error
 	// Execute executes the queries and populates the QueryExecutor with the results
 	Execute(ctx context.Context) error
 	// Results returns the results of the queries, where key is the name of the query and value is the result
-	Results() map[string][]string
+	Results() map[string]interface{}
 	// IsComparable checks whether both QueryExecutors can be compared (e.g. they have the same type, queries are the same, etc.), and returns an error (if any difference is found)
 	IsComparable(other QueryExecutor) error
 	// TimeRange sets the time range for the queries
@@ -59,14 +48,9 @@ type QueryExecutor interface {
 type StandardQueryExecutorType string
 
 const (
-	StandardQueryExecutor_Loki      StandardQueryExecutorType = "loki"
-	StandardQueryExecutor_Generator StandardQueryExecutorType = "generator"
-)
-
-type StandardResourceMonitorType string
-
-const (
-	StandardResourceMonitor_Prometheus StandardResourceMonitorType = "prometheus"
+	StandardQueryExecutor_Loki       StandardQueryExecutorType = "loki"
+	StandardQueryExecutor_Generator  StandardQueryExecutorType = "generator"
+	StandardQueryExecutor_Prometheus StandardQueryExecutorType = "prometheus"
 )
 
 type StandardLoadMetric string

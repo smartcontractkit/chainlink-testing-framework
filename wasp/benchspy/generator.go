@@ -14,15 +14,15 @@ import (
 type GeneratorQueryFn = func(responses *wasp.SliceBuffer[wasp.Response]) (string, error)
 
 type GeneratorQueryExecutor struct {
-	Kind         string                      `json:"kind"`
+	KindName     string                      `json:"kind"`
 	Generator    *wasp.Generator             `json:"generator_config"`
 	Queries      map[string]GeneratorQueryFn `json:"queries"`
-	QueryResults map[string][]string         `json:"query_results"`
+	QueryResults map[string]interface{}      `json:"query_results"`
 }
 
 func NewGeneratorQueryExecutor(generator *wasp.Generator) (*GeneratorQueryExecutor, error) {
 	g := &GeneratorQueryExecutor{
-		Kind:      "generator",
+		KindName:  string(StandardQueryExecutor_Generator),
 		Generator: generator,
 	}
 
@@ -32,13 +32,17 @@ func NewGeneratorQueryExecutor(generator *wasp.Generator) (*GeneratorQueryExecut
 	}
 
 	g.Queries = queries
-	g.QueryResults = make(map[string][]string)
+	g.QueryResults = make(map[string]interface{})
 
 	return g, nil
 }
 
-func (g *GeneratorQueryExecutor) Results() map[string][]string {
+func (g *GeneratorQueryExecutor) Results() map[string]interface{} {
 	return g.QueryResults
+}
+
+func (l *GeneratorQueryExecutor) Kind() string {
+	return l.KindName
 }
 
 func (g *GeneratorQueryExecutor) IsComparable(otherQueryExecutor QueryExecutor) error {
@@ -113,7 +117,7 @@ func (g *GeneratorQueryExecutor) Execute(_ context.Context) error {
 			return queryErr
 		}
 
-		g.QueryResults[queryName] = []string{results}
+		g.QueryResults[queryName] = results
 	}
 
 	return nil
@@ -184,14 +188,14 @@ func (g *GeneratorQueryExecutor) standardQuery(standardMetric StandardLoadMetric
 func (g *GeneratorQueryExecutor) MarshalJSON() ([]byte, error) {
 	// we need custom marshalling to only include query names, since the functions are not serializable
 	type QueryExecutor struct {
-		Kind         string              `json:"kind"`
-		Generator    interface{}         `json:"generator_config"`
-		Queries      []string            `json:"queries"`
-		QueryResults map[string][]string `json:"query_results"`
+		Kind         string                 `json:"kind"`
+		Generator    interface{}            `json:"generator_config"`
+		Queries      []string               `json:"queries"`
+		QueryResults map[string]interface{} `json:"query_results"`
 	}
 
 	return json.Marshal(&QueryExecutor{
-		Kind: g.Kind,
+		Kind: g.KindName,
 		Generator: func() interface{} {
 			if g.Generator != nil {
 				return g.Generator.Cfg

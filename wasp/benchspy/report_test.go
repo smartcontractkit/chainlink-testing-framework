@@ -12,6 +12,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var lokiConfig = &wasp.LokiConfig{
+	URL:       "http://localhost:3100",
+	TenantID:  "test",
+	BasicAuth: "user:pass",
+}
+
 func TestBenchSpy_NewStandardReport(t *testing.T) {
 	baseTime := time.Now()
 	basicGen := &wasp.Generator{
@@ -25,6 +31,7 @@ func TestBenchSpy_NewStandardReport(t *testing.T) {
 			Schedule: []*wasp.Segment{
 				{StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
 			},
+			LokiConfig: lokiConfig,
 		},
 	}
 
@@ -69,6 +76,16 @@ func TestBenchSpy_NewStandardReport(t *testing.T) {
 		_, err := NewStandardReport("test-commit", WithStandardQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(invalidGen))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "missing branch or commit labels")
+	})
+
+	t.Run("missing loki config", func(t *testing.T) {
+		gen := *basicGen
+		gen.Cfg.LokiConfig = nil
+
+		report, err := NewStandardReport("test-commit", WithStandardQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(&gen))
+		require.Nil(t, report)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "loki config is missing")
 	})
 
 	t.Run("nil generator", func(t *testing.T) {
@@ -116,38 +133,8 @@ func TestBenchSpy_StandardReport_FetchData_WithMockExecutors(t *testing.T) {
 
 		err := report.FetchData(ctx)
 		require.NoError(t, err)
-		assert.True(t, exec1.ValidateCalled)
-		assert.True(t, exec2.ValidateCalled)
 		assert.True(t, exec1.ExecuteCalled)
 		assert.True(t, exec2.ExecuteCalled)
-	})
-
-	t.Run("one executor fails validation", func(t *testing.T) {
-		exec1 := &MockQueryExecutor{
-			ExecuteFn:  func(ctx context.Context) error { return nil },
-			ValidateFn: func() error { return nil },
-		}
-		exec2 := &MockQueryExecutor{
-			ExecuteFn:  func(ctx context.Context) error { return nil },
-			ValidateFn: func() error { return fmt.Errorf("validation failed") },
-		}
-
-		report := &StandardReport{
-			BasicData: BasicData{
-				TestStart:        baseTime,
-				TestEnd:          baseTime.Add(time.Hour),
-				GeneratorConfigs: map[string]*wasp.Config{"basic": basicGen.Cfg},
-			},
-			QueryExecutors: []QueryExecutor{exec1, exec2},
-		}
-
-		err := report.FetchData(ctx)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "validation failed")
-		assert.True(t, exec1.ValidateCalled)
-		assert.True(t, exec2.ValidateCalled)
-		assert.True(t, exec1.ExecuteCalled)
-		assert.False(t, exec2.ExecuteCalled)
 	})
 
 	t.Run("one executor fails execution", func(t *testing.T) {
@@ -241,6 +228,10 @@ type MockQueryExecutor struct {
 	ExecuteCalled  bool
 }
 
+func (m *MockQueryExecutor) Kind() string {
+	return "mock"
+}
+
 func (m *MockQueryExecutor) Execute(ctx context.Context) error {
 	m.ExecuteCalled = true
 	return m.ExecuteFn(ctx)
@@ -261,7 +252,7 @@ func (m *MockQueryExecutor) IsComparable(other QueryExecutor) error {
 	return nil
 }
 
-func (m *MockQueryExecutor) Results() map[string][]string {
+func (m *MockQueryExecutor) Results() map[string]interface{} {
 	return nil
 }
 
@@ -317,6 +308,7 @@ func TestBenchSpy_StandardReport_FetchData(t *testing.T) {
 	}
 
 	t.Run("valid fetch", func(t *testing.T) {
+		basicGen.Cfg.LokiConfig = lokiConfig
 		report, err := NewStandardReport("test-commit", WithStandardQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
 		require.NoError(t, err)
 
@@ -329,18 +321,6 @@ func TestBenchSpy_StandardReport_FetchData(t *testing.T) {
 		err = report.FetchData(context.Background())
 		require.NoError(t, err)
 		assert.True(t, mockExec.ExecuteCalled)
-	})
-
-	t.Run("missing loki config", func(t *testing.T) {
-		report, err := NewStandardReport("test-commit", WithStandardQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
-		require.NoError(t, err)
-		report.QueryExecutors = []QueryExecutor{&LokiQueryExecutor{
-			Queries: map[string]string{"test": "query"},
-		}}
-
-		err = report.FetchData(context.Background())
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "loki config is missing")
 	})
 }
 
@@ -357,6 +337,7 @@ func TestBenchSpy_StandardReport_IsComparable(t *testing.T) {
 			Schedule: []*wasp.Segment{
 				{StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
 			},
+			LokiConfig: lokiConfig,
 		},
 	}
 
@@ -398,6 +379,7 @@ func TestBenchSpy_StandardReport_IsComparable(t *testing.T) {
 				Schedule: []*wasp.Segment{
 					{StartTime: baseTime, EndTime: baseTime.Add(2 * time.Hour)}, // different duration
 				},
+				LokiConfig: lokiConfig,
 			},
 		}
 		report2, err := NewStandardReport("test-commit", WithStandardQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(diffGen))
@@ -434,6 +416,7 @@ func TestBenchSpy_StandardReport_Store_Load(t *testing.T) {
 			Schedule: []*wasp.Segment{
 				{StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
 			},
+			LokiConfig: lokiConfig,
 		},
 	}
 

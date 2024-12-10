@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
@@ -14,8 +15,7 @@ import (
 type StandardReport struct {
 	BasicData
 	LocalStorage
-	ResourceFetchers []ResourceMonitor `json:"resource_fetchers"`
-	QueryExecutors   []QueryExecutor   `json:"query_executors"`
+	QueryExecutors []QueryExecutor `json:"query_executors"`
 }
 
 func (b *StandardReport) Store() (string, error) {
@@ -28,6 +28,27 @@ func (b *StandardReport) Load(testName, commitOrTag string) error {
 
 func (b *StandardReport) LoadLatest(testName string) error {
 	return b.LocalStorage.Load(testName, "", b)
+}
+
+func ResultsAs[Type any](newType Type, queryExecutors []QueryExecutor, queryExecutorType StandardQueryExecutorType, queryNames ...string) map[string]Type {
+	results := make(map[string]Type)
+	for _, queryExecutor := range queryExecutors {
+		if strings.EqualFold(queryExecutor.Kind(), string(queryExecutorType)) {
+			if len(queryNames) > 0 {
+				for _, queryName := range queryNames {
+					if result, ok := queryExecutor.Results()[queryName]; ok {
+						results[queryName] = result.(Type)
+					}
+				}
+			} else {
+				for queryName, result := range queryExecutor.Results() {
+					results[queryName] = result.(Type)
+				}
+			}
+		}
+	}
+
+	return results
 }
 
 func (b *StandardReport) FetchData(ctx context.Context) error {
@@ -64,32 +85,6 @@ func (b *StandardReport) FetchData(ctx context.Context) error {
 		return err
 	}
 
-	errGroup, errCtx = errgroup.WithContext(ctx)
-	for _, resourceFetcher := range b.ResourceFetchers {
-		errGroup.Go(func() error {
-			// feature: PLAIN SEGEMENT ONLY
-			// go over all schedules and execute the code below only for ones with type "plain"
-			// and then concatenate that data and return that; if parallelizing then we should first
-			// create a slice of plain segments and then, when sending results over channel include the index,
-			// so that we can concatenate them in the right order
-			// resourceFetcher.TimeRange(b.TestStart, b.TestEnd)
-
-			// if validateErr := resourceFetcher.ValidateResources(); validateErr != nil {
-			// 	return validateErr
-			// }
-
-			if execErr := resourceFetcher.Fetch(errCtx); execErr != nil {
-				return execErr
-			}
-
-			return nil
-		})
-	}
-
-	if err := errGroup.Wait(); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -109,13 +104,6 @@ func (b *StandardReport) IsComparable(otherReport Reporter) error {
 		queryErr := queryExecutor.IsComparable(queryExecutor)
 		if queryErr != nil {
 			return queryErr
-		}
-	}
-
-	for _, resourceFetcher := range b.ResourceFetchers {
-		resourceErr := resourceFetcher.IsComparable(resourceFetcher)
-		if resourceErr != nil {
-			return resourceErr
 		}
 	}
 
@@ -153,6 +141,31 @@ func WithPrometheus(prometheusConfig *PrometheusConfig) StandardReportOption {
 	return func(c *standardReportConfig) {
 		c.prometheusConfig = prometheusConfig
 	}
+}
+
+func (c *standardReportConfig) validate() error {
+	if c.executorType == "" {
+		return errors.New("executor type is not set")
+	}
+
+	if c.executorType == StandardQueryExecutor_Prometheus {
+		return errors.New("prometheus as query executor is not supported currently. Use either Loki or Generator")
+	}
+
+	if len(c.generators) == 0 {
+		return errors.New("generators are not set")
+	}
+
+	if c.prometheusConfig != WithoutPrometheus {
+		if c.prometheusConfig.url == "" {
+			return errors.New("prometheus url is not set")
+		}
+		if len(c.prometheusConfig.nameRegexPatterns) == 0 {
+			return errors.New("prometheus name regex patterns are not set. At least one pattern is needed to match containers by name")
+		}
+	}
+
+	return nil
 }
 
 // func NewStandardReport(commitOrTag string, standardQueryExecutorType StandardQueryExecutorType, generators []*wasp.Generator, prometheusConfig *PrometheusConfig) (*StandardReport, error) {
@@ -223,6 +236,11 @@ func NewStandardReport(commitOrTag string, opts ...StandardReportOption) (*Stand
 		return nil, errors.Wrapf(basicErr, "failed to create basic data for generators %s", generatorNames)
 	}
 
+	configErr := config.validate()
+	if configErr != nil {
+		return nil, configErr
+	}
+
 	startEndErr := basicData.FillStartEndTimes()
 	if startEndErr != nil {
 		return nil, startEndErr
@@ -248,10 +266,9 @@ func NewStandardReport(commitOrTag string, opts ...StandardReportOption) (*Stand
 		queryExecutors = append(queryExecutors, executor)
 	}
 
-	var resourceFetchers []ResourceMonitor
 	if config.prometheusConfig != WithoutPrometheus {
 		for _, nameRegexPattern := range config.prometheusConfig.nameRegexPatterns {
-			resourceFetcher, prometheusErr := NewStandardPrometheusResourceReporter(config.prometheusConfig.url, basicData.TestStart, basicData.TestEnd, nameRegexPattern)
+			resourceFetcher, prometheusErr := NewStandardPrometheusQueryExecutor(config.prometheusConfig.url, basicData.TestStart, basicData.TestEnd, nameRegexPattern)
 			if prometheusErr != nil {
 				return nil, errors.Wrapf(prometheusErr, "failed to create Prometheus resource reporter for name %s", nameRegexPattern)
 			}
@@ -259,14 +276,13 @@ func NewStandardReport(commitOrTag string, opts ...StandardReportOption) (*Stand
 			if validateErr != nil {
 				return nil, errors.Wrapf(validateErr, "failed to validate resources for name %s", nameRegexPattern)
 			}
-			resourceFetchers = append(resourceFetchers, resourceFetcher)
+			queryExecutors = append(queryExecutors, resourceFetcher)
 		}
 	}
 
 	return &StandardReport{
-		BasicData:        *basicData,
-		QueryExecutors:   queryExecutors,
-		ResourceFetchers: resourceFetchers,
+		BasicData:      *basicData,
+		QueryExecutors: queryExecutors,
 	}, nil
 }
 
@@ -343,14 +359,8 @@ func (s *StandardReport) UnmarshalJSON(data []byte) error {
 		return queryErr
 	}
 
-	resourceFetchers, resourceErr := unmarshallResourceFetchers(raw.ResourceFetchers)
-	if resourceErr != nil {
-		return resourceErr
-	}
-
 	*s = StandardReport(raw.Alias)
 	s.QueryExecutors = queryExecutors
-	s.ResourceFetchers = resourceFetchers
 	return nil
 }
 
@@ -372,6 +382,8 @@ func unmarshallQueryExecutors(raw []json.RawMessage) ([]QueryExecutor, error) {
 			executor = &LokiQueryExecutor{}
 		case "generator":
 			executor = &GeneratorQueryExecutor{}
+		case "prometheus":
+			executor = &PrometheusQueryExecutor{}
 		default:
 			return nil, fmt.Errorf("unknown query executor type: %s\nIf you added a new query executor make sure to add a custom JSON unmarshaller to StandardReport.UnmarshalJSON()", typeIndicator.Kind)
 		}
@@ -384,34 +396,4 @@ func unmarshallQueryExecutors(raw []json.RawMessage) ([]QueryExecutor, error) {
 	}
 
 	return queryExecutors, nil
-}
-
-func unmarshallResourceFetchers(raw []json.RawMessage) ([]ResourceMonitor, error) {
-	var resourceFetchers []ResourceMonitor
-
-	// manually decide, which ResourceFetcher implementation to use based on the "kind" field
-	for _, rawExecutor := range raw {
-		var typeIndicator struct {
-			Kind string `json:"kind"`
-		}
-		if err := json.Unmarshal(rawExecutor, &typeIndicator); err != nil {
-			return nil, err
-		}
-
-		var monitor ResourceMonitor
-		switch typeIndicator.Kind {
-		case "prometheus":
-			monitor = &PrometheusResourceReporter{}
-		default:
-			return nil, fmt.Errorf("unknown resource monitor type: %s\nIf you added a new resource monitor make sure to add a custom JSON unmarshaller to StandardReport.UnmarshalJSON()", typeIndicator.Kind)
-		}
-
-		if err := json.Unmarshal(rawExecutor, monitor); err != nil {
-			return nil, err
-		}
-
-		resourceFetchers = append(resourceFetchers, monitor)
-	}
-
-	return resourceFetchers, nil
 }

@@ -16,15 +16,15 @@ import (
 
 func NewLokiQueryExecutor(queries map[string]string, lokiConfig *wasp.LokiConfig) *LokiQueryExecutor {
 	return &LokiQueryExecutor{
-		Kind:         "loki",
+		KindName:     string(StandardQueryExecutor_Loki),
 		Queries:      queries,
 		Config:       lokiConfig,
-		QueryResults: make(map[string][]string),
+		QueryResults: make(map[string]interface{}),
 	}
 }
 
 type LokiQueryExecutor struct {
-	Kind string `json:"kind"`
+	KindName string `json:"kind"`
 	// Test metrics
 	StartTime time.Time `json:"start_time"`
 	EndTime   time.Time `json:"end_time"`
@@ -34,13 +34,17 @@ type LokiQueryExecutor struct {
 	Queries map[string]string `json:"queries"`
 	// Performance queries results
 	// can be anything, avg RPS, amount of errors, 95th percentile of CPU utilization, etc
-	QueryResults map[string][]string `json:"query_results"`
+	QueryResults map[string]interface{} `json:"query_results"`
 
 	Config *wasp.LokiConfig `json:"-"`
 }
 
-func (l *LokiQueryExecutor) Results() map[string][]string {
+func (l *LokiQueryExecutor) Results() map[string]interface{} {
 	return l.QueryResults
+}
+
+func (l *LokiQueryExecutor) Kind() string {
+	return l.KindName
 }
 
 func (l *LokiQueryExecutor) IsComparable(otherQueryExecutor QueryExecutor) error {
@@ -65,16 +69,23 @@ func (l *LokiQueryExecutor) Validate() error {
 }
 
 func (l *LokiQueryExecutor) Execute(ctx context.Context) error {
-	splitAuth := strings.Split(l.Config.BasicAuth, ":")
 	var basicAuth client.LokiBasicAuth
-	if len(splitAuth) == 2 {
-		basicAuth = client.LokiBasicAuth{
-			Login:    splitAuth[0],
-			Password: splitAuth[1],
+
+	if l.Config == nil {
+		return errors.New("loki config is missing. Please set it and try again")
+	}
+
+	if l.Config.BasicAuth != "" {
+		splitAuth := strings.Split(l.Config.BasicAuth, ":")
+		if len(splitAuth) == 2 {
+			basicAuth = client.LokiBasicAuth{
+				Login:    splitAuth[0],
+				Password: splitAuth[1],
+			}
 		}
 	}
 
-	l.QueryResults = make(map[string][]string)
+	l.QueryResults = make(map[string]interface{})
 	resultCh := make(chan map[string][]string, len(l.Queries))
 	errGroup, errCtx := errgroup.WithContext(ctx)
 
@@ -154,9 +165,9 @@ func (l *LokiQueryExecutor) TimeRange(start, end time.Time) {
 
 func NewStandardMetricsLokiExecutor(lokiConfig *wasp.LokiConfig, testName, generatorName, branch, commit string, startTime, endTime time.Time) (*LokiQueryExecutor, error) {
 	lq := &LokiQueryExecutor{
-		Kind:         "loki",
+		KindName:     string(StandardQueryExecutor_Loki),
 		Config:       lokiConfig,
-		QueryResults: make(map[string][]string),
+		QueryResults: make(map[string]interface{}),
 	}
 
 	standardQueries, queryErr := lq.generateStandardQueries(testName, generatorName, branch, commit, startTime, endTime)

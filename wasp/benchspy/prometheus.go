@@ -13,24 +13,24 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/client"
 )
 
-type PrometheusResourceReporter struct {
-	Kind               StandardResourceMonitorType `json:"kind"`
-	startTime, endTime time.Time                   `json:"-"`
-	client             *client.Prometheus          `json:"-"`
-	Queries            map[string]string           `json:"queries"`
-	ResourceResults    map[string]interface{}      `json:"resources"`
-	warnings           map[string]v1.Warnings      `json:"-"`
+type PrometheusQueryExecutor struct {
+	KindName           string                 `json:"kind"`
+	startTime, endTime time.Time              `json:"-"`
+	client             *client.Prometheus     `json:"-"`
+	Queries            map[string]string      `json:"queries"`
+	ResourceResults    map[string]interface{} `json:"resources"`
+	warnings           map[string]v1.Warnings `json:"-"`
 }
 
-// NewPrometheusResourceReporter creates a new PrometheusResourceReporter, url should include basic auth if needed
-func NewPrometheusResourceReporter(url string, startTime, endTime time.Time, queries map[string]string) (*PrometheusResourceReporter, error) {
+// NewPrometheusQueryExecutor creates a new PrometheusResourceReporter, url should include basic auth if needed
+func NewPrometheusQueryExecutor(url string, startTime, endTime time.Time, queries map[string]string) (*PrometheusQueryExecutor, error) {
 	c, err := client.NewPrometheusClient(url)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create Prometheus client")
 	}
 
-	return &PrometheusResourceReporter{
-		Kind:            StandardResourceMonitor_Prometheus,
+	return &PrometheusQueryExecutor{
+		KindName:        string(StandardQueryExecutor_Prometheus),
 		client:          c,
 		Queries:         queries,
 		startTime:       startTime,
@@ -39,18 +39,18 @@ func NewPrometheusResourceReporter(url string, startTime, endTime time.Time, que
 	}, nil
 }
 
-func NewStandardPrometheusResourceReporter(url string, startTime, endTime time.Time, nameRegexPattern string) (*PrometheusResourceReporter, error) {
+func NewStandardPrometheusQueryExecutor(url string, startTime, endTime time.Time, nameRegexPattern string) (*PrometheusQueryExecutor, error) {
 	c, err := client.NewPrometheusClient(url)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create Prometheus client")
 	}
 
-	standardQueries, queryErr := (&PrometheusResourceReporter{client: c}).generateStandardQueries(nameRegexPattern, startTime, endTime)
+	standardQueries, queryErr := (&PrometheusQueryExecutor{client: c}).generateStandardQueries(nameRegexPattern, startTime, endTime)
 	if queryErr != nil {
 		return nil, errors.Wrapf(queryErr, "failed to generate standard queries for %s", nameRegexPattern)
 	}
 
-	return &PrometheusResourceReporter{
+	return &PrometheusQueryExecutor{
 		client:          c,
 		Queries:         standardQueries,
 		startTime:       startTime,
@@ -59,7 +59,7 @@ func NewStandardPrometheusResourceReporter(url string, startTime, endTime time.T
 	}, nil
 }
 
-func (r *PrometheusResourceReporter) Fetch(ctx context.Context) error {
+func (r *PrometheusQueryExecutor) Execute(ctx context.Context) error {
 	for name, query := range r.Queries {
 		result, warnings, queryErr := r.client.Query(ctx, query, r.endTime)
 		if queryErr != nil {
@@ -76,11 +76,15 @@ func (r *PrometheusResourceReporter) Fetch(ctx context.Context) error {
 	return nil
 }
 
-func (r *PrometheusResourceReporter) Resources() map[string]interface{} {
+func (r *PrometheusQueryExecutor) Results() map[string]interface{} {
 	return r.ResourceResults
 }
 
-func (r *PrometheusResourceReporter) Validate() error {
+func (l *PrometheusQueryExecutor) Kind() string {
+	return l.KindName
+}
+
+func (r *PrometheusQueryExecutor) Validate() error {
 	if r.client == nil {
 		return errors.New("prometheus client is nil")
 	}
@@ -100,18 +104,18 @@ func (r *PrometheusResourceReporter) Validate() error {
 	return nil
 }
 
-func (r *PrometheusResourceReporter) IsComparable(other ResourceMonitor) error {
+func (r *PrometheusQueryExecutor) IsComparable(other QueryExecutor) error {
 	otherType := reflect.TypeOf(other)
 	if otherType != reflect.TypeOf(r) {
 		return fmt.Errorf("expected type %s, got %s", reflect.TypeOf(r), otherType)
 	}
 
-	asPrometheusResourceReporter := other.(*PrometheusResourceReporter)
+	asPrometheusResourceReporter := other.(*PrometheusQueryExecutor)
 
 	return r.compareQueries(asPrometheusResourceReporter.Queries)
 }
 
-func (r *PrometheusResourceReporter) compareQueries(other map[string]string) error {
+func (r *PrometheusQueryExecutor) compareQueries(other map[string]string) error {
 	this := r.Queries
 	if len(this) != len(other) {
 		return fmt.Errorf("queries count is different. Expected %d, got %d", len(this), len(other))
@@ -130,11 +134,11 @@ func (r *PrometheusResourceReporter) compareQueries(other map[string]string) err
 	return nil
 }
 
-func (r *PrometheusResourceReporter) Warnings() map[string]v1.Warnings {
+func (r *PrometheusQueryExecutor) Warnings() map[string]v1.Warnings {
 	return r.warnings
 }
 
-func (r *PrometheusResourceReporter) MustResourcesAsValue() map[string]model.Value {
+func (r *PrometheusQueryExecutor) MustResourcesAsValue() map[string]model.Value {
 	resources := make(map[string]model.Value)
 	for name, resource := range r.ResourceResults {
 		resources[name] = resource.(model.Value)
@@ -142,14 +146,14 @@ func (r *PrometheusResourceReporter) MustResourcesAsValue() map[string]model.Val
 	return resources
 }
 
-func (r *PrometheusResourceReporter) TimeRange(startTime, endTime time.Time) {
+func (r *PrometheusQueryExecutor) TimeRange(startTime, endTime time.Time) {
 	// not sure if we need to set the time range for Prometheus
 	// I think we should remove that method all together from all interfaces
 	// and instead make sure that all segments have start/end times (i.e. they were executed), when new report is created
 	return
 }
 
-func (r *PrometheusResourceReporter) standardQuery(metric StandardResourceMetric, nameRegexPattern string, startTime, endTime time.Time) (string, error) {
+func (r *PrometheusQueryExecutor) standardQuery(metric StandardResourceMetric, nameRegexPattern string, startTime, endTime time.Time) (string, error) {
 	duration := calculateTimeRange(startTime, endTime)
 	switch metric {
 	case MedianCPUUsage:
@@ -167,7 +171,7 @@ func (r *PrometheusResourceReporter) standardQuery(metric StandardResourceMetric
 	}
 }
 
-func (r *PrometheusResourceReporter) generateStandardQueries(nameRegexPattern string, startTime, endTime time.Time) (map[string]string, error) {
+func (r *PrometheusQueryExecutor) generateStandardQueries(nameRegexPattern string, startTime, endTime time.Time) (map[string]string, error) {
 	standardQueries := make(map[string]string)
 
 	for _, metric := range standardResourceMetrics {

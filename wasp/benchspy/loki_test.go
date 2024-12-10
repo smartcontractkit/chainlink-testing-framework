@@ -193,7 +193,7 @@ func TestBenchSpy_NewLokiQueryExecutor(t *testing.T) {
 	}
 
 	executor := NewLokiQueryExecutor(queries, config)
-	assert.Equal(t, "loki", executor.Kind)
+	assert.Equal(t, "loki", executor.KindName)
 	assert.Equal(t, queries, executor.Queries)
 	assert.Equal(t, config, executor.Config)
 	assert.NotNil(t, executor.QueryResults)
@@ -201,8 +201,8 @@ func TestBenchSpy_NewLokiQueryExecutor(t *testing.T) {
 
 func TestBenchSpy_LokiQueryExecutor_Results(t *testing.T) {
 	executor := &LokiQueryExecutor{
-		QueryResults: map[string][]string{
-			"test": {"result1", "result2"},
+		QueryResults: map[string]interface{}{
+			"test": []string{"result1", "result2"},
 		},
 	}
 	results := executor.Results()
@@ -211,13 +211,17 @@ func TestBenchSpy_LokiQueryExecutor_Results(t *testing.T) {
 
 type anotherQueryExecutor struct{}
 
+func (a *anotherQueryExecutor) Kind() string {
+	return "another"
+}
+
 func (a *anotherQueryExecutor) Validate() error {
 	return nil
 }
 func (a *anotherQueryExecutor) Execute(_ context.Context) error {
 	return nil
 }
-func (a *anotherQueryExecutor) Results() map[string][]string {
+func (a *anotherQueryExecutor) Results() map[string]interface{} {
 	return nil
 }
 func (a *anotherQueryExecutor) IsComparable(_ QueryExecutor) error {
@@ -336,7 +340,11 @@ func TestBenchSpy_LokiQueryExecutor_Execute(t *testing.T) {
 	err := executor.Execute(context.Background())
 	assert.NoError(t, err)
 	assert.Contains(t, executor.QueryResults, "test_query")
-	assert.Equal(t, "Log message 1", executor.QueryResults["test_query"][0])
+
+	asStringSlice, ok := executor.QueryResults["test_query"].([]string)
+	assert.True(t, ok)
+
+	assert.Equal(t, "Log message 1", asStringSlice[0])
 }
 
 func TestBenchSpy_LokiQueryExecutor_TimeRange(t *testing.T) {
@@ -365,7 +373,7 @@ func TestBenchSpy_NewStandardMetricsLokiExecutor(t *testing.T) {
 	executor, err := NewStandardMetricsLokiExecutor(config, testName, genName, branch, commit, start, end)
 	assert.NoError(t, err)
 	assert.NotNil(t, executor)
-	assert.Equal(t, "loki", executor.Kind)
+	assert.Equal(t, "loki", executor.KindName)
 	assert.Len(t, executor.Queries, len(standardLoadMetrics))
 }
 
