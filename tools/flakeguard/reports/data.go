@@ -12,15 +12,15 @@ import (
 
 type TestReport struct {
 	GoProject          string
+	HeadSHA            string
+	BaseSHA            string
+	RepoURL            string
+	GitHubWorkflowName string
 	TestRunCount       int
 	RaceDetection      bool
 	ExcludedTests      []string
 	SelectedTests      []string
 	Results            []TestResult
-	HeadSHA            string
-	BaseSHA            string
-	RepoURL            string
-	GitHubWorkflowName string
 }
 
 type TestResult struct {
