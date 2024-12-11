@@ -271,7 +271,7 @@ func TestBenchSpy_GeneratorQueryExecutor_Execute(t *testing.T) {
 
 		fakeGun := &fakeGun{
 			maxSuccesses: 0,
-			maxFailures:  6,
+			maxFailures:  10,
 			schedule:     cfg.Schedule[0],
 		}
 
@@ -296,7 +296,7 @@ func TestBenchSpy_GeneratorQueryExecutor_Execute(t *testing.T) {
 
 		errorRate, exists := results[string(ErrorRate)]
 		assert.True(t, exists)
-		assert.Equal(t, []string{"1.0000"}, errorRate)
+		assert.Equal(t, "1.0000", errorRate)
 	})
 
 	t.Run("no responses", func(t *testing.T) {

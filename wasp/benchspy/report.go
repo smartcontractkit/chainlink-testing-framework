@@ -30,18 +30,6 @@ func (b *StandardReport) LoadLatest(testName string) error {
 	return b.LocalStorage.Load(testName, "", b)
 }
 
-func convertSlice[T any, U any](input []T, convert func(T) (U, error)) ([]U, error) {
-	var result []U
-	for _, v := range input {
-		converted, err := convert(v)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, converted)
-	}
-	return result, nil
-}
-
 func ResultsAs[Type any](newType Type, queryExecutors []QueryExecutor, queryExecutorType StandardQueryExecutorType, queryNames ...string) (map[string]Type, error) {
 	results := make(map[string]Type)
 
@@ -133,8 +121,8 @@ func (b *StandardReport) IsComparable(otherReport Reporter) error {
 }
 
 type PrometheusConfig struct {
-	url               string
-	nameRegexPatterns []string
+	Url               string
+	NameRegexPatterns []string
 }
 
 var WithoutPrometheus *PrometheusConfig = nil
@@ -179,10 +167,10 @@ func (c *standardReportConfig) validate() error {
 	}
 
 	if c.prometheusConfig != WithoutPrometheus {
-		if c.prometheusConfig.url == "" {
+		if c.prometheusConfig.Url == "" {
 			return errors.New("prometheus url is not set")
 		}
-		if len(c.prometheusConfig.nameRegexPatterns) == 0 {
+		if len(c.prometheusConfig.NameRegexPatterns) == 0 {
 			return errors.New("prometheus name regex patterns are not set. At least one pattern is needed to match containers by name")
 		}
 	}
@@ -231,16 +219,16 @@ func NewStandardReport(commitOrTag string, opts ...StandardReportOption) (*Stand
 	}
 
 	if config.prometheusConfig != WithoutPrometheus {
-		for _, nameRegexPattern := range config.prometheusConfig.nameRegexPatterns {
-			resourceFetcher, prometheusErr := NewStandardPrometheusQueryExecutor(config.prometheusConfig.url, basicData.TestStart, basicData.TestEnd, nameRegexPattern)
+		for _, nameRegexPattern := range config.prometheusConfig.NameRegexPatterns {
+			prometheusExecutor, prometheusErr := NewStandardPrometheusQueryExecutor(config.prometheusConfig.Url, basicData.TestStart, basicData.TestEnd, nameRegexPattern)
 			if prometheusErr != nil {
 				return nil, errors.Wrapf(prometheusErr, "failed to create Prometheus resource reporter for name %s", nameRegexPattern)
 			}
-			validateErr := resourceFetcher.Validate()
+			validateErr := prometheusExecutor.Validate()
 			if validateErr != nil {
 				return nil, errors.Wrapf(validateErr, "failed to validate resources for name %s", nameRegexPattern)
 			}
-			queryExecutors = append(queryExecutors, resourceFetcher)
+			queryExecutors = append(queryExecutors, prometheusExecutor)
 		}
 	}
 
@@ -354,34 +342,52 @@ func convertQueryResults(results map[string]interface{}) (map[string]interface{}
 			switch v[0].(type) {
 			case string:
 				strSlice := make([]string, len(v))
+				allConverted := true
 				for i, elem := range v {
 					str, ok := elem.(string)
 					if !ok {
-						return nil, fmt.Errorf("cannot convert element %d to string", i)
+						// return original slice if we can't convert, because it composed of different types
+						converted[key] = v
+						allConverted = false
+						break
 					}
 					strSlice[i] = str
 				}
-				converted[key] = strSlice
+				if allConverted {
+					converted[key] = strSlice
+				}
 			case int:
 				intSlice := make([]int, len(v))
+				allConverted := true
 				for i, elem := range v {
 					num, ok := elem.(int)
 					if !ok {
-						return nil, fmt.Errorf("cannot convert element %d to int", i)
+						// return original slice if we can't convert, because it composed of different types
+						converted[key] = v
+						allConverted = false
+						break
 					}
 					intSlice[i] = num
 				}
-				converted[key] = intSlice
+				if allConverted {
+					converted[key] = intSlice
+				}
 			case float64:
 				floatSlice := make([]float64, len(v))
+				allConverted := true
 				for i, elem := range v {
 					f, ok := elem.(float64)
 					if !ok {
-						return nil, fmt.Errorf("cannot convert element %d to float64", i)
+						// return original slice if we can't convert, because it composed of different types
+						converted[key] = v
+						allConverted = false
+						break
 					}
 					floatSlice[i] = f
 				}
-				converted[key] = floatSlice
+				if allConverted {
+					converted[key] = floatSlice
+				}
 			default:
 				// do nothing if it's not a type we can convert
 				converted[key] = v

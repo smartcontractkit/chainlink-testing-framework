@@ -13,8 +13,9 @@ func TestBenchSpy_NewBasicData(t *testing.T) {
 	testName := t.Name()
 	gen := &wasp.Generator{
 		Cfg: &wasp.Config{
-			T:       t,
-			GenName: "gen1",
+			T:        t,
+			GenName:  "gen1",
+			Schedule: []*wasp.Segment{{From: 1, Duration: time.Hour, StartTime: time.Now().Add(-time.Hour), EndTime: time.Now()}},
 		},
 	}
 
@@ -68,6 +69,9 @@ func TestBenchSpy_MustNewBasicData(t *testing.T) {
 		Cfg: &wasp.Config{
 			T:       t,
 			GenName: "gen1",
+			Schedule: []*wasp.Segment{
+				{From: 1, Duration: time.Hour, StartTime: time.Now().Add(-time.Hour), EndTime: time.Now()},
+			},
 		},
 	}
 
@@ -115,15 +119,13 @@ func TestBenchSpy_BasicData_FillStartEndTimes(t *testing.T) {
 				T:       t,
 				GenName: "gen1",
 				Schedule: []*wasp.Segment{
-					{EndTime: now.Add(time.Hour)},
+					{EndTime: now.Add(-time.Hour), Type: wasp.SegmentType_Plain, From: 1, Duration: time.Hour},
 				},
 			},
 		}
 
 		bd, err := NewBasicData("abc123", gen)
-		require.NoError(t, err)
-
-		err = bd.FillStartEndTimes()
+		require.Nil(t, bd)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "start time is missing")
 	})
@@ -140,9 +142,7 @@ func TestBenchSpy_BasicData_FillStartEndTimes(t *testing.T) {
 		}
 
 		bd, err := NewBasicData("abc123", gen)
-		require.NoError(t, err)
-
-		err = bd.FillStartEndTimes()
+		require.Nil(t, bd)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "end time is missing")
 	})
@@ -156,9 +156,7 @@ func TestBenchSpy_BasicData_FillStartEndTimes(t *testing.T) {
 		}
 
 		bd, err := NewBasicData("abc123", gen)
-		require.NoError(t, err)
-
-		err = bd.FillStartEndTimes()
+		require.Nil(t, bd)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "schedule is empty for generator gen1")
 	})

@@ -2,6 +2,7 @@ package benchspy
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -12,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewPrometheusQueryExecutor(t *testing.T) {
+func TestBenchSpy_NewPrometheusQueryExecutor(t *testing.T) {
 	t.Run("successful creation", func(t *testing.T) {
 		startTime := time.Now().Add(-1 * time.Hour)
 		endTime := time.Now()
@@ -28,7 +29,7 @@ func TestNewPrometheusQueryExecutor(t *testing.T) {
 	})
 }
 
-func TestNewStandardPrometheusQueryExecutor(t *testing.T) {
+func TestBenchSpy_NewStandardPrometheusQueryExecutor(t *testing.T) {
 	t.Run("successful creation", func(t *testing.T) {
 		startTime := time.Now().Add(-1 * time.Hour)
 		endTime := time.Now()
@@ -52,7 +53,7 @@ func TestNewStandardPrometheusQueryExecutor(t *testing.T) {
 	})
 }
 
-func TestPrometheusQueryExecutor_Execute(t *testing.T) {
+func TestBenchSpy_PrometheusQueryExecutor_Execute(t *testing.T) {
 	t.Run("successful execution", func(t *testing.T) {
 		// Create test data
 		expectedQuery := "rate(test_metric[5m])"
@@ -93,6 +94,51 @@ func TestPrometheusQueryExecutor_Execute(t *testing.T) {
 		assert.Equal(t, expectedValue, result)
 	})
 
+	t.Run("handles warnings", func(t *testing.T) {
+		// Create test data
+		expectedQuery := "rate(test_metric[5m])"
+		expectedTime := time.Now()
+		expectedWarnings := v1.Warnings{"warning1", "warning2"}
+		expectedValue := &model.Vector{
+			&model.Sample{
+				Timestamp: model.Time(expectedTime.Unix()),
+				Value:     42,
+			},
+		}
+
+		// Create mock client that returns warnings
+		mockClient := &mockPrometheusClient{
+			queryFn: func(ctx context.Context, query string, ts time.Time, opts ...v1.Option) (model.Value, v1.Warnings, error) {
+				return expectedValue, expectedWarnings, nil
+			},
+		}
+
+		executor := &PrometheusQueryExecutor{
+			client:       mockClient,
+			Queries:      map[string]string{"test_metric": expectedQuery},
+			warnings:     make(map[string]v1.Warnings),
+			QueryResults: make(map[string]interface{}),
+			startTime:    expectedTime.Add(-1 * time.Hour),
+			endTime:      expectedTime,
+		}
+
+		err := executor.Execute(context.Background())
+
+		// Verify execution
+		require.NoError(t, err)
+		assert.NotEmpty(t, executor.QueryResults)
+		assert.Contains(t, executor.QueryResults, "test_metric")
+
+		// Verify warnings were stored
+		assert.Contains(t, executor.Warnings(), "test_metric")
+		assert.Equal(t, expectedWarnings, executor.Warnings()["test_metric"])
+
+		// Verify result was still stored despite warnings
+		result, ok := executor.QueryResults["test_metric"]
+		require.True(t, ok)
+		assert.Equal(t, expectedValue, result)
+	})
+
 	t.Run("handles query error", func(t *testing.T) {
 		mockClient := &mockPrometheusClient{
 			queryFn: func(ctx context.Context, query string, ts time.Time, opts ...v1.Option) (model.Value, v1.Warnings, error) {
@@ -115,7 +161,7 @@ func TestPrometheusQueryExecutor_Execute(t *testing.T) {
 	})
 }
 
-func TestPrometheusQueryExecutor_Validate(t *testing.T) {
+func TestBenchSpy_PrometheusQueryExecutor_Validate(t *testing.T) {
 	t.Run("valid configuration", func(t *testing.T) {
 		executor := &PrometheusQueryExecutor{
 			client:    &mockPrometheusClient{},
@@ -154,9 +200,35 @@ func TestPrometheusQueryExecutor_Validate(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "no queries provided")
 	})
+
+	t.Run("no startTime", func(t *testing.T) {
+		executor := &PrometheusQueryExecutor{
+			client:  &mockPrometheusClient{},
+			Queries: map[string]string{"test": "query"},
+			endTime: time.Now(),
+		}
+
+		err := executor.Validate()
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "start time is not set")
+	})
+
+	t.Run("no endTime", func(t *testing.T) {
+		executor := &PrometheusQueryExecutor{
+			client:    &mockPrometheusClient{},
+			Queries:   map[string]string{"test": "query"},
+			startTime: time.Now(),
+		}
+
+		err := executor.Validate()
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "end time is not set")
+	})
 }
 
-func TestPrometheusQueryExecutor_IsComparable(t *testing.T) {
+func TestBenchSpy_PrometheusQueryExecutor_IsComparable(t *testing.T) {
 	t.Run("same queries", func(t *testing.T) {
 		queries := map[string]string{"test": "query"}
 		executor1 := &PrometheusQueryExecutor{Queries: queries}
@@ -165,6 +237,65 @@ func TestPrometheusQueryExecutor_IsComparable(t *testing.T) {
 		err := executor1.IsComparable(executor2)
 
 		require.NoError(t, err)
+	})
+
+	t.Run("different query count", func(t *testing.T) {
+		executor1 := &PrometheusQueryExecutor{
+			Queries: map[string]string{
+				"test1": "query1",
+				"test2": "query2",
+			},
+		}
+		executor2 := &PrometheusQueryExecutor{
+			Queries: map[string]string{
+				"test1": "query1",
+			},
+		}
+
+		err := executor1.IsComparable(executor2)
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "queries count is different")
+	})
+
+	t.Run("missing query", func(t *testing.T) {
+		executor1 := &PrometheusQueryExecutor{
+			Queries: map[string]string{
+				"test1": "query1",
+				"test2": "query2",
+			},
+		}
+		executor2 := &PrometheusQueryExecutor{
+			Queries: map[string]string{
+				"test1": "query1",
+				"test3": "query3",
+			},
+		}
+
+		err := executor1.IsComparable(executor2)
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "query test2 is missing")
+	})
+
+	t.Run("different query content", func(t *testing.T) {
+		executor1 := &PrometheusQueryExecutor{
+			Queries: map[string]string{
+				"test1": "query1",
+				"test2": "query2",
+			},
+		}
+		executor2 := &PrometheusQueryExecutor{
+			Queries: map[string]string{
+				"test1": "query1",
+				"test2": "different_query",
+			},
+		}
+
+		err := executor1.IsComparable(executor2)
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "query test2 is different")
 	})
 
 	t.Run("different types", func(t *testing.T) {
@@ -179,6 +310,51 @@ func TestPrometheusQueryExecutor_IsComparable(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "expected type")
+	})
+}
+
+func TestBenchSpy_PrometheusQueryExecutor_JSONMarshalling(t *testing.T) {
+	t.Run("marshal and unmarshal", func(t *testing.T) {
+		original := &PrometheusQueryExecutor{
+			KindName: "prometheus",
+			Queries: map[string]string{
+				"test_metric":  "rate(test[5m])",
+				"test_metric2": "histogram_quantile(0.95, test[5m])",
+			},
+			QueryResults: map[string]interface{}{
+				"test_metric": &model.Vector{
+					&model.Sample{
+						Timestamp: model.Time(time.Now().Unix()),
+						Value:     42,
+					},
+				},
+			},
+		}
+
+		// Marshal to JSON
+		data, err := json.Marshal(original)
+		require.NoError(t, err)
+
+		// Verify JSON contains expected fields
+		jsonStr := string(data)
+		assert.Contains(t, jsonStr, "prometheus")
+		assert.Contains(t, jsonStr, "test_metric")
+		assert.Contains(t, jsonStr, "rate(test[5m])")
+
+		// Unmarshal back
+		var decoded PrometheusQueryExecutor
+		err = json.Unmarshal(data, &decoded)
+		require.NoError(t, err)
+
+		// Verify fields
+		assert.Equal(t, original.KindName, decoded.KindName)
+		assert.Equal(t, original.Queries, decoded.Queries)
+		assert.Equal(t, len(original.QueryResults), len(decoded.QueryResults))
+
+		// Verify unexported fields are not marshalled
+		assert.Zero(t, decoded.startTime)
+		assert.Zero(t, decoded.endTime)
+		assert.Nil(t, decoded.client)
 	})
 }
 

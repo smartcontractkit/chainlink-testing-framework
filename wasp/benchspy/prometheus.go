@@ -41,26 +41,14 @@ func NewPrometheusQueryExecutor(url string, startTime, endTime time.Time, querie
 }
 
 func NewStandardPrometheusQueryExecutor(url string, startTime, endTime time.Time, nameRegexPattern string) (*PrometheusQueryExecutor, error) {
-	c, err := client.NewPrometheusClient(url)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create Prometheus client")
-	}
+	p := &PrometheusQueryExecutor{}
 
-	pr := &PrometheusQueryExecutor{
-		client:       c,
-		startTime:    startTime,
-		endTime:      endTime,
-		QueryResults: make(map[string]interface{}),
-	}
-
-	standardQueries, queryErr := pr.generateStandardQueries(nameRegexPattern, startTime, endTime)
+	standardQueries, queryErr := p.generateStandardQueries(nameRegexPattern, startTime, endTime)
 	if queryErr != nil {
 		return nil, errors.Wrapf(queryErr, "failed to generate standard queries for %s", nameRegexPattern)
 	}
 
-	pr.Queries = standardQueries
-
-	return pr, nil
+	return NewPrometheusQueryExecutor(url, startTime, endTime, standardQueries)
 }
 
 func (r *PrometheusQueryExecutor) Execute(ctx context.Context) error {
@@ -189,12 +177,43 @@ func (r *PrometheusQueryExecutor) generateStandardQueries(nameRegexPattern strin
 	return standardQueries, nil
 }
 
+type TypedMetric struct {
+	model.Value
+	MetricType string `json:"metric_type"`
+}
+
+func (g *PrometheusQueryExecutor) MarshalJSON() ([]byte, error) {
+	// we need custom marshalling to only include some parts of the metrics
+	type QueryExecutor struct {
+		Kind         string                 `json:"kind"`
+		Queries      map[string]string      `json:"queries"`
+		QueryResults map[string]TypedMetric `json:"query_results"`
+	}
+
+	q := &QueryExecutor{
+		Kind:    g.KindName,
+		Queries: g.Queries,
+		QueryResults: func() map[string]TypedMetric {
+			simplifiedMetrics := make(map[string]TypedMetric)
+			for name, value := range g.MustResultsAsValue() {
+				simplifiedMetrics[name] = TypedMetric{
+					MetricType: value.Type().String(),
+					Value:      value,
+				}
+			}
+			return simplifiedMetrics
+		}(),
+	}
+
+	return json.Marshal(q)
+}
+
 func (r *PrometheusQueryExecutor) UnmarshalJSON(data []byte) error {
 	// helper struct with QueryResults map[string]interface{}
 	type Alias PrometheusQueryExecutor
 	var raw struct {
 		Alias
-		QueryResults map[string]interface{} `json:"query_results"`
+		QueryResults map[string]json.RawMessage `json:"query_results"`
 	}
 
 	// unmarshal into the helper struct to populate other fields automatically
@@ -202,13 +221,48 @@ func (r *PrometheusQueryExecutor) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	// convert map[string]interface{} to map[string]actualType
-	convertedTypes, conversionErr := convertQueryResults(raw.QueryResults)
-	if conversionErr != nil {
-		return conversionErr
+	var convertedQueryResults = make(map[string]interface{})
+
+	for name, rawResult := range raw.QueryResults {
+		var rawTypedMetric struct {
+			MetricType string          `json:"metric_type"`
+			Value      json.RawMessage `json:"Value"`
+		}
+		if err := json.Unmarshal(rawResult, &rawTypedMetric); err != nil {
+			return errors.Wrapf(err, "failed to unmarshal query result for %s", name)
+		}
+
+		switch rawTypedMetric.MetricType {
+		case "scalar":
+			var scalar model.Scalar
+			if err := json.Unmarshal(rawTypedMetric.Value, &scalar); err != nil {
+				return errors.Wrapf(err, "failed to unmarshal scalar value for %s", name)
+			}
+			convertedQueryResults[name] = scalar
+		case "vector":
+			var vector model.Vector
+			if err := json.Unmarshal(rawTypedMetric.Value, &vector); err != nil {
+				return errors.Wrapf(err, "failed to unmarshal vector value for %s", name)
+			}
+			convertedQueryResults[name] = vector
+		case "matrix":
+			var matrix model.Matrix
+			if err := json.Unmarshal(rawTypedMetric.Value, &matrix); err != nil {
+				return errors.Wrapf(err, "failed to unmarshal matrix value for %s", name)
+			}
+			convertedQueryResults[name] = matrix
+		case "string":
+			var str model.String
+			if err := json.Unmarshal(rawTypedMetric.Value, &str); err != nil {
+				return errors.Wrapf(err, "failed to unmarshal string value for %s", name)
+			}
+			convertedQueryResults[name] = str
+		default:
+			return fmt.Errorf("unknown metric type %s", rawTypedMetric.MetricType)
+		}
 	}
 
 	*r = PrometheusQueryExecutor(raw.Alias)
-	r.QueryResults = convertedTypes
+	r.QueryResults = convertedQueryResults
 	return nil
 }

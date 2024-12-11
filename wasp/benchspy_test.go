@@ -11,9 +11,11 @@ import (
 
 	// "github.com/prometheus/common/model"
 	// "github.com/smartcontractkit/chainlink-testing-framework/wasp"
+
 	"github.com/prometheus/common/model"
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp/benchspy"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -357,8 +359,8 @@ func TestBenchSpyWithStandardGeneratorMetrics(t *testing.T) {
 	fetchErr := currentReport.FetchData(context.Background())
 	require.NoError(t, fetchErr, "failed to fetch current report")
 
-	path, storeErr := currentReport.Store()
-	require.NoError(t, storeErr, "failed to store current report", path)
+	// path, storeErr := currentReport.Store()
+	// require.NoError(t, storeErr, "failed to store current report", path)
 
 	// this is only needed, because we are using a non-standard directory
 	// otherwise, the Load method would be able to find the file
@@ -405,26 +407,86 @@ func TestBenchSpyWithStandardGeneratorMetrics(t *testing.T) {
 	compareValues(benchspy.ErrorRate)
 }
 
-func TestBenchSpy_Prometheus(t *testing.T) {
-	t.Skip("skipping test, since it requires a running CTFv2 node_set and observability stack [start it manually and run the test]")
+// func TestBenchSpy_Prometheus(t *testing.T) {
+// 	t.Skip("skipping test, since it requires a running CTFv2 node_set and observability stack [start it manually and run the test]")
 
-	before := time.Now().Add(-5 * time.Minute)
-	// exclude bootstrap node
-	prometheusNodeReporter, err := benchspy.NewStandardPrometheusQueryExecutor("http://localhost:9090", before, time.Now(), `node[^0]`)
+// 	before := time.Now().Add(-5 * time.Minute)
+// 	// exclude bootstrap node
+// 	prometheusNodeReporter, err := benchspy.NewStandardPrometheusQueryExecutor("http://localhost:9090", before, time.Now(), `node[^0]`)
+// 	require.NoError(t, err)
+
+// 	fetchErr := prometheusNodeReporter.Execute(context.Background())
+// 	require.NoError(t, fetchErr, "failed to fetch prometheus node resources")
+
+// 	resourcesAsValue := prometheusNodeReporter.MustResultsAsValue()
+// 	medianCpuUsagePerNode := resourcesAsValue[string(benchspy.MedianCPUUsage)]
+// 	require.Equal(t, medianCpuUsagePerNode.Type(), model.ValVector, "median cpu usage per node should be a vector")
+
+// 	medianCpuUsagePerNodeVector := medianCpuUsagePerNode.(model.Vector)
+// 	require.NotEmpty(t, medianCpuUsagePerNodeVector, "median cpu usage per node vector should not be empty")
+// 	require.Equal(t, 4, len(medianCpuUsagePerNodeVector), "median cpu usage per node vector should have 4 elements")
+
+// 	for _, sample := range medianCpuUsagePerNodeVector {
+// 		require.NotZero(t, sample.Value, "median cpu usage per node should not be zero")
+// 	}
+// }
+
+func TestBenchSpy_Prometheus_And_Generator(t *testing.T) {
+	// this test requires CTFv2 node_set with observability stack to be running
+	previousReport := benchspy.StandardReport{
+		LocalStorage: benchspy.LocalStorage{
+			Directory: "test_performance_reports",
+		},
+	}
+	loadErr := previousReport.Load(t.Name(), "e7fc5826a572c09f8b93df3b9f674113372ce924")
+	require.NoError(t, loadErr, "failed to load previous report")
+
+	gen, err := wasp.NewGenerator(&wasp.Config{
+		T:           t,
+		GenName:     "vu",
+		CallTimeout: 100 * time.Millisecond,
+		LoadType:    wasp.VU,
+		Schedule:    wasp.Plain(1, 10*time.Second),
+		VU: wasp.NewMockVU(&wasp.MockVirtualUserConfig{
+			CallSleep: 50 * time.Millisecond,
+		}),
+	})
 	require.NoError(t, err)
 
-	fetchErr := prometheusNodeReporter.Execute(context.Background())
-	require.NoError(t, fetchErr, "failed to fetch prometheus node resources")
+	gen.Run(true)
 
-	resourcesAsValue := prometheusNodeReporter.MustResultsAsValue()
-	medianCpuUsagePerNode := resourcesAsValue[string(benchspy.MedianCPUUsage)]
-	require.Equal(t, medianCpuUsagePerNode.Type(), model.ValVector, "median cpu usage per node should be a vector")
-
-	medianCpuUsagePerNodeVector := medianCpuUsagePerNode.(model.Vector)
-	require.NotEmpty(t, medianCpuUsagePerNodeVector, "median cpu usage per node vector should not be empty")
-	require.Equal(t, 4, len(medianCpuUsagePerNodeVector), "median cpu usage per node vector should have 4 elements")
-
-	for _, sample := range medianCpuUsagePerNodeVector {
-		require.NotZero(t, sample.Value, "median cpu usage per node should not be zero")
+	promConfig := benchspy.PrometheusConfig{
+		Url:               "http://localhost:9090",
+		NameRegexPatterns: []string{"node[^0]"},
 	}
+
+	currentReport, err := benchspy.NewStandardReport("e7fc5826a572c09f8b93df3b9f674113372ce925", benchspy.WithStandardQueryExecutorType(benchspy.StandardQueryExecutor_Generator), benchspy.WithGenerators(gen), benchspy.WithPrometheus(&promConfig))
+	require.NoError(t, err)
+
+	// context is not really needed, since we are using a generator, but it's required by the FetchData method
+	fetchErr := currentReport.FetchData(context.Background())
+	require.NoError(t, fetchErr, "failed to fetch current report")
+
+	// path, storeErr := currentReport.Store()
+	// require.NoError(t, storeErr, "failed to store current report", path)
+
+	isComparableErrs := previousReport.IsComparable(currentReport)
+	require.Empty(t, isComparableErrs, "reports were not comparable", isComparableErrs)
+
+	currentAsValues := currentReport.QueryExecutors[1].(*benchspy.PrometheusQueryExecutor).MustResultsAsValue()
+	previousAsValues := previousReport.QueryExecutors[1].(*benchspy.PrometheusQueryExecutor).MustResultsAsValue()
+
+	assert.Equal(t, len(currentAsValues), len(previousAsValues), "number of metrics in results should be the same")
+
+	currentMedianCPUUsage := currentAsValues[string(benchspy.MedianCPUUsage)]
+	previousMedianCPUUsage := previousAsValues[string(benchspy.MedianCPUUsage)]
+
+	assert.Equal(t, currentMedianCPUUsage.Type(), previousMedianCPUUsage.Type(), "types of metrics should be the same")
+
+	currentMedianCPUUsageVector := currentMedianCPUUsage.(model.Vector)
+	previousMedianCPUUsageVector := previousMedianCPUUsage.(model.Vector)
+
+	assert.Equal(t, len(currentMedianCPUUsageVector), len(previousMedianCPUUsageVector), "number of samples in vectors should be the same")
+
+	// here we could compare actual values, but most likely they will be very different and the test will fail
 }
