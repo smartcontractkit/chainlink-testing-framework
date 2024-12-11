@@ -24,6 +24,10 @@ var AggregateResultsCmd = &cobra.Command{
 		maxPassRatio, _ := cmd.Flags().GetFloat64("max-pass-ratio")
 		codeOwnersPath, _ := cmd.Flags().GetString("codeowners-path")
 		repoPath, _ := cmd.Flags().GetString("repo-path")
+		repoURL, _ := cmd.Flags().GetString("repo-url")
+		headSHA, _ := cmd.Flags().GetString("head-sha")
+		baseSHA, _ := cmd.Flags().GetString("base-sha")
+		githubWorkflowName, _ := cmd.Flags().GetString("github-workflow-name")
 
 		// Ensure the output directory exists
 		if err := fs.MkdirAll(outputDir, 0755); err != nil {
@@ -51,6 +55,13 @@ var AggregateResultsCmd = &cobra.Command{
 
 		// Aggregate the reports
 		aggregatedReport, err := reports.Aggregate(testReports...)
+
+		// Add metadata to the aggregated report
+		aggregatedReport.HeadSHA = headSHA
+		aggregatedReport.BaseSHA = baseSHA
+		aggregatedReport.RepoURL = repoURL
+		aggregatedReport.GitHubWorkflowName = githubWorkflowName
+
 		if err != nil {
 			s.Stop()
 			return fmt.Errorf("error aggregating test reports: %w", err)
@@ -98,12 +109,15 @@ var AggregateResultsCmd = &cobra.Command{
 
 			// Create a new report for failed tests with logs
 			failedReportWithLogs := &reports.TestReport{
-				GoProject:     aggregatedReport.GoProject,
-				TestRunCount:  aggregatedReport.TestRunCount,
-				RaceDetection: aggregatedReport.RaceDetection,
-				ExcludedTests: aggregatedReport.ExcludedTests,
-				SelectedTests: aggregatedReport.SelectedTests,
-				Results:       failedTests,
+				GoProject:          aggregatedReport.GoProject,
+				TestRunCount:       aggregatedReport.TestRunCount,
+				RaceDetection:      aggregatedReport.RaceDetection,
+				ExcludedTests:      aggregatedReport.ExcludedTests,
+				SelectedTests:      aggregatedReport.SelectedTests,
+				HeadSHA:            aggregatedReport.HeadSHA,
+				BaseSHA:            aggregatedReport.BaseSHA,
+				GitHubWorkflowName: aggregatedReport.GitHubWorkflowName,
+				Results:            failedTests,
 			}
 
 			// Save the failed tests report with logs
@@ -171,6 +185,10 @@ func init() {
 	AggregateResultsCmd.Flags().Float64P("max-pass-ratio", "", 1.0, "The maximum pass ratio threshold for a test to be considered flaky")
 	AggregateResultsCmd.Flags().StringP("codeowners-path", "", "", "Path to the CODEOWNERS file")
 	AggregateResultsCmd.Flags().StringP("repo-path", "", ".", "The path to the root of the repository/project")
+	AggregateResultsCmd.Flags().String("repo-url", "", "The repository URL")
+	AggregateResultsCmd.Flags().String("head-sha", "", "Head commit SHA for the test report")
+	AggregateResultsCmd.Flags().String("base-sha", "", "Base commit SHA for the test report")
+	AggregateResultsCmd.Flags().String("github-workflow-name", "", "GitHub workflow name for the test report")
 
 	AggregateResultsCmd.MarkFlagRequired("results-path")
 }
