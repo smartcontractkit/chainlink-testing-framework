@@ -11,12 +11,16 @@ import (
 // Data Structures
 
 type TestReport struct {
-	GoProject     string
-	TestRunCount  int
-	RaceDetection bool
-	ExcludedTests []string
-	SelectedTests []string
-	Results       []TestResult
+	GoProject          string
+	TestRunCount       int
+	RaceDetection      bool
+	ExcludedTests      []string
+	SelectedTests      []string
+	Results            []TestResult
+	HeadSHA            string
+	BaseSHA            string
+	RepoURL            string
+	GitHubWorkflowName string
 }
 
 type TestResult struct {

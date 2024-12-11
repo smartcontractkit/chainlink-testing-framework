@@ -101,6 +101,24 @@ func buildExcludeStringForGoModDirs(rootGoModPath string) (string, error) {
 	return excludeStr, nil
 }
 
+// ResolveRemoteSHA resolves a branch, tag, or SHA from a remote Git repository.
+func ResolveRemoteSHA(remoteURL, ref string) (string, error) {
+	// Run git ls-remote to fetch the SHA for the ref
+	cmd := exec.Command("git", "ls-remote", remoteURL, ref)
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve SHA for ref '%s' at remote '%s': %w", ref, remoteURL, err)
+	}
+
+	// Parse the output to extract the SHA
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(lines) == 0 || len(strings.Fields(lines[0])) < 1 {
+		return "", fmt.Errorf("no SHA found for ref '%s' at remote '%s'", ref, remoteURL)
+	}
+	sha := strings.Fields(lines[0])[0]
+	return sha, nil
+}
+
 func Diff(baseBranch string) (*utils.CmdOutput, error) {
 	return utils.ExecuteCmd("git", "diff", "--name-only", baseBranch)
 }
