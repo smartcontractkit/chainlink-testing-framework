@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
-	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/git"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/spf13/cobra"
 )
@@ -26,8 +25,8 @@ var AggregateResultsCmd = &cobra.Command{
 		codeOwnersPath, _ := cmd.Flags().GetString("codeowners-path")
 		repoPath, _ := cmd.Flags().GetString("repo-path")
 		repoURL, _ := cmd.Flags().GetString("repo-url")
-		headRef, _ := cmd.Flags().GetString("head-ref")
-		baseRef, _ := cmd.Flags().GetString("base-ref")
+		headSHA, _ := cmd.Flags().GetString("head-sha")
+		baseSHA, _ := cmd.Flags().GetString("base-sha")
 		githubWorkflowName, _ := cmd.Flags().GetString("github-workflow-name")
 
 		// Ensure the output directory exists
@@ -58,28 +57,10 @@ var AggregateResultsCmd = &cobra.Command{
 		aggregatedReport, err := reports.Aggregate(testReports...)
 
 		// Add metadata to the aggregated report
+		aggregatedReport.HeadSHA = headSHA
+		aggregatedReport.BaseSHA = baseSHA
+		aggregatedReport.RepoURL = repoURL
 		aggregatedReport.GitHubWorkflowName = githubWorkflowName
-		if repoURL != "" {
-			aggregatedReport.RepoURL = repoURL
-
-			var headSHA string
-			if headRef == "" {
-				headSHA, err = git.ResolveRemoteSHA(repoPath, headRef)
-				if err != nil {
-					fmt.Printf("Error resolving head SHA: %v\n", err)
-				}
-			}
-			aggregatedReport.HeadSHA = headSHA
-
-			var baseSHA string
-			if baseRef == "" {
-				baseSHA, err = git.ResolveRemoteSHA(repoPath, baseRef)
-				if err != nil {
-					fmt.Printf("Error resolving base SHA: %v\n", err)
-				}
-			}
-			aggregatedReport.BaseSHA = baseSHA
-		}
 
 		if err != nil {
 			s.Stop()
@@ -204,9 +185,9 @@ func init() {
 	AggregateResultsCmd.Flags().Float64P("max-pass-ratio", "", 1.0, "The maximum pass ratio threshold for a test to be considered flaky")
 	AggregateResultsCmd.Flags().StringP("codeowners-path", "", "", "Path to the CODEOWNERS file")
 	AggregateResultsCmd.Flags().StringP("repo-path", "", ".", "The path to the root of the repository/project")
-	AggregateResultsCmd.Flags().String("repo-url", "", "The URL of the remote repository for the test report")
-	AggregateResultsCmd.Flags().String("head-ref", "", "Head commit ref for the test report")
-	AggregateResultsCmd.Flags().String("base-ref", "", "Base commit ref for the test report")
+	AggregateResultsCmd.Flags().String("repo-url", "", "The repository URL")
+	AggregateResultsCmd.Flags().String("head-sha", "", "Head commit SHA for the test report")
+	AggregateResultsCmd.Flags().String("base-sha", "", "Base commit SHA for the test report")
 	AggregateResultsCmd.Flags().String("github-workflow-name", "", "GitHub workflow name for the test report")
 
 	AggregateResultsCmd.MarkFlagRequired("results-path")
