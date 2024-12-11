@@ -25,6 +25,7 @@ const (
 type Input struct {
 	Image      string  `toml:"image" validate:"required"`
 	Port       int     `toml:"port"`
+	Name       string  `toml:"name"`
 	VolumeName string  `toml:"volume_name"`
 	Databases  int     `toml:"databases"`
 	JDDatabase bool    `toml:"jd_database"`
@@ -44,7 +45,12 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 	ctx := context.Background()
 
 	bindPort := fmt.Sprintf("%s/tcp", Port)
-	containerName := framework.DefaultTCName("ns-postgresql")
+	var containerName string
+	if in.Name != "" {
+		containerName = framework.DefaultTCName(in.Name)
+	} else {
+		containerName = framework.DefaultTCName("ns-postgresql")
+	}
 
 	var sqlCommands []string
 	for i := 0; i <= in.Databases; i++ {

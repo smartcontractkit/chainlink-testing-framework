@@ -54,6 +54,7 @@ func defaultJDDB() *postgres.Input {
 	return &postgres.Input{
 		Image:      "postgres:12",
 		Port:       14000,
+		Name:       "jd-db",
 		VolumeName: "jd",
 		JDDatabase: true,
 	}
