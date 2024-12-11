@@ -71,6 +71,7 @@ type NodeOut struct {
 	HostURL         string `toml:"url"`
 	DockerURL       string `toml:"docker_internal_url"`
 	DockerP2PUrl    string `toml:"p2p_docker_internal_url"`
+	InternalIP      string `toml:"internal_ip"`
 }
 
 // NewNodeWithDB create a new Chainlink node with some image:tag and one or several configs
@@ -298,6 +299,11 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		ContainerRequest: req,
 		Started:          true,
 	})
+	ip, err := c.ContainerIP(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -315,6 +321,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		HostURL:         fmt.Sprintf("http://%s:%s", host, mp.Port()),
 		DockerURL:       fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
 		DockerP2PUrl:    fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
+		InternalIP:      ip,
 	}, nil
 }
 
