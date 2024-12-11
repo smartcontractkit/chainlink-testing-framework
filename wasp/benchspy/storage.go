@@ -26,6 +26,11 @@ func (l *LocalStorage) defaultDirectoryIfEmpty() {
 	}
 }
 
+func (l *LocalStorage) cleanTestName(testName string) string {
+	// nested tests might contain slashes, replace them with underscores
+	return strings.ReplaceAll(testName, "/", "_")
+}
+
 func (l *LocalStorage) Store(testName, commitOrTag string, report interface{}) (string, error) {
 	l.defaultDirectoryIfEmpty()
 	asJson, err := json.MarshalIndent(report, "", " ")
@@ -39,7 +44,8 @@ func (l *LocalStorage) Store(testName, commitOrTag string, report interface{}) (
 		}
 	}
 
-	reportFilePath := filepath.Join(l.Directory, fmt.Sprintf("%s-%s.json", testName, commitOrTag))
+	cleanTestName := l.cleanTestName(testName)
+	reportFilePath := filepath.Join(l.Directory, fmt.Sprintf("%s-%s.json", cleanTestName, commitOrTag))
 	reportFile, err := os.Create(reportFilePath)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create file %s", reportFilePath)
@@ -66,6 +72,8 @@ func (l *LocalStorage) Load(testName, commitOrTag string, report interface{}) er
 		return errors.New("test name is empty. Please set it and try again")
 	}
 
+	cleanTestName := l.cleanTestName(testName)
+
 	var ref string
 	if commitOrTag == "" {
 		entries, err := os.ReadDir(l.Directory)
@@ -77,14 +85,14 @@ func (l *LocalStorage) Load(testName, commitOrTag string, report interface{}) er
 		var refs []string
 		filesByRef := make(map[string]string)
 		for _, entry := range entries {
-			if !entry.IsDir() && strings.Contains(entry.Name(), testName) {
+			if !entry.IsDir() && strings.Contains(entry.Name(), cleanTestName) {
 				parts := strings.Split(entry.Name(), "-")
 				if len(parts) == 2 {
 					ref := strings.TrimSuffix(parts[len(parts)-1], ".json")
 					refs = append(refs, ref)
 					filesByRef[ref] = filepath.Join(l.Directory, entry.Name())
 				} else {
-					return errors.Errorf("invalid file name: %s. Expected: %s-<ref>.json", entry.Name(), testName)
+					return errors.Errorf("invalid file name: %s. Expected: %s-<ref>.json", entry.Name(), cleanTestName)
 				}
 			}
 		}
@@ -148,7 +156,7 @@ func (l *LocalStorage) Load(testName, commitOrTag string, report interface{}) er
 		ref = commitOrTag
 	}
 
-	reportFilePath := filepath.Join(l.Directory, fmt.Sprintf("%s-%s.json", testName, ref))
+	reportFilePath := filepath.Join(l.Directory, fmt.Sprintf("%s-%s.json", cleanTestName, ref))
 
 	reportFile, err := os.Open(reportFilePath)
 	if err != nil {

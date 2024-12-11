@@ -439,10 +439,10 @@ func convertQueryResults(results map[string]interface{}) (map[string]interface{}
 	return converted, nil
 }
 
-func FetchNewReportAndLoadLatestPrevious(ctx context.Context, newCommitOrTag string, newReportOpts ...StandardReportOption) (newReport, previousReport *StandardReport, err error) {
-	newReport, err = NewStandardReport(newCommitOrTag, newReportOpts...)
+func FetchNewReportAndLoadLatestPrevious(ctx context.Context, newCommitOrTag string, newReportOpts ...StandardReportOption) (*StandardReport, *StandardReport, error) {
+	newReport, err := NewStandardReport(newCommitOrTag, newReportOpts...)
 	if err != nil {
-		return
+		return nil, nil, errors.Wrapf(err, "failed to create new report for commit or tag %s", newCommitOrTag)
 	}
 
 	config := standardReportConfig{}
@@ -456,19 +456,22 @@ func FetchNewReportAndLoadLatestPrevious(ctx context.Context, newCommitOrTag str
 		localStorage.Directory = config.reportDirectory
 	}
 
-	previousReport = &StandardReport{
+	previousReport := &StandardReport{
 		LocalStorage: localStorage,
 	}
 
 	if err = previousReport.LoadLatest(newReport.TestName); err != nil {
-		return
+		return nil, nil, errors.Wrapf(err, "failed to load latest report for test %s", newReport.TestName)
 	}
 
 	if err = newReport.FetchData(ctx); err != nil {
-		return
+		return nil, nil, errors.Wrapf(err, "failed to fetch data for new report")
 	}
 
 	err = newReport.IsComparable(previousReport)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "new report is not comparable to previous report")
+	}
 
-	return
+	return newReport, previousReport, nil
 }

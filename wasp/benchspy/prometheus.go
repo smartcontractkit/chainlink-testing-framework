@@ -146,9 +146,8 @@ func (r *PrometheusQueryExecutor) MustResultsAsValue() map[string]model.Value {
 }
 
 func (r *PrometheusQueryExecutor) TimeRange(startTime, endTime time.Time) {
-	// not sure if we need to set the time range for Prometheus
-	// I think we should remove that method all together from all interfaces
-	// and instead make sure that all segments have start/end times (i.e. they were executed), when new report is created
+	r.startTime = startTime
+	r.endTime = endTime
 	return
 }
 

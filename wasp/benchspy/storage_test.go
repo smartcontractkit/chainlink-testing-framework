@@ -92,8 +92,11 @@ func TestBenchSpy_LocalStorage_Load(t *testing.T) {
 		cmd.Dir = gitDir
 		require.NoError(t, cmd.Run())
 
-		// Create some report
+		// Create two reports
 		fileName := filepath.Join(gitDir, "test-abc123.json")
+		require.NoError(t, os.WriteFile(fileName, reportJSON, 0644))
+
+		fileName = filepath.Join(gitDir, "test-abc1234.json")
 		require.NoError(t, os.WriteFile(fileName, reportJSON, 0644))
 
 		// Configure git for test
@@ -428,6 +431,16 @@ func TestBenchSpy_LocalStorage_Load_GitEdgeCases(t *testing.T) {
 
 	storage := &LocalStorage{Directory: gitDir}
 
+	t.Run("works with invalid git ref (1 file)", func(t *testing.T) {
+		testData := testReport{Data: "test"}
+		_, err := storage.Store("test", "invalid##ref", testData)
+		require.NoError(t, err)
+
+		var report testReport
+		err = storage.Load("test", "", &report)
+		require.NoError(t, err)
+	})
+
 	t.Run("error with non-existent commit", func(t *testing.T) {
 		var report testReport
 		err := storage.Load("test", "nonexistentcommit", &report)
@@ -435,11 +448,14 @@ func TestBenchSpy_LocalStorage_Load_GitEdgeCases(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to open file")
 	})
 
-	t.Run("error with invalid git ref", func(t *testing.T) {
-		// Create file with invalid ref
-		invalidRef := "invalid##ref"
+	t.Run("error with invalid git ref (2 files)", func(t *testing.T) {
+		// Create 2 files with invalid ref
 		testData := testReport{Data: "test"}
-		_, err := storage.Store("test", invalidRef, testData)
+		_, err := storage.Store("test", "invalid##ref", testData)
+		require.NoError(t, err)
+
+		testData = testReport{Data: "test"}
+		_, err = storage.Store("test", "invalid##ref2", testData)
 		require.NoError(t, err)
 
 		var report testReport
@@ -448,11 +464,19 @@ func TestBenchSpy_LocalStorage_Load_GitEdgeCases(t *testing.T) {
 	})
 
 	t.Run("error when git command fails", func(t *testing.T) {
-		// Create valid file but break git repo
+		// Create 2 invalid files and break git repo
 		require.NoError(t, os.RemoveAll(filepath.Join(gitDir, ".git")))
 
+		testData := testReport{Data: "test"}
+		_, err := storage.Store("test", "invalid##ref", testData)
+		require.NoError(t, err)
+
+		testData = testReport{Data: "test"}
+		_, err = storage.Store("test", "invalid##ref2", testData)
+		require.NoError(t, err)
+
 		var report testReport
-		err := storage.Load("test", "", &report)
+		err = storage.Load("test", "", &report)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to find git root")
 	})

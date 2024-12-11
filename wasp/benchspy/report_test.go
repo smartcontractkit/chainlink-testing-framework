@@ -413,7 +413,7 @@ func TestBenchSpy_StandardReport_UnmarshalJSON(t *testing.T) {
 		assert.Equal(t, "1", asStringSlice["test generator query"])
 	})
 
-	t.Run("valid prometheus executor", func(t *testing.T) {
+	t.Run("valid prometheus executor (vector)", func(t *testing.T) {
 		jsonData := `{
     "test_name": "test1",
     "commit_or_tag": "abc123",
@@ -817,5 +817,251 @@ func TestBenchSpy_ConvertQueryResults(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, map[string]interface{}{}, result)
 		})
+	})
+}
+
+func TestBenchSpy_MustAllResults(t *testing.T) {
+	t.Run("MustAllLokiResults", func(t *testing.T) {
+		mockLokiExec := &MockQueryExecutor{
+			ResultsFn: func() map[string]interface{} {
+				return map[string]interface{}{
+					"query1": []string{"log1", "log2"},
+					"query2": []string{"log3", "log4"},
+				}
+			},
+			KindFn: func() string {
+				return string(StandardQueryExecutor_Loki)
+			},
+		}
+
+		sr := &StandardReport{
+			QueryExecutors: []QueryExecutor{mockLokiExec},
+		}
+
+		results := MustAllLokiResults(sr)
+		assert.Equal(t, 2, len(results))
+		assert.Equal(t, []string{"log1", "log2"}, results["query1"])
+		assert.Equal(t, []string{"log3", "log4"}, results["query2"])
+	})
+
+	t.Run("MustAllGeneratorResults", func(t *testing.T) {
+		mockGenExec := &MockQueryExecutor{
+			ResultsFn: func() map[string]interface{} {
+				return map[string]interface{}{
+					"query1": "result1",
+					"query2": "result2",
+				}
+			},
+			KindFn: func() string {
+				return string(StandardQueryExecutor_Generator)
+			},
+		}
+
+		sr := &StandardReport{
+			QueryExecutors: []QueryExecutor{mockGenExec},
+		}
+
+		results := MustAllGeneratorResults(sr)
+		assert.Equal(t, 2, len(results))
+		assert.Equal(t, "result1", results["query1"])
+		assert.Equal(t, "result2", results["query2"])
+	})
+
+	t.Run("MustAllPrometheusResults", func(t *testing.T) {
+		vector1 := model.Vector{
+			&model.Sample{
+				Value: 1.23,
+			},
+		}
+		vector2 := model.Vector{
+			&model.Sample{
+				Value: 4.56,
+			},
+		}
+
+		mockPromExec := &MockQueryExecutor{
+			ResultsFn: func() map[string]interface{} {
+				return map[string]interface{}{
+					"query1": vector1,
+					"query2": vector2,
+				}
+			},
+			KindFn: func() string {
+				return string(StandardQueryExecutor_Prometheus)
+			},
+		}
+
+		sr := &StandardReport{
+			QueryExecutors: []QueryExecutor{mockPromExec},
+		}
+
+		results := MustAllPrometheusResults(sr)
+		assert.Equal(t, 2, len(results))
+		assert.Equal(t, model.Vector(vector1), results["query1"].(model.Vector))
+		assert.Equal(t, model.Vector(vector2), results["query2"].(model.Vector))
+	})
+
+	t.Run("MustAllLokiResults panics on wrong type", func(t *testing.T) {
+		mockExec := &MockQueryExecutor{
+			ResultsFn: func() map[string]interface{} {
+				return map[string]interface{}{
+					"query1": 123, // wrong type
+				}
+			},
+			KindFn: func() string {
+				return string(StandardQueryExecutor_Loki)
+			},
+		}
+
+		sr := &StandardReport{
+			QueryExecutors: []QueryExecutor{mockExec},
+		}
+
+		assert.Panics(t, func() {
+			MustAllLokiResults(sr)
+		})
+	})
+
+	t.Run("MustAllGeneratorResults panics on wrong type", func(t *testing.T) {
+		mockExec := &MockQueryExecutor{
+			ResultsFn: func() map[string]interface{} {
+				return map[string]interface{}{
+					"query1": []string{"wrong", "type"},
+				}
+			},
+			KindFn: func() string {
+				return string(StandardQueryExecutor_Generator)
+			},
+		}
+
+		sr := &StandardReport{
+			QueryExecutors: []QueryExecutor{mockExec},
+		}
+
+		assert.Panics(t, func() {
+			MustAllGeneratorResults(sr)
+		})
+	})
+
+	t.Run("Results from mixed executors", func(t *testing.T) {
+		mockLokiExec := &MockQueryExecutor{
+			ResultsFn: func() map[string]interface{} {
+				return map[string]interface{}{
+					"loki_query": []string{"log1", "log2"},
+				}
+			},
+			KindFn: func() string {
+				return string(StandardQueryExecutor_Loki)
+			},
+		}
+
+		mockGenExec := &MockQueryExecutor{
+			ResultsFn: func() map[string]interface{} {
+				return map[string]interface{}{
+					"gen_query": "result1",
+				}
+			},
+			KindFn: func() string {
+				return string(StandardQueryExecutor_Generator)
+			},
+		}
+
+		sr := &StandardReport{
+			QueryExecutors: []QueryExecutor{mockLokiExec, mockGenExec},
+		}
+
+		lokiResults := MustAllLokiResults(sr)
+		assert.Equal(t, 1, len(lokiResults))
+		assert.Equal(t, []string{"log1", "log2"}, lokiResults["loki_query"])
+
+		genResults := MustAllGeneratorResults(sr)
+		assert.Equal(t, 1, len(genResults))
+		assert.Equal(t, "result1", genResults["gen_query"])
+	})
+}
+
+func TestBenchSpy_FetchNewReportAndLoadLatestPrevious(t *testing.T) {
+	baseTime := time.Now()
+	basicGen := &wasp.Generator{
+		Cfg: &wasp.Config{
+			T:       t,
+			GenName: "test-gen",
+			Labels: map[string]string{
+				"branch": "main",
+				"commit": "abc123",
+			},
+			Schedule: []*wasp.Segment{
+				{StartTime: baseTime, EndTime: baseTime.Add(time.Hour), From: 1, Duration: 2 * time.Second},
+			},
+			LokiConfig: lokiConfig,
+		},
+	}
+
+	t.Run("successful execution", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		cfg := &wasp.Config{
+			T:        t,
+			LoadType: wasp.RPS,
+			GenName:  "test-gen",
+			Labels: map[string]string{
+				"branch": "main",
+				"commit": "abc123",
+			},
+			Schedule: []*wasp.Segment{
+				{StartTime: baseTime, EndTime: baseTime.Add(time.Hour), From: 1, Duration: 2 * time.Second, Type: wasp.SegmentType_Plain},
+			},
+		}
+
+		fakeGun := &fakeGun{
+			maxSuccesses: 4,
+			maxFailures:  3,
+			schedule:     cfg.Schedule[0],
+		}
+
+		cfg.Gun = fakeGun
+
+		gen, err := wasp.NewGenerator(cfg)
+		require.NoError(t, err)
+
+		gen.Run(true)
+
+		prevReport, err := NewStandardReport("a7fc5826a572c09f8b93df3b9f674113372ce924",
+			WithStandardQueryExecutorType(StandardQueryExecutor_Generator),
+			WithGenerators(gen),
+			WithReportDirectory(tmpDir))
+		require.NoError(t, err)
+		_, err = prevReport.Store()
+		require.NoError(t, err)
+
+		newReport, prevLoadedReport, err := FetchNewReportAndLoadLatestPrevious(
+			context.Background(),
+			"new-commit",
+			WithStandardQueryExecutorType(StandardQueryExecutor_Generator),
+			WithGenerators(gen),
+			WithReportDirectory(tmpDir),
+		)
+		require.NoError(t, err)
+
+		assert.NotNil(t, newReport)
+		assert.NotNil(t, prevLoadedReport)
+		assert.Equal(t, "a7fc5826a572c09f8b93df3b9f674113372ce924", prevLoadedReport.CommitOrTag)
+	})
+
+	t.Run("no previous report", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		basicGen.Cfg.T = t
+		newReport, prevReport, err := FetchNewReportAndLoadLatestPrevious(
+			context.Background(),
+			"new-commit-7",
+			WithStandardQueryExecutorType(StandardQueryExecutor_Generator),
+			WithGenerators(basicGen),
+			WithReportDirectory(tmpDir),
+		)
+
+		assert.Error(t, err)
+		assert.Nil(t, newReport)
+		assert.Nil(t, prevReport)
 	})
 }
