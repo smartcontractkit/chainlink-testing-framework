@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/prometheus/common/model"
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 	"golang.org/x/sync/errgroup"
 )
@@ -58,6 +59,38 @@ func ResultsAs[Type any](newType Type, queryExecutors []QueryExecutor, queryExec
 	}
 
 	return results, nil
+}
+
+func MustAllLokiResults(sr *StandardReport) map[string][]string {
+	results, err := ResultsAs([]string{}, sr.QueryExecutors, StandardQueryExecutor_Loki)
+	if err != nil {
+		panic(err)
+	}
+	return results
+}
+
+func MustAllGeneratorResults(sr *StandardReport) map[string]string {
+	results, err := ResultsAs("string", sr.QueryExecutors, StandardQueryExecutor_Generator)
+	if err != nil {
+		panic(err)
+	}
+	return results
+}
+
+func MustAllPrometheusResults(sr *StandardReport) map[string]model.Value {
+	results := make(map[string]model.Value)
+
+	for _, queryExecutor := range sr.QueryExecutors {
+		if strings.EqualFold(queryExecutor.Kind(), string(StandardQueryExecutor_Prometheus)) {
+			for queryName, result := range queryExecutor.Results() {
+				if asValue, ok := result.(model.Value); ok {
+					results[queryName] = asValue
+				}
+			}
+		}
+	}
+
+	return results
 }
 
 func (b *StandardReport) FetchData(ctx context.Context) error {
@@ -120,17 +153,11 @@ func (b *StandardReport) IsComparable(otherReport Reporter) error {
 	return nil
 }
 
-type PrometheusConfig struct {
-	Url               string
-	NameRegexPatterns []string
-}
-
-var WithoutPrometheus *PrometheusConfig = nil
-
 type standardReportConfig struct {
 	executorType     StandardQueryExecutorType
 	generators       []*wasp.Generator
 	prometheusConfig *PrometheusConfig
+	reportDirectory  string
 }
 
 type StandardReportOption func(*standardReportConfig)
@@ -150,6 +177,12 @@ func WithGenerators(generators ...*wasp.Generator) StandardReportOption {
 func WithPrometheus(prometheusConfig *PrometheusConfig) StandardReportOption {
 	return func(c *standardReportConfig) {
 		c.prometheusConfig = prometheusConfig
+	}
+}
+
+func WithReportDirectory(reportDirectory string) StandardReportOption {
+	return func(c *standardReportConfig) {
+		c.reportDirectory = reportDirectory
 	}
 }
 
@@ -232,10 +265,16 @@ func NewStandardReport(commitOrTag string, opts ...StandardReportOption) (*Stand
 		}
 	}
 
-	return &StandardReport{
+	sr := &StandardReport{
 		BasicData:      *basicData,
 		QueryExecutors: queryExecutors,
-	}, nil
+	}
+
+	if config.reportDirectory != "" {
+		sr.LocalStorage.Directory = config.reportDirectory
+	}
+
+	return sr, nil
 }
 
 func initStandardQueryExecutor(kind StandardQueryExecutorType, basicData *BasicData, g *wasp.Generator) (QueryExecutor, error) {
@@ -398,4 +437,38 @@ func convertQueryResults(results map[string]interface{}) (map[string]interface{}
 		}
 	}
 	return converted, nil
+}
+
+func FetchNewReportAndLoadLatestPrevious(ctx context.Context, newCommitOrTag string, newReportOpts ...StandardReportOption) (newReport, previousReport *StandardReport, err error) {
+	newReport, err = NewStandardReport(newCommitOrTag, newReportOpts...)
+	if err != nil {
+		return
+	}
+
+	config := standardReportConfig{}
+	for _, opt := range newReportOpts {
+		opt(&config)
+	}
+
+	var localStorage LocalStorage
+
+	if config.reportDirectory != "" {
+		localStorage.Directory = config.reportDirectory
+	}
+
+	previousReport = &StandardReport{
+		LocalStorage: localStorage,
+	}
+
+	if err = previousReport.LoadLatest(newReport.TestName); err != nil {
+		return
+	}
+
+	if err = newReport.FetchData(ctx); err != nil {
+		return
+	}
+
+	err = newReport.IsComparable(previousReport)
+
+	return
 }

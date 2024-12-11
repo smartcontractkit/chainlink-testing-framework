@@ -14,6 +14,13 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/client"
 )
 
+type PrometheusConfig struct {
+	Url               string
+	NameRegexPatterns []string
+}
+
+var WithoutPrometheus *PrometheusConfig = nil
+
 type PrometheusQueryExecutor struct {
 	KindName           string                 `json:"kind"`
 	startTime, endTime time.Time              `json:"-"`

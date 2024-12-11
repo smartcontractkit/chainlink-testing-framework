@@ -93,52 +93,56 @@ func (l *LocalStorage) Load(testName, commitOrTag string, report interface{}) er
 			return fmt.Errorf("no reports found in directory %s", l.Directory)
 		}
 
-		// Find git root
-		cmd := exec.Command("git", "rev-parse", "--show-toplevel")
-		cmd.Dir = l.Directory
-		out, err := cmd.Output()
-		if err != nil {
-			return errors.Wrap(err, "failed to find git root")
-		}
-		gitRoot := strings.TrimSpace(string(out))
+		if len(refs) > 1 {
+			// Find git root
+			cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+			cmd.Dir = l.Directory
+			out, err := cmd.Output()
+			if err != nil {
+				return errors.Wrap(err, "failed to find git root")
+			}
+			gitRoot := strings.TrimSpace(string(out))
 
-		// Resolve all refs to commit hashes
-		resolvedRefs := make(map[string]string)
-		for _, ref := range refs {
-			cmd = exec.Command("git", "rev-parse", ref)
+			// Resolve all refs to commit hashes
+			resolvedRefs := make(map[string]string)
+			for _, ref := range refs {
+				cmd = exec.Command("git", "rev-parse", ref)
+				cmd.Dir = gitRoot
+				if out, err := cmd.Output(); err == nil {
+					resolvedRefs[ref] = strings.TrimSpace(string(out))
+				}
+			}
+
+			// Find latest among resolved commits
+			var commitRefs []string
+			for _, hash := range resolvedRefs {
+				commitRefs = append(commitRefs, hash)
+			}
+
+			args := append([]string{"rev-list", "--topo-order", "--date-order", "--max-count=1"}, commitRefs...)
+			cmd = exec.Command("git", args...)
 			cmd.Dir = gitRoot
-			if out, err := cmd.Output(); err == nil {
-				resolvedRefs[ref] = strings.TrimSpace(string(out))
+			out, err = cmd.Output()
+			if err != nil {
+				return errors.Wrap(err, "failed to find latest reference")
 			}
-		}
+			latestCommit := strings.TrimSpace(string(out))
 
-		// Find latest among resolved commits
-		var commitRefs []string
-		for _, hash := range resolvedRefs {
-			commitRefs = append(commitRefs, hash)
-		}
-
-		args := append([]string{"rev-list", "--topo-order", "--date-order", "--max-count=1"}, commitRefs...)
-		cmd = exec.Command("git", args...)
-		cmd.Dir = gitRoot
-		out, err = cmd.Output()
-		if err != nil {
-			return errors.Wrap(err, "failed to find latest reference")
-		}
-		latestCommit := strings.TrimSpace(string(out))
-
-		// Find original ref for this commit
-		foundOriginal := false
-		for origRef, hash := range resolvedRefs {
-			if hash == latestCommit {
-				ref = origRef
-				foundOriginal = true
-				break
+			// Find original ref for this commit
+			foundOriginal := false
+			for origRef, hash := range resolvedRefs {
+				if hash == latestCommit {
+					ref = origRef
+					foundOriginal = true
+					break
+				}
 			}
-		}
 
-		if !foundOriginal {
-			return fmt.Errorf("no file found for latest commit %s. This should never happen", latestCommit)
+			if !foundOriginal {
+				return fmt.Errorf("no file found for latest commit %s. This should never happen", latestCommit)
+			}
+		} else {
+			ref = refs[0]
 		}
 	} else {
 		ref = commitOrTag
