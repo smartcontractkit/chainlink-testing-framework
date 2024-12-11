@@ -25,8 +25,10 @@ const (
 type Input struct {
 	Image      string  `toml:"image" validate:"required"`
 	Port       int     `toml:"port"`
+	Name       string  `toml:"name"`
 	VolumeName string  `toml:"volume_name"`
 	Databases  int     `toml:"databases"`
+	JDDatabase bool    `toml:"jd_database"`
 	PullImage  bool    `toml:"pull_image"`
 	Out        *Output `toml:"out"`
 }
@@ -43,13 +45,20 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 	ctx := context.Background()
 
 	bindPort := fmt.Sprintf("%s/tcp", Port)
-	containerName := framework.DefaultTCName("ns-postgresql")
+	var containerName string
+	if in.Name != "" {
+		containerName = framework.DefaultTCName(in.Name)
+	} else {
+		containerName = framework.DefaultTCName("ns-postgresql")
+	}
 
 	var sqlCommands []string
 	for i := 0; i <= in.Databases; i++ {
 		sqlCommands = append(sqlCommands, fmt.Sprintf("CREATE DATABASE db_%d;", i))
 	}
-	sqlCommands = append(sqlCommands, "CREATE DATABASE jd;")
+	if in.JDDatabase {
+		sqlCommands = append(sqlCommands, "CREATE DATABASE jd;")
+	}
 	sqlCommands = append(sqlCommands, "ALTER USER chainlink WITH SUPERUSER;")
 	initSQL := strings.Join(sqlCommands, "\n")
 	initFile, err := os.CreateTemp("", "init-*.sql")
@@ -129,7 +138,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Output{
+	o := &Output{
 		ContainerName: containerName,
 		DockerInternalURL: fmt.Sprintf(
 			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
@@ -147,21 +156,24 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 			portToExpose,
 			Database,
 		),
-		JDDockerInternalURL: fmt.Sprintf(
+	}
+	if in.JDDatabase {
+		o.JDDockerInternalURL = fmt.Sprintf(
 			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
 			User,
 			Password,
 			containerName,
 			Port,
 			"jd",
-		),
-		JDUrl: fmt.Sprintf(
+		)
+		o.JDUrl = fmt.Sprintf(
 			"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
 			User,
 			Password,
 			host,
 			portToExpose,
 			"jd",
-		),
-	}, nil
+		)
+	}
+	return o, nil
 }

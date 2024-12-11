@@ -23,7 +23,6 @@ func TestJDAndNodeSet(t *testing.T) {
 	require.NoError(t, err)
 	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc)
 	require.NoError(t, err)
-	in.JD.DBURL = out.DBOut.JDDockerInternalURL
 	_, err = jd.NewJD(in.JD)
 	require.NoError(t, err)
 
