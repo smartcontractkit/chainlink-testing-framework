@@ -246,9 +246,9 @@ func kubeSecret(chart cdk8s.Chart, props *Props) {
 				Labels: props.Labels,
 			},
 			Type: ptr.Ptr("Opaque"), // Typical for storing arbitrary user-defined data
-			StringData: &map[string]*string{
-				".testsecrets": ptr.Ptr(createTestSecretsDotenvFromEnvVars()),
-			},
+			// StringData: &map[string]*string{
+			// 	".testsecrets": ptr.Ptr(createTestSecretsDotenvFromEnvVars()),
+			// },
 		},
 	)
 }
