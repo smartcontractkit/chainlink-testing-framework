@@ -17,7 +17,7 @@ import (
 type PrometheusQueryExecutor struct {
 	KindName           string                 `json:"kind"`
 	startTime, endTime time.Time              `json:"-"`
-	client             *client.Prometheus     `json:"-"`
+	client             v1.API                 `json:"-"`
 	Queries            map[string]string      `json:"queries"`
 	QueryResults       map[string]interface{} `json:"query_results"`
 	warnings           map[string]v1.Warnings `json:"-"`
@@ -46,18 +46,21 @@ func NewStandardPrometheusQueryExecutor(url string, startTime, endTime time.Time
 		return nil, errors.Wrapf(err, "failed to create Prometheus client")
 	}
 
-	standardQueries, queryErr := (&PrometheusQueryExecutor{client: c}).generateStandardQueries(nameRegexPattern, startTime, endTime)
+	pr := &PrometheusQueryExecutor{
+		client:       c,
+		startTime:    startTime,
+		endTime:      endTime,
+		QueryResults: make(map[string]interface{}),
+	}
+
+	standardQueries, queryErr := pr.generateStandardQueries(nameRegexPattern, startTime, endTime)
 	if queryErr != nil {
 		return nil, errors.Wrapf(queryErr, "failed to generate standard queries for %s", nameRegexPattern)
 	}
 
-	return &PrometheusQueryExecutor{
-		client:       c,
-		Queries:      standardQueries,
-		startTime:    startTime,
-		endTime:      endTime,
-		QueryResults: make(map[string]interface{}),
-	}, nil
+	pr.Queries = standardQueries
+
+	return pr, nil
 }
 
 func (r *PrometheusQueryExecutor) Execute(ctx context.Context) error {
