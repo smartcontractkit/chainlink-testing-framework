@@ -121,10 +121,10 @@ func NewJD(in *Input) (*Output, error) {
 	}
 	out := &Output{
 		UseCache:       true,
-		HostGRPCUrl:    fmt.Sprintf("http://%s:%s", host, in.GRPCPort),
-		DockerGRPCUrl:  fmt.Sprintf("http://%s:%s", containerName, in.GRPCPort),
-		HostWSRPCUrl:   fmt.Sprintf("ws://%s:%s", host, in.WSRPCPort),
-		DockerWSRPCUrl: fmt.Sprintf("ws://%s:%s", containerName, in.WSRPCPort),
+		HostGRPCUrl:    fmt.Sprintf("%s:%s", host, in.GRPCPort),
+		DockerGRPCUrl:  fmt.Sprintf("%s:%s", containerName, in.GRPCPort),
+		HostWSRPCUrl:   fmt.Sprintf("%s:%s", host, in.WSRPCPort),
+		DockerWSRPCUrl: fmt.Sprintf("%s:%s", containerName, in.WSRPCPort),
 	}
 	in.Out = out
 	return out, nil
