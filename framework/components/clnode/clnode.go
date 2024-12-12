@@ -221,7 +221,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		ExposedPorts: exposedPorts,
 		Entrypoint: []string{
 			"/bin/sh", "-c",
-			"chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials",
+            "dlv --listen=0.0.0.0:40000 --headless=true --continue --api-version=2 --accept-multiclient exec /usr/local/bin/chainlink -- -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials",
 		},
 		WaitingFor: wait.ForHTTP("/").WithPort(DefaultHTTPPort).WithStartupTimeout(2 * time.Minute),
 	}
