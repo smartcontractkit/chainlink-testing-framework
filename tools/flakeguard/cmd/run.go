@@ -31,6 +31,7 @@ var RunTestsCmd = &cobra.Command{
 		selectTests, _ := cmd.Flags().GetStringSlice("select-tests")
 		useShuffle, _ := cmd.Flags().GetBool("shuffle")
 		shuffleSeed, _ := cmd.Flags().GetString("shuffle-seed")
+		omitOutputsOnSuccess, _ := cmd.Flags().GetBool("omit-test-outputs-on-success")
 
 		// Check if project dependencies are correctly set up
 		if err := checkDependencies(projectPath); err != nil {
@@ -62,6 +63,7 @@ var RunTestsCmd = &cobra.Command{
 			SelectedTestPackages: testPackages,
 			UseShuffle:           useShuffle,
 			ShuffleSeed:          shuffleSeed,
+			OmitOutputsOnSuccess: omitOutputsOnSuccess,
 		}
 
 		// Run the tests
@@ -119,6 +121,7 @@ func init() {
 	RunTestsCmd.Flags().StringSlice("skip-tests", nil, "Comma-separated list of test names to skip from running")
 	RunTestsCmd.Flags().StringSlice("select-tests", nil, "Comma-separated list of test names to specifically run")
 	RunTestsCmd.Flags().Float64("max-pass-ratio", 1.0, "The maximum pass ratio threshold for a test to be considered flaky. Any tests below this pass rate will be considered flaky.")
+	RunTestsCmd.Flags().Bool("omit-test-outputs-on-success", true, "Omit test outputs and package outputs for tests that pass")
 }
 
 func checkDependencies(projectPath string) error {
