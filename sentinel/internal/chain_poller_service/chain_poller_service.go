@@ -1,4 +1,4 @@
-// File: chain_poller_service/chain_poller_service.go
+// File: internal/chain_poller_service/chain_poller_service.go
 package chain_poller_service
 
 import (
@@ -12,9 +12,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog"
 	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/api"
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/chain_poller"
 	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/internal"
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/subscription_manager"
+	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/internal/chain_poller"
+	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/internal/subscription_manager"
 )
 
 // ChainPollerServiceConfig holds the configuration for the ChainPollerService.
@@ -152,7 +152,12 @@ func (eps *ChainPollerService) pollCycle() {
 	// Fetch the latest block number
 	latestBlock, err := eps.config.BlockchainClient.BlockNumber(eps.ctx)
 	if err != nil {
-		eps.config.Logger.Error().Err(err).Msg("Failed to get latest block")
+		if errors.Is(err, context.Canceled) {
+			eps.config.Logger.Debug().Msg("Fetching latest block number canceled due to shutdown")
+		} else {
+			eps.config.Logger.Error().Err(err).Msg("Failed to get latest block")
+		}
+
 		return
 	}
 

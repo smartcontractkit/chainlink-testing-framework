@@ -9,7 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/rs/zerolog"
 	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/api"
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/chain_poller_service"
+	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/internal/chain_poller_service"
 )
 
 // SentinelConfig holds configuration for the Sentinel.

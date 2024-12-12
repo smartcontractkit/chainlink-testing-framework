@@ -1,4 +1,4 @@
-// File: chain_poller_service/chain_poller_service_test.go
+// File: internal/chain_poller_service/chain_poller_service_test.go
 package chain_poller_service_test
 
 import (
@@ -14,8 +14,8 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/api"
-	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/chain_poller_service"
 	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/internal"
+	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/internal/chain_poller_service"
 )
 
 // MockChainPoller implements the ChainPollerInterface for testing.

@@ -1,4 +1,4 @@
-// File: chain_poller/chain_poller.go
+// File: internal/chain_poller/chain_poller.go
 package chain_poller
 
 import (

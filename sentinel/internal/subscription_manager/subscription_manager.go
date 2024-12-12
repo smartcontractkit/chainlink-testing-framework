@@ -1,4 +1,4 @@
-// File: subscription_manager/subscription_manager.go
+// File: internal/subscription_manager/subscription_manager.go
 package subscription_manager
 
 import (
