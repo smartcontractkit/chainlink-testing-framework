@@ -42,10 +42,6 @@ Sentinel is a centralized orchestrator that manages multiple blockchain poller s
 
 ### How Components Interact
 
-## System Architecture
-
-### How Components Interact
-
 ```mermaid
 graph TD
     Sentinel["Sentinel<br/>(Coordinator)"]
