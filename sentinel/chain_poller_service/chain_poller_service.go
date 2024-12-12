@@ -196,7 +196,12 @@ func (eps *ChainPollerService) pollCycle() {
 		return
 	}
 
-	eps.config.Logger.Debug().Int("Number of fetched logs", len(logs)).Msg(("Fetched logs from blockchain"))
+	eps.config.Logger.Debug().
+		Int("Number of fetched logs", len(logs)).
+		Uint64("FromBlock", fromBlock.Uint64()).
+		Uint64("ToBlock", toBlock).
+		Uint64("Number of blocks", toBlock-fromBlock.Uint64()).
+		Msg(("Fetched logs from blockchain"))
 
 	// Broadcast each log to subscribers
 	for _, log := range logs {
