@@ -287,7 +287,7 @@ func TestAggregate(t *testing.T) {
 		},
 	}
 
-	aggregatedReport, err := Aggregate(report1, report2)
+	aggregatedReport, err := aggregateFromReports(report1, report2)
 	if err != nil {
 		t.Fatalf("Error aggregating reports: %v", err)
 	}
@@ -371,7 +371,7 @@ func TestAggregateOutputs(t *testing.T) {
 		},
 	}
 
-	aggregatedReport, err := Aggregate(report1, report2)
+	aggregatedReport, err := aggregateFromReports(report1, report2)
 	if err != nil {
 		t.Fatalf("Error aggregating reports: %v", err)
 	}
@@ -432,7 +432,7 @@ func TestAggregateIdenticalOutputs(t *testing.T) {
 		},
 	}
 
-	aggregatedReport, err := Aggregate(report1, report2)
+	aggregatedReport, err := aggregateFromReports(report1, report2)
 	if err != nil {
 		t.Fatalf("Error aggregating reports: %v", err)
 	}
@@ -569,7 +569,7 @@ func TestAggregate_AllSkippedTests(t *testing.T) {
 		},
 	}
 
-	aggregatedReport, err := Aggregate(report1, report2)
+	aggregatedReport, err := aggregateFromReports(report1, report2)
 	if err != nil {
 		t.Fatalf("Error aggregating reports: %v", err)
 	}
