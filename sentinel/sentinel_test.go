@@ -115,7 +115,7 @@ func TestAddChain_SubscribeUnsubscribeEvent(t *testing.T) {
 	log := createLog(1, common.HexToHash("0x1234"), address, []common.Hash{topic}, []byte("event data"), 0)
 
 	// Retrieve the chain service to access the Subscription Manager.
-	chainService, exists := s.GetService(1)
+	chainService, exists := s.services[1]
 	require.True(t, exists, "Chain service should exist")
 
 	// Broadcast the log.
@@ -175,9 +175,9 @@ func TestAddChains_MultipleConsumers(t *testing.T) {
 	logEvent2 := createLog(3, common.HexToHash("0x2345"), address2, []common.Hash{topic2}, []byte("another log data 2"), 0)
 	logEvent3 := createLog(4, common.HexToHash("0x3456"), address3, []common.Hash{topic3}, []byte("another log data 3"), 0)
 
-	chainService1, exists1 := s.GetService(1)
+	chainService1, exists1 := s.services[1]
 	require.True(t, exists1, "Chain service 1 should exist")
-	chainService2, exists2 := s.GetService(2)
+	chainService2, exists2 := s.services[2]
 	require.True(t, exists2, "Chain service 2 should exist")
 
 	chainService1.SubscriptionMgr.BroadcastLog(createEventKey(address1, topic1), logEvent1)
@@ -259,5 +259,5 @@ func TestAddMultipleChains_CloseSentinel(t *testing.T) {
 	s.Close()
 
 	// Verify that all chains are cleaned up.
-	assert.False(t, s.HasServices(), "All chains should be cleaned up after Close")
+	assert.False(t, len(s.services) > 0, "All chains should be cleaned up after Close")
 }

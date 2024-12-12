@@ -107,23 +107,6 @@ func (s *Sentinel) Unsubscribe(chainID int64, address common.Address, topic comm
 	return eps.SubscriptionManager().Unsubscribe(address, topic, ch)
 }
 
-// GetService gets the chain poller service for a chain id.
-func (s *Sentinel) GetService(chainID int64) (*chain_poller_service.ChainPollerService, bool) {
-	s.mu.RLock()
-	eps, exists := s.services[chainID]
-	s.mu.RUnlock()
-
-	return eps, exists
-}
-
-// HasServices returns true if there is at least 1 service running.
-func (s *Sentinel) HasServices() bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	return len(s.services) > 0
-}
-
 // Close shuts down all chains and the global registry.
 func (s *Sentinel) Close() {
 	s.mu.Lock()
