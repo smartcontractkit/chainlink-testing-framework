@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -235,25 +234,20 @@ func TestBenchSpy_GeneratorQueryExecutor_Execute(t *testing.T) {
 		// 4 responses with ~150ms latency (150ms sleep + some execution overhead)
 		// and 2-3 responses with ~200ms latency (200ms sleep + some execution overhead)
 		// expected median latency: (150ms, 151ms>
-		resultsAsStrings, err := ResultsAs("string", []QueryExecutor{executor}, StandardQueryExecutor_Generator, string(MedianLatency), string(Percentile95Latency), string(ErrorRate))
+		resultsAsFloats, err := ResultsAs(0.0, []QueryExecutor{executor}, StandardQueryExecutor_Generator, string(MedianLatency), string(Percentile95Latency), string(ErrorRate))
 		assert.NoError(t, err)
-		require.Equal(t, 3, len(resultsAsStrings))
-
-		medianLatencyFloat, err := strconv.ParseFloat(resultsAsStrings[string(MedianLatency)], 64)
-		assert.NoError(t, err)
-		require.InDelta(t, 151.0, medianLatencyFloat, 1.0)
+		require.Equal(t, 3, len(resultsAsFloats))
+		require.InDelta(t, 151.0, resultsAsFloats[string(MedianLatency)], 1.0)
 
 		// since we have 2-3 responses with 200-201ms latency, the 95th percentile should be (200ms, 201ms>
-		p95LatencyFloat, err := strconv.ParseFloat(resultsAsStrings[string(Percentile95Latency)], 64)
-		assert.NoError(t, err)
-		require.InDelta(t, 201.0, p95LatencyFloat, 1.0)
+		require.InDelta(t, 201.0, resultsAsFloats[string(Percentile95Latency)], 1.0)
 
-		errorRate, exists := resultsAsStrings[string(ErrorRate)]
+		errorRate, exists := resultsAsFloats[string(ErrorRate)]
 		assert.True(t, exists)
 
 		// error rate is the number of failures divided by the total number of responses
 		expectedErrorRate := float64(actualFailures) / (float64(fakeGun.maxSuccesses) + float64(actualFailures))
-		assert.Equal(t, fmt.Sprintf("%.4f", expectedErrorRate), errorRate)
+		assert.Equal(t, expectedErrorRate, errorRate)
 	})
 
 	t.Run("all responses failed", func(t *testing.T) {
@@ -296,7 +290,7 @@ func TestBenchSpy_GeneratorQueryExecutor_Execute(t *testing.T) {
 
 		errorRate, exists := results[string(ErrorRate)]
 		assert.True(t, exists)
-		assert.Equal(t, "1.0000", errorRate)
+		assert.Equal(t, 1.0, errorRate)
 	})
 
 	t.Run("no responses", func(t *testing.T) {
@@ -343,15 +337,15 @@ func TestBenchSpy_GeneratorQueryExecutor_MarshalJSON(t *testing.T) {
 			},
 		}
 		original, _ := NewGeneratorQueryExecutor(gen)
-		original.QueryResults["test"] = "result"
-		original.QueryResults["test2"] = "1"
+		original.QueryResults["test"] = 2.0
+		original.QueryResults["test2"] = 12.1
 
 		original.Queries = map[string]GeneratorQueryFn{
-			"test": func(responses *wasp.SliceBuffer[wasp.Response]) (string, error) {
-				return "result", nil
+			"test": func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error) {
+				return 2.0, nil
 			},
-			"test2": func(responses *wasp.SliceBuffer[wasp.Response]) (string, error) {
-				return "1", nil
+			"test2": func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error) {
+				return 12.1, nil
 			},
 		}
 

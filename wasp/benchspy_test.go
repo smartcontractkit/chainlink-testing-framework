@@ -269,7 +269,7 @@ func TestBenchSpyWithStandardLokiMetrics(t *testing.T) {
 	fetchCtx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancelFn()
 
-	currentReport, previousReport, err := benchspy.FetchNewReportAndLoadLatestPrevious(fetchCtx, "e7fc5826a572c09f8b93df3b9f674113372ce925", benchspy.WithStandardQueryExecutorType(benchspy.StandardQueryExecutor_Loki), benchspy.WithGenerators(gen), benchspy.WithReportDirectory("test_performance_reports"))
+	currentReport, previousReport, err := benchspy.FetchNewStandardReportAndLoadLatestPrevious(fetchCtx, "e7fc5826a572c09f8b93df3b9f674113372ce925", benchspy.WithQueryExecutorType(benchspy.StandardQueryExecutor_Loki), benchspy.WithGenerators(gen), benchspy.WithReportDirectory("test_performance_reports"))
 	require.NoError(t, err, "failed to fetch current report or load the previous one")
 
 	// path, storeErr := currentReport.Store()
@@ -325,7 +325,7 @@ func TestBenchSpyWithStandardGeneratorMetrics(t *testing.T) {
 
 	gen.Run(true)
 
-	currentReport, err := benchspy.NewStandardReport("e7fc5826a572c09f8b93df3b9f674113372ce925", benchspy.WithStandardQueryExecutorType(benchspy.StandardQueryExecutor_Generator), benchspy.WithGenerators(gen))
+	currentReport, err := benchspy.NewStandardReport("e7fc5826a572c09f8b93df3b9f674113372ce925", benchspy.WithQueryExecutorType(benchspy.StandardQueryExecutor_Generator), benchspy.WithGenerators(gen))
 	require.NoError(t, err)
 
 	// context is not really needed, since we are using a generator, but it's required by the FetchData method
@@ -348,24 +348,21 @@ func TestBenchSpyWithStandardGeneratorMetrics(t *testing.T) {
 	isComparableErrs := previousReport.IsComparable(currentReport)
 	require.Empty(t, isComparableErrs, "reports were not comparable", isComparableErrs)
 
-	currentAsString := benchspy.MustAllGeneratorResults(currentReport)
-	previousAsString := benchspy.MustAllGeneratorResults(&previousReport)
+	currentAsFloat64 := benchspy.MustAllGeneratorResults(currentReport)
+	previousAsloat64 := benchspy.MustAllGeneratorResults(&previousReport)
 
 	var compareValues = func(metricName benchspy.StandardLoadMetric) {
-		require.NotEmpty(t, currentAsString[string(metricName)], "%s results were missing from current report", string(metricName))
-		require.NotEmpty(t, previousAsString[string(metricName)], "%s results were missing from previous report", string(metricName))
+		require.NotEmpty(t, currentAsFloat64[string(metricName)], "%s results were missing from current report", string(metricName))
+		require.NotEmpty(t, previousAsloat64[string(metricName)], "%s results were missing from previous report", string(metricName))
 
-		currentFloat, err := strconv.ParseFloat(currentAsString[string(metricName)], 64)
-		require.NoError(t, err, "failed to convert %s results to float64 slice", string(metricName))
-
-		previousFloat, err := strconv.ParseFloat(previousAsString[string(metricName)], 64)
-		require.NoError(t, err, "failed to convert %s results to float64 slice", string(metricName))
+		currentMetric := currentAsFloat64[string(metricName)]
+		previousMetric := previousAsloat64[string(metricName)]
 
 		var diffPrecentage float64
-		if previousFloat != 0 {
-			diffPrecentage = (currentFloat - previousFloat) / previousFloat * 100
+		if previousMetric != 0.0 {
+			diffPrecentage = (currentMetric - previousMetric) / previousMetric * 100
 		} else {
-			diffPrecentage = currentFloat * 100
+			diffPrecentage = currentMetric * 100.0
 		}
 		require.LessOrEqual(t, math.Abs(diffPrecentage), 1.0, "%s medians are more than 1% different", string(metricName), fmt.Sprintf("%.4f", diffPrecentage))
 	}
@@ -404,7 +401,7 @@ func TestBenchSpy_Prometheus_And_Generator(t *testing.T) {
 		NameRegexPatterns: []string{"node[^0]"},
 	}
 
-	currentReport, err := benchspy.NewStandardReport("e7fc5826a572c09f8b93df3b9f674113372ce925", benchspy.WithStandardQueryExecutorType(benchspy.StandardQueryExecutor_Generator), benchspy.WithGenerators(gen), benchspy.WithPrometheus(&promConfig))
+	currentReport, err := benchspy.NewStandardReport("e7fc5826a572c09f8b93df3b9f674113372ce925", benchspy.WithQueryExecutorType(benchspy.StandardQueryExecutor_Generator), benchspy.WithGenerators(gen), benchspy.WithPrometheusConfig(&promConfig))
 	require.NoError(t, err)
 
 	// context is not really needed, since we are using a generator, but it's required by the FetchData method

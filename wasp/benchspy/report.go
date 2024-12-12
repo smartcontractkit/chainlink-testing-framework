@@ -69,8 +69,8 @@ func MustAllLokiResults(sr *StandardReport) map[string][]string {
 	return results
 }
 
-func MustAllGeneratorResults(sr *StandardReport) map[string]string {
-	results, err := ResultsAs("string", sr.QueryExecutors, StandardQueryExecutor_Generator)
+func MustAllGeneratorResults(sr *StandardReport) map[string]float64 {
+	results, err := ResultsAs(0.0, sr.QueryExecutors, StandardQueryExecutor_Generator)
 	if err != nil {
 		panic(err)
 	}
@@ -154,17 +154,18 @@ func (b *StandardReport) IsComparable(otherReport Reporter) error {
 }
 
 type standardReportConfig struct {
-	executorType     StandardQueryExecutorType
+	executorTypes    []StandardQueryExecutorType
 	generators       []*wasp.Generator
 	prometheusConfig *PrometheusConfig
+	queryExecutors   []QueryExecutor
 	reportDirectory  string
 }
 
 type StandardReportOption func(*standardReportConfig)
 
-func WithStandardQueryExecutorType(executorType StandardQueryExecutorType) StandardReportOption {
+func WithQueryExecutorType(executorTypes ...StandardQueryExecutorType) StandardReportOption {
 	return func(c *standardReportConfig) {
-		c.executorType = executorType
+		c.executorTypes = executorTypes
 	}
 }
 
@@ -174,7 +175,7 @@ func WithGenerators(generators ...*wasp.Generator) StandardReportOption {
 	}
 }
 
-func WithPrometheus(prometheusConfig *PrometheusConfig) StandardReportOption {
+func WithPrometheusConfig(prometheusConfig *PrometheusConfig) StandardReportOption {
 	return func(c *standardReportConfig) {
 		c.prometheusConfig = prometheusConfig
 	}
@@ -186,20 +187,36 @@ func WithReportDirectory(reportDirectory string) StandardReportOption {
 	}
 }
 
+func WithQueryExecutors(queryExecutors ...QueryExecutor) StandardReportOption {
+	return func(c *standardReportConfig) {
+		c.queryExecutors = queryExecutors
+	}
+}
+
 func (c *standardReportConfig) validate() error {
-	if c.executorType == "" {
-		return errors.New("executor type is not set")
+	if len(c.executorTypes) == 0 && len(c.queryExecutors) == 0 {
+		return errors.New("no standard executor types and no custom query executors are provided. At least one is needed")
 	}
 
-	if c.executorType == StandardQueryExecutor_Prometheus {
-		return errors.New("prometheus as query executor is not supported currently. Use either Loki or Generator")
+	hasPrometehus := false
+	for _, t := range c.executorTypes {
+		if t == StandardQueryExecutor_Prometheus {
+			hasPrometehus = true
+			if c.prometheusConfig == WithoutPrometheus {
+				return errors.New("prometheus as query executor type is set, but prometheus config is not provided")
+			}
+		}
 	}
 
 	if len(c.generators) == 0 {
-		return errors.New("generators are not set")
+		return errors.New("generators are not set, at least one is required")
 	}
 
 	if c.prometheusConfig != WithoutPrometheus {
+		if !hasPrometehus {
+			return errors.New("prometheus config is set, but query executor type is not set to prometheus")
+		}
+
 		if c.prometheusConfig.Url == "" {
 			return errors.New("prometheus url is not set")
 		}
@@ -237,29 +254,40 @@ func NewStandardReport(commitOrTag string, opts ...StandardReportOption) (*Stand
 	}
 
 	var queryExecutors []QueryExecutor
-	for _, g := range config.generators {
-		executor, executorErr := initStandardQueryExecutor(config.executorType, basicData, g)
-		if executorErr != nil {
-			return nil, errors.Wrapf(executorErr, "failed to create standard %s query executor for generator %s", config.executorType, g.Cfg.GenName)
-		}
+	if len(config.executorTypes) != 0 {
+		for _, g := range config.generators {
+			for _, exType := range config.executorTypes {
+				if exType != StandardQueryExecutor_Prometheus {
+					executor, executorErr := initStandardQueryExecutor(exType, basicData, g)
+					if executorErr != nil {
+						return nil, errors.Wrapf(executorErr, "failed to create standard %s query executor for generator %s", exType, g.Cfg.GenName)
+					}
 
-		validateErr := executor.Validate()
-		if validateErr != nil {
-			return nil, errors.Wrapf(validateErr, "failed to validate queries for generator %s", g.Cfg.GenName)
-		}
+					validateErr := executor.Validate()
+					if validateErr != nil {
+						return nil, errors.Wrapf(validateErr, "failed to validate queries for generator %s", g.Cfg.GenName)
+					}
 
-		queryExecutors = append(queryExecutors, executor)
+					queryExecutors = append(queryExecutors, executor)
+				}
+			}
+		}
+	}
+
+	if len(config.queryExecutors) > 0 {
+		queryExecutors = append(queryExecutors, config.queryExecutors...)
 	}
 
 	if config.prometheusConfig != WithoutPrometheus {
-		for _, nameRegexPattern := range config.prometheusConfig.NameRegexPatterns {
-			prometheusExecutor, prometheusErr := NewStandardPrometheusQueryExecutor(config.prometheusConfig.Url, basicData.TestStart, basicData.TestEnd, nameRegexPattern)
+		// not ideal, but we want to follow the same pattern as with other executors
+		for _, n := range config.prometheusConfig.NameRegexPatterns {
+			prometheusExecutor, prometheusErr := NewStandardPrometheusQueryExecutor(basicData.TestStart, basicData.TestEnd, *NewPrometheusConfig(config.prometheusConfig.Url, n))
 			if prometheusErr != nil {
-				return nil, errors.Wrapf(prometheusErr, "failed to create Prometheus resource reporter for name %s", nameRegexPattern)
+				return nil, errors.Wrapf(prometheusErr, "failed to create Prometheus executor for name patterns: %s", strings.Join(config.prometheusConfig.NameRegexPatterns, ", "))
 			}
 			validateErr := prometheusExecutor.Validate()
 			if validateErr != nil {
-				return nil, errors.Wrapf(validateErr, "failed to validate resources for name %s", nameRegexPattern)
+				return nil, errors.Wrapf(validateErr, "failed to Prometheus executor for for name patterns: %s", strings.Join(config.prometheusConfig.NameRegexPatterns, ", "))
 			}
 			queryExecutors = append(queryExecutors, prometheusExecutor)
 		}
@@ -439,7 +467,7 @@ func convertQueryResults(results map[string]interface{}) (map[string]interface{}
 	return converted, nil
 }
 
-func FetchNewReportAndLoadLatestPrevious(ctx context.Context, newCommitOrTag string, newReportOpts ...StandardReportOption) (*StandardReport, *StandardReport, error) {
+func FetchNewStandardReportAndLoadLatestPrevious(ctx context.Context, newCommitOrTag string, newReportOpts ...StandardReportOption) (*StandardReport, *StandardReport, error) {
 	newReport, err := NewStandardReport(newCommitOrTag, newReportOpts...)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to create new report for commit or tag %s", newCommitOrTag)

@@ -37,7 +37,7 @@ func TestBenchSpy_NewStandardReport(t *testing.T) {
 	}
 
 	t.Run("successful creation (loki)", func(t *testing.T) {
-		report, err := NewStandardReport("test-commit", WithStandardQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
+		report, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
 		require.NoError(t, err)
 		assert.NotNil(t, report)
 		assert.Equal(t, 1, len(report.QueryExecutors))
@@ -45,7 +45,7 @@ func TestBenchSpy_NewStandardReport(t *testing.T) {
 	})
 
 	t.Run("successful creation (generator)", func(t *testing.T) {
-		report, err := NewStandardReport("test-commit", WithStandardQueryExecutorType(StandardQueryExecutor_Generator), WithGenerators(basicGen))
+		report, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Generator), WithGenerators(basicGen))
 		require.NoError(t, err)
 		assert.NotNil(t, report)
 		assert.Equal(t, 1, len(report.QueryExecutors))
@@ -65,7 +65,7 @@ func TestBenchSpy_NewStandardReport(t *testing.T) {
 				},
 			},
 		}
-		_, err := NewStandardReport("test-commit", WithStandardQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(invalidGen))
+		_, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(invalidGen))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "missing branch or commit labels")
 	})
@@ -83,7 +83,7 @@ func TestBenchSpy_NewStandardReport(t *testing.T) {
 				},
 			},
 		}
-		_, err := NewStandardReport("test-commit", WithStandardQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(invalidGen))
+		_, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(invalidGen))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "missing branch or commit labels")
 	})
@@ -92,14 +92,14 @@ func TestBenchSpy_NewStandardReport(t *testing.T) {
 		gen := *basicGen
 		gen.Cfg.LokiConfig = nil
 
-		report, err := NewStandardReport("test-commit", WithStandardQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(&gen))
+		report, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(&gen))
 		require.Nil(t, report)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "loki config is missing")
 	})
 
 	t.Run("nil generator", func(t *testing.T) {
-		_, err := NewStandardReport("test-commit", WithStandardQueryExecutorType(StandardQueryExecutor_Loki))
+		_, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki))
 		require.Error(t, err)
 	})
 }
@@ -128,9 +128,9 @@ func TestBenchSpy_NewStandardReportWithPrometheus(t *testing.T) {
 
 	t.Run("successful prometheus creation", func(t *testing.T) {
 		report, err := NewStandardReport("test-commit",
-			WithStandardQueryExecutorType(StandardQueryExecutor_Loki),
+			WithQueryExecutorType(StandardQueryExecutor_Prometheus, StandardQueryExecutor_Loki),
 			WithGenerators(validGen),
-			WithPrometheus(promConfig))
+			WithPrometheusConfig(promConfig))
 		require.NoError(t, err)
 		assert.NotNil(t, report)
 		assert.Equal(t, 2, len(report.QueryExecutors))
@@ -145,15 +145,18 @@ func TestBenchSpy_NewStandardReportWithPrometheus(t *testing.T) {
 		}
 
 		report, err := NewStandardReport("test-commit",
-			WithStandardQueryExecutorType(StandardQueryExecutor_Loki),
+			WithQueryExecutorType(StandardQueryExecutor_Prometheus),
 			WithGenerators(validGen),
-			WithPrometheus(multiPromConfig))
+			WithPrometheusConfig(multiPromConfig))
 		require.NoError(t, err)
 		assert.NotNil(t, report)
-		assert.Equal(t, 3, len(report.QueryExecutors))
-		assert.IsType(t, &LokiQueryExecutor{}, report.QueryExecutors[0])
+		assert.Equal(t, 2, len(report.QueryExecutors))
+		assert.IsType(t, &PrometheusQueryExecutor{}, report.QueryExecutors[0])
 		assert.IsType(t, &PrometheusQueryExecutor{}, report.QueryExecutors[1])
-		assert.IsType(t, &PrometheusQueryExecutor{}, report.QueryExecutors[2])
+		firstAsProm := report.QueryExecutors[0].(*PrometheusQueryExecutor)
+		assert.Equal(t, 4, len(firstAsProm.Queries))
+		secondAsProm := report.QueryExecutors[0].(*PrometheusQueryExecutor)
+		assert.Equal(t, 4, len(secondAsProm.Queries))
 	})
 
 	t.Run("invalid prometheus config (mising url)", func(t *testing.T) {
@@ -162,9 +165,9 @@ func TestBenchSpy_NewStandardReportWithPrometheus(t *testing.T) {
 		}
 
 		_, err := NewStandardReport("test-commit",
-			WithStandardQueryExecutorType(StandardQueryExecutor_Loki),
+			WithQueryExecutorType(StandardQueryExecutor_Prometheus),
 			WithGenerators(validGen),
-			WithPrometheus(invalidPromConfig),
+			WithPrometheusConfig(invalidPromConfig),
 		)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "prometheus url is not set")
@@ -176,9 +179,9 @@ func TestBenchSpy_NewStandardReportWithPrometheus(t *testing.T) {
 		}
 
 		_, err := NewStandardReport("test-commit",
-			WithStandardQueryExecutorType(StandardQueryExecutor_Loki),
+			WithQueryExecutorType(StandardQueryExecutor_Prometheus),
 			WithGenerators(validGen),
-			WithPrometheus(invalidPromConfig),
+			WithPrometheusConfig(invalidPromConfig),
 		)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "prometheus name regex patterns are not set")
@@ -424,7 +427,7 @@ func TestBenchSpy_StandardReport_UnmarshalJSON(t *testing.T) {
         },
         "query_results": {
             "rate": {
-                "Value": [{
+                "value": [{
                     "metric": {
                         "container_label_framework": "ctf",
                         "container_label_logging": "promtail",
@@ -479,6 +482,114 @@ func TestBenchSpy_StandardReport_UnmarshalJSON(t *testing.T) {
 		assert.Equal(t, 0.39449004082983885, float64(asVector[0].Value))
 	})
 
+	t.Run("valid prometheus executor (matrix)", func(t *testing.T) {
+		jsonData := `{
+	"test_name":"test1",
+	"commit_or_tag":"abc123",
+	"query_executors":[
+		{
+			"kind":"prometheus",
+			"queries":{
+				"rate":"rate(test_metric[5m])"
+			},
+			"query_results":{
+				"rate":{
+					"value":[{
+								"metric": {
+									"container_label_framework": "ctf",
+									"container_label_logging": "promtail",
+									"container_label_org_opencontainers_image_created": "2024-10-10T15:34:11Z",
+									"container_label_org_opencontainers_image_description": "\"node of the decentralized oracle network, bridging on and off-chain computation\"",
+									"container_label_org_opencontainers_image_licenses": "\"MIT\"",
+									"container_label_org_opencontainers_image_ref_name": "ubuntu",
+									"container_label_org_opencontainers_image_revision": "5ebb63266ca697f0649633641bbccb436c2c18bb",
+									"container_label_org_opencontainers_image_source": "\"https://github.com/smartcontractkit/chainlink\"",
+									"container_label_org_opencontainers_image_title": "chainlink",
+									"container_label_org_opencontainers_image_url": "\"https://github.com/smartcontractkit/chainlink\"",
+									"container_label_org_opencontainers_image_version": "2.17.0",
+									"container_label_org_testcontainers": "true",
+									"container_label_org_testcontainers_lang": "go",
+									"container_label_org_testcontainers_reap": "true",
+									"container_label_org_testcontainers_sessionId": "0e438f13ded27fcd3f85123134091358f9ce5c575c0b14a6f3c8998b4d2e7d14",
+									"container_label_org_testcontainers_version": "0.34.0",
+									"cpu": "total",
+									"id": "/docker/a2f7ab689d98d06f941732a3c04eae867ce56de687d87c7fd1bb1ac8c36a415a",
+									"image": "public.ecr.aws/chainlink/chainlink:v2.17.0-arm64",
+									"instance": "cadvisor:8080",
+									"job": "cadvisor",
+									"name": "node1"
+								},
+								"values":[[
+										1734010920,
+										"0.004647525277233765"
+								]]
+							}],
+					"metric_type":"matrix"
+					}
+				}
+			}
+		]
+	}`
+
+		var report StandardReport
+		err := json.Unmarshal([]byte(jsonData), &report)
+		require.NoError(t, err)
+		assert.Equal(t, 1, len(report.QueryExecutors))
+		assert.IsType(t, &PrometheusQueryExecutor{}, report.QueryExecutors[0])
+		asProm := report.QueryExecutors[0].(*PrometheusQueryExecutor)
+		assert.NotNil(t, asProm.Queries["rate"])
+		assert.Equal(t, "rate(test_metric[5m])", asProm.Queries["rate"])
+		assert.Equal(t, 1, len(report.QueryExecutors[0].Results()))
+
+		asValue := asProm.MustResultsAsValue()
+
+		assert.IsType(t, model.Matrix{}, asValue["rate"])
+		asMatrix := asValue["rate"].(model.Matrix)
+
+		assert.Equal(t, 1, len(asMatrix))
+		assert.Equal(t, 1, len(asMatrix[0].Values))
+		assert.Equal(t, 0.004647525277233765, float64(asMatrix[0].Values[0].Value))
+	})
+
+	t.Run("valid prometheus executor (scalar)", func(t *testing.T) {
+		jsonData := `{
+    "test_name": "test1",
+    "commit_or_tag": "abc123",
+    "query_executors": [{
+        "kind": "prometheus",
+        "queries": {
+            "rate": "scalar(quantile(0.95, rate(container_cpu_usage_seconds_total{}[5m])) * 100)"
+        },
+        "query_results": {
+            "rate": {
+				"value": [
+					1734012682.065,
+					"0.4631138973188853"
+				],
+				"metric_type": "scalar"
+			}
+		}
+	}]
+}`
+
+		var report StandardReport
+		err := json.Unmarshal([]byte(jsonData), &report)
+		require.NoError(t, err)
+		assert.Equal(t, 1, len(report.QueryExecutors))
+		assert.IsType(t, &PrometheusQueryExecutor{}, report.QueryExecutors[0])
+		asProm := report.QueryExecutors[0].(*PrometheusQueryExecutor)
+		assert.NotNil(t, asProm.Queries["rate"])
+		assert.Equal(t, "scalar(quantile(0.95, rate(container_cpu_usage_seconds_total{}[5m])) * 100)", asProm.Queries["rate"])
+		assert.Equal(t, 1, len(report.QueryExecutors[0].Results()))
+
+		asValue := asProm.MustResultsAsValue()
+
+		assert.IsType(t, &model.Scalar{}, asValue["rate"])
+		asScalar := asValue["rate"].(*model.Scalar)
+
+		assert.Equal(t, 0.4631138973188853, float64(asScalar.Value))
+	})
+
 	t.Run("unknown executor type", func(t *testing.T) {
 		jsonData := `{
 			"test_name": "test1",
@@ -514,7 +625,7 @@ func TestBenchSpy_StandardReport_FetchData(t *testing.T) {
 
 	t.Run("valid fetch", func(t *testing.T) {
 		basicGen.Cfg.LokiConfig = lokiConfig
-		report, err := NewStandardReport("test-commit", WithStandardQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
+		report, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
 		require.NoError(t, err)
 
 		mockExec := &MockQueryExecutor{
@@ -547,9 +658,9 @@ func TestBenchSpy_StandardReport_IsComparable(t *testing.T) {
 	}
 
 	t.Run("matching reports", func(t *testing.T) {
-		report1, err := NewStandardReport("test-commit", WithStandardQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
+		report1, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
 		require.NoError(t, err)
-		report2, err := NewStandardReport("test-commit", WithStandardQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
+		report2, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
 		require.NoError(t, err)
 
 		err = report1.IsComparable(report2)
@@ -557,7 +668,7 @@ func TestBenchSpy_StandardReport_IsComparable(t *testing.T) {
 	})
 
 	t.Run("different report types", func(t *testing.T) {
-		report1, err := NewStandardReport("test-commit", WithStandardQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
+		report1, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
 		require.NoError(t, err)
 
 		// Create a mock reporter that implements Reporter interface
@@ -569,7 +680,7 @@ func TestBenchSpy_StandardReport_IsComparable(t *testing.T) {
 	})
 
 	t.Run("different executors", func(t *testing.T) {
-		report1, err := NewStandardReport("test-commit", WithStandardQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
+		report1, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
 		require.NoError(t, err)
 
 		// Create second report with different executor
@@ -587,7 +698,7 @@ func TestBenchSpy_StandardReport_IsComparable(t *testing.T) {
 				LokiConfig: lokiConfig,
 			},
 		}
-		report2, err := NewStandardReport("test-commit", WithStandardQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(diffGen))
+		report2, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(diffGen))
 		require.NoError(t, err)
 
 		err = report1.IsComparable(report2)
@@ -626,7 +737,7 @@ func TestBenchSpy_StandardReport_Store_Load(t *testing.T) {
 	}
 
 	t.Run("store and load", func(t *testing.T) {
-		report, err := NewStandardReport("test-commit", WithStandardQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
+		report, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
 		require.NoError(t, err)
 
 		storage := LocalStorage{Directory: tmpDir}
@@ -848,8 +959,8 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 		mockGenExec := &MockQueryExecutor{
 			ResultsFn: func() map[string]interface{} {
 				return map[string]interface{}{
-					"query1": "result1",
-					"query2": "result2",
+					"query1": 1.0,
+					"query2": 2.0,
 				}
 			},
 			KindFn: func() string {
@@ -863,8 +974,8 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 
 		results := MustAllGeneratorResults(sr)
 		assert.Equal(t, 2, len(results))
-		assert.Equal(t, "result1", results["query1"])
-		assert.Equal(t, "result2", results["query2"])
+		assert.Equal(t, 1.0, results["query1"])
+		assert.Equal(t, 2.0, results["query2"])
 	})
 
 	t.Run("MustAllPrometheusResults", func(t *testing.T) {
@@ -958,7 +1069,7 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 		mockGenExec := &MockQueryExecutor{
 			ResultsFn: func() map[string]interface{} {
 				return map[string]interface{}{
-					"gen_query": "result1",
+					"gen_query": 1.0,
 				}
 			},
 			KindFn: func() string {
@@ -976,7 +1087,7 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 
 		genResults := MustAllGeneratorResults(sr)
 		assert.Equal(t, 1, len(genResults))
-		assert.Equal(t, "result1", genResults["gen_query"])
+		assert.Equal(t, 1.0, genResults["gen_query"])
 	})
 }
 
@@ -1027,17 +1138,17 @@ func TestBenchSpy_FetchNewReportAndLoadLatestPrevious(t *testing.T) {
 		gen.Run(true)
 
 		prevReport, err := NewStandardReport("a7fc5826a572c09f8b93df3b9f674113372ce924",
-			WithStandardQueryExecutorType(StandardQueryExecutor_Generator),
+			WithQueryExecutorType(StandardQueryExecutor_Generator),
 			WithGenerators(gen),
 			WithReportDirectory(tmpDir))
 		require.NoError(t, err)
 		_, err = prevReport.Store()
 		require.NoError(t, err)
 
-		newReport, prevLoadedReport, err := FetchNewReportAndLoadLatestPrevious(
+		newReport, prevLoadedReport, err := FetchNewStandardReportAndLoadLatestPrevious(
 			context.Background(),
 			"new-commit",
-			WithStandardQueryExecutorType(StandardQueryExecutor_Generator),
+			WithQueryExecutorType(StandardQueryExecutor_Generator),
 			WithGenerators(gen),
 			WithReportDirectory(tmpDir),
 		)
@@ -1052,10 +1163,10 @@ func TestBenchSpy_FetchNewReportAndLoadLatestPrevious(t *testing.T) {
 		tmpDir := t.TempDir()
 
 		basicGen.Cfg.T = t
-		newReport, prevReport, err := FetchNewReportAndLoadLatestPrevious(
+		newReport, prevReport, err := FetchNewStandardReportAndLoadLatestPrevious(
 			context.Background(),
 			"new-commit-7",
-			WithStandardQueryExecutorType(StandardQueryExecutor_Generator),
+			WithQueryExecutorType(StandardQueryExecutor_Generator),
 			WithGenerators(basicGen),
 			WithReportDirectory(tmpDir),
 		)

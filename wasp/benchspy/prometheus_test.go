@@ -15,17 +15,13 @@ import (
 
 func TestBenchSpy_NewPrometheusQueryExecutor(t *testing.T) {
 	t.Run("successful creation", func(t *testing.T) {
-		startTime := time.Now().Add(-1 * time.Hour)
-		endTime := time.Now()
 		queries := map[string]string{"test": "query"}
 
-		executor, err := NewPrometheusQueryExecutor("http://localhost:9090", startTime, endTime, queries)
+		executor, err := NewPrometheusQueryExecutor(queries, PrometheusConfig{Url: "http://localhost:9090"})
 
 		require.NoError(t, err)
 		assert.NotNil(t, executor)
 		assert.Equal(t, queries, executor.Queries)
-		assert.Equal(t, startTime, executor.startTime)
-		assert.Equal(t, endTime, executor.endTime)
 	})
 }
 
@@ -34,7 +30,7 @@ func TestBenchSpy_NewStandardPrometheusQueryExecutor(t *testing.T) {
 		startTime := time.Now().Add(-1 * time.Hour)
 		endTime := time.Now()
 
-		executor, err := NewStandardPrometheusQueryExecutor("http://localhost:9090", startTime, endTime, "test.*")
+		executor, err := NewStandardPrometheusQueryExecutor(startTime, endTime, PrometheusConfig{Url: "http://localhost:9090", NameRegexPatterns: []string{"test.*"}})
 
 		require.NoError(t, err)
 		assert.NotNil(t, executor)
@@ -78,8 +74,8 @@ func TestBenchSpy_PrometheusQueryExecutor_Execute(t *testing.T) {
 			Queries:      map[string]string{"test_metric": expectedQuery},
 			warnings:     make(map[string]v1.Warnings),
 			QueryResults: make(map[string]interface{}),
-			startTime:    expectedTime.Add(-1 * time.Hour),
-			endTime:      expectedTime,
+			StartTime:    expectedTime.Add(-1 * time.Hour),
+			EndTime:      expectedTime,
 		}
 
 		err := executor.Execute(context.Background())
@@ -118,8 +114,8 @@ func TestBenchSpy_PrometheusQueryExecutor_Execute(t *testing.T) {
 			Queries:      map[string]string{"test_metric": expectedQuery},
 			warnings:     make(map[string]v1.Warnings),
 			QueryResults: make(map[string]interface{}),
-			startTime:    expectedTime.Add(-1 * time.Hour),
-			endTime:      expectedTime,
+			StartTime:    expectedTime.Add(-1 * time.Hour),
+			EndTime:      expectedTime,
 		}
 
 		err := executor.Execute(context.Background())
@@ -151,8 +147,8 @@ func TestBenchSpy_PrometheusQueryExecutor_Execute(t *testing.T) {
 			Queries:      map[string]string{"test_metric": "invalid_query"},
 			warnings:     make(map[string]v1.Warnings),
 			QueryResults: make(map[string]interface{}),
-			startTime:    time.Now().Add(-1 * time.Hour),
-			endTime:      time.Now(),
+			StartTime:    time.Now().Add(-1 * time.Hour),
+			EndTime:      time.Now(),
 		}
 
 		err := executor.Execute(context.Background())
@@ -166,8 +162,8 @@ func TestBenchSpy_PrometheusQueryExecutor_Validate(t *testing.T) {
 		executor := &PrometheusQueryExecutor{
 			client:    &mockPrometheusClient{},
 			Queries:   map[string]string{"test": "query"},
-			startTime: time.Now(),
-			endTime:   time.Now(),
+			StartTime: time.Now(),
+			EndTime:   time.Now(),
 		}
 
 		err := executor.Validate()
@@ -178,8 +174,8 @@ func TestBenchSpy_PrometheusQueryExecutor_Validate(t *testing.T) {
 	t.Run("missing client", func(t *testing.T) {
 		executor := &PrometheusQueryExecutor{
 			Queries:   map[string]string{"test": "query"},
-			startTime: time.Now(),
-			endTime:   time.Now(),
+			StartTime: time.Now(),
+			EndTime:   time.Now(),
 		}
 
 		err := executor.Validate()
@@ -191,40 +187,14 @@ func TestBenchSpy_PrometheusQueryExecutor_Validate(t *testing.T) {
 	t.Run("empty queries", func(t *testing.T) {
 		executor := &PrometheusQueryExecutor{
 			client:    &mockPrometheusClient{},
-			startTime: time.Now(),
-			endTime:   time.Now(),
+			StartTime: time.Now(),
+			EndTime:   time.Now(),
 		}
 
 		err := executor.Validate()
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "no queries provided")
-	})
-
-	t.Run("no startTime", func(t *testing.T) {
-		executor := &PrometheusQueryExecutor{
-			client:  &mockPrometheusClient{},
-			Queries: map[string]string{"test": "query"},
-			endTime: time.Now(),
-		}
-
-		err := executor.Validate()
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "start time is not set")
-	})
-
-	t.Run("no endTime", func(t *testing.T) {
-		executor := &PrometheusQueryExecutor{
-			client:    &mockPrometheusClient{},
-			Queries:   map[string]string{"test": "query"},
-			startTime: time.Now(),
-		}
-
-		err := executor.Validate()
-
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "end time is not set")
 	})
 }
 
@@ -352,8 +322,8 @@ func TestBenchSpy_PrometheusQueryExecutor_JSONMarshalling(t *testing.T) {
 		assert.Equal(t, len(original.QueryResults), len(decoded.QueryResults))
 
 		// Verify unexported fields are not marshalled
-		assert.Zero(t, decoded.startTime)
-		assert.Zero(t, decoded.endTime)
+		assert.Zero(t, decoded.StartTime)
+		assert.Zero(t, decoded.EndTime)
 		assert.Nil(t, decoded.client)
 	})
 }

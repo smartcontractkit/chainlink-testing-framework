@@ -11,7 +11,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 )
 
-type GeneratorQueryFn = func(responses *wasp.SliceBuffer[wasp.Response]) (string, error)
+type GeneratorQueryFn = func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error)
 
 type GeneratorQueryExecutor struct {
 	KindName     string                      `json:"kind"`
@@ -144,27 +144,27 @@ func (g *GeneratorQueryExecutor) generateStandardQueries() (map[string]Generator
 func (g *GeneratorQueryExecutor) standardQuery(standardMetric StandardLoadMetric) (GeneratorQueryFn, error) {
 	switch standardMetric {
 	case MedianLatency:
-		medianFn := func(responses *wasp.SliceBuffer[wasp.Response]) (string, error) {
+		medianFn := func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error) {
 			var asMiliDuration []float64
 			for _, response := range responses.Data {
 				asMiliDuration = append(asMiliDuration, float64(response.Duration.Milliseconds()))
 			}
 
-			return fmt.Sprintf("%.4f", CalculatePercentile(asMiliDuration, 0.5)), nil
+			return CalculatePercentile(asMiliDuration, 0.5), nil
 		}
 		return medianFn, nil
 	case Percentile95Latency:
-		p95Fn := func(responses *wasp.SliceBuffer[wasp.Response]) (string, error) {
+		p95Fn := func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error) {
 			var asMiliDuration []float64
 			for _, response := range responses.Data {
 				asMiliDuration = append(asMiliDuration, float64(response.Duration.Milliseconds()))
 			}
 
-			return fmt.Sprintf("%.4f", CalculatePercentile(asMiliDuration, 0.95)), nil
+			return CalculatePercentile(asMiliDuration, 0.95), nil
 		}
 		return p95Fn, nil
 	case ErrorRate:
-		errorRateFn := func(responses *wasp.SliceBuffer[wasp.Response]) (string, error) {
+		errorRateFn := func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error) {
 			failedCount := 0.0
 			successfulCount := 0.0
 			for _, response := range responses.Data {
@@ -175,9 +175,7 @@ func (g *GeneratorQueryExecutor) standardQuery(standardMetric StandardLoadMetric
 				}
 			}
 
-			ratio := failedCount / (failedCount + successfulCount)
-
-			return fmt.Sprintf("%.4f", ratio), nil
+			return failedCount / (failedCount + successfulCount), nil
 		}
 		return errorRateFn, nil
 	default:

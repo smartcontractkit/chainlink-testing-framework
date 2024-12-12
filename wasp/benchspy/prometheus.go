@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"time"
 
@@ -19,20 +20,30 @@ type PrometheusConfig struct {
 	NameRegexPatterns []string
 }
 
+const PrometheusUrlEnvVar = "PROMETHEUS_URL"
+
+func NewPrometheusConfig(nameRegexPatterns ...string) *PrometheusConfig {
+	return &PrometheusConfig{
+		Url:               os.Getenv(PrometheusUrlEnvVar),
+		NameRegexPatterns: nameRegexPatterns,
+	}
+}
+
 var WithoutPrometheus *PrometheusConfig = nil
 
 type PrometheusQueryExecutor struct {
-	KindName           string                 `json:"kind"`
-	startTime, endTime time.Time              `json:"-"`
-	client             v1.API                 `json:"-"`
-	Queries            map[string]string      `json:"queries"`
-	QueryResults       map[string]interface{} `json:"query_results"`
-	warnings           map[string]v1.Warnings `json:"-"`
+	KindName     string                 `json:"kind"`
+	StartTime    time.Time              `json:"start_time"`
+	EndTime      time.Time              `json:"end_time"`
+	client       v1.API                 `json:"-"`
+	Queries      map[string]string      `json:"queries"`
+	QueryResults map[string]interface{} `json:"query_results"`
+	warnings     map[string]v1.Warnings `json:"-"`
 }
 
 // NewPrometheusQueryExecutor creates a new PrometheusResourceReporter, url should include basic auth if needed
-func NewPrometheusQueryExecutor(url string, startTime, endTime time.Time, queries map[string]string) (*PrometheusQueryExecutor, error) {
-	c, err := client.NewPrometheusClient(url)
+func NewPrometheusQueryExecutor(queries map[string]string, config PrometheusConfig) (*PrometheusQueryExecutor, error) {
+	c, err := client.NewPrometheusClient(config.Url)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create Prometheus client")
 	}
@@ -41,26 +52,31 @@ func NewPrometheusQueryExecutor(url string, startTime, endTime time.Time, querie
 		KindName:     string(StandardQueryExecutor_Prometheus),
 		client:       c,
 		Queries:      queries,
-		startTime:    startTime,
-		endTime:      endTime,
 		QueryResults: make(map[string]interface{}),
 	}, nil
 }
 
-func NewStandardPrometheusQueryExecutor(url string, startTime, endTime time.Time, nameRegexPattern string) (*PrometheusQueryExecutor, error) {
+func NewStandardPrometheusQueryExecutor(startTime, endTime time.Time, config PrometheusConfig) (*PrometheusQueryExecutor, error) {
 	p := &PrometheusQueryExecutor{}
 
-	standardQueries, queryErr := p.generateStandardQueries(nameRegexPattern, startTime, endTime)
-	if queryErr != nil {
-		return nil, errors.Wrapf(queryErr, "failed to generate standard queries for %s", nameRegexPattern)
+	standardQueries := make(map[string]string)
+	for _, nameRegexPattern := range config.NameRegexPatterns {
+		queries, queryErr := p.generateStandardQueries(nameRegexPattern, startTime, endTime)
+		if queryErr != nil {
+			return nil, errors.Wrapf(queryErr, "failed to generate standard queries for %s", nameRegexPattern)
+		}
+
+		for name, query := range queries {
+			standardQueries[name] = query
+		}
 	}
 
-	return NewPrometheusQueryExecutor(url, startTime, endTime, standardQueries)
+	return NewPrometheusQueryExecutor(standardQueries, config)
 }
 
 func (r *PrometheusQueryExecutor) Execute(ctx context.Context) error {
 	for name, query := range r.Queries {
-		result, warnings, queryErr := r.client.Query(ctx, query, r.endTime)
+		result, warnings, queryErr := r.client.Query(ctx, query, r.EndTime)
 		if queryErr != nil {
 			return errors.Wrapf(queryErr, "failed to query Prometheus for %s", name)
 		}
@@ -90,14 +106,6 @@ func (r *PrometheusQueryExecutor) Validate() error {
 
 	if len(r.Queries) == 0 {
 		return errors.New("no queries provided")
-	}
-
-	if r.startTime.IsZero() {
-		return errors.New("start time is not set")
-	}
-
-	if r.endTime.IsZero() {
-		return errors.New("end time is not set")
 	}
 
 	return nil
@@ -140,14 +148,41 @@ func (r *PrometheusQueryExecutor) Warnings() map[string]v1.Warnings {
 func (r *PrometheusQueryExecutor) MustResultsAsValue() map[string]model.Value {
 	results := make(map[string]model.Value)
 	for name, result := range r.QueryResults {
-		results[name] = result.(model.Value)
+		var val model.Value
+		switch v := result.(type) {
+		case model.Matrix:
+			// model.Matrix implements model.Value with value receivers
+			val = v
+		case *model.Matrix:
+			val = v
+		case model.Vector:
+			// model.Vector implements model.Value with value receivers
+			val = v
+		case *model.Vector:
+			val = v
+		case model.Scalar:
+			scalar := v
+			// *model.Scalar implements model.Value
+			val = &scalar
+		case *model.Scalar:
+			val = v
+		case model.String:
+			str := v
+			// *model.String implements model.Value
+			val = &str
+		case *model.String:
+			val = v
+		default:
+			panic(fmt.Sprintf("Unknown result type: %T", result))
+		}
+		results[name] = val
 	}
 	return results
 }
 
 func (r *PrometheusQueryExecutor) TimeRange(startTime, endTime time.Time) {
-	r.startTime = startTime
-	r.endTime = endTime
+	r.StartTime = startTime
+	r.EndTime = endTime
 	return
 }
 
@@ -184,8 +219,8 @@ func (r *PrometheusQueryExecutor) generateStandardQueries(nameRegexPattern strin
 }
 
 type TypedMetric struct {
-	model.Value
-	MetricType string `json:"metric_type"`
+	Value      model.Value `json:"value"`
+	MetricType string      `json:"metric_type"`
 }
 
 func (g *PrometheusQueryExecutor) MarshalJSON() ([]byte, error) {
@@ -232,7 +267,7 @@ func (r *PrometheusQueryExecutor) UnmarshalJSON(data []byte) error {
 	for name, rawResult := range raw.QueryResults {
 		var rawTypedMetric struct {
 			MetricType string          `json:"metric_type"`
-			Value      json.RawMessage `json:"Value"`
+			Value      json.RawMessage `json:"value"`
 		}
 		if err := json.Unmarshal(rawResult, &rawTypedMetric); err != nil {
 			return errors.Wrapf(err, "failed to unmarshal query result for %s", name)
@@ -244,7 +279,7 @@ func (r *PrometheusQueryExecutor) UnmarshalJSON(data []byte) error {
 			if err := json.Unmarshal(rawTypedMetric.Value, &scalar); err != nil {
 				return errors.Wrapf(err, "failed to unmarshal scalar value for %s", name)
 			}
-			convertedQueryResults[name] = scalar
+			convertedQueryResults[name] = &scalar
 		case "vector":
 			var vector model.Vector
 			if err := json.Unmarshal(rawTypedMetric.Value, &vector); err != nil {
@@ -262,7 +297,7 @@ func (r *PrometheusQueryExecutor) UnmarshalJSON(data []byte) error {
 			if err := json.Unmarshal(rawTypedMetric.Value, &str); err != nil {
 				return errors.Wrapf(err, "failed to unmarshal string value for %s", name)
 			}
-			convertedQueryResults[name] = str
+			convertedQueryResults[name] = &str
 		default:
 			return fmt.Errorf("unknown metric type %s", rawTypedMetric.MetricType)
 		}

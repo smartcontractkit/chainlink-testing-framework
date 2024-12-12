@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -169,28 +168,4 @@ func (l *LocalStorage) Load(testName, commitOrTag string, report interface{}) er
 	}
 
 	return nil
-}
-
-func extractTagsOrCommits(directory string) ([]string, error) {
-	pattern := regexp.MustCompile(`.+-(.+)\.json$`)
-
-	files, err := os.ReadDir(directory)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read directory %s", directory)
-	}
-
-	var tagsOrCommits []string
-
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-
-		matches := pattern.FindStringSubmatch(file.Name())
-		if len(matches) == 2 {
-			tagsOrCommits = append(tagsOrCommits, matches[1])
-		}
-	}
-
-	return tagsOrCommits, nil
 }
