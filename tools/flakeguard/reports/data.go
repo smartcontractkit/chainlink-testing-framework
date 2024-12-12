@@ -179,6 +179,15 @@ func aggregate(reportChan <-chan *TestReport) (*TestReport, error) {
 	return fullReport, nil
 }
 
+func aggregateFromReports(reports ...*TestReport) (*TestReport, error) {
+	reportChan := make(chan *TestReport, len(reports))
+	for _, report := range reports {
+		reportChan <- report
+	}
+	close(reportChan)
+	return aggregate(reportChan)
+}
+
 func mergeTestResults(a, b TestResult) TestResult {
 	a.Runs += b.Runs
 	a.Durations = append(a.Durations, b.Durations...)
