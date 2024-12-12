@@ -128,13 +128,13 @@ func FilterTests(results []TestResult, predicate func(TestResult) bool) []TestRe
 	return filtered
 }
 
-func Aggregate(reports ...*TestReport) (*TestReport, error) {
+func aggregate(reportChan <-chan *TestReport) (*TestReport, error) {
 	testMap := make(map[string]TestResult)
 	fullReport := &TestReport{}
 	excludedTests := map[string]struct{}{}
 	selectedTests := map[string]struct{}{}
 
-	for _, report := range reports {
+	for report := range reportChan {
 		if fullReport.GoProject == "" {
 			fullReport.GoProject = report.GoProject
 		} else if fullReport.GoProject != report.GoProject {
@@ -159,6 +159,7 @@ func Aggregate(reports ...*TestReport) (*TestReport, error) {
 		}
 	}
 
+	// Finalize excluded and selected tests
 	for test := range excludedTests {
 		fullReport.ExcludedTests = append(fullReport.ExcludedTests, test)
 	}
@@ -166,6 +167,7 @@ func Aggregate(reports ...*TestReport) (*TestReport, error) {
 		fullReport.SelectedTests = append(fullReport.SelectedTests, test)
 	}
 
+	// Prepare final results
 	var aggregatedResults []TestResult
 	for _, result := range testMap {
 		aggregatedResults = append(aggregatedResults, result)

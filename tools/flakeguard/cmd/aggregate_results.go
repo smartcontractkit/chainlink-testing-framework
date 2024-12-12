@@ -36,25 +36,17 @@ var AggregateResultsCmd = &cobra.Command{
 
 		// Start spinner for loading test reports
 		s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-		s.Suffix = " Loading test reports..."
+		s.Suffix = " Aggregating test reports..."
 		s.Start()
 
-		// Load test reports from JSON files
-		testReports, err := reports.LoadReports(resultsPath)
+		// Load test reports from JSON files and aggregate them
+		aggregatedReport, err := reports.LoadAndAggregate(resultsPath)
 		if err != nil {
 			s.Stop()
 			return fmt.Errorf("error loading test reports: %w", err)
 		}
 		s.Stop()
-		fmt.Println("Test reports loaded successfully.")
-
-		// Start spinner for aggregating reports
-		s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-		s.Suffix = " Aggregating test reports..."
-		s.Start()
-
-		// Aggregate the reports
-		aggregatedReport, err := reports.Aggregate(testReports...)
+		fmt.Println("Test reports aggregated successfully.")
 
 		// Add metadata to the aggregated report
 		aggregatedReport.HeadSHA = headSHA
