@@ -30,6 +30,9 @@ func (l *LocalStorage) cleanTestName(testName string) string {
 	return strings.ReplaceAll(testName, "/", "_")
 }
 
+// Store saves a test report as a JSON file in local storage.
+// It organizes reports by test name and commit/tag, ensuring easy retrieval and management. 
+// Returns the absolute path of the stored report or an error if the operation fails.
 func (l *LocalStorage) Store(testName, commitOrTag string, report interface{}) (string, error) {
 	l.defaultDirectoryIfEmpty()
 	asJson, err := json.MarshalIndent(report, "", " ")
@@ -65,6 +68,8 @@ func (l *LocalStorage) Store(testName, commitOrTag string, report interface{}) (
 	return abs, nil
 }
 
+// Load retrieves a report from local storage based on the specified test name and optional commit or tag.
+// It decodes the report into the provided interface, enabling users to access stored test results.
 func (l *LocalStorage) Load(testName, commitOrTag string, report interface{}) error {
 	l.defaultDirectoryIfEmpty()
 	if testName == "" {

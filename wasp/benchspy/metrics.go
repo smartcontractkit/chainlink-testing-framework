@@ -6,6 +6,9 @@ import (
 	"strconv"
 )
 
+// CalculatePercentile computes the specified percentile of a slice of numbers.
+// It is useful for statistical analysis, allowing users to understand data distributions
+// by retrieving values at specific percentiles, such as median or 95th percentile.
 func CalculatePercentile(numbers []float64, percentile float64) float64 {
 	// Sort the slice
 	sort.Float64s(numbers)
@@ -31,6 +34,8 @@ func CalculatePercentile(numbers []float64, percentile float64) float64 {
 	return numbers[lowerIndex]*(1-weight) + numbers[upperIndex]*weight
 }
 
+// StringSliceToFloat64Slice converts a slice of strings to a slice of float64 values.
+// It returns an error if any string cannot be parsed as a float64, making it useful for data conversion tasks.
 func StringSliceToFloat64Slice(s []string) ([]float64, error) {
 	numbers := make([]float64, len(s))
 	for i, str := range s {
