@@ -11,18 +11,18 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 )
 
-type GeneratorQueryFn = func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error)
+type DirectQueryFn = func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error)
 
-type GeneratorQueryExecutor struct {
-	KindName     string                      `json:"kind"`
-	Generator    *wasp.Generator             `json:"generator_config"`
-	Queries      map[string]GeneratorQueryFn `json:"queries"`
-	QueryResults map[string]interface{}      `json:"query_results"`
+type DirectQueryExecutor struct {
+	KindName     string                   `json:"kind"`
+	Generator    *wasp.Generator          `json:"generator_config"`
+	Queries      map[string]DirectQueryFn `json:"queries"`
+	QueryResults map[string]interface{}   `json:"query_results"`
 }
 
-func NewStandardGeneratorQueryExecutor(generator *wasp.Generator) (*GeneratorQueryExecutor, error) {
-	g := &GeneratorQueryExecutor{
-		KindName: string(StandardQueryExecutor_Generator),
+func NewStandardDirectQueryExecutor(generator *wasp.Generator) (*DirectQueryExecutor, error) {
+	g := &DirectQueryExecutor{
+		KindName: string(StandardQueryExecutor_Direct),
 	}
 
 	queries, err := g.generateStandardQueries()
@@ -30,12 +30,12 @@ func NewStandardGeneratorQueryExecutor(generator *wasp.Generator) (*GeneratorQue
 		return nil, err
 	}
 
-	return NewGeneratorQueryExecutor(generator, queries)
+	return NewDirectQueryExecutor(generator, queries)
 }
 
-func NewGeneratorQueryExecutor(generator *wasp.Generator, queries map[string]GeneratorQueryFn) (*GeneratorQueryExecutor, error) {
-	g := &GeneratorQueryExecutor{
-		KindName:     string(StandardQueryExecutor_Generator),
+func NewDirectQueryExecutor(generator *wasp.Generator, queries map[string]DirectQueryFn) (*DirectQueryExecutor, error) {
+	g := &DirectQueryExecutor{
+		KindName:     string(StandardQueryExecutor_Direct),
 		Generator:    generator,
 		Queries:      queries,
 		QueryResults: make(map[string]interface{}),
@@ -44,22 +44,22 @@ func NewGeneratorQueryExecutor(generator *wasp.Generator, queries map[string]Gen
 	return g, nil
 }
 
-func (g *GeneratorQueryExecutor) Results() map[string]interface{} {
+func (g *DirectQueryExecutor) Results() map[string]interface{} {
 	return g.QueryResults
 }
 
-func (l *GeneratorQueryExecutor) Kind() string {
+func (l *DirectQueryExecutor) Kind() string {
 	return l.KindName
 }
 
-func (g *GeneratorQueryExecutor) IsComparable(otherQueryExecutor QueryExecutor) error {
+func (g *DirectQueryExecutor) IsComparable(otherQueryExecutor QueryExecutor) error {
 	otherType := reflect.TypeOf(otherQueryExecutor)
 
 	if otherType != reflect.TypeOf(g) {
 		return fmt.Errorf("expected type %s, got %s", reflect.TypeOf(g), otherType)
 	}
 
-	otherGeneratorQueryExecutor := otherQueryExecutor.(*GeneratorQueryExecutor)
+	otherGeneratorQueryExecutor := otherQueryExecutor.(*DirectQueryExecutor)
 
 	if compareGeneratorConfigs(g.Generator.Cfg, otherGeneratorQueryExecutor.Generator.Cfg) != nil {
 		return errors.New("generators are not comparable")
@@ -68,7 +68,7 @@ func (g *GeneratorQueryExecutor) IsComparable(otherQueryExecutor QueryExecutor) 
 	return g.compareQueries(otherGeneratorQueryExecutor.Queries)
 }
 
-func (l *GeneratorQueryExecutor) compareQueries(other map[string]GeneratorQueryFn) error {
+func (l *DirectQueryExecutor) compareQueries(other map[string]DirectQueryFn) error {
 	this := l.Queries
 	if len(this) != len(other) {
 		return fmt.Errorf("queries count is different. Expected %d, got %d", len(this), len(other))
@@ -83,7 +83,7 @@ func (l *GeneratorQueryExecutor) compareQueries(other map[string]GeneratorQueryF
 	return nil
 }
 
-func (g *GeneratorQueryExecutor) Validate() error {
+func (g *DirectQueryExecutor) Validate() error {
 	if g.Generator == nil {
 		return errors.New("generator is not set")
 	}
@@ -95,7 +95,7 @@ func (g *GeneratorQueryExecutor) Validate() error {
 	return nil
 }
 
-func (g *GeneratorQueryExecutor) Execute(_ context.Context) error {
+func (g *DirectQueryExecutor) Execute(_ context.Context) error {
 	if g.Generator == nil {
 		return errors.New("generator is not set")
 	}
@@ -130,12 +130,12 @@ func (g *GeneratorQueryExecutor) Execute(_ context.Context) error {
 	return nil
 }
 
-func (g *GeneratorQueryExecutor) TimeRange(_, _ time.Time) {
+func (g *DirectQueryExecutor) TimeRange(_, _ time.Time) {
 	// nothing to do here, since all responses stored in the generator are already in the right time range
 }
 
-func (g *GeneratorQueryExecutor) generateStandardQueries() (map[string]GeneratorQueryFn, error) {
-	standardQueries := make(map[string]GeneratorQueryFn)
+func (g *DirectQueryExecutor) generateStandardQueries() (map[string]DirectQueryFn, error) {
+	standardQueries := make(map[string]DirectQueryFn)
 
 	for _, metric := range standardLoadMetrics {
 		query, err := g.standardQuery(metric)
@@ -148,7 +148,7 @@ func (g *GeneratorQueryExecutor) generateStandardQueries() (map[string]Generator
 	return standardQueries, nil
 }
 
-func (g *GeneratorQueryExecutor) standardQuery(standardMetric StandardLoadMetric) (GeneratorQueryFn, error) {
+func (g *DirectQueryExecutor) standardQuery(standardMetric StandardLoadMetric) (DirectQueryFn, error) {
 	switch standardMetric {
 	case MedianLatency:
 		medianFn := func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error) {
@@ -194,7 +194,7 @@ func (g *GeneratorQueryExecutor) standardQuery(standardMetric StandardLoadMetric
 	}
 }
 
-func (g *GeneratorQueryExecutor) MarshalJSON() ([]byte, error) {
+func (g *DirectQueryExecutor) MarshalJSON() ([]byte, error) {
 	// we need custom marshalling to only include query names, since the functions are not serializable
 	type QueryExecutor struct {
 		Kind         string                 `json:"kind"`
@@ -222,10 +222,10 @@ func (g *GeneratorQueryExecutor) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (g *GeneratorQueryExecutor) UnmarshalJSON(data []byte) error {
+func (g *DirectQueryExecutor) UnmarshalJSON(data []byte) error {
 	// helper struct with QueryExecutors as json.RawMessage and QueryResults as map[string]interface{}
 	// and as actual types
-	type Alias GeneratorQueryExecutor
+	type Alias DirectQueryExecutor
 	var raw struct {
 		Alias
 		GeneratorCfg wasp.Config            `json:"generator_config"`
@@ -238,7 +238,7 @@ func (g *GeneratorQueryExecutor) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	queries := make(map[string]GeneratorQueryFn)
+	queries := make(map[string]DirectQueryFn)
 
 	// unmarshall only query names
 	for _, rawQuery := range raw.Queries {
@@ -256,7 +256,7 @@ func (g *GeneratorQueryExecutor) UnmarshalJSON(data []byte) error {
 		return conversionErr
 	}
 
-	*g = GeneratorQueryExecutor(raw.Alias)
+	*g = DirectQueryExecutor(raw.Alias)
 	g.Queries = queries
 	g.QueryResults = convertedTypes
 	g.Generator = &wasp.Generator{

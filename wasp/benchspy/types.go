@@ -49,7 +49,7 @@ type StandardQueryExecutorType string
 
 const (
 	StandardQueryExecutor_Loki       StandardQueryExecutorType = "loki"
-	StandardQueryExecutor_Generator  StandardQueryExecutorType = "generator"
+	StandardQueryExecutor_Direct     StandardQueryExecutorType = "direct"
 	StandardQueryExecutor_Prometheus StandardQueryExecutorType = "prometheus"
 )
 

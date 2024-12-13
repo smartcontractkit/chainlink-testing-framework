@@ -14,8 +14,8 @@ so there's no dilemma, but with `Loki` and `Prometheus` things get a bit more co
 But first... since each of built-in `QueryExecutors` returns a different data type and we are using `interface{}` type to reflect that,
 we will use convenience functions to cast them to more usable types:
 ```go
-currentAsFloat64 := benchspy.MustAllGeneratorResults(currentReport)
-previousAsloat64 := benchspy.MustAllGeneratorResults(previousReport)
+currentAsFloat64 := benchspy.MustAllDirectResults(currentReport)
+previousAsloat64 := benchspy.MustAllDirectResults(previousReport)
 ```
 
 > [!NOTE]

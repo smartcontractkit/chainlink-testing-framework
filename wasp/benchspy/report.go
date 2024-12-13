@@ -69,8 +69,8 @@ func MustAllLokiResults(sr *StandardReport) map[string][]string {
 	return results
 }
 
-func MustAllGeneratorResults(sr *StandardReport) map[string]float64 {
-	results, err := ResultsAs(0.0, sr.QueryExecutors, StandardQueryExecutor_Generator)
+func MustAllDirectResults(sr *StandardReport) map[string]float64 {
+	results, err := ResultsAs(0.0, sr.QueryExecutors, StandardQueryExecutor_Direct)
 	if err != nil {
 		panic(err)
 	}
@@ -94,12 +94,9 @@ func MustAllPrometheusResults(sr *StandardReport) map[string]model.Value {
 }
 
 func (b *StandardReport) FetchData(ctx context.Context) error {
-	// if b.TestStart.IsZero() || b.TestEnd.IsZero() {
-	// 	fillErr := b.BasicData.FillStartEndTimes()
-	// 	if fillErr != nil {
-	// 		return fillErr
-	// 	}
-	// }
+	if b.TestStart.IsZero() || b.TestEnd.IsZero() {
+		return errors.New("start and end times are not set")
+	}
 
 	errGroup, errCtx := errgroup.WithContext(ctx)
 	for _, queryExecutor := range b.QueryExecutors {
@@ -316,8 +313,8 @@ func initStandardQueryExecutor(kind StandardQueryExecutorType, basicData *BasicD
 			return nil, errors.Wrapf(executorErr, "failed to create standard Loki query executor for generator %s", g.Cfg.GenName)
 		}
 		return executor, nil
-	case StandardQueryExecutor_Generator:
-		executor, executorErr := NewStandardGeneratorQueryExecutor(g)
+	case StandardQueryExecutor_Direct:
+		executor, executorErr := NewStandardDirectQueryExecutor(g)
 		if executorErr != nil {
 			return nil, errors.Wrapf(executorErr, "failed to create standard generator query executor for generator %s", g.Cfg.GenName)
 		}
@@ -375,8 +372,8 @@ func unmarshallQueryExecutors(raw []json.RawMessage) ([]QueryExecutor, error) {
 		switch typeIndicator.Kind {
 		case "loki":
 			executor = &LokiQueryExecutor{}
-		case "generator":
-			executor = &GeneratorQueryExecutor{}
+		case "direct":
+			executor = &DirectQueryExecutor{}
 		case "prometheus":
 			executor = &PrometheusQueryExecutor{}
 		default:
@@ -413,7 +410,7 @@ func convertQueryResults(results map[string]interface{}) (map[string]interface{}
 				for i, elem := range v {
 					str, ok := elem.(string)
 					if !ok {
-						// return original slice if we can't convert, because it composed of different types
+						// return original slice if we can't convert, because its composed of different types
 						converted[key] = v
 						allConverted = false
 						break
@@ -429,7 +426,7 @@ func convertQueryResults(results map[string]interface{}) (map[string]interface{}
 				for i, elem := range v {
 					num, ok := elem.(int)
 					if !ok {
-						// return original slice if we can't convert, because it composed of different types
+						// return original slice if we can't convert, because its composed of different types
 						converted[key] = v
 						allConverted = false
 						break
@@ -445,7 +442,7 @@ func convertQueryResults(results map[string]interface{}) (map[string]interface{}
 				for i, elem := range v {
 					f, ok := elem.(float64)
 					if !ok {
-						// return original slice if we can't convert, because it composed of different types
+						// return original slice if we can't convert, because its composed of different types
 						converted[key] = v
 						allConverted = false
 						break

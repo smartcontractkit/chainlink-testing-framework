@@ -101,4 +101,7 @@ compareMedian(string(benchspy.ErrorRate))
 
 We have used standard metrics, which are the same as in the first test, now let's see how you can use your custom LogQl queries.
 
+> [!NOTE]
+> Don't know whether to use `Loki` or `Direct` query executors? [Read this!](./loki_dillema.md)
+
 You can find the full example [here](...).

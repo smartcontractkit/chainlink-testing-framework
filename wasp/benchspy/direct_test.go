@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBenchSpy_NewGeneratorQueryExecutor(t *testing.T) {
+func TestBenchSpy_NewDirectQueryExecutor(t *testing.T) {
 	t.Run("success case", func(t *testing.T) {
 		gen := &wasp.Generator{
 			Cfg: &wasp.Config{
@@ -27,9 +27,9 @@ func TestBenchSpy_NewGeneratorQueryExecutor(t *testing.T) {
 				},
 			},
 		}
-		executor, err := NewStandardGeneratorQueryExecutor(gen)
+		executor, err := NewStandardDirectQueryExecutor(gen)
 		assert.NoError(t, err)
-		assert.Equal(t, "generator", executor.KindName)
+		assert.Equal(t, "direct", executor.KindName)
 		assert.Equal(t, gen, executor.Generator)
 		assert.NotEmpty(t, executor.Queries)
 		assert.NotNil(t, executor.QueryResults)
@@ -39,7 +39,7 @@ func TestBenchSpy_NewGeneratorQueryExecutor(t *testing.T) {
 	})
 
 	t.Run("nil generator", func(t *testing.T) {
-		executor, err := NewStandardGeneratorQueryExecutor(nil)
+		executor, err := NewStandardDirectQueryExecutor(nil)
 		assert.NoError(t, err)
 
 		err = executor.Validate()
@@ -47,17 +47,17 @@ func TestBenchSpy_NewGeneratorQueryExecutor(t *testing.T) {
 	})
 }
 
-func TestBenchSpy_GeneratorQueryExecutor_Results(t *testing.T) {
+func TestBenchSpy_DirectQueryExecutor_Results(t *testing.T) {
 	expected := map[string]interface{}{
 		"test": "result",
 	}
-	executor := &GeneratorQueryExecutor{
+	executor := &DirectQueryExecutor{
 		QueryResults: expected,
 	}
 	assert.Equal(t, expected, executor.Results())
 }
 
-func TestBenchSpy_GeneratorQueryExecutor_IsComparable(t *testing.T) {
+func TestBenchSpy_DirectQueryExecutor_IsComparable(t *testing.T) {
 	baseGen := &wasp.Generator{
 		Cfg: &wasp.Config{
 			GenName: "my_gen",
@@ -72,29 +72,29 @@ func TestBenchSpy_GeneratorQueryExecutor_IsComparable(t *testing.T) {
 	}
 
 	t.Run("same configs", func(t *testing.T) {
-		exec1, _ := NewStandardGeneratorQueryExecutor(baseGen)
-		exec2, _ := NewStandardGeneratorQueryExecutor(baseGen)
+		exec1, _ := NewStandardDirectQueryExecutor(baseGen)
+		exec2, _ := NewStandardDirectQueryExecutor(baseGen)
 		assert.NoError(t, exec1.IsComparable(exec2))
 	})
 
 	t.Run("different query count", func(t *testing.T) {
-		exec1, _ := NewStandardGeneratorQueryExecutor(baseGen)
-		exec2, _ := NewStandardGeneratorQueryExecutor(baseGen)
-		exec2.Queries = map[string]GeneratorQueryFn{"test": nil}
+		exec1, _ := NewStandardDirectQueryExecutor(baseGen)
+		exec2, _ := NewStandardDirectQueryExecutor(baseGen)
+		exec2.Queries = map[string]DirectQueryFn{"test": nil}
 
 		assert.Error(t, exec1.IsComparable(exec2))
 	})
 
 	t.Run("different queries", func(t *testing.T) {
-		exec1, _ := NewStandardGeneratorQueryExecutor(baseGen)
-		exec2, _ := NewStandardGeneratorQueryExecutor(baseGen)
-		exec2.Queries = map[string]GeneratorQueryFn{"test": nil, "test2": nil, "test3": nil}
+		exec1, _ := NewStandardDirectQueryExecutor(baseGen)
+		exec2, _ := NewStandardDirectQueryExecutor(baseGen)
+		exec2.Queries = map[string]DirectQueryFn{"test": nil, "test2": nil, "test3": nil}
 
 		assert.Error(t, exec1.IsComparable(exec2))
 	})
 
 	t.Run("different configs", func(t *testing.T) {
-		exec1, _ := NewStandardGeneratorQueryExecutor(baseGen)
+		exec1, _ := NewStandardDirectQueryExecutor(baseGen)
 		differentGen := &wasp.Generator{
 			Cfg: &wasp.Config{
 				GenName: "my_gen",
@@ -107,36 +107,36 @@ func TestBenchSpy_GeneratorQueryExecutor_IsComparable(t *testing.T) {
 				},
 			},
 		}
-		exec2, _ := NewStandardGeneratorQueryExecutor(differentGen)
+		exec2, _ := NewStandardDirectQueryExecutor(differentGen)
 		assert.Error(t, exec1.IsComparable(exec2))
 	})
 
 	t.Run("different types", func(t *testing.T) {
-		exec1, _ := NewStandardGeneratorQueryExecutor(baseGen)
+		exec1, _ := NewStandardDirectQueryExecutor(baseGen)
 		exec2 := &LokiQueryExecutor{}
 		assert.Error(t, exec1.IsComparable(exec2))
 	})
 }
 
-func TestBenchSpy_GeneratorQueryExecutor_Validate(t *testing.T) {
+func TestBenchSpy_DirectQueryExecutor_Validate(t *testing.T) {
 	t.Run("valid case", func(t *testing.T) {
-		executor, _ := NewStandardGeneratorQueryExecutor(&wasp.Generator{
+		executor, _ := NewStandardDirectQueryExecutor(&wasp.Generator{
 			Cfg: &wasp.Config{},
 		})
 		assert.NoError(t, executor.Validate())
 	})
 
 	t.Run("missing generator", func(t *testing.T) {
-		executor := &GeneratorQueryExecutor{
-			Queries: map[string]GeneratorQueryFn{"test": nil},
+		executor := &DirectQueryExecutor{
+			Queries: map[string]DirectQueryFn{"test": nil},
 		}
 		assert.Error(t, executor.Validate())
 	})
 
 	t.Run("empty queries", func(t *testing.T) {
-		executor := &GeneratorQueryExecutor{
+		executor := &DirectQueryExecutor{
 			Generator: &wasp.Generator{},
-			Queries:   map[string]GeneratorQueryFn{},
+			Queries:   map[string]DirectQueryFn{},
 		}
 		assert.Error(t, executor.Validate())
 	})
@@ -190,7 +190,7 @@ func (f *fakeGun) Call(l *wasp.Generator) *wasp.Response {
 	panic(fmt.Sprintf("fakeGun.Call called too many times (%d vs %d). Expected maxFailures: %d. Expected maxSuccesses: %d. do adjust your settings (sum of maxSuccesses and maxFilure should be greater than the duration of the segment in seconds)", f.maxFailures+f.maxSuccesses, f.maxFailures+f.maxSuccesses+1, f.maxFailures, f.maxSuccesses))
 }
 
-func TestBenchSpy_GeneratorQueryExecutor_Execute(t *testing.T) {
+func TestBenchSpy_DirectQueryExecutor_Execute(t *testing.T) {
 	t.Run("success case with mixed responses", func(t *testing.T) {
 		cfg := &wasp.Config{
 			GenName:  "my_gen",
@@ -222,7 +222,7 @@ func TestBenchSpy_GeneratorQueryExecutor_Execute(t *testing.T) {
 
 		actualFailures := len(gen.GetData().FailResponses.Data)
 
-		executor, err := NewStandardGeneratorQueryExecutor(gen)
+		executor, err := NewStandardDirectQueryExecutor(gen)
 		assert.NoError(t, err)
 
 		err = executor.Execute(context.Background())
@@ -234,7 +234,7 @@ func TestBenchSpy_GeneratorQueryExecutor_Execute(t *testing.T) {
 		// 4 responses with ~150ms latency (150ms sleep + some execution overhead)
 		// and 2-3 responses with ~200ms latency (200ms sleep + some execution overhead)
 		// expected median latency: (150ms, 151ms>
-		resultsAsFloats, err := ResultsAs(0.0, []QueryExecutor{executor}, StandardQueryExecutor_Generator, string(MedianLatency), string(Percentile95Latency), string(ErrorRate))
+		resultsAsFloats, err := ResultsAs(0.0, []QueryExecutor{executor}, StandardQueryExecutor_Direct, string(MedianLatency), string(Percentile95Latency), string(ErrorRate))
 		assert.NoError(t, err)
 		require.Equal(t, 3, len(resultsAsFloats))
 		require.InDelta(t, 151.0, resultsAsFloats[string(MedianLatency)], 1.0)
@@ -279,7 +279,7 @@ func TestBenchSpy_GeneratorQueryExecutor_Execute(t *testing.T) {
 		require.Equal(t, 0, len(gen.GetData().OKResponses.Data), "expected 0 successful responses")
 		require.GreaterOrEqual(t, len(gen.GetData().FailResponses.Data), 5, "expected >=5 failed responses")
 
-		executor, err := NewStandardGeneratorQueryExecutor(gen)
+		executor, err := NewStandardDirectQueryExecutor(gen)
 		assert.NoError(t, err)
 
 		err = executor.Execute(context.Background())
@@ -316,14 +316,14 @@ func TestBenchSpy_GeneratorQueryExecutor_Execute(t *testing.T) {
 		gen, err := wasp.NewGenerator(cfg)
 		require.NoError(t, err)
 
-		executor, _ := NewStandardGeneratorQueryExecutor(gen)
+		executor, _ := NewStandardDirectQueryExecutor(gen)
 		err = executor.Execute(context.Background())
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "no responses found for generator")
 	})
 }
 
-func TestBenchSpy_GeneratorQueryExecutor_MarshalJSON(t *testing.T) {
+func TestBenchSpy_DirectQueryExecutor_MarshalJSON(t *testing.T) {
 	t.Run("marshal/unmarshal round trip", func(t *testing.T) {
 		gen := &wasp.Generator{
 			Cfg: &wasp.Config{
@@ -337,11 +337,11 @@ func TestBenchSpy_GeneratorQueryExecutor_MarshalJSON(t *testing.T) {
 				},
 			},
 		}
-		original, _ := NewStandardGeneratorQueryExecutor(gen)
+		original, _ := NewStandardDirectQueryExecutor(gen)
 		original.QueryResults["test"] = 2.0
 		original.QueryResults["test2"] = 12.1
 
-		original.Queries = map[string]GeneratorQueryFn{
+		original.Queries = map[string]DirectQueryFn{
 			"test": func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error) {
 				return 2.0, nil
 			},
@@ -353,7 +353,7 @@ func TestBenchSpy_GeneratorQueryExecutor_MarshalJSON(t *testing.T) {
 		data, err := json.Marshal(original)
 		assert.NoError(t, err)
 
-		var recovered GeneratorQueryExecutor
+		var recovered DirectQueryExecutor
 		err = json.Unmarshal(data, &recovered)
 		assert.NoError(t, err)
 
@@ -363,21 +363,21 @@ func TestBenchSpy_GeneratorQueryExecutor_MarshalJSON(t *testing.T) {
 	})
 
 	t.Run("marshal with nil generator", func(t *testing.T) {
-		executor := &GeneratorQueryExecutor{}
+		executor := &DirectQueryExecutor{}
 		data, err := json.Marshal(executor)
 		assert.NoError(t, err)
 		assert.Contains(t, string(data), `"generator_config":null`)
 	})
 
 	t.Run("unmarshal invalid JSON", func(t *testing.T) {
-		var executor GeneratorQueryExecutor
+		var executor DirectQueryExecutor
 		err := json.Unmarshal([]byte(`{invalid json}`), &executor)
 		assert.Error(t, err)
 	})
 }
 
-func TestBenchSpy_GeneratorQueryExecutor_TimeRange(t *testing.T) {
-	executor := &GeneratorQueryExecutor{}
+func TestBenchSpy_DirectQueryExecutor_TimeRange(t *testing.T) {
+	executor := &DirectQueryExecutor{}
 	start := time.Now()
 	end := start.Add(time.Hour)
 

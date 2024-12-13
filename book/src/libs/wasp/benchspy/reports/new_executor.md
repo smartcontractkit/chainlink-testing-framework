@@ -1,7 +1,7 @@
 # BenchSpy - Adding new QueryExecutor
 
 As mentioned previously the `StandardReport` comes with support of three different data types:
-* `WASP generator`
+* `Direct`
 * `Loki`
 * `Prometheus`
 

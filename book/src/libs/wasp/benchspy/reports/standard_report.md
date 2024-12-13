@@ -1,7 +1,7 @@
 # BenchSpy - Standard Report
 
 `StandardReport` comes with built-in support for three types of data sources:
-* `WASP Generator`
+* `Direct`
 * `Loki`
 * `Prometheus`
 
@@ -9,7 +9,7 @@ Each of them allows you to both use pre-defined metrics or use your own.
 
 ## Pre-defined (standard) metrics
 
-### WASP generator and Loki
+### Direct and Loki
 Both query executors focus on the characteristics of the load generated with WASP.
 The datasets they work on are almost identical, because the former allows you to query load-specific
 data before its sent to Loki. The latter offers you richer querying options (via `LogQL`) and access
@@ -79,10 +79,10 @@ var timeouts = func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error)
     return timeoutCount / (timeoutCount + inTimeCount), nil
 }
 
-generatorExectutor, err := NewGeneratorQueryExecutor(generator, map[string]GeneratorQueryFn{
+directExectutor, err := NewDirectQueryExecutor(generator, map[string]DirectQueryFn{
     "timeout_ratio": timeouts,
 })
-require.NoError(t, err, "failed to create WASP Generator Query Executor")
+require.NoError(t, err, "failed to create Direct Query Executor")
 ```
 
 ### Loki
@@ -122,7 +122,7 @@ functional option `WithStandardQueries` you should pass the `QueryExecutors` cre
 ```go
 report, err := benchspy.NewStandardReport(
     "2d1fa3532656c51991c0212afce5f80d2914e34e",
-    benchspy.WithQueryExecutors(generatorExectutor, lokiQueryExecutor, prometheusExecutor),
+    benchspy.WithQueryExecutors(directExectutor, lokiQueryExecutor, prometheusExecutor),
     benchspy.WithGenerators(gen),
 )
 require.NoError(t, err, "failed to create baseline report")

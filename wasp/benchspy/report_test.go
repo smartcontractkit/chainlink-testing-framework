@@ -45,11 +45,11 @@ func TestBenchSpy_NewStandardReport(t *testing.T) {
 	})
 
 	t.Run("successful creation (generator)", func(t *testing.T) {
-		report, err := NewStandardReport("test-commit", WithStandardQueries(StandardQueryExecutor_Generator), WithGenerators(basicGen))
+		report, err := NewStandardReport("test-commit", WithStandardQueries(StandardQueryExecutor_Direct), WithGenerators(basicGen))
 		require.NoError(t, err)
 		assert.NotNil(t, report)
 		assert.Equal(t, 1, len(report.QueryExecutors))
-		assert.IsType(t, &GeneratorQueryExecutor{}, report.QueryExecutors[0])
+		assert.IsType(t, &DirectQueryExecutor{}, report.QueryExecutors[0])
 	})
 
 	t.Run("missing branch label", func(t *testing.T) {
@@ -400,7 +400,7 @@ func TestBenchSpy_StandardReport_UnmarshalJSON(t *testing.T) {
             "test_name": "test1",
             "commit_or_tag": "abc123",
             "query_executors": [{
-                "kind": "generator",
+                "kind": "direct",
                 "queries": [
 					"test generator query"
 				],
@@ -414,8 +414,8 @@ func TestBenchSpy_StandardReport_UnmarshalJSON(t *testing.T) {
 		err := json.Unmarshal([]byte(jsonData), &report)
 		require.NoError(t, err)
 		assert.Equal(t, 1, len(report.QueryExecutors))
-		assert.IsType(t, &GeneratorQueryExecutor{}, report.QueryExecutors[0])
-		asGenerator := report.QueryExecutors[0].(*GeneratorQueryExecutor)
+		assert.IsType(t, &DirectQueryExecutor{}, report.QueryExecutors[0])
+		asGenerator := report.QueryExecutors[0].(*DirectQueryExecutor)
 
 		assert.Equal(t, 1, len(asGenerator.Queries))
 		_, keyExists := asGenerator.Queries["test generator query"]
@@ -423,7 +423,7 @@ func TestBenchSpy_StandardReport_UnmarshalJSON(t *testing.T) {
 		assert.Nil(t, asGenerator.Queries["test generator query"])
 		assert.Equal(t, 1, len(asGenerator.Results()))
 		assert.IsType(t, "string", asGenerator.Results()["test generator query"])
-		asStringSlice, err := ResultsAs("string", report.QueryExecutors, StandardQueryExecutor_Generator, "test generator query")
+		asStringSlice, err := ResultsAs("string", report.QueryExecutors, StandardQueryExecutor_Direct, "test generator query")
 		require.NoError(t, err)
 		assert.Equal(t, "1", asStringSlice["test generator query"])
 	})
@@ -976,7 +976,7 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 				}
 			},
 			KindFn: func() string {
-				return string(StandardQueryExecutor_Generator)
+				return string(StandardQueryExecutor_Direct)
 			},
 		}
 
@@ -984,7 +984,7 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 			QueryExecutors: []QueryExecutor{mockGenExec},
 		}
 
-		results := MustAllGeneratorResults(sr)
+		results := MustAllDirectResults(sr)
 		assert.Equal(t, 2, len(results))
 		assert.Equal(t, 1.0, results["query1"])
 		assert.Equal(t, 2.0, results["query2"])
@@ -1053,7 +1053,7 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 				}
 			},
 			KindFn: func() string {
-				return string(StandardQueryExecutor_Generator)
+				return string(StandardQueryExecutor_Direct)
 			},
 		}
 
@@ -1062,7 +1062,7 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 		}
 
 		assert.Panics(t, func() {
-			MustAllGeneratorResults(sr)
+			MustAllDirectResults(sr)
 		})
 	})
 
@@ -1085,7 +1085,7 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 				}
 			},
 			KindFn: func() string {
-				return string(StandardQueryExecutor_Generator)
+				return string(StandardQueryExecutor_Direct)
 			},
 		}
 
@@ -1097,7 +1097,7 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 		assert.Equal(t, 1, len(lokiResults))
 		assert.Equal(t, []string{"log1", "log2"}, lokiResults["loki_query"])
 
-		genResults := MustAllGeneratorResults(sr)
+		genResults := MustAllDirectResults(sr)
 		assert.Equal(t, 1, len(genResults))
 		assert.Equal(t, 1.0, genResults["gen_query"])
 	})
@@ -1150,7 +1150,7 @@ func TestBenchSpy_FetchNewReportAndLoadLatestPrevious(t *testing.T) {
 		gen.Run(true)
 
 		prevReport, err := NewStandardReport("a7fc5826a572c09f8b93df3b9f674113372ce924",
-			WithStandardQueries(StandardQueryExecutor_Generator),
+			WithStandardQueries(StandardQueryExecutor_Direct),
 			WithGenerators(gen),
 			WithReportDirectory(tmpDir))
 		require.NoError(t, err)
@@ -1160,7 +1160,7 @@ func TestBenchSpy_FetchNewReportAndLoadLatestPrevious(t *testing.T) {
 		newReport, prevLoadedReport, err := FetchNewStandardReportAndLoadLatestPrevious(
 			context.Background(),
 			"new-commit",
-			WithStandardQueries(StandardQueryExecutor_Generator),
+			WithStandardQueries(StandardQueryExecutor_Direct),
 			WithGenerators(gen),
 			WithReportDirectory(tmpDir),
 		)
@@ -1178,7 +1178,7 @@ func TestBenchSpy_FetchNewReportAndLoadLatestPrevious(t *testing.T) {
 		newReport, prevReport, err := FetchNewStandardReportAndLoadLatestPrevious(
 			context.Background(),
 			"new-commit-7",
-			WithStandardQueries(StandardQueryExecutor_Generator),
+			WithStandardQueries(StandardQueryExecutor_Direct),
 			WithGenerators(basicGen),
 			WithReportDirectory(tmpDir),
 		)

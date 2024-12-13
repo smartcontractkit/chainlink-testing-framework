@@ -2,7 +2,7 @@
 
 Let's start with a simplest case, which doesn't require you to have any of the observability stack, but only `WASP` and the application you are testing.
 `BenchSpy` comes with some built-in `QueryExecutors` each of which additionaly has predefined metrics that you can use. One of these executors is the
-`GeneratorQueryExecutor` that fetches metrics directly from `WASP` generators.
+`DirectQueryExecutor` that fetches metrics directly from `WASP` generators.
 
 Our first test will follow the following logic:
 * Run a simple load test
@@ -37,7 +37,7 @@ baseLineReport, err := benchspy.NewStandardReport(
     // random hash, this should be commit or hash of the Application Under Test (AUT)
     "e7fc5826a572c09f8b93df3b9f674113372ce924",
     // use built-in queries for an executor that fetches data directly from the WASP generator
-    benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Generator),
+    benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Direct),
     // WASP generators
     benchspy.WithGenerators(gen),
 )
@@ -85,7 +85,7 @@ defer cancelFn()
 currentReport, previousReport, err := benchspy.FetchNewStandardReportAndLoadLatestPrevious(
     fetchCtx,
     "e7fc5826a572c09f8b93df3b9f674113372ce925",
-    benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Generator),
+    benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Direct),
     benchspy.WithGenerators(newGen),
 )
 require.NoError(t, err, "failed to fetch current report or load the previous one")

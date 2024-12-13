@@ -14,7 +14,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp/benchspy"
 )
 
-func TestBenchSpy_Standard_Generator_Metrics(t *testing.T) {
+func TestBenchSpy_Standard_Direct_Metrics(t *testing.T) {
 	gen, err := wasp.NewGenerator(&wasp.Config{
 		T:           t,
 		GenName:     "vu",
@@ -34,7 +34,7 @@ func TestBenchSpy_Standard_Generator_Metrics(t *testing.T) {
 
 	baseLineReport, err := benchspy.NewStandardReport(
 		"e7fc5826a572c09f8b93df3b9f674113372ce924",
-		benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Generator),
+		benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Direct),
 		benchspy.WithGenerators(gen),
 	)
 	require.NoError(t, err, "failed to create baseline report")
@@ -66,7 +66,7 @@ func TestBenchSpy_Standard_Generator_Metrics(t *testing.T) {
 	currentReport, previousReport, err := benchspy.FetchNewStandardReportAndLoadLatestPrevious(
 		fetchCtx,
 		"e7fc5826a572c09f8b93df3b9f674113372ce925",
-		benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Generator),
+		benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Direct),
 		benchspy.WithGenerators(newGen),
 	)
 	require.NoError(t, err, "failed to fetch current report or load the previous one")
@@ -74,8 +74,8 @@ func TestBenchSpy_Standard_Generator_Metrics(t *testing.T) {
 	// make sure that previous report is the same as the baseline report
 	require.Equal(t, baseLineReport.CommitOrTag, previousReport.CommitOrTag, "current report should be the same as the original report")
 
-	currentAsFloat64 := benchspy.MustAllGeneratorResults(currentReport)
-	previousAsloat64 := benchspy.MustAllGeneratorResults(previousReport)
+	currentAsFloat64 := benchspy.MustAllDirectResults(currentReport)
+	previousAsloat64 := benchspy.MustAllDirectResults(previousReport)
 
 	var compareValues = func(
 		metricName string,
