@@ -4,6 +4,7 @@ package sentinel
 import (
 	"fmt"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -14,7 +15,7 @@ import (
 
 // SentinelConfig holds configuration for the Sentinel.
 type SentinelConfig struct {
-	Logger zerolog.Logger
+	t *testing.T
 }
 
 type AddChainConfig struct {
@@ -24,18 +25,20 @@ type AddChainConfig struct {
 }
 
 type Sentinel struct {
-	config   SentinelConfig
+	l        *zerolog.Logger
 	mu       sync.RWMutex
 	services map[int64]*chain_poller_service.ChainPollerService // Map of chainID to ChianPollerService
 }
 
 // NewSentinel initializes and returns a new Sentinel instance.
 func NewSentinel(cfg SentinelConfig) *Sentinel {
-	cfg.Logger = cfg.Logger.With().Str("component", "Sentinel").Logger()
-	cfg.Logger.Info().Msg("Initializing Sentinel")
+	logger := GetLogger(cfg.t, "Sentinel")
+	logger.Info().Msg("Initializing Sentinel")
+	logger.Debug().Msg("Initializing Sentinel")
+	logger.Info().Str("Level", logger.GetLevel().String()).Msg("Initializing Sentinel")
 	return &Sentinel{
-		config:   cfg,
 		services: make(map[int64]*chain_poller_service.ChainPollerService),
+		l:        &logger,
 	}
 }
 
@@ -51,7 +54,7 @@ func (s *Sentinel) AddChain(acc AddChainConfig) error {
 	cfg := chain_poller_service.ChainPollerServiceConfig{
 		PollInterval:     acc.PollInterval,
 		ChainID:          acc.ChainID,
-		Logger:           &s.config.Logger,
+		Logger:           s.l,
 		BlockchainClient: acc.BlockchainClient,
 	}
 
@@ -60,7 +63,7 @@ func (s *Sentinel) AddChain(acc AddChainConfig) error {
 		return fmt.Errorf("failed to initialize ChainPollerService: %w", err)
 	}
 	s.services[cfg.ChainID] = eps
-	s.config.Logger.Info().Int64("ChainID", cfg.ChainID).Msg("Added new chain")
+	s.l.Info().Int64("ChainID", cfg.ChainID).Msg("Added new chain")
 	eps.Start()
 	return nil
 }
@@ -77,7 +80,7 @@ func (s *Sentinel) RemoveChain(chainID int64) error {
 
 	eps.Stop()
 	delete(s.services, chainID)
-	s.config.Logger.Info().Msg("Removed chain")
+	s.l.Info().Msg("Removed chain")
 	return nil
 }
 

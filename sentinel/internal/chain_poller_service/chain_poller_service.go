@@ -69,7 +69,7 @@ func NewChainPollerService(cfg ChainPollerServiceConfig) (*ChainPollerService, e
 		return nil, fmt.Errorf("failed to initialize ChainPoller: %w", err)
 	}
 
-	l := cfg.Logger.With().Str("component", "ChainPollerService").Logger().With().Int64("ChainID", cfg.ChainID).Logger()
+	l := cfg.Logger.With().Str("Component", "ChainPollerService").Logger().With().Int64("ChainID", cfg.ChainID).Logger()
 
 	cfg.Logger = &l
 

@@ -35,7 +35,7 @@ func NewChainPoller(cfg ChainPollerConfig) (*ChainPoller, error) {
 		return nil, errors.New("chain ID not set")
 	}
 
-	logger := cfg.Logger.With().Str("component", "ChainPoller").Logger().With().Int64("ChainID", cfg.ChainID).Logger()
+	logger := cfg.Logger.With().Str("Component", "ChainPoller").Logger().With().Int64("ChainID", cfg.ChainID).Logger()
 
 	return &ChainPoller{
 		blockchainClient: cfg.BlockchainClient,

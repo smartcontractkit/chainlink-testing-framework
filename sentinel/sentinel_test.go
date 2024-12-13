@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/api"
 	"github.com/smartcontractkit/chainlink-testing-framework/sentinel/internal"
 )
@@ -18,10 +17,7 @@ import (
 // Helper function to initialize a Sentinel instance for testing.
 func setupSentinel(t *testing.T) *Sentinel {
 	t.Helper()
-	logger := logging.GetTestLogger(t)
-	s := NewSentinel(SentinelConfig{
-		Logger: logger,
-	})
+	s := NewSentinel(SentinelConfig{t: t})
 
 	// Ensure Sentinel is closed after the test.
 	t.Cleanup(func() {

@@ -33,7 +33,7 @@ type SubscriptionManager struct {
 
 // NewSubscriptionManager initializes a new SubscriptionManager.
 func NewSubscriptionManager(cfg SubscriptionManagerConfig) *SubscriptionManager {
-	subscriptionManagerLogger := cfg.Logger.With().Str("component", "SubscriptionManager").Logger()
+	subscriptionManagerLogger := cfg.Logger.With().Str("Component", "SubscriptionManager").Logger()
 
 	return &SubscriptionManager{
 		registry:          make(map[internal.EventKey][]chan api.Log),
