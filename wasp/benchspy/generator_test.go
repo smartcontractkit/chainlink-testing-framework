@@ -314,6 +314,7 @@ func TestBenchSpy_GeneratorQueryExecutor_Execute(t *testing.T) {
 
 		cfg.Gun = fakeGun
 		gen, err := wasp.NewGenerator(cfg)
+		require.NoError(t, err)
 
 		executor, _ := NewGeneratorQueryExecutor(gen)
 		err = executor.Execute(context.Background())

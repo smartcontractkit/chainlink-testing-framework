@@ -12,6 +12,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestLokiClient_QueryLogs tests the LokiClient's ability to query Loki logs
@@ -135,9 +136,9 @@ func TestBenchSpy_LokiClient_InternalServerError(t *testing.T) {
 }
 
 func TestBenchSpy_LokiClient_DebugMode(t *testing.T) {
-	// Set the RESTY_DEBUG environment variable
-	os.Setenv("RESTY_DEBUG", "true")
-	defer os.Unsetenv("RESTY_DEBUG") // Clean up after the test
+	err := os.Setenv("RESTY_DEBUG", "true")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.Unsetenv("RESTY_DEBUG") })
 
 	// Create a mock Loki server
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

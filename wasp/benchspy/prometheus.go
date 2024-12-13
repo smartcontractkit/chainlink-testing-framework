@@ -183,7 +183,6 @@ func (r *PrometheusQueryExecutor) MustResultsAsValue() map[string]model.Value {
 func (r *PrometheusQueryExecutor) TimeRange(startTime, endTime time.Time) {
 	r.StartTime = startTime
 	r.EndTime = endTime
-	return
 }
 
 func (r *PrometheusQueryExecutor) standardQuery(metric StandardResourceMetric, nameRegexPattern string, startTime, endTime time.Time) (string, error) {

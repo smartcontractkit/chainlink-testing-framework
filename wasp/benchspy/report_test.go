@@ -89,10 +89,22 @@ func TestBenchSpy_NewStandardReport(t *testing.T) {
 	})
 
 	t.Run("missing loki config", func(t *testing.T) {
-		gen := *basicGen
-		gen.Cfg.LokiConfig = nil
+		gen := &wasp.Generator{
+			Cfg: &wasp.Config{
+				T:       t,
+				GenName: "test-gen",
+				Labels: map[string]string{
+					"branch": "main",
+					"commit": "abc123",
+				},
+				Schedule: []*wasp.Segment{
+					{StartTime: baseTime, EndTime: baseTime.Add(time.Hour)},
+				},
+				// no loki config
+			},
+		}
 
-		report, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(&gen))
+		report, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(gen))
 		require.Nil(t, report)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "loki config is missing")

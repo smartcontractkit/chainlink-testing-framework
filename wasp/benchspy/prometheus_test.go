@@ -351,7 +351,6 @@ func (m *mockQueryExecutor) Kind() string {
 }
 
 func (r *mockQueryExecutor) TimeRange(startTime, endTime time.Time) {
-	return
 }
 
 func (m *mockQueryExecutor) Results() map[string]interface{} {

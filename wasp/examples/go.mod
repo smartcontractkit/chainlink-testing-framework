@@ -5,11 +5,11 @@ go 1.23
 toolchain go1.23.3
 
 replace github.com/smartcontractkit/chainlink-testing-framework/wasp => ../
-replace github.com/smartcontractkit/chainlink-testing-framework/lib => ../../lib
 
 require (
 	github.com/K-Phoen/grabana v0.22.2
 	github.com/go-resty/resty/v2 v2.15.3
+	github.com/prometheus/common v0.60.0
 	github.com/smartcontractkit/chainlink-testing-framework/wasp v1.50.1
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/ratelimit v0.3.1
@@ -206,7 +206,6 @@ require (
 	github.com/prometheus/alertmanager v0.26.0 // indirect
 	github.com/prometheus/client_golang v1.20.5 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
-	github.com/prometheus/common v0.60.0 // indirect
 	github.com/prometheus/common/sigv4 v0.1.0 // indirect
 	github.com/prometheus/exporter-toolkit v0.10.1-0.20230714054209-2f4150c63f97 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
@@ -220,7 +219,7 @@ require (
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/smartcontractkit/chainlink-testing-framework/lib v1.50.18 // indirect
+	github.com/smartcontractkit/chainlink-testing-framework/lib v1.50.20-0.20241211181913-305088e7925a // indirect
 	github.com/smartcontractkit/chainlink-testing-framework/lib/grafana v1.50.0 // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
 	github.com/sony/gobreaker v0.5.0 // indirect

@@ -380,8 +380,9 @@ func TestBenchSpy_LocalStorage_Store(t *testing.T) {
 		_, err = os.Stat(filepath.Join(DEFAULT_DIRECTORY, "test-abc123.json"))
 		require.NoError(t, err)
 
-		// Cleanup
-		os.RemoveAll(DEFAULT_DIRECTORY)
+		t.Cleanup(func() {
+			_ = os.RemoveAll(DEFAULT_DIRECTORY)
+		})
 	})
 
 	t.Run("handles special characters in test name and commit", func(t *testing.T) {
@@ -407,7 +408,7 @@ func TestBenchSpy_LocalStorage_Store(t *testing.T) {
 		require.Error(t, err)
 
 		// Restore permissions for cleanup
-		require.NoError(t, os.Chmod(restrictedDir, 0755))
+		t.Cleanup(func() { _ = os.Chmod(restrictedDir, 0755) })
 	})
 }
 func TestBenchSpy_LocalStorage_Load_GitEdgeCases(t *testing.T) {
@@ -485,7 +486,7 @@ func TestBenchSpy_LocalStorage_Load_GitEdgeCases(t *testing.T) {
 func TestBenchSpy_LocalStorage_Load_PathEdgeCases(t *testing.T) {
 	t.Run("loads with relative directory path", func(t *testing.T) {
 		relDir := "./test_reports"
-		defer os.RemoveAll(relDir)
+		t.Cleanup(func() { _ = os.RemoveAll(relDir) })
 
 		storage := &LocalStorage{Directory: relDir}
 		testData := testReport{Data: "test"}
