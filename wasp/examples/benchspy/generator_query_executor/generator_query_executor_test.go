@@ -34,7 +34,7 @@ func TestBenchSpy_Standard_Generator_Metrics(t *testing.T) {
 
 	baseLineReport, err := benchspy.NewStandardReport(
 		"e7fc5826a572c09f8b93df3b9f674113372ce924",
-		benchspy.WithQueryExecutorType(benchspy.StandardQueryExecutor_Generator),
+		benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Generator),
 		benchspy.WithGenerators(gen),
 	)
 	require.NoError(t, err, "failed to create baseline report")
@@ -66,7 +66,7 @@ func TestBenchSpy_Standard_Generator_Metrics(t *testing.T) {
 	currentReport, previousReport, err := benchspy.FetchNewStandardReportAndLoadLatestPrevious(
 		fetchCtx,
 		"e7fc5826a572c09f8b93df3b9f674113372ce925",
-		benchspy.WithQueryExecutorType(benchspy.StandardQueryExecutor_Generator),
+		benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Generator),
 		benchspy.WithGenerators(newGen),
 	)
 	require.NoError(t, err, "failed to fetch current report or load the previous one")

@@ -38,7 +38,7 @@ func TestBenchSpy_Standard_Loki_Metrics(t *testing.T) {
 
 	baseLineReport, err := benchspy.NewStandardReport(
 		"c2cf545d733eef8bad51d685fcb302e277d7ca14",
-		benchspy.WithQueryExecutorType(benchspy.StandardQueryExecutor_Loki),
+		benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Loki),
 		benchspy.WithGenerators(gen),
 	)
 	require.NoError(t, err, "failed to create original report")
@@ -74,7 +74,7 @@ func TestBenchSpy_Standard_Loki_Metrics(t *testing.T) {
 	currentReport, previousReport, err := benchspy.FetchNewStandardReportAndLoadLatestPrevious(
 		fetchCtx,
 		"c2cf545d733eef8bad51d685fcb302e277d7ca15",
-		benchspy.WithQueryExecutorType(benchspy.StandardQueryExecutor_Loki),
+		benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Loki),
 		benchspy.WithGenerators(newGen),
 	)
 	require.NoError(t, err, "failed to fetch current report or load the previous one")

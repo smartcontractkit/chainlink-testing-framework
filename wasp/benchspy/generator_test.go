@@ -27,7 +27,7 @@ func TestBenchSpy_NewGeneratorQueryExecutor(t *testing.T) {
 				},
 			},
 		}
-		executor, err := NewGeneratorQueryExecutor(gen)
+		executor, err := NewStandardGeneratorQueryExecutor(gen)
 		assert.NoError(t, err)
 		assert.Equal(t, "generator", executor.KindName)
 		assert.Equal(t, gen, executor.Generator)
@@ -39,7 +39,7 @@ func TestBenchSpy_NewGeneratorQueryExecutor(t *testing.T) {
 	})
 
 	t.Run("nil generator", func(t *testing.T) {
-		executor, err := NewGeneratorQueryExecutor(nil)
+		executor, err := NewStandardGeneratorQueryExecutor(nil)
 		assert.NoError(t, err)
 
 		err = executor.Validate()
@@ -72,29 +72,29 @@ func TestBenchSpy_GeneratorQueryExecutor_IsComparable(t *testing.T) {
 	}
 
 	t.Run("same configs", func(t *testing.T) {
-		exec1, _ := NewGeneratorQueryExecutor(baseGen)
-		exec2, _ := NewGeneratorQueryExecutor(baseGen)
+		exec1, _ := NewStandardGeneratorQueryExecutor(baseGen)
+		exec2, _ := NewStandardGeneratorQueryExecutor(baseGen)
 		assert.NoError(t, exec1.IsComparable(exec2))
 	})
 
 	t.Run("different query count", func(t *testing.T) {
-		exec1, _ := NewGeneratorQueryExecutor(baseGen)
-		exec2, _ := NewGeneratorQueryExecutor(baseGen)
+		exec1, _ := NewStandardGeneratorQueryExecutor(baseGen)
+		exec2, _ := NewStandardGeneratorQueryExecutor(baseGen)
 		exec2.Queries = map[string]GeneratorQueryFn{"test": nil}
 
 		assert.Error(t, exec1.IsComparable(exec2))
 	})
 
 	t.Run("different queries", func(t *testing.T) {
-		exec1, _ := NewGeneratorQueryExecutor(baseGen)
-		exec2, _ := NewGeneratorQueryExecutor(baseGen)
+		exec1, _ := NewStandardGeneratorQueryExecutor(baseGen)
+		exec2, _ := NewStandardGeneratorQueryExecutor(baseGen)
 		exec2.Queries = map[string]GeneratorQueryFn{"test": nil, "test2": nil, "test3": nil}
 
 		assert.Error(t, exec1.IsComparable(exec2))
 	})
 
 	t.Run("different configs", func(t *testing.T) {
-		exec1, _ := NewGeneratorQueryExecutor(baseGen)
+		exec1, _ := NewStandardGeneratorQueryExecutor(baseGen)
 		differentGen := &wasp.Generator{
 			Cfg: &wasp.Config{
 				GenName: "my_gen",
@@ -107,12 +107,12 @@ func TestBenchSpy_GeneratorQueryExecutor_IsComparable(t *testing.T) {
 				},
 			},
 		}
-		exec2, _ := NewGeneratorQueryExecutor(differentGen)
+		exec2, _ := NewStandardGeneratorQueryExecutor(differentGen)
 		assert.Error(t, exec1.IsComparable(exec2))
 	})
 
 	t.Run("different types", func(t *testing.T) {
-		exec1, _ := NewGeneratorQueryExecutor(baseGen)
+		exec1, _ := NewStandardGeneratorQueryExecutor(baseGen)
 		exec2 := &LokiQueryExecutor{}
 		assert.Error(t, exec1.IsComparable(exec2))
 	})
@@ -120,7 +120,7 @@ func TestBenchSpy_GeneratorQueryExecutor_IsComparable(t *testing.T) {
 
 func TestBenchSpy_GeneratorQueryExecutor_Validate(t *testing.T) {
 	t.Run("valid case", func(t *testing.T) {
-		executor, _ := NewGeneratorQueryExecutor(&wasp.Generator{
+		executor, _ := NewStandardGeneratorQueryExecutor(&wasp.Generator{
 			Cfg: &wasp.Config{},
 		})
 		assert.NoError(t, executor.Validate())
@@ -222,7 +222,7 @@ func TestBenchSpy_GeneratorQueryExecutor_Execute(t *testing.T) {
 
 		actualFailures := len(gen.GetData().FailResponses.Data)
 
-		executor, err := NewGeneratorQueryExecutor(gen)
+		executor, err := NewStandardGeneratorQueryExecutor(gen)
 		assert.NoError(t, err)
 
 		err = executor.Execute(context.Background())
@@ -279,7 +279,7 @@ func TestBenchSpy_GeneratorQueryExecutor_Execute(t *testing.T) {
 		require.Equal(t, 0, len(gen.GetData().OKResponses.Data), "expected 0 successful responses")
 		require.GreaterOrEqual(t, len(gen.GetData().FailResponses.Data), 5, "expected >=5 failed responses")
 
-		executor, err := NewGeneratorQueryExecutor(gen)
+		executor, err := NewStandardGeneratorQueryExecutor(gen)
 		assert.NoError(t, err)
 
 		err = executor.Execute(context.Background())
@@ -316,7 +316,7 @@ func TestBenchSpy_GeneratorQueryExecutor_Execute(t *testing.T) {
 		gen, err := wasp.NewGenerator(cfg)
 		require.NoError(t, err)
 
-		executor, _ := NewGeneratorQueryExecutor(gen)
+		executor, _ := NewStandardGeneratorQueryExecutor(gen)
 		err = executor.Execute(context.Background())
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "no responses found for generator")
@@ -337,7 +337,7 @@ func TestBenchSpy_GeneratorQueryExecutor_MarshalJSON(t *testing.T) {
 				},
 			},
 		}
-		original, _ := NewGeneratorQueryExecutor(gen)
+		original, _ := NewStandardGeneratorQueryExecutor(gen)
 		original.QueryResults["test"] = 2.0
 		original.QueryResults["test2"] = 12.1
 

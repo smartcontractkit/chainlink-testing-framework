@@ -20,10 +20,9 @@ type GeneratorQueryExecutor struct {
 	QueryResults map[string]interface{}      `json:"query_results"`
 }
 
-func NewGeneratorQueryExecutor(generator *wasp.Generator) (*GeneratorQueryExecutor, error) {
+func NewStandardGeneratorQueryExecutor(generator *wasp.Generator) (*GeneratorQueryExecutor, error) {
 	g := &GeneratorQueryExecutor{
-		KindName:  string(StandardQueryExecutor_Generator),
-		Generator: generator,
+		KindName: string(StandardQueryExecutor_Generator),
 	}
 
 	queries, err := g.generateStandardQueries()
@@ -31,8 +30,16 @@ func NewGeneratorQueryExecutor(generator *wasp.Generator) (*GeneratorQueryExecut
 		return nil, err
 	}
 
-	g.Queries = queries
-	g.QueryResults = make(map[string]interface{})
+	return NewGeneratorQueryExecutor(generator, queries)
+}
+
+func NewGeneratorQueryExecutor(generator *wasp.Generator, queries map[string]GeneratorQueryFn) (*GeneratorQueryExecutor, error) {
+	g := &GeneratorQueryExecutor{
+		KindName:     string(StandardQueryExecutor_Generator),
+		Generator:    generator,
+		Queries:      queries,
+		QueryResults: make(map[string]interface{}),
+	}
 
 	return g, nil
 }
@@ -165,6 +172,10 @@ func (g *GeneratorQueryExecutor) standardQuery(standardMetric StandardLoadMetric
 		return p95Fn, nil
 	case ErrorRate:
 		errorRateFn := func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error) {
+			if len(responses.Data) == 0 {
+				return 0, nil
+			}
+
 			failedCount := 0.0
 			successfulCount := 0.0
 			for _, response := range responses.Data {

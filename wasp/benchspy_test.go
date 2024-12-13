@@ -269,7 +269,7 @@ func TestBenchSpyWithStandardLokiMetrics(t *testing.T) {
 	fetchCtx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancelFn()
 
-	currentReport, previousReport, err := benchspy.FetchNewStandardReportAndLoadLatestPrevious(fetchCtx, "e7fc5826a572c09f8b93df3b9f674113372ce925", benchspy.WithQueryExecutorType(benchspy.StandardQueryExecutor_Loki), benchspy.WithGenerators(gen), benchspy.WithReportDirectory("test_performance_reports"))
+	currentReport, previousReport, err := benchspy.FetchNewStandardReportAndLoadLatestPrevious(fetchCtx, "e7fc5826a572c09f8b93df3b9f674113372ce925", benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Loki), benchspy.WithGenerators(gen), benchspy.WithReportDirectory("test_performance_reports"))
 	require.NoError(t, err, "failed to fetch current report or load the previous one")
 
 	// path, storeErr := currentReport.Store()
@@ -325,7 +325,7 @@ func TestBenchSpyWithStandardGeneratorMetrics(t *testing.T) {
 
 	gen.Run(true)
 
-	currentReport, err := benchspy.NewStandardReport("e7fc5826a572c09f8b93df3b9f674113372ce925", benchspy.WithQueryExecutorType(benchspy.StandardQueryExecutor_Generator), benchspy.WithGenerators(gen))
+	currentReport, err := benchspy.NewStandardReport("e7fc5826a572c09f8b93df3b9f674113372ce925", benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Generator), benchspy.WithGenerators(gen))
 	require.NoError(t, err)
 
 	// context is not really needed, since we are using a generator, but it's required by the FetchData method
@@ -401,7 +401,7 @@ func TestBenchSpy_Prometheus_And_Generator(t *testing.T) {
 		NameRegexPatterns: []string{"node[^0]"},
 	}
 
-	currentReport, err := benchspy.NewStandardReport("e7fc5826a572c09f8b93df3b9f674113372ce925", benchspy.WithQueryExecutorType(benchspy.StandardQueryExecutor_Generator), benchspy.WithGenerators(gen), benchspy.WithPrometheusConfig(&promConfig))
+	currentReport, err := benchspy.NewStandardReport("e7fc5826a572c09f8b93df3b9f674113372ce925", benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Generator), benchspy.WithGenerators(gen), benchspy.WithPrometheusConfig(&promConfig))
 	require.NoError(t, err)
 
 	// context is not really needed, since we are using a generator, but it's required by the FetchData method

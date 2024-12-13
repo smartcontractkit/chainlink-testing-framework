@@ -41,7 +41,7 @@ func TestBenchSpy_Standard_Prometheus_And_Loki_Metrics(t *testing.T) {
 
 	baseLineReport, err := benchspy.NewStandardReport(
 		"91ee9e3c903d52de12f3d0c1a07ac3c2a6d141fb",
-		benchspy.WithQueryExecutorType(benchspy.StandardQueryExecutor_Prometheus, benchspy.StandardQueryExecutor_Loki),
+		benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Prometheus, benchspy.StandardQueryExecutor_Loki),
 		benchspy.WithPrometheusConfig(benchspy.NewPrometheusConfig("node[^0]")),
 		benchspy.WithGenerators(gen),
 	)
@@ -81,7 +81,7 @@ func TestBenchSpy_Standard_Prometheus_And_Loki_Metrics(t *testing.T) {
 	currentReport, previousReport, err := benchspy.FetchNewStandardReportAndLoadLatestPrevious(
 		fetchCtx,
 		"91ee9e3c903d52de12f3d0c1a07ac3c2a6d141fc",
-		benchspy.WithQueryExecutorType(benchspy.StandardQueryExecutor_Prometheus, benchspy.StandardQueryExecutor_Loki),
+		benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Prometheus, benchspy.StandardQueryExecutor_Loki),
 		benchspy.WithPrometheusConfig(benchspy.NewPrometheusConfig("node[^0]")),
 		benchspy.WithGenerators(newGen),
 	)

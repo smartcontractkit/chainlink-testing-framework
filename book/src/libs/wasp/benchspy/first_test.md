@@ -37,7 +37,7 @@ baseLineReport, err := benchspy.NewStandardReport(
     // random hash, this should be commit or hash of the Application Under Test (AUT)
     "e7fc5826a572c09f8b93df3b9f674113372ce924",
     // use built-in queries for an executor that fetches data directly from the WASP generator
-    benchspy.WithStandardQueryExecutorType(benchspy.StandardQueryExecutor_Generator),
+    benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Generator),
     // WASP generators
     benchspy.WithGenerators(gen),
 )
@@ -85,7 +85,7 @@ defer cancelFn()
 currentReport, previousReport, err := benchspy.FetchNewStandardReportAndLoadLatestPrevious(
     fetchCtx,
     "e7fc5826a572c09f8b93df3b9f674113372ce925",
-    benchspy.WithStandardQueryExecutorType(benchspy.StandardQueryExecutor_Generator),
+    benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Generator),
     benchspy.WithGenerators(newGen),
 )
 require.NoError(t, err, "failed to fetch current report or load the previous one")

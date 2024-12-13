@@ -22,7 +22,7 @@ Just like in previous examples we will use built-in Prometheus metrics and fetch
 ```go
 baseLineReport, err := benchspy.NewStandardReport(
     "91ee9e3c903d52de12f3d0c1a07ac3c2a6d141fb",
-    benchspy.WithQueryExecutorType(benchspy.StandardQueryExecutor_Prometheus),
+    benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Prometheus),
     benchspy.WithPrometheusConfig(promConfig),
     // needed even if we don't query Loki or Generator,
     // because we calculate test time range based on

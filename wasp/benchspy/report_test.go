@@ -37,7 +37,7 @@ func TestBenchSpy_NewStandardReport(t *testing.T) {
 	}
 
 	t.Run("successful creation (loki)", func(t *testing.T) {
-		report, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
+		report, err := NewStandardReport("test-commit", WithStandardQueries(StandardQueryExecutor_Loki), WithGenerators(basicGen))
 		require.NoError(t, err)
 		assert.NotNil(t, report)
 		assert.Equal(t, 1, len(report.QueryExecutors))
@@ -45,7 +45,7 @@ func TestBenchSpy_NewStandardReport(t *testing.T) {
 	})
 
 	t.Run("successful creation (generator)", func(t *testing.T) {
-		report, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Generator), WithGenerators(basicGen))
+		report, err := NewStandardReport("test-commit", WithStandardQueries(StandardQueryExecutor_Generator), WithGenerators(basicGen))
 		require.NoError(t, err)
 		assert.NotNil(t, report)
 		assert.Equal(t, 1, len(report.QueryExecutors))
@@ -65,7 +65,7 @@ func TestBenchSpy_NewStandardReport(t *testing.T) {
 				},
 			},
 		}
-		_, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(invalidGen))
+		_, err := NewStandardReport("test-commit", WithStandardQueries(StandardQueryExecutor_Loki), WithGenerators(invalidGen))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "missing branch or commit labels")
 	})
@@ -83,7 +83,7 @@ func TestBenchSpy_NewStandardReport(t *testing.T) {
 				},
 			},
 		}
-		_, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(invalidGen))
+		_, err := NewStandardReport("test-commit", WithStandardQueries(StandardQueryExecutor_Loki), WithGenerators(invalidGen))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "missing branch or commit labels")
 	})
@@ -104,14 +104,14 @@ func TestBenchSpy_NewStandardReport(t *testing.T) {
 			},
 		}
 
-		report, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(gen))
+		report, err := NewStandardReport("test-commit", WithStandardQueries(StandardQueryExecutor_Loki), WithGenerators(gen))
 		require.Nil(t, report)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "loki config is missing")
 	})
 
 	t.Run("nil generator", func(t *testing.T) {
-		_, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki))
+		_, err := NewStandardReport("test-commit", WithStandardQueries(StandardQueryExecutor_Loki))
 		require.Error(t, err)
 	})
 }
@@ -140,7 +140,7 @@ func TestBenchSpy_NewStandardReportWithPrometheus(t *testing.T) {
 
 	t.Run("successful prometheus creation", func(t *testing.T) {
 		report, err := NewStandardReport("test-commit",
-			WithQueryExecutorType(StandardQueryExecutor_Prometheus, StandardQueryExecutor_Loki),
+			WithStandardQueries(StandardQueryExecutor_Prometheus, StandardQueryExecutor_Loki),
 			WithGenerators(validGen),
 			WithPrometheusConfig(promConfig))
 		require.NoError(t, err)
@@ -157,7 +157,7 @@ func TestBenchSpy_NewStandardReportWithPrometheus(t *testing.T) {
 		}
 
 		report, err := NewStandardReport("test-commit",
-			WithQueryExecutorType(StandardQueryExecutor_Prometheus),
+			WithStandardQueries(StandardQueryExecutor_Prometheus),
 			WithGenerators(validGen),
 			WithPrometheusConfig(multiPromConfig))
 		require.NoError(t, err)
@@ -177,7 +177,7 @@ func TestBenchSpy_NewStandardReportWithPrometheus(t *testing.T) {
 		}
 
 		_, err := NewStandardReport("test-commit",
-			WithQueryExecutorType(StandardQueryExecutor_Prometheus),
+			WithStandardQueries(StandardQueryExecutor_Prometheus),
 			WithGenerators(validGen),
 			WithPrometheusConfig(invalidPromConfig),
 		)
@@ -191,7 +191,7 @@ func TestBenchSpy_NewStandardReportWithPrometheus(t *testing.T) {
 		}
 
 		_, err := NewStandardReport("test-commit",
-			WithQueryExecutorType(StandardQueryExecutor_Prometheus),
+			WithStandardQueries(StandardQueryExecutor_Prometheus),
 			WithGenerators(validGen),
 			WithPrometheusConfig(invalidPromConfig),
 		)
@@ -637,7 +637,7 @@ func TestBenchSpy_StandardReport_FetchData(t *testing.T) {
 
 	t.Run("valid fetch", func(t *testing.T) {
 		basicGen.Cfg.LokiConfig = lokiConfig
-		report, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
+		report, err := NewStandardReport("test-commit", WithStandardQueries(StandardQueryExecutor_Loki), WithGenerators(basicGen))
 		require.NoError(t, err)
 
 		mockExec := &MockQueryExecutor{
@@ -670,9 +670,9 @@ func TestBenchSpy_StandardReport_IsComparable(t *testing.T) {
 	}
 
 	t.Run("matching reports", func(t *testing.T) {
-		report1, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
+		report1, err := NewStandardReport("test-commit", WithStandardQueries(StandardQueryExecutor_Loki), WithGenerators(basicGen))
 		require.NoError(t, err)
-		report2, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
+		report2, err := NewStandardReport("test-commit", WithStandardQueries(StandardQueryExecutor_Loki), WithGenerators(basicGen))
 		require.NoError(t, err)
 
 		err = report1.IsComparable(report2)
@@ -680,7 +680,7 @@ func TestBenchSpy_StandardReport_IsComparable(t *testing.T) {
 	})
 
 	t.Run("different report types", func(t *testing.T) {
-		report1, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
+		report1, err := NewStandardReport("test-commit", WithStandardQueries(StandardQueryExecutor_Loki), WithGenerators(basicGen))
 		require.NoError(t, err)
 
 		// Create a mock reporter that implements Reporter interface
@@ -692,7 +692,7 @@ func TestBenchSpy_StandardReport_IsComparable(t *testing.T) {
 	})
 
 	t.Run("different executors", func(t *testing.T) {
-		report1, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
+		report1, err := NewStandardReport("test-commit", WithStandardQueries(StandardQueryExecutor_Loki), WithGenerators(basicGen))
 		require.NoError(t, err)
 
 		// Create second report with different executor
@@ -710,7 +710,7 @@ func TestBenchSpy_StandardReport_IsComparable(t *testing.T) {
 				LokiConfig: lokiConfig,
 			},
 		}
-		report2, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(diffGen))
+		report2, err := NewStandardReport("test-commit", WithStandardQueries(StandardQueryExecutor_Loki), WithGenerators(diffGen))
 		require.NoError(t, err)
 
 		err = report1.IsComparable(report2)
@@ -749,7 +749,7 @@ func TestBenchSpy_StandardReport_Store_Load(t *testing.T) {
 	}
 
 	t.Run("store and load", func(t *testing.T) {
-		report, err := NewStandardReport("test-commit", WithQueryExecutorType(StandardQueryExecutor_Loki), WithGenerators(basicGen))
+		report, err := NewStandardReport("test-commit", WithStandardQueries(StandardQueryExecutor_Loki), WithGenerators(basicGen))
 		require.NoError(t, err)
 
 		storage := LocalStorage{Directory: tmpDir}
@@ -1150,7 +1150,7 @@ func TestBenchSpy_FetchNewReportAndLoadLatestPrevious(t *testing.T) {
 		gen.Run(true)
 
 		prevReport, err := NewStandardReport("a7fc5826a572c09f8b93df3b9f674113372ce924",
-			WithQueryExecutorType(StandardQueryExecutor_Generator),
+			WithStandardQueries(StandardQueryExecutor_Generator),
 			WithGenerators(gen),
 			WithReportDirectory(tmpDir))
 		require.NoError(t, err)
@@ -1160,7 +1160,7 @@ func TestBenchSpy_FetchNewReportAndLoadLatestPrevious(t *testing.T) {
 		newReport, prevLoadedReport, err := FetchNewStandardReportAndLoadLatestPrevious(
 			context.Background(),
 			"new-commit",
-			WithQueryExecutorType(StandardQueryExecutor_Generator),
+			WithStandardQueries(StandardQueryExecutor_Generator),
 			WithGenerators(gen),
 			WithReportDirectory(tmpDir),
 		)
@@ -1178,7 +1178,7 @@ func TestBenchSpy_FetchNewReportAndLoadLatestPrevious(t *testing.T) {
 		newReport, prevReport, err := FetchNewStandardReportAndLoadLatestPrevious(
 			context.Background(),
 			"new-commit-7",
-			WithQueryExecutorType(StandardQueryExecutor_Generator),
+			WithStandardQueries(StandardQueryExecutor_Generator),
 			WithGenerators(basicGen),
 			WithReportDirectory(tmpDir),
 		)

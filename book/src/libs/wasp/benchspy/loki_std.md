@@ -46,7 +46,7 @@ defer cancelFn()
 baseLineReport, err := benchspy.NewStandardReport(
     "c2cf545d733eef8bad51d685fcb302e277d7ca14",
     // notice the different standard executor type
-    benchspy.WithStandardQueryExecutorType(benchspy.StandardQueryExecutor_Loki),
+    benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Loki),
     benchspy.WithGenerators(gen),
 )
 require.NoError(t, err, "failed to create original report")

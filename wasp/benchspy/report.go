@@ -163,7 +163,7 @@ type standardReportConfig struct {
 
 type StandardReportOption func(*standardReportConfig)
 
-func WithQueryExecutorType(executorTypes ...StandardQueryExecutorType) StandardReportOption {
+func WithStandardQueries(executorTypes ...StandardQueryExecutorType) StandardReportOption {
 	return func(c *standardReportConfig) {
 		c.executorTypes = executorTypes
 	}
@@ -317,7 +317,7 @@ func initStandardQueryExecutor(kind StandardQueryExecutorType, basicData *BasicD
 		}
 		return executor, nil
 	case StandardQueryExecutor_Generator:
-		executor, executorErr := NewGeneratorQueryExecutor(g)
+		executor, executorErr := NewStandardGeneratorQueryExecutor(g)
 		if executorErr != nil {
 			return nil, errors.Wrapf(executorErr, "failed to create standard generator query executor for generator %s", g.Cfg.GenName)
 		}
