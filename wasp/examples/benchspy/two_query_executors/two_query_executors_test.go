@@ -124,10 +124,12 @@ var compareMedian = func(t *testing.T, metricName string, currentAsStringSlice, 
 	previousMedian := benchspy.CalculatePercentile(previousFloatSlice, 0.5)
 
 	var diffPrecentage float64
-	if previousMedian != 0 {
+	if previousMedian != 0.0 && currentMedian != 0.0 {
 		diffPrecentage = (currentMedian - previousMedian) / previousMedian * 100
+	} else if previousMedian == 0.0 && currentMedian == 0.0 {
+		diffPrecentage = 0.0
 	} else {
-		diffPrecentage = currentMedian * 100
+		diffPrecentage = 100.0
 	}
 	assert.LessOrEqual(t, math.Abs(diffPrecentage), 1.0, "%s medians are more than 1% different", metricName, fmt.Sprintf("%.4f", diffPrecentage))
 }

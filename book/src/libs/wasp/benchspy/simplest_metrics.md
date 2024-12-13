@@ -36,10 +36,12 @@ var compareValues = func(
     previousMetric := previousAsFloat64[metricName]
 
     var diffPercentage float64
-    if previousMetric != 0.0 {
-        diffPercentage = (currentMetric - previousMetric) / previousMetric * 100
+    if previousMetric != 0.0 && currentMetric != 0.0 {
+        diffPrecentage = (currentMetric - previousMetric) / previousMetric * 100
+    } else if previousMetric == 0.0 && currentMetric == 0.0 {
+        diffPrecentage = 0.0
     } else {
-        diffPercentage = 100.0
+        diffPrecentage = 100.0
     }
     assert.LessOrEqual(t, math.Abs(diffPercentage), maxDiffPercentage, "%s medians are more than 1% different", metricName, fmt.Sprintf("%.4f", diffPercentage))
 }

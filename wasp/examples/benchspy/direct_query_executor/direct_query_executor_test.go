@@ -88,12 +88,14 @@ func TestBenchSpy_Standard_Direct_Metrics(t *testing.T) {
 		previousMetric := previousAsloat64[metricName]
 
 		var diffPrecentage float64
-		if previousMetric != 0.0 {
+		if previousMetric != 0.0 && currentMetric != 0.0 {
 			diffPrecentage = (currentMetric - previousMetric) / previousMetric * 100
+		} else if previousMetric == 0.0 && currentMetric == 0.0 {
+			diffPrecentage = 0.0
 		} else {
 			diffPrecentage = 100.0
 		}
-		assert.LessOrEqual(t, math.Abs(diffPrecentage), maxDiffPercentage, "%s medians are more than 1% different", metricName, fmt.Sprintf("%.4f", diffPrecentage))
+		assert.LessOrEqual(t, math.Abs(diffPrecentage), maxDiffPercentage, "%s medians are more than %f different", metricName, fmt.Sprintf("%.4f", diffPrecentage))
 	}
 
 	compareValues(string(benchspy.MedianLatency), 1.0)
