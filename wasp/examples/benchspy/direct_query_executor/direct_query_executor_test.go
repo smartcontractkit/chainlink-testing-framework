@@ -91,7 +91,7 @@ func TestBenchSpy_Standard_Direct_Metrics(t *testing.T) {
 		if previousMetric != 0.0 {
 			diffPrecentage = (currentMetric - previousMetric) / previousMetric * 100
 		} else {
-			diffPrecentage = currentMetric * 100.0
+			diffPrecentage = 100.0
 		}
 		assert.LessOrEqual(t, math.Abs(diffPrecentage), maxDiffPercentage, "%s medians are more than 1% different", metricName, fmt.Sprintf("%.4f", diffPrecentage))
 	}

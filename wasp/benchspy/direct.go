@@ -179,7 +179,7 @@ func (g *DirectQueryExecutor) standardQuery(standardMetric StandardLoadMetric) (
 			failedCount := 0.0
 			successfulCount := 0.0
 			for _, response := range responses.Data {
-				if response.Failed {
+				if response.Failed || response.Timeout {
 					failedCount = failedCount + 1
 				} else {
 					successfulCount = successfulCount + 1

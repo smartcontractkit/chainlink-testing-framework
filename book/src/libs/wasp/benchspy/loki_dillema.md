@@ -1,15 +1,22 @@
-# BenchSpy - To Loki or not to Loki?
+# BenchSpy - To Loki or Not to Loki?
 
-You might be asking yourself whether you should use `Loki` or `Direct` query executor if all you
-need are basic latency metrics.
+You might be wondering whether to use the `Loki` or `Direct` query executor if all you need are basic latency metrics.
 
-As a rule of thumb, if all you need is a single number that describes the median latency or error rate
-and you are not interested in directly comparing time series, minimum or maximum values or any kinds
-of more advanced calculation on raw data, then you should go with the `Direct`.
+## Rule of Thumb
 
-Why?
+If all you need is a single number, such as the median latency or error rate, and you're not interested in:
+- Comparing time series directly,
+- Examining minimum or maximum values, or
+- Performing advanced calculations on raw data,
 
-Because it returns a single value for each of standard metrics using the same raw data that Loki would use
-(it accesses the data stored in the `WASP`'s generator that would later be pushed to Loki).
-This way you can run your load test without a Loki instance and save yourself the need of calculating the
-median and 95th percentile latency or the error ratio.
+then you should opt for the `Direct` query executor.
+
+## Why Choose `Direct`?
+
+The `Direct` executor returns a single value for each standard metric using the same raw data that Loki would use. It accesses data stored in the `WASP` generator, which is later pushed to Loki.
+
+This means you can:
+- Run your load test without a Loki instance.
+- Avoid calculating metrics like the median, 95th percentile latency, or error ratio yourself.
+
+By using `Direct`, you save resources and simplify the process when advanced analysis isn't required.

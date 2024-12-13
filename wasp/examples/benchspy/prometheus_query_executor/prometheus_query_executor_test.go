@@ -121,7 +121,7 @@ func TestBenchSpy_Custom_Prometheus_Metrics(t *testing.T) {
 			// matrix value
 			"cpu_rate_by_container": "rate(container_cpu_usage_seconds_total{name=~\"node[^0]\"}[1m])[30m:1m]",
 		},
-		*promConfig,
+		promConfig,
 	)
 	require.NoError(t, err)
 

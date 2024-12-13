@@ -1,10 +1,13 @@
-# Defining a new report
+# Defining a New Report
 
-Each `BenchSpy` report should implement the `Reporter` interface, which handles 3 responsibilities:
-* storage and retrival (`Storer` interface)
-* data fetching (`DataFetcher` interface)
-* comparator (`Comparator` interface)
+Each `BenchSpy` report must implement the `Reporter` interface, which handles three primary responsibilities:
+- **Storage and retrieval** (`Storer` interface)
+- **Data fetching** (`DataFetcher` interface)
+- **Comparison** (`Comparator` interface)
 
+---
+
+## Reporter Interface
 ### Definition
 ```go
 type Reporter interface {
@@ -12,50 +15,60 @@ type Reporter interface {
 	DataFetcher
 	Comparator
 }
-
 ```
 
-Comparison of actual performance data should not be part of the report and should be done independently from it,
-ideally using simple Go's `require` and `assert` statements.
+The comparison of actual performance data should not be part of the report itself. It should be done independently, ideally using Go's `require` and `assert` statements.
 
-# Storer interface
-## Definition
+---
+
+## Storer Interface
+### Definition
 ```go
 type Storer interface {
-	// Store stores the report in a persistent storage and returns the path to it, or an error
+	// Store stores the report in persistent storage and returns the path to it, or an error
 	Store() (string, error)
-	// Load loads the report from a persistent storage and returns it, or an error
+	// Load loads the report from persistent storage based on the test name and commit/tag, or returns an error
 	Load(testName, commitOrTag string) error
-	// LoadLatest loads the latest report from a persistent storage and returns it, or an error
+	// LoadLatest loads the latest report from persistent storage for the given test name, or returns an error
 	LoadLatest(testName string) error
 }
 ```
 
-If storing the reports on the local filesystem under Git fulfills your requirements you can reuse the `LocalStorage`
-implementation of `Storer`.
+### Usage
+- If storing reports locally under Git satisfies your requirements, you can reuse the `LocalStorage` implementation of `Storer`.
+- If you need to store reports in S3 or a database, you will need to implement the interface yourself.
 
-If you would like to store them in S3 or a database, you will need to implement the interface yourself.
+---
 
-# DataFetcher interface
-## Definition
+## DataFetcher Interface
+### Definition
 ```go
 type DataFetcher interface {
-	// Fetch populates the report with the data from the test
+	// FetchData populates the report with data from the test
 	FetchData(ctx context.Context) error
 }
 ```
-This interface is only concerned with fetching the data from the data source and populating the results.
 
-# Comparator interface
-## Definition
+### Purpose
+This interface is solely responsible for fetching data from the data source and populating the report with results.
+
+---
+
+## Comparator Interface
+### Definition
 ```go
 type Comparator interface {
-	// IsComparable checks whether both reports can be compared (e.g. test config is the same, app's resources are the same, queries or metrics used are the same, etc.), and an error if any difference is found
+	// IsComparable checks whether two reports can be compared (e.g., test configuration, app resources, queries, and metrics are identical),
+	// and returns an error if any differences are found
 	IsComparable(otherReport Reporter) error
 }
-
 ```
 
-This interface is only concerned with making sure that both report are comparable, for example by checking:
-* whether both use generators with identical configurations (such as load type, load characteristics)
-* whether both report feature the same data sources and queries
+### Purpose
+This interface ensures that both reports are comparable by verifying:
+- Both use generators with identical configurations (e.g., load type, load characteristics).
+- Both reports feature the same data sources and queries.
+
+---
+
+This design provides flexibility and composability, allowing you to store, fetch, and compare reports in a way that fits your specific requirements.

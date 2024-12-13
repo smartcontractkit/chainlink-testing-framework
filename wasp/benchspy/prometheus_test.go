@@ -17,7 +17,7 @@ func TestBenchSpy_NewPrometheusQueryExecutor(t *testing.T) {
 	t.Run("successful creation", func(t *testing.T) {
 		queries := map[string]string{"test": "query"}
 
-		executor, err := NewPrometheusQueryExecutor(queries, PrometheusConfig{Url: "http://localhost:9090"})
+		executor, err := NewPrometheusQueryExecutor(queries, &PrometheusConfig{Url: "http://localhost:9090"})
 
 		require.NoError(t, err)
 		assert.NotNil(t, executor)
@@ -30,7 +30,7 @@ func TestBenchSpy_NewStandardPrometheusQueryExecutor(t *testing.T) {
 		startTime := time.Now().Add(-1 * time.Hour)
 		endTime := time.Now()
 
-		executor, err := NewStandardPrometheusQueryExecutor(startTime, endTime, PrometheusConfig{Url: "http://localhost:9090", NameRegexPatterns: []string{"test.*"}})
+		executor, err := NewStandardPrometheusQueryExecutor(startTime, endTime, &PrometheusConfig{Url: "http://localhost:9090", NameRegexPatterns: []string{"test.*"}})
 
 		require.NoError(t, err)
 		assert.NotNil(t, executor)

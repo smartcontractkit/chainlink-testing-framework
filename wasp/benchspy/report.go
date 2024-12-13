@@ -278,7 +278,7 @@ func NewStandardReport(commitOrTag string, opts ...StandardReportOption) (*Stand
 	if config.prometheusConfig != WithoutPrometheus {
 		// not ideal, but we want to follow the same pattern as with other executors
 		for _, n := range config.prometheusConfig.NameRegexPatterns {
-			prometheusExecutor, prometheusErr := NewStandardPrometheusQueryExecutor(basicData.TestStart, basicData.TestEnd, *NewPrometheusConfig(config.prometheusConfig.Url, n))
+			prometheusExecutor, prometheusErr := NewStandardPrometheusQueryExecutor(basicData.TestStart, basicData.TestEnd, NewPrometheusConfig(config.prometheusConfig.Url, n))
 			if prometheusErr != nil {
 				return nil, errors.Wrapf(prometheusErr, "failed to create Prometheus executor for name patterns: %s", strings.Join(config.prometheusConfig.NameRegexPatterns, ", "))
 			}

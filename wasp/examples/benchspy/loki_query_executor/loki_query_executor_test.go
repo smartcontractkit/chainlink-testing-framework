@@ -83,30 +83,9 @@ func TestBenchSpy_Standard_Loki_Metrics(t *testing.T) {
 	currentAsStringSlice := benchspy.MustAllLokiResults(currentReport)
 	previousAsStringSlice := benchspy.MustAllLokiResults(previousReport)
 
-	var compareMedian = func(metricName string) {
-		require.NotEmpty(t, currentAsStringSlice[metricName], "%s results were missing from current report", metricName)
-		require.NotEmpty(t, previousAsStringSlice[metricName], "%s results were missing from previous report", metricName)
-
-		currentFloatSlice, err := benchspy.StringSliceToFloat64Slice(currentAsStringSlice[metricName])
-		require.NoError(t, err, "failed to convert %s results to float64 slice", metricName)
-		currentMedian := benchspy.CalculatePercentile(currentFloatSlice, 0.5)
-
-		previousFloatSlice, err := benchspy.StringSliceToFloat64Slice(previousAsStringSlice[metricName])
-		require.NoError(t, err, "failed to convert %s results to float64 slice", metricName)
-		previousMedian := benchspy.CalculatePercentile(previousFloatSlice, 0.5)
-
-		var diffPrecentage float64
-		if previousMedian != 0 {
-			diffPrecentage = (currentMedian - previousMedian) / previousMedian * 100
-		} else {
-			diffPrecentage = currentMedian * 100
-		}
-		assert.LessOrEqual(t, math.Abs(diffPrecentage), 1.0, "%s medians are more than 1% different", metricName, fmt.Sprintf("%.4f", diffPrecentage))
-	}
-
-	compareMedian(string(benchspy.MedianLatency))
-	compareMedian(string(benchspy.Percentile95Latency))
-	compareMedian(string(benchspy.ErrorRate))
+	compareMedian(t, string(benchspy.MedianLatency), currentAsStringSlice, previousAsStringSlice)
+	compareMedian(t, string(benchspy.Percentile95Latency), currentAsStringSlice, previousAsStringSlice)
+	compareMedian(t, string(benchspy.ErrorRate), currentAsStringSlice, previousAsStringSlice)
 }
 
 func TestBenchSpy_Custom_Loki_Metrics(t *testing.T) {
@@ -186,27 +165,27 @@ func TestBenchSpy_Custom_Loki_Metrics(t *testing.T) {
 	currentAsStringSlice := benchspy.MustAllLokiResults(currentReport)
 	previousAsStringSlice := benchspy.MustAllLokiResults(previousReport)
 
-	var compareMedian = func(metricName string) {
-		require.NotEmpty(t, currentAsStringSlice[metricName], "%s results were missing from current report", metricName)
-		require.NotEmpty(t, previousAsStringSlice[metricName], "%s results were missing from previous report", metricName)
+	compareMedian(t, "vu_over_time", currentAsStringSlice, previousAsStringSlice)
+	compareMedian(t, "responses_over_time", currentAsStringSlice, previousAsStringSlice)
+}
 
-		currentFloatSlice, err := benchspy.StringSliceToFloat64Slice(currentAsStringSlice[metricName])
-		require.NoError(t, err, "failed to convert %s results to float64 slice", metricName)
-		currentMedian := benchspy.CalculatePercentile(currentFloatSlice, 0.5)
+var compareMedian = func(t *testing.T, metricName string, currentAsStringSlice, previousAsStringSlice map[string][]string) {
+	require.NotEmpty(t, currentAsStringSlice[metricName], "%s results were missing from current report", metricName)
+	require.NotEmpty(t, previousAsStringSlice[metricName], "%s results were missing from previous report", metricName)
 
-		previousFloatSlice, err := benchspy.StringSliceToFloat64Slice(previousAsStringSlice[metricName])
-		require.NoError(t, err, "failed to convert %s results to float64 slice", metricName)
-		previousMedian := benchspy.CalculatePercentile(previousFloatSlice, 0.5)
+	currentFloatSlice, err := benchspy.StringSliceToFloat64Slice(currentAsStringSlice[metricName])
+	require.NoError(t, err, "failed to convert %s results to float64 slice", metricName)
+	currentMedian := benchspy.CalculatePercentile(currentFloatSlice, 0.5)
 
-		var diffPrecentage float64
-		if previousMedian != 0 {
-			diffPrecentage = (currentMedian - previousMedian) / previousMedian * 100
-		} else {
-			diffPrecentage = currentMedian * 100
-		}
-		assert.LessOrEqual(t, math.Abs(diffPrecentage), 1.0, "%s medians are more than 1% different", metricName, fmt.Sprintf("%.4f", diffPrecentage))
+	previousFloatSlice, err := benchspy.StringSliceToFloat64Slice(previousAsStringSlice[metricName])
+	require.NoError(t, err, "failed to convert %s results to float64 slice", metricName)
+	previousMedian := benchspy.CalculatePercentile(previousFloatSlice, 0.5)
+
+	var diffPrecentage float64
+	if previousMedian != 0 {
+		diffPrecentage = (currentMedian - previousMedian) / previousMedian * 100
+	} else {
+		diffPrecentage = 100
 	}
-
-	compareMedian("vu_over_time")
-	compareMedian("responses_over_time")
+	assert.LessOrEqual(t, math.Abs(diffPrecentage), 1.0, "%s medians are more than 1% different", metricName, fmt.Sprintf("%.4f", diffPrecentage))
 }

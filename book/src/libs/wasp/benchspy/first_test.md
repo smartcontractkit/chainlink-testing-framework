@@ -1,18 +1,26 @@
-# BenchSpy - Your first test
+# BenchSpy - Your First Test
 
-Let's start with a simplest case, which doesn't require you to have any of the observability stack, but only `WASP` and the application you are testing.
-`BenchSpy` comes with some built-in `QueryExecutors` each of which additionaly has predefined metrics that you can use. One of these executors is the
-`DirectQueryExecutor` that fetches metrics directly from `WASP` generators.
+Let's start with the simplest case, which doesn't require any part of the observability stack—only `WASP` and the application you are testing.
+`BenchSpy` comes with built-in `QueryExecutors`, each of which also has predefined metrics that you can use. One of these executors is the `DirectQueryExecutor`, which fetches metrics directly from `WASP` generators,
+which means you can run it with Loki.
 
-Our first test will follow the following logic:
-* Run a simple load test
-* Generate the performance report and store it
-* Run the load again
-* Generate a new report and compare it to the previous one
+> [!NOTE]
+> Not sure whether to use `Loki` or `Direct` query executors? [Read this!](./loki_dillema.md)
 
-We will use some very simplified assertions, used only for the sake of example, and expect the performance to remain unchanged.
+## Test Overview
 
-Let's start by defining and running a generator that will use a mocked service:
+Our first test will follow this logic:
+- Run a simple load test.
+- Generate a performance report and store it.
+- Run the load test again.
+- Generate a new report and compare it to the previous one.
+
+We'll use very simplified assertions for this example and expect the performance to remain unchanged.
+
+### Step 1: Define and Run a Generator
+
+Let's start by defining and running a generator that uses a mocked service:
+
 ```go
 gen, err := wasp.NewGenerator(&wasp.Config{
     T:           t,
@@ -28,39 +36,43 @@ require.NoError(t, err)
 gen.Run(true)
 ```
 
-Now that we have load data, let's generate a baseline performance report and store it in the local storage:
-```go
-fetchCtx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
-defer cancelFn()
+### Step 2: Generate a Baseline Performance Report
 
+With load data available, let's generate a baseline performance report and store it in local storage:
+
+```go
 baseLineReport, err := benchspy.NewStandardReport(
-    // random hash, this should be commit or hash of the Application Under Test (AUT)
+    // random hash, this should be the commit or hash of the Application Under Test (AUT)
     "e7fc5826a572c09f8b93df3b9f674113372ce924",
     // use built-in queries for an executor that fetches data directly from the WASP generator
     benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Direct),
     // WASP generators
     benchspy.WithGenerators(gen),
 )
-require.NoError(t, err, "failed to create original report")
+require.NoError(t, err, "failed to create baseline report")
+
+fetchCtx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+defer cancelFn()
 
 fetchErr := baseLineReport.FetchData(fetchCtx)
-require.NoError(t, fetchErr, "failed to fetch data for original report")
+require.NoError(t, fetchErr, "failed to fetch data for baseline report")
 
 path, storeErr := baseLineReport.Store()
-require.NoError(t, storeErr, "failed to store current report", path)
+require.NoError(t, storeErr, "failed to store baseline report", path)
 ```
 
 > [!NOTE]
-> There's quite a lot to unpack here and you are enouraged to read more about build-in `QueryExecutors` and
-> standard metrics each comes with [here](./built_in_query_executors.md) and about the `StandardReport` [here](./standard_report.md).
+> There's a lot to unpack here, and you're encouraged to read more about the built-in `QueryExecutors` and the standard metrics they provide as well as about the `StandardReport` [here](./reports/standard_report.md).
 >
-> For now, it's enough for you to know that standard metrics that `StandardQueryExecutor_Generator` comes with are following:
-> * median latency
-> * p95 latency (95th percentile)
-> * error rate
+> For now, it's enough to know that the standard metrics provided by `StandardQueryExecutor_Direct` include:
+> - Median latency
+> - P95 latency (95th percentile)
+> - Error rate
 
-With baseline report ready let's run the load test again, but this time let's use a wrapper function
-that will automatically load the previous report, generate a new one and make sure that they are actually comparable.
+### Step 3: Run the Test Again and Compare Reports
+
+With the baseline report ready, let's run the load test again. This time, we'll use a wrapper function to automatically load the previous report, generate a new one, and ensure they are comparable.
+
 ```go
 // define a new generator using the same config values
 newGen, err := wasp.NewGenerator(&wasp.Config{
@@ -84,6 +96,7 @@ defer cancelFn()
 // currentReport is the report that we just created (baseLineReport)
 currentReport, previousReport, err := benchspy.FetchNewStandardReportAndLoadLatestPrevious(
     fetchCtx,
+    // commit or tag of the new application version
     "e7fc5826a572c09f8b93df3b9f674113372ce925",
     benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Direct),
     benchspy.WithGenerators(newGen),
@@ -92,8 +105,9 @@ require.NoError(t, err, "failed to fetch current report or load the previous one
 ```
 
 > [!NOTE]
-> In real-world case, once you have the first report generated you should only need to use
-> `benchspy.FetchNewStandardReportAndLoadLatestPrevious` function.
+> In a real-world case, once you've generated the first report, you should only need to use the `benchspy.FetchNewStandardReportAndLoadLatestPrevious` function.
 
-Okay, so we have two reports now, that's great, but how do we make sure that application's performance is as expected?
-You'll find out in the [next chapter](./first_test_comparison.md).
+### What's Next?
+
+Now that we have two reports, how do we ensure that the application's performance meets expectations?
+Find out in the [next chapter](./simplest_metrics.md).

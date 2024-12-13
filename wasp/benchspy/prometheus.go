@@ -42,7 +42,7 @@ type PrometheusQueryExecutor struct {
 }
 
 // NewPrometheusQueryExecutor creates a new PrometheusResourceReporter, url should include basic auth if needed
-func NewPrometheusQueryExecutor(queries map[string]string, config PrometheusConfig) (*PrometheusQueryExecutor, error) {
+func NewPrometheusQueryExecutor(queries map[string]string, config *PrometheusConfig) (*PrometheusQueryExecutor, error) {
 	c, err := client.NewPrometheusClient(config.Url)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create Prometheus client")
@@ -56,7 +56,7 @@ func NewPrometheusQueryExecutor(queries map[string]string, config PrometheusConf
 	}, nil
 }
 
-func NewStandardPrometheusQueryExecutor(startTime, endTime time.Time, config PrometheusConfig) (*PrometheusQueryExecutor, error) {
+func NewStandardPrometheusQueryExecutor(startTime, endTime time.Time, config *PrometheusConfig) (*PrometheusQueryExecutor, error) {
 	p := &PrometheusQueryExecutor{}
 
 	standardQueries := make(map[string]string)

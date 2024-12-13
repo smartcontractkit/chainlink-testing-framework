@@ -1,6 +1,5 @@
 # BenchSpy - Reports
 
-`BenchSpy` was created with composability in mind. It comes with a `StandardReport` implementation that
-should cover the majority if needs and an ease of adding fully customised reports.
+`BenchSpy` was designed with composability in mind. It includes a `StandardReport` implementation that should cover the majority of use cases while also allowing for the creation of fully customized reports with ease.
 
-Let's look at the `StandardReport` in the [next chapter](./standard_report.md).
+Learn more about the `StandardReport` in the [next chapter](./standard_report.md).

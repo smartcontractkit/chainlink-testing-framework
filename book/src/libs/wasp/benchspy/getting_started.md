@@ -1,14 +1,14 @@
-# BenchSpy - Getting started
+# BenchSpy - Getting Started
 
-All of the following examples assume that you have access to following applications:
-* Grafana
-* Loki
-* Prometheus
+The following examples assume you have access to the following applications:
+- Grafana
+- Loki
+- Prometheus
 
 > [!NOTE]
-> The easiest way to run them locally is by using CTFv2's [observability stack](../../../framework/observability/observability_stack.md).
-> Just remember to first install the `CTF CLI` as described in [CTFv2 Getting Started](../../../framework/getting_started.md) chapter.
+> The easiest way to run these locally is by using CTFv2's [observability stack](../../../framework/observability/observability_stack.md).
+> Be sure to install the `CTF CLI` first, as described in the [CTFv2 Getting Started](../../../framework/getting_started.md) guide.
 
-Since BenchSpy is tightly couplesd with WASP it's highly recommended that you [get familiar with it first](../overview.md), if you haven't yet.
+Since BenchSpy is tightly coupled with WASP, we highly recommend that you [get familiar with it first](../overview.md) if you haven't already.
 
-Ready? [Let's go!](./first_test.md)
+Ready? [Let's get started!](./first_test.md)
