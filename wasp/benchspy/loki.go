@@ -15,6 +15,9 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// NewLokiQueryExecutor creates a new LokiQueryExecutor instance.
+// It initializes the executor with provided queries and Loki configuration,
+// enabling efficient querying of logs from Loki in a structured manner.
 func NewLokiQueryExecutor(queries map[string]string, lokiConfig *wasp.LokiConfig) *LokiQueryExecutor {
 	return &LokiQueryExecutor{
 		KindName:     string(StandardQueryExecutor_Loki),
@@ -40,14 +43,21 @@ type LokiQueryExecutor struct {
 	Config *wasp.LokiConfig `json:"-"`
 }
 
+// Results returns the query results as a map of string to interface{}.
+// It allows users to access the outcomes of executed queries, facilitating further processing or type assertions.
 func (l *LokiQueryExecutor) Results() map[string]interface{} {
 	return l.QueryResults
 }
 
+// Kind returns the type of the query executor as a string.
+// It is used to identify the specific kind of query executor in various operations.
 func (l *LokiQueryExecutor) Kind() string {
 	return l.KindName
 }
 
+// IsComparable checks if the given QueryExecutor is of the same type as the current instance.
+// It compares the queries of both executors to ensure they are equivalent in structure and content. 
+// This function is useful for validating compatibility between different query executors.
 func (l *LokiQueryExecutor) IsComparable(otherQueryExecutor QueryExecutor) error {
 	otherType := reflect.TypeOf(otherQueryExecutor)
 
@@ -58,6 +68,9 @@ func (l *LokiQueryExecutor) IsComparable(otherQueryExecutor QueryExecutor) error
 	return l.compareQueries(otherQueryExecutor.(*LokiQueryExecutor).Queries)
 }
 
+// Validate checks if the LokiQueryExecutor has valid queries and configuration.
+// It returns an error if no queries are set or if the configuration is missing,
+// ensuring that the executor is ready for execution.
 func (l *LokiQueryExecutor) Validate() error {
 	if len(l.Queries) == 0 {
 		return errors.New("there are no Loki queries, there's nothing to fetch. Please set them and try again")
@@ -69,6 +82,9 @@ func (l *LokiQueryExecutor) Validate() error {
 	return nil
 }
 
+// Execute runs the configured Loki queries concurrently and collects the results.
+// It requires a valid configuration and handles basic authentication if provided.
+// The function returns an error if any query execution fails or if the configuration is missing.
 func (l *LokiQueryExecutor) Execute(ctx context.Context) error {
 	var basicAuth client.LokiBasicAuth
 
@@ -159,11 +175,15 @@ func (l *LokiQueryExecutor) compareQueries(other map[string]string) error {
 	return nil
 }
 
+// TimeRange sets the start and end time for the Loki query execution.
+// This function is essential for defining the time window of the data to be fetched.
 func (l *LokiQueryExecutor) TimeRange(start, end time.Time) {
 	l.StartTime = start
 	l.EndTime = end
 }
 
+// UnmarshalJSON parses the JSON-encoded data and populates the LokiQueryExecutor fields.
+// It converts the query results from a generic map to a specific type map, enabling type-safe access to the results.
 func (l *LokiQueryExecutor) UnmarshalJSON(data []byte) error {
 	// helper struct with QueryResults map[string]interface{}
 	type Alias LokiQueryExecutor
@@ -188,6 +208,8 @@ func (l *LokiQueryExecutor) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// NewStandardMetricsLokiExecutor creates a LokiQueryExecutor configured with standard metrics queries.
+// It generates queries based on provided test parameters and time range, returning the executor or an error if query generation fails.
 func NewStandardMetricsLokiExecutor(lokiConfig *wasp.LokiConfig, testName, generatorName, branch, commit string, startTime, endTime time.Time) (*LokiQueryExecutor, error) {
 	lq := &LokiQueryExecutor{
 		KindName:     string(StandardQueryExecutor_Loki),

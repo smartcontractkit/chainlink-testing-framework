@@ -19,18 +19,27 @@ type StandardReport struct {
 	QueryExecutors []QueryExecutor `json:"query_executors"`
 }
 
+// Store saves the report to local storage as a JSON file.
+// It returns the absolute path of the stored file and any error encountered.
 func (b *StandardReport) Store() (string, error) {
 	return b.LocalStorage.Store(b.TestName, b.CommitOrTag, b)
 }
 
+// Load retrieves a report based on the specified test name and commit or tag.
+// It utilizes local storage to find and decode the corresponding report file,
+// ensuring that the report is available for further processing or analysis.
 func (b *StandardReport) Load(testName, commitOrTag string) error {
 	return b.LocalStorage.Load(testName, commitOrTag, b)
 }
 
+// LoadLatest retrieves the most recent report for the specified test name from local storage.
+// It returns an error if the report cannot be loaded, enabling users to access historical test data efficiently.
 func (b *StandardReport) LoadLatest(testName string) error {
 	return b.LocalStorage.Load(testName, "", b)
 }
 
+// ResultsAs retrieves and casts results from specified query executors to a desired type.
+// It returns a map of query names to their corresponding results, or an error if casting fails.
 func ResultsAs[Type any](newType Type, queryExecutors []QueryExecutor, queryExecutorType StandardQueryExecutorType, queryNames ...string) (map[string]Type, error) {
 	results := make(map[string]Type)
 
@@ -61,6 +70,9 @@ func ResultsAs[Type any](newType Type, queryExecutors []QueryExecutor, queryExec
 	return results, nil
 }
 
+// MustAllLokiResults retrieves all Loki query results from a StandardReport.
+// It panics if an error occurs during the retrieval process, ensuring that
+// the caller receives valid results or an immediate failure.
 func MustAllLokiResults(sr *StandardReport) map[string][]string {
 	results, err := ResultsAs([]string{}, sr.QueryExecutors, StandardQueryExecutor_Loki)
 	if err != nil {
@@ -69,6 +81,9 @@ func MustAllLokiResults(sr *StandardReport) map[string][]string {
 	return results
 }
 
+// MustAllDirectResults retrieves all direct results from a StandardReport.
+// It panics if an error occurs during the retrieval process, ensuring that
+// the caller receives valid results or an immediate failure.
 func MustAllDirectResults(sr *StandardReport) map[string]float64 {
 	results, err := ResultsAs(0.0, sr.QueryExecutors, StandardQueryExecutor_Direct)
 	if err != nil {
@@ -77,6 +92,9 @@ func MustAllDirectResults(sr *StandardReport) map[string]float64 {
 	return results
 }
 
+// MustAllPrometheusResults retrieves all Prometheus query results from a StandardReport.
+// It returns a map of query names to their corresponding model.Values, ensuring type safety. 
+// This function is useful for aggregating and accessing Prometheus metrics efficiently.
 func MustAllPrometheusResults(sr *StandardReport) map[string]model.Value {
 	results := make(map[string]model.Value)
 
@@ -93,6 +111,8 @@ func MustAllPrometheusResults(sr *StandardReport) map[string]model.Value {
 	return results
 }
 
+// FetchData retrieves data for the report within the specified time range.
+// It validates the time range and executes queries in parallel, returning any errors encountered during execution.
 func (b *StandardReport) FetchData(ctx context.Context) error {
 	if b.TestStart.IsZero() || b.TestEnd.IsZero() {
 		return errors.New("start and end times are not set")
@@ -128,6 +148,9 @@ func (b *StandardReport) FetchData(ctx context.Context) error {
 	return nil
 }
 
+// IsComparable checks if the current report can be compared with another report.
+// It validates the type of the other report and ensures that their basic data and query executors are comparable.
+// This function is useful for verifying report consistency before performing further analysis.
 func (b *StandardReport) IsComparable(otherReport Reporter) error {
 	if _, ok := otherReport.(*StandardReport); !ok {
 		return fmt.Errorf("expected type %s, got %T", "*StandardReport", otherReport)
@@ -160,30 +183,42 @@ type standardReportConfig struct {
 
 type StandardReportOption func(*standardReportConfig)
 
+// WithStandardQueries sets the executor types for a standard report configuration.
+// It allows users to specify which types of query executors to use, enabling customization 
+// of report generation based on their requirements.
 func WithStandardQueries(executorTypes ...StandardQueryExecutorType) StandardReportOption {
 	return func(c *standardReportConfig) {
 		c.executorTypes = executorTypes
 	}
 }
 
+// WithGenerators sets the generators for the standard report configuration.
+// It allows users to specify custom generator instances to be included in the report.
 func WithGenerators(generators ...*wasp.Generator) StandardReportOption {
 	return func(c *standardReportConfig) {
 		c.generators = generators
 	}
 }
 
+// WithPrometheusConfig sets the Prometheus configuration for the standard report.
+// It returns a StandardReportOption that can be used to customize report generation.
 func WithPrometheusConfig(prometheusConfig *PrometheusConfig) StandardReportOption {
 	return func(c *standardReportConfig) {
 		c.prometheusConfig = prometheusConfig
 	}
 }
 
+// WithReportDirectory sets the directory for storing report files.
+// This function is useful for configuring the output location of reports
+// generated by the standard reporting system.
 func WithReportDirectory(reportDirectory string) StandardReportOption {
 	return func(c *standardReportConfig) {
 		c.reportDirectory = reportDirectory
 	}
 }
 
+// WithQueryExecutors sets the query executors for a standard report configuration.
+// It allows customization of how queries are executed, enhancing report generation flexibility.
 func WithQueryExecutors(queryExecutors ...QueryExecutor) StandardReportOption {
 	return func(c *standardReportConfig) {
 		c.queryExecutors = queryExecutors
@@ -225,6 +260,9 @@ func (c *standardReportConfig) validate() error {
 	return nil
 }
 
+// NewStandardReport creates a new StandardReport based on the provided commit or tag and options.
+// It initializes necessary data and query executors, ensuring all configurations are validated.
+// This function is essential for generating reports that require specific data sources and execution strategies.
 func NewStandardReport(commitOrTag string, opts ...StandardReportOption) (*StandardReport, error) {
 	config := standardReportConfig{}
 	for _, opt := range opts {
@@ -328,6 +366,9 @@ func generatorHasLabels(g *wasp.Generator) bool {
 	return g.Cfg.Labels["branch"] != "" && g.Cfg.Labels["commit"] != ""
 }
 
+// UnmarshalJSON decodes JSON data into a StandardReport struct.
+// It populates the QueryExecutors and ResourceFetchers fields,
+// allowing for dynamic handling of JSON structures in reports.
 func (s *StandardReport) UnmarshalJSON(data []byte) error {
 	// helper struct with QueryExecutors as json.RawMessage
 	type Alias StandardReport
@@ -464,6 +505,9 @@ func convertQueryResults(results map[string]interface{}) (map[string]interface{}
 	return converted, nil
 }
 
+// FetchNewStandardReportAndLoadLatestPrevious creates a new standard report for a given commit or tag,
+// loads the latest previous report, and checks their comparability. 
+// It returns the new report, the previous report, and any error encountered during the process.
 func FetchNewStandardReportAndLoadLatestPrevious(ctx context.Context, newCommitOrTag string, newReportOpts ...StandardReportOption) (*StandardReport, *StandardReport, error) {
 	newReport, err := NewStandardReport(newCommitOrTag, newReportOpts...)
 	if err != nil {

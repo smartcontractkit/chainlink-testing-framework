@@ -22,6 +22,8 @@ type PrometheusConfig struct {
 
 const PrometheusUrlEnvVar = "PROMETHEUS_URL"
 
+// NewPrometheusConfig creates a new PrometheusConfig instance with the specified name regex patterns.
+// It retrieves the Prometheus URL from the environment and is used to configure query execution for Prometheus data sources.
 func NewPrometheusConfig(nameRegexPatterns ...string) *PrometheusConfig {
 	return &PrometheusConfig{
 		Url:               os.Getenv(PrometheusUrlEnvVar),
@@ -56,6 +58,9 @@ func NewPrometheusQueryExecutor(queries map[string]string, config *PrometheusCon
 	}, nil
 }
 
+// NewStandardPrometheusQueryExecutor creates a PrometheusQueryExecutor with standard queries 
+// based on the provided time range and configuration. It simplifies the process of generating 
+// queries for Prometheus, making it easier to integrate Prometheus data into reports.
 func NewStandardPrometheusQueryExecutor(startTime, endTime time.Time, config *PrometheusConfig) (*PrometheusQueryExecutor, error) {
 	p := &PrometheusQueryExecutor{}
 
@@ -74,6 +79,8 @@ func NewStandardPrometheusQueryExecutor(startTime, endTime time.Time, config *Pr
 	return NewPrometheusQueryExecutor(standardQueries, config)
 }
 
+// Execute runs the defined Prometheus queries concurrently, collecting results and warnings.
+// It returns an error if any query fails, allowing for efficient data retrieval in reporting tasks.
 func (r *PrometheusQueryExecutor) Execute(ctx context.Context) error {
 	for name, query := range r.Queries {
 		result, warnings, queryErr := r.client.Query(ctx, query, r.EndTime)
@@ -91,14 +98,20 @@ func (r *PrometheusQueryExecutor) Execute(ctx context.Context) error {
 	return nil
 }
 
+// Results returns the query results as a map of string to interface{}.
+// It allows users to access the results of executed queries, facilitating data retrieval and manipulation.
 func (r *PrometheusQueryExecutor) Results() map[string]interface{} {
 	return r.QueryResults
 }
 
+// Kind returns the type of the query executor as a string.
+// It is used to identify the specific kind of executor in a collection of query executors.
 func (l *PrometheusQueryExecutor) Kind() string {
 	return l.KindName
 }
 
+// Validate checks the PrometheusQueryExecutor for a valid client and ensures that at least one query is provided. 
+// It returns an error if the client is nil or no queries are specified, helping to ensure proper configuration before execution.
 func (r *PrometheusQueryExecutor) Validate() error {
 	if r.client == nil {
 		return errors.New("prometheus client is nil")
@@ -111,6 +124,8 @@ func (r *PrometheusQueryExecutor) Validate() error {
 	return nil
 }
 
+// IsComparable checks if the provided QueryExecutor is of the same type as the receiver.
+// It returns an error if the types do not match, ensuring type safety for query comparisons.
 func (r *PrometheusQueryExecutor) IsComparable(other QueryExecutor) error {
 	otherType := reflect.TypeOf(other)
 	if otherType != reflect.TypeOf(r) {
@@ -141,10 +156,15 @@ func (r *PrometheusQueryExecutor) compareQueries(other map[string]string) error 
 	return nil
 }
 
+// Warnings returns a map of warnings encountered during query execution.
+// This function is useful for retrieving any issues that may have arisen, 
+// allowing users to handle or log them appropriately.
 func (r *PrometheusQueryExecutor) Warnings() map[string]v1.Warnings {
 	return r.warnings
 }
 
+// MustResultsAsValue retrieves the query results as a map of metric names to their corresponding values.
+// It ensures that the results are in a consistent format, making it easier to work with metrics in subsequent operations.
 func (r *PrometheusQueryExecutor) MustResultsAsValue() map[string]model.Value {
 	results := make(map[string]model.Value)
 	for name, result := range r.QueryResults {
@@ -180,6 +200,8 @@ func (r *PrometheusQueryExecutor) MustResultsAsValue() map[string]model.Value {
 	return results
 }
 
+// TimeRange sets the start and end time for the Prometheus query execution.
+// This function is essential for defining the time window for data retrieval, ensuring accurate and relevant results.
 func (r *PrometheusQueryExecutor) TimeRange(startTime, endTime time.Time) {
 	r.StartTime = startTime
 	r.EndTime = endTime
@@ -222,6 +244,9 @@ type TypedMetric struct {
 	MetricType string      `json:"metric_type"`
 }
 
+// MarshalJSON customizes the JSON representation of PrometheusQueryExecutor.
+// It includes only essential fields: Kind, Queries, and simplified QueryResults.
+// This function is useful for serializing the executor's state in a concise format.
 func (g *PrometheusQueryExecutor) MarshalJSON() ([]byte, error) {
 	// we need custom marshalling to only include some parts of the metrics
 	type QueryExecutor struct {
@@ -248,6 +273,9 @@ func (g *PrometheusQueryExecutor) MarshalJSON() ([]byte, error) {
 	return json.Marshal(q)
 }
 
+// UnmarshalJSON decodes JSON data into a PrometheusQueryExecutor instance.
+// It populates the QueryResults field with appropriately typed metrics,
+// enabling easy access to the results of Prometheus queries.
 func (r *PrometheusQueryExecutor) UnmarshalJSON(data []byte) error {
 	// helper struct with QueryResults map[string]interface{}
 	type Alias PrometheusQueryExecutor

@@ -22,6 +22,8 @@ type BasicData struct {
 	GeneratorConfigs map[string]*wasp.Config `json:"generator_configs"`
 }
 
+// MustNewBasicData creates a new BasicData instance from a commit or tag.
+// It panics if the creation fails, ensuring that the caller receives a valid instance.
 func MustNewBasicData(commitOrTag string, generators ...*wasp.Generator) BasicData {
 	b, err := NewBasicData(commitOrTag, generators...)
 	if err != nil {
@@ -31,6 +33,9 @@ func MustNewBasicData(commitOrTag string, generators ...*wasp.Generator) BasicDa
 	return *b
 }
 
+// NewBasicData creates a new BasicData instance using the provided commit or tag and a list of generators.
+// It ensures that at least one generator is provided and that it is associated with a testing.T instance. 
+// This function is essential for initializing test data configurations in a structured manner.
 func NewBasicData(commitOrTag string, generators ...*wasp.Generator) (*BasicData, error) {
 	if len(generators) == 0 {
 		return nil, errors.New("at least one generator is required")
@@ -58,6 +63,8 @@ func NewBasicData(commitOrTag string, generators ...*wasp.Generator) (*BasicData
 	return b, nil
 }
 
+// FillStartEndTimes calculates the earliest start time and latest end time from generator schedules.
+// It updates the BasicData instance with these times, ensuring all segments have valid start and end times.
 func (b *BasicData) FillStartEndTimes() error {
 	earliestTime := time.Now()
 	var latestTime time.Time
@@ -89,6 +96,8 @@ func (b *BasicData) FillStartEndTimes() error {
 	return nil
 }
 
+// Validate checks the integrity of the BasicData fields, ensuring that the test start and end times are set,
+// and that at least one generator configuration is provided. It returns an error if any of these conditions are not met.
 func (b *BasicData) Validate() error {
 	if b.TestStart.IsZero() {
 		return errors.New("test start time is missing. We cannot query Loki without a time range. Please set it and try again")
@@ -104,6 +113,10 @@ func (b *BasicData) Validate() error {
 	return nil
 }
 
+// IsComparable checks if two BasicData instances have the same configuration settings.
+// It validates the count, presence, and equivalence of generator configurations,
+// returning an error if any discrepancies are found. This function is useful for ensuring
+// consistency between data reports before processing or comparison.
 func (b *BasicData) IsComparable(otherData BasicData) error {
 	// are all configs present? do they have the same schedule type? do they have the same segments? is call timeout the same? is rate limit timeout the same?
 	if len(b.GeneratorConfigs) != len(otherData.GeneratorConfigs) {

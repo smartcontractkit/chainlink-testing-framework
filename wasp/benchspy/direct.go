@@ -20,6 +20,8 @@ type DirectQueryExecutor struct {
 	QueryResults map[string]interface{}   `json:"query_results"`
 }
 
+// NewStandardDirectQueryExecutor creates a new DirectQueryExecutor configured for standard queries.
+// It initializes the executor and generates the necessary queries, returning the executor or an error if the process fails.
 func NewStandardDirectQueryExecutor(generator *wasp.Generator) (*DirectQueryExecutor, error) {
 	g := &DirectQueryExecutor{
 		KindName: string(StandardQueryExecutor_Direct),
@@ -33,6 +35,8 @@ func NewStandardDirectQueryExecutor(generator *wasp.Generator) (*DirectQueryExec
 	return NewDirectQueryExecutor(generator, queries)
 }
 
+// NewDirectQueryExecutor creates a new DirectQueryExecutor with the specified generator and query functions.
+// It initializes the executor with a kind name and prepares a map for query results, enabling efficient query execution.
 func NewDirectQueryExecutor(generator *wasp.Generator, queries map[string]DirectQueryFn) (*DirectQueryExecutor, error) {
 	g := &DirectQueryExecutor{
 		KindName:     string(StandardQueryExecutor_Direct),
@@ -44,14 +48,20 @@ func NewDirectQueryExecutor(generator *wasp.Generator, queries map[string]Direct
 	return g, nil
 }
 
+// Results returns the query results as a map of string keys to interface{} values.
+// It allows users to access the outcomes of executed queries, facilitating further processing or type assertions.
 func (g *DirectQueryExecutor) Results() map[string]interface{} {
 	return g.QueryResults
 }
 
+// Kind returns the type of the query executor as a string.
+// It is useful for identifying the specific implementation of a query executor in a collection.
 func (l *DirectQueryExecutor) Kind() string {
 	return l.KindName
 }
 
+// IsComparable checks if the given QueryExecutor is of the same type and has comparable configurations.
+// It returns an error if the types do not match or if the configurations are not comparable.
 func (g *DirectQueryExecutor) IsComparable(otherQueryExecutor QueryExecutor) error {
 	otherType := reflect.TypeOf(otherQueryExecutor)
 
@@ -83,6 +93,9 @@ func (l *DirectQueryExecutor) compareQueries(other map[string]DirectQueryFn) err
 	return nil
 }
 
+// Validate checks if the query executor is properly configured.
+// It ensures that a generator is set and at least one query is provided.
+// Returns an error if validation fails, helping to prevent execution issues.
 func (g *DirectQueryExecutor) Validate() error {
 	if g.Generator == nil {
 		return errors.New("generator is not set")
@@ -95,6 +108,9 @@ func (g *DirectQueryExecutor) Validate() error {
 	return nil
 }
 
+// Execute runs the defined queries using the data from the generator.
+// It validates the generator's data and aggregates responses before executing each query.
+// This function is essential for processing and retrieving results from multiple queries concurrently.
 func (g *DirectQueryExecutor) Execute(_ context.Context) error {
 	if g.Generator == nil {
 		return errors.New("generator is not set")
@@ -130,6 +146,8 @@ func (g *DirectQueryExecutor) Execute(_ context.Context) error {
 	return nil
 }
 
+// TimeRange ensures that the query executor operates within the specified time range.
+// It is a no-op for executors that already have responses stored in the correct time range.
 func (g *DirectQueryExecutor) TimeRange(_, _ time.Time) {
 	// nothing to do here, since all responses stored in the generator are already in the right time range
 }
@@ -198,6 +216,9 @@ func (g *DirectQueryExecutor) standardQuery(standardMetric StandardLoadMetric) (
 	}
 }
 
+// MarshalJSON customizes the JSON representation of the DirectQueryExecutor.
+// It serializes only the relevant fields, including query names and results,
+// making it suitable for efficient data transmission and storage.
 func (g *DirectQueryExecutor) MarshalJSON() ([]byte, error) {
 	// we need custom marshalling to only include query names, since the functions are not serializable
 	type QueryExecutor struct {
@@ -226,6 +247,9 @@ func (g *DirectQueryExecutor) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// UnmarshalJSON decodes JSON data into a DirectQueryExecutor instance.
+// It populates the executor's fields, including queries and results, 
+// enabling seamless integration of JSON configurations into the executor's structure.
 func (g *DirectQueryExecutor) UnmarshalJSON(data []byte) error {
 	// helper struct with QueryExecutors as json.RawMessage and QueryResults as map[string]interface{}
 	// and as actual types
