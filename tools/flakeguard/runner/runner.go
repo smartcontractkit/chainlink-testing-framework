@@ -196,8 +196,11 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 		expectedRuns        = r.RunCount
 	)
 
+	runNumber := 0
 	// Process each file
 	for _, filePath := range filePaths {
+		runNumber++
+		runID := fmt.Sprintf("run%d", runNumber)
 		file, err := os.Open(filePath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open test output file: %w", err)
@@ -243,7 +246,8 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 						TestName:       entryLine.Test,
 						TestPackage:    entryLine.Package,
 						PassRatio:      0,
-						Outputs:        []string{},
+						PassedOutputs:  make(map[string][]string),
+						FailedOutputs:  make(map[string][]string),
 						PackageOutputs: []string{},
 					}
 				}
@@ -264,13 +268,27 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 					detectedEntries = append(detectedEntries, entryLine)
 					raceDetectionMode = true
 					continue // Don't process this entry further
+				} else if entryLine.Test != "" && entryLine.Action == "output" {
+					// Collect outputs regardless of pass or fail
+					if result.Outputs == nil {
+						result.Outputs = make(map[string][]string)
+					}
+					result.Outputs[runID] = append(result.Outputs[runID], entryLine.Output)
 				} else if entryLine.Test == "" {
 					if _, exists := packageLevelOutputs[entryLine.Package]; !exists {
 						packageLevelOutputs[entryLine.Package] = []string{}
 					}
 					packageLevelOutputs[entryLine.Package] = append(packageLevelOutputs[entryLine.Package], entryLine.Output)
-				} else if entryLine.Test != "" {
-					result.Outputs = append(result.Outputs, entryLine.Output)
+				} else {
+					// Collect outputs per run, per test action
+					switch entryLine.Action {
+					case "pass":
+						result.PassedOutputs[runID] = append(result.PassedOutputs[runID], entryLine.Output)
+					case "fail":
+						result.FailedOutputs[runID] = append(result.FailedOutputs[runID], entryLine.Output)
+					default:
+						// Handle other actions if necessary
+					}
 				}
 			}
 
@@ -290,7 +308,8 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 							TestName:       panicTest,
 							TestPackage:    entryLine.Package,
 							PassRatio:      0,
-							Outputs:        []string{},
+							PassedOutputs:  make(map[string][]string),
+							FailedOutputs:  make(map[string][]string),
 							PackageOutputs: []string{},
 						}
 						testDetails[panicTestKey] = result
@@ -306,7 +325,8 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 						if entry.Test == "" {
 							result.PackageOutputs = append(result.PackageOutputs, entry.Output)
 						} else {
-							result.Outputs = append(result.Outputs, entry.Output)
+							runID := fmt.Sprintf("run%d", runNumber)
+							result.FailedOutputs[runID] = append(result.FailedOutputs[runID], entry.Output)
 						}
 					}
 				} else if raceDetectionMode {
@@ -324,7 +344,8 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 							TestName:       raceTest,
 							TestPackage:    entryLine.Package,
 							PassRatio:      0,
-							Outputs:        []string{},
+							PassedOutputs:  make(map[string][]string),
+							FailedOutputs:  make(map[string][]string),
 							PackageOutputs: []string{},
 						}
 						testDetails[raceTestKey] = result
@@ -339,7 +360,8 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 						if entry.Test == "" {
 							result.PackageOutputs = append(result.PackageOutputs, entry.Output)
 						} else {
-							result.Outputs = append(result.Outputs, entry.Output)
+							runID := fmt.Sprintf("run%d", runNumber)
+							result.FailedOutputs[runID] = append(result.FailedOutputs[runID], entry.Output)
 						}
 					}
 				}
@@ -359,10 +381,14 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 					}
 					result.Durations = append(result.Durations, duration)
 					result.Successes++
-					if r.OmitOutputsOnSuccess {
-						// Clear outputs for passing tests
-						result.Outputs = nil
+
+					// Move outputs to PassedOutputs
+					if result.PassedOutputs == nil {
+						result.PassedOutputs = make(map[string][]string)
 					}
+					result.PassedOutputs[runID] = result.Outputs[runID]
+					// Clear temporary outputs
+					delete(result.Outputs, runID)
 				}
 			case "fail":
 				if entryLine.Test != "" {
@@ -372,12 +398,18 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 					}
 					result.Durations = append(result.Durations, duration)
 					result.Failures++
+
+					// Move outputs to FailedOutputs
+					if result.FailedOutputs == nil {
+						result.FailedOutputs = make(map[string][]string)
+					}
+					result.FailedOutputs[runID] = result.Outputs[runID]
+					// Clear temporary outputs
+					delete(result.Outputs, runID)
 				}
-			case "skip":
-				if entryLine.Test != "" {
-					result.Skipped = true
-					result.Skips++
-				}
+			case "output":
+				// Handled above when entryLine.Test is not empty
+				// ...existing code for other actions...
 			}
 			if entryLine.Test != "" {
 				result.Runs = result.Successes + result.Failures
@@ -412,7 +444,14 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 					if subTestResult, exists := testDetails[subTestKey]; exists {
 						if subTestResult.Failures > 0 {
 							subTestResult.Panic = true
-							subTestResult.Outputs = append(subTestResult.Outputs, "Panic in parent test")
+							// Initialize Outputs map if nil
+							if subTestResult.FailedOutputs == nil {
+								subTestResult.FailedOutputs = make(map[string][]string)
+							}
+							// Add the message to each run's output
+							for runID := range subTestResult.FailedOutputs {
+								subTestResult.FailedOutputs[runID] = append(subTestResult.FailedOutputs[runID], "Panic in parent test")
+							}
 						}
 					} else {
 						log.Printf("WARN: expected to find subtest '%s' inside parent test '%s', but not found\n", subTestKey, parentTestKey)

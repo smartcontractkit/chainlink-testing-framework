@@ -36,7 +36,9 @@ type TestResult struct {
 	Failures       int
 	Successes      int
 	Skips          int
-	Outputs        []string
+	Outputs        map[string][]string // Temporary storage for outputs during test run
+	PassedOutputs  map[string][]string // Outputs for passed runs
+	FailedOutputs  map[string][]string // Outputs for failed runs
 	Durations      []time.Duration
 	PackageOutputs []string
 	TestPath       string
@@ -191,7 +193,18 @@ func aggregateFromReports(reports ...*TestReport) (*TestReport, error) {
 func mergeTestResults(a, b TestResult) TestResult {
 	a.Runs += b.Runs
 	a.Durations = append(a.Durations, b.Durations...)
-	a.Outputs = append(a.Outputs, b.Outputs...)
+	if a.PassedOutputs == nil {
+		a.PassedOutputs = make(map[string][]string)
+	}
+	if a.FailedOutputs == nil {
+		a.FailedOutputs = make(map[string][]string)
+	}
+	for runID, outputs := range b.PassedOutputs {
+		a.PassedOutputs[runID] = append(a.PassedOutputs[runID], outputs...)
+	}
+	for runID, outputs := range b.FailedOutputs {
+		a.FailedOutputs[runID] = append(a.FailedOutputs[runID], outputs...)
+	}
 	a.PackageOutputs = append(a.PackageOutputs, b.PackageOutputs...)
 	a.Successes += b.Successes
 	a.Failures += b.Failures
