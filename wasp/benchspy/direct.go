@@ -154,7 +154,9 @@ func (g *DirectQueryExecutor) standardQuery(standardMetric StandardLoadMetric) (
 		medianFn := func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error) {
 			var asMiliDuration []float64
 			for _, response := range responses.Data {
-				asMiliDuration = append(asMiliDuration, float64(response.Duration.Milliseconds()))
+				// get duration as nanoseconds and convert to milliseconds in order to not lose precision
+				// otherwise, the duration will be rounded to the nearest millisecond
+				asMiliDuration = append(asMiliDuration, float64(response.Duration.Nanoseconds())/1_000_000)
 			}
 
 			return CalculatePercentile(asMiliDuration, 0.5), nil
@@ -164,7 +166,9 @@ func (g *DirectQueryExecutor) standardQuery(standardMetric StandardLoadMetric) (
 		p95Fn := func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error) {
 			var asMiliDuration []float64
 			for _, response := range responses.Data {
-				asMiliDuration = append(asMiliDuration, float64(response.Duration.Milliseconds()))
+				// get duration as nanoseconds and convert to milliseconds in order to not lose precision
+				// otherwise, the duration will be rounded to the nearest millisecond
+				asMiliDuration = append(asMiliDuration, float64(response.Duration.Nanoseconds())/1_000_000)
 			}
 
 			return CalculatePercentile(asMiliDuration, 0.95), nil

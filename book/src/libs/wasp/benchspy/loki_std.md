@@ -105,6 +105,10 @@ compareMedian(string(benchspy.Percentile95Latency))
 compareMedian(string(benchspy.ErrorRate))
 ```
 
+> [!WARNING]
+> Standard Loki metrics are all calculated using a 10 seconds moving window, which results in smoothing of values due to aggregation.
+> To learn what that means in details, please refer to [To Loki or Not to Loki](./loki_dillema.md) chapter.
+
 ## What’s Next?
 
 In this example, we used standard metrics, which are the same as in the first test. Now, [let’s explore how to use your custom LogQL queries](./loki_custom.md).
