@@ -49,6 +49,6 @@ compareValues(string(benchspy.ErrorRate), 1.0)
 
 And that's it! You have written your first test that uses `WASP` to generate the load and `BenchSpy` to make sure that neither median latency nor 95th latency percentile
 nor error rate has changed significantly between the runs. You did that without even needing a Loki instance, but what if you wanted to leverage the power
-of LogQL? We will look at that in the [next chapter](./using_loki.md).
+of `LogQL`? We will look at that in the [next chapter](./using_loki.md).
 
 You can find the full example [here](...).
