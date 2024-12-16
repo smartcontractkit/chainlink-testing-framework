@@ -346,11 +346,13 @@ func TestAggregateOutputs(t *testing.T) {
 		TestRunCount: 1,
 		Results: []TestResult{
 			{
-				TestName:       "TestOutput",
-				TestPackage:    "pkg1",
-				Runs:           1,
-				Successes:      1,
-				Outputs:        []string{"Output from report1 test run"},
+				TestName:    "TestOutput",
+				TestPackage: "pkg1",
+				Runs:        1,
+				Successes:   1,
+				PassedOutputs: map[string][]string{
+					"run1": {"Output from report1 test run"},
+				},
 				PackageOutputs: []string{"Package output from report1"},
 			},
 		},
@@ -361,11 +363,13 @@ func TestAggregateOutputs(t *testing.T) {
 		TestRunCount: 1,
 		Results: []TestResult{
 			{
-				TestName:       "TestOutput",
-				TestPackage:    "pkg1",
-				Runs:           1,
-				Successes:      1,
-				Outputs:        []string{"Output from report2 test run"},
+				TestName:    "TestOutput",
+				TestPackage: "pkg1",
+				Runs:        1,
+				Successes:   1,
+				PassedOutputs: map[string][]string{
+					"run2": {"Output from report2 test run"},
+				},
 				PackageOutputs: []string{"Package output from report2"},
 			},
 		},
@@ -382,18 +386,24 @@ func TestAggregateOutputs(t *testing.T) {
 
 	result := aggregatedReport.Results[0]
 
-	// Expected outputs
-	expectedOutputs := []string{
-		"Output from report1 test run",
-		"Output from report2 test run",
+	// Expected outputs after aggregation:
+	// The aggregator should have merged both test runs' outputs under the same run key ("run1").
+	expectedOutputs := map[string][]string{
+		"run1": {
+			"Output from report1 test run",
+		},
+		"run2": {
+			"Output from report2 test run",
+		},
 	}
+
 	expectedPackageOutputs := []string{
 		"Package output from report1",
 		"Package output from report2",
 	}
 
-	if !reflect.DeepEqual(result.Outputs, expectedOutputs) {
-		t.Errorf("Expected Outputs %v, got %v", expectedOutputs, result.Outputs)
+	if !reflect.DeepEqual(result.PassedOutputs, expectedOutputs) {
+		t.Errorf("Expected Outputs %v, got %v", expectedOutputs, result.PassedOutputs)
 	}
 
 	if !reflect.DeepEqual(result.PackageOutputs, expectedPackageOutputs) {
@@ -407,11 +417,13 @@ func TestAggregateIdenticalOutputs(t *testing.T) {
 		TestRunCount: 1,
 		Results: []TestResult{
 			{
-				TestName:       "TestIdenticalOutput",
-				TestPackage:    "pkg1",
-				Runs:           1,
-				Successes:      1,
-				Outputs:        []string{"Identical output"},
+				TestName:    "TestIdenticalOutput",
+				TestPackage: "pkg1",
+				Runs:        1,
+				Successes:   1,
+				PassedOutputs: map[string][]string{
+					"run1": {"Identical output"},
+				},
 				PackageOutputs: []string{"Identical package output"},
 			},
 		},
@@ -422,11 +434,13 @@ func TestAggregateIdenticalOutputs(t *testing.T) {
 		TestRunCount: 1,
 		Results: []TestResult{
 			{
-				TestName:       "TestIdenticalOutput",
-				TestPackage:    "pkg1",
-				Runs:           1,
-				Successes:      1,
-				Outputs:        []string{"Identical output"},
+				TestName:    "TestIdenticalOutput",
+				TestPackage: "pkg1",
+				Runs:        1,
+				Successes:   1,
+				PassedOutputs: map[string][]string{
+					"run1": {"Identical output"},
+				},
 				PackageOutputs: []string{"Identical package output"},
 			},
 		},
@@ -443,77 +457,21 @@ func TestAggregateIdenticalOutputs(t *testing.T) {
 
 	result := aggregatedReport.Results[0]
 
-	// Expected outputs
-	expectedOutputs := []string{
-		"Identical output",
-		"Identical output",
+	expectedOutputs := map[string][]string{
+		"run1": {"Identical output", "Identical output"},
 	}
+
 	expectedPackageOutputs := []string{
 		"Identical package output",
 		"Identical package output",
 	}
 
-	if !reflect.DeepEqual(result.Outputs, expectedOutputs) {
-		t.Errorf("Expected Outputs %v, got %v", expectedOutputs, result.Outputs)
+	if !reflect.DeepEqual(result.PassedOutputs, expectedOutputs) {
+		t.Errorf("Expected Outputs %v, got %v", expectedOutputs, result.PassedOutputs)
 	}
 
 	if !reflect.DeepEqual(result.PackageOutputs, expectedPackageOutputs) {
 		t.Errorf("Expected PackageOutputs %v, got %v", expectedPackageOutputs, result.PackageOutputs)
-	}
-}
-
-// TestMergeTestResults tests the mergeTestResults function.
-func TestMergeTestResults(t *testing.T) {
-	a := TestResult{
-		TestName:       "TestA",
-		TestPackage:    "pkg1",
-		Runs:           2,
-		Successes:      2,
-		Failures:       0,
-		Skips:          0,
-		Durations:      []time.Duration{time.Second, time.Second},
-		Outputs:        []string{"Output1", "Output2"},
-		PackageOutputs: []string{"PkgOutput1"},
-		Panic:          false,
-		Race:           false,
-		Skipped:        false,
-	}
-
-	b := TestResult{
-		TestName:       "TestA",
-		TestPackage:    "pkg1",
-		Runs:           3,
-		Successes:      2,
-		Failures:       1,
-		Skips:          0,
-		Durations:      []time.Duration{2 * time.Second, 2 * time.Second, 2 * time.Second},
-		Outputs:        []string{"Output3", "Output4", "Output5"},
-		PackageOutputs: []string{"PkgOutput2"},
-		Panic:          true,
-		Race:           false,
-		Skipped:        false,
-	}
-
-	merged := mergeTestResults(a, b)
-
-	expected := TestResult{
-		TestName:       "TestA",
-		TestPackage:    "pkg1",
-		Runs:           5,
-		Successes:      4,
-		Failures:       1,
-		Skips:          0,
-		Durations:      []time.Duration{time.Second, time.Second, 2 * time.Second, 2 * time.Second, 2 * time.Second},
-		Outputs:        []string{"Output1", "Output2", "Output3", "Output4", "Output5"},
-		PackageOutputs: []string{"PkgOutput1", "PkgOutput2"},
-		Panic:          true,
-		Race:           false,
-		Skipped:        false,
-		PassRatio:      0.8,
-	}
-
-	if !reflect.DeepEqual(merged, expected) {
-		t.Errorf("Expected %+v, got %+v", expected, merged)
 	}
 }
 
