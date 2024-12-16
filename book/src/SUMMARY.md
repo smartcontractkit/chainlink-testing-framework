@@ -76,7 +76,7 @@
       - [Define NFRs and check alerts](./libs/wasp/how-to/define_nfr_check_alerts.md)
       - [Use labels](./libs/wasp/how-to/use_labels.md)
       - [Incorporate load tests in your workflow](./libs/wasp/how-to/incorporate_load_tests.md)
-      - [Reuse dashboard components](./libs/wasp/how-to/reuse_dashboard_components.md) 
+      - [Reuse dashboard components](./libs/wasp/how-to/reuse_dashboard_components.md)
       - [Parallelize load](./libs/wasp/how-to/parallelise_load.md)
       - [Debug Loki errors](./libs/wasp/how-to/debug_loki_errors.md)
   - [Havoc](./libs/havoc.md)
@@ -85,6 +85,20 @@
 ---
 
 - [Releasing modules](releasing_modules.md)
+---
+
+- [Lib](libv2/overview.md)
+  - [Concurrency](libv2/concurrency.md)
+  - [Client](libv2/client.md)
+    - [Anvil]()
+    - [AWS Secrets Manager](libv2/client/aws_secrets_manager.md)
+    - [Github](libv2/client/github.md)
+    - [Kafka](libv2/client/kafka.md)
+    - [Loki](libv2/client/loki.md)
+    - [MockServer](libv2/client/mockserver.md)
+    - [Postgres](libv2/client/postgres.md)
+    - [Prometheus](libv2/client/prometheus.md)
+  - [Logging](libv2/logging.md)
 
 ---
 - [Lib (*Deprecated*)](lib.md)
