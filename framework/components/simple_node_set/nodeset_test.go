@@ -78,6 +78,7 @@ func TestComponentDockerNodeSetSharedDB(t *testing.T) {
 				OverrideMode:       "each",
 				HTTPPortRangeStart: 20000,
 				P2PPortRangeStart:  22000,
+				DlvPortRangeStart:  45000,
 				DbInput: &postgres.Input{
 					Image: "postgres:12.0",
 					Port:  14000,
