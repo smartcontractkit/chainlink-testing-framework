@@ -557,7 +557,7 @@ func (c *ChainlinkClient) UpdateEthKeyMaxGasPriceGWei(keyId string, gWei int) (*
 }
 
 // ReadPrimaryETHKey reads updated information about the Chainlink's primary ETH key
-func (c *ChainlinkClient) ReadPrimaryETHKey() (*ETHKeyData, error) {
+func (c *ChainlinkClient) ReadPrimaryETHKey(chainId string) (*ETHKeyData, error) {
 	ethKeys, err := c.MustReadETHKeys()
 	if err != nil {
 		return nil, err
@@ -565,7 +565,12 @@ func (c *ChainlinkClient) ReadPrimaryETHKey() (*ETHKeyData, error) {
 	if len(ethKeys.Data) == 0 {
 		return nil, fmt.Errorf("Error retrieving primary eth key on node %s: No ETH keys present", c.URL())
 	}
-	return &ethKeys.Data[0], nil
+	for _, data := range ethKeys.Data {
+		if data.Attributes.ChainID == chainId {
+			return &data, nil
+		}
+	}
+	return nil, fmt.Errorf("error retrieving primary eth key on node %s: No ETH keys present for chain %s", c.URL(), chainId)
 }
 
 // ReadETHKeyAtIndex reads updated information about the Chainlink's ETH key at given index
