@@ -216,7 +216,8 @@ func SaveSummaryAsJSON(fs FileSystem, path string, summary SummaryData) error {
 func SaveReportNoLogs(fs FileSystem, filePath string, report TestReport) error {
 	var filteredResults []TestResult
 	for _, r := range report.Results {
-		r.Outputs = nil
+		r.FailedOutputs = nil
+		r.PassedOutputs = nil
 		r.PackageOutputs = nil
 		filteredResults = append(filteredResults, r)
 	}
