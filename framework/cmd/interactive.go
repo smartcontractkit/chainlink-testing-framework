@@ -75,9 +75,6 @@ func createComponentsFromForm(form *nodeSetForm) error {
 	}
 	switch form.Observability {
 	case true:
-		if err = framework.NewPromtail(); err != nil {
-			return err
-		}
 		if err := observabilityUp(); err != nil {
 			return err
 		}

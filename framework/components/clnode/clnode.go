@@ -222,7 +222,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 			"/bin/sh", "-c",
 			"chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials",
 		},
-		WaitingFor: wait.ForHTTP("/").WithPort(DefaultHTTPPort).WithStartupTimeout(2 * time.Minute),
+		WaitingFor: wait.ForHTTP("/").WithPort(DefaultHTTPPort).WithStartupTimeout(1 * time.Minute).WithPollInterval(200 * time.Millisecond),
 	}
 	if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {
 		req.HostConfigModifier = func(h *container.HostConfig) {

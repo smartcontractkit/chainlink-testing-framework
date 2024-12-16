@@ -59,7 +59,7 @@ scrape_configs:
 	lokiTenantID := os.Getenv("LOKI_TENANT_ID")
 
 	if lokiURL == "" {
-		lokiURL = "http://host.docker.internal:3030/loki/api/v1/push"
+		lokiURL = "http://host.docker.internal:3100/loki/api/v1/push"
 	}
 	if lokiTenantID == "" {
 		lokiTenantID = "promtail"
@@ -108,7 +108,7 @@ scrape_configs:
 }
 
 func NewPromtail() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
 	pcn, err := promtailConfig()
