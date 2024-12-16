@@ -409,7 +409,6 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 				}
 			case "output":
 				// Handled above when entryLine.Test is not empty
-				// ...existing code for other actions...
 			}
 			if entryLine.Test != "" {
 				result.Runs = result.Successes + result.Failures
