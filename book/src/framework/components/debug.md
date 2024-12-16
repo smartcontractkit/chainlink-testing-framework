@@ -10,7 +10,6 @@ Use `RESTY_DEBUG=true` to debug any API calls.
 
 Use `SETH_LOG_LEVEL=trace|debug|info|warn` to debug [Seth](../../libs/seth.md).
 
-## Using Delve
+## Using Delve Debugger
 
-All `dlv` debuggers are exposed on ports `40000, 40001, 40002 ...`
-
+If you are using `Chainlink` image with [Delve](https://github.com/go-delve/delve) available in path you can use ports `40000..400XX` to connect to any node.
