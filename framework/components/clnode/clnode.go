@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"text/template"
@@ -23,6 +24,7 @@ import (
 const (
 	DefaultHTTPPort     = "6688"
 	DefaultP2PPort      = "6690"
+	DefaultDebuggerPort = 40000
 	TmpImageName        = "chainlink-tmp:latest"
 	CustomPortSeparator = ":"
 )
@@ -54,6 +56,7 @@ type NodeInput struct {
 	HTTPPort                int      `toml:"port"`
 	P2PPort                 int      `toml:"p2p_port"`
 	CustomPorts             []string `toml:"custom_ports"`
+	DebuggerPort            int      `toml:"debugger_port"`
 }
 
 // Output represents Chainlink node output, nodes and databases connection URLs
@@ -114,16 +117,36 @@ func NewNode(in *Input, pgOut *postgres.Output) (*Output, error) {
 	return out, nil
 }
 
+func generateEntryPoint() []string {
+	entrypoint := []string{
+		"/bin/sh", "-c",
+	}
+	if os.Getenv("CTF_CLNODE_DLV") == "true" {
+		entrypoint = append(entrypoint, "dlv  exec /usr/local/bin/chainlink --continue --listen=0.0.0.0:40000 --headless=true --api-version=2 --accept-multiclient -- -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials")
+	} else {
+		entrypoint = append(entrypoint, "chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials")
+	}
+	return entrypoint
+}
+
 // generatePortBindings generates exposed ports and port bindings
 // exposes default CL node port
 // exposes custom_ports in format "host:docker" or map 1-to-1 if only "host" port is provided
 func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
 	httpPort := fmt.Sprintf("%s/tcp", DefaultHTTPPort)
+	innerDebuggerPort := fmt.Sprintf("%d/tcp", DefaultDebuggerPort)
+	debuggerPort := fmt.Sprintf("%d/tcp", in.Node.DebuggerPort)
 	portBindings := nat.PortMap{
 		nat.Port(httpPort): []nat.PortBinding{
 			{
 				HostIP:   "0.0.0.0",
 				HostPort: fmt.Sprintf("%d/tcp", in.Node.HTTPPort),
+			},
+		},
+		nat.Port(innerDebuggerPort): []nat.PortBinding{
+			{
+				HostIP:   "0.0.0.0",
+				HostPort: debuggerPort,
 			},
 		},
 	}
@@ -157,7 +180,7 @@ func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
 			}
 		}
 	}
-	exposedPorts := []string{httpPort}
+	exposedPorts := []string{httpPort, strconv.Itoa(DefaultDebuggerPort)}
 	exposedPorts = append(exposedPorts, customPorts...)
 	return exposedPorts, portBindings, nil
 }
@@ -219,11 +242,8 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 			framework.DefaultNetworkName: {containerName},
 		},
 		ExposedPorts: exposedPorts,
-		Entrypoint: []string{
-			"/bin/sh", "-c",
-			"chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials",
-		},
-		WaitingFor: wait.ForHTTP("/").WithPort(DefaultHTTPPort).WithStartupTimeout(1 * time.Minute).WithPollInterval(200 * time.Millisecond),
+		Entrypoint:   generateEntryPoint(),
+		WaitingFor:   wait.ForHTTP("/").WithPort(DefaultHTTPPort).WithStartupTimeout(1 * time.Minute).WithPollInterval(200 * time.Millisecond),
 	}
 	if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {
 		req.HostConfigModifier = func(h *container.HostConfig) {

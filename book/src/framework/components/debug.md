@@ -10,35 +10,7 @@ Use `RESTY_DEBUG=true` to debug any API calls.
 
 Use `SETH_LOG_LEVEL=trace|debug|info|warn` to debug [Seth](../../libs/seth.md).
 
-## Using Delve (TBD)
+## Using Delve
 
-You can use [Delve]() inside your containers to debug aplications.
-
-Build them with `go build -gcflags="all=-N -l" -o myapp` and use an example `Dockerfile`:
-```
-FROM golang:1.20
-
-# Install Delve
-RUN go install github.com/go-delve/delve/cmd/dlv@latest
-
-# Set working directory
-WORKDIR /app
-
-# Copy the application binary and source code (if needed for debugging)
-COPY myapp /app/myapp
-COPY . /app
-
-# Expose the port for Delve
-EXPOSE 40000
-
-# Start Delve in headless mode for remote debugging
-ENTRYPOINT ["dlv", "exec", "./myapp", "--headless", "--listen=:40000", "--api-version=2", "--accept-multiclient"]
-
-```
-
-Adding `Delve` to all our components is WIP right now.
-
-To expose `Delve` port follow this [guide](state.md).
-
-
+All `dlv` debuggers are exposed on ports `40000, 40001, 40002 ...`
 

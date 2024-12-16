@@ -129,6 +129,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 				Node: &clnode.NodeInput{
 					HTTPPort:                httpPortRangeStart + i,
 					P2PPort:                 p2pPortRangeStart + i,
+					DebuggerPort:            clnode.DefaultDebuggerPort + i,
 					CustomPorts:             in.NodeSpecs[overrideIdx].Node.CustomPorts,
 					Image:                   in.NodeSpecs[overrideIdx].Node.Image,
 					Name:                    nodeName,

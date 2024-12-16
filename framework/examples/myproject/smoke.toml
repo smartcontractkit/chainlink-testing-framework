@@ -1,9 +1,9 @@
 
 [blockchain_a]
   # choose "anvil", "geth" or "besu"
-  # uncomment the second line for "anvil"
-  type = "besu"
-#  docker_cmd_params = ["-b", "1"]
+  # use   docker_cmd_params = ["-b", "1"] for "anvil"
+  type = "anvil"
+  docker_cmd_params = ["-b", "1"]
 
 [data_provider]
   port = 9111
@@ -18,4 +18,6 @@
   [[nodeset.node_specs]]
 
     [nodeset.node_specs.node]
-      image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+      docker_file = "plugins/chainlink.Dockerfile"
+      docker_ctx = "/Users/fahrenheit/GolandProjects/chainlink"
+#      image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
