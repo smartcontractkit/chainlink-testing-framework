@@ -386,8 +386,6 @@ func TestAggregateOutputs(t *testing.T) {
 
 	result := aggregatedReport.Results[0]
 
-	// Expected outputs after aggregation:
-	// The aggregator should have merged both test runs' outputs under the same run key ("run1").
 	expectedOutputs := map[string][]string{
 		"run1": {
 			"Output from report1 test run",

@@ -590,9 +590,6 @@ func TestOmitOutputsOnSuccess(t *testing.T) {
 		}
 	}
 	require.NotNil(t, testPassResult, "expected 'TestPass' result not found in report")
-
-	// Since TestPass always succeeds and OmitOutputsOnSuccess is true,
-	// we expect no PassedOutputs or general outputs.
 	require.Empty(t, testPassResult.PassedOutputs, "expected no passed outputs due to OmitOutputsOnSuccess")
 	require.Empty(t, testPassResult.Outputs, "expected no captured outputs due to OmitOutputsOnSuccess and a successful test")
 }
