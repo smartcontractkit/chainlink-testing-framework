@@ -531,6 +531,39 @@ func TestFailedOutputs(t *testing.T) {
 	}
 }
 
+func TestSkippedTests(t *testing.T) {
+	t.Parallel()
+
+	runner := Runner{
+		ProjectPath:          "./",
+		Verbose:              true,
+		RunCount:             1,
+		SelectedTestPackages: []string{flakyTestPackagePath},
+		SelectTests:          []string{"TestSkipped"}, // Known skipping test
+		CollectRawOutput:     true,
+	}
+
+	testReport, err := runner.RunTests()
+	require.NoError(t, err, "running tests should not produce an unexpected error")
+
+	require.Equal(t, 1, testReport.TestRunCount, "unexpected number of test runs")
+
+	var testSkipResult *reports.TestResult
+	for i := range testReport.Results {
+		if testReport.Results[i].TestName == "TestSkipped" {
+			testSkipResult = &testReport.Results[i]
+			break
+		}
+	}
+	require.NotNil(t, testSkipResult, "expected 'TestSkipped' result not found in report")
+
+	// Check that the test was properly marked as skipped
+	require.True(t, testSkipResult.Skipped, "test 'TestSkipped' should be marked as skipped")
+	require.Equal(t, 0, testSkipResult.Failures, "test 'TestSkipped' should have no failures")
+	require.Equal(t, 0, testSkipResult.Successes, "test 'TestSkipped' should have no successes")
+	require.Equal(t, 1, testSkipResult.Skips, "test 'TestSkipped' should have exactly one skip recorded")
+}
+
 func TestOmitOutputsOnSuccess(t *testing.T) {
 	t.Parallel()
 

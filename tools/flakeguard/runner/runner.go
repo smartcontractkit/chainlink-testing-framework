@@ -407,6 +407,11 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 					// Clear temporary outputs
 					delete(result.Outputs, runID)
 				}
+			case "skip":
+				if entryLine.Test != "" {
+					result.Skipped = true
+					result.Skips++
+				}
 			case "output":
 				// Handled above when entryLine.Test is not empty
 			}
