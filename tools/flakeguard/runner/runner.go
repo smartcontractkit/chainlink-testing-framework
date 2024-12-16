@@ -39,6 +39,7 @@ type Runner struct {
 	SelectTests          []string      // Test names to include.
 	SelectedTestPackages []string      // Explicitly selected packages to run.
 	CollectRawOutput     bool          // Set to true to collect test output for later inspection.
+	OmitOutputsOnSuccess bool          // Set to true to omit test outputs on success.
 	rawOutputs           map[string]*bytes.Buffer
 }
 
@@ -69,7 +70,7 @@ func (r *Runner) RunTests() (*reports.TestReport, error) {
 		}
 	}
 
-	results, err := parseTestResults(r.RunCount, jsonFilePaths)
+	results, err := r.parseTestResults(jsonFilePaths)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
@@ -182,7 +183,7 @@ func (e entry) String() string {
 // panics and failures at that point.
 // Subtests add more complexity, as panics in subtests are only reported in their parent's output,
 // and cannot be accurately attributed to the subtest that caused them.
-func parseTestResults(expectedRuns int, filePaths []string) ([]reports.TestResult, error) {
+func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, error) {
 	var (
 		testDetails         = make(map[string]*reports.TestResult) // Holds run, pass counts, and other details for each test
 		panickedPackages    = map[string]struct{}{}                // Packages with tests that panicked
@@ -192,6 +193,7 @@ func parseTestResults(expectedRuns int, filePaths []string) ([]reports.TestResul
 		panicDetectionMode  = false
 		raceDetectionMode   = false
 		detectedEntries     = []entry{} // race or panic entries
+		expectedRuns        = r.RunCount
 	)
 
 	// Process each file
@@ -357,6 +359,10 @@ func parseTestResults(expectedRuns int, filePaths []string) ([]reports.TestResul
 					}
 					result.Durations = append(result.Durations, duration)
 					result.Successes++
+					if r.OmitOutputsOnSuccess {
+						// Clear outputs for passing tests
+						result.Outputs = nil
+					}
 				}
 			case "fail":
 				if entryLine.Test != "" {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 )
@@ -31,30 +32,157 @@ func (OSFileSystem) WriteFile(filename string, data []byte, perm os.FileMode) er
 	return os.WriteFile(filename, data, perm)
 }
 
-// LoadReports reads JSON files from a directory and returns a slice of TestReport pointers
-func LoadReports(resultsPath string) ([]*TestReport, error) {
-	var testReports []*TestReport
-	err := filepath.Walk(resultsPath, func(path string, info os.FileInfo, err error) error {
+func LoadAndAggregate(resultsPath string) (*TestReport, error) {
+	reportChan := make(chan *TestReport)
+	errChan := make(chan error, 1)
+
+	// Start file processing in a goroutine
+	go func() {
+		defer close(reportChan)
+		defer close(errChan)
+
+		err := filepath.Walk(resultsPath, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return fmt.Errorf("error accessing path %s: %w", path, err)
+			}
+			if !info.IsDir() && filepath.Ext(path) == ".json" {
+				log.Printf("Processing file: %s", path)
+				processLargeFile(path, reportChan, errChan)
+			}
+			return nil
+		})
 		if err != nil {
-			return fmt.Errorf("error accessing path %s: %w", path, err)
+			errChan <- err
 		}
-		if !info.IsDir() && filepath.Ext(path) == ".json" {
-			data, readErr := os.ReadFile(path)
-			if readErr != nil {
-				return fmt.Errorf("error reading file %s: %w", path, readErr)
-			}
-			var report TestReport
-			if jsonErr := json.Unmarshal(data, &report); jsonErr != nil {
-				return fmt.Errorf("error unmarshaling JSON from file %s: %w", path, jsonErr)
-			}
-			testReports = append(testReports, &report)
-		}
-		return nil
-	})
+	}()
+
+	// Aggregate results as they are being loaded
+	aggregatedReport, err := aggregate(reportChan)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error aggregating reports: %w", err)
 	}
-	return testReports, nil
+	return aggregatedReport, nil
+}
+
+func processLargeFile(filePath string, reportChan chan<- *TestReport, errChan chan<- error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		errChan <- fmt.Errorf("error opening file %s: %w", filePath, err)
+		log.Printf("Error opening file: %s, Error: %v", filePath, err)
+		return
+	}
+	defer file.Close()
+
+	decoder := json.NewDecoder(file)
+
+	var report TestReport
+	token, err := decoder.Token() // Read opening brace '{'
+	if err != nil || token != json.Delim('{') {
+		errChan <- fmt.Errorf("error reading JSON object start from file %s: %w", filePath, err)
+		log.Printf("Error reading JSON object start from file: %s, Error: %v", filePath, err)
+		return
+	}
+
+	// Parse fields until we reach the end of the object
+	for decoder.More() {
+		token, err := decoder.Token()
+		if err != nil {
+			errChan <- fmt.Errorf("error reading JSON token from file %s: %w", filePath, err)
+			log.Printf("Error reading JSON token from file: %s, Error: %v", filePath, err)
+			return
+		}
+
+		fieldName, ok := token.(string)
+		if !ok {
+			errChan <- fmt.Errorf("unexpected JSON token in file %s", filePath)
+			log.Printf("Unexpected JSON token in file: %s, Token: %v", filePath, token)
+			return
+		}
+
+		switch fieldName {
+		case "GoProject":
+			if err := decoder.Decode(&report.GoProject); err != nil {
+				log.Printf("Error decoding GoProject in file: %s, Error: %v", filePath, err)
+				return
+			}
+		case "HeadSHA":
+			if err := decoder.Decode(&report.HeadSHA); err != nil {
+				log.Printf("Error decoding HeadSHA in file: %s, Error: %v", filePath, err)
+				return
+			}
+		case "BaseSHA":
+			if err := decoder.Decode(&report.BaseSHA); err != nil {
+				log.Printf("Error decoding BaseSHA in file: %s, Error: %v", filePath, err)
+				return
+			}
+		case "RepoURL":
+			if err := decoder.Decode(&report.RepoURL); err != nil {
+				log.Printf("Error decoding RepoURL in file: %s, Error: %v", filePath, err)
+				return
+			}
+		case "GitHubWorkflowName":
+			if err := decoder.Decode(&report.GitHubWorkflowName); err != nil {
+				log.Printf("Error decoding GitHubWorkflowName in file: %s, Error: %v", filePath, err)
+				return
+			}
+		case "TestRunCount":
+			if err := decoder.Decode(&report.TestRunCount); err != nil {
+				log.Printf("Error decoding TestRunCount in file: %s, Error: %v", filePath, err)
+				return
+			}
+		case "RaceDetection":
+			if err := decoder.Decode(&report.RaceDetection); err != nil {
+				log.Printf("Error decoding RaceDetection in file: %s, Error: %v", filePath, err)
+				return
+			}
+		case "ExcludedTests":
+			if err := decoder.Decode(&report.ExcludedTests); err != nil {
+				log.Printf("Error decoding ExcludedTests in file: %s, Error: %v", filePath, err)
+				return
+			}
+		case "SelectedTests":
+			if err := decoder.Decode(&report.SelectedTests); err != nil {
+				log.Printf("Error decoding SelectedTests in file: %s, Error: %v", filePath, err)
+				return
+			}
+		case "Results":
+			token, err := decoder.Token() // Read opening bracket '['
+			if err != nil || token != json.Delim('[') {
+				log.Printf("Error reading Results array start in file: %s, Error: %v", filePath, err)
+				return
+			}
+
+			for decoder.More() {
+				var result TestResult
+				if err := decoder.Decode(&result); err != nil {
+					log.Printf("Error decoding TestResult in file: %s, Error: %v", filePath, err)
+					return
+				}
+				report.Results = append(report.Results, result)
+			}
+
+			if _, err := decoder.Token(); err != nil {
+				log.Printf("Error reading Results array end in file: %s, Error: %v", filePath, err)
+				return
+			}
+		default:
+			// Skip unknown fields
+			var skip interface{}
+			if err := decoder.Decode(&skip); err != nil {
+				log.Printf("Error skipping unknown field: %s in file: %s, Error: %v", fieldName, filePath, err)
+				return
+			}
+			log.Printf("Skipped unknown field: %s in file: %s", fieldName, filePath)
+		}
+	}
+
+	// Read closing brace '}'
+	if _, err := decoder.Token(); err != nil {
+		log.Printf("Error reading JSON object end in file: %s, Error: %v", filePath, err)
+		return
+	}
+
+	reportChan <- &report
 }
 
 // LoadReport reads a JSON file and returns a TestReport pointer
