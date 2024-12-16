@@ -264,8 +264,7 @@ func WriteAllContainersLogs(dir string) error {
 func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string) error {
 	var err error
 	once.Do(func() {
-		dfilePath := filepath.Join(dctx, dfile)
-		err = runCommand("docker", "build", "-t", nameAndTag, "-f", dfilePath, dctx)
+		err = BuildImage(dctx, dfile, nameAndTag)
 		if err != nil {
 			err = fmt.Errorf("failed to build Docker image: %w", err)
 		}
@@ -275,5 +274,9 @@ func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string) error {
 
 func BuildImage(dctx, dfile, nameAndTag string) error {
 	dfilePath := filepath.Join(dctx, dfile)
-	return runCommand("docker", "build", "-t", nameAndTag, "-f", dfilePath, dctx)
+	if os.Getenv("CTF_CLNODE_DLV") == "true" {
+		return runCommand("docker", "build", "--build-arg", `GO_GCFLAGS=all=-N -l`, "-t", nameAndTag, "-f", dfilePath, dctx)
+	} else {
+		return runCommand("docker", "build", "-t", nameAndTag, "-f", dfilePath, dctx)
+	}
 }
