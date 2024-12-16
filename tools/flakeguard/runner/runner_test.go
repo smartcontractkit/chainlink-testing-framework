@@ -496,6 +496,74 @@ func TestAttributeRaceToTest(t *testing.T) {
 	}
 }
 
+func TestFailedOutputs(t *testing.T) {
+	t.Parallel()
+
+	runner := Runner{
+		ProjectPath:          "./",
+		Verbose:              true,
+		RunCount:             1,
+		SelectedTestPackages: []string{flakyTestPackagePath},
+		SelectTests:          []string{"TestFail"}, // This test is known to fail consistently
+		CollectRawOutput:     true,
+	}
+
+	testReport, err := runner.RunTests()
+	require.NoError(t, err, "running tests should not produce an unexpected error")
+
+	require.Equal(t, 1, testReport.TestRunCount, "unexpected number of test runs")
+
+	var testFailResult *reports.TestResult
+	for i := range testReport.Results {
+		if testReport.Results[i].TestName == "TestFail" {
+			testFailResult = &testReport.Results[i]
+			break
+		}
+	}
+	require.NotNil(t, testFailResult, "expected TestFail result not found in report")
+
+	require.NotEmpty(t, testFailResult.FailedOutputs, "expected failed outputs for TestFail")
+
+	// Verify that each run (in this case, only one) has some non-empty output
+	for runID, outputs := range testFailResult.FailedOutputs {
+		t.Logf("Failed outputs for run %s: %v", runID, outputs)
+		require.NotEmpty(t, outputs, "Failed outputs should not be empty for TestFail")
+	}
+}
+
+func TestOmitOutputsOnSuccess(t *testing.T) {
+	t.Parallel()
+
+	runner := Runner{
+		ProjectPath:          "./",
+		Verbose:              true,
+		RunCount:             1,
+		SelectedTestPackages: []string{flakyTestPackagePath},
+		SelectTests:          []string{"TestPass"}, // Known passing test
+		CollectRawOutput:     true,
+		OmitOutputsOnSuccess: true,
+	}
+
+	testReport, err := runner.RunTests()
+	require.NoError(t, err, "running tests should not produce an unexpected error")
+
+	require.Equal(t, 1, testReport.TestRunCount, "unexpected number of test runs")
+
+	var testPassResult *reports.TestResult
+	for i := range testReport.Results {
+		if testReport.Results[i].TestName == "TestPass" {
+			testPassResult = &testReport.Results[i]
+			break
+		}
+	}
+	require.NotNil(t, testPassResult, "expected 'TestPass' result not found in report")
+
+	// Since TestPass always succeeds and OmitOutputsOnSuccess is true,
+	// we expect no PassedOutputs or general outputs.
+	require.Empty(t, testPassResult.PassedOutputs, "expected no passed outputs due to OmitOutputsOnSuccess")
+	require.Empty(t, testPassResult.Outputs, "expected no captured outputs due to OmitOutputsOnSuccess and a successful test")
+}
+
 var (
 	improperlyAttributedPanicEntries = []entry{
 		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFlaky", Output: "panic: This test intentionally panics [recovered]\n"},

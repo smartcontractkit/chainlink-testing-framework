@@ -481,6 +481,14 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 		results = append(results, *result)
 	}
 
+	// Omit success outputs if requested
+	if r.OmitOutputsOnSuccess {
+		for i := range results {
+			results[i].PassedOutputs = make(map[string][]string)
+			results[i].Outputs = make(map[string][]string)
+		}
+	}
+
 	return results, nil
 }
 
