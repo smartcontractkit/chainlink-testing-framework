@@ -59,7 +59,7 @@ scrape_configs:
 	lokiTenantID := os.Getenv("LOKI_TENANT_ID")
 
 	if lokiURL == "" {
-		lokiURL = "http://host.docker.internal:3100/loki/api/v1/push"
+		lokiURL = "http://host.docker.internal:3030/loki/api/v1/push"
 	}
 	if lokiTenantID == "" {
 		lokiTenantID = "promtail"
