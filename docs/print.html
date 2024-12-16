@@ -1952,6 +1952,7 @@ export CTF_CONFIGS=load-profile-api-service-1.toml,load-profile-api-service-2.to
 <ul>
 <li><a href="framework/components/../components/chainlink/nodeset.html">NodeSet</a> (Node HTTP API): <code>10000..100XX</code></li>
 <li><a href="framework/components/../components/chainlink/nodeset.html">NodeSet</a> (Node P2P API): <code>12000..120XX</code></li>
+<li><a href="framework/components/../components/chainlink/nodeset.html">NodeSet</a> (Delve debugger): <code>40000..400XX</code> (if you are using debug image)</li>
 <li>Shared <code>PostgreSQL</code> volume is called <code>postgresql_data</code></li>
 </ul>
 <pre><code>[nodeset]
@@ -2066,30 +2067,8 @@ export CTF_CONFIGS=load-profile-api-service-1.toml,load-profile-api-service-2.to
 <p>Use <code>CTF_LOG_LEVEL=trace|debug|info|warn</code> to debug the framework.</p>
 <p>Use <code>RESTY_DEBUG=true</code> to debug any API calls.</p>
 <p>Use <code>SETH_LOG_LEVEL=trace|debug|info|warn</code> to debug <a href="framework/components/../../libs/seth.html">Seth</a>.</p>
-<h2 id="using-delve-tbd"><a class="header" href="#using-delve-tbd">Using Delve (TBD)</a></h2>
-<p>You can use <a href="framework/components/">Delve</a> inside your containers to debug aplications.</p>
-<p>Build them with <code>go build -gcflags="all=-N -l" -o myapp</code> and use an example <code>Dockerfile</code>:</p>
-<pre><code>FROM golang:1.20
-
-# Install Delve
-RUN go install github.com/go-delve/delve/cmd/dlv@latest
-
-# Set working directory
-WORKDIR /app
-
-# Copy the application binary and source code (if needed for debugging)
-COPY myapp /app/myapp
-COPY . /app
-
-# Expose the port for Delve
-EXPOSE 40000
-
-# Start Delve in headless mode for remote debugging
-ENTRYPOINT ["dlv", "exec", "./myapp", "--headless", "--listen=:40000", "--api-version=2", "--accept-multiclient"]
-
-</code></pre>
-<p>Adding <code>Delve</code> to all our components is WIP right now.</p>
-<p>To expose <code>Delve</code> port follow this <a href="framework/components/state.html">guide</a>.</p>
+<h2 id="using-delve-debugger"><a class="header" href="#using-delve-debugger">Using Delve Debugger</a></h2>
+<p>If you are using <code>Chainlink</code> image with <a href="https://github.com/go-delve/delve">Delve</a> available in path you can use ports <code>40000..400XX</code> to connect to any node.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -10133,7 +10112,7 @@ echo ::add-mask::$BASE64_CONFIG_OVERRIDE
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>d9c773ea</code></li>
+<li>Commit: <code>88c6d2ec</code></li>
 </ul>
 
                     </main>
