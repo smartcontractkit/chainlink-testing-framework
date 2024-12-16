@@ -23,6 +23,7 @@ type Input struct {
 	Nodes              int             `toml:"nodes" validate:"required"`
 	HTTPPortRangeStart int             `toml:"http_port_range_start"`
 	P2PPortRangeStart  int             `toml:"p2p_port_range_start"`
+	DlvPortRangeStart  int             `toml:"dlv_port_range_start"`
 	OverrideMode       string          `toml:"override_mode" validate:"required,oneof=all each"`
 	DbInput            *postgres.Input `toml:"db" validate:"required"`
 	NodeSpecs          []*clnode.Input `toml:"node_specs" validate:"required"`
@@ -88,12 +89,16 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 	var (
 		httpPortRangeStart = DefaultHTTPPortStaticRangeStart
 		p2pPortRangeStart  = DefaultP2PStaticRangeStart
+		dlvPortStart       = clnode.DefaultDebuggerPort
 	)
 	if in.HTTPPortRangeStart != 0 {
 		httpPortRangeStart = in.HTTPPortRangeStart
 	}
 	if in.P2PPortRangeStart != 0 {
 		p2pPortRangeStart = in.P2PPortRangeStart
+	}
+	if in.DlvPortRangeStart != 0 {
+		dlvPortStart = in.DlvPortRangeStart
 	}
 
 	eg := &errgroup.Group{}
@@ -129,7 +134,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 				Node: &clnode.NodeInput{
 					HTTPPort:                httpPortRangeStart + i,
 					P2PPort:                 p2pPortRangeStart + i,
-					DebuggerPort:            clnode.DefaultDebuggerPort + i,
+					DebuggerPort:            dlvPortStart + i,
 					CustomPorts:             in.NodeSpecs[overrideIdx].Node.CustomPorts,
 					Image:                   in.NodeSpecs[overrideIdx].Node.Image,
 					Name:                    nodeName,
