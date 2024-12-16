@@ -36,7 +36,7 @@ type TestResult struct {
 	Failures       int
 	Successes      int
 	Skips          int
-	Outputs        map[string][]string // Temporary storage for outputs during test run
+	Outputs        map[string][]string `json:"-"` // Temporary storage for outputs during test run
 	PassedOutputs  map[string][]string // Outputs for passed runs
 	FailedOutputs  map[string][]string // Outputs for failed runs
 	Durations      []time.Duration
