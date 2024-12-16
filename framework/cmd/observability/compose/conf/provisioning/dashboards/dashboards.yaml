@@ -2,9 +2,9 @@
 apiVersion: 1
 
 providers:
-  - name: 'WASP'
+  - name: 'Local'
     orgId: 1
-    folder: 'Load testing'
+    folder: 'Dashboards'
     folderUid: ''
     type: file
     disableDeletion: false

@@ -6,6 +6,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 	"os"
@@ -19,14 +20,14 @@ const (
 )
 
 type Input struct {
-	Image            string  `toml:"image"`
-	GRPCPort         string  `toml:"grpc_port"`
-	WSRPCPort        string  `toml:"wsrpc_port"`
-	DBURL            string  `toml:"db_url"`
-	CSAEncryptionKey string  `toml:"csa_encryption_key"`
-	DockerFilePath   string  `toml:"docker_file"`
-	DockerContext    string  `toml:"docker_ctx"`
-	Out              *Output `toml:"out"`
+	Image            string          `toml:"image"`
+	GRPCPort         string          `toml:"grpc_port"`
+	WSRPCPort        string          `toml:"wsrpc_port"`
+	CSAEncryptionKey string          `toml:"csa_encryption_key"`
+	DockerFilePath   string          `toml:"docker_file"`
+	DockerContext    string          `toml:"docker_ctx"`
+	DBInput          *postgres.Input `toml:"db"`
+	Out              *Output         `toml:"out"`
 }
 
 type Output struct {
@@ -49,6 +50,16 @@ func defaults(in *Input) {
 	}
 }
 
+func defaultJDDB() *postgres.Input {
+	return &postgres.Input{
+		Image:      "postgres:12",
+		Port:       14000,
+		Name:       "jd-db",
+		VolumeName: "jd",
+		JDDatabase: true,
+	}
+}
+
 func NewJD(in *Input) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
@@ -58,6 +69,13 @@ func NewJD(in *Input) (*Output, error) {
 	jdImg := os.Getenv("CTF_JD_IMAGE")
 	if jdImg != "" {
 		in.Image = jdImg
+	}
+	if in.DBInput == nil {
+		in.DBInput = defaultJDDB()
+	}
+	pgOut, err := postgres.NewPostgreSQL(in.DBInput)
+	if err != nil {
+		return nil, err
 	}
 	containerName := framework.DefaultTCName("jd")
 	bindPort := fmt.Sprintf("%s/tcp", in.GRPCPort)
@@ -74,7 +92,7 @@ func NewJD(in *Input) (*Output, error) {
 			h.PortBindings = framework.MapTheSamePort(bindPort)
 		},
 		Env: map[string]string{
-			"DATABASE_URL":              in.DBURL,
+			"DATABASE_URL":              pgOut.JDDockerInternalURL,
 			"PORT":                      in.GRPCPort,
 			"NODE_RPC_PORT":             in.WSRPCPort,
 			"CSA_KEY_ENCRYPTION_SECRET": in.CSAEncryptionKey,
@@ -103,10 +121,10 @@ func NewJD(in *Input) (*Output, error) {
 	}
 	out := &Output{
 		UseCache:       true,
-		HostGRPCUrl:    fmt.Sprintf("http://%s:%s", host, in.GRPCPort),
-		DockerGRPCUrl:  fmt.Sprintf("http://%s:%s", containerName, in.GRPCPort),
-		HostWSRPCUrl:   fmt.Sprintf("ws://%s:%s", host, in.WSRPCPort),
-		DockerWSRPCUrl: fmt.Sprintf("ws://%s:%s", containerName, in.WSRPCPort),
+		HostGRPCUrl:    fmt.Sprintf("%s:%s", host, in.GRPCPort),
+		DockerGRPCUrl:  fmt.Sprintf("%s:%s", containerName, in.GRPCPort),
+		HostWSRPCUrl:   fmt.Sprintf("%s:%s", host, in.WSRPCPort),
+		DockerWSRPCUrl: fmt.Sprintf("%s:%s", containerName, in.WSRPCPort),
 	}
 	in.Out = out
 	return out, nil

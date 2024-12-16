@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -57,7 +58,8 @@ func SendETH(client *ethclient.Client, privateKeyHex string, toAddress string, a
 		return fmt.Errorf("failed to send transaction: %v", err)
 	}
 	framework.L.Info().Msgf("Transaction sent: %s", signedTx.Hash().Hex())
-	return nil
+	_, err = bind.WaitMined(context.Background(), client, signedTx)
+	return err
 }
 
 // FundNodes funds Chainlink nodes with N ETH each
