@@ -891,21 +891,22 @@ max_tps = 8.0
 <li>gas bumping is disabled</li>
 </ul>
 <h2 id="abi-finder"><a class="header" href="#abi-finder">ABI Finder</a></h2>
-<p>In order to be able to decode and trace transactions and calls between smart contracts we need their ABIs. Unfortunately it might happen that two or more contracts have methods with the same signatures, which might result in incorrect tracing. To make that problem less severe we have decided to add a single point of entry for contract deployment in Seth as that way we always know what contract is deployed at which address and thus avoid incorrect tracing due to potentially ambiguous method signatures.</p>
+<p>In order to be able to decode and trace transactions and calls between smart contracts we need their ABIs. Unfortunately, it might happen that two or more contracts have methods with the same signatures, which might result in incorrect tracing. To make that problem less severe we have decided to add a single point of entry for contract deployment in Seth to track what contract is deployed at which address and thus minimise incorrect tracing due to potentially ambiguous method signatures.</p>
+<p>There are two possible starting points:</p>
 <ol>
 <li>
-<p>We don’t know what contract (ABI) is located at a given address. Should be the case, when the contract either wasn’t uploaded via Seth or we haven’t supplied Seth with a contract map as part of its configuration (more on that later).</p>
-<p>a. We sequentially iterate over all known ABIs (map: <code>name -&gt; ABI_name</code>) checking whether it has a method with a given signature. Once we get a first match we will upsert that (<code>address -&gt; ABI_name</code>) data into the contract map and return the ABI.</p>
-<pre><code>The caveat here is that if the method we are searching for belongs is present in more than one ABI we might associate the address with an incorrect address (we will use the first match).
+<p>We don’t know what contract (ABI) is located at a given address. That is the case, when the contract either wasn’t uploaded via Seth or we haven’t supplied Seth with a contract map as part of its configuration (more on that later).</p>
+<p>a. We sequentially iterate over all known ABIs (map: <code>name -&gt; ABI_name</code>) checking whether it has a method with a given signature. Once we get a first match we upsert that (<code>address -&gt; ABI_name</code>) data into the contract map and return the ABI.</p>
+<pre><code>The caveat here is that if the method we are searching for is present in more than one ABI we might associate the address with an incorrect address (we use the first match).
 </code></pre>
-<p>b. If no match is found we will return an error.</p>
+<p>b. If no match is found we return an error.</p>
 </li>
 <li>
-<p>We know what ABI is located at a given address. It should be the case, when we have either uploaded the contract via Seth, provided Seth with a contract map or already traced a transaction to that address and found an ABI with matching method signature.</p>
-<p>a. We fetch the corresponding ABIand check if it indeed contains the method we are looking for (as mentioned earlier in some cases it might not be the case).</p>
+<p>We know what ABI is located at a given address. That is the case, when we have either uploaded the contract via Seth, provided Seth with a contract map or already traced a transaction to that address and found an ABI with matching method signature.</p>
+<p>a. We fetch the corresponding ABI and check if it indeed contains the method we are looking for (as mentioned earlier in some cases it might not be the case, because we associated the ABI with address using a different method that it shared with some other contract).</p>
 <p>b. If it does, we return the ABI.</p>
-<p>c. If it doesn’t we iterate over all known ABIs, in the same way as in 1a. If we find a match we update the (<code>address -&gt; ABI_name</code>) association in the contract map and return the ABI.</p>
-<pre><code>It is possible that this will happen multiple times in case we have multiple contracts with multiple identical methods, but given a sufficiently diverse set of methods that were called we should eventually arrive at a fully correct contract map.
+<p>c. If it doesn’t we iterate again over all known ABIs, in the same way as in <code>1a</code>. If we find a match we update the (<code>address -&gt; ABI_name</code>) association in the contract map and return the ABI.</p>
+<pre><code>It is possible that this will happen multiple times, if we have multiple contracts with multiple identical methods, but given a sufficiently diverse set of methods that were called we should eventually arrive at a fully correct contract map.
 </code></pre>
 <p>d. If no match is found we will return an error.</p>
 </li>
@@ -913,13 +914,13 @@ max_tps = 8.0
 <h3 id="example"><a class="header" href="#example">Example</a></h3>
 <p><img src="./images/tracing_example.png" alt="tracing_example" /></p>
 <h2 id="contract-map"><a class="header" href="#contract-map">Contract Map</a></h2>
-<p>We support in-memory contract map and a TOML file contract map that keeps the association of (<code>address -&gt; ABI_name</code>). The latter map is only used for non-simulated networks. Every time we deploy a contract we save (<code>address -&gt; ABI_name</code>) entry in the in-memory map.If the network is not a simulated one we also save it in a file. That file can later be pointed to in Seth configuration and we will load the contract map from it (<strong>currently without validating whether we have all the ABIs mentioned in the file</strong>).</p>
-<p>When saving contract deployment information we will either generate filename for you (if you didn’t configure Seth to use a particular file) using the pattern of <code>deployed_contracts_${network_name}_${timestamp}.toml</code> or use the filename provided in Seth TOML configuration file.</p>
-<p>It has to be noted that the file contract map is currently updated only, when new contracts are deployed. There’s no mechanism for updating it if we found the mapping invalid (which might be the case if you manually created the entry in the file).</p>
+<p>We support in-memory contract map and a TOML file-based one that keeps the association of (<code>address -&gt; ABI_name</code>). The latter map is only used for non-simulated networks. Every time we deploy a contract we save (<code>address -&gt; ABI_name</code>) entry in the in-memory map. If the network is not a simulated one we also save it in a file. That file can later be pointed to in Seth configuration and we will load the contract map from it (<strong>currently without validating whether we have all the ABIs mentioned in the file</strong>).</p>
+<p>When saving contract deployment information we can either generate filename for you (if you didn’t configure Seth to use a particular file) using the pattern of <code>deployed_contracts_${network_name}_${timestamp}.toml</code> or use the filename provided in Seth TOML configuration file.</p>
+<p>It has to be noted that the file-based contract map is currently updated only, when new contracts are deployed. There’s no mechanism for updating it if we found the mapping invalid (which might be the case if you manually created the entry in the file).</p>
 <h2 id="contract-store"><a class="header" href="#contract-store">Contract Store</a></h2>
-<p>Seth can be used with the contract store, but it would have very limited usage as transaction decoding and tracing cannot work with ABIs. Thus, when you initialise Seth with contract store it is necessary that it can load at least one ABI.</p>
+<p>Contract store is a component that stores ABIs and contracts' bytecodes. In theory, Seth can be used without it, but it would have very limited usage as transaction decoding and tracing cannot work without ABIs. Thus in practice, we enforce a non-empty Contract Store durin Seth initialisation.</p>
 <p>Another use of Contract Store is simplified contract deployment. For that we also need the contract's bytecode. The contract store can be used to store the bytecode of the contract and then deploy it using the <code>DeployContractFromContractStore(auth *bind.TransactOpts, name string, backend bind.ContractBackend, params ...interface{})</code> method. When Seth is intialisied with the contract store and no bytecode files (<code>*.bin</code>) are provided, it will log a warning, but initialise successfully nonetheless.</p>
-<p>If bytecode file wasn't provided you need to use <code>DeployContract(auth *bind.TransactOpts, name string, abi abi.ABI, bytecode []byte, backend bind.ContractBackend, params ...interface{})</code> method, which expects you to provide contract name (best if equal to the name of the ABI file), bytecode and the ABI.</p>
+<p>If bytecode file wasn't provided, you need to use <code>DeployContract(auth *bind.TransactOpts, name string, abi abi.ABI, bytecode []byte, backend bind.ContractBackend, params ...interface{})</code> method, which expects you to provide contract name (best if equal to the name of the ABI file), bytecode and the ABI.</p>
 
                     </main>
 
