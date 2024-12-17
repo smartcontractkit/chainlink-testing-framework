@@ -80,10 +80,6 @@ jobs:
           QA_AWS_ROLE_TO_ASSUME: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
           QA_KUBECONFIG: ${{ secrets.QA_KUBECONFIG }}
           go_necessary: false
-      - name: Echo kubeconfig line count
-        run: |
-          echo "Kubeconfig Line Count:"
-          wc -l < "$KUBECONFIG"          
       - name: Run Tests
         env:
           LOCAL_CHARTS: true
