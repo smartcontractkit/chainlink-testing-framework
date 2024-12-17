@@ -49,6 +49,8 @@ type PrysmBeaconChain struct {
 	posContainerSettings
 }
 
+// NewPrysmBeaconChain initializes a new Prysm beacon chain instance with the specified network configurations and parameters. 
+// It is used to set up a beacon chain for Ethereum 2.0, enabling users to run and manage a consensus layer node.
 func NewPrysmBeaconChain(networks []string, chainConfig *config.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir, gethExecutionURL string, baseEthereumFork ethereum.Fork, opts ...EnvComponentOption) (*PrysmBeaconChain, error) {
 	prysmBeaconChainImage, ok := beaconForkToImageMap[baseEthereumFork]
 	if !ok {
@@ -77,12 +79,17 @@ func NewPrysmBeaconChain(networks []string, chainConfig *config.EthereumChainCon
 	return g, nil
 }
 
+// WithTestInstance sets up the PrysmBeaconChain for testing by assigning a test logger and the testing context.
+// This allows for better logging and error tracking during test execution.
 func (g *PrysmBeaconChain) WithTestInstance(t *testing.T) *PrysmBeaconChain {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
 }
 
+// StartContainer initializes and starts the Prysm Beacon Chain container.
+// It sets up the necessary RPC endpoints and logs the container's status.
+// This function is essential for deploying a Prysm-based Ethereum 2.0 beacon chain in a Docker environment.
 func (g *PrysmBeaconChain) StartContainer() error {
 	r, err := g.getContainerRequest(g.Networks)
 	if err != nil {
@@ -187,6 +194,8 @@ type PrysmValidator struct {
 	posContainerSettings
 }
 
+// NewPrysmValidator initializes a new Prysm validator instance with the specified network configurations and settings.
+// It is used to set up a validator for Ethereum's consensus layer, ensuring proper integration with the blockchain environment.
 func NewPrysmValidator(networks []string, chainConfig *config.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir, valKeysDir, internalBeaconRpcProvider string, baseEthereumFork ethereum.Fork, opts ...EnvComponentOption) (*PrysmValidator, error) {
 	pyrsmValidatorImage, ok := validatorForkToImageMap[baseEthereumFork]
 	if !ok {
@@ -215,12 +224,16 @@ func NewPrysmValidator(networks []string, chainConfig *config.EthereumChainConfi
 	return g, nil
 }
 
+// WithTestInstance sets up the PrysmValidator with a test logger and the provided testing context.
+// This allows for easier testing and debugging of the validator's behavior during unit tests.
 func (g *PrysmValidator) WithTestInstance(t *testing.T) *PrysmValidator {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
 }
 
+// StartContainer initializes and starts the Prysm validator container.
+// It handles the setup and logging, ensuring the container is ready for use in Ethereum network operations.
 func (g *PrysmValidator) StartContainer() error {
 	r, err := g.getContainerRequest(g.Networks)
 	if err != nil {

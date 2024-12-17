@@ -233,6 +233,10 @@ func (m *RPCClient) BlockNumber() (int64, error) {
 	return bn, nil
 }
 
+// GethSetHead sets the Ethereum node's head to a specified block in the past.
+// This function is useful for testing and debugging by allowing developers to 
+// manipulate the blockchain state to a previous block. It returns an error 
+// if the operation fails.
 func (m *RPCClient) GethSetHead(blocksBack int) error {
 	decimalLastBlock, err := m.BlockNumber()
 	if err != nil {
@@ -274,6 +278,9 @@ type GethContainer struct {
 	URL string
 }
 
+// StartAnvil initializes and starts an Anvil container for Ethereum development.
+// It returns an AnvilContainer instance containing the container and its accessible URL.
+// This function is useful for developers needing a local Ethereum node for testing and development.
 func StartAnvil(params []string) (*AnvilContainer, error) {
 	entryPoint := []string{"anvil", "--host", "0.0.0.0"}
 	entryPoint = append(entryPoint, params...)

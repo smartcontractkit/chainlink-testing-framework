@@ -47,6 +47,8 @@ type EthereumNetworkBuilder struct {
 	nodeLogLevel        string
 }
 
+// NewEthereumNetworkBuilder initializes a new EthereumNetworkBuilder with default settings.
+// It prepares the builder for configuring an Ethereum network, allowing customization of various parameters.
 func NewEthereumNetworkBuilder() EthereumNetworkBuilder {
 	return EthereumNetworkBuilder{
 		dockerNetworks:      []string{},
@@ -70,56 +72,86 @@ func (b *EthereumNetworkBuilder) WithConsensusType(consensusType config.Consensu
 	return b
 }
 
+// WithEthereumVersion sets the Ethereum version for the network builder.
+// It allows users to specify whether to use 'eth1' or 'eth2' for their Ethereum network configuration.
 func (b *EthereumNetworkBuilder) WithEthereumVersion(ethereumVersion config_types.EthereumVersion) *EthereumNetworkBuilder {
 	b.ethereumVersion = ethereumVersion
 	return b
 }
 
+// WithConsensusLayer sets the consensus layer for the Ethereum network builder.
+// It allows users to specify the consensus mechanism to be used, ensuring compatibility
+// with the selected Ethereum version and execution layer.
 func (b *EthereumNetworkBuilder) WithConsensusLayer(consensusLayer config.ConsensusLayer) *EthereumNetworkBuilder {
 	b.consensusLayer = &consensusLayer
 	return b
 }
 
+// WithExecutionLayer sets the execution layer for the Ethereum network builder.
+// It allows users to specify which execution layer to use, ensuring compatibility 
+// with the selected Ethereum version and consensus layer.
 func (b *EthereumNetworkBuilder) WithExecutionLayer(executionLayer config_types.ExecutionLayer) *EthereumNetworkBuilder {
 	b.executionLayer = executionLayer
 	return b
 }
 
+// WithEthereumChainConfig sets the Ethereum chain configuration for the network builder.
+// This allows customization of parameters such as validator count and chain ID, enabling tailored network setups.
 func (b *EthereumNetworkBuilder) WithEthereumChainConfig(config config.EthereumChainConfig) *EthereumNetworkBuilder {
 	b.ethereumChainConfig = &config
 	return b
 }
 
+// WithDockerNetworks sets the Docker networks for the Ethereum network builder.
+// It allows users to specify custom networks for containerized deployments, 
+// enhancing flexibility in network configuration.
 func (b *EthereumNetworkBuilder) WithDockerNetworks(networks []string) *EthereumNetworkBuilder {
 	b.dockerNetworks = networks
 	return b
 }
 
+// WithNodeLogLevel sets the logging level for the Ethereum node.
+// This function allows users to customize the verbosity of logs,
+// aiding in debugging and monitoring of the node's operations.
 func (b *EthereumNetworkBuilder) WithNodeLogLevel(nodeLogLevel string) *EthereumNetworkBuilder {
 	b.nodeLogLevel = nodeLogLevel
 	return b
 }
 
+// WithExistingConfig sets an existing Ethereum network configuration for the builder.
+// It allows users to customize the network setup using predefined settings, 
+// facilitating the creation of a network with specific parameters.
 func (b *EthereumNetworkBuilder) WithExistingConfig(config config.EthereumNetworkConfig) *EthereumNetworkBuilder {
 	b.existingConfig = &config
 	return b
 }
 
+// WithExistingConfigFromEnvVar enables the use of an existing Ethereum configuration 
+// sourced from an environment variable. This allows for flexible deployment 
+// configurations without hardcoding values, enhancing security and adaptability.
 func (b *EthereumNetworkBuilder) WithExistingConfigFromEnvVar() *EthereumNetworkBuilder {
 	b.existingFromEnvVar = true
 	return b
 }
 
+// WithTest sets the testing context for the Ethereum network builder.
+// It allows for integration testing by associating a *testing.T instance,
+// enabling error reporting and test management during network setup.
 func (b *EthereumNetworkBuilder) WithTest(t *testing.T) *EthereumNetworkBuilder {
 	b.t = t
 	return b
 }
 
+// WithCustomDockerImages sets custom Docker images for the Ethereum network builder.
+// This allows users to specify their own container images for different components, 
+// enabling greater flexibility and customization in the network setup.
 func (b *EthereumNetworkBuilder) WithCustomDockerImages(newImages map[config.ContainerType]string) *EthereumNetworkBuilder {
 	b.customDockerImages = newImages
 	return b
 }
 
+// WithWaitingForFinalization enables the builder to wait for transaction finalization before proceeding.
+// This is useful for ensuring that the blockchain state is stable and confirmed before executing subsequent operations.
 func (b *EthereumNetworkBuilder) WithWaitingForFinalization() *EthereumNetworkBuilder {
 	b.waitForFinalization = true
 	return b
@@ -151,6 +183,9 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 	return n
 }
 
+// Build constructs an EthereumNetwork based on the provided configuration settings.
+// It validates the configuration, auto-fills missing values, and handles both existing and new setups.
+// This function is essential for initializing a private Ethereum chain environment.
 func (b *EthereumNetworkBuilder) Build() (EthereumNetwork, error) {
 	if b.existingFromEnvVar {
 		path := os.Getenv(CONFIG_ENV_VAR_NAME)
@@ -392,6 +427,8 @@ type EthereumNetwork struct {
 	t           *testing.T
 }
 
+// Start initializes and starts the Ethereum network based on the specified version.
+// It returns the configured blockchain network, RPC provider, and any error encountered during the process.
 func (en *EthereumNetwork) Start() (blockchain.EVMNetwork, RpcProvider, error) {
 	switch *en.EthereumVersion {
 	//nolint:staticcheck //ignore SA1019
@@ -749,6 +786,9 @@ func (en *EthereumNetwork) getImageOverride(ct config.ContainerType) string {
 	return ""
 }
 
+// Save persists the configuration of the Ethereum network to a TOML file.
+// It generates a unique filename and logs the path for future reference in end-to-end tests. 
+// This function is essential for maintaining consistent test environments.
 func (en *EthereumNetwork) Save() error {
 	name := fmt.Sprintf("ethereum_network_%s", uuid.NewString()[0:8])
 	confPath, err := toml_utils.SaveStructAsToml(en, ".private_chains", name)
@@ -799,18 +839,26 @@ func NewRPCProvider(
 	}
 }
 
+// PrivateHttpUrls returns a slice of private HTTP URLs used by the RPC provider.
+// This function is useful for accessing internal endpoints securely in a decentralized application.
 func (s *RpcProvider) PrivateHttpUrls() []string {
 	return s.privateHttpUrls
 }
 
+// PrivateWsUrls returns a slice of private WebSocket URLs.
+// This function is useful for clients needing to connect to private WebSocket endpoints for secure communication.
 func (s *RpcProvider) PrivateWsUrsl() []string {
 	return s.privateWsUrls
 }
 
+// PublicHttpUrls returns a slice of public HTTP URLs for the RPC provider.
+// This function is useful for clients needing to connect to the provider's services over HTTP.
 func (s *RpcProvider) PublicHttpUrls() []string {
 	return s.publiclHttpUrls
 }
 
+// PublicWsUrls returns a slice of public WebSocket URLs for the RPC provider.
+// This function is useful for clients needing to connect to the provider's WebSocket endpoints for real-time data.
 func (s *RpcProvider) PublicWsUrls() []string {
 	return s.publicWsUrls
 }
@@ -829,6 +877,8 @@ func createHostDirectories() (string, string, error) {
 	return customConfigDataDir, valKeysDir, nil
 }
 
+// NewPrivateChainEnvConfigFromFile loads an EthereumNetwork configuration from a TOML file specified by the given path.
+// It returns the populated EthereumNetwork struct and any error encountered during the file reading or parsing process.
 func NewPrivateChainEnvConfigFromFile(path string) (EthereumNetwork, error) {
 	c := EthereumNetwork{}
 	err := toml_utils.OpenTomlFileAsStruct(path, &c)
