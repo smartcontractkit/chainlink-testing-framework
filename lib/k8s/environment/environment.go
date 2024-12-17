@@ -682,6 +682,9 @@ func (m *Environment) AddHelm(chart ConnectedChart) *Environment {
 	if err != nil {
 		m.err = err
 	}
+
+	log.Info().Str("WorkloadLabels", fmt.Sprintf("%v", workloadLabels)).Msg("WorkloadLabels")
+
 	addRequiredChainLinkLabelsToWorkloads(h, workloadLabels)
 	addDefaultPodAnnotationsAndLabels(h, markNotSafeToEvict(m.Cfg.PreventPodEviction, nil), podLabels)
 	m.Charts = append(m.Charts, chart)

@@ -42,6 +42,12 @@ func GetTestEnvConfig(t *testing.T) *environment.Config {
 	workloadPodLabels, err := environment.GetRequiredChainLinkWorkloadAndPodLabels(product, testType)
 	require.NoError(t, err, "Error creating required chain.link labels for workloads and pods")
 
+	l := logging.GetTestLogger(t)
+	l.Info().
+		Strs("NamespaceLabels", nsLabels).
+		Interface("WorkloadPodLabels", workloadPodLabels).
+		Msg("TestEnvConfig")
+
 	return &environment.Config{
 		NamespacePrefix: TestEnvType,
 		Test:            t,
