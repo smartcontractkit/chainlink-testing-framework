@@ -49,11 +49,12 @@ func GetTestEnvConfig(t *testing.T) *environment.Config {
 		Msg("TestEnvConfig")
 
 	return &environment.Config{
-		NamespacePrefix: TestEnvType,
-		Test:            t,
-		Labels:          nsLabels,
-		WorkloadLabels:  workloadPodLabels,
-		PodLabels:       workloadPodLabels,
+		NamespacePrefix:                       TestEnvType,
+		Test:                                  t,
+		Labels:                                nsLabels,
+		WorkloadLabels:                        workloadPodLabels,
+		PodLabels:                             workloadPodLabels,
+		SkipRequiredChainLinkLabelsValidation: true,
 	}
 }
 
