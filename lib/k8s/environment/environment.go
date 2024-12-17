@@ -246,15 +246,32 @@ var requiredChainLinkWorkloadAndPodLabels = append([]string{}, append(requiredCh
 // validateRequiredChainLinkLabels validates whether the namespace, workloads ands pods have the required chain.link labels
 // and returns an error with a list of missing labels if any
 func (m *Environment) validateRequiredChainLinkLabels() error {
+	if m.root == nil {
+		return fmt.Errorf("m.root is nil, cannot validate namespace labels")
+	}
+
 	if m.root.Labels() == nil {
-		return fmt.Errorf("namespace labels are nil, but it should contain at least '%s' labels. Please add them to your environment config under 'Labels' key", strings.Join(requiredChainLinkNsLabels, ", "))
+		return fmt.Errorf("namespace labels are nil, but it should contain at least '%s' labels. Please add them to your environment config under 'Labels' key",
+			strings.Join(requiredChainLinkNsLabels, ", "))
 	}
 
 	var missingNsLabels []string
+	// Safely access the map
 	for _, l := range requiredChainLinkNsLabels {
-		if _, ok := (*m.root.Labels())[l]; !ok {
+		labels := m.root.Labels()
+		if labels == nil {
+			// This additional check is defensive; can be omitted if Labels() is guaranteed non-nil
+			return fmt.Errorf("unexpected nil labels while iterating")
+		}
+		if _, ok := (*labels)[l]; !ok {
 			missingNsLabels = append(missingNsLabels, l)
 		}
+	}
+
+	// Report missing labels if any
+	if len(missingNsLabels) > 0 {
+		return fmt.Errorf("missing required namespace labels: %s",
+			strings.Join(missingNsLabels, ", "))
 	}
 
 	children := m.root.Node().Children()
