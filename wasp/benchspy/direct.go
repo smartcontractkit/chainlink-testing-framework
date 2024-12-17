@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/montanaflynn/stats"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 )
@@ -177,7 +178,7 @@ func (g *DirectQueryExecutor) standardQuery(standardMetric StandardLoadMetric) (
 				asMiliDuration = append(asMiliDuration, float64(response.Duration.Nanoseconds())/1_000_000)
 			}
 
-			return CalculatePercentile(asMiliDuration, 0.5), nil
+			return stats.Median(asMiliDuration)
 		}
 		return medianFn, nil
 	case Percentile95Latency:
@@ -189,7 +190,7 @@ func (g *DirectQueryExecutor) standardQuery(standardMetric StandardLoadMetric) (
 				asMiliDuration = append(asMiliDuration, float64(response.Duration.Nanoseconds())/1_000_000)
 			}
 
-			return CalculatePercentile(asMiliDuration, 0.95), nil
+			return stats.Percentile(asMiliDuration, 95)
 		}
 		return p95Fn, nil
 	case ErrorRate:
@@ -248,7 +249,7 @@ func (g *DirectQueryExecutor) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON decodes JSON data into a DirectQueryExecutor instance.
-// It populates the executor's fields, including queries and results, 
+// It populates the executor's fields, including queries and results,
 // enabling seamless integration of JSON configurations into the executor's structure.
 func (g *DirectQueryExecutor) UnmarshalJSON(data []byte) error {
 	// helper struct with QueryExecutors as json.RawMessage and QueryResults as map[string]interface{}

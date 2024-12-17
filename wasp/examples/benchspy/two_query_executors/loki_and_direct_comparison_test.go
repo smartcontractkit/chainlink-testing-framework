@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/montanaflynn/stats"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -73,11 +74,14 @@ func TestBenchSpy_Standard_Direct_And_Loki_Metrics(t *testing.T) {
 
 	lokiFloatSlice, err := benchspy.StringSliceToFloat64Slice(currentAsLokiSlices[string(benchspy.MedianLatency)])
 	require.NoError(t, err, "failed to convert %s results to float64 slice", string(benchspy.MedianLatency))
-	lokiMedian := benchspy.CalculatePercentile(lokiFloatSlice, 0.5)
+	lokiMedian, err := stats.Median(lokiFloatSlice)
+	require.NoError(t, err, "failed to calculate median for loki %s results", string(benchspy.MedianLatency))
 
 	compareValues(t, string(benchspy.MedianLatency), lokiMedian, currentAsDirectFloats[string(benchspy.MedianLatency)], 1.0)
 
-	lokip95 := benchspy.CalculatePercentile(lokiFloatSlice, 0.95)
+	lokip95, err := stats.Percentile(lokiFloatSlice, 95)
+	require.NoError(t, err, "failed to calculate 95th percentile for loki %s results", string(benchspy.Percentile95Latency))
+
 	// here the max diff is 1.5% because of higher impact of data aggregation in loki
 	compareValues(t, string(benchspy.Percentile95Latency), lokip95, currentAsDirectFloats[string(benchspy.Percentile95Latency)], 1.5)
 

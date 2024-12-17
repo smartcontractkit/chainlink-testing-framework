@@ -9,6 +9,7 @@ replace github.com/smartcontractkit/chainlink-testing-framework/wasp => ../
 require (
 	github.com/K-Phoen/grabana v0.22.2
 	github.com/go-resty/resty/v2 v2.15.3
+	github.com/montanaflynn/stats v0.7.1
 	github.com/prometheus/common v0.60.0
 	github.com/smartcontractkit/chainlink-testing-framework/wasp v1.50.1
 	github.com/stretchr/testify v1.9.0

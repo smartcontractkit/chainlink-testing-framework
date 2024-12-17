@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/montanaflynn/stats"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -175,11 +176,13 @@ var compareMedian = func(t *testing.T, metricName string, currentAsStringSlice, 
 
 	currentFloatSlice, err := benchspy.StringSliceToFloat64Slice(currentAsStringSlice[metricName])
 	require.NoError(t, err, "failed to convert %s results to float64 slice", metricName)
-	currentMedian := benchspy.CalculatePercentile(currentFloatSlice, 0.5)
+	currentMedian, err := stats.Median(currentFloatSlice)
+	require.NoError(t, err, "failed to calculate median for %s results", metricName)
 
 	previousFloatSlice, err := benchspy.StringSliceToFloat64Slice(previousAsStringSlice[metricName])
 	require.NoError(t, err, "failed to convert %s results to float64 slice", metricName)
-	previousMedian := benchspy.CalculatePercentile(previousFloatSlice, 0.5)
+	previousMedian, err := stats.Median(previousFloatSlice)
+	require.NoError(t, err, "failed to calculate median for %s results", metricName)
 
 	var diffPrecentage float64
 	if previousMedian != 0.0 && currentMedian != 0.0 {
