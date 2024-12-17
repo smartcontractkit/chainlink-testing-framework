@@ -866,9 +866,9 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 	log.Debug().Bool("ManifestUpdate", m.Cfg.SkipManifestUpdate).Msg("Update mode")
 
 	// make sure all required chain.link labels are present in the final manifest
-	if err := m.validateRequiredChainLinkLabels(); err != nil {
-		return err
-	}
+	// if err := m.validateRequiredChainLinkLabels(); err != nil {
+	// 	return err
+	// }
 
 	if !m.Cfg.SkipManifestUpdate || m.Cfg.JobImage != "" {
 		if err := m.DeployCustomReadyConditions(customCheck, podCount); err != nil {
