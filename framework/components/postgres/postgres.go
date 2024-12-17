@@ -107,8 +107,8 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 		},
 		WaitingFor: tcwait.ForExec([]string{"psql", "-h", "127.0.0.1",
 			"-U", User, "-p", Port, "-c", "select", "1", "-d", Database}).
-			WithStartupTimeout(20 * time.Second).
-			WithPollInterval(1 * time.Second),
+			WithStartupTimeout(15 * time.Second).
+			WithPollInterval(200 * time.Millisecond),
 	}
 	var portToExpose int
 	if in.Port != 0 {

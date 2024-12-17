@@ -82,7 +82,7 @@ func newBesu(in *Input) (*Output, error) {
 				},
 			}
 		},
-		WaitingFor: wait.ForListeningPort(nat.Port(in.Port)).WithStartupTimeout(15 * time.Second),
+		WaitingFor: wait.ForListeningPort(nat.Port(in.Port)).WithStartupTimeout(15 * time.Second).WithPollInterval(200 * time.Millisecond),
 		Cmd:        entryPoint,
 	}
 
