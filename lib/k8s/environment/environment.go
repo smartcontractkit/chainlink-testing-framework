@@ -129,6 +129,8 @@ type Config struct {
 	detachRunner bool
 	// fundReturnFailed the status of a fund return
 	fundReturnFailed bool
+	// Skip validating that all required chain.link labels are present in the final manifest
+	SkipRequiredChainLinkLabelsValidation bool
 }
 
 func defaultEnvConfig() *Config {
@@ -513,11 +515,13 @@ func (m *Environment) ReplaceHelm(name string, chart ConnectedChart) (*Environme
 	workloadLabels, err := getComponentLabels(m.Cfg.WorkloadLabels, chart.GetLabels())
 	if err != nil {
 		m.err = err
+		return nil, err
 	}
 
 	podLabels, err := getComponentLabels(m.Cfg.PodLabels, chart.GetLabels())
 	if err != nil {
 		m.err = err
+		return nil, err
 	}
 
 	addRequiredChainLinkLabelsToWorkloads(h, workloadLabels)
@@ -618,7 +622,7 @@ func (m *Environment) UpdateHelm(name string, values map[string]any) (*Environme
 	return m.ReplaceHelm(name, chart)
 }
 
-// AddHelmCharts adds multiple helm charts to the testing environment
+// Charts adds multiple helm charts to the testing environment
 func (m *Environment) AddHelmCharts(charts []ConnectedChart) *Environment {
 	if m.err != nil {
 		return m
@@ -674,11 +678,13 @@ func (m *Environment) AddHelm(chart ConnectedChart) *Environment {
 	workloadLabels, err := getComponentLabels(m.Cfg.WorkloadLabels, chart.GetLabels())
 	if err != nil {
 		m.err = err
+		return m
 	}
 
 	podLabels, err := getComponentLabels(m.Cfg.PodLabels, chart.GetLabels())
 	if err != nil {
 		m.err = err
+		return m
 	}
 	addRequiredChainLinkLabelsToWorkloads(h, workloadLabels)
 	addDefaultPodAnnotationsAndLabels(h, markNotSafeToEvict(m.Cfg.PreventPodEviction, nil), podLabels)
@@ -865,9 +871,11 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 	}
 	log.Debug().Bool("ManifestUpdate", m.Cfg.SkipManifestUpdate).Msg("Update mode")
 
-	// make sure all required chain.link labels are present in the final manifest
-	if err := m.validateRequiredChainLinkLabels(); err != nil {
-		return err
+	if !m.Cfg.SkipRequiredChainLinkLabelsValidation {
+		// make sure all required chain.link labels are present in the final manifest
+		if err := m.validateRequiredChainLinkLabels(); err != nil {
+			return err
+		}
 	}
 
 	if !m.Cfg.SkipManifestUpdate || m.Cfg.JobImage != "" {
