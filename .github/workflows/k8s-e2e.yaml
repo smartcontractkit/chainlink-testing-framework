@@ -1,7 +1,6 @@
 name: (k8s package) E2E tests
-# disabling for now, as they always fail
-#on:
-#  pull_request:
+on:
+ pull_request:
 
 concurrency:
   group: e2e-tests-k8s-${{ github.ref }}
