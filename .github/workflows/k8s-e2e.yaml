@@ -87,6 +87,7 @@ jobs:
       - name: Run Tests
         env:
           LOCAL_CHARTS: true
+          CHAINLINK_USER_TEAM: "TT"
         uses: smartcontractkit/.github/actions/ctf-run-tests@b8731364b119e88983e94b0c4da87fc27ddb41b8 # ctf-run-tests@0.0.0
         with:
           cl_repo: ${{ env.CHAINLINK_IMAGE }}
