@@ -33,10 +33,21 @@ var (
 )
 
 func GetTestEnvConfig(t *testing.T) *environment.Config {
+	testType := "functional"
+	product := "k8s_runner"
+
+	nsLabels, err := environment.GetRequiredChainLinkNamespaceLabels(product, testType)
+	require.NoError(t, err, "Error creating required chain.link labels for namespace")
+
+	workloadPodLabels, err := environment.GetRequiredChainLinkWorkloadAndPodLabels(product, testType)
+	require.NoError(t, err, "Error creating required chain.link labels for workloads and pods")
+
 	return &environment.Config{
 		NamespacePrefix: TestEnvType,
-		Labels:          []string{testSelector},
 		Test:            t,
+		Labels:          nsLabels,
+		WorkloadLabels:  workloadPodLabels,
+		PodLabels:       workloadPodLabels,
 	}
 }
 
