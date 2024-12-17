@@ -246,28 +246,15 @@ var requiredChainLinkWorkloadAndPodLabels = append([]string{}, append(requiredCh
 // validateRequiredChainLinkLabels validates whether the namespace, workloads ands pods have the required chain.link labels
 // and returns an error with a list of missing labels if any
 func (m *Environment) validateRequiredChainLinkLabels() error {
-	if m.root == nil {
-		return fmt.Errorf("m.root is nil, cannot validate namespace labels")
-	}
-
 	if m.root.Labels() == nil {
-		return fmt.Errorf("namespace labels are nil, but it should contain at least '%s' labels. Please add them to your environment config under 'Labels' key",
-			strings.Join(requiredChainLinkNsLabels, ", "))
+		return fmt.Errorf("namespace labels are nil, but it should contain at least '%s' labels. Please add them to your environment config under 'Labels' key", strings.Join(requiredChainLinkNsLabels, ", "))
 	}
 
 	var missingNsLabels []string
-	// Safely access the map
 	for _, l := range requiredChainLinkNsLabels {
-		labels := m.root.Labels()
-		if _, ok := (*labels)[l]; !ok {
+		if _, ok := (*m.root.Labels())[l]; !ok {
 			missingNsLabels = append(missingNsLabels, l)
 		}
-	}
-
-	// Report missing labels if any
-	if len(missingNsLabels) > 0 {
-		return fmt.Errorf("missing required namespace labels: %s",
-			strings.Join(missingNsLabels, ", "))
 	}
 
 	children := m.root.Node().Children()
@@ -423,8 +410,6 @@ func (m *Environment) initApp() error {
 		return err
 	}
 
-	log.Info().Interface("Labels", nsLabels).Msg("Converted Namespace labels")
-
 	m.root = cdk8s.NewChart(m.App, ptr.Ptr(fmt.Sprintf("root-chart-%s", m.Cfg.Namespace)), &cdk8s.ChartProps{
 		Labels:    nsLabels,
 		Namespace: ptr.Ptr(m.Cfg.Namespace),
@@ -534,8 +519,6 @@ func (m *Environment) ReplaceHelm(name string, chart ConnectedChart) (*Environme
 	if err != nil {
 		m.err = err
 	}
-
-	log.Info().Str("WorkloadLabels", fmt.Sprintf("%v", workloadLabels)).Msg("WorkloadLabels")
 
 	addRequiredChainLinkLabelsToWorkloads(h, workloadLabels)
 	addDefaultPodAnnotationsAndLabels(h, markNotSafeToEvict(m.Cfg.PreventPodEviction, nil), podLabels)
@@ -697,9 +680,6 @@ func (m *Environment) AddHelm(chart ConnectedChart) *Environment {
 	if err != nil {
 		m.err = err
 	}
-
-	log.Info().Str("WorkloadLabels", fmt.Sprintf("%v", workloadLabels)).Msg("WorkloadLabels")
-
 	addRequiredChainLinkLabelsToWorkloads(h, workloadLabels)
 	addDefaultPodAnnotationsAndLabels(h, markNotSafeToEvict(m.Cfg.PreventPodEviction, nil), podLabels)
 	m.Charts = append(m.Charts, chart)
