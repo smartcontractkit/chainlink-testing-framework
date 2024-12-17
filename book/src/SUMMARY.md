@@ -93,7 +93,7 @@
     - [Anvil]()
     - [AWS Secrets Manager](./libv2/client/aws_secrets_manager.md)
     - [Github](./libv2/client/github.md)
-    - [Grafana]()
+    - [Grafana](./libv2/client/grafana.md)
     - [Kafka](./libv2/client/kafka.md)
     - [Loki](./libv2/client/loki.md)
     - [MockServer](./libv2/client/mockserver.md)
