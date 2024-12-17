@@ -146,7 +146,7 @@ func GeneratePRCommentMarkdown(w io.Writer, testReport *TestReport, maxPassRatio
 	}
 
 	resultsTable := GenerateFlakyTestsTable(testReport.Results, maxPassRatio, true)
-	renderTestResultsTable(w, resultsTable, true)
+	renderTestResultsTable(w, resultsTable)
 
 	if artifactLink != "" {
 		renderArtifactSection(w, artifactName, artifactLink)
@@ -179,7 +179,7 @@ func RenderResults(
 	resultsTable := GenerateFlakyTestsTable(tests, maxPassRatio, markdown)
 	summary := GenerateSummaryData(tests, maxPassRatio)
 	renderSummaryTable(w, summary, markdown)
-	renderTestResultsTable(w, resultsTable, markdown)
+	renderTestResultsTable(w, resultsTable)
 }
 
 func renderSummaryTable(w io.Writer, summary SummaryData, markdown bool) {
@@ -209,7 +209,7 @@ func renderSummaryTable(w io.Writer, summary SummaryData, markdown bool) {
 	fmt.Fprintln(w)
 }
 
-func renderTestResultsTable(w io.Writer, table [][]string, markdown bool) {
+func renderTestResultsTable(w io.Writer, table [][]string) {
 	if len(table) <= 1 {
 		fmt.Fprintln(w, "No tests found under the specified pass ratio threshold.")
 		return
