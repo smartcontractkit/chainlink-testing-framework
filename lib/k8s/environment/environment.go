@@ -259,10 +259,6 @@ func (m *Environment) validateRequiredChainLinkLabels() error {
 	// Safely access the map
 	for _, l := range requiredChainLinkNsLabels {
 		labels := m.root.Labels()
-		if labels == nil {
-			// This additional check is defensive; can be omitted if Labels() is guaranteed non-nil
-			return fmt.Errorf("unexpected nil labels while iterating")
-		}
 		if _, ok := (*labels)[l]; !ok {
 			missingNsLabels = append(missingNsLabels, l)
 		}
@@ -426,6 +422,8 @@ func (m *Environment) initApp() error {
 	if err != nil {
 		return err
 	}
+
+	log.Info().Interface("Labels", nsLabels).Msg("Converted Namespace labels")
 
 	m.root = cdk8s.NewChart(m.App, ptr.Ptr(fmt.Sprintf("root-chart-%s", m.Cfg.Namespace)), &cdk8s.ChartProps{
 		Labels:    nsLabels,
