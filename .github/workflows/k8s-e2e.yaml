@@ -93,7 +93,7 @@ jobs:
             cp $KUBECONFIG ./kubeconfig
             echo "Kubeconfig copied to: $(pwd)/kubeconfig"
             echo "Lines in kubeconfig: $(wc -l < ./kubeconfig)"
-            nix develop -c sh -c "export KUBECONFIG=$(pwd)/kubeconfig2 && cd lib && make k8s_test_e2e_ci"
+            nix develop -c sh -c "export KUBECONFIG=$(pwd)/kubeconfig && cd lib && make k8s_test_e2e_ci"
           artifacts_location: ./e2e/logs
           publish_check_name: E2E Test Results
           token: ${{ secrets.GITHUB_TOKEN }}
