@@ -34,7 +34,7 @@ var (
 
 func GetTestEnvConfig(t *testing.T) *environment.Config {
 	testType := "functional"
-	product := "k8s_runner"
+	product := "internal-k8s-test-runner"
 
 	nsLabels, err := environment.GetRequiredChainLinkNamespaceLabels(product, testType)
 	require.NoError(t, err, "Error creating required chain.link labels for namespace")
