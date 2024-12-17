@@ -73,7 +73,7 @@ jobs:
       - name: Load Nix
         run: nix develop -c sh -c "cd lib &&go mod download"
       - name: Setup environment
-        uses: smartcontractkit/.github/actions/ctf-setup-run-tests-environment@49cb1613e96c9ce17f7290e4dabd38f43aa9bd4d # ctf-setup-run-tests-environment@0.0.0
+        uses: smartcontractkit/.github/actions/ctf-setup-run-tests-environment@99747b298ad960374b47b6315175a349d06579d7 # ctf-setup-run-tests-environment@0.0.0
         with:
           go_mod_path: go.mod
           QA_AWS_REGION: ${{ secrets.QA_AWS_REGION }}
@@ -83,7 +83,7 @@ jobs:
       - name: Run Tests
         env:
           LOCAL_CHARTS: true
-        uses: smartcontractkit/.github/actions/ctf-run-tests@b8731364b119e88983e94b0c4da87fc27ddb41b8 # ctf-run-tests@0.0.0
+        uses: smartcontractkit/.github/actions/ctf-run-tests@99747b298ad960374b47b6315175a349d06579d7 # ctf-run-tests@0.0.0
         with:
           cl_repo: ${{ env.CHAINLINK_IMAGE }}
           cl_image_tag: ${{ env.CHAINLINK_VERSION }}
