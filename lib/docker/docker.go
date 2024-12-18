@@ -15,6 +15,8 @@ import (
 const RetryAttempts = 3
 const defaultRyukImage = "testcontainers/ryuk:0.5.1"
 
+// CreateNetwork initializes a new Docker network with a unique name.
+// It ensures no duplicate networks exist and returns the created network or an error if the operation fails.
 func CreateNetwork(l zerolog.Logger) (*tc.DockerNetwork, error) {
 	uuidObj, _ := uuid.NewRandom()
 	var networkName = fmt.Sprintf("network-%s", uuidObj.String())

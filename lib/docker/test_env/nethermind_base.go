@@ -35,12 +35,17 @@ type Nethermind struct {
 	posContainerSettings
 }
 
+// WithTestInstance sets up the execution client with a test logger and test context.
+// This is useful for running tests with specific logging and context requirements.
 func (g *Nethermind) WithTestInstance(t *testing.T) ExecutionClient {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
 }
 
+// StartContainer initializes and starts a Nethermind container for Ethereum execution.
+// It configures network settings based on the Ethereum version and returns the network configuration
+// along with any errors encountered during the process.
 func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
 	var r *tc.ContainerRequest
 	var err error
@@ -110,6 +115,9 @@ func (g *Nethermind) StartContainer() (blockchain.EVMNetwork, error) {
 	return networkConfig, nil
 }
 
+// GetInternalExecutionURL returns the internal execution URL for the Ethereum client.
+// It is used to retrieve the endpoint for executing transactions in a network that supports it.
+// If the client is an Eth1 node, it will panic as Eth1 does not have an execution URL.
 func (g *Nethermind) GetInternalExecutionURL() string {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		panic("eth1 node doesn't have an execution URL")
@@ -117,6 +125,8 @@ func (g *Nethermind) GetInternalExecutionURL() string {
 	return g.InternalExecutionURL
 }
 
+// GetExternalExecutionURL returns the external execution URL for the Nethermind node.
+// It panics if the node is running on Ethereum version 1, as it does not support execution URLs.
 func (g *Nethermind) GetExternalExecutionURL() string {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		panic("eth1 node doesn't have an execution URL")
@@ -124,34 +134,50 @@ func (g *Nethermind) GetExternalExecutionURL() string {
 	return g.ExternalExecutionURL
 }
 
+// GetInternalHttpUrl returns the internal HTTP URL of the Nethermind client.
+// This URL is used to communicate with the execution layer in a secure manner.
 func (g *Nethermind) GetInternalHttpUrl() string {
 	return g.InternalHttpUrl
 }
 
+// GetInternalWsUrl returns the internal WebSocket URL for the Nethermind client.
+// This URL is essential for establishing WebSocket connections to the execution layer.
 func (g *Nethermind) GetInternalWsUrl() string {
 	return g.InternalWsUrl
 }
 
+// GetExternalHttpUrl returns the external HTTP URL for the Nethermind client.
+// This URL is used to interact with the Nethermind execution layer over HTTP.
 func (g *Nethermind) GetExternalHttpUrl() string {
 	return g.ExternalHttpUrl
 }
 
+// GetExternalWsUrl returns the external WebSocket URL for the Nethermind client.
+// This URL is essential for connecting to the Nethermind execution layer from external services.
 func (g *Nethermind) GetExternalWsUrl() string {
 	return g.ExternalWsUrl
 }
 
+// GetContainerName returns the name of the container associated with the Nethermind instance.
+// This function is useful for identifying and managing the container in a Docker environment.
 func (g *Nethermind) GetContainerName() string {
 	return g.ContainerName
 }
 
+// GetContainer returns a pointer to the Container associated with the Nethermind instance.
+// This function is useful for accessing the container's properties and methods in a Dockerized environment.
 func (g *Nethermind) GetContainer() *tc.Container {
 	return &g.Container
 }
 
+// GetEthereumVersion returns the current Ethereum version of the Nethermind instance.
+// This information is crucial for determining the appropriate execution URLs and consensus mechanisms.
 func (g *Nethermind) GetEthereumVersion() config_types.EthereumVersion {
 	return g.ethereumVersion
 }
 
+// WaitUntilChainIsReady blocks until the Ethereum chain is fully operational or the specified wait time elapses.
+// It is useful for ensuring that the blockchain client is ready for transactions or queries before proceeding.
 func (g *Nethermind) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return nil
@@ -160,7 +186,10 @@ func (g *Nethermind) WaitUntilChainIsReady(ctx context.Context, waitTime time.Du
 	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
 }
 
-func (g *Nethermind) GethConsensusMechanism() ConsensusMechanism {
+// GetConsensusMechanism returns the consensus mechanism used by the Nethermind instance.
+// It determines whether the Ethereum version is Eth1 or not, returning either Proof of Authority (PoA)
+// or Proof of Stake (PoS) accordingly. This is useful for understanding the network's validation method.
+func (g *Nethermind) GetConsensusMechanism() ConsensusMechanism {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return ConsensusMechanism_PoA
 	}
