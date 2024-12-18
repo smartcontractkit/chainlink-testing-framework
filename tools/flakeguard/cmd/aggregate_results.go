@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/spf13/cobra"
 )
@@ -28,6 +29,9 @@ var AggregateResultsCmd = &cobra.Command{
 		headSHA, _ := cmd.Flags().GetString("head-sha")
 		baseSHA, _ := cmd.Flags().GetString("base-sha")
 		githubWorkflowName, _ := cmd.Flags().GetString("github-workflow-name")
+		reportID, _ := cmd.Flags().GetString("report-id")
+		splunkURL, _ := cmd.Flags().GetString("splunk-url")
+		splunkToken, _ := cmd.Flags().GetString("splunk-token")
 
 		// Ensure the output directory exists
 		if err := fs.MkdirAll(outputDir, 0755); err != nil {
@@ -40,13 +44,14 @@ var AggregateResultsCmd = &cobra.Command{
 		s.Start()
 
 		// Load test reports from JSON files and aggregate them
-		aggregatedReport, err := reports.LoadAndAggregate(resultsPath)
+		aggregatedReport, err := reports.LoadAndAggregate(resultsPath, reports.WithReportID(reportID), reports.WithSplunk(splunkURL, splunkToken))
 		if err != nil {
 			s.Stop()
+			fmt.Println()
 			return fmt.Errorf("error loading test reports: %w", err)
 		}
 		s.Stop()
-		fmt.Println("Test reports aggregated successfully.")
+		fmt.Println()
 
 		// Add metadata to the aggregated report
 		aggregatedReport.HeadSHA = headSHA
@@ -59,7 +64,7 @@ var AggregateResultsCmd = &cobra.Command{
 			return fmt.Errorf("error aggregating test reports: %w", err)
 		}
 		s.Stop()
-		fmt.Println("Test reports aggregated successfully.")
+		log.Info().Msg("Successfully loaded and aggregated test reports")
 
 		// Start spinner for mapping test results to paths
 		s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
@@ -73,7 +78,7 @@ var AggregateResultsCmd = &cobra.Command{
 			return fmt.Errorf("error mapping test results to paths: %w", err)
 		}
 		s.Stop()
-		fmt.Println("Test results mapped to paths successfully.")
+		log.Info().Msg("Successfully mapped paths to test results")
 
 		// Map test results to code owners if codeOwnersPath is provided
 		if codeOwnersPath != "" {
@@ -87,7 +92,7 @@ var AggregateResultsCmd = &cobra.Command{
 				return fmt.Errorf("error mapping test results to code owners: %w", err)
 			}
 			s.Stop()
-			fmt.Println("Test results mapped to code owners successfully.")
+			log.Info().Msg("Successfully mapped code owners to test results")
 		}
 
 		failedTests := reports.FilterTests(aggregatedReport.Results, func(tr reports.TestResult) bool {
@@ -97,7 +102,7 @@ var AggregateResultsCmd = &cobra.Command{
 
 		// Check if there are any failed tests
 		if len(failedTests) > 0 {
-			fmt.Printf("Found %d failed test(s).\n", len(failedTests))
+			log.Info().Int("count", len(failedTests)).Msg("Found failed tests")
 
 			// Create a new report for failed tests with logs
 			failedReportWithLogs := &reports.TestReport{
@@ -117,7 +122,7 @@ var AggregateResultsCmd = &cobra.Command{
 			if err := reports.SaveReport(fs, failedTestsReportWithLogsPath, *failedReportWithLogs); err != nil {
 				return fmt.Errorf("error saving failed tests report with logs: %w", err)
 			}
-			fmt.Printf("Failed tests report with logs saved to %s\n", failedTestsReportWithLogsPath)
+			log.Debug().Str("path", failedTestsReportWithLogsPath).Msg("Failed tests report with logs saved")
 
 			// Remove logs from test results for the report without logs
 			for i := range failedReportWithLogs.Results {
@@ -131,9 +136,9 @@ var AggregateResultsCmd = &cobra.Command{
 			if err := reports.SaveReport(fs, failedTestsReportNoLogsPath, *failedReportWithLogs); err != nil {
 				return fmt.Errorf("error saving failed tests report without logs: %w", err)
 			}
-			fmt.Printf("Failed tests report without logs saved to %s\n", failedTestsReportNoLogsPath)
+			log.Info().Str("path", failedTestsReportNoLogsPath).Msg("Failed tests report without logs saved")
 		} else {
-			fmt.Println("No failed tests found. Skipping generation of failed tests reports.")
+			log.Info().Msg("No failed tests found. Skipping generation of failed tests reports")
 		}
 
 		// Remove logs from test results for the aggregated report
@@ -148,7 +153,7 @@ var AggregateResultsCmd = &cobra.Command{
 		if err := reports.SaveReport(fs, aggregatedReportPath, *aggregatedReport); err != nil {
 			return fmt.Errorf("error saving aggregated test report: %w", err)
 		}
-		fmt.Printf("Aggregated test report saved to %s\n", aggregatedReportPath)
+		log.Info().Str("path", aggregatedReportPath).Msg("Aggregated test report saved")
 
 		// Generate all-tests-summary.json
 		if summaryFileName != "" {
@@ -163,11 +168,10 @@ var AggregateResultsCmd = &cobra.Command{
 				return fmt.Errorf("error generating summary json: %w", err)
 			}
 			s.Stop()
-			fmt.Printf("Summary generated at %s\n", summaryFilePath)
+			log.Info().Str("path", summaryFilePath).Msg("Summary generated")
 		}
 
-		fmt.Println("Aggregation complete.")
-
+		log.Info().Str("path", outputDir).Msg("Aggregation complete")
 		return nil
 	},
 }
@@ -183,8 +187,13 @@ func init() {
 	AggregateResultsCmd.Flags().String("head-sha", "", "Head commit SHA for the test report")
 	AggregateResultsCmd.Flags().String("base-sha", "", "Base commit SHA for the test report")
 	AggregateResultsCmd.Flags().String("github-workflow-name", "", "GitHub workflow name for the test report")
+	AggregateResultsCmd.Flags().String("report-id", "", "Optional identifier for the test report. Will be generated if not provided")
+	AggregateResultsCmd.Flags().String("splunk-url", "", "Optional url to simultaneously send the test results to splunk")
+	AggregateResultsCmd.Flags().String("splunk-token", "", "Optional Splunk HEC token to simultaneously send the test results to splunk")
 
-	AggregateResultsCmd.MarkFlagRequired("results-path")
+	if err := AggregateResultsCmd.MarkFlagRequired("results-path"); err != nil {
+		log.Fatal().Err(err).Msg("Error marking flag as required")
+	}
 }
 
 // New function to generate all-tests-summary.json

@@ -11,6 +11,7 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/google/go-github/v67/github"
+	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
@@ -70,7 +71,7 @@ var GenerateReportCmd = &cobra.Command{
 			return fmt.Errorf("error decoding aggregated test report: %w", err)
 		}
 		s.Stop()
-		fmt.Println("Aggregated test report loaded successfully.")
+		log.Info().Msg("Successfully loaded aggregated test report")
 
 		// Load the summary data to check for failed tests
 		var summaryData SummaryData
@@ -102,7 +103,7 @@ var GenerateReportCmd = &cobra.Command{
 		} else {
 			// No failed tests, set artifactLink to empty string
 			artifactLink = ""
-			fmt.Println("No failed tests found. Skipping artifact link generation.")
+			log.Debug().Msg("No failed tests found. Skipping artifact link generation")
 		}
 
 		// Create output directory if it doesn't exist
@@ -121,7 +122,7 @@ var GenerateReportCmd = &cobra.Command{
 			return fmt.Errorf("error generating GitHub summary markdown: %w", err)
 		}
 		s.Stop()
-		fmt.Println("GitHub summary markdown generated successfully.")
+		log.Info().Msg("GitHub summary markdown generated successfully")
 
 		if generatePRComment {
 			// Retrieve required flags
@@ -171,10 +172,10 @@ var GenerateReportCmd = &cobra.Command{
 				return fmt.Errorf("error generating PR comment markdown: %w", err)
 			}
 			s.Stop()
-			fmt.Println("PR comment markdown generated successfully.")
+			log.Info().Msg("PR comment markdown generated successfully")
 		}
 
-		fmt.Printf("Reports generated at: %s\n", outputDir)
+		log.Info().Str("output", outputDir).Msg("Reports generated successfully")
 
 		return nil
 	},
@@ -195,10 +196,18 @@ func init() {
 	GenerateReportCmd.Flags().Int64("github-run-id", 0, "The GitHub Actions run ID (required)")
 	GenerateReportCmd.Flags().String("failed-tests-artifact-name", "failed-test-results-with-logs.json", "The name of the failed tests artifact (default 'failed-test-results-with-logs.json')")
 
-	GenerateReportCmd.MarkFlagRequired("aggregated-results-path")
-	GenerateReportCmd.MarkFlagRequired("summary-path")
-	GenerateReportCmd.MarkFlagRequired("github-repository")
-	GenerateReportCmd.MarkFlagRequired("github-run-id")
+	if err := GenerateReportCmd.MarkFlagRequired("aggregated-results-path"); err != nil {
+		log.Fatal().Err(err).Msg("Error marking flag as required")
+	}
+	if err := GenerateReportCmd.MarkFlagRequired("summary-path"); err != nil {
+		log.Fatal().Err(err).Msg("Error marking flag as required")
+	}
+	if err := GenerateReportCmd.MarkFlagRequired("github-repository"); err != nil {
+		log.Fatal().Err(err).Msg("Error marking flag as required")
+	}
+	if err := GenerateReportCmd.MarkFlagRequired("github-run-id"); err != nil {
+		log.Fatal().Err(err).Msg("Error marking flag as required")
+	}
 }
 
 func fetchArtifactLink(githubToken, githubRepo string, githubRunID int64, artifactName string) (string, error) {

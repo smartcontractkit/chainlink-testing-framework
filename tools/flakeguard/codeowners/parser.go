@@ -2,12 +2,13 @@ package codeowners
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 // PatternOwner maps a file pattern to its owners
@@ -63,7 +64,7 @@ func FindOwners(filePath string, patterns []PatternOwner) []string {
 		if IsWildcardPattern(normalizedPattern) {
 			matched, err := path.Match(normalizedPattern, relFilePath)
 			if err != nil {
-				fmt.Printf("Error matching pattern: %s to file: %s, error: %v\n", normalizedPattern, relFilePath, err)
+				log.Error().Str("file", relFilePath).Str("pattern", normalizedPattern).Err(err).Msgf("Error matching pattern")
 				continue
 			}
 

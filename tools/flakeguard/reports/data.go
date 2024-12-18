@@ -10,6 +10,7 @@ import (
 
 // TestReport reports on the parameters and results of one to many test runs
 type TestReport struct {
+	ReportID           string       `json:"report_id"`
 	GoProject          string       `json:"go_project"`
 	HeadSHA            string       `json:"head_sha"`
 	BaseSHA            string       `json:"base_sha"`
@@ -19,7 +20,7 @@ type TestReport struct {
 	RaceDetection      bool         `json:"race_detection"`
 	ExcludedTests      []string     `json:"excluded_tests"`
 	SelectedTests      []string     `json:"selected_tests"`
-	Results            []TestResult `json:"results"`
+	Results            []TestResult `json:"results,omitempty"`
 }
 
 // TestResult contains the results and outputs of a single test
@@ -58,6 +59,48 @@ type SummaryData struct {
 	SkippedRuns    int     `json:"skipped_runs"`
 	PassRatio      string  `json:"pass_ratio"`
 	MaxPassRatio   float64 `json:"max_pass_ratio"`
+}
+
+// SplunkEvent represents a customized splunk event string that helps us distinguish what
+// triggered the test to run
+type SplunkEvent string
+
+// SplunkType represents what type of data is being sent to Splunk, e.g. a report or a result
+type SplunkType string
+
+const (
+	Manual      SplunkEvent = "manual"
+	Periodic    SplunkEvent = "periodic"
+	PullRequest SplunkEvent = "pull_request"
+
+	Report SplunkType = "report"
+	Result SplunkType = "result"
+)
+
+// SplunkTestReport is the full wrapper structure sent to Splunk for the full test report (sans results)
+type SplunkTestReport struct {
+	Event      SplunkTestResultEvent `json:"event"`      // https://docs.splunk.com/Splexicon:Event
+	SourceType string                `json:"sourcetype"` // https://docs.splunk.com/Splexicon:Sourcetype
+}
+
+// SplunkTestReportEvent contains the actual meat of the Splunk test report event
+type SplunkTestReportEvent struct {
+	Event SplunkEvent `json:"event"`
+	Type  SplunkType  `json:"type"`
+	Data  TestReport  `json:"data"`
+}
+
+// SplunkTestResult is the full wrapper structure sent to Splunk for a single test result
+type SplunkTestResult struct {
+	Event      SplunkTestResultEvent `json:"event"`      // https://docs.splunk.com/Splexicon:Event
+	SourceType string                `json:"sourcetype"` // https://docs.splunk.com/Splexicon:Sourcetype
+}
+
+// SplunkTestResultEvent contains the actual meat of the Splunk test result event
+type SplunkTestResultEvent struct {
+	Event SplunkEvent `json:"event"`
+	Type  SplunkType  `json:"type"`
+	Data  TestResult  `json:"data"`
 }
 
 // Data Processing Functions
@@ -131,12 +174,13 @@ func FilterTests(results []TestResult, predicate func(TestResult) bool) []TestRe
 	return filtered
 }
 
-func aggregate(reportChan <-chan *TestReport) (*TestReport, error) {
+func aggregate(reportChan <-chan *TestReport, opts *aggregateOptions) (*TestReport, error) {
 	testMap := make(map[string]TestResult)
 	fullReport := &TestReport{}
 	excludedTests := map[string]struct{}{}
 	selectedTests := map[string]struct{}{}
 
+	fullReport.ReportID = opts.reportID
 	for report := range reportChan {
 		if fullReport.GoProject == "" {
 			fullReport.GoProject = report.GoProject
@@ -182,13 +226,13 @@ func aggregate(reportChan <-chan *TestReport) (*TestReport, error) {
 	return fullReport, nil
 }
 
-func aggregateFromReports(reports ...*TestReport) (*TestReport, error) {
+func aggregateFromReports(opts *aggregateOptions, reports ...*TestReport) (*TestReport, error) {
 	reportChan := make(chan *TestReport, len(reports))
 	for _, report := range reports {
 		reportChan <- report
 	}
 	close(reportChan)
-	return aggregate(reportChan)
+	return aggregate(reportChan, opts)
 }
 
 func mergeTestResults(a, b TestResult) TestResult {

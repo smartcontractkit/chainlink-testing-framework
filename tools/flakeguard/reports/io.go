@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 )
 
 // FileSystem interface and implementations
-
 type FileSystem interface {
 	MkdirAll(path string, perm os.FileMode) error
 	Create(name string) (io.WriteCloser, error)
@@ -32,7 +33,42 @@ func (OSFileSystem) WriteFile(filename string, data []byte, perm os.FileMode) er
 	return os.WriteFile(filename, data, perm)
 }
 
-func LoadAndAggregate(resultsPath string) (*TestReport, error) {
+type aggregateOptions struct {
+	reportID    string
+	splunkURL   string
+	splunkToken string
+}
+
+// AggregateOption is a functional option for configuring the aggregation process.
+type AggregateOption func(*aggregateOptions)
+
+// WithReportID explicitly sets the report ID for the aggregated report.
+func WithReportID(reportID string) AggregateOption {
+	return func(opts *aggregateOptions) {
+		opts.reportID = reportID
+	}
+}
+
+// WithSplunk also sends the aggregation to a Splunk instance as events.
+func WithSplunk(splunkURL, splunkToken string) AggregateOption {
+	return func(opts *aggregateOptions) {
+		opts.splunkURL = splunkURL
+		opts.splunkToken = splunkToken
+	}
+}
+
+// LoadAndAggregate reads all JSON files in a directory and aggregates the results into a single TestReport.
+func LoadAndAggregate(resultsPath string, options ...AggregateOption) (*TestReport, error) {
+	if _, err := os.Stat(resultsPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("results directory does not exist: %s", resultsPath)
+	}
+
+	// Apply options
+	opts := aggregateOptions{}
+	for _, opt := range options {
+		opt(&opts)
+	}
+
 	reportChan := make(chan *TestReport)
 	errChan := make(chan error, 1)
 
@@ -46,7 +82,7 @@ func LoadAndAggregate(resultsPath string) (*TestReport, error) {
 				return fmt.Errorf("error accessing path %s: %w", path, err)
 			}
 			if !info.IsDir() && filepath.Ext(path) == ".json" {
-				log.Printf("Processing file: %s", path)
+				log.Debug().Str("path", path).Msg("Processing file")
 				processLargeFile(path, reportChan, errChan)
 			}
 			return nil
@@ -56,14 +92,22 @@ func LoadAndAggregate(resultsPath string) (*TestReport, error) {
 		}
 	}()
 
+	if opts.reportID == "" {
+		uuid, err := uuid.NewRandom()
+		if err != nil {
+			return nil, fmt.Errorf("error generating UUID: %w", err)
+		}
+		opts.reportID = uuid.String()
+	}
 	// Aggregate results as they are being loaded
-	aggregatedReport, err := aggregate(reportChan)
+	aggregatedReport, err := aggregate(reportChan, &opts)
 	if err != nil {
 		return nil, fmt.Errorf("error aggregating reports: %w", err)
 	}
 	return aggregatedReport, nil
 }
 
+// processLargeFile reads a large JSON report file and creates TestReport objects in a memory-efficient way.
 func processLargeFile(filePath string, reportChan chan<- *TestReport, errChan chan<- error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -85,94 +129,10 @@ func processLargeFile(filePath string, reportChan chan<- *TestReport, errChan ch
 
 	// Parse fields until we reach the end of the object
 	for decoder.More() {
-		token, err := decoder.Token()
-		if err != nil {
-			errChan <- fmt.Errorf("error reading JSON token from file %s: %w", filePath, err)
-			log.Printf("Error reading JSON token from file: %s, Error: %v", filePath, err)
+		if err = decodeField(decoder, report); err != nil {
+			errChan <- fmt.Errorf("error decoding field: %w", err)
+			log.Printf("Error decoding file '%s': %v", filePath, err)
 			return
-		}
-
-		fieldName, ok := token.(string)
-		if !ok {
-			errChan <- fmt.Errorf("unexpected JSON token in file %s", filePath)
-			log.Printf("Unexpected JSON token in file: %s, Token: %v", filePath, token)
-			return
-		}
-
-		switch fieldName {
-		case "go_project":
-			if err := decoder.Decode(&report.GoProject); err != nil {
-				log.Printf("Error decoding GoProject in file: %s, Error: %v", filePath, err)
-				return
-			}
-		case "head_sha":
-			if err := decoder.Decode(&report.HeadSHA); err != nil {
-				log.Printf("Error decoding HeadSHA in file: %s, Error: %v", filePath, err)
-				return
-			}
-		case "base_sha":
-			if err := decoder.Decode(&report.BaseSHA); err != nil {
-				log.Printf("Error decoding BaseSHA in file: %s, Error: %v", filePath, err)
-				return
-			}
-		case "repo_url":
-			if err := decoder.Decode(&report.RepoURL); err != nil {
-				log.Printf("Error decoding RepoURL in file: %s, Error: %v", filePath, err)
-				return
-			}
-		case "github_workflow_name":
-			if err := decoder.Decode(&report.GitHubWorkflowName); err != nil {
-				log.Printf("Error decoding GitHubWorkflowName in file: %s, Error: %v", filePath, err)
-				return
-			}
-		case "test_run_count":
-			if err := decoder.Decode(&report.TestRunCount); err != nil {
-				log.Printf("Error decoding TestRunCount in file: %s, Error: %v", filePath, err)
-				return
-			}
-		case "race_detection":
-			if err := decoder.Decode(&report.RaceDetection); err != nil {
-				log.Printf("Error decoding RaceDetection in file: %s, Error: %v", filePath, err)
-				return
-			}
-		case "excluded_tests":
-			if err := decoder.Decode(&report.ExcludedTests); err != nil {
-				log.Printf("Error decoding ExcludedTests in file: %s, Error: %v", filePath, err)
-				return
-			}
-		case "selected_tests":
-			if err := decoder.Decode(&report.SelectedTests); err != nil {
-				log.Printf("Error decoding SelectedTests in file: %s, Error: %v", filePath, err)
-				return
-			}
-		case "results":
-			token, err := decoder.Token() // Read opening bracket '['
-			if err != nil || token != json.Delim('[') {
-				log.Printf("Error reading Results array start in file: %s, Error: %v", filePath, err)
-				return
-			}
-
-			for decoder.More() {
-				var result TestResult
-				if err := decoder.Decode(&result); err != nil {
-					log.Printf("Error decoding TestResult in file: %s, Error: %v", filePath, err)
-					return
-				}
-				report.Results = append(report.Results, result)
-			}
-
-			if _, err := decoder.Token(); err != nil {
-				log.Printf("Error reading Results array end in file: %s, Error: %v", filePath, err)
-				return
-			}
-		default:
-			// Skip unknown fields
-			var skip interface{}
-			if err := decoder.Decode(&skip); err != nil {
-				log.Printf("Error skipping unknown field: %s in file: %s, Error: %v", fieldName, filePath, err)
-				return
-			}
-			log.Printf("Skipped unknown field: '%s' in file: %s", fieldName, filePath)
 		}
 	}
 
@@ -183,6 +143,87 @@ func processLargeFile(filePath string, reportChan chan<- *TestReport, errChan ch
 	}
 
 	reportChan <- &report
+}
+
+// decodeField reads a JSON field from the decoder and populates the corresponding field in the TestReport.
+func decodeField(decoder *json.Decoder, report TestReport) error {
+	token, err := decoder.Token()
+	if err != nil {
+		return fmt.Errorf("error reading JSON token: %w", err)
+	}
+
+	fieldName, ok := token.(string)
+	if !ok {
+		return fmt.Errorf("unexpected JSON token")
+	}
+
+	switch fieldName {
+	case "go_project":
+		if err := decoder.Decode(&report.GoProject); err != nil {
+			return fmt.Errorf("error decoding GoProject: %w", err)
+		}
+	case "head_sha":
+		if err := decoder.Decode(&report.HeadSHA); err != nil {
+			return fmt.Errorf("error decoding HeadSHA: %w", err)
+		}
+	case "base_sha":
+		if err := decoder.Decode(&report.BaseSHA); err != nil {
+			return fmt.Errorf("error decoding BaseSHA: %w", err)
+		}
+	case "repo_url":
+		if err := decoder.Decode(&report.RepoURL); err != nil {
+			return fmt.Errorf("error decoding RepoURL: %w", err)
+		}
+	case "github_workflow_name":
+		if err := decoder.Decode(&report.GitHubWorkflowName); err != nil {
+			return fmt.Errorf("error decoding GitHubWorkflowName: %w", err)
+		}
+	case "test_run_count":
+		if err := decoder.Decode(&report.TestRunCount); err != nil {
+			return fmt.Errorf("error decoding TestRunCount: %w", err)
+		}
+	case "race_detection":
+		if err := decoder.Decode(&report.RaceDetection); err != nil {
+			return fmt.Errorf("error decoding RaceDetection: %w", err)
+		}
+	case "excluded_tests":
+		if err := decoder.Decode(&report.ExcludedTests); err != nil {
+			return fmt.Errorf("error decoding ExcludedTests: %w", err)
+		}
+	case "selected_tests":
+		if err := decoder.Decode(&report.SelectedTests); err != nil {
+			return fmt.Errorf("error decoding SelectedTests: %w", err)
+		}
+	case "report_id":
+		if err := decoder.Decode(&report.ReportID); err != nil {
+			return fmt.Errorf("error decoding ReportID: %w", err)
+		}
+	case "results":
+		token, err := decoder.Token() // Read opening bracket '['
+		if err != nil || token != json.Delim('[') {
+			return fmt.Errorf("error reading Results array start: %w", err)
+		}
+
+		for decoder.More() {
+			var result TestResult
+			if err := decoder.Decode(&result); err != nil {
+				return fmt.Errorf("error decoding TestResult: %w", err)
+			}
+			report.Results = append(report.Results, result)
+		}
+
+		if _, err := decoder.Token(); err != nil {
+			return fmt.Errorf("error reading results array end: %w", err)
+		}
+	default:
+		// Skip unknown fields
+		var skip any
+		if err := decoder.Decode(&skip); err != nil {
+			return fmt.Errorf("error skipping unknown field: %w", err)
+		}
+		log.Warn().Str("field", fieldName).Msg("Skipped unknown field, check the test report struct to see if it's been properly updated")
+	}
+	return nil
 }
 
 // LoadReport reads a JSON file and returns a TestReport pointer
@@ -249,7 +290,7 @@ func SaveReport(fs FileSystem, filePath string, report TestReport) error {
 	bufferedWriter := bufio.NewWriter(file)
 	defer func() {
 		if err := bufferedWriter.Flush(); err != nil {
-			fmt.Printf("error flushing buffer: %v\n", err)
+			log.Error().Err(err).Msg("Error flushing buffer")
 		}
 	}()
 
