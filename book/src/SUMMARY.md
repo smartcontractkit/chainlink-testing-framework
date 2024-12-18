@@ -84,11 +84,10 @@
   - [Sentinel](./libs/sentinel.md)
 
 ---
-
 - [Releasing modules](releasing_modules.md)
 ---
 
-- [CTFv1 (Disouraged)](lib.md)
+- [CTFv1 (Discouraged)](lib.md)
   - [Blockchain](lib/blockchain.md)
   - [Concurrency](lib/concurrency.md)
   - [Client](lib/client.md)
