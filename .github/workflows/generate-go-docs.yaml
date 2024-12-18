@@ -110,7 +110,7 @@ jobs:
       - name: Generate go docs for changed projects
         shell: bash
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_DOC_GEN_API_KEY }}
         run: |
           # Add go binary to PATH
           PATH=$PATH:$(go env GOPATH)/bin
