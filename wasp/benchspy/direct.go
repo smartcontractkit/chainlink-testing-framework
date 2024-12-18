@@ -49,6 +49,8 @@ func NewDirectQueryExecutor(generator *wasp.Generator, queries map[string]Direct
 	return g, nil
 }
 
+// GeneratorName returns the name of the generator associated with the query executor.
+// It is useful for identifying and categorizing results based on their generator type.
 func (g *DirectQueryExecutor) GeneratorName() string {
 	return g.Generator.Cfg.GenName
 }
