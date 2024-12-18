@@ -35,7 +35,7 @@ func TestBenchSpy_NewStandardPrometheusQueryExecutor(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotNil(t, executor)
 		assert.NotEmpty(t, executor.Queries)
-		assert.Equal(t, 4, len(executor.Queries))
+		assert.Equal(t, 6, len(executor.Queries))
 
 		queries := []string{}
 		for name := range executor.Queries {

@@ -16,9 +16,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp/benchspy"
 )
 
+// this test requires CTFv2 node_set with observability stack to be running
 func TestBenchSpy_Standard_Prometheus_And_Loki_Metrics(t *testing.T) {
-	// this test requires CTFv2 node_set with observability stack to be running
-
 	label := "benchspy-two-query-executors"
 
 	gen, err := wasp.NewGenerator(&wasp.Config{
@@ -108,6 +107,99 @@ func TestBenchSpy_Standard_Prometheus_And_Loki_Metrics(t *testing.T) {
 	previousMedianCPUUsageVector := previousMedianCPUUsage.(model.Vector)
 
 	assert.Equal(t, len(currentMedianCPUUsageVector), len(previousMedianCPUUsageVector), "number of samples in vectors should be the same")
+
+	// here we could compare actual values, but most likely they will be very different and the test will fail
+}
+
+// this test requires CTFv2 observability stack to be running
+func TestBenchSpy_Two_Loki_Executors(t *testing.T) {
+	label := "benchspy-two-loki-executors"
+
+	gen, err := wasp.NewGenerator(&wasp.Config{
+		T:           t,
+		GenName:     "vu",
+		CallTimeout: 100 * time.Millisecond,
+		LoadType:    wasp.VU,
+		Schedule:    wasp.Plain(1, 10*time.Second),
+		VU: wasp.NewMockVU(&wasp.MockVirtualUserConfig{
+			CallSleep: 50 * time.Millisecond,
+		}),
+		Labels: map[string]string{
+			"branch": label,
+			"commit": label,
+		},
+		LokiConfig: wasp.NewEnvLokiConfig(),
+	})
+	require.NoError(t, err)
+
+	gen.Run(true)
+
+	firstLokiQueryExecutor := benchspy.NewLokiQueryExecutor(
+		map[string]string{
+			"vu_over_time": fmt.Sprintf("max_over_time({branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"stats\", gen_name=~\"%s\"} | json | unwrap current_instances [10s]) by (node_id, go_test_name, gen_name)", label, label, t.Name(), gen.Cfg.GenName),
+		},
+		gen.Cfg.LokiConfig,
+	)
+
+	secondLokiQueryExecutor := benchspy.NewLokiQueryExecutor(
+		map[string]string{
+			"responses_over_time": fmt.Sprintf("sum(count_over_time({branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"responses\", gen_name=~\"%s\"} [1s])) by (node_id, go_test_name, gen_name)", label, label, t.Name(), gen.Cfg.GenName),
+		},
+		gen.Cfg.LokiConfig,
+	)
+
+	baseLineReport, err := benchspy.NewStandardReport(
+		"91ee9e3c903d52de12f3d0c1a07ac3c2a6d141fb",
+		benchspy.WithQueryExecutors(firstLokiQueryExecutor, secondLokiQueryExecutor),
+		benchspy.WithGenerators(gen),
+	)
+	require.NoError(t, err, "failed to create original report")
+
+	fetchCtx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancelFn()
+
+	fetchErr := baseLineReport.FetchData(fetchCtx)
+	require.NoError(t, fetchErr, "failed to fetch current report")
+
+	path, storeErr := baseLineReport.Store()
+	require.NoError(t, storeErr, "failed to store current report", path)
+
+	newGen, err := wasp.NewGenerator(&wasp.Config{
+		T:           t,
+		GenName:     "vu",
+		CallTimeout: 100 * time.Millisecond,
+		LoadType:    wasp.VU,
+		Schedule:    wasp.Plain(1, 10*time.Second),
+		VU: wasp.NewMockVU(&wasp.MockVirtualUserConfig{
+			CallSleep: 50 * time.Millisecond,
+		}),
+		Labels: map[string]string{
+			"branch": label,
+			"commit": label,
+		},
+		LokiConfig: wasp.NewEnvLokiConfig(),
+	})
+	require.NoError(t, err)
+
+	newGen.Run(true)
+
+	fetchCtx, cancelFn = context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancelFn()
+
+	currentReport, previousReport, err := benchspy.FetchNewStandardReportAndLoadLatestPrevious(
+		fetchCtx,
+		"91ee9e3c903d52de12f3d0c1a07ac3c2a6d141fc",
+		benchspy.WithQueryExecutors(firstLokiQueryExecutor, secondLokiQueryExecutor),
+		benchspy.WithGenerators(newGen),
+	)
+	require.NoError(t, err, "failed to fetch current report or load the previous one")
+	require.Equal(t, baseLineReport.CommitOrTag, previousReport.CommitOrTag, "current report should be the same as the original report")
+
+	currentAsLokiSlices := benchspy.MustAllLokiResults(currentReport)
+	previousAsLokiSlices := benchspy.MustAllLokiResults(previousReport)
+
+	compareMedian(t, "vu_over_time", currentAsLokiSlices, previousAsLokiSlices)
+	compareMedian(t, "responses_over_time", currentAsLokiSlices, previousAsLokiSlices)
 
 	// here we could compare actual values, but most likely they will be very different and the test will fail
 }

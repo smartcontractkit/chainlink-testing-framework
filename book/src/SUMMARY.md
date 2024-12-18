@@ -78,6 +78,7 @@
       - [Standard Prometheus metrics](./libs/wasp/benchspy/prometheus_std.md)
       - [Custom Prometheus metrics](./libs/wasp/benchspy/prometheus_custom.md)
       - [To Loki or not to Loki?](./libs/wasp/benchspy/loki_dillema.md)
+      - [Real world example](./libs/wasp/benchspy/real_world.md)
       - [Reports](./libs/wasp/benchspy/reports/overview.md)
         - [Standard Report](./libs/wasp/benchspy/reports/standard_report.md)
           - [Adding new QueryExecutor](./libs/wasp/benchspy/reports/new_executor.md)

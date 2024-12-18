@@ -13,8 +13,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp/benchspy"
 )
 
+// this test requires CTFv2 node_set with observability stack to be running
 func TestBenchSpy_Standard_Prometheus_Metrics(t *testing.T) {
-	// this test requires CTFv2 node_set with observability stack to be running
 	gen, err := wasp.NewGenerator(&wasp.Config{
 		T:           t,
 		GenName:     "vu",
@@ -80,6 +80,12 @@ func TestBenchSpy_Standard_Prometheus_Metrics(t *testing.T) {
 	previousAsValues := benchspy.MustAllPrometheusResults(previousReport)
 
 	assert.Equal(t, len(currentAsValues), len(previousAsValues), "number of metrics in results should be the same")
+	assert.Equal(t, 6, len(currentAsValues), "there should be 6 metrics in the report")
+
+	for _, metric := range benchspy.StandardResourceMetrics {
+		assert.NotEmpty(t, currentAsValues[string(metric)], "current report should contain metric %s", metric)
+		assert.NotEmpty(t, previousAsValues[string(metric)], "previous report should contain metric %s", metric)
+	}
 
 	currentMedianCPUUsage := currentAsValues[string(benchspy.MedianCPUUsage)]
 	previousMedianCPUUsage := previousAsValues[string(benchspy.MedianCPUUsage)]
@@ -94,8 +100,8 @@ func TestBenchSpy_Standard_Prometheus_Metrics(t *testing.T) {
 	// here we could compare actual values, but most likely they will be very different and the test will fail
 }
 
+// this test requires CTFv2 node_set with observability stack to be running
 func TestBenchSpy_Custom_Prometheus_Metrics(t *testing.T) {
-	// this test requires CTFv2 node_set with observability stack to be running
 	gen, err := wasp.NewGenerator(&wasp.Config{
 		T:           t,
 		GenName:     "vu",

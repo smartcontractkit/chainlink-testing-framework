@@ -16,10 +16,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp/benchspy"
 )
 
-// both should give the same results
+// this test requires CTFv2 observability stack to be running
 func TestBenchSpy_Standard_Direct_And_Loki_Metrics(t *testing.T) {
-	// this test requires CTFv2 node_set with observability stack to be running
-
 	label := "benchspy-direct-loki"
 
 	gen, err := wasp.NewGenerator(&wasp.Config{

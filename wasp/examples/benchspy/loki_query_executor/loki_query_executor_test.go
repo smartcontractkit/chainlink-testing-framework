@@ -15,6 +15,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp/benchspy"
 )
 
+// this test requires CTFv2 observability stack to be running
 func TestBenchSpy_Standard_Loki_Metrics(t *testing.T) {
 	label := "benchspy-std"
 
@@ -72,6 +73,9 @@ func TestBenchSpy_Standard_Loki_Metrics(t *testing.T) {
 
 	newGen.Run(true)
 
+	fetchCtx, cancelFn = context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancelFn()
+
 	currentReport, previousReport, err := benchspy.FetchNewStandardReportAndLoadLatestPrevious(
 		fetchCtx,
 		"c2cf545d733eef8bad51d685fcb302e277d7ca15",
@@ -84,11 +88,13 @@ func TestBenchSpy_Standard_Loki_Metrics(t *testing.T) {
 	currentAsStringSlice := benchspy.MustAllLokiResults(currentReport)
 	previousAsStringSlice := benchspy.MustAllLokiResults(previousReport)
 
-	compareMedian(t, string(benchspy.MedianLatency), currentAsStringSlice, previousAsStringSlice)
-	compareMedian(t, string(benchspy.Percentile95Latency), currentAsStringSlice, previousAsStringSlice)
-	compareMedian(t, string(benchspy.ErrorRate), currentAsStringSlice, previousAsStringSlice)
+	compareAverages(t, string(benchspy.MedianLatency), currentAsStringSlice, previousAsStringSlice)
+	compareAverages(t, string(benchspy.Percentile95Latency), currentAsStringSlice, previousAsStringSlice)
+	compareAverages(t, string(benchspy.MaxLatency), currentAsStringSlice, previousAsStringSlice)
+	compareAverages(t, string(benchspy.ErrorRate), currentAsStringSlice, previousAsStringSlice)
 }
 
+// this test requires CTFv2 observability stack to be running
 func TestBenchSpy_Custom_Loki_Metrics(t *testing.T) {
 	label := "benchspy-custom"
 
@@ -154,6 +160,9 @@ func TestBenchSpy_Custom_Loki_Metrics(t *testing.T) {
 
 	newGen.Run(true)
 
+	fetchCtx, cancelFn = context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancelFn()
+
 	currentReport, previousReport, err := benchspy.FetchNewStandardReportAndLoadLatestPrevious(
 		fetchCtx,
 		"2d1fa3532656c51991c0212afce5f80d2914e34f",
@@ -166,22 +175,22 @@ func TestBenchSpy_Custom_Loki_Metrics(t *testing.T) {
 	currentAsStringSlice := benchspy.MustAllLokiResults(currentReport)
 	previousAsStringSlice := benchspy.MustAllLokiResults(previousReport)
 
-	compareMedian(t, "vu_over_time", currentAsStringSlice, previousAsStringSlice)
-	compareMedian(t, "responses_over_time", currentAsStringSlice, previousAsStringSlice)
+	compareAverages(t, "vu_over_time", currentAsStringSlice, previousAsStringSlice)
+	compareAverages(t, "responses_over_time", currentAsStringSlice, previousAsStringSlice)
 }
 
-var compareMedian = func(t *testing.T, metricName string, currentAsStringSlice, previousAsStringSlice map[string][]string) {
+var compareAverages = func(t *testing.T, metricName string, currentAsStringSlice, previousAsStringSlice map[string][]string) {
 	require.NotEmpty(t, currentAsStringSlice[metricName], "%s results were missing from current report", metricName)
 	require.NotEmpty(t, previousAsStringSlice[metricName], "%s results were missing from previous report", metricName)
 
 	currentFloatSlice, err := benchspy.StringSliceToFloat64Slice(currentAsStringSlice[metricName])
 	require.NoError(t, err, "failed to convert %s results to float64 slice", metricName)
-	currentMedian, err := stats.Median(currentFloatSlice)
+	currentMedian, err := stats.Mean(currentFloatSlice)
 	require.NoError(t, err, "failed to calculate median for %s results", metricName)
 
 	previousFloatSlice, err := benchspy.StringSliceToFloat64Slice(previousAsStringSlice[metricName])
 	require.NoError(t, err, "failed to convert %s results to float64 slice", metricName)
-	previousMedian, err := stats.Median(previousFloatSlice)
+	previousMedian, err := stats.Mean(previousFloatSlice)
 	require.NoError(t, err, "failed to calculate median for %s results", metricName)
 
 	var diffPrecentage float64

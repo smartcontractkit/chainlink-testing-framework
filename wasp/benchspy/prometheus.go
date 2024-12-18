@@ -15,6 +15,16 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/client"
 )
 
+// all of them are calculated over 5 minutes intervals (rate query), that are later sampled every 10 seconds over %s duration (quantile_over_time query)
+var (
+	Prometheus_MedianCPU = `quantile_over_time(0.5, rate(container_cpu_usage_seconds_total{name=~"%s"}[5m])[%s:10s]) * 100`
+	Prometheus_P95CPU    = `quantile_over_time(0.95, rate(container_cpu_usage_seconds_total{name=~"%s"}[5m])[%s:10s]) * 100`
+	Prometheus_MaxCPU    = `max(max_over_time(rate(container_cpu_usage_seconds_total{name=~"%s"}[5m])[%s:10s]) * 100)`
+	Prometheus_MedianMem = `quantile_over_time(0.5, rate(container_memory_usage_bytes{name=~"%s"}[5m])[%s:10s]) * 100`
+	Prometheus_P95Mem    = `quantile_over_time(0.95, rate(container_memory_usage_bytes{name=~"%s"}[5m])[%s:10s]) * 100`
+	Prometheus_MaxMem    = `max(max_over_time(rate(container_memory_usage_bytes{name=~"%s"}[5m])[%s:10s]) * 100)`
+)
+
 type PrometheusConfig struct {
 	Url               string
 	NameRegexPatterns []string
@@ -58,8 +68,8 @@ func NewPrometheusQueryExecutor(queries map[string]string, config *PrometheusCon
 	}, nil
 }
 
-// NewStandardPrometheusQueryExecutor creates a PrometheusQueryExecutor with standard queries 
-// based on the provided time range and configuration. It simplifies the process of generating 
+// NewStandardPrometheusQueryExecutor creates a PrometheusQueryExecutor with standard queries
+// based on the provided time range and configuration. It simplifies the process of generating
 // queries for Prometheus, making it easier to integrate Prometheus data into reports.
 func NewStandardPrometheusQueryExecutor(startTime, endTime time.Time, config *PrometheusConfig) (*PrometheusQueryExecutor, error) {
 	p := &PrometheusQueryExecutor{}
@@ -110,7 +120,7 @@ func (l *PrometheusQueryExecutor) Kind() string {
 	return l.KindName
 }
 
-// Validate checks the PrometheusQueryExecutor for a valid client and ensures that at least one query is provided. 
+// Validate checks the PrometheusQueryExecutor for a valid client and ensures that at least one query is provided.
 // It returns an error if the client is nil or no queries are specified, helping to ensure proper configuration before execution.
 func (r *PrometheusQueryExecutor) Validate() error {
 	if r.client == nil {
@@ -157,7 +167,7 @@ func (r *PrometheusQueryExecutor) compareQueries(other map[string]string) error 
 }
 
 // Warnings returns a map of warnings encountered during query execution.
-// This function is useful for retrieving any issues that may have arisen, 
+// This function is useful for retrieving any issues that may have arisen,
 // allowing users to handle or log them appropriately.
 func (r *PrometheusQueryExecutor) Warnings() map[string]v1.Warnings {
 	return r.warnings
@@ -211,15 +221,17 @@ func (r *PrometheusQueryExecutor) standardQuery(metric StandardResourceMetric, n
 	duration := calculateTimeRange(startTime, endTime)
 	switch metric {
 	case MedianCPUUsage:
-		return fmt.Sprintf("quantile_over_time(0.5, rate(container_cpu_usage_seconds_total{name=~\"%s\"}[5m])[%s:10s]) * 100", nameRegexPattern, duration), nil
+		return fmt.Sprintf(Prometheus_MedianCPU, nameRegexPattern, duration), nil
 	case P95CPUUsage:
-		return fmt.Sprintf("quantile_over_time(0.95, rate(container_cpu_usage_seconds_total{name=~\"%s\"}[5m])[%s:10s]) * 100", nameRegexPattern, duration), nil
+		return fmt.Sprintf(Prometheus_P95CPU, nameRegexPattern, duration), nil
+	case MaxCPUUsage:
+		return fmt.Sprintf(Prometheus_MaxCPU, nameRegexPattern, duration), nil
 	case MedianMemUsage:
-		return fmt.Sprintf("quantile_over_time(0.5, rate(container_memory_usage_bytes{name=~\"%s\"}[5m])[%s:10s]) * 100", nameRegexPattern, duration), nil
+		return fmt.Sprintf(Prometheus_MedianMem, nameRegexPattern, duration), nil
 	case P95MemUsage:
-		// this becomes problematic if we want to only consider plain segments, because each might have a different length and thus should have a different range window for accurate calculation
-		// unless... we will are only interested in comparing the differences between reports, not the actual values, then it won't matter that error rate is skewed (calculated over ranges longer than query interval)
-		return fmt.Sprintf("quantile_over_time(0.95, rate(container_memory_usage_bytes{name=~\"%s\"}[5m])[%s:10s]) * 100", nameRegexPattern, duration), nil
+		return fmt.Sprintf(Prometheus_P95Mem, nameRegexPattern, duration), nil
+	case MaxMemUsage:
+		return fmt.Sprintf(Prometheus_MaxMem, nameRegexPattern, duration), nil
 	default:
 		return "", fmt.Errorf("unsupported standard metric %s", metric)
 	}
@@ -228,7 +240,7 @@ func (r *PrometheusQueryExecutor) standardQuery(metric StandardResourceMetric, n
 func (r *PrometheusQueryExecutor) generateStandardQueries(nameRegexPattern string, startTime, endTime time.Time) (map[string]string, error) {
 	standardQueries := make(map[string]string)
 
-	for _, metric := range standardResourceMetrics {
+	for _, metric := range StandardResourceMetrics {
 		query, err := r.standardQuery(metric, nameRegexPattern, startTime, endTime)
 		if err != nil {
 			return nil, err

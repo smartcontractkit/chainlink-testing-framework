@@ -3,17 +3,16 @@ package main
 import (
 	"context"
 	"fmt"
-	"math"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp/benchspy"
 )
 
+// this test can be run without external dependencies
 func TestBenchSpy_Standard_Direct_Metrics(t *testing.T) {
 	gen, err := wasp.NewGenerator(&wasp.Config{
 		T:           t,
@@ -74,31 +73,6 @@ func TestBenchSpy_Standard_Direct_Metrics(t *testing.T) {
 	// make sure that previous report is the same as the baseline report
 	require.Equal(t, baseLineReport.CommitOrTag, previousReport.CommitOrTag, "current report should be the same as the original report")
 
-	currentAsFloat64 := benchspy.MustAllDirectResults(currentReport)
-	previousAsloat64 := benchspy.MustAllDirectResults(previousReport)
-
-	var compareValues = func(
-		metricName string,
-		maxDiffPercentage float64,
-	) {
-		require.NotNil(t, currentAsFloat64[metricName], "%s results were missing from current report", metricName)
-		require.NotNil(t, previousAsloat64[metricName], "%s results were missing from previous report", metricName)
-
-		currentMetric := currentAsFloat64[metricName]
-		previousMetric := previousAsloat64[metricName]
-
-		var diffPrecentage float64
-		if previousMetric != 0.0 && currentMetric != 0.0 {
-			diffPrecentage = (currentMetric - previousMetric) / previousMetric * 100
-		} else if previousMetric == 0.0 && currentMetric == 0.0 {
-			diffPrecentage = 0.0
-		} else {
-			diffPrecentage = 100.0
-		}
-		assert.LessOrEqual(t, math.Abs(diffPrecentage), maxDiffPercentage, "%s medians are more than %f different", metricName, fmt.Sprintf("%.4f", diffPrecentage))
-	}
-
-	compareValues(string(benchspy.MedianLatency), 1.0)
-	compareValues(string(benchspy.Percentile95Latency), 1.0)
-	compareValues(string(benchspy.ErrorRate), 1.0)
+	hasErrors, errors := benchspy.CompareDirectWithThresholds(1.0, 1.0, 1.0, 1.0, currentReport, previousReport)
+	require.False(t, hasErrors, fmt.Sprintf("errors found: %v", errors))
 }

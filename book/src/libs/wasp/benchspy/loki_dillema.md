@@ -4,12 +4,10 @@ You might be wondering whether to use the `Loki` or `Direct` query executor if a
 
 ## Rule of Thumb
 
-If all you need is a single number, such as the median latency or error rate, and you're not interested in:
+You should opt for the `Direct` query executor if all you need is a single number, such as the median latency or error rate, and you're not interested in:
 - Comparing time series directly,
-- Examining minimum or maximum values, or
+- Examining minimum or maximum values over time, or
 - Performing advanced calculations on raw data,
-
-then you should opt for the `Direct` query executor.
 
 ## Why Choose `Direct`?
 
@@ -30,6 +28,12 @@ By using `Direct`, you save resources and simplify the process when advanced ana
 > Percentiles, such as the 95th percentile (p95), are particularly sensitive to the granularity of the input data:
 > - In the **`Direct` QueryExecutor**, the p95 is calculated across all raw data points, capturing the true variability of the dataset, including any extreme values or spikes.
 > - In the **`Loki` QueryExecutor**, the p95 is calculated over aggregated data (i.e. using the 10-second window). As a result, the raw values within each window are smoothed into a single representative value, potentially lowering or altering the calculated p95. For example, an outlier that would significantly affect the p95 in the `Direct` calculation might be averaged out in the `Loki` window, leading to a slightly lower percentile value.
+
+> #### Direct caveats:
+> - **buffer limitations:** `WASP` generator use a [StringBuffer](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/wasp/buffer.go) with fixed size to store the responses. Once full capacity is reached
+> oldest entries are replaced with incoming ones. The size of the buffer can be set in generator's config. By default, it is limited to 50k entries to lower resource consumption and potential OOMs.
+>
+> - **sampling:** `WASP` generators support optional sampling of successful responses. It is disabled by deafult, but if you do enable it, then the calculations would no longer be done over a full dataset.
 
 > #### Key Takeaway:
 > The difference arises because `Direct` prioritizes precision by using raw data, while `Loki` prioritizes efficiency and scalability by using aggregated data. When interpreting results, it’s essential to consider how the smoothing effect of `Loki` might impact the representation of variability or extremes in the dataset. This is especially important for metrics like percentiles, where such details can significantly influence the outcome.

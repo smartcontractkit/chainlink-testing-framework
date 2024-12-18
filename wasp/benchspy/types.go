@@ -58,10 +58,11 @@ type StandardLoadMetric string
 const (
 	MedianLatency       StandardLoadMetric = "median_latency"
 	Percentile95Latency StandardLoadMetric = "95th_percentile_latency"
+	MaxLatency          StandardLoadMetric = "max_latency"
 	ErrorRate           StandardLoadMetric = "error_rate"
 )
 
-var standardLoadMetrics = []StandardLoadMetric{MedianLatency, Percentile95Latency, ErrorRate}
+var StandardLoadMetrics = []StandardLoadMetric{MedianLatency, Percentile95Latency, MaxLatency, ErrorRate}
 
 type StandardResourceMetric string
 
@@ -69,7 +70,9 @@ const (
 	MedianCPUUsage StandardResourceMetric = "median_cpu_usage"
 	MedianMemUsage StandardResourceMetric = "median_mem_usage"
 	P95CPUUsage    StandardResourceMetric = "p95_cpu_usage"
+	MaxCPUUsage    StandardResourceMetric = "max_cpu_usage"
 	P95MemUsage    StandardResourceMetric = "p95_mem_usage"
+	MaxMemUsage    StandardResourceMetric = "max_mem_usage"
 )
 
-var standardResourceMetrics = []StandardResourceMetric{MedianCPUUsage, MedianMemUsage, P95CPUUsage, P95MemUsage}
+var StandardResourceMetrics = []StandardResourceMetric{MedianCPUUsage, MedianMemUsage, P95CPUUsage, P95MemUsage, MaxCPUUsage, MaxMemUsage}

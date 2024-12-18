@@ -166,9 +166,9 @@ func TestBenchSpy_NewStandardReportWithPrometheus(t *testing.T) {
 		assert.IsType(t, &PrometheusQueryExecutor{}, report.QueryExecutors[0])
 		assert.IsType(t, &PrometheusQueryExecutor{}, report.QueryExecutors[1])
 		firstAsProm := report.QueryExecutors[0].(*PrometheusQueryExecutor)
-		assert.Equal(t, 4, len(firstAsProm.Queries))
+		assert.Equal(t, 6, len(firstAsProm.Queries))
 		secondAsProm := report.QueryExecutors[0].(*PrometheusQueryExecutor)
-		assert.Equal(t, 4, len(secondAsProm.Queries))
+		assert.Equal(t, 6, len(secondAsProm.Queries))
 	})
 
 	t.Run("invalid prometheus config (mising url)", func(t *testing.T) {
@@ -807,6 +807,55 @@ func TestBenchSpy_StandardReport_ResultsAs(t *testing.T) {
 		assert.Equal(t, "result3", results["query3"])
 		assert.Empty(t, results["query2"])
 	})
+
+	t.Run("failed type conversion", func(t *testing.T) {
+		mockExecutor := &MockQueryExecutor{
+			ResultsFn: func() map[string]interface{} {
+				return map[string]interface{}{
+					"query1": "result1",
+					"query2": 2,
+				}
+			},
+			KindFn: func() string {
+				return string(StandardQueryExecutor_Loki)
+			},
+		}
+
+		results, err := ResultsAs("", []QueryExecutor{mockExecutor}, StandardQueryExecutor_Loki, "query1", "query2")
+		require.Error(t, err)
+		require.Nil(t, results)
+		require.Contains(t, err.Error(), "failed to cast result to type string")
+	})
+
+	t.Run("duplicated query name", func(t *testing.T) {
+		firstMockExecutor := &MockQueryExecutor{
+			ResultsFn: func() map[string]interface{} {
+				return map[string]interface{}{
+					"query1": "result1",
+					"query2": "result2",
+				}
+			},
+			KindFn: func() string {
+				return string(StandardQueryExecutor_Loki)
+			},
+		}
+
+		secondMockExecutor := &MockQueryExecutor{
+			ResultsFn: func() map[string]interface{} {
+				return map[string]interface{}{
+					"query2": "result2",
+				}
+			},
+			KindFn: func() string {
+				return string(StandardQueryExecutor_Loki)
+			},
+		}
+
+		results, err := ResultsAs("", []QueryExecutor{firstMockExecutor, secondMockExecutor}, StandardQueryExecutor_Loki)
+		require.Error(t, err)
+		require.Nil(t, results)
+		require.Contains(t, err.Error(), "results for query 'query2' already exist")
+	})
 }
 
 func TestBenchSpy_ConvertQueryResults(t *testing.T) {
@@ -965,6 +1014,43 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 		assert.Equal(t, 2, len(results))
 		assert.Equal(t, []string{"log1", "log2"}, results["query1"])
 		assert.Equal(t, []string{"log3", "log4"}, results["query2"])
+	})
+
+	t.Run("MustAllLokiResults - two executors", func(t *testing.T) {
+		firstMockLokiExec := &MockQueryExecutor{
+			ResultsFn: func() map[string]interface{} {
+				return map[string]interface{}{
+					"query1": []string{"log1", "log2"},
+					"query2": []string{"log3", "log4"},
+				}
+			},
+			KindFn: func() string {
+				return string(StandardQueryExecutor_Loki)
+			},
+		}
+
+		secondMockLokiExec := &MockQueryExecutor{
+			ResultsFn: func() map[string]interface{} {
+				return map[string]interface{}{
+					"query3": []string{"log5", "log6"},
+					"query4": []string{"log7", "log8"},
+				}
+			},
+			KindFn: func() string {
+				return string(StandardQueryExecutor_Loki)
+			},
+		}
+
+		sr := &StandardReport{
+			QueryExecutors: []QueryExecutor{firstMockLokiExec, secondMockLokiExec},
+		}
+
+		results := MustAllLokiResults(sr)
+		assert.Equal(t, 4, len(results))
+		assert.Equal(t, []string{"log1", "log2"}, results["query1"])
+		assert.Equal(t, []string{"log3", "log4"}, results["query2"])
+		assert.Equal(t, []string{"log5", "log6"}, results["query3"])
+		assert.Equal(t, []string{"log7", "log8"}, results["query4"])
 	})
 
 	t.Run("MustAllGeneratorResults", func(t *testing.T) {
@@ -1186,5 +1272,242 @@ func TestBenchSpy_FetchNewReportAndLoadLatestPrevious(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, newReport)
 		assert.Nil(t, prevReport)
+	})
+}
+func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
+	t.Run("metrics within thresholds", func(t *testing.T) {
+		previousReport := &StandardReport{
+			QueryExecutors: []QueryExecutor{
+				&MockQueryExecutor{
+					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
+					ResultsFn: func() map[string]interface{} {
+						return map[string]interface{}{
+							string(MedianLatency):       100.0,
+							string(Percentile95Latency): 200.0,
+							string(MaxLatency):          300.0,
+							string(ErrorRate):           1.0,
+						}
+					},
+				},
+			},
+		}
+
+		currentReport := &StandardReport{
+			QueryExecutors: []QueryExecutor{
+				&MockQueryExecutor{
+					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
+					ResultsFn: func() map[string]interface{} {
+						return map[string]interface{}{
+							string(MedianLatency):       105.0, // 5% increase
+							string(Percentile95Latency): 210.0, // 5% increase
+							string(MaxLatency):          315.0, // 5% increase
+							string(ErrorRate):           1.05,  // 5% increase
+						}
+					},
+				},
+			},
+		}
+
+		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, previousReport, currentReport)
+		assert.False(t, failed)
+		assert.Empty(t, errs)
+	})
+
+	t.Run("one metric exceed thresholds", func(t *testing.T) {
+		previousReport := &StandardReport{
+			QueryExecutors: []QueryExecutor{
+				&MockQueryExecutor{
+					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
+					ResultsFn: func() map[string]interface{} {
+						return map[string]interface{}{
+							string(MedianLatency):       100.0,
+							string(Percentile95Latency): 200.0,
+							string(MaxLatency):          300.0,
+							string(ErrorRate):           1.0,
+						}
+					},
+				},
+			},
+		}
+
+		currentReport := &StandardReport{
+			QueryExecutors: []QueryExecutor{
+				&MockQueryExecutor{
+					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
+					ResultsFn: func() map[string]interface{} {
+						return map[string]interface{}{
+							string(MedianLatency):       150.0, // 50% increase
+							string(Percentile95Latency): 200.0, // no increase
+							string(MaxLatency):          300.0, // no increase
+							string(ErrorRate):           1.0,   // no increase
+						}
+					},
+				},
+			},
+		}
+
+		failed, errs := CompareDirectWithThresholds(10.0, 1.0, 1.0, 1.0, previousReport, currentReport)
+		assert.True(t, failed)
+		assert.Len(t, errs, 1)
+		for _, err := range errs {
+			assert.Contains(t, err.Error(), "different, which is higher than the threshold")
+		}
+	})
+
+	t.Run("all metrics exceed thresholds", func(t *testing.T) {
+		previousReport := &StandardReport{
+			QueryExecutors: []QueryExecutor{
+				&MockQueryExecutor{
+					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
+					ResultsFn: func() map[string]interface{} {
+						return map[string]interface{}{
+							string(MedianLatency):       100.0,
+							string(Percentile95Latency): 200.0,
+							string(MaxLatency):          300.0,
+							string(ErrorRate):           1.0,
+						}
+					},
+				},
+			},
+		}
+
+		currentReport := &StandardReport{
+			QueryExecutors: []QueryExecutor{
+				&MockQueryExecutor{
+					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
+					ResultsFn: func() map[string]interface{} {
+						return map[string]interface{}{
+							string(MedianLatency):       150.0, // 50% increase
+							string(Percentile95Latency): 300.0, // 50% increase
+							string(MaxLatency):          450.0, // 50% increase
+							string(ErrorRate):           2.0,   // 100% increase
+						}
+					},
+				},
+			},
+		}
+
+		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, previousReport, currentReport)
+		assert.True(t, failed)
+		assert.Len(t, errs, 4)
+		for _, err := range errs {
+			assert.Contains(t, err.Error(), "different, which is higher than the threshold")
+		}
+	})
+
+	t.Run("handle zero values", func(t *testing.T) {
+		previousReport := &StandardReport{
+			QueryExecutors: []QueryExecutor{
+				&MockQueryExecutor{
+					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
+					ResultsFn: func() map[string]interface{} {
+						return map[string]interface{}{
+							string(MedianLatency):       0.0,
+							string(Percentile95Latency): 0.0,
+							string(MaxLatency):          0.0,
+							string(ErrorRate):           0.0,
+						}
+					},
+				},
+			},
+		}
+
+		currentReport := &StandardReport{
+			QueryExecutors: []QueryExecutor{
+				&MockQueryExecutor{
+					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
+					ResultsFn: func() map[string]interface{} {
+						return map[string]interface{}{
+							string(MedianLatency):       0.0,
+							string(Percentile95Latency): 0.0,
+							string(MaxLatency):          0.0,
+							string(ErrorRate):           0.0,
+						}
+					},
+				},
+			},
+		}
+
+		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, previousReport, currentReport)
+		assert.False(t, failed)
+		assert.Empty(t, errs)
+	})
+
+	t.Run("handle missing metrics", func(t *testing.T) {
+		previousReport := &StandardReport{
+			QueryExecutors: []QueryExecutor{
+				&MockQueryExecutor{
+					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
+					ResultsFn: func() map[string]interface{} {
+						return map[string]interface{}{
+							string(MedianLatency): 100.0,
+							// missing other metrics
+						}
+					},
+				},
+			},
+		}
+
+		currentReport := &StandardReport{
+			QueryExecutors: []QueryExecutor{
+				&MockQueryExecutor{
+					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
+					ResultsFn: func() map[string]interface{} {
+						return map[string]interface{}{
+							string(MedianLatency): 105.0,
+							// missing other metrics
+						}
+					},
+				},
+			},
+		}
+
+		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, previousReport, currentReport)
+		assert.True(t, failed)
+		assert.Len(t, errs, 3) // Should have errors for missing P95, Max, and Error Rate
+		for _, err := range errs {
+			assert.Contains(t, err.Error(), "results were missing")
+		}
+	})
+
+	t.Run("handle zero to non-zero transition", func(t *testing.T) {
+		previousReport := &StandardReport{
+			QueryExecutors: []QueryExecutor{
+				&MockQueryExecutor{
+					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
+					ResultsFn: func() map[string]interface{} {
+						return map[string]interface{}{
+							string(MedianLatency):       0.0,
+							string(Percentile95Latency): 0.0,
+							string(MaxLatency):          0.0,
+							string(ErrorRate):           0.0,
+						}
+					},
+				},
+			},
+		}
+
+		currentReport := &StandardReport{
+			QueryExecutors: []QueryExecutor{
+				&MockQueryExecutor{
+					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
+					ResultsFn: func() map[string]interface{} {
+						return map[string]interface{}{
+							string(MedianLatency):       100.0,
+							string(Percentile95Latency): 200.0,
+							string(MaxLatency):          300.0,
+							string(ErrorRate):           1.0,
+						}
+					},
+				},
+			},
+		}
+
+		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, previousReport, currentReport)
+		assert.True(t, failed)
+		assert.Len(t, errs, 4)
+		for _, err := range errs {
+			assert.Contains(t, err.Error(), "100.0000% different")
+		}
 	})
 }

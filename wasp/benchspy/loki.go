@@ -15,6 +15,14 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// all metrics, but error rate are calculated over a 10s interval
+var (
+	Loki_MedianQuery = `quantile_over_time(0.5, {branch=~"%s", commit=~"%s", go_test_name=~"%s", test_data_type=~"responses", gen_name=~"%s"} | json| unwrap duration [10s]) by (go_test_name, gen_name) / 1e6`
+	Loki_95thQuery   = `quantile_over_time(0.95, {branch=~"%s", commit=~"%s", go_test_name=~"%s", test_data_type=~"responses", gen_name=~"%s"} | json| unwrap duration [10s]) by (go_test_name, gen_name) / 1e6`
+	Loki_MaxQuery    = `max(max_over_time({branch=~"%s", commit=~"%s", go_test_name=~"%s", test_data_type=~"responses", gen_name=~"%s"} | json| unwrap duration [10s]) by (go_test_name, gen_name) / 1e6)`
+	Loki_ErrorRate   = `sum(max_over_time({branch=~"%s", commit=~"%s", go_test_name=~"%s", test_data_type=~"stats", gen_name=~"%s"} | json| unwrap failed [%s]) by (node_id, go_test_name, gen_name)) by (__stream_shard__)`
+)
+
 // NewLokiQueryExecutor creates a new LokiQueryExecutor instance.
 // It initializes the executor with provided queries and Loki configuration,
 // enabling efficient querying of logs from Loki in a structured manner.
@@ -56,7 +64,7 @@ func (l *LokiQueryExecutor) Kind() string {
 }
 
 // IsComparable checks if the given QueryExecutor is of the same type as the current instance.
-// It compares the queries of both executors to ensure they are equivalent in structure and content. 
+// It compares the queries of both executors to ensure they are equivalent in structure and content.
 // This function is useful for validating compatibility between different query executors.
 func (l *LokiQueryExecutor) IsComparable(otherQueryExecutor QueryExecutor) error {
 	otherType := reflect.TypeOf(otherQueryExecutor)
@@ -228,16 +236,18 @@ func NewStandardMetricsLokiExecutor(lokiConfig *wasp.LokiConfig, testName, gener
 }
 
 func (l *LokiQueryExecutor) standardQuery(standardMetric StandardLoadMetric, testName, generatorName, branch, commit string, startTime, endTime time.Time) (string, error) {
+	// if we decide to include only plain segments for the calculation, we we will need to execute this function for each of them
+	// and then aggregate the results
 	switch standardMetric {
 	case MedianLatency:
-		return fmt.Sprintf("quantile_over_time(0.5, {branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"responses\", gen_name=~\"%s\"} | json| unwrap duration [10s]) by (go_test_name, gen_name) / 1e6", branch, commit, testName, generatorName), nil
+		return fmt.Sprintf(Loki_MedianQuery, branch, commit, testName, generatorName), nil
 	case Percentile95Latency:
-		return fmt.Sprintf("quantile_over_time(0.95, {branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"responses\", gen_name=~\"%s\"} | json| unwrap duration [10s]) by (go_test_name, gen_name) / 1e6", branch, commit, testName, generatorName), nil
+		return fmt.Sprintf(Loki_95thQuery, branch, commit, testName, generatorName), nil
+	case MaxLatency:
+		return fmt.Sprintf(Loki_MaxQuery, branch, commit, testName, generatorName), nil
 	case ErrorRate:
 		queryRange := calculateTimeRange(startTime, endTime)
-		// this becomes problematic if we want to only consider plain segments, because each might have a different length and thus should have a different range window for accurate calculation
-		// unless... we will are only interested in comparing the differences between reports, not the actual values, then it won't matter that error rate is skewed (calculated over ranges longer than query interval)
-		return fmt.Sprintf("sum(max_over_time({branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"stats\", gen_name=~\"%s\"} | json| unwrap failed [%s]) by (node_id, go_test_name, gen_name)) by (__stream_shard__)", branch, commit, testName, generatorName, queryRange), nil
+		return fmt.Sprintf(Loki_ErrorRate, branch, commit, testName, generatorName, queryRange), nil
 	default:
 		return "", fmt.Errorf("unsupported standard metric %s", standardMetric)
 	}
@@ -246,7 +256,7 @@ func (l *LokiQueryExecutor) standardQuery(standardMetric StandardLoadMetric, tes
 func (l *LokiQueryExecutor) generateStandardQueries(testName, generatorName, branch, commit string, startTime, endTime time.Time) (map[string]string, error) {
 	standardQueries := make(map[string]string)
 
-	for _, metric := range standardLoadMetrics {
+	for _, metric := range StandardLoadMetrics {
 		query, err := l.standardQuery(metric, testName, generatorName, branch, commit, startTime, endTime)
 		if err != nil {
 			return nil, err

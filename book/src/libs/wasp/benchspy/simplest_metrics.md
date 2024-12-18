@@ -6,54 +6,33 @@ For example, if your query returns a time series, you could:
 - Compare each data point in the time series individually.
 - Compare aggregates like averages, medians, or min/max values of the time series.
 
-Each of these approaches has its pros and cons, and `BenchSpy` doesn't make any judgments here. In this example, we'll use a very simplified approach, which **should not be treated** as a gold standard. In our case, the `QueryExecutor` returns a single data point for each metric, eliminating the complexity. However, with `Loki` and `Prometheus`, things can get more complicated.
-
 ## Working with Built-in `QueryExecutors`
-
-Since each built-in `QueryExecutor` returns a different data type, and we use the `interface{}` type to reflect this, convenience functions help cast these results into more usable types:
+Each built-in `QueryExecutor` returns a different data type, and we use the `interface{}` type to reflect this. Since `Direct` executor always returns `float64` we have added a convenience function
+that checks whether any of the standard metrics has **degraded** more than the threshold. If the performance has improved, no error will be returned.
 
 ```go
-currentAsFloat64 := benchspy.MustAllDirectResults(currentReport)
-previousAsFloat64 := benchspy.MustAllDirectResults(previousReport)
+hasErrors, errors := benchspy.CompareDirectWithThresholds(
+    // maximum differences in percentages for:
+    1.0, // median latency
+    1.0, // p95 latency
+    1.0, // max latency
+    1.0, // error rate
+    currentReport,
+    previousReport,
+)
+require.False(t, hasErrors, fmt.Sprintf("errors found: %v", errors))
 ```
 
 > [!NOTE]
-> All standard metrics for the `DirectQueryExecutor` have the `float64` type.
-
-## Defining a Comparison Function
-
-Next, let's define a simple function to compare two floats and ensure the difference between them is smaller than 1%:
-
-```go
-var compareValues = func(
-    metricName string,
-    maxDiffPercentage float64,
-) {
-    require.NotNil(t, currentAsFloat64[metricName], "%s results were missing from current report", metricName)
-    require.NotNil(t, previousAsFloat64[metricName], "%s results were missing from previous report", metricName)
-
-    currentMetric := currentAsFloat64[metricName]
-    previousMetric := previousAsFloat64[metricName]
-
-    var diffPercentage float64
-    if previousMetric != 0.0 && currentMetric != 0.0 {
-        diffPrecentage = (currentMetric - previousMetric) / previousMetric * 100
-    } else if previousMetric == 0.0 && currentMetric == 0.0 {
-        diffPrecentage = 0.0
-    } else {
-        diffPrecentage = 100.0
-    }
-    assert.LessOrEqual(t, math.Abs(diffPercentage), maxDiffPercentage, "%s medians are more than 1% different", metricName, fmt.Sprintf("%.4f", diffPercentage))
-}
-
-compareValues(string(benchspy.MedianLatency), 1.0)
-compareValues(string(benchspy.Percentile95Latency), 1.0)
-compareValues(string(benchspy.ErrorRate), 1.0)
-```
+> Both `Direct` and `Loki` query executors support following standard performance metrics out of the box:
+> - `median_latency`
+> - `p95_latency`
+> - `max_latency`
+> - `error_rate`
 
 ## Wrapping Up
 
-And that's it! You've written your first test that uses `WASP` to generate load and `BenchSpy` to ensure that the median latency, 95th percentile latency, and error rate haven't changed significantly between runs. You accomplished this without even needing a Loki instance. But what if you wanted to leverage the power of `LogQL`? We'll explore that in the [next chapter](./loki_std.md).
+And that's it! You've written your first test that uses `WASP` to generate load and `BenchSpy` to ensure that the median latency, 95th percentile latency, max latency and error rate haven't changed significantly between runs. You accomplished this without even needing a Loki instance. But what if you wanted to leverage the power of `LogQL`? We'll explore that in the [next chapter](./loki_std.md).
 
 > [!NOTE]
 > You can find the full example [here](https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/wasp/examples/benchspy/direct_query_executor/direct_query_executor_test.go).

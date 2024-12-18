@@ -67,6 +67,7 @@ require.NoError(t, storeErr, "failed to store baseline report", path)
 > For now, it's enough to know that the standard metrics provided by `StandardQueryExecutor_Direct` include:
 > - Median latency
 > - P95 latency (95th percentile)
+> - Max latency
 > - Error rate
 
 ### Step 3: Run the Test Again and Compare Reports

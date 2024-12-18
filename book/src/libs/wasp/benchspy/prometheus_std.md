@@ -16,7 +16,7 @@ This constructor loads the URL from the environment variable `PROMETHEUS_URL` an
 
 > [!WARNING]
 > This example assumes that you have both the observability stack and basic node set running.
-> If you have the `CTF CLI`, you can start it by running: `ctf b ns`.
+> If you have the [CTF CLI](../../../framework/getting_started.md), you can start it by running: `ctf b ns`.
 
 > [!NOTE]
 > Matching containers **by name** should work both for most k8s and Docker setups using `CTFv2` observability stack.
@@ -53,8 +53,10 @@ require.NoError(t, storeErr, "failed to store baseline report", path)
 > Standard Prometheus metrics include:
 > - `median_cpu_usage`
 > - `median_mem_usage`
+> - `max_cpu_usage`
 > - `p95_cpu_usage`
 > - `p95_mem_usage`
+> - `max_mem_usage`
 >
 > These are calculated at the **container level**, based on total usage (user + system).
 

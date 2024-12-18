@@ -62,7 +62,6 @@ require.NoError(t, storeErr, "failed to store baseline report", path)
 ```
 
 ## Step 3: Skip to Metrics Comparison
-
 Since the next steps are very similar to those in the first test, we’ll skip them and go straight to metrics comparison.
 
 By default, the `LokiQueryExecutor` returns results as the `[]string` data type. Let’s use dedicated convenience functions to cast them from `interface{}` to string slices:
@@ -74,22 +73,24 @@ previousAsStringSlice := benchspy.MustAllLokiResults(previousReport)
 
 ## Step 4: Compare Metrics
 
-Now, let’s compare metrics. Since we have `[]string`, we’ll first convert it to `[]float64`, calculate the median, and ensure the difference between the medians is less than 1%. Again, this is just an example—you should decide the best way to validate your metrics.
+Now, let’s compare metrics. Since we have `[]string`, we’ll first convert it to `[]float64`, calculate the median, and ensure the difference between the averages is less than 1%. Again, this is just an example—you should decide the best way to validate your metrics. Here we are explicitly aggregating them using an average to get a single number representation of each metric, but for your case a median or percentile or yet some other aggregate might be more appropriate.
 
 ```go
-var compareMedian = func(metricName string) {
-    require.NotEmpty(t, currentAsStringSlice[metricName], "%s results were missing from current report", metricName)
-    require.NotEmpty(t, previousAsStringSlice[metricName], "%s results were missing from previous report", metricName)
+var compareAverages = func(t *testing.T, metricName string, currentAsStringSlice, previousAsStringSlice map[string][]string) {
+	require.NotEmpty(t, currentAsStringSlice[metricName], "%s results were missing from current report", metricName)
+	require.NotEmpty(t, previousAsStringSlice[metricName], "%s results were missing from previous report", metricName)
 
-    currentFloatSlice, err := benchspy.StringSliceToFloat64Slice(currentAsStringSlice[metricName])
-    require.NoError(t, err, "failed to convert %s results to float64 slice", metricName)
-    currentMedian := benchspy.CalculatePercentile(currentFloatSlice, 0.5)
+	currentFloatSlice, err := benchspy.StringSliceToFloat64Slice(currentAsStringSlice[metricName])
+	require.NoError(t, err, "failed to convert %s results to float64 slice", metricName)
+	currentMedian, err := stats.Mean(currentFloatSlice)
+	require.NoError(t, err, "failed to calculate median for %s results", metricName)
 
-    previousFloatSlice, err := benchspy.StringSliceToFloat64Slice(previousAsStringSlice[metricName])
-    require.NoError(t, err, "failed to convert %s results to float64 slice", metricName)
-    previousMedian := benchspy.CalculatePercentile(previousFloatSlice, 0.5)
+	previousFloatSlice, err := benchspy.StringSliceToFloat64Slice(previousAsStringSlice[metricName])
+	require.NoError(t, err, "failed to convert %s results to float64 slice", metricName)
+	previousMedian, err := stats.Mean(previousFloatSlice)
+	require.NoError(t, err, "failed to calculate median for %s results", metricName)
 
-    var diffPercentage float64
+	var diffPrecentage float64
 	if previousMedian != 0.0 && currentMedian != 0.0 {
 		diffPrecentage = (currentMedian - previousMedian) / previousMedian * 100
 	} else if previousMedian == 0.0 && currentMedian == 0.0 {
@@ -97,17 +98,21 @@ var compareMedian = func(metricName string) {
 	} else {
 		diffPrecentage = 100.0
 	}
-    assert.LessOrEqual(t, math.Abs(diffPercentage), 1.0, "%s medians are more than 1% different", metricName, fmt.Sprintf("%.4f", diffPercentage))
+	assert.LessOrEqual(t, math.Abs(diffPrecentage), 1.0, "%s medians are more than 1% different", metricName, fmt.Sprintf("%.4f", diffPrecentage))
 }
 
-compareMedian(string(benchspy.MedianLatency))
-compareMedian(string(benchspy.Percentile95Latency))
-compareMedian(string(benchspy.ErrorRate))
+compareAverages(t, string(benchspy.MedianLatency), currentAsStringSlice, previousAsStringSlice)
+compareAverages(t, string(benchspy.Percentile95Latency), currentAsStringSlice, previousAsStringSlice)
+compareAverages(t, string(benchspy.MaxLatency), currentAsStringSlice, previousAsStringSlice)
+compareAverages(t, string(benchspy.ErrorRate), currentAsStringSlice, previousAsStringSlice)
 ```
 
 > [!WARNING]
 > Standard Loki metrics are all calculated using a 10 seconds moving window, which results in smoothing of values due to aggregation.
 > To learn what that means in details, please refer to [To Loki or Not to Loki](./loki_dillema.md) chapter.
+>
+> Also, due to the HTTP API endpoint used, namely the `query_range`, all query results **are always returned as a slice**. Execution of **instant queries**
+> that return a single data point is currently **not supported**.
 
 ## What’s Next?
 

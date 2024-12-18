@@ -38,29 +38,45 @@ func (b *StandardReport) LoadLatest(testName string) error {
 	return b.LocalStorage.Load(testName, "", b)
 }
 
-// ResultsAs retrieves and casts results from specified query executors to a desired type.
-// It returns a map of query names to their corresponding results, or an error if casting fails.
 func ResultsAs[Type any](newType Type, queryExecutors []QueryExecutor, queryExecutorType StandardQueryExecutorType, queryNames ...string) (map[string]Type, error) {
 	results := make(map[string]Type)
+
+	var addIfQueryDoesntExist = func(queryName string, asType Type) error {
+		if _, ok := results[queryName]; ok {
+			return fmt.Errorf("results for query '%s' already exist. Always use unique query names, even in different executors of the same type", queryName)
+		}
+		results[queryName] = asType
+
+		return nil
+	}
+
+	var toTypeOrErr = func(result interface{}, queryName string) error {
+		if asType, ok := result.(Type); ok {
+			existsErr := addIfQueryDoesntExist(queryName, asType)
+			if existsErr != nil {
+				return existsErr
+			}
+		} else {
+			return fmt.Errorf("failed to cast result to type %T. It's actual type is: %T", newType, result)
+		}
+
+		return nil
+	}
 
 	for _, queryExecutor := range queryExecutors {
 		if strings.EqualFold(queryExecutor.Kind(), string(queryExecutorType)) {
 			if len(queryNames) > 0 {
 				for _, queryName := range queryNames {
 					if result, ok := queryExecutor.Results()[queryName]; ok {
-						if asType, ok := result.(Type); ok {
-							results[queryName] = asType
-						} else {
-							return nil, fmt.Errorf("failed to cast result to type %T. It's actual type is: %T", newType, result)
+						if err := toTypeOrErr(result, queryName); err != nil {
+							return nil, err
 						}
 					}
 				}
 			} else {
 				for queryName, result := range queryExecutor.Results() {
-					if asType, ok := result.(Type); ok {
-						results[queryName] = asType
-					} else {
-						return nil, fmt.Errorf("failed to cast result to type %T. It's actual type is: %T", newType, result)
+					if err := toTypeOrErr(result, queryName); err != nil {
+						return nil, err
 					}
 				}
 			}
@@ -93,7 +109,7 @@ func MustAllDirectResults(sr *StandardReport) map[string]float64 {
 }
 
 // MustAllPrometheusResults retrieves all Prometheus query results from a StandardReport.
-// It returns a map of query names to their corresponding model.Values, ensuring type safety. 
+// It returns a map of query names to their corresponding model.Values, ensuring type safety.
 // This function is useful for aggregating and accessing Prometheus metrics efficiently.
 func MustAllPrometheusResults(sr *StandardReport) map[string]model.Value {
 	results := make(map[string]model.Value)
@@ -109,6 +125,62 @@ func MustAllPrometheusResults(sr *StandardReport) map[string]model.Value {
 	}
 
 	return results
+}
+
+func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold float64, currentReport, previousReport *StandardReport) (bool, []error) {
+	currentResults := MustAllDirectResults(currentReport)
+	previousResults := MustAllDirectResults(previousReport)
+
+	var compareValues = func(
+		metricName string,
+		maxDiffPercentage float64,
+	) error {
+		if _, ok := currentResults[metricName]; !ok {
+			return fmt.Errorf("%s results were missing from current report", metricName)
+		}
+
+		if _, ok := previousResults[metricName]; !ok {
+			return fmt.Errorf("%s results were missing from previous report", metricName)
+		}
+
+		currentMetric := currentResults[metricName]
+		previousMetric := previousResults[metricName]
+
+		var diffPrecentage float64
+		if previousMetric != 0.0 && currentMetric != 0.0 {
+			diffPrecentage = (currentMetric - previousMetric) / previousMetric * 100
+		} else if previousMetric == 0.0 && currentMetric == 0.0 {
+			diffPrecentage = 0.0
+		} else {
+			diffPrecentage = 100.0
+		}
+
+		if diffPrecentage > maxDiffPercentage {
+			return fmt.Errorf("%s is %.4f%% different, which is higher than the threshold %.4f%%", metricName, diffPrecentage, maxDiffPercentage)
+		}
+
+		return nil
+	}
+
+	var errors []error
+
+	if err := compareValues(string(MedianLatency), medianThreshold); err != nil {
+		errors = append(errors, err)
+	}
+
+	if err := compareValues(string(Percentile95Latency), p95Threshold); err != nil {
+		errors = append(errors, err)
+	}
+
+	if err := compareValues(string(MaxLatency), maxThreshold); err != nil {
+		errors = append(errors, err)
+	}
+
+	if err := compareValues(string(ErrorRate), errorRateThreshold); err != nil {
+		errors = append(errors, err)
+	}
+
+	return len(errors) > 0, errors
 }
 
 // FetchData retrieves data for the report within the specified time range.
@@ -184,7 +256,7 @@ type standardReportConfig struct {
 type StandardReportOption func(*standardReportConfig)
 
 // WithStandardQueries sets the executor types for a standard report configuration.
-// It allows users to specify which types of query executors to use, enabling customization 
+// It allows users to specify which types of query executors to use, enabling customization
 // of report generation based on their requirements.
 func WithStandardQueries(executorTypes ...StandardQueryExecutorType) StandardReportOption {
 	return func(c *standardReportConfig) {
@@ -506,7 +578,7 @@ func convertQueryResults(results map[string]interface{}) (map[string]interface{}
 }
 
 // FetchNewStandardReportAndLoadLatestPrevious creates a new standard report for a given commit or tag,
-// loads the latest previous report, and checks their comparability. 
+// loads the latest previous report, and checks their comparability.
 // It returns the new report, the previous report, and any error encountered during the process.
 func FetchNewStandardReportAndLoadLatestPrevious(ctx context.Context, newCommitOrTag string, newReportOpts ...StandardReportOption) (*StandardReport, *StandardReport, error) {
 	newReport, err := NewStandardReport(newCommitOrTag, newReportOpts...)

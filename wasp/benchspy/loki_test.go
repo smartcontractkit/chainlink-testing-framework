@@ -204,7 +204,7 @@ func TestBenchSpy_NewStandardMetricsLokiExecutor(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, executor)
 	assert.Equal(t, "loki", executor.KindName)
-	assert.Len(t, executor.Queries, len(standardLoadMetrics))
+	assert.Len(t, executor.Queries, len(StandardLoadMetrics))
 }
 
 func TestBenchSpy_CalculateTimeRange(t *testing.T) {

@@ -156,7 +156,7 @@ func (g *DirectQueryExecutor) TimeRange(_, _ time.Time) {
 func (g *DirectQueryExecutor) generateStandardQueries() (map[string]DirectQueryFn, error) {
 	standardQueries := make(map[string]DirectQueryFn)
 
-	for _, metric := range standardLoadMetrics {
+	for _, metric := range StandardLoadMetrics {
 		query, err := g.standardQuery(metric)
 		if err != nil {
 			return nil, err
@@ -193,6 +193,18 @@ func (g *DirectQueryExecutor) standardQuery(standardMetric StandardLoadMetric) (
 			return stats.Percentile(asMiliDuration, 95)
 		}
 		return p95Fn, nil
+	case MaxLatency:
+		maxFn := func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error) {
+			var asMiliDuration []float64
+			for _, response := range responses.Data {
+				// get duration as nanoseconds and convert to milliseconds in order to not lose precision
+				// otherwise, the duration will be rounded to the nearest millisecond
+				asMiliDuration = append(asMiliDuration, float64(response.Duration.Nanoseconds())/1_000_000)
+			}
+
+			return stats.Max(asMiliDuration)
+		}
+		return maxFn, nil
 	case ErrorRate:
 		errorRateFn := func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error) {
 			if len(responses.Data) == 0 {
