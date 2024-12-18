@@ -23,6 +23,9 @@ var (
 	Loki_ErrorRate   = `sum(max_over_time({branch=~"%s", commit=~"%s", go_test_name=~"%s", test_data_type=~"stats", gen_name=~"%s"} | json| unwrap failed [%s]) by (node_id, go_test_name, gen_name)) by (__stream_shard__)`
 )
 
+// NewLokiQueryExecutor creates a new LokiQueryExecutor instance.
+// It initializes the executor with the specified generator name, queries, and Loki configuration.
+// This function is useful for setting up a query executor to interact with Loki for log data retrieval.
 func NewLokiQueryExecutor(generatorName string, queries map[string]string, lokiConfig *wasp.LokiConfig) *LokiQueryExecutor {
 	return &LokiQueryExecutor{
 		KindName:            string(StandardQueryExecutor_Loki),
@@ -49,6 +52,8 @@ type LokiQueryExecutor struct {
 	Config *wasp.LokiConfig `json:"-"`
 }
 
+// GeneratorName returns the name of the generator associated with the LokiQueryExecutor.
+// It is useful for identifying the source of results in reports or logs.
 func (l *LokiQueryExecutor) GeneratorName() string {
 	return l.GeneratorNameString
 }

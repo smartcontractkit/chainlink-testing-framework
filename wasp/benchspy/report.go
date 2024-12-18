@@ -40,6 +40,8 @@ func (b *StandardReport) LoadLatest(testName string) error {
 	return b.LocalStorage.Load(testName, "", b)
 }
 
+// ResultsAs retrieves and casts results from a query executor to a specified type.
+// It returns a map of query names to their corresponding results, or an error if casting fails.
 func ResultsAs[Type any](newType Type, queryExecutor QueryExecutor, queryNames ...string) (map[string]Type, error) {
 	results := make(map[string]Type)
 
@@ -74,6 +76,8 @@ func ResultsAs[Type any](newType Type, queryExecutor QueryExecutor, queryNames .
 
 type LokiResultsByGenerator map[string]map[string][]string
 
+// MustAllLokiResults retrieves and aggregates results from all Loki query executors in a StandardReport.
+// It panics if any query execution fails, ensuring that only successful results are returned.
 func MustAllLokiResults(sr *StandardReport) LokiResultsByGenerator {
 	results := make(LokiResultsByGenerator)
 
@@ -94,6 +98,8 @@ func MustAllLokiResults(sr *StandardReport) LokiResultsByGenerator {
 
 type DirectResultsByGenerator map[string]map[string]float64
 
+// MustAllDirectResults extracts and returns all direct results from a given StandardReport.
+// It panics if any result extraction fails, ensuring that only valid results are processed.
 func MustAllDirectResults(sr *StandardReport) DirectResultsByGenerator {
 	results := make(DirectResultsByGenerator)
 
@@ -144,6 +150,8 @@ func calculateDiffPercentage(current, previous float64) float64 {
 	return diffPrecentage
 }
 
+// CompareDirectWithThresholds evaluates the current and previous reports against specified thresholds.
+// It checks for significant differences in metrics and returns any discrepancies found, aiding in performance analysis.
 func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold float64, currentReport, previousReport *StandardReport) (bool, map[string][]error) {
 	allCurrentResults := MustAllDirectResults(currentReport)
 	allPreviousResults := MustAllDirectResults(previousReport)
@@ -207,6 +215,9 @@ func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, er
 	return len(errors) > 0, errors
 }
 
+// PrintStandardDirectMetrics outputs a comparison of direct metrics between two reports.
+// It displays the current and previous values along with the percentage difference for each metric,
+// helping users to quickly assess performance changes across different generator configurations.
 func PrintStandardDirectMetrics(currentReport, previousReport *StandardReport) {
 	currentResults := MustAllDirectResults(currentReport)
 	previousResults := MustAllDirectResults(previousReport)
