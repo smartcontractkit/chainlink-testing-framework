@@ -81,6 +81,7 @@
       - [Debug Loki errors](./libs/wasp/how-to/debug_loki_errors.md)
   - [Havoc](./libs/havoc.md)
   - [K8s Test Runner](k8s-test-runner/k8s-test-runner.md)
+  - [Sentinel](./libs/sentinel.md)
 
 ---
 
