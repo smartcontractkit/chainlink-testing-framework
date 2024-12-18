@@ -100,52 +100,52 @@ func processLargeFile(filePath string, reportChan chan<- *TestReport, errChan ch
 		}
 
 		switch fieldName {
-		case "GoProject":
+		case "go_project":
 			if err := decoder.Decode(&report.GoProject); err != nil {
 				log.Printf("Error decoding GoProject in file: %s, Error: %v", filePath, err)
 				return
 			}
-		case "HeadSHA":
+		case "head_sha":
 			if err := decoder.Decode(&report.HeadSHA); err != nil {
 				log.Printf("Error decoding HeadSHA in file: %s, Error: %v", filePath, err)
 				return
 			}
-		case "BaseSHA":
+		case "base_sha":
 			if err := decoder.Decode(&report.BaseSHA); err != nil {
 				log.Printf("Error decoding BaseSHA in file: %s, Error: %v", filePath, err)
 				return
 			}
-		case "RepoURL":
+		case "repo_url":
 			if err := decoder.Decode(&report.RepoURL); err != nil {
 				log.Printf("Error decoding RepoURL in file: %s, Error: %v", filePath, err)
 				return
 			}
-		case "GitHubWorkflowName":
+		case "github_workflow_name":
 			if err := decoder.Decode(&report.GitHubWorkflowName); err != nil {
 				log.Printf("Error decoding GitHubWorkflowName in file: %s, Error: %v", filePath, err)
 				return
 			}
-		case "TestRunCount":
+		case "test_run_count":
 			if err := decoder.Decode(&report.TestRunCount); err != nil {
 				log.Printf("Error decoding TestRunCount in file: %s, Error: %v", filePath, err)
 				return
 			}
-		case "RaceDetection":
+		case "race_detection":
 			if err := decoder.Decode(&report.RaceDetection); err != nil {
 				log.Printf("Error decoding RaceDetection in file: %s, Error: %v", filePath, err)
 				return
 			}
-		case "ExcludedTests":
+		case "excluded_tests":
 			if err := decoder.Decode(&report.ExcludedTests); err != nil {
 				log.Printf("Error decoding ExcludedTests in file: %s, Error: %v", filePath, err)
 				return
 			}
-		case "SelectedTests":
+		case "selected_tests":
 			if err := decoder.Decode(&report.SelectedTests); err != nil {
 				log.Printf("Error decoding SelectedTests in file: %s, Error: %v", filePath, err)
 				return
 			}
-		case "Results":
+		case "results":
 			token, err := decoder.Token() // Read opening bracket '['
 			if err != nil || token != json.Delim('[') {
 				log.Printf("Error reading Results array start in file: %s, Error: %v", filePath, err)
@@ -172,7 +172,7 @@ func processLargeFile(filePath string, reportChan chan<- *TestReport, errChan ch
 				log.Printf("Error skipping unknown field: %s in file: %s, Error: %v", fieldName, filePath, err)
 				return
 			}
-			log.Printf("Skipped unknown field: %s in file: %s", fieldName, filePath)
+			log.Printf("Skipped unknown field: '%s' in file: %s", fieldName, filePath)
 		}
 	}
 
