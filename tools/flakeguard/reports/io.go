@@ -129,7 +129,7 @@ func processLargeFile(filePath string, reportChan chan<- *TestReport) error {
 
 	// Parse fields until we reach the end of the object
 	for decoder.More() {
-		if err = decodeField(decoder, report); err != nil {
+		if err = decodeField(decoder, &report); err != nil {
 			return fmt.Errorf("error decoding field: %w", err)
 		}
 	}
@@ -144,7 +144,7 @@ func processLargeFile(filePath string, reportChan chan<- *TestReport) error {
 }
 
 // decodeField reads a JSON field from the decoder and populates the corresponding field in the TestReport.
-func decodeField(decoder *json.Decoder, report TestReport) error {
+func decodeField(decoder *json.Decoder, report *TestReport) error {
 	token, err := decoder.Token()
 	if err != nil {
 		return fmt.Errorf("error reading JSON token: %w", err)
@@ -221,6 +221,7 @@ func decodeField(decoder *json.Decoder, report TestReport) error {
 		}
 		log.Warn().Str("field", fieldName).Msg("Skipped unknown field, check the test report struct to see if it's been properly updated")
 	}
+	fmt.Printf("Decoded field: %s\n", fieldName)
 	return nil
 }
 
