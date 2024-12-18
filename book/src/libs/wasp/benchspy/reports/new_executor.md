@@ -1,5 +1,7 @@
 # BenchSpy - Adding a New QueryExecutor
 
+# QueryExecutor interface
+
 As mentioned earlier, the `StandardReport` supports three different data sources:
 - `Direct`
 - `Loki`
@@ -49,3 +51,17 @@ By default, `StandardReport` calculates the test time range automatically by ana
 ---
 
 With these details in mind, you should have a clear path to implementing your own `QueryExecutor` and integrating it seamlessly with `BenchSpy`'s `StandardReport`.
+
+# NamedGenerator interface
+
+Executors that query load generation metrics should also implement this simple interface:
+```go
+type NamedGenerator interface {
+	// GeneratorName returns the name of the generator
+	GeneratorName() string
+}
+```
+
+It is used primarly, when casting results from `map[string]interface{}` to target type, while splitting them between different generators.
+
+Currently, this interface is implemented by `Direct` and `Loki` exectors, but not by `Prometheus`.

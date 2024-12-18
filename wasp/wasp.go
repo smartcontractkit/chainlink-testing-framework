@@ -713,8 +713,6 @@ func (g *Generator) Wait() (interface{}, bool) {
 	g.dataCancel()
 	g.dataWaitGroup.Wait()
 	if g.Cfg.LokiConfig != nil {
-		// g.dataCancel()
-		// g.dataWaitGroup.Wait()
 		g.stopLokiStream()
 	}
 	return g.GetData(), g.stats.RunFailed.Load()

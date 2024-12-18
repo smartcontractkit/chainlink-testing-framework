@@ -46,6 +46,7 @@ type QueryExecutor interface {
 }
 
 type NamedGenerator interface {
+	// GeneratorName returns the name of the generator
 	GeneratorName() string
 }
 
