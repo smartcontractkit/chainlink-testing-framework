@@ -54,6 +54,8 @@ func NewPostgresConnector(cfg *PostgresConfig) (*PostgresConnector, error) {
 	return &PostgresConnector{DB: db, Cfg: cfg}, nil
 }
 
+// ConnectDB establishes a connection to a PostgreSQL database using the provided environment settings.
+// It returns a PostgresConnector instance or an error if the connection fails.
 func ConnectDB(nodeNum int, e *environment.Environment) (*PostgresConnector, error) {
 	spl := strings.Split(e.URLs["chainlink_db"][nodeNum], ":")
 	port := spl[len(spl)-1]

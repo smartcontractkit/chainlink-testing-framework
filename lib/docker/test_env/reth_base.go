@@ -37,12 +37,17 @@ type Reth struct {
 	posContainerSettings
 }
 
+// WithTestInstance sets up the execution client with a test logger and the provided testing context.
+// This is useful for integrating testing frameworks with the execution client, enabling better logging and error tracking during tests.
 func (g *Reth) WithTestInstance(t *testing.T) ExecutionClient {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
 }
 
+// StartContainer initializes and starts a Reth execution client container.
+// It returns the configured EVM network details or an error if the process fails.
+// This function is essential for setting up a local Ethereum environment for testing or development.
 func (g *Reth) StartContainer() (blockchain.EVMNetwork, error) {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return blockchain.EVMNetwork{}, errors.New(config.Eth1NotSupportedByRethMsg)
@@ -110,6 +115,9 @@ func (g *Reth) StartContainer() (blockchain.EVMNetwork, error) {
 	return networkConfig, nil
 }
 
+// GetInternalExecutionURL returns the internal execution URL for the Ethereum client.
+// It is used to retrieve the endpoint for interacting with the execution layer,
+// ensuring compatibility with Ethereum 2.0 clients.
 func (g *Reth) GetInternalExecutionURL() string {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		panic("eth1 node doesn't have an execution URL")
@@ -117,6 +125,8 @@ func (g *Reth) GetInternalExecutionURL() string {
 	return g.InternalExecutionURL
 }
 
+// GetExternalExecutionURL returns the external execution URL for the Reth instance.
+// It panics if the Ethereum version is Eth1, as Eth1 nodes do not support execution URLs.
 func (g *Reth) GetExternalExecutionURL() string {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		panic("eth1 node doesn't have an execution URL")
@@ -124,34 +134,51 @@ func (g *Reth) GetExternalExecutionURL() string {
 	return g.ExternalExecutionURL
 }
 
+// GetInternalHttpUrl returns the internal HTTP URL of the execution client.
+// This URL is essential for establishing communication with the client in a secure manner.
 func (g *Reth) GetInternalHttpUrl() string {
 	return g.InternalHttpUrl
 }
 
+// GetInternalWsUrl returns the internal WebSocket URL for the Reth execution client.
+// This URL is essential for establishing WebSocket connections to the client for real-time data streaming.
 func (g *Reth) GetInternalWsUrl() string {
 	return g.InternalWsUrl
 }
 
+// GetExternalHttpUrl returns the external HTTP URL for the Reth execution client.
+// This URL is useful for connecting to the client from external applications or services.
 func (g *Reth) GetExternalHttpUrl() string {
 	return g.ExternalHttpUrl
 }
 
+// GetExternalWsUrl returns the external WebSocket URL for the Reth execution client.
+// This URL is essential for connecting to the client for real-time data and event subscriptions.
 func (g *Reth) GetExternalWsUrl() string {
 	return g.ExternalWsUrl
 }
 
+// GetContainerName returns the name of the container associated with the Reth instance.
+// This function is useful for identifying and managing the container in a Docker environment.
 func (g *Reth) GetContainerName() string {
 	return g.ContainerName
 }
 
+// GetContainer returns a pointer to the container associated with the Reth instance.
+// This function is useful for accessing the container's properties and methods in order to manage or interact with the execution environment.
 func (g *Reth) GetContainer() *tc.Container {
 	return &g.Container
 }
 
+// GetEthereumVersion returns the current Ethereum version of the Reth instance.
+// This information is essential for determining compatibility and functionality
+// with various Ethereum features and services.
 func (g *Reth) GetEthereumVersion() config_types.EthereumVersion {
 	return g.ethereumVersion
 }
 
+// WaitUntilChainIsReady blocks until the Ethereum chain is ready for use, waiting for the first block to be committed if necessary.
+// This function is essential for ensuring that the blockchain environment is fully operational before proceeding with further operations.
 func (g *Reth) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return nil
@@ -160,7 +187,10 @@ func (g *Reth) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration
 	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
 }
 
-func (g *Reth) GethConsensusMechanism() ConsensusMechanism {
+// GetConsensusMechanism returns the consensus mechanism used by the Ethereum network.
+// It identifies whether the network is operating on Proof of Work (PoW) or Proof of Stake (PoS)
+// based on the current Ethereum version, aiding in understanding network dynamics.
+func (g *Reth) GetConsensusMechanism() ConsensusMechanism {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return ConsensusMechanism_PoW
 	}

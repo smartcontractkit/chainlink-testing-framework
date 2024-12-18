@@ -41,6 +41,8 @@ type KafkaTopicConfig struct {
 	CleanupPolicy string `json:"cleanup_policy"`
 }
 
+// NewKafka initializes a new Kafka instance with a unique container name and default environment variables.
+// It sets up the necessary configurations for Kafka to operate within specified networks, making it easy to deploy and manage Kafka services in a containerized environment.
 func NewKafka(networks []string) *Kafka {
 	id, _ := uuid.NewRandom()
 	containerName := fmt.Sprintf("kafka-%s", id.String())
@@ -65,12 +67,17 @@ func NewKafka(networks []string) *Kafka {
 	}
 }
 
+// WithTestInstance configures the Kafka instance for testing by setting up a test logger.
+// It returns the modified Kafka instance, allowing for easier testing and logging during unit tests.
 func (k *Kafka) WithTestInstance(t *testing.T) *Kafka {
 	k.l = logging.GetTestLogger(t)
 	k.t = t
 	return k
 }
 
+// WithContainerName sets the container name for the Kafka instance.
+// It configures the internal and bootstrap server URLs based on the provided name,
+// allowing for easy identification and connection to the Kafka service.
 func (k *Kafka) WithContainerName(name string) *Kafka {
 	k.ContainerName = name
 	internalUrl := fmt.Sprintf("%s:%s", name, "9092")
@@ -80,11 +87,15 @@ func (k *Kafka) WithContainerName(name string) *Kafka {
 	return k
 }
 
+// WithTopics sets the Kafka topic configurations for the Kafka instance.
+// It returns the updated Kafka instance, allowing for method chaining.
 func (k *Kafka) WithTopics(topics []KafkaTopicConfig) *Kafka {
 	k.TopicConfigs = topics
 	return k
 }
 
+// WithZookeeper sets the Zookeeper connection URL for the Kafka instance.
+// It prepares the necessary environment variables and returns the updated Kafka instance.
 func (k *Kafka) WithZookeeper(zookeeperUrl string) *Kafka {
 	envVars := map[string]string{
 		"KAFKA_ZOOKEEPER_CONNECT": zookeeperUrl,
@@ -92,6 +103,8 @@ func (k *Kafka) WithZookeeper(zookeeperUrl string) *Kafka {
 	return k.WithEnvVars(envVars)
 }
 
+// WithEnvVars merges the provided environment variables into the Kafka instance's existing environment variables.
+// It allows customization of the Kafka container's configuration before starting it.
 func (k *Kafka) WithEnvVars(envVars map[string]string) *Kafka {
 	if err := mergo.Merge(&k.EnvVars, envVars, mergo.WithOverride); err != nil {
 		k.l.Fatal().Err(err).Msg("Failed to merge env vars")
@@ -99,6 +112,9 @@ func (k *Kafka) WithEnvVars(envVars map[string]string) *Kafka {
 	return k
 }
 
+// StartContainer initializes and starts a Kafka container with specified environment variables.
+// It sets internal and external URLs for the container and logs the startup process.
+// This function is essential for setting up a Kafka instance for testing or development purposes.
 func (k *Kafka) StartContainer() error {
 	l := logging.GetTestContainersGoTestLogger(k.t)
 	k.InternalUrl = fmt.Sprintf("%s:%s", k.ContainerName, "9092")
@@ -133,6 +149,10 @@ func (k *Kafka) StartContainer() error {
 	return nil
 }
 
+// CreateLocalTopics creates Kafka topics based on the provided configurations.
+// It ensures that topics are only created if they do not already exist,
+// and logs the creation details for each topic. This function is useful
+// for initializing Kafka environments with predefined topic settings.
 func (k *Kafka) CreateLocalTopics() error {
 	for _, topicConfig := range k.TopicConfigs {
 		cmd := []string{"kafka-topics", "--bootstrap-server", fmt.Sprintf("http://%s", k.BootstrapServerUrl),

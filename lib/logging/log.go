@@ -33,6 +33,9 @@ type CustomT struct {
 	ended bool
 }
 
+// Write writes the contents of p to the logger associated with CustomT.
+// It handles empty input gracefully and logs a warning if called after the test has ended.
+// Returns the number of bytes written and any write error encountered.
 func (ct *CustomT) Write(p []byte) (n int, err error) {
 	str := string(p)
 	if strings.TrimSpace(str) == "" {
@@ -59,6 +62,8 @@ func (ct CustomT) Printf(format string, v ...interface{}) {
 	}
 }
 
+// Init initializes the logging system by setting up a logger with the specified log level.
+// It ensures that logging is configured before any application components are initialized.
 func Init() {
 	l := GetLogger(nil, config.EnvVarLogLevel)
 	log.Logger = l
