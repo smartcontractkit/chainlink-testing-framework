@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
+	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
@@ -127,6 +129,19 @@ func MustAllPrometheusResults(sr *StandardReport) map[string]model.Value {
 	return results
 }
 
+func calculateDiffPercentage(current, previous float64) float64 {
+	var diffPrecentage float64
+	if previous != 0.0 && current != 0.0 {
+		diffPrecentage = (current - previous) / previous * 100
+	} else if previous == 0.0 && current == 0.0 {
+		diffPrecentage = 0.0
+	} else {
+		diffPrecentage = 100.0
+	}
+
+	return diffPrecentage
+}
+
 func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold float64, currentReport, previousReport *StandardReport) (bool, []error) {
 	currentResults := MustAllDirectResults(currentReport)
 	previousResults := MustAllDirectResults(previousReport)
@@ -146,15 +161,7 @@ func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, er
 		currentMetric := currentResults[metricName]
 		previousMetric := previousResults[metricName]
 
-		var diffPrecentage float64
-		if previousMetric != 0.0 && currentMetric != 0.0 {
-			diffPrecentage = (currentMetric - previousMetric) / previousMetric * 100
-		} else if previousMetric == 0.0 && currentMetric == 0.0 {
-			diffPrecentage = 0.0
-		} else {
-			diffPrecentage = 100.0
-		}
-
+		diffPrecentage := calculateDiffPercentage(currentMetric, previousMetric)
 		if diffPrecentage > maxDiffPercentage {
 			return fmt.Errorf("%s is %.4f%% different, which is higher than the threshold %.4f%%", metricName, diffPrecentage, maxDiffPercentage)
 		}
@@ -180,7 +187,30 @@ func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, er
 		errors = append(errors, err)
 	}
 
+	PrintStandardDirectMetrics(currentReport, previousReport)
+
 	return len(errors) > 0, errors
+}
+
+func PrintStandardDirectMetrics(currentReport, previousReport *StandardReport) {
+	currentResults := MustAllDirectResults(currentReport)
+	previousResults := MustAllDirectResults(previousReport)
+
+	table := tablewriter.NewWriter(os.Stderr)
+	table.SetHeader([]string{"Metric", previousReport.CommitOrTag, currentReport.CommitOrTag, "Diff %"})
+
+	for _, metricName := range StandardLoadMetrics {
+		metricString := string(metricName)
+		diff := calculateDiffPercentage(currentResults[metricString], previousResults[metricString])
+		table.Append([]string{metricString, fmt.Sprintf("%.4f", previousResults[metricString]), fmt.Sprintf("%.4f", currentResults[metricString]), fmt.Sprintf("%.4f", diff)})
+	}
+
+	table.SetBorder(true)
+	table.SetRowLine(true)
+	table.SetAlignment(tablewriter.ALIGN_LEFT)
+
+	table.Render()
+
 }
 
 // FetchData retrieves data for the report within the specified time range.

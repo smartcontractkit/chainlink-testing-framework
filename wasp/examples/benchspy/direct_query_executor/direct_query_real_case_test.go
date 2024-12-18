@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -62,15 +63,17 @@ func TestBenchSpy_Standard_Direct_Metrics_RealCase(t *testing.T) {
 		}),
 	})
 	require.NoError(t, err)
-
 	generator.Run(true)
+
+	currentVersion := os.Getenv("CURRENT_VERSION")
+	require.NotEmpty(t, currentVersion, "No current version provided")
 
 	fetchCtx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancelFn()
 
 	currentReport, previousReport, err := benchspy.FetchNewStandardReportAndLoadLatestPrevious(
 		fetchCtx,
-		"v1.1.0",
+		currentVersion,
 		benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Direct),
 		benchspy.WithReportDirectory("test_reports"),
 		benchspy.WithGenerators(generator),

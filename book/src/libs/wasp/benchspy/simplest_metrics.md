@@ -30,6 +30,21 @@ require.False(t, hasErrors, fmt.Sprintf("errors found: %v", errors))
 > - `max_latency`
 > - `error_rate`
 
+The function also prints a table with the differences between two reports, regardless whether they were meaningful:
+```bash
++-------------------------+---------+---------+---------+
+|         METRIC          | V1.0.0  | V1.1.0  | DIFF %  |
++-------------------------+---------+---------+---------+
+| median_latency          | 50.4256 | 61.0009 | 20.9722 |
++-------------------------+---------+---------+---------+
+| 95th_percentile_latency | 51.0082 | 61.1052 | 19.7949 |
++-------------------------+---------+---------+---------+
+| max_latency             | 52.1362 | 61.2028 | 17.3903 |
++-------------------------+---------+---------+---------+
+| error_rate              | 0.0000  | 0.0000  | 0.0000  |
++-------------------------+---------+---------+---------+
+```
+
 ## Wrapping Up
 
 And that's it! You've written your first test that uses `WASP` to generate load and `BenchSpy` to ensure that the median latency, 95th percentile latency, max latency and error rate haven't changed significantly between runs. You accomplished this without even needing a Loki instance. But what if you wanted to leverage the power of `LogQL`? We'll explore that in the [next chapter](./loki_std.md).
