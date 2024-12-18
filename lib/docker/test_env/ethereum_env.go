@@ -88,7 +88,7 @@ func (b *EthereumNetworkBuilder) WithConsensusLayer(consensusLayer config.Consen
 }
 
 // WithExecutionLayer sets the execution layer for the Ethereum network builder.
-// It allows users to specify which execution layer to use, ensuring compatibility 
+// It allows users to specify which execution layer to use, ensuring compatibility
 // with the selected Ethereum version and consensus layer.
 func (b *EthereumNetworkBuilder) WithExecutionLayer(executionLayer config_types.ExecutionLayer) *EthereumNetworkBuilder {
 	b.executionLayer = executionLayer
@@ -103,7 +103,7 @@ func (b *EthereumNetworkBuilder) WithEthereumChainConfig(config config.EthereumC
 }
 
 // WithDockerNetworks sets the Docker networks for the Ethereum network builder.
-// It allows users to specify custom networks for containerized deployments, 
+// It allows users to specify custom networks for containerized deployments,
 // enhancing flexibility in network configuration.
 func (b *EthereumNetworkBuilder) WithDockerNetworks(networks []string) *EthereumNetworkBuilder {
 	b.dockerNetworks = networks
@@ -119,15 +119,15 @@ func (b *EthereumNetworkBuilder) WithNodeLogLevel(nodeLogLevel string) *Ethereum
 }
 
 // WithExistingConfig sets an existing Ethereum network configuration for the builder.
-// It allows users to customize the network setup using predefined settings, 
+// It allows users to customize the network setup using predefined settings,
 // facilitating the creation of a network with specific parameters.
 func (b *EthereumNetworkBuilder) WithExistingConfig(config config.EthereumNetworkConfig) *EthereumNetworkBuilder {
 	b.existingConfig = &config
 	return b
 }
 
-// WithExistingConfigFromEnvVar enables the use of an existing Ethereum configuration 
-// sourced from an environment variable. This allows for flexible deployment 
+// WithExistingConfigFromEnvVar enables the use of an existing Ethereum configuration
+// sourced from an environment variable. This allows for flexible deployment
 // configurations without hardcoding values, enhancing security and adaptability.
 func (b *EthereumNetworkBuilder) WithExistingConfigFromEnvVar() *EthereumNetworkBuilder {
 	b.existingFromEnvVar = true
@@ -143,7 +143,7 @@ func (b *EthereumNetworkBuilder) WithTest(t *testing.T) *EthereumNetworkBuilder 
 }
 
 // WithCustomDockerImages sets custom Docker images for the Ethereum network builder.
-// This allows users to specify their own container images for different components, 
+// This allows users to specify their own container images for different components,
 // enabling greater flexibility and customization in the network setup.
 func (b *EthereumNetworkBuilder) WithCustomDockerImages(newImages map[config.ContainerType]string) *EthereumNetworkBuilder {
 	b.customDockerImages = newImages
@@ -787,7 +787,7 @@ func (en *EthereumNetwork) getImageOverride(ct config.ContainerType) string {
 }
 
 // Save persists the configuration of the Ethereum network to a TOML file.
-// It generates a unique filename and logs the path for future reference in end-to-end tests. 
+// It generates a unique filename and logs the path for future reference in end-to-end tests.
 // This function is essential for maintaining consistent test environments.
 func (en *EthereumNetwork) Save() error {
 	name := fmt.Sprintf("ethereum_network_%s", uuid.NewString()[0:8])

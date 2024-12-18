@@ -62,7 +62,7 @@ func WithPostgresImageName(imageName string) PostgresDbOption {
 }
 
 // WithPostgresImageVersion sets the PostgreSQL container image version for the database.
-// It allows customization of the database version used in the container, enhancing flexibility 
+// It allows customization of the database version used in the container, enhancing flexibility
 // for development and testing environments.
 func WithPostgresImageVersion(version string) PostgresDbOption {
 	return func(c *PostgresDb) {
@@ -91,7 +91,7 @@ func WithContainerEnv(key, value string) PostgresDbOption {
 }
 
 // NewPostgresDb initializes a new Postgres database instance with specified networks and options.
-// It sets up the container environment and default configurations, returning the PostgresDb object 
+// It sets up the container environment and default configurations, returning the PostgresDb object
 // for use in applications requiring a Postgres database connection.
 func NewPostgresDb(networks []string, opts ...PostgresDbOption) (*PostgresDb, error) {
 	imageParts := strings.Split(defaultPostgresImage, ":")
@@ -137,13 +137,13 @@ func (pg *PostgresDb) WithTestInstance(t *testing.T) *PostgresDb {
 }
 
 // StartContainer initializes and starts a PostgreSQL database container.
-// It ensures the container is ready for use, providing both internal and external connection URLs. 
+// It ensures the container is ready for use, providing both internal and external connection URLs.
 // This function is essential for setting up a database environment in testing or development scenarios.
 func (pg *PostgresDb) StartContainer() error {
 	return pg.startOrRestartContainer(false)
 }
 
-// RestartContainer restarts the PostgreSQL database container, ensuring it is running with the latest configuration. 
+// RestartContainer restarts the PostgreSQL database container, ensuring it is running with the latest configuration.
 // This function is useful for applying changes or recovering from issues without needing to manually stop and start the container.
 func (pg *PostgresDb) RestartContainer() error {
 	return pg.startOrRestartContainer(true)

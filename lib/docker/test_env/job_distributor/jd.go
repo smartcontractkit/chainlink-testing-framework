@@ -151,7 +151,7 @@ func New(networks []string, opts ...Option) *Component {
 }
 
 // WithTestInstance sets up a test logger and test context for a Component.
-// It is useful for initializing components in unit tests, ensuring that logs 
+// It is useful for initializing components in unit tests, ensuring that logs
 // are captured and associated with the provided testing.T instance.
 func WithTestInstance(t *testing.T) Option {
 	return func(j *Component) {
@@ -161,7 +161,7 @@ func WithTestInstance(t *testing.T) Option {
 }
 
 // WithContainerPort sets the container port for a Component.
-// This option allows customization of the network configuration for the container, 
+// This option allows customization of the network configuration for the container,
 // enabling proper communication with external services.
 func WithContainerPort(port string) Option {
 	return func(j *Component) {
@@ -170,7 +170,7 @@ func WithContainerPort(port string) Option {
 }
 
 // WithWSRPCContainerPort sets the WebSocket RPC port for the Component.
-// This option allows users to configure the port for WebSocket communication, 
+// This option allows users to configure the port for WebSocket communication,
 // enabling flexibility in service deployment and integration.
 func WithWSRPCContainerPort(port string) Option {
 	return func(j *Component) {

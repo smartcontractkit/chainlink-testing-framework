@@ -49,7 +49,7 @@ type PrysmBeaconChain struct {
 	posContainerSettings
 }
 
-// NewPrysmBeaconChain initializes a new Prysm beacon chain instance with the specified network configurations and parameters. 
+// NewPrysmBeaconChain initializes a new Prysm beacon chain instance with the specified network configurations and parameters.
 // It is used to set up a beacon chain for Ethereum 2.0, enabling users to run and manage a consensus layer node.
 func NewPrysmBeaconChain(networks []string, chainConfig *config.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir, gethExecutionURL string, baseEthereumFork ethereum.Fork, opts ...EnvComponentOption) (*PrysmBeaconChain, error) {
 	prysmBeaconChainImage, ok := beaconForkToImageMap[baseEthereumFork]

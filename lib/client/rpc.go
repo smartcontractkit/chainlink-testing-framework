@@ -234,8 +234,8 @@ func (m *RPCClient) BlockNumber() (int64, error) {
 }
 
 // GethSetHead sets the Ethereum node's head to a specified block in the past.
-// This function is useful for testing and debugging by allowing developers to 
-// manipulate the blockchain state to a previous block. It returns an error 
+// This function is useful for testing and debugging by allowing developers to
+// manipulate the blockchain state to a previous block. It returns an error
 // if the operation fails.
 func (m *RPCClient) GethSetHead(blocksBack int) error {
 	decimalLastBlock, err := m.BlockNumber()

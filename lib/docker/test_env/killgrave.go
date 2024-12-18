@@ -329,8 +329,8 @@ type RequestData struct {
 }
 
 // GetReceivedRequests retrieves and parses request data from a log file.
-// It ensures all requests are written before reading and returns a slice of 
-// RequestData along with any encountered errors. This function is useful for 
+// It ensures all requests are written before reading and returns a slice of
+// RequestData along with any encountered errors. This function is useful for
 // accessing logged request information in a structured format.
 func (k *Killgrave) GetReceivedRequests() ([]RequestData, error) {
 	// killgrave uses a channel to write the request data to a file so we want to make sure

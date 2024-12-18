@@ -150,8 +150,8 @@ func (k *Kafka) StartContainer() error {
 }
 
 // CreateLocalTopics creates Kafka topics based on the provided configurations.
-// It ensures that topics are only created if they do not already exist, 
-// and logs the creation details for each topic. This function is useful 
+// It ensures that topics are only created if they do not already exist,
+// and logs the creation details for each topic. This function is useful
 // for initializing Kafka environments with predefined topic settings.
 func (k *Kafka) CreateLocalTopics() error {
 	for _, topicConfig := range k.TopicConfigs {

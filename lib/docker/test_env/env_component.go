@@ -34,7 +34,7 @@ type EnvComponent struct {
 type EnvComponentOption = func(c *EnvComponent)
 
 // WithContainerName sets the container name for an EnvComponent.
-// It allows customization of the container's identity, enhancing clarity 
+// It allows customization of the container's identity, enhancing clarity
 // and organization in containerized environments.
 func WithContainerName(name string) EnvComponentOption {
 	return func(c *EnvComponent) {

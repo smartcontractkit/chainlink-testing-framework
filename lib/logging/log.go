@@ -34,7 +34,7 @@ type CustomT struct {
 }
 
 // Write writes the contents of p to the logger associated with CustomT.
-// It handles empty input gracefully and logs a warning if called after the test has ended. 
+// It handles empty input gracefully and logs a warning if called after the test has ended.
 // Returns the number of bytes written and any write error encountered.
 func (ct *CustomT) Write(p []byte) (n int, err error) {
 	str := string(p)

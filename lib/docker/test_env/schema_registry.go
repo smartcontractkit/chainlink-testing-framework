@@ -54,7 +54,7 @@ func (r *SchemaRegistry) WithTestInstance(t *testing.T) *SchemaRegistry {
 }
 
 // WithContainerName sets the container name for the SchemaRegistry instance.
-// This allows users to customize the naming of the container for better organization 
+// This allows users to customize the naming of the container for better organization
 // and identification within their application. It returns the updated SchemaRegistry.
 func (r *SchemaRegistry) WithContainerName(name string) *SchemaRegistry {
 	r.ContainerName = name
@@ -80,9 +80,9 @@ func (r *SchemaRegistry) WithEnvVars(envVars map[string]string) *SchemaRegistry 
 }
 
 // StartContainer initializes and starts a Schema Registry container.
-// It sets up the necessary environment variables and logs the internal 
-// and external URLs for accessing the container. This function is 
-// essential for users needing a running instance of Schema Registry 
+// It sets up the necessary environment variables and logs the internal
+// and external URLs for accessing the container. This function is
+// essential for users needing a running instance of Schema Registry
 // for testing or development purposes.
 func (r *SchemaRegistry) StartContainer() error {
 	r.InternalUrl = fmt.Sprintf("http://%s:%s", r.ContainerName, "8081")
