@@ -174,62 +174,53 @@ func (g *DirectQueryExecutor) generateStandardQueries() (map[string]DirectQueryF
 }
 
 func (g *DirectQueryExecutor) standardQuery(standardMetric StandardLoadMetric) (DirectQueryFn, error) {
+	var responsesToDurationFn = func(responses *wasp.SliceBuffer[*wasp.Response]) []float64 {
+		var asMiliDuration []float64
+		for _, response := range responses.Data {
+			// get duration as nanoseconds and convert to milliseconds in order to not lose precision
+			// otherwise, the duration will be rounded to the nearest millisecond
+			asMiliDuration = append(asMiliDuration, float64(response.Duration.Nanoseconds())/1_000_000)
+		}
+
+		return asMiliDuration
+	}
+
+	var calculateFailureRateFn = func(responses *wasp.SliceBuffer[*wasp.Response]) (float64, error) {
+		if len(responses.Data) == 0 {
+			return 0, nil
+		}
+
+		failedCount := 0.0
+		successfulCount := 0.0
+		for _, response := range responses.Data {
+			if response.Failed || response.Timeout {
+				failedCount = failedCount + 1
+			} else {
+				successfulCount = successfulCount + 1
+			}
+		}
+
+		return failedCount / (failedCount + successfulCount), nil
+	}
+
 	switch standardMetric {
 	case MedianLatency:
 		medianFn := func(responses *wasp.SliceBuffer[*wasp.Response]) (float64, error) {
-			var asMiliDuration []float64
-			for _, response := range responses.Data {
-				// get duration as nanoseconds and convert to milliseconds in order to not lose precision
-				// otherwise, the duration will be rounded to the nearest millisecond
-				asMiliDuration = append(asMiliDuration, float64(response.Duration.Nanoseconds())/1_000_000)
-			}
-
-			return stats.Median(asMiliDuration)
+			return stats.Median(responsesToDurationFn(responses))
 		}
 		return medianFn, nil
 	case Percentile95Latency:
 		p95Fn := func(responses *wasp.SliceBuffer[*wasp.Response]) (float64, error) {
-			var asMiliDuration []float64
-			for _, response := range responses.Data {
-				// get duration as nanoseconds and convert to milliseconds in order to not lose precision
-				// otherwise, the duration will be rounded to the nearest millisecond
-				asMiliDuration = append(asMiliDuration, float64(response.Duration.Nanoseconds())/1_000_000)
-			}
-
-			return stats.Percentile(asMiliDuration, 95)
+			return stats.Percentile(responsesToDurationFn(responses), 95)
 		}
 		return p95Fn, nil
 	case MaxLatency:
 		maxFn := func(responses *wasp.SliceBuffer[*wasp.Response]) (float64, error) {
-			var asMiliDuration []float64
-			for _, response := range responses.Data {
-				// get duration as nanoseconds and convert to milliseconds in order to not lose precision
-				// otherwise, the duration will be rounded to the nearest millisecond
-				asMiliDuration = append(asMiliDuration, float64(response.Duration.Nanoseconds())/1_000_000)
-			}
-
-			return stats.Max(asMiliDuration)
+			return stats.Max(responsesToDurationFn(responses))
 		}
 		return maxFn, nil
 	case ErrorRate:
-		errorRateFn := func(responses *wasp.SliceBuffer[*wasp.Response]) (float64, error) {
-			if len(responses.Data) == 0 {
-				return 0, nil
-			}
-
-			failedCount := 0.0
-			successfulCount := 0.0
-			for _, response := range responses.Data {
-				if response.Failed || response.Timeout {
-					failedCount = failedCount + 1
-				} else {
-					successfulCount = successfulCount + 1
-				}
-			}
-
-			return failedCount / (failedCount + successfulCount), nil
-		}
-		return errorRateFn, nil
+		return calculateFailureRateFn, nil
 	default:
 		return nil, fmt.Errorf("unsupported standard metric %s", standardMetric)
 	}

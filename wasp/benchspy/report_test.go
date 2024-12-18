@@ -162,7 +162,7 @@ func TestBenchSpy_NewStandardReportWithPrometheus(t *testing.T) {
 			WithPrometheusConfig(multiPromConfig))
 		require.NoError(t, err)
 		assert.NotNil(t, report)
-		assert.Equal(t, 2, len(report.QueryExecutors))
+		require.Equal(t, 2, len(report.QueryExecutors))
 		assert.IsType(t, &PrometheusQueryExecutor{}, report.QueryExecutors[0])
 		assert.IsType(t, &PrometheusQueryExecutor{}, report.QueryExecutors[1])
 		firstAsProm := report.QueryExecutors[0].(*PrometheusQueryExecutor)

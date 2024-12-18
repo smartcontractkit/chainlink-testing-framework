@@ -422,6 +422,55 @@ func NewStandardReport(commitOrTag string, opts ...StandardReportOption) (*Stand
 		return nil, basicValidateErr
 	}
 
+	queryExecutors, initErr := initStandardLoadExecutors(config, basicData)
+	if initErr != nil {
+		return nil, errors.Wrap(initErr, "failed to initialize standard query executors")
+	}
+
+	if len(config.queryExecutors) > 0 {
+		queryExecutors = append(queryExecutors, config.queryExecutors...)
+	}
+
+	prometheusExecutors, promErr := initPrometheusQueryExecutor(config, basicData)
+	if promErr != nil {
+		return nil, errors.Wrap(promErr, "failed to initialize prometheus query executor")
+	}
+
+	queryExecutors = append(queryExecutors, prometheusExecutors...)
+
+	sr := &StandardReport{
+		BasicData:      *basicData,
+		QueryExecutors: queryExecutors,
+	}
+
+	if config.reportDirectory != "" {
+		sr.LocalStorage.Directory = config.reportDirectory
+	}
+
+	return sr, nil
+}
+
+func initPrometheusQueryExecutor(config standardReportConfig, basicData *BasicData) ([]QueryExecutor, error) {
+	var queryExecutors []QueryExecutor
+	if config.prometheusConfig != WithoutPrometheus {
+		// not ideal, but we want to follow the same pattern as with other executors
+		for _, n := range config.prometheusConfig.NameRegexPatterns {
+			prometheusExecutor, prometheusErr := NewStandardPrometheusQueryExecutor(basicData.TestStart, basicData.TestEnd, NewPrometheusConfig(config.prometheusConfig.Url, n))
+			if prometheusErr != nil {
+				return nil, errors.Wrapf(prometheusErr, "failed to create Prometheus executor for name patterns: %s", strings.Join(config.prometheusConfig.NameRegexPatterns, ", "))
+			}
+			validateErr := prometheusExecutor.Validate()
+			if validateErr != nil {
+				return nil, errors.Wrapf(validateErr, "failed to Prometheus executor for for name patterns: %s", strings.Join(config.prometheusConfig.NameRegexPatterns, ", "))
+			}
+			queryExecutors = append(queryExecutors, prometheusExecutor)
+		}
+	}
+
+	return queryExecutors, nil
+}
+
+func initStandardLoadExecutors(config standardReportConfig, basicData *BasicData) ([]QueryExecutor, error) {
 	var queryExecutors []QueryExecutor
 	if len(config.executorTypes) != 0 {
 		for _, g := range config.generators {
@@ -443,35 +492,7 @@ func NewStandardReport(commitOrTag string, opts ...StandardReportOption) (*Stand
 		}
 	}
 
-	if len(config.queryExecutors) > 0 {
-		queryExecutors = append(queryExecutors, config.queryExecutors...)
-	}
-
-	if config.prometheusConfig != WithoutPrometheus {
-		// not ideal, but we want to follow the same pattern as with other executors
-		for _, n := range config.prometheusConfig.NameRegexPatterns {
-			prometheusExecutor, prometheusErr := NewStandardPrometheusQueryExecutor(basicData.TestStart, basicData.TestEnd, NewPrometheusConfig(config.prometheusConfig.Url, n))
-			if prometheusErr != nil {
-				return nil, errors.Wrapf(prometheusErr, "failed to create Prometheus executor for name patterns: %s", strings.Join(config.prometheusConfig.NameRegexPatterns, ", "))
-			}
-			validateErr := prometheusExecutor.Validate()
-			if validateErr != nil {
-				return nil, errors.Wrapf(validateErr, "failed to Prometheus executor for for name patterns: %s", strings.Join(config.prometheusConfig.NameRegexPatterns, ", "))
-			}
-			queryExecutors = append(queryExecutors, prometheusExecutor)
-		}
-	}
-
-	sr := &StandardReport{
-		BasicData:      *basicData,
-		QueryExecutors: queryExecutors,
-	}
-
-	if config.reportDirectory != "" {
-		sr.LocalStorage.Directory = config.reportDirectory
-	}
-
-	return sr, nil
+	return queryExecutors, nil
 }
 
 func initStandardQueryExecutor(kind StandardQueryExecutorType, basicData *BasicData, g *wasp.Generator) (QueryExecutor, error) {
@@ -568,6 +589,60 @@ func unmarshallQueryExecutors(raw []json.RawMessage) ([]QueryExecutor, error) {
 func convertQueryResults(results map[string]interface{}) (map[string]interface{}, error) {
 	converted := make(map[string]interface{})
 
+	var convertToStringSlice = func(v []interface{}, key string) {
+		strSlice := make([]string, len(v))
+		allConverted := true
+		for i, elem := range v {
+			str, ok := elem.(string)
+			if !ok {
+				// return original slice if we can't convert, because its composed of different types
+				converted[key] = v
+				allConverted = false
+				break
+			}
+			strSlice[i] = str
+		}
+		if allConverted {
+			converted[key] = strSlice
+		}
+	}
+
+	var convertToIntSlice = func(v []interface{}, key string) {
+		intSlice := make([]int, len(v))
+		allConverted := true
+		for i, elem := range v {
+			num, ok := elem.(int)
+			if !ok {
+				// return original slice if we can't convert, because its composed of different types
+				converted[key] = v
+				allConverted = false
+				break
+			}
+			intSlice[i] = num
+		}
+		if allConverted {
+			converted[key] = intSlice
+		}
+	}
+
+	var convertToFloatSlice = func(v []interface{}, key string) {
+		floatSlice := make([]float64, len(v))
+		allConverted := true
+		for i, elem := range v {
+			f, ok := elem.(float64)
+			if !ok {
+				// return original slice if we can't convert, because its composed of different types
+				converted[key] = v
+				allConverted = false
+				break
+			}
+			floatSlice[i] = f
+		}
+		if allConverted {
+			converted[key] = floatSlice
+		}
+	}
+
 	for key, value := range results {
 		switch v := value.(type) {
 		case string, int, float64:
@@ -580,53 +655,11 @@ func convertQueryResults(results map[string]interface{}) (map[string]interface{}
 			// Convert first element to determine slice type
 			switch v[0].(type) {
 			case string:
-				strSlice := make([]string, len(v))
-				allConverted := true
-				for i, elem := range v {
-					str, ok := elem.(string)
-					if !ok {
-						// return original slice if we can't convert, because its composed of different types
-						converted[key] = v
-						allConverted = false
-						break
-					}
-					strSlice[i] = str
-				}
-				if allConverted {
-					converted[key] = strSlice
-				}
+				convertToStringSlice(v, key)
 			case int:
-				intSlice := make([]int, len(v))
-				allConverted := true
-				for i, elem := range v {
-					num, ok := elem.(int)
-					if !ok {
-						// return original slice if we can't convert, because its composed of different types
-						converted[key] = v
-						allConverted = false
-						break
-					}
-					intSlice[i] = num
-				}
-				if allConverted {
-					converted[key] = intSlice
-				}
+				convertToIntSlice(v, key)
 			case float64:
-				floatSlice := make([]float64, len(v))
-				allConverted := true
-				for i, elem := range v {
-					f, ok := elem.(float64)
-					if !ok {
-						// return original slice if we can't convert, because its composed of different types
-						converted[key] = v
-						allConverted = false
-						break
-					}
-					floatSlice[i] = f
-				}
-				if allConverted {
-					converted[key] = floatSlice
-				}
+				convertToFloatSlice(v, key)
 			default:
 				// do nothing if it's not a type we can convert
 				converted[key] = v
