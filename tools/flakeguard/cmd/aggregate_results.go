@@ -138,7 +138,7 @@ var AggregateResultsCmd = &cobra.Command{
 			}
 			log.Info().Str("path", failedTestsReportNoLogsPath).Msg("Failed tests report without logs saved")
 		} else {
-			log.Info().Msg("No failed tests found. Skipping generation of failed tests reports")
+			log.Debug().Msg("No failed tests found. Skipping generation of failed tests reports")
 		}
 
 		// Remove logs from test results for the aggregated report
@@ -171,7 +171,7 @@ var AggregateResultsCmd = &cobra.Command{
 			log.Info().Str("path", summaryFilePath).Msg("Summary generated")
 		}
 
-		log.Info().Str("path", outputDir).Msg("Aggregation complete")
+		log.Info().Msg("Aggregation complete")
 		return nil
 	},
 }

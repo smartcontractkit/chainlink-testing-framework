@@ -83,7 +83,10 @@ func LoadAndAggregate(resultsPath string, options ...AggregateOption) (*TestRepo
 			}
 			if !info.IsDir() && filepath.Ext(path) == ".json" {
 				log.Debug().Str("path", path).Msg("Processing file")
-				processLargeFile(path, reportChan, errChan)
+				err = processLargeFile(path, reportChan)
+				if err != nil {
+					return fmt.Errorf("error processing file '%s': %w", path, err)
+				}
 			}
 			return nil
 		})
@@ -99,8 +102,9 @@ func LoadAndAggregate(resultsPath string, options ...AggregateOption) (*TestRepo
 		}
 		opts.reportID = uuid.String()
 	}
+
 	// Aggregate results as they are being loaded
-	aggregatedReport, err := aggregate(reportChan, &opts)
+	aggregatedReport, err := aggregate(reportChan, errChan, &opts)
 	if err != nil {
 		return nil, fmt.Errorf("error aggregating reports: %w", err)
 	}
@@ -108,12 +112,10 @@ func LoadAndAggregate(resultsPath string, options ...AggregateOption) (*TestRepo
 }
 
 // processLargeFile reads a large JSON report file and creates TestReport objects in a memory-efficient way.
-func processLargeFile(filePath string, reportChan chan<- *TestReport, errChan chan<- error) {
+func processLargeFile(filePath string, reportChan chan<- *TestReport) error {
 	file, err := os.Open(filePath)
 	if err != nil {
-		errChan <- fmt.Errorf("error opening file %s: %w", filePath, err)
-		log.Printf("Error opening file: %s, Error: %v", filePath, err)
-		return
+		return fmt.Errorf("error opening file: %w", err)
 	}
 	defer file.Close()
 
@@ -122,27 +124,23 @@ func processLargeFile(filePath string, reportChan chan<- *TestReport, errChan ch
 	var report TestReport
 	token, err := decoder.Token() // Read opening brace '{'
 	if err != nil || token != json.Delim('{') {
-		errChan <- fmt.Errorf("error reading JSON object start from file %s: %w", filePath, err)
-		log.Printf("Error reading JSON object start from file: %s, Error: %v", filePath, err)
-		return
+		return fmt.Errorf("error reading JSON object start from file: %w", err)
 	}
 
 	// Parse fields until we reach the end of the object
 	for decoder.More() {
 		if err = decodeField(decoder, report); err != nil {
-			errChan <- fmt.Errorf("error decoding field: %w", err)
-			log.Printf("Error decoding file '%s': %v", filePath, err)
-			return
+			return fmt.Errorf("error decoding field: %w", err)
 		}
 	}
 
 	// Read closing brace '}'
 	if _, err := decoder.Token(); err != nil {
-		log.Printf("Error reading JSON object end in file: %s, Error: %v", filePath, err)
-		return
+		return fmt.Errorf("error reading JSON object end from file: %w", err)
 	}
 
 	reportChan <- &report
+	return nil
 }
 
 // decodeField reads a JSON field from the decoder and populates the corresponding field in the TestReport.

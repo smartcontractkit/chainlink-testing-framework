@@ -174,7 +174,7 @@ func FilterTests(results []TestResult, predicate func(TestResult) bool) []TestRe
 	return filtered
 }
 
-func aggregate(reportChan <-chan *TestReport, opts *aggregateOptions) (*TestReport, error) {
+func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggregateOptions) (*TestReport, error) {
 	testMap := make(map[string]TestResult)
 	fullReport := &TestReport{}
 	excludedTests := map[string]struct{}{}
@@ -206,6 +206,10 @@ func aggregate(reportChan <-chan *TestReport, opts *aggregateOptions) (*TestRepo
 		}
 	}
 
+	for err := range errChan {
+		return nil, err
+	}
+
 	// Finalize excluded and selected tests
 	for test := range excludedTests {
 		fullReport.ExcludedTests = append(fullReport.ExcludedTests, test)
@@ -228,11 +232,13 @@ func aggregate(reportChan <-chan *TestReport, opts *aggregateOptions) (*TestRepo
 
 func aggregateFromReports(opts *aggregateOptions, reports ...*TestReport) (*TestReport, error) {
 	reportChan := make(chan *TestReport, len(reports))
+	errChan := make(chan error, 1)
 	for _, report := range reports {
 		reportChan <- report
 	}
 	close(reportChan)
-	return aggregate(reportChan, opts)
+	close(errChan)
+	return aggregate(reportChan, errChan, opts)
 }
 
 func mergeTestResults(a, b TestResult) TestResult {
