@@ -8,41 +8,44 @@ import (
 	"time"
 )
 
-// Data Structures
-
+// TestReport reports on the parameters and results of one to many test runs
 type TestReport struct {
-	GoProject          string
-	HeadSHA            string
-	BaseSHA            string
-	RepoURL            string
-	GitHubWorkflowName string
-	TestRunCount       int
-	RaceDetection      bool
-	ExcludedTests      []string
-	SelectedTests      []string
-	Results            []TestResult
+	GoProject          string       `json:"go_project"`
+	HeadSHA            string       `json:"head_sha"`
+	BaseSHA            string       `json:"base_sha"`
+	RepoURL            string       `json:"repo_url"`
+	GitHubWorkflowName string       `json:"github_workflow_name"`
+	TestRunCount       int          `json:"test_run_count"`
+	RaceDetection      bool         `json:"race_detection"`
+	ExcludedTests      []string     `json:"excluded_tests"`
+	SelectedTests      []string     `json:"selected_tests"`
+	Results            []TestResult `json:"results"`
 }
 
+// TestResult contains the results and outputs of a single test
 type TestResult struct {
-	TestName       string
-	TestPackage    string
-	PackagePanic   bool
-	Panic          bool
-	Timeout        bool
-	Race           bool
-	Skipped        bool
-	PassRatio      float64
-	Runs           int
-	Failures       int
-	Successes      int
-	Skips          int
-	Outputs        []string
-	Durations      []time.Duration
-	PackageOutputs []string
-	TestPath       string
-	CodeOwners     []string
+	TestName       string              `json:"test_name"`
+	TestPackage    string              `json:"test_package"`
+	PackagePanic   bool                `json:"package_panic"`
+	Panic          bool                `json:"panic"`
+	Timeout        bool                `json:"timeout"`
+	Race           bool                `json:"race"`
+	Skipped        bool                `json:"skipped"`
+	PassRatio      float64             `json:"pass_ratio"`
+	Runs           int                 `json:"runs"`
+	Failures       int                 `json:"failures"`
+	Successes      int                 `json:"successes"`
+	Skips          int                 `json:"skips"`
+	Outputs        map[string][]string `json:"-"`              // Temporary storage for outputs during test run
+	PassedOutputs  map[string][]string `json:"passed_outputs"` // Outputs for passed runs
+	FailedOutputs  map[string][]string `json:"failed_outputs"` // Outputs for failed runs
+	Durations      []time.Duration     `json:"durations"`
+	PackageOutputs []string            `json:"package_outputs"`
+	TestPath       string              `json:"test_path"`
+	CodeOwners     []string            `json:"code_owners"`
 }
 
+// SummaryData contains aggregated data from a set of test results
 type SummaryData struct {
 	TotalTests     int     `json:"total_tests"`
 	PanickedTests  int     `json:"panicked_tests"`
@@ -191,7 +194,18 @@ func aggregateFromReports(reports ...*TestReport) (*TestReport, error) {
 func mergeTestResults(a, b TestResult) TestResult {
 	a.Runs += b.Runs
 	a.Durations = append(a.Durations, b.Durations...)
-	a.Outputs = append(a.Outputs, b.Outputs...)
+	if a.PassedOutputs == nil {
+		a.PassedOutputs = make(map[string][]string)
+	}
+	if a.FailedOutputs == nil {
+		a.FailedOutputs = make(map[string][]string)
+	}
+	for runID, outputs := range b.PassedOutputs {
+		a.PassedOutputs[runID] = append(a.PassedOutputs[runID], outputs...)
+	}
+	for runID, outputs := range b.FailedOutputs {
+		a.FailedOutputs[runID] = append(a.FailedOutputs[runID], outputs...)
+	}
 	a.PackageOutputs = append(a.PackageOutputs, b.PackageOutputs...)
 	a.Successes += b.Successes
 	a.Failures += b.Failures

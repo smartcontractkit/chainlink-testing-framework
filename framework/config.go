@@ -144,10 +144,6 @@ func Load[X any](t *testing.T) (*X, error) {
 	//}
 	err = DefaultNetwork(once)
 	require.NoError(t, err)
-	if os.Getenv(EnvVarCI) != "true" {
-		err = NewPromtail()
-		require.NoError(t, err)
-	}
 	return input, nil
 }
 

@@ -108,7 +108,7 @@ scrape_configs:
 }
 
 func NewPromtail() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
 	pcn, err := promtailConfig()

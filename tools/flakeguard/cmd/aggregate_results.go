@@ -121,7 +121,8 @@ var AggregateResultsCmd = &cobra.Command{
 
 			// Remove logs from test results for the report without logs
 			for i := range failedReportWithLogs.Results {
-				failedReportWithLogs.Results[i].Outputs = nil
+				failedReportWithLogs.Results[i].PassedOutputs = nil
+				failedReportWithLogs.Results[i].FailedOutputs = nil
 				failedReportWithLogs.Results[i].PackageOutputs = nil
 			}
 
@@ -137,7 +138,8 @@ var AggregateResultsCmd = &cobra.Command{
 
 		// Remove logs from test results for the aggregated report
 		for i := range aggregatedReport.Results {
-			aggregatedReport.Results[i].Outputs = nil
+			aggregatedReport.Results[i].PassedOutputs = nil
+			aggregatedReport.Results[i].FailedOutputs = nil
 			aggregatedReport.Results[i].PackageOutputs = nil
 		}
 

@@ -10,6 +10,9 @@ func observabilityUp() error {
 	if err := extractAllFiles("observability"); err != nil {
 		return err
 	}
+	if err := framework.NewPromtail(); err != nil {
+		return err
+	}
 	err := runCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
 		docker compose up -d
