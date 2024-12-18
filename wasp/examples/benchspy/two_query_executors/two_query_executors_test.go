@@ -40,7 +40,7 @@ func TestBenchSpy_Standard_Prometheus_And_Loki_Metrics(t *testing.T) {
 	gen.Run(true)
 
 	baseLineReport, err := benchspy.NewStandardReport(
-		"91ee9e3c903d52de12f3d0c1a07ac3c2a6d141fb",
+		"v1.0.0",
 		benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Prometheus, benchspy.StandardQueryExecutor_Loki),
 		benchspy.WithPrometheusConfig(benchspy.NewPrometheusConfig("node[^0]")),
 		benchspy.WithGenerators(gen),
@@ -80,7 +80,7 @@ func TestBenchSpy_Standard_Prometheus_And_Loki_Metrics(t *testing.T) {
 
 	currentReport, previousReport, err := benchspy.FetchNewStandardReportAndLoadLatestPrevious(
 		fetchCtx,
-		"91ee9e3c903d52de12f3d0c1a07ac3c2a6d141fc",
+		"v1.1.0",
 		benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Prometheus, benchspy.StandardQueryExecutor_Loki),
 		benchspy.WithPrometheusConfig(benchspy.NewPrometheusConfig("node[^0]")),
 		benchspy.WithGenerators(newGen),
@@ -88,8 +88,14 @@ func TestBenchSpy_Standard_Prometheus_And_Loki_Metrics(t *testing.T) {
 	require.NoError(t, err, "failed to fetch current report or load the previous one")
 	require.Equal(t, baseLineReport.CommitOrTag, previousReport.CommitOrTag, "current report should be the same as the original report")
 
-	currentAsLokiSlices := benchspy.MustAllLokiResults(currentReport)
-	previousAsLokiSlices := benchspy.MustAllLokiResults(previousReport)
+	allCurrentAsStringSlice := benchspy.MustAllLokiResults(currentReport)
+	allPreviousAsStringSlice := benchspy.MustAllLokiResults(previousReport)
+
+	require.NotEmpty(t, allCurrentAsStringSlice, "current report is empty")
+	require.NotEmpty(t, allPreviousAsStringSlice, "previous report is empty")
+
+	currentAsLokiSlices := allCurrentAsStringSlice[gen.Cfg.GenName]
+	previousAsLokiSlices := allPreviousAsStringSlice[gen.Cfg.GenName]
 
 	compareMedian(t, string(benchspy.MedianLatency), currentAsLokiSlices, previousAsLokiSlices)
 
@@ -135,6 +141,7 @@ func TestBenchSpy_Two_Loki_Executors(t *testing.T) {
 	gen.Run(true)
 
 	firstLokiQueryExecutor := benchspy.NewLokiQueryExecutor(
+		gen.Cfg.GenName,
 		map[string]string{
 			"vu_over_time": fmt.Sprintf("max_over_time({branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"stats\", gen_name=~\"%s\"} | json | unwrap current_instances [10s]) by (node_id, go_test_name, gen_name)", label, label, t.Name(), gen.Cfg.GenName),
 		},
@@ -142,6 +149,7 @@ func TestBenchSpy_Two_Loki_Executors(t *testing.T) {
 	)
 
 	secondLokiQueryExecutor := benchspy.NewLokiQueryExecutor(
+		gen.Cfg.GenName,
 		map[string]string{
 			"responses_over_time": fmt.Sprintf("sum(count_over_time({branch=~\"%s\", commit=~\"%s\", go_test_name=~\"%s\", test_data_type=~\"responses\", gen_name=~\"%s\"} [1s])) by (node_id, go_test_name, gen_name)", label, label, t.Name(), gen.Cfg.GenName),
 		},
@@ -149,7 +157,7 @@ func TestBenchSpy_Two_Loki_Executors(t *testing.T) {
 	)
 
 	baseLineReport, err := benchspy.NewStandardReport(
-		"91ee9e3c903d52de12f3d0c1a07ac3c2a6d141fb",
+		"v1.0.0",
 		benchspy.WithQueryExecutors(firstLokiQueryExecutor, secondLokiQueryExecutor),
 		benchspy.WithGenerators(gen),
 	)
@@ -188,15 +196,21 @@ func TestBenchSpy_Two_Loki_Executors(t *testing.T) {
 
 	currentReport, previousReport, err := benchspy.FetchNewStandardReportAndLoadLatestPrevious(
 		fetchCtx,
-		"91ee9e3c903d52de12f3d0c1a07ac3c2a6d141fc",
+		"v1.1.0",
 		benchspy.WithQueryExecutors(firstLokiQueryExecutor, secondLokiQueryExecutor),
 		benchspy.WithGenerators(newGen),
 	)
 	require.NoError(t, err, "failed to fetch current report or load the previous one")
 	require.Equal(t, baseLineReport.CommitOrTag, previousReport.CommitOrTag, "current report should be the same as the original report")
 
-	currentAsLokiSlices := benchspy.MustAllLokiResults(currentReport)
-	previousAsLokiSlices := benchspy.MustAllLokiResults(previousReport)
+	allCurrentAsStringSlice := benchspy.MustAllLokiResults(currentReport)
+	allPreviousAsStringSlice := benchspy.MustAllLokiResults(previousReport)
+
+	require.NotEmpty(t, allCurrentAsStringSlice, "current report is empty")
+	require.NotEmpty(t, allPreviousAsStringSlice, "previous report is empty")
+
+	currentAsLokiSlices := allCurrentAsStringSlice[gen.Cfg.GenName]
+	previousAsLokiSlices := allPreviousAsStringSlice[gen.Cfg.GenName]
 
 	compareMedian(t, "vu_over_time", currentAsLokiSlices, previousAsLokiSlices)
 	compareMedian(t, "responses_over_time", currentAsLokiSlices, previousAsLokiSlices)

@@ -87,7 +87,7 @@ func TestBenchSpy_Standard_Direct_Metrics_RealCase(t *testing.T) {
 	expectedErrors := []benchspy.StandardLoadMetric{benchspy.MedianLatency, benchspy.Percentile95Latency, benchspy.MaxLatency}
 	var foundErrors []benchspy.StandardLoadMetric
 
-	for _, e := range errors {
+	for _, e := range errors[generator.Cfg.GenName] {
 		for _, expected := range expectedErrors {
 			if strings.Contains(e.Error(), string(expected)) {
 				foundErrors = append(foundErrors, expected)

@@ -12,7 +12,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 )
 
-type DirectQueryFn = func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error)
+type DirectQueryFn = func(responses *wasp.SliceBuffer[*wasp.Response]) (float64, error)
 
 type DirectQueryExecutor struct {
 	KindName     string                   `json:"kind"`
@@ -47,6 +47,10 @@ func NewDirectQueryExecutor(generator *wasp.Generator, queries map[string]Direct
 	}
 
 	return g, nil
+}
+
+func (g *DirectQueryExecutor) GeneratorName() string {
+	return g.Generator.Cfg.GenName
 }
 
 // Results returns the query results as a map of string keys to interface{} values.
@@ -122,14 +126,14 @@ func (g *DirectQueryExecutor) Execute(_ context.Context) error {
 			return fmt.Errorf("generator %s has no data", g.Generator.Cfg.GenName)
 		}
 		length := len(g.Generator.GetData().FailResponses.Data) + len(g.Generator.GetData().OKData.Data)
-		allResponses := wasp.NewSliceBuffer[wasp.Response](length)
+		allResponses := wasp.NewSliceBuffer[*wasp.Response](length)
 
 		for _, response := range g.Generator.GetData().OKResponses.Data {
-			allResponses.Append(*response)
+			allResponses.Append(response)
 		}
 
 		for _, response := range g.Generator.GetData().FailResponses.Data {
-			allResponses.Append(*response)
+			allResponses.Append(response)
 		}
 
 		if len(allResponses.Data) == 0 {
@@ -170,7 +174,7 @@ func (g *DirectQueryExecutor) generateStandardQueries() (map[string]DirectQueryF
 func (g *DirectQueryExecutor) standardQuery(standardMetric StandardLoadMetric) (DirectQueryFn, error) {
 	switch standardMetric {
 	case MedianLatency:
-		medianFn := func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error) {
+		medianFn := func(responses *wasp.SliceBuffer[*wasp.Response]) (float64, error) {
 			var asMiliDuration []float64
 			for _, response := range responses.Data {
 				// get duration as nanoseconds and convert to milliseconds in order to not lose precision
@@ -182,7 +186,7 @@ func (g *DirectQueryExecutor) standardQuery(standardMetric StandardLoadMetric) (
 		}
 		return medianFn, nil
 	case Percentile95Latency:
-		p95Fn := func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error) {
+		p95Fn := func(responses *wasp.SliceBuffer[*wasp.Response]) (float64, error) {
 			var asMiliDuration []float64
 			for _, response := range responses.Data {
 				// get duration as nanoseconds and convert to milliseconds in order to not lose precision
@@ -194,7 +198,7 @@ func (g *DirectQueryExecutor) standardQuery(standardMetric StandardLoadMetric) (
 		}
 		return p95Fn, nil
 	case MaxLatency:
-		maxFn := func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error) {
+		maxFn := func(responses *wasp.SliceBuffer[*wasp.Response]) (float64, error) {
 			var asMiliDuration []float64
 			for _, response := range responses.Data {
 				// get duration as nanoseconds and convert to milliseconds in order to not lose precision
@@ -206,7 +210,7 @@ func (g *DirectQueryExecutor) standardQuery(standardMetric StandardLoadMetric) (
 		}
 		return maxFn, nil
 	case ErrorRate:
-		errorRateFn := func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error) {
+		errorRateFn := func(responses *wasp.SliceBuffer[*wasp.Response]) (float64, error) {
 			if len(responses.Data) == 0 {
 				return 0, nil
 			}

@@ -95,6 +95,8 @@ currentMedianCPUUsageVector := currentMedianCPUUsage.(model.Vector)
 previousMedianCPUUsageVector := previousMedianCPUUsage.(model.Vector)
 ```
 
+Since these metrics are not related to load generation, the convenience function a `map[string](model.Value)`, where key is resource metric name.
+
 > [!WARNING]
 > All standard Prometheus metrics bundled with `BenchSpy` return `model.Vector`.
 > However, if you use custom queries, you must manually verify their return types.

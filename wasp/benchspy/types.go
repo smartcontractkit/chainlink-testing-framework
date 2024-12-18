@@ -45,6 +45,10 @@ type QueryExecutor interface {
 	TimeRange(startTime, endTime time.Time)
 }
 
+type NamedGenerator interface {
+	GeneratorName() string
+}
+
 type StandardQueryExecutorType string
 
 const (

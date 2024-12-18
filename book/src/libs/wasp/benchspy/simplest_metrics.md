@@ -23,6 +23,8 @@ hasErrors, errors := benchspy.CompareDirectWithThresholds(
 require.False(t, hasErrors, fmt.Sprintf("errors found: %v", errors))
 ```
 
+If there are errors they will be returned as `map[string][]errors`, where key is the name of a generator.
+
 > [!NOTE]
 > Both `Direct` and `Loki` query executors support following standard performance metrics out of the box:
 > - `median_latency`
@@ -32,14 +34,16 @@ require.False(t, hasErrors, fmt.Sprintf("errors found: %v", errors))
 
 The function also prints a table with the differences between two reports, regardless whether they were meaningful:
 ```bash
+Generator: vu1
+==============
 +-------------------------+---------+---------+---------+
-|         METRIC          | V1.0.0  | V1.1.0  | DIFF %  |
+|         METRIC          |   V1    |   V2    | DIFF %  |
 +-------------------------+---------+---------+---------+
-| median_latency          | 50.4256 | 61.0009 | 20.9722 |
+| median_latency          | 50.1300 | 50.1179 | -0.0242 |
 +-------------------------+---------+---------+---------+
-| 95th_percentile_latency | 51.0082 | 61.1052 | 19.7949 |
+| 95th_percentile_latency | 50.7387 | 50.7622 | 0.0463  |
 +-------------------------+---------+---------+---------+
-| max_latency             | 52.1362 | 61.2028 | 17.3903 |
+| max_latency             | 55.7195 | 51.7248 | -7.1692 |
 +-------------------------+---------+---------+---------+
 | error_rate              | 0.0000  | 0.0000  | 0.0000  |
 +-------------------------+---------+---------+---------+

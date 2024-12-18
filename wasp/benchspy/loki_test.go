@@ -22,7 +22,7 @@ func TestBenchSpy_NewLokiQueryExecutor(t *testing.T) {
 		BasicAuth: "user:pass",
 	}
 
-	executor := NewLokiQueryExecutor(queries, config)
+	executor := NewLokiQueryExecutor("some_generator", queries, config)
 	assert.Equal(t, "loki", executor.KindName)
 	assert.Equal(t, queries, executor.Queries)
 	assert.Equal(t, config, executor.Config)
@@ -63,24 +63,38 @@ func (a *anotherQueryExecutor) TimeRange(_, _ time.Time) {
 
 func TestBenchSpy_LokiQueryExecutor_IsComparable(t *testing.T) {
 	executor1 := &LokiQueryExecutor{
-		Queries: map[string]string{"q1": "query1"},
+		GeneratorNameString: "generator",
+		Queries:             map[string]string{"q1": "query1"},
 	}
 	executor2 := &LokiQueryExecutor{
-		Queries: map[string]string{"q1": "query2"},
+		GeneratorNameString: "generator",
+		Queries:             map[string]string{"q1": "query2"},
 	}
 	executor3 := &LokiQueryExecutor{
-		Queries: map[string]string{"q2": "query1"},
+		GeneratorNameString: "generator",
+		Queries:             map[string]string{"q2": "query1"},
 	}
 	executor4 := &LokiQueryExecutor{
-		Queries: map[string]string{"q1": "query1", "q2": "query2"},
+		GeneratorNameString: "generator",
+		Queries:             map[string]string{"q1": "query1", "q2": "query2"},
 	}
 	executor5 := &LokiQueryExecutor{
-		Queries: map[string]string{"q1": "query1", "q3": "query3"},
+		GeneratorNameString: "generator",
+		Queries:             map[string]string{"q1": "query1", "q3": "query3"},
+	}
+	executor6 := &LokiQueryExecutor{
+		GeneratorNameString: "other",
+		Queries:             map[string]string{"q1": "query1"},
 	}
 
 	t.Run("same queries", func(t *testing.T) {
 		err := executor1.IsComparable(executor1)
 		assert.NoError(t, err)
+	})
+
+	t.Run("different generator names", func(t *testing.T) {
+		err := executor1.IsComparable(executor6)
+		assert.Error(t, err)
 	})
 
 	t.Run("same queries, different names", func(t *testing.T) {
@@ -114,11 +128,20 @@ func TestBenchSpy_LokiQueryExecutor_IsComparable(t *testing.T) {
 func TestBenchSpy_LokiQueryExecutor_Validate(t *testing.T) {
 	t.Run("valid configuration", func(t *testing.T) {
 		executor := &LokiQueryExecutor{
-			Queries: map[string]string{"q1": "query1"},
-			Config:  &wasp.LokiConfig{},
+			GeneratorNameString: "generator",
+			Queries:             map[string]string{"q1": "query1"},
+			Config:              &wasp.LokiConfig{},
 		}
 		err := executor.Validate()
 		assert.NoError(t, err)
+	})
+
+	t.Run("missing generator name", func(t *testing.T) {
+		executor := &LokiQueryExecutor{
+			Config: &wasp.LokiConfig{},
+		}
+		err := executor.Validate()
+		assert.Error(t, err)
 	})
 
 	t.Run("missing queries", func(t *testing.T) {

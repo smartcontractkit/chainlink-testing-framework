@@ -234,7 +234,7 @@ func TestBenchSpy_DirectQueryExecutor_Execute(t *testing.T) {
 		// 4 responses with ~150ms latency (150ms sleep + some execution overhead)
 		// and 2-3 responses with ~200ms latency (200ms sleep + some execution overhead)
 		// expected median latency: (150ms, 151ms>
-		resultsAsFloats, err := ResultsAs(0.0, []QueryExecutor{executor}, StandardQueryExecutor_Direct, string(MedianLatency), string(Percentile95Latency), string(ErrorRate))
+		resultsAsFloats, err := ResultsAs(0.0, executor, string(MedianLatency), string(Percentile95Latency), string(ErrorRate))
 		assert.NoError(t, err)
 		require.Equal(t, 3, len(resultsAsFloats))
 		require.InDelta(t, 151.0, resultsAsFloats[string(MedianLatency)], 1.0)
@@ -342,10 +342,10 @@ func TestBenchSpy_DirectQueryExecutor_MarshalJSON(t *testing.T) {
 		original.QueryResults["test2"] = 12.1
 
 		original.Queries = map[string]DirectQueryFn{
-			"test": func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error) {
+			"test": func(responses *wasp.SliceBuffer[*wasp.Response]) (float64, error) {
 				return 2.0, nil
 			},
-			"test2": func(responses *wasp.SliceBuffer[wasp.Response]) (float64, error) {
+			"test2": func(responses *wasp.SliceBuffer[*wasp.Response]) (float64, error) {
 				return 12.1, nil
 			},
 		}

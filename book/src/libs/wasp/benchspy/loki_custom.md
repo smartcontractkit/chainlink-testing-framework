@@ -29,7 +29,7 @@ Now, let’s create a `StandardReport` using our custom queries:
 
 ```go
 baseLineReport, err := benchspy.NewStandardReport(
-    "2d1fa3532656c51991c0212afce5f80d2914e34e",
+    "v1.0.0",
     // notice the different functional option used to pass Loki executor with custom queries
     benchspy.WithQueryExecutors(lokiQueryExecutor),
     benchspy.WithGenerators(gen),

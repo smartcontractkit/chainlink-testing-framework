@@ -710,9 +710,11 @@ func (g *Generator) Wait() (interface{}, bool) {
 	g.ResponsesWaitGroup.Wait()
 	g.stats.Duration = g.Cfg.duration.Nanoseconds()
 	g.stats.CurrentTimeUnit = g.Cfg.RateLimitUnitDuration.Nanoseconds()
+	g.dataCancel()
+	g.dataWaitGroup.Wait()
 	if g.Cfg.LokiConfig != nil {
-		g.dataCancel()
-		g.dataWaitGroup.Wait()
+		// g.dataCancel()
+		// g.dataWaitGroup.Wait()
 		g.stopLokiStream()
 	}
 	return g.GetData(), g.stats.RunFailed.Load()

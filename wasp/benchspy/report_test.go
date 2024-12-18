@@ -327,13 +327,18 @@ func TestBenchSpy_StandardReport_FetchData_WithMockExecutors(t *testing.T) {
 
 // MockQueryExecutor implements QueryExecutor interface for testing
 type MockQueryExecutor struct {
-	ExecuteFn      func(context.Context) error
-	ValidateFn     func() error
-	TimeRangeFn    func(time.Time, time.Time)
-	ValidateCalled bool
-	ExecuteCalled  bool
-	ResultsFn      func() map[string]interface{}
-	KindFn         func() string
+	ExecuteFn       func(context.Context) error
+	ValidateFn      func() error
+	TimeRangeFn     func(time.Time, time.Time)
+	ValidateCalled  bool
+	ExecuteCalled   bool
+	ResultsFn       func() map[string]interface{}
+	KindFn          func() string
+	GeneratorNameFn func() string
+}
+
+func (m *MockQueryExecutor) GeneratorName() string {
+	return m.GeneratorNameFn()
 }
 
 func (m *MockQueryExecutor) Kind() string {
@@ -371,6 +376,7 @@ func TestBenchSpy_StandardReport_UnmarshalJSON(t *testing.T) {
 			"commit_or_tag": "abc123",
 			"query_executors": [{
 				"kind": "loki",
+				"generator_name": "some generator",
 				"queries": {
 					"test query": "some query"
 				},
@@ -390,22 +396,37 @@ func TestBenchSpy_StandardReport_UnmarshalJSON(t *testing.T) {
 		assert.Equal(t, "some query", asLoki.Queries["test query"])
 		assert.Equal(t, 1, len(report.QueryExecutors[0].Results()))
 		assert.IsType(t, []string{}, report.QueryExecutors[0].Results()["test query"])
-		asStringSlice, err := ResultsAs([]string{}, report.QueryExecutors, StandardQueryExecutor_Loki, "test query")
+		asStringSlice, err := ResultsAs([]string{}, report.QueryExecutors[0], "test query")
 		require.NoError(t, err)
 		assert.Equal(t, []string{"1", "2", "3"}, asStringSlice["test query"])
 	})
 
-	t.Run("valid generator executor", func(t *testing.T) {
+	t.Run("valid direct executor", func(t *testing.T) {
 		jsonData := `{
             "test_name": "test1",
             "commit_or_tag": "abc123",
             "query_executors": [{
                 "kind": "direct",
+				"generator_config": {
+					"generator_name": "test_generator",
+					"load_type": "vu_schedule",
+					"schedule": [
+						{
+						"from": 10,
+						"duration": 15000000000,
+						"type": "plain",
+						"time_start": "2024-12-18T12:26:01.578938+01:00",
+						"time_end": "2024-12-18T12:26:16.579713+01:00"
+						}
+					],
+					"rate_limit_unit_duration": 1000000000,
+					"call_timeout": 100000000
+				},
                 "queries": [
 					"test generator query"
 				],
                 "query_results": {
-                    "test generator query": "1"
+                    "test generator query": 1.0
                 }
             }]
         }`
@@ -422,10 +443,11 @@ func TestBenchSpy_StandardReport_UnmarshalJSON(t *testing.T) {
 		assert.True(t, keyExists, "map should contain the key")
 		assert.Nil(t, asGenerator.Queries["test generator query"])
 		assert.Equal(t, 1, len(asGenerator.Results()))
-		assert.IsType(t, "string", asGenerator.Results()["test generator query"])
-		asStringSlice, err := ResultsAs("string", report.QueryExecutors, StandardQueryExecutor_Direct, "test generator query")
+		assert.IsType(t, 0.0, asGenerator.Results()["test generator query"])
+		directResults := MustAllDirectResults(&report)
 		require.NoError(t, err)
-		assert.Equal(t, "1", asStringSlice["test generator query"])
+		assert.Len(t, directResults["test_generator"], 1)
+		assert.Equal(t, 1.0, directResults["test_generator"]["test generator query"])
 	})
 
 	t.Run("valid prometheus executor (vector)", func(t *testing.T) {
@@ -781,7 +803,7 @@ func TestBenchSpy_StandardReport_ResultsAs(t *testing.T) {
 			},
 		}
 
-		results, err := ResultsAs(float64(0), []QueryExecutor{mockExecutor}, StandardQueryExecutor_Loki)
+		results, err := ResultsAs(float64(0), mockExecutor)
 		require.NoError(t, err)
 		assert.Equal(t, float64(123.45), results["query1"])
 		assert.Equal(t, float64(678.90), results["query2"])
@@ -801,7 +823,7 @@ func TestBenchSpy_StandardReport_ResultsAs(t *testing.T) {
 			},
 		}
 
-		results, err := ResultsAs("", []QueryExecutor{mockExecutor}, StandardQueryExecutor_Loki, "query1", "query3")
+		results, err := ResultsAs("", mockExecutor, "query1", "query3")
 		require.NoError(t, err)
 		assert.Equal(t, "result1", results["query1"])
 		assert.Equal(t, "result3", results["query3"])
@@ -821,40 +843,10 @@ func TestBenchSpy_StandardReport_ResultsAs(t *testing.T) {
 			},
 		}
 
-		results, err := ResultsAs("", []QueryExecutor{mockExecutor}, StandardQueryExecutor_Loki, "query1", "query2")
+		results, err := ResultsAs("", mockExecutor, "query1", "query2")
 		require.Error(t, err)
 		require.Nil(t, results)
 		require.Contains(t, err.Error(), "failed to cast result to type string")
-	})
-
-	t.Run("duplicated query name", func(t *testing.T) {
-		firstMockExecutor := &MockQueryExecutor{
-			ResultsFn: func() map[string]interface{} {
-				return map[string]interface{}{
-					"query1": "result1",
-					"query2": "result2",
-				}
-			},
-			KindFn: func() string {
-				return string(StandardQueryExecutor_Loki)
-			},
-		}
-
-		secondMockExecutor := &MockQueryExecutor{
-			ResultsFn: func() map[string]interface{} {
-				return map[string]interface{}{
-					"query2": "result2",
-				}
-			},
-			KindFn: func() string {
-				return string(StandardQueryExecutor_Loki)
-			},
-		}
-
-		results, err := ResultsAs("", []QueryExecutor{firstMockExecutor, secondMockExecutor}, StandardQueryExecutor_Loki)
-		require.Error(t, err)
-		require.Nil(t, results)
-		require.Contains(t, err.Error(), "results for query 'query2' already exist")
 	})
 }
 
@@ -1004,6 +996,7 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 			KindFn: func() string {
 				return string(StandardQueryExecutor_Loki)
 			},
+			GeneratorNameFn: func() string { return "generator" },
 		}
 
 		sr := &StandardReport{
@@ -1011,9 +1004,10 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 		}
 
 		results := MustAllLokiResults(sr)
-		assert.Equal(t, 2, len(results))
-		assert.Equal(t, []string{"log1", "log2"}, results["query1"])
-		assert.Equal(t, []string{"log3", "log4"}, results["query2"])
+		assert.Equal(t, 1, len(results))
+		assert.Equal(t, 2, len(results["generator"]))
+		assert.Equal(t, []string{"log1", "log2"}, results["generator"]["query1"])
+		assert.Equal(t, []string{"log3", "log4"}, results["generator"]["query2"])
 	})
 
 	t.Run("MustAllLokiResults - two executors", func(t *testing.T) {
@@ -1027,6 +1021,7 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 			KindFn: func() string {
 				return string(StandardQueryExecutor_Loki)
 			},
+			GeneratorNameFn: func() string { return "generator" },
 		}
 
 		secondMockLokiExec := &MockQueryExecutor{
@@ -1039,6 +1034,7 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 			KindFn: func() string {
 				return string(StandardQueryExecutor_Loki)
 			},
+			GeneratorNameFn: func() string { return "generator2" },
 		}
 
 		sr := &StandardReport{
@@ -1046,14 +1042,16 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 		}
 
 		results := MustAllLokiResults(sr)
-		assert.Equal(t, 4, len(results))
-		assert.Equal(t, []string{"log1", "log2"}, results["query1"])
-		assert.Equal(t, []string{"log3", "log4"}, results["query2"])
-		assert.Equal(t, []string{"log5", "log6"}, results["query3"])
-		assert.Equal(t, []string{"log7", "log8"}, results["query4"])
+		assert.Equal(t, 2, len(results))
+		assert.Equal(t, 2, len(results["generator"]))
+		assert.Equal(t, 2, len(results["generator2"]))
+		assert.Equal(t, []string{"log1", "log2"}, results["generator"]["query1"])
+		assert.Equal(t, []string{"log3", "log4"}, results["generator"]["query2"])
+		assert.Equal(t, []string{"log5", "log6"}, results["generator2"]["query3"])
+		assert.Equal(t, []string{"log7", "log8"}, results["generator2"]["query4"])
 	})
 
-	t.Run("MustAllGeneratorResults", func(t *testing.T) {
+	t.Run("MustAllDirectResults", func(t *testing.T) {
 		mockGenExec := &MockQueryExecutor{
 			ResultsFn: func() map[string]interface{} {
 				return map[string]interface{}{
@@ -1064,6 +1062,7 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 			KindFn: func() string {
 				return string(StandardQueryExecutor_Direct)
 			},
+			GeneratorNameFn: func() string { return "generator" },
 		}
 
 		sr := &StandardReport{
@@ -1071,9 +1070,10 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 		}
 
 		results := MustAllDirectResults(sr)
-		assert.Equal(t, 2, len(results))
-		assert.Equal(t, 1.0, results["query1"])
-		assert.Equal(t, 2.0, results["query2"])
+		assert.Equal(t, 1, len(results))
+		assert.Equal(t, 2, len(results["generator"]))
+		assert.Equal(t, 1.0, results["generator"]["query1"])
+		assert.Equal(t, 2.0, results["generator"]["query2"])
 	})
 
 	t.Run("MustAllPrometheusResults", func(t *testing.T) {
@@ -1120,6 +1120,7 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 			KindFn: func() string {
 				return string(StandardQueryExecutor_Loki)
 			},
+			GeneratorNameFn: func() string { return "generator" },
 		}
 
 		sr := &StandardReport{
@@ -1141,6 +1142,7 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 			KindFn: func() string {
 				return string(StandardQueryExecutor_Direct)
 			},
+			GeneratorNameFn: func() string { return "generator" },
 		}
 
 		sr := &StandardReport{
@@ -1162,6 +1164,7 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 			KindFn: func() string {
 				return string(StandardQueryExecutor_Loki)
 			},
+			GeneratorNameFn: func() string { return "generator" },
 		}
 
 		mockGenExec := &MockQueryExecutor{
@@ -1173,6 +1176,7 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 			KindFn: func() string {
 				return string(StandardQueryExecutor_Direct)
 			},
+			GeneratorNameFn: func() string { return "generator" },
 		}
 
 		sr := &StandardReport{
@@ -1181,11 +1185,13 @@ func TestBenchSpy_MustAllResults(t *testing.T) {
 
 		lokiResults := MustAllLokiResults(sr)
 		assert.Equal(t, 1, len(lokiResults))
-		assert.Equal(t, []string{"log1", "log2"}, lokiResults["loki_query"])
+		assert.Equal(t, 1, len(lokiResults["generator"]))
+		assert.Equal(t, []string{"log1", "log2"}, lokiResults["generator"]["loki_query"])
 
-		genResults := MustAllDirectResults(sr)
-		assert.Equal(t, 1, len(genResults))
-		assert.Equal(t, 1.0, genResults["gen_query"])
+		directResults := MustAllDirectResults(sr)
+		assert.Equal(t, 1, len(directResults))
+		assert.Equal(t, 1, len(directResults["generator"]))
+		assert.Equal(t, 1.0, directResults["generator"]["gen_query"])
 	})
 }
 
@@ -1277,6 +1283,13 @@ func TestBenchSpy_FetchNewReportAndLoadLatestPrevious(t *testing.T) {
 func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 	t.Run("metrics within thresholds", func(t *testing.T) {
 		previousReport := &StandardReport{
+			BasicData: BasicData{
+				GeneratorConfigs: map[string]*wasp.Config{
+					"test-gen": {
+						GenName: "test-gen",
+					},
+				},
+			},
 			QueryExecutors: []QueryExecutor{
 				&MockQueryExecutor{
 					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
@@ -1288,11 +1301,19 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 							string(ErrorRate):           1.0,
 						}
 					},
+					GeneratorNameFn: func() string { return "test-gen" },
 				},
 			},
 		}
 
 		currentReport := &StandardReport{
+			BasicData: BasicData{
+				GeneratorConfigs: map[string]*wasp.Config{
+					"test-gen": {
+						GenName: "test-gen",
+					},
+				},
+			},
 			QueryExecutors: []QueryExecutor{
 				&MockQueryExecutor{
 					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
@@ -1304,17 +1325,25 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 							string(ErrorRate):           1.05,  // 5% increase
 						}
 					},
+					GeneratorNameFn: func() string { return "test-gen" },
 				},
 			},
 		}
 
-		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, previousReport, currentReport)
+		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
 		assert.False(t, failed)
 		assert.Empty(t, errs)
 	})
 
 	t.Run("one metric exceed thresholds", func(t *testing.T) {
 		previousReport := &StandardReport{
+			BasicData: BasicData{
+				GeneratorConfigs: map[string]*wasp.Config{
+					"test-gen": {
+						GenName: "test-gen",
+					},
+				},
+			},
 			QueryExecutors: []QueryExecutor{
 				&MockQueryExecutor{
 					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
@@ -1326,11 +1355,19 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 							string(ErrorRate):           1.0,
 						}
 					},
+					GeneratorNameFn: func() string { return "test-gen" },
 				},
 			},
 		}
 
 		currentReport := &StandardReport{
+			BasicData: BasicData{
+				GeneratorConfigs: map[string]*wasp.Config{
+					"test-gen": {
+						GenName: "test-gen",
+					},
+				},
+			},
 			QueryExecutors: []QueryExecutor{
 				&MockQueryExecutor{
 					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
@@ -1342,20 +1379,29 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 							string(ErrorRate):           1.0,   // no increase
 						}
 					},
+					GeneratorNameFn: func() string { return "test-gen" },
 				},
 			},
 		}
 
-		failed, errs := CompareDirectWithThresholds(10.0, 1.0, 1.0, 1.0, previousReport, currentReport)
+		failed, errs := CompareDirectWithThresholds(10.0, 1.0, 1.0, 1.0, currentReport, previousReport)
 		assert.True(t, failed)
 		assert.Len(t, errs, 1)
-		for _, err := range errs {
+		assert.Len(t, errs["test-gen"], 1)
+		for _, err := range errs["test-gen"] {
 			assert.Contains(t, err.Error(), "different, which is higher than the threshold")
 		}
 	})
 
 	t.Run("all metrics exceed thresholds", func(t *testing.T) {
 		previousReport := &StandardReport{
+			BasicData: BasicData{
+				GeneratorConfigs: map[string]*wasp.Config{
+					"test-gen": {
+						GenName: "test-gen",
+					},
+				},
+			},
 			QueryExecutors: []QueryExecutor{
 				&MockQueryExecutor{
 					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
@@ -1367,11 +1413,19 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 							string(ErrorRate):           1.0,
 						}
 					},
+					GeneratorNameFn: func() string { return "test-gen" },
 				},
 			},
 		}
 
 		currentReport := &StandardReport{
+			BasicData: BasicData{
+				GeneratorConfigs: map[string]*wasp.Config{
+					"test-gen": {
+						GenName: "test-gen",
+					},
+				},
+			},
 			QueryExecutors: []QueryExecutor{
 				&MockQueryExecutor{
 					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
@@ -1383,20 +1437,29 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 							string(ErrorRate):           2.0,   // 100% increase
 						}
 					},
+					GeneratorNameFn: func() string { return "test-gen" },
 				},
 			},
 		}
 
-		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, previousReport, currentReport)
+		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
 		assert.True(t, failed)
-		assert.Len(t, errs, 4)
-		for _, err := range errs {
+		assert.Len(t, errs, 1)
+		assert.Len(t, errs["test-gen"], 4)
+		for _, err := range errs["test-gen"] {
 			assert.Contains(t, err.Error(), "different, which is higher than the threshold")
 		}
 	})
 
 	t.Run("handle zero values", func(t *testing.T) {
 		previousReport := &StandardReport{
+			BasicData: BasicData{
+				GeneratorConfigs: map[string]*wasp.Config{
+					"test-gen": {
+						GenName: "test-gen",
+					},
+				},
+			},
 			QueryExecutors: []QueryExecutor{
 				&MockQueryExecutor{
 					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
@@ -1408,11 +1471,19 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 							string(ErrorRate):           0.0,
 						}
 					},
+					GeneratorNameFn: func() string { return "test-gen" },
 				},
 			},
 		}
 
 		currentReport := &StandardReport{
+			BasicData: BasicData{
+				GeneratorConfigs: map[string]*wasp.Config{
+					"test-gen": {
+						GenName: "test-gen",
+					},
+				},
+			},
 			QueryExecutors: []QueryExecutor{
 				&MockQueryExecutor{
 					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
@@ -1424,17 +1495,25 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 							string(ErrorRate):           0.0,
 						}
 					},
+					GeneratorNameFn: func() string { return "test-gen" },
 				},
 			},
 		}
 
-		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, previousReport, currentReport)
+		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
 		assert.False(t, failed)
 		assert.Empty(t, errs)
 	})
 
 	t.Run("handle missing metrics", func(t *testing.T) {
 		previousReport := &StandardReport{
+			BasicData: BasicData{
+				GeneratorConfigs: map[string]*wasp.Config{
+					"test-gen": {
+						GenName: "test-gen",
+					},
+				},
+			},
 			QueryExecutors: []QueryExecutor{
 				&MockQueryExecutor{
 					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
@@ -1444,11 +1523,19 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 							// missing other metrics
 						}
 					},
+					GeneratorNameFn: func() string { return "test-gen" },
 				},
 			},
 		}
 
 		currentReport := &StandardReport{
+			BasicData: BasicData{
+				GeneratorConfigs: map[string]*wasp.Config{
+					"test-gen": {
+						GenName: "test-gen",
+					},
+				},
+			},
 			QueryExecutors: []QueryExecutor{
 				&MockQueryExecutor{
 					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
@@ -1458,20 +1545,29 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 							// missing other metrics
 						}
 					},
+					GeneratorNameFn: func() string { return "test-gen" },
 				},
 			},
 		}
 
-		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, previousReport, currentReport)
+		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
 		assert.True(t, failed)
-		assert.Len(t, errs, 3) // Should have errors for missing P95, Max, and Error Rate
-		for _, err := range errs {
+		assert.Len(t, errs, 1)
+		assert.Len(t, errs["test-gen"], 3) // Should have errors for missing P95, Max, and Error Rate
+		for _, err := range errs["test-gen"] {
 			assert.Contains(t, err.Error(), "results were missing")
 		}
 	})
 
 	t.Run("handle zero to non-zero transition", func(t *testing.T) {
 		previousReport := &StandardReport{
+			BasicData: BasicData{
+				GeneratorConfigs: map[string]*wasp.Config{
+					"test-gen": {
+						GenName: "test-gen",
+					},
+				},
+			},
 			QueryExecutors: []QueryExecutor{
 				&MockQueryExecutor{
 					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
@@ -1483,11 +1579,19 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 							string(ErrorRate):           0.0,
 						}
 					},
+					GeneratorNameFn: func() string { return "test-gen" },
 				},
 			},
 		}
 
 		currentReport := &StandardReport{
+			BasicData: BasicData{
+				GeneratorConfigs: map[string]*wasp.Config{
+					"test-gen": {
+						GenName: "test-gen",
+					},
+				},
+			},
 			QueryExecutors: []QueryExecutor{
 				&MockQueryExecutor{
 					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
@@ -1499,15 +1603,101 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 							string(ErrorRate):           1.0,
 						}
 					},
+					GeneratorNameFn: func() string { return "test-gen" },
 				},
 			},
 		}
 
-		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, previousReport, currentReport)
+		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
 		assert.True(t, failed)
-		assert.Len(t, errs, 4)
-		for _, err := range errs {
+		assert.Len(t, errs, 1)
+		assert.Len(t, errs["test-gen"], 4)
+		for _, err := range errs["test-gen"] {
 			assert.Contains(t, err.Error(), "100.0000% different")
 		}
 	})
+}
+
+func TestBenchSpy_Standard_Direct_Metrics_Two_Generators_E2E(t *testing.T) {
+	p := wasp.NewProfile()
+
+	p.Add(wasp.NewGenerator(&wasp.Config{
+		T:           t,
+		GenName:     "vu1",
+		CallTimeout: 200 * time.Millisecond,
+		LoadType:    wasp.VU,
+		Schedule:    wasp.Plain(10, 5*time.Second),
+		VU: wasp.NewMockVU(&wasp.MockVirtualUserConfig{
+			CallSleep: 50 * time.Millisecond,
+		}),
+	}))
+
+	p.Add(wasp.NewGenerator(&wasp.Config{
+		T:           t,
+		GenName:     "vu2",
+		CallTimeout: 200 * time.Millisecond,
+		LoadType:    wasp.VU,
+		Schedule:    wasp.Plain(10, 7*time.Second),
+		VU: wasp.NewMockVU(&wasp.MockVirtualUserConfig{
+			CallSleep: 60 * time.Millisecond,
+		}),
+	}))
+
+	_, runErr := p.Run(true)
+	require.NoError(t, runErr)
+
+	fetchCtx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancelFn()
+
+	previousReport, err := NewStandardReport(
+		"v1",
+		WithStandardQueries(StandardQueryExecutor_Direct),
+		WithGenerators(p.Generators[0], p.Generators[1]),
+	)
+	require.NoError(t, err, "failed to create baseline report")
+
+	fetchErr := previousReport.FetchData(fetchCtx)
+	require.NoError(t, fetchErr, "failed to fetch data for original report")
+
+	p2 := wasp.NewProfile()
+	p2.Add(wasp.NewGenerator(&wasp.Config{
+		T:           t,
+		GenName:     "vu1",
+		CallTimeout: 200 * time.Millisecond,
+		LoadType:    wasp.VU,
+		Schedule:    wasp.Plain(10, 5*time.Second),
+		VU: wasp.NewMockVU(&wasp.MockVirtualUserConfig{
+			CallSleep: 50 * time.Millisecond,
+		}),
+	}))
+
+	p2.Add(wasp.NewGenerator(&wasp.Config{
+		T:           t,
+		GenName:     "vu2",
+		CallTimeout: 200 * time.Millisecond,
+		LoadType:    wasp.VU,
+		Schedule:    wasp.Plain(10, 7*time.Second),
+		VU: wasp.NewMockVU(&wasp.MockVirtualUserConfig{
+			CallSleep: 60 * time.Millisecond,
+		}),
+	}))
+
+	_, runErr = p2.Run(true)
+	require.NoError(t, runErr)
+
+	fetchCtx, cancelFn = context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancelFn()
+
+	currentReport, err := NewStandardReport(
+		"v2",
+		WithStandardQueries(StandardQueryExecutor_Direct),
+		WithGenerators(p2.Generators[0], p2.Generators[1]),
+	)
+	require.NoError(t, err, "failed to create baseline report")
+
+	fetchErr = currentReport.FetchData(fetchCtx)
+	require.NoError(t, fetchErr, "failed to fetch data for original report")
+
+	hasErrors, errors := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
+	require.False(t, hasErrors, fmt.Sprintf("errors found: %v", errors))
 }

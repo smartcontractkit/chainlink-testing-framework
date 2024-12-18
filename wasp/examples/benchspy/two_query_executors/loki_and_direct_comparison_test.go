@@ -52,8 +52,8 @@ func TestBenchSpy_Standard_Direct_And_Loki_Metrics(t *testing.T) {
 	fetchErr := baseLineReport.FetchData(fetchCtx)
 	require.NoError(t, fetchErr, "failed to fetch current report")
 
-	currentAsLokiSlices := benchspy.MustAllLokiResults(baseLineReport)
-	currentAsDirectFloats := benchspy.MustAllDirectResults(baseLineReport)
+	currentAsLokiSlices := benchspy.MustAllLokiResults(baseLineReport)[gen.Cfg.GenName]
+	currentAsDirectFloats := benchspy.MustAllDirectResults(baseLineReport)[gen.Cfg.GenName]
 
 	require.NotEmpty(t, currentAsLokiSlices[string(benchspy.MedianLatency)], "%s results were missing for loki", string(benchspy.MedianLatency))
 	require.NotEmpty(t, currentAsDirectFloats[string(benchspy.MedianLatency)], "%s results were missing for direct", string(benchspy.MedianLatency))

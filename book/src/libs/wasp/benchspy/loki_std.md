@@ -44,7 +44,7 @@ require.NoError(t, err)
 gen.Run(true)
 
 baseLineReport, err := benchspy.NewStandardReport(
-    "c2cf545d733eef8bad51d685fcb302e277d7ca14",
+    "v1.0.0",
     // notice the different standard query executor type
     benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Loki),
     benchspy.WithGenerators(gen),
@@ -67,16 +67,27 @@ Since the next steps are very similar to those in the first test, we’ll skip t
 By default, the `LokiQueryExecutor` returns results as the `[]string` data type. Let’s use dedicated convenience functions to cast them from `interface{}` to string slices:
 
 ```go
-currentAsStringSlice := benchspy.MustAllLokiResults(currentReport)
-previousAsStringSlice := benchspy.MustAllLokiResults(previousReport)
+allCurrentAsStringSlice := benchspy.MustAllLokiResults(currentReport)
+allPreviousAsStringSlice := benchspy.MustAllLokiResults(previousReport)
+
+require.NotEmpty(t, allCurrentAsStringSlice, "current report is empty")
+require.NotEmpty(t, allPreviousAsStringSlice, "previous report is empty")
+
+currentAsStringSlice := allCurrentAsStringSlice[gen.Cfg.GenName]
+previousAsStringSlice := allPreviousAsStringSlice[gen.Cfg.GenName]
 ```
+
+An explanation is needed here: this function separates metrics for each generator, hence it returns a `map[string]map[string][]string`. Let's break it down:
+- outer map's key is generator name
+- inner map's key is metric name and the value is a series of measurements
+In our case there's only a single generator, but in a complex test there might be a few.
 
 ## Step 4: Compare Metrics
 
 Now, let’s compare metrics. Since we have `[]string`, we’ll first convert it to `[]float64`, calculate the median, and ensure the difference between the averages is less than 1%. Again, this is just an example—you should decide the best way to validate your metrics. Here we are explicitly aggregating them using an average to get a single number representation of each metric, but for your case a median or percentile or yet some other aggregate might be more appropriate.
 
 ```go
-var compareAverages = func(t *testing.T, metricName string, currentAsStringSlice, previousAsStringSlice map[string][]string) {
+var compareAverages = func(t *testing.T, metricName string, currentAsStringSlice, previousAsStringSlice map[string][]string, maxPrecentageDiff float64) {
 	require.NotEmpty(t, currentAsStringSlice[metricName], "%s results were missing from current report", metricName)
 	require.NotEmpty(t, previousAsStringSlice[metricName], "%s results were missing from previous report", metricName)
 
@@ -98,13 +109,19 @@ var compareAverages = func(t *testing.T, metricName string, currentAsStringSlice
 	} else {
 		diffPrecentage = 100.0
 	}
-	assert.LessOrEqual(t, math.Abs(diffPrecentage), 1.0, "%s medians are more than 1% different", metricName, fmt.Sprintf("%.4f", diffPrecentage))
+	assert.LessOrEqual(t, math.Abs(diffPrecentage), maxPrecentageDiff, "%s medians are more than 1% different", metricName, fmt.Sprintf("%.4f", diffPrecentage))
 }
 
-compareAverages(t, string(benchspy.MedianLatency), currentAsStringSlice, previousAsStringSlice)
-compareAverages(t, string(benchspy.Percentile95Latency), currentAsStringSlice, previousAsStringSlice)
-compareAverages(t, string(benchspy.MaxLatency), currentAsStringSlice, previousAsStringSlice)
-compareAverages(t, string(benchspy.ErrorRate), currentAsStringSlice, previousAsStringSlice)
+compareAverages(
+    t,
+    string(benchspy.MedianLatency),
+    currentAsStringSlice,
+    previousAsStringSlice,
+    1.0,
+)
+compareAverages(t, string(benchspy.Percentile95Latency), currentAsStringSlice, previousAsStringSlice, 1.0)
+compareAverages(t, string(benchspy.MaxLatency), currentAsStringSlice, previousAsStringSlice, 1.0)
+compareAverages(t, string(benchspy.ErrorRate), currentAsStringSlice, previousAsStringSlice, 1.0)
 ```
 
 > [!WARNING]

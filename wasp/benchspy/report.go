@@ -40,24 +40,12 @@ func (b *StandardReport) LoadLatest(testName string) error {
 	return b.LocalStorage.Load(testName, "", b)
 }
 
-func ResultsAs[Type any](newType Type, queryExecutors []QueryExecutor, queryExecutorType StandardQueryExecutorType, queryNames ...string) (map[string]Type, error) {
+func ResultsAs[Type any](newType Type, queryExecutor QueryExecutor, queryNames ...string) (map[string]Type, error) {
 	results := make(map[string]Type)
-
-	var addIfQueryDoesntExist = func(queryName string, asType Type) error {
-		if _, ok := results[queryName]; ok {
-			return fmt.Errorf("results for query '%s' already exist. Always use unique query names, even in different executors of the same type", queryName)
-		}
-		results[queryName] = asType
-
-		return nil
-	}
 
 	var toTypeOrErr = func(result interface{}, queryName string) error {
 		if asType, ok := result.(Type); ok {
-			existsErr := addIfQueryDoesntExist(queryName, asType)
-			if existsErr != nil {
-				return existsErr
-			}
+			results[queryName] = asType
 		} else {
 			return fmt.Errorf("failed to cast result to type %T. It's actual type is: %T", newType, result)
 		}
@@ -65,22 +53,18 @@ func ResultsAs[Type any](newType Type, queryExecutors []QueryExecutor, queryExec
 		return nil
 	}
 
-	for _, queryExecutor := range queryExecutors {
-		if strings.EqualFold(queryExecutor.Kind(), string(queryExecutorType)) {
-			if len(queryNames) > 0 {
-				for _, queryName := range queryNames {
-					if result, ok := queryExecutor.Results()[queryName]; ok {
-						if err := toTypeOrErr(result, queryName); err != nil {
-							return nil, err
-						}
-					}
+	if len(queryNames) > 0 {
+		for _, queryName := range queryNames {
+			if result, ok := queryExecutor.Results()[queryName]; ok {
+				if err := toTypeOrErr(result, queryName); err != nil {
+					return nil, err
 				}
-			} else {
-				for queryName, result := range queryExecutor.Results() {
-					if err := toTypeOrErr(result, queryName); err != nil {
-						return nil, err
-					}
-				}
+			}
+		}
+	} else {
+		for queryName, result := range queryExecutor.Results() {
+			if err := toTypeOrErr(result, queryName); err != nil {
+				return nil, err
 			}
 		}
 	}
@@ -88,25 +72,43 @@ func ResultsAs[Type any](newType Type, queryExecutors []QueryExecutor, queryExec
 	return results, nil
 }
 
-// MustAllLokiResults retrieves all Loki query results from a StandardReport.
-// It panics if an error occurs during the retrieval process, ensuring that
-// the caller receives valid results or an immediate failure.
-func MustAllLokiResults(sr *StandardReport) map[string][]string {
-	results, err := ResultsAs([]string{}, sr.QueryExecutors, StandardQueryExecutor_Loki)
-	if err != nil {
-		panic(err)
+type LokiResultsByGenerator map[string]map[string][]string
+
+func MustAllLokiResults(sr *StandardReport) LokiResultsByGenerator {
+	results := make(LokiResultsByGenerator)
+
+	for _, queryExecutor := range sr.QueryExecutors {
+		if strings.EqualFold(queryExecutor.Kind(), string(StandardQueryExecutor_Loki)) {
+			singleResult, err := ResultsAs([]string{}, queryExecutor)
+			if err != nil {
+				panic(err)
+			}
+
+			asNamedGenerator := queryExecutor.(NamedGenerator)
+			results[asNamedGenerator.GeneratorName()] = singleResult
+		}
 	}
+
 	return results
 }
 
-// MustAllDirectResults retrieves all direct results from a StandardReport.
-// It panics if an error occurs during the retrieval process, ensuring that
-// the caller receives valid results or an immediate failure.
-func MustAllDirectResults(sr *StandardReport) map[string]float64 {
-	results, err := ResultsAs(0.0, sr.QueryExecutors, StandardQueryExecutor_Direct)
-	if err != nil {
-		panic(err)
+type DirectResultsByGenerator map[string]map[string]float64
+
+func MustAllDirectResults(sr *StandardReport) DirectResultsByGenerator {
+	results := make(DirectResultsByGenerator)
+
+	for _, queryExecutor := range sr.QueryExecutors {
+		if strings.EqualFold(queryExecutor.Kind(), string(StandardQueryExecutor_Direct)) {
+			singleResult, err := ResultsAs(0.0, queryExecutor)
+			if err != nil {
+				panic(err)
+			}
+
+			asNamedGenerator := queryExecutor.(NamedGenerator)
+			results[asNamedGenerator.GeneratorName()] = singleResult
+		}
 	}
+
 	return results
 }
 
@@ -142,24 +144,35 @@ func calculateDiffPercentage(current, previous float64) float64 {
 	return diffPrecentage
 }
 
-func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold float64, currentReport, previousReport *StandardReport) (bool, []error) {
-	currentResults := MustAllDirectResults(currentReport)
-	previousResults := MustAllDirectResults(previousReport)
+func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold float64, currentReport, previousReport *StandardReport) (bool, map[string][]error) {
+	allCurrentResults := MustAllDirectResults(currentReport)
+	allPreviousResults := MustAllDirectResults(previousReport)
 
 	var compareValues = func(
-		metricName string,
+		metricName, generatorName string,
 		maxDiffPercentage float64,
 	) error {
-		if _, ok := currentResults[metricName]; !ok {
-			return fmt.Errorf("%s results were missing from current report", metricName)
+		if _, ok := allCurrentResults[generatorName]; !ok {
+			return fmt.Errorf("generator %s results were missing from current report", generatorName)
 		}
 
-		if _, ok := previousResults[metricName]; !ok {
-			return fmt.Errorf("%s results were missing from previous report", metricName)
+		if _, ok := allPreviousResults[generatorName]; !ok {
+			return fmt.Errorf("generator %s results were missing from previous report", generatorName)
 		}
 
-		currentMetric := currentResults[metricName]
-		previousMetric := previousResults[metricName]
+		currentForGenerator := allCurrentResults[generatorName]
+		previousForGenerator := allPreviousResults[generatorName]
+
+		if _, ok := currentForGenerator[metricName]; !ok {
+			return fmt.Errorf("%s metric results were missing from current report for generator %s", metricName, generatorName)
+		}
+
+		if _, ok := previousForGenerator[metricName]; !ok {
+			return fmt.Errorf("%s metric results were missing from previous report for generator %s", metricName, generatorName)
+		}
+
+		currentMetric := currentForGenerator[metricName]
+		previousMetric := previousForGenerator[metricName]
 
 		diffPrecentage := calculateDiffPercentage(currentMetric, previousMetric)
 		if diffPrecentage > maxDiffPercentage {
@@ -169,22 +182,24 @@ func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, er
 		return nil
 	}
 
-	var errors []error
+	errors := make(map[string][]error)
 
-	if err := compareValues(string(MedianLatency), medianThreshold); err != nil {
-		errors = append(errors, err)
-	}
+	for _, genCfg := range currentReport.GeneratorConfigs {
+		if err := compareValues(string(MedianLatency), genCfg.GenName, medianThreshold); err != nil {
+			errors[genCfg.GenName] = append(errors[genCfg.GenName], err)
+		}
 
-	if err := compareValues(string(Percentile95Latency), p95Threshold); err != nil {
-		errors = append(errors, err)
-	}
+		if err := compareValues(string(Percentile95Latency), genCfg.GenName, p95Threshold); err != nil {
+			errors[genCfg.GenName] = append(errors[genCfg.GenName], err)
+		}
 
-	if err := compareValues(string(MaxLatency), maxThreshold); err != nil {
-		errors = append(errors, err)
-	}
+		if err := compareValues(string(MaxLatency), genCfg.GenName, maxThreshold); err != nil {
+			errors[genCfg.GenName] = append(errors[genCfg.GenName], err)
+		}
 
-	if err := compareValues(string(ErrorRate), errorRateThreshold); err != nil {
-		errors = append(errors, err)
+		if err := compareValues(string(ErrorRate), genCfg.GenName, errorRateThreshold); err != nil {
+			errors[genCfg.GenName] = append(errors[genCfg.GenName], err)
+		}
 	}
 
 	PrintStandardDirectMetrics(currentReport, previousReport)
@@ -196,21 +211,27 @@ func PrintStandardDirectMetrics(currentReport, previousReport *StandardReport) {
 	currentResults := MustAllDirectResults(currentReport)
 	previousResults := MustAllDirectResults(previousReport)
 
-	table := tablewriter.NewWriter(os.Stderr)
-	table.SetHeader([]string{"Metric", previousReport.CommitOrTag, currentReport.CommitOrTag, "Diff %"})
+	for _, genCfg := range currentReport.GeneratorConfigs {
+		generatorName := genCfg.GenName
+		table := tablewriter.NewWriter(os.Stderr)
+		table.SetHeader([]string{"Metric", previousReport.CommitOrTag, currentReport.CommitOrTag, "Diff %"})
 
-	for _, metricName := range StandardLoadMetrics {
-		metricString := string(metricName)
-		diff := calculateDiffPercentage(currentResults[metricString], previousResults[metricString])
-		table.Append([]string{metricString, fmt.Sprintf("%.4f", previousResults[metricString]), fmt.Sprintf("%.4f", currentResults[metricString]), fmt.Sprintf("%.4f", diff)})
+		for _, metricName := range StandardLoadMetrics {
+			metricString := string(metricName)
+			diff := calculateDiffPercentage(currentResults[generatorName][metricString], previousResults[generatorName][metricString])
+			table.Append([]string{metricString, fmt.Sprintf("%.4f", previousResults[genCfg.GenName][metricString]), fmt.Sprintf("%.4f", currentResults[genCfg.GenName][metricString]), fmt.Sprintf("%.4f", diff)})
+		}
+
+		table.SetBorder(true)
+		table.SetRowLine(true)
+		table.SetAlignment(tablewriter.ALIGN_LEFT)
+
+		title := "Generator: " + generatorName
+		fmt.Println(title)
+		fmt.Println(strings.Repeat("=", len(title)))
+
+		table.Render()
 	}
-
-	table.SetBorder(true)
-	table.SetRowLine(true)
-	table.SetAlignment(tablewriter.ALIGN_LEFT)
-
-	table.Render()
-
 }
 
 // FetchData retrieves data for the report within the specified time range.

@@ -23,32 +23,34 @@ var (
 	Loki_ErrorRate   = `sum(max_over_time({branch=~"%s", commit=~"%s", go_test_name=~"%s", test_data_type=~"stats", gen_name=~"%s"} | json| unwrap failed [%s]) by (node_id, go_test_name, gen_name)) by (__stream_shard__)`
 )
 
-// NewLokiQueryExecutor creates a new LokiQueryExecutor instance.
-// It initializes the executor with provided queries and Loki configuration,
-// enabling efficient querying of logs from Loki in a structured manner.
-func NewLokiQueryExecutor(queries map[string]string, lokiConfig *wasp.LokiConfig) *LokiQueryExecutor {
+func NewLokiQueryExecutor(generatorName string, queries map[string]string, lokiConfig *wasp.LokiConfig) *LokiQueryExecutor {
 	return &LokiQueryExecutor{
-		KindName:     string(StandardQueryExecutor_Loki),
-		Queries:      queries,
-		Config:       lokiConfig,
-		QueryResults: make(map[string]interface{}),
+		KindName:            string(StandardQueryExecutor_Loki),
+		GeneratorNameString: generatorName,
+		Queries:             queries,
+		Config:              lokiConfig,
+		QueryResults:        make(map[string]interface{}),
 	}
 }
 
 type LokiQueryExecutor struct {
-	KindName string `json:"kind"`
+	KindName            string `json:"kind"`
+	GeneratorNameString string `json:"generator_name"`
+
 	// Test metrics
 	StartTime time.Time `json:"start_time"`
 	EndTime   time.Time `json:"end_time"`
 
-	// Performance queries
 	// a map of name to query template, ex: "average cpu usage": "avg(rate(cpu_usage_seconds_total[5m]))"
 	Queries map[string]string `json:"queries"`
-	// Performance queries results
 	// can be anything, avg RPS, amount of errors, 95th percentile of CPU utilization, etc
 	QueryResults map[string]interface{} `json:"query_results"`
 
 	Config *wasp.LokiConfig `json:"-"`
+}
+
+func (l *LokiQueryExecutor) GeneratorName() string {
+	return l.GeneratorNameString
 }
 
 // Results returns the query results as a map of string to interface{}.
@@ -73,6 +75,11 @@ func (l *LokiQueryExecutor) IsComparable(otherQueryExecutor QueryExecutor) error
 		return fmt.Errorf("expected type %s, got %s", reflect.TypeOf(l), otherType)
 	}
 
+	otherAsLoki := otherQueryExecutor.(*LokiQueryExecutor)
+	if l.GeneratorNameString != otherAsLoki.GeneratorNameString {
+		return fmt.Errorf("generator name is different. Expected %s, got %s", l.GeneratorNameString, otherAsLoki.GeneratorNameString)
+	}
+
 	return l.compareQueries(otherQueryExecutor.(*LokiQueryExecutor).Queries)
 }
 
@@ -85,6 +92,9 @@ func (l *LokiQueryExecutor) Validate() error {
 	}
 	if l.Config == nil {
 		return errors.New("loki config is missing. Please set it and try again")
+	}
+	if l.GeneratorNameString == "" {
+		return errors.New("generator name is missing. Please set it and try again")
 	}
 
 	return nil
@@ -220,9 +230,10 @@ func (l *LokiQueryExecutor) UnmarshalJSON(data []byte) error {
 // It generates queries based on provided test parameters and time range, returning the executor or an error if query generation fails.
 func NewStandardMetricsLokiExecutor(lokiConfig *wasp.LokiConfig, testName, generatorName, branch, commit string, startTime, endTime time.Time) (*LokiQueryExecutor, error) {
 	lq := &LokiQueryExecutor{
-		KindName:     string(StandardQueryExecutor_Loki),
-		Config:       lokiConfig,
-		QueryResults: make(map[string]interface{}),
+		KindName:            string(StandardQueryExecutor_Loki),
+		GeneratorNameString: generatorName,
+		Config:              lokiConfig,
+		QueryResults:        make(map[string]interface{}),
 	}
 
 	standardQueries, queryErr := lq.generateStandardQueries(testName, generatorName, branch, commit, startTime, endTime)

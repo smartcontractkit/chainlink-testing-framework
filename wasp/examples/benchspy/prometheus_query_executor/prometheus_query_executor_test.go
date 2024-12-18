@@ -68,7 +68,7 @@ func TestBenchSpy_Standard_Prometheus_Metrics(t *testing.T) {
 
 	currentReport, previousReport, err := benchspy.FetchNewStandardReportAndLoadLatestPrevious(
 		fetchCtx,
-		"91ee9e3c903d52de12f3d0c1a07ac3c2a6d141fc",
+		"2d1fa3532656c51991c0212afce5f80d2914e34f",
 		benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Prometheus),
 		benchspy.WithPrometheusConfig(promConfig),
 		benchspy.WithGenerators(newGen),
@@ -166,7 +166,7 @@ func TestBenchSpy_Custom_Prometheus_Metrics(t *testing.T) {
 
 	currentReport, previousReport, err := benchspy.FetchNewStandardReportAndLoadLatestPrevious(
 		fetchCtx,
-		"91ee9e3c903d52de12f3d0c1a07ac3c2a6d141fc",
+		"2d1fa3532656c51991c0212afce5f80d2914e340",
 		benchspy.WithQueryExecutors(customPrometheus),
 		benchspy.WithGenerators(newGen),
 	)

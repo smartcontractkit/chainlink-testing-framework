@@ -43,7 +43,7 @@ With load data available, let's generate a baseline performance report and store
 ```go
 baseLineReport, err := benchspy.NewStandardReport(
     // random hash, this should be the commit or hash of the Application Under Test (AUT)
-    "e7fc5826a572c09f8b93df3b9f674113372ce924",
+    "v1.0.0",
     // use built-in queries for an executor that fetches data directly from the WASP generator
     benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Direct),
     // WASP generators
@@ -98,7 +98,7 @@ defer cancelFn()
 currentReport, previousReport, err := benchspy.FetchNewStandardReportAndLoadLatestPrevious(
     fetchCtx,
     // commit or tag of the new application version
-    "e7fc5826a572c09f8b93df3b9f674113372ce925",
+    "v2.0.0",
     benchspy.WithStandardQueries(benchspy.StandardQueryExecutor_Direct),
     benchspy.WithGenerators(newGen),
 )
