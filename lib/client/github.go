@@ -17,6 +17,8 @@ type GithubClient struct {
 
 const WITHOUT_TOKEN = ""
 
+// NewGithubClient creates a new instance of GithubClient, optionally authenticating with a personal access token.
+// This is useful for making authenticated requests to the GitHub API, helping to avoid rate limits.
 func NewGithubClient(token string) *GithubClient {
 	// Optional: Authenticate with a personal access token if necessary
 	// This is recommended to avoid rate limits for unauthenticated requests

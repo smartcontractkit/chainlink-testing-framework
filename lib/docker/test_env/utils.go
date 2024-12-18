@@ -9,10 +9,14 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 )
 
+// NatPortFormat formats a given port string to include the TCP protocol suffix.
+// This is useful for standardizing port representations in container configurations.
 func NatPortFormat(port string) string {
 	return fmt.Sprintf("%s/tcp", port)
 }
 
+// NatPort converts a string representation of a port into a nat.Port type.
+// This is useful for ensuring that the port is formatted correctly for networking operations.
 func NatPort(port string) nat.Port {
 	return nat.Port(NatPortFormat(port))
 }
@@ -56,10 +60,14 @@ func GetEndpoint(ctx context.Context, container tc.Container, endpointType strin
 	return strings.Replace(endpoint, "localhost", "127.0.0.1", 1), nil
 }
 
+// FormatHttpUrl constructs a standard HTTP URL using the provided host and port.
+// This function is useful for generating URLs for services running in a containerized environment.
 func FormatHttpUrl(host string, port string) string {
 	return fmt.Sprintf("http://%s:%s", host, port)
 }
 
+// FormatWsUrl constructs a WebSocket URL using the provided host and port.
+// This function is useful for establishing WebSocket connections to Ethereum nodes.
 func FormatWsUrl(host string, port string) string {
 	return fmt.Sprintf("ws://%s:%s", host, port)
 }

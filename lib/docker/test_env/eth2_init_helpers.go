@@ -29,6 +29,8 @@ type AfterGenesisHelper struct {
 	posContainerSettings
 }
 
+// NewInitHelper initializes a new AfterGenesisHelper instance with the provided chain configuration and directory paths.
+// It sets up necessary environment components and options, facilitating the management of post-genesis operations in a blockchain network.
 func NewInitHelper(chainConfig config.EthereumChainConfig, generatedDataHostDir, generatedDataContainerDir string, opts ...EnvComponentOption) *AfterGenesisHelper {
 	g := &AfterGenesisHelper{
 		EnvComponent: EnvComponent{
@@ -47,12 +49,16 @@ func NewInitHelper(chainConfig config.EthereumChainConfig, generatedDataHostDir,
 	return g
 }
 
+// WithTestInstance sets up the AfterGenesisHelper for testing by assigning a logger and test context.
+// This allows for better logging and error tracking during test execution.
 func (g *AfterGenesisHelper) WithTestInstance(t *testing.T) *AfterGenesisHelper {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
 }
 
+// StartContainer initializes and starts the After Genesis Helper container.
+// It handles container requests and logs the startup process, ensuring the container is ready for use.
 func (g *AfterGenesisHelper) StartContainer() error {
 	r, err := g.getContainerRequest(g.Networks)
 	if err != nil {

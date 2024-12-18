@@ -25,6 +25,8 @@ type Zookeeper struct {
 	t           *testing.T
 }
 
+// NewZookeeper creates a new Zookeeper instance with a unique container name and specified networks.
+// It initializes default hooks and sets a startup timeout, making it suitable for managing distributed systems.
 func NewZookeeper(networks []string) *Zookeeper {
 	id, _ := uuid.NewRandom()
 	z := &Zookeeper{
@@ -38,17 +40,24 @@ func NewZookeeper(networks []string) *Zookeeper {
 	return z
 }
 
+// WithTestInstance configures the Zookeeper instance for testing by setting up a test logger.
+// It returns the modified Zookeeper instance, allowing for easier testing and logging during test execution.
 func (z *Zookeeper) WithTestInstance(t *testing.T) *Zookeeper {
 	z.l = logging.GetTestLogger(t)
 	z.t = t
 	return z
 }
 
+// WithContainerName sets the container name for the Zookeeper instance.
+// It returns the updated Zookeeper instance, allowing for method chaining.
 func (z *Zookeeper) WithContainerName(name string) *Zookeeper {
 	z.ContainerName = name
 	return z
 }
 
+// StartContainer initializes and starts a Zookeeper container.
+// It configures logging, handles errors, and sets the internal URL for the container.
+// This function is essential for setting up a Zookeeper instance in a test environment.
 func (z *Zookeeper) StartContainer() error {
 	l := logging.GetTestContainersGoTestLogger(z.t)
 	cr, err := z.getContainerRequest()
