@@ -42,7 +42,7 @@ type ExecutionClient interface {
 	GetExternalHttpUrl() string
 	GetExternalWsUrl() string
 	GetEthereumVersion() config_types.EthereumVersion
-	GethConsensusMechanism() ConsensusMechanism
+	GetConsensusMechanism() ConsensusMechanism
 	WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error
 	WithTestInstance(t *testing.T) ExecutionClient
 }

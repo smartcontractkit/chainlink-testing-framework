@@ -27,18 +27,26 @@ type AlertRulerClient struct {
 	resty *resty.Client
 }
 
+// GetAlertGroups retrieves the alert groups from the AlertManager API.
+// It returns a slice of AlertGroupsResponse, the HTTP response, and any error encountered.
+// This function is useful for monitoring and managing alert configurations.
 func (g *AlertManagerClient) GetAlertGroups() ([]AlertGroupsResponse, *resty.Response, error) {
 	var result []AlertGroupsResponse
 	r, err := g.resty.R().SetResult(&result).Get("/api/alertmanager/grafana/api/v2/alerts/groups")
 	return result, r, err
 }
 
+// GetAlterManagerAlerts retrieves alerts from the AlertManager API.
+// It returns a slice of alerts, the HTTP response, and any error encountered.
 func (g *AlertManagerClient) GetAlterManagerAlerts() ([]interface{}, *resty.Response, error) {
 	var result []interface{}
 	r, err := g.resty.R().SetResult(&result).Get("/api/alertmanager/grafana/api/v2/alerts")
 	return result, r, err
 }
 
+// GetDatasources retrieves a map of datasource names to their unique identifiers from the API.
+// It also identifies the default datasource, if available, and includes it in the returned map.
+// This function is useful for applications needing to interact with various datasources dynamically.
 func (c *Client) GetDatasources() (map[string]string, *resty.Response, error) {
 	var result []struct {
 		UID       string `json:"uid"`
@@ -63,6 +71,9 @@ func (c *Client) GetDatasources() (map[string]string, *resty.Response, error) {
 	return datasourcesMap, r, err
 }
 
+// NewGrafanaClient initializes a new Grafana client with the specified URL and API key.
+// It sets up the necessary headers and configurations for making API requests to Grafana,
+// providing access to AlertManager and AlertRuler functionalities.
 func NewGrafanaClient(url, apiKey string) *Client {
 	isDebug := os.Getenv("RESTY_DEBUG") == "true"
 	resty := resty.New().
@@ -81,6 +92,8 @@ type GetDashboardResponse struct {
 	Dashboard *dashboard.Dashboard   `json:"dashboard"`
 }
 
+// GetDashboard retrieves the dashboard associated with the given unique identifier (uid).
+// It returns the dashboard data, the HTTP response, and any error encountered during the request.
 func (c *Client) GetDashboard(uid string) (GetDashboardResponse, *resty.Response, error) {
 	var result GetDashboardResponse
 	r, err := c.resty.R().SetResult(&result).Get("/api/dashboards/uid/" + uid)
@@ -105,6 +118,10 @@ type GrafanaResponse struct {
 	URL     *string `json:"url"`
 }
 
+// PostDashboard sends a request to create or update a Grafana dashboard.
+// It returns the response containing the dashboard details, the HTTP response, 
+// and any error encountered during the request. This function is useful for 
+// programmatically managing Grafana dashboards.
 func (c *Client) PostDashboard(dashboard PostDashboardRequest) (GrafanaResponse, *resty.Response, error) {
 	var grafanaResp GrafanaResponse
 
@@ -126,12 +143,16 @@ func (c *Client) PostDashboard(dashboard PostDashboardRequest) (GrafanaResponse,
 	return grafanaResp, resp, nil
 }
 
+// GetAlertsRules retrieves all provisioned alert rules from the API.
+// It returns a slice of ProvisionedAlertRule, the HTTP response, and any error encountered.
 func (c *Client) GetAlertsRules() ([]ProvisionedAlertRule, *resty.Response, error) {
 	var result []ProvisionedAlertRule
 	r, err := c.resty.R().SetResult(&result).Get("/api/v1/provisioning/alert-rules")
 	return result, r, err
 }
 
+// GetAlertRulesForDashboardID retrieves all provisioned alert rules associated with a specific dashboard ID.
+// It returns a slice of ProvisionedAlertRule and any error encountered during the process.
 func (c *Client) GetAlertRulesForDashboardID(dashboardID string) ([]ProvisionedAlertRule, error) {
 	rules, _, err := c.GetAlertsRules()
 	if err != nil {
@@ -151,6 +172,9 @@ type CustomTime struct {
 	time.Time
 }
 
+// UnmarshalJSON parses the JSON-encoded data and sets the CustomTime's value.
+// It expects the data to represent a timestamp in milliseconds since the epoch.
+// This function is useful for decoding JSON data into a CustomTime type.
 func (ct *CustomTime) UnmarshalJSON(b []byte) error {
 	// Convert bytes to string and parse the number
 	var ms int64
@@ -180,6 +204,9 @@ type Annotation struct {
 	Data         interface{}   `json:"data"`
 }
 
+// FormatAlertsTable formats a slice of alerts into a tabular string representation.
+// It provides a clear overview of alert states, including timestamps and IDs,
+// making it useful for logging or displaying alert information in a structured format.
 func FormatAlertsTable(alerts []Annotation) string {
 	var b strings.Builder
 	// Initialize a new tab writer with output directed to b, a min width of 8, a tab width of 8, a padding of 2, and tabs replaced by spaces
@@ -227,6 +254,9 @@ type PostAnnotationResponse struct {
 	ID      int64  `json:"id"`
 }
 
+// GetAnnotations retrieves a list of annotations based on specified query parameters.
+// It allows filtering by alert ID, dashboard ID, type, and time range, ensuring both From and To are set.
+// This function is useful for fetching relevant annotations in a Grafana context.
 func (c *Client) GetAnnotations(params AnnotationsQueryParams) ([]Annotation, *resty.Response, error) {
 	query := make(url.Values)
 	if params.Limit != nil {
@@ -266,6 +296,8 @@ func (c *Client) GetAnnotations(params AnnotationsQueryParams) ([]Annotation, *r
 	return result, r, err
 }
 
+// DeleteAnnotation removes an annotation identified by its ID from the server.
+// It returns the response from the server and any error encountered during the request.
 func (c *Client) DeleteAnnotation(annotationID int64) (*resty.Response, error) {
 	urlPath := fmt.Sprintf("/api/annotations/%d", annotationID)
 
@@ -275,6 +307,8 @@ func (c *Client) DeleteAnnotation(annotationID int64) (*resty.Response, error) {
 	return r, err
 }
 
+// PostAnnotation sends a new annotation to a specified dashboard, allowing users to add notes or comments.
+// It returns the response containing the annotation details, the HTTP response, and any error encountered.
 func (c *Client) PostAnnotation(annotation PostAnnotation) (PostAnnotationResponse, *resty.Response, error) {
 	a := map[string]interface{}{
 		"dashboardUID": annotation.DashboardUID,
@@ -301,6 +335,8 @@ func (c *Client) PostAnnotation(annotation PostAnnotation) (PostAnnotationRespon
 	return result, r, err
 }
 
+// PostAlert retrieves alert rules associated with a specified dashboard UID.
+// It returns a map of alert rules, the HTTP response, and any error encountered.
 func (g *AlertRulerClient) PostAlert(dashboardUID string) (map[string][]interface{}, *resty.Response, error) {
 	var result map[string][]interface{}
 	r, err := g.resty.R().SetResult(&result).Get("/api/ruler/grafana/api/v1/rules?dashboard_uid=" + url.QueryEscape(dashboardUID))
@@ -327,6 +363,10 @@ type ProvisionedAlertRule struct {
 	Annotations  map[string]string `json:"annotations"`
 }
 
+// String returns a formatted string representation of the ProvisionedAlertRule,
+// including its ID, UID, title, labels, annotations, and other relevant details.
+// This function is useful for logging and debugging purposes, providing a clear
+// overview of the alert rule's properties.
 func (p ProvisionedAlertRule) String() string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("ID: %d\n", p.ID))

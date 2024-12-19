@@ -27,7 +27,7 @@ Before running tests, you must create a Docker image containing the test binary.
 3. Pushes the docker image to the image registry (e.g. Staging ECR)
 
 ```sh
-go run ./cmd/main.go create-test-image --image-registry-url <staging-ecr-registry-url> --image-tag "<image-tag>" "<path-to-test-folder>"
+go run ./cmd/main.go create-test-image --image-registry-url <staging-ecr-registry-url> --image-name "<image-name>" --image-tag "<image-tag>" "<path-to-test-folder>"
 ```
 
 Where `image-tag` should be a descriptive name for your test, such as "mercury-load-tests".
