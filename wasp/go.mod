@@ -1,10 +1,8 @@
 module github.com/smartcontractkit/chainlink-testing-framework/wasp
 
 go 1.23
-
 require (
 	github.com/K-Phoen/grabana v0.22.2
-	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-resty/resty/v2 v2.15.3
 	github.com/google/uuid v1.6.0
@@ -12,16 +10,15 @@ require (
 	github.com/grafana/grafana-foundation-sdk/go v0.0.0-20240326122733-6f96a993222b
 	// loki main 12/15/2023
 	github.com/grafana/loki v1.6.2-0.20231215164305-b51b7d7b5503
-	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/common v0.60.0
 	github.com/rs/zerolog v1.33.0
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/ratelimit v0.3.1
 	google.golang.org/grpc v1.67.1 // indirect
-	k8s.io/api v0.31.2
-	k8s.io/apimachinery v0.31.2
-	k8s.io/client-go v0.31.2
+	k8s.io/api v0.32.0
+	k8s.io/apimachinery v0.32.0
+	k8s.io/client-go v0.32.0
 )
 
 require (
@@ -50,12 +47,12 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/analysis v0.21.4 // indirect
 	github.com/go-openapi/errors v0.20.4 // indirect
-	github.com/go-openapi/jsonpointer v0.20.0 // indirect
+	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/loads v0.21.2 // indirect
 	github.com/go-openapi/spec v0.20.9 // indirect
 	github.com/go-openapi/strfmt v0.21.7 // indirect
-	github.com/go-openapi/swag v0.22.4 // indirect
+	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/go-openapi/validate v0.22.1 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
@@ -145,19 +142,19 @@ require (
 	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/term v0.25.0 // indirect
 	golang.org/x/text v0.19.0 // indirect
-	golang.org/x/time v0.6.0 // indirect
+	golang.org/x/time v0.7.0 // indirect
 	golang.org/x/tools v0.26.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240814211410-ddb44dafa142 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240814211410-ddb44dafa142 // indirect
-	google.golang.org/protobuf v1.34.2 // indirect
+	google.golang.org/protobuf v1.35.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
-	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340 // indirect
-	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8 // indirect
-	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
+	k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f // indirect
+	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738 // indirect
+	sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.4.2 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
@@ -231,11 +228,9 @@ require (
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-redis/redis/v8 v8.11.5 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
-	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/go-github/v41 v41.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/google/pprof v0.0.0-20240827171923-fa2c70bbbfe5 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/grafana/gomemcache v0.0.0-20231023152154-6947259a0586 // indirect
@@ -256,7 +251,7 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.1 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/patternmatcher v0.6.0 // indirect
-	github.com/moby/spdystream v0.4.0 // indirect
+	github.com/moby/spdystream v0.5.0 // indirect
 	github.com/moby/sys/sequential v0.5.0 // indirect
 	github.com/moby/sys/user v0.1.0 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
@@ -264,7 +259,6 @@ require (
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
-	github.com/onsi/ginkgo/v2 v2.20.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
