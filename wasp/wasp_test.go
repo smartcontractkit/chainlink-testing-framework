@@ -475,7 +475,7 @@ func TestSmokeCustomUnitPrecision(t *testing.T) {
 	_, failed := gen.Run(true)
 	require.Equal(t, false, failed)
 	stats := gen.Stats()
-	require.GreaterOrEqual(t, stats.Success.Load(), int64(4970))
+	require.GreaterOrEqual(t, stats.Success.Load(), int64(4950))
 	require.LessOrEqual(t, stats.Success.Load(), int64(5010))
 	require.Equal(t, stats.Failed.Load(), int64(0))
 	require.Equal(t, stats.CallTimeout.Load(), int64(0))

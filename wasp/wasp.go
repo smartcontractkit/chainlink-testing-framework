@@ -257,6 +257,7 @@ type Generator struct {
 	dataCancel         context.CancelFunc
 	gun                Gun
 	vu                 VirtualUser
+	vusMu              *sync.Mutex
 	vus                []VirtualUser
 	ResponsesChan      chan *Response
 	Responses          *Responses
@@ -320,6 +321,7 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 		dataCancel:         dataCancel,
 		gun:                cfg.Gun,
 		vu:                 cfg.VU,
+		vusMu:              &sync.Mutex{},
 		Responses:          NewResponses(rch),
 		ResponsesChan:      rch,
 		labels:             ls,
@@ -379,7 +381,9 @@ func (g *Generator) runExecuteLoop() {
 		for i := 0; i < int(vus); i++ {
 			inst := g.vu.Clone(g)
 			g.runVU(inst)
+			g.vusMu.Lock()
 			g.vus = append(g.vus, inst)
+			g.vusMu.Unlock()
 		}
 	}
 }
@@ -510,14 +514,18 @@ func (g *Generator) processSegment() bool {
 		}
 		if oldVUs > g.currentSegment.From {
 			for i := 0; i < vusToSpawn; i++ {
+				g.vusMu.Lock()
 				g.vus[i].Stop(g)
+				g.vusMu.Unlock()
 			}
 			g.vus = g.vus[vusToSpawn:]
 		} else {
 			for i := 0; i < vusToSpawn; i++ {
 				inst := g.vu.Clone(g)
 				g.runVU(inst)
+				g.vusMu.Lock()
 				g.vus = append(g.vus, inst)
+				g.vusMu.Unlock()
 			}
 		}
 	}
@@ -624,8 +632,10 @@ func (g *Generator) pacedCall() {
 	if !g.Stats().RunStarted.Load() {
 		return
 	}
-	l := *g.rl.Load()
-	l.Take()
+	if g.rl.Load() == nil {
+		return
+	}
+	(*g.rl.Load()).Take()
 	if g.stats.RunPaused.Load() {
 		return
 	}
