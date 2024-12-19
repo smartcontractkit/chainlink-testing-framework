@@ -13,3 +13,4 @@ CVE-2024-32972 # CWE-400: Uncontrolled Resource Consumption ('Resource Exhaustio
 CVE-2023-42319 # CWE-noinfo: lol... go-ethereum v1.13.8 again
 CVE-2024-10086 # Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')
 CVE-2024-51744 # CWE-755: Improper Handling of Exceptional Conditions
+CVE-2024-45338 # CWE-770: Allocation of Resources Without Limits or Throttling

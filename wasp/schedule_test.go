@@ -22,14 +22,17 @@ func TestSmokeSchedules(t *testing.T) {
 				{
 					From:     10,
 					Duration: 10 * time.Second,
+					Type:     SegmentType_Steps,
 				},
 				{
 					From:     20,
 					Duration: 10 * time.Second,
+					Type:     SegmentType_Steps,
 				},
 				{
 					From:     30,
 					Duration: 10 * time.Second,
+					Type:     SegmentType_Steps,
 				},
 			},
 		},
@@ -40,14 +43,17 @@ func TestSmokeSchedules(t *testing.T) {
 				{
 					From:     100,
 					Duration: 10 * time.Second,
+					Type:     SegmentType_Steps,
 				},
 				{
 					From:     90,
 					Duration: 10 * time.Second,
+					Type:     SegmentType_Steps,
 				},
 				{
 					From:     80,
 					Duration: 10 * time.Second,
+					Type:     SegmentType_Steps,
 				},
 			},
 		},
@@ -58,6 +64,7 @@ func TestSmokeSchedules(t *testing.T) {
 				{
 					From:     1,
 					Duration: 1 * time.Second,
+					Type:     SegmentType_Plain,
 				},
 			},
 		},
@@ -71,10 +78,12 @@ func TestSmokeSchedules(t *testing.T) {
 				{
 					From:     200,
 					Duration: 1 * time.Second,
+					Type:     SegmentType_Plain,
 				},
 				{
 					From:     300,
 					Duration: 1 * time.Second,
+					Type:     SegmentType_Plain,
 				},
 			},
 		},
@@ -89,18 +98,22 @@ func TestSmokeSchedules(t *testing.T) {
 				{
 					From:     1,
 					Duration: 1 * time.Second,
+					Type:     SegmentType_Plain,
 				},
 				{
 					From:     100,
 					Duration: 1 * time.Second,
+					Type:     SegmentType_Plain,
 				},
 				{
 					From:     1,
 					Duration: 1 * time.Second,
+					Type:     SegmentType_Plain,
 				},
 				{
 					From:     100,
 					Duration: 1 * time.Second,
+					Type:     SegmentType_Plain,
 				},
 			},
 		},
