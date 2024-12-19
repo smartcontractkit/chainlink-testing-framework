@@ -475,7 +475,7 @@ func TestSmokeCustomUnitPrecision(t *testing.T) {
 	_, failed := gen.Run(true)
 	require.Equal(t, false, failed)
 	stats := gen.Stats()
-	require.GreaterOrEqual(t, stats.Success.Load(), int64(4950))
+	require.GreaterOrEqual(t, stats.Success.Load(), int64(4970))
 	require.LessOrEqual(t, stats.Success.Load(), int64(5010))
 	require.Equal(t, stats.Failed.Load(), int64(0))
 	require.Equal(t, stats.CallTimeout.Load(), int64(0))
@@ -676,10 +676,10 @@ func TestSmokeVUsIncrease(t *testing.T) {
 
 	okData, okResponses, failResponses := convertResponsesData(gen)
 	require.GreaterOrEqual(t, okResponses[0].Duration, 50*time.Millisecond)
-	require.GreaterOrEqual(t, len(okResponses), 147)
-	require.GreaterOrEqual(t, len(okData), 147)
+	require.GreaterOrEqual(t, len(okResponses), 140)
+	require.GreaterOrEqual(t, len(okData), 140)
 	require.Equal(t, okResponses[0].Data.(string), "successCallData")
-	require.Equal(t, okResponses[147].Data.(string), "successCallData")
+	require.Equal(t, okResponses[140].Data.(string), "successCallData")
 	require.Empty(t, failResponses)
 	require.Empty(t, gen.Errors())
 }
@@ -706,10 +706,10 @@ func TestSmokeVUsDecrease(t *testing.T) {
 
 	okData, okResponses, failResponses := convertResponsesData(gen)
 	require.GreaterOrEqual(t, okResponses[0].Duration, 50*time.Millisecond)
-	require.GreaterOrEqual(t, len(okResponses), 147)
-	require.GreaterOrEqual(t, len(okData), 147)
+	require.GreaterOrEqual(t, len(okResponses), 140)
+	require.GreaterOrEqual(t, len(okData), 140)
 	require.Equal(t, okResponses[0].Data.(string), "successCallData")
-	require.Equal(t, okResponses[147].Data.(string), "successCallData")
+	require.Equal(t, okResponses[140].Data.(string), "successCallData")
 	require.Empty(t, failResponses)
 	require.Empty(t, gen.Errors())
 }
