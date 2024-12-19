@@ -32,6 +32,7 @@ var AggregateResultsCmd = &cobra.Command{
 		reportID, _ := cmd.Flags().GetString("report-id")
 		splunkURL, _ := cmd.Flags().GetString("splunk-url")
 		splunkToken, _ := cmd.Flags().GetString("splunk-token")
+		splunkEvent, _ := cmd.Flags().GetString("splunk-event")
 
 		// Ensure the output directory exists
 		if err := fs.MkdirAll(outputDir, 0755); err != nil {
@@ -44,7 +45,11 @@ var AggregateResultsCmd = &cobra.Command{
 		s.Start()
 
 		// Load test reports from JSON files and aggregate them
-		aggregatedReport, err := reports.LoadAndAggregate(resultsPath, reports.WithReportID(reportID), reports.WithSplunk(splunkURL, splunkToken))
+		aggregatedReport, err := reports.LoadAndAggregate(
+			resultsPath,
+			reports.WithReportID(reportID),
+			reports.WithSplunk(splunkURL, splunkToken, reports.SplunkEvent(splunkEvent)),
+		)
 		if err != nil {
 			s.Stop()
 			fmt.Println()
@@ -190,6 +195,7 @@ func init() {
 	AggregateResultsCmd.Flags().String("report-id", "", "Optional identifier for the test report. Will be generated if not provided")
 	AggregateResultsCmd.Flags().String("splunk-url", "", "Optional url to simultaneously send the test results to splunk")
 	AggregateResultsCmd.Flags().String("splunk-token", "", "Optional Splunk HEC token to simultaneously send the test results to splunk")
+	AggregateResultsCmd.Flags().String("splunk-event", "manual", "Optional Splunk event to send as the triggering event for the test results")
 
 	if err := AggregateResultsCmd.MarkFlagRequired("results-path"); err != nil {
 		log.Fatal().Err(err).Msg("Error marking flag as required")

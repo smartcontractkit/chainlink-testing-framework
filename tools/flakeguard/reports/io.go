@@ -37,6 +37,7 @@ type aggregateOptions struct {
 	reportID    string
 	splunkURL   string
 	splunkToken string
+	splunkEvent SplunkEvent
 }
 
 // AggregateOption is a functional option for configuring the aggregation process.
@@ -50,10 +51,11 @@ func WithReportID(reportID string) AggregateOption {
 }
 
 // WithSplunk also sends the aggregation to a Splunk instance as events.
-func WithSplunk(splunkURL, splunkToken string) AggregateOption {
+func WithSplunk(url, token string, event SplunkEvent) AggregateOption {
 	return func(opts *aggregateOptions) {
-		opts.splunkURL = splunkURL
-		opts.splunkToken = splunkToken
+		opts.splunkURL = url
+		opts.splunkToken = token
+		opts.splunkEvent = event
 	}
 }
 
@@ -192,9 +194,9 @@ func decodeField(decoder *json.Decoder, report *TestReport) error {
 		if err := decoder.Decode(&report.SelectedTests); err != nil {
 			return fmt.Errorf("error decoding SelectedTests: %w", err)
 		}
-	case "report_id":
-		if err := decoder.Decode(&report.ReportID); err != nil {
-			return fmt.Errorf("error decoding ReportID: %w", err)
+	case "id":
+		if err := decoder.Decode(&report.ID); err != nil {
+			return fmt.Errorf("error decoding ID: %w", err)
 		}
 	case "results":
 		token, err := decoder.Token() // Read opening bracket '['
@@ -221,7 +223,6 @@ func decodeField(decoder *json.Decoder, report *TestReport) error {
 		}
 		log.Warn().Str("field", fieldName).Msg("Skipped unknown field, check the test report struct to see if it's been properly updated")
 	}
-	fmt.Printf("Decoded field: %s\n", fieldName)
 	return nil
 }
 

@@ -6,11 +6,15 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/go-resty/resty/v2"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 )
 
 // TestReport reports on the parameters and results of one to many test runs
 type TestReport struct {
-	ReportID           string       `json:"report_id"`
+	ID                 string       `json:"id"`
 	GoProject          string       `json:"go_project"`
 	HeadSHA            string       `json:"head_sha"`
 	BaseSHA            string       `json:"base_sha"`
@@ -25,6 +29,9 @@ type TestReport struct {
 
 // TestResult contains the results and outputs of a single test
 type TestResult struct {
+	// ReportID is the ID of the report this test result belongs to
+	// used mostly for Splunk logging
+	ReportID       string              `json:"report_id"`
 	TestName       string              `json:"test_name"`
 	TestPackage    string              `json:"test_package"`
 	PackagePanic   bool                `json:"package_panic"`
@@ -79,7 +86,7 @@ const (
 
 // SplunkTestReport is the full wrapper structure sent to Splunk for the full test report (sans results)
 type SplunkTestReport struct {
-	Event      SplunkTestResultEvent `json:"event"`      // https://docs.splunk.com/Splexicon:Event
+	Event      SplunkTestReportEvent `json:"event"`      // https://docs.splunk.com/Splexicon:Event
 	SourceType string                `json:"sourcetype"` // https://docs.splunk.com/Splexicon:Sourcetype
 }
 
@@ -180,7 +187,7 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 	excludedTests := map[string]struct{}{}
 	selectedTests := map[string]struct{}{}
 
-	fullReport.ReportID = opts.reportID
+	fullReport.ID = opts.reportID
 	for report := range reportChan {
 		if fullReport.GoProject == "" {
 			fullReport.GoProject = report.GoProject
@@ -196,6 +203,7 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 			selectedTests[test] = struct{}{}
 		}
 		for _, result := range report.Results {
+			result.ReportID = opts.reportID
 			key := result.TestName + "|" + result.TestPackage
 			if existing, found := testMap[key]; found {
 				existing = mergeTestResults(existing, result)
@@ -218,16 +226,95 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 		fullReport.SelectedTests = append(fullReport.SelectedTests, test)
 	}
 
+	// Send report to Splunk before adding test results
+	if opts.splunkURL != "" {
+		err := sendReportToSplunk(opts.splunkURL, opts.splunkToken, opts.splunkEvent, fullReport)
+		if err != nil {
+			log.Error().Err(err).Msg("Error sending report to Splunk")
+		} else {
+			log.Debug().Str("event", string(opts.splunkEvent)).Msg("Report sent to Splunk")
+		}
+	}
+
 	// Prepare final results
+	eg := errgroup.Group{}
 	var aggregatedResults []TestResult
-	for _, result := range testMap {
+	for _, r := range testMap {
+		result := r
 		aggregatedResults = append(aggregatedResults, result)
+		if opts.splunkURL != "" {
+			eg.Go(func() error {
+				return sendResultsToSplunk(opts.splunkURL, opts.splunkToken, opts.splunkEvent, result)
+			})
+		}
 	}
 
 	sortTestResults(aggregatedResults)
 	fullReport.Results = aggregatedResults
 
+	if splunkErr := eg.Wait(); splunkErr != nil {
+		log.Error().Err(splunkErr).Msg("Error sending results to Splunk")
+	} else {
+		log.Debug().Str("event", string(opts.splunkEvent)).Msg("All results sent to Splunk")
+	}
 	return fullReport, nil
+}
+
+// sendReportToSplunk sends meta test report data to Splunk
+func sendReportToSplunk(url, token string, event SplunkEvent, report *TestReport) error {
+	client := resty.New()
+	client.AddRetryAfterErrorCondition().SetRetryCount(3).SetRetryWaitTime(5 * time.Second)
+	resp, err := client.R().
+		SetHeader("Authorization", fmt.Sprintf("Splunk %s", token)).
+		SetHeader("Content-Type", "application/json").
+		SetBody(SplunkTestReport{
+			Event: SplunkTestReportEvent{
+				Event: event,
+				Type:  Report,
+				Data:  *report,
+			},
+			SourceType: "flakeguard_json",
+		}).
+		Post(url)
+	if err != nil {
+		return err
+	}
+	if resp.IsError() {
+		return fmt.Errorf("error sending report to Splunk: %s", resp.String())
+	}
+	return nil
+}
+
+func sendResultsToSplunk(url, token string, event SplunkEvent, results ...TestResult) error {
+	client := resty.New()
+	client.AddRetryAfterErrorCondition().SetRetryCount(3).SetRetryWaitTime(5 * time.Second)
+	eg := errgroup.Group{}
+	for _, r := range results {
+		result := r
+		eg.Go(func() error {
+			resp, err := client.R().
+				SetHeader("Authorization", fmt.Sprintf("Splunk %s", token)).
+				SetHeader("Content-Type", "application/json").
+				SetBody(SplunkTestResult{
+					Event: SplunkTestResultEvent{
+						Event: event,
+						Type:  Result,
+						Data:  result,
+					},
+					SourceType: "flakeguard_json",
+				}).
+				Post(url)
+			if err != nil {
+				return err
+			}
+			if resp.IsError() {
+				return fmt.Errorf("error sending result to Splunk: %s", resp.String())
+			}
+			return nil
+		})
+	}
+
+	return eg.Wait()
 }
 
 func aggregateFromReports(opts *aggregateOptions, reports ...*TestReport) (*TestReport, error) {
