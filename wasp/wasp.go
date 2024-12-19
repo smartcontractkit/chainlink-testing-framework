@@ -217,7 +217,6 @@ type Stats struct {
 	CurrentSegment  atomic.Int64 `json:"current_schedule_segment"`
 	SamplesRecorded atomic.Int64 `json:"samples_recorded"`
 	SamplesSkipped  atomic.Int64 `json:"samples_skipped"`
-	RunStarted      atomic.Bool  `json:"runStarted"`
 	RunPaused       atomic.Bool  `json:"runPaused"`
 	RunStopped      atomic.Bool  `json:"runStopped"`
 	RunFailed       atomic.Bool  `json:"runFailed"`
@@ -246,6 +245,7 @@ type Generator struct {
 	Log                zerolog.Logger
 	labels             model.LabelSet
 	rl                 atomic.Pointer[ratelimit.Limiter]
+	executionLoopStart chan struct{}
 	scheduleSegments   []*Segment
 	currentSegmentMu   *sync.Mutex
 	currentSegment     *Segment
@@ -320,6 +320,7 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 		dataCancel:         dataCancel,
 		gun:                cfg.Gun,
 		vu:                 cfg.VU,
+		executionLoopStart: make(chan struct{}),
 		Responses:          NewResponses(rch),
 		ResponsesChan:      rch,
 		labels:             ls,
@@ -349,9 +350,9 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 	return g, nil
 }
 
-// runExecuteLoop initiates the generator's execution loop based on the configured load type.
-// It manages request pacing for RPS or handles virtual users for load testing scenarios.
-func (g *Generator) runExecuteLoop() {
+// runRPSLoop initiates the generator's RPS loop, noop if load type is VU.
+// It manages request pacing for RPS after the first segment is loaded.
+func (g *Generator) runRPSLoop() {
 	g.currentSegment = g.scheduleSegments[0]
 	g.stats.LastSegment.Store(int64(len(g.scheduleSegments)))
 	switch g.Cfg.LoadType {
@@ -359,6 +360,8 @@ func (g *Generator) runExecuteLoop() {
 		g.ResponsesWaitGroup.Add(1)
 		// we run pacedCall controlled by stats.CurrentRPS
 		go func() {
+			// start when first segment is loaded, see
+			<-g.executionLoopStart
 			for {
 				select {
 				case <-g.ResponsesCtx.Done():
@@ -370,17 +373,6 @@ func (g *Generator) runExecuteLoop() {
 				}
 			}
 		}()
-	case VU:
-		g.currentSegmentMu.Lock()
-		g.stats.CurrentVUs.Store(g.currentSegment.From)
-		g.currentSegmentMu.Unlock()
-		// we start all vus once
-		vus := g.stats.CurrentVUs.Load()
-		for i := 0; i < int(vus); i++ {
-			inst := g.vu.Clone(g)
-			g.runVU(inst)
-			g.vus = append(g.vus, inst)
-		}
 	}
 }
 
@@ -478,7 +470,6 @@ func (g *Generator) runVU(vu VirtualUser) {
 // It returns true when all segments have been handled, signaling the scheduler to terminate.
 func (g *Generator) processSegment() bool {
 	defer func() {
-		g.stats.RunStarted.Store(true)
 		g.Log.Info().
 			Int64("Segment", g.stats.CurrentSegment.Load()).
 			Int64("VUs", g.stats.CurrentVUs.Load()).
@@ -498,6 +489,8 @@ func (g *Generator) processSegment() bool {
 		newRateLimit := ratelimit.New(int(g.currentSegment.From), ratelimit.Per(g.Cfg.RateLimitUnitDuration), ratelimit.WithoutSlack)
 		g.rl.Store(&newRateLimit)
 		g.stats.CurrentRPS.Store(g.currentSegment.From)
+		// signal RPS loop to start
+		g.executionLoopStart <- struct{}{}
 	case VU:
 		oldVUs := g.stats.CurrentVUs.Load()
 		newVUs := g.currentSegment.From
@@ -621,12 +614,6 @@ func (g *Generator) collectVUResults() {
 // handling timeouts and storing the response.
 // It ensures requests adhere to the generator's configuration and execution state.
 func (g *Generator) pacedCall() {
-	if !g.Stats().RunStarted.Load() {
-		return
-	}
-	//if g.rl.Load() == nil {
-	//	return
-	//}
 	(*g.rl.Load()).Take()
 	if g.stats.RunPaused.Load() {
 		return
@@ -670,7 +657,7 @@ func (g *Generator) Run(wait bool) (interface{}, bool) {
 		g.sendStatsToLoki()
 	}
 	g.runScheduleLoop()
-	g.runExecuteLoop()
+	g.runRPSLoop()
 	g.collectVUResults()
 	if wait {
 		return g.Wait()
@@ -698,7 +685,6 @@ func (g *Generator) Stop() (interface{}, bool) {
 	if g.stats.RunStopped.Load() {
 		return nil, true
 	}
-	g.stats.RunStarted.Store(false)
 	g.stats.RunStopped.Store(true)
 	g.stats.RunFailed.Store(true)
 	g.Log.Warn().Msg("Graceful stop")
