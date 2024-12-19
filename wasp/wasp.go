@@ -346,7 +346,6 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 			return nil, err
 		}
 	}
-	CPUCheckLoop()
 	return g, nil
 }
 
