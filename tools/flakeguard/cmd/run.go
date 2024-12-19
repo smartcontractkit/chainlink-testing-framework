@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 
+	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner"
 	"github.com/spf13/cobra"
@@ -35,19 +35,19 @@ var RunTestsCmd = &cobra.Command{
 
 		// Check if project dependencies are correctly set up
 		if err := checkDependencies(projectPath); err != nil {
-			log.Fatalf("Error: %v", err)
+			log.Fatal().Err(err).Msg("Error checking project dependencies")
 		}
 
 		// Determine test packages
 		var testPackages []string
 		if testPackagesJson != "" {
 			if err := json.Unmarshal([]byte(testPackagesJson), &testPackages); err != nil {
-				log.Fatalf("Error decoding test packages JSON: %v", err)
+				log.Fatal().Err(err).Msg("Error decoding test packages JSON")
 			}
 		} else if len(testPackagesArg) > 0 {
 			testPackages = testPackagesArg
 		} else {
-			log.Fatalf("Error: must specify either --test-packages-json or --test-packages")
+			log.Fatal().Msg("Error: must specify either --test-packages-json or --test-packages")
 		}
 
 		// Initialize the runner
@@ -69,24 +69,23 @@ var RunTestsCmd = &cobra.Command{
 		// Run the tests
 		testReport, err := testRunner.RunTests()
 		if err != nil {
-			fmt.Printf("Error running tests: %v\n", err)
-			os.Exit(1)
+			log.Fatal().Err(err).Msg("Error running tests")
 		}
 
 		// Save the test results in JSON format
 		if outputPath != "" && len(testReport.Results) > 0 {
 			jsonData, err := json.MarshalIndent(testReport, "", "  ")
 			if err != nil {
-				log.Fatalf("Error marshaling test results to JSON: %v", err)
+				log.Fatal().Err(err).Msg("Error marshaling test results to JSON")
 			}
 			if err := os.WriteFile(outputPath, jsonData, 0600); err != nil {
-				log.Fatalf("Error writing test results to file: %v", err)
+				log.Fatal().Err(err).Msg("Error writing test results to file")
 			}
-			fmt.Printf("All test results saved to %s\n", outputPath)
+			log.Info().Str("path", outputPath).Msg("Test results saved")
 		}
 
 		if len(testReport.Results) == 0 {
-			fmt.Printf("No tests were run for the specified packages.\n")
+			log.Warn().Msg("No tests were run for the specified packages")
 			return
 		}
 
@@ -96,7 +95,7 @@ var RunTestsCmd = &cobra.Command{
 		})
 
 		if len(flakyTests) > 0 {
-			fmt.Printf("Found %d flaky tests below the pass ratio threshold of %.2f:\n", len(flakyTests), maxPassRatio)
+			log.Info().Int("count", len(flakyTests)).Str("pass ratio threshold", fmt.Sprintf("%.2f%%", maxPassRatio*100)).Msg("Found flaky tests")
 			fmt.Printf("\nFlakeguard Summary\n")
 			reports.RenderResults(os.Stdout, flakyTests, maxPassRatio, false)
 			// Exit with error code if there are flaky tests

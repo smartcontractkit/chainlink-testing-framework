@@ -10,20 +10,25 @@ import (
 
 // TestReport reports on the parameters and results of one to many test runs
 type TestReport struct {
-	GoProject          string       `json:"go_project"`
-	HeadSHA            string       `json:"head_sha"`
-	BaseSHA            string       `json:"base_sha"`
-	RepoURL            string       `json:"repo_url"`
-	GitHubWorkflowName string       `json:"github_workflow_name"`
-	TestRunCount       int          `json:"test_run_count"`
-	RaceDetection      bool         `json:"race_detection"`
-	ExcludedTests      []string     `json:"excluded_tests"`
-	SelectedTests      []string     `json:"selected_tests"`
-	Results            []TestResult `json:"results"`
+	ID                   string       `json:"id"`
+	GoProject            string       `json:"go_project"`
+	HeadSHA              string       `json:"head_sha,omitempty"`
+	BaseSHA              string       `json:"base_sha,omitempty"`
+	RepoURL              string       `json:"repo_url,omitempty"`
+	GitHubWorkflowName   string       `json:"github_workflow_name,omitempty"`
+	GitHubWorkflowRunURL string       `json:"github_workflow_run_url,omitempty"`
+	TestRunCount         int          `json:"test_run_count"`
+	RaceDetection        bool         `json:"race_detection"`
+	ExcludedTests        []string     `json:"excluded_tests,omitempty"`
+	SelectedTests        []string     `json:"selected_tests,omitempty"`
+	Results              []TestResult `json:"results,omitempty"`
 }
 
 // TestResult contains the results and outputs of a single test
 type TestResult struct {
+	// ReportID is the ID of the report this test result belongs to
+	// used mostly for Splunk logging
+	ReportID       string              `json:"report_id"`
 	TestName       string              `json:"test_name"`
 	TestPackage    string              `json:"test_package"`
 	PackagePanic   bool                `json:"package_panic"`
@@ -58,6 +63,58 @@ type SummaryData struct {
 	SkippedRuns    int     `json:"skipped_runs"`
 	PassRatio      string  `json:"pass_ratio"`
 	MaxPassRatio   float64 `json:"max_pass_ratio"`
+}
+
+// SplunkEvent represents a customized splunk event string that helps us distinguish what
+// triggered the test to run. This is a custom field, different from the Splunk event field.
+type SplunkEvent string
+
+// SplunkType represents what type of data is being sent to Splunk, e.g. a report or a result.
+// This is a custom field to help us distinguish what kind of data we're sending.
+type SplunkType string
+
+const (
+	Manual      SplunkEvent = "manual"
+	Scheduled   SplunkEvent = "scheduled"
+	PullRequest SplunkEvent = "pull_request"
+
+	Report SplunkType = "report"
+	Result SplunkType = "result"
+
+	// https://docs.splunk.com/Splexicon:Sourcetype
+	SplunkSourceType = "flakeguard_json"
+	// https://docs.splunk.com/Splexicon:Index
+	SplunkIndex = "github_flakeguard_runs"
+)
+
+// SplunkTestReport is the full wrapper structure sent to Splunk for the full test report (sans results)
+type SplunkTestReport struct {
+	Event      SplunkTestReportEvent `json:"event"`      // https://docs.splunk.com/Splexicon:Event
+	SourceType string                `json:"sourcetype"` // https://docs.splunk.com/Splexicon:Sourcetype
+	Index      string                `json:"index"`      // https://docs.splunk.com/Splexicon:Index
+}
+
+// SplunkTestReportEvent contains the actual meat of the Splunk test report event
+type SplunkTestReportEvent struct {
+	Event SplunkEvent `json:"event"`
+	Type  SplunkType  `json:"type"`
+	Data  TestReport  `json:"data"`
+	// Incomplete indicates that there were issues uploading test results and the report is incomplete
+	Incomplete bool `json:"incomplete"`
+}
+
+// SplunkTestResult is the full wrapper structure sent to Splunk for a single test result
+type SplunkTestResult struct {
+	Event      SplunkTestResultEvent `json:"event"`      // https://docs.splunk.com/Splexicon:Event
+	SourceType string                `json:"sourcetype"` // https://docs.splunk.com/Splexicon:Sourcetype
+	Index      string                `json:"index"`      // https://docs.splunk.com/Splexicon:Index
+}
+
+// SplunkTestResultEvent contains the actual meat of the Splunk test result event
+type SplunkTestResultEvent struct {
+	Event SplunkEvent `json:"event"`
+	Type  SplunkType  `json:"type"`
+	Data  TestResult  `json:"data"`
 }
 
 // Data Processing Functions
@@ -129,66 +186,6 @@ func FilterTests(results []TestResult, predicate func(TestResult) bool) []TestRe
 		}
 	}
 	return filtered
-}
-
-func aggregate(reportChan <-chan *TestReport) (*TestReport, error) {
-	testMap := make(map[string]TestResult)
-	fullReport := &TestReport{}
-	excludedTests := map[string]struct{}{}
-	selectedTests := map[string]struct{}{}
-
-	for report := range reportChan {
-		if fullReport.GoProject == "" {
-			fullReport.GoProject = report.GoProject
-		} else if fullReport.GoProject != report.GoProject {
-			return nil, fmt.Errorf("reports with different Go projects found, expected %s, got %s", fullReport.GoProject, report.GoProject)
-		}
-		fullReport.TestRunCount += report.TestRunCount
-		fullReport.RaceDetection = report.RaceDetection && fullReport.RaceDetection
-		for _, test := range report.ExcludedTests {
-			excludedTests[test] = struct{}{}
-		}
-		for _, test := range report.SelectedTests {
-			selectedTests[test] = struct{}{}
-		}
-		for _, result := range report.Results {
-			key := result.TestName + "|" + result.TestPackage
-			if existing, found := testMap[key]; found {
-				existing = mergeTestResults(existing, result)
-				testMap[key] = existing
-			} else {
-				testMap[key] = result
-			}
-		}
-	}
-
-	// Finalize excluded and selected tests
-	for test := range excludedTests {
-		fullReport.ExcludedTests = append(fullReport.ExcludedTests, test)
-	}
-	for test := range selectedTests {
-		fullReport.SelectedTests = append(fullReport.SelectedTests, test)
-	}
-
-	// Prepare final results
-	var aggregatedResults []TestResult
-	for _, result := range testMap {
-		aggregatedResults = append(aggregatedResults, result)
-	}
-
-	sortTestResults(aggregatedResults)
-	fullReport.Results = aggregatedResults
-
-	return fullReport, nil
-}
-
-func aggregateFromReports(reports ...*TestReport) (*TestReport, error) {
-	reportChan := make(chan *TestReport, len(reports))
-	for _, report := range reports {
-		reportChan <- report
-	}
-	close(reportChan)
-	return aggregate(reportChan)
 }
 
 func mergeTestResults(a, b TestResult) TestResult {

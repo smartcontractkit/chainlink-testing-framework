@@ -2,9 +2,8 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
 
+	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/git"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/golang"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/utils"
@@ -32,18 +31,18 @@ var FindTestsCmd = &cobra.Command{
 		if findByTestFilesDiff {
 			changedTestFiles, err := git.FindChangedFiles(projectPath, baseRef, "grep '_test\\.go$'")
 			if err != nil {
-				log.Fatalf("Error finding changed test files: %v", err)
+				log.Fatal().Err(err).Msg("Error finding changed test files")
 			}
 			if onlyShowChangedTestFiles {
 				outputResults(changedTestFiles, jsonOutput)
 				return
 			}
 			if verbose {
-				fmt.Println("Changed test files:", changedTestFiles)
+				log.Debug().Strs("files", changedTestFiles).Msg("Found changed test files")
 			}
 			changedTestPkgs, err = golang.GetFilePackages(changedTestFiles)
 			if err != nil {
-				log.Fatalf("Error getting package names for test files: %v", err)
+				log.Fatal().Err(err).Msg("Error getting package names for test files")
 			}
 		}
 
@@ -51,7 +50,7 @@ var FindTestsCmd = &cobra.Command{
 		var affectedTestPkgs []string
 		if findByAffected {
 			if verbose {
-				fmt.Println("Finding affected packages...")
+				log.Debug().Msg("Finding affected packages...")
 			}
 			affectedTestPkgs = findAffectedPackages(baseRef, projectPath, excludes, levels)
 		}
@@ -63,7 +62,7 @@ var FindTestsCmd = &cobra.Command{
 		// Filter out packages that do not have tests
 		if filterEmptyTests {
 			if verbose {
-				fmt.Println("Filtering packages without tests...")
+				log.Debug().Msg("Filtering packages without tests...")
 			}
 			testPkgs = golang.FilterPackagesWithTests(testPkgs)
 		}
@@ -85,27 +84,27 @@ func init() {
 	FindTestsCmd.Flags().Bool("only-show-changed-test-files", false, "Only show the changed test files and exit")
 
 	if err := FindTestsCmd.MarkFlagRequired("base-ref"); err != nil {
-		fmt.Println("Error marking base-ref as required:", err)
+		log.Fatal().Err(err).Msg("Error marking base-ref as required")
 	}
 }
 
 func findAffectedPackages(baseRef, projectPath string, excludes []string, levels int) []string {
 	goList, err := golang.GoList()
 	if err != nil {
-		log.Fatalf("Error getting go list: %v\nStdErr: %s", err, goList.Stderr.String())
+		log.Fatal().Err(err).Msg("Error getting go list")
 	}
 	gitDiff, err := git.Diff(baseRef)
 	if err != nil {
-		log.Fatalf("Error getting the git diff: %v\nStdErr: %s", err, gitDiff.Stderr.String())
+		log.Fatal().Err(err).Msg("Error getting the git diff")
 	}
 	gitModDiff, err := git.ModDiff(baseRef, projectPath)
 	if err != nil {
-		log.Fatalf("Error getting the git mod diff: %v\nStdErr: %s", err, gitModDiff.Stderr.String())
+		log.Fatal().Err(err).Msg("Error getting the git mod diff")
 	}
 
 	packages, err := golang.ParsePackages(goList.Stdout)
 	if err != nil {
-		log.Fatalf("Error parsing packages: %v", err)
+		log.Fatal().Err(err).Msg("Error parsing packages")
 	}
 
 	fileMap := golang.GetGoFileMap(packages, true)
@@ -113,12 +112,12 @@ func findAffectedPackages(baseRef, projectPath string, excludes []string, levels
 	var changedPackages []string
 	changedPackages, err = git.GetChangedGoPackagesFromDiff(gitDiff.Stdout, projectPath, excludes, fileMap)
 	if err != nil {
-		log.Fatalf("Error getting changed packages: %v", err)
+		log.Fatal().Err(err).Msg("Error getting changed packages")
 	}
 
 	changedModPackages, err := git.GetGoModChangesFromDiff(gitModDiff.Stdout)
 	if err != nil {
-		log.Fatalf("Error getting go.mod changes: %v", err)
+		log.Fatal().Err(err).Msg("Error getting go.mod changes")
 	}
 
 	depMap := golang.GetGoDepMap(packages)
@@ -156,12 +155,12 @@ func outputResults(packages []string, jsonOutput bool) {
 	if jsonOutput {
 		data, err := json.Marshal(packages)
 		if err != nil {
-			log.Fatalf("Error marshaling test files to JSON: %v", err)
+			log.Fatal().Err(err).Msg("Error marshaling test packages to JSON")
 		}
-		fmt.Println(string(data))
+		log.Debug().Str("output", string(data)).Msg("JSON")
 	} else {
 		for _, pkg := range packages {
-			fmt.Print(pkg, " ")
+			log.Debug().Str("package", pkg).Msg("Test package")
 		}
 	}
 }

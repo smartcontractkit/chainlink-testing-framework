@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/utils"
 )
 
@@ -94,7 +95,7 @@ func GetPackageNames(dirs []string) []string {
 		cmd.Dir = dir
 		out, err := cmd.Output()
 		if err != nil {
-			fmt.Printf("Error getting package name for directory %s: %s\n", dir, err)
+			log.Error().Str("directory", dir).Err(err).Msg("Error getting package name")
 			continue
 		}
 		packageName := strings.TrimSpace(string(out))
@@ -188,7 +189,7 @@ func FilterPackagesWithTests(pkgs []string) []string {
 	for _, pkg := range pkgs {
 		hasT, err := hasTests(pkg)
 		if err != nil {
-			fmt.Printf("Error checking for tests in package %s: %s\n", pkg, err)
+			log.Error().Err(err).Str("package", pkg).Msg("Error checking for tests")
 		}
 		if hasT {
 			testPkgs = append(testPkgs, pkg)
