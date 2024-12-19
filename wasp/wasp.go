@@ -378,13 +378,13 @@ func (g *Generator) runExecuteLoop() {
 		g.currentSegmentMu.Unlock()
 		// we start all vus once
 		vus := g.stats.CurrentVUs.Load()
-		g.vusMu.Lock()
 		for i := 0; i < int(vus); i++ {
 			inst := g.vu.Clone(g)
 			g.runVU(inst)
+			g.vusMu.Lock()
 			g.vus = append(g.vus, inst)
+			g.vusMu.Unlock()
 		}
-		g.vusMu.Unlock()
 	}
 }
 
