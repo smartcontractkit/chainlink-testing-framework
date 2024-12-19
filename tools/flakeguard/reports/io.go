@@ -387,6 +387,7 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 
 // sendDataToSplunk sends a truncated TestReport and each individual TestResults to Splunk as events
 func sendDataToSplunk(opts *aggregateOptions, report TestReport, results ...TestResult) error {
+	start := time.Now()
 	client := resty.New().
 		SetBaseURL(opts.splunkURL).
 		SetAuthScheme("Splunk").
@@ -395,12 +396,12 @@ func sendDataToSplunk(opts *aggregateOptions, report TestReport, results ...Test
 		SetLogger(ZerologRestyLogger{})
 	client.AddRetryAfterErrorCondition().SetRetryCount(5).SetTimeout(time.Second * 10)
 
-	log.Debug().Str("report id", report.ID).Int("results", len(report.Results)).Msg("Sending aggregated data to Splunk")
+	log.Debug().Str("report id", report.ID).Int("results", len(results)).Msg("Sending aggregated data to Splunk")
 
 	// Send results
 	var (
 		splunkErrs            = []error{}
-		resultsBatchSize      = 5
+		resultsBatchSize      = 10
 		resultsBatch          = []SplunkTestResult{}
 		successfulResultsSent = 0
 	)
@@ -420,7 +421,6 @@ func sendDataToSplunk(opts *aggregateOptions, report TestReport, results ...Test
 			if err != nil {
 				return fmt.Errorf("error batching results: %w", err)
 			}
-			resultsBatch = []SplunkTestResult{}
 
 			resp, err := client.R().
 				SetBody(batchData.String()).
@@ -436,22 +436,10 @@ func sendDataToSplunk(opts *aggregateOptions, report TestReport, results ...Test
 				)
 			}
 			if err == nil && !resp.IsError() {
-				successfulResultsSent += resultsBatchSize
+				successfulResultsSent += len(resultsBatch)
 			}
+			resultsBatch = []SplunkTestResult{}
 		}
-	}
-
-	if len(splunkErrs) > 0 {
-		log.Error().
-			Int("successfully sent", successfulResultsSent).
-			Int("total results", len(results)).
-			Errs("errors", splunkErrs).
-			Msg("Errors occurred while sending test results to Splunk")
-	} else {
-		log.Debug().
-			Int("successfully sent", successfulResultsSent).
-			Int("total results", len(results)).
-			Msg("All results sent successfully")
 	}
 
 	// Check if errors occurred while uploading results and send report with incomplete flag
@@ -473,6 +461,20 @@ func sendDataToSplunk(opts *aggregateOptions, report TestReport, results ...Test
 	}
 	if resp.IsError() {
 		splunkErrs = append(splunkErrs, fmt.Errorf("error sending flakeguard report '%s' to Splunk: %s", report.ID, resp.String()))
+	}
+	if len(splunkErrs) > 0 {
+		log.Error().
+			Int("successfully sent", successfulResultsSent).
+			Int("total results", len(results)).
+			Errs("errors", splunkErrs).
+			Str("duration", time.Since(start).String()).
+			Msg("Errors occurred while sending test results to Splunk")
+	} else {
+		log.Debug().
+			Int("successfully sent", successfulResultsSent).
+			Int("total results", len(results)).
+			Str("duration", time.Since(start).String()).
+			Msg("All results sent successfully")
 	}
 	return errors.Join(splunkErrs...)
 }
