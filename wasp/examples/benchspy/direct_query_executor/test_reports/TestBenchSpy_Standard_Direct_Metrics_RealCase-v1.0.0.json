@@ -1,0 +1,56 @@
+{
+ "test_name": "TestBenchSpy_Standard_Direct_Metrics_RealCase",
+ "commit_or_tag": "v1.0.0",
+ "test_start_timestamp": "2024-12-18T12:26:01.578938+01:00",
+ "test_end_timestamp": "2024-12-18T12:26:16.579713+01:00",
+ "generator_configs": {
+  "vu": {
+   "generator_name": "vu",
+   "load_type": "vu_schedule",
+   "schedule": [
+    {
+     "from": 10,
+     "duration": 15000000000,
+     "type": "plain",
+     "time_start": "2024-12-18T12:26:01.578938+01:00",
+     "time_end": "2024-12-18T12:26:16.579713+01:00"
+    }
+   ],
+   "rate_limit_unit_duration": 1000000000,
+   "call_timeout": 100000000
+  }
+ },
+ "directory": "test_reports",
+ "query_executors": [
+  {
+   "kind": "direct",
+   "generator_config": {
+    "generator_name": "vu",
+    "load_type": "vu_schedule",
+    "schedule": [
+     {
+      "from": 10,
+      "duration": 15000000000,
+      "type": "plain",
+      "time_start": "2024-12-18T12:26:01.578938+01:00",
+      "time_end": "2024-12-18T12:26:16.579713+01:00"
+     }
+    ],
+    "rate_limit_unit_duration": 1000000000,
+    "call_timeout": 100000000
+   },
+   "queries": [
+    "median_latency",
+    "95th_percentile_latency",
+    "max_latency",
+    "error_rate"
+   ],
+   "query_results": {
+    "95th_percentile_latency": 51.0081875,
+    "error_rate": 0,
+    "max_latency": 52.136167,
+    "median_latency": 50.425604
+   }
+  }
+ ]
+}

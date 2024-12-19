@@ -1,4 +1,4 @@
-name: WASP Go Tests
+name: WASP's BenchSpy Go Tests
 on: [push]
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -8,7 +8,7 @@ jobs:
     defaults:
       run:
         working-directory: wasp
-    runs-on: ubuntu22.04-16cores-64GB
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: dorny/paths-filter@v3
@@ -16,7 +16,7 @@ jobs:
         with:
           filters: |
             src:
-              - 'wasp/**'
+              - 'wasp/benchspy/**'
       - uses: cachix/install-nix-action@08dcb3a5e62fa31e2da3d490afc4176ef55ecd72 # v30
         if: steps.changes.outputs.src == 'true'
         with:
@@ -24,4 +24,4 @@ jobs:
       - name: Run tests
         if: steps.changes.outputs.src == 'true'
         run: |-
-          nix develop -c make test_race
+          nix develop -c make test_benchspy_race
