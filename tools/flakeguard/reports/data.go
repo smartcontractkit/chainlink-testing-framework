@@ -78,7 +78,7 @@ type SplunkType string
 
 const (
 	Manual      SplunkEvent = "manual"
-	Periodic    SplunkEvent = "periodic"
+	Scheduled   SplunkEvent = "scheduled"
 	PullRequest SplunkEvent = "pull_request"
 
 	Report SplunkType = "report"
