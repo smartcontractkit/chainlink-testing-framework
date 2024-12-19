@@ -31,7 +31,7 @@ jobs:
           GOPRIVATE: github.com/smartcontractkit/generate-go-function-docs
         run: |
           git config --global url."https://x-access-token:${{ steps.setup-github-token-read.outputs.access-token }}@github.com/".insteadOf "https://github.com/"
-          go install github.com/smartcontractkit/generate-go-function-docs@v0.0.1
+          go install github.com/smartcontractkit/generate-go-function-docs@v0.0.2
           go install github.com/jmank88/gomods@v0.1.3
           go install golang.org/x/tools/gopls@latest
 
