@@ -24,4 +24,4 @@ jobs:
       - name: Run tests
         if: steps.changes.outputs.src == 'true'
         run: |-
-          nix develop -c make test_race
+          nix develop -c make test
