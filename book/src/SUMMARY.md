@@ -101,17 +101,33 @@
   - [Sentinel](./libs/sentinel.md)
 
 ---
-
 - [Releasing modules](releasing_modules.md)
-
 ---
-- [Lib (*Deprecated*)](lib.md)
-    - [Blockchain](lib/blockchain.md)
-    - [Kubernetes](lib/k8s/KUBERNETES.md)
+
+- [CTFv1 (Discouraged)](lib.md)
+  - [Blockchain](lib/blockchain.md)
+  - [Concurrency](lib/concurrency.md)
+  - [Client](lib/client.md)
+    - [Anvil]()
+    - [AWS Secrets Manager](lib/client/aws_secrets_manager.md)
+    - [Github](lib/client/github.md)
+    - [Grafana](lib/client/grafana.md)
+    - [Kafka](lib/client/kafka.md)
+    - [Loki](lib/client/loki.md)
+    - [MockServer](lib/client/mockserver.md)
+    - [Postgres](lib/client/postgres.md)
+    - [Prometheus](lib/client/prometheus.md)
+  - [Kubernetes](lib/k8s/KUBERNETES.md)
     - [K8s Remote Run](lib/k8s/REMOTE_RUN.md)
     - [K8s Tutorial](lib/k8s/TUTORIAL.md)
     - [k8s chain.link labels](lib/k8s/labels.md)
-    - [Config](lib/config/config.md)
-    - [CRIB Connector](lib/crib.md)
+  - [Config](lib/config/config.md)
+  - [CRIB Connector](lib/crib.md)
+  - [Docker](lib/docker/overview.md)
+    - [Blockchain nodes](lib/docker/blockchain_nodes.md)
+    - [Chainlink ecosystem](lib/docker/chainlink_ecosystem.md)
+    - [Third party apps]()
+    - [Test helpers](lib/docker/test_helpers.md)
+  - [Logging](lib/logging.md)
 ---
 - [Build info](build_info.md)
