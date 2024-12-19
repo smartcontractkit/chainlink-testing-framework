@@ -934,7 +934,7 @@ func (m *Client) CalculateGasEstimations(request GasEstimationRequest) GasEstima
 	defer cancel()
 
 	var disableEstimationsIfNeeded = func(err error) {
-		if strings.Contains(err.Error(), ZeroGasSuggestedErr) {
+		if strings.Contains(err.Error(), ZeroGasSuggestedErr) || strings.Contains(err.Error(), "Partial data received") {
 			L.Warn().Msg("Received incorrect gas estimations. Disabling them and reverting to hardcoded values. Remember to update your config!")
 			m.Cfg.Network.GasPriceEstimationEnabled = false
 		}

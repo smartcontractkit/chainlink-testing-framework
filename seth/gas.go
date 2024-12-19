@@ -48,7 +48,8 @@ func (m *GasEstimator) Stats(fromNumber uint64, priorityPerc float64) (GasSugges
 	}
 	gasPercs, err := quantilesFromFloatArray(baseFees)
 	if err != nil {
-		return GasSuggestions{}, err
+		L.Debug().Err(err).Msg("Error calculating gas percentiles. Will use partial data.")
+		// return GasSuggestions{}, err
 	}
 	tips := make([]float64, 0)
 	for _, bf := range hist.Reward {
@@ -64,7 +65,8 @@ func (m *GasEstimator) Stats(fromNumber uint64, priorityPerc float64) (GasSugges
 	}
 	tipPercs, err := quantilesFromFloatArray(tips)
 	if err != nil {
-		return GasSuggestions{}, err
+		// return GasSuggestions{}, err
+		L.Debug().Err(err).Msg("Error calculating tip percentiles. Will use partial data.")
 	}
 	suggestedGasPrice, err := m.Client.Client.SuggestGasPrice(context.Background())
 	if err != nil {
@@ -105,23 +107,28 @@ type GasSuggestions struct {
 func quantilesFromFloatArray(fa []float64) (*GasPercentiles, error) {
 	perMax, err := stats.Max(fa)
 	if err != nil {
-		return nil, err
+		L.Debug().Err(err).Msg("Error calculating max gas price. Continuing")
+		// return nil, err
 	}
 	perc99, err := stats.Percentile(fa, 99)
 	if err != nil {
-		return nil, err
+		L.Debug().Err(err).Msg("Error calculating p99 gas price. Continuing")
+		// return nil, err
 	}
 	perc75, err := stats.Percentile(fa, 75)
 	if err != nil {
-		return nil, err
+		L.Debug().Err(err).Msg("Error calculating p75 gas price. Continuing")
+		// return nil, err
 	}
 	perc50, err := stats.Percentile(fa, 50)
 	if err != nil {
-		return nil, err
+		L.Debug().Err(err).Msg("Error calculating p50 gas price. Continuing")
+		// return nil, err
 	}
 	perc25, err := stats.Percentile(fa, 25)
 	if err != nil {
-		return nil, err
+		L.Debug().Err(err).Msg("Error calculating p25 gas price. Continuing")
+		// return nil, err
 	}
 	return &GasPercentiles{
 		Max:    perMax,

@@ -467,22 +467,55 @@ func (m *Client) HistoricalFeeData(priority string) (baseFee float64, historical
 	stats, err := estimator.Stats(m.Cfg.Network.GasPriceEstimationBlocks, 99)
 	if err != nil {
 		L.Debug().
-			Msgf("Failed to get fee history due to: %s. Skipping automation gas estimation", err.Error())
+			Err(err).
+			Msgf("Failed to get fee history.. Skipping automation gas estimation")
 
 		return
 	}
 
 	switch priority {
 	case Priority_Degen:
+		if stats.GasPrice.Max == math.NaN() || stats.TipCap.Max == math.NaN() {
+			err = fmt.Errorf("Partial data received. Either base fee or suggested tip is 0 for Max values")
+			L.Debug().
+				Err(err).
+				Msgf("Failed to get fee history.. Skipping automation gas estimation")
+
+			return
+		}
 		baseFee = stats.GasPrice.Max
 		historicalGasTipCap = stats.TipCap.Max
 	case Priority_Fast:
+		if stats.GasPrice.Perc99 == math.NaN() || stats.TipCap.Perc99 == math.NaN() {
+			err = fmt.Errorf("Partial data received. Either base fee or suggested tip is 0 for Perc99 values")
+			L.Debug().
+				Err(err).
+				Msgf("Failed to get fee history.. Skipping automation gas estimation")
+
+			return
+		}
 		baseFee = stats.GasPrice.Perc99
 		historicalGasTipCap = stats.TipCap.Perc99
 	case Priority_Standard:
+		if stats.GasPrice.Perc50 == math.NaN() || stats.TipCap.Perc50 == math.NaN() {
+			err = fmt.Errorf("Partial data received. Either base fee or suggested tip is 0 for Perc50 values")
+			L.Debug().
+				Err(err).
+				Msgf("Failed to get fee history.. Skipping automation gas estimation")
+
+			return
+		}
 		baseFee = stats.GasPrice.Perc50
 		historicalGasTipCap = stats.TipCap.Perc50
 	case Priority_Slow:
+		if math.IsNaN(stats.GasPrice.Perc25) || math.IsNaN(stats.TipCap.Perc25) {
+			err = fmt.Errorf("Partial data received. Either base fee or suggested tip is 0 for Perc25 values")
+			L.Debug().
+				Err(err).
+				Msgf("Failed to get fee history.. Skipping automation gas estimation")
+
+			return
+		}
 		baseFee = stats.GasPrice.Perc25
 		historicalGasTipCap = stats.TipCap.Perc25
 	default:
