@@ -350,26 +350,23 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 	return g, nil
 }
 
-// runRPSLoop initiates the generator's RPS loop, noop if load type is VU.
+// runGunLoop runs the generator's Gun loop
 // It manages request pacing for RPS after the first segment is loaded.
-func (g *Generator) runRPSLoop() {
-	switch g.Cfg.LoadType {
-	case RPS:
-		g.ResponsesWaitGroup.Add(1)
-		// we run pacedCall controlled by stats.CurrentRPS
-		go func() {
-			for {
-				select {
-				case <-g.ResponsesCtx.Done():
-					g.ResponsesWaitGroup.Done()
-					g.Log.Info().Msg("RPS generator has stopped")
-					return
-				default:
-					g.pacedCall()
-				}
+func (g *Generator) runGunLoop() {
+	g.ResponsesWaitGroup.Add(1)
+	// we run pacedCall controlled by stats.CurrentRPS
+	go func() {
+		for {
+			select {
+			case <-g.ResponsesCtx.Done():
+				g.ResponsesWaitGroup.Done()
+				g.Log.Info().Msg("RPS generator has stopped")
+				return
+			default:
+				g.pacedCall()
 			}
-		}()
-	}
+		}
+	}()
 }
 
 // runSetupWithTimeout executes the VirtualUser's setup within the configured timeout.
@@ -485,9 +482,9 @@ func (g *Generator) processSegment() bool {
 		newRateLimit := ratelimit.New(int(g.currentSegment.From), ratelimit.Per(g.Cfg.RateLimitUnitDuration), ratelimit.WithoutSlack)
 		g.rl.Store(&newRateLimit)
 		g.stats.CurrentRPS.Store(g.currentSegment.From)
-		// start RPS loop once, in next segments we control it using g.rl ratelimiter
+		// start Gun loop once, in next segments we control it using g.rl ratelimiter
 		g.rpsLoopOnce.Do(func() {
-			g.runRPSLoop()
+			g.runGunLoop()
 		})
 	case VU:
 		oldVUs := g.stats.CurrentVUs.Load()
