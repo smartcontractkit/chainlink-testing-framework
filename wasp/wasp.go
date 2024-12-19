@@ -245,6 +245,7 @@ type Generator struct {
 	Log                zerolog.Logger
 	labels             model.LabelSet
 	rl                 atomic.Pointer[ratelimit.Limiter]
+	executionLoopOnce  *sync.Once
 	executionLoopStart chan struct{}
 	scheduleSegments   []*Segment
 	currentSegmentMu   *sync.Mutex
@@ -320,6 +321,7 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 		dataCancel:         dataCancel,
 		gun:                cfg.Gun,
 		vu:                 cfg.VU,
+		executionLoopOnce:  &sync.Once{},
 		executionLoopStart: make(chan struct{}),
 		Responses:          NewResponses(rch),
 		ResponsesChan:      rch,
@@ -359,9 +361,9 @@ func (g *Generator) runRPSLoop() {
 	case RPS:
 		g.ResponsesWaitGroup.Add(1)
 		// we run pacedCall controlled by stats.CurrentRPS
+		// start when first segment is loaded, see runScheduleLoop
+		<-g.executionLoopStart
 		go func() {
-			// start when first segment is loaded, see
-			<-g.executionLoopStart
 			for {
 				select {
 				case <-g.ResponsesCtx.Done():
@@ -481,16 +483,18 @@ func (g *Generator) processSegment() bool {
 	}
 	g.currentSegmentMu.Lock()
 	g.currentSegment = g.scheduleSegments[g.stats.CurrentSegment.Load()]
-	g.currentSegment.StartTime = time.Now()
 	g.currentSegmentMu.Unlock()
 	g.stats.CurrentSegment.Add(1)
+	g.currentSegment.StartTime = time.Now()
 	switch g.Cfg.LoadType {
 	case RPS:
 		newRateLimit := ratelimit.New(int(g.currentSegment.From), ratelimit.Per(g.Cfg.RateLimitUnitDuration), ratelimit.WithoutSlack)
 		g.rl.Store(&newRateLimit)
 		g.stats.CurrentRPS.Store(g.currentSegment.From)
 		// signal RPS loop to start
-		g.executionLoopStart <- struct{}{}
+		g.executionLoopOnce.Do(func() {
+			g.executionLoopStart <- struct{}{}
+		})
 	case VU:
 		oldVUs := g.stats.CurrentVUs.Load()
 		newVUs := g.currentSegment.From
