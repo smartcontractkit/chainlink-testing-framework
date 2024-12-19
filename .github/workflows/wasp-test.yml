@@ -8,7 +8,7 @@ jobs:
     defaults:
       run:
         working-directory: wasp
-    runs-on: ubuntu-latest
+    runs-on: ubuntu22.04-16cores-64GB
     steps:
       - uses: actions/checkout@v3
       - uses: dorny/paths-filter@v3
