@@ -632,9 +632,9 @@ func (g *Generator) pacedCall() {
 	if !g.Stats().RunStarted.Load() {
 		return
 	}
-	if g.rl.Load() == nil {
-		return
-	}
+	//if g.rl.Load() == nil {
+	//	return
+	//}
 	(*g.rl.Load()).Take()
 	if g.stats.RunPaused.Load() {
 		return
