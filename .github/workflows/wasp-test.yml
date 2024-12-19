@@ -8,7 +8,7 @@ jobs:
     defaults:
       run:
         working-directory: wasp
-    runs-on: ubuntu22.04-8cores-32GB
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: dorny/paths-filter@v3
@@ -24,4 +24,4 @@ jobs:
       - name: Run tests
         if: steps.changes.outputs.src == 'true'
         run: |-
-          nix develop -c make test
+          nix develop -c make test_race
