@@ -29,6 +29,7 @@ var AggregateResultsCmd = &cobra.Command{
 		headSHA, _ := cmd.Flags().GetString("head-sha")
 		baseSHA, _ := cmd.Flags().GetString("base-sha")
 		githubWorkflowName, _ := cmd.Flags().GetString("github-workflow-name")
+		githubWorkflowRunURL, _ := cmd.Flags().GetString("github-workflow-run-url")
 		reportID, _ := cmd.Flags().GetString("report-id")
 		splunkURL, _ := cmd.Flags().GetString("splunk-url")
 		splunkToken, _ := cmd.Flags().GetString("splunk-token")
@@ -63,6 +64,7 @@ var AggregateResultsCmd = &cobra.Command{
 		aggregatedReport.BaseSHA = baseSHA
 		aggregatedReport.RepoURL = repoURL
 		aggregatedReport.GitHubWorkflowName = githubWorkflowName
+		aggregatedReport.GitHubWorkflowRunURL = githubWorkflowRunURL
 
 		if err != nil {
 			s.Stop()
@@ -193,6 +195,7 @@ func init() {
 	AggregateResultsCmd.Flags().String("head-sha", "", "Head commit SHA for the test report")
 	AggregateResultsCmd.Flags().String("base-sha", "", "Base commit SHA for the test report")
 	AggregateResultsCmd.Flags().String("github-workflow-name", "", "GitHub workflow name for the test report")
+	AggregateResultsCmd.Flags().String("github-workflow-run-url", "", "GitHub workflow run URL for the test report")
 	AggregateResultsCmd.Flags().String("report-id", "", "Optional identifier for the test report. Will be generated if not provided")
 	AggregateResultsCmd.Flags().String("splunk-url", "", "Optional url to simultaneously send the test results to splunk")
 	AggregateResultsCmd.Flags().String("splunk-token", "", "Optional Splunk HEC token to simultaneously send the test results to splunk")

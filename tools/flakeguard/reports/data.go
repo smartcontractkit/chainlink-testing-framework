@@ -12,15 +12,15 @@ import (
 type TestReport struct {
 	ID                   string       `json:"id"`
 	GoProject            string       `json:"go_project"`
-	HeadSHA              string       `json:"head_sha"`
-	BaseSHA              string       `json:"base_sha"`
-	RepoURL              string       `json:"repo_url"`
-	GitHubWorkflowName   string       `json:"github_workflow_name"`
-	GitHubWorkflowRunURL string       `json:"github_workflow_run_url"`
+	HeadSHA              string       `json:"head_sha,omitempty"`
+	BaseSHA              string       `json:"base_sha,omitempty"`
+	RepoURL              string       `json:"repo_url,omitempty"`
+	GitHubWorkflowName   string       `json:"github_workflow_name,omitempty"`
+	GitHubWorkflowRunURL string       `json:"github_workflow_run_url,omitempty"`
 	TestRunCount         int          `json:"test_run_count"`
 	RaceDetection        bool         `json:"race_detection"`
-	ExcludedTests        []string     `json:"excluded_tests"`
-	SelectedTests        []string     `json:"selected_tests"`
+	ExcludedTests        []string     `json:"excluded_tests,omitempty"`
+	SelectedTests        []string     `json:"selected_tests,omitempty"`
 	Results              []TestResult `json:"results,omitempty"`
 }
 
