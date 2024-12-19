@@ -2,12 +2,17 @@ package reports
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 )
@@ -174,6 +179,10 @@ func decodeField(decoder *json.Decoder, report *TestReport) error {
 		if err := decoder.Decode(&report.RepoURL); err != nil {
 			return fmt.Errorf("error decoding RepoURL: %w", err)
 		}
+	case "github_workflow_run_url":
+		if err := decoder.Decode(&report.GitHubWorkflowRunURL); err != nil {
+			return fmt.Errorf("error decoding GitHubWorkflowRunURL: %w", err)
+		}
 	case "github_workflow_name":
 		if err := decoder.Decode(&report.GitHubWorkflowName); err != nil {
 			return fmt.Errorf("error decoding GitHubWorkflowName: %w", err)
@@ -304,4 +313,234 @@ func SaveReport(fs FileSystem, filePath string, report TestReport) error {
 	}
 
 	return nil
+}
+
+// aggregate aggregates multiple TestReport objects into a single TestReport as they are received
+func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggregateOptions) (*TestReport, error) {
+	var (
+		testMap       = make(map[string]TestResult)
+		fullReport    = &TestReport{}
+		excludedTests = map[string]struct{}{}
+		selectedTests = map[string]struct{}{}
+		sendToSplunk  = opts.splunkURL != ""
+	)
+
+	fullReport.ID = opts.reportID
+	for report := range reportChan {
+		if fullReport.GoProject == "" {
+			fullReport.GoProject = report.GoProject
+		} else if fullReport.GoProject != report.GoProject {
+			return nil, fmt.Errorf("reports with different Go projects found, expected %s, got %s", fullReport.GoProject, report.GoProject)
+		}
+		fullReport.TestRunCount += report.TestRunCount
+		fullReport.RaceDetection = report.RaceDetection && fullReport.RaceDetection
+		for _, test := range report.ExcludedTests {
+			excludedTests[test] = struct{}{}
+		}
+		for _, test := range report.SelectedTests {
+			selectedTests[test] = struct{}{}
+		}
+		for _, result := range report.Results {
+			result.ReportID = opts.reportID
+			key := result.TestName + "|" + result.TestPackage
+			if existing, found := testMap[key]; found {
+				existing = mergeTestResults(existing, result)
+				testMap[key] = existing
+			} else {
+				testMap[key] = result
+			}
+		}
+	}
+
+	for err := range errChan {
+		return nil, err
+	}
+
+	// Finalize excluded and selected tests
+	for test := range excludedTests {
+		fullReport.ExcludedTests = append(fullReport.ExcludedTests, test)
+	}
+	for test := range selectedTests {
+		fullReport.SelectedTests = append(fullReport.SelectedTests, test)
+	}
+
+	// Get the report without any results to send to splunk
+	splunkReport := *fullReport
+
+	// Prepare final results
+	var (
+		aggregatedResults []TestResult
+		err               error
+	)
+	for _, result := range testMap {
+		aggregatedResults = append(aggregatedResults, result)
+	}
+
+	sortTestResults(aggregatedResults)
+	fullReport.Results = aggregatedResults
+
+	if sendToSplunk {
+		err = sendDataToSplunk(opts, splunkReport, aggregatedResults...)
+	}
+	return fullReport, err
+}
+
+// sendDataToSplunk sends a truncated TestReport and each individual TestResults to Splunk as events
+func sendDataToSplunk(opts *aggregateOptions, report TestReport, results ...TestResult) error {
+	client := resty.New().
+		SetBaseURL(opts.splunkURL).
+		SetAuthScheme("Splunk").
+		SetAuthToken(opts.splunkToken).
+		SetHeader("Content-Type", "application/json").
+		SetLogger(ZerologRestyLogger{})
+	client.AddRetryAfterErrorCondition().SetRetryCount(5).SetTimeout(time.Second * 10)
+
+	log.Debug().Str("report id", report.ID).Int("results", len(report.Results)).Msg("Sending aggregated data to Splunk")
+
+	// Send results
+	var (
+		splunkErrs            = []error{}
+		resultsBatchSize      = 5
+		resultsBatch          = []SplunkTestResult{}
+		successfulResultsSent = 0
+	)
+	for resultCount, result := range results {
+		resultsBatch = append(resultsBatch, SplunkTestResult{
+			Event: SplunkTestResultEvent{
+				Event: opts.splunkEvent,
+				Type:  Result,
+				Data:  result,
+			},
+			SourceType: SplunkSourceType,
+			Index:      SplunkIndex,
+		})
+		// Send results in batches so Splunk doesn't get mad
+		if len(resultsBatch) >= resultsBatchSize || resultCount == len(results)-1 {
+			batchData, testNames, err := batchSplunkResults(resultsBatch)
+			if err != nil {
+				return fmt.Errorf("error batching results: %w", err)
+			}
+			resultsBatch = []SplunkTestResult{}
+
+			resp, err := client.R().
+				SetBody(batchData.String()).
+				Post("")
+			if err != nil {
+				splunkErrs = append(splunkErrs,
+					fmt.Errorf("error sending flakeguard results for [%s] to Splunk: %w", strings.Join(testNames, ", "), err),
+				)
+			}
+			if resp.IsError() {
+				splunkErrs = append(splunkErrs,
+					fmt.Errorf("error sending flakeguard result for [%s] to Splunk: %s", strings.Join(testNames, ", "), resp.String()),
+				)
+			}
+			if err == nil && !resp.IsError() {
+				successfulResultsSent += resultsBatchSize
+			}
+		}
+	}
+
+	if len(splunkErrs) > 0 {
+		log.Error().
+			Int("successfully sent", successfulResultsSent).
+			Int("total results", len(results)).
+			Errs("errors", splunkErrs).
+			Msg("Errors occurred while sending test results to Splunk")
+	} else {
+		log.Debug().
+			Int("successfully sent", successfulResultsSent).
+			Int("total results", len(results)).
+			Msg("All results sent successfully")
+	}
+
+	// Check if errors occurred while uploading results and send report with incomplete flag
+	resp, err := client.R().
+		SetBody(SplunkTestReport{
+			Event: SplunkTestReportEvent{
+				Event:      opts.splunkEvent,
+				Type:       Report,
+				Data:       report,
+				Incomplete: len(splunkErrs) > 0,
+			},
+			SourceType: SplunkSourceType,
+			Index:      SplunkIndex,
+		}).
+		Post("")
+
+	if err != nil {
+		splunkErrs = append(splunkErrs, fmt.Errorf("error sending flakeguard report '%s' to Splunk: %w", report.ID, err))
+	}
+	if resp.IsError() {
+		splunkErrs = append(splunkErrs, fmt.Errorf("error sending flakeguard report '%s' to Splunk: %s", report.ID, resp.String()))
+	}
+	return errors.Join(splunkErrs...)
+}
+
+// batchSplunkResults creates a batch of TestResult objects as individual JSON objects
+// Splunk doesn't accept JSON arrays, they want individual events as single JSON objects
+// https://docs.splunk.com/Documentation/Splunk/9.4.0/Data/FormateventsforHTTPEventCollector
+func batchSplunkResults(results []SplunkTestResult) (batchData bytes.Buffer, resultTestNames []string, err error) {
+	for _, result := range results {
+		data, err := json.Marshal(result)
+		if err != nil {
+			return batchData, nil, fmt.Errorf("error marshaling result for '%s': %w", result.Event.Data.TestName, err)
+		}
+		if _, err := batchData.Write(data); err != nil {
+			return batchData, nil, fmt.Errorf("error writing result for '%s': %w", result.Event.Data.TestName, err)
+		}
+		if _, err := batchData.WriteRune('\n'); err != nil {
+			return batchData, nil, fmt.Errorf("error writing newline for '%s': %w", result.Event.Data.TestName, err)
+		}
+		resultTestNames = append(resultTestNames, result.Event.Data.TestName)
+	}
+	return batchData, resultTestNames, nil
+}
+
+// unBatchSplunkResults un-batches a batch of TestResult objects into a slice of TestResult objects
+func unBatchSplunkResults(batch []byte) ([]*SplunkTestResult, error) {
+	var results []*SplunkTestResult
+	scanner := bufio.NewScanner(bufio.NewReader(bytes.NewReader(batch)))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.TrimSpace(line) == "" {
+			continue // Skip empty lines
+		}
+		var result *SplunkTestResult
+		if err := json.Unmarshal([]byte(line), &result); err != nil {
+			return results, fmt.Errorf("error unmarshaling result: %w", err)
+		}
+		results = append(results, result)
+	}
+	return results, scanner.Err()
+}
+
+// aggregateFromReports aggregates multiple TestReport objects into a single TestReport
+func aggregateFromReports(opts *aggregateOptions, reports ...*TestReport) (*TestReport, error) {
+	reportChan := make(chan *TestReport, len(reports))
+	errChan := make(chan error, 1)
+	for _, report := range reports {
+		reportChan <- report
+	}
+	close(reportChan)
+	close(errChan)
+	return aggregate(reportChan, errChan, opts)
+}
+
+// ZerologRestyLogger wraps zerolog for Resty's logging interface
+type ZerologRestyLogger struct{}
+
+// Errorf logs errors using zerolog's global logger
+func (ZerologRestyLogger) Errorf(format string, v ...interface{}) {
+	log.Error().Msgf(format, v...)
+}
+
+// Warnf logs warnings using zerolog's global logger
+func (ZerologRestyLogger) Warnf(format string, v ...interface{}) {
+	log.Warn().Msgf(format, v...)
+}
+
+// Debugf logs debug messages using zerolog's global logger
+func (ZerologRestyLogger) Debugf(format string, v ...interface{}) {
+	log.Debug().Msgf(format, v...)
 }

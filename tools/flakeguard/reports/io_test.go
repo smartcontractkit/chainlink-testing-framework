@@ -14,26 +14,61 @@ import (
 )
 
 const (
-	splunkToken               = "test-token"
-	splunkEvent   SplunkEvent = "test"
-	numberReports             = 3
-	reportID                  = "123"
-	testRunCount              = 15
-	uniqueTests               = 18
+	splunkToken              = "test-token"
+	splunkEvent  SplunkEvent = "test"
+	reportID                 = "123"
+	testRunCount             = 15
+	uniqueTests              = 18
 )
 
-func TestAggregateResultsSplunk(t *testing.T) {
+func TestAggregateResultFilesSplunk(t *testing.T) {
 	t.Parallel()
 
-	srv := splunkServer(t)
+	var (
+		reportRequestsReceived int
+		resultRequestsReceived int
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "application/json", r.Header.Get("Content-Type"), "unexpected content type")
+		require.Equal(t, fmt.Sprintf("Splunk %s", splunkToken), r.Header.Get("Authorization"), "unexpected authorization header")
+
+		// Figure out what kind of splunk data the payload is
+		bodyBytes, err := io.ReadAll(r.Body)
+		require.NoError(t, err, "error reading request")
+		defer r.Body.Close()
+
+		report := SplunkTestReport{}
+		err = json.Unmarshal(bodyBytes, &report)
+		if err == nil {
+			require.Equal(t, SplunkSourceType, report.SourceType, "source type mismatch")
+			require.Equal(t, Report, report.Event.Type, "event type mismatch")
+			require.Equal(t, splunkEvent, report.Event.Event, "event mismatch")
+			reportRequestsReceived++
+		} else {
+			results, err := unBatchSplunkResults(bodyBytes)
+			require.NoError(t, err, "error parsing splunk results data")
+			require.NotNil(t, results, "expected some results")
+			require.NotZero(t, len(results), "expected some results")
+			for _, result := range results {
+				require.Equal(t, SplunkSourceType, result.SourceType, "source type mismatch")
+				require.Equal(t, Result, result.Event.Type, "event type mismatch")
+				require.Equal(t, splunkEvent, result.Event.Event, "event mismatch")
+				resultRequestsReceived++
+			}
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}))
 	t.Cleanup(srv.Close)
 
 	report, err := LoadAndAggregate("./testdata", WithReportID(reportID), WithSplunk(srv.URL, splunkToken, splunkEvent))
 	require.NoError(t, err, "LoadAndAggregate failed")
 	verifyAggregatedReport(t, report)
+	assert.Equal(t, 1, reportRequestsReceived, "unexpected number of report requests")
+	assert.Equal(t, uniqueTests, resultRequestsReceived, "unexpected number of report requests")
 }
 
-func TestAggregateResults(t *testing.T) {
+func TestAggregateResultFiles(t *testing.T) {
 	t.Parallel()
 
 	report, err := LoadAndAggregate("./testdata", WithReportID(reportID))
@@ -41,56 +76,12 @@ func TestAggregateResults(t *testing.T) {
 	verifyAggregatedReport(t, report)
 }
 
-func splunkServer(t *testing.T) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "application/json", r.Header.Get("Content-Type"), "unexpected content type")
-		require.Equal(t, fmt.Sprintf("Splunk %s", splunkToken), r.Header.Get("Authorization"), "unexpected authorization header")
-
-		// Figure out what kind of splunk data the payload is
-		bodyBytes, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
-		defer r.Body.Close()
-
-		var payload map[string]any
-		err = json.Unmarshal(bodyBytes, &payload)
-		require.NoError(t, err, "error parsing splunk event data")
-		require.NotNil(t, payload, "error parsing splunk event data")
-		require.NotNil(t, payload["event"], "unable to find event while parsing splunk data")
-		event := payload["event"].(map[string]any)
-		require.NotNil(t, event, "error parsing splunk event data")
-		require.NotNil(t, event["type"], "unable to find inner event type while parsing splunk data")
-		eventType := event["type"].(string)
-		require.NotNil(t, eventType, "error parsing splunk event type")
-
-		if eventType == string(Report) {
-			var report SplunkTestReport
-			err := json.Unmarshal(bodyBytes, &report)
-			require.NoError(t, err, "error parsing report data")
-			require.NotNil(t, report, "error parsing report data")
-			assert.Equal(t, SplunkSourceType, report.SourceType, "source type mismatch")
-			assert.Equal(t, splunkEvent, report.Event.Event, "event mismatch")
-			assert.Equal(t, reportID, report.Event.Data.ID, "ID mismatch")
-		} else if eventType == string(Result) {
-			var result SplunkTestResult
-			err := json.Unmarshal(bodyBytes, &result)
-			require.NoError(t, err, "error parsing results data")
-			require.NotNil(t, result, "error parsing results data")
-			assert.Equal(t, SplunkSourceType, result.SourceType, "source type mismatch")
-			assert.Equal(t, splunkEvent, result.Event.Event, "event mismatch")
-		} else {
-			t.Errorf("unexpected splunk event type: %s", eventType)
-		}
-
-		w.WriteHeader(http.StatusOK)
-	}))
-}
-
 func verifyAggregatedReport(t *testing.T, report *TestReport) {
 	require.NotNil(t, report, "report is nil")
-	assert.Equal(t, reportID, report.ID, "report ID mismatch")
-	assert.Equal(t, uniqueTests, len(report.Results), "report results count mismatch")
-	assert.Equal(t, testRunCount, report.TestRunCount, "report test run count mismatch")
-	assert.Equal(t, false, report.RaceDetection, "race detection should be false")
+	require.Equal(t, reportID, report.ID, "report ID mismatch")
+	require.Equal(t, uniqueTests, len(report.Results), "report results count mismatch")
+	require.Equal(t, testRunCount, report.TestRunCount, "report test run count mismatch")
+	require.Equal(t, false, report.RaceDetection, "race detection should be false")
 
 	var (
 		testFail, testSkipped, testPass TestResult
@@ -146,7 +137,7 @@ func verifyAggregatedReport(t *testing.T, report *TestReport) {
 	})
 }
 
-func BenchmarkTestAggregateResults(b *testing.B) {
+func BenchmarkTestAggregateResultFiles(b *testing.B) {
 	zerolog.SetGlobalLevel(zerolog.Disabled)
 	for i := 0; i < b.N; i++ {
 		_, err := LoadAndAggregate("./testdata", WithReportID(reportID))
@@ -156,12 +147,12 @@ func BenchmarkTestAggregateResults(b *testing.B) {
 	}
 }
 
-func BenchmarkTestAggregateResultsSplunk(b *testing.B) {
+func BenchmarkTestAggregateResultFilesSplunk(b *testing.B) {
 	zerolog.SetGlobalLevel(zerolog.Disabled)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
-	defer srv.Close()
+	b.Cleanup(srv.Close)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
