@@ -378,13 +378,13 @@ func (g *Generator) runExecuteLoop() {
 		g.currentSegmentMu.Unlock()
 		// we start all vus once
 		vus := g.stats.CurrentVUs.Load()
+		g.vusMu.Lock()
 		for i := 0; i < int(vus); i++ {
 			inst := g.vu.Clone(g)
 			g.runVU(inst)
-			g.vusMu.Lock()
 			g.vus = append(g.vus, inst)
-			g.vusMu.Unlock()
 		}
+		g.vusMu.Unlock()
 	}
 }
 
@@ -512,22 +512,20 @@ func (g *Generator) processSegment() bool {
 		if oldVUs == newVUs {
 			return false
 		}
+		g.vusMu.Lock()
 		if oldVUs > g.currentSegment.From {
 			for i := 0; i < vusToSpawn; i++ {
-				g.vusMu.Lock()
 				g.vus[i].Stop(g)
-				g.vusMu.Unlock()
 			}
 			g.vus = g.vus[vusToSpawn:]
 		} else {
 			for i := 0; i < vusToSpawn; i++ {
 				inst := g.vu.Clone(g)
 				g.runVU(inst)
-				g.vusMu.Lock()
 				g.vus = append(g.vus, inst)
-				g.vusMu.Unlock()
 			}
 		}
+		g.vusMu.Unlock()
 	}
 	return false
 }
@@ -632,9 +630,9 @@ func (g *Generator) pacedCall() {
 	if !g.Stats().RunStarted.Load() {
 		return
 	}
-	//if g.rl.Load() == nil {
-	//	return
-	//}
+	if g.rl.Load() == nil {
+		return
+	}
 	(*g.rl.Load()).Take()
 	if g.stats.RunPaused.Load() {
 		return
