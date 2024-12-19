@@ -8,6 +8,14 @@ test:
 	set -euo pipefail
 	go list ./... | grep -v 'example_test_package' | xargs go test -json -cover -coverprofile unit-test-coverage.out -v 2>&1 | tee /tmp/gotest.log | gotestfmt
 
+.PHONY: test-race
+test-race:
+	go list ./... | grep -v 'example_test_package' | xargs go test -count=1 -race
+
+.PHONY: bench
+bench:
+	go test -run=^$$ -bench=. -benchmem ./...
+
 .PHONY: example
 example:
 	rm -rf example_results

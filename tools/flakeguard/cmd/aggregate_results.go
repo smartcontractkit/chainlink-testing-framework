@@ -69,7 +69,7 @@ var AggregateResultsCmd = &cobra.Command{
 			return fmt.Errorf("error aggregating test reports: %w", err)
 		}
 		s.Stop()
-		log.Info().Msg("Successfully loaded and aggregated test reports")
+		log.Debug().Msg("Successfully loaded and aggregated test reports")
 
 		// Start spinner for mapping test results to paths
 		s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
@@ -83,7 +83,7 @@ var AggregateResultsCmd = &cobra.Command{
 			return fmt.Errorf("error mapping test results to paths: %w", err)
 		}
 		s.Stop()
-		log.Info().Msg("Successfully mapped paths to test results")
+		log.Debug().Msg("Successfully mapped paths to test results")
 
 		// Map test results to code owners if codeOwnersPath is provided
 		if codeOwnersPath != "" {
@@ -97,7 +97,7 @@ var AggregateResultsCmd = &cobra.Command{
 				return fmt.Errorf("error mapping test results to code owners: %w", err)
 			}
 			s.Stop()
-			log.Info().Msg("Successfully mapped code owners to test results")
+			log.Debug().Msg("Successfully mapped code owners to test results")
 		}
 
 		failedTests := reports.FilterTests(aggregatedReport.Results, func(tr reports.TestResult) bool {
@@ -141,7 +141,7 @@ var AggregateResultsCmd = &cobra.Command{
 			if err := reports.SaveReport(fs, failedTestsReportNoLogsPath, *failedReportWithLogs); err != nil {
 				return fmt.Errorf("error saving failed tests report without logs: %w", err)
 			}
-			log.Info().Str("path", failedTestsReportNoLogsPath).Msg("Failed tests report without logs saved")
+			log.Debug().Str("path", failedTestsReportNoLogsPath).Msg("Failed tests report without logs saved")
 		} else {
 			log.Debug().Msg("No failed tests found. Skipping generation of failed tests reports")
 		}
@@ -158,25 +158,26 @@ var AggregateResultsCmd = &cobra.Command{
 		if err := reports.SaveReport(fs, aggregatedReportPath, *aggregatedReport); err != nil {
 			return fmt.Errorf("error saving aggregated test report: %w", err)
 		}
-		log.Info().Str("path", aggregatedReportPath).Msg("Aggregated test report saved")
+		log.Debug().Str("path", aggregatedReportPath).Msg("Aggregated test report saved")
 
 		// Generate all-tests-summary.json
+		var summaryFilePath string
 		if summaryFileName != "" {
 			s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
 			s.Suffix = " Generating summary json..."
 			s.Start()
 
-			summaryFilePath := filepath.Join(outputDir, summaryFileName)
+			summaryFilePath = filepath.Join(outputDir, summaryFileName)
 			err = generateAllTestsSummaryJSON(aggregatedReport, summaryFilePath, maxPassRatio)
 			if err != nil {
 				s.Stop()
 				return fmt.Errorf("error generating summary json: %w", err)
 			}
 			s.Stop()
-			log.Info().Str("path", summaryFilePath).Msg("Summary generated")
+			log.Debug().Str("path", summaryFilePath).Msg("Summary generated")
 		}
 
-		log.Info().Msg("Aggregation complete")
+		log.Info().Str("summary", summaryFilePath).Str("report", aggregatedReportPath).Msg("Aggregation complete")
 		return nil
 	},
 }

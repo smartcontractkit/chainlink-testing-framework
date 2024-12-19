@@ -69,10 +69,11 @@ type SummaryData struct {
 }
 
 // SplunkEvent represents a customized splunk event string that helps us distinguish what
-// triggered the test to run
+// triggered the test to run. This is a custom field, different from the Splunk event field.
 type SplunkEvent string
 
-// SplunkType represents what type of data is being sent to Splunk, e.g. a report or a result
+// SplunkType represents what type of data is being sent to Splunk, e.g. a report or a result.
+// This is a custom field to help us distinguish what kind of data we're sending.
 type SplunkType string
 
 const (
@@ -82,6 +83,9 @@ const (
 
 	Report SplunkType = "report"
 	Result SplunkType = "result"
+
+	// https://docs.splunk.com/Splexicon:Sourcetype
+	SplunkSourceType = "flakeguard_json"
 )
 
 // SplunkTestReport is the full wrapper structure sent to Splunk for the full test report (sans results)
@@ -182,10 +186,13 @@ func FilterTests(results []TestResult, predicate func(TestResult) bool) []TestRe
 }
 
 func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggregateOptions) (*TestReport, error) {
-	testMap := make(map[string]TestResult)
-	fullReport := &TestReport{}
-	excludedTests := map[string]struct{}{}
-	selectedTests := map[string]struct{}{}
+	var (
+		testMap       = make(map[string]TestResult)
+		fullReport    = &TestReport{}
+		excludedTests = map[string]struct{}{}
+		selectedTests = map[string]struct{}{}
+		sendToSplunk  = opts.splunkURL != ""
+	)
 
 	fullReport.ID = opts.reportID
 	for report := range reportChan {
@@ -227,12 +234,12 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 	}
 
 	// Send report to Splunk before adding test results
-	if opts.splunkURL != "" {
+	if sendToSplunk {
 		err := sendReportToSplunk(opts.splunkURL, opts.splunkToken, opts.splunkEvent, fullReport)
 		if err != nil {
 			log.Error().Err(err).Msg("Error sending report to Splunk")
 		} else {
-			log.Debug().Str("event", string(opts.splunkEvent)).Msg("Report sent to Splunk")
+			log.Debug().Str("event", string(opts.splunkEvent)).Msg("Successfully sent report sent to Splunk")
 		}
 	}
 
@@ -242,7 +249,7 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 	for _, r := range testMap {
 		result := r
 		aggregatedResults = append(aggregatedResults, result)
-		if opts.splunkURL != "" {
+		if sendToSplunk {
 			eg.Go(func() error {
 				return sendResultsToSplunk(opts.splunkURL, opts.splunkToken, opts.splunkEvent, result)
 			})
@@ -252,10 +259,12 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 	sortTestResults(aggregatedResults)
 	fullReport.Results = aggregatedResults
 
-	if splunkErr := eg.Wait(); splunkErr != nil {
-		log.Error().Err(splunkErr).Msg("Error sending results to Splunk")
-	} else {
-		log.Debug().Str("event", string(opts.splunkEvent)).Msg("All results sent to Splunk")
+	if sendToSplunk {
+		if splunkErr := eg.Wait(); splunkErr != nil {
+			log.Error().Err(splunkErr).Msg("Error sending results to Splunk")
+		} else {
+			log.Debug().Str("event", string(opts.splunkEvent)).Msg("Successfully sent results to Splunk")
+		}
 	}
 	return fullReport, nil
 }
@@ -273,7 +282,7 @@ func sendReportToSplunk(url, token string, event SplunkEvent, report *TestReport
 				Type:  Report,
 				Data:  *report,
 			},
-			SourceType: "flakeguard_json",
+			SourceType: SplunkSourceType,
 		}).
 		Post(url)
 	if err != nil {
@@ -301,7 +310,7 @@ func sendResultsToSplunk(url, token string, event SplunkEvent, results ...TestRe
 						Type:  Result,
 						Data:  result,
 					},
-					SourceType: "flakeguard_json",
+					SourceType: SplunkSourceType,
 				}).
 				Post(url)
 			if err != nil {
