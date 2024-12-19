@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 )
 
@@ -123,7 +123,7 @@ func (r *Runner) runTests(packageName string) (string, bool, error) {
 	}
 
 	if r.Verbose {
-		log.Printf("Running command: go %s\n", strings.Join(args, " "))
+		log.Info().Str("command", fmt.Sprintf("go %s\n", strings.Join(args, " "))).Msg("Running command")
 	}
 
 	// Create a temporary file to store the output
@@ -136,7 +136,7 @@ func (r *Runner) runTests(packageName string) (string, bool, error) {
 	r.prettyProjectPath, err = prettyProjectPath(r.ProjectPath)
 	if err != nil {
 		r.prettyProjectPath = r.ProjectPath
-		log.Printf("WARN: failed to get pretty project path: %v", err)
+		log.Warn().Err(err).Str("projectPath", r.ProjectPath).Msg("Failed to get pretty project path")
 	}
 	// Run the command with output directed to the file
 	cmd := exec.Command("go", args...)
@@ -430,10 +430,10 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 		}
 		// Clean up file after parsing
 		if err = file.Close(); err != nil {
-			log.Printf("WARN: failed to close file: %v", err)
+			log.Warn().Err(err).Str("file", filePath).Msg("failed to close file")
 		}
 		if err = os.Remove(filePath); err != nil {
-			log.Printf("WARN: failed to delete file: %v", err)
+			log.Warn().Err(err).Str("file", filePath).Msg("failed to delete file")
 		}
 	}
 
@@ -458,12 +458,12 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 							}
 						}
 					} else {
-						log.Printf("WARN: expected to find subtest '%s' inside parent test '%s', but not found\n", subTestKey, parentTestKey)
+						log.Warn().Str("expected subtest", subTestKey).Str("parent test", parentTestKey).Msg("expected subtest not found in parent test")
 					}
 				}
 			}
 		} else {
-			log.Printf("WARN: expected to find parent test '%s' for subtests, but not found\n", parentTestKey)
+			log.Warn().Str("parent test", parentTestKey).Msg("expected parent test not found")
 		}
 	}
 	for _, result := range testDetails {
@@ -472,7 +472,7 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 				result.Failures = expectedRuns
 				result.Runs = expectedRuns
 			} else {
-				log.Printf("WARN: '%s' has %d test runs, exceeding expected amount of %d; this may be due to unexpected panics\n", result.TestName, result.Runs, expectedRuns)
+				log.Warn().Str("test", result.TestName).Int("actual runs", result.Runs).Int("expected runs", expectedRuns).Msg("unexpected test runs")
 			}
 		}
 		// If a package panicked, all tests in that package will be marked as panicking
