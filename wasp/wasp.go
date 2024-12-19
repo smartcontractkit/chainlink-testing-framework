@@ -38,6 +38,7 @@ var (
 	ErrTeardown               = errors.New("generator request teardown error")
 	ErrStartFrom              = errors.New("from must be > 0")
 	ErrInvalidSegmentDuration = errors.New("SegmentDuration must be defined")
+	ErrMissingSegmentType     = errors.New("Segment Type myst be set")
 	ErrNoGun                  = errors.New("rps load scheduleSegments selected but gun implementation is nil")
 	ErrNoVU                   = errors.New("vu load scheduleSegments selected but vu implementation is nil")
 	ErrInvalidLabels          = errors.New("invalid Loki labels, labels should be [a-z][A-Z][0-9] and _")
@@ -104,10 +105,20 @@ const (
 	VU  ScheduleType = "vu_schedule"
 )
 
+type SegmentType string
+
+const (
+	SegmentType_Plain SegmentType = "plain"
+	SegmentType_Steps SegmentType = "steps"
+)
+
 // Segment load test schedule segment
 type Segment struct {
-	From     int64
-	Duration time.Duration
+	From      int64         `json:"from"`
+	Duration  time.Duration `json:"duration"`
+	Type      SegmentType   `json:"type"`
+	StartTime time.Time     `json:"time_start"`
+	EndTime   time.Time     `json:"time_end"`
 }
 
 // Validate checks that the Segment has a valid starting point and duration.
@@ -120,29 +131,33 @@ func (ls *Segment) Validate() error {
 	if ls.Duration == 0 {
 		return ErrInvalidSegmentDuration
 	}
+	if ls.Type == "" {
+		return ErrMissingSegmentType
+	}
+
 	return nil
 }
 
 // Config is for shared load test data and configuration
 type Config struct {
-	T                     *testing.T
-	GenName               string
-	LoadType              ScheduleType
-	Labels                map[string]string
-	LokiConfig            *LokiConfig
-	Schedule              []*Segment
-	RateLimitUnitDuration time.Duration
-	CallResultBufLen      int
-	StatsPollInterval     time.Duration
-	CallTimeout           time.Duration
-	SetupTimeout          time.Duration
-	TeardownTimeout       time.Duration
-	FailOnErr             bool
-	Gun                   Gun
-	VU                    VirtualUser
-	Logger                zerolog.Logger
-	SharedData            interface{}
-	SamplerConfig         *SamplerConfig
+	T                     *testing.T        `json:"-"`
+	GenName               string            `json:"generator_name"`
+	LoadType              ScheduleType      `json:"load_type"`
+	Labels                map[string]string `json:"-"`
+	LokiConfig            *LokiConfig       `json:"-"`
+	Schedule              []*Segment        `json:"schedule"`
+	RateLimitUnitDuration time.Duration     `json:"rate_limit_unit_duration"`
+	CallResultBufLen      int               `json:"-"`
+	StatsPollInterval     time.Duration     `json:"-"`
+	CallTimeout           time.Duration     `json:"call_timeout"`
+	SetupTimeout          time.Duration     `json:"-"`
+	TeardownTimeout       time.Duration     `json:"-"`
+	FailOnErr             bool              `json:"-"`
+	Gun                   Gun               `json:"-"`
+	VU                    VirtualUser       `json:"-"`
+	Logger                zerolog.Logger    `json:"-"`
+	SharedData            interface{}       `json:"-"`
+	SamplerConfig         *SamplerConfig    `json:"-"`
 	// calculated fields
 	duration time.Duration
 	// only available in cluster mode
@@ -202,7 +217,6 @@ type Stats struct {
 	CurrentSegment  atomic.Int64 `json:"current_schedule_segment"`
 	SamplesRecorded atomic.Int64 `json:"samples_recorded"`
 	SamplesSkipped  atomic.Int64 `json:"samples_skipped"`
-	RunStarted      atomic.Bool  `json:"runStarted"`
 	RunPaused       atomic.Bool  `json:"runPaused"`
 	RunStopped      atomic.Bool  `json:"runStopped"`
 	RunFailed       atomic.Bool  `json:"runFailed"`
@@ -231,6 +245,7 @@ type Generator struct {
 	Log                zerolog.Logger
 	labels             model.LabelSet
 	rl                 atomic.Pointer[ratelimit.Limiter]
+	rpsLoopOnce        *sync.Once
 	scheduleSegments   []*Segment
 	currentSegmentMu   *sync.Mutex
 	currentSegment     *Segment
@@ -305,6 +320,7 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 		dataCancel:         dataCancel,
 		gun:                cfg.Gun,
 		vu:                 cfg.VU,
+		rpsLoopOnce:        &sync.Once{},
 		Responses:          NewResponses(rch),
 		ResponsesChan:      rch,
 		labels:             ls,
@@ -330,43 +346,26 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 			return nil, err
 		}
 	}
-	CPUCheckLoop()
 	return g, nil
 }
 
-// runExecuteLoop initiates the generator's execution loop based on the configured load type.
-// It manages request pacing for RPS or handles virtual users for load testing scenarios.
-func (g *Generator) runExecuteLoop() {
-	g.currentSegment = g.scheduleSegments[0]
-	g.stats.LastSegment.Store(int64(len(g.scheduleSegments)))
-	switch g.Cfg.LoadType {
-	case RPS:
-		g.ResponsesWaitGroup.Add(1)
-		// we run pacedCall controlled by stats.CurrentRPS
-		go func() {
-			for {
-				select {
-				case <-g.ResponsesCtx.Done():
-					g.ResponsesWaitGroup.Done()
-					g.Log.Info().Msg("RPS generator has stopped")
-					return
-				default:
-					g.pacedCall()
-				}
+// runGunLoop runs the generator's Gun loop
+// It manages request pacing for RPS after the first segment is loaded.
+func (g *Generator) runGunLoop() {
+	g.ResponsesWaitGroup.Add(1)
+	// we run pacedCall controlled by stats.CurrentRPS
+	go func() {
+		for {
+			select {
+			case <-g.ResponsesCtx.Done():
+				g.ResponsesWaitGroup.Done()
+				g.Log.Info().Msg("RPS generator has stopped")
+				return
+			default:
+				g.pacedCall()
 			}
-		}()
-	case VU:
-		g.currentSegmentMu.Lock()
-		g.stats.CurrentVUs.Store(g.currentSegment.From)
-		g.currentSegmentMu.Unlock()
-		// we start all vus once
-		vus := g.stats.CurrentVUs.Load()
-		for i := 0; i < int(vus); i++ {
-			inst := g.vu.Clone(g)
-			g.runVU(inst)
-			g.vus = append(g.vus, inst)
 		}
-	}
+	}()
 }
 
 // runSetupWithTimeout executes the VirtualUser's setup within the configured timeout.
@@ -463,7 +462,6 @@ func (g *Generator) runVU(vu VirtualUser) {
 // It returns true when all segments have been handled, signaling the scheduler to terminate.
 func (g *Generator) processSegment() bool {
 	defer func() {
-		g.stats.RunStarted.Store(true)
 		g.Log.Info().
 			Int64("Segment", g.stats.CurrentSegment.Load()).
 			Int64("VUs", g.stats.CurrentVUs.Load()).
@@ -477,11 +475,16 @@ func (g *Generator) processSegment() bool {
 	g.currentSegment = g.scheduleSegments[g.stats.CurrentSegment.Load()]
 	g.currentSegmentMu.Unlock()
 	g.stats.CurrentSegment.Add(1)
+	g.currentSegment.StartTime = time.Now()
 	switch g.Cfg.LoadType {
 	case RPS:
 		newRateLimit := ratelimit.New(int(g.currentSegment.From), ratelimit.Per(g.Cfg.RateLimitUnitDuration), ratelimit.WithoutSlack)
 		g.rl.Store(&newRateLimit)
 		g.stats.CurrentRPS.Store(g.currentSegment.From)
+		// start Gun loop once, in next segments we control it using g.rl ratelimiter
+		g.rpsLoopOnce.Do(func() {
+			g.runGunLoop()
+		})
 	case VU:
 		oldVUs := g.stats.CurrentVUs.Load()
 		newVUs := g.currentSegment.From
@@ -511,6 +514,8 @@ func (g *Generator) processSegment() bool {
 // runScheduleLoop initiates an asynchronous loop that processes scheduling segments and monitors for completion signals.
 // It enables the generator to handle load distribution seamlessly in the background.
 func (g *Generator) runScheduleLoop() {
+	g.currentSegment = g.scheduleSegments[0]
+	g.stats.LastSegment.Store(int64(len(g.scheduleSegments)))
 	go func() {
 		for {
 			select {
@@ -527,6 +532,7 @@ func (g *Generator) runScheduleLoop() {
 					return
 				}
 				time.Sleep(g.currentSegment.Duration)
+				g.currentSegment.EndTime = time.Now()
 			}
 		}
 	}()
@@ -604,11 +610,7 @@ func (g *Generator) collectVUResults() {
 // handling timeouts and storing the response.
 // It ensures requests adhere to the generator's configuration and execution state.
 func (g *Generator) pacedCall() {
-	if !g.Stats().RunStarted.Load() {
-		return
-	}
-	l := *g.rl.Load()
-	l.Take()
+	(*g.rl.Load()).Take()
 	if g.stats.RunPaused.Load() {
 		return
 	}
@@ -651,7 +653,6 @@ func (g *Generator) Run(wait bool) (interface{}, bool) {
 		g.sendStatsToLoki()
 	}
 	g.runScheduleLoop()
-	g.runExecuteLoop()
 	g.collectVUResults()
 	if wait {
 		return g.Wait()
@@ -679,7 +680,6 @@ func (g *Generator) Stop() (interface{}, bool) {
 	if g.stats.RunStopped.Load() {
 		return nil, true
 	}
-	g.stats.RunStarted.Store(false)
 	g.stats.RunStopped.Store(true)
 	g.stats.RunFailed.Store(true)
 	g.Log.Warn().Msg("Graceful stop")
@@ -693,9 +693,9 @@ func (g *Generator) Wait() (interface{}, bool) {
 	g.ResponsesWaitGroup.Wait()
 	g.stats.Duration = g.Cfg.duration.Nanoseconds()
 	g.stats.CurrentTimeUnit = g.Cfg.RateLimitUnitDuration.Nanoseconds()
+	g.dataCancel()
+	g.dataWaitGroup.Wait()
 	if g.Cfg.LokiConfig != nil {
-		g.dataCancel()
-		g.dataWaitGroup.Wait()
 		g.stopLokiStream()
 	}
 	return g.GetData(), g.stats.RunFailed.Load()

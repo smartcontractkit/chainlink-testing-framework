@@ -18,6 +18,7 @@ func Plain(from int64, duration time.Duration) []*Segment {
 		{
 			From:     from,
 			Duration: duration,
+			Type:     SegmentType_Plain,
 		},
 	}
 }
@@ -33,6 +34,7 @@ func Steps(from, increase int64, steps int, duration time.Duration) []*Segment {
 		segments = append(segments, &Segment{
 			From:     newFrom,
 			Duration: perStepDuration,
+			Type:     SegmentType_Steps,
 		})
 	}
 	return segments
