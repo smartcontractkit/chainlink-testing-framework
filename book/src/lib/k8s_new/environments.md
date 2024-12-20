@@ -1,39 +1,44 @@
-# Kubernetes - enviromments
+# Kubernetes - Environments
 
-As already mentioned `CTFv1` creates `k8s` environments programmatically from existing building blocks that currently include:
-* `anvil`
-* `blockscout` (cdk8s)
-* `chainlink node`
-* `geth`
-* `goc` (cdk8s)
-* `grafana`
-* `influxdb`
-* `kafka`
-* `mock-adapter`
-* `mockserver`
-* `reorg controller`
-* `schema registry`
-* `solana validator`
-* `starknet validator`
-* `wiremock`
+As mentioned earlier, `CTFv1` creates `k8s` environments programmatically from existing building blocks. These include:
 
-Unless marked otherwise, they are all based on `Helm` charts.
+- `anvil`
+- `blockscout` (cdk8s)
+- `chainlink node`
+- `geth`
+- `goc` (cdk8s)
+- `grafana`
+- `influxdb`
+- `kafka`
+- `mock-adapter`
+- `mockserver`
+- `reorg controller`
+- `schema registry`
+- `solana validator`
+- `starknet validator`
+- `wiremock`
+
+Unless noted otherwise, all components are based on `Helm` charts.
 
 > [!NOTE]
-> Creation of new environment and modification of existing ones is explained in detail [here](../k8s/TUTORIAL.md), so we won't repeat it here,
-> but instead focus on practical example of creating a new `k8s` test that creates its own basic environment.
+> The process of creating new environments or modifying existing ones is explained in detail [here](../k8s/TUTORIAL.md). This document focuses on a practical example of creating a new `k8s` test environment with a basic setup.
 >
-> **It is highly recommended that you read it before continuing**.
+> **It is highly recommended to read that tutorial before proceeding.**
 
-We will focus on creating a basic testing environment compromised of:
-* 6 `chainlink nodes`
-* 1 blockchain node (`go-ethereum` aka `geth`)
+---
 
-Let's start!
+## Example: Basic Testing Environment
 
-# Step 1: Create Chainlink node TOML config
-In real-world scenario you should dynamically create or load Chainlink node configuration to match your needs.
-Here, for simplification, we will use a hardcoded config that will work for our case.
+We will create a simple testing environment consisting of:
+- 6 `Chainlink nodes`
+- 1 blockchain node (`go-ethereum`, aka `geth`)
+
+---
+
+### Step 1: Create Chainlink Node TOML Config
+
+In real-world scenarios, you should dynamically generate or load Chainlink node configurations to suit your needs. For simplicity, we will use a hardcoded configuration:
+
 ```go
 func TestSimpleDONWithLinkContract(t *testing.T) {
 	tomlConfig := `[Feature]
@@ -92,14 +97,18 @@ WSURL = "ws://geth:8546"
 HTTPURL = "http://geth:8544"`
 ```
 
-This configuration uses log poller and OCRv2 and connects to a single EVM chain with id `1337` that can be reached through RPC node with following URLS:
-* `ws://geth:8546`
-* `http://geth:8544`
+This configuration enables the log poller and OCRv2 features while connecting to an EVM chain with `ChainID` `1337`. It uses the following RPC URLs:
+- WebSocket: `ws://geth:8546`
+- HTTP: `http://geth:8544`
 
-These are standard `geth` ports, and `geth` is the default name of our `go-ethereum` k8s service. We will connect to a "simulated" blockchain, which
-is a private ephemeral/on-demand blockchain composed of a single node.
+These URLs correspond to the default ports for `geth` and match the `go-ethereum` service name in the `k8s` cluster.
 
-Now, let's build the chart that describes our chainlink `k8s` deployment:
+---
+
+### Step 2: Define the Chainlink Deployment
+
+To define the Chainlink deployment, we configure the image, version, and other parameters such as replicas and database settings. Here's the detailed implementation:
+
 ```go
 chainlinkImageCfg := &ctf_config.ChainlinkImageConfig{
     Image:   ptr.Ptr("public.ecr.aws/chainlink/chainlink"),
@@ -111,83 +120,94 @@ var overrideFn = func(_ interface{}, target interface{}) {
 }
 
 cd := chainlink.NewWithOverride(0, map[string]any{
-    "replicas": 6,          // number of nodes
-    "toml":     tomlConfig,
+    "replicas": 6,          // Number of Chainlink nodes
+    "toml":     tomlConfig, // TOML configuration defined earlier
     "db": map[string]any{
-        "stateful": true,   // stateful DB by default for soak tests
+        "stateful": true,   // Use stateful databases for tests
     },
 }, chainlinkImageCfg, overrideFn)
 ```
 
-Here, we use a hardcoded image and version for the Chainlink node, but in real test you would like to make it configurable. This setup
-will launch 6 nodes, with stateful set dbs. It does look complex, but for various legacy reasons after removing support for some env vars
-this is how setting image name and version looks like.
+**Key Details:**
+- **Image and Version:** These are hardcoded here for simplicity but should ideally be configurable for different environments.
+- **Replicas:** We specify 6 Chainlink nodes to simulate a multi-node setup.
+- **Database Configuration:** The database is stateful to allow for persistence during soak tests.
+- **Override Function:** This ensures that the specified image and version are applied to all Chainlink node deployments.
 
-# Step 2: Label resources
-For the purpose of better expenses tracking in the next step we will create necessary `chain.link` labels that every k8s resource needs to have. We will
-use existing convenience functions:
+---
+
+### Step 3: Label Resources
+
+To track costs effectively, add required `chain.link` labels to all `k8s` resources:
+
 ```go
 productName := "data-feedsv1.0"
 nsLabels, err := environment.GetRequiredChainLinkNamespaceLabels(productName, "soak")
 if err != nil {
-    t.Fatal("Error creating required chain.link labels for namespace", err)
+    t.Fatal("Error creating namespace labels", err)
 }
 
 workloadPodLabels, err := environment.GetRequiredChainLinkWorkloadAndPodLabels(productName, "soak")
 if err != nil {
-    t.Fatal("Error creating required chain.link labels for workload and pod", err)
+    t.Fatal("Error creating workload and pod labels", err)
 }
 ```
 
-> [!NOTE]
-> As explained [here](../k8s/labels.md) there are two environment variables that need to be set
-> to satisfy labelling requirements:
-> - `CHAINLINK_ENV_USER` - name of person running the test
-> - `CHAINLINK_USER_TEAM` - name of the team, for which the test is run
+Set the following environment variables:
+- `CHAINLINK_ENV_USER`: Name of the person running the test.
+- `CHAINLINK_USER_TEAM`: Name of the team the test is for.
 
-# Step 3: Create environment config
-This step is pretty straightforward:
+---
+
+### Step 4: Create Environment Config
+
 ```go
 baseEnvironmentConfig := &environment.Config{
     TTL:                time.Hour * 2,
     NamespacePrefix:    "my-namespace-prefix",
     Test:               t,
     PreventPodEviction: true,
-    Labels:             nsLabels,           // pass labels created in previous step
-    WorkloadLabels:     workloadPodLabels,  // pass labels created in previous step
-    PodLabels:          workloadPodLabels,  // pass labels created in previous step
+    Labels:             nsLabels,
+    WorkloadLabels:     workloadPodLabels,
+    PodLabels:          workloadPodLabels,
 }
 ```
-Just three explanations are necessary here:
-* `TTL` is the amount of time after which the namespace will by automatically removed
-* `NamespacePrefix` is the preffix to which unique hash will be attached to ensure name uniqueness
-* `PreventPodEviction` will prevent our pods from being evicted or restarted by `k8s`
 
-# Step 4: Define blockchain network
-For simplicity, we will use a hardcoded "simulated" EVM network, which should more accurately be called
-an ephemeral private blockchain. In real case scenario you would use existing convenienice functions
-for dynamically selecting the network, to which nodes should connect as it could be either a "simulated" one or an existing network (public or private).
-In the latter case your code should skip adding the `ethereum` chart that represents `go-ethereum`-based blockchain node, as it
-be connecting an already available service.
+**Key Fields:**
+- **`TTL`**: Time-to-live for the namespace (auto-removal after this time).
+- **`NamespacePrefix`**: Ensures unique namespace names.
+- **`PreventPodEviction`**: Prevents pods from being evicted or restarted.
+
+---
+
+### Step 5: Define Blockchain Network
+
+To set up the blockchain network, we use predefined properties for a simulated EVM network. Here's the detailed implementation:
 
 ```go
 nodeNetwork := blockchain.SimulatedEVMNetwork
 
 ethProps := &ethereum.Props{
-    NetworkName: nodeNetwork.Name,
-    Simulated:   nodeNetwork.Simulated,
-    WsURLs:      nodeNetwork.URLs,
-    HttpURLs:    nodeNetwork.HTTPURLs,
+    NetworkName: nodeNetwork.Name,         // Name of the network
+    Simulated:   nodeNetwork.Simulated,   // Indicates that the network is simulated
+    WsURLs:      nodeNetwork.URLs,        // WebSocket URLs for the network
+    HttpURLs:    nodeNetwork.HTTPURLs,    // HTTP URLs for the network
 }
 ```
-There's no default network name or URLs set for `ethereum` chart, so you need to set these as a minimum.
 
-# Step 5: Build the environment
-Now that we have all the building blocks lets put them together and build the environment:
+**Details:**
+- **Simulated Network:** Represents a private, ephemeral blockchain used for testing.
+- **Dynamic Selection:** In real scenarios, use helper functions to dynamically select networks (public, private, or simulated) based on test requirements.
+- **Custom URLs:** The `ethereum` chart requires explicit settings for the network name and URLs.
+
+---
+
+### Step 6: Build the Environment
+
 ```go
 testEnv := environment.New(baseEnvironmentConfig).
-    AddHelm(ethereum.New(ethProps)).    // blockchain node
-    AddHelm(cd)                         // chainlink node
+    AddHelm(ethereum.New(ethProps)).    // Blockchain node
+    AddHelm(cd)                         // Chainlink nodes
 
 err = testEnv.Run()
 if err != nil {
@@ -195,13 +215,12 @@ if err != nil {
 }
 ```
 
-# Step 6: Create new blockchain client
-With our environment created, let's create blockchain client, which will connect to our EVM node and later on deploy
-a contract. We will use [Seth](../../libs/seth.md) for that purpose:
+---
+
+### Step 7: Create Blockchain Client
+
 ```go
-// if test is running inside K8s, nothing to do, default network urls are correct
 if !testEnv.Cfg.InsideK8s {
-    // Test is running locally, use forwarded URL of Geth blockchain node
     wsURLs := testEnv.URLs[blockchain.SimulatedEVMNetwork.Name]
     httpURLs := testEnv.URLs[blockchain.SimulatedEVMNetwork.Name+"_http"]
     if len(wsURLs) == 0 || len(httpURLs) == 0 {
@@ -219,24 +238,27 @@ if err != nil {
     t.Fatal("Error creating Seth client", err)
 }
 ```
-Notice the URL rewriting for our `nodeNetwork`. That's required, because by default, that network uses the name
-of `geth` service in the `k8s` as it's URI. That works inside `k8s`, but not when your test is executing
-on local environment, as is currently the case.
 
-`Environment` is capable of forwarding `k8s` ports to local machine and does that for some of applications automatically.
-`Geth` running in "simulated" mode is one of these and adds forwarded ports to the `URLs` map, so we can just grab them from it.
+**Details:**
+- **Local vs. Cluster Environment**: When running tests outside the k8s cluster, the service URLs (`ws://geth:8546`, `http://geth:8544`) are not directly accessible. Port forwarding ensures local access to these services.
+- **Automatic Port Forwarding**: The `Environment` object manages forwarding for key services, including Geth in simulated mode, making these forwarded URLs available in the `URLs` map.
+- **Dynamic Rewriting**: URLs are dynamically rewritten to switch between in-cluster and local connectivity.
 
-# Step 7: Deploy LINK contract
-Finally, let's deploy a LINK contract and assert that it's total supply isn't 0:
+---
+
+### Step 8: Deploy LINK Contract
+
 ```go
 linkTokenAbi, err := link_token_interface.LinkTokenMetaData.GetAbi()
 if err != nil {
     t.Fatal("Error getting LinkToken ABI", err)
 }
+
 linkDeploymentData, err := sethClient.DeployContract(sethClient.NewTXOpts(), "LinkToken", *linkTokenAbi, common.FromHex(link_token_interface.LinkTokenMetaData.Bin))
 if err != nil {
     t.Fatal("Error deploying LinkToken contract", err)
 }
+
 linkToken, err := link_token_interface.NewLinkToken(linkDeploymentData.Address, sethClient.Client)
 if err != nil {
     t.Fatal("Error creating LinkToken contract instance", err)
@@ -250,13 +272,16 @@ if totalSupply.Cmp(big.NewInt(0)) <= 0 {
     t.Fatal("Total supply of LinkToken should be greater than 0")
 }
 ```
-In a real world scenario that could be the end of the setup phase. Well, you should probably deploy a couple more contracts,
-maybe the data feeds? And then, generate some load, ideally using [WASP](../../libs/wasp/overview.md).
 
-Let's say that is what you really want. And that on top of that you would like your test to run for 2 days without having to
-keep your local machine up and running, or having to deal with CI limitations (6h maximum action duration in Github Actions).
+**Details:**
+- **Deploy Contract:** Deploys the LINK token contract to the simulated blockchain.
+- **Verify Deployment:** Ensures the total supply is greater than zero as a sanity check.
 
-In the [next chapter](./remote_runner.md) you'll learn how to achieve that.
+---
+
+### Next Steps
+
+Learn how to run long-duration tests using a `remote runner` in the [next chapter](./remote_runner.md).
 
 > [!NOTE]
-> You can find this example [here](https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/lib/k8s/examples/link/link_test.go).
+> This example can be found [here](https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/lib/k8s/examples/link/link_test.go).
