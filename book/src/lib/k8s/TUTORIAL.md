@@ -30,9 +30,29 @@ This documentation is outdated, and we are using it only internally to run our s
 
 ## Getting started
 
-Read [here](KUBERNETES.md) about how to spin up a local cluster if you don't have one
+Read [here](KUBERNETES.md) about how to spin up a local cluster if you don't have one.
 
-Let's create a simple environment by combining different deployment parts
+Following examples will use hardcoded `chain.link` labels for the sake of satisfying validations. When using any of remote clusters you should
+provide them with actual and valid values, for example using following convenience functions:
+```go
+nsLabels, err := GetRequiredChainLinkNamespaceLabels("my-product", "load")
+require.NoError(t, err, "Error creating required chain.link labels for namespace")
+
+workloadPodLabels, err := GetRequiredChainLinkWorkloadAndPodLabels("my-product", "load")
+require.NoError(t, err, "Error creating required chain.link labels for workloads and pods")
+```
+
+And then setting them in the `Environment` config:
+```go
+envConfig := &environment.Config{
+	Labels:		nsLabels,
+	WorkloadLabels:	workloadPodLabels
+	PodLabels:		workloadPodLabels
+	NamespacePrefix:	"new-environment",
+}
+```
+
+Now, let's create a simple environment by combining different deployment parts.
 
 Create `examples/simple/env.go`
 
@@ -48,14 +68,21 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/k8s/pkg/helm/mockserver"
 )
 
+func addHardcodedLabelsToEnv(env *environment.Config) {
+	env.Labels = []string{"chain.link/product=myProduct", "chain.link/team=my-team", "chain.link/cost-center=test-tooling-load-test"}
+	env.WorkloadLabels = map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"}
+    env.PodLabels = map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"}
+}
+
 func main() {
-	err := environment.New(&environment.Config{
-      KeepConnection:    false,
-      RemoveOnInterrupt: false,
-	  Labels: []string{"chain.link/product=myProduct", "chain.link/team=my-team", "chain.link/cost-center=test-tooling-load-test"},
-	  WorkloadLabels: map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
-      PodLabels: map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
-    }).
+	env := &environment.Config{
+		NamespacePrefix:   "new-environment",
+      	KeepConnection:    false,
+      	RemoveOnInterrupt: false,
+	}
+
+	addHardcodedLabelsToEnv(env)
+	err := environment.New(env).
 		AddHelm(ethereum.New(nil)).
 		AddHelm(chainlink.New(0, nil)).
 		Run()
@@ -104,21 +131,14 @@ import (
 )
 
 func main() {
-	nsLabels, err := GetRequiredChainLinkNamespaceLabels("my-product", "load")
-	require.NoError(t, err, "Error creating required chain.link labels for namespace")
-
-	workloadPodLabels, err := GetRequiredChainLinkWorkloadAndPodLabels("my-product", "load")
-	require.NoError(t, err, "Error creating required chain.link labels for workloads and pods")
-
-	nsLabels := append(nsLabel,s "type=construction-in-progress")
-	err := environment.New(&environment.Config{
-		Labels:            nsLabels,
-        WorkloadLabels:    workloadPodLabels
-        PodLabels:	   workloadPodLabels
+	env := &environment.Config{
 		NamespacePrefix:   "new-environment",
 		KeepConnection:    true,
 		RemoveOnInterrupt: true,
-	}).
+	}
+
+	addHardcodedLabelsToEnv(env)
+	err := environment.New(env).
 		AddHelm(ethereum.New(nil)).
 		AddHelm(chainlink.New(0, nil)).
 		Run()
@@ -193,15 +213,15 @@ import (
 )
 
 func main() {
-	e := environment.New(&environment.Config{
-        Labels: 	   []string{"chain.link/product=myProduct", "chain.link/team=my-team", "chain.link/cost-center=test-tooling-load-test"},
-        WorkloadLabels:	   map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
-        PodLabels:	   map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
+	env := &environment.Config{
 		NamespacePrefix:   "adding-new-deployment-part",
 		TTL:               3 * time.Hour,
 		KeepConnection:    true,
 		RemoveOnInterrupt: true,
-	}).
+	}
+
+	addHardcodedLabelsToEnv(env)
+	e := environment.New(env).
 		AddHelm(deployment_part.New(nil)).
 		AddHelm(chainlink.New(0, map[string]any{
 			"replicas": 5,
@@ -249,7 +269,7 @@ type ConnectedChart interface {
 	// ExportData export deployment part data in the env
 	ExportData(e *Environment) error
     // GetLabels get labels for component, it must return `chain.link/component` label
-    GetLabels() map[string]string	
+    GetLabels() map[string]string
 }
 ```
 
@@ -266,16 +286,24 @@ import (
 )
 
 func main() {
-  e := environment.New(nil).
-    AddChart(deployment_part_cdk8s.New(&deployment_part_cdk8s.Props{})).
-    AddHelm(ethereum.New(nil)).
-          AddHelm(chainlink.New(0, map[string]any{
-            "replicas": 2,
-          }))
-  if err := e.Run(); err != nil {
-    panic(err)
-  }
-  e.Shutdown()
+	env := &environment.Config{
+		NamespacePrefix:   "adding-new-deployment-part",
+		TTL:               3 * time.Hour,
+		KeepConnection:    true,
+		RemoveOnInterrupt: true,
+	}
+
+	addHardcodedLabelsToEnv(env)
+	e := environment.New(env).
+		AddChart(deployment_part_cdk8s.New(&deployment_part_cdk8s.Props{})).
+		AddHelm(ethereum.New(nil)).
+			AddHelm(chainlink.New(0, map[string]any{
+				"replicas": 2,
+			}))
+	if err := e.Run(); err != nil {
+		panic(err)
+	}
+	e.Shutdown()
 }
 ```
 
@@ -411,10 +439,9 @@ import (
 func main() {
     modifiedEnvConfig := &environment.Config{
       NamespacePrefix: "modified-env",
-      Labels:         []string{"envType=Modified", "chain.link/product=myProduct", "chain.link/team=my-team", "chain.link/cost-center=test-tooling-load-test"},
-      WorkloadLabels: map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
-      PodLabels:      map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"}
     }
+
+	addHardcodedLabelsToEnv(modifiedEnvConfig)
     e := environment.New(modifiedEnvConfig).
       AddHelm(mockservercfg.New(nil)).
       AddHelm(mockserver.New(nil)).
@@ -470,7 +497,7 @@ const (
 
     EnvVarTeam            = "CHAINLINK_USER_TEAM"
     EnvVarTeamDescription = "Team to, which owner of the environment belongs to"
-    EnvVarTeamExample     = "BIX, CCIP, BCM"	
+    EnvVarTeamExample     = "BIX, CCIP, BCM"
 
 	EnvVarCLCommitSha            = "CHAINLINK_COMMIT_SHA"
 	EnvVarCLCommitShaDescription = "The sha of the commit that you're running tests on. Mostly used for CI"
@@ -542,7 +569,7 @@ type Config struct {
     RemoveOnInterrupt bool
     // UpdateWaitInterval an interval to wait for deployment update started
     UpdateWaitInterval time.Duration
-    
+
     // Remote Runner Specific Variables //
     // JobImage an image to run environment as a job inside k8s
     JobImage string
@@ -579,11 +606,10 @@ import (
 )
 
 func main() {
-	e := environment.New(&environment.Config{
-        Labels:         []string{"chain.link/product=myProduct", "chain.link/team=my-team", "chain.link/cost-center=test-tooling-load-test"},
-        WorkloadLabels: map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
-        PodLabels:      map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"}
-      }).
+	env := &environment.Config{}
+
+	addHardcodedLabelsToEnv(env)
+	e := environment.New(env).
 		AddHelm(ethereum.New(nil)).
 		AddHelm(chainlink.New(0, nil))
 	if err := e.Run(); err != nil {
@@ -612,11 +638,10 @@ import (
 )
 
 func main() {
-  e := environment.New(&environment.Config{
-    Labels:         []string{fmt.Sprintf("envType=%s", pkg.EnvTypeEVM5), "chain.link/product=myProduct", "chain.link/team=my-team", "chain.link/cost-center=test-tooling-load-test"},
-    WorkloadLabels: map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
-    PodLabels:      map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"}
-  }).
+	env := &environment.Config{}
+	addHardcodedLabelsToEnv(env)
+
+  	e := environment.New(env).
 		AddHelm(ethereum.New(nil)).
 		AddHelm(chainlink.New(0, nil))
 	err := e.Run()
@@ -667,26 +692,23 @@ import (
 )
 
 func main() {
-	envConfig := &environment.Config{
-      Labels:         []string{"chain.link/product=myProduct", "chain.link/team=my-team", "chain.link/cost-center=test-tooling-load-test"},
-      WorkloadLabels: map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"},
-      PodLabels:      map[string]string{"chain.link/product": "myProduct", "chain.link/team": "my-team", "chain.link/cost-center": "test-tooling-load-test"}
-    }
-  e := environment.New(envConfig).
-    AddChart(goc.New()).
-    AddChart(dummy.New())
-  if err := e.Run(); err != nil {
-    panic(err)
-  }
-  // run your test logic here
-  time.Sleep(1 * time.Minute)
-  if err := e.SaveCoverage(); err != nil {
-    panic(err)
-  }
-  // clear the coverage, rerun the tests again if needed
-  if err := e.ClearCoverage(); err != nil {
-    panic(err)
-  }
+	envConfig := &environment.Config{}
+	addHardcodedLabelsToEnv(envConfig)
+	e := environment.New(envConfig).
+		AddChart(goc.New()).
+		AddChart(dummy.New())
+	if err := e.Run(); err != nil {
+		panic(err)
+	}
+	// run your test logic here
+	time.Sleep(1 * time.Minute)
+	if err := e.SaveCoverage(); err != nil {
+		panic(err)
+	}
+	// clear the coverage, rerun the tests again if needed
+	if err := e.ClearCoverage(); err != nil {
+		panic(err)
+	}
 }
 
 ```
