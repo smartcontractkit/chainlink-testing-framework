@@ -267,7 +267,6 @@ func TestRenderResults(t *testing.T) {
 	}
 
 	for _, tc := range testcases {
-		tc := tc // capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			var buf bytes.Buffer
 

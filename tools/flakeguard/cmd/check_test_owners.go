@@ -1,10 +1,9 @@
 package cmd
 
 import (
-	"fmt"
-	"log"
 	"path/filepath"
 
+	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/codeowners"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/spf13/cobra"
@@ -25,13 +24,13 @@ var CheckTestOwnersCmd = &cobra.Command{
 		// Scan project for test functions
 		testFileMap, err := reports.ScanTestFiles(projectPath)
 		if err != nil {
-			log.Fatalf("Error scanning test files: %v", err)
+			log.Fatal().Err(err).Msg("Error scanning test files")
 		}
 
 		// Parse CODEOWNERS file
 		codeOwnerPatterns, err := codeowners.Parse(codeownersPath)
 		if err != nil {
-			log.Fatalf("Error parsing CODEOWNERS file: %v", err)
+			log.Fatal().Err(err).Msg("Error parsing CODEOWNERS file")
 		}
 
 		// Check for tests without code owners
@@ -39,7 +38,7 @@ var CheckTestOwnersCmd = &cobra.Command{
 		for testName, filePath := range testFileMap {
 			relFilePath, err := filepath.Rel(projectPath, filePath)
 			if err != nil {
-				fmt.Printf("Error getting relative path for test %s: %v\n", testName, err)
+				log.Error().Err(err).Msgf("Error getting relative path for test %s", testName)
 				continue
 			}
 			// Convert to Unix-style path for matching
@@ -60,19 +59,18 @@ var CheckTestOwnersCmd = &cobra.Command{
 		percentageWithoutOwners := float64(totalWithoutOwners) / float64(totalTests) * 100
 
 		// Report results
-		fmt.Printf("Total Test functions found: %d\n", totalTests)
-		fmt.Printf("Test functions with owners: %d (%.2f%%)\n", totalWithOwners, percentageWithOwners)
-		fmt.Printf("Test functions without owners: %d (%.2f%%)\n", totalWithoutOwners, percentageWithoutOwners)
+		log.Info().Msgf("Total Test functions found: %d", totalTests)
+		log.Info().Msgf("Test functions with owners: %d (%.2f%%)", totalWithOwners, percentageWithOwners)
+		log.Info().Msgf("Test functions without owners: %d (%.2f%%)", totalWithoutOwners, percentageWithoutOwners)
 
 		if printTestFunctions {
-
 			if totalWithoutOwners > 0 {
-				fmt.Println("\nTest functions without owners:")
+				log.Debug().Msg("Test functions without owners:")
 				for testName, relPath := range testsWithoutOwners {
-					fmt.Printf("- %s (%s)\n", testName, relPath)
+					log.Debug().Msgf("- %s (%s)", testName, relPath)
 				}
 			} else {
-				fmt.Println("All Test functions have code owners!")
+				log.Debug().Msg("All Test functions have code owners!")
 			}
 		}
 
