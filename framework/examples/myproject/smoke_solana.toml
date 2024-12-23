@@ -1,0 +1,17 @@
+
+[blockchain_a]
+  type = "solana"
+  public_key = "9n1pyVGGo6V4mpiSDMVay5As9NurEkY283wwRk1Kto2C"
+  contracts_dir = "."
+
+[nodeset]
+  nodes = 5
+  override_mode = "all"
+
+  [nodeset.db]
+    image = "postgres:12.0"
+
+  [[nodeset.node_specs]]
+
+    [nodeset.node_specs.node]
+      image = "public.ecr.aws/chainlink/chainlink:v2.17.0"

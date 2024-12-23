@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -31,30 +32,33 @@ var idJSONRaw = `
 
 func defaultSolana(in *Input) {
 	if in.Image == "" {
-		in.Image = "solanalabs/solana:v1.18.26"
+		in.Image = "f4hrenh9it/solana"
 	}
 	if in.Port == "" {
-		in.Port = "8899"
+		in.Port = "8545"
+	}
+	if in.WSPort == "" {
+		in.WSPort = "8546"
 	}
 }
 
 func newSolana(in *Input) (*Output, error) {
 	defaultSolana(in)
 	ctx := context.Background()
-	wsPortNumberStr, err := wsPort(in.Port)
-	if err != nil {
-		return nil, err
-	}
+	//wsPortNumberStr, err := wsPort(in.Port)
+	//if err != nil {
+	//	return nil, err
+	//}
 	framework.L.Info().Msg("Creating solana container")
 	bindPort := fmt.Sprintf("%s/tcp", in.Port)
 	containerName := framework.DefaultTCName("blockchain-solana-node")
-	wsBindPort := fmt.Sprintf("%s/tcp", wsPortNumberStr)
+	wsBindPort := fmt.Sprintf("%s/tcp", in.WSPort)
 
 	configYml, err := os.CreateTemp("", "config.yml")
 	if err != nil {
 		return nil, err
 	}
-	configYmlRaw = fmt.Sprintf(configYmlRaw, in.Port, wsPortNumberStr)
+	configYmlRaw = fmt.Sprintf(configYmlRaw, in.Port, in.WSPort)
 	_, err = configYml.WriteString(configYmlRaw)
 	if err != nil {
 		return nil, err
@@ -69,6 +73,12 @@ func newSolana(in *Input) (*Output, error) {
 		return nil, err
 	}
 
+	contractsDir, err := filepath.Abs(in.ContractsDir)
+	if err != nil {
+		return nil, err
+	}
+
+	framework.L.Info().Any("Port", in.Port).Any("WSPort", in.WSPort).Send()
 	req := testcontainers.ContainerRequest{
 		AlwaysPullImage: in.PullImage,
 		Image:           in.Image,
@@ -83,35 +93,40 @@ func newSolana(in *Input) (*Output, error) {
 			WithStartupTimeout(30 * time.Second).
 			WithPollInterval(100 * time.Millisecond),
 		HostConfigModifier: func(h *container.HostConfig) {
-			h.PortBindings = framework.MapTheSamePort(bindPort)
-			h.PortBindings[nat.Port(wsBindPort)] = []nat.PortBinding{
-				{
-					HostIP:   "0.0.0.0",
-					HostPort: wsBindPort,
+			h.PortBindings = nat.PortMap{
+				nat.Port(bindPort): []nat.PortBinding{
+					{
+						HostIP:   "0.0.0.0",
+						HostPort: bindPort,
+					},
+				},
+				nat.Port(wsBindPort): []nat.PortBinding{
+					{
+						HostIP:   "0.0.0.0",
+						HostPort: wsBindPort,
+					},
 				},
 			}
 			h.Mounts = append(h.Mounts, mount.Mount{
 				Type:     mount.TypeBind,
-				Source:   in.ContractsDir,
+				Source:   contractsDir,
 				Target:   "/programs",
 				ReadOnly: false,
 			})
 		},
-		LifecycleHooks: []testcontainers.ContainerLifecycleHooks{
+		Files: []testcontainers.ContainerFile{
 			{
-				PostStarts: []testcontainers.ContainerHook{
-					func(ctx context.Context, container testcontainers.Container) error {
-						err = container.CopyFileToContainer(ctx, configYml.Name(), "/root/.config/solana/cli/config.yml", 0644)
-						if err != nil {
-							return err
-						}
-						err = container.CopyFileToContainer(ctx, idJSON.Name(), "/root/.config/solana/cli/id.json", 0644)
-						return err
-					},
-				},
+				HostFilePath:      configYml.Name(),
+				ContainerFilePath: "/data/config.yml",
+				FileMode:          0644,
+			},
+			{
+				HostFilePath:      idJSON.Name(),
+				ContainerFilePath: "/data/id.json",
+				FileMode:          0644,
 			},
 		},
-		Entrypoint: []string{"sh", "-c", fmt.Sprintf("mkdir -p /root/.config/solana/cli && solana-test-validator --rpc-port %s --mint %s", in.Port, in.PublicKey)},
+		Entrypoint: []string{"sh", "-c", "solana-test-validator -C /data/config.yml --bind-address=0.0.0.0 --mint=" + in.PublicKey},
 	}
 
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -125,14 +140,14 @@ func newSolana(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	mp, err := c.MappedPort(ctx, nat.Port(bindPort))
-	if err != nil {
-		return nil, err
-	}
-	wsmp, err := c.MappedPort(ctx, nat.Port(wsBindPort))
-	if err != nil {
-		return nil, err
-	}
+	//mp, err := c.MappedPort(ctx, nat.Port(bindPort))
+	//if err != nil {
+	//	return nil, err
+	//}
+	//wsmp, err := c.MappedPort(ctx, nat.Port(wsBindPort))
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	framework.L.Info().Msg("Started Solana container")
 
@@ -143,9 +158,9 @@ func newSolana(in *Input) (*Output, error) {
 		ContainerName: containerName,
 		Nodes: []*Node{
 			{
-				HostWSUrl:             fmt.Sprintf("ws://%s:%s", host, wsmp.Port()),
-				HostHTTPUrl:           fmt.Sprintf("http://%s:%s", host, mp.Port()),
-				DockerInternalWSUrl:   fmt.Sprintf("ws://%s:%s", containerName, wsPortNumberStr),
+				HostWSUrl:             fmt.Sprintf("ws://%s:%s", host, in.Port),
+				HostHTTPUrl:           fmt.Sprintf("http://%s:%s", host, in.WSPort),
+				DockerInternalWSUrl:   fmt.Sprintf("ws://%s:%s", containerName, in.WSPort),
 				DockerInternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
 			},
 		},

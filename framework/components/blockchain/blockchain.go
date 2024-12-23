@@ -6,6 +6,7 @@ import (
 
 // Input is a blockchain network configuration params
 type Input struct {
+	// Common EVM fields
 	Type      string `toml:"type" validate:"required,oneof=anvil geth besu solana" envconfig:"net_type"`
 	Image     string `toml:"image"`
 	PullImage bool   `toml:"pull_image"`
@@ -16,10 +17,10 @@ type Input struct {
 	DockerCmdParamsOverrides []string `toml:"docker_cmd_params"`
 	Out                      *Output  `toml:"out"`
 
-	// solana only fields
+	// Solana fields
 	// publickey to mint when solana-test-validator starts
-	PublicKey    string `toml:"public_key"`
-	ContractsDir string `toml:"contracts_dir"`
+	PublicKey    string `toml:"public_key" validate:"required"`
+	ContractsDir string `toml:"contracts_dir" validate:"required"`
 }
 
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network
