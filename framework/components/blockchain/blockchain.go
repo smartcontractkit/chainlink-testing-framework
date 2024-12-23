@@ -19,8 +19,8 @@ type Input struct {
 
 	// Solana fields
 	// publickey to mint when solana-test-validator starts
-	PublicKey    string `toml:"public_key" validate:"required"`
-	ContractsDir string `toml:"contracts_dir" validate:"required"`
+	PublicKey    string `toml:"public_key"`
+	ContractsDir string `toml:"contracts_dir"`
 }
 
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network
