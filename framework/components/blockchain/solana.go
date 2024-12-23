@@ -82,9 +82,6 @@ func newSolana(in *Input) (*Output, error) {
 		WaitingFor: wait.ForLog("Processed Slot: 1").
 			WithStartupTimeout(30 * time.Second).
 			WithPollInterval(100 * time.Millisecond),
-		Env: map[string]string{
-			"SERVER_PORT": "1080", // what is this?
-		},
 		HostConfigModifier: func(h *container.HostConfig) {
 			h.PortBindings = framework.MapTheSamePort(bindPort)
 			h.PortBindings[nat.Port(wsBindPort)] = []nat.PortBinding{
@@ -114,7 +111,7 @@ func newSolana(in *Input) (*Output, error) {
 				},
 			},
 		},
-		Entrypoint: []string{"sh", "-c", "mkdir -p /root/.config/solana/cli && solana-test-validator -r --mint=" + in.PublicKey},
+		Entrypoint: []string{"sh", "-c", fmt.Sprintf("mkdir -p /root/.config/solana/cli && solana-test-validator --rpc-port %s --mint %s", in.Port, in.PublicKey)},
 	}
 
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
