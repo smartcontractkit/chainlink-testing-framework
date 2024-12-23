@@ -16,7 +16,7 @@ type CfgSolana struct {
 	NodeSet     *ns.Input         `toml:"nodeset" validate:"required"`
 }
 
-func TestSmokeSolana(t *testing.T) {
+func TestSolanaSmoke(t *testing.T) {
 	in, err := framework.Load[CfgSolana](t)
 	require.NoError(t, err)
 
