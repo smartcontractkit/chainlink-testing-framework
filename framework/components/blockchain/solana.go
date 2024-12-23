@@ -37,21 +37,19 @@ func defaultSolana(in *Input) {
 	if in.Port == "" {
 		in.Port = "8545"
 	}
-	if in.WSPort == "" {
-		in.WSPort = "8546"
-	}
 }
 
 func newSolana(in *Input) (*Output, error) {
 	defaultSolana(in)
 	ctx := context.Background()
-	//wsPortNumberStr, err := wsPort(in.Port)
-	//if err != nil {
-	//	return nil, err
-	//}
-	framework.L.Info().Msg("Creating solana container")
+	containerName := framework.DefaultTCName("blockchain-node")
+	// Solana do not allow to set ws port, it just uses --rpc-port=N and sets WS as N+1 automatically
 	bindPort := fmt.Sprintf("%s/tcp", in.Port)
-	containerName := framework.DefaultTCName("blockchain-solana-node")
+	pp, err := strconv.Atoi(in.Port)
+	if err != nil {
+		return nil, fmt.Errorf("in.Port is not a number")
+	}
+	in.WSPort = strconv.Itoa(pp + 1)
 	wsBindPort := fmt.Sprintf("%s/tcp", in.WSPort)
 
 	configYml, err := os.CreateTemp("", "config.yml")
@@ -78,7 +76,6 @@ func newSolana(in *Input) (*Output, error) {
 		return nil, err
 	}
 
-	framework.L.Info().Any("Port", in.Port).Any("WSPort", in.WSPort).Send()
 	req := testcontainers.ContainerRequest{
 		AlwaysPullImage: in.PullImage,
 		Image:           in.Image,
@@ -117,16 +114,16 @@ func newSolana(in *Input) (*Output, error) {
 		Files: []testcontainers.ContainerFile{
 			{
 				HostFilePath:      configYml.Name(),
-				ContainerFilePath: "/data/config.yml",
+				ContainerFilePath: "/root/.config/solana/cli/config.yml",
 				FileMode:          0644,
 			},
 			{
 				HostFilePath:      idJSON.Name(),
-				ContainerFilePath: "/data/id.json",
+				ContainerFilePath: "/root/.config/solana/cli/id.json",
 				FileMode:          0644,
 			},
 		},
-		Entrypoint: []string{"sh", "-c", "solana-test-validator -C /data/config.yml --bind-address=0.0.0.0 --mint=" + in.PublicKey},
+		Entrypoint: []string{"sh", "-c", fmt.Sprintf("mkdir -p /root/.config/solana/cli && solana-test-validator --rpc-port %s --mint %s", in.Port, in.PublicKey)},
 	}
 
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -140,39 +137,18 @@ func newSolana(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	//mp, err := c.MappedPort(ctx, nat.Port(bindPort))
-	//if err != nil {
-	//	return nil, err
-	//}
-	//wsmp, err := c.MappedPort(ctx, nat.Port(wsBindPort))
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	framework.L.Info().Msg("Started Solana container")
 
 	return &Output{
 		UseCache:      true,
-		Family:        "non-evm",
-		ChainID:       in.ChainID,
+		Family:        "solana",
 		ContainerName: containerName,
 		Nodes: []*Node{
 			{
-				HostWSUrl:             fmt.Sprintf("ws://%s:%s", host, in.Port),
-				HostHTTPUrl:           fmt.Sprintf("http://%s:%s", host, in.WSPort),
+				HostWSUrl:             fmt.Sprintf("ws://%s:%s", host, in.WSPort),
+				HostHTTPUrl:           fmt.Sprintf("http://%s:%s", host, in.Port),
 				DockerInternalWSUrl:   fmt.Sprintf("ws://%s:%s", containerName, in.WSPort),
 				DockerInternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
 			},
 		},
 	}, nil
-}
-
-func wsPort(rpcPort string) (string, error) {
-	wsPortNumber, err := strconv.Atoi(rpcPort)
-	if err != nil {
-		return "", fmt.Errorf("failed to convert port to integer: %w", err)
-	}
-	wsPortNumber += 1 // Increment by 1
-	wsPortNumberStr := strconv.Itoa(wsPortNumber)
-	return wsPortNumberStr, nil
 }
