@@ -1,0 +1,6 @@
+
+[blockchain_a]
+  type = "solana"
+  public_key = "9n1pyVGGo6V4mpiSDMVay5As9NurEkY283wwRk1Kto2C"
+  contracts_dir = "."
+  image = "solanalabs/solana:v1.18.26"

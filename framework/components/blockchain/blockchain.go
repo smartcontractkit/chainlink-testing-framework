@@ -6,14 +6,21 @@ import (
 
 // Input is a blockchain network configuration params
 type Input struct {
-	Type                     string   `toml:"type" validate:"required,oneof=anvil geth besu" envconfig:"net_type"`
-	Image                    string   `toml:"image"`
-	PullImage                bool     `toml:"pull_image"`
-	Port                     string   `toml:"port"`
+	// Common EVM fields
+	Type      string `toml:"type" validate:"required,oneof=anvil geth besu solana" envconfig:"net_type"`
+	Image     string `toml:"image"`
+	PullImage bool   `toml:"pull_image"`
+	Port      string `toml:"port"`
+	// Not applicable to Solana, ws port for Solana is +1 of port
 	WSPort                   string   `toml:"port_ws"`
 	ChainID                  string   `toml:"chain_id"`
 	DockerCmdParamsOverrides []string `toml:"docker_cmd_params"`
 	Out                      *Output  `toml:"out"`
+
+	// Solana fields
+	// publickey to mint when solana-test-validator starts
+	PublicKey    string `toml:"public_key"`
+	ContractsDir string `toml:"contracts_dir"`
 }
 
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network
@@ -49,6 +56,8 @@ func NewBlockchainNetwork(in *Input) (*Output, error) {
 		out, err = newGeth(in)
 	case "besu":
 		out, err = newBesu(in)
+	case "solana":
+		out, err = newSolana(in)
 	default:
 		return nil, fmt.Errorf("blockchain type is not supported or empty, must be 'anvil' or 'geth'")
 	}
