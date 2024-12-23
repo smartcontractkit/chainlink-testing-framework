@@ -36,6 +36,7 @@
     - [Components](framework/components/overview.md)
         - [Blockchains](framework/components/blockchains/overview.md)
             - [EVM](framework/components/blockchains/evm.md)
+            - [Solana](framework/components/blockchains/solana.md)
             - [Optimism Stack]()
             - [Arbitrum Stack]()
         - [Chainlink](framework/components/chainlink.md)
