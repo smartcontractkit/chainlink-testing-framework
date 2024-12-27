@@ -147,12 +147,12 @@ func GenerateSummaryData(tests []TestResult, maxPassRatio float64) SummaryData {
 	flakePercentage := 0.0
 
 	if runs > 0 {
-		passPercentage = math.Floor((float64(passes)/float64(runs)*100)*100) / 100 // Truncate to 2 decimal places
+		passPercentage = math.Round((float64(passes)/float64(runs)*100)*100) / 100 // Round to 2 decimal places
 	}
 
 	totalTests := len(tests)
 	if totalTests > 0 {
-		flakePercentage = math.Floor((float64(flakyTests)/float64(totalTests)*100)*100) / 100 // Truncate to 2 decimal places
+		flakePercentage = math.Round((float64(flakyTests)/float64(totalTests)*100)*100) / 100 // Round to 2 decimal places
 	}
 
 	return SummaryData{

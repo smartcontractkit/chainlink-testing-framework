@@ -50,12 +50,12 @@ func TestGenerateSummaryData(t *testing.T) {
 				PanickedTests:  0,
 				RacedTests:     0,
 				FlakyTests:     2,
-				FlakyTestRatio: "66.66%",
+				FlakyTestRatio: "66.67%",
 				TotalRuns:      19,
 				PassedRuns:     15,
 				FailedRuns:     4,
 				SkippedRuns:    0,
-				PassRatio:      "78.94%",
+				PassRatio:      "78.95%",
 				MaxPassRatio:   0.9,
 			},
 		},
@@ -72,7 +72,7 @@ func TestGenerateSummaryData(t *testing.T) {
 				PanickedTests:  1,
 				RacedTests:     1,
 				FlakyTests:     2,
-				FlakyTestRatio: "66.66%",
+				FlakyTestRatio: "66.67%",
 				TotalRuns:      18,
 				PassedRuns:     17,
 				FailedRuns:     1,
@@ -140,6 +140,66 @@ func TestGenerateSummaryData(t *testing.T) {
 				SkippedRuns:    1,
 				PassRatio:      "78.57%",
 				MaxPassRatio:   0.85,
+			},
+		},
+		{
+			name: "Tiny flake ratio that rounds up to 0.01%",
+			testResults: func() []TestResult {
+				// Create 9,999 test results in total:
+				//  - 9,998 stable (PassRatio=1.0) => not flaky
+				//  - 1 flaky (PassRatio=0.5) => definitely flaky
+				const total = 9999
+				tests := make([]TestResult, total)
+				for i := 0; i < total-1; i++ {
+					tests[i] = TestResult{
+						PassRatio: 1.0, // 100% success
+						Runs:      10,
+						Successes: 10,
+						Failures:  0,
+						Skips:     0,
+						Skipped:   false,
+						Panic:     false,
+						Race:      false,
+					}
+				}
+				// This final test is partially failing => PassRatio=0.5 => "flaky"
+				tests[total-1] = TestResult{
+					PassRatio: 0.5,
+					Runs:      2,
+					Successes: 1,
+					Failures:  1,
+				}
+				return tests
+			}(),
+			maxPassRatio: 1.0,
+			expected: SummaryData{
+				// 9,999 total test results:
+				TotalTests: 9999,
+				// None of them panic or race:
+				PanickedTests: 0,
+				RacedTests:    0,
+				// Exactly one is flaky:
+				FlakyTests: 1,
+				// Flaky ratio = 1 / 9999 ≈ 0.00010001 => 0.01% after rounding
+				FlakyTestRatio: "0.01%",
+
+				// Total runs = 9,998 stable tests * 10 runs each + 1 flaky test with 2 runs
+				TotalRuns: (9998 * 10) + 2, // = 99,980 + 2 = 99,982
+
+				// Passed runs = all 9,998 stable tests (each 10 successes) + 1 success in the flaky test
+				PassedRuns: (9998 * 10) + 1, // = 99,980 + 1 = 99,981
+
+				// Failed runs = the 1 failure in the flaky test
+				FailedRuns: 1,
+
+				// No skipped
+				SkippedRuns: 0,
+
+				// Pass ratio = 99,981 / 99,982 = 0.9999899 => 99.99899% => rounds to 100.00%
+				PassRatio: "100.00%",
+
+				// Provided maxPassRatio
+				MaxPassRatio: 1.0,
 			},
 		},
 	}
