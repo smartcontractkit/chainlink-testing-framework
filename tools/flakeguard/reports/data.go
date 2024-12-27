@@ -143,30 +143,55 @@ func GenerateSummaryData(tests []TestResult, maxPassRatio float64) SummaryData {
 		}
 	}
 
-	passPercentage := 100.0
-	flakePercentage := 0.0
+	// Calculate the PASS ratio (as a float) and then build a string
+	passPercentageStr := "100.00%" // default if runs == 0
 
 	if runs > 0 {
-		passPercentage = math.Round((float64(passes)/float64(runs)*100)*100) / 100 // Round to 2 decimal places
+		rawPassRatio := (float64(passes) / float64(runs)) * 100
+		// Round to 8 decimal places to avoid floating-point quirks
+		passPercentage := math.Floor(rawPassRatio*1e8) / 1e8
+
+		// If there's any failure, never show 100.00%
+		if fails > 0 {
+			passPercentage = math.Min(passPercentage, 99.99)
+		}
+
+		passPercentageStr = fmt.Sprintf("%.2f%%", passPercentage)
 	}
+
+	// Calculate the FLAKE ratio (as a float) and then build a string
+	flakePercentage := 0.0
+	flakeTestRatioStr := "0.00%" // default if totalTests == 0
 
 	totalTests := len(tests)
 	if totalTests > 0 {
-		flakePercentage = math.Round((float64(flakyTests)/float64(totalTests)*100)*100) / 100 // Round to 2 decimal places
+		rawFlakeRatio := (float64(flakyTests) / float64(totalTests)) * 100
+
+		// If non-zero but < 0.01, show "< 0.01%"
+		if rawFlakeRatio > 0 && rawFlakeRatio < 0.01 {
+			flakeTestRatioStr = "< 0.01%"
+		} else {
+			flakePercentage = math.Floor(rawFlakeRatio*100) / 100
+			flakeTestRatioStr = fmt.Sprintf("%.2f%%", flakePercentage)
+		}
 	}
 
+	// 3) Build the SummaryData with the final strings
 	return SummaryData{
 		TotalTests:     totalTests,
 		PanickedTests:  panickedTests,
 		RacedTests:     racedTests,
 		FlakyTests:     flakyTests,
-		FlakyTestRatio: fmt.Sprintf("%.2f%%", flakePercentage),
-		TotalRuns:      runs,
-		PassedRuns:     passes,
-		FailedRuns:     fails,
-		SkippedRuns:    skips,
-		PassRatio:      fmt.Sprintf("%.2f%%", passPercentage),
-		MaxPassRatio:   maxPassRatio,
+		FlakyTestRatio: flakeTestRatioStr,
+
+		TotalRuns:   runs,
+		PassedRuns:  passes,
+		FailedRuns:  fails,
+		SkippedRuns: skips,
+
+		// Use the final passPercentageStr
+		PassRatio:    passPercentageStr,
+		MaxPassRatio: maxPassRatio,
 	}
 }
 
