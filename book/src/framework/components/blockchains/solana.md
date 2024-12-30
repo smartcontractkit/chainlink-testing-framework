@@ -17,10 +17,14 @@ arm64 f4hrenh9it/solana:latest - used locally
   # optional, in case you need some custom image
   # image = "solanalabs/solana:v1.18.26"
 
-# optional, in case you need to deploy some programs
-# this example assumes there is a mcm.so in the mounted contracts_dir directory
-# value is the program id to set for the deployed program instead of auto generating
-# useful for deterministic testing
+# optional
+# To deploy a solana program, we can provide a mapping of program name to program id.
+# The program name has to match the name of the .so file in the contracts_dir directory.
+# This example assumes there is a mcm.so in the mounted contracts_dir directory
+# value is the program_id to set for the deployed program, any valid public key can be used here.
+# this allows lookup via program_id during testing.
+# Alternative, we can use `solana deploy` instead of this field to deploy a program, but 
+# program_id will be auto generated.
 [blockchain_a.solana_programs]
   mcm = "6UmMZr5MEqiKWD5jqTJd1WCR5kT8oZuFYBLJFi1o6GQX"
 
