@@ -21,6 +21,9 @@ type Input struct {
 	// publickey to mint when solana-test-validator starts
 	PublicKey    string `toml:"public_key"`
 	ContractsDir string `toml:"contracts_dir"`
+	// programs to deploy on solana-test-validator start
+	// a map of program name to program id
+	SolanaPrograms map[string]string `toml:"solana_programs"`
 }
 
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network

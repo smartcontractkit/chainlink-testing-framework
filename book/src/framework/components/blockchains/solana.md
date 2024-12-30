@@ -16,6 +16,14 @@ arm64 f4hrenh9it/solana:latest - used locally
   contracts_dir = "."
   # optional, in case you need some custom image
   # image = "solanalabs/solana:v1.18.26"
+
+# optional, in case you need to deploy some programs
+# this example assumes there is a mcm.so in the mounted contracts_dir directory
+# value is the program id to set for the deployed program instead of auto generating
+# useful for deterministic testing
+[blockchain_a.solana_programs]
+  mcm = "6UmMZr5MEqiKWD5jqTJd1WCR5kT8oZuFYBLJFi1o6GQX"
+
 ```
 
 ## Usage

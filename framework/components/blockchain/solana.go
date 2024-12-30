@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -80,6 +81,16 @@ func newSolana(in *Input) (*Output, error) {
 		return nil, err
 	}
 
+	flags := []string{}
+	for k, v := range in.SolanaPrograms {
+		flags = append(flags, "--upgradeable-program", v, filepath.Join("/programs", k+".so"), in.PublicKey)
+	}
+	args := append([]string{
+		"--reset",
+		"--rpc-port", in.Port,
+		"--mint", in.PublicKey,
+	}, flags...)
+
 	req := testcontainers.ContainerRequest{
 		AlwaysPullImage: in.PullImage,
 		Image:           in.Image,
@@ -127,7 +138,7 @@ func newSolana(in *Input) (*Output, error) {
 				FileMode:          0644,
 			},
 		},
-		Entrypoint: []string{"sh", "-c", fmt.Sprintf("mkdir -p /root/.config/solana/cli && solana-test-validator --rpc-port %s --mint %s", in.Port, in.PublicKey)},
+		Entrypoint: []string{"sh", "-c", fmt.Sprintf("mkdir -p /root/.config/solana/cli && solana-test-validator %s", strings.Join(args, " "))},
 	}
 
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
