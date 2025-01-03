@@ -88,7 +88,7 @@ jobs:
           go test -timeout ${{ matrix.test.timeout }} -v -count ${{ matrix.test.count }} -run ${{ matrix.test.name }}
       - name: Upload Logs
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: container-logs-${{ matrix.test.name }}
           path: framework/examples/myproject/logs
