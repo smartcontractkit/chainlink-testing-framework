@@ -11,12 +11,12 @@ func TestConfig(t *testing.T) {
 	t.Setenv("LOG_LEVEL", "butterfly")
 
 	config := readConfig()
-	assert.Equal(t, config.SaveFile, "kendrick.json")
-	assert.Equal(t, config.LogLevel, "butterfly")
+	assert.Equal(t, "kendrick.json", config.SaveFile)
+	assert.Equal(t, "butterfly", config.LogLevel)
 }
 
 func TestConfigDefaults(t *testing.T) {
 	config := readConfig()
-	assert.Equal(t, config.SaveFile, "save.json")
-	assert.Equal(t, config.LogLevel, "debug")
+	assert.Equal(t, "save.json", config.SaveFile)
+	assert.Equal(t, "debug", config.LogLevel)
 }

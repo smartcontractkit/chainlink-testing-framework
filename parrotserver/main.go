@@ -31,7 +31,7 @@ func init() {
 	log.Logger = log.Logger.Level(level).With().Timestamp().Logger()
 }
 
-func main() {
+func start() int {
 	defer func() {
 		if err := save(); err != nil {
 			log.Error().Err(err).Msg("Failed to save configuration")
@@ -49,8 +49,14 @@ func main() {
 		IdleTimeout:  15 * time.Second,
 	}
 
-	log.Info().Int("Port", 8080).Interface("Config", config).Msg("Mock server started")
+	log.Info().Int("port", 8080).Interface("config", config).Msg("Parrot server started")
 	if err := server.ListenAndServe(); err != nil {
-		log.Fatal().Err(err).Msg("Server stopped")
+		log.Error().Err(err).Msg("Server stopped")
+		return 1
 	}
+	return 0
+}
+
+func main() {
+	os.Exit(start())
 }
