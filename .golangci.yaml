@@ -4,11 +4,10 @@ run:
 linters:
   enable:
     - containedctx
-    - depguard
+    - copyloopvar
     - errname
     - errorlint
     - exhaustive
-    - exportloopref
     - fatcontext
     - ginkgolinter
     - gocritic
