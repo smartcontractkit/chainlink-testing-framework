@@ -65,8 +65,8 @@ func (sm *SubscriptionManager) Subscribe(address common.Address, topic common.Ha
 
 	sm.logger.Info().
 		Int64("ChainID", sm.chainID).
-		Hex("Address", []byte(address.Hex())).
-		Hex("Topic", []byte(topic.Hex())).
+		Str("Address", address.Hex()).
+		Str("Topic", topic.Hex()).
 		Int64("SubscriberCount", int64(len(sm.registry[eventKey]))).
 		Msg("New subscription added")
 
@@ -82,8 +82,8 @@ func (sm *SubscriptionManager) Unsubscribe(address common.Address, topic common.
 	if !exists {
 		sm.logger.Warn().
 			Int64("ChainID", sm.chainID).
-			Hex("Address", []byte(address.Hex())).
-			Hex("Topic", []byte(topic.Hex())).
+			Str("Address", address.Hex()).
+			Str("Topic", topic.Hex()).
 			Msg("Attempted to unsubscribe from a non-existent EventKey")
 		return errors.New("event key does not exist")
 	}
@@ -99,8 +99,8 @@ func (sm *SubscriptionManager) Unsubscribe(address common.Address, topic common.
 			sm.mu.Unlock()
 			sm.logger.Info().
 				Int64("ChainID", sm.chainID).
-				Hex("Address", []byte(address.Hex())).
-				Hex("Topic", []byte(topic.Hex())).
+				Str("Address", address.Hex()).
+				Str("Topic", topic.Hex()).
 				Int64("RemainingSubscribers", int64(len(sm.registry[eventKey]))).
 				Msg("Subscription removed")
 			found = true
@@ -124,8 +124,8 @@ func (sm *SubscriptionManager) Unsubscribe(address common.Address, topic common.
 		delete(sm.registry, eventKey)
 		sm.logger.Debug().
 			Int64("ChainID", sm.chainID).
-			Hex("Address", []byte(address.Hex())).
-			Hex("Topic", []byte(topic.Hex())).
+			Str("Address", address.Hex()).
+			Str("Topic", topic.Hex()).
 			Msg("No remaining subscribers, removing EventKey from registry")
 	}
 	sm.mu.Unlock()
@@ -173,8 +173,8 @@ func (sm *SubscriptionManager) BroadcastLog(eventKey internal.EventKey, log api.
 	sm.logger.Debug().
 		Int64("ChainID", sm.chainID).
 		Int("Subscribers", len(subscribers)).
-		Hex("Address", []byte(eventKey.Address.Hex())).
-		Hex("Topic", []byte(eventKey.Topic.Hex())).
+		Str("Address", eventKey.Address.Hex()).
+		Str("Topic", eventKey.Topic.Hex()).
 		Msg("Log broadcasted to all subscribers")
 }
 
