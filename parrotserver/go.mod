@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/parrotserver
 
-go 1.23.2
+go 1.23.4
 
 require (
 	github.com/rs/zerolog v1.33.0

@@ -85,3 +85,4 @@ jobs:
           aws_region: ${{ secrets.QA_AWS_REGION }}
           role_to_assume: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
           aws_account_number: ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}
+          github_token: ${{ github.token }}

@@ -1,29 +1,29 @@
-name: MOCKSERVER Test
+name: Parrotserver Test
 
 on:
   push:
     branches:
       - main
     tags:
-      - 'mockserver/v*.*.*'
+      - 'parrotserver/v*.*.*'
   pull_request:
 
 jobs:
   test:
     defaults:
       run:
-        working-directory: mockserver
+        working-directory: parrotserver
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
-      - name: Check for changes in Mockserver
+      - name: Check for changes in Parrotserver
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
         id: changes
         with:
           filters: |
             src:
-              - 'mockserver/**'
+              - 'parrotserver/**'
       - name: Set up Go
         if: steps.changes.outputs.src == 'true'
         uses: actions/setup-go@v5
@@ -36,7 +36,7 @@ jobs:
   lint:
     defaults:
       run:
-        working-directory: mockserver
+        working-directory: parrotserver
     name: Lint
     runs-on: ubuntu-latest
     steps:

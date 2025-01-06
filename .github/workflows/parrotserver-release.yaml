@@ -1,9 +1,9 @@
-name: Mockserver Release
+name: Parrotserver Release
 
 on:
   push:
     tags:
-      - mockserver/v*
+      - parrotserver/v*
 
 jobs:
   release:
@@ -28,6 +28,6 @@ jobs:
       - name: Build and release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IMAGE_PREFIX: ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com/mockserver
+          IMAGE_PREFIX: ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.QA_AWS_REGION }}.amazonaws.com/parrotserver
           IMAGE_TAG: ${{ github.ref_name}}
-        run: goreleaser release --clean -f ./mockserver/.goreleaser.yml
+        run: goreleaser release --clean -f ./parrotserver/.goreleaser.yml
