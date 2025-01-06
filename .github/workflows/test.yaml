@@ -26,6 +26,8 @@ jobs:
             path: ./tools/flakeguard/            
           - name: workflowresultparser
             path: ./tools/workflowresultparser/
+          - name: parrotserver
+            path: ./parrotserver/
     runs-on: ubuntu-latest
     name: ${{ matrix.project.name }} unit tests
     steps:
