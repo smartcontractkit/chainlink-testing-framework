@@ -105,11 +105,13 @@ func newEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMClient,
 		return nil, err
 	}
 	ec.gasStats = NewGasStats(ec.ID)
-	err = ec.subscribeToNewHeaders()
-	if err != nil {
-		return nil, err
+	// Check if subscriptions are supported since HTTP does not support subscriptions.
+	if ec.Client.Client().SupportsSubscriptions() {
+		err = ec.subscribeToNewHeaders()
+		if err != nil {
+			return nil, err
+		}
 	}
-
 	// Check if the chain supports EIP-1559
 	// https://eips.ethereum.org/EIPS/eip-1559
 	if networkSettings.SupportsEIP1559 {
@@ -1336,13 +1338,20 @@ func NewEVMClient(networkSettings EVMNetwork, env *environment.Environment, logg
 // ConnectEVMClient returns a multi-node EVM client connected to a specified network, using only URLs.
 // Should mostly be used for inside K8s, non-simulated tests.
 func ConnectEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMClient, error) {
+	var urls []string
 	if len(networkSettings.URLs) == 0 {
-		return nil, fmt.Errorf("no URLs provided to connect to network")
+		if len(networkSettings.HTTPURLs) == 0 {
+			return nil, fmt.Errorf("no URLs provided to connect to network")
+		}
+		logger.Warn().Msg("You are running using only HTTP RPC URLs.")
+		urls = networkSettings.HTTPURLs
+	} else {
+		urls = networkSettings.URLs
 	}
 
 	ecl := &EthereumMultinodeClient{}
 
-	for idx, networkURL := range networkSettings.URLs {
+	for idx, networkURL := range urls {
 		networkSettings.URL = networkURL
 		ec, err := newEVMClient(networkSettings, logger)
 
