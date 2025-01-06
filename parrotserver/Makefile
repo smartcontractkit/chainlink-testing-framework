@@ -1,0 +1,3 @@
+.PHONY: test_unit
+test_unit:
+	go test ./...
