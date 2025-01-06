@@ -105,7 +105,7 @@ func newEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMClient,
 		return nil, err
 	}
 	ec.gasStats = NewGasStats(ec.ID)
-	// Check if subscriptions are supported since HTTP does not suport subscriptions.
+	// Check if subscriptions are supported since HTTP does not support subscriptions.
 	if ec.Client.Client().SupportsSubscriptions() {
 		err = ec.subscribeToNewHeaders()
 		if err != nil {
