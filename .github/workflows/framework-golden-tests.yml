@@ -22,18 +22,27 @@ jobs:
             config: smoke.toml
             count: 1
             timeout: 10m
-          - name: TestLoad
-            config: load.toml
+          - name: TestSolanaSmoke
+            config: smoke_solana.toml
+            count: 1
+            timeout: 10m
+          - name: TestUpgrade
+            config: upgrade.toml
+            count: 1
+            timeout: 10m
+          - name: TestPerformanceBaseline
+            config: performance_baseline.toml
             count: 1
             timeout: 10m
           - name: TestChaos
             config: chaos.toml
             count: 1
             timeout: 10m
-          - name: TestReload
-            config: reload.toml
+          - name: TestScalability
+            config: scalability.toml
             count: 1
             timeout: 10m
+    name: ${{ matrix.test.name }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
@@ -54,6 +63,7 @@ jobs:
           filters: |
             src:
               - 'framework/**'
+              - '.github/workflows/framework-golden-tests.yml'
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
@@ -70,9 +80,16 @@ jobs:
             go-modules-${{ runner.os }}
       - name: Install dependencies
         run: go mod download
-      - name: Run Docker Component Tests
+      - name: Run System Tests
         if: steps.changes.outputs.src == 'true'
         env:
           CTF_CONFIGS: ${{ matrix.test.config }}
         run: |
           go test -timeout ${{ matrix.test.timeout }} -v -count ${{ matrix.test.count }} -run ${{ matrix.test.name }}
+      - name: Upload Logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: container-logs-${{ matrix.test.name }}
+          path: framework/examples/myproject/logs
+          retention-days: 1

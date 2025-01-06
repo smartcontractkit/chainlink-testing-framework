@@ -6,6 +6,10 @@ test:
 test_race:
 	go test -v -race -count 1 `go list ./... | grep -v examples` -run TestSmoke
 
+.PHONY: test_benchspy_race
+test_benchspy_race:
+	@./scripts/run_benchspy_tests.sh
+
 .PHONY: test_bench
 test_bench:
 	go test -bench=. -benchmem -count 1 -run=^#
@@ -34,7 +38,7 @@ dashboard:
 .PHONY: start
 start:
 	docker compose -f compose/docker-compose.yaml up -d
-	sleep 5 && curl -X POST -H "Content-Type: application/json" -d '{"name":"test", "role": "Admin"}' http://localhost:3000/api/auth/keys | jq .key
+	@./scripts/generate_grafana_token.sh
 
 .PHONY: stop
 stop:

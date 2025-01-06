@@ -9,14 +9,16 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// ExecCmd executes os command, logging both streams
+// ExecCmd executes the provided command string and logs its output.
+// It returns an error if the command fails to run or exits with a non-zero status.
 func ExecCmd(command string) error {
 	return ExecCmdWithStreamFunc(command, func(m string) {
 		log.Info().Str("Text", m).Msg("Command output")
 	})
 }
 
-// readStdPipe continuously read a pipe from the command
+// readStdPipe reads lines from the provided pipe and sends each line to streamFunc.
+// It is used to handle streaming output from command execution, such as stdout and stderr.
 func readStdPipe(pipe io.ReadCloser, streamFunc func(string)) {
 	scanner := bufio.NewScanner(pipe)
 	scanner.Split(bufio.ScanLines)
@@ -28,7 +30,8 @@ func readStdPipe(pipe io.ReadCloser, streamFunc func(string)) {
 	}
 }
 
-// ExecCmdWithStreamFunc executes command with stream function
+// ExecCmdWithStreamFunc runs the specified command and streams its output and error lines 
+// to the provided outputFunction. It enables real-time handling of command execution output.
 func ExecCmdWithStreamFunc(command string, outputFunction func(string)) error {
 	c := strings.Split(command, " ")
 	cmd := exec.Command(c[0], c[1:]...)

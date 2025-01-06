@@ -13,6 +13,8 @@ import (
 
 const RetryAttempts = 3
 
+// CreateNetwork initializes a new Docker network with a unique name.
+// It ensures no duplicate networks exist and returns the created network or an error if the operation fails.
 func CreateNetwork(l zerolog.Logger) (*tc.DockerNetwork, error) {
 	network, err := tc_network.New(context.Background())
 	if err != nil {

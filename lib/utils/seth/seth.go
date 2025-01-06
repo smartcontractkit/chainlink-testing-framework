@@ -152,7 +152,11 @@ func MergeSethAndEvmNetworkConfigs(evmNetwork blockchain.EVMNetwork, sethConfig 
 	mergeSimulatedNetworks := func(evmNetwork blockchain.EVMNetwork, sethNetwork pkg_seth.Network) *pkg_seth.Network {
 		sethNetwork.PrivateKeys = evmNetwork.PrivateKeys
 		if len(sethNetwork.URLs) == 0 {
-			sethNetwork.URLs = evmNetwork.URLs
+			if len(evmNetwork.URLs) > 0 {
+				sethNetwork.URLs = evmNetwork.URLs
+			} else {
+				sethNetwork.URLs = evmNetwork.HTTPURLs
+			}
 		}
 		// important since Besu doesn't support EIP-1559, but other EVM clients do
 		sethNetwork.EIP1559DynamicFees = evmNetwork.SupportsEIP1559
@@ -175,7 +179,11 @@ func MergeSethAndEvmNetworkConfigs(evmNetwork blockchain.EVMNetwork, sethConfig 
 		} else if isSameNetwork(conf, evmNetwork) {
 			conf.PrivateKeys = evmNetwork.PrivateKeys
 			if len(conf.URLs) == 0 {
-				conf.URLs = evmNetwork.URLs
+				if len(evmNetwork.URLs) > 0 {
+					conf.URLs = evmNetwork.URLs
+				} else {
+					conf.URLs = evmNetwork.HTTPURLs
+				}
 			}
 
 			sethNetwork = conf
@@ -189,8 +197,11 @@ func MergeSethAndEvmNetworkConfigs(evmNetwork blockchain.EVMNetwork, sethConfig 
 			if conf.Name == fmt.Sprint(pkg_seth.DefaultNetworkName) {
 				conf.Name = evmNetwork.Name
 				conf.PrivateKeys = evmNetwork.PrivateKeys
-				conf.URLs = evmNetwork.URLs
-
+				if len(evmNetwork.URLs) > 0 {
+					conf.URLs = evmNetwork.URLs
+				} else {
+					conf.URLs = evmNetwork.HTTPURLs
+				}
 				sethNetwork = conf
 				break
 			}
@@ -246,10 +257,10 @@ func ValidateSethNetworkConfig(cfg *pkg_seth.Network) error {
 	if cfg == nil {
 		return errors.New("network cannot be nil")
 	}
-	if cfg.URLs == nil || len(cfg.URLs) == 0 {
+	if len(cfg.URLs) == 0 {
 		return errors.New("URLs are required")
 	}
-	if cfg.PrivateKeys == nil || len(cfg.PrivateKeys) == 0 {
+	if len(cfg.PrivateKeys) == 0 {
 		return errors.New("PrivateKeys are required")
 	}
 	if cfg.TransferGasFee == 0 {

@@ -1,7 +1,6 @@
 package test_env
 
 import (
-	"context"
 	"fmt"
 	"time"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/logstream"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/osutil"
 )
 
@@ -19,23 +17,25 @@ const (
 )
 
 type EnvComponent struct {
-	ContainerName      string               `json:"containerName"`
-	ContainerImage     string               `json:"containerImage"`
-	ContainerVersion   string               `json:"containerVersion"`
-	ContainerEnvs      map[string]string    `json:"containerEnvs"`
-	WasRecreated       bool                 `json:"wasRecreated"`
-	Networks           []string             `json:"networks"`
-	Container          tc.Container         `json:"-"`
-	LogStream          *logstream.LogStream `json:"-"`
-	PostStartsHooks    []tc.ContainerHook   `json:"-"`
-	PostStopsHooks     []tc.ContainerHook   `json:"-"`
-	PreTerminatesHooks []tc.ContainerHook   `json:"-"`
-	LogLevel           string               `json:"-"`
-	StartupTimeout     time.Duration        `json:"-"`
+	ContainerName      string             `json:"containerName"`
+	ContainerImage     string             `json:"containerImage"`
+	ContainerVersion   string             `json:"containerVersion"`
+	ContainerEnvs      map[string]string  `json:"containerEnvs"`
+	WasRecreated       bool               `json:"wasRecreated"`
+	Networks           []string           `json:"networks"`
+	Container          tc.Container       `json:"-"`
+	PostStartsHooks    []tc.ContainerHook `json:"-"`
+	PostStopsHooks     []tc.ContainerHook `json:"-"`
+	PreTerminatesHooks []tc.ContainerHook `json:"-"`
+	LogLevel           string             `json:"-"`
+	StartupTimeout     time.Duration      `json:"-"`
 }
 
 type EnvComponentOption = func(c *EnvComponent)
 
+// WithContainerName sets the container name for an EnvComponent.
+// It allows customization of the container's identity, enhancing clarity
+// and organization in containerized environments.
 func WithContainerName(name string) EnvComponentOption {
 	return func(c *EnvComponent) {
 		if name != "" {
@@ -44,6 +44,9 @@ func WithContainerName(name string) EnvComponentOption {
 	}
 }
 
+// WithStartupTimeout sets a custom startup timeout for an EnvComponent.
+// This option allows users to specify how long to wait for the component to start
+// before timing out, enhancing control over component initialization.
 func WithStartupTimeout(timeout time.Duration) EnvComponentOption {
 	return func(c *EnvComponent) {
 		if timeout != 0 {
@@ -52,6 +55,9 @@ func WithStartupTimeout(timeout time.Duration) EnvComponentOption {
 	}
 }
 
+// WithContainerImageWithVersion sets the container image and version for an EnvComponent.
+// It splits the provided image string by ':' and assigns the values accordingly.
+// This function is useful for configuring specific container images in a deployment.
 func WithContainerImageWithVersion(imageWithVersion string) EnvComponentOption {
 	return func(c *EnvComponent) {
 		split := strings.Split(imageWithVersion, ":")
@@ -62,6 +68,8 @@ func WithContainerImageWithVersion(imageWithVersion string) EnvComponentOption {
 	}
 }
 
+// WithLogLevel sets the logging level for an environment component.
+// It allows customization of log verbosity, enhancing debugging and monitoring capabilities.
 func WithLogLevel(logLevel string) EnvComponentOption {
 	return func(c *EnvComponent) {
 		if logLevel != "" {
@@ -70,49 +78,38 @@ func WithLogLevel(logLevel string) EnvComponentOption {
 	}
 }
 
-func WithLogStream(ls *logstream.LogStream) EnvComponentOption {
-	return func(c *EnvComponent) {
-		c.LogStream = ls
-	}
-}
-
+// WithPostStartsHooks sets the PostStarts hooks for an EnvComponent.
+// This allows users to define custom actions that should occur after the component starts.
 func WithPostStartsHooks(hooks ...tc.ContainerHook) EnvComponentOption {
 	return func(c *EnvComponent) {
 		c.PostStartsHooks = hooks
 	}
 }
 
+// WithPostStopsHooks sets the PostStops hooks for an EnvComponent.
+// This allows users to define custom actions that should occur after the component stops.
 func WithPostStopsHooks(hooks ...tc.ContainerHook) EnvComponentOption {
 	return func(c *EnvComponent) {
 		c.PostStopsHooks = hooks
 	}
 }
 
+// WithPreTerminatesHooks sets the pre-termination hooks for an EnvComponent.
+// This allows users to define custom behavior that should occur before the component is terminated.
 func WithPreTerminatesHooks(hooks ...tc.ContainerHook) EnvComponentOption {
 	return func(c *EnvComponent) {
 		c.PreTerminatesHooks = hooks
 	}
 }
 
+// SetDefaultHooks initializes the default hooks for the environment component.
+// This function is useful for ensuring that the component has a consistent starting state before further configuration.
 func (ec *EnvComponent) SetDefaultHooks() {
-	ec.PostStartsHooks = []tc.ContainerHook{
-		func(ctx context.Context, c tc.Container) error {
-			if ec.LogStream != nil {
-				return ec.LogStream.ConnectContainer(ctx, c, "")
-			}
-			return nil
-		},
-	}
-	ec.PostStopsHooks = []tc.ContainerHook{
-		func(ctx context.Context, c tc.Container) error {
-			if ec.LogStream != nil {
-				return ec.LogStream.DisconnectContainer(c)
-			}
-			return nil
-		},
-	}
+	// no default hooks
 }
 
+// GetImageWithVersion returns the container image name combined with its version.
+// This function is useful for generating a complete image identifier needed for container requests.
 func (ec *EnvComponent) GetImageWithVersion() string {
 	return fmt.Sprintf("%s:%s", ec.ContainerImage, ec.ContainerVersion)
 }

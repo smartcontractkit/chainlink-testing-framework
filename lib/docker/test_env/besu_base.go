@@ -44,12 +44,17 @@ type Besu struct {
 	powSettings
 }
 
+// WithTestInstance sets up the execution client for testing by assigning a test logger and the testing context.
+// This allows for better logging and error tracking during test execution.
 func (g *Besu) WithTestInstance(t *testing.T) ExecutionClient {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
 }
 
+// StartContainer initializes and starts a Besu container for Ethereum execution.
+// It configures network settings based on the Ethereum version and returns the
+// network configuration along with any errors encountered during the process.
 func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 	var r *tc.ContainerRequest
 	var err error
@@ -121,6 +126,9 @@ func (g *Besu) StartContainer() (blockchain.EVMNetwork, error) {
 	return networkConfig, nil
 }
 
+// GetInternalExecutionURL returns the internal execution URL for the Besu client.
+// It is used to retrieve the endpoint for executing transactions in Ethereum 2.0 networks,
+// ensuring compatibility with the Ethereum version in use.
 func (g *Besu) GetInternalExecutionURL() string {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		panic("eth1 node doesn't have an execution URL")
@@ -128,6 +136,8 @@ func (g *Besu) GetInternalExecutionURL() string {
 	return g.InternalExecutionURL
 }
 
+// GetExternalExecutionURL returns the external execution URL for the Besu instance.
+// It panics if the Ethereum version is Eth1, as Eth1 nodes do not support execution URLs.
 func (g *Besu) GetExternalExecutionURL() string {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		panic("eth1 node doesn't have an execution URL")
@@ -135,34 +145,50 @@ func (g *Besu) GetExternalExecutionURL() string {
 	return g.ExternalExecutionURL
 }
 
+// GetInternalHttpUrl returns the internal HTTP URL of the Besu client.
+// This URL is essential for establishing communication with the Besu node in a private network setup.
 func (g *Besu) GetInternalHttpUrl() string {
 	return g.InternalHttpUrl
 }
 
+// GetInternalWsUrl returns the internal WebSocket URL for the Besu client.
+// This URL is essential for establishing WebSocket connections to the Besu node for real-time data and event subscriptions.
 func (g *Besu) GetInternalWsUrl() string {
 	return g.InternalWsUrl
 }
 
+// GetExternalHttpUrl returns the external HTTP URL of the Besu client.
+// This URL is used to interact with the Besu node from external applications or services.
 func (g *Besu) GetExternalHttpUrl() string {
 	return g.ExternalHttpUrl
 }
 
+// GetExternalWsUrl returns the external WebSocket URL for the Besu client.
+// This URL is essential for connecting to the Besu node from external services or clients.
 func (g *Besu) GetExternalWsUrl() string {
 	return g.ExternalWsUrl
 }
 
+// GetContainerName returns the name of the container associated with the Besu instance.
+// This function is useful for identifying and managing the container in a Docker environment.
 func (g *Besu) GetContainerName() string {
 	return g.ContainerName
 }
 
+// GetContainer returns a pointer to the container associated with the Besu instance.
+// This function is useful for accessing the container's properties and methods in other operations.
 func (g *Besu) GetContainer() *tc.Container {
 	return &g.Container
 }
 
+// GetEthereumVersion returns the current Ethereum version of the Besu instance.
+// This information is crucial for determining the appropriate container configuration and consensus mechanism.
 func (g *Besu) GetEthereumVersion() config_types.EthereumVersion {
 	return g.ethereumVersion
 }
 
+// WaitUntilChainIsReady blocks until the Ethereum chain is ready for operations.
+// It is useful for ensuring that the execution client has fully synchronized with the network before proceeding with further actions.
 func (g *Besu) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return nil
@@ -171,7 +197,10 @@ func (g *Besu) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration
 	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
 }
 
-func (g *Besu) GethConsensusMechanism() ConsensusMechanism {
+// GetConsensusMechanism returns the consensus mechanism used by the Besu instance.
+// It identifies whether the Ethereum version is Eth1 or not, returning either Proof of Authority (PoA)
+// or Proof of Stake (PoS) accordingly. This is useful for understanding the network's validation method.
+func (g *Besu) GetConsensusMechanism() ConsensusMechanism {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return ConsensusMechanism_PoA
 	}

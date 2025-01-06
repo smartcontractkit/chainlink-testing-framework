@@ -1,7 +1,10 @@
 { pkgs, scriptDir }:
 with pkgs;
 let
+<<<<<<< HEAD
   go = pkgs.go_1_23;
+=======
+>>>>>>> 15722ca32b6471e17114cc61bced6e78aed251da
   postgresql = postgresql_15;
   nodejs = nodejs-18_x;
   nodePackages = pkgs.nodePackages.override { inherit nodejs; };

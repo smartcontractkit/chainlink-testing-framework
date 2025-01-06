@@ -10,17 +10,16 @@ Here we provide full configuration reference, if you want to copy and run it, pl
 ## Configuration
 ```toml
 [cl_node]
-  # Optional URL for fake data provider URL
-  # usually set up in test with local mock server
-  data_provider_url = "http://example.com"
 
   [cl_node.db]
     # PostgreSQL image version and tag
-    image = "postgres:15.6"
+    image = "postgres:12.0"
     # Pulls the image every time if set to 'true', used like that in CI. Can be set to 'false' to speed up local runs
-    pull_image = true
+    pull_image = false
 
   [cl_node.node]
+    # custom ports that plugins may need to expose and map to the host machine
+    custom_ports = [14000, 14001]
     # A list of paths to capability binaries
     capabilities = ["./capability_1", "./capability_2"]
     # Default capabilities directory inside container
@@ -34,7 +33,7 @@ Here we provide full configuration reference, if you want to copy and run it, pl
     # Optional name for image we build, default is "ctftmp"
     docker_image_name = "ctftmp"
     # Pulls the image every time if set to 'true', used like that in CI. Can be set to 'false' to speed up local runs
-    pull_image = true
+    pull_image = false
     # Overrides Chainlink node TOML configuration
     # can be multiline, see example
     user_config_overrides = """
@@ -54,6 +53,10 @@ Here we provide full configuration reference, if you want to copy and run it, pl
     use_cache = true
     # Describes deployed or external Chainlink node
     [cl_node.out.node]
+      # API user name
+      api_auth_user = 'notreal@fakeemail.ch'
+      # API password
+      api_auth_password = 'fj293fbBnlQ!f9vNs'
       # Host Docker URLs the test uses
       # in case of using external component you can replace these URLs with another deployment
       p2p_url = "http://127.0.0.1:32812"

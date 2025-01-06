@@ -1,0 +1,223 @@
+name: Generate go-docs
+
+on:
+  pull_request:
+    types:
+      - labeled
+      - reopened
+      - synchronize
+
+jobs:
+  generate_docs_new_pr:
+    name: Generate Go Docs
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'generate_go_docs') }}
+    runs-on: ubuntu-latest
+    environment: integration
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Setup GitHub Token for reading Generate Go Doc Repo
+        id: setup-github-token-read
+        uses: smartcontractkit/.github/actions/setup-github-token@9e7cc0779934cae4a9028b8588c9adb64d8ce68c # setup-github-token@0.1.2
+        with:
+          aws-role-arn: ${{ secrets.AWS_ROLE_ARN_READ_GENERATE_GO_DOC_REPO }}
+          aws-lambda-url: ${{ secrets.GATI_LAMBDA_TT_URL }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Configure git for private repository and install go tools
+        env:
+          GOPRIVATE: github.com/smartcontractkit/generate-go-function-docs
+        run: |
+          git config --global url."https://x-access-token:${{ steps.setup-github-token-read.outputs.access-token }}@github.com/".insteadOf "https://github.com/"
+          go install github.com/smartcontractkit/generate-go-function-docs@v0.0.2
+          go install github.com/jmank88/gomods@v0.1.3
+          go install golang.org/x/tools/gopls@latest
+
+      - name: Checkout current branch
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Detect changes related to current PR
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: changes
+        with:
+          filters: |
+            seth:
+              - 'seth/**/*.go'
+            wasp:
+              - 'wasp/**/*.go'
+            havoc:
+              - 'havoc/**/*.go'
+            lib:
+              - 'lib/**/*.go'
+            k8s-test-runner:
+              - 'k8s-test-runner/**/*.go'
+            framework:
+              - 'framework/**/*.go'
+            tools/asciitable:
+              - 'tools/asciitable/**/*.go'
+            tools/breakingchanges:
+              - 'tools/breakingchanges/**/*.go'
+            tools/citool:
+              - 'tools/citool/**/*.go'
+            tools/ecrimagefetcher:
+              - 'tools/ecrimagefetcher/**/*.go'
+            tools/envresolve:
+              - 'tools/envresolve/**/*.go'
+            tools/flakeguard:
+              - 'tools/flakeguard/**/*.go'
+            tools/ghlatestreleasechecker:
+              - 'tools/ghlatestreleasechecker/**/*.go'
+            tools/ghsecrets:
+              - 'tools/ghsecrets/**/*.go'
+            tools/gotestloghelper:
+              - 'tools/gotestloghelper/**/*.go'
+            tools/testlistgenerator:
+              - 'tools/testlistgenerator/**/*.go'
+            tools/workflowresultparser:
+              - 'tools/workflowresultparser/**/*.go'
+            # add more projects here
+
+      - name: Find all go modules in the repository and filter the ones that changed
+        shell: bash
+        id: go-modules
+        env:
+          FILTERS: ${{ steps.changes.outputs.changes }}
+        run: |
+          PATH=$PATH:$(go env GOPATH)/bin
+          export PATH
+
+          # Find all go projects
+          gomods_output=$(gomods 2>&1)
+
+          # Extract the parent directories of go.mod files
+          parent_folders=$(echo "$gomods_output" | grep 'go\.mod$' | sed 's/\/go\.mod//' | sed 's/^[ \t]*//;s/[ \t]*$//' | xargs -n 1)
+
+          # Convert parent directories into a JSON matrix
+          echo "$parent_folders" | jq -R -s 'split("\n") | map(select(length > 0)) | map({folder: .})' > all_folders.json
+
+          # Filter the directories that did not changeß
+          jq --argjson filters "$FILTERS" 'map(select(.folder as $folder | $filters | index($folder)))' all_folders.json > filtered_folders.json
+
+          echo "Filtered folder List JSON"
+          cat filtered_folders.json
+
+          rm all_folders.json
+
+      - name: Generate go docs for changed projects
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_DOC_GEN_API_KEY }}
+        run: |
+          # Add go binary to PATH
+          PATH=$PATH:$(go env GOPATH)/bin
+          export PATH
+          cat filtered_folders.json | jq -c '.[]' | while read -r item; do
+            folder=$(echo "$item" | jq -r '.folder')
+            echo "Processing folder: $folder"
+            generate-go-function-docs diff -b ${{ github.event.pull_request.base.sha }} -c ${{ github.event.pull_request.head.sha }} --saveCosts --generator chatgpt --generatorSubType ${{ vars.GO_DOC_GEN_CHATGPT_MODEL }} --folder "$folder"
+          done
+          rm filtered_folders.json
+
+      - name: Upload costs as artifact
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: generation-costs
+          path: ./costs
+
+      - name: Remove costs before committing
+        shell: bash
+        run: rm -rf costs
+
+      - name: Setup GitHub Token for creating a new PR
+        id: setup-github-token-write
+        uses: smartcontractkit/.github/actions/setup-github-token@9e7cc0779934cae4a9028b8588c9adb64d8ce68c # setup-github-token@0.1.2
+        with:
+          aws-role-arn: ${{ secrets.AWS_ROLE_ARN_CREATE_PR }}
+          aws-lambda-url: ${{ secrets.GATI_LAMBDA_TT_URL }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Create a new PR targeting current PR
+        uses: peter-evans/create-pull-request@5e914681df9dc83aa4e4905692ca88beb2f9e91f # v7.0.5
+        id: create-pr
+        with:
+          token: ${{ steps.setup-github-token-write.outputs.access-token }}
+          branch: ${{ github.head_ref }}-docs
+          base: ${{ github.head_ref }}
+          title: "Go docs for PR#${{ github.event.pull_request.number }}"
+          body: "This PR contains automatically generated go documentation for the PR#${{ github.event.pull_request.number }}. Please review the changes."
+          commit-message: "[Bot] Add automatically generated go documentation"
+
+      - name: Find comment with PR link
+        uses: peter-evans/find-comment@3eae4d37986fb5a8592848f6a574fdf654e61f9e # v3.1.0
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-includes: Go doc generation
+
+      - name: Create comment in the original PR with link to the new PR
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
+        if: steps.create-pr.outputs.pull-request-number != ''
+        with:
+          token: ${{ steps.setup-github-token-write.outputs.access-token }}
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          edit-mode: replace
+          body: |
+            ## Go doc generation
+            Hey @${{ github.actor }}, you can check generated Go function documentation [here](${{ steps.create-pr.outputs.pull-request-url }}). Please review them and merge to this PR once you're satisfied with them.
+
+      - name: Create comment in the original PR to notify about no new docs
+        uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043 # v4.0.0
+        if: steps.create-pr.outputs.pull-request-number == ''
+        with:
+          token: ${{ steps.setup-github-token-write.outputs.access-token }}
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          edit-mode: replace
+          body: |
+            ## Go doc generation
+            Hey @${{ github.actor }}, no documentation was generated. Are you sure that you made changes to public functions without existing comments in your PR?
+
+      - name: Send Slack notification
+        uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
+        if: failure()
+        id: slack
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.QA_SLACK_API_KEY }}
+        with:
+          channel-id: 'C049X3353K2'
+          payload: |
+            {
+              "attachments": [
+                {
+                  "color": "#C62828",
+                  "blocks": [
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "mrkdwn",
+                        "text": "Go doc generation - Failed :x:"
+                      }
+                    },
+                    {
+                        "type": "section",
+                        "text": {
+                          "type": "mrkdwn",
+                          "text": "<@U060CGGPY8H>, please have a look."
+                        }
+                    },
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "mrkdwn",
+                        "text": "<${{ github.server_url }}/${{ github.repository }}/pull/${{ github.event.pull_request.number }}|PR#${{ github.event.pull_request.number }}> | <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run Details>"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }

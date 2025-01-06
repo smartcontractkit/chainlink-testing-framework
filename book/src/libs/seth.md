@@ -36,6 +36,9 @@ Reliable and debug-friendly Ethereum client
 15. [Bulk transaction tracing](#bulk-transaction-tracing)
 16. [RPC traffic logging](#rpc-traffic-logging)
 17. [Read-only mode](#read-only-mode)
+18. [ABI Finder](#abi-finder)
+19. [Contract Map](#contract-map)
+20. [Contract Store](#contract-store)
 
 ## Goals
 
@@ -80,7 +83,7 @@ You can read more about how ABI finding and contract map works [here](../../../s
 
 ## Examples
 
-Check [examples](../../../seth/examples) folder
+Check [examples](https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/seth/examples) folder
 
 Lib provides a small amount of helpers for decoding handling that you can use with vanilla `go-ethereum` generated wrappers
 
@@ -231,7 +234,7 @@ client, err := NewClientBuilder().
     WithEIP1559DynamicFees(true).
     WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
     WithGasPriceEstimations(true, 10, seth.Priority_Fast).
-// gas bumping: retries, max gas price, bumping strategy function
+    // gas bumping: retries, max gas price, bumping strategy function
     WithGasBumping(5, 100_000_000_000, PriorityBasedGasBumpingStrategyFn).
     Build()
 
@@ -345,6 +348,12 @@ You can also enable pending nonce protection that will check if given key has an
 ```toml
 pending_nonce_protection_enabled = true
 pending_nonce_protection_timeout = "5m"
+```
+
+If you want to use HTTP instead of WS you can do so by setting to true:
+
+```toml
+force_http = false
 ```
 
 You can add more networks like this:
@@ -839,3 +848,49 @@ Additionally, when the client is build anc `cfg.ReadOnly = true` is set, we will
 * RPC health check is disabled
 * pending nonce protection is disabled
 * gas bumping is disabled
+
+## ABI Finder
+
+In order to be able to decode and trace transactions and calls between smart contracts we need their ABIs. Unfortunately, it might happen that two or more contracts have methods with the same signatures, which might result in incorrect tracing. To make that problem less severe we have decided to add a single point of entry for contract deployment in Seth to track what contract is deployed at which address and thus minimise incorrect tracing due to potentially ambiguous method signatures.
+
+There are two possible starting points:
+
+1.  We don’t know what contract (ABI) is located at a given address. That is the case, when the contract either wasn’t uploaded via Seth or we haven’t supplied Seth with a contract map as part of its configuration (more on that later).
+
+    a. We sequentially iterate over all known ABIs (map: `name -> ABI_name`) checking whether it has a method with a given signature. Once we get a first match we upsert that (`address -> ABI_name`) data into the contract map and return the ABI.
+
+        The caveat here is that if the method we are searching for is present in more than one ABI we might associate the address with an incorrect address (we use the first match).
+
+    b. If no match is found we return an error.
+
+2.  We know what ABI is located at a given address. That is the case, when we have either uploaded the contract via Seth, provided Seth with a contract map or already traced a transaction to that address and found an ABI with matching method signature.
+
+    a. We fetch the corresponding ABI and check if it indeed contains the method we are looking for (as mentioned earlier in some cases it might not be the case, because we associated the ABI with address using a different method that it shared with some other contract).
+
+    b. If it does, we return the ABI.
+
+    c. If it doesn’t we iterate again over all known ABIs, in the same way as in `1a`. If we find a match we update the (`address -> ABI_name`) association in the contract map and return the ABI.
+
+        It is possible that this will happen multiple times, if we have multiple contracts with multiple identical methods, but given a sufficiently diverse set of methods that were called we should eventually arrive at a fully correct contract map.
+
+    d. If no match is found we will return an error.
+
+### Example
+
+![tracing_example](./images/tracing_example.png)
+
+## Contract Map
+
+We support in-memory contract map and a TOML file-based one that keeps the association of (`address -> ABI_name`). The latter map is only used for non-simulated networks. Every time we deploy a contract we save (`address -> ABI_name`) entry in the in-memory map. If the network is not a simulated one we also save it in a file. That file can later be pointed to in Seth configuration and we will load the contract map from it (**currently without validating whether we have all the ABIs mentioned in the file**).
+
+When saving contract deployment information we can either generate filename for you (if you didn’t configure Seth to use a particular file) using the pattern of `deployed_contracts_${network_name}_${timestamp}.toml` or use the filename provided in Seth TOML configuration file.
+
+It has to be noted that the file-based contract map is currently updated only, when new contracts are deployed. There’s no mechanism for updating it if we found the mapping invalid (which might be the case if you manually created the entry in the file).
+
+## Contract Store
+
+Contract store is a component that stores ABIs and contracts' bytecodes. In theory, Seth can be used without it, but it would have very limited usage as transaction decoding and tracing cannot work without ABIs. Thus in practice, we enforce a non-empty Contract Store durin Seth initialisation.
+
+Another use of Contract Store is simplified contract deployment. For that we also need the contract's bytecode. The contract store can be used to store the bytecode of the contract and then deploy it using the `DeployContractFromContractStore(auth *bind.TransactOpts, name string, backend bind.ContractBackend, params ...interface{})` method. When Seth is intialisied with the contract store and no bytecode files (`*.bin`) are provided, it will log a warning, but initialise successfully nonetheless.
+
+If bytecode file wasn't provided, you need to use `DeployContract(auth *bind.TransactOpts, name string, abi abi.ABI, bytecode []byte, backend bind.ContractBackend, params ...interface{})` method, which expects you to provide contract name (best if equal to the name of the ABI file), bytecode and the ABI.

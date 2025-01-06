@@ -7,9 +7,7 @@ Let's spin up a simple component.
 Create your configuration in `smoke.toml`
 ```toml
 [blockchain_a]
-  chain_id = "31337"
-  image = "f4hrenh9it/foundry:latest"
-  port = "8545"
+  # choose between "anvil", "geth" or "besu"
   type = "anvil"
 ```
 
@@ -46,7 +44,7 @@ Run the test
 CTF_CONFIGS=smoke.toml go test -v -run TestMe
 ```
 
-Remove containers
+Remove containers (read more about cleanup [here](components/cleanup.md))
 ```
 ctf d rm
 ```
@@ -57,4 +55,4 @@ Summary:
 
 Now let's connect the [Chainlink](./connecting_chainlink_node.md) node!
 
-Learn more about [anvil](./components/blockchains/anvil.md) component.
+Learn more about [EVM Client](./components/blockchains/evm.md) component.

@@ -155,6 +155,11 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 	)
 }
 
+// ValidateConfig checks and validates the provided Config struct.
+// It ensures essential fields have valid values or default to appropriate values
+// when necessary. This function performs validation on gas price estimation,
+// gas limit, tracing level, trace outputs, network dial timeout, and pending nonce protection timeout.
+// If any configuration is invalid, it returns an error.
 func ValidateConfig(cfg *Config) error {
 	if cfg.Network.GasPriceEstimationEnabled {
 		if cfg.Network.GasPriceEstimationBlocks == 0 {
@@ -365,7 +370,6 @@ func NewClientRaw(
 		eg, egCtx := errgroup.WithContext(ctx)
 		// root key is element 0 in ephemeral
 		for _, addr := range c.Addresses[1:] {
-			addr := addr
 			eg.Go(func() error {
 				return c.TransferETHFromKey(egCtx, 0, addr.Hex(), bd.AddrFunding, gasPrice)
 			})
@@ -454,6 +458,10 @@ func (m *Client) checkRPCHealth() error {
 	return nil
 }
 
+// TransferETHFromKey initiates a transfer of Ether from a specified key to a recipient address.
+// It validates the private key index, estimates gas limit if not provided, and sends the transaction.
+// The function signs and sends an Ethereum transaction using the specified fromKeyNum and recipient address,
+// with the specified amount and gas price.
 func (m *Client) TransferETHFromKey(ctx context.Context, fromKeyNum int, to string, value *big.Int, gasPrice *big.Int) error {
 	if err := m.validatePrivateKeysKeyNum(fromKeyNum); err != nil {
 		return err

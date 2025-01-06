@@ -58,6 +58,12 @@ func (m Chart) GetValues() *map[string]interface{} {
 	return m.Values
 }
 
+func (m Chart) GetLabels() map[string]string {
+	return map[string]string{
+		"chain.link/component": "reorg",
+	}
+}
+
 func (m Chart) ExportData(e *environment.Environment) error {
 	urls := make([]string, 0)
 	httpURLs := make([]string, 0)

@@ -5,27 +5,20 @@ Let's create a full-fledged set of Chainlink nodes connected to some blockchain.
 Create a configuration file `smoke.toml`
 ```toml
 [blockchain_a]
-  chain_id = "31337"
-  image = "f4hrenh9it/foundry:latest"
-  port = "8545"
   type = "anvil"
-
-[data_provider]
-  port = 9111
+  docker_cmd_params = ["-b", "1"]
 
 [nodeset]
   nodes = 5
   override_mode = "all"
+  
+  [nodeset.db]
+    image = "postgres:12.0"
 
   [[nodeset.node_specs]]
 
-    [nodeset.node_specs.db]
-      image = "postgres:15.6"
-      pull_image = true
-
     [nodeset.node_specs.node]
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
-      pull_image = true
 ```
 
 Create a file `smoke_test.go`
@@ -35,7 +28,6 @@ package yourpackage_test
 import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -43,7 +35,6 @@ import (
 
 type Config struct {
 	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
-	MockerDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
 	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
 }
 
@@ -53,9 +44,7 @@ func TestNodeSet(t *testing.T) {
 
 	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
 	require.NoError(t, err)
-	dp, err := fake.NewFakeDataProvider(in.MockerDataProvider)
-	require.NoError(t, err)
-	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc, dp.BaseURLDocker)
+	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc)
 	require.NoError(t, err)
 
 	t.Run("test something", func(t *testing.T) {

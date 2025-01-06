@@ -1,0 +1,16 @@
+[contracts_src]
+[contracts_dst]
+
+[blockchain_dst]
+  chain_id = "2337"
+#  docker_cmd_params = ["--fork-url", "wss://avalanche-fuji-c-chain-rpc.publicnode.com", "--auto-impersonate", "-b", "1"]
+  docker_cmd_params = ["-b", "1"]
+  port = "8545"
+  type = "anvil"
+
+[blockchain_src]
+  chain_id = "3337"
+#  docker_cmd_params = ["--fork-url", "wss://avalanche-fuji-c-chain-rpc.publicnode.com", "--auto-impersonate", "-b", "1"]
+  docker_cmd_params = ["-b", "1"]
+  port = "8555"
+  type = "anvil"

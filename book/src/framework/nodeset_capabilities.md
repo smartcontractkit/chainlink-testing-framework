@@ -17,23 +17,17 @@ go get github.com/smartcontractkit/capabilities/kvstore && go install github.com
 Create a configuration file `smoke.toml`
 ```toml
 [blockchain_a]
-  chain_id = "31337"
-  image = "f4hrenh9it/foundry:latest"
-  port = "8545"
   type = "anvil"
-
-[data_provider]
-  port = 9111
+  docker_cmd_params = ["-b", "1"]
 
 [nodeset]
   nodes = 5
   override_mode = "all"
+  
+  [nodeset.db]
+    image = "postgres:12.0"
 
   [[nodeset.node_specs]]
-
-    [nodeset.node_specs.db]
-      image = "postgres:15.6"
-      pull_image = true
 
     [nodeset.node_specs.node]
       # path to your capability binaries
@@ -41,8 +35,6 @@ Create a configuration file `smoke.toml`
       # default capabilities directory
       # capabilities_container_dir = "/home/capabilities"
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
-      pull_image = true
-
 ```
 
 Run it

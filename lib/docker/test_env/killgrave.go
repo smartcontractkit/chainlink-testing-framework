@@ -78,6 +78,9 @@ type KillgraveAdapterResult struct {
 	Result interface{} `json:"result"`
 }
 
+// NewKillgrave initializes a new Killgrave instance with specified networks and imposters directory.
+// It sets default configurations and allows for optional environment component modifications.
+// This function is useful for creating a Killgrave service for testing and simulating APIs.
 func NewKillgrave(networks []string, impostersDirectoryPath string, opts ...EnvComponentOption) *Killgrave {
 	k := &Killgrave{
 		EnvComponent: EnvComponent{
@@ -96,12 +99,16 @@ func NewKillgrave(networks []string, impostersDirectoryPath string, opts ...EnvC
 	return k
 }
 
+// WithTestInstance sets up a Killgrave instance for testing by assigning a test logger and the testing context.
+// This allows for better logging during tests and facilitates easier debugging.
 func (k *Killgrave) WithTestInstance(t *testing.T) *Killgrave {
 	k.l = logging.GetTestLogger(t)
 	k.t = t
 	return k
 }
 
+// StartContainer initializes and starts the Killgrave container, setting up imposters and request dumping.
+// It also configures cleanup for the container and logs the external and internal endpoints for access.
 func (k *Killgrave) StartContainer() error {
 	err := k.setupImposters()
 	if err != nil {
@@ -286,6 +293,9 @@ func (k *Killgrave) SetAdapterBasedAnyValuePath(path string, methods []string, v
 	}, string(data))
 }
 
+// SetAnyValueResponse sets a JSON-encoded response for a specified path and HTTP methods.
+// It marshals the provided value into JSON format and updates the response headers accordingly.
+// This function is useful for configuring dynamic API responses in a flexible manner.
 func (k *Killgrave) SetAnyValueResponse(path string, methods []string, v interface{}) error {
 	data, err := json.Marshal(v)
 	if err != nil {
@@ -310,6 +320,10 @@ type RequestData struct {
 	Body   string              `json:"body"`
 }
 
+// GetReceivedRequests retrieves and parses request data from a log file.
+// It ensures all requests are written before reading and returns a slice of
+// RequestData along with any encountered errors. This function is useful for
+// accessing logged request information in a structured format.
 func (k *Killgrave) GetReceivedRequests() ([]RequestData, error) {
 	// killgrave uses a channel to write the request data to a file so we want to make sure
 	// all requests have been written before reading the file

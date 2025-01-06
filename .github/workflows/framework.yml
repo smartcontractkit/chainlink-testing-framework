@@ -5,10 +5,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-framework
   cancel-in-progress: true
 jobs:
-  test:
+  framework-component-tests:
     defaults:
       run:
         working-directory: framework
+    env:
+      CTF_JD_IMAGE: ${{ secrets.CTF_JD_IMAGE }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -51,4 +53,4 @@ jobs:
       - name: Run Docker Component Tests
         if: steps.changes.outputs.src == 'true'
         run: |
-          go test -timeout 5m -v -count 1 -run TestDocker ./...
+          go test -timeout 2m -v -count 1 -run TestComponent ./...

@@ -16,11 +16,12 @@ import (
 )
 
 type nodeSetForm struct {
-	Network       string
-	CLVersion     string
-	Nodes         int
-	Observability bool
-	Blockscout    bool
+	Network          string
+	CLVersion        string
+	Nodes            int
+	Observability    bool
+	Blockscout       bool
+	BlockscoutRPCURL string
 }
 
 func createComponentsFromForm(form *nodeSetForm) error {
@@ -52,9 +53,6 @@ func createComponentsFromForm(form *nodeSetForm) error {
 		nspecs := make([]*clnode.Input, 0)
 		for i := 0; i < form.Nodes; i++ {
 			nspecs = append(nspecs, &clnode.Input{
-				DbInput: &postgres.Input{
-					Image: "postgres:15.6",
-				},
 				Node: &clnode.NodeInput{
 					Image: form.CLVersion,
 				},
@@ -64,8 +62,11 @@ func createComponentsFromForm(form *nodeSetForm) error {
 			_, err = simple_node_set.NewSharedDBNodeSet(&simple_node_set.Input{
 				Nodes:        5,
 				OverrideMode: "all",
-				NodeSpecs:    nspecs,
-			}, bc, "")
+				DbInput: &postgres.Input{
+					Image: "postgres:12.0",
+				},
+				NodeSpecs: nspecs,
+			}, bc)
 		}
 		err = spinner.New().
 			Title("Creating node set..").
@@ -74,16 +75,13 @@ func createComponentsFromForm(form *nodeSetForm) error {
 	}
 	switch form.Observability {
 	case true:
-		if err = framework.NewPromtail(); err != nil {
-			return err
-		}
 		if err := observabilityUp(); err != nil {
 			return err
 		}
 	}
 	switch form.Blockscout {
 	case true:
-		if err := blockscoutUp(); err != nil {
+		if err := blockscoutUp(form.BlockscoutRPCURL); err != nil {
 			return err
 		}
 	}
@@ -93,7 +91,7 @@ func createComponentsFromForm(form *nodeSetForm) error {
 func cleanup(form *nodeSetForm) error {
 	var err error
 	f := func() {
-		err = cleanDockerResources()
+		err = removeTestContainers()
 	}
 	err = spinner.New().
 		Title("Removing docker resources..").
@@ -107,7 +105,7 @@ func cleanup(form *nodeSetForm) error {
 	}
 	switch form.Blockscout {
 	case true:
-		if err := blockscoutDown(); err != nil {
+		if err := blockscoutDown(form.BlockscoutRPCURL); err != nil {
 			return err
 		}
 	}
@@ -143,7 +141,11 @@ Docker Desktop (https://www.docker.com/products/docker-desktop/)
 			huh.NewSelect[string]().
 				Title("Choose Chainlink node version").
 				Options(
-					huh.NewOption("public.ecr.aws/chainlink/chainlink:v2.17.0", "public.ecr.aws/chainlink/chainlink:v2.17.0")).
+					huh.NewOption("public.ecr.aws/chainlink/chainlink:v2.17.0-arm64", "public.ecr.aws/chainlink/chainlink:v2.17.0-arm64"),
+					huh.NewOption("public.ecr.aws/chainlink/chainlink:v2.17.0", "public.ecr.aws/chainlink/chainlink:v2.17.0"),
+					huh.NewOption("public.ecr.aws/chainlink/chainlink:v2.16.0-arm64", "public.ecr.aws/chainlink/chainlink:v2.16.0-arm64"),
+					huh.NewOption("public.ecr.aws/chainlink/chainlink:v2.16.0", "public.ecr.aws/chainlink/chainlink:v2.16.0"),
+				).
 				Value(&f.CLVersion),
 			huh.NewConfirm().
 				Title("Do you need to spin up an observability stack?").
@@ -152,6 +154,13 @@ Docker Desktop (https://www.docker.com/products/docker-desktop/)
 			huh.NewConfirm().
 				Title("Do you need to spin up a Blockscout stack?").
 				Value(&f.Blockscout),
+			huh.NewSelect[string]().
+				Title("To which blockchain node you want Blockscout to connect?").
+				Options(
+					huh.NewOption("Network 1", "http://host.docker.internal:8545"),
+					huh.NewOption("Network 2", "http://host.docker.internal:8550"),
+				).
+				Value(&f.BlockscoutRPCURL),
 		),
 	)
 

@@ -291,6 +291,9 @@ type ExitCodeStrategy struct {
 	pollInterval     time.Duration
 }
 
+// NewExitCodeStrategy initializes a new ExitCodeStrategy with default settings.
+// It sets the expected exit code to 0, a timeout of 2 minutes, and a poll interval of 2 seconds.
+// This function is useful for configuring container readiness checks based on exit codes.
 func NewExitCodeStrategy() *ExitCodeStrategy {
 	return &ExitCodeStrategy{
 		expectedExitCode: 0,
@@ -299,16 +302,22 @@ func NewExitCodeStrategy() *ExitCodeStrategy {
 	}
 }
 
+// WithTimeout sets the timeout duration for the ExitCodeStrategy.
+// It allows users to specify how long to wait for a process to exit with the expected code.
 func (w *ExitCodeStrategy) WithTimeout(timeout time.Duration) *ExitCodeStrategy {
 	w.timeout = timeout
 	return w
 }
 
+// WithExitCode sets the expected exit code for the strategy and returns the updated instance.
+// This function is useful for configuring container requests to wait for specific exit conditions.
 func (w *ExitCodeStrategy) WithExitCode(exitCode int) *ExitCodeStrategy {
 	w.expectedExitCode = exitCode
 	return w
 }
 
+// WithPollInterval sets the interval for polling the exit code and returns the updated strategy.
+// This function is useful for configuring how frequently to check the exit code during container execution.
 func (w *ExitCodeStrategy) WithPollInterval(pollInterval time.Duration) *ExitCodeStrategy {
 	w.pollInterval = pollInterval
 	return w

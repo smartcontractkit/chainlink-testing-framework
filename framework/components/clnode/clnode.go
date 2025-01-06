@@ -5,22 +5,28 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
+	"text/template"
+	"time"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"os"
-	"path/filepath"
-	"sync"
-	"text/template"
-	"time"
 )
 
 const (
-	DefaultHTTPPort = "6688"
-	DefaultP2PPort  = "6690"
+	DefaultHTTPPort     = "6688"
+	DefaultP2PPort      = "6690"
+	DefaultDebuggerPort = 40000
+	TmpImageName        = "chainlink-tmp:latest"
+	CustomPortSeparator = ":"
 )
 
 var (
@@ -29,10 +35,9 @@ var (
 
 // Input represents Chainlink node input
 type Input struct {
-	DataProviderURL string          `toml:"data_provider_url" validate:"required"`
-	DbInput         *postgres.Input `toml:"db" validate:"required"`
-	Node            *NodeInput      `toml:"node" validate:"required"`
-	Out             *Output         `toml:"out"`
+	DbInput *postgres.Input `toml:"db" validate:"required"`
+	Node    *NodeInput      `toml:"node" validate:"required"`
+	Out     *Output         `toml:"out"`
 }
 
 // NodeInput is CL nod container inputs
@@ -41,7 +46,6 @@ type NodeInput struct {
 	Name                    string   `toml:"name"`
 	DockerFilePath          string   `toml:"docker_file"`
 	DockerContext           string   `toml:"docker_ctx"`
-	DockerImageName         string   `toml:"docker_image_name"`
 	PullImage               bool     `toml:"pull_image"`
 	CapabilitiesBinaryPaths []string `toml:"capabilities"`
 	CapabilityContainerDir  string   `toml:"capabilities_container_dir"`
@@ -51,6 +55,8 @@ type NodeInput struct {
 	UserSecretsOverrides    string   `toml:"user_secrets_overrides"`
 	HTTPPort                int      `toml:"port"`
 	P2PPort                 int      `toml:"p2p_port"`
+	CustomPorts             []string `toml:"custom_ports"`
+	DebuggerPort            int      `toml:"debugger_port"`
 }
 
 // Output represents Chainlink node output, nodes and databases connection URLs
@@ -62,10 +68,13 @@ type Output struct {
 
 // NodeOut is CL node container output, URLs to connect
 type NodeOut struct {
-	HostURL      string `toml:"url"`
-	HostP2PURL   string `toml:"p2p_url"`
-	DockerURL    string `toml:"docker_internal_url"`
-	DockerP2PUrl string `toml:"p2p_docker_internal_url"`
+	APIAuthUser     string `toml:"api_auth_user"`
+	APIAuthPassword string `toml:"api_auth_password"`
+	ContainerName   string `toml:"container_name"`
+	HostURL         string `toml:"url"`
+	DockerURL       string `toml:"docker_internal_url"`
+	DockerP2PUrl    string `toml:"p2p_docker_internal_url"`
+	InternalIP      string `toml:"internal_ip"`
 }
 
 // NewNodeWithDB create a new Chainlink node with some image:tag and one or several configs
@@ -108,18 +117,86 @@ func NewNode(in *Input, pgOut *postgres.Output) (*Output, error) {
 	return out, nil
 }
 
+func generateEntryPoint() []string {
+	entrypoint := []string{
+		"/bin/sh", "-c",
+	}
+	if os.Getenv("CTF_CLNODE_DLV") == "true" {
+		entrypoint = append(entrypoint, "dlv  exec /usr/local/bin/chainlink --continue --listen=0.0.0.0:40000 --headless=true --api-version=2 --accept-multiclient -- -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials")
+	} else {
+		entrypoint = append(entrypoint, "chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials")
+	}
+	return entrypoint
+}
+
+// generatePortBindings generates exposed ports and port bindings
+// exposes default CL node port
+// exposes custom_ports in format "host:docker" or map 1-to-1 if only "host" port is provided
+func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
+	httpPort := fmt.Sprintf("%s/tcp", DefaultHTTPPort)
+	innerDebuggerPort := fmt.Sprintf("%d/tcp", DefaultDebuggerPort)
+	debuggerPort := fmt.Sprintf("%d/tcp", in.Node.DebuggerPort)
+	portBindings := nat.PortMap{
+		nat.Port(httpPort): []nat.PortBinding{
+			{
+				HostIP:   "0.0.0.0",
+				HostPort: fmt.Sprintf("%d/tcp", in.Node.HTTPPort),
+			},
+		},
+		nat.Port(innerDebuggerPort): []nat.PortBinding{
+			{
+				HostIP:   "0.0.0.0",
+				HostPort: debuggerPort,
+			},
+		},
+	}
+	customPorts := make([]string, 0)
+	for _, p := range in.Node.CustomPorts {
+		if strings.Contains(p, CustomPortSeparator) {
+			pp := strings.Split(p, CustomPortSeparator)
+			if len(pp) != 2 {
+				return nil, nil, errors.New("custom_ports has ':' but you must provide both ports")
+			}
+			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", pp[1]))
+
+			dockerPort := nat.Port(fmt.Sprintf("%s/tcp", pp[1]))
+			hostPort := fmt.Sprintf("%s/tcp", pp[0])
+			portBindings[dockerPort] = []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: hostPort,
+				},
+			}
+		} else {
+			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", p))
+
+			dockerPort := nat.Port(fmt.Sprintf("%s/tcp", p))
+			hostPort := fmt.Sprintf("%s/tcp", p)
+			portBindings[dockerPort] = []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: hostPort,
+				},
+			}
+		}
+	}
+	exposedPorts := []string{httpPort, strconv.Itoa(DefaultDebuggerPort)}
+	exposedPorts = append(exposedPorts, customPorts...)
+	return exposedPorts, portBindings, nil
+}
+
 func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	ctx := context.Background()
 
 	passwordPath, err := WriteTmpFile(DefaultPasswordTxt, "password.txt")
+	if err != nil {
+		return nil, err
+	}
 	apiCredentialsPath, err := WriteTmpFile(DefaultAPICredentials, "apicredentials")
 	if err != nil {
 		return nil, err
 	}
-	if err != nil {
-		return nil, err
-	}
-	cfgPath, err := writeDefaultConfig(in)
+	cfgPath, err := writeDefaultConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -144,8 +221,6 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		return nil, err
 	}
 
-	httpPort := fmt.Sprintf("%s/tcp", DefaultHTTPPort)
-	p2pPort := fmt.Sprintf("%s/udp", DefaultP2PPort)
 	var containerName string
 	if in.Node.Name != "" {
 		containerName = in.Node.Name
@@ -153,6 +228,10 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		containerName = framework.DefaultTCName("node")
 	}
 
+	exposedPorts, portBindings, err := generatePortBindings(in)
+	if err != nil {
+		return nil, err
+	}
 	req := tc.ContainerRequest{
 		AlwaysPullImage: in.Node.PullImage,
 		Image:           in.Node.Image,
@@ -162,29 +241,13 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		NetworkAliases: map[string][]string{
 			framework.DefaultNetworkName: {containerName},
 		},
-		ExposedPorts: []string{httpPort, p2pPort},
-		Entrypoint: []string{
-			"/bin/sh", "-c",
-			"chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials",
-		},
-		WaitingFor: wait.ForLog("Listening and serving HTTP").WithStartupTimeout(2 * time.Minute),
+		ExposedPorts: exposedPorts,
+		Entrypoint:   generateEntryPoint(),
+		WaitingFor:   wait.ForHTTP("/").WithPort(DefaultHTTPPort).WithStartupTimeout(1 * time.Minute).WithPollInterval(200 * time.Millisecond),
 	}
 	if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {
 		req.HostConfigModifier = func(h *container.HostConfig) {
-			h.PortBindings = nat.PortMap{
-				"6688/tcp": []nat.PortBinding{
-					{
-						HostIP:   "0.0.0.0",
-						HostPort: fmt.Sprintf("%d/tcp", in.Node.HTTPPort),
-					},
-				},
-				"6690/udp": []nat.PortBinding{
-					{
-						HostIP:   "0.0.0.0",
-						HostPort: fmt.Sprintf("%d/udp", in.Node.P2PPort),
-					},
-				},
-			}
+			h.PortBindings = portBindings
 		}
 	}
 	files := []tc.ContainerFile{
@@ -246,8 +309,8 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		return nil, errors.New("you provided both 'image' and one of 'docker_file', 'docker_ctx' fields. Please provide either 'image' or params to build a local one")
 	}
 	if req.Image == "" {
-		req.Image, err = framework.RebuildDockerImage(once, in.Node.DockerFilePath, in.Node.DockerContext, in.Node.DockerImageName)
-		if err != nil {
+		req.Image = TmpImageName
+		if err := framework.BuildImageOnce(once, in.Node.DockerContext, in.Node.DockerFilePath, req.Image); err != nil {
 			return nil, err
 		}
 		req.KeepImage = false
@@ -259,19 +322,25 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	if err != nil {
 		return nil, err
 	}
+	ip, err := c.ContainerIP(ctx)
+	if err != nil {
+		return nil, err
+	}
 	host, err := framework.GetHost(c)
 	if err != nil {
 		return nil, err
 	}
 
 	mp := nat.Port(fmt.Sprintf("%d/tcp", in.Node.HTTPPort))
-	mpP2P := nat.Port(fmt.Sprintf("%d/udp", in.Node.P2PPort))
 
 	return &NodeOut{
-		HostURL:      fmt.Sprintf("http://%s:%s", host, mp.Port()),
-		HostP2PURL:   fmt.Sprintf("http://%s:%s", host, mpP2P.Port()),
-		DockerURL:    fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
-		DockerP2PUrl: fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
+		APIAuthUser:     DefaultAPIUser,
+		APIAuthPassword: DefaultAPIPassword,
+		ContainerName:   containerName,
+		HostURL:         fmt.Sprintf("http://%s:%s", host, mp.Port()),
+		DockerURL:       fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
+		DockerP2PUrl:    fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
+		InternalIP:      ip,
 	}, nil
 }
 
@@ -280,7 +349,7 @@ type DefaultCLNodeConfig struct {
 	SecureCookies bool
 }
 
-func generateDefaultConfig(in *Input) (string, error) {
+func generateDefaultConfig() (string, error) {
 	config := DefaultCLNodeConfig{
 		HTTPPort:      DefaultHTTPPort,
 		SecureCookies: false,
@@ -328,8 +397,8 @@ func writeDefaultSecrets(pgOut *postgres.Output) (*os.File, error) {
 	return WriteTmpFile(secretsOverrides, "secrets.toml")
 }
 
-func writeDefaultConfig(in *Input) (*os.File, error) {
-	cfg, err := generateDefaultConfig(in)
+func writeDefaultConfig() (*os.File, error) {
+	cfg, err := generateDefaultConfig()
 	if err != nil {
 		return nil, err
 	}

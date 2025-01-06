@@ -250,7 +250,7 @@ func (c *EthereumChainConfig) Validate(l zerolog.Logger, ethereumVersion *config
 		return fmt.Errorf("seconds per slot must be >= 3")
 	}
 	if c.SlotsPerEpoch < 2 {
-		return fmt.Errorf("slots per epoch must be >= 1")
+		return fmt.Errorf("slots per epoch must be >= 2")
 	}
 	if c.GenesisDelay < 10 {
 		return fmt.Errorf("genesis delay must be >= 10")

@@ -34,6 +34,11 @@ type Runner struct {
 	DetachedMode            bool              `toml:"detached_mode"`
 	Debug                   bool              `toml:"debug"`
 	Envs                    map[string]string `toml:"envs"`
+	Metadata                Metadata          `toml:"metadata"`
+}
+
+type Metadata struct {
+	Labels map[string]string `toml:"labels"`
 }
 
 // Read initializes the configuration by sequentially loading from a TOML file,

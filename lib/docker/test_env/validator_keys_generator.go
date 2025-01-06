@@ -29,6 +29,8 @@ type ValKeysGenerator struct {
 	t                  *testing.T
 }
 
+// NewValKeysGeneretor initializes a ValKeysGenerator for managing validator key generation in a specified Ethereum environment.
+// It sets up the necessary container configuration and options, returning the generator instance or an error if initialization fails.
 func NewValKeysGeneretor(chainConfig *config.EthereumChainConfig, valKeysHostDataDir string, opts ...EnvComponentOption) (*ValKeysGenerator, error) {
 	parts := strings.Split(defaultEth2ValToolsImage, ":")
 	g := &ValKeysGenerator{
@@ -50,12 +52,16 @@ func NewValKeysGeneretor(chainConfig *config.EthereumChainConfig, valKeysHostDat
 	return g, nil
 }
 
+// WithTestInstance sets up a test logger and associates it with the ValKeysGenerator instance.
+// This is useful for capturing log output during testing, ensuring that logs are directed to the test context.
 func (g *ValKeysGenerator) WithTestInstance(t *testing.T) *ValKeysGenerator {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
 }
 
+// StartContainer initializes and starts the validation keys generation container.
+// It ensures the container is ready for use, logging the start event, and returns any errors encountered during the process.
 func (g *ValKeysGenerator) StartContainer() error {
 	r, err := g.getContainerRequest(g.Networks)
 	if err != nil {

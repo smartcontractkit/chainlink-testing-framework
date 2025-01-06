@@ -52,6 +52,12 @@ func (m Chart) GetVersion() string {
 	return m.HelmProps.Version
 }
 
+func (m Chart) GetLabels() map[string]string {
+	return map[string]string{
+		"chain.link/component": "solana-validator",
+	}
+}
+
 func (m Chart) GetValues() *map[string]interface{} {
 	return m.HelmProps.Values
 }

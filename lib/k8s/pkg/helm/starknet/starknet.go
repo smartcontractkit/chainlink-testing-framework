@@ -56,6 +56,12 @@ func (m Chart) GetValues() *map[string]interface{} {
 	return m.HelmProps.Values
 }
 
+func (m Chart) GetLabels() map[string]string {
+	return map[string]string{
+		"chain.link/component": "starknet",
+	}
+}
+
 func (m Chart) ExportData(e *environment.Environment) error {
 	devnetLocalHttp, err := e.Fwd.FindPort("starknet-dev:0", "starknetdev", "http").As(client.LocalConnection, client.HTTP)
 	if err != nil {

@@ -90,21 +90,21 @@ func (n *NetworkConfig) OverrideURLsAndKeysFromEVMNetwork() {
 		return
 	}
 	for name, evmNetwork := range n.EVMNetworks {
-		if evmNetwork.URLs != nil && len(evmNetwork.URLs) > 0 {
+		if len(evmNetwork.URLs) > 0 {
 			logging.L.Warn().Str("network", name).Msg("found URLs in EVMNetwork. overriding RPC URLs in RpcWsUrls with EVMNetwork URLs")
 			if n.RpcWsUrls == nil {
 				n.RpcWsUrls = make(map[string][]string)
 			}
 			n.RpcWsUrls[name] = evmNetwork.URLs
 		}
-		if evmNetwork.HTTPURLs != nil && len(evmNetwork.HTTPURLs) > 0 {
+		if len(evmNetwork.HTTPURLs) > 0 {
 			logging.L.Warn().Str("network", name).Msg("found HTTPURLs in EVMNetwork. overriding RPC URLs in RpcHttpUrls with EVMNetwork HTTP URLs")
 			if n.RpcHttpUrls == nil {
 				n.RpcHttpUrls = make(map[string][]string)
 			}
 			n.RpcHttpUrls[name] = evmNetwork.HTTPURLs
 		}
-		if evmNetwork.PrivateKeys != nil && len(evmNetwork.PrivateKeys) > 0 {
+		if len(evmNetwork.PrivateKeys) > 0 {
 			logging.L.Warn().Str("network", name).Msg("found PrivateKeys in EVMNetwork. overriding wallet keys in WalletKeys with EVMNetwork private keys")
 			if n.WalletKeys == nil {
 				n.WalletKeys = make(map[string][]string)
@@ -141,13 +141,18 @@ func (n *NetworkConfig) Validate() error {
 				continue
 			}
 		}
-		// if the network is not forked, we need to validate RPC endpoints and private keys
-		if _, ok := n.RpcHttpUrls[network]; !ok {
-			return fmt.Errorf("at least one HTTP RPC endpoint for %s network must be set", network)
+
+		// If the network is not forked, we need to validate RPC endpoints and private keys
+		_, httpOk := n.RpcHttpUrls[network]
+		_, wsOk := n.RpcWsUrls[network]
+		// WS can be present but only if HTTP is also available
+		if wsOk && !httpOk {
+			return fmt.Errorf("WS RPC endpoint for %s network is set without an HTTP endpoint; only HTTP or both HTTP and WS are allowed", network)
 		}
 
-		if _, ok := n.RpcWsUrls[network]; !ok {
-			return fmt.Errorf("at least one WS RPC endpoint for %s network must be set", network)
+		// Validate that there is at least one HTTP endpoint
+		if !httpOk {
+			return fmt.Errorf("at least one HTTP RPC endpoint for %s network must be set", network)
 		}
 
 		if _, ok := n.WalletKeys[network]; !ok {

@@ -6,20 +6,34 @@ import (
 
 // Input is a blockchain network configuration params
 type Input struct {
-	Type                     string   `toml:"type" validate:"required,oneof=anvil geth" envconfig:"net_type"`
-	Image                    string   `toml:"image" validate:"required"`
-	PullImage                bool     `toml:"pull_image"`
-	Port                     string   `toml:"port" validate:"required"`
-	ChainID                  string   `toml:"chain_id" validate:"required"`
+	// Common EVM fields
+	Type      string `toml:"type" validate:"required,oneof=anvil geth besu solana" envconfig:"net_type"`
+	Image     string `toml:"image"`
+	PullImage bool   `toml:"pull_image"`
+	Port      string `toml:"port"`
+	// Not applicable to Solana, ws port for Solana is +1 of port
+	WSPort                   string   `toml:"port_ws"`
+	ChainID                  string   `toml:"chain_id"`
 	DockerCmdParamsOverrides []string `toml:"docker_cmd_params"`
 	Out                      *Output  `toml:"out"`
+
+	// Solana fields
+	// publickey to mint when solana-test-validator starts
+	PublicKey    string `toml:"public_key"`
+	ContractsDir string `toml:"contracts_dir"`
+	// programs to deploy on solana-test-validator start
+	// a map of program name to program id
+	// there needs to be a matching .so file in contracts_dir
+	SolanaPrograms map[string]string `toml:"solana_programs"`
 }
 
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network
 type Output struct {
-	UseCache bool    `toml:"use_cache"`
-	ChainID  string  `toml:"chain_id"`
-	Nodes    []*Node `toml:"nodes"`
+	UseCache      bool    `toml:"use_cache"`
+	Family        string  `toml:"family"`
+	ContainerName string  `toml:"container_name"`
+	ChainID       string  `toml:"chain_id"`
+	Nodes         []*Node `toml:"nodes"`
 }
 
 // Node represents blockchain node output, URLs required for connection locally and inside docker network
@@ -41,12 +55,18 @@ func NewBlockchainNetwork(in *Input) (*Output, error) {
 	var err error
 	switch in.Type {
 	case "anvil":
-		out, err = deployAnvil(in)
-		if err != nil {
-			return nil, err
-		}
+		out, err = newAnvil(in)
+	case "geth":
+		out, err = newGeth(in)
+	case "besu":
+		out, err = newBesu(in)
+	case "solana":
+		out, err = newSolana(in)
 	default:
-		return nil, fmt.Errorf("blockchain type is not supported or empty")
+		return nil, fmt.Errorf("blockchain type is not supported or empty, must be 'anvil' or 'geth'")
+	}
+	if err != nil {
+		return nil, err
 	}
 	in.Out = out
 	return out, nil

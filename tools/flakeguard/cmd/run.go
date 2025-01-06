@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
+	"os/exec"
 
+	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner"
 	"github.com/spf13/cobra"
@@ -15,70 +17,89 @@ var RunTestsCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run tests to check if they are flaky",
 	Run: func(cmd *cobra.Command, args []string) {
+		// Retrieve flags
 		projectPath, _ := cmd.Flags().GetString("project-path")
 		testPackagesJson, _ := cmd.Flags().GetString("test-packages-json")
 		testPackagesArg, _ := cmd.Flags().GetStringSlice("test-packages")
 		runCount, _ := cmd.Flags().GetInt("run-count")
+		timeout, _ := cmd.Flags().GetDuration("timeout")
+		tags, _ := cmd.Flags().GetStringArray("tags")
 		useRace, _ := cmd.Flags().GetBool("race")
 		outputPath, _ := cmd.Flags().GetString("output-json")
-		threshold, _ := cmd.Flags().GetFloat64("threshold")
+		maxPassRatio, _ := cmd.Flags().GetFloat64("max-pass-ratio")
 		skipTests, _ := cmd.Flags().GetStringSlice("skip-tests")
+		selectTests, _ := cmd.Flags().GetStringSlice("select-tests")
+		useShuffle, _ := cmd.Flags().GetBool("shuffle")
+		shuffleSeed, _ := cmd.Flags().GetString("shuffle-seed")
+		omitOutputsOnSuccess, _ := cmd.Flags().GetBool("omit-test-outputs-on-success")
 
+		// Check if project dependencies are correctly set up
+		if err := checkDependencies(projectPath); err != nil {
+			log.Fatal().Err(err).Msg("Error checking project dependencies")
+		}
+
+		// Determine test packages
 		var testPackages []string
 		if testPackagesJson != "" {
 			if err := json.Unmarshal([]byte(testPackagesJson), &testPackages); err != nil {
-				log.Fatalf("Error decoding test packages JSON: %v", err)
+				log.Fatal().Err(err).Msg("Error decoding test packages JSON")
 			}
 		} else if len(testPackagesArg) > 0 {
 			testPackages = testPackagesArg
 		} else {
-			log.Fatalf("Error: must specify either --test-packages-json or --test-packages")
+			log.Fatal().Msg("Error: must specify either --test-packages-json or --test-packages")
 		}
 
-		runner := runner.Runner{
-			ProjectPath: projectPath,
-			Verbose:     true,
-			RunCount:    runCount,
-			UseRace:     useRace,
-			FailFast:    threshold == 1.0, // Fail test on first test run if threshold is 1.0
-			SkipTests:   skipTests,
+		// Initialize the runner
+		testRunner := runner.Runner{
+			ProjectPath:          projectPath,
+			Verbose:              true,
+			RunCount:             runCount,
+			Timeout:              timeout,
+			Tags:                 tags,
+			UseRace:              useRace,
+			SkipTests:            skipTests,
+			SelectTests:          selectTests,
+			SelectedTestPackages: testPackages,
+			UseShuffle:           useShuffle,
+			ShuffleSeed:          shuffleSeed,
+			OmitOutputsOnSuccess: omitOutputsOnSuccess,
 		}
 
-		testResults, err := runner.RunTests(testPackages)
+		// Run the tests
+		testReport, err := testRunner.RunTests()
 		if err != nil {
-			fmt.Printf("Error running tests: %v\n", err)
-			os.Exit(1)
+			log.Fatal().Err(err).Msg("Error running tests")
 		}
-
-		passedTests := reports.FilterPassedTests(testResults, threshold)
-		failedTests := reports.FilterFailedTests(testResults, threshold)
-		skippedTests := reports.FilterSkippedTests(testResults)
-
-		if len(failedTests) > 0 {
-			fmt.Printf("PassRatio threshold for flaky tests: %.2f\n", threshold)
-			fmt.Printf("%d failed tests:\n", len(failedTests))
-			reports.PrintTests(failedTests, os.Stdout)
-		}
-
-		fmt.Printf("Summary: %d passed, %d skipped, %d failed\n", len(passedTests), len(skippedTests), len(failedTests))
 
 		// Save the test results in JSON format
-		if outputPath != "" && len(testResults) > 0 {
-			jsonData, err := json.MarshalIndent(testResults, "", "  ")
+		if outputPath != "" && len(testReport.Results) > 0 {
+			jsonData, err := json.MarshalIndent(testReport, "", "  ")
 			if err != nil {
-				log.Fatalf("Error marshaling test results to JSON: %v", err)
+				log.Fatal().Err(err).Msg("Error marshaling test results to JSON")
 			}
-			if err := os.WriteFile(outputPath, jsonData, 0644); err != nil {
-				log.Fatalf("Error writing test results to file: %v", err)
+			if err := os.WriteFile(outputPath, jsonData, 0600); err != nil {
+				log.Fatal().Err(err).Msg("Error writing test results to file")
 			}
-			fmt.Printf("All test results saved to %s\n", outputPath)
+			log.Info().Str("path", outputPath).Msg("Test results saved")
 		}
 
-		if len(failedTests) > 0 {
-			// Fail if any tests failed
+		if len(testReport.Results) == 0 {
+			log.Warn().Msg("No tests were run for the specified packages")
+			return
+		}
+
+		// Filter flaky tests using FilterTests
+		flakyTests := reports.FilterTests(testReport.Results, func(tr reports.TestResult) bool {
+			return !tr.Skipped && tr.PassRatio < maxPassRatio
+		})
+
+		if len(flakyTests) > 0 {
+			log.Info().Int("count", len(flakyTests)).Str("pass ratio threshold", fmt.Sprintf("%.2f%%", maxPassRatio*100)).Msg("Found flaky tests")
+			fmt.Printf("\nFlakeguard Summary\n")
+			reports.RenderResults(os.Stdout, flakyTests, maxPassRatio, false)
+			// Exit with error code if there are flaky tests
 			os.Exit(1)
-		} else if len(testResults) == 0 {
-			fmt.Printf("No tests were run for the specified packages.\n")
 		}
 	},
 }
@@ -87,10 +108,32 @@ func init() {
 	RunTestsCmd.Flags().StringP("project-path", "r", ".", "The path to the Go project. Default is the current directory. Useful for subprojects")
 	RunTestsCmd.Flags().String("test-packages-json", "", "JSON-encoded string of test packages")
 	RunTestsCmd.Flags().StringSlice("test-packages", nil, "Comma-separated list of test packages to run")
+	RunTestsCmd.Flags().Bool("run-all-packages", false, "Run all test packages in the project. This flag overrides --test-packages and --test-packages-json")
 	RunTestsCmd.Flags().IntP("run-count", "c", 1, "Number of times to run the tests")
+	RunTestsCmd.Flags().Duration("timeout", 0, "Passed on to the 'go test' command as the -timeout flag")
+	RunTestsCmd.Flags().StringArray("tags", nil, "Passed on to the 'go test' command as the -tags flag")
 	RunTestsCmd.Flags().Bool("race", false, "Enable the race detector")
+	RunTestsCmd.Flags().Bool("shuffle", false, "Enable test shuffling")
+	RunTestsCmd.Flags().String("shuffle-seed", "", "Set seed for test shuffling. Must be used with --shuffle")
 	RunTestsCmd.Flags().Bool("fail-fast", false, "Stop on the first test failure")
 	RunTestsCmd.Flags().String("output-json", "", "Path to output the test results in JSON format")
-	RunTestsCmd.Flags().Float64("threshold", 0.8, "Threshold for considering a test as flaky")
 	RunTestsCmd.Flags().StringSlice("skip-tests", nil, "Comma-separated list of test names to skip from running")
+	RunTestsCmd.Flags().StringSlice("select-tests", nil, "Comma-separated list of test names to specifically run")
+	RunTestsCmd.Flags().Float64("max-pass-ratio", 1.0, "The maximum pass ratio threshold for a test to be considered flaky. Any tests below this pass rate will be considered flaky.")
+	RunTestsCmd.Flags().Bool("omit-test-outputs-on-success", true, "Omit test outputs and package outputs for tests that pass")
+}
+
+func checkDependencies(projectPath string) error {
+	cmd := exec.Command("go", "mod", "tidy")
+	cmd.Dir = projectPath
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("dependency check failed: %v\n%s\nPlease run 'go mod tidy' to fix missing or unused dependencies", err, out.String())
+	}
+
+	return nil
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/grafana"
 )
 
+// SingleLineGrafanaAnnotator annotates Grafana dashboards with chaos experiment events in a single line.
 type SingleLineGrafanaAnnotator struct {
 	client       *grafana.Client
 	dashboardUID string

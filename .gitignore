@@ -19,6 +19,7 @@ artifacts/
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+cover.html
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
@@ -46,9 +47,7 @@ suite/remote_runner_config.yaml
 *.csv
 
 # docs
-docs/_site/
-docs/.sass-cache/
-docs/Gemfile.lock
+book/docs/
 
 dist/
 
@@ -82,3 +81,4 @@ tag.py
 
 # mockserver
 mockserver/save.json
+tag.py

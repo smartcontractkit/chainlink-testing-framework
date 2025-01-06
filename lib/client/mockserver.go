@@ -160,6 +160,9 @@ func (em *MockserverClient) SetAnyValuePath(path string, v interface{}) error {
 	return err
 }
 
+// SetAnyValueResponse configures a mock server to return a specified value for a given path.
+// It ensures the path starts with a '/', sanitizes it, and logs the operation.
+// This function is useful for testing and simulating API responses in a controlled environment.
 func (em *MockserverClient) SetAnyValueResponse(path string, v interface{}) error {
 	if !strings.HasPrefix(path, "/") {
 		path = fmt.Sprintf("/%s", path)

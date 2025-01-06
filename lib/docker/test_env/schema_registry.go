@@ -26,6 +26,8 @@ type SchemaRegistry struct {
 	t           *testing.T
 }
 
+// NewSchemaRegistry initializes a new SchemaRegistry instance with a unique container name and specified networks.
+// It sets default environment variables and a startup timeout, making it suitable for managing schema registries in decentralized applications.
 func NewSchemaRegistry(networks []string) *SchemaRegistry {
 	id, _ := uuid.NewRandom()
 	defaultEnvVars := map[string]string{
@@ -41,17 +43,25 @@ func NewSchemaRegistry(networks []string) *SchemaRegistry {
 	}
 }
 
+// WithTestInstance sets up a SchemaRegistry instance for testing purposes.
+// It initializes the logger with a test logger and associates the testing context,
+// allowing for better logging and error tracking during tests.
 func (r *SchemaRegistry) WithTestInstance(t *testing.T) *SchemaRegistry {
 	r.l = logging.GetTestLogger(t)
 	r.t = t
 	return r
 }
 
+// WithContainerName sets the container name for the SchemaRegistry instance.
+// This allows users to customize the naming of the container for better organization
+// and identification within their application. It returns the updated SchemaRegistry.
 func (r *SchemaRegistry) WithContainerName(name string) *SchemaRegistry {
 	r.ContainerName = name
 	return r
 }
 
+// WithKafka sets the Kafka bootstrap servers for the Schema Registry using the provided URL.
+// It returns the updated SchemaRegistry instance with the new environment variables applied.
 func (r *SchemaRegistry) WithKafka(kafkaUrl string) *SchemaRegistry {
 	envVars := map[string]string{
 		"SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS": kafkaUrl,
@@ -59,6 +69,8 @@ func (r *SchemaRegistry) WithKafka(kafkaUrl string) *SchemaRegistry {
 	return r.WithEnvVars(envVars)
 }
 
+// WithEnvVars merges the provided environment variables into the SchemaRegistry's existing set.
+// It allows for dynamic configuration of the Schema Registry based on the specified environment settings.
 func (r *SchemaRegistry) WithEnvVars(envVars map[string]string) *SchemaRegistry {
 	if err := mergo.Merge(&r.EnvVars, envVars, mergo.WithOverride); err != nil {
 		r.l.Fatal().Err(err).Msg("Failed to merge env vars")
@@ -66,6 +78,11 @@ func (r *SchemaRegistry) WithEnvVars(envVars map[string]string) *SchemaRegistry 
 	return r
 }
 
+// StartContainer initializes and starts a Schema Registry container.
+// It sets up the necessary environment variables and logs the internal
+// and external URLs for accessing the container. This function is
+// essential for users needing a running instance of Schema Registry
+// for testing or development purposes.
 func (r *SchemaRegistry) StartContainer() error {
 	r.InternalUrl = fmt.Sprintf("http://%s:%s", r.ContainerName, "8081")
 	l := logging.GetTestContainersGoTestLogger(r.t)

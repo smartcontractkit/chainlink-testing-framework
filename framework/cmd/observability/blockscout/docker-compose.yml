@@ -28,6 +28,9 @@ services:
       - db:database
     environment:
         ETHEREUM_JSONRPC_VARIANT: 'geth'
+        ETHEREUM_JSONRPC_HTTP_URL: ${BLOCKSCOUT_RPC_URL}
+        ETHEREUM_JSONRPC_TRACE_URL: ${BLOCKSCOUT_RPC_URL}
+        CHAIN_ID: ${BLOCKSCOUT_CHAIN_ID:-1337}
 
   visualizer:
     extends:

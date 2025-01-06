@@ -18,7 +18,7 @@ Example:
 ```
 [blockchain_a.out]
 use_cache = true
-chain_id = '31337'
+chain_id = '1337'
 
 [[blockchain_a.out.nodes]]
 ws_url = 'ws://127.0.0.1:33447'

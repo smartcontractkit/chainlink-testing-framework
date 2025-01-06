@@ -25,6 +25,8 @@ type HTTPStrategy struct {
 	timeout            time.Duration
 }
 
+// NewHTTPStrategy initializes a new HTTP strategy for waiting on a service to become available.
+// It sets the path, port, retry delay, expected status code, and timeout, allowing for flexible service readiness checks.
 func NewHTTPStrategy(path string, port nat.Port) *HTTPStrategy {
 	return &HTTPStrategy{
 		Path:               path,
@@ -35,11 +37,15 @@ func NewHTTPStrategy(path string, port nat.Port) *HTTPStrategy {
 	}
 }
 
+// WithTimeout sets the timeout duration for HTTP requests.
+// It returns the updated HTTPStrategy instance, allowing for method chaining.
 func (w *HTTPStrategy) WithTimeout(timeout time.Duration) *HTTPStrategy {
 	w.timeout = timeout
 	return w
 }
 
+// WithStatusCode sets the expected HTTP status code for the HTTP strategy.
+// This allows users to specify the desired response code to validate during service startup.
 func (w *HTTPStrategy) WithStatusCode(statusCode int) *HTTPStrategy {
 	w.ExpectedStatusCode = statusCode
 	return w
@@ -124,6 +130,8 @@ type WebSocketStrategy struct {
 	l          zerolog.Logger
 }
 
+// NewWebSocketStrategy initializes a WebSocket strategy for monitoring service readiness.
+// It sets the port and defines retry behavior, making it useful for ensuring services are operational before proceeding.
 func NewWebSocketStrategy(port nat.Port, l zerolog.Logger) *WebSocketStrategy {
 	return &WebSocketStrategy{
 		Port:       port,
@@ -132,11 +140,16 @@ func NewWebSocketStrategy(port nat.Port, l zerolog.Logger) *WebSocketStrategy {
 	}
 }
 
+// WithTimeout sets the timeout duration for the WebSocket strategy.
+// It allows users to specify how long to wait for a response before timing out,
+// enhancing control over connection behavior in network operations.
 func (w *WebSocketStrategy) WithTimeout(timeout time.Duration) *WebSocketStrategy {
 	w.timeout = timeout
 	return w
 }
 
+// WaitUntilReady waits for the WebSocket service to become available by repeatedly attempting to connect.
+// It returns an error if the connection cannot be established within the specified timeout.
 func (w *WebSocketStrategy) WaitUntilReady(ctx context.Context, target tcwait.StrategyTarget) (err error) {
 	var client *rpc.Client
 	var host string

@@ -21,11 +21,10 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/logstream"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
 )
 
-const defaultPostgresImage = "postgres:15.6"
+const defaultPostgresImage = "postgres:12.0"
 
 type PostgresDb struct {
 	EnvComponent
@@ -51,6 +50,8 @@ func WithPostgresDbContainerName(name string) PostgresDbOption {
 	}
 }
 
+// WithPostgresImageName sets the Docker image name for the Postgres database container.
+// It allows customization of the container image used, enabling users to specify a preferred version or variant.
 func WithPostgresImageName(imageName string) PostgresDbOption {
 	return func(c *PostgresDb) {
 		if imageName != "" {
@@ -59,12 +60,9 @@ func WithPostgresImageName(imageName string) PostgresDbOption {
 	}
 }
 
-func WithPostgresDbLogStream(ls *logstream.LogStream) PostgresDbOption {
-	return func(c *PostgresDb) {
-		c.LogStream = ls
-	}
-}
-
+// WithPostgresImageVersion sets the PostgreSQL container image version for the database.
+// It allows customization of the database version used in the container, enhancing flexibility
+// for development and testing environments.
 func WithPostgresImageVersion(version string) PostgresDbOption {
 	return func(c *PostgresDb) {
 		if version != "" {
@@ -73,6 +71,8 @@ func WithPostgresImageVersion(version string) PostgresDbOption {
 	}
 }
 
+// WithPostgresDbName sets the database name for a PostgresDb instance.
+// It returns a PostgresDbOption that can be used to configure the database connection.
 func WithPostgresDbName(name string) PostgresDbOption {
 	return func(c *PostgresDb) {
 		if name != "" {
@@ -81,12 +81,17 @@ func WithPostgresDbName(name string) PostgresDbOption {
 	}
 }
 
+// WithContainerEnv sets an environment variable for the Postgres database container.
+// It allows users to configure the container's environment by providing a key-value pair.
 func WithContainerEnv(key, value string) PostgresDbOption {
 	return func(c *PostgresDb) {
 		c.ContainerEnvs[key] = value
 	}
 }
 
+// NewPostgresDb initializes a new Postgres database instance with specified networks and options.
+// It sets up the container environment and default configurations, returning the PostgresDb object
+// for use in applications requiring a Postgres database connection.
 func NewPostgresDb(networks []string, opts ...PostgresDbOption) (*PostgresDb, error) {
 	imageParts := strings.Split(defaultPostgresImage, ":")
 	pg := &PostgresDb{
@@ -118,16 +123,24 @@ func NewPostgresDb(networks []string, opts ...PostgresDbOption) (*PostgresDb, er
 	return pg, nil
 }
 
+// WithTestInstance sets up a PostgresDb instance for testing,
+// initializing a test logger and associating it with the provided
+// testing context. This allows for better logging during tests.
 func (pg *PostgresDb) WithTestInstance(t *testing.T) *PostgresDb {
 	pg.l = logging.GetTestLogger(t)
 	pg.t = t
 	return pg
 }
 
+// StartContainer initializes and starts a PostgreSQL database container.
+// It ensures the container is ready for use, providing both internal and external connection URLs.
+// This function is essential for setting up a database environment in testing or development scenarios.
 func (pg *PostgresDb) StartContainer() error {
 	return pg.startOrRestartContainer(false)
 }
 
+// RestartContainer restarts the PostgreSQL database container, ensuring it is running with the latest configuration.
+// This function is useful for applying changes or recovering from issues without needing to manually stop and start the container.
 func (pg *PostgresDb) RestartContainer() error {
 	return pg.startOrRestartContainer(true)
 }

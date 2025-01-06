@@ -31,6 +31,9 @@ type MockServer struct {
 	l                zerolog.Logger
 }
 
+// NewMockServer creates a new instance of MockServer with specified networks and options.
+// It initializes the server with a unique container name and a default startup timeout.
+// This function is useful for testing decentralized applications in a controlled environment.
 func NewMockServer(networks []string, opts ...EnvComponentOption) *MockServer {
 	ms := &MockServer{
 		EnvComponent: EnvComponent{
@@ -46,12 +49,17 @@ func NewMockServer(networks []string, opts ...EnvComponentOption) *MockServer {
 	return ms
 }
 
+// WithTestInstance configures the MockServer with a test logger and test context.
+// It returns the updated MockServer instance for use in testing scenarios.
 func (ms *MockServer) WithTestInstance(t *testing.T) *MockServer {
 	ms.l = logging.GetTestLogger(t)
 	ms.t = t
 	return ms
 }
 
+// SetExternalAdapterMocks configures a specified number of mock external adapter endpoints.
+// It generates unique paths for each adapter and stores their URLs for later use.
+// This function is useful for testing scenarios that require multiple external adapter interactions.
 func (ms *MockServer) SetExternalAdapterMocks(count int) error {
 	for i := 0; i < count; i++ {
 		path := fmt.Sprintf("/ea-%d", i)
@@ -74,6 +82,9 @@ func (ms *MockServer) SetExternalAdapterMocks(count int) error {
 	return nil
 }
 
+// StartContainer initializes and starts a MockServer container.
+// It sets up logging, retrieves the container request, and establishes endpoints for communication.
+// This function is essential for testing environments that require a mock server instance.
 func (ms *MockServer) StartContainer() error {
 	l := logging.GetTestContainersGoTestLogger(ms.t)
 	cr, err := ms.getContainerRequest()

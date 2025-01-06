@@ -1,3 +1,4 @@
+// nolint
 package networks
 
 import (
@@ -11,6 +12,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/ptr"
 )
 
 func TestMain(m *testing.M) {
@@ -79,10 +81,8 @@ func TestVariousNetworkConfig(t *testing.T) {
 			"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
 		},
 	}
-	forkedNetwork := newNetwork
-	forkedNetwork.HTTPURLs = nil
-	forkedNetwork.URLs = nil
-	forkedNetwork.PrivateKeys = nil
+	httpOnlyNetwork := newNetwork
+	httpOnlyNetwork.URLs = nil
 	t.Cleanup(func() {
 		ArbitrumGoerli.URLs = []string{}
 		ArbitrumGoerli.HTTPURLs = []string{}
@@ -445,7 +445,7 @@ evm_default_gas_limit = 6000000
 				os.Unsetenv("E2E_TEST_NEW_NETWORK_WALLET_KEY")
 				os.Unsetenv("E2E_TEST_NEW_NETWORK_RPC_HTTP_URL")
 			},
-			isNetworkConfigError: true,
+			expNetworks: []blockchain.EVMNetwork{httpOnlyNetwork},
 		},
 	}
 	for _, tc := range testcases {
@@ -487,6 +487,184 @@ evm_default_gas_limit = 6000000
 			}
 			require.NoError(t, err, "unexpected error")
 			require.Equal(t, tc.expNetworks, actualNets, "unexpected networks")
+		})
+	}
+}
+
+func TestSetNetworks(t *testing.T) {
+	// Helper to create a simple NetworkConfig for testing
+	createNetworkConfig := func(selectedNetworks []string, evmNetworks map[string]*blockchain.EVMNetwork,
+		rpcHttpUrls map[string][]string, rpcWsUrls map[string][]string, walletKeys map[string][]string,
+		anvilConfigs map[string]*config.AnvilConfig) config.NetworkConfig {
+
+		return config.NetworkConfig{
+			SelectedNetworks: selectedNetworks,
+			EVMNetworks:      evmNetworks,
+			RpcHttpUrls:      rpcHttpUrls,
+			RpcWsUrls:        rpcWsUrls,
+			WalletKeys:       walletKeys,
+			AnvilConfigs:     anvilConfigs,
+		}
+	}
+
+	// Define test cases
+	testCases := []struct {
+		name             string
+		networkCfg       config.NetworkConfig
+		expectedError    bool
+		expectedErrorMsg string
+		expectedCount    int // Expected number of valid networks returned
+	}{
+		{
+			name: "Basic network setup with both HTTP and WS URLs",
+			networkCfg: createNetworkConfig(
+				[]string{"ETHEREUM_MAINNET"},
+				map[string]*blockchain.EVMNetwork{
+					"ETHEREUM_MAINNET": {Name: "ETHEREUM_MAINNET", ChainID: 1},
+				},
+				map[string][]string{"ETHEREUM_MAINNET": {"http://localhost:8545"}},
+				map[string][]string{"ETHEREUM_MAINNET": {"ws://localhost:8546"}},
+				map[string][]string{"ETHEREUM_MAINNET": {"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}},
+				nil,
+			),
+			expectedError: false,
+			expectedCount: 1,
+		},
+		{
+			name: "Simulated network bypasses validations",
+			networkCfg: createNetworkConfig(
+				[]string{"SIMULATED"},
+				map[string]*blockchain.EVMNetwork{
+					"SIMULATED": {Name: "Simulated", Simulated: true, ChainID: 1337},
+				},
+				nil, nil, nil, nil,
+			),
+			expectedError: false,
+			expectedCount: 1,
+		},
+		{
+			name: "Forked network skips RPC and wallet validation",
+			networkCfg: createNetworkConfig(
+				[]string{"ETHEREUM_MAINNET"},
+				nil,
+				nil,
+				nil,
+				nil,
+				map[string]*config.AnvilConfig{
+					"ETHEREUM_MAINNET": {URL: ptr.Ptr("http://localhost:8545")},
+				},
+			),
+			expectedError: false,
+			expectedCount: 1,
+		},
+		{
+			name: "Only HTTP URLs, valid setup",
+			networkCfg: createNetworkConfig(
+				[]string{"ETHEREUM_MAINNET"},
+				nil,
+				map[string][]string{"ETHEREUM_MAINNET": {"http://localhost:8545"}},
+				nil,
+				map[string][]string{"ETHEREUM_MAINNET": {"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}},
+				nil,
+			),
+			expectedError: false,
+			expectedCount: 1,
+		},
+		{
+			name: "Only WS URLs without HTTP, invalid setup",
+			networkCfg: createNetworkConfig(
+				[]string{"MAINNET"},
+				nil,
+				nil,
+				map[string][]string{"MAINNET": {"ws://localhost:8546"}},
+				map[string][]string{"MAINNET": {"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}},
+				nil,
+			),
+			expectedError:    true,
+			expectedErrorMsg: "WS RPC endpoint for MAINNET network is set without an HTTP endpoint",
+		},
+		{
+			name: "Multiple networks with valid configurations",
+			networkCfg: createNetworkConfig(
+				[]string{"ETHEREUM_MAINNET", "OPTIMISM_MAINNET"},
+				map[string]*blockchain.EVMNetwork{
+					"ETHEREUM_MAINNET": {Name: "ETHEREUM_MAINNET", ChainID: 1},
+					"OPTIMISM_MAINNET": {Name: "OPTIMISM_MAINNET", ChainID: 10},
+				},
+				map[string][]string{
+					"ETHEREUM_MAINNET": {"http://localhost:8545"},
+					"OPTIMISM_MAINNET": {"http://localhost:8547"},
+				},
+				map[string][]string{
+					"ETHEREUM_MAINNET": {"ws://localhost:8546"},
+					"OPTIMISM_MAINNET": {"ws://localhost:8548"},
+				},
+				map[string][]string{
+					"ETHEREUM_MAINNET": {"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"},
+					"OPTIMISM_MAINNET": {"59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"},
+				},
+				nil,
+			),
+			expectedError: false,
+			expectedCount: 2,
+		},
+		{
+			name: "Missing wallet keys, invalid setup",
+			networkCfg: createNetworkConfig(
+				[]string{"ETHEREUM_MAINNET"},
+				nil,
+				map[string][]string{"ETHEREUM_MAINNET": {"http://localhost:8545"}},
+				nil,
+				nil,
+				nil,
+			),
+			expectedError:    true,
+			expectedErrorMsg: "no wallet keys found in config for 'ETHEREUM_MAINNET' network",
+		},
+		{
+			name: "Unknown network, invalid setup skips validation",
+			networkCfg: createNetworkConfig(
+				[]string{"UNKNOWN_NETWORK"},
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			),
+			expectedError:    true,
+			expectedErrorMsg: "at least one HTTP RPC endpoint for UNKNOWN_NETWORK network must be set",
+		},
+		{
+			name: "Valid known network from MappedNetworks",
+			networkCfg: createNetworkConfig(
+				[]string{"SIMULATED_1"},
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+			),
+			expectedError: false,
+			expectedCount: 1,
+		},
+	}
+
+	// Run test cases
+	for _, tc := range testCases {
+		tc := tc // capture range variable
+		t.Run(tc.name, func(t *testing.T) {
+			nets, err := SetNetworks(tc.networkCfg)
+
+			// Check for expected error
+			if tc.expectedError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tc.expectedErrorMsg)
+				return
+			}
+			require.NoError(t, err)
+
+			// Check the expected count of networks returned
+			require.Equal(t, tc.expectedCount, len(nets))
 		})
 	}
 }

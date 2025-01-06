@@ -5,21 +5,16 @@ Now let's have an example of Chainlink node connected to some local blockchain.
 Create your configuration in `smoke.toml`
 ```toml
 [blockchain_a]
-  chain_id = "31337"
-  image = "f4hrenh9it/foundry:latest"
-  port = "8545"
   type = "anvil"
+  docker_cmd_params = ["-b", "1"]
 
 [cl_node]
-  data_provider_url = "http://example.com"
 
   [cl_node.db]
-    image = "postgres:15.6"
-    pull_image = true
+    image = "postgres:12.0"
 
   [cl_node.node]
     image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
-    pull_image = true
 ```
 
 Create your test in `smoke_test.go`

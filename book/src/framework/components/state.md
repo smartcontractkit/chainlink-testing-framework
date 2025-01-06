@@ -1,4 +1,4 @@
-# Components Persistence
+# Exposing Components (Data and ports)
 
 We use static port ranges and volumes for all components to simplify Docker port management for developers.
 
@@ -9,6 +9,8 @@ When deploying a component, you can explicitly configure port ranges if the defa
 Defaults are:
 - [NodeSet](../components/chainlink/nodeset.md) (Node HTTP API): `10000..100XX`
 - [NodeSet](../components/chainlink/nodeset.md) (Node P2P API): `12000..120XX`
+- [NodeSet](../components/chainlink/nodeset.md) (Delve debugger): `40000..400XX` (if you are using debug image)
+- Shared `PostgreSQL` volume is called `postgresql_data`
 ```
 [nodeset]
   # HTTP API port range start, each new node get port incremented (host machine)
@@ -27,6 +29,7 @@ Defaults are:
 
 When you run `ctf d rm` database volume will be **removed**.
 
+
 <div class="warning">
 
 One node set is enough for any kind of testing, if you need more nodes consider extending your existing node set:
@@ -35,3 +38,23 @@ One node set is enough for any kind of testing, if you need more nodes consider 
   nodes = 10
 ```
 </div>
+
+## Custom ports
+
+You can also define a custom set of ports for any node.
+```toml
+[nodeset]
+  nodes = 5
+  override_mode = "each"
+  
+  [nodeset.db]
+    image = "postgres:12.0"
+
+  [[nodeset.node_specs]]
+
+    [nodeset.node_specs.node]
+      # here we defined 2 new ports to listen and mapped them to our host machine
+      # syntax is "host:docker", if you provide only host port then we map 1-to-1
+      custom_ports = ["14000:15000", "20000"]
+      image = "public.ecr.aws/chainlink/chainlink:v2.16.0"
+```

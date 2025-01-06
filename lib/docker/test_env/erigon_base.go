@@ -36,12 +36,17 @@ type Erigon struct {
 	posContainerSettings
 }
 
+// WithTestInstance sets up the execution client with a test logger and test context.
+// This is useful for running tests that require a specific logging setup and context.
 func (g *Erigon) WithTestInstance(t *testing.T) ExecutionClient {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
 }
 
+// StartContainer initializes and starts an Erigon container for Ethereum execution.
+// It configures network settings based on the Ethereum version and returns the
+// blockchain network configuration along with any errors encountered during the process.
 func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 	var r *tc.ContainerRequest
 	var err error
@@ -105,6 +110,9 @@ func (g *Erigon) StartContainer() (blockchain.EVMNetwork, error) {
 	return networkConfig, nil
 }
 
+// GetInternalExecutionURL returns the internal execution URL for the Erigon client.
+// It is used to retrieve the execution layer's endpoint, essential for connecting to the Ethereum network.
+// If the Ethereum version is Eth1, it panics as Eth1 nodes do not support execution URLs.
 func (g *Erigon) GetInternalExecutionURL() string {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		panic("eth1 node doesn't have an execution URL")
@@ -112,6 +120,8 @@ func (g *Erigon) GetInternalExecutionURL() string {
 	return g.InternalExecutionURL
 }
 
+// GetExternalExecutionURL returns the external execution URL for the Erigon instance.
+// It panics if the Ethereum version is Eth1, as Eth1 nodes do not support execution URLs.
 func (g *Erigon) GetExternalExecutionURL() string {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		panic("eth1 node doesn't have an execution URL")
@@ -119,34 +129,50 @@ func (g *Erigon) GetExternalExecutionURL() string {
 	return g.ExternalExecutionURL
 }
 
+// GetInternalHttpUrl returns the internal HTTP URL of the Erigon client.
+// This URL is used to connect to the Erigon execution layer for internal communications.
 func (g *Erigon) GetInternalHttpUrl() string {
 	return g.InternalHttpUrl
 }
 
+// GetInternalWsUrl returns the internal WebSocket URL for the Erigon client.
+// This URL is used to establish a WebSocket connection for real-time communication with the Erigon node.
 func (g *Erigon) GetInternalWsUrl() string {
 	return g.InternalWsUrl
 }
 
+// GetExternalHttpUrl returns the external HTTP URL for the Erigon client.
+// This URL is used to interact with the Erigon execution layer over HTTP.
 func (g *Erigon) GetExternalHttpUrl() string {
 	return g.ExternalHttpUrl
 }
 
+// GetExternalWsUrl returns the external WebSocket URL for the Erigon client.
+// This URL is essential for connecting to the Erigon node for real-time data and event subscriptions.
 func (g *Erigon) GetExternalWsUrl() string {
 	return g.ExternalWsUrl
 }
 
+// GetContainerName returns the name of the container associated with the Erigon instance.
+// This function is useful for identifying and managing the container in a Docker environment.
 func (g *Erigon) GetContainerName() string {
 	return g.ContainerName
 }
 
+// GetContainer returns a pointer to the Container associated with the Erigon instance.
+// This function is useful for accessing the container's properties and methods in a structured manner.
 func (g *Erigon) GetContainer() *tc.Container {
 	return &g.Container
 }
 
+// GetEthereumVersion returns the current Ethereum version of the Erigon instance.
+// This information is essential for determining the appropriate execution URLs and consensus mechanisms.
 func (g *Erigon) GetEthereumVersion() config_types.EthereumVersion {
 	return g.ethereumVersion
 }
 
+// WaitUntilChainIsReady blocks until the Ethereum chain is ready for use, waiting for the first block to be built.
+// It returns an error if the chain does not become ready within the specified wait time.
 func (g *Erigon) WaitUntilChainIsReady(ctx context.Context, waitTime time.Duration) error {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return nil
@@ -155,7 +181,9 @@ func (g *Erigon) WaitUntilChainIsReady(ctx context.Context, waitTime time.Durati
 	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
 }
 
-func (g *Erigon) GethConsensusMechanism() ConsensusMechanism {
+// GetConsensusMechanism returns the consensus mechanism used by the Erigon instance.
+// It identifies whether the Ethereum version is Eth1 (Proof of Work) or a later version (Proof of Stake).
+func (g *Erigon) GetConsensusMechanism() ConsensusMechanism {
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return ConsensusMechanism_PoW
 	}

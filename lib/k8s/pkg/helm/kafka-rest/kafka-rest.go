@@ -48,6 +48,12 @@ func (m Chart) GetValues() *map[string]interface{} {
 	return m.Values
 }
 
+func (m Chart) GetLabels() map[string]string {
+	return map[string]string{
+		"chain.link/component": "kafka-rest",
+	}
+}
+
 func (m Chart) ExportData(e *environment.Environment) error {
 	urls := make([]string, 0)
 	local, err := e.Fwd.FindPort("cp-kafka-rest:0", "kafka-rest", "http").As(client.LocalConnection, client.HTTP)

@@ -7,24 +7,26 @@ import (
 )
 
 const (
-	GroupAuth   = "auth"
-	GroupUser   = "user"
-	GroupCommon = "common"
+	GroupAuth = "auth"
+	GroupUser = "user"
 )
 
 type VirtualUser struct {
 	*wasp.VUControl
-	target string
-	Data   []string
-	rl     ratelimit.Limiter
-	client *resty.Client
+	target    string
+	Data      []string
+	rateLimit int
+	rl        ratelimit.Limiter
+	client    *resty.Client
 }
 
 func NewExampleScenario(target string) *VirtualUser {
+	rateLimit := 10
 	return &VirtualUser{
 		VUControl: wasp.NewVUControl(),
 		target:    target,
-		rl:        ratelimit.New(10, ratelimit.WithoutSlack),
+		rateLimit: rateLimit,
+		rl:        ratelimit.New(rateLimit, ratelimit.WithoutSlack),
 		client:    resty.New().SetBaseURL(target),
 		Data:      make([]string, 0),
 	}
@@ -34,7 +36,7 @@ func (m *VirtualUser) Clone(_ *wasp.Generator) wasp.VirtualUser {
 	return &VirtualUser{
 		VUControl: wasp.NewVUControl(),
 		target:    m.target,
-		rl:        ratelimit.New(10, ratelimit.WithoutSlack),
+		rl:        ratelimit.New(m.rateLimit, ratelimit.WithoutSlack),
 		client:    resty.New().SetBaseURL(m.target),
 		Data:      make([]string, 0),
 	}
@@ -48,6 +50,7 @@ func (m *VirtualUser) Teardown(_ *wasp.Generator) error {
 	return nil
 }
 
+// represents user login
 func (m *VirtualUser) requestOne(l *wasp.Generator) {
 	var result map[string]interface{}
 	r, err := m.client.R().
@@ -60,6 +63,7 @@ func (m *VirtualUser) requestOne(l *wasp.Generator) {
 	l.Responses.OK(r, GroupAuth)
 }
 
+// represents authenticated user action
 func (m *VirtualUser) requestTwo(l *wasp.Generator) {
 	var result map[string]interface{}
 	r, err := m.client.R().

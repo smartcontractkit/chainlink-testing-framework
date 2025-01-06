@@ -40,6 +40,9 @@ type EthGenesisGenerator struct {
 	t                         *testing.T
 }
 
+// NewEthGenesisGenerator initializes a new EthGenesisGenerator instance for generating Ethereum genesis data.
+// It requires the Ethereum chain configuration, a directory for generated data, and the last fork used.
+// This function is essential for setting up the environment to create and manage Ethereum genesis files.
 func NewEthGenesisGenerator(chainConfig config.EthereumChainConfig, generatedDataHostDir string, lastFork ethereum.Fork, opts ...EnvComponentOption) (*EthGenesisGenerator, error) {
 	genesisGeneratorImage, ok := generatorForkToImageMap[lastFork]
 	if !ok {
@@ -71,12 +74,16 @@ func NewEthGenesisGenerator(chainConfig config.EthereumChainConfig, generatedDat
 	return g, nil
 }
 
+// WithTestInstance sets up the EthGenesisGenerator for testing by assigning a logger and test context.
+// This allows for better logging and error tracking during test execution.
 func (g *EthGenesisGenerator) WithTestInstance(t *testing.T) *EthGenesisGenerator {
 	g.l = logging.GetTestLogger(t)
 	g.t = t
 	return g
 }
 
+// StartContainer initializes and starts the Ethereum genesis generation container.
+// It ensures the container is ready for use, logging the process and any errors encountered.
 func (g *EthGenesisGenerator) StartContainer() error {
 	r, err := g.getContainerRequest(g.Networks)
 	if err != nil {
@@ -192,6 +199,8 @@ func (g *EthGenesisGenerator) getContainerRequest(networks []string) (*tc.Contai
 	}, nil
 }
 
+// GetGeneratedDataContainerDir returns the directory path for the generated data container.
+// This is useful for accessing the location where the genesis data is stored after generation.
 func (g *EthGenesisGenerator) GetGeneratedDataContainerDir() string {
 	return g.generatedDataContainerDir
 }

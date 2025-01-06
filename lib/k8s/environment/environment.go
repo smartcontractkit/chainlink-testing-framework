@@ -66,6 +66,8 @@ type ConnectedChart interface {
 	GetValues() *map[string]any
 	// ExportData export deployment part data in the env
 	ExportData(e *Environment) error
+	// GetLabels returns labels for the component
+	GetLabels() map[string]string
 }
 
 // Config is an environment common configuration, labels, annotations, connection types, readiness check, etc.
@@ -80,6 +82,8 @@ type Config struct {
 	Labels []string
 	// PodLabels is a set of labels applied to every pod in the namespace
 	PodLabels map[string]string
+	// WorkloadLabels is a set of labels applied to every workload in the namespace
+	WorkloadLabels map[string]string
 	// PreventPodEviction if true sets a k8s annotation safe-to-evict=false to prevent pods from being evicted
 	// Note: This should only be used if your test is completely incapable of handling things like K8s rebalances without failing.
 	// If that is the case, it's worth the effort to make your test fault-tolerant soon. The alternative is expensive and infuriating.
@@ -125,6 +129,8 @@ type Config struct {
 	detachRunner bool
 	// fundReturnFailed the status of a fund return
 	fundReturnFailed bool
+	// Skip validating that all required chain.link labels are present in the final manifest
+	SkipRequiredChainLinkLabelsValidation bool
 }
 
 func defaultEnvConfig() *Config {
@@ -234,6 +240,134 @@ func New(cfg *Config) *Environment {
 		}
 	}
 	return e
+}
+
+var requiredChainLinkNsLabels = []string{"chain.link/team", "chain.link/cost-center", "chain.link/product"}
+var requiredChainLinkWorkloadAndPodLabels = append([]string{}, append(requiredChainLinkNsLabels, "chain.link/component")...)
+
+// validateRequiredChainLinkLabels validates whether the namespace, workloads ands pods have the required chain.link labels
+// and returns an error with a list of missing labels if any
+func (m *Environment) validateRequiredChainLinkLabels() error {
+	if m.root.Labels() == nil {
+		return fmt.Errorf("namespace labels are nil, but it should contain at least '%s' labels. Please add them to your environment config under 'Labels' key", strings.Join(requiredChainLinkNsLabels, ", "))
+	}
+
+	var missingNsLabels []string
+	for _, l := range requiredChainLinkNsLabels {
+		if _, ok := (*m.root.Labels())[l]; !ok {
+			missingNsLabels = append(missingNsLabels, l)
+		}
+	}
+
+	children := m.root.Node().Children()
+	// map[workflow name][missing labels]
+	missingWorkloadLabels := make(map[string][]string)
+	// map[workflow name][missing labels]
+	missingPodLabels := make(map[string][]string)
+
+	if children == nil {
+		return nil
+	}
+
+	var podHasLabel = func(labelName string, podLabels map[string]string) bool {
+		if len(podLabels) == 0 {
+			return false
+		}
+		for label, _ := range podLabels {
+			if label == labelName {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	for _, child := range *children {
+		// most of our workloads are Helm charts
+		if h, ok := child.(cdk8s.Helm); ok {
+			for _, ao := range *h.ApiObjects() {
+				kind := *ao.Kind()
+				chartName := *ao.Name()
+				// map[label]value
+				var podLabels map[string]string
+				nodeMightHavePods := mightHavePods(kind)
+				shouldHavePodLabels := false
+				if nodeMightHavePods && hasPods(kind, *ao.Chart().ToJson()) {
+					shouldHavePodLabels = true
+					podLabels = getJsonPodLabels(kind, *ao.Chart().ToJson())
+				}
+				for _, requiredLabel := range requiredChainLinkWorkloadAndPodLabels {
+					maybeLabel := ao.Metadata().GetLabel(&requiredLabel)
+					if maybeLabel == nil {
+						missingWorkloadLabels[chartName] = append(missingWorkloadLabels[chartName], requiredLabel)
+					}
+					if shouldHavePodLabels {
+						labelFound := podHasLabel(requiredLabel, podLabels)
+						if !labelFound {
+							missingPodLabels[chartName] = append(missingPodLabels[chartName], requiredLabel)
+						}
+					}
+				}
+			}
+		}
+		// but legacy runners have no Helm charts, but are programmatically defined as KubeJobs
+		if j, ok := child.(k8s.KubeJob); ok {
+			// we have already checked the Namespace
+			if j.Kind() == nil || *j.Kind() == "Namespace" {
+				continue
+			}
+
+			kind := *j.Kind()
+			name := *j.Name()
+
+			var podLabels map[string]string
+			nodeMightHavePods := mightHavePods(kind)
+			shouldHavePodLabels := false
+			if nodeMightHavePods && hasPods(kind, []interface{}{j.ToJson()}) {
+				shouldHavePodLabels = true
+				podLabels = getJsonPodLabels(kind, []interface{}{j.ToJson()})
+			}
+
+			for _, requiredLabel := range requiredChainLinkWorkloadAndPodLabels {
+				maybeLabel := j.Metadata().GetLabel(&requiredLabel)
+				if maybeLabel == nil {
+					missingWorkloadLabels[name] = append(missingWorkloadLabels[name], requiredLabel)
+				}
+				if shouldHavePodLabels {
+					labelFound := podHasLabel(requiredLabel, podLabels)
+					if !labelFound {
+						missingPodLabels[name] = append(missingPodLabels[name], requiredLabel)
+					}
+				}
+			}
+		}
+	}
+
+	if len(missingWorkloadLabels) > 0 {
+		sb := strings.Builder{}
+		sb.WriteString("missing required labels for workloads:\n")
+		for chart, missingLabels := range missingWorkloadLabels {
+			for _, label := range missingLabels {
+				sb.WriteString(fmt.Sprintf("\t'%s': '%s'\n", chart, label))
+			}
+		}
+		sb.WriteString("Please add them to your environment configuration under 'WorkloadLabels' key. And check whether every chart has 'chain.link/component' label defined.")
+		return errors.New(sb.String())
+	}
+
+	if len(missingPodLabels) > 0 {
+		sb := strings.Builder{}
+		sb.WriteString("missing required labels for pods:\n")
+		for chart, missingLabels := range missingPodLabels {
+			for _, label := range missingLabels {
+				sb.WriteString(fmt.Sprintf("\t'%s': '%s'\n", chart, label))
+			}
+		}
+		sb.WriteString("Please add them to your environment configuration under 'WorkloadLabels' key. And check whether every pod in the chart has 'chain.link/component' label defined.")
+		return errors.New(sb.String())
+	}
+
+	return nil
 }
 
 func (m *Environment) initApp() error {
@@ -377,7 +511,21 @@ func (m *Environment) ReplaceHelm(name string, chart ConnectedChart) (*Environme
 		ReleaseName: ptr.Ptr(chart.GetName()),
 		Values:      chart.GetValues(),
 	})
-	addDefaultPodAnnotationsAndLabels(h, markNotSafeToEvict(m.Cfg.PreventPodEviction, nil), m.Cfg.PodLabels)
+
+	workloadLabels, err := getComponentLabels(m.Cfg.WorkloadLabels, chart.GetLabels())
+	if err != nil {
+		m.err = err
+		return nil, err
+	}
+
+	podLabels, err := getComponentLabels(m.Cfg.PodLabels, chart.GetLabels())
+	if err != nil {
+		m.err = err
+		return nil, err
+	}
+
+	addRequiredChainLinkLabelsToWorkloads(h, workloadLabels)
+	addDefaultPodAnnotationsAndLabels(h, markNotSafeToEvict(m.Cfg.PreventPodEviction, nil), podLabels)
 	m.Charts = append(m.Charts, chart)
 	return m, nil
 }
@@ -388,15 +536,18 @@ func addDefaultPodAnnotationsAndLabels(h cdk8s.Helm, annotations, labels map[str
 		annoatationsCopy[k] = v
 	}
 	for _, ao := range *h.ApiObjects() {
-		switch *ao.Kind() {
-		case "Deployment", "ReplicaSet", "StatefulSet":
+		if ao.Kind() == nil {
+			continue
+		}
+		kind := *ao.Kind()
+		if mightHavePods(kind) {
 			// we aren't guaranteed to have annotations in existence so we have to dig down to see if they exist
 			// and add any to our current list we want to add
 			aj := *ao.Chart().ToJson()
 			// loop over the json array until we get the expected kind and look for existing annotations
 			for _, dep := range aj {
 				l := fmt.Sprint(dep)
-				if !strings.Contains(l, fmt.Sprintf("kind:%s", *ao.Kind())) {
+				if !strings.Contains(l, fmt.Sprintf("kind:%s", kind)) {
 					continue
 				}
 				depM := dep.(map[string]interface{})
@@ -420,7 +571,11 @@ func addDefaultPodAnnotationsAndLabels(h cdk8s.Helm, annotations, labels map[str
 					annoatationsCopy[k] = v.(string)
 				}
 			}
-			ao.AddJsonPatch(cdk8s.JsonPatch_Add(ptr.Ptr("/spec/template/metadata/annotations"), annoatationsCopy))
+			annotationPath := "/spec/template/metadata/annotations"
+			if strings.EqualFold("cronjob", kind) {
+				annotationPath = "/spec/jobTemplate/spec/template/metadata/annotations"
+			}
+			ao.AddJsonPatch(cdk8s.JsonPatch_Add(ptr.Ptr(annotationPath), annoatationsCopy))
 
 			// loop over the labels and apply them to both the labels and selectors
 			// these should in theory always have at least one label/selector combo in existence so we don't
@@ -429,8 +584,19 @@ func addDefaultPodAnnotationsAndLabels(h cdk8s.Helm, annotations, labels map[str
 				// Escape the keys according to JSON Pointer syntax in RFC 6901
 				escapedKey := strings.ReplaceAll(strings.ReplaceAll(k, "~", "~0"), "/", "~1")
 				ao.AddJsonPatch(cdk8s.JsonPatch_Add(ptr.Ptr(fmt.Sprintf("/spec/template/metadata/labels/%s", escapedKey)), v))
-				ao.AddJsonPatch(cdk8s.JsonPatch_Add(ptr.Ptr(fmt.Sprintf("/spec/selector/matchLabels/%s", escapedKey)), v))
+				// CronJob doesn't have a selector, so we don't need to add it
+				if !strings.EqualFold("cronjob", kind) {
+					ao.AddJsonPatch(cdk8s.JsonPatch_Add(ptr.Ptr(fmt.Sprintf("/spec/selector/matchLabels/%s", escapedKey)), v))
+				}
 			}
+		}
+	}
+}
+
+func addRequiredChainLinkLabelsToWorkloads(h cdk8s.Helm, labels map[string]string) {
+	for _, ao := range *h.ApiObjects() {
+		for k, v := range labels {
+			ao.Metadata().AddLabel(&k, &v)
 		}
 	}
 }
@@ -456,7 +622,7 @@ func (m *Environment) UpdateHelm(name string, values map[string]any) (*Environme
 	return m.ReplaceHelm(name, chart)
 }
 
-// AddHelmCharts adds multiple helm charts to the testing environment
+// Charts adds multiple helm charts to the testing environment
 func (m *Environment) AddHelmCharts(charts []ConnectedChart) *Environment {
 	if m.err != nil {
 		return m
@@ -508,9 +674,36 @@ func (m *Environment) AddHelm(chart ConnectedChart) *Environment {
 		ReleaseName: ptr.Ptr(chart.GetName()),
 		Values:      values,
 	})
-	addDefaultPodAnnotationsAndLabels(h, markNotSafeToEvict(m.Cfg.PreventPodEviction, nil), m.Cfg.PodLabels)
+
+	workloadLabels, err := getComponentLabels(m.Cfg.WorkloadLabels, chart.GetLabels())
+	if err != nil {
+		m.err = err
+		return m
+	}
+
+	podLabels, err := getComponentLabels(m.Cfg.PodLabels, chart.GetLabels())
+	if err != nil {
+		m.err = err
+		return m
+	}
+	addRequiredChainLinkLabelsToWorkloads(h, workloadLabels)
+	addDefaultPodAnnotationsAndLabels(h, markNotSafeToEvict(m.Cfg.PreventPodEviction, nil), podLabels)
 	m.Charts = append(m.Charts, chart)
 	return m
+}
+
+func getComponentLabels(podLabels, chartLabels map[string]string) (map[string]string, error) {
+	componentLabels := make(map[string]string)
+	err := mergo.Merge(&componentLabels, podLabels, mergo.WithOverride)
+	if err != nil {
+		return nil, err
+	}
+	err = mergo.Merge(&componentLabels, chartLabels, mergo.WithOverride)
+	if err != nil {
+		return nil, err
+	}
+
+	return componentLabels, nil
 }
 
 // PullOCIChart handles working with OCI format repositories
@@ -630,7 +823,10 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 		if m.Cfg.Test == nil {
 			return fmt.Errorf("Test must be configured in the environment when using the remote runner")
 		}
-		rrSelector := map[string]*string{pkg.NamespaceLabelKey: ptr.Ptr(m.Cfg.Namespace)}
+		remoteRunnerLabels := map[string]*string{pkg.NamespaceLabelKey: ptr.Ptr(m.Cfg.Namespace)}
+		for l, v := range m.Cfg.WorkloadLabels {
+			remoteRunnerLabels[l] = ptr.Ptr(v)
+		}
 		// if no runner name is specified use constant
 		if m.Cfg.RunnerName == "" {
 			m.Cfg.RunnerName = REMOTE_RUNNER_NAME
@@ -639,7 +835,7 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 			BaseName:           m.Cfg.RunnerName,
 			ReportPath:         m.Cfg.ReportPath,
 			TargetNamespace:    m.Cfg.Namespace,
-			Labels:             &rrSelector,
+			Labels:             &remoteRunnerLabels,
 			Image:              m.Cfg.JobImage,
 			TestName:           m.Cfg.Test.Name(),
 			SkipManifestUpdate: m.Cfg.SkipManifestUpdate,
@@ -651,7 +847,7 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 				BaseName:           m.Cfg.RunnerName,
 				ReportPath:         m.Cfg.ReportPath,
 				TargetNamespace:    m.Cfg.Namespace,
-				Labels:             &rrSelector,
+				Labels:             &remoteRunnerLabels,
 				Image:              m.Cfg.JobImage,
 				TestName:           m.Cfg.Test.Name(),
 				SkipManifestUpdate: m.Cfg.SkipManifestUpdate,
@@ -674,6 +870,14 @@ func (m *Environment) RunCustomReadyConditions(customCheck *client.ReadyCheckDat
 		m.Cfg.SkipManifestUpdate = mu
 	}
 	log.Debug().Bool("ManifestUpdate", m.Cfg.SkipManifestUpdate).Msg("Update mode")
+
+	if !m.Cfg.SkipRequiredChainLinkLabelsValidation {
+		// make sure all required chain.link labels are present in the final manifest
+		if err := m.validateRequiredChainLinkLabels(); err != nil {
+			return err
+		}
+	}
+
 	if !m.Cfg.SkipManifestUpdate || m.Cfg.JobImage != "" {
 		if err := m.DeployCustomReadyConditions(customCheck, podCount); err != nil {
 			log.Error().Err(err).Msg("Error deploying environment")
@@ -804,7 +1008,7 @@ func (m *Environment) DeployCustomReadyConditions(customCheck *client.ReadyCheck
 	return m.enumerateApps()
 }
 
-// Deploy deploy current manifest and check logs for readiness
+// Deploy deploys current manifest and check logs for readiness
 func (m *Environment) Deploy() error {
 	return m.DeployCustomReadyConditions(nil, 0)
 }
@@ -1083,4 +1287,173 @@ func markNotSafeToEvict(preventPodEviction bool, m map[string]string) map[string
 	}
 
 	return m
+}
+
+// GetRequiredChainLinkNamespaceLabels returns the required chain.link namespace labels
+// if `CHAINLINK_USER_TEAM` env var is not set it will return an error
+func GetRequiredChainLinkNamespaceLabels(product, testType string) ([]string, error) {
+	var nsLabels []string
+	createdLabels, err := createRequiredChainLinkLabels(product, testType)
+	if err != nil {
+		return nsLabels, err
+	}
+
+	for k, v := range createdLabels {
+		nsLabels = append(nsLabels, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	return nsLabels, nil
+}
+
+// GetRequiredChainLinkWorkloadAndPodLabels returns the required chain.link workload and pod labels
+// if `CHAINLINK_USER_TEAM` env var is not set it will return an error
+func GetRequiredChainLinkWorkloadAndPodLabels(product, testType string) (map[string]string, error) {
+	createdLabels, err := createRequiredChainLinkLabels(product, testType)
+	if err != nil {
+		return nil, err
+	}
+
+	return createdLabels, nil
+}
+
+func createRequiredChainLinkLabels(product, testType string) (map[string]string, error) {
+	team := os.Getenv(config.EnvVarTeam)
+	if team == "" {
+		return nil, fmt.Errorf("missing team environment variable, please set %s to your team name or if you are seeing this in CI please either add a new input with team name or hardcode it if this jobs is only run by a single team", config.EnvVarTeam)
+	}
+
+	return map[string]string{
+		"chain.link/product":     product,
+		"chain.link/team":        team,
+		"chain.link/cost-center": fmt.Sprintf("test-tooling-%s-test", testType),
+	}, nil
+}
+
+// mightHavePods returns true if the kind of k8s resource might have pods
+func mightHavePods(kind string) bool {
+	switch kind {
+	// only these objects contain pods in their definition
+	case "Deployment", "ReplicaSet", "StatefulSet", "Job", "CronJob", "DaemonSet":
+		return true
+	}
+
+	return false
+}
+
+// hasPods checks if the json representing k8s resource has any pods
+func hasPods(kind string, maybeJson []interface{}) bool {
+	var hasSpecContainers = func(depMap map[string]interface{}) bool {
+		spec, ok := depMap["spec"].(map[string]interface{})
+		if !ok {
+			return false
+		}
+		containers, ok := spec["containers"].([]interface{})
+		if !ok {
+			return false
+		}
+
+		return len(containers) > 0
+	}
+
+	switch kind {
+	case "CronJob":
+		foundPods := false
+		for _, dep := range maybeJson {
+			depM := dep.(map[string]interface{})
+			spec, ok := depM["spec"].(map[string]interface{})
+			if !ok {
+				continue
+			}
+			jobTemplate, ok := spec["jobTemplate"].(map[string]interface{})
+			if !ok {
+				continue
+			}
+			spec2, ok := jobTemplate["spec"].(map[string]interface{})
+			if !ok {
+				continue
+			}
+			template, ok := spec2["template"].(map[string]interface{})
+			if !ok {
+				continue
+			}
+			if hasSpecContainers(template) {
+				foundPods = true
+				break
+			}
+		}
+		return foundPods
+	default:
+		foundPods := false
+		for _, dep := range maybeJson {
+			depM := dep.(map[string]interface{})
+			spec, ok := depM["spec"].(map[string]interface{})
+			if !ok {
+				continue
+			}
+			template, ok := spec["template"].(map[string]interface{})
+			if !ok {
+				continue
+			}
+			if hasSpecContainers(template) {
+				foundPods = true
+				break
+			}
+		}
+		return foundPods
+	}
+
+	return false
+}
+
+// getJsonPodLabels returns the labels for the pods in the json, which represents k8s resource
+// it returns pod labels of the first resource with these labels
+func getJsonPodLabels(kind string, maybeJson []interface{}) map[string]string {
+	templateLabels := make(map[string]string)
+	for _, dep := range maybeJson {
+		l := fmt.Sprint(dep)
+		if !strings.Contains(l, fmt.Sprintf("kind:%s", kind)) {
+			continue
+		}
+		depM := dep.(map[string]interface{})
+		spec, ok := depM["spec"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// CronJob has a different structure for the labels
+		var specRoot map[string]interface{}
+		if strings.EqualFold(kind, "CronJob") {
+			jobTemplate, ok := spec["jobTemplate"].(map[string]interface{})
+			if !ok {
+				continue
+			}
+			spec2, ok := jobTemplate["spec"].(map[string]interface{})
+			if !ok {
+				continue
+			}
+			specRoot = spec2
+		} else {
+			specRoot = spec
+		}
+
+		template, ok := specRoot["template"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		metadata, ok := template["metadata"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+		labels, ok := metadata["labels"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		for k, v := range labels {
+			templateLabels[k] = v.(string)
+		}
+		break
+	}
+
+	return templateLabels
 }

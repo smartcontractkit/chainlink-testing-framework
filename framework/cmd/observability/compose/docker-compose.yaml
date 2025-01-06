@@ -1,4 +1,17 @@
 services:
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.51.0
+    container_name: cadvisor
+    ports:
+      - "8085:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro # Docker container data
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    privileged: true
   prometheus:
     image: prom/prometheus:latest
     user: "0:0"
@@ -27,7 +40,8 @@ services:
       - ./conf/grafana.ini:/etc/grafana/grafana.ini
       - ./conf/provisioning:/etc/grafana/provisioning
       - ./conf/provisioning/dashboards/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
-      - ./conf/provisioning/dashboards/wasp.json:/var/lib/grafana/dashboards/wasp.json
+      - ./conf/provisioning/dashboards/wasp/wasp.json:/var/lib/grafana/dashboards/wasp/wasp.json
+      - ./conf/provisioning/dashboards/cadvisor/cadvisor.json:/var/lib/grafana/dashboards/cadvisor/cadvisor.json
     ports:
       - "3000:3000"
   pyroscope:

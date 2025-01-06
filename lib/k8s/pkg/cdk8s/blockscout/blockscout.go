@@ -51,6 +51,12 @@ func (m Chart) GetValues() *map[string]interface{} {
 	return nil
 }
 
+func (m Chart) GetLabels() map[string]string {
+	return map[string]string{
+		"chain.link/component": "blockscout",
+	}
+}
+
 func (m Chart) ExportData(e *environment.Environment) error {
 	bsURL, err := e.Fwd.FindPort(
 		fmt.Sprintf("%s:0", m.GetName()),
@@ -73,7 +79,8 @@ func New(props *Props) func(root cdk8s.Chart) environment.ConnectedChart {
 		}
 		vars := vars{
 			Labels: &map[string]*string{
-				"app": ptr.Ptr(c.GetName()),
+				"app":                  ptr.Ptr(c.GetName()),
+				"chain.link/component": ptr.Ptr("blockscout"),
 			},
 			ConfigMapName: fmt.Sprintf("%s-cm", c.GetName()),
 			BaseName:      c.GetName(),
@@ -111,7 +118,8 @@ type vars struct {
 func service(chart cdk8s.Chart, vars vars) {
 	k8s.NewKubeService(chart, ptr.Ptr(fmt.Sprintf("%s-service", vars.BaseName)), &k8s.KubeServiceProps{
 		Metadata: &k8s.ObjectMeta{
-			Name: ptr.Ptr(vars.BaseName),
+			Name:   ptr.Ptr(vars.BaseName),
+			Labels: vars.Labels,
 		},
 		Spec: &k8s.ServiceSpec{
 			Ports: &[]*k8s.ServicePort{
@@ -167,7 +175,8 @@ func deployment(chart cdk8s.Chart, vars vars) {
 		ptr.Ptr(fmt.Sprintf("%s-deployment", vars.BaseName)),
 		&k8s.KubeDeploymentProps{
 			Metadata: &k8s.ObjectMeta{
-				Name: ptr.Ptr(vars.BaseName),
+				Name:   ptr.Ptr(vars.BaseName),
+				Labels: vars.Labels,
 			},
 			Spec: &k8s.DeploymentSpec{
 				Selector: &k8s.LabelSelector{
