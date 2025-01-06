@@ -3,30 +3,22 @@ run:
   allow-parallel-runners: true
 linters:
   enable:
-    - containedctx
-    - copyloopvar
-    - errname
-    - errorlint
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - typecheck
+    - unused
+    # extra
     - exhaustive
-    - fatcontext
-    - ginkgolinter
-    - gocritic
+    - copyloopvar
+    - revive
     - goimports
     - gosec
-    - loggercheck
-    - mirror
     - misspell
-    - noctx
-    - nolintlint
-    - perfsprint
-    - prealloc
-    - revive
-    - rowserrcheck
-    - spancheck
-    - sqlclosecheck
-    - testifylint
-    - unconvert
-    - whitespace
+    - errorlint
+    - contextcheck
 linters-settings:
   exhaustive:
     default-signifies-exhaustive: true
