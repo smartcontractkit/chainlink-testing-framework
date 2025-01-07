@@ -149,7 +149,12 @@ func calculateSimpleNetworkCongestionMetric(headers []*types.Header) float64 {
 func calculateNewestFirstNetworkCongestionMetric(headers []*types.Header) float64 {
 	// sort blocks so that we are sure they are in ascending order
 	slices.SortFunc(headers, func(i, j *types.Header) int {
-		return mustSafeInt(i.Number.Uint64() - j.Number.Uint64())
+		if i.Number.Uint64() < j.Number.Uint64() {
+			return -1
+		} else if i.Number.Uint64() > j.Number.Uint64() {
+			return 1
+		}
+		return 0
 	})
 
 	var weightedSum, totalWeight float64

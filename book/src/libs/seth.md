@@ -234,7 +234,7 @@ client, err := NewClientBuilder().
     WithEIP1559DynamicFees(true).
     WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
     // estimate gas prices based on the information from the RPC based on 10 last blocks
-    // adjust the value to fast priority and attempt 3 times to get the estimations
+    // adjust the value to fast priority and 3 attempts to get the estimations
     WithGasPriceEstimations(true, 10, seth.Priority_Fast, 3).
     // gas bumping: retries, max gas price, bumping strategy function
     WithGasBumping(5, 100_000_000_000, PriorityBasedGasBumpingStrategyFn).
