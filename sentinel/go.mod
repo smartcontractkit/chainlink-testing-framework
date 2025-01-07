@@ -7,13 +7,12 @@ toolchain go1.23.3
 require (
 	github.com/ethereum/go-ethereum v1.14.11
 	github.com/rs/zerolog v1.33.0
-	github.com/smartcontractkit/chainlink-testing-framework/lib v1.50.18
+	github.com/smartcontractkit/chainlink-testing-framework/lib v1.50.20-0.20250106135623-15722ca32b64
 	github.com/stretchr/testify v1.9.0
 )
 
 require (
 	dario.cat/mergo v1.0.1 // indirect
-	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/bits-and-blooms/bitset v1.13.0 // indirect

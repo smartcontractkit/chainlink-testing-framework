@@ -8,5 +8,5 @@ echo "## CTF modules and org dependencies
 \`\`\`mermaid
 flowchart LR
 "
-gomods graph | modgraph -prefix github.com/smartcontractkit/
+gomods graph | modgraph -prefix github.com/smartcontractkit/chainlink-testing-framework/
 echo "\`\`\`"
