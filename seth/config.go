@@ -33,11 +33,11 @@ const (
 	DefaultDialTimeout                   = 1 * time.Minute
 	DefaultPendingNonceProtectionTimeout = 1 * time.Minute
 
-	DefaultTransferGasFee                = 21_000
-	DefaultGasPrice                      = 100_000_000_000 // 100 Gwei
-	DefaultGasFeeCap                     = 100_000_000_000 // 100 Gwei
-	DefaultGasTipCap                     = 50_000_000_000  // 50 Gwei
-	DefaultGasPriceEstimationsRetryCount = 3
+	DefaultTransferGasFee                  = 21_000
+	DefaultGasPrice                        = 100_000_000_000 // 100 Gwei
+	DefaultGasFeeCap                       = 100_000_000_000 // 100 Gwei
+	DefaultGasTipCap                       = 50_000_000_000  // 50 Gwei
+	DefaultGasPriceEstimationsAttemptCount = 1               // this actually means no retries, due to how the retry-go library works
 )
 
 type Config struct {
@@ -100,22 +100,22 @@ type NonceManagerCfg struct {
 }
 
 type Network struct {
-	Name                         string    `toml:"name"`
-	URLs                         []string  `toml:"urls_secret"`
-	ChainID                      uint64    `toml:"chain_id"`
-	EIP1559DynamicFees           bool      `toml:"eip_1559_dynamic_fees"`
-	GasPrice                     int64     `toml:"gas_price"`
-	GasFeeCap                    int64     `toml:"gas_fee_cap"`
-	GasTipCap                    int64     `toml:"gas_tip_cap"`
-	GasLimit                     uint64    `toml:"gas_limit"`
-	TxnTimeout                   *Duration `toml:"transaction_timeout"`
-	DialTimeout                  *Duration `toml:"dial_timeout"`
-	TransferGasFee               int64     `toml:"transfer_gas_fee"`
-	PrivateKeys                  []string  `toml:"private_keys_secret"`
-	GasPriceEstimationEnabled    bool      `toml:"gas_price_estimation_enabled"`
-	GasPriceEstimationBlocks     uint64    `toml:"gas_price_estimation_blocks"`
-	GasPriceEstimationTxPriority string    `toml:"gas_price_estimation_tx_priority"`
-	GasPriceEstimationRetryCount uint      `toml:"gas_price_estimation_retry_count"`
+	Name                           string    `toml:"name"`
+	URLs                           []string  `toml:"urls_secret"`
+	ChainID                        uint64    `toml:"chain_id"`
+	EIP1559DynamicFees             bool      `toml:"eip_1559_dynamic_fees"`
+	GasPrice                       int64     `toml:"gas_price"`
+	GasFeeCap                      int64     `toml:"gas_fee_cap"`
+	GasTipCap                      int64     `toml:"gas_tip_cap"`
+	GasLimit                       uint64    `toml:"gas_limit"`
+	TxnTimeout                     *Duration `toml:"transaction_timeout"`
+	DialTimeout                    *Duration `toml:"dial_timeout"`
+	TransferGasFee                 int64     `toml:"transfer_gas_fee"`
+	PrivateKeys                    []string  `toml:"private_keys_secret"`
+	GasPriceEstimationEnabled      bool      `toml:"gas_price_estimation_enabled"`
+	GasPriceEstimationBlocks       uint64    `toml:"gas_price_estimation_blocks"`
+	GasPriceEstimationTxPriority   string    `toml:"gas_price_estimation_tx_priority"`
+	GasPriceEstimationAttemptCount uint      `toml:"gas_price_estimation_attempt_count"`
 }
 
 // DefaultClient returns a Client with reasonable default config with the specified RPC URL and private keys. You should pass at least 1 private key.
@@ -200,18 +200,18 @@ func ReadConfig() (*Config, error) {
 // when necessary. This function performs validation on gas price estimation,
 // gas limit, tracing level, trace outputs, network dial timeout, and pending nonce protection timeout.
 // If any configuration is invalid, it returns an error.
-func (cfg *Config) Validate() error {
-	if cfg.Network.GasPriceEstimationEnabled {
-		if cfg.Network.GasPriceEstimationBlocks == 0 {
+func (c *Config) Validate() error {
+	if c.Network.GasPriceEstimationEnabled {
+		if c.Network.GasPriceEstimationBlocks == 0 {
 			L.Debug().Msg("Gas estimation is enabled, but block headers to use is set to 0. Will not use block congestion for gas estimation")
 		}
-		cfg.Network.GasPriceEstimationTxPriority = strings.ToLower(cfg.Network.GasPriceEstimationTxPriority)
+		c.Network.GasPriceEstimationTxPriority = strings.ToLower(c.Network.GasPriceEstimationTxPriority)
 
-		if cfg.Network.GasPriceEstimationTxPriority == "" {
-			cfg.Network.GasPriceEstimationTxPriority = Priority_Standard
+		if c.Network.GasPriceEstimationTxPriority == "" {
+			c.Network.GasPriceEstimationTxPriority = Priority_Standard
 		}
 
-		switch cfg.Network.GasPriceEstimationTxPriority {
+		switch c.Network.GasPriceEstimationTxPriority {
 		case Priority_Degen:
 		case Priority_Fast:
 		case Priority_Standard:
@@ -222,22 +222,22 @@ func (cfg *Config) Validate() error {
 
 	}
 
-	if cfg.Network.GasLimit != 0 {
+	if c.Network.GasLimit != 0 {
 		L.Warn().
 			Msg("Gas limit is set, this will override the gas limit set by the network. This option should be used **ONLY** if node is incapable of estimating gas limit itself, which happens only with very old versions")
 	}
 
-	if cfg.Network.GasPriceEstimationRetryCount == 0 {
-		cfg.Network.GasPriceEstimationRetryCount = DefaultGasPriceEstimationsRetryCount
+	if c.Network.GasPriceEstimationAttemptCount == 0 {
+		c.Network.GasPriceEstimationAttemptCount = DefaultGasPriceEstimationsAttemptCount
 	}
 
-	if cfg.TracingLevel == "" {
-		cfg.TracingLevel = TracingLevel_Reverted
+	if c.TracingLevel == "" {
+		c.TracingLevel = TracingLevel_Reverted
 	}
 
-	cfg.TracingLevel = strings.ToUpper(cfg.TracingLevel)
+	c.TracingLevel = strings.ToUpper(c.TracingLevel)
 
-	switch cfg.TracingLevel {
+	switch c.TracingLevel {
 	case TracingLevel_None:
 	case TracingLevel_Reverted:
 	case TracingLevel_All:
@@ -245,7 +245,7 @@ func (cfg *Config) Validate() error {
 		return errors.New("tracing level must be one of: NONE, REVERTED, ALL")
 	}
 
-	for _, output := range cfg.TraceOutputs {
+	for _, output := range c.TraceOutputs {
 		switch strings.ToLower(output) {
 		case TraceOutput_Console:
 		case TraceOutput_JSON:
@@ -255,12 +255,12 @@ func (cfg *Config) Validate() error {
 		}
 	}
 
-	if cfg.Network.DialTimeout == nil {
-		cfg.Network.DialTimeout = &Duration{D: DefaultDialTimeout}
+	if c.Network.DialTimeout == nil {
+		c.Network.DialTimeout = &Duration{D: DefaultDialTimeout}
 	}
 
-	if cfg.PendingNonceProtectionTimeout == nil {
-		cfg.PendingNonceProtectionTimeout = &Duration{D: DefaultPendingNonceProtectionTimeout}
+	if c.PendingNonceProtectionTimeout == nil {
+		c.PendingNonceProtectionTimeout = &Duration{D: DefaultPendingNonceProtectionTimeout}
 	}
 
 	return nil

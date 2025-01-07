@@ -213,7 +213,7 @@ func NewClientRaw(
 		Addresses:   addrs,
 		PrivateKeys: pkeys,
 		URL:         cfg.FirstNetworkURL(),
-		ChainID:     int64(cfg.Network.ChainID),
+		ChainID:     mustSafeInt64(cfg.Network.ChainID),
 		Context:     ctx,
 		CancelFunc:  cancelFunc,
 	}
@@ -417,7 +417,7 @@ func (m *Client) TransferETHFromKey(ctx context.Context, fromKeyNum int, to stri
 	if err != nil {
 		gasLimit = m.Cfg.Network.TransferGasFee
 	} else {
-		gasLimit = int64(gasLimitRaw)
+		gasLimit = mustSafeInt64(gasLimitRaw)
 	}
 
 	if gasPrice == nil {
@@ -428,7 +428,7 @@ func (m *Client) TransferETHFromKey(ctx context.Context, fromKeyNum int, to stri
 		Nonce:    m.NonceManager.NextNonce(m.Addresses[fromKeyNum]).Uint64(),
 		To:       &toAddr,
 		Value:    value,
-		Gas:      uint64(gasLimit),
+		Gas:      mustSafeUint64(gasLimit),
 		GasPrice: gasPrice,
 	}
 	L.Debug().Interface("TransferTx", rawTx).Send()
@@ -543,7 +543,7 @@ func WithPending(pending bool) CallOpt {
 // WithBlockNumber sets blockNumber option for bind.CallOpts
 func WithBlockNumber(bn uint64) CallOpt {
 	return func(o *bind.CallOpts) {
-		o.BlockNumber = big.NewInt(int64(bn))
+		o.BlockNumber = big.NewInt(mustSafeInt64(bn))
 	}
 }
 
@@ -938,7 +938,7 @@ func (m *Client) configureTransactionOpts(
 	estimations GasEstimations,
 	o ...TransactOpt,
 ) *bind.TransactOpts {
-	opts.Nonce = big.NewInt(int64(nonce))
+	opts.Nonce = big.NewInt(mustSafeInt64(nonce))
 	opts.GasPrice = estimations.GasPrice
 	opts.GasLimit = m.Cfg.Network.GasLimit
 

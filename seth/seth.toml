@@ -119,8 +119,8 @@ eip_1559_dynamic_fees = true
 gas_price_estimation_enabled = true
 gas_price_estimation_blocks = 100
 gas_price_estimation_tx_priority = "standard"
-# how many times to retry fetching & calculating gas price data in case of errors, defaults to 3 if empty
-gas_price_estimation_retry_count = 5
+# how many times to try fetching & calculating gas price data in case of errors, defaults to 1 if empty
+gas_price_estimation_attempt_count = 5
 
 # fallback values
 transfer_gas_fee = 21_000
@@ -139,8 +139,8 @@ eip_1559_dynamic_fees = true
 #gas_price_estimation_enabled = true
 #gas_price_estimation_blocks = 100
 #gas_price_estimation_tx_priority = "standard"
-# how many times to retry fetching & calculating gas price data in case of errors, defaults to 3 if empty
-#gas_price_estimation_retry_count = 5
+# how many times to try fetching & calculating gas price data in case of errors, defaults to 1 if empty
+#gas_price_estimation_attempt_count = 5
 
 # gas limits
 #transfer_gas_fee = 21_000
@@ -165,8 +165,8 @@ eip_1559_dynamic_fees = true
 gas_price_estimation_enabled = true
 gas_price_estimation_blocks = 100
 gas_price_estimation_tx_priority = "standard"
-# how many times to retry fetching & calculating gas price data in case of errors, defaults to 3 if empty
-gas_price_estimation_retry_count = 5
+# how many times to try fetching & calculating gas price data in case of errors, defaults to 1 if empty
+gas_price_estimation_attempt_count = 5
 
 # gas limits
 transfer_gas_fee = 21_000
@@ -194,8 +194,8 @@ gas_price_estimation_enabled = true
 gas_price_estimation_blocks = 100
 # transaction priority, which determines adjustment factor multiplier applied to suggested values (fast - 1.2x, standard - 1x, slow - 0.8x)
 gas_price_estimation_tx_priority = "standard"
-# how many times to retry fetching & calculating gas price data in case of errors, defaults to 3 if empty
-gas_price_estimation_retry_count = 5
+# how many times to try fetching & calculating gas price data in case of errors, defaults to 1 if empty
+gas_price_estimation_attempt_count = 5
 
 # gas limits
 transfer_gas_fee = 21_000
@@ -220,8 +220,8 @@ eip_1559_dynamic_fees = false
 gas_price_estimation_enabled = true
 gas_price_estimation_blocks = 100
 gas_price_estimation_tx_priority = "standard"
-# how many times to retry fetching & calculating gas price data in case of errors, defaults to 3 if empty
-gas_price_estimation_retry_count = 5
+# how many times to try fetching & calculating gas price data in case of errors, defaults to 1 if empty
+gas_price_estimation_attempt_count = 5
 
 # gas limits
 transfer_gas_fee = 21_000
@@ -255,5 +255,5 @@ gas_price_estimation_enabled = true
 gas_price_estimation_blocks = 100
 # priority of the transaction, can be "fast", "standard" or "slow" (the higher the priority, the higher adjustment factor will be used for gas estimation) [default: "standard"]
 gas_price_estimation_tx_priority = "standard"
-# how many times to retry fetching & calculating gas price data in case of errors, defaults to 3 if empty
-gas_price_estimation_retry_count = 5
+# how many times to try fetching & calculating gas price data in case of errors, defaults to 1 if empty
+gas_price_estimation_attempt_count = 5

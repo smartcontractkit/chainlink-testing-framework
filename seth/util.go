@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -65,7 +66,7 @@ func (m *Client) CalculateSubKeyFunding(addrs, gasPrice, rooKeyBuffer int64) (*F
 	if err == nil {
 		gasLimitRaw, err := m.EstimateGasLimitForFundTransfer(m.Addresses[0], common.HexToAddress(newAddress), big.NewInt(0).Quo(balance, big.NewInt(addrs)))
 		if err == nil {
-			gasLimit = int64(gasLimitRaw)
+			gasLimit = mustSafeInt64(gasLimitRaw)
 		}
 	}
 
@@ -386,7 +387,7 @@ func DecodePragmaVersion(bytecode string) (Pragma, error) {
 	}
 
 	// each byte is represented by 2 characters in hex
-	metadataLengthInt := int(metadataByteLengthUint) * 2
+	metadataLengthInt := mustSafeInt(metadataByteLengthUint) * 2
 
 	// if we get nonsensical metadata length, it means that metadata section is not present and last 2 bytes do not represent metadata length
 	if metadataLengthInt > len(bytecode) {
@@ -456,4 +457,25 @@ This error could be caused by several issues. Please try these steps to resolve 
 
 Original error:`
 	return fmt.Errorf("%s\n%s", message, err.Error())
+}
+
+func mustSafeInt64(input uint64) int64 {
+	if input > math.MaxInt64 {
+		panic(fmt.Errorf("uint64 %d exceeds int64 max value", input))
+	}
+	return int64(input)
+}
+
+func mustSafeInt(input uint64) int {
+	if input > math.MaxInt {
+		panic(fmt.Errorf("uint64 %d exceeds int max value", input))
+	}
+	return int(input)
+}
+
+func mustSafeUint64(input int64) uint64 {
+	if input < 0 {
+		panic(fmt.Errorf("int64 %d exceeds uint64 max value", input))
+	}
+	return uint64(input)
 }

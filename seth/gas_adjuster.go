@@ -12,6 +12,7 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -60,7 +61,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 			timeout = 6
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(mustSafeInt64(timeout))*time.Second)
 		defer cancel()
 		header, err := m.Client.HeaderByNumber(ctx, bn)
 		if err != nil {
@@ -80,7 +81,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 
 	L.Trace().Msgf("Block range for gas calculation: %d - %d", lastBlockNumber-blocksNumber, lastBlockNumber)
 
-	lastBlock, err := getHeaderData(big.NewInt(int64(lastBlockNumber)))
+	lastBlock, err := getHeaderData(big.NewInt(mustSafeInt64(lastBlockNumber)))
 	if err != nil {
 		return 0, err
 	}
@@ -115,7 +116,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 				return
 			}
 			dataCh <- header
-		}(big.NewInt(int64(i)))
+		}(big.NewInt(mustSafeInt64(i)))
 	}
 
 	wg.Wait()
@@ -148,7 +149,7 @@ func calculateSimpleNetworkCongestionMetric(headers []*types.Header) float64 {
 func calculateNewestFirstNetworkCongestionMetric(headers []*types.Header) float64 {
 	// sort blocks so that we are sure they are in ascending order
 	slices.SortFunc(headers, func(i, j *types.Header) int {
-		return int(i.Number.Uint64() - j.Number.Uint64())
+		return mustSafeInt(i.Number.Uint64() - j.Number.Uint64())
 	})
 
 	var weightedSum, totalWeight float64
@@ -176,20 +177,37 @@ func calculateNewestFirstNetworkCongestionMetric(headers []*types.Header) float6
 func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (maxFeeCap *big.Int, adjustedTipCap *big.Int, err error) {
 	L.Info().Msg("Calculating suggested EIP-1559 fees")
 	var suggestedGasTip *big.Int
-	suggestedGasTip, err = m.Client.SuggestGasTipCap(ctx)
-	if err != nil {
-		return
-	}
-
-	L.Debug().
-		Str("CurrentGasTip", fmt.Sprintf("%s wei / %s ether", suggestedGasTip.String(), WeiToEther(suggestedGasTip).Text('f', -1))).
-		Msg("Current suggested gas tip")
-
-	// Fetch the baseline historical base fee and tip for the selected priority
 	var baseFee64, historicalSuggestedTip64 float64
-	//nolint
-	baseFee64, historicalSuggestedTip64, err = m.HistoricalFeeData(priority)
-	if err != nil {
+	attempts := getSafeGasEstimationsAttemptCount(m.Cfg)
+
+	retryErr := retry.Do(func() error {
+		var tipErr error
+		suggestedGasTip, tipErr = m.Client.SuggestGasTipCap(ctx)
+		if tipErr != nil {
+			return tipErr
+		}
+
+		L.Debug().
+			Str("CurrentGasTip", fmt.Sprintf("%s wei / %s ether", suggestedGasTip.String(), WeiToEther(suggestedGasTip).Text('f', -1))).
+			Msg("Current suggested gas tip")
+
+		// Fetch the baseline historical base fee and tip for the selected priority
+		var historyErr error
+		//nolint
+		baseFee64, historicalSuggestedTip64, historyErr = m.HistoricalFeeData(priority)
+		return historyErr
+	},
+		retry.Attempts(attempts),
+		retry.Delay(1*time.Second),
+		retry.LastErrorOnly(true),
+		retry.DelayType(retry.FixedDelay),
+		retry.OnRetry(func(i uint, retryErr error) {
+			L.Debug().
+				Msgf("Retrying fetching of EIP1559 suggested fees due to: %s. Attempt %d/%d", retryErr.Error(), (i + 1), attempts)
+		}))
+
+	if retryErr != nil {
+		err = retryErr
 		return
 	}
 
@@ -347,15 +365,32 @@ func (m *Client) GetSuggestedLegacyFees(ctx context.Context, priority string) (a
 		Msg("Calculating suggested Legacy fees")
 
 	var suggestedGasPrice *big.Int
-	suggestedGasPrice, err = m.Client.SuggestGasPrice(ctx)
-	if err != nil {
-		return
-	}
+	attempts := getSafeGasEstimationsAttemptCount(m.Cfg)
 
-	if suggestedGasPrice.Int64() == 0 {
-		err = fmt.Errorf("suggested gas price is 0")
-		L.Debug().
-			Msg("Incorrect gas data received from node: suggested gas price was 0. Skipping automation gas estimation")
+	retryErr := retry.Do(func() error {
+		var priceErr error
+		suggestedGasPrice, priceErr = m.Client.SuggestGasPrice(ctx)
+		if priceErr != nil {
+			return priceErr
+		}
+
+		if suggestedGasPrice.Int64() == 0 {
+			return errors.New("suggested gas price is 0")
+		}
+
+		return nil
+	},
+		retry.Attempts(attempts),
+		retry.Delay(1*time.Second),
+		retry.LastErrorOnly(true),
+		retry.DelayType(retry.FixedDelay),
+		retry.OnRetry(func(i uint, retryErr error) {
+			L.Debug().
+				Msgf("Retrying fetching of legacy suggested gas price due to: %s. Attempt %d/%d", retryErr.Error(), (i + 1), attempts)
+		}))
+
+	if retryErr != nil {
+		err = retryErr
 		return
 	}
 
@@ -465,30 +500,10 @@ func classifyCongestion(congestionMetric float64) string {
 
 func (m *Client) HistoricalFeeData(priority string) (baseFee float64, historicalGasTipCap float64, err error) {
 	estimator := NewGasEstimator(m)
-	var stats GasSuggestions
-
-	statsErr := retry.Do(func() error {
-		var retryErr error
-		stats, retryErr = estimator.Stats(m.Cfg.Network.GasPriceEstimationBlocks, 99)
-		return retryErr
-	},
-		retry.Attempts(func() uint {
-			if m.Cfg.Network.GasPriceEstimationRetryCount > 0 {
-				return m.Cfg.Network.GasPriceEstimationRetryCount
-			}
-			return 1
-		}()),
-		retry.Delay(1*time.Second),
-		retry.LastErrorOnly(true),
-		retry.DelayType(retry.FixedDelay),
-		retry.OnRetry(func(i uint, retryErr error) {
-			L.Debug().
-				Msgf("Retrying to get fee history due to: %s", retryErr.Error())
-		}))
-
-	if statsErr != nil {
+	stats, err := estimator.Stats(m.Cfg.Network.GasPriceEstimationBlocks, 99)
+	if err != nil {
 		L.Debug().
-			Msgf("Failed to get fee history due to: %s. Will use hardcoded gas prices", statsErr.Error())
+			Msgf("Failed to get fee history due to: %s. Will use hardcoded gas prices", err.Error())
 
 		return
 	}
@@ -563,4 +578,11 @@ func calculateMagnitudeDifference(first, second *big.Float) (int, string) {
 
 	intDiff := int(math.Ceil(diff))
 	return intDiff, fmt.Sprintf("%d orders of magnitude larger", intDiff)
+}
+
+func getSafeGasEstimationsAttemptCount(cfg *Config) uint {
+	if cfg.Network.GasPriceEstimationAttemptCount == 0 {
+		return DefaultGasPriceEstimationsAttemptCount
+	}
+	return cfg.Network.GasPriceEstimationAttemptCount
 }

@@ -23,18 +23,18 @@ type ClientBuilder struct {
 // NewClientBuilder creates a new ClientBuilder with reasonable default values. You only need to pass private key(s) and RPC URL to build a usable config.
 func NewClientBuilder() *ClientBuilder {
 	network := &Network{
-		Name:                         DefaultNetworkName,
-		EIP1559DynamicFees:           true,
-		TxnTimeout:                   MustMakeDuration(5 * time.Minute),
-		DialTimeout:                  MustMakeDuration(DefaultDialTimeout),
-		TransferGasFee:               DefaultTransferGasFee,
-		GasPriceEstimationEnabled:    true,
-		GasPriceEstimationBlocks:     200,
-		GasPriceEstimationTxPriority: Priority_Standard,
-		GasPrice:                     DefaultGasPrice,
-		GasFeeCap:                    DefaultGasFeeCap,
-		GasTipCap:                    DefaultGasTipCap,
-		GasPriceEstimationRetryCount: DefaultGasPriceEstimationsRetryCount,
+		Name:                           DefaultNetworkName,
+		EIP1559DynamicFees:             true,
+		TxnTimeout:                     MustMakeDuration(5 * time.Minute),
+		DialTimeout:                    MustMakeDuration(DefaultDialTimeout),
+		TransferGasFee:                 DefaultTransferGasFee,
+		GasPriceEstimationEnabled:      true,
+		GasPriceEstimationBlocks:       200,
+		GasPriceEstimationTxPriority:   Priority_Standard,
+		GasPrice:                       DefaultGasPrice,
+		GasFeeCap:                      DefaultGasFeeCap,
+		GasTipCap:                      DefaultGasTipCap,
+		GasPriceEstimationAttemptCount: DefaultGasPriceEstimationsAttemptCount,
 	}
 
 	return &ClientBuilder{
@@ -177,15 +177,17 @@ func (c *ClientBuilder) WithNetworkChainId(chainId uint64) *ClientBuilder {
 // WithGasPriceEstimations enables or disables gas price estimations, sets the number of blocks to use for estimation or transaction priority.
 // Even with estimations enabled you should still either set legacy gas price with `WithLegacyGasPrice()` or EIP-1559 dynamic fees with `WithDynamicGasPrices()`
 // ss they will be used as fallback values, if the estimations fail.
+// To disable gas price estimations, set the enabled parameter to false. Setting attemptCount to 0 won't disable it, it will be treated as "no value" and default to 1.
 // Following priorities are supported: "slow", "standard" and "fast"
-// Default values are true for enabled, 200 blocks for estimation and "standard" for priority.
-func (c *ClientBuilder) WithGasPriceEstimations(enabled bool, estimationBlocks uint64, txPriority string) *ClientBuilder {
+// Default values are true for enabled, 200 blocks for estimation, "standard" for priority and 1 attempt.
+func (c *ClientBuilder) WithGasPriceEstimations(enabled bool, estimationBlocks uint64, txPriority string, attemptCount uint) *ClientBuilder {
 	if !c.checkIfNetworkIsSet() {
 		return c
 	}
 	c.config.Network.GasPriceEstimationEnabled = enabled
 	c.config.Network.GasPriceEstimationBlocks = estimationBlocks
 	c.config.Network.GasPriceEstimationTxPriority = txPriority
+	c.config.Network.GasPriceEstimationAttemptCount = attemptCount
 	// defensive programming
 	if len(c.config.Networks) == 0 {
 		c.config.Networks = append(c.config.Networks, c.config.Network)
@@ -193,6 +195,7 @@ func (c *ClientBuilder) WithGasPriceEstimations(enabled bool, estimationBlocks u
 		net.GasPriceEstimationEnabled = enabled
 		net.GasPriceEstimationBlocks = estimationBlocks
 		net.GasPriceEstimationTxPriority = txPriority
+		net.GasPriceEstimationAttemptCount = attemptCount
 	}
 	return c
 }
