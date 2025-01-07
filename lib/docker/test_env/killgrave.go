@@ -19,6 +19,7 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/k8s/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
 )
@@ -153,8 +154,14 @@ func (k *Killgrave) StartContainer() error {
 }
 
 func (k *Killgrave) getContainerRequest() (tc.ContainerRequest, error) {
-	// TT-1290 Temporary work around using fork of killgrave, uncomment line below when fork is merged
+	// killgraveImage := mirror.AddMirrorToImageIfSet(defaultKillgraveImage)
+	// TT-1290 Temporary code to set image to the fork or the ecr mirror depending on the config
 	killgraveImage := "tateexon/killgrave:v0.5.1-request-dump"
+	ecr := os.Getenv(config.EnvVarInternalDockerRepo)
+	if ecr != "" {
+		killgraveImage = fmt.Sprintf("%s/%s", ecr, defaultKillgraveImage)
+	}
+	// end temporary code
 
 	return tc.ContainerRequest{
 		Name:         k.ContainerName,
