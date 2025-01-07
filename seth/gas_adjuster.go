@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -464,10 +465,30 @@ func classifyCongestion(congestionMetric float64) string {
 
 func (m *Client) HistoricalFeeData(priority string) (baseFee float64, historicalGasTipCap float64, err error) {
 	estimator := NewGasEstimator(m)
-	stats, err := estimator.Stats(m.Cfg.Network.GasPriceEstimationBlocks, 99)
-	if err != nil {
+	var stats GasSuggestions
+
+	statsErr := retry.Do(func() error {
+		var retryErr error
+		stats, retryErr = estimator.Stats(m.Cfg.Network.GasPriceEstimationBlocks, 99)
+		return retryErr
+	},
+		retry.Attempts(func() uint {
+			if m.Cfg.Network.GasPriceEstimationRetryCount > 0 {
+				return m.Cfg.Network.GasPriceEstimationRetryCount
+			}
+			return 1
+		}()),
+		retry.Delay(1*time.Second),
+		retry.LastErrorOnly(true),
+		retry.DelayType(retry.FixedDelay),
+		retry.OnRetry(func(i uint, retryErr error) {
+			L.Debug().
+				Msgf("Retrying to get fee history due to: %s", retryErr.Error())
+		}))
+
+	if statsErr != nil {
 		L.Debug().
-			Msgf("Failed to get fee history due to: %s. Skipping automation gas estimation", err.Error())
+			Msgf("Failed to get fee history due to: %s. Will use hardcoded gas prices", statsErr.Error())
 
 		return
 	}

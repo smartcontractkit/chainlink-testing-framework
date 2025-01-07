@@ -34,6 +34,7 @@ func NewClientBuilder() *ClientBuilder {
 		GasPrice:                     DefaultGasPrice,
 		GasFeeCap:                    DefaultGasFeeCap,
 		GasTipCap:                    DefaultGasTipCap,
+		GasPriceEstimationRetryCount: DefaultGasPriceEstimationsRetryCount,
 	}
 
 	return &ClientBuilder{
