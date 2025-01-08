@@ -65,34 +65,34 @@ func (g *Nethermind) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 	}
 
 	command := []string{
-		"--datadir=/nethermind",
-		"--config=/none.cfg",
-		fmt.Sprintf("--Init.ChainSpecPath=%s/chainspec.json", g.generatedDataContainerDir),
-		"--Init.DiscoveryEnabled=false",
-		"--Init.WebSocketsEnabled=true",
-		fmt.Sprintf("--JsonRpc.WebSocketsPort=%s", DEFAULT_EVM_NODE_WS_PORT),
-		fmt.Sprintf("--Blocks.SecondsPerSlot=%d", g.chainConfig.SecondsPerSlot),
-		"--JsonRpc.Enabled=true",
-		"--JsonRpc.EnabledModules=net,eth,consensus,subscribe,web3,admin,txpool,debug,trace",
-		"--JsonRpc.Host=0.0.0.0",
-		fmt.Sprintf("--JsonRpc.Port=%s", DEFAULT_EVM_NODE_HTTP_PORT),
-		"--JsonRpc.EngineHost=0.0.0.0",
-		"--JsonRpc.EnginePort=" + ETH2_EXECUTION_PORT,
-		fmt.Sprintf("--JsonRpc.JwtSecretFile=%s", getJWTSecretFileLocationInsideContainer(g.generatedDataContainerDir)),
-		fmt.Sprintf("--KeyStore.KeyStoreDirectory=%s", getKeystoreDirLocationInsideContainer(g.generatedDataContainerDir)),
-		"--KeyStore.BlockAuthorAccount=0x123463a4b065722e99115d6c222f267d9cabb524",
-		"--KeyStore.UnlockAccounts=0x123463a4b065722e99115d6c222f267d9cabb524",
-		fmt.Sprintf("--KeyStore.PasswordFiles=%s", getAccountPasswordFileInsideContainer(g.generatedDataContainerDir)),
-		"--Network.MaxActivePeers=0",
-		"--Network.OnlyStaticPeers=true",
-		"--HealthChecks.Enabled=true", // default slug /health
-		fmt.Sprintf("--log=%s", strings.ToUpper(g.LogLevel)),
+		"--datadir", "/nethermind",
+		"--config", "/none.cfg",
+		"--Init.ChainSpecPath", fmt.Sprintf("%s/chainspec.json", g.generatedDataContainerDir),
+		"--Init.DiscoveryEnabled", "false",
+		"--Init.WebSocketsEnabled", "true",
+		"--JsonRpc.WebSocketsPort", DEFAULT_EVM_NODE_WS_PORT,
+		"--Blocks.SecondsPerSlot", fmt.Sprintf("%d", g.chainConfig.SecondsPerSlot),
+		"--JsonRpc.Enabled", "true",
+		"--JsonRpc.EnabledModules", "net,eth,consensus,subscribe,web3,admin,txpool,debug,trace",
+		"--JsonRpc.Host", "0.0.0.0",
+		"--JsonRpc.Port", DEFAULT_EVM_NODE_HTTP_PORT,
+		"--JsonRpc.EngineHost", "0.0.0.0",
+		"--JsonRpc.EnginePort", ETH2_EXECUTION_PORT,
+		"--JsonRpc.JwtSecretFile", getJWTSecretFileLocationInsideContainer(g.generatedDataContainerDir),
+		"--KeyStore.KeyStoreDirectory", getKeystoreDirLocationInsideContainer(g.generatedDataContainerDir),
+		"--KeyStore.BlockAuthorAccount", "0x123463a4b065722e99115d6c222f267d9cabb524",
+		"--KeyStore.UnlockAccounts", "0x123463a4b065722e99115d6c222f267d9cabb524",
+		"--KeyStore.PasswordFiles", getAccountPasswordFileInsideContainer(g.generatedDataContainerDir),
+		"--Network.MaxActivePeers", "0",
+		"--Network.OnlyStaticPeers", "true",
+		"--HealthChecks.Enabled", "true", // default slug /health
+		"--log", strings.ToUpper(g.LogLevel),
 	}
 
 	if g.LogLevel == "trace" {
-		command = append(command, "--TraceStore.Enabled=true")
-		command = append(command, "--Network.DiagTracerEnabled=true")
-		command = append(command, "--TxPool.ReportMinutes=1")
+		command = append(command, "--TraceStore.Enabled", "true")
+		command = append(command, "--Network.DiagTracerEnabled", "true")
+		command = append(command, "--TxPool.ReportMinutes", "1")
 	}
 
 	return &tc.ContainerRequest{
