@@ -4,3 +4,6 @@
   public_key = "9n1pyVGGo6V4mpiSDMVay5As9NurEkY283wwRk1Kto2C"
   contracts_dir = "."
   image = "solanalabs/solana:v1.18.26"
+
+[blockchain_a.solana_programs]
+  mcm = "6UmMZr5MEqiKWD5jqTJd1WCR5kT8oZuFYBLJFi1o6GQX"
