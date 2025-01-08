@@ -333,7 +333,7 @@ Tracing support (prestate)</li>
 Tracing decoding</li>
 <li><input disabled="" type="checkbox" checked=""/>
 Tracing tests</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 More tests for corner cases of decoding/tracing</li>
 <li><input disabled="" type="checkbox" checked=""/>
 Saving of deployed contracts mapping (<code>address -&gt; ABI_name</code>) for live networks</li>
@@ -454,7 +454,9 @@ if err != nil {
     // EIP-1559 and gas estimations
     WithEIP1559DynamicFees(true).
     WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
-    WithGasPriceEstimations(true, 10, seth.Priority_Fast).
+    // estimate gas prices based on the information from the RPC based on 10 last blocks
+    // adjust the value to fast priority and 3 attempts to get the estimations
+    WithGasPriceEstimations(true, 10, seth.Priority_Fast, 3).
     // gas bumping: retries, max gas price, bumping strategy function
     WithGasBumping(5, 100_000_000_000, PriorityBasedGasBumpingStrategyFn).
     Build()
@@ -608,6 +610,7 @@ gas_price_estimation_tx_priority = "slow"
 <li><strong>Final Fee Calculation</strong>: Sum the base fee and adjusted tip to set the <code>gas_fee_cap</code>.</li>
 <li><strong>Congestion Buffer</strong>: Similar to legacy transactions, analyze congestion and apply a buffer to both the fee cap and the tip to secure transaction inclusion.</li>
 </ol>
+<p>Regardless of transaction type, if fetching data from RPC or calculating prices fails due to any issue and <code>gas_price_estimation_attempt_count</code> is &gt; 1 we will retry it N-1 number of times.</p>
 <p>Understanding and setting these parameters correctly ensures that your transactions are processed efficiently and cost-effectively on the network.</p>
 <p>When fetching historical base fee and tip data, we will use the last <code>gas_price_estimation_blocks</code> blocks. If it's set to <code>0</code> we will default to <code>100</code> last blocks. If the blockchain has less than <code>100</code> blocks we will use all of them.</p>
 <p>Finally, <code>gas_price_estimation_tx_priority</code> is also used, when deciding, which percentile to use for base fee and tip for historical fee data. Here's how that looks:</p>
@@ -644,6 +647,16 @@ case Congestion_VeryHigh:
 </code></pre>
 <p>For low congestion rate we will increase gas price by 10%, for medium by 20%, for high by 30% and for very high by 40%. We cache block header data in an in-memory cache, so we don't have to fetch it every time we estimate gas. The cache has capacity equal to <code>gas_price_estimation_blocks</code> and every time we add a new element, we remove one that is least frequently used and oldest (with block number being a constant and chain always moving forward it makes no sense to keep old blocks). It's important to know that in order to use congestion metrics we need to fetch at least 80% of the requested blocks. If that fails, we will skip this part of the estimation and only adjust the gas price based on priority.
 For both transaction types if any of the steps fails, we fall back to hardcoded values.</p>
+<h5 id="gas-estimations-attemps"><a class="header" href="#gas-estimations-attemps">Gas estimations attemps</a></h5>
+<p>If for any reason fetching gas price suggestions or fee history from the RPC fails, or subsequent calulation of percentiles fails, it can be retried. This behaviour is controlled by <code>gas_price_estimation_attempt_count</code>, which if empty or set to <code>0</code> will default to
+just one attempt, which means that if it fails, it won't be retried. Set it to <code>2</code> to allow a single retry, etc.</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>To disable gas estimation set <code>gas_price_estimation_enabled</code> to <code>false</code>. Setting <code>gas_price_estimation_attempt_count</code> to <code>0</code> won't have such effect.</p>
+</div>
 <h3 id="dot-graphs"><a class="header" href="#dot-graphs">DOT graphs</a></h3>
 <p>There are multiple ways of visualising DOT graphs:</p>
 <ul>
