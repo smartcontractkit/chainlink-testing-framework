@@ -158,7 +158,7 @@ func GenerateSummaryData(tests []TestResult, maxPassRatio float64) SummaryData {
 
 	// Helper function to convert a float ratio into a trimmed string
 	formatRatio := func(val float64) string {
-		// Format with 5 decimal places
+		// Format with 4 decimal places
 		s := fmt.Sprintf("%.4f", val)
 		// Trim trailing zeros
 		s = strings.TrimRight(s, "0")
