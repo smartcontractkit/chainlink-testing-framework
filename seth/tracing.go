@@ -406,7 +406,7 @@ func (t *Tracer) decodeCall(byteSignature []byte, rawCall Call) (*DecodedCall, e
 				Str("Gas", rawCall.Gas).
 				Msg("Failed to parse value")
 		} else {
-			defaultCall.GasLimit = uint64(decimalValue)
+			defaultCall.GasLimit = mustSafeUint64(decimalValue)
 		}
 	}
 
@@ -418,7 +418,7 @@ func (t *Tracer) decodeCall(byteSignature []byte, rawCall Call) (*DecodedCall, e
 				Str("GasUsed", rawCall.GasUsed).
 				Msg("Failed to parse value")
 		} else {
-			defaultCall.GasUsed = uint64(decimalValue)
+			defaultCall.GasUsed = mustSafeUint64(decimalValue)
 		}
 	}
 

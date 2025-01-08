@@ -192,7 +192,7 @@ func TestConfig_LegacyGas_No_Estimations(t *testing.T) {
 		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
 		// Gas price and estimations
 		WithLegacyGasPrice(710_000_000).
-		WithGasPriceEstimations(false, 0, "").
+		WithGasPriceEstimations(false, 0, "", 0).
 		Build()
 	require.NoError(t, err, "failed to build client")
 	require.Equal(t, 1, len(client.PrivateKeys), "expected 1 private key")
@@ -215,7 +215,7 @@ func TestConfig_Eip1559Gas_With_Estimations(t *testing.T) {
 		// Gas price and estimations
 		WithEIP1559DynamicFees(true).
 		WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
-		WithGasPriceEstimations(true, 10, seth.Priority_Fast).
+		WithGasPriceEstimations(true, 10, seth.Priority_Fast, seth.DefaultGasPriceEstimationsAttemptCount).
 		Build()
 
 	require.NoError(t, err, "failed to build client")
@@ -238,7 +238,7 @@ func TestConfig_NoPrivateKeys_RpcHealthEnabled(t *testing.T) {
 		// Gas price and estimations
 		WithEIP1559DynamicFees(true).
 		WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
-		WithGasPriceEstimations(false, 10, seth.Priority_Fast).
+		WithGasPriceEstimations(false, 10, seth.Priority_Fast, seth.DefaultGasPriceEstimationsAttemptCount).
 		Build()
 
 	require.Error(t, err, "succeeded in building the client")
@@ -255,7 +255,7 @@ func TestConfig_NoPrivateKeys_PendingNonce(t *testing.T) {
 		// Gas price and estimations
 		WithEIP1559DynamicFees(true).
 		WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
-		WithGasPriceEstimations(false, 10, seth.Priority_Fast).
+		WithGasPriceEstimations(false, 10, seth.Priority_Fast, 2).
 		WithProtections(true, false, seth.MustMakeDuration(1*time.Minute)).
 		Build()
 
@@ -274,7 +274,7 @@ func TestConfig_NoPrivateKeys_EphemeralKeys(t *testing.T) {
 		// Gas price and estimations
 		WithEIP1559DynamicFees(true).
 		WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
-		WithGasPriceEstimations(false, 10, seth.Priority_Fast).
+		WithGasPriceEstimations(false, 10, seth.Priority_Fast, 2).
 		WithProtections(false, false, seth.MustMakeDuration(1*time.Minute)).
 		Build()
 
@@ -288,7 +288,7 @@ func TestConfig_NoPrivateKeys_GasEstimations(t *testing.T) {
 	_, err := builder.
 		WithNetworkName("my network").
 		WithRpcUrl("ws://localhost:8546").
-		WithGasPriceEstimations(true, 10, seth.Priority_Fast).
+		WithGasPriceEstimations(true, 10, seth.Priority_Fast, 2).
 		WithProtections(false, false, seth.MustMakeDuration(1*time.Minute)).
 		Build()
 
@@ -306,7 +306,7 @@ func TestConfig_NoPrivateKeys_TxOpts(t *testing.T) {
 		// Gas price and estimations
 		WithEIP1559DynamicFees(true).
 		WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
-		WithGasPriceEstimations(false, 10, seth.Priority_Fast).
+		WithGasPriceEstimations(false, 10, seth.Priority_Fast, 2).
 		WithProtections(false, false, seth.MustMakeDuration(1*time.Minute)).
 		Build()
 
@@ -326,7 +326,7 @@ func TestConfig_NoPrivateKeys_Tracing(t *testing.T) {
 		WithRpcUrl("ws://localhost:8546").
 		WithEIP1559DynamicFees(true).
 		WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
-		WithGasPriceEstimations(false, 10, seth.Priority_Fast).
+		WithGasPriceEstimations(false, 10, seth.Priority_Fast, 2).
 		WithProtections(false, false, seth.MustMakeDuration(1*time.Minute)).
 		WithGethWrappersFolders([]string{"./contracts/bind"}).
 		Build()
@@ -375,7 +375,7 @@ func TestConfig_ReadOnlyMode(t *testing.T) {
 		WithRpcUrl("ws://localhost:8546").
 		WithEphemeralAddresses(10, 1000).
 		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
-		WithGasPriceEstimations(true, 10, seth.Priority_Fast).
+		WithGasPriceEstimations(true, 10, seth.Priority_Fast, 2).
 		WithReadOnlyMode().
 		Build()
 
