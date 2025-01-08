@@ -1,6 +1,7 @@
 package benchspy
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/rs/zerolog"
@@ -28,5 +29,15 @@ func initDefaultLogging() {
 	if err != nil {
 		panic(err)
 	}
-	L = log.Output(zerolog.ConsoleWriter{Out: os.Stderr}).Level(lvl)
+
+	output := zerolog.ConsoleWriter{Out: os.Stderr}
+	output.FormatMessage = func(i interface{}) string {
+		return fmt.Sprintf("\033[38;5;136m%v \033[0m", i) // Dark gold color for message
+	}
+
+	output.FormatFieldValue = func(i interface{}) string {
+		return fmt.Sprintf("\033[38;5;136m%v \033[0m", i) // Dark gold color for field value
+	}
+
+	L = log.Output(output).Level(lvl)
 }

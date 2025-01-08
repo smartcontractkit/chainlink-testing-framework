@@ -34,9 +34,12 @@ func MustNewBasicData(commitOrTag string, generators ...*wasp.Generator) BasicDa
 }
 
 // NewBasicData creates a new BasicData instance using the provided commit or tag and a list of generators.
-// It ensures that at least one generator is provided and that it is associated with a testing.T instance. 
+// It ensures that at least one generator is provided and that it is associated with a testing.T instance.
 // This function is essential for initializing test data configurations in a structured manner.
 func NewBasicData(commitOrTag string, generators ...*wasp.Generator) (*BasicData, error) {
+	L.Debug().
+		Msg("Creating new basic data instance")
+
 	if len(generators) == 0 {
 		return nil, errors.New("at least one generator is required")
 	}
@@ -60,12 +63,18 @@ func NewBasicData(commitOrTag string, generators ...*wasp.Generator) (*BasicData
 		return nil, timeErr
 	}
 
+	L.Debug().
+		Msg("Basic data instance created successfully")
+
 	return b, nil
 }
 
 // FillStartEndTimes calculates the earliest start time and latest end time from generator schedules.
 // It updates the BasicData instance with these times, ensuring all segments have valid start and end times.
 func (b *BasicData) FillStartEndTimes() error {
+	L.Debug().
+		Msg("Filling test start and end times for basic data instance based on generator schedules")
+
 	earliestTime := time.Now()
 	var latestTime time.Time
 
@@ -92,6 +101,10 @@ func (b *BasicData) FillStartEndTimes() error {
 
 	b.TestStart = earliestTime
 	b.TestEnd = latestTime
+	L.Debug().
+		Str("Test start time", earliestTime.Format(time.RFC3339)).
+		Str("Test end time", latestTime.Format(time.RFC3339)).
+		Msg("Start and end times filled successfully")
 
 	return nil
 }
@@ -99,6 +112,8 @@ func (b *BasicData) FillStartEndTimes() error {
 // Validate checks the integrity of the BasicData fields, ensuring that the test start and end times are set,
 // and that at least one generator configuration is provided. It returns an error if any of these conditions are not met.
 func (b *BasicData) Validate() error {
+	L.Debug().
+		Msg("Validating basic data instance")
 	if b.TestStart.IsZero() {
 		return errors.New("test start time is missing. We cannot query Loki without a time range. Please set it and try again")
 	}
@@ -110,6 +125,9 @@ func (b *BasicData) Validate() error {
 		return errors.New("generator configs are missing. At least one is required. Please set them and try again")
 	}
 
+	L.Debug().
+		Msg("Basic data instance is valid")
+
 	return nil
 }
 
@@ -118,7 +136,9 @@ func (b *BasicData) Validate() error {
 // returning an error if any discrepancies are found. This function is useful for ensuring
 // consistency between data reports before processing or comparison.
 func (b *BasicData) IsComparable(otherData BasicData) error {
-	// are all configs present? do they have the same schedule type? do they have the same segments? is call timeout the same? is rate limit timeout the same?
+	L.Debug().
+		Msg("Checking if basic data instances are comparable")
+
 	if len(b.GeneratorConfigs) != len(otherData.GeneratorConfigs) {
 		return fmt.Errorf("generator configs count is different. Expected %d, got %d", len(b.GeneratorConfigs), len(otherData.GeneratorConfigs))
 	}
@@ -132,6 +152,9 @@ func (b *BasicData) IsComparable(otherData BasicData) error {
 			}
 		}
 	}
+
+	L.Debug().
+		Msg("Basic data instances are comparable")
 
 	return nil
 }
