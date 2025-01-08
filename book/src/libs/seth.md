@@ -70,7 +70,7 @@ Reliable and debug-friendly Ethereum client
 - [ ] Tracing support (prestate)
 - [x] Tracing decoding
 - [x] Tracing tests
-- [ ] More tests for corner cases of decoding/tracing
+- [x] More tests for corner cases of decoding/tracing
 - [x] Saving of deployed contracts mapping (`address -> ABI_name`) for live networks
 - [x] Reading of deployed contracts mappings for live networks
 - [x] Automatic gas estimator (experimental)
@@ -233,7 +233,9 @@ client, err := NewClientBuilder().
     // EIP-1559 and gas estimations
     WithEIP1559DynamicFees(true).
     WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
-    WithGasPriceEstimations(true, 10, seth.Priority_Fast).
+    // estimate gas prices based on the information from the RPC based on 10 last blocks
+    // adjust the value to fast priority and 3 attempts to get the estimations
+    WithGasPriceEstimations(true, 10, seth.Priority_Fast, 3).
     // gas bumping: retries, max gas price, bumping strategy function
     WithGasBumping(5, 100_000_000_000, PriorityBasedGasBumpingStrategyFn).
     Build()
@@ -441,6 +443,8 @@ For real networks, the estimation process differs for legacy transactions and th
 5. **Final Fee Calculation**: Sum the base fee and adjusted tip to set the `gas_fee_cap`.
 6. **Congestion Buffer**: Similar to legacy transactions, analyze congestion and apply a buffer to both the fee cap and the tip to secure transaction inclusion.
 
+Regardless of transaction type, if fetching data from RPC or calculating prices fails due to any issue and `gas_price_estimation_attempt_count` is > 1 we will retry it N-1 number of times.
+
 Understanding and setting these parameters correctly ensures that your transactions are processed efficiently and cost-effectively on the network.
 
 When fetching historical base fee and tip data, we will use the last `gas_price_estimation_blocks` blocks. If it's set to `0` we will default to `100` last blocks. If the blockchain has less than `100` blocks we will use all of them.
@@ -491,6 +495,14 @@ case Congestion_VeryHigh:
 
 For low congestion rate we will increase gas price by 10%, for medium by 20%, for high by 30% and for very high by 40%. We cache block header data in an in-memory cache, so we don't have to fetch it every time we estimate gas. The cache has capacity equal to `gas_price_estimation_blocks` and every time we add a new element, we remove one that is least frequently used and oldest (with block number being a constant and chain always moving forward it makes no sense to keep old blocks). It's important to know that in order to use congestion metrics we need to fetch at least 80% of the requested blocks. If that fails, we will skip this part of the estimation and only adjust the gas price based on priority.
 For both transaction types if any of the steps fails, we fall back to hardcoded values.
+
+##### Gas estimations attemps
+
+If for any reason fetching gas price suggestions or fee history from the RPC fails, or subsequent calulation of percentiles fails, it can be retried. This behaviour is controlled by `gas_price_estimation_attempt_count`, which if empty or set to `0` will default to
+just one attempt, which means that if it fails, it won't be retried. Set it to `2` to allow a single retry, etc.
+
+> [!NOTE]
+> To disable gas estimation set `gas_price_estimation_enabled` to `false`. Setting `gas_price_estimation_attempt_count` to `0` won't have such effect.
 
 ### DOT graphs
 
