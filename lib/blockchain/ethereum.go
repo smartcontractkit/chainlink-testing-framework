@@ -714,6 +714,11 @@ func (e *EthereumClient) WaitForFinalizedTx(txHash common.Hash) (*big.Int, time.
 						e.l.Err(err).Msg("Error fetching latest finalized header via HTTP polling")
 					}
 
+					if latestHeader.Time > math.MaxInt64 {
+						e.l.Error().Msg("Latest finalized header time is too large")
+						continue
+					}
+
 					nodeHeader := NodeHeader{
 						// NodeID: 0, // Assign appropriate NodeID if needed
 						SafeEVMHeader: SafeEVMHeader{
@@ -1279,7 +1284,10 @@ func (e *EthereumClient) startPollingHeaders() error {
 				}
 				if latestHeader.Number.Uint64() > lastHeaderNumber {
 					lastHeaderNumber = latestHeader.Number.Uint64()
-					e.receiveHeader(latestHeader)
+					if err := e.receiveHeader(latestHeader); err != nil {
+						e.l.Error().Err(err).Msg("Error processing header")
+						continue
+					}
 				}
 			case <-e.doneChan:
 				e.l.Debug().Str("Network", e.NetworkConfig.Name).Msg("Polling loop cancelled")
