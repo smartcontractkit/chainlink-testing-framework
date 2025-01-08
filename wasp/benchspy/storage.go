@@ -35,6 +35,11 @@ func (l *LocalStorage) cleanTestName(testName string) string {
 // It organizes reports by test name and commit/tag, ensuring easy retrieval and management.
 // Returns the absolute path of the stored report or an error if the operation fails.
 func (l *LocalStorage) Store(testName, commitOrTag string, report interface{}) (string, error) {
+	L.Debug().
+		Str("Test name", testName).
+		Str("Reference", commitOrTag).
+		Msg("Storing report on local storage")
+
 	l.defaultDirectoryIfEmpty()
 	asJson, err := json.MarshalIndent(report, "", " ")
 	if err != nil {
@@ -66,6 +71,12 @@ func (l *LocalStorage) Store(testName, commitOrTag string, report interface{}) (
 		return reportFilePath, nil
 	}
 
+	L.Info().
+		Str("Test name", testName).
+		Str("Reference", commitOrTag).
+		Str("Report path", abs).
+		Msg("Report stored successfully")
+
 	return abs, nil
 }
 
@@ -81,12 +92,20 @@ func (l *LocalStorage) Load(testName, commitOrTag string, report interface{}) er
 
 	var ref string
 	if commitOrTag == "" {
+		L.Info().
+			Str("Test name", testName).
+			Msg("Loading latest report from local storage")
+
 		var refErr error
 		ref, refErr = l.findRef(cleanTestName)
 		if refErr != nil {
 			return refErr
 		}
 	} else {
+		L.Info().
+			Str("Test name", testName).
+			Str("Reference", commitOrTag).
+			Msg("Loading report from local storage")
 		ref = commitOrTag
 	}
 
@@ -101,6 +120,12 @@ func (l *LocalStorage) Load(testName, commitOrTag string, report interface{}) er
 	if err := decoder.Decode(report); err != nil {
 		return errors.Wrapf(err, "failed to decode file %s", reportFilePath)
 	}
+
+	L.Info().
+		Str("Test name", testName).
+		Str("Reference", ref).
+		Str("Report path", reportFilePath).
+		Msg("Report loaded successfully")
 
 	return nil
 }
@@ -123,6 +148,14 @@ func (l *LocalStorage) findAllGitlikeReferences(cleanTestName string, entries []
 }
 
 func (l *LocalStorage) findLatestGitRef(refs []string) (string, error) {
+	L.Debug().
+		Int("References found", len(refs)).
+		Msg("Finding latest report based on Git history")
+
+	L.Trace().
+		Str("References", strings.Join(refs, ", ")).
+		Msg("Resolving references to commit hashes")
+
 	var ref string
 	// Find git root
 	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
@@ -140,6 +173,14 @@ func (l *LocalStorage) findLatestGitRef(refs []string) (string, error) {
 		cmd.Dir = gitRoot
 		if out, err := cmd.Output(); err == nil {
 			resolvedRefs[ref] = strings.TrimSpace(string(out))
+			L.Trace().
+				Str("Reference", ref).
+				Str("Resolved", resolvedRefs[ref]).
+				Msg("Reference resolved to commit hash")
+		} else {
+			L.Warn().
+				Str("Reference", ref).
+				Msg("Failed to resolve reference to commit hash")
 		}
 	}
 
@@ -148,6 +189,10 @@ func (l *LocalStorage) findLatestGitRef(refs []string) (string, error) {
 	for _, hash := range resolvedRefs {
 		commitRefs = append(commitRefs, hash)
 	}
+
+	L.Debug().
+		Str("Commits found", strings.Join(commitRefs, ", ")).
+		Msg("Finding latest commit among resolved references")
 
 	args := append([]string{"rev-list", "--topo-order", "--date-order", "--max-count=1"}, commitRefs...)
 	cmd = exec.Command("git", args...)
@@ -168,6 +213,11 @@ func (l *LocalStorage) findLatestGitRef(refs []string) (string, error) {
 		}
 	}
 
+	L.Debug().
+		Str("Latest commit", latestCommit).
+		Str("Original ref", ref).
+		Msg("Found original reference for latest commit")
+
 	if !foundOriginal {
 		return "", fmt.Errorf("no file found for latest commit %s. This should never happen", latestCommit)
 	}
@@ -176,6 +226,10 @@ func (l *LocalStorage) findLatestGitRef(refs []string) (string, error) {
 }
 
 func (l *LocalStorage) findRef(cleanTestName string) (string, error) {
+	L.Debug().
+		Str("Test name", cleanTestName).
+		Msg("Finding available reports in local storage")
+
 	entries, err := os.ReadDir(l.Directory)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to read storage directory")
@@ -185,6 +239,11 @@ func (l *LocalStorage) findRef(cleanTestName string) (string, error) {
 	if refErr != nil {
 		return "", refErr
 	}
+
+	L.Debug().
+		Str("Test name", cleanTestName).
+		Int("References found", len(refs)).
+		Msg("Found available reports in local storage")
 
 	switch len(refs) {
 	case 0:
