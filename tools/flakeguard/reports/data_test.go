@@ -28,14 +28,13 @@ func TestGenerateSummaryData(t *testing.T) {
 				PanickedTests:  0,
 				RacedTests:     0,
 				FlakyTests:     0,
-				FlakyTestRatio: "0.00%", // no flaky tests
+				FlakyTestRatio: "0%", // no flaky tests
 				TotalRuns:      15,
 				PassedRuns:     15,
 				FailedRuns:     0,
 				SkippedRuns:    0,
-				// No failures => truly 100.00%
-				PassRatio:    "100.00%",
-				MaxPassRatio: 1.0,
+				PassRatio:      "100%",
+				MaxPassRatio:   1.0,
 			},
 		},
 		{
@@ -51,14 +50,14 @@ func TestGenerateSummaryData(t *testing.T) {
 				PanickedTests: 0,
 				RacedTests:    0,
 				FlakyTests:    2,
-				// 2/3 => 66.666...% => rounds to 66.66%
-				FlakyTestRatio: "66.66%",
+				// 2/3 => 66.666...%
+				FlakyTestRatio: "66.6667%",
 				TotalRuns:      19,
 				PassedRuns:     15,
 				FailedRuns:     4, // total failures
 				SkippedRuns:    0,
-				// 15/19 => ~78.947... => rounds to 78.95%
-				PassRatio:    "78.95%",
+				// 15/19 => ~78.947...
+				PassRatio:    "78.9474%",
 				MaxPassRatio: 0.9,
 			},
 		},
@@ -75,14 +74,14 @@ func TestGenerateSummaryData(t *testing.T) {
 				PanickedTests: 1,
 				RacedTests:    1,
 				FlakyTests:    2,
-				// 2/3 => ~66.666... => "66.66%"
-				FlakyTestRatio: "66.66%",
+				// 2/3 => ~66.666...
+				FlakyTestRatio: "66.6667%",
 				TotalRuns:      18,
 				PassedRuns:     17,
 				FailedRuns:     1,
 				SkippedRuns:    0,
-				// 17/18 => ~94.444... => "94.44%"
-				PassRatio:    "94.44%",
+				// 17/18 => ~94.444...
+				PassRatio:    "94.4444%",
 				MaxPassRatio: 1.0,
 			},
 		},
@@ -95,13 +94,13 @@ func TestGenerateSummaryData(t *testing.T) {
 				PanickedTests:  0,
 				RacedTests:     0,
 				FlakyTests:     0,
-				FlakyTestRatio: "0.00%", // no tests => 0.00%
+				FlakyTestRatio: "0%", // no tests => 0%
 				TotalRuns:      0,
 				PassedRuns:     0,
 				FailedRuns:     0,
 				SkippedRuns:    0,
-				// With zero runs, we default passRatio to "100.00%"
-				PassRatio:    "100.00%",
+				// With zero runs, we default passRatio to "100%"
+				PassRatio:    "100%",
 				MaxPassRatio: 1.0,
 			},
 		},
@@ -116,13 +115,13 @@ func TestGenerateSummaryData(t *testing.T) {
 				TotalTests:     2,
 				PanickedTests:  0,
 				RacedTests:     0,
-				FlakyTests:     1,        // second test has ratio=0.7 => "flaky"
-				FlakyTestRatio: "50.00%", // 1 out of 2 => 50.00%
+				FlakyTests:     1,     // second test has ratio=0.7 => "flaky"
+				FlakyTestRatio: "50%", // 1 out of 2 => 50%
 				TotalRuns:      10,
 				PassedRuns:     7,
 				FailedRuns:     3,
 				SkippedRuns:    1, // from first test
-				PassRatio:      "70.00%",
+				PassRatio:      "70%",
 				MaxPassRatio:   0.8,
 			},
 		},
@@ -138,14 +137,14 @@ func TestGenerateSummaryData(t *testing.T) {
 				TotalTests:     3,
 				PanickedTests:  0,
 				RacedTests:     0,
-				FlakyTests:     1,        // last test has ratio=0.5 => "flaky"
-				FlakyTestRatio: "33.33%", // 1 out of 3 => 33.333... => 33.33%
-				TotalRuns:      14,       // 10 + 4
-				PassedRuns:     11,       // 9 + 2
-				FailedRuns:     3,        // 1 + 2
-				SkippedRuns:    1,        // from first test
-				// 11/14 => 78.5714... => "78.57%"
-				PassRatio:    "78.57%",
+				FlakyTests:     1,          // last test has ratio=0.5 => "flaky"
+				FlakyTestRatio: "33.3333%", // 1 out of 3 => 33.333...
+				TotalRuns:      14,         // 10 + 4
+				PassedRuns:     11,         // 9 + 2
+				FailedRuns:     3,          // 1 + 2
+				SkippedRuns:    1,          // from first test
+				// 11/14 => 78.5714...
+				PassRatio:    "78.5714%",
 				MaxPassRatio: 0.85,
 			},
 		},
@@ -174,63 +173,17 @@ func TestGenerateSummaryData(t *testing.T) {
 			}(),
 			maxPassRatio: 1.0,
 			expected: SummaryData{
-				TotalTests:    9999,
-				PanickedTests: 0,
-				RacedTests:    0,
-				FlakyTests:    1,
-				// ratio = 1/9999 => ~0.00010001 => rounds to 0.01%
+				TotalTests:     9999,
+				PanickedTests:  0,
+				RacedTests:     0,
+				FlakyTests:     1,
 				FlakyTestRatio: "0.01%",
-				// total runs => (9998 stable * 10 each) + 2 = 99,982
-				TotalRuns: (9998 * 10) + 2,
-				// total passes => (9998 stable * 10) + 1 success in flaky = 99,981
-				PassedRuns:  (9998 * 10) + 1,
-				FailedRuns:  1,
-				SkippedRuns: 0,
-				// 1 failure => we do NOT show 100% => we cap at 99.99%
-				PassRatio:    "99.99%",
-				MaxPassRatio: 1.0,
-			},
-		},
-		{
-			name: "Tiny flake ratio below threshold",
-			testResults: func() []TestResult {
-				// 100,001 total:
-				//  - 100,000 stable => pass=1.0
-				//  - 1 flaky => pass=0.5
-				const total = 100001
-				tests := make([]TestResult, total)
-				for i := 0; i < total-1; i++ {
-					tests[i] = TestResult{
-						PassRatio: 1.0,
-						Runs:      10,
-						Successes: 10,
-					}
-				}
-				tests[total-1] = TestResult{
-					PassRatio: 0.5, // 1 success, 1 fail
-					Runs:      2,
-					Successes: 1,
-					Failures:  1,
-				}
-				return tests
-			}(),
-			maxPassRatio: 1.0,
-			expected: SummaryData{
-				TotalTests:    100001,
-				PanickedTests: 0,
-				RacedTests:    0,
-				FlakyTests:    1,
-				// 1 / 100001 => ~0.000009999 => definitely < 0.01%
-				FlakyTestRatio: "< 0.01%",
-				// total runs => (100,000 stable * 10) + 2 = 1,000,002
-				TotalRuns: (100000 * 10) + 2,
-				// passes => stable=1,000,000 + 1 success from flaky=1 => 1,000,001
-				PassedRuns:  100000*10 + 1,
-				FailedRuns:  1,
-				SkippedRuns: 0,
-				// again 1 failure => cap pass ratio => "99.99%"
-				PassRatio:    "99.99%",
-				MaxPassRatio: 1.0,
+				TotalRuns:      (9998 * 10) + 2,
+				PassedRuns:     (9998 * 10) + 1,
+				FailedRuns:     1,
+				SkippedRuns:    0,
+				PassRatio:      "99.999%",
+				MaxPassRatio:   1.0,
 			},
 		},
 	}

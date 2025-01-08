@@ -2,7 +2,6 @@ package reports
 
 import (
 	"fmt"
-	"math"
 	"sort"
 	"strings"
 	"time"
@@ -121,6 +120,7 @@ type SplunkTestResultEvent struct {
 
 func GenerateSummaryData(tests []TestResult, maxPassRatio float64) SummaryData {
 	var runs, passes, fails, skips, panickedTests, racedTests, flakyTests, skippedTests int
+
 	for _, result := range tests {
 		runs += result.Runs
 		passes += result.Successes
@@ -143,40 +143,33 @@ func GenerateSummaryData(tests []TestResult, maxPassRatio float64) SummaryData {
 		}
 	}
 
-	// Calculate the PASS ratio (as a float) and then build a string
-	passPercentageStr := "100.00%" // default if runs == 0
-
+	// Calculate the raw pass ratio
+	passPercentage := 100.0
 	if runs > 0 {
-		rawPassRatio := (float64(passes) / float64(runs)) * 100
-		// Round to 8 decimal places to avoid floating-point quirks
-		passPercentage := math.Floor(rawPassRatio*1e8) / 1e8
-
-		// If there's any failure, never show 100.00%
-		if fails > 0 {
-			passPercentage = math.Min(passPercentage, 99.99)
-		}
-
-		passPercentageStr = fmt.Sprintf("%.2f%%", passPercentage)
+		passPercentage = (float64(passes) / float64(runs)) * 100
 	}
 
-	// Calculate the FLAKE ratio (as a float) and then build a string
-	flakePercentage := 0.0
-	flakeTestRatioStr := "0.00%" // default if totalTests == 0
-
+	// Calculate the raw flake ratio
 	totalTests := len(tests)
+	flakePercentage := 0.0
 	if totalTests > 0 {
-		rawFlakeRatio := (float64(flakyTests) / float64(totalTests)) * 100
-
-		// If non-zero but < 0.01, show "< 0.01%"
-		if rawFlakeRatio > 0 && rawFlakeRatio < 0.01 {
-			flakeTestRatioStr = "< 0.01%"
-		} else {
-			flakePercentage = math.Floor(rawFlakeRatio*100) / 100
-			flakeTestRatioStr = fmt.Sprintf("%.2f%%", flakePercentage)
-		}
+		flakePercentage = (float64(flakyTests) / float64(totalTests)) * 100
 	}
 
-	// 3) Build the SummaryData with the final strings
+	// Helper function to convert a float ratio into a trimmed string
+	formatRatio := func(val float64) string {
+		// Format with 5 decimal places
+		s := fmt.Sprintf("%.4f", val)
+		// Trim trailing zeros
+		s = strings.TrimRight(s, "0")
+		// Trim trailing '.' if needed (in case we have an integer)
+		s = strings.TrimRight(s, ".")
+		return s + "%"
+	}
+
+	passRatioStr := formatRatio(passPercentage)
+	flakeTestRatioStr := formatRatio(flakePercentage)
+
 	return SummaryData{
 		TotalTests:     totalTests,
 		PanickedTests:  panickedTests,
@@ -189,8 +182,7 @@ func GenerateSummaryData(tests []TestResult, maxPassRatio float64) SummaryData {
 		FailedRuns:  fails,
 		SkippedRuns: skips,
 
-		// Use the final passPercentageStr
-		PassRatio:    passPercentageStr,
+		PassRatio:    passRatioStr,
 		MaxPassRatio: maxPassRatio,
 	}
 }
