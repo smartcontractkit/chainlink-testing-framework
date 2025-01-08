@@ -1271,9 +1271,15 @@ func (e *EthereumClient) startPollingHeaders() error {
 	pollInterval := time.Second * 5
 	ticker := time.NewTicker(pollInterval)
 	e.subscriptionWg.Add(1)
+
+	latestHeader, err := e.HeaderByNumber(context.Background(), nil) // Fetch the latest header
+	if err != nil {
+		return fmt.Errorf("failed to fetch the latest header during initialization: %w", err)
+	}
 	go func() {
 		defer e.subscriptionWg.Done()
-		lastHeaderNumber := uint64(0)
+		// Initialize lastHeaderNumber dynamically
+		lastHeaderNumber := latestHeader.Number.Uint64() - 1
 		for {
 			select {
 			case <-ticker.C:
@@ -1287,6 +1293,21 @@ func (e *EthereumClient) startPollingHeaders() error {
 					if err := e.receiveHeader(latestHeader); err != nil {
 						e.l.Error().Err(err).Msg("Error processing header")
 						continue
+					}
+
+					// Process headers from (lastHeaderNumber + 1) to latestHeader.Number
+					// We may need to add a rate limiter, if we run into issues.
+					for blockNum := lastHeaderNumber + 1; blockNum <= latestHeader.Number.Uint64(); blockNum++ {
+						header, err := e.HeaderByNumber(context.Background(), big.NewInt(int64(blockNum)))
+						if err != nil {
+							e.l.Error().Err(err).Uint64("BlockNumber", blockNum).Msg("Error fetching header during range processing")
+							continue
+						}
+						lastHeaderNumber = header.Number.Uint64()
+						if err := e.receiveHeader(header); err != nil {
+							e.l.Error().Err(err).Uint64("BlockNumber", blockNum).Msg("Error processing header")
+							continue
+						}
 					}
 				}
 			case <-e.doneChan:
