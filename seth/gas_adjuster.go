@@ -508,7 +508,7 @@ func (m *Client) HistoricalFeeData(priority string) (baseFee float64, historical
 	stats, err := estimator.Stats(m.Cfg.Network.GasPriceEstimationBlocks, 99)
 	if err != nil {
 		L.Debug().
-			Msgf("Failed to get fee history due to: %s. Will use hardcoded gas prices", err.Error())
+			Msgf("Failed to get fee history due to: %s", err.Error())
 
 		return
 	}
@@ -530,7 +530,7 @@ func (m *Client) HistoricalFeeData(priority string) (baseFee float64, historical
 		err = fmt.Errorf("unknown priority: %s", priority)
 		L.Debug().
 			Str("Priority", priority).
-			Msgf("Unknown priority: %s. Skipping automation gas estimation", err.Error())
+			Msgf("Unknown priority: %s", err.Error())
 
 		return
 
