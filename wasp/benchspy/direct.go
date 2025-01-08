@@ -39,22 +39,27 @@ func NewStandardDirectQueryExecutor(generator *wasp.Generator) (*DirectQueryExec
 // NewDirectQueryExecutor creates a new DirectQueryExecutor with the specified generator and query functions.
 // It initializes the executor with a kind name and prepares a map for query results, enabling efficient query execution.
 func NewDirectQueryExecutor(generator *wasp.Generator, queries map[string]DirectQueryFn) (*DirectQueryExecutor, error) {
-	L.Debug().
-		Str("Generator", generator.Cfg.GenName).
-		Int("Queries", len(queries)).
-		Msg("Creating new Direct query executor")
-
-	return &DirectQueryExecutor{
+	ex := &DirectQueryExecutor{
 		KindName:     string(StandardQueryExecutor_Direct),
 		Generator:    generator,
 		Queries:      queries,
 		QueryResults: make(map[string]interface{}),
-	}, nil
+	}
+
+	L.Debug().
+		Str("Generator", ex.GeneratorName()).
+		Int("Queries", len(queries)).
+		Msg("Creating new Direct query executor")
+
+	return ex, nil
 }
 
 // GeneratorName returns the name of the generator associated with the query executor.
 // It is useful for identifying and categorizing results based on their generator type.
 func (g *DirectQueryExecutor) GeneratorName() string {
+	if g.Generator == nil {
+		return ""
+	}
 	return g.Generator.Cfg.GenName
 }
 
