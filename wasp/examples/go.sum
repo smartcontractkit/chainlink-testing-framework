@@ -872,6 +872,8 @@ github.com/smartcontractkit/chainlink-testing-framework/lib v1.50.20-0.202501061
 github.com/smartcontractkit/chainlink-testing-framework/lib v1.50.20-0.20250106135623-15722ca32b64/go.mod h1:ag7LEgejsVtPXaUNkcoFPpAoDkl1J8V2HSbqVUxfEtk=
 github.com/smartcontractkit/chainlink-testing-framework/lib/grafana v1.50.0 h1:VIxK8u0Jd0Q/VuhmsNm6Bls6Tb31H/sA3A/rbc5hnhg=
 github.com/smartcontractkit/chainlink-testing-framework/lib/grafana v1.50.0/go.mod h1:lyAu+oMXdNUzEDScj2DXB2IueY+SDXPPfyl/kb63tMM=
+github.com/smartcontractkit/chainlink-testing-framework/wasp v1.50.4 h1:pmPPbbe0lJFIeA8wtV2VMy6k1UiS91H7ARFtLOuEh4I=
+github.com/smartcontractkit/chainlink-testing-framework/wasp v1.50.4/go.mod h1:nWXWjJng+3OxuvrgJ0uWtryClTWaiTJjdko+DwGZcyo=
 github.com/soheilhy/cmux v0.1.5 h1:jjzc5WVemNEDTLwv9tlmemhC73tI08BNOIGwBOo10Js=
 github.com/soheilhy/cmux v0.1.5/go.mod h1:T7TcVDs9LWfQgPlPsdngu6I6QIoyIFZDDC6sNE1GqG0=
 github.com/sony/gobreaker v0.5.0 h1:dRCvqm0P490vZPmy7ppEk2qCnCieBooFJ+YoXGYB+yg=
