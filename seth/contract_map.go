@@ -45,15 +45,15 @@ func (c ContractMap) GetContractName(addr string) string {
 	return c.addressMap[strings.ToLower(addr)]
 }
 
-func (c ContractMap) GetContractAddress(addr string) string {
-	if addr == UNKNOWN {
+func (c ContractMap) GetContractAddress(name string) string {
+	if name == UNKNOWN {
 		return UNKNOWN
 	}
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for k, v := range c.addressMap {
-		if v == addr {
+		if v == name {
 			return k
 		}
 	}
