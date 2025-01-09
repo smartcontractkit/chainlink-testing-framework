@@ -66,13 +66,15 @@ type AWSSecretsManager struct {
 // NewAWSSecretsManager create a new connection to AWS Secrets Manager
 func NewAWSSecretsManager(requestTimeout time.Duration) (*AWSSecretsManager, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO())
-	region := os.Getenv("AWS_REGION")
-	if region == "" {
-		return nil, fmt.Errorf("region is required for AWSSecretsManager, use env variable: export AWS_REGION=...: %w", err)
-	}
-	cfg.Region = region
 	if err != nil {
 		return nil, fmt.Errorf("unable to load AWS SDK config, %v", err)
+	}
+	if cfg.Region == "" {
+		region := os.Getenv("AWS_REGION")
+		if region == "" {
+			return nil, fmt.Errorf("region is required for AWSSecretsManager, use env variable: export AWS_REGION")
+		}
+		cfg.Region = region
 	}
 	l := log.Logger.With().Str("Component", "AWSSecretsManager").Logger()
 	l.Info().Msg("Connecting to AWS Secrets Manager")
