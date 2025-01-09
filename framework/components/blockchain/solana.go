@@ -143,6 +143,7 @@ func newSolana(in *Input) (*Output, error) {
 		UseCache:      true,
 		Family:        "solana",
 		ContainerName: containerName,
+		Container:     c,
 		Nodes: []*Node{
 			{
 				HostWSUrl:             fmt.Sprintf("ws://%s:%s", host, in.WSPort),

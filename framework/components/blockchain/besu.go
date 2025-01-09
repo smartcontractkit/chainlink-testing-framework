@@ -100,6 +100,7 @@ func newBesu(in *Input) (*Output, error) {
 		ChainID:       in.ChainID,
 		Family:        "evm",
 		ContainerName: containerName,
+		Container:     c,
 		Nodes: []*Node{
 			{
 				HostHTTPUrl:           fmt.Sprintf("http://%s:%s", host, mp.Port()),
