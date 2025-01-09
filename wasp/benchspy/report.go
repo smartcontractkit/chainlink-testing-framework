@@ -150,21 +150,29 @@ func MustAllPrometheusResults(sr *StandardReport) map[string]model.Value {
 }
 
 func calculateDiffPercentage(current, previous float64) float64 {
-	var diffPrecentage float64
-	if previous != 0.0 && current != 0.0 {
-		diffPrecentage = (current - previous) / previous * 100
-	} else if previous == 0.0 && current == 0.0 {
-		diffPrecentage = 0.0
-	} else {
-		diffPrecentage = 100.0
+	if previous == 0.0 {
+		if current == 0.0 {
+			return 0.0
+		}
+		return 999.0 // Convention for infinite change when previous is 0
 	}
 
-	return diffPrecentage
+	if current == 0.0 {
+		return -100.0 // Complete improvement when current is 0
+	}
+
+	return (current - previous) / previous * 100
 }
 
 // CompareDirectWithThresholds evaluates the current and previous reports against specified thresholds.
 // It checks for significant differences in metrics and returns any discrepancies found, aiding in performance analysis.
 func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold float64, currentReport, previousReport *StandardReport) (bool, map[string][]error) {
+	if currentReport == nil || previousReport == nil {
+		return true, map[string][]error{
+			"initialization": {errors.New("one or both reports are nil")},
+		}
+	}
+
 	L.Info().
 		Str("Current report", currentReport.CommitOrTag).
 		Str("Previous report", previousReport.CommitOrTag).
@@ -173,6 +181,12 @@ func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, er
 		Float64("Max threshold", maxThreshold).
 		Float64("Error rate threshold", errorRateThreshold).
 		Msg("Comparing Direct metrics with thresholds")
+
+	if thresholdsErrs := validateThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold); len(thresholdsErrs) > 0 {
+		return true, map[string][]error{
+			"initialization": thresholdsErrs,
+		}
+	}
 
 	allCurrentResults := MustAllDirectResults(currentReport)
 	allPreviousResults := MustAllDirectResults(previousReport)
@@ -240,6 +254,35 @@ func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, er
 		Msg("Finished comparing Direct metrics with thresholds")
 
 	return len(errors) > 0, errors
+}
+
+func validateThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold float64) []error {
+	var errs []error
+
+	var validateThreshold = func(name string, threshold float64) error {
+		if threshold < 0 || threshold > 100 {
+			return fmt.Errorf("%s threshold %.4f is not in the range [0, 100]", name, threshold)
+		}
+		return nil
+	}
+
+	if err := validateThreshold("median", medianThreshold); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := validateThreshold("p95", p95Threshold); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := validateThreshold("max", maxThreshold); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := validateThreshold("error rate", errorRateThreshold); err != nil {
+		errs = append(errs, err)
+	}
+
+	return errs
 }
 
 // PrintStandardDirectMetrics outputs a comparison of direct metrics between two reports.
