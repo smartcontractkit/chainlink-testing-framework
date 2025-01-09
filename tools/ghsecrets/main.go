@@ -8,19 +8,19 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-
 	"time"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-
 	"github.com/spf13/cobra"
 )
 
 func main() {
 	var filePath string
-	var customSecretID string
+	var secretID string
 	var backend string // Backend: GitHub or AWS
+	var decode bool    // Decode flag for `get`
 
+	// Set Command
 	var setCmd = &cobra.Command{
 		Use:   "set",
 		Short: "Set test secrets in GitHub or AWS",
@@ -31,16 +31,12 @@ func main() {
 				return
 			}
 
-			var secretID string
-			var err error
-
-			if customSecretID != "" {
-				secretID = customSecretID
-			} else {
+			if secretID == "" {
 				if !isGHInstalled() {
 					fmt.Println("GitHub CLI not found. Please go to https://cli.github.com/ and install it to use this tool.")
 					return
 				}
+				var err error
 				secretID, err = generateSecretIDFromGithubUsername()
 				if err != nil {
 					log.Fatalf("Failed to generate secret ID: %s", err)
@@ -63,16 +59,41 @@ func main() {
 		},
 	}
 
+	// Get Command
+	var getCmd = &cobra.Command{
+		Use:   "get",
+		Short: "Retrieve a secret from AWS Secrets Manager",
+		Run: func(cmd *cobra.Command, args []string) {
+			if strings.ToLower(backend) != "aws" {
+				log.Fatalf("The 'get' command only supports the AWS backend.")
+			}
+
+			if secretID == "" {
+				log.Fatalf("You must specify a secret ID using the --secret-id flag.")
+			}
+
+			// Retrieve the secret from AWS Secrets Manager
+			if err := getAWSSecret(secretID, decode); err != nil {
+				log.Fatalf("Failed to retrieve AWS secret: %s", err)
+			}
+		},
+	}
+
 	var rootCmd = &cobra.Command{
 		Use:   "ghsecrets",
 		Short: "A tool for managing GitHub or AWS test secrets",
 	}
 
 	rootCmd.AddCommand(setCmd)
+	rootCmd.AddCommand(getCmd)
 
 	setCmd.PersistentFlags().StringVarP(&filePath, "file", "f", defaultSecretsPath(), "path to file with test secrets")
-	setCmd.PersistentFlags().StringVarP(&customSecretID, "secret-id", "s", "", "custom secret ID")
+	setCmd.PersistentFlags().StringVarP(&secretID, "secret-id", "s", "", "ID of the secret to set")
 	setCmd.PersistentFlags().StringVarP(&backend, "backend", "b", "aws", "Backend to use for storing secrets. Options: github, aws")
+
+	getCmd.PersistentFlags().StringVarP(&secretID, "secret-id", "s", "", "ID of the secret to retrieve")
+	getCmd.PersistentFlags().StringVarP(&backend, "backend", "b", "aws", "Backend to use for retrieving secrets. Only 'aws' is supported for this command.")
+	getCmd.PersistentFlags().BoolVarP(&decode, "decode", "d", false, "Decode the Base64-encoded secret value")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -116,9 +137,7 @@ func generateSecretIDFromGithubUsername() (string, error) {
 	return strings.ToUpper(secretID), nil
 }
 
-// ===========================
-// GitHub Secrets Logic
-// ===========================
+// setGitHubSecret sets a test secret in GitHub Secrets
 func setGitHubSecret(filePath, secretID string) error {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -148,31 +167,43 @@ func setGitHubSecret(filePath, secretID string) error {
 	return nil
 }
 
-// ===========================
-// AWS Secrets Manager Logic
-// ===========================
+// getAWSSecret retrieves a test secret from AWS Secrets Manager
 func setAWSSecret(filePath, secretID string) error {
-	// 1. Read the file content
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
 	}
-
-	// 2. Base64 encode the file content (or skip if you prefer raw)
 	encoded := base64.StdEncoding.EncodeToString(data)
-
-	// 3. Create a new AWS Secrets Manager client
 	sm, err := framework.NewAWSSecretsManager(10 * time.Second)
 	if err != nil {
 		return fmt.Errorf("failed to initialize AWS Secrets Manager: %w", err)
 	}
-
-	// 4. Create (or override) the secret
 	err = sm.CreateSecret(secretID, encoded, true)
 	if err != nil {
 		return fmt.Errorf("failed to create (or override) AWS secret: %w", err)
 	}
-
 	fmt.Printf("Test secret set successfully in AWS with key: %s\n", secretID)
+	return nil
+}
+
+// getAWSSecret retrieves a test secret from AWS Secrets Manager
+func getAWSSecret(secretID string, decode bool) error {
+	sm, err := framework.NewAWSSecretsManager(10 * time.Second)
+	if err != nil {
+		return fmt.Errorf("failed to initialize AWS Secrets Manager: %w", err)
+	}
+	secret, err := sm.GetSecret(secretID)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve AWS secret: %w", err)
+	}
+	value := secret.Value()
+	if decode {
+		decoded, err := base64.StdEncoding.DecodeString(value)
+		if err != nil {
+			return fmt.Errorf("failed to decode secret value: %w", err)
+		}
+		value = string(decoded)
+	}
+	fmt.Println(value)
 	return nil
 }
