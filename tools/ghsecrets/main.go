@@ -9,44 +9,70 @@ import (
 	"path/filepath"
 	"strings"
 
+	"time"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+
 	"github.com/spf13/cobra"
 )
 
 func main() {
 	var filePath string
 	var customSecretID string
+	var backend string // Backend: GitHub or AWS
 
 	var setCmd = &cobra.Command{
 		Use:   "set",
-		Short: "Set test secrets in GitHub",
+		Short: "Set test secrets in GitHub or AWS",
 		Run: func(cmd *cobra.Command, args []string) {
-			if !isGHInstalled() {
-				fmt.Println("GitHub CLI not found. Please go to https://cli.github.com/ and install it to use this tool.")
-				return
-			}
-
+			// Validate file
 			if err := validateFile(filePath); err != nil {
 				fmt.Println(err)
 				return
 			}
 
-			secretID, err := getSecretID(customSecretID)
-			if err != nil {
-				log.Fatalf("Failed to obtain secret ID: %s", err)
+			var secretID string
+			var err error
+
+			if customSecretID != "" {
+				secretID = customSecretID
+			} else {
+				if !isGHInstalled() {
+					fmt.Println("GitHub CLI not found. Please go to https://cli.github.com/ and install it to use this tool.")
+					return
+				}
+				secretID, err = generateSecretIDFromGithubUsername()
+				if err != nil {
+					log.Fatalf("Failed to generate secret ID: %s", err)
+				}
 			}
 
-			setSecret(filePath, secretID)
+			// Set secret according to backend
+			switch strings.ToLower(backend) {
+			case "github":
+				if err := setGitHubSecret(filePath, secretID); err != nil {
+					log.Fatalf("Failed to set GitHub secret: %s", err)
+				}
+			case "aws":
+				if err := setAWSSecret(filePath, secretID); err != nil {
+					log.Fatalf("Failed to set AWS secret: %s", err)
+				}
+			default:
+				log.Fatalf("Unsupported backend: %s. Valid backends are 'github' or 'aws'.", backend)
+			}
 		},
 	}
 
 	var rootCmd = &cobra.Command{
 		Use:   "ghsecrets",
-		Short: "A tool for managing GitHub test secrets",
+		Short: "A tool for managing GitHub or AWS test secrets",
 	}
 
 	rootCmd.AddCommand(setCmd)
-	setCmd.PersistentFlags().StringVarP(&filePath, "file", "f", defaultSecretsPath(), "path to dotenv file with test secrets")
-	setCmd.PersistentFlags().StringVarP(&customSecretID, "secret-id", "s", "", "custom secret ID. Do not use unless you know what you are doing")
+
+	setCmd.PersistentFlags().StringVarP(&filePath, "file", "f", defaultSecretsPath(), "path to file with test secrets")
+	setCmd.PersistentFlags().StringVarP(&customSecretID, "secret-id", "s", "", "custom secret ID")
+	setCmd.PersistentFlags().StringVarP(&backend, "backend", "b", "aws", "Backend to use for storing secrets. Options: github, aws")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -78,10 +104,8 @@ func validateFile(filePath string) error {
 	return nil
 }
 
-func getSecretID(customID string) (string, error) {
-	if customID != "" {
-		return customID, nil
-	}
+// generateSecretIDFromGithubUsername generates a secret ID based on the GitHub username
+func generateSecretIDFromGithubUsername() (string, error) {
 	usernameCmd := exec.Command("gh", "api", "user", "--jq", ".login")
 	usernameOutput, err := usernameCmd.CombinedOutput()
 	if err != nil {
@@ -92,11 +116,13 @@ func getSecretID(customID string) (string, error) {
 	return strings.ToUpper(secretID), nil
 }
 
-func setSecret(filePath, secretID string) {
-	// Read the file content
+// ===========================
+// GitHub Secrets Logic
+// ===========================
+func setGitHubSecret(filePath, secretID string) error {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		log.Fatalf("Failed to read file: %s", err)
+		return fmt.Errorf("failed to read file: %w", err)
 	}
 
 	// Base64 encode the file content
@@ -109,13 +135,44 @@ func setSecret(filePath, secretID string) {
 	// Execute the command to set the secret
 	output, err := setSecretCmd.CombinedOutput()
 	if err != nil {
-		log.Fatalf("Failed to set secret: %s\nOutput: %s", err, string(output))
+		return fmt.Errorf("failed to set secret: %s\nOutput: %s", err, string(output))
 	}
 
 	fmt.Printf(
-		"Test secret set successfully in Github with key: %s\n\n"+
-			"To run a Github workflow with the test secrets, use the 'test_secrets_override_key' flag.\n"+
+		"Test secret set successfully in GitHub with key: %s\n\n"+
+			"To run a GitHub workflow with the test secrets, use the 'test_secrets_override_key' flag.\n"+
 			"Example: gh workflow run ${workflow_name} -f test_secrets_override_key=%s\n",
 		secretID, secretID,
 	)
+
+	return nil
+}
+
+// ===========================
+// AWS Secrets Manager Logic
+// ===========================
+func setAWSSecret(filePath, secretID string) error {
+	// 1. Read the file content
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %w", err)
+	}
+
+	// 2. Base64 encode the file content (or skip if you prefer raw)
+	encoded := base64.StdEncoding.EncodeToString(data)
+
+	// 3. Create a new AWS Secrets Manager client
+	sm, err := framework.NewAWSSecretsManager(10 * time.Second)
+	if err != nil {
+		return fmt.Errorf("failed to initialize AWS Secrets Manager: %w", err)
+	}
+
+	// 4. Create (or override) the secret
+	err = sm.CreateSecret(secretID, encoded, true)
+	if err != nil {
+		return fmt.Errorf("failed to create (or override) AWS secret: %w", err)
+	}
+
+	fmt.Printf("Test secret set successfully in AWS with key: %s\n", secretID)
+	return nil
 }
