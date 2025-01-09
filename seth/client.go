@@ -1167,36 +1167,145 @@ func (t TransactionLog) GetData() []byte {
 }
 
 func (m *Client) decodeContractLogs(l zerolog.Logger, logs []types.Log, allABIs []*abi.ABI) ([]DecodedTransactionLog, error) {
-	l.Trace().Msg("Decoding ALL events")
+	l.Trace().Msg("Decoding events")
+	sigMap := buildEventSignatureMap(allABIs)
+
 	var eventsParsed []DecodedTransactionLog
 	for _, lo := range logs {
-	ABI_LOOP:
-		for _, a := range allABIs {
-			for _, evSpec := range a.Events {
-				if evSpec.ID.Hex() == lo.Topics[0].Hex() {
-					d := TransactionLog{lo.Topics, lo.Data}
-					l.Trace().Str("Name", evSpec.RawName).Str("Signature", evSpec.Sig).Msg("Unpacking event")
-					eventsMap, topicsMap, err := decodeEventFromLog(l, *a, evSpec, d)
-					if err != nil {
-						return nil, errors.Wrap(err, ErrDecodeLog)
-					}
-					parsedEvent := decodedLogFromMaps(&DecodedTransactionLog{}, eventsMap, topicsMap)
-					decodedTransactionLog, ok := parsedEvent.(*DecodedTransactionLog)
-					if ok {
-						decodedTransactionLog.Signature = evSpec.Sig
-						m.mergeLogMeta(decodedTransactionLog, lo)
-						eventsParsed = append(eventsParsed, *decodedTransactionLog)
-						l.Trace().Interface("Log", parsedEvent).Msg("Transaction log")
-						break ABI_LOOP
-					}
-					l.Trace().
-						Str("Actual type", fmt.Sprintf("%T", decodedTransactionLog)).
-						Msg("Failed to cast decoded event to DecodedCommonLog")
+		if len(lo.Topics) == 0 {
+			l.Debug().Msg("Log has no topics; skipping")
+			continue
+		}
+
+		eventSig := lo.Topics[0].Hex()
+		possibleEvents, exists := sigMap[eventSig]
+		if !exists {
+			l.Trace().Str("Signature", eventSig).Msg("No matching events found for signature")
+			continue
+		}
+
+		// Iterate over possible events with the same signature
+		matched := false
+		for _, evWithABI := range possibleEvents {
+			evSpec := evWithABI.EventSpec
+			eventABI := evWithABI.EventABI
+
+			// Validate indexed parameters count
+			// Non-indexed parameters are stored in the Data field,
+			// and much harder to validate due to dynamic types,
+			// so we skip them for now
+			var indexedParams abi.Arguments
+			for _, input := range evSpec.Inputs {
+				if input.Indexed {
+					indexedParams = append(indexedParams, input)
 				}
 			}
+
+			expectedIndexed := len(indexedParams)
+			actualIndexed := len(lo.Topics) - 1 // First topic is the event signature
+
+			if expectedIndexed != actualIndexed {
+				l.Trace().
+					Str("Event", evSpec.Name).
+					Int("Expected indexed param count", expectedIndexed).
+					Int("Actual indexed param count", actualIndexed).
+					Msg("Mismatch in indexed parameters; skipping event")
+				continue
+			}
+
+			// Proceed to decode the event
+			d := TransactionLog{lo.Topics, lo.Data}
+			l.Trace().
+				Str("Name", evSpec.RawName).
+				Str("Signature", evSpec.Sig).
+				Msg("Unpacking event")
+
+			eventsMap, topicsMap, err := decodeEventFromLog(l, *eventABI, *evSpec, d)
+			if err != nil {
+				l.Error().
+					Err(err).
+					Str("Event", evSpec.Name).
+					Msg("Failed to decode event; skipping")
+				continue // Skip this event instead of returning an error
+			}
+
+			parsedEvent := decodedLogFromMaps(&DecodedTransactionLog{}, eventsMap, topicsMap)
+			decodedTransactionLog, ok := parsedEvent.(*DecodedTransactionLog)
+			if ok {
+				decodedTransactionLog.Signature = evSpec.Sig
+				m.mergeLogMeta(decodedTransactionLog, lo)
+				eventsParsed = append(eventsParsed, *decodedTransactionLog)
+				l.Trace().
+					Interface("Log", parsedEvent).
+					Msg("Transaction log decoded successfully")
+				matched = true
+				break // Move to the next log after successful decoding
+			}
+
+			l.Trace().
+				Str("Actual type", fmt.Sprintf("%T", decodedTransactionLog)).
+				Msg("Failed to cast decoded event to DecodedTransactionLog")
+		}
+
+		if !matched {
+			l.Warn().
+				Str("Signature", eventSig).
+				Msg("No matching event with valid indexed parameter count found for log")
 		}
 	}
 	return eventsParsed, nil
+}
+
+// func (m *Client) decodeContractLogs(l zerolog.Logger, logs []types.Log, allABIs []*abi.ABI) ([]DecodedTransactionLog, error) {
+// 	l.Trace().Msg("Decoding events")
+// 	var eventsParsed []DecodedTransactionLog
+// 	for _, lo := range logs {
+// 	ABI_LOOP:
+// 		for _, a := range allABIs {
+// 			for _, evSpec := range a.Events {
+// 				if evSpec.ID.Hex() == lo.Topics[0].Hex() {
+// 					d := TransactionLog{lo.Topics, lo.Data}
+// 					l.Trace().Str("Name", evSpec.RawName).Str("Signature", evSpec.Sig).Msg("Unpacking event")
+// 					eventsMap, topicsMap, err := decodeEventFromLog(l, *a, evSpec, d)
+// 					if err != nil {
+// 						return nil, errors.Wrap(err, ErrDecodeLog)
+// 					}
+// 					parsedEvent := decodedLogFromMaps(&DecodedTransactionLog{}, eventsMap, topicsMap)
+// 					decodedTransactionLog, ok := parsedEvent.(*DecodedTransactionLog)
+// 					if ok {
+// 						decodedTransactionLog.Signature = evSpec.Sig
+// 						m.mergeLogMeta(decodedTransactionLog, lo)
+// 						eventsParsed = append(eventsParsed, *decodedTransactionLog)
+// 						l.Trace().Interface("Log", parsedEvent).Msg("Transaction log")
+// 						break ABI_LOOP
+// 					}
+// 					l.Trace().
+// 						Str("Actual type", fmt.Sprintf("%T", decodedTransactionLog)).
+// 						Msg("Failed to cast decoded event to DecodedCommonLog")
+// 				}
+// 			}
+// 		}
+// 	}
+// 	return eventsParsed, nil
+// }
+
+type EventWithABI struct {
+	EventABI  *abi.ABI
+	EventSpec *abi.Event
+}
+
+// buildEventSignatureMap precomputes a mapping from event signature to events with their ABIs
+func buildEventSignatureMap(allABIs []*abi.ABI) map[string][]*EventWithABI {
+	sigMap := make(map[string][]*EventWithABI)
+	for _, a := range allABIs {
+		for _, ev := range a.Events {
+			sigMap[ev.ID.Hex()] = append(sigMap[ev.ID.Hex()], &EventWithABI{
+				EventABI:  a,
+				EventSpec: &ev,
+			})
+		}
+	}
+	return sigMap
 }
 
 // WaitUntilNoPendingTxForRootKey waits until there's no pending transaction for root key. If after timeout there are still pending transactions, it returns error.
