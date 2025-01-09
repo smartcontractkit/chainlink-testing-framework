@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"net/http"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"time"
 
@@ -1167,28 +1168,56 @@ func (t TransactionLog) GetData() []byte {
 }
 
 func (m *Client) decodeContractLogs(l zerolog.Logger, logs []types.Log, allABIs []*abi.ABI) ([]DecodedTransactionLog, error) {
-	l.Trace().Msg("Decoding events")
+	l.Trace().
+		Msg("Decoding events")
 	sigMap := buildEventSignatureMap(allABIs)
 
 	var eventsParsed []DecodedTransactionLog
 	for _, lo := range logs {
 		if len(lo.Topics) == 0 {
-			l.Debug().Msg("Log has no topics; skipping")
+			l.Debug().
+				Msg("Log has no topics; skipping")
 			continue
 		}
 
 		eventSig := lo.Topics[0].Hex()
 		possibleEvents, exists := sigMap[eventSig]
 		if !exists {
-			l.Trace().Str("Signature", eventSig).Msg("No matching events found for signature")
+			l.Trace().
+				Str("Event signature", eventSig).
+				Msg("No matching events found for signature")
 			continue
+		}
+
+		// Check if we know what contract is this log from and if we do, get its ABI to skip unnecessary iterations
+		var knownContractABI *abi.ABI
+		if contractName := m.ContractAddressToNameMap.GetContractName(lo.Address.Hex()); contractName != "" {
+			maybeABI, ok := m.ContractStore.GetABI(contractName)
+			if !ok {
+				l.Trace().
+					Str("Event signature", eventSig).
+					Str("Contract name", contractName).
+					Str("Contract address", lo.Address.Hex()).
+					Msg("No ABI found for known contract; this is unexpected. Continuing with step-by-step ABI search")
+			} else {
+				knownContractABI = maybeABI
+			}
 		}
 
 		// Iterate over possible events with the same signature
 		matched := false
 		for _, evWithABI := range possibleEvents {
 			evSpec := evWithABI.EventSpec
-			eventABI := evWithABI.EventABI
+			contractABI := evWithABI.ContractABI
+
+			// Check if known contract ABI matches candidate ABI and if not, skip this ABI and try the next one
+			if knownContractABI != nil && !reflect.DeepEqual(knownContractABI, contractABI) {
+				l.Trace().
+					Str("Event signature", eventSig).
+					Str("Contract address", lo.Address.Hex()).
+					Msg("ABI doesn't match known ABI for this address; trying next ABI")
+				continue
+			}
 
 			// Validate indexed parameters count
 			// Non-indexed parameters are stored in the Data field,
@@ -1220,7 +1249,7 @@ func (m *Client) decodeContractLogs(l zerolog.Logger, logs []types.Log, allABIs 
 				Str("Signature", evSpec.Sig).
 				Msg("Unpacking event")
 
-			eventsMap, topicsMap, err := decodeEventFromLog(l, *eventABI, *evSpec, d)
+			eventsMap, topicsMap, err := decodeEventFromLog(l, *contractABI, *evSpec, d)
 			if err != nil {
 				l.Error().
 					Err(err).
@@ -1256,55 +1285,24 @@ func (m *Client) decodeContractLogs(l zerolog.Logger, logs []types.Log, allABIs 
 	return eventsParsed, nil
 }
 
-// func (m *Client) decodeContractLogs(l zerolog.Logger, logs []types.Log, allABIs []*abi.ABI) ([]DecodedTransactionLog, error) {
-// 	l.Trace().Msg("Decoding events")
-// 	var eventsParsed []DecodedTransactionLog
-// 	for _, lo := range logs {
-// 	ABI_LOOP:
-// 		for _, a := range allABIs {
-// 			for _, evSpec := range a.Events {
-// 				if evSpec.ID.Hex() == lo.Topics[0].Hex() {
-// 					d := TransactionLog{lo.Topics, lo.Data}
-// 					l.Trace().Str("Name", evSpec.RawName).Str("Signature", evSpec.Sig).Msg("Unpacking event")
-// 					eventsMap, topicsMap, err := decodeEventFromLog(l, *a, evSpec, d)
-// 					if err != nil {
-// 						return nil, errors.Wrap(err, ErrDecodeLog)
-// 					}
-// 					parsedEvent := decodedLogFromMaps(&DecodedTransactionLog{}, eventsMap, topicsMap)
-// 					decodedTransactionLog, ok := parsedEvent.(*DecodedTransactionLog)
-// 					if ok {
-// 						decodedTransactionLog.Signature = evSpec.Sig
-// 						m.mergeLogMeta(decodedTransactionLog, lo)
-// 						eventsParsed = append(eventsParsed, *decodedTransactionLog)
-// 						l.Trace().Interface("Log", parsedEvent).Msg("Transaction log")
-// 						break ABI_LOOP
-// 					}
-// 					l.Trace().
-// 						Str("Actual type", fmt.Sprintf("%T", decodedTransactionLog)).
-// 						Msg("Failed to cast decoded event to DecodedCommonLog")
-// 				}
-// 			}
-// 		}
-// 	}
-// 	return eventsParsed, nil
-// }
-
-type EventWithABI struct {
-	EventABI  *abi.ABI
-	EventSpec *abi.Event
+type eventWithABI struct {
+	ContractABI *abi.ABI
+	EventSpec   *abi.Event
 }
 
 // buildEventSignatureMap precomputes a mapping from event signature to events with their ABIs
-func buildEventSignatureMap(allABIs []*abi.ABI) map[string][]*EventWithABI {
-	sigMap := make(map[string][]*EventWithABI)
+func buildEventSignatureMap(allABIs []*abi.ABI) map[string][]*eventWithABI {
+	sigMap := make(map[string][]*eventWithABI)
 	for _, a := range allABIs {
 		for _, ev := range a.Events {
-			sigMap[ev.ID.Hex()] = append(sigMap[ev.ID.Hex()], &EventWithABI{
-				EventABI:  a,
-				EventSpec: &ev,
+			event := ev //nolint:copyloopvar // Explicitly keeping the copy for clarity
+			sigMap[ev.ID.Hex()] = append(sigMap[ev.ID.Hex()], &eventWithABI{
+				ContractABI: a,
+				EventSpec:   &event,
 			})
 		}
 	}
+
 	return sigMap
 }
 

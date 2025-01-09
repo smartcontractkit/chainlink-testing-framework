@@ -85,8 +85,8 @@ func getRetractedTags(goModPath string) ([]*semver.Constraints, error) {
 
 func getLatestTag(pathPrefix string, retractedTags []*semver.Constraints) (string, error) {
 	// use regex to find exact matches, as otherwise might include pre-release versions
-	// or versions that partially match the path prefix, e.g. when seraching for 'lib'
-	// we won't make sure we won't include tags like `lib/grafana/v1.0.0`
+	// or versions that partially match the path prefix, e.g. when searching for 'lib'
+	// we want to make sure we won't include tags like `lib/grafana/v1.0.0`
 	grepRegex := fmt.Sprintf("^%s/v[0-9]+\\.[0-9]+\\.[0-9]+$", pathPrefix)
 
 	//nolint

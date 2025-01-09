@@ -75,85 +75,85 @@ func TestSmokeDebugData(t *testing.T) {
 	}
 
 	tests := []test{
-		// {
-		// 	name:   "test named inputs/outputs",
-		// 	method: "emitNamedInputsOutputs",
-		// 	params: []interface{}{big.NewInt(1337), "test"},
-		// 	write:  true,
-		// 	output: seth.DecodedTransaction{
-		// 		CommonData: seth.CommonData{
-		// 			Input: map[string]interface{}{
-		// 				"inputVal1": big.NewInt(1337),
-		// 				"inputVal2": "test",
-		// 			},
-		// 		},
-		// 	},
-		// },
-		// // TODO: https://docs.soliditylang.org/en/v0.8.19/control-structures.html read and figure out if
-		// // decoding anynymous + named is heavily used and needed, usually people name params and omit output names
-		// {
-		// 	name:   "test anonymous inputs/outputs",
-		// 	method: "emitInputsOutputs",
-		// 	params: []interface{}{big.NewInt(1337), "test"},
-		// 	write:  true,
-		// 	output: seth.DecodedTransaction{
-		// 		CommonData: seth.CommonData{
-		// 			Input: map[string]interface{}{
-		// 				"inputVal1": big.NewInt(1337),
-		// 				"inputVal2": "test",
-		// 			},
-		// 		},
-		// 	},
-		// },
-		// {
-		// 	name:   "test one log no index",
-		// 	method: "emitNoIndexEvent",
-		// 	write:  true,
-		// 	output: seth.DecodedTransaction{
-		// 		Events: []seth.DecodedTransactionLog{
-		// 			{
-		// 				DecodedCommonLog: seth.DecodedCommonLog{
-		// 					EventData: map[string]interface{}{
-		// 						"sender": c.Addresses[0],
-		// 					},
-		// 				},
-		// 			},
-		// 		},
-		// 	},
-		// },
-		// {
-		// 	name:   "test one log index",
-		// 	method: "emitOneIndexEvent",
-		// 	write:  true,
-		// 	output: seth.DecodedTransaction{
-		// 		Events: []seth.DecodedTransactionLog{
-		// 			{
-		// 				DecodedCommonLog: seth.DecodedCommonLog{
-		// 					EventData: map[string]interface{}{
-		// 						"a": big.NewInt(83),
-		// 					},
-		// 				},
-		// 			},
-		// 		},
-		// 	},
-		// },
-		// {
-		// 	name:   "test two log index",
-		// 	method: "emitTwoIndexEvent",
-		// 	write:  true,
-		// 	output: seth.DecodedTransaction{
-		// 		Events: []seth.DecodedTransactionLog{
-		// 			{
-		// 				DecodedCommonLog: seth.DecodedCommonLog{
-		// 					EventData: map[string]interface{}{
-		// 						"roundId":   big.NewInt(1),
-		// 						"startedBy": c.Addresses[0],
-		// 					},
-		// 				},
-		// 			},
-		// 		},
-		// 	},
-		// },
+		{
+			name:   "test named inputs/outputs",
+			method: "emitNamedInputsOutputs",
+			params: []interface{}{big.NewInt(1337), "test"},
+			write:  true,
+			output: seth.DecodedTransaction{
+				CommonData: seth.CommonData{
+					Input: map[string]interface{}{
+						"inputVal1": big.NewInt(1337),
+						"inputVal2": "test",
+					},
+				},
+			},
+		},
+		// TODO: https://docs.soliditylang.org/en/v0.8.19/control-structures.html read and figure out if
+		// decoding anynymous + named is heavily used and needed, usually people name params and omit output names
+		{
+			name:   "test anonymous inputs/outputs",
+			method: "emitInputsOutputs",
+			params: []interface{}{big.NewInt(1337), "test"},
+			write:  true,
+			output: seth.DecodedTransaction{
+				CommonData: seth.CommonData{
+					Input: map[string]interface{}{
+						"inputVal1": big.NewInt(1337),
+						"inputVal2": "test",
+					},
+				},
+			},
+		},
+		{
+			name:   "test one log no index",
+			method: "emitNoIndexEvent",
+			write:  true,
+			output: seth.DecodedTransaction{
+				Events: []seth.DecodedTransactionLog{
+					{
+						DecodedCommonLog: seth.DecodedCommonLog{
+							EventData: map[string]interface{}{
+								"sender": c.Addresses[0],
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:   "test one log index",
+			method: "emitOneIndexEvent",
+			write:  true,
+			output: seth.DecodedTransaction{
+				Events: []seth.DecodedTransactionLog{
+					{
+						DecodedCommonLog: seth.DecodedCommonLog{
+							EventData: map[string]interface{}{
+								"a": big.NewInt(83),
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:   "test two log index",
+			method: "emitTwoIndexEvent",
+			write:  true,
+			output: seth.DecodedTransaction{
+				Events: []seth.DecodedTransactionLog{
+					{
+						DecodedCommonLog: seth.DecodedCommonLog{
+							EventData: map[string]interface{}{
+								"roundId":   big.NewInt(1),
+								"startedBy": c.Addresses[0],
+							},
+						},
+					},
+				},
+			},
+		},
 		{
 			name:   "test three log index",
 			method: "emitThreeIndexEvent",
@@ -172,47 +172,47 @@ func TestSmokeDebugData(t *testing.T) {
 				},
 			},
 		},
-		// {
-		// 	name:   "test log no index string",
-		// 	method: "emitNoIndexEventString",
-		// 	write:  true,
-		// 	output: seth.DecodedTransaction{
-		// 		Events: []seth.DecodedTransactionLog{
-		// 			{
-		// 				DecodedCommonLog: seth.DecodedCommonLog{
-		// 					EventData: map[string]interface{}{
-		// 						"str": "myString",
-		// 					},
-		// 				},
-		// 			},
-		// 		},
-		// 	},
-		// },
-		// // emitNoIndexStructEvent
-		// {
-		// 	name:   "test log struct",
-		// 	method: "emitNoIndexStructEvent",
-		// 	write:  true,
-		// 	output: seth.DecodedTransaction{
-		// 		Events: []seth.DecodedTransactionLog{
-		// 			{
-		// 				DecodedCommonLog: seth.DecodedCommonLog{
-		// 					EventData: map[string]interface{}{
-		// 						"a": struct {
-		// 							Name       string   `json:"name"`
-		// 							Balance    uint64   `json:"balance"`
-		// 							DailyLimit *big.Int `json:"dailyLimit"`
-		// 						}{
-		// 							Name:       "John",
-		// 							Balance:    5,
-		// 							DailyLimit: big.NewInt(10),
-		// 						},
-		// 					},
-		// 				},
-		// 			},
-		// 		},
-		// 	},
-		// },
+		{
+			name:   "test log no index string",
+			method: "emitNoIndexEventString",
+			write:  true,
+			output: seth.DecodedTransaction{
+				Events: []seth.DecodedTransactionLog{
+					{
+						DecodedCommonLog: seth.DecodedCommonLog{
+							EventData: map[string]interface{}{
+								"str": "myString",
+							},
+						},
+					},
+				},
+			},
+		},
+		// emitNoIndexStructEvent
+		{
+			name:   "test log struct",
+			method: "emitNoIndexStructEvent",
+			write:  true,
+			output: seth.DecodedTransaction{
+				Events: []seth.DecodedTransactionLog{
+					{
+						DecodedCommonLog: seth.DecodedCommonLog{
+							EventData: map[string]interface{}{
+								"a": struct {
+									Name       string   `json:"name"`
+									Balance    uint64   `json:"balance"`
+									DailyLimit *big.Int `json:"dailyLimit"`
+								}{
+									Name:       "John",
+									Balance:    5,
+									DailyLimit: big.NewInt(10),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 		// TODO: another case - figure out if indexed strings are used by anyone in events
 		// https://ethereum.stackexchange.com/questions/6840/indexed-event-with-string-not-getting-logged
 	}
