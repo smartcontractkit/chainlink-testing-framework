@@ -78,3 +78,5 @@ __debug*
 
 import_keys_test.go
 tag.py
+
+parrotserver/*.json
