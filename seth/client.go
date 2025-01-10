@@ -5,7 +5,6 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
-	"net/http"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -13,13 +12,12 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/ethereum/go-ethereum/ethclient/simulated"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
@@ -64,7 +62,7 @@ var (
 // Client is a vanilla go-ethereum client with enhanced debug logging
 type Client struct {
 	Cfg                      *Config
-	Client                   *ethclient.Client
+	Client                   simulated.Client
 	Addresses                []common.Address
 	PrivateKeys              []*ecdsa.PrivateKey
 	ChainID                  int64
@@ -175,42 +173,40 @@ func NewClientRaw(
 	pkeys []*ecdsa.PrivateKey,
 	opts ...ClientOpt,
 ) (*Client, error) {
-	if len(cfg.Network.URLs) == 0 {
-		return nil, errors.New("no RPC URL provided")
-	}
-	if len(cfg.Network.URLs) > 1 {
-		L.Warn().Msg("Multiple RPC URLs provided, only the first one will be used")
-	}
-
 	if cfg.ReadOnly && (len(addrs) > 0 || len(pkeys) > 0) {
 		return nil, errors.New(ErrReadOnlyWithPrivateKeys)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.Network.DialTimeout.Duration())
-	defer cancel()
-	rpcClient, err := rpc.DialOptions(ctx,
-		cfg.FirstNetworkURL(),
-		rpc.WithHeaders(cfg.RPCHeaders),
-		rpc.WithHTTPClient(&http.Client{
-			Transport: NewLoggingTransport(),
-		}),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect RPC client to '%s' due to: %w", cfg.FirstNetworkURL(), err)
-	}
-	client := ethclient.NewClient(rpcClient)
+	// TODO we should execute this only if we haven't passed an instance of Client
+	// or... we should externalize client creation to a separate function
+	// and by default create a new instance of Client using the URL from the config
+	// althouth that would change the API a bit
 
-	if cfg.Network.ChainID == 0 {
-		chainId, err := client.ChainID(context.Background())
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to get chain ID")
-		}
-		cfg.Network.ChainID = chainId.Uint64()
-	}
+	// if len(cfg.Network.URLs) == 0 {
+	// 	return nil, errors.New("no RPC URL provided")
+	// }
+
+	// if len(cfg.Network.URLs) > 1 {
+	// 	L.Warn().Msg("Multiple RPC URLs provided, only the first one will be used")
+	// }
+
+	// ctx, cancel := context.WithTimeout(context.Background(), cfg.Network.DialTimeout.Duration())
+	// defer cancel()
+	// rpcClient, err := rpc.DialOptions(ctx,
+	// 	cfg.FirstNetworkURL(),
+	// 	rpc.WithHeaders(cfg.RPCHeaders),
+	// 	rpc.WithHTTPClient(&http.Client{
+	// 		Transport: NewLoggingTransport(),
+	// 	}),
+	// )
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to connect RPC client to '%s' due to: %w", cfg.FirstNetworkURL(), err)
+	// }
+	// client := ethclient.NewClient(rpcClient)
+
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	c := &Client{
 		Cfg:         cfg,
-		Client:      client,
 		Addresses:   addrs,
 		PrivateKeys: pkeys,
 		URL:         cfg.FirstNetworkURL(),
@@ -218,9 +214,21 @@ func NewClientRaw(
 		Context:     ctx,
 		CancelFunc:  cancelFunc,
 	}
+
 	for _, o := range opts {
 		o(c)
 	}
+
+	if cfg.Network.ChainID == 0 {
+		chainId, err := c.Client.ChainID(context.Background())
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get chain ID")
+		}
+		cfg.Network.ChainID = chainId.Uint64()
+		c.ChainID = int64(cfg.Network.ChainID)
+	}
+
+	var err error
 
 	if c.ContractAddressToNameMap.addressMap == nil {
 		c.ContractAddressToNameMap = NewEmptyContractMap()
@@ -407,7 +415,7 @@ func (m *Client) TransferETHFromKey(ctx context.Context, fromKeyNum int, to stri
 	ctx, chainCancel := context.WithTimeout(ctx, m.Cfg.Network.TxnTimeout.Duration())
 	defer chainCancel()
 
-	chainID, err := m.Client.NetworkID(ctx)
+	chainID, err := m.Client.ChainID(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to get network ID")
 	}
@@ -526,6 +534,12 @@ func WithNonceManager(nm *NonceManager) ClientOpt {
 func WithTracer(t *Tracer) ClientOpt {
 	return func(c *Client) {
 		c.Tracer = t
+	}
+}
+
+func WithEthClient(ethClient simulated.Client) ClientOpt {
+	return func(c *Client) {
+		c.Client = ethClient
 	}
 }
 
@@ -827,6 +841,8 @@ This issue is caused by one of two things:
 
 		return &bind.TransactOpts{Context: ctx}, NonceStatus{}, GasEstimations{}
 	}
+
+	fmt.Println("sender", opts.From.Hex())
 
 	if ctx != nil {
 		opts.Context = ctx
