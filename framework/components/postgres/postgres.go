@@ -9,6 +9,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -121,7 +122,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 			nat.Port(bindPort): []nat.PortBinding{
 				{
 					HostIP:   "0.0.0.0",
-					HostPort: fmt.Sprintf("%d/tcp", portToExpose),
+					HostPort: strconv.Itoa(portToExpose),
 				},
 			},
 		}

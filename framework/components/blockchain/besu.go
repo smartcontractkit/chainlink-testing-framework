@@ -67,20 +67,7 @@ func newBesu(in *Input) (*Output, error) {
 		},
 		Labels: framework.DefaultTCLabels(),
 		HostConfigModifier: func(h *container.HostConfig) {
-			h.PortBindings = nat.PortMap{
-				nat.Port(bindPortWs): []nat.PortBinding{
-					{
-						HostIP:   "0.0.0.0",
-						HostPort: bindPortWs,
-					},
-				},
-				nat.Port(bindPort): []nat.PortBinding{
-					{
-						HostIP:   "0.0.0.0",
-						HostPort: bindPort,
-					},
-				},
-			}
+			h.PortBindings = framework.MapTheSamePort(bindPortWs, bindPort)
 		},
 		WaitingFor: wait.ForListeningPort(nat.Port(in.Port)).WithStartupTimeout(15 * time.Second).WithPollInterval(200 * time.Millisecond),
 		Cmd:        entryPoint,
@@ -113,6 +100,7 @@ func newBesu(in *Input) (*Output, error) {
 		ChainID:       in.ChainID,
 		Family:        "evm",
 		ContainerName: containerName,
+		Container:     c,
 		Nodes: []*Node{
 			{
 				HostHTTPUrl:           fmt.Sprintf("http://%s:%s", host, mp.Port()),

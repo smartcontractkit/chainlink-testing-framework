@@ -11,7 +11,6 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
@@ -105,20 +104,7 @@ func newSolana(in *Input) (*Output, error) {
 			WithStartupTimeout(30 * time.Second).
 			WithPollInterval(100 * time.Millisecond),
 		HostConfigModifier: func(h *container.HostConfig) {
-			h.PortBindings = nat.PortMap{
-				nat.Port(bindPort): []nat.PortBinding{
-					{
-						HostIP:   "0.0.0.0",
-						HostPort: bindPort,
-					},
-				},
-				nat.Port(wsBindPort): []nat.PortBinding{
-					{
-						HostIP:   "0.0.0.0",
-						HostPort: wsBindPort,
-					},
-				},
-			}
+			h.PortBindings = framework.MapTheSamePort(bindPort, wsBindPort)
 			h.Mounts = append(h.Mounts, mount.Mount{
 				Type:     mount.TypeBind,
 				Source:   contractsDir,
@@ -157,6 +143,7 @@ func newSolana(in *Input) (*Output, error) {
 		UseCache:      true,
 		Family:        "solana",
 		ContainerName: containerName,
+		Container:     c,
 		Nodes: []*Node{
 			{
 				HostWSUrl:             fmt.Sprintf("ws://%s:%s", host, in.WSPort),
