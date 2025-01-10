@@ -87,14 +87,16 @@ This function fetches the current report (for version passed as environment vari
 Let’s assume you want to ensure that none of the performance metrics degrade by more than **1%** between releases (and that error rate has not changed at all). Here's how you can write assertions using a convenient function for the `Direct` query executor:
 
 ```go
-hasErrors, errors := benchspy.CompareDirectWithThresholds(
+hasFailed, error := benchspy.CompareDirectWithThresholds(
     1.0, // Max 1% worse median latency
     1.0, // Max 1% worse p95 latency
     1.0, // Max 1% worse maximum latency
     0.0, // No increase in error rate
     currentReport, previousReport)
-require.False(t, hasErrors, fmt.Sprintf("errors found: %v", errors))
+require.False(t, hasError, fmt.Sprintf("issues found: %v", error))
 ```
+
+Error returned by this function is a concatenation of all threshold violations found for each standard metric and generator.
 
 ---
 

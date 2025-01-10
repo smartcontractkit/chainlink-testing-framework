@@ -7949,14 +7949,15 @@ require.NoError(t, err, "failed to fetch current report or load the previous one
 <hr />
 <h2 id="adding-assertions"><a class="header" href="#adding-assertions">Adding Assertions</a></h2>
 <p>Let’s assume you want to ensure that none of the performance metrics degrade by more than <strong>1%</strong> between releases (and that error rate has not changed at all). Here's how you can write assertions using a convenient function for the <code>Direct</code> query executor:</p>
-<pre><code class="language-go">hasErrors, errors := benchspy.CompareDirectWithThresholds(
+<pre><code class="language-go">hasFailed, error := benchspy.CompareDirectWithThresholds(
     1.0, // Max 1% worse median latency
     1.0, // Max 1% worse p95 latency
     1.0, // Max 1% worse maximum latency
     0.0, // No increase in error rate
     currentReport, previousReport)
-require.False(t, hasErrors, fmt.Sprintf("errors found: %v", errors))
+require.False(t, hasError, fmt.Sprintf("issues found: %v", error))
 </code></pre>
+<p>Error returned by this function is a concatenation of all threshold violations found for each standard metric and generator.</p>
 <hr />
 <h2 id="conclusion-4"><a class="header" href="#conclusion-4">Conclusion</a></h2>
 <p>You’re now ready to use <code>BenchSpy</code> to ensure that your application’s performance does not degrade below your specified thresholds!</p>
@@ -15278,7 +15279,7 @@ use <code>GetTestContainersGoTestLogger(*testing.T)</code> instead.</p>
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>456673e8</code></li>
+<li>Commit: <code>da0bb136</code></li>
 </ul>
 
                     </main>
