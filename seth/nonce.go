@@ -66,14 +66,14 @@ func (m *NonceManager) UpdateNonces() error {
 		if err != nil {
 			return err
 		}
-		m.Nonces[addr] = int64(nonce)
+		m.Nonces[addr] = mustSafeInt64(nonce)
 	}
 	L.Debug().Interface("Nonces", m.Nonces).Msg("Updated nonces for addresses")
 	m.SyncedKeys = make(chan *KeyNonce, len(m.Addresses))
 	for keyNum, addr := range m.Addresses[1:] {
 		m.SyncedKeys <- &KeyNonce{
 			KeyNum: keyNum + 1,
-			Nonce:  uint64(m.Nonces[addr]),
+			Nonce:  mustSafeUint64(m.Nonces[addr]),
 		}
 	}
 	return nil
@@ -134,7 +134,7 @@ func (m *NonceManager) anySyncedKey() int {
 					L.Trace().
 						Interface("KeyNum", keyData.KeyNum).
 						Uint64("Nonce", nonce).
-						Int("Expected nonce", int(keyData.Nonce+1)).
+						Int("Expected nonce", mustSafeInt(keyData.Nonce+1)).
 						Interface("Address", m.Addresses[keyData.KeyNum]).
 						Msg("Key NOT synced")
 

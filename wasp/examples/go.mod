@@ -9,7 +9,7 @@ require (
 	github.com/go-resty/resty/v2 v2.15.3
 	github.com/montanaflynn/stats v0.7.1
 	github.com/prometheus/common v0.60.0
-	github.com/smartcontractkit/chainlink-testing-framework/wasp v1.50.1
+	github.com/smartcontractkit/chainlink-testing-framework/wasp v1.50.4
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/ratelimit v0.3.1
 	nhooyr.io/websocket v1.8.10

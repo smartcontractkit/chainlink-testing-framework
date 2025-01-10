@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"net/http"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"time"
 
@@ -83,9 +84,12 @@ type Client struct {
 func NewClientWithConfig(cfg *Config) (*Client, error) {
 	initDefaultLogging()
 
-	err := ValidateConfig(cfg)
-	if err != nil {
-		return nil, err
+	if cfg == nil {
+		return nil, errors.New("seth config cannot be nil")
+	}
+
+	if cfgErr := cfg.Validate(); cfgErr != nil {
+		return nil, cfgErr
 	}
 
 	L.Debug().Msgf("Using tracing level: %s", cfg.TracingLevel)
@@ -155,73 +159,6 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 	)
 }
 
-// ValidateConfig checks and validates the provided Config struct.
-// It ensures essential fields have valid values or default to appropriate values
-// when necessary. This function performs validation on gas price estimation,
-// gas limit, tracing level, trace outputs, network dial timeout, and pending nonce protection timeout.
-// If any configuration is invalid, it returns an error.
-func ValidateConfig(cfg *Config) error {
-	if cfg.Network.GasPriceEstimationEnabled {
-		if cfg.Network.GasPriceEstimationBlocks == 0 {
-			L.Debug().Msg("Gas estimation is enabled, but block headers to use is set to 0. Will not use block congestion for gas estimation")
-		}
-		cfg.Network.GasPriceEstimationTxPriority = strings.ToLower(cfg.Network.GasPriceEstimationTxPriority)
-
-		if cfg.Network.GasPriceEstimationTxPriority == "" {
-			cfg.Network.GasPriceEstimationTxPriority = Priority_Standard
-		}
-
-		switch cfg.Network.GasPriceEstimationTxPriority {
-		case Priority_Degen:
-		case Priority_Fast:
-		case Priority_Standard:
-		case Priority_Slow:
-		default:
-			return errors.New("when automating gas estimation is enabled priority must be fast, standard or slow. fix it or disable gas estimation")
-		}
-
-	}
-
-	if cfg.Network.GasLimit != 0 {
-		L.Warn().
-			Msg("Gas limit is set, this will override the gas limit set by the network. This option should be used **ONLY** if node is incapable of estimating gas limit itself, which happens only with very old versions")
-	}
-
-	if cfg.TracingLevel == "" {
-		cfg.TracingLevel = TracingLevel_Reverted
-	}
-
-	cfg.TracingLevel = strings.ToUpper(cfg.TracingLevel)
-
-	switch cfg.TracingLevel {
-	case TracingLevel_None:
-	case TracingLevel_Reverted:
-	case TracingLevel_All:
-	default:
-		return errors.New("tracing level must be one of: NONE, REVERTED, ALL")
-	}
-
-	for _, output := range cfg.TraceOutputs {
-		switch strings.ToLower(output) {
-		case TraceOutput_Console:
-		case TraceOutput_JSON:
-		case TraceOutput_DOT:
-		default:
-			return errors.New("trace output must be one of: console, json, dot")
-		}
-	}
-
-	if cfg.Network.DialTimeout == nil {
-		cfg.Network.DialTimeout = &Duration{D: DefaultDialTimeout}
-	}
-
-	if cfg.PendingNonceProtectionTimeout == nil {
-		cfg.PendingNonceProtectionTimeout = &Duration{D: DefaultPendingNonceProtectionTimeout}
-	}
-
-	return nil
-}
-
 // NewClient creates a new raw seth client with all deps setup from env vars
 func NewClient() (*Client, error) {
 	cfg, err := ReadConfig()
@@ -277,7 +214,7 @@ func NewClientRaw(
 		Addresses:   addrs,
 		PrivateKeys: pkeys,
 		URL:         cfg.FirstNetworkURL(),
-		ChainID:     int64(cfg.Network.ChainID),
+		ChainID:     mustSafeInt64(cfg.Network.ChainID),
 		Context:     ctx,
 		CancelFunc:  cancelFunc,
 	}
@@ -481,7 +418,7 @@ func (m *Client) TransferETHFromKey(ctx context.Context, fromKeyNum int, to stri
 	if err != nil {
 		gasLimit = m.Cfg.Network.TransferGasFee
 	} else {
-		gasLimit = int64(gasLimitRaw)
+		gasLimit = mustSafeInt64(gasLimitRaw)
 	}
 
 	if gasPrice == nil {
@@ -492,7 +429,7 @@ func (m *Client) TransferETHFromKey(ctx context.Context, fromKeyNum int, to stri
 		Nonce:    m.NonceManager.NextNonce(m.Addresses[fromKeyNum]).Uint64(),
 		To:       &toAddr,
 		Value:    value,
-		Gas:      uint64(gasLimit),
+		Gas:      mustSafeUint64(gasLimit),
 		GasPrice: gasPrice,
 	}
 	L.Debug().Interface("TransferTx", rawTx).Send()
@@ -607,7 +544,7 @@ func WithPending(pending bool) CallOpt {
 // WithBlockNumber sets blockNumber option for bind.CallOpts
 func WithBlockNumber(bn uint64) CallOpt {
 	return func(o *bind.CallOpts) {
-		o.BlockNumber = big.NewInt(int64(bn))
+		o.BlockNumber = big.NewInt(mustSafeInt64(bn))
 	}
 }
 
@@ -1002,7 +939,7 @@ func (m *Client) configureTransactionOpts(
 	estimations GasEstimations,
 	o ...TransactOpt,
 ) *bind.TransactOpts {
-	opts.Nonce = big.NewInt(int64(nonce))
+	opts.Nonce = big.NewInt(mustSafeInt64(nonce))
 	opts.GasPrice = estimations.GasPrice
 	opts.GasLimit = m.Cfg.Network.GasLimit
 
@@ -1231,36 +1168,142 @@ func (t TransactionLog) GetData() []byte {
 }
 
 func (m *Client) decodeContractLogs(l zerolog.Logger, logs []types.Log, allABIs []*abi.ABI) ([]DecodedTransactionLog, error) {
-	l.Trace().Msg("Decoding ALL events")
+	l.Trace().
+		Msg("Decoding events")
+	sigMap := buildEventSignatureMap(allABIs)
+
 	var eventsParsed []DecodedTransactionLog
 	for _, lo := range logs {
-	ABI_LOOP:
-		for _, a := range allABIs {
-			for _, evSpec := range a.Events {
-				if evSpec.ID.Hex() == lo.Topics[0].Hex() {
-					d := TransactionLog{lo.Topics, lo.Data}
-					l.Trace().Str("Name", evSpec.RawName).Str("Signature", evSpec.Sig).Msg("Unpacking event")
-					eventsMap, topicsMap, err := decodeEventFromLog(l, *a, evSpec, d)
-					if err != nil {
-						return nil, errors.Wrap(err, ErrDecodeLog)
-					}
-					parsedEvent := decodedLogFromMaps(&DecodedTransactionLog{}, eventsMap, topicsMap)
-					decodedTransactionLog, ok := parsedEvent.(*DecodedTransactionLog)
-					if ok {
-						decodedTransactionLog.Signature = evSpec.Sig
-						m.mergeLogMeta(decodedTransactionLog, lo)
-						eventsParsed = append(eventsParsed, *decodedTransactionLog)
-						l.Trace().Interface("Log", parsedEvent).Msg("Transaction log")
-						break ABI_LOOP
-					}
-					l.Trace().
-						Str("Actual type", fmt.Sprintf("%T", decodedTransactionLog)).
-						Msg("Failed to cast decoded event to DecodedCommonLog")
+		if len(lo.Topics) == 0 {
+			l.Debug().
+				Msg("Log has no topics; skipping")
+			continue
+		}
+
+		eventSig := lo.Topics[0].Hex()
+		possibleEvents, exists := sigMap[eventSig]
+		if !exists {
+			l.Trace().
+				Str("Event signature", eventSig).
+				Msg("No matching events found for signature")
+			continue
+		}
+
+		// Check if we know what contract is this log from and if we do, get its ABI to skip unnecessary iterations
+		var knownContractABI *abi.ABI
+		if contractName := m.ContractAddressToNameMap.GetContractName(lo.Address.Hex()); contractName != "" {
+			maybeABI, ok := m.ContractStore.GetABI(contractName)
+			if !ok {
+				l.Trace().
+					Str("Event signature", eventSig).
+					Str("Contract name", contractName).
+					Str("Contract address", lo.Address.Hex()).
+					Msg("No ABI found for known contract; this is unexpected. Continuing with step-by-step ABI search")
+			} else {
+				knownContractABI = maybeABI
+			}
+		}
+
+		// Iterate over possible events with the same signature
+		matched := false
+		for _, evWithABI := range possibleEvents {
+			evSpec := evWithABI.EventSpec
+			contractABI := evWithABI.ContractABI
+
+			// Check if known contract ABI matches candidate ABI and if not, skip this ABI and try the next one
+			if knownContractABI != nil && !reflect.DeepEqual(knownContractABI, contractABI) {
+				l.Trace().
+					Str("Event signature", eventSig).
+					Str("Contract address", lo.Address.Hex()).
+					Msg("ABI doesn't match known ABI for this address; trying next ABI")
+				continue
+			}
+
+			// Validate indexed parameters count
+			// Non-indexed parameters are stored in the Data field,
+			// and much harder to validate due to dynamic types,
+			// so we skip them for now
+			var indexedParams abi.Arguments
+			for _, input := range evSpec.Inputs {
+				if input.Indexed {
+					indexedParams = append(indexedParams, input)
 				}
 			}
+
+			expectedIndexed := len(indexedParams)
+			actualIndexed := len(lo.Topics) - 1 // First topic is the event signature
+
+			if expectedIndexed != actualIndexed {
+				l.Trace().
+					Str("Event", evSpec.Name).
+					Int("Expected indexed param count", expectedIndexed).
+					Int("Actual indexed param count", actualIndexed).
+					Msg("Mismatch in indexed parameters; skipping event")
+				continue
+			}
+
+			// Proceed to decode the event
+			d := TransactionLog{lo.Topics, lo.Data}
+			l.Trace().
+				Str("Name", evSpec.RawName).
+				Str("Signature", evSpec.Sig).
+				Msg("Unpacking event")
+
+			eventsMap, topicsMap, err := decodeEventFromLog(l, *contractABI, *evSpec, d)
+			if err != nil {
+				l.Error().
+					Err(err).
+					Str("Event", evSpec.Name).
+					Msg("Failed to decode event; skipping")
+				continue // Skip this event instead of returning an error
+			}
+
+			parsedEvent := decodedLogFromMaps(&DecodedTransactionLog{}, eventsMap, topicsMap)
+			decodedTransactionLog, ok := parsedEvent.(*DecodedTransactionLog)
+			if ok {
+				decodedTransactionLog.Signature = evSpec.Sig
+				m.mergeLogMeta(decodedTransactionLog, lo)
+				eventsParsed = append(eventsParsed, *decodedTransactionLog)
+				l.Trace().
+					Interface("Log", parsedEvent).
+					Msg("Transaction log decoded successfully")
+				matched = true
+				break // Move to the next log after successful decoding
+			}
+
+			l.Trace().
+				Str("Actual type", fmt.Sprintf("%T", decodedTransactionLog)).
+				Msg("Failed to cast decoded event to DecodedTransactionLog")
+		}
+
+		if !matched {
+			l.Warn().
+				Str("Signature", eventSig).
+				Msg("No matching event with valid indexed parameter count found for log")
 		}
 	}
 	return eventsParsed, nil
+}
+
+type eventWithABI struct {
+	ContractABI *abi.ABI
+	EventSpec   *abi.Event
+}
+
+// buildEventSignatureMap precomputes a mapping from event signature to events with their ABIs
+func buildEventSignatureMap(allABIs []*abi.ABI) map[string][]*eventWithABI {
+	sigMap := make(map[string][]*eventWithABI)
+	for _, a := range allABIs {
+		for _, ev := range a.Events {
+			event := ev //nolint:copyloopvar // Explicitly keeping the copy for clarity
+			sigMap[ev.ID.Hex()] = append(sigMap[ev.ID.Hex()], &eventWithABI{
+				ContractABI: a,
+				EventSpec:   &event,
+			})
+		}
+	}
+
+	return sigMap
 }
 
 // WaitUntilNoPendingTxForRootKey waits until there's no pending transaction for root key. If after timeout there are still pending transactions, it returns error.

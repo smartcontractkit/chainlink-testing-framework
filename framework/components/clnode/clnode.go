@@ -135,18 +135,17 @@ func generateEntryPoint() []string {
 func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
 	httpPort := fmt.Sprintf("%s/tcp", DefaultHTTPPort)
 	innerDebuggerPort := fmt.Sprintf("%d/tcp", DefaultDebuggerPort)
-	debuggerPort := fmt.Sprintf("%d/tcp", in.Node.DebuggerPort)
 	portBindings := nat.PortMap{
 		nat.Port(httpPort): []nat.PortBinding{
 			{
 				HostIP:   "0.0.0.0",
-				HostPort: fmt.Sprintf("%d/tcp", in.Node.HTTPPort),
+				HostPort: strconv.Itoa(in.Node.HTTPPort),
 			},
 		},
 		nat.Port(innerDebuggerPort): []nat.PortBinding{
 			{
 				HostIP:   "0.0.0.0",
-				HostPort: debuggerPort,
+				HostPort: strconv.Itoa(in.Node.DebuggerPort),
 			},
 		},
 	}
@@ -160,7 +159,7 @@ func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
 			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", pp[1]))
 
 			dockerPort := nat.Port(fmt.Sprintf("%s/tcp", pp[1]))
-			hostPort := fmt.Sprintf("%s/tcp", pp[0])
+			hostPort := pp[0]
 			portBindings[dockerPort] = []nat.PortBinding{
 				{
 					HostIP:   "0.0.0.0",
@@ -171,7 +170,7 @@ func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
 			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", p))
 
 			dockerPort := nat.Port(fmt.Sprintf("%s/tcp", p))
-			hostPort := fmt.Sprintf("%s/tcp", p)
+			hostPort := p
 			portBindings[dockerPort] = []nat.PortBinding{
 				{
 					HostIP:   "0.0.0.0",

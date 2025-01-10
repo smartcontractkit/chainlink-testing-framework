@@ -2,7 +2,6 @@ package reports
 
 import (
 	"fmt"
-	"math"
 	"sort"
 	"strings"
 	"time"
@@ -121,6 +120,7 @@ type SplunkTestResultEvent struct {
 
 func GenerateSummaryData(tests []TestResult, maxPassRatio float64) SummaryData {
 	var runs, passes, fails, skips, panickedTests, racedTests, flakyTests, skippedTests int
+
 	for _, result := range tests {
 		runs += result.Runs
 		passes += result.Successes
@@ -143,30 +143,47 @@ func GenerateSummaryData(tests []TestResult, maxPassRatio float64) SummaryData {
 		}
 	}
 
+	// Calculate the raw pass ratio
 	passPercentage := 100.0
-	flakePercentage := 0.0
-
 	if runs > 0 {
-		passPercentage = math.Floor((float64(passes)/float64(runs)*100)*100) / 100 // Truncate to 2 decimal places
+		passPercentage = (float64(passes) / float64(runs)) * 100
 	}
 
+	// Calculate the raw flake ratio
 	totalTests := len(tests)
+	flakePercentage := 0.0
 	if totalTests > 0 {
-		flakePercentage = math.Floor((float64(flakyTests)/float64(totalTests)*100)*100) / 100 // Truncate to 2 decimal places
+		flakePercentage = (float64(flakyTests) / float64(totalTests)) * 100
 	}
+
+	// Helper function to convert a float ratio into a trimmed string
+	formatRatio := func(val float64) string {
+		// Format with 4 decimal places
+		s := fmt.Sprintf("%.4f", val)
+		// Trim trailing zeros
+		s = strings.TrimRight(s, "0")
+		// Trim trailing '.' if needed (in case we have an integer)
+		s = strings.TrimRight(s, ".")
+		return s + "%"
+	}
+
+	passRatioStr := formatRatio(passPercentage)
+	flakeTestRatioStr := formatRatio(flakePercentage)
 
 	return SummaryData{
 		TotalTests:     totalTests,
 		PanickedTests:  panickedTests,
 		RacedTests:     racedTests,
 		FlakyTests:     flakyTests,
-		FlakyTestRatio: fmt.Sprintf("%.2f%%", flakePercentage),
-		TotalRuns:      runs,
-		PassedRuns:     passes,
-		FailedRuns:     fails,
-		SkippedRuns:    skips,
-		PassRatio:      fmt.Sprintf("%.2f%%", passPercentage),
-		MaxPassRatio:   maxPassRatio,
+		FlakyTestRatio: flakeTestRatioStr,
+
+		TotalRuns:   runs,
+		PassedRuns:  passes,
+		FailedRuns:  fails,
+		SkippedRuns: skips,
+
+		PassRatio:    passRatioStr,
+		MaxPassRatio: maxPassRatio,
 	}
 }
 

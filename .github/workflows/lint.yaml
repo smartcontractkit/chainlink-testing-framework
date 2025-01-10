@@ -21,6 +21,26 @@ jobs:
       - name: Run pre-commit checks
         run: |
           nix develop -c sh -c "pre-commit run --hook-stage pre-commit --show-diff-on-failure --color=always"
+
+  clean-go-mods:
+    name: Clean go mods
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go 1.23.3
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.3'
+      - name: Install gomods
+        run: go install github.com/jmank88/gomods@v0.1.4
+      - name: Check out code
+        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
+      - name: Run gomods tidy
+        run: gomods tidy
+      - name: Ensure clean after tidy
+        run: |
+          git add --all
+          git diff --minimal --cached --exit-code
+
   tools:
     name: Get tool-versions
     runs-on: ubuntu-latest

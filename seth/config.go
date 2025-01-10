@@ -33,10 +33,11 @@ const (
 	DefaultDialTimeout                   = 1 * time.Minute
 	DefaultPendingNonceProtectionTimeout = 1 * time.Minute
 
-	DefaultTransferGasFee = 21_000
-	DefaultGasPrice       = 100_000_000_000 // 100 Gwei
-	DefaultGasFeeCap      = 100_000_000_000 // 100 Gwei
-	DefaultGasTipCap      = 50_000_000_000  // 50 Gwei
+	DefaultTransferGasFee                  = 21_000
+	DefaultGasPrice                        = 100_000_000_000 // 100 Gwei
+	DefaultGasFeeCap                       = 100_000_000_000 // 100 Gwei
+	DefaultGasTipCap                       = 50_000_000_000  // 50 Gwei
+	DefaultGasPriceEstimationsAttemptCount = 1               // this actually means no retries, due to how the retry-go library works
 )
 
 type Config struct {
@@ -99,21 +100,22 @@ type NonceManagerCfg struct {
 }
 
 type Network struct {
-	Name                         string    `toml:"name"`
-	URLs                         []string  `toml:"urls_secret"`
-	ChainID                      uint64    `toml:"chain_id"`
-	EIP1559DynamicFees           bool      `toml:"eip_1559_dynamic_fees"`
-	GasPrice                     int64     `toml:"gas_price"`
-	GasFeeCap                    int64     `toml:"gas_fee_cap"`
-	GasTipCap                    int64     `toml:"gas_tip_cap"`
-	GasLimit                     uint64    `toml:"gas_limit"`
-	TxnTimeout                   *Duration `toml:"transaction_timeout"`
-	DialTimeout                  *Duration `toml:"dial_timeout"`
-	TransferGasFee               int64     `toml:"transfer_gas_fee"`
-	PrivateKeys                  []string  `toml:"private_keys_secret"`
-	GasPriceEstimationEnabled    bool      `toml:"gas_price_estimation_enabled"`
-	GasPriceEstimationBlocks     uint64    `toml:"gas_price_estimation_blocks"`
-	GasPriceEstimationTxPriority string    `toml:"gas_price_estimation_tx_priority"`
+	Name                           string    `toml:"name"`
+	URLs                           []string  `toml:"urls_secret"`
+	ChainID                        uint64    `toml:"chain_id"`
+	EIP1559DynamicFees             bool      `toml:"eip_1559_dynamic_fees"`
+	GasPrice                       int64     `toml:"gas_price"`
+	GasFeeCap                      int64     `toml:"gas_fee_cap"`
+	GasTipCap                      int64     `toml:"gas_tip_cap"`
+	GasLimit                       uint64    `toml:"gas_limit"`
+	TxnTimeout                     *Duration `toml:"transaction_timeout"`
+	DialTimeout                    *Duration `toml:"dial_timeout"`
+	TransferGasFee                 int64     `toml:"transfer_gas_fee"`
+	PrivateKeys                    []string  `toml:"private_keys_secret"`
+	GasPriceEstimationEnabled      bool      `toml:"gas_price_estimation_enabled"`
+	GasPriceEstimationBlocks       uint64    `toml:"gas_price_estimation_blocks"`
+	GasPriceEstimationTxPriority   string    `toml:"gas_price_estimation_tx_priority"`
+	GasPriceEstimationAttemptCount uint      `toml:"gas_price_estimation_attempt_count"`
 }
 
 // DefaultClient returns a Client with reasonable default config with the specified RPC URL and private keys. You should pass at least 1 private key.
@@ -191,6 +193,77 @@ func ReadConfig() (*Config, error) {
 	}
 	L.Trace().Interface("Config", cfg).Msg("Parsed seth config")
 	return cfg, nil
+}
+
+// Validate checks and validates the provided Config struct.
+// It ensures essential fields have valid values or default to appropriate values
+// when necessary. This function performs validation on gas price estimation,
+// gas limit, tracing level, trace outputs, network dial timeout, and pending nonce protection timeout.
+// If any configuration is invalid, it returns an error.
+func (c *Config) Validate() error {
+	if c.Network.GasPriceEstimationEnabled {
+		if c.Network.GasPriceEstimationBlocks == 0 {
+			L.Debug().Msg("Gas estimation is enabled, but block headers to use is set to 0. Will not use block congestion for gas estimation")
+		}
+		c.Network.GasPriceEstimationTxPriority = strings.ToLower(c.Network.GasPriceEstimationTxPriority)
+
+		if c.Network.GasPriceEstimationTxPriority == "" {
+			c.Network.GasPriceEstimationTxPriority = Priority_Standard
+		}
+
+		switch c.Network.GasPriceEstimationTxPriority {
+		case Priority_Degen:
+		case Priority_Fast:
+		case Priority_Standard:
+		case Priority_Slow:
+		default:
+			return errors.New("when automating gas estimation is enabled priority must be fast, standard or slow. fix it or disable gas estimation")
+		}
+
+	}
+
+	if c.Network.GasLimit != 0 {
+		L.Warn().
+			Msg("Gas limit is set, this will override the gas limit set by the network. This option should be used **ONLY** if node is incapable of estimating gas limit itself, which happens only with very old versions")
+	}
+
+	if c.Network.GasPriceEstimationAttemptCount == 0 {
+		c.Network.GasPriceEstimationAttemptCount = DefaultGasPriceEstimationsAttemptCount
+	}
+
+	if c.TracingLevel == "" {
+		c.TracingLevel = TracingLevel_Reverted
+	}
+
+	c.TracingLevel = strings.ToUpper(c.TracingLevel)
+
+	switch c.TracingLevel {
+	case TracingLevel_None:
+	case TracingLevel_Reverted:
+	case TracingLevel_All:
+	default:
+		return errors.New("tracing level must be one of: NONE, REVERTED, ALL")
+	}
+
+	for _, output := range c.TraceOutputs {
+		switch strings.ToLower(output) {
+		case TraceOutput_Console:
+		case TraceOutput_JSON:
+		case TraceOutput_DOT:
+		default:
+			return errors.New("trace output must be one of: console, json, dot")
+		}
+	}
+
+	if c.Network.DialTimeout == nil {
+		c.Network.DialTimeout = &Duration{D: DefaultDialTimeout}
+	}
+
+	if c.PendingNonceProtectionTimeout == nil {
+		c.PendingNonceProtectionTimeout = &Duration{D: DefaultPendingNonceProtectionTimeout}
+	}
+
+	return nil
 }
 
 // FirstNetworkURL returns first network URL

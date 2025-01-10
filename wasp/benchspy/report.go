@@ -3,6 +3,7 @@ package benchspy
 import (
 	"context"
 	"encoding/json"
+	goerrors "errors"
 	"fmt"
 	"os"
 	"strings"
@@ -43,6 +44,12 @@ func (b *StandardReport) LoadLatest(testName string) error {
 // ResultsAs retrieves and casts results from a query executor to a specified type.
 // It returns a map of query names to their corresponding results, or an error if casting fails.
 func ResultsAs[Type any](newType Type, queryExecutor QueryExecutor, queryNames ...string) (map[string]Type, error) {
+	L.Debug().
+		Str("Executor kind", queryExecutor.Kind()).
+		Str("Query names", strings.Join(queryNames, ", ")).
+		Str("New type", fmt.Sprintf("%T", newType)).
+		Msg("Casting query results to new type")
+
 	results := make(map[string]Type)
 
 	var toTypeOrErr = func(result interface{}, queryName string) error {
@@ -70,6 +77,12 @@ func ResultsAs[Type any](newType Type, queryExecutor QueryExecutor, queryNames .
 			}
 		}
 	}
+
+	L.Debug().
+		Str("Executor kind", queryExecutor.Kind()).
+		Str("Query names", strings.Join(queryNames, ", ")).
+		Str("New type", fmt.Sprintf("%T", newType)).
+		Msg("Successfully casted query results to new type")
 
 	return results, nil
 }
@@ -138,21 +151,40 @@ func MustAllPrometheusResults(sr *StandardReport) map[string]model.Value {
 }
 
 func calculateDiffPercentage(current, previous float64) float64 {
-	var diffPrecentage float64
-	if previous != 0.0 && current != 0.0 {
-		diffPrecentage = (current - previous) / previous * 100
-	} else if previous == 0.0 && current == 0.0 {
-		diffPrecentage = 0.0
-	} else {
-		diffPrecentage = 100.0
+	if previous == 0.0 {
+		if current == 0.0 {
+			return 0.0
+		}
+		return 999.0 // Convention for infinite change when previous is 0
 	}
 
-	return diffPrecentage
+	if current == 0.0 {
+		return -100.0 // Complete improvement when current is 0
+	}
+
+	return (current - previous) / previous * 100
 }
 
 // CompareDirectWithThresholds evaluates the current and previous reports against specified thresholds.
 // It checks for significant differences in metrics and returns any discrepancies found, aiding in performance analysis.
-func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold float64, currentReport, previousReport *StandardReport) (bool, map[string][]error) {
+func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold float64, currentReport, previousReport *StandardReport) (bool, error) {
+	if currentReport == nil || previousReport == nil {
+		return true, errors.New("one or both reports are nil")
+	}
+
+	L.Info().
+		Str("Current report", currentReport.CommitOrTag).
+		Str("Previous report", previousReport.CommitOrTag).
+		Float64("Median threshold", medianThreshold).
+		Float64("P95 threshold", p95Threshold).
+		Float64("Max threshold", maxThreshold).
+		Float64("Error rate threshold", errorRateThreshold).
+		Msg("Comparing Direct metrics with thresholds")
+
+	if thresholdsErr := validateThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold); thresholdsErr != nil {
+		return true, thresholdsErr
+	}
+
 	allCurrentResults := MustAllDirectResults(currentReport)
 	allPreviousResults := MustAllDirectResults(previousReport)
 
@@ -212,7 +244,52 @@ func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, er
 
 	PrintStandardDirectMetrics(currentReport, previousReport)
 
-	return len(errors) > 0, errors
+	L.Info().
+		Str("Current report", currentReport.CommitOrTag).
+		Str("Previous report", previousReport.CommitOrTag).
+		Int("Number of meaningful differences", len(errors)).
+		Msg("Finished comparing Direct metrics with thresholds")
+
+	return len(errors) > 0, concatenateGeneratorErrors(errors)
+}
+
+func concatenateGeneratorErrors(errors map[string][]error) error {
+	var errs []error
+	for generatorName, errors := range errors {
+		for _, err := range errors {
+			errs = append(errs, fmt.Errorf("[%s] %w", generatorName, err))
+		}
+	}
+	return goerrors.Join(errs...)
+}
+
+func validateThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold float64) error {
+	var errs []error
+
+	var validateThreshold = func(name string, threshold float64) error {
+		if threshold < 0 || threshold > 100 {
+			return fmt.Errorf("%s threshold %.4f is not in the range [0, 100]", name, threshold)
+		}
+		return nil
+	}
+
+	if err := validateThreshold("median", medianThreshold); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := validateThreshold("p95", p95Threshold); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := validateThreshold("max", maxThreshold); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := validateThreshold("error rate", errorRateThreshold); err != nil {
+		errs = append(errs, err)
+	}
+
+	return goerrors.Join(errs...)
 }
 
 // PrintStandardDirectMetrics outputs a comparison of direct metrics between two reports.
@@ -248,6 +325,11 @@ func PrintStandardDirectMetrics(currentReport, previousReport *StandardReport) {
 // FetchData retrieves data for the report within the specified time range.
 // It validates the time range and executes queries in parallel, returning any errors encountered during execution.
 func (b *StandardReport) FetchData(ctx context.Context) error {
+	L.Info().
+		Str("Test name", b.TestName).
+		Str("Reference", b.CommitOrTag).
+		Msg("Fetching data for standard report")
+
 	if b.TestStart.IsZero() || b.TestEnd.IsZero() {
 		return errors.New("start and end times are not set")
 	}
@@ -279,6 +361,11 @@ func (b *StandardReport) FetchData(ctx context.Context) error {
 		return err
 	}
 
+	L.Info().
+		Str("Test name", b.TestName).
+		Str("Reference", b.CommitOrTag).
+		Msg("Finished fetching data for standard report")
+
 	return nil
 }
 
@@ -286,6 +373,10 @@ func (b *StandardReport) FetchData(ctx context.Context) error {
 // It validates the type of the other report and ensures that their basic data and query executors are comparable.
 // This function is useful for verifying report consistency before performing further analysis.
 func (b *StandardReport) IsComparable(otherReport Reporter) error {
+	L.Debug().
+		Str("Expected type", "*StandardReport").
+		Msg("Checking if reports are comparable")
+
 	if _, ok := otherReport.(*StandardReport); !ok {
 		return fmt.Errorf("expected type %s, got %T", "*StandardReport", otherReport)
 	}
@@ -303,6 +394,9 @@ func (b *StandardReport) IsComparable(otherReport Reporter) error {
 			return queryErr
 		}
 	}
+
+	L.Debug().
+		Msg("Reports are comparable")
 
 	return nil
 }
@@ -360,6 +454,9 @@ func WithQueryExecutors(queryExecutors ...QueryExecutor) StandardReportOption {
 }
 
 func (c *standardReportConfig) validate() error {
+	L.Debug().
+		Msg("Validating standard report configuration")
+
 	if len(c.executorTypes) == 0 && len(c.queryExecutors) == 0 {
 		return errors.New("no standard executor types and no custom query executors are provided. At least one is needed")
 	}
@@ -391,6 +488,9 @@ func (c *standardReportConfig) validate() error {
 		}
 	}
 
+	L.Debug().
+		Msg("Standard report configuration is valid")
+
 	return nil
 }
 
@@ -398,6 +498,10 @@ func (c *standardReportConfig) validate() error {
 // It initializes necessary data and query executors, ensuring all configurations are validated.
 // This function is essential for generating reports that require specific data sources and execution strategies.
 func NewStandardReport(commitOrTag string, opts ...StandardReportOption) (*StandardReport, error) {
+	L.Info().
+		Str("Reference", commitOrTag).
+		Msg("Creating new standard report")
+
 	config := standardReportConfig{}
 	for _, opt := range opts {
 		opt(&config)
@@ -446,6 +550,12 @@ func NewStandardReport(commitOrTag string, opts ...StandardReportOption) (*Stand
 	if config.reportDirectory != "" {
 		sr.LocalStorage.Directory = config.reportDirectory
 	}
+
+	L.Info().
+		Str("Reference", commitOrTag).
+		Str("Test name", sr.TestName).
+		Int("Number of query executors", len(sr.QueryExecutors)).
+		Msg("New standard report created")
 
 	return sr, nil
 }
