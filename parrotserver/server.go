@@ -217,8 +217,8 @@ func save() error {
 }
 
 func (p *ParrotServer) RegisterRoute(route Route) {
-	routesMu.Lock()
-	routes[route.Method+":"+route.Path] = route
+	p.routesMu.Lock()
+	p.routes[route.Method+":"+route.Path] = route
 	routesMu.Unlock()
 }
 
