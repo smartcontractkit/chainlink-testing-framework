@@ -3,6 +3,7 @@ package benchspy
 import (
 	"context"
 	"encoding/json"
+	goerrors "errors"
 	"fmt"
 	"os"
 	"strings"
@@ -166,11 +167,9 @@ func calculateDiffPercentage(current, previous float64) float64 {
 
 // CompareDirectWithThresholds evaluates the current and previous reports against specified thresholds.
 // It checks for significant differences in metrics and returns any discrepancies found, aiding in performance analysis.
-func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold float64, currentReport, previousReport *StandardReport) (bool, map[string][]error) {
+func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold float64, currentReport, previousReport *StandardReport) (bool, error) {
 	if currentReport == nil || previousReport == nil {
-		return true, map[string][]error{
-			"initialization": {errors.New("one or both reports are nil")},
-		}
+		return true, errors.New("one or both reports are nil")
 	}
 
 	L.Info().
@@ -182,10 +181,8 @@ func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, er
 		Float64("Error rate threshold", errorRateThreshold).
 		Msg("Comparing Direct metrics with thresholds")
 
-	if thresholdsErrs := validateThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold); len(thresholdsErrs) > 0 {
-		return true, map[string][]error{
-			"initialization": thresholdsErrs,
-		}
+	if thresholdsErr := validateThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold); thresholdsErr != nil {
+		return true, thresholdsErr
 	}
 
 	allCurrentResults := MustAllDirectResults(currentReport)
@@ -253,10 +250,20 @@ func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, er
 		Int("Number of meaningful differences", len(errors)).
 		Msg("Finished comparing Direct metrics with thresholds")
 
-	return len(errors) > 0, errors
+	return len(errors) > 0, concatenateGeneratorErrors(errors)
 }
 
-func validateThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold float64) []error {
+func concatenateGeneratorErrors(errors map[string][]error) error {
+	var errs []error
+	for generatorName, errors := range errors {
+		for _, err := range errors {
+			errs = append(errs, fmt.Errorf("[%s] %w", generatorName, err))
+		}
+	}
+	return goerrors.Join(errs...)
+}
+
+func validateThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold float64) error {
 	var errs []error
 
 	var validateThreshold = func(name string, threshold float64) error {
@@ -282,7 +289,7 @@ func validateThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateTh
 		errs = append(errs, err)
 	}
 
-	return errs
+	return goerrors.Join(errs...)
 }
 
 // PrintStandardDirectMetrics outputs a comparison of direct metrics between two reports.

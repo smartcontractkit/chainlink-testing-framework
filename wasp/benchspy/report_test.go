@@ -1384,13 +1384,10 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, errs := CompareDirectWithThresholds(10.0, 1.0, 1.0, 1.0, currentReport, previousReport)
+		failed, err := CompareDirectWithThresholds(10.0, 1.0, 1.0, 1.0, currentReport, previousReport)
 		assert.True(t, failed)
-		assert.Len(t, errs, 1)
-		assert.Len(t, errs["test-gen"], 1)
-		for _, err := range errs["test-gen"] {
-			assert.Contains(t, err.Error(), "different, which is higher than the threshold")
-		}
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 50.0000%% different, which is higher than the threshold", string(MedianLatency)))
 	})
 
 	t.Run("all metrics exceed thresholds", func(t *testing.T) {
@@ -1442,13 +1439,13 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
+		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
 		assert.True(t, failed)
-		assert.Len(t, errs, 1)
-		assert.Len(t, errs["test-gen"], 4)
-		for _, err := range errs["test-gen"] {
-			assert.Contains(t, err.Error(), "different, which is higher than the threshold")
-		}
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 50.0000%% different, which is higher than the threshold", string(MedianLatency)))
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 50.0000%% different, which is higher than the threshold", string(Percentile95Latency)))
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 50.0000%% different, which is higher than the threshold", string(MaxLatency)))
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 100.0000%% different, which is higher than the threshold", string(ErrorRate)))
 	})
 
 	t.Run("handle zero values", func(t *testing.T) {
@@ -1500,12 +1497,67 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
+		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
 		assert.False(t, failed)
-		assert.Empty(t, errs)
+		assert.Nil(t, err)
 	})
 
-	t.Run("handle missing metrics", func(t *testing.T) {
+	t.Run("handle missing metrics from current report", func(t *testing.T) {
+		previousReport := &StandardReport{
+			BasicData: BasicData{
+				GeneratorConfigs: map[string]*wasp.Config{
+					"test-gen": {
+						GenName: "test-gen",
+					},
+				},
+			},
+			QueryExecutors: []QueryExecutor{
+				&MockQueryExecutor{
+					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
+					ResultsFn: func() map[string]interface{} {
+						return map[string]interface{}{
+							string(MedianLatency):       100.0,
+							string(Percentile95Latency): 0.0,
+							string(MaxLatency):          0.0,
+							string(ErrorRate):           0.0,
+						}
+					},
+					GeneratorNameFn: func() string { return "test-gen" },
+				},
+			},
+		}
+
+		currentReport := &StandardReport{
+			BasicData: BasicData{
+				GeneratorConfigs: map[string]*wasp.Config{
+					"test-gen": {
+						GenName: "test-gen",
+					},
+				},
+			},
+			QueryExecutors: []QueryExecutor{
+				&MockQueryExecutor{
+					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
+					ResultsFn: func() map[string]interface{} {
+						return map[string]interface{}{
+							string(MedianLatency): 105.0,
+							// missing other metrics
+						}
+					},
+					GeneratorNameFn: func() string { return "test-gen" },
+				},
+			},
+		}
+
+		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
+		assert.True(t, failed)
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from current report", string(Percentile95Latency)))
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from current report", string(MaxLatency)))
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from current report", string(ErrorRate)))
+	})
+
+	t.Run("handle missing metrics from previous report", func(t *testing.T) {
 		previousReport := &StandardReport{
 			BasicData: BasicData{
 				GeneratorConfigs: map[string]*wasp.Config{
@@ -1541,6 +1593,63 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
 					ResultsFn: func() map[string]interface{} {
 						return map[string]interface{}{
+							string(MedianLatency):       105.0,
+							string(Percentile95Latency): 0.0,
+							string(MaxLatency):          0.0,
+							string(ErrorRate):           0.0,
+						}
+					},
+					GeneratorNameFn: func() string { return "test-gen" },
+				},
+			},
+		}
+
+		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
+		assert.True(t, failed)
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from previous report", string(Percentile95Latency)))
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from previous report", string(MaxLatency)))
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from previous report", string(ErrorRate)))
+	})
+
+	t.Run("handle missing metrics from both reports", func(t *testing.T) {
+		previousReport := &StandardReport{
+			BasicData: BasicData{
+				GeneratorConfigs: map[string]*wasp.Config{
+					"test-gen": {
+						GenName: "test-gen",
+					},
+				},
+			},
+			QueryExecutors: []QueryExecutor{
+				&MockQueryExecutor{
+					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
+					ResultsFn: func() map[string]interface{} {
+						return map[string]interface{}{
+							string(MedianLatency):       100.0,
+							string(Percentile95Latency): 0.0,
+							string(MaxLatency):          0.0,
+							string(ErrorRate):           0.0,
+						}
+					},
+					GeneratorNameFn: func() string { return "test-gen" },
+				},
+			},
+		}
+
+		currentReport := &StandardReport{
+			BasicData: BasicData{
+				GeneratorConfigs: map[string]*wasp.Config{
+					"test-gen": {
+						GenName: "test-gen",
+					},
+				},
+			},
+			QueryExecutors: []QueryExecutor{
+				&MockQueryExecutor{
+					KindFn: func() string { return string(StandardQueryExecutor_Direct) },
+					ResultsFn: func() map[string]interface{} {
+						return map[string]interface{}{
 							string(MedianLatency): 105.0,
 							// missing other metrics
 						}
@@ -1550,13 +1659,12 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
+		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
 		assert.True(t, failed)
-		assert.Len(t, errs, 1)
-		assert.Len(t, errs["test-gen"], 3) // Should have errors for missing P95, Max, and Error Rate
-		for _, err := range errs["test-gen"] {
-			assert.Contains(t, err.Error(), "results were missing")
-		}
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from current report", string(Percentile95Latency)))
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from current report", string(MaxLatency)))
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from current report", string(ErrorRate)))
 	})
 
 	t.Run("handle zero to non-zero transition", func(t *testing.T) {
@@ -1608,13 +1716,13 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
+		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
 		assert.True(t, failed)
-		assert.Len(t, errs, 1)
-		assert.Len(t, errs["test-gen"], 4)
-		for _, err := range errs["test-gen"] {
-			assert.Contains(t, err.Error(), "999.0000% different")
-		}
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 999.0000%% different, which is higher than the threshold", string(MedianLatency)))
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 999.0000%% different, which is higher than the threshold", string(Percentile95Latency)))
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 999.0000%% different, which is higher than the threshold", string(MaxLatency)))
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 999.0000%% different, which is higher than the threshold", string(ErrorRate)))
 	})
 
 	t.Run("handle non-zero to zero transition", func(t *testing.T) {
@@ -1666,9 +1774,9 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
+		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
 		assert.False(t, failed)
-		assert.Len(t, errs, 0)
+		assert.Nil(t, err)
 	})
 
 	t.Run("handle edge-cases", func(t *testing.T) {
@@ -1720,11 +1828,10 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, errs := CompareDirectWithThresholds(0.99, 0.9892, 10.0, 10.0, currentReport, previousReport)
+		failed, err := CompareDirectWithThresholds(0.99, 0.9892, 10.0, 10.0, currentReport, previousReport)
 		assert.True(t, failed)
-		assert.Equal(t, 1, len(errs))
-		assert.Equal(t, 1, len(errs["test-gen"]))
-		assert.Contains(t, errs["test-gen"][0].Error(), "0.9901% different")
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 0.9901%% different, which is higher than the threshold", string(MedianLatency)))
 	})
 
 	t.Run("handle nil reports", func(t *testing.T) {
@@ -1752,23 +1859,20 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, report, nil)
+		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, report, nil)
 		assert.True(t, failed)
-		assert.Equal(t, 1, len(errs))
-		assert.Equal(t, 1, len(errs["initialization"]))
-		assert.Contains(t, errs["initialization"][0].Error(), "one or both reports are nil")
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "one or both reports are nil")
 
-		failed, errs = CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, nil, report)
+		failed, err = CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, nil, report)
 		assert.True(t, failed)
-		assert.Equal(t, 1, len(errs))
-		assert.Equal(t, 1, len(errs["initialization"]))
-		assert.Contains(t, errs["initialization"][0].Error(), "one or both reports are nil")
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "one or both reports are nil")
 
-		failed, errs = CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, nil, nil)
+		failed, err = CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, nil, nil)
 		assert.True(t, failed)
-		assert.Equal(t, 1, len(errs))
-		assert.Equal(t, 1, len(errs["initialization"]))
-		assert.Contains(t, errs["initialization"][0].Error(), "one or both reports are nil")
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "one or both reports are nil")
 	})
 
 	t.Run("handle incorrect thresholds", func(t *testing.T) {
@@ -1796,26 +1900,23 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, errs := CompareDirectWithThresholds(-0.1, 100.0, 0.0, 100.0, report, report)
+		failed, err := CompareDirectWithThresholds(-0.1, 100.0, 0.0, 100.0, report, report)
 		assert.True(t, failed)
-		assert.Equal(t, 1, len(errs))
-		assert.Equal(t, 1, len(errs["initialization"]))
-		assert.Contains(t, errs["initialization"][0].Error(), "median threshold -0.1000 is not in the range [0, 100]")
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "median threshold -0.1000 is not in the range [0, 100]")
 
-		failed, errs = CompareDirectWithThresholds(1.0, 101.0, 0.0, 100.0, report, report)
+		failed, err = CompareDirectWithThresholds(1.0, 101.0, 0.0, 100.0, report, report)
 		assert.True(t, failed)
-		assert.Equal(t, 1, len(errs))
-		assert.Equal(t, 1, len(errs["initialization"]))
-		assert.Contains(t, errs["initialization"][0].Error(), "p95 threshold 101.0000 is not in the range [0, 100]")
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "p95 threshold 101.0000 is not in the range [0, 100]")
 
-		failed, errs = CompareDirectWithThresholds(-1, -1, -1, -1, report, report)
+		failed, err = CompareDirectWithThresholds(-1, -1, -1, -1, report, report)
 		assert.True(t, failed)
-		assert.Equal(t, 1, len(errs))
-		assert.Equal(t, 4, len(errs["initialization"]))
-		assert.Contains(t, errs["initialization"][0].Error(), "median threshold -1.0000 is not in the range [0, 100]")
-		assert.Contains(t, errs["initialization"][1].Error(), "p95 threshold -1.0000 is not in the range [0, 100]")
-		assert.Contains(t, errs["initialization"][2].Error(), "max threshold -1.0000 is not in the range [0, 100]")
-		assert.Contains(t, errs["initialization"][3].Error(), "error rate threshold -1.0000 is not in the range [0, 100]")
+		assert.NotNil(t, err)
+		assert.Contains(t, err.Error(), "median threshold -1.0000 is not in the range [0, 100]")
+		assert.Contains(t, err.Error(), "p95 threshold -1.0000 is not in the range [0, 100]")
+		assert.Contains(t, err.Error(), "max threshold -1.0000 is not in the range [0, 100]")
+		assert.Contains(t, err.Error(), "error rate threshold -1.0000 is not in the range [0, 100]")
 	})
 }
 
