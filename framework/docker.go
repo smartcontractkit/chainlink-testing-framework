@@ -47,15 +47,19 @@ func GetHost(container tc.Container) (string, error) {
 	return host, nil
 }
 
-func MapTheSamePort(port string) nat.PortMap {
-	return nat.PortMap{
-		nat.Port(port): []nat.PortBinding{
+func MapTheSamePort(ports ...string) nat.PortMap {
+	portMap := nat.PortMap{}
+	for _, port := range ports {
+		// need to split off /tcp or /udp
+		onlyPort := strings.SplitN(port, "/", 2)
+		portMap[nat.Port(port)] = []nat.PortBinding{
 			{
 				HostIP:   "0.0.0.0",
-				HostPort: port,
+				HostPort: onlyPort[0],
 			},
-		},
+		}
 	}
+	return portMap
 }
 
 func DefaultTCLabels() map[string]string {
