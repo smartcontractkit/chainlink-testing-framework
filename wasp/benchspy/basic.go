@@ -121,6 +121,13 @@ func (b *BasicData) Validate() error {
 		return errors.New("test end time is missing. We cannot query Loki without a time range. Please set it and try again")
 	}
 
+	if b.TestEnd.Before(b.TestStart) {
+		return errors.New("test end time is before test start time. Please set valid times and try again")
+	}
+	if b.TestEnd.Sub(b.TestStart) < time.Second {
+		return errors.New("test duration is less than a second. Please set a valid time range and try again")
+	}
+
 	if len(b.GeneratorConfigs) == 0 {
 		return errors.New("generator configs are missing. At least one is required. Please set them and try again")
 	}
