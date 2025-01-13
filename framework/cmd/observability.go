@@ -30,7 +30,7 @@ func observabilityDown() error {
 	framework.L.Info().Msg("Removing local observability stack")
 	err := runCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
-		docker compose down -v
+		docker compose down -v && docker rm -f promtail
 	`, "compose"))
 	if err != nil {
 		return err
