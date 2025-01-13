@@ -130,7 +130,7 @@ func Load[X any](t *testing.T) (*X, error) {
 	t.Cleanup(func() {
 		err := Store[X](input)
 		require.NoError(t, err)
-		err = WriteAllContainersLogs(DefaultCTFLogsDir)
+		err = WriteAllContainersLogs(fmt.Sprintf("%s-%s", DefaultCTFLogsDir, t.Name()))
 		require.NoError(t, err)
 		err = checkAllNodeLogErrors()
 		require.NoError(t, err)
