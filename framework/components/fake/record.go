@@ -6,10 +6,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"net/http"
+	"sync"
 )
 
 var (
-	R = NewRecords()
+	R  = NewRecords()
+	mu sync.Mutex
 )
 
 // Record is a request and response data
@@ -78,6 +80,8 @@ func recordMiddleware() gin.HandlerFunc {
 		// Capture response data
 		resBody := customWriter.body.String()
 		status := c.Writer.Status()
+		mu.Lock()
+		defer mu.Unlock()
 		if R.Data[c.Request.URL.Path] == nil {
 			R.Data[c.Request.URL.Path] = make([]*Record, 0)
 		}
