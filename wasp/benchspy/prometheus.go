@@ -55,6 +55,10 @@ type PrometheusQueryExecutor struct {
 
 // NewPrometheusQueryExecutor creates a new PrometheusResourceReporter, url should include basic auth if needed
 func NewPrometheusQueryExecutor(queries map[string]string, config *PrometheusConfig) (*PrometheusQueryExecutor, error) {
+	L.Debug().
+		Int("Queries", len(queries)).
+		Msg("Creating new Prometheus query executor")
+
 	c, err := client.NewPrometheusClient(config.Url)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create Prometheus client")
@@ -92,7 +96,16 @@ func NewStandardPrometheusQueryExecutor(startTime, endTime time.Time, config *Pr
 // Execute runs the defined Prometheus queries concurrently, collecting results and warnings.
 // It returns an error if any query fails, allowing for efficient data retrieval in reporting tasks.
 func (r *PrometheusQueryExecutor) Execute(ctx context.Context) error {
+	L.Info().
+		Int("Queries", len(r.Queries)).
+		Msg("Executing Prometheus queries")
+
 	for name, query := range r.Queries {
+		L.Debug().
+			Str("Query name", name).
+			Str("Query", query).
+			Msg("Executing Prometheus query")
+
 		result, warnings, queryErr := r.client.Query(ctx, query, r.EndTime)
 		if queryErr != nil {
 			return errors.Wrapf(queryErr, "failed to query Prometheus for %s", name)
@@ -104,6 +117,10 @@ func (r *PrometheusQueryExecutor) Execute(ctx context.Context) error {
 
 		r.QueryResults[name] = result
 	}
+
+	L.Info().
+		Int("Queries", len(r.Queries)).
+		Msg("Prometheus queries executed successfully")
 
 	return nil
 }
@@ -123,6 +140,9 @@ func (l *PrometheusQueryExecutor) Kind() string {
 // Validate checks the PrometheusQueryExecutor for a valid client and ensures that at least one query is provided.
 // It returns an error if the client is nil or no queries are specified, helping to ensure proper configuration before execution.
 func (r *PrometheusQueryExecutor) Validate() error {
+	L.Debug().
+		Msg("Validating Prometheus query executor")
+
 	if r.client == nil {
 		return errors.New("prometheus client is nil")
 	}
@@ -131,12 +151,19 @@ func (r *PrometheusQueryExecutor) Validate() error {
 		return errors.New("no queries provided")
 	}
 
+	L.Debug().
+		Msg("Prometheus query executor is valid")
+
 	return nil
 }
 
 // IsComparable checks if the provided QueryExecutor is of the same type as the receiver.
 // It returns an error if the types do not match, ensuring type safety for query comparisons.
 func (r *PrometheusQueryExecutor) IsComparable(other QueryExecutor) error {
+	L.Debug().
+		Str("Expected kind", r.KindName).
+		Msg("Checking if query executors are comparable")
+
 	otherType := reflect.TypeOf(other)
 	if otherType != reflect.TypeOf(r) {
 		return fmt.Errorf("expected type %s, got %s", reflect.TypeOf(r), otherType)
@@ -144,7 +171,16 @@ func (r *PrometheusQueryExecutor) IsComparable(other QueryExecutor) error {
 
 	asPrometheusResourceReporter := other.(*PrometheusQueryExecutor)
 
-	return r.compareQueries(asPrometheusResourceReporter.Queries)
+	queryErr := r.compareQueries(asPrometheusResourceReporter.Queries)
+	if queryErr != nil {
+		return queryErr
+	}
+
+	L.Debug().
+		Str("Kind", r.KindName).
+		Msg("Query executors are comparable")
+
+	return nil
 }
 
 func (r *PrometheusQueryExecutor) compareQueries(other map[string]string) error {
@@ -176,8 +212,14 @@ func (r *PrometheusQueryExecutor) Warnings() map[string]v1.Warnings {
 // MustResultsAsValue retrieves the query results as a map of metric names to their corresponding values.
 // It ensures that the results are in a consistent format, making it easier to work with metrics in subsequent operations.
 func (r *PrometheusQueryExecutor) MustResultsAsValue() map[string]model.Value {
+	L.Debug().
+		Msg("Casting query results to expected types")
+
 	results := make(map[string]model.Value)
 	for name, result := range r.QueryResults {
+		L.Debug().
+			Str("Query name", name).
+			Msg("Casting query result to expected type")
 		var val model.Value
 		switch v := result.(type) {
 		case model.Matrix:
@@ -206,6 +248,11 @@ func (r *PrometheusQueryExecutor) MustResultsAsValue() map[string]model.Value {
 			panic(fmt.Sprintf("Unknown result type: %T", result))
 		}
 		results[name] = val
+
+		L.Debug().
+			Str("Query name", name).
+			Str("Type", val.Type().String()).
+			Msg("Query result casted to expected type")
 	}
 	return results
 }
@@ -238,6 +285,9 @@ func (r *PrometheusQueryExecutor) standardQuery(metric StandardResourceMetric, n
 }
 
 func (r *PrometheusQueryExecutor) generateStandardQueries(nameRegexPattern string, startTime, endTime time.Time) (map[string]string, error) {
+	L.Debug().
+		Msg("Generating standard Prometheus queries")
+
 	standardQueries := make(map[string]string)
 
 	for _, metric := range StandardResourceMetrics {
@@ -247,6 +297,10 @@ func (r *PrometheusQueryExecutor) generateStandardQueries(nameRegexPattern strin
 		}
 		standardQueries[string(metric)] = query
 	}
+
+	L.Debug().
+		Int("Queries", len(standardQueries)).
+		Msg("Standard Prometheus queries generated")
 
 	return standardQueries, nil
 }

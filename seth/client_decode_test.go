@@ -10,7 +10,7 @@ import (
 )
 
 func TestSmokeDebugReverts(t *testing.T) {
-	c := newClient(t)
+	c := newClientWithContractMapFromEnv(t)
 
 	type test struct {
 		name   string
@@ -63,7 +63,7 @@ func TestSmokeDebugReverts(t *testing.T) {
 }
 
 func TestSmokeDebugData(t *testing.T) {
-	c := newClient(t)
+	c := newClientWithContractMapFromEnv(t)
 	c.Cfg.TracingLevel = seth.TracingLevel_All
 
 	type test struct {
@@ -226,9 +226,10 @@ func TestSmokeDebugData(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, dtx.Input, tc.output.Input)
 				require.Equal(t, dtx.Output, tc.output.Output)
+				require.Equal(t, len(tc.output.Events), len(dtx.Events))
 				for i, e := range tc.output.Events {
 					require.NotNil(t, dtx.Events[i])
-					require.Equal(t, dtx.Events[i].EventData, e.EventData)
+					require.Equal(t, e.EventData, dtx.Events[i].EventData)
 				}
 			}
 		})

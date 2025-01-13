@@ -76,6 +76,7 @@ func newAnvil(in *Input) (*Output, error) {
 		Family:        "evm",
 		ChainID:       in.ChainID,
 		ContainerName: containerName,
+		Container:     c,
 		Nodes: []*Node{
 			{
 				HostWSUrl:             fmt.Sprintf("ws://%s:%s", host, mp.Port()),

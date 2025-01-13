@@ -27,6 +27,11 @@ var (
 // It initializes the executor with the specified generator name, queries, and Loki configuration.
 // This function is useful for setting up a query executor to interact with Loki for log data retrieval.
 func NewLokiQueryExecutor(generatorName string, queries map[string]string, lokiConfig *wasp.LokiConfig) *LokiQueryExecutor {
+	L.Debug().
+		Str("Generator", generatorName).
+		Int("Queries", len(queries)).
+		Msg("Creating new Loki query executor")
+
 	return &LokiQueryExecutor{
 		KindName:            string(StandardQueryExecutor_Loki),
 		GeneratorNameString: generatorName,
@@ -74,6 +79,10 @@ func (l *LokiQueryExecutor) Kind() string {
 // It compares the queries of both executors to ensure they are equivalent in structure and content.
 // This function is useful for validating compatibility between different query executors.
 func (l *LokiQueryExecutor) IsComparable(otherQueryExecutor QueryExecutor) error {
+	L.Debug().
+		Str("Expected kind", l.KindName).
+		Msg("Checking if query executors are comparable")
+
 	otherType := reflect.TypeOf(otherQueryExecutor)
 
 	if otherType != reflect.TypeOf(l) {
@@ -85,13 +94,25 @@ func (l *LokiQueryExecutor) IsComparable(otherQueryExecutor QueryExecutor) error
 		return fmt.Errorf("generator name is different. Expected %s, got %s", l.GeneratorNameString, otherAsLoki.GeneratorNameString)
 	}
 
-	return l.compareQueries(otherQueryExecutor.(*LokiQueryExecutor).Queries)
+	queryErr := l.compareQueries(otherQueryExecutor.(*LokiQueryExecutor).Queries)
+	if queryErr != nil {
+		return queryErr
+	}
+
+	L.Debug().
+		Str("Kind", l.KindName).
+		Msg("Query executors are comparable")
+
+	return nil
 }
 
 // Validate checks if the LokiQueryExecutor has valid queries and configuration.
 // It returns an error if no queries are set or if the configuration is missing,
 // ensuring that the executor is ready for execution.
 func (l *LokiQueryExecutor) Validate() error {
+	L.Debug().
+		Msg("Validating Loki query executor")
+
 	if len(l.Queries) == 0 {
 		return errors.New("there are no Loki queries, there's nothing to fetch. Please set them and try again")
 	}
@@ -102,6 +123,9 @@ func (l *LokiQueryExecutor) Validate() error {
 		return errors.New("generator name is missing. Please set it and try again")
 	}
 
+	L.Debug().
+		Msg("Loki query executor is valid")
+
 	return nil
 }
 
@@ -109,6 +133,11 @@ func (l *LokiQueryExecutor) Validate() error {
 // It requires a valid configuration and handles basic authentication if provided.
 // The function returns an error if any query execution fails or if the configuration is missing.
 func (l *LokiQueryExecutor) Execute(ctx context.Context) error {
+	L.Info().
+		Str("Generator", l.GeneratorNameString).
+		Int("Queries", len(l.Queries)).
+		Msg("Executing Loki queries")
+
 	var basicAuth client.LokiBasicAuth
 
 	if l.Config == nil {
@@ -130,6 +159,12 @@ func (l *LokiQueryExecutor) Execute(ctx context.Context) error {
 	errGroup, errCtx := errgroup.WithContext(ctx)
 
 	for name, query := range l.Queries {
+		L.Debug().
+			Str("Generator", l.GeneratorNameString).
+			Str("Query name", name).
+			Str("Query", query).
+			Msg("Executing Loki query")
+
 		errGroup.Go(func() error {
 			queryParams := client.LokiQueryParams{
 				Query:     query,
@@ -158,8 +193,17 @@ func (l *LokiQueryExecutor) Execute(ctx context.Context) error {
 
 			select {
 			case resultCh <- resultMap:
+				L.Debug().
+					Str("Generator", l.GeneratorNameString).
+					Str("Query name", name).
+					Msg("Loki query executed successfully")
 				return nil
 			case <-errCtx.Done():
+				L.Debug().
+					Str("Generator", l.GeneratorNameString).
+					Str("Query name", name).
+					Str("Upstream error", errCtx.Err().Error()).
+					Msg("Loki query execution cancelled")
 				return errCtx.Err() // Allows goroutine to exit if timeout occurs
 			}
 		})
@@ -175,6 +219,11 @@ func (l *LokiQueryExecutor) Execute(ctx context.Context) error {
 			l.QueryResults[name] = logs
 		}
 	}
+
+	L.Info().
+		Str("Generator", l.GeneratorNameString).
+		Int("Queries", len(l.Queries)).
+		Msg("Loki queries executed successfully")
 
 	return nil
 }
@@ -270,6 +319,9 @@ func (l *LokiQueryExecutor) standardQuery(standardMetric StandardLoadMetric, tes
 }
 
 func (l *LokiQueryExecutor) generateStandardQueries(testName, generatorName, branch, commit string, startTime, endTime time.Time) (map[string]string, error) {
+	L.Debug().
+		Msg("Generating standard Loki queries")
+
 	standardQueries := make(map[string]string)
 
 	for _, metric := range StandardLoadMetrics {
@@ -279,6 +331,10 @@ func (l *LokiQueryExecutor) generateStandardQueries(testName, generatorName, bra
 		}
 		standardQueries[string(metric)] = query
 	}
+
+	L.Debug().
+		Int("Queries", len(standardQueries)).
+		Msg("Standard Loki queries generated")
 
 	return standardQueries, nil
 }

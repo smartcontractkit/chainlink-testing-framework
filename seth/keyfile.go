@@ -71,7 +71,7 @@ func ReturnFunds(c *Client, toAddr string) error {
 			if err != nil {
 				gasLimit = c.Cfg.Network.TransferGasFee
 			} else {
-				gasLimit = int64(gasLimitRaw)
+				gasLimit = mustSafeInt64(gasLimitRaw)
 			}
 
 			networkTransferFee := gasPrice.Int64() * gasLimit

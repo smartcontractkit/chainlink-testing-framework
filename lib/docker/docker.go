@@ -1,10 +1,13 @@
 package docker
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
+	"github.com/docker/docker/api/types/container"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 
@@ -58,8 +61,13 @@ var NaiveRetrier = func(l zerolog.Logger, startErr error, req tc.GenericContaine
 		Str("Retrier", "NaiveRetrier").
 		Msgf("Attempting to start %s container", req.Name)
 
-	oldName := req.Name
-	req.Name = req.Name + "-naive-retry"
+	req.Reuse = false // We need to force a new container to be created
+
+	removeErr := removeContainer(req)
+	if removeErr != nil {
+		l.Error().Err(removeErr).Msgf("Failed to remove %s container to initiate restart", req.Name)
+		return nil, removeErr
+	}
 
 	ct, err := tc.GenericContainer(testcontext.Get(nil), req)
 	if err == nil {
@@ -78,8 +86,6 @@ var NaiveRetrier = func(l zerolog.Logger, startErr error, req tc.GenericContaine
 		}
 	}
 
-	req.Name = oldName
-
 	l.Debug().
 		Str("Original start error", startErr.Error()).
 		Str("Current start error", err.Error()).
@@ -94,9 +100,8 @@ var LinuxPlatformImageRetrier = func(l zerolog.Logger, startErr error, req tc.Ge
 	if startErr == nil {
 		return nil, startErr
 	}
+
 	req.Reuse = false // We need to force a new container to be created
-	oldName := req.Name
-	req.Name = req.Name + "-linux-retry"
 
 	// a bit lame, but that's the lame error we get in case there's no specific image for our platform :facepalm:
 	if !strings.Contains(startErr.Error(), "No such image") {
@@ -115,6 +120,12 @@ var LinuxPlatformImageRetrier = func(l zerolog.Logger, startErr error, req tc.Ge
 	originalPlatform := req.ImagePlatform
 	req.ImagePlatform = "linux/x86_64"
 
+	removeErr := removeContainer(req)
+	if removeErr != nil {
+		l.Error().Err(removeErr).Msgf("Failed to remove %s container to initiate restart", req.Name)
+		return nil, removeErr
+	}
+
 	ct, err := tc.GenericContainer(testcontext.Get(nil), req)
 	if err == nil {
 		l.Debug().
@@ -124,7 +135,6 @@ var LinuxPlatformImageRetrier = func(l zerolog.Logger, startErr error, req tc.Ge
 	}
 
 	req.ImagePlatform = originalPlatform
-	req.Name = oldName
 
 	if ct != nil {
 		err := ct.Terminate(testcontext.Get(nil))
@@ -170,4 +180,19 @@ func StartContainerWithRetry(l zerolog.Logger, req tc.GenericContainerRequest, r
 	}
 
 	return nil, err
+}
+
+func removeContainer(req tc.GenericContainerRequest) error {
+	provider, providerErr := tc.NewDockerProvider()
+	if providerErr != nil {
+		return errors.Wrapf(providerErr, "failed to create Docker provider")
+	}
+
+	removeErr := provider.Client().ContainerRemove(context.Background(), req.Name, container.RemoveOptions{Force: true})
+	if removeErr != nil && strings.Contains(strings.ToLower(removeErr.Error()), "no such container") {
+		// container doesn't exist, nothing to remove
+		return nil
+	}
+
+	return removeErr
 }

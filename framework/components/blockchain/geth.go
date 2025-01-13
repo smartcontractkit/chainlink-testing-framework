@@ -214,6 +214,7 @@ func newGeth(in *Input) (*Output, error) {
 		Family:        "evm",
 		ChainID:       in.ChainID,
 		ContainerName: containerName,
+		Container:     c,
 		Nodes: []*Node{
 			{
 				HostHTTPUrl:           fmt.Sprintf("http://%s:%s", host, mp.Port()),
