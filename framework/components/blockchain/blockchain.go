@@ -2,6 +2,8 @@ package blockchain
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/testcontainers/testcontainers-go"
 )
 
@@ -26,6 +28,9 @@ type Input struct {
 	// a map of program name to program id
 	// there needs to be a matching .so file in contracts_dir
 	SolanaPrograms map[string]string `toml:"solana_programs"`
+
+	// used to cancel container contexts
+	T *testing.T `toml:"testing"`
 }
 
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network

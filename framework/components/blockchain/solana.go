@@ -131,6 +131,13 @@ func newSolana(in *Input) (*Output, error) {
 		ContainerRequest: req,
 		Started:          true,
 	})
+	// Call cleanup container indiscriminately
+	// This should be called as a defer directly after (before any error check)
+	// of [GenericContainer](...) or a modules Run(...) in a test to ensure the
+	// container is stopped when the function ends.
+	if in.T != nil {
+		testcontainers.CleanupContainer(in.T, c)
+	}
 	if err != nil {
 		return nil, err
 	}
