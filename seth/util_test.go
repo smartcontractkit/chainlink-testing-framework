@@ -183,6 +183,7 @@ func TestUtilPendingNonce(t *testing.T) {
 					seth.L.Debug().Msgf("Starting tx %d", index)
 
 					opts := c.NewTXOpts()
+					//nolint
 					nonceToUse := int64(getNonceAndIncrement())
 					opts.Nonce = big.NewInt(nonceToUse)
 					defer seth.L.Debug().Msgf("Finished tx %d with nonce %d", index, nonceToUse)
@@ -193,6 +194,7 @@ func TestUtilPendingNonce(t *testing.T) {
 					if index == 50 {
 						started <- struct{}{}
 					}
+					//nolint
 					nonceCh <- uint64(nonceToUse)
 				}(i)
 			}
@@ -205,6 +207,7 @@ func TestUtilPendingNonce(t *testing.T) {
 		pendingNonce, err := c.Client.PendingNonceAt(context.Background(), c.Addresses[testCase.keyNum])
 		require.NoError(t, err, "Error getting pending nonce")
 
+		//nolint
 		require.Greater(t, int64(pendingNonce), int64(lastNonce), "Pending nonce should be greater than last nonce")
 
 		if testCase.keyNum == 0 {

@@ -253,15 +253,15 @@ func TestRenderResults(t *testing.T) {
 				PanickedTests:  0,
 				RacedTests:     0,
 				FlakyTests:     1,
-				FlakyTestRatio: "100.00%",
+				FlakyTestRatio: "100%",
 				TotalRuns:      4,
 				PassedRuns:     3,
 				FailedRuns:     1,
 				SkippedRuns:    0,
-				PassRatio:      "75.00%",
+				PassRatio:      "75%",
 				MaxPassRatio:   0.9,
 			},
-			expectedStringsContain: []string{"Test1", "package1", "75.00%", "false", "1.05s", "4", "0"},
+			expectedStringsContain: []string{"Test1", "package1", "75%", "false", "1.05s", "4", "0"},
 		},
 		// Add more test cases as needed
 	}

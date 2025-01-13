@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/docker/docker/api/types/container"
+	filters2 "github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
@@ -47,15 +48,19 @@ func GetHost(container tc.Container) (string, error) {
 	return host, nil
 }
 
-func MapTheSamePort(port string) nat.PortMap {
-	return nat.PortMap{
-		nat.Port(port): []nat.PortBinding{
+func MapTheSamePort(ports ...string) nat.PortMap {
+	portMap := nat.PortMap{}
+	for _, port := range ports {
+		// need to split off /tcp or /udp
+		onlyPort := strings.SplitN(port, "/", 2)
+		portMap[nat.Port(port)] = []nat.PortBinding{
 			{
 				HostIP:   "0.0.0.0",
-				HostPort: port,
+				HostPort: onlyPort[0],
 			},
-		},
+		}
 	}
+	return portMap
 }
 
 func DefaultTCLabels() map[string]string {
@@ -171,23 +176,6 @@ func (dc *DockerClient) copyToContainer(containerID, sourceFile, targetPath stri
 	return nil
 }
 
-func in(s string, substrings []string) bool {
-	for _, substr := range substrings {
-		if strings.Contains(s, substr) {
-			return true
-		}
-	}
-	return false
-}
-
-func isLocalToolDockerContainer(containerName string) bool {
-	if in(containerName, []string{"/sig-provider", "/stats", "/stats-db", "/db", "/backend", "/promtail", "/compose", "/blockscout", "/frontend", "/user-ops-indexer", "/visualizer", "/redis-db", "/proxy"}) {
-		L.Debug().Str("Container", containerName).Msg("Ignoring local tool container output")
-		return true
-	}
-	return false
-}
-
 // WriteAllContainersLogs writes all Docker container logs to the default logs directory
 func WriteAllContainersLogs(dir string) error {
 	L.Info().Msg("Writing Docker containers logs")
@@ -200,7 +188,13 @@ func WriteAllContainersLogs(dir string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create Docker provider: %w", err)
 	}
-	containers, err := provider.Client().ContainerList(context.Background(), container.ListOptions{All: true})
+	containers, err := provider.Client().ContainerList(context.Background(), container.ListOptions{
+		All: true,
+		Filters: filters2.NewArgs(filters2.KeyValuePair{
+			Key:   "label",
+			Value: "framework=ctf",
+		}),
+	})
 	if err != nil {
 		return fmt.Errorf("failed to list Docker containers: %w", err)
 	}
@@ -210,9 +204,6 @@ func WriteAllContainersLogs(dir string) error {
 	for _, containerInfo := range containers {
 		eg.Go(func() error {
 			containerName := containerInfo.Names[0]
-			if isLocalToolDockerContainer(containerName) {
-				return nil
-			}
 			L.Debug().Str("Container", containerName).Msg("Collecting logs")
 			logOptions := container.LogsOptions{ShowStdout: true, ShowStderr: true}
 			logs, err := provider.Client().ContainerLogs(context.Background(), containerInfo.ID, logOptions)

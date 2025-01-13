@@ -51,7 +51,7 @@ jobs:
           fi
 
           # Extract the version part of the last tag
-          LAST_TAG_VERSION="${LAST_TAG##*/}"  
+          LAST_TAG_VERSION="${LAST_TAG##*/}"
           echo "Last tag version: $LAST_TAG_VERSION"
           echo "LAST_TAG_VERSION=${LAST_TAG_VERSION}" >> "$GITHUB_ENV"
 

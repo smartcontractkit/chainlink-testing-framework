@@ -125,7 +125,7 @@ func (cs *BlockStats) CalculateBlockDurations(blocks []*types.Block) error {
 	totalSize := uint64(0)
 
 	for i := 1; i < len(blocks); i++ {
-		duration := time.Unix(int64(blocks[i].Time()), 0).Sub(time.Unix(int64(blocks[i-1].Time()), 0))
+		duration := time.Unix(mustSafeInt64(blocks[i].Time()), 0).Sub(time.Unix(mustSafeInt64(blocks[i-1].Time()), 0))
 		durations = append(durations, duration)
 		totalDuration += duration
 
@@ -155,7 +155,7 @@ func (cs *BlockStats) CalculateBlockDurations(blocks []*types.Block) error {
 
 		L.Debug().
 			Uint64("BlockNumber", blocks[i].Number().Uint64()).
-			Time("BlockTime", time.Unix(int64(blocks[i].Time()), 0)).
+			Time("BlockTime", time.Unix(mustSafeInt64(blocks[i].Time()), 0)).
 			Str("Duration", duration.String()).
 			Float64("GasUsedPercentage", calculateRatioPercentage(blocks[i].GasUsed(), blocks[i].GasLimit())).
 			Float64("TPS", tps).

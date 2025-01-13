@@ -184,7 +184,7 @@ func TestGasBumping_Contract_Deployment_Legacy_CustomBumpingFunction(t *testing.
 	client, err := seth.NewClientBuilder().
 		WithRpcUrl(c.Cfg.Network.URLs[0]).
 		WithPrivateKeys([]string{newPk}).
-		WithGasPriceEstimations(false, 0, "").
+		WithGasPriceEstimations(false, 0, "", 0).
 		WithEIP1559DynamicFees(false).
 		WithLegacyGasPrice(1).
 		WithTransactionTimeout(10*time.Second).

@@ -39,19 +39,27 @@ func NewStandardDirectQueryExecutor(generator *wasp.Generator) (*DirectQueryExec
 // NewDirectQueryExecutor creates a new DirectQueryExecutor with the specified generator and query functions.
 // It initializes the executor with a kind name and prepares a map for query results, enabling efficient query execution.
 func NewDirectQueryExecutor(generator *wasp.Generator, queries map[string]DirectQueryFn) (*DirectQueryExecutor, error) {
-	g := &DirectQueryExecutor{
+	ex := &DirectQueryExecutor{
 		KindName:     string(StandardQueryExecutor_Direct),
 		Generator:    generator,
 		Queries:      queries,
 		QueryResults: make(map[string]interface{}),
 	}
 
-	return g, nil
+	L.Debug().
+		Str("Generator", ex.GeneratorName()).
+		Int("Queries", len(queries)).
+		Msg("Creating new Direct query executor")
+
+	return ex, nil
 }
 
 // GeneratorName returns the name of the generator associated with the query executor.
 // It is useful for identifying and categorizing results based on their generator type.
 func (g *DirectQueryExecutor) GeneratorName() string {
+	if g.Generator == nil {
+		return ""
+	}
 	return g.Generator.Cfg.GenName
 }
 
@@ -70,6 +78,10 @@ func (l *DirectQueryExecutor) Kind() string {
 // IsComparable checks if the given QueryExecutor is of the same type and has comparable configurations.
 // It returns an error if the types do not match or if the configurations are not comparable.
 func (g *DirectQueryExecutor) IsComparable(otherQueryExecutor QueryExecutor) error {
+	L.Debug().
+		Str("Expected kind", g.KindName).
+		Msg("Checking if query executors are comparable")
+
 	otherType := reflect.TypeOf(otherQueryExecutor)
 
 	if otherType != reflect.TypeOf(g) {
@@ -82,7 +94,16 @@ func (g *DirectQueryExecutor) IsComparable(otherQueryExecutor QueryExecutor) err
 		return errors.New("generators are not comparable")
 	}
 
-	return g.compareQueries(otherGeneratorQueryExecutor.Queries)
+	queryErr := g.compareQueries(otherGeneratorQueryExecutor.Queries)
+	if queryErr != nil {
+		return queryErr
+	}
+
+	L.Debug().
+		Str("Kind", g.KindName).
+		Msg("Query executors are comparable")
+
+	return nil
 }
 
 func (l *DirectQueryExecutor) compareQueries(other map[string]DirectQueryFn) error {
@@ -104,6 +125,9 @@ func (l *DirectQueryExecutor) compareQueries(other map[string]DirectQueryFn) err
 // It ensures that a generator is set and at least one query is provided.
 // Returns an error if validation fails, helping to prevent execution issues.
 func (g *DirectQueryExecutor) Validate() error {
+	L.Debug().
+		Msg("Validating Direct query executor")
+
 	if g.Generator == nil {
 		return errors.New("generator is not set")
 	}
@@ -112,6 +136,9 @@ func (g *DirectQueryExecutor) Validate() error {
 		return errors.New("at least one query is needed")
 	}
 
+	L.Debug().
+		Msg("Direct query executor is valid")
+
 	return nil
 }
 
@@ -119,11 +146,21 @@ func (g *DirectQueryExecutor) Validate() error {
 // It validates the generator's data and aggregates responses before executing each query.
 // This function is essential for processing and retrieving results from multiple queries concurrently.
 func (g *DirectQueryExecutor) Execute(_ context.Context) error {
+	L.Info().
+		Str("Generator", g.Generator.Cfg.GenName).
+		Int("Queries", len(g.Queries)).
+		Msg("Executing Direct queries")
+
 	if g.Generator == nil {
 		return errors.New("generator is not set")
 	}
 
 	for queryName, queryFunction := range g.Queries {
+		L.Debug().
+			Str("Generator", g.Generator.Cfg.GenName).
+			Str("Query", queryName).
+			Msg("Executing Direct query")
+
 		if g.Generator.GetData() == nil {
 			return fmt.Errorf("generator %s has no data", g.Generator.Cfg.GenName)
 		}
@@ -148,7 +185,17 @@ func (g *DirectQueryExecutor) Execute(_ context.Context) error {
 		}
 
 		g.QueryResults[queryName] = results
+
+		L.Debug().
+			Str("Query", queryName).
+			Float64("Result", results).
+			Msg("Direct query executed successfully")
 	}
+
+	L.Info().
+		Str("Generator", g.Generator.Cfg.GenName).
+		Int("Queries", len(g.Queries)).
+		Msg("Direct queries executed successfully")
 
 	return nil
 }
@@ -160,6 +207,9 @@ func (g *DirectQueryExecutor) TimeRange(_, _ time.Time) {
 }
 
 func (g *DirectQueryExecutor) generateStandardQueries() (map[string]DirectQueryFn, error) {
+	L.Debug().
+		Msg("Generating standard Direct queries")
+
 	standardQueries := make(map[string]DirectQueryFn)
 
 	for _, metric := range StandardLoadMetrics {
@@ -169,6 +219,10 @@ func (g *DirectQueryExecutor) generateStandardQueries() (map[string]DirectQueryF
 		}
 		standardQueries[string(metric)] = query
 	}
+
+	L.Debug().
+		Int("Queries", len(standardQueries)).
+		Msg("Standard queries Direct generated")
 
 	return standardQueries, nil
 }

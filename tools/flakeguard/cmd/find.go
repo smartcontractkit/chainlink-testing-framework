@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/git"
@@ -160,7 +161,7 @@ func outputResults(packages []string, jsonOutput bool) {
 		log.Debug().Str("output", string(data)).Msg("JSON")
 	} else {
 		for _, pkg := range packages {
-			log.Debug().Str("package", pkg).Msg("Test package")
+			fmt.Print(pkg, " ")
 		}
 	}
 }
