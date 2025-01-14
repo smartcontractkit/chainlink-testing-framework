@@ -1385,6 +1385,10 @@ func (e *EthereumClient) startHeaderPolling() error {
 					for blockNum := lastHeaderNumber + 1; blockNum <= latestHeader.Number.Uint64(); blockNum++ {
 						// Create a new context with timeout for each HeaderByNumber call
 						blockCtx, blockCancel := context.WithTimeout(context.Background(), e.NetworkConfig.Timeout.Duration)
+						if blockNum > math.MaxInt64 {
+							e.l.Error().Int64("Chain Id", e.GetChainID().Int64()).Uint64("BlockNumber", blockNum).Msg("blockNum exceeds the maximum value for int64")
+							continue
+						}
 						header, err := e.HeaderByNumber(blockCtx, big.NewInt(int64(blockNum)))
 						blockCancel()
 						if err != nil {
