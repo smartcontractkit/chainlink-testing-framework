@@ -113,7 +113,7 @@ level = 'info'
 	}
 
 	for _, tc := range testCases {
-		err := framework.DefaultNetwork(&sync.Once{})
+		err := framework.DefaultNetwork(t, &sync.Once{})
 		require.NoError(t, err)
 
 		t.Run(tc.name, func(t *testing.T) {
