@@ -6,14 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
-	"sync"
-	"testing"
-	"text/template"
-	"time"
-
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-playground/validator/v10"
 	"github.com/pelletier/go-toml/v2"
@@ -21,6 +13,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/network"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+	"text/template"
+	"time"
 )
 
 const (
@@ -143,12 +142,12 @@ func Load[X any](t *testing.T) (*X, error) {
 	//		return nil, fmt.Errorf("failed to connect AWSSecretsManager: %w", err)
 	//	}
 	//}
-	err = DefaultNetwork(t, once)
+	err = DefaultNetwork(once)
 	require.NoError(t, err)
 	return input, nil
 }
 
-func DefaultNetwork(t *testing.T, once *sync.Once) error {
+func DefaultNetwork(once *sync.Once) error {
 	var net *testcontainers.DockerNetwork
 	var err error
 	once.Do(func() {
@@ -156,7 +155,6 @@ func DefaultNetwork(t *testing.T, once *sync.Once) error {
 			context.Background(),
 			network.WithLabels(map[string]string{"framework": "ctf"}),
 		)
-		testcontainers.CleanupNetwork(t, net)
 		DefaultNetworkName = net.Name
 	})
 	return err
