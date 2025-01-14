@@ -22,6 +22,10 @@ jobs:
             config: smoke.toml
             count: 1
             timeout: 10m
+          - name: TestAptosSmoke
+            config: smoke_aptos.toml
+            count: 1
+            timeout: 10m
           - name: TestSolanaSmoke
             config: smoke_solana.toml
             count: 1
