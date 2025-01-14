@@ -30,7 +30,7 @@ func createComponentsFromForm(form *nodeSetForm) error {
 		_   *simple_node_set.Output
 		err error
 	)
-	if err := framework.DefaultNetwork(t, &sync.Once{}); err != nil {
+	if _, err := framework.DefaultNetwork(&sync.Once{}); err != nil {
 		return err
 	}
 	switch form.Network {

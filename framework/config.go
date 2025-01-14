@@ -143,12 +143,12 @@ func Load[X any](t *testing.T) (*X, error) {
 	//		return nil, fmt.Errorf("failed to connect AWSSecretsManager: %w", err)
 	//	}
 	//}
-	err = DefaultNetwork(t, once)
+	_, err = DefaultNetwork(once)
 	require.NoError(t, err)
 	return input, nil
 }
 
-func DefaultNetwork(t *testing.T, once *sync.Once) error {
+func DefaultNetwork(once *sync.Once) (*testcontainers.DockerNetwork, error) {
 	var net *testcontainers.DockerNetwork
 	var err error
 	once.Do(func() {
@@ -156,10 +156,9 @@ func DefaultNetwork(t *testing.T, once *sync.Once) error {
 			context.Background(),
 			network.WithLabels(map[string]string{"framework": "ctf"}),
 		)
-		testcontainers.CleanupNetwork(t, net)
 		DefaultNetworkName = net.Name
 	})
-	return err
+	return net, err
 }
 
 func RenderTemplate(tmpl string, data interface{}) (string, error) {
