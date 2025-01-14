@@ -1,15 +1,14 @@
 package simple_node_set_test
 
 import (
-	"sync"
-	"testing"
-
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 	"github.com/stretchr/testify/require"
+	"sync"
+	"testing"
 )
 
 type testCase struct {
@@ -114,7 +113,7 @@ level = 'info'
 	}
 
 	for _, tc := range testCases {
-		_, err := framework.DefaultNetwork(&sync.Once{})
+		err := framework.DefaultNetwork(t, &sync.Once{})
 		require.NoError(t, err)
 
 		t.Run(tc.name, func(t *testing.T) {
