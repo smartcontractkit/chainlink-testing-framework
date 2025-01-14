@@ -8,7 +8,7 @@ import (
 // Input is a blockchain network configuration params
 type Input struct {
 	// Common EVM fields
-	Type      string `toml:"type" validate:"required,oneof=anvil geth besu solana" envconfig:"net_type"`
+	Type      string `toml:"type" validate:"required,oneof=anvil geth besu solana aptos" envconfig:"net_type"`
 	Image     string `toml:"image"`
 	PullImage bool   `toml:"pull_image"`
 	Port      string `toml:"port"`
@@ -47,8 +47,6 @@ type Node struct {
 }
 
 // NewBlockchainNetwork this is an abstraction that can spin up various blockchain network simulators
-// - Anvil
-// - Geth
 func NewBlockchainNetwork(in *Input) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
@@ -64,6 +62,8 @@ func NewBlockchainNetwork(in *Input) (*Output, error) {
 		out, err = newBesu(in)
 	case "solana":
 		out, err = newSolana(in)
+	case "aptos":
+		out, err = newAptos(in)
 	default:
 		return nil, fmt.Errorf("blockchain type is not supported or empty, must be 'anvil' or 'geth'")
 	}
