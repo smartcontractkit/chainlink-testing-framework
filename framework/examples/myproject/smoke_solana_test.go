@@ -22,7 +22,7 @@ func TestSolanaSmoke(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("test something", func(t *testing.T) {
-		// use internal URL to connect chainlink nodes
+		// use internal URL to connect Chainlink nodes
 		_ = bc.Nodes[0].DockerInternalHTTPUrl
 		// use host URL to deploy contracts
 		c := client.NewClient(bc.Nodes[0].HostHTTPUrl)

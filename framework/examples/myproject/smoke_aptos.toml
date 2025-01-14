@@ -1,0 +1,5 @@
+
+[blockchain_a]
+  type = "aptos"
+  port = "8082"
+  image = "aptoslabs/tools:nightly"
