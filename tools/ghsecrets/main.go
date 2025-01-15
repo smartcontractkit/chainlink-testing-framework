@@ -25,6 +25,7 @@ func main() {
 	var secretID string
 	var backend string      // Backend: GitHub or AWS
 	var decode bool         // Decode flag for `get`
+	var profile string      // AWS profile to use
 	var sharedWith []string // List of ARNs to share the secret with
 
 	// Set Command
@@ -57,10 +58,13 @@ func main() {
 					return
 				}
 			case "aws":
+				if profile == "" {
+					exitWithError(nil, "AWS profile is required when using the AWS backend. Use the --profile flag to specify it.")
+					return
+				}
 				// Ensure AWS secretID starts with "testsecrets/" prefix
-				// GHA IAM role has a policy that restricts access to secrets with this prefix
 				secretID = ensurePrefix(secretID, "testsecrets/")
-				if err := setAWSSecret(filePath, secretID, sharedWith); err != nil {
+				if err := setAWSSecret(filePath, secretID, profile, sharedWith); err != nil {
 					exitWithError(err, "Failed to set AWS secret")
 					return
 				}
@@ -76,8 +80,12 @@ func main() {
 		Use:   "get",
 		Short: "Retrieve a secret from AWS Secrets Manager",
 		Run: func(cmd *cobra.Command, args []string) {
+			if profile == "" {
+				exitWithError(nil, "AWS profile is required when using the AWS backend. Use the --profile flag to specify it.")
+				return
+			}
 			secretID = ensurePrefix(secretID, "testsecrets/")
-			if err := getAWSSecret(secretID, decode); err != nil {
+			if err := getAWSSecret(secretID, decode, profile); err != nil {
 				exitWithError(err, "Failed to retrieve AWS secret")
 			}
 		},
@@ -94,12 +102,13 @@ func main() {
 	setCmd.PersistentFlags().StringVarP(&filePath, "file", "f", defaultSecretsPath(), "Path to file with test secrets")
 	setCmd.PersistentFlags().StringVarP(&secretID, "secret-id", "s", "", "ID of the secret to set")
 	setCmd.PersistentFlags().StringVarP(&backend, "backend", "b", "aws", "Backend to use for storing secrets. Options: github, aws")
+	setCmd.PersistentFlags().StringVar(&profile, "profile", "", "AWS profile to use for credentials (required for AWS backend)")
 	setCmd.PersistentFlags().StringSliceVar(&sharedWith, "shared-with", []string{}, "Comma-separated list of IAM ARNs to share the secret with")
 
 	getCmd.PersistentFlags().StringVarP(&secretID, "secret-id", "s", "", "ID of the secret to retrieve")
 	getCmd.PersistentFlags().BoolVarP(&decode, "decode", "d", false, "Decode the Base64-encoded secret value")
+	getCmd.PersistentFlags().StringVar(&profile, "profile", "", "AWS profile to use for credentials (required for AWS backend)")
 
-	// Make secretID a required flag for the set command
 	getCmd.MarkPersistentFlagRequired("secret-id")
 
 	if err := rootCmd.Execute(); err != nil {
@@ -114,10 +123,8 @@ func setGitHubSecret(filePath, secretID string) error {
 		return fmt.Errorf("failed to read file: %w", err)
 	}
 
-	// Base64 encode the file content
 	encoded := base64.StdEncoding.EncodeToString(data)
 
-	// Construct the GitHub CLI command to set the secret
 	setSecretCmd := exec.Command("gh", "secret", "set", secretID, "--body", encoded)
 	setSecretCmd.Stdin = strings.NewReader(encoded)
 
@@ -136,18 +143,16 @@ func setGitHubSecret(filePath, secretID string) error {
 }
 
 // setAWSSecret creates or updates a secret in AWS Secrets Manager
-func setAWSSecret(filePath, secretID string, sharedWith []string) error {
-	secretID = ensurePrefix(secretID, "testsecrets/") // Ensure prefix
-
+func setAWSSecret(filePath, secretID, profile string, sharedWith []string) error {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
 	}
 	encoded := base64.StdEncoding.EncodeToString(data)
 
-	cfg, err := config.LoadDefaultConfig(context.TODO())
+	cfg, err := loadAWSConfig(profile)
 	if err != nil {
-		return fmt.Errorf("failed to load AWS config: %w", err)
+		return handleAWSSSOError(err)
 	}
 
 	smClient := secretsmanager.NewFromConfig(cfg)
@@ -167,33 +172,20 @@ func setAWSSecret(filePath, secretID string, sharedWith []string) error {
 				Description:  aws.String("Secret updated by ghsecrets CLI"),
 			})
 			if err != nil {
-				if strings.Contains(err.Error(), "InvalidGrantException") {
-					return fmt.Errorf(
-						"Your AWS SSO session has likely expired. Please re-authenticate by running:\n\n  aws sso login --profile <my-profile>\n\nThen try again.\n\nOriginal error: %w",
-						err,
-					)
-				}
-				return fmt.Errorf("failed to update AWS secret: %w", err)
+				return handleAWSSSOError(err)
 			}
 		} else {
-			if strings.Contains(err.Error(), "InvalidGrantException") {
-				return fmt.Errorf(
-					"Your AWS SSO session has likely expired. Please re-authenticate by running:\n\n  aws sso login --profile <my-profile>\n\nThen try again.\n\nOriginal error: %w",
-					err,
-				)
-			}
-			return fmt.Errorf("failed to create AWS secret: %w", err)
+			return handleAWSSSOError(err)
 		}
 	}
 
 	if len(sharedWith) > 0 {
-		err = updateAWSSecretAccessPolicy(secretID, sharedWith)
+		err = updateAWSSecretAccessPolicy(secretID, sharedWith, profile)
 		if err != nil {
 			return fmt.Errorf("failed to update secret sharing policy: %w", err)
 		}
 	}
 
-	// Success message with AWS-specific instructions
 	fmt.Printf(
 		"Test secret set successfully in AWS Secrets Manager with key: %s\n\n"+
 			"To use this secret in a GitHub workflow, set the 'test_secrets_override_key' flag with the 'aws:' prefix. Example:\n"+
@@ -203,10 +195,38 @@ func setAWSSecret(filePath, secretID string, sharedWith []string) error {
 	return nil
 }
 
+// getAWSSecret retrieves a test secret from AWS Secrets Manager
+func getAWSSecret(secretID string, decode bool, profile string) error {
+	cfg, err := loadAWSConfig(profile)
+	if err != nil {
+		return handleAWSSSOError(err)
+	}
+
+	smClient := secretsmanager.NewFromConfig(cfg)
+	out, err := smClient.GetSecretValue(context.TODO(), &secretsmanager.GetSecretValueInput{
+		SecretId: aws.String(secretID),
+	})
+	if err != nil {
+		return handleAWSSSOError(err)
+	}
+
+	value := aws.ToString(out.SecretString)
+	if decode {
+		decoded, err := base64.StdEncoding.DecodeString(value)
+		if err != nil {
+			return fmt.Errorf("failed to decode secret value: %w", err)
+		}
+		value = string(decoded)
+	}
+
+	fmt.Printf("Retrieved secret value:\n%s\n", value)
+	return nil
+}
+
 // updateAWSSecretAccessPolicy updates the sharing policy for a secret in AWS Secrets Manager
-func updateAWSSecretAccessPolicy(secretID string, sharedWith []string) error {
+func updateAWSSecretAccessPolicy(secretID string, sharedWith []string, profile string) error {
 	// 1) Load AWS config
-	cfg, err := config.LoadDefaultConfig(context.TODO())
+	cfg, err := loadAWSConfig(profile)
 	if err != nil {
 		return fmt.Errorf("failed to load AWS config: %w", err)
 	}
@@ -262,56 +282,19 @@ func updateAWSSecretAccessPolicy(secretID string, sharedWith []string) error {
 	return nil
 }
 
-// getAWSSecret retrieves a test secret from AWS Secrets Manager
-// getAWSSecret retrieves a test secret from AWS Secrets Manager
-func getAWSSecret(secretID string, decode bool) error {
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		return fmt.Errorf("failed to load AWS config: %w", err)
-	}
-
-	smClient := secretsmanager.NewFromConfig(cfg)
-	out, err := smClient.GetSecretValue(context.TODO(), &secretsmanager.GetSecretValueInput{
-		SecretId: aws.String(secretID),
-	})
-	if err != nil {
-		// Check if the error is due to an expired SSO token
-		if strings.Contains(err.Error(), "InvalidGrantException") {
-			return fmt.Errorf(
-				"Your AWS SSO session has likely expired. Please re-authenticate by running:\n\n  aws sso login --profile <my-profile>\n\nThen try again.\n\nOriginal error: %w",
-				err,
-			)
-		}
-		return fmt.Errorf("failed to retrieve AWS secret: %w", err)
-	}
-
-	value := aws.ToString(out.SecretString)
-	if decode {
-		decoded, err := base64.StdEncoding.DecodeString(value)
-		if err != nil {
-			return fmt.Errorf("failed to decode secret value: %w", err)
-		}
-		value = string(decoded)
-	}
-
-	fmt.Printf("Retrieved secret value:\n%s\n", value)
-	return nil
-}
-
-// =======================================================================
 // Utility Functions
-// =======================================================================
-func defaultSecretsPath() string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		log.Fatalf("Failed to get user home directory: %s", err)
-	}
-	return filepath.Join(homeDir, ".testsecrets")
+func loadAWSConfig(profile string) (aws.Config, error) {
+	return config.LoadDefaultConfig(
+		context.TODO(),
+		config.WithSharedConfigProfile(profile),
+	)
 }
 
-func isGHInstalled() bool {
-	_, err := exec.LookPath("gh")
-	return err == nil
+func ensurePrefix(secretID, prefix string) string {
+	if !strings.HasPrefix(secretID, prefix) {
+		return prefix + secretID
+	}
+	return secretID
 }
 
 func validateFile(filePath string) error {
@@ -325,6 +308,27 @@ func validateFile(filePath string) error {
 	return nil
 }
 
+func handleAWSSSOError(err error) error {
+	if strings.Contains(err.Error(), "SSO session has expired") || strings.Contains(err.Error(), "InvalidGrantException") {
+		return fmt.Errorf(
+			"AWS SSO session has expired or is invalid. Please re-authenticate by running:\n\n"+
+				"  aws sso login --profile <your-profile>\n\n"+
+				"Then try again with --profile <your-profile> flag.\n\nOriginal error: %w",
+			err,
+		)
+	}
+	return fmt.Errorf("AWS operation failed: %w", err)
+}
+
+func exitWithError(err error, msg string) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s: %v\n", msg, err)
+	} else {
+		fmt.Fprintf(os.Stderr, "%s\n", msg)
+	}
+	os.Exit(1)
+}
+
 func generateSecretIDFromGithubUsername() (string, error) {
 	usernameCmd := exec.Command("gh", "api", "user", "--jq", ".login")
 	usernameOutput, err := usernameCmd.CombinedOutput()
@@ -336,18 +340,15 @@ func generateSecretIDFromGithubUsername() (string, error) {
 	return strings.ToUpper(secretID), nil
 }
 
-func ensurePrefix(secretID, prefix string) string {
-	if !strings.HasPrefix(secretID, prefix) {
-		return prefix + secretID
+func defaultSecretsPath() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatalf("Failed to get user home directory: %s", err)
 	}
-	return secretID
+	return filepath.Join(homeDir, ".testsecrets")
 }
 
-func exitWithError(err error, msg string) {
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s: %v\n", msg, err)
-	} else {
-		fmt.Fprintf(os.Stderr, "%s\n", msg)
-	}
-	os.Exit(1)
+func isGHInstalled() bool {
+	_, err := exec.LookPath("gh")
+	return err == nil
 }
