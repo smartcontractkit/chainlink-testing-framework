@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/parrot"
 	"github.com/spf13/cobra"
@@ -25,15 +26,17 @@ func main() {
 		Short: "a server that can set and parrrot back dynamic requests",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options := []parrot.ServerOption{parrot.WithPort(port)}
+			logLevel := zerolog.InfoLevel
 			if debug {
-				options = append(options, parrot.WithDebug())
+				logLevel = zerolog.DebugLevel
 			}
 			if trace {
-				options = append(options, parrot.WithTrace())
+				logLevel = zerolog.TraceLevel
 			}
 			if silent {
-				options = append(options, parrot.Silent())
+				logLevel = zerolog.Disabled
 			}
+			options = append(options, parrot.WithLogLevel(logLevel))
 			if json {
 				options = append(options, parrot.WithJSONLogs())
 			}

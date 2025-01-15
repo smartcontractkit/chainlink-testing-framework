@@ -19,12 +19,15 @@ import (
 // Route holds information about the mock route configuration
 type Route struct {
 	// Method is the HTTP method to match
-	Method string `json:"method"`
+	Method string `json:"Method"`
 	// Path is the URL path to match
-	Path string `json:"path"`
+	Path string `json:"Path"`
 	// Handler is the dynamic handler function to use when called
+	// Can only be set upon creation of the server
 	Handler http.HandlerFunc `json:"-"`
-	// ResponseBody is the static JSON response to return when called
+	// RawResponseBody is the static, raw string response to return when called
+	RawResponseBody string `json:"raw_response_body"`
+	// ResponseBody will be marshalled to JSON and returned when called
 	ResponseBody any `json:"response_body"`
 	// ResponseStatusCode is the HTTP status code to return when called
 	ResponseStatusCode int `json:"response_status_code"`
@@ -52,30 +55,20 @@ type ServerOption func(*Server) error
 func WithPort(port int) ServerOption {
 	return func(s *Server) error {
 		if port == 0 {
-			s.log.Debug().Msg("No port specified, using random port")
+			s.log.Debug().Msg("Configuring Parrot: No port specified, using random port")
 		} else if port < 0 || port > 65535 {
 			return fmt.Errorf("invalid port: %d", port)
 		}
 		s.port = port
-		s.log.Debug().Int("port", port).Msg("Setting port")
+		s.log.Debug().Int("port", port).Msg("Configuring Parrot: Setting port")
 		return nil
 	}
 }
 
-// WithDebug sets the log level to debug
-func WithDebug() ServerOption {
+func WithLogLevel(level zerolog.Level) ServerOption {
 	return func(s *Server) error {
-		s.log = s.log.Level(zerolog.DebugLevel)
-		s.log.Debug().Msg("Setting log level to debug")
-		return nil
-	}
-}
-
-// WithTrace sets the log level to trace
-func WithTrace() ServerOption {
-	return func(s *Server) error {
-		s.log = s.log.Level(zerolog.TraceLevel)
-		s.log.Debug().Msg("Setting log level to trace")
+		s.log = s.log.Level(level)
+		s.log.Debug().Str("log level", level.String()).Msg("Configuring Parrot: Setting log level")
 		return nil
 	}
 }
@@ -84,15 +77,7 @@ func WithTrace() ServerOption {
 func WithLogger(l zerolog.Logger) ServerOption {
 	return func(s *Server) error {
 		s.log = l
-		s.log.Debug().Msg("Setting custom logger")
-		return nil
-	}
-}
-
-// Silent sets the logger to a no-op logger
-func Silent() ServerOption {
-	return func(s *Server) error {
-		s.log = zerolog.Nop()
+		s.log.Debug().Msg("Configuring Parrot: Setting custom logger")
 		return nil
 	}
 }
@@ -101,7 +86,7 @@ func Silent() ServerOption {
 func WithJSONLogs() ServerOption {
 	return func(s *Server) error {
 		s.log = s.log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339Nano})
-		s.log.Debug().Msg("Setting log output to JSON")
+		s.log.Debug().Msg("Configuring Parrot: Setting log output to JSON")
 		return nil
 	}
 }
@@ -113,7 +98,7 @@ func WithSaveFile(saveFile string) ServerOption {
 			return fmt.Errorf("invalid save file name: %s", saveFile)
 		}
 		s.saveFile = saveFile
-		s.log.Debug().Str("file", saveFile).Msg("Setting save file")
+		s.log.Debug().Str("file", saveFile).Msg("Configuring Parrot: Setting save file")
 		return nil
 	}
 }
@@ -125,7 +110,7 @@ func WithRoutes(routes []*Route) ServerOption {
 			if err := s.Register(route); err != nil {
 				return fmt.Errorf("failed to register route: %w", err)
 			}
-			s.log.Debug().Str("path", route.Path).Str("method", route.Method).Msg("Pre-registered route")
+			s.log.Debug().Str("Path", route.Path).Str("Method", route.Method).Msg("Configuring Parrot: Pre-registered route")
 		}
 		return nil
 	}
@@ -223,19 +208,33 @@ func (p *Server) Register(route *Route) error {
 	if route.Method == "" {
 		return fmt.Errorf("invalid route method: %s", route.Method)
 	}
-	if route.Handler == nil && route.ResponseBody == nil {
+	if route.Handler == nil && route.ResponseBody == nil && route.RawResponseBody == "" {
 		return fmt.Errorf("route must have a handler or response body")
+	}
+	if route.Handler != nil && (route.ResponseBody != nil || route.RawResponseBody != "") {
+		return fmt.Errorf("route cannot have both a handler and response body")
+	}
+	if route.ResponseBody != nil && route.RawResponseBody != "" {
+		return fmt.Errorf("route cannot have both a response body and raw response body")
 	}
 	if route.ResponseBody != nil {
 		if _, err := json.Marshal(route.ResponseBody); err != nil {
-			return fmt.Errorf("failed to marshal response body: %w", err)
+			return fmt.Errorf("response body is unable to be marshalled into JSON: %w", err)
 		}
 	}
+
 	p.routesMu.Lock()
 	defer p.routesMu.Unlock()
 	p.routes[route.Method+":"+route.Path] = route
 
 	return nil
+}
+
+// Routes returns all registered routes
+func (p *Server) Routes() map[string]*Route {
+	p.routesMu.RLock()
+	defer p.routesMu.RUnlock()
+	return p.routes
 }
 
 // Unregister removes a route from the parrot
@@ -247,7 +246,7 @@ func (p *Server) Unregister(method, path string) {
 
 // Call makes a request to the parrot server
 func (p *Server) Call(method, path string) (*http.Response, error) {
-	req, err := http.NewRequest(method, filepath.Join(p.server.Addr, path), nil)
+	req, err := http.NewRequest(method, "http://"+filepath.Join(p.Address(), path), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -260,10 +259,11 @@ func (p *Server) Call(method, path string) (*http.Response, error) {
 func (p *Server) registerRouteHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST allowed", http.StatusMethodNotAllowed)
+		p.log.Trace().Str("Method", r.Method).Msg("Invalid method")
 		return
 	}
 
-	var route Route
+	var route *Route
 	if err := json.NewDecoder(r.Body).Decode(&route); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -271,13 +271,17 @@ func (p *Server) registerRouteHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	if route.Method == "" || route.Path == "" {
-		http.Error(w, "Method and Path are required", http.StatusBadRequest)
+		err := errors.New("Method and path are required")
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	p.routesMu.Lock()
-	p.routes[route.Method+":"+route.Path] = &route
-	p.routesMu.Unlock()
+	err := p.Register(route)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		p.log.Trace().Err(err).Msg("Failed to register route")
+		return
+	}
 
 	w.WriteHeader(http.StatusCreated)
 	p.log.Info().Str("Path", route.Path).Str("Method", route.Method).Msg("Route registered")
@@ -291,13 +295,65 @@ func (p *Server) dynamicHandler(w http.ResponseWriter, r *http.Request) {
 
 	if !exists {
 		http.NotFound(w, r)
+		p.log.Trace().Str("Remote Addr", r.RemoteAddr).Str("Path", r.URL.Path).Str("Method", r.Method).Msg("Route not found")
 		return
 	}
 
-	w.Header().Set("Content-Type", route.ResponseContentType)
+	if route.ResponseContentType != "" {
+		w.Header().Set("Content-Type", route.ResponseContentType)
+	}
 	w.WriteHeader(route.ResponseStatusCode)
-	if err := json.NewEncoder(w).Encode(route.ResponseBody); err != nil {
-		http.Error(w, "Failed to marshal response into json", http.StatusInternalServerError)
+
+	if route.Handler != nil {
+		p.log.Trace().Str("Remote Addr", r.RemoteAddr).Str("Path", r.URL.Path).Str("Method", r.Method).Msg("Calling route handler")
+		route.Handler(w, r)
+	} else if route.RawResponseBody != "" {
+		if route.ResponseContentType == "" {
+			w.Header().Set("Content-Type", "text/plain")
+		}
+		if _, err := w.Write([]byte(route.RawResponseBody)); err != nil {
+			p.log.Trace().Err(err).Str("Remote Addr", r.RemoteAddr).Str("Path", r.URL.Path).Str("Method", r.Method).Msg("Failed to write response")
+			http.Error(w, "Failed to write response", http.StatusInternalServerError)
+			return
+		}
+		p.log.Trace().
+			Str("Remote Addr", r.RemoteAddr).
+			Str("Response", route.RawResponseBody).
+			Str("Path", r.URL.Path).
+			Str("Method", r.Method).
+			Msg("Returned raw response")
+	} else if route.ResponseBody != nil {
+		if route.ResponseContentType == "" {
+			w.Header().Set("Content-Type", "application/json")
+		}
+		rawJSON, err := json.Marshal(route.ResponseBody)
+		if err != nil {
+			p.log.Trace().Err(err).
+				Str("Remote Addr", r.RemoteAddr).
+				Str("Path", r.URL.Path).
+				Str("Method", r.Method).
+				Msg("Failed to marshal JSON response")
+			http.Error(w, "Failed to marshal response into json", http.StatusInternalServerError)
+			return
+		}
+		if _, err = w.Write(rawJSON); err != nil {
+			p.log.Trace().Err(err).
+				RawJSON("Response", rawJSON).
+				Str("Remote Addr", r.RemoteAddr).
+				Str("Path", r.URL.Path).
+				Str("Method", r.Method).
+				Msg("Failed to write response")
+			http.Error(w, "Failed to write JSON response", http.StatusInternalServerError)
+			return
+		}
+		p.log.Trace().
+			Str("Remote Addr", r.RemoteAddr).
+			RawJSON("Response", rawJSON).
+			Str("Path", r.URL.Path).
+			Str("Method", r.Method).
+			Msg("Returned JSON response")
+	} else {
+		p.log.Trace().Str("Remote Addr", r.RemoteAddr).Str("Path", r.URL.Path).Str("Method", r.Method).Msg("Route has no response")
 	}
 }
 
@@ -336,7 +392,7 @@ func (p *Server) save() error {
 		p.log.Debug().Msg("No routes to save")
 		return nil
 	}
-	p.log.Debug().Str("file", p.saveFile).Msg("Saving routes")
+	p.log.Trace().Str("file", p.saveFile).Msg("Saving routes")
 
 	p.routesMu.RLock()
 	defer p.routesMu.RUnlock()
@@ -350,6 +406,6 @@ func (p *Server) save() error {
 		return fmt.Errorf("failed to write routes to file: %w", err)
 	}
 
-	p.log.Info().Str("file", p.saveFile).Msg("Saved routes")
+	p.log.Trace().Str("file", p.saveFile).Msg("Saved routes")
 	return nil
 }
