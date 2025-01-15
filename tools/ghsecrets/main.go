@@ -32,7 +32,6 @@ func main() {
 		Use:   "set",
 		Short: "Set test secrets in GitHub or AWS",
 		Run: func(cmd *cobra.Command, args []string) {
-			// Validate file
 			if err := validateFile(filePath); err != nil {
 				exitWithError(err, "Failed to validate file")
 				return
@@ -50,6 +49,9 @@ func main() {
 					return
 				}
 			}
+
+			// Ensure secretID starts with "testsecrets/"
+			secretID = ensurePrefix(secretID, "testsecrets/")
 
 			switch strings.ToLower(backend) {
 			case "github":
@@ -134,29 +136,27 @@ func setGitHubSecret(filePath, secretID string) error {
 
 // setAWSSecret creates or updates a secret in AWS Secrets Manager
 func setAWSSecret(filePath, secretID string, sharedWith []string) error {
+	secretID = ensurePrefix(secretID, "testsecrets/") // Ensure prefix
+
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
 	}
 	encoded := base64.StdEncoding.EncodeToString(data)
 
-	// 1) Load AWS config
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
 		return fmt.Errorf("failed to load AWS config: %w", err)
 	}
 
-	// 2) Create Secrets Manager client
 	smClient := secretsmanager.NewFromConfig(cfg)
 
-	// 3) Try creating the secret
 	_, err = smClient.CreateSecret(context.TODO(), &secretsmanager.CreateSecretInput{
 		Name:         aws.String(secretID),
 		SecretString: aws.String(encoded),
 		Description:  aws.String("Chainlink Test Secret created by CTF/ghsecrets CLI"),
 	})
 	if err != nil {
-		// If the secret already exists, update it instead
 		var resourceExistsErr *types.ResourceExistsException
 		if errors.As(err, &resourceExistsErr) {
 			fmt.Printf("Secret %s already exists, updating its value...\n", secretID)
@@ -166,7 +166,6 @@ func setAWSSecret(filePath, secretID string, sharedWith []string) error {
 				Description:  aws.String("Secret updated by ghsecrets CLI"),
 			})
 			if err != nil {
-				// Check for the SSO token expiration error
 				if strings.Contains(err.Error(), "InvalidGrantException") {
 					return fmt.Errorf(
 						"Your AWS SSO session has likely expired. Please re-authenticate by running:\n\n  aws sso login --profile <my-profile>\n\nThen try again.\n\nOriginal error: %w",
@@ -175,9 +174,7 @@ func setAWSSecret(filePath, secretID string, sharedWith []string) error {
 				}
 				return fmt.Errorf("failed to update AWS secret: %w", err)
 			}
-			fmt.Printf("Secret %s updated successfully.\n", secretID)
 		} else {
-			// Check for the SSO token expiration error
 			if strings.Contains(err.Error(), "InvalidGrantException") {
 				return fmt.Errorf(
 					"Your AWS SSO session has likely expired. Please re-authenticate by running:\n\n  aws sso login --profile <my-profile>\n\nThen try again.\n\nOriginal error: %w",
@@ -186,17 +183,22 @@ func setAWSSecret(filePath, secretID string, sharedWith []string) error {
 			}
 			return fmt.Errorf("failed to create AWS secret: %w", err)
 		}
-	} else {
-		fmt.Printf("Secret %s created successfully.\n", secretID)
 	}
 
-	// 4) Update sharing policy if necessary
 	if len(sharedWith) > 0 {
 		err = updateAWSSecretAccessPolicy(secretID, sharedWith)
 		if err != nil {
 			return fmt.Errorf("failed to update secret sharing policy: %w", err)
 		}
 	}
+
+	// Success message with AWS-specific instructions
+	fmt.Printf(
+		"Test secret set successfully in AWS Secrets Manager with key: %s\n\n"+
+			"To use this secret in a GitHub workflow, set the 'test_secrets_override_key' flag with the 'aws:' prefix. Example:\n"+
+			"gh workflow run ${workflow_name} -f test_secrets_override_key=aws:%s\n",
+		secretID, secretID,
+	)
 	return nil
 }
 
@@ -331,6 +333,13 @@ func generateSecretIDFromGithubUsername() (string, error) {
 	trimmedUsername := strings.TrimSpace(string(usernameOutput))
 	secretID := fmt.Sprintf("BASE64_TESTSECRETS_%s", trimmedUsername)
 	return strings.ToUpper(secretID), nil
+}
+
+func ensurePrefix(secretID, prefix string) string {
+	if !strings.HasPrefix(secretID, prefix) {
+		return prefix + secretID
+	}
+	return secretID
 }
 
 func exitWithError(err error, msg string) {
