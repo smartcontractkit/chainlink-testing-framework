@@ -29,6 +29,13 @@ By default, `ghsecrets set` assumes you want to store secrets in AWS Secrets Man
 
 This will read from `~/.testsecrets` (by default) and create/update a secret in AWS Secrets Manager:
 
+> **⚠️ Note:** Ensure you authenticate with AWS before using the tool:
+>
+> ```sh
+> aws sso login --profile <my-profile>
+> ```
+> By default, use the `SDLC` profile
+
 ```sh
 ghsecrets set
 ```
