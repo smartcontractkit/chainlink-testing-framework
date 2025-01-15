@@ -38,76 +38,167 @@ func TestWake(t *testing.T) {
 	require.NotNil(t, p)
 }
 
-func TestNativeRegisterRoute(t *testing.T) {
-	t.Parallel()
-
-	p, err := Wake(WithLogLevel(testLogLevel))
-	require.NoError(t, err)
-
-	route := &Route{
-		Method:              http.MethodGet,
-		Path:                "/test",
-		RawResponseBody:     "Squawk",
-		ResponseStatusCode:  200,
-		ResponseContentType: "text/plain",
-	}
-
-	err = p.Register(route)
-	require.NoError(t, err, "error registering route")
-}
-
-func TestRegisteredRoute(t *testing.T) {
+func TestRegister(t *testing.T) {
 	t.Parallel()
 
 	p, err := Wake(WithLogLevel(testLogLevel))
 	require.NoError(t, err, "error waking parrot")
 
-	routes := []*Route{
+	testCases := []struct {
+		name  string
+		route *Route
+	}{
 		{
-			Method:              http.MethodPost,
-			Path:                "/hello",
-			RawResponseBody:     "Squawk",
-			ResponseStatusCode:  200,
-			ResponseContentType: "text/plain",
+			name: "simple route",
+			route: &Route{
+				Method:              http.MethodPost,
+				Path:                "/hello",
+				RawResponseBody:     "Squawk",
+				ResponseStatusCode:  200,
+				ResponseContentType: "text/plain",
+			},
 		},
 		{
-			Method:              http.MethodPost,
-			Path:                "/goodbye",
-			RawResponseBody:     "Squeak",
-			ResponseStatusCode:  201,
-			ResponseContentType: "text/plain",
-		},
-		{
-			Method:              http.MethodGet,
-			Path:                "/json",
-			ResponseBody:        map[string]any{"message": "Squawk"},
-			ResponseStatusCode:  200,
-			ResponseContentType: "application/json",
+			name: "json route",
+			route: &Route{
+				Method:              http.MethodGet,
+				Path:                "/json",
+				ResponseBody:        map[string]any{"message": "Squawk"},
+				ResponseStatusCode:  200,
+				ResponseContentType: "application/json",
+			},
 		},
 	}
 
-	for _, route := range routes {
-		t.Run(route.Method+":"+route.Path, func(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := p.Register(route)
+			err := p.Register(tc.route)
 			require.NoError(t, err, "error registering route")
 
-			resp, err := p.Call(route.Method, route.Path)
+			resp, err := p.Call(tc.route.Method, tc.route.Path)
 			require.NoError(t, err, "error calling parrot")
 			defer resp.Body.Close()
 
-			assert.Equal(t, resp.StatusCode, route.ResponseStatusCode)
-			assert.Equal(t, resp.Header.Get("Content-Type"), route.ResponseContentType)
+			assert.Equal(t, resp.StatusCode, tc.route.ResponseStatusCode)
+			assert.Equal(t, resp.Header.Get("Content-Type"), tc.route.ResponseContentType)
 			body, _ := io.ReadAll(resp.Body)
-			if route.ResponseBody != nil {
-				jsonBody, err := json.Marshal(route.ResponseBody)
+			if tc.route.ResponseBody != nil {
+				jsonBody, err := json.Marshal(tc.route.ResponseBody)
 				require.NoError(t, err)
 				assert.JSONEq(t, string(jsonBody), string(body))
 			} else {
-				assert.Equal(t, route.RawResponseBody, string(body))
+				assert.Equal(t, tc.route.RawResponseBody, string(body))
 			}
 			resp.Body.Close()
+		})
+	}
+}
+
+func TestIsValidPath(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name  string
+		paths []string
+		valid bool
+	}{
+		{
+			name:  "valid paths",
+			paths: []string{"/hello"},
+			valid: true,
+		},
+		{
+			name:  "no register",
+			paths: []string{"/register", "/register/", "/register//", "/register/other_stuff"},
+			valid: false,
+		},
+		{
+			name:  "invalid paths",
+			paths: []string{"", "/", " ", " /", "/ ", " / ", "invalid path"},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			for _, path := range tc.paths {
+				valid := isValidPath(path)
+				assert.Equal(t, tc.valid, valid)
+			}
+		})
+	}
+}
+
+func TestBadRegisterRoute(t *testing.T) {
+	t.Parallel()
+
+	p, err := Wake(WithLogLevel(testLogLevel))
+	require.NoError(t, err, "error waking parrot")
+
+	testCases := []struct {
+		name  string
+		err   error
+		route *Route
+	}{
+		{
+			name:  "nil route",
+			err:   ErrNilRoute,
+			route: nil,
+		},
+		{
+			name: "no method",
+			err:  ErrNoMethod,
+			route: &Route{
+				Path:                "/hello",
+				RawResponseBody:     "Squawk",
+				ResponseStatusCode:  200,
+				ResponseContentType: "text/plain",
+			},
+		},
+		{
+			name: "no path",
+			err:  ErrInvalidPath,
+			route: &Route{
+				Method:              http.MethodGet,
+				RawResponseBody:     "Squawk",
+				ResponseStatusCode:  200,
+				ResponseContentType: "application/json",
+			},
+		},
+		{
+			name: "base path",
+			err:  ErrInvalidPath,
+			route: &Route{
+				Method:              http.MethodGet,
+				Path:                "/",
+				RawResponseBody:     "Squawk",
+				ResponseStatusCode:  200,
+				ResponseContentType: "application/json",
+			},
+		},
+		{
+			name: "invalid path",
+			err:  ErrInvalidPath,
+			route: &Route{
+				Method:              http.MethodGet,
+				Path:                "invalid path",
+				RawResponseBody:     "Squawk",
+				ResponseStatusCode:  200,
+				ResponseContentType: "application/json",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := p.Register(tc.route)
+			require.Error(t, err, "expected error registering route")
+			assert.ErrorIs(t, err, tc.err)
 		})
 	}
 }
@@ -152,7 +243,8 @@ func TestUnregister(t *testing.T) {
 	assert.Equal(t, route.RawResponseBody, string(body))
 	resp.Body.Close()
 
-	p.Unregister(route.Method, route.Path)
+	err = p.Unregister(route.Method, route.Path)
+	require.NoError(t, err, "error unregistering route")
 
 	resp, err = p.Call(route.Method, route.Path)
 	require.NoError(t, err, "error calling parrot")

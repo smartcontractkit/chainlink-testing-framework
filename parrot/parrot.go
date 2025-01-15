@@ -7,9 +7,12 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -35,6 +38,12 @@ type Route struct {
 	ResponseContentType string `json:"response_content_type"`
 }
 
+// RouteRequestBody is the request body for querying the server on a specific route
+type RouteRequestBody struct {
+	Method string `json:"method"`
+	Path   string `json:"path"`
+}
+
 // Server is a mock HTTP server that can register and respond to dynamic routes
 type Server struct {
 	port     int
@@ -46,6 +55,9 @@ type Server struct {
 	server   *http.Server
 	routes   map[string]*Route // Store routes based on "Method:Path" keys
 	routesMu sync.RWMutex
+
+	recorders   map[string]*Recorder
+	recordersMu sync.RWMutex
 }
 
 // ServerOption defines functional options for configuring the ParrotServer
@@ -69,6 +81,21 @@ func WithLogLevel(level zerolog.Level) ServerOption {
 	return func(s *Server) error {
 		s.log = s.log.Level(level)
 		s.log.Debug().Str("log level", level.String()).Msg("Configuring Parrot: Setting log level")
+		return nil
+	}
+}
+
+func WithLogFile(logFile string) ServerOption {
+	return func(s *Server) error {
+		if logFile == "" {
+			return fmt.Errorf("invalid log file name: %s", logFile)
+		}
+		file, err := os.OpenFile(logFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			return fmt.Errorf("failed to open log file: %w", err)
+		}
+		s.log = s.log.Output(file)
+		s.log.Debug().Str("file", logFile).Msg("Configuring Parrot: Setting log file")
 		return nil
 	}
 }
@@ -151,6 +178,7 @@ func Wake(options ...ServerOption) (*Server, error) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/register", p.registerRouteHandler)
+	mux.HandleFunc("/record", p.recordHandler)
 	mux.HandleFunc("/", p.dynamicHandler)
 
 	p.server = &http.Server{
@@ -202,24 +230,30 @@ func (p *Server) Address() string {
 
 // Register adds a new route to the parrot
 func (p *Server) Register(route *Route) error {
-	if route.Path == "" || route.Path == "/" || route.Path == "/register" {
-		return fmt.Errorf("invalid route path: %s", route.Path)
+	if route == nil {
+		return ErrNilRoute
+	}
+	if !isValidPath(route.Path) {
+		return newDynamicError(ErrInvalidPath, fmt.Sprintf("'%s'", route.Path))
+	}
+	if _, err := url.Parse(route.Path); err != nil {
+		return newDynamicError(ErrInvalidPath, fmt.Sprintf("%s: '%s'", err.Error(), route.Path))
 	}
 	if route.Method == "" {
-		return fmt.Errorf("invalid route method: %s", route.Method)
+		return ErrNoMethod
 	}
 	if route.Handler == nil && route.ResponseBody == nil && route.RawResponseBody == "" {
-		return fmt.Errorf("route must have a handler or response body")
+		return ErrNoResponse
 	}
 	if route.Handler != nil && (route.ResponseBody != nil || route.RawResponseBody != "") {
-		return fmt.Errorf("route cannot have both a handler and response body")
+		return newDynamicError(ErrOnlyOneResponse, "handler and another response type provided")
 	}
 	if route.ResponseBody != nil && route.RawResponseBody != "" {
-		return fmt.Errorf("route cannot have both a response body and raw response body")
+		return ErrOnlyOneResponse
 	}
 	if route.ResponseBody != nil {
 		if _, err := json.Marshal(route.ResponseBody); err != nil {
-			return fmt.Errorf("response body is unable to be marshalled into JSON: %w", err)
+			return newDynamicError(ErrResponseMarshal, err.Error())
 		}
 	}
 
@@ -227,6 +261,139 @@ func (p *Server) Register(route *Route) error {
 	defer p.routesMu.Unlock()
 	p.routes[route.Method+":"+route.Path] = route
 
+	return nil
+}
+
+// registerRouteHandler handles the dynamic route registration.
+func (p *Server) registerRouteHandler(w http.ResponseWriter, r *http.Request) {
+	const parrotPath = "/register"
+	if r.Method == http.MethodDelete {
+		var routeRequestBody *RouteRequestBody
+		if err := json.NewDecoder(r.Body).Decode(&routeRequestBody); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+		defer r.Body.Close()
+
+		if routeRequestBody.Method == "" || routeRequestBody.Path == "" {
+			err := errors.New("Method and path are required")
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		err := p.Unregister(routeRequestBody.Method, routeRequestBody.Path)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			p.log.Trace().Err(err).Str("Path", parrotPath).Msg("Failed to unregister route")
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+		p.log.Info().
+			Str("Route Path", routeRequestBody.Path).
+			Str("Parrot Path", parrotPath).
+			Str("Method", routeRequestBody.Method).
+			Msg("Route unregistered")
+	} else if r.Method == http.MethodPost {
+		var route *Route
+		if err := json.NewDecoder(r.Body).Decode(&route); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+		defer r.Body.Close()
+
+		if route.Method == "" || route.Path == "" {
+			err := errors.New("Method and path are required")
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		err := p.Register(route)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			p.log.Trace().Err(err).Msg("Failed to register route")
+			return
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		p.log.Info().
+			Str("Parrot Path", parrotPath).
+			Str("Route Path", route.Path).
+			Str("Method", route.Method).
+			Msg("Route registered")
+	} else {
+		http.Error(w, "Invalid method, only use POST or DELETE", http.StatusMethodNotAllowed)
+		p.log.Trace().Str("Method", r.Method).Msg("Invalid method")
+		return
+	}
+}
+
+// Record registers a new recorder with the parrot. All incoming requests to the parrot will be recorded at that webhook.
+func (p *Server) Record(url *url.URL) error {
+	p.recordersMu.Lock()
+	defer p.recordersMu.Unlock()
+	p.recorders[url.String()] = NewRecorder(url)
+	return nil
+}
+
+func (p *Server) recordHandler(w http.ResponseWriter, r *http.Request) {
+	const parrotPath = "/record"
+	if r.Method == http.MethodPost {
+		var recorder *Recorder
+		if err := json.NewDecoder(r.Body).Decode(&recorder); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			p.log.Trace().Err(err).Str("Parrot Path", parrotPath).Msg("Failed to decode request body")
+			return
+		}
+
+		err := p.Record(recorder.URL)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			p.log.Trace().Err(err).Str("Parrot Path", parrotPath).Msg("Failed to add recorder")
+			return
+		}
+
+		w.WriteHeader(http.StatusCreated)
+		p.log.Info().Str("Recorder URL", recorder.URL.String()).Str("Parrot Path", parrotPath).Msg("Recorder added")
+	} else if r.Method == http.MethodDelete {
+		var recorder *Recorder
+		if err := json.NewDecoder(r.Body).Decode(&recorder); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			p.log.Trace().Err(err).Str("Parrot Path", parrotPath).Msg("Failed to decode request body")
+			return
+		}
+
+		err := p.StopRecord(recorder.URL)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			p.log.Trace().
+				Err(err).
+				Str("Parrot Path", parrotPath).
+				Str("Recorder", recorder.URL.String()).
+				Msg("Failed to stop recording")
+			return
+		}
+		p.log.Info().Str("Recorder URL", recorder.URL.String()).Str("Parrot Path", parrotPath).Msg("Recorder removed")
+	} else {
+		http.Error(w, "Invalid method, only use POST or DELETE", http.StatusMethodNotAllowed)
+		p.log.Trace().Str("Method", r.Method).Msg("Invalid method")
+		return
+	}
+}
+
+// Record registers a new recorder with the parrot. All incoming requests to the parrot will be recorded at that webhook.
+func (p *Server) StopRecord(url *url.URL) error {
+	p.recordersMu.RLock()
+	_, exists := p.recorders[url.String()]
+	p.recordersMu.RUnlock()
+
+	if !exists {
+		return newDynamicError(ErrRecorderNotFound, fmt.Sprintf("'%s'", url.String()))
+	}
+
+	p.recordersMu.Lock()
+	defer p.recordersMu.Unlock()
+	delete(p.recorders, url.String())
 	return nil
 }
 
@@ -238,10 +405,18 @@ func (p *Server) Routes() map[string]*Route {
 }
 
 // Unregister removes a route from the parrot
-func (p *Server) Unregister(method, path string) {
+func (p *Server) Unregister(method, path string) error {
+	p.routesMu.RLock()
+	_, exists := p.routes[method+":"+path]
+	p.routesMu.RUnlock()
+
+	if !exists {
+		return newDynamicError(ErrRouteNotFound, fmt.Sprintf("%s %s", method, path))
+	}
 	p.routesMu.Lock()
 	defer p.routesMu.Unlock()
 	delete(p.routes, method+":"+path)
+	return nil
 }
 
 // Call makes a request to the parrot server
@@ -253,38 +428,6 @@ func (p *Server) Call(method, path string) (*http.Response, error) {
 
 	client := &http.Client{}
 	return client.Do(req)
-}
-
-// registerRouteHandler handles the dynamic route registration.
-func (p *Server) registerRouteHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Only POST allowed", http.StatusMethodNotAllowed)
-		p.log.Trace().Str("Method", r.Method).Msg("Invalid method")
-		return
-	}
-
-	var route *Route
-	if err := json.NewDecoder(r.Body).Decode(&route); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-	defer r.Body.Close()
-
-	if route.Method == "" || route.Path == "" {
-		err := errors.New("Method and path are required")
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	err := p.Register(route)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		p.log.Trace().Err(err).Msg("Failed to register route")
-		return
-	}
-
-	w.WriteHeader(http.StatusCreated)
-	p.log.Info().Str("Path", route.Path).Str("Method", route.Method).Msg("Route registered")
 }
 
 // dynamicHandler handles all incoming requests and responds based on the registered routes.
@@ -408,4 +551,27 @@ func (p *Server) save() error {
 
 	p.log.Trace().Str("file", p.saveFile).Msg("Saved routes")
 	return nil
+}
+
+var pathRegex = regexp.MustCompile(`^\/[a-zA-Z0-9\-._~%!$&'()*+,;=:@\/]*$`)
+
+func isValidPath(path string) bool {
+	switch path {
+	case "", "/", "//", "/register", "/.", "/..":
+		return false
+	}
+	if !strings.HasPrefix(path, "/") {
+		return false
+	}
+	if strings.HasPrefix(path, "/register") {
+		return false
+	}
+	if strings.HasPrefix(path, "/unregister") {
+		return false
+	}
+	u, err := url.Parse(path)
+	if err != nil || u.Path != path {
+		return false
+	}
+	return pathRegex.MatchString(u.Path)
 }
