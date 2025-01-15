@@ -76,6 +76,7 @@ func main() {
 		Use:   "get",
 		Short: "Retrieve a secret from AWS Secrets Manager",
 		Run: func(cmd *cobra.Command, args []string) {
+			secretID = ensurePrefix(secretID, "testsecrets/")
 			if err := getAWSSecret(secretID, decode); err != nil {
 				exitWithError(err, "Failed to retrieve AWS secret")
 			}
