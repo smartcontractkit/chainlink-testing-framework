@@ -50,9 +50,6 @@ func main() {
 				}
 			}
 
-			// Ensure secretID starts with "testsecrets/"
-			secretID = ensurePrefix(secretID, "testsecrets/")
-
 			switch strings.ToLower(backend) {
 			case "github":
 				if err := setGitHubSecret(filePath, secretID); err != nil {
@@ -60,6 +57,9 @@ func main() {
 					return
 				}
 			case "aws":
+				// Ensure AWS secretID starts with "testsecrets/" prefix
+				// GHA IAM role has a policy that restricts access to secrets with this prefix
+				secretID = ensurePrefix(secretID, "testsecrets/")
 				if err := setAWSSecret(filePath, secretID, sharedWith); err != nil {
 					exitWithError(err, "Failed to set AWS secret")
 					return
