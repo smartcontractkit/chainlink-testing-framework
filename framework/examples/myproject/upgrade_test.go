@@ -66,7 +66,7 @@ func TestUpgrade(t *testing.T) {
 											level = 'info'
 	`
 
-	out, err = ns.UpgradeNodeSet(in.NodeSet, bc, 3*time.Second)
+	out, err = ns.UpgradeNodeSet(t, in.NodeSet, bc, 3*time.Second)
 	require.NoError(t, err)
 
 	jobs, _, err := c[0].ReadJobs()

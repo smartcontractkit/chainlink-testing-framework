@@ -277,6 +277,33 @@ func TestBenchSpy_TestBasicData_Validate(t *testing.T) {
 			wantErr: true,
 			errMsg:  "generator configs are missing",
 		},
+		{
+			name: "test start and end time are the same",
+			bd: &BasicData{
+				TestStart: time.Now(),
+				TestEnd:   time.Now(),
+			},
+			wantErr: true,
+			errMsg:  "test duration is less than a second",
+		},
+		{
+			name: "test end time before start time",
+			bd: &BasicData{
+				TestStart: time.Now().Add(time.Hour),
+				TestEnd:   time.Now(),
+			},
+			wantErr: true,
+			errMsg:  "test end time is before test start time",
+		},
+		{
+			name: "test end time are start time < 1s apart",
+			bd: &BasicData{
+				TestStart: time.Now(),
+				TestEnd:   time.Now().Add(time.Second - time.Millisecond),
+			},
+			wantErr: true,
+			errMsg:  "test duration is less than a second",
+		},
 	}
 
 	for _, tt := range tests {

@@ -127,7 +127,6 @@ func NewPromtail() error {
 		ExposedPorts: []string{"9080/tcp"},
 		Name:         "promtail",
 		Cmd:          cmd,
-		Labels:       DefaultTCLabels(),
 		Files: []testcontainers.ContainerFile{
 			{
 				HostFilePath:      pcn,

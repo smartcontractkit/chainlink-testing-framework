@@ -2,12 +2,13 @@ package blockchain
 
 import (
 	"fmt"
+	"github.com/testcontainers/testcontainers-go"
 )
 
 // Input is a blockchain network configuration params
 type Input struct {
 	// Common EVM fields
-	Type      string `toml:"type" validate:"required,oneof=anvil geth besu solana" envconfig:"net_type"`
+	Type      string `toml:"type" validate:"required,oneof=anvil geth besu solana aptos" envconfig:"net_type"`
 	Image     string `toml:"image"`
 	PullImage bool   `toml:"pull_image"`
 	Port      string `toml:"port"`
@@ -29,11 +30,12 @@ type Input struct {
 
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network
 type Output struct {
-	UseCache      bool    `toml:"use_cache"`
-	Family        string  `toml:"family"`
-	ContainerName string  `toml:"container_name"`
-	ChainID       string  `toml:"chain_id"`
-	Nodes         []*Node `toml:"nodes"`
+	UseCache      bool                     `toml:"use_cache"`
+	Family        string                   `toml:"family"`
+	ContainerName string                   `toml:"container_name"`
+	Container     testcontainers.Container `toml:"-"`
+	ChainID       string                   `toml:"chain_id"`
+	Nodes         []*Node                  `toml:"nodes"`
 }
 
 // Node represents blockchain node output, URLs required for connection locally and inside docker network
@@ -45,8 +47,6 @@ type Node struct {
 }
 
 // NewBlockchainNetwork this is an abstraction that can spin up various blockchain network simulators
-// - Anvil
-// - Geth
 func NewBlockchainNetwork(in *Input) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
@@ -62,6 +62,8 @@ func NewBlockchainNetwork(in *Input) (*Output, error) {
 		out, err = newBesu(in)
 	case "solana":
 		out, err = newSolana(in)
+	case "aptos":
+		out, err = newAptos(in)
 	default:
 		return nil, fmt.Errorf("blockchain type is not supported or empty, must be 'anvil' or 'geth'")
 	}
