@@ -8,7 +8,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/parrot"
 )
 
-func ExampleServer_Register() {
+func ExampleServer() {
 	p, err := parrot.Wake()
 	if err != nil {
 		panic(err)

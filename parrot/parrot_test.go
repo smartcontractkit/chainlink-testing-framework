@@ -1,6 +1,7 @@
 package parrot
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -76,14 +77,20 @@ func TestRegisteredRoute(t *testing.T) {
 			ResponseStatusCode:  201,
 			ResponseContentType: "text/plain",
 		},
+		{
+			Method:              http.MethodGet,
+			Path:                "/json",
+			ResponseBody:        map[string]any{"message": "Squawk"},
+			ResponseStatusCode:  200,
+			ResponseContentType: "application/json",
+		},
 	}
 
-	for _, r := range routes {
-		route := r
+	for _, route := range routes {
 		t.Run(route.Method+":"+route.Path, func(t *testing.T) {
 			t.Parallel()
 
-			err = p.Register(route)
+			err := p.Register(route)
 			require.NoError(t, err, "error registering route")
 
 			resp, err := p.Call(route.Method, route.Path)
@@ -93,7 +100,13 @@ func TestRegisteredRoute(t *testing.T) {
 			assert.Equal(t, resp.StatusCode, route.ResponseStatusCode)
 			assert.Equal(t, resp.Header.Get("Content-Type"), route.ResponseContentType)
 			body, _ := io.ReadAll(resp.Body)
-			assert.Equal(t, route.RawResponseBody, string(body))
+			if route.ResponseBody != nil {
+				jsonBody, err := json.Marshal(route.ResponseBody)
+				require.NoError(t, err)
+				assert.JSONEq(t, string(jsonBody), string(body))
+			} else {
+				assert.Equal(t, route.RawResponseBody, string(body))
+			}
 			resp.Body.Close()
 		})
 	}
@@ -110,6 +123,39 @@ func TestUnregisteredRoute(t *testing.T) {
 	require.NotNil(t, resp, "response should not be nil")
 	defer resp.Body.Close()
 
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+}
+
+func TestUnregister(t *testing.T) {
+	t.Parallel()
+
+	p, err := Wake(WithLogLevel(testLogLevel))
+	require.NoError(t, err, "error waking parrot")
+
+	route := &Route{
+		Method:              http.MethodPost,
+		Path:                "/hello",
+		RawResponseBody:     "Squawk",
+		ResponseStatusCode:  200,
+		ResponseContentType: "text/plain",
+	}
+
+	err = p.Register(route)
+	require.NoError(t, err, "error registering route")
+
+	resp, err := p.Call(route.Method, route.Path)
+	require.NoError(t, err, "error calling parrot")
+
+	assert.Equal(t, resp.StatusCode, route.ResponseStatusCode)
+	assert.Equal(t, resp.Header.Get("Content-Type"), route.ResponseContentType)
+	body, _ := io.ReadAll(resp.Body)
+	assert.Equal(t, route.RawResponseBody, string(body))
+	resp.Body.Close()
+
+	p.Unregister(route.Method, route.Path)
+
+	resp, err = p.Call(route.Method, route.Path)
+	require.NoError(t, err, "error calling parrot")
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
 

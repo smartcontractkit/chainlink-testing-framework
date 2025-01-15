@@ -22,8 +22,8 @@ func main() {
 	)
 
 	rootCmd := &cobra.Command{
-		Use:   "parrotserver",
-		Short: "a server that can set and parrrot back dynamic requests",
+		Use:   "parrot",
+		Short: "A server that can register and parrot back dynamic requests",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			options := []parrot.ServerOption{parrot.WithPort(port)}
 			logLevel := zerolog.InfoLevel
