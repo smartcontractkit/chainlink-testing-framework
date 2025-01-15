@@ -312,8 +312,8 @@ func handleAWSSSOError(err error) error {
 	if strings.Contains(err.Error(), "SSO session has expired") || strings.Contains(err.Error(), "InvalidGrantException") {
 		return fmt.Errorf(
 			"AWS SSO session has expired or is invalid. Please re-authenticate by running:\n\n"+
-				"  aws sso login --profile <your-profile>\n\n"+
-				"Then try again with --profile <your-profile> flag.\n\nOriginal error: %w",
+				"  aws sso login --profile <your-sdlc-profile>\n\n"+
+				"Then try again with --profile <your-sdlc-profile> flag.\n\nOriginal error: %w",
 			err,
 		)
 	}

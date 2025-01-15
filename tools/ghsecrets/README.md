@@ -30,26 +30,26 @@ By default, `ghsecrets set` assumes you want to store secrets in AWS Secrets Man
 > **⚠️ Note:** Ensure you authenticate with AWS before using the tool:
 >
 > ```sh
-> aws sso login --profile <your-aws-profile>
+> aws sso login --profile <your-aws-sdlc-profile>
 > ```
-> By default, use the SDLC profile
+> Use the **SDLC** profile in AWS 
 
 This will read from `~/.testsecrets` (by default) and create/update a secret in AWS Secrets Manager:
 
 ```sh
-ghsecrets set --profile <your-aws-profile>
+ghsecrets set --profile <your-aws-sdlc-profile>
 ```
 
 If you’d like to specify a different file:
 
 ```sh
-ghsecrets set --file /path/to/mysecrets.env --profile <your-aws-profile>
+ghsecrets set --file /path/to/mysecrets.env --profile <your-aws-sdlc-profile>
 ```
 
 If you’d like to specify a custom secret name:
 
 ```sh
-ghsecrets set --secret-id my-custom-secret --profile <your-aws-profile>
+ghsecrets set --secret-id my-custom-secret --profile <your-aws-sdlc-profile>
 ```
 
 Note: For AWS backend, the tool automatically adds the `testsecrets/` prefix if it is missing. This ensures consistency and allows GitHub Actions to access all secrets with this designated prefix.
@@ -57,13 +57,13 @@ Note: For AWS backend, the tool automatically adds the `testsecrets/` prefix if 
 If you’d like to share this secret with additional AWS IAM principals (e.g., a collaborator’s account):
 
 ```sh
-ghsecrets set --shared-with arn:aws:iam::123456789012:role/SomeRole --profile <your-aws-profile>
+ghsecrets set --shared-with arn:aws:iam::123456789012:role/SomeRole --profile <your-aws-sdlc-profile>
 ```
 
 You can specify multiple ARNs using commas:
 
 ```sh
-ghsecrets set --shared-with arn:aws:iam::123456789012:role/SomeRole,arn:aws:iam::345678901234:root --profile <your-aws-profile>
+ghsecrets set --shared-with arn:aws:iam::123456789012:role/SomeRole,arn:aws:iam::345678901234:root --profile <your-aws-sdlc-profile>
 ```
 
 #### b) Set secrets in GitHub
@@ -82,13 +82,13 @@ This will:
 If you want to retrieve an existing secret from AWS Secrets Manager, use:
 
 ```sh
-ghsecrets get --secret-id testsecrets/MySecretName --profile <your-aws-profile>
+ghsecrets get --secret-id testsecrets/MySecretName --profile <your-aws-sdlc-profile>
 ```
 
 By default, it prints out the Base64-encoded string. To decode it automatically:
 
 ```sh
-ghsecrets get --secret-id testsecrets/MySecretName --decode --profile <your-aws-profile>
+ghsecrets get --secret-id testsecrets/MySecretName --decode --profile <your-aws-sdlc-profile>
 ```
 
 ## FAQ
