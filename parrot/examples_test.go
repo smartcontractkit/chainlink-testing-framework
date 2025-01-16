@@ -18,11 +18,10 @@ func ExampleServer() {
 
 	// Create a new route /test that will return a 200 status code with a text/plain response body of "Squawk"
 	route := &parrot.Route{
-		Method:              http.MethodGet,
-		Path:                "/test",
-		RawResponseBody:     "Squawk",
-		ResponseStatusCode:  200,
-		ResponseContentType: "text/plain",
+		Method:             http.MethodGet,
+		Path:               "/test",
+		RawResponseBody:    "Squawk",
+		ResponseStatusCode: 200,
 	}
 
 	// Register the route with the parrot instance
@@ -39,11 +38,9 @@ func ExampleServer() {
 	defer resp.Body.Close()
 
 	fmt.Println(resp.StatusCode)
-	fmt.Println(resp.Header.Get("Content-Type"))
 	body, _ := io.ReadAll(resp.Body)
 	fmt.Println(string(body))
 	// Output:
 	// 200
-	// text/plain
 	// Squawk
 }

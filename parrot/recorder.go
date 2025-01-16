@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"time"
 )
 
@@ -18,8 +19,9 @@ type Recorder struct {
 
 // RouteCall records that a route was called
 type RouteCall struct {
-	RouteID string       `json:"route_id"`
-	Request http.Request `json:"request"`
+	RouteID  string         `json:"route_id"`
+	Request  *http.Request  `json:"request"`
+	Response *http.Response `json:"response"`
 }
 
 type RecorderOption func(*Recorder) error
@@ -44,7 +46,7 @@ func NewRecorder(opts ...RecorderOption) (*Recorder, error) {
 	r.URL = listener.Addr().String()
 
 	mux := http.NewServeMux()
-	mux.Handle("/record", r.defaultRecordHandler())
+	mux.Handle("/", r.defaultRecordHandler())
 	r.server = &http.Server{
 		ReadHeaderTimeout: 5 * time.Second,
 		Addr:              listener.Addr().String(),
@@ -83,4 +85,46 @@ func (r *Recorder) defaultRecordHandler() http.HandlerFunc {
 
 		r.recordChan <- recordedCall
 	}
+}
+
+// httpResponseRecorder is a wrapper around http.ResponseWriter that records the response
+// for later inspection while still writing to the original writer.
+// WARNING: If you mutate after calling Header(), the changes will not be reflected in the recorded response.
+type responseWriterRecorder struct {
+	originalWriter http.ResponseWriter
+	record         *httptest.ResponseRecorder
+}
+
+func newResponseWriterRecorder(w http.ResponseWriter) *responseWriterRecorder {
+	return &responseWriterRecorder{
+		originalWriter: w,
+		record:         httptest.NewRecorder(),
+	}
+}
+
+// SetWriter sets a new writer to record and write to, flushing any previous record
+func (rr *responseWriterRecorder) SetWriter(w http.ResponseWriter) {
+	rr.originalWriter = w
+	rr.record = httptest.NewRecorder()
+}
+
+func (rr *responseWriterRecorder) WriteHeader(code int) {
+	rr.originalWriter.WriteHeader(code)
+	rr.record.WriteHeader(code)
+}
+
+func (rr *responseWriterRecorder) Write(data []byte) (int, error) {
+	_, _ = rr.record.Write(data) // ignore error as we still want to write to the original writer
+	return rr.originalWriter.Write(data)
+}
+
+func (rr *responseWriterRecorder) Header() http.Header {
+	for k, v := range rr.originalWriter.Header() {
+		rr.record.Header()[k] = v
+	}
+	return rr.originalWriter.Header()
+}
+
+func (rr *responseWriterRecorder) Result() *http.Response {
+	return rr.record.Result()
 }

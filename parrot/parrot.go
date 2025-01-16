@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog"
 )
 
@@ -35,14 +36,16 @@ type Route struct {
 	ResponseBody any `json:"response_body"`
 	// ResponseStatusCode is the HTTP status code to return when called
 	ResponseStatusCode int `json:"response_status_code"`
-	// ResponseContentType is the Content-Type header to return the response with
-	ResponseContentType string `json:"response_content_type"`
 }
 
-// RouteRequestBody is the request body for querying the server on a specific route
-type RouteRequestBody struct {
-	Method string `json:"method"`
-	Path   string `json:"path"`
+// ID returns the unique identifier for the route
+func (r *Route) ID() string {
+	return r.Method + ":" + r.Path
+}
+
+// RouteRequest is the request body for querying the server on a specific route
+type RouteRequest struct {
+	ID string `json:"id"`
 }
 
 // Server is a mock HTTP server that can register and respond to dynamic routes
@@ -286,7 +289,7 @@ func (p *Server) Register(route *Route) error {
 
 	p.routesMu.Lock()
 	defer p.routesMu.Unlock()
-	p.routes[route.Method+":"+route.Path] = route
+	p.routes[route.ID()] = route
 
 	return nil
 }
@@ -295,20 +298,20 @@ func (p *Server) Register(route *Route) error {
 func (p *Server) registerRouteHandler(w http.ResponseWriter, r *http.Request) {
 	const parrotPath = "/register"
 	if r.Method == http.MethodDelete {
-		var routeRequestBody *RouteRequestBody
-		if err := json.NewDecoder(r.Body).Decode(&routeRequestBody); err != nil {
+		var routeRequest *RouteRequest
+		if err := json.NewDecoder(r.Body).Decode(&routeRequest); err != nil {
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
 		defer r.Body.Close()
 
-		if routeRequestBody.Method == "" || routeRequestBody.Path == "" {
-			err := errors.New("Method and path are required")
+		if routeRequest.ID == "" {
+			err := errors.New("ID required")
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		err := p.Unregister(routeRequestBody.Method, routeRequestBody.Path)
+		err := p.Unregister(routeRequest.ID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			p.log.Trace().Err(err).Str("Path", parrotPath).Msg("Failed to unregister route")
@@ -317,9 +320,8 @@ func (p *Server) registerRouteHandler(w http.ResponseWriter, r *http.Request) {
 
 		w.WriteHeader(http.StatusNoContent)
 		p.log.Info().
-			Str("Route Path", routeRequestBody.Path).
+			Str("Route ID", routeRequest.ID).
 			Str("Parrot Path", parrotPath).
-			Str("Method", routeRequestBody.Method).
 			Msg("Route unregistered")
 	} else if r.Method == http.MethodPost {
 		var route *Route
@@ -389,25 +391,18 @@ func (p *Server) recordHandler(w http.ResponseWriter, r *http.Request) {
 	p.log.Info().Str("Recorder URL", recorder.URL).Str("Parrot Path", parrotPath).Msg("Recorder added")
 }
 
-// Routes returns all registered routes
-func (p *Server) Routes() map[string]*Route {
-	p.routesMu.RLock()
-	defer p.routesMu.RUnlock()
-	return p.routes
-}
-
 // Unregister removes a route from the parrot
-func (p *Server) Unregister(method, path string) error {
+func (p *Server) Unregister(routeID string) error {
 	p.routesMu.RLock()
-	_, exists := p.routes[method+":"+path]
+	_, exists := p.routes[routeID]
 	p.routesMu.RUnlock()
 
 	if !exists {
-		return newDynamicError(ErrRouteNotFound, fmt.Sprintf("%s %s", method, path))
+		return newDynamicError(ErrRouteNotFound, routeID)
 	}
 	p.routesMu.Lock()
 	defer p.routesMu.Unlock()
-	delete(p.routes, method+":"+path)
+	delete(p.routes, routeID)
 	return nil
 }
 
@@ -428,30 +423,36 @@ func (p *Server) dynamicHandler(w http.ResponseWriter, r *http.Request) {
 	route, exists := p.routes[r.Method+":"+r.URL.Path]
 	p.routesMu.RUnlock()
 
-	if !exists {
-		http.NotFound(w, r)
+	routeCall := &RouteCall{
+		RouteID: r.Method + ":" + r.URL.Path,
+		Request: r,
+	}
+	recordingWriter := newResponseWriterRecorder(w)
+
+	defer func() {
+		routeCall.Response = recordingWriter.Result()
+		p.sendToRecorders(routeCall)
+	}()
+
+	if !exists { // Route not found
+		http.NotFound(recordingWriter, r)
 		p.log.Trace().Str("Remote Addr", r.RemoteAddr).Str("Path", r.URL.Path).Str("Method", r.Method).Msg("Route not found")
 		return
 	}
 
-	if route.ResponseContentType != "" {
-		w.Header().Set("Content-Type", route.ResponseContentType)
-	}
-	w.WriteHeader(route.ResponseStatusCode)
-
+	// Let the custom handler take over if it exists
 	if route.Handler != nil {
 		p.log.Trace().Str("Remote Addr", r.RemoteAddr).Str("Path", r.URL.Path).Str("Method", r.Method).Msg("Calling route handler")
-		route.Handler(w, r)
+		route.Handler(recordingWriter, r)
 		return
 	}
 
+	recordingWriter.WriteHeader(route.ResponseStatusCode)
+
 	if route.RawResponseBody != "" {
-		if route.ResponseContentType == "" {
-			w.Header().Set("Content-Type", "text/plain")
-		}
 		if _, err := w.Write([]byte(route.RawResponseBody)); err != nil {
 			p.log.Trace().Err(err).Str("Remote Addr", r.RemoteAddr).Str("Path", r.URL.Path).Str("Method", r.Method).Msg("Failed to write response")
-			http.Error(w, "Failed to write response", http.StatusInternalServerError)
+			http.Error(recordingWriter, "Failed to write response", http.StatusInternalServerError)
 			return
 		}
 		p.log.Trace().
@@ -464,9 +465,6 @@ func (p *Server) dynamicHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if route.ResponseBody != nil {
-		if route.ResponseContentType == "" {
-			w.Header().Set("Content-Type", "application/json")
-		}
 		rawJSON, err := json.Marshal(route.ResponseBody)
 		if err != nil {
 			p.log.Trace().Err(err).
@@ -474,7 +472,7 @@ func (p *Server) dynamicHandler(w http.ResponseWriter, r *http.Request) {
 				Str("Path", r.URL.Path).
 				Str("Method", r.Method).
 				Msg("Failed to marshal JSON response")
-			http.Error(w, "Failed to marshal response into json", http.StatusInternalServerError)
+			http.Error(recordingWriter, "Failed to marshal response into json", http.StatusInternalServerError)
 			return
 		}
 		if _, err = w.Write(rawJSON); err != nil {
@@ -484,7 +482,7 @@ func (p *Server) dynamicHandler(w http.ResponseWriter, r *http.Request) {
 				Str("Path", r.URL.Path).
 				Str("Method", r.Method).
 				Msg("Failed to write response")
-			http.Error(w, "Failed to write JSON response", http.StatusInternalServerError)
+			http.Error(recordingWriter, "Failed to write JSON response", http.StatusInternalServerError)
 			return
 		}
 		p.log.Trace().
@@ -550,6 +548,34 @@ func (p *Server) save() error {
 
 	p.log.Trace().Str("file", p.saveFileName).Msg("Saved routes")
 	return nil
+}
+
+// sendToRecorders sends the route call to all registered recorders
+func (p *Server) sendToRecorders(routeCall *RouteCall) {
+	p.recordersMu.RLock()
+	defer p.recordersMu.RUnlock()
+
+	client := resty.New()
+
+	for _, hook := range p.recorderHooks {
+		go func(hook string) {
+			p.log.Trace().Str("Recorder Hook", hook).Msg("Sending route call to recorder")
+			resp, err := client.R().SetBody(routeCall).Post(hook)
+			if err != nil {
+				p.log.Error().Err(err).Str("Recorder Hook", hook).Msg("Failed to send route call to recorder")
+				return
+			}
+			if resp.IsError() {
+				p.log.Error().
+					Str("Recorder Hook", hook).
+					Int("Code", resp.StatusCode()).
+					Str("Response", resp.String()).
+					Msg("Failed to send route call to recorder")
+				return
+			}
+			p.log.Debug().Str("Recorder Hook", hook).Msg("Route call sent to recorder")
+		}(hook)
+	}
 }
 
 var pathRegex = regexp.MustCompile(`^\/[a-zA-Z0-9\-._~%!$&'()*+,;=:@\/]*$`)

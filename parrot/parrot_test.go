@@ -51,21 +51,19 @@ func TestRegister(t *testing.T) {
 		{
 			name: "simple route",
 			route: &Route{
-				Method:              http.MethodPost,
-				Path:                "/hello",
-				RawResponseBody:     "Squawk",
-				ResponseStatusCode:  200,
-				ResponseContentType: "text/plain",
+				Method:             http.MethodPost,
+				Path:               "/hello",
+				RawResponseBody:    "Squawk",
+				ResponseStatusCode: 200,
 			},
 		},
 		{
 			name: "json route",
 			route: &Route{
-				Method:              http.MethodGet,
-				Path:                "/json",
-				ResponseBody:        map[string]any{"message": "Squawk"},
-				ResponseStatusCode:  200,
-				ResponseContentType: "application/json",
+				Method:             http.MethodGet,
+				Path:               "/json",
+				ResponseBody:       map[string]any{"message": "Squawk"},
+				ResponseStatusCode: 200,
 			},
 		},
 	}
@@ -82,7 +80,6 @@ func TestRegister(t *testing.T) {
 			defer resp.Body.Close()
 
 			assert.Equal(t, resp.StatusCode, tc.route.ResponseStatusCode)
-			assert.Equal(t, resp.Header.Get("Content-Type"), tc.route.ResponseContentType)
 			body, _ := io.ReadAll(resp.Body)
 			if tc.route.ResponseBody != nil {
 				jsonBody, err := json.Marshal(tc.route.ResponseBody)
@@ -152,42 +149,38 @@ func TestBadRegisterRoute(t *testing.T) {
 			name: "no method",
 			err:  ErrNoMethod,
 			route: &Route{
-				Path:                "/hello",
-				RawResponseBody:     "Squawk",
-				ResponseStatusCode:  200,
-				ResponseContentType: "text/plain",
+				Path:               "/hello",
+				RawResponseBody:    "Squawk",
+				ResponseStatusCode: 200,
 			},
 		},
 		{
 			name: "no path",
 			err:  ErrInvalidPath,
 			route: &Route{
-				Method:              http.MethodGet,
-				RawResponseBody:     "Squawk",
-				ResponseStatusCode:  200,
-				ResponseContentType: "application/json",
+				Method:             http.MethodGet,
+				RawResponseBody:    "Squawk",
+				ResponseStatusCode: 200,
 			},
 		},
 		{
 			name: "base path",
 			err:  ErrInvalidPath,
 			route: &Route{
-				Method:              http.MethodGet,
-				Path:                "/",
-				RawResponseBody:     "Squawk",
-				ResponseStatusCode:  200,
-				ResponseContentType: "application/json",
+				Method:             http.MethodGet,
+				Path:               "/",
+				RawResponseBody:    "Squawk",
+				ResponseStatusCode: 200,
 			},
 		},
 		{
 			name: "invalid path",
 			err:  ErrInvalidPath,
 			route: &Route{
-				Method:              http.MethodGet,
-				Path:                "invalid path",
-				RawResponseBody:     "Squawk",
-				ResponseStatusCode:  200,
-				ResponseContentType: "application/json",
+				Method:             http.MethodGet,
+				Path:               "invalid path",
+				RawResponseBody:    "Squawk",
+				ResponseStatusCode: 200,
 			},
 		},
 	}
@@ -224,11 +217,10 @@ func TestUnregister(t *testing.T) {
 	require.NoError(t, err, "error waking parrot")
 
 	route := &Route{
-		Method:              http.MethodPost,
-		Path:                "/hello",
-		RawResponseBody:     "Squawk",
-		ResponseStatusCode:  200,
-		ResponseContentType: "text/plain",
+		Method:             http.MethodPost,
+		Path:               "/hello",
+		RawResponseBody:    "Squawk",
+		ResponseStatusCode: 200,
 	}
 
 	err = p.Register(route)
@@ -238,12 +230,11 @@ func TestUnregister(t *testing.T) {
 	require.NoError(t, err, "error calling parrot")
 
 	assert.Equal(t, resp.StatusCode, route.ResponseStatusCode)
-	assert.Equal(t, resp.Header.Get("Content-Type"), route.ResponseContentType)
 	body, _ := io.ReadAll(resp.Body)
 	assert.Equal(t, route.RawResponseBody, string(body))
 	resp.Body.Close()
 
-	err = p.Unregister(route.Method, route.Path)
+	err = p.Unregister(route.ID())
 	require.NoError(t, err, "error unregistering route")
 
 	resp, err = p.Call(route.Method, route.Path)
@@ -260,18 +251,16 @@ func TestSaveLoad(t *testing.T) {
 
 	routes := []*Route{
 		{
-			Method:              "GET",
-			Path:                "/hello",
-			RawResponseBody:     "Squawk",
-			ResponseStatusCode:  200,
-			ResponseContentType: "text/plain",
+			Method:             "GET",
+			Path:               "/hello",
+			RawResponseBody:    "Squawk",
+			ResponseStatusCode: 200,
 		},
 		{
-			Method:              "Post",
-			Path:                "/goodbye",
-			RawResponseBody:     "Squeak",
-			ResponseStatusCode:  201,
-			ResponseContentType: "text/plain",
+			Method:             "Post",
+			Path:               "/goodbye",
+			RawResponseBody:    "Squeak",
+			ResponseStatusCode: 201,
 		},
 	}
 
@@ -296,7 +285,6 @@ func TestSaveLoad(t *testing.T) {
 		require.NoError(t, err, "error calling parrot")
 
 		assert.Equal(t, resp.StatusCode, route.ResponseStatusCode)
-		assert.Equal(t, resp.Header.Get("Content-Type"), route.ResponseContentType)
 		body, _ := io.ReadAll(resp.Body)
 		assert.Equal(t, route.RawResponseBody, string(body))
 		resp.Body.Close()
@@ -308,11 +296,10 @@ func BenchmarkRegisterRoute(b *testing.B) {
 	require.NoError(b, err)
 
 	route := &Route{
-		Method:              "GET",
-		Path:                "/bench",
-		RawResponseBody:     "Benchmark Response",
-		ResponseStatusCode:  200,
-		ResponseContentType: "text/plain",
+		Method:             "GET",
+		Path:               "/bench",
+		RawResponseBody:    "Benchmark Response",
+		ResponseStatusCode: 200,
 	}
 
 	b.ResetTimer()
@@ -327,11 +314,10 @@ func BenchmarkRouteResponse(b *testing.B) {
 	require.NoError(b, err)
 
 	route := &Route{
-		Method:              "GET",
-		Path:                "/bench",
-		RawResponseBody:     "Benchmark Response",
-		ResponseStatusCode:  200,
-		ResponseContentType: "text/plain",
+		Method:             "GET",
+		Path:               "/bench",
+		RawResponseBody:    "Benchmark Response",
+		ResponseStatusCode: 200,
 	}
 	err = p.Register(route)
 	require.NoError(b, err)
@@ -351,11 +337,10 @@ func BenchmarkSaveRoutes(b *testing.B) {
 
 	for i := 0; i < 1000; i++ {
 		routes = append(routes, &Route{
-			Method:              "GET",
-			Path:                fmt.Sprintf("/bench%d", i),
-			RawResponseBody:     fmt.Sprintf("{\"message\":\"Response %d\"}", i),
-			ResponseStatusCode:  200,
-			ResponseContentType: "text/plain",
+			Method:             "GET",
+			Path:               fmt.Sprintf("/bench%d", i),
+			RawResponseBody:    fmt.Sprintf("Squawk %d", i),
+			ResponseStatusCode: 200,
 		})
 	}
 	p, err := Wake(WithRoutes(routes), WithLogLevel(zerolog.Disabled), WithSaveFile(saveFile))
@@ -383,11 +368,10 @@ func BenchmarkLoadRoutes(b *testing.B) {
 
 	for i := 0; i < 1000; i++ {
 		routes = append(routes, &Route{
-			Method:              "GET",
-			Path:                fmt.Sprintf("/bench%d", i),
-			RawResponseBody:     fmt.Sprintf("{\"message\":\"Response %d\"}", i),
-			ResponseStatusCode:  200,
-			ResponseContentType: "text/plain",
+			Method:             "GET",
+			Path:               fmt.Sprintf("/bench%d", i),
+			RawResponseBody:    fmt.Sprintf("Squawk %d", i),
+			ResponseStatusCode: 200,
 		})
 	}
 	p, err := Wake(WithRoutes(routes), WithLogLevel(zerolog.Disabled), WithSaveFile(saveFile))
