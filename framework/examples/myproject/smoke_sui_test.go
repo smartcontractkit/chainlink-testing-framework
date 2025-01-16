@@ -47,7 +47,5 @@ func TestSuiSmoke(t *testing.T) {
 		})
 		require.NoError(t, err)
 		fmt.Printf("My funds: %v\n", rsp)
-		fmt.Printf("url1: %s\n", bc.Nodes[0].HostHTTPUrl)
-		fmt.Printf("url2: %s\n", bc.Nodes[0].DockerInternalHTTPUrl)
 	})
 }
