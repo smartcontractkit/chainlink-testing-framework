@@ -38,6 +38,7 @@
       - [EVM](framework/components/blockchains/evm.md)
       - [Solana](framework/components/blockchains/solana.md)
       - [Aptos](framework/components/blockchains/aptos.md)
+      - [Sui](framework/components/blockchains/sui.md)
       - [Optimism Stack]()
       - [Arbitrum Stack]()
     - [Chainlink](framework/components/chainlink.md)

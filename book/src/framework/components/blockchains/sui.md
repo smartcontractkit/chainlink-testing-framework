@@ -1,3 +1,19 @@
+# Sui Blockchain Client
+
+API is available on [localhost:9000](http://localhost:9000)
+
+## Configuration
+
+```toml
+[blockchain_a]
+  type = "sui"
+  image = "mysten/sui-tools:mainnet" # if omitted default is mysten/sui-tools:devnet
+  contracts_dir = "$your_dir"
+```
+
+## Usage
+
+```golang
 package examples
 
 import (
@@ -47,7 +63,16 @@ func TestSuiSmoke(t *testing.T) {
 		})
 		require.NoError(t, err)
 		fmt.Printf("My funds: %v\n", rsp)
-		fmt.Printf("url1: %s\n", bc.Nodes[0].HostHTTPUrl)
-		fmt.Printf("url2: %s\n", bc.Nodes[0].DockerInternalHTTPUrl)
 	})
 }
+```
+
+## Test Private Keys
+
+Since Sui doesn't have official local development chain we are using real node and generating mnemonic at start then funding that account through internal faucet, see
+```
+	// network is already funded, here are the keys
+	_ = bc.NetworkSpecificData.SuiAccount.Mnemonic
+	_ = bc.NetworkSpecificData.SuiAccount.PublicBase64Key
+	_ = bc.NetworkSpecificData.SuiAccount.SuiAddress
+```

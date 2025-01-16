@@ -15,7 +15,14 @@ import (
 	"time"
 )
 
-type SuiKeyInfo struct {
+const (
+	DefaultFaucetPort    = "9123/tcp"
+	DefaultFaucetPortNum = "9123"
+	DefaultSuiNodePort   = "9000"
+)
+
+// SuiWalletInfo info about Sui account/wallet
+type SuiWalletInfo struct {
 	Alias           *string `json:"alias"`           // Alias key name, usually "null"
 	Flag            int     `json:"flag"`            // Flag is an integer
 	KeyScheme       string  `json:"keyScheme"`       // Key scheme is a string
@@ -25,8 +32,11 @@ type SuiKeyInfo struct {
 	SuiAddress      string  `json:"suiAddress"`      // Sui address is a 0x prefixed hex string
 }
 
+// funds provided key using local faucet
+// we can't use the best client available - block-vision/sui-go-sdk for that, since some versions have old API and it is hardcoded
+// https://github.com/block-vision/sui-go-sdk/blob/main/sui/faucet_api.go#L16
 func fundAccount(url string, address string) error {
-	r := resty.New().SetBaseURL(url).EnableTrace().SetDebug(true)
+	r := resty.New().SetBaseURL(url)
 	b := &models.FaucetRequest{
 		FixedAmountRequest: &models.FaucetFixedAmountRequest{
 			Recipient: address,
@@ -40,18 +50,21 @@ func fundAccount(url string, address string) error {
 	return nil
 }
 
-func generateKeyData(containerName string, keyCipherType string) (*SuiKeyInfo, error) {
+// generateKeyData generates a wallet and returns all the data
+func generateKeyData(containerName string, keyCipherType string) (*SuiWalletInfo, error) {
 	cmdStr := []string{"sui", "keytool", "generate", keyCipherType, "--json"}
 	keyOut, err := framework.ExecContainer(containerName, cmdStr)
 	if err != nil {
 		return nil, err
 	}
+	// formatted JSON with, no plain --json version, remove special symbols
 	cleanKey := strings.ReplaceAll(keyOut, "\x00", "")
 	cleanKey = strings.ReplaceAll(cleanKey, "\x01", "")
 	cleanKey = strings.ReplaceAll(cleanKey, "\x02", "")
 	cleanKey = strings.ReplaceAll(cleanKey, "\n", "")
-	var key *SuiKeyInfo
-	if err := json.Unmarshal([]byte("{"+cleanKey[2:]), &key); err != nil {
+	cleanKey = "{" + cleanKey[2:]
+	var key *SuiWalletInfo
+	if err := json.Unmarshal([]byte(cleanKey), &key); err != nil {
 		return nil, err
 	}
 	framework.L.Info().Interface("Key", key).Msg("Test key")
@@ -63,9 +76,9 @@ func defaultSui(in *Input) {
 		in.Image = "mysten/sui-tools:devnet"
 	}
 	if in.Port != "" {
-		framework.L.Warn().Msg("'port' field is set but only default port can be used: 9000")
+		framework.L.Warn().Msgf("'port' field is set but only default port can be used: %s", DefaultSuiNodePort)
 	}
-	in.Port = "9000"
+	in.Port = DefaultSuiNodePort
 }
 
 func newSui(in *Input) (*Output, error) {
@@ -82,7 +95,7 @@ func newSui(in *Input) (*Output, error) {
 
 	req := testcontainers.ContainerRequest{
 		Image:        in.Image,
-		ExposedPorts: []string{in.Port, "9123/tcp"},
+		ExposedPorts: []string{in.Port, DefaultFaucetPort},
 		Name:         containerName,
 		Labels:       framework.DefaultTCLabels(),
 		Networks:     []string{framework.DefaultNetworkName},
@@ -90,7 +103,7 @@ func newSui(in *Input) (*Output, error) {
 			framework.DefaultNetworkName: {containerName},
 		},
 		HostConfigModifier: func(h *container.HostConfig) {
-			h.PortBindings = framework.MapTheSamePort(bindPort, "9123/tcp")
+			h.PortBindings = framework.MapTheSamePort(bindPort, DefaultFaucetPort)
 		},
 		ImagePlatform: "linux/amd64",
 		Env: map[string]string{
@@ -109,7 +122,7 @@ func newSui(in *Input) (*Output, error) {
 			},
 		},
 		// we need faucet for funding
-		WaitingFor: wait.ForListeningPort("9123/tcp").WithStartupTimeout(10 * time.Second).WithPollInterval(200 * time.Millisecond),
+		WaitingFor: wait.ForListeningPort(DefaultFaucetPort).WithStartupTimeout(10 * time.Second).WithPollInterval(200 * time.Millisecond),
 	}
 
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -123,19 +136,18 @@ func newSui(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	keyData, err := generateKeyData(containerName, "ed25519")
+	suiAccount, err := generateKeyData(containerName, "ed25519")
 	if err != nil {
 		return nil, err
 	}
-	err = fundAccount(fmt.Sprintf("http://%s:%s", "127.0.0.1", "9123"), keyData.SuiAddress)
-	if err != nil {
+	if err := fundAccount(fmt.Sprintf("http://%s:%s", "127.0.0.1", DefaultFaucetPortNum), suiAccount.SuiAddress); err != nil {
 		return nil, err
 	}
 	return &Output{
-		UseCache:      true,
-		Family:        "sui",
-		ContainerName: containerName,
-		GeneratedData: &GeneratedData{Mnemonic: keyData.Mnemonic},
+		UseCache:            true,
+		Family:              "sui",
+		ContainerName:       containerName,
+		NetworkSpecificData: &NetworkSpecificData{SuiAccount: suiAccount},
 		Nodes: []*Node{
 			{
 				HostHTTPUrl:           fmt.Sprintf("http://%s:%s", host, in.Port),
