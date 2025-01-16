@@ -27,6 +27,7 @@ func main() {
 	var decode bool         // Decode flag for `get`
 	var profile string      // AWS profile to use
 	var sharedWith []string // List of ARNs to share the secret with
+	var env string          // Environment name for GitHub secrets
 
 	// Set Command
 	var setCmd = &cobra.Command{
@@ -53,7 +54,7 @@ func main() {
 
 			switch strings.ToLower(backend) {
 			case "github":
-				if err := setGitHubSecret(filePath, secretID); err != nil {
+				if err := setGitHubSecret(filePath, secretID, env); err != nil {
 					exitWithError(err, "Failed to set GitHub secret")
 					return
 				}
@@ -104,6 +105,7 @@ func main() {
 	setCmd.PersistentFlags().StringVarP(&backend, "backend", "b", "aws", "Backend to use for storing secrets. Options: github, aws")
 	setCmd.PersistentFlags().StringVar(&profile, "profile", "", "AWS profile to use for credentials (required for AWS backend)")
 	setCmd.PersistentFlags().StringSliceVar(&sharedWith, "shared-with", []string{}, "Comma-separated list of IAM ARNs to share the secret with")
+	setCmd.PersistentFlags().StringVar(&env, "env", "", "Optional environment name (for GitHub Secrets)")
 
 	getCmd.PersistentFlags().StringVarP(&secretID, "secret-id", "s", "", "ID of the secret to retrieve")
 	getCmd.PersistentFlags().BoolVarP(&decode, "decode", "d", true, "Decode the Base64-encoded secret value")
@@ -117,7 +119,7 @@ func main() {
 }
 
 // setGitHubSecret creates or updates a secret in GitHub
-func setGitHubSecret(filePath, secretID string) error {
+func setGitHubSecret(filePath, secretID, env string) error {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to read file: %w", err)
@@ -125,7 +127,15 @@ func setGitHubSecret(filePath, secretID string) error {
 
 	encoded := base64.StdEncoding.EncodeToString(data)
 
-	setSecretCmd := exec.Command("gh", "secret", "set", secretID, "--body", encoded)
+	// Build the gh command
+	args := []string{"secret", "set", secretID, "--body", encoded}
+
+	// If --env was provided, add the environment argument
+	if env != "" {
+		args = append(args, "--env", env)
+	}
+
+	setSecretCmd := exec.Command("gh", args...)
 	setSecretCmd.Stdin = strings.NewReader(encoded)
 
 	output, err := setSecretCmd.CombinedOutput()
@@ -134,7 +144,7 @@ func setGitHubSecret(filePath, secretID string) error {
 	}
 
 	fmt.Printf(
-		"Test secret set successfully in GitHub with key: %s\n\n"+
+		"Test secret set successfully in GitHub Secrets with key: %s\n\n"+
 			"To run a GitHub workflow with the test secrets, use the 'test_secrets_override_key' flag.\n"+
 			"Example: gh workflow run ${workflow_name} -f test_secrets_override_key=%s\n",
 		secretID, secretID,
