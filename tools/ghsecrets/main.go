@@ -106,7 +106,7 @@ func main() {
 	setCmd.PersistentFlags().StringSliceVar(&sharedWith, "shared-with", []string{}, "Comma-separated list of IAM ARNs to share the secret with")
 
 	getCmd.PersistentFlags().StringVarP(&secretID, "secret-id", "s", "", "ID of the secret to retrieve")
-	getCmd.PersistentFlags().BoolVarP(&decode, "decode", "d", false, "Decode the Base64-encoded secret value")
+	getCmd.PersistentFlags().BoolVarP(&decode, "decode", "d", true, "Decode the Base64-encoded secret value")
 	getCmd.PersistentFlags().StringVar(&profile, "profile", "", "AWS profile to use for credentials (required for AWS backend)")
 
 	getCmd.MarkPersistentFlagRequired("secret-id")

@@ -85,10 +85,10 @@ If you want to retrieve an existing secret from AWS Secrets Manager, use:
 ghsecrets get --secret-id testsecrets/MySecretName --profile <your-aws-sdlc-profile>
 ```
 
-By default, it prints out the Base64-encoded string. To decode it automatically:
+By default, it tries to decode a Base64-encoded test secret. To disable decoding use `--decode false` flag:
 
 ```sh
-ghsecrets get --secret-id testsecrets/MySecretName --decode --profile <your-aws-sdlc-profile>
+ghsecrets get --secret-id testsecrets/MySecretName --decode false --profile <your-aws-sdlc-profile>
 ```
 
 ## FAQ
