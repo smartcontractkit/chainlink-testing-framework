@@ -14,7 +14,7 @@ require (
 	github.com/blocto/solana-go-sdk v1.30.0
 	github.com/ethereum/go-ethereum v1.14.11
 	github.com/go-resty/resty/v2 v2.15.3
-	github.com/smartcontractkit/chainlink-testing-framework/framework v0.4.1
+	github.com/smartcontractkit/chainlink-testing-framework/framework v0.4.4
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.50.10
 	github.com/smartcontractkit/chainlink-testing-framework/wasp v1.50.2
 	github.com/stretchr/testify v1.10.0

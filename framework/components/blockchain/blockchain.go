@@ -8,7 +8,7 @@ import (
 // Input is a blockchain network configuration params
 type Input struct {
 	// Common EVM fields
-	Type      string `toml:"type" validate:"required,oneof=anvil geth besu solana aptos sui" envconfig:"net_type"`
+	Type      string `toml:"type" validate:"required,oneof=anvil geth besu solana aptos tron sui" envconfig:"net_type"`
 	Image     string `toml:"image"`
 	PullImage bool   `toml:"pull_image"`
 	Port      string `toml:"port"`
@@ -71,6 +71,8 @@ func NewBlockchainNetwork(in *Input) (*Output, error) {
 		out, err = newAptos(in)
 	case "sui":
 		out, err = newSui(in)
+	case "tron":
+		out, err = newTron(in)
 	default:
 		return nil, fmt.Errorf("blockchain type is not supported or empty, must be 'anvil' or 'geth'")
 	}

@@ -39,6 +39,7 @@ func TestVerify(t *testing.T) {
 			"example_components/onchain",
 			"src/Counter.sol",
 			"Counter",
+			"0.8.13",
 		)
 		require.NoError(t, err)
 	})
