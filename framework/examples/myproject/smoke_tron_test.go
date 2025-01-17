@@ -18,10 +18,16 @@ func TestTRONSmoke(t *testing.T) {
 	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
 	require.NoError(t, err)
 
+	// all private keys are funded
+	_ = blockchain.TRONAccounts.PrivateKeys[0]
+
 	t.Run("test something", func(t *testing.T) {
 		// use internal URL to connect Chainlink nodes
 		_ = bc.Nodes[0].DockerInternalHTTPUrl
 		// use host URL to interact
 		_ = bc.Nodes[0].HostHTTPUrl
+
+		// use bc.Nodes[0].HostHTTPUrl + "/wallet" to access full node
+		// use bc.Nodes[0].HostHTTPUrl + "/walletsolidity" to access Solidity node
 	})
 }
