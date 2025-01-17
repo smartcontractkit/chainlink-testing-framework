@@ -2,9 +2,9 @@ package blockchain
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"os"
 	"time"
@@ -13,30 +13,30 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
+type Accounts struct {
+	HDPath      string   `json:"hdPath"`
+	Mnemonic    string   `json:"mnemonic"`
+	PrivateKeys []string `json:"privateKeys"`
+	More        []string `json:"more"`
+}
+
 const (
 	AccountsFile = `{
-	 "hdPath": "m/44'/195'/0'/0/",
-	 "mnemonic": "resemble birth wool happy sun burger fatal trumpet globe purity health ritual",
-	 "privateKeys": [
-	       "cf36898af3c63e13537063ae165ec8262fafac188f09200647b4b76b6f212b90",
-	       "7d5110f81cc6b2c65a532066e81fe813edf781e24f4e0fa42d22a3003dae7a54",
-	       "ae0de6fb5450622bfc96ec0c25a8a5cb85256d1f9d6cbbe5fd9de073d22f0060",
-	       "e972c3c213f8ba8cfe9a75e5d0b48310f4e35715f70986edd1eade904dd03437",
-	       "23d81a4d6c85661b58922e68db09cca0ebe77c787beb0e12c8d29da111568855"
-	  ],
-	 "more": [
-	   {
-	     "hdPath": "m/44'/195'/0'/0/",
-	     "mnemonic": "resemble birth wool happy sun burger fatal trumpet globe purity health ritual",
-	     "privateKeys": [
-	       "cf36898af3c63e13537063ae165ec8262fafac188f09200647b4b76b6f212b90",
-	       "7d5110f81cc6b2c65a532066e81fe813edf781e24f4e0fa42d22a3003dae7a54",
-	       "ae0de6fb5450622bfc96ec0c25a8a5cb85256d1f9d6cbbe5fd9de073d22f0060",
-	       "e972c3c213f8ba8cfe9a75e5d0b48310f4e35715f70986edd1eade904dd03437",
-	       "23d81a4d6c85661b58922e68db09cca0ebe77c787beb0e12c8d29da111568855"
-	      ]
-		}
-	 ]
+		"hdPath": "m/44'/195'/0'/0/",
+		"mnemonic": "resemble birth wool happy sun burger fatal trumpet globe purity health ritual",
+		"privateKeys": [
+			"932a39242805a1b1095638027f26af9664d1d5bf8ab3b7527ee75e7efb2946dd",
+			"1c17c9c049d36cde7e5ea99df6c86e0474b04f0e258ab619a1e674f397a17152",
+			"458130a239671674746582184711a6f8d633355df1a491b9f3b323576134c2e9",
+			"2676fd1427968e07feaa9aff967d4ba7607c5497c499968c098d0517cd75cfbb",
+			"d26b24a691ff2b03ee6ab65bf164def216f73574996b9ca6299c43a9a63767ac",
+			"55df6adf3d081944dbe4688205d94f236fb4427ac44f3a286a96d47db0860667",
+			"8a9a60ddd722a40753c2a38edd6b6fa38e806d681c9b08a520ba4912e62b6458",
+			"75eb182fb623acf5e53d9885c4e8578f2530533a96c753481cc4277ecc6022de",
+			"6c4b22b1d9d68ef7a8ecd151cd4ffdd4ecc2a7b3a3f8a9f9f9bbdbcef6671f10",
+			"e578d66453cb41b6c923b9caa91c375a0545eeb171ccafc60b46fa834ce5c200"
+		],
+	 "more": []
 	}
 	`
 	DefaultTronPort         = "9090"
@@ -45,7 +45,7 @@ const (
 
 func defaultTron(in *Input) {
 	if in.Image == "" {
-		in.Image = "trontools/quickstart:2.1.1"
+		in.Image = "tronbox/tre"
 	}
 	if in.Port == "" {
 		in.Port = DefaultTronPort
@@ -63,7 +63,29 @@ func newTron(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = accounts.WriteString(AccountsFile)
+	accountsData, err := json.Marshal(Accounts{
+		HDPath:   "m/44'/195'/0'/0/",
+		Mnemonic: "resemble birth wool happy sun burger fatal trumpet globe purity health ritual",
+		PrivateKeys: []string{
+			"932a39242805a1b1095638027f26af9664d1d5bf8ab3b7527ee75e7efb2946dd",
+			"1c17c9c049d36cde7e5ea99df6c86e0474b04f0e258ab619a1e674f397a17152",
+			"458130a239671674746582184711a6f8d633355df1a491b9f3b323576134c2e9",
+			"2676fd1427968e07feaa9aff967d4ba7607c5497c499968c098d0517cd75cfbb",
+			"d26b24a691ff2b03ee6ab65bf164def216f73574996b9ca6299c43a9a63767ac",
+			"55df6adf3d081944dbe4688205d94f236fb4427ac44f3a286a96d47db0860667",
+			"8a9a60ddd722a40753c2a38edd6b6fa38e806d681c9b08a520ba4912e62b6458",
+			"75eb182fb623acf5e53d9885c4e8578f2530533a96c753481cc4277ecc6022de",
+			"6c4b22b1d9d68ef7a8ecd151cd4ffdd4ecc2a7b3a3f8a9f9f9bbdbcef6671f10",
+			"e578d66453cb41b6c923b9caa91c375a0545eeb171ccafc60b46fa834ce5c200",
+		},
+		// should not be empty, otherwise TRE will panic
+		More: []string{},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = accounts.WriteString(string(accountsData))
 	if err != nil {
 		return nil, err
 	}
@@ -72,19 +94,16 @@ func newTron(in *Input) (*Output, error) {
 		AlwaysPullImage: in.PullImage,
 		Image:           in.Image,
 		Name:            containerName,
-		ExposedPorts:    []string{bindPort, "18190/tcp", "18191/tcp"},
+		ExposedPorts:    []string{bindPort},
 		Networks:        []string{framework.DefaultNetworkName},
 		NetworkAliases: map[string][]string{
 			framework.DefaultNetworkName: {containerName},
 		},
-		Env: map[string]string{
-			"accounts": "10",
-		},
 		Labels: framework.DefaultTCLabels(),
 		HostConfigModifier: func(h *container.HostConfig) {
-			h.PortBindings = framework.MapTheSamePort(bindPort, "18190/tcp", "19191/tcp")
+			h.PortBindings = framework.MapTheSamePort(bindPort)
 		},
-		WaitingFor: wait.ForListeningPort(nat.Port(in.Port)).WithStartupTimeout(60 * time.Second).WithPollInterval(200 * time.Millisecond),
+		WaitingFor: wait.ForLog("Mnemonic").WithPollInterval(200 * time.Millisecond).WithStartupTimeout(1 * time.Minute),
 		Files: []testcontainers.ContainerFile{
 			{
 				HostFilePath:      accounts.Name(),
