@@ -8,7 +8,7 @@ import (
 // Input is a blockchain network configuration params
 type Input struct {
 	// Common EVM fields
-	Type      string `toml:"type" validate:"required,oneof=anvil geth besu solana aptos tron" envconfig:"net_type"`
+	Type      string `toml:"type" validate:"required,oneof=anvil geth besu solana aptos tron sui" envconfig:"net_type"`
 	Image     string `toml:"image"`
 	PullImage bool   `toml:"pull_image"`
 	Port      string `toml:"port"`
@@ -30,12 +30,17 @@ type Input struct {
 
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network
 type Output struct {
-	UseCache      bool                     `toml:"use_cache"`
-	Family        string                   `toml:"family"`
-	ContainerName string                   `toml:"container_name"`
-	Container     testcontainers.Container `toml:"-"`
-	ChainID       string                   `toml:"chain_id"`
-	Nodes         []*Node                  `toml:"nodes"`
+	UseCache            bool                     `toml:"use_cache"`
+	Family              string                   `toml:"family"`
+	ContainerName       string                   `toml:"container_name"`
+	NetworkSpecificData *NetworkSpecificData     `toml:"network_specific_data"`
+	Container           testcontainers.Container `toml:"-"`
+	ChainID             string                   `toml:"chain_id"`
+	Nodes               []*Node                  `toml:"nodes"`
+}
+
+type NetworkSpecificData struct {
+	SuiAccount *SuiWalletInfo
 }
 
 // Node represents blockchain node output, URLs required for connection locally and inside docker network
@@ -64,6 +69,8 @@ func NewBlockchainNetwork(in *Input) (*Output, error) {
 		out, err = newSolana(in)
 	case "aptos":
 		out, err = newAptos(in)
+	case "sui":
+		out, err = newSui(in)
 	case "tron":
 		out, err = newTron(in)
 	default:

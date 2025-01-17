@@ -34,6 +34,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.0 // indirect
 	github.com/aws/smithy-go v1.22.1 // indirect
 	github.com/bits-and-blooms/bitset v1.13.0 // indirect
+	github.com/block-vision/sui-go-sdk v1.0.6 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.4 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/consensys/bavard v0.1.13 // indirect
@@ -100,6 +101,9 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/supranational/blst v0.3.13 // indirect
 	github.com/testcontainers/testcontainers-go v0.35.0 // indirect
+	github.com/tidwall/gjson v1.14.4 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
