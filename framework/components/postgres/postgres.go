@@ -55,7 +55,11 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 
 	var sqlCommands []string
 	for i := 0; i <= in.Databases; i++ {
-		sqlCommands = append(sqlCommands, fmt.Sprintf("CREATE DATABASE db_%d;", i))
+		sqlCommands = append(sqlCommands,
+			fmt.Sprintf("CREATE DATABASE db_%d;", i),
+			fmt.Sprintf("\\c db_%d", i),
+			"CREATE EXTENSION pg_stat_statements;",
+		)
 	}
 	if in.JDDatabase {
 		sqlCommands = append(sqlCommands, "CREATE DATABASE jd;")
@@ -89,7 +93,10 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 			"POSTGRES_DB":       Database,
 		},
 		Cmd: []string{
-			"postgres", "-c", fmt.Sprintf("port=%s", Port),
+			"postgres", "-c",
+			fmt.Sprintf("port=%s", Port),
+			"-c", "shared_preload_libraries=pg_stat_statements",
+			"-c", "pg_stat_statements.track=all",
 		},
 		Files: []testcontainers.ContainerFile{
 			{
