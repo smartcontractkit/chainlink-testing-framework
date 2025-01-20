@@ -22,6 +22,8 @@ func observabilityUp() error {
 	}
 	fmt.Println()
 	framework.L.Info().Msgf("Loki: %s", LocalLogsURL)
+	framework.L.Info().Msgf("Prometheus: %s", LocalPrometheusURL)
+	framework.L.Info().Msgf("PostgreSQL: %s", LocalPostgresDebugURL)
 	framework.L.Info().Msgf("Pyroscope: %s", LocalPyroScopeURL)
 	return nil
 }
