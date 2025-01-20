@@ -31,6 +31,7 @@
     - [Metrics](framework/observability/metrics.md)
     - [Logs](framework/observability/logs.md)
     - [Profiling](framework/observability/profiling.md)
+    - [PostgreSQL](framework/observability/postgresql.md)
     - [Traces]()
   - [Blockscout](framework/observability/blockscout.md)
   - [Components](framework/components/overview.md)
