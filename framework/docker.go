@@ -322,8 +322,8 @@ func ExecContainer(containerName string, command []string) (string, error) {
 }
 
 type ContainerResources struct {
-	CPUs     float64 `toml:"cpus"`
-	MemoryMb int     `toml:"memory_mb"`
+	CPUs     float64 `toml:"cpus" validate:"gte=0"`
+	MemoryMb uint    `toml:"memory_mb"`
 }
 
 // ResourceLimitsFunc returns a function to configure container resources based on the human-readable CPUs and memory in Mb
@@ -331,13 +331,13 @@ func ResourceLimitsFunc(h *container.HostConfig, resources *ContainerResources) 
 	if resources == nil {
 		return
 	}
-	if resources.MemoryMb != 0 {
+	if resources.MemoryMb > 0 {
 		h.Memory = int64(resources.MemoryMb) * 1024 * 1024            // Memory in Mb
 		h.MemoryReservation = int64(resources.MemoryMb) * 1024 * 1024 // Total memory that can be reserved (soft) in Mb
 		// https://docs.docker.com/engine/containers/resource_constraints/ if both values are equal swap is off, read the docs
 		h.MemorySwap = h.Memory
 	}
-	if resources.CPUs != 0 {
+	if resources.CPUs > 0 {
 		// Set CPU limits using CPUQuota and CPUPeriod
 		// we don't use runtime.NumCPU or docker API to get CPUs because h.CPUShares is relative to amount of containers you run
 		// CPUPeriod and CPUQuota are absolute and easier to control
