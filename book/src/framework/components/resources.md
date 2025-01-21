@@ -26,6 +26,8 @@ How quota and period works:
 - To allocate `0.5 CPU`, we set `CPUQuota = 50000` and `CPUPeriod = 100000`.
 - To allocate `2 CPUs`, we set `CPUQuota = 200000` and `CPUPeriod = 100000`.
 
-When the `resources` key is not empty, we disable swap, ensuring the container goes OOM when memory is exhausted, allowing for more precise detection of sudden memory spikes.
+Read more about [CFS](https://engineering.squarespace.com/blog/2017/understanding-linux-container-scheduling).
+
+When the `resources.memory_mb` key is not empty, we disable swap, ensuring the container goes OOM when memory is exhausted, allowing for more precise detection of sudden memory spikes.
 
 Full configuration [example]()
