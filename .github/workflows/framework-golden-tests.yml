@@ -22,6 +22,10 @@ jobs:
             config: smoke.toml
             count: 1
             timeout: 10m
+          - name: TestSmoke
+            config: smoke_limited_resources.toml
+            count: 1
+            timeout: 10m
           - name: TestSuiSmoke
             config: smoke_sui.toml
             count: 1
@@ -54,7 +58,7 @@ jobs:
             config: scalability.toml
             count: 1
             timeout: 10m
-    name: ${{ matrix.test.name }}
+    name: ${{ matrix.test.name }} - ${{ matrix.test.config }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4

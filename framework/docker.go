@@ -331,14 +331,17 @@ func ResourceLimitsFunc(h *container.HostConfig, resources *ContainerResources) 
 	if resources == nil {
 		return
 	}
-	h.Memory = int64(resources.MemoryMb) * 1024 * 1024            // Memory in Mb
-	h.MemoryReservation = int64(resources.MemoryMb) * 1024 * 1024 // Total memory that can be reserved (soft) in Mb
-	// https://docs.docker.com/engine/containers/resource_constraints/ if memories are equal we don't have swap, read the docs
-	h.MemorySwap = h.Memory // No swap for simplicity
-
-	// Set CPU limits using CPUQuota and CPUPeriod
-	// we don't use runtime.NumCPU or docker API to get CPUs because h.CPUShares is relative to amount of containers you run
-	// CPUPeriod and CPUQuota are absolute and easier to control
-	h.CPUPeriod = 100000                        // Default period (100ms)
-	h.CPUQuota = int64(resources.CPUs * 100000) // Quota in microseconds (e.g., 0.5 CPUs = 50000)
+	if resources.MemoryMb != 0 {
+		h.Memory = int64(resources.MemoryMb) * 1024 * 1024            // Memory in Mb
+		h.MemoryReservation = int64(resources.MemoryMb) * 1024 * 1024 // Total memory that can be reserved (soft) in Mb
+		// https://docs.docker.com/engine/containers/resource_constraints/ if both values are equal swap is off, read the docs
+		h.MemorySwap = h.Memory
+	}
+	if resources.CPUs != 0 {
+		// Set CPU limits using CPUQuota and CPUPeriod
+		// we don't use runtime.NumCPU or docker API to get CPUs because h.CPUShares is relative to amount of containers you run
+		// CPUPeriod and CPUQuota are absolute and easier to control
+		h.CPUPeriod = 100000                        // Default period (100ms)
+		h.CPUQuota = int64(resources.CPUs * 100000) // Quota in microseconds (e.g., 0.5 CPUs = 50000)
+	}
 }
