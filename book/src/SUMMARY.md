@@ -22,6 +22,7 @@
   - [Debugging Tests](framework/components/debug.md)
   - [Components Cleanup](framework/components/cleanup.md)
   - [Components Caching](framework/components/caching.md)
+  - [Components Resources](framework/components/resources.md)
   - [Mocking Services](framework/components/mocking.md)
   - [Copying Files](framework/copying_files.md)
   - [External Environment](framework/components/external.md)

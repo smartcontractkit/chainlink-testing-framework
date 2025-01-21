@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"fmt"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/testcontainers/testcontainers-go"
 )
 
@@ -25,7 +26,8 @@ type Input struct {
 	// programs to deploy on solana-test-validator start
 	// a map of program name to program id
 	// there needs to be a matching .so file in contracts_dir
-	SolanaPrograms map[string]string `toml:"solana_programs"`
+	SolanaPrograms     map[string]string             `toml:"solana_programs"`
+	ContainerResources *framework.ContainerResources `toml:"resources"`
 }
 
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network
