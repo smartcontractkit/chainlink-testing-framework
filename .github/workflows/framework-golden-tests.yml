@@ -58,7 +58,7 @@ jobs:
             config: scalability.toml
             count: 1
             timeout: 10m
-    name: ${{ matrix.test.name }} - ${{ matrix.test.config }}
+    name: ${{ matrix.test.name }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
