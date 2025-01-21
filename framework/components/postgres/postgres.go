@@ -24,14 +24,15 @@ const (
 )
 
 type Input struct {
-	Image      string  `toml:"image" validate:"required"`
-	Port       int     `toml:"port"`
-	Name       string  `toml:"name"`
-	VolumeName string  `toml:"volume_name"`
-	Databases  int     `toml:"databases"`
-	JDDatabase bool    `toml:"jd_database"`
-	PullImage  bool    `toml:"pull_image"`
-	Out        *Output `toml:"out"`
+	Image              string                        `toml:"image" validate:"required"`
+	Port               int                           `toml:"port"`
+	Name               string                        `toml:"name"`
+	VolumeName         string                        `toml:"volume_name"`
+	Databases          int                           `toml:"databases"`
+	JDDatabase         bool                          `toml:"jd_database"`
+	PullImage          bool                          `toml:"pull_image"`
+	ContainerResources *framework.ContainerResources `toml:"resources"`
+	Out                *Output                       `toml:"out"`
 }
 
 type Output struct {
@@ -133,6 +134,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 				},
 			},
 		}
+		framework.ResourceLimitsFunc(h, in.ContainerResources)
 	}
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,

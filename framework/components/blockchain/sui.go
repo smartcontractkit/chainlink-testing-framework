@@ -104,6 +104,7 @@ func newSui(in *Input) (*Output, error) {
 		},
 		HostConfigModifier: func(h *container.HostConfig) {
 			h.PortBindings = framework.MapTheSamePort(bindPort, DefaultFaucetPort)
+			framework.ResourceLimitsFunc(h, in.ContainerResources)
 		},
 		ImagePlatform: "linux/amd64",
 		Env: map[string]string{

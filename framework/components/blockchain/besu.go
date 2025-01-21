@@ -68,6 +68,7 @@ func newBesu(in *Input) (*Output, error) {
 		Labels: framework.DefaultTCLabels(),
 		HostConfigModifier: func(h *container.HostConfig) {
 			h.PortBindings = framework.MapTheSamePort(bindPortWs, bindPort)
+			framework.ResourceLimitsFunc(h, in.ContainerResources)
 		},
 		WaitingFor: wait.ForListeningPort(nat.Port(in.Port)).WithStartupTimeout(15 * time.Second).WithPollInterval(200 * time.Millisecond),
 		Cmd:        entryPoint,
