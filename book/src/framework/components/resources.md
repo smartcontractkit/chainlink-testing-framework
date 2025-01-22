@@ -30,4 +30,4 @@ Read more about [CFS](https://engineering.squarespace.com/blog/2017/understandin
 
 When the `resources.memory_mb` key is not empty, we disable swap, ensuring the container goes OOM when memory is exhausted, allowing for more precise detection of sudden memory spikes.
 
-Full configuration [example]()
+Full configuration [example](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/smoke_limited_resources.toml)
