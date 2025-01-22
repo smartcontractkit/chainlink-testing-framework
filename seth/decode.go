@@ -124,7 +124,7 @@ func (m *Client) DecodeSendErr(txErr error) error {
 
 	reason, decodingErr := m.DecodeCustomABIErr(txErr)
 
-	if decodingErr == nil {
+	if decodingErr == nil && reason != "" {
 		return errors.Wrap(txErr, reason)
 	}
 
@@ -511,7 +511,7 @@ func (m *Client) DecodeCustomABIErr(txErr error) (string, error) {
 	} else {
 		L.Debug().Msg("Transaction submission error doesn't contain any data. Impossible to decode the revert reason")
 	}
-	return "", errors.New(ErrUnableToDecode)
+	return "", nil
 }
 
 // CallMsgFromTx creates ethereum.CallMsg from tx, used in simulated calls

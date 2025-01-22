@@ -6,13 +6,13 @@ import (
 )
 
 // VerifyContract wraps the forge verify-contract command.
-func VerifyContract(out *Output, address, foundryDir, contractFile, contractName string) error {
+func VerifyContract(out *Output, address, foundryDir, contractFile, contractName, compilerVersion string) error {
 	args := []string{
 		"verify-contract",
 		"--rpc-url", out.Nodes[0].HostHTTPUrl,
 		"--chain-id",
 		out.ChainID,
-		"--compiler-version=0.8.24",
+		fmt.Sprintf("--compiler-version=%s", compilerVersion),
 		address,
 		fmt.Sprintf("%s:%s", contractFile, contractName),
 		"--verifier", "blockscout",

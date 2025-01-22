@@ -434,6 +434,7 @@ func jobEnvVars(props *Props) *[]*k8s.EnvVar {
 		config.EnvVarInternalDockerRepo,
 		config.EnvVarLocalCharts,
 		config.EnvBase64ConfigOverride,
+		config.EnvSethLogLevel,
 	}
 	for _, k := range lookups {
 		v, success := os.LookupEnv(k)

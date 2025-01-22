@@ -22,6 +22,8 @@ func observabilityUp() error {
 	}
 	fmt.Println()
 	framework.L.Info().Msgf("Loki: %s", LocalLogsURL)
+	framework.L.Info().Msgf("Prometheus: %s", LocalPrometheusURL)
+	framework.L.Info().Msgf("PostgreSQL: %s", LocalPostgresDebugURL)
 	framework.L.Info().Msgf("Pyroscope: %s", LocalPyroScopeURL)
 	return nil
 }
@@ -30,7 +32,7 @@ func observabilityDown() error {
 	framework.L.Info().Msg("Removing local observability stack")
 	err := runCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
-		docker compose down -v
+		docker compose down -v && docker rm -f promtail
 	`, "compose"))
 	if err != nil {
 		return err

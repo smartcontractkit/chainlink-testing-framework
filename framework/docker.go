@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/docker/docker/api/types/container"
+	filters2 "github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
@@ -175,23 +176,6 @@ func (dc *DockerClient) copyToContainer(containerID, sourceFile, targetPath stri
 	return nil
 }
 
-func in(s string, substrings []string) bool {
-	for _, substr := range substrings {
-		if strings.Contains(s, substr) {
-			return true
-		}
-	}
-	return false
-}
-
-func isLocalToolDockerContainer(containerName string) bool {
-	if in(containerName, []string{"/sig-provider", "/stats", "/stats-db", "/db", "/backend", "/promtail", "/compose", "/blockscout", "/frontend", "/user-ops-indexer", "/visualizer", "/redis-db", "/proxy"}) {
-		L.Debug().Str("Container", containerName).Msg("Ignoring local tool container output")
-		return true
-	}
-	return false
-}
-
 // WriteAllContainersLogs writes all Docker container logs to the default logs directory
 func WriteAllContainersLogs(dir string) error {
 	L.Info().Msg("Writing Docker containers logs")
@@ -204,7 +188,13 @@ func WriteAllContainersLogs(dir string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create Docker provider: %w", err)
 	}
-	containers, err := provider.Client().ContainerList(context.Background(), container.ListOptions{All: true})
+	containers, err := provider.Client().ContainerList(context.Background(), container.ListOptions{
+		All: true,
+		Filters: filters2.NewArgs(filters2.KeyValuePair{
+			Key:   "label",
+			Value: "framework=ctf",
+		}),
+	})
 	if err != nil {
 		return fmt.Errorf("failed to list Docker containers: %w", err)
 	}
@@ -214,9 +204,6 @@ func WriteAllContainersLogs(dir string) error {
 	for _, containerInfo := range containers {
 		eg.Go(func() error {
 			containerName := containerInfo.Names[0]
-			if isLocalToolDockerContainer(containerName) {
-				return nil
-			}
 			L.Debug().Str("Container", containerName).Msg("Collecting logs")
 			logOptions := container.LogsOptions{ShowStdout: true, ShowStderr: true}
 			logs, err := provider.Client().ContainerLogs(context.Background(), containerInfo.ID, logOptions)
@@ -283,4 +270,53 @@ func BuildImage(dctx, dfile, nameAndTag string) error {
 	} else {
 		return runCommand("docker", "build", "-t", nameAndTag, "-f", dfilePath, dctx)
 	}
+}
+
+// ExecContainer executes a command inside a running container by name and returns the combined stdout/stderr.
+func ExecContainer(containerName string, command []string) (string, error) {
+	L.Info().Strs("Command", command).Str("ContainerName", containerName).Msg("Executing command")
+	p, err := tc.NewDockerProvider()
+	if err != nil {
+		return "", err
+	}
+	ctx := context.Background()
+	containers, err := p.Client().ContainerList(ctx, container.ListOptions{
+		All: true,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to list containers: %w", err)
+	}
+	var containerID string
+	for _, cont := range containers {
+		for _, name := range cont.Names {
+			if name == "/"+containerName {
+				containerID = cont.ID
+				break
+			}
+		}
+	}
+	if containerID == "" {
+		return "", fmt.Errorf("container with name '%s' not found", containerName)
+	}
+
+	execConfig := container.ExecOptions{
+		Cmd:          command,
+		AttachStdout: true,
+		AttachStderr: true,
+	}
+	execID, err := p.Client().ContainerExecCreate(ctx, containerID, execConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to create exec instance: %w", err)
+	}
+	resp, err := p.Client().ContainerExecAttach(ctx, execID.ID, container.ExecStartOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to attach to exec instance: %w", err)
+	}
+	defer resp.Close()
+	output, err := io.ReadAll(resp.Reader)
+	if err != nil {
+		return "", fmt.Errorf("failed to read exec output: %w", err)
+	}
+	L.Info().Str("Output", string(output)).Msg("Command output")
+	return string(output), nil
 }
