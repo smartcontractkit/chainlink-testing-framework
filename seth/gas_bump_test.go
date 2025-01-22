@@ -606,7 +606,7 @@ func TestGasBumping_Contract_Interaction_Legacy_FailedBumping(t *testing.T) {
 		StrategyFn: func(gasPrice *big.Int) *big.Int {
 			gasBumps++
 			// this results in a gas bump that is too high to be accepted
-			return new(big.Int).Mul(gasPrice, big.NewInt(1000000000000))
+			return new(big.Int).Mul(gasPrice, big.NewInt(100000000000000))
 		},
 	}
 

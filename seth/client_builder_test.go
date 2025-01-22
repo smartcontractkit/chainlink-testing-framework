@@ -403,7 +403,7 @@ func TestConfig_EthClient_DoesntAllowRpcUrl(t *testing.T) {
 	require.Nil(t, client, "expected client to be nil")
 }
 
-func TestConfig_EthClient(t *testing.T) {
+func TestExtraConfig_EthClient(t *testing.T) {
 	builder := seth.NewClientBuilder()
 
 	ethclient, err := ethclient.Dial("ws://localhost:8545")

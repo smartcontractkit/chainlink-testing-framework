@@ -49,6 +49,7 @@ func newAptos(in *Input) (*Output, error) {
 		},
 		HostConfigModifier: func(h *container.HostConfig) {
 			h.PortBindings = framework.MapTheSamePort(bindPort)
+			framework.ResourceLimitsFunc(h, in.ContainerResources)
 		},
 		ImagePlatform: "linux/amd64",
 		Cmd: []string{

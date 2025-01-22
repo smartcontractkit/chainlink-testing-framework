@@ -48,6 +48,7 @@ func newAnvil(in *Input) (*Output, error) {
 		ExposedPorts:    []string{bindPort},
 		HostConfigModifier: func(h *container.HostConfig) {
 			h.PortBindings = framework.MapTheSamePort(bindPort)
+			framework.ResourceLimitsFunc(h, in.ContainerResources)
 		},
 		Networks: []string{framework.DefaultNetworkName},
 		NetworkAliases: map[string][]string{
