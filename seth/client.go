@@ -851,8 +851,6 @@ This issue is caused by one of two things:
 		return &bind.TransactOpts{Context: ctx}, NonceStatus{}, GasEstimations{}
 	}
 
-	fmt.Println("sender", opts.From.Hex())
-
 	if ctx != nil {
 		opts.Context = ctx
 	}
