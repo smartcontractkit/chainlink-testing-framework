@@ -29,6 +29,7 @@ const (
 	ErrDecodeILogIndexed    = "failed to decode indexed log data"
 	ErrTooShortTxData       = "tx data is less than 4 bytes, can't decode"
 	ErrRPCJSONCastError     = "failed to cast CallMsg error as rpc.DataError"
+	ErrUnableToDecode       = "unable to decode revert reason"
 
 	WarnNoContractStore = "ContractStore is nil, use seth.NewContractStore(...) to decode transactions"
 )
@@ -510,7 +511,7 @@ func (m *Client) DecodeCustomABIErr(txErr error) (string, error) {
 	} else {
 		L.Debug().Msg("Transaction submission error doesn't contain any data. Impossible to decode the revert reason")
 	}
-	return "", nil
+	return "", errors.New(ErrUnableToDecode)
 }
 
 // CallMsgFromTx creates ethereum.CallMsg from tx, used in simulated calls
