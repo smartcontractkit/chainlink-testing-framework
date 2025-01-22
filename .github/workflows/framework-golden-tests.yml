@@ -22,6 +22,10 @@ jobs:
             config: smoke.toml
             count: 1
             timeout: 10m
+          - name: TestSmoke
+            config: smoke_limited_resources.toml
+            count: 1
+            timeout: 10m
           - name: TestSuiSmoke
             config: smoke_sui.toml
             count: 1

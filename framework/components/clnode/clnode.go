@@ -42,21 +42,22 @@ type Input struct {
 
 // NodeInput is CL nod container inputs
 type NodeInput struct {
-	Image                   string   `toml:"image" validate:"required"`
-	Name                    string   `toml:"name"`
-	DockerFilePath          string   `toml:"docker_file"`
-	DockerContext           string   `toml:"docker_ctx"`
-	PullImage               bool     `toml:"pull_image"`
-	CapabilitiesBinaryPaths []string `toml:"capabilities"`
-	CapabilityContainerDir  string   `toml:"capabilities_container_dir"`
-	TestConfigOverrides     string   `toml:"test_config_overrides"`
-	UserConfigOverrides     string   `toml:"user_config_overrides"`
-	TestSecretsOverrides    string   `toml:"test_secrets_overrides"`
-	UserSecretsOverrides    string   `toml:"user_secrets_overrides"`
-	HTTPPort                int      `toml:"port"`
-	P2PPort                 int      `toml:"p2p_port"`
-	CustomPorts             []string `toml:"custom_ports"`
-	DebuggerPort            int      `toml:"debugger_port"`
+	Image                   string                        `toml:"image" validate:"required"`
+	Name                    string                        `toml:"name"`
+	DockerFilePath          string                        `toml:"docker_file"`
+	DockerContext           string                        `toml:"docker_ctx"`
+	PullImage               bool                          `toml:"pull_image"`
+	CapabilitiesBinaryPaths []string                      `toml:"capabilities"`
+	CapabilityContainerDir  string                        `toml:"capabilities_container_dir"`
+	TestConfigOverrides     string                        `toml:"test_config_overrides"`
+	UserConfigOverrides     string                        `toml:"user_config_overrides"`
+	TestSecretsOverrides    string                        `toml:"test_secrets_overrides"`
+	UserSecretsOverrides    string                        `toml:"user_secrets_overrides"`
+	HTTPPort                int                           `toml:"port"`
+	P2PPort                 int                           `toml:"p2p_port"`
+	CustomPorts             []string                      `toml:"custom_ports"`
+	DebuggerPort            int                           `toml:"debugger_port"`
+	ContainerResources      *framework.ContainerResources `toml:"resources"`
 }
 
 // Output represents Chainlink node output, nodes and databases connection URLs
@@ -247,6 +248,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {
 		req.HostConfigModifier = func(h *container.HostConfig) {
 			h.PortBindings = portBindings
+			framework.ResourceLimitsFunc(h, in.Node.ContainerResources)
 		}
 	}
 	files := []tc.ContainerFile{

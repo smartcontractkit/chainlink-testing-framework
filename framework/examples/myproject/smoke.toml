@@ -1,9 +1,7 @@
 
 [blockchain_a]
-  # choose "anvil", "geth" or "besu"
-  # use   docker_cmd_params = ["-b", "1"] for "anvil"
-  type = "anvil"
   docker_cmd_params = ["-b", "1"]
+  type = "anvil"
 
 [data_provider]
   port = 9111

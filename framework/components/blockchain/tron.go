@@ -85,6 +85,7 @@ func newTron(in *Input) (*Output, error) {
 		Labels: framework.DefaultTCLabels(),
 		HostConfigModifier: func(h *container.HostConfig) {
 			h.PortBindings = framework.MapTheSamePort(bindPort)
+			framework.ResourceLimitsFunc(h, in.ContainerResources)
 		},
 		WaitingFor: wait.ForLog("Mnemonic").WithPollInterval(200 * time.Millisecond).WithStartupTimeout(1 * time.Minute),
 		Files: []testcontainers.ContainerFile{

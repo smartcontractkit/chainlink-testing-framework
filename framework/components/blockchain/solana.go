@@ -105,6 +105,7 @@ func newSolana(in *Input) (*Output, error) {
 			WithPollInterval(100 * time.Millisecond),
 		HostConfigModifier: func(h *container.HostConfig) {
 			h.PortBindings = framework.MapTheSamePort(bindPort, wsBindPort)
+			framework.ResourceLimitsFunc(h, in.ContainerResources)
 			h.Mounts = append(h.Mounts, mount.Mount{
 				Type:     mount.TypeBind,
 				Source:   contractsDir,

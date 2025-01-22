@@ -167,6 +167,7 @@ func newGeth(in *Input) (*Output, error) {
 		ExposedPorts: []string{bindPort},
 		HostConfigModifier: func(h *container.HostConfig) {
 			h.PortBindings = framework.MapTheSamePort(bindPort)
+			framework.ResourceLimitsFunc(h, in.ContainerResources)
 			h.Mounts = append(h.Mounts, mount.Mount{
 				Type:     mount.TypeBind,
 				Source:   keystoreDir,
