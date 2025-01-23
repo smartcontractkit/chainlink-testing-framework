@@ -11,7 +11,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/parrot"
 )
 
-func ExampleRegister() {
+func ExampleServer_Register() {
 	// Create a new parrot instance with no logging and a custom save file
 	saveFile := "register_example.json"
 	p, err := parrot.Wake(parrot.WithLogLevel(zerolog.NoLevel), parrot.WithSaveFile(saveFile))
