@@ -29,6 +29,7 @@ const (
 	ErrDecodeILogIndexed    = "failed to decode indexed log data"
 	ErrTooShortTxData       = "tx data is less than 4 bytes, can't decode"
 	ErrRPCJSONCastError     = "failed to cast CallMsg error as rpc.DataError"
+	ErrUnableToDecode       = "unable to decode revert reason"
 
 	WarnNoContractStore = "ContractStore is nil, use seth.NewContractStore(...) to decode transactions"
 )
@@ -123,7 +124,7 @@ func (m *Client) DecodeSendErr(txErr error) error {
 
 	reason, decodingErr := m.DecodeCustomABIErr(txErr)
 
-	if decodingErr == nil {
+	if decodingErr == nil && reason != "" {
 		return errors.Wrap(txErr, reason)
 	}
 

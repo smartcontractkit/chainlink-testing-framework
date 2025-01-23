@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ethereum/go-ethereum/ethclient/simulated"
 	"github.com/pkg/errors"
 )
 
@@ -12,6 +13,7 @@ const (
 	NoPkForNonceProtection    = "you need to provide at least one private key to enable nonce protection"
 	NoPkForEphemeralKeys      = "you need to provide at least one private key to generate and fund ephemeral addresses"
 	NoPkForGasPriceEstimation = "you need to provide at least one private key to enable gas price estimations"
+	EthClientAndUrlsSet       = "you cannot set both EthClient and RPC URLs"
 )
 
 type ClientBuilder struct {
@@ -363,6 +365,14 @@ func (c *ClientBuilder) WithNonceManager(rateLimitSec int, retries uint, timeout
 	return c
 }
 
+// WithEthClient sets the ethclient to use. It means that the URL you pass will be ignored and the client will use the provided ethclient,
+// but what it allows you is to use Geth's Simulated Backend or similar implementations for testing.
+// Default value is nil.
+func (c *ClientBuilder) WithEthClient(ethclient simulated.Client) *ClientBuilder {
+	c.config.ethclient = ethclient
+	return c
+}
+
 // WithReadOnlyMode sets the client to read-only mode. It removes all private keys from all Networks and disables nonce protection and ephemeral addresses.
 func (c *ClientBuilder) WithReadOnlyMode() *ClientBuilder {
 	c.readonly = true
@@ -422,6 +432,9 @@ func (c *ClientBuilder) validateConfig() {
 		}
 		if len(c.config.Network.PrivateKeys) == 0 && c.config.Network.GasPriceEstimationEnabled {
 			c.errors = append(c.errors, errors.New(NoPkForGasPriceEstimation))
+		}
+		if len(c.config.Network.URLs) > 0 && c.config.ethclient != nil {
+			c.errors = append(c.errors, errors.New(EthClientAndUrlsSet))
 		}
 	}
 }

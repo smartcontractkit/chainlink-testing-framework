@@ -5,9 +5,12 @@ import (
 	"math/big"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient/simulated"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
@@ -214,4 +217,31 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(m.Run())
+}
+
+func StartSimulatedBackend(fundedAddresses []common.Address) (*simulated.Backend, context.CancelFunc) {
+	toFund := make(map[common.Address]types.Account)
+	for _, address := range fundedAddresses {
+		toFund[address] = types.Account{
+			Balance: big.NewInt(1000000000000000000), // 1 Ether
+		}
+	}
+	backend := simulated.NewBackend(toFund)
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+
+	ticker := time.NewTicker(100 * time.Millisecond)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				backend.Commit()
+			case <-ctx.Done():
+				backend.Close()
+				return
+			}
+		}
+	}()
+
+	return backend, cancelFn
 }

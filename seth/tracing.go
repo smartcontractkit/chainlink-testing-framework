@@ -129,10 +129,11 @@ type Call struct {
 func NewTracer(cs *ContractStore, abiFinder *ABIFinder, cfg *Config, contractAddressToNameMap ContractMap, addresses []common.Address) (*Tracer, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Network.DialTimeout.Duration())
 	defer cancel()
-	c, err := rpc.DialOptions(ctx, cfg.FirstNetworkURL(), rpc.WithHeaders(cfg.RPCHeaders))
+	c, err := rpc.DialOptions(ctx, cfg.MustFirstNetworkURL(), rpc.WithHeaders(cfg.RPCHeaders))
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to '%s' due to: %w", cfg.FirstNetworkURL(), err)
+		return nil, fmt.Errorf("failed to connect to '%s' due to: %w", cfg.MustFirstNetworkURL(), err)
 	}
+
 	return &Tracer{
 		Cfg:                      cfg,
 		rpcClient:                c,
