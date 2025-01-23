@@ -17,3 +17,9 @@ make test PARROT_TEST_LOG_LEVEL=trace # Set log level for tests
 make test_race # Test with -race flag enabled
 make bench # Benchmark
 ```
+
+## Build
+
+```sh
+make goreleaser # Uses goreleaser to build binaries and docker containers
+```

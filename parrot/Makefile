@@ -31,3 +31,7 @@ bench:
 .PHONY: build
 build:
 	go build -o ./parrot ./cmd
+
+.PHONY: goreleaser
+goreleaser:
+	cd .. && goreleaser build --snapshot --clean -f ./parrot/.goreleaser.yaml --output ./parrot/dist

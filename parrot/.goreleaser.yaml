@@ -13,6 +13,7 @@ env:
 # Build settings for binaries
 builds:
   - id: parrot
+    main: ./cmd/main.go
     goos:
       - linux
       - darwin
@@ -23,7 +24,7 @@ builds:
       - '-s -w'
 
 archives:
-  - format: binary
+  - formats: ['binary']
 
 dockers:
   - id: linux-amd64-parrot
