@@ -56,6 +56,7 @@ type Server struct {
 	host    string
 	address string
 
+	shutDown        bool
 	saveFileName    string
 	useCustomLogger bool
 	logFileName     string
@@ -203,8 +204,8 @@ func Wake(options ...ServerOption) (*Server, error) {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/register", p.registerRouteHandler)
-	mux.HandleFunc("/record", p.recordHandler)
+	// TODO: Add a route to
+	mux.HandleFunc("/routes", p.routesHandler)
 	mux.HandleFunc("/", p.dynamicHandler)
 
 	p.server = &http.Server{
@@ -241,6 +242,7 @@ func (p *Server) run(listener net.Listener) {
 
 // Shutdown gracefully shuts down the parrot server
 func (p *Server) Shutdown(ctx context.Context) error {
+	p.shutDown = true
 	p.log.Info().Msg("Putting cloth over the parrot's cage...")
 	return p.server.Shutdown(ctx)
 }
@@ -301,40 +303,43 @@ func (p *Server) Register(route *Route) error {
 	return nil
 }
 
-// registerRouteHandler handles the dynamic route registration.
-func (p *Server) registerRouteHandler(w http.ResponseWriter, r *http.Request) {
-	registerLogger := zerolog.Ctx(r.Context())
+// routesHandler handles the dynamic route registration.
+func (p *Server) routesHandler(w http.ResponseWriter, r *http.Request) {
+	routesLogger := zerolog.Ctx(r.Context())
 	if r.Method == http.MethodDelete {
 		var routeRequest *RouteRequest
 		if err := json.NewDecoder(r.Body).Decode(&routeRequest); err != nil {
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
-			registerLogger.Debug().Err(err).Msg("Failed to decode request body")
+			routesLogger.Debug().Err(err).Msg("Failed to decode request body")
 			return
 		}
 		defer r.Body.Close()
 
 		if routeRequest.ID == "" {
 			http.Error(w, "Route ID required", http.StatusBadRequest)
-			registerLogger.Debug().Msg("No Route ID provided")
+			routesLogger.Debug().Msg("No Route ID provided")
 			return
 		}
 
 		err := p.Unregister(routeRequest.ID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
-			registerLogger.Debug().Err(err).Msg("Failed to unregister route")
+			routesLogger.Debug().Err(err).Msg("Failed to unregister route")
 			return
 		}
 
 		w.WriteHeader(http.StatusNoContent)
-		registerLogger.Info().
+		routesLogger.Info().
 			Str("Route ID", routeRequest.ID).
 			Msg("Route unregistered")
-	} else if r.Method == http.MethodPost {
+		return
+	}
+
+	if r.Method == http.MethodPost {
 		var route *Route
 		if err := json.NewDecoder(r.Body).Decode(&route); err != nil {
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
-			registerLogger.Debug().Err(err).Msg("Failed to decode request body")
+			routesLogger.Debug().Err(err).Msg("Failed to decode request body")
 			return
 		}
 		defer r.Body.Close()
@@ -342,23 +347,42 @@ func (p *Server) registerRouteHandler(w http.ResponseWriter, r *http.Request) {
 		if route.Method == "" || route.Path == "" {
 			err := errors.New("Method and path are required")
 			http.Error(w, err.Error(), http.StatusBadRequest)
-			registerLogger.Debug().Err(err).Msg("Method and path are required")
+			routesLogger.Debug().Err(err).Msg("Method and path are required")
 			return
 		}
 
 		err := p.Register(route)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
-			registerLogger.Debug().Err(err).Msg("Failed to register route")
+			routesLogger.Debug().Err(err).Msg("Failed to register route")
 			return
 		}
 
 		w.WriteHeader(http.StatusCreated)
-	} else {
-		http.Error(w, "Invalid method, only use POST or DELETE", http.StatusMethodNotAllowed)
-		registerLogger.Debug().Msg("Invalid method")
 		return
 	}
+
+	if r.Method == http.MethodGet {
+		jsonRoutes, err := json.Marshal(p.Routes())
+		if err != nil {
+			http.Error(w, "Failed to marshal routes", http.StatusInternalServerError)
+			routesLogger.Debug().Err(err).Msg("Failed to marshal routes")
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if _, err = w.Write(jsonRoutes); err != nil {
+			http.Error(w, "Failed to write response", http.StatusInternalServerError)
+			routesLogger.Debug().Err(err).Msg("Failed to write response")
+			return
+		}
+
+		routesLogger.Debug().Msg("Returned routes")
+		return
+	}
+
+	http.Error(w, "Invalid method", http.StatusMethodNotAllowed)
+	routesLogger.Debug().Msg("Invalid method")
 }
 
 // Record registers a new recorder with the parrot. All incoming requests to the parrot will be sent to the recorder.
@@ -374,32 +398,6 @@ func (p *Server) Record(recorderURL string) error {
 	}
 	p.recorderHooks = append(p.recorderHooks, recorderURL)
 	return nil
-}
-
-func (p *Server) recordHandler(w http.ResponseWriter, r *http.Request) {
-	recordLogger := zerolog.Ctx(r.Context())
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid method, only use POST or DELETE", http.StatusMethodNotAllowed)
-		recordLogger.Debug().Msg("Invalid method")
-		return
-	}
-
-	var recorder *Recorder
-	if err := json.NewDecoder(r.Body).Decode(&recorder); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		recordLogger.Err(err).Msg("Failed to decode request body")
-		return
-	}
-
-	err := p.Record(recorder.URL)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		recordLogger.Debug().Err(err).Msg("Failed to add recorder")
-		return
-	}
-
-	w.WriteHeader(http.StatusCreated)
-	recordLogger.Info().Str("Recorder URL", recorder.URL).Msg("Recorder added")
 }
 
 // Unregister removes a route from the parrot
@@ -426,6 +424,17 @@ func (p *Server) Call(method, path string) (*http.Response, error) {
 
 	client := &http.Client{}
 	return client.Do(req)
+}
+
+func (p *Server) Routes() []*Route {
+	p.routesMu.RLock()
+	defer p.routesMu.RUnlock()
+
+	routes := make([]*Route, 0, len(p.routes))
+	for _, route := range p.routes {
+		routes = append(routes, route)
+	}
+	return routes
 }
 
 // dynamicHandler handles all incoming requests and responds based on the registered routes.

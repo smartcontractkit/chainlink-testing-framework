@@ -1,20 +1,28 @@
 package parrot_test
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog"
 	"github.com/smartcontractkit/chainlink-testing-framework/parrot"
 )
 
-func ExampleServer() {
+func ExampleRegister() {
 	// Create a new parrot instance with no logging
 	p, err := parrot.Wake(parrot.WithLogLevel(zerolog.NoLevel))
 	if err != nil {
 		panic(err)
 	}
+	defer func() {
+		err = p.Shutdown(context.Background())
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	// Create a new route /test that will return a 200 status code with a text/plain response body of "Squawk"
 	route := &parrot.Route{
@@ -41,6 +49,143 @@ func ExampleServer() {
 	body, _ := io.ReadAll(resp.Body)
 	fmt.Println(string(body))
 	// Output:
+	// 200
+	// Squawk
+}
+
+func ExampleRoute() {
+	// Run the parrot server as a separate instance, like in a Docker container
+	p, err := parrot.Wake(parrot.WithPort(9090), parrot.WithLogLevel(zerolog.NoLevel))
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		err = p.Shutdown(context.Background())
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	// Code that calls the parrot server from another service
+	// Use resty to make HTTP calls to the parrot server
+	client := resty.New()
+
+	// Register a new route /test that will return a 200 status code with a text/plain response body of "Squawk"
+	route := &parrot.Route{
+		Method:             http.MethodGet,
+		Path:               "/test",
+		RawResponseBody:    "Squawk",
+		ResponseStatusCode: 200,
+	}
+	resp, err := client.R().SetBody(route).Post("http://localhost:9090/routes")
+	if err != nil {
+		panic(err)
+	}
+	defer resp.RawResponse.Body.Close()
+	fmt.Println(resp.StatusCode())
+
+	// Get all routes from the parrot server
+	routes := make([]*parrot.Route, 0)
+	resp, err = client.R().SetResult(&routes).Get("http://localhost:9090/routes")
+	if err != nil {
+		panic(err)
+	}
+	defer resp.RawResponse.Body.Close()
+	fmt.Println(resp.StatusCode())
+	fmt.Println(len(routes))
+
+	// Delete the route
+	req := &parrot.RouteRequest{
+		ID: route.ID(),
+	}
+	resp, err = client.R().SetBody(req).Delete("http://localhost:9090/routes")
+	if err != nil {
+		panic(err)
+	}
+	defer resp.RawResponse.Body.Close()
+	fmt.Println(resp.StatusCode())
+
+	// Get all routes from the parrot server
+	routes = make([]*parrot.Route, 0)
+	resp, err = client.R().SetResult(&routes).Get("http://localhost:9090/routes")
+	if err != nil {
+		panic(err)
+	}
+	defer resp.RawResponse.Body.Close()
+	fmt.Println(len(routes))
+
+	// Output:
+	// 201
+	// 200
+	// 1
+	// 204
+	// 0
+}
+
+func ExampleRecorder() {
+	p, err := parrot.Wake(parrot.WithLogLevel(zerolog.NoLevel))
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		err = p.Shutdown(context.Background())
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	// Create a new recorder
+	recorder, err := parrot.NewRecorder()
+	if err != nil {
+		panic(err)
+	}
+
+	// Register the recorder with the parrot instance
+	err = p.Record(recorder.URL)
+	if err != nil {
+		panic(err)
+	}
+	defer recorder.Close()
+
+	// Register a new route /test that will return a 200 status code with a text/plain response body of "Squawk"
+	route := &parrot.Route{
+		Method:             http.MethodGet,
+		Path:               "/test",
+		RawResponseBody:    "Squawk",
+		ResponseStatusCode: http.StatusOK,
+	}
+	err = p.Register(route)
+	if err != nil {
+		panic(err)
+	}
+
+	// Call the route
+	go func() {
+		resp, err := p.Call(http.MethodGet, "/test")
+		if err != nil {
+			panic(err)
+		}
+		defer resp.Body.Close()
+	}()
+
+	// Record the route call
+	for {
+		select {
+		case recordedRouteCall := <-recorder.Record():
+			if recordedRouteCall.RouteID == route.ID() {
+				fmt.Println(recordedRouteCall.RouteID)
+				fmt.Println(recordedRouteCall.Request.Method)
+				fmt.Println(recordedRouteCall.Response.StatusCode)
+				fmt.Println(string(recordedRouteCall.Response.Body))
+				return
+			}
+		case err := <-recorder.Err():
+			panic(err)
+		}
+	}
+	// Output:
+	// GET:/test
+	// GET
 	// 200
 	// Squawk
 }
