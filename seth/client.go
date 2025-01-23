@@ -13,13 +13,14 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/ethclient/simulated"
 	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
@@ -64,7 +65,7 @@ var (
 // Client is a vanilla go-ethereum client with enhanced debug logging
 type Client struct {
 	Cfg                      *Config
-	Client                   *ethclient.Client
+	Client                   simulated.Client
 	Addresses                []common.Address
 	PrivateKeys              []*ecdsa.PrivateKey
 	ChainID                  int64
@@ -139,23 +140,26 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 	}
 
 	abiFinder := NewABIFinder(contractAddressToNameMap, cs)
-	if len(cfg.Network.URLs) == 0 {
-		return nil, fmt.Errorf("at least one url should be present in config in 'secret_urls = []'")
+
+	var opts []ClientOpt
+
+	// even if the ethclient that was passed supports tracing, we still need the RPC URL, because we cannot get from
+	// the instance of ethclient, since it doesn't expose any such method
+	if (cfg.ethclient != nil && shouldIntialiseTracer(cfg.ethclient, cfg) && len(cfg.Network.URLs) > 0) || cfg.ethclient == nil {
+		tr, err := NewTracer(cs, &abiFinder, cfg, contractAddressToNameMap, addrs)
+		if err != nil {
+			return nil, errors.Wrap(err, ErrCreateTracer)
+		}
+		opts = append(opts, WithTracer(tr))
 	}
-	tr, err := NewTracer(cs, &abiFinder, cfg, contractAddressToNameMap, addrs)
-	if err != nil {
-		return nil, errors.Wrap(err, ErrCreateTracer)
-	}
+
+	opts = append(opts, WithContractStore(cs), WithNonceManager(nm), WithContractMap(contractAddressToNameMap), WithABIFinder(&abiFinder))
 
 	return NewClientRaw(
 		cfg,
 		addrs,
 		pkeys,
-		WithContractStore(cs),
-		WithNonceManager(nm),
-		WithTracer(tr),
-		WithContractMap(contractAddressToNameMap),
-		WithABIFinder(&abiFinder),
+		opts...,
 	)
 }
 
@@ -175,52 +179,69 @@ func NewClientRaw(
 	pkeys []*ecdsa.PrivateKey,
 	opts ...ClientOpt,
 ) (*Client, error) {
-	if len(cfg.Network.URLs) == 0 {
-		return nil, errors.New("no RPC URL provided")
-	}
-	if len(cfg.Network.URLs) > 1 {
-		L.Warn().Msg("Multiple RPC URLs provided, only the first one will be used")
-	}
-
 	if cfg.ReadOnly && (len(addrs) > 0 || len(pkeys) > 0) {
 		return nil, errors.New(ErrReadOnlyWithPrivateKeys)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.Network.DialTimeout.Duration())
-	defer cancel()
-	rpcClient, err := rpc.DialOptions(ctx,
-		cfg.FirstNetworkURL(),
-		rpc.WithHeaders(cfg.RPCHeaders),
-		rpc.WithHTTPClient(&http.Client{
-			Transport: NewLoggingTransport(),
-		}),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect RPC client to '%s' due to: %w", cfg.FirstNetworkURL(), err)
-	}
-	client := ethclient.NewClient(rpcClient)
-
-	if cfg.Network.ChainID == 0 {
-		chainId, err := client.ChainID(context.Background())
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to get chain ID")
+	var firstUrl string
+	var client simulated.Client
+	if cfg.ethclient == nil {
+		L.Info().Msg("Creating new ethereum client")
+		if len(cfg.Network.URLs) == 0 {
+			return nil, errors.New("no RPC URL provided")
 		}
-		cfg.Network.ChainID = chainId.Uint64()
+
+		if len(cfg.Network.URLs) > 1 {
+			L.Warn().Msg("Multiple RPC URLs provided, only the first one will be used")
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), cfg.Network.DialTimeout.Duration())
+		defer cancel()
+		rpcClient, err := rpc.DialOptions(ctx,
+			cfg.MustFirstNetworkURL(),
+			rpc.WithHeaders(cfg.RPCHeaders),
+			rpc.WithHTTPClient(&http.Client{
+				Transport: NewLoggingTransport(),
+			}),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect RPC client to '%s' due to: %w", cfg.MustFirstNetworkURL(), err)
+		}
+		client = ethclient.NewClient(rpcClient)
+		firstUrl = cfg.MustFirstNetworkURL()
+	} else {
+		L.Info().
+			Str("Type", reflect.TypeOf(cfg.ethclient).String()).
+			Msg("Using provided ethereum client")
+		client = cfg.ethclient
 	}
+
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	c := &Client{
-		Cfg:         cfg,
 		Client:      client,
+		Cfg:         cfg,
 		Addresses:   addrs,
 		PrivateKeys: pkeys,
-		URL:         cfg.FirstNetworkURL(),
+		URL:         firstUrl,
 		ChainID:     mustSafeInt64(cfg.Network.ChainID),
 		Context:     ctx,
 		CancelFunc:  cancelFunc,
 	}
+
 	for _, o := range opts {
 		o(c)
 	}
+
+	if cfg.Network.ChainID == 0 {
+		chainId, err := c.Client.ChainID(context.Background())
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get chain ID")
+		}
+		cfg.Network.ChainID = chainId.Uint64()
+		c.ChainID = mustSafeInt64(cfg.Network.ChainID)
+	}
+
+	var err error
 
 	if c.ContractAddressToNameMap.addressMap == nil {
 		c.ContractAddressToNameMap = NewEmptyContractMap()
@@ -279,7 +300,7 @@ func NewClientRaw(
 	L.Info().
 		Str("NetworkName", cfg.Network.Name).
 		Interface("Addresses", addrs).
-		Str("RPC", cfg.FirstNetworkURL()).
+		Str("RPC", firstUrl).
 		Uint64("ChainID", cfg.Network.ChainID).
 		Int64("Ephemeral keys", *cfg.EphemeralAddrs).
 		Msg("Created new client")
@@ -316,7 +337,9 @@ func NewClientRaw(
 		}
 	}
 
-	if c.Cfg.TracingLevel != TracingLevel_None && c.Tracer == nil {
+	// we cannot use the tracer with simulated backend, because it doesn't expose a method to get rpcClient (even though it has one)
+	// and Tracer needs rpcClient to call debug_traceTransaction
+	if shouldIntialiseTracer(c.Client, cfg) && c.Cfg.TracingLevel != TracingLevel_None && c.Tracer == nil {
 		if c.ContractStore == nil {
 			cs, err := NewContractStore(filepath.Join(cfg.ConfigDir, cfg.ABIDir), filepath.Join(cfg.ConfigDir, cfg.BINDir), cfg.GethWrappersDirs)
 			if err != nil {
@@ -407,7 +430,7 @@ func (m *Client) TransferETHFromKey(ctx context.Context, fromKeyNum int, to stri
 	ctx, chainCancel := context.WithTimeout(ctx, m.Cfg.Network.TxnTimeout.Duration())
 	defer chainCancel()
 
-	chainID, err := m.Client.NetworkID(ctx)
+	chainID, err := m.Client.ChainID(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to get network ID")
 	}
@@ -1384,4 +1407,12 @@ func (m *Client) mergeLogMeta(pe *DecodedTransactionLog, l types.Log) {
 	pe.TXHash = l.TxHash.Hex()
 	pe.TXIndex = l.TxIndex
 	pe.Removed = l.Removed
+}
+
+func shouldIntialiseTracer(client simulated.Client, cfg *Config) bool {
+	return len(cfg.Network.URLs) > 0 && supportsTracing(client)
+}
+
+func supportsTracing(client simulated.Client) bool {
+	return strings.Contains(reflect.TypeOf(client).String(), "ethclient.Client")
 }

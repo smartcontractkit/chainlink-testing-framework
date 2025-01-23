@@ -228,6 +228,10 @@ func RunCLI(args []string) error {
 						if cfg.Network == nil {
 							return fmt.Errorf("network %s not defined in the TOML file", selectedNetwork)
 						}
+
+						if len(cfg.Network.URLs) == 0 {
+							return errors.New("no URLs defined for the network")
+						}
 					} else {
 						url := os.Getenv(seth.URL_ENV_VAR)
 
@@ -246,7 +250,11 @@ func RunCLI(args []string) error {
 						}
 
 						if cfg.Network == nil {
-							return fmt.Errorf("default network not defined in the TOML file")
+							return errors.New("default network not defined in the TOML file")
+						}
+
+						if len(cfg.Network.URLs) == 0 {
+							return errors.New("no URLs defined for the network")
 						}
 
 						if cfg.Network.DialTimeout == nil {
@@ -254,9 +262,9 @@ func RunCLI(args []string) error {
 						}
 						ctx, cancel := context.WithTimeout(context.Background(), cfg.Network.DialTimeout.Duration())
 						defer cancel()
-						rpcClient, err := rpc.DialOptions(ctx, cfg.FirstNetworkURL(), rpc.WithHeaders(cfg.RPCHeaders))
+						rpcClient, err := rpc.DialOptions(ctx, cfg.MustFirstNetworkURL(), rpc.WithHeaders(cfg.RPCHeaders))
 						if err != nil {
-							return fmt.Errorf("failed to connect RPC client to '%s' due to: %w", cfg.FirstNetworkURL(), err)
+							return fmt.Errorf("failed to connect RPC client to '%s' due to: %w", cfg.MustFirstNetworkURL(), err)
 						}
 						client := ethclient.NewClient(rpcClient)
 						defer client.Close()

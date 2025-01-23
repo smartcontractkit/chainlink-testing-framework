@@ -22,6 +22,7 @@ Reliable and debug-friendly Ethereum client
 5. [Configuration](#config)
     1. [Simplified configuration](#simplified-configuration)
     2. [ClientBuilder](#clientbuilder)
+        1. [Simulated Backend](#simulated-backend)
     3. [Supported env vars](#supported-env-vars)
     4. [TOML configuration](#toml-configuration)
 6. [Automated gas price estimation](#automatic-gas-estimator)
@@ -262,6 +263,67 @@ if err != nil {
 }
 ```
 This can be useful if you already have a config, but want to modify it slightly. It can also be useful if you read TOML config with multiple `Networks` and you want to specify which one you want to use.
+
+### Simulated Backend
+
+Last, but not least, `ClientBuilder` allows you to pass custom implementation of `simulated.Client` interface, which include Geth's [Simulated Backend](https://github.com/ethereum/go-ethereum/blob/master/ethclient/simulated/backend.go), which might be very useful for rapid testing against
+in-memory environment. When using that option bear in mind that:
+* passing RPC URL is not allowed and will result in error
+* tracing is disabled
+
+> [!NOTE]
+> Simulated Backend doesn't support tracing, because it doesn't expose the JSON-RPC `Call(result interface{}, method string, args ...interface{})` method, which we use to fetch debug information.
+
+So how do you use Seth with simulated backend?
+```go
+var startBackend := func(fundedAddresses []common.Address) (*simulated.Backend, context.CancelFunc) {
+toFund := make(map[common.Address]types.Account)
+	for _, address := range fundedAddresses {
+		toFund[address] = types.Account{
+			Balance: big.NewInt(1000000000000000000), // 1 Ether
+		}
+	}
+	backend := simulated.NewBackend(toFund)
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+
+    // 100ms block time
+	ticker := time.NewTicker(100 * time.Millisecond)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				backend.Commit()
+			case <-ctx.Done():
+				backend.Close()
+				return
+			}
+		}
+	}()
+
+	return backend, cancelFn
+}
+
+// 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266 is the default dev account
+backend, cancelFn := startBackend(
+    []common.Address{common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")},
+)
+defer func() { cancelFn() }()
+
+client, err := builder.
+    WithNetworkName("simulated").
+    WithEthClient(backend.Client()).
+    WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+    Build()
+
+require.NoError(t, err, "failed to build client")
+_ = client
+```
+
+> [!WARNING]
+> When using `simulated.Backend` do remember that it doesn't automatically mine blocks. You need to call `backend.Commit()` manually
+> to mine a new block and have your transactions processed. The best way to do it is having a goroutine running in the background
+> that either mines at specific intervals or when it receives a message on channel.
 
 ### Supported env vars
 
