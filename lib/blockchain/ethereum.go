@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -79,18 +80,6 @@ type SharedHeaderPoller struct {
 	done         chan struct{}
 }
 
-var sharedSubscriptionRegistry = struct {
-	sync.Mutex
-	m map[int64]*HeaderSubscription
-}{
-	m: make(map[int64]*HeaderSubscription),
-}
-
-type HeaderSubscription struct {
-	mu                  sync.Mutex
-	headerSubscriptions map[string]HeaderEventSubscription
-}
-
 // newEVMClient creates an EVM client for a single node/URL
 func newEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMClient, error) {
 	logger.Info().
@@ -134,21 +123,7 @@ func newEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMClient,
 		return nil, err
 	}
 	ec.gasStats = NewGasStats(ec.ID)
-	chainID := ec.GetChainID().Int64()
-	// Acquire or create the shared data
-	sharedSubscriptionRegistry.Lock()
-	sharedSubs, exists := sharedSubscriptionRegistry.m[chainID]
-	if !exists {
-		sharedSubs = &HeaderSubscription{
-			headerSubscriptions: make(map[string]HeaderEventSubscription),
-		}
-		sharedSubscriptionRegistry.m[chainID] = sharedSubs
-	}
-	sharedSubscriptionRegistry.Unlock()
 
-	// Now point the client’s fields to the shared map & mutex
-	ec.headerSubscriptions = sharedSubs.headerSubscriptions
-	ec.subscriptionMutex = &sharedSubs.mu
 	// Initialize header subscription or polling
 	if err := ec.InitializeHeaderSubscription(); err != nil {
 		return nil, err
@@ -1348,7 +1323,7 @@ func (e *EthereumClient) startHeaderPolling() error {
 
 	go func() {
 		defer e.subscriptionWg.Done()
-		e.l.Info().Int64("Chain Id", e.GetChainID().Int64()).Msg("Polling for headers goroutine started")
+		e.l.Info().Int64("Chain Id", e.GetChainID().Int64()).Msg("Polling for headers started")
 		// Initialize lastHeaderNumber dynamically
 		lastHeaderNumber := latestHeader.Number.Uint64() - 1
 		for {
@@ -1379,20 +1354,37 @@ func (e *EthereumClient) startHeaderPolling() error {
 				}
 
 				if latestHeader.Number.Uint64() > lastHeaderNumber {
-					e.l.Info().Int64("Chain Id", e.GetChainID().Int64()).Uint64("LatestHeaderNumber", latestHeader.Number.Uint64()).Msg("New headers detected")
+					e.l.Debug().Int64("Chain Id", e.GetChainID().Int64()).Uint64("LatestHeaderNumber", latestHeader.Number.Uint64()).Msg("New headers detected")
 					// Process headers from (lastHeaderNumber + 1) to latestHeader.Number
 					// We may need to add a rate limiter, if we run into issues.
 					for blockNum := lastHeaderNumber + 1; blockNum <= latestHeader.Number.Uint64(); blockNum++ {
-						// Create a new context with timeout for each HeaderByNumber call
-						blockCtx, blockCancel := context.WithTimeout(context.Background(), e.NetworkConfig.Timeout.Duration)
 						if blockNum > math.MaxInt64 {
 							e.l.Error().Int64("Chain Id", e.GetChainID().Int64()).Uint64("BlockNumber", blockNum).Msg("blockNum exceeds the maximum value for int64")
 							continue
 						}
-						header, err := e.HeaderByNumber(blockCtx, big.NewInt(int64(blockNum)))
-						blockCancel()
-						if err != nil {
-							e.l.Error().Int64("Chain Id", e.GetChainID().Int64()).Err(err).Uint64("BlockNumber", blockNum).Msg("Error fetching header during range processing")
+						var header *SafeEVMHeader
+						var fetchErr error
+
+						// Retry logic for fetching the block header
+						retryErr := retry.Do(
+							func() error {
+								blockCtx, blockCancel := context.WithTimeout(context.Background(), e.NetworkConfig.Timeout.Duration)
+								defer blockCancel()
+
+								header, fetchErr = e.HeaderByNumber(blockCtx, big.NewInt(int64(blockNum)))
+								if fetchErr != nil {
+									e.l.Warn().Int64("Chain Id", e.GetChainID().Int64()).Err(fetchErr).Uint64("BlockNumber", blockNum).Msg("Retry fetching header")
+								}
+								return fetchErr
+							},
+							retry.Attempts(5),
+							retry.Delay(2*time.Second),
+							retry.MaxDelay(10*time.Second),
+							retry.DelayType(retry.BackOffDelay),
+						)
+
+						if retryErr != nil {
+							e.l.Error().Int64("Chain Id", e.GetChainID().Int64()).Err(fetchErr).Uint64("BlockNumber", blockNum).Msg("Failed to fetch header after retries. Skipping header.")
 							continue
 						}
 
