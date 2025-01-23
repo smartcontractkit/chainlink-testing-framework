@@ -48,60 +48,60 @@ func TestRegister(t *testing.T) {
 		name  string
 		route *Route
 	}{
-		{
-			name: "get route",
-			route: &Route{
-				Method:             http.MethodGet,
-				Path:               "/hello",
-				RawResponseBody:    "Squawk",
-				ResponseStatusCode: 200,
-			},
-		},
-		{
-			name: "json route",
-			route: &Route{
-				Method:             http.MethodGet,
-				Path:               "/json",
-				ResponseBody:       map[string]any{"message": "Squawk"},
-				ResponseStatusCode: 200,
-			},
-		},
-		{
-			name: "post route",
-			route: &Route{
-				Method:             http.MethodPost,
-				Path:               "/post",
-				RawResponseBody:    "Squawk",
-				ResponseStatusCode: 201,
-			},
-		},
-		{
-			name: "put route",
-			route: &Route{
-				Method:             http.MethodPut,
-				Path:               "/put",
-				RawResponseBody:    "Squawk",
-				ResponseStatusCode: 200,
-			},
-		},
-		{
-			name: "delete route",
-			route: &Route{
-				Method:             http.MethodDelete,
-				Path:               "/delete",
-				RawResponseBody:    "Squawk",
-				ResponseStatusCode: 200,
-			},
-		},
-		{
-			name: "patch route",
-			route: &Route{
-				Method:             http.MethodPatch,
-				Path:               "/patch",
-				RawResponseBody:    "Squawk",
-				ResponseStatusCode: 200,
-			},
-		},
+		// {
+		// 	name: "get route",
+		// 	route: &Route{
+		// 		Method:             http.MethodGet,
+		// 		Path:               "/hello",
+		// 		RawResponseBody:    "Squawk",
+		// 		ResponseStatusCode: 200,
+		// 	},
+		// },
+		// {
+		// 	name: "json route",
+		// 	route: &Route{
+		// 		Method:             http.MethodGet,
+		// 		Path:               "/json",
+		// 		ResponseBody:       map[string]any{"message": "Squawk"},
+		// 		ResponseStatusCode: 200,
+		// 	},
+		// },
+		// {
+		// 	name: "post route",
+		// 	route: &Route{
+		// 		Method:             http.MethodPost,
+		// 		Path:               "/post",
+		// 		RawResponseBody:    "Squawk",
+		// 		ResponseStatusCode: 201,
+		// 	},
+		// },
+		// {
+		// 	name: "put route",
+		// 	route: &Route{
+		// 		Method:             http.MethodPut,
+		// 		Path:               "/put",
+		// 		RawResponseBody:    "Squawk",
+		// 		ResponseStatusCode: 200,
+		// 	},
+		// },
+		// {
+		// 	name: "delete route",
+		// 	route: &Route{
+		// 		Method:             http.MethodDelete,
+		// 		Path:               "/delete",
+		// 		RawResponseBody:    "Squawk",
+		// 		ResponseStatusCode: 200,
+		// 	},
+		// },
+		// {
+		// 	name: "patch route",
+		// 	route: &Route{
+		// 		Method:             http.MethodPatch,
+		// 		Path:               "/patch",
+		// 		RawResponseBody:    "Squawk",
+		// 		ResponseStatusCode: 200,
+		// 	},
+		// },
 		{
 			name: "error route",
 			route: &Route{

@@ -493,8 +493,10 @@ func (p *Server) dynamicHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	recordingWriter.WriteHeader(route.ResponseStatusCode)
+
 	if route.RawResponseBody != "" {
-		if _, err := w.Write([]byte(route.RawResponseBody)); err != nil {
+		if _, err := recordingWriter.Write([]byte(route.RawResponseBody)); err != nil {
 			dynamicLogger.Debug().Err(err).Msg("Failed to write response")
 			http.Error(recordingWriter, "Failed to write response", http.StatusInternalServerError)
 			return
@@ -513,7 +515,7 @@ func (p *Server) dynamicHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(recordingWriter, "Failed to marshal response into json", http.StatusInternalServerError)
 			return
 		}
-		if _, err = w.Write(rawJSON); err != nil {
+		if _, err = recordingWriter.Write(rawJSON); err != nil {
 			dynamicLogger.Debug().Err(err).
 				RawJSON("Response", rawJSON).
 				Msg("Failed to write response")
