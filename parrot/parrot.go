@@ -362,20 +362,17 @@ func (p *Server) registerRouteHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Record registers a new recorder with the parrot. All incoming requests to the parrot will be sent to the recorder.
-func (p *Server) Record(recorder *Recorder) error {
+func (p *Server) Record(recorderURL string) error {
 	p.recordersMu.Lock()
 	defer p.recordersMu.Unlock()
-	if recorder == nil {
-		return ErrNilRecorder
-	}
-	if recorder.URL == "" {
+	if recorderURL == "" {
 		return ErrNoRecorderURL
 	}
-	_, err := url.Parse(recorder.URL)
+	_, err := url.Parse(recorderURL)
 	if err != nil {
-		return fmt.Errorf("failed to parse recorder URL: %w", err)
+		return ErrInvalidRecorderURL
 	}
-	p.recorderHooks = append(p.recorderHooks, recorder.URL)
+	p.recorderHooks = append(p.recorderHooks, recorderURL)
 	return nil
 }
 
@@ -394,7 +391,7 @@ func (p *Server) recordHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := p.Record(recorder)
+	err := p.Record(recorder.URL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		recordLogger.Debug().Err(err).Msg("Failed to add recorder")

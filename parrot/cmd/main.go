@@ -14,11 +14,12 @@ import (
 
 func main() {
 	var (
-		port   int
-		debug  bool
-		trace  bool
-		silent bool
-		json   bool
+		port      int
+		debug     bool
+		trace     bool
+		silent    bool
+		json      bool
+		recorders []string
 	)
 
 	rootCmd := &cobra.Command{
@@ -49,6 +50,13 @@ func main() {
 				return err
 			}
 
+			for _, r := range recorders {
+				err = p.Record(r)
+				if err != nil {
+					return err
+				}
+			}
+
 			c := make(chan os.Signal, 1)
 			signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 			<-c
@@ -65,6 +73,7 @@ func main() {
 	rootCmd.Flags().BoolVarP(&trace, "trace", "t", false, "Enable trace and debug output")
 	rootCmd.Flags().BoolVarP(&silent, "silent", "s", false, "Disable all output")
 	rootCmd.Flags().BoolVarP(&json, "json", "j", false, "Output logs in JSON format")
+	rootCmd.Flags().StringSliceVarP(&recorders, "recorders", "r", nil, "Existing recorders to use")
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Error().Err(err).Msg("error executing command")

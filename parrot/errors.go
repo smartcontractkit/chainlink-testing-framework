@@ -14,9 +14,9 @@ var (
 	ErrResponseMarshal = errors.New("unable to marshal response body to JSON")
 	ErrRouteNotFound   = errors.New("route not found")
 
-	ErrNoRecorderURL    = errors.New("no recorder URL specified")
-	ErrNilRecorder      = errors.New("recorder is nil")
-	ErrRecorderNotFound = errors.New("recorder not found")
+	ErrNoRecorderURL      = errors.New("no recorder URL specified")
+	ErrInvalidRecorderURL = errors.New("invalid recorder URL")
+	ErrRecorderNotFound   = errors.New("recorder not found")
 )
 
 // Custom error type to help add more detail to base errors

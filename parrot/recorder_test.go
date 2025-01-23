@@ -85,7 +85,7 @@ func TestRecorder(t *testing.T) {
 	recorder, err := NewRecorder()
 	require.NoError(t, err, "error creating recorder")
 
-	err = p.Record(recorder)
+	err = p.Record(recorder.URL)
 	require.NoError(t, err, "error recording parrot")
 	t.Cleanup(func() {
 		require.NoError(t, recorder.Close())
