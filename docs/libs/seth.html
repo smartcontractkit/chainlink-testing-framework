@@ -264,7 +264,11 @@
 <li><a href="#config">Configuration</a>
 <ol>
 <li><a href="#simplified-configuration">Simplified configuration</a></li>
-<li><a href="#clientbuilder">ClientBuilder</a></li>
+<li><a href="#clientbuilder">ClientBuilder</a>
+<ol>
+<li><a href="#simulated-backend">Simulated Backend</a></li>
+</ol>
+</li>
 <li><a href="#supported-env-vars">Supported env vars</a></li>
 <li><a href="#toml-configuration">TOML configuration</a></li>
 </ol>
@@ -479,6 +483,73 @@ if err != nil {
 }
 </code></pre>
 <p>This can be useful if you already have a config, but want to modify it slightly. It can also be useful if you read TOML config with multiple <code>Networks</code> and you want to specify which one you want to use.</p>
+<h3 id="simulated-backend"><a class="header" href="#simulated-backend">Simulated Backend</a></h3>
+<p>Last, but not least, <code>ClientBuilder</code> allows you to pass custom implementation of <code>simulated.Client</code> interface, which include Geth's <a href="https://github.com/ethereum/go-ethereum/blob/master/ethclient/simulated/backend.go">Simulated Backend</a>, which might be very useful for rapid testing against
+in-memory environment. When using that option bear in mind that:</p>
+<ul>
+<li>passing RPC URL is not allowed and will result in error</li>
+<li>tracing is disabled</li>
+</ul>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>Simulated Backend doesn't support tracing, because it doesn't expose the JSON-RPC <code>Call(result interface{}, method string, args ...interface{})</code> method, which we use to fetch debug information.</p>
+</div>
+<p>So how do you use Seth with simulated backend?</p>
+<pre><code class="language-go">var startBackend := func(fundedAddresses []common.Address) (*simulated.Backend, context.CancelFunc) {
+toFund := make(map[common.Address]types.Account)
+	for _, address := range fundedAddresses {
+		toFund[address] = types.Account{
+			Balance: big.NewInt(1000000000000000000), // 1 Ether
+		}
+	}
+	backend := simulated.NewBackend(toFund)
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+
+    // 100ms block time
+	ticker := time.NewTicker(100 * time.Millisecond)
+	go func() {
+		for {
+			select {
+			case &lt;-ticker.C:
+				backend.Commit()
+			case &lt;-ctx.Done():
+				backend.Close()
+				return
+			}
+		}
+	}()
+
+	return backend, cancelFn
+}
+
+// 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266 is the default dev account
+backend, cancelFn := startBackend(
+    []common.Address{common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")},
+)
+defer func() { cancelFn() }()
+
+client, err := builder.
+    WithNetworkName("simulated").
+    WithEthClient(backend.Client()).
+    WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+    Build()
+
+require.NoError(t, err, "failed to build client")
+_ = client
+</code></pre>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<p>When using <code>simulated.Backend</code> do remember that it doesn't automatically mine blocks. You need to call <code>backend.Commit()</code> manually
+to mine a new block and have your transactions processed. The best way to do it is having a goroutine running in the background
+that either mines at specific intervals or when it receives a message on channel.</p>
+</div>
 <h3 id="supported-env-vars"><a class="header" href="#supported-env-vars">Supported env vars</a></h3>
 <p>Some crucial data is stored in env vars, create <code>.envrc</code> and use <code>source .envrc</code>, or use <code>direnv</code></p>
 <pre><code class="language-sh">export SETH_LOG_LEVEL=info # global logger level
