@@ -271,3 +271,77 @@ func BuildImage(dctx, dfile, nameAndTag string) error {
 		return runCommand("docker", "build", "-t", nameAndTag, "-f", dfilePath, dctx)
 	}
 }
+
+// ExecContainer executes a command inside a running container by name and returns the combined stdout/stderr.
+func ExecContainer(containerName string, command []string) (string, error) {
+	L.Info().Strs("Command", command).Str("ContainerName", containerName).Msg("Executing command")
+	p, err := tc.NewDockerProvider()
+	if err != nil {
+		return "", err
+	}
+	ctx := context.Background()
+	containers, err := p.Client().ContainerList(ctx, container.ListOptions{
+		All: true,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to list containers: %w", err)
+	}
+	var containerID string
+	for _, cont := range containers {
+		for _, name := range cont.Names {
+			if name == "/"+containerName {
+				containerID = cont.ID
+				break
+			}
+		}
+	}
+	if containerID == "" {
+		return "", fmt.Errorf("container with name '%s' not found", containerName)
+	}
+
+	execConfig := container.ExecOptions{
+		Cmd:          command,
+		AttachStdout: true,
+		AttachStderr: true,
+	}
+	execID, err := p.Client().ContainerExecCreate(ctx, containerID, execConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to create exec instance: %w", err)
+	}
+	resp, err := p.Client().ContainerExecAttach(ctx, execID.ID, container.ExecStartOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to attach to exec instance: %w", err)
+	}
+	defer resp.Close()
+	output, err := io.ReadAll(resp.Reader)
+	if err != nil {
+		return "", fmt.Errorf("failed to read exec output: %w", err)
+	}
+	L.Info().Str("Output", string(output)).Msg("Command output")
+	return string(output), nil
+}
+
+type ContainerResources struct {
+	CPUs     float64 `toml:"cpus" validate:"gte=0"`
+	MemoryMb uint    `toml:"memory_mb"`
+}
+
+// ResourceLimitsFunc returns a function to configure container resources based on the human-readable CPUs and memory in Mb
+func ResourceLimitsFunc(h *container.HostConfig, resources *ContainerResources) {
+	if resources == nil {
+		return
+	}
+	if resources.MemoryMb > 0 {
+		h.Memory = int64(resources.MemoryMb) * 1024 * 1024            // Memory in Mb
+		h.MemoryReservation = int64(resources.MemoryMb) * 1024 * 1024 // Total memory that can be reserved (soft) in Mb
+		// https://docs.docker.com/engine/containers/resource_constraints/ if both values are equal swap is off, read the docs
+		h.MemorySwap = h.Memory
+	}
+	if resources.CPUs > 0 {
+		// Set CPU limits using CPUQuota and CPUPeriod
+		// we don't use runtime.NumCPU or docker API to get CPUs because h.CPUShares is relative to amount of containers you run
+		// CPUPeriod and CPUQuota are absolute and easier to control
+		h.CPUPeriod = 100000                        // Default period (100ms)
+		h.CPUQuota = int64(resources.CPUs * 100000) // Quota in microseconds (e.g., 0.5 CPUs = 50000)
+	}
+}

@@ -3,7 +3,7 @@ services:
     image: gcr.io/cadvisor/cadvisor:v0.51.0
     container_name: cadvisor
     ports:
-      - "8085:8080"
+      - '8085:8080'
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -12,14 +12,16 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
     privileged: true
+
   prometheus:
     image: prom/prometheus:latest
-    user: "0:0"
+    user: '0:0'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./conf/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
-      - "9090:9090"
+      - '9099:9090'
+
   loki:
     image: grafana/loki:2.5.0
     volumes:
@@ -27,7 +29,7 @@ services:
       - ./conf/provisioning/rules/rules.yml:/etc/loki/rules/fake/rules.yml
       - loki_data:/loki
     ports:
-      - "3030:3100"
+      - '3030:3100'
     command: -config.file=/etc/loki/mounted-config.yaml -log.level=info -ruler.storage.local.directory=/etc/loki/rules
 
   grafana:
@@ -41,15 +43,62 @@ services:
       - ./conf/provisioning:/etc/grafana/provisioning
       - ./conf/provisioning/dashboards/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
       - ./conf/provisioning/dashboards/wasp/wasp.json:/var/lib/grafana/dashboards/wasp/wasp.json
+      - ./conf/provisioning/dashboards/pg/pg.json:/var/lib/grafana/dashboards/pg/pg.json
       - ./conf/provisioning/dashboards/cadvisor/cadvisor.json:/var/lib/grafana/dashboards/cadvisor/cadvisor.json
     ports:
-      - "3000:3000"
+      - '3000:3000'
+
   pyroscope:
     image: 'pyroscope/pyroscope:latest'
     ports:
       - '4040:4040'
     command:
       - 'server'
+
+  postgres_exporter_0:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres_exporter_0
+    environment:
+      - DATA_SOURCE_NAME=postgresql://chainlink:thispasswordislongenough@host.docker.internal:13000/db_0?sslmode=disable
+    ports:
+      - '9300:9187'
+    restart: unless-stopped
+
+  postgres_exporter_1:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres_exporter_1
+    environment:
+      - DATA_SOURCE_NAME=postgresql://chainlink:thispasswordislongenough@host.docker.internal:13000/db_1?sslmode=disable
+    ports:
+      - '9301:9187'
+    restart: unless-stopped
+
+  postgres_exporter_2:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres_exporter_2
+    environment:
+      - DATA_SOURCE_NAME=postgresql://chainlink:thispasswordislongenough@host.docker.internal:13000/db_2?sslmode=disable
+    ports:
+      - '9302:9187'
+    restart: unless-stopped
+
+  postgres_exporter_3:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres_exporter_3
+    environment:
+      - DATA_SOURCE_NAME=postgresql://chainlink:thispasswordislongenough@host.docker.internal:13000/db_3?sslmode=disable
+    ports:
+      - '9303:9187'
+    restart: unless-stopped
+
+  postgres_exporter_4:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres_exporter_4
+    environment:
+      - DATA_SOURCE_NAME=postgresql://chainlink:thispasswordislongenough@host.docker.internal:13000/db_4?sslmode=disable
+    ports:
+      - '9304:9187'
+    restart: unless-stopped
 
 volumes:
   loki_data:

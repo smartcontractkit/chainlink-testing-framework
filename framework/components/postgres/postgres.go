@@ -24,14 +24,15 @@ const (
 )
 
 type Input struct {
-	Image      string  `toml:"image" validate:"required"`
-	Port       int     `toml:"port"`
-	Name       string  `toml:"name"`
-	VolumeName string  `toml:"volume_name"`
-	Databases  int     `toml:"databases"`
-	JDDatabase bool    `toml:"jd_database"`
-	PullImage  bool    `toml:"pull_image"`
-	Out        *Output `toml:"out"`
+	Image              string                        `toml:"image" validate:"required"`
+	Port               int                           `toml:"port"`
+	Name               string                        `toml:"name"`
+	VolumeName         string                        `toml:"volume_name"`
+	Databases          int                           `toml:"databases"`
+	JDDatabase         bool                          `toml:"jd_database"`
+	PullImage          bool                          `toml:"pull_image"`
+	ContainerResources *framework.ContainerResources `toml:"resources"`
+	Out                *Output                       `toml:"out"`
 }
 
 type Output struct {
@@ -55,7 +56,11 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 
 	var sqlCommands []string
 	for i := 0; i <= in.Databases; i++ {
-		sqlCommands = append(sqlCommands, fmt.Sprintf("CREATE DATABASE db_%d;", i))
+		sqlCommands = append(sqlCommands,
+			fmt.Sprintf("CREATE DATABASE db_%d;", i),
+			fmt.Sprintf("\\c db_%d", i),
+			"CREATE EXTENSION pg_stat_statements;",
+		)
 	}
 	if in.JDDatabase {
 		sqlCommands = append(sqlCommands, "CREATE DATABASE jd;")
@@ -89,7 +94,10 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 			"POSTGRES_DB":       Database,
 		},
 		Cmd: []string{
-			"postgres", "-c", fmt.Sprintf("port=%s", Port),
+			"postgres", "-c",
+			fmt.Sprintf("port=%s", Port),
+			"-c", "shared_preload_libraries=pg_stat_statements",
+			"-c", "pg_stat_statements.track=all",
 		},
 		Files: []testcontainers.ContainerFile{
 			{
@@ -126,6 +134,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 				},
 			},
 		}
+		framework.ResourceLimitsFunc(h, in.ContainerResources)
 	}
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,

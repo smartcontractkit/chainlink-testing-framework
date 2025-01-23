@@ -1,33 +1,33 @@
 package examples
 
 import (
-	"context"
-	"fmt"
-	"github.com/blocto/solana-go-sdk/client"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
-type CfgSolana struct {
+type CfgTron struct {
 	BlockchainA *blockchain.Input `toml:"blockchain_a" validate:"required"`
 }
 
-func TestSolanaSmoke(t *testing.T) {
-	in, err := framework.Load[CfgSolana](t)
+func TestTRONSmoke(t *testing.T) {
+	in, err := framework.Load[CfgTron](t)
 	require.NoError(t, err)
 
 	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
 	require.NoError(t, err)
 
+	// all private keys are funded
+	_ = blockchain.TRONAccounts.PrivateKeys[0]
+
 	t.Run("test something", func(t *testing.T) {
 		// use internal URL to connect Chainlink nodes
 		_ = bc.Nodes[0].DockerInternalHTTPUrl
-		// use host URL to deploy contracts
-		c := client.NewClient(bc.Nodes[0].HostHTTPUrl)
-		latestSlot, err := c.GetSlotWithConfig(context.Background(), client.GetSlotConfig{Commitment: "processed"})
-		require.NoError(t, err)
-		fmt.Printf("Latest slot: %v\n", latestSlot)
+		// use host URL to interact
+		_ = bc.Nodes[0].HostHTTPUrl
+
+		// use bc.Nodes[0].HostHTTPUrl + "/wallet" to access full node
+		// use bc.Nodes[0].HostHTTPUrl + "/walletsolidity" to access Solidity node
 	})
 }
