@@ -35,3 +35,7 @@ build:
 .PHONY: goreleaser
 goreleaser:
 	cd .. && goreleaser build --snapshot --clean -f ./parrot/.goreleaser.yaml --output ./parrot/dist
+
+.PHONY: lint
+lint:
+	golangci-lint run --fix ./...
