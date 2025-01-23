@@ -333,7 +333,7 @@ func TestSaveLoad(t *testing.T) {
 	err := p.save()
 	require.NoError(t, err)
 
-	require.FileExists(t, t.Name())
+	require.FileExists(t, t.Name()+".json")
 	err = p.load()
 	require.NoError(t, err)
 
@@ -446,12 +446,13 @@ func BenchmarkLoadRoutes(b *testing.B) {
 func newParrot(t *testing.T) *Server {
 	t.Helper()
 
-	p, err := Wake(WithSaveFile(t.Name()), WithLogLevel(testLogLevel))
+	fileName := t.Name() + ".json"
+	p, err := Wake(WithSaveFile(fileName), WithLogLevel(testLogLevel))
 	require.NoError(t, err, "error waking parrot")
 	t.Cleanup(func() {
 		err := p.Shutdown(context.Background())
 		assert.NoError(t, err, "error shutting down parrot")
-		os.Remove(t.Name())
+		os.Remove(fileName)
 	})
 	return p
 }
