@@ -49,9 +49,9 @@ func TestRegister(t *testing.T) {
 		route *Route
 	}{
 		{
-			name: "simple route",
+			name: "get route",
 			route: &Route{
-				Method:             http.MethodPost,
+				Method:             http.MethodGet,
 				Path:               "/hello",
 				RawResponseBody:    "Squawk",
 				ResponseStatusCode: 200,
@@ -64,6 +64,51 @@ func TestRegister(t *testing.T) {
 				Path:               "/json",
 				ResponseBody:       map[string]any{"message": "Squawk"},
 				ResponseStatusCode: 200,
+			},
+		},
+		{
+			name: "post route",
+			route: &Route{
+				Method:             http.MethodPost,
+				Path:               "/post",
+				RawResponseBody:    "Squawk",
+				ResponseStatusCode: 201,
+			},
+		},
+		{
+			name: "put route",
+			route: &Route{
+				Method:             http.MethodPut,
+				Path:               "/put",
+				RawResponseBody:    "Squawk",
+				ResponseStatusCode: 200,
+			},
+		},
+		{
+			name: "delete route",
+			route: &Route{
+				Method:             http.MethodDelete,
+				Path:               "/delete",
+				RawResponseBody:    "Squawk",
+				ResponseStatusCode: 200,
+			},
+		},
+		{
+			name: "patch route",
+			route: &Route{
+				Method:             http.MethodPatch,
+				Path:               "/patch",
+				RawResponseBody:    "Squawk",
+				ResponseStatusCode: 200,
+			},
+		},
+		{
+			name: "error route",
+			route: &Route{
+				Method:             http.MethodGet,
+				Path:               "/error",
+				RawResponseBody:    "Squawk",
+				ResponseStatusCode: 500,
 			},
 		},
 	}
@@ -79,7 +124,7 @@ func TestRegister(t *testing.T) {
 			require.NoError(t, err, "error calling parrot")
 			defer resp.Body.Close()
 
-			assert.Equal(t, resp.StatusCode, tc.route.ResponseStatusCode)
+			assert.Equal(t, tc.route.ResponseStatusCode, resp.StatusCode)
 			body, _ := io.ReadAll(resp.Body)
 			if tc.route.ResponseBody != nil {
 				jsonBody, err := json.Marshal(tc.route.ResponseBody)
@@ -284,7 +329,7 @@ func TestSaveLoad(t *testing.T) {
 		resp, err := p.Call(route.Method, route.Path)
 		require.NoError(t, err, "error calling parrot")
 
-		assert.Equal(t, resp.StatusCode, route.ResponseStatusCode)
+		assert.Equal(t, route.ResponseStatusCode, resp.StatusCode, "unexpected status code for route %s", route.ID())
 		body, _ := io.ReadAll(resp.Body)
 		assert.Equal(t, route.RawResponseBody, string(body))
 		resp.Body.Close()

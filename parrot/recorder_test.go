@@ -79,5 +79,59 @@ func TestResponseWriterRecorder(t *testing.T) {
 }
 
 func TestRecorder(t *testing.T) {
+	p, err := Wake(WithLogLevel(testLogLevel))
+	require.NoError(t, err, "error waking parrot")
 
+	recorder, err := NewRecorder()
+	require.NoError(t, err, "error creating recorder")
+
+	err = p.Record(recorder)
+	require.NoError(t, err, "error recording parrot")
+	t.Cleanup(func() {
+		require.NoError(t, recorder.Close())
+	})
+
+	route := &Route{
+		Method:             http.MethodGet,
+		Path:               "/test",
+		RawResponseBody:    "Squawk",
+		ResponseStatusCode: http.StatusOK,
+	}
+	err = p.Register(route)
+	require.NoError(t, err, "error registering route")
+
+	var (
+		responseCount = 5
+		recordedCalls = 0
+	)
+
+	go func() {
+		for i := 0; i < responseCount; i++ {
+			resp, err := p.Call(http.MethodGet, "/test")
+			require.NoError(t, err, "error calling parrot")
+
+			t.Cleanup(func() {
+				_ = resp.Body.Close()
+			})
+		}
+	}()
+
+	for {
+		select {
+		case recordedRouteCall := <-recorder.Record():
+			assert.Equal(t, route.ID(), recordedRouteCall.RouteID, "recorded response has unexpected route ID")
+
+			assert.Equal(t, http.StatusOK, recordedRouteCall.Response.StatusCode, "recorded response has unexpected status code")
+			assert.Equal(t, "Squawk", string(recordedRouteCall.Response.Body), "recorded response has unexpected body")
+
+			assert.Equal(t, "/test", recordedRouteCall.Request.URL.Path, "recorded request has unexpected path")
+			assert.Equal(t, http.MethodGet, recordedRouteCall.Request.Method, "recorded request has unexpected method")
+			recordedCalls++
+			if recordedCalls == responseCount {
+				return
+			}
+		case err := <-recorder.Err():
+			require.NoError(t, err, "error recording route call")
+		}
+	}
 }

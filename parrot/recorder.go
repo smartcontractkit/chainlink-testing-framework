@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"time"
 )
 
@@ -19,31 +20,38 @@ type Recorder struct {
 
 // RouteCall records that a route was called
 type RouteCall struct {
-	RouteID  string         `json:"route_id"`
-	Request  *http.Request  `json:"request"`
-	Response *http.Response `json:"response"`
+	RouteID  string             `json:"route_id"`
+	Request  *RouteCallRequest  `json:"request"`
+	Response *RouteCallResponse `json:"response"`
 }
 
-type RecorderOption func(*Recorder) error
+// RouteCallRequest records the request made to a route
+type RouteCallRequest struct {
+	Method string      `json:"method"`
+	URL    *url.URL    `json:"url"`
+	Header http.Header `json:"header"`
+	Body   []byte      `json:"body"`
+}
 
-func NewRecorder(opts ...RecorderOption) (*Recorder, error) {
+// RouteCallResponse records the response from a route
+type RouteCallResponse struct {
+	StatusCode int         `json:"status_code"`
+	Header     http.Header `json:"header"`
+	Body       []byte      `json:"body"`
+}
+
+func NewRecorder() (*Recorder, error) {
 	r := &Recorder{
 		recordChan: make(chan *RouteCall),
 		errChan:    make(chan error),
 	}
 
-	for _, opt := range opts {
-		err := opt(r)
-		if err != nil {
-			return nil, err
-		}
-	}
-
+	// TODO: Will need a way to send out the URL to an external service (e.g. Parrotserver running in a docker container)
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, fmt.Errorf("failed to start listener: %w", err)
 	}
-	r.URL = listener.Addr().String()
+	r.URL = "http://" + listener.Addr().String()
 
 	mux := http.NewServeMux()
 	mux.Handle("/", r.defaultRecordHandler())
@@ -55,7 +63,9 @@ func NewRecorder(opts ...RecorderOption) (*Recorder, error) {
 
 	go func() {
 		if err := r.server.Serve(listener); err != nil {
-			r.errChan <- err
+			if err != http.ErrServerClosed {
+				r.errChan <- fmt.Errorf("error serving recorder: %w", err)
+			}
 		}
 	}()
 	return r, nil
@@ -67,10 +77,12 @@ func (r *Recorder) Record() chan *RouteCall {
 }
 
 func (r *Recorder) Close() error {
+	close(r.recordChan)
+	close(r.errChan)
 	return r.server.Close()
 }
 
-func (r *Recorder) Error() chan error {
+func (r *Recorder) Err() chan error {
 	return r.errChan
 }
 

@@ -6,13 +6,16 @@ import (
 )
 
 var (
-	ErrNilRoute         = errors.New("route is nil")
-	ErrNoMethod         = errors.New("no method specified")
-	ErrInvalidPath      = errors.New("invalid path")
-	ErrNoResponse       = errors.New("route must have a handler or some response")
-	ErrOnlyOneResponse  = errors.New("route can only have one response type")
-	ErrResponseMarshal  = errors.New("unable to marshal response body to JSON")
-	ErrRouteNotFound    = errors.New("route not found")
+	ErrNilRoute        = errors.New("route is nil")
+	ErrNoMethod        = errors.New("no method specified")
+	ErrInvalidPath     = errors.New("invalid path")
+	ErrNoResponse      = errors.New("route must have a handler or some response")
+	ErrOnlyOneResponse = errors.New("route can only have one response type")
+	ErrResponseMarshal = errors.New("unable to marshal response body to JSON")
+	ErrRouteNotFound   = errors.New("route not found")
+
+	ErrNoRecorderURL    = errors.New("no recorder URL specified")
+	ErrNilRecorder      = errors.New("recorder is nil")
 	ErrRecorderNotFound = errors.New("recorder not found")
 )
 
