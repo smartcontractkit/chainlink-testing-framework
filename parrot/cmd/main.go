@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -42,7 +43,7 @@ func main() {
 				options = append(options, parrot.WithJSONLogs())
 			}
 
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
 			p, err := parrot.Wake(options...)
@@ -62,7 +63,7 @@ func main() {
 			<-c
 			err = p.Shutdown(ctx)
 			if err != nil {
-				log.Error().Err(err).Msg("error shutting down server")
+				log.Error().Err(err).Msg("Error putting parrot to sleep")
 			}
 			return nil
 		},

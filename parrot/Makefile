@@ -27,3 +27,7 @@ test_unit:
 .PHONY: bench
 bench:
 	go test $(TEST_ARGS) -bench=. -run=^$$ ./...
+
+.PHONY: build
+build:
+	go build -o ./parrot ./cmd

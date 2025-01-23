@@ -4,7 +4,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -79,11 +81,15 @@ func TestResponseWriterRecorder(t *testing.T) {
 }
 
 func TestRecorder(t *testing.T) {
-	p, err := Wake(WithLogLevel(testLogLevel))
-	require.NoError(t, err, "error waking parrot")
+	t.Parallel()
+
+	p := newParrot(t)
 
 	recorder, err := NewRecorder()
 	require.NoError(t, err, "error creating recorder")
+	t.Cleanup(func() {
+		require.NoError(t, recorder.Close())
+	})
 
 	err = p.Record(recorder.URL)
 	require.NoError(t, err, "error recording parrot")
@@ -107,12 +113,8 @@ func TestRecorder(t *testing.T) {
 
 	go func() {
 		for i := 0; i < responseCount; i++ {
-			resp, err := p.Call(http.MethodGet, "/test")
+			_, err := p.Call(http.MethodGet, "/test")
 			require.NoError(t, err, "error calling parrot")
-
-			t.Cleanup(func() {
-				_ = resp.Body.Close()
-			})
 		}
 	}()
 
@@ -132,6 +134,70 @@ func TestRecorder(t *testing.T) {
 			}
 		case err := <-recorder.Err():
 			require.NoError(t, err, "error recording route call")
+		}
+	}
+}
+
+func TestMultipleRecorders(t *testing.T) {
+	t.Parallel()
+
+	p := newParrot(t)
+
+	var (
+		numRecorders = 10
+		numCalls     = 5
+	)
+	recorders := make([]*Recorder, numRecorders)
+	for i := 0; i < numRecorders; i++ {
+		recorder, err := NewRecorder()
+		require.NoError(t, err, "error creating recorder")
+		recorders[i] = recorder
+	}
+	t.Cleanup(func() {
+		for _, recorder := range recorders {
+			require.NoError(t, recorder.Close())
+		}
+	})
+
+	for _, recorder := range recorders {
+		err := p.Record(recorder.URL)
+		require.NoError(t, err, "error recording parrot")
+	}
+
+	route := &Route{
+		Method:             http.MethodGet,
+		Path:               "/test",
+		RawResponseBody:    "Squawk",
+		ResponseStatusCode: http.StatusOK,
+	}
+	err := p.Register(route)
+	require.NoError(t, err, "error registering route")
+
+	var wg sync.WaitGroup
+	wg.Add(numCalls)
+	for i := 0; i < numCalls; i++ {
+		go func() {
+			defer wg.Done()
+			_, err := p.Call(http.MethodGet, "/test")
+			require.NoError(t, err, "error calling parrot")
+		}()
+	}
+	wg.Wait()
+
+	for _, recorder := range recorders {
+		for i := 0; i < numCalls; i++ {
+			select {
+			case recordedRouteCall := <-recorder.Record():
+				assert.Equal(t, route.ID(), recordedRouteCall.RouteID, "recorded response has unexpected route ID for recorder %d", i)
+				assert.Equal(t, http.StatusOK, recordedRouteCall.Response.StatusCode, "recorded response has unexpected status code for recorder %d", i)
+				assert.Equal(t, "Squawk", string(recordedRouteCall.Response.Body), "recorded response has unexpected body for recorder %d", i)
+				assert.Equal(t, "/test", recordedRouteCall.Request.URL.Path, "recorded request has unexpected path for recorder %d", i)
+				assert.Equal(t, http.MethodGet, recordedRouteCall.Request.Method, "recorded request has unexpected method for recorder %d", i)
+			case err := <-recorder.Err():
+				require.NoError(t, err, "error recording route call")
+			case <-time.After(time.Second):
+				require.Fail(t, "timed out waiting for recorder %d", i)
+			}
 		}
 	}
 }

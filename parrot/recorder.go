@@ -40,6 +40,7 @@ type RouteCallResponse struct {
 	Body       []byte      `json:"body"`
 }
 
+// NewRecorder creates a new recorder that listens for incoming requests to the parrot server
 func NewRecorder() (*Recorder, error) {
 	r := &Recorder{
 		recordChan: make(chan *RouteCall),
@@ -64,7 +65,7 @@ func NewRecorder() (*Recorder, error) {
 	go func() {
 		if err := r.server.Serve(listener); err != nil {
 			if err != http.ErrServerClosed {
-				r.errChan <- fmt.Errorf("error serving recorder: %w", err)
+				fmt.Println("Error serving recorder:", err)
 			}
 		}
 	}()
@@ -76,12 +77,14 @@ func (r *Recorder) Record() chan *RouteCall {
 	return r.recordChan
 }
 
+// Close shuts down the recorder
 func (r *Recorder) Close() error {
-	close(r.recordChan)
-	close(r.errChan)
+	// close(r.recordChan)
+	// close(r.errChan)
 	return r.server.Close()
 }
 
+// Err receives errors from the recorder
 func (r *Recorder) Err() chan error {
 	return r.errChan
 }

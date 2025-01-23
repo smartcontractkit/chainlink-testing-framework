@@ -81,3 +81,5 @@ tag.py
 
 parrot/*.json
 parrot/*.log
+# Executable
+parrot/parrot

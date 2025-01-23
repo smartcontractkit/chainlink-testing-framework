@@ -3,8 +3,8 @@ package parrot_test
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
+	"os"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog"
@@ -12,16 +12,19 @@ import (
 )
 
 func ExampleRegister() {
-	// Create a new parrot instance with no logging
-	p, err := parrot.Wake(parrot.WithLogLevel(zerolog.NoLevel))
+	// Create a new parrot instance with no logging and a custom save file
+	saveFile := "register_example.json"
+	p, err := parrot.Wake(parrot.WithLogLevel(zerolog.NoLevel), parrot.WithSaveFile(saveFile))
 	if err != nil {
 		panic(err)
 	}
-	defer func() {
-		err = p.Shutdown(context.Background())
+	defer func() { // Cleanup the parrot instance
+		err = p.Shutdown(context.Background()) // Gracefully shutdown the parrot instance
 		if err != nil {
 			panic(err)
 		}
+		p.WaitShutdown()    // Wait for the parrot instance to shutdown. Usually unnecessary, but we want to clean up the save file
+		os.Remove(saveFile) // Cleanup the save file for the example
 	}()
 
 	// Create a new route /test that will return a 200 status code with a text/plain response body of "Squawk"
@@ -29,7 +32,7 @@ func ExampleRegister() {
 		Method:             http.MethodGet,
 		Path:               "/test",
 		RawResponseBody:    "Squawk",
-		ResponseStatusCode: 200,
+		ResponseStatusCode: http.StatusOK,
 	}
 
 	// Register the route with the parrot instance
@@ -43,11 +46,8 @@ func ExampleRegister() {
 	if err != nil {
 		panic(err)
 	}
-	defer resp.Body.Close()
-
-	fmt.Println(resp.StatusCode)
-	body, _ := io.ReadAll(resp.Body)
-	fmt.Println(string(body))
+	fmt.Println(resp.StatusCode())
+	fmt.Println(string(resp.Body()))
 	// Output:
 	// 200
 	// Squawk
@@ -55,15 +55,18 @@ func ExampleRegister() {
 
 func ExampleRoute() {
 	// Run the parrot server as a separate instance, like in a Docker container
-	p, err := parrot.Wake(parrot.WithPort(9090), parrot.WithLogLevel(zerolog.NoLevel))
+	saveFile := "route_example.json"
+	p, err := parrot.Wake(parrot.WithPort(9090), parrot.WithLogLevel(zerolog.NoLevel), parrot.WithSaveFile(saveFile))
 	if err != nil {
 		panic(err)
 	}
-	defer func() {
-		err = p.Shutdown(context.Background())
+	defer func() { // Cleanup the parrot instance
+		err = p.Shutdown(context.Background()) // Gracefully shutdown the parrot instance
 		if err != nil {
 			panic(err)
 		}
+		p.WaitShutdown()    // Wait for the parrot instance to shutdown. Usually unnecessary, but we want to clean up the save file
+		os.Remove(saveFile) // Cleanup the save file for the example
 	}()
 
 	// Code that calls the parrot server from another service
@@ -75,7 +78,7 @@ func ExampleRoute() {
 		Method:             http.MethodGet,
 		Path:               "/test",
 		RawResponseBody:    "Squawk",
-		ResponseStatusCode: 200,
+		ResponseStatusCode: http.StatusOK,
 	}
 	resp, err := client.R().SetBody(route).Post("http://localhost:9090/routes")
 	if err != nil {
@@ -123,15 +126,18 @@ func ExampleRoute() {
 }
 
 func ExampleRecorder() {
-	p, err := parrot.Wake(parrot.WithLogLevel(zerolog.NoLevel))
+	saveFile := "recorder_example.json"
+	p, err := parrot.Wake(parrot.WithLogLevel(zerolog.NoLevel), parrot.WithSaveFile(saveFile))
 	if err != nil {
 		panic(err)
 	}
-	defer func() {
-		err = p.Shutdown(context.Background())
+	defer func() { // Cleanup the parrot instance
+		err = p.Shutdown(context.Background()) // Gracefully shutdown the parrot instance
 		if err != nil {
 			panic(err)
 		}
+		p.WaitShutdown()    // Wait for the parrot instance to shutdown. Usually unnecessary, but we want to clean up the save file
+		os.Remove(saveFile) // Cleanup the save file for the example
 	}()
 
 	// Create a new recorder
@@ -161,11 +167,10 @@ func ExampleRecorder() {
 
 	// Call the route
 	go func() {
-		resp, err := p.Call(http.MethodGet, "/test")
+		_, err := p.Call(http.MethodGet, "/test")
 		if err != nil {
 			panic(err)
 		}
-		defer resp.Body.Close()
 	}()
 
 	// Record the route call

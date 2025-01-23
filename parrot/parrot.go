@@ -56,7 +56,10 @@ type Server struct {
 	host    string
 	address string
 
+	client          *resty.Client
 	shutDown        bool
+	shutDownChan    chan struct{}
+	shutDownOnce    sync.Once
 	saveFileName    string
 	useCustomLogger bool
 	logFileName     string
@@ -69,8 +72,14 @@ type Server struct {
 	routes   map[string]*Route // Store routes based on "Method:Path" keys
 	routesMu sync.RWMutex
 
-	recorderHooks []string
+	recorderHooks map[string]struct{} // Store recorders based on URL keys to avoid duplicates
 	recordersMu   sync.RWMutex
+}
+
+// SaveFile is the structure of the file to save and load parrot data from
+type SaveFile struct {
+	Routes    []*Route `json:"routes"`
+	Recorders []string `json:"recorders"`
 }
 
 // ServerOption defines functional options for configuring the ParrotServer
@@ -154,8 +163,14 @@ func Wake(options ...ServerOption) (*Server, error) {
 		logLevel:     zerolog.InfoLevel,
 		logFileName:  "parrot.log",
 
+		client:       resty.New(),
+		shutDownChan: make(chan struct{}),
+
 		routes:   make(map[string]*Route),
 		routesMu: sync.RWMutex{},
+
+		recorderHooks: make(map[string]struct{}),
+		recordersMu:   sync.RWMutex{},
 	}
 
 	for _, option := range options {
@@ -204,7 +219,7 @@ func Wake(options ...ServerOption) (*Server, error) {
 	}
 
 	mux := http.NewServeMux()
-	// TODO: Add a route to
+	// TODO: Add a route to enable registering recorders
 	mux.HandleFunc("/routes", p.routesHandler)
 	mux.HandleFunc("/", p.dynamicHandler)
 
@@ -215,7 +230,7 @@ func Wake(options ...ServerOption) (*Server, error) {
 	}
 
 	if err = p.load(); err != nil {
-		return nil, fmt.Errorf("failed to load saved routes: %w", err)
+		return nil, fmt.Errorf("failed to load data from '%s': %w", p.saveFileName, err)
 	}
 
 	go p.run(listener)
@@ -225,12 +240,16 @@ func Wake(options ...ServerOption) (*Server, error) {
 
 func (p *Server) run(listener net.Listener) {
 	defer func() {
+		p.shutDown = true
 		if err := p.save(); err != nil {
 			p.log.Error().Err(err).Msg("Failed to save routes")
 		}
 		if err := p.logFile.Close(); err != nil {
 			p.log.Error().Err(err).Msg("Failed to close log file")
 		}
+		p.shutDownOnce.Do(func() {
+			close(p.shutDownChan)
+		})
 	}()
 
 	p.log.Info().Int("Port", p.Port()).Str("Address", p.address).Msg("Parrot awake and ready to squawk")
@@ -242,14 +261,17 @@ func (p *Server) run(listener net.Listener) {
 
 // Shutdown gracefully shuts down the parrot server
 func (p *Server) Shutdown(ctx context.Context) error {
-	p.shutDown = true
+	if p.shutDown {
+		return ErrServerShutdown
+	}
+
 	p.log.Info().Msg("Putting cloth over the parrot's cage...")
 	return p.server.Shutdown(ctx)
 }
 
-// Host returns the host the parrot is running on
-func (p *Server) Host() string {
-	return p.host
+// WaitShutdown blocks until the parrot server has shut down
+func (p *Server) WaitShutdown() {
+	<-p.shutDownChan
 }
 
 // Port returns the port the parrot is running on
@@ -264,14 +286,14 @@ func (p *Server) Address() string {
 
 // Register adds a new route to the parrot
 func (p *Server) Register(route *Route) error {
+	if p.shutDown {
+		return ErrServerShutdown
+	}
 	if route == nil {
 		return ErrNilRoute
 	}
 	if !isValidPath(route.Path) {
 		return newDynamicError(ErrInvalidPath, fmt.Sprintf("'%s'", route.Path))
-	}
-	if _, err := url.Parse(route.Path); err != nil {
-		return newDynamicError(ErrInvalidPath, fmt.Sprintf("%s: '%s'", err.Error(), route.Path))
 	}
 	if route.Method == "" {
 		return ErrNoMethod
@@ -387,6 +409,10 @@ func (p *Server) routesHandler(w http.ResponseWriter, r *http.Request) {
 
 // Record registers a new recorder with the parrot. All incoming requests to the parrot will be sent to the recorder.
 func (p *Server) Record(recorderURL string) error {
+	if p.shutDown {
+		return ErrServerShutdown
+	}
+
 	p.recordersMu.Lock()
 	defer p.recordersMu.Unlock()
 	if recorderURL == "" {
@@ -396,12 +422,31 @@ func (p *Server) Record(recorderURL string) error {
 	if err != nil {
 		return ErrInvalidRecorderURL
 	}
-	p.recorderHooks = append(p.recorderHooks, recorderURL)
+	p.recorderHooks[recorderURL] = struct{}{}
 	return nil
+}
+
+// Recorders returns the URLs of all registered recorders
+func (p *Server) Recorders() []string {
+	if p.shutDown {
+		return nil
+	}
+
+	p.recordersMu.RLock()
+	defer p.recordersMu.RUnlock()
+	recorders := make([]string, 0, len(p.recorderHooks))
+	for recorder := range p.recorderHooks {
+		recorders = append(recorders, recorder)
+	}
+	return recorders
 }
 
 // Unregister removes a route from the parrot
 func (p *Server) Unregister(routeID string) error {
+	if p.shutDown {
+		return ErrServerShutdown
+	}
+
 	p.routesMu.RLock()
 	_, exists := p.routes[routeID]
 	p.routesMu.RUnlock()
@@ -416,14 +461,11 @@ func (p *Server) Unregister(routeID string) error {
 }
 
 // Call makes a request to the parrot server
-func (p *Server) Call(method, path string) (*http.Response, error) {
-	req, err := http.NewRequest(method, "http://"+filepath.Join(p.Address(), path), nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+func (p *Server) Call(method, path string) (*resty.Response, error) {
+	if p.shutDown {
+		return nil, ErrServerShutdown
 	}
-
-	client := &http.Client{}
-	return client.Do(req)
+	return p.client.R().Execute(method, "http://"+filepath.Join(p.Address(), path))
 }
 
 func (p *Server) Routes() []*Route {
@@ -542,26 +584,37 @@ func (p *Server) dynamicHandler(w http.ResponseWriter, r *http.Request) {
 // load loads all registered routes from a file.
 func (p *Server) load() error {
 	if _, err := os.Stat(p.saveFileName); os.IsNotExist(err) {
-		p.log.Trace().Str("file", p.saveFileName).Msg("No routes to load")
+		p.log.Trace().Str("file", p.saveFileName).Msg("No data to load")
 		return nil
 	}
 
-	p.log.Debug().Str("file", p.saveFileName).Msg("Loading routes")
+	p.log.Debug().Str("File", p.saveFileName).Msg("Loading data")
 
-	data, err := os.ReadFile(p.saveFileName)
+	fileData, err := os.ReadFile(p.saveFileName)
 	if err != nil {
 		return fmt.Errorf("failed to read routes from file: %w", err)
 	}
-	if len(data) == 0 {
-		p.log.Trace().Str("file", p.saveFileName).Msg("No routes to load")
+	if len(fileData) == 0 {
+		p.log.Trace().Str("File", p.saveFileName).Msg("No data to load")
 		return nil
 	}
 
-	p.routesMu.Lock()
-	defer p.routesMu.Unlock()
+	var saveData SaveFile
+	err = json.Unmarshal(fileData, &saveData)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal save file: %w", err)
+	}
 
-	if err = json.Unmarshal(data, &p.routes); err != nil {
-		return fmt.Errorf("failed to unmarshal routes: %w", err)
+	for _, route := range saveData.Routes {
+		if err = p.Register(route); err != nil {
+			return fmt.Errorf("failed to register route: %w", err)
+		}
+	}
+
+	for _, recorder := range saveData.Recorders {
+		if err = p.Record(recorder); err != nil {
+			return fmt.Errorf("failed to register recorder: %w", err)
+		}
 	}
 
 	p.log.Info().Str("file", p.saveFileName).Int("number", len(p.routes)).Msg("Loaded routes")
@@ -570,25 +623,25 @@ func (p *Server) load() error {
 
 // save saves all registered routes to a file.
 func (p *Server) save() error {
-	if len(p.routes) == 0 {
-		p.log.Debug().Msg("No routes to save")
+	saveFile := &SaveFile{
+		Routes:    p.Routes(),
+		Recorders: p.Recorders(),
+	}
+	if len(saveFile.Routes) == 0 && len(saveFile.Recorders) == 0 {
+		p.log.Trace().Str("File", p.saveFileName).Msg("No data to save")
 		return nil
 	}
-	p.log.Trace().Str("file", p.saveFileName).Msg("Saving routes")
 
-	p.routesMu.RLock()
-	defer p.routesMu.RUnlock()
-
-	jsonData, err := json.Marshal(p.routes)
+	jsonData, err := json.Marshal(saveFile)
 	if err != nil {
-		return fmt.Errorf("failed to marshal routes: %w", err)
+		return fmt.Errorf("failed to marshal save file: %w", err)
 	}
 
 	if err = os.WriteFile(p.saveFileName, jsonData, 0644); err != nil { //nolint:gosec
-		return fmt.Errorf("failed to write routes to file: %w", err)
+		return fmt.Errorf("failed to write to save file: %w", err)
 	}
 
-	p.log.Trace().Str("file", p.saveFileName).Msg("Saved routes")
+	p.log.Debug().Str("File", p.saveFileName).Msg("Saved data")
 	return nil
 }
 
@@ -601,15 +654,16 @@ func (p *Server) sendToRecorders(routeCall *RouteCall) {
 	}
 
 	client := resty.New()
-	p.log.Trace().Strs("Recorders", p.recorderHooks).Str("Route ID", routeCall.RouteID).Msg("Sending route call to recorders")
+	p.log.Trace().Int("Recorder Count", len(p.recorderHooks)).Str("Route ID", routeCall.RouteID).Msg("Sending route call to recorders")
 
-	for _, hook := range p.recorderHooks {
+	for hook := range p.recorderHooks {
 		go func(hook string) {
 			resp, err := client.R().SetBody(routeCall).Post(hook)
 			if err != nil {
 				p.log.Error().Err(err).Str("Recorder Hook", hook).Msg("Failed to send route call to recorder")
 				return
 			}
+			defer resp.RawResponse.Body.Close()
 			if resp.IsError() {
 				p.log.Error().
 					Str("Recorder Hook", hook).

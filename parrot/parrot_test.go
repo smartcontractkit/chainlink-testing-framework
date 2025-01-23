@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
@@ -46,7 +46,7 @@ func TestRegisterRoutes(t *testing.T) {
 				Method:             http.MethodGet,
 				Path:               "/hello",
 				RawResponseBody:    "Squawk",
-				ResponseStatusCode: 200,
+				ResponseStatusCode: http.StatusOK,
 			},
 		},
 		{
@@ -55,7 +55,7 @@ func TestRegisterRoutes(t *testing.T) {
 				Method:             http.MethodGet,
 				Path:               "/json",
 				ResponseBody:       map[string]any{"message": "Squawk"},
-				ResponseStatusCode: 200,
+				ResponseStatusCode: http.StatusOK,
 			},
 		},
 		{
@@ -73,7 +73,7 @@ func TestRegisterRoutes(t *testing.T) {
 				Method:             http.MethodPut,
 				Path:               "/put",
 				RawResponseBody:    "Squawk",
-				ResponseStatusCode: 200,
+				ResponseStatusCode: http.StatusOK,
 			},
 		},
 		{
@@ -82,7 +82,7 @@ func TestRegisterRoutes(t *testing.T) {
 				Method:             http.MethodDelete,
 				Path:               "/delete",
 				RawResponseBody:    "Squawk",
-				ResponseStatusCode: 200,
+				ResponseStatusCode: http.StatusOK,
 			},
 		},
 		{
@@ -91,7 +91,7 @@ func TestRegisterRoutes(t *testing.T) {
 				Method:             http.MethodPatch,
 				Path:               "/patch",
 				RawResponseBody:    "Squawk",
-				ResponseStatusCode: 200,
+				ResponseStatusCode: http.StatusOK,
 			},
 		},
 		{
@@ -114,18 +114,15 @@ func TestRegisterRoutes(t *testing.T) {
 
 			resp, err := p.Call(tc.route.Method, tc.route.Path)
 			require.NoError(t, err, "error calling parrot")
-			defer resp.Body.Close()
 
-			assert.Equal(t, tc.route.ResponseStatusCode, resp.StatusCode)
-			body, _ := io.ReadAll(resp.Body)
+			assert.Equal(t, tc.route.ResponseStatusCode, resp.StatusCode())
 			if tc.route.ResponseBody != nil {
 				jsonBody, err := json.Marshal(tc.route.ResponseBody)
 				require.NoError(t, err)
-				assert.JSONEq(t, string(jsonBody), string(body))
+				assert.JSONEq(t, string(jsonBody), string(resp.Body()))
 			} else {
-				assert.Equal(t, tc.route.RawResponseBody, string(body))
+				assert.Equal(t, tc.route.RawResponseBody, string(resp.Body()))
 			}
-			resp.Body.Close()
 		})
 	}
 }
@@ -140,7 +137,7 @@ func TestGetRoutes(t *testing.T) {
 			Method:             http.MethodGet,
 			Path:               "/hello",
 			RawResponseBody:    "Squawk",
-			ResponseStatusCode: 200,
+			ResponseStatusCode: http.StatusOK,
 		},
 		{
 			Method:             http.MethodPost,
@@ -195,6 +192,74 @@ func TestIsValidPath(t *testing.T) {
 	}
 }
 
+func TestPreRegisterRoutes(t *testing.T) {
+	t.Parallel()
+
+	routes := []*Route{
+		{
+			Method:             http.MethodGet,
+			Path:               "/hello",
+			RawResponseBody:    "Squawk",
+			ResponseStatusCode: http.StatusOK,
+		},
+		{
+			Method:             http.MethodPost,
+			Path:               "/goodbye",
+			RawResponseBody:    "Squeak",
+			ResponseStatusCode: 201,
+		},
+	}
+
+	saveFile := t.Name() + ".json"
+	p, err := Wake(WithSaveFile(saveFile), WithRoutes(routes), WithLogLevel(testLogLevel))
+	require.NoError(t, err, "error waking parrot")
+
+	t.Cleanup(func() {
+		err := p.Shutdown(context.Background())
+		assert.NoError(t, err, "error shutting down parrot")
+		p.WaitShutdown()
+		os.Remove(saveFile)
+	})
+
+	registeredRoutes := p.Routes()
+	require.Len(t, registeredRoutes, len(routes))
+}
+
+func TestCustomLogFile(t *testing.T) {
+	t.Parallel()
+
+	logFile := t.Name() + ".log"
+	saveFile := t.Name() + ".json"
+	p, err := Wake(WithLogFile(logFile), WithSaveFile(saveFile), WithLogLevel(zerolog.DebugLevel))
+	require.NoError(t, err, "error waking parrot")
+
+	t.Cleanup(func() {
+		err := p.Shutdown(context.Background())
+		assert.NoError(t, err, "error shutting down parrot")
+		p.WaitShutdown()
+		os.Remove(logFile)
+		os.Remove(saveFile)
+	})
+
+	// Call a route to generate some logs
+	route := &Route{
+		Method:             http.MethodGet,
+		Path:               "/hello",
+		RawResponseBody:    "Squawk",
+		ResponseStatusCode: http.StatusOK,
+	}
+	err = p.Register(route)
+	require.NoError(t, err, "error registering route")
+
+	_, err = p.Call(route.Method, route.Path)
+	require.NoError(t, err, "error calling parrot")
+
+	require.FileExists(t, logFile, "expected log file to exist")
+	logData, err := os.ReadFile(logFile)
+	require.NoError(t, err, "error reading log file")
+	require.Contains(t, string(logData), "GET:/hello", "expected log file to contain route call")
+}
+
 func TestBadRegisterRoute(t *testing.T) {
 	t.Parallel()
 
@@ -216,7 +281,7 @@ func TestBadRegisterRoute(t *testing.T) {
 			route: &Route{
 				Path:               "/hello",
 				RawResponseBody:    "Squawk",
-				ResponseStatusCode: 200,
+				ResponseStatusCode: http.StatusOK,
 			},
 		},
 		{
@@ -225,7 +290,7 @@ func TestBadRegisterRoute(t *testing.T) {
 			route: &Route{
 				Method:             http.MethodGet,
 				RawResponseBody:    "Squawk",
-				ResponseStatusCode: 200,
+				ResponseStatusCode: http.StatusOK,
 			},
 		},
 		{
@@ -235,7 +300,7 @@ func TestBadRegisterRoute(t *testing.T) {
 				Method:             http.MethodGet,
 				Path:               "/",
 				RawResponseBody:    "Squawk",
-				ResponseStatusCode: 200,
+				ResponseStatusCode: http.StatusOK,
 			},
 		},
 		{
@@ -245,7 +310,37 @@ func TestBadRegisterRoute(t *testing.T) {
 				Method:             http.MethodGet,
 				Path:               "invalid path",
 				RawResponseBody:    "Squawk",
-				ResponseStatusCode: 200,
+				ResponseStatusCode: http.StatusOK,
+			},
+		},
+		{
+			name: "no response",
+			err:  ErrNoResponse,
+			route: &Route{
+				Method:             http.MethodGet,
+				Path:               "/hello",
+				ResponseStatusCode: http.StatusOK,
+			},
+		},
+		{
+			name: "invalid url",
+			err:  ErrInvalidPath,
+			route: &Route{
+				Method:             http.MethodGet,
+				Path:               "http://example.com",
+				RawResponseBody:    "Squawk",
+				ResponseStatusCode: http.StatusOK,
+			},
+		},
+		{
+			name: "multiple responses",
+			err:  ErrOnlyOneResponse,
+			route: &Route{
+				Method:             http.MethodGet,
+				Path:               "/hello",
+				RawResponseBody:    "Squawk",
+				ResponseBody:       map[string]any{"message": "Squawk"},
+				ResponseStatusCode: http.StatusOK,
 			},
 		},
 	}
@@ -269,9 +364,8 @@ func TestUnregisteredRoute(t *testing.T) {
 	resp, err := p.Call(http.MethodGet, "/unregistered")
 	require.NoError(t, err, "error calling parrot")
 	require.NotNil(t, resp, "response should not be nil")
-	defer resp.Body.Close()
 
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode())
 }
 
 func TestUnregister(t *testing.T) {
@@ -283,7 +377,7 @@ func TestUnregister(t *testing.T) {
 		Method:             http.MethodPost,
 		Path:               "/hello",
 		RawResponseBody:    "Squawk",
-		ResponseStatusCode: 200,
+		ResponseStatusCode: http.StatusOK,
 	}
 
 	err := p.Register(route)
@@ -292,17 +386,15 @@ func TestUnregister(t *testing.T) {
 	resp, err := p.Call(route.Method, route.Path)
 	require.NoError(t, err, "error calling parrot")
 
-	assert.Equal(t, resp.StatusCode, route.ResponseStatusCode)
-	body, _ := io.ReadAll(resp.Body)
-	assert.Equal(t, route.RawResponseBody, string(body))
-	resp.Body.Close()
+	assert.Equal(t, resp.StatusCode(), route.ResponseStatusCode)
+	assert.Equal(t, route.RawResponseBody, string(resp.Body()))
 
 	err = p.Unregister(route.ID())
 	require.NoError(t, err, "error unregistering route")
 
 	resp, err = p.Call(route.Method, route.Path)
 	require.NoError(t, err, "error calling parrot")
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode())
 }
 
 func TestSaveLoad(t *testing.T) {
@@ -315,7 +407,7 @@ func TestSaveLoad(t *testing.T) {
 			Method:             "GET",
 			Path:               "/hello",
 			RawResponseBody:    "Squawk",
-			ResponseStatusCode: 200,
+			ResponseStatusCode: http.StatusOK,
 		},
 		{
 			Method:             "Post",
@@ -325,9 +417,19 @@ func TestSaveLoad(t *testing.T) {
 		},
 	}
 
+	recorders := []string{ // Dummy recorder URLs
+		"http://localhost:8080",
+		"http://localhost:8081",
+	}
+
 	for _, route := range routes {
 		err := p.Register(route)
 		require.NoError(t, err, "error registering route")
+	}
+
+	for _, recorder := range recorders {
+		err := p.Record(recorder)
+		require.NoError(t, err, "error recording parrot")
 	}
 
 	err := p.save()
@@ -341,106 +443,42 @@ func TestSaveLoad(t *testing.T) {
 		resp, err := p.Call(route.Method, route.Path)
 		require.NoError(t, err, "error calling parrot")
 
-		assert.Equal(t, route.ResponseStatusCode, resp.StatusCode, "unexpected status code for route %s", route.ID())
-		body, _ := io.ReadAll(resp.Body)
-		assert.Equal(t, route.RawResponseBody, string(body))
-		resp.Body.Close()
+		assert.Equal(t, route.ResponseStatusCode, resp.StatusCode(), "unexpected status code for route %s", route.ID())
+		assert.Equal(t, route.RawResponseBody, string(resp.Body()))
 	}
+
+	registeredRecorders := p.Recorders()
+	require.Len(t, registeredRecorders, len(recorders), "unexpected number of recorders")
 }
 
-func BenchmarkRegisterRoute(b *testing.B) {
-	p, err := Wake(WithLogLevel(zerolog.Disabled))
-	require.NoError(b, err)
+func TestShutDown(t *testing.T) {
+	fileName := t.Name() + ".json"
+	p, err := Wake(WithSaveFile(fileName), WithLogLevel(testLogLevel))
+	require.NoError(t, err, "error waking parrot")
 
-	route := &Route{
-		Method:             "GET",
-		Path:               "/bench",
-		RawResponseBody:    "Benchmark Response",
-		ResponseStatusCode: 200,
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	err = p.Shutdown(ctx)
+	require.NoError(t, err, "error shutting down parrot")
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		err := p.Register(route)
-		require.NoError(b, err)
-	}
-}
+	p.WaitShutdown() // Wait for shutdown to complete
 
-func BenchmarkRouteResponse(b *testing.B) {
-	p, err := Wake(WithLogLevel(zerolog.Disabled))
-	require.NoError(b, err)
+	_, err = p.Call(http.MethodGet, "/hello")
+	require.ErrorIs(t, err, ErrServerShutdown, "expected error calling parrot after shutdown")
 
-	route := &Route{
-		Method:             "GET",
-		Path:               "/bench",
-		RawResponseBody:    "Benchmark Response",
-		ResponseStatusCode: 200,
-	}
-	err = p.Register(route)
-	require.NoError(b, err)
+	err = p.Record("http://localhost:8080")
+	require.ErrorIs(t, err, ErrServerShutdown, "expected error recording parrot after shutdown")
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := p.Call(route.Method, route.Path)
-		require.NoError(b, err)
-	}
-}
-
-func BenchmarkSaveRoutes(b *testing.B) {
-	var (
-		routes   = []*Route{}
-		saveFile = "bench_save_routes.json"
-	)
-
-	for i := 0; i < 1000; i++ {
-		routes = append(routes, &Route{
-			Method:             "GET",
-			Path:               fmt.Sprintf("/bench%d", i),
-			RawResponseBody:    fmt.Sprintf("Squawk %d", i),
-			ResponseStatusCode: 200,
-		})
-	}
-	p, err := Wake(WithRoutes(routes), WithLogLevel(zerolog.Disabled), WithSaveFile(saveFile))
-	require.NoError(b, err)
-
-	b.Cleanup(func() {
-		os.Remove(saveFile)
+	err = p.Register(&Route{
+		Method:             http.MethodGet,
+		Path:               "/hello",
+		RawResponseBody:    "Squawk",
+		ResponseStatusCode: http.StatusOK,
 	})
+	require.ErrorIs(t, err, ErrServerShutdown, "expected error registering route after shutdown")
 
-	b.ResetTimer() // Start measuring time
-	for i := 0; i < b.N; i++ {
-		err := p.save()
-		require.NoError(b, err)
-	}
-}
-
-func BenchmarkLoadRoutes(b *testing.B) {
-	var (
-		routes   = []*Route{}
-		saveFile = "bench_load_routes.json"
-	)
-	b.Cleanup(func() {
-		os.Remove(saveFile)
-	})
-
-	for i := 0; i < 1000; i++ {
-		routes = append(routes, &Route{
-			Method:             "GET",
-			Path:               fmt.Sprintf("/bench%d", i),
-			RawResponseBody:    fmt.Sprintf("Squawk %d", i),
-			ResponseStatusCode: 200,
-		})
-	}
-	p, err := Wake(WithRoutes(routes), WithLogLevel(zerolog.Disabled), WithSaveFile(saveFile))
-	require.NoError(b, err, "error waking parrot")
-	err = p.save()
-	require.NoError(b, err, "error saving routes")
-
-	b.ResetTimer() // Start measuring time
-	for i := 0; i < b.N; i++ {
-		err := p.load()
-		require.NoError(b, err)
-	}
+	err = p.Shutdown(context.Background())
+	require.ErrorIs(t, err, ErrServerShutdown, "expected error shutting down parrot after shutdown")
 }
 
 func newParrot(t *testing.T) *Server {
@@ -452,6 +490,7 @@ func newParrot(t *testing.T) *Server {
 	t.Cleanup(func() {
 		err := p.Shutdown(context.Background())
 		assert.NoError(t, err, "error shutting down parrot")
+		p.WaitShutdown() // Wait for shutdown to complete
 		os.Remove(fileName)
 	})
 	return p
