@@ -20,19 +20,25 @@ type Recorder struct {
 	errChan    chan error
 }
 
-// RouteCall records that a route was called
+// RouteCall records when a route is called, the request and response
 type RouteCall struct {
-	RouteID  string             `json:"route_id"`
-	Request  *RouteCallRequest  `json:"request"`
+	// RouteCallID is a unique identifier for the route call for help with debugging
+	RouteCallID string `json:"route_call_id"`
+	// RouteID is the identifier of the route that was called
+	RouteID string `json:"route_id"`
+	// Request is the request made to the route
+	Request *RouteCallRequest `json:"request"`
+	// Response is the response from the route
 	Response *RouteCallResponse `json:"response"`
 }
 
 // RouteCallRequest records the request made to a route
 type RouteCallRequest struct {
-	Method string      `json:"method"`
-	URL    *url.URL    `json:"url"`
-	Header http.Header `json:"header"`
-	Body   []byte      `json:"body"`
+	Method     string      `json:"method"`
+	URL        *url.URL    `json:"url"`
+	RemoteAddr string      `json:"caller"`
+	Header     http.Header `json:"header"`
+	Body       []byte      `json:"body"`
 }
 
 // RouteCallResponse records the response from a route

@@ -479,9 +479,9 @@ func (p *Server) dynamicHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	requestID := uuid.New().String()[0:8]
+	routeCallID := uuid.New().String()[0:8]
 	dynamicLogger.UpdateContext(func(c zerolog.Context) zerolog.Context {
-		return c.Str("Request ID", requestID).Str("Route ID", route.ID())
+		return c.Str("Route Call ID", routeCallID).Str("Route ID", route.ID())
 	})
 
 	requestBody, err := io.ReadAll(r.Body)
@@ -494,12 +494,14 @@ func (p *Server) dynamicHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	routeCall := &RouteCall{
-		RouteID: r.Method + ":" + r.URL.Path,
+		RouteCallID: routeCallID,
+		RouteID:     r.Method + ":" + r.URL.Path,
 		Request: &RouteCallRequest{
-			Method: r.Method,
-			URL:    r.URL,
-			Header: r.Header,
-			Body:   requestBody,
+			Method:     r.Method,
+			URL:        r.URL,
+			Header:     r.Header,
+			Body:       requestBody,
+			RemoteAddr: r.RemoteAddr,
 		},
 	}
 	recordingWriter := newResponseWriterRecorder(w)
