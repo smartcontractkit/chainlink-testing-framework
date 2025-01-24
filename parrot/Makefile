@@ -34,4 +34,4 @@ build:
 
 .PHONY: goreleaser
 goreleaser:
-	cd .. && goreleaser build --snapshot --clean -f ./parrot/.goreleaser.yaml --output ./parrot/dist
+	cd .. && goreleaser build --snapshot --clean -f ./parrot/.goreleaser.yaml
