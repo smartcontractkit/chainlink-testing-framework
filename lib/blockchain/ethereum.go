@@ -1290,7 +1290,7 @@ func (e *EthereumClient) InitializeHeaderSubscription() error {
 	if !exists {
 		poller = &SharedHeaderPoller{
 			chainID:      e.GetChainID().Int64(),
-			pollInterval: 10 * time.Second,
+			pollInterval: 15 * time.Second,
 			done:         make(chan struct{}),
 		}
 		chainPollingRegistry.m[e.GetChainID().Int64()] = poller
