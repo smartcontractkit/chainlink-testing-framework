@@ -731,7 +731,10 @@ func (e *EthereumClient) WaitForFinalizedTx(txHash common.Hash) (*big.Int, time.
 					if err != nil {
 						e.l.Err(err).Msg("Error fetching latest finalized header via HTTP polling")
 					}
-
+					if latestHeader == nil {
+						e.l.Error().Msg("Latest finalized header is nil")
+						continue
+					}
 					if latestHeader.Time > math.MaxInt64 {
 						e.l.Error().Msg("Latest finalized header time is too large")
 						continue
