@@ -23,6 +23,12 @@ import (
 	"github.com/rs/zerolog/hlog"
 )
 
+const (
+	healthRoute = "/health"
+	routesRoute = "/routes"
+	recordRoute = "/record"
+)
+
 // Route holds information about the mock route configuration
 type Route struct {
 	// Method is the HTTP method to match
@@ -215,10 +221,10 @@ func Wake(options ...ServerOption) (*Server, error) {
 
 	mux := http.NewServeMux()
 	// TODO: Add a route to enable registering recorders
-	mux.HandleFunc("/routes", p.registerHandler)
-	mux.HandleFunc("/record", p.recordHandler)
-	mux.HandleFunc("/health", p.healthHandler)
-	mux.HandleFunc("/", p.routesHandler)
+	mux.HandleFunc(routesRoute, p.routeHandler)
+	mux.HandleFunc(recordRoute, p.recordHandler)
+	mux.HandleFunc(healthRoute, p.healthHandler)
+	mux.HandleFunc("/", p.dynamicHandler)
 
 	p.server = &http.Server{
 		ReadHeaderTimeout: 5 * time.Second,
@@ -329,7 +335,7 @@ func (p *Server) Record(recorderURL string) error {
 	if recorderURL == "" {
 		return ErrNoRecorderURL
 	}
-	_, err := url.Parse(recorderURL)
+	_, err := url.ParseRequestURI(recorderURL)
 	if err != nil {
 		return ErrInvalidRecorderURL
 	}
@@ -390,25 +396,19 @@ func (p *Server) Routes() []*Route {
 	return routes
 }
 
-// registerHandler handles registering, unregistering, and querying routes
-func (p *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
+// routeHandler handles registering, unregistering, and querying routes
+func (p *Server) routeHandler(w http.ResponseWriter, r *http.Request) {
 	routesLogger := zerolog.Ctx(r.Context())
 	if r.Method == http.MethodDelete {
-		var routeRequest *Route
-		if err := json.NewDecoder(r.Body).Decode(&routeRequest); err != nil {
+		var route *Route
+		if err := json.NewDecoder(r.Body).Decode(&route); err != nil {
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			routesLogger.Debug().Err(err).Msg("Failed to decode request body")
 			return
 		}
 		defer r.Body.Close()
 
-		if routeRequest.ID() == "" {
-			http.Error(w, "Route ID required", http.StatusBadRequest)
-			routesLogger.Debug().Msg("No Route ID provided")
-			return
-		}
-
-		err := p.Delete(routeRequest.ID())
+		err := p.Delete(route.ID())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			routesLogger.Debug().Err(err).Msg("Failed to unregister route")
@@ -417,8 +417,8 @@ func (p *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 
 		w.WriteHeader(http.StatusNoContent)
 		routesLogger.Info().
-			Str("Route ID", routeRequest.ID()).
-			Msg("Route unregistered")
+			Str("Route ID", route.ID()).
+			Msg("Route deleted")
 		return
 	}
 
@@ -430,13 +430,6 @@ func (p *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer r.Body.Close()
-
-		if route.Method == "" || route.Path == "" {
-			err := errors.New("Method and path are required")
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			routesLogger.Debug().Err(err).Msg("Method and path are required")
-			return
-		}
 
 		err := p.Register(route)
 		if err != nil {
@@ -450,7 +443,8 @@ func (p *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == http.MethodGet {
-		jsonRoutes, err := json.Marshal(p.Routes())
+		routes := p.Routes()
+		jsonRoutes, err := json.Marshal(routes)
 		if err != nil {
 			http.Error(w, "Failed to marshal routes", http.StatusInternalServerError)
 			routesLogger.Debug().Err(err).Msg("Failed to marshal routes")
@@ -464,7 +458,7 @@ func (p *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		routesLogger.Debug().Msg("Returned routes")
+		routesLogger.Debug().Int("Count", len(routes)).Msg("Returned routes")
 		return
 	}
 
@@ -472,8 +466,8 @@ func (p *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 	routesLogger.Debug().Msg("Invalid method")
 }
 
-// routesHandler handles all incoming requests and responds based on the registered routes.
-func (p *Server) routesHandler(w http.ResponseWriter, r *http.Request) {
+// dynamicHandler handles all incoming requests and responds based on the registered routes.
+func (p *Server) dynamicHandler(w http.ResponseWriter, r *http.Request) {
 	p.routesMu.RLock()
 	route, exists := p.routes[r.Method+":"+r.URL.Path]
 	p.routesMu.RUnlock()
@@ -741,16 +735,19 @@ var pathRegex = regexp.MustCompile(`^\/[a-zA-Z0-9\-._~%!$&'()*+,;=:@\/]*$`)
 
 func isValidPath(path string) bool {
 	switch path {
-	case "", "/", "//", "/register", "/health", "/.", "/..":
+	case "", "/", "//", healthRoute, recordRoute, routesRoute, "/.", "/..":
 		return false
 	}
 	if !strings.HasPrefix(path, "/") {
 		return false
 	}
-	if strings.HasPrefix(path, "/register") {
+	if strings.HasPrefix(path, recordRoute) {
 		return false
 	}
-	if strings.HasPrefix(path, "/health") {
+	if strings.HasPrefix(path, healthRoute) {
+		return false
+	}
+	if strings.HasPrefix(path, routesRoute) {
 		return false
 	}
 	return pathRegex.MatchString(path)

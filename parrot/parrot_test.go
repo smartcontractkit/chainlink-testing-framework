@@ -170,8 +170,8 @@ func TestIsValidPath(t *testing.T) {
 			valid: true,
 		},
 		{
-			name:  "no register",
-			paths: []string{"/register", "/register/", "/register//", "/register/other_stuff"},
+			name:  "no protected paths",
+			paths: []string{healthRoute, routesRoute, recordRoute, fmt.Sprintf("%s/%s", routesRoute, "route-id"), fmt.Sprintf("%s/%s", healthRoute, "recorder-id"), fmt.Sprintf("%s/%s", recordRoute, "recorder-id")},
 			valid: false,
 		},
 		{
@@ -343,6 +343,30 @@ func TestBadRegisterRoute(t *testing.T) {
 				ResponseStatusCode: http.StatusOK,
 			},
 		},
+		{
+			name: "too many responses",
+			err:  ErrOnlyOneResponse,
+			route: &Route{
+				Method:       http.MethodGet,
+				Path:         "/hello",
+				ResponseBody: map[string]any{"message": "Squawk"},
+				Handler: func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusOK)
+					_, _ = w.Write([]byte("Squawk"))
+				},
+				ResponseStatusCode: http.StatusOK,
+			},
+		},
+		{
+			name: "bad JSON",
+			err:  ErrResponseMarshal,
+			route: &Route{
+				Method:             http.MethodGet,
+				Path:               "/json",
+				ResponseBody:       map[string]any{"message": make(chan int)},
+				ResponseStatusCode: http.StatusOK,
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -354,6 +378,18 @@ func TestBadRegisterRoute(t *testing.T) {
 			assert.ErrorIs(t, err, tc.err)
 		})
 	}
+}
+
+func TestBadRecorder(t *testing.T) {
+	t.Parallel()
+
+	p := newParrot(t)
+
+	err := p.Record("")
+	require.ErrorIs(t, err, ErrNoRecorderURL, "expected error recording parrot")
+
+	err = p.Record("invalid url")
+	require.ErrorIs(t, err, ErrInvalidRecorderURL, "expected error recording parrot")
 }
 
 func TestUnregisteredRoute(t *testing.T) {
@@ -395,6 +431,10 @@ func TestDelete(t *testing.T) {
 	resp, err = p.Call(route.Method, route.Path)
 	require.NoError(t, err, "error calling parrot")
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode())
+
+	// Try to delete the route again
+	err = p.Delete(route.ID())
+	require.ErrorIs(t, err, ErrRouteNotFound, "expected error deleting route")
 }
 
 func TestSaveLoad(t *testing.T) {
@@ -476,6 +516,9 @@ func TestShutDown(t *testing.T) {
 		ResponseStatusCode: http.StatusOK,
 	})
 	require.ErrorIs(t, err, ErrServerShutdown, "expected error registering route after shutdown")
+
+	err = p.Delete("route-id")
+	require.ErrorIs(t, err, ErrServerShutdown, "expected error deleting route after shutdown")
 
 	err = p.Shutdown(context.Background())
 	require.ErrorIs(t, err, ErrServerShutdown, "expected error shutting down parrot after shutdown")
