@@ -1,3 +1,3 @@
 FROM scratch
-COPY parrotserver /parrotserver
-ENTRYPOINT [ "parrotserver", "-port", "9090", "-t" ]
+COPY parrot /parrot
+ENTRYPOINT [ "parrot", "-port", "9090", "-t" ]
