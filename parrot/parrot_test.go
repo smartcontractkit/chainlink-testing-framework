@@ -230,7 +230,7 @@ func TestCustomLogFile(t *testing.T) {
 
 	logFile := t.Name() + ".log"
 	saveFile := t.Name() + ".json"
-	p, err := Wake(WithLogFile(logFile), WithSaveFile(saveFile), WithLogLevel(zerolog.DebugLevel))
+	p, err := Wake(WithLogFile(logFile), WithSaveFile(saveFile), WithLogLevel(zerolog.InfoLevel))
 	require.NoError(t, err, "error waking parrot")
 
 	t.Cleanup(func() {
@@ -368,7 +368,7 @@ func TestUnregisteredRoute(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode())
 }
 
-func TestUnregister(t *testing.T) {
+func TestDelete(t *testing.T) {
 	t.Parallel()
 
 	p := newParrot(t)
@@ -389,7 +389,7 @@ func TestUnregister(t *testing.T) {
 	assert.Equal(t, resp.StatusCode(), route.ResponseStatusCode)
 	assert.Equal(t, route.RawResponseBody, string(resp.Body()))
 
-	err = p.Unregister(route.ID())
+	err = p.Delete(route.ID())
 	require.NoError(t, err, "error unregistering route")
 
 	resp, err = p.Call(route.Method, route.Path)

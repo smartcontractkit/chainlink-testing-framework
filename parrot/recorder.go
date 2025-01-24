@@ -10,8 +10,10 @@ import (
 	"time"
 )
 
+// Recorder records route calls
 type Recorder struct {
-	URL    string `json:"url"`
+	Host   string `json:"host"`
+	Port   string `json:"port"`
 	server *http.Server
 
 	recordChan chan *RouteCall
@@ -40,19 +42,31 @@ type RouteCallResponse struct {
 	Body       []byte      `json:"body"`
 }
 
+// RecorderOption is a function that modifies a recorder
+type RecorderOption func(*Recorder)
+
+// WithHost sets the host of the recorder
+func WithHost(host string) RecorderOption {
+	return func(r *Recorder) {
+		r.Host = host
+	}
+}
+
 // NewRecorder creates a new recorder that listens for incoming requests to the parrot server
-func NewRecorder() (*Recorder, error) {
+func NewRecorder(opts ...RecorderOption) (*Recorder, error) {
 	r := &Recorder{
 		recordChan: make(chan *RouteCall),
 		errChan:    make(chan error),
 	}
 
-	// TODO: Will need a way to send out the URL to an external service (e.g. Parrotserver running in a docker container)
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := net.Listen("tcp", ":0") // nolint:gosec
 	if err != nil {
 		return nil, fmt.Errorf("failed to start listener: %w", err)
 	}
-	r.URL = "http://" + listener.Addr().String()
+	r.Host, r.Port, err = net.SplitHostPort(listener.Addr().String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to split host and port: %w", err)
+	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/", r.defaultRecordHandler())
@@ -60,6 +74,10 @@ func NewRecorder() (*Recorder, error) {
 		ReadHeaderTimeout: 5 * time.Second,
 		Addr:              listener.Addr().String(),
 		Handler:           mux,
+	}
+
+	for _, opt := range opts {
+		opt(r)
 	}
 
 	go func() {
@@ -72,6 +90,14 @@ func NewRecorder() (*Recorder, error) {
 	return r, nil
 }
 
+// URL returns the URL of the recorder to send requests to
+// WARNING: This URL automatically binds to the first available port on the host machine
+// and the host will be 0.0.0.0 or localhost. If you're calling this from a different machine
+// you will need to replace the host with the IP address of the machine running the recorder.
+func (r *Recorder) URL() string {
+	return fmt.Sprintf("http://%s:%s", r.Host, r.Port)
+}
+
 // Record receives recorded calls
 func (r *Recorder) Record() chan *RouteCall {
 	return r.recordChan
@@ -79,8 +105,6 @@ func (r *Recorder) Record() chan *RouteCall {
 
 // Close shuts down the recorder
 func (r *Recorder) Close() error {
-	// close(r.recordChan)
-	// close(r.errChan)
 	return r.server.Close()
 }
 

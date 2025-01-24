@@ -91,7 +91,7 @@ func TestRecorder(t *testing.T) {
 		require.NoError(t, recorder.Close())
 	})
 
-	err = p.Record(recorder.URL)
+	err = p.Record(recorder.URL())
 	require.NoError(t, err, "error recording parrot")
 	t.Cleanup(func() {
 		require.NoError(t, recorder.Close())
@@ -160,7 +160,7 @@ func TestMultipleRecorders(t *testing.T) {
 	})
 
 	for _, recorder := range recorders {
-		err := p.Record(recorder.URL)
+		err := p.Record(recorder.URL())
 		require.NoError(t, err, "error recording parrot")
 	}
 

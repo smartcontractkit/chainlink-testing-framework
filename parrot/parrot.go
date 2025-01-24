@@ -45,11 +45,6 @@ func (r *Route) ID() string {
 	return r.Method + ":" + r.Path
 }
 
-// RouteRequest is the request body for querying the server on a specific route
-type RouteRequest struct {
-	ID string `json:"id"`
-}
-
 // Server is a mock HTTP server that can register and respond to dynamic routes
 type Server struct {
 	port    int
@@ -203,7 +198,7 @@ func Wake(options ...ServerOption) (*Server, error) {
 		p.log = zerolog.New(multiWriter).Level(p.logLevel).With().Timestamp().Logger()
 	}
 
-	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", p.port))
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", p.port))
 	if err != nil {
 		return nil, fmt.Errorf("failed to start listener: %w", err)
 	}
@@ -220,8 +215,10 @@ func Wake(options ...ServerOption) (*Server, error) {
 
 	mux := http.NewServeMux()
 	// TODO: Add a route to enable registering recorders
-	mux.HandleFunc("/routes", p.routesHandler)
-	mux.HandleFunc("/", p.dynamicHandler)
+	mux.HandleFunc("/routes", p.registerHandler)
+	mux.HandleFunc("/record", p.recordHandler)
+	mux.HandleFunc("/health", p.healthHandler)
+	mux.HandleFunc("/", p.routesHandler)
 
 	p.server = &http.Server{
 		ReadHeaderTimeout: 5 * time.Second,
@@ -238,6 +235,7 @@ func Wake(options ...ServerOption) (*Server, error) {
 	return p, nil
 }
 
+// run starts the parrot server
 func (p *Server) run(listener net.Listener) {
 	defer func() {
 		p.shutDown = true
@@ -252,7 +250,7 @@ func (p *Server) run(listener net.Listener) {
 		})
 	}()
 
-	p.log.Info().Int("Port", p.Port()).Str("Address", p.address).Msg("Parrot awake and ready to squawk")
+	p.log.Info().Str("Address", p.address).Msg("Parrot awake and ready to squawk")
 	p.log.Debug().Str("Save File", p.saveFileName).Str("Log File", p.logFileName).Msg("Configuration")
 	if err := p.server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		p.log.Fatal().Err(err).Msg("Error while running server")
@@ -272,11 +270,6 @@ func (p *Server) Shutdown(ctx context.Context) error {
 // WaitShutdown blocks until the parrot server has shut down
 func (p *Server) WaitShutdown() {
 	<-p.shutDownChan
-}
-
-// Port returns the port the parrot is running on
-func (p *Server) Port() int {
-	return p.port
 }
 
 // Address returns the address the parrot is running on
@@ -325,11 +318,83 @@ func (p *Server) Register(route *Route) error {
 	return nil
 }
 
-// routesHandler handles the dynamic route registration.
-func (p *Server) routesHandler(w http.ResponseWriter, r *http.Request) {
+// Record registers a new recorder with the parrot. All incoming requests to the parrot will be sent to the recorder.
+func (p *Server) Record(recorderURL string) error {
+	if p.shutDown {
+		return ErrServerShutdown
+	}
+
+	p.recordersMu.Lock()
+	defer p.recordersMu.Unlock()
+	if recorderURL == "" {
+		return ErrNoRecorderURL
+	}
+	_, err := url.Parse(recorderURL)
+	if err != nil {
+		return ErrInvalidRecorderURL
+	}
+	p.recorderHooks[recorderURL] = struct{}{}
+	return nil
+}
+
+// Recorders returns the URLs of all registered recorders
+func (p *Server) Recorders() []string {
+	if p.shutDown {
+		return nil
+	}
+
+	p.recordersMu.RLock()
+	defer p.recordersMu.RUnlock()
+	recorders := make([]string, 0, len(p.recorderHooks))
+	for recorder := range p.recorderHooks {
+		recorders = append(recorders, recorder)
+	}
+	return recorders
+}
+
+// Delete removes a route from the parrot
+func (p *Server) Delete(routeID string) error {
+	if p.shutDown {
+		return ErrServerShutdown
+	}
+
+	p.routesMu.RLock()
+	_, exists := p.routes[routeID]
+	p.routesMu.RUnlock()
+
+	if !exists {
+		return newDynamicError(ErrRouteNotFound, routeID)
+	}
+	p.routesMu.Lock()
+	defer p.routesMu.Unlock()
+	delete(p.routes, routeID)
+	return nil
+}
+
+// Call makes a request to the parrot server
+func (p *Server) Call(method, path string) (*resty.Response, error) {
+	if p.shutDown {
+		return nil, ErrServerShutdown
+	}
+	return p.client.R().Execute(method, "http://"+filepath.Join(p.Address(), path))
+}
+
+func (p *Server) Routes() []*Route {
+	p.routesMu.RLock()
+	defer p.routesMu.RUnlock()
+
+	routes := make([]*Route, 0, len(p.routes))
+	for _, route := range p.routes {
+		routes = append(routes, route)
+	}
+	return routes
+}
+
+// registerHandler handles registering, unregistering, and querying routes
+func (p *Server) registerHandler(w http.ResponseWriter, r *http.Request) {
 	routesLogger := zerolog.Ctx(r.Context())
 	if r.Method == http.MethodDelete {
-		var routeRequest *RouteRequest
+		var routeRequest *Route
 		if err := json.NewDecoder(r.Body).Decode(&routeRequest); err != nil {
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			routesLogger.Debug().Err(err).Msg("Failed to decode request body")
@@ -337,13 +402,13 @@ func (p *Server) routesHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		defer r.Body.Close()
 
-		if routeRequest.ID == "" {
+		if routeRequest.ID() == "" {
 			http.Error(w, "Route ID required", http.StatusBadRequest)
 			routesLogger.Debug().Msg("No Route ID provided")
 			return
 		}
 
-		err := p.Unregister(routeRequest.ID)
+		err := p.Delete(routeRequest.ID())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			routesLogger.Debug().Err(err).Msg("Failed to unregister route")
@@ -352,7 +417,7 @@ func (p *Server) routesHandler(w http.ResponseWriter, r *http.Request) {
 
 		w.WriteHeader(http.StatusNoContent)
 		routesLogger.Info().
-			Str("Route ID", routeRequest.ID).
+			Str("Route ID", routeRequest.ID()).
 			Msg("Route unregistered")
 		return
 	}
@@ -407,80 +472,8 @@ func (p *Server) routesHandler(w http.ResponseWriter, r *http.Request) {
 	routesLogger.Debug().Msg("Invalid method")
 }
 
-// Record registers a new recorder with the parrot. All incoming requests to the parrot will be sent to the recorder.
-func (p *Server) Record(recorderURL string) error {
-	if p.shutDown {
-		return ErrServerShutdown
-	}
-
-	p.recordersMu.Lock()
-	defer p.recordersMu.Unlock()
-	if recorderURL == "" {
-		return ErrNoRecorderURL
-	}
-	_, err := url.Parse(recorderURL)
-	if err != nil {
-		return ErrInvalidRecorderURL
-	}
-	p.recorderHooks[recorderURL] = struct{}{}
-	return nil
-}
-
-// Recorders returns the URLs of all registered recorders
-func (p *Server) Recorders() []string {
-	if p.shutDown {
-		return nil
-	}
-
-	p.recordersMu.RLock()
-	defer p.recordersMu.RUnlock()
-	recorders := make([]string, 0, len(p.recorderHooks))
-	for recorder := range p.recorderHooks {
-		recorders = append(recorders, recorder)
-	}
-	return recorders
-}
-
-// Unregister removes a route from the parrot
-func (p *Server) Unregister(routeID string) error {
-	if p.shutDown {
-		return ErrServerShutdown
-	}
-
-	p.routesMu.RLock()
-	_, exists := p.routes[routeID]
-	p.routesMu.RUnlock()
-
-	if !exists {
-		return newDynamicError(ErrRouteNotFound, routeID)
-	}
-	p.routesMu.Lock()
-	defer p.routesMu.Unlock()
-	delete(p.routes, routeID)
-	return nil
-}
-
-// Call makes a request to the parrot server
-func (p *Server) Call(method, path string) (*resty.Response, error) {
-	if p.shutDown {
-		return nil, ErrServerShutdown
-	}
-	return p.client.R().Execute(method, "http://"+filepath.Join(p.Address(), path))
-}
-
-func (p *Server) Routes() []*Route {
-	p.routesMu.RLock()
-	defer p.routesMu.RUnlock()
-
-	routes := make([]*Route, 0, len(p.routes))
-	for _, route := range p.routes {
-		routes = append(routes, route)
-	}
-	return routes
-}
-
-// dynamicHandler handles all incoming requests and responds based on the registered routes.
-func (p *Server) dynamicHandler(w http.ResponseWriter, r *http.Request) {
+// routesHandler handles all incoming requests and responds based on the registered routes.
+func (p *Server) routesHandler(w http.ResponseWriter, r *http.Request) {
 	p.routesMu.RLock()
 	route, exists := p.routes[r.Method+":"+r.URL.Path]
 	p.routesMu.RUnlock()
@@ -579,6 +572,54 @@ func (p *Server) dynamicHandler(w http.ResponseWriter, r *http.Request) {
 
 	dynamicLogger.Error().Msg("Route has no response")
 	http.Error(recordingWriter, "Route has no response", http.StatusInternalServerError)
+}
+
+// recordHandler handles registering recorders with the parrot
+func (p *Server) recordHandler(w http.ResponseWriter, r *http.Request) {
+	recordingLogger := zerolog.Ctx(r.Context())
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid method", http.StatusMethodNotAllowed)
+		recordingLogger.Debug().Msg("Invalid method")
+		return
+	}
+
+	var recorder *Recorder
+	if err := json.NewDecoder(r.Body).Decode(&recorder); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		recordingLogger.Debug().Err(err).Msg("Failed to decode request body")
+		return
+	}
+	defer r.Body.Close()
+
+	if recorder == nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		recordingLogger.Debug().Msg("No recorder provided")
+		return
+	}
+
+	if recorder.URL() == "" {
+		http.Error(w, "Recorder URL required", http.StatusBadRequest)
+		recordingLogger.Debug().Msg("No recorder URL provided")
+		return
+	}
+
+	if err := p.Record(recorder.URL()); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		recordingLogger.Debug().Err(err).Msg("Failed to register recorder")
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	recordingLogger.Debug().Str("URL", recorder.URL()).Msg("Recorder added")
+}
+
+func (p *Server) healthHandler(w http.ResponseWriter, _ *http.Request) {
+	if p.shutDown {
+		http.Error(w, "Server is shutting down", http.StatusServiceUnavailable)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 // load loads all registered routes from a file.
@@ -700,7 +741,7 @@ var pathRegex = regexp.MustCompile(`^\/[a-zA-Z0-9\-._~%!$&'()*+,;=:@\/]*$`)
 
 func isValidPath(path string) bool {
 	switch path {
-	case "", "/", "//", "/register", "/.", "/..":
+	case "", "/", "//", "/register", "/health", "/.", "/..":
 		return false
 	}
 	if !strings.HasPrefix(path, "/") {
@@ -709,12 +750,8 @@ func isValidPath(path string) bool {
 	if strings.HasPrefix(path, "/register") {
 		return false
 	}
-	if strings.HasPrefix(path, "/unregister") {
+	if strings.HasPrefix(path, "/health") {
 		return false
 	}
-	u, err := url.Parse(path)
-	if err != nil || u.Path != path {
-		return false
-	}
-	return pathRegex.MatchString(u.Path)
+	return pathRegex.MatchString(path)
 }
