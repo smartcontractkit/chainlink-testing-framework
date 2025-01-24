@@ -78,3 +78,8 @@ __debug*
 
 import_keys_test.go
 tag.py
+
+parrot/*.json
+parrot/*.log
+# Executable
+parrot/parrot
