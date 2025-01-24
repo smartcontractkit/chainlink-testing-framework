@@ -9,6 +9,10 @@ go run ./cmd
 go run ./cmd -h # See all config options 
 ```
 
+## Use
+
+See our runnable examples in [examples_test.go](./examples_test.go) to see how to use Parrot programmatically.
+
 ## Test
 
 ```sh
