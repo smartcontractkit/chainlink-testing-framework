@@ -31,8 +31,7 @@ dockers:
     goos: linux
     goarch: amd64
     image_templates:
-      - '{{ .Env.IMG_PRE }}/parrot:{{ .Tag }}'
-      - '{{ .Env.IMG_PRE }}/parrot:latest'
+      - '{{ .Env.IMG_PRE }}/parrot:{{ .Tag }}-amd64'
     build_flag_templates:
       - --platform=linux/amd64
       - --pull
@@ -45,7 +44,6 @@ dockers:
     goarch: arm64
     image_templates:
       - '{{ .Env.IMG_PRE }}/parrot:{{ .Tag }}-arm64'
-      - '{{ .Env.IMG_PRE }}/parrot:latest-arm64'
     build_flag_templates:
       - --platform=linux/arm64
       - --pull
@@ -54,6 +52,12 @@ dockers:
       - --label=org.opencontainers.image.revision={{.FullCommit}}
       - --label=org.opencontainers.image.version={{.Version}}
 
+docker_manifests:
+  - name_template: '{{ .Env.IMG_PRE }}/parrot:{{ .Tag }}'
+    image_templates:
+      - '{{ .Env.IMG_PRE }}/parrot:{{ .Tag }}-amd64'
+      - '{{ .Env.IMG_PRE }}/parrot:{{ .Tag }}-arm64'
+
 before:
   hooks:
-    - cd parrot && go mod tidy
+    - sh -c "cd parrot && go mod tidy"
