@@ -19,7 +19,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -1362,29 +1361,12 @@ func (e *EthereumClient) startHeaderPolling() error {
 							e.l.Error().Int64("Chain Id", e.GetChainID().Int64()).Uint64("BlockNumber", blockNum).Msg("blockNum exceeds the maximum value for int64")
 							continue
 						}
-						var header *SafeEVMHeader
-						var fetchErr error
-
-						// Retry logic for fetching the block header
-						retryErr := retry.Do(
-							func() error {
-								blockCtx, blockCancel := context.WithTimeout(context.Background(), e.NetworkConfig.Timeout.Duration)
-								defer blockCancel()
-
-								header, fetchErr = e.HeaderByNumber(blockCtx, big.NewInt(int64(blockNum)))
-								if fetchErr != nil {
-									e.l.Warn().Int64("Chain Id", e.GetChainID().Int64()).Err(fetchErr).Uint64("BlockNumber", blockNum).Msg("Retry fetching header")
-								}
-								return fetchErr
-							},
-							retry.Attempts(5),
-							retry.Delay(2*time.Second),
-							retry.MaxDelay(10*time.Second),
-							retry.DelayType(retry.BackOffDelay),
-						)
-
-						if retryErr != nil {
-							e.l.Error().Int64("Chain Id", e.GetChainID().Int64()).Err(fetchErr).Uint64("BlockNumber", blockNum).Msg("Failed to fetch header after retries. Skipping header.")
+						// Create a new context with timeout for each HeaderByNumber call
+						blockCtx, blockCancel := context.WithTimeout(context.Background(), e.NetworkConfig.Timeout.Duration)
+						header, err := e.HeaderByNumber(blockCtx, big.NewInt(int64(blockNum)))
+						blockCancel()
+						if err != nil {
+							e.l.Error().Int64("Chain Id", e.GetChainID().Int64()).Err(err).Uint64("BlockNumber", blockNum).Msg("Error fetching header during range processing")
 							continue
 						}
 
