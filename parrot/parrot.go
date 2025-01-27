@@ -57,17 +57,18 @@ type Server struct {
 	host    string
 	address string
 
-	client          *resty.Client
-	shutDown        bool
-	shutDownChan    chan struct{}
-	shutDownOnce    sync.Once
-	saveFileName    string
-	useCustomLogger bool
-	logFileName     string
-	logFile         *os.File
-	logLevel        zerolog.Level
-	jsonLogs        bool
-	log             zerolog.Logger
+	client             *resty.Client
+	shutDown           bool
+	shutDownChan       chan struct{}
+	shutDownOnce       sync.Once
+	saveFileName       string
+	useCustomLogger    bool
+	logFileName        string
+	logFile            *os.File
+	logLevel           zerolog.Level
+	jsonLogs           bool
+	disableConsoleLogs bool
+	log                zerolog.Logger
 
 	server   *http.Server
 	routes   map[string]*Route // Store routes based on "Method:Path" keys
@@ -118,6 +119,14 @@ func WithLogger(l zerolog.Logger) ServerOption {
 func WithJSONLogs() ServerOption {
 	return func(s *Server) error {
 		s.jsonLogs = true
+		return nil
+	}
+}
+
+// DisableConsoleLogs disables logging to the console
+func DisableConsoleLogs() ServerOption {
+	return func(s *Server) error {
+		s.disableConsoleLogs = true
 		return nil
 	}
 }
@@ -189,11 +198,14 @@ func Wake(options ...ServerOption) (*Server, error) {
 	if !p.useCustomLogger { // Build default logger
 		var writers []io.Writer
 
-		if p.jsonLogs {
-			writers = append(writers, os.Stderr)
-		} else {
-			consoleOut := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02T15:04:05.000"}
-			writers = append(writers, consoleOut)
+		zerolog.TimeFieldFormat = "2006-01-02T15:04:05.000"
+		if !p.disableConsoleLogs {
+			if p.jsonLogs {
+				writers = append(writers, os.Stderr)
+			} else {
+				consoleOut := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02T15:04:05.000"}
+				writers = append(writers, consoleOut)
+			}
 		}
 
 		if p.logFile != nil {

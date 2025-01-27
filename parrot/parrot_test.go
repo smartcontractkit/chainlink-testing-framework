@@ -1,10 +1,12 @@
 package parrot
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"testing"
@@ -492,6 +494,8 @@ func TestSaveLoad(t *testing.T) {
 }
 
 func TestShutDown(t *testing.T) {
+	t.Parallel()
+
 	fileName := t.Name() + ".json"
 	p, err := Wake(WithSaveFile(fileName), WithLogLevel(testLogLevel))
 	require.NoError(t, err, "error waking parrot")
@@ -524,17 +528,89 @@ func TestShutDown(t *testing.T) {
 	require.ErrorIs(t, err, ErrServerShutdown, "expected error shutting down parrot after shutdown")
 }
 
-func newParrot(t *testing.T) *Server {
-	t.Helper()
+func TestCustomLogger(t *testing.T) {
+	t.Parallel()
+
+	logBuffer := new(bytes.Buffer)
+	testLogger := zerolog.New(logBuffer)
 
 	fileName := t.Name() + ".json"
-	p, err := Wake(WithSaveFile(fileName), WithLogLevel(testLogLevel))
+	p, err := Wake(WithSaveFile(fileName), WithLogLevel(zerolog.DebugLevel), WithLogger(testLogger))
 	require.NoError(t, err, "error waking parrot")
 	t.Cleanup(func() {
 		err := p.Shutdown(context.Background())
 		assert.NoError(t, err, "error shutting down parrot")
 		p.WaitShutdown() // Wait for shutdown to complete
 		os.Remove(fileName)
+	})
+
+	route := &Route{
+		Method:             http.MethodGet,
+		Path:               "/hello",
+		RawResponseBody:    "Squawk",
+		ResponseStatusCode: http.StatusOK,
+	}
+
+	err = p.Register(route)
+	require.NoError(t, err, "error registering route")
+
+	_, err = p.Call(route.Method, route.Path)
+	require.NoError(t, err, "error calling parrot")
+
+	require.Contains(t, logBuffer.String(), "GET:/hello", "expected log buffer to contain route call")
+}
+
+func TestJSONLogger(t *testing.T) {
+	t.Parallel()
+
+	logFileName := t.Name() + ".log"
+	fileName := t.Name() + ".json"
+	p, err := Wake(WithSaveFile(fileName), WithLogLevel(zerolog.DebugLevel), WithLogFile(logFileName), WithJSONLogs(), DisableConsoleLogs())
+	require.NoError(t, err, "error waking parrot")
+	t.Cleanup(func() {
+		os.Remove(fileName)
+		os.Remove(logFileName)
+	})
+
+	route := &Route{
+		Method:             http.MethodGet,
+		Path:               "/test",
+		RawResponseBody:    "Squawk",
+		ResponseStatusCode: http.StatusOK,
+	}
+
+	err = p.Register(route)
+	assert.NoError(t, err, "error registering route")
+
+	_, err = p.Call(route.Method, route.Path)
+	assert.NoError(t, err, "error calling parrot")
+
+	err = p.Shutdown(context.Background())
+	assert.NoError(t, err, "error shutting down parrot")
+	p.WaitShutdown()
+	require.FileExists(t, logFileName, "expected log file to exist")
+	logFile, err := os.Open(logFileName)
+	require.NoError(t, err, "error opening log file")
+	logs, err := io.ReadAll(logFile)
+	require.NoError(t, err, "error reading log file")
+	require.NotNil(t, logs, "expected logs to be read from file")
+	require.NotEmpty(t, logs, "expected logs to be written to file")
+	require.Contains(t, string(logs), `"Route ID":"GET:/test"`, "expected log file to contain route call in JSON format")
+}
+
+func newParrot(t *testing.T) *Server {
+	t.Helper()
+
+	logFileName := t.Name() + ".log"
+	saveFileName := t.Name() + ".json"
+	p, err := Wake(WithSaveFile(saveFileName), WithLogFile(logFileName), WithLogLevel(testLogLevel))
+	require.NoError(t, err, "error waking parrot")
+	t.Cleanup(func() {
+		err := p.Shutdown(context.Background())
+		assert.NoError(t, err, "error shutting down parrot")
+		p.WaitShutdown() // Wait for shutdown to complete and file to be written
+		os.Remove(saveFileName)
+		os.Remove(logFileName)
 	})
 	return p
 }
