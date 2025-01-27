@@ -60,23 +60,6 @@ type EthereumClient struct {
 	doneChan             chan struct{}
 	l                    zerolog.Logger
 	subscriptionWg       sync.WaitGroup
-	sharedPoller         *SharedHeaderPoller
-}
-
-var chainPollingRegistry = struct {
-	sync.Mutex
-	m map[int64]*SharedHeaderPoller
-}{
-	m: make(map[int64]*SharedHeaderPoller),
-}
-
-type SharedHeaderPoller struct {
-	chainID      int64
-	lastPolled   time.Time
-	pollInterval time.Duration
-	mu           sync.Mutex
-	fetching     bool
-	done         chan struct{}
 }
 
 // newEVMClient creates an EVM client for a single node/URL
@@ -942,11 +925,24 @@ func (e *EthereumClient) ParallelTransactions(enabled bool) {
 	e.queueTransactions = enabled
 }
 
-// Close tears down the current open Ethereum client
+// Close tears down the current open Ethereum client and unsubscribes from the manager, if any
 func (e *EthereumClient) Close() error {
 	// close(e.NonceSettings.doneChan)
 	close(e.doneChan)
 	e.subscriptionWg.Wait()
+
+	chainManagerRegistry.Lock()
+	defer chainManagerRegistry.Unlock()
+
+	mgr, exists := chainManagerRegistry.managers[e.GetChainID().Int64()]
+	if exists {
+		mgr.unsubscribe(e)
+		// If no more subscribers remain, we can shut down the manager
+		if len(mgr.subscribers) == 0 {
+			mgr.shutdown()
+			removeChainManager(e.GetChainID().Int64())
+		}
+	}
 	return nil
 }
 
@@ -1285,114 +1281,21 @@ func (e *EthereumClient) InitializeHeaderSubscription() error {
 	// Fallback to polling if subscriptions are not supported
 	e.l.Info().Str("Network", e.NetworkConfig.Name).Msg("Subscriptions not supported. Using polling for new headers.")
 
-	chainPollingRegistry.Lock()
-	poller, exists := chainPollingRegistry.m[e.GetChainID().Int64()]
-	if !exists {
-		poller = &SharedHeaderPoller{
-			chainID:      e.GetChainID().Int64(),
-			pollInterval: 15 * time.Second,
-			done:         make(chan struct{}),
-		}
-		chainPollingRegistry.m[e.GetChainID().Int64()] = poller
-	}
-	e.sharedPoller = poller
-	chainPollingRegistry.Unlock()
-	return e.startHeaderPolling()
-}
+	// Acquire (or create) a manager for this chain
+	mgr := getOrCreateChainManager(
+		e.GetChainID().Int64(),
+		15*time.Second, // or e.NetworkConfig.PollInterval, etc.
+		e.NetworkConfig,
+		e.l,
+		e.Client,
+		e.rawRPC,
+	)
 
-// startPollingHeaders starts a polling loop to fetch new headers at regular intervals
-func (e *EthereumClient) startHeaderPolling() error {
-	e.l.Info().Int64("Chain Id", e.GetChainID().Int64()).Msg("Starting Polling Headers")
-	// pollInterval := time.Second * 30
-	chainPollingRegistry.Lock()
-	pollInterval := chainPollingRegistry.m[e.GetChainID().Int64()].pollInterval
-	ticker := time.NewTicker(pollInterval)
-	chainPollingRegistry.Unlock()
+	// Subscribe
+	mgr.subscribe(e)
+	// Start polling if not started
+	mgr.startPolling()
 
-	e.subscriptionWg.Add(1)
-
-	// Create a context with timeout for the initial header fetch
-	initCtx, initCancel := context.WithTimeout(context.Background(), e.NetworkConfig.Timeout.Duration)
-	defer initCancel()
-
-	e.l.Info().Int64("Chain Id", e.GetChainID().Int64()).Msg("Attempting to fetch latest header during initialization")
-	latestHeader, err := e.HeaderByNumber(initCtx, nil) // Fetch the latest header
-	if err != nil {
-		e.l.Error().Int64("Chain Id", e.GetChainID().Int64()).Err(err).Msg("Failed to fetch the latest header during initialization")
-		return fmt.Errorf("failed to fetch the latest header during initialization: %w", err)
-	}
-	e.l.Info().Int64("Chain Id", e.GetChainID().Int64()).Str("HeaderHash", latestHeader.Hash.String()).Msg("Successfully fetched latest header during initialization")
-
-	go func() {
-		defer e.subscriptionWg.Done()
-		e.l.Info().Int64("Chain Id", e.GetChainID().Int64()).Msg("Polling for headers started")
-		// Initialize lastHeaderNumber dynamically
-		lastHeaderNumber := latestHeader.Number.Uint64() - 1
-		for {
-			select {
-			case <-ticker.C:
-				// Determine if it's this goroutine's turn to poll
-				e.sharedPoller.mu.Lock()
-				now := time.Now()
-				if now.Sub(e.sharedPoller.lastPolled) < e.sharedPoller.pollInterval || e.sharedPoller.fetching {
-					e.l.Debug().Int64("Chain Id", e.GetChainID().Int64()).Msg("Not my time to poll, skipping")
-					e.sharedPoller.mu.Unlock()
-					continue
-				}
-				e.sharedPoller.lastPolled = now
-				e.sharedPoller.fetching = true
-				e.sharedPoller.mu.Unlock()
-
-				e.l.Debug().Int64("Chain Id", e.GetChainID().Int64()).Msg("Polling Headers")
-
-				// Create a new context with timeout for each HeaderByNumber call
-				pollCtx, pollCancel := context.WithTimeout(context.Background(), e.NetworkConfig.Timeout.Duration)
-				latestHeader, err := e.HeaderByNumber(pollCtx, nil) // nil gets the latest header
-				pollCancel()
-
-				if err != nil {
-					e.l.Error().Int64("Chain Id", e.GetChainID().Int64()).Err(err).Msg("Error fetching latest header during polling")
-					continue
-				}
-
-				if latestHeader.Number.Uint64() > lastHeaderNumber {
-					e.l.Debug().Int64("Chain Id", e.GetChainID().Int64()).Uint64("LatestHeaderNumber", latestHeader.Number.Uint64()).Msg("New headers detected")
-					// Process headers from (lastHeaderNumber + 1) to latestHeader.Number
-					// We may need to add a rate limiter, if we run into issues.
-					for blockNum := lastHeaderNumber + 1; blockNum <= latestHeader.Number.Uint64(); blockNum++ {
-						if blockNum > math.MaxInt64 {
-							e.l.Error().Int64("Chain Id", e.GetChainID().Int64()).Uint64("BlockNumber", blockNum).Msg("blockNum exceeds the maximum value for int64")
-							continue
-						}
-						// Create a new context with timeout for each HeaderByNumber call
-						blockCtx, blockCancel := context.WithTimeout(context.Background(), e.NetworkConfig.Timeout.Duration)
-						header, err := e.HeaderByNumber(blockCtx, big.NewInt(int64(blockNum)))
-						blockCancel()
-						if err != nil {
-							e.l.Error().Int64("Chain Id", e.GetChainID().Int64()).Err(err).Uint64("BlockNumber", blockNum).Msg("Error fetching header during range processing")
-							continue
-						}
-
-						lastHeaderNumber = header.Number.Uint64()
-
-						if err := e.receiveHeader(header); err != nil {
-							e.l.Error().Int64("Chain Id", e.GetChainID().Int64()).Err(err).Uint64("BlockNumber", blockNum).Msg("Error processing header")
-							continue
-						}
-						e.l.Debug().Int64("Chain Id", e.GetChainID().Int64()).Uint64("BlockNumber", blockNum).Msg("Processing header")
-					}
-				}
-				e.sharedPoller.mu.Lock()
-				e.sharedPoller.fetching = false
-				e.sharedPoller.mu.Unlock()
-			case <-e.doneChan:
-				e.l.Debug().Int64("Chain Id", e.GetChainID().Int64()).Str("Network", e.NetworkConfig.Name).Msg("Polling loop cancelled")
-				ticker.Stop()
-				e.Client.Close()
-				return
-			}
-		}
-	}()
 	return nil
 }
 
