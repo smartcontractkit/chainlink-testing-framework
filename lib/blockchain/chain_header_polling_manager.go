@@ -103,7 +103,6 @@ func (m *ChainHeaderManager) startPolling() {
 	// Attempt an initial fetch of the latest block, so we know where to begin
 	initCtx, cancel := context.WithTimeout(context.Background(), m.networkCfg.Timeout.Duration)
 	defer cancel()
-	m.ethClient.HeaderByNumber(initCtx, nil)
 	latestHeader, err := m.ethClient.HeaderByNumber(initCtx, nil)
 	if err != nil {
 		m.logger.Error().
@@ -164,7 +163,10 @@ func (m *ChainHeaderManager) fanOutRoutine() {
 		case hdr := <-m.headersChan:
 			m.mu.RLock()
 			for sub := range m.subscribers {
-				sub.receiveHeader(hdr)
+				err := sub.receiveHeader(hdr)
+				if err != nil {
+					m.logger.Err(err).Msg("Finalizer received error during HTTP polling")
+				}
 			}
 			m.mu.RUnlock()
 		}
@@ -233,10 +235,16 @@ func convertToSafeEVMHeader(hdr *types.Header) *SafeEVMHeader {
 	if hdr == nil {
 		return nil
 	}
+	var safeTime int64
+	if hdr.Time > math.MaxInt64 {
+		safeTime = math.MaxInt64
+	} else {
+		safeTime = int64(hdr.Time)
+	}
 	return &SafeEVMHeader{
 		Hash:      hdr.Hash(),
 		Number:    hdr.Number,
 		BaseFee:   hdr.BaseFee,
-		Timestamp: time.Unix(int64(hdr.Time), 0),
+		Timestamp: time.Unix(safeTime, 0),
 	}
 }
