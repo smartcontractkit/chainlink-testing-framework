@@ -1,7 +1,4 @@
-# Default test log level (can be overridden)
 PARROT_TEST_LOG_LEVEL ?= ""
-
-# Pass TEST_LOG_LEVEL as a flag to go test
 TEST_ARGS ?= -testLogLevel=$(PARROT_TEST_LOG_LEVEL)
 
 .PHONY: lint

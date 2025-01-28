@@ -22,6 +22,7 @@ import (
 
 const defaultMockServerImage = "mockserver/mockserver:5.15.0"
 
+// Deprecated: Transition from MockServer to Parrot: https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/parrot
 type MockServer struct {
 	EnvComponent
 	Client           *ctfClient.MockserverClient

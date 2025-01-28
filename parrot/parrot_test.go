@@ -178,7 +178,7 @@ func TestIsValidPath(t *testing.T) {
 		},
 		{
 			name:  "invalid paths",
-			paths: []string{"", "/", " ", " /", "/ ", " / ", "invalid path"},
+			paths: []string{"", "/", " ", " /", "/ ", " / ", "/invalid/", "invalid", "invalid path"},
 		},
 	}
 
@@ -596,6 +596,44 @@ func TestJSONLogger(t *testing.T) {
 	require.NotNil(t, logs, "expected logs to be read from file")
 	require.NotEmpty(t, logs, "expected logs to be written to file")
 	require.Contains(t, string(logs), `"Route ID":"GET:/test"`, "expected log file to contain route call in JSON format")
+}
+
+func TestPreRegisteredRecorders(t *testing.T) {
+	t.Parallel()
+
+	recorder, err := NewRecorder()
+	require.NoError(t, err, "error creating recorder")
+	t.Cleanup(func() {
+		require.NoError(t, recorder.Close())
+	})
+
+	logFileName := t.Name() + ".log"
+	fileName := t.Name() + ".json"
+	p, err := Wake(WithSaveFile(fileName), WithLogLevel(testLogLevel), WithLogFile(logFileName), WithRecorders(recorder.URL()))
+	require.NoError(t, err, "error waking parrot")
+	t.Cleanup(func() {
+		err := p.Shutdown(context.Background())
+		assert.NoError(t, err, "error shutting down parrot")
+		p.WaitShutdown() // Wait for shutdown to complete and file to be written
+		os.Remove(fileName)
+		os.Remove(logFileName)
+	})
+
+	route := &Route{
+		Method:             http.MethodGet,
+		Path:               "/hello",
+		RawResponseBody:    "Squawk",
+		ResponseStatusCode: http.StatusOK,
+	}
+
+	err = p.Register(route)
+	require.NoError(t, err, "error registering route")
+
+	_, err = p.Call(route.Method, route.Path)
+	require.NoError(t, err, "error calling parrot")
+
+	recordedCall := <-recorder.Record()
+	assert.Equal(t, route.ID(), recordedCall.RouteID, "recorded response has unexpected route ID")
 }
 
 func newParrot(t *testing.T) *Server {

@@ -106,6 +106,18 @@ func WithLogLevel(level zerolog.Level) ServerOption {
 	}
 }
 
+// WithRecorders pre-registers recorders with the ParrotServer
+func WithRecorders(recorderURLs ...string) ServerOption {
+	return func(s *Server) error {
+		for _, url := range recorderURLs {
+			if err := s.Record(url); err != nil {
+				return fmt.Errorf("failed to register recorder: %w", err)
+			}
+		}
+		return nil
+	}
+}
+
 // WithLogger sets the logger for the ParrotServer
 func WithLogger(l zerolog.Logger) ServerOption {
 	return func(s *Server) error {
@@ -256,6 +268,7 @@ func Wake(options ...ServerOption) (*Server, error) {
 // run starts the parrot server
 func (p *Server) run(listener net.Listener) {
 	defer func() {
+		p.log.Info().Msg("Putting cloth over the parrot's cage...")
 		p.shutDown = true
 		if err := p.save(); err != nil {
 			p.log.Error().Err(err).Msg("Failed to save routes")
@@ -269,7 +282,7 @@ func (p *Server) run(listener net.Listener) {
 	}()
 
 	p.log.Info().Str("Address", p.address).Msg("Parrot awake and ready to squawk")
-	p.log.Debug().Str("Save File", p.saveFileName).Str("Log File", p.logFileName).Msg("Configuration")
+	p.log.Debug().Str("Save File", p.saveFileName).Str("Log File", p.logFileName).Msg("Parrot configuration")
 	if err := p.server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		p.log.Fatal().Err(err).Msg("Error while running server")
 	}
@@ -280,8 +293,6 @@ func (p *Server) Shutdown(ctx context.Context) error {
 	if p.shutDown {
 		return ErrServerShutdown
 	}
-
-	p.log.Info().Msg("Putting cloth over the parrot's cage...")
 	return p.server.Shutdown(ctx)
 }
 
@@ -745,14 +756,17 @@ func (p *Server) loggingMiddleware(next http.Handler) http.Handler {
 	return h(accessHandler(next))
 }
 
-var pathRegex = regexp.MustCompile(`^\/[a-zA-Z0-9\-._~%!$&'()*+,;=:@\/]*$`)
+var validPathRegex = regexp.MustCompile(`^\/[a-zA-Z0-9\-._~%!$&'()+,;=:@\/]`)
 
 func isValidPath(path string) bool {
 	switch path {
-	case "", "/", "//", healthRoute, recordRoute, routesRoute, "/.", "/..":
+	case "", "/", "//", healthRoute, recordRoute, routesRoute, "/..":
 		return false
 	}
 	if !strings.HasPrefix(path, "/") {
+		return false
+	}
+	if strings.HasSuffix(path, "/") {
 		return false
 	}
 	if strings.HasPrefix(path, recordRoute) {
@@ -764,5 +778,5 @@ func isValidPath(path string) bool {
 	if strings.HasPrefix(path, routesRoute) {
 		return false
 	}
-	return pathRegex.MatchString(path)
+	return validPathRegex.MatchString(path)
 }

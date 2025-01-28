@@ -19,6 +19,8 @@ var (
 	ErrRecorderNotFound   = errors.New("recorder not found")
 
 	ErrServerShutdown = errors.New("parrot is already asleep")
+
+	ErrCageNotFound = errors.New("sub-route not found")
 )
 
 // Custom error type to help add more detail to base errors
