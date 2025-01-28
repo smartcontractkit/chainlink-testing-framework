@@ -14,6 +14,8 @@ If the team decides on minimal or no manual testing and the project is trivial, 
 
 The team identifies potential integration points with third-party software, blockchain, and external services and document any testing limitations.
 
+If the system is complex and the team wants to test parts of it using mocks, a schema should be provided to outline which components will be separated and include examples of the mocks.
+
 If new components are required, the team implements them following this guide: [Developing Components](https://smartcontractkit.github.io/chainlink-testing-framework/developing/developing_components.html).
 
 
@@ -22,9 +24,13 @@ The team maintains a system-level smoke test where all components are deployed u
 
 All on-chain changes are done through [chainlink-deployments](https://github.com/smartcontractkit/chainlink-deployments).
 
+The test should not depend on `chainlink` core types.
+
 The test is readable, and the README clearly explains what is tested.
 
 The test is stable when run with a `-count 10`.
+
+If the team has more than two distinct NodeSets (DONs), system-level tests in ephemeral environments should be limited to two NodeSets to allow for chaos testing later.
 
 If your project includes multiple use cases and functionality suitable for end-to-end testing, you can add additional tests at this level.
 
@@ -38,7 +44,7 @@ This test deploys specific platform and plugin versions, performs an end-to-end 
 ## Level 3
 The team has a baseline performance testing suite.
 
-At this level, the focus is not on improving performance but on detecting any performance degradation, supported by a reliable CI pipeline.
+At this level, the focus is not on improving performance but on detecting any performance degradation early, supported by a reliable CI pipeline.
 
 This pipeline runs as needed—nightly or before releases—enabling early detection of performance issues across all critical on-chain and off-chain functionality.
 
@@ -49,8 +55,16 @@ The team incorporates chaos engineering practices to test the system’s failure
 
 This stage builds on [Level 3](#level-3), as it not only verifies that the system is reliable and can recover from reasonable failures but also ensures an understanding of how these failures impact performance and user experience.
 
+Recommended test cases:
+- Component failure (reboot)
+- Slow network
+- RPC node outage
+- Stress test (limiting container resources)
+
 ## Level 5
 The team has complete ownership of their persistent staging environment.
+
+The team can use [components caching](https://smartcontractkit.github.io/chainlink-testing-framework/framework/components/caching.html) to reuse testing logic on staging and substitute staging environment URLs instead of an ephemeral environment.
 
 They can perform upgrades, data migrations, and run advanced load tests to validate the scalability of their applications.
 
