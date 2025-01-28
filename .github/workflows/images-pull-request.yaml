@@ -31,7 +31,6 @@ jobs:
         run: .github/ci-scripts/create-image-matrix.sh
         env:
           CHANGED_FILES: ${{ steps.get_changed_files.outputs.all_modified_files }}
-          ECR_REPO_TYPE: public
 
   build-public:
     needs: chkmodified
