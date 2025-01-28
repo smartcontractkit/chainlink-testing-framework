@@ -1,0 +1,64 @@
+name: pull-request
+on: pull_request
+
+jobs:
+  #  hadolint:
+  #    name: Lint Dockerfiles
+  #    runs-on: ubuntu-latest
+  #    steps:
+  #      - uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+  #      - uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf #v3.1.0
+  #        with:
+  #          recursive: true
+
+  chkmodified:
+    name: Check modified
+    runs-on: ubuntu-latest
+    outputs:
+      dockerfile_dirs: ${{ steps.list_dockerfile_dirs.outputs.dirs }}
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+
+      - name: Get changed files
+        id: get_changed_files
+        uses: tj-actions/changed-files@0874344d6ebbaa00a27da73276ae7162fadcaf69 # v44.3.0
+        with:
+          fetch_depth: 1000
+
+      - name: List changed directories with Docker files
+        id: list_dockerfile_dirs
+        run: .github/ci-scripts/create-image-matrix.sh
+        env:
+          CHANGED_FILES: ${{ steps.get_changed_files.outputs.all_modified_files }}
+          ECR_REPO_TYPE: public
+
+  build-public:
+    needs: chkmodified
+    runs-on: ubuntu-latest
+    environment: ecr-prod-publish
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      matrix: ${{ fromJson(needs.chkmodified.outputs.dockerfile_dirs) }}
+      fail-fast: false
+
+    steps:
+      - name: Build
+        uses: smartcontractkit/.github/actions/cicd-build-publish-docker@crib-626/multiplatform # v0.1.0
+        with:
+          # general inputs
+          ecr-repo-name: ${{ matrix.image }}
+          publish: 'false'
+          dockerfile: ./images/${{ matrix.image }}/Dockerfile
+          context: ./images/${{ matrix.image }}/
+          registry-type: 'public'
+          registry-alias: 'w0i8p0z9'
+          multi-platform: 'true'
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            type=sha,prefix=pr=,event=pr
+          # aws inputs
+          aws-role-arn: ${{ secrets.AWS_OIDC_PUBLISH_ECR_ROLE_ARN }}
+          aws-account-number: ${{ secrets.AWS_PROD_ACCOUNT_NUMBER }}
