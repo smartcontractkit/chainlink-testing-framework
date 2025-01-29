@@ -2,7 +2,6 @@ package parrot
 
 import (
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -75,29 +74,30 @@ func TestCageNewRoutes(t *testing.T) {
 			require.NoError(t, err, "newRoute should not return an error")
 
 			// Check that the proper cage level got created
-			cageLevel, routeSegment, err := c.cageLevel(tc.route.Path, false)
+			cageLevel, err := c.getCageLevel(tc.route.Path, false)
 			require.NoError(t, err, "cageLevel should not return an error")
 			require.NotNil(t, cageLevel, "cageLevel should not return nil")
-			pathSegments := strings.Split(tc.route.Path, "/")
-			routePathSegment := pathSegments[len(pathSegments)-1]
-			require.Equal(t, routePathSegment, routeSegment, "route should be equal to the route in the cage")
 			// Check that the route was created and can be found from the cage level
-			route, found, err := cageLevel.route(routeSegment)
+			route, found, err := cageLevel.route(tc.route.Segment(), tc.route.Method)
 			require.NoError(t, err, "route should not return an error")
 			require.True(t, found, "route should be found in the found cage level")
 			require.Equal(t, tc.route, route, "route should be equal to the route in the cage")
 
 			// Check that the route was created and can be found from the base cage
-			route, err = c.getRoute(tc.route.Path)
+			route, err = c.getRoute(tc.route.Path, tc.route.Method)
 			require.NoError(t, err, "getRoute should not return an error")
 			require.NotNil(t, route, "route should not be nil")
 			require.Equal(t, tc.route, route, "route should be equal to the route in the cage")
+			allRoutes := c.routes()
+			require.Len(t, allRoutes, 1, "cage should have 1 route")
 
 			// Check that we can properly delete the route
 			err = c.deleteRoute(tc.route)
 			require.NoError(t, err, "deleteRoute should not return an error")
-			_, err = c.getRoute(tc.route.Path)
+			_, err = c.getRoute(tc.route.Path, tc.route.Method)
 			require.ErrorIs(t, err, ErrRouteNotFound, "should error getting route after deleting it")
+			allRoutes = c.routes()
+			require.Empty(t, allRoutes, "cage should no longer have any routes")
 
 		})
 	}

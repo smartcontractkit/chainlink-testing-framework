@@ -168,7 +168,7 @@ func TestIsValidPath(t *testing.T) {
 	}{
 		{
 			name:  "valid paths",
-			paths: []string{"/hello"},
+			paths: []string{"/hello", "/hello/there", "/wildcard/*", "/wildcard/*/nested", "/wildcard/*/nested/*"},
 			valid: true,
 		},
 		{
@@ -178,7 +178,7 @@ func TestIsValidPath(t *testing.T) {
 		},
 		{
 			name:  "invalid paths",
-			paths: []string{"", "/", " ", " /", "/ ", " / ", "/invalid/", "invalid", "invalid path"},
+			paths: []string{"", "/", " ", " /", "/ ", " / ", "/invalid//", "/invalid/../x", "/invalid/", "invalid", "invalid path"},
 		},
 	}
 
@@ -424,10 +424,10 @@ func TestDelete(t *testing.T) {
 	resp, err := p.Call(route.Method, route.Path)
 	require.NoError(t, err, "error calling parrot")
 
-	assert.Equal(t, resp.StatusCode(), route.ResponseStatusCode)
+	assert.Equal(t, route.ResponseStatusCode, resp.StatusCode())
 	assert.Equal(t, route.RawResponseBody, string(resp.Body()))
 
-	err = p.Delete(route.ID())
+	err = p.Delete(route)
 	require.NoError(t, err, "error unregistering route")
 
 	resp, err = p.Call(route.Method, route.Path)
@@ -435,7 +435,7 @@ func TestDelete(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode())
 
 	// Try to delete the route again
-	err = p.Delete(route.ID())
+	err = p.Delete(route)
 	require.ErrorIs(t, err, ErrRouteNotFound, "expected error deleting route")
 }
 
@@ -513,15 +513,16 @@ func TestShutDown(t *testing.T) {
 	err = p.Record("http://localhost:8080")
 	require.ErrorIs(t, err, ErrServerShutdown, "expected error recording parrot after shutdown")
 
-	err = p.Register(&Route{
+	testRoute := &Route{
 		Method:             http.MethodGet,
 		Path:               "/hello",
 		RawResponseBody:    "Squawk",
 		ResponseStatusCode: http.StatusOK,
-	})
+	}
+	err = p.Register(testRoute)
 	require.ErrorIs(t, err, ErrServerShutdown, "expected error registering route after shutdown")
 
-	err = p.Delete("route-id")
+	err = p.Delete(testRoute)
 	require.ErrorIs(t, err, ErrServerShutdown, "expected error deleting route after shutdown")
 
 	err = p.Shutdown(context.Background())

@@ -51,6 +51,16 @@ func (r *Route) ID() string {
 	return r.Method + ":" + r.Path
 }
 
+// Segment returns the last segment of the route path
+func (r *Route) Segment() string {
+	segments := strings.Split(r.Path, "/")
+	if len(segments) == 0 {
+		return ""
+	}
+
+	return segments[len(segments)-1]
+}
+
 // Server is a mock HTTP server that can register and respond to dynamic routes
 type Server struct {
 	port    int
@@ -70,9 +80,8 @@ type Server struct {
 	disableConsoleLogs bool
 	log                zerolog.Logger
 
-	server   *http.Server
-	routes   map[string]*Route // Store routes based on "Method:Path" keys
-	routesMu sync.RWMutex
+	server *http.Server
+	cage   *cage // The root cage for the parrot that manages all dynamic routes
 
 	recorderHooks map[string]struct{} // Store recorders based on URL keys to avoid duplicates
 	recordersMu   sync.RWMutex
@@ -188,8 +197,7 @@ func Wake(options ...ServerOption) (*Server, error) {
 		client:       resty.New(),
 		shutDownChan: make(chan struct{}),
 
-		routes:   make(map[string]*Route),
-		routesMu: sync.RWMutex{},
+		cage: newCage(),
 
 		recorderHooks: make(map[string]struct{}),
 		recordersMu:   sync.RWMutex{},
@@ -335,9 +343,10 @@ func (p *Server) Register(route *Route) error {
 		}
 	}
 
-	p.routesMu.Lock()
-	defer p.routesMu.Unlock()
-	p.routes[route.ID()] = route
+	err := p.cage.newRoute(route)
+	if err != nil {
+		return err
+	}
 	p.log.Info().
 		Str("Route ID", route.ID()).
 		Str("Path", route.Path).
@@ -382,22 +391,12 @@ func (p *Server) Recorders() []string {
 }
 
 // Delete removes a route from the parrot
-func (p *Server) Delete(routeID string) error {
+func (p *Server) Delete(route *Route) error {
 	if p.shutDown {
 		return ErrServerShutdown
 	}
 
-	p.routesMu.RLock()
-	_, exists := p.routes[routeID]
-	p.routesMu.RUnlock()
-
-	if !exists {
-		return newDynamicError(ErrRouteNotFound, routeID)
-	}
-	p.routesMu.Lock()
-	defer p.routesMu.Unlock()
-	delete(p.routes, routeID)
-	return nil
+	return p.cage.deleteRoute(route)
 }
 
 // Call makes a request to the parrot server
@@ -409,14 +408,7 @@ func (p *Server) Call(method, path string) (*resty.Response, error) {
 }
 
 func (p *Server) Routes() []*Route {
-	p.routesMu.RLock()
-	defer p.routesMu.RUnlock()
-
-	routes := make([]*Route, 0, len(p.routes))
-	for _, route := range p.routes {
-		routes = append(routes, route)
-	}
-	return routes
+	return p.cage.routes()
 }
 
 // routeHandler handles registering, unregistering, and querying routes
@@ -431,7 +423,7 @@ func (p *Server) routeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		defer r.Body.Close()
 
-		err := p.Delete(route.ID())
+		err := p.Delete(route)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			routesLogger.Debug().Err(err).Msg("Failed to unregister route")
@@ -491,20 +483,26 @@ func (p *Server) routeHandler(w http.ResponseWriter, r *http.Request) {
 
 // dynamicHandler handles all incoming requests and responds based on the registered routes.
 func (p *Server) dynamicHandler(w http.ResponseWriter, r *http.Request) {
-	p.routesMu.RLock()
-	route, exists := p.routes[r.Method+":"+r.URL.Path]
-	p.routesMu.RUnlock()
-
+	routeCallID := uuid.New().String()[0:8]
 	dynamicLogger := zerolog.Ctx(r.Context())
-	if !exists {
-		http.NotFound(w, r)
-		dynamicLogger.Debug().Msg("Route not found")
+	dynamicLogger.UpdateContext(func(c zerolog.Context) zerolog.Context {
+		return c.Str("Route Call ID", routeCallID)
+	})
+
+	route, err := p.cage.getRoute(r.URL.Path, r.Method)
+	if err != nil {
+		if errors.Is(err, ErrRouteNotFound) {
+			http.Error(w, "Route not found", http.StatusNotFound)
+			dynamicLogger.Debug().Msg("Route not found")
+			return
+		}
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		dynamicLogger.Error().Err(err).Msg("Route called does not exist")
 		return
 	}
 
-	routeCallID := uuid.New().String()[0:8]
 	dynamicLogger.UpdateContext(func(c zerolog.Context) zerolog.Context {
-		return c.Str("Route Call ID", routeCallID).Str("Route ID", route.ID())
+		return c.Str("Route ID", route.ID())
 	})
 
 	requestBody, err := io.ReadAll(r.Body)
@@ -677,7 +675,7 @@ func (p *Server) load() error {
 		}
 	}
 
-	p.log.Info().Str("file", p.saveFileName).Int("number", len(p.routes)).Msg("Loaded routes")
+	p.log.Info().Str("file", p.saveFileName).Msg("Loaded routes")
 	return nil
 }
 
@@ -761,6 +759,15 @@ var validPathRegex = regexp.MustCompile(`^\/[a-zA-Z0-9\-._~%!$&'()+,;=:@\/]`)
 func isValidPath(path string) bool {
 	switch path {
 	case "", "/", "//", healthRoute, recordRoute, routesRoute, "/..":
+		return false
+	}
+	if strings.Contains(path, "/..") {
+		return false
+	}
+	if strings.Contains(path, "/.") {
+		return false
+	}
+	if strings.Contains(path, "//") {
 		return false
 	}
 	if !strings.HasPrefix(path, "/") {

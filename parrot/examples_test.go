@@ -55,7 +55,7 @@ func ExampleServer_Register_internal() {
 	fmt.Println(len(routes))
 
 	// Delete the route
-	err = p.Delete(route.ID())
+	err = p.Delete(route)
 	if err != nil {
 		panic(err)
 	}
