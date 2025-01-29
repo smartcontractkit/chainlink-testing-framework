@@ -15,17 +15,15 @@ import (
 	"time"
 )
 
-const (
-	Namespace = "janitor"
-)
-
 func defaultLogger() zerolog.Logger {
 	return log.Output(zerolog.ConsoleWriter{Out: os.Stderr}).Level(zerolog.TraceLevel)
 }
 
 type NodeLatenciesConfig struct {
+	Namespace               string
 	Description             string
 	Latency                 time.Duration
+	LatencyDuration         time.Duration
 	FromLabelKey            string
 	FromLabelValues         []string
 	ToLabelKey              string
@@ -34,7 +32,7 @@ type NodeLatenciesConfig struct {
 	ExperimentCreateDelay   time.Duration
 }
 
-func nodeLatencies(client client.Client, l zerolog.Logger, cfg NodeLatenciesConfig) (*havoc.Schedule, error) {
+func networkDelay(client client.Client, l zerolog.Logger, cfg NodeLatenciesConfig) (*havoc.Schedule, error) {
 	return havoc.NewSchedule(havoc.ScheduleOpts{
 		Description: cfg.Description,
 		DelayCreate: cfg.ExperimentCreateDelay,
@@ -47,13 +45,13 @@ func nodeLatencies(client client.Client, l zerolog.Logger, cfg NodeLatenciesConf
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "latencies",
-				Namespace: Namespace,
+				Namespace: cfg.Namespace,
 			},
 			Spec: v1alpha1.ScheduleSpec{
-				Schedule:          "*/1 * * * *",
+				Schedule:          "@every 1m",
 				ConcurrencyPolicy: v1alpha1.ForbidConcurrent,
 				Type:              v1alpha1.ScheduleTypeNetworkChaos,
-				HistoryLimit:      10,
+				HistoryLimit:      2,
 				ScheduleItem: v1alpha1.ScheduleItem{
 					EmbedChaos: v1alpha1.EmbedChaos{
 						NetworkChaos: &v1alpha1.NetworkChaosSpec{
@@ -62,7 +60,7 @@ func nodeLatencies(client client.Client, l zerolog.Logger, cfg NodeLatenciesConf
 								Mode: v1alpha1.AllMode,
 								Selector: v1alpha1.PodSelectorSpec{
 									GenericSelectorSpec: v1alpha1.GenericSelectorSpec{
-										Namespaces: []string{Namespace},
+										Namespaces: []string{cfg.Namespace},
 										ExpressionSelectors: v1alpha1.LabelSelectorRequirements{
 											{
 												Operator: "In",
@@ -73,12 +71,12 @@ func nodeLatencies(client client.Client, l zerolog.Logger, cfg NodeLatenciesConf
 									},
 								},
 							},
-							Duration:  ptr.To[string]((30 * time.Second).String()),
+							Duration:  ptr.To[string]((cfg.LatencyDuration).String()),
 							Direction: v1alpha1.From,
 							Target: &v1alpha1.PodSelector{
 								Selector: v1alpha1.PodSelectorSpec{
 									GenericSelectorSpec: v1alpha1.GenericSelectorSpec{
-										Namespaces: []string{Namespace},
+										Namespaces: []string{cfg.Namespace},
 										ExpressionSelectors: v1alpha1.LabelSelectorRequirements{
 											{
 												Operator: "In",
@@ -107,6 +105,7 @@ func nodeLatencies(client client.Client, l zerolog.Logger, cfg NodeLatenciesConf
 }
 
 type NodeRebootsConfig struct {
+	Namespace               string
 	Description             string
 	LabelKey                string
 	LabelValues             []string
@@ -114,7 +113,7 @@ type NodeRebootsConfig struct {
 	ExperimentCreateDelay   time.Duration
 }
 
-func reboots(client client.Client, l zerolog.Logger, cfg NodeRebootsConfig) (*havoc.Schedule, error) {
+func podFail(client client.Client, l zerolog.Logger, cfg NodeRebootsConfig) (*havoc.Schedule, error) {
 	return havoc.NewSchedule(havoc.ScheduleOpts{
 		Description: cfg.Description,
 		DelayCreate: cfg.ExperimentCreateDelay,
@@ -126,14 +125,14 @@ func reboots(client client.Client, l zerolog.Logger, cfg NodeRebootsConfig) (*ha
 				APIVersion: "chaos-mesh.org/v1alpha1",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "reboots",
-				Namespace: Namespace,
+				Name:      "fail",
+				Namespace: cfg.Namespace,
 			},
 			Spec: v1alpha1.ScheduleSpec{
-				Schedule:          "*/1 * * * *",
+				Schedule:          "@every 1m",
 				ConcurrencyPolicy: v1alpha1.ForbidConcurrent,
 				Type:              v1alpha1.ScheduleTypePodChaos,
-				HistoryLimit:      10,
+				HistoryLimit:      2,
 				ScheduleItem: v1alpha1.ScheduleItem{
 					EmbedChaos: v1alpha1.EmbedChaos{
 						PodChaos: &v1alpha1.PodChaosSpec{
@@ -143,7 +142,7 @@ func reboots(client client.Client, l zerolog.Logger, cfg NodeRebootsConfig) (*ha
 									Mode: v1alpha1.AllMode,
 									Selector: v1alpha1.PodSelectorSpec{
 										GenericSelectorSpec: v1alpha1.GenericSelectorSpec{
-											Namespaces: []string{Namespace},
+											Namespaces: []string{cfg.Namespace},
 											ExpressionSelectors: v1alpha1.LabelSelectorRequirements{
 												{
 													Operator: "In",
@@ -155,7 +154,7 @@ func reboots(client client.Client, l zerolog.Logger, cfg NodeRebootsConfig) (*ha
 									},
 								},
 							},
-							Duration: ptr.To[string]("40s"),
+							Duration: ptr.To[string]("10s"),
 						},
 					},
 				},
@@ -170,14 +169,18 @@ func TestChaos(t *testing.T) {
 	c, err := havoc.NewChaosMeshClient()
 	require.NoError(t, err)
 
-	rebootsChaos, err := reboots(c, l, NodeRebootsConfig{
+	namespace := "janitor"
+
+	rebootsChaos, err := podFail(c, l, NodeRebootsConfig{
+		Namespace:               namespace,
 		Description:             "reboot nodes",
 		LabelKey:                "app.kubernetes.io/instance",
 		LabelValues:             []string{"janitor"},
 		ExperimentTotalDuration: 1 * time.Minute,
 	})
 	require.NoError(t, err)
-	latenciesChaos, err := nodeLatencies(c, l, NodeLatenciesConfig{
+	latenciesChaos, err := networkDelay(c, l, NodeLatenciesConfig{
+		Namespace:               namespace,
 		Description:             "network issues",
 		Latency:                 300 * time.Millisecond,
 		FromLabelKey:            "app.kubernetes.io/instance",
