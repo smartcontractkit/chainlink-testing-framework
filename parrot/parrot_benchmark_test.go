@@ -26,23 +26,54 @@ func BenchmarkRegisterRoute(b *testing.B) {
 		os.Remove(saveFile)
 	}()
 
-	route := &Route{
-		Method:             "GET",
-		Path:               "/bench",
-		RawResponseBody:    "Benchmark Response",
-		ResponseStatusCode: http.StatusOK,
+	routes := make([]*Route, b.N)
+	for i := 0; i < b.N; i++ {
+		routes[i] = &Route{
+			Method:             http.MethodGet,
+			Path:               fmt.Sprintf("/bench%d", i),
+			RawResponseBody:    "Benchmark Response",
+			ResponseStatusCode: http.StatusOK,
+		}
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err := p.Register(route)
+		err := p.Register(routes[i])
 		require.NoError(b, err)
 	}
 	b.StopTimer()
 }
 
 func BenchmarkRegisterWildCardRoute(b *testing.B) {
-	// TODO: Implement
+	saveFile := b.Name() + ".json"
+	p, err := Wake(WithLogLevel(testLogLevel), WithSaveFile(saveFile))
+	require.NoError(b, err)
+
+	defer func() { // Cleanup
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		err := p.Shutdown(ctx)
+		cancel()
+		require.NoError(b, err, "error shutting down parrot")
+		p.WaitShutdown()
+		os.Remove(saveFile)
+	}()
+
+	routes := make([]*Route, b.N)
+	for i := 0; i < b.N; i++ {
+		routes[i] = &Route{
+			Method:             http.MethodGet,
+			Path:               fmt.Sprintf("/wildcard/*/bench%d/*", i),
+			RawResponseBody:    "Benchmark Response",
+			ResponseStatusCode: http.StatusOK,
+		}
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		err := p.Register(routes[i])
+		require.NoError(b, err)
+	}
+	b.StopTimer()
 }
 
 func BenchmarkRouteResponse(b *testing.B) {
@@ -77,7 +108,36 @@ func BenchmarkRouteResponse(b *testing.B) {
 }
 
 func BenchmarkWildCardRouteResponse(b *testing.B) {
+	saveFile := b.Name() + ".json"
+	p, err := Wake(WithLogLevel(testLogLevel), WithSaveFile(saveFile))
+	require.NoError(b, err)
 
+	defer func() { // Cleanup
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		err := p.Shutdown(ctx)
+		cancel()
+		require.NoError(b, err, "error shutting down parrot")
+		p.WaitShutdown()
+		os.Remove(saveFile)
+	}()
+
+	route := &Route{
+		Method:             "GET",
+		Path:               "/wildcard/*/bench/*",
+		RawResponseBody:    "Benchmark Response",
+		ResponseStatusCode: http.StatusOK,
+	}
+	err = p.Register(route)
+	require.NoError(b, err)
+
+	callPath := "/wildcard/123/bench/456"
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := p.Call(route.Method, callPath)
+		require.NoError(b, err)
+	}
+	b.StopTimer()
 }
 
 func BenchmarkSave(b *testing.B) {
