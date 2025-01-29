@@ -18,6 +18,7 @@ FROM base AS builder
 RUN apt update && \
     apt-get install -y \
     build-essential \
+    libssl-dev \
     pkg-config \
     protobuf-compiler \
     clang cmake curl libudev-dev  && \
