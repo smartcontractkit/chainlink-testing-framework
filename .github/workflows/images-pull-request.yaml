@@ -3,6 +3,10 @@ on: pull_request
 
 env:
   REGISTRY_ALIAS: w0i8p0z9
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   #  hadolint:
   #    name: Lint Dockerfiles
@@ -36,8 +40,9 @@ jobs:
 
   build-amd64:
     name: Build & Push AMD64 Image
-    runs-on: ubuntu-latest  # Ensure it supports x86_64
-    needs: [ check-modified ]
+    runs-on: ubuntu-latest # Ensure it supports x86_64
+    environment: ecr-prod-publish
+    needs: [check-modified]
     strategy:
       matrix: ${{ fromJson(needs.check-modified.outputs.dockerfile_dirs) }}
       fail-fast: false
@@ -75,8 +80,9 @@ jobs:
 
   build-arm64:
     name: Build & Push Arm64 Image
-    runs-on: ubuntu-24.04-arm  # Ensure it supports x86_64
-    needs: [ check-modified ]
+    runs-on: ubuntu-24.04-arm # Ensure it supports x86_64
+    environment: ecr-prod-publish
+    needs: [check-modified]
     strategy:
       matrix: ${{ fromJson(needs.check-modified.outputs.dockerfile_dirs) }}
       fail-fast: false
@@ -115,6 +121,7 @@ jobs:
   create-manifest:
     name: Create & Push Multi-Arch Manifest
     runs-on: ubuntu-latest
+    environment: ecr-prod-publish
     strategy:
       matrix: ${{ fromJson(needs.check-modified.outputs.dockerfile_dirs) }}
       fail-fast: false
@@ -140,4 +147,3 @@ jobs:
             --amend ${{ steps.login-ecr.outputs.registry }}/${ env.REGISTRY_ALIAS }/${{ matrix.image }}:sha-${{ github.sha }}-arm64
 
           docker manifest push ${{ steps.login-ecr.outputs.registry }}/${ env.REGISTRY_ALIAS }/${{ matrix.image }}:sha-${{ github.sha }}
-
