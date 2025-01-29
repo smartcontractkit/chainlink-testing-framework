@@ -1,4 +1,4 @@
-name: pull-request
+name: Docker Images - Pull Request
 on: pull_request
 
 jobs:
@@ -34,7 +34,7 @@ jobs:
 
   build-public:
     needs: chkmodified
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     environment: ecr-prod-publish
     permissions:
       id-token: write
@@ -45,7 +45,7 @@ jobs:
 
     steps:
       - name: Build
-        uses: smartcontractkit/.github/actions/cicd-build-publish-docker@crib-626/multiplatform # v0.1.0
+        uses: smartcontractkit/.github/actions/cicd-build-publish-docker@main # v0.1.0
         with:
           # general inputs
           ecr-repo-name: ${{ matrix.image }}
