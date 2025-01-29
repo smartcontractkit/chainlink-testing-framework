@@ -197,9 +197,7 @@ func (cl *cageLevel) route(routeSegment, routeMethod string) (route *Route, foun
 		if route, found = cl.routes[routeSegment][routeMethod]; found {
 			return route, true, nil
 		}
-	}
-	if _, ok := cl.wildCardRoutes[routeSegment]; ok {
-		if route, found = cl.wildCardRoutes[routeSegment][MethodAny]; found {
+		if route, found = cl.routes[routeSegment][MethodAny]; found { // Fallthrough to any method if it's designed
 			return route, true, nil
 		}
 	}

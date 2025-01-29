@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCageNewRoutes(t *testing.T) {
+func TestCage(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {

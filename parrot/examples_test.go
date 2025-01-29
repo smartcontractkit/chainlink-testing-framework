@@ -70,6 +70,107 @@ func ExampleServer_Register_internal() {
 	// 0
 }
 
+func ExampleServer_Register_wildcards() {
+	// Create a new parrot instance with no logging and a custom save file
+	saveFile := "register_example.json"
+	p, err := parrot.Wake(parrot.WithLogLevel(zerolog.NoLevel), parrot.WithSaveFile(saveFile))
+	if err != nil {
+		panic(err)
+	}
+	defer func() { // Cleanup the parrot instance
+		err = p.Shutdown(context.Background()) // Gracefully shutdown the parrot instance
+		if err != nil {
+			panic(err)
+		}
+		p.WaitShutdown()    // Wait for the parrot instance to shutdown. Usually unnecessary, but we want to clean up the save file
+		os.Remove(saveFile) // Cleanup the save file for the example
+	}()
+
+	// You can use the MethodAny constant to match any HTTP method
+	anyMethodRoute := &parrot.Route{
+		Method:             parrot.MethodAny,
+		Path:               "/any-method",
+		RawResponseBody:    "Any Method",
+		ResponseStatusCode: http.StatusOK,
+	}
+
+	err = p.Register(anyMethodRoute)
+	if err != nil {
+		panic(err)
+	}
+	resp, err := p.Call(http.MethodGet, "/any-method")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(resp.Request.Method, string(resp.Body()))
+	resp, err = p.Call(http.MethodPost, "/any-method")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(resp.Request.Method, string(resp.Body()))
+
+	// A * in the path will match any characters in the path
+	basicWildCard := &parrot.Route{
+		Method:             parrot.MethodAny,
+		Path:               "/wildcard/*",
+		RawResponseBody:    "Basic Wildcard",
+		ResponseStatusCode: http.StatusOK,
+	}
+
+	err = p.Register(basicWildCard)
+	if err != nil {
+		panic(err)
+	}
+	resp, err = p.Call(http.MethodGet, "/wildcard/anything")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(resp.Request.RawRequest.URL.Path, string(resp.Body()))
+
+	// Wild cards can be nested
+	nestedWildCardRoute := &parrot.Route{
+		Method:             parrot.MethodAny,
+		Path:               "/wildcard/*/nested/*",
+		RawResponseBody:    "Nested Wildcard",
+		ResponseStatusCode: http.StatusOK,
+	}
+
+	err = p.Register(nestedWildCardRoute)
+	if err != nil {
+		panic(err)
+	}
+	resp, err = p.Call(http.MethodGet, "/wildcard/anything/nested/else")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(resp.Request.RawRequest.URL.Path, string(resp.Body()))
+
+	// Wild cards can also be partials
+	partialWildCardRoute := &parrot.Route{
+		Method:             parrot.MethodAny,
+		Path:               "/partial*/wildcard",
+		RawResponseBody:    "Partial Wildcard",
+		ResponseStatusCode: http.StatusOK,
+	}
+
+	err = p.Register(partialWildCardRoute)
+	if err != nil {
+		panic(err)
+	}
+	resp, err = p.Call(http.MethodGet, "/partial_anything/wildcard")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(resp.Request.RawRequest.URL.Path, string(resp.Body()))
+
+	// Output:
+	// GET Any Method
+	// POST Any Method
+	// /wildcard/anything Basic Wildcard
+	// /wildcard/anything/nested/else Nested Wildcard
+	// /partial_anything/wildcard Partial Wildcard
+}
+
 func ExampleServer_Register_external() {
 	var (
 		saveFile = "route_example.json"

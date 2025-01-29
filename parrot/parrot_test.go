@@ -109,8 +109,6 @@ func TestRegisterRoutes(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
 			err := p.Register(tc.route)
 			require.NoError(t, err, "error registering route")
 
@@ -126,6 +124,143 @@ func TestRegisterRoutes(t *testing.T) {
 				assert.Equal(t, tc.route.RawResponseBody, string(resp.Body()))
 			}
 		})
+	}
+}
+
+func TestWildCardRoute(t *testing.T) {
+	t.Parallel()
+
+	p := newParrot(t)
+
+	simpleWildCardRoute := &Route{
+		Method:             http.MethodGet,
+		Path:               "/wildcard/*",
+		RawResponseBody:    "First Wildcard",
+		ResponseStatusCode: http.StatusOK,
+	}
+
+	nestedWildCardRoute := &Route{
+		Method:             http.MethodGet,
+		Path:               "/wildcard/*/nested/*",
+		RawResponseBody:    "Nested Wildcard",
+		ResponseStatusCode: http.StatusOK,
+	}
+
+	// Try to register a route that will confuse the wildcard route
+	confusingWildCardRoute := &Route{
+		Method:             http.MethodGet,
+		Path:               "/wildcard/*/*",
+		RawResponseBody:    "Confusing Wildcard",
+		ResponseStatusCode: http.StatusOK,
+	}
+
+	baseWildCardRoute := &Route{
+		Method:             http.MethodGet,
+		Path:               "/*/base/*",
+		RawResponseBody:    "Base Wildcard",
+		ResponseStatusCode: http.StatusOK,
+	}
+
+	partialWildCardRoute := &Route{
+		Method:             http.MethodGet,
+		Path:               "/partial*/after",
+		RawResponseBody:    "Partial Wildcard",
+		ResponseStatusCode: http.StatusOK,
+	}
+
+	err := p.Register(simpleWildCardRoute)
+	require.NoError(t, err, "error registering route")
+	err = p.Register(nestedWildCardRoute)
+	require.NoError(t, err, "error registering route")
+	err = p.Register(confusingWildCardRoute)
+	require.NoError(t, err, "error registering route")
+	err = p.Register(baseWildCardRoute)
+	require.NoError(t, err, "error registering route")
+	err = p.Register(partialWildCardRoute)
+	require.NoError(t, err, "error registering route")
+
+	testCases := []struct {
+		callingPath         string
+		matchRoute          *Route
+		expectErrStatusCode bool
+	}{
+		{
+			callingPath:         "/wildcard/anything",
+			matchRoute:          simpleWildCardRoute,
+			expectErrStatusCode: false,
+		},
+		{
+			callingPath:         "/wildcard/anything/nested/thing",
+			matchRoute:          nestedWildCardRoute,
+			expectErrStatusCode: false,
+		},
+		{
+			callingPath:         "/wildcard/anything/anything",
+			matchRoute:          confusingWildCardRoute,
+			expectErrStatusCode: false,
+		},
+		{
+			callingPath:         "/route",
+			matchRoute:          nil,
+			expectErrStatusCode: true,
+		},
+		{
+			callingPath:         "/wildcard/anything/nested/thing/extra",
+			matchRoute:          nil,
+			expectErrStatusCode: true,
+		},
+		{
+			callingPath:         "/base/base/anything",
+			matchRoute:          baseWildCardRoute,
+			expectErrStatusCode: false,
+		},
+		{
+			callingPath:         "/partialanything/after",
+			matchRoute:          partialWildCardRoute,
+			expectErrStatusCode: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.callingPath[1:], func(t *testing.T) {
+			resp, err := p.Call(http.MethodGet, tc.callingPath)
+			require.NoError(t, err, "error calling parrot")
+
+			if tc.expectErrStatusCode {
+				assert.Equal(t,
+					http.StatusNotFound, resp.StatusCode(),
+					fmt.Sprintf("expected route not found, got body ''%s''", string(resp.Body())),
+				)
+			} else {
+				assert.Equal(t, tc.matchRoute.ResponseStatusCode, resp.StatusCode(), "status code mismatch")
+				assert.Equal(t, tc.matchRoute.RawResponseBody, string(resp.Body()), "response body mismatch")
+			}
+		})
+	}
+}
+
+func TestAnyMethodRoute(t *testing.T) {
+	t.Parallel()
+
+	p := newParrot(t)
+
+	route := &Route{
+		Method:             MethodAny,
+		Path:               "/any",
+		RawResponseBody:    "Squawk",
+		ResponseStatusCode: http.StatusOK,
+	}
+
+	err := p.Register(route)
+	require.NoError(t, err, "error registering route")
+
+	methods := []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch}
+
+	for _, method := range methods {
+		resp, err := p.Call(method, route.Path)
+		require.NoError(t, err, "error calling parrot")
+		assert.Equal(t, route.ResponseStatusCode, resp.StatusCode(), "status code mismatch")
+		assert.Equal(t, route.RawResponseBody, string(resp.Body()), "response body mismatch")
 	}
 }
 
@@ -168,27 +303,30 @@ func TestIsValidPath(t *testing.T) {
 	}{
 		{
 			name:  "valid paths",
-			paths: []string{"/hello", "/hello/there", "/wildcard/*", "/wildcard/*/nested", "/wildcard/*/nested/*"},
+			paths: []string{"/hello", "/hello/there", "/wildcard/*", "/wildcard/*/nested", "/wildcard/*/nested/*", "/*/nested/*"},
 			valid: true,
 		},
 		{
 			name:  "no protected paths",
-			paths: []string{healthRoute, routesRoute, recordRoute, fmt.Sprintf("%s/%s", routesRoute, "route-id"), fmt.Sprintf("%s/%s", healthRoute, "recorder-id"), fmt.Sprintf("%s/%s", recordRoute, "recorder-id")},
+			paths: []string{healthRoute, routesRoute, recordRoute, fmt.Sprintf("%s/%s", routesRoute, "route-id"), fmt.Sprintf("%s/%s", healthRoute, "recorder-id"), fmt.Sprintf("%s/%s", recordRoute, "recorder-id"), "/*"},
 			valid: false,
 		},
 		{
 			name:  "invalid paths",
-			paths: []string{"", "/", " ", " /", "/ ", " / ", "/invalid//", "/invalid/../x", "/invalid/", "invalid", "invalid path"},
+			paths: []string{"", "/", " ", " /", " / ", "/invalid//", "/invalid/../x", "/invalid/", "invalid", "invalid path"},
+			valid: false,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
 			for _, path := range tc.paths {
-				valid := isValidPath(path)
-				assert.Equal(t, tc.valid, valid)
+				pathErr := checkPath(path)
+				if tc.valid {
+					assert.NoError(t, pathErr, "expected path to be valid")
+				} else {
+					assert.Error(t, pathErr, fmt.Sprintf("expected path '%s' to be invalid", path))
+				}
 			}
 		})
 	}

@@ -4,9 +4,9 @@ A simple, high-performing mockserver that can dynamically build new routes with 
 
 ## Features
 
-* Simplistic and fast design
-* Run within your Go code, through a small binary, or in a minimal Docker container
-* Easily record all incoming requests to the server to programmatically react to 
+* Run as an imported package, through a small binary, or in a minimal Docker container
+* Record all incoming requests to the server and programmatically react
+* Match wildcard routes and methods
 
 ## Use
 

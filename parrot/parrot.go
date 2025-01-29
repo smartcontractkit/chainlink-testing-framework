@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -322,8 +321,8 @@ func (p *Server) Register(route *Route) error {
 	if route == nil {
 		return ErrNilRoute
 	}
-	if !isValidPath(route.Path) {
-		return newDynamicError(ErrInvalidPath, fmt.Sprintf("'%s'", route.Path))
+	if err := checkPath(route.Path); err != nil {
+		return newDynamicError(ErrInvalidPath, err.Error())
 	}
 	if route.Method == "" {
 		return ErrNoMethod
@@ -400,6 +399,10 @@ func (p *Server) Delete(route *Route) error {
 }
 
 // Call makes a request to the parrot server
+// The method is the HTTP method to use (GET, POST, PUT, DELETE, etc.)
+// The path is the URL path to call
+// The response is returned as a resty.Response
+// Errors are returned if the server is shut down or if the request fails, not if the response is an error
 func (p *Server) Call(method, path string) (*resty.Response, error) {
 	if p.shutDown {
 		return nil, ErrServerShutdown
@@ -491,7 +494,7 @@ func (p *Server) dynamicHandler(w http.ResponseWriter, r *http.Request) {
 
 	route, err := p.cage.getRoute(r.URL.Path, r.Method)
 	if err != nil {
-		if errors.Is(err, ErrRouteNotFound) {
+		if errors.Is(err, ErrRouteNotFound) || errors.Is(err, ErrCageNotFound) {
 			http.Error(w, "Route not found", http.StatusNotFound)
 			dynamicLogger.Debug().Msg("Route not found")
 			return
@@ -754,36 +757,58 @@ func (p *Server) loggingMiddleware(next http.Handler) http.Handler {
 	return h(accessHandler(next))
 }
 
-var validPathRegex = regexp.MustCompile(`^\/[a-zA-Z0-9\-._~%!$&'()+,;=:@\/]`)
-
-func isValidPath(path string) bool {
+func checkPath(path string) error {
 	switch path {
 	case "", "/", "//", healthRoute, recordRoute, routesRoute, "/..":
-		return false
+		return fmt.Errorf("cannot match special paths: '%s'", path)
 	}
 	if strings.Contains(path, "/..") {
-		return false
+		return fmt.Errorf("cannot match parent directory traversal: '%s'", path)
 	}
 	if strings.Contains(path, "/.") {
-		return false
+		return fmt.Errorf("cannot match hidden files: '%s'", path)
 	}
 	if strings.Contains(path, "//") {
-		return false
+		return fmt.Errorf("cannot match double slashes: '%s'", path)
 	}
 	if !strings.HasPrefix(path, "/") {
-		return false
+		return fmt.Errorf("path must start with a forward slash: '%s'", path)
 	}
 	if strings.HasSuffix(path, "/") {
-		return false
+		return fmt.Errorf("path cannot end with a forward slash: '%s'", path)
 	}
 	if strings.HasPrefix(path, recordRoute) {
-		return false
+		return fmt.Errorf("cannot match record route: '%s'", path)
 	}
 	if strings.HasPrefix(path, healthRoute) {
-		return false
+		return fmt.Errorf("cannot match health route: '%s'", path)
 	}
 	if strings.HasPrefix(path, routesRoute) {
-		return false
+		return fmt.Errorf("cannot match routes route: '%s'", path)
 	}
-	return validPathRegex.MatchString(path)
+	match, err := filepath.Match(path, healthRoute)
+	if err != nil {
+		return fmt.Errorf("failed to match: '%s'", path)
+	}
+	if match {
+		return fmt.Errorf("cannot match health route: '%s'", path)
+	}
+
+	match, err = filepath.Match(path, recordRoute)
+	if err != nil {
+		return fmt.Errorf("failed to match: '%s'", path)
+	}
+	if match {
+		return fmt.Errorf("cannot match record route: '%s'", path)
+	}
+
+	match, err = filepath.Match(path, routesRoute)
+	if err != nil {
+		return fmt.Errorf("failed to match: '%s'", path)
+	}
+	if match {
+		return fmt.Errorf("cannot match routes route: '%s'", path)
+	}
+
+	return nil
 }

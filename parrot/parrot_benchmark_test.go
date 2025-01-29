@@ -41,6 +41,10 @@ func BenchmarkRegisterRoute(b *testing.B) {
 	b.StopTimer()
 }
 
+func BenchmarkRegisterWildCardRoute(b *testing.B) {
+	// TODO: Implement
+}
+
 func BenchmarkRouteResponse(b *testing.B) {
 	saveFile := b.Name() + ".json"
 	p, err := Wake(WithLogLevel(testLogLevel), WithSaveFile(saveFile))
@@ -70,6 +74,10 @@ func BenchmarkRouteResponse(b *testing.B) {
 		require.NoError(b, err)
 	}
 	b.StopTimer()
+}
+
+func BenchmarkWildCardRouteResponse(b *testing.B) {
+
 }
 
 func BenchmarkSave(b *testing.B) {
