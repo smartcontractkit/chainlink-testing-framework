@@ -55,7 +55,8 @@ jobs:
           registry-type: 'public'
           registry-alias: 'w0i8p0z9'
           multi-platform: 'true'
-          platforms: linux/amd64,linux/arm64
+          # platforms: linux/amd64,linux/arm64
+          platforms: linux/arm64
           tags: |
             type=sha,prefix=pr=,event=pr
           # aws inputs
