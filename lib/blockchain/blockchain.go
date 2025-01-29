@@ -118,6 +118,8 @@ type EVMClient interface {
 	RawJsonRPCCall(ctx context.Context, result interface{}, method string, params ...interface{}) error
 
 	GetEthClient() *ethclient.Client
+
+	InitializeHeaderSubscription() error
 }
 
 // NodeHeader header with the ID of the node that received it

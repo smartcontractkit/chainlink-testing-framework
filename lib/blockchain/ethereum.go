@@ -105,12 +105,10 @@ func newEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMClient,
 		return nil, err
 	}
 	ec.gasStats = NewGasStats(ec.ID)
-	// Check if subscriptions are supported since HTTP does not support subscriptions.
-	if ec.Client.Client().SupportsSubscriptions() {
-		err = ec.subscribeToNewHeaders()
-		if err != nil {
-			return nil, err
-		}
+
+	// Initialize header subscription or polling
+	if err := ec.InitializeHeaderSubscription(); err != nil {
+		return nil, err
 	}
 	// Check if the chain supports EIP-1559
 	// https://eips.ethereum.org/EIPS/eip-1559
@@ -701,6 +699,48 @@ func (e *EthereumClient) WaitForFinalizedTx(txHash common.Hash) (*big.Int, time.
 	key := "txFinalizer-" + txHash.String()
 	e.AddHeaderEventSubscription(key, finalizer)
 	defer e.DeleteHeaderEventSubscription(key)
+
+	if !e.Client.Client().SupportsSubscriptions() {
+		go func() {
+			ticker := time.NewTicker(10 * time.Second)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-finalizer.context.Done():
+					return
+				case <-ticker.C:
+					latestHeader, err := e.GetLatestFinalizedBlockHeader(context.Background())
+					if err != nil {
+						e.l.Err(err).Msg("Error fetching latest finalized header via HTTP polling")
+					}
+					if latestHeader == nil {
+						e.l.Error().Msg("Latest finalized header is nil")
+						continue
+					}
+					if latestHeader.Time > math.MaxInt64 {
+						e.l.Error().Msg("Latest finalized header time is too large")
+						continue
+					}
+
+					nodeHeader := NodeHeader{
+						// NodeID: 0, // Assign appropriate NodeID if needed
+						SafeEVMHeader: SafeEVMHeader{
+							Hash:      latestHeader.Hash(),
+							Number:    latestHeader.Number,
+							Timestamp: time.Unix(int64(latestHeader.Time), 0),
+							BaseFee:   latestHeader.BaseFee,
+						},
+					}
+
+					err = finalizer.ReceiveHeader(nodeHeader)
+					if err != nil {
+						e.l.Err(err).Msg("Finalizer received error during HTTP polling")
+					}
+				}
+			}
+		}()
+	}
 	err = finalizer.Wait()
 	if err != nil {
 		return nil, time.Time{}, fmt.Errorf("error waiting for finalization: %w in network %s tx %s", err, e.GetNetworkName(), txHash.Hex())
@@ -885,11 +925,24 @@ func (e *EthereumClient) ParallelTransactions(enabled bool) {
 	e.queueTransactions = enabled
 }
 
-// Close tears down the current open Ethereum client
+// Close tears down the current open Ethereum client and unsubscribes from the manager, if any
 func (e *EthereumClient) Close() error {
 	// close(e.NonceSettings.doneChan)
 	close(e.doneChan)
 	e.subscriptionWg.Wait()
+
+	chainManagerRegistry.Lock()
+	defer chainManagerRegistry.Unlock()
+
+	mgr, exists := chainManagerRegistry.managers[e.GetChainID().Int64()]
+	if exists {
+		mgr.unsubscribe(e)
+		// If no more subscribers remain, we can shut down the manager
+		if len(mgr.subscribers) == 0 {
+			mgr.shutdown()
+			removeChainManager(e.GetChainID().Int64())
+		}
+	}
 	return nil
 }
 
@@ -1218,6 +1271,32 @@ func (e *EthereumClient) AvgBlockTime(ctx context.Context) (time.Duration, error
 	averageBlockTime := totalTime / time.Duration(numBlocks) //nolint
 
 	return averageBlockTime, nil
+}
+
+// InitializeHeaderSubscription initializes either subscription-based or polling-based header processing
+func (e *EthereumClient) InitializeHeaderSubscription() error {
+	if e.Client.Client().SupportsSubscriptions() {
+		return e.subscribeToNewHeaders()
+	}
+	// Fallback to polling if subscriptions are not supported
+	e.l.Info().Str("Network", e.NetworkConfig.Name).Msg("Subscriptions not supported. Using polling for new headers.")
+
+	// Acquire (or create) a manager for this chain
+	mgr := getOrCreateChainManager(
+		e.GetChainID().Int64(),
+		15*time.Second, // or e.NetworkConfig.PollInterval, etc.
+		e.NetworkConfig,
+		e.l,
+		e.Client,
+		e.rawRPC,
+	)
+
+	// Subscribe
+	mgr.subscribe(e)
+	// Start polling if not started
+	mgr.startPolling()
+
+	return nil
 }
 
 // EthereumMultinodeClient wraps the client and the BlockChain network to interact with an EVM based Blockchain with multiple nodes
@@ -1754,4 +1833,9 @@ func (e *EthereumMultinodeClient) WaitForEvents() error {
 
 func (e *EthereumMultinodeClient) ErrorReason(b ethereum.ContractCaller, tx *types.Transaction, receipt *types.Receipt) (string, error) {
 	return e.DefaultClient.ErrorReason(b, tx, receipt)
+}
+
+// InitializeHeaderSubscription initializes either subscription-based or polling-based header processing
+func (e *EthereumMultinodeClient) InitializeHeaderSubscription() error {
+	return e.DefaultClient.InitializeHeaderSubscription()
 }
