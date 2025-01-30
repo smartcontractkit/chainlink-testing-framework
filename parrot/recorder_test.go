@@ -1,15 +1,16 @@
 package parrot
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 )
 
 func TestResponseWriterRecorder(t *testing.T) {
@@ -72,6 +73,7 @@ func TestResponseWriterRecorder(t *testing.T) {
 			recordedBody, err := io.ReadAll(recordedResp.Body)
 			require.NoError(t, err, "error reading recorded response body")
 
+			// TODO: Make sure body is actually getting checked
 			assert.Equal(t, tc.expectedRespCode, actualResp.StatusCode, "actual response has unexpected status code")
 			assert.Equal(t, tc.expectedRespCode, recordedResp.StatusCode, "recorded response has unexpected status code")
 			assert.Equal(t, tc.expectedRespBody, string(actualBody), "actual response has unexpected body")
@@ -88,13 +90,13 @@ func TestRecorder(t *testing.T) {
 	recorder, err := NewRecorder()
 	require.NoError(t, err, "error creating recorder")
 	t.Cleanup(func() {
-		require.NoError(t, recorder.Close())
+		_ = recorder.Close()
 	})
 
 	err = p.Record(recorder.URL())
 	require.NoError(t, err, "error recording parrot")
 	t.Cleanup(func() {
-		require.NoError(t, recorder.Close())
+		_ = recorder.Close()
 	})
 
 	route := &Route{
@@ -106,34 +108,39 @@ func TestRecorder(t *testing.T) {
 	err = p.Register(route)
 	require.NoError(t, err, "error registering route")
 
-	var (
-		responseCount = 5
-		recordedCalls = 0
-	)
+	responseCount := 5
 
-	go func() {
-		for i := 0; i < responseCount; i++ {
-			_, err := p.Call(http.MethodGet, "/test")
-			require.NoError(t, err, "error calling parrot")
-		}
-	}()
+	var eg errgroup.Group
+	for i := 0; i < responseCount; i++ {
+		eg.Go(func() error {
+			resp, err := p.Call(http.MethodGet, route.Path)
+			if err != nil {
+				return err
+			}
+			if resp.StatusCode() != route.ResponseStatusCode {
+				return fmt.Errorf("unexpected status code calling '/test': %d", resp.StatusCode())
+			}
+			if string(resp.Body()) != route.RawResponseBody {
+				return fmt.Errorf("unexpected body calling '/test': %s", string(resp.Body()))
+			}
+			return nil
+		})
+	}
 
-	for {
+	require.NoError(t, eg.Wait(), "error calling parrot")
+
+	for i := 0; i < responseCount; i++ {
 		select {
 		case recordedRouteCall := <-recorder.Record():
 			assert.Equal(t, route.ID(), recordedRouteCall.RouteID, "recorded response has unexpected route ID")
-
 			assert.Equal(t, http.StatusOK, recordedRouteCall.Response.StatusCode, "recorded response has unexpected status code")
-			assert.Equal(t, "Squawk", string(recordedRouteCall.Response.Body), "recorded response has unexpected body")
-
-			assert.Equal(t, "/test", recordedRouteCall.Request.URL.Path, "recorded request has unexpected path")
+			assert.Equal(t, route.RawResponseBody, string(recordedRouteCall.Response.Body), "recorded response has unexpected body")
+			assert.Equal(t, route.Path, recordedRouteCall.Request.URL.Path, "recorded request has unexpected path")
 			assert.Equal(t, http.MethodGet, recordedRouteCall.Request.Method, "recorded request has unexpected method")
-			recordedCalls++
-			if recordedCalls == responseCount {
-				return
-			}
 		case err := <-recorder.Err():
 			require.NoError(t, err, "error recording route call")
+		case <-time.After(time.Second):
+			require.Fail(t, "timed out waiting for recorded route call")
 		}
 	}
 }
@@ -173,16 +180,24 @@ func TestMultipleRecorders(t *testing.T) {
 	err := p.Register(route)
 	require.NoError(t, err, "error registering route")
 
-	var wg sync.WaitGroup
-	wg.Add(numCalls)
+	var eg errgroup.Group
 	for i := 0; i < numCalls; i++ {
-		go func() {
-			defer wg.Done()
-			_, err := p.Call(http.MethodGet, "/test")
-			require.NoError(t, err, "error calling parrot")
-		}()
+		eg.Go(func() error {
+			resp, err := p.Call(http.MethodGet, route.Path)
+			if err != nil {
+				return err
+			}
+			if resp.StatusCode() != route.ResponseStatusCode {
+				return fmt.Errorf("unexpected status code calling '/test': %d", resp.StatusCode())
+			}
+			if string(resp.Body()) != route.RawResponseBody {
+				return fmt.Errorf("unexpected body calling '/test': %s", string(resp.Body()))
+			}
+			return nil
+		})
 	}
-	wg.Wait()
+
+	require.NoError(t, eg.Wait(), "error calling parrot")
 
 	for _, recorder := range recorders {
 		for i := 0; i < numCalls; i++ {

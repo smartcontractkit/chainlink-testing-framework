@@ -18,7 +18,8 @@ var (
 	ErrInvalidRecorderURL = errors.New("invalid recorder URL")
 	ErrRecorderNotFound   = errors.New("recorder not found")
 
-	ErrServerShutdown = errors.New("parrot is already asleep")
+	ErrServerShutdown  = errors.New("parrot is already asleep")
+	ErrServerUnhealthy = errors.New("parrot is unhealthy")
 )
 
 // Custom error type to help add more detail to base errors

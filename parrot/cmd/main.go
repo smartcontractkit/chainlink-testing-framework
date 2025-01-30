@@ -42,6 +42,7 @@ func main() {
 			if json {
 				options = append(options, parrot.WithJSONLogs())
 			}
+			options = append(options, parrot.WithRecorders(recorders...))
 
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
@@ -49,13 +50,6 @@ func main() {
 			p, err := parrot.Wake(options...)
 			if err != nil {
 				return err
-			}
-
-			for _, r := range recorders {
-				err = p.Record(r)
-				if err != nil {
-					return err
-				}
 			}
 
 			c := make(chan os.Signal, 1)

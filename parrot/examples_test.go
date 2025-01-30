@@ -55,10 +55,7 @@ func ExampleServer_Register_internal() {
 	fmt.Println(len(routes))
 
 	// Delete the route
-	err = p.Delete(route.ID())
-	if err != nil {
-		panic(err)
-	}
+	p.Delete(route)
 
 	// Get all routes from the parrot instance
 	routes = p.Routes()
@@ -98,7 +95,7 @@ func ExampleServer_Register_external() {
 		RawResponseBody:    "Squawk",
 		ResponseStatusCode: http.StatusOK,
 	}
-	resp, err := client.R().SetBody(route).Post("/routes")
+	resp, err := client.R().SetBody(route).Post(parrot.RoutesRoute)
 	if err != nil {
 		panic(err)
 	}
@@ -107,7 +104,7 @@ func ExampleServer_Register_external() {
 
 	// Get all routes from the parrot server
 	routes := make([]*parrot.Route, 0)
-	resp, err = client.R().SetResult(&routes).Get("/routes")
+	resp, err = client.R().SetResult(&routes).Get(parrot.RoutesRoute)
 	if err != nil {
 		panic(err)
 	}
@@ -116,7 +113,7 @@ func ExampleServer_Register_external() {
 	fmt.Println(len(routes))
 
 	// Delete the route
-	resp, err = client.R().SetBody(route).Delete("/routes")
+	resp, err = client.R().SetBody(route).Delete(parrot.RoutesRoute)
 	if err != nil {
 		panic(err)
 	}
@@ -125,7 +122,7 @@ func ExampleServer_Register_external() {
 
 	// Get all routes from the parrot server
 	routes = make([]*parrot.Route, 0)
-	resp, err = client.R().SetResult(&routes).Get("/routes")
+	resp, err = client.R().SetResult(&routes).Get(parrot.RoutesRoute)
 	if err != nil {
 		panic(err)
 	}
@@ -239,7 +236,7 @@ func ExampleRecorder_external() {
 	}
 
 	// Register the route with the parrot instance
-	resp, err := client.R().SetBody(route).Post("/routes")
+	resp, err := client.R().SetBody(route).Post(parrot.RoutesRoute)
 	if err != nil {
 		panic(err)
 	}
@@ -256,7 +253,7 @@ func ExampleRecorder_external() {
 	}
 
 	// Register the recorder with the parrot instance
-	resp, err = client.R().SetBody(recorder).Post("/record")
+	resp, err = client.R().SetBody(recorder).Post(parrot.RecorderRoute)
 	if err != nil {
 		panic(err)
 	}
@@ -301,7 +298,7 @@ func waitForParrotServer(client *resty.Client, timeoutDur time.Duration) {
 	for { // Wait for the parrot server to start
 		select {
 		case <-ticker.C:
-			resp, err := client.R().Get("/health")
+			resp, err := client.R().Get(parrot.HealthRoute)
 			if err != nil {
 				continue
 			}

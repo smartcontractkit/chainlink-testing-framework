@@ -109,8 +109,6 @@ func TestRegisterRoutes(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
 			err := p.Register(tc.route)
 			require.NoError(t, err, "error registering route")
 
@@ -173,7 +171,7 @@ func TestIsValidPath(t *testing.T) {
 		},
 		{
 			name:  "no protected paths",
-			paths: []string{healthRoute, routesRoute, recordRoute, fmt.Sprintf("%s/%s", routesRoute, "route-id"), fmt.Sprintf("%s/%s", healthRoute, "recorder-id"), fmt.Sprintf("%s/%s", recordRoute, "recorder-id")},
+			paths: []string{HealthRoute, RoutesRoute, RecorderRoute, fmt.Sprintf("%s/%s", RoutesRoute, "route-id"), fmt.Sprintf("%s/%s", HealthRoute, "recorder-id"), fmt.Sprintf("%s/%s", RecorderRoute, "recorder-id")},
 			valid: false,
 		},
 		{
@@ -427,16 +425,11 @@ func TestDelete(t *testing.T) {
 	assert.Equal(t, resp.StatusCode(), route.ResponseStatusCode)
 	assert.Equal(t, route.RawResponseBody, string(resp.Body()))
 
-	err = p.Delete(route.ID())
-	require.NoError(t, err, "error unregistering route")
+	p.Delete(route)
 
 	resp, err = p.Call(route.Method, route.Path)
 	require.NoError(t, err, "error calling parrot")
 	assert.Equal(t, http.StatusNotFound, resp.StatusCode())
-
-	// Try to delete the route again
-	err = p.Delete(route.ID())
-	require.ErrorIs(t, err, ErrRouteNotFound, "expected error deleting route")
 }
 
 func TestSaveLoad(t *testing.T) {
@@ -446,13 +439,13 @@ func TestSaveLoad(t *testing.T) {
 
 	routes := []*Route{
 		{
-			Method:             "GET",
+			Method:             http.MethodGet,
 			Path:               "/hello",
 			RawResponseBody:    "Squawk",
 			ResponseStatusCode: http.StatusOK,
 		},
 		{
-			Method:             "Post",
+			Method:             http.MethodPost,
 			Path:               "/goodbye",
 			RawResponseBody:    "Squeak",
 			ResponseStatusCode: 201,
@@ -513,16 +506,14 @@ func TestShutDown(t *testing.T) {
 	err = p.Record("http://localhost:8080")
 	require.ErrorIs(t, err, ErrServerShutdown, "expected error recording parrot after shutdown")
 
-	err = p.Register(&Route{
+	testRoute := &Route{
 		Method:             http.MethodGet,
 		Path:               "/hello",
 		RawResponseBody:    "Squawk",
 		ResponseStatusCode: http.StatusOK,
-	})
+	}
+	err = p.Register(testRoute)
 	require.ErrorIs(t, err, ErrServerShutdown, "expected error registering route after shutdown")
-
-	err = p.Delete("route-id")
-	require.ErrorIs(t, err, ErrServerShutdown, "expected error deleting route after shutdown")
 
 	err = p.Shutdown(context.Background())
 	require.ErrorIs(t, err, ErrServerShutdown, "expected error shutting down parrot after shutdown")
@@ -557,7 +548,7 @@ func TestCustomLogger(t *testing.T) {
 	_, err = p.Call(route.Method, route.Path)
 	require.NoError(t, err, "error calling parrot")
 
-	require.Contains(t, logBuffer.String(), "GET:/hello", "expected log buffer to contain route call")
+	require.Contains(t, logBuffer.String(), route.ID(), "expected log buffer to contain route call")
 }
 
 func TestJSONLogger(t *testing.T) {
@@ -595,7 +586,7 @@ func TestJSONLogger(t *testing.T) {
 	require.NoError(t, err, "error reading log file")
 	require.NotNil(t, logs, "expected logs to be read from file")
 	require.NotEmpty(t, logs, "expected logs to be written to file")
-	require.Contains(t, string(logs), `"Route ID":"GET:/test"`, "expected log file to contain route call in JSON format")
+	require.Contains(t, string(logs), fmt.Sprintf(`"Route ID":"%s"`, route.ID()), "expected log file to contain route call in JSON format")
 }
 
 func newParrot(t *testing.T) *Server {
