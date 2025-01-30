@@ -73,7 +73,6 @@ func TestResponseWriterRecorder(t *testing.T) {
 			recordedBody, err := io.ReadAll(recordedResp.Body)
 			require.NoError(t, err, "error reading recorded response body")
 
-			// TODO: Make sure body is actually getting checked
 			assert.Equal(t, tc.expectedRespCode, actualResp.StatusCode, "actual response has unexpected status code")
 			assert.Equal(t, tc.expectedRespCode, recordedResp.StatusCode, "recorded response has unexpected status code")
 			assert.Equal(t, tc.expectedRespBody, string(actualBody), "actual response has unexpected body")
