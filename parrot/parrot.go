@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -67,13 +68,12 @@ type Server struct {
 	recordersMu   sync.RWMutex
 
 	// Save and shutdown
-	shutDown     bool
+	shutDown     atomic.Bool
 	shutDownChan chan struct{}
 	shutDownOnce sync.Once
 	saveFileName string
 
 	// Logging
-	useCustomLogger    bool
 	logFileName        string
 	logFile            *os.File
 	logLevel           zerolog.Level
@@ -113,33 +113,32 @@ func Wake(options ...ServerOption) (*Server, error) {
 		}
 	}
 
+	// Setup logger
 	var err error
 	p.logFile, err = os.Create(p.logFileName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create log file: %w", err)
 	}
 
-	if !p.useCustomLogger { // Build default logger
-		var writers []io.Writer
+	var writers []io.Writer
 
-		zerolog.TimeFieldFormat = "2006-01-02T15:04:05.000"
-		if !p.disableConsoleLogs {
-			if p.jsonLogs {
-				writers = append(writers, os.Stderr)
-			} else {
-				consoleOut := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02T15:04:05.000"}
-				writers = append(writers, consoleOut)
-			}
+	if !p.disableConsoleLogs {
+		if p.jsonLogs {
+			writers = append(writers, os.Stderr)
+		} else {
+			consoleOut := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02T15:04:05.000"}
+			writers = append(writers, consoleOut)
 		}
-
-		if p.logFile != nil {
-			writers = append(writers, p.logFile)
-		}
-
-		multiWriter := zerolog.MultiLevelWriter(writers...)
-		p.log = zerolog.New(multiWriter).Level(p.logLevel).With().Timestamp().Logger()
 	}
 
+	if p.logFile != nil {
+		writers = append(writers, p.logFile)
+	}
+
+	multiWriter := zerolog.MultiLevelWriter(writers...)
+	p.log = zerolog.New(multiWriter).Level(p.logLevel).With().Timestamp().Logger()
+
+	// Setup server
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", p.port))
 	if err != nil {
 		return nil, fmt.Errorf("failed to start listener: %w", err)
@@ -155,6 +154,7 @@ func Wake(options ...ServerOption) (*Server, error) {
 		return nil, fmt.Errorf("failed to parse port: %w", err)
 	}
 
+	// Initialize router
 	p.router.Get(HealthRoute, p.healthHandlerGET)
 
 	p.router.Get(RoutesRoute, p.routesHandlerGET)
@@ -182,7 +182,7 @@ func Wake(options ...ServerOption) (*Server, error) {
 // run starts the parrot server
 func (p *Server) run(listener net.Listener) {
 	defer func() {
-		p.shutDown = true
+		p.shutDown.Store(true)
 		if err := p.save(); err != nil {
 			p.log.Error().Err(err).Msg("Failed to save routes")
 		}
@@ -241,7 +241,7 @@ func (p *Server) routeCallHandler(route *Route) http.HandlerFunc {
 
 // Healthy checks if the parrot server is healthy
 func (p *Server) Healthy() error {
-	if p.shutDown {
+	if p.shutDown.Load() {
 		return ErrServerShutdown
 	}
 
@@ -288,7 +288,7 @@ func (p *Server) healthHandlerGET(w http.ResponseWriter, r *http.Request) {
 
 // Shutdown gracefully shuts down the parrot server
 func (p *Server) Shutdown(ctx context.Context) error {
-	if p.shutDown {
+	if p.shutDown.Load() {
 		return ErrServerShutdown
 	}
 
@@ -308,7 +308,7 @@ func (p *Server) Address() string {
 
 // Register adds a new route to the parrot
 func (p *Server) Register(route *Route) error {
-	if p.shutDown {
+	if p.shutDown.Load() {
 		return ErrServerShutdown
 	}
 	if route == nil {
@@ -372,7 +372,7 @@ func (p *Server) routesHandlerPOST(w http.ResponseWriter, r *http.Request) {
 
 // Record registers a new recorder with the parrot. All incoming requests to the parrot will be sent to the recorder.
 func (p *Server) Record(recorderURL string) error {
-	if p.shutDown {
+	if p.shutDown.Load() {
 		return ErrServerShutdown
 	}
 
@@ -426,7 +426,7 @@ func (p *Server) recorderHandlerPOST(w http.ResponseWriter, r *http.Request) {
 
 // Recorders returns the URLs of all registered recorders
 func (p *Server) Recorders() []string {
-	if p.shutDown {
+	if p.shutDown.Load() {
 		return nil
 	}
 
@@ -493,14 +493,14 @@ func (p *Server) routesHandlerDELETE(w http.ResponseWriter, r *http.Request) {
 
 // Call makes a request to the parrot server
 func (p *Server) Call(method, path string) (*resty.Response, error) {
-	if p.shutDown {
+	if p.shutDown.Load() {
 		return nil, ErrServerShutdown
 	}
 	return p.client.R().Execute(method, "http://"+filepath.Join(p.Address(), path))
 }
 
 func (p *Server) Routes() []*Route {
-	if p.shutDown {
+	if p.shutDown.Load() {
 		return nil
 	}
 

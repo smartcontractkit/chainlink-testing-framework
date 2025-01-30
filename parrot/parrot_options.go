@@ -28,15 +28,6 @@ func WithLogLevel(level zerolog.Level) ServerOption {
 	}
 }
 
-// WithLogger sets the logger for the ParrotServer
-func WithLogger(l zerolog.Logger) ServerOption {
-	return func(s *Server) error {
-		s.log = l
-		s.useCustomLogger = true
-		return nil
-	}
-}
-
 // WithJSONLogs sets the logger to output JSON logs
 func WithJSONLogs() ServerOption {
 	return func(s *Server) error {

@@ -1,7 +1,6 @@
 package parrot
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -31,6 +30,36 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(m.Run())
+}
+
+func TestHealthy(t *testing.T) {
+	t.Parallel()
+
+	p := newParrot(t)
+
+	healthCount := 0
+	targetCount := 3
+
+	ticker := time.NewTicker(time.Millisecond * 10)
+	timeout := time.NewTimer(time.Second)
+	t.Cleanup(func() {
+		ticker.Stop()
+		timeout.Stop()
+	})
+
+	for {
+		select {
+		case <-ticker.C:
+			if err := p.Healthy(); err == nil {
+				healthCount++
+			}
+			if healthCount >= targetCount {
+				return
+			}
+		case <-timeout.C:
+			require.GreaterOrEqual(t, targetCount, healthCount, "parrot never became healthy")
+		}
+	}
 }
 
 func TestRegisterRoutes(t *testing.T) {
@@ -517,38 +546,6 @@ func TestShutDown(t *testing.T) {
 
 	err = p.Shutdown(context.Background())
 	require.ErrorIs(t, err, ErrServerShutdown, "expected error shutting down parrot after shutdown")
-}
-
-func TestCustomLogger(t *testing.T) {
-	t.Parallel()
-
-	logBuffer := new(bytes.Buffer)
-	testLogger := zerolog.New(logBuffer)
-
-	fileName := t.Name() + ".json"
-	p, err := Wake(WithSaveFile(fileName), WithLogLevel(zerolog.DebugLevel), WithLogger(testLogger))
-	require.NoError(t, err, "error waking parrot")
-	t.Cleanup(func() {
-		err := p.Shutdown(context.Background())
-		assert.NoError(t, err, "error shutting down parrot")
-		p.WaitShutdown() // Wait for shutdown to complete
-		os.Remove(fileName)
-	})
-
-	route := &Route{
-		Method:             http.MethodGet,
-		Path:               "/hello",
-		RawResponseBody:    "Squawk",
-		ResponseStatusCode: http.StatusOK,
-	}
-
-	err = p.Register(route)
-	require.NoError(t, err, "error registering route")
-
-	_, err = p.Call(route.Method, route.Path)
-	require.NoError(t, err, "error calling parrot")
-
-	require.Contains(t, logBuffer.String(), route.ID(), "expected log buffer to contain route call")
 }
 
 func TestJSONLogger(t *testing.T) {
