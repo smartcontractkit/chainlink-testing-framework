@@ -699,6 +699,8 @@ func isValidMethod(method string) bool {
 		http.MethodPatch,
 		http.MethodDelete,
 		http.MethodOptions,
+		http.MethodConnect,
+		http.MethodTrace,
 		MethodAny:
 		return true
 	}

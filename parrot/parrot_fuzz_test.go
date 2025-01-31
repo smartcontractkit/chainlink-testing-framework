@@ -48,10 +48,12 @@ func FuzzMethodAny(f *testing.F) {
 	f.Add(http.MethodPatch)
 	f.Add(http.MethodDelete)
 	f.Add(http.MethodOptions)
+	f.Add(http.MethodConnect)
+	f.Add(http.MethodTrace)
 
 	f.Fuzz(func(t *testing.T, method string) {
 		if !isValidMethod(method) {
-			t.Skip("invalid method")
+			t.Skipf("invalid method '%s'", method)
 		}
 		resp, err := p.Call(method, route.Path)
 		require.NoError(t, err)
