@@ -1,13 +1,18 @@
 package parrot
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 )
 
 // Recorder records route calls
@@ -22,8 +27,8 @@ type Recorder struct {
 
 // RouteCall records when a route is called, the request and response
 type RouteCall struct {
-	// RouteCallID is a unique identifier for the route call for help with debugging
-	RouteCallID string `json:"route_call_id"`
+	// ID is a unique identifier for the route call for help with debugging
+	ID string `json:"id"`
 	// RouteID is the identifier of the route that was called
 	RouteID string `json:"route_id"`
 	// Request is the request made to the route
@@ -164,12 +169,54 @@ func (rr *responseWriterRecorder) Write(data []byte) (int, error) {
 }
 
 func (rr *responseWriterRecorder) Header() http.Header {
-	for k, v := range rr.originalWriter.Header() {
-		rr.record.Header()[k] = v
-	}
-	return rr.originalWriter.Header()
+	return rr.record.Header()
 }
 
 func (rr *responseWriterRecorder) Result() *http.Response {
-	return rr.record.Result()
+	resp := rr.record.Result()
+	resp.Header = rr.originalWriter.Header() // Ensure headers are properly synced
+	return resp
+}
+
+// routeRecordingMiddleware is a middleware that records the request and response of a route call
+func routeRecordingMiddleware(p *Server, next http.Handler) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		routeCallID := uuid.New().String()[0:8]
+		recordLogger := zerolog.Ctx(r.Context())
+		recordLogger.UpdateContext(func(c zerolog.Context) zerolog.Context {
+			return c.Str("Route Call ID", routeCallID)
+		})
+
+		reqBody, err := io.ReadAll(r.Body) // Read the body to ensure it's not closed before we can read it
+		if err != nil {
+			recordLogger.Error().Err(err).Msg("Failed to read request body")
+			http.Error(w, "Failed to read request body", http.StatusInternalServerError)
+			return
+		}
+		r.Body = io.NopCloser(bytes.NewBuffer(reqBody))
+
+		routeCall := &RouteCall{
+			ID:      routeCallID,
+			RouteID: r.Method + ":" + r.URL.String(),
+			Request: &RouteCallRequest{
+				Method:     r.Method,
+				URL:        r.URL,
+				RemoteAddr: r.RemoteAddr,
+				Header:     r.Header,
+				Body:       reqBody,
+			},
+		}
+
+		rr := newResponseWriterRecorder(w)
+		next.ServeHTTP(rr, r)
+
+		resp := rr.Result()
+		routeCall.Response = &RouteCallResponse{
+			StatusCode: resp.StatusCode,
+			Header:     resp.Header,
+			Body:       rr.record.Body.Bytes(),
+		}
+
+		p.sendToRecorders(routeCall)
+	})
 }
