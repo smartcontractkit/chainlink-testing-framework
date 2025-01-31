@@ -12,7 +12,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/parrot"
 )
 
-func ExampleServer_Register_internal() {
+func ExampleServer_internal() {
 	// Create a new parrot instance with no logging and a custom save file
 	saveFile := "register_example.json"
 	p, err := parrot.Wake(parrot.WithLogLevel(zerolog.NoLevel), parrot.WithSaveFile(saveFile))
@@ -69,7 +69,7 @@ func ExampleServer_Register_internal() {
 	// 0
 }
 
-func ExampleServer_Register_external() {
+func ExampleServer_external() {
 	var (
 		saveFile = "route_example.json"
 		port     = 9090

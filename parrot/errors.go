@@ -7,12 +7,13 @@ import (
 
 var (
 	ErrNilRoute        = errors.New("route is nil")
-	ErrNoMethod        = errors.New("no method specified")
 	ErrInvalidPath     = errors.New("invalid path")
+	ErrInvalidMethod   = errors.New("invalid method")
 	ErrNoResponse      = errors.New("route must have a handler or some response")
 	ErrOnlyOneResponse = errors.New("route can only have one response type")
 	ErrResponseMarshal = errors.New("unable to marshal response body to JSON")
 	ErrRouteNotFound   = errors.New("route not found")
+	ErrWildcardPath    = fmt.Errorf("path can only contain one wildcard '*' and it must be the final value")
 
 	ErrNoRecorderURL      = errors.New("no recorder URL specified")
 	ErrInvalidRecorderURL = errors.New("invalid recorder URL")

@@ -306,7 +306,7 @@ func TestBadRegisterRoute(t *testing.T) {
 		},
 		{
 			name: "no method",
-			err:  ErrNoMethod,
+			err:  ErrInvalidMethod,
 			route: &Route{
 				Path:               "/hello",
 				RawResponseBody:    "Squawk",
@@ -369,20 +369,6 @@ func TestBadRegisterRoute(t *testing.T) {
 				Path:               "/hello",
 				RawResponseBody:    "Squawk",
 				ResponseBody:       map[string]any{"message": "Squawk"},
-				ResponseStatusCode: http.StatusOK,
-			},
-		},
-		{
-			name: "too many responses",
-			err:  ErrOnlyOneResponse,
-			route: &Route{
-				Method:       http.MethodGet,
-				Path:         "/hello",
-				ResponseBody: map[string]any{"message": "Squawk"},
-				Handler: func(w http.ResponseWriter, r *http.Request) {
-					w.WriteHeader(http.StatusOK)
-					_, _ = w.Write([]byte("Squawk"))
-				},
 				ResponseStatusCode: http.StatusOK,
 			},
 		},
@@ -586,16 +572,16 @@ func TestJSONLogger(t *testing.T) {
 	require.Contains(t, string(logs), fmt.Sprintf(`"Route ID":"%s"`, route.ID()), "expected log file to contain route call in JSON format")
 }
 
-func newParrot(t *testing.T) *Server {
-	t.Helper()
+func newParrot(tb testing.TB) *Server {
+	tb.Helper()
 
-	logFileName := t.Name() + ".log"
-	saveFileName := t.Name() + ".json"
+	logFileName := tb.Name() + ".log"
+	saveFileName := tb.Name() + ".json"
 	p, err := Wake(WithSaveFile(saveFileName), WithLogFile(logFileName), WithLogLevel(testLogLevel))
-	require.NoError(t, err, "error waking parrot")
-	t.Cleanup(func() {
+	require.NoError(tb, err, "error waking parrot")
+	tb.Cleanup(func() {
 		err := p.Shutdown(context.Background())
-		assert.NoError(t, err, "error shutting down parrot")
+		assert.NoError(tb, err, "error shutting down parrot")
 		p.WaitShutdown() // Wait for shutdown to complete and file to be written
 		os.Remove(saveFileName)
 		os.Remove(logFileName)

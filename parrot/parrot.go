@@ -28,6 +28,9 @@ const (
 	HealthRoute   = "/health"
 	RoutesRoute   = "/routes"
 	RecorderRoute = "/recorder"
+
+	// MethodAny is a wildcard for any HTTP method
+	MethodAny = "ANY"
 )
 
 // Route holds information about the mock route configuration
@@ -36,9 +39,6 @@ type Route struct {
 	Method string `json:"Method"`
 	// Path is the URL path to match
 	Path string `json:"Path"`
-	// Handler is the dynamic handler function to use when called
-	// Can only be set upon creation of the server
-	Handler http.HandlerFunc `json:"-"`
 	// RawResponseBody is the static, raw string response to return when called
 	RawResponseBody string `json:"raw_response_body"`
 	// ResponseBody will be marshalled to JSON and returned when called
@@ -187,7 +187,7 @@ func (p *Server) run(listener net.Listener) {
 			p.log.Error().Err(err).Msg("Failed to save routes")
 		}
 		if err := p.logFile.Close(); err != nil {
-			p.log.Error().Err(err).Msg("Failed to close log file")
+			fmt.Println("ERROR: Failed to close log file:", err)
 		}
 		p.shutDownOnce.Do(func() {
 			close(p.shutDownChan)
@@ -197,7 +197,7 @@ func (p *Server) run(listener net.Listener) {
 	p.log.Info().Str("Address", p.address).Msg("Parrot awake and ready to squawk")
 	p.log.Debug().Str("Save File", p.saveFileName).Str("Log File", p.logFileName).Msg("Configuration")
 	if err := p.server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		p.log.Fatal().Err(err).Msg("Error while running server")
+		fmt.Println("ERROR: Failed to start server:", err)
 	}
 }
 
@@ -208,11 +208,6 @@ func (p *Server) routeCallHandler(route *Route) http.HandlerFunc {
 		routeCallLogger.UpdateContext(func(c zerolog.Context) zerolog.Context {
 			return c.Str("Route ID", route.ID())
 		})
-
-		if route.Handler != nil {
-			route.Handler(w, r)
-			return
-		}
 
 		if route.RawResponseBody != "" {
 			w.Header().Set("Content-Type", "text/plain")
@@ -317,14 +312,11 @@ func (p *Server) Register(route *Route) error {
 	if !isValidPath(route.Path) {
 		return newDynamicError(ErrInvalidPath, fmt.Sprintf("'%s'", route.Path))
 	}
-	if route.Method == "" {
-		return ErrNoMethod
+	if !isValidMethod(route.Method) {
+		return newDynamicError(ErrInvalidMethod, fmt.Sprintf("'%s'", route.Method))
 	}
-	if route.Handler == nil && route.ResponseBody == nil && route.RawResponseBody == "" {
+	if route.ResponseBody == nil && route.RawResponseBody == "" {
 		return ErrNoResponse
-	}
-	if route.Handler != nil && (route.ResponseBody != nil || route.RawResponseBody != "") {
-		return newDynamicError(ErrOnlyOneResponse, "handler and another response type provided")
 	}
 	if route.ResponseBody != nil && route.RawResponseBody != "" {
 		return ErrOnlyOneResponse
@@ -334,8 +326,19 @@ func (p *Server) Register(route *Route) error {
 			return newDynamicError(ErrResponseMarshal, err.Error())
 		}
 	}
+	numWildcards := strings.Count(route.Path, "*")
+	if 1 < numWildcards {
+		return newDynamicError(ErrWildcardPath, fmt.Sprintf("more than 1 wildcard '%s'", route.Path))
+	}
+	if numWildcards == 1 && !strings.HasSuffix(route.Path, "*") {
+		return newDynamicError(ErrWildcardPath, fmt.Sprintf("wildcard not at end '%s'", route.Path))
+	}
 
-	p.router.MethodFunc(route.Method, route.Path, routeRecordingMiddleware(p, p.routeCallHandler(route)))
+	if route.Method == MethodAny {
+		p.router.Handle(route.Path, routeRecordingMiddleware(p, p.routeCallHandler(route)))
+	} else {
+		p.router.MethodFunc(route.Method, route.Path, routeRecordingMiddleware(p, p.routeCallHandler(route)))
+	}
 
 	p.routesMu.Lock()
 	defer p.routesMu.Unlock()
@@ -495,6 +498,9 @@ func (p *Server) routesHandlerDELETE(w http.ResponseWriter, r *http.Request) {
 func (p *Server) Call(method, path string) (*resty.Response, error) {
 	if p.shutDown.Load() {
 		return nil, ErrServerShutdown
+	}
+	if !isValidMethod(method) {
+		return nil, newDynamicError(ErrInvalidMethod, fmt.Sprintf("'%s'", method))
 	}
 	return p.client.R().Execute(method, "http://"+filepath.Join(p.Address(), path))
 }
@@ -660,6 +666,7 @@ func (p *Server) loggingMiddleware(next http.Handler) http.Handler {
 
 var pathRegex = regexp.MustCompile(`^\/[a-zA-Z0-9\-._~%!$&'()*+,;=:@\/]*$`)
 
+// isValidPath checks if the path is a valid URL path
 func isValidPath(path string) bool {
 	if path == "" || path == "/" {
 		return false
@@ -680,4 +687,20 @@ func isValidPath(path string) bool {
 		return false
 	}
 	return pathRegex.MatchString(path)
+}
+
+// isValidMethod checks if the method is a valid HTTP method, in loose terms
+func isValidMethod(method string) bool {
+	switch method {
+	case
+		http.MethodGet,
+		http.MethodPost,
+		http.MethodPut,
+		http.MethodPatch,
+		http.MethodDelete,
+		http.MethodOptions,
+		MethodAny:
+		return true
+	}
+	return false
 }
