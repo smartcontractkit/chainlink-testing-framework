@@ -47,7 +47,12 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 	ctx := context.Background()
 
 	bindPort := fmt.Sprintf("%s/tcp", Port)
-	containerName := in.Name
+	var containerName string
+	if in.Name == "" {
+		containerName = "ns-postgresql"
+	} else {
+		containerName = in.Name
+	}
 
 	var sqlCommands []string
 	for i := 0; i <= in.Databases; i++ {
