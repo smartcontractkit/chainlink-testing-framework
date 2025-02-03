@@ -40,7 +40,7 @@ func TestMultiUpgrade(t *testing.T) {
 											level = 'info'
 	`
 
-	ns1, err = ns.UpgradeNodeSet(t, in.NodeSetA, bc, 3*time.Second)
+	ns1, err = ns.UpgradeNodeSet(t, in.NodeSetA, bc, 10*time.Second)
 	require.NoError(t, err)
 
 	in.NodeSetB.NodeSpecs[0].Node.Image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
@@ -54,7 +54,7 @@ func TestMultiUpgrade(t *testing.T) {
 											level = 'info'
 	`
 
-	ns2, err = ns.UpgradeNodeSet(t, in.NodeSetB, bc, 3*time.Second)
+	ns2, err = ns.UpgradeNodeSet(t, in.NodeSetB, bc, 10*time.Second)
 	require.NoError(t, err)
 
 	t.Run("test something", func(t *testing.T) {

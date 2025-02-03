@@ -77,6 +77,7 @@ func printURLs(out *Output) {
 
 func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 	in.DbInput.Name = fmt.Sprintf("%s-%s", in.Name, "ns-postgresql")
+	in.DbInput.VolumeName = in.Name
 
 	// create database for each node
 	in.DbInput.Databases = in.Nodes
