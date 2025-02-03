@@ -16,9 +16,6 @@ flowchart LR
 	click grafana href "https://github.com/smartcontractkit/chainlink-testing-framework/grafana"
 	havoc --> lib/grafana
 	click havoc href "https://github.com/smartcontractkit/chainlink-testing-framework/havoc"
-	havoc/examples --> framework
-	havoc/examples --> havoc
-	click havoc/examples href "https://github.com/smartcontractkit/chainlink-testing-framework/havoc"
 	lib --> seth
 	click lib href "https://github.com/smartcontractkit/chainlink-testing-framework/lib"
 	lib/grafana
@@ -47,12 +44,6 @@ flowchart LR
 	end
 	click framework-repo href "https://github.com/smartcontractkit/chainlink-testing-framework/framework"
 
-	subgraph havoc-repo[havoc]
-		 havoc
-		 havoc/examples
-	end
-	click havoc-repo href "https://github.com/smartcontractkit/chainlink-testing-framework/havoc"
-
 	subgraph lib-repo[lib]
 		 lib
 		 lib/grafana
@@ -67,5 +58,5 @@ flowchart LR
 	click tools-repo href "https://github.com/smartcontractkit/chainlink-testing-framework/tools"
 
 	classDef outline stroke-dasharray:6,fill:none;
-	class framework-repo,havoc-repo,lib-repo,tools-repo outline
+	class framework-repo,lib-repo,tools-repo outline
 ```
