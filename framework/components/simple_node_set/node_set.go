@@ -121,9 +121,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 				return nil, fmt.Errorf("custom_ports can be used only with override_mode = 'each'")
 			}
 		}
-		if in.NodeSpecs[overrideIdx].Node.Name == "" {
-			nodeName = fmt.Sprintf("node%d", i)
-		}
+
 		eg.Go(func() error {
 			var net string
 			net, err = clnode.NewNetworkCfgOneNetworkAllNodes(bcOut)
@@ -133,8 +131,12 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 			if in.NodeSpecs[overrideIdx].Node.TestConfigOverrides != "" {
 				net = in.NodeSpecs[overrideIdx].Node.TestConfigOverrides
 			}
-
-			nodeName = fmt.Sprintf("%s-%s", in.Name, nodeName)
+			if in.NodeSpecs[overrideIdx].Node.Name == "" {
+				nodeName = fmt.Sprintf("node%d", i)
+			} else {
+				nodeName = in.NodeSpecs[overrideIdx].Node.Name
+			}
+			nodeWithNodeSetPrefixName := fmt.Sprintf("%s-%s", in.Name, nodeName)
 
 			nodeSpec := &clnode.Input{
 				DbInput: in.DbInput,
@@ -144,7 +146,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 					DebuggerPort:            dlvPortStart + i,
 					CustomPorts:             in.NodeSpecs[overrideIdx].Node.CustomPorts,
 					Image:                   in.NodeSpecs[overrideIdx].Node.Image,
-					Name:                    nodeName,
+					Name:                    nodeWithNodeSetPrefixName,
 					PullImage:               in.NodeSpecs[overrideIdx].Node.PullImage,
 					DockerFilePath:          in.NodeSpecs[overrideIdx].Node.DockerFilePath,
 					DockerContext:           in.NodeSpecs[overrideIdx].Node.DockerContext,

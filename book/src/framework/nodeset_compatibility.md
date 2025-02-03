@@ -9,6 +9,7 @@ Create a configuration file `smoke.toml`
   docker_cmd_params = ["-b", "1"]
 
 [nodeset]
+  name = "don"
   nodes = 5
   override_mode = "each"
 

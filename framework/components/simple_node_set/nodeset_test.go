@@ -47,6 +47,7 @@ func TestComponentDockerNodeSetSharedDB(t *testing.T) {
 				ChainID: "31337",
 			},
 			nodeSetInput: &ns.Input{
+				Name:         "don",
 				Nodes:        2,
 				OverrideMode: "all",
 				DbInput: &postgres.Input{
@@ -74,6 +75,7 @@ func TestComponentDockerNodeSetSharedDB(t *testing.T) {
 				ChainID: "31337",
 			},
 			nodeSetInput: &ns.Input{
+				Name:               "don",
 				Nodes:              2,
 				OverrideMode:       "each",
 				HTTPPortRangeStart: 20000,

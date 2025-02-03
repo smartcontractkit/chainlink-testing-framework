@@ -6,6 +6,7 @@
   port = 9111
 
 [nodeset]
+  name = "don"
   nodes = 5
   override_mode = "all"
 
