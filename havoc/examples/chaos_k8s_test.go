@@ -164,40 +164,56 @@ func podFail(client client.Client, l zerolog.Logger, cfg NodeRebootsConfig) (*ha
 	})
 }
 
-func TestChaos(t *testing.T) {
+func TestCCIPK8sChaos(t *testing.T) {
 	l := defaultLogger()
 	c, err := havoc.NewChaosMeshClient()
 	require.NoError(t, err)
 
-	namespace := "janitor"
+	namespace := "crib-radek-ccip-v2"
 
 	rebootsChaos, err := podFail(c, l, NodeRebootsConfig{
 		Namespace:               namespace,
 		Description:             "reboot nodes",
 		LabelKey:                "app.kubernetes.io/instance",
-		LabelValues:             []string{"janitor"},
-		ExperimentTotalDuration: 1 * time.Minute,
+		LabelValues:             []string{"ccip-1"},
+		ExperimentTotalDuration: 3 * time.Minute,
 	})
 	require.NoError(t, err)
 	latenciesChaos, err := networkDelay(c, l, NodeLatenciesConfig{
 		Namespace:               namespace,
 		Description:             "network issues",
-		Latency:                 300 * time.Millisecond,
+		Latency:                 5000 * time.Millisecond,
+		LatencyDuration:         40 * time.Second,
 		FromLabelKey:            "app.kubernetes.io/instance",
-		FromLabelValues:         []string{"janitor"},
+		FromLabelValues:         []string{"ccip-1"},
 		ToLabelKey:              "app.kubernetes.io/instance",
-		ToLabelValues:           []string{"janitor"},
-		ExperimentTotalDuration: 2 * time.Minute,
-		ExperimentCreateDelay:   1 * time.Minute,
+		ToLabelValues:           []string{"ccip-2", "ccip-3", "ccip-4"},
+		ExperimentTotalDuration: 3 * time.Minute,
+		//ExperimentCreateDelay:   3 * time.Minute,
 	})
 	require.NoError(t, err)
+	//blockchainLatency, err := networkDelay(c, l, NodeLatenciesConfig{
+	//	Namespace:               namespace,
+	//	Description:             "blockchain nodes network issues",
+	//	Latency:                 5000 * time.Millisecond,
+	//	LatencyDuration:         40 * time.Second,
+	//	FromLabelKey:            "app.kubernetes.io/instance",
+	//	FromLabelValues:         []string{"ccip-1", "ccip-2", "ccip-3"},
+	//	ToLabelKey:              "instance",
+	//	ToLabelValues:           []string{"geth-1337"},
+	//	ExperimentTotalDuration: 3 * time.Minute,
+	//	//ExperimentCreateDelay:   3 * time.Minute,
+	//})
+	//require.NoError(t, err)
 
 	_ = rebootsChaos
 	_ = latenciesChaos
+	//_ = blockchainLatency
 
 	chaosList := []havoc.ChaosEntity{
-		rebootsChaos,
-		latenciesChaos,
+		//rebootsChaos,
+		//latenciesChaos,
+		//blockchainLatency,
 	}
 
 	for _, chaos := range chaosList {
@@ -214,6 +230,6 @@ func TestChaos(t *testing.T) {
 		}
 	})
 
-	// your load test comes here !
-	time.Sleep(3 * time.Minute)
+	//// your load test comes here !
+	//time.Sleep(3*time.Minute + 5*time.Second)
 }

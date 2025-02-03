@@ -11,6 +11,7 @@
   - [NodeSet (Local Docker builds)](./framework/nodeset_docker_rebuild.md)
   - [NodeSet Compat Environment](./framework/nodeset_compatibility.md)
   - [Creating your own components](./developing/developing_components.md)
+  - [Asserting Logs](./developing/asserting_logs.md)
   - [Fork Testing](./framework/fork.md)
   - [Quick Contracts Deployment](./framework/quick_deployment.md)
   - [Verifying Contracts](./framework/verify.md)

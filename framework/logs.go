@@ -31,7 +31,8 @@ func getLogDirectories() ([]string, error) {
 	return logDirs, nil
 }
 
-func checkAllNodeLogErrors() error {
+// CheckCLNodeContainerErrors check if any CL node container logs has errors
+func CheckCLNodeContainerErrors() error {
 	dirs, err := getLogDirectories()
 	if err != nil {
 		return err
