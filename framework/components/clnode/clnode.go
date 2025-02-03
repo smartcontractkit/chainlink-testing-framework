@@ -135,7 +135,7 @@ func generateEntryPoint() []string {
 // exposes custom_ports in format "host:docker" or map 1-to-1 if only "host" port is provided
 func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
 	httpPort := fmt.Sprintf("%s/tcp", DefaultHTTPPort)
-	innerDebuggerPort := fmt.Sprintf("%d/tcp", DefaultDebuggerPort)
+	exposedPorts := []string{httpPort}
 	portBindings := nat.PortMap{
 		nat.Port(httpPort): []nat.PortBinding{
 			{
@@ -143,12 +143,14 @@ func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
 				HostPort: strconv.Itoa(in.Node.HTTPPort),
 			},
 		},
-		nat.Port(innerDebuggerPort): []nat.PortBinding{
-			{
-				HostIP:   "0.0.0.0",
-				HostPort: strconv.Itoa(in.Node.DebuggerPort),
-			},
-		},
+	}
+	if os.Getenv("CTF_CLNODE_DLV") == "true" {
+		innerDebuggerPort := fmt.Sprintf("%d/tcp", DefaultDebuggerPort)
+		portBindings[nat.Port(innerDebuggerPort)] = append(portBindings[nat.Port(innerDebuggerPort)], nat.PortBinding{
+			HostIP:   "0.0.0.0",
+			HostPort: strconv.Itoa(in.Node.DebuggerPort),
+		})
+		exposedPorts = append(exposedPorts, strconv.Itoa(DefaultDebuggerPort))
 	}
 	customPorts := make([]string, 0)
 	for _, p := range in.Node.CustomPorts {
@@ -180,7 +182,6 @@ func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
 			}
 		}
 	}
-	exposedPorts := []string{httpPort, strconv.Itoa(DefaultDebuggerPort)}
 	exposedPorts = append(exposedPorts, customPorts...)
 	return exposedPorts, portBindings, nil
 }

@@ -7,6 +7,7 @@ flowchart LR
 	framework
 	click framework href "https://github.com/smartcontractkit/chainlink-testing-framework/framework"
 	framework/examples --> framework
+	framework/examples --> havoc
 	framework/examples --> wasp
 	click framework/examples href "https://github.com/smartcontractkit/chainlink-testing-framework/framework"
 	framework/examples_cll --> framework
