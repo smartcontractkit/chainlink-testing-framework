@@ -205,7 +205,7 @@ func TestPrintTable(t *testing.T) {
 	}
 
 	var buffer bytes.Buffer
-	printTable(&buffer, table)
+	printTable(&buffer, table, false)
 
 	output := buffer.String()
 
@@ -270,7 +270,7 @@ func TestRenderResults(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var buf bytes.Buffer
 
-			RenderResults(&buf, tc.testResults, tc.maxPassRatio, false)
+			RenderResults(&buf, tc.testResults, tc.maxPassRatio, false, false)
 			output := buf.String()
 
 			// Generate the summary data

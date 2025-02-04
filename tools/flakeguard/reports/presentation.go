@@ -92,7 +92,7 @@ func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassR
 	}
 
 	settingsTable := buildSettingsTable(testReport, maxPassRatio)
-	printTable(w, settingsTable)
+	printTable(w, settingsTable, false)
 	fmt.Fprintln(w)
 
 	summary := GenerateSummaryData(testReport.Results, maxPassRatio)
@@ -102,14 +102,20 @@ func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassR
 		fmt.Fprintln(w, "## No Flakes Found :white_check_mark:")
 	}
 
-	RenderResults(w, testReport.Results, maxPassRatio, true)
+	RenderResults(w, testReport.Results, maxPassRatio, true, false)
 
 	if artifactLink != "" {
 		renderArtifactSection(w, artifactName, artifactLink)
 	}
 }
 
-func GeneratePRCommentMarkdown(w io.Writer, testReport *TestReport, maxPassRatio float64, baseBranch, currentBranch, currentCommitSHA, repoURL, actionRunID, artifactName, artifactLink string) {
+// GeneratePRCommentMarkdown generates a markdown summary of the test results for a GitHub PR comment.
+func GeneratePRCommentMarkdown(
+	w io.Writer,
+	testReport *TestReport,
+	maxPassRatio float64,
+	baseBranch, currentBranch, currentCommitSHA, repoURL, actionRunID, artifactName, artifactLink string,
+) {
 	fmt.Fprint(w, "# Flakeguard Summary\n\n")
 
 	if len(testReport.Results) == 0 {
@@ -146,7 +152,7 @@ func GeneratePRCommentMarkdown(w io.Writer, testReport *TestReport, maxPassRatio
 	}
 
 	resultsTable := GenerateFlakyTestsTable(testReport.Results, maxPassRatio, true)
-	renderTestResultsTable(w, resultsTable)
+	renderTestResultsTable(w, resultsTable, true)
 
 	if artifactLink != "" {
 		renderArtifactSection(w, artifactName, artifactLink)
@@ -170,19 +176,24 @@ func buildSettingsTable(testReport *TestReport, maxPassRatio float64) [][]string
 	return rows
 }
 
+// RenderResults renders the test results into a console or markdown format.
+// If in markdown mode, the table results can also be made collapsible.
 func RenderResults(
 	w io.Writer,
 	tests []TestResult,
 	maxPassRatio float64,
 	markdown bool,
+	collapsible bool,
 ) {
 	resultsTable := GenerateFlakyTestsTable(tests, maxPassRatio, markdown)
 	summary := GenerateSummaryData(tests, maxPassRatio)
-	renderSummaryTable(w, summary, markdown)
-	renderTestResultsTable(w, resultsTable)
+	renderSummaryTable(w, summary, markdown, false) // Don't make the summary collapsible
+	renderTestResultsTable(w, resultsTable, collapsible)
 }
 
-func renderSummaryTable(w io.Writer, summary SummaryData, markdown bool) {
+// renderSummaryTable renders a summary table with the given data into a console or markdown format.
+// If in markdown mode, the table can also be made collapsible.
+func renderSummaryTable(w io.Writer, summary SummaryData, markdown bool, collapsible bool) {
 	summaryData := [][]string{
 		{"Category", "Total"},
 		{"Tests", fmt.Sprintf("%d", summary.TotalTests)},
@@ -205,16 +216,16 @@ func renderSummaryTable(w io.Writer, summary SummaryData, markdown bool) {
 			}
 		}
 	}
-	printTable(w, summaryData)
+	printTable(w, summaryData, collapsible && markdown)
 	fmt.Fprintln(w)
 }
 
-func renderTestResultsTable(w io.Writer, table [][]string) {
+func renderTestResultsTable(w io.Writer, table [][]string, collapsible bool) {
 	if len(table) <= 1 {
 		fmt.Fprintln(w, "No tests found under the specified pass ratio threshold.")
 		return
 	}
-	printTable(w, table)
+	printTable(w, table, collapsible)
 }
 
 func renderArtifactSection(w io.Writer, artifactName, artifactLink string) {
@@ -226,15 +237,26 @@ func renderArtifactSection(w io.Writer, artifactName, artifactLink string) {
 	}
 }
 
-func printTable(w io.Writer, table [][]string) {
+// printTable prints a markdown table to the given writer in a pretty format.
+func printTable(w io.Writer, table [][]string, collapsible bool) {
 	colWidths := calculateColumnWidths(table)
 	separator := buildSeparator(colWidths)
+
+	if collapsible {
+		numResults := len(table) - 1
+		fmt.Fprintln(w, "<details>")
+		fmt.Fprintf(w, "<summary>%d Results</summary>\n\n", numResults)
+	}
 
 	for i, row := range table {
 		printRow(w, row, colWidths)
 		if i == 0 {
 			fmt.Fprintln(w, separator)
 		}
+	}
+
+	if collapsible {
+		fmt.Fprintln(w, "</details>")
 	}
 }
 
