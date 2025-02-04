@@ -14,11 +14,11 @@ import (
 )
 
 const (
-	splunkToken              = "test-token"
-	splunkEvent  SplunkEvent = "test"
-	reportID                 = "123"
-	testRunCount             = 15
-	uniqueTests              = 18
+	splunkToken  = "test-token"
+	splunkEvent  = "test"
+	reportID     = "123"
+	testRunCount = 15
+	uniqueTests  = 18
 )
 
 func TestAggregateResultFilesSplunk(t *testing.T) {
