@@ -16,7 +16,7 @@ require (
 	github.com/ethereum/go-ethereum v1.14.11
 	github.com/go-resty/resty/v2 v2.15.3
 	github.com/rs/zerolog v1.33.0
-	github.com/smartcontractkit/chainlink-testing-framework/framework v0.4.7
+	github.com/smartcontractkit/chainlink-testing-framework/framework v0.4.8
 	github.com/smartcontractkit/chainlink-testing-framework/havoc v1.50.2
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.50.10
 	github.com/smartcontractkit/chainlink-testing-framework/wasp v1.50.2

@@ -48,10 +48,10 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 
 	bindPort := fmt.Sprintf("%s/tcp", Port)
 	var containerName string
-	if in.Name != "" {
-		containerName = framework.DefaultTCName(in.Name)
+	if in.Name == "" {
+		containerName = "ns-postgresql"
 	} else {
-		containerName = framework.DefaultTCName("ns-postgresql")
+		containerName = in.Name
 	}
 
 	var sqlCommands []string
@@ -116,7 +116,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 		},
 		WaitingFor: tcwait.ForExec([]string{"psql", "-h", "127.0.0.1",
 			"-U", User, "-p", Port, "-c", "select", "1", "-d", Database}).
-			WithStartupTimeout(15 * time.Second).
+			WithStartupTimeout(40 * time.Second).
 			WithPollInterval(200 * time.Millisecond),
 	}
 	var portToExpose int

@@ -1,5 +1,6 @@
 
 [blockchain_a]
+  docker_cmd_params = ["-b", "1"]
   type = "anvil"
 
 [data_provider]

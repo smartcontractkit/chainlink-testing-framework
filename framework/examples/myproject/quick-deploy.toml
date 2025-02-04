@@ -5,6 +5,7 @@
 [contracts_src]
 
 [nodeset]
+  name = "don"
   nodes = 5
   override_mode = "all"
 

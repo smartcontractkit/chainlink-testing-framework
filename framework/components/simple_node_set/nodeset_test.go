@@ -24,13 +24,13 @@ func checkBasicOutputs(t *testing.T, output *ns.Output) {
 	require.NotNil(t, output.CLNodes)
 	require.Len(t, output.CLNodes, 2)
 	require.Contains(t, output.CLNodes[0].PostgreSQL.Url, "postgresql://chainlink:thispasswordislongenough@127.0.0.1")
-	require.Contains(t, output.CLNodes[0].PostgreSQL.DockerInternalURL, "postgresql://chainlink:thispasswordislongenough@ns-postgresql-")
+	require.Contains(t, output.CLNodes[0].PostgreSQL.DockerInternalURL, "postgresql://chainlink:thispasswordislongenough@don")
 	require.Contains(t, output.CLNodes[0].Node.HostURL, "127.0.0.1")
 	require.Contains(t, output.CLNodes[0].Node.DockerURL, "node")
 	require.Contains(t, output.CLNodes[0].Node.DockerP2PUrl, "node")
 
 	require.Contains(t, output.CLNodes[1].PostgreSQL.Url, "postgresql://chainlink:thispasswordislongenough@127.0.0.1")
-	require.Contains(t, output.CLNodes[1].PostgreSQL.DockerInternalURL, "postgresql://chainlink:thispasswordislongenough@ns-postgresql-")
+	require.Contains(t, output.CLNodes[1].PostgreSQL.DockerInternalURL, "postgresql://chainlink:thispasswordislongenough@don")
 	require.Contains(t, output.CLNodes[1].Node.HostURL, "127.0.0.1")
 	require.Contains(t, output.CLNodes[1].Node.DockerURL, "node")
 	require.Contains(t, output.CLNodes[1].Node.DockerP2PUrl, "node")
@@ -47,6 +47,7 @@ func TestComponentDockerNodeSetSharedDB(t *testing.T) {
 				ChainID: "31337",
 			},
 			nodeSetInput: &ns.Input{
+				Name:         "don-1",
 				Nodes:        2,
 				OverrideMode: "all",
 				DbInput: &postgres.Input{
@@ -74,6 +75,7 @@ func TestComponentDockerNodeSetSharedDB(t *testing.T) {
 				ChainID: "31337",
 			},
 			nodeSetInput: &ns.Input{
+				Name:               "don-2",
 				Nodes:              2,
 				OverrideMode:       "each",
 				HTTPPortRangeStart: 20000,

@@ -1,12 +1,13 @@
 
 [blockchain_a]
-  type = "anvil"
   docker_cmd_params = ["-b", "1"]
+  type = "anvil"
 
 [data_provider]
   port = 9111
 
 [nodeset]
+  name = "don"
   nodes = 5
   override_mode = "all"
 

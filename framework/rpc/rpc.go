@@ -3,8 +3,10 @@ package rpc
 import (
 	"context"
 	"crypto/tls"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"math/rand"
 	"net/http"
 	"os"
@@ -115,12 +117,13 @@ func (m *RPCClient) AnvilTxPoolStatus(params []interface{}) (*TxStatusResponse, 
 
 // AnvilSetMinGasPrice sets min gas price (pre-EIP-1559 anvil is required)
 // API Reference https://book.getfoundry.sh/reference/anvil/
-func (m *RPCClient) AnvilSetMinGasPrice(params []interface{}) error {
+func (m *RPCClient) AnvilSetMinGasPrice(gas uint64) error {
+	hexGasPrice := fmt.Sprintf("0x%x", gas)
 	rInt := rand.Int()
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
 		"method":  "anvil_setMinGasPrice",
-		"params":  params,
+		"params":  []interface{}{hexGasPrice},
 		"id":      rInt,
 	}
 	if _, err := m.client.R().SetBody(payload).Post(m.URL); err != nil {
@@ -129,14 +132,42 @@ func (m *RPCClient) AnvilSetMinGasPrice(params []interface{}) error {
 	return nil
 }
 
+// int64ToUint256 converts an int64 to a 256-bit unsigned integer encoded as a hex string.
+func int64ToUint256(value int64) string {
+	bigValue := big.NewInt(value)
+	if bigValue.Sign() < 0 {
+		panic("value must be non-negative for uint256")
+	}
+	bytes := make([]byte, 32)
+	bigValue.FillBytes(bytes)
+	return "0x" + hex.EncodeToString(bytes)
+}
+
+// int64ToU128 converts an int64 to a 128-bit unsigned integer encoded as a hex string.
+func int64ToU128(value int64) string {
+	bigValue := big.NewInt(value)
+	if bigValue.Sign() < 0 {
+		panic("value must be non-negative for u128")
+	}
+	if bigValue.BitLen() > 128 {
+		panic("value exceeds 128 bits")
+	}
+	bytes := make([]byte, 16)
+	bigValue.FillBytes(bytes)
+	return "0x" + hex.EncodeToString(bytes)
+}
+
 // AnvilSetNextBlockBaseFeePerGas sets next block base fee per gas value
 // API Reference https://book.getfoundry.sh/reference/anvil/
-func (m *RPCClient) AnvilSetNextBlockBaseFeePerGas(params []interface{}) error {
+func (m *RPCClient) AnvilSetNextBlockBaseFeePerGas(gas *big.Int) error {
+	//hexBaseFee := "0x" + strconv.FormatInt(gas, 10)
+	//bi := big.NewInt(gas)
+	//hexBaseFee := fmt.Sprintf("0x%x", bi)
 	rInt := rand.Int()
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
 		"method":  "anvil_setNextBlockBaseFeePerGas",
-		"params":  params,
+		"params":  []interface{}{gas.String()},
 		"id":      rInt,
 	}
 	if _, err := m.client.R().SetBody(payload).Post(m.URL); err != nil {

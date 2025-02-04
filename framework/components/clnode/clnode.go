@@ -244,7 +244,10 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		},
 		ExposedPorts: exposedPorts,
 		Entrypoint:   generateEntryPoint(),
-		WaitingFor:   wait.ForHTTP("/").WithPort(DefaultHTTPPort).WithStartupTimeout(1 * time.Minute).WithPollInterval(200 * time.Millisecond),
+		WaitingFor: wait.ForHTTP("/").
+			WithPort(DefaultHTTPPort).
+			WithStartupTimeout(1 * time.Minute).
+			WithPollInterval(200 * time.Millisecond),
 	}
 	if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {
 		req.HostConfigModifier = func(h *container.HostConfig) {
