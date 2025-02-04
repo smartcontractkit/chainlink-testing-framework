@@ -5,7 +5,7 @@ We offer Docker and Kubernetes boilerplates designed to test the resilience of `
 
 ## Goals
 
-We recommend structuring your tests as a linear suite that applies various chaos experiments and verifies the outcomes using a [load](../../libs/wasp.md) testing suite. Focus on critical user metrics, such as:
+We recommend structuring your tests as a linear suite that applies various chaos experiments and verifies the outcomes using a load testing suite. Focus on critical user metrics, such as:
 
 - The ratio of successful responses to failed responses
 - The nth percentile of response latency
@@ -32,7 +32,7 @@ You can also use [fake](../../framework/components/mocking.md) package to create
 
 Given the complexity of `Kubernetes`, we recommend starting with `Docker` first. Identifying faulty behavior in your services early—such as cascading latency—can prevent more severe issues when scaling up. Addressing these problems at a smaller scale can save significant time and effort later.
 
-Check `NodeSet` + `Blockchain` template [here]().
+Check `NodeSet` + `Blockchain` template [here](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/chaos/chaos_docker_test.go).
 
 ## Kubernetes
 
@@ -44,7 +44,7 @@ We utilize a subset of [ChaosMesh](https://chaos-mesh.org/) experiments that can
 
 - [HTTP faults](https://chaos-mesh.org/docs/simulate-http-chaos-on-kubernetes/)
 
-Check `NodeSet` + `Blockchain` template [here]().
+Check `NodeSet` + `Blockchain` template [here](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/chaos/chaos_k8s_test.go).
 
 ## Blockchain
 
@@ -56,4 +56,4 @@ We also offer a set of blockchain-specific experiments, which typically involve 
 
 - Utilizing developer APIs (e.g., Anvil)
 
-Check [gas]() and [reorg]() examples.
+Check [gas](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/chaos/chaos_blockchain_evm_gas_test.go) and [reorg](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/chaos/chaos_blockchain_evm_reorg_test.go) examples.

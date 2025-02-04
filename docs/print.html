@@ -4561,7 +4561,7 @@ func TestMe(t *testing.T) {
 <h1 id="chaos-testing"><a class="header" href="#chaos-testing">Chaos Testing</a></h1>
 <p>We offer Docker and Kubernetes boilerplates designed to test the resilience of <code>NodeSet</code> and <code>Blockchain</code>, which you can customize and integrate into your pipeline.</p>
 <h2 id="goals"><a class="header" href="#goals">Goals</a></h2>
-<p>We recommend structuring your tests as a linear suite that applies various chaos experiments and verifies the outcomes using a <a href="framework/chaos/../../libs/wasp.html">load</a> testing suite. Focus on critical user metrics, such as:</p>
+<p>We recommend structuring your tests as a linear suite that applies various chaos experiments and verifies the outcomes using a load testing suite. Focus on critical user metrics, such as:</p>
 <ul>
 <li>The ratio of successful responses to failed responses</li>
 <li>The nth percentile of response latency</li>
@@ -4582,7 +4582,7 @@ func TestMe(t *testing.T) {
 <p>Additionally, we offer a <a href="framework/chaos/../../framework/components/resources.html">resources</a> API that allows you to test whether your software can operate effectively in low-resource environments.</p>
 <p>You can also use <a href="framework/chaos/../../framework/components/mocking.html">fake</a> package to create HTTP chaos experiments.</p>
 <p>Given the complexity of <code>Kubernetes</code>, we recommend starting with <code>Docker</code> first. Identifying faulty behavior in your services early—such as cascading latency—can prevent more severe issues when scaling up. Addressing these problems at a smaller scale can save significant time and effort later.</p>
-<p>Check <code>NodeSet</code> + <code>Blockchain</code> template <a href="framework/chaos/">here</a>.</p>
+<p>Check <code>NodeSet</code> + <code>Blockchain</code> template <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/chaos/chaos_docker_test.go">here</a>.</p>
 <h2 id="kubernetes"><a class="header" href="#kubernetes">Kubernetes</a></h2>
 <p>We utilize a subset of <a href="https://chaos-mesh.org/">ChaosMesh</a> experiments that can be safely executed on an isolated node group. These include:</p>
 <ul>
@@ -4596,7 +4596,7 @@ func TestMe(t *testing.T) {
 <p><a href="https://chaos-mesh.org/docs/simulate-http-chaos-on-kubernetes/">HTTP faults</a></p>
 </li>
 </ul>
-<p>Check <code>NodeSet</code> + <code>Blockchain</code> template <a href="framework/chaos/">here</a>.</p>
+<p>Check <code>NodeSet</code> + <code>Blockchain</code> template <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/chaos/chaos_k8s_test.go">here</a>.</p>
 <h2 id="blockchain"><a class="header" href="#blockchain">Blockchain</a></h2>
 <p>We also offer a set of blockchain-specific experiments, which typically involve API calls to blockchain simulators to execute certain actions. These include:</p>
 <ul>
@@ -4610,7 +4610,7 @@ func TestMe(t *testing.T) {
 <p>Utilizing developer APIs (e.g., Anvil)</p>
 </li>
 </ul>
-<p>Check <a href="framework/chaos/">gas</a> and <a href="framework/chaos/">reorg</a> examples.</p>
+<p>Check <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/chaos/chaos_blockchain_evm_gas_test.go">gas</a> and <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/chaos/chaos_blockchain_evm_reorg_test.go">reorg</a> examples.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -16140,7 +16140,7 @@ use <code>GetTestContainersGoTestLogger(*testing.T)</code> instead.</p>
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>76f0f139</code></li>
+<li>Commit: <code>34f9bdf9</code></li>
 </ul>
 
                     </main>
