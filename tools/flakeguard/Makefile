@@ -35,7 +35,11 @@ example:
       --repo-url "https://github.com/smartcontractkit/chainlink-testing-framework" \
       --base-sha "abc" \
       --head-sha "xyz" \
-      --github-workflow-name "example"
+      --github-workflow-name "ExampleWorkflowName" \
+	  --github-workflow-run-url "https://github.com/example/repo/actions/runs/1" \
+	  --splunk-url "https://splunk.example.com" \
+	  --splunk-token "splunk-token" \
+	  --splunk-event "example-splunk-event"
 
 .PHONY: example_flaky_panic
 example_flaky_panic:
@@ -50,7 +54,11 @@ example_flaky_panic:
 	  --repo-url "https://github.com/smartcontractkit/chainlink-testing-framework" \
       --base-sha "abc" \
       --head-sha "xyz" \
-      --github-workflow-name "example"
+      --github-workflow-name "ExampleWorkflowName" \
+	  --github-workflow-run-url "https://github.com/example/repo/actions/runs/1" \
+	  --splunk-url "https://splunk.example.com" \
+	  --splunk-token "splunk-token" \
+	  --splunk-event "example-splunk-event"
 
 .PHONY: example_timeout
 example_timeout:
@@ -65,4 +73,8 @@ example_timeout:
 	  --repo-url "https://github.com/smartcontractkit/chainlink-testing-framework" \
       --base-sha "abc" \
       --head-sha "xyz" \
-      --github-workflow-name "example"
+      --github-workflow-name "ExampleWorkflowName" \
+	  --github-workflow-run-url "https://github.com/example/repo/actions/runs/1" \
+	  --splunk-url "https://splunk.example.com" \
+	  --splunk-token "splunk-token" \
+	  --splunk-event "example-splunk-event"

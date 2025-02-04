@@ -49,7 +49,12 @@ var AggregateResultsCmd = &cobra.Command{
 		aggregatedReport, err := reports.LoadAndAggregate(
 			resultsPath,
 			reports.WithReportID(reportID),
-			reports.WithSplunk(splunkURL, splunkToken, reports.SplunkEvent(splunkEvent)),
+			reports.WithSplunk(splunkURL, splunkToken, splunkEvent),
+			reports.WithBaseSha(baseSHA),
+			reports.WithHeadSha(headSHA),
+			reports.WithRepoURL(repoURL),
+			reports.WithGitHubWorkflowName(githubWorkflowName),
+			reports.WithGitHubWorkflowRunURL(githubWorkflowRunURL),
 		)
 		if err != nil {
 			s.Stop()
@@ -58,13 +63,6 @@ var AggregateResultsCmd = &cobra.Command{
 		}
 		s.Stop()
 		fmt.Println()
-
-		// Add metadata to the aggregated report
-		aggregatedReport.HeadSHA = headSHA
-		aggregatedReport.BaseSHA = baseSHA
-		aggregatedReport.RepoURL = repoURL
-		aggregatedReport.GitHubWorkflowName = githubWorkflowName
-		aggregatedReport.GitHubWorkflowRunURL = githubWorkflowRunURL
 
 		if err != nil {
 			s.Stop()

@@ -39,10 +39,15 @@ func (OSFileSystem) WriteFile(filename string, data []byte, perm os.FileMode) er
 }
 
 type aggregateOptions struct {
-	reportID    string
-	splunkURL   string
-	splunkToken string
-	splunkEvent SplunkEvent
+	reportID             string
+	splunkURL            string
+	splunkToken          string
+	splunkEvent          string
+	baseSha              string
+	headSha              string
+	repoURL              string
+	gitHubWorkflowName   string
+	gitHubWorkflowRunURL string
 }
 
 // AggregateOption is a functional option for configuring the aggregation process.
@@ -56,11 +61,46 @@ func WithReportID(reportID string) AggregateOption {
 }
 
 // WithSplunk also sends the aggregation to a Splunk instance as events.
-func WithSplunk(url, token string, event SplunkEvent) AggregateOption {
+func WithSplunk(url, token string, event string) AggregateOption {
 	return func(opts *aggregateOptions) {
 		opts.splunkURL = url
 		opts.splunkToken = token
 		opts.splunkEvent = event
+	}
+}
+
+// WithHeadSha sets the head SHA for the aggregated report.
+func WithHeadSha(headSha string) AggregateOption {
+	return func(opts *aggregateOptions) {
+		opts.headSha = headSha
+	}
+}
+
+// WithBaseSha sets the base SHA for the aggregated report.
+func WithBaseSha(baseSha string) AggregateOption {
+	return func(opts *aggregateOptions) {
+		opts.baseSha = baseSha
+	}
+}
+
+// WithRepoURL sets the repository URL for the aggregated report.
+func WithRepoURL(repoURL string) AggregateOption {
+	return func(opts *aggregateOptions) {
+		opts.repoURL = repoURL
+	}
+}
+
+// WithGitHubWorkflowName sets the GitHub workflow name for the aggregated report.
+func WithGitHubWorkflowName(githubWorkflowName string) AggregateOption {
+	return func(opts *aggregateOptions) {
+		opts.gitHubWorkflowName = githubWorkflowName
+	}
+}
+
+// WithGitHubWorkflowRunURL sets the GitHub workflow run URL for the aggregated report.
+func WithGitHubWorkflowRunURL(githubWorkflowRunURL string) AggregateOption {
+	return func(opts *aggregateOptions) {
+		opts.gitHubWorkflowRunURL = githubWorkflowRunURL
 	}
 }
 
@@ -115,6 +155,7 @@ func LoadAndAggregate(resultsPath string, options ...AggregateOption) (*TestRepo
 	if err != nil {
 		return nil, fmt.Errorf("error aggregating reports: %w", err)
 	}
+
 	return aggregatedReport, nil
 }
 
@@ -318,14 +359,20 @@ func SaveReport(fs FileSystem, filePath string, report TestReport) error {
 // aggregate aggregates multiple TestReport objects into a single TestReport as they are received
 func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggregateOptions) (*TestReport, error) {
 	var (
+		fullReport = &TestReport{
+			ID:                   opts.reportID,
+			BaseSHA:              opts.baseSha,
+			HeadSHA:              opts.headSha,
+			RepoURL:              opts.repoURL,
+			GitHubWorkflowName:   opts.gitHubWorkflowName,
+			GitHubWorkflowRunURL: opts.gitHubWorkflowRunURL,
+		}
 		testMap       = make(map[string]TestResult)
-		fullReport    = &TestReport{}
 		excludedTests = map[string]struct{}{}
 		selectedTests = map[string]struct{}{}
 		sendToSplunk  = opts.splunkURL != ""
 	)
 
-	fullReport.ID = opts.reportID
 	for report := range reportChan {
 		if fullReport.GoProject == "" {
 			fullReport.GoProject = report.GoProject
@@ -388,23 +435,25 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 // sendDataToSplunk sends a truncated TestReport and each individual TestResults to Splunk as events
 func sendDataToSplunk(opts *aggregateOptions, report TestReport, results ...TestResult) error {
 	start := time.Now()
+	// Dry-run mode for example runs
+	isExampleRun := strings.Contains(opts.splunkURL, "splunk.example.com")
+
 	client := resty.New().
 		SetBaseURL(opts.splunkURL).
 		SetAuthScheme("Splunk").
 		SetAuthToken(opts.splunkToken).
 		SetHeader("Content-Type", "application/json").
 		SetLogger(ZerologRestyLogger{})
-	client.AddRetryAfterErrorCondition().SetRetryCount(5).SetTimeout(time.Second * 10)
 
 	log.Debug().Str("report id", report.ID).Int("results", len(results)).Msg("Sending aggregated data to Splunk")
 
-	// Send results
 	var (
 		splunkErrs            = []error{}
 		resultsBatchSize      = 10
 		resultsBatch          = []SplunkTestResult{}
 		successfulResultsSent = 0
 	)
+
 	for resultCount, result := range results {
 		resultsBatch = append(resultsBatch, SplunkTestResult{
 			Event: SplunkTestResultEvent{
@@ -415,53 +464,70 @@ func sendDataToSplunk(opts *aggregateOptions, report TestReport, results ...Test
 			SourceType: SplunkSourceType,
 			Index:      SplunkIndex,
 		})
-		// Send results in batches so Splunk doesn't get mad
+
 		if len(resultsBatch) >= resultsBatchSize || resultCount == len(results)-1 {
 			batchData, testNames, err := batchSplunkResults(resultsBatch)
 			if err != nil {
 				return fmt.Errorf("error batching results: %w", err)
 			}
 
-			resp, err := client.R().
-				SetBody(batchData.String()).
-				Post("")
-			if err != nil {
-				splunkErrs = append(splunkErrs,
-					fmt.Errorf("error sending flakeguard results for [%s] to Splunk: %w", strings.Join(testNames, ", "), err),
-				)
-			}
-			if resp.IsError() {
-				splunkErrs = append(splunkErrs,
-					fmt.Errorf("error sending flakeguard result for [%s] to Splunk: %s", strings.Join(testNames, ", "), resp.String()),
-				)
-			}
-			if err == nil && !resp.IsError() {
-				successfulResultsSent += len(resultsBatch)
+			if isExampleRun {
+				log.Debug().Strs("tests", testNames).Msg("Example Run. Would send the below results to Splunk")
+				for _, result := range resultsBatch {
+					jsonResult, err := json.Marshal(result)
+					if err != nil {
+						return fmt.Errorf("error marshaling result for '%s': %w", result.Event.Data.TestName, err)
+					}
+					fmt.Println(string(jsonResult))
+				}
+			} else {
+				resp, err := client.R().SetBody(batchData.String()).Post("")
+				if err != nil {
+					splunkErrs = append(splunkErrs,
+						fmt.Errorf("error sending results for [%s] to Splunk: %w", strings.Join(testNames, ", "), err),
+					)
+				}
+				if resp.IsError() {
+					splunkErrs = append(splunkErrs,
+						fmt.Errorf("error sending result for [%s] to Splunk: %s", strings.Join(testNames, ", "), resp.String()),
+					)
+				}
+				if err == nil && !resp.IsError() {
+					successfulResultsSent += len(resultsBatch)
+				}
 			}
 			resultsBatch = []SplunkTestResult{}
 		}
 	}
 
-	// Check if errors occurred while uploading results and send report with incomplete flag
-	resp, err := client.R().
-		SetBody(SplunkTestReport{
-			Event: SplunkTestReportEvent{
-				Event:      opts.splunkEvent,
-				Type:       Report,
-				Data:       report,
-				Incomplete: len(splunkErrs) > 0,
-			},
-			SourceType: SplunkSourceType,
-			Index:      SplunkIndex,
-		}).
-		Post("")
+	reportData := SplunkTestReport{
+		Event: SplunkTestReportEvent{
+			Event:      opts.splunkEvent,
+			Type:       Report,
+			Data:       report,
+			Incomplete: len(splunkErrs) > 0,
+		},
+		SourceType: SplunkSourceType,
+		Index:      SplunkIndex,
+	}
 
-	if err != nil {
-		splunkErrs = append(splunkErrs, fmt.Errorf("error sending flakeguard report '%s' to Splunk: %w", report.ID, err))
+	if isExampleRun {
+		log.Info().Msg("Example Run. Would send the below report to Splunk")
+		jsonReport, err := json.Marshal(reportData)
+		if err != nil {
+			return fmt.Errorf("error marshaling report: %w", err)
+		}
+		fmt.Println(string(jsonReport))
+	} else {
+		resp, err := client.R().SetBody(reportData).Post("")
+		if err != nil {
+			splunkErrs = append(splunkErrs, fmt.Errorf("error sending report '%s' to Splunk: %w", report.ID, err))
+		}
+		if resp.IsError() {
+			splunkErrs = append(splunkErrs, fmt.Errorf("error sending report '%s' to Splunk: %s", report.ID, resp.String()))
+		}
 	}
-	if resp.IsError() {
-		splunkErrs = append(splunkErrs, fmt.Errorf("error sending flakeguard report '%s' to Splunk: %s", report.ID, resp.String()))
-	}
+
 	if len(splunkErrs) > 0 {
 		log.Error().
 			Int("successfully sent", successfulResultsSent).
@@ -476,6 +542,7 @@ func sendDataToSplunk(opts *aggregateOptions, report TestReport, results ...Test
 			Str("duration", time.Since(start).String()).
 			Msg("All results sent successfully")
 	}
+
 	return errors.Join(splunkErrs...)
 }
 

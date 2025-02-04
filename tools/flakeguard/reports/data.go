@@ -64,19 +64,11 @@ type SummaryData struct {
 	MaxPassRatio   float64 `json:"max_pass_ratio"`
 }
 
-// SplunkEvent represents a customized splunk event string that helps us distinguish what
-// triggered the test to run. This is a custom field, different from the Splunk event field.
-type SplunkEvent string
-
 // SplunkType represents what type of data is being sent to Splunk, e.g. a report or a result.
 // This is a custom field to help us distinguish what kind of data we're sending.
 type SplunkType string
 
 const (
-	Manual      SplunkEvent = "manual"
-	Scheduled   SplunkEvent = "scheduled"
-	PullRequest SplunkEvent = "pull_request"
-
 	Report SplunkType = "report"
 	Result SplunkType = "result"
 
@@ -95,9 +87,9 @@ type SplunkTestReport struct {
 
 // SplunkTestReportEvent contains the actual meat of the Splunk test report event
 type SplunkTestReportEvent struct {
-	Event SplunkEvent `json:"event"`
-	Type  SplunkType  `json:"type"`
-	Data  TestReport  `json:"data"`
+	Event string     `json:"event"`
+	Type  SplunkType `json:"type"`
+	Data  TestReport `json:"data"`
 	// Incomplete indicates that there were issues uploading test results and the report is incomplete
 	Incomplete bool `json:"incomplete"`
 }
@@ -111,9 +103,9 @@ type SplunkTestResult struct {
 
 // SplunkTestResultEvent contains the actual meat of the Splunk test result event
 type SplunkTestResultEvent struct {
-	Event SplunkEvent `json:"event"`
-	Type  SplunkType  `json:"type"`
-	Data  TestResult  `json:"data"`
+	Event string     `json:"event"`
+	Type  SplunkType `json:"type"`
+	Data  TestResult `json:"data"`
 }
 
 // Data Processing Functions
