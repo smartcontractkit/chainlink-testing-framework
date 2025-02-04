@@ -14,7 +14,7 @@ func removeTestContainers() error {
 	cmd := exec.Command("bash", "-c", `
 		docker ps -aq --filter "label=framework=ctf" | xargs -r docker rm -f && \
 		docker network ls --filter "label=framework=ctf" -q | xargs -r docker network rm && \
-		docker volume rm postgresql_data || true
+		docker volume ls -q | xargs -r docker volume rm || true
 	`)
 	framework.L.Debug().Msg("Running command")
 	if framework.L.GetLevel() == zerolog.DebugLevel {

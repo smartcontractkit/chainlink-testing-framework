@@ -181,7 +181,7 @@ func TestRPCAPI(t *testing.T) {
 		printGasPrices(t, client)
 
 		anvilClient := New(ac.URL, nil)
-		err = anvilClient.AnvilSetNextBlockBaseFeePerGas([]interface{}{"10000000000"})
+		err = anvilClient.AnvilSetNextBlockBaseFeePerGas(big.NewInt(10000000000))
 		require.NoError(t, err)
 		printGasPrices(t, client)
 		gasPrice, err := client.SuggestGasPrice(context.Background())
@@ -191,7 +191,7 @@ func TestRPCAPI(t *testing.T) {
 		_, err = sendTestTransaction(t, client, big.NewInt(1e9), big.NewInt(1e9), true)
 		require.Error(t, err)
 
-		err = anvilClient.AnvilSetNextBlockBaseFeePerGas([]interface{}{"1"})
+		err = anvilClient.AnvilSetNextBlockBaseFeePerGas(big.NewInt(1))
 		require.NoError(t, err)
 
 		_, err = sendTestTransaction(t, client, big.NewInt(1e9), big.NewInt(1e9), true)

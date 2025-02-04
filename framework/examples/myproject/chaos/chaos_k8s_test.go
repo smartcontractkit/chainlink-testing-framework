@@ -1,4 +1,4 @@
-package examples
+package chaos
 
 import (
 	"context"
@@ -252,32 +252,32 @@ func TestK8sChaos(t *testing.T) {
 		ExperimentTotalDuration: experimentDuration,
 	})
 	require.NoError(t, err)
-	//latenciesChaos, err := networkDelay(c, l, NodeLatenciesConfig{
-	//	Namespace:               namespace,
-	//	Description:             "network issues",
-	//	Latency:                 5000 * time.Millisecond,
-	//	LatencyDuration:         40 * time.Second,
-	//	FromLabelKey:            "app.kubernetes.io/instance",
-	//	FromLabelValues:         []string{"ccip-1"},
-	//	ToLabelKey:              "app.kubernetes.io/instance",
-	//	ToLabelValues:           []string{"ccip-2", "ccip-3", "ccip-4"},
-	//	ExperimentTotalDuration: 3 * time.Minute,
-	//	ExperimentCreateDelay:   3 * time.Minute,
-	//})
-	//require.NoError(t, err)
-	//blockchainLatency, err := networkDelay(c, l, NodeLatenciesConfig{
-	//	Namespace:               namespace,
-	//	Description:             "blockchain nodes network issues",
-	//	Latency:                 5000 * time.Millisecond,
-	//	LatencyDuration:         40 * time.Second,
-	//	FromLabelKey:            "app.kubernetes.io/instance",
-	//	FromLabelValues:         []string{"ccip-1", "ccip-2", "ccip-3"},
-	//	ToLabelKey:              "instance",
-	//	ToLabelValues:           []string{"geth-1337"},
-	//	ExperimentTotalDuration: 3 * time.Minute,
-	//	//ExperimentCreateDelay:   3 * time.Minute,
-	//})
-	//require.NoError(t, err)
+	latenciesChaos, err := networkDelay(c, l, NodeLatenciesConfig{
+		Namespace:               namespace,
+		Description:             "network issues",
+		Latency:                 5000 * time.Millisecond,
+		InjectionDuration:       40 * time.Second,
+		FromLabelKey:            "app.kubernetes.io/instance",
+		FromLabelValues:         []string{"ccip-1"},
+		ToLabelKey:              "app.kubernetes.io/instance",
+		ToLabelValues:           []string{"ccip-2", "ccip-3", "ccip-4"},
+		ExperimentTotalDuration: 3 * time.Minute,
+		ExperimentCreateDelay:   3 * time.Minute,
+	})
+	require.NoError(t, err)
+	blockchainLatency, err := networkDelay(c, l, NodeLatenciesConfig{
+		Namespace:               namespace,
+		Description:             "blockchain nodes network issues",
+		Latency:                 5000 * time.Millisecond,
+		InjectionDuration:       40 * time.Second,
+		FromLabelKey:            "app.kubernetes.io/instance",
+		FromLabelValues:         []string{"ccip-1", "ccip-2", "ccip-3"},
+		ToLabelKey:              "instance",
+		ToLabelValues:           []string{"geth-1337"},
+		ExperimentTotalDuration: 3 * time.Minute,
+		//ExperimentCreateDelay:   3 * time.Minute,
+	})
+	require.NoError(t, err)
 	podCPUStress, err := podStressCPU(c, l, NodeCPUStressConfig{
 		Namespace:               namespace,
 		Description:             "CPU hog",
@@ -290,14 +290,14 @@ func TestK8sChaos(t *testing.T) {
 	require.NoError(t, err)
 
 	_ = rebootsChaos
-	//_ = latenciesChaos
-	//_ = blockchainLatency
+	_ = latenciesChaos
+	_ = blockchainLatency
 	_ = podCPUStress
 
 	chaosList := []havoc.ChaosEntity{
-		//rebootsChaos,
-		//latenciesChaos,
-		//blockchainLatency,
+		rebootsChaos,
+		latenciesChaos,
+		blockchainLatency,
 		podCPUStress,
 	}
 
@@ -314,6 +314,7 @@ func TestK8sChaos(t *testing.T) {
 		}
 	})
 
-	// your load test comes here !
+	// Start WASP load test here, apply average load profile that you expect in production!
+	// Configure timeouts and validate all the test cases until the test ends
 	time.Sleep(3*time.Minute + 5*time.Second)
 }

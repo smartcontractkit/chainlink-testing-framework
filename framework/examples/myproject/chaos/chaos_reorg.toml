@@ -1,6 +1,13 @@
 
 [blockchain_a]
-  type = "anvil"
+  chain_id = "1337"
+  port = "8545"
+  type = "geth"
+
+[blockchain_b]
+  chain_id = "2337"
+  port = "8555"
+  type = "geth"
 
 [data_provider]
   port = 9111

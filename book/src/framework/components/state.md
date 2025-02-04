@@ -44,6 +44,7 @@ One node set is enough for any kind of testing, if you need more nodes consider 
 You can also define a custom set of ports for any node.
 ```toml
 [nodeset]
+  name = "don"
   nodes = 5
   override_mode = "each"
   

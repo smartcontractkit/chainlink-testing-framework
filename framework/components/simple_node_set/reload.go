@@ -17,7 +17,7 @@ func UpgradeNodeSet(t *testing.T, in *Input, bc *blockchain.Output, wait time.Du
 	if _, err := framework.SaveContainerLogs(uniq); err != nil {
 		return nil, err
 	}
-	_, err := chaos.ExecPumba("rm --volumes=false re2:^node.*|ns-postgresql.*", wait)
+	_, err := chaos.ExecPumba(fmt.Sprintf("rm --volumes=false re2:^%s-node.*|%s-ns-postgresql.*", in.Name, in.Name), wait)
 	if err != nil {
 		return nil, err
 	}
