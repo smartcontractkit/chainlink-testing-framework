@@ -43,6 +43,7 @@ type aggregateOptions struct {
 	splunkURL            string
 	splunkToken          string
 	splunkEvent          string
+	branchName           string
 	baseSha              string
 	headSha              string
 	repoURL              string
@@ -66,6 +67,12 @@ func WithSplunk(url, token string, event string) AggregateOption {
 		opts.splunkURL = url
 		opts.splunkToken = token
 		opts.splunkEvent = event
+	}
+}
+
+func WithBranchName(branchName string) AggregateOption {
+	return func(opts *aggregateOptions) {
+		opts.branchName = branchName
 	}
 }
 
@@ -207,6 +214,10 @@ func decodeField(decoder *json.Decoder, report *TestReport) error {
 	case "go_project":
 		if err := decoder.Decode(&report.GoProject); err != nil {
 			return fmt.Errorf("error decoding GoProject: %w", err)
+		}
+	case "branch_name":
+		if err := decoder.Decode(&report.BranchName); err != nil {
+			return fmt.Errorf("error decoding BranchName: %w", err)
 		}
 	case "head_sha":
 		if err := decoder.Decode(&report.HeadSHA); err != nil {
@@ -361,6 +372,7 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 	var (
 		fullReport = &TestReport{
 			ID:                   opts.reportID,
+			BranchName:           opts.branchName,
 			BaseSHA:              opts.baseSha,
 			HeadSHA:              opts.headSha,
 			RepoURL:              opts.repoURL,

@@ -27,6 +27,7 @@ var AggregateResultsCmd = &cobra.Command{
 		codeOwnersPath, _ := cmd.Flags().GetString("codeowners-path")
 		repoPath, _ := cmd.Flags().GetString("repo-path")
 		repoURL, _ := cmd.Flags().GetString("repo-url")
+		branchName, _ := cmd.Flags().GetString("branch-name")
 		headSHA, _ := cmd.Flags().GetString("head-sha")
 		baseSHA, _ := cmd.Flags().GetString("base-sha")
 		githubWorkflowName, _ := cmd.Flags().GetString("github-workflow-name")
@@ -52,6 +53,7 @@ var AggregateResultsCmd = &cobra.Command{
 			resultsPath,
 			reports.WithReportID(reportID),
 			reports.WithSplunk(splunkURL, splunkToken, splunkEvent),
+			reports.WithBranchName(branchName),
 			reports.WithBaseSha(baseSHA),
 			reports.WithHeadSha(headSHA),
 			reports.WithRepoURL(repoURL),
@@ -199,6 +201,7 @@ func init() {
 	AggregateResultsCmd.Flags().StringP("codeowners-path", "", "", "Path to the CODEOWNERS file")
 	AggregateResultsCmd.Flags().StringP("repo-path", "", ".", "The path to the root of the repository/project")
 	AggregateResultsCmd.Flags().String("repo-url", "", "The repository URL")
+	AggregateResultsCmd.Flags().String("branch-name", "", "Branch name for the test report")
 	AggregateResultsCmd.Flags().String("head-sha", "", "Head commit SHA for the test report")
 	AggregateResultsCmd.Flags().String("base-sha", "", "Base commit SHA for the test report")
 	AggregateResultsCmd.Flags().String("github-workflow-name", "", "GitHub workflow name for the test report")
