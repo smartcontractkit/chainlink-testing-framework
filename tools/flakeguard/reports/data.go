@@ -11,6 +11,7 @@ import (
 type TestReport struct {
 	ID                   string       `json:"id"`
 	GoProject            string       `json:"go_project"`
+	BranchName           string       `json:"branch_name,omitempty"`
 	HeadSHA              string       `json:"head_sha,omitempty"`
 	BaseSHA              string       `json:"base_sha,omitempty"`
 	RepoURL              string       `json:"repo_url,omitempty"`
