@@ -13,6 +13,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	// FlakyTestsExitCode indicates that Flakeguard ran correctly and was able to identify flaky tests
+	FlakyTestsExitCode = 1
+	// ErrorExitCode indicates that Flakeguard ran into an error and was not able to complete operation
+	ErrorExitCode = 2
+)
+
 var RunTestsCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run tests to check if they are flaky",
@@ -35,19 +42,22 @@ var RunTestsCmd = &cobra.Command{
 
 		// Check if project dependencies are correctly set up
 		if err := checkDependencies(projectPath); err != nil {
-			log.Fatal().Err(err).Msg("Error checking project dependencies")
+			log.Error().Err(err).Msg("Error checking project dependencies")
+			os.Exit(ErrorExitCode)
 		}
 
 		// Determine test packages
 		var testPackages []string
 		if testPackagesJson != "" {
 			if err := json.Unmarshal([]byte(testPackagesJson), &testPackages); err != nil {
-				log.Fatal().Err(err).Msg("Error decoding test packages JSON")
+				log.Error().Err(err).Msg("Error decoding test packages JSON")
+				os.Exit(ErrorExitCode)
 			}
 		} else if len(testPackagesArg) > 0 {
 			testPackages = testPackagesArg
 		} else {
-			log.Fatal().Msg("Error: must specify either --test-packages-json or --test-packages")
+			log.Error().Msg("Error: must specify either --test-packages-json or --test-packages")
+			os.Exit(ErrorExitCode)
 		}
 
 		// Initialize the runner
@@ -69,17 +79,20 @@ var RunTestsCmd = &cobra.Command{
 		// Run the tests
 		testReport, err := testRunner.RunTests()
 		if err != nil {
-			log.Fatal().Err(err).Msg("Error running tests")
+			log.Error().Err(err).Msg("Error running tests")
+			os.Exit(ErrorExitCode)
 		}
 
 		// Save the test results in JSON format
 		if outputPath != "" && len(testReport.Results) > 0 {
 			jsonData, err := json.MarshalIndent(testReport, "", "  ")
 			if err != nil {
-				log.Fatal().Err(err).Msg("Error marshaling test results to JSON")
+				log.Error().Err(err).Msg("Error marshaling test results to JSON")
+				os.Exit(ErrorExitCode)
 			}
 			if err := os.WriteFile(outputPath, jsonData, 0600); err != nil {
-				log.Fatal().Err(err).Msg("Error writing test results to file")
+				log.Error().Err(err).Msg("Error writing test results to file")
+				os.Exit(ErrorExitCode)
 			}
 			log.Info().Str("path", outputPath).Msg("Test results saved")
 		}
@@ -99,7 +112,7 @@ var RunTestsCmd = &cobra.Command{
 			fmt.Printf("\nFlakeguard Summary\n")
 			reports.RenderResults(os.Stdout, flakyTests, maxPassRatio, false, false)
 			// Exit with error code if there are flaky tests
-			os.Exit(1)
+			os.Exit(FlakyTestsExitCode)
 		}
 	},
 }

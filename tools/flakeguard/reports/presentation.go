@@ -176,6 +176,13 @@ func buildSettingsTable(testReport *TestReport, maxPassRatio float64) [][]string
 	return rows
 }
 
+func RenderError(
+	w io.Writer,
+	err error,
+) {
+	fmt.Fprintln(w, ":x: Error Running Flakeguard :x:")
+}
+
 // RenderResults renders the test results into a console or markdown format.
 // If in markdown mode, the table results can also be made collapsible.
 func RenderResults(

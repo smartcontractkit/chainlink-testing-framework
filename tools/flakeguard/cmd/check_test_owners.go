@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"os"
 	"path/filepath"
 
 	"github.com/rs/zerolog/log"
@@ -18,19 +19,21 @@ var (
 var CheckTestOwnersCmd = &cobra.Command{
 	Use:   "check-test-owners",
 	Short: "Check which tests in the project do not have code owners",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		projectPath, _ := cmd.Flags().GetString("project-path")
 
 		// Scan project for test functions
 		testFileMap, err := reports.ScanTestFiles(projectPath)
 		if err != nil {
-			log.Fatal().Err(err).Msg("Error scanning test files")
+			log.Error().Err(err).Msg("Error scanning test files")
+			os.Exit(ErrorExitCode)
 		}
 
 		// Parse CODEOWNERS file
 		codeOwnerPatterns, err := codeowners.Parse(codeownersPath)
 		if err != nil {
-			log.Fatal().Err(err).Msg("Error parsing CODEOWNERS file")
+			log.Error().Err(err).Msg("Error parsing CODEOWNERS file")
+			os.Exit(ErrorExitCode)
 		}
 
 		// Check for tests without code owners
@@ -73,8 +76,6 @@ var CheckTestOwnersCmd = &cobra.Command{
 				log.Debug().Msg("All Test functions have code owners!")
 			}
 		}
-
-		return nil
 	},
 }
 
