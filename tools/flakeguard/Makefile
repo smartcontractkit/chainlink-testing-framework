@@ -33,6 +33,7 @@ example:
       --results-path ./example_results \
       --output-path ./example_results \
       --repo-url "https://github.com/smartcontractkit/chainlink-testing-framework" \
+	  --branch-name "example-branch" \
       --base-sha "abc" \
       --head-sha "xyz" \
       --github-workflow-name "ExampleWorkflowName" \
@@ -52,6 +53,7 @@ example_flaky_panic:
 	  --results-path ./example_results \
 	  --output-path ./example_results \
 	  --repo-url "https://github.com/smartcontractkit/chainlink-testing-framework" \
+	  --branch-name "example-branch" \
       --base-sha "abc" \
       --head-sha "xyz" \
       --github-workflow-name "ExampleWorkflowName" \
@@ -71,6 +73,7 @@ example_timeout:
 	  --results-path ./example_results \
 	  --output-path ./example_results \
 	  --repo-url "https://github.com/smartcontractkit/chainlink-testing-framework" \
+	  --branch-name "example-branch" \
       --base-sha "abc" \
       --head-sha "xyz" \
       --github-workflow-name "ExampleWorkflowName" \
