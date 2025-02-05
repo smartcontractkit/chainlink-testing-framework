@@ -497,7 +497,7 @@ func TestAttributeRaceToTest(t *testing.T) {
 }
 
 // TODO: Running the failing test here fools tools like gotestfmt into thinking we actually ran a failing test
-// as the output gets piped out to the console. This is a minor annoyance we should fix.
+// as the output gets piped out to the console. This a confusing annoyance that I'd like to fix, but it's not crucial.p\\\\\\\\\\-
 func TestFailedOutputs(t *testing.T) {
 	t.Parallel()
 

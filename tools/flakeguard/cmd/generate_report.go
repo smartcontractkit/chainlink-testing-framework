@@ -34,7 +34,7 @@ type SummaryData struct {
 var GenerateReportCmd = &cobra.Command{
 	Use:   "generate-report",
 	Short: "Generate reports from an aggregated test results",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		fs := reports.OSFileSystem{}
 
 		// Get flag values
@@ -50,7 +50,8 @@ var GenerateReportCmd = &cobra.Command{
 		// Get the GitHub token from environment variable
 		githubToken := os.Getenv("GITHUB_TOKEN")
 		if githubToken == "" {
-			return fmt.Errorf("GITHUB_TOKEN environment variable is not set")
+			log.Error().Msg("GITHUB_TOKEN environment variable is not set")
+			os.Exit(ErrorExitCode)
 		}
 
 		// Load the aggregated report
@@ -62,32 +63,40 @@ var GenerateReportCmd = &cobra.Command{
 		reportFile, err := os.Open(aggregatedResultsPath)
 		if err != nil {
 			s.Stop()
-			return fmt.Errorf("error opening aggregated test report: %w", err)
+			fmt.Println()
+			log.Error().Err(err).Msg("Error opening aggregated test report")
+			os.Exit(ErrorExitCode)
 		}
 		defer reportFile.Close()
 
 		if err := json.NewDecoder(reportFile).Decode(aggregatedReport); err != nil {
 			s.Stop()
-			return fmt.Errorf("error decoding aggregated test report: %w", err)
+			fmt.Println()
+			log.Error().Err(err).Msg("Error decoding aggregated test report")
+			os.Exit(ErrorExitCode)
 		}
 		s.Stop()
+		fmt.Println()
 		log.Info().Msg("Successfully loaded aggregated test report")
 
 		// Load the summary data to check for failed tests
 		var summaryData SummaryData
 
 		if summaryPath == "" {
-			return fmt.Errorf("--summary-path is required")
+			log.Error().Msg("Summary path is required")
+			os.Exit(ErrorExitCode)
 		}
 
 		summaryFile, err := os.Open(summaryPath)
 		if err != nil {
-			return fmt.Errorf("error opening summary JSON file: %w", err)
+			log.Error().Err(err).Msg("Error opening summary JSON file")
+			os.Exit(ErrorExitCode)
 		}
 		defer summaryFile.Close()
 
 		if err := json.NewDecoder(summaryFile).Decode(&summaryData); err != nil {
-			return fmt.Errorf("error decoding summary JSON file: %w", err)
+			log.Error().Err(err).Msg("Error decoding summary JSON file")
+			os.Exit(ErrorExitCode)
 		}
 
 		// Check if there are failed tests
@@ -98,7 +107,8 @@ var GenerateReportCmd = &cobra.Command{
 			// Fetch artifact link from GitHub API
 			artifactLink, err = fetchArtifactLink(githubToken, githubRepo, githubRunID, artifactName)
 			if err != nil {
-				return fmt.Errorf("error fetching artifact link: %w", err)
+				log.Error().Err(err).Msg("Error fetching artifact link")
+				os.Exit(ErrorExitCode)
 			}
 		} else {
 			// No failed tests, set artifactLink to empty string
@@ -108,7 +118,8 @@ var GenerateReportCmd = &cobra.Command{
 
 		// Create output directory if it doesn't exist
 		if err := fs.MkdirAll(outputDir, 0755); err != nil {
-			return fmt.Errorf("error creating output directory: %w", err)
+			log.Error().Err(err).Msg("Error creating output directory")
+			os.Exit(ErrorExitCode)
 		}
 
 		// Generate GitHub summary markdown
@@ -119,9 +130,12 @@ var GenerateReportCmd = &cobra.Command{
 		err = generateGitHubSummaryMarkdown(aggregatedReport, filepath.Join(outputDir, "all-test"), artifactLink, artifactName)
 		if err != nil {
 			s.Stop()
-			return fmt.Errorf("error generating GitHub summary markdown: %w", err)
+			fmt.Println()
+			log.Error().Err(err).Msg("Error generating GitHub summary markdown")
+			os.Exit(ErrorExitCode)
 		}
 		s.Stop()
+		fmt.Println()
 		log.Info().Msg("GitHub summary markdown generated successfully")
 
 		if generatePRComment {
@@ -147,7 +161,8 @@ var GenerateReportCmd = &cobra.Command{
 				missingFlags = append(missingFlags, "--action-run-id")
 			}
 			if len(missingFlags) > 0 {
-				return fmt.Errorf("the following flags are required when --generate-pr-comment is set: %s", strings.Join(missingFlags, ", "))
+				log.Error().Strs("missing flags", missingFlags).Msg("Not all required flags are provided for --generate-pr-comment")
+				os.Exit(ErrorExitCode)
 			}
 
 			// Generate PR comment markdown
@@ -169,15 +184,16 @@ var GenerateReportCmd = &cobra.Command{
 			)
 			if err != nil {
 				s.Stop()
-				return fmt.Errorf("error generating PR comment markdown: %w", err)
+				fmt.Println()
+				log.Error().Err(err).Msg("Error generating PR comment markdown")
+				os.Exit(ErrorExitCode)
 			}
 			s.Stop()
+			fmt.Println()
 			log.Info().Msg("PR comment markdown generated successfully")
 		}
 
 		log.Info().Str("output", outputDir).Msg("Reports generated successfully")
-
-		return nil
 	},
 }
 
@@ -197,16 +213,20 @@ func init() {
 	GenerateReportCmd.Flags().String("failed-tests-artifact-name", "failed-test-results-with-logs.json", "The name of the failed tests artifact (default 'failed-test-results-with-logs.json')")
 
 	if err := GenerateReportCmd.MarkFlagRequired("aggregated-results-path"); err != nil {
-		log.Fatal().Err(err).Msg("Error marking flag as required")
+		log.Error().Err(err).Msg("Error marking flag as required")
+		os.Exit(ErrorExitCode)
 	}
 	if err := GenerateReportCmd.MarkFlagRequired("summary-path"); err != nil {
-		log.Fatal().Err(err).Msg("Error marking flag as required")
+		log.Error().Err(err).Msg("Error marking flag as required")
+		os.Exit(ErrorExitCode)
 	}
 	if err := GenerateReportCmd.MarkFlagRequired("github-repository"); err != nil {
-		log.Fatal().Err(err).Msg("Error marking flag as required")
+		log.Error().Err(err).Msg("Error marking flag as required")
+		os.Exit(ErrorExitCode)
 	}
 	if err := GenerateReportCmd.MarkFlagRequired("github-run-id"); err != nil {
-		log.Fatal().Err(err).Msg("Error marking flag as required")
+		log.Error().Err(err).Msg("Error marking flag as required")
+		os.Exit(ErrorExitCode)
 	}
 }
 
