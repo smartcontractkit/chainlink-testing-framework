@@ -46,6 +46,8 @@ func TestAggregateResultFilesSplunk(t *testing.T) {
 			require.Equal(t, splunkEvent, report.Event.Event, "event mismatch")
 			require.Equal(t, reportID, report.Event.Data.ID, "report ID mismatch")
 			require.False(t, report.Event.Incomplete, "report should not be incomplete")
+			require.NotNil(t, report.Event.Data.SummaryData, "report summary data is nil")
+			require.Len(t, report.Event.Data.Results, 0, "shouldn't send all result data to splunk")
 			reportRequestsReceived++
 		} else {
 			results, err := unBatchSplunkResults(bodyBytes)
