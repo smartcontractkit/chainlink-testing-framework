@@ -1,64 +1,41 @@
 {
   "id": "",
   "go_project": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner",
-  "head_sha": "",
-  "base_sha": "",
-  "repo_url": "",
-  "github_workflow_name": "",
-  "test_run_count": 5,
+  "summary_data": {
+    "unique_tests_run": 18,
+    "panicked_tests": 0,
+    "raced_tests": 0,
+    "flaky_tests": 9,
+    "flaky_test_percent": "50%",
+    "total_runs": 85,
+    "passed_runs": 42,
+    "failed_runs": 43,
+    "skipped_runs": 5,
+    "pass_percent": "49.4118%",
+    "max_pass_ratio": 1
+  },
   "race_detection": false,
   "excluded_tests": [
     "Panic",
     "Timeout"
   ],
-  "selected_tests": [],
   "results": [
     {
-      "test_name": "TestSubTestsSomeFail",
+      "report_id": "",
+      "test_name": "TestRace",
       "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
       "package_panic": false,
       "panic": false,
       "timeout": false,
       "race": false,
       "skipped": false,
-      "pass_ratio": 0,
+      "pass_ratio": 1,
       "runs": 5,
-      "failures": 5,
-      "successes": 0,
+      "failures": 0,
+      "successes": 5,
       "skips": 0,
       "passed_outputs": {},
-      "failed_outputs": {
-        "run1": [
-          "=== RUN   TestSubTestsSomeFail\n",
-          "=== PAUSE TestSubTestsSomeFail\n",
-          "=== CONT  TestSubTestsSomeFail\n",
-          "--- FAIL: TestSubTestsSomeFail (0.00s)\n"
-        ],
-        "run2": [
-          "=== RUN   TestSubTestsSomeFail\n",
-          "=== PAUSE TestSubTestsSomeFail\n",
-          "=== CONT  TestSubTestsSomeFail\n",
-          "--- FAIL: TestSubTestsSomeFail (0.00s)\n"
-        ],
-        "run3": [
-          "=== RUN   TestSubTestsSomeFail\n",
-          "=== PAUSE TestSubTestsSomeFail\n",
-          "=== CONT  TestSubTestsSomeFail\n",
-          "--- FAIL: TestSubTestsSomeFail (0.00s)\n"
-        ],
-        "run4": [
-          "=== RUN   TestSubTestsSomeFail\n",
-          "=== PAUSE TestSubTestsSomeFail\n",
-          "=== CONT  TestSubTestsSomeFail\n",
-          "--- FAIL: TestSubTestsSomeFail (0.00s)\n"
-        ],
-        "run5": [
-          "=== RUN   TestSubTestsSomeFail\n",
-          "=== PAUSE TestSubTestsSomeFail\n",
-          "=== CONT  TestSubTestsSomeFail\n",
-          "--- FAIL: TestSubTestsSomeFail (0.00s)\n"
-        ]
-      },
+      "failed_outputs": {},
       "durations": [
         0,
         0,
@@ -68,51 +45,21 @@
       ],
       "package_outputs": [
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.189s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.181s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.171s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.176s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.158s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.172s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.174s\n"
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n"
       ],
       "test_path": "",
       "code_owners": null
     },
     {
-      "test_name": "TestSkipped",
-      "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
-      "package_panic": false,
-      "panic": false,
-      "timeout": false,
-      "race": false,
-      "skipped": true,
-      "pass_ratio": 1,
-      "runs": 0,
-      "failures": 0,
-      "successes": 0,
-      "skips": 5,
-      "passed_outputs": {},
-      "failed_outputs": {},
-      "durations": null,
-      "package_outputs": [
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.189s\n",
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.171s\n",
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.176s\n",
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.172s\n",
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.174s\n"
-      ],
-      "test_path": "",
-      "code_owners": null
-    },
-    {
+      "report_id": "",
       "test_name": "TestFailInParentAfterSubTests/Pass2",
       "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
       "package_panic": false,
@@ -136,21 +83,22 @@
       ],
       "package_outputs": [
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.189s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.181s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.171s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.176s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.158s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.172s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.174s\n"
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n"
       ],
       "test_path": "",
       "code_owners": null
     },
     {
-      "test_name": "TestSubTestsAllPass/Pass1",
+      "report_id": "",
+      "test_name": "TestSubTestsSomeFail/Pass",
       "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
       "package_panic": false,
       "panic": false,
@@ -173,20 +121,21 @@
       ],
       "package_outputs": [
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.189s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.181s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.171s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.176s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.158s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.172s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.174s\n"
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n"
       ],
       "test_path": "",
       "code_owners": null
     },
     {
+      "report_id": "",
       "test_name": "TestSubTestsSomeFail/Fail",
       "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
       "package_panic": false,
@@ -246,20 +195,21 @@
       ],
       "package_outputs": [
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.189s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.181s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.171s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.176s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.158s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.172s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.174s\n"
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n"
       ],
       "test_path": "",
       "code_owners": null
     },
     {
+      "report_id": "",
       "test_name": "TestSubTestsAllFail",
       "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
       "package_panic": false,
@@ -314,145 +264,21 @@
       ],
       "package_outputs": [
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.189s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.181s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.171s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.176s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.158s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.172s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.174s\n"
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n"
       ],
       "test_path": "",
       "code_owners": null
     },
     {
-      "test_name": "TestFlaky",
-      "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
-      "package_panic": false,
-      "panic": false,
-      "timeout": false,
-      "race": false,
-      "skipped": false,
-      "pass_ratio": 0.6,
-      "runs": 5,
-      "failures": 2,
-      "successes": 3,
-      "skips": 0,
-      "passed_outputs": {},
-      "failed_outputs": {
-        "run2": [
-          "=== RUN   TestFlaky\n",
-          "=== PAUSE TestFlaky\n",
-          "=== CONT  TestFlaky\n",
-          "    example_tests_test.go:121: This is a designed flaky test working as intended\n",
-          "--- FAIL: TestFlaky (0.00s)\n"
-        ],
-        "run4": [
-          "=== RUN   TestFlaky\n",
-          "=== PAUSE TestFlaky\n",
-          "=== CONT  TestFlaky\n",
-          "    example_tests_test.go:121: This is a designed flaky test working as intended\n",
-          "--- FAIL: TestFlaky (0.00s)\n"
-        ]
-      },
-      "durations": [
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      "package_outputs": [
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.189s\n",
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.171s\n",
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.176s\n",
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.172s\n",
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.174s\n"
-      ],
-      "test_path": "",
-      "code_owners": null
-    },
-    {
-      "test_name": "TestSubTestsAllFail/Fail1",
-      "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
-      "package_panic": false,
-      "panic": false,
-      "timeout": false,
-      "race": false,
-      "skipped": false,
-      "pass_ratio": 0,
-      "runs": 5,
-      "failures": 5,
-      "successes": 0,
-      "skips": 0,
-      "passed_outputs": {},
-      "failed_outputs": {
-        "run1": [
-          "=== RUN   TestSubTestsAllFail/Fail1\n",
-          "=== PAUSE TestSubTestsAllFail/Fail1\n",
-          "=== CONT  TestSubTestsAllFail/Fail1\n",
-          "    example_tests_test.go:40: This subtest always fails\n",
-          "--- FAIL: TestSubTestsAllFail/Fail1 (0.00s)\n"
-        ],
-        "run2": [
-          "=== RUN   TestSubTestsAllFail/Fail1\n",
-          "=== PAUSE TestSubTestsAllFail/Fail1\n",
-          "=== CONT  TestSubTestsAllFail/Fail1\n",
-          "    example_tests_test.go:40: This subtest always fails\n",
-          "--- FAIL: TestSubTestsAllFail/Fail1 (0.00s)\n"
-        ],
-        "run3": [
-          "=== RUN   TestSubTestsAllFail/Fail1\n",
-          "=== PAUSE TestSubTestsAllFail/Fail1\n",
-          "=== CONT  TestSubTestsAllFail/Fail1\n",
-          "    example_tests_test.go:40: This subtest always fails\n",
-          "--- FAIL: TestSubTestsAllFail/Fail1 (0.00s)\n"
-        ],
-        "run4": [
-          "=== RUN   TestSubTestsAllFail/Fail1\n",
-          "=== PAUSE TestSubTestsAllFail/Fail1\n",
-          "=== CONT  TestSubTestsAllFail/Fail1\n",
-          "    example_tests_test.go:40: This subtest always fails\n",
-          "--- FAIL: TestSubTestsAllFail/Fail1 (0.00s)\n"
-        ],
-        "run5": [
-          "=== RUN   TestSubTestsAllFail/Fail1\n",
-          "=== PAUSE TestSubTestsAllFail/Fail1\n",
-          "=== CONT  TestSubTestsAllFail/Fail1\n",
-          "    example_tests_test.go:40: This subtest always fails\n",
-          "--- FAIL: TestSubTestsAllFail/Fail1 (0.00s)\n"
-        ]
-      },
-      "durations": [
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      "package_outputs": [
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.189s\n",
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.171s\n",
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.176s\n",
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.172s\n",
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.174s\n"
-      ],
-      "test_path": "",
-      "code_owners": null
-    },
-    {
+      "report_id": "",
       "test_name": "TestSubTestsAllPass/Pass2",
       "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
       "package_panic": false,
@@ -476,20 +302,21 @@
       ],
       "package_outputs": [
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.189s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.181s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.171s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.176s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.158s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.172s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.174s\n"
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n"
       ],
       "test_path": "",
       "code_owners": null
     },
     {
+      "report_id": "",
       "test_name": "TestFail",
       "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
       "package_panic": false,
@@ -549,20 +376,21 @@
       ],
       "package_outputs": [
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.189s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.181s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.171s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.176s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.158s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.172s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.174s\n"
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n"
       ],
       "test_path": "",
       "code_owners": null
     },
     {
+      "report_id": "",
       "test_name": "TestSubTestsAllPass",
       "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
       "package_panic": false,
@@ -586,20 +414,166 @@
       ],
       "package_outputs": [
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.189s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.181s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.171s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.176s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.158s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.172s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.174s\n"
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n"
       ],
       "test_path": "",
       "code_owners": null
     },
     {
+      "report_id": "",
+      "test_name": "TestSubTestsSomeFail",
+      "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
+      "package_panic": false,
+      "panic": false,
+      "timeout": false,
+      "race": false,
+      "skipped": false,
+      "pass_ratio": 0,
+      "runs": 5,
+      "failures": 5,
+      "successes": 0,
+      "skips": 0,
+      "passed_outputs": {},
+      "failed_outputs": {
+        "run1": [
+          "=== RUN   TestSubTestsSomeFail\n",
+          "=== PAUSE TestSubTestsSomeFail\n",
+          "=== CONT  TestSubTestsSomeFail\n",
+          "--- FAIL: TestSubTestsSomeFail (0.00s)\n"
+        ],
+        "run2": [
+          "=== RUN   TestSubTestsSomeFail\n",
+          "=== PAUSE TestSubTestsSomeFail\n",
+          "=== CONT  TestSubTestsSomeFail\n",
+          "--- FAIL: TestSubTestsSomeFail (0.00s)\n"
+        ],
+        "run3": [
+          "=== RUN   TestSubTestsSomeFail\n",
+          "=== PAUSE TestSubTestsSomeFail\n",
+          "=== CONT  TestSubTestsSomeFail\n",
+          "--- FAIL: TestSubTestsSomeFail (0.00s)\n"
+        ],
+        "run4": [
+          "=== RUN   TestSubTestsSomeFail\n",
+          "=== PAUSE TestSubTestsSomeFail\n",
+          "=== CONT  TestSubTestsSomeFail\n",
+          "--- FAIL: TestSubTestsSomeFail (0.00s)\n"
+        ],
+        "run5": [
+          "=== RUN   TestSubTestsSomeFail\n",
+          "=== PAUSE TestSubTestsSomeFail\n",
+          "=== CONT  TestSubTestsSomeFail\n",
+          "--- FAIL: TestSubTestsSomeFail (0.00s)\n"
+        ]
+      },
+      "durations": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "package_outputs": [
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.181s\n",
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.158s\n",
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n"
+      ],
+      "test_path": "",
+      "code_owners": null
+    },
+    {
+      "report_id": "",
+      "test_name": "TestSubTestsAllPass/Pass1",
+      "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
+      "package_panic": false,
+      "panic": false,
+      "timeout": false,
+      "race": false,
+      "skipped": false,
+      "pass_ratio": 1,
+      "runs": 5,
+      "failures": 0,
+      "successes": 5,
+      "skips": 0,
+      "passed_outputs": {},
+      "failed_outputs": {},
+      "durations": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "package_outputs": [
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.181s\n",
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.158s\n",
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n"
+      ],
+      "test_path": "",
+      "code_owners": null
+    },
+    {
+      "report_id": "",
+      "test_name": "TestPass",
+      "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
+      "package_panic": false,
+      "panic": false,
+      "timeout": false,
+      "race": false,
+      "skipped": false,
+      "pass_ratio": 1,
+      "runs": 5,
+      "failures": 0,
+      "successes": 5,
+      "skips": 0,
+      "passed_outputs": {},
+      "failed_outputs": {},
+      "durations": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "package_outputs": [
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.181s\n",
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.158s\n",
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n"
+      ],
+      "test_path": "",
+      "code_owners": null
+    },
+    {
+      "report_id": "",
       "test_name": "TestFailInParentBeforeSubTests",
       "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
       "package_panic": false,
@@ -659,142 +633,55 @@
       ],
       "package_outputs": [
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.189s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.181s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.171s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.176s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.158s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.172s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.174s\n"
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n"
       ],
       "test_path": "",
       "code_owners": null
     },
     {
-      "test_name": "TestSubTestsSomeFail/Pass",
+      "report_id": "",
+      "test_name": "TestFlaky",
       "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
       "package_panic": false,
       "panic": false,
       "timeout": false,
       "race": false,
       "skipped": false,
-      "pass_ratio": 1,
+      "pass_ratio": 0.4,
       "runs": 5,
-      "failures": 0,
-      "successes": 5,
-      "skips": 0,
-      "passed_outputs": {},
-      "failed_outputs": {},
-      "durations": [
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      "package_outputs": [
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.189s\n",
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.171s\n",
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.176s\n",
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.172s\n",
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.174s\n"
-      ],
-      "test_path": "",
-      "code_owners": null
-    },
-    {
-      "test_name": "TestPass",
-      "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
-      "package_panic": false,
-      "panic": false,
-      "timeout": false,
-      "race": false,
-      "skipped": false,
-      "pass_ratio": 1,
-      "runs": 5,
-      "failures": 0,
-      "successes": 5,
-      "skips": 0,
-      "passed_outputs": {},
-      "failed_outputs": {},
-      "durations": [
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      "package_outputs": [
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.189s\n",
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.171s\n",
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.176s\n",
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.172s\n",
-        "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.174s\n"
-      ],
-      "test_path": "",
-      "code_owners": null
-    },
-    {
-      "test_name": "TestFailInParentAfterSubTests",
-      "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
-      "package_panic": false,
-      "panic": false,
-      "timeout": false,
-      "race": false,
-      "skipped": false,
-      "pass_ratio": 0,
-      "runs": 5,
-      "failures": 5,
-      "successes": 0,
+      "failures": 3,
+      "successes": 2,
       "skips": 0,
       "passed_outputs": {},
       "failed_outputs": {
         "run1": [
-          "=== RUN   TestFailInParentAfterSubTests\n",
-          "=== PAUSE TestFailInParentAfterSubTests\n",
-          "=== CONT  TestFailInParentAfterSubTests\n",
-          "    example_tests_test.go:90: This test always fails\n",
-          "--- FAIL: TestFailInParentAfterSubTests (0.00s)\n"
-        ],
-        "run2": [
-          "=== RUN   TestFailInParentAfterSubTests\n",
-          "=== PAUSE TestFailInParentAfterSubTests\n",
-          "=== CONT  TestFailInParentAfterSubTests\n",
-          "    example_tests_test.go:90: This test always fails\n",
-          "--- FAIL: TestFailInParentAfterSubTests (0.00s)\n"
+          "=== RUN   TestFlaky\n",
+          "=== PAUSE TestFlaky\n",
+          "=== CONT  TestFlaky\n",
+          "    example_tests_test.go:121: This is a designed flaky test working as intended\n",
+          "--- FAIL: TestFlaky (0.00s)\n"
         ],
         "run3": [
-          "=== RUN   TestFailInParentAfterSubTests\n",
-          "=== PAUSE TestFailInParentAfterSubTests\n",
-          "=== CONT  TestFailInParentAfterSubTests\n",
-          "    example_tests_test.go:90: This test always fails\n",
-          "--- FAIL: TestFailInParentAfterSubTests (0.00s)\n"
-        ],
-        "run4": [
-          "=== RUN   TestFailInParentAfterSubTests\n",
-          "=== PAUSE TestFailInParentAfterSubTests\n",
-          "=== CONT  TestFailInParentAfterSubTests\n",
-          "    example_tests_test.go:90: This test always fails\n",
-          "--- FAIL: TestFailInParentAfterSubTests (0.00s)\n"
+          "=== RUN   TestFlaky\n",
+          "=== PAUSE TestFlaky\n",
+          "=== CONT  TestFlaky\n",
+          "    example_tests_test.go:121: This is a designed flaky test working as intended\n",
+          "--- FAIL: TestFlaky (0.00s)\n"
         ],
         "run5": [
-          "=== RUN   TestFailInParentAfterSubTests\n",
-          "=== PAUSE TestFailInParentAfterSubTests\n",
-          "=== CONT  TestFailInParentAfterSubTests\n",
-          "    example_tests_test.go:90: This test always fails\n",
-          "--- FAIL: TestFailInParentAfterSubTests (0.00s)\n"
+          "=== RUN   TestFlaky\n",
+          "=== PAUSE TestFlaky\n",
+          "=== CONT  TestFlaky\n",
+          "    example_tests_test.go:121: This is a designed flaky test working as intended\n",
+          "--- FAIL: TestFlaky (0.00s)\n"
         ]
       },
       "durations": [
@@ -806,57 +693,53 @@
       ],
       "package_outputs": [
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.189s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.181s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.171s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.176s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.158s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.172s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.174s\n"
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n"
       ],
       "test_path": "",
       "code_owners": null
     },
     {
-      "test_name": "TestRace",
+      "report_id": "",
+      "test_name": "TestSkipped",
       "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
       "package_panic": false,
       "panic": false,
       "timeout": false,
       "race": false,
-      "skipped": false,
+      "skipped": true,
       "pass_ratio": 1,
-      "runs": 5,
+      "runs": 0,
       "failures": 0,
-      "successes": 5,
-      "skips": 0,
+      "successes": 0,
+      "skips": 5,
       "passed_outputs": {},
       "failed_outputs": {},
-      "durations": [
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
+      "durations": null,
       "package_outputs": [
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.189s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.181s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.171s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.176s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.158s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.172s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.174s\n"
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n"
       ],
       "test_path": "",
       "code_owners": null
     },
     {
+      "report_id": "",
       "test_name": "TestFailInParentAfterSubTests/Pass1",
       "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
       "package_panic": false,
@@ -880,20 +763,95 @@
       ],
       "package_outputs": [
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.189s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.181s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.171s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.176s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.158s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.172s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.174s\n"
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n"
       ],
       "test_path": "",
       "code_owners": null
     },
     {
+      "report_id": "",
+      "test_name": "TestSubTestsAllFail/Fail1",
+      "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
+      "package_panic": false,
+      "panic": false,
+      "timeout": false,
+      "race": false,
+      "skipped": false,
+      "pass_ratio": 0,
+      "runs": 5,
+      "failures": 5,
+      "successes": 0,
+      "skips": 0,
+      "passed_outputs": {},
+      "failed_outputs": {
+        "run1": [
+          "=== RUN   TestSubTestsAllFail/Fail1\n",
+          "=== PAUSE TestSubTestsAllFail/Fail1\n",
+          "=== CONT  TestSubTestsAllFail/Fail1\n",
+          "    example_tests_test.go:40: This subtest always fails\n",
+          "--- FAIL: TestSubTestsAllFail/Fail1 (0.00s)\n"
+        ],
+        "run2": [
+          "=== RUN   TestSubTestsAllFail/Fail1\n",
+          "=== PAUSE TestSubTestsAllFail/Fail1\n",
+          "=== CONT  TestSubTestsAllFail/Fail1\n",
+          "    example_tests_test.go:40: This subtest always fails\n",
+          "--- FAIL: TestSubTestsAllFail/Fail1 (0.00s)\n"
+        ],
+        "run3": [
+          "=== RUN   TestSubTestsAllFail/Fail1\n",
+          "=== PAUSE TestSubTestsAllFail/Fail1\n",
+          "=== CONT  TestSubTestsAllFail/Fail1\n",
+          "    example_tests_test.go:40: This subtest always fails\n",
+          "--- FAIL: TestSubTestsAllFail/Fail1 (0.00s)\n"
+        ],
+        "run4": [
+          "=== RUN   TestSubTestsAllFail/Fail1\n",
+          "=== PAUSE TestSubTestsAllFail/Fail1\n",
+          "=== CONT  TestSubTestsAllFail/Fail1\n",
+          "    example_tests_test.go:40: This subtest always fails\n",
+          "--- FAIL: TestSubTestsAllFail/Fail1 (0.00s)\n"
+        ],
+        "run5": [
+          "=== RUN   TestSubTestsAllFail/Fail1\n",
+          "=== PAUSE TestSubTestsAllFail/Fail1\n",
+          "=== CONT  TestSubTestsAllFail/Fail1\n",
+          "    example_tests_test.go:40: This subtest always fails\n",
+          "--- FAIL: TestSubTestsAllFail/Fail1 (0.00s)\n"
+        ]
+      },
+      "durations": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "package_outputs": [
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.181s\n",
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.158s\n",
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n"
+      ],
+      "test_path": "",
+      "code_owners": null
+    },
+    {
+      "report_id": "",
       "test_name": "TestSubTestsAllFail/Fail2",
       "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
       "package_panic": false,
@@ -953,15 +911,89 @@
       ],
       "package_outputs": [
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.189s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.181s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.171s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.176s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.158s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.172s\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
         "FAIL\n",
-        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.174s\n"
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n"
+      ],
+      "test_path": "",
+      "code_owners": null
+    },
+    {
+      "report_id": "",
+      "test_name": "TestFailInParentAfterSubTests",
+      "test_package": "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
+      "package_panic": false,
+      "panic": false,
+      "timeout": false,
+      "race": false,
+      "skipped": false,
+      "pass_ratio": 0,
+      "runs": 5,
+      "failures": 5,
+      "successes": 0,
+      "skips": 0,
+      "passed_outputs": {},
+      "failed_outputs": {
+        "run1": [
+          "=== RUN   TestFailInParentAfterSubTests\n",
+          "=== PAUSE TestFailInParentAfterSubTests\n",
+          "=== CONT  TestFailInParentAfterSubTests\n",
+          "    example_tests_test.go:90: This test always fails\n",
+          "--- FAIL: TestFailInParentAfterSubTests (0.00s)\n"
+        ],
+        "run2": [
+          "=== RUN   TestFailInParentAfterSubTests\n",
+          "=== PAUSE TestFailInParentAfterSubTests\n",
+          "=== CONT  TestFailInParentAfterSubTests\n",
+          "    example_tests_test.go:90: This test always fails\n",
+          "--- FAIL: TestFailInParentAfterSubTests (0.00s)\n"
+        ],
+        "run3": [
+          "=== RUN   TestFailInParentAfterSubTests\n",
+          "=== PAUSE TestFailInParentAfterSubTests\n",
+          "=== CONT  TestFailInParentAfterSubTests\n",
+          "    example_tests_test.go:90: This test always fails\n",
+          "--- FAIL: TestFailInParentAfterSubTests (0.00s)\n"
+        ],
+        "run4": [
+          "=== RUN   TestFailInParentAfterSubTests\n",
+          "=== PAUSE TestFailInParentAfterSubTests\n",
+          "=== CONT  TestFailInParentAfterSubTests\n",
+          "    example_tests_test.go:90: This test always fails\n",
+          "--- FAIL: TestFailInParentAfterSubTests (0.00s)\n"
+        ],
+        "run5": [
+          "=== RUN   TestFailInParentAfterSubTests\n",
+          "=== PAUSE TestFailInParentAfterSubTests\n",
+          "=== CONT  TestFailInParentAfterSubTests\n",
+          "    example_tests_test.go:90: This test always fails\n",
+          "--- FAIL: TestFailInParentAfterSubTests (0.00s)\n"
+        ]
+      },
+      "durations": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "package_outputs": [
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.181s\n",
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.158s\n",
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n",
+        "FAIL\n",
+        "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.164s\n"
       ],
       "test_path": "",
       "code_owners": null

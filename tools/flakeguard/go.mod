@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard
 
-go 1.23.4
+go 1.23.6
 
 require (
 	github.com/briandowns/spinner v1.23.1
@@ -21,6 +21,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	golang.org/x/net v0.27.0 // indirect

@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog/pkgerrors"
 	"github.com/spf13/cobra"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/cmd"
@@ -32,6 +33,7 @@ func init() {
 		Out:        os.Stderr,
 		TimeFormat: "15:04:05.00", // hh:mm:ss.ss format
 	})
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 	rootCmd.AddCommand(cmd.FindTestsCmd)

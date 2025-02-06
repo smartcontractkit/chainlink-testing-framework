@@ -50,7 +50,7 @@ func GenerateFlakyTestsTable(
 		if !result.Skipped && result.PassRatio < expectedPassRatio {
 			row := []string{
 				result.TestName,
-				formatPassRatio(result.PassRatio),
+				formatRatio(result.PassRatio),
 				fmt.Sprintf("%t", result.Panic),
 				fmt.Sprintf("%t", result.Timeout),
 				fmt.Sprintf("%t", result.Race),
@@ -74,13 +74,6 @@ func GenerateFlakyTestsTable(
 		}
 	}
 	return table
-}
-
-func formatPassRatio(passRatio float64) string {
-	if passRatio < 0 {
-		return "N/A" // Handle undefined pass ratios (e.g., skipped tests)
-	}
-	return fmt.Sprintf("%.2f%%", passRatio*100)
 }
 
 func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassRatio float64, artifactName, artifactLink string) {
@@ -164,7 +157,7 @@ func buildSettingsTable(testReport *TestReport, maxPassRatio float64) [][]string
 		{"**Setting**", "**Value**"},
 		{"Project", testReport.GoProject},
 		{"Max Pass Ratio", fmt.Sprintf("%.2f%%", maxPassRatio*100)},
-		{"Test Run Count", fmt.Sprintf("%d", testReport.TestRunCount)},
+		{"Test Run Count", fmt.Sprintf("%d", testReport.SummaryData.UniqueTestsRun)},
 		{"Race Detection", fmt.Sprintf("%t", testReport.RaceDetection)},
 	}
 	if len(testReport.ExcludedTests) > 0 {
@@ -203,16 +196,17 @@ func RenderResults(
 func renderSummaryTable(w io.Writer, summary SummaryData, markdown bool, collapsible bool) {
 	summaryData := [][]string{
 		{"Category", "Total"},
-		{"Tests", fmt.Sprintf("%d", summary.TotalTests)},
+		{"Unique Tests", fmt.Sprintf("%d", summary.UniqueTestsRun)},
+		{"Test Run Count", fmt.Sprintf("%d", summary.TestRunCount)},
 		{"Panicked Tests", fmt.Sprintf("%d", summary.PanickedTests)},
 		{"Raced Tests", fmt.Sprintf("%d", summary.RacedTests)},
 		{"Flaky Tests", fmt.Sprintf("%d", summary.FlakyTests)},
-		{"Flaky Test Ratio", summary.FlakyTestRatio},
-		{"Runs", fmt.Sprintf("%d", summary.TotalRuns)},
+		{"Flaky Test Ratio", summary.FlakyTestPercent},
+		{"Total Test Runs", fmt.Sprintf("%d", summary.TotalRuns)},
 		{"Passes", fmt.Sprintf("%d", summary.PassedRuns)},
 		{"Failures", fmt.Sprintf("%d", summary.FailedRuns)},
 		{"Skips", fmt.Sprintf("%d", summary.SkippedRuns)},
-		{"Pass Ratio", summary.PassRatio},
+		{"Pass Ratio", summary.PassPercent},
 	}
 	if markdown {
 		for i, row := range summaryData {

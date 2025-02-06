@@ -17,23 +17,9 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type SummaryData struct {
-	TotalTests     int     `json:"total_tests"`
-	PanickedTests  int     `json:"panicked_tests"`
-	RacedTests     int     `json:"raced_tests"`
-	FlakyTests     int     `json:"flaky_tests"`
-	FlakyTestRatio string  `json:"flaky_test_ratio"`
-	TotalRuns      int     `json:"total_runs"`
-	PassedRuns     int     `json:"passed_runs"`
-	FailedRuns     int     `json:"failed_runs"`
-	SkippedRuns    int     `json:"skipped_runs"`
-	PassRatio      string  `json:"pass_ratio"`
-	MaxPassRatio   float64 `json:"max_pass_ratio"`
-}
-
 var GenerateReportCmd = &cobra.Command{
 	Use:   "generate-report",
-	Short: "Generate reports from an aggregated test results",
+	Short: "Generate test reports from aggregated results that can be posted to GitHub",
 	Run: func(cmd *cobra.Command, args []string) {
 		fs := reports.OSFileSystem{}
 
@@ -80,7 +66,7 @@ var GenerateReportCmd = &cobra.Command{
 		log.Info().Msg("Successfully loaded aggregated test report")
 
 		// Load the summary data to check for failed tests
-		var summaryData SummaryData
+		var summaryData reports.SummaryData
 
 		if summaryPath == "" {
 			log.Error().Msg("Summary path is required")

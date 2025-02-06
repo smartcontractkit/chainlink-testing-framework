@@ -5,11 +5,13 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 // TestReport reports on the parameters and results of one to many test runs
 type TestReport struct {
-	ID                   string       `json:"id"`
+	ID                   string       `json:"id,omitempty"`
 	GoProject            string       `json:"go_project"`
 	BranchName           string       `json:"branch_name,omitempty"`
 	HeadSHA              string       `json:"head_sha,omitempty"`
@@ -17,7 +19,7 @@ type TestReport struct {
 	RepoURL              string       `json:"repo_url,omitempty"`
 	GitHubWorkflowName   string       `json:"github_workflow_name,omitempty"`
 	GitHubWorkflowRunURL string       `json:"github_workflow_run_url,omitempty"`
-	TestRunCount         int          `json:"test_run_count"`
+	SummaryData          SummaryData  `json:"summary_data"`
 	RaceDetection        bool         `json:"race_detection"`
 	ExcludedTests        []string     `json:"excluded_tests,omitempty"`
 	SelectedTests        []string     `json:"selected_tests,omitempty"`
@@ -52,17 +54,35 @@ type TestResult struct {
 
 // SummaryData contains aggregated data from a set of test results
 type SummaryData struct {
-	TotalTests     int     `json:"total_tests"`
-	PanickedTests  int     `json:"panicked_tests"`
-	RacedTests     int     `json:"raced_tests"`
-	FlakyTests     int     `json:"flaky_tests"`
-	FlakyTestRatio string  `json:"flaky_test_ratio"`
-	TotalRuns      int     `json:"total_runs"`
-	PassedRuns     int     `json:"passed_runs"`
-	FailedRuns     int     `json:"failed_runs"`
-	SkippedRuns    int     `json:"skipped_runs"`
-	PassRatio      string  `json:"pass_ratio"`
-	MaxPassRatio   float64 `json:"max_pass_ratio"`
+	// Overall test run stats
+	// UniqueTestsRun tracks how many unique tests were run
+	UniqueTestsRun int `json:"unique_tests_run"`
+	// TestRunCount tracks the max amount of times the tests were run, giving an idea of how many times flakeguard was executed
+	// e.g. if TestA was run 5 times, and TestB was run 10 times, UniqueTestsRun == 2 and TestRunCount == 10
+	TestRunCount int `json:"test_run_count"`
+	// PanickedTests tracks how many tests panicked
+	PanickedTests int `json:"panicked_tests"`
+	// RacedTests tracks how many tests raced
+	RacedTests int `json:"raced_tests"`
+	// FlakyTests tracks how many tests are considered flaky
+	FlakyTests int `json:"flaky_tests"`
+	// FlakyTestPercent is the percentage of tests that are considered flaky
+	FlakyTestPercent string `json:"flaky_test_percent"`
+
+	// Individual test run counts
+	// TotalRuns tracks how many total test runs were executed
+	// e.g. if TestA was run 5 times, and TestB was run 10 times, TotalRuns would be 15
+	TotalRuns int `json:"total_runs"`
+	// PassedRuns tracks how many test runs passed
+	PassedRuns int `json:"passed_runs"`
+	// FailedRuns tracks how many test runs failed
+	FailedRuns int `json:"failed_runs"`
+	// SkippedRuns tracks how many test runs were skipped
+	SkippedRuns int `json:"skipped_runs"`
+	// PassPercent is the percentage of test runs that passed
+	PassPercent string `json:"pass_percent"`
+	// MaxPassRatio is the maximum flakiness ratio allowed for a test to be considered not flaky
+	MaxPassRatio float64 `json:"max_pass_ratio,omitempty"`
 }
 
 // SplunkType represents what type of data is being sent to Splunk, e.g. a report or a result.
@@ -111,11 +131,22 @@ type SplunkTestResultEvent struct {
 
 // Data Processing Functions
 
+// GenerateSummaryData generates a summary of the test results
 func GenerateSummaryData(tests []TestResult, maxPassRatio float64) SummaryData {
-	var runs, passes, fails, skips, panickedTests, racedTests, flakyTests, skippedTests int
+	if maxPassRatio < 0 {
+		log.Debug().Float64("ratio", maxPassRatio).Msg("maxPassRatio is negative, setting to 0")
+		maxPassRatio = 0.0
+	} else if maxPassRatio > 1 {
+		log.Debug().Float64("ratio", maxPassRatio).Msg("maxPassRatio is greater than 1, setting to 1")
+		maxPassRatio = 1.0
+	}
+	var runs, mostRuns, passes, fails, skips, panickedTests, racedTests, flakyTests, skippedTests int
 
 	for _, result := range tests {
 		runs += result.Runs
+		if result.Runs > mostRuns {
+			mostRuns = result.Runs
+		}
 		passes += result.Successes
 		fails += result.Failures
 		skips += result.Skips
@@ -137,45 +168,29 @@ func GenerateSummaryData(tests []TestResult, maxPassRatio float64) SummaryData {
 	}
 
 	// Calculate the raw pass ratio
-	passPercentage := 100.0
-	if runs > 0 {
-		passPercentage = (float64(passes) / float64(runs)) * 100
-	}
+	passRatio := passRatio(passes, runs)
 
 	// Calculate the raw flake ratio
 	totalTests := len(tests)
-	flakePercentage := 0.0
-	if totalTests > 0 {
-		flakePercentage = (float64(flakyTests) / float64(totalTests)) * 100
-	}
+	flakeRatio := flakeRatio(flakyTests, totalTests)
 
-	// Helper function to convert a float ratio into a trimmed string
-	formatRatio := func(val float64) string {
-		// Format with 4 decimal places
-		s := fmt.Sprintf("%.4f", val)
-		// Trim trailing zeros
-		s = strings.TrimRight(s, "0")
-		// Trim trailing '.' if needed (in case we have an integer)
-		s = strings.TrimRight(s, ".")
-		return s + "%"
-	}
-
-	passRatioStr := formatRatio(passPercentage)
-	flakeTestRatioStr := formatRatio(flakePercentage)
+	passRatioStr := formatRatio(passRatio)
+	flakeTestRatioStr := formatRatio(flakeRatio)
 
 	return SummaryData{
-		TotalTests:     totalTests,
-		PanickedTests:  panickedTests,
-		RacedTests:     racedTests,
-		FlakyTests:     flakyTests,
-		FlakyTestRatio: flakeTestRatioStr,
+		UniqueTestsRun:   totalTests,
+		TestRunCount:     mostRuns,
+		PanickedTests:    panickedTests,
+		RacedTests:       racedTests,
+		FlakyTests:       flakyTests,
+		FlakyTestPercent: flakeTestRatioStr,
 
 		TotalRuns:   runs,
 		PassedRuns:  passes,
 		FailedRuns:  fails,
 		SkippedRuns: skips,
 
-		PassRatio:    passRatioStr,
+		PassPercent:  passRatioStr,
 		MaxPassRatio: maxPassRatio,
 	}
 }
@@ -258,4 +273,34 @@ func avgDuration(durations []time.Duration) time.Duration {
 		total += d
 	}
 	return total / time.Duration(len(durations))
+}
+
+// passRatio calculates the pass percentage in statistical terms (0-1)
+func passRatio(successes, runs int) float64 {
+	passRatio := 1.0
+	if runs > 0 {
+		passRatio = (float64(successes) / float64(runs))
+	}
+	return passRatio
+}
+
+// flakeRatio calculates the flake percentage in statistical terms (0-1)
+func flakeRatio(flakyTests, totalTests int) float64 {
+	flakeRatio := 0.0
+	if totalTests > 0 {
+		flakeRatio = (float64(flakyTests) / float64(totalTests))
+	}
+	return flakeRatio
+}
+
+// formatRatio converts a float ratio (0.0-1.0) into a human-readable string (0.00%-100.00%)
+func formatRatio(ratio float64) string {
+	ratio *= 100
+	// Format with 4 decimal places
+	s := fmt.Sprintf("%.4f", ratio)
+	// Trim trailing zeros
+	s = strings.TrimRight(s, "0")
+	// Trim trailing '.' if needed (in case we have an integer)
+	s = strings.TrimRight(s, ".")
+	return s + "%"
 }

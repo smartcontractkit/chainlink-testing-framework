@@ -54,7 +54,7 @@ func TestGenerateFlakyTestsTable(t *testing.T) {
 
 	expectedRow := []string{
 		"TestFlaky",
-		"50.00%",
+		"50%",
 		"false",
 		"false",
 		"false",
@@ -76,7 +76,7 @@ func TestGenerateFlakyTestsTable(t *testing.T) {
 func TestGenerateGitHubSummaryMarkdown(t *testing.T) {
 	testReport := &TestReport{
 		GoProject:     "ProjectX",
-		TestRunCount:  3,
+		SummaryData:   SummaryData{UniqueTestsRun: 2, FlakyTests: 1},
 		RaceDetection: true,
 		Results: []TestResult{
 			{
@@ -131,7 +131,7 @@ func TestGenerateGitHubSummaryMarkdown(t *testing.T) {
 func TestGeneratePRCommentMarkdown(t *testing.T) {
 	testReport := &TestReport{
 		GoProject:     "ProjectX",
-		TestRunCount:  3,
+		SummaryData:   SummaryData{UniqueTestsRun: 3, FlakyTests: 1},
 		RaceDetection: true,
 		Results: []TestResult{
 			{
@@ -249,17 +249,17 @@ func TestRenderResults(t *testing.T) {
 			},
 			maxPassRatio: 0.9,
 			expectedSummary: SummaryData{
-				TotalTests:     1,
-				PanickedTests:  0,
-				RacedTests:     0,
-				FlakyTests:     1,
-				FlakyTestRatio: "100%",
-				TotalRuns:      4,
-				PassedRuns:     3,
-				FailedRuns:     1,
-				SkippedRuns:    0,
-				PassRatio:      "75%",
-				MaxPassRatio:   0.9,
+				UniqueTestsRun:   1,
+				PanickedTests:    0,
+				RacedTests:       0,
+				FlakyTests:       1,
+				FlakyTestPercent: "100%",
+				TotalRuns:        4,
+				PassedRuns:       3,
+				FailedRuns:       1,
+				SkippedRuns:      0,
+				PassPercent:      "75%",
+				MaxPassRatio:     0.9,
 			},
 			expectedStringsContain: []string{"Test1", "package1", "75%", "false", "1.05s", "4", "0"},
 		},
@@ -277,8 +277,8 @@ func TestRenderResults(t *testing.T) {
 			summary := GenerateSummaryData(tc.testResults, tc.maxPassRatio)
 
 			// Verify summary data
-			if summary.TotalTests != tc.expectedSummary.TotalTests {
-				t.Errorf("Expected TotalTests %v, got %v", tc.expectedSummary.TotalTests, summary.TotalTests)
+			if summary.UniqueTestsRun != tc.expectedSummary.UniqueTestsRun {
+				t.Errorf("Expected TotalTests %v, got %v", tc.expectedSummary.UniqueTestsRun, summary.UniqueTestsRun)
 			}
 			if summary.TotalRuns != tc.expectedSummary.TotalRuns {
 				t.Errorf("Expected TotalRuns %v, got %v", tc.expectedSummary.TotalRuns, summary.TotalRuns)
@@ -292,8 +292,8 @@ func TestRenderResults(t *testing.T) {
 			if summary.FlakyTests != tc.expectedSummary.FlakyTests {
 				t.Errorf("Expected FlakyTests %v, got %v", tc.expectedSummary.FlakyTests, summary.FlakyTests)
 			}
-			if summary.PassRatio != tc.expectedSummary.PassRatio {
-				t.Errorf("Expected PassRatio %v, got %v", tc.expectedSummary.PassRatio, summary.PassRatio)
+			if summary.PassPercent != tc.expectedSummary.PassPercent {
+				t.Errorf("Expected PassRatio %v, got %v", tc.expectedSummary.PassPercent, summary.PassPercent)
 			}
 
 			// Verify output content

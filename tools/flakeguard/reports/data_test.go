@@ -24,17 +24,18 @@ func TestGenerateSummaryData(t *testing.T) {
 			},
 			maxPassRatio: 1.0,
 			expected: SummaryData{
-				TotalTests:     2,
-				PanickedTests:  0,
-				RacedTests:     0,
-				FlakyTests:     0,
-				FlakyTestRatio: "0%", // no flaky tests
-				TotalRuns:      15,
-				PassedRuns:     15,
-				FailedRuns:     0,
-				SkippedRuns:    0,
-				PassRatio:      "100%",
-				MaxPassRatio:   1.0,
+				UniqueTestsRun:   2,
+				TestRunCount:     10,
+				PanickedTests:    0,
+				RacedTests:       0,
+				FlakyTests:       0,
+				FlakyTestPercent: "0%", // no flaky tests
+				TotalRuns:        15,
+				PassedRuns:       15,
+				FailedRuns:       0,
+				SkippedRuns:      0,
+				PassPercent:      "100%",
+				MaxPassRatio:     1.0,
 			},
 		},
 		{
@@ -46,18 +47,19 @@ func TestGenerateSummaryData(t *testing.T) {
 			},
 			maxPassRatio: 0.9,
 			expected: SummaryData{
-				TotalTests:    3,
-				PanickedTests: 0,
-				RacedTests:    0,
-				FlakyTests:    2,
+				UniqueTestsRun: 3,
+				TestRunCount:   10,
+				PanickedTests:  0,
+				RacedTests:     0,
+				FlakyTests:     2,
 				// 2/3 => 66.666...%
-				FlakyTestRatio: "66.6667%",
-				TotalRuns:      19,
-				PassedRuns:     15,
-				FailedRuns:     4, // total failures
-				SkippedRuns:    0,
+				FlakyTestPercent: "66.6667%",
+				TotalRuns:        19,
+				PassedRuns:       15,
+				FailedRuns:       4, // total failures
+				SkippedRuns:      0,
 				// 15/19 => ~78.947...
-				PassRatio:    "78.9474%",
+				PassPercent:  "78.9474%",
 				MaxPassRatio: 0.9,
 			},
 		},
@@ -70,18 +72,19 @@ func TestGenerateSummaryData(t *testing.T) {
 			},
 			maxPassRatio: 1.0,
 			expected: SummaryData{
-				TotalTests:    3,
-				PanickedTests: 1,
-				RacedTests:    1,
-				FlakyTests:    2,
+				UniqueTestsRun: 3,
+				TestRunCount:   10,
+				PanickedTests:  1,
+				RacedTests:     1,
+				FlakyTests:     2,
 				// 2/3 => ~66.666...
-				FlakyTestRatio: "66.6667%",
-				TotalRuns:      18,
-				PassedRuns:     17,
-				FailedRuns:     1,
-				SkippedRuns:    0,
+				FlakyTestPercent: "66.6667%",
+				TotalRuns:        18,
+				PassedRuns:       17,
+				FailedRuns:       1,
+				SkippedRuns:      0,
 				// 17/18 => ~94.444...
-				PassRatio:    "94.4444%",
+				PassPercent:  "94.4444%",
 				MaxPassRatio: 1.0,
 			},
 		},
@@ -90,17 +93,18 @@ func TestGenerateSummaryData(t *testing.T) {
 			testResults:  []TestResult{},
 			maxPassRatio: 1.0,
 			expected: SummaryData{
-				TotalTests:     0,
-				PanickedTests:  0,
-				RacedTests:     0,
-				FlakyTests:     0,
-				FlakyTestRatio: "0%", // no tests => 0%
-				TotalRuns:      0,
-				PassedRuns:     0,
-				FailedRuns:     0,
-				SkippedRuns:    0,
+				UniqueTestsRun:   0,
+				TestRunCount:     0,
+				PanickedTests:    0,
+				RacedTests:       0,
+				FlakyTests:       0,
+				FlakyTestPercent: "0%", // no tests => 0%
+				TotalRuns:        0,
+				PassedRuns:       0,
+				FailedRuns:       0,
+				SkippedRuns:      0,
 				// With zero runs, we default passRatio to "100%"
-				PassRatio:    "100%",
+				PassPercent:  "100%",
 				MaxPassRatio: 1.0,
 			},
 		},
@@ -112,17 +116,18 @@ func TestGenerateSummaryData(t *testing.T) {
 			},
 			maxPassRatio: 0.8,
 			expected: SummaryData{
-				TotalTests:     2,
-				PanickedTests:  0,
-				RacedTests:     0,
-				FlakyTests:     1,     // second test has ratio=0.7 => "flaky"
-				FlakyTestRatio: "50%", // 1 out of 2 => 50%
-				TotalRuns:      10,
-				PassedRuns:     7,
-				FailedRuns:     3,
-				SkippedRuns:    1, // from first test
-				PassRatio:      "70%",
-				MaxPassRatio:   0.8,
+				UniqueTestsRun:   2,
+				TestRunCount:     10,
+				PanickedTests:    0,
+				RacedTests:       0,
+				FlakyTests:       1,     // second test has ratio=0.7 => "flaky"
+				FlakyTestPercent: "50%", // 1 out of 2 => 50%
+				TotalRuns:        10,
+				PassedRuns:       7,
+				FailedRuns:       3,
+				SkippedRuns:      1, // from first test
+				PassPercent:      "70%",
+				MaxPassRatio:     0.8,
 			},
 		},
 		{
@@ -134,17 +139,18 @@ func TestGenerateSummaryData(t *testing.T) {
 			},
 			maxPassRatio: 0.85,
 			expected: SummaryData{
-				TotalTests:     3,
-				PanickedTests:  0,
-				RacedTests:     0,
-				FlakyTests:     1,          // last test has ratio=0.5 => "flaky"
-				FlakyTestRatio: "33.3333%", // 1 out of 3 => 33.333...
-				TotalRuns:      14,         // 10 + 4
-				PassedRuns:     11,         // 9 + 2
-				FailedRuns:     3,          // 1 + 2
-				SkippedRuns:    1,          // from first test
+				UniqueTestsRun:   3,
+				TestRunCount:     10,
+				PanickedTests:    0,
+				RacedTests:       0,
+				FlakyTests:       1,          // last test has ratio=0.5 => "flaky"
+				FlakyTestPercent: "33.3333%", // 1 out of 3 => 33.333...
+				TotalRuns:        14,         // 10 + 4
+				PassedRuns:       11,         // 9 + 2
+				FailedRuns:       3,          // 1 + 2
+				SkippedRuns:      1,          // from first test
 				// 11/14 => 78.5714...
-				PassRatio:    "78.5714%",
+				PassPercent:  "78.5714%",
 				MaxPassRatio: 0.85,
 			},
 		},
@@ -173,17 +179,18 @@ func TestGenerateSummaryData(t *testing.T) {
 			}(),
 			maxPassRatio: 1.0,
 			expected: SummaryData{
-				TotalTests:     9999,
-				PanickedTests:  0,
-				RacedTests:     0,
-				FlakyTests:     1,
-				FlakyTestRatio: "0.01%",
-				TotalRuns:      (9998 * 10) + 2,
-				PassedRuns:     (9998 * 10) + 1,
-				FailedRuns:     1,
-				SkippedRuns:    0,
-				PassRatio:      "99.999%",
-				MaxPassRatio:   1.0,
+				UniqueTestsRun:   9999,
+				TestRunCount:     10,
+				PanickedTests:    0,
+				RacedTests:       0,
+				FlakyTests:       1,
+				FlakyTestPercent: "0.01%",
+				TotalRuns:        (9998 * 10) + 2,
+				PassedRuns:       (9998 * 10) + 1,
+				FailedRuns:       1,
+				SkippedRuns:      0,
+				PassPercent:      "99.999%",
+				MaxPassRatio:     1.0,
 			},
 		},
 	}
@@ -289,8 +296,7 @@ func TestFilterSkippedTests(t *testing.T) {
 // TestAggregate tests the Aggregate function.
 func TestAggregate(t *testing.T) {
 	report1 := &TestReport{
-		GoProject:    "ProjectX",
-		TestRunCount: 2,
+		GoProject: "ProjectX",
 		Results: []TestResult{
 			{
 				TestName:    "TestA",
@@ -311,8 +317,7 @@ func TestAggregate(t *testing.T) {
 	}
 
 	report2 := &TestReport{
-		GoProject:    "ProjectX",
-		TestRunCount: 3,
+		GoProject: "ProjectX",
 		Results: []TestResult{
 			{
 				TestName:    "TestA",
@@ -333,7 +338,7 @@ func TestAggregate(t *testing.T) {
 	}
 
 	aggregateOptions := &aggregateOptions{reportID: "123"}
-	aggregatedReport, err := aggregateFromReports(aggregateOptions, report1, report2)
+	aggregatedReport, err := aggregateReports(aggregateOptions, report1, report2)
 	if err != nil {
 		t.Fatalf("Error aggregating reports: %v", err)
 	}
@@ -388,8 +393,8 @@ func TestAggregate(t *testing.T) {
 
 func TestAggregateOutputs(t *testing.T) {
 	report1 := &TestReport{
-		GoProject:    "ProjectX",
-		TestRunCount: 1,
+		GoProject:   "ProjectX",
+		SummaryData: SummaryData{UniqueTestsRun: 1},
 		Results: []TestResult{
 			{
 				TestName:    "TestOutput",
@@ -405,8 +410,8 @@ func TestAggregateOutputs(t *testing.T) {
 	}
 
 	report2 := &TestReport{
-		GoProject:    "ProjectX",
-		TestRunCount: 1,
+		GoProject:   "ProjectX",
+		SummaryData: SummaryData{UniqueTestsRun: 1},
 		Results: []TestResult{
 			{
 				TestName:    "TestOutput",
@@ -422,7 +427,7 @@ func TestAggregateOutputs(t *testing.T) {
 	}
 
 	aggregateOptions := &aggregateOptions{reportID: "123"}
-	aggregatedReport, err := aggregateFromReports(aggregateOptions, report1, report2)
+	aggregatedReport, err := aggregateReports(aggregateOptions, report1, report2)
 	if err != nil {
 		t.Fatalf("Error aggregating reports: %v", err)
 	}
@@ -458,8 +463,8 @@ func TestAggregateOutputs(t *testing.T) {
 
 func TestAggregateIdenticalOutputs(t *testing.T) {
 	report1 := &TestReport{
-		GoProject:    "ProjectX",
-		TestRunCount: 1,
+		GoProject:   "ProjectX",
+		SummaryData: SummaryData{UniqueTestsRun: 1},
 		Results: []TestResult{
 			{
 				TestName:    "TestIdenticalOutput",
@@ -475,8 +480,8 @@ func TestAggregateIdenticalOutputs(t *testing.T) {
 	}
 
 	report2 := &TestReport{
-		GoProject:    "ProjectX",
-		TestRunCount: 1,
+		GoProject:   "ProjectX",
+		SummaryData: SummaryData{UniqueTestsRun: 1},
 		Results: []TestResult{
 			{
 				TestName:    "TestIdenticalOutput",
@@ -492,7 +497,7 @@ func TestAggregateIdenticalOutputs(t *testing.T) {
 	}
 
 	aggregateOptions := &aggregateOptions{reportID: "123"}
-	aggregatedReport, err := aggregateFromReports(aggregateOptions, report1, report2)
+	aggregatedReport, err := aggregateReports(aggregateOptions, report1, report2)
 	if err != nil {
 		t.Fatalf("Error aggregating reports: %v", err)
 	}
@@ -544,8 +549,8 @@ func TestAvgDuration(t *testing.T) {
 
 func TestAggregate_AllSkippedTests(t *testing.T) {
 	report1 := &TestReport{
-		GoProject:    "ProjectX",
-		TestRunCount: 3,
+		GoProject:   "ProjectX",
+		SummaryData: SummaryData{UniqueTestsRun: 3},
 		Results: []TestResult{
 			{
 				TestName:    "TestSkipped",
@@ -559,8 +564,8 @@ func TestAggregate_AllSkippedTests(t *testing.T) {
 	}
 
 	report2 := &TestReport{
-		GoProject:    "ProjectX",
-		TestRunCount: 2,
+		GoProject:   "ProjectX",
+		SummaryData: SummaryData{UniqueTestsRun: 2},
 		Results: []TestResult{
 			{
 				TestName:    "TestSkipped",
@@ -574,7 +579,7 @@ func TestAggregate_AllSkippedTests(t *testing.T) {
 	}
 
 	aggregateOptions := &aggregateOptions{reportID: "123"}
-	aggregatedReport, err := aggregateFromReports(aggregateOptions, report1, report2)
+	aggregatedReport, err := aggregateReports(aggregateOptions, report1, report2)
 	if err != nil {
 		t.Fatalf("Error aggregating reports: %v", err)
 	}
