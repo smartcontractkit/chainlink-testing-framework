@@ -24,6 +24,7 @@ var (
 	startRaceRe  = regexp.MustCompile(`^WARNING: DATA RACE`)
 )
 
+// Runner describes the test run parameters and raw test outputs
 type Runner struct {
 	ProjectPath          string        // Path to the Go project directory.
 	prettyProjectPath    string        // Go project package path, formatted for pretty printing.
@@ -40,6 +41,7 @@ type Runner struct {
 	SelectedTestPackages []string      // Explicitly selected packages to run.
 	CollectRawOutput     bool          // Set to true to collect test output for later inspection.
 	OmitOutputsOnSuccess bool          // Set to true to omit test outputs on success.
+	MaxPassRatio         float64       // Maximum pass ratio threshold for a test to be considered flaky.
 	rawOutputs           map[string]*bytes.Buffer
 }
 
@@ -74,14 +76,15 @@ func (r *Runner) RunTests() (*reports.TestReport, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
-	return &reports.TestReport{
+	report := &reports.TestReport{
 		GoProject:     r.prettyProjectPath,
-		TestRunCount:  r.RunCount,
 		RaceDetection: r.UseRace,
 		ExcludedTests: r.SkipTests,
 		SelectedTests: r.SelectTests,
 		Results:       results,
-	}, nil
+	}
+	reports.GenerateSummaryData(report)
+	return report, nil
 }
 
 // RawOutputs retrieves the raw output from the test runs, if CollectRawOutput enabled.

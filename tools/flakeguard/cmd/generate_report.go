@@ -17,29 +17,14 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type SummaryData struct {
-	TotalTests     int     `json:"total_tests"`
-	PanickedTests  int     `json:"panicked_tests"`
-	RacedTests     int     `json:"raced_tests"`
-	FlakyTests     int     `json:"flaky_tests"`
-	FlakyTestRatio string  `json:"flaky_test_ratio"`
-	TotalRuns      int     `json:"total_runs"`
-	PassedRuns     int     `json:"passed_runs"`
-	FailedRuns     int     `json:"failed_runs"`
-	SkippedRuns    int     `json:"skipped_runs"`
-	PassRatio      string  `json:"pass_ratio"`
-	MaxPassRatio   float64 `json:"max_pass_ratio"`
-}
-
 var GenerateReportCmd = &cobra.Command{
 	Use:   "generate-report",
-	Short: "Generate reports from an aggregated test results",
+	Short: "Generate test reports from aggregated results that can be posted to GitHub",
 	Run: func(cmd *cobra.Command, args []string) {
 		fs := reports.OSFileSystem{}
 
 		// Get flag values
 		aggregatedResultsPath, _ := cmd.Flags().GetString("aggregated-results-path")
-		summaryPath, _ := cmd.Flags().GetString("summary-path")
 		outputDir, _ := cmd.Flags().GetString("output-path")
 		maxPassRatio, _ := cmd.Flags().GetFloat64("max-pass-ratio")
 		generatePRComment, _ := cmd.Flags().GetBool("generate-pr-comment")
@@ -79,28 +64,8 @@ var GenerateReportCmd = &cobra.Command{
 		fmt.Println()
 		log.Info().Msg("Successfully loaded aggregated test report")
 
-		// Load the summary data to check for failed tests
-		var summaryData SummaryData
-
-		if summaryPath == "" {
-			log.Error().Msg("Summary path is required")
-			os.Exit(ErrorExitCode)
-		}
-
-		summaryFile, err := os.Open(summaryPath)
-		if err != nil {
-			log.Error().Err(err).Msg("Error opening summary JSON file")
-			os.Exit(ErrorExitCode)
-		}
-		defer summaryFile.Close()
-
-		if err := json.NewDecoder(summaryFile).Decode(&summaryData); err != nil {
-			log.Error().Err(err).Msg("Error decoding summary JSON file")
-			os.Exit(ErrorExitCode)
-		}
-
 		// Check if there are failed tests
-		hasFailedTests := summaryData.FailedRuns > 0
+		hasFailedTests := aggregatedReport.SummaryData.FailedRuns > 0
 
 		var artifactLink string
 		if hasFailedTests {
@@ -199,7 +164,6 @@ var GenerateReportCmd = &cobra.Command{
 
 func init() {
 	GenerateReportCmd.Flags().StringP("aggregated-results-path", "i", "", "Path to the aggregated JSON report file (required)")
-	GenerateReportCmd.Flags().StringP("summary-path", "s", "", "Path to the summary JSON file (required)")
 	GenerateReportCmd.Flags().StringP("output-path", "o", "./report", "Path to output the generated report files")
 	GenerateReportCmd.Flags().Float64P("max-pass-ratio", "", 1.0, "The maximum pass ratio threshold for a test to be considered flaky")
 	GenerateReportCmd.Flags().Bool("generate-pr-comment", false, "Set to true to generate PR comment markdown")
@@ -213,10 +177,6 @@ func init() {
 	GenerateReportCmd.Flags().String("failed-tests-artifact-name", "failed-test-results-with-logs.json", "The name of the failed tests artifact (default 'failed-test-results-with-logs.json')")
 
 	if err := GenerateReportCmd.MarkFlagRequired("aggregated-results-path"); err != nil {
-		log.Error().Err(err).Msg("Error marking flag as required")
-		os.Exit(ErrorExitCode)
-	}
-	if err := GenerateReportCmd.MarkFlagRequired("summary-path"); err != nil {
 		log.Error().Err(err).Msg("Error marking flag as required")
 		os.Exit(ErrorExitCode)
 	}

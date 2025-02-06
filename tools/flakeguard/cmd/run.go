@@ -40,6 +40,11 @@ var RunTestsCmd = &cobra.Command{
 		shuffleSeed, _ := cmd.Flags().GetString("shuffle-seed")
 		omitOutputsOnSuccess, _ := cmd.Flags().GetBool("omit-test-outputs-on-success")
 
+		if maxPassRatio < 0 || maxPassRatio > 1 {
+			log.Error().Float64("max pass ratio", maxPassRatio).Msg("Error: max pass ratio must be between 0 and 1")
+			os.Exit(ErrorExitCode)
+		}
+
 		// Check if project dependencies are correctly set up
 		if err := checkDependencies(projectPath); err != nil {
 			log.Error().Err(err).Msg("Error checking project dependencies")
@@ -74,6 +79,7 @@ var RunTestsCmd = &cobra.Command{
 			UseShuffle:           useShuffle,
 			ShuffleSeed:          shuffleSeed,
 			OmitOutputsOnSuccess: omitOutputsOnSuccess,
+			MaxPassRatio:         maxPassRatio,
 		}
 
 		// Run the tests
@@ -109,8 +115,14 @@ var RunTestsCmd = &cobra.Command{
 
 		if len(flakyTests) > 0 {
 			log.Info().Int("count", len(flakyTests)).Str("pass ratio threshold", fmt.Sprintf("%.2f%%", maxPassRatio*100)).Msg("Found flaky tests")
-			fmt.Printf("\nFlakeguard Summary\n")
-			reports.RenderResults(os.Stdout, flakyTests, maxPassRatio, false, false)
+		} else {
+			log.Info().Msg("No flaky tests found")
+		}
+
+		fmt.Printf("\nFlakeguard Summary\n")
+		reports.RenderResults(os.Stdout, testReport, false, false)
+
+		if len(flakyTests) > 0 {
 			// Exit with error code if there are flaky tests
 			os.Exit(FlakyTestsExitCode)
 		}
