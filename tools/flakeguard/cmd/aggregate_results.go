@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,7 +21,6 @@ var AggregateResultsCmd = &cobra.Command{
 		// Get flag values
 		resultsPath, _ := cmd.Flags().GetString("results-path")
 		outputDir, _ := cmd.Flags().GetString("output-path")
-		summaryFileName, _ := cmd.Flags().GetString("summary-file-name")
 		maxPassRatio, _ := cmd.Flags().GetFloat64("max-pass-ratio")
 		codeOwnersPath, _ := cmd.Flags().GetString("codeowners-path")
 		repoPath, _ := cmd.Flags().GetString("repo-path")
@@ -162,36 +160,13 @@ var AggregateResultsCmd = &cobra.Command{
 			log.Error().Stack().Err(err).Msg("Error saving aggregated test report")
 			os.Exit(ErrorExitCode)
 		}
-		log.Debug().Str("path", aggregatedReportPath).Msg("Aggregated test report saved")
-
-		// Generate all-tests-summary.json
-		var summaryFilePath string
-		if summaryFileName != "" {
-			s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-			s.Suffix = " Generating summary json..."
-			s.Start()
-			fmt.Println()
-
-			summaryFilePath = filepath.Join(outputDir, summaryFileName)
-			err = generateAllTestsSummaryJSON(aggregatedReport, summaryFilePath, maxPassRatio)
-			if err != nil {
-				s.Stop()
-				fmt.Println()
-				log.Error().Stack().Err(err).Msg("Error generating summary json")
-				os.Exit(ErrorExitCode)
-			}
-			s.Stop()
-			log.Debug().Str("path", summaryFilePath).Msg("Summary generated")
-		}
-
-		log.Info().Str("summary", summaryFilePath).Str("report", aggregatedReportPath).Msg("Aggregation complete")
+		log.Info().Str("report", aggregatedReportPath).Msg("Aggregation complete")
 	},
 }
 
 func init() {
 	AggregateResultsCmd.Flags().StringP("results-path", "p", "", "Path to the folder containing JSON test result files (required)")
 	AggregateResultsCmd.Flags().StringP("output-path", "o", "./report", "Path to output the aggregated results (directory)")
-	AggregateResultsCmd.Flags().StringP("summary-file-name", "s", "all-test-summary.json", "Name of the summary JSON file")
 	AggregateResultsCmd.Flags().Float64P("max-pass-ratio", "", 1.0, "The maximum pass ratio threshold for a test to be considered flaky")
 	AggregateResultsCmd.Flags().StringP("codeowners-path", "", "", "Path to the CODEOWNERS file")
 	AggregateResultsCmd.Flags().StringP("repo-path", "", ".", "The path to the root of the repository/project")
@@ -209,27 +184,4 @@ func init() {
 	if err := AggregateResultsCmd.MarkFlagRequired("results-path"); err != nil {
 		log.Fatal().Err(err).Msg("Error marking flag as required")
 	}
-}
-
-// New function to generate all-tests-summary.json
-func generateAllTestsSummaryJSON(report *reports.TestReport, outputPath string, maxPassRatio float64) error {
-	summary := reports.GenerateSummaryData(report.Results, maxPassRatio)
-	data, err := json.Marshal(summary)
-	if err != nil {
-		return fmt.Errorf("error marshaling summary data to JSON: %w", err)
-	}
-
-	fs := reports.OSFileSystem{}
-	jsonFile, err := fs.Create(outputPath)
-	if err != nil {
-		return fmt.Errorf("error creating file: %w", err)
-	}
-	defer jsonFile.Close()
-
-	_, err = jsonFile.Write(data)
-	if err != nil {
-		return fmt.Errorf("error writing data to file: %w", err)
-	}
-
-	return nil
 }

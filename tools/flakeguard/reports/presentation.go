@@ -10,13 +10,12 @@ import (
 	"golang.org/x/text/message"
 )
 
+// GenerateFlakyTestsTable generates a table of flaky tests from the given test report to print to the console or markdown.
 func GenerateFlakyTestsTable(
-	results []TestResult,
-	expectedPassRatio float64,
+	testReport *TestReport,
 	markdown bool,
 ) [][]string {
 	p := message.NewPrinter(language.English)
-	sortTestResults(results)
 
 	// Headers in the requested order
 	headers := []string{
@@ -45,9 +44,9 @@ func GenerateFlakyTestsTable(
 	// Initialize the table with headers
 	table := [][]string{headers}
 
-	for _, result := range results {
+	for _, result := range testReport.Results {
 		// Exclude skipped tests and only include tests below the expected pass ratio
-		if !result.Skipped && result.PassRatio < expectedPassRatio {
+		if !result.Skipped && result.PassRatio < testReport.MaxPassRatio {
 			row := []string{
 				result.TestName,
 				formatRatio(result.PassRatio),
@@ -76,6 +75,7 @@ func GenerateFlakyTestsTable(
 	return table
 }
 
+// GenerateGitHubSummaryMarkdown generates a markdown summary of the test results for a GitHub workflow summary
 func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassRatio float64, artifactName, artifactLink string) {
 	fmt.Fprint(w, "# Flakeguard Summary\n\n")
 
@@ -88,14 +88,14 @@ func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassR
 	printTable(w, settingsTable, false)
 	fmt.Fprintln(w)
 
-	summary := GenerateSummaryData(testReport.Results, maxPassRatio)
-	if summary.FlakyTests > 0 {
+	if testReport.SummaryData.FlakyTests > 0 {
 		fmt.Fprintln(w, "## Found Flaky Tests :x:")
+		fmt.Fprintln(w)
 	} else {
 		fmt.Fprintln(w, "## No Flakes Found :white_check_mark:")
 	}
 
-	RenderResults(w, testReport.Results, maxPassRatio, true, false)
+	RenderResults(w, testReport, true, false)
 
 	if artifactLink != "" {
 		renderArtifactSection(w, artifactName, artifactLink)
@@ -138,13 +138,13 @@ func GeneratePRCommentMarkdown(
 	fmt.Fprintln(w) // Add an extra newline for formatting
 
 	// Add the flaky tests section
-	if GenerateSummaryData(testReport.Results, maxPassRatio).FlakyTests > 0 {
+	if testReport.SummaryData.FlakyTests > 0 {
 		fmt.Fprintln(w, "## Found Flaky Tests :x:")
 	} else {
 		fmt.Fprintln(w, "## No Flakes Found :white_check_mark:")
 	}
 
-	resultsTable := GenerateFlakyTestsTable(testReport.Results, maxPassRatio, true)
+	resultsTable := GenerateFlakyTestsTable(testReport, true)
 	renderTestResultsTable(w, resultsTable, true)
 
 	if artifactLink != "" {
@@ -180,20 +180,18 @@ func RenderError(
 // If in markdown mode, the table results can also be made collapsible.
 func RenderResults(
 	w io.Writer,
-	tests []TestResult,
-	maxPassRatio float64,
+	testReport *TestReport,
 	markdown bool,
 	collapsible bool,
 ) {
-	resultsTable := GenerateFlakyTestsTable(tests, maxPassRatio, markdown)
-	summary := GenerateSummaryData(tests, maxPassRatio)
-	renderSummaryTable(w, summary, markdown, false) // Don't make the summary collapsible
+	resultsTable := GenerateFlakyTestsTable(testReport, markdown)
+	renderSummaryTable(w, testReport.SummaryData, markdown, false) // Don't make the summary collapsible
 	renderTestResultsTable(w, resultsTable, collapsible)
 }
 
 // renderSummaryTable renders a summary table with the given data into a console or markdown format.
 // If in markdown mode, the table can also be made collapsible.
-func renderSummaryTable(w io.Writer, summary SummaryData, markdown bool, collapsible bool) {
+func renderSummaryTable(w io.Writer, summary *SummaryData, markdown bool, collapsible bool) {
 	summaryData := [][]string{
 		{"Category", "Total"},
 		{"Unique Tests", fmt.Sprintf("%d", summary.UniqueTestsRun)},

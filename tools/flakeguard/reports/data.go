@@ -5,8 +5,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	"github.com/rs/zerolog/log"
 )
 
 // TestReport reports on the parameters and results of one to many test runs
@@ -19,11 +17,13 @@ type TestReport struct {
 	RepoURL              string       `json:"repo_url,omitempty"`
 	GitHubWorkflowName   string       `json:"github_workflow_name,omitempty"`
 	GitHubWorkflowRunURL string       `json:"github_workflow_run_url,omitempty"`
-	SummaryData          SummaryData  `json:"summary_data"`
+	SummaryData          *SummaryData `json:"summary_data"`
 	RaceDetection        bool         `json:"race_detection"`
 	ExcludedTests        []string     `json:"excluded_tests,omitempty"`
 	SelectedTests        []string     `json:"selected_tests,omitempty"`
 	Results              []TestResult `json:"results,omitempty"`
+	// MaxPassRatio is the maximum flakiness ratio allowed for a test to be considered not flaky
+	MaxPassRatio float64 `json:"max_pass_ratio,omitempty"`
 }
 
 // TestResult contains the results and outputs of a single test
@@ -81,8 +81,6 @@ type SummaryData struct {
 	SkippedRuns int `json:"skipped_runs"`
 	// PassPercent is the percentage of test runs that passed
 	PassPercent string `json:"pass_percent"`
-	// MaxPassRatio is the maximum flakiness ratio allowed for a test to be considered not flaky
-	MaxPassRatio float64 `json:"max_pass_ratio,omitempty"`
 }
 
 // SplunkType represents what type of data is being sent to Splunk, e.g. a report or a result.
@@ -131,18 +129,11 @@ type SplunkTestResultEvent struct {
 
 // Data Processing Functions
 
-// GenerateSummaryData generates a summary of the test results
-func GenerateSummaryData(tests []TestResult, maxPassRatio float64) SummaryData {
-	if maxPassRatio < 0 {
-		log.Debug().Float64("ratio", maxPassRatio).Msg("maxPassRatio is negative, setting to 0")
-		maxPassRatio = 0.0
-	} else if maxPassRatio > 1 {
-		log.Debug().Float64("ratio", maxPassRatio).Msg("maxPassRatio is greater than 1, setting to 1")
-		maxPassRatio = 1.0
-	}
+// GenerateSummaryData generates a summary of a report's test results
+func GenerateSummaryData(testReport *TestReport) {
 	var runs, mostRuns, passes, fails, skips, panickedTests, racedTests, flakyTests, skippedTests int
 
-	for _, result := range tests {
+	for _, result := range testReport.Results {
 		runs += result.Runs
 		if result.Runs > mostRuns {
 			mostRuns = result.Runs
@@ -162,7 +153,7 @@ func GenerateSummaryData(tests []TestResult, maxPassRatio float64) SummaryData {
 		} else if result.Race {
 			racedTests++
 			flakyTests++
-		} else if !result.Skipped && result.Runs > 0 && result.PassRatio < maxPassRatio {
+		} else if !result.Skipped && result.Runs > 0 && result.PassRatio < testReport.MaxPassRatio {
 			flakyTests++
 		}
 	}
@@ -171,13 +162,13 @@ func GenerateSummaryData(tests []TestResult, maxPassRatio float64) SummaryData {
 	passRatio := passRatio(passes, runs)
 
 	// Calculate the raw flake ratio
-	totalTests := len(tests)
+	totalTests := len(testReport.Results)
 	flakeRatio := flakeRatio(flakyTests, totalTests)
 
 	passRatioStr := formatRatio(passRatio)
 	flakeTestRatioStr := formatRatio(flakeRatio)
 
-	return SummaryData{
+	testReport.SummaryData = &SummaryData{
 		UniqueTestsRun:   totalTests,
 		TestRunCount:     mostRuns,
 		PanickedTests:    panickedTests,
@@ -189,9 +180,7 @@ func GenerateSummaryData(tests []TestResult, maxPassRatio float64) SummaryData {
 		PassedRuns:  passes,
 		FailedRuns:  fails,
 		SkippedRuns: skips,
-
-		PassPercent:  passRatioStr,
-		MaxPassRatio: maxPassRatio,
+		PassPercent: passRatioStr,
 	}
 }
 

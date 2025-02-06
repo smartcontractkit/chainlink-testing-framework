@@ -113,10 +113,16 @@ var RunTestsCmd = &cobra.Command{
 			return !tr.Skipped && tr.PassRatio < maxPassRatio
 		})
 
-		fmt.Printf("\nFlakeguard Summary\n")
-		reports.RenderResults(os.Stdout, flakyTests, maxPassRatio, false, false)
 		if len(flakyTests) > 0 {
 			log.Info().Int("count", len(flakyTests)).Str("pass ratio threshold", fmt.Sprintf("%.2f%%", maxPassRatio*100)).Msg("Found flaky tests")
+		} else {
+			log.Info().Msg("No flaky tests found")
+		}
+
+		fmt.Printf("\nFlakeguard Summary\n")
+		reports.RenderResults(os.Stdout, testReport, false, false)
+
+		if len(flakyTests) > 0 {
 			// Exit with error code if there are flaky tests
 			os.Exit(FlakyTestsExitCode)
 		}

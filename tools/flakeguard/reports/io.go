@@ -297,7 +297,7 @@ func decodeField(decoder *json.Decoder, report *TestReport) error {
 			return fmt.Errorf("error decoding PassRatio: %w", err)
 		}
 	case "max_pass_ratio":
-		if err := decoder.Decode(&report.SummaryData.MaxPassRatio); err != nil {
+		if err := decoder.Decode(&report.MaxPassRatio); err != nil {
 			return fmt.Errorf("error decoding MaxPassRatio: %w", err)
 		}
 	case "race_detection":
@@ -435,6 +435,7 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 			RepoURL:              opts.repoURL,
 			GitHubWorkflowName:   opts.gitHubWorkflowName,
 			GitHubWorkflowRunURL: opts.gitHubWorkflowRunURL,
+			MaxPassRatio:         opts.maxPassRatio,
 		}
 		testMap       = make(map[string]TestResult)
 		excludedTests = map[string]struct{}{}
@@ -466,7 +467,6 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 			}
 		}
 	}
-	fullReport.SummaryData = GenerateSummaryData(fullReport.Results, opts.maxPassRatio)
 
 	for err := range errChan {
 		return nil, err
@@ -494,6 +494,7 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 
 	sortTestResults(aggregatedResults)
 	fullReport.Results = aggregatedResults
+	GenerateSummaryData(fullReport)
 
 	if sendToSplunk {
 		err = sendDataToSplunk(opts, splunkReport, aggregatedResults...)
