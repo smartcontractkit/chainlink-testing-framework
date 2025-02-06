@@ -480,9 +480,6 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 		fullReport.SelectedTests = append(fullReport.SelectedTests, test)
 	}
 
-	// Get the report without any results to send to splunk
-	splunkReport := *fullReport
-
 	// Prepare final results
 	var (
 		aggregatedResults []TestResult
@@ -497,14 +494,16 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 	GenerateSummaryData(fullReport)
 
 	if sendToSplunk {
-		err = sendDataToSplunk(opts, splunkReport, aggregatedResults...)
+		err = sendDataToSplunk(opts, *fullReport)
 	}
 	return fullReport, err
 }
 
 // sendDataToSplunk sends a truncated TestReport and each individual TestResults to Splunk as events
-func sendDataToSplunk(opts *aggregateOptions, report TestReport, results ...TestResult) error {
+func sendDataToSplunk(opts *aggregateOptions, report TestReport) error {
 	start := time.Now()
+	results := report.Results
+	report.Results = nil // Don't send results to Splunk, doing that individually
 	// Dry-run mode for example runs
 	isExampleRun := strings.Contains(opts.splunkURL, "splunk.example.com")
 
@@ -515,7 +514,7 @@ func sendDataToSplunk(opts *aggregateOptions, report TestReport, results ...Test
 		SetHeader("Content-Type", "application/json").
 		SetLogger(ZerologRestyLogger{})
 
-	log.Debug().Str("report id", report.ID).Int("results", len(results)).Msg("Sending aggregated data to Splunk")
+	log.Debug().Str("report id", report.ID).Int("results", len(report.Results)).Msg("Sending aggregated data to Splunk")
 
 	var (
 		splunkErrs            = []error{}
