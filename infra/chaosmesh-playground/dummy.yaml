@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ping-deployment
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: ping-app
+  template:
+    metadata:
+      labels:
+        app: ping-app
+    spec:
+      containers:
+        - name: ping-container
+          image: alpine:latest
+          command: ["sh", "-c", "while true; do ping -c 1 google.com; sleep 1; done"]
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ping-service-1
+spec:
+  selector:
+    app: ping-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ping-service-2
+spec:
+  selector:
+    app: ping-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ping-service-3
+spec:
+  selector:
+    app: ping-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ping-service-4
+spec:
+  selector:
+    app: ping-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80

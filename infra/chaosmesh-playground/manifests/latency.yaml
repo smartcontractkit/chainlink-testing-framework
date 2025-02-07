@@ -1,0 +1,15 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: introduce-latency-to-google
+  namespace: default
+spec:
+  action: delay
+  mode: all
+  selector:
+    labelSelectors:
+      app: ping-app
+  delay:
+    latency: "100ms"
+    correlation: "100"
+    jitter: "0ms"
