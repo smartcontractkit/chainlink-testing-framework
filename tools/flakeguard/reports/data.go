@@ -43,11 +43,11 @@ type TestResult struct {
 	Failures       int                 `json:"failures"`
 	Successes      int                 `json:"successes"`
 	Skips          int                 `json:"skips"`
-	Outputs        map[string][]string `json:"-"`              // Temporary storage for outputs during test run
-	PassedOutputs  map[string][]string `json:"passed_outputs"` // Outputs for passed runs
-	FailedOutputs  map[string][]string `json:"failed_outputs"` // Outputs for failed runs
+	Outputs        map[string][]string `json:"-"`                        // Temporary storage for outputs during test run
+	PassedOutputs  map[string][]string `json:"passed_outputs,omitempty"` // Outputs for passed runs
+	FailedOutputs  map[string][]string `json:"failed_outputs,omitempty"` // Outputs for failed runs
 	Durations      []time.Duration     `json:"durations"`
-	PackageOutputs []string            `json:"package_outputs"`
+	PackageOutputs []string            `json:"package_outputs,omitempty"`
 	TestPath       string              `json:"test_path"`
 	CodeOwners     []string            `json:"code_owners"`
 }
