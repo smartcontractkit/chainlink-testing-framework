@@ -14,11 +14,21 @@
       "up": [
         "kind create cluster --name cm-playground --config kind.yaml",
         "helm repo add chaos-mesh https://charts.chaos-mesh.org",
+        "kubectl create ns chaos-mesh",
         "helm install chaos-mesh chaos-mesh/chaos-mesh -n=chaos-mesh --set chaosDaemon.runtime=containerd --set chaosDaemon.socketPath=/run/containerd/containerd.sock --version 2.7.0",
-        "kubectl apply -f dummy.yaml"
+        "kubectl apply -f dummy-cluster.yaml"
       ],
       "down": [
         "kind delete cluster --name cm-playground"
+      ],
+      "rm-chaos": [
+        "kubectl delete networkchaos --all -A",
+        "kubectl delete podchaos --all -A",
+        "kubectl delete iochaos --all -A",
+        "kubectl delete timechaos --all -A",
+        "kubectl delete stresschaos --all -A",
+        "kubectl delete dnschaos --all -A",
+        "kubectl delete kernelchaos --all -A"
       ],
       "context": [
         "kubectl config set-context"

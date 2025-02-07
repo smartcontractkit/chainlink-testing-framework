@@ -1,4 +1,4 @@
-## ChaosMesh Playground
+# Debugging K8s Chaos Tests
 
 This deployment is used to debug various [ChaosMesh](https://chaos-mesh.org/) with [Kind](https://kind.sigs.k8s.io/)
 

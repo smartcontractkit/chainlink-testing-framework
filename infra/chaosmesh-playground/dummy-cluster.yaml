@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: http-ping-deployment
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: http-ping-app
+  template:
+    metadata:
+      labels:
+        app: http-ping-app
+    spec:
+      containers:
+        - name: http-ping-container
+          image: python:3.9-alpine
+          command:
+            - sh
+            - -c
+            - |
+              apk add --no-cache bind-tools
+              python -m http.server 8080 &
+              while true; do
+                POD_IPS=$(nslookup http-ping-service | awk '/Address/ {print $2}' | tail -n +2)
+                for IP in $POD_IPS; do
+                  if [ "$IP" != "$(hostname -i)" ]; then
+                    LATENCY=$(ping -c 1 $IP | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
+                    echo "$IP ->> $LATENCY ms"
+                  fi
+                done
+                sleep 1
+              done
+          ports:
+            - containerPort: 8080
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: http-ping-service
+spec:
+  selector:
+    app: http-ping-app
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: production-app-that-must-be-safe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: production-app
+  template:
+    metadata:
+      labels:
+        app: production-app
+    spec:
+      containers:
+        - name: ping-container
+          image: alpine:latest
+          command: ["sh", "-c", "while true; do ping -c 1 google.com; sleep 1; done"]
