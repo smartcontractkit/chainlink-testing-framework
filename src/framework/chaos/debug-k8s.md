@@ -4,6 +4,7 @@ This deployment is used to debug various [ChaosMesh](https://chaos-mesh.org/) wi
 
 Install [DevBox](https://www.jetify.com/devbox) and run your environment
 ```
+cd infra/chaosmesh-playground
 devbox run up
 ```
 
