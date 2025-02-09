@@ -6,6 +6,7 @@ toolchain go1.23.3
 
 replace (
 	github.com/smartcontractkit/chainlink-testing-framework/framework => ../../
+	github.com/smartcontractkit/chainlink-testing-framework/havoc => ../../../havoc
 	github.com/smartcontractkit/chainlink-testing-framework/wasp => ../../../wasp
 )
 
@@ -15,6 +16,7 @@ require (
 	github.com/chaos-mesh/chaos-mesh/api v0.0.0-20240821051457-da69c6d9617a
 	github.com/ethereum/go-ethereum v1.14.11
 	github.com/go-resty/resty/v2 v2.15.3
+	github.com/google/uuid v1.6.0
 	github.com/rs/zerolog v1.33.0
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.4.8
 	github.com/smartcontractkit/chainlink-testing-framework/havoc v1.50.2
@@ -136,7 +138,6 @@ require (
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/grafana/dskit v0.0.0-20231120170505-765e343eda4f // indirect
