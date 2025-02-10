@@ -121,7 +121,7 @@ type SummaryData struct {
 	RacedTests int `json:"raced_tests"`
 	// FlakyTests tracks how many tests are considered flaky
 	FlakyTests int `json:"flaky_tests"`
-	// FlakyTestPercent is the percentage of tests that are considered flaky
+	// FlakyTestPercent is the human-readable percentage of tests that are considered flaky
 	FlakyTestPercent string `json:"flaky_test_percent"`
 
 	// Individual test run counts
@@ -134,7 +134,7 @@ type SummaryData struct {
 	FailedRuns int `json:"failed_runs"`
 	// SkippedRuns tracks how many test runs were skipped
 	SkippedRuns int `json:"skipped_runs"`
-	// PassPercent is the percentage of test runs that passed
+	// PassPercent is the human-readable percentage of test runs that passed
 	PassPercent string `json:"pass_percent"`
 }
 
