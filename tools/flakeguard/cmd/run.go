@@ -126,7 +126,7 @@ func init() {
 	RunTestsCmd.Flags().String("test-packages-json", "", "JSON-encoded string of test packages")
 	RunTestsCmd.Flags().StringSlice("test-packages", nil, "Comma-separated list of test packages to run")
 	RunTestsCmd.Flags().StringArray("test-cmd", nil,
-		"Optional custom test command (e.g. 'go run e2e_test.go -someflag'), which must produce go test -json output.",
+		"Optional custom test command (e.g. 'go test -json github.com/smartcontractkit/chainlink/integration-tests/smoke -v -run TestForwarderOCR2Basic'), which must produce go test -json output.",
 	)
 	RunTestsCmd.Flags().Bool("run-all-packages", false, "Run all test packages in the project. This flag overrides --test-packages and --test-packages-json")
 	RunTestsCmd.Flags().IntP("run-count", "c", 1, "Number of times to run the tests")
