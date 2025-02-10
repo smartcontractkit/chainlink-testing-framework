@@ -301,6 +301,16 @@ func (p *Server) Address() string {
 	return p.address
 }
 
+// Port returns the port the parrot is running on
+func (p *Server) Port() int {
+	return p.port
+}
+
+// Host returns the host the parrot is running on
+func (p *Server) Host() string {
+	return p.host
+}
+
 // Register adds a new route to the parrot
 func (p *Server) Register(route *Route) error {
 	if p.shutDown.Load() {
