@@ -22,14 +22,14 @@ func TestK8sChaos(t *testing.T) {
 	c, err := havoc.NewChaosMeshClient()
 	require.NoError(t, err)
 
-	namespace := "default"
+	namespace := "crib-ccip-chaos"
 	experimentInterval := 3 * time.Minute
 	injectionDuration := 90 * time.Second
 
 	reorgBelowFinalityDepth := 10
 	reorgAboveFinalityDepth := 50
-	srcURL := os.Getenv("CCIP_SRC_CHAIN_HTTP_URL")
-	dstURL := os.Getenv("CCIP_DST_CHAIN_HTTP_URL")
+	srcURL := "https://crib-ccip-chaos-geth-1337-http.main.stage.cldev.sh"
+	dstURL := "https://crib-ccip-chaos-geth-2337-http.main.stage.cldev.sh"
 
 	testCases := []struct {
 		name     string
@@ -42,8 +42,8 @@ func TestK8sChaos(t *testing.T) {
 			run: func(t *testing.T) {
 				src, err := template.PodFail(c, l, template.PodFailCfg{
 					Namespace:         namespace,
-					LabelKey:          "app.kubernetes.io/instance",
-					LabelValues:       []string{"blockchain-1"},
+					LabelKey:          "instance",
+					LabelValues:       []string{"geth-1337"},
 					InjectionDuration: injectionDuration,
 				})
 				require.NoError(t, err)
@@ -56,8 +56,8 @@ func TestK8sChaos(t *testing.T) {
 			run: func(t *testing.T) {
 				dst, err := template.PodFail(c, l, template.PodFailCfg{
 					Namespace:         namespace,
-					LabelKey:          "app.kubernetes.io/instance",
-					LabelValues:       []string{"blockchain-2"},
+					LabelKey:          "instance",
+					LabelValues:       []string{"geth-2337"},
 					InjectionDuration: injectionDuration,
 				})
 				require.NoError(t, err)
@@ -71,7 +71,7 @@ func TestK8sChaos(t *testing.T) {
 				node1, err := template.PodFail(c, l, template.PodFailCfg{
 					Namespace:         namespace,
 					LabelKey:          "app.kubernetes.io/instance",
-					LabelValues:       []string{"ccip-1"},
+					LabelValues:       []string{"ccip-0"},
 					InjectionDuration: injectionDuration,
 				})
 				require.NoError(t, err)
@@ -85,7 +85,7 @@ func TestK8sChaos(t *testing.T) {
 				node1, err := template.PodFail(c, l, template.PodFailCfg{
 					Namespace:         namespace,
 					LabelKey:          "app.kubernetes.io/instance",
-					LabelValues:       []string{"ccip-1", "ccip-2"},
+					LabelValues:       []string{"ccip-0", "ccip-1"},
 					InjectionDuration: injectionDuration,
 				})
 				require.NoError(t, err)
@@ -99,8 +99,8 @@ func TestK8sChaos(t *testing.T) {
 			run: func(t *testing.T) {
 				src, err := template.PodDelay(c, l, template.PodDelayCfg{
 					Namespace:         namespace,
-					LabelKey:          "app.kubernetes.io/instance",
-					LabelValues:       []string{"blockchain-1"},
+					LabelKey:          "instance",
+					LabelValues:       []string{"geth-1337"},
 					Latency:           200 * time.Millisecond,
 					Jitter:            200 * time.Millisecond,
 					Correlation:       "0",
@@ -116,8 +116,8 @@ func TestK8sChaos(t *testing.T) {
 			run: func(t *testing.T) {
 				src, err := template.PodDelay(c, l, template.PodDelayCfg{
 					Namespace:         namespace,
-					LabelKey:          "app.kubernetes.io/instance",
-					LabelValues:       []string{"blockchain-2"},
+					LabelKey:          "instance",
+					LabelValues:       []string{"geth-2337"},
 					Latency:           200 * time.Millisecond,
 					Jitter:            200 * time.Millisecond,
 					Correlation:       "0",
@@ -134,7 +134,7 @@ func TestK8sChaos(t *testing.T) {
 				src, err := template.PodDelay(c, l, template.PodDelayCfg{
 					Namespace:         namespace,
 					LabelKey:          "app.kubernetes.io/instance",
-					LabelValues:       []string{"ccip-1"},
+					LabelValues:       []string{"ccip-0"},
 					Latency:           200 * time.Millisecond,
 					Jitter:            200 * time.Millisecond,
 					Correlation:       "0",
@@ -151,7 +151,7 @@ func TestK8sChaos(t *testing.T) {
 				src, err := template.PodDelay(c, l, template.PodDelayCfg{
 					Namespace:         namespace,
 					LabelKey:          "app.kubernetes.io/instance",
-					LabelValues:       []string{"ccip-1", "ccip-2"},
+					LabelValues:       []string{"ccip-0", "ccip-1"},
 					Latency:           200 * time.Millisecond,
 					Jitter:            200 * time.Millisecond,
 					Correlation:       "0",
@@ -168,9 +168,9 @@ func TestK8sChaos(t *testing.T) {
 				src, err := template.PodPartition(c, l, template.PodPartitionCfg{
 					Namespace:         namespace,
 					LabelFromKey:      "app.kubernetes.io/instance",
-					LabelFromValues:   []string{"ccip-1"},
+					LabelFromValues:   []string{"ccip-0"},
 					LabelToKey:        "app.kubernetes.io/instance",
-					LabelToValues:     []string{"ccip-2", "ccip-3", "ccip-4"},
+					LabelToValues:     []string{"ccip-1", "ccip-2", "ccip-3"},
 					InjectionDuration: injectionDuration,
 				})
 				require.NoError(t, err)
@@ -184,9 +184,9 @@ func TestK8sChaos(t *testing.T) {
 				src, err := template.PodPartition(c, l, template.PodPartitionCfg{
 					Namespace:         namespace,
 					LabelFromKey:      "app.kubernetes.io/instance",
-					LabelFromValues:   []string{"ccip-1", "ccip-2"},
+					LabelFromValues:   []string{"ccip-0", "ccip-1"},
 					LabelToKey:        "app.kubernetes.io/instance",
-					LabelToValues:     []string{"ccip-3", "ccip-4"},
+					LabelToValues:     []string{"ccip-2", "ccip-3"},
 					InjectionDuration: injectionDuration,
 				})
 				require.NoError(t, err)
