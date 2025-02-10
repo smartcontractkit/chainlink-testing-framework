@@ -494,7 +494,7 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 	GenerateSummaryData(fullReport)
 
 	if sendToSplunk {
-		err = sendDataToSplunk(opts, *fullReport)
+		_ = sendDataToSplunk(opts, *fullReport)
 	}
 	return fullReport, err
 }
