@@ -241,7 +241,7 @@ func TestRenderResults(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Generate the summary data
-			GenerateSummaryData(tc.testReport)
+			tc.testReport.GenerateSummaryData()
 
 			var buf bytes.Buffer
 			RenderResults(&buf, tc.testReport, false, false)

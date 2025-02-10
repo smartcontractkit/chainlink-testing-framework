@@ -17,6 +17,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+const exampleGitHubToken = "EXAMPLE_GITHUB_TOKEN" //nolint:gosec
+
 var GenerateReportCmd = &cobra.Command{
 	Use:   "generate-report",
 	Short: "Generate test reports from aggregated results that can be posted to GitHub",
@@ -191,6 +193,9 @@ func init() {
 }
 
 func fetchArtifactLink(githubToken, githubRepo string, githubRunID int64, artifactName string) (string, error) {
+	if githubToken == exampleGitHubToken {
+		return "https://example-artifact-link.com", nil
+	}
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: githubToken},
