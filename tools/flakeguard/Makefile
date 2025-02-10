@@ -41,6 +41,18 @@ example:
 		--splunk-url "https://splunk.example.com" \
 		--splunk-token "splunk-token" \
 		--splunk-event "example-splunk-event"
+	GITHUB_TOKEN="EXAMPLE_GITHUB_TOKEN" go run . generate-report \
+		--aggregated-results-path ./example_results/all-test-results.json \
+		--output-path ./example_results \
+		--github-repository "smartcontractkit/chainlink-testing-framework" \
+		--github-run-id "1" \
+		--failed-tests-artifact-name "failed-test-results-with-logs.json" \
+		--base-branch "exampleBaseBranch" \
+		--current-branch "exampleCurrentBranch" \
+		--current-commit-sha "abc" \
+		--repo-url "https://github.com/smartcontractkit/chainlink-testing-framework" \
+		--action-run-id "1" \
+		--max-pass-ratio "1.0" 
 
 .PHONY: example_flaky_panic
 example_flaky_panic:
@@ -61,6 +73,18 @@ example_flaky_panic:
 		--splunk-url "https://splunk.example.com" \
 		--splunk-token "splunk-token" \
 		--splunk-event "example-splunk-event"
+	GITHUB_TOKEN="EXAMPLE_GITHUB_TOKEN" go run . generate-report \
+		--aggregated-results-path ./example_results/all-test-results.json \
+		--output-path ./example_results \
+		--github-repository "smartcontractkit/chainlink-testing-framework" \
+		--github-run-id "1" \
+		--failed-tests-artifact-name "failed-test-results-with-logs.json" \
+		--base-branch "exampleBaseBranch" \
+		--current-branch "exampleCurrentBranch" \
+		--current-commit-sha "abc" \
+		--repo-url "https://github.com/smartcontractkit/chainlink-testing-framework" \
+		--action-run-id "1" \
+		--max-pass-ratio "1.0" 
 
 .PHONY: example_timeout
 example_timeout:
@@ -81,3 +105,15 @@ example_timeout:
 		--splunk-url "https://splunk.example.com" \
 		--splunk-token "splunk-token" \
 		--splunk-event "example-splunk-event"
+	GITHUB_TOKEN="EXAMPLE_GITHUB_TOKEN" go run . generate-report \
+		--aggregated-results-path ./example_results/all-test-results.json \
+		--output-path ./example_results \
+		--github-repository "smartcontractkit/chainlink-testing-framework" \
+		--github-run-id "1" \
+		--failed-tests-artifact-name "failed-test-results-with-logs.json" \
+		--base-branch "exampleBaseBranch" \
+		--current-branch "exampleCurrentBranch" \
+		--current-commit-sha "abc" \
+		--repo-url "https://github.com/smartcontractkit/chainlink-testing-framework" \
+		--action-run-id "1" \
+		--max-pass-ratio "1.0" 

@@ -84,7 +84,7 @@ func (r *Runner) RunTests() (*reports.TestReport, error) {
 		Results:       results,
 		MaxPassRatio:  r.MaxPassRatio,
 	}
-	reports.GenerateSummaryData(report)
+	report.GenerateSummaryData()
 	return report, nil
 }
 

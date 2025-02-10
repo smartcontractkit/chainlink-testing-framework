@@ -36,7 +36,8 @@ Both `find` and `run` commands support JSON output `--json`, making it easy to i
 You can find example usage and see outputs with:
 
 ```sh
-make example       # Run an example flow of running tests and aggregating results
-make example_panic # Run example flow with panicking tests
-ls example_results # See results of each run and aggregation
+make example             # Run an example flow of running tests, aggregating results, and reporting them to GitHub
+make example_flaky_panic # Run example flow with flaky and panicking tests
+make example_timeout     # Run example flow tests the timeout
+ls example_results       # See results of each run and aggregation
 ```

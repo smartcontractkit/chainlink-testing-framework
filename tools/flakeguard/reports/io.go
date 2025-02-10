@@ -491,10 +491,13 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 
 	sortTestResults(aggregatedResults)
 	fullReport.Results = aggregatedResults
-	GenerateSummaryData(fullReport)
+	fullReport.GenerateSummaryData()
 
 	if sendToSplunk {
 		err = sendDataToSplunk(opts, *fullReport)
+		if err != nil {
+			return fullReport, fmt.Errorf("error sending data to Splunk: %w", err)
+		}
 	}
 	return fullReport, err
 }
@@ -630,6 +633,7 @@ func sendDataToSplunk(opts *aggregateOptions, report TestReport) error {
 			Int("successfully sent", successfulResultsSent).
 			Int("total results", len(results)).
 			Errs("errors", splunkErrs).
+			Str("report id", report.ID).
 			Str("duration", time.Since(start).String()).
 			Msg("Errors occurred while sending test results to Splunk")
 	} else {
@@ -637,6 +641,7 @@ func sendDataToSplunk(opts *aggregateOptions, report TestReport) error {
 			Int("successfully sent", successfulResultsSent).
 			Int("total results", len(results)).
 			Str("duration", time.Since(start).String()).
+			Str("report id", report.ID).
 			Msg("All results sent successfully to Splunk")
 	}
 

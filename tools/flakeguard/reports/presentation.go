@@ -90,10 +90,10 @@ func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassR
 
 	if testReport.SummaryData.FlakyTests > 0 {
 		fmt.Fprintln(w, "## Found Flaky Tests :x:")
-		fmt.Fprintln(w)
 	} else {
 		fmt.Fprintln(w, "## No Flakes Found :white_check_mark:")
 	}
+	fmt.Fprintln(w)
 
 	RenderResults(w, testReport, true, false)
 
