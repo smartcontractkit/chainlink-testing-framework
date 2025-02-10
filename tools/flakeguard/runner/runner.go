@@ -160,6 +160,93 @@ func (r *Runner) runTests(packageName string) (string, bool, error) {
 	return tmpFile.Name(), true, nil // Test succeeded
 }
 
+// RunTestsByCmd runs an arbitrary command testCmd (like ["go", "run", "my_test.go", ...])
+// that produces the same JSON lines that 'go test -json' would produce on stdout.
+// It captures those lines in a temp file, then parses them for pass/fail/panic/race data.
+func (r *Runner) RunTestsByCmd(testCmd []string) (*reports.TestReport, error) {
+	var jsonFilePaths []string
+
+	// Run the command r.RunCount times
+	for i := 0; i < r.RunCount; i++ {
+		jsonFilePath, passed, err := r.runCmd(testCmd, i)
+		if err != nil {
+			return nil, fmt.Errorf("failed to run test command: %w", err)
+		}
+		jsonFilePaths = append(jsonFilePaths, jsonFilePath)
+		if !passed && r.FailFast {
+			break
+		}
+	}
+
+	results, err := r.parseTestResults(jsonFilePaths)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse test results: %w", err)
+	}
+
+	// Build a TestReport, same shape as RunTests()
+	return &reports.TestReport{
+		GoProject:     r.prettyProjectPath,
+		TestRunCount:  r.RunCount,
+		RaceDetection: r.UseRace,
+		Results:       results,
+	}, nil
+}
+
+// runCmd is a helper that runs the user-supplied command once, captures its JSON output,
+// and returns (tempFilePath, passed, error).
+func (r *Runner) runCmd(testCmd []string, runIndex int) (string, bool, error) {
+	// Create temp file for JSON output
+	tmpFile, err := os.CreateTemp("", fmt.Sprintf("test-output-cmd-run%d-*.json", runIndex+1))
+	if err != nil {
+		return "", false, fmt.Errorf("failed to create temp file: %w", err)
+	}
+	defer tmpFile.Close()
+
+	if r.Verbose {
+		log.Info().Msgf("Running custom test command (%d/%d): %s", runIndex+1, r.RunCount, strings.Join(testCmd, " "))
+	}
+
+	cmd := exec.Command(testCmd[0], testCmd[1:]...)
+	cmd.Dir = r.ProjectPath
+
+	// If collecting raw output, write to both file & buffer
+	if r.CollectRawOutput {
+		if r.rawOutputs == nil {
+			r.rawOutputs = make(map[string]*bytes.Buffer)
+		}
+		key := fmt.Sprintf("customCmd-run%d", runIndex+1)
+		if _, exists := r.rawOutputs[key]; !exists {
+			r.rawOutputs[key] = &bytes.Buffer{}
+		}
+		cmd.Stdout = io.MultiWriter(tmpFile, r.rawOutputs[key])
+	} else {
+		cmd.Stdout = tmpFile
+	}
+	// Handle stderr however you like; here we just dump it to console
+	cmd.Stderr = os.Stderr
+
+	// Run it
+	err = cmd.Run()
+
+	// Determine pass/fail from exit code
+	type exitCoder interface {
+		ExitCode() int
+	}
+	var ec exitCoder
+	if errors.As(err, &ec) {
+		// Non-zero exit code => test failure
+		if ec.ExitCode() != 0 {
+			return tmpFile.Name(), false, nil
+		}
+	} else if err != nil {
+		// Some other error that doesn't implement ExitCode() => real error
+		return "", false, fmt.Errorf("error running test command: %w", err)
+	}
+
+	// Otherwise, assume success
+	return tmpFile.Name(), true, nil
+}
+
 type entry struct {
 	Action  string  `json:"Action"`
 	Test    string  `json:"Test"`
