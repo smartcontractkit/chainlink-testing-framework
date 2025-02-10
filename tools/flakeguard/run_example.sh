@@ -1,4 +1,5 @@
 #!/bin/bash
+# Used to run flakeguard on the example test package
 
 run_flakeguard_example() {
   local run_count=$1
