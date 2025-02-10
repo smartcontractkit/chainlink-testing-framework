@@ -518,7 +518,7 @@ func sendDataToSplunk(opts *aggregateOptions, report TestReport) error {
 
 	var (
 		splunkErrs            = []error{}
-		resultsBatchSize      = 10
+		resultsBatchSize      = 5
 		resultsBatch          = []SplunkTestResult{}
 		successfulResultsSent = 0
 	)
