@@ -221,7 +221,7 @@ func TestIsValidPath(t *testing.T) {
 	}
 }
 
-func TestPreRegisterRoutes(t *testing.T) {
+func TestPreRegisterRoutesRecorders(t *testing.T) {
 	t.Parallel()
 
 	routes := []*Route{
@@ -238,9 +238,13 @@ func TestPreRegisterRoutes(t *testing.T) {
 			ResponseStatusCode: 201,
 		},
 	}
+	recorders := []string{
+		"http://localhost:8080",
+		"http://localhost:8081",
+	}
 
 	saveFile := t.Name() + ".json"
-	p, err := Wake(WithSaveFile(saveFile), WithRoutes(routes), WithLogLevel(testLogLevel))
+	p, err := NewServer(WithSaveFile(saveFile), WithRecorders(recorders...), WithRoutes(routes), WithLogLevel(testLogLevel))
 	require.NoError(t, err, "error waking parrot")
 
 	t.Cleanup(func() {
@@ -250,8 +254,10 @@ func TestPreRegisterRoutes(t *testing.T) {
 		os.Remove(saveFile)
 	})
 
-	registeredRoutes := p.Routes()
-	require.Len(t, registeredRoutes, len(routes))
+	foundRoutes := p.Routes()
+	require.Len(t, foundRoutes, len(routes))
+	foundRecorders := p.Recorders()
+	require.Len(t, foundRecorders, len(recorders))
 }
 
 func TestCustomLogFile(t *testing.T) {
@@ -259,7 +265,7 @@ func TestCustomLogFile(t *testing.T) {
 
 	logFile := t.Name() + ".log"
 	saveFile := t.Name() + ".json"
-	p, err := Wake(WithLogFile(logFile), WithSaveFile(saveFile), WithLogLevel(zerolog.InfoLevel))
+	p, err := NewServer(WithLogFile(logFile), WithSaveFile(saveFile), WithLogLevel(zerolog.InfoLevel))
 	require.NoError(t, err, "error waking parrot")
 
 	t.Cleanup(func() {
@@ -505,7 +511,7 @@ func TestShutDown(t *testing.T) {
 	t.Parallel()
 
 	fileName := t.Name() + ".json"
-	p, err := Wake(WithSaveFile(fileName), WithLogLevel(testLogLevel))
+	p, err := NewServer(WithSaveFile(fileName), WithLogLevel(testLogLevel))
 	require.NoError(t, err, "error waking parrot")
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -539,7 +545,7 @@ func TestJSONLogger(t *testing.T) {
 
 	logFileName := t.Name() + ".log"
 	fileName := t.Name() + ".json"
-	p, err := Wake(WithSaveFile(fileName), WithLogLevel(zerolog.DebugLevel), WithLogFile(logFileName), WithJSONLogs(), DisableConsoleLogs())
+	p, err := NewServer(WithSaveFile(fileName), WithLogLevel(zerolog.DebugLevel), WithLogFile(logFileName), WithJSONLogs(), DisableConsoleLogs())
 	require.NoError(t, err, "error waking parrot")
 	t.Cleanup(func() {
 		os.Remove(fileName)
@@ -577,7 +583,7 @@ func newParrot(tb testing.TB) *Server {
 
 	logFileName := tb.Name() + ".log"
 	saveFileName := tb.Name() + ".json"
-	p, err := Wake(WithSaveFile(saveFileName), WithLogFile(logFileName), WithLogLevel(testLogLevel))
+	p, err := NewServer(WithSaveFile(saveFileName), WithLogFile(logFileName), WithLogLevel(testLogLevel))
 	require.NoError(tb, err, "error waking parrot")
 	tb.Cleanup(func() {
 		err := p.Shutdown(context.Background())

@@ -47,7 +47,7 @@ func main() {
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			p, err := parrot.Wake(options...)
+			p, err := parrot.NewServer(options...)
 			if err != nil {
 				return err
 			}

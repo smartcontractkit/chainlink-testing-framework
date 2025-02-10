@@ -88,8 +88,8 @@ type SaveFile struct {
 	Recorders []string `json:"recorders"`
 }
 
-// Wake creates a new Parrot server with dynamic route handling
-func Wake(options ...ServerOption) (*Server, error) {
+// NewServer creates a new Parrot server with dynamic route handling
+func NewServer(options ...ServerOption) (*Server, error) {
 	p := &Server{
 		port:         0,
 		saveFileName: "parrot_save.json",
@@ -337,7 +337,7 @@ func (p *Server) Register(route *Route) error {
 		}
 	}
 	numWildcards := strings.Count(route.Path, "*")
-	if 1 < numWildcards {
+	if numWildcards > 1 {
 		return newDynamicError(ErrWildcardPath, fmt.Sprintf("more than 1 wildcard '%s'", route.Path))
 	}
 	if numWildcards == 1 && !strings.HasSuffix(route.Path, "*") {
