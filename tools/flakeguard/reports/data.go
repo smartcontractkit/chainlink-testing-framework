@@ -28,12 +28,12 @@ type TestReport struct {
 
 // GenerateSummaryData generates a summary of a report's test results
 func (testReport *TestReport) GenerateSummaryData() {
-	var runs, mostRuns, passes, fails, skips, panickedTests, racedTests, flakyTests, skippedTests int
+	var runs, testRunCount, passes, fails, skips, panickedTests, racedTests, flakyTests, skippedTests int
 
 	for _, result := range testReport.Results {
 		runs += result.Runs
-		if result.Runs > mostRuns {
-			mostRuns = result.Runs
+		if result.Runs > testRunCount {
+			testRunCount = result.Runs
 		}
 		passes += result.Successes
 		fails += result.Failures
@@ -67,7 +67,7 @@ func (testReport *TestReport) GenerateSummaryData() {
 
 	testReport.SummaryData = &SummaryData{
 		UniqueTestsRun:   totalTests,
-		TestRunCount:     mostRuns,
+		TestRunCount:     testRunCount,
 		PanickedTests:    panickedTests,
 		RacedTests:       racedTests,
 		FlakyTests:       flakyTests,

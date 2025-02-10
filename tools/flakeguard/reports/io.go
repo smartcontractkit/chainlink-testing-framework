@@ -127,7 +127,9 @@ func LoadAndAggregate(resultsPath string, options ...AggregateOption) (*TestRepo
 	}
 
 	// Apply options
-	opts := aggregateOptions{}
+	opts := aggregateOptions{
+		maxPassRatio: 1.0,
+	}
 	for _, opt := range options {
 		opt(&opts)
 	}
