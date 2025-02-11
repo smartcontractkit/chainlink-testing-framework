@@ -84,6 +84,11 @@ func TestRun(t *testing.T) {
 					exactPassRate: &failPassRate,
 					allFailures:   true,
 				},
+				"TestFailLargeOutput": {
+					exactRuns:     &defaultTestRunCount,
+					exactPassRate: &failPassRate,
+					allFailures:   true,
+				},
 				"TestPass": {
 					exactRuns:     &defaultTestRunCount,
 					exactPassRate: &successPassRate,

@@ -34,6 +34,12 @@ var GenerateReportCmd = &cobra.Command{
 		githubRunID, _ := cmd.Flags().GetInt64("github-run-id")
 		artifactName, _ := cmd.Flags().GetString("failed-tests-artifact-name")
 
+		initialDirSize, err := getDirSize(outputDir)
+		if err != nil {
+			log.Error().Err(err).Str("path", outputDir).Msg("Error getting initial directory size")
+			// intentionally don't exit here, as we can still proceed with the generation
+		}
+
 		// Get the GitHub token from environment variable
 		githubToken := os.Getenv("GITHUB_TOKEN")
 		if githubToken == "" {
@@ -160,7 +166,13 @@ var GenerateReportCmd = &cobra.Command{
 			log.Info().Msg("PR comment markdown generated successfully")
 		}
 
-		log.Info().Str("output", outputDir).Msg("Reports generated successfully")
+		finalDirSize, err := getDirSize(outputDir)
+		if err != nil {
+			log.Error().Err(err).Str("path", outputDir).Msg("Error getting initial directory size")
+			// intentionally don't exit here, as we can still proceed with the generation
+		}
+		diskSpaceUsed := byteCountSI(finalDirSize - initialDirSize)
+		log.Info().Str("disk space used", diskSpaceUsed).Str("output", outputDir).Msg("Reports generated successfully")
 	},
 }
 

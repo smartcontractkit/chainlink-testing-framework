@@ -66,3 +66,6 @@ rm -rf example_results
 mkdir -p example_results
 
 run_flakeguard_example "$1" "$2"
+
+size=$(du -sh ./example_results | awk '{print $1}')
+echo "Wrote $size to disk"
