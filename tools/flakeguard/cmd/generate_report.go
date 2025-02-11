@@ -96,7 +96,7 @@ var GenerateReportCmd = &cobra.Command{
 		var artifactLink string
 		if hasFailedTests && githubRepo != "" && githubRunID != 0 && artifactName != "" {
 			// Fetch artifact link from GitHub API
-			artifactLink, err = fetchArtifactLink(githubToken, githubRepo, githubRunID, artifactName)
+			artifactLink, err = fetchArtifactLinkWithRetry(githubToken, githubRepo, githubRunID, artifactName, 5, 5*time.Second)
 			if err != nil {
 				return fmt.Errorf("error fetching artifact link: %w", err)
 			}
@@ -216,7 +216,7 @@ func fetchArtifactLink(githubToken, githubRepo string, githubRunID int64, artifa
 	owner, repo := repoParts[0], repoParts[1]
 
 	// List artifacts for the workflow run
-	opts := &github.ListOptions{Page: 5, PerPage: 100}
+	opts := &github.ListOptions{PerPage: 500}
 	artifacts, _, err := client.Actions.ListWorkflowRunArtifacts(ctx, owner, repo, githubRunID, opts)
 	if err != nil {
 		return "", fmt.Errorf("error listing artifacts: %w", err)
@@ -233,6 +233,33 @@ func fetchArtifactLink(githubToken, githubRepo string, githubRunID int64, artifa
 	}
 
 	return "", fmt.Errorf("artifact '%s' not found in the workflow run", artifactName)
+}
+
+func fetchArtifactLinkWithRetry(
+	githubToken, githubRepo string,
+	githubRunID int64, artifactName string,
+	maxRetries int, delay time.Duration,
+) (string, error) {
+	var lastErr error
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		link, err := fetchArtifactLink(githubToken, githubRepo, githubRunID, artifactName)
+		if err == nil {
+			// Found the artifact link successfully
+			return link, nil
+		}
+
+		// If this was our last attempt, return the error
+		lastErr = err
+		if attempt == maxRetries {
+			break
+		}
+
+		// Otherwise wait and retry
+		log.Printf("[Attempt %d/%d] Artifact not yet available. Retrying in %s...", attempt, maxRetries, delay)
+		time.Sleep(delay)
+	}
+
+	return "", fmt.Errorf("failed to fetch artifact link after %d retries: %w", maxRetries, lastErr)
 }
 
 func generateGitHubSummaryMarkdown(report *reports.TestReport, outputPath, artifactLink, artifactName string) error {
