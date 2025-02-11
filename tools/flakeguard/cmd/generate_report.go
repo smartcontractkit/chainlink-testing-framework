@@ -94,16 +94,12 @@ var GenerateReportCmd = &cobra.Command{
 		hasFailedTests := summaryData.FailedRuns > 0
 
 		var artifactLink string
-		if hasFailedTests {
+		if hasFailedTests && githubRepo != "" && githubRunID != 0 {
 			// Fetch artifact link from GitHub API
 			artifactLink, err = fetchArtifactLink(githubToken, githubRepo, githubRunID, artifactName)
 			if err != nil {
 				return fmt.Errorf("error fetching artifact link: %w", err)
 			}
-		} else {
-			// No failed tests, set artifactLink to empty string
-			artifactLink = ""
-			log.Debug().Msg("No failed tests found. Skipping artifact link generation")
 		}
 
 		// Create output directory if it doesn't exist
@@ -200,12 +196,6 @@ func init() {
 		log.Fatal().Err(err).Msg("Error marking flag as required")
 	}
 	if err := GenerateReportCmd.MarkFlagRequired("summary-path"); err != nil {
-		log.Fatal().Err(err).Msg("Error marking flag as required")
-	}
-	if err := GenerateReportCmd.MarkFlagRequired("github-repository"); err != nil {
-		log.Fatal().Err(err).Msg("Error marking flag as required")
-	}
-	if err := GenerateReportCmd.MarkFlagRequired("github-run-id"); err != nil {
 		log.Fatal().Err(err).Msg("Error marking flag as required")
 	}
 }
