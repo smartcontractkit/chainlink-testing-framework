@@ -247,6 +247,7 @@ func (p *Server) Healthy() error {
 		ResponseStatusCode: http.StatusOK,
 	}
 
+	p.log.Info().Msg("Checking Parrot health")
 	err := p.Register(healthCheckRoute)
 	if err != nil {
 		return newDynamicError(ErrServerUnhealthy, fmt.Sprintf("%s: unable to register routes", err.Error()))
@@ -263,7 +264,7 @@ func (p *Server) Healthy() error {
 
 	p.Delete(healthCheckRoute)
 
-	p.log.Debug().Msg("Parrot is healthy")
+	p.log.Info().Msg("Parrot healthy")
 	return nil
 }
 

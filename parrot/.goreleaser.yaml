@@ -2,6 +2,8 @@
 version: 2
 project_name: parrot
 
+dist: parrot/dist
+
 monorepo:
   tag_prefix: parrot/
   dir: parrot
@@ -20,8 +22,7 @@ builds:
     goarch:
       - amd64
       - arm64
-    ldflags:
-      - '-s -w'
+    binary: parrot
 
 archives:
   - formats: ['binary']
@@ -32,6 +33,7 @@ dockers:
     goarch: amd64
     image_templates:
       - '{{ .Env.IMG_PRE }}/parrot:{{ .Tag }}-amd64'
+      - '{{ .Env.IMG_PRE }}/parrot:latest-amd64'
     build_flag_templates:
       - --platform=linux/amd64
       - --pull
@@ -44,6 +46,7 @@ dockers:
     goarch: arm64
     image_templates:
       - '{{ .Env.IMG_PRE }}/parrot:{{ .Tag }}-arm64'
+      - '{{ .Env.IMG_PRE }}/parrot:latest-arm64'
     build_flag_templates:
       - --platform=linux/arm64
       - --pull
@@ -57,6 +60,10 @@ docker_manifests:
     image_templates:
       - '{{ .Env.IMG_PRE }}/parrot:{{ .Tag }}-amd64'
       - '{{ .Env.IMG_PRE }}/parrot:{{ .Tag }}-arm64'
+  - name_template: '{{ .Env.IMG_PRE }}/parrot:latest'
+    image_templates:
+      - '{{ .Env.IMG_PRE }}/parrot:latest-amd64'
+      - '{{ .Env.IMG_PRE }}/parrot:latest-arm64'
 
 before:
   hooks:
