@@ -35,6 +35,12 @@ var AggregateResultsCmd = &cobra.Command{
 		splunkToken, _ := cmd.Flags().GetString("splunk-token")
 		splunkEvent, _ := cmd.Flags().GetString("splunk-event")
 
+		initialDirSize, err := getDirSize(resultsPath)
+		if err != nil {
+			log.Error().Err(err).Str("path", resultsPath).Msg("Error getting initial directory size")
+			// intentionally don't exit here, as we can still proceed with the aggregation
+		}
+
 		// Ensure the output directory exists
 		if err := fs.MkdirAll(outputDir, 0755); err != nil {
 			log.Error().Err(err).Str("path", outputDir).Msg("Error creating output directory")
@@ -160,7 +166,14 @@ var AggregateResultsCmd = &cobra.Command{
 			log.Error().Stack().Err(err).Msg("Error saving aggregated test report")
 			os.Exit(ErrorExitCode)
 		}
-		log.Info().Str("report", aggregatedReportPath).Msg("Aggregation complete")
+
+		finalDirSize, err := getDirSize(resultsPath)
+		if err != nil {
+			log.Error().Err(err).Str("path", resultsPath).Msg("Error getting final directory size")
+			// intentionally don't exit here, as we can still proceed with the aggregation
+		}
+		diskSpaceUsed := byteCountSI(finalDirSize - initialDirSize)
+		log.Info().Str("disk space used", diskSpaceUsed).Str("report", aggregatedReportPath).Msg("Aggregation complete")
 	},
 }
 
@@ -184,4 +197,34 @@ func init() {
 	if err := AggregateResultsCmd.MarkFlagRequired("results-path"); err != nil {
 		log.Fatal().Err(err).Msg("Error marking flag as required")
 	}
+}
+
+// getDirSize returns the size of a directory in bytes
+// helpful for tracking how much data is being produced on disk
+func getDirSize(path string) (int64, error) {
+	var size int64
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return nil
+	})
+	return size, err
+}
+
+// byteCountSI returns a human-readable byte count (decimal SI units)
+func byteCountSI(b int64) string {
+	const unit = 1000
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "kMGTPE"[exp])
 }

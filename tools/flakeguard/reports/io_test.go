@@ -17,9 +17,9 @@ const (
 	splunkToken   = "test-token"
 	splunkEvent   = "test"
 	reportID      = "123"
-	totalTestRuns = 255
+	totalTestRuns = 270
 	testRunCount  = 15
-	uniqueTests   = 18
+	uniqueTests   = 19
 )
 
 func TestAggregateResultFilesSplunk(t *testing.T) {
@@ -140,9 +140,7 @@ func BenchmarkAggregateResultFiles(b *testing.B) {
 	zerolog.SetGlobalLevel(zerolog.Disabled)
 	for i := 0; i < b.N; i++ {
 		_, err := LoadAndAggregate("./testdata", WithReportID(reportID))
-		if err != nil {
-			b.Fatalf("LoadAndAggregate failed: %v", err)
-		}
+		require.NoError(b, err, "LoadAndAggregate failed")
 	}
 }
 
@@ -156,8 +154,6 @@ func BenchmarkAggregateResultFilesSplunk(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, err := LoadAndAggregate("./testdata", WithReportID(reportID), WithSplunk(srv.URL, splunkToken, "test"))
-		if err != nil {
-			b.Fatalf("LoadAndAggregate failed: %v", err)
-		}
+		require.NoError(b, err, "LoadAndAggregate failed")
 	}
 }
