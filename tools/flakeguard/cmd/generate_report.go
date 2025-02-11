@@ -94,7 +94,7 @@ var GenerateReportCmd = &cobra.Command{
 		hasFailedTests := summaryData.FailedRuns > 0
 
 		var artifactLink string
-		if hasFailedTests && githubRepo != "" && githubRunID != 0 {
+		if hasFailedTests && githubRepo != "" && githubRunID != 0 && artifactName != "" {
 			// Fetch artifact link from GitHub API
 			artifactLink, err = fetchArtifactLink(githubToken, githubRepo, githubRunID, artifactName)
 			if err != nil {
@@ -216,7 +216,7 @@ func fetchArtifactLink(githubToken, githubRepo string, githubRunID int64, artifa
 	owner, repo := repoParts[0], repoParts[1]
 
 	// List artifacts for the workflow run
-	opts := &github.ListOptions{PerPage: 100}
+	opts := &github.ListOptions{Page: 5, PerPage: 100}
 	artifacts, _, err := client.Actions.ListWorkflowRunArtifacts(ctx, owner, repo, githubRunID, opts)
 	if err != nil {
 		return "", fmt.Errorf("error listing artifacts: %w", err)
