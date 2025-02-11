@@ -202,32 +202,43 @@ func init() {
 
 func fetchArtifactLink(githubToken, githubRepo string, githubRunID int64, artifactName string) (string, error) {
 	ctx := context.Background()
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: githubToken},
-	)
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: githubToken})
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
 
-	// Split the repository into owner and repo
+	// Split owner/repo
 	repoParts := strings.SplitN(githubRepo, "/", 2)
 	if len(repoParts) != 2 {
 		return "", fmt.Errorf("invalid format for --github-repository, expected owner/repo")
 	}
 	owner, repo := repoParts[0], repoParts[1]
 
-	// List artifacts for the workflow run
-	opts := &github.ListOptions{PerPage: 500}
-	artifacts, _, err := client.Actions.ListWorkflowRunArtifacts(ctx, owner, repo, githubRunID, opts)
-	if err != nil {
-		return "", fmt.Errorf("error listing artifacts: %w", err)
+	opts := &github.ListOptions{PerPage: 100} // The max GitHub allows is 100 per page
+	var allArtifacts []*github.Artifact
+
+	// Paginate through all artifacts
+	for {
+		artifacts, resp, err := client.Actions.ListWorkflowRunArtifacts(ctx, owner, repo, githubRunID, opts)
+		if err != nil {
+			return "", fmt.Errorf("error listing artifacts: %w", err)
+		}
+
+		allArtifacts = append(allArtifacts, artifacts.Artifacts...)
+
+		if resp.NextPage == 0 {
+			// No more pages
+			break
+		}
+		// Move to the next page
+		opts.Page = resp.NextPage
 	}
 
-	// Find the artifact
-	for _, artifact := range artifacts.Artifacts {
+	// Find the artifact we want
+	for _, artifact := range allArtifacts {
 		if artifact.GetName() == artifactName {
-			// Construct the artifact URL using the artifact ID
 			artifactID := artifact.GetID()
-			artifactURL := fmt.Sprintf("https://github.com/%s/%s/actions/runs/%d/artifacts/%d", owner, repo, githubRunID, artifactID)
+			artifactURL := fmt.Sprintf("https://github.com/%s/%s/actions/runs/%d/artifacts/%d",
+				owner, repo, githubRunID, artifactID)
 			return artifactURL, nil
 		}
 	}
