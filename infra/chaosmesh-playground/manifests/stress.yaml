@@ -1,0 +1,17 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: m-1
+  namespace: default
+spec:
+  mode: one
+  duration: "1m"
+  selector:
+    labelSelectors:
+      app.kubernetes.io/instance: ccip-1
+  stressors:
+    cpu:
+      workers: 1
+    memory:
+      workers: 1
+      size: '1024MB'

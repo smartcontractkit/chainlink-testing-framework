@@ -15,18 +15,22 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/go-chi/chi"
 	"github.com/go-resty/resty/v2"
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
 )
 
 const (
-	healthRoute = "/health"
-	routesRoute = "/routes"
-	recordRoute = "/record"
+	HealthRoute   = "/health"
+	RoutesRoute   = "/routes"
+	RecorderRoute = "/recorder"
+
+	// MethodAny is a wildcard for any HTTP method
+	MethodAny = "ANY"
 )
 
 // Route holds information about the mock route configuration
@@ -35,9 +39,6 @@ type Route struct {
 	Method string `json:"Method"`
 	// Path is the URL path to match
 	Path string `json:"Path"`
-	// Handler is the dynamic handler function to use when called
-	// Can only be set upon creation of the server
-	Handler http.HandlerFunc `json:"-"`
 	// RawResponseBody is the static, raw string response to return when called
 	RawResponseBody string `json:"raw_response_body"`
 	// ResponseBody will be marshalled to JSON and returned when called
@@ -57,25 +58,28 @@ type Server struct {
 	host    string
 	address string
 
-	client             *resty.Client
-	shutDown           bool
-	shutDownChan       chan struct{}
-	shutDownOnce       sync.Once
-	saveFileName       string
-	useCustomLogger    bool
+	router *chi.Mux
+	server *http.Server
+	client *resty.Client
+
+	routes        map[string]*Route // Store routes for saving and retrieving
+	routesMu      sync.RWMutex
+	recorderHooks map[string]struct{} // Store recorders based on URL keys to avoid duplicates
+	recordersMu   sync.RWMutex
+
+	// Save and shutdown
+	shutDown     atomic.Bool
+	shutDownChan chan struct{}
+	shutDownOnce sync.Once
+	saveFileName string
+
+	// Logging
 	logFileName        string
 	logFile            *os.File
 	logLevel           zerolog.Level
 	jsonLogs           bool
 	disableConsoleLogs bool
 	log                zerolog.Logger
-
-	server   *http.Server
-	routes   map[string]*Route // Store routes based on "Method:Path" keys
-	routesMu sync.RWMutex
-
-	recorderHooks map[string]struct{} // Store recorders based on URL keys to avoid duplicates
-	recordersMu   sync.RWMutex
 }
 
 // SaveFile is the structure of the file to save and load parrot data from
@@ -84,104 +88,24 @@ type SaveFile struct {
 	Recorders []string `json:"recorders"`
 }
 
-// ServerOption defines functional options for configuring the ParrotServer
-type ServerOption func(*Server) error
-
-// WithPort sets the port for the ParrotServer to run on
-func WithPort(port int) ServerOption {
-	return func(s *Server) error {
-		if port < 0 || port > 65535 {
-			return fmt.Errorf("invalid port: %d", port)
-		}
-		s.port = port
-		return nil
-	}
-}
-
-// WithLogLevel sets the visible log level of the default logger
-func WithLogLevel(level zerolog.Level) ServerOption {
-	return func(s *Server) error {
-		s.logLevel = level
-		return nil
-	}
-}
-
-// WithLogger sets the logger for the ParrotServer
-func WithLogger(l zerolog.Logger) ServerOption {
-	return func(s *Server) error {
-		s.log = l
-		s.useCustomLogger = true
-		return nil
-	}
-}
-
-// WithJSONLogs sets the logger to output JSON logs
-func WithJSONLogs() ServerOption {
-	return func(s *Server) error {
-		s.jsonLogs = true
-		return nil
-	}
-}
-
-// DisableConsoleLogs disables logging to the console
-func DisableConsoleLogs() ServerOption {
-	return func(s *Server) error {
-		s.disableConsoleLogs = true
-		return nil
-	}
-}
-
-// WithSaveFile sets the file to save the routes to
-func WithSaveFile(saveFile string) ServerOption {
-	return func(s *Server) error {
-		if saveFile == "" {
-			return fmt.Errorf("invalid save file name: %s", saveFile)
-		}
-		s.saveFileName = saveFile
-		return nil
-	}
-}
-
-// WithLogFile sets the file to save the logs to
-func WithLogFile(logFile string) ServerOption {
-	return func(s *Server) error {
-		if logFile == "" {
-			return fmt.Errorf("invalid log file name: %s", logFile)
-		}
-		s.logFileName = logFile
-		return nil
-	}
-}
-
-// WithRoutes sets the initial routes for the Parrot
-func WithRoutes(routes []*Route) ServerOption {
-	return func(s *Server) error {
-		for _, route := range routes {
-			if err := s.Register(route); err != nil {
-				return fmt.Errorf("failed to register route: %w", err)
-			}
-		}
-		return nil
-	}
-}
-
-// Wake creates a new Parrot server with dynamic route handling
-func Wake(options ...ServerOption) (*Server, error) {
+// NewServer creates a new Parrot server with dynamic route handling
+func NewServer(options ...ServerOption) (*Server, error) {
 	p := &Server{
 		port:         0,
 		saveFileName: "parrot_save.json",
 		logLevel:     zerolog.InfoLevel,
 		logFileName:  "parrot.log",
 
-		client:       resty.New(),
-		shutDownChan: make(chan struct{}),
+		routes: make(map[string]*Route),
+		router: chi.NewRouter(),
+		client: resty.New(),
 
-		routes:   make(map[string]*Route),
-		routesMu: sync.RWMutex{},
+		shutDownChan: make(chan struct{}),
 
 		recorderHooks: make(map[string]struct{}),
 		recordersMu:   sync.RWMutex{},
 	}
+	p.router.Use(p.loggingMiddleware)
 
 	for _, option := range options {
 		if err := option(p); err != nil {
@@ -189,33 +113,32 @@ func Wake(options ...ServerOption) (*Server, error) {
 		}
 	}
 
+	// Setup logger
 	var err error
 	p.logFile, err = os.Create(p.logFileName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create log file: %w", err)
 	}
 
-	if !p.useCustomLogger { // Build default logger
-		var writers []io.Writer
+	var writers []io.Writer
 
-		zerolog.TimeFieldFormat = "2006-01-02T15:04:05.000"
-		if !p.disableConsoleLogs {
-			if p.jsonLogs {
-				writers = append(writers, os.Stderr)
-			} else {
-				consoleOut := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02T15:04:05.000"}
-				writers = append(writers, consoleOut)
-			}
+	if !p.disableConsoleLogs {
+		if p.jsonLogs {
+			writers = append(writers, os.Stderr)
+		} else {
+			consoleOut := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02T15:04:05.000"}
+			writers = append(writers, consoleOut)
 		}
-
-		if p.logFile != nil {
-			writers = append(writers, p.logFile)
-		}
-
-		multiWriter := zerolog.MultiLevelWriter(writers...)
-		p.log = zerolog.New(multiWriter).Level(p.logLevel).With().Timestamp().Logger()
 	}
 
+	if p.logFile != nil {
+		writers = append(writers, p.logFile)
+	}
+
+	multiWriter := zerolog.MultiLevelWriter(writers...)
+	p.log = zerolog.New(multiWriter).Level(p.logLevel).With().Timestamp().Logger()
+
+	// Setup server
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", p.port))
 	if err != nil {
 		return nil, fmt.Errorf("failed to start listener: %w", err)
@@ -231,17 +154,20 @@ func Wake(options ...ServerOption) (*Server, error) {
 		return nil, fmt.Errorf("failed to parse port: %w", err)
 	}
 
-	mux := http.NewServeMux()
-	// TODO: Add a route to enable registering recorders
-	mux.HandleFunc(routesRoute, p.routeHandler)
-	mux.HandleFunc(recordRoute, p.recordHandler)
-	mux.HandleFunc(healthRoute, p.healthHandler)
-	mux.HandleFunc("/", p.dynamicHandler)
+	// Initialize router
+	p.router.Get(HealthRoute, p.healthHandlerGET)
+
+	p.router.Get(RoutesRoute, p.routesHandlerGET)
+	p.router.Post(RoutesRoute, p.routesHandlerPOST)
+	p.router.Delete(RoutesRoute, p.routesHandlerDELETE)
+
+	p.router.Get(RecorderRoute, p.recorderHandlerGET)
+	p.router.Post(RecorderRoute, p.recorderHandlerPOST)
 
 	p.server = &http.Server{
 		ReadHeaderTimeout: 5 * time.Second,
 		Addr:              listener.Addr().String(),
-		Handler:           p.loggingMiddleware(mux),
+		Handler:           p.router,
 	}
 
 	if err = p.load(); err != nil {
@@ -256,12 +182,12 @@ func Wake(options ...ServerOption) (*Server, error) {
 // run starts the parrot server
 func (p *Server) run(listener net.Listener) {
 	defer func() {
-		p.shutDown = true
+		p.shutDown.Store(true)
 		if err := p.save(); err != nil {
 			p.log.Error().Err(err).Msg("Failed to save routes")
 		}
 		if err := p.logFile.Close(); err != nil {
-			p.log.Error().Err(err).Msg("Failed to close log file")
+			fmt.Println("ERROR: Failed to close log file:", err)
 		}
 		p.shutDownOnce.Do(func() {
 			close(p.shutDownChan)
@@ -271,13 +197,94 @@ func (p *Server) run(listener net.Listener) {
 	p.log.Info().Str("Address", p.address).Msg("Parrot awake and ready to squawk")
 	p.log.Debug().Str("Save File", p.saveFileName).Str("Log File", p.logFileName).Msg("Configuration")
 	if err := p.server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		p.log.Fatal().Err(err).Msg("Error while running server")
+		fmt.Println("ERROR: Failed to start server:", err)
 	}
+}
+
+// routeCallHandler handles incoming requests to the parrot server routes
+func (p *Server) routeCallHandler(route *Route) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		routeCallLogger := zerolog.Ctx(r.Context())
+		routeCallLogger.UpdateContext(func(c zerolog.Context) zerolog.Context {
+			return c.Str("Route ID", route.ID())
+		})
+
+		if route.RawResponseBody != "" {
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(route.ResponseStatusCode)
+			if _, err := w.Write([]byte(route.RawResponseBody)); err != nil {
+				routeCallLogger.Error().Err(err).Msg("Failed to write response")
+				http.Error(w, "Failed to write response", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		if route.ResponseBody != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(route.ResponseStatusCode)
+			if err := json.NewEncoder(w).Encode(route.ResponseBody); err != nil {
+				routeCallLogger.Error().Err(err).Msg("Failed to write response")
+				http.Error(w, "Failed to write response", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		routeCallLogger.Error().Msg("No response provided")
+		http.Error(w, "No response provided", http.StatusInternalServerError)
+	}
+}
+
+// Healthy checks if the parrot server is healthy
+func (p *Server) Healthy() error {
+	if p.shutDown.Load() {
+		return ErrServerShutdown
+	}
+
+	healthCheckRoute := &Route{
+		Method:             http.MethodGet,
+		Path:               "/check/health",
+		RawResponseBody:    "Healthy",
+		ResponseStatusCode: http.StatusOK,
+	}
+
+	p.log.Info().Msg("Checking Parrot health")
+	err := p.Register(healthCheckRoute)
+	if err != nil {
+		return newDynamicError(ErrServerUnhealthy, fmt.Sprintf("%s: unable to register routes", err.Error()))
+	}
+
+	resp, err := p.Call(http.MethodGet, healthCheckRoute.Path)
+	if err != nil {
+		return newDynamicError(ErrServerUnhealthy, fmt.Sprintf("%s: unable to call routes", err.Error()))
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return newDynamicError(ErrServerUnhealthy, fmt.Sprintf("routes not responding with expected code, expected %d, got %d", http.StatusOK, resp.StatusCode()))
+	}
+
+	p.Delete(healthCheckRoute)
+
+	p.log.Info().Msg("Parrot healthy")
+	return nil
+}
+
+// healthHandlerGET handles the health check route
+// GET /health
+func (p *Server) healthHandlerGET(w http.ResponseWriter, r *http.Request) {
+	healthLogger := zerolog.Ctx(r.Context())
+
+	err := p.Healthy()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		healthLogger.Error().Err(err).Msg("Parrot is unhealthy")
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 // Shutdown gracefully shuts down the parrot server
 func (p *Server) Shutdown(ctx context.Context) error {
-	if p.shutDown {
+	if p.shutDown.Load() {
 		return ErrServerShutdown
 	}
 
@@ -295,9 +302,19 @@ func (p *Server) Address() string {
 	return p.address
 }
 
+// Port returns the port the parrot is running on
+func (p *Server) Port() int {
+	return p.port
+}
+
+// Host returns the host the parrot is running on
+func (p *Server) Host() string {
+	return p.host
+}
+
 // Register adds a new route to the parrot
 func (p *Server) Register(route *Route) error {
-	if p.shutDown {
+	if p.shutDown.Load() {
 		return ErrServerShutdown
 	}
 	if route == nil {
@@ -306,14 +323,11 @@ func (p *Server) Register(route *Route) error {
 	if !isValidPath(route.Path) {
 		return newDynamicError(ErrInvalidPath, fmt.Sprintf("'%s'", route.Path))
 	}
-	if route.Method == "" {
-		return ErrNoMethod
+	if !isValidMethod(route.Method) {
+		return newDynamicError(ErrInvalidMethod, fmt.Sprintf("'%s'", route.Method))
 	}
-	if route.Handler == nil && route.ResponseBody == nil && route.RawResponseBody == "" {
+	if route.ResponseBody == nil && route.RawResponseBody == "" {
 		return ErrNoResponse
-	}
-	if route.Handler != nil && (route.ResponseBody != nil || route.RawResponseBody != "") {
-		return newDynamicError(ErrOnlyOneResponse, "handler and another response type provided")
 	}
 	if route.ResponseBody != nil && route.RawResponseBody != "" {
 		return ErrOnlyOneResponse
@@ -323,22 +337,56 @@ func (p *Server) Register(route *Route) error {
 			return newDynamicError(ErrResponseMarshal, err.Error())
 		}
 	}
+	numWildcards := strings.Count(route.Path, "*")
+	if numWildcards > 1 {
+		return newDynamicError(ErrWildcardPath, fmt.Sprintf("more than 1 wildcard '%s'", route.Path))
+	}
+	if numWildcards == 1 && !strings.HasSuffix(route.Path, "*") {
+		return newDynamicError(ErrWildcardPath, fmt.Sprintf("wildcard not at end '%s'", route.Path))
+	}
+
+	if route.Method == MethodAny {
+		p.router.Handle(route.Path, routeRecordingMiddleware(p, p.routeCallHandler(route)))
+	} else {
+		p.router.MethodFunc(route.Method, route.Path, routeRecordingMiddleware(p, p.routeCallHandler(route)))
+	}
 
 	p.routesMu.Lock()
 	defer p.routesMu.Unlock()
 	p.routes[route.ID()] = route
 	p.log.Info().
 		Str("Route ID", route.ID()).
-		Str("Path", route.Path).
-		Str("Method", route.Method).
-		Msg("Route registered")
+		Msg("Registered route")
 
 	return nil
 }
 
+// routesHandlerPOST handles registering a new route
+// POST /routes
+func (p *Server) routesHandlerPOST(w http.ResponseWriter, r *http.Request) {
+	routesLogger := zerolog.Ctx(r.Context())
+
+	var route *Route
+	if err := json.NewDecoder(r.Body).Decode(&route); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		routesLogger.Debug().Err(err).Msg("Failed to decode request body")
+		return
+	}
+	defer r.Body.Close()
+
+	err := p.Register(route)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		routesLogger.Debug().Err(err).Msg("Failed to register route")
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+}
+
 // Record registers a new recorder with the parrot. All incoming requests to the parrot will be sent to the recorder.
 func (p *Server) Record(recorderURL string) error {
-	if p.shutDown {
+	if p.shutDown.Load() {
 		return ErrServerShutdown
 	}
 
@@ -352,249 +400,19 @@ func (p *Server) Record(recorderURL string) error {
 		return ErrInvalidRecorderURL
 	}
 	p.recorderHooks[recorderURL] = struct{}{}
+	p.log.Info().Str("URL", recorderURL).Msg("Registered Recorder")
 	return nil
 }
 
-// Recorders returns the URLs of all registered recorders
-func (p *Server) Recorders() []string {
-	if p.shutDown {
-		return nil
-	}
-
-	p.recordersMu.RLock()
-	defer p.recordersMu.RUnlock()
-	recorders := make([]string, 0, len(p.recorderHooks))
-	for recorder := range p.recorderHooks {
-		recorders = append(recorders, recorder)
-	}
-	return recorders
-}
-
-// Delete removes a route from the parrot
-func (p *Server) Delete(routeID string) error {
-	if p.shutDown {
-		return ErrServerShutdown
-	}
-
-	p.routesMu.RLock()
-	_, exists := p.routes[routeID]
-	p.routesMu.RUnlock()
-
-	if !exists {
-		return newDynamicError(ErrRouteNotFound, routeID)
-	}
-	p.routesMu.Lock()
-	defer p.routesMu.Unlock()
-	delete(p.routes, routeID)
-	return nil
-}
-
-// Call makes a request to the parrot server
-func (p *Server) Call(method, path string) (*resty.Response, error) {
-	if p.shutDown {
-		return nil, ErrServerShutdown
-	}
-	return p.client.R().Execute(method, "http://"+filepath.Join(p.Address(), path))
-}
-
-func (p *Server) Routes() []*Route {
-	p.routesMu.RLock()
-	defer p.routesMu.RUnlock()
-
-	routes := make([]*Route, 0, len(p.routes))
-	for _, route := range p.routes {
-		routes = append(routes, route)
-	}
-	return routes
-}
-
-// routeHandler handles registering, unregistering, and querying routes
-func (p *Server) routeHandler(w http.ResponseWriter, r *http.Request) {
-	routesLogger := zerolog.Ctx(r.Context())
-	if r.Method == http.MethodDelete {
-		var route *Route
-		if err := json.NewDecoder(r.Body).Decode(&route); err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
-			routesLogger.Debug().Err(err).Msg("Failed to decode request body")
-			return
-		}
-		defer r.Body.Close()
-
-		err := p.Delete(route.ID())
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			routesLogger.Debug().Err(err).Msg("Failed to unregister route")
-			return
-		}
-
-		w.WriteHeader(http.StatusNoContent)
-		routesLogger.Info().
-			Str("Route ID", route.ID()).
-			Msg("Route deleted")
-		return
-	}
-
-	if r.Method == http.MethodPost {
-		var route *Route
-		if err := json.NewDecoder(r.Body).Decode(&route); err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
-			routesLogger.Debug().Err(err).Msg("Failed to decode request body")
-			return
-		}
-		defer r.Body.Close()
-
-		err := p.Register(route)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			routesLogger.Debug().Err(err).Msg("Failed to register route")
-			return
-		}
-
-		w.WriteHeader(http.StatusCreated)
-		return
-	}
-
-	if r.Method == http.MethodGet {
-		routes := p.Routes()
-		jsonRoutes, err := json.Marshal(routes)
-		if err != nil {
-			http.Error(w, "Failed to marshal routes", http.StatusInternalServerError)
-			routesLogger.Debug().Err(err).Msg("Failed to marshal routes")
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		if _, err = w.Write(jsonRoutes); err != nil {
-			http.Error(w, "Failed to write response", http.StatusInternalServerError)
-			routesLogger.Debug().Err(err).Msg("Failed to write response")
-			return
-		}
-
-		routesLogger.Debug().Int("Count", len(routes)).Msg("Returned routes")
-		return
-	}
-
-	http.Error(w, "Invalid method", http.StatusMethodNotAllowed)
-	routesLogger.Debug().Msg("Invalid method")
-}
-
-// dynamicHandler handles all incoming requests and responds based on the registered routes.
-func (p *Server) dynamicHandler(w http.ResponseWriter, r *http.Request) {
-	p.routesMu.RLock()
-	route, exists := p.routes[r.Method+":"+r.URL.Path]
-	p.routesMu.RUnlock()
-
-	dynamicLogger := zerolog.Ctx(r.Context())
-	if !exists {
-		http.NotFound(w, r)
-		dynamicLogger.Debug().Msg("Route not found")
-		return
-	}
-
-	routeCallID := uuid.New().String()[0:8]
-	dynamicLogger.UpdateContext(func(c zerolog.Context) zerolog.Context {
-		return c.Str("Route Call ID", routeCallID).Str("Route ID", route.ID())
-	})
-
-	requestBody, err := io.ReadAll(r.Body)
-	if err != nil {
-		dynamicLogger.Debug().
-			Err(err).
-			Msg("Failed to read request body")
-		http.Error(w, "Failed to read request body", http.StatusInternalServerError)
-		return
-	}
-
-	routeCall := &RouteCall{
-		RouteCallID: routeCallID,
-		RouteID:     r.Method + ":" + r.URL.Path,
-		Request: &RouteCallRequest{
-			Method:     r.Method,
-			URL:        r.URL,
-			Header:     r.Header,
-			Body:       requestBody,
-			RemoteAddr: r.RemoteAddr,
-		},
-	}
-	recordingWriter := newResponseWriterRecorder(w)
-
-	defer func() {
-		res := recordingWriter.Result()
-		resBody, err := io.ReadAll(res.Body)
-		if err != nil {
-			dynamicLogger.Debug().Err(err).Msg("Failed to read response body")
-			http.Error(w, "Failed to read response body", http.StatusInternalServerError)
-			return
-		}
-
-		routeCall.Response = &RouteCallResponse{
-			StatusCode: res.StatusCode,
-			Header:     res.Header,
-			Body:       resBody,
-		}
-		p.sendToRecorders(routeCall)
-	}()
-
-	// Let the custom handler take over if it exists
-	if route.Handler != nil {
-		dynamicLogger.Debug().Msg("Calling route handler")
-		route.Handler(recordingWriter, r)
-		return
-	}
-
-	recordingWriter.WriteHeader(route.ResponseStatusCode)
-
-	if route.RawResponseBody != "" {
-		if _, err := recordingWriter.Write([]byte(route.RawResponseBody)); err != nil {
-			dynamicLogger.Debug().Err(err).Msg("Failed to write response")
-			http.Error(recordingWriter, "Failed to write response", http.StatusInternalServerError)
-			return
-		}
-		dynamicLogger.Debug().
-			Str("Response", route.RawResponseBody).
-			Msg("Returned raw response")
-		recordingWriter.WriteHeader(route.ResponseStatusCode)
-		return
-	}
-
-	if route.ResponseBody != nil {
-		rawJSON, err := json.Marshal(route.ResponseBody)
-		if err != nil {
-			dynamicLogger.Debug().Err(err).Msg("Failed to marshal JSON response")
-			http.Error(recordingWriter, "Failed to marshal response into json", http.StatusInternalServerError)
-			return
-		}
-		if _, err = recordingWriter.Write(rawJSON); err != nil {
-			dynamicLogger.Debug().Err(err).
-				RawJSON("Response", rawJSON).
-				Msg("Failed to write response")
-			http.Error(recordingWriter, "Failed to write JSON response", http.StatusInternalServerError)
-			return
-		}
-		dynamicLogger.Debug().
-			RawJSON("Response", rawJSON).
-			Msg("Returned JSON response")
-		recordingWriter.WriteHeader(route.ResponseStatusCode)
-		return
-	}
-
-	dynamicLogger.Error().Msg("Route has no response")
-	http.Error(recordingWriter, "Route has no response", http.StatusInternalServerError)
-}
-
-// recordHandler handles registering recorders with the parrot
-func (p *Server) recordHandler(w http.ResponseWriter, r *http.Request) {
+// recorderHandlerPOST handles registering a new recorder
+// POST /recorder
+func (p *Server) recorderHandlerPOST(w http.ResponseWriter, r *http.Request) {
 	recordingLogger := zerolog.Ctx(r.Context())
-	if r.Method != http.MethodPost {
-		http.Error(w, "Invalid method", http.StatusMethodNotAllowed)
-		recordingLogger.Debug().Msg("Invalid method")
-		return
-	}
 
 	var recorder *Recorder
 	if err := json.NewDecoder(r.Body).Decode(&recorder); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		recordingLogger.Debug().Err(err).Msg("Failed to decode request body")
+		recordingLogger.Error().Err(err).Msg("Failed to decode request body")
 		return
 	}
 	defer r.Body.Close()
@@ -618,16 +436,120 @@ func (p *Server) recordHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	recordingLogger.Debug().Str("URL", recorder.URL()).Msg("Recorder added")
 }
 
-func (p *Server) healthHandler(w http.ResponseWriter, _ *http.Request) {
-	if p.shutDown {
-		http.Error(w, "Server is shutting down", http.StatusServiceUnavailable)
+// Recorders returns the URLs of all registered recorders
+func (p *Server) Recorders() []string {
+	if p.shutDown.Load() {
+		return nil
+	}
+
+	p.recordersMu.RLock()
+	defer p.recordersMu.RUnlock()
+	recorders := make([]string, 0, len(p.recorderHooks))
+	for recorder := range p.recorderHooks {
+		recorders = append(recorders, recorder)
+	}
+	p.log.Debug().Int("Count", len(recorders)).Msg("Got recorders")
+	return recorders
+}
+
+// recorderHandlerGET handles getting all recorders
+// GET /recorder
+func (p *Server) recorderHandlerGET(w http.ResponseWriter, r *http.Request) {
+	recordersLogger := zerolog.Ctx(r.Context())
+
+	recorders := p.Recorders()
+	jsonRecorders, err := json.Marshal(recorders)
+	if err != nil {
+		http.Error(w, "Failed to marshal recorders", http.StatusInternalServerError)
+		recordersLogger.Error().Err(err).Msg("Failed to marshal recorders")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if _, err = w.Write(jsonRecorders); err != nil {
+		http.Error(w, "Failed to write response", http.StatusInternalServerError)
+		recordersLogger.Error().Err(err).Msg("Failed to write response")
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+// Delete removes a route from the parrot
+func (p *Server) Delete(route *Route) {
+	p.router.Method(route.Method, route.Path, http.NotFoundHandler())
+	p.routesMu.Lock()
+	defer p.routesMu.Unlock()
+	delete(p.routes, route.ID())
+	p.log.Info().
+		Str("Route ID", route.ID()).
+		Msg("Route deleted")
+}
+
+// routesHandlerDELETE handles deleting a route
+// DELETE /routes
+func (p *Server) routesHandlerDELETE(w http.ResponseWriter, r *http.Request) {
+	routesLogger := zerolog.Ctx(r.Context())
+
+	var route *Route
+	if err := json.NewDecoder(r.Body).Decode(&route); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		routesLogger.Debug().Err(err).Msg("Failed to decode request body")
+		return
+	}
+	defer r.Body.Close()
+
+	p.Delete(route)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// Call makes a request to the parrot server
+func (p *Server) Call(method, path string) (*resty.Response, error) {
+	if p.shutDown.Load() {
+		return nil, ErrServerShutdown
+	}
+	if !isValidMethod(method) {
+		return nil, newDynamicError(ErrInvalidMethod, fmt.Sprintf("'%s'", method))
+	}
+	return p.client.R().Execute(method, "http://"+filepath.Join(p.Address(), path))
+}
+
+func (p *Server) Routes() []*Route {
+	if p.shutDown.Load() {
+		return nil
+	}
+
+	p.routesMu.RLock()
+	defer p.routesMu.RUnlock()
+	routes := make([]*Route, 0, len(p.routes))
+	for _, route := range p.routes {
+		routes = append(routes, route)
+	}
+	p.log.Debug().Int("Count", len(routes)).Msg("Returned routes")
+	return routes
+}
+
+// routesHandlerGET handles getting all routes
+// GET /routes
+func (p *Server) routesHandlerGET(w http.ResponseWriter, r *http.Request) {
+	routesLogger := zerolog.Ctx(r.Context())
+
+	routes := p.Routes()
+	jsonRoutes, err := json.Marshal(routes)
+	if err != nil {
+		http.Error(w, "Failed to marshal routes", http.StatusInternalServerError)
+		routesLogger.Error().Err(err).Msg("Failed to marshal routes")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if _, err = w.Write(jsonRoutes); err != nil {
+		http.Error(w, "Failed to write response", http.StatusInternalServerError)
+		routesLogger.Error().Err(err).Msg("Failed to write response")
+		return
+	}
 }
 
 // load loads all registered routes from a file.
@@ -703,7 +625,11 @@ func (p *Server) sendToRecorders(routeCall *RouteCall) {
 	}
 
 	client := resty.New()
-	p.log.Trace().Int("Recorder Count", len(p.recorderHooks)).Str("Route ID", routeCall.RouteID).Msg("Sending route call to recorders")
+	p.log.Trace().
+		Int("Recorder Count", len(p.recorderHooks)).
+		Str("Route Call ID", routeCall.ID).
+		Str("Route ID", routeCall.RouteID).
+		Msg("Sending route call to recorders")
 
 	for hook := range p.recorderHooks {
 		go func(hook string) {
@@ -712,7 +638,6 @@ func (p *Server) sendToRecorders(routeCall *RouteCall) {
 				p.log.Error().Err(err).Str("Recorder Hook", hook).Msg("Failed to send route call to recorder")
 				return
 			}
-			defer resp.RawResponse.Body.Close()
 			if resp.IsError() {
 				p.log.Error().
 					Str("Recorder Hook", hook).
@@ -721,11 +646,16 @@ func (p *Server) sendToRecorders(routeCall *RouteCall) {
 					Msg("Failed to send route call to recorder")
 				return
 			}
-			p.log.Trace().Str("Route ID", routeCall.RouteID).Str("Recorder Hook", hook).Msg("Route call sent to recorder")
+			p.log.Trace().
+				Str("Route Call ID", routeCall.ID).
+				Str("Route ID", routeCall.RouteID).
+				Str("Recorder Hook", hook).
+				Msg("Route call sent to recorder")
 		}(hook)
 	}
 }
 
+// loggingMiddleware logs all incoming requests
 func (p *Server) loggingMiddleware(next http.Handler) http.Handler {
 	h := hlog.NewHandler(p.log)
 
@@ -747,22 +677,43 @@ func (p *Server) loggingMiddleware(next http.Handler) http.Handler {
 
 var pathRegex = regexp.MustCompile(`^\/[a-zA-Z0-9\-._~%!$&'()*+,;=:@\/]*$`)
 
+// isValidPath checks if the path is a valid URL path
 func isValidPath(path string) bool {
-	switch path {
-	case "", "/", "//", healthRoute, recordRoute, routesRoute, "/.", "/..":
+	if path == "" || path == "/" {
+		return false
+	}
+	if strings.Contains(path, "//") {
 		return false
 	}
 	if !strings.HasPrefix(path, "/") {
 		return false
 	}
-	if strings.HasPrefix(path, recordRoute) {
+	if strings.HasPrefix(path, RecorderRoute) {
 		return false
 	}
-	if strings.HasPrefix(path, healthRoute) {
+	if strings.HasPrefix(path, HealthRoute) {
 		return false
 	}
-	if strings.HasPrefix(path, routesRoute) {
+	if strings.HasPrefix(path, RoutesRoute) {
 		return false
 	}
 	return pathRegex.MatchString(path)
+}
+
+// isValidMethod checks if the method is a valid HTTP method, in loose terms
+func isValidMethod(method string) bool {
+	switch method {
+	case
+		http.MethodGet,
+		http.MethodPost,
+		http.MethodPut,
+		http.MethodPatch,
+		http.MethodDelete,
+		http.MethodOptions,
+		http.MethodConnect,
+		http.MethodTrace,
+		MethodAny:
+		return true
+	}
+	return false
 }

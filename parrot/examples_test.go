@@ -7,15 +7,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-resty/resty/v2"
 	"github.com/rs/zerolog"
 	"github.com/smartcontractkit/chainlink-testing-framework/parrot"
 )
 
-func ExampleServer_Register_internal() {
+func ExampleServer_internal() {
 	// Create a new parrot instance with no logging and a custom save file
 	saveFile := "register_example.json"
-	p, err := parrot.Wake(parrot.WithLogLevel(zerolog.NoLevel), parrot.WithSaveFile(saveFile))
+	p, err := parrot.NewServer(parrot.WithLogLevel(zerolog.NoLevel), parrot.WithSaveFile(saveFile))
 	if err != nil {
 		panic(err)
 	}
@@ -36,6 +35,8 @@ func ExampleServer_Register_internal() {
 		ResponseStatusCode: http.StatusOK,
 	}
 
+	waitForParrotServerInternal(p, time.Second) // Wait for the parrot server to start
+
 	// Register the route with the parrot instance
 	err = p.Register(route)
 	if err != nil {
@@ -55,10 +56,7 @@ func ExampleServer_Register_internal() {
 	fmt.Println(len(routes))
 
 	// Delete the route
-	err = p.Delete(route.ID())
-	if err != nil {
-		panic(err)
-	}
+	p.Delete(route)
 
 	// Get all routes from the parrot instance
 	routes = p.Routes()
@@ -70,7 +68,7 @@ func ExampleServer_Register_internal() {
 	// 0
 }
 
-func ExampleServer_Register_external() {
+func ExampleServer_external() {
 	var (
 		saveFile = "route_example.json"
 		port     = 9090
@@ -78,18 +76,15 @@ func ExampleServer_Register_external() {
 	defer os.Remove(saveFile) // Cleanup the save file for the example
 
 	go func() { // Run the parrot server as a separate instance, like in a Docker container
-		_, err := parrot.Wake(parrot.WithPort(port), parrot.WithLogLevel(zerolog.NoLevel), parrot.WithSaveFile(saveFile))
+		_, err := parrot.NewServer(parrot.WithPort(port), parrot.WithLogLevel(zerolog.NoLevel), parrot.WithSaveFile(saveFile))
 		if err != nil {
 			panic(err)
 		}
 	}()
 
-	// Code that calls the parrot server from another service
-	// Use resty to make HTTP calls to the parrot server
-	client := resty.New()
-	client.SetBaseURL(fmt.Sprintf("http://localhost:%d", port)) // The URL of the parrot server
-
-	waitForParrotServer(client, time.Second) // Wait for the parrot server to start
+	// Get a client to interact with the parrot server
+	client := parrot.NewClient(fmt.Sprintf("http://localhost:%d", port))
+	waitForParrotServerExternal(client, time.Second) // Wait for the parrot server to start
 
 	// Register a new route /test that will return a 200 status code with a text/plain response body of "Squawk"
 	route := &parrot.Route{
@@ -98,51 +93,43 @@ func ExampleServer_Register_external() {
 		RawResponseBody:    "Squawk",
 		ResponseStatusCode: http.StatusOK,
 	}
-	resp, err := client.R().SetBody(route).Post("/routes")
+	err := client.RegisterRoute(route)
 	if err != nil {
 		panic(err)
 	}
-	defer resp.RawResponse.Body.Close()
-	fmt.Println(resp.StatusCode())
+	fmt.Println("Registered route")
 
 	// Get all routes from the parrot server
-	routes := make([]*parrot.Route, 0)
-	resp, err = client.R().SetResult(&routes).Get("/routes")
+	routes, err := client.Routes()
 	if err != nil {
 		panic(err)
 	}
-	defer resp.RawResponse.Body.Close()
-	fmt.Println(resp.StatusCode())
-	fmt.Println(len(routes))
+	fmt.Printf("Found %d routes\n", len(routes))
 
 	// Delete the route
-	resp, err = client.R().SetBody(route).Delete("/routes")
+	err = client.DeleteRoute(route)
 	if err != nil {
 		panic(err)
 	}
-	defer resp.RawResponse.Body.Close()
-	fmt.Println(resp.StatusCode())
+	fmt.Println("Deleted route")
 
 	// Get all routes from the parrot server
-	routes = make([]*parrot.Route, 0)
-	resp, err = client.R().SetResult(&routes).Get("/routes")
+	routes, err = client.Routes()
 	if err != nil {
 		panic(err)
 	}
-	defer resp.RawResponse.Body.Close()
-	fmt.Println(len(routes))
+	fmt.Printf("Found %d routes\n", len(routes))
 
 	// Output:
-	// 201
-	// 200
-	// 1
-	// 204
-	// 0
+	// Registered route
+	// Found 1 routes
+	// Deleted route
+	// Found 0 routes
 }
 
 func ExampleRecorder_internal() {
 	saveFile := "recorder_example.json"
-	p, err := parrot.Wake(parrot.WithLogLevel(zerolog.NoLevel), parrot.WithSaveFile(saveFile))
+	p, err := parrot.NewServer(parrot.WithLogLevel(zerolog.NoLevel), parrot.WithSaveFile(saveFile))
 	if err != nil {
 		panic(err)
 	}
@@ -160,6 +147,8 @@ func ExampleRecorder_internal() {
 	if err != nil {
 		panic(err)
 	}
+
+	waitForParrotServerInternal(p, time.Second) // Wait for the parrot server to start
 
 	// Register the recorder with the parrot instance
 	err = p.Record(recorder.URL())
@@ -219,16 +208,14 @@ func ExampleRecorder_external() {
 	defer os.Remove(saveFile) // Cleanup the save file for the example
 
 	go func() { // Run the parrot server as a separate instance, like in a Docker container
-		_, err := parrot.Wake(parrot.WithPort(port), parrot.WithLogLevel(zerolog.NoLevel), parrot.WithSaveFile(saveFile))
+		_, err := parrot.NewServer(parrot.WithPort(port), parrot.WithLogLevel(zerolog.NoLevel), parrot.WithSaveFile(saveFile))
 		if err != nil {
 			panic(err)
 		}
 	}()
 
-	client := resty.New()
-	client.SetBaseURL(fmt.Sprintf("http://localhost:%d", port)) // The URL of the parrot server
-
-	waitForParrotServer(client, time.Second) // Wait for the parrot server to start
+	client := parrot.NewClient(fmt.Sprintf("http://localhost:%d", port))
+	waitForParrotServerExternal(client, time.Second) // Wait for the parrot server to start
 
 	// Register a new route /test that will return a 200 status code with a text/plain response body of "Squawk"
 	route := &parrot.Route{
@@ -239,33 +226,36 @@ func ExampleRecorder_external() {
 	}
 
 	// Register the route with the parrot instance
-	resp, err := client.R().SetBody(route).Post("/routes")
+	err := client.RegisterRoute(route)
 	if err != nil {
 		panic(err)
 	}
 
-	// Use the host of the machine your recorder is running on
+	// Use the recorderHost of the machine your recorder is running on
 	// This should not be localhost if you are running the parrot server on a different machine
 	// It should be the public IP address of the machine running your code, so that the parrot can call back to it
-	host := "localhost"
+	recorderHost := "localhost"
 
 	// Create a new recorder with our host
-	recorder, err := parrot.NewRecorder(parrot.WithHost(host))
+	recorder, err := parrot.NewRecorder(parrot.WithHost(recorderHost))
 	if err != nil {
 		panic(err)
 	}
 
 	// Register the recorder with the parrot instance
-	resp, err = client.R().SetBody(recorder).Post("/record")
+	err = client.RegisterRecorder(recorder)
 	if err != nil {
 		panic(err)
 	}
-	if resp.StatusCode() != http.StatusCreated {
-		panic(fmt.Sprintf("failed to register recorder, got %d status code", resp.StatusCode()))
+
+	recorders, err := client.Recorders()
+	if err != nil {
+		panic(err)
 	}
+	fmt.Printf("Found %d recorders\n", len(recorders))
 
 	go func() { // Some other service calls the /test route
-		_, err := client.R().Get("/test")
+		_, err := client.CallRoute(http.MethodGet, "/test")
 		if err != nil {
 			panic(err)
 		}
@@ -287,25 +277,42 @@ func ExampleRecorder_external() {
 		}
 	}
 	// Output:
+	// Found 1 recorders
 	// GET:/test
 	// GET
 	// 200
 	// Squawk
 }
 
-// waitForParrotServer checks the parrot server health endpoint until it returns a 200 status code or the timeout is reached
-func waitForParrotServer(client *resty.Client, timeoutDur time.Duration) {
+// waitForParrotServerExternal checks the parrot server health endpoint until it returns a 200 status code or the timeout is reached
+func waitForParrotServerExternal(client *parrot.Client, timeoutDur time.Duration) {
 	ticker := time.NewTicker(50 * time.Millisecond)
 	defer ticker.Stop()
 	timeout := time.NewTimer(timeoutDur)
 	for { // Wait for the parrot server to start
 		select {
 		case <-ticker.C:
-			resp, err := client.R().Get("/health")
+			healthy, err := client.Healthy()
 			if err != nil {
-				continue
+				continue // Ignore errors for health check as the server may not be ready yet
 			}
-			if resp.StatusCode() == http.StatusOK {
+			if healthy {
+				return
+			}
+		case <-timeout.C:
+			panic("timeout waiting for parrot server to start")
+		}
+	}
+}
+
+func waitForParrotServerInternal(p *parrot.Server, timeoutDur time.Duration) {
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
+	timeout := time.NewTimer(timeoutDur)
+	for { // Wait for the parrot server to start
+		select {
+		case <-ticker.C:
+			if err := p.Healthy(); err == nil {
 				return
 			}
 		case <-timeout.C:

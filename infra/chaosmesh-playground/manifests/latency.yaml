@@ -1,0 +1,16 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: delay-1
+spec:
+  action: delay
+  mode: one
+  selector:
+    namespaces:
+      - default
+    labelSelectors:
+      app.kubernetes.io/instance: ccip-2
+  delay:
+    latency: '100ms'
+    correlation: '10'
+    jitter: '300ms'

@@ -74,10 +74,11 @@ func (l SingleLineGrafanaAnnotator) OnChaosStarted(chaos Chaos) {
 		Time:         Ptr[time.Time](chaos.GetStartTime()),
 		Text:         sb.String(),
 	}
-	_, _, err = l.client.PostAnnotation(a)
+	_, resp, err := l.client.PostAnnotation(a)
 	if err != nil {
 		l.logger.Warn().Msgf("could not annotate on Grafana: %s", err)
 	}
+	l.logger.Debug().Any("GrafanaResponse", resp.String()).Msg("Annotated chaos experiment start")
 }
 
 func (l SingleLineGrafanaAnnotator) OnChaosPaused(chaos Chaos) {
@@ -126,10 +127,11 @@ func (l SingleLineGrafanaAnnotator) OnChaosEnded(chaos Chaos) {
 		Time:         Ptr[time.Time](chaos.GetEndTime()),
 		Text:         sb.String(),
 	}
-	_, _, err = l.client.PostAnnotation(a)
+	_, resp, err := l.client.PostAnnotation(a)
 	if err != nil {
 		l.logger.Warn().Msgf("could not annotate on Grafana: %s", err)
 	}
+	l.logger.Debug().Any("GrafanaResponse", resp.String()).Msg("Annotated chaos experiment end")
 }
 
 func (l SingleLineGrafanaAnnotator) OnChaosStatusUnknown(chaos Chaos) {
@@ -164,10 +166,11 @@ func (l SingleLineGrafanaAnnotator) OnScheduleCreated(s Schedule) {
 		Time:         Ptr[time.Time](s.startTime),
 		Text:         sb.String(),
 	}
-	_, _, err = l.client.PostAnnotation(a)
+	_, resp, err := l.client.PostAnnotation(a)
 	if err != nil {
 		l.logger.Warn().Msgf("could not annotate on Grafana: %s", err)
 	}
+	l.logger.Debug().Any("GrafanaResponse", resp.String()).Msg("Annotated chaos experiment created")
 }
 
 func (l SingleLineGrafanaAnnotator) OnScheduleDeleted(s Schedule) {
@@ -200,8 +203,9 @@ func (l SingleLineGrafanaAnnotator) OnScheduleDeleted(s Schedule) {
 		Time:         Ptr[time.Time](s.endTime),
 		Text:         sb.String(),
 	}
-	_, _, err = l.client.PostAnnotation(a)
+	_, resp, err := l.client.PostAnnotation(a)
 	if err != nil {
 		l.logger.Warn().Msgf("could not annotate on Grafana: %s", err)
 	}
+	l.logger.Debug().Any("GrafanaResponse", resp.String()).Msg("Annotated chaos experiment deleted")
 }

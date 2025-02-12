@@ -1,4 +1,4 @@
-package examples
+package chaos
 
 import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
@@ -18,11 +18,6 @@ type CfgChaos struct {
 	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
 }
 
-func verifyServices(t *testing.T, c []*clclient.ChainlinkClient) {
-	_, _, err := c[0].ReadBridges()
-	require.NoError(t, err)
-}
-
 func TestChaos(t *testing.T) {
 	in, err := framework.Load[CfgChaos](t)
 	require.NoError(t, err)
@@ -37,24 +32,43 @@ func TestChaos(t *testing.T) {
 	c, err := clclient.New(out.CLNodes)
 	require.NoError(t, err)
 
-	t.Run("run the cluster and test various chaos scenarios", func(t *testing.T) {
-		// Here are examples of using Pumba (https://github.com/alexei-led/pumba)
-		// for simplicity we allow users to run commands "as is", read their docs to learn more
-		// second parameter is experiment wait time
+	testCases := []struct {
+		name     string
+		command  string
+		wait     time.Duration
+		validate func(c []*clclient.ChainlinkClient) error
+	}{
+		{
+			name:    "Reboot the pods",
+			wait:    1 * time.Minute,
+			command: "stop --duration=20s --restart re2:don-node0",
+			validate: func(c []*clclient.ChainlinkClient) error {
+				_, _, err := c[0].ReadBridges()
+				return err
+			},
+		},
+		{
+			name:    "Introduce network delay",
+			wait:    1 * time.Minute,
+			command: "netem --tc-image=gaiadocker/iproute2 --duration=1m delay --time=1000 re2:don-node.*",
+			validate: func(c []*clclient.ChainlinkClient) error {
+				_, _, err := c[0].ReadBridges()
+				return err
+			},
+		},
+	}
 
-		// Restart the container
-		_, err = chaos.ExecPumba("stop --duration=20s --restart re2:node0", 30*time.Second)
-		require.NoError(t, err)
-		verifyServices(t, c)
+	// Start WASP load test here, apply average load profile that you expect in production!
+	// Configure timeouts and validate all the test cases until the test ends
 
-		// Simulate poor network with 1s delay
-		_, err = chaos.ExecPumba("netem --tc-image=gaiadocker/iproute2 --duration=1m delay --time=1000 re2:node.*", 30*time.Second)
-		require.NoError(t, err)
-		verifyServices(t, c)
-
-		// Stress container CPU (TODO: it is not portable, works only in CI or Linux VM, cgroups are required)
-		//_, err = chaos.ExecPumba(`stress --stress-image=alexeiled/stress-ng:latest-ubuntu --duration=30s --stressors="--cpu 1 --vm 2 --vm-bytes 1G" node0`, 30*time.Second)
-		//require.NoError(t, err)
-		//verifyServices(t, c)
-	})
+	// Run chaos test cases
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Log(tc.name)
+			_, err = chaos.ExecPumba(tc.command, tc.wait)
+			require.NoError(t, err)
+			err = tc.validate(c)
+			require.NoError(t, err)
+		})
+	}
 }

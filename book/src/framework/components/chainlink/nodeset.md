@@ -42,6 +42,8 @@ This component requires some Blockchain to be deployed, add this to config
 Then configure NodeSet
 ```toml
 [nodeset]
+  # unique NodeSet name
+  name = "don"
   # amount of Chainlink nodes to spin up
   nodes = 5
   # Override mode: can be "all" or "each"

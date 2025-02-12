@@ -1,4 +1,4 @@
-// File: sentinel.go
+// File: sentinel_coordinator.go
 package sentinel
 
 import (

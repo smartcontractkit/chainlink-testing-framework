@@ -17,29 +17,16 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type SummaryData struct {
-	TotalTests     int     `json:"total_tests"`
-	PanickedTests  int     `json:"panicked_tests"`
-	RacedTests     int     `json:"raced_tests"`
-	FlakyTests     int     `json:"flaky_tests"`
-	FlakyTestRatio string  `json:"flaky_test_ratio"`
-	TotalRuns      int     `json:"total_runs"`
-	PassedRuns     int     `json:"passed_runs"`
-	FailedRuns     int     `json:"failed_runs"`
-	SkippedRuns    int     `json:"skipped_runs"`
-	PassRatio      string  `json:"pass_ratio"`
-	MaxPassRatio   float64 `json:"max_pass_ratio"`
-}
+const exampleGitHubToken = "EXAMPLE_GITHUB_TOKEN" //nolint:gosec
 
 var GenerateReportCmd = &cobra.Command{
 	Use:   "generate-report",
-	Short: "Generate reports from an aggregated test results",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Short: "Generate test reports from aggregated results that can be posted to GitHub",
+	Run: func(cmd *cobra.Command, args []string) {
 		fs := reports.OSFileSystem{}
 
 		// Get flag values
 		aggregatedResultsPath, _ := cmd.Flags().GetString("aggregated-results-path")
-		summaryPath, _ := cmd.Flags().GetString("summary-path")
 		outputDir, _ := cmd.Flags().GetString("output-path")
 		maxPassRatio, _ := cmd.Flags().GetFloat64("max-pass-ratio")
 		generatePRComment, _ := cmd.Flags().GetBool("generate-pr-comment")
@@ -47,10 +34,17 @@ var GenerateReportCmd = &cobra.Command{
 		githubRunID, _ := cmd.Flags().GetInt64("github-run-id")
 		artifactName, _ := cmd.Flags().GetString("failed-tests-artifact-name")
 
+		initialDirSize, err := getDirSize(outputDir)
+		if err != nil {
+			log.Error().Err(err).Str("path", outputDir).Msg("Error getting initial directory size")
+			// intentionally don't exit here, as we can still proceed with the generation
+		}
+
 		// Get the GitHub token from environment variable
 		githubToken := os.Getenv("GITHUB_TOKEN")
 		if githubToken == "" {
-			return fmt.Errorf("GITHUB_TOKEN environment variable is not set")
+			log.Error().Msg("GITHUB_TOKEN environment variable is not set")
+			os.Exit(ErrorExitCode)
 		}
 
 		// Load the aggregated report
@@ -62,49 +56,39 @@ var GenerateReportCmd = &cobra.Command{
 		reportFile, err := os.Open(aggregatedResultsPath)
 		if err != nil {
 			s.Stop()
-			return fmt.Errorf("error opening aggregated test report: %w", err)
+			fmt.Println()
+			log.Error().Err(err).Msg("Error opening aggregated test report")
+			os.Exit(ErrorExitCode)
 		}
 		defer reportFile.Close()
 
 		if err := json.NewDecoder(reportFile).Decode(aggregatedReport); err != nil {
 			s.Stop()
-			return fmt.Errorf("error decoding aggregated test report: %w", err)
+			fmt.Println()
+			log.Error().Err(err).Msg("Error decoding aggregated test report")
+			os.Exit(ErrorExitCode)
 		}
 		s.Stop()
+		fmt.Println()
 		log.Info().Msg("Successfully loaded aggregated test report")
 
-		// Load the summary data to check for failed tests
-		var summaryData SummaryData
-
-		if summaryPath == "" {
-			return fmt.Errorf("--summary-path is required")
-		}
-
-		summaryFile, err := os.Open(summaryPath)
-		if err != nil {
-			return fmt.Errorf("error opening summary JSON file: %w", err)
-		}
-		defer summaryFile.Close()
-
-		if err := json.NewDecoder(summaryFile).Decode(&summaryData); err != nil {
-			return fmt.Errorf("error decoding summary JSON file: %w", err)
-		}
-
 		// Check if there are failed tests
-		hasFailedTests := summaryData.FailedRuns > 0
+		hasFailedTests := aggregatedReport.SummaryData.FailedRuns > 0
 
 		var artifactLink string
 		if hasFailedTests && githubRepo != "" && githubRunID != 0 && artifactName != "" {
 			// Fetch artifact link from GitHub API
 			artifactLink, err = fetchArtifactLinkWithRetry(githubToken, githubRepo, githubRunID, artifactName, 5, 5*time.Second)
 			if err != nil {
-				return fmt.Errorf("error fetching artifact link: %w", err)
+				log.Error().Err(err).Msg("Error fetching artifact link")
+				os.Exit(ErrorExitCode)
 			}
 		}
 
 		// Create output directory if it doesn't exist
 		if err := fs.MkdirAll(outputDir, 0755); err != nil {
-			return fmt.Errorf("error creating output directory: %w", err)
+			log.Error().Err(err).Msg("Error creating output directory")
+			os.Exit(ErrorExitCode)
 		}
 
 		// Generate GitHub summary markdown
@@ -115,9 +99,12 @@ var GenerateReportCmd = &cobra.Command{
 		err = generateGitHubSummaryMarkdown(aggregatedReport, filepath.Join(outputDir, "all-test"), artifactLink, artifactName)
 		if err != nil {
 			s.Stop()
-			return fmt.Errorf("error generating GitHub summary markdown: %w", err)
+			fmt.Println()
+			log.Error().Err(err).Msg("Error generating GitHub summary markdown")
+			os.Exit(ErrorExitCode)
 		}
 		s.Stop()
+		fmt.Println()
 		log.Info().Msg("GitHub summary markdown generated successfully")
 
 		if generatePRComment {
@@ -143,7 +130,8 @@ var GenerateReportCmd = &cobra.Command{
 				missingFlags = append(missingFlags, "--action-run-id")
 			}
 			if len(missingFlags) > 0 {
-				return fmt.Errorf("the following flags are required when --generate-pr-comment is set: %s", strings.Join(missingFlags, ", "))
+				log.Error().Strs("missing flags", missingFlags).Msg("Not all required flags are provided for --generate-pr-comment")
+				os.Exit(ErrorExitCode)
 			}
 
 			// Generate PR comment markdown
@@ -165,21 +153,27 @@ var GenerateReportCmd = &cobra.Command{
 			)
 			if err != nil {
 				s.Stop()
-				return fmt.Errorf("error generating PR comment markdown: %w", err)
+				fmt.Println()
+				log.Error().Err(err).Msg("Error generating PR comment markdown")
+				os.Exit(ErrorExitCode)
 			}
 			s.Stop()
+			fmt.Println()
 			log.Info().Msg("PR comment markdown generated successfully")
 		}
 
-		log.Info().Str("output", outputDir).Msg("Reports generated successfully")
-
-		return nil
+		finalDirSize, err := getDirSize(outputDir)
+		if err != nil {
+			log.Error().Err(err).Str("path", outputDir).Msg("Error getting initial directory size")
+			// intentionally don't exit here, as we can still proceed with the generation
+		}
+		diskSpaceUsed := byteCountSI(finalDirSize - initialDirSize)
+		log.Info().Str("disk space used", diskSpaceUsed).Str("output", outputDir).Msg("Reports generated successfully")
 	},
 }
 
 func init() {
 	GenerateReportCmd.Flags().StringP("aggregated-results-path", "i", "", "Path to the aggregated JSON report file (required)")
-	GenerateReportCmd.Flags().StringP("summary-path", "s", "", "Path to the summary JSON file (required)")
 	GenerateReportCmd.Flags().StringP("output-path", "o", "./report", "Path to output the generated report files")
 	GenerateReportCmd.Flags().Float64P("max-pass-ratio", "", 1.0, "The maximum pass ratio threshold for a test to be considered flaky")
 	GenerateReportCmd.Flags().Bool("generate-pr-comment", false, "Set to true to generate PR comment markdown")
@@ -193,14 +187,15 @@ func init() {
 	GenerateReportCmd.Flags().String("failed-tests-artifact-name", "failed-test-results-with-logs.json", "The name of the failed tests artifact (default 'failed-test-results-with-logs.json')")
 
 	if err := GenerateReportCmd.MarkFlagRequired("aggregated-results-path"); err != nil {
-		log.Fatal().Err(err).Msg("Error marking flag as required")
-	}
-	if err := GenerateReportCmd.MarkFlagRequired("summary-path"); err != nil {
-		log.Fatal().Err(err).Msg("Error marking flag as required")
+		log.Error().Err(err).Msg("Error marking flag as required")
+		os.Exit(ErrorExitCode)
 	}
 }
 
 func fetchArtifactLink(githubToken, githubRepo string, githubRunID int64, artifactName string) (string, error) {
+	if githubToken == exampleGitHubToken {
+		return "https://example-artifact-link.com", nil
+	}
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: githubToken})
 	tc := oauth2.NewClient(ctx, ts)

@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -15,17 +15,17 @@ import (
 var AggregateResultsCmd = &cobra.Command{
 	Use:   "aggregate-results",
 	Short: "Aggregate test results into a single JSON report",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		fs := reports.OSFileSystem{}
 
 		// Get flag values
 		resultsPath, _ := cmd.Flags().GetString("results-path")
 		outputDir, _ := cmd.Flags().GetString("output-path")
-		summaryFileName, _ := cmd.Flags().GetString("summary-file-name")
 		maxPassRatio, _ := cmd.Flags().GetFloat64("max-pass-ratio")
 		codeOwnersPath, _ := cmd.Flags().GetString("codeowners-path")
 		repoPath, _ := cmd.Flags().GetString("repo-path")
 		repoURL, _ := cmd.Flags().GetString("repo-url")
+		branchName, _ := cmd.Flags().GetString("branch-name")
 		headSHA, _ := cmd.Flags().GetString("head-sha")
 		baseSHA, _ := cmd.Flags().GetString("base-sha")
 		githubWorkflowName, _ := cmd.Flags().GetString("github-workflow-name")
@@ -35,40 +35,40 @@ var AggregateResultsCmd = &cobra.Command{
 		splunkToken, _ := cmd.Flags().GetString("splunk-token")
 		splunkEvent, _ := cmd.Flags().GetString("splunk-event")
 
+		initialDirSize, err := getDirSize(resultsPath)
+		if err != nil {
+			log.Error().Err(err).Str("path", resultsPath).Msg("Error getting initial directory size")
+			// intentionally don't exit here, as we can still proceed with the aggregation
+		}
+
 		// Ensure the output directory exists
 		if err := fs.MkdirAll(outputDir, 0755); err != nil {
-			return fmt.Errorf("error creating output directory: %w", err)
+			log.Error().Err(err).Str("path", outputDir).Msg("Error creating output directory")
+			os.Exit(ErrorExitCode)
 		}
 
 		// Start spinner for loading test reports
 		s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
 		s.Suffix = " Aggregating test reports..."
 		s.Start()
+		fmt.Println()
 
 		// Load test reports from JSON files and aggregate them
 		aggregatedReport, err := reports.LoadAndAggregate(
 			resultsPath,
 			reports.WithReportID(reportID),
-			reports.WithSplunk(splunkURL, splunkToken, reports.SplunkEvent(splunkEvent)),
+			reports.WithSplunk(splunkURL, splunkToken, splunkEvent),
+			reports.WithBranchName(branchName),
+			reports.WithBaseSha(baseSHA),
+			reports.WithHeadSha(headSHA),
+			reports.WithRepoURL(repoURL),
+			reports.WithGitHubWorkflowName(githubWorkflowName),
+			reports.WithGitHubWorkflowRunURL(githubWorkflowRunURL),
 		)
 		if err != nil {
 			s.Stop()
-			fmt.Println()
-			return fmt.Errorf("error loading test reports: %w", err)
-		}
-		s.Stop()
-		fmt.Println()
-
-		// Add metadata to the aggregated report
-		aggregatedReport.HeadSHA = headSHA
-		aggregatedReport.BaseSHA = baseSHA
-		aggregatedReport.RepoURL = repoURL
-		aggregatedReport.GitHubWorkflowName = githubWorkflowName
-		aggregatedReport.GitHubWorkflowRunURL = githubWorkflowRunURL
-
-		if err != nil {
-			s.Stop()
-			return fmt.Errorf("error aggregating test reports: %w", err)
+			log.Error().Err(err).Stack().Msg("Error aggregating test reports")
+			os.Exit(ErrorExitCode)
 		}
 		s.Stop()
 		log.Debug().Msg("Successfully loaded and aggregated test reports")
@@ -82,7 +82,8 @@ var AggregateResultsCmd = &cobra.Command{
 		err = reports.MapTestResultsToPaths(aggregatedReport, repoPath)
 		if err != nil {
 			s.Stop()
-			return fmt.Errorf("error mapping test results to paths: %w", err)
+			log.Error().Stack().Err(err).Msg("Error mapping test results to paths")
+			os.Exit(ErrorExitCode)
 		}
 		s.Stop()
 		log.Debug().Msg("Successfully mapped paths to test results")
@@ -92,11 +93,13 @@ var AggregateResultsCmd = &cobra.Command{
 			s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
 			s.Suffix = " Mapping test results to code owners..."
 			s.Start()
+			fmt.Println()
 
 			err = reports.MapTestResultsToOwners(aggregatedReport, codeOwnersPath)
 			if err != nil {
 				s.Stop()
-				return fmt.Errorf("error mapping test results to code owners: %w", err)
+				log.Error().Stack().Err(err).Msg("Error mapping test results to code owners")
+				os.Exit(ErrorExitCode)
 			}
 			s.Stop()
 			log.Debug().Msg("Successfully mapped code owners to test results")
@@ -114,7 +117,7 @@ var AggregateResultsCmd = &cobra.Command{
 			// Create a new report for failed tests with logs
 			failedReportWithLogs := &reports.TestReport{
 				GoProject:          aggregatedReport.GoProject,
-				TestRunCount:       aggregatedReport.TestRunCount,
+				SummaryData:        aggregatedReport.SummaryData,
 				RaceDetection:      aggregatedReport.RaceDetection,
 				ExcludedTests:      aggregatedReport.ExcludedTests,
 				SelectedTests:      aggregatedReport.SelectedTests,
@@ -127,7 +130,8 @@ var AggregateResultsCmd = &cobra.Command{
 			// Save the failed tests report with logs
 			failedTestsReportWithLogsPath := filepath.Join(outputDir, "failed-test-results-with-logs.json")
 			if err := reports.SaveReport(fs, failedTestsReportWithLogsPath, *failedReportWithLogs); err != nil {
-				return fmt.Errorf("error saving failed tests report with logs: %w", err)
+				log.Error().Stack().Err(err).Msg("Error saving failed tests report with logs")
+				os.Exit(ErrorExitCode)
 			}
 			log.Debug().Str("path", failedTestsReportWithLogsPath).Msg("Failed tests report with logs saved")
 
@@ -141,7 +145,8 @@ var AggregateResultsCmd = &cobra.Command{
 			// Save the failed tests report without logs
 			failedTestsReportNoLogsPath := filepath.Join(outputDir, "failed-test-results.json")
 			if err := reports.SaveReport(fs, failedTestsReportNoLogsPath, *failedReportWithLogs); err != nil {
-				return fmt.Errorf("error saving failed tests report without logs: %w", err)
+				log.Error().Stack().Err(err).Msg("Error saving failed tests report without logs")
+				os.Exit(ErrorExitCode)
 			}
 			log.Debug().Str("path", failedTestsReportNoLogsPath).Msg("Failed tests report without logs saved")
 		} else {
@@ -158,40 +163,28 @@ var AggregateResultsCmd = &cobra.Command{
 		// Save the aggregated report to the output directory
 		aggregatedReportPath := filepath.Join(outputDir, "all-test-results.json")
 		if err := reports.SaveReport(fs, aggregatedReportPath, *aggregatedReport); err != nil {
-			return fmt.Errorf("error saving aggregated test report: %w", err)
-		}
-		log.Debug().Str("path", aggregatedReportPath).Msg("Aggregated test report saved")
-
-		// Generate all-tests-summary.json
-		var summaryFilePath string
-		if summaryFileName != "" {
-			s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-			s.Suffix = " Generating summary json..."
-			s.Start()
-
-			summaryFilePath = filepath.Join(outputDir, summaryFileName)
-			err = generateAllTestsSummaryJSON(aggregatedReport, summaryFilePath, maxPassRatio)
-			if err != nil {
-				s.Stop()
-				return fmt.Errorf("error generating summary json: %w", err)
-			}
-			s.Stop()
-			log.Debug().Str("path", summaryFilePath).Msg("Summary generated")
+			log.Error().Stack().Err(err).Msg("Error saving aggregated test report")
+			os.Exit(ErrorExitCode)
 		}
 
-		log.Info().Str("summary", summaryFilePath).Str("report", aggregatedReportPath).Msg("Aggregation complete")
-		return nil
+		finalDirSize, err := getDirSize(resultsPath)
+		if err != nil {
+			log.Error().Err(err).Str("path", resultsPath).Msg("Error getting final directory size")
+			// intentionally don't exit here, as we can still proceed with the aggregation
+		}
+		diskSpaceUsed := byteCountSI(finalDirSize - initialDirSize)
+		log.Info().Str("disk space used", diskSpaceUsed).Str("report", aggregatedReportPath).Msg("Aggregation complete")
 	},
 }
 
 func init() {
 	AggregateResultsCmd.Flags().StringP("results-path", "p", "", "Path to the folder containing JSON test result files (required)")
 	AggregateResultsCmd.Flags().StringP("output-path", "o", "./report", "Path to output the aggregated results (directory)")
-	AggregateResultsCmd.Flags().StringP("summary-file-name", "s", "all-test-summary.json", "Name of the summary JSON file")
 	AggregateResultsCmd.Flags().Float64P("max-pass-ratio", "", 1.0, "The maximum pass ratio threshold for a test to be considered flaky")
 	AggregateResultsCmd.Flags().StringP("codeowners-path", "", "", "Path to the CODEOWNERS file")
 	AggregateResultsCmd.Flags().StringP("repo-path", "", ".", "The path to the root of the repository/project")
 	AggregateResultsCmd.Flags().String("repo-url", "", "The repository URL")
+	AggregateResultsCmd.Flags().String("branch-name", "", "Branch name for the test report")
 	AggregateResultsCmd.Flags().String("head-sha", "", "Head commit SHA for the test report")
 	AggregateResultsCmd.Flags().String("base-sha", "", "Base commit SHA for the test report")
 	AggregateResultsCmd.Flags().String("github-workflow-name", "", "GitHub workflow name for the test report")
@@ -206,25 +199,32 @@ func init() {
 	}
 }
 
-// New function to generate all-tests-summary.json
-func generateAllTestsSummaryJSON(report *reports.TestReport, outputPath string, maxPassRatio float64) error {
-	summary := reports.GenerateSummaryData(report.Results, maxPassRatio)
-	data, err := json.Marshal(summary)
-	if err != nil {
-		return fmt.Errorf("error marshaling summary data to JSON: %w", err)
-	}
+// getDirSize returns the size of a directory in bytes
+// helpful for tracking how much data is being produced on disk
+func getDirSize(path string) (int64, error) {
+	var size int64
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return nil
+	})
+	return size, err
+}
 
-	fs := reports.OSFileSystem{}
-	jsonFile, err := fs.Create(outputPath)
-	if err != nil {
-		return fmt.Errorf("error creating file: %w", err)
+// byteCountSI returns a human-readable byte count (decimal SI units)
+func byteCountSI(b int64) string {
+	const unit = 1000
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
 	}
-	defer jsonFile.Close()
-
-	_, err = jsonFile.Write(data)
-	if err != nil {
-		return fmt.Errorf("error writing data to file: %w", err)
+	div, exp := int64(unit), 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
 	}
-
-	return nil
+	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "kMGTPE"[exp])
 }

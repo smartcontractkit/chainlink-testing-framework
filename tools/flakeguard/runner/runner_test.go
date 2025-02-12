@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	defaultRuns          = 5
+	defaultTestRunCount  = 5
 	flakyTestPackagePath = "./example_test_package"
 	debugDir             = "debug_outputs"
 )
@@ -64,7 +64,7 @@ func TestRun(t *testing.T) {
 			runner: Runner{
 				ProjectPath:      "./",
 				Verbose:          true,
-				RunCount:         defaultRuns,
+				RunCount:         defaultTestRunCount,
 				UseRace:          false,
 				SkipTests:        []string{"TestPanic", "TestFlakyPanic", "TestSubTestsSomePanic", "TestTimeout"},
 				FailFast:         false,
@@ -72,19 +72,24 @@ func TestRun(t *testing.T) {
 			},
 			expectedTests: map[string]*expectedTestResult{
 				"TestFlaky": {
-					exactRuns:       &defaultRuns,
+					exactRuns:       &defaultTestRunCount,
 					minimumPassRate: &failPassRate,
 					maximumPassRate: &successPassRate,
 					someSuccesses:   true,
 					someFailures:    true,
 				},
 				"TestFail": {
-					exactRuns:     &defaultRuns,
+					exactRuns:     &defaultTestRunCount,
+					exactPassRate: &failPassRate,
+					allFailures:   true,
+				},
+				"TestFailLargeOutput": {
+					exactRuns:     &defaultTestRunCount,
 					exactPassRate: &failPassRate,
 					allFailures:   true,
 				},
 				"TestPass": {
-					exactRuns:     &defaultRuns,
+					exactRuns:     &defaultTestRunCount,
 					exactPassRate: &successPassRate,
 					allSuccesses:  true,
 				},
@@ -94,60 +99,60 @@ func TestRun(t *testing.T) {
 					allSkips:      true,
 				},
 				"TestRace": {
-					exactRuns:     &defaultRuns,
+					exactRuns:     &defaultTestRunCount,
 					exactPassRate: &successPassRate,
 					allSuccesses:  true,
 				},
 				"TestSubTestsAllPass": {
-					exactRuns:    &defaultRuns,
+					exactRuns:    &defaultTestRunCount,
 					allSuccesses: true,
 				},
 				"TestFailInParentAfterSubTests": {
-					exactRuns:   &defaultRuns,
+					exactRuns:   &defaultTestRunCount,
 					allFailures: true,
 				},
 				"TestFailInParentAfterSubTests/Pass1": {
-					exactRuns:    &defaultRuns,
+					exactRuns:    &defaultTestRunCount,
 					allSuccesses: true,
 				},
 				"TestFailInParentAfterSubTests/Pass2": {
-					exactRuns:    &defaultRuns,
+					exactRuns:    &defaultTestRunCount,
 					allSuccesses: true,
 				},
 				"TestFailInParentBeforeSubTests": {
-					exactRuns:   &defaultRuns,
+					exactRuns:   &defaultTestRunCount,
 					allFailures: true,
 				},
 				"TestSubTestsAllPass/Pass1": {
-					exactRuns:    &defaultRuns,
+					exactRuns:    &defaultTestRunCount,
 					allSuccesses: true,
 				},
 				"TestSubTestsAllPass/Pass2": {
-					exactRuns:    &defaultRuns,
+					exactRuns:    &defaultTestRunCount,
 					allSuccesses: true,
 				},
 				"TestSubTestsAllFail": {
-					exactRuns:   &defaultRuns,
+					exactRuns:   &defaultTestRunCount,
 					allFailures: true,
 				},
 				"TestSubTestsAllFail/Fail1": {
-					exactRuns:   &defaultRuns,
+					exactRuns:   &defaultTestRunCount,
 					allFailures: true,
 				},
 				"TestSubTestsAllFail/Fail2": {
-					exactRuns:   &defaultRuns,
+					exactRuns:   &defaultTestRunCount,
 					allFailures: true,
 				},
 				"TestSubTestsSomeFail": {
-					exactRuns:   &defaultRuns,
+					exactRuns:   &defaultTestRunCount,
 					allFailures: true,
 				},
 				"TestSubTestsSomeFail/Pass": {
-					exactRuns:    &defaultRuns,
+					exactRuns:    &defaultTestRunCount,
 					allSuccesses: true,
 				},
 				"TestSubTestsSomeFail/Fail": {
-					exactRuns:   &defaultRuns,
+					exactRuns:   &defaultTestRunCount,
 					allFailures: true,
 				},
 			},
@@ -157,7 +162,7 @@ func TestRun(t *testing.T) {
 			runner: Runner{
 				ProjectPath:      "./",
 				Verbose:          true,
-				RunCount:         defaultRuns,
+				RunCount:         defaultTestRunCount,
 				UseRace:          false,
 				SkipTests:        []string{},
 				SelectTests:      []string{"TestPanic"},
@@ -168,7 +173,7 @@ func TestRun(t *testing.T) {
 				"TestPanic": {
 					packagePanic: true,
 					testPanic:    true,
-					maximumRuns:  defaultRuns,
+					maximumRuns:  defaultTestRunCount,
 				},
 			},
 		},
@@ -177,7 +182,7 @@ func TestRun(t *testing.T) {
 			runner: Runner{
 				ProjectPath:      "./",
 				Verbose:          true,
-				RunCount:         defaultRuns,
+				RunCount:         defaultTestRunCount,
 				UseRace:          false,
 				SkipTests:        []string{},
 				SelectTests:      []string{"TestFlakyPanic"},
@@ -188,7 +193,7 @@ func TestRun(t *testing.T) {
 				"TestFlakyPanic": {
 					packagePanic: true,
 					testPanic:    true,
-					maximumRuns:  defaultRuns,
+					maximumRuns:  defaultTestRunCount,
 				},
 			},
 		},
@@ -197,7 +202,7 @@ func TestRun(t *testing.T) {
 			runner: Runner{
 				ProjectPath:      "./",
 				Verbose:          true,
-				RunCount:         defaultRuns,
+				RunCount:         defaultTestRunCount,
 				UseRace:          false,
 				SkipTests:        []string{},
 				SelectTests:      []string{"TestSubTestsSomePanic"},
@@ -208,17 +213,17 @@ func TestRun(t *testing.T) {
 				"TestSubTestsSomePanic": {
 					packagePanic: true,
 					testPanic:    true,
-					maximumRuns:  defaultRuns,
+					maximumRuns:  defaultTestRunCount,
 				},
 				"TestSubTestsSomePanic/Pass": {
 					packagePanic: true,
 					allSuccesses: true,
-					maximumRuns:  defaultRuns,
+					maximumRuns:  defaultTestRunCount,
 				},
 				"TestSubTestsSomePanic/Panic": {
 					packagePanic: true,
 					testPanic:    true,
-					maximumRuns:  defaultRuns,
+					maximumRuns:  defaultTestRunCount,
 				},
 			},
 		},
@@ -227,7 +232,7 @@ func TestRun(t *testing.T) {
 			runner: Runner{
 				ProjectPath:      "./",
 				Verbose:          true,
-				RunCount:         defaultRuns,
+				RunCount:         defaultTestRunCount,
 				UseRace:          false,
 				SkipTests:        []string{},
 				SelectTests:      []string{"TestFail", "TestPass"},
@@ -282,7 +287,12 @@ func TestRun(t *testing.T) {
 				}
 			})
 
-			require.Equal(t, tc.runner.RunCount, testReport.TestRunCount, "unexpected number of test runs")
+			if tc.runner.FailFast {
+				require.Equal(t, 1, testReport.SummaryData.TestRunCount, "unexpected number of unique tests run")
+			} else {
+				require.Equal(t, tc.runner.RunCount, testReport.SummaryData.TestRunCount, "unexpected number of test runs")
+			}
+
 			require.Equal(t, tc.runner.UseRace, testReport.RaceDetection, "unexpected race usage")
 
 			assert.Equal(t, len(tc.expectedTests), len(testReport.Results), "unexpected number of test results")
@@ -492,7 +502,7 @@ func TestAttributeRaceToTest(t *testing.T) {
 }
 
 // TODO: Running the failing test here fools tools like gotestfmt into thinking we actually ran a failing test
-// as the output gets piped out to the console. This is a minor annoyance we should fix.
+// as the output gets piped out to the console. This a confusing annoyance that I'd like to fix, but it's not crucial.
 func TestFailedOutputs(t *testing.T) {
 	t.Parallel()
 
@@ -507,7 +517,7 @@ func TestFailedOutputs(t *testing.T) {
 	testReport, err := runner.RunTestPackages([]string{flakyTestPackagePath})
 	require.NoError(t, err, "running tests should not produce an unexpected error")
 
-	require.Equal(t, 1, testReport.TestRunCount, "unexpected number of test runs")
+	require.Equal(t, 1, testReport.SummaryData.TotalRuns, "unexpected number of test runs")
 
 	var testFailResult *reports.TestResult
 	for i := range testReport.Results {
@@ -541,7 +551,9 @@ func TestSkippedTests(t *testing.T) {
 	testReport, err := runner.RunTestPackages([]string{flakyTestPackagePath})
 	require.NoError(t, err, "running tests should not produce an unexpected error")
 
-	require.Equal(t, 1, testReport.TestRunCount, "unexpected number of test runs")
+	require.Equal(t, 0, testReport.SummaryData.TotalRuns, "unexpected number of test runs")
+	require.Equal(t, 1, len(testReport.Results), "unexpected number of test results")
+	require.Equal(t, 0, testReport.SummaryData.TestRunCount, "unexpected test run count")
 
 	var testSkipResult *reports.TestResult
 	for i := range testReport.Results {
@@ -574,7 +586,7 @@ func TestOmitOutputsOnSuccess(t *testing.T) {
 	testReport, err := runner.RunTestPackages([]string{flakyTestPackagePath})
 	require.NoError(t, err, "running tests should not produce an unexpected error")
 
-	require.Equal(t, 1, testReport.TestRunCount, "unexpected number of test runs")
+	require.Equal(t, 1, testReport.SummaryData.TotalRuns, "unexpected number of test runs")
 
 	var testPassResult *reports.TestResult
 	for i := range testReport.Results {

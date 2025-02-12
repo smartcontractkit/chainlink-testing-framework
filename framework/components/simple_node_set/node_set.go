@@ -20,6 +20,7 @@ const (
 
 // Input is a node set configuration input
 type Input struct {
+	Name               string          `toml:"name" validate:"required"`
 	Nodes              int             `toml:"nodes" validate:"required"`
 	HTTPPortRangeStart int             `toml:"http_port_range_start"`
 	P2PPortRangeStart  int             `toml:"p2p_port_range_start"`
@@ -75,6 +76,10 @@ func printURLs(out *Output) {
 }
 
 func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
+	in.DbInput.Name = fmt.Sprintf("%s-%s", in.Name, "ns-postgresql")
+	in.DbInput.VolumeName = in.Name
+
+	// create database for each node
 	in.DbInput.Databases = in.Nodes
 	dbOut, err := postgres.NewPostgreSQL(in.DbInput)
 	if err != nil {
@@ -116,9 +121,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 				return nil, fmt.Errorf("custom_ports can be used only with override_mode = 'each'")
 			}
 		}
-		if in.NodeSpecs[overrideIdx].Node.Name == "" {
-			nodeName = fmt.Sprintf("node%d", i)
-		}
+
 		eg.Go(func() error {
 			var net string
 			net, err = clnode.NewNetworkCfgOneNetworkAllNodes(bcOut)
@@ -128,6 +131,8 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 			if in.NodeSpecs[overrideIdx].Node.TestConfigOverrides != "" {
 				net = in.NodeSpecs[overrideIdx].Node.TestConfigOverrides
 			}
+			nodeName = fmt.Sprintf("node%d", i)
+			nodeWithNodeSetPrefixName := fmt.Sprintf("%s-%s", in.Name, nodeName)
 
 			nodeSpec := &clnode.Input{
 				DbInput: in.DbInput,
@@ -137,7 +142,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 					DebuggerPort:            dlvPortStart + i,
 					CustomPorts:             in.NodeSpecs[overrideIdx].Node.CustomPorts,
 					Image:                   in.NodeSpecs[overrideIdx].Node.Image,
-					Name:                    nodeName,
+					Name:                    nodeWithNodeSetPrefixName,
 					PullImage:               in.NodeSpecs[overrideIdx].Node.PullImage,
 					DockerFilePath:          in.NodeSpecs[overrideIdx].Node.DockerFilePath,
 					DockerContext:           in.NodeSpecs[overrideIdx].Node.DockerContext,

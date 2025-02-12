@@ -6,11 +6,19 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner"
 	"github.com/spf13/cobra"
+)
+
+const (
+	// FlakyTestsExitCode indicates that Flakeguard ran correctly and was able to identify flaky tests
+	FlakyTestsExitCode = 1
+	// ErrorExitCode indicates that Flakeguard ran into an error and was not able to complete operation
+	ErrorExitCode = 2
 )
 
 var RunTestsCmd = &cobra.Command{
@@ -34,9 +42,22 @@ var RunTestsCmd = &cobra.Command{
 		shuffleSeed, _ := cmd.Flags().GetString("shuffle-seed")
 		omitOutputsOnSuccess, _ := cmd.Flags().GetBool("omit-test-outputs-on-success")
 
+		outputDir := filepath.Dir(outputPath)
+		initialDirSize, err := getDirSize(outputDir)
+		if err != nil {
+			log.Error().Err(err).Str("path", outputDir).Msg("Error getting initial directory size")
+			// intentionally don't exit here, as we can still proceed with the run
+		}
+
+		if maxPassRatio < 0 || maxPassRatio > 1 {
+			log.Error().Float64("max pass ratio", maxPassRatio).Msg("Error: max pass ratio must be between 0 and 1")
+			os.Exit(ErrorExitCode)
+		}
+
 		// Check if project dependencies are correctly set up
 		if err := checkDependencies(projectPath); err != nil {
-			log.Fatal().Err(err).Msg("Error checking project dependencies")
+			log.Error().Err(err).Msg("Error checking project dependencies")
+			os.Exit(ErrorExitCode)
 		}
 
 		// Determine test packages
@@ -45,12 +66,14 @@ var RunTestsCmd = &cobra.Command{
 			// No custom command -> parse packages
 			if testPackagesJson != "" {
 				if err := json.Unmarshal([]byte(testPackagesJson), &testPackages); err != nil {
-					log.Fatal().Err(err).Msg("Error decoding test packages JSON")
+					log.Error().Err(err).Msg("Error decoding test packages JSON")
+					os.Exit(ErrorExitCode)
 				}
 			} else if len(testPackagesArg) > 0 {
 				testPackages = testPackagesArg
 			} else {
-				log.Fatal().Msg("Error: must specify either --test-packages-json or --test-packages (or use --test-cmd).")
+				log.Error().Msg("Error: must specify either --test-packages-json or --test-packages")
+				os.Exit(ErrorExitCode)
 			}
 		}
 
@@ -67,24 +90,26 @@ var RunTestsCmd = &cobra.Command{
 			UseShuffle:           useShuffle,
 			ShuffleSeed:          shuffleSeed,
 			OmitOutputsOnSuccess: omitOutputsOnSuccess,
+			MaxPassRatio:         maxPassRatio,
 		}
 
 		// Run the tests
 		var (
 			testReport *reports.TestReport
-			err        error
 		)
 
 		if len(testCmdStrings) > 0 {
 			testReport, err = testRunner.RunTestCmd(testCmdStrings)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error running custom test command")
+				os.Exit(ErrorExitCode)
 			}
 		} else {
 			// Otherwise, use the normal go test approach
 			testReport, err = testRunner.RunTestPackages(testPackages)
 			if err != nil {
-				log.Fatal().Err(err).Msg("Error running tests")
+				log.Fatal().Err(err).Msg("Error running test packages")
+				os.Exit(ErrorExitCode)
 			}
 		}
 
@@ -92,10 +117,12 @@ var RunTestsCmd = &cobra.Command{
 		if outputPath != "" && len(testReport.Results) > 0 {
 			jsonData, err := json.MarshalIndent(testReport, "", "  ")
 			if err != nil {
-				log.Fatal().Err(err).Msg("Error marshaling test results to JSON")
+				log.Error().Err(err).Msg("Error marshaling test results to JSON")
+				os.Exit(ErrorExitCode)
 			}
 			if err := os.WriteFile(outputPath, jsonData, 0600); err != nil {
-				log.Fatal().Err(err).Msg("Error writing test results to file")
+				log.Error().Err(err).Msg("Error writing test results to file")
+				os.Exit(ErrorExitCode)
 			}
 			log.Info().Str("path", outputPath).Msg("Test results saved")
 		}
@@ -110,12 +137,25 @@ var RunTestsCmd = &cobra.Command{
 			return !tr.Skipped && tr.PassRatio < maxPassRatio
 		})
 
+		finalDirSize, err := getDirSize(outputDir)
+		if err != nil {
+			log.Error().Err(err).Str("path", outputDir).Msg("Error getting initial directory size")
+			// intentionally don't exit here, as we can still proceed with the run
+		}
+		diskSpaceUsed := byteCountSI(finalDirSize - initialDirSize)
+
 		if len(flakyTests) > 0 {
-			log.Info().Int("count", len(flakyTests)).Str("pass ratio threshold", fmt.Sprintf("%.2f%%", maxPassRatio*100)).Msg("Found flaky tests")
-			fmt.Printf("\nFlakeguard Summary\n")
-			reports.RenderResults(os.Stdout, flakyTests, maxPassRatio, false)
+			log.Info().Str("disk space used", diskSpaceUsed).Int("count", len(flakyTests)).Str("pass ratio threshold", fmt.Sprintf("%.2f%%", maxPassRatio*100)).Msg("Found flaky tests")
+		} else {
+			log.Info().Str("disk space used", diskSpaceUsed).Msg("No flaky tests found")
+		}
+
+		fmt.Printf("\nFlakeguard Summary\n")
+		reports.RenderResults(os.Stdout, testReport, false, false)
+
+		if len(flakyTests) > 0 {
 			// Exit with error code if there are flaky tests
-			os.Exit(1)
+			os.Exit(FlakyTestsExitCode)
 		}
 	},
 }

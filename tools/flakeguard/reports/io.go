@@ -3,6 +3,7 @@ package reports
 import (
 	"bufio"
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -38,11 +40,19 @@ func (OSFileSystem) WriteFile(filename string, data []byte, perm os.FileMode) er
 	return os.WriteFile(filename, data, perm)
 }
 
+// aggregateOptions influence how reports are aggregated together
 type aggregateOptions struct {
-	reportID    string
-	splunkURL   string
-	splunkToken string
-	splunkEvent SplunkEvent
+	maxPassRatio         float64
+	reportID             string
+	splunkURL            string
+	splunkToken          string
+	splunkEvent          string
+	branchName           string
+	baseSha              string
+	headSha              string
+	repoURL              string
+	gitHubWorkflowName   string
+	gitHubWorkflowRunURL string
 }
 
 // AggregateOption is a functional option for configuring the aggregation process.
@@ -56,11 +66,59 @@ func WithReportID(reportID string) AggregateOption {
 }
 
 // WithSplunk also sends the aggregation to a Splunk instance as events.
-func WithSplunk(url, token string, event SplunkEvent) AggregateOption {
+func WithSplunk(url, token string, event string) AggregateOption {
 	return func(opts *aggregateOptions) {
 		opts.splunkURL = url
 		opts.splunkToken = token
 		opts.splunkEvent = event
+	}
+}
+
+func WithBranchName(branchName string) AggregateOption {
+	return func(opts *aggregateOptions) {
+		opts.branchName = branchName
+	}
+}
+
+// WithHeadSha sets the head SHA for the aggregated report.
+func WithHeadSha(headSha string) AggregateOption {
+	return func(opts *aggregateOptions) {
+		opts.headSha = headSha
+	}
+}
+
+// WithBaseSha sets the base SHA for the aggregated report.
+func WithBaseSha(baseSha string) AggregateOption {
+	return func(opts *aggregateOptions) {
+		opts.baseSha = baseSha
+	}
+}
+
+// WithRepoURL sets the repository URL for the aggregated report.
+func WithRepoURL(repoURL string) AggregateOption {
+	return func(opts *aggregateOptions) {
+		opts.repoURL = repoURL
+	}
+}
+
+// WithGitHubWorkflowName sets the GitHub workflow name for the aggregated report.
+func WithGitHubWorkflowName(githubWorkflowName string) AggregateOption {
+	return func(opts *aggregateOptions) {
+		opts.gitHubWorkflowName = githubWorkflowName
+	}
+}
+
+// WithGitHubWorkflowRunURL sets the GitHub workflow run URL for the aggregated report.
+func WithGitHubWorkflowRunURL(githubWorkflowRunURL string) AggregateOption {
+	return func(opts *aggregateOptions) {
+		opts.gitHubWorkflowRunURL = githubWorkflowRunURL
+	}
+}
+
+// WithMaxPassRatio sets the maximum pass ratio for the aggregated report.
+func WithMaxPassRatio(maxPassRatio float64) AggregateOption {
+	return func(opts *aggregateOptions) {
+		opts.maxPassRatio = maxPassRatio
 	}
 }
 
@@ -71,7 +129,9 @@ func LoadAndAggregate(resultsPath string, options ...AggregateOption) (*TestRepo
 	}
 
 	// Apply options
-	opts := aggregateOptions{}
+	opts := aggregateOptions{
+		maxPassRatio: 1.0,
+	}
 	for _, opt := range options {
 		opt(&opts)
 	}
@@ -115,6 +175,7 @@ func LoadAndAggregate(resultsPath string, options ...AggregateOption) (*TestRepo
 	if err != nil {
 		return nil, fmt.Errorf("error aggregating reports: %w", err)
 	}
+
 	return aggregatedReport, nil
 }
 
@@ -167,6 +228,10 @@ func decodeField(decoder *json.Decoder, report *TestReport) error {
 		if err := decoder.Decode(&report.GoProject); err != nil {
 			return fmt.Errorf("error decoding GoProject: %w", err)
 		}
+	case "branch_name":
+		if err := decoder.Decode(&report.BranchName); err != nil {
+			return fmt.Errorf("error decoding BranchName: %w", err)
+		}
 	case "head_sha":
 		if err := decoder.Decode(&report.HeadSHA); err != nil {
 			return fmt.Errorf("error decoding HeadSHA: %w", err)
@@ -187,9 +252,57 @@ func decodeField(decoder *json.Decoder, report *TestReport) error {
 		if err := decoder.Decode(&report.GitHubWorkflowName); err != nil {
 			return fmt.Errorf("error decoding GitHubWorkflowName: %w", err)
 		}
+	case "summary_data":
+		if err := decoder.Decode(&report.SummaryData); err != nil {
+			return fmt.Errorf("error decoding SummaryData: %w", err)
+		}
+	case "unique_tests_run":
+		if err := decoder.Decode(&report.SummaryData.UniqueTestsRun); err != nil {
+			return fmt.Errorf("error decoding TotalTests: %w", err)
+		}
 	case "test_run_count":
-		if err := decoder.Decode(&report.TestRunCount); err != nil {
+		if err := decoder.Decode(&report.SummaryData.TestRunCount); err != nil {
 			return fmt.Errorf("error decoding TestRunCount: %w", err)
+		}
+	case "panicked_tests":
+		if err := decoder.Decode(&report.SummaryData.PanickedTests); err != nil {
+			return fmt.Errorf("error decoding PanickedTests: %w", err)
+		}
+	case "raced_tests":
+		if err := decoder.Decode(&report.SummaryData.RacedTests); err != nil {
+			return fmt.Errorf("error decoding RacedTests: %w", err)
+		}
+	case "flaky_tests":
+		if err := decoder.Decode(&report.SummaryData.FlakyTests); err != nil {
+			return fmt.Errorf("error decoding FlakyTests: %w", err)
+		}
+	case "flaky_test_percent":
+		if err := decoder.Decode(&report.SummaryData.FlakyTestPercent); err != nil {
+			return fmt.Errorf("error decoding FlakyTestRatio: %w", err)
+		}
+	case "total_runs":
+		if err := decoder.Decode(&report.SummaryData.TotalRuns); err != nil {
+			return fmt.Errorf("error decoding TotalRuns: %w", err)
+		}
+	case "passed_runs":
+		if err := decoder.Decode(&report.SummaryData.PassedRuns); err != nil {
+			return fmt.Errorf("error decoding PassedRuns: %w", err)
+		}
+	case "failed_runs":
+		if err := decoder.Decode(&report.SummaryData.FailedRuns); err != nil {
+			return fmt.Errorf("error decoding FailedRuns: %w", err)
+		}
+	case "skipped_runs":
+		if err := decoder.Decode(&report.SummaryData.SkippedRuns); err != nil {
+			return fmt.Errorf("error decoding SkippedRuns: %w", err)
+		}
+	case "pass_percent":
+		if err := decoder.Decode(&report.SummaryData.PassPercent); err != nil {
+			return fmt.Errorf("error decoding PassRatio: %w", err)
+		}
+	case "max_pass_ratio":
+		if err := decoder.Decode(&report.MaxPassRatio); err != nil {
+			return fmt.Errorf("error decoding MaxPassRatio: %w", err)
 		}
 	case "race_detection":
 		if err := decoder.Decode(&report.RaceDetection); err != nil {
@@ -318,21 +431,28 @@ func SaveReport(fs FileSystem, filePath string, report TestReport) error {
 // aggregate aggregates multiple TestReport objects into a single TestReport as they are received
 func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggregateOptions) (*TestReport, error) {
 	var (
+		fullReport = &TestReport{
+			ID:                   opts.reportID,
+			BranchName:           opts.branchName,
+			BaseSHA:              opts.baseSha,
+			HeadSHA:              opts.headSha,
+			RepoURL:              opts.repoURL,
+			GitHubWorkflowName:   opts.gitHubWorkflowName,
+			GitHubWorkflowRunURL: opts.gitHubWorkflowRunURL,
+			MaxPassRatio:         opts.maxPassRatio,
+		}
 		testMap       = make(map[string]TestResult)
-		fullReport    = &TestReport{}
 		excludedTests = map[string]struct{}{}
 		selectedTests = map[string]struct{}{}
 		sendToSplunk  = opts.splunkURL != ""
 	)
 
-	fullReport.ID = opts.reportID
 	for report := range reportChan {
 		if fullReport.GoProject == "" {
 			fullReport.GoProject = report.GoProject
 		} else if fullReport.GoProject != report.GoProject {
 			return nil, fmt.Errorf("reports with different Go projects found, expected %s, got %s", fullReport.GoProject, report.GoProject)
 		}
-		fullReport.TestRunCount += report.TestRunCount
 		fullReport.RaceDetection = report.RaceDetection && fullReport.RaceDetection
 		for _, test := range report.ExcludedTests {
 			excludedTests[test] = struct{}{}
@@ -364,9 +484,6 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 		fullReport.SelectedTests = append(fullReport.SelectedTests, test)
 	}
 
-	// Get the report without any results to send to splunk
-	splunkReport := *fullReport
-
 	// Prepare final results
 	var (
 		aggregatedResults []TestResult
@@ -378,34 +495,54 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 
 	sortTestResults(aggregatedResults)
 	fullReport.Results = aggregatedResults
+	fullReport.GenerateSummaryData()
 
 	if sendToSplunk {
-		err = sendDataToSplunk(opts, splunkReport, aggregatedResults...)
+		err = sendDataToSplunk(opts, *fullReport)
+		if err != nil {
+			return fullReport, fmt.Errorf("error sending data to Splunk: %w", err)
+		}
 	}
 	return fullReport, err
 }
 
 // sendDataToSplunk sends a truncated TestReport and each individual TestResults to Splunk as events
-func sendDataToSplunk(opts *aggregateOptions, report TestReport, results ...TestResult) error {
+func sendDataToSplunk(opts *aggregateOptions, report TestReport) error {
 	start := time.Now()
+	results := report.Results
+	report.Results = nil // Don't send results to Splunk, doing that individually
+	// Dry-run mode for example runs
+	isExampleRun := strings.Contains(opts.splunkURL, "splunk.example.com")
+
 	client := resty.New().
 		SetBaseURL(opts.splunkURL).
 		SetAuthScheme("Splunk").
 		SetAuthToken(opts.splunkToken).
 		SetHeader("Content-Type", "application/json").
 		SetLogger(ZerologRestyLogger{})
-	client.AddRetryAfterErrorCondition().SetRetryCount(5).SetTimeout(time.Second * 10)
 
 	log.Debug().Str("report id", report.ID).Int("results", len(results)).Msg("Sending aggregated data to Splunk")
 
-	// Send results
+	const (
+		resultsBatchSize             = 10
+		splunkSizeLimitBytes         = 100_000_000 // 100MB. Actual limit is over 800MB, but that's excessive
+		exampleSplunkReportFileName  = "example_results/example_splunk_report.json"
+		exampleSplunkResultsFileName = "example_results/example_splunk_results_batch_%d.json"
+	)
+
 	var (
 		splunkErrs            = []error{}
-		resultsBatchSize      = 10
 		resultsBatch          = []SplunkTestResult{}
 		successfulResultsSent = 0
+		batchNum              = 1
 	)
+
 	for resultCount, result := range results {
+		// No need to send log outputs to Splunk
+		result.FailedOutputs = nil
+		result.PassedOutputs = nil
+		result.PackageOutputs = nil
+
 		resultsBatch = append(resultsBatch, SplunkTestResult{
 			Event: SplunkTestResultEvent{
 				Event: opts.splunkEvent,
@@ -415,67 +552,114 @@ func sendDataToSplunk(opts *aggregateOptions, report TestReport, results ...Test
 			SourceType: SplunkSourceType,
 			Index:      SplunkIndex,
 		})
-		// Send results in batches so Splunk doesn't get mad
-		if len(resultsBatch) >= resultsBatchSize || resultCount == len(results)-1 {
+
+		if len(resultsBatch) >= resultsBatchSize ||
+			resultCount == len(results)-1 ||
+			binary.Size(resultsBatch) >= splunkSizeLimitBytes {
+
 			batchData, testNames, err := batchSplunkResults(resultsBatch)
 			if err != nil {
 				return fmt.Errorf("error batching results: %w", err)
 			}
 
-			resp, err := client.R().
-				SetBody(batchData.String()).
-				Post("")
-			if err != nil {
-				splunkErrs = append(splunkErrs,
-					fmt.Errorf("error sending flakeguard results for [%s] to Splunk: %w", strings.Join(testNames, ", "), err),
-				)
-			}
-			if resp.IsError() {
-				splunkErrs = append(splunkErrs,
-					fmt.Errorf("error sending flakeguard result for [%s] to Splunk: %s", strings.Join(testNames, ", "), resp.String()),
-				)
-			}
-			if err == nil && !resp.IsError() {
-				successfulResultsSent += len(resultsBatch)
+			if isExampleRun {
+				exampleSplunkResultsFileName := fmt.Sprintf(exampleSplunkResultsFileName, batchNum)
+				exampleSplunkResultsFile, err := os.Create(exampleSplunkResultsFileName)
+				if err != nil {
+					return fmt.Errorf("error creating example Splunk results file: %w", err)
+				}
+				for _, result := range resultsBatch {
+					jsonResult, err := json.Marshal(result)
+					if err != nil {
+						return fmt.Errorf("error marshaling result for '%s' to json: %w", result.Event.Data.TestName, err)
+					}
+					_, err = exampleSplunkResultsFile.Write(jsonResult)
+					if err != nil {
+						return fmt.Errorf("error writing result for '%s' to file: %w", result.Event.Data.TestName, err)
+					}
+				}
+				err = exampleSplunkResultsFile.Close()
+				if err != nil {
+					return fmt.Errorf("error closing example Splunk results file: %w", err)
+				}
+			} else {
+				resp, err := client.R().SetBody(batchData.String()).Post("")
+				if err != nil {
+					splunkErrs = append(splunkErrs,
+						fmt.Errorf("error sending results for [%s] to Splunk: %w", strings.Join(testNames, ", "), err),
+					)
+				}
+				if resp.IsError() {
+					splunkErrs = append(splunkErrs,
+						fmt.Errorf("error sending result for [%s] to Splunk: %s", strings.Join(testNames, ", "), resp.String()),
+					)
+				}
+				if err == nil && !resp.IsError() {
+					successfulResultsSent += len(resultsBatch)
+				}
 			}
 			resultsBatch = []SplunkTestResult{}
+			batchNum++
 		}
 	}
 
-	// Check if errors occurred while uploading results and send report with incomplete flag
-	resp, err := client.R().
-		SetBody(SplunkTestReport{
-			Event: SplunkTestReportEvent{
-				Event:      opts.splunkEvent,
-				Type:       Report,
-				Data:       report,
-				Incomplete: len(splunkErrs) > 0,
-			},
-			SourceType: SplunkSourceType,
-			Index:      SplunkIndex,
-		}).
-		Post("")
+	if isExampleRun {
+		log.Info().Msg("Example Run. See 'example_results/splunk_results' for the results that would be sent to splunk")
+	}
 
-	if err != nil {
-		splunkErrs = append(splunkErrs, fmt.Errorf("error sending flakeguard report '%s' to Splunk: %w", report.ID, err))
+	reportData := SplunkTestReport{
+		Event: SplunkTestReportEvent{
+			Event:      opts.splunkEvent,
+			Type:       Report,
+			Data:       report,
+			Incomplete: len(splunkErrs) > 0,
+		},
+		SourceType: SplunkSourceType,
+		Index:      SplunkIndex,
 	}
-	if resp.IsError() {
-		splunkErrs = append(splunkErrs, fmt.Errorf("error sending flakeguard report '%s' to Splunk: %s", report.ID, resp.String()))
+
+	if isExampleRun {
+		exampleSplunkReportFile, err := os.Create(exampleSplunkReportFileName)
+		if err != nil {
+			return fmt.Errorf("error creating example Splunk report file: %w", err)
+		}
+		jsonReport, err := json.Marshal(reportData)
+		if err != nil {
+			return fmt.Errorf("error marshaling report: %w", err)
+		}
+		_, err = exampleSplunkReportFile.Write(jsonReport)
+		if err != nil {
+			return fmt.Errorf("error writing report: %w", err)
+		}
+		log.Info().Msgf("Example Run. See '%s' for the results that would be sent to splunk", exampleSplunkReportFileName)
+	} else {
+		resp, err := client.R().SetBody(reportData).Post("")
+		if err != nil {
+			splunkErrs = append(splunkErrs, fmt.Errorf("error sending report '%s' to Splunk: %w", report.ID, err))
+		}
+		if resp.IsError() {
+			splunkErrs = append(splunkErrs, fmt.Errorf("error sending report '%s' to Splunk: %s", report.ID, resp.String()))
+		}
 	}
+
 	if len(splunkErrs) > 0 {
 		log.Error().
 			Int("successfully sent", successfulResultsSent).
 			Int("total results", len(results)).
 			Errs("errors", splunkErrs).
+			Str("report id", report.ID).
 			Str("duration", time.Since(start).String()).
 			Msg("Errors occurred while sending test results to Splunk")
 	} else {
 		log.Debug().
 			Int("successfully sent", successfulResultsSent).
 			Int("total results", len(results)).
+			Int("result batches", batchNum).
 			Str("duration", time.Since(start).String()).
-			Msg("All results sent successfully")
+			Str("report id", report.ID).
+			Msg("All results sent successfully to Splunk")
 	}
+
 	return errors.Join(splunkErrs...)
 }
 
@@ -501,24 +685,38 @@ func batchSplunkResults(results []SplunkTestResult) (batchData bytes.Buffer, res
 
 // unBatchSplunkResults un-batches a batch of TestResult objects into a slice of TestResult objects
 func unBatchSplunkResults(batch []byte) ([]*SplunkTestResult, error) {
-	var results []*SplunkTestResult
-	scanner := bufio.NewScanner(bufio.NewReader(bytes.NewReader(batch)))
+	results := make([]*SplunkTestResult, 0, bytes.Count(batch, []byte{'\n'}))
+	scanner := bufio.NewScanner(bytes.NewReader(batch))
+
+	maxCapacity := 1024 * 1024 // 1 MB
+	buf := make([]byte, maxCapacity)
+	scanner.Buffer(buf, maxCapacity)
+
+	var pool sync.Pool
+	pool.New = func() interface{} { return new(SplunkTestResult) }
+
 	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.TrimSpace(line) == "" {
+		line := scanner.Bytes()
+		if len(bytes.TrimSpace(line)) == 0 {
 			continue // Skip empty lines
 		}
-		var result *SplunkTestResult
-		if err := json.Unmarshal([]byte(line), &result); err != nil {
+
+		result := pool.Get().(*SplunkTestResult)
+		if err := json.Unmarshal(line, result); err != nil {
 			return results, fmt.Errorf("error unmarshaling result: %w", err)
 		}
 		results = append(results, result)
 	}
-	return results, scanner.Err()
+
+	if err := scanner.Err(); err != nil {
+		return results, fmt.Errorf("error scanning: %w", err)
+	}
+
+	return results, nil
 }
 
-// aggregateFromReports aggregates multiple TestReport objects into a single TestReport
-func aggregateFromReports(opts *aggregateOptions, reports ...*TestReport) (*TestReport, error) {
+// aggregateReports aggregates multiple TestReport objects into a single TestReport
+func aggregateReports(opts *aggregateOptions, reports ...*TestReport) (*TestReport, error) {
 	reportChan := make(chan *TestReport, len(reports))
 	errChan := make(chan error, 1)
 	for _, report := range reports {

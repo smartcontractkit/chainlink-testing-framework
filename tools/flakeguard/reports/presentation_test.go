@@ -3,39 +3,41 @@ package reports
 import (
 	"bytes"
 	"fmt"
-	"reflect"
-	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGenerateFlakyTestsTable(t *testing.T) {
-	results := []TestResult{
-		{
-			TestName:    "TestFlaky",
-			PassRatio:   0.5,
-			Skipped:     false,
-			Runs:        2,
-			Successes:   1,
-			Failures:    1,
-			TestPackage: "pkg1",
-			CodeOwners:  []string{"owner1"},
+	report := &TestReport{
+		Results: []TestResult{
+			{
+				TestName:    "TestFlaky",
+				PassRatio:   0.5,
+				Skipped:     false,
+				Runs:        2,
+				Successes:   1,
+				Failures:    1,
+				TestPackage: "pkg1",
+				CodeOwners:  []string{"owner1"},
+			},
+			{
+				TestName:    "TestSkipped",
+				PassRatio:   -1.0,
+				Skipped:     true,
+				Runs:        0,
+				Skips:       1,
+				TestPackage: "pkg2",
+				CodeOwners:  []string{"owner2"},
+			},
 		},
-		{
-			TestName:    "TestSkipped",
-			PassRatio:   -1.0,
-			Skipped:     true,
-			Runs:        0,
-			Skips:       1,
-			TestPackage: "pkg2",
-			CodeOwners:  []string{"owner2"},
-		},
+		MaxPassRatio: 0.9,
 	}
 
-	expectedPassRatio := 0.9
 	markdown := false
 
-	table := GenerateFlakyTestsTable(results, expectedPassRatio, markdown)
+	table := GenerateFlakyTestsTable(report, markdown)
 
 	// Verify headers
 	expectedHeaders := []string{
@@ -43,18 +45,14 @@ func TestGenerateFlakyTestsTable(t *testing.T) {
 		"Successes", "Failures", "Skips", "Package", "Package Panicked?",
 		"Avg Duration", "Code Owners",
 	}
-	if !reflect.DeepEqual(table[0], expectedHeaders) {
-		t.Errorf("Expected headers %+v, got %+v", expectedHeaders, table[0])
-	}
+	assert.Equal(t, expectedHeaders, table[0], "Expected headers to match")
 
 	// Verify rows (only TestFlaky should appear)
-	if len(table) != 2 { // 1 header row + 1 data row
-		t.Fatalf("Expected table length 2 (headers + 1 row), got %d", len(table))
-	}
+	assert.Len(t, table, 2, "Expected 2 rows in table (headers + 1 data row)")
 
 	expectedRow := []string{
 		"TestFlaky",
-		"50.00%",
+		"50%",
 		"false",
 		"false",
 		"false",
@@ -67,16 +65,14 @@ func TestGenerateFlakyTestsTable(t *testing.T) {
 		"0s",
 		"owner1",
 	}
-	if !reflect.DeepEqual(table[1], expectedRow) {
-		t.Errorf("Expected row %+v, got %+v", expectedRow, table[1])
-	}
+	assert.Equal(t, expectedRow, table[1], "Expected row to match")
 }
 
-// TestGenerateGitHubSummaryMarkdown tests the GenerateGitHubSummaryMarkdown function.
 func TestGenerateGitHubSummaryMarkdown(t *testing.T) {
+	maxPassRatio := 0.9
 	testReport := &TestReport{
 		GoProject:     "ProjectX",
-		TestRunCount:  3,
+		SummaryData:   &SummaryData{UniqueTestsRun: 2, FlakyTests: 1},
 		RaceDetection: true,
 		Results: []TestResult{
 			{
@@ -100,39 +96,31 @@ func TestGenerateGitHubSummaryMarkdown(t *testing.T) {
 				Durations:   []time.Duration{2 * time.Second, 2 * time.Second, 2 * time.Second},
 			},
 		},
+		MaxPassRatio: maxPassRatio,
 	}
 
 	var buffer bytes.Buffer
-	maxPassRatio := 0.9
 
 	GenerateGitHubSummaryMarkdown(&buffer, testReport, maxPassRatio, "", "")
 
 	output := buffer.String()
 
 	// Check that the summary includes the expected headings
-	if !strings.Contains(output, "# Flakeguard Summary") {
-		t.Error("Expected markdown summary to contain '# Flakeguard Summary'")
-	}
-	if !strings.Contains(output, "## Found Flaky Tests :x:") {
-		t.Error("Expected markdown summary to contain '## Found Flaky Tests :x:'")
-	}
-	if !strings.Contains(output, "| **Name**") {
-		t.Error("Expected markdown table headers for test results")
-	}
-	if !strings.Contains(output, "| TestA ") {
-		t.Error("Expected markdown table to include TestA")
-	}
-	if strings.Contains(output, "| TestB ") {
-		t.Error("Did not expect markdown table to include TestB since its pass ratio is above the threshold")
-	}
+	assert.Contains(t, output, "# Flakeguard Summary", "Expected markdown summary to contain '# Flakeguard Summary'")
+	assert.Contains(t, output, "## Found Flaky Tests :x:", "Expected markdown summary to contain '## Found Flaky Tests :x:'")
+	assert.Contains(t, output, "| **Name**", "Expected markdown table headers for test results")
+	assert.Contains(t, output, "| TestA ", "Expected markdown table to include TestA")
+	assert.NotContains(t, output, "| TestB ", "Markdown table should not include TestB")
 }
 
 // TestGeneratePRCommentMarkdown tests the GeneratePRCommentMarkdown function.
 func TestGeneratePRCommentMarkdown(t *testing.T) {
+	maxPassRatio := 0.9
 	testReport := &TestReport{
 		GoProject:     "ProjectX",
-		TestRunCount:  3,
+		SummaryData:   &SummaryData{UniqueTestsRun: 3, FlakyTests: 1},
 		RaceDetection: true,
+		MaxPassRatio:  maxPassRatio,
 		Results: []TestResult{
 			{
 				TestName:    "TestA",
@@ -158,7 +146,6 @@ func TestGeneratePRCommentMarkdown(t *testing.T) {
 	}
 
 	var buffer bytes.Buffer
-	maxPassRatio := 0.9
 	baseBranch := "develop"
 	currentBranch := "feature-branch"
 	currentCommitSHA := "abcdef1234567890"
@@ -170,30 +157,14 @@ func TestGeneratePRCommentMarkdown(t *testing.T) {
 	output := buffer.String()
 
 	// Check that the output includes the expected headings and links
-	if !strings.Contains(output, "# Flakeguard Summary") {
-		t.Error("Expected markdown summary to contain '# Flakeguard Summary'")
-	}
-	if !strings.Contains(output, fmt.Sprintf("Ran new or updated tests between `%s` and %s (`%s`).", baseBranch, currentCommitSHA, currentBranch)) {
-		t.Error("Expected markdown to contain the additional info line with branches and commit SHA")
-	}
-	if !strings.Contains(output, fmt.Sprintf("[View Flaky Detector Details](%s/actions/runs/%s)", repoURL, actionRunID)) {
-		t.Error("Expected markdown to contain the 'View Flaky Detector Details' link")
-	}
-	if !strings.Contains(output, fmt.Sprintf("[Compare Changes](%s/compare/%s...%s#files_bucket)", repoURL, baseBranch, currentCommitSHA)) {
-		t.Error("Expected markdown to contain the 'Compare Changes' link")
-	}
-	if !strings.Contains(output, "## Found Flaky Tests :x:") {
-		t.Error("Expected markdown summary to contain '## Found Flaky Tests :x:'")
-	}
-	if !strings.Contains(output, "| **Name**") {
-		t.Error("Expected markdown table headers for test results")
-	}
-	if !strings.Contains(output, "| TestA ") {
-		t.Error("Expected markdown table to include TestA")
-	}
-	if strings.Contains(output, "| TestB ") {
-		t.Error("Did not expect markdown table to include TestB since its pass ratio is above the threshold")
-	}
+	assert.Contains(t, output, "# Flakeguard Summary", "Expected markdown summary to contain '# Flakeguard Summary'")
+	assert.Contains(t, output, fmt.Sprintf("Ran new or updated tests between `%s` and %s (`%s`).", baseBranch, currentCommitSHA, currentBranch), "Expected markdown to contain the additional info line with branches and commit SHA")
+	assert.Contains(t, output, fmt.Sprintf("[View Flaky Detector Details](%s/actions/runs/%s)", repoURL, actionRunID), "Expected markdown to contain the 'View Flaky Detector Details' link")
+	assert.Contains(t, output, fmt.Sprintf("[Compare Changes](%s/compare/%s...%s#files_bucket)", repoURL, baseBranch, currentCommitSHA), "Expected markdown to contain the 'Compare Changes' link")
+	assert.Contains(t, output, "## Found Flaky Tests :x:", "Expected markdown summary to contain '## Found Flaky Tests :x:'")
+	assert.Contains(t, output, "| **Name**", "Expected markdown table headers for test results")
+	assert.Contains(t, output, "| TestA ", "Expected markdown table to include TestA")
+	assert.NotContains(t, output, "| TestB ", "Markdown table should not include TestB")
 }
 
 // TestPrintTable tests the printTable function.
@@ -205,7 +176,7 @@ func TestPrintTable(t *testing.T) {
 	}
 
 	var buffer bytes.Buffer
-	printTable(&buffer, table)
+	printTable(&buffer, table, false)
 
 	output := buffer.String()
 
@@ -223,43 +194,44 @@ func TestPrintTable(t *testing.T) {
 func TestRenderResults(t *testing.T) {
 	testcases := []struct {
 		name                   string
-		testResults            []TestResult
-		maxPassRatio           float64
-		expectedSummary        SummaryData
+		testReport             *TestReport
+		expectedSummary        *SummaryData
 		expectedStringsContain []string
 	}{
 		{
 			name: "single flaky test",
-			testResults: []TestResult{
-				{
-					TestName:    "Test1",
-					TestPackage: "package1",
-					PassRatio:   0.75,
-					Successes:   3,
-					Failures:    1,
-					Skipped:     false,
-					Runs:        4,
-					Durations: []time.Duration{
-						time.Millisecond * 1200,
-						time.Millisecond * 900,
-						time.Millisecond * 1100,
-						time.Second,
+			testReport: &TestReport{
+				Results: []TestResult{
+					{
+						TestName:    "Test1",
+						TestPackage: "package1",
+						PassRatio:   0.75,
+						Successes:   3,
+						Failures:    1,
+						Skipped:     false,
+						Runs:        4,
+						Durations: []time.Duration{
+							time.Millisecond * 1200,
+							time.Millisecond * 900,
+							time.Millisecond * 1100,
+							time.Second,
+						},
 					},
 				},
+				MaxPassRatio: 0.9,
 			},
-			maxPassRatio: 0.9,
-			expectedSummary: SummaryData{
-				TotalTests:     1,
-				PanickedTests:  0,
-				RacedTests:     0,
-				FlakyTests:     1,
-				FlakyTestRatio: "100%",
-				TotalRuns:      4,
-				PassedRuns:     3,
-				FailedRuns:     1,
-				SkippedRuns:    0,
-				PassRatio:      "75%",
-				MaxPassRatio:   0.9,
+			expectedSummary: &SummaryData{
+				UniqueTestsRun:   1,
+				TestRunCount:     4,
+				PanickedTests:    0,
+				RacedTests:       0,
+				FlakyTests:       1,
+				FlakyTestPercent: "100%",
+				TotalRuns:        4,
+				PassedRuns:       3,
+				FailedRuns:       1,
+				SkippedRuns:      0,
+				PassPercent:      "75%",
 			},
 			expectedStringsContain: []string{"Test1", "package1", "75%", "false", "1.05s", "4", "0"},
 		},
@@ -268,39 +240,19 @@ func TestRenderResults(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			var buf bytes.Buffer
+			// Generate the summary data
+			tc.testReport.GenerateSummaryData()
 
-			RenderResults(&buf, tc.testResults, tc.maxPassRatio, false)
+			var buf bytes.Buffer
+			RenderResults(&buf, tc.testReport, false, false)
 			output := buf.String()
 
-			// Generate the summary data
-			summary := GenerateSummaryData(tc.testResults, tc.maxPassRatio)
-
 			// Verify summary data
-			if summary.TotalTests != tc.expectedSummary.TotalTests {
-				t.Errorf("Expected TotalTests %v, got %v", tc.expectedSummary.TotalTests, summary.TotalTests)
-			}
-			if summary.TotalRuns != tc.expectedSummary.TotalRuns {
-				t.Errorf("Expected TotalRuns %v, got %v", tc.expectedSummary.TotalRuns, summary.TotalRuns)
-			}
-			if summary.PassedRuns != tc.expectedSummary.PassedRuns {
-				t.Errorf("Expected PassedRuns %v, got %v", tc.expectedSummary.PassedRuns, summary.PassedRuns)
-			}
-			if summary.FailedRuns != tc.expectedSummary.FailedRuns {
-				t.Errorf("Expected FailedRuns %v, got %v", tc.expectedSummary.FailedRuns, summary.FailedRuns)
-			}
-			if summary.FlakyTests != tc.expectedSummary.FlakyTests {
-				t.Errorf("Expected FlakyTests %v, got %v", tc.expectedSummary.FlakyTests, summary.FlakyTests)
-			}
-			if summary.PassRatio != tc.expectedSummary.PassRatio {
-				t.Errorf("Expected PassRatio %v, got %v", tc.expectedSummary.PassRatio, summary.PassRatio)
-			}
+			assert.Equal(t, tc.expectedSummary, tc.testReport.SummaryData, "Summary data does not match expected")
 
 			// Verify output content
 			for _, expected := range tc.expectedStringsContain {
-				if !strings.Contains(output, expected) {
-					t.Errorf("Expected output to contain %q, but it did not", expected)
-				}
+				assert.Contains(t, output, expected, "Expected output to contain %q", expected)
 			}
 		})
 	}

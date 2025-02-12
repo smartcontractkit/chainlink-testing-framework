@@ -10,13 +10,12 @@ import (
 	"golang.org/x/text/message"
 )
 
+// GenerateFlakyTestsTable generates a table of flaky tests from the given test report to print to the console or markdown.
 func GenerateFlakyTestsTable(
-	results []TestResult,
-	expectedPassRatio float64,
+	testReport *TestReport,
 	markdown bool,
 ) [][]string {
 	p := message.NewPrinter(language.English)
-	sortTestResults(results)
 
 	// Headers in the requested order
 	headers := []string{
@@ -45,12 +44,12 @@ func GenerateFlakyTestsTable(
 	// Initialize the table with headers
 	table := [][]string{headers}
 
-	for _, result := range results {
+	for _, result := range testReport.Results {
 		// Exclude skipped tests and only include tests below the expected pass ratio
-		if !result.Skipped && result.PassRatio < expectedPassRatio {
+		if !result.Skipped && result.PassRatio < testReport.MaxPassRatio {
 			row := []string{
 				result.TestName,
-				formatPassRatio(result.PassRatio),
+				formatRatio(result.PassRatio),
 				fmt.Sprintf("%t", result.Panic),
 				fmt.Sprintf("%t", result.Timeout),
 				fmt.Sprintf("%t", result.Race),
@@ -76,13 +75,7 @@ func GenerateFlakyTestsTable(
 	return table
 }
 
-func formatPassRatio(passRatio float64) string {
-	if passRatio < 0 {
-		return "N/A" // Handle undefined pass ratios (e.g., skipped tests)
-	}
-	return fmt.Sprintf("%.2f%%", passRatio*100)
-}
-
+// GenerateGitHubSummaryMarkdown generates a markdown summary of the test results for a GitHub workflow summary
 func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassRatio float64, artifactName, artifactLink string) {
 	fmt.Fprint(w, "# Flakeguard Summary\n\n")
 
@@ -92,24 +85,30 @@ func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassR
 	}
 
 	settingsTable := buildSettingsTable(testReport, maxPassRatio)
-	printTable(w, settingsTable)
+	printTable(w, settingsTable, false)
 	fmt.Fprintln(w)
 
-	summary := GenerateSummaryData(testReport.Results, maxPassRatio)
-	if summary.FlakyTests > 0 {
+	if testReport.SummaryData.FlakyTests > 0 {
 		fmt.Fprintln(w, "## Found Flaky Tests :x:")
 	} else {
 		fmt.Fprintln(w, "## No Flakes Found :white_check_mark:")
 	}
+	fmt.Fprintln(w)
 
-	RenderResults(w, testReport.Results, maxPassRatio, true)
+	RenderResults(w, testReport, true, false)
 
 	if artifactLink != "" {
 		renderArtifactSection(w, artifactName, artifactLink)
 	}
 }
 
-func GeneratePRCommentMarkdown(w io.Writer, testReport *TestReport, maxPassRatio float64, baseBranch, currentBranch, currentCommitSHA, repoURL, actionRunID, artifactName, artifactLink string) {
+// GeneratePRCommentMarkdown generates a markdown summary of the test results for a GitHub PR comment.
+func GeneratePRCommentMarkdown(
+	w io.Writer,
+	testReport *TestReport,
+	maxPassRatio float64,
+	baseBranch, currentBranch, currentCommitSHA, repoURL, actionRunID, artifactName, artifactLink string,
+) {
 	fmt.Fprint(w, "# Flakeguard Summary\n\n")
 
 	if len(testReport.Results) == 0 {
@@ -139,14 +138,14 @@ func GeneratePRCommentMarkdown(w io.Writer, testReport *TestReport, maxPassRatio
 	fmt.Fprintln(w) // Add an extra newline for formatting
 
 	// Add the flaky tests section
-	if GenerateSummaryData(testReport.Results, maxPassRatio).FlakyTests > 0 {
+	if testReport.SummaryData.FlakyTests > 0 {
 		fmt.Fprintln(w, "## Found Flaky Tests :x:")
 	} else {
 		fmt.Fprintln(w, "## No Flakes Found :white_check_mark:")
 	}
 
-	resultsTable := GenerateFlakyTestsTable(testReport.Results, maxPassRatio, true)
-	renderTestResultsTable(w, resultsTable)
+	resultsTable := GenerateFlakyTestsTable(testReport, true)
+	renderTestResultsTable(w, resultsTable, true)
 
 	if artifactLink != "" {
 		renderArtifactSection(w, artifactName, artifactLink)
@@ -163,7 +162,7 @@ func buildSettingsTable(testReport *TestReport, maxPassRatio float64) [][]string
 	}
 
 	rows = append(rows, []string{"Max Pass Ratio", fmt.Sprintf("%.2f%%", maxPassRatio*100)})
-	rows = append(rows, []string{"Test Run Count", fmt.Sprintf("%d", testReport.TestRunCount)})
+	rows = append(rows, []string{"Test Run Count", fmt.Sprintf("%d", testReport.SummaryData.UniqueTestsRun)})
 	rows = append(rows, []string{"Race Detection", fmt.Sprintf("%t", testReport.RaceDetection)})
 
 	if len(testReport.ExcludedTests) > 0 {
@@ -176,31 +175,42 @@ func buildSettingsTable(testReport *TestReport, maxPassRatio float64) [][]string
 	return rows
 }
 
-func RenderResults(
+func RenderError(
 	w io.Writer,
-	tests []TestResult,
-	maxPassRatio float64,
-	markdown bool,
+	err error,
 ) {
-	resultsTable := GenerateFlakyTestsTable(tests, maxPassRatio, markdown)
-	summary := GenerateSummaryData(tests, maxPassRatio)
-	renderSummaryTable(w, summary, markdown)
-	renderTestResultsTable(w, resultsTable)
+	fmt.Fprintln(w, ":x: Error Running Flakeguard :x:")
 }
 
-func renderSummaryTable(w io.Writer, summary SummaryData, markdown bool) {
+// RenderResults renders the test results into a console or markdown format.
+// If in markdown mode, the table results can also be made collapsible.
+func RenderResults(
+	w io.Writer,
+	testReport *TestReport,
+	markdown bool,
+	collapsible bool,
+) {
+	resultsTable := GenerateFlakyTestsTable(testReport, markdown)
+	renderSummaryTable(w, testReport.SummaryData, markdown, false) // Don't make the summary collapsible
+	renderTestResultsTable(w, resultsTable, collapsible)
+}
+
+// renderSummaryTable renders a summary table with the given data into a console or markdown format.
+// If in markdown mode, the table can also be made collapsible.
+func renderSummaryTable(w io.Writer, summary *SummaryData, markdown bool, collapsible bool) {
 	summaryData := [][]string{
 		{"Category", "Total"},
-		{"Tests", fmt.Sprintf("%d", summary.TotalTests)},
+		{"Unique Tests", fmt.Sprintf("%d", summary.UniqueTestsRun)},
+		{"Test Run Count", fmt.Sprintf("%d", summary.TestRunCount)},
 		{"Panicked Tests", fmt.Sprintf("%d", summary.PanickedTests)},
 		{"Raced Tests", fmt.Sprintf("%d", summary.RacedTests)},
 		{"Flaky Tests", fmt.Sprintf("%d", summary.FlakyTests)},
-		{"Flaky Test Ratio", summary.FlakyTestRatio},
-		{"Runs", fmt.Sprintf("%d", summary.TotalRuns)},
+		{"Flaky Test Percent", summary.FlakyTestPercent},
+		{"Total Test Runs", fmt.Sprintf("%d", summary.TotalRuns)},
 		{"Passes", fmt.Sprintf("%d", summary.PassedRuns)},
 		{"Failures", fmt.Sprintf("%d", summary.FailedRuns)},
 		{"Skips", fmt.Sprintf("%d", summary.SkippedRuns)},
-		{"Pass Ratio", summary.PassRatio},
+		{"Pass Percent", summary.PassPercent},
 	}
 	if markdown {
 		for i, row := range summaryData {
@@ -211,16 +221,16 @@ func renderSummaryTable(w io.Writer, summary SummaryData, markdown bool) {
 			}
 		}
 	}
-	printTable(w, summaryData)
+	printTable(w, summaryData, collapsible && markdown)
 	fmt.Fprintln(w)
 }
 
-func renderTestResultsTable(w io.Writer, table [][]string) {
+func renderTestResultsTable(w io.Writer, table [][]string, collapsible bool) {
 	if len(table) <= 1 {
 		fmt.Fprintln(w, "No tests found under the specified pass ratio threshold.")
 		return
 	}
-	printTable(w, table)
+	printTable(w, table, collapsible)
 }
 
 func renderArtifactSection(w io.Writer, artifactName, artifactLink string) {
@@ -232,15 +242,26 @@ func renderArtifactSection(w io.Writer, artifactName, artifactLink string) {
 	}
 }
 
-func printTable(w io.Writer, table [][]string) {
+// printTable prints a markdown table to the given writer in a pretty format.
+func printTable(w io.Writer, table [][]string, collapsible bool) {
 	colWidths := calculateColumnWidths(table)
 	separator := buildSeparator(colWidths)
+
+	if collapsible {
+		numResults := len(table) - 1
+		fmt.Fprintln(w, "<details>")
+		fmt.Fprintf(w, "<summary>%d Results</summary>\n\n", numResults)
+	}
 
 	for i, row := range table {
 		printRow(w, row, colWidths)
 		if i == 0 {
 			fmt.Fprintln(w, separator)
 		}
+	}
+
+	if collapsible {
+		fmt.Fprintln(w, "</details>")
 	}
 }
 
