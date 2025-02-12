@@ -46,6 +46,7 @@ func defaultSolana(in *Input) {
 func newSolana(in *Input) (*Output, error) {
 	defaultSolana(in)
 	ctx := context.Background()
+
 	containerName := framework.DefaultTCName("blockchain-node")
 	// Solana do not allow to set ws port, it just uses --rpc-port=N and sets WS as N+1 automatically
 	bindPort := fmt.Sprintf("%s/tcp", in.Port)
@@ -89,6 +90,7 @@ func newSolana(in *Input) (*Output, error) {
 		"--rpc-port", in.Port,
 		"--mint", in.PublicKey,
 	}, flags...)
+	args = append(args, in.DockerCmdParamsOverrides...)
 
 	req := testcontainers.ContainerRequest{
 		AlwaysPullImage: in.PullImage,
