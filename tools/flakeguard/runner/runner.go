@@ -110,12 +110,13 @@ func (r *Runner) RunTestCmd(testCmd []string) (*reports.TestReport, error) {
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
 
-	// Build a TestReport, same shape as RunTests()
 	return &reports.TestReport{
 		GoProject:     r.prettyProjectPath,
-		TestRunCount:  r.RunCount,
 		RaceDetection: r.UseRace,
+		ExcludedTests: r.SkipTests,
+		SelectedTests: r.SelectTests,
 		Results:       results,
+		MaxPassRatio:  r.MaxPassRatio,
 	}, nil
 }
 
