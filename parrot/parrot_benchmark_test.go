@@ -14,7 +14,7 @@ import (
 
 func BenchmarkRegisterRoute(b *testing.B) {
 	saveFile := b.Name() + ".json"
-	p, err := Wake(WithLogLevel(testLogLevel), WithSaveFile(saveFile))
+	p, err := NewServer(WithLogLevel(testLogLevel), WithSaveFile(saveFile))
 	require.NoError(b, err)
 
 	defer benchmarkCleanup(b, p, saveFile)
@@ -41,7 +41,7 @@ func BenchmarkRegisterRoute(b *testing.B) {
 
 func BenchmarkRouteResponse(b *testing.B) {
 	saveFile := b.Name() + ".json"
-	p, err := Wake(WithLogLevel(testLogLevel), WithSaveFile(saveFile))
+	p, err := NewServer(WithLogLevel(testLogLevel), WithSaveFile(saveFile))
 	require.NoError(b, err)
 
 	defer benchmarkCleanup(b, p, saveFile)
@@ -77,7 +77,7 @@ func BenchmarkRouteResponse(b *testing.B) {
 
 func BenchmarkGetRoutes(b *testing.B) {
 	saveFile := b.Name() + ".json"
-	p, err := Wake(WithLogLevel(testLogLevel), WithSaveFile(saveFile))
+	p, err := NewServer(WithLogLevel(testLogLevel), WithSaveFile(saveFile))
 	require.NoError(b, err)
 
 	defer benchmarkCleanup(b, p, saveFile)
@@ -104,8 +104,9 @@ func BenchmarkGetRoutes(b *testing.B) {
 
 func BenchmarkSave(b *testing.B) {
 	var (
-		routes   = []*Route{}
-		saveFile = "bench_save_routes.json"
+		routes    = []*Route{}
+		recorders = []string{}
+		saveFile  = "bench_save_routes.json"
 	)
 
 	for i := 0; i < 1000; i++ {
@@ -115,8 +116,9 @@ func BenchmarkSave(b *testing.B) {
 			RawResponseBody:    fmt.Sprintf("Squawk %d", i),
 			ResponseStatusCode: http.StatusOK,
 		})
+		recorders = append(recorders, fmt.Sprintf("http://recorder%d", i))
 	}
-	p, err := Wake(WithRoutes(routes), WithLogLevel(testLogLevel), WithSaveFile(saveFile))
+	p, err := NewServer(WithRoutes(routes), WithRecorders(recorders...), WithLogLevel(testLogLevel), WithSaveFile(saveFile))
 	require.NoError(b, err)
 
 	defer benchmarkCleanup(b, p, saveFile)
@@ -131,8 +133,9 @@ func BenchmarkSave(b *testing.B) {
 
 func BenchmarkLoad(b *testing.B) {
 	var (
-		routes   = []*Route{}
-		saveFile = "bench_load_routes.json"
+		routes    = []*Route{}
+		recorders = []string{}
+		saveFile  = "bench_load_routes.json"
 	)
 	b.Cleanup(func() {
 		os.Remove(saveFile)
@@ -145,8 +148,9 @@ func BenchmarkLoad(b *testing.B) {
 			RawResponseBody:    fmt.Sprintf("Squawk %d", i),
 			ResponseStatusCode: http.StatusOK,
 		})
+		recorders = append(recorders, fmt.Sprintf("http://recorder%d", i))
 	}
-	p, err := Wake(WithRoutes(routes), WithLogLevel(zerolog.Disabled), WithSaveFile(saveFile))
+	p, err := NewServer(WithRoutes(routes), WithRecorders(recorders...), WithLogLevel(zerolog.Disabled), WithSaveFile(saveFile))
 	require.NoError(b, err, "error waking parrot")
 
 	defer benchmarkCleanup(b, p, saveFile)

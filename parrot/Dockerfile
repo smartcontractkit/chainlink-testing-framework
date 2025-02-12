@@ -1,3 +1,7 @@
 FROM scratch
+
 COPY parrot /parrot
-ENTRYPOINT [ "parrot", "-port", "9090", "-t" ]
+ENV PARROT_PORT 80
+ENV PARROT_TRACE true
+EXPOSE 80
+ENTRYPOINT [ "/parrot" ]

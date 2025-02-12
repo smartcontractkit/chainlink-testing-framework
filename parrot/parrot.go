@@ -88,8 +88,8 @@ type SaveFile struct {
 	Recorders []string `json:"recorders"`
 }
 
-// Wake creates a new Parrot server with dynamic route handling
-func Wake(options ...ServerOption) (*Server, error) {
+// NewServer creates a new Parrot server with dynamic route handling
+func NewServer(options ...ServerOption) (*Server, error) {
 	p := &Server{
 		port:         0,
 		saveFileName: "parrot_save.json",
@@ -247,6 +247,7 @@ func (p *Server) Healthy() error {
 		ResponseStatusCode: http.StatusOK,
 	}
 
+	p.log.Info().Msg("Checking Parrot health")
 	err := p.Register(healthCheckRoute)
 	if err != nil {
 		return newDynamicError(ErrServerUnhealthy, fmt.Sprintf("%s: unable to register routes", err.Error()))
@@ -263,7 +264,7 @@ func (p *Server) Healthy() error {
 
 	p.Delete(healthCheckRoute)
 
-	p.log.Debug().Msg("Parrot is healthy")
+	p.log.Info().Msg("Parrot healthy")
 	return nil
 }
 
@@ -301,6 +302,16 @@ func (p *Server) Address() string {
 	return p.address
 }
 
+// Port returns the port the parrot is running on
+func (p *Server) Port() int {
+	return p.port
+}
+
+// Host returns the host the parrot is running on
+func (p *Server) Host() string {
+	return p.host
+}
+
 // Register adds a new route to the parrot
 func (p *Server) Register(route *Route) error {
 	if p.shutDown.Load() {
@@ -327,7 +338,7 @@ func (p *Server) Register(route *Route) error {
 		}
 	}
 	numWildcards := strings.Count(route.Path, "*")
-	if 1 < numWildcards {
+	if numWildcards > 1 {
 		return newDynamicError(ErrWildcardPath, fmt.Sprintf("more than 1 wildcard '%s'", route.Path))
 	}
 	if numWildcards == 1 && !strings.HasSuffix(route.Path, "*") {

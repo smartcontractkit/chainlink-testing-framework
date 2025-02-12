@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
@@ -39,6 +40,13 @@ var RunTestsCmd = &cobra.Command{
 		useShuffle, _ := cmd.Flags().GetBool("shuffle")
 		shuffleSeed, _ := cmd.Flags().GetString("shuffle-seed")
 		omitOutputsOnSuccess, _ := cmd.Flags().GetBool("omit-test-outputs-on-success")
+
+		outputDir := filepath.Dir(outputPath)
+		initialDirSize, err := getDirSize(outputDir)
+		if err != nil {
+			log.Error().Err(err).Str("path", outputDir).Msg("Error getting initial directory size")
+			// intentionally don't exit here, as we can still proceed with the run
+		}
 
 		if maxPassRatio < 0 || maxPassRatio > 1 {
 			log.Error().Float64("max pass ratio", maxPassRatio).Msg("Error: max pass ratio must be between 0 and 1")
@@ -113,10 +121,17 @@ var RunTestsCmd = &cobra.Command{
 			return !tr.Skipped && tr.PassRatio < maxPassRatio
 		})
 
+		finalDirSize, err := getDirSize(outputDir)
+		if err != nil {
+			log.Error().Err(err).Str("path", outputDir).Msg("Error getting initial directory size")
+			// intentionally don't exit here, as we can still proceed with the run
+		}
+		diskSpaceUsed := byteCountSI(finalDirSize - initialDirSize)
+
 		if len(flakyTests) > 0 {
-			log.Info().Int("count", len(flakyTests)).Str("pass ratio threshold", fmt.Sprintf("%.2f%%", maxPassRatio*100)).Msg("Found flaky tests")
+			log.Info().Str("disk space used", diskSpaceUsed).Int("count", len(flakyTests)).Str("pass ratio threshold", fmt.Sprintf("%.2f%%", maxPassRatio*100)).Msg("Found flaky tests")
 		} else {
-			log.Info().Msg("No flaky tests found")
+			log.Info().Str("disk space used", diskSpaceUsed).Msg("No flaky tests found")
 		}
 
 		fmt.Printf("\nFlakeguard Summary\n")

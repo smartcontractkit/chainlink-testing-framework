@@ -36,4 +36,5 @@ fuzz:
 .PHONY: build
 build:
 	cd .. && goreleaser release --snapshot --clean -f ./parrot/.goreleaser.yaml
+	echo "Build done, check in parrot/dist for binaries"
 	

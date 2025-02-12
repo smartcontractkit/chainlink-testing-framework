@@ -17,6 +17,8 @@ import (
 	"golang.org/x/oauth2"
 )
 
+const exampleGitHubToken = "EXAMPLE_GITHUB_TOKEN" //nolint:gosec
+
 var GenerateReportCmd = &cobra.Command{
 	Use:   "generate-report",
 	Short: "Generate test reports from aggregated results that can be posted to GitHub",
@@ -31,6 +33,12 @@ var GenerateReportCmd = &cobra.Command{
 		githubRepo, _ := cmd.Flags().GetString("github-repository")
 		githubRunID, _ := cmd.Flags().GetInt64("github-run-id")
 		artifactName, _ := cmd.Flags().GetString("failed-tests-artifact-name")
+
+		initialDirSize, err := getDirSize(outputDir)
+		if err != nil {
+			log.Error().Err(err).Str("path", outputDir).Msg("Error getting initial directory size")
+			// intentionally don't exit here, as we can still proceed with the generation
+		}
 
 		// Get the GitHub token from environment variable
 		githubToken := os.Getenv("GITHUB_TOKEN")
@@ -158,7 +166,13 @@ var GenerateReportCmd = &cobra.Command{
 			log.Info().Msg("PR comment markdown generated successfully")
 		}
 
-		log.Info().Str("output", outputDir).Msg("Reports generated successfully")
+		finalDirSize, err := getDirSize(outputDir)
+		if err != nil {
+			log.Error().Err(err).Str("path", outputDir).Msg("Error getting initial directory size")
+			// intentionally don't exit here, as we can still proceed with the generation
+		}
+		diskSpaceUsed := byteCountSI(finalDirSize - initialDirSize)
+		log.Info().Str("disk space used", diskSpaceUsed).Str("output", outputDir).Msg("Reports generated successfully")
 	},
 }
 
@@ -191,6 +205,9 @@ func init() {
 }
 
 func fetchArtifactLink(githubToken, githubRepo string, githubRunID int64, artifactName string) (string, error) {
+	if githubToken == exampleGitHubToken {
+		return "https://example-artifact-link.com", nil
+	}
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: githubToken},

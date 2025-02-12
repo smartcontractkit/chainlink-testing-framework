@@ -26,6 +26,61 @@ type TestReport struct {
 	MaxPassRatio float64 `json:"max_pass_ratio,omitempty"`
 }
 
+// GenerateSummaryData generates a summary of a report's test results
+func (testReport *TestReport) GenerateSummaryData() {
+	var runs, testRunCount, passes, fails, skips, panickedTests, racedTests, flakyTests, skippedTests int
+
+	for _, result := range testReport.Results {
+		runs += result.Runs
+		if result.Runs > testRunCount {
+			testRunCount = result.Runs
+		}
+		passes += result.Successes
+		fails += result.Failures
+		skips += result.Skips
+
+		// Count tests that were entirely skipped
+		if result.Runs == 0 && result.Skipped {
+			skippedTests++
+		}
+
+		if result.Panic {
+			panickedTests++
+			flakyTests++
+		} else if result.Race {
+			racedTests++
+			flakyTests++
+		} else if !result.Skipped && result.Runs > 0 && result.PassRatio < testReport.MaxPassRatio {
+			flakyTests++
+		}
+	}
+
+	// Calculate the raw pass ratio
+	passRatio := passRatio(passes, runs)
+
+	// Calculate the raw flake ratio
+	totalTests := len(testReport.Results)
+	flakeRatio := flakeRatio(flakyTests, totalTests)
+
+	passRatioStr := formatRatio(passRatio)
+	flakeTestRatioStr := formatRatio(flakeRatio)
+
+	testReport.SummaryData = &SummaryData{
+		UniqueTestsRun:   totalTests,
+		TestRunCount:     testRunCount,
+		PanickedTests:    panickedTests,
+		RacedTests:       racedTests,
+		FlakyTests:       flakyTests,
+		FlakyTestPercent: flakeTestRatioStr,
+
+		TotalRuns:   runs,
+		PassedRuns:  passes,
+		FailedRuns:  fails,
+		SkippedRuns: skips,
+		PassPercent: passRatioStr,
+	}
+}
+
 // TestResult contains the results and outputs of a single test
 type TestResult struct {
 	// ReportID is the ID of the report this test result belongs to
@@ -43,11 +98,11 @@ type TestResult struct {
 	Failures       int                 `json:"failures"`
 	Successes      int                 `json:"successes"`
 	Skips          int                 `json:"skips"`
-	Outputs        map[string][]string `json:"-"`              // Temporary storage for outputs during test run
-	PassedOutputs  map[string][]string `json:"passed_outputs"` // Outputs for passed runs
-	FailedOutputs  map[string][]string `json:"failed_outputs"` // Outputs for failed runs
+	Outputs        map[string][]string `json:"-"`                        // Temporary storage for outputs during test run
+	PassedOutputs  map[string][]string `json:"passed_outputs,omitempty"` // Outputs for passed runs
+	FailedOutputs  map[string][]string `json:"failed_outputs,omitempty"` // Outputs for failed runs
 	Durations      []time.Duration     `json:"durations"`
-	PackageOutputs []string            `json:"package_outputs"`
+	PackageOutputs []string            `json:"package_outputs,omitempty"`
 	TestPath       string              `json:"test_path"`
 	CodeOwners     []string            `json:"code_owners"`
 }
@@ -66,7 +121,7 @@ type SummaryData struct {
 	RacedTests int `json:"raced_tests"`
 	// FlakyTests tracks how many tests are considered flaky
 	FlakyTests int `json:"flaky_tests"`
-	// FlakyTestPercent is the percentage of tests that are considered flaky
+	// FlakyTestPercent is the human-readable percentage of tests that are considered flaky
 	FlakyTestPercent string `json:"flaky_test_percent"`
 
 	// Individual test run counts
@@ -79,7 +134,7 @@ type SummaryData struct {
 	FailedRuns int `json:"failed_runs"`
 	// SkippedRuns tracks how many test runs were skipped
 	SkippedRuns int `json:"skipped_runs"`
-	// PassPercent is the percentage of test runs that passed
+	// PassPercent is the human-readable percentage of test runs that passed
 	PassPercent string `json:"pass_percent"`
 }
 
@@ -128,61 +183,6 @@ type SplunkTestResultEvent struct {
 }
 
 // Data Processing Functions
-
-// GenerateSummaryData generates a summary of a report's test results
-func GenerateSummaryData(testReport *TestReport) {
-	var runs, mostRuns, passes, fails, skips, panickedTests, racedTests, flakyTests, skippedTests int
-
-	for _, result := range testReport.Results {
-		runs += result.Runs
-		if result.Runs > mostRuns {
-			mostRuns = result.Runs
-		}
-		passes += result.Successes
-		fails += result.Failures
-		skips += result.Skips
-
-		// Count tests that were entirely skipped
-		if result.Runs == 0 && result.Skipped {
-			skippedTests++
-		}
-
-		if result.Panic {
-			panickedTests++
-			flakyTests++
-		} else if result.Race {
-			racedTests++
-			flakyTests++
-		} else if !result.Skipped && result.Runs > 0 && result.PassRatio < testReport.MaxPassRatio {
-			flakyTests++
-		}
-	}
-
-	// Calculate the raw pass ratio
-	passRatio := passRatio(passes, runs)
-
-	// Calculate the raw flake ratio
-	totalTests := len(testReport.Results)
-	flakeRatio := flakeRatio(flakyTests, totalTests)
-
-	passRatioStr := formatRatio(passRatio)
-	flakeTestRatioStr := formatRatio(flakeRatio)
-
-	testReport.SummaryData = &SummaryData{
-		UniqueTestsRun:   totalTests,
-		TestRunCount:     mostRuns,
-		PanickedTests:    panickedTests,
-		RacedTests:       racedTests,
-		FlakyTests:       flakyTests,
-		FlakyTestPercent: flakeTestRatioStr,
-
-		TotalRuns:   runs,
-		PassedRuns:  passes,
-		FailedRuns:  fails,
-		SkippedRuns: skips,
-		PassPercent: passRatioStr,
-	}
-}
 
 func FilterResults(report *TestReport, maxPassRatio float64) *TestReport {
 	filteredResults := FilterTests(report.Results, func(tr TestResult) bool {
