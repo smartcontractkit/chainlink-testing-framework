@@ -233,7 +233,7 @@ func fetchArtifactLink(githubToken, githubRepo string, githubRunID int64, artifa
 		opts.Page = resp.NextPage
 	}
 
-	// Find the artifact we want
+	// Find the artifact
 	for _, artifact := range allArtifacts {
 		if artifact.GetName() == artifactName {
 			artifactID := artifact.GetID()

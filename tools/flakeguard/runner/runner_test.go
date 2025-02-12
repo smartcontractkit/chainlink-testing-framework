@@ -62,14 +62,13 @@ func TestRun(t *testing.T) {
 		{
 			name: "default",
 			runner: Runner{
-				ProjectPath:          "./",
-				Verbose:              true,
-				RunCount:             defaultRuns,
-				UseRace:              false,
-				SkipTests:            []string{"TestPanic", "TestFlakyPanic", "TestSubTestsSomePanic", "TestTimeout"},
-				FailFast:             false,
-				SelectedTestPackages: []string{flakyTestPackagePath},
-				CollectRawOutput:     true,
+				ProjectPath:      "./",
+				Verbose:          true,
+				RunCount:         defaultRuns,
+				UseRace:          false,
+				SkipTests:        []string{"TestPanic", "TestFlakyPanic", "TestSubTestsSomePanic", "TestTimeout"},
+				FailFast:         false,
+				CollectRawOutput: true,
 			},
 			expectedTests: map[string]*expectedTestResult{
 				"TestFlaky": {
@@ -156,15 +155,14 @@ func TestRun(t *testing.T) {
 		{
 			name: "always panic",
 			runner: Runner{
-				ProjectPath:          "./",
-				Verbose:              true,
-				RunCount:             defaultRuns,
-				UseRace:              false,
-				SkipTests:            []string{},
-				SelectTests:          []string{"TestPanic"},
-				FailFast:             false,
-				SelectedTestPackages: []string{flakyTestPackagePath},
-				CollectRawOutput:     true,
+				ProjectPath:      "./",
+				Verbose:          true,
+				RunCount:         defaultRuns,
+				UseRace:          false,
+				SkipTests:        []string{},
+				SelectTests:      []string{"TestPanic"},
+				FailFast:         false,
+				CollectRawOutput: true,
 			},
 			expectedTests: map[string]*expectedTestResult{
 				"TestPanic": {
@@ -177,15 +175,14 @@ func TestRun(t *testing.T) {
 		{
 			name: "flaky panic",
 			runner: Runner{
-				ProjectPath:          "./",
-				Verbose:              true,
-				RunCount:             defaultRuns,
-				UseRace:              false,
-				SkipTests:            []string{},
-				SelectTests:          []string{"TestFlakyPanic"},
-				FailFast:             false,
-				SelectedTestPackages: []string{flakyTestPackagePath},
-				CollectRawOutput:     true,
+				ProjectPath:      "./",
+				Verbose:          true,
+				RunCount:         defaultRuns,
+				UseRace:          false,
+				SkipTests:        []string{},
+				SelectTests:      []string{"TestFlakyPanic"},
+				FailFast:         false,
+				CollectRawOutput: true,
 			},
 			expectedTests: map[string]*expectedTestResult{
 				"TestFlakyPanic": {
@@ -198,15 +195,14 @@ func TestRun(t *testing.T) {
 		{
 			name: "subtest panic",
 			runner: Runner{
-				ProjectPath:          "./",
-				Verbose:              true,
-				RunCount:             defaultRuns,
-				UseRace:              false,
-				SkipTests:            []string{},
-				SelectTests:          []string{"TestSubTestsSomePanic"},
-				FailFast:             false,
-				SelectedTestPackages: []string{flakyTestPackagePath},
-				CollectRawOutput:     true,
+				ProjectPath:      "./",
+				Verbose:          true,
+				RunCount:         defaultRuns,
+				UseRace:          false,
+				SkipTests:        []string{},
+				SelectTests:      []string{"TestSubTestsSomePanic"},
+				FailFast:         false,
+				CollectRawOutput: true,
 			},
 			expectedTests: map[string]*expectedTestResult{
 				"TestSubTestsSomePanic": {
@@ -229,15 +225,14 @@ func TestRun(t *testing.T) {
 		{
 			name: "failfast",
 			runner: Runner{
-				ProjectPath:          "./",
-				Verbose:              true,
-				RunCount:             defaultRuns,
-				UseRace:              false,
-				SkipTests:            []string{},
-				SelectTests:          []string{"TestFail", "TestPass"},
-				FailFast:             true,
-				SelectedTestPackages: []string{flakyTestPackagePath},
-				CollectRawOutput:     true,
+				ProjectPath:      "./",
+				Verbose:          true,
+				RunCount:         defaultRuns,
+				UseRace:          false,
+				SkipTests:        []string{},
+				SelectTests:      []string{"TestFail", "TestPass"},
+				FailFast:         true,
+				CollectRawOutput: true,
 			},
 			expectedTests: map[string]*expectedTestResult{
 				"TestFail": {
@@ -254,7 +249,7 @@ func TestRun(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			testReport, err := tc.runner.RunTests()
+			testReport, err := tc.runner.RunTestPackages([]string{flakyTestPackagePath})
 			require.NoError(t, err)
 
 			t.Cleanup(func() {
@@ -502,15 +497,14 @@ func TestFailedOutputs(t *testing.T) {
 	t.Parallel()
 
 	runner := Runner{
-		ProjectPath:          "./",
-		Verbose:              true,
-		RunCount:             1,
-		SelectedTestPackages: []string{flakyTestPackagePath},
-		SelectTests:          []string{"TestFail"}, // This test is known to fail consistently
-		CollectRawOutput:     true,
+		ProjectPath:      "./",
+		Verbose:          true,
+		RunCount:         1,
+		SelectTests:      []string{"TestFail"}, // This test is known to fail consistently
+		CollectRawOutput: true,
 	}
 
-	testReport, err := runner.RunTests()
+	testReport, err := runner.RunTestPackages([]string{flakyTestPackagePath})
 	require.NoError(t, err, "running tests should not produce an unexpected error")
 
 	require.Equal(t, 1, testReport.TestRunCount, "unexpected number of test runs")
@@ -537,15 +531,14 @@ func TestSkippedTests(t *testing.T) {
 	t.Parallel()
 
 	runner := Runner{
-		ProjectPath:          "./",
-		Verbose:              true,
-		RunCount:             1,
-		SelectedTestPackages: []string{flakyTestPackagePath},
-		SelectTests:          []string{"TestSkipped"}, // Known skipping test
-		CollectRawOutput:     true,
+		ProjectPath:      "./",
+		Verbose:          true,
+		RunCount:         1,
+		SelectTests:      []string{"TestSkipped"}, // Known skipping test
+		CollectRawOutput: true,
 	}
 
-	testReport, err := runner.RunTests()
+	testReport, err := runner.RunTestPackages([]string{flakyTestPackagePath})
 	require.NoError(t, err, "running tests should not produce an unexpected error")
 
 	require.Equal(t, 1, testReport.TestRunCount, "unexpected number of test runs")
@@ -573,13 +566,12 @@ func TestOmitOutputsOnSuccess(t *testing.T) {
 		ProjectPath:          "./",
 		Verbose:              true,
 		RunCount:             1,
-		SelectedTestPackages: []string{flakyTestPackagePath},
 		SelectTests:          []string{"TestPass"}, // Known passing test
 		CollectRawOutput:     true,
 		OmitOutputsOnSuccess: true,
 	}
 
-	testReport, err := runner.RunTests()
+	testReport, err := runner.RunTestPackages([]string{flakyTestPackagePath})
 	require.NoError(t, err, "running tests should not produce an unexpected error")
 
 	require.Equal(t, 1, testReport.TestRunCount, "unexpected number of test runs")

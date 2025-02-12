@@ -64,7 +64,6 @@ var RunTestsCmd = &cobra.Command{
 			UseRace:              useRace,
 			SkipTests:            skipTests,
 			SelectTests:          selectTests,
-			SelectedTestPackages: testPackages,
 			UseShuffle:           useShuffle,
 			ShuffleSeed:          shuffleSeed,
 			OmitOutputsOnSuccess: omitOutputsOnSuccess,
@@ -77,13 +76,13 @@ var RunTestsCmd = &cobra.Command{
 		)
 
 		if len(testCmdStrings) > 0 {
-			testReport, err = testRunner.RunTestsByCmd(testCmdStrings)
+			testReport, err = testRunner.RunTestCmd(testCmdStrings)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error running custom test command")
 			}
 		} else {
 			// Otherwise, use the normal go test approach
-			testReport, err = testRunner.RunTests()
+			testReport, err = testRunner.RunTestPackages(testPackages)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error running tests")
 			}
