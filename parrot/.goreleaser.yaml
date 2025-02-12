@@ -41,8 +41,8 @@ dockers:
     image_templates:
       - '{{ .Env.IMG_PRE }}/parrot:{{ .Tag }}-amd64'
       - '{{ .Env.IMG_PRE }}/parrot:latest-amd64'
-      - '{{ if ne .Env.IMG_PRE "local" }}{{ .Env.DOCKER_USER }}/parrot:{{ .Tag }}-amd64{{ end }}'
-      - '{{ if ne .Env.IMG_PRE "local" }}{{ .Env.DOCKER_USER }}/parrot:latest-amd64{{ end }}'
+      - '{{ if ne .Env.IMG_PRE "local" }}{{ .Env.DOCKER_USERNAME }}/parrot:{{ .Tag }}-amd64{{ end }}'
+      - '{{ if ne .Env.IMG_PRE "local" }}{{ .Env.DOCKER_USERNAME }}/parrot:latest-amd64{{ end }}'
     build_flag_templates:
       - --platform=linux/amd64
       - --pull
@@ -56,8 +56,8 @@ dockers:
     image_templates:
       - '{{ .Env.IMG_PRE }}/parrot:{{ .Tag }}-arm64'
       - '{{ .Env.IMG_PRE }}/parrot:latest-arm64'
-      - '{{ if ne .Env.IMG_PRE "local" }}{{ .Env.DOCKER_USER }}/parrot:{{ .Tag }}-arm64{{ end }}'
-      - '{{ if ne .Env.IMG_PRE "local" }}{{ .Env.DOCKER_USER }}/parrot:latest-arm64{{ end }}'
+      - '{{ if ne .Env.IMG_PRE "local" }}{{ .Env.DOCKER_USERNAME }}/parrot:{{ .Tag }}-arm64{{ end }}'
+      - '{{ if ne .Env.IMG_PRE "local" }}{{ .Env.DOCKER_USERNAME }}/parrot:latest-arm64{{ end }}'
     build_flag_templates:
       - --platform=linux/arm64
       - --pull
@@ -75,14 +75,14 @@ docker_manifests:
     image_templates:
       - '{{ .Env.IMG_PRE }}/parrot:latest-amd64'
       - '{{ .Env.IMG_PRE }}/parrot:latest-arm64'
-  - name_template: '{{ if ne .Env.IMG_PRE "local" }}{{ .Env.DOCKER_USER }}/parrot:{{ .Tag }}{{ end }}'
+  - name_template: '{{ if ne .Env.IMG_PRE "local" }}{{ .Env.DOCKER_USERNAME }}/parrot:{{ .Tag }}{{ end }}'
     image_templates:
-      - '{{ if ne .Env.IMG_PRE "local" }}{{ .Env.DOCKER_USER }}/parrot:{{ .Tag }}-amd64{{ end }}'
-      - '{{ if ne .Env.IMG_PRE "local" }}{{ .Env.DOCKER_USER }}/parrot:{{ .Tag }}-arm64{{ end }}'
-  - name_template: '{{ if ne .Env.IMG_PRE "local" }}{{ .Env.DOCKER_USER }}/parrot:latest{{ end }}'
+      - '{{ if ne .Env.IMG_PRE "local" }}{{ .Env.DOCKER_USERNAME }}/parrot:{{ .Tag }}-amd64{{ end }}'
+      - '{{ if ne .Env.IMG_PRE "local" }}{{ .Env.DOCKER_USERNAME }}/parrot:{{ .Tag }}-arm64{{ end }}'
+  - name_template: '{{ if ne .Env.IMG_PRE "local" }}{{ .Env.DOCKER_USERNAME }}/parrot:latest{{ end }}'
     image_templates:
-      - '{{ if ne .Env.IMG_PRE "local" }}{{ .Env.DOCKER_USER }}/parrot:latest-amd64{{ end }}'
-      - '{{ if ne .Env.IMG_PRE "local" }}{{ .Env.DOCKER_USER }}/parrot:latest-arm64{{ end }}'
+      - '{{ if ne .Env.IMG_PRE "local" }}{{ .Env.DOCKER_USERNAME }}/parrot:latest-amd64{{ end }}'
+      - '{{ if ne .Env.IMG_PRE "local" }}{{ .Env.DOCKER_USERNAME }}/parrot:latest-arm64{{ end }}'
 
 before:
   hooks:

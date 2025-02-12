@@ -35,6 +35,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: stable
+          cache-dependency-path: ./parrot/go.mod
       - name: Goreleaser Release
         uses: goreleaser/goreleaser-action@v6
         with:
