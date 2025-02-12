@@ -156,17 +156,23 @@ func GeneratePRCommentMarkdown(w io.Writer, testReport *TestReport, maxPassRatio
 func buildSettingsTable(testReport *TestReport, maxPassRatio float64) [][]string {
 	rows := [][]string{
 		{"**Setting**", "**Value**"},
-		{"Project", testReport.GoProject},
-		{"Max Pass Ratio", fmt.Sprintf("%.2f%%", maxPassRatio*100)},
-		{"Test Run Count", fmt.Sprintf("%d", testReport.TestRunCount)},
-		{"Race Detection", fmt.Sprintf("%t", testReport.RaceDetection)},
 	}
+
+	if testReport.GoProject != "" {
+		rows = append(rows, []string{"Project", testReport.GoProject})
+	}
+
+	rows = append(rows, []string{"Max Pass Ratio", fmt.Sprintf("%.2f%%", maxPassRatio*100)})
+	rows = append(rows, []string{"Test Run Count", fmt.Sprintf("%d", testReport.TestRunCount)})
+	rows = append(rows, []string{"Race Detection", fmt.Sprintf("%t", testReport.RaceDetection)})
+
 	if len(testReport.ExcludedTests) > 0 {
 		rows = append(rows, []string{"Excluded Tests", strings.Join(testReport.ExcludedTests, ", ")})
 	}
 	if len(testReport.SelectedTests) > 0 {
 		rows = append(rows, []string{"Selected Tests", strings.Join(testReport.SelectedTests, ", ")})
 	}
+
 	return rows
 }
 
