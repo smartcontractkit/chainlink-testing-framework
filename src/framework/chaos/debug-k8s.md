@@ -8,7 +8,7 @@ cd infra/chaosmesh-playground
 devbox run up
 ```
 
-Overview the services
+Check the services
 ```
 devbox shell
 k9s
