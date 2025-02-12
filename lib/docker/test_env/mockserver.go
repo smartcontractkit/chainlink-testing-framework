@@ -22,6 +22,7 @@ import (
 
 const defaultMockServerImage = "mockserver/mockserver:5.15.0"
 
+// Deprecated: Use Parrot instead
 type MockServer struct {
 	EnvComponent
 	Client           *ctfClient.MockserverClient
@@ -35,6 +36,7 @@ type MockServer struct {
 // NewMockServer creates a new instance of MockServer with specified networks and options.
 // It initializes the server with a unique container name and a default startup timeout.
 // This function is useful for testing decentralized applications in a controlled environment.
+// Deprecated: Use Parrot instead
 func NewMockServer(networks []string, opts ...EnvComponentOption) *MockServer {
 	ms := &MockServer{
 		EnvComponent: EnvComponent{

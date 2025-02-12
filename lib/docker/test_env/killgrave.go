@@ -26,6 +26,7 @@ import (
 
 const defaultKillgraveImage = "friendsofgo/killgrave:v0.5.1-request-dump"
 
+// Deprecated: Use Parrot instead
 type Killgrave struct {
 	EnvComponent
 	ExternalEndpoint      string
@@ -82,6 +83,7 @@ type KillgraveAdapterResult struct {
 // NewKillgrave initializes a new Killgrave instance with specified networks and imposters directory.
 // It sets default configurations and allows for optional environment component modifications.
 // This function is useful for creating a Killgrave service for testing and simulating APIs.
+// Deprecated: Use Parrot instead
 func NewKillgrave(networks []string, impostersDirectoryPath string, opts ...EnvComponentOption) *Killgrave {
 	k := &Killgrave{
 		EnvComponent: EnvComponent{

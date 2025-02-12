@@ -15,6 +15,7 @@ import (
 )
 
 // MockserverClient mockserver client
+// Deprecated: Use Parrot instead
 type MockserverClient struct {
 	APIClient *resty.Client
 	Config    *MockserverConfig
@@ -28,6 +29,7 @@ type MockserverConfig struct {
 }
 
 // ConnectMockServer creates a connection to a deployed mockserver in the environment
+// Deprecated: Use Parrot instead
 func ConnectMockServer(e *environment.Environment) *MockserverClient {
 	c := NewMockserverClient(&MockserverConfig{
 		LocalURL:   e.URLs[mockserver.LocalURLsKey][0],
@@ -37,6 +39,7 @@ func ConnectMockServer(e *environment.Environment) *MockserverClient {
 }
 
 // ConnectMockServerURL creates a connection to a mockserver at a given url, should only be used for inside K8s tests
+// Deprecated: Use Parrot instead
 func ConnectMockServerURL(url string) *MockserverClient {
 	c := NewMockserverClient(&MockserverConfig{
 		LocalURL:   url,
@@ -46,6 +49,7 @@ func ConnectMockServerURL(url string) *MockserverClient {
 }
 
 // NewMockserverClient returns a mockserver client
+// Deprecated: Use Parrot instead
 func NewMockserverClient(cfg *MockserverConfig) *MockserverClient {
 	log.Debug().Str("Local URL", cfg.LocalURL).Str("Remote URL", cfg.ClusterURL).Msg("Connected to MockServer")
 	isDebug := os.Getenv("RESTY_DEBUG") == "true"
