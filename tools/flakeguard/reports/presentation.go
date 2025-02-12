@@ -157,7 +157,7 @@ func buildSettingsTable(testReport *TestReport, maxPassRatio float64) [][]string
 		{"**Setting**", "**Value**"},
 		{"Project", testReport.GoProject},
 		{"Max Pass Ratio", fmt.Sprintf("%.2f%%", maxPassRatio*100)},
-		{"Test Run Count", fmt.Sprintf("%d", testReport.SummaryData.UniqueTestsRun)},
+		{"Test Run Count", fmt.Sprintf("%d", testReport.SummaryData.TestRunCount)},
 		{"Race Detection", fmt.Sprintf("%t", testReport.RaceDetection)},
 	}
 	if len(testReport.ExcludedTests) > 0 {
