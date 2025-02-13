@@ -18,7 +18,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/parrot"
 )
 
-const defaultParrotImage = "kalverra/parrot:v0.4.5"
+const defaultParrotImage = "kalverra/parrot:v0.5.0"
 
 // Parrot is a test environment component that wraps a Parrot server.
 type Parrot struct {
