@@ -36,7 +36,7 @@ func defaultSolana(in *Input) {
 		in.Image = "f4hrenh9it/solana"
 	}
 	if in.Image == "" && ci {
-		in.Image = "solanalabs/solana:v1.18.26"
+		in.Image = "anzaxyz/agave:v2.1.13"
 	}
 	if in.Port == "" {
 		in.Port = "8999"
