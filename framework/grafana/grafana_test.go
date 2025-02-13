@@ -10,7 +10,7 @@ import (
 
 // TestPostAnnotationIntegration tests the PostAnnotation method against a real Grafana instance.
 func TestPostAnnotationIntegration(t *testing.T) {
-	//t.Skip("can only be run manually to debug")
+	t.Skip("manual grafana integration test")
 	grafanaURL := os.Getenv("GRAFANA_URL")
 	apiKey := os.Getenv("GRAFANA_TOKEN")
 	if grafanaURL == "" || apiKey == "" {
