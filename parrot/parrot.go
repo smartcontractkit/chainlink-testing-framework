@@ -335,6 +335,9 @@ func (p *Server) Register(route *Route) error {
 	if route == nil {
 		return ErrNilRoute
 	}
+	if !strings.HasPrefix(route.Path, "/") {
+		route.Path = "/" + route.Path
+	}
 	if !isValidPath(route.Path) {
 		return newDynamicError(ErrInvalidPath, fmt.Sprintf("'%s'", route.Path))
 	}

@@ -149,6 +149,7 @@ func (p *Parrot) getContainerRequest() (tc.ContainerRequest, error) {
 }
 
 // SetAdapterRoute sets a new route for the mock external adapter, wrapping the provided response in a standard adapter response.
+// If you don't want to wrap the response, use Client.RegisterRoute directly.
 func (p *Parrot) SetAdapterRoute(route *parrot.Route) error {
 	var result any
 	if route.RawResponseBody != "" {
