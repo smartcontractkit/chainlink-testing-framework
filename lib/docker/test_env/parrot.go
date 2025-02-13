@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -36,7 +35,7 @@ type Parrot struct {
 func NewParrot(networks []string, opts ...EnvComponentOption) *Parrot {
 	p := &Parrot{
 		EnvComponent: EnvComponent{
-			ContainerName:  fmt.Sprintf("%s-%s", "parrot", uuid.NewString()[0:8]),
+			ContainerName:  "parrot",
 			Networks:       networks,
 			StartupTimeout: 10 * time.Second,
 		},
