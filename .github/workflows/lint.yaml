@@ -88,7 +88,7 @@ jobs:
           use-go-cache: true
           go-cache-dep-path: ${{ matrix.project.path }}go.sum
       - name: golangci-lint ${{ needs.tools.outputs.golangci-lint-version }}
-        uses: golangci/golangci-lint-action@051d91933864810ecd5e2ea2cfd98f6a5bca5347 # v6.3.2
+        uses: golangci/golangci-lint-action@e0ebdd245eea59746bb0b28ea6a9871d3e35fbc9 # v6.3.3
         with:
           version: v${{ needs.tools.outputs.golangci-lint-version }}
           args: --out-format checkstyle:golangci-lint-report.xml
