@@ -26,10 +26,10 @@ jobs:
     name: Clean go mods
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.23.3
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23.3'
+          go-version: stable
       - name: Install gomods
         run: go install github.com/jmank88/gomods@v0.1.4
       - name: Check out code
