@@ -57,6 +57,8 @@ type KillgraveRequest struct {
 }
 
 // Response represent the structure of real response
+//
+// Deprecated: Use Parrot instead
 type KillgraveResponse struct {
 	Status   int                     `json:"status"`
 	Body     string                  `json:"body,omitempty"`
@@ -66,12 +68,16 @@ type KillgraveResponse struct {
 }
 
 // ResponseDelay represent time delay before server responds.
+//
+// Deprecated: Use Parrot instead
 type KillgraveResponseDelay struct {
 	Delay  int64 `json:"delay,omitempty"`
 	Offset int64 `json:"offset,omitempty"`
 }
 
 // AdapterResponse represents a response from an adapter
+//
+// Deprecated: Use Parrot instead
 type KillgraveAdapterResponse struct {
 	Id    string                 `json:"id"`
 	Data  KillgraveAdapterResult `json:"data"`
@@ -79,6 +85,8 @@ type KillgraveAdapterResponse struct {
 }
 
 // AdapterResult represents an int result for an adapter
+//
+// Deprecated: Use Parrot instead
 type KillgraveAdapterResult struct {
 	Result interface{} `json:"result"`
 }
@@ -108,8 +116,6 @@ func NewKillgrave(networks []string, impostersDirectoryPath string, opts ...EnvC
 
 // WithTestInstance sets up a Killgrave instance for testing by assigning a test logger and the testing context.
 // This allows for better logging during tests and facilitates easier debugging.
-//
-// Deprecated: Use Parrot instead
 func (k *Killgrave) WithTestInstance(t *testing.T) *Killgrave {
 	k.l = logging.GetTestLogger(t)
 	k.t = t
@@ -118,8 +124,6 @@ func (k *Killgrave) WithTestInstance(t *testing.T) *Killgrave {
 
 // StartContainer initializes and starts the Killgrave container, setting up imposters and request dumping.
 // It also configures cleanup for the container and logs the external and internal endpoints for access.
-//
-// Deprecated: Use Parrot instead
 func (k *Killgrave) StartContainer() error {
 	err := k.setupImposters()
 	if err != nil {

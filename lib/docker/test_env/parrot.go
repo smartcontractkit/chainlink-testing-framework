@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -27,6 +28,18 @@ type Parrot struct {
 	InternalEndpoint string
 	t                *testing.T
 	l                zerolog.Logger
+}
+
+// ParrotAdapterResponse imitates the standard response from a Chainlink external adapter.
+type ParrotAdapterResponse struct {
+	ID    string              `json:"id"`
+	Data  ParrotAdapterResult `json:"data"`
+	Error any                 `json:"error"`
+}
+
+// ParrotAdapterResult is the data field of the ParrotAdapterResponse.
+type ParrotAdapterResult struct {
+	Result any `json:"result"`
 }
 
 // NewParrot creates a new instance of ParrotServer with specified networks and options.
@@ -133,4 +146,28 @@ func (p *Parrot) getContainerRequest() (tc.ContainerRequest, error) {
 			},
 		},
 	}, nil
+}
+
+// SetAdapterRoute sets a new route for the mock external adapter, wrapping the provided response in a standard adapter response.
+func (p *Parrot) SetAdapterRoute(route *parrot.Route) error {
+	var result any
+	if route.RawResponseBody != "" {
+		result = route.RawResponseBody
+	} else {
+		result = route.ResponseBody
+	}
+	ar := ParrotAdapterResponse{
+		ID: uuid.NewString(),
+		Data: ParrotAdapterResult{
+			Result: result,
+		},
+		Error: nil,
+	}
+
+	return p.Client.RegisterRoute(&parrot.Route{
+		Method:             route.Method,
+		Path:               route.Path,
+		ResponseBody:       ar,
+		ResponseStatusCode: route.ResponseStatusCode,
+	})
 }
