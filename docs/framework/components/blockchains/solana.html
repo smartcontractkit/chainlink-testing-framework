@@ -254,6 +254,9 @@ arm64 f4hrenh9it/solana:latest - used locally
   contracts_dir = "."
   # optional, in case you need some custom image
   # image = "solanalabs/solana:v1.18.26"
+  # you can add docker cmd params, for example to clone some contracts
+  docker_cmd_params = ["--clone", "y9MdSjD9Beg9EFaeQGdMpESFWLNdSfZKQKeYLBfmnjJ", "-u", "https://api.mainnet-beta.solana.com"]
+
 
 # optional
 # To deploy a solana program, we can provide a mapping of program name to program id.
