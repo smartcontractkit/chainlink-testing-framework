@@ -55,8 +55,6 @@ func NewMockServer(networks []string, opts ...EnvComponentOption) *MockServer {
 
 // WithTestInstance configures the MockServer with a test logger and test context.
 // It returns the updated MockServer instance for use in testing scenarios.
-//
-// Deprecated: Use Parrot instead
 func (ms *MockServer) WithTestInstance(t *testing.T) *MockServer {
 	ms.l = logging.GetTestLogger(t)
 	ms.t = t
