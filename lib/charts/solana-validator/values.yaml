@@ -2,8 +2,8 @@ replicas: 1
 
 sol:
   image:
-    image: anza-xyz/agave
-    version: v2.1.13
+    image: solanalabs/solana
+    version: v1.18.26
   resources:
     requests:
       cpu: 2000m
