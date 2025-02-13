@@ -31,12 +31,8 @@ var idJSONRaw = `
 `
 
 func defaultSolana(in *Input) {
-	ci := os.Getenv("CI") == "true"
-	if in.Image == "" && !ci {
-		in.Image = "f4hrenh9it/solana"
-	}
-	if in.Image == "" && ci {
-		in.Image = "solanalabs/solana:v1.18.26"
+	if in.Image == "" {
+		in.Image = "anza-xyz/agave:v2.1.13"
 	}
 	if in.Port == "" {
 		in.Port = "8999"
