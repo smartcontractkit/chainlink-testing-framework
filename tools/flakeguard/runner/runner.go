@@ -110,14 +110,16 @@ func (r *Runner) RunTestCmd(testCmd []string) (*reports.TestReport, error) {
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
 
-	return &reports.TestReport{
+	report := &reports.TestReport{
 		GoProject:     r.prettyProjectPath,
 		RaceDetection: r.UseRace,
 		ExcludedTests: r.SkipTests,
 		SelectedTests: r.SelectTests,
 		Results:       results,
 		MaxPassRatio:  r.MaxPassRatio,
-	}, nil
+	}
+	report.GenerateSummaryData()
+	return report, nil
 }
 
 // RawOutputs retrieves the raw output from the test runs, if CollectRawOutput enabled.
