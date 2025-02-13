@@ -36,6 +36,7 @@ type MockServer struct {
 // NewMockServer creates a new instance of MockServer with specified networks and options.
 // It initializes the server with a unique container name and a default startup timeout.
 // This function is useful for testing decentralized applications in a controlled environment.
+//
 // Deprecated: Use Parrot instead
 func NewMockServer(networks []string, opts ...EnvComponentOption) *MockServer {
 	ms := &MockServer{
@@ -54,6 +55,8 @@ func NewMockServer(networks []string, opts ...EnvComponentOption) *MockServer {
 
 // WithTestInstance configures the MockServer with a test logger and test context.
 // It returns the updated MockServer instance for use in testing scenarios.
+//
+// Deprecated: Use Parrot instead
 func (ms *MockServer) WithTestInstance(t *testing.T) *MockServer {
 	ms.l = logging.GetTestLogger(t)
 	ms.t = t

@@ -40,11 +40,14 @@ type Killgrave struct {
 }
 
 // Imposter define an imposter structure
+//
+// Deprecated: Use Parrot instead
 type KillgraveImposter struct {
 	Request  KillgraveRequest  `json:"request"`
 	Response KillgraveResponse `json:"response"`
 }
 
+// Deprecated: Use Parrot instead
 type KillgraveRequest struct {
 	Method     string             `json:"method"`
 	Endpoint   string             `json:"endpoint,omitempty"`
@@ -83,6 +86,7 @@ type KillgraveAdapterResult struct {
 // NewKillgrave initializes a new Killgrave instance with specified networks and imposters directory.
 // It sets default configurations and allows for optional environment component modifications.
 // This function is useful for creating a Killgrave service for testing and simulating APIs.
+//
 // Deprecated: Use Parrot instead
 func NewKillgrave(networks []string, impostersDirectoryPath string, opts ...EnvComponentOption) *Killgrave {
 	k := &Killgrave{
@@ -104,6 +108,8 @@ func NewKillgrave(networks []string, impostersDirectoryPath string, opts ...EnvC
 
 // WithTestInstance sets up a Killgrave instance for testing by assigning a test logger and the testing context.
 // This allows for better logging during tests and facilitates easier debugging.
+//
+// Deprecated: Use Parrot instead
 func (k *Killgrave) WithTestInstance(t *testing.T) *Killgrave {
 	k.l = logging.GetTestLogger(t)
 	k.t = t
@@ -112,6 +118,8 @@ func (k *Killgrave) WithTestInstance(t *testing.T) *Killgrave {
 
 // StartContainer initializes and starts the Killgrave container, setting up imposters and request dumping.
 // It also configures cleanup for the container and logs the external and internal endpoints for access.
+//
+// Deprecated: Use Parrot instead
 func (k *Killgrave) StartContainer() error {
 	err := k.setupImposters()
 	if err != nil {
@@ -322,6 +330,7 @@ func (k *Killgrave) SetAdapterBasedIntValuePath(path string, methods []string, v
 	return k.SetAdapterBasedAnyValuePath(path, methods, v)
 }
 
+// Deprecated: Use Parrot instead
 type RequestData struct {
 	Method string              `json:"method"`
 	Host   string              `json:"host"`
