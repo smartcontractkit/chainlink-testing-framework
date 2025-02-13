@@ -33,6 +33,14 @@ const (
 	MethodAny = "ANY"
 )
 
+// These variables are set at build time and describe the Version of the application
+var (
+	version = "dev"
+	commit  = "dev"
+	date    = time.Now().Format(time.RFC3339)
+	builtBy = "local"
+)
+
 // Route holds information about the mock route configuration
 type Route struct {
 	// Method is the HTTP method to match
@@ -195,7 +203,14 @@ func (p *Server) run(listener net.Listener) {
 	}()
 
 	p.log.Info().Str("Address", p.address).Msg("Parrot awake and ready to squawk")
-	p.log.Debug().Str("Save File", p.saveFileName).Str("Log File", p.logFileName).Msg("Configuration")
+	p.log.Debug().
+		Str("Save File", p.saveFileName).
+		Str("Log File", p.logFileName).
+		Str("Version", version).
+		Str("Commit", commit).
+		Str("Build Date", date).
+		Str("Built By", builtBy).
+		Msg("Configuration")
 	if err := p.server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		fmt.Println("ERROR: Failed to start server:", err)
 	}
