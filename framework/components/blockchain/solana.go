@@ -32,7 +32,7 @@ var idJSONRaw = `
 
 func defaultSolana(in *Input) {
 	if in.Image == "" {
-		in.Image = "anza-xyz/agave:v2.1.13"
+		in.Image = "anzaxyz/agave:v2.1.13"
 	}
 	if in.Port == "" {
 		in.Port = "8999"
