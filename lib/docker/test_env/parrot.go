@@ -8,16 +8,17 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	tc "github.com/testcontainers/testcontainers-go"
+	tcwait "github.com/testcontainers/testcontainers-go/wait"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
 	"github.com/smartcontractkit/chainlink-testing-framework/parrot"
-	tc "github.com/testcontainers/testcontainers-go"
-	tcwait "github.com/testcontainers/testcontainers-go/wait"
 )
 
-const defaultParrotImage = "parrot:latest"
+const defaultParrotImage = "kalverra/parrot:v0.4.5"
 
 // Parrot is a test environment component that wraps a Parrot server.
 type Parrot struct {
@@ -37,7 +38,7 @@ func NewParrot(networks []string, opts ...EnvComponentOption) *Parrot {
 		EnvComponent: EnvComponent{
 			ContainerName:  fmt.Sprintf("%s-%s", "parrot", uuid.NewString()[0:8]),
 			Networks:       networks,
-			StartupTimeout: 1 * time.Minute,
+			StartupTimeout: 10 * time.Second,
 		},
 		l: log.Logger,
 	}
@@ -97,7 +98,7 @@ func (p *Parrot) StartContainer() error {
 		Logger:           l,
 	})
 	if err != nil {
-		return fmt.Errorf("cannot start MockServer container: %w", err)
+		return fmt.Errorf("cannot start Parrot container: %w", err)
 	}
 	p.Container = c
 	endpoint, err := GetEndpoint(testcontext.Get(p.t), c, "http")
