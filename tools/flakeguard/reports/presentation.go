@@ -162,7 +162,7 @@ func buildSettingsTable(testReport *TestReport, maxPassRatio float64) [][]string
 	}
 
 	rows = append(rows, []string{"Max Pass Ratio", fmt.Sprintf("%.2f%%", maxPassRatio*100)})
-	rows = append(rows, []string{"Test Run Count", fmt.Sprintf("%d", testReport.SummaryData.UniqueTestsRun)})
+	rows = append(rows, []string{"Test Run Count", fmt.Sprintf("%d", testReport.SummaryData.TestRunCount)})
 	rows = append(rows, []string{"Race Detection", fmt.Sprintf("%t", testReport.RaceDetection)})
 
 	if len(testReport.ExcludedTests) > 0 {
