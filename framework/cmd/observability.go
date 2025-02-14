@@ -2,8 +2,44 @@ package main
 
 import (
 	"fmt"
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"go.uber.org/ratelimit"
+	"net/http"
 )
+
+func loadLogs(rawURL, dirPath string, rps, chunks int) error {
+	if rawURL == "" && dirPath == "" {
+		return fmt.Errorf("at least one source must be provided, either -u $url or -d $dir")
+	}
+	jobID := uuid.New().String()[0:5]
+	framework.L.Info().Str("JobID", jobID).Msg("Loading logs into Loki")
+	limiter := ratelimit.New(rps)
+	if rawURL != "" {
+		L.Info().Msg("Downloading raw logs from URL")
+		resp, err := http.Get(rawURL)
+		if err != nil {
+			return errors.Wrap(err, "error downloading raw logs")
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode/100 != 2 {
+			return fmt.Errorf("non-success response code when downloading raw logs: %s", resp.Status)
+		}
+
+		if err := processAndUploadLog(rawURL, resp.Body, limiter, chunks, jobID); err != nil {
+			return errors.Wrap(err, "error processing raw logs")
+		}
+	} else if dirPath != "" {
+		L.Info().Msgf("Processing directory: %s", dirPath)
+		if err := processAndUploadDir(dirPath, limiter, chunks, jobID); err != nil {
+			return errors.Wrapf(err, "error processing directory: %s", dirPath)
+		}
+	}
+	framework.L.Info().Str("JobID", jobID).Str("URL", grafanaURL+jobID+grafanaURL2).Msg("Upload complete")
+	return nil
+}
 
 func observabilityUp() error {
 	framework.L.Info().Msg("Creating local observability stack")
