@@ -20,12 +20,10 @@ import (
 
 var L = framework.L
 
-// LokiPushRequest represents the payload format expected by Loki's push API.
 type LokiPushRequest struct {
 	Streams []LokiStream `json:"streams"`
 }
 
-// LokiStream represents one log stream.
 type LokiStream struct {
 	Stream map[string]string `json:"stream"`
 	Values [][2]string       `json:"values"`
@@ -37,8 +35,6 @@ const (
 	grafanaURL2 = "%5C%22%7D%22,%22queryType%22:%22range%22,%22datasource%22:%7B%22type%22:%22loki%22,%22uid%22:%22P8E80F9AEF21F6940%22%7D,%22editorMode%22:%22code%22%7D%5D,%22range%22:%7B%22from%22:%22now-6h%22,%22to%22:%22now%22%7D%7D%7D&schemaVersion=1&orgId=1"
 )
 
-// processAndUploadDir traverses the given directory recursively and
-// processes every file (ignoring directories) by calling processAndUploadLog.
 func processAndUploadDir(dirPath string, limiter ratelimit.Limiter, chunks int, jobID string) error {
 	return filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -61,8 +57,6 @@ func processAndUploadDir(dirPath string, limiter ratelimit.Limiter, chunks int, 
 	})
 }
 
-// processAndUploadLog reads log lines from the provided reader,
-// splits them into chunks (if more than 10,000 lines) and uploads each chunk concurrently.
 func processAndUploadLog(source string, r io.Reader, limiter ratelimit.Limiter, chunks int, jobID string) error {
 	scanner := bufio.NewScanner(r)
 	var values [][2]string
@@ -84,7 +78,7 @@ func processAndUploadLog(source string, r io.Reader, limiter ratelimit.Limiter, 
 		L.Info().Msgf("No log lines found in %s", source)
 		return nil
 	}
-	// Use one chunk if there are 10,000 or fewer lines.
+	// Some logs may include CL node logs, skip chunking for all that is less
 	if totalLines <= 10000 {
 		chunks = 1
 	}
@@ -110,7 +104,6 @@ func processAndUploadLog(source string, r io.Reader, limiter ratelimit.Limiter, 
 		endLine := end
 		start = end
 
-		// Use the unique jobID as the "job" label.
 		labels := map[string]string{
 			"job":    jobID,
 			"chunk":  fmt.Sprintf("%d", i+1),
