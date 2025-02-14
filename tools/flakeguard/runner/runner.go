@@ -198,13 +198,14 @@ func (r *Runner) runTestPackage(packageName string) (string, bool, error) {
 	return tmpFile.Name(), true, nil // Test succeeded
 }
 
-// runCmd is a helper that runs the user-supplied command once, captures its JSON output,
-// and returns (tempFilePath, passed, error).
-func (r *Runner) runCmd(testCmd []string, runIndex int) (string, bool, error) {
+// runCmd runs the user-supplied command once, captures its JSON output,
+// and returns the temp file path, whether the test passed, and an error if any.
+func (r *Runner) runCmd(testCmd []string, runIndex int) (tempFilePath string, passed bool, err error) {
 	// Create temp file for JSON output
 	tmpFile, err := os.CreateTemp("", fmt.Sprintf("test-output-cmd-run%d-*.json", runIndex+1))
 	if err != nil {
-		return "", false, fmt.Errorf("failed to create temp file: %w", err)
+		err = fmt.Errorf("failed to create temp file: %w", err)
+		return
 	}
 	defer tmpFile.Close()
 
@@ -232,6 +233,8 @@ func (r *Runner) runCmd(testCmd []string, runIndex int) (string, bool, error) {
 
 	err = cmd.Run()
 
+	tempFilePath = tmpFile.Name()
+
 	// Determine pass/fail from exit code
 	type exitCoder interface {
 		ExitCode() int
@@ -239,16 +242,19 @@ func (r *Runner) runCmd(testCmd []string, runIndex int) (string, bool, error) {
 	var ec exitCoder
 	if errors.As(err, &ec) {
 		// Non-zero exit code => test failure
-		if ec.ExitCode() != 0 {
-			return tmpFile.Name(), false, nil
-		}
+		passed = ec.ExitCode() == 0
+		err = nil // Clear error since we handled it
+		return
 	} else if err != nil {
 		// Some other error that doesn't implement ExitCode() => real error
-		return "", false, fmt.Errorf("error running test command: %w", err)
+		tempFilePath = ""
+		err = fmt.Errorf("error running test command: %w", err)
+		return
 	}
 
-	// Otherwise, assume success
-	return tmpFile.Name(), true, nil
+	// Otherwise, test passed
+	passed = true
+	return
 }
 
 type entry struct {
