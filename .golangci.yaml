@@ -27,9 +27,6 @@ linters-settings:
     local-prefixes: github.com/smartcontractkit/chainlink-testing-framework/
   gosec:
     exclude-generated: true
-  govet:
-    # report about shadowed variables
-    check-shadowing: false
   errorlint:
     # Allow formatting of errors without %w
     errorf: false
@@ -71,12 +68,8 @@ linters-settings:
       - name: modifies-parameter
       - name: identical-branches
       - name: get-return
-      # - name: flag-parameter
-      # - name: early-return
       - name: defer
       - name: constant-logical-expr
-      # - name: confusing-naming
-      # - name: confusing-results
       - name: bool-literal-in-expr
       - name: atomic
 issues:

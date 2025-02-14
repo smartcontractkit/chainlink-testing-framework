@@ -38,18 +38,17 @@ type Runner struct {
 	FailFast             bool          // Stop on first test failure.
 	SkipTests            []string      // Test names to exclude.
 	SelectTests          []string      // Test names to include.
-	SelectedTestPackages []string      // Explicitly selected packages to run.
 	CollectRawOutput     bool          // Set to true to collect test output for later inspection.
 	OmitOutputsOnSuccess bool          // Set to true to omit test outputs on success.
 	MaxPassRatio         float64       // Maximum pass ratio threshold for a test to be considered flaky.
 	rawOutputs           map[string]*bytes.Buffer
 }
 
-// RunTests executes the tests for each provided package and aggregates all results.
+// RunTestPackages executes the tests for each provided package and aggregates all results.
 // It returns all test results and any error encountered during testing.
-func (r *Runner) RunTests() (*reports.TestReport, error) {
+func (r *Runner) RunTestPackages(packages []string) (*reports.TestReport, error) {
 	var jsonFilePaths []string
-	for _, p := range r.SelectedTestPackages {
+	for _, p := range packages {
 		for i := 0; i < r.RunCount; i++ {
 			if r.CollectRawOutput { // Collect raw output for debugging
 				if r.rawOutputs == nil {
@@ -61,7 +60,7 @@ func (r *Runner) RunTests() (*reports.TestReport, error) {
 				separator := strings.Repeat("-", 80)
 				r.rawOutputs[p].WriteString(fmt.Sprintf("Run %d\n%s\n", i+1, separator))
 			}
-			jsonFilePath, passed, err := r.runTests(p)
+			jsonFilePath, passed, err := r.runTestPackage(p)
 			if err != nil {
 				return nil, fmt.Errorf("failed to run tests in package %s: %w", p, err)
 			}
@@ -88,6 +87,41 @@ func (r *Runner) RunTests() (*reports.TestReport, error) {
 	return report, nil
 }
 
+// RunTestCmd runs an arbitrary command testCmd (like ["go", "run", "my_test.go", ...])
+// that produces the same JSON lines that 'go test -json' would produce on stdout.
+// It captures those lines in a temp file, then parses them for pass/fail/panic/race data.
+func (r *Runner) RunTestCmd(testCmd []string) (*reports.TestReport, error) {
+	var jsonFilePaths []string
+
+	// Run the command r.RunCount times
+	for i := 0; i < r.RunCount; i++ {
+		jsonFilePath, passed, err := r.runCmd(testCmd, i)
+		if err != nil {
+			return nil, fmt.Errorf("failed to run test command: %w", err)
+		}
+		jsonFilePaths = append(jsonFilePaths, jsonFilePath)
+		if !passed && r.FailFast {
+			break
+		}
+	}
+
+	results, err := r.parseTestResults(jsonFilePaths)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse test results: %w", err)
+	}
+
+	report := &reports.TestReport{
+		GoProject:     r.prettyProjectPath,
+		RaceDetection: r.UseRace,
+		ExcludedTests: r.SkipTests,
+		SelectedTests: r.SelectTests,
+		Results:       results,
+		MaxPassRatio:  r.MaxPassRatio,
+	}
+	report.GenerateSummaryData()
+	return report, nil
+}
+
 // RawOutputs retrieves the raw output from the test runs, if CollectRawOutput enabled.
 // packageName : raw output
 func (r *Runner) RawOutputs() map[string]*bytes.Buffer {
@@ -98,8 +132,8 @@ type exitCoder interface {
 	ExitCode() int
 }
 
-// runTests runs the tests for a given package and returns the path to the output file.
-func (r *Runner) runTests(packageName string) (string, bool, error) {
+// runTestPackage runs the tests for a given package and returns the path to the output file.
+func (r *Runner) runTestPackage(packageName string) (string, bool, error) {
 	args := []string{"test", packageName, "-json", "-count=1"}
 	if r.UseRace {
 		args = append(args, "-race")
@@ -162,6 +196,65 @@ func (r *Runner) runTests(packageName string) (string, bool, error) {
 	}
 
 	return tmpFile.Name(), true, nil // Test succeeded
+}
+
+// runCmd runs the user-supplied command once, captures its JSON output,
+// and returns the temp file path, whether the test passed, and an error if any.
+func (r *Runner) runCmd(testCmd []string, runIndex int) (tempFilePath string, passed bool, err error) {
+	// Create temp file for JSON output
+	tmpFile, err := os.CreateTemp("", fmt.Sprintf("test-output-cmd-run%d-*.json", runIndex+1))
+	if err != nil {
+		err = fmt.Errorf("failed to create temp file: %w", err)
+		return
+	}
+	defer tmpFile.Close()
+
+	if r.Verbose {
+		log.Info().Msgf("Running custom test command (%d/%d): %s", runIndex+1, r.RunCount, strings.Join(testCmd, " "))
+	}
+
+	cmd := exec.Command(testCmd[0], testCmd[1:]...)
+	cmd.Dir = r.ProjectPath
+
+	// If collecting raw output, write to both file & buffer
+	if r.CollectRawOutput {
+		if r.rawOutputs == nil {
+			r.rawOutputs = make(map[string]*bytes.Buffer)
+		}
+		key := fmt.Sprintf("customCmd-run%d", runIndex+1)
+		if _, exists := r.rawOutputs[key]; !exists {
+			r.rawOutputs[key] = &bytes.Buffer{}
+		}
+		cmd.Stdout = io.MultiWriter(tmpFile, r.rawOutputs[key])
+	} else {
+		cmd.Stdout = tmpFile
+	}
+	cmd.Stderr = os.Stderr
+
+	err = cmd.Run()
+
+	tempFilePath = tmpFile.Name()
+
+	// Determine pass/fail from exit code
+	type exitCoder interface {
+		ExitCode() int
+	}
+	var ec exitCoder
+	if errors.As(err, &ec) {
+		// Non-zero exit code => test failure
+		passed = ec.ExitCode() == 0
+		err = nil // Clear error since we handled it
+		return
+	} else if err != nil {
+		// Some other error that doesn't implement ExitCode() => real error
+		tempFilePath = ""
+		err = fmt.Errorf("error running test command: %w", err)
+		return
+	}
+
+	// Otherwise, test passed
+	passed = true
+	return
 }
 
 type entry struct {
