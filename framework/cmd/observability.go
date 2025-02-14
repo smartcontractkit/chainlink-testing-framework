@@ -3,50 +3,38 @@ package main
 import (
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"go.uber.org/ratelimit"
 	"net/http"
 )
 
 func loadLogs(rawURL, dirPath string, rps, chunks int) error {
-	framework.L.Info().Msg("Loading logs into Loki")
-	sources := 0
-	if rawURL != "" {
-		sources++
-	}
-	if dirPath != "" {
-		sources++
-	}
-	if sources != 1 {
-		L.Error().Msg("Usage: provide exactly one of -raw-url or -dir")
-		return nil
+	if rawURL == "" && dirPath == "" {
+		return fmt.Errorf("at least one source must be provided, either -u $url or -d $dir")
 	}
 	jobID := uuid.New().String()[0:5]
-	L.Info().Msgf("Using unique job identifier: %s", jobID)
+	framework.L.Info().Str("JobID", jobID).Msg("Loading logs into Loki")
 	limiter := ratelimit.New(rps)
 	if rawURL != "" {
 		L.Info().Msg("Downloading raw logs from URL")
 		resp, err := http.Get(rawURL)
 		if err != nil {
-			L.Error().Err(err).Msg("Error downloading raw logs")
-			return nil
+			return errors.Wrap(err, "error downloading raw logs")
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode/100 != 2 {
-			L.Error().Msgf("Non-success response downloading raw logs: %s", resp.Status)
-			return nil
+			return fmt.Errorf("non-success response code when downloading raw logs: %s", resp.Status)
 		}
 
 		if err := processAndUploadLog(rawURL, resp.Body, limiter, chunks, jobID); err != nil {
-			L.Error().Err(err).Msg("Error processing raw logs")
-			return nil
+			return errors.Wrap(err, "error processing raw logs")
 		}
 	} else if dirPath != "" {
 		L.Info().Msgf("Processing directory: %s", dirPath)
 		if err := processAndUploadDir(dirPath, limiter, chunks, jobID); err != nil {
-			L.Error().Err(err).Msg("Error processing directory")
-			return nil
+			return errors.Wrapf(err, "error processing directory: %s", dirPath)
 		}
 	}
 	framework.L.Info().Str("JobID", jobID).Str("URL", grafanaURL+jobID+grafanaURL2).Msg("Upload complete")

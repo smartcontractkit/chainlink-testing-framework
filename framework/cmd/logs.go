@@ -5,11 +5,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -40,8 +42,7 @@ const (
 func processAndUploadDir(dirPath string, limiter ratelimit.Limiter, chunks int, jobID string) error {
 	return filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			L.Error().Err(err).Msgf("Error accessing %s", path)
-			return nil
+			return errors.Wrapf(err, "error accessing file: %s", path)
 		}
 		if info.IsDir() {
 			return nil
@@ -49,14 +50,12 @@ func processAndUploadDir(dirPath string, limiter ratelimit.Limiter, chunks int, 
 		L.Info().Msgf("Processing file: %s", path)
 		f, err := os.Open(path)
 		if err != nil {
-			L.Error().Err(err).Msgf("Error opening file %s", path)
-			return nil
+			return errors.Wrapf(err, "error opening file: %s", path)
 		}
 		defer f.Close()
 
 		if err := processAndUploadLog(path, f, limiter, chunks, jobID); err != nil {
-			L.Error().Err(err).Msgf("Error processing file %s", path)
-			// Continue processing other files even if one fails.
+			return errors.Wrapf(err, "error processing file: %s", path)
 		}
 		return nil
 	})
@@ -149,7 +148,13 @@ func processAndUploadLog(source string, r io.Reader, limiter ratelimit.Limiter, 
 				limiter.Take()
 				resp, err = http.Post(lokiURL, "application/json", bytes.NewReader(payload))
 				if err != nil {
-					L.Error().Err(err).Int("attempt", attempt).
+					if strings.Contains(err.Error(), "connection refused") {
+						L.Fatal().Msg("connection refused, is local Loki up and running? use 'ctf obs u'")
+						return
+					}
+					L.Error().Err(err).
+						Int("status", resp.StatusCode).
+						Int("attempt", attempt).
 						Int("chunk", chunkNum).
 						Float64("chunk_size_MB", sizeMB).
 						Msg("Error sending POST request")
