@@ -7,7 +7,7 @@ Install [DevBox](https://www.jetify.com/devbox) and run your environment
 devbox run up
 ```
 
-Overview the services
+Check the services
 ```
 devbox shell
 k9s
