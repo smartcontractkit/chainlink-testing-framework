@@ -36,7 +36,22 @@ Below are the some of the GitHub-hosted runners available in our organization:
 Flaky tests don't fail on every run, so you need to execute them multiple times to isolate problems.
 
 ### 2.1 Repeat Runs
-For E2E tests, run them 5–10 times consecutively to expose intermittent issues.  
+For E2E tests, run them 5–10 times consecutively to expose intermittent issues. To run the tests with flakeguard validation, execute the following command from the `chainlink-core/` directory:
+
+```sh
+cd chainlink-core/
+make run_flakeguard_validate_e2e_tests
+```
+
+You’ll be prompted to provide:
+- **Test IDs** (e.g., `smoke/forwarders_ocr2_test.go:*,smoke/vrf_test.go:*`)
+
+  *Note: Test IDs can be taken from the `e2e-tests.yml` file.*
+  
+- **Number of runs** (default: 5)
+- **Chainlink version** (default: develop)
+- **Branch name** (default: develop)
+
 
 ### 2.2 Flaky Unit Tests in the Core Repository
 For unit tests in the core repository, you can use a dedicated command to detect flakiness in an updated test:
@@ -44,7 +59,7 @@ For unit tests in the core repository, you can use a dedicated command to detect
 
 ```sh
 cd chainlink-core/
-make run_flakeguard_validate_tests
+make run_flakeguard_validate_unit_tests
 ```
 
 
