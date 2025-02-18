@@ -23,8 +23,8 @@ import (
 )
 
 var generatorForkToImageMap = map[ethereum.Fork]string{
-	ethereum.EthereumFork_Shanghai: "tofelb/ethereum-genesis-generator:2.0.5",
-	ethereum.EthereumFork_Deneb:    "public.ecr.aws/w0i8p0z9/ethereum-genesis-generator:pr-e74edac",
+	ethereum.EthereumFork_Shanghai: ethereum.GenesisGeneratorShanghaiImage,
+	ethereum.EthereumFork_Deneb:    ethereum.GenesisGeneratorDenebImage,
 }
 
 var generatorForkToDataDirMap = map[ethereum.Fork]string{
