@@ -68,32 +68,6 @@ func (p *Parrot) WithTestInstance(t *testing.T) *Parrot {
 	return p
 }
 
-// SetExternalAdapterMocks configures a specified number of mock external adapter endpoints.
-// It generates unique paths for each adapter and stores their URLs for later use.
-// This function is useful for testing scenarios that require multiple external adapter interactions.
-func (p *Parrot) SetExternalAdapterMocks(count int) error {
-	// for i := 0; i < count; i++ {
-	// 	path := fmt.Sprintf("/ea-%d", i)
-	// 	err := ms.Client.SetRandomValuePath(path)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	cName, err := ms.Container.Name(testcontext.Get(ms.t))
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	cName = strings.Replace(cName, "/", "", -1)
-	// 	eaUrl, err := url.Parse(fmt.Sprintf("http://%s:%s%s",
-	// 		cName, "1080", path))
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	ms.EAMockUrls = append(ms.EAMockUrls, eaUrl)
-	// }
-	// return nil
-	return fmt.Errorf("not implemented")
-}
-
 // StartContainer initializes and starts a Parrot container.
 // It sets up logging, retrieves the container request, and establishes endpoints for communication.
 // This function is essential for testing environments that require a mock server instance.
