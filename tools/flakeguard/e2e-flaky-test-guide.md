@@ -1,7 +1,7 @@
 # Finding the Root Cause of E2E Test Flakes
 
 ## Introduction
-When end-to-end tests fail intermittently, the underlying issues can stem from resource constraints, environment setup, or test design—among other possibilities. This guide helps developers and QA systematically diagnose and address E2E test flakiness, reducing the time spent on guesswork and repeated failures.
+When end-to-end tests fail intermittently, the underlying issues can stem from resource constraints, environment setup, or test design—among other possibilities. This guide helps engineers systematically diagnose and address E2E test flakiness, reducing the time spent on guesswork and repeated failures.
 
 ---
 
@@ -9,6 +9,8 @@ When end-to-end tests fail intermittently, the underlying issues can stem from r
 GitHub provides **hosted runners** with specific CPU, memory, and disk allocations. If your tests require more resources than these runners can provide, you may encounter intermittent failures.
 
 By default, we run tests on **`ubuntu-latest`**, as it is **free for public repositories** and the **most cost-effective option for private repositories**. However, this runner has limited resources, which can lead to intermittent failures in resource-intensive tests.
+
+> **Note:** `ubuntu-latest` for **private repositories** has weaker hardware compared to `ubuntu-latest` for **public repositories**. You can learn more about this distinction in [GitHub's documentation](https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories).
 
 ### 1.1 Available GitHub Runners
 Below are the some of the GitHub-hosted runners available in our organization:
