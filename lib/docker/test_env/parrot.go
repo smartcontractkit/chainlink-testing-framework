@@ -60,6 +60,13 @@ func NewParrot(networks []string, opts ...EnvComponentOption) *Parrot {
 	return p
 }
 
+// ConnectParrot connects to an existing Parrot server with the specified URL.
+func ConnectParrot(url string) *Parrot {
+	return &Parrot{
+		Client: parrot.NewClient(url),
+	}
+}
+
 // WithTestInstance configures the MockServer with a test logger and test context.
 // It returns the updated MockServer instance for use in testing scenarios.
 func (p *Parrot) WithTestInstance(t *testing.T) *Parrot {
