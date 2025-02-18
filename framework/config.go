@@ -6,13 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
-	"github.com/go-playground/validator/v10"
-	"github.com/pelletier/go-toml/v2"
-	"github.com/rs/zerolog"
-	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/network"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,6 +13,16 @@ import (
 	"testing"
 	"text/template"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
+	"github.com/go-playground/locales/en"
+	ut "github.com/go-playground/universal-translator"
+	"github.com/go-playground/validator/v10"
+	"github.com/pelletier/go-toml/v2"
+	"github.com/rs/zerolog"
+	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/network"
 )
 
 const (
@@ -48,7 +51,17 @@ var (
 	DefaultNetworkName string
 
 	AllowedEmptyConfigurationFields = []string{OutputFieldName, OverridesFieldName}
+
+	Validator *validator.Validate = validator.New(validator.WithRequiredStructEnabled())
+
+	ValidatorTranslator ut.Translator
 )
+
+func init() {
+	eng := en.New()
+	uni := ut.New(eng, eng)
+	ValidatorTranslator, _ = uni.GetTranslator("en")
+}
 
 type ValidationError struct {
 	Field   string
@@ -94,14 +107,21 @@ func mergeInputs[T any]() (*T, error) {
 
 func validateWithCustomErr(cfg interface{}) []ValidationError {
 	var validationErrors []ValidationError
-	validate := validator.New(validator.WithRequiredStructEnabled())
-	err := validate.Struct(cfg)
+	err := Validator.Struct(cfg)
 	if err != nil {
 		for _, err := range err.(validator.ValidationErrors) {
+			customMessage := err.Translate(ValidatorTranslator)
+			defaultMessage := fmt.Sprintf("validation failed on '%s' with tag '%s'", err.Field(), err.Tag())
+
+			messageToUse := customMessage
+			if strings.HasPrefix(customMessage, "validation failed") {
+				messageToUse = defaultMessage
+			}
+
 			validationErrors = append(validationErrors, ValidationError{
 				Field:   err.StructNamespace(),
 				Value:   err.Value(),
-				Message: fmt.Sprintf("validation failed on '%s' with tag '%s'", err.Field(), err.Tag()),
+				Message: messageToUse,
 			})
 		}
 	}
