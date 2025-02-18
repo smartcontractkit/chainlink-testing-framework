@@ -12,7 +12,7 @@ const (
 	erigonGitRepo          = "ledgerwatch/erigon"
 
 	DefaultGethEth1Image = "ethereum/client-go:v1.13.8"
-	DefaultGethEth2Image = "ethereum/client-go:v1.14.12"
+	DefaultGethEth2Image = "ethereum/client-go:v1.15.0"
 	GethBaseImageName    = "ethereum/client-go"
 	gethGitRepo          = "ethereum/go-ethereum"
 
