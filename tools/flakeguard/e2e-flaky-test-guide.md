@@ -29,6 +29,7 @@ Below are the some of the GitHub-hosted runners available in our organization:
 - **Optimize**: Only spin up what you need.  
 - **If resources are insufficient**, consider redesigning your tests to run in smaller, independent chunks.
 - **If needed**, you can configure CI workflows to use a higher-tier runner, but this comes at an additional cost.
+- **Run with debug logs** or Delve debugger. For more details, check out the [CTF Debug Docs.](https://smartcontractkit.github.io/chainlink-testing-framework/framework/components/debug.html)
 
 ---
 
@@ -47,7 +48,7 @@ You’ll be prompted to provide:
 - **Test IDs** (e.g., `smoke/forwarders_ocr2_test.go:*,smoke/vrf_test.go:*`)
 
   *Note: Test IDs can be taken from the `e2e-tests.yml` file.*
-  
+
 - **Number of runs** (default: 5)
 - **Chainlink version** (default: develop)
 - **Branch name** (default: develop)
