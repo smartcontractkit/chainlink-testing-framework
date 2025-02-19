@@ -2,7 +2,7 @@
 
 When writing a test, you need to decide whether to use **RPS** or **VUs** as your load type.
 
-> [!WARNING]  
+> [!WARNING]
 > RPS load type can only be used with a `Gun`, and VUs can only be used with a `VirtualUser`.
 
 ---
@@ -15,6 +15,9 @@ You should use **RPS** when your goal is to measure **throughput**. This load ty
 * The system's response time has no impact on the rate of load generation.
 
 In an RPS-based test, new requests are sent continuously, regardless of how long previous requests take.
+
+> [!NOTE]
+> [Read here](./libs/wasp/how-to/rps_per_minute.md) how to define the RPS load in terms of requests per minute or per hour instead of default per second.
 
 ### Example RPS Test Diagram
 ```mermaid
@@ -105,5 +108,5 @@ In this model, `VU2` starts only after `VU1` has finished its iteration.
     - Workflows that involve multiple steps.
     - Scenarios where response time impacts the load generation rate.
 
-> [!NOTE]  
+> [!NOTE]
 > Learn more about open and closed models [here](https://grafana.com/docs/k6/latest/using-k6/scenarios/concepts/open-vs-closed/).

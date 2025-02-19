@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/parrot
 
-go 1.23.4
+go 1.23.6
 
 require (
 	github.com/go-chi/chi v1.5.5

@@ -27,8 +27,9 @@ func NewRangeGrafanaAnnotator(grafanaURL, grafanaToken, dashboardUID string, log
 	}
 }
 
-func (l RangeGrafanaAnnotator) OnChaosCreated(chaos Chaos) {
-}
+func (l RangeGrafanaAnnotator) OnChaosCreated(chaos Chaos) {}
+
+func (l RangeGrafanaAnnotator) OnChaosCreationFailed(chaos Chaos, reason error) {}
 
 func (l RangeGrafanaAnnotator) OnChaosStarted(chaos Chaos) {
 	experiment, _ := chaos.GetExperimentStatus()
@@ -72,11 +73,11 @@ func (l RangeGrafanaAnnotator) OnChaosStarted(chaos Chaos) {
 		Time:         Ptr[time.Time](chaos.GetStartTime()),
 		Text:         sb.String(),
 	}
-	res, _, err := l.client.PostAnnotation(a)
+	res, resp, err := l.client.PostAnnotation(a)
 	if err != nil {
 		l.logger.Warn().Msgf("could not annotate on Grafana: %s", err)
 	}
-
+	l.logger.Debug().Any("GrafanaResponse", resp.String()).Msg("Annotated chaos experiment start")
 	l.chaosMap[chaos.GetChaosName()] = res.ID
 }
 
@@ -141,10 +142,11 @@ func (l RangeGrafanaAnnotator) OnChaosEnded(chaos Chaos) {
 		TimeEnd:      Ptr[time.Time](chaos.GetEndTime()),
 		Text:         sb.String(),
 	}
-	res, _, err := l.client.PostAnnotation(a)
+	res, resp, err := l.client.PostAnnotation(a)
 	if err != nil {
 		l.logger.Warn().Msgf("could not annotate on Grafana: %s", err)
 	}
+	l.logger.Debug().Any("GrafanaResponse", resp.String()).Msg("Annotated chaos experiment end")
 	l.chaosMap[chaos.GetChaosName()] = res.ID
 }
 
@@ -180,10 +182,11 @@ func (l RangeGrafanaAnnotator) OnScheduleCreated(chaos Schedule) {
 		Time:         Ptr[time.Time](chaos.startTime),
 		Text:         sb.String(),
 	}
-	res, _, err := l.client.PostAnnotation(a)
+	res, resp, err := l.client.PostAnnotation(a)
 	if err != nil {
 		l.logger.Warn().Msgf("could not annotate on Grafana: %s", err)
 	}
+	l.logger.Debug().Any("GrafanaResponse", resp.String()).Msg("Annotated schedule created")
 
 	l.chaosMap[chaos.Object.GetName()] = res.ID
 }
@@ -233,9 +236,10 @@ func (l RangeGrafanaAnnotator) OnScheduleDeleted(chaos Schedule) {
 		TimeEnd:      Ptr[time.Time](chaos.endTime),
 		Text:         sb.String(),
 	}
-	res, _, err := l.client.PostAnnotation(a)
+	res, resp, err := l.client.PostAnnotation(a)
 	if err != nil {
 		l.logger.Warn().Msgf("could not annotate on Grafana: %s", err)
 	}
+	l.logger.Debug().Any("GrafanaResponse", resp.String()).Msg("Annotated schedule deleted")
 	l.chaosMap[chaos.Object.GetName()] = res.ID
 }

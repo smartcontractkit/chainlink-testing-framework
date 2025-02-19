@@ -3,6 +3,7 @@ package reports
 import (
 	"bufio"
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -519,31 +521,28 @@ func sendDataToSplunk(opts *aggregateOptions, report TestReport) error {
 		SetHeader("Content-Type", "application/json").
 		SetLogger(ZerologRestyLogger{})
 
-	log.Debug().Str("report id", report.ID).Int("results", len(report.Results)).Msg("Sending aggregated data to Splunk")
+	log.Debug().Str("report id", report.ID).Int("results", len(results)).Msg("Sending aggregated data to Splunk")
+
+	const (
+		resultsBatchSize             = 10
+		splunkSizeLimitBytes         = 100_000_000 // 100MB. Actual limit is over 800MB, but that's excessive
+		exampleSplunkReportFileName  = "example_results/example_splunk_report.json"
+		exampleSplunkResultsFileName = "example_results/example_splunk_results_batch_%d.json"
+	)
 
 	var (
 		splunkErrs            = []error{}
-		resultsBatchSize      = 10
 		resultsBatch          = []SplunkTestResult{}
 		successfulResultsSent = 0
+		batchNum              = 1
 	)
 
-	var (
-		exampleSplunkResultsFileName = "example_results/example_splunk_results.json"
-		exampleSplunkResultsFile     *os.File
-		exampleSplunkReportFileName  = "example_results/example_splunk_report.json"
-		exampleSplunkReportFile      *os.File
-		err                          error
-	)
-
-	if isExampleRun {
-		exampleSplunkResultsFile, err = os.Create(exampleSplunkResultsFileName)
-		if err != nil {
-			return fmt.Errorf("error creating example Splunk results file: %w", err)
-		}
-		defer exampleSplunkResultsFile.Close()
-	}
 	for resultCount, result := range results {
+		// No need to send log outputs to Splunk
+		result.FailedOutputs = nil
+		result.PassedOutputs = nil
+		result.PackageOutputs = nil
+
 		resultsBatch = append(resultsBatch, SplunkTestResult{
 			Event: SplunkTestResultEvent{
 				Event: opts.splunkEvent,
@@ -554,13 +553,21 @@ func sendDataToSplunk(opts *aggregateOptions, report TestReport) error {
 			Index:      SplunkIndex,
 		})
 
-		if len(resultsBatch) >= resultsBatchSize || resultCount == len(results)-1 {
+		if len(resultsBatch) >= resultsBatchSize ||
+			resultCount == len(results)-1 ||
+			binary.Size(resultsBatch) >= splunkSizeLimitBytes {
+
 			batchData, testNames, err := batchSplunkResults(resultsBatch)
 			if err != nil {
 				return fmt.Errorf("error batching results: %w", err)
 			}
 
 			if isExampleRun {
+				exampleSplunkResultsFileName := fmt.Sprintf(exampleSplunkResultsFileName, batchNum)
+				exampleSplunkResultsFile, err := os.Create(exampleSplunkResultsFileName)
+				if err != nil {
+					return fmt.Errorf("error creating example Splunk results file: %w", err)
+				}
 				for _, result := range resultsBatch {
 					jsonResult, err := json.Marshal(result)
 					if err != nil {
@@ -570,6 +577,10 @@ func sendDataToSplunk(opts *aggregateOptions, report TestReport) error {
 					if err != nil {
 						return fmt.Errorf("error writing result for '%s' to file: %w", result.Event.Data.TestName, err)
 					}
+				}
+				err = exampleSplunkResultsFile.Close()
+				if err != nil {
+					return fmt.Errorf("error closing example Splunk results file: %w", err)
 				}
 			} else {
 				resp, err := client.R().SetBody(batchData.String()).Post("")
@@ -588,11 +599,12 @@ func sendDataToSplunk(opts *aggregateOptions, report TestReport) error {
 				}
 			}
 			resultsBatch = []SplunkTestResult{}
+			batchNum++
 		}
 	}
 
 	if isExampleRun {
-		log.Info().Msgf("Example Run. See '%s' for the results that would be sent to splunk", exampleSplunkResultsFileName)
+		log.Info().Msg("Example Run. See 'example_results/splunk_results' for the results that would be sent to splunk")
 	}
 
 	reportData := SplunkTestReport{
@@ -607,7 +619,7 @@ func sendDataToSplunk(opts *aggregateOptions, report TestReport) error {
 	}
 
 	if isExampleRun {
-		exampleSplunkReportFile, err = os.Create(exampleSplunkReportFileName)
+		exampleSplunkReportFile, err := os.Create(exampleSplunkReportFileName)
 		if err != nil {
 			return fmt.Errorf("error creating example Splunk report file: %w", err)
 		}
@@ -642,6 +654,7 @@ func sendDataToSplunk(opts *aggregateOptions, report TestReport) error {
 		log.Debug().
 			Int("successfully sent", successfulResultsSent).
 			Int("total results", len(results)).
+			Int("result batches", batchNum).
 			Str("duration", time.Since(start).String()).
 			Str("report id", report.ID).
 			Msg("All results sent successfully to Splunk")
@@ -672,20 +685,34 @@ func batchSplunkResults(results []SplunkTestResult) (batchData bytes.Buffer, res
 
 // unBatchSplunkResults un-batches a batch of TestResult objects into a slice of TestResult objects
 func unBatchSplunkResults(batch []byte) ([]*SplunkTestResult, error) {
-	var results []*SplunkTestResult
-	scanner := bufio.NewScanner(bufio.NewReader(bytes.NewReader(batch)))
+	results := make([]*SplunkTestResult, 0, bytes.Count(batch, []byte{'\n'}))
+	scanner := bufio.NewScanner(bytes.NewReader(batch))
+
+	maxCapacity := 1024 * 1024 // 1 MB
+	buf := make([]byte, maxCapacity)
+	scanner.Buffer(buf, maxCapacity)
+
+	var pool sync.Pool
+	pool.New = func() interface{} { return new(SplunkTestResult) }
+
 	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.TrimSpace(line) == "" {
+		line := scanner.Bytes()
+		if len(bytes.TrimSpace(line)) == 0 {
 			continue // Skip empty lines
 		}
-		var result *SplunkTestResult
-		if err := json.Unmarshal([]byte(line), &result); err != nil {
+
+		result := pool.Get().(*SplunkTestResult)
+		if err := json.Unmarshal(line, result); err != nil {
 			return results, fmt.Errorf("error unmarshaling result: %w", err)
 		}
 		results = append(results, result)
 	}
-	return results, scanner.Err()
+
+	if err := scanner.Err(); err != nil {
+		return results, fmt.Errorf("error scanning: %w", err)
+	}
+
+	return results, nil
 }
 
 // aggregateReports aggregates multiple TestReport objects into a single TestReport

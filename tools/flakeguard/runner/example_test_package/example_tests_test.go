@@ -18,6 +18,14 @@ func TestFail(t *testing.T) {
 	t.Fatal("This test always fails")
 }
 
+func TestFailLargeOutput(t *testing.T) {
+	t.Parallel()
+	for i := 0; i < 1000; i++ {
+		t.Log("This is a log line")
+	}
+	t.Fatal("This test always fails")
+}
+
 func TestSubTestsAllPass(t *testing.T) {
 	t.Parallel()
 

@@ -118,6 +118,44 @@ func main() {
 						Description: "Removes local observability stack",
 						Action:      func(c *cli.Context) error { return observabilityDown() },
 					},
+					{
+						Name:        "load",
+						Usage:       "ctf obs l",
+						Aliases:     []string{"l"},
+						Description: "Loads logs to Loki",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:    "raw-url",
+								Aliases: []string{"u"},
+								Usage:   "URL to GitHub raw log data",
+							},
+							&cli.StringFlag{
+								Name:    "dir",
+								Aliases: []string{"d"},
+								Usage:   "Directory to logs, output of 'gh run download $run_id'",
+							},
+							&cli.IntFlag{
+								Name:    "rps",
+								Aliases: []string{"r"},
+								Usage:   "RPS for uploading log chunks",
+								Value:   30,
+							},
+							&cli.IntFlag{
+								Name:    "chunk",
+								Aliases: []string{"c"},
+								Usage:   "Amount of chunks the files will be split in",
+								Value:   100,
+							},
+						},
+						Action: func(c *cli.Context) error {
+							return loadLogs(
+								c.String("raw-url"),
+								c.String("dir"),
+								c.Int("rps"),
+								c.Int("chunk"),
+							)
+						},
+					},
 				},
 			},
 			{

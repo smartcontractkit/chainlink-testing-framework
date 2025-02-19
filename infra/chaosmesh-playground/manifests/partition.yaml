@@ -1,0 +1,21 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: p-1
+spec:
+  action: partition
+  mode: all
+  duration: "30s"
+  direction: "to"
+  selector:
+    namespaces:
+      - default
+    labelSelectors:
+      app.kubernetes.io/instance: ccip-1
+  target:
+    mode: all
+    selector:
+      namespaces:
+        - default
+      labelSelectors:
+        app.kubernetes.io/instance: ccip-2

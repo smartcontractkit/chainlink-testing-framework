@@ -65,6 +65,7 @@ func TestBlockchainGasChaos(t *testing.T) {
 		// hold
 		for i := 0; i < 10; i++ {
 			printBlockBaseFee(t, url)
+			time.Sleep(blockEvery)
 			t.Logf("Setting block base fee: %d", startGasPrice)
 			err := r.AnvilSetNextBlockBaseFeePerGas(startGasPrice)
 			require.NoError(t, err)

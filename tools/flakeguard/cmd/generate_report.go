@@ -34,6 +34,12 @@ var GenerateReportCmd = &cobra.Command{
 		githubRunID, _ := cmd.Flags().GetInt64("github-run-id")
 		artifactName, _ := cmd.Flags().GetString("failed-tests-artifact-name")
 
+		initialDirSize, err := getDirSize(outputDir)
+		if err != nil {
+			log.Error().Err(err).Str("path", outputDir).Msg("Error getting initial directory size")
+			// intentionally don't exit here, as we can still proceed with the generation
+		}
+
 		// Get the GitHub token from environment variable
 		githubToken := os.Getenv("GITHUB_TOKEN")
 		if githubToken == "" {
@@ -70,17 +76,13 @@ var GenerateReportCmd = &cobra.Command{
 		hasFailedTests := aggregatedReport.SummaryData.FailedRuns > 0
 
 		var artifactLink string
-		if hasFailedTests {
+		if hasFailedTests && githubRepo != "" && githubRunID != 0 && artifactName != "" {
 			// Fetch artifact link from GitHub API
-			artifactLink, err = fetchArtifactLink(githubToken, githubRepo, githubRunID, artifactName)
+			artifactLink, err = fetchArtifactLinkWithRetry(githubToken, githubRepo, githubRunID, artifactName, 5, 5*time.Second)
 			if err != nil {
 				log.Error().Err(err).Msg("Error fetching artifact link")
 				os.Exit(ErrorExitCode)
 			}
-		} else {
-			// No failed tests, set artifactLink to empty string
-			artifactLink = ""
-			log.Debug().Msg("No failed tests found. Skipping artifact link generation")
 		}
 
 		// Create output directory if it doesn't exist
@@ -160,7 +162,13 @@ var GenerateReportCmd = &cobra.Command{
 			log.Info().Msg("PR comment markdown generated successfully")
 		}
 
-		log.Info().Str("output", outputDir).Msg("Reports generated successfully")
+		finalDirSize, err := getDirSize(outputDir)
+		if err != nil {
+			log.Error().Err(err).Str("path", outputDir).Msg("Error getting initial directory size")
+			// intentionally don't exit here, as we can still proceed with the generation
+		}
+		diskSpaceUsed := byteCountSI(finalDirSize - initialDirSize)
+		log.Info().Str("disk space used", diskSpaceUsed).Str("output", outputDir).Msg("Reports generated successfully")
 	},
 }
 
@@ -182,14 +190,6 @@ func init() {
 		log.Error().Err(err).Msg("Error marking flag as required")
 		os.Exit(ErrorExitCode)
 	}
-	if err := GenerateReportCmd.MarkFlagRequired("github-repository"); err != nil {
-		log.Error().Err(err).Msg("Error marking flag as required")
-		os.Exit(ErrorExitCode)
-	}
-	if err := GenerateReportCmd.MarkFlagRequired("github-run-id"); err != nil {
-		log.Error().Err(err).Msg("Error marking flag as required")
-		os.Exit(ErrorExitCode)
-	}
 }
 
 func fetchArtifactLink(githubToken, githubRepo string, githubRunID int64, artifactName string) (string, error) {
@@ -197,37 +197,75 @@ func fetchArtifactLink(githubToken, githubRepo string, githubRunID int64, artifa
 		return "https://example-artifact-link.com", nil
 	}
 	ctx := context.Background()
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: githubToken},
-	)
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: githubToken})
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
 
-	// Split the repository into owner and repo
+	// Split owner/repo
 	repoParts := strings.SplitN(githubRepo, "/", 2)
 	if len(repoParts) != 2 {
 		return "", fmt.Errorf("invalid format for --github-repository, expected owner/repo")
 	}
 	owner, repo := repoParts[0], repoParts[1]
 
-	// List artifacts for the workflow run
-	opts := &github.ListOptions{PerPage: 100}
-	artifacts, _, err := client.Actions.ListWorkflowRunArtifacts(ctx, owner, repo, githubRunID, opts)
-	if err != nil {
-		return "", fmt.Errorf("error listing artifacts: %w", err)
+	opts := &github.ListOptions{PerPage: 100} // The max GitHub allows is 100 per page
+	var allArtifacts []*github.Artifact
+
+	// Paginate through all artifacts
+	for {
+		artifacts, resp, err := client.Actions.ListWorkflowRunArtifacts(ctx, owner, repo, githubRunID, opts)
+		if err != nil {
+			return "", fmt.Errorf("error listing artifacts: %w", err)
+		}
+
+		allArtifacts = append(allArtifacts, artifacts.Artifacts...)
+
+		if resp.NextPage == 0 {
+			// No more pages
+			break
+		}
+		// Move to the next page
+		opts.Page = resp.NextPage
 	}
 
 	// Find the artifact
-	for _, artifact := range artifacts.Artifacts {
+	for _, artifact := range allArtifacts {
 		if artifact.GetName() == artifactName {
-			// Construct the artifact URL using the artifact ID
 			artifactID := artifact.GetID()
-			artifactURL := fmt.Sprintf("https://github.com/%s/%s/actions/runs/%d/artifacts/%d", owner, repo, githubRunID, artifactID)
+			artifactURL := fmt.Sprintf("https://github.com/%s/%s/actions/runs/%d/artifacts/%d",
+				owner, repo, githubRunID, artifactID)
 			return artifactURL, nil
 		}
 	}
 
 	return "", fmt.Errorf("artifact '%s' not found in the workflow run", artifactName)
+}
+
+func fetchArtifactLinkWithRetry(
+	githubToken, githubRepo string,
+	githubRunID int64, artifactName string,
+	maxRetries int, delay time.Duration,
+) (string, error) {
+	var lastErr error
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		link, err := fetchArtifactLink(githubToken, githubRepo, githubRunID, artifactName)
+		if err == nil {
+			// Found the artifact link successfully
+			return link, nil
+		}
+
+		// If this was our last attempt, return the error
+		lastErr = err
+		if attempt == maxRetries {
+			break
+		}
+
+		// Otherwise wait and retry
+		log.Printf("[Attempt %d/%d] Artifact not yet available. Retrying in %s...", attempt, maxRetries, delay)
+		time.Sleep(delay)
+	}
+
+	return "", fmt.Errorf("failed to fetch artifact link after %d retries: %w", maxRetries, lastErr)
 }
 
 func generateGitHubSummaryMarkdown(report *reports.TestReport, outputPath, artifactLink, artifactName string) error {

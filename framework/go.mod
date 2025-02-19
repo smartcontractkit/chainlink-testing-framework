@@ -15,6 +15,8 @@ require (
 	github.com/docker/go-connections v0.5.0
 	github.com/ethereum/go-ethereum v1.14.11
 	github.com/gin-gonic/gin v1.10.0
+	github.com/go-playground/locales v0.14.1
+	github.com/go-playground/universal-translator v0.18.1
 	github.com/go-playground/validator/v10 v10.22.1
 	github.com/go-resty/resty/v2 v2.15.3
 	github.com/google/uuid v1.6.0
@@ -25,6 +27,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.35.0
 	github.com/urfave/cli/v2 v2.27.5
+	go.uber.org/ratelimit v0.3.1
 	golang.org/x/sync v0.10.0
 	gopkg.in/guregu/null.v4 v4.0.0
 )
@@ -48,6 +51,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.31.3 // indirect
 	github.com/aws/smithy-go v1.21.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
+	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/bits-and-blooms/bitset v1.13.0 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.4 // indirect
 	github.com/bytedance/sonic v1.12.3 // indirect
@@ -87,8 +91,6 @@ require (
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/go-playground/locales v0.14.1 // indirect
-	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/goccy/go-json v0.10.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
