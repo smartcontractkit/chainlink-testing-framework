@@ -1,8 +1,13 @@
 package clclient
 
 import (
+	"crypto/ecdsa"
+	"crypto/rand"
 	"crypto/tls"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 	"math/big"
@@ -1232,4 +1237,74 @@ func (c *ChainlinkClient) GetForwarders() (*Forwarders, *http.Response, error) {
 		return nil, nil, err
 	}
 	return response, resp.RawResponse, err
+}
+
+func NewETHKey(password string) ([]byte, error) {
+	privateKey, err := ecdsa.GenerateKey(crypto.S256(), rand.Reader)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to generate private key")
+	}
+	jsonKey, err := keystore.EncryptKey(&keystore.Key{
+		PrivateKey: privateKey,
+		Address:    crypto.PubkeyToAddress(privateKey.PublicKey),
+	}, password, keystore.StandardScryptN, keystore.StandardScryptP)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to encrypt the keystore")
+	}
+	return jsonKey, nil
+}
+
+// ImportEVMKey imports EVM key to the node (encrypted go-ethereum JSON wallet format)
+func (c *ChainlinkClient) ImportEVMKey(key []byte, chainID string) (*http.Response, error) {
+	framework.L.Info().Str(NodeURL, c.Config.URL).Str("Key", string(key)).Msg("Importing EVM key")
+	// empty response, nothing to marshal
+	resp, err := c.APIClient.R().SetBody(key).Post(fmt.Sprintf("/v2/keys/eth/import?evmChainID=%s", chainID))
+	if err != nil {
+		return nil, err
+	}
+	return resp.RawResponse, err
+}
+
+// ImportEVMKeys imports an array of EVM keys to the nodes
+func ImportEVMKeys(cl []*ChainlinkClient, keys [][]byte, chainID string) error {
+	eg := &errgroup.Group{}
+	for i, c := range cl {
+		eg.Go(func() error {
+			_, err := c.ImportEVMKey(keys[i], chainID)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+	}
+	return eg.Wait()
+}
+
+// ImportP2PKey import P2P keys to the node (encrypted go-ethereum JSON wallet format, keystore.EncryptDataV3 + prefix)
+func (c *ChainlinkClient) ImportP2PKey(encryptedJSONKey []byte) (*P2PKey, *http.Response, error) {
+	p2pKey := &P2PKey{}
+	framework.L.Info().Str(NodeURL, c.Config.URL).Msg("Importing P2P Key")
+	resp, err := c.APIClient.R().
+		SetBody(encryptedJSONKey).
+		SetResult(p2pKey).
+		Post("/v2/keys/p2p/import")
+	if err != nil {
+		return nil, nil, err
+	}
+	return p2pKey, resp.RawResponse, err
+}
+
+// ImportP2PKeys imports an array of P2P keys to the nodes
+func ImportP2PKeys(cl []*ChainlinkClient, keys [][]byte) error {
+	eg := &errgroup.Group{}
+	for i, c := range cl {
+		eg.Go(func() error {
+			_, _, err := c.ImportP2PKey(keys[i])
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+	}
+	return eg.Wait()
 }
