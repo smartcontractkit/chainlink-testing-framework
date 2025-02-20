@@ -100,6 +100,10 @@ func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassR
 	if artifactLink != "" {
 		renderArtifactSection(w, artifactName, artifactLink)
 	}
+
+	if testReport.SummaryData.FlakyTests > 0 {
+		renderTroubleshootingSection(w)
+	}
 }
 
 // GeneratePRCommentMarkdown generates a markdown summary of the test results for a GitHub PR comment.
@@ -240,6 +244,14 @@ func renderArtifactSection(w io.Writer, artifactName, artifactLink string) {
 		fmt.Fprintln(w)
 		fmt.Fprintf(w, "For detailed logs of the failed tests, please refer to the artifact [%s](%s).\n", artifactName, artifactLink)
 	}
+}
+
+// renderTroubleshootingSection appends a troubleshooting section with a link to the README
+func renderTroubleshootingSection(w io.Writer) {
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "## Troubleshooting Flaky Tests 🔍")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "For guidance on diagnosing and resolving E2E test flakiness, refer to the [Finding the Root Cause of Test Flakes](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/tools/flakeguard/e2e-flaky-test-guide.md) guide.")
 }
 
 // printTable prints a markdown table to the given writer in a pretty format.
