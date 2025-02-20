@@ -102,6 +102,23 @@ func TestFailInParentBeforeSubTests(t *testing.T) {
 	})
 }
 
+func TestDeeplyNestedSubTests(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Level1", func(t *testing.T) {
+		t.Run("Level2", func(t *testing.T) {
+			t.Run("Level3", func(t *testing.T) {
+				t.Run("Pass", func(t *testing.T) {
+					t.Log("This deeply nested subtest always passes")
+				})
+				t.Run("Fail", func(t *testing.T) {
+					t.Fatal("This deeply nested subtest always fails")
+				})
+			})
+		})
+	})
+}
+
 // This test should have a 50% pass ratio
 func TestFlaky(t *testing.T) {
 	t.Parallel()
