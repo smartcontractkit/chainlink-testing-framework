@@ -213,7 +213,7 @@ func renderSummaryTable(w io.Writer, summary *SummaryData, markdown bool, collap
 		{"Total Test Runs", fmt.Sprintf("%d", summary.TotalRuns)},
 		{"Passes", fmt.Sprintf("%d", summary.PassedRuns)},
 		{"Failures", fmt.Sprintf("%d", summary.FailedRuns)},
-		{"Skips", fmt.Sprintf("%d", summary.SkippedRuns)},
+		// {"Skips", fmt.Sprintf("%d", summary.SkippedRuns)},
 		{"Pass Percent", summary.PassPercent},
 	}
 	if markdown {
