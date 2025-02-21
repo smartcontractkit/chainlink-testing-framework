@@ -27,7 +27,6 @@ var RunTestsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// Retrieve flags
 		projectPath, _ := cmd.Flags().GetString("project-path")
-		goProject, _ := cmd.Flags().GetString("go-project-name")
 		testPackagesJson, _ := cmd.Flags().GetString("test-packages-json")
 		testPackagesArg, _ := cmd.Flags().GetStringSlice("test-packages")
 		testCmdStrings, _ := cmd.Flags().GetStringArray("test-cmd")
@@ -81,7 +80,6 @@ var RunTestsCmd = &cobra.Command{
 		// Initialize the runner
 		testRunner := runner.Runner{
 			ProjectPath:          projectPath,
-			GoProject:            goProject,
 			Verbose:              true,
 			RunCount:             runCount,
 			Timeout:              timeout,
@@ -164,8 +162,6 @@ var RunTestsCmd = &cobra.Command{
 
 func init() {
 	RunTestsCmd.Flags().StringP("project-path", "r", ".", "The path to the Go project. Default is the current directory. Useful for subprojects")
-	RunTestsCmd.Flags().String("go-project-name", "", "The name of the Go project. Example: github.com/smartcontractkit/chainlink/v2")
-	_ = RunTestsCmd.MarkFlagRequired("go-project-name")
 	RunTestsCmd.Flags().String("test-packages-json", "", "JSON-encoded string of test packages")
 	RunTestsCmd.Flags().StringSlice("test-packages", nil, "Comma-separated list of test packages to run")
 	RunTestsCmd.Flags().StringArray("test-cmd", nil,

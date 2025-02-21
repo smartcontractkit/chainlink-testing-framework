@@ -39,6 +39,14 @@ type expectedTestResult struct {
 	seen bool
 }
 
+func TestPrettyProjectPath(t *testing.T) {
+	t.Parallel()
+
+	prettyPath, err := prettyProjectPath("./")
+	require.NoError(t, err)
+	assert.Equal(t, "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard", prettyPath)
+}
+
 func TestRun(t *testing.T) {
 	var (
 		zeroRuns        = 0

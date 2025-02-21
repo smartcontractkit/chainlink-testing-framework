@@ -27,7 +27,7 @@ var (
 // Runner describes the test run parameters and raw test outputs
 type Runner struct {
 	ProjectPath          string        // Path to the Go project directory.
-	GoProject            string        // Go project package name.
+	prettyProjectPath    string        // Go project package path, formatted for pretty printing.
 	Verbose              bool          // If true, provides detailed logging.
 	RunCount             int           // Number of times to run the tests.
 	UseRace              bool          // Enable race detector.
@@ -76,7 +76,7 @@ func (r *Runner) RunTestPackages(packages []string) (*reports.TestReport, error)
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
 	report := &reports.TestReport{
-		GoProject:     r.GoProject,
+		GoProject:     r.prettyProjectPath,
 		RaceDetection: r.UseRace,
 		ExcludedTests: r.SkipTests,
 		SelectedTests: r.SelectTests,
@@ -112,7 +112,7 @@ func (r *Runner) RunTestCmd(testCmd []string) (*reports.TestReport, error) {
 	}
 
 	report := &reports.TestReport{
-		GoProject:     r.GoProject,
+		GoProject:     r.prettyProjectPath,
 		RaceDetection: r.UseRace,
 		ExcludedTests: r.SkipTests,
 		SelectedTests: r.SelectTests,
@@ -173,6 +173,11 @@ func (r *Runner) runTestPackage(packageName string) (string, bool, error) {
 	}
 	defer tmpFile.Close()
 
+	r.prettyProjectPath, err = prettyProjectPath(r.ProjectPath)
+	if err != nil {
+		r.prettyProjectPath = r.ProjectPath
+		log.Warn().Err(err).Str("projectPath", r.ProjectPath).Msg("Failed to get pretty project path")
+	}
 	// Run the command with output directed to the file
 	cmd := exec.Command("go", args...)
 	cmd.Dir = r.ProjectPath
@@ -632,4 +637,43 @@ func parseSubTest(testName string) (parentTestName, subTestName string) {
 		return parts[0], ""
 	}
 	return parts[0], parts[1]
+}
+
+// prettyProjectPath returns the project path formatted for pretty printing in results.
+func prettyProjectPath(projectPath string) (string, error) {
+	// Walk up the directory structure to find go.mod
+	absPath, err := filepath.Abs(projectPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve absolute path: %w", err)
+	}
+	dir := absPath
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			break
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir { // Reached the root without finding go.mod
+			return "", fmt.Errorf("go.mod not found in project path, started at %s, ended at %s", projectPath, dir)
+		}
+		dir = parent
+	}
+
+	// Read go.mod to extract the module path
+	goModPath := filepath.Join(dir, "go.mod")
+	goModData, err := os.ReadFile(goModPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read go.mod: %w", err)
+	}
+
+	for _, line := range strings.Split(string(goModData), "\n") {
+		if strings.HasPrefix(line, "module ") {
+			goProject := strings.TrimSpace(strings.TrimPrefix(line, "module "))
+			relativePath := strings.TrimPrefix(projectPath, dir)
+			relativePath = strings.TrimLeft(relativePath, string(os.PathSeparator))
+			return filepath.Join(goProject, relativePath), nil
+		}
+	}
+
+	return "", fmt.Errorf("module path not found in go.mod")
 }
