@@ -84,6 +84,8 @@ func (r *Runner) RunTestPackages(packages []string) (*reports.TestReport, error)
 		MaxPassRatio:  r.MaxPassRatio,
 	}
 	report.GenerateSummaryData()
+	log.Debug().Int("TestRunCount", report.SummaryData.TestRunCount).Strs("jsonPaths", jsonFilePaths).Strs("packages", packages).Msg("TestRunCount for test packages")
+
 	return report, nil
 }
 
