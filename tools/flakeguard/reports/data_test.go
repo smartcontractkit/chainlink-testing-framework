@@ -27,17 +27,18 @@ func TestGenerateSummaryData(t *testing.T) {
 				MaxPassRatio: 1.0,
 			},
 			expected: &SummaryData{
-				UniqueTestsRun:   2,
-				TestRunCount:     10,
-				PanickedTests:    0,
-				RacedTests:       0,
-				FlakyTests:       0,
-				FlakyTestPercent: "0%", // no flaky tests
-				TotalRuns:        15,
-				PassedRuns:       15,
-				FailedRuns:       0,
-				SkippedRuns:      0,
-				PassPercent:      "100%",
+				UniqueTestsRun:         2,
+				TestRunCount:           10,
+				PanickedTests:          0,
+				RacedTests:             0,
+				FlakyTests:             0,
+				FlakyTestPercent:       "0%", // no flaky tests
+				TotalRuns:              15,
+				PassedRuns:             15,
+				FailedRuns:             0,
+				SkippedRuns:            0,
+				PassPercent:            "100%",
+				UniqueSkippedTestCount: 0,
 			},
 		},
 		{
@@ -60,10 +61,11 @@ func TestGenerateSummaryData(t *testing.T) {
 				FlakyTestPercent: "66.6667%",
 				TotalRuns:        19,
 				PassedRuns:       15,
-				FailedRuns:       4, // total failures
+				FailedRuns:       4,
 				SkippedRuns:      0,
 				// 15/19 => ~78.947...
-				PassPercent: "78.9474%",
+				PassPercent:            "78.9474%",
+				UniqueSkippedTestCount: 0,
 			},
 		},
 		{
@@ -89,7 +91,8 @@ func TestGenerateSummaryData(t *testing.T) {
 				FailedRuns:       1,
 				SkippedRuns:      0,
 				// 17/18 => ~94.444...
-				PassPercent: "94.4444%",
+				PassPercent:            "94.4444%",
+				UniqueSkippedTestCount: 0,
 			},
 		},
 		{
@@ -104,42 +107,46 @@ func TestGenerateSummaryData(t *testing.T) {
 				PanickedTests:    0,
 				RacedTests:       0,
 				FlakyTests:       0,
-				FlakyTestPercent: "0%", // no tests => 0%
+				FlakyTestPercent: "0%",
 				TotalRuns:        0,
 				PassedRuns:       0,
 				FailedRuns:       0,
 				SkippedRuns:      0,
 				// With zero runs, we default passRatio to "100%"
-				PassPercent: "100%",
+				PassPercent:            "100%",
+				UniqueSkippedTestCount: 0,
 			},
 		},
 		{
 			name: "Skipped tests included in total but not executed",
 			testReport: &TestReport{
 				Results: []TestResult{
+					// Skipped test with no runs should be counted in UniqueSkippedTestCount.
 					{PassRatio: -1.0, Runs: 0, Successes: 0, Skips: 1, Skipped: true},
 					{PassRatio: 0.7, Runs: 10, Successes: 7, Failures: 3},
 				},
 				MaxPassRatio: 0.8,
 			},
 			expected: &SummaryData{
-				UniqueTestsRun:   2,
-				TestRunCount:     10,
-				PanickedTests:    0,
-				RacedTests:       0,
-				FlakyTests:       1,     // second test has ratio=0.7 => "flaky"
-				FlakyTestPercent: "50%", // 1 out of 2 => 50%
-				TotalRuns:        10,
-				PassedRuns:       7,
-				FailedRuns:       3,
-				SkippedRuns:      1, // from first test
-				PassPercent:      "70%",
+				UniqueTestsRun:         2,
+				TestRunCount:           10,
+				PanickedTests:          0,
+				RacedTests:             0,
+				FlakyTests:             1,
+				FlakyTestPercent:       "50%",
+				TotalRuns:              10,
+				PassedRuns:             7,
+				FailedRuns:             3,
+				SkippedRuns:            1,
+				PassPercent:            "70%",
+				UniqueSkippedTestCount: 1,
 			},
 		},
 		{
 			name: "Mixed skipped and executed tests",
 			testReport: &TestReport{
 				Results: []TestResult{
+					// Skipped test should be counted for UniqueSkippedTestCount.
 					{PassRatio: -1.0, Runs: 0, Successes: 0, Skips: 1, Skipped: true},
 					{PassRatio: 0.9, Runs: 10, Successes: 9, Failures: 1},
 					{PassRatio: 0.5, Runs: 4, Successes: 2, Failures: 2},
@@ -147,18 +154,18 @@ func TestGenerateSummaryData(t *testing.T) {
 				MaxPassRatio: 0.85,
 			},
 			expected: &SummaryData{
-				UniqueTestsRun:   3,
-				TestRunCount:     10,
-				PanickedTests:    0,
-				RacedTests:       0,
-				FlakyTests:       1,          // last test has ratio=0.5 => "flaky"
-				FlakyTestPercent: "33.3333%", // 1 out of 3 => 33.333...
-				TotalRuns:        14,         // 10 + 4
-				PassedRuns:       11,         // 9 + 2
-				FailedRuns:       3,          // 1 + 2
-				SkippedRuns:      1,          // from first test
-				// 11/14 => 78.5714...
-				PassPercent: "78.5714%",
+				UniqueTestsRun:         3,
+				TestRunCount:           10,
+				PanickedTests:          0,
+				RacedTests:             0,
+				FlakyTests:             1,
+				FlakyTestPercent:       "33.3333%",
+				TotalRuns:              14,
+				PassedRuns:             11,
+				FailedRuns:             3,
+				SkippedRuns:            1,
+				PassPercent:            "78.5714%",
+				UniqueSkippedTestCount: 1,
 			},
 		},
 		{
@@ -166,8 +173,8 @@ func TestGenerateSummaryData(t *testing.T) {
 			testReport: &TestReport{
 				Results: func() []TestResult {
 					// 9,999 total:
-					//  - 9,998 stable => pass=1.0
-					//  - 1 flaky => pass=0.5
+					//  - 9,998 stable tests => pass ratio = 1.0
+					//  - 1 flaky test => pass ratio = 0.5
 					const total = 9999
 					tests := make([]TestResult, total)
 					for i := 0; i < total-1; i++ {
@@ -178,7 +185,7 @@ func TestGenerateSummaryData(t *testing.T) {
 						}
 					}
 					tests[total-1] = TestResult{
-						PassRatio: 0.5, // 1 success, 1 fail
+						PassRatio: 0.5, // 1 success, 1 failure
 						Runs:      2,
 						Successes: 1,
 						Failures:  1,
@@ -188,17 +195,47 @@ func TestGenerateSummaryData(t *testing.T) {
 				MaxPassRatio: 1.0,
 			},
 			expected: &SummaryData{
-				UniqueTestsRun:   9999,
-				TestRunCount:     10,
-				PanickedTests:    0,
-				RacedTests:       0,
-				FlakyTests:       1,
-				FlakyTestPercent: "0.01%",
-				TotalRuns:        (9998 * 10) + 2,
-				PassedRuns:       (9998 * 10) + 1,
-				FailedRuns:       1,
-				SkippedRuns:      0,
-				PassPercent:      "99.999%",
+				UniqueTestsRun:         9999,
+				TestRunCount:           10,
+				PanickedTests:          0,
+				RacedTests:             0,
+				FlakyTests:             1,
+				FlakyTestPercent:       "0.01%",
+				TotalRuns:              (9998 * 10) + 2,
+				PassedRuns:             (9998 * 10) + 1,
+				FailedRuns:             1,
+				SkippedRuns:            0,
+				PassPercent:            "99.999%",
+				UniqueSkippedTestCount: 0,
+			},
+		},
+		{
+			name: "Duplicate skipped tests",
+			testReport: &TestReport{
+				Results: []TestResult{
+					// Two entries for "TestA" should count as one unique skipped test.
+					{TestName: "TestA", PassRatio: -1.0, Runs: 0, Skips: 1, Skipped: true},
+					{TestName: "TestA", PassRatio: -1.0, Runs: 0, Skips: 1, Skipped: true},
+					// A different test "TestB"
+					{TestName: "TestB", PassRatio: -1.0, Runs: 0, Skips: 1, Skipped: true},
+					// This test was executed so it should not count as skipped.
+					{TestName: "TestC", PassRatio: 1.0, Runs: 5, Successes: 5, Skipped: false},
+				},
+				MaxPassRatio: 1.0,
+			},
+			expected: &SummaryData{
+				UniqueTestsRun:         4,
+				TestRunCount:           5,
+				PanickedTests:          0,
+				RacedTests:             0,
+				FlakyTests:             0,
+				FlakyTestPercent:       "0%",
+				TotalRuns:              5,
+				PassedRuns:             5,
+				FailedRuns:             0,
+				SkippedRuns:            3, // Sum of Skips for all skipped tests.
+				PassPercent:            "100%",
+				UniqueSkippedTestCount: 2, // Only "TestA" and "TestB" count.
 			},
 		},
 	}
