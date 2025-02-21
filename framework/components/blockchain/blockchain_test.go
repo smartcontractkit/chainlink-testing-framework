@@ -13,8 +13,10 @@ import (
 
 func TestAnvil(t *testing.T) {
 	anvilOut, err := NewBlockchainNetwork(&Input{
-		Type: "anvil",
-		Port: "8555",
+		Type:    "anvil",
+		Image:   "f4hrenh9it/foundry",
+		Port:    "8545",
+		ChainID: "31337",
 	})
 	require.NoError(t, err)
 
