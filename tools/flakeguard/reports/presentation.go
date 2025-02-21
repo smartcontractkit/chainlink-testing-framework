@@ -205,18 +205,15 @@ func renderSummaryTable(w io.Writer, summary *SummaryData, markdown bool, collap
 	summaryData := [][]string{
 		{"Category", "Total"},
 		{"Unique Tests", fmt.Sprintf("%d", summary.UniqueTestsRun)},
+		// {"Test Run Count", fmt.Sprintf("%d", summary.TestRunCount)},
 		{"Unique Skipped Tests", fmt.Sprintf("%d", summary.UniqueSkippedTestCount)},
-		{"Test Run Count", fmt.Sprintf("%d", summary.TestRunCount)},
+		{"Passed Tests", fmt.Sprintf("%d (%s)", summary.PassedRuns, summary.PassPercent)},
+		{"Flaky Tests", fmt.Sprintf("%d (%s)", summary.FlakyTests, summary.FlakyTestPercent)},
 		{"Panicked Tests", fmt.Sprintf("%d", summary.PanickedTests)},
 		{"Raced Tests", fmt.Sprintf("%d", summary.RacedTests)},
-		{"Flaky Tests", fmt.Sprintf("%d", summary.FlakyTests)},
-		{"Flaky Test Percent", summary.FlakyTestPercent},
 		{"Total Test Runs", fmt.Sprintf("%d", summary.TotalRuns)},
-		{"Passes", fmt.Sprintf("%d", summary.PassedRuns)},
-		{"Failures", fmt.Sprintf("%d", summary.FailedRuns)},
-		// {"Skips", fmt.Sprintf("%d", summary.SkippedRuns)},
-		{"Pass Percent", summary.PassPercent},
 	}
+
 	if markdown {
 		for i, row := range summaryData {
 			if i == 0 {
