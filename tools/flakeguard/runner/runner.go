@@ -121,6 +121,8 @@ func (r *Runner) RunTestCmd(testCmd []string) (*reports.TestReport, error) {
 		MaxPassRatio:  r.MaxPassRatio,
 	}
 	report.GenerateSummaryData()
+	log.Debug().Int("TestRunCount", report.SummaryData.TestRunCount).Strs("jsonPaths", jsonFilePaths).Strs("testCmd", testCmd).Msg("TestRunCount for test cmd")
+
 	return report, nil
 }
 
