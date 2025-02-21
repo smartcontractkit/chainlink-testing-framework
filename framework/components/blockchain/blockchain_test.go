@@ -11,28 +11,41 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAnvil(t *testing.T) {
-	anvilOut, err := NewBlockchainNetwork(&Input{
-		Type:    "anvil",
-		Image:   "f4hrenh9it/foundry",
-		Port:    "8545",
-		ChainID: "31337",
-	})
-	require.NoError(t, err)
+func TestChains(t *testing.T) {
+	testCases := []struct {
+		name    string
+		input   *Input
+		chainId int64
+	}{
+		{
+			name: "Anvil",
+			input: &Input{
+				Type:  "anvil",
+				Image: "f4hrenh9it/foundry",
+				Port:  "8545",
+			},
+			chainId: 31337,
+		},
+		{
+			name: "AnvilZksync",
+			input: &Input{
+				Type: "anvil-zksync",
+			},
+			chainId: 260,
+		},
+	}
 
-	testChain(t, 1337, anvilOut)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testChain(t, tc.chainId, tc.input)
+		})
+	}
 }
 
-func TestAnvilZksync(t *testing.T) {
-	anvilOut, err := NewBlockchainNetwork(&Input{
-		Type: "anvil-zksync",
-	})
+func testChain(t *testing.T, chainId int64, input *Input) {
+	input.ChainID = strconv.FormatInt(chainId, 10)
+	output, err := NewBlockchainNetwork(input)
 	require.NoError(t, err)
-
-	testChain(t, 260, anvilOut)
-}
-
-func testChain(t *testing.T, chainId int64, output *Output) {
 	rpcUrl := output.Nodes[0].HostHTTPUrl
 
 	reqBody := `{"jsonrpc": "2.0", "method": "eth_chainId", "params": [], "id": 1}`
