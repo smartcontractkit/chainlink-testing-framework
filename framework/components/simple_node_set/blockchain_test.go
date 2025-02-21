@@ -1,4 +1,4 @@
-package blockchain
+package simple_node_set_test
 
 import (
 	"encoding/json"
@@ -9,46 +9,50 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 )
 
 func TestChains(t *testing.T) {
 	testCases := []struct {
 		name    string
-		input   *Input
+		input   *blockchain.Input
 		chainId int64
 	}{
 		{
 			name: "Anvil",
-			input: &Input{
-				Type:  "anvil",
-				Image: "f4hrenh9it/foundry",
-				Port:  "8555",
+			input: &blockchain.Input{
+				Type:    "anvil",
+				Image:   "f4hrenh9it/foundry",
+				Port:    "8547",
+				ChainID: "31337",
 			},
-			chainId: 31337,
 		},
 		{
 			name: "AnvilZksync",
-			input: &Input{
-				Type: "anvil-zksync",
-				Port: "8011",
+			input: &blockchain.Input{
+				Type:    "anvil-zksync",
+				Port:    "8011",
+				ChainID: "260",
 			},
-			chainId: 260,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			testChain(t, tc.chainId, tc.input)
+			testChain(t, tc.input)
 		})
 	}
 }
 
-func testChain(t *testing.T, chainId int64, input *Input) {
-	input.ChainID = strconv.FormatInt(chainId, 10)
-	output, err := NewBlockchainNetwork(input)
+func testChain(t *testing.T, input *blockchain.Input) {
+	chainId, err := strconv.ParseInt(input.ChainID, 10, 64)
 	require.NoError(t, err)
-	rpcUrl := output.Nodes[0].HostHTTPUrl
 
+	output, err := blockchain.NewBlockchainNetwork(input)
+	require.NoError(t, err)
+
+	rpcUrl := output.Nodes[0].HostHTTPUrl
 	reqBody := `{"jsonrpc": "2.0", "method": "eth_chainId", "params": [], "id": 1}`
 	resp, err := http.Post(rpcUrl, "application/json", strings.NewReader(reqBody))
 	require.NoError(t, err)
@@ -63,8 +67,9 @@ func testChain(t *testing.T, chainId int64, input *Input) {
 	}
 	err = json.Unmarshal(responseData, &respJSON)
 	require.NoError(t, err)
+	result := respJSON.Result
 
-	actualChainId, err := strconv.ParseInt(strings.TrimPrefix(respJSON.Result, "0x"), 16, 64)
+	actualChainId, err := strconv.ParseInt(strings.TrimPrefix(result, "0x"), 16, 64)
 	require.NoError(t, err)
 
 	require.Equal(t, chainId, actualChainId)
