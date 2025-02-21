@@ -1,10 +1,10 @@
 # Finding the Root Cause of Test Flakes in Go
 
-Flaky tests can arise from many sources and can be frustrating to fix. Here's a non-exhaustive guide to help you find and resolve common causes for flakes in Go.
+Flaky tests can arise from many sources and can be frustrating to fix. Here's a non-exhaustive guide to help you find and resolve common causes for flakes in Go. But first, to answer a common question...
 
 ## The Test Only Flakes 0.xx% of the Time, Why Bother Fixing It?
 
-You bother to fix it because of **MATH!**
+You bother fixing it because of **MATH!**
 
 Let's imagine a large repo with 10,000 tests, and let's imagine only 100 (1%) of them are flaky. Let's further imagine that each of those flaky tests has a chance of flaking 1% of the time. If you are a responsible dev that requires all of your tests to pass in CI before you merge, flaky tests have now become a massive headache. 
 
@@ -12,7 +12,7 @@ $$P(\text{at least one flaky test}) = 1 - (1 - 0.01)^{100}$$
 
 $$P(\text{at least one flaky test}) \approx 63.40\%$$
 
-Even a few tests with a tiny chance of a flaking can cause massive damage to a repo that a lot of devs work on.
+Even a small percentage of tests with a small chance of flaking can cause massive damage to dev velocity.
 
 ## General Tips
 
@@ -98,25 +98,41 @@ You can also try using [dockexec](https://github.com/mvdan/dockexec) for conveni
 
 ### 6. Use Your Target System
 
-Sometimes you can only discover the truth by going directly to the source. Before you do so, please double check what `runs_on` systems your workflows use. If you're only using `ubuntu-latest` runners, these runs should be free. `8-core`, `16-core`, and `32-core` workflows can become very expensive, very quickly. Please use caution and discretion when running these workflows repeatedly.
+Sometimes you can only discover the truth by going directly to the source. Before you do so, please double check what `runs_on` systems your workflows use. If you're only using `ubuntu-latest` runners, these runs should be free, or at least very cheap. `8-core`, `16-core`, and `32-core` workflows can become very expensive, very quickly. Please use caution and discretion when running these workflows repeatedly.
+
+#### 6.1 CI Resource Constraints
+
+It is sometimes the case that tests only fail in CI environments because those environments are underpowered. **This is more rare than you think, be cautious of [System 1 thinking](https://en.wikipedia.org/wiki/Thinking,_Fast_and_Slow) here.** You can diagnose this with [this excellent GitHub workflow telemetry action](https://github.com/catchpoint/workflow-telemetry-action) that can give you detailed stats on how many resources your tests are consuming. (This is also handy if you're looking to optimize your CI runtimes or costs.) If your tests are flaking due to low resources, consider other options before just increasing the power of the CI runners. [Increasing the power of a GitHub Actions workflow by a single tier doubles its cost](https://docs.github.com/en/billing/managing-billing-for-your-products/managing-billing-for-github-actions/about-billing-for-github-actions#per-minute-rates-for-x64-powered-larger-runners). If your workflow runs often, you can burn a lot of cash quickly. You can otherwise try strategies like:
+
+* Splitting the tests into different workflows, each running on `ubuntu-latest`
+* Moving more resource-hungry tests to run only on nightly cadences
+* 
 
 ### 7. Fix It!
 
-Maybe you've found the source of the flake and are now drilling down into the reasons why. Whatever those reasons might be, I urge you to, at least briefly, reframe the problem and ask if the test is actually working as intended, and it is revealing flaky behavior in your application instead. This might be an opportunity to fix a rare bug instead of force a test to conform to it.
+Maybe you've found the source of the flake and are now drilling down into the reasons why. Whatever those reasons might be, I urge you to, at least briefly, reframe the problem and ask if the test is actually working as intended, and it is revealing flaky behavior in your application instead. Consider that you might have found a rare bug, rather than a rare flake.
 
 ### 8. Give Up
 
-It's not my favorite answer, but sometimes this truly is the solution. It's hard to know exactly when this point is. I hope to eventually gather enough data on dev productivity and how flaky tests affect them that I can give you absolute rules, but until then, we'll have to go off vibes. Here's your checklist for when you feel ready to collapse in defeat.
+It's not my favorite answer, but sometimes this truly is the solution. It's hard to know exactly when you should abandon hope, but maybe the below steps can help you figure it out.
 
 #### 8.1 Evaluate the Importance of the Test
 
-* What does the test actually check? Is it a critical path? 
-* Is the test flaking because it's a bad test? Or it's trying to test behavior that shouldn't or can't be tested? TODO:
-* 
+Ask yourself these questions to help figure out if it's worth working on this flake further, and to help you figure out what to do next.
 
-#### 8.2 How Flaky is the Test?
+* What does the test actually check? Is it a critical path?
+* Is the test flaking because it's a bad test? Or it's trying to test behavior that shouldn't or can't be tested?
+* Can you write a new test that checks the same behavior, but doesn't fall to the same issues?
+* Can you come back to this later? Maybe in a week or two you'll have new ideas, or maybe the underlying system will change in ways that this flake is no longer an issue?
 
-Flakeguard should give you a good idea of the test's percentage chance of flaking. Remember from above that even
+#### 8.2 Turn it Off
+
+Assuming you're ready to declare defeat, it's time to turn off the test. How you do this depends on the test, your team, and the answers to the questions above. If you've determined the test isn't particularly important and isn't worth running anymore, you should just delete it. 
+
+If the test does check crucial behavior and you'd like to return to it, please consider this general flow:
+
+1. Make a ticket noting the flake, and write down as much as you've figured out so far. Ideally have the ticket setup to remind you or your team in a couple of weeks that it's still there.
+2. Mark the test with `t.Skip("Flaky:<Ticket-Name>")` so that Flakeguard can properly identify tests that are being skipped for flaky issues.
 
 ## Chainlink E2E Tests
 
@@ -124,11 +140,7 @@ At CLL, we have specially designed E2E tests that run in Docker and Kubernetes e
 
 ### 1. Find Flakes
 
-You should already have examples thanks to flakeguard TODO:
-
-### 2. Reproduce Flakes
-
-For E2E tests, run them 5–10 times consecutively to expose intermittent issues. To run the tests with flakeguard validation, execute the following command from the `chainlink-core/` directory:
+If you don't already have some Flakeguard results to work with, you can run flakeguard on E2E tests easily with the following command from the `chainlink-core/` directory:
 
 ```sh
 cd chainlink-core/
@@ -144,81 +156,24 @@ You’ll be prompted to provide:
 - **Chainlink version** (default: develop)
 - **Branch name** (default: develop)
 
-This is generally enough 
+### 2. Explore Logs and Debug
 
-### 2. Check Resource Constraints
+E2E tests are complex beasts, orchestrating many systems together at once. As such, the best strategy is usually to mark the time of the test failure, and get busy cross-referencing that timestamp across the logs of each component so you can see what was happening in each component in the test. The [CTF Debug Docs](https://smartcontractkit.github.io/chainlink-testing-framework/framework/components/debug.html) can help increase the logs you're collecting, and help use more traditional debugging tools like [Delve](https://github.com/go-delve/delve).
 
-GitHub provides **hosted runners** with specific CPU, memory, and disk allocations. If your tests require more resources than these runners can provide, you may encounter intermittent failures.
+### 3. Remember You're (Sort of) in the Real World
 
-By default, we run tests on **`ubuntu-latest`**, as it is **free for public repositories** and the **most cost-effective option for private repositories**. However, this runner has limited resources, which can lead to intermittent failures in resource-intensive tests.
+E2E tests are meant to closely simulate real-world situations and deployments, so causes that never pop up in unit tests become common hazards:
 
-> **Note:** `ubuntu-latest` for **private repositories** has weaker hardware compared to `ubuntu-latest` for **public repositories**. You can learn more about this distinction in [GitHub's documentation](https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories).
+* **Networking issues**: A blip in networking connections can throw off timings, and make expected test states happen in an unexpected order.
+* **Timing issues**: Many E2E tests are set to fail after not receiving an expected result after x seconds. It's possible blips in infrastructure and networking slow it down, and expanding this timeout can help stabilize things.
+* **GitHub Actions degraded performance**: This is a common scapegoat for when you're frustrated, but it's worth [checking GitHub's status page](https://www.githubstatus.com/) for any incidents that might have occurred while your test was running.
 
-### 1.1 Available GitHub Runners
-Below are the some of the GitHub-hosted runners available in our organization:
+### 4. Check the Test's Resources
 
-| Runner Name                    | CPU     | Memory    | Disk       |
-| ------------------------------ | ------- | --------- | ---------- |
-| `ubuntu-22.04-4cores-16GB`     | 4 cores | 16 GB RAM | 150 GB SSD |
-| `ubuntu-latest-4cores-16GB`    | 4 cores | 16 GB RAM | 150 GB SSD |
-| `ubuntu-22.04-8cores-32GB`     | 8 cores | 32 GB RAM | 300 GB SSD |
-| `ubuntu-latest-8cores-32GB`    | 8 cores | 32 GB RAM | 300 GB SSD |
-| `ubuntu-22.04-8cores-32GB-ARM` | 8 cores | 32 GB RAM | 300 GB SSD |
+E2E tests are much more resource hungry than your typical unit test suite. Much of what I mentioned in our general tips for [CI resources](####-6.1-ci-resource-constraints) applies here. You can turn on CI telemetry easily in most of our E2E tests by setting [collect_test_telemetry](https://github.com/smartcontractkit/.github/blob/main/.github/workflows/run-e2e-tests.yml#L174), like so:
 
-
-### 1.2 Tips for Low-Resource Environments
-
-- **Profile your tests** to understand their CPU and memory usage.  
-- **Optimize**: Only spin up what you need.  
-- **If resources are insufficient**, consider redesigning your tests to run in smaller, independent chunks.
-- **If needed**, you can configure CI workflows to use a higher-tier runner, but this comes at an additional cost.
-- **Run with debug logs** or Delve debugger. For more details, check out the [CTF Debug Docs.](https://smartcontractkit.github.io/chainlink-testing-framework/framework/components/debug.html)
-
----
-
-## 3. Testing Locally Under CPU and Memory Constraints
-
-If CPU throttling or resource contention is suspected, here's how you can approach testing under constrained resources:
-
-1. **Spin up Docker containers locally with limited CPU or memory.**  
-2. **Mimic GitHub's environment** (use the same OS, similar resource limits).  
-3. **Run E2E tests** repeatedly to see if flakiness correlates with resource usage.  
-4. **Review logs and metrics** for signs of CPU or memory starvation.
-
-
-### Setting Global Limits (Docker Desktop)
-
-If you are using **Docker Desktop** on **macOS or Windows**, you can globally limit Docker's resource usage:
-
-1. Open **Docker Desktop**.
-2. Navigate to **Settings** → **Resources**.
-3. Adjust the sliders for **CPUs** and **Memory**.
-4. Click **Apply & Restart** to enforce the new limits.
-
-This setting caps the **total** resources Docker can use on your machine, ensuring all containers run within the specified constraints.
-
-
-### Observing Test Behavior Under Constraints
-
-- **Run your E2E tests repeatedly** with different global resource settings.
-- Watch for flakiness: If tests start failing more under tighter limits, suspect CPU throttling or memory starvation.
-- **Examine logs/metrics** to pinpoint if insufficient resources are causing sporadic failures.
-
-By setting global limits, you can simulate resource-constrained environments similar to CI/CD pipelines and detect potential performance bottlenecks in your tests.
-
-
-## 4. Common Pitfalls and “Gotchas”
-
-1. **Resource Starvation**: Heavy tests on minimal hardware lead to timeouts or slow responses.  
-2. **External Dependencies**: Network latency, rate limits, or third-party service issues can cause sporadic failures.  
-3. **Shared State**: Race conditions arise if tests share databases or global variables in parallel runs.  
-4. **Timeouts**: Overly tight time limits can fail tests on slower environments.
-
-
-## 5. Key Takeaways
-
-Tackle flakiness systematically:
-1. **Attempt local reproduction** (e.g., Docker + limited resources).  
-2. **Run multiple iterations** on GitHub runners.  
-3. **Analyze logs and metrics** to see if resource or concurrency issues exist.  
-4. **Escalate** to the infra team only after confirming the issue isn't in your own test code or setup.
+```yaml
+uses: smartcontractkit/.github/.github/workflows/run-e2e-tests.yml@version
+with:
+  collect_test_telemetry: true
+```
