@@ -28,7 +28,10 @@ type TestReport struct {
 
 // GenerateSummaryData generates a summary of a report's test results
 func (testReport *TestReport) GenerateSummaryData() {
-	var runs, testRunCount, passes, fails, skips, panickedTests, racedTests, flakyTests, skippedTests int
+	var runs, testRunCount, passes, fails, skips, panickedTests, racedTests, flakyTests int
+
+	// Map to hold unique test names that were entirely skipped
+	uniqueSkippedTestsMap := make(map[string]struct{})
 
 	for _, result := range testReport.Results {
 		runs += result.Runs
@@ -39,9 +42,8 @@ func (testReport *TestReport) GenerateSummaryData() {
 		fails += result.Failures
 		skips += result.Skips
 
-		// Count tests that were entirely skipped
 		if result.Runs == 0 && result.Skipped {
-			skippedTests++
+			uniqueSkippedTestsMap[result.TestName] = struct{}{}
 		}
 
 		if result.Panic {
@@ -55,6 +57,9 @@ func (testReport *TestReport) GenerateSummaryData() {
 		}
 	}
 
+	// Calculate the unique count of skipped tests
+	uniqueSkippedTestCount := len(uniqueSkippedTestsMap)
+
 	// Calculate the raw pass ratio
 	passRatio := passRatio(passes, runs)
 
@@ -66,12 +71,13 @@ func (testReport *TestReport) GenerateSummaryData() {
 	flakeTestRatioStr := formatRatio(flakeRatio)
 
 	testReport.SummaryData = &SummaryData{
-		UniqueTestsRun:   totalTests,
-		TestRunCount:     testRunCount,
-		PanickedTests:    panickedTests,
-		RacedTests:       racedTests,
-		FlakyTests:       flakyTests,
-		FlakyTestPercent: flakeTestRatioStr,
+		UniqueTestsRun:         totalTests,
+		UniqueSkippedTestCount: uniqueSkippedTestCount,
+		TestRunCount:           testRunCount,
+		PanickedTests:          panickedTests,
+		RacedTests:             racedTests,
+		FlakyTests:             flakyTests,
+		FlakyTestPercent:       flakeTestRatioStr,
 
 		TotalRuns:   runs,
 		PassedRuns:  passes,
@@ -112,6 +118,8 @@ type SummaryData struct {
 	// Overall test run stats
 	// UniqueTestsRun tracks how many unique tests were run
 	UniqueTestsRun int `json:"unique_tests_run"`
+	// UniqueSkippedTestCount tracks how many unique tests were entirely skipped
+	UniqueSkippedTestCount int `json:"unique_skipped_test_count"`
 	// TestRunCount tracks the max amount of times the tests were run, giving an idea of how many times flakeguard was executed
 	// e.g. if TestA was run 5 times, and TestB was run 10 times, UniqueTestsRun == 2 and TestRunCount == 10
 	TestRunCount int `json:"test_run_count"`
