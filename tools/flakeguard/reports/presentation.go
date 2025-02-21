@@ -195,27 +195,27 @@ func RenderResults(
 	collapsible bool,
 ) {
 	resultsTable := GenerateFlakyTestsTable(testReport, markdown)
-	renderSummaryTable(w, testReport.SummaryData, markdown, false) // Don't make the summary collapsible
+	renderSummaryTable(w, testReport.SummaryData, markdown, false, testReport.RaceDetection) // Don't make the summary collapsible
 	renderTestResultsTable(w, resultsTable, collapsible)
 }
 
 // renderSummaryTable renders a summary table with the given data into a console or markdown format.
 // If in markdown mode, the table can also be made collapsible.
-func renderSummaryTable(w io.Writer, summary *SummaryData, markdown bool, collapsible bool) {
+func renderSummaryTable(w io.Writer, summary *SummaryData, markdown bool, collapsible bool, raceDetection bool) {
 	summaryData := [][]string{
 		{"Category", "Total"},
 		{"Unique Tests", fmt.Sprintf("%d", summary.UniqueTestsRun)},
-		{"Test Run Count", fmt.Sprintf("%d", summary.TestRunCount)},
-		{"Panicked Tests", fmt.Sprintf("%d", summary.PanickedTests)},
-		{"Raced Tests", fmt.Sprintf("%d", summary.RacedTests)},
-		{"Flaky Tests", fmt.Sprintf("%d", summary.FlakyTests)},
-		{"Flaky Test Percent", summary.FlakyTestPercent},
+		{"Unique Skipped Tests", fmt.Sprintf("%d", summary.UniqueSkippedTestCount)},
 		{"Total Test Runs", fmt.Sprintf("%d", summary.TotalRuns)},
-		{"Passes", fmt.Sprintf("%d", summary.PassedRuns)},
-		{"Failures", fmt.Sprintf("%d", summary.FailedRuns)},
-		{"Skips", fmt.Sprintf("%d", summary.SkippedRuns)},
-		{"Pass Percent", summary.PassPercent},
+		{"Passed Test Runs", fmt.Sprintf("%d (%s)", summary.PassedRuns, summary.PassPercent)},
+		{"Flaky Test Runs", fmt.Sprintf("%d (%s)", summary.FlakyTests, summary.FlakyTestPercent)},
+		{"Panicked Tests", fmt.Sprintf("%d", summary.PanickedTests)},
 	}
+	// Only include "Raced Tests" row if race detection is enabled.
+	if raceDetection {
+		summaryData = append(summaryData, []string{"Raced Tests", fmt.Sprintf("%d", summary.RacedTests)})
+	}
+
 	if markdown {
 		for i, row := range summaryData {
 			if i == 0 {

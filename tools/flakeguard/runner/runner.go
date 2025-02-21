@@ -84,6 +84,7 @@ func (r *Runner) RunTestPackages(packages []string) (*reports.TestReport, error)
 		MaxPassRatio:  r.MaxPassRatio,
 	}
 	report.GenerateSummaryData()
+
 	return report, nil
 }
 
@@ -119,6 +120,7 @@ func (r *Runner) RunTestCmd(testCmd []string) (*reports.TestReport, error) {
 		MaxPassRatio:  r.MaxPassRatio,
 	}
 	report.GenerateSummaryData()
+
 	return report, nil
 }
 
