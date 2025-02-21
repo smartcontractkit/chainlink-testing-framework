@@ -1,4 +1,4 @@
-package simple_node_set_test
+package blockchain_test
 
 import (
 	"encoding/json"
