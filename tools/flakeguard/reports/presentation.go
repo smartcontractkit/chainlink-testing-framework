@@ -205,6 +205,7 @@ func renderSummaryTable(w io.Writer, summary *SummaryData, markdown bool, collap
 	summaryData := [][]string{
 		{"Category", "Total"},
 		{"Unique Tests", fmt.Sprintf("%d", summary.UniqueTestsRun)},
+		{"Unique Skipped Tests", fmt.Sprintf("%d", summary.UniqueSkippedTestCount)},
 		{"Test Run Count", fmt.Sprintf("%d", summary.TestRunCount)},
 		{"Panicked Tests", fmt.Sprintf("%d", summary.PanickedTests)},
 		{"Raced Tests", fmt.Sprintf("%d", summary.RacedTests)},
