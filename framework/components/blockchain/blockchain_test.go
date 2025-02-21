@@ -22,7 +22,7 @@ func TestChains(t *testing.T) {
 			input: &Input{
 				Type:  "anvil",
 				Image: "f4hrenh9it/foundry",
-				Port:  "8545",
+				Port:  "8555",
 			},
 			chainId: 31337,
 		},
@@ -30,6 +30,7 @@ func TestChains(t *testing.T) {
 			name: "AnvilZksync",
 			input: &Input{
 				Type: "anvil-zksync",
+				Port: "8011",
 			},
 			chainId: 260,
 		},
