@@ -212,3 +212,107 @@ func TestTimeout(t *testing.T) {
 	time.Sleep(time.Until(deadline))
 	t.Logf("This test should have timed out")
 }
+
+// 1) No subtests at all
+func TestParentNoSubtests(t *testing.T) {
+	t.Parallel()
+
+	t.Log("No subtests, just a single test that passes.")
+	// (Optional) you could also do t.Fail() or t.Fatal() to produce a fail
+}
+
+// 2) All subtests pass, no parent fail
+func TestParentAllPassSubtests(t *testing.T) {
+	t.Parallel()
+	t.Log("Parent does not fail, subtests all pass")
+
+	t.Run("SubtestA", func(t *testing.T) {
+		t.Parallel()
+		t.Log("passes")
+	})
+	t.Run("SubtestB", func(t *testing.T) {
+		t.Parallel()
+		t.Log("passes")
+	})
+}
+
+// 3) All subtests fail, no parent fail
+func TestParentAllFailSubtests(t *testing.T) {
+	t.Parallel()
+	t.Log("Parent does not fail, subtests all fail => typically the parent is marked fail by Go")
+
+	t.Run("FailA", func(t *testing.T) {
+		t.Parallel()
+		t.Fatal("This subtest always fails")
+	})
+	t.Run("FailB", func(t *testing.T) {
+		t.Parallel()
+		t.Fatal("This subtest always fails")
+	})
+}
+
+// 4) Some subtests pass, some fail, parent does NOT do its own fail
+func TestParentSomeFailSubtests(t *testing.T) {
+	t.Parallel()
+	t.Log("Parent does not fail, subtests partially pass/fail => parent is typically fail unless 'zeroOutParentFailsIfSubtestOnlyFails' modifies it")
+
+	t.Run("Pass", func(t *testing.T) {
+		t.Parallel()
+		t.Log("This subtest passes")
+	})
+	t.Run("Fail", func(t *testing.T) {
+		t.Parallel()
+		t.Fatal("This subtest fails")
+	})
+}
+
+// 5) Parent fails *after* subtests
+func TestParentOwnFailAfterSubtests(t *testing.T) {
+	t.Parallel()
+	t.Log("Parent fails after subtests pass => genuine parent-level failure")
+
+	t.Run("Pass1", func(t *testing.T) {
+		t.Parallel()
+		t.Log("This subtest always passes")
+	})
+	t.Run("Pass2", func(t *testing.T) {
+		t.Parallel()
+		t.Log("This subtest always passes")
+	})
+
+	// Finally, parent fails
+	t.Fatal("Parent test fails after subtests pass")
+}
+
+// 6) Parent fails *before* subtests
+func TestParentOwnFailBeforeSubtests(t *testing.T) {
+	t.Parallel()
+	t.Log("Parent fails before subtests => subtests might not even run in real usage, or still get reported, depending on concurrency")
+
+	t.Fatal("Parent test fails immediately")
+
+	t.Run("WouldPassButNeverRuns", func(t *testing.T) {
+		t.Parallel()
+		t.Log("Normally passes, but might not even run now.")
+	})
+}
+
+// 7) Nested subtests: parent -> child -> grandchild
+func TestNestedSubtests(t *testing.T) {
+	t.Parallel()
+	t.Log("Deep nesting example")
+
+	t.Run("Level1", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Level2Pass", func(t *testing.T) {
+			t.Parallel()
+			t.Log("This sub-subtest passes")
+		})
+
+		t.Run("Level2Fail", func(t *testing.T) {
+			t.Parallel()
+			t.Fatal("This sub-subtest fails")
+		})
+	})
+}

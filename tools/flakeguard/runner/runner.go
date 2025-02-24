@@ -565,6 +565,10 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 			log.Warn().Str("parent test", parentTestKey).Msg("expected parent test not found")
 		}
 	}
+
+	// Zero out parent test's failures if they are purely caused by subtest fails
+	zeroOutParentFailsIfSubtestOnlyFails(testDetails, testsWithSubTests)
+
 	for _, result := range testDetails {
 		if result.Runs > expectedRuns { // Panics can introduce double-counting test failures, this is a correction for it
 			if result.Panic {
@@ -593,6 +597,87 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 	}
 
 	return results, nil
+}
+
+// zeroOutParentFailsIfSubtestOnlyFails scans through parent tests in `testDetails`.
+// If a parent test's failures only reference subtests (no genuine parent-level lines),
+// we zero out the parent's failures, so the parent is considered passed.
+func zeroOutParentFailsIfSubtestOnlyFails(
+	testDetails map[string]*reports.TestResult,
+	testsWithSubTests map[string][]string,
+) {
+	for parentTestKey, subTests := range testsWithSubTests {
+		parentResult, ok := testDetails[parentTestKey]
+		if !ok {
+			continue
+		}
+		// If the parent has zero failures, no need to adjust.
+		if parentResult.Failures == 0 {
+			continue
+		}
+
+		parentHasOwnFailure := false
+
+		// For each run's fail lines
+		for _, failLines := range parentResult.FailedOutputs {
+			for _, line := range failLines {
+
+				// 1) If line doesn't even mention parent test name (e.g. "example_tests_test.go:315: This sub-subtest fails"),
+				//    skip it. It's presumably sub-subtest detail.
+				if !strings.Contains(line, parentResult.TestName) {
+					continue
+				}
+
+				// 2) If it's the summary line, e.g. "--- FAIL: TestNestedSubtests (0.00s)",
+				//    skip it. It's not a genuine parent-level fail for your purposes.
+				if strings.HasPrefix(line, "--- FAIL: "+parentResult.TestName+" (") {
+					continue
+				}
+
+				// 3) Check if it references "TestParent/SubtestName"
+				//    e.g. "TestNestedSubtests/Level1"
+				isSubtestLine := false
+				for _, subName := range subTests {
+					expected := parentResult.TestName + "/" + subName
+					if strings.Contains(line, expected) {
+						isSubtestLine = true
+						break
+					}
+				}
+
+				// If we *still* can’t identify it as purely subtest-based => it's a genuine parent-level fail.
+				if !isSubtestLine {
+					parentHasOwnFailure = true
+					break
+				}
+			}
+			if parentHasOwnFailure {
+				break
+			}
+		}
+
+		// If the parent has no genuine failure lines, zero out its fail
+		if !parentHasOwnFailure {
+			parentResult.Runs -= parentResult.Failures
+			parentResult.Failures = 0
+
+			// Adjust successes if needed
+			if parentResult.Runs < parentResult.Successes {
+				parentResult.Successes = parentResult.Runs
+			}
+
+			// Recompute pass ratio
+			if parentResult.Runs > 0 {
+				parentResult.PassRatio = float64(parentResult.Successes) / float64(parentResult.Runs)
+			} else {
+				// If no runs remain, we consider it "passed"
+				parentResult.PassRatio = 1
+			}
+
+			// Clear the parent's failed outputs
+			parentResult.FailedOutputs = make(map[string][]string)
+		}
+	}
 }
 
 // attributePanicToTest properly attributes panics to the test that caused them.
