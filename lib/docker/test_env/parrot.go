@@ -12,6 +12,8 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/docker"
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/k8s/environment"
+	helm_parrot "github.com/smartcontractkit/chainlink-testing-framework/lib/k8s/pkg/helm/parrot"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
@@ -64,6 +66,13 @@ func NewParrot(networks []string, opts ...EnvComponentOption) *Parrot {
 func ConnectParrot(url string) *Parrot {
 	return &Parrot{
 		Client: parrot.NewClient(url),
+	}
+}
+
+// ConnectParrotTestEnv connects to an existing Parrot server in a running test environment.
+func ConnectParrotTestEnv(e *environment.Environment) *Parrot {
+	return &Parrot{
+		Client: parrot.NewClient(e.URLs[helm_parrot.LocalURLsKey][0]),
 	}
 }
 
