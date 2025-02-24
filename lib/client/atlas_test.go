@@ -8,8 +8,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/ptr"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/ptr"
 )
 
 // TestAtlasClient_GetTransactionDetails_Success verifies that GetTransactionDetails successfully parses a valid response.
