@@ -20,7 +20,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/parrot"
 )
 
-const defaultParrotImage = "kalverra/parrot:v0.5.0"
+const defaultParrotImage = "kalverra/parrot"
 
 // Parrot is a test environment component that wraps a Parrot server.
 type Parrot struct {
@@ -120,7 +120,10 @@ func (p *Parrot) StartContainer() error {
 }
 
 func (p *Parrot) getContainerRequest() (tc.ContainerRequest, error) {
-	pImage := mirror.AddMirrorToImageIfSet(defaultParrotImage)
+	pImage := mirror.AddMirrorToImageIfSet("parrot")
+	if pImage == "" || pImage == "parrot" {
+		pImage = defaultParrotImage
+	}
 
 	return tc.ContainerRequest{
 		Name:         p.ContainerName,
