@@ -256,7 +256,7 @@ func (r *Runner) runCmd(testCmd []string, runIndex int) (tempFilePath string, pa
 		// Non-zero exit code => test failure
 		if ec.ExitCode() != 0 {
 			passed = false
-			err = nil // We’ll treat non-zero as not an actual error, but a test fail
+			err = nil // We'll treat non-zero as not an actual error, but a test fail
 			return
 		}
 		// Zero exit code => pass
@@ -283,7 +283,7 @@ type entry struct {
 
 // parseTestResults orchestrates reading and parsing multiple JSON output files.
 func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, error) {
-	// We’ll store test results keyed by "package/test"
+	// We'll store test results keyed by "package/test"
 	testResultsMap := make(map[string]*reports.TestResult)
 
 	// Track packages that had panics or data races
@@ -292,9 +292,6 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 
 	// Keep track of package-level outputs
 	packageLevelOutputs := make(map[string][]string)
-
-	// We'll no longer keep testsWithSubTests
-	// or pass it around to zeroOut logic.
 
 	expectedRuns := r.RunCount
 
@@ -499,21 +496,63 @@ func (r *Runner) handleNormalLine(
 	}
 }
 
-// normalizeParentFailures adjusts a test’s counts if the failures are due solely to subtests.
-// It uses the parent's root name (i.e. without nested subtest parts) when calling the helper.
+/*
+failedLinesIndicateRealParentFailure examines the failure output lines for a given parent test,
+and determines whether the parent itself has failed—not just one or more of its subtests.
+A "real" parent failure is identified by:
+ 1. The presence of a summary line in the output that begins with the expected prefix,
+    e.g. "--- FAIL: TestParentWithFailingSubtest (".
+ 2. The presence of a file error line (indicated by ".go:") that mentions "parent"
+    (case-insensitive), which serves as an additional heuristic to confirm that the parent test itself failed.
+
+If both conditions are met, the function returns true; otherwise, it returns false.
+Parameters:
+  - parentName: the name of the parent test (e.g. "TestParentWithFailingSubtest").
+  - failOuts: a map (e.g. "stdout", "stderr") of output lines collected from the test run.
+
+Returns:
+  - true if a real parent-level failure is detected, false otherwise.
+*/
+func failedLinesIndicateRealParentFailure(parentName string, failOuts map[string][]string) bool {
+	summaryPrefix := "--- FAIL: " + parentName + " ("
+	foundSummary := false
+	for _, lines := range failOuts {
+		for _, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, summaryPrefix) {
+				foundSummary = true
+				break
+			}
+		}
+	}
+	if !foundSummary {
+		return false
+	}
+	// Look for a parent's file error line that mentions "parent".
+	for _, lines := range failOuts {
+		for _, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if strings.Contains(trimmed, ".go:") && strings.Contains(strings.ToLower(trimmed), "parent") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// normalizeParentFailures processes only parent test results (those without "/" in TestName).
+// If only subtest failures are present (i.e. no real parent-level failure detected), the parent's
+// result is marked as successful (Failures set to 0, Successes = Runs, PassRatio = 1.0) while leaving the run count intact.
 func normalizeParentFailures(tests map[string]*reports.TestResult) {
 	for _, res := range tests {
-		// Skip normalization for subtests (they have a "/" in their TestName).
+		// Skip subtests (they have "/" in their TestName).
 		if strings.Contains(res.TestName, "/") {
 			continue
 		}
 		if res.Failures == 0 {
 			continue
 		}
-		// For parent tests, use the TestName as the root name.
 		parentRootName := res.TestName
-		// If no real parent-level failure is detected, mark the parent as success
-		// while keeping the total run count intact.
 		if !failedLinesIndicateRealParentFailure(parentRootName, res.FailedOutputs) {
 			res.Failures = 0
 			res.Successes = res.Runs
@@ -534,32 +573,6 @@ func countLeadingSpaces(s string) int {
 		}
 	}
 	return count
-}
-
-// failedLinesIndicateRealParentFailure scans the failure outputs for a file stacktrace line
-// that indicates a parent's failure. We assume that such a line starts with "/" and has fewer
-// than 8 leading spaces. We also skip any line that clearly belongs to a subtest by checking
-// that it does not contain the parent's root name immediately followed by a slash.
-func failedLinesIndicateRealParentFailure(parentName string, failOuts map[string][]string) bool {
-	for _, lines := range failOuts {
-		for _, line := range lines {
-			trimmed := strings.TrimLeft(line, " ")
-			// Look for a stacktrace line starting with "/" (file paths)
-			if strings.HasPrefix(trimmed, "/") {
-				indent := countLeadingSpaces(line)
-				// In our logs, subtest stacktraces are indented 8 or more spaces.
-				if indent < 8 {
-					// If the line contains the parent's name immediately followed by "/", skip it.
-					if strings.Contains(line, parentName+"/") {
-						continue
-					}
-					// Otherwise, we have a parent-level failure.
-					return true
-				}
-			}
-		}
-	}
-	return false
 }
 
 // getOrCreateTestResult is a small helper to create/lookup a TestResult struct in the map.

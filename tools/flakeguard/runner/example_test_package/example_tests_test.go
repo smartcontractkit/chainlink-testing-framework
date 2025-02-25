@@ -325,6 +325,17 @@ func TestParentWithFailingSubtest(t *testing.T) {
 	t.Run("PassingSubtest", func(t *testing.T) {
 		// pass
 	})
+}
 
-	// t.Errorf("parent fails")
+func TestParentWithFailingParentAndSubtest(t *testing.T) {
+	// Run a subtest that fails.
+	t.Run("FailingSubtest", func(t *testing.T) {
+		t.Errorf("This subtest always fails.")
+	})
+	// Run a subtest that passes.
+	t.Run("PassingSubtest", func(t *testing.T) {
+		// pass
+	})
+	// The parent test also fails.
+	t.Errorf("parent fails")
 }

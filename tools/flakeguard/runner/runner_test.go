@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -155,6 +156,18 @@ func TestRun(t *testing.T) {
 					exactRuns:   &defaultTestRunCount,
 					allFailures: true,
 				},
+				"TestParentWithFailingParentAndSubtest": {
+					exactRuns:   &defaultTestRunCount,
+					allFailures: true,
+				},
+				"TestParentWithFailingParentAndSubtest/FailingSubtest": {
+					exactRuns:   &defaultTestRunCount,
+					allFailures: true,
+				},
+				"TestParentWithFailingParentAndSubtest/PassingSubtest": {
+					exactRuns:    &defaultTestRunCount,
+					allSuccesses: true,
+				},
 			},
 		},
 		{
@@ -279,6 +292,36 @@ func TestRun(t *testing.T) {
 				"TestParentWithFailingSubtest/PassingSubtest": {
 					allSuccesses: true,
 					exactRuns:    &[]int{2}[0],
+				},
+			},
+		},
+		{
+			name: "parent fails and subtest fails",
+			runner: Runner{
+				ProjectPath:      "./",
+				Verbose:          true,
+				RunCount:         2, // run it a couple times
+				UseRace:          false,
+				SkipTests:        []string{},
+				SelectTests:      []string{"TestParentWithFailingParentAndSubtest"},
+				FailFast:         false,
+				CollectRawOutput: true,
+			},
+			expectedTests: map[string]*expectedTestResult{
+				// The parent test: we expect it to fail every run because it prints an error
+				"TestParentWithFailingParentAndSubtest": {
+					exactRuns:   &[]int{2}[0],
+					allFailures: true,
+				},
+				// The failing subtest: it fails on all runs
+				"TestParentWithFailingParentAndSubtest/FailingSubtest": {
+					exactRuns:   &[]int{2}[0],
+					allFailures: true,
+				},
+				// The passing subtest: it passes on all runs
+				"TestParentWithFailingParentAndSubtest/PassingSubtest": {
+					exactRuns:    &[]int{2}[0],
+					allSuccesses: true,
 				},
 			},
 		},
@@ -677,14 +720,80 @@ func TestGetOrCreateTestResult(t *testing.T) {
 	}
 }
 
+func TestFailedLinesIndicateRealParentFailure(t *testing.T) {
+	tests := []struct {
+		name           string
+		parentName     string
+		failOuts       map[string][]string
+		expectRealFail bool
+	}{
+		{
+			name:       "Only subtest failure – no parent failure",
+			parentName: "TestParentWithFailingSubtest",
+			failOuts: map[string][]string{
+				"stdout": {
+					"=== RUN   TestParentWithFailingSubtest\n",
+					"=== RUN   TestParentWithFailingSubtest/FailingSubtest\n",
+					"    example_tests_test.go:323: This subtest always fails.\n",
+					"=== RUN   TestParentWithFailingSubtest/PassingSubtest\n",
+					"--- FAIL: TestParentWithFailingSubtest (0.00s)\n",
+					"    --- FAIL: TestParentWithFailingSubtest/FailingSubtest (0.00s)\n",
+					"    --- PASS: TestParentWithFailingSubtest/PassingSubtest (0.00s)\n",
+					"FAIL\n",
+					"FAIL\n",
+				},
+			},
+			expectRealFail: false,
+		},
+		{
+			name:       "Parent and subtest failure – parent error summary present (from JSON output)",
+			parentName: "TestParentWithFailingSubtest",
+			failOuts: map[string][]string{
+				"stdout": {
+					"=== RUN   TestParentWithFailingSubtest\n",
+					"    example_tests_test.go:329: parent fails\n",
+					"--- FAIL: TestParentWithFailingSubtest (0.00s)\n",
+					// (Subtest outputs would be collected separately.)
+				},
+			},
+			expectRealFail: true,
+		},
+		{
+			name:       "No .go error lines",
+			parentName: "TestParent",
+			failOuts: map[string][]string{
+				"stderr": {"Some error occurred", "Another error message"},
+			},
+			expectRealFail: false,
+		},
+		{
+			name:       "Subtest error only (with parent's name embedded)",
+			parentName: "TestParent",
+			failOuts: map[string][]string{
+				"stdout": {"    example_tests_test.go:45: TestParent/SubTest error\n"},
+			},
+			expectRealFail: false,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := failedLinesIndicateRealParentFailure(tc.parentName, tc.failOuts)
+			if result != tc.expectRealFail {
+				t.Errorf("For %q, expected %v, got %v. failOuts: %v", tc.name, tc.expectRealFail, result, tc.failOuts)
+			}
+		})
+	}
+}
+
 func TestNormalizeParentFailures(t *testing.T) {
-	// Test case: Parent test with only subtest-level failures.
-	// Parent entry should be normalized (failures cleared) while subtest entries remain unchanged.
+	// Keys for our test results.
 	parentKey := "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package/TestParentWithFailingSubtest"
 	subFailKey := parentKey + "/FailingSubtest"
 	subPassKey := parentKey + "/PassingSubtest"
 
-	testsMap := map[string]*reports.TestResult{
+	// Test case 1: Parent test with only subtest-level failures.
+	// In this scenario (from JSON output) the parent's outputs do not include a parent-level error.
+	testsMap1 := map[string]*reports.TestResult{
 		parentKey: {
 			TestName:    "TestParentWithFailingSubtest",
 			TestPackage: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
@@ -694,10 +803,10 @@ func TestNormalizeParentFailures(t *testing.T) {
 			PassRatio:   0,
 			FailedOutputs: map[string][]string{
 				"stdout": {
-					"--- FAIL: TestParentWithFailingSubtest (0.00s)",
-					"    --- FAIL: TestParentWithFailingSubtest/FailingSubtest (0.00s)",
-					"        /Users/xxx/example_tests_test.go:323: This subtest always fails.",
-					"FAIL",
+					"=== RUN   TestParentWithFailingSubtest\n",
+					"    --- FAIL: TestParentWithFailingSubtest/FailingSubtest (0.00s)\n",
+					"    example_tests_test.go:323: This subtest always fails.\n",
+					"FAIL\n",
 				},
 			},
 		},
@@ -710,9 +819,10 @@ func TestNormalizeParentFailures(t *testing.T) {
 			PassRatio:   0,
 			FailedOutputs: map[string][]string{
 				"stdout": {
-					"--- FAIL: TestParentWithFailingSubtest/FailingSubtest (0.00s)",
-					"        /Users/xxx/example_tests_test.go:323: This subtest always fails.",
-					"FAIL",
+					"=== RUN   TestParentWithFailingSubtest/FailingSubtest\n",
+					"    example_tests_test.go:323: This subtest always fails.\n",
+					"    --- FAIL: TestParentWithFailingSubtest/FailingSubtest (0.00s)\n",
+					"FAIL\n",
 				},
 			},
 		},
@@ -727,94 +837,102 @@ func TestNormalizeParentFailures(t *testing.T) {
 		},
 	}
 
-	normalizeParentFailures(testsMap)
+	normalizeParentFailures(testsMap1)
 
-	// Parent entry should now be marked as success (failures cleared)
-	parentRes := testsMap[parentKey]
-	if parentRes.Failures != 0 {
-		t.Errorf("expected parent Failures to be 0, got %d", parentRes.Failures)
+	// For testsMap1, no parent-level error is detected so the parent's failures are cleared.
+	parentRes1 := testsMap1[parentKey]
+	if parentRes1.Failures != 0 {
+		t.Errorf("expected parent Failures to be 0, got %d", parentRes1.Failures)
 	}
-	if parentRes.Successes != parentRes.Runs {
-		t.Errorf("expected parent Successes (%d) to equal Runs (%d)", parentRes.Successes, parentRes.Runs)
+	if parentRes1.Successes != parentRes1.Runs {
+		t.Errorf("expected parent Successes (%d) to equal Runs (%d)", parentRes1.Successes, parentRes1.Runs)
 	}
-	if parentRes.PassRatio != 1.0 {
-		t.Errorf("expected parent PassRatio to be 1.0, got %f", parentRes.PassRatio)
+	if parentRes1.PassRatio != 1.0 {
+		t.Errorf("expected parent PassRatio to be 1.0, got %f", parentRes1.PassRatio)
 	}
-	if len(parentRes.FailedOutputs) != 0 {
-		t.Errorf("expected parent FailedOutputs to be cleared, got %v", parentRes.FailedOutputs)
+	if len(parentRes1.FailedOutputs) != 0 {
+		t.Errorf("expected parent FailedOutputs to be cleared, got %v", parentRes1.FailedOutputs)
 	}
 
-	// Subtest entries should remain unchanged.
-	subFailRes := testsMap[subFailKey]
+	// Test case 2: Parent test with both subtest and parent-level failures.
+	// Here the JSON output for the parent includes a line indicating a parent-level error:
+	// "    example_tests_test.go:329: parent fails\n"
+	testsMap2 := map[string]*reports.TestResult{
+		parentKey: {
+			TestName:    "TestParentWithFailingSubtest",
+			TestPackage: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
+			Runs:        2,
+			Failures:    2,
+			Successes:   0,
+			PassRatio:   0,
+			FailedOutputs: map[string][]string{
+				"stdout": {
+					"=== RUN   TestParentWithFailingSubtest\n",
+					"    example_tests_test.go:329: parent fails\n",
+					"--- FAIL: TestParentWithFailingSubtest (0.00s)\n",
+				},
+			},
+		},
+		subFailKey: {
+			TestName:    "TestParentWithFailingSubtest/FailingSubtest",
+			TestPackage: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
+			Runs:        2,
+			Failures:    2,
+			Successes:   0,
+			PassRatio:   0,
+			FailedOutputs: map[string][]string{
+				"stdout": {
+					"=== RUN   TestParentWithFailingSubtest/FailingSubtest\n",
+					"    example_tests_test.go:323: This subtest always fails.\n",
+					"    --- FAIL: TestParentWithFailingSubtest/FailingSubtest (0.00s)\n",
+				},
+			},
+		},
+		subPassKey: {
+			TestName:      "TestParentWithFailingSubtest/PassingSubtest",
+			TestPackage:   "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
+			Runs:          2,
+			Failures:      0,
+			Successes:     2,
+			PassRatio:     1,
+			FailedOutputs: map[string][]string{},
+		},
+	}
+
+	normalizeParentFailures(testsMap2)
+
+	// In testsMap2, because a parent-level error is detected, the parent's failure counts remain unchanged.
+	parentRes2 := testsMap2[parentKey]
+	if parentRes2.Failures != 2 {
+		t.Errorf("expected parent Failures to remain 2, got %d", parentRes2.Failures)
+	}
+	if parentRes2.Runs != 2 {
+		t.Errorf("expected parent Runs to remain 2, got %d", parentRes2.Runs)
+	}
+	if parentRes2.PassRatio != 0 {
+		t.Errorf("expected parent PassRatio to remain 0, got %f", parentRes2.PassRatio)
+	}
+	expectedOutputs2 := map[string][]string{
+		"stdout": {
+			"=== RUN   TestParentWithFailingSubtest\n",
+			"    example_tests_test.go:329: parent fails\n",
+			"--- FAIL: TestParentWithFailingSubtest (0.00s)\n",
+		},
+	}
+	if !reflect.DeepEqual(parentRes2.FailedOutputs, expectedOutputs2) {
+		t.Errorf("expected parent FailedOutputs to remain unchanged, got %v", parentRes2.FailedOutputs)
+	}
+
+	// Subtest entries remain unchanged.
+	subFailRes := testsMap2[subFailKey]
 	if subFailRes.Failures != 2 || subFailRes.Successes != 0 {
 		t.Errorf("expected subtest (FailingSubtest) counts to remain unchanged, got Failures=%d, Successes=%d",
 			subFailRes.Failures, subFailRes.Successes)
 	}
-	subPassRes := testsMap[subPassKey]
+	subPassRes := testsMap2[subPassKey]
 	if subPassRes.Failures != 0 || subPassRes.Successes != 2 {
 		t.Errorf("expected subtest (PassingSubtest) counts to remain unchanged, got Failures=%d, Successes=%d",
 			subPassRes.Failures, subPassRes.Successes)
-	}
-}
-
-func TestFailedLinesIndicateRealParentFailure(t *testing.T) {
-	tests := []struct {
-		name           string
-		parentName     string
-		failOuts       map[string][]string
-		expectRealFail bool
-	}{
-		{
-			name:       "Only subtest failure – no parent failure",
-			parentName: "TestParentWithFailingSubtest",
-			failOuts: map[string][]string{
-				"stdout": {
-					"--- FAIL: TestParentWithFailingSubtest (0.00s)",
-					"    --- FAIL: TestParentWithFailingSubtest/FailingSubtest (0.00s)",
-					"        /Users/xxx/example_tests_test.go:323: This subtest always fails.",
-					"FAIL",
-				},
-			},
-			expectRealFail: false,
-		},
-		{
-			name:       "Parent and subtest failure – parent error stacktrace present",
-			parentName: "TestParentWithFailingSubtest",
-			failOuts: map[string][]string{
-				"stdout": {
-					"--- FAIL: TestParentWithFailingSubtest (0.00s)",
-					"    --- FAIL: TestParentWithFailingSubtest/FailingSubtest (0.00s)",
-					"        /Users/xxx/example_tests_test.go:323: This subtest always fails.",
-					"    /Users/xxx/example_tests_test.go:329: parent fails",
-					"FAIL",
-				},
-			},
-			expectRealFail: true,
-		},
-		{
-			name:       "No stacktrace lines",
-			parentName: "TestParent",
-			failOuts: map[string][]string{
-				"stderr": {"Some error occurred", "Another error message"},
-			},
-			expectRealFail: false,
-		},
-		{
-			name:       "Subtest stacktrace only (with parent's name embedded)",
-			parentName: "TestParent",
-			failOuts: map[string][]string{
-				"stdout": {"    /Users/path/to/TestParent/SubTest:45: subtest error"},
-			},
-			expectRealFail: false,
-		},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			result := failedLinesIndicateRealParentFailure(tc.parentName, tc.failOuts)
-			if result != tc.expectRealFail {
-				t.Errorf("For %q, expected %v, got %v. failOuts: %v", tc.name, tc.expectRealFail, result, tc.failOuts)
-			}
-		})
 	}
 }
 
