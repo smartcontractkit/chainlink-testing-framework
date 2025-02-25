@@ -2,8 +2,6 @@ module github.com/smartcontractkit/chainlink-testing-framework/framework/example
 
 go 1.24
 
-toolchain go1.24.0
-
 replace (
 	github.com/smartcontractkit/chainlink-testing-framework/framework => ../../
 	github.com/smartcontractkit/chainlink-testing-framework/havoc => ../../../havoc
