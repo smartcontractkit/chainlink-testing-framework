@@ -26,7 +26,7 @@ type Chart struct {
 	Path    string
 	Version string
 	Props   *Props
-	Values  *map[string]interface{}
+	Values  *map[string]any
 }
 
 func (m Chart) IsDeploymentNeeded() bool {
@@ -45,11 +45,11 @@ func (m Chart) GetVersion() string {
 	return m.Version
 }
 
-func (m Chart) GetProps() interface{} {
+func (m Chart) GetProps() any {
 	return m.Props
 }
 
-func (m Chart) GetValues() *map[string]interface{} {
+func (m Chart) GetValues() *map[string]any {
 	return m.Values
 }
 
@@ -87,51 +87,45 @@ func (m Chart) ExportData(e *environment.Environment) error {
 	return nil
 }
 
-func defaultProps() map[string]interface{} {
+func defaultProps() map[string]any {
 	internalRepo := os.Getenv(config.EnvVarInternalDockerRepo)
-	mockserverRepo := "parrot"
+	parrotRepo := "kalverra/parrot"
 	if internalRepo != "" {
-		mockserverRepo = fmt.Sprintf("%s/parrot", internalRepo)
+		parrotRepo = fmt.Sprintf("%s/parrot", internalRepo)
 	}
 
-	return map[string]interface{}{
-		"replicaCount": "1",
-		"service": map[string]interface{}{
-			"type": "NodePort",
-			"port": "1080",
+	return map[string]any{
+		"image": map[string]any{
+			"repository":      parrotRepo,
+			"version":         "0.5.0", //TODO: Update to latest version
+			"imagePullPolicy": "IfNotPresent",
 		},
-		"app": map[string]interface{}{
-			"logLevel":               "INFO",
-			"serverPort":             "1080",
-			"mountedConfigMapName":   "mockserver-config",
-			"propertiesFileName":     "mockserver.properties",
-			"readOnlyRootFilesystem": "false",
-			"resources": map[string]interface{}{
-				"requests": map[string]interface{}{
-					"cpu":    "200m",
-					"memory": "256Mi",
-				},
-				"limits": map[string]interface{}{
-					"cpu":    "200m",
-					"memory": "256Mi",
-				},
+		"logLevel": "trace",
+		"resources": map[string]any{
+			"limits": map[string]any{
+				"cpu":    "250m",
+				"memory": "256Mi",
 			},
 		},
-		"image": map[string]interface{}{
-			"repository": mockserverRepo,
-			"version":    "5.15.0",
-			"snapshot":   false,
-			"pullPolicy": "IfNotPresent",
+		"service": map[string]any{
+			"type": "ClusterIP",
+			"port": 80,
+		},
+		"persistence": map[string]any{
+			"enabled":    true,
+			"accessMode": "ReadWriteOnce",
+			"size":       "1Gi",
+			"mountPath":  "/app",
 		},
 	}
 }
 
-func New(props map[string]interface{}) environment.ConnectedChart {
+func New(props map[string]any) environment.ConnectedChart {
 	return NewVersioned("", props)
 }
 
 // NewVersioned enables choosing a specific helm chart version
-func NewVersioned(helmVersion string, props map[string]interface{}) environment.ConnectedChart {
+func NewVersioned(helmVersion string, props map[string]any) environment.ConnectedChart {
 	dp := defaultProps()
 	config.MustMerge(&dp, props)
 	chartPath := "chainlink-qa/parrot"
