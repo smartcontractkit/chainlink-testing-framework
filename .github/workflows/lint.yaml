@@ -29,7 +29,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: stable
+          go-version: '1.24.0'
       - name: Install gomods
         run: go install github.com/jmank88/gomods@v0.1.4
       - name: Check out code
@@ -78,6 +78,10 @@ jobs:
             path: ./tools/workflowresultparser/
           - name: parrot
             path: ./parrot/
+          - name: wasp
+            path: ./wasp/
+          - name: seth
+            path: ./seth/
     steps:
       - name: Check out Code
         uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
@@ -88,7 +92,7 @@ jobs:
           use-go-cache: true
           go-cache-dep-path: ${{ matrix.project.path }}go.sum
       - name: golangci-lint ${{ needs.tools.outputs.golangci-lint-version }}
-        uses: golangci/golangci-lint-action@818ec4d51a1feacefc42ff1b3ec25d4962690f39 # v6.4.1
+        uses: golangci/golangci-lint-action@2226d7cb06a077cd73e56eedd38eecad18e5d837 # v6.5.0
         with:
           version: v${{ needs.tools.outputs.golangci-lint-version }}
           args: --out-format checkstyle:golangci-lint-report.xml
