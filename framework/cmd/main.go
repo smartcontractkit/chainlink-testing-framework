@@ -3,14 +3,15 @@ package main
 import (
 	"embed"
 	"fmt"
-	"github.com/pelletier/go-toml"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/urfave/cli/v2"
 	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pelletier/go-toml"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/urfave/cli/v2"
 )
 
 //go:embed observability/*
@@ -202,6 +203,39 @@ func main() {
 							return blockscoutUp(rpc)
 						},
 					},
+				},
+			},
+			{
+				Name:  "ci",
+				Usage: "Analyze CI job durations and statistics",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "repository",
+						Aliases:  []string{"r"},
+						Usage:    "GitHub repository in format owner/repo",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "workflow",
+						Aliases:  []string{"w"},
+						Usage:    "Name of GitHub workflow to analyze",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:    "days",
+						Aliases: []string{"d"},
+						Value:   "1",
+						Usage:   "How many days to analyze",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					repo := c.String("repository")
+					parts := strings.Split(repo, "/")
+					if len(parts) != 2 {
+						return fmt.Errorf("repository must be in format owner/repo, got: %s", repo)
+					}
+
+					return AnalyzeCIRuns(parts[0], parts[1], c.String("workflow"), c.Int("days"))
 				},
 			},
 		},
