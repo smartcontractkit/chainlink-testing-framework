@@ -50,7 +50,7 @@ func TestK8sChaos(t *testing.T) {
 				_, err := cr.RunPodFail(context.Background(),
 					havoc.PodFailCfg{
 						Namespace:         cfg.Namespace,
-						LabelKey:          "instance",
+						LabelKey:          "app.kubernetes.io/instance",
 						LabelValues:       []string{"geth-1337"},
 						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
 					})
@@ -64,7 +64,7 @@ func TestK8sChaos(t *testing.T) {
 				_, err := cr.RunPodFail(context.Background(),
 					havoc.PodFailCfg{
 						Namespace:         cfg.Namespace,
-						LabelKey:          "instance",
+						LabelKey:          "app.kubernetes.io/instance",
 						LabelValues:       []string{"geth-2337"},
 						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
 					})
