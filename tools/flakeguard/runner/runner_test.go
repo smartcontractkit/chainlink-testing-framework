@@ -632,334 +632,6 @@ func TestOmitOutputsOnSuccess(t *testing.T) {
 	require.Empty(t, testPassResult.Outputs, "expected no captured outputs due to OmitOutputsOnSuccess and a successful test")
 }
 
-func TestZeroOutParentFailsIfSubtestOnlyFails(t *testing.T) {
-
-	// 1) All subtests fail, but parent has no parent-level fail line
-	t.Run("AllSubtestsFailButNoParentFailLine => zero out parent's fail", func(t *testing.T) {
-		// We'll simulate "TestParentAllFailSubtests" from the logs.
-		// The parent is failing, but all lines mention subtests (FailA, FailB).
-		testDetails := map[string]*reports.TestResult{
-			"pkg/TestParentAllFailSubtests": {
-				TestName:    "TestParentAllFailSubtests",
-				TestPackage: "pkg",
-				Runs:        2, // total runs
-				Failures:    1, // parent is marked fail in run2
-				Successes:   1,
-				PassRatio:   0.5,
-				FailedOutputs: map[string][]string{
-					"run2": {
-						// Lines from your logs referencing subtests only:
-						"=== CONT  TestParentAllFailSubtests/FailA",
-						"    example_tests_test.go:246: This subtest always fails",
-						"    --- FAIL: TestParentAllFailSubtests/FailA (0.00s)",
-						"=== CONT  TestParentAllFailSubtests/FailB",
-						"    example_tests_test.go:250: This subtest always fails",
-						"    --- FAIL: TestParentAllFailSubtests/FailB (0.00s)",
-						// Notice we do NOT include a line like
-						// "FAIL: TestParentAllFailSubtests (0.00s)"
-						// That would be a genuine parent-level fail.
-					},
-				},
-			},
-		}
-		testsWithSubTests := map[string][]string{
-			"pkg/TestParentAllFailSubtests": {"FailA", "FailB"},
-		}
-
-		zeroOutParentFailsIfSubtestOnlyFails(testDetails, testsWithSubTests)
-
-		parent := testDetails["pkg/TestParentAllFailSubtests"]
-		// Because all fail lines reference subtests only,
-		// we expect parent's failure to be zeroed out:
-		assert.Equal(t, 0, parent.Failures)
-		assert.Equal(t, 1, parent.Runs, "2 => 1 after removing that 1 failure")
-		assert.InDelta(t, 1.0, parent.PassRatio, 0.0001)
-		assert.Empty(t, parent.FailedOutputs)
-	})
-
-	// 2) Some subtests fail, parent has no real parent-level line => zero out
-	t.Run("SomeSubtestsFailButNoParentFailLine => zero out parent's fail", func(t *testing.T) {
-		// Example: "TestParentSomeFailSubtests" => partial fail in subtest "Fail".
-		testDetails := map[string]*reports.TestResult{
-			"pkg/TestParentSomeFailSubtests": {
-				TestName:    "TestParentSomeFailSubtests",
-				TestPackage: "pkg",
-				Runs:        3,
-				Failures:    1,
-				Successes:   2,
-				PassRatio:   2.0 / 3.0,
-				FailedOutputs: map[string][]string{
-					"run2": {
-						// Real lines from logs referencing subtest "Fail" only:
-						"=== CONT  TestParentSomeFailSubtests/Fail",
-						"    example_tests_test.go:265: This subtest fails",
-						"    --- FAIL: TestParentSomeFailSubtests/Fail (0.00s)",
-					},
-				},
-			},
-		}
-		testsWithSubTests := map[string][]string{
-			"pkg/TestParentSomeFailSubtests": {"Pass", "Fail"},
-		}
-
-		zeroOutParentFailsIfSubtestOnlyFails(testDetails, testsWithSubTests)
-
-		parent := testDetails["pkg/TestParentSomeFailSubtests"]
-		assert.Equal(t, 0, parent.Failures, "parent test should have 0 failures now")
-		assert.Equal(t, 2, parent.Runs, "3 => 2 after removing 1 failure")
-		assert.InDelta(t, 1.0, parent.PassRatio, 0.0001)
-		assert.Empty(t, parent.FailedOutputs)
-	})
-
-	// 3) Parent fails before subtests => genuine fail remains
-	t.Run("ParentFailsBeforeSubtests => remains failing", func(t *testing.T) {
-		// Example: “TestParentOwnFailBeforeSubtests” => logs show a parent-level line
-		testDetails := map[string]*reports.TestResult{
-			"pkg/TestParentOwnFailBeforeSubtests": {
-				TestName:    "TestParentOwnFailBeforeSubtests",
-				TestPackage: "pkg",
-				Runs:        1,
-				Failures:    1,
-				Successes:   0,
-				PassRatio:   0.0,
-				FailedOutputs: map[string][]string{
-					"run1": {
-						// A genuine parent-level fail line:
-						"Error in TestParentOwnFailBeforeSubtests: parent test fails immediately",
-						// This also references subtest, but that doesn't matter;
-						// parent line is enough to keep it failing.
-						"Error in TestParentOwnFailBeforeSubtests/Pass1: subtest never ran",
-					},
-				},
-			},
-		}
-		testsWithSubTests := map[string][]string{
-			"pkg/TestParentOwnFailBeforeSubtests": {"Pass1", "Pass2"},
-		}
-
-		zeroOutParentFailsIfSubtestOnlyFails(testDetails, testsWithSubTests)
-
-		parent := testDetails["pkg/TestParentOwnFailBeforeSubtests"]
-		assert.Equal(t, 1, parent.Failures, "still fails, genuine parent-level line")
-		assert.Equal(t, 1, parent.Runs)
-		assert.InDelta(t, 0.0, parent.PassRatio, 0.0001)
-		assert.NotEmpty(t, parent.FailedOutputs)
-	})
-
-	// 4) Parent fails after subtests pass => remains failing
-	t.Run("ParentFailsAfterSubtests => genuine fail remains", func(t *testing.T) {
-		testDetails := map[string]*reports.TestResult{
-			"pkg/TestParentOwnFailAfterSubtests": {
-				TestName:    "TestParentOwnFailAfterSubtests",
-				TestPackage: "pkg",
-				Runs:        2,
-				Failures:    1,
-				Successes:   1,
-				PassRatio:   0.5,
-				FailedOutputs: map[string][]string{
-					"run2": {
-						// Contains parent-level line referencing "TestParentOwnFailAfterSubtests" alone:
-						"Error in TestParentOwnFailAfterSubtests: parent test fails after subtests pass",
-						// Subtests lines also appear, but the parent-level line is enough
-						"Error in TestParentOwnFailAfterSubtests/Pass1: subtest passes",
-						"Error in TestParentOwnFailAfterSubtests/Pass2: subtest passes",
-					},
-				},
-			},
-		}
-		testsWithSubTests := map[string][]string{
-			"pkg/TestParentOwnFailAfterSubtests": {"Pass1", "Pass2"},
-		}
-
-		zeroOutParentFailsIfSubtestOnlyFails(testDetails, testsWithSubTests)
-
-		parent := testDetails["pkg/TestParentOwnFailAfterSubtests"]
-		assert.Equal(t, 1, parent.Failures, "still fails, found genuine parent-level line")
-		assert.Equal(t, 2, parent.Runs)
-		assert.InDelta(t, 0.5, parent.PassRatio, 0.0001)
-		assert.NotEmpty(t, parent.FailedOutputs)
-	})
-
-	// 5) Nested subtests: parent lines mention deeper "TestParent/Nest1/Nest2" => zero out
-	t.Run("NestedSubtests => parent's lines mention deeper sub-subtest only => zero out", func(t *testing.T) {
-		testDetails := map[string]*reports.TestResult{
-			"pkg/TestNestedSubtests": {
-				TestName:    "TestNestedSubtests",
-				TestPackage: "pkg",
-				Runs:        2,
-				Failures:    1,
-				Successes:   1,
-				PassRatio:   0.5,
-				FailedOutputs: map[string][]string{
-					"run1": {
-						"Error in TestNestedSubtests/Level1/Level2Fail: sub-subtest fails",
-					},
-				},
-			},
-		}
-		testsWithSubTests := map[string][]string{
-			"pkg/TestNestedSubtests": {"Level1"}, // e.g., "Level1" might also have "Level2Fail"
-		}
-
-		zeroOutParentFailsIfSubtestOnlyFails(testDetails, testsWithSubTests)
-
-		parent := testDetails["pkg/TestNestedSubtests"]
-		assert.Equal(t, 0, parent.Failures)
-		assert.Equal(t, 1, parent.Runs, "2 => 1 after zeroing out the parent's fail")
-		assert.InDelta(t, 1.0, parent.PassRatio, 0.0001)
-		assert.Empty(t, parent.FailedOutputs)
-	})
-
-	// 6) “Simpler” tests from your prior suite
-
-	t.Run("Parent fails only referencing subtests => zero out parent's fails", func(t *testing.T) {
-		testDetails := map[string]*reports.TestResult{
-			"pkg/TestParent": {
-				TestName:    "TestParent",
-				TestPackage: "pkg",
-				Runs:        3,
-				Failures:    1,
-				Successes:   2,
-				PassRatio:   2.0 / 3.0,
-				FailedOutputs: map[string][]string{
-					"run1": {
-						"Error in TestParent/SubtestA: something bad",
-					},
-				},
-			},
-		}
-		testsWithSubTests := map[string][]string{
-			"pkg/TestParent": {"SubtestA"},
-		}
-
-		zeroOutParentFailsIfSubtestOnlyFails(testDetails, testsWithSubTests)
-
-		parent := testDetails["pkg/TestParent"]
-		assert.Equal(t, 0, parent.Failures)
-		assert.Equal(t, 2, parent.Runs)
-		assert.InDelta(t, 1.0, parent.PassRatio, 0.0001)
-		assert.Empty(t, parent.FailedOutputs)
-	})
-
-	t.Run("Parent with genuine fail => remains failing", func(t *testing.T) {
-		testDetails := map[string]*reports.TestResult{
-			"pkg/TestParent": {
-				TestName:    "TestParent",
-				TestPackage: "pkg",
-				Runs:        2,
-				Failures:    1,
-				Successes:   1,
-				PassRatio:   0.5,
-				FailedOutputs: map[string][]string{
-					"run1": {
-						// Genuine parent-level line
-						"Error in TestParent: parent-level assertion failed",
-					},
-				},
-			},
-		}
-		testsWithSubTests := map[string][]string{
-			"pkg/TestParent": {"SubtestA"},
-		}
-
-		zeroOutParentFailsIfSubtestOnlyFails(testDetails, testsWithSubTests)
-
-		parent := testDetails["pkg/TestParent"]
-		assert.Equal(t, 1, parent.Failures)
-		assert.Equal(t, 2, parent.Runs)
-		assert.InDelta(t, 0.5, parent.PassRatio, 0.0001)
-		assert.NotEmpty(t, parent.FailedOutputs)
-	})
-
-	t.Run("Parent with zero failures => no change", func(t *testing.T) {
-		testDetails := map[string]*reports.TestResult{
-			"pkg/TestParent": {
-				TestName:    "TestParent",
-				TestPackage: "pkg",
-				Runs:        3,
-				Failures:    0,
-				Successes:   3,
-				PassRatio:   1.0,
-			},
-		}
-		testsWithSubTests := map[string][]string{
-			"pkg/TestParent": {"SubtestA", "SubtestB"},
-		}
-
-		zeroOutParentFailsIfSubtestOnlyFails(testDetails, testsWithSubTests)
-
-		parent := testDetails["pkg/TestParent"]
-		assert.Equal(t, 3, parent.Runs)
-		assert.Equal(t, 0, parent.Failures)
-		assert.InDelta(t, 1.0, parent.PassRatio, 0.0001)
-	})
-
-	t.Run("Parent not found in testDetails => no crash", func(t *testing.T) {
-		testDetails := map[string]*reports.TestResult{
-			// some other test, but not pkg/TestParent
-		}
-		testsWithSubTests := map[string][]string{
-			"pkg/TestParent": {"SubtestA"},
-		}
-
-		zeroOutParentFailsIfSubtestOnlyFails(testDetails, testsWithSubTests)
-		// just confirm no panic, nothing to assert
-	})
-
-	t.Run("NestedSubtests => only sub-subtest lines => parent's fail is zeroed out", func(t *testing.T) {
-		// This mimics a scenario where Go initially flags the parent "TestNestedSubtests" as failed,
-		// but all failing lines actually reference sub-subtests only:
-		testDetails := map[string]*reports.TestResult{
-			"pkg/TestNestedSubtests": {
-				TestName:    "TestNestedSubtests",
-				TestPackage: "pkg",
-				// Suppose we had exactly 1 run that ended in 'fail' (incorrectly marking the parent):
-				Runs:      1,
-				Failures:  1,
-				Successes: 0,
-				PassRatio: 0.0,
-				FailedOutputs: map[string][]string{
-					"run1": {
-						// All lines mention sub-subtest path "TestNestedSubtests/Level1/Level2Fail"
-						// There's NO line referencing "TestNestedSubtests" alone.
-						"=== CONT  TestNestedSubtests/Level1/Level2Fail",
-						"    example_tests_test.go:315: This sub-subtest fails",
-						"    --- FAIL: TestNestedSubtests/Level1/Level2Fail (0.00s)",
-					},
-				},
-			},
-			// (Optionally, if you track each sub-subtest individually, you'd have
-			// "pkg/TestNestedSubtests/Level1/Level2Fail": {...} for completeness,
-			// but it's not necessary to show the parent's zero-out logic.)
-		}
-
-		// Indicate the parent has a subtest "Level1," which might have its own children:
-		testsWithSubTests := map[string][]string{
-			"pkg/TestNestedSubtests": {"Level1"},
-			// If your code needs deeper nesting, you could do:
-			// "pkg/TestNestedSubtests/Level1": {"Level2Fail", "Level2Pass"},
-		}
-
-		// Run your function that zeros out parent fails if lines are subtest-only
-		zeroOutParentFailsIfSubtestOnlyFails(testDetails, testsWithSubTests)
-
-		// Now check that the parent is zeroed out, since no line references "TestNestedSubtests" alone
-		parent := testDetails["pkg/TestNestedSubtests"]
-		// The parent's failure should be removed:
-		assert.Equal(t, 0, parent.Failures,
-			"parent test should have 0 failures now, since only sub-subtest lines appear")
-		// If the parent had 1 run all failing, but that was purely from sub-subtest => we remove it
-		// So the parent's total runs become 0
-		assert.Equal(t, 0, parent.Runs,
-			"parent test's runs should go from 1 => 0 after removing that purely sub-subtest failure")
-		// With 0 runs, we typically set passRatio = 1.0 in your logic (like a 'no-run is pass' fallback)
-		assert.InDelta(t, 1.0, parent.PassRatio, 0.0001,
-			"if there are 0 runs left, pass ratio is 1.0 by default")
-		assert.Empty(t, parent.FailedOutputs,
-			"failed outputs should be cleared after zeroing out the parent's fail")
-	})
-}
-
 func TestGetOrCreateTestResult(t *testing.T) {
 	tests := []struct {
 		key                 string
@@ -984,7 +656,7 @@ func TestGetOrCreateTestResult(t *testing.T) {
 		{
 			key:                 "smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package/TestParentWithFailingSubtest/SubA/SubB",
 			expectedTestPackage: "smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
-			expectedTestName:    "TestParentWithFailingSubtest",
+			expectedTestName:    "TestParentWithFailingSubtest/SubA/SubB",
 		},
 	}
 
@@ -1002,6 +674,147 @@ func TestGetOrCreateTestResult(t *testing.T) {
 		if duplicate != result {
 			t.Errorf("Subsequent call did not return the same instance for key %q", tc.key)
 		}
+	}
+}
+
+func TestNormalizeParentFailures(t *testing.T) {
+	// Test case: Parent test with only subtest-level failures.
+	// Parent entry should be normalized (failures cleared) while subtest entries remain unchanged.
+	parentKey := "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package/TestParentWithFailingSubtest"
+	subFailKey := parentKey + "/FailingSubtest"
+	subPassKey := parentKey + "/PassingSubtest"
+
+	testsMap := map[string]*reports.TestResult{
+		parentKey: {
+			TestName:    "TestParentWithFailingSubtest",
+			TestPackage: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
+			Runs:        2,
+			Failures:    2,
+			Successes:   0,
+			PassRatio:   0,
+			FailedOutputs: map[string][]string{
+				"stdout": {
+					"--- FAIL: TestParentWithFailingSubtest (0.00s)",
+					"    --- FAIL: TestParentWithFailingSubtest/FailingSubtest (0.00s)",
+					"        /Users/xxx/example_tests_test.go:323: This subtest always fails.",
+					"FAIL",
+				},
+			},
+		},
+		subFailKey: {
+			TestName:    "TestParentWithFailingSubtest/FailingSubtest",
+			TestPackage: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
+			Runs:        2,
+			Failures:    2,
+			Successes:   0,
+			PassRatio:   0,
+			FailedOutputs: map[string][]string{
+				"stdout": {
+					"--- FAIL: TestParentWithFailingSubtest/FailingSubtest (0.00s)",
+					"        /Users/xxx/example_tests_test.go:323: This subtest always fails.",
+					"FAIL",
+				},
+			},
+		},
+		subPassKey: {
+			TestName:      "TestParentWithFailingSubtest/PassingSubtest",
+			TestPackage:   "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
+			Runs:          2,
+			Failures:      0,
+			Successes:     2,
+			PassRatio:     1,
+			FailedOutputs: map[string][]string{},
+		},
+	}
+
+	normalizeParentFailures(testsMap)
+
+	// Parent entry should now be marked as success (failures cleared)
+	parentRes := testsMap[parentKey]
+	if parentRes.Failures != 0 {
+		t.Errorf("expected parent Failures to be 0, got %d", parentRes.Failures)
+	}
+	if parentRes.Successes != parentRes.Runs {
+		t.Errorf("expected parent Successes (%d) to equal Runs (%d)", parentRes.Successes, parentRes.Runs)
+	}
+	if parentRes.PassRatio != 1.0 {
+		t.Errorf("expected parent PassRatio to be 1.0, got %f", parentRes.PassRatio)
+	}
+	if len(parentRes.FailedOutputs) != 0 {
+		t.Errorf("expected parent FailedOutputs to be cleared, got %v", parentRes.FailedOutputs)
+	}
+
+	// Subtest entries should remain unchanged.
+	subFailRes := testsMap[subFailKey]
+	if subFailRes.Failures != 2 || subFailRes.Successes != 0 {
+		t.Errorf("expected subtest (FailingSubtest) counts to remain unchanged, got Failures=%d, Successes=%d",
+			subFailRes.Failures, subFailRes.Successes)
+	}
+	subPassRes := testsMap[subPassKey]
+	if subPassRes.Failures != 0 || subPassRes.Successes != 2 {
+		t.Errorf("expected subtest (PassingSubtest) counts to remain unchanged, got Failures=%d, Successes=%d",
+			subPassRes.Failures, subPassRes.Successes)
+	}
+}
+
+func TestFailedLinesIndicateRealParentFailure(t *testing.T) {
+	tests := []struct {
+		name           string
+		parentName     string
+		failOuts       map[string][]string
+		expectRealFail bool
+	}{
+		{
+			name:       "Only subtest failure – no parent failure",
+			parentName: "TestParentWithFailingSubtest",
+			failOuts: map[string][]string{
+				"stdout": {
+					"--- FAIL: TestParentWithFailingSubtest (0.00s)",
+					"    --- FAIL: TestParentWithFailingSubtest/FailingSubtest (0.00s)",
+					"        /Users/xxx/example_tests_test.go:323: This subtest always fails.",
+					"FAIL",
+				},
+			},
+			expectRealFail: false,
+		},
+		{
+			name:       "Parent and subtest failure – parent error stacktrace present",
+			parentName: "TestParentWithFailingSubtest",
+			failOuts: map[string][]string{
+				"stdout": {
+					"--- FAIL: TestParentWithFailingSubtest (0.00s)",
+					"    --- FAIL: TestParentWithFailingSubtest/FailingSubtest (0.00s)",
+					"        /Users/xxx/example_tests_test.go:323: This subtest always fails.",
+					"    /Users/xxx/example_tests_test.go:329: parent fails",
+					"FAIL",
+				},
+			},
+			expectRealFail: true,
+		},
+		{
+			name:       "No stacktrace lines",
+			parentName: "TestParent",
+			failOuts: map[string][]string{
+				"stderr": {"Some error occurred", "Another error message"},
+			},
+			expectRealFail: false,
+		},
+		{
+			name:       "Subtest stacktrace only (with parent's name embedded)",
+			parentName: "TestParent",
+			failOuts: map[string][]string{
+				"stdout": {"    /Users/path/to/TestParent/SubTest:45: subtest error"},
+			},
+			expectRealFail: false,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := failedLinesIndicateRealParentFailure(tc.parentName, tc.failOuts)
+			if result != tc.expectRealFail {
+				t.Errorf("For %q, expected %v, got %v. failOuts: %v", tc.name, tc.expectRealFail, result, tc.failOuts)
+			}
+		})
 	}
 }
 

@@ -293,10 +293,11 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 	// Keep track of package-level outputs
 	packageLevelOutputs := make(map[string][]string)
 
-	// Keep track of parent test => subtest names
-	testsWithSubTests := make(map[string][]string)
+	// We'll no longer keep testsWithSubTests
+	// or pass it around to zeroOut logic.
 
 	expectedRuns := r.RunCount
+
 	for i, filePath := range filePaths {
 		runNumber := i + 1
 		runID := fmt.Sprintf("run%d", runNumber)
@@ -308,7 +309,6 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 			panickedPackages,
 			racePackages,
 			packageLevelOutputs,
-			testsWithSubTests,
 			runID,
 		)
 		if err != nil {
@@ -316,8 +316,8 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 		}
 	}
 
-	// Once all files are parsed, fix up parent/child (subtest) relationships:
-	zeroOutParentFailsIfSubtestOnlyFails(testResultsMap, testsWithSubTests)
+	// Once all files are parsed, fix up any parent tests that failed only because subtests failed
+	normalizeParentFailures(testResultsMap)
 
 	// Finalize results array
 	var results []reports.TestResult
@@ -336,13 +336,9 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 
 	// Clean up runs vs. failures if panics introduced double counts
 	for i := range results {
-		if results[i].Runs > expectedRuns {
-			// If it panicked, we typically see double counts. Cap at expectedRuns
-			if results[i].Panic {
-				results[i].Failures = expectedRuns
-				results[i].Runs = expectedRuns
-			}
-			// If there's some other discrepancy, it's suspicious but we won't do extra logic here
+		if results[i].Runs > expectedRuns && results[i].Panic {
+			results[i].Failures = expectedRuns
+			results[i].Runs = expectedRuns
 		}
 	}
 
@@ -357,7 +353,6 @@ func (r *Runner) parseFileLines(
 	panickedPackages map[string]struct{},
 	racePackages map[string]struct{},
 	packageLevelOutputs map[string][]string,
-	testsWithSubTests map[string][]string,
 	runID string,
 ) error {
 	file, err := os.Open(filePath)
@@ -366,12 +361,10 @@ func (r *Runner) parseFileLines(
 	}
 	defer file.Close()
 	defer func() {
-		_ = os.Remove(filePath) // Best effort cleanup
+		_ = os.Remove(filePath) // best-effort cleanup
 	}()
 
 	scanner := bufio.NewScanner(file)
-
-	// We collect panic or race lines until we see a "fail" action
 	var (
 		collectingPanicOutput bool
 		collectingRaceOutput  bool
@@ -382,8 +375,6 @@ func (r *Runner) parseFileLines(
 
 	for scanner.Scan() {
 		line := scanner.Text()
-
-		// Keep some context lines in case JSON unmarshal fails
 		precedingLines = append(precedingLines, line)
 		if len(precedingLines) > 15 {
 			precedingLines = precedingLines[1:]
@@ -391,37 +382,28 @@ func (r *Runner) parseFileLines(
 
 		var e entry
 		if err := json.Unmarshal([]byte(line), &e); err != nil {
-			// Collect 15 lines after the error for more context
+			// If JSON unmarshal fails, gather some context lines
 			for scanner.Scan() && len(followingLines) < 15 {
 				followingLines = append(followingLines, scanner.Text())
 			}
 			context := append(precedingLines, followingLines...)
-			return fmt.Errorf(
-				"failed to parse JSON test output near lines:\n%s\nerror: %w",
-				strings.Join(context, "\n"), err,
-			)
+			return fmt.Errorf("failed to parse JSON test output near lines:\n%s\nerror: %w",
+				strings.Join(context, "\n"), err)
 		}
 
-		// If we are currently collecting panic or race lines
+		// If collecting panic or race output, keep appending until we see Action == "fail"
 		if collectingPanicOutput || collectingRaceOutput {
 			detectedEntries = append(detectedEntries, e)
-			// Wait until we see a "fail" action to finalize
 			if e.Action == "fail" {
 				if collectingPanicOutput {
 					panickedPackages[e.Package] = struct{}{}
-					err := finishPanicOrRaceCollection(
-						detectedEntries, testResultsMap, runID, true,
-					)
-					if err != nil {
+					if err := finishPanicOrRaceCollection(detectedEntries, testResultsMap, runID, true); err != nil {
 						return err
 					}
 					collectingPanicOutput = false
 				} else {
 					racePackages[e.Package] = struct{}{}
-					err := finishPanicOrRaceCollection(
-						detectedEntries, testResultsMap, runID, false,
-					)
-					if err != nil {
+					if err := finishPanicOrRaceCollection(detectedEntries, testResultsMap, runID, false); err != nil {
 						return err
 					}
 					collectingRaceOutput = false
@@ -431,16 +413,14 @@ func (r *Runner) parseFileLines(
 			continue
 		}
 
-		// Not currently collecting panic/race lines:
+		// Otherwise, check if new panic/race started
 		switch {
 		case startPanicRe.MatchString(e.Output):
-			// We found start of a panic
 			panickedPackages[e.Package] = struct{}{}
 			collectingPanicOutput = true
 			detectedEntries = append(detectedEntries, e)
 			continue
 		case startRaceRe.MatchString(e.Output):
-			// We found start of a data race
 			racePackages[e.Package] = struct{}{}
 			collectingRaceOutput = true
 			detectedEntries = append(detectedEntries, e)
@@ -448,13 +428,176 @@ func (r *Runner) parseFileLines(
 		}
 
 		// Normal line
-		r.handleNormalLine(e, runID, testResultsMap, packageLevelOutputs, testsWithSubTests)
+		r.handleNormalLine(e, runID, testResultsMap, packageLevelOutputs)
 	}
 
 	if err := scanner.Err(); err != nil {
 		return fmt.Errorf("scanner error reading file %s: %w", filePath, err)
 	}
 	return nil
+}
+
+// handleNormalLine processes a single "non-panic/race" line from go test -json.
+func (r *Runner) handleNormalLine(
+	e entry,
+	runID string,
+	testResultsMap map[string]*reports.TestResult,
+	packageLevelOutputs map[string][]string,
+) {
+	// If there's no Test name, it's package-level output
+	if e.Test == "" {
+		if e.Package != "" && e.Output != "" {
+			packageLevelOutputs[e.Package] = append(packageLevelOutputs[e.Package], e.Output)
+		}
+		return
+	}
+
+	// Otherwise, it's a test or subtest
+	key := fmt.Sprintf("%s/%s", e.Package, e.Test)
+	res := getOrCreateTestResult(testResultsMap, key)
+
+	// If Action == "output", just stash the line
+	if e.Action == "output" && e.Output != "" {
+		if res.Outputs == nil {
+			res.Outputs = make(map[string][]string)
+		}
+		res.Outputs[runID] = append(res.Outputs[runID], e.Output)
+		return
+	}
+
+	// If pass/fail/skip, update counters
+	switch e.Action {
+	case "pass":
+		d := parseElapsedDuration(e.Elapsed)
+		res.Durations = append(res.Durations, d)
+		res.Successes++
+		res.Runs = res.Successes + res.Failures
+		res.PassRatio = float64(res.Successes) / float64(res.Runs)
+		if existing := res.Outputs[runID]; len(existing) > 0 {
+			if res.PassedOutputs == nil {
+				res.PassedOutputs = make(map[string][]string)
+			}
+			res.PassedOutputs[runID] = existing
+			delete(res.Outputs, runID)
+		}
+	case "fail":
+		d := parseElapsedDuration(e.Elapsed)
+		res.Durations = append(res.Durations, d)
+		res.Failures++
+		res.Runs = res.Successes + res.Failures
+		res.PassRatio = float64(res.Successes) / float64(res.Runs)
+		if existing := res.Outputs[runID]; len(existing) > 0 {
+			if res.FailedOutputs == nil {
+				res.FailedOutputs = make(map[string][]string)
+			}
+			res.FailedOutputs[runID] = existing
+			delete(res.Outputs, runID)
+		}
+	case "skip":
+		res.Skipped = true
+		res.Skips++
+	}
+}
+
+// normalizeParentFailures adjusts a test’s counts if the failures are due solely to subtests.
+// It uses the parent's root name (i.e. without nested subtest parts) when calling the helper.
+func normalizeParentFailures(tests map[string]*reports.TestResult) {
+	for _, res := range tests {
+		// Skip normalization for subtests (they have a "/" in their TestName).
+		if strings.Contains(res.TestName, "/") {
+			continue
+		}
+		if res.Failures == 0 {
+			continue
+		}
+		// For parent tests, use the TestName as the root name.
+		parentRootName := res.TestName
+		// If no real parent-level failure is detected, mark the parent as success
+		// while keeping the total run count intact.
+		if !failedLinesIndicateRealParentFailure(parentRootName, res.FailedOutputs) {
+			res.Failures = 0
+			res.Successes = res.Runs
+			res.PassRatio = 1.0
+			res.FailedOutputs = map[string][]string{}
+		}
+	}
+}
+
+// countLeadingSpaces returns the number of space characters at the start of s.
+func countLeadingSpaces(s string) int {
+	count := 0
+	for _, c := range s {
+		if c == ' ' {
+			count++
+		} else {
+			break
+		}
+	}
+	return count
+}
+
+// failedLinesIndicateRealParentFailure scans the failure outputs for a file stacktrace line
+// that indicates a parent's failure. We assume that such a line starts with "/" and has fewer
+// than 8 leading spaces. We also skip any line that clearly belongs to a subtest by checking
+// that it does not contain the parent's root name immediately followed by a slash.
+func failedLinesIndicateRealParentFailure(parentName string, failOuts map[string][]string) bool {
+	for _, lines := range failOuts {
+		for _, line := range lines {
+			trimmed := strings.TrimLeft(line, " ")
+			// Look for a stacktrace line starting with "/" (file paths)
+			if strings.HasPrefix(trimmed, "/") {
+				indent := countLeadingSpaces(line)
+				// In our logs, subtest stacktraces are indented 8 or more spaces.
+				if indent < 8 {
+					// If the line contains the parent's name immediately followed by "/", skip it.
+					if strings.Contains(line, parentName+"/") {
+						continue
+					}
+					// Otherwise, we have a parent-level failure.
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// getOrCreateTestResult is a small helper to create/lookup a TestResult struct in the map.
+func getOrCreateTestResult(
+	testResultsMap map[string]*reports.TestResult,
+	key string,
+) *reports.TestResult {
+	parts := strings.Split(key, "/")
+	// Find the first part that looks like a test function.
+	var idx = -1
+	for i, part := range parts {
+		if strings.HasPrefix(part, "Test") {
+			idx = i
+			break
+		}
+	}
+	// If no part starts with "Test", treat the whole key as the test name.
+	if idx == -1 {
+		idx = len(parts)
+	}
+	testPackage := strings.Join(parts[:idx], "/")
+	testName := ""
+	if idx < len(parts) {
+		testName = strings.Join(parts[idx:], "/")
+	}
+
+	// Create the TestResult if it doesn't exist.
+	if _, exists := testResultsMap[key]; !exists {
+		testResultsMap[key] = &reports.TestResult{
+			TestName:       testName,
+			TestPackage:    testPackage,
+			PassedOutputs:  make(map[string][]string),
+			FailedOutputs:  make(map[string][]string),
+			Outputs:        make(map[string][]string),
+			PackageOutputs: []string{},
+		}
+	}
+	return testResultsMap[key]
 }
 
 // finishPanicOrRaceCollection finalizes the logic once we detect the "fail" action for a panic or race scenario.
@@ -513,83 +656,6 @@ func finishPanicOrRaceCollection(
 		}
 	}
 	return nil
-}
-
-// handleNormalLine processes a single line that is not in panic/race mode.
-func (r *Runner) handleNormalLine(
-	e entry,
-	runID string,
-	testDetails map[string]*reports.TestResult,
-	packageLevelOutputs map[string][]string,
-	testsWithSubTests map[string][]string,
-) {
-	// If it's package-level with no "Test" field, store package-level output
-	if e.Test == "" {
-		if e.Package != "" && e.Output != "" {
-			packageLevelOutputs[e.Package] = append(packageLevelOutputs[e.Package], e.Output)
-		}
-		return
-	}
-
-	// It's a test line
-	key := fmt.Sprintf("%s/%s", e.Package, e.Test)
-	res := getOrCreateTestResult(testDetails, key)
-
-	// Check for subtest
-	parentTestName, subTestName := parseSubTest(e.Test)
-	if subTestName != "" {
-		parentKey := fmt.Sprintf("%s/%s", e.Package, parentTestName)
-		testsWithSubTests[parentKey] = append(testsWithSubTests[parentKey], subTestName)
-	}
-
-	// Append the raw line output if Action == "output"
-	if e.Action == "output" && e.Output != "" {
-		if res.Outputs == nil {
-			res.Outputs = make(map[string][]string)
-		}
-		res.Outputs[runID] = append(res.Outputs[runID], e.Output)
-		return
-	}
-
-	// If pass/fail/skip, update counters & durations
-	switch e.Action {
-	case "pass":
-		// Mark pass
-		dur := parseElapsedDuration(e.Elapsed)
-		res.Durations = append(res.Durations, dur)
-		res.Successes++
-		res.Runs = res.Successes + res.Failures
-		res.PassRatio = float64(res.Successes) / float64(res.Runs)
-
-		// Move outputs from "Outputs" to "PassedOutputs"
-		if existing := res.Outputs[runID]; len(existing) > 0 {
-			if res.PassedOutputs == nil {
-				res.PassedOutputs = make(map[string][]string)
-			}
-			res.PassedOutputs[runID] = existing
-			delete(res.Outputs, runID) // Clear ephemeral storage
-		}
-
-	case "fail":
-		dur := parseElapsedDuration(e.Elapsed)
-		res.Durations = append(res.Durations, dur)
-		res.Failures++
-		res.Runs = res.Successes + res.Failures
-		res.PassRatio = float64(res.Successes) / float64(res.Runs)
-
-		// Move outputs from "Outputs" to "FailedOutputs"
-		if existing := res.Outputs[runID]; len(existing) > 0 {
-			if res.FailedOutputs == nil {
-				res.FailedOutputs = make(map[string][]string)
-			}
-			res.FailedOutputs[runID] = existing
-			delete(res.Outputs, runID)
-		}
-
-	case "skip":
-		res.Skipped = true
-		res.Skips++
-	}
 }
 
 // attributePanicToTest tries to figure out which test caused the panic.
@@ -651,116 +717,6 @@ func parseSubTest(testName string) (parentTestName, subTestName string) {
 		return testName, ""
 	}
 	return parts[0], parts[1]
-}
-
-// zeroOutParentFailsIfSubtestOnlyFails scans through parent tests in testDetails.
-// If a parent test has failures *only* referencing subtests (common in Go's default behavior),
-// we clear out the parent's "fail" so that only the subtest is marked as failing.
-//
-// This ensures that a parent test that merely has a subtest fail is not itself flagged
-// as a separate test failure, which is what you requested to change.
-func zeroOutParentFailsIfSubtestOnlyFails(
-	testDetails map[string]*reports.TestResult,
-	testsWithSubTests map[string][]string,
-) {
-	for parentKey, subTests := range testsWithSubTests {
-		parentRes, ok := testDetails[parentKey]
-		if !ok || parentRes.Failures == 0 {
-			continue
-		}
-
-		parentHasOwnFailure := false
-		for _, failLines := range parentRes.FailedOutputs {
-			for _, line := range failLines {
-				// If the line doesn't reference the parent at all, skip it.
-				if !strings.Contains(line, parentRes.TestName) {
-					continue
-				}
-				// If it's just the summary line (e.g. `--- FAIL: TestParent (0.00s)`),
-				// or it references `TestParent/Subtest` or deeper, we skip it
-				isSubtestLine := false
-				if strings.HasPrefix(line, "--- FAIL: "+parentRes.TestName+" (") {
-					isSubtestLine = true
-				} else {
-					// Check if line references any of the parent's subtests
-					for _, sub := range subTests {
-						expected := parentRes.TestName + "/" + sub
-						if strings.Contains(line, expected) {
-							isSubtestLine = true
-							break
-						}
-					}
-				}
-				if !isSubtestLine {
-					parentHasOwnFailure = true
-					break
-				}
-			}
-			if parentHasOwnFailure {
-				break
-			}
-		}
-
-		if !parentHasOwnFailure {
-			// The parent's only failures are caused by subtests => un-fail the parent
-			parentRes.Runs -= parentRes.Failures // remove parent's failures from "runs"
-			parentRes.Failures = 0
-			if parentRes.Runs < parentRes.Successes {
-				parentRes.Successes = parentRes.Runs
-			}
-			if parentRes.Runs > 0 {
-				parentRes.PassRatio = float64(parentRes.Successes) / float64(parentRes.Runs)
-			} else {
-				// If parent has no runs left, we consider it effectively 100% pass
-				parentRes.PassRatio = 1
-			}
-			// Clear the fail outputs
-			parentRes.FailedOutputs = map[string][]string{}
-		}
-	}
-}
-
-// getOrCreateTestResult is a small helper to create/lookup a TestResult struct in the map.
-func getOrCreateTestResult(
-	testResultsMap map[string]*reports.TestResult,
-	key string,
-) *reports.TestResult {
-	parts := strings.Split(key, "/")
-	// Find the first part that looks like a test function.
-	var idx = -1
-	for i, part := range parts {
-		if strings.HasPrefix(part, "Test") {
-			idx = i
-			break
-		}
-	}
-	// If no part starts with "Test", treat the whole key as the test name.
-	if idx == -1 {
-		idx = len(parts)
-	}
-	testPackage := strings.Join(parts[:idx], "/")
-	testName := ""
-	if idx < len(parts) {
-		testName = parts[idx]
-		// if idx+1 < len(parts) {
-		// subTests = parts[idx+1:]
-		// }
-	}
-
-	// Create the TestResult if it doesn't exist.
-	if _, exists := testResultsMap[key]; !exists {
-		testResultsMap[key] = &reports.TestResult{
-			TestName:       testName,
-			TestPackage:    testPackage,
-			PassedOutputs:  make(map[string][]string),
-			FailedOutputs:  make(map[string][]string),
-			Outputs:        make(map[string][]string),
-			PackageOutputs: []string{},
-			// If you update the reports.TestResult struct, you could add:
-			// SubTests:       subTests,
-		}
-	}
-	return testResultsMap[key]
 }
 
 // parseElapsedDuration converts the float "Elapsed" value into a time.Duration safely.
