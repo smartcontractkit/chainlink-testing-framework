@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/tools/breakingchanges
 
-go 1.23.3
+go 1.24
 
 retract [v1.999.0-test-release, v1.999.999-test-release]
 

@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard
 
-go 1.23.6
+go 1.24
 
 require (
 	github.com/briandowns/spinner v1.23.1
