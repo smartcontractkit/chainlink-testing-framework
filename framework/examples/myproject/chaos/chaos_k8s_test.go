@@ -2,34 +2,41 @@ package chaos
 
 import (
 	"context"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/examples/chaos/template"
+	f "github.com/smartcontractkit/chainlink-testing-framework/framework"
+	gf "github.com/smartcontractkit/chainlink-testing-framework/framework/grafana"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
 	"github.com/smartcontractkit/chainlink-testing-framework/havoc"
-	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
-func defaultLogger() zerolog.Logger {
-	return log.Output(zerolog.ConsoleWriter{Out: os.Stderr}).Level(zerolog.DebugLevel)
+type K8sChaos struct {
+	WaitBeforeStart             string   `toml:"wait_before_start"`
+	Namespace                   string   `toml:"namespace"`
+	DashboardUUIDs              []string `toml:"dashboard_uuids"`
+	ExperimentDuration          string   `toml:"experiment_duration"`
+	ExperimentInjectionDuration string   `toml:"experiment_injection_duration"`
+	BlockchainHTTPURLs          []string `toml:"blockchain_http_urls"`
+	ReorgBelowFinalityThreshold int      `toml:"reorg_below_finality_threshold"`
+	ReorgAboveFinalityThreshold int      `toml:"reorg_above_finality_threshold"`
+}
+
+type CfgChaosK8s struct {
+	Chaos *K8sChaos `toml:"chaos"`
 }
 
 func TestK8sChaos(t *testing.T) {
-	l := defaultLogger()
+	config, err := f.Load[CfgChaosK8s](t)
+	require.NoError(t, err)
+	cfg := config.Chaos
+
 	c, err := havoc.NewChaosMeshClient()
 	require.NoError(t, err)
-
-	namespace := "crib-ccip-chaos"
-	experimentInterval := 3 * time.Minute
-	injectionDuration := 90 * time.Second
-
-	reorgBelowFinalityDepth := 10
-	reorgAboveFinalityDepth := 50
-	srcURL := "https://crib-ccip-chaos-geth-1337-http.main.stage.cldev.sh"
-	dstURL := "https://crib-ccip-chaos-geth-2337-http.main.stage.cldev.sh"
+	cr := havoc.NewNamespaceRunner(f.L, c, false)
+	gc := gf.NewGrafanaClient(os.Getenv("GRAFANA_URL"), os.Getenv("GRAFANA_TOKEN"))
 
 	testCases := []struct {
 		name     string
@@ -40,165 +47,341 @@ func TestK8sChaos(t *testing.T) {
 		{
 			name: "Fail src chain",
 			run: func(t *testing.T) {
-				src, err := template.PodFail(c, l, template.PodFailCfg{
-					Namespace:         namespace,
-					LabelKey:          "instance",
-					LabelValues:       []string{"geth-1337"},
-					InjectionDuration: injectionDuration,
-				})
+				_, err := cr.RunPodFail(context.Background(),
+					havoc.PodFailCfg{
+						Namespace:         cfg.Namespace,
+						LabelKey:          "instance",
+						LabelValues:       []string{"geth-1337"},
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
 				require.NoError(t, err)
-				src.Create(context.Background())
 			},
 			validate: func(t *testing.T) {},
 		},
 		{
 			name: "Fail dst chain",
 			run: func(t *testing.T) {
-				dst, err := template.PodFail(c, l, template.PodFailCfg{
-					Namespace:         namespace,
-					LabelKey:          "instance",
-					LabelValues:       []string{"geth-2337"},
-					InjectionDuration: injectionDuration,
-				})
+				_, err := cr.RunPodFail(context.Background(),
+					havoc.PodFailCfg{
+						Namespace:         cfg.Namespace,
+						LabelKey:          "instance",
+						LabelValues:       []string{"geth-2337"},
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
 				require.NoError(t, err)
-				dst.Create(context.Background())
 			},
 			validate: func(t *testing.T) {},
 		},
 		{
-			name: "Fail one node",
+			name: "Fail one CL node",
 			run: func(t *testing.T) {
-				node1, err := template.PodFail(c, l, template.PodFailCfg{
-					Namespace:         namespace,
-					LabelKey:          "app.kubernetes.io/instance",
-					LabelValues:       []string{"ccip-0"},
-					InjectionDuration: injectionDuration,
-				})
+				_, err := cr.RunPodFail(context.Background(),
+					havoc.PodFailCfg{
+						Namespace:         cfg.Namespace,
+						LabelKey:          "app.kubernetes.io/instance",
+						LabelValues:       []string{"ccip-0"},
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
 				require.NoError(t, err)
-				node1.Create(context.Background())
 			},
 			validate: func(t *testing.T) {},
 		},
 		{
-			name: "Fail two nodes",
+			name: "Fail two CL nodes",
 			run: func(t *testing.T) {
-				node1, err := template.PodFail(c, l, template.PodFailCfg{
-					Namespace:         namespace,
-					LabelKey:          "app.kubernetes.io/instance",
-					LabelValues:       []string{"ccip-0", "ccip-1"},
-					InjectionDuration: injectionDuration,
-				})
+				_, err := cr.RunPodFail(context.Background(),
+					havoc.PodFailCfg{
+						Namespace:         cfg.Namespace,
+						LabelKey:          "app.kubernetes.io/instance",
+						LabelValues:       []string{"ccip-0", "ccip-1"},
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
 				require.NoError(t, err)
-				node1.Create(context.Background())
+			},
+			validate: func(t *testing.T) {},
+		},
+		{
+			name: "Fail one CL node DB",
+			run: func(t *testing.T) {
+				_, err := cr.RunPodFail(context.Background(),
+					havoc.PodFailCfg{
+						Namespace:         cfg.Namespace,
+						LabelKey:          "app.kubernetes.io/instance",
+						LabelValues:       []string{"chainlink-don-db-0"},
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
+				require.NoError(t, err)
+			},
+			validate: func(t *testing.T) {},
+		},
+		{
+			name: "Fail one RMN node",
+			run: func(t *testing.T) {
+				_, err := cr.RunPodFail(context.Background(),
+					havoc.PodFailCfg{
+						Namespace:         cfg.Namespace,
+						LabelKey:          "app.kubernetes.io/instance",
+						LabelValues:       []string{"rmn-0"},
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
+				require.NoError(t, err)
+			},
+			validate: func(t *testing.T) {},
+		},
+		{
+			name: "Fail two RMN nodes",
+			run: func(t *testing.T) {
+				_, err := cr.RunPodFail(context.Background(),
+					havoc.PodFailCfg{
+						Namespace:         cfg.Namespace,
+						LabelKey:          "app.kubernetes.io/instance",
+						LabelValues:       []string{"rmn-0", "rmn-1"},
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
+				require.NoError(t, err)
 			},
 			validate: func(t *testing.T) {},
 		},
 		// network delay
 		{
+			name: "Both chains are slow 400ms/20ms jitter",
+			run: func(t *testing.T) {
+				_, err := cr.RunPodDelay(context.Background(),
+					havoc.PodDelayCfg{
+						Namespace:         cfg.Namespace,
+						LabelKey:          "app.kubernetes.io/instance",
+						LabelValues:       []string{"geth-1337", "geth-2337"},
+						Latency:           400 * time.Millisecond,
+						Jitter:            20 * time.Millisecond,
+						Correlation:       "0",
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
+				require.NoError(t, err)
+			},
+			validate: func(t *testing.T) {},
+		},
+		{
 			name: "Slow src chain",
 			run: func(t *testing.T) {
-				src, err := template.PodDelay(c, l, template.PodDelayCfg{
-					Namespace:         namespace,
-					LabelKey:          "instance",
-					LabelValues:       []string{"geth-1337"},
-					Latency:           200 * time.Millisecond,
-					Jitter:            200 * time.Millisecond,
-					Correlation:       "0",
-					InjectionDuration: injectionDuration,
-				})
+				_, err := cr.RunPodDelay(context.Background(),
+					havoc.PodDelayCfg{
+						Namespace:         cfg.Namespace,
+						LabelKey:          "app.kubernetes.io/instance",
+						LabelValues:       []string{"geth-1337"},
+						Latency:           200 * time.Millisecond,
+						Jitter:            200 * time.Millisecond,
+						Correlation:       "0",
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
 				require.NoError(t, err)
-				src.Create(context.Background())
 			},
 			validate: func(t *testing.T) {},
 		},
 		{
 			name: "Slow dst chain",
 			run: func(t *testing.T) {
-				src, err := template.PodDelay(c, l, template.PodDelayCfg{
-					Namespace:         namespace,
-					LabelKey:          "instance",
-					LabelValues:       []string{"geth-2337"},
-					Latency:           200 * time.Millisecond,
-					Jitter:            200 * time.Millisecond,
-					Correlation:       "0",
-					InjectionDuration: injectionDuration,
-				})
+				_, err := cr.RunPodDelay(context.Background(),
+					havoc.PodDelayCfg{
+						Namespace:         cfg.Namespace,
+						LabelKey:          "app.kubernetes.io/instance",
+						LabelValues:       []string{"geth-2337"},
+						Latency:           200 * time.Millisecond,
+						Jitter:            200 * time.Millisecond,
+						Correlation:       "0",
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
 				require.NoError(t, err)
-				src.Create(context.Background())
 			},
 			validate: func(t *testing.T) {},
 		},
 		{
-			name: "One slow node",
+			name: "One slow CL node",
 			run: func(t *testing.T) {
-				src, err := template.PodDelay(c, l, template.PodDelayCfg{
-					Namespace:         namespace,
-					LabelKey:          "app.kubernetes.io/instance",
-					LabelValues:       []string{"ccip-0"},
-					Latency:           200 * time.Millisecond,
-					Jitter:            200 * time.Millisecond,
-					Correlation:       "0",
-					InjectionDuration: injectionDuration,
-				})
+				_, err := cr.RunPodDelay(context.Background(),
+					havoc.PodDelayCfg{
+						Namespace:         cfg.Namespace,
+						LabelKey:          "app.kubernetes.io/instance",
+						LabelValues:       []string{"ccip-0"},
+						Latency:           200 * time.Millisecond,
+						Jitter:            200 * time.Millisecond,
+						Correlation:       "0",
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
 				require.NoError(t, err)
-				src.Create(context.Background())
 			},
 			validate: func(t *testing.T) {},
 		},
 		{
-			name: "Two slow nodes",
+			name: "Two slow CL nodes",
 			run: func(t *testing.T) {
-				src, err := template.PodDelay(c, l, template.PodDelayCfg{
-					Namespace:         namespace,
-					LabelKey:          "app.kubernetes.io/instance",
-					LabelValues:       []string{"ccip-0", "ccip-1"},
-					Latency:           200 * time.Millisecond,
-					Jitter:            200 * time.Millisecond,
-					Correlation:       "0",
-					InjectionDuration: injectionDuration,
-				})
+				_, err := cr.RunPodDelay(context.Background(),
+					havoc.PodDelayCfg{
+						Namespace:         cfg.Namespace,
+						LabelKey:          "app.kubernetes.io/instance",
+						LabelValues:       []string{"ccip-0", "ccip-1"},
+						Latency:           200 * time.Millisecond,
+						Jitter:            200 * time.Millisecond,
+						Correlation:       "0",
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
 				require.NoError(t, err)
-				src.Create(context.Background())
 			},
 			validate: func(t *testing.T) {},
 		},
 		{
-			name: "One node partition",
+			name: "One slow CL node DB",
 			run: func(t *testing.T) {
-				src, err := template.PodPartition(c, l, template.PodPartitionCfg{
-					Namespace:         namespace,
-					LabelFromKey:      "app.kubernetes.io/instance",
-					LabelFromValues:   []string{"ccip-0"},
-					LabelToKey:        "app.kubernetes.io/instance",
-					LabelToValues:     []string{"ccip-1", "ccip-2", "ccip-3"},
-					InjectionDuration: injectionDuration,
-				})
+				_, err := cr.RunPodDelay(context.Background(),
+					havoc.PodDelayCfg{
+						Namespace:         cfg.Namespace,
+						LabelKey:          "app.kubernetes.io/instance",
+						LabelValues:       []string{"chainlink-don-db-0"},
+						Latency:           200 * time.Millisecond,
+						Jitter:            200 * time.Millisecond,
+						Correlation:       "0",
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
 				require.NoError(t, err)
-				src.Create(context.Background())
 			},
 			validate: func(t *testing.T) {},
 		},
 		{
-			name: "Two nodes partition",
+			name: "One slow RMN node",
 			run: func(t *testing.T) {
-				src, err := template.PodPartition(c, l, template.PodPartitionCfg{
-					Namespace:         namespace,
-					LabelFromKey:      "app.kubernetes.io/instance",
-					LabelFromValues:   []string{"ccip-0", "ccip-1"},
-					LabelToKey:        "app.kubernetes.io/instance",
-					LabelToValues:     []string{"ccip-2", "ccip-3"},
-					InjectionDuration: injectionDuration,
-				})
+				_, err := cr.RunPodDelay(context.Background(),
+					havoc.PodDelayCfg{
+						Namespace:         cfg.Namespace,
+						LabelKey:          "app.kubernetes.io/instance",
+						LabelValues:       []string{"rmn-0"},
+						Latency:           200 * time.Millisecond,
+						Jitter:            200 * time.Millisecond,
+						Correlation:       "0",
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
 				require.NoError(t, err)
-				src.Create(context.Background())
 			},
 			validate: func(t *testing.T) {},
 		},
+		{
+			name: "Two slow RMN nodes",
+			run: func(t *testing.T) {
+				_, err := cr.RunPodDelay(context.Background(),
+					havoc.PodDelayCfg{
+						Namespace:         cfg.Namespace,
+						LabelKey:          "app.kubernetes.io/instance",
+						LabelValues:       []string{"rmn-0", "rmn-1"},
+						Latency:           200 * time.Millisecond,
+						Jitter:            200 * time.Millisecond,
+						Correlation:       "0",
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
+				require.NoError(t, err)
+			},
+			validate: func(t *testing.T) {},
+		},
+		// network partition
+		{
+			name: "CL node <> CL nodes partition",
+			run: func(t *testing.T) {
+				_, err := cr.RunPodPartition(context.Background(),
+					havoc.PodPartitionCfg{
+						Namespace:         cfg.Namespace,
+						LabelFromKey:      "app.kubernetes.io/instance",
+						LabelFromValues:   []string{"ccip-0"},
+						LabelToKey:        "app.kubernetes.io/instance",
+						LabelToValues:     []string{"ccip-1", "ccip-2", "ccip-3"},
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
+				require.NoError(t, err)
+			},
+			validate: func(t *testing.T) {},
+		},
+		{
+			name: "2 CL nodes <> 2 CL nodes partition",
+			run: func(t *testing.T) {
+				_, err := cr.RunPodPartition(context.Background(),
+					havoc.PodPartitionCfg{
+						Namespace:         cfg.Namespace,
+						LabelFromKey:      "app.kubernetes.io/instance",
+						LabelFromValues:   []string{"ccip-0", "ccip-1"},
+						LabelToKey:        "app.kubernetes.io/instance",
+						LabelToValues:     []string{"ccip-2", "ccip-3"},
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
+				require.NoError(t, err)
+			},
+			validate: func(t *testing.T) {},
+		},
+		{
+			name: "CL node <> DB partition",
+			run: func(t *testing.T) {
+				_, err := cr.RunPodPartition(context.Background(),
+					havoc.PodPartitionCfg{
+						Namespace:         cfg.Namespace,
+						LabelFromKey:      "app.kubernetes.io/instance",
+						LabelFromValues:   []string{"ccip-0"},
+						LabelToKey:        "app.kubernetes.io/instance",
+						LabelToValues:     []string{"chainlink-don-db-0"},
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
+				require.NoError(t, err)
+			},
+			validate: func(t *testing.T) {},
+		},
+		{
+			name: "RMN node <> RMN node",
+			run: func(t *testing.T) {
+				_, err := cr.RunPodPartition(context.Background(),
+					havoc.PodPartitionCfg{
+						Namespace:         cfg.Namespace,
+						LabelFromKey:      "app.kubernetes.io/instance",
+						LabelFromValues:   []string{"rmn-0"},
+						LabelToKey:        "app.kubernetes.io/instance",
+						LabelToValues:     []string{"rmn-1", "rmn-2", "rmn-3"},
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
+				require.NoError(t, err)
+			},
+			validate: func(t *testing.T) {},
+		},
+		{
+			name: "2 RMN nodes <> 2 RMN nodes partition",
+			run: func(t *testing.T) {
+				_, err := cr.RunPodPartition(context.Background(),
+					havoc.PodPartitionCfg{
+						Namespace:         cfg.Namespace,
+						LabelFromKey:      "app.kubernetes.io/instance",
+						LabelFromValues:   []string{"rmn-0", "rmn-1"},
+						LabelToKey:        "app.kubernetes.io/instance",
+						LabelToValues:     []string{"rmn-2", "rmn-3"},
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
+				require.NoError(t, err)
+			},
+			validate: func(t *testing.T) {},
+		},
+		{
+			name: "2 CL nodes <> 2 RMN nodes partition",
+			run: func(t *testing.T) {
+				_, err := cr.RunPodPartition(context.Background(),
+					havoc.PodPartitionCfg{
+						Namespace:         cfg.Namespace,
+						LabelFromKey:      "app.kubernetes.io/instance",
+						LabelFromValues:   []string{"ccip-0", "ccip-1"},
+						LabelToKey:        "app.kubernetes.io/instance",
+						LabelToValues:     []string{"rmn-2", "rmn-3"},
+						InjectionDuration: f.MustParseDuration(cfg.ExperimentInjectionDuration),
+					})
+				require.NoError(t, err)
+			},
+			validate: func(t *testing.T) {},
+		},
+		// reorgs
 		{
 			name: "Reorg src chain below finality",
 			run: func(t *testing.T) {
-				r := rpc.New(srcURL, nil)
-				err := r.GethSetHead(reorgBelowFinalityDepth)
+				r := rpc.New(cfg.BlockchainHTTPURLs[0], nil)
+				err := r.GethSetHead(cfg.ReorgBelowFinalityThreshold)
 				require.NoError(t, err)
 			},
 			validate: func(t *testing.T) {},
@@ -206,8 +389,8 @@ func TestK8sChaos(t *testing.T) {
 		{
 			name: "Reorg dst chain below finality",
 			run: func(t *testing.T) {
-				r := rpc.New(dstURL, nil)
-				err := r.GethSetHead(reorgBelowFinalityDepth)
+				r := rpc.New(cfg.BlockchainHTTPURLs[1], nil)
+				err := r.GethSetHead(cfg.ReorgBelowFinalityThreshold)
 				require.NoError(t, err)
 			},
 			validate: func(t *testing.T) {},
@@ -215,8 +398,8 @@ func TestK8sChaos(t *testing.T) {
 		{
 			name: "Reorg src chain above finality",
 			run: func(t *testing.T) {
-				r := rpc.New(srcURL, nil)
-				err := r.GethSetHead(reorgAboveFinalityDepth)
+				r := rpc.New(cfg.BlockchainHTTPURLs[0], nil)
+				err := r.GethSetHead(cfg.ReorgAboveFinalityThreshold)
 				require.NoError(t, err)
 			},
 			validate: func(t *testing.T) {},
@@ -224,23 +407,26 @@ func TestK8sChaos(t *testing.T) {
 		{
 			name: "Reorg dst chain above finality",
 			run: func(t *testing.T) {
-				r := rpc.New(dstURL, nil)
-				err := r.GethSetHead(reorgAboveFinalityDepth)
+				r := rpc.New(cfg.BlockchainHTTPURLs[1], nil)
+				err := r.GethSetHead(cfg.ReorgAboveFinalityThreshold)
 				require.NoError(t, err)
 			},
 			validate: func(t *testing.T) {},
 		},
 	}
 
-	// Start WASP load test here, apply average load profile that you expect in production!
-	// Configure timeouts and validate all the test cases until the test ends
+	startsIn := f.MustParseDuration(cfg.WaitBeforeStart)
+	f.L.Info().Msgf("Starting chaos tests in %s", startsIn)
+	time.Sleep(startsIn)
 
-	// Run test cases
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			tc.run(t)
-			time.Sleep(experimentInterval)
-			tc.validate(t)
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			n := time.Now()
+			testCase.run(t)
+			time.Sleep(f.MustParseDuration(cfg.ExperimentDuration))
+			_, _, err := gc.Annotate(gf.A(cfg.Namespace, testCase.name, cfg.DashboardUUIDs, havoc.Ptr(n), havoc.Ptr(time.Now())))
+			require.NoError(t, err)
+			testCase.validate(t)
 		})
 	}
 }
