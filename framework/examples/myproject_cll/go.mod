@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/framework/examples_cll
 
-go 1.24
+go 1.24.0
 
 replace (
 	github.com/smartcontractkit/chainlink-testing-framework/framework => ../../

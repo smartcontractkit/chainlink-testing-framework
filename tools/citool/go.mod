@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/tools/citool
 
-go 1.24
+go 1.24.0
 
 require (
 	github.com/smartcontractkit/chainlink-testing-framework/lib v1.50.20-0.20250106135623-15722ca32b64

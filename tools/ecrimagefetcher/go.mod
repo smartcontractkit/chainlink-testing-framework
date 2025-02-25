@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/tools/ecrimagefetcher
 
-go 1.24
+go 1.24.0
 
 require (
 	github.com/Masterminds/semver/v3 v3.2.1
