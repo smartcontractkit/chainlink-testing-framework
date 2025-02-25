@@ -2,19 +2,18 @@ package wasp
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
-	"time"
-
-	"errors"
 	"strings"
+	"time"
 
 	"github.com/grafana/dskit/backoff"
 	dskit "github.com/grafana/dskit/flagext"
-	lokiAPI "github.com/grafana/loki/clients/pkg/promtail/api"
-	lokiClient "github.com/grafana/loki/clients/pkg/promtail/client"
-	lokiProto "github.com/grafana/loki/pkg/logproto"
+	lokiAPI "github.com/grafana/loki/v3/clients/pkg/promtail/api"
+	lokiClient "github.com/grafana/loki/v3/clients/pkg/promtail/client"
+	lokiProto "github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/rs/zerolog/log"
