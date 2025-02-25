@@ -316,3 +316,13 @@ func TestNestedSubtests(t *testing.T) {
 		})
 	})
 }
+
+func TestParentWithFailingSubtest(t *testing.T) {
+	// The parent does NOT fail. Only subtests do.
+	t.Run("FailingSubtest", func(t *testing.T) {
+		t.Errorf("This subtest always fails.")
+	})
+	t.Run("PassingSubtest", func(t *testing.T) {
+		// pass
+	})
+}

@@ -250,6 +250,38 @@ func TestRun(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "subtest fails but parent is not failing",
+			runner: Runner{
+				ProjectPath:      "./",
+				Verbose:          true,
+				RunCount:         2, // run it a couple times
+				UseRace:          false,
+				SkipTests:        []string{},
+				SelectTests:      []string{"TestParentWithFailingSubtest"},
+				FailFast:         false,
+				CollectRawOutput: true,
+			},
+			expectedTests: map[string]*expectedTestResult{
+				// The parent test
+				"TestParentWithFailingSubtest": {
+					// We expect the parent test to pass every run, because there's no parent-level fail
+					allSuccesses: true,
+					// or exactPassRate: &successPassRate,
+					exactRuns: &[]int{2}[0], // 2 runs
+				},
+				// The failing subtest
+				"TestParentWithFailingSubtest/FailingSubtest": {
+					allFailures: true,
+					exactRuns:   &[]int{2}[0],
+				},
+				// The passing subtest
+				"TestParentWithFailingSubtest/PassingSubtest": {
+					allSuccesses: true,
+					exactRuns:    &[]int{2}[0],
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -926,6 +958,51 @@ func TestZeroOutParentFailsIfSubtestOnlyFails(t *testing.T) {
 		assert.Empty(t, parent.FailedOutputs,
 			"failed outputs should be cleared after zeroing out the parent's fail")
 	})
+}
+
+func TestGetOrCreateTestResult(t *testing.T) {
+	tests := []struct {
+		key                 string
+		expectedTestPackage string
+		expectedTestName    string
+	}{
+		{
+			key:                 "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package/TestParentWithFailingSubtest",
+			expectedTestPackage: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
+			expectedTestName:    "TestParentWithFailingSubtest",
+		},
+		{
+			key:                 "somepackage/TestFunction",
+			expectedTestPackage: "somepackage",
+			expectedTestName:    "TestFunction",
+		},
+		{
+			key:                 "TestFunctionWithoutPackage",
+			expectedTestPackage: "",
+			expectedTestName:    "TestFunctionWithoutPackage",
+		},
+		{
+			key:                 "smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package/TestParentWithFailingSubtest/SubA/SubB",
+			expectedTestPackage: "smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package",
+			expectedTestName:    "TestParentWithFailingSubtest",
+		},
+	}
+
+	for _, tc := range tests {
+		testResultsMap := make(map[string]*reports.TestResult)
+		result := getOrCreateTestResult(testResultsMap, tc.key)
+		if result.TestPackage != tc.expectedTestPackage {
+			t.Errorf("For key %q, expected TestPackage %q, got %q", tc.key, tc.expectedTestPackage, result.TestPackage)
+		}
+		if result.TestName != tc.expectedTestName {
+			t.Errorf("For key %q, expected TestName %q, got %q", tc.key, tc.expectedTestName, result.TestName)
+		}
+		// Verify that subsequent lookups return the same instance.
+		duplicate := getOrCreateTestResult(testResultsMap, tc.key)
+		if duplicate != result {
+			t.Errorf("Subsequent call did not return the same instance for key %q", tc.key)
+		}
+	}
 }
 
 var (
