@@ -34,6 +34,8 @@ var AggregateResultsCmd = &cobra.Command{
 		splunkURL, _ := cmd.Flags().GetString("splunk-url")
 		splunkToken, _ := cmd.Flags().GetString("splunk-token")
 		splunkEvent, _ := cmd.Flags().GetString("splunk-event")
+		dxURL, _ := cmd.Flags().GetString("dx-url")
+		dxToken, _ := cmd.Flags().GetString("dx-token")
 
 		initialDirSize, err := getDirSize(resultsPath)
 		if err != nil {
@@ -58,6 +60,7 @@ var AggregateResultsCmd = &cobra.Command{
 			resultsPath,
 			reports.WithReportID(reportID),
 			reports.WithSplunk(splunkURL, splunkToken, splunkEvent),
+			reports.WithDX(dxURL, dxToken),
 			reports.WithBranchName(branchName),
 			reports.WithBaseSha(baseSHA),
 			reports.WithHeadSha(headSHA),
@@ -193,6 +196,8 @@ func init() {
 	AggregateResultsCmd.Flags().String("splunk-url", "", "Optional url to simultaneously send the test results to splunk")
 	AggregateResultsCmd.Flags().String("splunk-token", "", "Optional Splunk HEC token to simultaneously send the test results to splunk")
 	AggregateResultsCmd.Flags().String("splunk-event", "manual", "Optional Splunk event to send as the triggering event for the test results")
+	AggregateResultsCmd.Flags().String("dx-url", "", "Optional url to simultaneously send the test results to DX")
+	AggregateResultsCmd.Flags().String("dx-token", "", "Optional token to simultaneously send the test results to DX")
 
 	if err := AggregateResultsCmd.MarkFlagRequired("results-path"); err != nil {
 		log.Fatal().Err(err).Msg("Error marking flag as required")

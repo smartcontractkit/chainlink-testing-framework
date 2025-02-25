@@ -90,7 +90,7 @@ func (testReport *TestReport) GenerateSummaryData() {
 // TestResult contains the results and outputs of a single test
 type TestResult struct {
 	// ReportID is the ID of the report this test result belongs to
-	// used mostly for Splunk logging
+	// used mostly for Splunk analysis
 	ReportID       string              `json:"report_id"`
 	TestName       string              `json:"test_name"`
 	TestPackage    string              `json:"test_package"`
@@ -144,50 +144,6 @@ type SummaryData struct {
 	SkippedRuns int `json:"skipped_runs"`
 	// PassPercent is the human-readable percentage of test runs that passed
 	PassPercent string `json:"pass_percent"`
-}
-
-// SplunkType represents what type of data is being sent to Splunk, e.g. a report or a result.
-// This is a custom field to help us distinguish what kind of data we're sending.
-type SplunkType string
-
-const (
-	Report SplunkType = "report"
-	Result SplunkType = "result"
-
-	// https://docs.splunk.com/Splexicon:Sourcetype
-	SplunkSourceType = "flakeguard_json"
-	// https://docs.splunk.com/Splexicon:Index
-	SplunkIndex = "github_flakeguard_runs"
-)
-
-// SplunkTestReport is the full wrapper structure sent to Splunk for the full test report (sans results)
-type SplunkTestReport struct {
-	Event      SplunkTestReportEvent `json:"event"`      // https://docs.splunk.com/Splexicon:Event
-	SourceType string                `json:"sourcetype"` // https://docs.splunk.com/Splexicon:Sourcetype
-	Index      string                `json:"index"`      // https://docs.splunk.com/Splexicon:Index
-}
-
-// SplunkTestReportEvent contains the actual meat of the Splunk test report event
-type SplunkTestReportEvent struct {
-	Event string     `json:"event"`
-	Type  SplunkType `json:"type"`
-	Data  TestReport `json:"data"`
-	// Incomplete indicates that there were issues uploading test results and the report is incomplete
-	Incomplete bool `json:"incomplete"`
-}
-
-// SplunkTestResult is the full wrapper structure sent to Splunk for a single test result
-type SplunkTestResult struct {
-	Event      SplunkTestResultEvent `json:"event"`      // https://docs.splunk.com/Splexicon:Event
-	SourceType string                `json:"sourcetype"` // https://docs.splunk.com/Splexicon:Sourcetype
-	Index      string                `json:"index"`      // https://docs.splunk.com/Splexicon:Index
-}
-
-// SplunkTestResultEvent contains the actual meat of the Splunk test result event
-type SplunkTestResultEvent struct {
-	Event string     `json:"event"`
-	Type  SplunkType `json:"type"`
-	Data  TestResult `json:"data"`
 }
 
 // Data Processing Functions
