@@ -100,6 +100,10 @@ func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassR
 	if artifactLink != "" {
 		renderArtifactSection(w, artifactName, artifactLink)
 	}
+
+	if testReport.SummaryData.FlakyTests > 0 {
+		renderTroubleshootingSection(w)
+	}
 }
 
 // GeneratePRCommentMarkdown generates a markdown summary of the test results for a GitHub PR comment.
@@ -191,27 +195,27 @@ func RenderResults(
 	collapsible bool,
 ) {
 	resultsTable := GenerateFlakyTestsTable(testReport, markdown)
-	renderSummaryTable(w, testReport.SummaryData, markdown, false) // Don't make the summary collapsible
+	renderSummaryTable(w, testReport.SummaryData, markdown, false, testReport.RaceDetection) // Don't make the summary collapsible
 	renderTestResultsTable(w, resultsTable, collapsible)
 }
 
 // renderSummaryTable renders a summary table with the given data into a console or markdown format.
 // If in markdown mode, the table can also be made collapsible.
-func renderSummaryTable(w io.Writer, summary *SummaryData, markdown bool, collapsible bool) {
+func renderSummaryTable(w io.Writer, summary *SummaryData, markdown bool, collapsible bool, raceDetection bool) {
 	summaryData := [][]string{
 		{"Category", "Total"},
 		{"Unique Tests", fmt.Sprintf("%d", summary.UniqueTestsRun)},
-		{"Test Run Count", fmt.Sprintf("%d", summary.TestRunCount)},
-		{"Panicked Tests", fmt.Sprintf("%d", summary.PanickedTests)},
-		{"Raced Tests", fmt.Sprintf("%d", summary.RacedTests)},
-		{"Flaky Tests", fmt.Sprintf("%d", summary.FlakyTests)},
-		{"Flaky Test Percent", summary.FlakyTestPercent},
+		{"Unique Skipped Tests", fmt.Sprintf("%d", summary.UniqueSkippedTestCount)},
 		{"Total Test Runs", fmt.Sprintf("%d", summary.TotalRuns)},
-		{"Passes", fmt.Sprintf("%d", summary.PassedRuns)},
-		{"Failures", fmt.Sprintf("%d", summary.FailedRuns)},
-		{"Skips", fmt.Sprintf("%d", summary.SkippedRuns)},
-		{"Pass Percent", summary.PassPercent},
+		{"Passed Test Runs", fmt.Sprintf("%d (%s)", summary.PassedRuns, summary.PassPercent)},
+		{"Flaky Test Runs", fmt.Sprintf("%d (%s)", summary.FlakyTests, summary.FlakyTestPercent)},
+		{"Panicked Tests", fmt.Sprintf("%d", summary.PanickedTests)},
 	}
+	// Only include "Raced Tests" row if race detection is enabled.
+	if raceDetection {
+		summaryData = append(summaryData, []string{"Raced Tests", fmt.Sprintf("%d", summary.RacedTests)})
+	}
+
 	if markdown {
 		for i, row := range summaryData {
 			if i == 0 {
@@ -240,6 +244,14 @@ func renderArtifactSection(w io.Writer, artifactName, artifactLink string) {
 		fmt.Fprintln(w)
 		fmt.Fprintf(w, "For detailed logs of the failed tests, please refer to the artifact [%s](%s).\n", artifactName, artifactLink)
 	}
+}
+
+// renderTroubleshootingSection appends a troubleshooting section with a link to the README
+func renderTroubleshootingSection(w io.Writer) {
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "## Troubleshooting Flaky Tests 🔍")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "For guidance on diagnosing and resolving E2E test flakiness, refer to the [Finding the Root Cause of Test Flakes](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/tools/flakeguard/e2e-flaky-test-guide.md) guide.")
 }
 
 // printTable prints a markdown table to the given writer in a pretty format.
