@@ -1002,6 +1002,9 @@ func (cl *ContractLoader[T]) LoadContract(name string, address common.Address, a
 	return wrapperInitFn(address, cl.Client.Client)
 }
 
+// DeployContractWithHooks deploys a smart contract with optional pre- and post-deployment hooks.
+// It allows for custom logic to be executed before and after the contract deployment process,
+// enhancing flexibility and control over the deployment workflow.
 func (m *Client) DeployContractWithHooks(hooks ContractDeploymentHooks, auth *bind.TransactOpts, name string, abi abi.ABI, bytecode []byte, params ...interface{}) (DeploymentData, error) {
 	L.Info().
 		Msgf("Started deploying %s contract", name)
