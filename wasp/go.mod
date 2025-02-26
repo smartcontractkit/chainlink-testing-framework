@@ -1,8 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/wasp
 
-go 1.23.0
-
-toolchain go1.23.6
+go 1.24.0
 
 replace github.com/smartcontractkit/chainlink-testing-framework/lib => ../lib
 
