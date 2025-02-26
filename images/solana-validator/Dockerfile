@@ -30,6 +30,8 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 RUN curl https://codeload.github.com/anza-xyz/agave/tar.gz/refs/tags/v$AGAVE_VERSION | tar xvz
 RUN mv /app/agave-$AGAVE_VERSION /app/agave
 
+ADD solana_artifacts /programs
+
 WORKDIR /app/agave
 RUN cargo build --bin solana-test-validator --release
 RUN cp target/release/solana-test-validator /app/bin/
