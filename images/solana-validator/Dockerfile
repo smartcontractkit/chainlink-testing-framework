@@ -32,8 +32,14 @@ RUN mv /app/agave-$AGAVE_VERSION /app/agave
 
 
 WORKDIR /app/agave
+# Build validator
 RUN cargo build --bin solana-test-validator --release
 RUN cp target/release/solana-test-validator /app/bin/
+
+# Build solana
+RUN cargo build --bin solana --release
+RUN cp target/release/solana /app/bin/
+
 
 # Final app image
 FROM base AS final
@@ -43,4 +49,6 @@ RUN apt update && \
     rm -rf /var/lib/apt/lists/*
 
 ADD solana_artifacts/ /programs/
+
+
 COPY --from=builder /app/bin/* /app/bin
