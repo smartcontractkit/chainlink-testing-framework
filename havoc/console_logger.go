@@ -76,36 +76,6 @@ func (l ChaosLogger) OnChaosStatusUnknown(chaos Chaos) {
 		Msg("Chaos status unknown")
 }
 
-func (l ChaosLogger) OnScheduleCreated(schedule Schedule) {
-	duration, _ := schedule.GetChaosDuration()
-
-	l.logger.Info().
-		Str("logger", "chaos").
-		Str("name", schedule.GetObject().GetName()).
-		Str("namespace", schedule.GetObject().GetNamespace()).
-		Str("description", schedule.GetChaosDescription()).
-		Str("duration", duration.String()).
-		Time("startTime", schedule.GetStartTime()).
-		Time("endTime", schedule.GetEndTime()).
-		Interface("spec", schedule.GetChaosSpec()).
-		Msg("Chaos schedule created")
-}
-
-func (l ChaosLogger) OnScheduleDeleted(schedule Schedule) {
-	duration, _ := schedule.GetChaosDuration()
-
-	l.logger.Info().
-		Str("logger", "chaos").
-		Str("name", schedule.GetObject().GetName()).
-		Str("namespace", schedule.GetObject().GetNamespace()).
-		Str("description", schedule.GetChaosDescription()).
-		Str("duration", duration.String()).
-		Time("startTime", schedule.GetStartTime()).
-		Time("endTime", schedule.GetEndTime()).
-		Interface("spec", schedule.GetChaosSpec()).
-		Msg("Chaos schedule deleted")
-}
-
 func (l ChaosLogger) commonChaosLog(logLevel string, chaos Chaos) *zerolog.Event {
 	// Create a base event based on the dynamic log level
 	var event *zerolog.Event
