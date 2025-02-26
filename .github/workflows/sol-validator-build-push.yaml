@@ -1,5 +1,6 @@
 name: Solana validator build / push image
 on: 
+  pull_request:
   workflow_dispatch:
     inputs:
       artifact_download_url:
