@@ -235,3 +235,11 @@ func (d *JSONStrDuration) UnmarshalJSON(b []byte) error {
 		return errors.New("invalid duration")
 	}
 }
+
+func MustParseDuration(s string) time.Duration {
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		L.Fatal().Msg("cannot parse duration, should be Go format 1h2m3s")
+	}
+	return d
+}
