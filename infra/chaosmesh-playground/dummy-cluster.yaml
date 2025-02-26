@@ -3,17 +3,17 @@ kind: Deployment
 metadata:
   name: geth-1337
   labels:
-    instance: geth-1337
+    app.kubernetes.io/instance: geth-1337
 spec:
   selector:
     matchLabels:
       app: http-ping-app
-      instance: geth-1337
+      app.kubernetes.io/instance: geth-1337
   template:
     metadata:
       labels:
         app: http-ping-app
-        instance: geth-1337
+        app.kubernetes.io/instance: geth-1337
     spec:
       containers:
         - name: http-ping-container
@@ -42,17 +42,17 @@ kind: Deployment
 metadata:
   name: geth-2337
   labels:
-    instance: geth-2337
+    app.kubernetes.io/instance: geth-2337
 spec:
   selector:
     matchLabels:
       app: http-ping-app
-      instance: geth-2337
+      app.kubernetes.io/instance: geth-2337
   template:
     metadata:
       labels:
         app: http-ping-app
-        instance: geth-2337
+        app.kubernetes.io/instance: geth-2337
     spec:
       containers:
         - name: http-ping-container

@@ -1,6 +1,7 @@
 package framework
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -31,6 +32,20 @@ type Annotation struct {
 type PostAnnotationResponse struct {
 	Message string `json:"message"`
 	ID      int64  `json:"id"`
+}
+
+// A is just a short-cut for default annotation
+func A(ns, text string, dashboardUIDs []string, from, to *time.Time) Annotation {
+	a := Annotation{
+		Text:         fmt.Sprintf("Namespace: %s, Test: %s", ns, text),
+		StartTime:    from,
+		Tags:         []string{"chaos"},
+		DashboardUID: dashboardUIDs,
+	}
+	if !to.IsZero() {
+		a.EndTime = to
+	}
+	return a
 }
 
 // Annotate adds annotation to all the dashboards, works for both single point annotation with just StartTime and for ranges with StartTime/EndTime
