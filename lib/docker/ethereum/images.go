@@ -25,6 +25,6 @@ const (
 	RethBaseImageName    = "ghcr.io/paradigmxyz/reth"
 	rethGitRepo          = "paradigmxyz/reth"
 
-	GenesisGeneratorDenebImage    = "public.ecr.aws/w0i8p0z9/ethereum-genesis-generator:main-8a8fb99" // latest one
+	GenesisGeneratorDenebImage    = "tofelb/ethereum-genesis-generator:3.3.5-main-8a8fb99" // latest one, copy of public.ecr.aws/w0i8p0z9/ethereum-genesis-generator:main-8a8fb99
 	GenesisGeneratorShanghaiImage = "tofelb/ethereum-genesis-generator:2.0.5"
 )
