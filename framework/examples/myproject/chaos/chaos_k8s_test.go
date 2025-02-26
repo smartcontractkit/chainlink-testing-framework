@@ -6,6 +6,7 @@ import (
 	gf "github.com/smartcontractkit/chainlink-testing-framework/framework/grafana"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
 	"github.com/smartcontractkit/chainlink-testing-framework/havoc"
+	"math/big"
 	"os"
 	"testing"
 	"time"
@@ -22,6 +23,8 @@ type K8sChaos struct {
 	BlockchainHTTPURLs          []string `toml:"blockchain_http_urls"`
 	ReorgBelowFinalityThreshold int      `toml:"reorg_below_finality_threshold"`
 	ReorgAboveFinalityThreshold int      `toml:"reorg_above_finality_threshold"`
+	BlockEvery                  string   `toml:"block_every"`
+	RemoveK8sChaos              bool     `toml:"remove_k8s_chaos"`
 }
 
 type CfgChaosK8s struct {
@@ -35,8 +38,41 @@ func TestK8sChaos(t *testing.T) {
 
 	c, err := havoc.NewChaosMeshClient()
 	require.NoError(t, err)
-	cr := havoc.NewNamespaceRunner(f.L, c, false)
+	cr := havoc.NewNamespaceRunner(f.L, c, true)
 	gc := gf.NewGrafanaClient(os.Getenv("GRAFANA_URL"), os.Getenv("GRAFANA_TOKEN"))
+	rpc0 := rpc.New(cfg.BlockchainHTTPURLs[0], nil)
+	rpc1 := rpc.New(cfg.BlockchainHTTPURLs[1], nil)
+
+	gasScheduleFunc := func(t *testing.T, r *rpc.RPCClient, url string, increase *big.Int) {
+		startGasPrice := big.NewInt(2e9)
+		// ramp
+		for i := 0; i < 10; i++ {
+			err := r.PrintBlockBaseFee()
+			require.NoError(t, err)
+			err = r.AnvilSetNextBlockBaseFeePerGas(startGasPrice)
+			require.NoError(t, err)
+			err = r.AnvilMine([]interface{}{"1"})
+			require.NoError(t, err)
+			time.Sleep(f.MustParseDuration(cfg.BlockEvery))
+			startGasPrice = startGasPrice.Add(startGasPrice, increase)
+		}
+		// hold
+		for i := 0; i < 10; i++ {
+			err := r.PrintBlockBaseFee()
+			require.NoError(t, err)
+			err = r.AnvilSetNextBlockBaseFeePerGas(startGasPrice)
+			require.NoError(t, err)
+			err = r.AnvilMine([]interface{}{"1"})
+			require.NoError(t, err)
+			time.Sleep(f.MustParseDuration(cfg.BlockEvery))
+		}
+		// release
+		for i := 0; i < 10; i++ {
+			err := r.PrintBlockBaseFee()
+			require.NoError(t, err)
+			time.Sleep(f.MustParseDuration(cfg.BlockEvery))
+		}
+	}
 
 	testCases := []struct {
 		name     string
@@ -380,8 +416,7 @@ func TestK8sChaos(t *testing.T) {
 		{
 			name: "Reorg src chain below finality",
 			run: func(t *testing.T) {
-				r := rpc.New(cfg.BlockchainHTTPURLs[0], nil)
-				err := r.GethSetHead(cfg.ReorgBelowFinalityThreshold)
+				err := rpc0.GethSetHead(cfg.ReorgBelowFinalityThreshold)
 				require.NoError(t, err)
 			},
 			validate: func(t *testing.T) {},
@@ -389,8 +424,7 @@ func TestK8sChaos(t *testing.T) {
 		{
 			name: "Reorg dst chain below finality",
 			run: func(t *testing.T) {
-				r := rpc.New(cfg.BlockchainHTTPURLs[1], nil)
-				err := r.GethSetHead(cfg.ReorgBelowFinalityThreshold)
+				err := rpc1.GethSetHead(cfg.ReorgBelowFinalityThreshold)
 				require.NoError(t, err)
 			},
 			validate: func(t *testing.T) {},
@@ -398,8 +432,7 @@ func TestK8sChaos(t *testing.T) {
 		{
 			name: "Reorg src chain above finality",
 			run: func(t *testing.T) {
-				r := rpc.New(cfg.BlockchainHTTPURLs[0], nil)
-				err := r.GethSetHead(cfg.ReorgAboveFinalityThreshold)
+				err := rpc0.GethSetHead(cfg.ReorgAboveFinalityThreshold)
 				require.NoError(t, err)
 			},
 			validate: func(t *testing.T) {},
@@ -407,9 +440,22 @@ func TestK8sChaos(t *testing.T) {
 		{
 			name: "Reorg dst chain above finality",
 			run: func(t *testing.T) {
-				r := rpc.New(cfg.BlockchainHTTPURLs[1], nil)
-				err := r.GethSetHead(cfg.ReorgAboveFinalityThreshold)
+				err := rpc1.GethSetHead(cfg.ReorgAboveFinalityThreshold)
 				require.NoError(t, err)
+			},
+			validate: func(t *testing.T) {},
+		},
+		{
+			name: "Slow spike",
+			run: func(t *testing.T) {
+				gasScheduleFunc(t, rpc1, cfg.BlockchainHTTPURLs[1], big.NewInt(1e9))
+			},
+			validate: func(t *testing.T) {},
+		},
+		{
+			name: "Fast spike",
+			run: func(t *testing.T) {
+				gasScheduleFunc(t, rpc1, cfg.BlockchainHTTPURLs[1], big.NewInt(1e9))
 			},
 			validate: func(t *testing.T) {},
 		},
