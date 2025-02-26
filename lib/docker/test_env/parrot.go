@@ -130,6 +130,11 @@ func (p *Parrot) getContainerRequest() (tc.ContainerRequest, error) {
 		Image:        pImage,
 		ExposedPorts: []string{"80/tcp"},
 		Networks:     p.Networks,
+		Env: map[string]string{
+			"PARROT_PORT":      "80",
+			"PARROT_LOG_LEVEL": "trace",
+			"PARROT_HOST":      "0.0.0.0",
+		},
 		WaitingFor: tcwait.ForHealthCheck().
 			WithPollInterval(100 * time.Millisecond).WithStartupTimeout(p.StartupTimeout),
 		LifecycleHooks: []tc.ContainerLifecycleHooks{
