@@ -15,7 +15,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/k8s/environment"
 	helm_parrot "github.com/smartcontractkit/chainlink-testing-framework/lib/k8s/pkg/helm/parrot"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/mirror"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
 	"github.com/smartcontractkit/chainlink-testing-framework/parrot"
 )
@@ -23,6 +22,7 @@ import (
 const (
 	defaultParrotImage   = "kalverra/parrot"
 	defaultParrotVersion = "v0.5.0"
+	defaultParrotPort    = "80"
 )
 
 // Parrot is a test environment component that wraps a Parrot server.
@@ -123,19 +123,19 @@ func (p *Parrot) StartContainer() error {
 }
 
 func (p *Parrot) getContainerRequest() (tc.ContainerRequest, error) {
-	pImage := mirror.AddMirrorToImageIfSet("parrot")
-	if pImage == "" || pImage == "parrot" {
-		pImage = defaultParrotImage
-	}
+	// pImage := mirror.AddMirrorToImageIfSet("parrot")
+	// if pImage == "" || pImage == "parrot" {
+	pImage := defaultParrotImage // DEBUG: Checking if image difference is the problem
+	// }
 	pImage = fmt.Sprintf("%s:%s", pImage, defaultParrotVersion)
 
 	return tc.ContainerRequest{
 		Name:         p.ContainerName,
 		Image:        pImage,
-		ExposedPorts: []string{"80/tcp"},
+		ExposedPorts: []string{NatPortFormat(defaultParrotPort)},
 		Networks:     p.Networks,
 		Env: map[string]string{
-			"PARROT_PORT":      "80",
+			"PARROT_PORT":      defaultParrotPort,
 			"PARROT_LOG_LEVEL": "trace",
 			"PARROT_HOST":      "0.0.0.0",
 		},
