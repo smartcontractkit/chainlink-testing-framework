@@ -718,3 +718,79 @@ func TestSpecialCharactersInTestNames(t *testing.T) {
 
 	transformAndVerify(t, events, opts, 1, expectedActions)
 }
+
+func TestSubTestNameWithSlashes(t *testing.T) {
+	opts := &Options{
+		IgnoreAllSubtestFailures: false,
+	}
+
+	events := []testEvent{
+		createEvent("start", "example", "", 0.0, ""),
+		createEvent("run", "example", "TestSubTestNameWithSlashes", 0.0, "=== RUN   TestSubTestNameWithSlashes\n"),
+		createEvent("output", "example", "TestSubTestNameWithSlashes", 0.0, "=== PAUSE TestSubTestNameWithSlashes\n"),
+		createEvent("pause", "example", "TestSubTestNameWithSlashes", 0.0, ""),
+		createEvent("cont", "example", "TestSubTestNameWithSlashes", 0.0, "=== CONT  TestSubTestNameWithSlashes\n"),
+		createEvent("run", "example", "TestSubTestNameWithSlashes/sub/test/name/with/slashes", 0.0, "=== RUN   TestSubTestNameWithSlashes/sub/test/name/with/slashes\n"),
+		createEvent("output", "example", "TestSubTestNameWithSlashes/sub/test/name/with/slashes", 0.0, "    example_test.go:356: This subtest always passes\n"),
+		createEvent("output", "example", "TestSubTestNameWithSlashes/sub/test/name/with/slashes", 0.0, "--- PASS: TestSubTestNameWithSlashes/sub/test/name/with/slashes (0.00s)\n"),
+		createEvent("pass", "example", "TestSubTestNameWithSlashes/sub/test/name/with/slashes", 0.0, ""),
+		createEvent("output", "example", "TestSubTestNameWithSlashes", 0.0, "--- PASS: TestSubTestNameWithSlashes (0.00s)\n"),
+		createEvent("pass", "example", "TestSubTestNameWithSlashes", 0.0, ""),
+		createEvent("output", "example", "", 0.0, "PASS\n"),
+		createEvent("output", "example", "", 0.0, "ok  \texample\t0.188s\n"),
+		createEvent("pass", "example", "", 0.188, ""),
+	}
+
+	expectedActions := map[string]string{
+		"example/TestSubTestNameWithSlashes/sub/test/name/with/slashes": "pass",
+		"example/TestSubTestNameWithSlashes":                            "pass",
+		"example/":                                                      "pass",
+	}
+
+	transformAndVerify(t, events, opts, 0, expectedActions)
+}
+
+func TestFuzzTestWithCorpus(t *testing.T) {
+	opts := &Options{
+		IgnoreAllSubtestFailures: false,
+	}
+
+	events := []testEvent{
+		createEvent("start", "example", "", 0.0, ""),
+		createEvent("run", "example", "FuzzTestWithCorpus", 0.0, "=== RUN   FuzzTestWithCorpus\n"),
+
+		createEvent("run", "example", "FuzzTestWithCorpus/seed#0", 0.0, "=== RUN   FuzzTestWithCorpus/seed#0\n"),
+		createEvent("output", "example", "FuzzTestWithCorpus/seed#0", 0.0, "    example_test.go:367: Fuzzing with input: some\n"),
+		createEvent("output", "example", "FuzzTestWithCorpus/seed#0", 0.0, "--- PASS: FuzzTestWithCorpus/seed#0 (0.00s)\n"),
+		createEvent("pass", "example", "FuzzTestWithCorpus/seed#0", 0.0, ""),
+
+		createEvent("run", "example", "FuzzTestWithCorpus/seed#1", 0.0, "=== RUN   FuzzTestWithCorpus/seed#1\n"),
+		createEvent("output", "example", "FuzzTestWithCorpus/seed#1", 0.0, "    example_test.go:367: Fuzzing with input: corpus\n"),
+		createEvent("output", "example", "FuzzTestWithCorpus/seed#1", 0.0, "--- PASS: FuzzTestWithCorpus/seed#1 (0.00s)\n"),
+		createEvent("pass", "example", "FuzzTestWithCorpus/seed#1", 0.0, ""),
+
+		createEvent("run", "example", "FuzzTestWithCorpus/seed#2", 0.0, "=== RUN   FuzzTestWithCorpus/seed#2\n"),
+		createEvent("output", "example", "FuzzTestWithCorpus/seed#2", 0.0, "    example_test.go:367: Fuzzing with input: values\n"),
+		createEvent("output", "example", "FuzzTestWithCorpus/seed#2", 0.0, "--- PASS: FuzzTestWithCorpus/seed#2 (0.00s)\n"),
+		createEvent("pass", "example", "FuzzTestWithCorpus/seed#2", 0.0, ""),
+
+		createEvent("output", "example", "FuzzTestWithCorpus", 0.0, "--- PASS: FuzzTestWithCorpus (0.00s)\n"),
+		createEvent("pass", "example", "FuzzTestWithCorpus", 0.0, ""),
+
+		createEvent("output", "example", "", 0.0, "PASS\n"),
+		createEvent("output", "example", "", 0.0, "ok  \texample\t0.231s\n"),
+		createEvent("pass", "example", "", 0.231, ""),
+	}
+
+	// All fuzz seeds pass, so the fuzz test and package pass as well
+	expectedActions := map[string]string{
+		"example/FuzzTestWithCorpus/seed#0": "pass",
+		"example/FuzzTestWithCorpus/seed#1": "pass",
+		"example/FuzzTestWithCorpus/seed#2": "pass",
+		"example/FuzzTestWithCorpus":        "pass",
+		"example/":                          "pass",
+	}
+
+	// transformAndVerify should yield exit code 0 since everything passes
+	transformAndVerify(t, events, opts, 0, expectedActions)
+}

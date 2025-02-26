@@ -347,3 +347,23 @@ func TestWithSubtestReuse(t *testing.T) {
 	testFunc(t, "Third", false)
 	testFunc(t, "Fourth", true)
 }
+
+// See what happens if you include slashes in the subtest name
+func TestSubTestNameWithSlashes(t *testing.T) {
+	t.Parallel()
+
+	t.Run("sub/test/name/with/slashes", func(t *testing.T) {
+		t.Log("This subtest always passes")
+	})
+}
+
+// Account for fuzz tests with a corpus, so they run as normal unit tests
+func FuzzTestWithCorpus(f *testing.F) {
+	f.Add("some")
+	f.Add("corpus")
+	f.Add("values")
+
+	f.Fuzz(func(t *testing.T, input string) {
+		t.Logf("Fuzzing with input: %s", input)
+	})
+}
