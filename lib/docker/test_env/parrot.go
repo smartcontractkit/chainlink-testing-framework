@@ -23,8 +23,7 @@ import (
 const (
 	defaultParrotImage   = "kalverra/parrot"
 	defaultParrotVersion = "v0.5.0"
-	// defaultParrotPort    = "80"
-	defaultParrotPort = "5058" // DEBUG: checking if port chosen is wrong in CI
+	defaultParrotPort    = "80"
 )
 
 // Parrot is a test environment component that wraps a Parrot server.
@@ -55,12 +54,13 @@ type ParrotAdapterResult struct {
 func NewParrot(networks []string, opts ...EnvComponentOption) *Parrot {
 	p := &Parrot{
 		EnvComponent: EnvComponent{
-			ContainerName:  "parrot",
+			ContainerName:  fmt.Sprintf("%s-%s", "parrot", uuid.NewString()[0:3]),
 			Networks:       networks,
 			StartupTimeout: 10 * time.Second,
 		},
 		l: log.Logger,
 	}
+	p.SetDefaultHooks()
 	for _, opt := range opts {
 		opt(&p.EnvComponent)
 	}
