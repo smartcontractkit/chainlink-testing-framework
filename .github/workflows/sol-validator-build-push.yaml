@@ -46,7 +46,7 @@ jobs:
       - name: Download CCIP artifacts
         run: |
           curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN}}" -o artifact.zip ${{ inputs.ARTIFACT_DOWNLOAD_URL }}
-          unzip artifact.zip -d /home/runner/work/chainlink-testing-framework/images/solana-validator/solana_artifacts
+          unzip artifact.zip -d /home/runner/work/chainlink-testing-framework/chainlink-testing-framework/images/solana-validator/solana_artifacts
 
       - name: Build and Push AMD64 Image
         uses: docker/build-push-action@v5
@@ -87,7 +87,7 @@ jobs:
       - name: Download CCIP artifacts
         run: |
           curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN}}" -o artifact.zip ${{ inputs.ARTIFACT_DOWNLOAD_URL }}
-          unzip artifact.zip -d /home/runner/work/chainlink-testing-framework/images/solana-validator/solana_artifacts
+          unzip artifact.zip -d /home/runner/work/chainlink-testing-framework/chainlink-testing-framework/images/solana-validator/solana_artifacts
 
       - name: Build and Push Arm64 Image
         uses: docker/build-push-action@v5
