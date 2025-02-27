@@ -26,7 +26,7 @@ func createEvent(action, pkg, test string, elapsed float64, output string) testE
 }
 
 // transformAndVerify is a helper function to transform events and verify the results
-func transformAndVerify(t *testing.T, events []testEvent, opts *Options, expectedExitCode int, expectedActions map[string]string) {
+func transformAndVerify(t *testing.T, events []testEvent, opts *Options, expectedActions map[string]string) {
 	// Convert test events to JSON
 	var input bytes.Buffer
 	for _, event := range events {
@@ -39,14 +39,9 @@ func transformAndVerify(t *testing.T, events []testEvent, opts *Options, expecte
 
 	// Transform the events
 	var output bytes.Buffer
-	exitCode, err := TransformJSON(&input, &output, opts)
+	err := TransformJSON(&input, &output, opts)
 	if err != nil {
 		t.Fatalf("Failed to transform JSON: %v", err)
-	}
-
-	// Verify exit code
-	if exitCode != expectedExitCode {
-		t.Errorf("Expected exit code %d, got %d", expectedExitCode, exitCode)
 	}
 
 	// Parse the output
@@ -105,7 +100,7 @@ func TestIgnoreAllSubtests(t *testing.T) {
 		"example/":                    "pass",
 	}
 
-	transformAndVerify(t, events, opts, 1, expectedActions)
+	transformAndVerify(t, events, opts, expectedActions)
 }
 
 // TestNestedSubtests tests handling nested subtests
@@ -139,7 +134,7 @@ func TestNestedSubtests(t *testing.T) {
 		"example/":                               "pass",
 	}
 
-	transformAndVerify(t, events, opts, 1, expectedActions)
+	transformAndVerify(t, events, opts, expectedActions)
 }
 
 // TestParallelTestsEventOrdering tests handling of parallel tests
@@ -171,7 +166,7 @@ func TestParallelTestsEventOrdering(t *testing.T) {
 		"example/":                  "pass",
 	}
 
-	transformAndVerify(t, events, opts, 1, expectedActions)
+	transformAndVerify(t, events, opts, expectedActions)
 }
 
 // TestOutputTransformation tests transformation of output text
@@ -191,14 +186,10 @@ func TestEmptyInput(t *testing.T) {
 	opts := DefaultOptions()
 
 	var input, output bytes.Buffer
-	exitCode, err := TransformJSON(&input, &output, opts)
+	err := TransformJSON(&input, &output, opts)
 
 	if err != nil {
 		t.Errorf("Expected no error for empty input, got: %v", err)
-	}
-
-	if exitCode != 0 {
-		t.Errorf("Expected exit code 0 for empty input, got: %d", exitCode)
 	}
 
 	if output.Len() != 0 {
@@ -213,7 +204,7 @@ func TestMalformedJSON(t *testing.T) {
 	input := strings.NewReader("This is not JSON\n{\"Action\":\"fail\"")
 	var output bytes.Buffer
 
-	_, err := TransformJSON(input, &output, opts)
+	err := TransformJSON(input, &output, opts)
 
 	if err == nil {
 		t.Error("Expected error for malformed JSON, got nil")
@@ -257,7 +248,7 @@ func TestParentWithDirectFailureAndFailingSubtest(t *testing.T) {
 		"example/":                               "pass",
 	}
 
-	transformAndVerify(t, events, opts, 1, expectedActions)
+	transformAndVerify(t, events, opts, expectedActions)
 }
 
 func TestParentWithOnlyDirectFailure(t *testing.T) {
@@ -290,7 +281,7 @@ func TestParentWithOnlyDirectFailure(t *testing.T) {
 		"example/":                    "pass",
 	}
 
-	transformAndVerify(t, events, opts, 1, expectedActions)
+	transformAndVerify(t, events, opts, expectedActions)
 }
 
 // TestMultiLevelNestedFailures tests multiple levels of nested failures
@@ -333,7 +324,7 @@ func TestMultiLevelNestedFailures(t *testing.T) {
 		"example/":                                        "pass",
 	}
 
-	transformAndVerify(t, events, opts, 1, expectedActions)
+	transformAndVerify(t, events, opts, expectedActions)
 }
 
 // TestOnlyDirectFailures tests a scenario where there are no failing subtests, only direct failures
@@ -377,7 +368,7 @@ func TestOnlyDirectFailures(t *testing.T) {
 	}
 
 	// Exit code should be 1 because there are still failing tests
-	transformAndVerify(t, events, opts, 1, expectedActions)
+	transformAndVerify(t, events, opts, expectedActions)
 }
 
 // TestLogMessagesNotDirectFailures tests that log messages are not treated as direct failures
@@ -417,7 +408,7 @@ func TestLogMessagesNotDirectFailures(t *testing.T) {
 		"example/":                          "pass",
 	}
 
-	transformAndVerify(t, events, opts, 1, expectedActions)
+	transformAndVerify(t, events, opts, expectedActions)
 }
 
 // TestNestedLogsAllPassing tests that log messages in passing tests are handled correctly
@@ -453,7 +444,7 @@ func TestNestedLogsAllPassing(t *testing.T) {
 		"example/":                                 "pass",
 	}
 
-	transformAndVerify(t, events, opts, 0, expectedActions)
+	transformAndVerify(t, events, opts, expectedActions)
 }
 
 // TestSkippedTests tests handling of skipped tests
@@ -483,7 +474,7 @@ func TestSkippedTests(t *testing.T) {
 		"example/TestSkippedTests":                      "pass",
 	}
 
-	transformAndVerify(t, events, opts, 0, expectedActions)
+	transformAndVerify(t, events, opts, expectedActions)
 }
 
 // TestDeepNesting tests handling of deeply nested test hierarchies
@@ -529,7 +520,7 @@ func TestDeepNesting(t *testing.T) {
 		"example/":                                                   "pass",
 	}
 
-	transformAndVerify(t, events, opts, 1, expectedActions)
+	transformAndVerify(t, events, opts, expectedActions)
 }
 
 // TestConcurrentTests tests handling of concurrent test execution
@@ -580,7 +571,7 @@ func TestConcurrentTests(t *testing.T) {
 		"example/":                                    "pass",
 	}
 
-	transformAndVerify(t, events, opts, 1, expectedActions)
+	transformAndVerify(t, events, opts, expectedActions)
 }
 
 // TestTableDrivenTests tests handling of table-driven tests
@@ -628,7 +619,7 @@ func TestTableDrivenTests(t *testing.T) {
 		"example/":                                     "pass",
 	}
 
-	transformAndVerify(t, events, opts, 1, expectedActions)
+	transformAndVerify(t, events, opts, expectedActions)
 }
 
 // TestSubtestReuse tests handling of tests that reuse the same subtest function
@@ -677,7 +668,7 @@ func TestSubtestReuse(t *testing.T) {
 		"example/":                            "pass",
 	}
 
-	transformAndVerify(t, events, opts, 1, expectedActions)
+	transformAndVerify(t, events, opts, expectedActions)
 }
 
 // TestSpecialCharactersInTestNames tests handling of tests with special characters in names
@@ -720,7 +711,7 @@ func TestSpecialCharactersInTestNames(t *testing.T) {
 		"example/":                                        "pass",
 	}
 
-	transformAndVerify(t, events, opts, 1, expectedActions)
+	transformAndVerify(t, events, opts, expectedActions)
 }
 
 func TestSubTestNameWithSlashes(t *testing.T) {
@@ -751,7 +742,7 @@ func TestSubTestNameWithSlashes(t *testing.T) {
 		"example/":                                                      "pass",
 	}
 
-	transformAndVerify(t, events, opts, 0, expectedActions)
+	transformAndVerify(t, events, opts, expectedActions)
 }
 
 func TestFuzzTestWithCorpus(t *testing.T) {
@@ -796,5 +787,5 @@ func TestFuzzTestWithCorpus(t *testing.T) {
 	}
 
 	// transformAndVerify should yield exit code 0 since everything passes
-	transformAndVerify(t, events, opts, 0, expectedActions)
+	transformAndVerify(t, events, opts, expectedActions)
 }

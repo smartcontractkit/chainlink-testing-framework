@@ -37,7 +37,7 @@ type TestNode struct {
 }
 
 // TransformJSON transforms go test -json output according to the options
-func TransformJSON(input io.Reader, output io.Writer, opts *Options) (int, error) {
+func TransformJSON(input io.Reader, output io.Writer, opts *Options) error {
 	// Create scanner for JSON input
 	scanner := bufio.NewScanner(input)
 	scanner.Buffer(make([]byte, 1024*1024), 10*1024*1024) // 10MB max buffer
@@ -47,13 +47,13 @@ func TransformJSON(input io.Reader, output io.Writer, opts *Options) (int, error
 	for scanner.Scan() {
 		var event TestEvent
 		if err := json.Unmarshal(scanner.Bytes(), &event); err != nil {
-			return 1, fmt.Errorf("failed to parse JSON: %v", err)
+			return fmt.Errorf("failed to parse JSON: %v", err)
 		}
 		events = append(events, event)
 	}
 
 	if err := scanner.Err(); err != nil {
-		return 1, fmt.Errorf("error reading input: %v", err)
+		return fmt.Errorf("error reading input: %v", err)
 	}
 
 	// Build test tree
@@ -69,22 +69,18 @@ func TransformJSON(input io.Reader, output io.Writer, opts *Options) (int, error
 	identifyTestsToIgnore(testTree, opts)
 
 	// Transform events
-	transformedEvents, anyRemainingFailures := transformEvents(events, testTree)
+	transformedEvents, _ := transformEvents(events, testTree)
 
 	// Output transformed events
 	for _, event := range transformedEvents {
 		eventJSON, err := json.Marshal(event)
 		if err != nil {
-			return 1, fmt.Errorf("failed to marshal JSON: %v", err)
+			return fmt.Errorf("failed to marshal JSON: %v", err)
 		}
 		fmt.Fprintln(output, string(eventJSON))
 	}
 
-	// Return appropriate exit code
-	if anyRemainingFailures {
-		return 1, nil
-	}
-	return 0, nil
+	return nil
 }
 
 // buildTestTree builds a tree of tests from the events
