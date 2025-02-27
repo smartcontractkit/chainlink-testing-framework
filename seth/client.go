@@ -1002,10 +1002,10 @@ func (cl *ContractLoader[T]) LoadContract(name string, address common.Address, a
 	return wrapperInitFn(address, cl.Client.Client)
 }
 
-// DeployContractWithHooks deploys a smart contract with optional pre- and post-deployment hooks.
-// It allows for custom logic to be executed before and after the contract deployment process,
-// enhancing flexibility and control over the deployment workflow.
-func (m *Client) DeployContractWithHooks(hooks ContractDeploymentHooks, auth *bind.TransactOpts, name string, abi abi.ABI, bytecode []byte, params ...interface{}) (DeploymentData, error) {
+// DeployContract deploys contract using ABI and bytecode passed to it, waits for transaction to be minted and contract really
+// available at the address, so that when the method returns it's safe to interact with it. It also saves the contract address and ABI name
+// to the contract map, so that we can use that, when tracing transactions. It is suggested to use name identical to the name of the contract Solidity file.
+func (m *Client) DeployContract(auth *bind.TransactOpts, name string, abi abi.ABI, bytecode []byte, params ...interface{}) (DeploymentData, error) {
 	L.Info().
 		Msgf("Started deploying %s contract", name)
 
@@ -1015,10 +1015,12 @@ func (m *Client) DeployContractWithHooks(hooks ContractDeploymentHooks, auth *bi
 		}
 	}
 
-	if hooks.Pre != nil {
-		if err := hooks.Pre(auth, name, abi, bytecode, params...); err != nil {
+	if m.Cfg.Hooks != nil && m.Cfg.Hooks.ContractDeployment.Pre != nil {
+		if err := m.Cfg.Hooks.ContractDeployment.Pre(auth, name, abi, bytecode, params...); err != nil {
 			return DeploymentData{}, errors.Wrap(err, "pre-hook failed")
 		}
+	} else {
+		L.Trace().Msg("No pre-contract deployment hook defined. Skipping")
 	}
 
 	address, tx, contract, err := bind.DeployContract(auth, abi, bytecode, m.Client, params...)
@@ -1037,10 +1039,70 @@ func (m *Client) DeployContractWithHooks(hooks ContractDeploymentHooks, auth *bi
 		m.ContractStore.AddABI(name, abi)
 	}
 
-	if hooks.Post != nil {
-		if err := hooks.Post(m, tx); err != nil {
+	if m.Cfg.Hooks != nil && m.Cfg.Hooks.ContractDeployment.Post != nil {
+		if err := m.Cfg.Hooks.ContractDeployment.Post(m, tx); err != nil {
 			return DeploymentData{}, errors.Wrap(err, "post-hook failed")
 		}
+	} else {
+		L.Trace().Msg("No post-contract deployment hook defined. Skipping")
+	}
+
+	if err := retry.Do(
+		func() error {
+			ctx, cancel := context.WithTimeout(context.Background(), m.Cfg.Network.TxnTimeout.Duration())
+			_, err := bind.WaitDeployed(ctx, m.Client, tx)
+			cancel()
+
+			// let's make sure that deployment transaction was successful, before retrying
+			if err != nil && !errors.Is(err, context.DeadlineExceeded) {
+				ctx, cancel := context.WithTimeout(context.Background(), m.Cfg.Network.TxnTimeout.Duration())
+				receipt, mineErr := bind.WaitMined(ctx, m.Client, tx)
+				if mineErr != nil {
+					cancel()
+					return mineErr
+				}
+				cancel()
+
+				if receipt.Status == 0 {
+					return errors.New("deployment transaction was reverted")
+				}
+			}
+
+			return err
+		}, retry.OnRetry(func(i uint, retryErr error) {
+			switch {
+			case errors.Is(retryErr, context.DeadlineExceeded):
+				replacementTx, replacementErr := prepareReplacementTransaction(m, tx)
+				if replacementErr != nil {
+					L.Debug().Str("Current error", retryErr.Error()).Str("Replacement error", replacementErr.Error()).Uint("Attempt", i+1).Msg("Failed to prepare replacement transaction for contract deployment. Retrying with the original one")
+					return
+				}
+				tx = replacementTx
+			default:
+				// do nothing, just wait again until it's mined
+			}
+			L.Debug().Str("Current error", retryErr.Error()).Uint("Attempt", i+1).Msg("Waiting for contract to be deployed")
+		}),
+		retry.DelayType(retry.FixedDelay),
+		// if gas bump retries are set to 0, we still want to retry 10 times, because what we will be retrying will be other errors (no code at address, etc.)
+		// downside is that if retries are enabled and their number is low other retry errors will be retried only that number of times
+		// (we could have custom logic for different retry count per error, but that seemed like an overkill, so it wasn't implemented)
+		retry.Attempts(func() uint {
+			if m.Cfg.GasBumpRetries() != 0 {
+				return m.Cfg.GasBumpRetries()
+			}
+			return 10
+		}()),
+		retry.RetryIf(func(err error) bool {
+			return strings.Contains(strings.ToLower(err.Error()), "no contract code at given address") ||
+				strings.Contains(strings.ToLower(err.Error()), "no contract code after deployment") ||
+				(m.Cfg.GasBumpRetries() != 0 && errors.Is(err, context.DeadlineExceeded))
+		}),
+	); err != nil {
+		// pass this specific error, so that Decode knows that it's not the actual revert reason
+		_, _ = m.Decode(tx, errors.New(ErrContractDeploymentFailed))
+
+		return DeploymentData{}, wrapErrInMessageWithASuggestion(m.rewriteDeploymentError(err))
 	}
 
 	L.Info().
@@ -1059,17 +1121,6 @@ func (m *Client) DeployContractWithHooks(hooks ContractDeploymentHooks, auth *bi
 	}
 
 	return DeploymentData{Address: address, Transaction: tx, BoundContract: contract}, nil
-}
-
-// DeployContract deploys contract using ABI and bytecode passed to it, waits for transaction to be minted and contract really
-// available at the address, so that when the method returns it's safe to interact with it. It also saves the contract address and ABI name
-// to the contract map, so that we can use that, when tracing transactions. It is suggested to use name identical to the name of the contract Solidity file.
-func (m *Client) DeployContract(auth *bind.TransactOpts, name string, abi abi.ABI, bytecode []byte, params ...interface{}) (DeploymentData, error) {
-	hooks := ContractDeploymentHooks{
-		Post: RetryingPostDeployHook,
-	}
-
-	return m.DeployContractWithHooks(hooks, auth, name, abi, bytecode, params...)
 }
 
 // rewriteDeploymentError makes some known errors more human friendly
