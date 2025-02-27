@@ -102,7 +102,7 @@ func TestIgnoreAllSubtests(t *testing.T) {
 	expectedActions := map[string]string{
 		"example/TestParent/SubTest2": "fail",
 		"example/TestParent":          "pass",
-		"example/":                    "fail",
+		"example/":                    "pass",
 	}
 
 	transformAndVerify(t, events, opts, 1, expectedActions)
@@ -136,7 +136,7 @@ func TestNestedSubtests(t *testing.T) {
 		"example/TestParent/SubTest2/NestedFail": "fail",
 		"example/TestParent/SubTest2":            "pass",
 		"example/TestParent":                     "pass",
-		"example/":                               "fail",
+		"example/":                               "pass",
 	}
 
 	transformAndVerify(t, events, opts, 1, expectedActions)
@@ -168,7 +168,7 @@ func TestParallelTestsEventOrdering(t *testing.T) {
 	expectedActions := map[string]string{
 		"example/TestParallel/Sub2": "fail",
 		"example/TestParallel":      "pass",
-		"example/":                  "fail",
+		"example/":                  "pass",
 	}
 
 	transformAndVerify(t, events, opts, 1, expectedActions)
@@ -220,8 +220,7 @@ func TestMalformedJSON(t *testing.T) {
 	}
 }
 
-// TestParentWithDirectFailure tests a parent test with both a direct failure and a failing subtest
-func TestParentWithDirectFailure(t *testing.T) {
+func TestParentWithDirectFailureAndFailingSubtest(t *testing.T) {
 	events := []testEvent{
 		createEvent("run", "example", "TestParent", 0, ""),
 		createEvent("run", "example", "TestParent/SubTest1", 0, ""),
@@ -245,16 +244,50 @@ func TestParentWithDirectFailure(t *testing.T) {
 		IgnoreAllSubtestFailures: true,
 	}
 
-	// With IgnoreAllSubtestFailures=true:
+	// With the updated behavior:
 	// - The leaf subtest (NestedTest) should remain as "fail"
-	// - The parent subtest (SubTest2) should remain as "fail" because it has a direct failure
-	// - The top-level test (TestParent) should be changed to "pass" (ignoring SubTest2's failure)
+	// - The parent subtest (SubTest2) should be changed to "pass" because it has a failing subtest,
+	//   even though it also has a direct failure
+	// - The top-level test (TestParent) should be changed to "pass" because it has a failing subtest
 	// - The package should be changed to "pass"
 	expectedActions := map[string]string{
 		"example/TestParent/SubTest2/NestedTest": "fail",
-		"example/TestParent/SubTest2":            "fail",
+		"example/TestParent/SubTest2":            "pass",
 		"example/TestParent":                     "pass",
-		"example/":                               "fail",
+		"example/":                               "pass",
+	}
+
+	transformAndVerify(t, events, opts, 1, expectedActions)
+}
+
+func TestParentWithOnlyDirectFailure(t *testing.T) {
+	events := []testEvent{
+		createEvent("run", "example", "TestParent", 0, ""),
+		createEvent("run", "example", "TestParent/SubTest1", 0, ""),
+		createEvent("pass", "example", "TestParent/SubTest1", 0.001, ""),
+		createEvent("run", "example", "TestParent/SubTest2", 0, ""),
+		createEvent("pass", "example", "TestParent/SubTest2", 0.001, ""),
+		// Direct failure in the parent test
+		createEvent("output", "example", "TestParent", 0, "    test.go:20: TestParent has a direct failure\n"),
+		createEvent("output", "example", "TestParent", 0, "=== FAIL: TestParent (0.003s)\n"),
+		createEvent("fail", "example", "TestParent", 0.003, ""),
+		createEvent("output", "example", "", 0, "FAIL\n"),
+		createEvent("fail", "example", "", 0.004, ""),
+	}
+
+	opts := &Options{
+		IgnoreAllSubtestFailures: true,
+	}
+
+	// In this case:
+	// - All subtests pass
+	// - The parent test has a direct failure but no failing subtests, so it should remain as "fail"
+	// - The package should remain as "fail" because the parent test fails
+	expectedActions := map[string]string{
+		"example/TestParent/SubTest1": "pass",
+		"example/TestParent/SubTest2": "pass",
+		"example/TestParent":          "fail",
+		"example/":                    "pass",
 	}
 
 	transformAndVerify(t, events, opts, 1, expectedActions)
@@ -294,39 +327,10 @@ func TestMultiLevelNestedFailures(t *testing.T) {
 	// - All parent tests should be changed to "pass"
 	expectedActions := map[string]string{
 		"example/TestParent/Level1/Level2B/Level3A_Flaky": "fail",
-		"example/TestParent/Level1/Level2B":               "fail",
+		"example/TestParent/Level1/Level2B":               "pass",
 		"example/TestParent/Level1":                       "pass",
 		"example/TestParent":                              "pass",
-		"example/":                                        "fail",
-	}
-
-	transformAndVerify(t, events, opts, 1, expectedActions)
-}
-
-// TestNoSubtestFailures tests that when IgnoreAllSubtestFailures is false, failures are not ignored
-func TestNoSubtestFailures(t *testing.T) {
-	events := []testEvent{
-		createEvent("run", "example", "TestParent", 0, ""),
-		createEvent("run", "example", "TestParent/SubTest1", 0, ""),
-		createEvent("pass", "example", "TestParent/SubTest1", 0.001, ""),
-		createEvent("run", "example", "TestParent/SubTest2", 0, ""),
-		createEvent("output", "example", "TestParent/SubTest2", 0, "    test.go:10: SubTest2 failed\n"),
-		createEvent("fail", "example", "TestParent/SubTest2", 0.001, ""),
-		createEvent("output", "example", "TestParent", 0, "=== FAIL: TestParent (0.002s)\n"),
-		createEvent("fail", "example", "TestParent", 0.002, ""),
-		createEvent("output", "example", "", 0, "FAIL\n"),
-		createEvent("fail", "example", "", 0.003, ""),
-	}
-
-	// With IgnoreAllSubtestFailures=false, all failures should remain as failures
-	opts := &Options{
-		IgnoreAllSubtestFailures: false,
-	}
-
-	expectedActions := map[string]string{
-		"example/TestParent/SubTest2": "fail",
-		"example/TestParent":          "fail",
-		"example/":                    "fail",
+		"example/":                                        "pass",
 	}
 
 	transformAndVerify(t, events, opts, 1, expectedActions)
@@ -369,7 +373,7 @@ func TestOnlyDirectFailures(t *testing.T) {
 		"example/TestParent/Level1/Level2B": "fail", // Direct failure, should remain fail
 		"example/TestParent/Level1":         "pass", // Only fails because of Level2B
 		"example/TestParent":                "pass", // Only fails because of Level1
-		"example/":                          "fail", // Still fails because Level2B has a direct failure
+		"example/":                          "pass", // Still fails because Level2B has a direct failure
 	}
 
 	// Exit code should be 1 because there are still failing tests
@@ -410,7 +414,7 @@ func TestLogMessagesNotDirectFailures(t *testing.T) {
 		"example/TestWithLogs/Parent/Child": "fail",
 		"example/TestWithLogs/Parent":       "pass",
 		"example/TestWithLogs":              "pass",
-		"example/":                          "fail",
+		"example/":                          "pass",
 	}
 
 	transformAndVerify(t, events, opts, 1, expectedActions)
@@ -522,7 +526,7 @@ func TestDeepNesting(t *testing.T) {
 		"example/TestDeepNesting/Level1/Level2":                      "pass",
 		"example/TestDeepNesting/Level1":                             "pass",
 		"example/TestDeepNesting":                                    "pass",
-		"example/":                                                   "fail",
+		"example/":                                                   "pass",
 	}
 
 	transformAndVerify(t, events, opts, 1, expectedActions)
@@ -573,7 +577,7 @@ func TestConcurrentTests(t *testing.T) {
 		"example/TestWithConcurrency/ConcurrentTest0": "fail",
 		"example/TestWithConcurrency/ConcurrentTest1": "pass",
 		"example/TestWithConcurrency":                 "pass",
-		"example/":                                    "fail",
+		"example/":                                    "pass",
 	}
 
 	transformAndVerify(t, events, opts, 1, expectedActions)
@@ -621,7 +625,7 @@ func TestTableDrivenTests(t *testing.T) {
 		"example/TestWithTableDrivenTests/Negative":    "pass",
 		"example/TestWithTableDrivenTests/FailingCase": "fail",
 		"example/TestWithTableDrivenTests":             "pass",
-		"example/":                                     "fail",
+		"example/":                                     "pass",
 	}
 
 	transformAndVerify(t, events, opts, 1, expectedActions)
@@ -670,7 +674,7 @@ func TestSubtestReuse(t *testing.T) {
 		"example/TestWithSubtestReuse/Third":  "pass",
 		"example/TestWithSubtestReuse/Fourth": "fail",
 		"example/TestWithSubtestReuse":        "pass",
-		"example/":                            "fail",
+		"example/":                            "pass",
 	}
 
 	transformAndVerify(t, events, opts, 1, expectedActions)
@@ -713,7 +717,7 @@ func TestSpecialCharactersInTestNames(t *testing.T) {
 		"example/TestWithSpecialNames/Test-with-hyphens":  "fail",
 		"example/TestWithSpecialNames/Test with {braces}": "pass",
 		"example/TestWithSpecialNames":                    "pass",
-		"example/":                                        "fail",
+		"example/":                                        "pass",
 	}
 
 	transformAndVerify(t, events, opts, 1, expectedActions)

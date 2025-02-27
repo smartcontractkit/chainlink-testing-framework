@@ -30,10 +30,10 @@ type TestNode struct {
 	Children  map[string]*TestNode // Child tests
 	Parent    *TestNode            // Parent test
 	IsSubtest bool                 // Is this a subtest
-	// Track whether this node is directly matched by patterns
-	DirectlyIgnored bool
 	// Store output messages for direct failure detection
 	OutputMessages []string
+	// Flag to track if this node has any failing subtests
+	HasFailingSubtests bool
 }
 
 // TransformJSON transforms go test -json output according to the options
@@ -62,11 +62,11 @@ func TransformJSON(input io.Reader, output io.Writer, opts *Options) error {
 	// Track output messages for direct failure detection
 	captureOutputMessages(events, testTree)
 
-	// Apply ignore rules
-	applyIgnoreRules(testTree, opts)
+	// Mark parents with failing subtests
+	markParentsWithFailingSubtests(testTree)
 
-	// Propagate ignore status - but only in specific ways
-	propagateIgnoreStatus(testTree, opts)
+	// Identify which tests should be passed
+	identifyTestsToIgnore(testTree, opts)
 
 	// Transform events
 	transformedEvents, _ := transformEvents(events, testTree)
@@ -224,121 +224,58 @@ func captureOutputMessages(events []TestEvent, tree map[string]*TestNode) {
 	}
 }
 
-// applyIgnoreRules applies ignore rules to the test tree
-func applyIgnoreRules(tree map[string]*TestNode, opts *Options) {
+// markParentsWithFailingSubtests marks parent nodes that have any failing subtests
+func markParentsWithFailingSubtests(tree map[string]*TestNode) {
 	// Process each package
 	for _, pkgNode := range tree {
-		// Process all tests in this package recursively
-		var processNode func(*TestNode)
-		processNode = func(node *TestNode) {
-			// Only need to check if it's a failing test
-			if node.Failed {
-				// Apply ignore rules
-				if node.IsSubtest && opts.IgnoreAllSubtestFailures {
-					node.Ignored = true
-					node.DirectlyIgnored = true
+		// Bottom-up traversal to mark parents with failing subtests
+		var markParents func(*TestNode) bool
+		markParents = func(node *TestNode) bool {
+			// Check if any child is failing or has failing subtests
+			hasFailingSubtests := false
+
+			for _, child := range node.Children {
+				// Process child first (depth-first)
+				childHasFailingSubtests := markParents(child)
+
+				// Check if child is failing or has failing subtests
+				if child.Failed || childHasFailingSubtests {
+					hasFailingSubtests = true
 				}
 			}
 
-			// Recursively process children
+			// Update the node's status
+			node.HasFailingSubtests = hasFailingSubtests
+
+			// Return whether this node has failing subtests
+			return hasFailingSubtests
+		}
+
+		markParents(pkgNode)
+	}
+}
+
+// identifyTestsToIgnore identifies which tests should be converted to pass
+func identifyTestsToIgnore(tree map[string]*TestNode, opts *Options) {
+	// Process each package
+	for _, pkgNode := range tree {
+		// Process all nodes in the tree and set ignore status
+		var processNode func(*TestNode)
+		processNode = func(node *TestNode) {
+			// Process children first
 			for _, child := range node.Children {
 				processNode(child)
+			}
+
+			// If this node has failing subtests and it's failing itself,
+			// mark it as ignored (so it will be converted to PASS)
+			if node.HasFailingSubtests && node.Failed {
+				node.Ignored = true
 			}
 		}
 
 		processNode(pkgNode)
 	}
-}
-
-// propagateIgnoreStatus propagates ignore status up the tree
-func propagateIgnoreStatus(tree map[string]*TestNode, opts *Options) {
-	// Process each package
-	for _, pkgNode := range tree {
-		// We need to be careful how we propagate status
-		// Only propagate from children to parent when ALL failing children are ignored
-
-		// Bottom-up traversal
-		var markIgnored func(*TestNode) bool
-		markIgnored = func(node *TestNode) bool {
-			// First process all children
-			allFailingChildrenIgnored := true
-			anyFailingChildren := false
-
-			for _, child := range node.Children {
-				if child.Failed {
-					anyFailingChildren = true
-					if !markIgnored(child) {
-						allFailingChildrenIgnored = false
-					}
-				} else {
-					// Make sure to process non-failing children too
-					markIgnored(child)
-				}
-			}
-
-			// Now decide for this node
-			if node.Failed {
-				// If explicitly ignored, return that status
-				if node.DirectlyIgnored || node.Ignored {
-					return true
-				}
-
-				// If this is a parent and ALL failing children are ignored,
-				// Decide if we should ignore the parent
-				if anyFailingChildren && allFailingChildrenIgnored {
-					// For TestNestedSubtests, we should always propagate
-					if containsNestedFail(node) || containsParallel(node) {
-						node.Ignored = true
-						return true
-					}
-
-					// For IgnoreAllSubtestFailures, we should always propagate
-					if opts.IgnoreAllSubtestFailures {
-						node.Ignored = true
-						return true
-					}
-				}
-
-				// Default case: not ignored
-				return false
-			}
-
-			// Node isn't failed, so it's "ignored" for propagation purposes
-			return true
-		}
-
-		markIgnored(pkgNode)
-	}
-}
-
-// containsNestedFail checks if this node or any of its children contain NestedFail
-func containsNestedFail(node *TestNode) bool {
-	if strings.Contains(node.Name, "NestedFail") {
-		return true
-	}
-
-	for _, child := range node.Children {
-		if containsNestedFail(child) {
-			return true
-		}
-	}
-
-	return false
-}
-
-// containsParallel checks if this node or any of its children contain Parallel
-func containsParallel(node *TestNode) bool {
-	if strings.Contains(node.Name, "Parallel") {
-		return true
-	}
-
-	for _, child := range node.Children {
-		if containsParallel(child) {
-			return true
-		}
-	}
-
-	return false
 }
 
 // transformEvents applies transformations to events based on the test tree
@@ -382,18 +319,6 @@ func transformEvents(events []TestEvent, tree map[string]*TestNode) ([]TestEvent
 		return nil
 	}
 
-	// Helper function to check if a node has direct failure messages
-	hasDirectFailure := func(node *TestNode) bool {
-		for _, msg := range node.OutputMessages {
-			// Check if the message indicates a direct failure (not just reporting a child failure)
-			// This is a simple heuristic - direct failures usually don't mention child tests
-			if !strings.Contains(msg, "===") && !strings.Contains(msg, "---") {
-				return true
-			}
-		}
-		return false
-	}
-
 	for i, event := range events {
 		// Make a copy of the event
 		transformedEvents[i] = event
@@ -402,16 +327,8 @@ func transformEvents(events []TestEvent, tree map[string]*TestNode) ([]TestEvent
 		if event.Action == "fail" {
 			node := findNode(event.Package, event.Test)
 			if node != nil && node.Ignored {
-				// For leaf subtests, keep them as failed
-				// For parent tests with direct failures, keep them as failed
-				// For parent tests that only fail because of child failures, change to pass
-				if (node.IsSubtest && len(node.Children) == 0) || hasDirectFailure(node) {
-					// This is a leaf subtest or has a direct failure - keep it as a failure
-					anyRemainingFailures = true
-				} else {
-					// This is a parent test without direct failures - change to pass
-					transformedEvents[i].Action = "pass"
-				}
+				// Convert this fail to a pass
+				transformedEvents[i].Action = "pass"
 			} else {
 				// We're keeping this as a failure
 				anyRemainingFailures = true
@@ -422,10 +339,8 @@ func transformEvents(events []TestEvent, tree map[string]*TestNode) ([]TestEvent
 		} else if event.Action == "output" {
 			node := findNode(event.Package, event.Test)
 			if node != nil && node.Failed && node.Ignored {
-				// Only transform output text for non-subtests or parent tests without direct failures
-				if !node.IsSubtest && !hasDirectFailure(node) {
-					transformedEvents[i].Output = transformOutputText(event.Output)
-				}
+				// Transform output text for passed tests
+				transformedEvents[i].Output = transformOutputText(event.Output)
 			}
 		}
 	}
