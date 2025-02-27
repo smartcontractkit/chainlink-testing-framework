@@ -19,16 +19,18 @@ func defaultListeners(l zerolog.Logger) []ChaosListener {
 	}
 }
 
-type ChaosRunner struct {
-	l zerolog.Logger
-	c client.Client
+type NamespaceScopedChaosRunner struct {
+	l      zerolog.Logger
+	c      client.Client
+	remove bool
 }
 
 // NewNamespaceRunner creates a new namespace-scoped chaos runner
-func NewNamespaceRunner(l zerolog.Logger, c client.Client) *ChaosRunner {
-	return &ChaosRunner{
-		l: l,
-		c: c,
+func NewNamespaceRunner(l zerolog.Logger, c client.Client, remove bool) *NamespaceScopedChaosRunner {
+	return &NamespaceScopedChaosRunner{
+		l:      l,
+		c:      c,
+		remove: remove,
 	}
 }
 
@@ -43,7 +45,7 @@ type PodPartitionCfg struct {
 	ExperimentCreateDelay time.Duration
 }
 
-func (cr *ChaosRunner) RunPodPartition(ctx context.Context, cfg PodPartitionCfg) (*Chaos, error) {
+func (cr *NamespaceScopedChaosRunner) RunPodPartition(ctx context.Context, cfg PodPartitionCfg) (*Chaos, error) {
 	experiment, err := NewChaos(ChaosOpts{
 		Object: &v1alpha1.NetworkChaos{
 			TypeMeta: metav1.TypeMeta{
@@ -92,6 +94,7 @@ func (cr *ChaosRunner) RunPodPartition(ctx context.Context, cfg PodPartitionCfg)
 		Listeners: defaultListeners(cr.l),
 		Logger:    &cr.l,
 		Client:    cr.c,
+		Remove:    cr.remove,
 	})
 	if err != nil {
 		return nil, err
@@ -112,7 +115,7 @@ type PodDelayCfg struct {
 	ExperimentCreateDelay time.Duration
 }
 
-func (cr *ChaosRunner) RunPodDelay(ctx context.Context, cfg PodDelayCfg) (*Chaos, error) {
+func (cr *NamespaceScopedChaosRunner) RunPodDelay(ctx context.Context, cfg PodDelayCfg) (*Chaos, error) {
 	experiment, err := NewChaos(ChaosOpts{
 		Object: &v1alpha1.NetworkChaos{
 			TypeMeta: metav1.TypeMeta{
@@ -153,6 +156,7 @@ func (cr *ChaosRunner) RunPodDelay(ctx context.Context, cfg PodDelayCfg) (*Chaos
 		Listeners: defaultListeners(cr.l),
 		Logger:    &cr.l,
 		Client:    cr.c,
+		Remove:    cr.remove,
 	})
 	if err != nil {
 		return nil, err
@@ -170,7 +174,7 @@ type PodFailCfg struct {
 	ExperimentCreateDelay time.Duration
 }
 
-func (cr *ChaosRunner) RunPodFail(ctx context.Context, cfg PodFailCfg) (*Chaos, error) {
+func (cr *NamespaceScopedChaosRunner) RunPodFail(ctx context.Context, cfg PodFailCfg) (*Chaos, error) {
 	experiment, err := NewChaos(ChaosOpts{
 		Description: cfg.Description,
 		DelayCreate: cfg.ExperimentCreateDelay,
@@ -208,6 +212,7 @@ func (cr *ChaosRunner) RunPodFail(ctx context.Context, cfg PodFailCfg) (*Chaos, 
 		Listeners: defaultListeners(cr.l),
 		Logger:    &cr.l,
 		Client:    cr.c,
+		Remove:    cr.remove,
 	})
 	if err != nil {
 		return nil, err
@@ -228,11 +233,10 @@ type NodeCPUStressConfig struct {
 	ExperimentCreateDelay   time.Duration
 }
 
-func (cr *ChaosRunner) RunPodStressCPU(ctx context.Context, cfg NodeCPUStressConfig) (*Schedule, error) {
-	experiment, err := NewSchedule(ScheduleOpts{
+func (cr *NamespaceScopedChaosRunner) RunPodStressCPU(ctx context.Context, cfg NodeCPUStressConfig) (*Chaos, error) {
+	experiment, err := NewChaos(ChaosOpts{
 		Description: cfg.Description,
 		DelayCreate: cfg.ExperimentCreateDelay,
-		Duration:    cfg.ExperimentTotalDuration,
 		Object: &v1alpha1.Schedule{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "Schedule",
@@ -284,6 +288,7 @@ func (cr *ChaosRunner) RunPodStressCPU(ctx context.Context, cfg NodeCPUStressCon
 		Listeners: defaultListeners(cr.l),
 		Logger:    &cr.l,
 		Client:    cr.c,
+		Remove:    cr.remove,
 	})
 	if err != nil {
 		return nil, err

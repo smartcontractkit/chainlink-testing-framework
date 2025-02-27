@@ -35,7 +35,7 @@ func generateP2PKeys(pwd string, n int) ([][]byte, error) {
 func generateEVMKeys(pwd string, n int) ([][]byte, error) {
 	encryptedEVMKeyJSONs := make([][]byte, 0)
 	for i := 0; i < n; i++ {
-		key, err := clclient.NewETHKey(pwd)
+		key, _, err := clclient.NewETHKey(pwd)
 		if err != nil {
 			return nil, err
 		}

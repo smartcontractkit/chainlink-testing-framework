@@ -52,7 +52,7 @@ jobs:
           # - name: gcr.io/prysmaticlabs/prysm/validator
           #   expression: '^v[0-9]+\.[0-9]+\.[0-9]+$'
           - name: tofelb/ethereum-genesis-generator
-            expression: '^v?[0-9]+\.[0-9]+\.[0-9]+(\-slots\-per\-epoch)?'
+            expression: '.*'
     # This one only has latest tag, probably only want to update it when we know for sure it's a new version we want
     #  - name: protolambda/eth2-val-tools
     #   expression: 'latest'

@@ -1,8 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/sentinel
 
-go 1.23
-
-toolchain go1.23.3
+go 1.24.0
 
 require (
 	github.com/ethereum/go-ethereum v1.14.11
