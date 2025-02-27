@@ -199,9 +199,7 @@ func TestDeepNesting(t *testing.T) {
 			t.Run("Level3", func(t *testing.T) {
 				t.Run("Level4", func(t *testing.T) {
 					t.Run("Level5", func(t *testing.T) {
-						if !simulateFlaky() {
-							t.Error("Deep nested test failed")
-						}
+						t.Error("Deep nested test failed")
 					})
 				})
 			})
