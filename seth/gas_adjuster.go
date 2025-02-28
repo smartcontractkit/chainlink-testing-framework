@@ -506,7 +506,7 @@ func classifyCongestion(congestionMetric float64) string {
 func (m *Client) HistoricalFeeData(priority string) (baseFee float64, historicalGasTipCap float64, err error) {
 	var percentileTip float64
 
-	// based on priority decide, which tip percentile to use, when calling FeeHistory
+	// based on priority decide, which percentile to use to get historical tip values, when calling FeeHistory
 	switch priority {
 	case Priority_Degen:
 		percentileTip = 100
@@ -525,9 +525,6 @@ func (m *Client) HistoricalFeeData(priority string) (baseFee float64, historical
 		return
 	}
 
-	// TODO remove me
-	// percentileTip = 99
-
 	estimator := NewGasEstimator(m)
 	stats, err := estimator.Stats(m.Cfg.Network.GasPriceEstimationBlocks, percentileTip)
 	if err != nil {
@@ -537,21 +534,16 @@ func (m *Client) HistoricalFeeData(priority string) (baseFee float64, historical
 		return
 	}
 
-	// base fee should still be based on priority, because FeeHistory returns whole history, not just the requested percentile
-	// for the base fee (as opposed to tip cap)
+	// base fee should still be based on priority, because FeeHistory returns whole base fee history, not just the requested percentile
 	switch priority {
 	case Priority_Degen:
 		baseFee = stats.GasPrice.Max
-		// historicalGasTipCap = stats.TipCap.Max
 	case Priority_Fast:
 		baseFee = stats.GasPrice.Perc99
-		// historicalGasTipCap = stats.TipCap.Perc99
 	case Priority_Standard:
 		baseFee = stats.GasPrice.Perc50
-		// historicalGasTipCap = stats.TipCap.Perc50
 	case Priority_Slow:
 		baseFee = stats.GasPrice.Perc25
-		// historicalGasTipCap = stats.TipCap.Perc25
 	default:
 		err = fmt.Errorf("unknown priority: %s", priority)
 		L.Debug().
