@@ -36,9 +36,3 @@ func TestGasEstimator(t *testing.T) {
 	require.GreaterOrEqual(t, suggestions.TipCap.Perc99, suggestions.TipCap.Perc75, "Suggested 99th percentile tip cap should be greater than or equal to 75th percentile")
 	require.GreaterOrEqual(t, suggestions.TipCap.Max, suggestions.TipCap.Perc99, "Suggested max tip cap should be greater than or equal to 99th percentile")
 }
-
-func TestGasEstimations(t *testing.T) {
-	c := newClient(t)
-	txOpts := c.NewTXOpts()
-	_ = txOpts
-}
