@@ -13,7 +13,7 @@ func TestGasEstimator(t *testing.T) {
 	c := newClient(t)
 	bn, err := c.Client.BlockNumber(context.Background())
 	require.NoError(t, err, "BlockNumber should not error")
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		_, err := c.DeployContractFromContractStore(c.NewTXOpts(), "NetworkDebugSubContract")
 		require.NoError(t, err, "Deploying contract should not error")
 	}
@@ -35,4 +35,10 @@ func TestGasEstimator(t *testing.T) {
 	require.GreaterOrEqual(t, suggestions.TipCap.Perc75, suggestions.TipCap.Perc50, "Suggested 75th percentile tip cap should be greater than or equal to 50th percentile")
 	require.GreaterOrEqual(t, suggestions.TipCap.Perc99, suggestions.TipCap.Perc75, "Suggested 99th percentile tip cap should be greater than or equal to 75th percentile")
 	require.GreaterOrEqual(t, suggestions.TipCap.Max, suggestions.TipCap.Perc99, "Suggested max tip cap should be greater than or equal to 99th percentile")
+}
+
+func TestGasEstimations(t *testing.T) {
+	c := newClient(t)
+	txOpts := c.NewTXOpts()
+	_ = txOpts
 }
