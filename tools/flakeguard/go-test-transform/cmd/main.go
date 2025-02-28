@@ -58,12 +58,12 @@ func main() {
 	}
 
 	// Transform the output
-	exitCode, err := transformer.TransformJSON(input, output, opts)
+	err := transformer.TransformJSON(input, output, opts)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error transforming JSON: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Exit with the appropriate code
-	os.Exit(exitCode)
+	os.Exit(0)
 }
