@@ -3,14 +3,15 @@ package main
 import (
 	"embed"
 	"fmt"
-	"github.com/pelletier/go-toml"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/urfave/cli/v2"
 	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pelletier/go-toml"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/urfave/cli/v2"
 )
 
 //go:embed observability/*
@@ -317,6 +318,7 @@ func extractAllFiles(embeddedDir string) error {
 		}
 
 		// Write the file content to the target path
+		//nolint
 		err = os.WriteFile(targetPath, content, 0777)
 		if err != nil {
 			return fmt.Errorf("failed to write file %s: %w", targetPath, err)
@@ -343,6 +345,7 @@ func PrettyPrintTOML(inputFile string, outputFile string) error {
 		return fmt.Errorf("error converting to TOML string: %v", err)
 	}
 
+	//nolint
 	err = os.WriteFile(outputFile, []byte(dumpData), 0644)
 	if err != nil {
 		return fmt.Errorf("error writing to output file: %v", err)

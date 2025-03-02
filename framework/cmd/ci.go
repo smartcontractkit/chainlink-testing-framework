@@ -178,15 +178,15 @@ func AnalyzeJobsSteps(ctx context.Context, client GitHubActionsClient, cfg *Anal
 						stats.Jobs[name].TotalDuration += dur
 					}
 					if j.RunAttempt != nil && *j.RunAttempt > 1 {
-						stats.Jobs[name].ReRuns += 1
+						stats.Jobs[name].ReRuns++
 					}
 					if j.Conclusion != nil && *j.Conclusion == "failure" {
-						stats.Jobs[name].Failures += 1
+						stats.Jobs[name].Failures++
 					} else {
-						stats.Jobs[name].Successes += 1
+						stats.Jobs[name].Successes++
 					}
 					if j.Conclusion != nil && *j.Conclusion == "cancelled" {
-						stats.Jobs[name].Cancels += 1
+						stats.Jobs[name].Cancels++
 					}
 					// analyze steps
 					for _, s := range j.Steps {
@@ -204,9 +204,9 @@ func AnalyzeJobsSteps(ctx context.Context, client GitHubActionsClient, cfg *Anal
 							stats.Steps[name].Durations = append(stats.Steps[name].Durations, dur)
 						}
 						if *s.Conclusion == "failure" {
-							stats.Steps[name].Failures += 1
+							stats.Steps[name].Failures++
 						} else {
-							stats.Steps[name].Successes += 1
+							stats.Steps[name].Successes++
 						}
 					}
 				}
