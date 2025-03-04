@@ -6,6 +6,7 @@ concurrency:
 jobs:
   test:
     strategy:
+      fail-fast: false
       matrix:
         test-type: ['wasp-test-race', 'wasp-test-benchspy']
     defaults:
@@ -14,6 +15,13 @@ jobs:
     runs-on: ubuntu22.04-16cores-64GB
     steps:
       - uses: actions/checkout@v3
+      - name: Check for changes in Framework
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: changes
+        with:
+          filters: |
+            src:
+              - 'wasp/**'
       - name: Install Devbox
         uses: jetify-com/devbox-install-action@v0.11.0
         with:
