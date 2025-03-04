@@ -34,6 +34,7 @@
     ],
     "scripts": {
       "seth-build-contracts": [
+        "devbox run seth-solc",
         "cd seth && solc --abi --overwrite -o contracts/abi contracts/NetworkDebugContract.sol",
         "solc --bin --overwrite -o contracts/bin contracts/NetworkDebugContract.sol",
         "abigen --bin=contracts/bin/NetworkDebugContract.bin --abi=contracts/abi/NetworkDebugContract.abi --pkg=network_debug_contract --out=contracts/bind/NetworkDebugContract/NetworkDebugContract.go",
@@ -46,6 +47,10 @@
         "solc --abi --overwrite -o contracts/abi contracts/TestContractTwo.sol",
         "solc --bin --overwrite -o contracts/bin contracts/TestContractTwo.sol",
         "abigen --bin=contracts/bin/TestContractTwo.bin --abi=contracts/abi/TestContractTwo.abi --pkg=unique_event_two --out=contracts/bind/TestContractTwo/TestContractTwo.go"
+      ],
+      "seth-solc": [
+        "cd seth && solc-select install 0.8.19",
+        "solc-select use 0.8.19"
       ],
       "seth-anvil-sync": [
         "cd seth && anvil"
