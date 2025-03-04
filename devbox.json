@@ -147,6 +147,9 @@
         "go install github.com/jmank88/modgraph@v0.1.0",
         "./modgraph > go.md"
       ],
+      "install-loghelper": [
+        "go install github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper@latest"
+      ],
 
       "legacy-lib-go-test-unit": [
         "cd lib && make test_unit"
