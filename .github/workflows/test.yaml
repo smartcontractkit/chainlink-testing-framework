@@ -36,7 +36,7 @@ jobs:
       - name: Install devbox
         uses: jetify-com/devbox-install-action@v0.11.0
       - name: Install gotestloghelper
-        run: devbox run -- "cd lib && make gotestloghelper_build"
+        run: devbox run install-loghelper
       - name: Run Tests
         run: |
           PATH=$PATH:$(go env GOPATH)/bin
