@@ -1,0 +1,57 @@
+name: Seth Go Tests
+on: [push]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        test-type:
+          - 'seth-test-anvil'
+          - 'seth-test-geth'
+          - 'seth-test-anvil-api'
+          - 'seth-test-geth-api'
+          - 'seth-test-anvil-trace'
+          - 'seth-test-geth-trace'
+          - 'seth-test-anvil-cli'
+          - 'seth-test-geth-cli'
+          - 'seth-test-anvil-others'
+          - 'seth-test-geth-others'
+    defaults:
+      run:
+        working-directory: seth
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Check for changes in Framework
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: changes
+        with:
+          filters: |
+            src:
+              - 'seth/**'
+      - name: Install Devbox
+        uses: jetify-com/devbox-install-action@v0.11.0
+        with:
+          enable-cache: 'true'
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.0'
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-modules-${{ hashFiles('seth/go.sum') }}-${{ runner.os }}-seth
+          restore-keys: |
+            go-modules-${{ runner.os }}-seth
+            go-modules-${{ runner.os }}
+      - name: Install dependencies
+        run: go mod download
+      - name: Run tests
+        run: |
+          devbox run ${{ matrix.test-type }}
