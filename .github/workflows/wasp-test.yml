@@ -5,10 +5,13 @@ concurrency:
   cancel-in-progress: true
 jobs:
   test:
+    strategy:
+      matrix:
+        test-type: ['wasp-test-race', 'wasp-test-benchspy']
     defaults:
       run:
         working-directory: wasp
-    runs-on: ubuntu-latest
+    runs-on: ubuntu22.04-16cores-64GB
     steps:
       - uses: actions/checkout@v3
       - name: Install Devbox
@@ -33,35 +36,4 @@ jobs:
         run: go mod download
       - name: Run tests
         run: |
-          devbox run wasp-test-race
-
-  test-benchspy:
-    defaults:
-      run:
-        working-directory: wasp
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install Devbox
-        uses: jetify-com/devbox-install-action@v0.11.0
-        with:
-          enable-cache: 'true'
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.24.0'
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: go-modules-${{ hashFiles('wasp/go.sum') }}-${{ runner.os }}-wasp
-          restore-keys: |
-            go-modules-${{ runner.os }}-wasp
-            go-modules-${{ runner.os }}
-      - name: Install dependencies
-        run: go mod download
-      - name: Run tests
-        run: |
-          devbox run wasp-test-benchspy
+          devbox run ${{ matrix.test-type }}
