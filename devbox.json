@@ -103,6 +103,14 @@
         "devbox run seth-geth",
         "cd seth && SETH_URL=http://localhost:8545 SETH_CONFIG_PATH=\"seth.toml\" SETH_NETWORK=geth SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run \"TestContractMap|TestGasEstimator|TestRPCHealthCheck|TestUtil|TestContract|TestConfig\" || pkill -f geth"
       ],
+      "seth-test-anvil-gas-bumping": [
+        "devboz run seth-anvil",
+        "cd seth && SETH_URL=http://localhost:8545 SETH_NETWORK=anvil SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestGasBumping || pkill -f anvil"
+      ],
+      "seth-test-geth-gas-bumping": [
+        "devboz run seth-anvil",
+        "cd seth && SETH_URL=http://localhost:8545 SETH_NETWORK=anvil SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestGasBumping || pkill -f anvil"
+      ],
       "seth-lint": [
         "cd seth && golangci-lint --color=always run -v -c .golangci.yml"
       ],
@@ -138,6 +146,10 @@
         "go install github.com/jmank88/gomods@v0.1.5",
         "go install github.com/jmank88/modgraph@v0.1.0",
         "./modgraph > go.md"
+      ],
+
+      "legacy-lib-go-test-unit": [
+        "cd lib && make test_unit"
       ]
     }
   }
