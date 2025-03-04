@@ -33,12 +33,12 @@ jobs:
     steps:
       - name: Checkout the Repo
         uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
-      - name: Install devbox
-        uses: jetify-com/devbox-install-action@v0.11.0
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
-          enable-cache: 'true'
+          go-version: 'v1.24.0'
       - name: Install gotestloghelper
-        run: devbox run install-loghelper
+        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper@latest
       - name: Run Tests
         run: |
           PATH=$PATH:$(go env GOPATH)/bin
@@ -46,8 +46,8 @@ jobs:
           set -euo pipefail
           # disabled, because we want to use a multiline output of go list command
           # shellcheck disable=SC2046
-          devbox run -- "cd ${{ matrix.project.path }} && \
-            make test_unit"
+          cd ${{ matrix.project.path }} && \
+            make test_unit
       - name: Publish Artifacts
         if: failure()
         uses: actions/upload-artifact@v4
