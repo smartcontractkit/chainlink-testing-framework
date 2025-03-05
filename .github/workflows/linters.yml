@@ -8,7 +8,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cmd: ['lint-pre-commit']
+        cmd: ['lint-pre-commit', 'gomods-tidy', 'lib-lint']
     defaults:
       run:
         working-directory: wasp
@@ -30,16 +30,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.24.0'
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: go-modules-${{ hashFiles('wasp/go.sum') }}-${{ runner.os }}-wasp
-          restore-keys: |
-            go-modules-${{ runner.os }}-wasp
-            go-modules-${{ runner.os }}
       - name: Install dependencies
         run: go mod download
       - name: Run tests
