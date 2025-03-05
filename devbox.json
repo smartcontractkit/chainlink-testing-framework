@@ -152,12 +152,10 @@
         "go install github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper@latest"
       ],
       "gomods-tidy": [
-        "go install github.com/jmank88/gomods@v0.1.5",
-        "gomods tidy"
+        "go install github.com/jmank88/gomods@v0.1.5 && gomods tidy"
       ],
       "gomods-tidy-ci": [
-        "go install github.com/jmank88/gomods@v0.1.5",
-        "gomods tidy",
+        "go install github.com/jmank88/gomods@v0.1.5 && gomods tidy",
         "git add --all",
         "git diff --minimal --cached --exit-code"
       ],
