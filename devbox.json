@@ -9,7 +9,7 @@
     "go@latest",
     "goreleaser@latest",
     "postgresql@15",
-    "python@3.9.13",
+    "python@latest",
     "curl@latest",
     "nodejs@18.20.4",
     "pnpm@latest",
@@ -158,8 +158,8 @@
         "go install github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper@latest"
       ],
 
-      "legacy-lib-go-test-unit": [
-        "cd lib && make test_unit"
+      "lint-pre-commit": [
+        "pre-commit run --hook-stage pre-commit --show-diff-on-failure --color=always"
       ]
     }
   }
