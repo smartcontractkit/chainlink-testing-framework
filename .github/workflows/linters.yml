@@ -16,7 +16,6 @@ jobs:
           - 'havoc-lint'
           - 'parrot-lint'
           - 'lint-pre-commit'
-          - 'gomods-tidy-ci'
           # tools
           - 'workflowresultparser-lint'
           - 'asciitable-lint'
@@ -27,6 +26,9 @@ jobs:
           - 'k8stestrunner-lint'
           # legacy
           - 'lib-lint'
+          # utility
+          - 'gomods-tidy-ci'
+          - 'modgraph'
     defaults:
       run:
         working-directory: wasp
@@ -37,6 +39,6 @@ jobs:
         uses: jetify-com/devbox-install-action@v0.11.0
         with:
           enable-cache: 'true'
-      - name: Run tests
+      - name: Lint
         run: |
           devbox run ${{ matrix.cmd }}
