@@ -28,7 +28,6 @@ jobs:
           - 'lib-lint'
           # utility
           - 'gomods-tidy-ci'
-          - 'modgraph'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3

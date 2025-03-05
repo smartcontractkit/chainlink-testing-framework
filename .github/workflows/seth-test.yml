@@ -9,17 +9,17 @@ jobs:
       fail-fast: false
       matrix:
         test-type:
-#          - 'seth-test-anvil'
-#          - 'seth-test-geth'
-#          - 'seth-test-anvil-api'
-#          - 'seth-test-geth-api'
-#          - 'seth-test-anvil-trace'
-#          - 'seth-test-geth-trace'
-#          - 'seth-test-anvil-cli'
-#          - 'seth-test-geth-cli'
-#          - 'seth-test-anvil-gas-bumping'
-#          - 'seth-test-geth-gas-bumping'
-#          - 'seth-test-anvil-others'
+          - 'seth-test-anvil'
+          - 'seth-test-geth'
+          - 'seth-test-anvil-api'
+          - 'seth-test-geth-api'
+          - 'seth-test-anvil-trace'
+          - 'seth-test-geth-trace'
+          - 'seth-test-anvil-cli'
+          - 'seth-test-geth-cli'
+          - 'seth-test-anvil-gas-bumping'
+          - 'seth-test-geth-gas-bumping'
+          - 'seth-test-anvil-others'
           - 'seth-test-geth-others'
     defaults:
       run:
