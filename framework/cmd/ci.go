@@ -2,58 +2,269 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/pkg/errors"
-	"go.uber.org/ratelimit"
-	"golang.org/x/sync/errgroup"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fatih/color"
 	"github.com/google/go-github/v50/github"
+	"github.com/google/uuid"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"go.uber.org/ratelimit"
 	"golang.org/x/oauth2"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
-	WorkflowRateLimitPerSecond = 10
-	JobsRateLimitPerSecond     = 10
-	MaxBarLength               = 50
-	GHResultsPerPage           = 100 // anything above that won't work
+	JobsRateLimitPerSecond = 20
+	GHResultsPerPage       = 100 // anything above that won't work, check GitHub docs
+)
+
+const (
+	MaxNameLen     = 120
+	SuccessEmoji   = "✅"
+	FailureEmoji   = "❌"
+	RerunEmoji     = "🔄"
+	CancelledEmoji = "🚫"
 )
 
 var (
 	SlowTestThreshold          = 5 * time.Minute
 	ExtremelySlowTestThreshold = 10 * time.Minute
+
+	DebugDirRoot    = "ctf-ci-debug"
+	DebugSubDirWF   = filepath.Join(DebugDirRoot, "workflows")
+	DebugSubDirJobs = filepath.Join(DebugDirRoot, "jobs")
 )
 
-type JobResult struct {
-	StepStats map[string]Stat
-	JobStats  map[string]Stat
+type GitHubActionsClient interface {
+	ListRepositoryWorkflowRuns(ctx context.Context, owner, repo string, opts *github.ListWorkflowRunsOptions) (*github.WorkflowRuns, *github.Response, error)
+	ListWorkflowJobs(ctx context.Context, owner, repo string, runID int64, opts *github.ListWorkflowJobsOptions) (*github.Jobs, *github.Response, error)
+}
+
+type AnalysisConfig struct {
+	Debug               bool
+	Owner               string
+	Repo                string
+	WorkflowName        string
+	TimeDaysBeforeStart int
+	TimeStart           time.Time
+	TimeDaysBeforeEnd   int
+	TimeEnd             time.Time
+	Typ                 string
+	ResultsFile         string
 }
 
 type Stat struct {
-	Name      string
-	Median    time.Duration
-	P95       time.Duration
-	P99       time.Duration
-	Durations []time.Duration
+	Name          string
+	Successes     int
+	Failures      int
+	Cancels       int
+	ReRuns        int
+	P50           time.Duration
+	P95           time.Duration
+	P99           time.Duration
+	TotalDuration time.Duration
+	Durations     []time.Duration
 }
 
-// AnalyzeCIRuns analyzes GitHub Actions job runs and prints statistics
-func AnalyzeCIRuns(owner, repo, wf string, daysRange int) error {
+type Stats struct {
+	Mu            *sync.Mutex
+	Runs          int
+	CancelledRuns int
+	IgnoredRuns   int
+	Jobs          map[string]*Stat
+	Steps         map[string]*Stat
+}
+
+func calculatePercentiles(stat *Stat) *Stat {
+	sort.Slice(stat.Durations, func(i, j int) bool { return stat.Durations[i] < stat.Durations[j] })
+	q := func(d *Stat, quantile float64) int {
+		return int(float64(len(d.Durations)) * quantile / 100)
+	}
+	stat.P50 = stat.Durations[q(stat, 50)].Round(time.Second)
+	stat.P95 = stat.Durations[q(stat, 95)].Round(time.Second)
+	stat.P99 = stat.Durations[q(stat, 99)].Round(time.Second)
+	return stat
+}
+
+func refreshDebugDirs() {
+	_ = os.RemoveAll(DebugDirRoot)
+	if _, err := os.Stat(DebugDirRoot); os.IsNotExist(err) {
+		_ = os.MkdirAll(DebugSubDirWF, os.ModePerm)
+		_ = os.MkdirAll(DebugSubDirJobs, os.ModePerm)
+	}
+}
+
+func writeStruct(enabled bool, dir, name string, data interface{}) error {
+	if enabled {
+		d, err := json.MarshalIndent(data, "", " ")
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(fmt.Sprintf("%s/%s-%s.json", dir, name, uuid.NewString()[0:5]), d, os.ModeAppend|os.ModePerm)
+	}
+	return nil
+}
+
+func AnalyzeJobsSteps(ctx context.Context, client GitHubActionsClient, cfg *AnalysisConfig) (*Stats, error) {
+	framework.L.Info().Time("From", cfg.TimeStart).Time("To", cfg.TimeEnd).Msg("Analyzing workflow runs")
+	opts := &github.ListWorkflowRunsOptions{
+		Created:     fmt.Sprintf("%s..%s", cfg.TimeStart.Format(time.DateOnly), cfg.TimeEnd.Format(time.DateOnly)),
+		ListOptions: github.ListOptions{PerPage: GHResultsPerPage},
+	}
+	rlJobs := ratelimit.New(JobsRateLimitPerSecond)
+	stats := &Stats{
+		Mu:    &sync.Mutex{},
+		Jobs:  make(map[string]*Stat),
+		Steps: make(map[string]*Stat),
+	}
+	refreshDebugDirs()
+	for {
+		runs, resp, err := client.ListRepositoryWorkflowRuns(ctx, cfg.Owner, cfg.Repo, opts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch workflow runs: %w", err)
+		}
+		framework.L.Debug().Int("Runs", len(runs.WorkflowRuns)).Msg("Loading runs")
+
+		eg := &errgroup.Group{}
+		for _, wr := range runs.WorkflowRuns {
+			if !strings.Contains(*wr.Name, cfg.WorkflowName) {
+				stats.IgnoredRuns++
+				continue
+			}
+			stats.Runs++
+			// analyze workflow
+			name := *wr.Name
+			framework.L.Debug().Str("Name", name).Msg("Analyzing workflow run")
+			_ = writeStruct(cfg.Debug, DebugSubDirWF, name, wr)
+			eg.Go(func() error {
+				rlJobs.Take()
+				jobs, _, err := client.ListWorkflowJobs(ctx, cfg.Owner, cfg.Repo, *wr.ID, &github.ListWorkflowJobsOptions{
+					ListOptions: github.ListOptions{PerPage: GHResultsPerPage},
+				})
+				if err != nil {
+					return err
+				}
+				// analyze jobs
+				for _, j := range jobs.Jobs {
+					stats.Mu.Lock()
+					defer stats.Mu.Unlock()
+					name := *j.Name
+					_ = writeStruct(cfg.Debug, DebugSubDirJobs, name, wr)
+					if skippedOrInProgressJob(j) {
+						stats.IgnoredRuns++
+						continue
+					}
+					if j.Status != nil && *j.Status == "cancelled" {
+						stats.CancelledRuns++
+						continue
+					}
+					dur := j.CompletedAt.Time.Sub(j.StartedAt.Time)
+					if _, ok := stats.Jobs[name]; !ok {
+						stats.Jobs[name] = &Stat{
+							Name:          name,
+							Durations:     []time.Duration{dur},
+							TotalDuration: dur,
+						}
+					} else {
+						stats.Jobs[name].Durations = append(stats.Jobs[*j.Name].Durations, dur)
+						stats.Jobs[name].TotalDuration += dur
+					}
+					if j.RunAttempt != nil && *j.RunAttempt > 1 {
+						stats.Jobs[name].ReRuns++
+					}
+					if j.Conclusion != nil && *j.Conclusion == "failure" {
+						stats.Jobs[name].Failures++
+					} else {
+						stats.Jobs[name].Successes++
+					}
+					if j.Conclusion != nil && *j.Conclusion == "cancelled" {
+						stats.Jobs[name].Cancels++
+					}
+					// analyze steps
+					for _, s := range j.Steps {
+						name := *s.Name
+						if skippedOrInProgressStep(s) {
+							continue
+						}
+						dur := s.CompletedAt.Time.Sub(s.StartedAt.Time)
+						if _, ok := stats.Steps[name]; !ok {
+							stats.Steps[name] = &Stat{
+								Name:      name,
+								Durations: []time.Duration{dur},
+							}
+						} else {
+							stats.Steps[name].Durations = append(stats.Steps[name].Durations, dur)
+						}
+						if *s.Conclusion == "failure" {
+							stats.Steps[name].Failures++
+						} else {
+							stats.Steps[name].Successes++
+						}
+					}
+				}
+				return nil
+			})
+		}
+		if err := eg.Wait(); err != nil {
+			return nil, err
+		}
+		if resp.NextPage == 0 {
+			break
+		}
+		opts.Page = resp.NextPage
+	}
+	jobs := make([]*Stat, 0)
+	for _, js := range stats.Jobs {
+		stat := calculatePercentiles(js)
+		jobs = append(jobs, stat)
+	}
+	sort.Slice(jobs, func(i, j int) bool { return jobs[i].P50 > jobs[j].P50 })
+
+	steps := make([]*Stat, 0)
+	for _, js := range stats.Steps {
+		stat := calculatePercentiles(js)
+		steps = append(steps, stat)
+	}
+	sort.Slice(steps, func(i, j int) bool { return steps[i].P50 > steps[j].P50 })
+
+	switch cfg.Typ {
+	case "jobs":
+		for _, js := range jobs {
+			printSummary(js.Name, js, cfg.Typ)
+		}
+	case "steps":
+		for _, js := range steps {
+			printSummary(js.Name, js, cfg.Typ)
+		}
+	default:
+		return nil, errors.New("analytics type is not recognized")
+	}
+	framework.L.Info().
+		Int("Runs", stats.Runs).
+		Int("Cancelled", stats.CancelledRuns).
+		Int("Ignored", stats.IgnoredRuns).
+		Msg("Total runs analyzed")
+	return stats, nil
+}
+
+func AnalyzeCIRuns(cfg *AnalysisConfig) (*Stats, error) {
 	ctx := context.Background()
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
-		return fmt.Errorf("GITHUB_TOKEN environment variable is not set")
+		return nil, fmt.Errorf("GITHUB_TOKEN environment variable is not set")
 	}
-
 	framework.L.Info().
-		Str("Owner", owner).
-		Str("Repo", repo).
-		Str("Workflow", wf).
+		Str("Owner", cfg.Owner).
+		Str("Repo", cfg.Repo).
+		Str("Workflow", cfg.WorkflowName).
 		Msg("Analyzing CI runs")
 
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
@@ -62,212 +273,19 @@ func AnalyzeCIRuns(owner, repo, wf string, daysRange int) error {
 
 	// Fetch workflow runs for the last N days
 	// have GH rate limits in mind, see file constants
-	lastMonth := time.Now().AddDate(0, 0, -daysRange)
-	runs, err := getAllWorkflowRuns(ctx, client, owner, repo, wf, lastMonth)
+	timeStart := time.Now().AddDate(0, 0, -cfg.TimeDaysBeforeStart)
+	cfg.TimeStart = timeStart
+	timeEnd := time.Now().AddDate(0, 0, -cfg.TimeDaysBeforeEnd)
+	cfg.TimeEnd = timeEnd
+	stats, err := AnalyzeJobsSteps(ctx, client.Actions, cfg)
 	if err != nil {
-		return fmt.Errorf("failed to fetch workflow runs: %w", err)
+		return nil, fmt.Errorf("failed to fetch workflow runs: %w", err)
 	}
-
-	framework.L.Info().
-		Int("Runs", len(runs)).
-		Msg("Found matching workflow runs")
-
-	results := make(chan JobResult, len(runs))
-	eg := &errgroup.Group{}
-	rl := ratelimit.New(JobsRateLimitPerSecond)
-
-	for _, run := range runs {
-		eg.Go(func() error {
-			rl.Take()
-			return analyzeRun(ctx, client, run, results, owner, repo)
-		})
-	}
-	if err := eg.Wait(); err != nil {
-		return err
-	}
-	close(results)
-
-	perStepStats := make(map[string]Stat)
-	perJobStats := make(map[string]Stat)
-
-	for result := range results {
-		// Aggregate step durations
-		for stepName, durations := range result.StepStats {
-			if existing, ok := perStepStats[stepName]; ok {
-				existing.Durations = append(existing.Durations, durations.Durations...)
-				perStepStats[stepName] = existing
-			} else {
-				perStepStats[stepName] = Stat{
-					Name:      stepName,
-					Durations: durations.Durations,
-				}
-			}
-		}
-		// Aggregate job stats
-		for jobName, stat := range result.JobStats {
-			if existing, ok := perJobStats[jobName]; ok {
-				existing.Durations = append(existing.Durations, stat.Durations...)
-				perJobStats[jobName] = existing
-			} else {
-				perJobStats[jobName] = Stat{
-					Name:      jobName,
-					Durations: stat.Durations,
-				}
-			}
-		}
-	}
-
-	for stepName, stat := range perStepStats {
-		stat.Median, stat.P95, stat.P99 = calculatePercentiles(stat.Durations)
-		perStepStats[stepName] = stat
-	}
-	for jobName, stat := range perJobStats {
-		stat.Median, stat.P95, stat.P99 = calculatePercentiles(stat.Durations)
-		perJobStats[jobName] = stat
-	}
-	fmt.Print("\nSteps:\n")
-	printStats(perStepStats)
-	fmt.Print("\nJobs:\n")
-	printStats(perJobStats)
-	return nil
+	return stats, nil
 }
 
-func getAllWorkflowRuns(ctx context.Context, client *github.Client, owner, repo, name string, timeRange time.Time) ([]*github.WorkflowRun, error) {
-	var allRuns []*github.WorkflowRun
-	opts := &github.ListWorkflowRunsOptions{
-		Created:     fmt.Sprintf(">%s", timeRange.Format(time.RFC3339)),
-		ListOptions: github.ListOptions{PerPage: 100},
-	}
-	rl := ratelimit.New(WorkflowRateLimitPerSecond)
-	for {
-		rl.Take()
-		runs, resp, err := client.Actions.ListRepositoryWorkflowRuns(ctx, owner, repo, opts)
-		if err != nil {
-			return nil, fmt.Errorf("failed to fetch workflow runs: %w", err)
-		}
-		framework.L.Debug().Int("Runs", len(runs.WorkflowRuns)).Msg("Loading runs")
-		for _, wr := range runs.WorkflowRuns {
-			if strings.Contains(*wr.Name, name) {
-				allRuns = append(allRuns, wr)
-			}
-		}
-		if resp.NextPage == 0 {
-			break
-		}
-		opts.Page = resp.NextPage
-	}
-	return allRuns, nil
-}
-
-// analyzeRun fetches workflow runs that are not skipped and returns their Stat through channel
-func analyzeRun(ctx context.Context, client *github.Client, run *github.WorkflowRun, results chan<- JobResult, owner, repo string) error {
-	logger := framework.L.With().
-		Str("RunID", fmt.Sprintf("%d", *run.ID)).
-		Str("CreatedAt", run.CreatedAt.Format(time.RFC3339)).
-		Logger()
-	logger.Debug().Msg("Analyzing run")
-
-	jobs, _, err := client.Actions.ListWorkflowJobs(ctx, owner, repo, *run.ID, &github.ListWorkflowJobsOptions{
-		ListOptions: github.ListOptions{PerPage: GHResultsPerPage},
-	})
-	if err != nil {
-		return errors.Wrap(err, "failed to fetch jobs for run")
-	}
-
-	stepStats := make(map[string]Stat)
-	jobStats := make(map[string]Stat)
-
-	// Analyze each job
-	for _, job := range jobs.Jobs {
-		logger.Debug().
-			Str("job_id", fmt.Sprintf("%d", *job.ID)).
-			Str("job_name", *job.Name).
-			Msg("Found job")
-
-		// ignore jobs that are in progress or skipped
-		if job.Conclusion != nil && *job.Conclusion == "skipped" {
-			continue
-		}
-		if job.CompletedAt == nil {
-			continue
-		}
-		jobDuration := job.CompletedAt.Time.Sub(job.StartedAt.Time)
-		// Collect step durations
-		for _, step := range job.Steps {
-			if step.Conclusion != nil && *step.Conclusion == "skipped" {
-				continue
-			}
-			elapsed := step.CompletedAt.Time.Sub(step.StartedAt.Time)
-			if existing, ok := stepStats[*step.Name]; ok {
-				existing.Durations = append(existing.Durations, elapsed)
-				stepStats[*step.Name] = existing
-			} else {
-				stepStats[*step.Name] = Stat{
-					Name:      *step.Name,
-					Durations: []time.Duration{elapsed},
-				}
-			}
-		}
-		// Collect per-job statistics
-		if existing, ok := jobStats[*job.Name]; ok {
-			existing.Durations = append(existing.Durations, jobDuration)
-			jobStats[*job.Name] = existing
-		} else {
-			jobStats[*job.Name] = Stat{
-				Name:      *job.Name,
-				Durations: []time.Duration{jobDuration},
-			}
-		}
-	}
-	results <- JobResult{
-		StepStats: stepStats,
-		JobStats:  jobStats,
-	}
-	return nil
-}
-
-// calculatePercentiles calculates the median (50th), 95th, and 99th percentiles
-func calculatePercentiles(durations []time.Duration) (median, p95, p99 time.Duration) {
-	sort.Slice(durations, func(i, j int) bool { return durations[i] < durations[j] })
-	medianIndex := int(float64(len(durations)) * 50 / 100)
-	p95Index := int(float64(len(durations)) * 95 / 100)
-	p99Index := int(float64(len(durations)) * 99 / 100)
-	return durations[medianIndex], durations[p95Index], durations[p99Index]
-}
-
-func printStats(jobStats map[string]Stat) {
-	var stats []Stat
-	for _, stat := range jobStats {
-		sort.Slice(stat.Durations, func(i, j int) bool { return stat.Durations[i] < stat.Durations[j] })
-		stats = append(stats, stat)
-	}
-	sort.Slice(stats, func(i, j int) bool { return stats[i].Median > stats[j].Median })
-	maxNameLen := 0
-	for _, stat := range stats {
-		if len(stat.Name) > maxNameLen {
-			maxNameLen = len(stat.Name)
-		}
-	}
-
-	for _, stat := range stats {
-		colorPrinter := getColorPrinter(stat.Median)
-		barLength := int(stat.Median.Seconds())
-		if barLength > MaxBarLength {
-			barLength = MaxBarLength
-		}
-		bar := strings.Repeat("=", barLength)
-		fmt.Printf("%-*s 50th:%s 95th:%s 99th:%s %s\n",
-			maxNameLen,
-			stat.Name,
-			colorPrinter.Sprintf("%-12s", stat.Median.Round(time.Second)),
-			colorPrinter.Sprintf("%-12s", stat.P95.Round(time.Second)),
-			colorPrinter.Sprintf("%-12s", stat.P99.Round(time.Second)),
-			colorPrinter.Sprint(bar))
-	}
-}
-
-// getColorPrinter returns a color printer based on the duration
-func getColorPrinter(duration time.Duration) *color.Color {
+// getColor returns a color printer based on the duration
+func getColor(duration time.Duration) *color.Color {
 	switch {
 	case duration < SlowTestThreshold:
 		return color.New(color.FgGreen)
@@ -276,4 +294,62 @@ func getColorPrinter(duration time.Duration) *color.Color {
 	default:
 		return color.New(color.FgRed)
 	}
+}
+
+func printSummary(name string, s *Stat, typ string) {
+	cp50 := getColor(s.P50)
+	cp95 := getColor(s.P95)
+	cp99 := getColor(s.P99)
+	var cpFlaky *color.Color
+	if s.ReRuns > 0 {
+		cpFlaky = color.New(color.FgRed)
+	} else {
+		cpFlaky = color.New(color.FgGreen)
+	}
+	if len(name) > MaxNameLen {
+		name = name[:MaxNameLen]
+	}
+	switch typ {
+	case "jobs":
+		fmt.Printf("%s 50th:%-10s 95th:%-10s 99th:%-10s Total:%-10s %s %-2s %s %-2s %s %-2s %s %-2s\n",
+			cp50.Sprintf("%-120s", name),
+			cp50.Sprintf("%-8s", s.P50),
+			cp95.Sprintf("%-8s", s.P95),
+			cp99.Sprintf("%-8s", s.P99),
+			fmt.Sprintf("%-8s", s.TotalDuration.Round(time.Second)),
+			RerunEmoji,
+			cpFlaky.Sprintf("%-2d", s.ReRuns),
+			FailureEmoji,
+			cpFlaky.Sprintf("%-2d", s.Failures),
+			SuccessEmoji,
+			cpFlaky.Sprintf("%-2d", s.Successes),
+			CancelledEmoji,
+			cpFlaky.Sprintf("%-2d", s.Cancels),
+		)
+	case "steps":
+		fmt.Printf("%s 50th:%-10s 95th:%-10s 99th:%-10s %s %-2s %s %-2s\n",
+			cp50.Sprintf("%-120s", name),
+			cp50.Sprintf("%-8s", s.P50),
+			cp95.Sprintf("%-8s", s.P95),
+			cp99.Sprintf("%-8s", s.P99),
+			FailureEmoji,
+			cpFlaky.Sprintf("%-2d", s.Failures),
+			SuccessEmoji,
+			cpFlaky.Sprintf("%-2d", s.Successes),
+		)
+	}
+}
+
+func skippedOrInProgressStep(s *github.TaskStep) bool {
+	if s.Conclusion == nil || s.CompletedAt == nil || *s.Conclusion == "skipped" {
+		return true
+	}
+	return false
+}
+
+func skippedOrInProgressJob(s *github.WorkflowJob) bool {
+	if s.Conclusion == nil || s.CompletedAt == nil || (*s.Conclusion == "skipped") {
+		return true
+	}
+	return false
 }
