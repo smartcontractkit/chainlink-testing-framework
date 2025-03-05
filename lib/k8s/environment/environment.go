@@ -245,7 +245,7 @@ func New(cfg *Config) *Environment {
 var requiredChainLinkNsLabels = []string{"chain.link/team", "chain.link/cost-center", "chain.link/product"}
 var requiredChainLinkWorkloadAndPodLabels = append([]string{}, append(requiredChainLinkNsLabels, "chain.link/component")...)
 
-// validateRequiredChainLinkLabels validates whether the namespace, workloads ands pods have the required chain.link labels
+// validateRequiredChainLinkLabels validates whether the namespace, workloads and pods have the required chain.link labels
 // and returns an error with a list of missing labels if any
 func (m *Environment) validateRequiredChainLinkLabels() error {
 	if m.root.Labels() == nil {

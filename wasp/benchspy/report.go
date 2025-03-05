@@ -214,9 +214,9 @@ func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, er
 		currentMetric := currentForGenerator[metricName]
 		previousMetric := previousForGenerator[metricName]
 
-		diffPrecentage := calculateDiffPercentage(currentMetric, previousMetric)
-		if diffPrecentage > maxDiffPercentage {
-			return fmt.Errorf("%s is %.4f%% different, which is higher than the threshold %.4f%%", metricName, diffPrecentage, maxDiffPercentage)
+		diffPercentage := calculateDiffPercentage(currentMetric, previousMetric)
+		if diffPercentage > maxDiffPercentage {
+			return fmt.Errorf("%s is %.4f%% different, which is higher than the threshold %.4f%%", metricName, diffPercentage, maxDiffPercentage)
 		}
 
 		return nil
@@ -337,7 +337,7 @@ func (sr *StandardReport) FetchData(ctx context.Context) error {
 	errGroup, errCtx := errgroup.WithContext(ctx)
 	for _, queryExecutor := range sr.QueryExecutors {
 		errGroup.Go(func() error {
-			// feature: PLAIN SEGEMENT ONLY
+			// feature: PLAIN SEGMENT ONLY
 			// go over all schedules and execute the code below only for ones with type "plain"
 			// and then concatenate that data and return that; if parallelizing then we should first
 			// create a slice of plain segments and then, when sending results over channel include the index,

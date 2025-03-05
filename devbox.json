@@ -143,6 +143,11 @@
       "wasp-dashboard": [
         "cd wasp && go run dashboard/cmd/main.go"
       ],
+
+      "framework-test-components": [
+        "cd framework && go test -timeout 5m -count 1 -run TestComponentDocker ./..."
+      ],
+
       "modgraph": [
         "go install github.com/jmank88/gomods@v0.1.5",
         "go install github.com/jmank88/modgraph@v0.1.0",
@@ -217,7 +222,7 @@
         "cd lib/ && golangci-lint --color=always run -v -c ../.golangci.yaml"
       ],
 
-      "lint-pre-commit": [
+      "pre-commit": [
         "pre-commit run --hook-stage pre-commit --show-diff-on-failure --color=always"
       ]
     }
