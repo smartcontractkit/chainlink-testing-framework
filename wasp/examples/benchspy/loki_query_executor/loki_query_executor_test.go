@@ -192,7 +192,7 @@ func TestBenchSpy_Custom_Loki_Metrics(t *testing.T) {
 	compareAverages(t, "responses_over_time", currentAsStringSlice, previousAsStringSlice, 1.0)
 }
 
-var compareAverages = func(t *testing.T, metricName string, currentAsStringSlice, previousAsStringSlice map[string][]string, maxPrecentageDiff float64) {
+var compareAverages = func(t *testing.T, metricName string, currentAsStringSlice, previousAsStringSlice map[string][]string, maxPercentageDiff float64) {
 	require.NotEmpty(t, currentAsStringSlice[metricName], "%s results were missing from current report", metricName)
 	require.NotEmpty(t, previousAsStringSlice[metricName], "%s results were missing from previous report", metricName)
 
@@ -206,15 +206,15 @@ var compareAverages = func(t *testing.T, metricName string, currentAsStringSlice
 	previousMedian, err := stats.Mean(previousFloatSlice)
 	require.NoError(t, err, "failed to calculate median for %s results", metricName)
 
-	var diffPrecentage float64
+	var diffPercentage float64
 	if previousMedian != 0.0 && currentMedian != 0.0 {
-		diffPrecentage = (currentMedian - previousMedian) / previousMedian * 100
+		diffPercentage = (currentMedian - previousMedian) / previousMedian * 100
 	} else if previousMedian == 0.0 && currentMedian == 0.0 {
-		diffPrecentage = 0.0
+		diffPercentage = 0.0
 	} else {
-		diffPrecentage = 100.0
+		diffPercentage = 100.0
 	}
-	assert.LessOrEqual(t, math.Abs(diffPrecentage), maxPrecentageDiff, "%s medians are more than 1% different", metricName, fmt.Sprintf("%.4f", diffPrecentage))
+	assert.LessOrEqual(t, math.Abs(diffPercentage), maxPercentageDiff, "%s medians are more than 1% different", metricName, fmt.Sprintf("%.4f", diffPercentage))
 }
 
 func TestBenchSpy_Standard_Loki_Metrics_Two_Generators(t *testing.T) {
