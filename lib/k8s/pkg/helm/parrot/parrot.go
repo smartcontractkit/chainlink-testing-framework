@@ -97,7 +97,7 @@ func defaultProps() map[string]any {
 	return map[string]any{
 		"image": map[string]any{
 			"repository":      parrotRepo,
-			"version":         "0.5.0", //TODO: Update to latest version
+			"version":         "0.6.1",
 			"imagePullPolicy": "IfNotPresent",
 		},
 		"logLevel": "trace",
