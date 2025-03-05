@@ -51,6 +51,8 @@ type aggregateOptions struct {
 	baseSha              string
 	headSha              string
 	repoURL              string
+	repoPath             string
+	codeownersPath       string
 	gitHubWorkflowName   string
 	gitHubWorkflowRunURL string
 }
@@ -98,6 +100,18 @@ func WithBaseSha(baseSha string) AggregateOption {
 func WithRepoURL(repoURL string) AggregateOption {
 	return func(opts *aggregateOptions) {
 		opts.repoURL = repoURL
+	}
+}
+
+func WithRepoPath(repoPath string) AggregateOption {
+	return func(opts *aggregateOptions) {
+		opts.repoURL = repoPath
+	}
+}
+
+func WithCodeOwnersPath(codeOwnersPath string) AggregateOption {
+	return func(opts *aggregateOptions) {
+		opts.codeownersPath = codeOwnersPath
 	}
 }
 
@@ -174,6 +188,28 @@ func LoadAndAggregate(resultsPath string, options ...AggregateOption) (*TestRepo
 	aggregatedReport, err := aggregate(reportChan, errChan, &opts)
 	if err != nil {
 		return nil, fmt.Errorf("error aggregating reports: %w", err)
+	}
+
+	// Map test results to test paths
+	err = MapTestResultsToPaths(aggregatedReport, opts.repoPath)
+	if err != nil {
+		return nil, fmt.Errorf("error mapping test results to paths: %w", err)
+	}
+
+	// Map test results to code owners if codeOwnersPath is provided
+	if opts.codeownersPath != "" {
+		err := MapTestResultsToOwners(aggregatedReport, opts.codeownersPath)
+		if err != nil {
+			return nil, fmt.Errorf("error mapping test results to code owners: %w", err)
+		}
+	}
+
+	sendToSplunk := opts.splunkURL != ""
+	if sendToSplunk {
+		err = sendDataToSplunk(&opts, *aggregatedReport)
+		if err != nil {
+			return aggregatedReport, fmt.Errorf("error sending data to Splunk: %w", err)
+		}
 	}
 
 	return aggregatedReport, nil
@@ -444,7 +480,6 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 		testMap       = make(map[string]TestResult)
 		excludedTests = map[string]struct{}{}
 		selectedTests = map[string]struct{}{}
-		sendToSplunk  = opts.splunkURL != ""
 	)
 
 	for report := range reportChan {
@@ -497,12 +532,6 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 	fullReport.Results = aggregatedResults
 	fullReport.GenerateSummaryData()
 
-	if sendToSplunk {
-		err = sendDataToSplunk(opts, *fullReport)
-		if err != nil {
-			return fullReport, fmt.Errorf("error sending data to Splunk: %w", err)
-		}
-	}
 	return fullReport, err
 }
 
@@ -633,6 +662,7 @@ func sendDataToSplunk(opts *aggregateOptions, report TestReport) error {
 		}
 		log.Info().Msgf("Example Run. See '%s' for the results that would be sent to splunk", exampleSplunkReportFileName)
 	} else {
+		fmt.Printf("Final sent: %v", reportData)
 		resp, err := client.R().SetBody(reportData).Post("")
 		if err != nil {
 			splunkErrs = append(splunkErrs, fmt.Errorf("error sending report '%s' to Splunk: %w", report.ID, err))
@@ -680,6 +710,8 @@ func batchSplunkResults(results []SplunkTestResult) (batchData bytes.Buffer, res
 		}
 		resultTestNames = append(resultTestNames, result.Event.Data.TestName)
 	}
+	fmt.Println("Formatted Batch Data:")
+	fmt.Println(batchData.String())
 	return batchData, resultTestNames, nil
 }
 

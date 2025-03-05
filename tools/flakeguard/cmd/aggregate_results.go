@@ -56,6 +56,8 @@ var AggregateResultsCmd = &cobra.Command{
 		// Load test reports from JSON files and aggregate them
 		aggregatedReport, err := reports.LoadAndAggregate(
 			resultsPath,
+			reports.WithRepoPath(repoPath),
+			reports.WithCodeOwnersPath(codeOwnersPath),
 			reports.WithReportID(reportID),
 			reports.WithSplunk(splunkURL, splunkToken, splunkEvent),
 			reports.WithBranchName(branchName),
@@ -75,35 +77,8 @@ var AggregateResultsCmd = &cobra.Command{
 
 		// Start spinner for mapping test results to paths
 		s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-		s.Suffix = " Mapping test results to paths..."
+		s.Suffix = " Filter failed tests..."
 		s.Start()
-
-		// Map test results to test paths
-		err = reports.MapTestResultsToPaths(aggregatedReport, repoPath)
-		if err != nil {
-			s.Stop()
-			log.Error().Stack().Err(err).Msg("Error mapping test results to paths")
-			os.Exit(ErrorExitCode)
-		}
-		s.Stop()
-		log.Debug().Msg("Successfully mapped paths to test results")
-
-		// Map test results to code owners if codeOwnersPath is provided
-		if codeOwnersPath != "" {
-			s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-			s.Suffix = " Mapping test results to code owners..."
-			s.Start()
-			fmt.Println()
-
-			err = reports.MapTestResultsToOwners(aggregatedReport, codeOwnersPath)
-			if err != nil {
-				s.Stop()
-				log.Error().Stack().Err(err).Msg("Error mapping test results to code owners")
-				os.Exit(ErrorExitCode)
-			}
-			s.Stop()
-			log.Debug().Msg("Successfully mapped code owners to test results")
-		}
 
 		failedTests := reports.FilterTests(aggregatedReport.Results, func(tr reports.TestResult) bool {
 			return !tr.Skipped && tr.PassRatio < maxPassRatio
