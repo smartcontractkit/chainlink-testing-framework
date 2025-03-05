@@ -3,7 +3,6 @@ run:
   timeout: 5m
 linters:
   enable:
-    # defaults
     - errcheck
     - gosimple
     - govet
@@ -11,7 +10,6 @@ linters:
     - staticcheck
     - typecheck
     - unused
-    # extra
     - exhaustive
     - copyloopvar
     - revive

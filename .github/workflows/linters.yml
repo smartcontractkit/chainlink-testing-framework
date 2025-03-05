@@ -8,30 +8,35 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cmd: ['lint-pre-commit', 'gomods-tidy', 'lib-lint']
+        cmd:
+          # libs
+          - 'framework-lint'
+          - 'wasp-lint'
+          - 'seth-lint'
+          - 'havoc-lint'
+          - 'parrot-lint'
+          - 'lint-pre-commit'
+          - 'gomods-tidy-ci'
+          # tools
+          - 'workflowresultparser-lint'
+          - 'asciitable-lint'
+          - 'ghlatestreleasechecker-lint'
+          - 'testlistgenerator-lint'
+          - 'ecrimagefetcher-lint'
+          - 'gotestloghelper-lint'
+          - 'k8stestrunner-lint'
+          # legacy
+          - 'lib-lint'
     defaults:
       run:
         working-directory: wasp
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Check for changes in Framework
-        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
-        id: changes
-        with:
-          filters: |
-            src:
-              - 'wasp/**'
       - name: Install Devbox
         uses: jetify-com/devbox-install-action@v0.11.0
         with:
           enable-cache: 'true'
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.24.0'
-      - name: Install dependencies
-        run: go mod download
       - name: Run tests
         run: |
           devbox run ${{ matrix.cmd }}
