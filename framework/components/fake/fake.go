@@ -2,9 +2,10 @@ package fake
 
 import (
 	"fmt"
+	"regexp"
+
 	"github.com/gin-gonic/gin"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"regexp"
 )
 
 var (
@@ -32,9 +33,8 @@ func validate(method, path string) error {
 	}
 	if _, ok := R.Data[RecordKey(method, path)]; ok {
 		return fmt.Errorf("fake with method %s and path %s already exists", method, path)
-	} else {
-		R.Data[RecordKey(method, path)] = make([]*Record, 0)
 	}
+	R.Data[RecordKey(method, path)] = make([]*Record, 0)
 	return nil
 }
 

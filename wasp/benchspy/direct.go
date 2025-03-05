@@ -56,58 +56,58 @@ func NewDirectQueryExecutor(generator *wasp.Generator, queries map[string]Direct
 
 // GeneratorName returns the name of the generator associated with the query executor.
 // It is useful for identifying and categorizing results based on their generator type.
-func (g *DirectQueryExecutor) GeneratorName() string {
-	if g.Generator == nil {
+func (dqe *DirectQueryExecutor) GeneratorName() string {
+	if dqe.Generator == nil {
 		return ""
 	}
-	return g.Generator.Cfg.GenName
+	return dqe.Generator.Cfg.GenName
 }
 
 // Results returns the query results as a map of string keys to interface{} values.
 // It allows users to access the outcomes of executed queries, facilitating further processing or type assertions.
-func (g *DirectQueryExecutor) Results() map[string]interface{} {
-	return g.QueryResults
+func (dqe *DirectQueryExecutor) Results() map[string]interface{} {
+	return dqe.QueryResults
 }
 
 // Kind returns the type of the query executor as a string.
 // It is useful for identifying the specific implementation of a query executor in a collection.
-func (l *DirectQueryExecutor) Kind() string {
-	return l.KindName
+func (dqe *DirectQueryExecutor) Kind() string {
+	return dqe.KindName
 }
 
 // IsComparable checks if the given QueryExecutor is of the same type and has comparable configurations.
 // It returns an error if the types do not match or if the configurations are not comparable.
-func (g *DirectQueryExecutor) IsComparable(otherQueryExecutor QueryExecutor) error {
+func (dqe *DirectQueryExecutor) IsComparable(otherQueryExecutor QueryExecutor) error {
 	L.Debug().
-		Str("Expected kind", g.KindName).
+		Str("Expected kind", dqe.KindName).
 		Msg("Checking if query executors are comparable")
 
 	otherType := reflect.TypeOf(otherQueryExecutor)
 
-	if otherType != reflect.TypeOf(g) {
-		return fmt.Errorf("expected type %s, got %s", reflect.TypeOf(g), otherType)
+	if otherType != reflect.TypeOf(dqe) {
+		return fmt.Errorf("expected type %s, got %s", reflect.TypeOf(dqe), otherType)
 	}
 
 	otherGeneratorQueryExecutor := otherQueryExecutor.(*DirectQueryExecutor)
 
-	if compareGeneratorConfigs(g.Generator.Cfg, otherGeneratorQueryExecutor.Generator.Cfg) != nil {
+	if compareGeneratorConfigs(dqe.Generator.Cfg, otherGeneratorQueryExecutor.Generator.Cfg) != nil {
 		return errors.New("generators are not comparable")
 	}
 
-	queryErr := g.compareQueries(otherGeneratorQueryExecutor.Queries)
+	queryErr := dqe.compareQueries(otherGeneratorQueryExecutor.Queries)
 	if queryErr != nil {
 		return queryErr
 	}
 
 	L.Debug().
-		Str("Kind", g.KindName).
+		Str("Kind", dqe.KindName).
 		Msg("Query executors are comparable")
 
 	return nil
 }
 
-func (l *DirectQueryExecutor) compareQueries(other map[string]DirectQueryFn) error {
-	this := l.Queries
+func (dqe *DirectQueryExecutor) compareQueries(other map[string]DirectQueryFn) error {
+	this := dqe.Queries
 	if len(this) != len(other) {
 		return fmt.Errorf("queries count is different. Expected %d, got %d", len(this), len(other))
 	}
@@ -124,15 +124,15 @@ func (l *DirectQueryExecutor) compareQueries(other map[string]DirectQueryFn) err
 // Validate checks if the query executor is properly configured.
 // It ensures that a generator is set and at least one query is provided.
 // Returns an error if validation fails, helping to prevent execution issues.
-func (g *DirectQueryExecutor) Validate() error {
+func (dqe *DirectQueryExecutor) Validate() error {
 	L.Debug().
 		Msg("Validating Direct query executor")
 
-	if g.Generator == nil {
+	if dqe.Generator == nil {
 		return errors.New("generator is not set")
 	}
 
-	if len(g.Queries) == 0 {
+	if len(dqe.Queries) == 0 {
 		return errors.New("at least one query is needed")
 	}
 
@@ -145,38 +145,38 @@ func (g *DirectQueryExecutor) Validate() error {
 // Execute runs the defined queries using the data from the generator.
 // It validates the generator's data and aggregates responses before executing each query.
 // This function is essential for processing and retrieving results from multiple queries concurrently.
-func (g *DirectQueryExecutor) Execute(_ context.Context) error {
+func (dqe *DirectQueryExecutor) Execute(_ context.Context) error {
 	L.Info().
-		Str("Generator", g.Generator.Cfg.GenName).
-		Int("Queries", len(g.Queries)).
+		Str("Generator", dqe.Generator.Cfg.GenName).
+		Int("Queries", len(dqe.Queries)).
 		Msg("Executing Direct queries")
 
-	if g.Generator == nil {
+	if dqe.Generator == nil {
 		return errors.New("generator is not set")
 	}
 
-	for queryName, queryFunction := range g.Queries {
+	for queryName, queryFunction := range dqe.Queries {
 		L.Debug().
-			Str("Generator", g.Generator.Cfg.GenName).
+			Str("Generator", dqe.Generator.Cfg.GenName).
 			Str("Query", queryName).
 			Msg("Executing Direct query")
 
-		if g.Generator.GetData() == nil {
-			return fmt.Errorf("generator %s has no data", g.Generator.Cfg.GenName)
+		if dqe.Generator.GetData() == nil {
+			return fmt.Errorf("generator %s has no data", dqe.Generator.Cfg.GenName)
 		}
-		length := len(g.Generator.GetData().FailResponses.Data) + len(g.Generator.GetData().OKData.Data)
+		length := len(dqe.Generator.GetData().FailResponses.Data) + len(dqe.Generator.GetData().OKData.Data)
 		allResponses := wasp.NewSliceBuffer[*wasp.Response](length)
 
-		for _, response := range g.Generator.GetData().OKResponses.Data {
+		for _, response := range dqe.Generator.GetData().OKResponses.Data {
 			allResponses.Append(response)
 		}
 
-		for _, response := range g.Generator.GetData().FailResponses.Data {
+		for _, response := range dqe.Generator.GetData().FailResponses.Data {
 			allResponses.Append(response)
 		}
 
 		if len(allResponses.Data) == 0 {
-			return fmt.Errorf("no responses found for generator %s", g.Generator.Cfg.GenName)
+			return fmt.Errorf("no responses found for generator %s", dqe.Generator.Cfg.GenName)
 		}
 
 		results, queryErr := queryFunction(allResponses)
@@ -184,7 +184,7 @@ func (g *DirectQueryExecutor) Execute(_ context.Context) error {
 			return queryErr
 		}
 
-		g.QueryResults[queryName] = results
+		dqe.QueryResults[queryName] = results
 
 		L.Debug().
 			Str("Query", queryName).
@@ -193,8 +193,8 @@ func (g *DirectQueryExecutor) Execute(_ context.Context) error {
 	}
 
 	L.Info().
-		Str("Generator", g.Generator.Cfg.GenName).
-		Int("Queries", len(g.Queries)).
+		Str("Generator", dqe.Generator.Cfg.GenName).
+		Int("Queries", len(dqe.Queries)).
 		Msg("Direct queries executed successfully")
 
 	return nil
@@ -202,18 +202,18 @@ func (g *DirectQueryExecutor) Execute(_ context.Context) error {
 
 // TimeRange ensures that the query executor operates within the specified time range.
 // It is a no-op for executors that already have responses stored in the correct time range.
-func (g *DirectQueryExecutor) TimeRange(_, _ time.Time) {
+func (dqe *DirectQueryExecutor) TimeRange(_, _ time.Time) {
 	// nothing to do here, since all responses stored in the generator are already in the right time range
 }
 
-func (g *DirectQueryExecutor) generateStandardQueries() (map[string]DirectQueryFn, error) {
+func (dqe *DirectQueryExecutor) generateStandardQueries() (map[string]DirectQueryFn, error) {
 	L.Debug().
 		Msg("Generating standard Direct queries")
 
 	standardQueries := make(map[string]DirectQueryFn)
 
 	for _, metric := range StandardLoadMetrics {
-		query, err := g.standardQuery(metric)
+		query, err := dqe.standardQuery(metric)
 		if err != nil {
 			return nil, err
 		}
@@ -227,7 +227,7 @@ func (g *DirectQueryExecutor) generateStandardQueries() (map[string]DirectQueryF
 	return standardQueries, nil
 }
 
-func (g *DirectQueryExecutor) standardQuery(standardMetric StandardLoadMetric) (DirectQueryFn, error) {
+func (dqe *DirectQueryExecutor) standardQuery(standardMetric StandardLoadMetric) (DirectQueryFn, error) {
 	var responsesToDurationFn = func(responses *wasp.SliceBuffer[*wasp.Response]) []float64 {
 		var asMiliDuration []float64
 		for _, response := range responses.Data {
@@ -283,7 +283,7 @@ func (g *DirectQueryExecutor) standardQuery(standardMetric StandardLoadMetric) (
 // MarshalJSON customizes the JSON representation of the DirectQueryExecutor.
 // It serializes only the relevant fields, including query names and results,
 // making it suitable for efficient data transmission and storage.
-func (g *DirectQueryExecutor) MarshalJSON() ([]byte, error) {
+func (dqe *DirectQueryExecutor) MarshalJSON() ([]byte, error) {
 	// we need custom marshalling to only include query names, since the functions are not serializable
 	type QueryExecutor struct {
 		Kind         string                 `json:"kind"`
@@ -293,28 +293,28 @@ func (g *DirectQueryExecutor) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(&QueryExecutor{
-		Kind: g.KindName,
+		Kind: dqe.KindName,
 		Generator: func() interface{} {
-			if g.Generator != nil {
-				return g.Generator.Cfg
+			if dqe.Generator != nil {
+				return dqe.Generator.Cfg
 			}
 			return nil
 		}(),
 		Queries: func() []string {
-			keys := make([]string, 0, len(g.Queries))
-			for k := range g.Queries {
+			keys := make([]string, 0, len(dqe.Queries))
+			for k := range dqe.Queries {
 				keys = append(keys, k)
 			}
 			return keys
 		}(),
-		QueryResults: g.QueryResults,
+		QueryResults: dqe.QueryResults,
 	})
 }
 
 // UnmarshalJSON decodes JSON data into a DirectQueryExecutor instance.
 // It populates the executor's fields, including queries and results,
 // enabling seamless integration of JSON configurations into the executor's structure.
-func (g *DirectQueryExecutor) UnmarshalJSON(data []byte) error {
+func (dqe *DirectQueryExecutor) UnmarshalJSON(data []byte) error {
 	// helper struct with QueryExecutors as json.RawMessage and QueryResults as map[string]interface{}
 	// and as actual types
 	type Alias DirectQueryExecutor
@@ -348,10 +348,10 @@ func (g *DirectQueryExecutor) UnmarshalJSON(data []byte) error {
 		return conversionErr
 	}
 
-	*g = DirectQueryExecutor(raw.Alias)
-	g.Queries = queries
-	g.QueryResults = convertedTypes
-	g.Generator = &wasp.Generator{
+	*dqe = DirectQueryExecutor(raw.Alias)
+	dqe.Queries = queries
+	dqe.QueryResults = convertedTypes
+	dqe.Generator = &wasp.Generator{
 		Cfg: &raw.GeneratorCfg,
 	}
 	return nil

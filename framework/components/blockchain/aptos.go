@@ -3,11 +3,12 @@ package blockchain
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"path/filepath"
 )
 
 var (

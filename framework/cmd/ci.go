@@ -12,6 +12,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
+	"go.uber.org/ratelimit"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/fatih/color"
 	"github.com/google/go-github/v50/github"
 	"github.com/google/uuid"
