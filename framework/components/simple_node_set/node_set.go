@@ -2,15 +2,16 @@ package simple_node_set
 
 import (
 	"fmt"
+	"os"
+	"slices"
+	"strings"
+	"sync"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 	"golang.org/x/sync/errgroup"
-	"os"
-	"slices"
-	"strings"
-	"sync"
 )
 
 const (
@@ -109,7 +110,6 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 	eg := &errgroup.Group{}
 	mu := &sync.Mutex{}
 	for i := 0; i < in.Nodes; i++ {
-		i := i
 		var overrideIdx int
 		var nodeName string
 		switch in.OverrideMode {
@@ -194,8 +194,7 @@ func sortNodeOutsByHostPort(nodes []*clnode.Output) {
 		bb := strings.Split(b.Node.HostURL, ":")
 		if aa[len(aa)-1] < bb[len(bb)-1] {
 			return -1
-		} else {
-			return 1
 		}
+		return 1
 	})
 }

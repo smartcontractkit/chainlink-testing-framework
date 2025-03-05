@@ -290,7 +290,7 @@ func extractAllFiles(embeddedDir string) error {
 		}
 
 		// Write the file content to the target path
-		err = os.WriteFile(targetPath, content, 0777)
+		err = os.WriteFile(targetPath, content, 0600)
 		if err != nil {
 			return fmt.Errorf("failed to write file %s: %w", targetPath, err)
 		}
@@ -316,7 +316,7 @@ func PrettyPrintTOML(inputFile string, outputFile string) error {
 		return fmt.Errorf("error converting to TOML string: %v", err)
 	}
 
-	err = os.WriteFile(outputFile, []byte(dumpData), 0644)
+	err = os.WriteFile(outputFile, []byte(dumpData), 0600)
 	if err != nil {
 		return fmt.Errorf("error writing to output file: %v", err)
 	}

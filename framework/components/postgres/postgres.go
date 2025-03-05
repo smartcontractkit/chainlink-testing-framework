@@ -3,15 +3,16 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
-	"os"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const (
@@ -80,7 +81,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 
 	req := testcontainers.ContainerRequest{
 		AlwaysPullImage: in.PullImage,
-		Image:           fmt.Sprintf("%s", in.Image),
+		Image:           in.Image,
 		Name:            containerName,
 		Labels:          framework.DefaultTCLabels(),
 		ExposedPorts:    []string{bindPort},

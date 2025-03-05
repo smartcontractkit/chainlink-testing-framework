@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"os"
 	"path/filepath"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 func blockscoutUp(url string) error {
@@ -35,12 +36,11 @@ func blockscoutDown(url string) error {
 	if err != nil {
 		return err
 	}
-	err = runCommand("bash", "-c", fmt.Sprintf(`
+	return runCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
 		rm -rf blockscout-db-data && \
 		rm -rf logs && \
 		rm -rf redis-data && \
 		rm -rf stats-db-data
 	`, filepath.Join("blockscout", "services")))
-	return nil
 }
