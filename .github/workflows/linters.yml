@@ -1,10 +1,19 @@
 name: Run all linters
-on: [push]
+on: [ push ]
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  cache:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Devbox
+        uses: jetify-com/devbox-install-action@v0.11.0
+        with:
+          enable-cache: 'true'
   test:
+    needs: [ cache ]
     strategy:
       fail-fast: false
       matrix:
