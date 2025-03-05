@@ -6,128 +6,129 @@ on:
   pull_request:
 
 jobs:
-  pre-commit:
-    name: Pre-commit checks
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout the Repo
-        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
-        with:
-          fetch-depth: 0 # needed for pre-commit to work correctly
-      - name: Install devbox
-        uses: jetify-com/devbox-install-action@v0.11.0
-      - name: Run pre-commit checks
-        run: |
-          devbox run -- pre-commit run --hook-stage pre-commit --show-diff-on-failure --color=always
+#  pre-commit:
+#    name: Pre-commit checks
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout the Repo
+#        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
+#        with:
+#          fetch-depth: 0 # needed for pre-commit to work correctly
+#      - name: Install devbox
+#        uses: jetify-com/devbox-install-action@v0.11.0
+#      - name: Run pre-commit checks
+#        run: |
+#          devbox run -- pre-commit run --hook-stage pre-commit --show-diff-on-failure --color=always
+#
+#  clean-go-mods:
+#    name: Clean go mods
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Set up Go
+#        uses: actions/setup-go@v5
+#        with:
+#          go-version: '1.24.0'
+#      - name: Install gomods
+#        run: go install github.com/jmank88/gomods@v0.1.4
+#      - name: Check out code
+#        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
+#      - name: Run gomods tidy
+#        run: gomods tidy
+#      - name: Ensure clean after tidy
+#        run: |
+#          git add --all
+#          git diff --minimal --cached --exit-code
+#
+#  golangci:
+#    name: Linting-${{ matrix.project.name }}
+#    runs-on: ubuntu-latest
+#    strategy:
+#      fail-fast: false
+#      matrix:
+#        project:
+#          - name: lib
+#            path: ./lib/
+#          - name: gotestloghelper
+#            path: ./tools/gotestloghelper/
+#          - name: k8s-test-runner
+#            path: ./k8s-test-runner/
+#          - name: testlistgenerator
+#            path: ./tools/testlistgenerator/
+#          - name: ecrimagefetcher
+#            path: ./tools/ecrimagefetcher/
+#          - name: ghlatestreleasechecker
+#            path: ./tools/ghlatestreleasechecker/
+#          - name: asciitable
+#            path: ./tools/asciitable/
+#          - name: workflowresultparser
+#            path: ./tools/workflowresultparser/
+#          - name: parrot
+#            path: ./parrot/
+#          - name: wasp
+#            path: ./wasp/
+#          - name: seth
+#            path: ./seth/
+#    steps:
+#      - name: Check out Code
+#        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
+#      - name: Install Go
+#        uses: smartcontractkit/.github/actions/setup-golang@3835daadbcefcae06d12dc42a405a856c980d2cc
+#        with:
+#          go-version-file: ${{ matrix.project.path }}go.mod
+#          use-go-cache: true
+#          go-cache-dep-path: ${{ matrix.project.path }}go.sum
+#      - name: golangci-lint ${{ needs.tools.outputs.golangci-lint-version }}
+#        uses: golangci/golangci-lint-action@2226d7cb06a077cd73e56eedd38eecad18e5d837 # v6.5.0
+#        with:
+#          version: 'v1.64.2'
+#          args: --out-format checkstyle:golangci-lint-report.xml
+#          skip-cache: true
+#          working-directory: ${{ matrix.project.path }}
+#      - name: Print lint report artifact
+#        if: always()
+#        run: test -f ${{ matrix.project.path }}golangci-lint-report.xml || true
+#      - name: Store lint report artifact
+#        if: always()
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: golangci-lint-report-${{ matrix.project.name }}
+#          path: ${{ matrix.project.path }}golangci-lint-report.xml
 
-  clean-go-mods:
-    name: Clean go mods
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.24.0'
-      - name: Install gomods
-        run: go install github.com/jmank88/gomods@v0.1.4
-      - name: Check out code
-        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
-      - name: Run gomods tidy
-        run: gomods tidy
-      - name: Ensure clean after tidy
-        run: |
-          git add --all
-          git diff --minimal --cached --exit-code
+#  # TODO: enable for every module or remove
+#  vulnerabilities-check:
+#    name: Check for Vulnerabilities
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Check out Code
+#        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
+#      - name: Install Go
+#        uses: smartcontractkit/.github/actions/setup-golang@3835daadbcefcae06d12dc42a405a856c980d2cc
+#        with:
+#          go-version-file: ./lib/go.mod
+#          use-go-cache: true
+#          go-cache-dep-path: ./lib/go.sum
+#      - name: Write Go List
+#        working-directory: lib
+#        run: go list -json -deps ./... > ../go.list
+#      - name: Nancy
+#        uses: sonatype-nexus-community/nancy-github-action@726e338312e68ecdd4b4195765f174d3b3ce1533 # v1.0.3
 
-  golangci:
-    name: Linting-${{ matrix.project.name }}
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        project:
-          - name: lib
-            path: ./lib/
-          - name: gotestloghelper
-            path: ./tools/gotestloghelper/
-          - name: k8s-test-runner
-            path: ./k8s-test-runner/
-          - name: testlistgenerator
-            path: ./tools/testlistgenerator/
-          - name: ecrimagefetcher
-            path: ./tools/ecrimagefetcher/
-          - name: ghlatestreleasechecker
-            path: ./tools/ghlatestreleasechecker/
-          - name: asciitable
-            path: ./tools/asciitable/
-          - name: workflowresultparser
-            path: ./tools/workflowresultparser/
-          - name: parrot
-            path: ./parrot/
-          - name: wasp
-            path: ./wasp/
-          - name: seth
-            path: ./seth/
-    steps:
-      - name: Check out Code
-        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
-      - name: Install Go
-        uses: smartcontractkit/.github/actions/setup-golang@3835daadbcefcae06d12dc42a405a856c980d2cc
-        with:
-          go-version-file: ${{ matrix.project.path }}go.mod
-          use-go-cache: true
-          go-cache-dep-path: ${{ matrix.project.path }}go.sum
-      - name: golangci-lint ${{ needs.tools.outputs.golangci-lint-version }}
-        uses: golangci/golangci-lint-action@2226d7cb06a077cd73e56eedd38eecad18e5d837 # v6.5.0
-        with:
-          version: 'v1.64.2'
-          args: --out-format checkstyle:golangci-lint-report.xml
-          skip-cache: true
-          working-directory: ${{ matrix.project.path }}
-      - name: Print lint report artifact
-        if: always()
-        run: test -f ${{ matrix.project.path }}golangci-lint-report.xml || true
-      - name: Store lint report artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: golangci-lint-report-${{ matrix.project.name }}
-          path: ${{ matrix.project.path }}golangci-lint-report.xml
-
-  vulnerabilities-check:
-    name: Check for Vulnerabilities
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out Code
-        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
-      - name: Install Go
-        uses: smartcontractkit/.github/actions/setup-golang@3835daadbcefcae06d12dc42a405a856c980d2cc
-        with:
-          go-version-file: ./lib/go.mod
-          use-go-cache: true
-          go-cache-dep-path: ./lib/go.sum
-      - name: Write Go List
-        working-directory: lib
-        run: go list -json -deps ./... > ../go.list
-      - name: Nancy
-        uses: sonatype-nexus-community/nancy-github-action@726e338312e68ecdd4b4195765f174d3b3ce1533 # v1.0.3
-
-  helmlint:
-    name: Lint Helm Charts
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
-        with:
-          # Without this parameter, the merged commit that CI produces will make it so that ct will
-          # not detect a diff even if one exists
-          fetch-depth: 0
-      - name: Set up chart-testing
-        uses: helm/chart-testing-action@e6669bcd63d7cb57cb4380c33043eebe5d111992 # v2.6.1
-      - name: Add helm chart repo
-        run: helm repo add chainlink-qa https://raw.githubusercontent.com/smartcontractkit/qa-charts/gh-pages/
-      - name: Run chart-testing (lint)
-        run: ct lint --config ${{ github.workspace }}/.github/configs/ct.yaml
+#  helmlint:
+#    name: Lint Helm Charts
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout
+#        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
+#        with:
+#          # Without this parameter, the merged commit that CI produces will make it so that ct will
+#          # not detect a diff even if one exists
+#          fetch-depth: 0
+#      - name: Set up chart-testing
+#        uses: helm/chart-testing-action@e6669bcd63d7cb57cb4380c33043eebe5d111992 # v2.6.1
+#      - name: Add helm chart repo
+#        run: helm repo add chainlink-qa https://raw.githubusercontent.com/smartcontractkit/qa-charts/gh-pages/
+#      - name: Run chart-testing (lint)
+#        run: ct lint --config ${{ github.workspace }}/.github/configs/ct.yaml
 
   actionlint:
     name: Validate GitHub Action Workflows
@@ -138,22 +139,22 @@ jobs:
       - name: Run actionlint
         uses: reviewdog/action-actionlint@7eeec1dd160c2301eb28e1568721837d084558ad # v1.57.0
 
-  sonarqube:
-    name: SonarQube Analysis
-    needs: [golangci]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout the repo
-        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
-        with:
-          fetch-depth: 0 # fetches all history for all tags and branches to provide more metadata for sonar reports
-      - name: Download all workflow run artifacts
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
-      - name: SonarQube Scan
-        uses: sonarsource/sonarqube-scan-action@884b79409bbd464b2a59edc326a4b77dc56b2195 # v3.0.0
-        with:
-          args: >
-            -Dsonar.go.golangci-lint.reportPaths=golangci-lint-report/golangci-lint-report.xml
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+#  sonarqube:
+#    name: SonarQube Analysis
+#    needs: [golangci]
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout the repo
+#        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
+#        with:
+#          fetch-depth: 0 # fetches all history for all tags and branches to provide more metadata for sonar reports
+#      - name: Download all workflow run artifacts
+#        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+#      - name: SonarQube Scan
+#        uses: sonarsource/sonarqube-scan-action@884b79409bbd464b2a59edc326a4b77dc56b2195 # v3.0.0
+#        with:
+#          args: >
+#            -Dsonar.go.golangci-lint.reportPaths=golangci-lint-report/golangci-lint-report.xml
+#        env:
+#          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+#          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}

@@ -118,9 +118,6 @@
         "devboz run seth-anvil",
         "cd seth && SETH_URL=http://localhost:8545 SETH_NETWORK=anvil SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestGasBumping || pkill -f anvil"
       ],
-      "seth-lint": [
-        "cd seth && golangci-lint --color=always run -v -c .golangci.yml"
-      ],
       "wasp-test": [
         "cd wasp && go test -v -count 1 `go list ./... | grep -v examples` -run TestSmoke"
       ],
@@ -146,9 +143,6 @@
       "wasp-dashboard": [
         "cd wasp && go run dashboard/cmd/main.go"
       ],
-      "wasp-lint": [
-        "cd wasp && golangci-lint --color=always run -v"
-      ],
       "modgraph": [
         "go install github.com/jmank88/gomods@v0.1.5",
         "go install github.com/jmank88/modgraph@v0.1.0",
@@ -158,12 +152,70 @@
         "go install github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper@latest"
       ],
       "gomods-tidy": [
-        "go install github.com/jmank88/gomods@v0.1.4",
+        "go install github.com/jmank88/gomods@v0.1.5",
+        "gomods tidy"
+      ],
+      "gomods-tidy-ci": [
+        "go install github.com/jmank88/gomods@v0.1.5",
+        "gomods tidy",
         "git add --all",
         "git diff --minimal --cached --exit-code"
       ],
+      "lint": [
+        "devbox run workflowresultparser-lint",
+        "devbox run asciitable-lint",
+        "devbox run ghlatestreleasechecker-lint",
+        "devbox run testlistgenerator-lint",
+        "devbox run ecrimagefetcher-lint",
+        "devbox run gotestloghelper-lint",
+        "devbox run k8stestrunner-lint",
+        "devbox run framework-lint",
+        "devbox run parrot-lint",
+        "devbox run wasp-lint",
+        "devbox run seth-lint",
+        "devbox run havoc-lint",
+        "devbox run lib-lint"
+      ],
+
+      "workflowresultparser-lint": [
+        "cd tools/asciitable && golangci-lint --color=always run -v -c ../../.golangci.yaml"
+      ],
+      "asciitable-lint": [
+        "cd tools/asciitable/ && golangci-lint --color=always run -v -c ../../.golangci.yaml"
+      ],
+      "ghlatestreleasechecker-lint": [
+        "cd tools/ghlatestreleasechecker/ && golangci-lint --color=always run -v -c ../../.golangci.yaml"
+      ],
+      "testlistgenerator-lint": [
+        "cd tools/testlistgenerator/ && golangci-lint --color=always run -v -c ../../.golangci.yaml"
+      ],
+      "ecrimagefetcher-lint": [
+        "cd tools/ecrimagefetcher/ && golangci-lint --color=always run -v -c ../../.golangci.yaml"
+      ],
+      "gotestloghelper-lint": [
+        "cd tools/gotestloghelper/ && golangci-lint --color=always run -v -c ../../.golangci.yaml"
+      ],
+
+      "k8stestrunner-lint": [
+        "cd k8s-test-runner/ && golangci-lint --color=always run -v -c ../.golangci.yaml"
+      ],
+      "framework-lint": [
+        "cd framework/ && golangci-lint --color=always run -v -c ../.golangci.yaml"
+      ],
+      "parrot-lint": [
+        "cd parrot/ && golangci-lint --color=always run -v -c ../.golangci.yaml"
+      ],
+      "wasp-lint": [
+        "cd wasp/ && golangci-lint --color=always run -v -c ../.golangci.yaml"
+      ],
+      "seth-lint": [
+        "cd seth/ && golangci-lint --color=always run -v -c ../.golangci.yaml"
+      ],
+      "havoc-lint": [
+        "cd havoc/ && golangci-lint --color=always run -v -c ../.golangci.yaml"
+      ],
       "lib-lint": [
-        "cd lib && golangci-lint --color=always run -v -c ../.golangci.yaml"
+        "cd lib/ && golangci-lint --color=always run -v -c ../.golangci.yaml"
       ],
 
       "lint-pre-commit": [
