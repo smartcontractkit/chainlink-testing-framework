@@ -72,51 +72,51 @@
       ],
       "seth-test-anvil": [
         "devbox run seth-anvil",
-        "cd seth && SETH_URL=http://localhost:8545 SETH_NETWORK=anvil SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestSmoke || pkill -f anvil"
+        "cd seth && SETH_URL=http://localhost:8545 SETH_NETWORK=Anvil SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestSmoke || pkill -f anvil"
       ],
       "seth-test-geth": [
         "devbox run seth-geth",
-        "cd seth && SETH_URL=http://localhost:8545 SETH_NETWORK=geth SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestSmoke || pkill -f geth"
+        "cd seth && SETH_URL=ws://localhost:8546 SETH_NETWORK=Geth SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestSmoke || pkill -f geth"
       ],
       "seth-test-anvil-api": [
         "devbox run seth-anvil",
-        "cd seth && SETH_URL=http://localhost:8545 SETH_NETWORK=anvil SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestAPI || pkill -f anvil"
+        "cd seth && SETH_URL=http://localhost:8545 SETH_NETWORK=Anvil SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestAPI || pkill -f anvil"
       ],
       "seth-test-geth-api": [
         "devbox run seth-geth",
-        "cd seth && SETH_URL=http://localhost:8545 SETH_NETWORK=geth SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestAPI || pkill -f geth"
+        "cd seth && SETH_URL=ws://localhost:8546 SETH_NETWORK=Geth SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestAPI || pkill -f geth"
       ],
       "seth-test-anvil-trace": [
         "devbox run seth-anvil",
-        "cd seth && SETH_URL=http://localhost:8545 SETH_NETWORK=anvil SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestTrace || pkill -f anvil"
+        "cd seth && SETH_URL=http://localhost:8545 SETH_NETWORK=Anvil SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestTrace || pkill -f anvil"
       ],
       "seth-test-geth-trace": [
         "devbox run seth-geth",
-        "cd seth && SETH_URL=http://localhost:8545 SETH_NETWORK=geth SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestTrace || pkill -f geth"
+        "cd seth && SETH_URL=ws://localhost:8546 SETH_NETWORK=Geth SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestTrace || pkill -f geth"
       ],
       "seth-test-anvil-cli": [
         "devbox run seth-anvil",
-        "cd seth && SETH_URL=http://localhost:8545 SETH_NETWORK=anvil SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestCLI || pkill -f anvil"
+        "cd seth && SETH_URL=http://localhost:8545 SETH_NETWORK=Anvil SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestCLI || pkill -f anvil"
       ],
       "seth-test-geth-cli": [
         "devbox run seth-geth",
-        "cd seth && SETH_URL=http://localhost:8545 SETH_NETWORK=geth SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestCLI || pkill -f geth"
+        "cd seth && SETH_URL=ws://localhost:8546 SETH_NETWORK=Geth SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestCLI || pkill -f geth"
       ],
       "seth-test-anvil-others": [
         "devbox run seth-anvil",
-        "cd seth && SETH_URL=http://localhost:8545 SETH_CONFIG_PATH=\"seth.toml\" SETH_NETWORK=anvil SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run \"TestContractMap|TestGasEstimator|TestRPCHealthCheck|TestUtil|TestContract|TestConfig\" || pkill -f anvil"
+        "cd seth && SETH_URL=http://localhost:8545 SETH_CONFIG_PATH=\"seth.toml\" SETH_NETWORK=Anvil SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run \"TestContractMap|TestGasEstimator|TestRPCHealthCheck|TestUtil|TestContract|TestConfig\" || pkill -f anvil"
       ],
       "seth-test-geth-others": [
         "devbox run seth-geth",
-        "cd seth && SETH_URL=http://localhost:8545 SETH_CONFIG_PATH=\"seth.toml\" SETH_NETWORK=geth SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run \"TestContractMap|TestGasEstimator|TestRPCHealthCheck|TestUtil|TestContract|TestConfig\" || pkill -f geth"
+        "cd seth && SETH_URL=ws://localhost:8546 SETH_CONFIG_PATH=\"seth.toml\" SETH_NETWORK=Geth SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run \"TestContractMap|TestGasEstimator|TestRPCHealthCheck|TestUtil|TestContract|TestConfig\" || pkill -f geth"
       ],
       "seth-test-anvil-gas-bumping": [
-        "devboz run seth-anvil",
-        "cd seth && SETH_URL=http://localhost:8545 SETH_NETWORK=anvil SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestGasBumping || pkill -f anvil"
+        "devbox run seth-anvil",
+        "cd seth && SETH_URL=http://localhost:8545 SETH_NETWORK=Anvil SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestGasBumping || pkill -f anvil"
       ],
       "seth-test-geth-gas-bumping": [
-        "devboz run seth-anvil",
-        "cd seth && SETH_URL=http://localhost:8545 SETH_NETWORK=anvil SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestGasBumping || pkill -f anvil"
+        "devbox run seth-anvil",
+        "cd seth && SETH_URL=ws://localhost:8546 SETH_NETWORK=Geth SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run TestGasBumping || pkill -f anvil"
       ],
       "wasp-test": [
         "cd wasp && go test -v -count 1 `go list ./... | grep -v examples` -run TestSmoke"
