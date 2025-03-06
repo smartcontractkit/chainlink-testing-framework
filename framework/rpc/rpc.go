@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/core/types"
+	f "github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"math/big"
 	"math/rand"
 	"net/http"
@@ -160,9 +162,6 @@ func int64ToU128(value int64) string {
 // AnvilSetNextBlockBaseFeePerGas sets next block base fee per gas value
 // API Reference https://book.getfoundry.sh/reference/anvil/
 func (m *RPCClient) AnvilSetNextBlockBaseFeePerGas(gas *big.Int) error {
-	//hexBaseFee := "0x" + strconv.FormatInt(gas, 10)
-	//bi := big.NewInt(gas)
-	//hexBaseFee := fmt.Sprintf("0x%x", bi)
 	rInt := rand.Int()
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -252,6 +251,37 @@ func (m *RPCClient) BlockNumber() (int64, error) {
 	return bn, nil
 }
 
+type BlockResponse struct {
+	Jsonrpc string        `json:"jsonrpc"`
+	ID      int           `json:"id"`
+	Result  *types.Header `json:"result"`
+}
+
+// GetHeaderByNumber retrieves block details by block number
+// this is purely debug method to verify the gas chaos is applied
+func (m *RPCClient) GetHeaderByNumber(blockNumber int64) (*types.Header, error) {
+	rInt := rand.Int()
+	blockNumberHex := fmt.Sprintf("0x%x", blockNumber)
+	payload := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  "eth_getBlockByNumber",
+		"params":  []interface{}{blockNumberHex, false},
+		"id":      rInt,
+	}
+	resp, err := m.client.R().SetBody(payload).Post(m.URL)
+	if err != nil {
+		return nil, errors.Wrap(err, "eth_getBlockByNumber")
+	}
+	var blk *BlockResponse
+	if err := json.Unmarshal(resp.Body(), &blk); err != nil {
+		return nil, err
+	}
+	if blk.Result == nil {
+		return nil, errors.New("block not found")
+	}
+	return blk.Result, nil
+}
+
 func (m *RPCClient) GethSetHead(blocksBack int) error {
 	decimalLastBlock, err := m.BlockNumber()
 	if err != nil {
@@ -313,4 +343,19 @@ func StartAnvil(params []string) (*AnvilContainer, error) {
 	}
 	url := fmt.Sprintf("http://localhost:%s", mappedPort.Port())
 	return &AnvilContainer{Container: container, URL: url}, nil
+}
+
+// PrintBlockBaseFee prints block base fee
+// this is purely debug method to verify gas chaos is applied
+func (m *RPCClient) PrintBlockBaseFee() error {
+	bn, err := m.BlockNumber()
+	if err != nil {
+		return err
+	}
+	b, err := m.GetHeaderByNumber(bn)
+	if err != nil {
+		return err
+	}
+	f.L.Info().Uint64("BaseFee", b.BaseFee.Uint64()).Msg("Current block")
+	return nil
 }
