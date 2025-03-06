@@ -76,7 +76,7 @@ func TestAggregateResultFilesSplunk(t *testing.T) {
 func TestAggregateResultFiles(t *testing.T) {
 	t.Parallel()
 
-	report, err := LoadAndAggregate("./testdata", WithReportID(reportID))
+	report, err := LoadAndAggregate("./testdata", WithReportID(reportID), WithSplunk("splunk.com", splunkToken, splunkEvent), WithFailedLogsURL("https://github.com/smartcontractkit/chainlink/actions/runs/13667616389/artifacts/2693493886"))
 	require.NoError(t, err, "LoadAndAggregate failed")
 	verifyAggregatedReport(t, report)
 }

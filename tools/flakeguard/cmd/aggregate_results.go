@@ -31,9 +31,6 @@ var AggregateResultsCmd = &cobra.Command{
 		githubWorkflowName, _ := cmd.Flags().GetString("github-workflow-name")
 		githubWorkflowRunURL, _ := cmd.Flags().GetString("github-workflow-run-url")
 		reportID, _ := cmd.Flags().GetString("report-id")
-		splunkURL, _ := cmd.Flags().GetString("splunk-url")
-		splunkToken, _ := cmd.Flags().GetString("splunk-token")
-		splunkEvent, _ := cmd.Flags().GetString("splunk-event")
 
 		initialDirSize, err := getDirSize(resultsPath)
 		if err != nil {
@@ -59,7 +56,6 @@ var AggregateResultsCmd = &cobra.Command{
 			reports.WithRepoPath(repoPath),
 			reports.WithCodeOwnersPath(codeOwnersPath),
 			reports.WithReportID(reportID),
-			reports.WithSplunk(splunkURL, splunkToken, splunkEvent),
 			reports.WithBranchName(branchName),
 			reports.WithBaseSha(baseSHA),
 			reports.WithHeadSha(headSHA),
@@ -165,9 +161,6 @@ func init() {
 	AggregateResultsCmd.Flags().String("github-workflow-name", "", "GitHub workflow name for the test report")
 	AggregateResultsCmd.Flags().String("github-workflow-run-url", "", "GitHub workflow run URL for the test report")
 	AggregateResultsCmd.Flags().String("report-id", "", "Optional identifier for the test report. Will be generated if not provided")
-	AggregateResultsCmd.Flags().String("splunk-url", "", "Optional url to simultaneously send the test results to splunk")
-	AggregateResultsCmd.Flags().String("splunk-token", "", "Optional Splunk HEC token to simultaneously send the test results to splunk")
-	AggregateResultsCmd.Flags().String("splunk-event", "manual", "Optional Splunk event to send as the triggering event for the test results")
 
 	if err := AggregateResultsCmd.MarkFlagRequired("results-path"); err != nil {
 		log.Fatal().Err(err).Msg("Error marking flag as required")
