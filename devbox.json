@@ -28,7 +28,8 @@
     "kubernetes-helm@3.15.2",
     "k9s@latest",
     "actionlint@1.6.26",
-    "golangci-lint@1.64.5"
+    "golangci-lint@1.64.5",
+    "just@1.39.0"
   ],
   "shell": {
     "init_hook": [

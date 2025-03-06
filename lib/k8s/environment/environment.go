@@ -531,9 +531,9 @@ func (m *Environment) ReplaceHelm(name string, chart ConnectedChart) (*Environme
 }
 
 func addDefaultPodAnnotationsAndLabels(h cdk8s.Helm, annotations, labels map[string]string) {
-	annoatationsCopy := map[string]string{}
+	annotationsCopy := map[string]string{}
 	for k, v := range annotations {
-		annoatationsCopy[k] = v
+		annotationsCopy[k] = v
 	}
 	for _, ao := range *h.ApiObjects() {
 		if ao.Kind() == nil {
@@ -568,14 +568,14 @@ func addDefaultPodAnnotationsAndLabels(h cdk8s.Helm, annotations, labels map[str
 					continue
 				}
 				for k, v := range annot {
-					annoatationsCopy[k] = v.(string)
+					annotationsCopy[k] = v.(string)
 				}
 			}
 			annotationPath := "/spec/template/metadata/annotations"
 			if strings.EqualFold("cronjob", kind) {
 				annotationPath = "/spec/jobTemplate/spec/template/metadata/annotations"
 			}
-			ao.AddJsonPatch(cdk8s.JsonPatch_Add(ptr.Ptr(annotationPath), annoatationsCopy))
+			ao.AddJsonPatch(cdk8s.JsonPatch_Add(ptr.Ptr(annotationPath), annotationsCopy))
 
 			// loop over the labels and apply them to both the labels and selectors
 			// these should in theory always have at least one label/selector combo in existence so we don't

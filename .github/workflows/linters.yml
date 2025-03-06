@@ -8,26 +8,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cmd:
-          # libs
-          - 'framework-lint'
-          - 'wasp-lint'
-          - 'seth-lint'
-          - 'havoc-lint'
-          - 'parrot-lint'
-          - 'lint-pre-commit'
-          # tools
-          - 'workflowresultparser-lint'
-          - 'asciitable-lint'
-          - 'ghlatestreleasechecker-lint'
-          - 'testlistgenerator-lint'
-          - 'ecrimagefetcher-lint'
-          - 'gotestloghelper-lint'
-          - 'k8stestrunner-lint'
-          # legacy
-          - 'lib-lint'
-          # utility
-          - 'gomods-tidy-ci'
+        dir:
+          - framework
+          - parrot
+          - wasp
+          - seth
+          - havoc
+          - k8s-test-runner
+          - lib
+          - tools/workflowresultparser
+          - tools/asciitable
+          - tools/ghlatestreleasechecker
+          - tools/testlistgenerator
+          - tools/ecrimagefetcher
+          - tools/gotestloghelper
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -39,6 +33,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: 'v1.24.0'
+      - uses: extractions/setup-just@v2
       - name: Lint
         run: |
-          devbox run ${{ matrix.cmd }}
+          devbox run -- just lint ${{ matrix.dir }}

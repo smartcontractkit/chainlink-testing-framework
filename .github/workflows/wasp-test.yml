@@ -8,11 +8,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        test-type: ['wasp-test-race', 'wasp-test-benchspy']
+        test:
+          - TestSmoke
+          - TestBenchSpy
     defaults:
       run:
         working-directory: wasp
-    runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu22.04-16cores-64GB
     steps:
       - uses: actions/checkout@v3
       - name: Check for changes in Framework
@@ -22,10 +24,6 @@ jobs:
           filters: |
             src:
               - 'wasp/**'
-      - name: Install Devbox
-        uses: jetify-com/devbox-install-action@v0.11.0
-        with:
-          enable-cache: 'true'
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -42,6 +40,7 @@ jobs:
             go-modules-${{ runner.os }}
       - name: Install dependencies
         run: go mod download
+      - uses: extractions/setup-just@v2
       - name: Run tests
         run: |
-          devbox run ${{ matrix.test-type }}
+          just test wasp ${{ matrix.test }}

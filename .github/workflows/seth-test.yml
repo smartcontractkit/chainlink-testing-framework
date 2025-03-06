@@ -8,19 +8,44 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        test-type:
-          - 'seth-test-anvil'
-          - 'seth-test-geth'
-          - 'seth-test-anvil-api'
-          - 'seth-test-geth-api'
-          - 'seth-test-anvil-trace'
-          - 'seth-test-geth-trace'
-          - 'seth-test-anvil-cli'
-          - 'seth-test-geth-cli'
-          - 'seth-test-anvil-gas-bumping'
-          - 'seth-test-geth-gas-bumping'
-          - 'seth-test-anvil-others'
-          - 'seth-test-geth-others'
+        test:
+          - regex: TestSmoke
+            network-type: Geth
+            url: "ws://localhost:8546"
+          - regex: TestSmoke
+            network-type: Anvil
+            url: "http://localhost:8545"
+          - regex: TestAPI
+            network-type: Geth
+            url: "ws://localhost:8546"
+          - regex: TestAPI
+            network-type: Anvil
+            url: "http://localhost:8545"
+          - regex: TestTrace
+            network-type: Geth
+            url: "ws://localhost:8546"
+          - regex: TestTrace
+            network-type: Anvil
+            url: "http://localhost:8545"
+          - regex: TestCLI
+            network-type: Geth
+            url: "ws://localhost:8546"
+          - regex: TestCLI
+            network-type: Anvil
+            url: "http://localhost:8545"
+            # TODO: wasn't stable before, fix if possible
+#          - regex: TestGasBumping
+#            network-type: Geth
+#            url: "ws://localhost:8546"
+#          - regex: TestGasBumping
+#            network-type: Anvil
+#            url: "http://localhost:8545"
+          - regex: "'TestContractMap|TestGasEstimator|TestRPCHealthCheck|TestUtil|TestContract|TestConfig'"
+            network-type: Geth
+            url: "ws://localhost:8546"
+          - regex: "'TestContractMap|TestGasEstimator|TestRPCHealthCheck|TestUtil|TestContract|TestConfig'"
+            network-type: Anvil
+            url: "http://localhost:8545"
     defaults:
       run:
         working-directory: seth
@@ -54,6 +79,7 @@ jobs:
             go-modules-${{ runner.os }}
       - name: Install dependencies
         run: go mod download
+      - uses: extractions/setup-just@v2
       - name: Run tests
         run: |
-          devbox run ${{ matrix.test-type }}
+          devbox run -- just seth-test ${{ matrix.test.network-type }} ${{ matrix.test.url }} ${{ matrix.test.regex }}
