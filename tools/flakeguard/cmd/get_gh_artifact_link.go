@@ -37,7 +37,7 @@ var GetGHArtifactLinkCmd = &cobra.Command{
 			os.Exit(ErrorExitCode)
 		}
 
-		fmt.Println("Artifact link:", artifactLink)
+		fmt.Println(artifactLink)
 	},
 }
 
