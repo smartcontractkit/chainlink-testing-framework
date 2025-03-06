@@ -65,6 +65,9 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.24.0'
+      - name: Install dependencies
+        working-directory: ${{ matrix.test.path }}
+        run: go mod download
       - name: Cache Go modules
         uses: actions/cache@v4
         with:
@@ -75,9 +78,6 @@ jobs:
           restore-keys: |
             go-modules-${{ matrix.test.path }}-${{ runner.os }}-test
             go-modules-${{ matrix.test.path }}-${{ runner.os }}
-      - name: Install dependencies
-        working-directory: ${{ matrix.test.path }}
-        run: go mod download
       - uses: extractions/setup-just@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
