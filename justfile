@@ -5,7 +5,7 @@ default:
 # Install pre-commit hooks
 install:
     pre-commit install
-# Install gotestloghelper for enchanced go test logs output
+# Install gotestloghelper for enhanced go test logs output
 install-loghelper:
     go install github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper@latest
 
@@ -30,13 +30,21 @@ lint-all:
     @just lint tools/gotestloghelper
 
 
-# Default test command
-_default_test dir test_regex:
-    cd {{dir}} && go test -v -coverprofile cover.out -race -count 1 `go list ./... | grep -v examples` -run {{test_regex}}
+# Default test command (cacheable)
+_default_cached_test dir test_regex:
+    cd {{dir}} && go test -v -race `go list ./... | grep -v examples` -run {{test_regex}}
+
+# Default test + coverage command (no-cache)
+_default_cover_test dir test_regex:
+    cd {{dir}} && go test -v -race -cover -coverprofile=cover.out `go list ./... | grep -v examples` -run {{test_regex}}
 
 # Run tests for a package, example: just test wasp TestSmoke, example: just test tools/citool ./...
 test dir_path test_regex:
-    just _default_test {{dir_path}} {{test_regex}}
+    just _default_cached_test {{dir_path}} {{test_regex}}
+
+# Run tests for a package, example: just test wasp TestSmoke, example: just test tools/citool ./...
+test-cover dir_path test_regex:
+    just _default_cover_test {{dir_path}} {{test_regex}}
 
 # Open module coverage
 cover dir_path:

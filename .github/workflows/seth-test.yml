@@ -80,6 +80,8 @@ jobs:
       - name: Install dependencies
         run: go mod download
       - uses: extractions/setup-just@v2
+        with:
+          just-version: '1.39.0'
       - name: Run tests
         run: |
           devbox run -- just seth-test ${{ matrix.test.network-type }} ${{ matrix.test.url }} ${{ matrix.test.regex }}
