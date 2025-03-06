@@ -66,7 +66,7 @@ func TestAggregateResultFilesSplunk(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	report, err := LoadAndAggregate("./testdata", WithReportID(reportID), WithSplunk(srv.URL, splunkToken, splunkEvent))
+	report, err := LoadAndAggregate("./testdata", WithReportID(reportID))
 	require.NoError(t, err, "LoadAndAggregate failed")
 	verifyAggregatedReport(t, report)
 	assert.Equal(t, 1, reportRequestsReceived, "unexpected number of report requests")
@@ -76,7 +76,7 @@ func TestAggregateResultFilesSplunk(t *testing.T) {
 func TestAggregateResultFiles(t *testing.T) {
 	t.Parallel()
 
-	report, err := LoadAndAggregate("./testdata", WithReportID(reportID), WithSplunk("splunk.com", splunkToken, splunkEvent), WithFailedLogsURL("https://github.com/smartcontractkit/chainlink/actions/runs/13667616389/artifacts/2693493886"))
+	report, err := LoadAndAggregate("./testdata", WithReportID(reportID))
 	require.NoError(t, err, "LoadAndAggregate failed")
 	verifyAggregatedReport(t, report)
 }
@@ -153,7 +153,7 @@ func BenchmarkAggregateResultFilesSplunk(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := LoadAndAggregate("./testdata", WithReportID(reportID), WithSplunk(srv.URL, splunkToken, "test"))
+		_, err := LoadAndAggregate("./testdata", WithReportID(reportID))
 		require.NoError(b, err, "LoadAndAggregate failed")
 	}
 }
