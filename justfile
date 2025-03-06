@@ -88,7 +88,7 @@ seth-Geth:
 # Seth: run Seth tests, example: just seth-test Anvil http://localhost:8545 "TestAPI"
 seth-test network url test_regex:
     @just seth-{{network}}
-    cd seth && SETH_URL={{url}} SETH_NETWORK={{network}} SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -count 1 -race `go list ./... | grep -v examples` -run "{{test_regex}}" || pkill -f {{network}}
+    cd seth && SETH_URL={{url}} SETH_NETWORK={{network}} SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -race `go list ./... | grep -v examples` -run "{{test_regex}}" || pkill -f {{network}}
 
 # Run pre-commit hooks, build, lint, tidy, check typos
 pre-commit:

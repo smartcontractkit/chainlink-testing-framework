@@ -79,9 +79,8 @@ jobs:
         working-directory: ${{ matrix.test.path }}
         run: go mod download
       - uses: extractions/setup-just@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           just-version: '1.39.0'
       - name: Run tests
         run: |
