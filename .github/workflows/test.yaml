@@ -1,56 +1,68 @@
-name: (all packages) Unit tests
-on:
-  push:
-    tags:
-      - v*
-  pull_request:
+name: Go Tests
+on: [push]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  unit:
+  test:
+    runs-on: ${{ matrix.test.vm }}
     strategy:
       fail-fast: false
       matrix:
-        project:
-          - name: lib
-            path: ./lib/
-          - name: gotestloghelper
-            path: ./tools/gotestloghelper/
-          - name: testlistgenerator
-            path: ./tools/testlistgenerator/
-          - name: ecrimagefetcher
-            path: ./tools/ecrimagefetcher/
-          - name: ghlatestreleasechecker
-            path: ./tools/ghlatestreleasechecker/
-          - name: asciitable
-            path: ./tools/asciitable/
-          - name: flakeguard
-            path: ./tools/flakeguard/            
-          - name: workflowresultparser
-            path: ./tools/workflowresultparser/
-          - name: parrot
-            path: ./parrot/
-    runs-on: ubuntu-latest
-    name: ${{ matrix.project.name }} unit tests
+        test:
+          - path: framework
+            vm: ubuntu-latest
+            regex: TestComponent
+          - path: wasp
+            vm: ubuntu22.04-16cores-64GB
+            regex: TestSmoke
+          - path: wasp
+            vm: ubuntu22.04-16cores-64GB
+            regex: TestBenchSpy
+          - path: k8s-test-runner
+            vm: ubuntu-latest
+            regex: ./...
+          - path: parrot
+            vm: ubuntu-latest
+            regex: ./...
+          - path: tools/workflowresultparser
+            vm: ubuntu-latest
+            regex: ./...
+          - path: tools/asciitable
+            vm: ubuntu-latest
+            regex: ./...
+          - path: tools/ghlatestreleasechecker
+            vm: ubuntu-latest
+            regex: ./...
+          - path: tools/ecrimagefetcher
+            vm: ubuntu-latest
+            regex: ./...
+          - path: tools/testlistgenerator
+            vm: ubuntu-latest
+            regex: ./...
+          - path: tools/gotestloghelper
+            vm: ubuntu-latest
+            regex: ./...
+          - path: tools/citool
+            vm: ubuntu-latest
+            regex: ./...
     steps:
-      - name: Checkout the Repo
-        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
-      - name: Setup Go
+      - uses: actions/checkout@v3
+      - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 'v1.24.0'
-      - name: Install gotestloghelper
-        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper@latest
-      - name: Run Tests
-        run: |
-          PATH=$PATH:$(go env GOPATH)/bin
-          export PATH
-          set -euo pipefail
-          # disabled, because we want to use a multiline output of go list command
-          # shellcheck disable=SC2046
-          cd ${{ matrix.project.path }} && \
-            make test_unit
-      - name: Publish Artifacts
-        if: failure()
-        uses: actions/upload-artifact@v4
+          go-version: '1.24.0'
+      - name: Cache Go modules
+        uses: actions/cache@v4
         with:
-          name: test-logs
-          path: /tmp/gotest.log
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-modules-${{ hashFiles('wasp/go.sum') }}-${{ runner.os }}-test
+          restore-keys: |
+            go-modules-${{ runner.os }}-test
+            go-modules-${{ runner.os }}
+      - uses: extractions/setup-just@v2
+      - name: Run tests
+        run: |
+          just test ${{ matrix.test.path }} ${{ matrix.test.regex }}
