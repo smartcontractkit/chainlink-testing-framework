@@ -5,6 +5,9 @@ concurrency:
   cancel-in-progress: true
 jobs:
   test:
+    permissions:
+      id-token: write
+      contents: read
     runs-on: ${{ matrix.test.vm }}
     strategy:
       fail-fast: false
@@ -68,10 +71,13 @@ jobs:
           path: |
             ~/.cache/go-build
             ~/go/pkg/mod
-          key: go-modules-${{ hashFiles('wasp/go.sum') }}-${{ runner.os }}-test
+          key: go-modules-${{ matrix.test.path }}-${{ hashFiles(format('{0}/go.sum', matrix.test.path)) }}-${{ runner.os }}-test
           restore-keys: |
-            go-modules-${{ runner.os }}-test
-            go-modules-${{ runner.os }}
+            go-modules-${{ matrix.test.path }}-${{ runner.os }}-test
+            go-modules-${{ matrix.test.path }}-${{ runner.os }}
+      - name: Install dependencies
+        working-directory: ${{ matrix.test.path }}
+        run: go mod download
       - uses: extractions/setup-just@v2
       - name: Run tests
         run: |
