@@ -34,6 +34,8 @@ jobs:
         with:
           go-version: 'v1.24.0'
       - uses: extractions/setup-just@v2
+        with:
+          just-version: '1.39.0'
       - name: Lint
         run: |
           devbox run -- just lint ${{ matrix.dir }}
