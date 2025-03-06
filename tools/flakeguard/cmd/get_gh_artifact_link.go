@@ -13,14 +13,10 @@ import (
 	"golang.org/x/oauth2"
 )
 
-const (
-	exampleGitHubToken = "EXAMPLE_GITHUB_TOKEN" //nolint:gosec
-)
-
 // GetGHArtifactLinkCmd fetches the artifact link from GitHub API.
 var GetGHArtifactLinkCmd = &cobra.Command{
 	Use:   "get-gh-artifact",
-	Short: "Fetch artifact link from GitHub API",
+	Short: "Get artifact link from GitHub API",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Get flag values
 		githubRepo, _ := cmd.Flags().GetString("github-repository")
@@ -62,10 +58,6 @@ func init() {
 
 // fetchArtifactLink uses the GitHub API to retrieve the artifact link.
 func fetchArtifactLink(githubToken, githubRepo string, githubRunID int64, artifactName string) (string, error) {
-	// If using the example token, return a fake link.
-	if githubToken == exampleGitHubToken {
-		return "https://example-artifact-link.com", nil
-	}
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: githubToken})
 	tc := oauth2.NewClient(ctx, ts)
