@@ -143,7 +143,6 @@ func SendReportToSplunk(splunkURL, splunkToken, splunkEvent string, report TestR
 		}
 		log.Info().Msgf("Example Run. See '%s' for the results that would be sent to splunk", exampleSplunkReportFileName)
 	} else {
-		fmt.Printf("Final sent: %v", reportData)
 		resp, err := client.R().SetBody(reportData).Post("")
 		if err != nil {
 			splunkErrs = append(splunkErrs, fmt.Errorf("error sending report '%s' to Splunk: %w", report.ID, err))
@@ -191,8 +190,6 @@ func batchSplunkResults(results []SplunkTestResult) (batchData bytes.Buffer, res
 		}
 		resultTestNames = append(resultTestNames, result.Event.Data.TestName)
 	}
-	fmt.Println("Formatted Batch Data:")
-	fmt.Println(batchData.String())
 	return batchData, resultTestNames, nil
 }
 

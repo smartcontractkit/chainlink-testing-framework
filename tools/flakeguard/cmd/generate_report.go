@@ -158,7 +158,7 @@ func init() {
 	GenerateReportCmd.Flags().String("action-run-id", "", "The GitHub Actions run ID (required if generate-pr-comment is set)")
 	GenerateReportCmd.Flags().String("github-repository", "", "The GitHub repository in the format owner/repo (required)")
 	GenerateReportCmd.Flags().Int64("github-run-id", 0, "The GitHub Actions run ID (required)")
-	GenerateReportCmd.Flags().String("failed-tests-artifact-name", "failed-test-results-with-logs.json", "The name of the failed tests artifact (default 'failed-test-results-with-logs.json')")
+	GenerateReportCmd.Flags().String("failed-logs-url", "", "Optional URL linking to additional logs for failed tests")
 
 	if err := GenerateReportCmd.MarkFlagRequired("aggregated-results-path"); err != nil {
 		log.Error().Err(err).Msg("Error marking flag as required")
