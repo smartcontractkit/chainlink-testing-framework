@@ -1,0 +1,88 @@
+name: Seth Go Tests
+on: [push]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - regex: TestSmoke
+            network-type: Geth
+            url: "ws://localhost:8546"
+          - regex: TestSmoke
+            network-type: Anvil
+            url: "http://localhost:8545"
+          - regex: TestAPI
+            network-type: Geth
+            url: "ws://localhost:8546"
+          - regex: TestAPI
+            network-type: Anvil
+            url: "http://localhost:8545"
+          - regex: TestTrace
+            network-type: Geth
+            url: "ws://localhost:8546"
+          - regex: TestTrace
+            network-type: Anvil
+            url: "http://localhost:8545"
+          - regex: TestCLI
+            network-type: Geth
+            url: "ws://localhost:8546"
+          - regex: TestCLI
+            network-type: Anvil
+            url: "http://localhost:8545"
+            # TODO: wasn't stable before, fix if possible
+#          - regex: TestGasBumping
+#            network-type: Geth
+#            url: "ws://localhost:8546"
+#          - regex: TestGasBumping
+#            network-type: Anvil
+#            url: "http://localhost:8545"
+          - regex: "'TestContractMap|TestGasEstimator|TestRPCHealthCheck|TestUtil|TestContract|TestConfig'"
+            network-type: Geth
+            url: "ws://localhost:8546"
+          - regex: "'TestContractMap|TestGasEstimator|TestRPCHealthCheck|TestUtil|TestContract|TestConfig'"
+            network-type: Anvil
+            url: "http://localhost:8545"
+    defaults:
+      run:
+        working-directory: seth
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Check for changes in Framework
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: changes
+        with:
+          filters: |
+            src:
+              - 'seth/**'
+      - name: Install Devbox
+        uses: jetify-com/devbox-install-action@v0.11.0
+        with:
+          enable-cache: 'true'
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.0'
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-modules-${{ hashFiles('seth/go.sum') }}-${{ runner.os }}-seth
+          restore-keys: |
+            go-modules-${{ runner.os }}-seth
+            go-modules-${{ runner.os }}
+      - name: Install dependencies
+        run: go mod download
+      - uses: extractions/setup-just@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          just-version: '1.39.0'
+      - name: Run tests
+        run: |
+          devbox run -- just seth-test ${{ matrix.test.network-type }} ${{ matrix.test.url }} ${{ matrix.test.regex }}

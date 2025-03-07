@@ -3,13 +3,14 @@ package blockchain
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"strings"
-	"time"
 )
 
 const (
@@ -42,7 +43,7 @@ func newAnvil(in *Input) (*Output, error) {
 
 	req := testcontainers.ContainerRequest{
 		AlwaysPullImage: in.PullImage,
-		Image:           fmt.Sprintf("%s", in.Image),
+		Image:           in.Image,
 		Labels:          framework.DefaultTCLabels(),
 		Name:            containerName,
 		ExposedPorts:    []string{bindPort},

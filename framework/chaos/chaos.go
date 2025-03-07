@@ -3,13 +3,14 @@ package chaos
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/testcontainers/testcontainers-go"
-	"strings"
-	"time"
 )
 
 // ExecPumba executes Pumba (https://github.com/alexei-led/pumba) command

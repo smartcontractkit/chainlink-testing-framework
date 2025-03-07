@@ -3,10 +3,11 @@ package fake
 import (
 	"bytes"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"sync"
+
+	"github.com/gin-gonic/gin"
 )
 
 var (
@@ -62,8 +63,8 @@ func recordMiddleware() gin.HandlerFunc {
 		// Capture request data
 		var reqBodyBytes []byte
 		if c.Request.Body != nil {
-			reqBodyBytes, _ = ioutil.ReadAll(c.Request.Body)
-			c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(reqBodyBytes))
+			reqBodyBytes, _ = io.ReadAll(c.Request.Body)
+			c.Request.Body = io.NopCloser(bytes.NewBuffer(reqBodyBytes))
 		}
 		reqBody := string(reqBodyBytes)
 

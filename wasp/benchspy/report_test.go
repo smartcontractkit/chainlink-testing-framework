@@ -171,7 +171,7 @@ func TestBenchSpy_NewStandardReportWithPrometheus(t *testing.T) {
 		assert.Equal(t, 6, len(secondAsProm.Queries))
 	})
 
-	t.Run("invalid prometheus config (mising url)", func(t *testing.T) {
+	t.Run("invalid prometheus config (missing url)", func(t *testing.T) {
 		invalidPromConfig := &PrometheusConfig{
 			NameRegexPatterns: []string{"node"},
 		}
@@ -185,7 +185,7 @@ func TestBenchSpy_NewStandardReportWithPrometheus(t *testing.T) {
 		assert.Contains(t, err.Error(), "prometheus url is not set")
 	})
 
-	t.Run("invalid prometheus config (mising name regex)", func(t *testing.T) {
+	t.Run("invalid prometheus config (missing name regex)", func(t *testing.T) {
 		invalidPromConfig := &PrometheusConfig{
 			Url: "http://localhost:9090",
 		}

@@ -211,7 +211,9 @@ func TestRPCAPI(t *testing.T) {
 		pm.Stop()
 		bn, err := client.BlockNumber(context.Background())
 		require.NoError(t, err)
+		//nolint:gosec
 		require.GreaterOrEqual(t, uint64(iterations), bn-1)
+		//nolint:gosec
 		require.LessOrEqual(t, uint64(iterations), bn+1)
 	})
 
@@ -234,6 +236,7 @@ func TestRPCAPI(t *testing.T) {
 		}
 		bn, err := client.BlockNumber(context.Background())
 		require.NoError(t, err)
+		//nolint:gosec
 		for i := 1; i <= int(bn); i++ {
 			block, err := client.BlockByNumber(context.Background(), big.NewInt(int64(i)))
 			require.NoError(t, err)

@@ -41,16 +41,16 @@ func NewPrometheusConfig(nameRegexPatterns ...string) *PrometheusConfig {
 	}
 }
 
-var WithoutPrometheus *PrometheusConfig = nil
+var WithoutPrometheus *PrometheusConfig
 
 type PrometheusQueryExecutor struct {
 	KindName     string                 `json:"kind"`
 	StartTime    time.Time              `json:"start_time"`
 	EndTime      time.Time              `json:"end_time"`
-	client       v1.API                 `json:"-"`
 	Queries      map[string]string      `json:"queries"`
 	QueryResults map[string]interface{} `json:"query_results"`
-	warnings     map[string]v1.Warnings `json:"-"`
+	client       v1.API
+	warnings     map[string]v1.Warnings
 }
 
 // NewPrometheusQueryExecutor creates a new PrometheusResourceReporter, url should include basic auth if needed
@@ -95,31 +95,31 @@ func NewStandardPrometheusQueryExecutor(startTime, endTime time.Time, config *Pr
 
 // Execute runs the defined Prometheus queries concurrently, collecting results and warnings.
 // It returns an error if any query fails, allowing for efficient data retrieval in reporting tasks.
-func (r *PrometheusQueryExecutor) Execute(ctx context.Context) error {
+func (pe *PrometheusQueryExecutor) Execute(ctx context.Context) error {
 	L.Info().
-		Int("Queries", len(r.Queries)).
+		Int("Queries", len(pe.Queries)).
 		Msg("Executing Prometheus queries")
 
-	for name, query := range r.Queries {
+	for name, query := range pe.Queries {
 		L.Debug().
 			Str("Query name", name).
 			Str("Query", query).
 			Msg("Executing Prometheus query")
 
-		result, warnings, queryErr := r.client.Query(ctx, query, r.EndTime)
+		result, warnings, queryErr := pe.client.Query(ctx, query, pe.EndTime)
 		if queryErr != nil {
 			return errors.Wrapf(queryErr, "failed to query Prometheus for %s", name)
 		}
 
 		if len(warnings) > 0 {
-			r.warnings[name] = warnings
+			pe.warnings[name] = warnings
 		}
 
-		r.QueryResults[name] = result
+		pe.QueryResults[name] = result
 	}
 
 	L.Info().
-		Int("Queries", len(r.Queries)).
+		Int("Queries", len(pe.Queries)).
 		Msg("Prometheus queries executed successfully")
 
 	return nil
@@ -127,27 +127,27 @@ func (r *PrometheusQueryExecutor) Execute(ctx context.Context) error {
 
 // Results returns the query results as a map of string to interface{}.
 // It allows users to access the results of executed queries, facilitating data retrieval and manipulation.
-func (r *PrometheusQueryExecutor) Results() map[string]interface{} {
-	return r.QueryResults
+func (pe *PrometheusQueryExecutor) Results() map[string]interface{} {
+	return pe.QueryResults
 }
 
 // Kind returns the type of the query executor as a string.
 // It is used to identify the specific kind of executor in a collection of query executors.
-func (l *PrometheusQueryExecutor) Kind() string {
-	return l.KindName
+func (pe *PrometheusQueryExecutor) Kind() string {
+	return pe.KindName
 }
 
 // Validate checks the PrometheusQueryExecutor for a valid client and ensures that at least one query is provided.
 // It returns an error if the client is nil or no queries are specified, helping to ensure proper configuration before execution.
-func (r *PrometheusQueryExecutor) Validate() error {
+func (pe *PrometheusQueryExecutor) Validate() error {
 	L.Debug().
 		Msg("Validating Prometheus query executor")
 
-	if r.client == nil {
+	if pe.client == nil {
 		return errors.New("prometheus client is nil")
 	}
 
-	if len(r.Queries) == 0 {
+	if len(pe.Queries) == 0 {
 		return errors.New("no queries provided")
 	}
 
@@ -159,43 +159,43 @@ func (r *PrometheusQueryExecutor) Validate() error {
 
 // IsComparable checks if the provided QueryExecutor is of the same type as the receiver.
 // It returns an error if the types do not match, ensuring type safety for query comparisons.
-func (r *PrometheusQueryExecutor) IsComparable(other QueryExecutor) error {
+func (pe *PrometheusQueryExecutor) IsComparable(other QueryExecutor) error {
 	L.Debug().
-		Str("Expected kind", r.KindName).
+		Str("Expected kind", pe.KindName).
 		Msg("Checking if query executors are comparable")
 
 	otherType := reflect.TypeOf(other)
-	if otherType != reflect.TypeOf(r) {
-		return fmt.Errorf("expected type %s, got %s", reflect.TypeOf(r), otherType)
+	if otherType != reflect.TypeOf(pe) {
+		return fmt.Errorf("expected type %s, got %s", reflect.TypeOf(pe), otherType)
 	}
 
 	asPrometheusResourceReporter := other.(*PrometheusQueryExecutor)
 
-	queryErr := r.compareQueries(asPrometheusResourceReporter.Queries)
+	queryErr := pe.compareQueries(asPrometheusResourceReporter.Queries)
 	if queryErr != nil {
 		return queryErr
 	}
 
 	L.Debug().
-		Str("Kind", r.KindName).
+		Str("Kind", pe.KindName).
 		Msg("Query executors are comparable")
 
 	return nil
 }
 
-func (r *PrometheusQueryExecutor) compareQueries(other map[string]string) error {
-	this := r.Queries
+func (pe *PrometheusQueryExecutor) compareQueries(other map[string]string) error {
+	this := pe.Queries
 	if len(this) != len(other) {
 		return fmt.Errorf("queries count is different. Expected %d, got %d", len(this), len(other))
 	}
 
 	for name1, query1 := range this {
-		if query2, ok := other[name1]; !ok {
+		query2, ok := other[name1]
+		if !ok {
 			return fmt.Errorf("query %s is missing from the other report", name1)
-		} else {
-			if query1 != query2 {
-				return fmt.Errorf("query %s is different. Expected %s, got %s", name1, query1, query2)
-			}
+		}
+		if query1 != query2 {
+			return fmt.Errorf("query %s is different. Expected %s, got %s", name1, query1, query2)
 		}
 	}
 
@@ -205,18 +205,18 @@ func (r *PrometheusQueryExecutor) compareQueries(other map[string]string) error 
 // Warnings returns a map of warnings encountered during query execution.
 // This function is useful for retrieving any issues that may have arisen,
 // allowing users to handle or log them appropriately.
-func (r *PrometheusQueryExecutor) Warnings() map[string]v1.Warnings {
-	return r.warnings
+func (pe *PrometheusQueryExecutor) Warnings() map[string]v1.Warnings {
+	return pe.warnings
 }
 
 // MustResultsAsValue retrieves the query results as a map of metric names to their corresponding values.
 // It ensures that the results are in a consistent format, making it easier to work with metrics in subsequent operations.
-func (r *PrometheusQueryExecutor) MustResultsAsValue() map[string]model.Value {
+func (pe *PrometheusQueryExecutor) MustResultsAsValue() map[string]model.Value {
 	L.Debug().
 		Msg("Casting query results to expected types")
 
 	results := make(map[string]model.Value)
-	for name, result := range r.QueryResults {
+	for name, result := range pe.QueryResults {
 		L.Debug().
 			Str("Query name", name).
 			Msg("Casting query result to expected type")
@@ -259,12 +259,12 @@ func (r *PrometheusQueryExecutor) MustResultsAsValue() map[string]model.Value {
 
 // TimeRange sets the start and end time for the Prometheus query execution.
 // This function is essential for defining the time window for data retrieval, ensuring accurate and relevant results.
-func (r *PrometheusQueryExecutor) TimeRange(startTime, endTime time.Time) {
-	r.StartTime = startTime
-	r.EndTime = endTime
+func (pe *PrometheusQueryExecutor) TimeRange(startTime, endTime time.Time) {
+	pe.StartTime = startTime
+	pe.EndTime = endTime
 }
 
-func (r *PrometheusQueryExecutor) standardQuery(metric StandardResourceMetric, nameRegexPattern string, startTime, endTime time.Time) (string, error) {
+func (pe *PrometheusQueryExecutor) standardQuery(metric StandardResourceMetric, nameRegexPattern string, startTime, endTime time.Time) (string, error) {
 	duration := calculateTimeRange(startTime, endTime)
 	switch metric {
 	case MedianCPUUsage:
@@ -284,14 +284,14 @@ func (r *PrometheusQueryExecutor) standardQuery(metric StandardResourceMetric, n
 	}
 }
 
-func (r *PrometheusQueryExecutor) generateStandardQueries(nameRegexPattern string, startTime, endTime time.Time) (map[string]string, error) {
+func (pe *PrometheusQueryExecutor) generateStandardQueries(nameRegexPattern string, startTime, endTime time.Time) (map[string]string, error) {
 	L.Debug().
 		Msg("Generating standard Prometheus queries")
 
 	standardQueries := make(map[string]string)
 
 	for _, metric := range StandardResourceMetrics {
-		query, err := r.standardQuery(metric, nameRegexPattern, startTime, endTime)
+		query, err := pe.standardQuery(metric, nameRegexPattern, startTime, endTime)
 		if err != nil {
 			return nil, err
 		}
@@ -313,7 +313,7 @@ type TypedMetric struct {
 // MarshalJSON customizes the JSON representation of PrometheusQueryExecutor.
 // It includes only essential fields: Kind, Queries, and simplified QueryResults.
 // This function is useful for serializing the executor's state in a concise format.
-func (g *PrometheusQueryExecutor) MarshalJSON() ([]byte, error) {
+func (pe *PrometheusQueryExecutor) MarshalJSON() ([]byte, error) {
 	// we need custom marshalling to only include some parts of the metrics
 	type QueryExecutor struct {
 		Kind         string                 `json:"kind"`
@@ -322,11 +322,11 @@ func (g *PrometheusQueryExecutor) MarshalJSON() ([]byte, error) {
 	}
 
 	q := &QueryExecutor{
-		Kind:    g.KindName,
-		Queries: g.Queries,
+		Kind:    pe.KindName,
+		Queries: pe.Queries,
 		QueryResults: func() map[string]TypedMetric {
 			simplifiedMetrics := make(map[string]TypedMetric)
-			for name, value := range g.MustResultsAsValue() {
+			for name, value := range pe.MustResultsAsValue() {
 				simplifiedMetrics[name] = TypedMetric{
 					MetricType: value.Type().String(),
 					Value:      value,
@@ -342,7 +342,7 @@ func (g *PrometheusQueryExecutor) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON decodes JSON data into a PrometheusQueryExecutor instance.
 // It populates the QueryResults field with appropriately typed metrics,
 // enabling easy access to the results of Prometheus queries.
-func (r *PrometheusQueryExecutor) UnmarshalJSON(data []byte) error {
+func (pe *PrometheusQueryExecutor) UnmarshalJSON(data []byte) error {
 	// helper struct with QueryResults map[string]interface{}
 	type Alias PrometheusQueryExecutor
 	var raw struct {
@@ -396,7 +396,7 @@ func (r *PrometheusQueryExecutor) UnmarshalJSON(data []byte) error {
 		}
 	}
 
-	*r = PrometheusQueryExecutor(raw.Alias)
-	r.QueryResults = convertedQueryResults
+	*pe = PrometheusQueryExecutor(raw.Alias)
+	pe.QueryResults = convertedQueryResults
 	return nil
 }

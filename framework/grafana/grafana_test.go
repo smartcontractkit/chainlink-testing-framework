@@ -1,10 +1,11 @@
 package framework
 
 import (
-	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // TestPostAnnotationIntegration tests the Annotation method against a real Grafana instance.

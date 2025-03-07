@@ -4,15 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
+	"strings"
+	"time"
+
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/docker/docker/api/types/container"
 	"github.com/go-resty/resty/v2"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 const (

@@ -356,7 +356,7 @@ func LoadReport(filePath string) (*TestReport, error) {
 	}
 	var report TestReport
 	if err := json.Unmarshal(data, &report); err != nil {
-		return nil, fmt.Errorf("error unmarshaling JSON from file %s: %w", filePath, err)
+		return nil, fmt.Errorf("error unmarshalling JSON from file %s: %w", filePath, err)
 	}
 	return &report, nil
 }
@@ -703,7 +703,7 @@ func unBatchSplunkResults(batch []byte) ([]*SplunkTestResult, error) {
 
 		result := pool.Get().(*SplunkTestResult)
 		if err := json.Unmarshal(line, result); err != nil {
-			return results, fmt.Errorf("error unmarshaling result: %w", err)
+			return results, fmt.Errorf("error unmarshalling result: %w", err)
 		}
 		results = append(results, result)
 	}

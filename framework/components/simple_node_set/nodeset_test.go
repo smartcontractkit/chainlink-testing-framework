@@ -1,19 +1,19 @@
 package simple_node_set_test
 
 import (
+	"sync"
+	"testing"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 	"github.com/stretchr/testify/require"
-	"sync"
-	"testing"
 )
 
 type testCase struct {
 	name         string
-	funding      float64
 	bcInput      *blockchain.Input
 	nodeSetInput *ns.Input
 	assertion    func(t *testing.T, output *ns.Output)

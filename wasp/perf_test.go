@@ -1,9 +1,10 @@
 package wasp
 
 import (
-	"github.com/grafana/pyroscope-go"
 	"testing"
 	"time"
+
+	"github.com/grafana/pyroscope-go"
 
 	"github.com/stretchr/testify/require"
 
