@@ -29,6 +29,21 @@ lint-all:
     @just lint tools/ecrimagefetcher
     @just lint tools/gotestloghelper
 
+# Run all the tests
+test-all:
+    @just test k8s-test-runner ./... &
+    @just test parrot ./... &
+    @just test tools/workflowresultparser ./... &
+    @just test tools/asciitable ./... &
+    @just test tools/ghlatestreleasechecker ./... &
+    @just test tools/ecrimagefetcher ./... &
+    @just test tools/testlistgenerator ./... &
+    @just test tools/gotestloghelper ./... &
+    @just test tools/citool ./... &
+    wait
+    @just test framework TestComponent
+    @just test wasp TestSmoke
+    @just test wasp TestBenchSpy
 
 # Default test command (cacheable)
 _default_cached_test dir test_regex:
