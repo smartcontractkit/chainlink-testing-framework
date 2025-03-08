@@ -177,11 +177,7 @@ func TestFindFile_stopFileNotFoundWithinLimit(t *testing.T) {
 func TestFindDirectoriesContainingFile(t *testing.T) {
 	t.Run("file in root directory", func(t *testing.T) {
 		// Create a temporary directory using the os package
-		tempDir, err := os.MkdirTemp("", "rootcheck")
-		if err != nil {
-			require.NoError(t, err, "error creating temp directory")
-		}
-		defer os.RemoveAll(tempDir) // Clean up after yourself
+		tempDir := t.TempDir()
 
 		exampleFile := "examplefile.txt"
 		_, err = os.CreateTemp(tempDir, exampleFile)
@@ -197,11 +193,7 @@ func TestFindDirectoriesContainingFile(t *testing.T) {
 
 	t.Run("file in root and sub directory", func(t *testing.T) {
 		// Create a temporary directory using the os package
-		tempDir, err := os.MkdirTemp("", "rootcheck")
-		if err != nil {
-			require.NoError(t, err, "error creating temp directory")
-		}
-		defer os.RemoveAll(tempDir) // Clean up after yourself
+		tempDir := t.TempDir()
 
 		exampleFile := "examplefile.txt"
 		_, err = os.CreateTemp(tempDir, exampleFile)
@@ -209,10 +201,7 @@ func TestFindDirectoriesContainingFile(t *testing.T) {
 			require.NoError(t, err, "error creating temp file")
 		}
 
-		subDir, err := os.MkdirTemp(tempDir, "subdir")
-		if err != nil {
-			require.NoError(t, err, "error creating temp directory")
-		}
+		subDir := t.TempDir()
 
 		exampleFile2 := "examplefile.txt"
 		_, err = os.CreateTemp(subDir, exampleFile2)
@@ -228,16 +217,8 @@ func TestFindDirectoriesContainingFile(t *testing.T) {
 
 	t.Run("file in sub directory", func(t *testing.T) {
 		// Create a temporary directory using the os package
-		tempDir, err := os.MkdirTemp("", "rootcheck")
-		if err != nil {
-			require.NoError(t, err, "error creating temp directory")
-		}
-		defer os.RemoveAll(tempDir) // Clean up after yourself
-
-		subDir, err := os.MkdirTemp(tempDir, "subdir")
-		if err != nil {
-			require.NoError(t, err, "error creating temp directory")
-		}
+		tempDir := t.TempDir()
+		subDir := t.TempDir()
 
 		exampleFile2 := "examplefile.txt"
 		_, err = os.CreateTemp(subDir, exampleFile2)
