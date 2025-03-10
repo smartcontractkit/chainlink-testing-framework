@@ -2192,16 +2192,32 @@ ctf obs l -d $artifact_dir
 </style>
 <h1 id="analyzing-ci-runs"><a class="header" href="#analyzing-ci-runs">Analyzing CI Runs</a></h1>
 <p>We offer a straightforward CLI tool designed to analyze CI runs, focusing on Jobs and Steps, to provide deeper insights into system-level tests.</p>
+<p><img src="framework/components/img_1.png" alt="img_1.png" /></p>
+<h2 id="what-to-look-for"><a class="header" href="#what-to-look-for">What to look for</a></h2>
+<p>Check execution times, results are sorted by <code>median</code>.</p>
+<p>We exclude any runs without <code>conclusion</code> or if they have <code>conclusion: "skipped"</code>.</p>
+<p>🔄 - if you see high numbers here it means your pipeline is flaky, and it does not pass from the first attempt on some commits. It may indicate test flakiness!</p>
+<p>🚫 - if numbers are high there it means your pipeline is constantly <code>cancelled</code> so it wastes time without bringing any results/value!</p>
 <h2 id="examples"><a class="header" href="#examples">Examples</a></h2>
 <pre><code># GITHUB_TOKEN must have access to "actions" API
 export GITHUB_TOKEN=...
 
-# E2E tests from core, the last day
-ctf ci -r "smartcontractkit/chainlink" -w "Integration Tests"
+# E2E test jobs from core for the last day
+ctf ci -r "smartcontractkit/chainlink" -w "CI Core" -t jobs
+
+# E2E test steps from core for the last day
+ctf ci -r "smartcontractkit/chainlink" -w "CI Core" -t steps
+
+# E2E tests from core for the last week (1k jobs limit!)
+ctf ci -r "smartcontractkit/chainlink" -w "CI Core" -t jobs -s 7
+
+# E2E tests from core for some specific days from 5 days ago to 3 days ago
+ctf ci -r "smartcontractkit/chainlink" -w "CI Core" -t jobs -s 5 -e 3
 
 # Last 3 days runs for e2e framework tests
-ctf ci -r "smartcontractkit/chainlink-testing-framework" -w "Framework Golden Tests Examples" -d 3
+ctf ci -r "smartcontractkit/chainlink-testing-framework" -w "Framework Golden Tests Examples" -t jobs -s 3
 </code></pre>
+<p>You can also use <code>-debug</code> flag to dump all the workflow runs/jobs to <code>ctf-ci-debug</code> folder.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -16447,7 +16463,7 @@ use <code>GetTestContainersGoTestLogger(*testing.T)</code> instead.</p>
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>f3732850</code></li>
+<li>Commit: <code>bda6f162</code></li>
 </ul>
 
                     </main>
