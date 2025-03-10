@@ -22,7 +22,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: 'v1.24.0'
+          go-version-file: ${{ matrix.project.path }}/go.mod
       - name: Install gotestloghelper
         run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper@latest
       - name: Run Tests

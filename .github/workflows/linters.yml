@@ -24,7 +24,7 @@ jobs:
           - tools/gotestloghelper
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install Devbox
         uses: jetify-com/devbox-install-action@v0.11.0
         with:
@@ -32,7 +32,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: 'v1.24.0'
+          go-version-file: ${{ matrix.dir }}/go.mod
       - uses: extractions/setup-just@v2
         with:
           just-version: '1.39.0'
