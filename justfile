@@ -1,3 +1,5 @@
+go_test_args := env('GO_TEST_ARGS', '')
+
 # Print all the commands
 default:
     @just --list
@@ -5,6 +7,7 @@ default:
 # Install pre-commit hooks
 install:
     pre-commit install
+
 # Install gotestloghelper for enhanced go test logs output
 install-loghelper:
     go install github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper@latest
@@ -45,13 +48,13 @@ test-all:
     @just test wasp TestSmoke
     @just test wasp TestBenchSpy
 
-# Default test command (cacheable)
+# Default test command (cacheable), set GO_TEST_ARGS="-count 1" to disable cache
 _default_cached_test dir test_regex:
-    cd {{dir}} && go test -v -race `go list ./... | grep -v examples` -run {{test_regex}}
+    cd {{dir}} && go test {{go_test_args}} -v -race `go list ./... | grep -v examples` -run {{test_regex}}
 
 # Default test + coverage command (no-cache)
 _default_cover_test dir test_regex:
-    cd {{dir}} && go test -v -race -cover -coverprofile=cover.out `go list ./... | grep -v examples` -run {{test_regex}}
+    cd {{dir}} && go test {{go_test_args}} -v -race -cover -coverprofile=cover.out `go list ./... | grep -v examples` -run {{test_regex}}
 
 # Run tests for a package, example: just test wasp TestSmoke, example: just test tools/citool ./...
 test dir_path test_regex:
