@@ -17,7 +17,7 @@ jobs:
             vm: ubuntu-latest
             regex: TestSmoke
           - path: wasp
-            vm: ubuntu-latest-8cores-32GB
+            vm: ubuntu22.04-16cores-64GB # ghv-ignore!
             regex: TestSmoke
           - path: wasp
             vm: ubuntu-latest
