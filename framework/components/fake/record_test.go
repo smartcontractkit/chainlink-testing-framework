@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestComponentFake(t *testing.T) {
+func TestSmokeComponentFake(t *testing.T) {
 	cfg := &fake.Input{
 		Port: 9111,
 	}
