@@ -78,7 +78,7 @@ jobs:
           restore-keys: |
             go-modules-${{ matrix.test.path }}-${{ runner.os }}-test
             go-modules-${{ matrix.test.path }}-${{ runner.os }}
-      - uses: extractions/setup-just@v2
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           just-version: '1.39.0'
