@@ -17,10 +17,10 @@ jobs:
             vm: ubuntu-latest
             regex: TestSmoke
           - path: wasp
-            vm: ubuntu22.04-16cores-64GB # ghv-ignore!
+            vm: ubuntu-latest-8cores-32GB
             regex: TestSmoke
           - path: wasp
-            vm: ubuntu22.04-16cores-64GB # ghv-ignore!
+            vm: ubuntu-latest
             regex: TestBenchSpy
           - path: k8s-test-runner
             vm: ubuntu-latest
