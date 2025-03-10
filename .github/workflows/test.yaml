@@ -16,6 +16,9 @@ jobs:
           - path: framework
             vm: ubuntu-latest
             regex: TestComponent
+          - path: framework/cmd
+            vm: ubuntu-latest
+            regex: ./...
           - path: wasp
             vm: ubuntu22.04-16cores-64GB
             regex: TestSmoke
