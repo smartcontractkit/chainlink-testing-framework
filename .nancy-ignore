@@ -16,3 +16,4 @@ CVE-2024-51744 # CWE-755: Improper Handling of Exceptional Conditions
 CVE-2024-45338 # CWE-770: Allocation of Resources Without Limits or Throttling
 CVE-2024-45337 # CWE-863: Incorrect Authorization in golang.org/x/crypto@v0.28.0
 CVE-2025-24883 # CWE-248: Uncaught Exception
+CVE-2025-22869 # CWE-770: Allocation of Resources Without Limits or Throttling

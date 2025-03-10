@@ -66,8 +66,11 @@ func TestAggregateResultFilesSplunk(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	report, err := LoadAndAggregate("./testdata", WithReportID(reportID), WithSplunk(srv.URL, splunkToken, splunkEvent))
+	report, err := LoadAndAggregate("./testdata", WithReportID(reportID))
 	require.NoError(t, err, "LoadAndAggregate failed")
+
+	err = SendReportToSplunk(srv.URL, splunkToken, splunkEvent, *report)
+	require.NoError(t, err, "SendReportToSplunk failed")
 	verifyAggregatedReport(t, report)
 	assert.Equal(t, 1, reportRequestsReceived, "unexpected number of report requests")
 	assert.Equal(t, uniqueTests, resultRequestsReceived, "unexpected number of report requests")
@@ -153,7 +156,7 @@ func BenchmarkAggregateResultFilesSplunk(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := LoadAndAggregate("./testdata", WithReportID(reportID), WithSplunk(srv.URL, splunkToken, "test"))
+		_, err := LoadAndAggregate("./testdata", WithReportID(reportID))
 		require.NoError(b, err, "LoadAndAggregate failed")
 	}
 }

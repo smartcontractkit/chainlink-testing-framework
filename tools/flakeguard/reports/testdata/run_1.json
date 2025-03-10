@@ -6040,8 +6040,11 @@
         "FAIL\n",
         "FAIL\tgithub.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package\t0.172s\n"
       ],
-      "test_path": "",
-      "code_owners": null
+      "test_path": "example_folder/example_test.go",
+      "code_owners": [
+        "@chainlink/example-team1",
+        "@chainlink/example-team2"
+      ]
     }
   ],
   "max_pass_ratio": 1

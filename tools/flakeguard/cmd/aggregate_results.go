@@ -31,9 +31,6 @@ var AggregateResultsCmd = &cobra.Command{
 		githubWorkflowName, _ := cmd.Flags().GetString("github-workflow-name")
 		githubWorkflowRunURL, _ := cmd.Flags().GetString("github-workflow-run-url")
 		reportID, _ := cmd.Flags().GetString("report-id")
-		splunkURL, _ := cmd.Flags().GetString("splunk-url")
-		splunkToken, _ := cmd.Flags().GetString("splunk-token")
-		splunkEvent, _ := cmd.Flags().GetString("splunk-event")
 
 		initialDirSize, err := getDirSize(resultsPath)
 		if err != nil {
@@ -56,8 +53,9 @@ var AggregateResultsCmd = &cobra.Command{
 		// Load test reports from JSON files and aggregate them
 		aggregatedReport, err := reports.LoadAndAggregate(
 			resultsPath,
+			reports.WithRepoPath(repoPath),
+			reports.WithCodeOwnersPath(codeOwnersPath),
 			reports.WithReportID(reportID),
-			reports.WithSplunk(splunkURL, splunkToken, splunkEvent),
 			reports.WithBranchName(branchName),
 			reports.WithBaseSha(baseSHA),
 			reports.WithHeadSha(headSHA),
@@ -75,35 +73,8 @@ var AggregateResultsCmd = &cobra.Command{
 
 		// Start spinner for mapping test results to paths
 		s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-		s.Suffix = " Mapping test results to paths..."
+		s.Suffix = " Filter failed tests..."
 		s.Start()
-
-		// Map test results to test paths
-		err = reports.MapTestResultsToPaths(aggregatedReport, repoPath)
-		if err != nil {
-			s.Stop()
-			log.Error().Stack().Err(err).Msg("Error mapping test results to paths")
-			os.Exit(ErrorExitCode)
-		}
-		s.Stop()
-		log.Debug().Msg("Successfully mapped paths to test results")
-
-		// Map test results to code owners if codeOwnersPath is provided
-		if codeOwnersPath != "" {
-			s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-			s.Suffix = " Mapping test results to code owners..."
-			s.Start()
-			fmt.Println()
-
-			err = reports.MapTestResultsToOwners(aggregatedReport, codeOwnersPath)
-			if err != nil {
-				s.Stop()
-				log.Error().Stack().Err(err).Msg("Error mapping test results to code owners")
-				os.Exit(ErrorExitCode)
-			}
-			s.Stop()
-			log.Debug().Msg("Successfully mapped code owners to test results")
-		}
 
 		failedTests := reports.FilterTests(aggregatedReport.Results, func(tr reports.TestResult) bool {
 			return !tr.Skipped && tr.PassRatio < maxPassRatio
@@ -190,9 +161,6 @@ func init() {
 	AggregateResultsCmd.Flags().String("github-workflow-name", "", "GitHub workflow name for the test report")
 	AggregateResultsCmd.Flags().String("github-workflow-run-url", "", "GitHub workflow run URL for the test report")
 	AggregateResultsCmd.Flags().String("report-id", "", "Optional identifier for the test report. Will be generated if not provided")
-	AggregateResultsCmd.Flags().String("splunk-url", "", "Optional url to simultaneously send the test results to splunk")
-	AggregateResultsCmd.Flags().String("splunk-token", "", "Optional Splunk HEC token to simultaneously send the test results to splunk")
-	AggregateResultsCmd.Flags().String("splunk-event", "manual", "Optional Splunk event to send as the triggering event for the test results")
 
 	if err := AggregateResultsCmd.MarkFlagRequired("results-path"); err != nil {
 		log.Fatal().Err(err).Msg("Error marking flag as required")

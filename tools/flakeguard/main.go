@@ -41,6 +41,8 @@ func init() {
 	rootCmd.AddCommand(cmd.CheckTestOwnersCmd)
 	rootCmd.AddCommand(cmd.AggregateResultsCmd)
 	rootCmd.AddCommand(cmd.GenerateReportCmd)
+	rootCmd.AddCommand(cmd.GetGHArtifactLinkCmd)
+	rootCmd.AddCommand(cmd.SendToSplunkCmd)
 }
 
 func main() {
