@@ -80,11 +80,16 @@ jobs:
         id: check_breaking_changes
         run: |
           set +e  # Disable exit on error to capture output even if the command fails
+          # shellcheck disable=SC2296
           echo "Last tag version: ${{ env.LAST_TAG_VERSION }}"
           echo "Current tag version: ${VERSION}"
+          # shellcheck disable=SC2086
+          # shellcheck disable=SC1083
+          # shellcheck disable=SC2296
           BREAKING_CHANGES=$(gorelease -base=${{ env.LAST_TAG_VERSION }} -version=${VERSION} 2>&1)
           echo "Breaking changes: ${BREAKING_CHANGES}"
           set -e  # Re-enable exit on error for the subsequent steps
+          # shellcheck disable=SC2129
           echo "BREAKING_CHANGES<<EOF" >> "$GITHUB_ENV"
           echo "$BREAKING_CHANGES" >> "$GITHUB_ENV"
           echo "EOF" >> "$GITHUB_ENV"
@@ -93,19 +98,22 @@ jobs:
         working-directory: ${{ env.PACKAGE_NAME }}
         id: read_additional_notes
         run: |
+          
           # Check if the .changeset directory exists and the file for the current version is present
           if [ -f ".changeset/${{ env.VERSION }}.md" ]; then
             # Read the content of the file
             RELEASE_NOTES=$(cat ".changeset/${{ env.VERSION }}.md")
-
+            
             # Format the release notes and breaking changes into FULL_RELEASE_NOTES
+            # shellcheck disable=SC2129
             echo "FULL_RELEASE_NOTES<<EOF" >> "$GITHUB_ENV"
             echo "## Release notes:" >> "$GITHUB_ENV"
             echo "$RELEASE_NOTES" >> "$GITHUB_ENV"
             echo "" >> "$GITHUB_ENV"
             echo "## Commits:" >> "$GITHUB_ENV"
             echo "${{ env.COMMITS }}" >> "$GITHUB_ENV"
-            echo "" >> $GITHUB_ENV
+            echo "" >> "$GITHUB_ENV"
+            # shellcheck disable=SC2129
             echo "## Breaking changes:" >> "$GITHUB_ENV"
             echo "${{ env.BREAKING_CHANGES }}" >> "$GITHUB_ENV"
             echo "EOF" >> "$GITHUB_ENV"
@@ -114,7 +122,6 @@ jobs:
             echo "Error: Release notes file '.changeset/${{ env.VERSION }}.md' not found."
             exit 1
           fi
-
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -131,9 +138,9 @@ jobs:
       - name: Set binary name based on PACKAGE_NAME
         run: |
           if [ "${{ env.PACKAGE_NAME }}" == "framework" ]; then
-            echo "BINARY_NAME=ctf" >> $GITHUB_ENV
+            echo "BINARY_NAME=ctf" >> "$GITHUB_ENV"
           else
-            echo "BINARY_NAME=${{ env.PACKAGE_NAME }}" >> $GITHUB_ENV
+            echo "BINARY_NAME=${{ env.PACKAGE_NAME }}" >> "$GITHUB_ENV"
           fi
       - name: Build binary release
         uses: wangyoucao577/go-release-action@v1
