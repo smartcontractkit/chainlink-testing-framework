@@ -6,25 +6,6 @@ on:
   pull_request:
 
 jobs:
-#  # TODO: enable for every module or remove
-#  vulnerabilities-check:
-#    name: Check for Vulnerabilities
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Check out Code
-#        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
-#      - name: Install Go
-#        uses: smartcontractkit/.github/actions/setup-golang@3835daadbcefcae06d12dc42a405a856c980d2cc
-#        with:
-#          go-version-file: ./lib/go.mod
-#          use-go-cache: true
-#          go-cache-dep-path: ./lib/go.sum
-#      - name: Write Go List
-#        working-directory: lib
-#        run: go list -json -deps ./... > ../go.list
-#      - name: Nancy
-#        uses: sonatype-nexus-community/nancy-github-action@726e338312e68ecdd4b4195765f174d3b3ce1533 # v1.0.3
-
   actionlint:
     name: Validate GitHub Action Workflows
     runs-on: ubuntu-latest
