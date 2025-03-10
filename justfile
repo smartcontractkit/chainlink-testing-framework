@@ -129,3 +129,12 @@ gomods-tidy-ci:
     go install github.com/jmank88/gomods@v0.1.5 && gomods tidy
     git add --all
     git diff --minimal --cached --exit-code
+
+# Run GitHub Actions lint for CI workflows
+actionlint:
+    go install github.com/rhysd/actionlint/cmd/actionlint@latest
+    actionlint
+
+# Serve MDBook locally
+book:
+    cd book && mdbook serve -p 9999

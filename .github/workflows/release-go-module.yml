@@ -42,6 +42,7 @@ jobs:
         id: generate_release_notes
         run: |
           # Find the latest tag for the same package that is not the current tag
+          # shellcheck disable=SC2046
           LAST_TAG=$(git describe --abbrev=0 --always --match "$PACKAGE_NAME/v*" --tags $(git rev-list --tags --skip=1 --max-count=1))
           echo "Last tag: ${LAST_TAG}"
 
@@ -63,6 +64,7 @@ jobs:
           echo "$COMMITS"
 
           # Safely set the release notes as an environment variable using heredoc and EOF
+          # shellcheck disable=SC2129
           echo "COMMITS<<EOF" >> "$GITHUB_ENV"
           echo "$COMMITS" >> "$GITHUB_ENV"
           echo "EOF" >> "$GITHUB_ENV"

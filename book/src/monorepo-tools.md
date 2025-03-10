@@ -15,6 +15,8 @@ Install pre-commit hooks first:
 just install
 ```
 
+## Testing
+
 Each package has tests, run using commands in the justfile, examples:
 ```
 # run all the tests (cache)
@@ -25,6 +27,7 @@ just test wasp TestSmoke
 just test tools/ghlatestreleasechecker ./...
 ```
 
+## Linting
 Use linters:
 ```
 # all packages
@@ -33,4 +36,15 @@ just lint-all
 just lint wasp
 ```
 
+## Updating dev deps (DevBox)
 For extra dependencies, we use [NixHub](https://www.nixhub.io/) to add them to [DevBox](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/devbox.json), which also works in [CI](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/.github/workflows/seth-test.yml#L62).
+
+Don't forget to update the lockfile after adding new deps and commit the changes:
+```
+devbox update
+```
+
+## Updating Docs (MDBook)
+```
+just book
+```
