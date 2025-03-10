@@ -1,6 +1,10 @@
 package examples
 
 import (
+	"os"
+	"testing"
+	"time"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
@@ -9,9 +13,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/examples/generators"
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 	"github.com/stretchr/testify/require"
-	"os"
-	"testing"
-	"time"
 )
 
 type CfgScalability struct {

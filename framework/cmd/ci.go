@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,13 +11,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
+	"go.uber.org/ratelimit"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/fatih/color"
 	"github.com/google/go-github/v50/github"
 	"github.com/google/uuid"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"go.uber.org/ratelimit"
 	"golang.org/x/oauth2"
-	"golang.org/x/sync/errgroup"
 )
 
 const (

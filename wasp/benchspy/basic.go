@@ -151,12 +151,12 @@ func (b *BasicData) IsComparable(otherData BasicData) error {
 	}
 
 	for name1, cfg1 := range b.GeneratorConfigs {
-		if cfg2, ok := otherData.GeneratorConfigs[name1]; !ok {
+		cfg2, ok := otherData.GeneratorConfigs[name1]
+		if !ok {
 			return fmt.Errorf("generator config %s is missing from the other report", name1)
-		} else {
-			if err := compareGeneratorConfigs(cfg1, cfg2); err != nil {
-				return err
-			}
+		}
+		if err := compareGeneratorConfigs(cfg1, cfg2); err != nil {
+			return err
 		}
 	}
 

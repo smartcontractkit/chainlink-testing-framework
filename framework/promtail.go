@@ -3,15 +3,16 @@ package framework
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
+	"text/template"
+	"time"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/pkg/errors"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"os"
-	"strings"
-	"text/template"
-	"time"
 )
 
 type Config struct {

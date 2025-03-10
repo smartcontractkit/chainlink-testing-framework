@@ -232,13 +232,13 @@ var compareMedian = func(t *testing.T, metricName string, currentAsStringSlice, 
 	previousMedian, err := stats.Median(previousFloatSlice)
 	require.NoError(t, err, "failed to calculate median for %s results", metricName)
 
-	var diffPrecentage float64
+	var diffPercentage float64
 	if previousMedian != 0.0 && currentMedian != 0.0 {
-		diffPrecentage = (currentMedian - previousMedian) / previousMedian * 100
+		diffPercentage = (currentMedian - previousMedian) / previousMedian * 100
 	} else if previousMedian == 0.0 && currentMedian == 0.0 {
-		diffPrecentage = 0.0
+		diffPercentage = 0.0
 	} else {
-		diffPrecentage = 100.0
+		diffPercentage = 100.0
 	}
-	assert.LessOrEqual(t, math.Abs(diffPrecentage), 1.0, "%s medians are more than 1% different", metricName, fmt.Sprintf("%.4f", diffPrecentage))
+	assert.LessOrEqual(t, math.Abs(diffPercentage), 1.0, "%s medians are more than 1% different", metricName, fmt.Sprintf("%.4f", diffPercentage))
 }

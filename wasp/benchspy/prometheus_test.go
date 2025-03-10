@@ -338,7 +338,7 @@ func (m *mockQueryExecutor) Execute(ctx context.Context) error {
 	return nil
 }
 
-func (r *mockQueryExecutor) IsComparable(other QueryExecutor) error {
+func (m *mockQueryExecutor) IsComparable(other QueryExecutor) error {
 	return nil
 }
 
@@ -350,7 +350,7 @@ func (m *mockQueryExecutor) Kind() string {
 	return m.kindName
 }
 
-func (r *mockQueryExecutor) TimeRange(startTime, endTime time.Time) {
+func (m *mockQueryExecutor) TimeRange(startTime, endTime time.Time) {
 }
 
 func (m *mockQueryExecutor) Results() map[string]interface{} {

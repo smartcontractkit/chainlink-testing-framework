@@ -145,7 +145,7 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 
 	// even if the ethclient that was passed supports tracing, we still need the RPC URL, because we cannot get from
 	// the instance of ethclient, since it doesn't expose any such method
-	if (cfg.ethclient != nil && shouldIntialiseTracer(cfg.ethclient, cfg) && len(cfg.Network.URLs) > 0) || cfg.ethclient == nil {
+	if (cfg.ethclient != nil && shouldInitializeTracer(cfg.ethclient, cfg) && len(cfg.Network.URLs) > 0) || cfg.ethclient == nil {
 		tr, err := NewTracer(cs, &abiFinder, cfg, contractAddressToNameMap, addrs)
 		if err != nil {
 			return nil, errors.Wrap(err, ErrCreateTracer)
@@ -339,7 +339,7 @@ func NewClientRaw(
 
 	// we cannot use the tracer with simulated backend, because it doesn't expose a method to get rpcClient (even though it has one)
 	// and Tracer needs rpcClient to call debug_traceTransaction
-	if shouldIntialiseTracer(c.Client, cfg) && c.Cfg.TracingLevel != TracingLevel_None && c.Tracer == nil {
+	if shouldInitializeTracer(c.Client, cfg) && c.Cfg.TracingLevel != TracingLevel_None && c.Tracer == nil {
 		if c.ContractStore == nil {
 			cs, err := NewContractStore(filepath.Join(cfg.ConfigDir, cfg.ABIDir), filepath.Join(cfg.ConfigDir, cfg.BINDir), cfg.GethWrappersDirs)
 			if err != nil {
@@ -1409,7 +1409,7 @@ func (m *Client) mergeLogMeta(pe *DecodedTransactionLog, l types.Log) {
 	pe.Removed = l.Removed
 }
 
-func shouldIntialiseTracer(client simulated.Client, cfg *Config) bool {
+func shouldInitializeTracer(client simulated.Client, cfg *Config) bool {
 	return len(cfg.Network.URLs) > 0 && supportsTracing(client)
 }
 

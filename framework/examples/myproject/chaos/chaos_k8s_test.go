@@ -2,14 +2,15 @@ package chaos
 
 import (
 	"context"
-	f "github.com/smartcontractkit/chainlink-testing-framework/framework"
-	gf "github.com/smartcontractkit/chainlink-testing-framework/framework/grafana"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
-	"github.com/smartcontractkit/chainlink-testing-framework/havoc"
 	"math/big"
 	"os"
 	"testing"
 	"time"
+
+	f "github.com/smartcontractkit/chainlink-testing-framework/framework"
+	gf "github.com/smartcontractkit/chainlink-testing-framework/framework/grafana"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
+	"github.com/smartcontractkit/chainlink-testing-framework/havoc"
 
 	"github.com/stretchr/testify/require"
 )

@@ -1,11 +1,12 @@
 package examples
 
 import (
+	"testing"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 type CfgAptos struct {
