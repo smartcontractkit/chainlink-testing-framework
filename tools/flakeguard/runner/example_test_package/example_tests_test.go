@@ -218,8 +218,6 @@ func TestTimeout(t *testing.T) {
 func TestRandomFlaky(t *testing.T) {
 	t.Parallel()
 
-	time.Sleep(100 * time.Millisecond)
-
 	// Seed random number generator with current time
 	seed := time.Now().UnixNano()
 	t.Logf("Using seed: %d", seed)

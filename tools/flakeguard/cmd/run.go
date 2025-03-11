@@ -138,8 +138,9 @@ var RunTestsCmd = &cobra.Command{
 			return
 		}
 
-		fmt.Printf("\nFlakeguard Initial Summary:\n")
-		reports.RenderResults(os.Stdout, mainReport, false, false)
+		fmt.Printf("\nFlakeguard Main Summary:\n")
+		reports.RenderResults(os.Stdout, *mainReport, false, false)
+		fmt.Println()
 
 		// Rerun failed tests
 		if rerunFailed > 0 {
@@ -154,15 +155,16 @@ var RunTestsCmd = &cobra.Command{
 				return !tr.Skipped && tr.Successes == 0
 			})
 			fmt.Printf("\nFlakeguard Rerun Summary:\n")
-			reports.RenderResults(os.Stdout, rerunReport, false, false)
+			reports.PrintTestTable(os.Stdout, *rerunReport, false, false)
+			fmt.Println()
 
 			// Save the rerun test report to file
-			if rerunReportPath != "" && len(mainReport.Results) > 0 {
+			if rerunReportPath != "" && len(rerunReport.Results) > 0 {
 				if err := rerunReport.SaveToFile(rerunReportPath); err != nil {
 					log.Error().Err(err).Msg("Error saving test results to file")
 					os.Exit(ErrorExitCode)
 				}
-				log.Info().Str("path", rerunReportPath).Msg("Main test report saved")
+				log.Info().Str("path", rerunReportPath).Msg("Rerun test report saved")
 			}
 
 			if len(failedAfterRerun) > 0 {
@@ -172,7 +174,7 @@ var RunTestsCmd = &cobra.Command{
 					Msg("Tests still failing after reruns with 0 successes")
 				os.Exit(ErrorExitCode)
 			} else {
-				log.Info().Msg("Failed tests passed at least once after reruns")
+				log.Info().Msg("Tests that failed passed at least once after reruns")
 				os.Exit(0)
 			}
 		} else {

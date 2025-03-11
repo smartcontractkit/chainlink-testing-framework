@@ -10,10 +10,11 @@ import (
 	"golang.org/x/text/message"
 )
 
-// GenerateFlakyTestsTable generates a table of flaky tests from the given test report to print to the console or markdown.
-func GenerateFlakyTestsTable(
-	testReport *TestReport,
+// generateTestTable is a helper that builds the table based on the given filter function.
+func generateTestTable(
+	testReport TestReport,
 	markdown bool,
+	filter func(result TestResult) bool,
 ) [][]string {
 	p := message.NewPrinter(language.English)
 
@@ -45,8 +46,7 @@ func GenerateFlakyTestsTable(
 	table := [][]string{headers}
 
 	for _, result := range testReport.Results {
-		// Exclude skipped tests and only include tests below the expected pass ratio
-		if !result.Skipped && result.PassRatio < testReport.MaxPassRatio {
+		if filter(result) {
 			row := []string{
 				result.TestName,
 				formatRatio(result.PassRatio),
@@ -75,8 +75,30 @@ func GenerateFlakyTestsTable(
 	return table
 }
 
+// GenerateFlakyTestsTable returns a table with only the flaky tests.
+func GenerateFlakyTestsTable(
+	testReport TestReport,
+	markdown bool,
+) [][]string {
+	return generateTestTable(testReport, markdown, func(result TestResult) bool {
+		return !result.Skipped && result.PassRatio < testReport.MaxPassRatio
+	})
+}
+
+// PrintTestTable prints a table with all test results.
+func PrintTestTable(
+	w io.Writer,
+	testReport TestReport,
+	markdown bool,
+	collapsible bool) {
+	table := generateTestTable(testReport, markdown, func(result TestResult) bool {
+		return true // Include all tests
+	})
+	printTable(w, table, collapsible)
+}
+
 // GenerateGitHubSummaryMarkdown generates a markdown summary of the test results for a GitHub workflow summary
-func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassRatio float64, artifactName, artifactLink string) {
+func GenerateGitHubSummaryMarkdown(w io.Writer, testReport TestReport, maxPassRatio float64, artifactName, artifactLink string) {
 	fmt.Fprint(w, "# Flakeguard Summary\n\n")
 
 	if len(testReport.Results) == 0 {
@@ -109,7 +131,7 @@ func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassR
 // GeneratePRCommentMarkdown generates a markdown summary of the test results for a GitHub PR comment.
 func GeneratePRCommentMarkdown(
 	w io.Writer,
-	testReport *TestReport,
+	testReport TestReport,
 	maxPassRatio float64,
 	baseBranch, currentBranch, currentCommitSHA, repoURL, actionRunID, artifactName, artifactLink string,
 ) {
@@ -156,7 +178,7 @@ func GeneratePRCommentMarkdown(
 	}
 }
 
-func buildSettingsTable(testReport *TestReport, maxPassRatio float64) [][]string {
+func buildSettingsTable(testReport TestReport, maxPassRatio float64) [][]string {
 	rows := [][]string{
 		{"**Setting**", "**Value**"},
 	}
@@ -190,7 +212,7 @@ func RenderError(
 // If in markdown mode, the table results can also be made collapsible.
 func RenderResults(
 	w io.Writer,
-	testReport *TestReport,
+	testReport TestReport,
 	markdown bool,
 	collapsible bool,
 ) {

@@ -39,7 +39,7 @@ var GenerateReportCmd = &cobra.Command{
 		s.Suffix = " Loading aggregated test report..."
 		s.Start()
 
-		aggregatedReport := &reports.TestReport{}
+		aggregatedReport := reports.TestReport{}
 		reportFile, err := os.Open(aggregatedResultsPath)
 		if err != nil {
 			s.Stop()
@@ -166,7 +166,7 @@ func init() {
 	}
 }
 
-func generateGitHubSummaryMarkdown(report *reports.TestReport, outputPath, artifactLink, artifactName string) error {
+func generateGitHubSummaryMarkdown(report reports.TestReport, outputPath, artifactLink, artifactName string) error {
 	fs := reports.OSFileSystem{}
 	mdFileName := outputPath + "-summary.md"
 	mdFile, err := fs.Create(mdFileName)
@@ -182,7 +182,7 @@ func generateGitHubSummaryMarkdown(report *reports.TestReport, outputPath, artif
 }
 
 func generatePRCommentMarkdown(
-	report *reports.TestReport,
+	report reports.TestReport,
 	outputPath,
 	baseBranch,
 	currentBranch,
