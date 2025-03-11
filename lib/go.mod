@@ -32,7 +32,7 @@ require (
 	github.com/prometheus/common v0.62.0
 	github.com/rs/zerolog v1.33.0
 	github.com/slack-go/slack v0.15.0
-	github.com/smartcontractkit/chainlink-testing-framework/parrot v0.4.1
+	github.com/smartcontractkit/chainlink-testing-framework/parrot v0.6.1
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.50.10
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
@@ -54,6 +54,7 @@ require (
 require (
 	github.com/go-chi/chi v1.5.5 // indirect
 	github.com/rs/xid v1.5.0 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )
 
 require (
