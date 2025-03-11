@@ -3,6 +3,11 @@ exclude: '(\.bin|\.abi)'
 repos:
   - repo: local
     hooks:
+      - id: goimports
+        name: Goimport all files
+        entry: ./.githooks/goimports
+        language: script
+        pass_filenames: false
       - id: go-lint
         name: Check Go Lint
         entry: ./.githooks/go-lint
