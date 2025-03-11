@@ -33,7 +33,8 @@ var RunTestsCmd = &cobra.Command{
 		timeout, _ := cmd.Flags().GetDuration("timeout")
 		tags, _ := cmd.Flags().GetStringArray("tags")
 		useRace, _ := cmd.Flags().GetBool("race")
-		outputPath, _ := cmd.Flags().GetString("output-json")
+		mainReportPath, _ := cmd.Flags().GetString("main-report-path")
+		rerunReportPath, _ := cmd.Flags().GetString("rerun-report-path")
 		minPassRatio, _ := cmd.Flags().GetFloat64("min-pass-ratio")
 		// For backward compatibility, check if max-pass-ratio was used
 		maxPassRatio, _ := cmd.Flags().GetFloat64("max-pass-ratio")
@@ -102,51 +103,47 @@ var RunTestsCmd = &cobra.Command{
 			FailFast:                       failFast,
 		}
 
-		// Run the tests
 		var (
-			firstReport *reports.TestReport
+			mainReport  *reports.TestReport // Main test report
+			rerunReport *reports.TestReport // Test report after rerunning failed tests
 		)
 
+		// Run the tests
 		var err error
 		if len(testCmdStrings) > 0 {
-			firstReport, err = testRunner.RunTestCmd(testCmdStrings)
+			mainReport, err = testRunner.RunTestCmd(testCmdStrings)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error running custom test command")
 				os.Exit(ErrorExitCode)
 			}
 		} else {
-			firstReport, err = testRunner.RunTestPackages(testPackages)
+			mainReport, err = testRunner.RunTestPackages(testPackages)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error running test packages")
 				os.Exit(ErrorExitCode)
 			}
 		}
 
-		// Save the test results in JSON format
-		if outputPath != "" && len(firstReport.Results) > 0 {
-			jsonData, err := json.MarshalIndent(firstReport, "", "  ")
-			if err != nil {
-				log.Error().Err(err).Msg("Error marshaling test results to JSON")
+		// Save the main test report to file
+		if mainReportPath != "" && len(mainReport.Results) > 0 {
+			if err := mainReport.SaveToFile(mainReportPath); err != nil {
+				log.Error().Err(err).Msg("Error saving test results to file")
 				os.Exit(ErrorExitCode)
 			}
-			if err := os.WriteFile(outputPath, jsonData, 0600); err != nil {
-				log.Error().Err(err).Msg("Error writing test results to file")
-				os.Exit(ErrorExitCode)
-			}
-			log.Info().Str("path", outputPath).Msg("Test results saved")
+			log.Info().Str("path", mainReportPath).Msg("Main test report saved")
 		}
 
-		if len(firstReport.Results) == 0 {
+		if len(mainReport.Results) == 0 {
 			log.Warn().Msg("No tests were run for the specified packages")
 			return
 		}
 
 		fmt.Printf("\nFlakeguard Initial Summary:\n")
-		reports.RenderResults(os.Stdout, firstReport, false, false)
+		reports.RenderResults(os.Stdout, mainReport, false, false)
 
 		// Rerun failed tests
 		if rerunFailed > 0 {
-			rerunReport, err := testRunner.RerunFailedTests(firstReport.Results)
+			rerunReport, err = testRunner.RerunFailedTests(mainReport.Results)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error rerunning failed tests")
 				os.Exit(ErrorExitCode)
@@ -159,6 +156,15 @@ var RunTestsCmd = &cobra.Command{
 			fmt.Printf("\nFlakeguard Rerun Summary:\n")
 			reports.RenderResults(os.Stdout, rerunReport, false, false)
 
+			// Save the rerun test report to file
+			if rerunReportPath != "" && len(mainReport.Results) > 0 {
+				if err := rerunReport.SaveToFile(rerunReportPath); err != nil {
+					log.Error().Err(err).Msg("Error saving test results to file")
+					os.Exit(ErrorExitCode)
+				}
+				log.Info().Str("path", rerunReportPath).Msg("Main test report saved")
+			}
+
 			if len(failedAfterRerun) > 0 {
 				log.Error().
 					Int("tests", len(failedAfterRerun)).
@@ -169,23 +175,21 @@ var RunTestsCmd = &cobra.Command{
 				log.Info().Msg("Failed tests passed at least once after reruns")
 				os.Exit(0)
 			}
-
-			// TODO: save rerun test report to JSON file
-		}
-
-		// Filter flaky tests using FilterTests
-		flakyTests := reports.FilterTests(firstReport.Results, func(tr reports.TestResult) bool {
-			return !tr.Skipped && tr.PassRatio < passRatioThreshold
-		})
-
-		if len(flakyTests) > 0 {
-			log.Info().
-				Int("count", len(flakyTests)).
-				Str("stability threshold", fmt.Sprintf("%.0f%%", passRatioThreshold*100)).
-				Msg("Found flaky tests")
-			os.Exit(FlakyTestsExitCode)
 		} else {
-			log.Info().Msg("All tests passed stability requirements")
+			// Filter flaky tests using FilterTests
+			flakyTests := reports.FilterTests(mainReport.Results, func(tr reports.TestResult) bool {
+				return !tr.Skipped && tr.PassRatio < passRatioThreshold
+			})
+
+			if len(flakyTests) > 0 {
+				log.Info().
+					Int("count", len(flakyTests)).
+					Str("stability threshold", fmt.Sprintf("%.0f%%", passRatioThreshold*100)).
+					Msg("Found flaky tests")
+				os.Exit(FlakyTestsExitCode)
+			} else {
+				log.Info().Msg("All tests passed stability requirements")
+			}
 		}
 	},
 }
@@ -205,7 +209,8 @@ func init() {
 	RunTestsCmd.Flags().Bool("shuffle", false, "Enable test shuffling")
 	RunTestsCmd.Flags().String("shuffle-seed", "", "Set seed for test shuffling. Must be used with --shuffle")
 	RunTestsCmd.Flags().Bool("fail-fast", false, "Stop on the first test failure")
-	RunTestsCmd.Flags().String("output-json", "", "Path to output the test results in JSON format")
+	RunTestsCmd.Flags().String("main-report-path", "", "Path to the main test report in JSON format")
+	RunTestsCmd.Flags().String("rerun-report-path", "", "Path to the rerun test report in JSON format")
 	RunTestsCmd.Flags().StringSlice("skip-tests", nil, "Comma-separated list of test names to skip from running")
 	RunTestsCmd.Flags().StringSlice("select-tests", nil, "Comma-separated list of test names to specifically run")
 

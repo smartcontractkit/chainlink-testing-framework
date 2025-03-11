@@ -1,7 +1,9 @@
 package reports
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -25,6 +27,21 @@ type TestReport struct {
 	FailedLogsURL        string       `json:"failed_logs_url,omitempty"`
 	// MaxPassRatio is the maximum flakiness ratio allowed for a test to be considered not flaky
 	MaxPassRatio float64 `json:"max_pass_ratio,omitempty"`
+}
+
+// SaveToFile saves the test report to a JSON file at the given path.
+// It returns an error if there's any issue with marshaling the report or writing to the file.
+func (testReport *TestReport) SaveToFile(outputPath string) error {
+	jsonData, err := json.MarshalIndent(testReport, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error marshaling test results to JSON: %w", err)
+	}
+
+	if err := os.WriteFile(outputPath, jsonData, 0600); err != nil {
+		return fmt.Errorf("error writing test results to file: %w", err)
+	}
+
+	return nil
 }
 
 // GenerateSummaryData generates a summary of a report's test results
