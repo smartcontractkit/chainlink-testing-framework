@@ -32,7 +32,7 @@ require (
 	github.com/prometheus/common v0.62.0
 	github.com/rs/zerolog v1.33.0
 	github.com/slack-go/slack v0.15.0
-	github.com/smartcontractkit/chainlink-testing-framework/parrot v0.6.1
+	github.com/smartcontractkit/chainlink-testing-framework/parrot v0.6.2
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.50.10
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
