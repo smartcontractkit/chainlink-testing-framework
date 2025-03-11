@@ -39,9 +39,11 @@ var (
 	SlowTestThreshold          = 5 * time.Minute
 	ExtremelySlowTestThreshold = 10 * time.Minute
 
-	DebugDirRoot    = "ctf-ci-debug"
-	DebugSubDirWF   = filepath.Join(DebugDirRoot, "workflows")
-	DebugSubDirJobs = filepath.Join(DebugDirRoot, "jobs")
+	DebugDirRoot       = "ctf-ci-debug"
+	DebugSubDirWF      = filepath.Join(DebugDirRoot, "workflows")
+	DebugSubDirJobs    = filepath.Join(DebugDirRoot, "jobs")
+	DefaultResultsDir  = "."
+	DefaultResultsFile = "ctf-ci"
 )
 
 type GitHubActionsClient interface {
@@ -50,38 +52,38 @@ type GitHubActionsClient interface {
 }
 
 type AnalysisConfig struct {
-	Debug               bool
-	Owner               string
-	Repo                string
-	WorkflowName        string
-	TimeDaysBeforeStart int
-	TimeStart           time.Time
-	TimeDaysBeforeEnd   int
-	TimeEnd             time.Time
-	Typ                 string
-	ResultsFile         string
+	Debug               bool      `json:"debug"`
+	Owner               string    `json:"owner"`
+	Repo                string    `json:"repo"`
+	WorkflowName        string    `json:"workflow_name"`
+	TimeDaysBeforeStart int       `json:"time_days_before_start"`
+	TimeStart           time.Time `json:"time_start"`
+	TimeDaysBeforeEnd   int       `json:"time_days_before_end"`
+	TimeEnd             time.Time `json:"time_end"`
+	Typ                 string    `json:"type"`
+	ResultsFile         string    `json:"results_file"`
 }
 
 type Stat struct {
-	Name          string
-	Successes     int
-	Failures      int
-	Cancels       int
-	ReRuns        int
-	P50           time.Duration
-	P95           time.Duration
-	P99           time.Duration
-	TotalDuration time.Duration
-	Durations     []time.Duration
+	Name          string          `json:"name"`
+	Successes     int             `json:"successes"`
+	Failures      int             `json:"failures"`
+	Cancels       int             `json:"cancels"`
+	ReRuns        int             `json:"reRuns"`
+	P50           time.Duration   `json:"p50"`
+	P95           time.Duration   `json:"p95"`
+	P99           time.Duration   `json:"p99"`
+	TotalDuration time.Duration   `json:"totalDuration"`
+	Durations     []time.Duration `json:"-"`
 }
 
 type Stats struct {
-	Mu            *sync.Mutex
-	Runs          int
-	CancelledRuns int
-	IgnoredRuns   int
-	Jobs          map[string]*Stat
-	Steps         map[string]*Stat
+	Mu            *sync.Mutex      `json:"-"`
+	Runs          int              `json:"runs"`
+	CancelledRuns int              `json:"cancelled_runs"`
+	IgnoredRuns   int              `json:"ignored_runs"`
+	Jobs          map[string]*Stat `json:"jobs"`
+	Steps         map[string]*Stat `json:"steps"`
 }
 
 func calculatePercentiles(stat *Stat) *Stat {
@@ -103,7 +105,7 @@ func refreshDebugDirs() {
 	}
 }
 
-func writeStruct(enabled bool, dir, name string, data interface{}) error {
+func dumpResults(enabled bool, dir, name string, data interface{}) error {
 	if enabled {
 		d, err := json.MarshalIndent(data, "", " ")
 		if err != nil {
@@ -145,7 +147,7 @@ func AnalyzeJobsSteps(ctx context.Context, client GitHubActionsClient, cfg *Anal
 			// analyze workflow
 			name := *wr.Name
 			framework.L.Debug().Str("Name", name).Msg("Analyzing workflow run")
-			_ = writeStruct(cfg.Debug, DebugSubDirWF, name, wr)
+			_ = dumpResults(cfg.Debug, DebugSubDirWF, name, wr)
 			eg.Go(func() error {
 				rlJobs.Take()
 				jobs, _, err := client.ListWorkflowJobs(ctx, cfg.Owner, cfg.Repo, *wr.ID, &github.ListWorkflowJobsOptions{
@@ -159,7 +161,7 @@ func AnalyzeJobsSteps(ctx context.Context, client GitHubActionsClient, cfg *Anal
 				defer stats.Mu.Unlock()
 				for _, j := range jobs.Jobs {
 					name := *j.Name
-					_ = writeStruct(cfg.Debug, DebugSubDirJobs, name, wr)
+					_ = dumpResults(cfg.Debug, DebugSubDirJobs, name, wr)
 					if skippedOrInProgressJob(j) {
 						stats.IgnoredRuns++
 						continue
@@ -282,6 +284,9 @@ func AnalyzeCIRuns(cfg *AnalysisConfig) (*Stats, error) {
 	stats, err := AnalyzeJobsSteps(ctx, client.Actions, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch workflow runs: %w", err)
+	}
+	if cfg.ResultsFile != "" {
+		_ = dumpResults(true, DefaultResultsDir, DefaultResultsFile, stats)
 	}
 	return stats, nil
 }
