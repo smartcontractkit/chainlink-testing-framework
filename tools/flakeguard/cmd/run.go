@@ -148,6 +148,29 @@ var RunTestsCmd = &cobra.Command{
 			return
 		}
 
+		// Rerun failed tests
+		if rerunFailed > 0 {
+			rerunReport, err := testRunner.RerunFailedTests(testReport.Results)
+			if err != nil {
+				log.Fatal().Err(err).Msg("Error rerunning failed tests")
+				os.Exit(ErrorExitCode)
+			}
+
+			// Filter tests that failed after reruns
+			failedAfterRerun := reports.FilterTests(rerunReport.Results, func(tr reports.TestResult) bool {
+				return !tr.Skipped && tr.Successes == 0
+			})
+			if len(failedAfterRerun) > 0 {
+				log.Error().
+					Int("tests", len(failedAfterRerun)).
+					Int("reruns", rerunFailed).
+					Msg("Tests still failing after reruns with 0 successes")
+				os.Exit(ErrorExitCode)
+			}
+
+			// TODO: save rerun test report to JSON file
+		}
+
 		// Filter flaky tests using FilterTests
 		flakyTests := reports.FilterTests(testReport.Results, func(tr reports.TestResult) bool {
 			return !tr.Skipped && tr.PassRatio < passRatioThreshold

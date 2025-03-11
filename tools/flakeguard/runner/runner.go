@@ -83,15 +83,15 @@ func (r *Runner) RunTestPackages(packages []string) (*reports.TestReport, error)
 	}
 
 	// Rerun failing tests (only the unique tests).
-	if r.RerunFailed > 0 {
-		rerunResults, err := r.rerunFailedTests(results)
-		if err != nil {
-			return nil, fmt.Errorf("failed to rerun failing tests: %w", err)
-		}
+	// if r.RerunFailed > 0 {
+	// 	rerunResults, err := r.rerunFailedTests(results)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("failed to rerun failing tests: %w", err)
+	// 	}
 
-		// Merge rerun results with initial results.
-		mergeTestResults(&results, rerunResults)
-	}
+	// 	// Merge rerun results with initial results.
+	// 	mergeTestResults(&results, rerunResults)
+	// }
 
 	report := &reports.TestReport{
 		GoProject:     r.prettyProjectPath,
@@ -735,7 +735,7 @@ func prettyProjectPath(projectPath string) (string, error) {
 	return "", fmt.Errorf("module path not found in go.mod")
 }
 
-func (r *Runner) rerunFailedTests(results []reports.TestResult) ([]reports.TestResult, error) {
+func (r *Runner) RerunFailedTests(results []reports.TestResult) (*reports.TestReport, error) {
 	// Group failing tests by package for more efficient reruns
 	failingTestsByPackage := make(map[string][]string)
 	for _, tr := range results {
@@ -797,7 +797,16 @@ func (r *Runner) rerunFailedTests(results []reports.TestResult) ([]reports.TestR
 		return nil, fmt.Errorf("failed to parse rerun results: %w", err)
 	}
 
-	return rerunResults, nil
+	report := &reports.TestReport{
+		GoProject:     r.prettyProjectPath,
+		RaceDetection: r.UseRace,
+		ExcludedTests: r.SkipTests,
+		SelectedTests: r.SelectTests,
+		Results:       rerunResults,
+		MaxPassRatio:  r.MaxPassRatio,
+	}
+
+	return report, nil
 }
 
 // buildGoTestCommandForTest builds a `go test` command specifically
@@ -818,83 +827,4 @@ func (r *Runner) buildGoTestCommandForTest(t reports.TestResult) []string {
 	// Add any additional flags or args required by your setup here
 
 	return cmd
-}
-
-// mergeTestResults merges additional test results into the existing results slice.
-func mergeTestResults(mainResults *[]reports.TestResult, additional []reports.TestResult) {
-	for _, add := range additional {
-		found := false
-		for i, main := range *mainResults {
-			if main.TestName == add.TestName && main.TestPackage == add.TestPackage {
-				// Merge top-level stats
-				(*mainResults)[i].Runs += add.Runs
-				(*mainResults)[i].Successes += add.Successes
-				(*mainResults)[i].Failures += add.Failures
-				(*mainResults)[i].Skips += add.Skips
-
-				// Merge boolean flags (using OR operation)
-				(*mainResults)[i].Panic = (*mainResults)[i].Panic || add.Panic
-				(*mainResults)[i].Race = (*mainResults)[i].Race || add.Race
-				(*mainResults)[i].Timeout = (*mainResults)[i].Timeout || add.Timeout
-				(*mainResults)[i].Skipped = (*mainResults)[i].Skipped || add.Skipped
-				(*mainResults)[i].PackagePanic = (*mainResults)[i].PackagePanic || add.PackagePanic
-
-				// Merge durations
-				(*mainResults)[i].Durations = append((*mainResults)[i].Durations, add.Durations...)
-
-				// Merge maps for Outputs
-				if (*mainResults)[i].Outputs == nil {
-					(*mainResults)[i].Outputs = make(map[string][]string)
-				}
-				for runID, outputs := range add.Outputs {
-					if existing, ok := (*mainResults)[i].Outputs[runID]; ok {
-						(*mainResults)[i].Outputs[runID] = append(existing, outputs...)
-					} else {
-						(*mainResults)[i].Outputs[runID] = outputs
-					}
-				}
-
-				// Merge maps for PassedOutputs
-				if (*mainResults)[i].PassedOutputs == nil {
-					(*mainResults)[i].PassedOutputs = make(map[string][]string)
-				}
-				for runID, outputs := range add.PassedOutputs {
-					if existing, ok := (*mainResults)[i].PassedOutputs[runID]; ok {
-						(*mainResults)[i].PassedOutputs[runID] = append(existing, outputs...)
-					} else {
-						(*mainResults)[i].PassedOutputs[runID] = outputs
-					}
-				}
-
-				// Merge maps for FailedOutputs
-				if (*mainResults)[i].FailedOutputs == nil {
-					(*mainResults)[i].FailedOutputs = make(map[string][]string)
-				}
-				for runID, outputs := range add.FailedOutputs {
-					if existing, ok := (*mainResults)[i].FailedOutputs[runID]; ok {
-						(*mainResults)[i].FailedOutputs[runID] = append(existing, outputs...)
-					} else {
-						(*mainResults)[i].FailedOutputs[runID] = outputs
-					}
-				}
-
-				// Merge PackageOutputs
-				(*mainResults)[i].PackageOutputs = append((*mainResults)[i].PackageOutputs, add.PackageOutputs...)
-
-				// Update pass ratio (consistent with parseTestResults default)
-				if (*mainResults)[i].Runs > 0 {
-					(*mainResults)[i].PassRatio = float64((*mainResults)[i].Successes) / float64((*mainResults)[i].Runs)
-				} else {
-					(*mainResults)[i].PassRatio = 1.0 // Default to 1.0 if no runs
-				}
-
-				found = true
-				break
-			}
-		}
-		// If we didn't find a match, append this as a new test result
-		if !found {
-			*mainResults = append(*mainResults, add)
-		}
-	}
 }
