@@ -263,6 +263,7 @@ func main() {
 						TimeDaysBeforeStart: c.Int("start"),
 						TimeDaysBeforeEnd:   c.Int("end"),
 						Typ:                 typ,
+						ResultsFile:         "ctf-ci.json",
 					})
 					return err
 				},
