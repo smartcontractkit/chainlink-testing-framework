@@ -37,6 +37,7 @@ type Runner struct {
 	UseShuffle                     bool          // Enable test shuffling. -shuffle=on flag.
 	ShuffleSeed                    string        // Set seed for test shuffling -shuffle={seed} flag. Must be used with UseShuffle.
 	FailFast                       bool          // Stop on first test failure.
+	RerunFailed                    int           // Number of additional runs for tests that initially fail.
 	SkipTests                      []string      // Test names to exclude.
 	SelectTests                    []string      // Test names to include.
 	CollectRawOutput               bool          // Set to true to collect test output for later inspection.
@@ -48,11 +49,13 @@ type Runner struct {
 
 // RunTestPackages executes the tests for each provided package and aggregates all results.
 // It returns all test results and any error encountered during testing.
+// RunTestPackages executes the tests for each provided package and aggregates all results.
 func (r *Runner) RunTestPackages(packages []string) (*reports.TestReport, error) {
 	var jsonFilePaths []string
+	// Initial runs.
 	for _, p := range packages {
 		for i := 0; i < r.RunCount; i++ {
-			if r.CollectRawOutput { // Collect raw output for debugging
+			if r.CollectRawOutput { // Collect raw output for debugging.
 				if r.rawOutputs == nil {
 					r.rawOutputs = make(map[string]*bytes.Buffer)
 				}
@@ -73,10 +76,23 @@ func (r *Runner) RunTestPackages(packages []string) (*reports.TestReport, error)
 		}
 	}
 
+	// Parse initial results.
 	results, err := r.parseTestResults(jsonFilePaths)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
+
+	// Rerun failing tests (only the unique tests).
+	if r.RerunFailed > 0 {
+		rerunResults, err := r.rerunFailedTests(results)
+		if err != nil {
+			return nil, fmt.Errorf("failed to rerun failing tests: %w", err)
+		}
+
+		// Merge rerun results with initial results.
+		mergeTestResults(&results, rerunResults)
+	}
+
 	report := &reports.TestReport{
 		GoProject:     r.prettyProjectPath,
 		RaceDetection: r.UseRace,
@@ -717,4 +733,112 @@ func prettyProjectPath(projectPath string) (string, error) {
 	}
 
 	return "", fmt.Errorf("module path not found in go.mod")
+}
+
+func (r *Runner) rerunFailedTests(results []reports.TestResult) ([]reports.TestResult, error) {
+	var failingTests []reports.TestResult
+	for _, tr := range results {
+		if !tr.Skipped && tr.PassRatio < 1 {
+			failingTests = append(failingTests, tr)
+		}
+	}
+
+	if r.Verbose {
+		log.Info().Msgf("Rerunning failing tests: %v", failingTests)
+	}
+
+	var rerunResults []reports.TestResult
+
+	// Rerun each failing test up to RerunFailed times
+	for i := 0; i < r.RerunFailed; i++ {
+		for _, fTest := range failingTests {
+			testCmd := r.buildGoTestCommandForTest(fTest)
+
+			if r.Verbose {
+				log.Info().Msgf("Rerun iteration %d for %s: %v", i+1, fTest.TestName, testCmd)
+			}
+
+			jsonFilePath, _, err := r.runCmd(testCmd, i)
+			if err != nil {
+				return nil, fmt.Errorf("error on rerunCmd for test %s: %w", fTest.TestName, err)
+			}
+
+			additionalResults, err := r.parseTestResults([]string{jsonFilePath})
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse rerun results: %w", err)
+			}
+
+			// Collect these rerun results in a slice; we'll merge them later.
+			rerunResults = append(rerunResults, additionalResults...)
+		}
+	}
+
+	return rerunResults, nil
+}
+
+// buildGoTestCommandForTest builds a `go test` command specifically
+// for one failing test, using TestPackage and TestName in the -run argument.
+func (r *Runner) buildGoTestCommandForTest(t reports.TestResult) []string {
+	cmd := []string{
+		"go", "test",
+		t.TestPackage,
+		"-run", fmt.Sprintf("^%s$", t.TestName), // Run exactly this test
+		"-json", // Example flag, adjust as needed
+	}
+
+	// Add verbosity if requested
+	if r.Verbose {
+		cmd = append(cmd, "-v")
+	}
+
+	// Add any additional flags or args required by your setup here
+
+	return cmd
+}
+
+// appendUnique appends s to slice if not already present.
+func appendUnique(slice []string, s string) []string {
+	for _, v := range slice {
+		if v == s {
+			return slice
+		}
+	}
+	return append(slice, s)
+}
+
+// mergeTestResults merges additional test results into the existing results slice.
+func mergeTestResults(mainResults *[]reports.TestResult, additional []reports.TestResult) {
+	for _, add := range additional {
+		found := false
+		for i, main := range *mainResults {
+			if main.TestName == add.TestName && main.TestPackage == add.TestPackage {
+				// Merge top-level stats
+				(*mainResults)[i].Runs += add.Runs
+				(*mainResults)[i].Successes += add.Successes
+				(*mainResults)[i].Failures += add.Failures
+				(*mainResults)[i].Skips += add.Skips
+
+				// Merge durations
+				(*mainResults)[i].Durations = append((*mainResults)[i].Durations, add.Durations...)
+
+				// Because PassedOutputs and FailedOutputs are now []string:
+				(*mainResults)[i].PassedOutputs = append((*mainResults)[i].PassedOutputs, add.PassedOutputs...)
+				(*mainResults)[i].FailedOutputs = append((*mainResults)[i].FailedOutputs, add.FailedOutputs...)
+
+				// Update pass ratio
+				if (*mainResults)[i].Runs > 0 {
+					(*mainResults)[i].PassRatio = float64((*mainResults)[i].Successes) / float64((*mainResults)[i].Runs)
+				} else {
+					(*mainResults)[i].PassRatio = -1.0
+				}
+
+				found = true
+				break
+			}
+		}
+		// If we didn't find a match, append this as a new test result
+		if !found {
+			*mainResults = append(*mainResults, add)
+		}
+	}
 }
