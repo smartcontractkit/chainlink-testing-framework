@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	NoNetworkErr              = "you need to set the Network"
 	NoPkForRpcHealthCheckErr  = "you need to provide at least one private key to check the RPC health"
 	NoPkForNonceProtection    = "you need to provide at least one private key to enable nonce protection"
 	NoPkForEphemeralKeys      = "you need to provide at least one private key to generate and fund ephemeral addresses"
@@ -94,14 +95,6 @@ func (c *ClientBuilder) UseNetworkWithName(name string) *ClientBuilder {
 		}
 	}
 
-	// if the network is not found, we will try to use the default network
-	for _, network := range c.config.Networks {
-		if network.Name == DefaultNetworkName {
-			c.config.Network = network
-			return c
-		}
-	}
-
 	c.errors = append(c.errors, fmt.Errorf("network with name '%s' not found", name))
 	return c
 }
@@ -111,14 +104,6 @@ func (c *ClientBuilder) UseNetworkWithName(name string) *ClientBuilder {
 func (c *ClientBuilder) UseNetworkWithChainId(chainId uint64) *ClientBuilder {
 	for _, network := range c.config.Networks {
 		if network.ChainID == chainId {
-			c.config.Network = network
-			return c
-		}
-	}
-
-	// if the network is not found, we will try to use the default network
-	for _, network := range c.config.Networks {
-		if network.Name == DefaultNetworkName {
 			c.config.Network = network
 			return c
 		}
@@ -141,6 +126,14 @@ func (c *ClientBuilder) WithPrivateKeys(pks []string) *ClientBuilder {
 	} else if net := c.config.findNetworkByName(c.config.Network.Name); net != nil {
 		net.PrivateKeys = pks
 	}
+	return c
+}
+
+// WithNetworks sets the networks for the config. At least one is required to build a valid config.
+// It overrides the default network.
+// In order to use one of providers networks, you need to call `UseNetworkWithName(network-name)` or `UseNetworkWithChainId(networks-chain-id)` after calling this method.
+func (c *ClientBuilder) WithNetworks(networks []*Network) *ClientBuilder {
+	c.config.Networks = networks
 	return c
 }
 
@@ -425,22 +418,25 @@ func (c *ClientBuilder) handleReadOnlyMode() {
 }
 
 func (c *ClientBuilder) validateConfig() {
-	if c.config.Network != nil {
-		if len(c.config.Network.PrivateKeys) == 0 && c.config.CheckRpcHealthOnStart {
-			c.errors = append(c.errors, errors.New(NoPkForRpcHealthCheckErr))
-		}
-		if len(c.config.Network.PrivateKeys) == 0 && c.config.PendingNonceProtectionEnabled {
-			c.errors = append(c.errors, errors.New(NoPkForNonceProtection))
-		}
-		if len(c.config.Network.PrivateKeys) == 0 && c.config.EphemeralAddrs != nil && *c.config.EphemeralAddrs > 0 {
-			c.errors = append(c.errors, errors.New(NoPkForEphemeralKeys))
-		}
-		if len(c.config.Network.PrivateKeys) == 0 && c.config.Network.GasPriceEstimationEnabled {
-			c.errors = append(c.errors, errors.New(NoPkForGasPriceEstimation))
-		}
-		if len(c.config.Network.URLs) > 0 && c.config.ethclient != nil {
-			c.errors = append(c.errors, errors.New(EthClientAndUrlsSet))
-		}
+	if c.config.Network == nil {
+		c.errors = append(c.errors, errors.New(NoNetworkErr))
+		return
+	}
+
+	if len(c.config.Network.PrivateKeys) == 0 && c.config.CheckRpcHealthOnStart {
+		c.errors = append(c.errors, errors.New(NoPkForRpcHealthCheckErr))
+	}
+	if len(c.config.Network.PrivateKeys) == 0 && c.config.PendingNonceProtectionEnabled {
+		c.errors = append(c.errors, errors.New(NoPkForNonceProtection))
+	}
+	if len(c.config.Network.PrivateKeys) == 0 && c.config.EphemeralAddrs != nil && *c.config.EphemeralAddrs > 0 {
+		c.errors = append(c.errors, errors.New(NoPkForEphemeralKeys))
+	}
+	if len(c.config.Network.PrivateKeys) == 0 && c.config.Network.GasPriceEstimationEnabled {
+		c.errors = append(c.errors, errors.New(NoPkForGasPriceEstimation))
+	}
+	if len(c.config.Network.URLs) > 0 && c.config.ethclient != nil {
+		c.errors = append(c.errors, errors.New(EthClientAndUrlsSet))
 	}
 }
 

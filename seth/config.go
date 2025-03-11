@@ -204,6 +204,10 @@ func ReadConfig() (*Config, error) {
 // gas limit, tracing level, trace outputs, network dial timeout, and pending nonce protection timeout.
 // If any configuration is invalid, it returns an error.
 func (c *Config) Validate() error {
+	if c.Network == nil {
+		return errors.New(ErrNetworkIsNil)
+	}
+
 	if c.Network.GasPriceEstimationEnabled {
 		if c.Network.GasPriceEstimationBlocks == 0 {
 			L.Debug().Msg("Gas estimation is enabled, but block headers to use is set to 0. Will not use block congestion for gas estimation")

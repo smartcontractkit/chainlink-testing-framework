@@ -148,8 +148,8 @@ func (m *Client) DecodeTx(tx *types.Transaction) (*DecodedTransaction, error) {
 
 	l := L.With().Str("Transaction", tx.Hash().Hex()).Logger()
 
-	if m.Cfg.Hooks != nil && m.Cfg.Hooks.Decode.Pre != nil {
-		if err := m.Cfg.Hooks.Decode.Pre(m); err != nil {
+	if m.Cfg.Hooks != nil && m.Cfg.Hooks.TxDecoding.Pre != nil {
+		if err := m.Cfg.Hooks.TxDecoding.Pre(m); err != nil {
 			return nil, err
 		}
 	} else {
@@ -171,8 +171,8 @@ func (m *Client) DecodeTx(tx *types.Transaction) (*DecodedTransaction, error) {
 
 	decoded, decodeErr := m.decodeTransaction(l, tx, receipt)
 
-	if m.Cfg.Hooks != nil && m.Cfg.Hooks.Decode.Post != nil {
-		if err := m.Cfg.Hooks.Decode.Post(m, decoded, decodeErr); err != nil {
+	if m.Cfg.Hooks != nil && m.Cfg.Hooks.TxDecoding.Post != nil {
+		if err := m.Cfg.Hooks.TxDecoding.Post(m, decoded, decodeErr); err != nil {
 			return nil, err
 		}
 	} else {

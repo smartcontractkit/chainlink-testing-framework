@@ -39,6 +39,9 @@ const (
 	// unused by Seth, but used by upstream
 	ErrNoKeyLoaded = "failed to load private key"
 
+	ErrSethConfigIsNil         = "seth config is nil"
+	ErrNetworkIsNil            = "no Network is set in the Seth config"
+	ErrNonceManagerConfigIsNil = "nonce manager config is nil"
 	ErrReadOnlyWithPrivateKeys = "read-only mode is enabled, but you tried to load private keys"
 	ErrReadOnlyEphemeralKeys   = "ephemeral mode is not supported in read-only mode"
 	ErrReadOnlyGasBumping      = "gas bumping is not supported in read-only mode"
@@ -86,9 +89,8 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 	initDefaultLogging()
 
 	if cfg == nil {
-		return nil, errors.New("seth config cannot be nil")
+		return nil, errors.New(ErrSethConfigIsNil)
 	}
-
 	if cfgErr := cfg.Validate(); cfgErr != nil {
 		return nil, cfgErr
 	}
@@ -179,6 +181,12 @@ func NewClientRaw(
 	pkeys []*ecdsa.PrivateKey,
 	opts ...ClientOpt,
 ) (*Client, error) {
+	if cfg == nil {
+		return nil, errors.New(ErrSethConfigIsNil)
+	}
+	if cfgErr := cfg.Validate(); cfgErr != nil {
+		return nil, cfgErr
+	}
 	if cfg.ReadOnly && (len(addrs) > 0 || len(pkeys) > 0) {
 		return nil, errors.New(ErrReadOnlyWithPrivateKeys)
 	}
