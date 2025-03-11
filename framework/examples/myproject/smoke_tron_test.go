@@ -1,10 +1,12 @@
 package examples
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 type CfgTron struct {

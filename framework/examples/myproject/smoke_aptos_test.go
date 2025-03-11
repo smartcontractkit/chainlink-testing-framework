@@ -4,9 +4,10 @@ import (
 	"testing"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/stretchr/testify/require"
 )
 
 type CfgAptos struct {

@@ -18,8 +18,9 @@ import (
 	"github.com/fatih/color"
 	"github.com/google/go-github/v50/github"
 	"github.com/google/uuid"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"golang.org/x/oauth2"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 const (

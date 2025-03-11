@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 
 	"go.uber.org/ratelimit"

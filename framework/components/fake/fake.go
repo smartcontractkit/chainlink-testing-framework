@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 

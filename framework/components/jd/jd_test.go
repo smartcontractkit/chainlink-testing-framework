@@ -5,9 +5,10 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/jd"
-	"github.com/stretchr/testify/require"
 )
 
 // here we only test that we can boot up JD

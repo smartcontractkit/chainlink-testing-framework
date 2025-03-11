@@ -10,8 +10,9 @@ import (
 	"strings"
 
 	"github.com/pelletier/go-toml"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/urfave/cli/v2"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 //go:embed observability/*

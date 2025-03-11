@@ -1,13 +1,15 @@
 package examples
 
 import (
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/examples/example_components/onchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/seth"
-	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 type VerifyCfg struct {

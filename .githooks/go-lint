@@ -1,2 +1,2 @@
 #!/bin/bash
-devbox run lint
+devbox run lint-all

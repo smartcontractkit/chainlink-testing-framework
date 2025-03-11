@@ -11,8 +11,9 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
-	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 )
 
 // StandardReport is a report that contains all the necessary data for a performance test

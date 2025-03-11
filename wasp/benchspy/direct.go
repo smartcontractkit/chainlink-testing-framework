@@ -9,6 +9,7 @@ import (
 
 	"github.com/montanaflynn/stats"
 	"github.com/pkg/errors"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 )
 

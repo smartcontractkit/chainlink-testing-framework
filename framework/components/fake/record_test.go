@@ -6,8 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-resty/resty/v2"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
 )
 
 func TestSmokeComponentFake(t *testing.T) {

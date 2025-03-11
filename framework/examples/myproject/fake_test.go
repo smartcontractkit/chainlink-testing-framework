@@ -2,14 +2,16 @@ package examples
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/go-resty/resty/v2"
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 	components "github.com/smartcontractkit/chainlink-testing-framework/framework/examples/example_components"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 type CfgFake struct {

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
+
 	f "github.com/smartcontractkit/chainlink-testing-framework/framework"
 
 	"github.com/testcontainers/testcontainers-go"

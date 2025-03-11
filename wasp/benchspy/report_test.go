@@ -8,9 +8,10 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
-	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 )
 
 var lokiConfig = &wasp.LokiConfig{

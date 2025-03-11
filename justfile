@@ -48,6 +48,22 @@ test-all:
     @just test wasp TestSmoke
     @just test wasp TestBenchSpy
 
+goimports-all:
+    @just _default_goimports k8s-test-runner
+    @just _default_goimports parrot
+    @just _default_goimports tools/workflowresultparser
+    @just _default_goimports tools/asciitable
+    @just _default_goimports tools/ghlatestreleasechecker
+    @just _default_goimports tools/ecrimagefetcher
+    @just _default_goimports tools/testlistgenerator
+    @just _default_goimports tools/gotestloghelper
+    @just _default_goimports tools/citool
+    @just _default_goimports framework
+    @just _default_goimports wasp
+
+_default_goimports dir:
+    goimports -local github.com/smartcontractkit/chainlink-testing-framework -w {{dir}}
+
 # Default test command (cacheable), set GO_TEST_ARGS="-count 1" to disable cache
 _default_cached_test dir test_regex:
     cd {{dir}} && go test {{go_test_args}} -v -race `go list ./... | grep -v examples` -run {{test_regex}}

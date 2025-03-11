@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 
 	"github.com/testcontainers/testcontainers-go"
