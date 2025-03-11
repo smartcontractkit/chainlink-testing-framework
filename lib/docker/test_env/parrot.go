@@ -22,7 +22,7 @@ import (
 
 const (
 	defaultParrotImage   = "kalverra/parrot"
-	defaultParrotVersion = "v0.5.0"
+	defaultParrotVersion = "v0.6.1"
 	defaultParrotPort    = "80"
 )
 
