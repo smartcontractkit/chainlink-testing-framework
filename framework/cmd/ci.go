@@ -15,10 +15,11 @@ import (
 	"github.com/fatih/color"
 	"github.com/google/go-github/v50/github"
 	"github.com/google/uuid"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"go.uber.org/ratelimit"
 	"golang.org/x/oauth2"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 const (
@@ -135,6 +136,7 @@ func AnalyzeJobsSteps(ctx context.Context, client GitHubActionsClient, cfg *Anal
 
 		eg := &errgroup.Group{}
 		for _, wr := range runs.WorkflowRuns {
+			framework.L.Debug().Str("Name", *wr.Name).Msg("Analyzing workflow run")
 			if !strings.Contains(*wr.Name, cfg.WorkflowName) {
 				stats.IgnoredRuns++
 				continue
@@ -153,9 +155,9 @@ func AnalyzeJobsSteps(ctx context.Context, client GitHubActionsClient, cfg *Anal
 					return err
 				}
 				// analyze jobs
+				stats.Mu.Lock()
+				defer stats.Mu.Unlock()
 				for _, j := range jobs.Jobs {
-					stats.Mu.Lock()
-					defer stats.Mu.Unlock()
 					name := *j.Name
 					_ = writeStruct(cfg.Debug, DebugSubDirJobs, name, wr)
 					if skippedOrInProgressJob(j) {
