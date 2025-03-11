@@ -144,7 +144,16 @@ var RunTestsCmd = &cobra.Command{
 
 		// Rerun failed tests
 		if rerunFailedCount > 0 {
-			rerunReport, err = testRunner.RerunFailedTests(mainReport.Results)
+			failedTests := reports.FilterTests(mainReport.Results, func(tr reports.TestResult) bool {
+				return !tr.Skipped && tr.PassRatio < 1.0
+			})
+
+			if len(failedTests) == 0 {
+				log.Info().Msg("No tests to rerun. All tests passed")
+				os.Exit(0)
+			}
+
+			rerunReport, err = testRunner.RerunFailedTests(failedTests)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error rerunning failed tests")
 				os.Exit(ErrorExitCode)
@@ -227,7 +236,7 @@ func init() {
 	RunTestsCmd.Flags().Bool("ignore-parent-failures-on-subtests", false, "Ignore failures in parent tests when only subtests fail")
 
 	// Add rerun failed tests flag
-	RunTestsCmd.Flags().Int("rerun-failed-count", 0, "Number of times to rerun failed tests (0 disables reruns)")
+	RunTestsCmd.Flags().Int("rerun-failed-count", 0, "Number of times to rerun tests that did not get 100 percent pass ratio (0 disables reruns)")
 }
 
 func checkDependencies(projectPath string) error {

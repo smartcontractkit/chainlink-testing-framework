@@ -720,17 +720,11 @@ func prettyProjectPath(projectPath string) (string, error) {
 	return "", fmt.Errorf("module path not found in go.mod")
 }
 
-func (r *Runner) RerunFailedTests(results []reports.TestResult) (*reports.TestReport, error) {
-	// Group failing tests by package for more efficient reruns
+func (r *Runner) RerunFailedTests(failedTests []reports.TestResult) (*reports.TestReport, error) {
+	// Group the provided failed tests by package for more efficient reruns
 	failingTestsByPackage := make(map[string][]string)
-	for _, tr := range results {
-		if !tr.Skipped {
-			// if !tr.Skipped && tr.PassRatio < 1 { //TODO uncomment
-			if _, exists := failingTestsByPackage[tr.TestPackage]; !exists {
-				failingTestsByPackage[tr.TestPackage] = []string{}
-			}
-			failingTestsByPackage[tr.TestPackage] = append(failingTestsByPackage[tr.TestPackage], tr.TestName)
-		}
+	for _, tr := range failedTests {
+		failingTestsByPackage[tr.TestPackage] = append(failingTestsByPackage[tr.TestPackage], tr.TestName)
 	}
 
 	if r.Verbose {
@@ -739,7 +733,7 @@ func (r *Runner) RerunFailedTests(results []reports.TestResult) (*reports.TestRe
 
 	var rerunJsonFilePaths []string
 
-	// Rerun each failing test package up to RerunFailed times
+	// Rerun each failing test package up to RerunCount times
 	for i := range r.RerunCount {
 		for pkg, tests := range failingTestsByPackage {
 			// Build regex pattern to match all failing tests in this package
@@ -773,7 +767,6 @@ func (r *Runner) RerunFailedTests(results []reports.TestResult) (*reports.TestRe
 			if err != nil {
 				return nil, fmt.Errorf("error on rerunCmd for package %s: %w", pkg, err)
 			}
-
 			rerunJsonFilePaths = append(rerunJsonFilePaths, jsonFilePath)
 		}
 	}
