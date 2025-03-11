@@ -545,7 +545,7 @@ func TestRerunFailed(t *testing.T) {
 		ProjectPath:      "./",
 		Verbose:          true,
 		RunCount:         2,                    // Run tests twice initially
-		RerunFailed:      3,                    // Rerun failing tests 3 more times
+		RerunCount:       3,                    // Rerun failing tests 3 more times
 		SelectTests:      []string{"TestFail"}, // This test is known to always fail
 		CollectRawOutput: true,
 	}

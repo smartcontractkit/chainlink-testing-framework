@@ -30,6 +30,7 @@ var RunTestsCmd = &cobra.Command{
 		testPackagesArg, _ := cmd.Flags().GetStringSlice("test-packages")
 		testCmdStrings, _ := cmd.Flags().GetStringArray("test-cmd")
 		runCount, _ := cmd.Flags().GetInt("run-count")
+		rerunFailedCount, _ := cmd.Flags().GetInt("rerun-failed-count")
 		timeout, _ := cmd.Flags().GetDuration("timeout")
 		tags, _ := cmd.Flags().GetStringArray("tags")
 		useRace, _ := cmd.Flags().GetBool("race")
@@ -45,7 +46,6 @@ var RunTestsCmd = &cobra.Command{
 		shuffleSeed, _ := cmd.Flags().GetString("shuffle-seed")
 		omitOutputsOnSuccess, _ := cmd.Flags().GetBool("omit-test-outputs-on-success")
 		ignoreParentFailuresOnSubtests, _ := cmd.Flags().GetBool("ignore-parent-failures-on-subtests")
-		rerunFailed, _ := cmd.Flags().GetInt("rerun-failed")
 		failFast, _ := cmd.Flags().GetBool("fail-fast")
 
 		// Handle the compatibility between min/max pass ratio
@@ -99,7 +99,7 @@ var RunTestsCmd = &cobra.Command{
 			OmitOutputsOnSuccess:           omitOutputsOnSuccess,
 			MaxPassRatio:                   passRatioThreshold, // Use the calculated threshold
 			IgnoreParentFailuresOnSubtests: ignoreParentFailuresOnSubtests,
-			RerunFailed:                    rerunFailed,
+			RerunCount:                     rerunFailedCount,
 			FailFast:                       failFast,
 		}
 
@@ -143,7 +143,7 @@ var RunTestsCmd = &cobra.Command{
 		fmt.Println()
 
 		// Rerun failed tests
-		if rerunFailed > 0 {
+		if rerunFailedCount > 0 {
 			rerunReport, err = testRunner.RerunFailedTests(mainReport.Results)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error rerunning failed tests")
@@ -170,7 +170,7 @@ var RunTestsCmd = &cobra.Command{
 			if len(failedAfterRerun) > 0 {
 				log.Error().
 					Int("tests", len(failedAfterRerun)).
-					Int("reruns", rerunFailed).
+					Int("reruns", rerunFailedCount).
 					Msg("Tests still failing after reruns with 0 successes")
 				os.Exit(ErrorExitCode)
 			} else {
@@ -227,7 +227,7 @@ func init() {
 	RunTestsCmd.Flags().Bool("ignore-parent-failures-on-subtests", false, "Ignore failures in parent tests when only subtests fail")
 
 	// Add rerun failed tests flag
-	RunTestsCmd.Flags().Int("rerun-failed", 0, "Number of times to rerun failed tests (0 disables reruns)")
+	RunTestsCmd.Flags().Int("rerun-failed-count", 0, "Number of times to rerun failed tests (0 disables reruns)")
 }
 
 func checkDependencies(projectPath string) error {

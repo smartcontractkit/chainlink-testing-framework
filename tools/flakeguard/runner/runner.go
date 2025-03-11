@@ -31,13 +31,13 @@ type Runner struct {
 	prettyProjectPath              string        // Go project package path, formatted for pretty printing.
 	Verbose                        bool          // If true, provides detailed logging.
 	RunCount                       int           // Number of times to run the tests.
+	RerunCount                     int           // Number of additional runs for tests that initially fail.
 	UseRace                        bool          // Enable race detector.
 	Timeout                        time.Duration // Test timeout
 	Tags                           []string      // Build tags.
 	UseShuffle                     bool          // Enable test shuffling. -shuffle=on flag.
 	ShuffleSeed                    string        // Set seed for test shuffling -shuffle={seed} flag. Must be used with UseShuffle.
 	FailFast                       bool          // Stop on first test failure.
-	RerunFailed                    int           // Number of additional runs for tests that initially fail.
 	SkipTests                      []string      // Test names to exclude.
 	SelectTests                    []string      // Test names to include.
 	CollectRawOutput               bool          // Set to true to collect test output for later inspection.
@@ -77,21 +77,10 @@ func (r *Runner) RunTestPackages(packages []string) (*reports.TestReport, error)
 	}
 
 	// Parse initial results.
-	results, err := r.parseTestResults(jsonFilePaths, "run")
+	results, err := r.parseTestResults(jsonFilePaths, "run", r.RunCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
-
-	// Rerun failing tests (only the unique tests).
-	// if r.RerunFailed > 0 {
-	// 	rerunResults, err := r.rerunFailedTests(results)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("failed to rerun failing tests: %w", err)
-	// 	}
-
-	// 	// Merge rerun results with initial results.
-	// 	mergeTestResults(&results, rerunResults)
-	// }
 
 	report := &reports.TestReport{
 		GoProject:     r.prettyProjectPath,
@@ -124,7 +113,7 @@ func (r *Runner) RunTestCmd(testCmd []string) (*reports.TestReport, error) {
 		}
 	}
 
-	results, err := r.parseTestResults(jsonFilePaths, "run")
+	results, err := r.parseTestResults(jsonFilePaths, "run", r.RunCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
@@ -229,10 +218,6 @@ func (r *Runner) runCmd(testCmd []string, runIndex int) (tempFilePath string, pa
 	}
 	defer tmpFile.Close()
 
-	if r.Verbose {
-		log.Info().Msgf("Running custom test command (%d/%d): %s", runIndex+1, r.RunCount, strings.Join(testCmd, " "))
-	}
-
 	cmd := exec.Command(testCmd[0], testCmd[1:]...)
 	cmd.Dir = r.ProjectPath
 
@@ -300,7 +285,7 @@ func (e entry) String() string {
 // panics and failures at that point.
 // Subtests add more complexity, as panics in subtests are only reported in their parent's output,
 // and cannot be accurately attributed to the subtest that caused them.
-func (r *Runner) parseTestResults(filePaths []string, runPrefix string) ([]reports.TestResult, error) {
+func (r *Runner) parseTestResults(filePaths []string, runPrefix string, runCount int) ([]reports.TestResult, error) {
 	// If the option is enabled, transform each JSON output file before parsing.
 	if r.IgnoreParentFailuresOnSubtests {
 		transformedPaths, err := r.transformTestOutputFiles(filePaths)
@@ -319,7 +304,7 @@ func (r *Runner) parseTestResults(filePaths []string, runPrefix string) ([]repor
 		panicDetectionMode  = false
 		raceDetectionMode   = false
 		detectedEntries     = []entry{} // race or panic entries
-		expectedRuns        = r.RunCount
+		expectedRuns        = runCount
 	)
 
 	runNumber := 0
@@ -755,7 +740,7 @@ func (r *Runner) RerunFailedTests(results []reports.TestResult) (*reports.TestRe
 	var rerunJsonFilePaths []string
 
 	// Rerun each failing test package up to RerunFailed times
-	for i := range r.RerunFailed {
+	for i := range r.RerunCount {
 		for pkg, tests := range failingTestsByPackage {
 			// Build regex pattern to match all failing tests in this package
 			testPattern := fmt.Sprintf("^(%s)$", strings.Join(tests, "|"))
@@ -794,7 +779,7 @@ func (r *Runner) RerunFailedTests(results []reports.TestResult) (*reports.TestRe
 	}
 
 	// Parse all rerun results at once with a consistent prefix
-	rerunResults, err := r.parseTestResults(rerunJsonFilePaths, "rerun")
+	rerunResults, err := r.parseTestResults(rerunJsonFilePaths, "rerun", r.RerunCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse rerun results: %w", err)
 	}
