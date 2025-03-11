@@ -1,5 +1,6 @@
 [files]
 extend-exclude = [
+    "**/go-cache",
     "framework/examples/myproject_cll/README.md",
     "framework/components/blockchain/tron.go",
     "tools/flakeguard/e2e-flaky-test-guide.md",

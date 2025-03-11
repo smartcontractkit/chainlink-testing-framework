@@ -1,2 +1,2 @@
 #!/bin/bash
-devbox run goimports-all
+devbox run -- just goimports-all

@@ -365,7 +365,7 @@ func LoadReport(filePath string) (*TestReport, error) {
 	}
 	var report TestReport
 	if err := json.Unmarshal(data, &report); err != nil {
-		return nil, fmt.Errorf("error unmarshaling JSON from file %s: %w", filePath, err)
+		return nil, fmt.Errorf("error unmarshalling JSON from file %s: %w", filePath, err)
 	}
 	return &report, nil
 }
