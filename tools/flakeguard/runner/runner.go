@@ -763,6 +763,7 @@ func (r *Runner) RerunFailedTests(results []reports.TestResult) (*reports.TestRe
 			cmd := []string{
 				"go", "test",
 				pkg,
+				"-count=1",
 				"-run", testPattern,
 				"-json",
 			}
