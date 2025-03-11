@@ -22,6 +22,7 @@ type TestReport struct {
 	ExcludedTests        []string     `json:"excluded_tests,omitempty"`
 	SelectedTests        []string     `json:"selected_tests,omitempty"`
 	Results              []TestResult `json:"results,omitempty"`
+	FailedLogsURL        string       `json:"failed_logs_url,omitempty"`
 	// MaxPassRatio is the maximum flakiness ratio allowed for a test to be considered not flaky
 	MaxPassRatio float64 `json:"max_pass_ratio,omitempty"`
 }
