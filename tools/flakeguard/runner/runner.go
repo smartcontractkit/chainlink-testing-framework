@@ -736,41 +736,65 @@ func prettyProjectPath(projectPath string) (string, error) {
 }
 
 func (r *Runner) rerunFailedTests(results []reports.TestResult) ([]reports.TestResult, error) {
-	var failingTests []reports.TestResult
+	// Group failing tests by package for more efficient reruns
+	failingTestsByPackage := make(map[string][]string)
 	for _, tr := range results {
 		if !tr.Skipped && tr.PassRatio < 1 {
-			failingTests = append(failingTests, tr)
+			if _, exists := failingTestsByPackage[tr.TestPackage]; !exists {
+				failingTestsByPackage[tr.TestPackage] = []string{}
+			}
+			failingTestsByPackage[tr.TestPackage] = append(failingTestsByPackage[tr.TestPackage], tr.TestName)
 		}
 	}
 
 	if r.Verbose {
-		log.Info().Msgf("Rerunning failing tests: %v", failingTests)
+		log.Info().Msgf("Rerunning failing tests grouped by package: %v", failingTestsByPackage)
 	}
 
-	var rerunResults []reports.TestResult
+	var rerunJsonFilePaths []string
 
-	// Rerun each failing test up to RerunFailed times
+	// Rerun each failing test package up to RerunFailed times
 	for i := 0; i < r.RerunFailed; i++ {
-		for _, fTest := range failingTests {
-			testCmd := r.buildGoTestCommandForTest(fTest)
+		for pkg, tests := range failingTestsByPackage {
+			// Build regex pattern to match all failing tests in this package
+			testPattern := fmt.Sprintf("^(%s)$", strings.Join(tests, "|"))
 
+			cmd := []string{
+				"go", "test",
+				pkg,
+				"-run", testPattern,
+				"-json",
+			}
+
+			// Add other test flags
+			if r.UseRace {
+				cmd = append(cmd, "-race")
+			}
+			if r.Timeout > 0 {
+				cmd = append(cmd, fmt.Sprintf("-timeout=%s", r.Timeout.String()))
+			}
+			if len(r.Tags) > 0 {
+				cmd = append(cmd, fmt.Sprintf("-tags=%s", strings.Join(r.Tags, ",")))
+			}
 			if r.Verbose {
-				log.Info().Msgf("Rerun iteration %d for %s: %v", i+1, fTest.TestName, testCmd)
+				cmd = append(cmd, "-v")
+				log.Info().Msgf("Rerun iteration %d for package %s: %v", i+1, pkg, cmd)
 			}
 
-			jsonFilePath, _, err := r.runCmd(testCmd, i)
+			// Run the package tests
+			jsonFilePath, _, err := r.runCmd(cmd, i)
 			if err != nil {
-				return nil, fmt.Errorf("error on rerunCmd for test %s: %w", fTest.TestName, err)
+				return nil, fmt.Errorf("error on rerunCmd for package %s: %w", pkg, err)
 			}
 
-			additionalResults, err := r.parseTestResults([]string{jsonFilePath}, "rerun")
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse rerun results: %w", err)
-			}
-
-			// Collect these rerun results in a slice; we'll merge them later.
-			rerunResults = append(rerunResults, additionalResults...)
+			rerunJsonFilePaths = append(rerunJsonFilePaths, jsonFilePath)
 		}
+	}
+
+	// Parse all rerun results at once with a consistent prefix
+	rerunResults, err := r.parseTestResults(rerunJsonFilePaths, "rerun")
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse rerun results: %w", err)
 	}
 
 	return rerunResults, nil
@@ -797,7 +821,6 @@ func (r *Runner) buildGoTestCommandForTest(t reports.TestResult) []string {
 }
 
 // mergeTestResults merges additional test results into the existing results slice.
-// mergeTestResults merges additional test results into the existing results slice.
 func mergeTestResults(mainResults *[]reports.TestResult, additional []reports.TestResult) {
 	for _, add := range additional {
 		found := false
@@ -809,15 +832,38 @@ func mergeTestResults(mainResults *[]reports.TestResult, additional []reports.Te
 				(*mainResults)[i].Failures += add.Failures
 				(*mainResults)[i].Skips += add.Skips
 
+				// Merge boolean flags (using OR operation)
+				(*mainResults)[i].Panic = (*mainResults)[i].Panic || add.Panic
+				(*mainResults)[i].Race = (*mainResults)[i].Race || add.Race
+				(*mainResults)[i].Timeout = (*mainResults)[i].Timeout || add.Timeout
+				(*mainResults)[i].Skipped = (*mainResults)[i].Skipped || add.Skipped
+				(*mainResults)[i].PackagePanic = (*mainResults)[i].PackagePanic || add.PackagePanic
+
 				// Merge durations
 				(*mainResults)[i].Durations = append((*mainResults)[i].Durations, add.Durations...)
+
+				// Merge maps for Outputs
+				if (*mainResults)[i].Outputs == nil {
+					(*mainResults)[i].Outputs = make(map[string][]string)
+				}
+				for runID, outputs := range add.Outputs {
+					if existing, ok := (*mainResults)[i].Outputs[runID]; ok {
+						(*mainResults)[i].Outputs[runID] = append(existing, outputs...)
+					} else {
+						(*mainResults)[i].Outputs[runID] = outputs
+					}
+				}
 
 				// Merge maps for PassedOutputs
 				if (*mainResults)[i].PassedOutputs == nil {
 					(*mainResults)[i].PassedOutputs = make(map[string][]string)
 				}
 				for runID, outputs := range add.PassedOutputs {
-					(*mainResults)[i].PassedOutputs[runID] = append((*mainResults)[i].PassedOutputs[runID], outputs...)
+					if existing, ok := (*mainResults)[i].PassedOutputs[runID]; ok {
+						(*mainResults)[i].PassedOutputs[runID] = append(existing, outputs...)
+					} else {
+						(*mainResults)[i].PassedOutputs[runID] = outputs
+					}
 				}
 
 				// Merge maps for FailedOutputs
@@ -825,14 +871,21 @@ func mergeTestResults(mainResults *[]reports.TestResult, additional []reports.Te
 					(*mainResults)[i].FailedOutputs = make(map[string][]string)
 				}
 				for runID, outputs := range add.FailedOutputs {
-					(*mainResults)[i].FailedOutputs[runID] = append((*mainResults)[i].FailedOutputs[runID], outputs...)
+					if existing, ok := (*mainResults)[i].FailedOutputs[runID]; ok {
+						(*mainResults)[i].FailedOutputs[runID] = append(existing, outputs...)
+					} else {
+						(*mainResults)[i].FailedOutputs[runID] = outputs
+					}
 				}
 
-				// Update pass ratio
+				// Merge PackageOutputs
+				(*mainResults)[i].PackageOutputs = append((*mainResults)[i].PackageOutputs, add.PackageOutputs...)
+
+				// Update pass ratio (consistent with parseTestResults default)
 				if (*mainResults)[i].Runs > 0 {
 					(*mainResults)[i].PassRatio = float64((*mainResults)[i].Successes) / float64((*mainResults)[i].Runs)
 				} else {
-					(*mainResults)[i].PassRatio = -1.0
+					(*mainResults)[i].PassRatio = 1.0 // Default to 1.0 if no runs
 				}
 
 				found = true

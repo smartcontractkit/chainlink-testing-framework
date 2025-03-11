@@ -2,6 +2,7 @@ package exampletestpackage
 
 import (
 	"log"
+	"math/rand"
 	"os"
 	"sync"
 	"testing"
@@ -211,4 +212,24 @@ func TestTimeout(t *testing.T) {
 	// Sleep until the deadline
 	time.Sleep(time.Until(deadline))
 	t.Logf("This test should have timed out")
+}
+
+// TestRandomFlaky is a truly random flaky test that will fail approximately 50% of the time
+func TestRandomFlaky(t *testing.T) {
+	t.Parallel()
+
+	// Seed random number generator with current time
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	// Generate a random number between 0 and 1
+	randomValue := r.Float64()
+
+	t.Logf("Random value generated: %f", randomValue)
+
+	// Fail the test approximately 90% of the time
+	if randomValue < 0.9 {
+		t.Fatal("This test randomly failed (90% probability)")
+	}
+
+	t.Log("This test randomly passed (90% probability)")
 }

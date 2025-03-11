@@ -35,24 +35,38 @@ var RunTestsCmd = &cobra.Command{
 		tags, _ := cmd.Flags().GetStringArray("tags")
 		useRace, _ := cmd.Flags().GetBool("race")
 		outputPath, _ := cmd.Flags().GetString("output-json")
+		minPassRatio, _ := cmd.Flags().GetFloat64("min-pass-ratio")
+		// For backward compatibility, check if max-pass-ratio was used
 		maxPassRatio, _ := cmd.Flags().GetFloat64("max-pass-ratio")
+		maxPassRatioSpecified := cmd.Flags().Changed("max-pass-ratio")
 		skipTests, _ := cmd.Flags().GetStringSlice("skip-tests")
 		selectTests, _ := cmd.Flags().GetStringSlice("select-tests")
 		useShuffle, _ := cmd.Flags().GetBool("shuffle")
 		shuffleSeed, _ := cmd.Flags().GetString("shuffle-seed")
 		omitOutputsOnSuccess, _ := cmd.Flags().GetBool("omit-test-outputs-on-success")
 		ignoreParentFailuresOnSubtests, _ := cmd.Flags().GetBool("ignore-parent-failures-on-subtests")
+		rerunFailed, _ := cmd.Flags().GetInt("rerun-failed")
+		failFast, _ := cmd.Flags().GetBool("fail-fast")
+
+		// Handle the compatibility between min/max pass ratio
+		passRatioThreshold := minPassRatio
+		if maxPassRatioSpecified && maxPassRatio != 1.0 {
+			// If max-pass-ratio was explicitly set, use it (convert to min-pass-ratio)
+			log.Warn().Msg("--max-pass-ratio is deprecated, please use --min-pass-ratio instead")
+			passRatioThreshold = maxPassRatio
+		}
+
+		// Validate pass ratio
+		if passRatioThreshold < 0 || passRatioThreshold > 1 {
+			log.Error().Float64("pass ratio", passRatioThreshold).Msg("Error: pass ratio must be between 0 and 1")
+			os.Exit(ErrorExitCode)
+		}
 
 		outputDir := filepath.Dir(outputPath)
 		initialDirSize, err := getDirSize(outputDir)
 		if err != nil {
 			log.Error().Err(err).Str("path", outputDir).Msg("Error getting initial directory size")
 			// intentionally don't exit here, as we can still proceed with the run
-		}
-
-		if maxPassRatio < 0 || maxPassRatio > 1 {
-			log.Error().Float64("max pass ratio", maxPassRatio).Msg("Error: max pass ratio must be between 0 and 1")
-			os.Exit(ErrorExitCode)
 		}
 
 		// Check if project dependencies are correctly set up
@@ -90,8 +104,10 @@ var RunTestsCmd = &cobra.Command{
 			UseShuffle:                     useShuffle,
 			ShuffleSeed:                    shuffleSeed,
 			OmitOutputsOnSuccess:           omitOutputsOnSuccess,
-			MaxPassRatio:                   maxPassRatio,
+			MaxPassRatio:                   passRatioThreshold, // Use the calculated threshold
 			IgnoreParentFailuresOnSubtests: ignoreParentFailuresOnSubtests,
+			RerunFailed:                    rerunFailed,
+			FailFast:                       failFast,
 		}
 
 		// Run the tests
@@ -134,20 +150,37 @@ var RunTestsCmd = &cobra.Command{
 
 		// Filter flaky tests using FilterTests
 		flakyTests := reports.FilterTests(testReport.Results, func(tr reports.TestResult) bool {
-			return !tr.Skipped && tr.PassRatio < maxPassRatio
+			return !tr.Skipped && tr.PassRatio < passRatioThreshold
 		})
 
 		finalDirSize, err := getDirSize(outputDir)
 		if err != nil {
-			log.Error().Err(err).Str("path", outputDir).Msg("Error getting initial directory size")
+			log.Error().Err(err).Str("path", outputDir).Msg("Error getting final directory size")
 			// intentionally don't exit here, as we can still proceed with the run
 		}
 		diskSpaceUsed := byteCountSI(finalDirSize - initialDirSize)
 
-		if len(flakyTests) > 0 {
-			log.Info().Str("disk space used", diskSpaceUsed).Int("count", len(flakyTests)).Str("pass ratio threshold", fmt.Sprintf("%.2f%%", maxPassRatio*100)).Msg("Found flaky tests")
+		// Report with more detailed information about reruns
+		if rerunFailed > 0 {
+			log.Info().
+				Int("initial runs", runCount).
+				Int("reruns for failed tests", rerunFailed).
+				Str("disk space used", diskSpaceUsed).
+				Msg("Test execution completed")
 		} else {
-			log.Info().Str("disk space used", diskSpaceUsed).Msg("No flaky tests found")
+			log.Info().
+				Int("runs", runCount).
+				Str("disk space used", diskSpaceUsed).
+				Msg("Test execution completed")
+		}
+
+		if len(flakyTests) > 0 {
+			log.Info().
+				Int("count", len(flakyTests)).
+				Str("stability threshold", fmt.Sprintf("%.0f%%", passRatioThreshold*100)).
+				Msg("Found flaky tests")
+		} else {
+			log.Info().Msg("All tests passed stability requirements")
 		}
 
 		fmt.Printf("\nFlakeguard Summary\n")
@@ -178,9 +211,19 @@ func init() {
 	RunTestsCmd.Flags().String("output-json", "", "Path to output the test results in JSON format")
 	RunTestsCmd.Flags().StringSlice("skip-tests", nil, "Comma-separated list of test names to skip from running")
 	RunTestsCmd.Flags().StringSlice("select-tests", nil, "Comma-separated list of test names to specifically run")
-	RunTestsCmd.Flags().Float64("max-pass-ratio", 1.0, "The maximum pass ratio threshold for a test to be considered flaky. Any tests below this pass rate will be considered flaky.")
+
+	// Add the min-pass-ratio flag (new recommended approach)
+	RunTestsCmd.Flags().Float64("min-pass-ratio", 1.0, "The minimum pass ratio required for a test to be considered stable (0.0-1.0)")
+
+	// Keep max-pass-ratio for backward compatibility but mark as deprecated
+	RunTestsCmd.Flags().Float64("max-pass-ratio", 1.0, "DEPRECATED: Use min-pass-ratio instead")
+	RunTestsCmd.Flags().MarkDeprecated("max-pass-ratio", "use min-pass-ratio instead")
+
 	RunTestsCmd.Flags().Bool("omit-test-outputs-on-success", true, "Omit test outputs and package outputs for tests that pass")
 	RunTestsCmd.Flags().Bool("ignore-parent-failures-on-subtests", false, "Ignore failures in parent tests when only subtests fail")
+
+	// Add rerun failed tests flag
+	RunTestsCmd.Flags().Int("rerun-failed", 0, "Number of times to rerun failed tests (0 disables reruns)")
 }
 
 func checkDependencies(projectPath string) error {

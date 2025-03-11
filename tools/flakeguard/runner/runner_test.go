@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/stretchr/testify/assert"
@@ -312,7 +313,7 @@ func TestRun(t *testing.T) {
 					}
 					resultCounts := result.Successes + result.Failures
 					assert.Equal(t, result.Runs, resultCounts,
-						"test '%s' doesn't match Runs count with results counts\n%s", result.TestName, resultsString(result),
+						"test '%s' doesn't match Runs count with results counts\n%s", result.TestName, result.Runs, resultsString(result),
 					)
 
 					if expected.minimumRuns != nil {
@@ -662,6 +663,314 @@ func TestOmitOutputsOnSuccess(t *testing.T) {
 	require.Empty(t, testPassResult.Outputs, "expected no captured outputs due to OmitOutputsOnSuccess and a successful test")
 }
 
+func TestMergeTestResults(t *testing.T) {
+	t.Run("merge two test results with different outputs", func(t *testing.T) {
+		// Setup
+		mainResults := []reports.TestResult{
+			{
+				TestName:    "TestA",
+				TestPackage: "pkg/a",
+				Runs:        1,
+				Successes:   1,
+				Failures:    0,
+				PassRatio:   1.0,
+				Outputs: map[string][]string{
+					"run1": {"output1", "output2"},
+				},
+				PassedOutputs: map[string][]string{
+					"run1": {"passed1"},
+				},
+				FailedOutputs: map[string][]string{},
+				Durations:     []time.Duration{1 * time.Second},
+			},
+		}
+
+		additionalResults := []reports.TestResult{
+			{
+				TestName:    "TestA",
+				TestPackage: "pkg/a",
+				Runs:        1,
+				Successes:   0,
+				Failures:    1,
+				PassRatio:   0.0,
+				Outputs: map[string][]string{
+					"rerun_1_1": {"rerun_output1"},
+				},
+				PassedOutputs: map[string][]string{},
+				FailedOutputs: map[string][]string{
+					"rerun_1_1": {"failed1"},
+				},
+				Durations: []time.Duration{2 * time.Second},
+			},
+		}
+
+		// Execute
+		mergeTestResults(&mainResults, additionalResults)
+
+		// Verify
+		assert.Equal(t, 1, len(mainResults))
+		result := mainResults[0]
+		assert.Equal(t, 2, result.Runs)
+		assert.Equal(t, 1, result.Successes)
+		assert.Equal(t, 1, result.Failures)
+		assert.Equal(t, 0.5, result.PassRatio)
+
+		// Verify output maps
+		assert.Equal(t, 2, len(result.Outputs["run1"]))
+		assert.Equal(t, 1, len(result.Outputs["rerun_1_1"]))
+		assert.Equal(t, "output1", result.Outputs["run1"][0])
+		assert.Equal(t, "rerun_output1", result.Outputs["rerun_1_1"][0])
+
+		// Verify passed outputs
+		assert.Equal(t, 1, len(result.PassedOutputs["run1"]))
+		assert.Equal(t, "passed1", result.PassedOutputs["run1"][0])
+
+		// Verify failed outputs
+		assert.Equal(t, 1, len(result.FailedOutputs["rerun_1_1"]))
+		assert.Equal(t, "failed1", result.FailedOutputs["rerun_1_1"][0])
+
+		// Verify durations
+		assert.Equal(t, 2, len(result.Durations))
+		assert.Equal(t, 1*time.Second, result.Durations[0])
+		assert.Equal(t, 2*time.Second, result.Durations[1])
+	})
+
+	t.Run("merge results with nil output maps", func(t *testing.T) {
+		// Setup
+		mainResults := []reports.TestResult{
+			{
+				TestName:      "TestB",
+				TestPackage:   "pkg/b",
+				Runs:          1,
+				Successes:     1,
+				Failures:      0,
+				PassRatio:     1.0,
+				Outputs:       nil,
+				PassedOutputs: nil,
+				FailedOutputs: nil,
+			},
+		}
+
+		additionalResults := []reports.TestResult{
+			{
+				TestName:    "TestB",
+				TestPackage: "pkg/b",
+				Runs:        1,
+				Successes:   0,
+				Failures:    1,
+				PassRatio:   0.0,
+				Outputs: map[string][]string{
+					"rerun_1_1": {"new_output"},
+				},
+				PassedOutputs: nil,
+				FailedOutputs: map[string][]string{
+					"rerun_1_1": {"new_failed_output"},
+				},
+			},
+		}
+
+		// Execute
+		mergeTestResults(&mainResults, additionalResults)
+
+		// Verify
+		assert.Equal(t, 1, len(mainResults))
+		result := mainResults[0]
+
+		// Output maps should be initialized
+		assert.NotNil(t, result.Outputs)
+		assert.NotNil(t, result.PassedOutputs)
+		assert.NotNil(t, result.FailedOutputs)
+
+		// New outputs should be added
+		assert.Equal(t, 1, len(result.Outputs["rerun_1_1"]))
+		assert.Equal(t, "new_output", result.Outputs["rerun_1_1"][0])
+		assert.Equal(t, 1, len(result.FailedOutputs["rerun_1_1"]))
+		assert.Equal(t, "new_failed_output", result.FailedOutputs["rerun_1_1"][0])
+	})
+
+	t.Run("append new test result when no match", func(t *testing.T) {
+		// Setup
+		mainResults := []reports.TestResult{
+			{
+				TestName:    "TestA",
+				TestPackage: "pkg/a",
+			},
+		}
+
+		additionalResults := []reports.TestResult{
+			{
+				TestName:    "TestB",
+				TestPackage: "pkg/b",
+				Outputs: map[string][]string{
+					"rerun_1_1": {"output_b"},
+				},
+			},
+		}
+
+		// Execute
+		mergeTestResults(&mainResults, additionalResults)
+
+		// Verify
+		assert.Equal(t, 2, len(mainResults))
+		assert.Equal(t, "TestA", mainResults[0].TestName)
+		assert.Equal(t, "TestB", mainResults[1].TestName)
+		assert.Equal(t, "pkg/b", mainResults[1].TestPackage)
+		assert.Equal(t, "output_b", mainResults[1].Outputs["rerun_1_1"][0])
+	})
+
+	t.Run("merge boolean flags correctly", func(t *testing.T) {
+		// Setup
+		mainResults := []reports.TestResult{
+			{
+				TestName:     "TestC",
+				TestPackage:  "pkg/c",
+				Panic:        false,
+				Race:         true,
+				Timeout:      false,
+				Skipped:      false,
+				PackagePanic: false,
+			},
+		}
+
+		additionalResults := []reports.TestResult{
+			{
+				TestName:     "TestC",
+				TestPackage:  "pkg/c",
+				Panic:        true,
+				Race:         false,
+				Timeout:      true,
+				Skipped:      false,
+				PackagePanic: true,
+			},
+		}
+
+		// Execute
+		mergeTestResults(&mainResults, additionalResults)
+
+		// Verify boolean flags merged with OR
+		result := mainResults[0]
+		assert.True(t, result.Panic)
+		assert.True(t, result.Race)
+		assert.True(t, result.Timeout)
+		assert.False(t, result.Skipped)
+		assert.True(t, result.PackagePanic)
+	})
+
+	t.Run("test overlapping keys in output maps", func(t *testing.T) {
+		// Setup
+		mainResults := []reports.TestResult{
+			{
+				TestName:    "TestD",
+				TestPackage: "pkg/d",
+				Outputs: map[string][]string{
+					"common_key": {"original_output"},
+				},
+			},
+		}
+
+		additionalResults := []reports.TestResult{
+			{
+				TestName:    "TestD",
+				TestPackage: "pkg/d",
+				Outputs: map[string][]string{
+					"common_key": {"new_output"},
+				},
+			},
+		}
+
+		// Execute
+		mergeTestResults(&mainResults, additionalResults)
+
+		// Verify - key should be overwritten with new value
+		result := mainResults[0]
+		assert.Equal(t, 1, len(result.Outputs["common_key"]))
+		assert.Equal(t, "new_output", result.Outputs["common_key"][0])
+	})
+
+	t.Run("merge test results with multiple failed outputs", func(t *testing.T) {
+		// Setup
+		mainResults := []reports.TestResult{
+			{
+				TestName:    "TestMultiFailures",
+				TestPackage: "pkg/failures",
+				Runs:        2,
+				Successes:   0,
+				Failures:    2,
+				PassRatio:   0.0,
+				Outputs: map[string][]string{
+					"run1": {"main_output1"},
+				},
+				PassedOutputs: map[string][]string{},
+				FailedOutputs: map[string][]string{
+					"run1": {"main_failure_1"},
+					"run2": {"main_failure_2", "main_failure_3"},
+				},
+				Durations: []time.Duration{1 * time.Second, 2 * time.Second},
+			},
+		}
+
+		additionalResults := []reports.TestResult{
+			{
+				TestName:    "TestMultiFailures",
+				TestPackage: "pkg/failures",
+				Runs:        2,
+				Successes:   0,
+				Failures:    2,
+				PassRatio:   0.0,
+				Outputs: map[string][]string{
+					"rerun_1_1": {"additional_output1"},
+				},
+				PassedOutputs: map[string][]string{},
+				FailedOutputs: map[string][]string{
+					"rerun_1_1": {"additional_failure_1"},
+					"rerun_1_2": {"additional_failure_2", "additional_failure_3"},
+				},
+				Durations: []time.Duration{3 * time.Second, 4 * time.Second},
+			},
+		}
+
+		// Execute
+		mergeTestResults(&mainResults, additionalResults)
+
+		// Verify
+		assert.Equal(t, 1, len(mainResults))
+		result := mainResults[0]
+		assert.Equal(t, 4, result.Runs)
+		assert.Equal(t, 0, result.Successes)
+		assert.Equal(t, 4, result.Failures)
+		assert.Equal(t, 0.0, result.PassRatio)
+
+		// Verify combined failed outputs
+		// Check that original outputs are preserved
+		assert.Equal(t, 1, len(result.Outputs["run1"]))
+		assert.Equal(t, "main_output1", result.Outputs["run1"][0])
+		assert.Equal(t, 1, len(result.Outputs["rerun_1_1"]))
+		assert.Equal(t, "additional_output1", result.Outputs["rerun_1_1"][0])
+
+		// Verify failed outputs from both sets are preserved
+		assert.Equal(t, 1, len(result.FailedOutputs["run1"]))
+		assert.Equal(t, "main_failure_1", result.FailedOutputs["run1"][0])
+
+		assert.Equal(t, 2, len(result.FailedOutputs["run2"]))
+		assert.Equal(t, "main_failure_2", result.FailedOutputs["run2"][0])
+		assert.Equal(t, "main_failure_3", result.FailedOutputs["run2"][1])
+
+		assert.Equal(t, 1, len(result.FailedOutputs["rerun_1_1"]))
+		assert.Equal(t, "additional_failure_1", result.FailedOutputs["rerun_1_1"][0])
+
+		assert.Equal(t, 2, len(result.FailedOutputs["rerun_1_2"]))
+		assert.Equal(t, "additional_failure_2", result.FailedOutputs["rerun_1_2"][0])
+		assert.Equal(t, "additional_failure_3", result.FailedOutputs["rerun_1_2"][1])
+
+		// Verify durations are merged
+		assert.Equal(t, 4, len(result.Durations))
+		assert.Equal(t, 1*time.Second, result.Durations[0])
+		assert.Equal(t, 2*time.Second, result.Durations[1])
+		assert.Equal(t, 3*time.Second, result.Durations[2])
+		assert.Equal(t, 4*time.Second, result.Durations[3])
+	})
+}
+
 var (
 	improperlyAttributedPanicEntries = []entry{
 		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestFlaky", Output: "panic: This test intentionally panics [recovered]\n"},
@@ -878,36 +1187,6 @@ var (
 		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /opt/homebrew/Cellar/go/1.23.2/libexec/src/testing/testing.go:1743 +0x40\n"},
 		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "\n"},
 		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "Goroutine 14 (running) created at:\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package.TestRace()\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /Users/adamhamrick/Projects/chainlink-testing-framework/tools/flakeguard/runner/example_test_package/example_tests_test.go:74 +0x158\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  testing.tRunner()\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /opt/homebrew/Cellar/go/1.23.2/libexec/src/testing/testing.go:1690 +0x184\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  testing.(*T).Run.gowrap1()\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /opt/homebrew/Cellar/go/1.23.2/libexec/src/testing/testing.go:1743 +0x40\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "==================\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "==================\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "WARNING: DATA RACE\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "Read at 0x00c000292028 by goroutine 19:\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package.TestRace.func1()\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /Users/adamhamrick/Projects/chainlink-testing-framework/tools/flakeguard/runner/example_test_package/example_tests_test.go:68 +0xb8\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package.TestRace.gowrap1()\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /Users/adamhamrick/Projects/chainlink-testing-framework/tools/flakeguard/runner/example_test_package/example_tests_test.go:74 +0x44\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "Previous write at 0x00c000292028 by goroutine 13:\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package.TestRace.func1()\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /Users/adamhamrick/Projects/chainlink-testing-framework/tools/flakeguard/runner/example_test_package/example_tests_test.go:67 +0xa4\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package.TestRace.gowrap1()\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /Users/adamhamrick/Projects/chainlink-testing-framework/tools/flakeguard/runner/example_test_package/example_tests_test.go:74 +0x44\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "Goroutine 19 (running) created at:\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package.TestRace()\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /Users/adamhamrick/Projects/chainlink-testing-framework/tools/flakeguard/runner/example_test_package/example_tests_test.go:74 +0x158\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  testing.tRunner()\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /opt/homebrew/Cellar/go/1.23.2/libexec/src/testing/testing.go:1690 +0x184\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  testing.(*T).Run.gowrap1()\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /opt/homebrew/Cellar/go/1.23.2/libexec/src/testing/testing.go:1743 +0x40\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "Goroutine 13 (running) created at:\n"},
 		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package.TestRace()\n"},
 		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /Users/adamhamrick/Projects/chainlink-testing-framework/tools/flakeguard/runner/example_test_package/example_tests_test.go:74 +0x158\n"},
 		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  testing.tRunner()\n"},
