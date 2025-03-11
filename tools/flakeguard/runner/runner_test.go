@@ -537,6 +537,68 @@ func TestFailedOutputs(t *testing.T) {
 	}
 }
 
+func TestRerunFailed(t *testing.T) {
+	t.Parallel()
+
+	// Configure a runner that will rerun failed tests
+	runner := Runner{
+		ProjectPath:      "./",
+		Verbose:          true,
+		RunCount:         2,                    // Run tests twice initially
+		RerunFailed:      3,                    // Rerun failing tests 3 more times
+		SelectTests:      []string{"TestFail"}, // This test is known to always fail
+		CollectRawOutput: true,
+	}
+
+	testReport, err := runner.RunTestPackages([]string{flakyTestPackagePath})
+	require.NoError(t, err, "running tests should not produce an unexpected error")
+
+	// Verify we have the expected number of results
+	require.Equal(t, 1, len(testReport.Results), "expected exactly one test result")
+
+	// Find the TestFail result
+	var testFailResult *reports.TestResult
+	for i := range testReport.Results {
+		if testReport.Results[i].TestName == "TestFail" {
+			testFailResult = &testReport.Results[i]
+			break
+		}
+	}
+	require.NotNil(t, testFailResult, "expected TestFail result not found in report")
+
+	// TestFail should have run 5 times (2 initial + 3 reruns)
+	require.Equal(t, 5, testFailResult.Runs, "TestFail should have run 5 times (2 initial + 3 reruns)")
+
+	// Verify that we have outputs from failed runs
+	require.NotEmpty(t, testFailResult.FailedOutputs, "expected failed outputs for TestFail")
+	require.Empty(t, testFailResult.PassedOutputs, "TestFail should have no passed outputs")
+
+	// We should have outputs from both run and rerun prefixes
+	hasRunOutput := false
+	hasRerunOutput := false
+
+	// Check if we have outputs from both original runs and reruns
+	for runID := range testFailResult.FailedOutputs {
+		t.Logf("Found failed outputs for run %s", runID)
+		if strings.HasPrefix(runID, "run") {
+			hasRunOutput = true
+		} else if strings.HasPrefix(runID, "rerun") {
+			hasRerunOutput = true
+		}
+	}
+
+	require.True(t, hasRunOutput, "expected outputs from initial runs")
+	require.True(t, hasRerunOutput, "expected outputs from reruns")
+
+	// Check that the PassRatio is 0 (since TestFail always fails)
+	require.Equal(t, 0.0, testFailResult.PassRatio, "TestFail should have a pass ratio of 0.0")
+
+	// Verify that the test ran exactly 5 times and all were failures
+	require.Equal(t, 5, testFailResult.Failures, "TestFail should have failed 5 times")
+	require.Equal(t, 0, testFailResult.Successes, "TestFail should have passed 0 times")
+	require.Equal(t, 5, testFailResult.Successes+testFailResult.Failures, "total of successes and failures should equal 5")
+}
+
 func TestSkippedTests(t *testing.T) {
 	t.Parallel()
 

@@ -77,7 +77,7 @@ func (r *Runner) RunTestPackages(packages []string) (*reports.TestReport, error)
 	}
 
 	// Parse initial results.
-	results, err := r.parseTestResults(jsonFilePaths)
+	results, err := r.parseTestResults(jsonFilePaths, "run")
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
@@ -124,7 +124,7 @@ func (r *Runner) RunTestCmd(testCmd []string) (*reports.TestReport, error) {
 		}
 	}
 
-	results, err := r.parseTestResults(jsonFilePaths)
+	results, err := r.parseTestResults(jsonFilePaths, "run")
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
@@ -300,7 +300,7 @@ func (e entry) String() string {
 // panics and failures at that point.
 // Subtests add more complexity, as panics in subtests are only reported in their parent's output,
 // and cannot be accurately attributed to the subtest that caused them.
-func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, error) {
+func (r *Runner) parseTestResults(filePaths []string, runPrefix string) ([]reports.TestResult, error) {
 	// If the option is enabled, transform each JSON output file before parsing.
 	if r.IgnoreParentFailuresOnSubtests {
 		transformedPaths, err := r.transformTestOutputFiles(filePaths)
@@ -326,7 +326,7 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 	// Process each file
 	for _, filePath := range filePaths {
 		runNumber++
-		runID := fmt.Sprintf("run%d", runNumber)
+		runID := fmt.Sprintf("%s%d", runPrefix, runNumber)
 		file, err := os.Open(filePath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open test output file: %w", err)
@@ -763,7 +763,7 @@ func (r *Runner) rerunFailedTests(results []reports.TestResult) ([]reports.TestR
 				return nil, fmt.Errorf("error on rerunCmd for test %s: %w", fTest.TestName, err)
 			}
 
-			additionalResults, err := r.parseTestResults([]string{jsonFilePath})
+			additionalResults, err := r.parseTestResults([]string{jsonFilePath}, "rerun")
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse rerun results: %w", err)
 			}
@@ -796,16 +796,7 @@ func (r *Runner) buildGoTestCommandForTest(t reports.TestResult) []string {
 	return cmd
 }
 
-// appendUnique appends s to slice if not already present.
-func appendUnique(slice []string, s string) []string {
-	for _, v := range slice {
-		if v == s {
-			return slice
-		}
-	}
-	return append(slice, s)
-}
-
+// mergeTestResults merges additional test results into the existing results slice.
 // mergeTestResults merges additional test results into the existing results slice.
 func mergeTestResults(mainResults *[]reports.TestResult, additional []reports.TestResult) {
 	for _, add := range additional {
@@ -821,9 +812,21 @@ func mergeTestResults(mainResults *[]reports.TestResult, additional []reports.Te
 				// Merge durations
 				(*mainResults)[i].Durations = append((*mainResults)[i].Durations, add.Durations...)
 
-				// Because PassedOutputs and FailedOutputs are now []string:
-				(*mainResults)[i].PassedOutputs = append((*mainResults)[i].PassedOutputs, add.PassedOutputs...)
-				(*mainResults)[i].FailedOutputs = append((*mainResults)[i].FailedOutputs, add.FailedOutputs...)
+				// Merge maps for PassedOutputs
+				if (*mainResults)[i].PassedOutputs == nil {
+					(*mainResults)[i].PassedOutputs = make(map[string][]string)
+				}
+				for runID, outputs := range add.PassedOutputs {
+					(*mainResults)[i].PassedOutputs[runID] = append((*mainResults)[i].PassedOutputs[runID], outputs...)
+				}
+
+				// Merge maps for FailedOutputs
+				if (*mainResults)[i].FailedOutputs == nil {
+					(*mainResults)[i].FailedOutputs = make(map[string][]string)
+				}
+				for runID, outputs := range add.FailedOutputs {
+					(*mainResults)[i].FailedOutputs[runID] = append((*mainResults)[i].FailedOutputs[runID], outputs...)
+				}
 
 				// Update pass ratio
 				if (*mainResults)[i].Runs > 0 {
