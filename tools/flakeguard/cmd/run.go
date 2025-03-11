@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
@@ -62,13 +61,6 @@ var RunTestsCmd = &cobra.Command{
 			os.Exit(ErrorExitCode)
 		}
 
-		outputDir := filepath.Dir(outputPath)
-		initialDirSize, err := getDirSize(outputDir)
-		if err != nil {
-			log.Error().Err(err).Str("path", outputDir).Msg("Error getting initial directory size")
-			// intentionally don't exit here, as we can still proceed with the run
-		}
-
 		// Check if project dependencies are correctly set up
 		if err := checkDependencies(projectPath); err != nil {
 			log.Error().Err(err).Msg("Error checking project dependencies")
@@ -112,17 +104,18 @@ var RunTestsCmd = &cobra.Command{
 
 		// Run the tests
 		var (
-			testReport *reports.TestReport
+			firstReport *reports.TestReport
 		)
 
+		var err error
 		if len(testCmdStrings) > 0 {
-			testReport, err = testRunner.RunTestCmd(testCmdStrings)
+			firstReport, err = testRunner.RunTestCmd(testCmdStrings)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error running custom test command")
 				os.Exit(ErrorExitCode)
 			}
 		} else {
-			testReport, err = testRunner.RunTestPackages(testPackages)
+			firstReport, err = testRunner.RunTestPackages(testPackages)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error running test packages")
 				os.Exit(ErrorExitCode)
@@ -130,8 +123,8 @@ var RunTestsCmd = &cobra.Command{
 		}
 
 		// Save the test results in JSON format
-		if outputPath != "" && len(testReport.Results) > 0 {
-			jsonData, err := json.MarshalIndent(testReport, "", "  ")
+		if outputPath != "" && len(firstReport.Results) > 0 {
+			jsonData, err := json.MarshalIndent(firstReport, "", "  ")
 			if err != nil {
 				log.Error().Err(err).Msg("Error marshaling test results to JSON")
 				os.Exit(ErrorExitCode)
@@ -143,14 +136,17 @@ var RunTestsCmd = &cobra.Command{
 			log.Info().Str("path", outputPath).Msg("Test results saved")
 		}
 
-		if len(testReport.Results) == 0 {
+		if len(firstReport.Results) == 0 {
 			log.Warn().Msg("No tests were run for the specified packages")
 			return
 		}
 
+		fmt.Printf("\nFlakeguard Initial Summary:\n")
+		reports.RenderResults(os.Stdout, firstReport, false, false)
+
 		// Rerun failed tests
 		if rerunFailed > 0 {
-			rerunReport, err := testRunner.RerunFailedTests(testReport.Results)
+			rerunReport, err := testRunner.RerunFailedTests(firstReport.Results)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error rerunning failed tests")
 				os.Exit(ErrorExitCode)
@@ -160,58 +156,36 @@ var RunTestsCmd = &cobra.Command{
 			failedAfterRerun := reports.FilterTests(rerunReport.Results, func(tr reports.TestResult) bool {
 				return !tr.Skipped && tr.Successes == 0
 			})
+			fmt.Printf("\nFlakeguard Rerun Summary:\n")
+			reports.RenderResults(os.Stdout, rerunReport, false, false)
+
 			if len(failedAfterRerun) > 0 {
 				log.Error().
 					Int("tests", len(failedAfterRerun)).
 					Int("reruns", rerunFailed).
 					Msg("Tests still failing after reruns with 0 successes")
 				os.Exit(ErrorExitCode)
+			} else {
+				log.Info().Msg("Failed tests passed at least once after reruns")
+				os.Exit(0)
 			}
 
 			// TODO: save rerun test report to JSON file
 		}
 
 		// Filter flaky tests using FilterTests
-		flakyTests := reports.FilterTests(testReport.Results, func(tr reports.TestResult) bool {
+		flakyTests := reports.FilterTests(firstReport.Results, func(tr reports.TestResult) bool {
 			return !tr.Skipped && tr.PassRatio < passRatioThreshold
 		})
-
-		finalDirSize, err := getDirSize(outputDir)
-		if err != nil {
-			log.Error().Err(err).Str("path", outputDir).Msg("Error getting final directory size")
-			// intentionally don't exit here, as we can still proceed with the run
-		}
-		diskSpaceUsed := byteCountSI(finalDirSize - initialDirSize)
-
-		// Report with more detailed information about reruns
-		if rerunFailed > 0 {
-			log.Info().
-				Int("initial runs", runCount).
-				Int("reruns for failed tests", rerunFailed).
-				Str("disk space used", diskSpaceUsed).
-				Msg("Test execution completed")
-		} else {
-			log.Info().
-				Int("runs", runCount).
-				Str("disk space used", diskSpaceUsed).
-				Msg("Test execution completed")
-		}
 
 		if len(flakyTests) > 0 {
 			log.Info().
 				Int("count", len(flakyTests)).
 				Str("stability threshold", fmt.Sprintf("%.0f%%", passRatioThreshold*100)).
 				Msg("Found flaky tests")
+			os.Exit(FlakyTestsExitCode)
 		} else {
 			log.Info().Msg("All tests passed stability requirements")
-		}
-
-		fmt.Printf("\nFlakeguard Summary\n")
-		reports.RenderResults(os.Stdout, testReport, false, false)
-
-		if len(flakyTests) > 0 {
-			// Exit with error code if there are flaky tests
-			os.Exit(FlakyTestsExitCode)
 		}
 	},
 }

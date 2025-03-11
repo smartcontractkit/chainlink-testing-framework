@@ -218,18 +218,21 @@ func TestTimeout(t *testing.T) {
 func TestRandomFlaky(t *testing.T) {
 	t.Parallel()
 
+	time.Sleep(100 * time.Millisecond)
+
 	// Seed random number generator with current time
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	seed := time.Now().UnixNano()
+	t.Logf("Using seed: %d", seed)
+	r := rand.New(rand.NewSource(seed))
 
 	// Generate a random number between 0 and 1
 	randomValue := r.Float64()
 
 	t.Logf("Random value generated: %f", randomValue)
 
-	// Fail the test approximately 90% of the time
-	if randomValue < 0.9 {
-		t.Fatal("This test randomly failed (90% probability)")
+	if randomValue < 0.5 {
+		t.Fatal("This test randomly failed")
 	}
 
-	t.Log("This test randomly passed (90% probability)")
+	t.Log("This test randomly passed")
 }

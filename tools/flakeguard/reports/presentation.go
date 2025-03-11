@@ -231,7 +231,6 @@ func renderSummaryTable(w io.Writer, summary *SummaryData, markdown bool, collap
 
 func renderTestResultsTable(w io.Writer, table [][]string, collapsible bool) {
 	if len(table) <= 1 {
-		fmt.Fprintln(w, "No tests found under the specified pass ratio threshold.")
 		return
 	}
 	printTable(w, table, collapsible)

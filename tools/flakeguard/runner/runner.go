@@ -739,7 +739,8 @@ func (r *Runner) RerunFailedTests(results []reports.TestResult) (*reports.TestRe
 	// Group failing tests by package for more efficient reruns
 	failingTestsByPackage := make(map[string][]string)
 	for _, tr := range results {
-		if !tr.Skipped && tr.PassRatio < 1 {
+		if !tr.Skipped {
+			// if !tr.Skipped && tr.PassRatio < 1 { //TODO uncomment
 			if _, exists := failingTestsByPackage[tr.TestPackage]; !exists {
 				failingTestsByPackage[tr.TestPackage] = []string{}
 			}
@@ -754,7 +755,7 @@ func (r *Runner) RerunFailedTests(results []reports.TestResult) (*reports.TestRe
 	var rerunJsonFilePaths []string
 
 	// Rerun each failing test package up to RerunFailed times
-	for i := 0; i < r.RerunFailed; i++ {
+	for i := range r.RerunFailed {
 		for pkg, tests := range failingTestsByPackage {
 			// Build regex pattern to match all failing tests in this package
 			testPattern := fmt.Sprintf("^(%s)$", strings.Join(tests, "|"))
@@ -805,26 +806,7 @@ func (r *Runner) RerunFailedTests(results []reports.TestResult) (*reports.TestRe
 		Results:       rerunResults,
 		MaxPassRatio:  r.MaxPassRatio,
 	}
+	report.GenerateSummaryData()
 
 	return report, nil
-}
-
-// buildGoTestCommandForTest builds a `go test` command specifically
-// for one failing test, using TestPackage and TestName in the -run argument.
-func (r *Runner) buildGoTestCommandForTest(t reports.TestResult) []string {
-	cmd := []string{
-		"go", "test",
-		t.TestPackage,
-		"-run", fmt.Sprintf("^%s$", t.TestName), // Run exactly this test
-		"-json", // Example flag, adjust as needed
-	}
-
-	// Add verbosity if requested
-	if r.Verbose {
-		cmd = append(cmd, "-v")
-	}
-
-	// Add any additional flags or args required by your setup here
-
-	return cmd
 }
