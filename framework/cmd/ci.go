@@ -39,6 +39,7 @@ var (
 	SlowTestThreshold          = 5 * time.Minute
 	ExtremelySlowTestThreshold = 10 * time.Minute
 
+	DebugDirRoot       = "ctf-ci-debug"
 	DebugSubDirWF      = filepath.Join(DebugDirRoot, "workflows")
 	DebugSubDirJobs    = filepath.Join(DebugDirRoot, "jobs")
 	DefaultResultsDir  = "."
