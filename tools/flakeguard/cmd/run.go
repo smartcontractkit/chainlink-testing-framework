@@ -24,6 +24,15 @@ var RunTestsCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run tests to check if they are flaky",
 	Run: func(cmd *cobra.Command, args []string) {
+		// Create a buffer to accumulate all summary output.
+		var summaryBuffer bytes.Buffer
+
+		// Helper function to flush the summary buffer and exit.
+		flushSummaryAndExit := func(code int) {
+			fmt.Print(summaryBuffer.String())
+			os.Exit(code)
+		}
+
 		// Retrieve flags
 		projectPath, _ := cmd.Flags().GetString("project-path")
 		testPackagesJson, _ := cmd.Flags().GetString("test-packages-json")
@@ -59,13 +68,13 @@ var RunTestsCmd = &cobra.Command{
 		// Validate pass ratio
 		if passRatioThreshold < 0 || passRatioThreshold > 1 {
 			log.Error().Float64("pass ratio", passRatioThreshold).Msg("Error: pass ratio must be between 0 and 1")
-			os.Exit(ErrorExitCode)
+			flushSummaryAndExit(ErrorExitCode)
 		}
 
 		// Check if project dependencies are correctly set up
 		if err := checkDependencies(projectPath); err != nil {
 			log.Error().Err(err).Msg("Error checking project dependencies")
-			os.Exit(ErrorExitCode)
+			flushSummaryAndExit(ErrorExitCode)
 		}
 
 		// Determine test packages
@@ -74,13 +83,13 @@ var RunTestsCmd = &cobra.Command{
 			if testPackagesJson != "" {
 				if err := json.Unmarshal([]byte(testPackagesJson), &testPackages); err != nil {
 					log.Error().Err(err).Msg("Error decoding test packages JSON")
-					os.Exit(ErrorExitCode)
+					flushSummaryAndExit(ErrorExitCode)
 				}
 			} else if len(testPackagesArg) > 0 {
 				testPackages = testPackagesArg
 			} else {
 				log.Error().Msg("Error: must specify either --test-packages-json or --test-packages")
-				os.Exit(ErrorExitCode)
+				flushSummaryAndExit(ErrorExitCode)
 			}
 		}
 
@@ -114,13 +123,13 @@ var RunTestsCmd = &cobra.Command{
 			mainReport, err = testRunner.RunTestCmd(testCmdStrings)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error running custom test command")
-				os.Exit(ErrorExitCode)
+				flushSummaryAndExit(ErrorExitCode)
 			}
 		} else {
 			mainReport, err = testRunner.RunTestPackages(testPackages)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error running test packages")
-				os.Exit(ErrorExitCode)
+				flushSummaryAndExit(ErrorExitCode)
 			}
 		}
 
@@ -128,19 +137,21 @@ var RunTestsCmd = &cobra.Command{
 		if mainReportPath != "" && len(mainReport.Results) > 0 {
 			if err := mainReport.SaveToFile(mainReportPath); err != nil {
 				log.Error().Err(err).Msg("Error saving test results to file")
-				os.Exit(ErrorExitCode)
+				flushSummaryAndExit(ErrorExitCode)
 			}
 			log.Info().Str("path", mainReportPath).Msg("Main test report saved")
 		}
 
 		if len(mainReport.Results) == 0 {
 			log.Warn().Msg("No tests were run for the specified packages")
-			return
+			flushSummaryAndExit(0)
 		}
 
-		fmt.Printf("\nFlakeguard Main Summary:\n")
-		reports.RenderResults(os.Stdout, *mainReport, false, false)
-		fmt.Println()
+		// Accumulate main summary into summaryBuffer
+		fmt.Fprint(&summaryBuffer, "\nFlakeguard Main Summary:\n")
+		fmt.Fprintf(&summaryBuffer, "-------------------------\n")
+		reports.RenderResults(&summaryBuffer, *mainReport, false, false)
+		fmt.Fprintln(&summaryBuffer)
 
 		// Rerun failed tests
 		if rerunFailedCount > 0 {
@@ -150,24 +161,25 @@ var RunTestsCmd = &cobra.Command{
 
 			if len(failedTests) == 0 {
 				log.Info().Msg("No tests to rerun. All tests passed")
-				os.Exit(0)
+				flushSummaryAndExit(0)
 			}
 
 			rerunReport, err = testRunner.RerunFailedTests(failedTests)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error rerunning failed tests")
-				os.Exit(ErrorExitCode)
+				flushSummaryAndExit(ErrorExitCode)
 			}
 
-			fmt.Printf("\nAll Tests That Were Rerun:\n")
-			reports.PrintTestResultsTable(os.Stdout, rerunReport.Results, false, false)
-			fmt.Println()
+			fmt.Fprint(&summaryBuffer, "\nAll Tests That Were Rerun:\n")
+			fmt.Fprintf(&summaryBuffer, "---------------------------\n")
+			reports.PrintTestResultsTable(&summaryBuffer, rerunReport.Results, false, false)
+			fmt.Fprintln(&summaryBuffer)
 
 			// Save the rerun test report to file
 			if rerunReportPath != "" && len(rerunReport.Results) > 0 {
 				if err := rerunReport.SaveToFile(rerunReportPath); err != nil {
 					log.Error().Err(err).Msg("Error saving test results to file")
-					os.Exit(ErrorExitCode)
+					flushSummaryAndExit(ErrorExitCode)
 				}
 				log.Info().Str("path", rerunReportPath).Msg("Rerun test report saved")
 			}
@@ -178,12 +190,14 @@ var RunTestsCmd = &cobra.Command{
 			})
 
 			if len(failedAfterRerun) > 0 {
-				fmt.Printf("\nTests That Have 0 Success Runs:\n")
-				reports.PrintTestResultsTable(os.Stdout, failedAfterRerun, false, false)
-				fmt.Println()
+				fmt.Fprint(&summaryBuffer, "\nTests That Have 0 Success Runs:\n")
+				fmt.Fprintf(&summaryBuffer, "--------------------------------\n")
+				reports.PrintTestResultsTable(&summaryBuffer, failedAfterRerun, false, false)
+				fmt.Fprintln(&summaryBuffer)
 
-				fmt.Printf("\nLogs From All Reruns:\n")
-				err := rerunReport.PrintGotestsumOutput("pkgname")
+				fmt.Fprint(&summaryBuffer, "\nLogs From All Reruns:\n")
+				fmt.Fprintf(&summaryBuffer, "----------------------\n")
+				err := rerunReport.PrintGotestsumOutput(&summaryBuffer, "pkgname")
 				if err != nil {
 					log.Error().Err(err).Msg("Error printing gotestsum output")
 				}
@@ -192,10 +206,10 @@ var RunTestsCmd = &cobra.Command{
 					Int("noSuccessTests", len(failedAfterRerun)).
 					Int("reruns", rerunFailedCount).
 					Msg("Some tests are still failing after multiple reruns with no successful attempts.")
-				os.Exit(ErrorExitCode)
+				flushSummaryAndExit(ErrorExitCode)
 			} else {
 				log.Info().Msg("All tests passed at least once after reruns")
-				os.Exit(0)
+				flushSummaryAndExit(0)
 			}
 		} else {
 			// Filter flaky tests using FilterTests
@@ -208,11 +222,13 @@ var RunTestsCmd = &cobra.Command{
 					Int("count", len(flakyTests)).
 					Str("stability threshold", fmt.Sprintf("%.0f%%", passRatioThreshold*100)).
 					Msg("Found flaky tests")
-				os.Exit(FlakyTestsExitCode)
+				flushSummaryAndExit(FlakyTestsExitCode)
 			} else {
 				log.Info().Msg("All tests passed stability requirements")
 			}
 		}
+
+		flushSummaryAndExit(0)
 	},
 }
 

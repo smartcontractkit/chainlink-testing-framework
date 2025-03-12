@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"sort"
@@ -47,13 +48,12 @@ func (testReport *TestReport) SaveToFile(outputPath string) error {
 	return nil
 }
 
-func (tr *TestReport) PrintGotestsumOutput(format string) error {
+func (tr *TestReport) PrintGotestsumOutput(w io.Writer, format string) error {
 	if len(tr.JSONOutputPaths) == 0 {
-		fmt.Printf("No JSON output paths found in test report\n")
+		fmt.Fprintf(w, "No JSON output paths found in test report\n")
 		return nil
 	}
 
-	fmt.Println("---------------------")
 	for _, path := range tr.JSONOutputPaths {
 		cmdStr := fmt.Sprintf("cat %q | gotestsum --raw-command --format %q -- cat", path, format)
 		cmd := exec.Command("bash", "-c", cmdStr)
@@ -66,8 +66,8 @@ func (tr *TestReport) PrintGotestsumOutput(format string) error {
 			return fmt.Errorf("gotestsum command failed for file %s: %w\nOutput: %s", path, err, outBuf.String())
 		}
 
-		fmt.Print(outBuf.String())
-		fmt.Println("---------------------")
+		fmt.Fprint(w, outBuf.String())
+		fmt.Fprintln(w, "---------------------")
 	}
 	return nil
 }
