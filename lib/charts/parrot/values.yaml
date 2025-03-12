@@ -2,7 +2,7 @@ replicas: 1
 
 image:
   repository: kalverra/parrot
-  version: v0.6.1
+  version: v0.6.2
   imagePullPolicy: IfNotPresent
 
 logLevel: trace
