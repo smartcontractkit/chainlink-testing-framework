@@ -159,12 +159,8 @@ var RunTestsCmd = &cobra.Command{
 				os.Exit(ErrorExitCode)
 			}
 
-			// Filter tests that failed after reruns
-			failedAfterRerun := reports.FilterTests(rerunReport.Results, func(tr reports.TestResult) bool {
-				return !tr.Skipped && tr.Successes == 0
-			})
-			fmt.Printf("\nFlakeguard Rerun Summary:\n")
-			reports.PrintTestTable(os.Stdout, *rerunReport, false, false)
+			fmt.Printf("\nAll Rerun Tests:\n")
+			reports.PrintTestResultsTable(os.Stdout, rerunReport.Results, false, false)
 			fmt.Println()
 
 			// Save the rerun test report to file
@@ -176,14 +172,22 @@ var RunTestsCmd = &cobra.Command{
 				log.Info().Str("path", rerunReportPath).Msg("Rerun test report saved")
 			}
 
+			// Filter tests that failed after reruns
+			failedAfterRerun := reports.FilterTests(rerunReport.Results, func(tr reports.TestResult) bool {
+				return !tr.Skipped && tr.Successes == 0
+			})
+
 			if len(failedAfterRerun) > 0 {
+				fmt.Println("\nTests That Failed All Reruns:")
+				reports.PrintTestResultsTable(os.Stdout, failedAfterRerun, false, false)
+				fmt.Println()
 				log.Error().
-					Int("tests", len(failedAfterRerun)).
+					Int("noSuccessTests", len(failedAfterRerun)).
 					Int("reruns", rerunFailedCount).
-					Msg("Tests still failing after reruns with 0 successes")
+					Msg("Some tests are still failing after multiple reruns with no successful attempts.")
 				os.Exit(ErrorExitCode)
 			} else {
-				log.Info().Msg("Tests that failed passed at least once after reruns")
+				log.Info().Msg("All tests passed at least once after reruns")
 				os.Exit(0)
 			}
 		} else {

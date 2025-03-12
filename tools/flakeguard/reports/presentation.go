@@ -10,9 +10,9 @@ import (
 	"golang.org/x/text/message"
 )
 
-// generateTestTable is a helper that builds the table based on the given filter function.
-func generateTestTable(
-	testReport TestReport,
+// generateTestResultsTable is a helper that builds the table based on the given filter function.
+func generateTestResultsTable(
+	results []TestResult,
 	markdown bool,
 	filter func(result TestResult) bool,
 ) [][]string {
@@ -45,7 +45,7 @@ func generateTestTable(
 	// Initialize the table with headers
 	table := [][]string{headers}
 
-	for _, result := range testReport.Results {
+	for _, result := range results {
 		if filter(result) {
 			row := []string{
 				result.TestName,
@@ -80,18 +80,18 @@ func GenerateFlakyTestsTable(
 	testReport TestReport,
 	markdown bool,
 ) [][]string {
-	return generateTestTable(testReport, markdown, func(result TestResult) bool {
+	return generateTestResultsTable(testReport.Results, markdown, func(result TestResult) bool {
 		return !result.Skipped && result.PassRatio < testReport.MaxPassRatio
 	})
 }
 
-// PrintTestTable prints a table with all test results.
-func PrintTestTable(
+// PrintTestResultsTable prints a table with all test results.
+func PrintTestResultsTable(
 	w io.Writer,
-	testReport TestReport,
+	results []TestResult,
 	markdown bool,
 	collapsible bool) {
-	table := generateTestTable(testReport, markdown, func(result TestResult) bool {
+	table := generateTestResultsTable(results, markdown, func(result TestResult) bool {
 		return true // Include all tests
 	})
 	printTable(w, table, collapsible)
