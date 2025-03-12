@@ -213,7 +213,7 @@ func unBatchSplunkResults(batch []byte) ([]*SplunkTestResult, error) {
 
 		result := pool.Get().(*SplunkTestResult)
 		if err := json.Unmarshal(line, result); err != nil {
-			return results, fmt.Errorf("error unmarshaling result: %w", err)
+			return results, fmt.Errorf("error unmarshalling result: %w", err)
 		}
 		results = append(results, result)
 	}

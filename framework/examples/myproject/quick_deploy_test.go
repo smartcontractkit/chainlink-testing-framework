@@ -1,17 +1,19 @@
 package examples
 
 import (
+	"math/big"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/examples/example_components/onchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
-	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
-	"time"
 
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 )

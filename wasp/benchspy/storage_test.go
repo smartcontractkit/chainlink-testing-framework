@@ -33,7 +33,7 @@ func TestBenchSpy_LocalStorage_Load(t *testing.T) {
 		// Setup
 		commitID := "abc123"
 		fileName := filepath.Join(tempDir, "test-abc123.json")
-		require.NoError(t, os.WriteFile(fileName, reportJSON, 0644))
+		require.NoError(t, os.WriteFile(fileName, reportJSON, 0600))
 
 		// Test
 		var loadedReport testReport
@@ -60,7 +60,7 @@ func TestBenchSpy_LocalStorage_Load(t *testing.T) {
 		// Setup
 		commitID := "def456"
 		fileName := filepath.Join(tempDir, "test-def456.json")
-		require.NoError(t, os.WriteFile(fileName, []byte("invalid json"), 0644))
+		require.NoError(t, os.WriteFile(fileName, []byte("invalid json"), 0600))
 
 		// Test
 		var loadedReport testReport
@@ -94,15 +94,17 @@ func TestBenchSpy_LocalStorage_Load(t *testing.T) {
 
 		// Create two reports
 		fileName := filepath.Join(gitDir, "test-abc123.json")
-		require.NoError(t, os.WriteFile(fileName, reportJSON, 0644))
+		require.NoError(t, os.WriteFile(fileName, reportJSON, 0600))
 
 		fileName = filepath.Join(gitDir, "test-abc1234.json")
-		require.NoError(t, os.WriteFile(fileName, reportJSON, 0644))
+		require.NoError(t, os.WriteFile(fileName, reportJSON, 0600))
 
 		// Configure git for test
+		//nolint
 		configCmd := exec.Command("git", "config", "user.email", "test@example.com")
 		configCmd.Dir = gitDir
 		require.NoError(t, configCmd.Run())
+		//nolint
 		configCmd = exec.Command("git", "config", "user.name", "Test User")
 		configCmd.Dir = gitDir
 		require.NoError(t, configCmd.Run())
@@ -425,6 +427,7 @@ func TestBenchSpy_LocalStorage_Load_GitEdgeCases(t *testing.T) {
 		{"user.name", "Test User"},
 		{"commit.gpgsign", "false"},
 	} {
+		//nolint
 		cmd := exec.Command("git", "config", "--local", config[0], config[1])
 		cmd.Dir = gitDir
 		require.NoError(t, cmd.Run())

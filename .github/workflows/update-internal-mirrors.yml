@@ -46,11 +46,6 @@ jobs:
             expression: '^v?[0-9]+\.[0-9]+\.[0-9]+$'
           - name: wiremock/wiremock
             expression: '^v?[0-9]+\.[0-9]+\.[0-9]+$'
-          # disabled until gcloud auth is added
-          # - name: gcr.io/prysmaticlabs/prysm/beacon-chain
-          #   expression: '^v[0-9]+\.[0-9]+\.[0-9]+$'
-          # - name: gcr.io/prysmaticlabs/prysm/validator
-          #   expression: '^v[0-9]+\.[0-9]+\.[0-9]+$'
           - name: tofelb/ethereum-genesis-generator
             expression: '.*'
     # This one only has latest tag, probably only want to update it when we know for sure it's a new version we want

@@ -4,10 +4,11 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
-	"github.com/stretchr/testify/require"
 )
 
 type testCase struct {
@@ -27,7 +28,7 @@ func checkBasicOutputs(t *testing.T, output *clnode.Output) {
 	require.Contains(t, output.PostgreSQL.DockerInternalURL, "postgresql://chainlink:thispasswordislongenough@pg")
 }
 
-func TestComponentDockerNodeWithSharedDB(t *testing.T) {
+func TestSmokeComponentDockerNodeWithSharedDB(t *testing.T) {
 	testCases := []testCase{
 		{
 			name: "basic use case",
@@ -63,7 +64,7 @@ func TestComponentDockerNodeWithSharedDB(t *testing.T) {
 	}
 }
 
-func TestComponentDockerNodeWithDB(t *testing.T) {
+func TestSmokeComponentDockerNodeWithDB(t *testing.T) {
 	testCases := []testCase{
 		{
 			name: "basic use case",

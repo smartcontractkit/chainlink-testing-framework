@@ -21,8 +21,8 @@ type WSMockVU struct {
 	Data []string
 }
 
-// NewWSMockVU initializes a WSMockVU with the provided configuration.  
-// It sets up control mechanisms and data storage, enabling the simulation  
+// NewWSMockVU initializes a WSMockVU with the provided configuration.
+// It sets up control mechanisms and data storage, enabling the simulation
 // of a WebSocket virtual user for testing scenarios.
 func NewWSMockVU(cfg *WSMockVUConfig) *WSMockVU {
 	return &WSMockVU{
