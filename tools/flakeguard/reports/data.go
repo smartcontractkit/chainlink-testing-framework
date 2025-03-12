@@ -48,6 +48,12 @@ func (testReport *TestReport) SaveToFile(outputPath string) error {
 }
 
 func (tr *TestReport) PrintGotestsumOutput(format string) error {
+	if len(tr.JSONOutputPaths) == 0 {
+		fmt.Printf("No JSON output paths found in test report\n")
+		return nil
+	}
+
+	fmt.Println("---------------------")
 	for _, path := range tr.JSONOutputPaths {
 		cmdStr := fmt.Sprintf("cat %q | gotestsum --raw-command --format %q -- cat", path, format)
 		cmd := exec.Command("bash", "-c", cmdStr)

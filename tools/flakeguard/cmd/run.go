@@ -159,7 +159,7 @@ var RunTestsCmd = &cobra.Command{
 				os.Exit(ErrorExitCode)
 			}
 
-			fmt.Printf("\nAll Rerun Tests:\n")
+			fmt.Printf("\nAll Tests That Were Rerun:\n")
 			reports.PrintTestResultsTable(os.Stdout, rerunReport.Results, false, false)
 			fmt.Println()
 
@@ -178,7 +178,7 @@ var RunTestsCmd = &cobra.Command{
 			})
 
 			if len(failedAfterRerun) > 0 {
-				fmt.Printf("\nTests That Failed All %d Reruns:\n", rerunFailedCount)
+				fmt.Printf("\nTests That Have 0 Success Runs:\n")
 				reports.PrintTestResultsTable(os.Stdout, failedAfterRerun, false, false)
 				fmt.Println()
 
