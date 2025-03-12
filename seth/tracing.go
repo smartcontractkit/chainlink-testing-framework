@@ -127,6 +127,13 @@ type Call struct {
 }
 
 func NewTracer(cs *ContractStore, abiFinder *ABIFinder, cfg *Config, contractAddressToNameMap ContractMap, addresses []common.Address) (*Tracer, error) {
+	if cfg == nil {
+		return nil, errors.New("seth config is nil")
+	}
+	if cfg.Network == nil {
+		return nil, errors.New("no Network is set in the config")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Network.DialTimeout.Duration())
 	defer cancel()
 	c, err := rpc.DialOptions(ctx, cfg.MustFirstNetworkURL(), rpc.WithHeaders(cfg.RPCHeaders))

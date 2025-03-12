@@ -7,7 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
@@ -40,10 +42,47 @@ func TestConfig_MinimalBuilder(t *testing.T) {
 func TestConfig_MaximalBuilder(t *testing.T) {
 	builder := seth.NewClientBuilder()
 
+	firstNetwork := &seth.Network{
+		Name:                           "First",
+		EIP1559DynamicFees:             true,
+		TxnTimeout:                     seth.MustMakeDuration(5 * time.Minute),
+		DialTimeout:                    seth.MustMakeDuration(seth.DefaultDialTimeout),
+		TransferGasFee:                 seth.DefaultTransferGasFee,
+		GasPriceEstimationEnabled:      true,
+		GasPriceEstimationBlocks:       200,
+		GasPriceEstimationTxPriority:   seth.Priority_Standard,
+		GasPrice:                       seth.DefaultGasPrice,
+		GasFeeCap:                      seth.DefaultGasFeeCap,
+		GasTipCap:                      seth.DefaultGasTipCap,
+		GasPriceEstimationAttemptCount: seth.DefaultGasPriceEstimationsAttemptCount,
+	}
+
+	require.NotEmpty(t, os.Getenv("SETH_NETWORK"), "expected SETH_NETWORK to be set")
+	url := "ws://localhost:8546"
+	if os.Getenv("SETH_NETWORK") == "anvil" {
+		url = "ws://localhost:8545"
+	}
+
+	secondNetwork := &seth.Network{
+		Name:                           "Second",
+		EIP1559DynamicFees:             true,
+		TxnTimeout:                     seth.MustMakeDuration(5 * time.Minute),
+		DialTimeout:                    seth.MustMakeDuration(seth.DefaultDialTimeout),
+		TransferGasFee:                 seth.DefaultTransferGasFee,
+		GasPriceEstimationEnabled:      true,
+		GasPriceEstimationBlocks:       200,
+		GasPriceEstimationTxPriority:   seth.Priority_Standard,
+		GasPrice:                       seth.DefaultGasPrice,
+		GasFeeCap:                      seth.DefaultGasFeeCap,
+		GasTipCap:                      seth.DefaultGasTipCap,
+		GasPriceEstimationAttemptCount: seth.DefaultGasPriceEstimationsAttemptCount,
+		URLs:                           []string{url},
+	}
+
 	client, err := builder.
 		// network
-		WithNetworkName("my network").
-		WithRpcUrl("ws://localhost:8546").
+		WithNetworks([]*seth.Network{firstNetwork, secondNetwork}).
+		UseNetworkWithName("Second").
 		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
 		WithRpcDialTimeout(10*time.Second).
 		WithTransactionTimeout(1*time.Minute).
@@ -63,6 +102,8 @@ func TestConfig_MaximalBuilder(t *testing.T) {
 
 	require.NoError(t, err, "failed to create client")
 	require.Equal(t, 11, len(client.PrivateKeys), "expected 11 private keys")
+	require.Equal(t, 2, len(client.Cfg.Networks), "expected 2 networks")
+	require.Equal(t, "Second", client.Cfg.Network.Name, "expected network to be set")
 
 	t.Cleanup(func() {
 		err = seth.ReturnFunds(client, client.Addresses[0].Hex())
@@ -383,6 +424,103 @@ func TestConfig_SimulatedBackend(t *testing.T) {
 	require.IsType(t, backend.Client(), client.Client, "expected simulated client")
 }
 
+func TestConfig_SimulatedBackend_ContractDeploymentHooks(t *testing.T) {
+	backend, cancelFn := StartSimulatedBackend([]common.Address{common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")})
+	t.Cleanup(func() {
+		cancelFn()
+	})
+
+	builder := seth.NewClientBuilder()
+
+	wasContractPreHookCalled := false
+	wasContractPostHookCalled := false
+	hooks := seth.Hooks{
+		ContractDeployment: seth.ContractDeploymentHooks{
+			Pre: func(_ *bind.TransactOpts, _ string, _ abi.ABI, _ []byte, _ ...interface{}) error {
+				wasContractPreHookCalled = true
+				return nil
+			},
+			Post: func(_ *seth.Client, _ *types.Transaction) error {
+				wasContractPostHookCalled = true
+				backend.Commit()
+				return nil
+			},
+		},
+	}
+
+	client, err := builder.
+		WithNetworkName("simulated").
+		WithHooks(hooks).
+		WithEthClient(backend.Client()).
+		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+		Build()
+
+	require.NoError(t, err, "failed to build client")
+	require.Equal(t, 1, len(client.PrivateKeys), "expected 1 private key")
+	require.Equal(t, 1, len(client.Addresses), "expected 1 addresse")
+	require.IsType(t, backend.Client(), client.Client, "expected simulated client")
+
+	linkAbi, err := link_token.LinkTokenMetaData.GetAbi()
+	require.NoError(t, err, "failed to get LINK ABI")
+
+	_, err = client.DeployContract(client.NewTXOpts(), "LinkToken", *linkAbi, common.FromHex(link_token.LinkTokenMetaData.Bin))
+	require.NoError(t, err, "failed to deploy LINK contract")
+	require.True(t, wasContractPreHookCalled, "expected contract deployment pre hook to be called")
+	require.True(t, wasContractPostHookCalled, "expected contract deployment post hook to be called")
+}
+
+func TestConfig_SimulatedBackend_TxDecodingHooks(t *testing.T) {
+	backend, cancelFn := StartSimulatedBackend([]common.Address{common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")})
+	t.Cleanup(func() {
+		cancelFn()
+	})
+
+	builder := seth.NewClientBuilder()
+
+	wasTxDecodingPreHookCalled := false
+	wasTxDecodingPostHookCalled := false
+	hooks := seth.Hooks{
+		TxDecoding: seth.TxDecodingHooks{
+			Pre: func(_ *seth.Client) error {
+				backend.Commit()
+				wasTxDecodingPreHookCalled = true
+				return nil
+			},
+			Post: func(_ *seth.Client, _ *seth.DecodedTransaction, _ error) error {
+				wasTxDecodingPostHookCalled = true
+				return nil
+			},
+		},
+	}
+
+	client, err := builder.
+		WithNetworkName("simulated").
+		WithHooks(hooks).
+		WithEthClient(backend.Client()).
+		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+		Build()
+
+	require.NoError(t, err, "failed to build client")
+	require.Equal(t, 1, len(client.PrivateKeys), "expected 1 private key")
+	require.Equal(t, 1, len(client.Addresses), "expected 1 addresse")
+	require.IsType(t, backend.Client(), client.Client, "expected simulated client")
+
+	linkAbi, err := link_token.LinkTokenMetaData.GetAbi()
+	require.NoError(t, err, "failed to get LINK ABI")
+
+	data, err := client.DeployContract(client.NewTXOpts(), "LinkToken", *linkAbi, common.FromHex(link_token.LinkTokenMetaData.Bin))
+	require.NoError(t, err, "failed to deploy LINK contract")
+
+	instance, err := link_token.NewLinkToken(data.Address, client.Client)
+	require.NoError(t, err, "failed to get LINK instance")
+
+	_, err = client.Decode(instance.GrantMintAndBurnRoles(client.NewTXOpts(), common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")))
+	require.NoError(t, err, "failed to decode transaction")
+
+	require.True(t, wasTxDecodingPreHookCalled, "expected tx decoding pre hook to be called")
+	require.True(t, wasTxDecodingPostHookCalled, "expected tx decoding post hook to be called")
+}
+
 func TestConfig_EthClient_DoesntAllowRpcUrl(t *testing.T) {
 	backend, cancelFn := StartSimulatedBackend([]common.Address{common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")})
 	t.Cleanup(func() {
@@ -403,7 +541,7 @@ func TestConfig_EthClient_DoesntAllowRpcUrl(t *testing.T) {
 	require.Nil(t, client, "expected client to be nil")
 }
 
-func TestExtraConfig_EthClient(t *testing.T) {
+func TestConfig_EthClient(t *testing.T) {
 	builder := seth.NewClientBuilder()
 
 	ethclient, err := ethclient.Dial("ws://localhost:8545")
@@ -416,7 +554,21 @@ func TestExtraConfig_EthClient(t *testing.T) {
 		Build()
 
 	require.NoError(t, err, "failed to build client")
-	require.Equal(t, 1, len(client.PrivateKeys), "expected 0 private keys")
-	require.Equal(t, 1, len(client.Addresses), "expected 0 addresses")
+	require.Equal(t, 1, len(client.PrivateKeys), "expected 1 private key")
+	require.Equal(t, 1, len(client.Addresses), "expected 1 address")
 	require.IsType(t, ethclient, client.Client, "expected real client")
+}
+
+func TestConfig_UnknownNetwork(t *testing.T) {
+	builder := seth.NewClientBuilder()
+
+	client, err := builder.
+		UseNetworkWithName("my network").
+		WithNetworks([]*seth.Network{}).
+		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+		Build()
+
+	require.Error(t, err, "succeeded in building the client")
+	require.Contains(t, err.Error(), "network with name 'my network' not found", "expected error message")
+	require.Nil(t, client, "expected client to be nil")
 }
