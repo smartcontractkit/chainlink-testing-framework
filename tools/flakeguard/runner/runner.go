@@ -543,9 +543,9 @@ func (r *Runner) parseTestResults(filePaths []string, runPrefix string, runCount
 		if err = file.Close(); err != nil {
 			log.Warn().Err(err).Str("file", filePath).Msg("failed to close file")
 		}
-		if err = os.Remove(filePath); err != nil {
-			log.Warn().Err(err).Str("file", filePath).Msg("failed to delete file")
-		}
+		// if err = os.Remove(filePath); err != nil {
+		// 	log.Warn().Err(err).Str("file", filePath).Msg("failed to delete file")
+		// }
 	}
 
 	var results []reports.TestResult
@@ -778,12 +778,13 @@ func (r *Runner) RerunFailedTests(failedTests []reports.TestResult) (*reports.Te
 	}
 
 	report := &reports.TestReport{
-		GoProject:     r.prettyProjectPath,
-		RaceDetection: r.UseRace,
-		ExcludedTests: r.SkipTests,
-		SelectedTests: r.SelectTests,
-		Results:       rerunResults,
-		MaxPassRatio:  r.MaxPassRatio,
+		GoProject:       r.prettyProjectPath,
+		RaceDetection:   r.UseRace,
+		ExcludedTests:   r.SkipTests,
+		SelectedTests:   r.SelectTests,
+		Results:         rerunResults,
+		MaxPassRatio:    r.MaxPassRatio,
+		JSONOutputPaths: rerunJsonFilePaths,
 	}
 	report.GenerateSummaryData()
 

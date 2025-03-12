@@ -178,9 +178,16 @@ var RunTestsCmd = &cobra.Command{
 			})
 
 			if len(failedAfterRerun) > 0 {
-				fmt.Println("\nTests That Failed All Reruns:")
+				fmt.Printf("\nTests That Failed All %d Reruns:\n", rerunFailedCount)
 				reports.PrintTestResultsTable(os.Stdout, failedAfterRerun, false, false)
 				fmt.Println()
+
+				fmt.Printf("\nLogs From All Reruns:\n")
+				err := rerunReport.PrintGotestsumOutput("pkgname")
+				if err != nil {
+					log.Error().Err(err).Msg("Error printing gotestsum output")
+				}
+
 				log.Error().
 					Int("noSuccessTests", len(failedAfterRerun)).
 					Int("reruns", rerunFailedCount).

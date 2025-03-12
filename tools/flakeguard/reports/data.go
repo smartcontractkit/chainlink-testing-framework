@@ -1,9 +1,11 @@
 package reports
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"sort"
 	"strings"
 	"time"
@@ -25,6 +27,7 @@ type TestReport struct {
 	SelectedTests        []string     `json:"selected_tests,omitempty"`
 	Results              []TestResult `json:"results,omitempty"`
 	FailedLogsURL        string       `json:"failed_logs_url,omitempty"`
+	JSONOutputPaths      []string     `json:"-"` // go test -json outputs from runs
 	// MaxPassRatio is the maximum flakiness ratio allowed for a test to be considered not flaky
 	MaxPassRatio float64 `json:"max_pass_ratio,omitempty"`
 }
@@ -41,6 +44,25 @@ func (testReport *TestReport) SaveToFile(outputPath string) error {
 		return fmt.Errorf("error writing test results to file: %w", err)
 	}
 
+	return nil
+}
+
+func (tr *TestReport) PrintGotestsumOutput(format string) error {
+	for _, path := range tr.JSONOutputPaths {
+		cmdStr := fmt.Sprintf("cat %q | gotestsum --raw-command --format %q -- cat", path, format)
+		cmd := exec.Command("bash", "-c", cmdStr)
+
+		var outBuf bytes.Buffer
+		cmd.Stdout = &outBuf
+		cmd.Stderr = &outBuf
+
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("gotestsum command failed for file %s: %w\nOutput: %s", path, err, outBuf.String())
+		}
+
+		fmt.Print(outBuf.String())
+		fmt.Println("---------------------")
+	}
 	return nil
 }
 
