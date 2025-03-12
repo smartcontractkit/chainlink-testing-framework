@@ -86,36 +86,6 @@ type Stats struct {
 	Steps         map[string]*Stat `json:"steps"`
 }
 
-func calculatePercentiles(stat *Stat) *Stat {
-	sort.Slice(stat.Durations, func(i, j int) bool { return stat.Durations[i] < stat.Durations[j] })
-	q := func(d *Stat, quantile float64) int {
-		return int(float64(len(d.Durations)) * quantile / 100)
-	}
-	stat.P50 = stat.Durations[q(stat, 50)].Round(time.Second)
-	stat.P95 = stat.Durations[q(stat, 95)].Round(time.Second)
-	stat.P99 = stat.Durations[q(stat, 99)].Round(time.Second)
-	return stat
-}
-
-func refreshDebugDirs() {
-	_ = os.RemoveAll(DebugDirRoot)
-	if _, err := os.Stat(DebugDirRoot); os.IsNotExist(err) {
-		_ = os.MkdirAll(DebugSubDirWF, os.ModePerm)
-		_ = os.MkdirAll(DebugSubDirJobs, os.ModePerm)
-	}
-}
-
-func dumpResults(enabled bool, dir, name string, data interface{}) error {
-	if enabled {
-		d, err := json.MarshalIndent(data, "", " ")
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(fmt.Sprintf("%s/%s-%s.json", dir, name, uuid.NewString()[0:5]), d, os.ModeAppend|os.ModePerm)
-	}
-	return nil
-}
-
 func AnalyzeJobsSteps(ctx context.Context, client GitHubActionsClient, cfg *AnalysisConfig) (*Stats, error) {
 	framework.L.Info().Time("From", cfg.TimeStart).Time("To", cfg.TimeEnd).Msg("Analyzing workflow runs")
 	opts := &github.ListWorkflowRunsOptions{
@@ -359,4 +329,34 @@ func skippedOrInProgressJob(s *github.WorkflowJob) bool {
 		return true
 	}
 	return false
+}
+
+func calculatePercentiles(stat *Stat) *Stat {
+	sort.Slice(stat.Durations, func(i, j int) bool { return stat.Durations[i] < stat.Durations[j] })
+	q := func(d *Stat, quantile float64) int {
+		return int(float64(len(d.Durations)) * quantile / 100)
+	}
+	stat.P50 = stat.Durations[q(stat, 50)].Round(time.Second)
+	stat.P95 = stat.Durations[q(stat, 95)].Round(time.Second)
+	stat.P99 = stat.Durations[q(stat, 99)].Round(time.Second)
+	return stat
+}
+
+func refreshDebugDirs() {
+	_ = os.RemoveAll(DebugDirRoot)
+	if _, err := os.Stat(DebugDirRoot); os.IsNotExist(err) {
+		_ = os.MkdirAll(DebugSubDirWF, os.ModePerm)
+		_ = os.MkdirAll(DebugSubDirJobs, os.ModePerm)
+	}
+}
+
+func dumpResults(enabled bool, dir, name string, data interface{}) error {
+	if enabled {
+		d, err := json.MarshalIndent(data, "", " ")
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(fmt.Sprintf("%s/%s-%s.json", dir, name, uuid.NewString()[0:5]), d, os.ModeAppend|os.ModePerm)
+	}
+	return nil
 }
