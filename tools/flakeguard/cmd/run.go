@@ -181,7 +181,7 @@ var RunTestsCmd = &cobra.Command{
 			})
 
 			if len(failedTests) == 0 {
-				log.Info().Msg("No tests to rerun. All tests passed")
+				log.Info().Msg("All tests passed. No tests to rerun.")
 				flushSummaryAndExit(0)
 			}
 
