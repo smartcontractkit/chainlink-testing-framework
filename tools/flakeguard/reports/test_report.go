@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/google/uuid"
 )
@@ -48,6 +49,19 @@ func WithGoProject(goProject string) TestReportOption {
 func WithReportID(reportID string) TestReportOption {
 	return func(opts *reportOptions) {
 		opts.reportID = reportID
+	}
+}
+
+func WithGeneratedReportID(genReportID bool) TestReportOption {
+	return func(opts *reportOptions) {
+		if !genReportID {
+			return
+		}
+		uuid, err := uuid.NewRandom()
+		if err != nil {
+			panic(fmt.Errorf("error generating random report id: %w", err))
+		}
+		opts.reportID = uuid.String()
 	}
 }
 
@@ -210,25 +224,15 @@ type TestReport struct {
 	MaxPassRatio float64 `json:"max_pass_ratio,omitempty"`
 }
 
-func (r *TestReport) SetRandomReportID() {
-	uuid, err := uuid.NewRandom()
-	if err != nil {
-		panic(fmt.Errorf("error generating random report id: %w", err))
-	}
-	r.SetReportID(uuid.String())
-}
-
-func (r *TestReport) SetReportID(reportID string) {
-	r.ID = reportID
-	// Set the report ID in all test results
-	for i := range r.Results {
-		r.Results[i].ReportID = r.ID
-	}
-}
-
 // SaveToFile saves the test report to a JSON file at the given path.
 // It returns an error if there's any issue with marshaling the report or writing to the file.
 func (testReport *TestReport) SaveToFile(outputPath string) error {
+	// Create directory path if it doesn't exist
+	dir := filepath.Dir(outputPath)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("error creating directories: %w", err)
+	}
+
 	jsonData, err := json.MarshalIndent(testReport, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling test results to JSON: %w", err)

@@ -19,16 +19,6 @@ var SendToSplunkCmd = &cobra.Command{
 		splunkToken, _ := cmd.Flags().GetString("splunk-token")
 		splunkEvent, _ := cmd.Flags().GetString("splunk-event")
 		failLogsURL, _ := cmd.Flags().GetString("failed-logs-url")
-		repoURL, _ := cmd.Flags().GetString("repo-url")
-		branchName, _ := cmd.Flags().GetString("branch-name")
-		headSHA, _ := cmd.Flags().GetString("head-sha")
-		baseSHA, _ := cmd.Flags().GetString("base-sha")
-		githubWorkflowName, _ := cmd.Flags().GetString("github-workflow-name")
-		githubWorkflowRunURL, _ := cmd.Flags().GetString("github-workflow-run-url")
-		reportID, _ := cmd.Flags().GetString("report-id")
-		genReportID, _ := cmd.Flags().GetBool("gen-report-id")
-		repoPath, _ := cmd.Flags().GetString("repo-path")
-		codeownersPath, _ := cmd.Flags().GetString("codeowners-path")
 
 		// Read the report file.
 		data, err := os.ReadFile(reportPath)
@@ -43,43 +33,7 @@ var SendToSplunkCmd = &cobra.Command{
 			log.Error().Err(err).Msg("Error unmarshalling report JSON")
 			os.Exit(1)
 		}
-		testReport.GenerateSummaryData()
 
-		// Override report fields with flags if provided.
-		if repoURL != "" {
-			testReport.RepoURL = repoURL
-		}
-		if branchName != "" {
-			testReport.BranchName = branchName
-		}
-		if headSHA != "" {
-			testReport.HeadSHA = headSHA
-		}
-		if baseSHA != "" {
-			testReport.BaseSHA = baseSHA
-		}
-		if githubWorkflowName != "" {
-			testReport.GitHubWorkflowName = githubWorkflowName
-		}
-		if githubWorkflowRunURL != "" {
-			testReport.GitHubWorkflowRunURL = githubWorkflowRunURL
-		}
-		if reportID != "" {
-			testReport.SetReportID(reportID)
-		}
-		if genReportID {
-			testReport.SetRandomReportID()
-		}
-		if repoPath != "" {
-			err = reports.MapTestResultsToPaths(&testReport, repoPath)
-			if err != nil {
-				log.Error().Err(err).Msg("Error mapping test results to paths")
-				os.Exit(1)
-			}
-		}
-		if codeownersPath != "" && repoPath != "" {
-			reports.MapTestResultsToOwners(&testReport, codeownersPath)
-		}
 		if failLogsURL != "" {
 			testReport.FailedLogsURL = failLogsURL
 		}
@@ -102,16 +56,6 @@ func init() {
 	SendToSplunkCmd.Flags().String("splunk-url", "", "Optional URL to send the test results to Splunk")
 	SendToSplunkCmd.Flags().String("splunk-token", "", "Optional Splunk HEC token to send the test results")
 	SendToSplunkCmd.Flags().String("splunk-event", "", "Optional Splunk event to send as the triggering event for the test results")
-	SendToSplunkCmd.Flags().String("repo-url", "", "The repository URL")
-	SendToSplunkCmd.Flags().String("branch-name", "", "Branch name for the test report")
-	SendToSplunkCmd.Flags().String("head-sha", "", "Head commit SHA for the test report")
-	SendToSplunkCmd.Flags().String("base-sha", "", "Base commit SHA for the test report")
-	SendToSplunkCmd.Flags().String("github-workflow-name", "", "GitHub workflow name for the test report")
-	SendToSplunkCmd.Flags().String("github-workflow-run-url", "", "GitHub workflow run URL for the test report")
-	SendToSplunkCmd.Flags().String("report-id", "", "Optional identifier for the test report. Will be generated if not provided")
-	SendToSplunkCmd.Flags().StringP("repo-path", "", ".", "The path to the root of the repository/project")
-	SendToSplunkCmd.Flags().StringP("codeowners-path", "", "", "Path to the CODEOWNERS file")
-	SendToSplunkCmd.Flags().Bool("gen-report-id", false, "Generate a random report ID")
 
 	// Mark required flags.
 	if err := SendToSplunkCmd.MarkFlagRequired("report-path"); err != nil {

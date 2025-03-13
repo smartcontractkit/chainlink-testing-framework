@@ -14,7 +14,7 @@ import (
 )
 
 var GenerateReportCmd = &cobra.Command{
-	Use:   "generate-github-reports",
+	Use:   "generate-github-report",
 	Short: "Generate Github reports from Flakeguard test report",
 	Run: func(cmd *cobra.Command, args []string) {
 		fs := reports.OSFileSystem{}

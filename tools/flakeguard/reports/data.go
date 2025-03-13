@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -36,6 +37,12 @@ type TestResult struct {
 }
 
 func SaveTestResultsToFile(results []TestResult, filePath string) error {
+	// Create directory path if it doesn't exist
+	dir := filepath.Dir(filePath)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("error creating directories: %w", err)
+	}
+
 	jsonData, err := json.MarshalIndent(results, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling test results to JSON: %w", err)
