@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var AggregateResultsCmd = &cobra.Command{
+var GenerateTestReportCmd = &cobra.Command{
 	Use:   "generate-test-report",
 	Short: "Generate test report based on test results",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -176,22 +176,22 @@ var AggregateResultsCmd = &cobra.Command{
 }
 
 func init() {
-	AggregateResultsCmd.Flags().StringP("test-results-dir", "p", "", "Path to the folder containing JSON test result files (required)")
-	AggregateResultsCmd.Flags().StringP("project-path", "r", ".", "The path to the Go project. Default is the current directory. Useful for subprojects")
-	AggregateResultsCmd.Flags().StringP("output-path", "o", "./report", "Path to output the aggregated results (directory)")
-	AggregateResultsCmd.Flags().Float64P("max-pass-ratio", "", 1.0, "The maximum pass ratio threshold for a test to be considered flaky")
-	AggregateResultsCmd.Flags().StringP("codeowners-path", "", "", "Path to the CODEOWNERS file")
-	AggregateResultsCmd.Flags().StringP("repo-path", "", ".", "The path to the root of the repository/project")
-	AggregateResultsCmd.Flags().String("repo-url", "", "The repository URL")
-	AggregateResultsCmd.Flags().String("branch-name", "", "Branch name for the test report")
-	AggregateResultsCmd.Flags().String("head-sha", "", "Head commit SHA for the test report")
-	AggregateResultsCmd.Flags().String("base-sha", "", "Base commit SHA for the test report")
-	AggregateResultsCmd.Flags().String("github-workflow-name", "", "GitHub workflow name for the test report")
-	AggregateResultsCmd.Flags().String("github-workflow-run-url", "", "GitHub workflow run URL for the test report")
-	AggregateResultsCmd.Flags().String("report-id", "", "Optional identifier for the test report. Will be generated if not provided")
-	AggregateResultsCmd.Flags().Bool("race", false, "Enable the race detector")
+	GenerateTestReportCmd.Flags().StringP("test-results-dir", "p", "", "Path to the folder containing JSON test result files (required)")
+	GenerateTestReportCmd.Flags().StringP("project-path", "r", ".", "The path to the Go project. Default is the current directory. Useful for subprojects")
+	GenerateTestReportCmd.Flags().StringP("output-path", "o", "./report", "Path to output the aggregated results (directory)")
+	GenerateTestReportCmd.Flags().Float64P("max-pass-ratio", "", 1.0, "The maximum pass ratio threshold for a test to be considered flaky")
+	GenerateTestReportCmd.Flags().StringP("codeowners-path", "", "", "Path to the CODEOWNERS file")
+	GenerateTestReportCmd.Flags().StringP("repo-path", "", ".", "The path to the root of the repository/project")
+	GenerateTestReportCmd.Flags().String("repo-url", "", "The repository URL")
+	GenerateTestReportCmd.Flags().String("branch-name", "", "Branch name for the test report")
+	GenerateTestReportCmd.Flags().String("head-sha", "", "Head commit SHA for the test report")
+	GenerateTestReportCmd.Flags().String("base-sha", "", "Base commit SHA for the test report")
+	GenerateTestReportCmd.Flags().String("github-workflow-name", "", "GitHub workflow name for the test report")
+	GenerateTestReportCmd.Flags().String("github-workflow-run-url", "", "GitHub workflow run URL for the test report")
+	GenerateTestReportCmd.Flags().String("report-id", "", "Optional identifier for the test report. Will be generated if not provided")
+	GenerateTestReportCmd.Flags().Bool("race", false, "Enable the race detector")
 
-	if err := AggregateResultsCmd.MarkFlagRequired("test-results-dir"); err != nil {
+	if err := GenerateTestReportCmd.MarkFlagRequired("test-results-dir"); err != nil {
 		log.Fatal().Err(err).Msg("Error marking flag as required")
 	}
 }
