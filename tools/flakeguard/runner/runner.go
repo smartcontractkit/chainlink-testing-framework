@@ -32,7 +32,8 @@ type Runner struct {
 	Verbose                        bool          // If true, provides detailed logging.
 	RunCount                       int           // Number of times to run the tests.
 	RerunCount                     int           // Number of additional runs for tests that initially fail.
-	UseRace                        bool          // Enable race detector.
+	GoTestCountFlag                *int          // Run go test with -count flag.
+	GoTestRaceFlag                 bool          // Run go test with -race flag.
 	Timeout                        time.Duration // Test timeout
 	Tags                           []string      // Build tags.
 	UseShuffle                     bool          // Enable test shuffling. -shuffle=on flag.
@@ -84,7 +85,7 @@ func (r *Runner) RunTestPackages(packages []string) (*reports.TestReport, error)
 
 	report := &reports.TestReport{
 		GoProject:     r.prettyProjectPath,
-		RaceDetection: r.UseRace,
+		RaceDetection: r.GoTestRaceFlag,
 		ExcludedTests: r.SkipTests,
 		SelectedTests: r.SelectTests,
 		Results:       results,
@@ -120,7 +121,7 @@ func (r *Runner) RunTestCmd(testCmd []string) (*reports.TestReport, error) {
 
 	report := &reports.TestReport{
 		GoProject:     r.prettyProjectPath,
-		RaceDetection: r.UseRace,
+		RaceDetection: r.GoTestRaceFlag,
 		ExcludedTests: r.SkipTests,
 		SelectedTests: r.SelectTests,
 		Results:       results,
@@ -143,8 +144,11 @@ type exitCoder interface {
 
 // runTestPackage runs the tests for a given package and returns the path to the output file.
 func (r *Runner) runTestPackage(packageName string) (string, bool, error) {
-	args := []string{"test", packageName, "-json", "-count=1"}
-	if r.UseRace {
+	args := []string{"test", packageName, "-json"}
+	if r.GoTestCountFlag != nil {
+		args = append(args, fmt.Sprintf("-count=%d", *r.GoTestCountFlag))
+	}
+	if r.GoTestRaceFlag {
 		args = append(args, "-race")
 	}
 	if r.Timeout > 0 {
@@ -748,7 +752,7 @@ func (r *Runner) RerunFailedTests(failedTests []reports.TestResult) (*reports.Te
 			}
 
 			// Add other test flags
-			if r.UseRace {
+			if r.GoTestRaceFlag {
 				cmd = append(cmd, "-race")
 			}
 			if r.Timeout > 0 {
@@ -779,7 +783,7 @@ func (r *Runner) RerunFailedTests(failedTests []reports.TestResult) (*reports.Te
 
 	report := &reports.TestReport{
 		GoProject:       r.prettyProjectPath,
-		RaceDetection:   r.UseRace,
+		RaceDetection:   r.GoTestRaceFlag,
 		ExcludedTests:   r.SkipTests,
 		SelectedTests:   r.SelectTests,
 		Results:         rerunResults,

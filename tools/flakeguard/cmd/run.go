@@ -57,6 +57,17 @@ var RunTestsCmd = &cobra.Command{
 		ignoreParentFailuresOnSubtests, _ := cmd.Flags().GetBool("ignore-parent-failures-on-subtests")
 		failFast, _ := cmd.Flags().GetBool("fail-fast")
 
+		// Retrieve go-test-count flag as a pointer if explicitly provided.
+		var goTestCount *int
+		if cmd.Flags().Changed("go-test-count") {
+			v, err := cmd.Flags().GetInt("go-test-count")
+			if err != nil {
+				log.Error().Err(err).Msg("Error retrieving flag go-test-count")
+				flushSummaryAndExit(ErrorExitCode)
+			}
+			goTestCount = &v
+		}
+
 		// Handle the compatibility between min/max pass ratio
 		passRatioThreshold := minPassRatio
 		if maxPassRatioSpecified && maxPassRatio != 1.0 {
@@ -100,7 +111,8 @@ var RunTestsCmd = &cobra.Command{
 			RunCount:                       runCount,
 			Timeout:                        timeout,
 			Tags:                           tags,
-			UseRace:                        useRace,
+			GoTestCountFlag:                goTestCount,
+			GoTestRaceFlag:                 useRace,
 			SkipTests:                      skipTests,
 			SelectTests:                    selectTests,
 			UseShuffle:                     useShuffle,
@@ -243,6 +255,7 @@ func init() {
 	RunTestsCmd.Flags().IntP("run-count", "c", 1, "Number of times to run the tests")
 	RunTestsCmd.Flags().Duration("timeout", 0, "Passed on to the 'go test' command as the -timeout flag")
 	RunTestsCmd.Flags().StringArray("tags", nil, "Passed on to the 'go test' command as the -tags flag")
+	RunTestsCmd.Flags().Int("go-test-count", -1, "go test -count flag value. By default -count flag is not passed to go test")
 	RunTestsCmd.Flags().Bool("race", false, "Enable the race detector")
 	RunTestsCmd.Flags().Bool("shuffle", false, "Enable test shuffling")
 	RunTestsCmd.Flags().String("shuffle-seed", "", "Set seed for test shuffling. Must be used with --shuffle")

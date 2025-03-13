@@ -65,7 +65,7 @@ func TestRun(t *testing.T) {
 				ProjectPath:      "./",
 				Verbose:          true,
 				RunCount:         defaultTestRunCount,
-				UseRace:          false,
+				GoTestRaceFlag:   false,
 				SkipTests:        []string{"TestPanic", "TestFlakyPanic", "TestSubTestsSomePanic", "TestTimeout"},
 				FailFast:         false,
 				CollectRawOutput: true,
@@ -163,7 +163,7 @@ func TestRun(t *testing.T) {
 				ProjectPath:      "./",
 				Verbose:          true,
 				RunCount:         defaultTestRunCount,
-				UseRace:          false,
+				GoTestRaceFlag:   false,
 				SkipTests:        []string{},
 				SelectTests:      []string{"TestPanic"},
 				FailFast:         false,
@@ -183,7 +183,7 @@ func TestRun(t *testing.T) {
 				ProjectPath:      "./",
 				Verbose:          true,
 				RunCount:         defaultTestRunCount,
-				UseRace:          false,
+				GoTestRaceFlag:   false,
 				SkipTests:        []string{},
 				SelectTests:      []string{"TestFlakyPanic"},
 				FailFast:         false,
@@ -203,7 +203,7 @@ func TestRun(t *testing.T) {
 				ProjectPath:      "./",
 				Verbose:          true,
 				RunCount:         defaultTestRunCount,
-				UseRace:          false,
+				GoTestRaceFlag:   false,
 				SkipTests:        []string{},
 				SelectTests:      []string{"TestSubTestsSomePanic"},
 				FailFast:         false,
@@ -233,7 +233,7 @@ func TestRun(t *testing.T) {
 				ProjectPath:      "./",
 				Verbose:          true,
 				RunCount:         defaultTestRunCount,
-				UseRace:          false,
+				GoTestRaceFlag:   false,
 				SkipTests:        []string{},
 				SelectTests:      []string{"TestFail", "TestPass"},
 				FailFast:         true,
@@ -293,7 +293,7 @@ func TestRun(t *testing.T) {
 				require.Equal(t, tc.runner.RunCount, testReport.SummaryData.TestRunCount, "unexpected number of test runs")
 			}
 
-			require.Equal(t, tc.runner.UseRace, testReport.RaceDetection, "unexpected race usage")
+			require.Equal(t, tc.runner.GoTestRaceFlag, testReport.RaceDetection, "unexpected race usage")
 
 			assert.Equal(t, len(tc.expectedTests), len(testReport.Results), "unexpected number of test results")
 			for _, result := range testReport.Results {
