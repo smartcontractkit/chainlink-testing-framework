@@ -16,6 +16,7 @@ import (
 type reportOptions struct {
 	maxPassRatio         float64
 	reportID             string
+	rerunOfReportID      string
 	projectPath          string
 	goProjectName        string
 	raceDetection        bool
@@ -49,6 +50,12 @@ func WithGoProject(goProject string) TestReportOption {
 func WithReportID(reportID string) TestReportOption {
 	return func(opts *reportOptions) {
 		opts.reportID = reportID
+	}
+}
+
+func WithRerunOfReportID(rerunOfReportID string) TestReportOption {
+	return func(opts *reportOptions) {
+		opts.rerunOfReportID = rerunOfReportID
 	}
 }
 
@@ -169,6 +176,7 @@ func NewTestReport(results []TestResult, opts ...TestReportOption) (TestReport, 
 
 	r := TestReport{
 		ID:                   defaultOpts.reportID,
+		RerunOfReportID:      defaultOpts.rerunOfReportID,
 		ProjectPath:          defaultOpts.projectPath,
 		GoProject:            defaultOpts.goProjectName,
 		BranchName:           defaultOpts.branchName,
@@ -212,6 +220,7 @@ func NewTestReport(results []TestResult, opts ...TestReportOption) (TestReport, 
 // TestReport reports on the parameters and results of one to many test runs
 type TestReport struct {
 	ID                   string       `json:"id,omitempty"`
+	RerunOfReportID      string       `json:"rerun_of_report_id,omitempty"` // references the ID of the original/base report from which this re-run was created.
 	ProjectPath          string       `json:"project_path"`
 	GoProject            string       `json:"go_project"`
 	BranchName           string       `json:"branch_name,omitempty"`
