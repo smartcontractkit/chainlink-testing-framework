@@ -82,8 +82,7 @@ func generateShortTestResultsTable(
 ) [][]string {
 	p := message.NewPrinter(language.English)
 
-	// Define the columns you want
-	headers := []string{"Name", "Path", "Runs", "Failures", "Code Owners"}
+	headers := []string{"Name", "Ever Passed", "Runs", "Successes", "Code Owners", "Path"}
 
 	// Optionally format the headers for Markdown
 	if markdown {
@@ -101,6 +100,12 @@ func generateShortTestResultsTable(
 			continue
 		}
 
+		// Determine whether the test has passed at least once
+		passed := "NO"
+		if r.Successes > 0 {
+			passed = "YES"
+		}
+
 		// Format the Code Owners
 		owners := "Unknown"
 		if len(r.CodeOwners) > 0 {
@@ -108,11 +113,12 @@ func generateShortTestResultsTable(
 		}
 
 		row := []string{
-			r.TestName,
-			r.TestPath,
-			p.Sprintf("%d", r.Runs),
-			p.Sprintf("%d", r.Failures),
-			owners,
+			r.TestName,                   // "Name"
+			passed,                       // "Passed"
+			p.Sprintf("%d", r.Runs),      // "Runs"
+			p.Sprintf("%d", r.Successes), // "Passes"
+			owners,                       // "Code Owners"
+			r.TestPath,                   // "Path"
 		}
 
 		table = append(table, row)

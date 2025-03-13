@@ -204,6 +204,10 @@ var RunTestsCmd = &cobra.Command{
 				flushSummaryAndExit(ErrorExitCode)
 			}
 
+			fmt.Fprint(&summaryBuffer, "\nFailed Tests That Were Rerun:\n\n")
+			reports.PrintTestResultsTable(&summaryBuffer, rerunResults, false, false, true)
+			fmt.Fprintln(&summaryBuffer)
+
 			// Save the rerun test report to file
 			if rerunResultsPath != "" && len(rerunResults) > 0 {
 				if err := reports.SaveTestResultsToFile(rerunResults, rerunResultsPath); err != nil {
@@ -219,10 +223,6 @@ var RunTestsCmd = &cobra.Command{
 			})
 
 			if len(failedAfterRerun) > 0 {
-				fmt.Fprint(&summaryBuffer, "\nTests That Have 0 Success Rate After Reruns:\n\n")
-				reports.PrintTestResultsTable(&summaryBuffer, failedAfterRerun, false, false, true)
-				fmt.Fprintln(&summaryBuffer)
-
 				fmt.Fprint(&summaryBuffer, "\nLogs:\n\n")
 				err := rerunReport.PrintGotestsumOutput(&summaryBuffer, "pkgname")
 				if err != nil {
