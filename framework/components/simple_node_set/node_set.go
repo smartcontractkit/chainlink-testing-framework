@@ -125,9 +125,12 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 
 		eg.Go(func() error {
 			var net string
-			net, err := clnode.NewNetworkCfgOneNetworkAllNodes(bcOut)
-			if err != nil {
-				return err
+			var err error
+			if bcOut != nil {
+				net, err = clnode.NewNetworkCfgOneNetworkAllNodes(bcOut)
+				if err != nil {
+					return err
+				}
 			}
 			if in.NodeSpecs[overrideIdx].Node.TestConfigOverrides != "" {
 				net = in.NodeSpecs[overrideIdx].Node.TestConfigOverrides
