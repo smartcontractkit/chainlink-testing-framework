@@ -69,7 +69,7 @@ func TestAggregateResultFilesSplunk(t *testing.T) {
 	report, err := LoadAndAggregate("./testdata", WithReportID(reportID))
 	require.NoError(t, err, "LoadAndAggregate failed")
 
-	err = SendReportToSplunk(srv.URL, splunkToken, splunkEvent, *report)
+	err = SendTestReportToSplunk(srv.URL, splunkToken, splunkEvent, *report)
 	require.NoError(t, err, "SendReportToSplunk failed")
 	verifyAggregatedReport(t, report)
 	assert.Equal(t, 1, reportRequestsReceived, "unexpected number of report requests")

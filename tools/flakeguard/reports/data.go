@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // TestReport reports on the parameters and results of one to many test runs
@@ -31,6 +33,22 @@ type TestReport struct {
 	JSONOutputPaths      []string     `json:"-"` // go test -json outputs from runs
 	// MaxPassRatio is the maximum flakiness ratio allowed for a test to be considered not flaky
 	MaxPassRatio float64 `json:"max_pass_ratio,omitempty"`
+}
+
+func (r *TestReport) SetRandomReportID() {
+	uuid, err := uuid.NewRandom()
+	if err != nil {
+		panic(fmt.Errorf("error generating random report id: %w", err))
+	}
+	r.SetReportID(uuid.String())
+}
+
+func (r *TestReport) SetReportID(reportID string) {
+	r.ID = reportID
+	// Set the report ID in all test results
+	for i := range r.Results {
+		r.Results[i].ReportID = r.ID
+	}
 }
 
 // SaveToFile saves the test report to a JSON file at the given path.

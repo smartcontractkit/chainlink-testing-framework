@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 )
 
@@ -157,18 +156,13 @@ func LoadAndAggregate(resultsPath string, options ...AggregateOption) (*TestRepo
 		}
 	}()
 
-	if opts.reportID == "" {
-		uuid, err := uuid.NewRandom()
-		if err != nil {
-			return nil, fmt.Errorf("error generating UUID: %w", err)
-		}
-		opts.reportID = uuid.String()
-	}
-
 	// Aggregate results as they are being loaded
 	aggregatedReport, err := aggregate(reportChan, errChan, &opts)
 	if err != nil {
 		return nil, fmt.Errorf("error aggregating reports: %w", err)
+	}
+	if opts.reportID == "" {
+		aggregatedReport.SetRandomReportID()
 	}
 
 	// Map test results to test paths
