@@ -1,7 +1,7 @@
 # Base image
 FROM debian:bookworm AS base
 
-ARG AGAVE_VERSION=2.0.24
+ARG AGAVE_VERSION=2.1.15
 ARG RUST_VERSION=stable
 
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
