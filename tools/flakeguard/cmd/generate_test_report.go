@@ -189,6 +189,7 @@ func init() {
 	GenerateTestReportCmd.Flags().String("github-workflow-name", "", "GitHub workflow name for the test report")
 	GenerateTestReportCmd.Flags().String("github-workflow-run-url", "", "GitHub workflow run URL for the test report")
 	GenerateTestReportCmd.Flags().String("report-id", "", "Optional identifier for the test report. Will be generated if not provided")
+	GenerateTestReportCmd.Flags().Bool("gen-report-id", false, "Generate a random report ID")
 	GenerateTestReportCmd.Flags().Bool("race", false, "Enable the race detector")
 
 	if err := GenerateTestReportCmd.MarkFlagRequired("test-results-dir"); err != nil {
