@@ -14,13 +14,13 @@ import (
 )
 
 var GenerateReportCmd = &cobra.Command{
-	Use:   "generate-report",
-	Short: "Generate test reports from aggregated results that can be posted to GitHub",
+	Use:   "generate-github-reports",
+	Short: "Generate Github reports from Flakeguard test report",
 	Run: func(cmd *cobra.Command, args []string) {
 		fs := reports.OSFileSystem{}
 
 		// Get flag values
-		aggregatedResultsPath, _ := cmd.Flags().GetString("aggregated-results-path")
+		flakeguardReportPath, _ := cmd.Flags().GetString("flakeguard-report")
 		outputDir, _ := cmd.Flags().GetString("output-path")
 		maxPassRatio, _ := cmd.Flags().GetFloat64("max-pass-ratio")
 		generatePRComment, _ := cmd.Flags().GetBool("generate-pr-comment")
@@ -36,11 +36,11 @@ var GenerateReportCmd = &cobra.Command{
 
 		// Load the aggregated report
 		s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-		s.Suffix = " Loading aggregated test report..."
+		s.Suffix = " Loading flakeguard test report..."
 		s.Start()
 
-		aggregatedReport := reports.TestReport{}
-		reportFile, err := os.Open(aggregatedResultsPath)
+		testReport := reports.TestReport{}
+		reportFile, err := os.Open(flakeguardReportPath)
 		if err != nil {
 			s.Stop()
 			fmt.Println()
@@ -49,7 +49,7 @@ var GenerateReportCmd = &cobra.Command{
 		}
 		defer reportFile.Close()
 
-		if err := json.NewDecoder(reportFile).Decode(aggregatedReport); err != nil {
+		if err := json.NewDecoder(reportFile).Decode(testReport); err != nil {
 			s.Stop()
 			fmt.Println()
 			log.Error().Err(err).Msg("Error decoding aggregated test report")
@@ -70,7 +70,7 @@ var GenerateReportCmd = &cobra.Command{
 		s.Suffix = " Generating GitHub summary markdown..."
 		s.Start()
 
-		err = generateGitHubSummaryMarkdown(aggregatedReport, filepath.Join(outputDir, "all-test"), failedLogsURL, failedLogsArtifactName)
+		err = generateGitHubSummaryMarkdown(testReport, filepath.Join(outputDir, "all-test"), failedLogsURL, failedLogsArtifactName)
 		if err != nil {
 			s.Stop()
 			fmt.Println()
@@ -114,7 +114,7 @@ var GenerateReportCmd = &cobra.Command{
 			s.Start()
 
 			err = generatePRCommentMarkdown(
-				aggregatedReport,
+				testReport,
 				filepath.Join(outputDir, "all-test"),
 				baseBranch,
 				currentBranch,
@@ -147,7 +147,7 @@ var GenerateReportCmd = &cobra.Command{
 }
 
 func init() {
-	GenerateReportCmd.Flags().StringP("aggregated-results-path", "i", "", "Path to the aggregated JSON report file (required)")
+	GenerateReportCmd.Flags().StringP("flakeguard-report", "i", "", "Path to the flakeguard test report JSON file (required)")
 	GenerateReportCmd.Flags().StringP("output-path", "o", "./report", "Path to output the generated report files")
 	GenerateReportCmd.Flags().Float64P("max-pass-ratio", "", 1.0, "The maximum pass ratio threshold for a test to be considered flaky")
 	GenerateReportCmd.Flags().Bool("generate-pr-comment", false, "Set to true to generate PR comment markdown")
@@ -160,7 +160,7 @@ func init() {
 	GenerateReportCmd.Flags().Int64("github-run-id", 0, "The GitHub Actions run ID (required)")
 	GenerateReportCmd.Flags().String("failed-logs-url", "", "Optional URL linking to additional logs for failed tests")
 
-	if err := GenerateReportCmd.MarkFlagRequired("aggregated-results-path"); err != nil {
+	if err := GenerateReportCmd.MarkFlagRequired("flakeguard-report"); err != nil {
 		log.Error().Err(err).Msg("Error marking flag as required")
 		os.Exit(ErrorExitCode)
 	}
