@@ -125,6 +125,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 
 		eg.Go(func() error {
 			var net string
+			var err error
 			if bcOut != nil {
 				net, err = clnode.NewNetworkCfgOneNetworkAllNodes(bcOut)
 				if err != nil {
