@@ -27,24 +27,24 @@ var (
 
 // Runner describes the test run parameters and raw test outputs
 type Runner struct {
-	ProjectPath                    string        // Path to the Go project directory.
-	prettyProjectPath              string        // Go project package path, formatted for pretty printing.
-	Verbose                        bool          // If true, provides detailed logging.
-	RunCount                       int           // Number of times to run the tests.
-	RerunCount                     int           // Number of additional runs for tests that initially fail.
-	GoTestCountFlag                *int          // Run go test with -count flag.
-	GoTestRaceFlag                 bool          // Run go test with -race flag.
-	Timeout                        time.Duration // Test timeout
-	Tags                           []string      // Build tags.
-	UseShuffle                     bool          // Enable test shuffling. -shuffle=on flag.
-	ShuffleSeed                    string        // Set seed for test shuffling -shuffle={seed} flag. Must be used with UseShuffle.
-	FailFast                       bool          // Stop on first test failure.
-	SkipTests                      []string      // Test names to exclude.
-	SelectTests                    []string      // Test names to include.
-	CollectRawOutput               bool          // Set to true to collect test output for later inspection.
-	OmitOutputsOnSuccess           bool          // Set to true to omit test outputs on success.
-	MaxPassRatio                   float64       // Maximum pass ratio threshold for a test to be considered flaky.
-	IgnoreParentFailuresOnSubtests bool          // Ignore failures in parent tests when only subtests fail.
+	ProjectPath                    string   // Path to the Go project directory.
+	prettyProjectPath              string   // Go project package path, formatted for pretty printing.
+	Verbose                        bool     // If true, provides detailed logging.
+	RunCount                       int      // Number of times to run the tests.
+	RerunCount                     int      // Number of additional runs for tests that initially fail.
+	GoTestCountFlag                *int     // Run go test with -count flag.
+	GoTestRaceFlag                 bool     // Run go test with -race flag.
+	GoTestTimeoutFlag              string   // Run go test with -timeout flag
+	Tags                           []string // Build tags.
+	UseShuffle                     bool     // Enable test shuffling. -shuffle=on flag.
+	ShuffleSeed                    string   // Set seed for test shuffling -shuffle={seed} flag. Must be used with UseShuffle.
+	FailFast                       bool     // Stop on first test failure.
+	SkipTests                      []string // Test names to exclude.
+	SelectTests                    []string // Test names to include.
+	CollectRawOutput               bool     // Set to true to collect test output for later inspection.
+	OmitOutputsOnSuccess           bool     // Set to true to omit test outputs on success.
+	MaxPassRatio                   float64  // Maximum pass ratio threshold for a test to be considered flaky.
+	IgnoreParentFailuresOnSubtests bool     // Ignore failures in parent tests when only subtests fail.
 	rawOutputs                     map[string]*bytes.Buffer
 }
 
@@ -151,8 +151,8 @@ func (r *Runner) runTestPackage(packageName string) (string, bool, error) {
 	if r.GoTestRaceFlag {
 		args = append(args, "-race")
 	}
-	if r.Timeout > 0 {
-		args = append(args, fmt.Sprintf("-timeout=%s", r.Timeout.String()))
+	if r.GoTestTimeoutFlag != "" {
+		args = append(args, fmt.Sprintf("-timeout=%s", r.GoTestTimeoutFlag))
 	}
 	if len(r.Tags) > 0 {
 		args = append(args, fmt.Sprintf("-tags=%s", strings.Join(r.Tags, ",")))
@@ -755,8 +755,8 @@ func (r *Runner) RerunFailedTests(failedTests []reports.TestResult) (*reports.Te
 			if r.GoTestRaceFlag {
 				cmd = append(cmd, "-race")
 			}
-			if r.Timeout > 0 {
-				cmd = append(cmd, fmt.Sprintf("-timeout=%s", r.Timeout.String()))
+			if r.GoTestTimeoutFlag != "" {
+				cmd = append(cmd, fmt.Sprintf("-timeout=%s", r.GoTestTimeoutFlag))
 			}
 			if len(r.Tags) > 0 {
 				cmd = append(cmd, fmt.Sprintf("-tags=%s", strings.Join(r.Tags, ",")))

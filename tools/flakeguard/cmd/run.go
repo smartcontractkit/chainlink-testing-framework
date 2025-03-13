@@ -40,7 +40,6 @@ var RunTestsCmd = &cobra.Command{
 		testCmdStrings, _ := cmd.Flags().GetStringArray("test-cmd")
 		runCount, _ := cmd.Flags().GetInt("run-count")
 		rerunFailedCount, _ := cmd.Flags().GetInt("rerun-failed-count")
-		timeout, _ := cmd.Flags().GetDuration("timeout")
 		tags, _ := cmd.Flags().GetStringArray("tags")
 		useRace, _ := cmd.Flags().GetBool("race")
 		mainReportPath, _ := cmd.Flags().GetString("main-report-path")
@@ -56,16 +55,17 @@ var RunTestsCmd = &cobra.Command{
 		omitOutputsOnSuccess, _ := cmd.Flags().GetBool("omit-test-outputs-on-success")
 		ignoreParentFailuresOnSubtests, _ := cmd.Flags().GetBool("ignore-parent-failures-on-subtests")
 		failFast, _ := cmd.Flags().GetBool("fail-fast")
+		goTestTimeoutFlag, _ := cmd.Flags().GetString("go-test-timeout")
 
 		// Retrieve go-test-count flag as a pointer if explicitly provided.
-		var goTestCount *int
+		var goTestCountFlag *int
 		if cmd.Flags().Changed("go-test-count") {
 			v, err := cmd.Flags().GetInt("go-test-count")
 			if err != nil {
 				log.Error().Err(err).Msg("Error retrieving flag go-test-count")
 				flushSummaryAndExit(ErrorExitCode)
 			}
-			goTestCount = &v
+			goTestCountFlag = &v
 		}
 
 		// Handle the compatibility between min/max pass ratio
@@ -109,9 +109,9 @@ var RunTestsCmd = &cobra.Command{
 			ProjectPath:                    projectPath,
 			Verbose:                        true,
 			RunCount:                       runCount,
-			Timeout:                        timeout,
+			GoTestTimeoutFlag:              goTestTimeoutFlag,
 			Tags:                           tags,
-			GoTestCountFlag:                goTestCount,
+			GoTestCountFlag:                goTestCountFlag,
 			GoTestRaceFlag:                 useRace,
 			SkipTests:                      skipTests,
 			SelectTests:                    selectTests,
@@ -253,8 +253,8 @@ func init() {
 	)
 	RunTestsCmd.Flags().Bool("run-all-packages", false, "Run all test packages in the project. This flag overrides --test-packages and --test-packages-json")
 	RunTestsCmd.Flags().IntP("run-count", "c", 1, "Number of times to run the tests")
-	RunTestsCmd.Flags().Duration("timeout", 0, "Passed on to the 'go test' command as the -timeout flag")
 	RunTestsCmd.Flags().StringArray("tags", nil, "Passed on to the 'go test' command as the -tags flag")
+	RunTestsCmd.Flags().String("go-test-timeout", "", "Passed on to the 'go test' command as the -timeout flag")
 	RunTestsCmd.Flags().Int("go-test-count", -1, "go test -count flag value. By default -count flag is not passed to go test")
 	RunTestsCmd.Flags().Bool("race", false, "Enable the race detector")
 	RunTestsCmd.Flags().Bool("shuffle", false, "Enable test shuffling")
