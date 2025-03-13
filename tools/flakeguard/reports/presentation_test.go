@@ -244,7 +244,7 @@ func TestRenderResults(t *testing.T) {
 			tc.testReport.GenerateSummaryData()
 
 			var buf bytes.Buffer
-			RenderResults(&buf, tc.testReport, false, false)
+			RenderTestReport(&buf, tc.testReport, false, false)
 			output := buf.String()
 
 			// Verify summary data

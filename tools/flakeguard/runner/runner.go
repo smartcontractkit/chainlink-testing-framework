@@ -28,7 +28,6 @@ var (
 // Runner describes the test run parameters and raw test outputs
 type Runner struct {
 	ProjectPath                    string   // Path to the Go project directory.
-	prettyProjectPath              string   // Go project package path, formatted for pretty printing.
 	Verbose                        bool     // If true, provides detailed logging.
 	RunCount                       int      // Number of times to run the tests.
 	RerunCount                     int      // Number of additional runs for tests that initially fail.
@@ -51,7 +50,7 @@ type Runner struct {
 // RunTestPackages executes the tests for each provided package and aggregates all results.
 // It returns all test results and any error encountered during testing.
 // RunTestPackages executes the tests for each provided package and aggregates all results.
-func (r *Runner) RunTestPackages(packages []string) (*reports.TestReport, error) {
+func (r *Runner) RunTestPackages(packages []string) ([]reports.TestResult, error) {
 	var jsonFilePaths []string
 	// Initial runs.
 	for _, p := range packages {
@@ -83,53 +82,32 @@ func (r *Runner) RunTestPackages(packages []string) (*reports.TestReport, error)
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
 
-	report := &reports.TestReport{
-		GoProject:     r.prettyProjectPath,
-		RaceDetection: r.GoTestRaceFlag,
-		ExcludedTests: r.SkipTests,
-		SelectedTests: r.SelectTests,
-		Results:       results,
-		MaxPassRatio:  r.MaxPassRatio,
-	}
-	report.GenerateSummaryData()
-
-	return report, nil
+	return results, nil
 }
 
 // RunTestCmd runs an arbitrary command testCmd (like ["go", "run", "my_test.go", ...])
 // that produces the same JSON lines that 'go test -json' would produce on stdout.
 // It captures those lines in a temp file, then parses them for pass/fail/panic/race data.
-func (r *Runner) RunTestCmd(testCmd []string) (*reports.TestReport, error) {
-	var jsonFilePaths []string
+func (r *Runner) RunTestCmd(testCmd []string) ([]reports.TestResult, error) {
+	var jsonOutputPaths []string
 
-	// Run the command r.RunCount times
-	for i := 0; i < r.RunCount; i++ {
-		jsonFilePath, passed, err := r.runCmd(testCmd, i)
+	for i := range r.RunCount {
+		jsonOutputPath, passed, err := r.runCmd(testCmd, i)
 		if err != nil {
 			return nil, fmt.Errorf("failed to run test command: %w", err)
 		}
-		jsonFilePaths = append(jsonFilePaths, jsonFilePath)
+		jsonOutputPaths = append(jsonOutputPaths, jsonOutputPath)
 		if !passed && r.FailFast {
 			break
 		}
 	}
 
-	results, err := r.parseTestResults(jsonFilePaths, "run", r.RunCount)
+	results, err := r.parseTestResults(jsonOutputPaths, "run", r.RunCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
 
-	report := &reports.TestReport{
-		GoProject:     r.prettyProjectPath,
-		RaceDetection: r.GoTestRaceFlag,
-		ExcludedTests: r.SkipTests,
-		SelectedTests: r.SelectTests,
-		Results:       results,
-		MaxPassRatio:  r.MaxPassRatio,
-	}
-	report.GenerateSummaryData()
-
-	return report, nil
+	return results, nil
 }
 
 // RawOutputs retrieves the raw output from the test runs, if CollectRawOutput enabled.
@@ -184,11 +162,6 @@ func (r *Runner) runTestPackage(packageName string) (string, bool, error) {
 	}
 	defer tmpFile.Close()
 
-	r.prettyProjectPath, err = prettyProjectPath(r.ProjectPath)
-	if err != nil {
-		r.prettyProjectPath = r.ProjectPath
-		log.Warn().Err(err).Str("projectPath", r.ProjectPath).Msg("Failed to get pretty project path")
-	}
 	// Run the command with output directed to the file
 	cmd := exec.Command("go", args...)
 	cmd.Dir = r.ProjectPath
@@ -289,14 +262,14 @@ func (e entry) String() string {
 // panics and failures at that point.
 // Subtests add more complexity, as panics in subtests are only reported in their parent's output,
 // and cannot be accurately attributed to the subtest that caused them.
-func (r *Runner) parseTestResults(filePaths []string, runPrefix string, runCount int) ([]reports.TestResult, error) {
+func (r *Runner) parseTestResults(jsonOutputPaths []string, runPrefix string, runCount int) ([]reports.TestResult, error) {
 	// If the option is enabled, transform each JSON output file before parsing.
 	if r.IgnoreParentFailuresOnSubtests {
-		transformedPaths, err := r.transformTestOutputFiles(filePaths)
+		transformedPaths, err := r.transformTestOutputFiles(jsonOutputPaths)
 		if err != nil {
 			return nil, err
 		}
-		filePaths = transformedPaths
+		jsonOutputPaths = transformedPaths
 	}
 
 	var (
@@ -313,7 +286,7 @@ func (r *Runner) parseTestResults(filePaths []string, runPrefix string, runCount
 
 	runNumber := 0
 	// Process each file
-	for _, filePath := range filePaths {
+	for _, filePath := range jsonOutputPaths {
 		runNumber++
 		runID := fmt.Sprintf("%s%d", runPrefix, runNumber)
 		file, err := os.Open(filePath)
@@ -685,46 +658,7 @@ func parseSubTest(testName string) (parentTestName, subTestName string) {
 	return parts[0], parts[1]
 }
 
-// prettyProjectPath returns the project path formatted for pretty printing in results.
-func prettyProjectPath(projectPath string) (string, error) {
-	// Walk up the directory structure to find go.mod
-	absPath, err := filepath.Abs(projectPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to resolve absolute path: %w", err)
-	}
-	dir := absPath
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			break
-		}
-
-		parent := filepath.Dir(dir)
-		if parent == dir { // Reached the root without finding go.mod
-			return "", fmt.Errorf("go.mod not found in project path, started at %s, ended at %s", projectPath, dir)
-		}
-		dir = parent
-	}
-
-	// Read go.mod to extract the module path
-	goModPath := filepath.Join(dir, "go.mod")
-	goModData, err := os.ReadFile(goModPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read go.mod: %w", err)
-	}
-
-	for _, line := range strings.Split(string(goModData), "\n") {
-		if strings.HasPrefix(line, "module ") {
-			goProject := strings.TrimSpace(strings.TrimPrefix(line, "module "))
-			relativePath := strings.TrimPrefix(projectPath, dir)
-			relativePath = strings.TrimLeft(relativePath, string(os.PathSeparator))
-			return filepath.Join(goProject, relativePath), nil
-		}
-	}
-
-	return "", fmt.Errorf("module path not found in go.mod")
-}
-
-func (r *Runner) RerunFailedTests(failedTests []reports.TestResult) (*reports.TestReport, error) {
+func (r *Runner) RerunFailedTests(failedTests []reports.TestResult) ([]reports.TestResult, []string, error) {
 	// Group the provided failed tests by package for more efficient reruns
 	failingTestsByPackage := make(map[string][]string)
 	for _, tr := range failedTests {
@@ -735,7 +669,7 @@ func (r *Runner) RerunFailedTests(failedTests []reports.TestResult) (*reports.Te
 		log.Info().Msgf("Rerunning failing tests grouped by package: %v", failingTestsByPackage)
 	}
 
-	var rerunJsonFilePaths []string
+	var rerunJsonOutputPaths []string
 
 	// Rerun each failing test package up to RerunCount times
 	for i := range r.RerunCount {
@@ -767,30 +701,19 @@ func (r *Runner) RerunFailedTests(failedTests []reports.TestResult) (*reports.Te
 			}
 
 			// Run the package tests
-			jsonFilePath, _, err := r.runCmd(cmd, i)
+			jsonOutputPath, _, err := r.runCmd(cmd, i)
 			if err != nil {
-				return nil, fmt.Errorf("error on rerunCmd for package %s: %w", pkg, err)
+				return nil, nil, fmt.Errorf("error on rerunCmd for package %s: %w", pkg, err)
 			}
-			rerunJsonFilePaths = append(rerunJsonFilePaths, jsonFilePath)
+			rerunJsonOutputPaths = append(rerunJsonOutputPaths, jsonOutputPath)
 		}
 	}
 
 	// Parse all rerun results at once with a consistent prefix
-	rerunResults, err := r.parseTestResults(rerunJsonFilePaths, "rerun", r.RerunCount)
+	rerunResults, err := r.parseTestResults(rerunJsonOutputPaths, "rerun", r.RerunCount)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse rerun results: %w", err)
+		return nil, rerunJsonOutputPaths, fmt.Errorf("failed to parse rerun results: %w", err)
 	}
 
-	report := &reports.TestReport{
-		GoProject:       r.prettyProjectPath,
-		RaceDetection:   r.GoTestRaceFlag,
-		ExcludedTests:   r.SkipTests,
-		SelectedTests:   r.SelectTests,
-		Results:         rerunResults,
-		MaxPassRatio:    r.MaxPassRatio,
-		JSONOutputPaths: rerunJsonFilePaths,
-	}
-	report.GenerateSummaryData()
-
-	return report, nil
+	return rerunResults, rerunJsonOutputPaths, nil
 }

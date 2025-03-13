@@ -117,7 +117,7 @@ func GenerateGitHubSummaryMarkdown(w io.Writer, testReport TestReport, maxPassRa
 	}
 	fmt.Fprintln(w)
 
-	RenderResults(w, testReport, true, false)
+	RenderTestReport(w, testReport, true, false)
 
 	if artifactLink != "" {
 		renderArtifactSection(w, artifactName, artifactLink)
@@ -208,9 +208,9 @@ func RenderError(
 	fmt.Fprintln(w, ":x: Error Running Flakeguard :x:")
 }
 
-// RenderResults renders the test results into a console or markdown format.
+// RenderTestReport renders the test results into a console or markdown format.
 // If in markdown mode, the table results can also be made collapsible.
-func RenderResults(
+func RenderTestReport(
 	w io.Writer,
 	testReport TestReport,
 	markdown bool,

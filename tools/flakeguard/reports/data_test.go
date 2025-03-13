@@ -379,7 +379,7 @@ func TestAggregate(t *testing.T) {
 		},
 	}
 
-	aggregateOptions := &aggregateOptions{reportID: "123"}
+	aggregateOptions := &reportOptions{reportID: "123"}
 	aggregatedReport, err := aggregateReports(aggregateOptions, report1, report2)
 	if err != nil {
 		t.Fatalf("Error aggregating reports: %v", err)
@@ -468,7 +468,7 @@ func TestAggregateOutputs(t *testing.T) {
 		},
 	}
 
-	aggregateOptions := &aggregateOptions{reportID: "123"}
+	aggregateOptions := &reportOptions{reportID: "123"}
 	aggregatedReport, err := aggregateReports(aggregateOptions, report1, report2)
 	if err != nil {
 		t.Fatalf("Error aggregating reports: %v", err)
@@ -538,7 +538,7 @@ func TestAggregateIdenticalOutputs(t *testing.T) {
 		},
 	}
 
-	aggregateOptions := &aggregateOptions{reportID: "123"}
+	aggregateOptions := &reportOptions{reportID: "123"}
 	aggregatedReport, err := aggregateReports(aggregateOptions, report1, report2)
 	if err != nil {
 		t.Fatalf("Error aggregating reports: %v", err)
@@ -620,7 +620,7 @@ func TestAggregate_AllSkippedTests(t *testing.T) {
 		},
 	}
 
-	aggregateOptions := &aggregateOptions{reportID: "123"}
+	aggregateOptions := &reportOptions{reportID: "123"}
 	aggregatedReport, err := aggregateReports(aggregateOptions, report1, report2)
 	if err != nil {
 		t.Fatalf("Error aggregating reports: %v", err)

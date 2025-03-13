@@ -1,161 +1,19 @@
 package reports
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
 	"sort"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
 )
-
-// TestReport reports on the parameters and results of one to many test runs
-type TestReport struct {
-	ID                   string       `json:"id,omitempty"`
-	GoProject            string       `json:"go_project"`
-	BranchName           string       `json:"branch_name,omitempty"`
-	HeadSHA              string       `json:"head_sha,omitempty"`
-	BaseSHA              string       `json:"base_sha,omitempty"`
-	RepoURL              string       `json:"repo_url,omitempty"`
-	GitHubWorkflowName   string       `json:"github_workflow_name,omitempty"`
-	GitHubWorkflowRunURL string       `json:"github_workflow_run_url,omitempty"`
-	SummaryData          *SummaryData `json:"summary_data"`
-	RaceDetection        bool         `json:"race_detection"`
-	ExcludedTests        []string     `json:"excluded_tests,omitempty"`
-	SelectedTests        []string     `json:"selected_tests,omitempty"`
-	Results              []TestResult `json:"results,omitempty"`
-	FailedLogsURL        string       `json:"failed_logs_url,omitempty"`
-	JSONOutputPaths      []string     `json:"-"` // go test -json outputs from runs
-	// MaxPassRatio is the maximum flakiness ratio allowed for a test to be considered not flaky
-	MaxPassRatio float64 `json:"max_pass_ratio,omitempty"`
-}
-
-func (r *TestReport) SetRandomReportID() {
-	uuid, err := uuid.NewRandom()
-	if err != nil {
-		panic(fmt.Errorf("error generating random report id: %w", err))
-	}
-	r.SetReportID(uuid.String())
-}
-
-func (r *TestReport) SetReportID(reportID string) {
-	r.ID = reportID
-	// Set the report ID in all test results
-	for i := range r.Results {
-		r.Results[i].ReportID = r.ID
-	}
-}
-
-// SaveToFile saves the test report to a JSON file at the given path.
-// It returns an error if there's any issue with marshaling the report or writing to the file.
-func (testReport *TestReport) SaveToFile(outputPath string) error {
-	jsonData, err := json.MarshalIndent(testReport, "", "  ")
-	if err != nil {
-		return fmt.Errorf("error marshaling test results to JSON: %w", err)
-	}
-
-	if err := os.WriteFile(outputPath, jsonData, 0600); err != nil {
-		return fmt.Errorf("error writing test results to file: %w", err)
-	}
-
-	return nil
-}
-
-func (tr *TestReport) PrintGotestsumOutput(w io.Writer, format string) error {
-	if len(tr.JSONOutputPaths) == 0 {
-		fmt.Fprintf(w, "No JSON output paths found in test report\n")
-		return nil
-	}
-
-	for _, path := range tr.JSONOutputPaths {
-		cmdStr := fmt.Sprintf("cat %q | gotestsum --raw-command --format %q -- cat", path, format)
-		cmd := exec.Command("bash", "-c", cmdStr)
-
-		var outBuf bytes.Buffer
-		cmd.Stdout = &outBuf
-		cmd.Stderr = &outBuf
-
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("gotestsum command failed for file %s: %w\nOutput: %s", path, err, outBuf.String())
-		}
-
-		fmt.Fprint(w, outBuf.String())
-		fmt.Fprintln(w, "---------------------")
-	}
-	return nil
-}
-
-// GenerateSummaryData generates a summary of a report's test results
-func (testReport *TestReport) GenerateSummaryData() {
-	var runs, testRunCount, passes, fails, skips, panickedTests, racedTests, flakyTests int
-
-	// Map to hold unique test names that were entirely skipped
-	uniqueSkippedTestsMap := make(map[string]struct{})
-
-	for _, result := range testReport.Results {
-		runs += result.Runs
-		if result.Runs > testRunCount {
-			testRunCount = result.Runs
-		}
-		passes += result.Successes
-		fails += result.Failures
-		skips += result.Skips
-
-		if result.Runs == 0 && result.Skipped {
-			uniqueSkippedTestsMap[result.TestName] = struct{}{}
-		}
-
-		if result.Panic {
-			panickedTests++
-			flakyTests++
-		} else if result.Race {
-			racedTests++
-			flakyTests++
-		} else if !result.Skipped && result.Runs > 0 && result.PassRatio < testReport.MaxPassRatio {
-			flakyTests++
-		}
-	}
-
-	// Calculate the unique count of skipped tests
-	uniqueSkippedTestCount := len(uniqueSkippedTestsMap)
-
-	// Calculate the raw pass ratio
-	passRatio := passRatio(passes, runs)
-
-	// Calculate the raw flake ratio
-	totalTests := len(testReport.Results)
-	flakeRatio := flakeRatio(flakyTests, totalTests)
-
-	passRatioStr := formatRatio(passRatio)
-	flakeTestRatioStr := formatRatio(flakeRatio)
-
-	testReport.SummaryData = &SummaryData{
-		UniqueTestsRun:         totalTests,
-		UniqueSkippedTestCount: uniqueSkippedTestCount,
-		TestRunCount:           testRunCount,
-		PanickedTests:          panickedTests,
-		RacedTests:             racedTests,
-		FlakyTests:             flakyTests,
-		FlakyTestPercent:       flakeTestRatioStr,
-
-		TotalRuns:   runs,
-		PassedRuns:  passes,
-		FailedRuns:  fails,
-		SkippedRuns: skips,
-		PassPercent: passRatioStr,
-	}
-}
 
 // TestResult contains the results and outputs of a single test
 type TestResult struct {
 	// ReportID is the ID of the report this test result belongs to
 	// used mostly for Splunk logging
-	ReportID       string              `json:"report_id"`
+	ReportID       string              `json:"report_id,omitempty"`
 	TestName       string              `json:"test_name"`
 	TestPackage    string              `json:"test_package"`
 	PackagePanic   bool                `json:"package_panic"`
@@ -173,8 +31,21 @@ type TestResult struct {
 	FailedOutputs  map[string][]string `json:"failed_outputs,omitempty"` // Outputs for failed runs
 	Durations      []time.Duration     `json:"durations"`
 	PackageOutputs []string            `json:"package_outputs,omitempty"`
-	TestPath       string              `json:"test_path"`
-	CodeOwners     []string            `json:"code_owners"`
+	TestPath       string              `json:"test_path,omitempty"`
+	CodeOwners     []string            `json:"code_owners,omitempty"`
+}
+
+func SaveTestResultsToFile(results []TestResult, filePath string) error {
+	jsonData, err := json.MarshalIndent(results, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error marshaling test results to JSON: %w", err)
+	}
+
+	if err := os.WriteFile(filePath, jsonData, 0o600); err != nil {
+		return fmt.Errorf("error writing test results to file: %w", err)
+	}
+
+	return nil
 }
 
 // SummaryData contains aggregated data from a set of test results

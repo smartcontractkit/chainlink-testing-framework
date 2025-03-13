@@ -10,6 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner"
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -35,6 +36,7 @@ var RunTestsCmd = &cobra.Command{
 
 		// Retrieve flags
 		projectPath, _ := cmd.Flags().GetString("project-path")
+		codeownersPath, _ := cmd.Flags().GetString("codeowners-path")
 		testPackagesJson, _ := cmd.Flags().GetString("test-packages-json")
 		testPackagesArg, _ := cmd.Flags().GetStringSlice("test-packages")
 		testCmdStrings, _ := cmd.Flags().GetStringArray("test-cmd")
@@ -42,8 +44,8 @@ var RunTestsCmd = &cobra.Command{
 		rerunFailedCount, _ := cmd.Flags().GetInt("rerun-failed-count")
 		tags, _ := cmd.Flags().GetStringArray("tags")
 		useRace, _ := cmd.Flags().GetBool("race")
-		mainReportPath, _ := cmd.Flags().GetString("main-report-path")
-		rerunReportPath, _ := cmd.Flags().GetString("rerun-report-path")
+		mainResultsPath, _ := cmd.Flags().GetString("main-results-path")
+		rerunResultsPath, _ := cmd.Flags().GetString("rerun-results-path")
 		minPassRatio, _ := cmd.Flags().GetFloat64("min-pass-ratio")
 		// For backward compatibility, check if max-pass-ratio was used
 		maxPassRatio, _ := cmd.Flags().GetFloat64("max-pass-ratio")
@@ -56,6 +58,11 @@ var RunTestsCmd = &cobra.Command{
 		ignoreParentFailuresOnSubtests, _ := cmd.Flags().GetBool("ignore-parent-failures-on-subtests")
 		failFast, _ := cmd.Flags().GetBool("fail-fast")
 		goTestTimeoutFlag, _ := cmd.Flags().GetString("go-test-timeout")
+
+		goProject, err := utils.GetGoProjectName(projectPath)
+		if err != nil {
+			log.Warn().Err(err).Str("projectPath", goProject).Msg("Failed to get pretty project path")
+		}
 
 		// Retrieve go-test-count flag as a pointer if explicitly provided.
 		var goTestCountFlag *int
@@ -124,45 +131,53 @@ var RunTestsCmd = &cobra.Command{
 			FailFast:                       failFast,
 		}
 
-		var (
-			mainReport  *reports.TestReport // Main test report
-			rerunReport *reports.TestReport // Test report after rerunning failed tests
-		)
-
 		// Run the tests
-		var err error
+		var mainResults []reports.TestResult
 		if len(testCmdStrings) > 0 {
-			mainReport, err = testRunner.RunTestCmd(testCmdStrings)
+			mainResults, err = testRunner.RunTestCmd(testCmdStrings)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error running custom test command")
 				flushSummaryAndExit(ErrorExitCode)
 			}
 		} else {
-			mainReport, err = testRunner.RunTestPackages(testPackages)
+			mainResults, err = testRunner.RunTestPackages(testPackages)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error running test packages")
 				flushSummaryAndExit(ErrorExitCode)
 			}
 		}
 
-		// Save the main test report to file
-		if mainReportPath != "" && len(mainReport.Results) > 0 {
-			if err := mainReport.SaveToFile(mainReportPath); err != nil {
+		if len(mainResults) == 0 {
+			log.Warn().Msg("No tests were run for the specified packages")
+			flushSummaryAndExit(0)
+		}
+
+		// Save the main test results to file
+		if mainResultsPath != "" && len(mainResults) > 0 {
+			if err := reports.SaveTestResultsToFile(mainResults, mainResultsPath); err != nil {
 				log.Error().Err(err).Msg("Error saving test results to file")
 				flushSummaryAndExit(ErrorExitCode)
 			}
-			log.Info().Str("path", mainReportPath).Msg("Main test report saved")
+			log.Info().Str("path", mainResultsPath).Msg("Main test report saved")
 		}
 
-		if len(mainReport.Results) == 0 {
-			log.Warn().Msg("No tests were run for the specified packages")
-			flushSummaryAndExit(0)
+		mainReport, err := reports.NewTestReport(mainResults,
+			reports.WithGoProject(goProject),
+			reports.WithCodeOwnersPath(codeownersPath),
+			reports.WithMaxPassRatio(passRatioThreshold),
+			reports.WithGoRaceDetection(useRace),
+			reports.WithExcludedTests(skipTests),
+			reports.WithSelectedTests(selectTests),
+		)
+		if err != nil {
+			log.Error().Err(err).Msg("Error creating main test report")
+			flushSummaryAndExit(ErrorExitCode)
 		}
 
 		// Accumulate main summary into summaryBuffer
 		fmt.Fprint(&summaryBuffer, "\nFlakeguard Main Summary:\n")
 		fmt.Fprintf(&summaryBuffer, "-------------------------\n")
-		reports.RenderResults(&summaryBuffer, *mainReport, false, false)
+		reports.RenderTestReport(&summaryBuffer, mainReport, false, false)
 		fmt.Fprintln(&summaryBuffer)
 
 		// Rerun failed tests
@@ -176,9 +191,22 @@ var RunTestsCmd = &cobra.Command{
 				flushSummaryAndExit(0)
 			}
 
-			rerunReport, err = testRunner.RerunFailedTests(failedTests)
+			rerunResults, rerunJsonOutputPaths, err := testRunner.RerunFailedTests(failedTests)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error rerunning failed tests")
+				flushSummaryAndExit(ErrorExitCode)
+			}
+
+			rerunReport, err := reports.NewTestReport(rerunResults,
+				reports.WithGoProject(goProject),
+				reports.WithCodeOwnersPath(codeownersPath),
+				reports.WithMaxPassRatio(1),
+				reports.WithExcludedTests(skipTests),
+				reports.WithSelectedTests(selectTests),
+				reports.WithJSONOutputPaths(rerunJsonOutputPaths),
+			)
+			if err != nil {
+				log.Error().Err(err).Msg("Error creating rerun test report")
 				flushSummaryAndExit(ErrorExitCode)
 			}
 
@@ -188,16 +216,16 @@ var RunTestsCmd = &cobra.Command{
 			fmt.Fprintln(&summaryBuffer)
 
 			// Save the rerun test report to file
-			if rerunReportPath != "" && len(rerunReport.Results) > 0 {
-				if err := rerunReport.SaveToFile(rerunReportPath); err != nil {
+			if rerunResultsPath != "" && len(rerunResults) > 0 {
+				if err := reports.SaveTestResultsToFile(rerunResults, rerunResultsPath); err != nil {
 					log.Error().Err(err).Msg("Error saving test results to file")
 					flushSummaryAndExit(ErrorExitCode)
 				}
-				log.Info().Str("path", rerunReportPath).Msg("Rerun test report saved")
+				log.Info().Str("path", rerunResultsPath).Msg("Rerun test report saved")
 			}
 
 			// Filter tests that failed after reruns
-			failedAfterRerun := reports.FilterTests(rerunReport.Results, func(tr reports.TestResult) bool {
+			failedAfterRerun := reports.FilterTests(rerunResults, func(tr reports.TestResult) bool {
 				return !tr.Skipped && tr.Successes == 0
 			})
 
@@ -246,6 +274,7 @@ var RunTestsCmd = &cobra.Command{
 
 func init() {
 	RunTestsCmd.Flags().StringP("project-path", "r", ".", "The path to the Go project. Default is the current directory. Useful for subprojects")
+	RunTestsCmd.Flags().StringP("codeowners-path", "", "", "Path to the CODEOWNERS file")
 	RunTestsCmd.Flags().String("test-packages-json", "", "JSON-encoded string of test packages")
 	RunTestsCmd.Flags().StringSlice("test-packages", nil, "Comma-separated list of test packages to run")
 	RunTestsCmd.Flags().StringArray("test-cmd", nil,
@@ -260,8 +289,8 @@ func init() {
 	RunTestsCmd.Flags().Bool("shuffle", false, "Enable test shuffling")
 	RunTestsCmd.Flags().String("shuffle-seed", "", "Set seed for test shuffling. Must be used with --shuffle")
 	RunTestsCmd.Flags().Bool("fail-fast", false, "Stop on the first test failure")
-	RunTestsCmd.Flags().String("main-report-path", "", "Path to the main test report in JSON format")
-	RunTestsCmd.Flags().String("rerun-report-path", "", "Path to the rerun test report in JSON format")
+	RunTestsCmd.Flags().String("main-results-path", "", "Path to the main test results in JSON format")
+	RunTestsCmd.Flags().String("rerun-results-path", "", "Path to the rerun test results in JSON format")
 	RunTestsCmd.Flags().StringSlice("skip-tests", nil, "Comma-separated list of test names to skip from running")
 	RunTestsCmd.Flags().StringSlice("select-tests", nil, "Comma-separated list of test names to specifically run")
 

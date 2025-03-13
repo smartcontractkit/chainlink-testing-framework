@@ -32,98 +32,14 @@ func (OSFileSystem) WriteFile(filename string, data []byte, perm os.FileMode) er
 	return os.WriteFile(filename, data, perm)
 }
 
-// aggregateOptions influence how reports are aggregated together
-type aggregateOptions struct {
-	maxPassRatio         float64
-	reportID             string
-	branchName           string
-	baseSha              string
-	headSha              string
-	repoURL              string
-	repoPath             string
-	codeownersPath       string
-	gitHubWorkflowName   string
-	gitHubWorkflowRunURL string
-}
-
-// AggregateOption is a functional option for configuring the aggregation process.
-type AggregateOption func(*aggregateOptions)
-
-// WithReportID explicitly sets the report ID for the aggregated report.
-func WithReportID(reportID string) AggregateOption {
-	return func(opts *aggregateOptions) {
-		opts.reportID = reportID
-	}
-}
-
-func WithBranchName(branchName string) AggregateOption {
-	return func(opts *aggregateOptions) {
-		opts.branchName = branchName
-	}
-}
-
-// WithHeadSha sets the head SHA for the aggregated report.
-func WithHeadSha(headSha string) AggregateOption {
-	return func(opts *aggregateOptions) {
-		opts.headSha = headSha
-	}
-}
-
-// WithBaseSha sets the base SHA for the aggregated report.
-func WithBaseSha(baseSha string) AggregateOption {
-	return func(opts *aggregateOptions) {
-		opts.baseSha = baseSha
-	}
-}
-
-// WithRepoURL sets the repository URL for the aggregated report.
-func WithRepoURL(repoURL string) AggregateOption {
-	return func(opts *aggregateOptions) {
-		opts.repoURL = repoURL
-	}
-}
-
-func WithRepoPath(repoPath string) AggregateOption {
-	return func(opts *aggregateOptions) {
-		opts.repoURL = repoPath
-	}
-}
-
-func WithCodeOwnersPath(codeOwnersPath string) AggregateOption {
-	return func(opts *aggregateOptions) {
-		opts.codeownersPath = codeOwnersPath
-	}
-}
-
-// WithGitHubWorkflowName sets the GitHub workflow name for the aggregated report.
-func WithGitHubWorkflowName(githubWorkflowName string) AggregateOption {
-	return func(opts *aggregateOptions) {
-		opts.gitHubWorkflowName = githubWorkflowName
-	}
-}
-
-// WithGitHubWorkflowRunURL sets the GitHub workflow run URL for the aggregated report.
-func WithGitHubWorkflowRunURL(githubWorkflowRunURL string) AggregateOption {
-	return func(opts *aggregateOptions) {
-		opts.gitHubWorkflowRunURL = githubWorkflowRunURL
-	}
-}
-
-// WithMaxPassRatio sets the maximum pass ratio for the aggregated report.
-func WithMaxPassRatio(maxPassRatio float64) AggregateOption {
-	return func(opts *aggregateOptions) {
-		opts.maxPassRatio = maxPassRatio
-	}
-}
-
 // LoadAndAggregate reads all JSON files in a directory and aggregates the results into a single TestReport.
-func LoadAndAggregate(resultsPath string, options ...AggregateOption) (*TestReport, error) {
+func LoadAndAggregate(resultsPath string, options ...TestReportOption) (*TestReport, error) {
 	if _, err := os.Stat(resultsPath); os.IsNotExist(err) {
 		return nil, fmt.Errorf("results directory does not exist: %s", resultsPath)
 	}
 
 	// Apply options
-	opts := aggregateOptions{
+	opts := reportOptions{
 		maxPassRatio: 1.0,
 	}
 	for _, opt := range options {
@@ -166,7 +82,7 @@ func LoadAndAggregate(resultsPath string, options ...AggregateOption) (*TestRepo
 	}
 
 	// Map test results to test paths
-	err = MapTestResultsToPaths(aggregatedReport, opts.repoPath)
+	err = MapTestResultsToPaths(aggregatedReport, opts.projectPath)
 	if err != nil {
 		return nil, fmt.Errorf("error mapping test results to paths: %w", err)
 	}
@@ -432,7 +348,7 @@ func SaveReport(fs FileSystem, filePath string, report TestReport) error {
 }
 
 // aggregate aggregates multiple TestReport objects into a single TestReport as they are received
-func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggregateOptions) (*TestReport, error) {
+func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *reportOptions) (*TestReport, error) {
 	var (
 		fullReport = &TestReport{
 			ID:                   opts.reportID,
@@ -503,7 +419,7 @@ func aggregate(reportChan <-chan *TestReport, errChan <-chan error, opts *aggreg
 }
 
 // aggregateReports aggregates multiple TestReport objects into a single TestReport
-func aggregateReports(opts *aggregateOptions, reports ...*TestReport) (*TestReport, error) {
+func aggregateReports(opts *reportOptions, reports ...*TestReport) (*TestReport, error) {
 	reportChan := make(chan *TestReport, len(reports))
 	errChan := make(chan error, 1)
 	for _, report := range reports {
