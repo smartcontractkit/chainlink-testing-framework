@@ -11,11 +11,16 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
+	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 )
 
 type CfgSui struct {
-	BlockchainA *blockchain.Input `toml:"blockchain_a" validate:"required"`
+	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
+	MockerDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
+	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
 }
 
 func TestSuiSmoke(t *testing.T) {
@@ -34,12 +39,22 @@ func TestSuiSmoke(t *testing.T) {
 	_, err = framework.ExecContainer(bc.ContainerName, []string{"ls", "-lah"})
 	require.NoError(t, err)
 
-	t.Run("test something", func(t *testing.T) {
-		// use internal URL to connect Chainlink nodes
-		_ = bc.Nodes[0].DockerInternalHTTPUrl
-		// use host URL to interact
-		_ = bc.Nodes[0].HostHTTPUrl
+	_, err = fake.NewFakeDataProvider(in.MockerDataProvider)
+	require.NoError(t, err)
 
+	fmt.Printf("Sui host HTTP URL: %s", bc.Nodes[0].HostHTTPUrl)
+	fmt.Printf("Sui internal (docker) HTTP URL: %s", bc.Nodes[0].DockerInternalHTTPUrl)
+	for _, n := range in.NodeSet.NodeSpecs {
+		// configure each CL node for Sui, just an example
+		n.Node.TestConfigOverrides = `
+											[Log]
+											level = 'info'
+`
+	}
+	out, err := ns.NewSharedDBNodeSet(in.NodeSet, nil)
+	require.NoError(t, err)
+
+	t.Run("test something", func(t *testing.T) {
 		cli := sui.NewSuiClient(bc.Nodes[0].HostHTTPUrl)
 
 		signerAccount, err := signer.NewSignertWithMnemonic(bc.NetworkSpecificData.SuiAccount.Mnemonic)
@@ -49,5 +64,14 @@ func TestSuiSmoke(t *testing.T) {
 		})
 		require.NoError(t, err)
 		fmt.Printf("My funds: %v\n", rsp)
+		clClients, err := clclient.New(out.CLNodes)
+		require.NoError(t, err)
+		// create jobs, etc
+		for _, c := range clClients {
+			_ = c
+			// create jobs
+			//_, _, err := c.CreateJobRaw(`...`)
+			//require.NoError(t, err)
+		}
 	})
 }
