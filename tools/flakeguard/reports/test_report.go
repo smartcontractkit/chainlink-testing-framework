@@ -187,16 +187,23 @@ func NewTestReport(results []TestResult, opts ...TestReportOption) (TestReport, 
 
 	r.GenerateSummaryData()
 
+	// Map test results to paths
 	err := MapTestResultsToPaths(&r, r.ProjectPath)
 	if err != nil {
 		return r, fmt.Errorf("error mapping test results to paths: %w", err)
 	}
 
+	// Map test results to code owners if a codeowners file is provided
 	if defaultOpts.codeownersPath != "" {
 		err = MapTestResultsToOwners(&r, defaultOpts.codeownersPath)
 		if err != nil {
 			return r, fmt.Errorf("error mapping test results to code owners: %w", err)
 		}
+	}
+
+	// Set the report ID for each test result
+	for i := range r.Results {
+		r.Results[i].ReportID = r.ID
 	}
 
 	return r, nil
