@@ -75,6 +75,52 @@ func generateTestResultsTable(
 	return table
 }
 
+func generateShortTestResultsTable(
+	results []TestResult,
+	markdown bool,
+	filter func(TestResult) bool,
+) [][]string {
+	p := message.NewPrinter(language.English)
+
+	// Define the columns you want
+	headers := []string{"Name", "Path", "Runs", "Failures", "Code Owners"}
+
+	// Optionally format the headers for Markdown
+	if markdown {
+		for i, header := range headers {
+			headers[i] = fmt.Sprintf("**%s**", header)
+		}
+	}
+
+	// Initialize table with headers
+	table := [][]string{headers}
+
+	// Fill the table rows
+	for _, r := range results {
+		if !filter(r) {
+			continue
+		}
+
+		// Format the Code Owners
+		owners := "Unknown"
+		if len(r.CodeOwners) > 0 {
+			owners = strings.Join(r.CodeOwners, ", ")
+		}
+
+		row := []string{
+			r.TestName,
+			r.TestPath,
+			p.Sprintf("%d", r.Runs),
+			p.Sprintf("%d", r.Failures),
+			owners,
+		}
+
+		table = append(table, row)
+	}
+
+	return table
+}
+
 // GenerateFlakyTestsTable returns a table with only the flaky tests.
 func GenerateFlakyTestsTable(
 	testReport TestReport,
@@ -90,10 +136,17 @@ func PrintTestResultsTable(
 	w io.Writer,
 	results []TestResult,
 	markdown bool,
-	collapsible bool) {
-	table := generateTestResultsTable(results, markdown, func(result TestResult) bool {
+	collapsible bool,
+	shortTable bool) {
+	filter := func(result TestResult) bool {
 		return true // Include all tests
-	})
+	}
+	var table [][]string
+	if shortTable {
+		table = generateShortTestResultsTable(results, markdown, filter)
+	} else {
+		table = generateTestResultsTable(results, markdown, filter)
+	}
 	printTable(w, table, collapsible)
 }
 

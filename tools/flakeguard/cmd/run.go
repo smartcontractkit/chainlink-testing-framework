@@ -174,12 +174,6 @@ var RunTestsCmd = &cobra.Command{
 			flushSummaryAndExit(ErrorExitCode)
 		}
 
-		// Accumulate main summary into summaryBuffer
-		fmt.Fprint(&summaryBuffer, "\nFlakeguard Main Summary:\n")
-		fmt.Fprintf(&summaryBuffer, "-------------------------\n")
-		reports.RenderTestReport(&summaryBuffer, mainReport, false, false)
-		fmt.Fprintln(&summaryBuffer)
-
 		// Rerun failed tests
 		if rerunFailedCount > 0 {
 			failedTests := reports.FilterTests(mainReport.Results, func(tr reports.TestResult) bool {
@@ -210,11 +204,6 @@ var RunTestsCmd = &cobra.Command{
 				flushSummaryAndExit(ErrorExitCode)
 			}
 
-			fmt.Fprint(&summaryBuffer, "\nAll Tests That Were Rerun:\n")
-			fmt.Fprintf(&summaryBuffer, "---------------------------\n")
-			reports.PrintTestResultsTable(&summaryBuffer, rerunReport.Results, false, false)
-			fmt.Fprintln(&summaryBuffer)
-
 			// Save the rerun test report to file
 			if rerunResultsPath != "" && len(rerunResults) > 0 {
 				if err := reports.SaveTestResultsToFile(rerunResults, rerunResultsPath); err != nil {
@@ -230,13 +219,11 @@ var RunTestsCmd = &cobra.Command{
 			})
 
 			if len(failedAfterRerun) > 0 {
-				fmt.Fprint(&summaryBuffer, "\nTests That Have 0 Success Runs:\n")
-				fmt.Fprintf(&summaryBuffer, "--------------------------------\n")
-				reports.PrintTestResultsTable(&summaryBuffer, failedAfterRerun, false, false)
+				fmt.Fprint(&summaryBuffer, "\nTests That Have 0 Success Rate After Reruns:\n\n")
+				reports.PrintTestResultsTable(&summaryBuffer, failedAfterRerun, false, false, true)
 				fmt.Fprintln(&summaryBuffer)
 
-				fmt.Fprint(&summaryBuffer, "\nLogs From All Reruns:\n")
-				fmt.Fprintf(&summaryBuffer, "----------------------\n")
+				fmt.Fprint(&summaryBuffer, "\nLogs:\n\n")
 				err := rerunReport.PrintGotestsumOutput(&summaryBuffer, "pkgname")
 				if err != nil {
 					log.Error().Err(err).Msg("Error printing gotestsum output")
