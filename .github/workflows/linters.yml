@@ -1,0 +1,41 @@
+name: Run all linters
+on: [ push ]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  lint:
+    strategy:
+      fail-fast: false
+      matrix:
+        dir:
+          - framework
+          - parrot
+          - wasp
+          - seth
+          - havoc
+          - k8s-test-runner
+          - lib
+          - tools/workflowresultparser
+          - tools/asciitable
+          - tools/ghlatestreleasechecker
+          - tools/testlistgenerator
+          - tools/ecrimagefetcher
+          - tools/gotestloghelper
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Devbox
+        uses: jetify-com/devbox-install-action@734088efddca47cf44ff8a09289c6d0e51b73218 # v0.12.0
+        with:
+          enable-cache: 'true'
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ matrix.dir }}/go.mod
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
+        with:
+          just-version: '1.39.0'
+      - name: Lint
+        run: |
+          devbox run -- just lint ${{ matrix.dir }}

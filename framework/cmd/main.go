@@ -10,8 +10,9 @@ import (
 	"strings"
 
 	"github.com/pelletier/go-toml"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/urfave/cli/v2"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 //go:embed observability/*
@@ -262,6 +263,7 @@ func main() {
 						TimeDaysBeforeStart: c.Int("start"),
 						TimeDaysBeforeEnd:   c.Int("end"),
 						Typ:                 typ,
+						ResultsFile:         "ctf-ci.json",
 					})
 					return err
 				},

@@ -1,5 +1,0 @@
-#!/bin/bash
-
-printf "Executing unit tests..."
-
-make test_unit

@@ -2,8 +2,10 @@ package blockchain
 
 import (
 	"fmt"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+
 	"github.com/testcontainers/testcontainers-go"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 // Input is a blockchain network configuration params

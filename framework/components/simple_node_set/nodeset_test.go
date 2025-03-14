@@ -1,19 +1,20 @@
 package simple_node_set_test
 
 import (
+	"sync"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
-	"github.com/stretchr/testify/require"
-	"sync"
-	"testing"
 )
 
 type testCase struct {
 	name         string
-	funding      float64
 	bcInput      *blockchain.Input
 	nodeSetInput *ns.Input
 	assertion    func(t *testing.T, output *ns.Output)
@@ -36,7 +37,7 @@ func checkBasicOutputs(t *testing.T, output *ns.Output) {
 	require.Contains(t, output.CLNodes[1].Node.DockerP2PUrl, "node")
 }
 
-func TestComponentDockerNodeSetSharedDB(t *testing.T) {
+func TestSmokeComponentDockerNodeSetSharedDB(t *testing.T) {
 	testCases := []testCase{
 		{
 			name: "2 nodes cluster, override mode 'all'",
