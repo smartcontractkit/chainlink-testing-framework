@@ -280,7 +280,7 @@ func (tr *TestReport) PrintGotestsumOutput(w io.Writer, format string) error {
 		}
 
 		fmt.Fprint(w, outBuf.String())
-		fmt.Fprintln(w, "\n------------------------------------------\n")
+		fmt.Fprint(w, "\n------------------------------------------\n\n")
 	}
 	return nil
 }
