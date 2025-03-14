@@ -19,13 +19,14 @@ var GenerateReportCmd = &cobra.Command{
 
 		// Get flag values
 		flakeguardReportPath, _ := cmd.Flags().GetString("flakeguard-report")
-		outputDir, _ := cmd.Flags().GetString("output-dir")
+		summaryReportPath, _ := cmd.Flags().GetString("summary-report-md-path")
+		prCommentPath, _ := cmd.Flags().GetString("pr-comment-md-path")
 		maxPassRatio, _ := cmd.Flags().GetFloat64("max-pass-ratio")
-		generatePRComment, _ := cmd.Flags().GetBool("generate-pr-comment")
 		failedLogsURL, _ := cmd.Flags().GetString("failed-logs-url")
 
 		failedLogsArtifactName := "failed-test-results-with-logs.json"
 
+		// Load the test report from file
 		testReport := &reports.TestReport{}
 		reportFile, err := os.Open(flakeguardReportPath)
 		if err != nil {
@@ -43,16 +44,15 @@ var GenerateReportCmd = &cobra.Command{
 		fmt.Println()
 		log.Info().Msg("Successfully loaded aggregated test report")
 
-		// Create output directory if it doesn't exist
-		if err := fs.MkdirAll(outputDir, 0755); err != nil {
-			log.Error().Err(err).Msg("Error creating output directory")
+		// Create directory for summary markdown if needed
+		summaryDir := filepath.Dir(summaryReportPath)
+		if err := fs.MkdirAll(summaryDir, 0755); err != nil {
+			log.Error().Err(err).Msg("Error creating directory for summary report markdown")
 			os.Exit(ErrorExitCode)
 		}
 
 		// Generate GitHub summary markdown
-
-		summaryPath := filepath.Join(outputDir, "all-tests-summary.md")
-		err = generateGitHubSummaryMarkdown(*testReport, summaryPath, failedLogsURL, failedLogsArtifactName)
+		err = generateGitHubSummaryMarkdown(*testReport, summaryReportPath, failedLogsURL, failedLogsArtifactName)
 		if err != nil {
 			fmt.Println()
 			log.Error().Err(err).Msg("Error generating GitHub summary markdown")
@@ -60,11 +60,12 @@ var GenerateReportCmd = &cobra.Command{
 		}
 		fmt.Println()
 		log.Info().
-			Str("path", summaryPath).
+			Str("path", summaryReportPath).
 			Msg("GitHub summary markdown generated successfully")
 
-		if generatePRComment {
-			// Retrieve required flags
+		// Generate PR comment markdown if prCommentPath is provided
+		if prCommentPath != "" {
+			// Retrieve required flags for PR comment
 			currentBranch, _ := cmd.Flags().GetString("current-branch")
 			currentCommitSHA, _ := cmd.Flags().GetString("current-commit-sha")
 			baseBranch, _ := cmd.Flags().GetString("base-branch")
@@ -86,14 +87,20 @@ var GenerateReportCmd = &cobra.Command{
 				missingFlags = append(missingFlags, "--action-run-id")
 			}
 			if len(missingFlags) > 0 {
-				log.Error().Strs("missing flags", missingFlags).Msg("Not all required flags are provided for --generate-pr-comment")
+				log.Error().Strs("missing flags", missingFlags).Msg("Not all required flags are provided for PR comment generation")
 				os.Exit(ErrorExitCode)
 			}
 
-			prCommentPath := filepath.Join(outputDir, "all-tests-pr-comment.md")
+			// Create directory for PR comment markdown if needed
+			prCommentDir := filepath.Dir(prCommentPath)
+			if err := fs.MkdirAll(prCommentDir, 0755); err != nil {
+				log.Error().Err(err).Msg("Error creating directory for PR comment markdown")
+				os.Exit(ErrorExitCode)
+			}
+
 			err = generatePRCommentMarkdown(
 				*testReport,
-				filepath.Join(outputDir, prCommentPath),
+				prCommentPath,
 				baseBranch,
 				currentBranch,
 				currentCommitSHA,
@@ -118,19 +125,23 @@ var GenerateReportCmd = &cobra.Command{
 
 func init() {
 	GenerateReportCmd.Flags().StringP("flakeguard-report", "i", "", "Path to the flakeguard test report JSON file (required)")
-	GenerateReportCmd.Flags().StringP("output-dir", "o", "./report", "Path to output the generated report files")
+	GenerateReportCmd.Flags().String("summary-report-md-path", "", "Path to output the generated summary markdown file (required)")
+	GenerateReportCmd.Flags().String("pr-comment-md-path", "", "Path to output the generated PR comment markdown file (optional)")
 	GenerateReportCmd.Flags().Float64P("max-pass-ratio", "", 1.0, "The maximum pass ratio threshold for a test to be considered flaky")
-	GenerateReportCmd.Flags().Bool("generate-pr-comment", false, "Set to true to generate PR comment markdown")
 	GenerateReportCmd.Flags().String("base-branch", "develop", "The base branch to compare against (used in PR comment)")
-	GenerateReportCmd.Flags().String("current-branch", "", "The current branch name (required if generate-pr-comment is set)")
-	GenerateReportCmd.Flags().String("current-commit-sha", "", "The current commit SHA (required if generate-pr-comment is set)")
-	GenerateReportCmd.Flags().String("repo-url", "", "The repository URL (required if generate-pr-comment is set)")
-	GenerateReportCmd.Flags().String("action-run-id", "", "The GitHub Actions run ID (required if generate-pr-comment is set)")
+	GenerateReportCmd.Flags().String("current-branch", "", "The current branch name (required if pr-comment-md-path is provided)")
+	GenerateReportCmd.Flags().String("current-commit-sha", "", "The current commit SHA (required if pr-comment-md-path is provided)")
+	GenerateReportCmd.Flags().String("repo-url", "", "The repository URL (required if pr-comment-md-path is provided)")
+	GenerateReportCmd.Flags().String("action-run-id", "", "The GitHub Actions run ID (required if pr-comment-md-path is provided)")
 	GenerateReportCmd.Flags().String("github-repository", "", "The GitHub repository in the format owner/repo (required)")
 	GenerateReportCmd.Flags().Int64("github-run-id", 0, "The GitHub Actions run ID (required)")
 	GenerateReportCmd.Flags().String("failed-logs-url", "", "Optional URL linking to additional logs for failed tests")
 
 	if err := GenerateReportCmd.MarkFlagRequired("flakeguard-report"); err != nil {
+		log.Error().Err(err).Msg("Error marking flag as required")
+		os.Exit(ErrorExitCode)
+	}
+	if err := GenerateReportCmd.MarkFlagRequired("summary-report-md-path"); err != nil {
 		log.Error().Err(err).Msg("Error marking flag as required")
 		os.Exit(ErrorExitCode)
 	}
