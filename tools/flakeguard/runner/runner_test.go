@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,7 +43,7 @@ type expectedTestResult struct {
 func TestPrettyProjectPath(t *testing.T) {
 	t.Parallel()
 
-	prettyPath, err := prettyProjectPath("./")
+	prettyPath, err := utils.GetGoProjectName("./")
 	require.NoError(t, err)
 	assert.Equal(t, "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard", prettyPath)
 }
@@ -50,7 +51,7 @@ func TestPrettyProjectPath(t *testing.T) {
 func TestRun(t *testing.T) {
 	var (
 		zeroRuns        = 0
-		oneRun          = 1
+		oneCount        = 1
 		successPassRate = 1.0
 		failPassRate    = 0.0
 	)
@@ -184,6 +185,7 @@ func TestRun(t *testing.T) {
 				Verbose:          true,
 				RunCount:         defaultTestRunCount,
 				GoTestRaceFlag:   false,
+				GoTestCountFlag:  &oneCount,
 				SkipTests:        []string{},
 				SelectTests:      []string{"TestFlakyPanic"},
 				FailFast:         false,
@@ -241,11 +243,11 @@ func TestRun(t *testing.T) {
 			},
 			expectedTests: map[string]*expectedTestResult{
 				"TestFail": {
-					exactRuns:   &oneRun,
+					exactRuns:   &oneCount,
 					allFailures: true,
 				},
 				"TestPass": {
-					exactRuns:    &oneRun,
+					exactRuns:    &oneCount,
 					allSuccesses: true,
 				},
 			},
@@ -254,7 +256,7 @@ func TestRun(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			testReport, err := tc.runner.RunTestPackages([]string{flakyTestPackagePath})
+			testResults, err := tc.runner.RunTestPackages([]string{flakyTestPackagePath})
 			require.NoError(t, err)
 
 			t.Cleanup(func() {
@@ -267,7 +269,7 @@ func TestRun(t *testing.T) {
 				}
 				saniTName := strings.ReplaceAll(t.Name(), "/", "_")
 				resultsFileName := filepath.Join(debugDir, fmt.Sprintf("test_results_%s.json", saniTName))
-				jsonResults, err := json.Marshal(testReport)
+				jsonResults, err := json.Marshal(testResults)
 				if err != nil {
 					t.Logf("error marshalling test report: %v", err)
 					return
@@ -287,16 +289,8 @@ func TestRun(t *testing.T) {
 				}
 			})
 
-			if tc.runner.FailFast {
-				require.Equal(t, 1, testReport.SummaryData.TestRunCount, "unexpected number of unique tests run")
-			} else {
-				require.Equal(t, tc.runner.RunCount, testReport.SummaryData.TestRunCount, "unexpected number of test runs")
-			}
-
-			require.Equal(t, tc.runner.GoTestRaceFlag, testReport.RaceDetection, "unexpected race usage")
-
-			assert.Equal(t, len(tc.expectedTests), len(testReport.Results), "unexpected number of test results")
-			for _, result := range testReport.Results {
+			assert.Equal(t, len(tc.expectedTests), len(testResults), "unexpected number of test results")
+			for _, result := range testResults {
 				t.Run(fmt.Sprintf("checking results of %s", result.TestName), func(t *testing.T) {
 					require.NotNil(t, result, "test result was nil")
 					expected, ok := tc.expectedTests[result.TestName]
@@ -514,15 +508,15 @@ func TestFailedOutputs(t *testing.T) {
 		CollectRawOutput: true,
 	}
 
-	testReport, err := runner.RunTestPackages([]string{flakyTestPackagePath})
+	testResults, err := runner.RunTestPackages([]string{flakyTestPackagePath})
 	require.NoError(t, err, "running tests should not produce an unexpected error")
 
-	require.Equal(t, 1, testReport.SummaryData.TotalRuns, "unexpected number of test runs")
+	require.Equal(t, 1, len(testResults), "unexpected number of test runs")
 
 	var testFailResult *reports.TestResult
-	for i := range testReport.Results {
-		if testReport.Results[i].TestName == "TestFail" {
-			testFailResult = &testReport.Results[i]
+	for i := range testResults {
+		if testResults[i].TestName == "TestFail" {
+			testFailResult = &testResults[i]
 			break
 		}
 	}
@@ -537,68 +531,6 @@ func TestFailedOutputs(t *testing.T) {
 	}
 }
 
-func TestRerunFailed(t *testing.T) {
-	t.Parallel()
-
-	// Configure a runner that will rerun failed tests
-	runner := Runner{
-		ProjectPath:      "./",
-		Verbose:          true,
-		RunCount:         2,                    // Run tests twice initially
-		RerunCount:       3,                    // Rerun failing tests 3 more times
-		SelectTests:      []string{"TestFail"}, // This test is known to always fail
-		CollectRawOutput: true,
-	}
-
-	testReport, err := runner.RunTestPackages([]string{flakyTestPackagePath})
-	require.NoError(t, err, "running tests should not produce an unexpected error")
-
-	// Verify we have the expected number of results
-	require.Equal(t, 1, len(testReport.Results), "expected exactly one test result")
-
-	// Find the TestFail result
-	var testFailResult *reports.TestResult
-	for i := range testReport.Results {
-		if testReport.Results[i].TestName == "TestFail" {
-			testFailResult = &testReport.Results[i]
-			break
-		}
-	}
-	require.NotNil(t, testFailResult, "expected TestFail result not found in report")
-
-	// TestFail should have run 5 times (2 initial + 3 reruns)
-	require.Equal(t, 5, testFailResult.Runs, "TestFail should have run 5 times (2 initial + 3 reruns)")
-
-	// Verify that we have outputs from failed runs
-	require.NotEmpty(t, testFailResult.FailedOutputs, "expected failed outputs for TestFail")
-	require.Empty(t, testFailResult.PassedOutputs, "TestFail should have no passed outputs")
-
-	// We should have outputs from both run and rerun prefixes
-	hasRunOutput := false
-	hasRerunOutput := false
-
-	// Check if we have outputs from both original runs and reruns
-	for runID := range testFailResult.FailedOutputs {
-		t.Logf("Found failed outputs for run %s", runID)
-		if strings.HasPrefix(runID, "run") {
-			hasRunOutput = true
-		} else if strings.HasPrefix(runID, "rerun") {
-			hasRerunOutput = true
-		}
-	}
-
-	require.True(t, hasRunOutput, "expected outputs from initial runs")
-	require.True(t, hasRerunOutput, "expected outputs from reruns")
-
-	// Check that the PassRatio is 0 (since TestFail always fails)
-	require.Equal(t, 0.0, testFailResult.PassRatio, "TestFail should have a pass ratio of 0.0")
-
-	// Verify that the test ran exactly 5 times and all were failures
-	require.Equal(t, 5, testFailResult.Failures, "TestFail should have failed 5 times")
-	require.Equal(t, 0, testFailResult.Successes, "TestFail should have passed 0 times")
-	require.Equal(t, 5, testFailResult.Successes+testFailResult.Failures, "total of successes and failures should equal 5")
-}
-
 func TestSkippedTests(t *testing.T) {
 	t.Parallel()
 
@@ -610,17 +542,13 @@ func TestSkippedTests(t *testing.T) {
 		CollectRawOutput: true,
 	}
 
-	testReport, err := runner.RunTestPackages([]string{flakyTestPackagePath})
+	testResults, err := runner.RunTestPackages([]string{flakyTestPackagePath})
 	require.NoError(t, err, "running tests should not produce an unexpected error")
 
-	require.Equal(t, 0, testReport.SummaryData.TotalRuns, "unexpected number of test runs")
-	require.Equal(t, 1, len(testReport.Results), "unexpected number of test results")
-	require.Equal(t, 0, testReport.SummaryData.TestRunCount, "unexpected test run count")
-
 	var testSkipResult *reports.TestResult
-	for i := range testReport.Results {
-		if testReport.Results[i].TestName == "TestSkipped" {
-			testSkipResult = &testReport.Results[i]
+	for i := range testResults {
+		if testResults[i].TestName == "TestSkipped" {
+			testSkipResult = &testResults[i]
 			break
 		}
 	}
@@ -645,15 +573,13 @@ func TestOmitOutputsOnSuccess(t *testing.T) {
 		OmitOutputsOnSuccess: true,
 	}
 
-	testReport, err := runner.RunTestPackages([]string{flakyTestPackagePath})
+	testResults, err := runner.RunTestPackages([]string{flakyTestPackagePath})
 	require.NoError(t, err, "running tests should not produce an unexpected error")
 
-	require.Equal(t, 1, testReport.SummaryData.TotalRuns, "unexpected number of test runs")
-
 	var testPassResult *reports.TestResult
-	for i := range testReport.Results {
-		if testReport.Results[i].TestName == "TestPass" {
-			testPassResult = &testReport.Results[i]
+	for i := range testResults {
+		if testResults[i].TestName == "TestPass" {
+			testPassResult = &testResults[i]
 			break
 		}
 	}

@@ -30,7 +30,6 @@ type Runner struct {
 	ProjectPath                    string   // Path to the Go project directory.
 	Verbose                        bool     // If true, provides detailed logging.
 	RunCount                       int      // Number of times to run the tests.
-	RerunCount                     int      // Number of additional runs for tests that initially fail.
 	GoTestCountFlag                *int     // Run go test with -count flag.
 	GoTestRaceFlag                 bool     // Run go test with -race flag.
 	GoTestTimeoutFlag              string   // Run go test with -timeout flag
@@ -658,7 +657,7 @@ func parseSubTest(testName string) (parentTestName, subTestName string) {
 	return parts[0], parts[1]
 }
 
-func (r *Runner) RerunFailedTests(failedTests []reports.TestResult) ([]reports.TestResult, []string, error) {
+func (r *Runner) RerunFailedTests(failedTests []reports.TestResult, rerunCount int) ([]reports.TestResult, []string, error) {
 	// Group the provided failed tests by package for more efficient reruns
 	failingTestsByPackage := make(map[string][]string)
 	for _, tr := range failedTests {
@@ -672,7 +671,7 @@ func (r *Runner) RerunFailedTests(failedTests []reports.TestResult) ([]reports.T
 	var rerunJsonOutputPaths []string
 
 	// Rerun each failing test package up to RerunCount times
-	for i := range r.RerunCount {
+	for i := range rerunCount {
 		for pkg, tests := range failingTestsByPackage {
 			// Build regex pattern to match all failing tests in this package
 			testPattern := fmt.Sprintf("^(%s)$", strings.Join(tests, "|"))
@@ -710,7 +709,7 @@ func (r *Runner) RerunFailedTests(failedTests []reports.TestResult) ([]reports.T
 	}
 
 	// Parse all rerun results at once with a consistent prefix
-	rerunResults, err := r.parseTestResults(rerunJsonOutputPaths, "rerun", r.RerunCount)
+	rerunResults, err := r.parseTestResults(rerunJsonOutputPaths, "rerun", rerunCount)
 	if err != nil {
 		return nil, rerunJsonOutputPaths, fmt.Errorf("failed to parse rerun results: %w", err)
 	}

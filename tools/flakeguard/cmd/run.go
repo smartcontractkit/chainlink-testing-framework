@@ -127,7 +127,6 @@ var RunTestsCmd = &cobra.Command{
 			OmitOutputsOnSuccess:           omitOutputsOnSuccess,
 			MaxPassRatio:                   passRatioThreshold, // Use the calculated threshold
 			IgnoreParentFailuresOnSubtests: ignoreParentFailuresOnSubtests,
-			RerunCount:                     rerunFailedCount,
 			FailFast:                       failFast,
 		}
 
@@ -185,7 +184,7 @@ var RunTestsCmd = &cobra.Command{
 				flushSummaryAndExit(0)
 			}
 
-			rerunResults, rerunJsonOutputPaths, err := testRunner.RerunFailedTests(failedTests)
+			rerunResults, rerunJsonOutputPaths, err := testRunner.RerunFailedTests(failedTests, rerunFailedCount)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error rerunning failed tests")
 				flushSummaryAndExit(ErrorExitCode)
