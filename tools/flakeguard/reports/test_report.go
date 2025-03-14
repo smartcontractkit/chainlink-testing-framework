@@ -219,8 +219,8 @@ func NewTestReport(results []TestResult, opts ...TestReportOption) (TestReport, 
 
 // TestReport reports on the parameters and results of one to many test runs
 type TestReport struct {
-	ID                   string       `json:"id,omitempty"`
-	RerunOfReportID      string       `json:"rerun_of_report_id,omitempty"` // references the ID of the original/base report from which this re-run was created.
+	ID                   string       `json:"id"`
+	RerunOfReportID      string       `json:"rerun_of_report_id"` // references the ID of the original/base report from which this re-run was created.
 	ProjectPath          string       `json:"project_path"`
 	GoProject            string       `json:"go_project"`
 	BranchName           string       `json:"branch_name,omitempty"`
