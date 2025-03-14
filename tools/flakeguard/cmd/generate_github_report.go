@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
-	"github.com/briandowns/spinner"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/spf13/cobra"
@@ -21,28 +19,16 @@ var GenerateReportCmd = &cobra.Command{
 
 		// Get flag values
 		flakeguardReportPath, _ := cmd.Flags().GetString("flakeguard-report")
-		outputDir, _ := cmd.Flags().GetString("output-path")
+		outputDir, _ := cmd.Flags().GetString("output-dir")
 		maxPassRatio, _ := cmd.Flags().GetFloat64("max-pass-ratio")
 		generatePRComment, _ := cmd.Flags().GetBool("generate-pr-comment")
 		failedLogsURL, _ := cmd.Flags().GetString("failed-logs-url")
 
 		failedLogsArtifactName := "failed-test-results-with-logs.json"
 
-		initialDirSize, err := getDirSize(outputDir)
-		if err != nil {
-			log.Error().Err(err).Str("path", outputDir).Msg("Error getting initial directory size")
-			// intentionally don't exit here, as we can still proceed with the generation
-		}
-
-		// Load the aggregated report
-		s := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-		s.Suffix = " Loading flakeguard test report..."
-		s.Start()
-
-		testReport := reports.TestReport{}
+		testReport := &reports.TestReport{}
 		reportFile, err := os.Open(flakeguardReportPath)
 		if err != nil {
-			s.Stop()
 			fmt.Println()
 			log.Error().Err(err).Msg("Error opening aggregated test report")
 			os.Exit(ErrorExitCode)
@@ -50,12 +36,10 @@ var GenerateReportCmd = &cobra.Command{
 		defer reportFile.Close()
 
 		if err := json.NewDecoder(reportFile).Decode(testReport); err != nil {
-			s.Stop()
 			fmt.Println()
 			log.Error().Err(err).Msg("Error decoding aggregated test report")
 			os.Exit(ErrorExitCode)
 		}
-		s.Stop()
 		fmt.Println()
 		log.Info().Msg("Successfully loaded aggregated test report")
 
@@ -66,20 +50,18 @@ var GenerateReportCmd = &cobra.Command{
 		}
 
 		// Generate GitHub summary markdown
-		s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-		s.Suffix = " Generating GitHub summary markdown..."
-		s.Start()
 
-		err = generateGitHubSummaryMarkdown(testReport, filepath.Join(outputDir, "all-test"), failedLogsURL, failedLogsArtifactName)
+		summaryPath := filepath.Join(outputDir, "all-tests-summary.md")
+		err = generateGitHubSummaryMarkdown(*testReport, summaryPath, failedLogsURL, failedLogsArtifactName)
 		if err != nil {
-			s.Stop()
 			fmt.Println()
 			log.Error().Err(err).Msg("Error generating GitHub summary markdown")
 			os.Exit(ErrorExitCode)
 		}
-		s.Stop()
 		fmt.Println()
-		log.Info().Msg("GitHub summary markdown generated successfully")
+		log.Info().
+			Str("path", summaryPath).
+			Msg("GitHub summary markdown generated successfully")
 
 		if generatePRComment {
 			// Retrieve required flags
@@ -108,14 +90,10 @@ var GenerateReportCmd = &cobra.Command{
 				os.Exit(ErrorExitCode)
 			}
 
-			// Generate PR comment markdown
-			s = spinner.New(spinner.CharSets[11], 100*time.Millisecond)
-			s.Suffix = " Generating PR comment markdown..."
-			s.Start()
-
+			prCommentPath := filepath.Join(outputDir, "all-tests-pr-comment.md")
 			err = generatePRCommentMarkdown(
-				testReport,
-				filepath.Join(outputDir, "all-test"),
+				*testReport,
+				filepath.Join(outputDir, prCommentPath),
 				baseBranch,
 				currentBranch,
 				currentCommitSHA,
@@ -126,29 +104,21 @@ var GenerateReportCmd = &cobra.Command{
 				maxPassRatio,
 			)
 			if err != nil {
-				s.Stop()
 				fmt.Println()
 				log.Error().Err(err).Msg("Error generating PR comment markdown")
 				os.Exit(ErrorExitCode)
 			}
-			s.Stop()
 			fmt.Println()
-			log.Info().Msg("PR comment markdown generated successfully")
+			log.Info().
+				Str("path", prCommentPath).
+				Msg("PR comment markdown generated successfully")
 		}
-
-		finalDirSize, err := getDirSize(outputDir)
-		if err != nil {
-			log.Error().Err(err).Str("path", outputDir).Msg("Error getting initial directory size")
-			// intentionally don't exit here, as we can still proceed with the generation
-		}
-		diskSpaceUsed := byteCountSI(finalDirSize - initialDirSize)
-		log.Info().Str("disk space used", diskSpaceUsed).Str("output", outputDir).Msg("Reports generated successfully")
 	},
 }
 
 func init() {
 	GenerateReportCmd.Flags().StringP("flakeguard-report", "i", "", "Path to the flakeguard test report JSON file (required)")
-	GenerateReportCmd.Flags().StringP("output-path", "o", "./report", "Path to output the generated report files")
+	GenerateReportCmd.Flags().StringP("output-dir", "o", "./report", "Path to output the generated report files")
 	GenerateReportCmd.Flags().Float64P("max-pass-ratio", "", 1.0, "The maximum pass ratio threshold for a test to be considered flaky")
 	GenerateReportCmd.Flags().Bool("generate-pr-comment", false, "Set to true to generate PR comment markdown")
 	GenerateReportCmd.Flags().String("base-branch", "develop", "The base branch to compare against (used in PR comment)")
@@ -168,8 +138,7 @@ func init() {
 
 func generateGitHubSummaryMarkdown(report reports.TestReport, outputPath, artifactLink, artifactName string) error {
 	fs := reports.OSFileSystem{}
-	mdFileName := outputPath + "-summary.md"
-	mdFile, err := fs.Create(mdFileName)
+	mdFile, err := fs.Create(outputPath)
 	if err != nil {
 		return fmt.Errorf("error creating GitHub summary markdown file: %w", err)
 	}
@@ -194,8 +163,7 @@ func generatePRCommentMarkdown(
 	maxPassRatio float64,
 ) error {
 	fs := reports.OSFileSystem{}
-	mdFileName := outputPath + "-pr-comment.md"
-	mdFile, err := fs.Create(mdFileName)
+	mdFile, err := fs.Create(outputPath)
 	if err != nil {
 		return fmt.Errorf("error creating PR comment markdown file: %w", err)
 	}
