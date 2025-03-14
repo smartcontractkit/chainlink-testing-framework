@@ -66,10 +66,13 @@ func TestAggregateResultFilesSplunk(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	report, err := LoadAndAggregate("./testdata", WithReportID(reportID))
+	results, err := LoadAndAggregate("./testdata")
 	require.NoError(t, err, "LoadAndAggregate failed")
 
-	err = SendReportToSplunk(srv.URL, splunkToken, splunkEvent, *report)
+	report, err := NewTestReport(results, WithReportID(reportID))
+	require.NoError(t, err, "NewTestReport failed")
+
+	err = SendTestReportToSplunk(srv.URL, splunkToken, splunkEvent, report)
 	require.NoError(t, err, "SendReportToSplunk failed")
 	verifyAggregatedReport(t, report)
 	assert.Equal(t, 1, reportRequestsReceived, "unexpected number of report requests")
@@ -79,12 +82,16 @@ func TestAggregateResultFilesSplunk(t *testing.T) {
 func TestAggregateResultFiles(t *testing.T) {
 	t.Parallel()
 
-	report, err := LoadAndAggregate("./testdata", WithReportID(reportID))
+	results, err := LoadAndAggregate("./testdata")
 	require.NoError(t, err, "LoadAndAggregate failed")
+
+	report, err := NewTestReport(results, WithReportID(reportID))
+	require.NoError(t, err, "NewTestReport failed")
+
 	verifyAggregatedReport(t, report)
 }
 
-func verifyAggregatedReport(t *testing.T, report *TestReport) {
+func verifyAggregatedReport(t *testing.T, report TestReport) {
 	require.NotNil(t, report, "report is nil")
 	require.Equal(t, reportID, report.ID, "report ID mismatch")
 	require.Equal(t, uniqueTests, len(report.Results), "report results count mismatch")
@@ -142,7 +149,7 @@ func verifyAggregatedReport(t *testing.T, report *TestReport) {
 func BenchmarkAggregateResultFiles(b *testing.B) {
 	zerolog.SetGlobalLevel(zerolog.Disabled)
 	for i := 0; i < b.N; i++ {
-		_, err := LoadAndAggregate("./testdata", WithReportID(reportID))
+		_, err := LoadAndAggregate("./testdata")
 		require.NoError(b, err, "LoadAndAggregate failed")
 	}
 }
@@ -156,7 +163,7 @@ func BenchmarkAggregateResultFilesSplunk(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := LoadAndAggregate("./testdata", WithReportID(reportID))
+		_, err := LoadAndAggregate("./testdata")
 		require.NoError(b, err, "LoadAndAggregate failed")
 	}
 }

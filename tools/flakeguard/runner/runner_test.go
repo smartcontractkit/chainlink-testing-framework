@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,7 +43,7 @@ type expectedTestResult struct {
 func TestPrettyProjectPath(t *testing.T) {
 	t.Parallel()
 
-	prettyPath, err := prettyProjectPath("./")
+	prettyPath, err := utils.GetGoProjectName("./")
 	require.NoError(t, err)
 	assert.Equal(t, "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard", prettyPath)
 }
@@ -50,7 +51,7 @@ func TestPrettyProjectPath(t *testing.T) {
 func TestRun(t *testing.T) {
 	var (
 		zeroRuns        = 0
-		oneRun          = 1
+		oneCount        = 1
 		successPassRate = 1.0
 		failPassRate    = 0.0
 	)
@@ -65,7 +66,7 @@ func TestRun(t *testing.T) {
 				ProjectPath:      "./",
 				Verbose:          true,
 				RunCount:         defaultTestRunCount,
-				UseRace:          false,
+				GoTestRaceFlag:   false,
 				SkipTests:        []string{"TestPanic", "TestFlakyPanic", "TestSubTestsSomePanic", "TestTimeout"},
 				FailFast:         false,
 				CollectRawOutput: true,
@@ -163,7 +164,7 @@ func TestRun(t *testing.T) {
 				ProjectPath:      "./",
 				Verbose:          true,
 				RunCount:         defaultTestRunCount,
-				UseRace:          false,
+				GoTestRaceFlag:   false,
 				SkipTests:        []string{},
 				SelectTests:      []string{"TestPanic"},
 				FailFast:         false,
@@ -183,7 +184,8 @@ func TestRun(t *testing.T) {
 				ProjectPath:      "./",
 				Verbose:          true,
 				RunCount:         defaultTestRunCount,
-				UseRace:          false,
+				GoTestRaceFlag:   false,
+				GoTestCountFlag:  &oneCount,
 				SkipTests:        []string{},
 				SelectTests:      []string{"TestFlakyPanic"},
 				FailFast:         false,
@@ -203,7 +205,7 @@ func TestRun(t *testing.T) {
 				ProjectPath:      "./",
 				Verbose:          true,
 				RunCount:         defaultTestRunCount,
-				UseRace:          false,
+				GoTestRaceFlag:   false,
 				SkipTests:        []string{},
 				SelectTests:      []string{"TestSubTestsSomePanic"},
 				FailFast:         false,
@@ -233,7 +235,7 @@ func TestRun(t *testing.T) {
 				ProjectPath:      "./",
 				Verbose:          true,
 				RunCount:         defaultTestRunCount,
-				UseRace:          false,
+				GoTestRaceFlag:   false,
 				SkipTests:        []string{},
 				SelectTests:      []string{"TestFail", "TestPass"},
 				FailFast:         true,
@@ -241,11 +243,11 @@ func TestRun(t *testing.T) {
 			},
 			expectedTests: map[string]*expectedTestResult{
 				"TestFail": {
-					exactRuns:   &oneRun,
+					exactRuns:   &oneCount,
 					allFailures: true,
 				},
 				"TestPass": {
-					exactRuns:    &oneRun,
+					exactRuns:    &oneCount,
 					allSuccesses: true,
 				},
 			},
@@ -254,7 +256,7 @@ func TestRun(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			testReport, err := tc.runner.RunTestPackages([]string{flakyTestPackagePath})
+			testResults, err := tc.runner.RunTestPackages([]string{flakyTestPackagePath})
 			require.NoError(t, err)
 
 			t.Cleanup(func() {
@@ -267,7 +269,7 @@ func TestRun(t *testing.T) {
 				}
 				saniTName := strings.ReplaceAll(t.Name(), "/", "_")
 				resultsFileName := filepath.Join(debugDir, fmt.Sprintf("test_results_%s.json", saniTName))
-				jsonResults, err := json.Marshal(testReport)
+				jsonResults, err := json.Marshal(testResults)
 				if err != nil {
 					t.Logf("error marshalling test report: %v", err)
 					return
@@ -287,16 +289,8 @@ func TestRun(t *testing.T) {
 				}
 			})
 
-			if tc.runner.FailFast {
-				require.Equal(t, 1, testReport.SummaryData.TestRunCount, "unexpected number of unique tests run")
-			} else {
-				require.Equal(t, tc.runner.RunCount, testReport.SummaryData.TestRunCount, "unexpected number of test runs")
-			}
-
-			require.Equal(t, tc.runner.UseRace, testReport.RaceDetection, "unexpected race usage")
-
-			assert.Equal(t, len(tc.expectedTests), len(testReport.Results), "unexpected number of test results")
-			for _, result := range testReport.Results {
+			assert.Equal(t, len(tc.expectedTests), len(testResults), "unexpected number of test results")
+			for _, result := range testResults {
 				t.Run(fmt.Sprintf("checking results of %s", result.TestName), func(t *testing.T) {
 					require.NotNil(t, result, "test result was nil")
 					expected, ok := tc.expectedTests[result.TestName]
@@ -312,7 +306,7 @@ func TestRun(t *testing.T) {
 					}
 					resultCounts := result.Successes + result.Failures
 					assert.Equal(t, result.Runs, resultCounts,
-						"test '%s' doesn't match Runs count with results counts\n%s", result.TestName, resultsString(result),
+						"test '%s' doesn't match Runs count with results counts\n%s", result.TestName, result.Runs, resultsString(result),
 					)
 
 					if expected.minimumRuns != nil {
@@ -514,15 +508,15 @@ func TestFailedOutputs(t *testing.T) {
 		CollectRawOutput: true,
 	}
 
-	testReport, err := runner.RunTestPackages([]string{flakyTestPackagePath})
+	testResults, err := runner.RunTestPackages([]string{flakyTestPackagePath})
 	require.NoError(t, err, "running tests should not produce an unexpected error")
 
-	require.Equal(t, 1, testReport.SummaryData.TotalRuns, "unexpected number of test runs")
+	require.Equal(t, 1, len(testResults), "unexpected number of test runs")
 
 	var testFailResult *reports.TestResult
-	for i := range testReport.Results {
-		if testReport.Results[i].TestName == "TestFail" {
-			testFailResult = &testReport.Results[i]
+	for i := range testResults {
+		if testResults[i].TestName == "TestFail" {
+			testFailResult = &testResults[i]
 			break
 		}
 	}
@@ -548,17 +542,13 @@ func TestSkippedTests(t *testing.T) {
 		CollectRawOutput: true,
 	}
 
-	testReport, err := runner.RunTestPackages([]string{flakyTestPackagePath})
+	testResults, err := runner.RunTestPackages([]string{flakyTestPackagePath})
 	require.NoError(t, err, "running tests should not produce an unexpected error")
 
-	require.Equal(t, 0, testReport.SummaryData.TotalRuns, "unexpected number of test runs")
-	require.Equal(t, 1, len(testReport.Results), "unexpected number of test results")
-	require.Equal(t, 0, testReport.SummaryData.TestRunCount, "unexpected test run count")
-
 	var testSkipResult *reports.TestResult
-	for i := range testReport.Results {
-		if testReport.Results[i].TestName == "TestSkipped" {
-			testSkipResult = &testReport.Results[i]
+	for i := range testResults {
+		if testResults[i].TestName == "TestSkipped" {
+			testSkipResult = &testResults[i]
 			break
 		}
 	}
@@ -583,15 +573,13 @@ func TestOmitOutputsOnSuccess(t *testing.T) {
 		OmitOutputsOnSuccess: true,
 	}
 
-	testReport, err := runner.RunTestPackages([]string{flakyTestPackagePath})
+	testResults, err := runner.RunTestPackages([]string{flakyTestPackagePath})
 	require.NoError(t, err, "running tests should not produce an unexpected error")
 
-	require.Equal(t, 1, testReport.SummaryData.TotalRuns, "unexpected number of test runs")
-
 	var testPassResult *reports.TestResult
-	for i := range testReport.Results {
-		if testReport.Results[i].TestName == "TestPass" {
-			testPassResult = &testReport.Results[i]
+	for i := range testResults {
+		if testResults[i].TestName == "TestPass" {
+			testPassResult = &testResults[i]
 			break
 		}
 	}
@@ -816,36 +804,6 @@ var (
 		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /opt/homebrew/Cellar/go/1.23.2/libexec/src/testing/testing.go:1743 +0x40\n"},
 		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "\n"},
 		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "Goroutine 14 (running) created at:\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package.TestRace()\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /Users/adamhamrick/Projects/chainlink-testing-framework/tools/flakeguard/runner/example_test_package/example_tests_test.go:74 +0x158\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  testing.tRunner()\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /opt/homebrew/Cellar/go/1.23.2/libexec/src/testing/testing.go:1690 +0x184\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  testing.(*T).Run.gowrap1()\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /opt/homebrew/Cellar/go/1.23.2/libexec/src/testing/testing.go:1743 +0x40\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "==================\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "==================\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "WARNING: DATA RACE\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "Read at 0x00c000292028 by goroutine 19:\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package.TestRace.func1()\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /Users/adamhamrick/Projects/chainlink-testing-framework/tools/flakeguard/runner/example_test_package/example_tests_test.go:68 +0xb8\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package.TestRace.gowrap1()\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /Users/adamhamrick/Projects/chainlink-testing-framework/tools/flakeguard/runner/example_test_package/example_tests_test.go:74 +0x44\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "Previous write at 0x00c000292028 by goroutine 13:\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package.TestRace.func1()\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /Users/adamhamrick/Projects/chainlink-testing-framework/tools/flakeguard/runner/example_test_package/example_tests_test.go:67 +0xa4\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package.TestRace.gowrap1()\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /Users/adamhamrick/Projects/chainlink-testing-framework/tools/flakeguard/runner/example_test_package/example_tests_test.go:74 +0x44\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "Goroutine 19 (running) created at:\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package.TestRace()\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /Users/adamhamrick/Projects/chainlink-testing-framework/tools/flakeguard/runner/example_test_package/example_tests_test.go:74 +0x158\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  testing.tRunner()\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /opt/homebrew/Cellar/go/1.23.2/libexec/src/testing/testing.go:1690 +0x184\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  testing.(*T).Run.gowrap1()\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /opt/homebrew/Cellar/go/1.23.2/libexec/src/testing/testing.go:1743 +0x40\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "\n"},
-		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "Goroutine 13 (running) created at:\n"},
 		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package.TestRace()\n"},
 		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "      /Users/adamhamrick/Projects/chainlink-testing-framework/tools/flakeguard/runner/example_test_package/example_tests_test.go:74 +0x158\n"},
 		{Action: "output", Package: "github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/example_test_package", Test: "TestRace", Output: "  testing.tRunner()\n"},

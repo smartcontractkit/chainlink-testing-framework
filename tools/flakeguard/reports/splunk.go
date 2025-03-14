@@ -16,8 +16,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// SendReportToSplunk sends a truncated TestReport and each individual TestResults to Splunk as events
-func SendReportToSplunk(splunkURL, splunkToken, splunkEvent string, report TestReport) error {
+// SendTestReportToSplunk sends a truncated TestReport and each individual TestResults to Splunk as events
+func SendTestReportToSplunk(splunkURL, splunkToken, splunkEvent string, report TestReport) error {
 	start := time.Now()
 	results := report.Results
 	report.Results = nil // Don't send results to Splunk, doing that individually
@@ -116,6 +116,9 @@ func SendReportToSplunk(splunkURL, splunkToken, splunkEvent string, report TestR
 	if isExampleRun {
 		log.Info().Msg("Example Run. See 'example_results/splunk_results' for the results that would be sent to splunk")
 	}
+
+	// Sanitize report fields
+	report.BranchName = strings.TrimSpace(report.BranchName)
 
 	reportData := SplunkTestReport{
 		Event: SplunkTestReportEvent{
