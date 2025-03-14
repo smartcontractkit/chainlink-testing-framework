@@ -30,9 +30,8 @@ builds:
       - amd64
       - arm64
     binary: parrot
-
-archives:
-  - formats: ['binary']
+    env:
+      - CGO_ENABLED=0
 
 dockers:
   - id: linux-amd64-parrot

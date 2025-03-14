@@ -72,7 +72,7 @@ func (z *Zookeeper) StartContainer() error {
 	}
 	c, err := tc.GenericContainer(testcontext.Get(z.t), req)
 	if err != nil {
-		return fmt.Errorf("cannot start Zookeper container: %w", err)
+		return fmt.Errorf("cannot start Zookeeper container: %w", err)
 	}
 	name, err := c.Name(testcontext.Get(z.t))
 	if err != nil {
@@ -83,7 +83,7 @@ func (z *Zookeeper) StartContainer() error {
 
 	z.l.Info().Str("containerName", name).
 		Str("internalUrl", z.InternalUrl).
-		Msgf("Started Zookeper container")
+		Msgf("Started Zookeeper container")
 
 	z.Container = c
 

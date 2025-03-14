@@ -3,11 +3,13 @@ package examples
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/blocto/solana-go-sdk/client"
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 type CfgSolana struct {

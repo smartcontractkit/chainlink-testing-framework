@@ -25,7 +25,7 @@ func (m *CLNodeGun) Call(l *wasp.Generator) *wasp.Response {
 	case "bridges":
 		return m.bridges()
 	default:
-		panic("uknown generator mode")
+		panic("unknown generator mode")
 	}
 	return nil
 }

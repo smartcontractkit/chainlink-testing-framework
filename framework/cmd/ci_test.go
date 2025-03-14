@@ -36,7 +36,7 @@ var (
 	}
 )
 
-func TestCLIGitHubAnalytics(t *testing.T) {
+func TestSmokeCLIGitHubAnalytics(t *testing.T) {
 	tests := []struct {
 		name     string
 		setup    func() *FakeGHA

@@ -2,14 +2,16 @@ package examples
 
 import (
 	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	testToken "github.com/smartcontractkit/chainlink-testing-framework/framework/examples/example_components/gethwrappers"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/examples/example_components/onchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
 	"github.com/smartcontractkit/chainlink-testing-framework/seth"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 type CfgForkChains struct {

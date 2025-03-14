@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"fmt"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 

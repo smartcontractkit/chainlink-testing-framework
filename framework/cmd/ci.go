@@ -15,10 +15,11 @@ import (
 	"github.com/fatih/color"
 	"github.com/google/go-github/v50/github"
 	"github.com/google/uuid"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"go.uber.org/ratelimit"
 	"golang.org/x/oauth2"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 const (
@@ -38,9 +39,11 @@ var (
 	SlowTestThreshold          = 5 * time.Minute
 	ExtremelySlowTestThreshold = 10 * time.Minute
 
-	DebugDirRoot    = "ctf-ci-debug"
-	DebugSubDirWF   = filepath.Join(DebugDirRoot, "workflows")
-	DebugSubDirJobs = filepath.Join(DebugDirRoot, "jobs")
+	DebugDirRoot       = "ctf-ci-debug"
+	DebugSubDirWF      = filepath.Join(DebugDirRoot, "workflows")
+	DebugSubDirJobs    = filepath.Join(DebugDirRoot, "jobs")
+	DefaultResultsDir  = "."
+	DefaultResultsFile = "ctf-ci"
 )
 
 type GitHubActionsClient interface {
@@ -49,68 +52,38 @@ type GitHubActionsClient interface {
 }
 
 type AnalysisConfig struct {
-	Debug               bool
-	Owner               string
-	Repo                string
-	WorkflowName        string
-	TimeDaysBeforeStart int
-	TimeStart           time.Time
-	TimeDaysBeforeEnd   int
-	TimeEnd             time.Time
-	Typ                 string
-	ResultsFile         string
+	Debug               bool      `json:"debug"`
+	Owner               string    `json:"owner"`
+	Repo                string    `json:"repo"`
+	WorkflowName        string    `json:"workflow_name"`
+	TimeDaysBeforeStart int       `json:"time_days_before_start"`
+	TimeStart           time.Time `json:"time_start"`
+	TimeDaysBeforeEnd   int       `json:"time_days_before_end"`
+	TimeEnd             time.Time `json:"time_end"`
+	Typ                 string    `json:"type"`
+	ResultsFile         string    `json:"results_file"`
 }
 
 type Stat struct {
-	Name          string
-	Successes     int
-	Failures      int
-	Cancels       int
-	ReRuns        int
-	P50           time.Duration
-	P95           time.Duration
-	P99           time.Duration
-	TotalDuration time.Duration
-	Durations     []time.Duration
+	Name          string          `json:"name"`
+	Successes     int             `json:"successes"`
+	Failures      int             `json:"failures"`
+	Cancels       int             `json:"cancels"`
+	ReRuns        int             `json:"reRuns"`
+	P50           time.Duration   `json:"p50"`
+	P95           time.Duration   `json:"p95"`
+	P99           time.Duration   `json:"p99"`
+	TotalDuration time.Duration   `json:"totalDuration"`
+	Durations     []time.Duration `json:"-"`
 }
 
 type Stats struct {
-	Mu            *sync.Mutex
-	Runs          int
-	CancelledRuns int
-	IgnoredRuns   int
-	Jobs          map[string]*Stat
-	Steps         map[string]*Stat
-}
-
-func calculatePercentiles(stat *Stat) *Stat {
-	sort.Slice(stat.Durations, func(i, j int) bool { return stat.Durations[i] < stat.Durations[j] })
-	q := func(d *Stat, quantile float64) int {
-		return int(float64(len(d.Durations)) * quantile / 100)
-	}
-	stat.P50 = stat.Durations[q(stat, 50)].Round(time.Second)
-	stat.P95 = stat.Durations[q(stat, 95)].Round(time.Second)
-	stat.P99 = stat.Durations[q(stat, 99)].Round(time.Second)
-	return stat
-}
-
-func refreshDebugDirs() {
-	_ = os.RemoveAll(DebugDirRoot)
-	if _, err := os.Stat(DebugDirRoot); os.IsNotExist(err) {
-		_ = os.MkdirAll(DebugSubDirWF, os.ModePerm)
-		_ = os.MkdirAll(DebugSubDirJobs, os.ModePerm)
-	}
-}
-
-func writeStruct(enabled bool, dir, name string, data interface{}) error {
-	if enabled {
-		d, err := json.MarshalIndent(data, "", " ")
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(fmt.Sprintf("%s/%s-%s.json", dir, name, uuid.NewString()[0:5]), d, os.ModeAppend|os.ModePerm)
-	}
-	return nil
+	Mu            *sync.Mutex      `json:"-"`
+	Runs          int              `json:"runs"`
+	CancelledRuns int              `json:"cancelled_runs"`
+	IgnoredRuns   int              `json:"ignored_runs"`
+	Jobs          map[string]*Stat `json:"jobs"`
+	Steps         map[string]*Stat `json:"steps"`
 }
 
 func AnalyzeJobsSteps(ctx context.Context, client GitHubActionsClient, cfg *AnalysisConfig) (*Stats, error) {
@@ -135,6 +108,7 @@ func AnalyzeJobsSteps(ctx context.Context, client GitHubActionsClient, cfg *Anal
 
 		eg := &errgroup.Group{}
 		for _, wr := range runs.WorkflowRuns {
+			framework.L.Debug().Str("Name", *wr.Name).Msg("Analyzing workflow run")
 			if !strings.Contains(*wr.Name, cfg.WorkflowName) {
 				stats.IgnoredRuns++
 				continue
@@ -143,7 +117,7 @@ func AnalyzeJobsSteps(ctx context.Context, client GitHubActionsClient, cfg *Anal
 			// analyze workflow
 			name := *wr.Name
 			framework.L.Debug().Str("Name", name).Msg("Analyzing workflow run")
-			_ = writeStruct(cfg.Debug, DebugSubDirWF, name, wr)
+			_ = dumpResults(cfg.Debug, DebugSubDirWF, name, wr)
 			eg.Go(func() error {
 				rlJobs.Take()
 				jobs, _, err := client.ListWorkflowJobs(ctx, cfg.Owner, cfg.Repo, *wr.ID, &github.ListWorkflowJobsOptions{
@@ -153,11 +127,11 @@ func AnalyzeJobsSteps(ctx context.Context, client GitHubActionsClient, cfg *Anal
 					return err
 				}
 				// analyze jobs
+				stats.Mu.Lock()
+				defer stats.Mu.Unlock()
 				for _, j := range jobs.Jobs {
-					stats.Mu.Lock()
-					defer stats.Mu.Unlock()
 					name := *j.Name
-					_ = writeStruct(cfg.Debug, DebugSubDirJobs, name, wr)
+					_ = dumpResults(cfg.Debug, DebugSubDirJobs, name, wr)
 					if skippedOrInProgressJob(j) {
 						stats.IgnoredRuns++
 						continue
@@ -281,6 +255,9 @@ func AnalyzeCIRuns(cfg *AnalysisConfig) (*Stats, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch workflow runs: %w", err)
 	}
+	if cfg.ResultsFile != "" {
+		_ = dumpResults(true, DefaultResultsDir, DefaultResultsFile, stats)
+	}
 	return stats, nil
 }
 
@@ -352,4 +329,34 @@ func skippedOrInProgressJob(s *github.WorkflowJob) bool {
 		return true
 	}
 	return false
+}
+
+func calculatePercentiles(stat *Stat) *Stat {
+	sort.Slice(stat.Durations, func(i, j int) bool { return stat.Durations[i] < stat.Durations[j] })
+	q := func(d *Stat, quantile float64) int {
+		return int(float64(len(d.Durations)) * quantile / 100)
+	}
+	stat.P50 = stat.Durations[q(stat, 50)].Round(time.Second)
+	stat.P95 = stat.Durations[q(stat, 95)].Round(time.Second)
+	stat.P99 = stat.Durations[q(stat, 99)].Round(time.Second)
+	return stat
+}
+
+func refreshDebugDirs() {
+	_ = os.RemoveAll(DebugDirRoot)
+	if _, err := os.Stat(DebugDirRoot); os.IsNotExist(err) {
+		_ = os.MkdirAll(DebugSubDirWF, os.ModePerm)
+		_ = os.MkdirAll(DebugSubDirJobs, os.ModePerm)
+	}
+}
+
+func dumpResults(enabled bool, dir, name string, data interface{}) error {
+	if enabled {
+		d, err := json.MarshalIndent(data, "", " ")
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(fmt.Sprintf("%s/%s-%s.json", dir, name, uuid.NewString()[0:5]), d, os.ModeAppend|os.ModePerm)
+	}
+	return nil
 }

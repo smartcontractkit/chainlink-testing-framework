@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/grafana"
 )
 
@@ -181,7 +182,7 @@ func (m *Profile) Resume() {
 // ensuring all operations are complete before proceeding.
 func (m *Profile) Wait() {
 	for _, g := range m.Generators {
-		g := g
+
 		m.testEndedWg.Add(1)
 		go func() {
 			defer m.testEndedWg.Done()

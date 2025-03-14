@@ -82,7 +82,7 @@ func (ac *AtlasClient) GetTransactionDetails(msgIdOrTxnHash string) (*Transactio
 	return &transactionResponse, nil
 }
 
-// CustomTime wraps time.Time to support custom unmarshaling.
+// CustomTime wraps time.Time to support custom unmarshalling.
 type CustomTime struct {
 	time.Time
 }

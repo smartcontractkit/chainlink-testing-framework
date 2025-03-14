@@ -1,12 +1,14 @@
 package jd_test
 
 import (
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/jd"
-	"github.com/stretchr/testify/require"
 	"os"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/jd"
 )
 
 // here we only test that we can boot up JD

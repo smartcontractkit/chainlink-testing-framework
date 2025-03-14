@@ -10,9 +10,12 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/client"
-	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
+
 	"golang.org/x/sync/errgroup"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/lib/client"
 )
 
 // all metrics, but error rate are calculated over a 10s interval
@@ -235,12 +238,12 @@ func (l *LokiQueryExecutor) compareQueries(other map[string]string) error {
 	}
 
 	for name1, query1 := range this {
-		if query2, ok := other[name1]; !ok {
+		query2, ok := other[name1]
+		if !ok {
 			return fmt.Errorf("query %s is missing from the other report", name1)
-		} else {
-			if query1 != query2 {
-				return fmt.Errorf("query %s is different. Expected %s, got %s", name1, query1, query2)
-			}
+		}
+		if query1 != query2 {
+			return fmt.Errorf("query %s is different. Expected %s, got %s", name1, query1, query2)
 		}
 	}
 
