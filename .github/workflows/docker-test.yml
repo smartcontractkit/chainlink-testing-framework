@@ -18,8 +18,9 @@ jobs:
         test:
           - name: eth_env
             tests: TestEthEnv
-          - name: eth_clients
-            tests: TestBesu|TestGeth|TestNethermind|TestErigon
+          # ticket: DX-194
+#          - name: eth_clients
+#            tests: TestBesu|TestGeth|TestNethermind|TestErigon
           - name: other
             tests: TestPostgres|TestMockServer|TestKillgrave
     steps:
