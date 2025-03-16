@@ -1,5 +1,6 @@
 name: (all packages) Docker Test Env tests
 on:
+
   pull_request_review:
     types: [submitted]
   pull_request:
@@ -44,7 +45,7 @@ jobs:
           set -euo pipefail
           # disabled, because we want to use a multiline output of go list command
           # shellcheck disable=SC2046
-          go test -timeout 20m -json -parallel 2 -cover -covermode=atomic -coverprofile=unit-test-coverage.out $(go list ./... | grep /docker/test_env) -run '${{ matrix.test.tests }}' 2>&1 | tee /tmp/gotest.log | ../gotestloghelper -ci
+          go test -v -timeout 20m -json -parallel 2 -cover -covermode=atomic -coverprofile=unit-test-coverage.out $(go list ./... | grep /docker/test_env) -run '${{ matrix.test.tests }}' 2>&1 | tee /tmp/gotest.log | ../gotestloghelper -ci
       - name: Publish Artifacts
         if: failure()
         uses: actions/upload-artifact@v4
