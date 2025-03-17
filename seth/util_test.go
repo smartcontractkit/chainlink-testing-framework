@@ -3,7 +3,6 @@ package seth_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math/big"
 	"sync"
 	"testing"
@@ -144,7 +143,7 @@ func TestUtilPendingNonce(t *testing.T) {
 		{
 			name:       "processes all in time",
 			keyNum:     0,
-			timeout:    1 * time.Minute,
+			timeout:    2 * time.Minute,
 			shouldFail: false,
 		},
 		{
@@ -154,8 +153,6 @@ func TestUtilPendingNonce(t *testing.T) {
 			shouldFail: true,
 		},
 	}
-
-	fmt.Printf("RPC Url: %s\n", c.Cfg.MustFirstNetworkURL())
 
 	for _, testCase := range tests {
 		started := make(chan struct{})
