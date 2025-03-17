@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/pkg/errors"
 
 	"github.com/pelletier/go-toml/v2"
 
@@ -25,7 +26,10 @@ import (
 func TestConfig_MinimalBuilder(t *testing.T) {
 	builder := seth.NewClientBuilder()
 
-	client, err := builder.WithRpcUrl("ws://localhost:8546").
+	url, err := getRpc()
+	require.NoError(t, err, "failed to get rpc url")
+
+	client, err := builder.WithRpcUrl(url).
 		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
 		Build()
 	require.NoError(t, err, "failed to build client")
@@ -37,6 +41,18 @@ func TestConfig_MinimalBuilder(t *testing.T) {
 
 	_, err = client.DeployContract(client.NewTXOpts(), "LinkToken", *linkAbi, common.FromHex(link_token.LinkTokenMetaData.Bin))
 	require.NoError(t, err, "failed to deploy LINK contract")
+}
+
+func getRpc() (string, error) {
+	if os.Getenv("SETH_NETWORK") == "" {
+		return "", errors.New("SETH_NETWORK is not set")
+	}
+	url := "ws://localhost:8546"
+	if os.Getenv("SETH_NETWORK") == "anvil" {
+		url = "ws://localhost:8545"
+	}
+
+	return url, nil
 }
 
 func TestConfig_MaximalBuilder(t *testing.T) {
@@ -57,11 +73,8 @@ func TestConfig_MaximalBuilder(t *testing.T) {
 		GasPriceEstimationAttemptCount: seth.DefaultGasPriceEstimationsAttemptCount,
 	}
 
-	require.NotEmpty(t, os.Getenv("SETH_NETWORK"), "expected SETH_NETWORK to be set")
-	url := "ws://localhost:8546"
-	if os.Getenv("SETH_NETWORK") == "anvil" {
-		url = "ws://localhost:8545"
-	}
+	url, err := getRpc()
+	require.NoError(t, err, "failed to get rpc url")
 
 	secondNetwork := &seth.Network{
 		Name:                           "Second",
@@ -173,7 +186,8 @@ func TestConfig_ModifyExistingConfigWithBuilder_UnknownChainId(t *testing.T) {
 
 	expectedError := `errors occurred during building the config:
 network with chainId '225' not found
-at least one method that required network to be set was called, but network is nil`
+at least one method that required network to be set was called, but network is nil
+you need to set the Network`
 
 	require.Error(t, err, "succeeded to create client")
 	require.Equal(t, expectedError, err.Error(), "expected error message")
@@ -190,22 +204,35 @@ func TestConfig_ModifyExistingConfigWithBuilder_UnknownChainId_UseDefault(t *tes
 	err = toml.Unmarshal(d, &sethConfig)
 	require.NoError(t, err, "failed to unmarshal config file")
 
+	url, err := getRpc()
+	require.NoError(t, err, "failed to get rpc url")
+
 	_, err = seth.NewClientBuilderWithConfig(&sethConfig).
 		UseNetworkWithChainId(225).
-		WithRpcUrl("ws://localhost:8546").
+		WithRpcUrl(url).
 		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
 		Build()
 
-	require.NoError(t, err, "failed to create client")
+	expectedError := `errors occurred during building the config:
+network with chainId '225' not found
+at least one method that required network to be set was called, but network is nil
+at least one method that required network to be set was called, but network is nil
+you need to set the Network`
+
+	require.Error(t, err, "succeeded to create client")
+	require.Equal(t, expectedError, err.Error(), "expected error message")
 }
 
 func TestConfig_LegacyGas_No_Estimations(t *testing.T) {
 	builder := seth.NewClientBuilder()
 
+	url, err := getRpc()
+	require.NoError(t, err, "failed to get rpc url")
+
 	client, err := builder.
 		// network
 		WithNetworkName("my network").
-		WithRpcUrl("ws://localhost:8546").
+		WithRpcUrl(url).
 		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
 		// Gas price and estimations
 		WithLegacyGasPrice(710_000_000).
@@ -224,10 +251,13 @@ func TestConfig_LegacyGas_No_Estimations(t *testing.T) {
 func TestConfig_Eip1559Gas_With_Estimations(t *testing.T) {
 	builder := seth.NewClientBuilder()
 
+	url, err := getRpc()
+	require.NoError(t, err, "failed to get rpc url")
+
 	client, err := builder.
 		// network
 		WithNetworkName("my network").
-		WithRpcUrl("ws://localhost:8546").
+		WithRpcUrl(url).
 		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
 		// Gas price and estimations
 		WithEIP1559DynamicFees(true).
@@ -338,9 +368,12 @@ func TestConfig_NoPrivateKeys_TxOpts(t *testing.T) {
 func TestConfig_NoPrivateKeys_Tracing(t *testing.T) {
 	builder := seth.NewClientBuilder()
 
+	url, err := getRpc()
+	require.NoError(t, err, "failed to get rpc url")
+
 	client, err := builder.
 		WithNetworkName("my network").
-		WithRpcUrl("ws://localhost:8546").
+		WithRpcUrl(url).
 		WithEIP1559DynamicFees(true).
 		WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
 		WithGasPriceEstimations(false, 10, seth.Priority_Fast, 2).
@@ -387,9 +420,12 @@ func TestConfig_NoPrivateKeys_Tracing(t *testing.T) {
 func TestConfig_ReadOnlyMode(t *testing.T) {
 	builder := seth.NewClientBuilder()
 
+	url, err := getRpc()
+	require.NoError(t, err, "failed to get rpc url")
+
 	client, err := builder.
 		WithNetworkName("my network").
-		WithRpcUrl("ws://localhost:8546").
+		WithRpcUrl(url).
 		WithEphemeralAddresses(10, 1000).
 		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
 		WithGasPriceEstimations(true, 10, seth.Priority_Fast, 2).
@@ -434,15 +470,19 @@ func TestConfig_SimulatedBackend_ContractDeploymentHooks(t *testing.T) {
 
 	wasContractPreHookCalled := false
 	wasContractPostHookCalled := false
+	order := []string{}
+
 	hooks := seth.Hooks{
 		ContractDeployment: seth.ContractDeploymentHooks{
 			Pre: func(_ *bind.TransactOpts, _ string, _ abi.ABI, _ []byte, _ ...interface{}) error {
 				wasContractPreHookCalled = true
+				order = append(order, "pre")
 				return nil
 			},
 			Post: func(_ *seth.Client, _ *types.Transaction) error {
-				wasContractPostHookCalled = true
 				backend.Commit()
+				wasContractPostHookCalled = true
+				order = append(order, "post")
 				return nil
 			},
 		},
@@ -467,9 +507,10 @@ func TestConfig_SimulatedBackend_ContractDeploymentHooks(t *testing.T) {
 	require.NoError(t, err, "failed to deploy LINK contract")
 	require.True(t, wasContractPreHookCalled, "expected contract deployment pre hook to be called")
 	require.True(t, wasContractPostHookCalled, "expected contract deployment post hook to be called")
+	require.Equal(t, []string{"pre", "post"}, order, "expected order to be preserved")
 }
 
-func TestConfig_SimulatedBackend_TxDecodingHooks(t *testing.T) {
+func TestConfig_SimulatedBackend_ContractDeploymentHooks_PreError(t *testing.T) {
 	backend, cancelFn := StartSimulatedBackend([]common.Address{common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")})
 	t.Cleanup(func() {
 		cancelFn()
@@ -477,17 +518,21 @@ func TestConfig_SimulatedBackend_TxDecodingHooks(t *testing.T) {
 
 	builder := seth.NewClientBuilder()
 
-	wasTxDecodingPreHookCalled := false
-	wasTxDecodingPostHookCalled := false
+	wasContractPreHookCalled := false
+	wasContractPostHookCalled := false
+	order := []string{}
+
 	hooks := seth.Hooks{
-		TxDecoding: seth.TxDecodingHooks{
-			Pre: func(_ *seth.Client) error {
-				backend.Commit()
-				wasTxDecodingPreHookCalled = true
-				return nil
+		ContractDeployment: seth.ContractDeploymentHooks{
+			Pre: func(_ *bind.TransactOpts, _ string, _ abi.ABI, _ []byte, _ ...interface{}) error {
+				wasContractPreHookCalled = true
+				order = append(order, "pre")
+				return errors.New("pre hook error")
 			},
-			Post: func(_ *seth.Client, _ *seth.DecodedTransaction, _ error) error {
-				wasTxDecodingPostHookCalled = true
+			Post: func(_ *seth.Client, _ *types.Transaction) error {
+				backend.Commit()
+				wasContractPostHookCalled = true
+				order = append(order, "post")
 				return nil
 			},
 		},
@@ -508,6 +553,108 @@ func TestConfig_SimulatedBackend_TxDecodingHooks(t *testing.T) {
 	linkAbi, err := link_token.LinkTokenMetaData.GetAbi()
 	require.NoError(t, err, "failed to get LINK ABI")
 
+	_, err = client.DeployContract(client.NewTXOpts(), "LinkToken", *linkAbi, common.FromHex(link_token.LinkTokenMetaData.Bin))
+	require.Error(t, err, "succeeded in deploying LINK contract")
+	require.Contains(t, err.Error(), "pre hook error", "expected error message")
+	require.True(t, wasContractPreHookCalled, "expected contract deployment pre hook to be called")
+	require.False(t, wasContractPostHookCalled, "did no expect contract deployment post hook to be called")
+	require.Equal(t, []string{"pre"}, order, "expected order to be preserved")
+}
+
+func TestConfig_SimulatedBackend_ContractDeploymentHooks_PostError(t *testing.T) {
+	backend, cancelFn := StartSimulatedBackend([]common.Address{common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")})
+	t.Cleanup(func() {
+		cancelFn()
+	})
+
+	builder := seth.NewClientBuilder()
+
+	wasContractPreHookCalled := false
+	wasContractPostHookCalled := false
+	order := []string{}
+
+	hooks := seth.Hooks{
+		ContractDeployment: seth.ContractDeploymentHooks{
+			Pre: func(_ *bind.TransactOpts, _ string, _ abi.ABI, _ []byte, _ ...interface{}) error {
+				wasContractPreHookCalled = true
+				order = append(order, "pre")
+				return nil
+			},
+			Post: func(_ *seth.Client, _ *types.Transaction) error {
+				backend.Commit()
+				wasContractPostHookCalled = true
+				order = append(order, "post")
+				return errors.New("post hook error")
+			},
+		},
+	}
+
+	client, err := builder.
+		WithNetworkName("simulated").
+		WithHooks(hooks).
+		WithEthClient(backend.Client()).
+		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+		Build()
+
+	require.NoError(t, err, "failed to build client")
+	require.Equal(t, 1, len(client.PrivateKeys), "expected 1 private key")
+	require.Equal(t, 1, len(client.Addresses), "expected 1 addresse")
+	require.IsType(t, backend.Client(), client.Client, "expected simulated client")
+
+	linkAbi, err := link_token.LinkTokenMetaData.GetAbi()
+	require.NoError(t, err, "failed to get LINK ABI")
+
+	_, err = client.DeployContract(client.NewTXOpts(), "LinkToken", *linkAbi, common.FromHex(link_token.LinkTokenMetaData.Bin))
+	require.Error(t, err, "succeeded in deploying LINK contract")
+	require.Contains(t, err.Error(), "post hook error", "expected error message")
+	require.True(t, wasContractPreHookCalled, "expected contract deployment pre hook to be called")
+	require.True(t, wasContractPostHookCalled, "expected contract deployment post hook to be called")
+	require.Equal(t, []string{"pre", "post"}, order, "expected order to be preserved")
+}
+
+func TestConfig_SimulatedBackend_TxDecodingHooks(t *testing.T) {
+	backend, cancelFn := StartSimulatedBackend([]common.Address{common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")})
+	t.Cleanup(func() {
+		cancelFn()
+	})
+
+	builder := seth.NewClientBuilder()
+
+	wasTxDecodingPreHookCalled := false
+	wasTxDecodingPostHookCalled := false
+	order := []string{}
+
+	hooks := seth.Hooks{
+		TxDecoding: seth.TxDecodingHooks{
+			Pre: func(_ *seth.Client) error {
+				backend.Commit()
+				wasTxDecodingPreHookCalled = true
+				order = append(order, "pre")
+				return nil
+			},
+			Post: func(_ *seth.Client, _ *seth.DecodedTransaction, _ error) error {
+				wasTxDecodingPostHookCalled = true
+				order = append(order, "post")
+				return nil
+			},
+		},
+	}
+
+	client, err := builder.
+		WithNetworkName("simulated").
+		WithHooks(hooks).
+		WithEthClient(backend.Client()).
+		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+		Build()
+
+	require.NoError(t, err, "failed to build client")
+	require.Equal(t, 1, len(client.PrivateKeys), "expected 1 private key")
+	require.Equal(t, 1, len(client.Addresses), "expected 1 address")
+	require.IsType(t, backend.Client(), client.Client, "expected simulated client")
+
+	linkAbi, err := link_token.LinkTokenMetaData.GetAbi()
+	require.NoError(t, err, "failed to get LINK ABI")
+
 	data, err := client.DeployContract(client.NewTXOpts(), "LinkToken", *linkAbi, common.FromHex(link_token.LinkTokenMetaData.Bin))
 	require.NoError(t, err, "failed to deploy LINK contract")
 
@@ -519,6 +666,121 @@ func TestConfig_SimulatedBackend_TxDecodingHooks(t *testing.T) {
 
 	require.True(t, wasTxDecodingPreHookCalled, "expected tx decoding pre hook to be called")
 	require.True(t, wasTxDecodingPostHookCalled, "expected tx decoding post hook to be called")
+	require.Equal(t, []string{"pre", "post"}, order, "expected order to be preserved")
+}
+
+func TestConfig_SimulatedBackend_TxDecodingHooks_PreError(t *testing.T) {
+	backend, cancelFn := StartSimulatedBackend([]common.Address{common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")})
+	t.Cleanup(func() {
+		cancelFn()
+	})
+
+	builder := seth.NewClientBuilder()
+
+	wasTxDecodingPreHookCalled := false
+	wasTxDecodingPostHookCalled := false
+	order := []string{}
+
+	hooks := seth.Hooks{
+		TxDecoding: seth.TxDecodingHooks{
+			Pre: func(_ *seth.Client) error {
+				backend.Commit()
+				wasTxDecodingPreHookCalled = true
+				order = append(order, "pre")
+				return errors.New("pre hook error")
+			},
+			Post: func(_ *seth.Client, _ *seth.DecodedTransaction, _ error) error {
+				wasTxDecodingPostHookCalled = true
+				order = append(order, "post")
+				return nil
+			},
+		},
+	}
+
+	client, err := builder.
+		WithNetworkName("simulated").
+		WithHooks(hooks).
+		WithEthClient(backend.Client()).
+		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+		Build()
+
+	require.NoError(t, err, "failed to build client")
+	require.Equal(t, 1, len(client.PrivateKeys), "expected 1 private key")
+	require.Equal(t, 1, len(client.Addresses), "expected 1 address")
+	require.IsType(t, backend.Client(), client.Client, "expected simulated client")
+
+	linkAbi, err := link_token.LinkTokenMetaData.GetAbi()
+	require.NoError(t, err, "failed to get LINK ABI")
+
+	data, err := client.DeployContract(client.NewTXOpts(), "LinkToken", *linkAbi, common.FromHex(link_token.LinkTokenMetaData.Bin))
+	require.NoError(t, err, "failed to deploy LINK contract")
+
+	instance, err := link_token.NewLinkToken(data.Address, client.Client)
+	require.NoError(t, err, "failed to get LINK instance")
+
+	_, err = client.Decode(instance.GrantMintAndBurnRoles(client.NewTXOpts(), common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")))
+	require.Error(t, err, "succeeded in decoding transaction")
+	require.Contains(t, err.Error(), "pre hook error", "expected error message")
+	require.True(t, wasTxDecodingPreHookCalled, "expected tx decoding pre hook to be called")
+	require.False(t, wasTxDecodingPostHookCalled, "expected tx decoding post hook to be called")
+	require.Equal(t, []string{"pre"}, order, "expected order to be preserved")
+}
+
+func TestConfig_SimulatedBackend_TxDecodingHooks_PostError(t *testing.T) {
+	backend, cancelFn := StartSimulatedBackend([]common.Address{common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")})
+	t.Cleanup(func() {
+		cancelFn()
+	})
+
+	builder := seth.NewClientBuilder()
+
+	wasTxDecodingPreHookCalled := false
+	wasTxDecodingPostHookCalled := false
+	order := []string{}
+
+	hooks := seth.Hooks{
+		TxDecoding: seth.TxDecodingHooks{
+			Pre: func(_ *seth.Client) error {
+				backend.Commit()
+				wasTxDecodingPreHookCalled = true
+				order = append(order, "pre")
+				return nil
+			},
+			Post: func(_ *seth.Client, _ *seth.DecodedTransaction, _ error) error {
+				wasTxDecodingPostHookCalled = true
+				order = append(order, "post")
+				return errors.New("post hook error")
+			},
+		},
+	}
+
+	client, err := builder.
+		WithNetworkName("simulated").
+		WithHooks(hooks).
+		WithEthClient(backend.Client()).
+		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+		Build()
+
+	require.NoError(t, err, "failed to build client")
+	require.Equal(t, 1, len(client.PrivateKeys), "expected 1 private key")
+	require.Equal(t, 1, len(client.Addresses), "expected 1 address")
+	require.IsType(t, backend.Client(), client.Client, "expected simulated client")
+
+	linkAbi, err := link_token.LinkTokenMetaData.GetAbi()
+	require.NoError(t, err, "failed to get LINK ABI")
+
+	data, err := client.DeployContract(client.NewTXOpts(), "LinkToken", *linkAbi, common.FromHex(link_token.LinkTokenMetaData.Bin))
+	require.NoError(t, err, "failed to deploy LINK contract")
+
+	instance, err := link_token.NewLinkToken(data.Address, client.Client)
+	require.NoError(t, err, "failed to get LINK instance")
+
+	_, err = client.Decode(instance.GrantMintAndBurnRoles(client.NewTXOpts(), common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")))
+	require.Error(t, err, "succeeded in decoding transaction")
+	require.Contains(t, err.Error(), "post hook error", "expected error message")
+	require.True(t, wasTxDecodingPreHookCalled, "expected tx decoding pre hook to be called")
+	require.True(t, wasTxDecodingPostHookCalled, "expected tx decoding post hook to be called")
+	require.Equal(t, []string{"pre", "post"}, order, "expected order to be preserved")
 }
 
 func TestConfig_EthClient_DoesntAllowRpcUrl(t *testing.T) {
@@ -544,7 +806,10 @@ func TestConfig_EthClient_DoesntAllowRpcUrl(t *testing.T) {
 func TestConfig_EthClient(t *testing.T) {
 	builder := seth.NewClientBuilder()
 
-	ethclient, err := ethclient.Dial("ws://localhost:8545")
+	url, err := getRpc()
+	require.NoError(t, err, "failed to get rpc url")
+
+	ethclient, err := ethclient.Dial(url)
 	require.NoError(t, err, "failed to dial eth client")
 
 	client, err := builder.
