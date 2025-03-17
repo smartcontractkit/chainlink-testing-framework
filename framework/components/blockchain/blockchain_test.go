@@ -54,7 +54,7 @@ func testChain(t *testing.T, input *blockchain.Input) {
 
 	rpcUrl := output.Nodes[0].HostHTTPUrl
 	reqBody := `{"jsonrpc": "2.0", "method": "eth_chainId", "params": [], "id": 1}`
-	resp, err := http.Post(rpcUrl, "application/json", strings.NewReader(reqBody))
+	resp, err := http.Post(rpcUrl, "application/json", strings.NewReader(reqBody)) // nolint:gosec
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusOK, resp.StatusCode)

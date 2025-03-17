@@ -52,7 +52,7 @@ func newAnvilZksync(in *Input) (*Output, error) {
 
 	dockerfilePath := filepath.Join(tempDir, "anvilZksync.Dockerfile")
 
-	if err := os.WriteFile(dockerfilePath, []byte(dockerFile), 0644); err != nil {
+	if err := os.WriteFile(dockerfilePath, []byte(dockerFile), 0600); err != nil {
 		return nil, err
 	}
 	req.FromDockerfile = testcontainers.FromDockerfile{

@@ -1,7 +1,6 @@
 package blockchain
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
@@ -28,7 +27,7 @@ func newAnvil(in *Input) (*Output, error) {
 	defaultAnvil(in)
 	req := baseRequest(in)
 
-	req.Image = fmt.Sprintf("%s", in.Image)
+	req.Image = in.Image
 	req.AlwaysPullImage = in.PullImage
 
 	entryPoint := []string{"anvil"}
