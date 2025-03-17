@@ -13,7 +13,7 @@ require (
 	github.com/grafana/dskit v0.0.0-20241007172036-53283a0f6b41
 	github.com/grafana/grafana-foundation-sdk/go v0.0.0-20240326122733-6f96a993222b
 	// post v3.4.2 version compatible with prometheus
-	github.com/grafana/loki/v3 v3.0.0-20250221202516-b37eefe24f82
+	github.com/grafana/loki/v3 v3.4.2
 	github.com/grafana/pyroscope-go v1.1.2
 	github.com/montanaflynn/stats v0.7.1
 	github.com/olekukonko/tablewriter v0.0.5
@@ -314,9 +314,6 @@ require (
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
-require (
-	github.com/hashicorp/go-metrics v0.5.4 // indirect
-	github.com/tjhop/slog-gokit v0.1.3 // indirect
-)
+require github.com/hashicorp/go-metrics v0.5.4 // indirect
 
 retract [v1.999.0-test-release, v1.999.999-test-release]
