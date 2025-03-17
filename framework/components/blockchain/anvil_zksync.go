@@ -66,9 +66,7 @@ func newAnvilZksync(in *Input) (*Output, error) {
 		"-c",
 		"/root/.foundry/bin/anvil-zksync" +
 			" --chain-id " + in.ChainID +
-			" --port " + in.Port +
-			" fork --fork-url https://sepolia.era.zksync.dev",
-	}
+			" --port " + in.Port}
 
 	framework.L.Info().Any("Cmd", strings.Join(req.Entrypoint, " ")).Msg("Creating anvil with command")
 
