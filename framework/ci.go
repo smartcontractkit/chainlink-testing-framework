@@ -8,7 +8,6 @@ import (
 func HostDockerInternal() string {
 	if os.Getenv(EnvVarCI) == "true" {
 		return "http://172.17.0.1"
-	} else {
-		return "http://host.docker.internal"
 	}
+	return "http://host.docker.internal"
 }

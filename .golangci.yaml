@@ -3,7 +3,6 @@ run:
   timeout: 5m
 linters:
   enable:
-    # defaults
     - errcheck
     - gosimple
     - govet
@@ -11,7 +10,6 @@ linters:
     - staticcheck
     - typecheck
     - unused
-    # extra
     - exhaustive
     - copyloopvar
     - revive
@@ -24,7 +22,7 @@ linters-settings:
   exhaustive:
     default-signifies-exhaustive: true
   goimports:
-    local-prefixes: github.com/smartcontractkit/chainlink-testing-framework/lib
+    local-prefixes: github.com/smartcontractkit/chainlink-testing-framework/
   gosec:
     exclude-generated: true
   errorlint:
@@ -78,8 +76,8 @@ issues:
     - examples
     - imports
     - wasp/examples/*
-    - seth/examples_wasp/*
     - k8s
+    - seth/examples_wasp/*
     - seth/contracts
     - seth/examples
     - seth/examples_wasp

@@ -10,10 +10,11 @@ import (
 	"golang.org/x/text/message"
 )
 
-// GenerateFlakyTestsTable generates a table of flaky tests from the given test report to print to the console or markdown.
-func GenerateFlakyTestsTable(
-	testReport *TestReport,
+// generateTestResultsTable is a helper that builds the table based on the given filter function.
+func generateTestResultsTable(
+	results []TestResult,
 	markdown bool,
+	filter func(result TestResult) bool,
 ) [][]string {
 	p := message.NewPrinter(language.English)
 
@@ -44,9 +45,8 @@ func GenerateFlakyTestsTable(
 	// Initialize the table with headers
 	table := [][]string{headers}
 
-	for _, result := range testReport.Results {
-		// Exclude skipped tests and only include tests below the expected pass ratio
-		if !result.Skipped && result.PassRatio < testReport.MaxPassRatio {
+	for _, result := range results {
+		if filter(result) {
 			row := []string{
 				result.TestName,
 				formatRatio(result.PassRatio),
@@ -75,8 +75,89 @@ func GenerateFlakyTestsTable(
 	return table
 }
 
+func generateShortTestResultsTable(
+	results []TestResult,
+	markdown bool,
+	filter func(TestResult) bool,
+) [][]string {
+	p := message.NewPrinter(language.English)
+
+	headers := []string{"Name", "Ever Passed", "Runs", "Successes", "Code Owners", "Path"}
+
+	// Optionally format the headers for Markdown
+	if markdown {
+		for i, header := range headers {
+			headers[i] = fmt.Sprintf("**%s**", header)
+		}
+	}
+
+	// Initialize table with headers
+	table := [][]string{headers}
+
+	// Fill the table rows
+	for _, r := range results {
+		if !filter(r) {
+			continue
+		}
+
+		// Determine whether the test has passed at least once
+		passed := "NO"
+		if r.Successes > 0 {
+			passed = "YES"
+		}
+
+		// Format the Code Owners
+		owners := "Unknown"
+		if len(r.CodeOwners) > 0 {
+			owners = strings.Join(r.CodeOwners, ", ")
+		}
+
+		row := []string{
+			r.TestName,                   // "Name"
+			passed,                       // "Passed"
+			p.Sprintf("%d", r.Runs),      // "Runs"
+			p.Sprintf("%d", r.Successes), // "Passes"
+			owners,                       // "Code Owners"
+			r.TestPath,                   // "Path"
+		}
+
+		table = append(table, row)
+	}
+
+	return table
+}
+
+// GenerateFlakyTestsTable returns a table with only the flaky tests.
+func GenerateFlakyTestsTable(
+	testReport TestReport,
+	markdown bool,
+) [][]string {
+	return generateTestResultsTable(testReport.Results, markdown, func(result TestResult) bool {
+		return !result.Skipped && result.PassRatio < testReport.MaxPassRatio
+	})
+}
+
+// PrintTestResultsTable prints a table with all test results.
+func PrintTestResultsTable(
+	w io.Writer,
+	results []TestResult,
+	markdown bool,
+	collapsible bool,
+	shortTable bool) {
+	filter := func(result TestResult) bool {
+		return true // Include all tests
+	}
+	var table [][]string
+	if shortTable {
+		table = generateShortTestResultsTable(results, markdown, filter)
+	} else {
+		table = generateTestResultsTable(results, markdown, filter)
+	}
+	printTable(w, table, collapsible)
+}
+
 // GenerateGitHubSummaryMarkdown generates a markdown summary of the test results for a GitHub workflow summary
-func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassRatio float64, artifactName, artifactLink string) {
+func GenerateGitHubSummaryMarkdown(w io.Writer, testReport TestReport, maxPassRatio float64, artifactName, artifactLink string) {
 	fmt.Fprint(w, "# Flakeguard Summary\n\n")
 
 	if len(testReport.Results) == 0 {
@@ -95,7 +176,7 @@ func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassR
 	}
 	fmt.Fprintln(w)
 
-	RenderResults(w, testReport, true, false)
+	RenderTestReport(w, testReport, true, false)
 
 	if artifactLink != "" {
 		renderArtifactSection(w, artifactName, artifactLink)
@@ -109,7 +190,7 @@ func GenerateGitHubSummaryMarkdown(w io.Writer, testReport *TestReport, maxPassR
 // GeneratePRCommentMarkdown generates a markdown summary of the test results for a GitHub PR comment.
 func GeneratePRCommentMarkdown(
 	w io.Writer,
-	testReport *TestReport,
+	testReport TestReport,
 	maxPassRatio float64,
 	baseBranch, currentBranch, currentCommitSHA, repoURL, actionRunID, artifactName, artifactLink string,
 ) {
@@ -156,7 +237,7 @@ func GeneratePRCommentMarkdown(
 	}
 }
 
-func buildSettingsTable(testReport *TestReport, maxPassRatio float64) [][]string {
+func buildSettingsTable(testReport TestReport, maxPassRatio float64) [][]string {
 	rows := [][]string{
 		{"**Setting**", "**Value**"},
 	}
@@ -186,11 +267,11 @@ func RenderError(
 	fmt.Fprintln(w, ":x: Error Running Flakeguard :x:")
 }
 
-// RenderResults renders the test results into a console or markdown format.
+// RenderTestReport renders the test results into a console or markdown format.
 // If in markdown mode, the table results can also be made collapsible.
-func RenderResults(
+func RenderTestReport(
 	w io.Writer,
-	testReport *TestReport,
+	testReport TestReport,
 	markdown bool,
 	collapsible bool,
 ) {
@@ -231,7 +312,6 @@ func renderSummaryTable(w io.Writer, summary *SummaryData, markdown bool, collap
 
 func renderTestResultsTable(w io.Writer, table [][]string, collapsible bool) {
 	if len(table) <= 1 {
-		fmt.Fprintln(w, "No tests found under the specified pass ratio threshold.")
 		return
 	}
 	printTable(w, table, collapsible)

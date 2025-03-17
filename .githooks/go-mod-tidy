@@ -10,6 +10,7 @@ find "./" -type f -name 'go.mod' -print0 | while IFS= read -r -d $'\0' file; do
     go mod tidy
     cd - || exit 1
 done
+
 # pre-commit stashes changes before running the hooks so we can use git to check for changes here
 # Run git diff and capture output
 output=$(git diff --stat)

@@ -38,6 +38,7 @@ func (m *Sampler) ShouldRecord(cr *Response, s *Stats) bool {
 		s.SamplesRecorded.Add(1)
 		return true
 	}
+	//nolint
 	r := rand.Intn(100)
 	if cr.Error == "" && r < m.cfg.SuccessfulCallResultRecordRatio {
 		s.SamplesRecorded.Add(1)

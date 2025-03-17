@@ -7,13 +7,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/docker/docker/api/types/container"
-	dfilter "github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
-	"github.com/google/uuid"
-	tc "github.com/testcontainers/testcontainers-go"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"os"
 	"os/exec"
@@ -22,6 +15,14 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/docker/docker/api/types/container"
+	dfilter "github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
+	"github.com/google/uuid"
+	tc "github.com/testcontainers/testcontainers-go"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -314,9 +315,8 @@ func BuildImage(dctx, dfile, nameAndTag string) error {
 	dfilePath := filepath.Join(dctx, dfile)
 	if os.Getenv("CTF_CLNODE_DLV") == "true" {
 		return runCommand("docker", "build", "--build-arg", `GO_GCFLAGS=all=-N -l`, "-t", nameAndTag, "-f", dfilePath, dctx)
-	} else {
-		return runCommand("docker", "build", "-t", nameAndTag, "-f", dfilePath, dctx)
 	}
+	return runCommand("docker", "build", "-t", nameAndTag, "-f", dfilePath, dctx)
 }
 
 // ExecContainer executes a command inside a running container by name and returns the combined stdout/stderr.
@@ -379,7 +379,9 @@ func ResourceLimitsFunc(h *container.HostConfig, resources *ContainerResources) 
 		return
 	}
 	if resources.MemoryMb > 0 {
-		h.Memory = int64(resources.MemoryMb) * 1024 * 1024            // Memory in Mb
+		//nolint:gosec
+		h.Memory = int64(resources.MemoryMb) * 1024 * 1024 // Memory in Mb
+		//nolint:gosec
 		h.MemoryReservation = int64(resources.MemoryMb) * 1024 * 1024 // Total memory that can be reserved (soft) in Mb
 		// https://docs.docker.com/engine/containers/resource_constraints/ if both values are equal swap is off, read the docs
 		h.MemorySwap = h.Memory

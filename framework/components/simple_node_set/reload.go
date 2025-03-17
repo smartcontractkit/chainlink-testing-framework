@@ -2,12 +2,14 @@ package simple_node_set
 
 import (
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/chaos"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"testing"
-	"time"
 )
 
 // UpgradeNodeSet updates nodes configuration TOML files

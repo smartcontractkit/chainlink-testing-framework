@@ -98,7 +98,7 @@ func LoadNetworkFromEnvironment() EVMNetwork {
 	return network
 }
 
-// ToMap marshalls the network's values to a generic map, useful for setting env vars on instances like the remote runner
+// ToMap marshals the network's values to a generic map, useful for setting env vars on instances like the remote runner
 // Map Structure
 // "envconfig_key": stringValue
 func (e *EVMNetwork) ToMap() map[string]interface{} {

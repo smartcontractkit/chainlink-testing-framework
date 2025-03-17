@@ -2,17 +2,19 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/huh/spinner"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
-	"os"
-	"os/signal"
-	"sync"
-	"syscall"
 )
 
 type nodeSetForm struct {
@@ -114,10 +116,8 @@ func cleanup(form *nodeSetForm) error {
 
 func runSetupForm() error {
 	if !framework.IsDockerRunning() {
-		return fmt.Errorf(`Docker daemon is not running!
-Please set up OrbStack (https://orbstack.dev/)
-or
-Docker Desktop (https://www.docker.com/products/docker-desktop/)
+		//nolint
+		return fmt.Errorf(`docker daemon is not running! Please set up OrbStack (https://orbstack.dev/) or Docker Desktop (https://www.docker.com/products/docker-desktop/)
 `)
 	}
 	f := &nodeSetForm{}

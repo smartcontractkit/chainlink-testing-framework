@@ -3,6 +3,8 @@ package wasp
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/rs/zerolog/log"
 	batchV1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
@@ -10,7 +12,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"time"
 )
 
 const (
@@ -149,7 +150,7 @@ func (m *K8sClient) TrackJobs(ctx context.Context, nsName, syncLabel string, job
 					return fmt.Errorf("job %s has failed", j.Name)
 				}
 				if j.Status.Succeeded > 0 {
-					successfulJobs += 1
+					successfulJobs++
 				}
 			}
 			if successfulJobs == jobNum {

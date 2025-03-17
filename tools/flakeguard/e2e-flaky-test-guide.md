@@ -106,7 +106,7 @@ It is sometimes the case that tests only fail in CI environments because those e
 
 * Splitting the tests into different workflows, each running on `ubuntu-latest`
 * Moving more resource-hungry tests to run only on nightly cadences
-* 
+* Try removing `t.Parallel()` from subtests, as too many tests trying to run at once will often hurt stability and runtimes on smaller machines
 
 ### 7. Fix It!
 
