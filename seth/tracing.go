@@ -126,6 +126,9 @@ type Call struct {
 	Calls   []Call     `json:"calls"`
 }
 
+// NewTracer initializes a new Tracer instance for monitoring Ethereum contract interactions.
+// It connects to the specified network and prepares the necessary components for tracing transactions, 
+// making it essential for developers needing detailed insights into contract execution.
 func NewTracer(cs *ContractStore, abiFinder *ABIFinder, cfg *Config, contractAddressToNameMap ContractMap, addresses []common.Address) (*Tracer, error) {
 	if cfg == nil {
 		return nil, errors.New("seth config is nil")
