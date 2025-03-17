@@ -184,6 +184,10 @@ var RunTestsCmd = &cobra.Command{
 				flushSummaryAndExit(0)
 			}
 
+			fmt.Fprint(&summaryBuffer, "\nFailed Tests On The First Run:\n\n")
+			reports.PrintTestResultsTable(&summaryBuffer, failedTests, false, false, true, false)
+			fmt.Fprintln(&summaryBuffer)
+
 			rerunResults, rerunJsonOutputPaths, err := testRunner.RerunFailedTests(failedTests, rerunFailedCount)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error rerunning failed tests")
@@ -203,8 +207,8 @@ var RunTestsCmd = &cobra.Command{
 				flushSummaryAndExit(ErrorExitCode)
 			}
 
-			fmt.Fprint(&summaryBuffer, "\nFailed Tests That Were Rerun:\n\n")
-			reports.PrintTestResultsTable(&summaryBuffer, rerunResults, false, false, true)
+			fmt.Fprint(&summaryBuffer, "\nFailed Tests After Rerun:\n\n")
+			reports.PrintTestResultsTable(&summaryBuffer, rerunResults, false, false, true, true)
 			fmt.Fprintln(&summaryBuffer)
 
 			// Save the rerun test report to file
