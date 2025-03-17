@@ -25,7 +25,7 @@ func defaultAnvil(in *Input) {
 // newAnvil deploy foundry anvil node
 func newAnvil(in *Input) (*Output, error) {
 	defaultAnvil(in)
-	req := baseRequest(in)
+	req := baseRequest(in, false)
 
 	req.Image = in.Image
 	req.AlwaysPullImage = in.PullImage
@@ -38,5 +38,5 @@ func newAnvil(in *Input) (*Output, error) {
 
 	framework.L.Info().Any("Cmd", strings.Join(entryPoint, " ")).Msg("Creating anvil with command")
 
-	return createGenericEvmContainer(in, req)
+	return createGenericEvmContainer(in, req, false)
 }

@@ -13,29 +13,32 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
-func baseRequest(in *Input) testcontainers.ContainerRequest {
+func baseRequest(in *Input, useWS bool) testcontainers.ContainerRequest {
 	containerName := framework.DefaultTCName("blockchain-node")
 	bindPort := fmt.Sprintf("%s/tcp", in.Port)
+	exposedPorts := []string{bindPort}
+	if useWS {
+		exposedPorts = append(exposedPorts, fmt.Sprintf("%s/tcp", in.WSPort))
+	}
 
 	return testcontainers.ContainerRequest{
-		Labels:       framework.DefaultTCLabels(),
-		Name:         containerName,
-		ExposedPorts: []string{bindPort},
-		HostConfigModifier: func(h *container.HostConfig) {
-			h.PortBindings = framework.MapTheSamePort(bindPort)
-			framework.ResourceLimitsFunc(h, in.ContainerResources)
-		},
+		Name:     containerName,
+		Labels:   framework.DefaultTCLabels(),
 		Networks: []string{framework.DefaultNetworkName},
 		NetworkAliases: map[string][]string{
 			framework.DefaultNetworkName: {containerName},
 		},
-		WaitingFor: wait.ForListeningPort(nat.Port(in.Port)).WithStartupTimeout(10 * time.Second).WithPollInterval(200 * time.Millisecond),
+		ExposedPorts: exposedPorts,
+		HostConfigModifier: func(h *container.HostConfig) {
+			h.PortBindings = framework.MapTheSamePort(exposedPorts...)
+			framework.ResourceLimitsFunc(h, in.ContainerResources)
+		},
+		WaitingFor: wait.ForListeningPort(nat.Port(in.Port)).WithStartupTimeout(15 * time.Second).WithPollInterval(200 * time.Millisecond),
 	}
 }
 
-func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest) (*Output, error) {
+func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest, useWS bool) (*Output, error) {
 	ctx := context.Background()
-
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
@@ -57,7 +60,7 @@ func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest) (
 
 	containerName := req.Name
 
-	return &Output{
+	output := Output{
 		UseCache:      true,
 		Family:        "evm",
 		ChainID:       in.ChainID,
@@ -71,5 +74,15 @@ func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest) (
 				DockerInternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
 			},
 		},
-	}, nil
+	}
+
+	if useWS {
+		mp, err := c.MappedPort(ctx, nat.Port(req.ExposedPorts[1]))
+		if err != nil {
+			return nil, err
+		}
+		output.Nodes[0].HostWSUrl = fmt.Sprintf("ws://%s:%s", host, mp.Port())
+	}
+
+	return &output, nil
 }
