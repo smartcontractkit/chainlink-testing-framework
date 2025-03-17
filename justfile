@@ -120,9 +120,9 @@ seth-Geth:
     geth --graphql --http --http.api admin,debug,web3,eth,txpool,personal,miner,net --http.corsdomain "*" --ws --ws.api admin,debug,web3,eth,txpool,personal,miner,net --ws.origins "*" --mine --miner.etherbase 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --unlock f39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --allow-insecure-unlock --datadir ./geth_data --password geth_data/password.txt --nodiscover --vmdebug --networkid 1337 > /dev/null 2>&1 &
 
 # Seth: run Seth tests, example: just seth-test Anvil http://localhost:8545 "TestAPI"
-seth-test network url test_regex:
+seth-test network url test_regex extra_flags:
     @just seth-{{network}}
-    cd seth && SETH_URL={{url}} SETH_NETWORK={{network}} SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v -race `go list ./... | grep -v examples` -run "{{test_regex}}" || pkill -f {{network}}
+    cd seth && SETH_URL={{url}} SETH_NETWORK={{network}} SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 go test -v "{{extra_flags}}" `go list ./... | grep -v examples` -run "{{test_regex}}" || pkill -f {{network}}
 
 # Run pre-commit hooks, build, lint, tidy, check typos
 pre-commit:

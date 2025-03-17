@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"math/big"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,10 +27,7 @@ import (
 func TestConfig_MinimalBuilder(t *testing.T) {
 	builder := seth.NewClientBuilder()
 
-	url, err := getRpc()
-	require.NoError(t, err, "failed to get rpc url")
-
-	client, err := builder.WithRpcUrl(url).
+	client, err := builder.WithRpcUrl(os.Getenv("SETH_URL")).
 		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
 		Build()
 	require.NoError(t, err, "failed to build client")
@@ -41,18 +39,6 @@ func TestConfig_MinimalBuilder(t *testing.T) {
 
 	_, err = client.DeployContract(client.NewTXOpts(), "LinkToken", *linkAbi, common.FromHex(link_token.LinkTokenMetaData.Bin))
 	require.NoError(t, err, "failed to deploy LINK contract")
-}
-
-func getRpc() (string, error) {
-	if os.Getenv("SETH_NETWORK") == "" {
-		return "", errors.New("SETH_NETWORK is not set")
-	}
-	url := "ws://localhost:8546"
-	if os.Getenv("SETH_NETWORK") == "anvil" {
-		url = "ws://localhost:8545"
-	}
-
-	return url, nil
 }
 
 func TestConfig_MaximalBuilder(t *testing.T) {
@@ -73,9 +59,6 @@ func TestConfig_MaximalBuilder(t *testing.T) {
 		GasPriceEstimationAttemptCount: seth.DefaultGasPriceEstimationsAttemptCount,
 	}
 
-	url, err := getRpc()
-	require.NoError(t, err, "failed to get rpc url")
-
 	secondNetwork := &seth.Network{
 		Name:                           "Second",
 		EIP1559DynamicFees:             true,
@@ -89,7 +72,7 @@ func TestConfig_MaximalBuilder(t *testing.T) {
 		GasFeeCap:                      seth.DefaultGasFeeCap,
 		GasTipCap:                      seth.DefaultGasTipCap,
 		GasPriceEstimationAttemptCount: seth.DefaultGasPriceEstimationsAttemptCount,
-		URLs:                           []string{url},
+		URLs:                           []string{os.Getenv("SETH_URL")},
 	}
 
 	client, err := builder.
@@ -131,6 +114,9 @@ func TestConfig_MaximalBuilder(t *testing.T) {
 }
 
 func TestConfig_ModifyExistingConfigWithBuilder(t *testing.T) {
+	if strings.EqualFold(os.Getenv("SETH_NETWORK"), "anvil") {
+		t.Skip("skipping test in anvil network")
+	}
 	configPath := os.Getenv(seth.CONFIG_FILE_ENV_VAR)
 	require.NotEmpty(t, configPath, "expected config file path to be set")
 
@@ -204,12 +190,9 @@ func TestConfig_ModifyExistingConfigWithBuilder_UnknownChainId_UseDefault(t *tes
 	err = toml.Unmarshal(d, &sethConfig)
 	require.NoError(t, err, "failed to unmarshal config file")
 
-	url, err := getRpc()
-	require.NoError(t, err, "failed to get rpc url")
-
 	_, err = seth.NewClientBuilderWithConfig(&sethConfig).
 		UseNetworkWithChainId(225).
-		WithRpcUrl(url).
+		WithRpcUrl(os.Getenv("SETH_URL")).
 		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
 		Build()
 
@@ -226,13 +209,10 @@ you need to set the Network`
 func TestConfig_LegacyGas_No_Estimations(t *testing.T) {
 	builder := seth.NewClientBuilder()
 
-	url, err := getRpc()
-	require.NoError(t, err, "failed to get rpc url")
-
 	client, err := builder.
 		// network
 		WithNetworkName("my network").
-		WithRpcUrl(url).
+		WithRpcUrl(os.Getenv("SETH_URL")).
 		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
 		// Gas price and estimations
 		WithLegacyGasPrice(710_000_000).
@@ -251,13 +231,10 @@ func TestConfig_LegacyGas_No_Estimations(t *testing.T) {
 func TestConfig_Eip1559Gas_With_Estimations(t *testing.T) {
 	builder := seth.NewClientBuilder()
 
-	url, err := getRpc()
-	require.NoError(t, err, "failed to get rpc url")
-
 	client, err := builder.
 		// network
 		WithNetworkName("my network").
-		WithRpcUrl(url).
+		WithRpcUrl(os.Getenv("SETH_URL")).
 		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
 		// Gas price and estimations
 		WithEIP1559DynamicFees(true).
@@ -281,7 +258,7 @@ func TestConfig_NoPrivateKeys_RpcHealthEnabled(t *testing.T) {
 	_, err := builder.
 		// network
 		WithNetworkName("my network").
-		WithRpcUrl("ws://localhost:8546").
+		WithRpcUrl(os.Getenv("SETH_URL")).
 		// Gas price and estimations
 		WithEIP1559DynamicFees(true).
 		WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
@@ -298,7 +275,7 @@ func TestConfig_NoPrivateKeys_PendingNonce(t *testing.T) {
 	_, err := builder.
 		// network
 		WithNetworkName("my network").
-		WithRpcUrl("ws://localhost:8546").
+		WithRpcUrl(os.Getenv("SETH_URL")).
 		// Gas price and estimations
 		WithEIP1559DynamicFees(true).
 		WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
@@ -316,7 +293,7 @@ func TestConfig_NoPrivateKeys_EphemeralKeys(t *testing.T) {
 	_, err := builder.
 		// network
 		WithNetworkName("my network").
-		WithRpcUrl("ws://localhost:8546").
+		WithRpcUrl(os.Getenv("SETH_URL")).
 		WithEphemeralAddresses(10, 1000).
 		// Gas price and estimations
 		WithEIP1559DynamicFees(true).
@@ -334,7 +311,7 @@ func TestConfig_NoPrivateKeys_GasEstimations(t *testing.T) {
 
 	_, err := builder.
 		WithNetworkName("my network").
-		WithRpcUrl("ws://localhost:8546").
+		WithRpcUrl(os.Getenv("SETH_URL")).
 		WithGasPriceEstimations(true, 10, seth.Priority_Fast, 2).
 		WithProtections(false, false, seth.MustMakeDuration(1*time.Minute)).
 		Build()
@@ -349,7 +326,7 @@ func TestConfig_NoPrivateKeys_TxOpts(t *testing.T) {
 	client, err := builder.
 		// network
 		WithNetworkName("my network").
-		WithRpcUrl("ws://localhost:8546").
+		WithRpcUrl(os.Getenv("SETH_URL")).
 		// Gas price and estimations
 		WithEIP1559DynamicFees(true).
 		WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
@@ -366,14 +343,14 @@ func TestConfig_NoPrivateKeys_TxOpts(t *testing.T) {
 }
 
 func TestConfig_NoPrivateKeys_Tracing(t *testing.T) {
+	if strings.EqualFold(os.Getenv("SETH_NETWORK"), "anvil") {
+		t.Skip("skipping tracing test in anvil network")
+	}
 	builder := seth.NewClientBuilder()
-
-	url, err := getRpc()
-	require.NoError(t, err, "failed to get rpc url")
 
 	client, err := builder.
 		WithNetworkName("my network").
-		WithRpcUrl(url).
+		WithRpcUrl(os.Getenv("SETH_URL")).
 		WithEIP1559DynamicFees(true).
 		WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
 		WithGasPriceEstimations(false, 10, seth.Priority_Fast, 2).
@@ -384,7 +361,7 @@ func TestConfig_NoPrivateKeys_Tracing(t *testing.T) {
 	require.NoError(t, err, "failed to the client")
 	require.Equal(t, 0, len(client.PrivateKeys), "expected 0 private keys")
 
-	ethClient, err := ethclient.Dial("ws://localhost:8546")
+	ethClient, err := ethclient.Dial(os.Getenv("SETH_URL"))
 	require.NoError(t, err, "failed to dial eth client")
 
 	pk, err := crypto.HexToECDSA("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
@@ -420,12 +397,9 @@ func TestConfig_NoPrivateKeys_Tracing(t *testing.T) {
 func TestConfig_ReadOnlyMode(t *testing.T) {
 	builder := seth.NewClientBuilder()
 
-	url, err := getRpc()
-	require.NoError(t, err, "failed to get rpc url")
-
 	client, err := builder.
 		WithNetworkName("my network").
-		WithRpcUrl(url).
+		WithRpcUrl(os.Getenv("SETH_URL")).
 		WithEphemeralAddresses(10, 1000).
 		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
 		WithGasPriceEstimations(true, 10, seth.Priority_Fast, 2).
@@ -806,10 +780,7 @@ func TestConfig_EthClient_DoesntAllowRpcUrl(t *testing.T) {
 func TestConfig_EthClient(t *testing.T) {
 	builder := seth.NewClientBuilder()
 
-	url, err := getRpc()
-	require.NoError(t, err, "failed to get rpc url")
-
-	ethclient, err := ethclient.Dial(url)
+	ethclient, err := ethclient.Dial(os.Getenv("SETH_URL"))
 	require.NoError(t, err, "failed to dial eth client")
 
 	client, err := builder.
