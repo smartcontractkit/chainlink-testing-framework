@@ -37,7 +37,7 @@ func TestMainFunction(t *testing.T) {
 		defer func() { repoURL = oldRepoURL }()
 
 		os.Args = []string{"main", "some/repo", "30"}
-		require.PanicsWithError(t, "error fetching release: unexpected status code: 404\n", func() {
+		require.PanicsWithError(t, "error fetching release: unexpected status code: 404", func() {
 			main()
 		})
 	})
@@ -61,7 +61,7 @@ func TestMainFunction(t *testing.T) {
 		output := captureOutput(func() {
 			main()
 		})
-		require.Contains(t, "v1.0.0", output)
+		require.Contains(t, "v1.0.0\n", output)
 	})
 
 	t.Run("ValidArgumentsWithOldRelease", func(t *testing.T) {

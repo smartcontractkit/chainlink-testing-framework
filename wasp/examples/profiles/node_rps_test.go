@@ -1,10 +1,12 @@
 package main
 
 import (
-	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 )
 
 func TestNodeRPS(t *testing.T) {

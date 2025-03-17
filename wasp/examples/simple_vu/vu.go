@@ -4,9 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wsjson"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 )
 
 type WSVirtualUser struct {

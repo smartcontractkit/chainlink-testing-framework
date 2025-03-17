@@ -6,8 +6,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"go.uber.org/ratelimit"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 func loadLogs(rawURL, dirPath string, rps, chunks int) error {

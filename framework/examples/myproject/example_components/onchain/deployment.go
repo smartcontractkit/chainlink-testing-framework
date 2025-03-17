@@ -1,9 +1,11 @@
 package onchain
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	testToken "github.com/smartcontractkit/chainlink-testing-framework/framework/examples/example_components/gethwrappers"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
+
+	testToken "github.com/smartcontractkit/chainlink-testing-framework/framework/examples/example_components/gethwrappers"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/seth"
 )

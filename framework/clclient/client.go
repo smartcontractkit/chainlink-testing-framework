@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 
@@ -868,7 +869,7 @@ func (c *ChainlinkClient) ImportVRFKey(vrfExportKey *VRFExportKey) (*VRFKey, *ht
 	return vrfKey, resp.RawResponse, err
 }
 
-// CreateCSAKey creates a CSA key on the Chainlink node, only 1 CSA key per noe
+// CreateCSAKey creates a CSA key on the Chainlink node, only 1 CSA key per node
 func (c *ChainlinkClient) CreateCSAKey() (*CSAKey, *http.Response, error) {
 	csaKey := &CSAKey{}
 	framework.L.Info().Str(NodeURL, c.Config.URL).Msg("Creating CSA Key")

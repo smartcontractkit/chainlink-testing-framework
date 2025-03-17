@@ -1,11 +1,13 @@
 package main
 
 import (
-	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
-	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 )
 
 func TestGrafanaOptsVU(t *testing.T) {

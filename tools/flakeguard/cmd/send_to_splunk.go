@@ -38,7 +38,8 @@ var SendToSplunkCmd = &cobra.Command{
 			testReport.FailedLogsURL = failLogsURL
 		}
 
-		err = reports.SendReportToSplunk(splunkURL, splunkToken, splunkEvent, testReport)
+		// Send the test report to Splunk.
+		err = reports.SendTestReportToSplunk(splunkURL, splunkToken, splunkEvent, testReport)
 		if err != nil {
 			log.Error().Err(err).Msg("Error sending test report to Splunk")
 			os.Exit(1)

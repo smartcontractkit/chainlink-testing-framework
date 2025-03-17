@@ -35,3 +35,5 @@ ctf ci -r "smartcontractkit/chainlink" -w "CI Core" -t jobs -s 5 -e 3
 ctf ci -r "smartcontractkit/chainlink-testing-framework" -w "Framework Golden Tests Examples" -t jobs -s 3
 ```
 You can also use `-debug` flag to dump all the workflow runs/jobs to `ctf-ci-debug` folder.
+
+All the results are also saved by default into `ctf-ci-$uuid.json` files so you can use this tool as CI performance linter.
