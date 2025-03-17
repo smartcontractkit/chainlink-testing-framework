@@ -1,19 +1,15 @@
 package blockchain
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 
-	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 const (
@@ -82,7 +78,7 @@ func defaultGeth(in *Input) {
 
 func newGeth(in *Input) (*Output, error) {
 	defaultGeth(in)
-	ctx := context.Background()
+	req := baseRequest(in, false)
 	defaultCmd := []string{
 		"--http.corsdomain=*",
 		"--http.vhosts=*",
@@ -112,8 +108,7 @@ func newGeth(in *Input) (*Output, error) {
 	}
 	entryPoint := append(defaultCmd, in.DockerCmdParamsOverrides...)
 
-	containerName := framework.DefaultTCName("blockchain-node")
-	bindPort := fmt.Sprintf("%s/tcp", in.Port)
+	bindPort := req.ExposedPorts[0]
 
 	initScriptFile, err := os.CreateTemp("", "init_script")
 	if err != nil {
@@ -152,79 +147,41 @@ func newGeth(in *Input) (*Output, error) {
 		return nil, err
 	}
 
-	req := testcontainers.ContainerRequest{
-		AlwaysPullImage: in.PullImage,
-		Image:           in.Image,
-		Labels:          framework.DefaultTCLabels(),
-		Networks:        []string{framework.DefaultNetworkName},
-		NetworkAliases: map[string][]string{
-			framework.DefaultNetworkName: {containerName},
-		},
-		Entrypoint: []string{
-			"sh", "./root/init.sh",
-			"--datadir", "/root/.ethereum/devchain",
-			"--password", "/root/config/password.txt",
-		},
-		Name:         containerName,
-		ExposedPorts: []string{bindPort},
-		HostConfigModifier: func(h *container.HostConfig) {
-			h.PortBindings = framework.MapTheSamePort(bindPort)
-			framework.ResourceLimitsFunc(h, in.ContainerResources)
-			h.Mounts = append(h.Mounts, mount.Mount{
-				Type:     mount.TypeBind,
-				Source:   keystoreDir,
-				Target:   "/root/.ethereum/devchain/keystore/",
-				ReadOnly: false,
-			}, mount.Mount{
-				Type:     mount.TypeBind,
-				Source:   configDir,
-				Target:   "/root/config/",
-				ReadOnly: false,
-			})
-		},
-		Files: []testcontainers.ContainerFile{
-			{
-				HostFilePath:      initScriptFile.Name(),
-				ContainerFilePath: "/root/init.sh",
-				FileMode:          0644,
-			},
-			{
-				HostFilePath:      genesisFile.Name(),
-				ContainerFilePath: "/root/genesis.json",
-				FileMode:          0644,
-			},
-		},
-		WaitingFor: wait.ForListeningPort(nat.Port(in.Port)).WithStartupTimeout(15 * time.Second).WithPollInterval(200 * time.Millisecond),
-		Cmd:        entryPoint,
+	req.AlwaysPullImage = in.PullImage
+	req.Image = in.Image
+	req.Entrypoint = []string{
+		"sh", "./root/init.sh",
+		"--datadir", "/root/.ethereum/devchain",
+		"--password", "/root/config/password.txt",
 	}
-	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		return nil, err
+	req.HostConfigModifier = func(h *container.HostConfig) {
+		h.PortBindings = framework.MapTheSamePort(bindPort)
+		framework.ResourceLimitsFunc(h, in.ContainerResources)
+		h.Mounts = append(h.Mounts, mount.Mount{
+			Type:     mount.TypeBind,
+			Source:   keystoreDir,
+			Target:   "/root/.ethereum/devchain/keystore/",
+			ReadOnly: false,
+		}, mount.Mount{
+			Type:     mount.TypeBind,
+			Source:   configDir,
+			Target:   "/root/config/",
+			ReadOnly: false,
+		})
 	}
-	host, err := c.Host(ctx)
-	if err != nil {
-		return nil, err
-	}
-	mp, err := c.MappedPort(ctx, nat.Port(bindPort))
-	if err != nil {
-		return nil, err
-	}
-	return &Output{
-		UseCache:      true,
-		Family:        "evm",
-		ChainID:       in.ChainID,
-		ContainerName: containerName,
-		Container:     c,
-		Nodes: []*Node{
-			{
-				HostHTTPUrl:           fmt.Sprintf("http://%s:%s", host, mp.Port()),
-				HostWSUrl:             fmt.Sprintf("ws://%s:%s", host, mp.Port()),
-				DockerInternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
-				DockerInternalWSUrl:   fmt.Sprintf("ws://%s:%s", containerName, in.Port),
-			},
+	req.Files = []testcontainers.ContainerFile{
+		{
+			HostFilePath:      initScriptFile.Name(),
+			ContainerFilePath: "/root/init.sh",
+			FileMode:          0644,
 		},
-	}, nil
+		{
+			HostFilePath:      genesisFile.Name(),
+			ContainerFilePath: "/root/genesis.json",
+			FileMode:          0644,
+		},
+	}
+	req.Cmd = entryPoint
+
+	return createGenericEvmContainer(in, req, false)
 }

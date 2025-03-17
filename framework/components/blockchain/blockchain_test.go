@@ -45,6 +45,14 @@ func TestChains(t *testing.T) {
 				ChainID: "1337",
 			},
 		},
+		{
+			name: "Geth",
+			input: &blockchain.Input{
+				Type:    "geth",
+				Port:    "8211",
+				ChainID: "1337",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
