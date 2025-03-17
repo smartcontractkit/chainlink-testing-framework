@@ -45,16 +45,22 @@ func newAnvilZksync(in *Input) (*Output, error) {
 	defaultAnvilZksync(in)
 	req := baseRequest(in)
 
-	tempDir, err := os.MkdirTemp(".", "anvil-zksync-dockercontext-")
+	tempDir, err := os.MkdirTemp(".", "anvil-zksync-dockercontext")
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		// delete the folder wether it was successful or not
+		_ = os.RemoveAll(tempDir)
+	}()
 
 	dockerfilePath := filepath.Join(tempDir, "anvilZksync.Dockerfile")
 
 	if err := os.WriteFile(dockerfilePath, []byte(dockerFile), 0600); err != nil {
 		return nil, err
 	}
+
 	req.FromDockerfile = testcontainers.FromDockerfile{
 		Context:    tempDir,
 		Dockerfile: "anvilZksync.Dockerfile",
@@ -68,12 +74,9 @@ func newAnvilZksync(in *Input) (*Output, error) {
 			" --chain-id " + in.ChainID +
 			" --port " + in.Port}
 
-	framework.L.Info().Any("Cmd", strings.Join(req.Entrypoint, " ")).Msg("Creating anvil with command")
+	framework.L.Info().Any("Cmd", strings.Join(req.Entrypoint, " ")).Msg("Creating anvil zkSync with command")
 
 	output, err := createGenericEvmContainer(in, req)
-	// try to delete the file even if there is an error
-	_ = os.RemoveAll(tempDir)
-
 	if err != nil {
 		return nil, err
 	}
