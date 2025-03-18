@@ -23,7 +23,7 @@ func defaultBesu(in *Input) {
 
 func newBesu(in *Input) (*Output, error) {
 	defaultBesu(in)
-	req := baseRequest(in, true)
+	req := baseRequest(in, WithWsEndpoint)
 
 	req.Image = in.Image
 	req.AlwaysPullImage = in.PullImage

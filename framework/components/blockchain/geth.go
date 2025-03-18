@@ -78,7 +78,7 @@ func defaultGeth(in *Input) {
 
 func newGeth(in *Input) (*Output, error) {
 	defaultGeth(in)
-	req := baseRequest(in, false)
+	req := baseRequest(in, WithoutWsEndpoint)
 	defaultCmd := []string{
 		"--http.corsdomain=*",
 		"--http.vhosts=*",

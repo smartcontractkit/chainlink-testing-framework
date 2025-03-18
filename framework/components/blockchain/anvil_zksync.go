@@ -43,7 +43,7 @@ RUN curl -L https://raw.githubusercontent.com/matter-labs/foundry-zksync/main/in
 // see: https://foundry-book.zksync.io/getting-started/installation#using-foundry-with-docker
 func newAnvilZksync(in *Input) (*Output, error) {
 	defaultAnvilZksync(in)
-	req := baseRequest(in, false)
+	req := baseRequest(in, WithoutWsEndpoint)
 
 	tempDir, err := os.MkdirTemp(".", "anvil-zksync-dockercontext")
 	if err != nil {

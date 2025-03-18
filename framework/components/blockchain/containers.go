@@ -13,7 +13,14 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
-func baseRequest(in *Input, useWS bool) testcontainers.ContainerRequest {
+type ExposeWs = bool
+
+const (
+	WithWsEndpoint    ExposeWs = true
+	WithoutWsEndpoint ExposeWs = false
+)
+
+func baseRequest(in *Input, useWS ExposeWs) testcontainers.ContainerRequest {
 	containerName := framework.DefaultTCName("blockchain-node")
 	bindPort := fmt.Sprintf("%s/tcp", in.Port)
 	exposedPorts := []string{bindPort}

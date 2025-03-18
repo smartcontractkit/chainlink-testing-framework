@@ -25,7 +25,7 @@ func defaultAnvil(in *Input) {
 // newAnvil deploy foundry anvil node
 func newAnvil(in *Input) (*Output, error) {
 	defaultAnvil(in)
-	req := baseRequest(in, false)
+	req := baseRequest(in, WithoutWsEndpoint)
 
 	req.Image = in.Image
 	req.AlwaysPullImage = in.PullImage
