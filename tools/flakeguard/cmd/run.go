@@ -252,6 +252,9 @@ var RunTestsCmd = &cobra.Command{
 					Int("count", len(flakyTests)).
 					Str("stability threshold", fmt.Sprintf("%.0f%%", passRatioThreshold*100)).
 					Msg("Found flaky tests")
+
+				fmt.Fprint(&summaryBuffer, "\nFlakeguard Summary:\n")
+				reports.RenderTestReport(&summaryBuffer, mainReport, false, false)
 				flushSummaryAndExit(FlakyTestsExitCode)
 			} else {
 				log.Info().Msg("All tests passed stability requirements")
