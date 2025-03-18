@@ -79,6 +79,8 @@ func generateShortTestResultsTable(
 	results []TestResult,
 	markdown bool,
 	showEverPassed bool,
+	showRuns bool,
+	showSuccesses bool,
 	filter func(TestResult) bool,
 ) [][]string {
 	p := message.NewPrinter(language.English)
@@ -89,7 +91,14 @@ func generateShortTestResultsTable(
 	if showEverPassed {
 		headers = append(headers, "Ever Passed")
 	}
-	headers = append(headers, "Runs", "Successes", "Code Owners", "Path")
+	if showRuns {
+		headers = append(headers, "Runs")
+	}
+	if showSuccesses {
+		headers = append(headers, "Successes")
+	}
+
+	headers = append(headers, "Code Owners", "Path")
 
 	// Optionally format the headers for Markdown
 	if markdown {
@@ -124,9 +133,14 @@ func generateShortTestResultsTable(
 		if showEverPassed {
 			row = append(row, passed)
 		}
+		if showRuns {
+			row = append(row, p.Sprintf("%d", r.Runs))
+		}
+		if showSuccesses {
+			row = append(row, p.Sprintf("%d", r.Successes))
+		}
+
 		row = append(row,
-			p.Sprintf("%d", r.Runs),
-			p.Sprintf("%d", r.Successes),
 			owners,
 			r.TestPath,
 		)
@@ -154,13 +168,15 @@ func PrintTestResultsTable(
 	markdown bool,
 	collapsible bool,
 	shortTable bool,
-	showEverPassed bool) {
+	showEverPassed bool,
+	showRuns bool,
+	showSuccesses bool) {
 	filter := func(result TestResult) bool {
 		return true // Include all tests
 	}
 	var table [][]string
 	if shortTable {
-		table = generateShortTestResultsTable(results, markdown, showEverPassed, filter)
+		table = generateShortTestResultsTable(results, markdown, showEverPassed, showRuns, showSuccesses, filter)
 	} else {
 		table = generateTestResultsTable(results, markdown, filter)
 	}
