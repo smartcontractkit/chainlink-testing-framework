@@ -13,7 +13,7 @@
 [![Tests](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/test.yaml/badge.svg)](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/test.yaml)
 [![Run all linters](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/linters.yml/badge.svg)](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/linters.yml)
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/smartcontractkit/chainlink-testing-framework)](https://goreportcard.com/report/github.com/smartcontractkit/chainlink-testing-framework)
+[![Go Report Card](https://goreportcard.com/badge/github.com/smartcontractkit/chainlinsadsaaddasdk-testing-framework)](https://goreportcard.com/report/github.com/smartcontractkit/chainlink-testing-framework)
 ![Go Version](https://img.shields.io/github/go-mod/go-version/smartcontractkit/chainlink-testing-framework?filename=./lib/go.mod)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 </div>
