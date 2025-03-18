@@ -44,6 +44,7 @@
       - [Aptos](framework/components/blockchains/aptos.md)
       - [Sui](framework/components/blockchains/sui.md)
       - [TRON](framework/components/blockchains/tron.md)
+      - [ZKSync](framework/components/blockchains/zksync.md)
       - [Optimism Stack]()
       - [Arbitrum Stack]()
     - [Chainlink](framework/components/chainlink.md)
