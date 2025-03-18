@@ -381,7 +381,11 @@ func (r *Runner) parseTestResults(jsonOutputPaths []string, runPrefix string, ru
 
 			if (panicDetectionMode || raceDetectionMode) && entryLine.Action == "fail" { // End of panic or race output
 				if panicDetectionMode {
-					panicTest, timeout, err := attributePanicToTest(entryLine.Package, detectedEntries)
+					var outputs []string
+					for _, entry := range detectedEntries {
+						outputs = append(outputs, entry.Output)
+					}
+					panicTest, timeout, err := attributePanicToTest(outputs)
 					if err != nil {
 						return nil, err
 					}
@@ -614,23 +618,23 @@ func (r *Runner) transformTestOutputFiles(filePaths []string) ([]string, error) 
 }
 
 // attributePanicToTest properly attributes panics to the test that caused them.
-func attributePanicToTest(panicPackage string, panicEntries []entry) (test string, timeout bool, err error) {
-	regexSanitizePanicPackage := filepath.Base(panicPackage)
-	panicAttributionRe := regexp.MustCompile(fmt.Sprintf(`%s\.(Test[^\.\(]+)`, regexSanitizePanicPackage))
-	timeoutAttributionRe := regexp.MustCompile(`(Test.*?)\W+\(.*\)`)
-	entriesOutputs := []string{}
-	for _, entry := range panicEntries {
-		entriesOutputs = append(entriesOutputs, entry.Output)
-		if matches := panicAttributionRe.FindStringSubmatch(entry.Output); len(matches) > 1 {
+func attributePanicToTest(outputs []string) (test string, timeout bool, err error) {
+	// Regex to extract a valid test function name.
+	testNameRe := regexp.MustCompile(`(?:.*\.)?(Test[A-Z]\w+)(?:\.[^(]+)?\s*\(`)
+	// Regex to detect timeout messages (accepting "timeout", "timedout", or "timed out", case-insensitive).
+	timeoutRe := regexp.MustCompile(`(?i)(timeout|timedout|timed\s*out)`)
+	for _, o := range outputs {
+		outputs = append(outputs, o)
+		if matches := testNameRe.FindStringSubmatch(o); len(matches) > 1 {
 			testName := strings.TrimSpace(matches[1])
+			if timeoutRe.MatchString(o) {
+				return testName, true, nil
+			}
 			return testName, false, nil
 		}
-		if matches := timeoutAttributionRe.FindStringSubmatch(entry.Output); len(matches) > 1 {
-			testName := strings.TrimSpace(matches[1])
-			return testName, true, nil
-		}
 	}
-	return "", false, fmt.Errorf("failed to attribute panic to test, using regex %s on these strings:\n%s", panicAttributionRe.String(), strings.Join(entriesOutputs, ""))
+	return "", false, fmt.Errorf("failed to attribute panic to test, using regex %s on these strings:\n%s",
+		testNameRe.String(), strings.Join(outputs, ""))
 }
 
 // attributeRaceToTest properly attributes races to the test that caused them.
