@@ -7,7 +7,7 @@
 [![Framework tag](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework?filter=%2Aframework%2A)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
 [![Lib tag](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework?filter=%2Alib%2A)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
 [![WASP tag](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework?filter=%2Awasp%2A)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
-[![Seth tag](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework?filter=%2Aseth%2A)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
+[![Seth tag](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framewoasdsddadadark?filter=%2Aseth%2A)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
 [![Havoc tag](https://img.shields.io/github/v/tag/smartcontractkit/chainlink-testing-framework?filter=%2Ahavoc%2A)](https://github.com/smartcontractkit/chainlink-testing-framework/tags)
 
 [![Tests](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/test.yaml/badge.svg)](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/test.yaml)
