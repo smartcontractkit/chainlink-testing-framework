@@ -389,7 +389,7 @@ func (r *Runner) parseTestResults(jsonOutputPaths []string, runPrefix string, ru
 					panicTest, timeout, err := attributePanicToTest(outputs)
 					if err != nil {
 						log.Warn().Err(err).Msg("Unable to attribute panic to a test")
-						panicTest = "UnableToAttributePanicTest"
+						panicTest = "UnableToAttributePanicTestPleaseInvestigate"
 					}
 					panicTestKey := fmt.Sprintf("%s/%s", entryLine.Package, panicTest)
 
