@@ -634,7 +634,7 @@ func attributePanicToTest(outputs []string) (test string, timeout bool, err erro
 			return testName, false, nil
 		}
 	}
-	return "", false, fmt.Errorf("failed to attribute panic to test, using regex %s on these strings:\n\n%s",
+	return "", false, fmt.Errorf("failed to attribute panic to test, using regex '%s' on these strings:\n\n%s",
 		testNameRe.String(), strings.Join(outputs, ""))
 }
 

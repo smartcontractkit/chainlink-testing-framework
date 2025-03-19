@@ -257,6 +257,8 @@ func TestRun(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			testResults, err := tc.runner.RunTestPackages([]string{flakyTestPackagePath})
 			require.NoError(t, err)
 
@@ -543,9 +545,36 @@ func TestAttributePanicToTest(t *testing.T) {
 			},
 		},
 		{
-			name:             "no test name in panic",
-			expectedTestName: "UnknownTestPanic",
+			name:             "empty",
+			expectedTestName: "",
 			expectedTimeout:  false,
+			outputs:          []string{},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testName, timeout, err := attributePanicToTest(tc.outputs)
+			assert.Equal(t, tc.expectedTimeout, timeout, "timeout flag mismatch")
+			if tc.expectedTestName == "" {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.expectedTestName, testName, "test name mismatch")
+			}
+		})
+	}
+}
+
+func TestFailToAttributePanicToTest(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name    string
+		outputs []string
+	}{
+		{
+			name: "no test name in panic",
 			outputs: []string{
 				"panic: reflect: Elem of invalid type bool",
 				"goroutine 104182 [running]:",
@@ -582,24 +611,14 @@ func TestAttributePanicToTest(t *testing.T) {
 				"FAIL\tgithub.com/smartcontractkit/chainlink/deployment/ccip/changeset/solana\t184.801s",
 			},
 		},
-		{
-			name:             "empty",
-			expectedTestName: "",
-			expectedTimeout:  false,
-			outputs:          []string{},
-		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			testName, timeout, err := attributePanicToTest(tc.outputs)
-			assert.Equal(t, tc.expectedTimeout, timeout, "timeout flag mismatch")
-			if tc.expectedTestName == "" {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, tc.expectedTestName, testName, "test name mismatch")
-			}
+			require.Error(t, err)
+			assert.Empty(t, testName, "test name should be empty")
+			assert.False(t, timeout, "timeout flag should be false")
 		})
 	}
 }
