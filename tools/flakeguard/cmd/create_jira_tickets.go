@@ -164,11 +164,11 @@ func init() {
 // -------------------------------------------------------------------------------------
 
 type Ticket struct {
-	RowIndex        int  // which row in the original CSV (after skipping header)
-	Confirmed       bool // set to true if user pressed 'y'
-	TestName        string
+	RowIndex        int
+	Confirmed       bool
 	Valid           bool
 	InvalidReason   string
+	TestName        string
 	Summary         string
 	Description     string
 	ExistingJiraKey string
@@ -177,65 +177,40 @@ type Ticket struct {
 // rowToTicket builds a Ticket from one CSV row (your columns).
 // Required fields: Package(row[0]), TestName(row[2]), FlakeRate(row[7]), Logs(row[9]).
 func rowToTicket(row []string) Ticket {
-	pkg := row[0]
-	testName := row[2]
-	flakeRate := row[7]
-	logs := row[9]
+	pkg := strings.TrimSpace(row[0])
+	testName := strings.TrimSpace(row[2])
+	flakeRate := strings.TrimSpace(row[7])
+	logs := strings.TrimSpace(row[9])
 
-	// Check for missing required fields
-	var missing []string
-	if pkg == "" {
-		missing = append(missing, "Package")
-	}
-	if testName == "" {
-		missing = append(missing, "Test Name")
-	}
-	if flakeRate == "" {
-		missing = append(missing, "Flake Rate")
-	}
-	if logs == "" {
-		missing = append(missing, "Test Logs")
-	}
-
-	if len(missing) > 0 {
-		reason := fmt.Sprintf("Missing required field(s): %s", strings.Join(missing, ", "))
-		if testName != "" {
-			reason += fmt.Sprintf(" [Test Name: %s]", testName)
-		}
-		return Ticket{
-			Valid:         false,
-			InvalidReason: reason,
-		}
-	}
-
-	// Parse logs for multiple links
-	var logLines []string
-	logLinks := strings.Split(logs, ",")
-	runNumber := 1
-	for _, link := range logLinks {
-		link = strings.TrimSpace(link)
-		if link == "" {
-			continue
-		}
-		// Format each log line as a Markdown link: "- [Run 1](http://...)"
-		logLines = append(logLines,
-			fmt.Sprintf("- [Run %d](%s)", runNumber, link),
-		)
-		runNumber++
-	}
-	if len(logLines) == 0 {
-		return Ticket{
-			Valid:         false,
-			InvalidReason: "No valid test logs found after parsing",
-		}
-	}
-	// Join them into one string with newlines
-	testLogSection := strings.Join(logLines, "\n")
-
-	// Summary: "Fix Flaky Test: <TestName> (<FlakeRate>% flake rate)"
+	// 1) Build a single summary that might contain empty strings
 	summary := fmt.Sprintf("Fix Flaky Test: %s (%s%% flake rate)", testName, flakeRate)
 
-	// Build the description (Markdown style)
+	// 2) If logs is empty, we’ll show (Logs not available)
+	var logSection string
+	if logs == "" {
+		logSection = "(Logs not available)"
+	} else {
+		// Parse logs into bullets
+		var lines []string
+		runNumber := 1
+		for _, link := range strings.Split(logs, ",") {
+			link = strings.TrimSpace(link)
+			if link == "" {
+				continue
+			}
+			lines = append(lines,
+				fmt.Sprintf("- [Run %d](%s)", runNumber, link),
+			)
+			runNumber++
+		}
+		if len(lines) == 0 {
+			logSection = "(Logs not available)"
+		} else {
+			logSection = strings.Join(lines, "\n")
+		}
+	}
+
+	// 3) Always build the same final description, with placeholders if fields are empty
 	description := fmt.Sprintf(`
 ## Test Details:
 - **Package:** `+"`%s`"+`
@@ -251,14 +226,45 @@ func rowToTicket(row []string) Ticket {
 3. **Rerun Tests Locally:** Execute the test and related changes on a local environment to ensure that the fix stabilizes the test, as well as all other tests that may be affected.
 4. **Unskip the Test:** Once confirmed stable, remove any test skip markers to re-enable the test in the CI pipeline.
 5. **Reference Guidelines:** Follow the recommendations in the [Flaky Test Guide].
-`, pkg, testName, flakeRate, testLogSection)
+`,
+		pkg,
+		testName,
+		flakeRate,
+		logSection,
+	)
 
-	return Ticket{
-		TestName:    testName,
-		Valid:       true,
+	// 4) Mark ticket Valid or Invalid based on required fields
+	ticket := Ticket{
 		Summary:     summary,
 		Description: description,
+		TestName:    testName,
+		Valid:       true, // we assume valid unless required fields are missing
 	}
+
+	var missing []string
+	if pkg == "" {
+		missing = append(missing, "Package")
+	}
+	if testName == "" {
+		missing = append(missing, "Test Name")
+	}
+	if flakeRate == "" {
+		missing = append(missing, "Flake Rate")
+	}
+	if logs == "" || logSection == "(Logs not available)" {
+		missing = append(missing, "Test Logs")
+	}
+
+	if len(missing) > 0 {
+		ticket.Valid = false
+		reason := fmt.Sprintf("Missing required field(s): %s", strings.Join(missing, ", "))
+		if testName != "" {
+			reason += fmt.Sprintf(" [Test Name: %s]", testName)
+		}
+		ticket.InvalidReason = reason
+	}
+
+	return ticket
 }
 
 // -------------------------------------------------------------------------------------
@@ -412,8 +418,22 @@ func (m model) View() string {
 			fmt.Sprintf("Ticket #%d of %d (Invalid)", m.index+1, len(m.tickets)),
 		)
 		errMsg := errorStyle.Render("Cannot create ticket: " + t.InvalidReason)
+
+		sumHeader := summaryStyle.Render("Summary:")
+		sumContent := t.Summary
+		sum := fmt.Sprintf("%s\n\n%s\n", sumHeader, sumContent)
+		descHeader := descHeaderStyle.Render("Description:\n")
+		descBody := descBodyStyle.Render(t.Description)
+
 		hint := helpStyle.Render("\nPress any key to skip, or [q] to quit.\n")
-		return fmt.Sprintf("%s\n\n%s\n%s\n", header, errMsg, hint)
+
+		return fmt.Sprintf("%s\n\n%s\n\n%s\n%s\n\n%s\n",
+			header,
+			errMsg,
+			sum,
+			descHeader+descBody,
+			hint,
+		)
 	}
 
 	header := headerStyle.Render(
