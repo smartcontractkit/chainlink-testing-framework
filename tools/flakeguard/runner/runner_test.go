@@ -541,7 +541,7 @@ func TestAttributePanicToTest(t *testing.T) {
 				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/testing/testing.go:1851 +0x413",
 				"    logger.go:146: 03:14:04.485880684\tINFO\tDeployed KeystoneForwarder 1.0.0 chain selector 909606746561742123 addr 0x72B66019aCEdc35F7F6e58DF94De95f3cBCC5971\t{\"version\": \"(devel)@unset\"}",
 				"    logger.go:146: 03:14:04.486035865\tINFO\tdeploying forwarder\t{\"version\": \"(devel)@unset\", \"chainSelector\": 5548718428018410741}",
-				"    logger.go:146: 2025-03-08T03:14:04.490Z\tINFO\tchangeset/jd_register_nodes.go:91\tregistered node\t{\"version\": \"unset@unset\", \"name\": \"node1\", \"id\": \"node:{id:\\\"895776f5ba0cc11c570a47b5cc3dbb8771da9262cfb545cd5d48251796af7f1d\\\"  public_key:\\\"895776f5ba0cc11c570a47b5cc3dbb8771da9262cfb545cd5d48251796af7f1d\\\"  is_enabled:true  is_connected:true  labels:{key:\\\"product\\\"  value:\\\"test-product\\\"}  labels:{key:\\\"environment\\\"  value:\\\"test-env\\\"}  labels:{key:\\\"nodeType\\\"  value:\\\"bootstrap\\\"}  labels:{key:\\\"don-0-don1\\\"}\"}",
+				"    logger.go:146: 2025-03-08T03:14:04.490Z\tINFO\tchangeset/jd_register_nodes.go:91\tregistered node\t{\"version\": \"unset@unset\", \"name\": \"node1\", \"id\": \"node:{id:\\\"895776f5ba0cc11c570a47b5cc3dbb8771da9262cfb545cd5d48251796af7f\\\"  public_key:\\\"895776f5ba0cc11c570a47b5cc3dbb8771da9262cfb545cd5d48251796af7f\\\"  is_enabled:true  is_connected:true  labels:{key:\\\"product\\\"  value:\\\"test-product\\\"}  labels:{key:\\\"environment\\\"  value:\\\"test-env\\\"}  labels:{key:\\\"nodeType\\\"  value:\\\"bootstrap\\\"}  labels:{key:\\\"don-0-don1\\\"}\"}",
 			},
 		},
 		{
