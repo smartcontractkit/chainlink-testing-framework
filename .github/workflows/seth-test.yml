@@ -12,27 +12,35 @@ jobs:
           - regex: TestSmoke
             network-type: Geth
             url: "ws://localhost:8546"
+            extra_flags: "-race"
           - regex: TestSmoke
             network-type: Anvil
             url: "http://localhost:8545"
+            extra_flags: "-race"
           - regex: TestAPI
             network-type: Geth
             url: "ws://localhost:8546"
+            extra_flags: "-race"
           - regex: TestAPI
             network-type: Anvil
             url: "http://localhost:8545"
+            extra_flags: "-race"
           - regex: TestTrace
             network-type: Geth
             url: "ws://localhost:8546"
+            extra_flags: "-race"
           - regex: TestTrace
             network-type: Anvil
             url: "http://localhost:8545"
+            extra_flags: "-race"
           - regex: TestCLI
             network-type: Geth
             url: "ws://localhost:8546"
+            extra_flags: "-race"
           - regex: TestCLI
             network-type: Anvil
             url: "http://localhost:8545"
+            extra_flags: "-race"
             # TODO: wasn't stable before, fix if possible
 #          - regex: TestGasBumping
 #            network-type: Geth
@@ -40,13 +48,25 @@ jobs:
 #          - regex: TestGasBumping
 #            network-type: Anvil
 #            url: "http://localhost:8545"
-          - regex: "'TestContractMap|TestGasEstimator|TestRPCHealthCheck|TestUtil|TestContract|TestConfig'"
+            # Some test config tests use Simualted Backend, which is not has data races...
+          - regex: "'TestConfig'"
             network-type: Geth
             url: "ws://localhost:8546"
+            extra_flags: "''"
             # TODO: still expects Geth WS URL for some reason
-#          - regex: "'TestContractMap|TestGasEstimator|TestRPCHealthCheck|TestUtil|TestContract|TestConfig'"
-#            network-type: Anvil
-#            url: "http://localhost:8545"
+          - regex: "'TestConfig'"
+            network-type: Anvil
+            url: "http://localhost:8545"
+            extra_flags: "''"
+          - regex: "'TestContractMap|TestGasEstimator|TestRPCHealthCheck|TestUtil|TestContract'"
+            network-type: Geth
+            url: "ws://localhost:8546"
+            extra_flags: "-race"
+            # TODO: still expects Geth WS URL for some reason
+          - regex: "'TestContractMap|TestGasEstimator|TestRPCHealthCheck|TestUtil|TestContract'"
+            network-type: Anvil
+            url: "http://localhost:8545"
+            extra_flags: "-race"
     defaults:
       run:
         working-directory: seth
@@ -86,4 +106,4 @@ jobs:
           just-version: '1.39.0'
       - name: Run tests
         run: |
-          devbox run -- just seth-test ${{ matrix.test.network-type }} ${{ matrix.test.url }} ${{ matrix.test.regex }}
+          devbox run -- just seth-test ${{ matrix.test.network-type }} ${{ matrix.test.url }} ${{ matrix.test.regex }} ${{ matrix.test.extra_flags}}
