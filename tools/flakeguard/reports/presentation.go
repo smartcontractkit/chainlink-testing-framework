@@ -78,11 +78,27 @@ func generateTestResultsTable(
 func generateShortTestResultsTable(
 	results []TestResult,
 	markdown bool,
+	showEverPassed bool,
+	showRuns bool,
+	showSuccesses bool,
 	filter func(TestResult) bool,
 ) [][]string {
 	p := message.NewPrinter(language.English)
 
-	headers := []string{"Name", "Ever Passed", "Runs", "Successes", "Code Owners", "Path"}
+	// Build headers dynamically
+	var headers []string
+	headers = append(headers, "Name")
+	if showEverPassed {
+		headers = append(headers, "Ever Passed")
+	}
+	if showRuns {
+		headers = append(headers, "Runs")
+	}
+	if showSuccesses {
+		headers = append(headers, "Successes")
+	}
+
+	headers = append(headers, "Code Owners", "Path")
 
 	// Optionally format the headers for Markdown
 	if markdown {
@@ -112,14 +128,22 @@ func generateShortTestResultsTable(
 			owners = strings.Join(r.CodeOwners, ", ")
 		}
 
-		row := []string{
-			r.TestName,                   // "Name"
-			passed,                       // "Passed"
-			p.Sprintf("%d", r.Runs),      // "Runs"
-			p.Sprintf("%d", r.Successes), // "Passes"
-			owners,                       // "Code Owners"
-			r.TestPath,                   // "Path"
+		// Build row dynamically
+		row := []string{r.TestName}
+		if showEverPassed {
+			row = append(row, passed)
 		}
+		if showRuns {
+			row = append(row, p.Sprintf("%d", r.Runs))
+		}
+		if showSuccesses {
+			row = append(row, p.Sprintf("%d", r.Successes))
+		}
+
+		row = append(row,
+			owners,
+			r.TestPath,
+		)
 
 		table = append(table, row)
 	}
@@ -143,13 +167,16 @@ func PrintTestResultsTable(
 	results []TestResult,
 	markdown bool,
 	collapsible bool,
-	shortTable bool) {
+	shortTable bool,
+	showEverPassed bool,
+	showRuns bool,
+	showSuccesses bool) {
 	filter := func(result TestResult) bool {
 		return true // Include all tests
 	}
 	var table [][]string
 	if shortTable {
-		table = generateShortTestResultsTable(results, markdown, filter)
+		table = generateShortTestResultsTable(results, markdown, showEverPassed, showRuns, showSuccesses, filter)
 	} else {
 		table = generateTestResultsTable(results, markdown, filter)
 	}

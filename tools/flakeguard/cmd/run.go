@@ -184,6 +184,10 @@ var RunTestsCmd = &cobra.Command{
 				flushSummaryAndExit(0)
 			}
 
+			fmt.Fprint(&summaryBuffer, "\nFailed Tests On The First Run:\n\n")
+			reports.PrintTestResultsTable(&summaryBuffer, failedTests, false, false, true, false, false, false)
+			fmt.Fprintln(&summaryBuffer)
+
 			rerunResults, rerunJsonOutputPaths, err := testRunner.RerunFailedTests(failedTests, rerunFailedCount)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error rerunning failed tests")
@@ -203,8 +207,8 @@ var RunTestsCmd = &cobra.Command{
 				flushSummaryAndExit(ErrorExitCode)
 			}
 
-			fmt.Fprint(&summaryBuffer, "\nFailed Tests That Were Rerun:\n\n")
-			reports.PrintTestResultsTable(&summaryBuffer, rerunResults, false, false, true)
+			fmt.Fprint(&summaryBuffer, "\nTests After Rerun:\n\n")
+			reports.PrintTestResultsTable(&summaryBuffer, rerunResults, false, false, true, true, true, true)
 			fmt.Fprintln(&summaryBuffer)
 
 			// Save the rerun test report to file
@@ -248,6 +252,9 @@ var RunTestsCmd = &cobra.Command{
 					Int("count", len(flakyTests)).
 					Str("stability threshold", fmt.Sprintf("%.0f%%", passRatioThreshold*100)).
 					Msg("Found flaky tests")
+
+				fmt.Fprint(&summaryBuffer, "\nFlakeguard Summary\n")
+				reports.RenderTestReport(&summaryBuffer, mainReport, false, false)
 				flushSummaryAndExit(FlakyTestsExitCode)
 			} else {
 				log.Info().Msg("All tests passed stability requirements")
