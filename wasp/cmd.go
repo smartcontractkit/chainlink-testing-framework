@@ -30,10 +30,11 @@ func readStdPipe(pipe io.ReadCloser, streamFunc func(string)) {
 	}
 }
 
-// ExecCmdWithStreamFunc runs the specified command and streams its output and error lines 
+// ExecCmdWithStreamFunc runs the specified command and streams its output and error lines
 // to the provided outputFunction. It enables real-time handling of command execution output.
 func ExecCmdWithStreamFunc(command string, outputFunction func(string)) error {
 	c := strings.Split(command, " ")
+	//nolint
 	cmd := exec.Command(c[0], c[1:]...)
 	stderr, err := cmd.StderrPipe()
 	if err != nil {

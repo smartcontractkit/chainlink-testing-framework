@@ -1,29 +1,19 @@
 package chaos
 
 import (
-	"context"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"math/big"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+
+	f "github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
-	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
-	"time"
 )
-
-func printBlockBaseFee(t *testing.T, url string) {
-	ec, err := ethclient.Dial(url)
-	require.NoError(t, err)
-	bn, err := ec.BlockNumber(context.Background())
-	require.NoError(t, err)
-	b, err := ec.BlockByNumber(context.Background(), big.NewInt(int64(bn)))
-	require.NoError(t, err)
-	t.Logf("Current block base fee: %d", b.BaseFee())
-}
 
 type CfgGas struct {
 	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
@@ -32,7 +22,7 @@ type CfgGas struct {
 }
 
 func TestBlockchainGasChaos(t *testing.T) {
-	in, err := framework.Load[CfgGas](t)
+	in, err := f.Load[CfgGas](t)
 	require.NoError(t, err)
 
 	// Can replace deployments with CRIB here
@@ -51,28 +41,31 @@ func TestBlockchainGasChaos(t *testing.T) {
 	blockEvery := 1 * time.Second
 	waitBetweenTests := 1 * time.Minute
 
-	gasControlFunc := func(t *testing.T, r *rpc.RPCClient, url string) {
+	gasControlFunc := func(t *testing.T, r *rpc.RPCClient) {
 		startGasPrice := big.NewInt(2e9)
 		// ramp
 		for i := 0; i < 10; i++ {
-			printBlockBaseFee(t, url)
+			err := r.PrintBlockBaseFee()
+			require.NoError(t, err)
 			t.Logf("Setting block base fee: %d", startGasPrice)
-			err := r.AnvilSetNextBlockBaseFeePerGas(startGasPrice)
+			err = r.AnvilSetNextBlockBaseFeePerGas(startGasPrice)
 			require.NoError(t, err)
 			startGasPrice = startGasPrice.Add(startGasPrice, big.NewInt(1e9))
 			time.Sleep(blockEvery)
 		}
 		// hold
 		for i := 0; i < 10; i++ {
-			printBlockBaseFee(t, url)
+			err := r.PrintBlockBaseFee()
+			require.NoError(t, err)
 			time.Sleep(blockEvery)
 			t.Logf("Setting block base fee: %d", startGasPrice)
-			err := r.AnvilSetNextBlockBaseFeePerGas(startGasPrice)
+			err = r.AnvilSetNextBlockBaseFeePerGas(startGasPrice)
 			require.NoError(t, err)
 		}
 		// release
 		for i := 0; i < 10; i++ {
-			printBlockBaseFee(t, url)
+			err := r.PrintBlockBaseFee()
+			require.NoError(t, err)
 			time.Sleep(blockEvery)
 		}
 	}
@@ -82,7 +75,7 @@ func TestBlockchainGasChaos(t *testing.T) {
 		chainURL         string
 		increase         *big.Int
 		waitBetweenTests time.Duration
-		gasFunc          func(t *testing.T, r *rpc.RPCClient, url string)
+		gasFunc          func(t *testing.T, r *rpc.RPCClient)
 		validate         func(t *testing.T, c []*clclient.ChainlinkClient)
 	}{
 		{
@@ -114,9 +107,8 @@ func TestBlockchainGasChaos(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Log(tc.name)
-			printBlockBaseFee(t, tc.chainURL)
 			r := rpc.New(tc.chainURL, nil)
-			tc.gasFunc(t, r, tc.chainURL)
+			tc.gasFunc(t, r)
 			tc.validate(t, c)
 			time.Sleep(waitBetweenTests)
 		})

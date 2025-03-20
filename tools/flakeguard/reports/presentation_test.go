@@ -10,7 +10,7 @@ import (
 )
 
 func TestGenerateFlakyTestsTable(t *testing.T) {
-	report := &TestReport{
+	report := TestReport{
 		Results: []TestResult{
 			{
 				TestName:    "TestFlaky",
@@ -70,7 +70,7 @@ func TestGenerateFlakyTestsTable(t *testing.T) {
 
 func TestGenerateGitHubSummaryMarkdown(t *testing.T) {
 	maxPassRatio := 0.9
-	testReport := &TestReport{
+	testReport := TestReport{
 		GoProject:     "ProjectX",
 		SummaryData:   &SummaryData{UniqueTestsRun: 2, FlakyTests: 1},
 		RaceDetection: true,
@@ -116,7 +116,7 @@ func TestGenerateGitHubSummaryMarkdown(t *testing.T) {
 // TestGeneratePRCommentMarkdown tests the GeneratePRCommentMarkdown function.
 func TestGeneratePRCommentMarkdown(t *testing.T) {
 	maxPassRatio := 0.9
-	testReport := &TestReport{
+	testReport := TestReport{
 		GoProject:     "ProjectX",
 		SummaryData:   &SummaryData{UniqueTestsRun: 3, FlakyTests: 1},
 		RaceDetection: true,
@@ -194,13 +194,13 @@ func TestPrintTable(t *testing.T) {
 func TestRenderResults(t *testing.T) {
 	testcases := []struct {
 		name                   string
-		testReport             *TestReport
+		testReport             TestReport
 		expectedSummary        *SummaryData
 		expectedStringsContain []string
 	}{
 		{
 			name: "single flaky test",
-			testReport: &TestReport{
+			testReport: TestReport{
 				Results: []TestResult{
 					{
 						TestName:    "Test1",
@@ -244,7 +244,7 @@ func TestRenderResults(t *testing.T) {
 			tc.testReport.GenerateSummaryData()
 
 			var buf bytes.Buffer
-			RenderResults(&buf, tc.testReport, false, false)
+			RenderTestReport(&buf, tc.testReport, false, false)
 			output := buf.String()
 
 			// Verify summary data

@@ -1,11 +1,12 @@
 package wasp
 
 import (
-	"github.com/stretchr/testify/require"
 	"math"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 var (

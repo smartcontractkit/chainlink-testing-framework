@@ -157,8 +157,10 @@ var LinuxPlatformImageRetrier = func(l zerolog.Logger, startErr error, req tc.Ge
 // It will try to start the container with the provided retriers, if none are provided it will use the default retriers.
 // Default being: 1. tries to download image for "linux/x86_64" platform 2. simply starts again without changing anything
 func StartContainerWithRetry(l zerolog.Logger, req tc.GenericContainerRequest, retriers ...StartContainerRetrier) (tc.Container, error) {
-	var ct tc.Container
-	var err error
+	var (
+		ct  tc.Container
+		err error
+	)
 
 	ct, err = tc.GenericContainer(testcontext.Get(nil), req)
 	if err == nil {
@@ -169,7 +171,7 @@ func StartContainerWithRetry(l zerolog.Logger, req tc.GenericContainerRequest, r
 		retriers = append(retriers, LinuxPlatformImageRetrier, NaiveRetrier)
 	}
 
-	l.Info().Err(err).Msgf("Cannot start %s container, retrying", req.Name)
+	l.Warn().Err(err).Msgf("Cannot start %s container, retrying", req.Name)
 
 	req.Reuse = true // Try and see if we can reuse the container for a retry
 	for _, retrier := range retriers {

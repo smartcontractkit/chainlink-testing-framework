@@ -56,7 +56,7 @@ We also offer a set of blockchain-specific experiments, which typically involve 
 
 - Utilizing developer APIs (e.g., Anvil)
 
-Check [gas](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/chaos/chaos_blockchain_evm_gas_test.go) and [reorg](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/chaos/chaos_blockchain_evm_reorg_test.go) examples.
+Check [gas](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/chaos/chaos_blockchain_evm_gas_test.go) and [reorg](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/chaos/chaos_blockchain_evm_reorg_test.go) examples, the same example work for [K8s](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/chaos/chaos_k8s_test.go).
 
 ## Debugging
 

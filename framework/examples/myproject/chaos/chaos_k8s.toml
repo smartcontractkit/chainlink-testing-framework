@@ -1,0 +1,12 @@
+[chaos]
+wait_before_start = "10s"
+namespace = "default"
+dashboard_uuids = ["WaspDebug"]
+experiment_duration = "20s"
+experiment_injection_duration = "10s"
+remove_k8s_chaos = true
+
+blockchain_http_urls = ["http://localhost:8545", "http://localhost:8550"]
+reorg_below_finality_threshold = 5
+reorg_above_finality_threshold = 10
+block_every = "1s"

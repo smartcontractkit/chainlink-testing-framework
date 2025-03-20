@@ -58,16 +58,16 @@ func TestBenchSpy_Standard_Direct_And_Loki_Metrics(t *testing.T) {
 	require.NotEmpty(t, currentAsLokiSlices[string(benchspy.MedianLatency)], "%s results were missing for loki", string(benchspy.MedianLatency))
 	require.NotEmpty(t, currentAsDirectFloats[string(benchspy.MedianLatency)], "%s results were missing for direct", string(benchspy.MedianLatency))
 
-	var compareValues = func(t *testing.T, metricName string, lokiFloat, directFloat, maxDiffPrecentage float64) {
-		var diffPrecentage float64
+	var compareValues = func(t *testing.T, metricName string, lokiFloat, directFloat, maxDiffPercentage float64) {
+		var diffPercentage float64
 		if lokiFloat != 0.0 && directFloat != 0.0 {
-			diffPrecentage = (directFloat - lokiFloat) / lokiFloat * 100
+			diffPercentage = (directFloat - lokiFloat) / lokiFloat * 100
 		} else if lokiFloat == 0.0 && directFloat == 0.0 {
-			diffPrecentage = 0.0
+			diffPercentage = 0.0
 		} else {
-			diffPrecentage = 100.0
+			diffPercentage = 100.0
 		}
-		assert.LessOrEqual(t, math.Abs(diffPrecentage), maxDiffPrecentage, "%s are more than 1% different", metricName, fmt.Sprintf("%.4f", diffPrecentage))
+		assert.LessOrEqual(t, math.Abs(diffPercentage), maxDiffPercentage, "%s are more than 1% different", metricName, fmt.Sprintf("%.4f", diffPercentage))
 	}
 
 	lokiFloatSlice, err := benchspy.StringSliceToFloat64Slice(currentAsLokiSlices[string(benchspy.MedianLatency)])

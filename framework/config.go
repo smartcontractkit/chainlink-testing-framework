@@ -30,7 +30,8 @@ const (
 )
 
 const (
-	EnvVarTestConfigs       = "CTF_CONFIGS"
+	EnvVarTestConfigs = "CTF_CONFIGS"
+	//nolint
 	EnvVarAWSSecretsManager = "CTF_AWS_SECRETS_MANAGER"
 	// EnvVarCI this is a default env variable many CI runners use so code can detect we run in CI
 	EnvVarCI = "CI"
@@ -109,6 +110,7 @@ func validateWithCustomErr(cfg interface{}) []ValidationError {
 	var validationErrors []ValidationError
 	err := Validator.Struct(cfg)
 	if err != nil {
+		//nolint
 		for _, err := range err.(validator.ValidationErrors) {
 			customMessage := err.Translate(ValidatorTranslator)
 			defaultMessage := fmt.Sprintf("validation failed on '%s' with tag '%s'", err.Field(), err.Tag())
@@ -206,7 +208,7 @@ func Store[T any](cfg *T) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(DefaultConfigDir, cachedOutName), d, os.ModePerm)
+	return os.WriteFile(filepath.Join(DefaultConfigDir, cachedOutName), d, 0600)
 }
 
 // JSONStrDuration is JSON friendly duration that can be parsed from "1h2m0s" Go format
@@ -234,4 +236,12 @@ func (d *JSONStrDuration) UnmarshalJSON(b []byte) error {
 	default:
 		return errors.New("invalid duration")
 	}
+}
+
+func MustParseDuration(s string) time.Duration {
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		L.Fatal().Msg("cannot parse duration, should be Go format 1h2m3s")
+	}
+	return d
 }
