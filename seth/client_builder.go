@@ -338,7 +338,7 @@ func (c *ClientBuilder) WithArtifactsFolder(folder string) *ClientBuilder {
 	return c
 }
 
-// WithGethWrappersFolders sets list of folders where the Geth wrappers are stored. Seth will load ABIs from all wrappers it finds in theses folders (including subfolders).
+// WithGethWrappersFolders sets list of folders where the Geth wrappers are stored. Seth will load ABIs from all wrappers it finds in these folders (including subfolders).
 // Default value is an empty string (= loading disabled).
 func (c *ClientBuilder) WithGethWrappersFolders(folders []string) *ClientBuilder {
 	c.config.GethWrappersDirs = folders
@@ -367,7 +367,7 @@ func (c *ClientBuilder) WithEthClient(ethclient simulated.Client) *ClientBuilder
 }
 
 // WithHooks sets the hooks for the ClientBuilder configuration.
-// It allows users to customize behavior during client operations 
+// It allows users to customize behavior during client operations
 // by providing a set of hooks to be executed at specific events.
 func (c *ClientBuilder) WithHooks(hooks Hooks) *ClientBuilder {
 	c.config.Hooks = &hooks

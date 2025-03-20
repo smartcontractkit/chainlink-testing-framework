@@ -164,7 +164,7 @@ func (c *Chaos) Resume(ctx context.Context) error {
 	return nil
 }
 
-// Delete stops the chaos operation, updates its status, and removes the chaos object if specified. 
+// Delete stops the chaos operation, updates its status, and removes the chaos object if specified.
 // It notifies listeners of the operation's completion and handles any errors encountered during the process.
 func (c *Chaos) Delete(ctx context.Context) error {
 	defer func() {
