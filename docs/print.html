@@ -434,16 +434,16 @@ OrbStack Version: 1.8.2 (1080200)
 </code></pre>
 <p>Download our <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8">CLI</a></p>
 <p>OS X <code>arm64</code> (M1/M2/M3 MacBooks)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.6.1/framework-v0.6.1-darwin-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.6.2/framework-v0.6.2-darwin-arm64.tar.gz | tar -xz
 </code></pre>
 <p>OS X <code>amd64</code> (old Intel chips)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.6.1/framework-v0.6.1-darwin-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.6.2/framework-v0.6.2-darwin-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>arm64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.6.1/framework-v0.6.1-linux-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.6.2/framework-v0.6.2-linux-arm64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>amd64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.6.1/framework-v0.6.1-linux-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.6.2/framework-v0.6.2-linux-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Allow it to run in <code>System Settings -&gt; Security Settings</code> (OS X)</p>
 <p><img src="framework/images/img.png" alt="img.png" /></p>
@@ -5202,16 +5202,16 @@ just lint wasp
 <p>If you're on OS X, we recommend to use <a href="https://orbstack.dev/">OrbStack</a>, otherwise <a href="https://www.docker.com/products/docker-desktop/">Docker Desktop</a></p>
 <p>Download our <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8">CLI</a></p>
 <p>OS X <code>arm64</code> (M1/M2/M3 MacBooks)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.6.1/framework-v0.6.1-darwin-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.6.2/framework-v0.6.2-darwin-arm64.tar.gz | tar -xz
 </code></pre>
 <p>OS X <code>amd64</code> (old Intel chips)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.6.1/framework-v0.6.1-darwin-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.6.2/framework-v0.6.2-darwin-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>arm64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.6.1/framework-v0.6.1-linux-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.6.2/framework-v0.6.2-linux-arm64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>amd64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.6.1/framework-v0.6.1-linux-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.6.2/framework-v0.6.2-linux-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Allow it to run in <code>System Settings -&gt; Security Settings</code> (OS X)</p>
 <p><img src="framework/images/img.png" alt="img.png" /></p>
@@ -5446,7 +5446,7 @@ CLI to manipulate test keys</li>
 Simple manual gas price estimation</li>
 <li><input disabled="" type="checkbox"/>
 Fail over client logic</li>
-<li><input disabled="" type="checkbox"/>
+<li><input disabled="" type="checkbox" checked=""/>
 Decode collided event hashes</li>
 <li><input disabled="" type="checkbox" checked=""/>
 Tracing support (4byte)</li>
@@ -5603,7 +5603,52 @@ if err != nil {
     log.Fatal(err)
 }
 </code></pre>
-<p>This can be useful if you already have a config, but want to modify it slightly. It can also be useful if you read TOML config with multiple <code>Networks</code> and you want to specify which one you want to use.</p>
+<p>This can be useful if you already have a config, but want to modify it slightly. This approach will only work if you pass it the full config, since it will not apply any defaults. It can also be useful if you read TOML config with multiple <code>Networks</code> and you want to specify which one you want to use. Although for that use case it's better to make use of the following approach:</p>
+<pre><code class="language-go">// assuming that "readSethNetworks" knows how to read the TOML file and convert it to []*seth.Network
+/* example content of networks.toml:
+[[networks]]
+name = "Anvil"
+dial_timeout = "1m"
+transaction_timeout = "30s"
+urls_secret = ["ws://localhost:8545"]
+transfer_gas_fee = 21_000
+gas_limit = 10_000_000
+# legacy transactions
+gas_price = 1_000_000_000
+# EIP-1559 transactions
+# disabled as it makes some of our tests fail
+# eip_1559_dynamic_fees = true
+gas_fee_cap = 1_000_000_000
+gas_tip_cap = 1_000_000_000
+
+[[networks]]
+name = "Geth"
+dial_timeout = "1m"
+transaction_timeout = "30s"
+urls_secret = ["ws://localhost:8546"]
+transfer_gas_fee = 21_000
+gas_limit = 8_000_000
+# legacy transactions
+gas_price = 1_000_000_000
+# EIP-1559 transactions
+# disabled as it makes some of our tests fail
+# eip_1559_dynamic_fees = true
+gas_fee_cap = 10_000_000_000
+gas_tip_cap = 3_000_000_000
+*/
+networks, err := readSethNetworks("networks.toml")
+if err != nil {
+    log.Fatal(err)
+}
+
+client, err := NewClientBuilderWithConfig(&amp;existingConfig).
+        UseNetworkWithName("Anvil"). // or alternatively use UseNetworkWithChainId (if you defined it for you network)
+	    Build()
+
+if err != nil {
+    log.Fatal(err)
+}
+</code></pre>
 <h3 id="simulated-backend"><a class="header" href="#simulated-backend">Simulated Backend</a></h3>
 <p>Last, but not least, <code>ClientBuilder</code> allows you to pass custom implementation of <code>simulated.Client</code> interface, which include Geth's <a href="https://github.com/ethereum/go-ethereum/blob/master/ethclient/simulated/backend.go">Simulated Backend</a>, which might be very useful for rapid testing against
 in-memory environment. When using that option bear in mind that:</p>
@@ -5671,6 +5716,35 @@ _ = client
 to mine a new block and have your transactions processed. The best way to do it is having a goroutine running in the background
 that either mines at specific intervals or when it receives a message on channel.</p>
 </div>
+<h3 id="hooks"><a class="header" href="#hooks">Hooks</a></h3>
+<p>Seth supports pre/post operation hooks for two functions:</p>
+<ul>
+<li><code>DeployContract()</code></li>
+<li><code>Decode</code> (also <code>DecodeTx</code>)</li>
+</ul>
+<p>As the name suggest each will be executed before and after mentioned operation. By default, no hooks are set. Adding hooks doesn't influence retry/gas bumping logic.</p>
+<p>You can either set hooks directly on the <code>seth.Config</code> object (not recommended) or pass them to the <code>ClientBuilder</code>:</p>
+<pre><code class="language-go">// assuming backend is the simulated backend, to show how we can speed up contract deployments by calling `Commit()` right after deploying the contract
+hooks := seth.Hooks{
+    ContractDeployment: seth.ContractDeploymentHooks{
+        Post: func(client *seth.Client, tx *types.Transaction) error {
+            backend.Commit()
+            return nil
+        },
+    },
+}
+
+client, err := builder.
+    WithNetworkName("simulated").
+    WithHooks(hooks).
+    WithEthClient(backend.Client()).
+    WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+    Build()
+
+if err != nil {
+    log.Fatal(err)
+}
+</code></pre>
 <h3 id="supported-env-vars"><a class="header" href="#supported-env-vars">Supported env vars</a></h3>
 <p>Some crucial data is stored in env vars, create <code>.envrc</code> and use <code>source .envrc</code>, or use <code>direnv</code></p>
 <pre><code class="language-sh">export SETH_LOG_LEVEL=info # global logger level
@@ -16653,7 +16727,7 @@ use <code>GetTestContainersGoTestLogger(*testing.T)</code> instead.</p>
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>1e85367a</code></li>
+<li>Commit: <code>fa32137a</code></li>
 </ul>
 
                     </main>
