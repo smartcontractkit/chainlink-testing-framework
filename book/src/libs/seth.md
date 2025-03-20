@@ -65,7 +65,7 @@ Reliable and debug-friendly Ethereum client
 - [x] CLI to manipulate test keys
 - [x] Simple manual gas price estimation
 - [ ] Fail over client logic
-- [ ] Decode collided event hashes
+- [x] Decode collided event hashes
 - [x] Tracing support (4byte)
 - [x] Tracing support (callTracer)
 - [ ] Tracing support (prestate)
@@ -262,7 +262,53 @@ if err != nil {
     log.Fatal(err)
 }
 ```
-This can be useful if you already have a config, but want to modify it slightly. It can also be useful if you read TOML config with multiple `Networks` and you want to specify which one you want to use.
+This can be useful if you already have a config, but want to modify it slightly. This approach will only work if you pass it the full config, since it will not apply any defaults. It can also be useful if you read TOML config with multiple `Networks` and you want to specify which one you want to use. Although for that use case it's better to make use of the following approach:
+```go
+// assuming that "readSethNetworks" knows how to read the TOML file and convert it to []*seth.Network
+/* example content of networks.toml:
+[[networks]]
+name = "Anvil"
+dial_timeout = "1m"
+transaction_timeout = "30s"
+urls_secret = ["ws://localhost:8545"]
+transfer_gas_fee = 21_000
+gas_limit = 10_000_000
+# legacy transactions
+gas_price = 1_000_000_000
+# EIP-1559 transactions
+# disabled as it makes some of our tests fail
+# eip_1559_dynamic_fees = true
+gas_fee_cap = 1_000_000_000
+gas_tip_cap = 1_000_000_000
+
+[[networks]]
+name = "Geth"
+dial_timeout = "1m"
+transaction_timeout = "30s"
+urls_secret = ["ws://localhost:8546"]
+transfer_gas_fee = 21_000
+gas_limit = 8_000_000
+# legacy transactions
+gas_price = 1_000_000_000
+# EIP-1559 transactions
+# disabled as it makes some of our tests fail
+# eip_1559_dynamic_fees = true
+gas_fee_cap = 10_000_000_000
+gas_tip_cap = 3_000_000_000
+*/
+networks, err := readSethNetworks("networks.toml")
+if err != nil {
+    log.Fatal(err)
+}
+
+client, err := NewClientBuilderWithConfig(&existingConfig).
+        UseNetworkWithName("Anvil"). // or alternatively use UseNetworkWithChainId (if you defined it for you network)
+	    Build()
+
+if err != nil {
+    log.Fatal(err)
+}
+```
 
 ### Simulated Backend
 
@@ -324,6 +370,37 @@ _ = client
 > When using `simulated.Backend` do remember that it doesn't automatically mine blocks. You need to call `backend.Commit()` manually
 > to mine a new block and have your transactions processed. The best way to do it is having a goroutine running in the background
 > that either mines at specific intervals or when it receives a message on channel.
+
+### Hooks
+Seth supports pre/post operation hooks for two functions:
+* `DeployContract()`
+* `Decode` (also `DecodeTx`)
+
+As the name suggest each will be executed before and after mentioned operation. By default, no hooks are set. Adding hooks doesn't influence retry/gas bumping logic.
+
+You can either set hooks directly on the `seth.Config` object (not recommended) or pass them to the `ClientBuilder`:
+```go
+// assuming backend is the simulated backend, to show how we can speed up contract deployments by calling `Commit()` right after deploying the contract
+hooks := seth.Hooks{
+    ContractDeployment: seth.ContractDeploymentHooks{
+        Post: func(client *seth.Client, tx *types.Transaction) error {
+            backend.Commit()
+            return nil
+        },
+    },
+}
+
+client, err := builder.
+    WithNetworkName("simulated").
+    WithHooks(hooks).
+    WithEthClient(backend.Client()).
+    WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+    Build()
+
+if err != nil {
+    log.Fatal(err)
+}
+```
 
 ### Supported env vars
 
