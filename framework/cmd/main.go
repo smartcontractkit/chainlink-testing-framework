@@ -10,8 +10,9 @@ import (
 	"strings"
 
 	"github.com/pelletier/go-toml"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/urfave/cli/v2"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 //go:embed observability/*
@@ -205,6 +206,7 @@ func main() {
 					},
 				},
 			},
+
 			{
 				Name:  "ci",
 				Usage: "Analyze CI job durations and statistics",
@@ -222,10 +224,25 @@ func main() {
 						Required: true,
 					},
 					&cli.StringFlag{
-						Name:    "days",
-						Aliases: []string{"d"},
+						Name:    "start",
+						Aliases: []string{"s"},
 						Value:   "1",
 						Usage:   "How many days to analyze",
+					},
+					&cli.StringFlag{
+						Name:    "end",
+						Aliases: []string{"e"},
+						Value:   "0",
+						Usage:   "How many days to analyze",
+					},
+					&cli.StringFlag{
+						Name:    "type",
+						Aliases: []string{"t"},
+						Usage:   "Analytics type: jobs or steps",
+					},
+					&cli.BoolFlag{
+						Name:  "debug",
+						Usage: "Dumps all the workflow/jobs files for debugging purposes",
 					},
 				},
 				Action: func(c *cli.Context) error {
@@ -234,8 +251,21 @@ func main() {
 					if len(parts) != 2 {
 						return fmt.Errorf("repository must be in format owner/repo, got: %s", repo)
 					}
-
-					return AnalyzeCIRuns(parts[0], parts[1], c.String("workflow"), c.Int("days"))
+					typ := c.String("type")
+					if typ != "jobs" && typ != "steps" {
+						return fmt.Errorf("type must be 'jobs' or 'steps'")
+					}
+					_, err := AnalyzeCIRuns(&AnalysisConfig{
+						Debug:               c.Bool("debug"),
+						Owner:               parts[0],
+						Repo:                parts[1],
+						WorkflowName:        c.String("workflow"),
+						TimeDaysBeforeStart: c.Int("start"),
+						TimeDaysBeforeEnd:   c.Int("end"),
+						Typ:                 typ,
+						ResultsFile:         "ctf-ci.json",
+					})
+					return err
 				},
 			},
 		},
@@ -290,6 +320,7 @@ func extractAllFiles(embeddedDir string) error {
 		}
 
 		// Write the file content to the target path
+		//nolint
 		err = os.WriteFile(targetPath, content, 0777)
 		if err != nil {
 			return fmt.Errorf("failed to write file %s: %w", targetPath, err)
@@ -316,6 +347,7 @@ func PrettyPrintTOML(inputFile string, outputFile string) error {
 		return fmt.Errorf("error converting to TOML string: %v", err)
 	}
 
+	//nolint
 	err = os.WriteFile(outputFile, []byte(dumpData), 0644)
 	if err != nil {
 		return fmt.Errorf("error writing to output file: %v", err)

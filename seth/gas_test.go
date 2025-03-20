@@ -13,7 +13,7 @@ func TestGasEstimator(t *testing.T) {
 	c := newClient(t)
 	bn, err := c.Client.BlockNumber(context.Background())
 	require.NoError(t, err, "BlockNumber should not error")
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		_, err := c.DeployContractFromContractStore(c.NewTXOpts(), "NetworkDebugSubContract")
 		require.NoError(t, err, "Deploying contract should not error")
 	}

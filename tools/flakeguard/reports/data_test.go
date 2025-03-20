@@ -379,8 +379,24 @@ func TestAggregate(t *testing.T) {
 		},
 	}
 
-	aggregateOptions := &aggregateOptions{reportID: "123"}
-	aggregatedReport, err := aggregateReports(aggregateOptions, report1, report2)
+	// Create channels for test results and errors.
+	resultsChan := make(chan []TestResult)
+	errChan := make(chan error)
+
+	// Launch a goroutine to send the test results into the results channel.
+	go func() {
+		resultsChan <- report1.Results
+		resultsChan <- report2.Results
+		close(resultsChan)
+	}()
+
+	// No errors to send; close the error channel.
+	go func() {
+		close(errChan)
+	}()
+
+	// Call the updated aggregate function.
+	aggregatedResults, err := aggregate(resultsChan, errChan)
 	if err != nil {
 		t.Fatalf("Error aggregating reports: %v", err)
 	}
@@ -412,15 +428,16 @@ func TestAggregate(t *testing.T) {
 		},
 	}
 
-	// Sort results for comparison
+	// Sort both slices by TestName to ensure the order matches for comparison.
 	sort.Slice(expectedResults, func(i, j int) bool {
 		return expectedResults[i].TestName < expectedResults[j].TestName
 	})
-	sort.Slice(aggregatedReport.Results, func(i, j int) bool {
-		return aggregatedReport.Results[i].TestName < aggregatedReport.Results[j].TestName
+	sort.Slice(aggregatedResults, func(i, j int) bool {
+		return aggregatedResults[i].TestName < aggregatedResults[j].TestName
 	})
 
-	for i, result := range aggregatedReport.Results {
+	// Compare the aggregated results with expected results.
+	for i, result := range aggregatedResults {
 		expected := expectedResults[i]
 		if result.TestName != expected.TestName ||
 			result.TestPackage != expected.TestPackage ||
@@ -468,25 +485,37 @@ func TestAggregateOutputs(t *testing.T) {
 		},
 	}
 
-	aggregateOptions := &aggregateOptions{reportID: "123"}
-	aggregatedReport, err := aggregateReports(aggregateOptions, report1, report2)
+	// Create channels for results and errors.
+	resultsChan := make(chan []TestResult)
+	errChan := make(chan error)
+
+	// Launch a goroutine to send the results into the resultsChan.
+	go func() {
+		resultsChan <- report1.Results
+		resultsChan <- report2.Results
+		close(resultsChan)
+	}()
+
+	// Launch a goroutine to close the error channel (no errors to report).
+	go func() {
+		close(errChan)
+	}()
+
+	// Call the new aggregate function.
+	aggregatedResults, err := aggregate(resultsChan, errChan)
 	if err != nil {
 		t.Fatalf("Error aggregating reports: %v", err)
 	}
 
-	if len(aggregatedReport.Results) != 1 {
-		t.Fatalf("Expected 1 result, got %d", len(aggregatedReport.Results))
+	if len(aggregatedResults) != 1 {
+		t.Fatalf("Expected 1 result, got %d", len(aggregatedResults))
 	}
 
-	result := aggregatedReport.Results[0]
+	result := aggregatedResults[0]
 
 	expectedOutputs := map[string][]string{
-		"run1": {
-			"Output from report1 test run",
-		},
-		"run2": {
-			"Output from report2 test run",
-		},
+		"run1": {"Output from report1 test run"},
+		"run2": {"Output from report2 test run"},
 	}
 
 	expectedPackageOutputs := []string{
@@ -538,17 +567,32 @@ func TestAggregateIdenticalOutputs(t *testing.T) {
 		},
 	}
 
-	aggregateOptions := &aggregateOptions{reportID: "123"}
-	aggregatedReport, err := aggregateReports(aggregateOptions, report1, report2)
+	// Create channels for results and errors.
+	resultsChan := make(chan []TestResult)
+	errChan := make(chan error)
+
+	// Send the results from both reports.
+	go func() {
+		resultsChan <- report1.Results
+		resultsChan <- report2.Results
+		close(resultsChan)
+	}()
+
+	// Close error channel since there are no errors.
+	go func() {
+		close(errChan)
+	}()
+
+	aggregatedResults, err := aggregate(resultsChan, errChan)
 	if err != nil {
 		t.Fatalf("Error aggregating reports: %v", err)
 	}
 
-	if len(aggregatedReport.Results) != 1 {
-		t.Fatalf("Expected 1 result, got %d", len(aggregatedReport.Results))
+	if len(aggregatedResults) != 1 {
+		t.Fatalf("Expected 1 result, got %d", len(aggregatedResults))
 	}
 
-	result := aggregatedReport.Results[0]
+	result := aggregatedResults[0]
 
 	expectedOutputs := map[string][]string{
 		"run1": {"Identical output", "Identical output"},
@@ -600,7 +644,7 @@ func TestAggregate_AllSkippedTests(t *testing.T) {
 				Skipped:     true,
 				Runs:        0,
 				Skips:       3,
-				PassRatio:   -1, // 1 indicate undefined
+				PassRatio:   -1, // -1 indicates undefined
 			},
 		},
 	}
@@ -620,8 +664,23 @@ func TestAggregate_AllSkippedTests(t *testing.T) {
 		},
 	}
 
-	aggregateOptions := &aggregateOptions{reportID: "123"}
-	aggregatedReport, err := aggregateReports(aggregateOptions, report1, report2)
+	// Create channels for results and errors.
+	resultsChan := make(chan []TestResult)
+	errChan := make(chan error)
+
+	// Send results from both reports.
+	go func() {
+		resultsChan <- report1.Results
+		resultsChan <- report2.Results
+		close(resultsChan)
+	}()
+
+	// Close error channel since there are no errors.
+	go func() {
+		close(errChan)
+	}()
+
+	aggregatedResults, err := aggregate(resultsChan, errChan)
 	if err != nil {
 		t.Fatalf("Error aggregating reports: %v", err)
 	}
@@ -635,11 +694,11 @@ func TestAggregate_AllSkippedTests(t *testing.T) {
 		PassRatio:   -1,
 	}
 
-	if len(aggregatedReport.Results) != 1 {
-		t.Fatalf("Expected 1 result, got %d", len(aggregatedReport.Results))
+	if len(aggregatedResults) != 1 {
+		t.Fatalf("Expected 1 result, got %d", len(aggregatedResults))
 	}
 
-	result := aggregatedReport.Results[0]
+	result := aggregatedResults[0]
 
 	if result.TestName != expectedResult.TestName {
 		t.Errorf("Expected TestName %v, got %v", expectedResult.TestName, result.TestName)

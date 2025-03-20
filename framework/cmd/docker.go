@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/rs/zerolog"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"os"
 	"os/exec"
+
+	"github.com/rs/zerolog"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 func removeTestContainers() error {

@@ -16,6 +16,7 @@ import (
 )
 
 func TestErigonEth1(t *testing.T) {
+	t.Skip("thorax/erigon is not available anymore, find the new image if needed and enable the test")
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()
@@ -41,6 +42,7 @@ func TestErigonEth1(t *testing.T) {
 }
 
 func TestErigonEth2(t *testing.T) {
+	t.Skip("thorax/erigon is not available anymore, find the new image if needed and enable the test")
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()
@@ -65,6 +67,7 @@ func TestErigonEth2(t *testing.T) {
 }
 
 func TestErigonEth2_Deneb(t *testing.T) {
+	t.Skip("thorax/erigon is not available anymore, find the new image if needed and enable the test")
 	l := logging.GetTestLogger(t)
 
 	builder := NewEthereumNetworkBuilder()
@@ -112,6 +115,7 @@ func TestErigonEth2_Deneb(t *testing.T) {
 }
 
 func TestErigonEth2_Shanghai(t *testing.T) {
+	t.Skip("thorax/erigon is not available anymore, find the new image if needed and enable the test")
 	l := logging.GetTestLogger(t)
 
 	chainConfig := config.MustGetDefaultChainConfig()

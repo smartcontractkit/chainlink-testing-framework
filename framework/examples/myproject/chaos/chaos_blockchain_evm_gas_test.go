@@ -1,16 +1,18 @@
 package chaos
 
 import (
+	"math/big"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+
 	f "github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
-	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
-	"time"
 )
 
 type CfgGas struct {

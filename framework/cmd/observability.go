@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"go.uber.org/ratelimit"
-	"net/http"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 func loadLogs(rawURL, dirPath string, rps, chunks int) error {
@@ -18,6 +20,7 @@ func loadLogs(rawURL, dirPath string, rps, chunks int) error {
 	limiter := ratelimit.New(rps)
 	if rawURL != "" {
 		L.Info().Msg("Downloading raw logs from URL")
+		//nolint:gosec
 		resp, err := http.Get(rawURL)
 		if err != nil {
 			return errors.Wrap(err, "error downloading raw logs")

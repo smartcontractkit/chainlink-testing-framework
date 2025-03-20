@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/go-test-transform/pkg/transformer"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 )
 
@@ -26,31 +27,34 @@ var (
 
 // Runner describes the test run parameters and raw test outputs
 type Runner struct {
-	ProjectPath          string        // Path to the Go project directory.
-	prettyProjectPath    string        // Go project package path, formatted for pretty printing.
-	Verbose              bool          // If true, provides detailed logging.
-	RunCount             int           // Number of times to run the tests.
-	UseRace              bool          // Enable race detector.
-	Timeout              time.Duration // Test timeout
-	Tags                 []string      // Build tags.
-	UseShuffle           bool          // Enable test shuffling. -shuffle=on flag.
-	ShuffleSeed          string        // Set seed for test shuffling -shuffle={seed} flag. Must be used with UseShuffle.
-	FailFast             bool          // Stop on first test failure.
-	SkipTests            []string      // Test names to exclude.
-	SelectTests          []string      // Test names to include.
-	CollectRawOutput     bool          // Set to true to collect test output for later inspection.
-	OmitOutputsOnSuccess bool          // Set to true to omit test outputs on success.
-	MaxPassRatio         float64       // Maximum pass ratio threshold for a test to be considered flaky.
-	rawOutputs           map[string]*bytes.Buffer
+	ProjectPath                    string   // Path to the Go project directory.
+	Verbose                        bool     // If true, provides detailed logging.
+	RunCount                       int      // Number of times to run the tests.
+	GoTestCountFlag                *int     // Run go test with -count flag.
+	GoTestRaceFlag                 bool     // Run go test with -race flag.
+	GoTestTimeoutFlag              string   // Run go test with -timeout flag
+	Tags                           []string // Build tags.
+	UseShuffle                     bool     // Enable test shuffling. -shuffle=on flag.
+	ShuffleSeed                    string   // Set seed for test shuffling -shuffle={seed} flag. Must be used with UseShuffle.
+	FailFast                       bool     // Stop on first test failure.
+	SkipTests                      []string // Test names to exclude.
+	SelectTests                    []string // Test names to include.
+	CollectRawOutput               bool     // Set to true to collect test output for later inspection.
+	OmitOutputsOnSuccess           bool     // Set to true to omit test outputs on success.
+	MaxPassRatio                   float64  // Maximum pass ratio threshold for a test to be considered flaky.
+	IgnoreParentFailuresOnSubtests bool     // Ignore failures in parent tests when only subtests fail.
+	rawOutputs                     map[string]*bytes.Buffer
 }
 
 // RunTestPackages executes the tests for each provided package and aggregates all results.
 // It returns all test results and any error encountered during testing.
-func (r *Runner) RunTestPackages(packages []string) (*reports.TestReport, error) {
+// RunTestPackages executes the tests for each provided package and aggregates all results.
+func (r *Runner) RunTestPackages(packages []string) ([]reports.TestResult, error) {
 	var jsonFilePaths []string
+	// Initial runs.
 	for _, p := range packages {
 		for i := 0; i < r.RunCount; i++ {
-			if r.CollectRawOutput { // Collect raw output for debugging
+			if r.CollectRawOutput { // Collect raw output for debugging.
 				if r.rawOutputs == nil {
 					r.rawOutputs = make(map[string]*bytes.Buffer)
 				}
@@ -71,57 +75,38 @@ func (r *Runner) RunTestPackages(packages []string) (*reports.TestReport, error)
 		}
 	}
 
-	results, err := r.parseTestResults(jsonFilePaths)
+	// Parse initial results.
+	results, err := r.parseTestResults(jsonFilePaths, "run", r.RunCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
-	report := &reports.TestReport{
-		GoProject:     r.prettyProjectPath,
-		RaceDetection: r.UseRace,
-		ExcludedTests: r.SkipTests,
-		SelectedTests: r.SelectTests,
-		Results:       results,
-		MaxPassRatio:  r.MaxPassRatio,
-	}
-	report.GenerateSummaryData()
 
-	return report, nil
+	return results, nil
 }
 
 // RunTestCmd runs an arbitrary command testCmd (like ["go", "run", "my_test.go", ...])
 // that produces the same JSON lines that 'go test -json' would produce on stdout.
 // It captures those lines in a temp file, then parses them for pass/fail/panic/race data.
-func (r *Runner) RunTestCmd(testCmd []string) (*reports.TestReport, error) {
-	var jsonFilePaths []string
+func (r *Runner) RunTestCmd(testCmd []string) ([]reports.TestResult, error) {
+	var jsonOutputPaths []string
 
-	// Run the command r.RunCount times
-	for i := 0; i < r.RunCount; i++ {
-		jsonFilePath, passed, err := r.runCmd(testCmd, i)
+	for i := range r.RunCount {
+		jsonOutputPath, passed, err := r.runCmd(testCmd, i)
 		if err != nil {
 			return nil, fmt.Errorf("failed to run test command: %w", err)
 		}
-		jsonFilePaths = append(jsonFilePaths, jsonFilePath)
+		jsonOutputPaths = append(jsonOutputPaths, jsonOutputPath)
 		if !passed && r.FailFast {
 			break
 		}
 	}
 
-	results, err := r.parseTestResults(jsonFilePaths)
+	results, err := r.parseTestResults(jsonOutputPaths, "run", r.RunCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
 
-	report := &reports.TestReport{
-		GoProject:     r.prettyProjectPath,
-		RaceDetection: r.UseRace,
-		ExcludedTests: r.SkipTests,
-		SelectedTests: r.SelectTests,
-		Results:       results,
-		MaxPassRatio:  r.MaxPassRatio,
-	}
-	report.GenerateSummaryData()
-
-	return report, nil
+	return results, nil
 }
 
 // RawOutputs retrieves the raw output from the test runs, if CollectRawOutput enabled.
@@ -136,12 +121,15 @@ type exitCoder interface {
 
 // runTestPackage runs the tests for a given package and returns the path to the output file.
 func (r *Runner) runTestPackage(packageName string) (string, bool, error) {
-	args := []string{"test", packageName, "-json", "-count=1"}
-	if r.UseRace {
+	args := []string{"test", packageName, "-json"}
+	if r.GoTestCountFlag != nil {
+		args = append(args, fmt.Sprintf("-count=%d", *r.GoTestCountFlag))
+	}
+	if r.GoTestRaceFlag {
 		args = append(args, "-race")
 	}
-	if r.Timeout > 0 {
-		args = append(args, fmt.Sprintf("-timeout=%s", r.Timeout.String()))
+	if r.GoTestTimeoutFlag != "" {
+		args = append(args, fmt.Sprintf("-timeout=%s", r.GoTestTimeoutFlag))
 	}
 	if len(r.Tags) > 0 {
 		args = append(args, fmt.Sprintf("-tags=%s", strings.Join(r.Tags, ",")))
@@ -173,11 +161,6 @@ func (r *Runner) runTestPackage(packageName string) (string, bool, error) {
 	}
 	defer tmpFile.Close()
 
-	r.prettyProjectPath, err = prettyProjectPath(r.ProjectPath)
-	if err != nil {
-		r.prettyProjectPath = r.ProjectPath
-		log.Warn().Err(err).Str("projectPath", r.ProjectPath).Msg("Failed to get pretty project path")
-	}
 	// Run the command with output directed to the file
 	cmd := exec.Command("go", args...)
 	cmd.Dir = r.ProjectPath
@@ -210,10 +193,6 @@ func (r *Runner) runCmd(testCmd []string, runIndex int) (tempFilePath string, pa
 		return
 	}
 	defer tmpFile.Close()
-
-	if r.Verbose {
-		log.Info().Msgf("Running custom test command (%d/%d): %s", runIndex+1, r.RunCount, strings.Join(testCmd, " "))
-	}
 
 	cmd := exec.Command(testCmd[0], testCmd[1:]...)
 	cmd.Dir = r.ProjectPath
@@ -282,7 +261,16 @@ func (e entry) String() string {
 // panics and failures at that point.
 // Subtests add more complexity, as panics in subtests are only reported in their parent's output,
 // and cannot be accurately attributed to the subtest that caused them.
-func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, error) {
+func (r *Runner) parseTestResults(jsonOutputPaths []string, runPrefix string, runCount int) ([]reports.TestResult, error) {
+	// If the option is enabled, transform each JSON output file before parsing.
+	if r.IgnoreParentFailuresOnSubtests {
+		transformedPaths, err := r.transformTestOutputFiles(jsonOutputPaths)
+		if err != nil {
+			return nil, err
+		}
+		jsonOutputPaths = transformedPaths
+	}
+
 	var (
 		testDetails         = make(map[string]*reports.TestResult) // Holds run, pass counts, and other details for each test
 		panickedPackages    = map[string]struct{}{}                // Packages with tests that panicked
@@ -292,14 +280,14 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 		panicDetectionMode  = false
 		raceDetectionMode   = false
 		detectedEntries     = []entry{} // race or panic entries
-		expectedRuns        = r.RunCount
+		expectedRuns        = runCount
 	)
 
 	runNumber := 0
 	// Process each file
-	for _, filePath := range filePaths {
+	for _, filePath := range jsonOutputPaths {
 		runNumber++
-		runID := fmt.Sprintf("run%d", runNumber)
+		runID := fmt.Sprintf("%s%d", runPrefix, runNumber)
 		file, err := os.Open(filePath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open test output file: %w", err)
@@ -393,7 +381,11 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 
 			if (panicDetectionMode || raceDetectionMode) && entryLine.Action == "fail" { // End of panic or race output
 				if panicDetectionMode {
-					panicTest, timeout, err := attributePanicToTest(entryLine.Package, detectedEntries)
+					var outputs []string
+					for _, entry := range detectedEntries {
+						outputs = append(outputs, entry.Output)
+					}
+					panicTest, timeout, err := attributePanicToTest(outputs)
 					if err != nil {
 						return nil, err
 					}
@@ -531,9 +523,9 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 		if err = file.Close(); err != nil {
 			log.Warn().Err(err).Str("file", filePath).Msg("failed to close file")
 		}
-		if err = os.Remove(filePath); err != nil {
-			log.Warn().Err(err).Str("file", filePath).Msg("failed to delete file")
-		}
+		// if err = os.Remove(filePath); err != nil {
+		// 	log.Warn().Err(err).Str("file", filePath).Msg("failed to delete file")
+		// }
 	}
 
 	var results []reports.TestResult
@@ -595,24 +587,54 @@ func (r *Runner) parseTestResults(filePaths []string) ([]reports.TestResult, err
 	return results, nil
 }
 
+// transformTestOutputFiles transforms the test output JSON files to ignore parent failures when only subtests fail.
+// It returns the paths to the transformed files.
+func (r *Runner) transformTestOutputFiles(filePaths []string) ([]string, error) {
+	transformedPaths := make([]string, len(filePaths))
+	for i, origPath := range filePaths {
+		inFile, err := os.Open(origPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open original file %s: %w", origPath, err)
+		}
+		// Create a temporary file for the transformed output.
+		outFile, err := os.CreateTemp("", "transformed-output-*.json")
+		if err != nil {
+			inFile.Close()
+			return nil, fmt.Errorf("failed to create transformed temp file: %w", err)
+		}
+		// Transform the JSON output.
+		// The transformer option is set to ignore parent failures when only subtests fail.
+		err = transformer.TransformJSON(inFile, outFile, transformer.NewOptions(true))
+		inFile.Close()
+		outFile.Close()
+		if err != nil {
+			return nil, fmt.Errorf("failed to transform output file %s: %v", origPath, err)
+		}
+		// Use the transformed file path.
+		transformedPaths[i] = outFile.Name()
+		os.Remove(origPath)
+	}
+	return transformedPaths, nil
+}
+
 // attributePanicToTest properly attributes panics to the test that caused them.
-func attributePanicToTest(panicPackage string, panicEntries []entry) (test string, timeout bool, err error) {
-	regexSanitizePanicPackage := filepath.Base(panicPackage)
-	panicAttributionRe := regexp.MustCompile(fmt.Sprintf(`%s\.(Test[^\.\(]+)`, regexSanitizePanicPackage))
-	timeoutAttributionRe := regexp.MustCompile(`(Test.*?)\W+\(.*\)`)
-	entriesOutputs := []string{}
-	for _, entry := range panicEntries {
-		entriesOutputs = append(entriesOutputs, entry.Output)
-		if matches := panicAttributionRe.FindStringSubmatch(entry.Output); len(matches) > 1 {
+func attributePanicToTest(outputs []string) (test string, timeout bool, err error) {
+	// Regex to extract a valid test function name.
+	testNameRe := regexp.MustCompile(`(?:.*\.)?(Test[A-Z]\w+)(?:\.[^(]+)?\s*\(`)
+	// Regex to detect timeout messages (accepting "timeout", "timedout", or "timed out", case-insensitive).
+	timeoutRe := regexp.MustCompile(`(?i)(timeout|timedout|timed\s*out)`)
+	for _, o := range outputs {
+		outputs = append(outputs, o)
+		if matches := testNameRe.FindStringSubmatch(o); len(matches) > 1 {
 			testName := strings.TrimSpace(matches[1])
+			if timeoutRe.MatchString(o) {
+				return testName, true, nil
+			}
 			return testName, false, nil
 		}
-		if matches := timeoutAttributionRe.FindStringSubmatch(entry.Output); len(matches) > 1 {
-			testName := strings.TrimSpace(matches[1])
-			return testName, true, nil
-		}
 	}
-	return "", false, fmt.Errorf("failed to attribute panic to test, using regex %s on these strings:\n%s", panicAttributionRe.String(), strings.Join(entriesOutputs, ""))
+	return "", false, fmt.Errorf("failed to attribute panic to test, using regex %s on these strings:\n%s",
+		testNameRe.String(), strings.Join(outputs, ""))
 }
 
 // attributeRaceToTest properly attributes races to the test that caused them.
@@ -639,41 +661,62 @@ func parseSubTest(testName string) (parentTestName, subTestName string) {
 	return parts[0], parts[1]
 }
 
-// prettyProjectPath returns the project path formatted for pretty printing in results.
-func prettyProjectPath(projectPath string) (string, error) {
-	// Walk up the directory structure to find go.mod
-	absPath, err := filepath.Abs(projectPath)
+func (r *Runner) RerunFailedTests(failedTests []reports.TestResult, rerunCount int) ([]reports.TestResult, []string, error) {
+	// Group the provided failed tests by package for more efficient reruns
+	failingTestsByPackage := make(map[string][]string)
+	for _, tr := range failedTests {
+		failingTestsByPackage[tr.TestPackage] = append(failingTestsByPackage[tr.TestPackage], tr.TestName)
+	}
+
+	if r.Verbose {
+		log.Info().Msgf("Rerunning failing tests grouped by package: %v", failingTestsByPackage)
+	}
+
+	var rerunJsonOutputPaths []string
+
+	// Rerun each failing test package up to RerunCount times
+	for i := range rerunCount {
+		for pkg, tests := range failingTestsByPackage {
+			// Build regex pattern to match all failing tests in this package
+			testPattern := fmt.Sprintf("^(%s)$", strings.Join(tests, "|"))
+
+			cmd := []string{
+				"go", "test",
+				pkg,
+				"-count=1",
+				"-run", testPattern,
+				"-json",
+			}
+
+			// Add other test flags
+			if r.GoTestRaceFlag {
+				cmd = append(cmd, "-race")
+			}
+			if r.GoTestTimeoutFlag != "" {
+				cmd = append(cmd, fmt.Sprintf("-timeout=%s", r.GoTestTimeoutFlag))
+			}
+			if len(r.Tags) > 0 {
+				cmd = append(cmd, fmt.Sprintf("-tags=%s", strings.Join(r.Tags, ",")))
+			}
+			if r.Verbose {
+				cmd = append(cmd, "-v")
+				log.Info().Msgf("Rerun iteration %d for package %s: %v", i+1, pkg, cmd)
+			}
+
+			// Run the package tests
+			jsonOutputPath, _, err := r.runCmd(cmd, i)
+			if err != nil {
+				return nil, nil, fmt.Errorf("error on rerunCmd for package %s: %w", pkg, err)
+			}
+			rerunJsonOutputPaths = append(rerunJsonOutputPaths, jsonOutputPath)
+		}
+	}
+
+	// Parse all rerun results at once with a consistent prefix
+	rerunResults, err := r.parseTestResults(rerunJsonOutputPaths, "rerun", rerunCount)
 	if err != nil {
-		return "", fmt.Errorf("failed to resolve absolute path: %w", err)
-	}
-	dir := absPath
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			break
-		}
-
-		parent := filepath.Dir(dir)
-		if parent == dir { // Reached the root without finding go.mod
-			return "", fmt.Errorf("go.mod not found in project path, started at %s, ended at %s", projectPath, dir)
-		}
-		dir = parent
+		return nil, rerunJsonOutputPaths, fmt.Errorf("failed to parse rerun results: %w", err)
 	}
 
-	// Read go.mod to extract the module path
-	goModPath := filepath.Join(dir, "go.mod")
-	goModData, err := os.ReadFile(goModPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read go.mod: %w", err)
-	}
-
-	for _, line := range strings.Split(string(goModData), "\n") {
-		if strings.HasPrefix(line, "module ") {
-			goProject := strings.TrimSpace(strings.TrimPrefix(line, "module "))
-			relativePath := strings.TrimPrefix(projectPath, dir)
-			relativePath = strings.TrimLeft(relativePath, string(os.PathSeparator))
-			return filepath.Join(goProject, relativePath), nil
-		}
-	}
-
-	return "", fmt.Errorf("module path not found in go.mod")
+	return rerunResults, rerunJsonOutputPaths, nil
 }
