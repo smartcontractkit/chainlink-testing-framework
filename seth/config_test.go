@@ -2,6 +2,7 @@ package seth_test
 
 import (
 	"crypto/ecdsa"
+	"os"
 	"testing"
 	"time"
 
@@ -15,7 +16,7 @@ import (
 )
 
 func TestConfig_DefaultClient(t *testing.T) {
-	client, err := seth.DefaultClient("ws://localhost:8546", []string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"})
+	client, err := seth.DefaultClient(os.Getenv("SETH_URL"), []string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"})
 	require.NoError(t, err, "failed to create client with default config")
 	require.Equal(t, 1, len(client.PrivateKeys), "expected 1 private key")
 
@@ -27,7 +28,7 @@ func TestConfig_DefaultClient(t *testing.T) {
 }
 
 func TestConfig_Default_TwoPks(t *testing.T) {
-	client, err := seth.DefaultClient("ws://localhost:8546", []string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"})
+	client, err := seth.DefaultClient(os.Getenv("SETH_URL"), []string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"})
 	require.NoError(t, err, "failed to create client with default config")
 	require.Equal(t, 2, len(client.PrivateKeys), "expected 2 private keys")
 
@@ -122,7 +123,7 @@ func TestConfig_ReadOnly_WithPk(t *testing.T) {
 		ReadOnly: true,
 		Network: &seth.Network{
 			Name: "some_other",
-			URLs: []string{"ws://localhost:8546"},
+			URLs: []string{os.Getenv("SETH_URL")},
 		},
 	}
 
@@ -150,7 +151,7 @@ func TestConfig_ReadOnly_GasBumping(t *testing.T) {
 		ReadOnly: true,
 		Network: &seth.Network{
 			Name:        "some_other",
-			URLs:        []string{"ws://localhost:8546"},
+			URLs:        []string{os.Getenv("SETH_URL")},
 			DialTimeout: &seth.Duration{D: 10 * time.Second},
 		},
 		GasBump: &seth.GasBumpConfig{
@@ -169,7 +170,7 @@ func TestConfig_ReadOnly_RpcHealth(t *testing.T) {
 		CheckRpcHealthOnStart: true,
 		Network: &seth.Network{
 			Name:        "some_other",
-			URLs:        []string{"ws://localhost:8546"},
+			URLs:        []string{os.Getenv("SETH_URL")},
 			DialTimeout: &seth.Duration{D: 10 * time.Second},
 		},
 	}
@@ -185,7 +186,7 @@ func TestConfig_ReadOnly_PendingNonce(t *testing.T) {
 		PendingNonceProtectionEnabled: true,
 		Network: &seth.Network{
 			Name:        "some_other",
-			URLs:        []string{"ws://localhost:8546"},
+			URLs:        []string{os.Getenv("SETH_URL")},
 			DialTimeout: &seth.Duration{D: 10 * time.Second},
 		},
 	}
@@ -202,7 +203,7 @@ func TestConfig_ReadOnly_EphemeralKeys(t *testing.T) {
 		EphemeralAddrs: &ten,
 		Network: &seth.Network{
 			Name:        "some_other",
-			URLs:        []string{"ws://localhost:8546"},
+			URLs:        []string{os.Getenv("SETH_URL")},
 			DialTimeout: &seth.Duration{D: 10 * time.Second},
 		},
 	}

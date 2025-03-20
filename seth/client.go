@@ -39,6 +39,9 @@ const (
 	// unused by Seth, but used by upstream
 	ErrNoKeyLoaded = "failed to load private key"
 
+	ErrSethConfigIsNil         = "seth config is nil"
+	ErrNetworkIsNil            = "no Network is set in the Seth config"
+	ErrNonceManagerConfigIsNil = "nonce manager config is nil"
 	ErrReadOnlyWithPrivateKeys = "read-only mode is enabled, but you tried to load private keys"
 	ErrReadOnlyEphemeralKeys   = "ephemeral mode is not supported in read-only mode"
 	ErrReadOnlyGasBumping      = "gas bumping is not supported in read-only mode"
@@ -86,9 +89,8 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 	initDefaultLogging()
 
 	if cfg == nil {
-		return nil, errors.New("seth config cannot be nil")
+		return nil, errors.New(ErrSethConfigIsNil)
 	}
-
 	if cfgErr := cfg.Validate(); cfgErr != nil {
 		return nil, cfgErr
 	}
@@ -179,6 +181,12 @@ func NewClientRaw(
 	pkeys []*ecdsa.PrivateKey,
 	opts ...ClientOpt,
 ) (*Client, error) {
+	if cfg == nil {
+		return nil, errors.New(ErrSethConfigIsNil)
+	}
+	if cfgErr := cfg.Validate(); cfgErr != nil {
+		return nil, cfgErr
+	}
 	if cfg.ReadOnly && (len(addrs) > 0 || len(pkeys) > 0) {
 		return nil, errors.New(ErrReadOnlyWithPrivateKeys)
 	}
@@ -1015,6 +1023,14 @@ func (m *Client) DeployContract(auth *bind.TransactOpts, name string, abi abi.AB
 		}
 	}
 
+	if m.Cfg.Hooks != nil && m.Cfg.Hooks.ContractDeployment.Pre != nil {
+		if err := m.Cfg.Hooks.ContractDeployment.Pre(auth, name, abi, bytecode, params...); err != nil {
+			return DeploymentData{}, errors.Wrap(err, "pre-hook failed")
+		}
+	} else {
+		L.Trace().Msg("No pre-contract deployment hook defined. Skipping")
+	}
+
 	address, tx, contract, err := bind.DeployContract(auth, abi, bytecode, m.Client, params...)
 	if err != nil {
 		return DeploymentData{}, wrapErrInMessageWithASuggestion(err)
@@ -1031,7 +1047,14 @@ func (m *Client) DeployContract(auth *bind.TransactOpts, name string, abi abi.AB
 		m.ContractStore.AddABI(name, abi)
 	}
 
-	// retry is needed both for gas bumping and for waiting for deployment to finish (sometimes there's no code at address the first time we check)
+	if m.Cfg.Hooks != nil && m.Cfg.Hooks.ContractDeployment.Post != nil {
+		if err := m.Cfg.Hooks.ContractDeployment.Post(m, tx); err != nil {
+			return DeploymentData{}, errors.Wrap(err, "post-hook failed")
+		}
+	} else {
+		L.Trace().Msg("No post-contract deployment hook defined. Skipping")
+	}
+
 	if err := retry.Do(
 		func() error {
 			ctx, cancel := context.WithTimeout(context.Background(), m.Cfg.Network.TxnTimeout.Duration())
