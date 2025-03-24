@@ -95,11 +95,10 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 			ft.RowIndex = i + 1
 
 			// Check local DB for known Jira ticket
-			if ft.Valid {
-				if ticketID, found := db.Get(ft.TestPackage, ft.TestName); found {
-					ft.ExistingJiraKey = ticketID
-					ft.ExistingTicketSource = "localdb"
-				}
+			// Always check local DB for known Jira ticket (even for invalid tests)
+			if ticketID, found := db.Get(ft.TestPackage, ft.TestName); found {
+				ft.ExistingJiraKey = ticketID
+				ft.ExistingTicketSource = "localdb"
 			}
 			tickets = append(tickets, ft)
 		}
@@ -119,7 +118,7 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 		if client != nil {
 			for i := range tickets {
 				t := &tickets[i]
-				if t.Valid && t.ExistingJiraKey == "" {
+				if t.ExistingJiraKey == "" {
 					key, err := findExistingTicket(client, jiraSearchLabel, *t)
 					if err != nil {
 						log.Warn().Msgf("Search failed for %q: %v", t.Summary, err)
@@ -528,15 +527,13 @@ func (m model) View() string {
 	helpLine := ""
 	// Cases:
 	// A) If invalid:
-	//    - If there's an existing ticket => [n] to next, [e] to update existing ticket ID, [q] to quit.
-	//    - Else => "Press any key to skip, or [q] to quit."
 	// B) If valid & there's an existing ticket => [n] to next, [e] to update existing ticket ID, [q] to quit.
 	// C) If valid & no existing => [y] to confirm, [n] to skip, [e] to enter existing ticket, [q] to quit (with DRY RUN text if needed).
 	if !t.Valid {
 		if t.ExistingJiraKey != "" {
 			helpLine = faintStyle.Render("\n[n] to next, [e] to update existing ticket ID, [q] to quit.")
 		} else {
-			helpLine = faintStyle.Render("\nPress any key to skip, or [q] to quit.")
+			helpLine = faintStyle.Render("\n[n] to next, [e] to add existing ticket ID, [q] to quit.")
 		}
 	} else {
 		if t.ExistingJiraKey != "" {
@@ -555,7 +552,7 @@ func (m model) View() string {
 	}
 
 	return fmt.Sprintf(
-		"%s\n\n%s\n%s%s%s%s%s\n",
+		"%s\n\n%s\n%s%s%s%s\n%s\n",
 		header,
 		sum,
 		descHeader,
