@@ -7,8 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/andygrunwald/go-jira"
+	"github.com/briandowns/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/rs/zerolog/log"
@@ -26,8 +28,6 @@ var (
 	flakyTestJSONDBPath string
 )
 
-// CreateTicketsCmd is the Cobra command that runs a Bubble Tea TUI for CSV data,
-// creates (or references) tickets in Jira, and writes a new CSV omitting confirmed rows.
 var CreateTicketsCmd = &cobra.Command{
 	Use:   "create-tickets",
 	Short: "Interactive TUI to confirm and create Jira tickets from CSV",
@@ -96,7 +96,6 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 			ft.RowIndex = i + 1
 
 			// Check local DB for known Jira ticket
-			// Always check local DB for known Jira ticket (even for invalid tests)
 			if ticketID, found := db.Get(ft.TestPackage, ft.TestName); found {
 				ft.ExistingJiraKey = ticketID
 				ft.ExistingTicketSource = "localdb"
@@ -117,6 +116,10 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 
 		// 6) If we have a Jira client, do label-based search for existing tickets
 		if client != nil {
+			s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
+			s.Suffix = " Searching for existing jira tickets..."
+			s.Start()
+
 			for i := range tickets {
 				t := &tickets[i]
 				if t.ExistingJiraKey == "" {
@@ -130,6 +133,7 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 					}
 				}
 			}
+			s.Stop()
 		}
 
 		// 7) Create Bubble Tea model
@@ -153,7 +157,6 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 		if err := fm.LocalDB.Save(); err != nil {
 			log.Error().Err(err).Msg("Failed to save local DB")
 		} else {
-			// Let the user know we updated it
 			fmt.Printf("Local DB has been updated at: %s\n", fm.LocalDB.FilePath())
 		}
 

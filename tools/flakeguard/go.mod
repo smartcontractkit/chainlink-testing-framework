@@ -3,7 +3,7 @@ module github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard
 go 1.24.0
 
 require (
-	github.com/briandowns/spinner v1.23.1
+	github.com/briandowns/spinner v1.23.2
 	github.com/charmbracelet/bubbletea v1.3.4
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/go-resty/resty/v2 v2.16.2
