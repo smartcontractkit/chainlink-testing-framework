@@ -41,7 +41,7 @@ func CreateTicketInJira(
 			Summary:     summary,
 			Description: description,
 			Type:        jira.IssueType{Name: issueType},
-			Labels:      []string{"flaky_test"},
+			// Labels:      []string{"flaky_test"}, TODO: enable
 		},
 	}
 	newIssue, resp, err := client.Issue.CreateWithContext(context.Background(), issue)

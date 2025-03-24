@@ -331,11 +331,12 @@ func (m model) Init() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// If we have a sub-mode for manual ticket entry
 		if m.mode == "promptExisting" {
 			return updatePromptExisting(m, msg)
 		}
-		// Otherwise normal mode
+		if m.mode == "ticketCreated" {
+			return updateTicketCreated(m, msg)
+		}
 		return updateNormalMode(m, msg)
 	default:
 		return m, nil
@@ -426,12 +427,30 @@ func updateConfirm(m model) (tea.Model, tea.Cmd) {
 		log.Info().Msgf("[Dry Run] Would create Jira issue: %q", t.Summary)
 		t.Confirmed = true
 	}
-
 	m.tickets[i] = t
 	m.confirmed++
-	m.index++
-	if m.index >= len(m.tickets) {
-		m.quitting = true
+	// Instead of incrementing the index immediately, set mode to "ticketCreated"
+	m.mode = "ticketCreated"
+	return m, nil
+}
+
+func updateTicketCreated(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "n":
+		// Advance to the next ticket and reset mode
+		m.mode = "normal"
+		m.index++
+		if m.index >= len(m.tickets) {
+			m.quitting = true
+		}
+		return m, nil
+	case "e":
+		// Switch to the promptExisting mode for manual ticket id update
+		m.mode = "promptExisting"
+		m.inputValue = ""
+		return m, nil
+	case "q", "esc", "ctrl+c":
+		return updateQuit(m)
 	}
 	return m, nil
 }
