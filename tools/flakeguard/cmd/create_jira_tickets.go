@@ -463,7 +463,6 @@ func updateConfirm(m model) (tea.Model, tea.Cmd) {
 	t := m.tickets[i]
 
 	// Attempt Jira creation if not dry-run and we have a client.
-	// Pass the assignee (if any) to the CreateTicketInJira function.
 	if !m.DryRun && m.JiraClient != nil {
 		issueKey, err := jirautils.CreateTicketInJira(m.JiraClient, t.Summary, t.Description, m.JiraProject, m.JiraIssueType, t.Assignee)
 		if err != nil {
@@ -476,8 +475,9 @@ func updateConfirm(m model) (tea.Model, tea.Cmd) {
 			m.LocalDB.Set(t.TestPackage, t.TestName, issueKey)
 		}
 	} else {
-		log.Info().Msgf("[Dry Run] Would create Jira issue: %q", t.Summary)
 		t.Confirmed = true
+		// Set a dummy ticket key for testing purposes in dry-run mode.
+		t.ExistingJiraKey = "DRYRUN-1234"
 	}
 	m.tickets[i] = t
 	m.confirmed++
@@ -531,7 +531,16 @@ func (m model) View() string {
 			ticketURL = fmt.Sprintf("https://%s/browse/%s", domain, m.tickets[m.index].ExistingJiraKey)
 		}
 		ticketStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Align(lipgloss.Left)
-		return ticketStyle.Render("Ticket created:") + ticketURL + "\n\nPress any key to continue..."
+
+		return fmt.Sprintf(
+			"\n%s\n\n%s\n%s\n\n%s\n%s\n\n%s",
+			ticketStyle.Render("Ticket created!"),
+			lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("10")).Render("Summary:"),
+			m.tickets[m.index].Summary,
+			lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("10")).Render("URL:"),
+			ticketURL,
+			"Press any key to continue...",
+		)
 	}
 
 	if m.mode == "promptExisting" {
