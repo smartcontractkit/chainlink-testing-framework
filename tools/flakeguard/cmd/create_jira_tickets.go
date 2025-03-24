@@ -18,11 +18,12 @@ import (
 )
 
 var (
-	csvPath         string
-	dryRun          bool
-	jiraProject     string
-	jiraIssueType   string
-	jiraSearchLabel string // defaults to "flaky_test" if empty
+	csvPath             string
+	dryRun              bool
+	jiraProject         string
+	jiraIssueType       string
+	jiraSearchLabel     string // defaults to "flaky_test" if empty
+	flakyTestJSONDBPath string
 )
 
 // CreateTicketsCmd is the Cobra command that runs a Bubble Tea TUI for CSV data,
@@ -60,7 +61,7 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 		}
 
 		// 2) Load local DB (test -> known Jira ticket)
-		db, err := localdb.LoadDB()
+		db, err := localdb.LoadDBWithPath(flakyTestJSONDBPath)
 		if err != nil {
 			log.Warn().Err(err).Msg("Failed to load local DB; continuing with empty DB.")
 			db = localdb.NewDB()
@@ -149,11 +150,11 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 		fm := finalModel.(model)
 
 		// 9) Save local DB with any new knowledge
-		if err := localdb.SaveDB(fm.LocalDB); err != nil {
+		if err := fm.LocalDB.Save(); err != nil {
 			log.Error().Err(err).Msg("Failed to save local DB")
 		} else {
 			// Let the user know we updated it
-			fmt.Printf("Local DB has been updated at: %s\n", localdb.FilePath())
+			fmt.Printf("Local DB has been updated at: %s\n", fm.LocalDB.FilePath())
 		}
 
 		// 10) Write remaining CSV
@@ -174,6 +175,7 @@ func init() {
 	CreateTicketsCmd.Flags().StringVar(&jiraProject, "jira-project", "", "Jira project key (or env JIRA_PROJECT_KEY)")
 	CreateTicketsCmd.Flags().StringVar(&jiraIssueType, "jira-issue-type", "Task", "Type of Jira issue (Task, Bug, etc.)")
 	CreateTicketsCmd.Flags().StringVar(&jiraSearchLabel, "jira-search-label", "", "Jira label to filter existing tickets (default: flaky_test)")
+	CreateTicketsCmd.Flags().StringVar(&flakyTestJSONDBPath, "flaky-test-json-db-path", "", "Path to the flaky test JSON database (default: ~/.flaky_tes_db.json)")
 }
 
 // -------------------------------------------------------------------------------------
@@ -346,34 +348,29 @@ func updateNormalMode(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	t := m.tickets[m.index]
 
+	// Always allow 'q' (quit) and 'e' (enter existing ticket)
 	switch msg.String() {
 	case "q", "esc", "ctrl+c":
 		return updateQuit(m)
-	}
-
-	// If invalid, we cannot create a new ticket, so no 'y' prompt:
-	if !t.Valid {
-		// Let user skip or do other actions
-		switch msg.String() {
-		// user might press anything => skip
-		default:
-			return updateSkip(m)
-		}
-	}
-
-	// If valid, handle normal flow
-	switch msg.String() {
-	case "y":
-		return updateConfirm(m)
-	case "n":
-		return updateSkip(m)
 	case "e":
-		// always prompt to enter or overwrite
 		m.mode = "promptExisting"
 		m.inputValue = ""
 		return m, nil
 	}
-	return m, nil
+
+	// If ticket is valid, allow create ('c') and skip ('n')
+	if t.Valid {
+		switch msg.String() {
+		case "c":
+			return updateConfirm(m)
+		case "n":
+			return updateSkip(m)
+		}
+		return m, nil
+	}
+
+	// For invalid tickets, default to skipping if any other key is pressed.
+	return updateSkip(m)
 }
 
 func updatePromptExisting(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -491,8 +488,9 @@ func (m model) View() string {
 	}
 
 	// 2) Summary & Description
-	sum := summaryStyle.Render("Summary:\n") + t.Summary
-	descHeader := descHeaderStyle.Render("\nDescription:\n")
+	sum := summaryStyle.Render("Summary:")
+	sumBody := descBodyStyle.Render(t.Summary)
+	descHeader := descHeaderStyle.Render("\nDescription:")
 	descBody := descBodyStyle.Render(t.Description)
 
 	// 3) Existing ticket line
@@ -527,17 +525,17 @@ func (m model) View() string {
 	helpLine := ""
 	// Cases:
 	// A) If invalid:
-	// B) If valid & there's an existing ticket => [n] to next, [e] to update existing ticket ID, [q] to quit.
-	// C) If valid & no existing => [y] to confirm, [n] to skip, [e] to enter existing ticket, [q] to quit (with DRY RUN text if needed).
+	// B) If valid & there's an existing ticket => [n] to next, [e] to update ticket id, [q] to quit.
+	// C) If valid & no existing => [c] to create ticket, [n] to skip, [e] to enter existing ticket, [q] to quit (with DRY RUN text if needed).
 	if !t.Valid {
 		if t.ExistingJiraKey != "" {
-			helpLine = faintStyle.Render("\n[n] to next, [e] to update existing ticket ID, [q] to quit.")
+			helpLine = faintStyle.Render("\n[n] to next, [e] to update ticket id, [q] to quit.")
 		} else {
 			helpLine = faintStyle.Render("\n[n] to next, [e] to add existing ticket ID, [q] to quit.")
 		}
 	} else {
 		if t.ExistingJiraKey != "" {
-			helpLine = faintStyle.Render("\n[n] to next, [e] to update existing ticket ID, [q] to quit.")
+			helpLine = faintStyle.Render("\n[n] to next, [e] to update ticket id, [q] to quit.")
 		} else {
 			// if no existing ticket, the normal prompt
 			dryRunLabel := ""
@@ -545,21 +543,22 @@ func (m model) View() string {
 				dryRunLabel = " (DRY RUN)"
 			}
 			helpLine = faintStyle.Render(
-				fmt.Sprintf("\nPress [y] to confirm%s, [n] to skip, [e] to enter existing ticket, [q] to quit.",
+				fmt.Sprintf("\nPress [c] to create ticket%s, [n] to skip, [e] to enter existing ticket, [q] to quit.",
 					dryRunLabel),
 			)
 		}
 	}
 
 	return fmt.Sprintf(
-		"%s\n\n%s\n%s%s%s%s\n%s\n",
+		"%s\n%s\n%s\n%s%s%s%s\n%s\n",
 		header,
 		sum,
+		sumBody,
 		descHeader,
 		descBody,
 		existingLine, // e.g. "Existing ticket found in jira: https://..."
 		invalidLine,  // e.g. "Cannot create ticket: Missing required..."
-		helpLine,     // e.g. "[n] to next, [e]... or "[y] to confirm..."
+		helpLine,     // e.g. "[n] to next, [e]... or "[c] to create ticket..."
 	)
 }
 
