@@ -350,13 +350,30 @@ func updateNormalMode(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	t := m.tickets[m.index]
 
-	// Always allow 'q' (quit) and 'e' (enter existing ticket)
+	// Always allow 'q' (quit), 'e' (enter existing ticket), and 'd' (delete existing ticket)
 	switch msg.String() {
 	case "q", "esc", "ctrl+c":
 		return updateQuit(m)
 	case "e":
 		m.mode = "promptExisting"
 		m.inputValue = ""
+		return m, nil
+	case "d":
+		// Only allow removal if an existing ticket is present
+		if t.ExistingJiraKey != "" && m.JiraClient != nil {
+			err := jirautils.DeleteTicketInJira(m.JiraClient, t.ExistingJiraKey)
+			if err != nil {
+				// Log error if deletion fails
+				log.Error().Err(err).Msgf("Failed to delete ticket %s", t.ExistingJiraKey)
+			} else {
+				// Clear ticket info on success
+				t.ExistingJiraKey = ""
+				t.ExistingTicketSource = ""
+				m.tickets[m.index] = t
+				// Update local DB (clearing stored ticket)
+				m.LocalDB.Set(t.TestPackage, t.TestName, "")
+			}
+		}
 		return m, nil
 	}
 
@@ -492,19 +509,16 @@ func (m model) View() string {
 	faintStyle := lipgloss.NewStyle().Faint(true)
 	errorStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("9"))
 	existingStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
+	redStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
 
 	t := m.tickets[m.index]
 
 	// 1) Header line
-	header := ""
+	var header string
 	if t.Valid {
-		header = headerStyle.Render(
-			fmt.Sprintf("Proposed Ticket #%d of %d", m.index+1, len(m.tickets)),
-		)
+		header = headerStyle.Render(fmt.Sprintf("Proposed Ticket #%d of %d", m.index+1, len(m.tickets)))
 	} else {
-		header = headerStyle.Render(
-			fmt.Sprintf("Ticket #%d of %d (Invalid)", m.index+1, len(m.tickets)),
-		)
+		header = headerStyle.Render(fmt.Sprintf("Ticket #%d of %d (Invalid)", m.index+1, len(m.tickets)))
 	}
 
 	// 2) Summary & Description
@@ -526,27 +540,19 @@ func (m model) View() string {
 		domain := os.Getenv("JIRA_DOMAIN")
 		link := t.ExistingJiraKey
 		if domain != "" {
-			// Turn "DX-203" into a link
 			link = fmt.Sprintf("https://%s/browse/%s", domain, t.ExistingJiraKey)
 		}
 		existingLine = existingStyle.Render(fmt.Sprintf("\n%s: %s", prefix, link))
 	}
 
-	// 4) If invalid + missing required fields => show that after existing line
-	//    or if there's no existing ticket, show it anyway
+	// 4) If invalid: show reason
 	invalidLine := ""
 	if !t.Valid {
-		invalidLine = errorStyle.Render(
-			fmt.Sprintf("\nCannot create ticket: %s", t.InvalidReason),
-		)
+		invalidLine = errorStyle.Render(fmt.Sprintf("\nCannot create ticket: %s", t.InvalidReason))
 	}
 
 	// 5) Help line
-	helpLine := ""
-	// Cases:
-	// A) If invalid:
-	// B) If valid & there's an existing ticket => [n] to next, [e] to update ticket id, [q] to quit.
-	// C) If valid & no existing => [c] to create ticket, [n] to skip, [e] to enter existing ticket, [q] to quit (with DRY RUN text if needed).
+	var helpLine string
 	if !t.Valid {
 		if t.ExistingJiraKey != "" {
 			helpLine = faintStyle.Render("\n[n] to next, [e] to update ticket id, [q] to quit.")
@@ -555,30 +561,27 @@ func (m model) View() string {
 		}
 	} else {
 		if t.ExistingJiraKey != "" {
-			helpLine = faintStyle.Render("\n[n] to next, [e] to update ticket id, [q] to quit.")
+			// Show the "d" option in red when a ticket is found.
+			helpLine = fmt.Sprintf("\n[n] to next, [e] to update ticket id, %s to remove ticket, [q] to quit.",
+				redStyle.Render("[d]"))
 		} else {
-			// if no existing ticket, the normal prompt
 			dryRunLabel := ""
 			if m.DryRun || m.JiraClient == nil {
 				dryRunLabel = " (DRY RUN)"
 			}
-			helpLine = faintStyle.Render(
-				fmt.Sprintf("\nPress [c] to create ticket%s, [n] to skip, [e] to enter existing ticket, [q] to quit.",
-					dryRunLabel),
-			)
+			helpLine = faintStyle.Render(fmt.Sprintf("\nPress [c] to create ticket%s, [n] to skip, [e] to enter existing ticket, [q] to quit.", dryRunLabel))
 		}
 	}
 
-	return fmt.Sprintf(
-		"%s\n%s\n%s\n%s\n%s%s%s\n%s\n",
+	return fmt.Sprintf("%s\n%s\n%s\n%s\n%s%s%s\n%s\n",
 		header,
 		sum,
 		sumBody,
 		descHeader,
 		descBody,
-		existingLine, // e.g. "Existing ticket found in jira: https://..."
-		invalidLine,  // e.g. "Cannot create ticket: Missing required..."
-		helpLine,     // e.g. "[n] to next, [e]... or "[c] to create ticket..."
+		existingLine,
+		invalidLine,
+		helpLine,
 	)
 }
 

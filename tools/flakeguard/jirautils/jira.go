@@ -50,3 +50,12 @@ func CreateTicketInJira(
 	}
 	return newIssue.Key, nil
 }
+
+// DeleteTicketInJira deletes a Jira ticket with the given ticket key.
+func DeleteTicketInJira(client *jira.Client, ticketKey string) error {
+	resp, err := client.Issue.DeleteWithContext(context.Background(), ticketKey)
+	if err != nil {
+		return fmt.Errorf("error deleting Jira ticket %s: %w (resp: %v)", ticketKey, err, resp)
+	}
+	return nil
+}
