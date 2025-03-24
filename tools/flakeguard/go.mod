@@ -10,7 +10,7 @@ require (
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/google/go-github/v67 v67.0.0
 	github.com/google/uuid v1.6.0
-	github.com/rs/zerolog v1.33.0
+	github.com/rs/zerolog v1.34.0
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/oauth2 v0.28.0
