@@ -47,11 +47,35 @@ go run main.go create-tickets --jira-project=DX --flaky-test-json-db-path=.flaky
 **Options:**
 
 - `--jira-project`: The JIRA project key where tickets should be created (e.g., `DX`).
-- `--flaky-test-json-db-path`: The path to a JSON database (`.json`) that stores information about existing flaky test tickets.
+- `--test-db-path`: The path to a JSON database (`.json`) that stores information about existing flaky test tickets.
 - `--assignee-mapping`: The path to a JSON file (`.json`) that maps test packages to JIRA assignees.
 - `--csv-path`: The path to the CSV file containing the flaky test results.
 - `--skip-existing`: (Optional) Skips creating tickets for tests that already have corresponding JIRA tickets in the database or JIRA.
 - `--dry-run`: (Optional) Performs a dry run without actually creating JIRA tickets.
+
+**Environment Variables:**
+
+- `JIRA_DOMAIN`: The domain of your JIRA instance.
+- `JIRA_EMAIL`: The email address used to authenticate with JIRA.
+- `JIRA_API_KEY`: The API key used to authenticate with JIRA.
+
+### Managing Tickets
+The new tickets command lets you interactively manage your flaky test tickets stored in your local JSON database. With this command you can:
+
+- Mark tests as skipped: Post a comment to the associated JIRA ticket and update the local DB.
+- Unskip tests: Remove the skipped status and post an unskip comment.
+- Navigate tickets: Use a TUI to browse through tickets.
+
+```
+go run main.go tickets --test-db-path=.flaky_test_db.json --jira-comment
+```
+
+**Options:**
+
+- `--test-db-path`: The path to a JSON database (.json) that stores information about your flaky test tickets.
+- `--jira-comment`: If set to true, posts a comment to the corresponding JIRA ticket when marking a test as skipped or unskipped.
+`--dry-run`: (Optional) Runs the command in dry-run mode without posting comments to JIRA.
+- `--hide-skipped`: (Optional) If set, tickets already marked as skipped are hidden from the interface.
 
 **Environment Variables:**
 

@@ -20,6 +20,7 @@ var (
 	ticketsJSONPath string
 	jiraComment     bool // if true, post a comment when marking as skipped
 	ticketsDryRun   bool // if true, do not send anything to Jira
+	hideSkipped     bool // if true, do not show skipped tests
 )
 
 // TicketsCmd is the new CLI command for managing tickets.
@@ -62,6 +63,17 @@ You can later extend this command to support additional actions.`,
 			}
 		}
 
+		// If the hideSkipped flag is set, filter out tickets with a non-zero SkippedAt.
+		if hideSkipped {
+			filtered := make([]model.FlakyTicket, 0, len(tickets))
+			for _, t := range tickets {
+				if t.SkippedAt.IsZero() {
+					filtered = append(filtered, t)
+				}
+			}
+			tickets = filtered
+		}
+
 		// 3) Setup a Jira client (if available).
 		jiraClient, clientErr := jirautils.GetJiraClient()
 		if clientErr != nil {
@@ -96,6 +108,7 @@ func init() {
 	TicketsCmd.Flags().StringVar(&ticketsJSONPath, "test-db-path", "flaky_test_db.json", "Path to the JSON file containing tickets")
 	TicketsCmd.Flags().BoolVar(&jiraComment, "jira-comment", true, "If true, post a comment to the Jira ticket when marking as skipped")
 	TicketsCmd.Flags().BoolVar(&ticketsDryRun, "dry-run", false, "If true, do not send anything to Jira")
+	TicketsCmd.Flags().BoolVar(&hideSkipped, "hide-skipped", false, "If true, do not show skipped tests")
 }
 
 // -------------------------
