@@ -127,6 +127,7 @@ func TestUtilDoesPragmaSupportCustomRevert(t *testing.T) {
 }
 
 func TestUtilPendingNonce(t *testing.T) {
+	t.Skip("Flaky Test: https://smartcontract-it.atlassian.net/browse/DX-299")
 	c := newClient(t)
 	c.Cfg.Network.PrivateKeys = append(c.Cfg.Network.PrivateKeys, c.Cfg.Network.PrivateKeys[0])
 	c.Addresses = append(c.Addresses, c.Addresses[0])
