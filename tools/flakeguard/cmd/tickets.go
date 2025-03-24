@@ -30,6 +30,7 @@ var TicketsCmd = &cobra.Command{
 	
 Actions:
   [s] mark as skipped (and optionally post a comment to the Jira ticket)
+  [u] unskip a ticket
   [p] previous ticket
   [n] next ticket
   [q] quit
@@ -50,14 +51,13 @@ You can later extend this command to support additional actions.`,
 			return nil
 		}
 
-		// Convert entries to model.FlakyTicket
+		// Convert entries to model.FlakyTicket (using SkippedAt only).
 		tickets := make([]model.FlakyTicket, len(entries))
 		for i, entry := range entries {
 			tickets[i] = model.FlakyTicket{
 				TestPackage:     entry.TestPackage,
 				TestName:        entry.TestName,
 				ExistingJiraKey: entry.JiraTicket,
-				IsSkipped:       entry.IsSkipped,
 				SkippedAt:       entry.SkippedAt,
 			}
 		}
@@ -74,7 +74,7 @@ You can later extend this command to support additional actions.`,
 		m.JiraClient = jiraClient
 		m.LocalDB = db
 		m.JiraComment = jiraComment
-		m.DryRun = dryRun
+		m.DryRun = ticketsDryRun
 
 		// 5) Run the TUI.
 		finalModel, err := tea.NewProgram(m).Run()
@@ -111,6 +111,7 @@ type ticketModel struct {
 	JiraComment bool
 	DryRun      bool
 	quitting    bool
+	infoMessage string // new field for showing info to the user
 }
 
 // initialTicketsModel creates an initial model.
@@ -143,45 +144,67 @@ func (m ticketModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.index > 0 {
 				m.index--
 			}
+			// Clear info message on navigation.
+			m.infoMessage = ""
 			return m, nil
 		case "n":
 			if m.index < len(m.tickets)-1 {
 				m.index++
 			}
+			// Clear info message on navigation.
+			m.infoMessage = ""
 			return m, nil
 		}
 
 		// Action: mark as skipped.
 		if msg.String() == "s" {
 			t := m.tickets[m.index]
-			// Only mark if not already skipped.
-			if !t.IsSkipped {
-				t.IsSkipped = true
+			// Only mark as skipped if not already skipped.
+			if t.SkippedAt.IsZero() {
+				t.SkippedAt = time.Now()
 				// Optionally, post a comment to the Jira ticket if not in dry-run.
 				if !m.DryRun && m.JiraClient != nil && t.ExistingJiraKey != "" && m.JiraComment {
 					comment := fmt.Sprintf("Test marked as skipped on %s.", time.Now().Format(time.RFC822))
 					err := jirautils.PostCommentToTicket(m.JiraClient, t.ExistingJiraKey, comment)
 					if err != nil {
 						log.Error().Err(err).Msgf("Failed to post comment to Jira ticket %s", t.ExistingJiraKey)
+						m.infoMessage = fmt.Sprintf("Failed to post comment to Jira ticket %s", t.ExistingJiraKey)
+					} else {
+						// Use the Jira link to display the comment location.
+						m.infoMessage = fmt.Sprintf("Skip comment posted to Jira ticket: %s", jirautils.GetJiraLink(t.ExistingJiraKey))
 					}
 				}
 				// Update local DB state with the current time.
 				m.tickets[m.index] = t
-				m.LocalDB.UpdateTicketStatus(t.TestPackage, t.TestName, t.IsSkipped, time.Now())
+				m.LocalDB.UpdateTicketStatus(t.TestPackage, t.TestName, t.SkippedAt)
+			}
+			return m, nil
+		}
+
+		// Action: unskip a ticket.
+		if msg.String() == "u" {
+			t := m.tickets[m.index]
+			// Only unskip if the ticket is currently marked as skipped.
+			if !t.SkippedAt.IsZero() {
+				t.SkippedAt = time.Time{} // reset to zero value
+				// Optionally, post a comment to the Jira ticket if not in dry-run.
+				if !m.DryRun && m.JiraClient != nil && t.ExistingJiraKey != "" && m.JiraComment {
+					comment := fmt.Sprintf("Test unskipped on %s.", time.Now().Format(time.RFC822))
+					err := jirautils.PostCommentToTicket(m.JiraClient, t.ExistingJiraKey, comment)
+					if err != nil {
+						log.Error().Err(err).Msgf("Failed to post unskip comment to Jira ticket %s", t.ExistingJiraKey)
+						m.infoMessage = fmt.Sprintf("Failed to post unskip comment to Jira ticket %s", t.ExistingJiraKey)
+					} else {
+						m.infoMessage = fmt.Sprintf("Unskip comment posted to Jira ticket: %s", jirautils.GetJiraLink(t.ExistingJiraKey))
+					}
+				}
+				m.tickets[m.index] = t
+				m.LocalDB.UpdateTicketStatus(t.TestPackage, t.TestName, t.SkippedAt)
 			}
 			return m, nil
 		}
 	}
 	return m, nil
-}
-
-// getJiraLink returns the full Jira URL for a given ticket key if JIRA_DOMAIN is set.
-func getJiraLink(ticketKey string) string {
-	domain := os.Getenv("JIRA_DOMAIN")
-	if domain != "" {
-		return fmt.Sprintf("https://%s/browse/%s", domain, ticketKey)
-	}
-	return ticketKey
 }
 
 // View renders the current ticket and available actions.
@@ -194,23 +217,37 @@ func (m ticketModel) View() string {
 	// Define styles.
 	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205"))
 	infoStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
-	faintStyle := lipgloss.NewStyle().Faint(true)
+	labelStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("69"))
+	dryRunStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("208"))
+	actionStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205"))
+
+	var view string
+
+	// Show a dry-run indicator at the top.
+	if m.DryRun {
+		view += dryRunStyle.Render("DRY RUN MODE") + "\n\n"
+	}
 
 	// Build header and ticket details.
-	view := headerStyle.Render(fmt.Sprintf("Ticket [%d/%d]", m.index+1, len(m.tickets))) + "\n"
-	view += fmt.Sprintf("Test: %s\n", t.TestName)
-	view += fmt.Sprintf("Package: %s\n", t.TestPackage)
+	view += headerStyle.Render(fmt.Sprintf("Ticket [%d/%d]\n", m.index+1, len(m.tickets))) + "\n"
+	view += fmt.Sprintf("%s %s\n", labelStyle.Render("Test:"), t.TestName)
+	view += fmt.Sprintf("%s %s\n", labelStyle.Render("Package:"), t.TestPackage)
 	if t.ExistingJiraKey != "" {
-		view += fmt.Sprintf("Jira: %s\n", getJiraLink(t.ExistingJiraKey))
+		view += fmt.Sprintf("%s %s\n", labelStyle.Render("Jira:"), jirautils.GetJiraLink(t.ExistingJiraKey))
 	}
 
 	// Show status with color.
-	if t.IsSkipped {
-		view += fmt.Sprintf("Status: %s\n", fmt.Sprintf("Skipped At: %s\n", faintStyle.Render(t.SkippedAt.UTC().Format(time.RFC822))))
+	if !t.SkippedAt.IsZero() {
+		view += fmt.Sprintf("%s %s\n", labelStyle.Render("Status:"), fmt.Sprintf("skipped at: %s", t.SkippedAt.UTC().Format(time.RFC822)))
 	} else {
-		view += fmt.Sprintf("Status: %s\n", infoStyle.Render("Not Skipped"))
+		view += fmt.Sprintf("%s %s\n", labelStyle.Render("Status:"), infoStyle.Render("not skipped"))
 	}
 
-	view += "\nActions: [s] mark as skipped, [p] previous, [n] next, [q] quit"
+	// Display any info message.
+	if m.infoMessage != "" {
+		view += "\n" + infoStyle.Render(m.infoMessage) + "\n"
+	}
+
+	view += "\n" + actionStyle.Render("Actions:") + " [s] mark as skipped, [u] unskip, [p] previous, [n] next, [q] quit"
 	return view
 }

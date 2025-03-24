@@ -120,7 +120,8 @@ func (db *DB) Set(testPackage, testName, jiraTicket string) {
 
 // UpdateTicketStatus updates or inserts the ticket status for (testPackage, testName).
 // It accepts a boolean for whether the ticket is skipped and a timestamp in UTC.
-func (db *DB) UpdateTicketStatus(testPackage, testName string, isSkipped bool, skippedAt time.Time) {
+// UpdateTicketStatus updates the ticket's skipped status using the SkippedAt timestamp.
+func (db *DB) UpdateTicketStatus(testPackage, testName string, skippedAt time.Time) {
 	key := makeKey(testPackage, testName)
 	entry, exists := db.data[key]
 	if !exists {
@@ -129,13 +130,7 @@ func (db *DB) UpdateTicketStatus(testPackage, testName string, isSkipped bool, s
 			TestName:    testName,
 		}
 	}
-	entry.IsSkipped = isSkipped
-	if isSkipped {
-		entry.SkippedAt = skippedAt.UTC() // Ensure the timestamp is saved as UTC.
-	} else {
-		// If not skipped, clear the timestamp.
-		entry.SkippedAt = time.Time{}
-	}
+	entry.SkippedAt = skippedAt.UTC()
 	db.data[key] = entry
 }
 

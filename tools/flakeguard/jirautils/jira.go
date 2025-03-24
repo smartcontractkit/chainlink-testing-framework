@@ -73,3 +73,12 @@ func PostCommentToTicket(client *jira.Client, ticketKey, comment string) error {
 	}
 	return nil
 }
+
+// getJiraLink returns the full Jira URL for a given ticket key if JIRA_DOMAIN is set.
+func GetJiraLink(ticketKey string) string {
+	domain := os.Getenv("JIRA_DOMAIN")
+	if domain != "" {
+		return fmt.Sprintf("https://%s/browse/%s", domain, ticketKey)
+	}
+	return ticketKey
+}
