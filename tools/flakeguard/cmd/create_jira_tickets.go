@@ -204,7 +204,7 @@ func rowToFlakyTicket(row []string) FlakyTicket {
 
 	summary := fmt.Sprintf("Fix Flaky Test: %s (%s%% flake rate)", testName, flakeRate)
 
-	// parse logs
+	// Parse logs (same as before)
 	var logSection string
 	if logs == "" {
 		logSection = "(Logs not available)"
@@ -216,7 +216,8 @@ func rowToFlakyTicket(row []string) FlakyTicket {
 			if link == "" {
 				continue
 			}
-			lines = append(lines, fmt.Sprintf("- [Run %d](%s)", runNumber, link))
+			// Build a Jira wiki bullet for each log link
+			lines = append(lines, fmt.Sprintf("* [Run %d|%s]", runNumber, link))
 			runNumber++
 		}
 		if len(lines) == 0 {
@@ -226,21 +227,21 @@ func rowToFlakyTicket(row []string) FlakyTicket {
 		}
 	}
 
-	desc := fmt.Sprintf(`
-## Test Details:
-- **Package:** %s
-- **Test Name:** %s
-- **Flake Rate:** %s%% in the last 7 days
+	// Use Jira Wiki Markup rather than Markdown
+	desc := fmt.Sprintf(`h2. Test Details:
+* *Package:* %s
+* *Test Name:* %s
+* *Flake Rate:* %s%% in the last 7 days
 
-### Test Logs:
+h3. Test Logs:
 %s
 
-### Action Items:
-1. **Investigate:** Review logs to find the root cause.
-2. **Fix:** Address the underlying problem causing flakiness.
-3. **Rerun Locally:** Confirm the fix stabilizes the test.
-4. **Unskip:** Re-enable test in the CI pipeline once stable.
-5. **Ref:** Follow guidelines in the Flaky Test Guide.
+h3. Action Items:
+# *Investigate:* Review logs to find the root cause.
+# *Fix:* Address the underlying problem causing flakiness.
+# *Rerun Locally:* Confirm the fix stabilizes the test.
+# *Unskip:* Re-enable test in the CI pipeline once stable.
+# *Ref:* [Follow guidelines in the Flaky Test Guide|https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/tools/flakeguard/e2e-flaky-test-guide.md].
 `,
 		pkg,
 		testName,
@@ -569,7 +570,7 @@ func (m model) View() string {
 	}
 
 	return fmt.Sprintf(
-		"%s\n%s\n%s\n%s%s%s%s\n%s\n",
+		"%s\n%s\n%s\n%s\n%s%s%s\n%s\n",
 		header,
 		sum,
 		sumBody,
