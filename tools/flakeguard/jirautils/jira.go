@@ -33,15 +33,16 @@ func GetJiraClient() (*jira.Client, error) {
 // CreateTicketInJira creates a new Jira ticket and returns its issue key.
 func CreateTicketInJira(
 	client *jira.Client,
-	summary, description, projectKey, issueType string,
+	summary, description, projectKey, issueType, assigneeId string,
 ) (string, error) {
 	issue := &jira.Issue{
 		Fields: &jira.IssueFields{
 			Project:     jira.Project{Key: projectKey},
+			Assignee:    &jira.User{AccountID: assigneeId},
 			Summary:     summary,
 			Description: description,
 			Type:        jira.IssueType{Name: issueType},
-			// Labels:      []string{"flaky_test"}, TODO: enable
+			Labels:      []string{"flaky_test"},
 		},
 	}
 	newIssue, resp, err := client.Issue.CreateWithContext(context.Background(), issue)

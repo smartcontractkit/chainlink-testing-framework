@@ -3,9 +3,11 @@ package cmd
 import (
 	"context"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -26,7 +28,14 @@ var (
 	jiraIssueType       string
 	jiraSearchLabel     string // defaults to "flaky_test" if empty
 	flakyTestJSONDBPath string
+	assigneeMappingPath string // New flag: path to JSON file for assignee mapping
 )
+
+// AssigneeMapping holds a regex pattern and its corresponding assignee.
+type AssigneeMapping struct {
+	Pattern  string `json:"pattern"`
+	Assignee string `json:"assignee"`
+}
 
 var CreateTicketsCmd = &cobra.Command{
 	Use:   "create-tickets",
@@ -42,7 +51,10 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 - A local JSON "database" (via internal/localdb) remembers any tickets
   already mapped to tests, so you won't be prompted again in the future.
 - After the TUI ends, a new CSV is produced, omitting any confirmed rows.
-  The original CSV remains untouched.`,
+  The original CSV remains untouched.
+- Optionally, an assignee mapping file (JSON) can be provided to set the ticket’s assignee
+  based on the test package. The mapping supports regex.
+`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// 1) Validate input
 		if csvPath == "" {
@@ -105,6 +117,34 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 		if len(tickets) == 0 {
 			log.Warn().Msg("No valid tickets found in CSV.")
 			return nil
+		}
+
+		// Load assignee mapping (if provided)
+		var mappings []AssigneeMapping
+		if assigneeMappingPath != "" {
+			mappingData, err := os.ReadFile(assigneeMappingPath)
+			if err != nil {
+				log.Warn().Err(err).Msg("Failed to read assignee mapping file; proceeding without assignee mapping.")
+			} else {
+				if err := json.Unmarshal(mappingData, &mappings); err != nil {
+					log.Warn().Err(err).Msg("Failed to unmarshal assignee mapping; proceeding without assignee mapping.")
+				} else {
+					// Apply mapping: iterate over tickets and assign based on regex match.
+					for i := range tickets {
+						for _, mapping := range mappings {
+							re, err := regexp.Compile(mapping.Pattern)
+							if err != nil {
+								log.Warn().Msgf("Invalid regex pattern %q: %v", mapping.Pattern, err)
+								continue
+							}
+							if re.MatchString(tickets[i].TestPackage) {
+								tickets[i].Assignee = mapping.Assignee
+								break // use first matching mapping
+							}
+						}
+					}
+				}
+			}
 		}
 
 		// 5) Attempt Jira client creation
@@ -179,6 +219,7 @@ func init() {
 	CreateTicketsCmd.Flags().StringVar(&jiraIssueType, "jira-issue-type", "Task", "Type of Jira issue (Task, Bug, etc.)")
 	CreateTicketsCmd.Flags().StringVar(&jiraSearchLabel, "jira-search-label", "", "Jira label to filter existing tickets (default: flaky_test)")
 	CreateTicketsCmd.Flags().StringVar(&flakyTestJSONDBPath, "flaky-test-json-db-path", "", "Path to the flaky test JSON database (default: ~/.flaky_tes_db.json)")
+	CreateTicketsCmd.Flags().StringVar(&assigneeMappingPath, "assignee-mapping", "", "Path to JSON file with assignee mapping (supports regex)")
 }
 
 // -------------------------------------------------------------------------------------
@@ -196,6 +237,7 @@ type FlakyTicket struct {
 	Description          string
 	ExistingJiraKey      string
 	ExistingTicketSource string // "localdb" or "jira" (if found)
+	Assignee             string
 }
 
 // rowToFlakyTicket: build a ticket from one CSV row (index assumptions: pkg=0, testName=2, flakeRate=7, logs=9).
@@ -207,7 +249,7 @@ func rowToFlakyTicket(row []string) FlakyTicket {
 
 	summary := fmt.Sprintf("Fix Flaky Test: %s (%s%% flake rate)", testName, flakeRate)
 
-	// Parse logs (same as before)
+	// Parse logs
 	var logSection string
 	if logs == "" {
 		logSection = "(Logs not available)"
@@ -316,7 +358,7 @@ type model struct {
 
 	LocalDB localdb.DB // reference to our local DB
 
-	mode       string // "normal" or "promptExisting"
+	mode       string // "normal", "promptExisting", or "ticketCreated"
 	inputValue string // user-typed input for existing ticket
 }
 
@@ -366,14 +408,11 @@ func updateNormalMode(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if t.ExistingJiraKey != "" && m.JiraClient != nil {
 			err := jirautils.DeleteTicketInJira(m.JiraClient, t.ExistingJiraKey)
 			if err != nil {
-				// Log error if deletion fails
 				log.Error().Err(err).Msgf("Failed to delete ticket %s", t.ExistingJiraKey)
 			} else {
-				// Clear ticket info on success
 				t.ExistingJiraKey = ""
 				t.ExistingTicketSource = ""
 				m.tickets[m.index] = t
-				// Update local DB (clearing stored ticket)
 				m.LocalDB.Set(t.TestPackage, t.TestName, "")
 			}
 		}
@@ -404,22 +443,15 @@ func updatePromptExisting(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.inputValue = m.inputValue[:len(m.inputValue)-1]
 		}
 	case tea.KeyEnter:
-		// store the typed string
 		t := m.tickets[m.index]
 		t.ExistingJiraKey = m.inputValue
-		t.ExistingTicketSource = "localdb" // user-provided
+		t.ExistingTicketSource = "localdb"
 		m.tickets[m.index] = t
-
-		// update local DB
 		m.LocalDB.Set(t.TestPackage, t.TestName, t.ExistingJiraKey)
-
-		// back to normal mode
 		m.mode = "normal"
 		m.inputValue = ""
-		// skip from CSV if there's now a known ticket
 		return updateSkip(m)
 	case tea.KeyEsc:
-		// Cancel
 		m.mode = "normal"
 		m.inputValue = ""
 	}
@@ -430,9 +462,10 @@ func updateConfirm(m model) (tea.Model, tea.Cmd) {
 	i := m.index
 	t := m.tickets[i]
 
-	// Attempt Jira creation if not dry-run and we have a client
+	// Attempt Jira creation if not dry-run and we have a client.
+	// Pass the assignee (if any) to the CreateTicketInJira function.
 	if !m.DryRun && m.JiraClient != nil {
-		issueKey, err := jirautils.CreateTicketInJira(m.JiraClient, t.Summary, t.Description, m.JiraProject, m.JiraIssueType)
+		issueKey, err := jirautils.CreateTicketInJira(m.JiraClient, t.Summary, t.Description, m.JiraProject, m.JiraIssueType, t.Assignee)
 		if err != nil {
 			log.Error().Err(err).Msgf("Failed to create Jira ticket: %s", t.Summary)
 		} else {
@@ -440,17 +473,14 @@ func updateConfirm(m model) (tea.Model, tea.Cmd) {
 			t.Confirmed = true
 			t.ExistingJiraKey = issueKey
 			t.ExistingTicketSource = "jira"
-			// store in local DB so we won't prompt again
 			m.LocalDB.Set(t.TestPackage, t.TestName, issueKey)
 		}
 	} else {
-		// Dry run => mark confirmed (so we remove from CSV), but no actual creation
 		log.Info().Msgf("[Dry Run] Would create Jira issue: %q", t.Summary)
 		t.Confirmed = true
 	}
 	m.tickets[i] = t
 	m.confirmed++
-	// Instead of incrementing the index immediately, set mode to "ticketCreated"
 	m.mode = "ticketCreated"
 	return m, nil
 }
@@ -458,7 +488,6 @@ func updateConfirm(m model) (tea.Model, tea.Cmd) {
 func updateTicketCreated(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "n":
-		// Advance to the next ticket and reset mode
 		m.mode = "normal"
 		m.index++
 		if m.index >= len(m.tickets) {
@@ -466,7 +495,6 @@ func updateTicketCreated(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case "e":
-		// Switch to the promptExisting mode for manual ticket id update
 		m.mode = "promptExisting"
 		m.inputValue = ""
 		return m, nil
@@ -490,13 +518,12 @@ func updateQuit(m model) (tea.Model, tea.Cmd) {
 	return m, tea.Quit
 }
 
-// View logic to handle your new requirements
+// View logic
 func (m model) View() string {
 	if m.quitting || m.index >= len(m.tickets) {
 		return finalView(m)
 	}
 
-	// Sub-mode: prompt for existing ticket ID
 	if m.mode == "promptExisting" {
 		return fmt.Sprintf(
 			"Enter existing Jira ticket ID for test %q:\n\n%s\n\n(Press Enter to confirm, Esc to cancel)",
@@ -516,7 +543,6 @@ func (m model) View() string {
 
 	t := m.tickets[m.index]
 
-	// 1) Header line
 	var header string
 	if t.Valid {
 		header = headerStyle.Render(fmt.Sprintf("Proposed Ticket #%d of %d", m.index+1, len(m.tickets)))
@@ -524,13 +550,17 @@ func (m model) View() string {
 		header = headerStyle.Render(fmt.Sprintf("Ticket #%d of %d (Invalid)", m.index+1, len(m.tickets)))
 	}
 
-	// 2) Summary & Description
+	// New: Assignee line above Summary
+	var assigneeLine string
+	if t.Assignee != "" {
+		assigneeLine = summaryStyle.Render(fmt.Sprintf("Assignee: %s", t.Assignee))
+	}
+
 	sum := summaryStyle.Render("Summary:")
 	sumBody := descBodyStyle.Render(t.Summary)
 	descHeader := descHeaderStyle.Render("\nDescription:")
 	descBody := descBodyStyle.Render(t.Description)
 
-	// 3) Existing ticket line
 	existingLine := ""
 	if t.ExistingJiraKey != "" {
 		prefix := "Existing ticket found"
@@ -548,13 +578,11 @@ func (m model) View() string {
 		existingLine = existingStyle.Render(fmt.Sprintf("\n%s: %s", prefix, link))
 	}
 
-	// 4) If invalid: show reason
 	invalidLine := ""
 	if !t.Valid {
 		invalidLine = errorStyle.Render(fmt.Sprintf("\nCannot create ticket: %s", t.InvalidReason))
 	}
 
-	// 5) Help line
 	var helpLine string
 	if !t.Valid {
 		if t.ExistingJiraKey != "" {
@@ -564,7 +592,6 @@ func (m model) View() string {
 		}
 	} else {
 		if t.ExistingJiraKey != "" {
-			// Show the "d" option in red when a ticket is found.
 			helpLine = fmt.Sprintf("\n[n] to next, [e] to update ticket id, %s to remove ticket, [q] to quit.",
 				redStyle.Render("[d]"))
 		} else {
@@ -576,8 +603,9 @@ func (m model) View() string {
 		}
 	}
 
-	return fmt.Sprintf("%s\n%s\n%s\n%s\n%s%s%s\n%s\n",
+	return fmt.Sprintf("%s\n\n%s\n\n%s\n%s\n%s\n%s%s%s\n%s\n",
 		header,
+		assigneeLine,
 		sum,
 		sumBody,
 		descHeader,
@@ -606,39 +634,32 @@ func readFlakyTestsCSV(path string) ([][]string, error) {
 		return nil, err
 	}
 	defer f.Close()
-
 	r := csv.NewReader(f)
 	return r.ReadAll()
 }
 
 func writeRemainingTicketsCSV(newPath string, m model) error {
-	// gather confirmed row indices
 	confirmedRows := make(map[int]bool)
 	for _, t := range m.tickets {
 		if t.Confirmed || t.ExistingJiraKey != "" {
-			// If there's an existing or newly created ticket, remove from the new CSV
 			confirmedRows[t.RowIndex] = true
 		}
 	}
-
 	var newRecords [][]string
 	orig := m.originalRecords
 	if len(orig) > 0 {
-		newRecords = append(newRecords, orig[0]) // header row
+		newRecords = append(newRecords, orig[0])
 	}
-
 	for i := 1; i < len(orig); i++ {
 		if !confirmedRows[i] {
 			newRecords = append(newRecords, orig[i])
 		}
 	}
-
 	f, err := os.Create(newPath)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-
 	w := csv.NewWriter(f)
 	if err := w.WriteAll(newRecords); err != nil {
 		return err
