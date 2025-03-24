@@ -8,58 +8,65 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/andygrunwald/go-jira"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-
-	"github.com/andygrunwald/go-jira"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/localdb"
 	"github.com/spf13/cobra"
 )
 
 var (
-	csvPathFlag     string
-	dryRunFlag      bool
-	jiraProjectKey  string
+	csvPath         string
+	dryRun          bool
+	jiraProject     string
 	jiraIssueType   string
 	jiraSearchLabel string // defaults to "flaky_test" if empty
 )
 
-// CreateTicketsCmd is the Cobra command that runs a Bubble Tea TUI for CSV data
-// and optionally creates tickets in Jira, then writes a new CSV with unconfirmed rows only.
+// CreateTicketsCmd is the Cobra command that runs a Bubble Tea TUI for CSV data,
+// creates (or references) tickets in Jira, and writes a new CSV omitting confirmed rows.
 var CreateTicketsCmd = &cobra.Command{
 	Use:   "create-tickets",
-	Short: "Interactive TUI to confirm Jira tickets from CSV, then write a new CSV without confirmed rows",
-	Long: `Reads a CSV file describing flaky tests and displays each proposed
-ticket in a text-based UI. Press 'y' to confirm, 'n' to skip, 'q' to quit.
-If --dry-run=false we will attempt to create the ticket in Jira using environment
-variables JIRA_DOMAIN, JIRA_EMAIL, JIRA_API_KEY. We also search for existing tickets
-(label=flaky_test) with the same summary before prompting to create.
+	Short: "Interactive TUI to confirm and create Jira tickets from CSV",
+	Long: `Reads a CSV describing flaky tests and displays each proposed
+ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
+'e' if you know of an existing Jira ticket, or 'q' to quit.
 
-After the TUI ends, a new CSV file is produced, omitting rows where the user
-confirmed (pressed 'y'). The original CSV remains untouched.`,
+- If --dry-run=false, we attempt to create the ticket in Jira (using
+  environment variables JIRA_DOMAIN, JIRA_EMAIL, JIRA_API_KEY).
+- We also search for existing tickets (label=flaky_test) with a matching
+  test name before prompting creation.
+- A local JSON "database" (via internal/localdb) remembers any tickets
+  already mapped to tests, so you won't be prompted again in the future.
+- After the TUI ends, a new CSV is produced, omitting any confirmed rows.
+  The original CSV remains untouched.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// 1) Validate input
-		if csvPathFlag == "" {
-			log.Error().Msg("CSV path is required (use --csv-path)")
+		if csvPath == "" {
+			log.Error().Msg("CSV path is required (--csv-path)")
 			os.Exit(1)
 		}
-
-		// If no project key was passed via --jira-project, try env var
-		if jiraProjectKey == "" {
-			jiraProjectKey = os.Getenv("JIRA_PROJECT_KEY")
+		if jiraProject == "" {
+			jiraProject = os.Getenv("JIRA_PROJECT_KEY")
 		}
-		if jiraProjectKey == "" {
+		if jiraProject == "" {
 			log.Error().Msg("Jira project key is required (set --jira-project or JIRA_PROJECT_KEY env)")
 			os.Exit(1)
 		}
-
-		// If no label provided, default to "flaky_test"
 		if jiraSearchLabel == "" {
 			jiraSearchLabel = "flaky_test"
 		}
 
-		// 2) Read CSV
-		records, err := readCSV(csvPathFlag)
+		// 2) Load local DB (test -> known Jira ticket)
+		db, err := localdb.LoadDB()
+		if err != nil {
+			log.Warn().Err(err).Msg("Failed to load local DB; continuing with empty DB.")
+			db = localdb.NewDB()
+		}
+
+		// 3) Read CSV
+		records, err := readFlakyTestsCSV(csvPath)
 		if err != nil {
 			log.Error().Err(err).Msg("Error reading CSV file")
 			os.Exit(1)
@@ -69,65 +76,69 @@ confirmed (pressed 'y'). The original CSV remains untouched.`,
 			return nil
 		}
 
-		// Keep all lines (including headers) so we can rewrite later
 		originalRecords := records
-
-		// 3) Skip the first row if it's a header row
 		if len(records) <= 1 {
-			log.Warn().Msg("No data rows found (CSV might be empty or only headers).")
+			log.Warn().Msg("No data rows found (CSV might have only a header).")
 			return nil
 		}
-		dataRows := records[1:] // skip the header
+		dataRows := records[1:] // skip the header row
 
-		// 4) Convert CSV rows to Tickets
-		var tickets []Ticket
+		// 4) Convert CSV rows -> FlakyTicket objects
+		var tickets []FlakyTicket
 		for i, row := range dataRows {
 			if len(row) < 10 {
 				log.Warn().Msgf("Skipping row %d (not enough columns)", i+1)
 				continue
 			}
-			t := rowToTicket(row)
-			t.RowIndex = i + 1 // store which row in "originalRecords" (row 0 is the header, so offset by 1)
-			tickets = append(tickets, t)
+			ft := rowToFlakyTicket(row)
+			ft.RowIndex = i + 1
+			if ft.Valid {
+				// Check local DB for known Jira ticket
+				if ticketID, found := db.Get(ft.TestPackage, ft.TestName); found {
+					ft.ExistingJiraKey = ticketID
+				}
+			}
+			tickets = append(tickets, ft)
 		}
-
 		if len(tickets) == 0 {
-			log.Warn().Msg("No valid tickets found (or CSV data rows are invalid).")
+			log.Warn().Msg("No valid tickets found in CSV.")
 			return nil
 		}
 
-		// 5) Attempt to create a Jira client (for searching/creating), unless we lack env vars
+		// 5) Attempt Jira client creation
 		client, clientErr := getJiraClient()
 		if clientErr != nil {
 			log.Warn().Msgf("No valid Jira client: %v\nWill skip searching or creating tickets in Jira.", clientErr)
 			client = nil
 		}
 
-		// 6) If we have a client, search for existing tickets
+		// 6) If we have a Jira client, do label-based search for existing tickets
 		if client != nil {
 			for i := range tickets {
-				if tickets[i].Valid {
-					key, err := findExistingTicket(client, jiraSearchLabel, tickets[i])
+				t := &tickets[i]
+				if t.Valid && t.ExistingJiraKey == "" {
+					key, err := findExistingTicket(client, jiraSearchLabel, *t)
 					if err != nil {
-						log.Warn().Msgf("Search failed for %q: %v", tickets[i].Summary, err)
+						log.Warn().Msgf("Search failed for %q: %v", t.Summary, err)
 					} else if key != "" {
-						tickets[i].ExistingJiraKey = key
+						t.ExistingJiraKey = key
+						// Also save in local DB so we don't ask again next time
+						db.Set(t.TestPackage, t.TestName, key)
 					}
 				}
 			}
 		}
 
-		// 7) Create the Bubble Tea model
+		// 7) Create Bubble Tea model
 		m := initialModel(tickets)
-		m.DryRun = dryRunFlag
-		m.JiraProject = jiraProjectKey
+		m.DryRun = dryRun
+		m.JiraProject = jiraProject
 		m.JiraIssueType = jiraIssueType
 		m.JiraClient = client
-
-		// Store original CSV lines for rewriting
 		m.originalRecords = originalRecords
+		m.LocalDB = db
 
-		// 8) Run Bubble Tea TUI
+		// 8) Run TUI
 		finalModel, err := tea.NewProgram(m).Run()
 		if err != nil {
 			log.Error().Err(err).Msg("Error running Bubble Tea program")
@@ -135,10 +146,14 @@ confirmed (pressed 'y'). The original CSV remains untouched.`,
 		}
 		fm := finalModel.(model)
 
-		// 9) Write a new CSV omitting the lines for which the user pressed 'y'.
-		//    The original CSV is not modified.
-		remainingCSVPath := makeRemainingCSVPath(csvPathFlag)
-		if err := rewriteCSVWithoutConfirmed(remainingCSVPath, fm); err != nil {
+		// 9) Save local DB with any new knowledge
+		if err := localdb.SaveDB(fm.LocalDB); err != nil {
+			log.Error().Err(err).Msg("Failed to save local DB")
+		}
+
+		// 10) Write remaining CSV
+		remainingCSVPath := makeRemainingCSVPath(csvPath)
+		if err := writeRemainingTicketsCSV(remainingCSVPath, fm); err != nil {
 			log.Error().Err(err).Msgf("Failed to write updated CSV to %s", remainingCSVPath)
 		} else {
 			fmt.Printf("Remaining tickets have been written to: %s\n", remainingCSVPath)
@@ -149,48 +164,43 @@ confirmed (pressed 'y'). The original CSV remains untouched.`,
 }
 
 func init() {
-	CreateTicketsCmd.Flags().StringVar(&csvPathFlag, "csv-path", "", "Path to the CSV file containing ticket data")
-	CreateTicketsCmd.Flags().BoolVar(&dryRunFlag, "dry-run", false, "If true, do not actually create tickets in Jira")
-	CreateTicketsCmd.Flags().StringVar(&jiraProjectKey, "jira-project", "", "Jira project key (or env JIRA_PROJECT_KEY)")
+	CreateTicketsCmd.Flags().StringVar(&csvPath, "csv-path", "", "Path to the CSV file containing flaky test data")
+	CreateTicketsCmd.Flags().BoolVar(&dryRun, "dry-run", false, "If true, do not actually create tickets in Jira")
+	CreateTicketsCmd.Flags().StringVar(&jiraProject, "jira-project", "", "Jira project key (or env JIRA_PROJECT_KEY)")
 	CreateTicketsCmd.Flags().StringVar(&jiraIssueType, "jira-issue-type", "Task", "Type of Jira issue (Task, Bug, etc.)")
 	CreateTicketsCmd.Flags().StringVar(&jiraSearchLabel, "jira-search-label", "", "Jira label to filter existing tickets (default: flaky_test)")
-
-	// Then, in main.go or wherever you define your CLI, do something like:
-	// rootCmd.AddCommand(CreateTicketsCmd)
 }
 
 // -------------------------------------------------------------------------------------
-// Ticket Data Model
+// FlakyTicket Data Model
 // -------------------------------------------------------------------------------------
 
-type Ticket struct {
+type FlakyTicket struct {
 	RowIndex        int
 	Confirmed       bool
 	Valid           bool
 	InvalidReason   string
 	TestName        string
+	TestPackage     string
 	Summary         string
 	Description     string
 	ExistingJiraKey string
 }
 
-// rowToTicket builds a Ticket from one CSV row (your columns).
-// Required fields: Package(row[0]), TestName(row[2]), FlakeRate(row[7]), Logs(row[9]).
-func rowToTicket(row []string) Ticket {
+// rowToFlakyTicket: build a ticket from one CSV row (index assumptions: pkg=0, testName=2, flakeRate=7, logs=9).
+func rowToFlakyTicket(row []string) FlakyTicket {
 	pkg := strings.TrimSpace(row[0])
 	testName := strings.TrimSpace(row[2])
 	flakeRate := strings.TrimSpace(row[7])
 	logs := strings.TrimSpace(row[9])
 
-	// 1) Build a single summary that might contain empty strings
 	summary := fmt.Sprintf("Fix Flaky Test: %s (%s%% flake rate)", testName, flakeRate)
 
-	// 2) If logs is empty, we’ll show (Logs not available)
+	// parse logs
 	var logSection string
 	if logs == "" {
 		logSection = "(Logs not available)"
 	} else {
-		// Parse logs into bullets
 		var lines []string
 		runNumber := 1
 		for _, link := range strings.Split(logs, ",") {
@@ -198,9 +208,7 @@ func rowToTicket(row []string) Ticket {
 			if link == "" {
 				continue
 			}
-			lines = append(lines,
-				fmt.Sprintf("- [Run %d](%s)", runNumber, link),
-			)
+			lines = append(lines, fmt.Sprintf("- [Run %d](%s)", runNumber, link))
 			runNumber++
 		}
 		if len(lines) == 0 {
@@ -210,22 +218,21 @@ func rowToTicket(row []string) Ticket {
 		}
 	}
 
-	// 3) Always build the same final description, with placeholders if fields are empty
-	description := fmt.Sprintf(`
+	desc := fmt.Sprintf(`
 ## Test Details:
-- **Package:** `+"`%s`"+`
-- **Test Name:** `+"`%s`"+`
+- **Package:** %s
+- **Test Name:** %s
 - **Flake Rate:** %s%% in the last 7 days
 
 ### Test Logs:
 %s
 
 ### Action Items:
-1. **Investigate Failed Test Logs:** Thoroughly review the provided logs to identify patterns or common error messages that indicate the root cause.
-2. **Fix the Issue:** Analyze and address the underlying problem causing the flakiness.
-3. **Rerun Tests Locally:** Execute the test and related changes on a local environment to ensure that the fix stabilizes the test, as well as all other tests that may be affected.
-4. **Unskip the Test:** Once confirmed stable, remove any test skip markers to re-enable the test in the CI pipeline.
-5. **Reference Guidelines:** Follow the recommendations in the [Flaky Test Guide].
+1. **Investigate:** Review logs to find the root cause.
+2. **Fix:** Address the underlying problem causing flakiness.
+3. **Rerun Locally:** Confirm the fix stabilizes the test.
+4. **Unskip:** Re-enable test in the CI pipeline once stable.
+5. **Ref:** Follow guidelines in the Flaky Test Guide.
 `,
 		pkg,
 		testName,
@@ -233,14 +240,15 @@ func rowToTicket(row []string) Ticket {
 		logSection,
 	)
 
-	// 4) Mark ticket Valid or Invalid based on required fields
-	ticket := Ticket{
-		Summary:     summary,
-		Description: description,
+	t := FlakyTicket{
+		TestPackage: pkg,
 		TestName:    testName,
-		Valid:       true, // we assume valid unless required fields are missing
+		Summary:     summary,
+		Description: desc,
+		Valid:       true,
 	}
 
+	// check required fields
 	var missing []string
 	if pkg == "" {
 		missing = append(missing, "Package")
@@ -251,35 +259,24 @@ func rowToTicket(row []string) Ticket {
 	if flakeRate == "" {
 		missing = append(missing, "Flake Rate")
 	}
-	if logs == "" || logSection == "(Logs not available)" {
-		missing = append(missing, "Test Logs")
+	if logs == "" {
+		missing = append(missing, "Logs")
 	}
 
 	if len(missing) > 0 {
-		ticket.Valid = false
-		reason := fmt.Sprintf("Missing required field(s): %s", strings.Join(missing, ", "))
-		if testName != "" {
-			reason += fmt.Sprintf(" [Test Name: %s]", testName)
-		}
-		ticket.InvalidReason = reason
+		t.Valid = false
+		t.InvalidReason = fmt.Sprintf("Missing required: %s", strings.Join(missing, ", "))
 	}
-
-	return ticket
+	return t
 }
 
 // -------------------------------------------------------------------------------------
 // Jira Search
 // -------------------------------------------------------------------------------------
 
-// findExistingTicket looks for an existing ticket with the given summary, label, etc.
-func findExistingTicket(client *jira.Client, label string, ticket Ticket) (string, error) {
-	// JQL example: labels = "flaky_test" AND summary ~ "TestEthBroadcaster"
-	// We'll do an approximate search on the test name
+func findExistingTicket(client *jira.Client, label string, ticket FlakyTicket) (string, error) {
 	jql := fmt.Sprintf(`labels = "%s" AND summary ~ "%s" order by created DESC`, label, ticket.TestName)
-
-	issues, resp, err := client.Issue.SearchWithContext(context.Background(), jql, &jira.SearchOptions{
-		MaxResults: 1,
-	})
+	issues, resp, err := client.Issue.SearchWithContext(context.Background(), jql, &jira.SearchOptions{MaxResults: 1})
 	if err != nil {
 		return "", fmt.Errorf("error searching Jira: %w (resp: %v)", err, resp)
 	}
@@ -294,23 +291,28 @@ func findExistingTicket(client *jira.Client, label string, ticket Ticket) (strin
 // -------------------------------------------------------------------------------------
 
 type model struct {
-	tickets   []Ticket
-	index     int
-	confirmed int
-	skipped   int
-	quitting  bool
-
+	tickets         []FlakyTicket
+	index           int
+	confirmed       int
+	skipped         int
+	quitting        bool
 	DryRun          bool
 	JiraProject     string
 	JiraIssueType   string
 	JiraClient      *jira.Client
-	originalRecords [][]string // store the entire CSV (including header row)
+	originalRecords [][]string
+
+	LocalDB localdb.DB // reference to our local DB
+
+	mode       string // "normal" or "promptExisting"
+	inputValue string // user-typed input for existing ticket
 }
 
-func initialModel(tickets []Ticket) model {
+func initialModel(tickets []FlakyTicket) model {
 	return model{
 		tickets: tickets,
 		index:   0,
+		mode:    "normal",
 	}
 }
 
@@ -321,53 +323,102 @@ func (m model) Init() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if m.quitting || m.index >= len(m.tickets) {
+		// If we have a sub-mode for manual ticket entry
+		if m.mode == "promptExisting" {
+			return updatePromptExisting(m, msg)
+		}
+		// Otherwise normal mode
+		return updateNormalMode(m, msg)
+	default:
+		return m, nil
+	}
+}
+
+func updateNormalMode(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.quitting || m.index >= len(m.tickets) {
+		return updateQuit(m)
+	}
+	t := m.tickets[m.index]
+	if !t.Valid {
+		// invalid ticket => skip or quit
+		switch msg.String() {
+		case "q", "esc", "ctrl+c":
 			return updateQuit(m)
+		default:
+			return updateSkip(m)
 		}
+	}
+
+	switch msg.String() {
+	case "y":
+		return updateConfirm(m)
+	case "n":
+		return updateSkip(m)
+	case "e":
+		// Remove the condition requiring an empty ExistingJiraKey
+		// so we ALWAYS enter prompt mode when user presses "e".
+		m.mode = "promptExisting"
+		m.inputValue = ""
+		return m, nil
+	case "q", "esc", "ctrl+c":
+		return updateQuit(m)
+	}
+	return m, nil
+}
+
+func updatePromptExisting(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.Type {
+	case tea.KeyRunes:
+		m.inputValue += string(msg.Runes)
+	case tea.KeyBackspace:
+		if len(m.inputValue) > 0 {
+			m.inputValue = m.inputValue[:len(m.inputValue)-1]
+		}
+	case tea.KeyEnter:
+		// store the typed string
 		t := m.tickets[m.index]
-		if !t.Valid {
-			// For invalid tickets, any key besides 'q' => skip
-			switch msg.String() {
-			case "q", "esc", "ctrl+c":
-				return updateQuit(m)
-			default:
-				return updateSkip(m)
-			}
-		} else {
-			// Valid ticket => y/n or quit
-			switch msg.String() {
-			case "y":
-				return updateConfirm(m)
-			case "n":
-				return updateSkip(m)
-			case "q", "esc", "ctrl+c":
-				return updateQuit(m)
-			}
-		}
+		t.ExistingJiraKey = m.inputValue
+		m.tickets[m.index] = t
+
+		// update local DB
+		m.LocalDB.Set(t.TestPackage, t.TestName, t.ExistingJiraKey)
+
+		// back to normal mode
+		m.mode = "normal"
+		m.inputValue = ""
+		// we can skip rewriting this row since it already has a known ticket
+		return updateSkip(m)
+	case tea.KeyEsc:
+		// Cancel
+		m.mode = "normal"
+		m.inputValue = ""
 	}
 	return m, nil
 }
 
 func updateConfirm(m model) (tea.Model, tea.Cmd) {
-	currentIndex := m.index
-	t := m.tickets[currentIndex]
+	i := m.index
+	t := m.tickets[i]
 
-	// If not DryRun and we have a Jira client, attempt creation
+	// Attempt Jira creation if not dry-run and we have a client
 	if !m.DryRun && m.JiraClient != nil {
 		issueKey, err := createTicketInJira(m.JiraClient, t.Summary, t.Description, m.JiraProject, m.JiraIssueType)
 		if err != nil {
-			log.Error().Err(err).Msgf("Failed to create Jira ticket for summary %q", t.Summary)
+			log.Error().Err(err).Msgf("Failed to create Jira ticket: %s", t.Summary)
 		} else {
-			log.Info().Msgf("Created Jira issue: %s (summary=%s)", issueKey, t.Summary)
+			log.Info().Msgf("Created Jira ticket: %s (summary=%q)", issueKey, t.Summary)
 			t.Confirmed = true
+			t.ExistingJiraKey = issueKey
+			// store in local DB so we won't prompt again
+			m.LocalDB.Set(t.TestPackage, t.TestName, issueKey)
 		}
 	} else {
-		// In DryRun, let's still consider it "confirmed" so we remove it from the CSV
-		log.Info().Msgf("[Dry Run] Would create Jira issue: %s", t.Summary)
+		// Dry run => mark confirmed (so we remove from CSV), but no actual creation
+		log.Info().Msgf("[Dry Run] Would create Jira issue: %q", t.Summary)
 		t.Confirmed = true
 	}
 
-	m.tickets[currentIndex] = t
+	m.tickets[i] = t
 	m.confirmed++
 	m.index++
 	if m.index >= len(m.tickets) {
@@ -395,39 +446,36 @@ func (m model) View() string {
 		return finalView(m)
 	}
 
-	t := m.tickets[m.index]
-	headerStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("205")) // pink/purple
-	summaryStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("10")) // green
-	descHeaderStyle := summaryStyle
-	descBodyStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("7")) // light gray
-	helpStyle := lipgloss.NewStyle().
-		Faint(true)
-	errorStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("9")) // bright red
-	existingStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("11")) // yellow
+	if m.mode == "promptExisting" {
+		return fmt.Sprintf(
+			"Enter existing Jira ticket ID for test %q:\n\n%s\n\n(Press Enter to confirm, Esc to cancel)",
+			m.tickets[m.index].TestName,
+			m.inputValue,
+		)
+	}
 
+	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205"))
+	summaryStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("10"))
+	descHeaderStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("10"))
+	descBodyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("7"))
+	helpStyle := lipgloss.NewStyle().Faint(true)
+	errorStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("9"))
+	existingStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
+
+	t := m.tickets[m.index]
 	if !t.Valid {
 		header := headerStyle.Render(
 			fmt.Sprintf("Ticket #%d of %d (Invalid)", m.index+1, len(m.tickets)),
 		)
 		errMsg := errorStyle.Render("Cannot create ticket: " + t.InvalidReason)
 
-		sumHeader := summaryStyle.Render("Summary:")
-		sumContent := t.Summary
-		sum := fmt.Sprintf("%s\n\n%s\n", sumHeader, sumContent)
-		descHeader := descHeaderStyle.Render("Description:\n")
+		sum := summaryStyle.Render("\nSummary:\n") + t.Summary
+		descHeader := descHeaderStyle.Render("\nDescription:\n")
 		descBody := descBodyStyle.Render(t.Description)
 
 		hint := helpStyle.Render("\nPress any key to skip, or [q] to quit.\n")
 
-		return fmt.Sprintf("%s\n\n%s\n\n%s\n%s\n\n%s\n",
+		return fmt.Sprintf("%s\n\n%s\n%s\n%s\n\n%s\n",
 			header,
 			errMsg,
 			sum,
@@ -440,7 +488,7 @@ func (m model) View() string {
 		fmt.Sprintf("Proposed Ticket #%d of %d", m.index+1, len(m.tickets)),
 	)
 	sum := summaryStyle.Render("Summary:\n") + t.Summary
-	descHeader := descHeaderStyle.Render("Description:\n")
+	descHeader := descHeaderStyle.Render("\nDescription:\n")
 	descBody := descBodyStyle.Render(t.Description)
 
 	var existingLine string
@@ -451,7 +499,7 @@ func (m model) View() string {
 			link = fmt.Sprintf("https://%s/browse/%s", domain, t.ExistingJiraKey)
 		}
 		existingLine = existingStyle.Render(
-			fmt.Sprintf("\nAn existing ticket already exists: %s", link),
+			fmt.Sprintf("\nExisting ticket found: %s", link),
 		)
 	}
 
@@ -459,22 +507,22 @@ func (m model) View() string {
 	if m.DryRun || m.JiraClient == nil {
 		dryRunLabel = " (DRY RUN)"
 	}
-	help := helpStyle.Render(fmt.Sprintf("\nPress [y] to confirm%s, [n] to skip, [q] to quit.", dryRunLabel))
+	help := helpStyle.Render(
+		fmt.Sprintf("\nPress [y] to confirm%s, [n] to skip, [e] to enter existing ticket, [q] to quit.", dryRunLabel),
+	)
 
-	return fmt.Sprintf("%s\n\n%s\n%s%s\n%s\n%s\n",
+	return fmt.Sprintf("%s\n\n%s%s\n%s\n%s\n%s\n",
 		header,
 		sum,
-		descHeader,
-		descBody,
 		existingLine,
+		descHeader+descBody,
 		help,
+		"",
 	)
 }
 
 func finalView(m model) string {
-	doneStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("6")) // cyan
+	doneStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
 	return doneStyle.Render(fmt.Sprintf(
 		"Done! Confirmed %d tickets, skipped %d. Exiting...\n",
 		m.confirmed, m.skipped,
@@ -482,23 +530,21 @@ func finalView(m model) string {
 }
 
 // -------------------------------------------------------------------------------------
-// Jira Client
+// Jira Client Helpers
 // -------------------------------------------------------------------------------------
 
 func getJiraClient() (*jira.Client, error) {
 	domain := os.Getenv("JIRA_DOMAIN")
 	if domain == "" {
-		return nil, fmt.Errorf("JIRA_DOMAIN environment variable is not set")
+		return nil, fmt.Errorf("JIRA_DOMAIN env var is not set")
 	}
-
 	email := os.Getenv("JIRA_EMAIL")
 	if email == "" {
-		return nil, fmt.Errorf("JIRA_EMAIL environment variable is not set")
+		return nil, fmt.Errorf("JIRA_EMAIL env var is not set")
 	}
-
 	apiKey := os.Getenv("JIRA_API_KEY")
 	if apiKey == "" {
-		return nil, fmt.Errorf("JIRA_API_KEY environment variable is not set")
+		return nil, fmt.Errorf("JIRA_API_KEY env var is not set")
 	}
 
 	tp := jira.BasicAuthTransport{
@@ -509,7 +555,7 @@ func getJiraClient() (*jira.Client, error) {
 }
 
 func createTicketInJira(client *jira.Client, summary, description, projectKey, issueType string) (string, error) {
-	i := &jira.Issue{
+	issue := &jira.Issue{
 		Fields: &jira.IssueFields{
 			Project:     jira.Project{Key: projectKey},
 			Summary:     summary,
@@ -518,8 +564,7 @@ func createTicketInJira(client *jira.Client, summary, description, projectKey, i
 			Labels:      []string{"flaky_test"},
 		},
 	}
-
-	newIssue, resp, err := client.Issue.CreateWithContext(context.Background(), i)
+	newIssue, resp, err := client.Issue.CreateWithContext(context.Background(), issue)
 	if err != nil {
 		return "", fmt.Errorf("error creating Jira issue: %w (resp: %v)", err, resp)
 	}
@@ -530,7 +575,7 @@ func createTicketInJira(client *jira.Client, summary, description, projectKey, i
 // CSV Reading / Writing
 // -------------------------------------------------------------------------------------
 
-func readCSV(path string) ([][]string, error) {
+func readFlakyTestsCSV(path string) ([][]string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -541,27 +586,25 @@ func readCSV(path string) ([][]string, error) {
 	return r.ReadAll()
 }
 
-// rewriteCSVWithoutConfirmed writes a new CSV file by removing any row
-// where the user pressed 'y' (Ticket.Confirmed == true).
-func rewriteCSVWithoutConfirmed(newPath string, m model) error {
-	// Build a set of row indices for confirmed tickets
+func writeRemainingTicketsCSV(newPath string, m model) error {
+	// gather confirmed row indices
 	confirmedRows := make(map[int]bool)
 	for _, t := range m.tickets {
-		if t.Confirmed {
+		if t.Confirmed || t.ExistingJiraKey != "" {
+			// If there's an existing or newly created ticket, remove from the new CSV
 			confirmedRows[t.RowIndex] = true
 		}
 	}
 
 	var newRecords [][]string
-	if len(m.originalRecords) > 0 {
-		// keep the header row
-		newRecords = append(newRecords, m.originalRecords[0])
+	orig := m.originalRecords
+	if len(orig) > 0 {
+		newRecords = append(newRecords, orig[0]) // header row
 	}
 
-	// skip any row in confirmedRows
-	for i := 1; i < len(m.originalRecords); i++ {
+	for i := 1; i < len(orig); i++ {
 		if !confirmedRows[i] {
-			newRecords = append(newRecords, m.originalRecords[i])
+			newRecords = append(newRecords, orig[i])
 		}
 	}
 
@@ -579,11 +622,10 @@ func rewriteCSVWithoutConfirmed(newPath string, m model) error {
 	return w.Error()
 }
 
-// makeRemainingCSVPath returns a new CSV filename: e.g. "flaky_tests.csv" => "flaky_tests.remaining.csv"
 func makeRemainingCSVPath(originalPath string) string {
-	ext := filepath.Ext(originalPath) // ".csv"
+	ext := filepath.Ext(originalPath)
 	base := strings.TrimSuffix(filepath.Base(originalPath), ext)
 	dir := filepath.Dir(originalPath)
-	newName := base + ".remaining" + ext // e.g. "flaky_tests.remaining.csv"
+	newName := base + ".remaining" + ext
 	return filepath.Join(dir, newName)
 }
