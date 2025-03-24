@@ -92,10 +92,12 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 			}
 			ft := rowToFlakyTicket(row)
 			ft.RowIndex = i + 1
+
+			// Check local DB for known Jira ticket
 			if ft.Valid {
-				// Check local DB for known Jira ticket
 				if ticketID, found := db.Get(ft.TestPackage, ft.TestName); found {
 					ft.ExistingJiraKey = ticketID
+					ft.ExistingTicketSource = "localdb" // <--- mark source as localdb
 				}
 			}
 			tickets = append(tickets, ft)
@@ -116,13 +118,14 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 		if client != nil {
 			for i := range tickets {
 				t := &tickets[i]
+				// if valid, no local db ticket, let's see if Jira has one
 				if t.Valid && t.ExistingJiraKey == "" {
 					key, err := findExistingTicket(client, jiraSearchLabel, *t)
 					if err != nil {
 						log.Warn().Msgf("Search failed for %q: %v", t.Summary, err)
 					} else if key != "" {
 						t.ExistingJiraKey = key
-						// Also save in local DB so we don't ask again next time
+						t.ExistingTicketSource = "jira" // <--- mark source as jira
 						db.Set(t.TestPackage, t.TestName, key)
 					}
 				}
@@ -149,6 +152,9 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 		// 9) Save local DB with any new knowledge
 		if err := localdb.SaveDB(fm.LocalDB); err != nil {
 			log.Error().Err(err).Msg("Failed to save local DB")
+		} else {
+			// Let the user know we updated it
+			fmt.Printf("Local DB has been updated at: %s\n", localdb.FilePath())
 		}
 
 		// 10) Write remaining CSV
@@ -176,15 +182,16 @@ func init() {
 // -------------------------------------------------------------------------------------
 
 type FlakyTicket struct {
-	RowIndex        int
-	Confirmed       bool
-	Valid           bool
-	InvalidReason   string
-	TestName        string
-	TestPackage     string
-	Summary         string
-	Description     string
-	ExistingJiraKey string
+	RowIndex             int
+	Confirmed            bool
+	Valid                bool
+	InvalidReason        string
+	TestName             string
+	TestPackage          string
+	Summary              string
+	Description          string
+	ExistingJiraKey      string
+	ExistingTicketSource string // "localdb" or "jira" (if found)
 }
 
 // rowToFlakyTicket: build a ticket from one CSV row (index assumptions: pkg=0, testName=2, flakeRate=7, logs=9).
@@ -355,8 +362,7 @@ func updateNormalMode(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "n":
 		return updateSkip(m)
 	case "e":
-		// Remove the condition requiring an empty ExistingJiraKey
-		// so we ALWAYS enter prompt mode when user presses "e".
+		// <--- Always prompt for a known ticket ID (even if one exists).
 		m.mode = "promptExisting"
 		m.inputValue = ""
 		return m, nil
@@ -378,6 +384,7 @@ func updatePromptExisting(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// store the typed string
 		t := m.tickets[m.index]
 		t.ExistingJiraKey = m.inputValue
+		t.ExistingTicketSource = "localdb" // user manually provided => treat like local db
 		m.tickets[m.index] = t
 
 		// update local DB
@@ -409,6 +416,7 @@ func updateConfirm(m model) (tea.Model, tea.Cmd) {
 			log.Info().Msgf("Created Jira ticket: %s (summary=%q)", issueKey, t.Summary)
 			t.Confirmed = true
 			t.ExistingJiraKey = issueKey
+			t.ExistingTicketSource = "jira"
 			// store in local DB so we won't prompt again
 			m.LocalDB.Set(t.TestPackage, t.TestName, issueKey)
 		}
@@ -446,6 +454,7 @@ func (m model) View() string {
 		return finalView(m)
 	}
 
+	// Sub-mode: prompt for existing ticket ID
 	if m.mode == "promptExisting" {
 		return fmt.Sprintf(
 			"Enter existing Jira ticket ID for test %q:\n\n%s\n\n(Press Enter to confirm, Esc to cancel)",
@@ -491,15 +500,24 @@ func (m model) View() string {
 	descHeader := descHeaderStyle.Render("\nDescription:\n")
 	descBody := descBodyStyle.Render(t.Description)
 
+	// Build existing line AFTER the description
 	var existingLine string
 	if t.ExistingJiraKey != "" {
+		prefix := "Existing ticket found"
+		switch t.ExistingTicketSource {
+		case "localdb":
+			prefix = "Existing ticket found in local db"
+		case "jira":
+			prefix = "Existing ticket found in jira"
+		}
 		domain := os.Getenv("JIRA_DOMAIN")
 		link := t.ExistingJiraKey
 		if domain != "" {
+			// Turn "DX-204" into a link if we have a domain
 			link = fmt.Sprintf("https://%s/browse/%s", domain, t.ExistingJiraKey)
 		}
 		existingLine = existingStyle.Render(
-			fmt.Sprintf("\nExisting ticket found: %s", link),
+			fmt.Sprintf("\n%s: %s", prefix, link),
 		)
 	}
 
@@ -511,13 +529,15 @@ func (m model) View() string {
 		fmt.Sprintf("\nPress [y] to confirm%s, [n] to skip, [e] to enter existing ticket, [q] to quit.", dryRunLabel),
 	)
 
-	return fmt.Sprintf("%s\n\n%s%s\n%s\n%s\n%s\n",
+	// Show summary, description, then existing line at the bottom, then help text
+	return fmt.Sprintf(
+		"%s\n\n%s\n%s%s\n%s\n%s\n",
 		header,
 		sum,
+		descHeader,
+		descBody,
 		existingLine,
-		descHeader+descBody,
 		help,
-		"",
 	)
 }
 

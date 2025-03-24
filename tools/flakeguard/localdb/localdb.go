@@ -67,6 +67,11 @@ func SaveDB(db DB) error {
 	return nil
 }
 
+// FilePath returns the path where the local DB is stored (e.g. ~/.flaky_test_db.json).
+func FilePath() string {
+	return getDBPath()
+}
+
 // Get retrieves the Jira ticket ID for (testPackage, testName), if it exists.
 func (db *DB) Get(testPackage, testName string) (string, bool) {
 	key := makeKey(testPackage, testName)
