@@ -207,14 +207,6 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 			fmt.Printf("Local DB has been updated at: %s\n", fm.LocalDB.FilePath())
 		}
 
-		// 10) Write remaining CSV
-		remainingCSVPath := makeRemainingCSVPath(csvPath)
-		if err := writeRemainingTicketsCSV(remainingCSVPath, fm); err != nil {
-			log.Error().Err(err).Msgf("Failed to write updated CSV to %s", remainingCSVPath)
-		} else {
-			fmt.Printf("Remaining tickets have been written to: %s\n", remainingCSVPath)
-		}
-
 		return nil
 	},
 }
@@ -532,6 +524,16 @@ func (m model) View() string {
 		return finalView(m)
 	}
 
+	if m.mode == "ticketCreated" {
+		domain := os.Getenv("JIRA_DOMAIN")
+		ticketURL := m.tickets[m.index].ExistingJiraKey
+		if domain != "" {
+			ticketURL = fmt.Sprintf("https://%s/browse/%s", domain, m.tickets[m.index].ExistingJiraKey)
+		}
+		ticketStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11")).Align(lipgloss.Left)
+		return ticketStyle.Render("Ticket created:") + ticketURL + "\n\nPress any key to continue..."
+	}
+
 	if m.mode == "promptExisting" {
 		return fmt.Sprintf(
 			"Enter existing Jira ticket ID for test %q:\n\n%s\n\n(Press Enter to confirm, Esc to cancel)",
@@ -561,7 +563,7 @@ func (m model) View() string {
 	// New: Assignee line above Summary
 	var assigneeLine string
 	if t.Assignee != "" {
-		assigneeLine = summaryStyle.Render(fmt.Sprintf("Assignee: %s", t.Assignee))
+		assigneeLine = summaryStyle.Render("Assignee:") + "\n" + t.Assignee
 	}
 
 	sum := summaryStyle.Render("Summary:")
