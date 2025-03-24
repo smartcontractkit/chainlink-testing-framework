@@ -8,10 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
-	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/utils"
 )
 
 var (
@@ -256,6 +257,8 @@ func TestRun(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			testResults, err := tc.runner.RunTestPackages([]string{flakyTestPackagePath})
 			require.NoError(t, err)
 
@@ -538,7 +541,7 @@ func TestAttributePanicToTest(t *testing.T) {
 				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/testing/testing.go:1851 +0x413",
 				"    logger.go:146: 03:14:04.485880684\tINFO\tDeployed KeystoneForwarder 1.0.0 chain selector 909606746561742123 addr 0x72B66019aCEdc35F7F6e58DF94De95f3cBCC5971\t{\"version\": \"(devel)@unset\"}",
 				"    logger.go:146: 03:14:04.486035865\tINFO\tdeploying forwarder\t{\"version\": \"(devel)@unset\", \"chainSelector\": 5548718428018410741}",
-				"    logger.go:146: 2025-03-08T03:14:04.490Z\tINFO\tchangeset/jd_register_nodes.go:91\tregistered node\t{\"version\": \"unset@unset\", \"name\": \"node1\", \"id\": \"node:{id:\\\"895776f5ba0cc11c570a47b5cc3dbb8771da9262cfb545cd5d48251796af7f1d\\\"  public_key:\\\"895776f5ba0cc11c570a47b5cc3dbb8771da9262cfb545cd5d48251796af7f1d\\\"  is_enabled:true  is_connected:true  labels:{key:\\\"product\\\"  value:\\\"test-product\\\"}  labels:{key:\\\"environment\\\"  value:\\\"test-env\\\"}  labels:{key:\\\"nodeType\\\"  value:\\\"bootstrap\\\"}  labels:{key:\\\"don-0-don1\\\"}\"}",
+				"    logger.go:146: 2025-03-08T03:14:04.490Z\tINFO\tchangeset/jd_register_nodes.go:91\tregistered node\t{\"version\": \"unset@unset\", \"name\": \"node1\", \"id\": \"node:{id:\\\"895776f5ba0cc11c570a47b5cc3dbb8771da9262cfb545cd5d48251796af7f\\\"  public_key:\\\"895776f5ba0cc11c570a47b5cc3dbb8771da9262cfb545cd5d48251796af7f\\\"  is_enabled:true  is_connected:true  labels:{key:\\\"product\\\"  value:\\\"test-product\\\"}  labels:{key:\\\"environment\\\"  value:\\\"test-env\\\"}  labels:{key:\\\"nodeType\\\"  value:\\\"bootstrap\\\"}  labels:{key:\\\"don-0-don1\\\"}\"}",
 			},
 		},
 		{
@@ -589,9 +592,7 @@ func TestAttributePanicToTest(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc // capture range variable
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
 			testName, timeout, err := attributePanicToTest(tc.outputs)
 			assert.Equal(t, tc.expectedTimeout, timeout, "timeout flag mismatch")
 			if tc.expectedTestName == "" {
@@ -600,6 +601,63 @@ func TestAttributePanicToTest(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, tc.expectedTestName, testName, "test name mismatch")
 			}
+		})
+	}
+}
+
+func TestFailToAttributePanicToTest(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name    string
+		outputs []string
+	}{
+		{
+			name: "no test name in panic",
+			outputs: []string{
+				"panic: reflect: Elem of invalid type bool",
+				"goroutine 104182 [running]:",
+				"reflect.elem(0xc0569d9998?)",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/reflect/type.go:733 +0x9a",
+				"reflect.(*rtype).Elem(0xa4dd940?)",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/reflect/type.go:737 +0x15",
+				"github.com/smartcontractkit/chainlink-solana/pkg/solana/chainreader.setPollingFilterOverrides(0x0, {0xc052040510, 0x1, 0xc?})",
+				"\t/home/runner/go/pkg/mod/github.com/smartcontractkit/chainlink-solana@v1.1.2-0.20250319030827-8e2f4d76eb79/pkg/solana/chainreader/chain_reader.go:942 +0x492",
+				"github.com/smartcontractkit/chainlink-solana/pkg/solana/chainreader.(*ContractReaderService).addEventRead(_, _, {_, _}, {_, _}, {{0xc0544c4270, 0x9}, {0xc0544c4280, 0xc}, ...}, ...)",
+				"\t/home/runner/go/pkg/mod/github.com/smartcontractkit/chainlink-solana@v1.1.2-0.20250319030827-8e2f4d76eb79/pkg/solana/chainreader/chain_reader.go:605 +0x13d",
+				"github.com/smartcontractkit/chainlink-solana/pkg/solana/chainreader.(*ContractReaderService).initNamespace(0xc054472540, 0xc01c37d440?)",
+				"\t/home/runner/go/pkg/mod/github.com/smartcontractkit/chainlink-solana@v1.1.2-0.20250319030827-8e2f4d76eb79/pkg/solana/chainreader/chain_reader.go:443 +0x28b",
+				"github.com/smartcontractkit/chainlink-solana/pkg/solana/chainreader.NewContractReaderService({0x7fcf8b532040?, 0xc015b223e0?}, {0xc6ac960, 0xc05464e470}, {0xc0544384e0?, {0xc01c37d440?, 0xc054163b84?, 0xc054163b80?}}, {0x7fcf8071c7a0, 0xc0157928c0})",
+				"\t/home/runner/go/pkg/mod/github.com/smartcontractkit/chainlink-solana@v1.1.2-0.20250319030827-8e2f4d76eb79/pkg/solana/chainreader/chain_reader.go:97 +0x287",
+				"github.com/smartcontractkit/chainlink-solana/pkg/solana.(*Relayer).NewContractReader(0xc015b2e150, {0x4d0102030cb384f5?, 0xb938300b5ca1aa13?}, {0xc05469c000, 0x1eedf, 0x20000})",
+				"\t/home/runner/go/pkg/mod/github.com/smartcontractkit/chainlink-solana@v1.1.2-0.20250319030827-8e2f4d76eb79/pkg/solana/relay.go:160 +0x205",
+				"github.com/smartcontractkit/chainlink/v2/core/capabilities/ccip/oraclecreator.(*pluginOracleCreator).createReadersAndWriters(_, {_, _}, {_, _}, _, {0x3, {0x0, 0xa, 0x93, ...}, ...}, ...)",
+				"\t/home/runner/work/chainlink/chainlink/core/capabilities/ccip/oraclecreator/plugin.go:446 +0x338",
+				"github.com/smartcontractkit/chainlink/v2/core/capabilities/ccip/oraclecreator.(*pluginOracleCreator).Create(0xc033a69ad0, {0xc6f5a10, 0xc02e4f9a40}, 0x3, {0x3, {0x0, 0xa, 0x93, 0x8f, 0x67, ...}, ...})",
+				"\t/home/runner/work/chainlink/chainlink/core/capabilities/ccip/oraclecreator/plugin.go:215 +0xc0c",
+				"github.com/smartcontractkit/chainlink/v2/core/capabilities/ccip/launcher.createDON({0xc6f5a10, 0xc02e4f9a40}, {0x7fcf8b533ad0, 0xc015b97340}, {0xb6, 0x5e, 0x31, 0xd0, 0x35, 0xef, ...}, ...)",
+				"\t/home/runner/work/chainlink/chainlink/core/capabilities/ccip/launcher/launcher.go:367 +0x451",
+				"github.com/smartcontractkit/chainlink/v2/core/capabilities/ccip/launcher.(*launcher).processAdded(0xc015723080, {0xc6f5a10, 0xc02e4f9a40}, 0xc053de2ff0)",
+				"\t/home/runner/work/chainlink/chainlink/core/capabilities/ccip/launcher/launcher.go:254 +0x239",
+				"github.com/smartcontractkit/chainlink/v2/core/capabilities/ccip/launcher.(*launcher).processDiff(0xc015723080, {0xc6f5a10, 0xc02e4f9a40}, {0xc053de2ff0?, 0xc053de3020?, 0xc053de3050?})",
+				"\t/home/runner/work/chainlink/chainlink/core/capabilities/ccip/launcher/launcher.go:192 +0x68",
+				"github.com/smartcontractkit/chainlink/v2/core/capabilities/ccip/launcher.(*launcher).tick(0xc015723080, {0xc6f5a10, 0xc02e4f9a40})",
+				"\t/home/runner/work/chainlink/chainlink/core/capabilities/ccip/launcher/launcher.go:178 +0x20b",
+				"github.com/smartcontractkit/chainlink/v2/core/capabilities/ccip/launcher.(*launcher).monitor(0xc015723080)",
+				"\t/home/runner/work/chainlink/chainlink/core/capabilities/ccip/launcher/launcher.go:152 +0x112",
+				"created by github.com/smartcontractkit/chainlink/v2/core/capabilities/ccip/launcher.(*launcher).Start.func1 in goroutine 1335",
+				"\t/home/runner/work/chainlink/chainlink/core/capabilities/ccip/launcher/launcher.go:134 +0xa5",
+				"FAIL\tgithub.com/smartcontractkit/chainlink/deployment/ccip/changeset/solana\t184.801s",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testName, timeout, err := attributePanicToTest(tc.outputs)
+			require.Error(t, err)
+			assert.Empty(t, testName, "test name should be empty")
+			assert.False(t, timeout, "timeout flag should be false")
 		})
 	}
 }
@@ -637,8 +695,6 @@ func TestAttributeRaceToTest(t *testing.T) {
 	for _, testCase := range testCases {
 		tc := testCase
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
 			testName, err := attributeRaceToTest(tc.packageName, tc.raceEntries)
 			if tc.expectedTestName == "" {
 				require.Error(t, err)

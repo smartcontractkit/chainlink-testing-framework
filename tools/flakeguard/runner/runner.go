@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/go-test-transform/pkg/transformer"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 )
@@ -194,7 +195,7 @@ func (r *Runner) runCmd(testCmd []string, runIndex int) (tempFilePath string, pa
 	}
 	defer tmpFile.Close()
 
-	cmd := exec.Command(testCmd[0], testCmd[1:]...)
+	cmd := exec.Command(testCmd[0], testCmd[1:]...) //nolint:gosec
 	cmd.Dir = r.ProjectPath
 
 	// If collecting raw output, write to both file & buffer
@@ -387,7 +388,8 @@ func (r *Runner) parseTestResults(jsonOutputPaths []string, runPrefix string, ru
 					}
 					panicTest, timeout, err := attributePanicToTest(outputs)
 					if err != nil {
-						return nil, err
+						log.Warn().Err(err).Msg("Unable to attribute panic to a test")
+						panicTest = "UnableToAttributePanicTestPleaseInvestigate"
 					}
 					panicTestKey := fmt.Sprintf("%s/%s", entryLine.Package, panicTest)
 
@@ -633,7 +635,7 @@ func attributePanicToTest(outputs []string) (test string, timeout bool, err erro
 			return testName, false, nil
 		}
 	}
-	return "", false, fmt.Errorf("failed to attribute panic to test, using regex %s on these strings:\n%s",
+	return "", false, fmt.Errorf("failed to attribute panic to test, using regex '%s' on these strings:\n\n%s",
 		testNameRe.String(), strings.Join(outputs, ""))
 }
 
