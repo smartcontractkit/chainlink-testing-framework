@@ -28,7 +28,8 @@ var (
 	jiraIssueType       string
 	jiraSearchLabel     string // defaults to "flaky_test" if empty
 	flakyTestJSONDBPath string
-	assigneeMappingPath string // New flag: path to JSON file for assignee mapping
+	assigneeMappingPath string
+	skipExisting        bool
 )
 
 // AssigneeMapping holds a regex pattern and its corresponding assignee.
@@ -112,6 +113,12 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 				ft.ExistingJiraKey = ticketID
 				ft.ExistingTicketSource = "localdb"
 			}
+
+			// Skip processing if flag is set and a Jira ticket ID exists
+			if skipExisting && ft.ExistingJiraKey != "" {
+				continue
+			}
+
 			tickets = append(tickets, ft)
 		}
 		if len(tickets) == 0 {
@@ -220,6 +227,7 @@ func init() {
 	CreateTicketsCmd.Flags().StringVar(&jiraSearchLabel, "jira-search-label", "", "Jira label to filter existing tickets (default: flaky_test)")
 	CreateTicketsCmd.Flags().StringVar(&flakyTestJSONDBPath, "flaky-test-json-db-path", "", "Path to the flaky test JSON database (default: ~/.flaky_tes_db.json)")
 	CreateTicketsCmd.Flags().StringVar(&assigneeMappingPath, "assignee-mapping", "", "Path to JSON file with assignee mapping (supports regex)")
+	CreateTicketsCmd.Flags().BoolVar(&skipExisting, "skip-existing", false, "Skip processing tickets that already have a Jira ticket ID")
 }
 
 // -------------------------------------------------------------------------------------
