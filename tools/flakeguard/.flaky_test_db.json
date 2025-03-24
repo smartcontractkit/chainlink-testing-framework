@@ -9,19 +9,19 @@
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_DifferentRmnNodesForDifferentChains",
     "jira_ticket": "DX-202",
-    "skipped_at": "0001-01-01T00:00:00Z"
+    "skipped_at": "2025-03-24T16:08:45.515288Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_GlobalCurseTwoMessagesOnTwoLanes": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_GlobalCurseTwoMessagesOnTwoLanes",
     "jira_ticket": "DX-294",
-    "skipped_at": "0001-01-01T00:00:00Z"
+    "skipped_at": "2025-03-24T16:08:45.515288Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_MultipleMessagesOnOneLaneNoWaitForExec": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_MultipleMessagesOnOneLaneNoWaitForExec",
     "jira_ticket": "DX-201",
-    "skipped_at": "0001-01-01T00:00:00Z"
+    "skipped_at": "2025-03-24T16:08:45.515288Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_NotEnoughObservers": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
@@ -33,19 +33,19 @@
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_NotEnoughSigners",
     "jira_ticket": "DX-296",
-    "skipped_at": "0001-01-01T00:00:00Z"
+    "skipped_at": "2025-03-24T16:07:58.289626Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_TwoMessagesOnTwoLanesIncludingBatching": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_TwoMessagesOnTwoLanesIncludingBatching",
     "jira_ticket": "DX-199",
-    "skipped_at": "0001-01-01T00:00:00Z"
+    "skipped_at": "2025-03-24T16:07:10.367387Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_TwoMessagesOnTwoLanesIncludingBatchingWithTemporaryPause": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_TwoMessagesOnTwoLanesIncludingBatchingWithTemporaryPause",
     "jira_ticket": "DX-123",
-    "skipped_at": "0001-01-01T00:00:00Z"
+    "skipped_at": "2025-03-24T16:09:29.306211Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_TwoMessagesOneSourceChainCursed": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
@@ -63,6 +63,6 @@
     "test_package": "github.com/smartcontractkit/chainlink/v2",
     "test_name": "TestScripts/health/default",
     "jira_ticket": "DX-109",
-    "skipped_at": "0001-01-01T00:00:00Z"
+    "skipped_at": "2025-03-24T16:08:31.91215Z"
   }
 }
