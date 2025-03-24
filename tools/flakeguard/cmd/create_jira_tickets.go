@@ -12,6 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/jirautils"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/localdb"
 	"github.com/spf13/cobra"
 )
@@ -97,7 +98,7 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 			if ft.Valid {
 				if ticketID, found := db.Get(ft.TestPackage, ft.TestName); found {
 					ft.ExistingJiraKey = ticketID
-					ft.ExistingTicketSource = "localdb" // <--- mark source as localdb
+					ft.ExistingTicketSource = "localdb"
 				}
 			}
 			tickets = append(tickets, ft)
@@ -108,7 +109,7 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 		}
 
 		// 5) Attempt Jira client creation
-		client, clientErr := getJiraClient()
+		client, clientErr := jirautils.GetJiraClient()
 		if clientErr != nil {
 			log.Warn().Msgf("No valid Jira client: %v\nWill skip searching or creating tickets in Jira.", clientErr)
 			client = nil
@@ -118,14 +119,13 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 		if client != nil {
 			for i := range tickets {
 				t := &tickets[i]
-				// if valid, no local db ticket, let's see if Jira has one
 				if t.Valid && t.ExistingJiraKey == "" {
 					key, err := findExistingTicket(client, jiraSearchLabel, *t)
 					if err != nil {
 						log.Warn().Msgf("Search failed for %q: %v", t.Summary, err)
 					} else if key != "" {
 						t.ExistingJiraKey = key
-						t.ExistingTicketSource = "jira" // <--- mark source as jira
+						t.ExistingTicketSource = "jira"
 						db.Set(t.TestPackage, t.TestName, key)
 					}
 				}
@@ -346,28 +346,33 @@ func updateNormalMode(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return updateQuit(m)
 	}
 	t := m.tickets[m.index]
+
+	switch msg.String() {
+	case "q", "esc", "ctrl+c":
+		return updateQuit(m)
+	}
+
+	// If invalid, we cannot create a new ticket, so no 'y' prompt:
 	if !t.Valid {
-		// invalid ticket => skip or quit
+		// Let user skip or do other actions
 		switch msg.String() {
-		case "q", "esc", "ctrl+c":
-			return updateQuit(m)
+		// user might press anything => skip
 		default:
 			return updateSkip(m)
 		}
 	}
 
+	// If valid, handle normal flow
 	switch msg.String() {
 	case "y":
 		return updateConfirm(m)
 	case "n":
 		return updateSkip(m)
 	case "e":
-		// <--- Always prompt for a known ticket ID (even if one exists).
+		// always prompt to enter or overwrite
 		m.mode = "promptExisting"
 		m.inputValue = ""
 		return m, nil
-	case "q", "esc", "ctrl+c":
-		return updateQuit(m)
 	}
 	return m, nil
 }
@@ -384,7 +389,7 @@ func updatePromptExisting(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// store the typed string
 		t := m.tickets[m.index]
 		t.ExistingJiraKey = m.inputValue
-		t.ExistingTicketSource = "localdb" // user manually provided => treat like local db
+		t.ExistingTicketSource = "localdb" // user-provided
 		m.tickets[m.index] = t
 
 		// update local DB
@@ -393,7 +398,7 @@ func updatePromptExisting(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// back to normal mode
 		m.mode = "normal"
 		m.inputValue = ""
-		// we can skip rewriting this row since it already has a known ticket
+		// skip from CSV if there's now a known ticket
 		return updateSkip(m)
 	case tea.KeyEsc:
 		// Cancel
@@ -409,7 +414,7 @@ func updateConfirm(m model) (tea.Model, tea.Cmd) {
 
 	// Attempt Jira creation if not dry-run and we have a client
 	if !m.DryRun && m.JiraClient != nil {
-		issueKey, err := createTicketInJira(m.JiraClient, t.Summary, t.Description, m.JiraProject, m.JiraIssueType)
+		issueKey, err := jirautils.CreateTicketInJira(m.JiraClient, t.Summary, t.Description, m.JiraProject, m.JiraIssueType)
 		if err != nil {
 			log.Error().Err(err).Msgf("Failed to create Jira ticket: %s", t.Summary)
 		} else {
@@ -449,6 +454,7 @@ func updateQuit(m model) (tea.Model, tea.Cmd) {
 	return m, tea.Quit
 }
 
+// View logic to handle your new requirements
 func (m model) View() string {
 	if m.quitting || m.index >= len(m.tickets) {
 		return finalView(m)
@@ -467,41 +473,31 @@ func (m model) View() string {
 	summaryStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("10"))
 	descHeaderStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("10"))
 	descBodyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("7"))
-	helpStyle := lipgloss.NewStyle().Faint(true)
+	faintStyle := lipgloss.NewStyle().Faint(true)
 	errorStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("9"))
 	existingStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
 
 	t := m.tickets[m.index]
-	if !t.Valid {
-		header := headerStyle.Render(
-			fmt.Sprintf("Ticket #%d of %d (Invalid)", m.index+1, len(m.tickets)),
+
+	// 1) Header line
+	header := ""
+	if t.Valid {
+		header = headerStyle.Render(
+			fmt.Sprintf("Proposed Ticket #%d of %d", m.index+1, len(m.tickets)),
 		)
-		errMsg := errorStyle.Render("Cannot create ticket: " + t.InvalidReason)
-
-		sum := summaryStyle.Render("\nSummary:\n") + t.Summary
-		descHeader := descHeaderStyle.Render("\nDescription:\n")
-		descBody := descBodyStyle.Render(t.Description)
-
-		hint := helpStyle.Render("\nPress any key to skip, or [q] to quit.\n")
-
-		return fmt.Sprintf("%s\n\n%s\n%s\n%s\n\n%s\n",
-			header,
-			errMsg,
-			sum,
-			descHeader+descBody,
-			hint,
+	} else {
+		header = headerStyle.Render(
+			fmt.Sprintf("Ticket #%d of %d (Invalid)", m.index+1, len(m.tickets)),
 		)
 	}
 
-	header := headerStyle.Render(
-		fmt.Sprintf("Proposed Ticket #%d of %d", m.index+1, len(m.tickets)),
-	)
+	// 2) Summary & Description
 	sum := summaryStyle.Render("Summary:\n") + t.Summary
 	descHeader := descHeaderStyle.Render("\nDescription:\n")
 	descBody := descBodyStyle.Render(t.Description)
 
-	// Build existing line AFTER the description
-	var existingLine string
+	// 3) Existing ticket line
+	existingLine := ""
 	if t.ExistingJiraKey != "" {
 		prefix := "Existing ticket found"
 		switch t.ExistingTicketSource {
@@ -513,31 +509,60 @@ func (m model) View() string {
 		domain := os.Getenv("JIRA_DOMAIN")
 		link := t.ExistingJiraKey
 		if domain != "" {
-			// Turn "DX-204" into a link if we have a domain
+			// Turn "DX-203" into a link
 			link = fmt.Sprintf("https://%s/browse/%s", domain, t.ExistingJiraKey)
 		}
-		existingLine = existingStyle.Render(
-			fmt.Sprintf("\n%s: %s", prefix, link),
+		existingLine = existingStyle.Render(fmt.Sprintf("\n%s: %s", prefix, link))
+	}
+
+	// 4) If invalid + missing required fields => show that after existing line
+	//    or if there's no existing ticket, show it anyway
+	invalidLine := ""
+	if !t.Valid {
+		invalidLine = errorStyle.Render(
+			fmt.Sprintf("\nCannot create ticket: %s", t.InvalidReason),
 		)
 	}
 
-	dryRunLabel := ""
-	if m.DryRun || m.JiraClient == nil {
-		dryRunLabel = " (DRY RUN)"
+	// 5) Help line
+	helpLine := ""
+	// Cases:
+	// A) If invalid:
+	//    - If there's an existing ticket => [n] to next, [e] to update existing ticket ID, [q] to quit.
+	//    - Else => "Press any key to skip, or [q] to quit."
+	// B) If valid & there's an existing ticket => [n] to next, [e] to update existing ticket ID, [q] to quit.
+	// C) If valid & no existing => [y] to confirm, [n] to skip, [e] to enter existing ticket, [q] to quit (with DRY RUN text if needed).
+	if !t.Valid {
+		if t.ExistingJiraKey != "" {
+			helpLine = faintStyle.Render("\n[n] to next, [e] to update existing ticket ID, [q] to quit.")
+		} else {
+			helpLine = faintStyle.Render("\nPress any key to skip, or [q] to quit.")
+		}
+	} else {
+		if t.ExistingJiraKey != "" {
+			helpLine = faintStyle.Render("\n[n] to next, [e] to update existing ticket ID, [q] to quit.")
+		} else {
+			// if no existing ticket, the normal prompt
+			dryRunLabel := ""
+			if m.DryRun || m.JiraClient == nil {
+				dryRunLabel = " (DRY RUN)"
+			}
+			helpLine = faintStyle.Render(
+				fmt.Sprintf("\nPress [y] to confirm%s, [n] to skip, [e] to enter existing ticket, [q] to quit.",
+					dryRunLabel),
+			)
+		}
 	}
-	help := helpStyle.Render(
-		fmt.Sprintf("\nPress [y] to confirm%s, [n] to skip, [e] to enter existing ticket, [q] to quit.", dryRunLabel),
-	)
 
-	// Show summary, description, then existing line at the bottom, then help text
 	return fmt.Sprintf(
-		"%s\n\n%s\n%s%s\n%s\n%s\n",
+		"%s\n\n%s\n%s%s%s%s%s\n",
 		header,
 		sum,
 		descHeader,
 		descBody,
-		existingLine,
-		help,
+		existingLine, // e.g. "Existing ticket found in jira: https://..."
+		invalidLine,  // e.g. "Cannot create ticket: Missing required..."
+		helpLine,     // e.g. "[n] to next, [e]... or "[y] to confirm..."
 	)
 }
 
@@ -547,48 +572,6 @@ func finalView(m model) string {
 		"Done! Confirmed %d tickets, skipped %d. Exiting...\n",
 		m.confirmed, m.skipped,
 	))
-}
-
-// -------------------------------------------------------------------------------------
-// Jira Client Helpers
-// -------------------------------------------------------------------------------------
-
-func getJiraClient() (*jira.Client, error) {
-	domain := os.Getenv("JIRA_DOMAIN")
-	if domain == "" {
-		return nil, fmt.Errorf("JIRA_DOMAIN env var is not set")
-	}
-	email := os.Getenv("JIRA_EMAIL")
-	if email == "" {
-		return nil, fmt.Errorf("JIRA_EMAIL env var is not set")
-	}
-	apiKey := os.Getenv("JIRA_API_KEY")
-	if apiKey == "" {
-		return nil, fmt.Errorf("JIRA_API_KEY env var is not set")
-	}
-
-	tp := jira.BasicAuthTransport{
-		Username: email,
-		Password: apiKey,
-	}
-	return jira.NewClient(tp.Client(), fmt.Sprintf("https://%s", domain))
-}
-
-func createTicketInJira(client *jira.Client, summary, description, projectKey, issueType string) (string, error) {
-	issue := &jira.Issue{
-		Fields: &jira.IssueFields{
-			Project:     jira.Project{Key: projectKey},
-			Summary:     summary,
-			Description: description,
-			Type:        jira.IssueType{Name: issueType},
-			Labels:      []string{"flaky_test"},
-		},
-	}
-	newIssue, resp, err := client.Issue.CreateWithContext(context.Background(), issue)
-	if err != nil {
-		return "", fmt.Errorf("error creating Jira issue: %w (resp: %v)", err, resp)
-	}
-	return newIssue.Key, nil
 }
 
 // -------------------------------------------------------------------------------------
