@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/rs/zerolog/log"
 )
@@ -13,9 +14,11 @@ const defaultDBFileName = ".flaky_test_db.json"
 
 // Entry represents one record in the local DB for a given test.
 type Entry struct {
-	TestPackage string `json:"test_package"`
-	TestName    string `json:"test_name"`
-	JiraTicket  string `json:"jira_ticket"`
+	TestPackage string    `json:"test_package"`
+	TestName    string    `json:"test_name"`
+	JiraTicket  string    `json:"jira_ticket"`
+	IsSkipped   bool      `json:"is_skipped,omitempty"`
+	SkippedAt   time.Time `json:"skipped_at,omitempty"`
 }
 
 // DB is a simple in-memory map keyed by "pkg::testName" => Entry,
@@ -113,6 +116,36 @@ func (db *DB) Set(testPackage, testName, jiraTicket string) {
 		TestName:    testName,
 		JiraTicket:  jiraTicket,
 	}
+}
+
+// UpdateTicketStatus updates or inserts the ticket status for (testPackage, testName).
+// It accepts a boolean for whether the ticket is skipped and a timestamp in UTC.
+func (db *DB) UpdateTicketStatus(testPackage, testName string, isSkipped bool, skippedAt time.Time) {
+	key := makeKey(testPackage, testName)
+	entry, exists := db.data[key]
+	if !exists {
+		entry = Entry{
+			TestPackage: testPackage,
+			TestName:    testName,
+		}
+	}
+	entry.IsSkipped = isSkipped
+	if isSkipped {
+		entry.SkippedAt = skippedAt.UTC() // Ensure the timestamp is saved as UTC.
+	} else {
+		// If not skipped, clear the timestamp.
+		entry.SkippedAt = time.Time{}
+	}
+	db.data[key] = entry
+}
+
+// GetAllEntries returns all entries in the DB.
+func (db *DB) GetAllEntries() []Entry {
+	entries := make([]Entry, 0, len(db.data))
+	for _, entry := range db.data {
+		entries = append(entries, entry)
+	}
+	return entries
 }
 
 // getDefaultDBPath returns the default DB file path in the user's home directory.

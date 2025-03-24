@@ -2,56 +2,72 @@
   "github.com/smartcontractkit/chainlink/deployment/environment/crib::TestShouldProvideEnvironmentConfig": {
     "test_package": "github.com/smartcontractkit/chainlink/deployment/environment/crib",
     "test_name": "TestShouldProvideEnvironmentConfig",
-    "jira_ticket": "DX-291"
+    "jira_ticket": "DX-291",
+    "is_skipped": true,
+    "skipped_at": "2025-03-24T15:39:48.839992Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_DifferentRmnNodesForDifferentChains": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_DifferentRmnNodesForDifferentChains",
-    "jira_ticket": "DX-202"
+    "jira_ticket": "DX-202",
+    "is_skipped": true,
+    "skipped_at": "2025-03-24T15:44:09.201139Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_GlobalCurseTwoMessagesOnTwoLanes": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_GlobalCurseTwoMessagesOnTwoLanes",
-    "jira_ticket": "DX-294"
+    "jira_ticket": "DX-294",
+    "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_MultipleMessagesOnOneLaneNoWaitForExec": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_MultipleMessagesOnOneLaneNoWaitForExec",
-    "jira_ticket": "DX-201"
+    "jira_ticket": "DX-201",
+    "is_skipped": true,
+    "skipped_at": "2025-03-24T15:48:41.042284Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_NotEnoughObservers": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_NotEnoughObservers",
-    "jira_ticket": "DX-295"
+    "jira_ticket": "DX-295",
+    "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_NotEnoughSigners": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_NotEnoughSigners",
-    "jira_ticket": "DX-296"
+    "jira_ticket": "DX-296",
+    "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_TwoMessagesOnTwoLanesIncludingBatching": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_TwoMessagesOnTwoLanesIncludingBatching",
-    "jira_ticket": "DX-199"
+    "jira_ticket": "DX-199",
+    "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_TwoMessagesOnTwoLanesIncludingBatchingWithTemporaryPause": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_TwoMessagesOnTwoLanesIncludingBatchingWithTemporaryPause",
-    "jira_ticket": "DX-123"
+    "jira_ticket": "DX-123",
+    "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_TwoMessagesOneSourceChainCursed": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_TwoMessagesOneSourceChainCursed",
-    "jira_ticket": "DX-297"
+    "jira_ticket": "DX-297",
+    "is_skipped": true,
+    "skipped_at": "2025-03-24T15:45:52.058582Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestV1_5_Message_RMNRemote_Curse_Uncurse": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestV1_5_Message_RMNRemote_Curse_Uncurse",
-    "jira_ticket": "DX-293"
+    "jira_ticket": "DX-293",
+    "is_skipped": true,
+    "skipped_at": "2025-03-24T15:45:59.557336Z"
   },
   "github.com/smartcontractkit/chainlink/v2::TestScripts/health/default": {
     "test_package": "github.com/smartcontractkit/chainlink/v2",
     "test_name": "TestScripts/health/default",
-    "jira_ticket": "DX-109"
+    "jira_ticket": "DX-109",
+    "skipped_at": "0001-01-01T00:00:00Z"
   }
 }

@@ -60,3 +60,16 @@ func DeleteTicketInJira(client *jira.Client, ticketKey string) error {
 	}
 	return nil
 }
+
+// PostCommentToTicket posts a comment to a Jira ticket identified by ticketKey.
+// It returns an error if the comment cannot be added.
+func PostCommentToTicket(client *jira.Client, ticketKey, comment string) error {
+	cmt := jira.Comment{
+		Body: comment,
+	}
+	_, resp, err := client.Issue.AddComment(ticketKey, &cmt)
+	if err != nil {
+		return fmt.Errorf("failed to add comment to ticket %s: %w (response: %+v)", ticketKey, err, resp)
+	}
+	return nil
+}

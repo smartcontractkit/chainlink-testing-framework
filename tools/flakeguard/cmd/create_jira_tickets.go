@@ -18,6 +18,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/jirautils"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/localdb"
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/model"
 	"github.com/spf13/cobra"
 )
 
@@ -27,7 +28,7 @@ var (
 	jiraProject         string
 	jiraIssueType       string
 	jiraSearchLabel     string // defaults to "flaky_test" if empty
-	flakyTestJSONDBPath string
+	testDBPath          string
 	assigneeMappingPath string
 	skipExisting        bool
 )
@@ -74,7 +75,7 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 		}
 
 		// 2) Load local DB (test -> known Jira ticket)
-		db, err := localdb.LoadDBWithPath(flakyTestJSONDBPath)
+		db, err := localdb.LoadDBWithPath(testDBPath)
 		if err != nil {
 			log.Warn().Err(err).Msg("Failed to load local DB; continuing with empty DB.")
 			db = localdb.NewDB()
@@ -99,7 +100,7 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 		dataRows := records[1:] // skip the header row
 
 		// 4) Convert CSV rows -> FlakyTicket objects
-		var tickets []FlakyTicket
+		var tickets []model.FlakyTicket
 		for i, row := range dataRows {
 			if len(row) < 10 {
 				log.Warn().Msgf("Skipping row %d (not enough columns)", i+1)
@@ -198,7 +199,7 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 			log.Error().Err(err).Msg("Error running Bubble Tea program")
 			os.Exit(1)
 		}
-		fm := finalModel.(model)
+		fm := finalModel.(tmodel)
 
 		// 9) Save local DB with any new knowledge
 		if err := fm.LocalDB.Save(); err != nil {
@@ -217,7 +218,7 @@ func init() {
 	CreateTicketsCmd.Flags().StringVar(&jiraProject, "jira-project", "", "Jira project key (or env JIRA_PROJECT_KEY)")
 	CreateTicketsCmd.Flags().StringVar(&jiraIssueType, "jira-issue-type", "Task", "Type of Jira issue (Task, Bug, etc.)")
 	CreateTicketsCmd.Flags().StringVar(&jiraSearchLabel, "jira-search-label", "", "Jira label to filter existing tickets (default: flaky_test)")
-	CreateTicketsCmd.Flags().StringVar(&flakyTestJSONDBPath, "flaky-test-json-db-path", "", "Path to the flaky test JSON database (default: ~/.flaky_tes_db.json)")
+	CreateTicketsCmd.Flags().StringVar(&testDBPath, "test-db-path", "", "Path to the flaky test JSON database (default: ~/.flaky_tes_db.json)")
 	CreateTicketsCmd.Flags().StringVar(&assigneeMappingPath, "assignee-mapping", "", "Path to JSON file with assignee mapping (supports regex)")
 	CreateTicketsCmd.Flags().BoolVar(&skipExisting, "skip-existing", false, "Skip processing tickets that already have a Jira ticket ID")
 }
@@ -226,22 +227,8 @@ func init() {
 // FlakyTicket Data Model
 // -------------------------------------------------------------------------------------
 
-type FlakyTicket struct {
-	RowIndex             int
-	Confirmed            bool
-	Valid                bool
-	InvalidReason        string
-	TestName             string
-	TestPackage          string
-	Summary              string
-	Description          string
-	ExistingJiraKey      string
-	ExistingTicketSource string // "localdb" or "jira" (if found)
-	Assignee             string
-}
-
 // rowToFlakyTicket: build a ticket from one CSV row (index assumptions: pkg=0, testName=2, flakeRate=7, logs=9).
-func rowToFlakyTicket(row []string) FlakyTicket {
+func rowToFlakyTicket(row []string) model.FlakyTicket {
 	pkg := strings.TrimSpace(row[0])
 	testName := strings.TrimSpace(row[2])
 	flakeRate := strings.TrimSpace(row[7])
@@ -294,7 +281,7 @@ h3. Action Items:
 		logSection,
 	)
 
-	t := FlakyTicket{
+	t := model.FlakyTicket{
 		TestPackage: pkg,
 		TestName:    testName,
 		Summary:     summary,
@@ -328,7 +315,7 @@ h3. Action Items:
 // Jira Search
 // -------------------------------------------------------------------------------------
 
-func findExistingTicket(client *jira.Client, label string, ticket FlakyTicket) (string, error) {
+func findExistingTicket(client *jira.Client, label string, ticket model.FlakyTicket) (string, error) {
 	jql := fmt.Sprintf(`labels = "%s" AND summary ~ "%s" order by created DESC`, label, ticket.TestName)
 	issues, resp, err := client.Issue.SearchWithContext(context.Background(), jql, &jira.SearchOptions{MaxResults: 1})
 	if err != nil {
@@ -344,8 +331,8 @@ func findExistingTicket(client *jira.Client, label string, ticket FlakyTicket) (
 // Bubble Tea Model
 // -------------------------------------------------------------------------------------
 
-type model struct {
-	tickets         []FlakyTicket
+type tmodel struct {
+	tickets         []model.FlakyTicket
 	index           int
 	confirmed       int
 	skipped         int
@@ -362,19 +349,19 @@ type model struct {
 	inputValue string // user-typed input for existing ticket
 }
 
-func initialModel(tickets []FlakyTicket) model {
-	return model{
+func initialModel(tickets []model.FlakyTicket) tmodel {
+	return tmodel{
 		tickets: tickets,
 		index:   0,
 		mode:    "normal",
 	}
 }
 
-func (m model) Init() tea.Cmd {
+func (m tmodel) Init() tea.Cmd {
 	return nil
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m tmodel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if m.mode == "promptExisting" {
@@ -389,7 +376,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func updateNormalMode(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func updateNormalMode(m tmodel, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.quitting || m.index >= len(m.tickets) {
 		return updateQuit(m)
 	}
@@ -434,7 +421,7 @@ func updateNormalMode(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return updateSkip(m)
 }
 
-func updatePromptExisting(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func updatePromptExisting(m tmodel, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.Type {
 	case tea.KeyRunes:
 		m.inputValue += string(msg.Runes)
@@ -458,7 +445,7 @@ func updatePromptExisting(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func updateConfirm(m model) (tea.Model, tea.Cmd) {
+func updateConfirm(m tmodel) (tea.Model, tea.Cmd) {
 	i := m.index
 	t := m.tickets[i]
 
@@ -485,7 +472,7 @@ func updateConfirm(m model) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func updateTicketCreated(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func updateTicketCreated(m tmodel, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "n":
 		m.mode = "normal"
@@ -504,7 +491,7 @@ func updateTicketCreated(m model, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func updateSkip(m model) (tea.Model, tea.Cmd) {
+func updateSkip(m tmodel) (tea.Model, tea.Cmd) {
 	m.skipped++
 	m.index++
 	if m.index >= len(m.tickets) {
@@ -513,13 +500,13 @@ func updateSkip(m model) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func updateQuit(m model) (tea.Model, tea.Cmd) {
+func updateQuit(m tmodel) (tea.Model, tea.Cmd) {
 	m.quitting = true
 	return m, tea.Quit
 }
 
 // View logic
-func (m model) View() string {
+func (m tmodel) View() string {
 	if m.quitting || m.index >= len(m.tickets) {
 		return finalView(m)
 	}
@@ -635,7 +622,7 @@ func (m model) View() string {
 	)
 }
 
-func finalView(m model) string {
+func finalView(m tmodel) string {
 	doneStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
 	return doneStyle.Render(fmt.Sprintf(
 		"Done! Confirmed %d tickets, skipped %d. Exiting...\n",
@@ -657,7 +644,7 @@ func readFlakyTestsCSV(path string) ([][]string, error) {
 	return r.ReadAll()
 }
 
-func writeRemainingTicketsCSV(newPath string, m model) error {
+func writeRemainingTicketsCSV(newPath string, m tmodel) error {
 	confirmedRows := make(map[int]bool)
 	for _, t := range m.tickets {
 		if t.Confirmed || t.ExistingJiraKey != "" {

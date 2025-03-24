@@ -43,6 +43,7 @@ func init() {
 	rootCmd.AddCommand(cmd.GenerateReportCmd)
 	rootCmd.AddCommand(cmd.GetGHArtifactLinkCmd)
 	rootCmd.AddCommand(cmd.SendToSplunkCmd)
+	rootCmd.AddCommand(cmd.TicketsCmd)
 	rootCmd.AddCommand(cmd.CreateTicketsCmd)
 }
 
