@@ -577,7 +577,7 @@ func (r *Runner) transformTestOutputFiles(filePaths []string) error {
 			return fmt.Errorf("failed to open original file %s: %w", origPath, err)
 		}
 		// Create a temporary file for the transformed output.
-		outFile, err := os.CreateTemp(RawOutputTransformedDir, "transformed-raw-output-*.json")
+		outFile, err := os.Create(filepath.Join(RawOutputTransformedDir, fmt.Sprintf("transformed-%s.json", filepath.Base(origPath))))
 		if err != nil {
 			inFile.Close()
 			return fmt.Errorf("failed to create transformed temp file: %w", err)
