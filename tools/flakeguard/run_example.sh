@@ -16,7 +16,7 @@ run_flakeguard_example() {
       --skip-tests=$skip_tests \
       --max-pass-ratio=1 \
       --race=false \
-      --output-json=$output_file
+      --main-results-path=$output_file
     local EXIT_CODE=$?
     if [ $EXIT_CODE -eq 2 ]; then
       echo "ERROR: Flakeguard encountered an error while running tests"

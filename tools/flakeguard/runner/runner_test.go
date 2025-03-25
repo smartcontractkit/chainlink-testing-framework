@@ -64,13 +64,12 @@ func TestRun(t *testing.T) {
 		{
 			name: "default",
 			runner: Runner{
-				ProjectPath:      "./",
-				Verbose:          true,
-				RunCount:         defaultTestRunCount,
-				GoTestRaceFlag:   false,
-				SkipTests:        []string{"TestPanic", "TestFlakyPanic", "TestSubTestsSomePanic", "TestTimeout"},
-				FailFast:         false,
-				CollectRawOutput: true,
+				ProjectPath:    "./",
+				Verbose:        true,
+				RunCount:       defaultTestRunCount,
+				GoTestRaceFlag: false,
+				SkipTests:      []string{"TestPanic", "TestFlakyPanic", "TestSubTestsSomePanic", "TestTimeout"},
+				FailFast:       false,
 			},
 			expectedTests: map[string]*expectedTestResult{
 				"TestFlaky": {
@@ -162,14 +161,13 @@ func TestRun(t *testing.T) {
 		{
 			name: "always panic",
 			runner: Runner{
-				ProjectPath:      "./",
-				Verbose:          true,
-				RunCount:         defaultTestRunCount,
-				GoTestRaceFlag:   false,
-				SkipTests:        []string{},
-				SelectTests:      []string{"TestPanic"},
-				FailFast:         false,
-				CollectRawOutput: true,
+				ProjectPath:    "./",
+				Verbose:        true,
+				RunCount:       defaultTestRunCount,
+				GoTestRaceFlag: false,
+				SkipTests:      []string{},
+				SelectTests:    []string{"TestPanic"},
+				FailFast:       false,
 			},
 			expectedTests: map[string]*expectedTestResult{
 				"TestPanic": {
@@ -182,15 +180,14 @@ func TestRun(t *testing.T) {
 		{
 			name: "flaky panic",
 			runner: Runner{
-				ProjectPath:      "./",
-				Verbose:          true,
-				RunCount:         defaultTestRunCount,
-				GoTestRaceFlag:   false,
-				GoTestCountFlag:  &oneCount,
-				SkipTests:        []string{},
-				SelectTests:      []string{"TestFlakyPanic"},
-				FailFast:         false,
-				CollectRawOutput: true,
+				ProjectPath:     "./",
+				Verbose:         true,
+				RunCount:        defaultTestRunCount,
+				GoTestRaceFlag:  false,
+				GoTestCountFlag: &oneCount,
+				SkipTests:       []string{},
+				SelectTests:     []string{"TestFlakyPanic"},
+				FailFast:        false,
 			},
 			expectedTests: map[string]*expectedTestResult{
 				"TestFlakyPanic": {
@@ -203,14 +200,13 @@ func TestRun(t *testing.T) {
 		{
 			name: "subtest panic",
 			runner: Runner{
-				ProjectPath:      "./",
-				Verbose:          true,
-				RunCount:         defaultTestRunCount,
-				GoTestRaceFlag:   false,
-				SkipTests:        []string{},
-				SelectTests:      []string{"TestSubTestsSomePanic"},
-				FailFast:         false,
-				CollectRawOutput: true,
+				ProjectPath:    "./",
+				Verbose:        true,
+				RunCount:       defaultTestRunCount,
+				GoTestRaceFlag: false,
+				SkipTests:      []string{},
+				SelectTests:    []string{"TestSubTestsSomePanic"},
+				FailFast:       false,
 			},
 			expectedTests: map[string]*expectedTestResult{
 				"TestSubTestsSomePanic": {
@@ -233,14 +229,13 @@ func TestRun(t *testing.T) {
 		{
 			name: "failfast",
 			runner: Runner{
-				ProjectPath:      "./",
-				Verbose:          true,
-				RunCount:         defaultTestRunCount,
-				GoTestRaceFlag:   false,
-				SkipTests:        []string{},
-				SelectTests:      []string{"TestFail", "TestPass"},
-				FailFast:         true,
-				CollectRawOutput: true,
+				ProjectPath:    "./",
+				Verbose:        true,
+				RunCount:       defaultTestRunCount,
+				GoTestRaceFlag: false,
+				SkipTests:      []string{},
+				SelectTests:    []string{"TestFail", "TestPass"},
+				FailFast:       true,
 			},
 			expectedTests: map[string]*expectedTestResult{
 				"TestFail": {
@@ -281,14 +276,6 @@ func TestRun(t *testing.T) {
 				if err != nil {
 					t.Logf("error writing test results: %v", err)
 					return
-				}
-				for packageName, rawOutput := range tc.runner.RawOutputs() {
-					saniPackageName := filepath.Base(packageName)
-					rawJSONOutputFileName := filepath.Join(debugDir, fmt.Sprintf("raw_output_%s_%s.json", saniTName, saniPackageName))
-					err = os.WriteFile(rawJSONOutputFileName, rawOutput.Bytes(), 0644) //nolint:gosec
-					if err != nil {
-						t.Logf("error writing raw JSON output: %v", err)
-					}
 				}
 			})
 
@@ -673,11 +660,10 @@ func TestFailedOutputs(t *testing.T) {
 	t.Parallel()
 
 	runner := Runner{
-		ProjectPath:      "./",
-		Verbose:          true,
-		RunCount:         1,
-		SelectTests:      []string{"TestFail"}, // This test is known to fail consistently
-		CollectRawOutput: true,
+		ProjectPath: "./",
+		Verbose:     true,
+		RunCount:    1,
+		SelectTests: []string{"TestFail"}, // This test is known to fail consistently
 	}
 
 	testResults, err := runner.RunTestPackages([]string{flakyTestPackagePath})
@@ -707,11 +693,10 @@ func TestSkippedTests(t *testing.T) {
 	t.Parallel()
 
 	runner := Runner{
-		ProjectPath:      "./",
-		Verbose:          true,
-		RunCount:         1,
-		SelectTests:      []string{"TestSkipped"}, // Known skipping test
-		CollectRawOutput: true,
+		ProjectPath: "./",
+		Verbose:     true,
+		RunCount:    1,
+		SelectTests: []string{"TestSkipped"}, // Known skipping test
 	}
 
 	testResults, err := runner.RunTestPackages([]string{flakyTestPackagePath})
@@ -741,7 +726,6 @@ func TestOmitOutputsOnSuccess(t *testing.T) {
 		Verbose:              true,
 		RunCount:             1,
 		SelectTests:          []string{"TestPass"}, // Known passing test
-		CollectRawOutput:     true,
 		OmitOutputsOnSuccess: true,
 	}
 
