@@ -567,7 +567,7 @@ func (r *Runner) parseTestResults(runPrefix string, runCount int) ([]reports.Tes
 // transformTestOutputFiles transforms the test output JSON files to ignore parent failures when only subtests fail.
 // It returns the paths to the transformed files.
 func (r *Runner) transformTestOutputFiles(filePaths []string) error {
-	err := os.MkdirAll(RawOutputDir, 0o755)
+	err := os.MkdirAll(RawOutputTransformedDir, 0o755)
 	if err != nil {
 		return fmt.Errorf("failed to create raw output directory: %w", err)
 	}
