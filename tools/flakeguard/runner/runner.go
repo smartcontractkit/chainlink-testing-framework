@@ -598,22 +598,25 @@ func (r *Runner) transformTestOutputFiles(filePaths []string) error {
 
 // attributePanicToTest properly attributes panics to the test that caused them.
 func attributePanicToTest(outputs []string) (test string, timeout bool, err error) {
-	// Regex to extract a valid test function name.
-	testNameRe := regexp.MustCompile(`(?:.*\.)?(Test[A-Z]\w+)(?:\.[^(]+)?\s*\(`)
-	// Regex to detect timeout messages (accepting "timeout", "timedout", or "timed out", case-insensitive).
-	timeoutRe := regexp.MustCompile(`(?i)(timeout|timedout|timed\s*out)`)
+	// Regex to extract a valid test function name from a panic message, e.g.
+	// github.com/smartcontractkit/chainlink/deployment/keystone/changeset_test.TestDeployBalanceReader(0xc000583c00)
+	nestedTestNameRe := regexp.MustCompile(`\.(Test[A-Z]\w+)(?:\.[^(]+)?\s*\(`)
+	// Regex to extract a valid test function name from a panic message if the panic is a timeout, e.g.
+	// TestTimedOut (10m0s)
+	timedOutTestNamRe := regexp.MustCompile(`^(Test\w+)\W+\(.*\)$`)
+
 	for _, o := range outputs {
 		outputs = append(outputs, o)
-		if matches := testNameRe.FindStringSubmatch(o); len(matches) > 1 {
-			testName := strings.TrimSpace(matches[1])
-			if timeoutRe.MatchString(o) {
-				return testName, true, nil
-			}
-			return testName, false, nil
+		matchNestedTestName := nestedTestNameRe.FindStringSubmatch(o)
+		matchTimedOutTestName := timedOutTestNamRe.FindStringSubmatch(o)
+		if len(matchNestedTestName) > 1 {
+			return strings.TrimSpace(matchNestedTestName[1]), false, nil
+		} else if len(matchTimedOutTestName) > 1 {
+			return strings.TrimSpace(matchTimedOutTestName[1]), true, nil
 		}
 	}
-	return "", false, fmt.Errorf("failed to attribute panic to test, using regex '%s' on these strings:\n\n%s",
-		testNameRe.String(), strings.Join(outputs, ""))
+	return "", false, fmt.Errorf("failed to attribute panic to test, using regex '%s' and '%s' on these strings:\n\n%s",
+		nestedTestNameRe.String(), timedOutTestNamRe.String(), strings.Join(outputs, ""))
 }
 
 // attributeRaceToTest properly attributes races to the test that caused them.
