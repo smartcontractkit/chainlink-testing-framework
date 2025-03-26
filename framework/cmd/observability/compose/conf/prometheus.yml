@@ -2,6 +2,10 @@ global:
   scrape_interval: 10s
 
 scrape_configs:
+  - job_name: 'otel-collector'
+    scrape_interval: 10s
+    static_configs:
+      - targets: [ 'otel-collector:8889' ]
   - job_name: 'ctf'
     metrics_path: /metrics
     docker_sd_configs:
