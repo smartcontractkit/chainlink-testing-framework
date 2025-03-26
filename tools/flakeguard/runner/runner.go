@@ -186,7 +186,7 @@ func (r *Runner) runTestPackage(packageName string) (string, bool, error) {
 
 // runCmd runs the user-supplied command once, captures its JSON output,
 // and returns the temp file path, whether the test passed, and an error if any.
-func (r *Runner) runCmd(testCmd []string, runIndex int) (tempFilePath string, passed bool, err error) {
+func (r *Runner) runCmd(testCmd []string, runIndex int) (outputPath string, passed bool, err error) {
 	// Create temp file for JSON output
 	tmpFile, err := os.CreateTemp("", fmt.Sprintf("test-output-cmd-run%d-*.json", runIndex+1))
 	if err != nil {
@@ -215,7 +215,7 @@ func (r *Runner) runCmd(testCmd []string, runIndex int) (tempFilePath string, pa
 
 	err = cmd.Run()
 
-	tempFilePath = tmpFile.Name()
+	outputPath = tmpFile.Name()
 
 	// Determine pass/fail from exit code
 	type exitCoder interface {
@@ -229,7 +229,6 @@ func (r *Runner) runCmd(testCmd []string, runIndex int) (tempFilePath string, pa
 		return
 	} else if err != nil {
 		// Some other error that doesn't implement ExitCode() => real error
-		tempFilePath = ""
 		err = fmt.Errorf("error running test command: %w", err)
 		return
 	}
@@ -614,7 +613,6 @@ func (r *Runner) transformTestOutputFiles(filePaths []string) ([]string, error) 
 		}
 		// Use the transformed file path.
 		transformedPaths[i] = outFile.Name()
-		os.Remove(origPath)
 	}
 	return transformedPaths, nil
 }

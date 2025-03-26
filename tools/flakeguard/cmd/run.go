@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner"
@@ -133,11 +135,15 @@ var RunTestsCmd = &cobra.Command{
 		// Run the tests
 		var mainResults []reports.TestResult
 		if len(testCmdStrings) > 0 {
+			s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
+			s.Suffix = " Running custom test command..."
+			s.Start()
 			mainResults, err = testRunner.RunTestCmd(testCmdStrings)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error running custom test command")
 				flushSummaryAndExit(ErrorExitCode)
 			}
+			s.Stop()
 		} else {
 			mainResults, err = testRunner.RunTestPackages(testPackages)
 			if err != nil {
