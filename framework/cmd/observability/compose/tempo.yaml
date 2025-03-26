@@ -8,6 +8,9 @@ distributor:
         grpc:
         http:
 
+overrides:
+  max_traces_per_user: 50000
+
 storage:
   trace:
     backend: local
@@ -15,3 +18,8 @@ storage:
       path: /tmp/tempo/blocks
     wal:
       path: /tmp/tempo/wal
+
+compactor:
+  compaction:
+    max_block_bytes: 1073741824   # 1GB max block size
+    max_compaction_objects: 1000000

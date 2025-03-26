@@ -18,7 +18,31 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-func TestSendLogsToOTELCollector(t *testing.T) {
+func TestOTELSendMetricsToOTELCollector(t *testing.T) {
+	t.Skip("run manually to debug otel-collector")
+	res, err := resource.New(context.Background(),
+		resource.WithAttributes(
+			semconv.ServiceName("test-metrics-service"),
+			semconv.ServiceVersion("1.0.0"),
+			attribute.String("environment", "test"),
+		),
+	)
+	if err != nil {
+		t.Fatalf("failed to create resource: %v", err)
+	}
+
+	metrics := generateMetricsData(res)
+	jsonData, _ := json.MarshalIndent(metrics, "", "  ")
+	t.Logf("Sending metrics payload:\n%s\n", string(jsonData))
+
+	err = sendMetricsToCollector(metrics)
+	if err != nil {
+		t.Fatalf("failed to send metrics: %v", err)
+	}
+	t.Log("Metrics sent successfully to OTEL Collector!")
+}
+
+func TestOTELSendLogsToOTELCollector(t *testing.T) {
 	t.Skip("run manually to debug otel-collector")
 	res, err := resource.New(context.Background(),
 		resource.WithAttributes(
@@ -39,7 +63,7 @@ func TestSendLogsToOTELCollector(t *testing.T) {
 	t.Log("Logs sent successfully!")
 }
 
-func TestSendTracesToOTELCollector(t *testing.T) {
+func TestOTELSendTracesToOTELCollector(t *testing.T) {
 	t.Skip("run manually to debug otel-collector")
 	res, err := resource.New(context.Background(),
 		resource.WithAttributes(
@@ -59,6 +83,104 @@ func TestSendTracesToOTELCollector(t *testing.T) {
 		t.Fatalf("failed to send traces: %v", err)
 	}
 	t.Log("Traces sent successfully to OTEL Collector!")
+}
+
+func generateMetricsData(res *resource.Resource) map[string]interface{} {
+	now := time.Now()
+	nanos := now.UnixNano()
+	startTime := now.Add(-5 * time.Minute).UnixNano()
+
+	return map[string]interface{}{
+		"resourceMetrics": []interface{}{
+			map[string]interface{}{
+				"resource": map[string]interface{}{
+					"attributes": resourceToAttributes(res),
+				},
+				"scopeMetrics": []interface{}{
+					map[string]interface{}{
+						"scope": map[string]interface{}{
+							"name":    "test-metrics",
+							"version": "1.0",
+						},
+						"metrics": []interface{}{
+							// Counter example
+							map[string]interface{}{
+								"name":        "http.requests",
+								"description": "Count of HTTP requests",
+								"unit":        "1",
+								"sum": map[string]interface{}{
+									"dataPoints": []interface{}{
+										map[string]interface{}{
+											"startTimeUnixNano": startTime,
+											"timeUnixNano":      nanos,
+											"asInt":             "42",
+											"attributes": []interface{}{
+												map[string]interface{}{
+													"key":   "http.method",
+													"value": map[string]interface{}{"stringValue": "GET"},
+												},
+												map[string]interface{}{
+													"key":   "http.status",
+													"value": map[string]interface{}{"stringValue": "200"},
+												},
+											},
+										},
+									},
+									"aggregationTemporality": 2, // Cumulative
+									"isMonotonic":            true,
+								},
+							},
+							// Gauge example
+							map[string]interface{}{
+								"name":        "memory.usage",
+								"description": "Memory usage in bytes",
+								"unit":        "By",
+								"gauge": map[string]interface{}{
+									"dataPoints": []interface{}{
+										map[string]interface{}{
+											"timeUnixNano": nanos,
+											"asDouble":     1024.42,
+											"attributes": []interface{}{
+												map[string]interface{}{
+													"key":   "memory.type",
+													"value": map[string]interface{}{"stringValue": "heap"},
+												},
+											},
+										},
+									},
+								},
+							},
+							// Histogram example
+							map[string]interface{}{
+								"name":        "http.request.duration",
+								"description": "HTTP request duration in seconds",
+								"unit":        "s",
+								"histogram": map[string]interface{}{
+									"dataPoints": []interface{}{
+										map[string]interface{}{
+											"startTimeUnixNano": startTime,
+											"timeUnixNano":      nanos,
+											"count":             "5",
+											"sum":               4.2,
+											"bucketCounts":      []interface{}{"0", "1", "3", "1", "0"},
+											"explicitBounds":    []interface{}{"0.1", "0.5", "1", "2"},
+											"attributes": []interface{}{
+												map[string]interface{}{
+													"key":   "http.route",
+													"value": map[string]interface{}{"stringValue": "/api/users"},
+												},
+											},
+										},
+									},
+									"aggregationTemporality": 2, // Cumulative
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 }
 
 func generateLogRecords(res *resource.Resource) map[string]interface{} {
@@ -203,6 +325,34 @@ func resourceToAttributes(res *resource.Resource) []interface{} {
 		})
 	}
 	return attrs
+}
+
+func sendMetricsToCollector(metrics map[string]interface{}) error {
+	jsonData, err := json.Marshal(metrics)
+	if err != nil {
+		return fmt.Errorf("failed to marshal metrics: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", "http://localhost:4318/v1/metrics", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
 }
 
 func sendLogsToCollector(logs map[string]interface{}) error {
