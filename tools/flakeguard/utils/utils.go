@@ -28,3 +28,14 @@ func Deduplicate(items []string) []string {
 	}
 	return uniqueItems
 }
+
+func ResolveFullPath(projectPath string) (string, error) {
+	if filepath.IsAbs(projectPath) {
+		return filepath.Clean(projectPath), nil
+	}
+	absPath, err := filepath.Abs(projectPath)
+	if err != nil {
+		return "", err
+	}
+	return absPath, nil
+}
