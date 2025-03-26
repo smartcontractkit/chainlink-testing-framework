@@ -25,8 +25,8 @@ require (
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/ratelimit v0.3.1
 	google.golang.org/grpc v1.70.0 // indirect
-	k8s.io/api v0.32.2
-	k8s.io/apimachinery v0.32.2
+	k8s.io/api v0.32.3
+	k8s.io/apimachinery v0.32.3
 	k8s.io/client-go v0.32.2
 )
 
