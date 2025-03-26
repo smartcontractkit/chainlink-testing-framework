@@ -2,5 +2,10 @@ tmp_test_flaky*
 test_results_*.json
 debug_outputs
 example_results/
+example_flakeguard_report/
 example*.json
 example*.md
+test-output-*.json
+transformed-output-*.json
+flakeguard_raw_output/
+flakeguard_raw_output_transformed/

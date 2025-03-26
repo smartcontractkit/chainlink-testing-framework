@@ -2,11 +2,9 @@ package runner
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,6 +17,11 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/go-test-transform/pkg/transformer"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
+)
+
+const (
+	RawOutputDir            = "./flakeguard_raw_output"
+	RawOutputTransformedDir = "./flakeguard_raw_output_transformed"
 )
 
 var (
@@ -40,36 +43,25 @@ type Runner struct {
 	FailFast                       bool     // Stop on first test failure.
 	SkipTests                      []string // Test names to exclude.
 	SelectTests                    []string // Test names to include.
-	CollectRawOutput               bool     // Set to true to collect test output for later inspection.
 	OmitOutputsOnSuccess           bool     // Set to true to omit test outputs on success.
 	MaxPassRatio                   float64  // Maximum pass ratio threshold for a test to be considered flaky.
 	IgnoreParentFailuresOnSubtests bool     // Ignore failures in parent tests when only subtests fail.
-	rawOutputs                     map[string]*bytes.Buffer
+	rawOutputFiles                 []string // Raw output files for each test run.
+	transformedOutputFiles         []string // Transformed output files for each test run.
 }
 
 // RunTestPackages executes the tests for each provided package and aggregates all results.
 // It returns all test results and any error encountered during testing.
 // RunTestPackages executes the tests for each provided package and aggregates all results.
 func (r *Runner) RunTestPackages(packages []string) ([]reports.TestResult, error) {
-	var jsonFilePaths []string
 	// Initial runs.
 	for _, p := range packages {
-		for i := 0; i < r.RunCount; i++ {
-			if r.CollectRawOutput { // Collect raw output for debugging.
-				if r.rawOutputs == nil {
-					r.rawOutputs = make(map[string]*bytes.Buffer)
-				}
-				if _, exists := r.rawOutputs[p]; !exists {
-					r.rawOutputs[p] = &bytes.Buffer{}
-				}
-				separator := strings.Repeat("-", 80)
-				r.rawOutputs[p].WriteString(fmt.Sprintf("Run %d\n%s\n", i+1, separator))
-			}
-			jsonFilePath, passed, err := r.runTestPackage(p)
+		for i := range r.RunCount {
+			jsonFilePath, passed, err := r.runTestPackage(p, i)
 			if err != nil {
 				return nil, fmt.Errorf("failed to run tests in package %s: %w", p, err)
 			}
-			jsonFilePaths = append(jsonFilePaths, jsonFilePath)
+			r.rawOutputFiles = append(r.rawOutputFiles, jsonFilePath)
 			if !passed && r.FailFast {
 				break
 			}
@@ -77,7 +69,7 @@ func (r *Runner) RunTestPackages(packages []string) ([]reports.TestResult, error
 	}
 
 	// Parse initial results.
-	results, err := r.parseTestResults(jsonFilePaths, "run", r.RunCount)
+	results, err := r.parseTestResults("run", r.RunCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
@@ -89,20 +81,18 @@ func (r *Runner) RunTestPackages(packages []string) ([]reports.TestResult, error
 // that produces the same JSON lines that 'go test -json' would produce on stdout.
 // It captures those lines in a temp file, then parses them for pass/fail/panic/race data.
 func (r *Runner) RunTestCmd(testCmd []string) ([]reports.TestResult, error) {
-	var jsonOutputPaths []string
-
 	for i := range r.RunCount {
 		jsonOutputPath, passed, err := r.runCmd(testCmd, i)
 		if err != nil {
 			return nil, fmt.Errorf("failed to run test command: %w", err)
 		}
-		jsonOutputPaths = append(jsonOutputPaths, jsonOutputPath)
+		r.rawOutputFiles = append(r.rawOutputFiles, jsonOutputPath)
 		if !passed && r.FailFast {
 			break
 		}
 	}
 
-	results, err := r.parseTestResults(jsonOutputPaths, "run", r.RunCount)
+	results, err := r.parseTestResults("run", r.RunCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
@@ -110,18 +100,12 @@ func (r *Runner) RunTestCmd(testCmd []string) ([]reports.TestResult, error) {
 	return results, nil
 }
 
-// RawOutputs retrieves the raw output from the test runs, if CollectRawOutput enabled.
-// packageName : raw output
-func (r *Runner) RawOutputs() map[string]*bytes.Buffer {
-	return r.rawOutputs
-}
-
 type exitCoder interface {
 	ExitCode() int
 }
 
 // runTestPackage runs the tests for a given package and returns the path to the output file.
-func (r *Runner) runTestPackage(packageName string) (string, bool, error) {
+func (r *Runner) runTestPackage(packageName string, runCount int) (string, bool, error) {
 	args := []string{"test", packageName, "-json"}
 	if r.GoTestCountFlag != nil {
 		args = append(args, fmt.Sprintf("-count=%d", *r.GoTestCountFlag))
@@ -151,25 +135,26 @@ func (r *Runner) runTestPackage(packageName string) (string, bool, error) {
 		args = append(args, fmt.Sprintf("-run=^%s$", selectPattern))
 	}
 
-	if r.Verbose {
-		log.Info().Str("command", fmt.Sprintf("go %s\n", strings.Join(args, " "))).Msg("Running command")
+	err := os.MkdirAll(RawOutputDir, 0o755)
+	if err != nil {
+		return "", false, fmt.Errorf("failed to create raw output directory: %w", err)
 	}
-
 	// Create a temporary file to store the output
-	tmpFile, err := os.CreateTemp("", "test-output-*.json")
+	saniPackageName := filepath.Base(packageName)
+	tmpFile, err := os.CreateTemp(RawOutputDir, fmt.Sprintf("test-output-%s-%d-*.json", saniPackageName, runCount))
 	if err != nil {
 		return "", false, fmt.Errorf("failed to create temp file: %w", err)
 	}
 	defer tmpFile.Close()
 
+	if r.Verbose {
+		log.Info().Str("raw output file", tmpFile.Name()).Str("command", fmt.Sprintf("go %s\n", strings.Join(args, " "))).Msg("Running command")
+	}
+
 	// Run the command with output directed to the file
 	cmd := exec.Command("go", args...)
 	cmd.Dir = r.ProjectPath
-	if r.CollectRawOutput {
-		cmd.Stdout = io.MultiWriter(tmpFile, r.rawOutputs[packageName])
-	} else {
-		cmd.Stdout = tmpFile
-	}
+	cmd.Stdout = tmpFile
 
 	err = cmd.Run()
 	if err != nil {
@@ -188,29 +173,21 @@ func (r *Runner) runTestPackage(packageName string) (string, bool, error) {
 // and returns the temp file path, whether the test passed, and an error if any.
 func (r *Runner) runCmd(testCmd []string, runIndex int) (tempFilePath string, passed bool, err error) {
 	// Create temp file for JSON output
-	tmpFile, err := os.CreateTemp("", fmt.Sprintf("test-output-cmd-run%d-*.json", runIndex+1))
+	err = os.MkdirAll(RawOutputDir, 0o755)
+	if err != nil {
+		return "", false, fmt.Errorf("failed to create raw output directory: %w", err)
+	}
+	tmpFile, err := os.CreateTemp(RawOutputDir, fmt.Sprintf("test-output-cmd-run%d-*.json", runIndex+1))
 	if err != nil {
 		err = fmt.Errorf("failed to create temp file: %w", err)
-		return
+		return "", false, err
 	}
 	defer tmpFile.Close()
 
 	cmd := exec.Command(testCmd[0], testCmd[1:]...) //nolint:gosec
 	cmd.Dir = r.ProjectPath
 
-	// If collecting raw output, write to both file & buffer
-	if r.CollectRawOutput {
-		if r.rawOutputs == nil {
-			r.rawOutputs = make(map[string]*bytes.Buffer)
-		}
-		key := fmt.Sprintf("customCmd-run%d", runIndex+1)
-		if _, exists := r.rawOutputs[key]; !exists {
-			r.rawOutputs[key] = &bytes.Buffer{}
-		}
-		cmd.Stdout = io.MultiWriter(tmpFile, r.rawOutputs[key])
-	} else {
-		cmd.Stdout = tmpFile
-	}
+	cmd.Stdout = tmpFile
 	cmd.Stderr = os.Stderr
 
 	err = cmd.Run()
@@ -231,12 +208,12 @@ func (r *Runner) runCmd(testCmd []string, runIndex int) (tempFilePath string, pa
 		// Some other error that doesn't implement ExitCode() => real error
 		tempFilePath = ""
 		err = fmt.Errorf("error running test command: %w", err)
-		return
+		return tempFilePath, passed, err
 	}
 
 	// Otherwise, test passed
 	passed = true
-	return
+	return tempFilePath, passed, nil
 }
 
 type entry struct {
@@ -262,14 +239,16 @@ func (e entry) String() string {
 // panics and failures at that point.
 // Subtests add more complexity, as panics in subtests are only reported in their parent's output,
 // and cannot be accurately attributed to the subtest that caused them.
-func (r *Runner) parseTestResults(jsonOutputPaths []string, runPrefix string, runCount int) ([]reports.TestResult, error) {
+func (r *Runner) parseTestResults(runPrefix string, runCount int) ([]reports.TestResult, error) {
+	var parseFilePaths = r.rawOutputFiles
+
 	// If the option is enabled, transform each JSON output file before parsing.
 	if r.IgnoreParentFailuresOnSubtests {
-		transformedPaths, err := r.transformTestOutputFiles(jsonOutputPaths)
+		err := r.transformTestOutputFiles(r.rawOutputFiles)
 		if err != nil {
 			return nil, err
 		}
-		jsonOutputPaths = transformedPaths
+		parseFilePaths = r.transformedOutputFiles
 	}
 
 	var (
@@ -286,7 +265,7 @@ func (r *Runner) parseTestResults(jsonOutputPaths []string, runPrefix string, ru
 
 	runNumber := 0
 	// Process each file
-	for _, filePath := range jsonOutputPaths {
+	for _, filePath := range parseFilePaths {
 		runNumber++
 		runID := fmt.Sprintf("%s%d", runPrefix, runNumber)
 		file, err := os.Open(filePath)
@@ -521,13 +500,9 @@ func (r *Runner) parseTestResults(jsonOutputPaths []string, runPrefix string, ru
 		if err := scanner.Err(); err != nil {
 			return nil, fmt.Errorf("reading test output file: %w", err)
 		}
-		// Clean up file after parsing
 		if err = file.Close(); err != nil {
 			log.Warn().Err(err).Str("file", filePath).Msg("failed to close file")
 		}
-		// if err = os.Remove(filePath); err != nil {
-		// 	log.Warn().Err(err).Str("file", filePath).Msg("failed to delete file")
-		// }
 	}
 
 	var results []reports.TestResult
@@ -591,18 +566,21 @@ func (r *Runner) parseTestResults(jsonOutputPaths []string, runPrefix string, ru
 
 // transformTestOutputFiles transforms the test output JSON files to ignore parent failures when only subtests fail.
 // It returns the paths to the transformed files.
-func (r *Runner) transformTestOutputFiles(filePaths []string) ([]string, error) {
-	transformedPaths := make([]string, len(filePaths))
-	for i, origPath := range filePaths {
+func (r *Runner) transformTestOutputFiles(filePaths []string) error {
+	err := os.MkdirAll(RawOutputTransformedDir, 0o755)
+	if err != nil {
+		return fmt.Errorf("failed to create raw output directory: %w", err)
+	}
+	for _, origPath := range filePaths {
 		inFile, err := os.Open(origPath)
 		if err != nil {
-			return nil, fmt.Errorf("failed to open original file %s: %w", origPath, err)
+			return fmt.Errorf("failed to open original file %s: %w", origPath, err)
 		}
 		// Create a temporary file for the transformed output.
-		outFile, err := os.CreateTemp("", "transformed-output-*.json")
+		outFile, err := os.Create(filepath.Join(RawOutputTransformedDir, fmt.Sprintf("transformed-%s.json", filepath.Base(origPath))))
 		if err != nil {
 			inFile.Close()
-			return nil, fmt.Errorf("failed to create transformed temp file: %w", err)
+			return fmt.Errorf("failed to create transformed temp file: %w", err)
 		}
 		// Transform the JSON output.
 		// The transformer option is set to ignore parent failures when only subtests fail.
@@ -610,33 +588,35 @@ func (r *Runner) transformTestOutputFiles(filePaths []string) ([]string, error) 
 		inFile.Close()
 		outFile.Close()
 		if err != nil {
-			return nil, fmt.Errorf("failed to transform output file %s: %v", origPath, err)
+			return fmt.Errorf("failed to transform output file %s: %v", origPath, err)
 		}
 		// Use the transformed file path.
-		transformedPaths[i] = outFile.Name()
-		os.Remove(origPath)
+		r.transformedOutputFiles = append(r.transformedOutputFiles, outFile.Name())
 	}
-	return transformedPaths, nil
+	return nil
 }
 
 // attributePanicToTest properly attributes panics to the test that caused them.
 func attributePanicToTest(outputs []string) (test string, timeout bool, err error) {
-	// Regex to extract a valid test function name.
-	testNameRe := regexp.MustCompile(`(?:.*\.)?(Test[A-Z]\w+)(?:\.[^(]+)?\s*\(`)
-	// Regex to detect timeout messages (accepting "timeout", "timedout", or "timed out", case-insensitive).
-	timeoutRe := regexp.MustCompile(`(?i)(timeout|timedout|timed\s*out)`)
+	// Regex to extract a valid test function name from a panic message, e.g.
+	// github.com/smartcontractkit/chainlink/deployment/keystone/changeset_test.TestDeployBalanceReader(0xc000583c00)
+	nestedTestNameRe := regexp.MustCompile(`\.(Test[A-Z]\w+)(?:\.[^(]+)?\s*\(`)
+	// Regex to extract a valid test function name from a panic message if the panic is a timeout, e.g.
+	// TestTimedOut (10m0s)
+	timedOutTestNamRe := regexp.MustCompile(`^(Test\w+)\W+\(.*\)$`)
+
 	for _, o := range outputs {
 		outputs = append(outputs, o)
-		if matches := testNameRe.FindStringSubmatch(o); len(matches) > 1 {
-			testName := strings.TrimSpace(matches[1])
-			if timeoutRe.MatchString(o) {
-				return testName, true, nil
-			}
-			return testName, false, nil
+		matchNestedTestName := nestedTestNameRe.FindStringSubmatch(o)
+		matchTimedOutTestName := timedOutTestNamRe.FindStringSubmatch(o)
+		if len(matchNestedTestName) > 1 {
+			return strings.TrimSpace(matchNestedTestName[1]), false, nil
+		} else if len(matchTimedOutTestName) > 1 {
+			return strings.TrimSpace(matchTimedOutTestName[1]), true, nil
 		}
 	}
-	return "", false, fmt.Errorf("failed to attribute panic to test, using regex '%s' on these strings:\n\n%s",
-		testNameRe.String(), strings.Join(outputs, ""))
+	return "", false, fmt.Errorf("failed to attribute panic to test, using regex '%s' and '%s' on these strings:\n\n%s",
+		nestedTestNameRe.String(), timedOutTestNamRe.String(), strings.Join(outputs, ""))
 }
 
 // attributeRaceToTest properly attributes races to the test that caused them.
@@ -674,8 +654,6 @@ func (r *Runner) RerunFailedTests(failedTests []reports.TestResult, rerunCount i
 		log.Info().Msgf("Rerunning failing tests grouped by package: %v", failingTestsByPackage)
 	}
 
-	var rerunJsonOutputPaths []string
-
 	// Rerun each failing test package up to RerunCount times
 	for i := range rerunCount {
 		for pkg, tests := range failingTestsByPackage {
@@ -710,15 +688,15 @@ func (r *Runner) RerunFailedTests(failedTests []reports.TestResult, rerunCount i
 			if err != nil {
 				return nil, nil, fmt.Errorf("error on rerunCmd for package %s: %w", pkg, err)
 			}
-			rerunJsonOutputPaths = append(rerunJsonOutputPaths, jsonOutputPath)
+			r.rawOutputFiles = append(r.rawOutputFiles, jsonOutputPath)
 		}
 	}
 
 	// Parse all rerun results at once with a consistent prefix
-	rerunResults, err := r.parseTestResults(rerunJsonOutputPaths, "rerun", rerunCount)
+	rerunResults, err := r.parseTestResults("rerun", rerunCount)
 	if err != nil {
-		return nil, rerunJsonOutputPaths, fmt.Errorf("failed to parse rerun results: %w", err)
+		return nil, r.rawOutputFiles, fmt.Errorf("failed to parse rerun results: %w", err)
 	}
 
-	return rerunResults, rerunJsonOutputPaths, nil
+	return rerunResults, r.rawOutputFiles, nil
 }
