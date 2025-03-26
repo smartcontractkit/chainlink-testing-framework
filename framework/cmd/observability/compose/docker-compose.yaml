@@ -1,4 +1,29 @@
 services:
+  tempo:
+    image: grafana/tempo:2.3.1
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - ./tempo.yaml:/etc/tempo.yaml
+      - tempo_data:/tmp/tempo
+    ports:
+      - "3200:3200"   # tempo
+#      - "5317:4317"   # otlp grpc
+#      - "5318:4318"   # otlp http
+      - "9411:9411"   # zipkin
+      - "14268:14268" # jaeger ingest
+      - "14250:14250" # jaeger grpc
+      - "55680:55680" # otlp http legacy
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    volumes:
+      - ./otel.yaml:/etc/otel/config.yaml
+    command:
+      - '--config=/etc/otel/config.yaml'
+    ports:
+      - "4317:4317" #grpc
+      - "4318:4318" #http
+    depends_on:
+      - loki
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.51.0
     container_name: cadvisor
@@ -23,7 +48,7 @@ services:
       - '9099:9090'
 
   loki:
-    image: grafana/loki:2.5.0
+    image: grafana/loki:3.4.1
     volumes:
       - ./loki-config.yaml:/etc/loki/mounted-config.yaml
       - ./conf/provisioning/rules/rules.yml:/etc/loki/rules/fake/rules.yml
@@ -47,6 +72,10 @@ services:
       - ./conf/provisioning/dashboards/cadvisor/cadvisor.json:/var/lib/grafana/dashboards/cadvisor/cadvisor.json
     ports:
       - '3000:3000'
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
 
   pyroscope:
     image: 'pyroscope/pyroscope:latest'
@@ -106,3 +135,4 @@ volumes:
   grafana_home:
   grafana_logs:
   grafana_plugins:
+  tempo_data:
