@@ -41,6 +41,24 @@ type expectedTestResult struct {
 	seen bool
 }
 
+func TestNoCompileTests(t *testing.T) {
+	// Test that we are not swallowing test compilation errors
+	t.Parallel()
+
+	runner := Runner{
+		ProjectPath:    "./",
+		Verbose:        true,
+		RunCount:       1,
+		GoTestRaceFlag: false,
+		FailFast:       false,
+	}
+
+	_, err := runner.RunTestPackages([]string{"./example_bad_test_package"})
+	require.Error(t, err)
+	require.ErrorIs(t, err, buildErr, "expected a compile error")
+	require.NotErrorIs(t, err, failedToShowBuildErr, "should be able to print out build errors")
+}
+
 func TestPrettyProjectPath(t *testing.T) {
 	t.Parallel()
 
