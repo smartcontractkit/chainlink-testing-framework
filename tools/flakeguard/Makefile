@@ -21,11 +21,3 @@ test-race:
 .PHONY: bench
 bench:
 	go test -run=^$$ -bench=. -benchmem ./...
-
-.PHONY: example
-example:
-	./run_example.sh 3 Panic,Timeout
-
-.PHONY: example_flaky_panic
-example_flaky_panic:
-	./run_example.sh 3 TestPanic

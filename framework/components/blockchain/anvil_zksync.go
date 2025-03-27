@@ -51,7 +51,7 @@ func newAnvilZksync(in *Input) (*Output, error) {
 	}
 
 	defer func() {
-		// delete the folder wether it was successful or not
+		// delete the folder whether it was successful or not
 		_ = os.RemoveAll(tempDir)
 	}()
 
