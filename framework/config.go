@@ -149,19 +149,15 @@ func Load[X any](t *testing.T) (*X, error) {
 	if err := validate(input); err != nil {
 		return nil, err
 	}
-	t.Cleanup(func() {
-		err := Store[X](input)
-		require.NoError(t, err)
-	})
-	// TODO: not all the people have AWS access, sadly enough, uncomment when granted
-	//if os.Getenv(EnvVarAWSSecretsManager) == "true" {
-	//	Secrets, err = NewAWSSecretsManager(1 * time.Minute)
-	//	if err != nil {
-	//		return nil, fmt.Errorf("failed to connect AWSSecretsManager: %w", err)
-	//	}
-	//}
-	err = DefaultNetwork(once)
-	require.NoError(t, err)
+	if t != nil {
+		t.Cleanup(func() {
+			err := Store[X](input)
+			require.NoError(t, err)
+		})
+	}
+	if err = DefaultNetwork(once); err != nil {
+		L.Info().Err(err).Msg("docker network creation failed, either docker is not running or you are running in CRIB mode")
+	}
 	return input, nil
 }
 
