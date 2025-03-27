@@ -71,6 +71,7 @@ services:
       - ./conf/provisioning/dashboards/wasp/wasp.json:/var/lib/grafana/dashboards/wasp/wasp.json
       - ./conf/provisioning/dashboards/pg/pg.json:/var/lib/grafana/dashboards/pg/pg.json
       - ./conf/provisioning/dashboards/cadvisor/cadvisor.json:/var/lib/grafana/dashboards/cadvisor/cadvisor.json
+      - ./conf/provisioning/dashboards/clnode-errors/errors.json:/var/lib/grafana/dashboards/clnode-errors/errors.json
     ports:
       - '3000:3000'
     depends_on:
