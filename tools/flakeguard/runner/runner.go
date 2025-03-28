@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,8 +26,10 @@ const (
 )
 
 var (
-	startPanicRe = regexp.MustCompile(`^panic:`)
-	startRaceRe  = regexp.MustCompile(`^WARNING: DATA RACE`)
+	startPanicRe         = regexp.MustCompile(`^panic:`)
+	startRaceRe          = regexp.MustCompile(`^WARNING: DATA RACE`)
+	buildErr             = errors.New("failed to build test code")
+	failedToShowBuildErr = errors.New("flakeguard failed to show build errors")
 )
 
 // Runner describes the test run parameters and raw test outputs
@@ -296,6 +299,19 @@ func (r *Runner) parseTestResults(runPrefix string, runCount int) ([]reports.Tes
 				// Combine precedingLines and followingLines to provide 15 lines before and after
 				context := append(precedingLines, followingLines...)
 				return nil, fmt.Errorf("failed to parse json test output near lines:\n%s\nerror: %w", strings.Join(context, "\n"), err)
+			}
+			if entryLine.Action == "build-fail" {
+				_, err := file.Seek(0, 0)
+				if err != nil {
+					return nil, fmt.Errorf("%w: %w", failedToShowBuildErr, buildErr)
+				}
+				// Print all build errors
+				buildErrs, err := io.ReadAll(file)
+				if err != nil {
+					return nil, fmt.Errorf("%w: %w", failedToShowBuildErr, buildErr)
+				}
+				fmt.Println(string(buildErrs))
+				return nil, buildErr
 			}
 
 			var result *reports.TestResult

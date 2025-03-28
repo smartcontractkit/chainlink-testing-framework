@@ -64,6 +64,8 @@ func observabilityUp() error {
 	framework.L.Info().Msgf("Prometheus: %s", LocalPrometheusURL)
 	framework.L.Info().Msgf("PostgreSQL: %s", LocalPostgresDebugURL)
 	framework.L.Info().Msgf("Pyroscope: %s", LocalPyroScopeURL)
+	framework.L.Info().Msgf("CL Node Errors: %s", LocalCLNodeErrorsURL)
+	framework.L.Info().Msgf("Workflow Engine: %s", LocalWorkflowEngineURL)
 	return nil
 }
 

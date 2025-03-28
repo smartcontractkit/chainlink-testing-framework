@@ -14,7 +14,7 @@ services:
       - "14250:14250" # jaeger grpc
       - "55680:55680" # otlp http legacy
   otel-collector:
-    image: otel/opentelemetry-collector:latest
+    image: otel/opentelemetry-collector-contrib:0.96.0
     volumes:
       - ./otel.yaml:/etc/otel/config.yaml
     command:
@@ -56,7 +56,10 @@ services:
       - loki_data:/loki
     ports:
       - '3030:3100'
-    command: -config.file=/etc/loki/mounted-config.yaml -log.level=info -ruler.storage.local.directory=/etc/loki/rules
+    command:
+      - -config.file=/etc/loki/mounted-config.yaml
+      - -log.level=info
+      - -ruler.storage.local.directory=/etc/loki/rules
 
   grafana:
     image: grafana/grafana:10.1.0
@@ -71,6 +74,8 @@ services:
       - ./conf/provisioning/dashboards/wasp/wasp.json:/var/lib/grafana/dashboards/wasp/wasp.json
       - ./conf/provisioning/dashboards/pg/pg.json:/var/lib/grafana/dashboards/pg/pg.json
       - ./conf/provisioning/dashboards/cadvisor/cadvisor.json:/var/lib/grafana/dashboards/cadvisor/cadvisor.json
+      - ./conf/provisioning/dashboards/clnode-errors/errors.json:/var/lib/grafana/dashboards/clnode-errors/errors.json
+      - ./conf/provisioning/dashboards/workflow-engine/engine.json:/var/lib/grafana/dashboards/workflow-engine/engine.json
     ports:
       - '3000:3000'
     depends_on:
