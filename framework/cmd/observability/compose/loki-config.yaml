@@ -9,6 +9,10 @@ limits_config:
   volume_enabled: true
 
 server:
+  grpc_server_max_recv_msg_size: 104857600 # 100 MB CL workflow engine debug logs!
+  grpc_server_max_send_msg_size: 104857600 # 100 MB CL workflow engine debug logs
+  http_server_read_timeout: 5m
+  http_server_write_timeout: 5m
   http_listen_port: 3100
 
 common:
@@ -38,3 +42,14 @@ storage_config:
 
 pattern_ingester:
   enabled: true
+
+
+query_scheduler:
+  grpc_client_config:
+    max_recv_msg_size: 26777216
+    max_send_msg_size: 26777216
+
+ingester_client:
+  grpc_client_config:
+    max_recv_msg_size: 26777216
+    max_send_msg_size: 26777216
