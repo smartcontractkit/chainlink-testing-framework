@@ -443,13 +443,54 @@ func TestAttributePanicToTest(t *testing.T) {
 			},
 		},
 		{
-			name:             "timeout panic",
+			name:             "log after test complete panic",
+			expectedTestName: "Test_workflowRegisteredHandler/skips_fetch_if_secrets_url_is_missing",
+			expectedTimeout:  false,
+			outputs: []string{
+				"panic: Log in goroutine after Test_workflowRegisteredHandler/skips_fetch_if_secrets_url_is_missing has completed: 2025-03-28T17:18:16.703Z\tDEBUG\tCapabilitiesRegistry\tcapabilities/registry.go:69\tget capability\t{\"version\": \"unset@unset\", \"id\": \"basic-test-trigger@1.0.0\"}",
+				"goroutine 646 [running]:",
+				"testing.(*common).logDepth(0xc000728000, {0xc0001b9400, 0x9b}, 0x3)",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/testing/testing.go:1064 +0x69f",
+				"testing.(*common).log(...)",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/testing/testing.go:1046",
+				"testing.(*common).Logf(0xc000728000, {0x6000752, 0x2}, {0xc001070430, 0x1, 0x1})",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/testing/testing.go:1097 +0x9f",
+				"go.uber.org/zap/zaptest.TestingWriter.Write({{0x7fb811aa2818?, 0xc000728000?}, 0x20?}, {0xc001074000, 0x9c, 0x400})",
+				"\t/home/runner/go/pkg/mod/go.uber.org/zap@v1.27.0/zaptest/logger.go:146 +0x11d",
+				"go.uber.org/zap/zapcore.(*ioCore).Write(0xc000bff1d0, {0xff, {0xc1f1d45629e99436, 0x252667087c, 0x87b3fa0}, {0x602a730, 0x14}, {0x601d42f, 0xe}, {0x1, ...}, ...}, ...)",
+				"\t/home/runner/go/pkg/mod/go.uber.org/zap@v1.27.0/zapcore/core.go:99 +0x18e",
+				"go.uber.org/zap/zapcore.(*CheckedEntry).Write(0xc00106dba0, {0xc00101d400, 0x1, 0x2})",
+				"\t/home/runner/go/pkg/mod/go.uber.org/zap@v1.27.0/zapcore/entry.go:253 +0x1ed",
+				"go.uber.org/zap.(*SugaredLogger).log(0xc0001e48b8, 0xff, {0x601d42f, 0xe}, {0x0, 0x0, 0x0}, {0xc00101bf40, 0x2, 0x2})",
+				"\t/home/runner/go/pkg/mod/go.uber.org/zap@v1.27.0/sugar.go:355 +0x12d",
+				"go.uber.org/zap.(*SugaredLogger).Debugw(...)",
+				"\t/home/runner/go/pkg/mod/go.uber.org/zap@v1.27.0/sugar.go:251",
+				"github.com/smartcontractkit/chainlink/v2/core/capabilities.(*Registry).Get(0xc000ab88c0, {0x20?, 0x87bb320?}, {0xc0013282a0, 0x18})",
+				"\t/home/runner/work/chainlink/chainlink/core/capabilities/registry.go:69 +0x1cf",
+				"github.com/smartcontractkit/chainlink/v2/core/capabilities.(*Registry).GetTrigger(0xc000ab88c0, {0x67d38a8, 0xc0011f22d0}, {0xc0013282a0, 0x18})",
+				"\t/home/runner/work/chainlink/chainlink/core/capabilities/registry.go:80 +0x6f",
+				"github.com/smartcontractkit/chainlink/v2/core/services/workflows.(*Engine).resolveWorkflowCapabilities(0xc000e75188, {0x67d38a8, 0xc0011f22d0})",
+				"\t/home/runner/work/chainlink/chainlink/core/services/workflows/engine.go:198 +0x173",
+				"github.com/smartcontractkit/chainlink/v2/core/services/workflows.(*Engine).init.func1()",
+				"\t/home/runner/work/chainlink/chainlink/core/services/workflows/engine.go:348 +0x2aa",
+				"github.com/smartcontractkit/chainlink/v2/core/services/workflows.retryable({0x67d38a8, 0xc0011f22d0}, {0x680c850, 0xc000e08210}, 0x1388, 0x0, 0xc000f0bf08)",
+				"\t/home/runner/work/chainlink/chainlink/core/services/workflows/retry.go:45 +0x402",
+				"github.com/smartcontractkit/chainlink/v2/core/services/workflows.(*Engine).init(0xc000e75188, {0x67d38a8, 0xc0011f22d0})",
+				"\t/home/runner/work/chainlink/chainlink/core/services/workflows/engine.go:339 +0x225",
+				"created by github.com/smartcontractkit/chainlink/v2/core/services/workflows.(*Engine).Start.func1 in goroutine 390",
+				"\t/home/runner/work/chainlink/chainlink/core/services/workflows/engine.go:179 +0xf37",
+				"FAIL\tgithub.com/smartcontractkit/chainlink/v2/core/services/workflows/syncer\t159.643s",
+			},
+		},
+		{
+			name:             "timeout panic with obvious culprit",
 			expectedTestName: "TestTimedOut",
 			expectedTimeout:  true,
 			outputs: []string{
 				"panic: test timed out after 10m0s",
 				"running tests",
-				"TestTimedOut (10m0s)",
+				"\tTestNoTimeout (9m59s)",
+				"\tTestTimedOut (10m0s)",
 				"goroutine 397631 [running]:",
 				"testing.(*M).startAlarm.func1()",
 				"\t/opt/hostedtoolcache/go/1.23.3/x64/src/testing/testing.go:2373 +0x385",
@@ -575,11 +616,15 @@ func TestFailToAttributePanicToTest(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		name    string
-		outputs []string
+		name            string
+		expectedTimeout bool
+		expectedError   error
+		outputs         []string
 	}{
 		{
-			name: "no test name in panic",
+			name:            "no test name in panic",
+			expectedTimeout: false,
+			expectedError:   ErrFailedToAttributePanicToTest,
 			outputs: []string{
 				"panic: reflect: Elem of invalid type bool",
 				"goroutine 104182 [running]:",
@@ -617,7 +662,105 @@ func TestFailToAttributePanicToTest(t *testing.T) {
 			},
 		},
 		{
-			name: "possible regex trip-up",
+			name:            "fail to parse timeout duration",
+			expectedTimeout: true,
+			expectedError:   ErrFailedToParseTimeoutDuration,
+			outputs: []string{
+				"panic: test timed out after malformedDurationStr\n",
+				"\trunning tests:\n",
+				"\t\tTestAddAndPromoteCandidatesForNewChain (22s)\n",
+				"\t\tTestAddAndPromoteCandidatesForNewChain/Remote_chains_owned_by_MCMS (22s)\n",
+				"\t\tTestAlmostPanicTime (9m59s)\n",
+				"\t\tTestConnectNewChain (1m1s)\n",
+				"\t\tTestConnectNewChain/Use_production_router_(with_MCMS) (1m1s)\n",
+				"\t\tTestJobSpecChangeset (0s)\n",
+				"\t\tTest_ActiveCandidate (1m1s)\n",
+				"goroutine 971967 [running]:\n",
+				"testing.(*M).startAlarm.func1()\n",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/testing/testing.go:2484 +0x605\n",
+				"created by time.goFunc\n",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/time/sleep.go:215 +0x45\n",
+				"goroutine 1 [chan receive]:\n",
+				"testing.tRunner.func1()\n",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/testing/testing.go:1753 +0x965\n",
+				"testing.tRunner(0xc0013dac40, 0xc0025b7ae0)\n",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/testing/testing.go:1798 +0x25f\n",
+				"testing.runTests(0xc0010a0b70, {0x14366840, 0x25, 0x25}, {0x3?, 0x0?, 0x146214a0?})\n",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/testing/testing.go:2277 +0x96d\n",
+				"testing.(*M).Run(0xc0014732c0)\n",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/testing/testing.go:2142 +0xeeb\n",
+				"main.main()\n",
+				"\t_testmain.go:119 +0x165\n",
+			},
+		},
+		{
+			name:            "fail to parse test duration",
+			expectedTimeout: true,
+			expectedError:   ErrDetectedTimeoutFailedParse,
+			outputs: []string{
+				"panic: test timed out after 10m0s\n",
+				"\trunning tests:\n",
+				"\t\tTestAddAndPromoteCandidatesForNewChain (malformedDurationStr)\n",
+				"\t\tTestAddAndPromoteCandidatesForNewChain/Remote_chains_owned_by_MCMS (22s)\n",
+				"\t\tTestAlmostPanicTime (9m59s)\n",
+				"\t\tTestConnectNewChain (1m1s)\n",
+				"\t\tTestConnectNewChain/Use_production_router_(with_MCMS) (1m1s)\n",
+				"\t\tTestJobSpecChangeset (0s)\n",
+				"\t\tTest_ActiveCandidate (1m1s)\n",
+				"goroutine 971967 [running]:\n",
+				"testing.(*M).startAlarm.func1()\n",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/testing/testing.go:2484 +0x605\n",
+				"created by time.goFunc\n",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/time/sleep.go:215 +0x45\n",
+				"goroutine 1 [chan receive]:\n",
+				"testing.tRunner.func1()\n",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/testing/testing.go:1753 +0x965\n",
+				"testing.tRunner(0xc0013dac40, 0xc0025b7ae0)\n",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/testing/testing.go:1798 +0x25f\n",
+				"testing.runTests(0xc0010a0b70, {0x14366840, 0x25, 0x25}, {0x3?, 0x0?, 0x146214a0?})\n",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/testing/testing.go:2277 +0x96d\n",
+				"testing.(*M).Run(0xc0014732c0)\n",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/testing/testing.go:2142 +0xeeb\n",
+				"main.main()\n",
+				"\t_testmain.go:119 +0x165\n",
+			},
+		},
+		{
+			name:            "timeout panic without obvious culprit",
+			expectedTimeout: true,
+			expectedError:   ErrDetectedTimeoutFailedAttribution,
+			outputs: []string{
+				"panic: test timed out after 10m0s\n",
+				"\trunning tests:\n",
+				"\t\tTestAddAndPromoteCandidatesForNewChain (22s)\n",
+				"\t\tTestAddAndPromoteCandidatesForNewChain/Remote_chains_owned_by_MCMS (22s)\n",
+				"\t\tTestAlmostPanicTime (9m59s)\n",
+				"\t\tTestConnectNewChain (1m1s)\n",
+				"\t\tTestConnectNewChain/Use_production_router_(with_MCMS) (1m1s)\n",
+				"\t\tTestJobSpecChangeset (0s)\n",
+				"\t\tTest_ActiveCandidate (1m1s)\n",
+				"goroutine 971967 [running]:\n",
+				"testing.(*M).startAlarm.func1()\n",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/testing/testing.go:2484 +0x605\n",
+				"created by time.goFunc\n",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/time/sleep.go:215 +0x45\n",
+				"goroutine 1 [chan receive]:\n",
+				"testing.tRunner.func1()\n",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/testing/testing.go:1753 +0x965\n",
+				"testing.tRunner(0xc0013dac40, 0xc0025b7ae0)\n",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/testing/testing.go:1798 +0x25f\n",
+				"testing.runTests(0xc0010a0b70, {0x14366840, 0x25, 0x25}, {0x3?, 0x0?, 0x146214a0?})\n",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/testing/testing.go:2277 +0x96d\n",
+				"testing.(*M).Run(0xc0014732c0)\n",
+				"\t/opt/hostedtoolcache/go/1.24.0/x64/src/testing/testing.go:2142 +0xeeb\n",
+				"main.main()\n",
+				"\t_testmain.go:119 +0x165\n",
+			},
+		},
+		{
+			name:            "possible regex trip-up",
+			expectedTimeout: false,
+			expectedError:   ErrFailedToAttributePanicToTest,
 			outputs: []string{
 				"panic: runtime error: invalid memory address or nil pointer dereference\n",
 				"[signal SIGSEGV: segmentation violation code=0x1 addr=0x18 pc=0x21589cc]\n",
@@ -759,9 +902,10 @@ func TestFailToAttributePanicToTest(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			testName, timeout, err := attributePanicToTest(tc.outputs)
+			assert.Equal(t, tc.expectedTimeout, timeout, "timeout flag mismatch")
 			require.Error(t, err)
+			assert.ErrorIs(t, err, tc.expectedError, "error mismatch")
 			assert.Empty(t, testName, "test name should be empty")
-			assert.False(t, timeout, "timeout flag should be false")
 		})
 	}
 }
