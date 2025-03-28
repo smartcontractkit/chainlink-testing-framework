@@ -175,8 +175,8 @@ var RunTestsCmd = &cobra.Command{
 		}
 
 		if len(mainResults) == 0 {
-			log.Warn().Msg("No tests were run.")
-			flushSummaryAndExit(0)
+			log.Error().Msg("No tests were run.")
+			flushSummaryAndExit(ErrorExitCode)
 		}
 
 		// Save the main test results to file
