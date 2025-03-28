@@ -138,7 +138,7 @@
         "type": "loki",
         "uid": "P8E80F9AEF21F6940"
       },
-      "description": "Workflow Logs (info)",
+      "description": "Workflow Logs (error)",
       "gridPos": {
         "h": 6,
         "w": 24,
@@ -171,7 +171,7 @@
           "refId": "A"
         }
       ],
-      "title": "Workflow Logs (info)",
+      "title": "Workflow Logs (error)",
       "transparent": true,
       "type": "logs"
     },
@@ -318,7 +318,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -381,7 +382,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -467,7 +469,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -538,7 +541,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -643,7 +647,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -745,7 +750,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -788,7 +794,7 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "sum(increase(platform_engine_workflow_errors{}[$__range])) by (workflowName, workflowID) > 0",
+              "expr": "sum(increase(platform_engine_workflow_errors_total{}[$__range])) by (workflowName, workflowID) > 0",
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
@@ -847,7 +853,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -890,8 +897,8 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "sum by (workflowID, workflowName) (platform_engine_workflow_unregistered_count{})",
-              "legendFormat": "__auto",
+              "expr": "sum by (workflowID, workflowName) (platform_engine_workflow_unregistered_count_total{})",
+              "legendFormat": "{{workflowName}}",
               "range": true,
               "refId": "A"
             }
@@ -949,7 +956,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1045,7 +1053,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1089,6 +1098,7 @@
               },
               "editorMode": "code",
               "expr": "group by (workflowName, workflowID) (rate(platform_engine_workflow_completed_time_seconds_count{}[2m]) > 0)",
+              "legendFormat": "{{workflowName}}",
               "range": true,
               "refId": "A"
             }
@@ -1146,7 +1156,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1242,7 +1253,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1286,7 +1298,7 @@
               },
               "editorMode": "code",
               "expr": "group by (workflowName, workflowID) (rate(platform_engine_workflow_earlyexit_time_seconds_count{}[2m]) > 0)",
-              "legendFormat": "__auto",
+              "legendFormat": "{{workflowName}}",
               "range": true,
               "refId": "A"
             }
@@ -1344,7 +1356,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1440,7 +1453,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1484,7 +1498,7 @@
               },
               "editorMode": "code",
               "expr": "group by (workflowName, workflowID) (rate(platform_engine_workflow_error_time_seconds_count{}[2m]) > 0)",
-              "legendFormat": "__auto",
+              "legendFormat": "{{workflowName}}",
               "range": true,
               "refId": "A"
             }
@@ -1542,7 +1556,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1638,7 +1653,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1739,7 +1755,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1835,7 +1852,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -1931,7 +1949,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -2027,7 +2046,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -2123,7 +2143,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -2219,7 +2240,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -2315,7 +2337,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -2411,7 +2434,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -2538,7 +2562,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 4
+            "y": 96
           },
           "id": 28,
           "options": {
@@ -2635,7 +2659,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 12
+            "y": 104
           },
           "id": 29,
           "options": {
@@ -2732,7 +2756,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 20
+            "y": 112
           },
           "id": 30,
           "options": {
@@ -2812,7 +2836,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -2828,7 +2853,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 28
+            "y": 120
           },
           "id": 31,
           "options": {
@@ -2908,7 +2933,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -2924,7 +2950,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 36
+            "y": 128
           },
           "id": 32,
           "options": {
@@ -3004,7 +3030,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -3020,7 +3047,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 44
+            "y": 136
           },
           "id": 33,
           "options": {
@@ -3100,7 +3127,8 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "green",
+                    "value": null
                   },
                   {
                     "color": "red",
@@ -3116,7 +3144,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 52
+            "y": 144
           },
           "id": 34,
           "options": {
@@ -3169,10 +3197,10 @@
         "current": {
           "selected": true,
           "text": [
-            "otel-collector"
+            "ctf"
           ],
           "value": [
-            "otel-collector"
+            "ctf"
           ]
         },
         "datasource": {
@@ -3232,7 +3260,7 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {},
