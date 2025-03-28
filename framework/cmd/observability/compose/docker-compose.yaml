@@ -56,7 +56,10 @@ services:
       - loki_data:/loki
     ports:
       - '3030:3100'
-    command: -config.file=/etc/loki/mounted-config.yaml -log.level=info -ruler.storage.local.directory=/etc/loki/rules
+    command:
+      - -config.file=/etc/loki/mounted-config.yaml
+      - -log.level=info
+      - -ruler.storage.local.directory=/etc/loki/rules
 
   grafana:
     image: grafana/grafana:10.1.0
