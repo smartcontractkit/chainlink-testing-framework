@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"time"
 
+	"github.com/briandowns/spinner"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner"
@@ -62,6 +64,28 @@ var RunTestsCmd = &cobra.Command{
 		goProject, err := utils.GetGoProjectName(projectPath)
 		if err != nil {
 			log.Warn().Err(err).Str("projectPath", goProject).Msg("Failed to get pretty project path")
+		}
+
+		projectPath, err = utils.ResolveFullPath(projectPath)
+		if err != nil {
+			log.Error().Err(err).Str("projectPath", projectPath).Msg("Failed to resolve full path for project path")
+			flushSummaryAndExit(ErrorExitCode)
+		}
+
+		if mainResultsPath != "" {
+			mainResultsPath, err = utils.ResolveFullPath(mainResultsPath)
+			if err != nil {
+				log.Error().Err(err).Str("mainResultsPath", mainResultsPath).Msg("Failed to resolve full path for main results path")
+				flushSummaryAndExit(ErrorExitCode)
+			}
+		}
+
+		if rerunResultsPath != "" {
+			rerunResultsPath, err = utils.ResolveFullPath(rerunResultsPath)
+			if err != nil {
+				log.Error().Err(err).Str("rerunResultsPath", rerunResultsPath).Msg("Failed to resolve full path for rerun results path")
+				flushSummaryAndExit(ErrorExitCode)
+			}
 		}
 
 		// Retrieve go-test-count flag as a pointer if explicitly provided.
@@ -133,11 +157,15 @@ var RunTestsCmd = &cobra.Command{
 		// Run the tests
 		var mainResults []reports.TestResult
 		if len(testCmdStrings) > 0 {
+			s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
+			s.Suffix = " Running custom test command..."
+			s.Start()
 			mainResults, err = testRunner.RunTestCmd(testCmdStrings)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error running custom test command")
 				flushSummaryAndExit(ErrorExitCode)
 			}
+			s.Stop()
 		} else {
 			mainResults, err = testRunner.RunTestPackages(testPackages)
 			if err != nil {
@@ -147,8 +175,8 @@ var RunTestsCmd = &cobra.Command{
 		}
 
 		if len(mainResults) == 0 {
-			log.Warn().Msg("No tests were run for the specified packages")
-			flushSummaryAndExit(0)
+			log.Error().Msg("No tests were run.")
+			flushSummaryAndExit(ErrorExitCode)
 		}
 
 		// Save the main test results to file
