@@ -604,6 +604,16 @@ func (r *Runner) transformTestOutputFiles(filePaths []string) error {
 		inFile.Close()
 		outFile.Close()
 		if err != nil {
+			// Transformation failed; read & log the original file’s contents.
+			raw, readErr := os.ReadFile(origPath)
+			if readErr != nil {
+				return fmt.Errorf(
+					"failed to transform file %s: %v (also failed reading original file: %v)",
+					origPath, err, readErr,
+				)
+			}
+			log.Printf("Original test file %s content:\n%s\n", origPath, string(raw))
+
 			return fmt.Errorf("failed to transform output file %s: %v", origPath, err)
 		}
 		// Use the transformed file path.
