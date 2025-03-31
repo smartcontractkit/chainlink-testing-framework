@@ -18,6 +18,10 @@ jobs:
       fail-fast: false
       matrix:
         test:
+          - name: TestMemoryMetrics
+            config: smoke_memory.toml
+            count: 1
+            timeout: 10m
           - name: TestSmoke
             config: smoke.toml
             count: 1
