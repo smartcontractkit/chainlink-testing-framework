@@ -17,6 +17,7 @@ require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
+	github.com/avast/retry-go/v4 v4.6.1 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.32.5 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.28.4 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.45 // indirect
