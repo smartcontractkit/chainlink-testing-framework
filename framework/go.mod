@@ -5,6 +5,7 @@ go 1.24.0
 replace github.com/smartcontractkit/chainlink-testing-framework/seth => ../seth
 
 require (
+	github.com/avast/retry-go/v4 v4.6.1
 	github.com/aws/aws-sdk-go-v2/config v1.27.39
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.33.3
 	github.com/block-vision/sui-go-sdk v1.0.6
@@ -26,7 +27,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.3
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.33.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.35.0
 	github.com/urfave/cli/v2 v2.27.5
 	go.opentelemetry.io/otel v1.24.0
