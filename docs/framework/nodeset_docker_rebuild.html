@@ -261,6 +261,8 @@
       # Dockerfile path is relative to "docker_ctx"
       docker_file = "core/chainlink.Dockerfile"
       docker_ctx = "../.."
+      # Or pin the image after the first build and work on the test
+      image = "chainlink-tmp:latest"
 </code></pre>
 <p>These paths will work for <code>e2e/capabilities</code> in our main <a href="https://github.com/smartcontractkit/chainlink/tree/ctf-v2-tests/e2e/capabilities">repository</a></p>
 <p>Also check how you can add rebuild to your <a href="../developing/developing_components.html#building-local-images">components</a>.</p>

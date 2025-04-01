@@ -978,6 +978,8 @@ go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install gi
       # Dockerfile path is relative to "docker_ctx"
       docker_file = "core/chainlink.Dockerfile"
       docker_ctx = "../.."
+      # Or pin the image after the first build and work on the test
+      image = "chainlink-tmp:latest"
 </code></pre>
 <p>These paths will work for <code>e2e/capabilities</code> in our main <a href="https://github.com/smartcontractkit/chainlink/tree/ctf-v2-tests/e2e/capabilities">repository</a></p>
 <p>Also check how you can add rebuild to your <a href="framework/../developing/developing_components.html#building-local-images">components</a>.</p>
@@ -16727,7 +16729,7 @@ use <code>GetTestContainersGoTestLogger(*testing.T)</code> instead.</p>
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>adcb18be</code></li>
+<li>Commit: <code>1994028d</code></li>
 </ul>
 
                     </main>

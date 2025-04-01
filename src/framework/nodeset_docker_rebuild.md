@@ -22,6 +22,8 @@ Create a configuration file `smoke.toml`
       # Dockerfile path is relative to "docker_ctx"
       docker_file = "core/chainlink.Dockerfile"
       docker_ctx = "../.."
+      # Or pin the image after the first build and work on the test
+      image = "chainlink-tmp:latest"
 ```
 
 These paths will work for `e2e/capabilities` in our main [repository](https://github.com/smartcontractkit/chainlink/tree/ctf-v2-tests/e2e/capabilities)
