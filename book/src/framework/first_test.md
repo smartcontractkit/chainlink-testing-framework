@@ -34,7 +34,7 @@ func TestMe(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("test something", func(t *testing.T) {
-		require.NotEmpty(t, bc.Nodes[0].HostHTTPUrl)
+		require.NotEmpty(t, bc.Nodes[0].ExternalHTTPUrl)
 	})
 }
 ```

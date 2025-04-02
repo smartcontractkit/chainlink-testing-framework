@@ -70,7 +70,7 @@ func printURLs(out *Output) {
 	}
 	httpURLs, _, pgURLs := make([]string, 0), make([]string, 0), make([]string, 0)
 	for _, n := range out.CLNodes {
-		httpURLs = append(httpURLs, n.Node.HostURL)
+		httpURLs = append(httpURLs, n.Node.ExternalURL)
 		pgURLs = append(pgURLs, n.PostgreSQL.Url)
 	}
 	framework.L.Info().Any("UI", httpURLs).Send()
@@ -165,10 +165,10 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 			}
 
 			dbURLHost := strings.Replace(dbOut.Url, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i), -1)
-			dbURL := strings.Replace(dbOut.DockerInternalURL, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i), -1)
+			dbURL := strings.Replace(dbOut.InternalURL, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i), -1)
 			dbSpec := &postgres.Output{
-				Url:               dbURLHost,
-				DockerInternalURL: dbURL,
+				Url:         dbURLHost,
+				InternalURL: dbURL,
 			}
 
 			o, err := clnode.NewNode(nodeSpec, dbSpec)
@@ -194,8 +194,8 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 
 func sortNodeOutsByHostPort(nodes []*clnode.Output) {
 	slices.SortFunc[[]*clnode.Output, *clnode.Output](nodes, func(a, b *clnode.Output) int {
-		aa := strings.Split(a.Node.HostURL, ":")
-		bb := strings.Split(b.Node.HostURL, ":")
+		aa := strings.Split(a.Node.ExternalURL, ":")
+		bb := strings.Split(b.Node.ExternalURL, ":")
 		if aa[len(aa)-1] < bb[len(bb)-1] {
 			return -1
 		}

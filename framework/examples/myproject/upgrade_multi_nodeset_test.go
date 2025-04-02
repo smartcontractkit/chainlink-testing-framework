@@ -56,10 +56,10 @@ func TestMultiUpgrade(t *testing.T) {
 
 	t.Run("test something", func(t *testing.T) {
 		for _, n := range ns1.CLNodes {
-			require.NotEmpty(t, n.Node.HostURL)
+			require.NotEmpty(t, n.Node.ExternalURL)
 		}
 		for _, n := range ns2.CLNodes {
-			require.NotEmpty(t, n.Node.HostURL)
+			require.NotEmpty(t, n.Node.ExternalURL)
 		}
 	})
 }

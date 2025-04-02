@@ -153,8 +153,8 @@ func newSui(in *Input) (*Output, error) {
 		NetworkSpecificData: &NetworkSpecificData{SuiAccount: suiAccount},
 		Nodes: []*Node{
 			{
-				HostHTTPUrl:           fmt.Sprintf("http://%s:%s", host, in.Port),
-				DockerInternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
+				ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", host, in.Port),
+				InternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
 			},
 		},
 	}, nil

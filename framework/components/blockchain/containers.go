@@ -75,10 +75,10 @@ func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest, u
 		Container:     c,
 		Nodes: []*Node{
 			{
-				HostWSUrl:             fmt.Sprintf("ws://%s:%s", host, mp.Port()),
-				HostHTTPUrl:           fmt.Sprintf("http://%s:%s", host, mp.Port()),
-				DockerInternalWSUrl:   fmt.Sprintf("ws://%s:%s", containerName, in.Port),
-				DockerInternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
+				ExternalWSUrl:   fmt.Sprintf("ws://%s:%s", host, mp.Port()),
+				ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", host, mp.Port()),
+				InternalWSUrl:   fmt.Sprintf("ws://%s:%s", containerName, in.Port),
+				InternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
 			},
 		},
 	}
@@ -88,7 +88,7 @@ func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest, u
 		if err != nil {
 			return nil, err
 		}
-		output.Nodes[0].HostWSUrl = fmt.Sprintf("ws://%s:%s", host, mp.Port())
+		output.Nodes[0].ExternalWSUrl = fmt.Sprintf("ws://%s:%s", host, mp.Port())
 	}
 
 	return &output, nil

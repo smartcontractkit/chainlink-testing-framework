@@ -49,10 +49,10 @@ type NetworkSpecificData struct {
 
 // Node represents blockchain node output, URLs required for connection locally and inside docker network
 type Node struct {
-	HostWSUrl             string `toml:"ws_url"`
-	HostHTTPUrl           string `toml:"http_url"`
-	DockerInternalWSUrl   string `toml:"docker_internal_ws_url"`
-	DockerInternalHTTPUrl string `toml:"docker_internal_http_url"`
+	ExternalWSUrl   string `toml:"ws_url"`
+	ExternalHTTPUrl string `toml:"http_url"`
+	InternalWSUrl   string `toml:"internal_ws_url"`
+	InternalHTTPUrl string `toml:"internal_http_url"`
 }
 
 // NewBlockchainNetwork this is an abstraction that can spin up various blockchain network simulators

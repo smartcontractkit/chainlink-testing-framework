@@ -31,8 +31,8 @@ We support 3 EVM clients at the moment: [Geth](https://geth.ethereum.org/docs/fu
 
     [[blockchain_a.out.nodes]]
       # URLs to access the node(s) inside docker network, used by other components
-      docker_internal_http_url = "http://anvil-14411:8545"
-      docker_internal_ws_url = "ws://anvil-14411:8545"
+      internal_http_url = "http://anvil-14411:8545"
+      internal_ws_url = "ws://anvil-14411:8545"
       # URLs to access the node(s) on your host machine or in CI
       http_url = "http://127.0.0.1:33955"
       ws_url = "ws://127.0.0.1:33955"
