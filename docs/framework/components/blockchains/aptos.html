@@ -284,10 +284,10 @@ func TestAptosSmoke(t *testing.T) {
 
 	t.Run("test something", func(t *testing.T) {
 		// use internal URL to connect Chainlink nodes
-		_ = bc.Nodes[0].DockerInternalHTTPUrl
+		_ = bc.Nodes[0].InternalHTTPUrl
 		// use host URL to interact
-		_ = bc.Nodes[0].HostHTTPUrl
-		r := resty.New().SetBaseURL(bc.Nodes[0].HostHTTPUrl).EnableTrace()
+		_ = bc.Nodes[0].ExternalHTTPUrl
+		r := resty.New().SetBaseURL(bc.Nodes[0].ExternalHTTPUrl).EnableTrace()
 		_, err := r.R().Get("/v1/transactions")
 		require.NoError(t, err)
 	})

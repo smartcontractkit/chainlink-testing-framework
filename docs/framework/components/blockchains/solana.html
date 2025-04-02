@@ -296,9 +296,9 @@ func TestSolanaSmoke(t *testing.T) {
 
 	t.Run("test something", func(t *testing.T) {
 		// use internal URL to connect chainlink nodes
-		_ = bc.Nodes[0].DockerInternalHTTPUrl
+		_ = bc.Nodes[0].InternalHTTPUrl
 		// use host URL to deploy contracts
-		c := client.NewClient(bc.Nodes[0].HostHTTPUrl)
+		c := client.NewClient(bc.Nodes[0].ExternalHTTPUrl)
 		latestSlot, err := c.GetSlotWithConfig(context.Background(), client.GetSlotConfig{Commitment: "processed"})
 		require.NoError(t, err)
 		fmt.Printf("Latest slot: %v\n", latestSlot)

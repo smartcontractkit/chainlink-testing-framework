@@ -247,7 +247,7 @@
 </code></pre>
 <p>Set the <code>miner</code> speed,</p>
 <pre><code class="language-golang">	// start periodic mining so nodes can receive heads (async)
-	miner := rpc.NewRemoteAnvilMiner(bcSrc.Nodes[0].HostHTTPUrl, nil)
+	miner := rpc.NewRemoteAnvilMiner(bcSrc.Nodes[0].ExternalHTTPUrl, nil)
 	miner.MinePeriodically(5 * time.Second)
 </code></pre>
 <p>Then use this <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/quick_deploy_test.go">template</a></p>

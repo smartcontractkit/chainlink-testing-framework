@@ -102,8 +102,8 @@ func TestMe(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("test something", func(t *testing.T) {
-		fmt.Printf("node url: %s\n", output.Node.HostURL)
-		require.NotEmpty(t, output.Node.HostURL)
+		fmt.Printf("node url: %s\n", output.Node.ExternalURL)
+		require.NotEmpty(t, output.Node.ExternalURL)
 	})
 }
 ```

@@ -50,11 +50,11 @@ func TestSuiSmoke(t *testing.T) {
 
 	t.Run("test something", func(t *testing.T) {
 		// use internal URL to connect Chainlink nodes
-		_ = bc.Nodes[0].DockerInternalHTTPUrl
+		_ = bc.Nodes[0].InternalHTTPUrl
 		// use host URL to interact
-		_ = bc.Nodes[0].HostHTTPUrl
+		_ = bc.Nodes[0].ExternalHTTPUrl
 
-		cli := sui.NewSuiClient(bc.Nodes[0].HostHTTPUrl)
+		cli := sui.NewSuiClient(bc.Nodes[0].ExternalHTTPUrl)
 
 		signerAccount, err := signer.NewSignertWithMnemonic(bc.NetworkSpecificData.SuiAccount.Mnemonic)
 		require.NoError(t, err)

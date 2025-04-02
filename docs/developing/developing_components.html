@@ -327,8 +327,8 @@ func NewComponent(input *Input) (*Output, error) {
 
 	return &amp;NodeOut{
 	    UseCache: true,
-		DockerURL: fmt.Sprintf("http://%s:%s", containerName, in.Node.Port),
-		HostURL:   fmt.Sprintf("http://%s:%s", host, mp.Port()),
+		InternalURL: fmt.Sprintf("http://%s:%s", containerName, in.Node.Port),
+		ExternalURL:   fmt.Sprintf("http://%s:%s", host, mp.Port()),
 	}, nil
 </code></pre>
 <p>An example <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/components/blockchain/anvil.go">simple component</a></p>
