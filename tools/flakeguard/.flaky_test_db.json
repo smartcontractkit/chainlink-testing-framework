@@ -5,6 +5,12 @@
     "jira_ticket": "DX-291",
     "skipped_at": "2025-03-24T16:13:41.618985Z"
   },
+  "github.com/smartcontractkit/chainlink/deployment/environment/memory::TestJobClientJobAPI": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/environment/memory",
+    "test_name": "TestJobClientJobAPI",
+    "jira_ticket": "DX-402",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_DifferentRmnNodesForDifferentChains": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_DifferentRmnNodesForDifferentChains",
@@ -99,6 +105,126 @@
     "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/ocr2/plugins/ocr2keeper/evmregistry/v21/logprovider",
     "test_name": "TestIntegration_LogRecoverer_Backfill",
     "jira_ticket": "DX-121",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
+    "test_name": "TestChainComponents",
+    "jira_ticket": "DX-401",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsEvmTests": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
+    "test_name": "TestChainComponents/RunChainComponentsEvmTests",
+    "jira_ticket": "DX-401",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsEvmTests/EVM": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
+    "test_name": "TestChainComponents/RunChainComponentsEvmTests/EVM",
+    "jira_ticket": "DX-401",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsEvmTests/EVM#01": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
+    "test_name": "TestChainComponents/RunChainComponentsEvmTests/EVM#01",
+    "jira_ticket": "DX-41",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsEvmTests/EVM#01/Dynamically_typed_topics_can_be_used_to_filter_and_have_type_correct_in_return": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
+    "test_name": "TestChainComponents/RunChainComponentsEvmTests/EVM#01/Dynamically_typed_topics_can_be_used_to_filter_and_have_type_correct_in_return",
+    "jira_ticket": "DX-401",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsEvmTests/EVM#01/Filtering_can_be_done_on_indexed_topics_that_get_hashed": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
+    "test_name": "TestChainComponents/RunChainComponentsEvmTests/EVM#01/Filtering_can_be_done_on_indexed_topics_that_get_hashed",
+    "jira_ticket": "DX-401",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsEvmTests/EVM#01/Multiple_topics_can_filter_together": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
+    "test_name": "TestChainComponents/RunChainComponentsEvmTests/EVM#01/Multiple_topics_can_filter_together",
+    "jira_ticket": "DX-401",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsEvmTests/EVM/QueryKeys": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
+    "test_name": "TestChainComponents/RunChainComponentsEvmTests/EVM/QueryKeys",
+    "jira_ticket": "DX-401",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsEvmTests/EVM/QueryKeys/EVM": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
+    "test_name": "TestChainComponents/RunChainComponentsEvmTests/EVM/QueryKeys/EVM",
+    "jira_ticket": "DX-401",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsEvmTests/EVM/QueryKeys/EVM/QueryKeys_can_limit_results_with_cursor": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
+    "test_name": "TestChainComponents/RunChainComponentsEvmTests/EVM/QueryKeys/EVM/QueryKeys_can_limit_results_with_cursor",
+    "jira_ticket": "DX-401",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsInLoopEvmTests": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
+    "test_name": "TestChainComponents/RunChainComponentsInLoopEvmTests",
+    "jira_ticket": "DX-401",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
+    "test_name": "TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop",
+    "jira_ticket": "DX-401",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop#01": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
+    "test_name": "TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop#01",
+    "jira_ticket": "DX-401",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop#01/Filtering_can_be_done_on_data_words_using_value_comparator": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
+    "test_name": "TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop#01/Filtering_can_be_done_on_data_words_using_value_comparator",
+    "jira_ticket": "DX-401",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop#01/Filtering_can_be_done_on_data_words_using_value_comparator_on_a_nested_field": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
+    "test_name": "TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop#01/Filtering_can_be_done_on_data_words_using_value_comparator_on_a_nested_field",
+    "jira_ticket": "DX-401",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop#01/Filtering_can_be_done_on_data_words_using_value_comparator_on_field_that_follows_a_dynamic_field": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
+    "test_name": "TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop#01/Filtering_can_be_done_on_data_words_using_value_comparator_on_field_that_follows_a_dynamic_field",
+    "jira_ticket": "DX-401",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop#01/Filtering_can_be_done_on_data_words_using_value_comparators_on_fields_that_require_manual_index_input": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
+    "test_name": "TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop#01/Filtering_can_be_done_on_data_words_using_value_comparators_on_fields_that_require_manual_index_input",
+    "jira_ticket": "DX-401",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop/QueryKeys": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
+    "test_name": "TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop/QueryKeys",
+    "jira_ticket": "DX-401",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop/QueryKeys/EVM_on_loop": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
+    "test_name": "TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop/QueryKeys/EVM_on_loop",
+    "jira_ticket": "DX-401",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop/QueryKeys/EVM_on_loop/QueryKeys_can_limit_results_with_cursor": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
+    "test_name": "TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop/QueryKeys/EVM_on_loop/QueryKeys_can_limit_results_with_cursor",
+    "jira_ticket": "DX-401",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/v2/core/services/workflows::TestEngine_ConcurrentExecutions": {
