@@ -82,15 +82,11 @@ func CreateTicketInJira(
 	} else {
 		log.Debug().Msg("No priority name provided, skipping priority setting.")
 	}
-	// --- End Priority Setting ---
 
-	// --- Create the Issue ---
+	// Create the issue
 	issue := &jira.Issue{
 		Fields: fields,
 	}
-
-	log.Debug().Interface("issue_payload", issue).Msg("Attempting to create Jira issue") // Log payload for debugging
-
 	newIssue, resp, err := client.Issue.CreateWithContext(context.Background(), issue)
 	if err != nil {
 		// Read response body for more detailed error context
@@ -100,7 +96,6 @@ func CreateTicketInJira(
 		return "", fmt.Errorf("error creating Jira issue (status: %s): %w; response: %s", getResponseStatus(resp), err, errMsg)
 	}
 
-	log.Info().Str("issue_key", newIssue.Key).Msg("Successfully created Jira issue")
 	return newIssue.Key, nil
 }
 

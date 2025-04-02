@@ -653,9 +653,9 @@ func (m tmodel) View() string {
 	var helpLine string
 	if !t.Valid {
 		if t.ExistingJiraKey != "" {
-			helpLine = faintStyle.Render("\n[n] to next, [e] to update ticket id, [q] to quit.")
+			helpLine = faintStyle.Render("\n[n] to next, [e] to SET existing ticket id, [q] to quit.")
 		} else {
-			helpLine = faintStyle.Render("\n[n] to next, [e] to add existing ticket ID, [q] to quit.")
+			helpLine = faintStyle.Render("\n[n] to next, [e] to SET existing ticket id, [q] to quit.")
 		}
 	} else {
 		if t.ExistingJiraKey != "" {
@@ -666,7 +666,7 @@ func (m tmodel) View() string {
 			if m.DryRun || m.JiraClient == nil {
 				dryRunLabel = " (DRY RUN)"
 			}
-			helpLine = faintStyle.Render(fmt.Sprintf("\nPress [c] to create ticket%s, [n] to skip, [e] to enter existing ticket, [q] to quit.", dryRunLabel))
+			helpLine = faintStyle.Render(fmt.Sprintf("\nPress [c] to create NEW ticket%s, [n] to skip, [e] to SET existing ticket id, [q] to quit.", dryRunLabel))
 		}
 	}
 
