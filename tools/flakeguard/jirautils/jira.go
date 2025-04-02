@@ -50,8 +50,6 @@ func CreateTicketInJira(
 	// Set Assignee only if assigneeId is provided
 	if assigneeId != "" {
 		fields.Assignee = &jira.User{AccountID: assigneeId}
-	} else {
-		log.Debug().Msg("No assignee ID provided, ticket will be unassigned.")
 	}
 
 	// Find and Set Priority
@@ -70,7 +68,6 @@ func CreateTicketInJira(
 				if p.Name == priorityName {
 					fields.Priority = &p // Set the Priority field with the found object
 					foundPriority = true
-					log.Debug().Msgf("Found and setting priority: %s (ID: %s)", p.Name, p.ID)
 					break
 				}
 			}
@@ -79,8 +76,6 @@ func CreateTicketInJira(
 				log.Warn().Msgf("Priority '%s' not found in Jira instance. Creating ticket without this priority.", priorityName)
 			}
 		}
-	} else {
-		log.Debug().Msg("No priority name provided, skipping priority setting.")
 	}
 
 	// Create the issue
