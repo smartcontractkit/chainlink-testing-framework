@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -149,6 +148,7 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 							}
 							if re.MatchString(tickets[i].TestPackage) {
 								tickets[i].AssigneeId = mapping.Assignee
+								tickets[i].AssigneeName = mapping.AssigneeName
 								break // use first matching mapping
 							}
 						}
@@ -599,11 +599,15 @@ func (m tmodel) View() string {
 		header = headerStyle.Render(fmt.Sprintf("Ticket #%d of %d (Invalid)", m.index+1, len(m.tickets)))
 	}
 
-	// New: Assignee line above Summary
+	// Assignee
 	var assigneeLine string
-	if t.AssigneeId != "" {
-		assigneeLine = summaryStyle.Render("Assignee:") + "\n" + t.AssigneeId
+	var assigneeDisplayValue string
+	if t.AssigneeName != "" {
+		assigneeDisplayValue = fmt.Sprintf("%s (%s)", t.AssigneeName, t.AssigneeId)
+	} else {
+		assigneeDisplayValue = t.AssigneeId
 	}
+	assigneeLine = summaryStyle.Render("Assignee:") + "\n" + bodyStyle.Render(assigneeDisplayValue)
 
 	sum := summaryStyle.Render("Summary:")
 	sumBody := descBodyStyle.Render(t.Summary)
@@ -708,42 +712,4 @@ func readFlakyTestsCSV(path string) ([][]string, error) {
 	defer f.Close()
 	r := csv.NewReader(f)
 	return r.ReadAll()
-}
-
-func writeRemainingTicketsCSV(newPath string, m tmodel) error {
-	confirmedRows := make(map[int]bool)
-	for _, t := range m.tickets {
-		if t.Confirmed || t.ExistingJiraKey != "" {
-			confirmedRows[t.RowIndex] = true
-		}
-	}
-	var newRecords [][]string
-	orig := m.originalRecords
-	if len(orig) > 0 {
-		newRecords = append(newRecords, orig[0])
-	}
-	for i := 1; i < len(orig); i++ {
-		if !confirmedRows[i] {
-			newRecords = append(newRecords, orig[i])
-		}
-	}
-	f, err := os.Create(newPath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	w := csv.NewWriter(f)
-	if err := w.WriteAll(newRecords); err != nil {
-		return err
-	}
-	w.Flush()
-	return w.Error()
-}
-
-func makeRemainingCSVPath(originalPath string) string {
-	ext := filepath.Ext(originalPath)
-	base := strings.TrimSuffix(filepath.Base(originalPath), ext)
-	dir := filepath.Dir(originalPath)
-	newName := base + ".remaining" + ext
-	return filepath.Join(dir, newName)
 }
