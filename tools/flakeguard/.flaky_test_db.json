@@ -1,4 +1,262 @@
 {
+  "::Critical. Test \"TestConfig_Marshal/full\"": {
+    "test_package": "",
+    "test_name": "Critical. Test \"TestConfig_Marshal/full\"",
+    "jira_ticket": "CCIP-5052",
+    "jira_assignee_id": "712020:457491fb-0ea7-4078-b854-e53b746915d0",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::Critical. Test \"Test_ActiveCandidate\"": {
+    "test_package": "",
+    "test_name": "Critical. Test \"Test_ActiveCandidate\"",
+    "jira_ticket": "CCIP-5051",
+    "jira_assignee_id": "712020:5ab0ffd6-6baa-4ea1-ace5-a57ae20db75a",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::Critical. Test \"Test_decodeExtraArgs/decode_extra_args_into_map_svm\"": {
+    "test_package": "",
+    "test_name": "Critical. Test \"Test_decodeExtraArgs/decode_extra_args_into_map_svm\"",
+    "jira_ticket": "CCIP-5048",
+    "jira_assignee_id": "712020:5ab0ffd6-6baa-4ea1-ace5-a57ae20db75a",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::High. Test \"TestInvalidOCR3Params\"": {
+    "test_package": "",
+    "test_name": "High. Test \"TestInvalidOCR3Params\"",
+    "jira_ticket": "CCIP-5053",
+    "jira_assignee_id": "712020:76432787-cb4c-452a-92bf-4653a7b145ec",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::High. Test \"TestRMNCurseIdempotent\"": {
+    "test_package": "",
+    "test_name": "High. Test \"TestRMNCurseIdempotent\"",
+    "jira_ticket": "CCIP-4884",
+    "jira_assignee_id": "712020:f11a58b4-3503-4d4d-9983-d4161c7d27a8",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::High. Test \"Test_decodeExtraArgs/SVMv1\"": {
+    "test_package": "",
+    "test_name": "High. Test \"Test_decodeExtraArgs/SVMv1\"",
+    "jira_ticket": "CCIP-5055",
+    "jira_assignee_id": "712020:5ab0ffd6-6baa-4ea1-ace5-a57ae20db75a",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::High. Test \"Test_decodeExtraArgs/decode_extra_args_into_map_svm\"": {
+    "test_package": "",
+    "test_name": "High. Test \"Test_decodeExtraArgs/decode_extra_args_into_map_svm\"",
+    "jira_ticket": "CCIP-5058",
+    "jira_assignee_id": "712020:5ab0ffd6-6baa-4ea1-ace5-a57ae20db75a",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::Medium. Test \"TestDeployChainContractsChangeset\"": {
+    "test_package": "",
+    "test_name": "Medium. Test \"TestDeployChainContractsChangeset\"",
+    "jira_ticket": "CCIP-5056",
+    "jira_assignee_id": "712020:76432787-cb4c-452a-92bf-4653a7b145ec",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::Medium. Test \"TestExecutePluginCodecV1/base_report, TestExecutePluginCodecV1/reports_have_empty_offchain_token_data\"": {
+    "test_package": "",
+    "test_name": "Medium. Test \"TestExecutePluginCodecV1/base_report, TestExecutePluginCodecV1/reports_have_empty_offchain_token_data\"",
+    "jira_ticket": "CCIP-5049",
+    "jira_assignee_id": "712020:5ab0ffd6-6baa-4ea1-ace5-a57ae20db75a",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestAddRemoteChain": {
+    "test_package": "",
+    "test_name": "TestAddRemoteChain",
+    "jira_ticket": "DX-242",
+    "jira_assignee_id": "712020:7aaa919f-fc27-42dc-9b1f-05fd49d5723b",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestArbitrumBlockTranslator_BinarySearch": {
+    "test_package": "",
+    "test_name": "TestArbitrumBlockTranslator_BinarySearch",
+    "jira_ticket": "DX-204",
+    "jira_assignee_id": "6115c23730fe4500702c1301",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestCalculateConfigDigest": {
+    "test_package": "",
+    "test_name": "TestCalculateConfigDigest",
+    "jira_ticket": "DX-253",
+    "jira_assignee_id": "638f597c3e79f12e57253913",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestCallSetChannelDefinitions": {
+    "test_package": "",
+    "test_name": "TestCallSetChannelDefinitions",
+    "jira_ticket": "DX-105",
+    "jira_assignee_id": "633e1564fedc6169aed9de10",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestDeployHomeChainIdempotent": {
+    "test_package": "",
+    "test_name": "TestDeployHomeChainIdempotent",
+    "jira_ticket": "DX-259",
+    "jira_assignee_id": "712020:0403445b-a590-4e71-944c-e5b3c681dafb",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestDistributeBootstrapJobSpecs": {
+    "test_package": "",
+    "test_name": "TestDistributeBootstrapJobSpecs",
+    "jira_ticket": "DX-196",
+    "jira_assignee_id": "633e1564fedc6169aed9de10",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestEthBroadcaster_HederaBroadcastValidation": {
+    "test_package": "",
+    "test_name": "TestEthBroadcaster_HederaBroadcastValidation",
+    "jira_ticket": "DX-203",
+    "jira_assignee_id": "61452c1eeaef340069a02d4a",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestEthBroadcaster_HederaBroadcastValidation2": {
+    "test_package": "",
+    "test_name": "TestEthBroadcaster_HederaBroadcastValidation2",
+    "jira_ticket": "DX-287",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestHydrateCapabilityRegistry": {
+    "test_package": "",
+    "test_name": "TestHydrateCapabilityRegistry",
+    "jira_ticket": "DX-103",
+    "jira_assignee_id": "615260607a6be400718eefff",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestInitializeVerifier": {
+    "test_package": "",
+    "test_name": "TestInitializeVerifier",
+    "jira_ticket": "DX-260",
+    "jira_assignee_id": "641949fb1273131f2ae1dd4e",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestIntegration_LLO_multi_formats/offchainConfig={ProtocolVersion:1_DefaultMinReportIntervalNanoseconds:1}/generates_reports_using_multiple_formats": {
+    "test_package": "",
+    "test_name": "TestIntegration_LLO_multi_formats/offchainConfig={ProtocolVersion:1_DefaultMinReportIntervalNanoseconds:1}/generates_reports_using_multiple_formats",
+    "jira_ticket": "DX-258",
+    "jira_assignee_id": "610c6ea1ec92ab0070ec5c07",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestMCMSState": {
+    "test_package": "",
+    "test_name": "TestMCMSState",
+    "jira_ticket": "DX-106",
+    "jira_assignee_id": "712020:0403445b-a590-4e71-944c-e5b3c681dafb",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestNode": {
+    "test_package": "",
+    "test_name": "TestNode",
+    "jira_ticket": "DX-102",
+    "jira_assignee_id": "712020:0403445b-a590-4e71-944c-e5b3c681dafb",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestRMN_DifferentSigners": {
+    "test_package": "",
+    "test_name": "TestRMN_DifferentSigners",
+    "jira_ticket": "DX-200",
+    "jira_assignee_id": "712020:97d1a977-ba60-4d03-a15e-369daf238718",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestRMN_TwoMessagesOneSourceChainCursed": {
+    "test_package": "",
+    "test_name": "TestRMN_TwoMessagesOneSourceChainCursed",
+    "jira_ticket": "DX-122",
+    "jira_assignee_id": "712020:97d1a977-ba60-4d03-a15e-369daf238718",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestReportCodecEVMStreamlined/Pack": {
+    "test_package": "",
+    "test_name": "TestReportCodecEVMStreamlined/Pack",
+    "jira_ticket": "DX-257",
+    "jira_assignee_id": "610c6ea1ec92ab0070ec5c07",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestReportCodecEVMStreamlined/Verify": {
+    "test_package": "",
+    "test_name": "TestReportCodecEVMStreamlined/Verify",
+    "jira_ticket": "DX-256",
+    "jira_assignee_id": "610c6ea1ec92ab0070ec5c07",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestScripts/keys/eth/list/unavailable": {
+    "test_package": "",
+    "test_name": "TestScripts/keys/eth/list/unavailable",
+    "jira_ticket": "DX-110",
+    "jira_assignee_id": "6115c23730fe4500702c1301",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestScripts/nodes/evm/list/list": {
+    "test_package": "",
+    "test_name": "TestScripts/nodes/evm/list/list",
+    "jira_ticket": "DX-107",
+    "jira_assignee_id": "6115c23730fe4500702c1301",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestSmokeCCIPOnRampLimits": {
+    "test_package": "",
+    "test_name": "TestSmokeCCIPOnRampLimits",
+    "jira_ticket": "DX-124",
+    "jira_assignee_id": "712020:0403445b-a590-4e71-944c-e5b3c681dafb",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestSyncUSDCDomainsWithChainsChangeset/Sync_domains_without_MCMS": {
+    "test_package": "",
+    "test_name": "TestSyncUSDCDomainsWithChainsChangeset/Sync_domains_without_MCMS",
+    "jira_ticket": "DX-112",
+    "jira_assignee_id": "620a6e93bba9ca0070c98e8f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestV1_5_Message_RMNRemote_Curse_Uncurse": {
+    "test_package": "",
+    "test_name": "TestV1_5_Message_RMNRemote_Curse_Uncurse",
+    "jira_ticket": "DX-197",
+    "jira_assignee_id": "712020:97d1a977-ba60-4d03-a15e-369daf238718",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestVRFV2PlusIntegration_CancelSubscription": {
+    "test_package": "",
+    "test_name": "TestVRFV2PlusIntegration_CancelSubscription",
+    "jira_ticket": "DX-205",
+    "jira_assignee_id": "6115c23730fe4500702c1301",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestValidateSyncUSDCDomainsWithChainsConfig/Chain_selector_is_not_valid": {
+    "test_package": "",
+    "test_name": "TestValidateSyncUSDCDomainsWithChainsConfig/Chain_selector_is_not_valid",
+    "jira_ticket": "DX-195",
+    "jira_assignee_id": "620a6e93bba9ca0070c98e8f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::TestValidateSyncUSDCDomainsWithChainsConfig/Domain_mapping_not_defined": {
+    "test_package": "",
+    "test_name": "TestValidateSyncUSDCDomainsWithChainsConfig/Domain_mapping_not_defined",
+    "jira_ticket": "DX-113",
+    "jira_assignee_id": "620a6e93bba9ca0070c98e8f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::Test_Client_TransmissionSchedules": {
+    "test_package": "",
+    "test_name": "Test_Client_TransmissionSchedules",
+    "jira_ticket": "DX-104",
+    "jira_assignee_id": "712020:255a47f2-cfd0-4186-b8b3-9c502314f726",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::Test_Deploy": {
+    "test_package": "",
+    "test_name": "Test_Deploy",
+    "jira_ticket": "DX-101",
+    "jira_assignee_id": "610c6e93ae72b2006f798c06",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "::Test_RemoteExecutableCapability_TransmissionSchedules": {
+    "test_package": "",
+    "test_name": "Test_RemoteExecutableCapability_TransmissionSchedules",
+    "jira_ticket": "DX-108",
+    "jira_assignee_id": "63beffc42a526608c5501530",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
   "github.com/smartcontractkit/chainlink/deployment/ccip/changeset::TestDeployerGroupMCMS": {
     "test_package": "github.com/smartcontractkit/chainlink/deployment/ccip/changeset",
     "test_name": "TestDeployerGroupMCMS",
@@ -9,18 +267,21 @@
     "test_package": "github.com/smartcontractkit/chainlink/deployment/ccip/changeset",
     "test_name": "TestDeployerGroupMCMS/happy_path",
     "jira_ticket": "DX-405",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/deployment/common/changeset/solana::TestFundMCMSignersChangeset_Apply": {
     "test_package": "github.com/smartcontractkit/chainlink/deployment/common/changeset/solana",
     "test_name": "TestFundMCMSignersChangeset_Apply",
     "jira_ticket": "DX-403",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/deployment/common/changeset/state::TestMCMSWithTimelockState_GenerateMCMSWithTimelockViewSolana": {
     "test_package": "github.com/smartcontractkit/chainlink/deployment/common/changeset/state",
     "test_name": "TestMCMSWithTimelockState_GenerateMCMSWithTimelockViewSolana",
     "jira_ticket": "DX-404",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/deployment/environment/crib::TestShouldProvideEnvironmentConfig": {
@@ -33,66 +294,77 @@
     "test_package": "github.com/smartcontractkit/chainlink/deployment/environment/memory",
     "test_name": "TestJobClientJobAPI",
     "jira_ticket": "DX-402",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_DifferentRmnNodesForDifferentChains": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_DifferentRmnNodesForDifferentChains",
     "jira_ticket": "DX-202",
+    "jira_assignee_id": "712020:97d1a977-ba60-4d03-a15e-369daf238718",
     "skipped_at": "2025-03-24T16:08:45.515288Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_GlobalCurseTwoMessagesOnTwoLanes": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_GlobalCurseTwoMessagesOnTwoLanes",
     "jira_ticket": "DX-294",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
     "skipped_at": "2025-03-24T16:08:45.515288Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_IncorrectSig": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_IncorrectSig",
     "jira_ticket": "DX-396",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_MultipleMessagesOnOneLaneNoWaitForExec": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_MultipleMessagesOnOneLaneNoWaitForExec",
     "jira_ticket": "DX-201",
+    "jira_assignee_id": "712020:97d1a977-ba60-4d03-a15e-369daf238718",
     "skipped_at": "2025-03-24T16:08:45.515288Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_NotEnoughObservers": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_NotEnoughObservers",
     "jira_ticket": "DX-295",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
     "skipped_at": "2025-03-24T16:05:20.79639Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_NotEnoughSigners": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_NotEnoughSigners",
     "jira_ticket": "DX-296",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
     "skipped_at": "2025-03-24T16:07:58.289626Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_TwoMessagesOnTwoLanesIncludingBatching": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_TwoMessagesOnTwoLanesIncludingBatching",
     "jira_ticket": "DX-199",
+    "jira_assignee_id": "712020:97d1a977-ba60-4d03-a15e-369daf238718",
     "skipped_at": "2025-03-24T16:07:10.367387Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_TwoMessagesOnTwoLanesIncludingBatchingWithTemporaryPause": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_TwoMessagesOnTwoLanesIncludingBatchingWithTemporaryPause",
     "jira_ticket": "DX-123",
+    "jira_assignee_id": "712020:97d1a977-ba60-4d03-a15e-369daf238718",
     "skipped_at": "2025-03-24T16:09:29.306211Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRMN_TwoMessagesOneSourceChainCursed": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestRMN_TwoMessagesOneSourceChainCursed",
     "jira_ticket": "DX-297",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
     "skipped_at": "2025-03-24T16:13:24.263916Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestV1_5_Message_RMNRemote_Curse_Uncurse": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestV1_5_Message_RMNRemote_Curse_Uncurse",
     "jira_ticket": "DX-293",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
     "skipped_at": "2025-03-24T16:06:00.975793Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::Test_CCIPTokenPriceUpdates": {
@@ -105,12 +377,14 @@
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke",
     "test_name": "TestKeeperNodeDown/registry_1_3",
     "jira_ticket": "DX-398",
+    "jira_assignee_id": "61b2b168744c4d006994b84c",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/v2/core/capabilities/integration_tests/keystone::Test_OneAtATimeTransmissionSchedule": {
     "test_package": "github.com/smartcontractkit/chainlink/v2/core/capabilities/integration_tests/keystone",
     "test_name": "Test_OneAtATimeTransmissionSchedule",
     "jira_ticket": "DX-399",
+    "jira_assignee_id": "63beffc42a526608c5501530",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/v2/core/services/keeper::TestKeeperEthIntegration": {
@@ -123,30 +397,35 @@
     "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/keeper",
     "test_name": "TestKeeperEthIntegration/eip1559_registry1_2",
     "jira_ticket": "DX-400",
+    "jira_assignee_id": "61c3bc0d68926d0068ad903d",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/v2/core/services/ocr2/plugins/ocr2keeper/evmregistry/v21/logprovider::TestIntegration_LogRecoverer_Backfill": {
     "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/ocr2/plugins/ocr2keeper/evmregistry/v21/logprovider",
     "test_name": "TestIntegration_LogRecoverer_Backfill",
     "jira_ticket": "DX-121",
+    "jira_assignee_id": "61c3bc0d68926d0068ad903d",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents": {
     "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
     "test_name": "TestChainComponents",
     "jira_ticket": "DX-401",
+    "jira_assignee_id": "61c3bc0d68926d0068ad903d",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsEvmTests": {
     "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
     "test_name": "TestChainComponents/RunChainComponentsEvmTests",
     "jira_ticket": "DX-401",
+    "jira_assignee_id": "61c3bc0d68926d0068ad903d",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsEvmTests/EVM": {
     "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
     "test_name": "TestChainComponents/RunChainComponentsEvmTests/EVM",
     "jira_ticket": "DX-401",
+    "jira_assignee_id": "61c3bc0d68926d0068ad903d",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsEvmTests/EVM#01": {
@@ -195,6 +474,7 @@
     "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
     "test_name": "TestChainComponents/RunChainComponentsInLoopEvmTests",
     "jira_ticket": "DX-401",
+    "jira_assignee_id": "61c3bc0d68926d0068ad903d",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop": {
@@ -255,12 +535,14 @@
     "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/workflows",
     "test_name": "TestEngine_ConcurrentExecutions",
     "jira_ticket": "DX-397",
+    "jira_assignee_id": "712020:0f7e9a75-6933-4dcb-91fd-b6bf1c903d6f",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/v2::TestScripts/health/default": {
     "test_package": "github.com/smartcontractkit/chainlink/v2",
     "test_name": "TestScripts/health/default",
     "jira_ticket": "DX-109",
+    "jira_assignee_id": "6115c23730fe4500702c1301",
     "skipped_at": "2025-03-24T16:08:31.91215Z"
   }
 }
