@@ -2,7 +2,6 @@ package crib
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"strconv"
 
@@ -26,7 +25,6 @@ const (
 	DefaultSimulatedPrivateKey = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 	// DefaultSimulatedNetworkChainID is a default chainID we use for Geth/Hardhat/Anvil
 	DefaultSimulatedNetworkChainID = 1337
-	HostHeader                     = "X-Original-Host"
 )
 
 // ConnectionVars common K8s connection vars
@@ -40,16 +38,13 @@ type ConnectionVars struct {
 // CoreDONConnectionConfig Chainlink DON connection config
 type CoreDONConnectionConfig struct {
 	*ConnectionVars
-	PrivateKeys           []string
-	NodeURLs              []string
-	NodeInternalDNS       []string
-	NodeHeaders           []map[string]string
-	BlockchainNodeHeaders http.Header
-	MockserverHeaders     map[string]string
-	ChainID               int64
-	NetworkWSURL          string
-	NetworkHTTPURL        string
-	MockserverURL         string
+	PrivateKeys     []string
+	NodeURLs        []string
+	NodeInternalDNS []string
+	ChainID         int64
+	NetworkWSURL    string
+	NetworkHTTPURL  string
+	MockserverURL   string
 }
 
 // CoreDONSimulatedConnection returns all vars required to connect to core DON Simulated CRIB
@@ -62,30 +57,27 @@ func CoreDONSimulatedConnection() (*CoreDONConnectionConfig, error) {
 	var conn *CoreDONConnectionConfig
 	clNodeURLs := make([]string, 0)
 	clNodesInternalDNS := make([]string, 0)
-	clNodesHeaders := make([]map[string]string, 0)
 	for i := 1; i <= vars.Nodes; i++ {
 		clNodesInternalDNS = append(clNodesInternalDNS, fmt.Sprintf(InternalNodeDNSTemplate, i))
-		clNodesHeaders = append(clNodesHeaders, map[string]string{
-			HostHeader: fmt.Sprintf("%s-node%d%s", vars.Namespace, i, vars.IngressSuffix),
-		})
 	}
 	conn = &CoreDONConnectionConfig{
 		ConnectionVars:  vars,
 		PrivateKeys:     []string{DefaultSimulatedPrivateKey},
 		NodeURLs:        clNodeURLs,
 		NodeInternalDNS: clNodesInternalDNS,
-		NodeHeaders:     clNodesHeaders,
-		BlockchainNodeHeaders: http.Header{
-			HostHeader: []string{fmt.Sprintf("%s-geth-%d-http%s", vars.Namespace, DefaultSimulatedNetworkChainID, vars.IngressSuffix)},
-		},
-		MockserverHeaders: map[string]string{
-			HostHeader: fmt.Sprintf("%s-mockserver%s", vars.Namespace, vars.IngressSuffix),
-		},
-		ChainID: DefaultSimulatedNetworkChainID,
+		ChainID:         DefaultSimulatedNetworkChainID,
 	}
 	// GAP connection
-	gapURL := os.Getenv("GAP_URL")
-	if gapURL == "" {
+	gapEnabled := os.Getenv("GAP_ENABLED")
+	if gapEnabled == "true" {
+		logging.L.Info().Msg("Connecting to CRIB using GAP")
+		for i := 1; i <= vars.Nodes; i++ {
+			conn.NodeURLs = append(conn.NodeURLs, fmt.Sprintf("https://gap-%s-node%d.public%s", vars.Namespace, i, vars.IngressSuffix))
+		}
+		conn.NetworkWSURL = fmt.Sprintf("wss://gap-%s-geth-%d-ws.public%s", vars.Namespace, DefaultSimulatedNetworkChainID, vars.IngressSuffix)
+		conn.NetworkHTTPURL = fmt.Sprintf("https://gap-%s-geth-%d-http.public%s", vars.Namespace, DefaultSimulatedNetworkChainID, vars.IngressSuffix)
+		conn.MockserverURL = fmt.Sprintf("https://gap-%s-mockserver.public%s", vars.Namespace, vars.IngressSuffix)
+	} else {
 		logging.L.Info().Msg("Connecting to CRIB locally")
 		for i := 1; i <= vars.Nodes; i++ {
 			conn.NodeURLs = append(conn.NodeURLs, fmt.Sprintf("https://%s-node%d%s", vars.Namespace, i, vars.IngressSuffix))
@@ -93,17 +85,12 @@ func CoreDONSimulatedConnection() (*CoreDONConnectionConfig, error) {
 		conn.NetworkWSURL = fmt.Sprintf(IngressNetworkWSURLTemplate, vars.Namespace, DefaultSimulatedNetworkChainID, vars.IngressSuffix)
 		conn.NetworkHTTPURL = fmt.Sprintf(IngressNetworkHTTPURLTemplate, vars.Namespace, DefaultSimulatedNetworkChainID, vars.IngressSuffix)
 		conn.MockserverURL = fmt.Sprintf(MockserverCRIBTemplate, vars.Namespace, vars.IngressSuffix)
-	} else {
-		logging.L.Info().Msg("Connecting to CRIB using GAP")
-		for i := 1; i <= vars.Nodes; i++ {
-			conn.NodeURLs = append(conn.NodeURLs, gapURL)
-		}
-		conn.NetworkWSURL = gapURL
-		conn.NetworkHTTPURL = gapURL
-		conn.MockserverURL = gapURL
+
 	}
+
 	logging.L.Debug().Any("ConnectionInfo", conn).Msg("CRIB connection info")
 	return conn, nil
+
 }
 
 // ReadCRIBVars read CRIB environment variables
