@@ -21,10 +21,11 @@ type FlakyTicket struct {
 	ExistingJiraKey      string
 	ExistingTicketSource string // "localdb" or "jira"
 	AssigneeId           string
-	AssigneeName         string
 	Priority             string
 	FlakeRate            float64
 	SkippedAt            time.Time // timestamp when the ticket was marked as skipped
+	MissingUserMapping   bool      // true if the assignee ID exists but has no mapping in user_mapping.json
+	PillarName           string    // pillar name from Jira customfield_11016
 }
 
 // MapTestPackageToUser maps a test package to a user ID using regex patterns

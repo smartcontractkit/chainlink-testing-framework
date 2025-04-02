@@ -560,8 +560,8 @@ func (m tmodel) View() string {
 	// Assignee
 	var assigneeLine string
 	var assigneeDisplayValue string
-	if t.AssigneeName != "" {
-		assigneeDisplayValue = fmt.Sprintf("%s (%s)", t.AssigneeName, t.AssigneeId)
+	if t.AssigneeId != "" {
+		assigneeDisplayValue = fmt.Sprintf("%s (%s)", t.AssigneeId, t.AssigneeId)
 	} else {
 		assigneeDisplayValue = t.AssigneeId
 	}

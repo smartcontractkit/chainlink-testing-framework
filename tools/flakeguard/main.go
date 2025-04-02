@@ -45,6 +45,7 @@ func init() {
 	rootCmd.AddCommand(cmd.SendToSplunkCmd)
 	rootCmd.AddCommand(cmd.TicketsCmd)
 	rootCmd.AddCommand(cmd.CreateTicketsCmd)
+	rootCmd.AddCommand(cmd.SyncJiraCmd)
 }
 
 func main() {

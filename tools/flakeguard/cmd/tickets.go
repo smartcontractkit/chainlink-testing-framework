@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/andygrunwald/go-jira"
+	"github.com/briandowns/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/rs/zerolog/log"
@@ -22,6 +24,7 @@ var (
 	jiraComment     bool // if true, post a comment when marking as skipped
 	ticketsDryRun   bool // if true, do not send anything to Jira
 	hideSkipped     bool // if true, do not show skipped tests
+	missingPillars  bool // if true, only show tickets with missing pillar names
 )
 
 // TicketsCmd is the new CLI command for managing tickets.
@@ -99,11 +102,13 @@ Actions:
 				SkippedAt:       entry.SkippedAt,
 			}
 
-			// Map user ID based on test package pattern
-			if userID := model.MapTestPackageToUser(entry.TestPackage, patternToUserID); userID != "" {
-				if userMapping, exists := userMap[userID]; exists {
-					tickets[i].AssigneeId = userID
-					tickets[i].AssigneeName = userMapping.UserName
+			// Map user based on assignee ID from local DB
+			if entry.AssigneeID != "" {
+				if _, exists := userMap[entry.AssigneeID]; exists {
+					tickets[i].AssigneeId = entry.AssigneeID
+				} else {
+					tickets[i].AssigneeId = entry.AssigneeID
+					tickets[i].MissingUserMapping = true
 				}
 			}
 		}
@@ -124,6 +129,77 @@ Actions:
 		if clientErr != nil {
 			log.Warn().Msgf("Jira client not available: %v. Running in offline mode.", clientErr)
 			jiraClient = nil
+		}
+
+		// Fetch pillar names with spinner
+		if jiraClient != nil {
+			s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
+			s.Suffix = " Fetching pillar names from Jira..."
+			s.Start()
+
+			// Collect all Jira keys that need pillar names
+			var jiraKeys []string
+			for _, t := range tickets {
+				if t.ExistingJiraKey != "" {
+					jiraKeys = append(jiraKeys, t.ExistingJiraKey)
+				}
+			}
+
+			// Process tickets in batches of 50 (Jira's recommended batch size)
+			batchSize := 50
+			for i := 0; i < len(jiraKeys); i += batchSize {
+				end := i + batchSize
+				if end > len(jiraKeys) {
+					end = len(jiraKeys)
+				}
+				batch := jiraKeys[i:end]
+
+				// Create JQL query for the batch
+				jql := fmt.Sprintf("key IN (%s)", strings.Join(batch, ","))
+
+				// Fetch issues in batch
+				issues, _, err := jiraClient.Issue.Search(jql, &jira.SearchOptions{
+					Fields:     []string{"key", "customfield_11016"},
+					MaxResults: batchSize,
+				})
+
+				if err != nil {
+					log.Warn().Err(err).Msgf("Failed to fetch pillar names for batch of tickets")
+					continue
+				}
+
+				// Update tickets with pillar names
+				for _, issue := range issues {
+					// Find the corresponding ticket
+					for j := range tickets {
+						if tickets[j].ExistingJiraKey == issue.Key {
+							if issue.Fields != nil {
+								if pillarField, ok := issue.Fields.Unknowns["customfield_11016"].(map[string]interface{}); ok {
+									if value, ok := pillarField["value"].(string); ok {
+										tickets[j].PillarName = value
+									}
+								}
+							}
+							break
+						}
+					}
+				}
+
+				// Update spinner progress
+				s.Suffix = fmt.Sprintf(" Fetching pillar names from Jira... (%d/%d)", end, len(jiraKeys))
+			}
+			s.Stop()
+		}
+
+		// Filter tickets with missing pillars if the flag is set
+		if missingPillars {
+			filtered := make([]model.FlakyTicket, 0, len(tickets))
+			for _, t := range tickets {
+				if t.PillarName == "" {
+					filtered = append(filtered, t)
+				}
+			}
+			tickets = filtered
 		}
 
 		// 6) Initialize the Bubble Tea model.
@@ -153,7 +229,8 @@ func init() {
 	TicketsCmd.Flags().StringVar(&ticketsJSONPath, "test-db-path", "flaky_test_db.json", "Path to the JSON file containing tickets")
 	TicketsCmd.Flags().BoolVar(&jiraComment, "jira-comment", true, "If true, post a comment to the Jira ticket when marking as skipped")
 	TicketsCmd.Flags().BoolVar(&ticketsDryRun, "dry-run", false, "If true, do not send anything to Jira")
-	TicketsCmd.Flags().BoolVar(&hideSkipped, "hide-skipped", false, "If true, do not show skipped tests")
+	TicketsCmd.Flags().BoolVar(&hideSkipped, "hide-skipped", false, "If true, dbto not show skipped tests")
+	TicketsCmd.Flags().BoolVar(&missingPillars, "missing-pillars", false, "If true, only show tickets with missing pillar names")
 	TicketsCmd.Flags().StringVar(&userMappingPath, "user-mapping-path", "user_mapping.json", "Path to the JSON file containing user mapping")
 	TicketsCmd.Flags().StringVar(&userTestMappingPath, "user-test-mapping-path", "user_test_mapping.json", "Path to the JSON file containing user test mapping")
 	InitCommonFlags(TicketsCmd)
@@ -328,6 +405,11 @@ func (m ticketModel) View() string {
 		view += fmt.Sprintf("%s %s\n", labelStyle.Render("Jira:"), jirautils.GetJiraLink(t.ExistingJiraKey))
 	}
 
+	// Show assignee information
+	if t.AssigneeId != "" {
+		view += fmt.Sprintf("%s %s\n", labelStyle.Render("Assignee ID:"), t.AssigneeId)
+	}
+
 	// Show status with color.
 	if !t.SkippedAt.IsZero() {
 		view += fmt.Sprintf("%s %s\n", labelStyle.Render("Status:"), fmt.Sprintf("skipped at: %s", t.SkippedAt.UTC().Format(time.RFC822)))
@@ -335,11 +417,22 @@ func (m ticketModel) View() string {
 		view += fmt.Sprintf("%s %s\n", labelStyle.Render("Status:"), infoStyle.Render("not skipped"))
 	}
 
+	view += fmt.Sprintf("%s %s\n", labelStyle.Render("Pillar:"), t.PillarName)
+
 	// Display any info message.
 	if m.infoMessage != "" {
 		view += "\n" + infoStyle.Render(m.infoMessage) + "\n"
 	}
 
-	view += "\n" + actionStyle.Render("Actions:") + " [s] mark as skipped, [u] unskip, [i] set pillar name, [n] next, [q] quit"
+	// Build actions list
+	actions := []string{
+		"[s] mark as skipped",
+		"[u] unskip",
+		"[i] set pillar name",
+		"[n] next",
+		"[q] quit",
+	}
+
+	view += "\n" + actionStyle.Render("Actions:") + " " + strings.Join(actions, ", ")
 	return view
 }
