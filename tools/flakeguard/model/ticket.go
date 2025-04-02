@@ -1,6 +1,12 @@
 package model
 
-import "time"
+import (
+	"regexp"
+	"sort"
+	"time"
+
+	"github.com/rs/zerolog/log"
+)
 
 // FlakyTicket represents a ticket for a flaky test.
 type FlakyTicket struct {
@@ -19,4 +25,31 @@ type FlakyTicket struct {
 	Priority             string
 	FlakeRate            float64
 	SkippedAt            time.Time // timestamp when the ticket was marked as skipped
+}
+
+// MapTestPackageToUser maps a test package to a user ID using regex patterns
+func MapTestPackageToUser(testPackage string, testPatternMap map[string]string) string {
+	// Sort patterns by length (longest first) to ensure most specific match
+	patterns := make([]string, 0, len(testPatternMap))
+	for pattern := range testPatternMap {
+		patterns = append(patterns, pattern)
+	}
+	sort.Slice(patterns, func(i, j int) bool {
+		return len(patterns[i]) > len(patterns[j])
+	})
+
+	// Try each pattern
+	for _, pattern := range patterns {
+		matched, err := regexp.MatchString(pattern, testPackage)
+		if err != nil {
+			log.Error().Err(err).Msgf("Error matching pattern %s against package %s", pattern, testPackage)
+			continue
+		}
+		if matched {
+			return testPatternMap[pattern]
+		}
+	}
+
+	// If no match found, return empty string
+	return ""
 }

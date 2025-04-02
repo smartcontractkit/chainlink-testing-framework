@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -32,11 +33,9 @@ var TicketsCmd = &cobra.Command{
 Actions:
   [s] mark as skipped (and optionally post a comment to the Jira ticket)
   [u] unskip a ticket
-  [p] previous ticket
+  [i] set pillar name based on user mapping
   [n] next ticket
-  [q] quit
-	
-You can later extend this command to support additional actions.`,
+  [q] quit`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// 1) Load the local JSON database.
 		db, err := localdb.LoadDBWithPath(ticketsJSONPath)
@@ -45,7 +44,45 @@ You can later extend this command to support additional actions.`,
 			os.Exit(1)
 		}
 
-		// 2) Retrieve all entries from the DB.
+		// 3) Load user mapping
+		var userMap map[string]UserMapping
+		var testPatternMap map[string]UserTestMapping
+
+		// Load user mapping file
+		userMappingData, err := os.ReadFile(userMappingPath)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to read user mapping file")
+			return err
+		}
+		var userMappings []UserMapping
+		if err := json.Unmarshal(userMappingData, &userMappings); err != nil {
+			log.Error().Err(err).Msg("Failed to unmarshal user mapping")
+			return err
+		}
+		// Convert array to map
+		userMap = make(map[string]UserMapping)
+		for _, user := range userMappings {
+			userMap[user.JiraUserID] = user
+		}
+
+		// Load user test mapping file
+		userTestMappingData, err := os.ReadFile(userTestMappingPath)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to read user test mapping file")
+			return err
+		}
+		var userTestMappings []UserTestMapping
+		if err := json.Unmarshal(userTestMappingData, &userTestMappings); err != nil {
+			log.Error().Err(err).Msg("Failed to unmarshal user test mapping")
+			return err
+		}
+		// Convert array to map
+		patternToUserID := make(map[string]string)
+		for _, mapping := range userTestMappings {
+			patternToUserID[mapping.Pattern] = mapping.JiraUserID
+		}
+
+		// 4) Retrieve all entries from the DB.
 		entries := db.GetAllEntries()
 		if len(entries) == 0 {
 			log.Warn().Msg("No tickets found in local DB")
@@ -61,6 +98,14 @@ You can later extend this command to support additional actions.`,
 				ExistingJiraKey: entry.JiraTicket,
 				SkippedAt:       entry.SkippedAt,
 			}
+
+			// Map user ID based on test package pattern
+			if userID := model.MapTestPackageToUser(entry.TestPackage, patternToUserID); userID != "" {
+				if userMapping, exists := userMap[userID]; exists {
+					tickets[i].AssigneeId = userID
+					tickets[i].AssigneeName = userMapping.UserName
+				}
+			}
 		}
 
 		// If the hideSkipped flag is set, filter out tickets with a non-zero SkippedAt.
@@ -74,21 +119,21 @@ You can later extend this command to support additional actions.`,
 			tickets = filtered
 		}
 
-		// 3) Setup a Jira client (if available).
+		// 5) Setup a Jira client (if available).
 		jiraClient, clientErr := jirautils.GetJiraClient()
 		if clientErr != nil {
 			log.Warn().Msgf("Jira client not available: %v. Running in offline mode.", clientErr)
 			jiraClient = nil
 		}
 
-		// 4) Initialize the Bubble Tea model.
-		m := initialTicketsModel(tickets)
+		// 6) Initialize the Bubble Tea model.
+		m := initialTicketsModel(tickets, userMap, testPatternMap)
 		m.JiraClient = jiraClient
 		m.LocalDB = db
 		m.JiraComment = jiraComment
 		m.DryRun = ticketsDryRun
 
-		// 5) Run the TUI.
+		// 7) Run the TUI.
 		finalModel, err := tea.NewProgram(m).Run()
 		if err != nil {
 			log.Error().Err(err).Msg("Error running tickets TUI")
@@ -96,7 +141,7 @@ You can later extend this command to support additional actions.`,
 		}
 		_ = finalModel
 
-		// 6) Save the local DB if any changes were made.
+		// 8) Save the local DB if any changes were made.
 		if err := db.Save(); err != nil {
 			log.Error().Err(err).Msg("Failed to save local DB")
 		}
@@ -109,6 +154,9 @@ func init() {
 	TicketsCmd.Flags().BoolVar(&jiraComment, "jira-comment", true, "If true, post a comment to the Jira ticket when marking as skipped")
 	TicketsCmd.Flags().BoolVar(&ticketsDryRun, "dry-run", false, "If true, do not send anything to Jira")
 	TicketsCmd.Flags().BoolVar(&hideSkipped, "hide-skipped", false, "If true, do not show skipped tests")
+	TicketsCmd.Flags().StringVar(&userMappingPath, "user-mapping-path", "user_mapping.json", "Path to the JSON file containing user mapping")
+	TicketsCmd.Flags().StringVar(&userTestMappingPath, "user-test-mapping-path", "user_test_mapping.json", "Path to the JSON file containing user test mapping")
+	InitCommonFlags(TicketsCmd)
 }
 
 // -------------------------
@@ -117,21 +165,25 @@ func init() {
 
 // ticketModel represents the state of the TUI.
 type ticketModel struct {
-	tickets     []model.FlakyTicket
-	index       int
-	JiraClient  *jira.Client
-	LocalDB     localdb.DB
-	JiraComment bool
-	DryRun      bool
-	quitting    bool
-	infoMessage string // new field for showing info to the user
+	tickets        []model.FlakyTicket
+	index          int
+	JiraClient     *jira.Client
+	LocalDB        localdb.DB
+	JiraComment    bool
+	DryRun         bool
+	quitting       bool
+	infoMessage    string
+	userMap        map[string]UserMapping     // map of JiraUserID to UserMapping
+	testPatternMap map[string]UserTestMapping // map of JiraUserID to UserTestMapping
 }
 
 // initialTicketsModel creates an initial model.
-func initialTicketsModel(tickets []model.FlakyTicket) ticketModel {
+func initialTicketsModel(tickets []model.FlakyTicket, userMap map[string]UserMapping, testPatternMap map[string]UserTestMapping) ticketModel {
 	return ticketModel{
-		tickets: tickets,
-		index:   0,
+		tickets:        tickets,
+		index:          0,
+		userMap:        userMap,
+		testPatternMap: testPatternMap,
 	}
 }
 
@@ -183,11 +235,9 @@ func (m ticketModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						log.Error().Err(err).Msgf("Failed to post comment to Jira ticket %s", t.ExistingJiraKey)
 						m.infoMessage = fmt.Sprintf("Failed to post comment to Jira ticket %s", t.ExistingJiraKey)
 					} else {
-						// Use the Jira link to display the comment location.
 						m.infoMessage = fmt.Sprintf("Skip comment posted to Jira ticket: %s", jirautils.GetJiraLink(t.ExistingJiraKey))
 					}
 				}
-				// Update local DB state with the current time.
 				m.tickets[m.index] = t
 				m.LocalDB.UpdateTicketStatus(t.TestPackage, t.TestName, t.SkippedAt)
 			}
@@ -213,6 +263,35 @@ func (m ticketModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.tickets[m.index] = t
 				m.LocalDB.UpdateTicketStatus(t.TestPackage, t.TestName, t.SkippedAt)
+			}
+			return m, nil
+		}
+
+		// Action: set pillar name.
+		if msg.String() == "i" {
+			t := m.tickets[m.index]
+			if t.ExistingJiraKey != "" {
+				// Find the user mapping for the ticket's assignee
+				if userMapping, exists := m.userMap[t.AssigneeId]; exists && !m.DryRun && m.JiraClient != nil {
+					// Update the Jira ticket with the pillar name
+					issue := &jira.Issue{
+						Key: t.ExistingJiraKey,
+						Fields: &jira.IssueFields{
+							Unknowns: map[string]interface{}{
+								"customfield_11016": map[string]interface{}{
+									"value": userMapping.PillarName,
+								},
+							},
+						},
+					}
+					_, _, err := m.JiraClient.Issue.Update(issue)
+					if err != nil {
+						log.Error().Err(err).Msgf("Failed to update pillar name for Jira ticket %s", t.ExistingJiraKey)
+						m.infoMessage = fmt.Sprintf("Failed to update pillar name for Jira ticket %s", t.ExistingJiraKey)
+					} else {
+						m.infoMessage = fmt.Sprintf("Pillar name set to %s for ticket: %s", userMapping.PillarName, jirautils.GetJiraLink(t.ExistingJiraKey))
+					}
+				}
 			}
 			return m, nil
 		}
@@ -261,6 +340,6 @@ func (m ticketModel) View() string {
 		view += "\n" + infoStyle.Render(m.infoMessage) + "\n"
 	}
 
-	view += "\n" + actionStyle.Render("Actions:") + " [s] mark as skipped, [u] unskip, [p] previous, [n] next, [q] quit"
+	view += "\n" + actionStyle.Render("Actions:") + " [s] mark as skipped, [u] unskip, [i] set pillar name, [n] next, [q] quit"
 	return view
 }

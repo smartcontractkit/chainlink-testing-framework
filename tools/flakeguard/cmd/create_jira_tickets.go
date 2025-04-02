@@ -3,10 +3,8 @@ package cmd
 import (
 	"context"
 	"encoding/csv"
-	"encoding/json"
 	"fmt"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -23,22 +21,14 @@ import (
 )
 
 var (
-	csvPath             string
-	dryRun              bool
-	jiraProject         string
-	jiraIssueType       string
-	jiraSearchLabel     string // defaults to "flaky_test" if empty
-	testDBPath          string
-	assigneeMappingPath string
-	skipExisting        bool
+	csvPath         string
+	dryRun          bool
+	jiraProject     string
+	jiraIssueType   string
+	jiraSearchLabel string // defaults to "flaky_test" if empty
+	testDBPath      string
+	skipExisting    bool
 )
-
-// AssigneeMapping holds a regex pattern and its corresponding assignee.
-type AssigneeMapping struct {
-	Pattern      string `json:"pattern"`
-	Assignee     string `json:"assignee"`
-	AssigneeName string `json:"assignee_name"`
-}
 
 var CreateTicketsCmd = &cobra.Command{
 	Use:   "create-tickets",
@@ -55,8 +45,6 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
   already mapped to tests, so you won't be prompted again in the future.
 - After the TUI ends, a new CSV is produced, omitting any confirmed rows.
   The original CSV remains untouched.
-- Optionally, an assignee mapping file (JSON) can be provided to set the ticket’s assignee
-  based on the test package. The mapping supports regex.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// 1) Validate input
@@ -128,35 +116,6 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 			return nil
 		}
 
-		// Load assignee mapping (if provided)
-		var mappings []AssigneeMapping
-		if assigneeMappingPath != "" {
-			mappingData, err := os.ReadFile(assigneeMappingPath)
-			if err != nil {
-				log.Warn().Err(err).Msg("Failed to read assignee mapping file; proceeding without assignee mapping.")
-			} else {
-				if err := json.Unmarshal(mappingData, &mappings); err != nil {
-					log.Warn().Err(err).Msg("Failed to unmarshal assignee mapping; proceeding without assignee mapping.")
-				} else {
-					// Apply mapping: iterate over tickets and assign based on regex match.
-					for i := range tickets {
-						for _, mapping := range mappings {
-							re, err := regexp.Compile(mapping.Pattern)
-							if err != nil {
-								log.Warn().Msgf("Invalid regex pattern %q: %v", mapping.Pattern, err)
-								continue
-							}
-							if re.MatchString(tickets[i].TestPackage) {
-								tickets[i].AssigneeId = mapping.Assignee
-								tickets[i].AssigneeName = mapping.AssigneeName
-								break // use first matching mapping
-							}
-						}
-					}
-				}
-			}
-		}
-
 		// 5) Attempt Jira client creation
 		client, clientErr := jirautils.GetJiraClient()
 		if clientErr != nil {
@@ -215,14 +174,14 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 }
 
 func init() {
-	CreateTicketsCmd.Flags().StringVar(&csvPath, "csv-path", "", "Path to the CSV file containing flaky test data")
-	CreateTicketsCmd.Flags().BoolVar(&dryRun, "dry-run", false, "If true, do not actually create tickets in Jira")
-	CreateTicketsCmd.Flags().StringVar(&jiraProject, "jira-project", "", "Jira project key (or env JIRA_PROJECT_KEY)")
-	CreateTicketsCmd.Flags().StringVar(&jiraIssueType, "jira-issue-type", "Task", "Type of Jira issue (Task, Bug, etc.)")
+	CreateTicketsCmd.Flags().StringVar(&csvPath, "csv-path", "", "Path to CSV file with flaky tests")
+	CreateTicketsCmd.Flags().BoolVar(&dryRun, "dry-run", false, "If true, do not create tickets in Jira")
+	CreateTicketsCmd.Flags().StringVar(&jiraProject, "jira-project", "", "Jira project key (default: JIRA_PROJECT_KEY env)")
+	CreateTicketsCmd.Flags().StringVar(&jiraIssueType, "jira-issue-type", "Task", "Jira issue type")
 	CreateTicketsCmd.Flags().StringVar(&jiraSearchLabel, "jira-search-label", "", "Jira label to filter existing tickets (default: flaky_test)")
 	CreateTicketsCmd.Flags().StringVar(&testDBPath, "test-db-path", "", "Path to the flaky test JSON database (default: ~/.flaky_tes_db.json)")
-	CreateTicketsCmd.Flags().StringVar(&assigneeMappingPath, "assignee-mapping", "", "Path to JSON file with assignee mapping (supports regex)")
 	CreateTicketsCmd.Flags().BoolVar(&skipExisting, "skip-existing", false, "Skip processing tickets that already have a Jira ticket ID")
+	InitCommonFlags(CreateTicketsCmd)
 }
 
 // -------------------------------------------------------------------------------------
@@ -473,7 +432,6 @@ func updatePromptExisting(m tmodel, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		t.ExistingJiraKey = m.inputValue
 		t.ExistingTicketSource = "localdb"
 		m.tickets[m.index] = t
-		m.LocalDB.Set(t.TestPackage, t.TestName, t.ExistingJiraKey)
 		m.mode = "normal"
 		m.inputValue = ""
 		return updateSkip(m)
