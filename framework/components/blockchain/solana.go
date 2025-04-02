@@ -149,10 +149,10 @@ func newSolana(in *Input) (*Output, error) {
 		Container:     c,
 		Nodes: []*Node{
 			{
-				HostWSUrl:             fmt.Sprintf("ws://%s:%s", host, in.WSPort),
-				HostHTTPUrl:           fmt.Sprintf("http://%s:%s", host, in.Port),
-				DockerInternalWSUrl:   fmt.Sprintf("ws://%s:%s", containerName, in.WSPort),
-				DockerInternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
+				ExternalWSUrl:   fmt.Sprintf("ws://%s:%s", host, in.WSPort),
+				ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", host, in.Port),
+				InternalWSUrl:   fmt.Sprintf("ws://%s:%s", containerName, in.WSPort),
+				InternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
 			},
 		},
 	}, nil

@@ -38,11 +38,11 @@ type Input struct {
 }
 
 type Output struct {
-	Url                 string `toml:"url"`
-	ContainerName       string `toml:"container_name"`
-	DockerInternalURL   string `toml:"docker_internal_url"`
-	JDUrl               string `toml:"jd_url"`
-	JDDockerInternalURL string `toml:"jd_docker_internal_url"`
+	Url           string `toml:"url"`
+	ContainerName string `toml:"container_name"`
+	InternalURL   string `toml:"internal_url"`
+	JDUrl         string `toml:"jd_url"`
+	JDInternalURL string `toml:"jd_internal_url"`
 }
 
 func NewPostgreSQL(in *Input) (*Output, error) {
@@ -152,7 +152,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 	}
 	o := &Output{
 		ContainerName: containerName,
-		DockerInternalURL: fmt.Sprintf(
+		InternalURL: fmt.Sprintf(
 			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
 			User,
 			Password,
@@ -170,7 +170,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 		),
 	}
 	if in.JDDatabase {
-		o.JDDockerInternalURL = fmt.Sprintf(
+		o.JDInternalURL = fmt.Sprintf(
 			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
 			User,
 			Password,

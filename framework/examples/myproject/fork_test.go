@@ -34,14 +34,14 @@ func TestFork(t *testing.T) {
 
 	// connect 2 clients
 	scSrc, err := seth.NewClientBuilder().
-		WithRpcUrl(bcSrc.Nodes[0].HostWSUrl).
+		WithRpcUrl(bcSrc.Nodes[0].ExternalWSUrl).
 		WithGasPriceEstimations(true, 0, seth.Priority_Fast).
 		WithTracing(seth.TracingLevel_All, []string{seth.TraceOutput_Console}).
 		WithPrivateKeys([]string{blockchain.DefaultAnvilPrivateKey}).
 		Build()
 	require.NoError(t, err)
 	scDst, err := seth.NewClientBuilder().
-		WithRpcUrl(bcDst.Nodes[0].HostWSUrl).
+		WithRpcUrl(bcDst.Nodes[0].ExternalWSUrl).
 		WithGasPriceEstimations(true, 0, seth.Priority_Fast).
 		WithTracing(seth.TracingLevel_All, []string{seth.TraceOutput_Console}).
 		WithPrivateKeys([]string{blockchain.DefaultAnvilPrivateKey}).
@@ -50,10 +50,10 @@ func TestFork(t *testing.T) {
 
 	// deploy 2 example product contracts
 	// you can replace it with chainlink-deployments
-	in.ContractsSrc.URL = bcSrc.Nodes[0].HostWSUrl
+	in.ContractsSrc.URL = bcSrc.Nodes[0].ExternalWSUrl
 	contractsSrc, err := onchain.NewProductOnChainDeployment(scSrc, in.ContractsSrc)
 	require.NoError(t, err)
-	in.ContractsDst.URL = bcDst.Nodes[0].HostWSUrl
+	in.ContractsDst.URL = bcDst.Nodes[0].ExternalWSUrl
 	contractsDst, err := onchain.NewProductOnChainDeployment(scDst, in.ContractsDst)
 	require.NoError(t, err)
 
@@ -73,7 +73,7 @@ func TestFork(t *testing.T) {
 		fmt.Println(balance)
 
 		// Use anvil methods, see https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/rpc/rpc.go
-		_ = rpc.New(bcSrc.Nodes[0].HostHTTPUrl, nil)
-		_ = rpc.New(bcDst.Nodes[0].HostHTTPUrl, nil)
+		_ = rpc.New(bcSrc.Nodes[0].ExternalHTTPUrl, nil)
+		_ = rpc.New(bcDst.Nodes[0].ExternalHTTPUrl, nil)
 	})
 }

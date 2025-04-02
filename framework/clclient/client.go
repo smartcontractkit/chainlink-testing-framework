@@ -69,7 +69,7 @@ func New(outs []*clnode.Output) ([]*ChainlinkClient, error) {
 	clients := make([]*ChainlinkClient, 0)
 	for _, out := range outs {
 		c, err := NewChainlinkClient(&Config{
-			URL:      out.Node.HostURL,
+			URL:      out.Node.ExternalURL,
 			Email:    out.Node.APIAuthUser,
 			Password: out.Node.APIAuthPassword,
 		})

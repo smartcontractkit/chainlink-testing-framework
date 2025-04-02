@@ -98,8 +98,8 @@ func newAptos(in *Input) (*Output, error) {
 		ContainerName: containerName,
 		Nodes: []*Node{
 			{
-				HostHTTPUrl:           fmt.Sprintf("http://%s:%s", host, in.Port),
-				DockerInternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
+				ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", host, in.Port),
+				InternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
 			},
 		},
 	}, nil

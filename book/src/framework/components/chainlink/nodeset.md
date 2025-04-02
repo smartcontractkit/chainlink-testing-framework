@@ -32,8 +32,8 @@ This component requires some Blockchain to be deployed, add this to config
 
     [[blockchain_a.out.nodes]]
       # URLs to access the node(s) inside docker network, used by other components
-      docker_internal_http_url = "http://anvil-14411:8545"
-      docker_internal_ws_url = "ws://anvil-14411:8545"
+      internal_http_url = "http://anvil-14411:8545"
+      internal_ws_url = "ws://anvil-14411:8545"
       # URLs to access the node(s) on your host machine or in CI
       http_url = "http://127.0.0.1:33955"
       ws_url = "ws://127.0.0.1:33955"
@@ -155,7 +155,7 @@ func TestMe(t *testing.T) {
 
 	t.Run("test something", func(t *testing.T) {
 		for _, n := range out.CLNodes {
-			require.NotEmpty(t, n.Node.HostURL)
+			require.NotEmpty(t, n.Node.ExternalURL)
 			require.NotEmpty(t, n.Node.HostP2PURL)
 		}
 	})

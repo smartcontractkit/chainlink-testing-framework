@@ -74,7 +74,7 @@ func TestBlockchainReorgChaos(t *testing.T) {
 		{
 			name:       "Reorg src with depth: 1",
 			wait:       30 * time.Second,
-			chainURL:   bcA.Nodes[0].HostHTTPUrl,
+			chainURL:   bcA.Nodes[0].ExternalHTTPUrl,
 			reorgDepth: 1,
 			validate: func(c []*clclient.ChainlinkClient) error {
 				// add clients and validate
@@ -84,7 +84,7 @@ func TestBlockchainReorgChaos(t *testing.T) {
 		{
 			name:       "Reorg dst with depth: 1",
 			wait:       30 * time.Second,
-			chainURL:   bcB.Nodes[0].HostHTTPUrl,
+			chainURL:   bcB.Nodes[0].ExternalHTTPUrl,
 			reorgDepth: 1,
 			validate: func(c []*clclient.ChainlinkClient) error {
 				return nil
@@ -93,7 +93,7 @@ func TestBlockchainReorgChaos(t *testing.T) {
 		{
 			name:       "Reorg src with depth: 5",
 			wait:       30 * time.Second,
-			chainURL:   bcA.Nodes[0].HostHTTPUrl,
+			chainURL:   bcA.Nodes[0].ExternalHTTPUrl,
 			reorgDepth: 5,
 			validate: func(c []*clclient.ChainlinkClient) error {
 				return nil
@@ -102,7 +102,7 @@ func TestBlockchainReorgChaos(t *testing.T) {
 		{
 			name:       "Reorg dst with depth: 5",
 			wait:       30 * time.Second,
-			chainURL:   bcB.Nodes[0].HostHTTPUrl,
+			chainURL:   bcB.Nodes[0].ExternalHTTPUrl,
 			reorgDepth: 5,
 			validate: func(c []*clclient.ChainlinkClient) error {
 				return nil

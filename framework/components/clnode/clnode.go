@@ -73,9 +73,9 @@ type NodeOut struct {
 	APIAuthUser     string `toml:"api_auth_user"`
 	APIAuthPassword string `toml:"api_auth_password"`
 	ContainerName   string `toml:"container_name"`
-	HostURL         string `toml:"url"`
-	DockerURL       string `toml:"docker_internal_url"`
-	DockerP2PUrl    string `toml:"p2p_docker_internal_url"`
+	ExternalURL     string `toml:"url"`
+	InternalURL     string `toml:"internal_url"`
+	InternalP2PUrl  string `toml:"p2p_internal_url"`
 	InternalIP      string `toml:"internal_ip"`
 }
 
@@ -343,9 +343,9 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		APIAuthUser:     DefaultAPIUser,
 		APIAuthPassword: DefaultAPIPassword,
 		ContainerName:   containerName,
-		HostURL:         fmt.Sprintf("http://%s:%s", host, mp.Port()),
-		DockerURL:       fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
-		DockerP2PUrl:    fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
+		ExternalURL:     fmt.Sprintf("http://%s:%s", host, mp.Port()),
+		InternalURL:     fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
+		InternalP2PUrl:  fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
 		InternalIP:      ip,
 	}, nil
 }
@@ -396,7 +396,7 @@ func generateSecretsConfig(connString, password string) (string, error) {
 }
 
 func writeDefaultSecrets(pgOut *postgres.Output) (*os.File, error) {
-	secretsOverrides, err := generateSecretsConfig(pgOut.DockerInternalURL, DefaultTestKeystorePassword)
+	secretsOverrides, err := generateSecretsConfig(pgOut.InternalURL, DefaultTestKeystorePassword)
 	if err != nil {
 		return nil, err
 	}
