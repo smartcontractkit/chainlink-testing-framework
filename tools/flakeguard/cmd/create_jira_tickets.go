@@ -474,21 +474,20 @@ func updateConfirm(m tmodel) (tea.Model, tea.Cmd) {
 
 func updateTicketCreated(m tmodel, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "n":
-		m.mode = "normal"
-		m.index++
-		if m.index >= len(m.tickets) {
-			m.quitting = true
-		}
-		return m, nil
-	case "e":
+	case "e": // Still allow 'e' to go to the prompt mode
 		m.mode = "promptExisting"
 		m.inputValue = ""
 		return m, nil
-	case "q", "esc", "ctrl+c":
+	case "q", "esc", "ctrl+c": // Still allow quitting
 		return updateQuit(m)
+	default: // Make continuing the default action for *any other key*
+		m.mode = "normal"
+		m.index++
+		if m.index >= len(m.tickets) {
+			m.quitting = true // Ensure it quits if this was the last ticket
+		}
+		return m, nil
 	}
-	return m, nil
 }
 
 func updateSkip(m tmodel) (tea.Model, tea.Cmd) {
