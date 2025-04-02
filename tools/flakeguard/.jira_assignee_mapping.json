@@ -25,6 +25,11 @@
         "assignee_name": "Akshay"
     },
     {
+        "pattern": "github.com/smartcontractkit/chainlink/v2/core/services/relay.*",
+        "assignee": "61c3bc0d68926d0068ad903d",
+        "assignee_name": "Akshay"
+    },
+    {
         "pattern": "github.com/smartcontractkit/chainlink/deployment.*",
         "assignee": "6175d3e016119e0069fdd14f"
     },

@@ -89,6 +89,18 @@
     "jira_ticket": "DX-400",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
+  "github.com/smartcontractkit/chainlink/v2/core/services/keeper::TestKeeperEthIntegration/eip1559_registry1_2": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/keeper",
+    "test_name": "TestKeeperEthIntegration/eip1559_registry1_2",
+    "jira_ticket": "DX-400",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/ocr2/plugins/ocr2keeper/evmregistry/v21/logprovider::TestIntegration_LogRecoverer_Backfill": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/ocr2/plugins/ocr2keeper/evmregistry/v21/logprovider",
+    "test_name": "TestIntegration_LogRecoverer_Backfill",
+    "jira_ticket": "DX-121",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
   "github.com/smartcontractkit/chainlink/v2/core/services/workflows::TestEngine_ConcurrentExecutions": {
     "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/workflows",
     "test_name": "TestEngine_ConcurrentExecutions",
