@@ -1,4 +1,28 @@
 {
+  "github.com/smartcontractkit/chainlink/deployment/ccip/changeset::TestDeployerGroupMCMS": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/ccip/changeset",
+    "test_name": "TestDeployerGroupMCMS",
+    "jira_ticket": "DX-405",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/deployment/ccip/changeset::TestDeployerGroupMCMS/happy_path": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/ccip/changeset",
+    "test_name": "TestDeployerGroupMCMS/happy_path",
+    "jira_ticket": "DX-405",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/deployment/common/changeset/solana::TestFundMCMSignersChangeset_Apply": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/common/changeset/solana",
+    "test_name": "TestFundMCMSignersChangeset_Apply",
+    "jira_ticket": "DX-403",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/deployment/common/changeset/state::TestMCMSWithTimelockState_GenerateMCMSWithTimelockViewSolana": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/common/changeset/state",
+    "test_name": "TestMCMSWithTimelockState_GenerateMCMSWithTimelockViewSolana",
+    "jira_ticket": "DX-404",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
   "github.com/smartcontractkit/chainlink/deployment/environment/crib::TestShouldProvideEnvironmentConfig": {
     "test_package": "github.com/smartcontractkit/chainlink/deployment/environment/crib",
     "test_name": "TestShouldProvideEnvironmentConfig",
