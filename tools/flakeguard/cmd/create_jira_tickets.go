@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -147,7 +148,7 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 								continue
 							}
 							if re.MatchString(tickets[i].TestPackage) {
-								tickets[i].Assignee = mapping.Assignee
+								tickets[i].AssigneeId = mapping.Assignee
 								break // use first matching mapping
 							}
 						}
@@ -232,13 +233,52 @@ func init() {
 func rowToFlakyTicket(row []string) model.FlakyTicket {
 	pkg := strings.TrimSpace(row[0])
 	testName := strings.TrimSpace(row[2])
-	flakeRate := strings.TrimSpace(row[7])
+	flakeRateStr := strings.TrimSpace(row[7]) // Keep the string for display
 	logs := strings.TrimSpace(row[9])
 
-	summary := fmt.Sprintf("Fix Flaky Test: %s (%s%% flake rate)", testName, flakeRate)
+	t := model.FlakyTicket{
+		TestPackage: pkg,
+		TestName:    testName,
+		// Summary and Description will be set later
+		Valid: true, // Assume valid initially
+	}
 
-	// Parse logs
+	// Priority Calculation
+	var flakeRate float64
+	var parseErr error
+	if flakeRateStr == "" {
+		log.Warn().Msgf("Missing Flake Rate for test %q (%s). Defaulting to Low priority.", testName, pkg)
+		t.Priority = "Low" // Default priority if empty
+		flakeRateStr = "0" // Use "0" for summary display if empty
+	} else {
+		flakeRate, parseErr = strconv.ParseFloat(flakeRateStr, 64)
+		if parseErr != nil {
+			log.Error().Err(parseErr).Msgf("Invalid Flake Rate '%s' for test %q (%s).", flakeRateStr, testName, pkg)
+			t.Valid = false
+			t.InvalidReason = fmt.Sprintf("Invalid Flake Rate: %s", flakeRateStr)
+		} else {
+			t.FlakeRate = flakeRate // Store numeric value
+			// Determine priority based on numeric value
+			switch {
+			case flakeRate < 1.0:
+				t.Priority = "Low"
+			case flakeRate >= 1.0 && flakeRate < 3.0:
+				t.Priority = "Medium"
+			case flakeRate >= 3.0 && flakeRate < 5.0:
+				t.Priority = "High"
+			default: // >= 5.0
+				t.Priority = "Very High"
+			}
+		}
+	}
+
+	// Use flakeRateStr for display in summary/description to keep the % format as originally intended
+	summary := fmt.Sprintf("Fix Flaky Test: %s (%s%% flake rate)", testName, flakeRateStr)
+	t.Summary = summary
+
+	// Parse logs (same as before)
 	var logSection string
+	// ... (keep existing log parsing logic) ...
 	if logs == "" {
 		logSection = "(Logs not available)"
 	} else {
@@ -249,7 +289,6 @@ func rowToFlakyTicket(row []string) model.FlakyTicket {
 			if link == "" {
 				continue
 			}
-			// Build a Jira wiki bullet for each log link
 			lines = append(lines, fmt.Sprintf("* [Run %d|%s]", runNumber, link))
 			runNumber++
 		}
@@ -260,7 +299,7 @@ func rowToFlakyTicket(row []string) model.FlakyTicket {
 		}
 	}
 
-	// Use Jira Wiki Markup rather than Markdown
+	// Use Jira Wiki Markup (same as before)
 	desc := fmt.Sprintf(`h2. Test Details:
 * *Package:* %s
 * *Test Name:* %s
@@ -278,19 +317,12 @@ h3. Action Items:
 `,
 		pkg,
 		testName,
-		flakeRate,
+		flakeRateStr,
 		logSection,
 	)
+	t.Description = desc
 
-	t := model.FlakyTicket{
-		TestPackage: pkg,
-		TestName:    testName,
-		Summary:     summary,
-		Description: desc,
-		Valid:       true,
-	}
-
-	// check required fields
+	// Check required fields
 	var missing []string
 	if pkg == "" {
 		missing = append(missing, "Package")
@@ -298,17 +330,23 @@ h3. Action Items:
 	if testName == "" {
 		missing = append(missing, "Test Name")
 	}
-	if flakeRate == "" {
-		missing = append(missing, "Flake Rate")
+	if flakeRateStr == "" && parseErr != nil { // Check if original was empty AND parsing failed (edge case)
+		missing = append(missing, "Flake Rate (missing or invalid)")
+	} else if flakeRateStr == "" {
+		missing = append(missing, "Flake Rate (missing)")
+	} else if parseErr != nil {
+		missing = append(missing, "Flake Rate (invalid format)")
 	}
 	if logs == "" {
 		missing = append(missing, "Logs")
 	}
 
-	if len(missing) > 0 {
+	// Only overwrite Valid/InvalidReason if previously valid
+	if t.Valid && len(missing) > 0 {
 		t.Valid = false
-		t.InvalidReason = fmt.Sprintf("Missing required: %s", strings.Join(missing, ", "))
+		t.InvalidReason = fmt.Sprintf("Missing/Invalid required fields: %s", strings.Join(missing, ", "))
 	}
+
 	return t
 }
 
@@ -452,7 +490,7 @@ func updateConfirm(m tmodel) (tea.Model, tea.Cmd) {
 
 	// Attempt Jira creation if not dry-run and we have a client.
 	if !m.DryRun && m.JiraClient != nil {
-		issueKey, err := jirautils.CreateTicketInJira(m.JiraClient, t.Summary, t.Description, m.JiraProject, m.JiraIssueType, t.Assignee)
+		issueKey, err := jirautils.CreateTicketInJira(m.JiraClient, t.Summary, t.Description, m.JiraProject, m.JiraIssueType, t.AssigneeId, t.Priority)
 		if err != nil {
 			log.Error().Err(err).Msgf("Failed to create Jira ticket: %s", t.Summary)
 		} else {
@@ -538,6 +576,7 @@ func (m tmodel) View() string {
 		)
 	}
 
+	bodyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("7")) // For general text
 	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205"))
 	summaryStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("10"))
 	descHeaderStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("10"))
@@ -546,6 +585,10 @@ func (m tmodel) View() string {
 	errorStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("9"))
 	existingStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
 	redStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+	lowPriorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("10"))    // Green
+	mediumPriorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11")) // Blue/Purple
+	highPriorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("208"))  // Orange
+	veryHighPriorityStyle := errorStyle                                         // Use red for highest
 
 	t := m.tickets[m.index]
 
@@ -558,8 +601,8 @@ func (m tmodel) View() string {
 
 	// New: Assignee line above Summary
 	var assigneeLine string
-	if t.Assignee != "" {
-		assigneeLine = summaryStyle.Render("Assignee:") + "\n" + t.Assignee
+	if t.AssigneeId != "" {
+		assigneeLine = summaryStyle.Render("Assignee:") + "\n" + t.AssigneeId
 	}
 
 	sum := summaryStyle.Render("Summary:")
@@ -589,6 +632,24 @@ func (m tmodel) View() string {
 		invalidLine = errorStyle.Render(fmt.Sprintf("\nCannot create ticket: %s", t.InvalidReason))
 	}
 
+	var priorityLine string
+	if t.Priority != "" {
+		var style lipgloss.Style
+		switch t.Priority {
+		case "Low":
+			style = lowPriorityStyle
+		case "Medium":
+			style = mediumPriorityStyle
+		case "High":
+			style = highPriorityStyle
+		case "Very High": // Match the name used in calculation
+			style = veryHighPriorityStyle
+		default:
+			style = bodyStyle // Default style if unknown
+		}
+		priorityLine = summaryStyle.Render("Priority:") + "\n" + style.Render(t.Priority)
+	}
+
 	var helpLine string
 	if !t.Valid {
 		if t.ExistingJiraKey != "" {
@@ -609,15 +670,20 @@ func (m tmodel) View() string {
 		}
 	}
 
-	return fmt.Sprintf("%s\n\n%s\n\n%s\n%s\n%s\n%s%s%s\n%s\n",
+	return lipgloss.JoinVertical(lipgloss.Left,
 		header,
+		"",
 		assigneeLine,
+		"",
+		priorityLine,
+		"",
 		sum,
 		sumBody,
 		descHeader,
 		descBody,
 		existingLine,
 		invalidLine,
+		"",
 		helpLine,
 	)
 }

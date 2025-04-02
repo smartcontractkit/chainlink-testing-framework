@@ -3,9 +3,11 @@ package jirautils
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	"github.com/andygrunwald/go-jira"
+	"github.com/rs/zerolog/log"
 )
 
 // GetJiraClient creates and returns a Jira client using env vars.
@@ -30,26 +32,102 @@ func GetJiraClient() (*jira.Client, error) {
 	return jira.NewClient(tp.Client(), fmt.Sprintf("https://%s", domain))
 }
 
-// CreateTicketInJira creates a new Jira ticket and returns its issue key.
+// CreateTicketInJira creates a Jira issue with the specified details, including priority.
 func CreateTicketInJira(
 	client *jira.Client,
-	summary, description, projectKey, issueType, assigneeId string,
+	summary, description, projectKey, issueType, assigneeId, priorityName string,
 ) (string, error) {
-	issue := &jira.Issue{
-		Fields: &jira.IssueFields{
-			Project:     jira.Project{Key: projectKey},
-			Assignee:    &jira.User{AccountID: assigneeId},
-			Summary:     summary,
-			Description: description,
-			Type:        jira.IssueType{Name: issueType},
-			Labels:      []string{"flaky_test"},
-		},
+
+	// --- Prepare Issue Fields ---
+	fields := &jira.IssueFields{
+		Project:     jira.Project{Key: projectKey},
+		Summary:     summary,
+		Description: description,
+		Type:        jira.IssueType{Name: issueType},
+		Labels:      []string{"flaky_test"}, // Default label
 	}
+
+	// Set Assignee only if assigneeId is provided
+	if assigneeId != "" {
+		fields.Assignee = &jira.User{AccountID: assigneeId}
+	} else {
+		log.Debug().Msg("No assignee ID provided, ticket will be unassigned.")
+	}
+
+	// Find and Set Priority
+	if priorityName != "" {
+		priorities, resp, err := client.Priority.GetList()
+		if err != nil {
+			// Log the error but proceed without priority if fetching fails
+			status := "unknown"
+			if resp != nil {
+				status = resp.Status
+			}
+			log.Warn().Err(err).Str("status", status).Msgf("Failed to fetch Jira priorities. Creating ticket without setting priority '%s'.", priorityName)
+		} else {
+			foundPriority := false
+			for _, p := range priorities {
+				if p.Name == priorityName {
+					fields.Priority = &p // Set the Priority field with the found object
+					foundPriority = true
+					log.Debug().Msgf("Found and setting priority: %s (ID: %s)", p.Name, p.ID)
+					break
+				}
+			}
+			if !foundPriority {
+				// Log a warning if the specified priority name doesn't exist in Jira
+				log.Warn().Msgf("Priority '%s' not found in Jira instance. Creating ticket without this priority.", priorityName)
+			}
+		}
+	} else {
+		log.Debug().Msg("No priority name provided, skipping priority setting.")
+	}
+	// --- End Priority Setting ---
+
+	// --- Create the Issue ---
+	issue := &jira.Issue{
+		Fields: fields,
+	}
+
+	log.Debug().Interface("issue_payload", issue).Msg("Attempting to create Jira issue") // Log payload for debugging
+
 	newIssue, resp, err := client.Issue.CreateWithContext(context.Background(), issue)
 	if err != nil {
-		return "", fmt.Errorf("error creating Jira issue: %w (resp: %v)", err, resp)
+		// Read response body for more detailed error context
+		errMsg := readResponseBody(resp)
+		log.Error().Err(err).Str("response_body", errMsg).Msg("Failed to create Jira issue")
+		// Return a more informative error message
+		return "", fmt.Errorf("error creating Jira issue (status: %s): %w; response: %s", getResponseStatus(resp), err, errMsg)
 	}
+
+	log.Info().Str("issue_key", newIssue.Key).Msg("Successfully created Jira issue")
 	return newIssue.Key, nil
+}
+
+// Helper function to safely read response body
+func readResponseBody(resp *jira.Response) string {
+	if resp == nil || resp.Body == nil {
+		return "[no response body]"
+	}
+	defer resp.Body.Close()
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Sprintf("[error reading response body: %v]", err)
+	}
+	// Limit body size in logs/errors if necessary
+	// const maxBodyLog = 512
+	// if len(bodyBytes) > maxBodyLog {
+	//  return string(bodyBytes[:maxBodyLog]) + "... (truncated)"
+	// }
+	return string(bodyBytes)
+}
+
+// Helper function to safely get response status
+func getResponseStatus(resp *jira.Response) string {
+	if resp != nil {
+		return resp.Status
+	}
+	return "unknown"
 }
 
 // DeleteTicketInJira deletes a Jira ticket with the given ticket key.

@@ -14,6 +14,8 @@ type FlakyTicket struct {
 	Description          string
 	ExistingJiraKey      string
 	ExistingTicketSource string // "localdb" or "jira"
-	Assignee             string
+	AssigneeId           string
+	Priority             string
+	FlakeRate            float64
 	SkippedAt            time.Time // timestamp when the ticket was marked as skipped
 }
