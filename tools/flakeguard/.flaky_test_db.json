@@ -71,6 +71,24 @@
     "jira_ticket": "CCIP-4582",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
+  "github.com/smartcontractkit/chainlink/integration-tests/smoke::TestKeeperNodeDown/registry_1_3": {
+    "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke",
+    "test_name": "TestKeeperNodeDown/registry_1_3",
+    "jira_ticket": "DX-398",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/capabilities/integration_tests/keystone::Test_OneAtATimeTransmissionSchedule": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/capabilities/integration_tests/keystone",
+    "test_name": "Test_OneAtATimeTransmissionSchedule",
+    "jira_ticket": "DX-399",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/keeper::TestKeeperEthIntegration": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/keeper",
+    "test_name": "TestKeeperEthIntegration",
+    "jira_ticket": "DX-400",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
   "github.com/smartcontractkit/chainlink/v2/core/services/workflows::TestEngine_ConcurrentExecutions": {
     "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/workflows",
     "test_name": "TestEngine_ConcurrentExecutions",

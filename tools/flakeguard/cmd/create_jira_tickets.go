@@ -35,8 +35,9 @@ var (
 
 // AssigneeMapping holds a regex pattern and its corresponding assignee.
 type AssigneeMapping struct {
-	Pattern  string `json:"pattern"`
-	Assignee string `json:"assignee"`
+	Pattern      string `json:"pattern"`
+	Assignee     string `json:"assignee"`
+	AssigneeName string `json:"assignee_name"`
 }
 
 var CreateTicketsCmd = &cobra.Command{

@@ -16,6 +16,15 @@
         "assignee": "63beffc42a526608c5501530"
     },
     {
+        "pattern": "github.com/smartcontractkit/chainlink/v2/core/capabilities/integration_tests/keystone.*",
+        "assignee": "63beffc42a526608c5501530"
+    },
+    {
+        "pattern": "github.com/smartcontractkit/chainlink/v2/core/services/keeper",
+        "assignee": "61c3bc0d68926d0068ad903d",
+        "assignee_name": "Akshay"
+    },
+    {
         "pattern": "github.com/smartcontractkit/chainlink/deployment.*",
         "assignee": "6175d3e016119e0069fdd14f"
     },
