@@ -158,7 +158,7 @@ func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
 		if strings.Contains(p, CustomPortSeparator) {
 			pp := strings.Split(p, CustomPortSeparator)
 			if len(pp) != 2 {
-				return nil, nil, errors.New("custom_ports has ':' but you must provide both ports")
+				return nil, nil, fmt.Errorf("custom_ports has ':' but you must provide both ports, you provided: %s", pp)
 			}
 			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", pp[1]))
 

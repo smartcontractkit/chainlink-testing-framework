@@ -52,7 +52,7 @@ func observabilityUp() error {
 	if err := framework.NewPromtail(); err != nil {
 		return err
 	}
-	err := runCommand("bash", "-c", fmt.Sprintf(`
+	err := framework.RunCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
 		docker compose up -d
 	`, "compose"))
@@ -71,7 +71,7 @@ func observabilityUp() error {
 
 func observabilityDown() error {
 	framework.L.Info().Msg("Removing local observability stack")
-	err := runCommand("bash", "-c", fmt.Sprintf(`
+	err := framework.RunCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
 		docker compose down -v && docker rm -f promtail
 	`, "compose"))

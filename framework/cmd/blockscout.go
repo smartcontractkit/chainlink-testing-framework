@@ -14,7 +14,7 @@ func blockscoutUp(url string) error {
 		return err
 	}
 	os.Setenv("BLOCKSCOUT_RPC_URL", url)
-	err := runCommand("bash", "-c", fmt.Sprintf(`
+	err := framework.RunCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
 		docker compose up -d
 	`, "blockscout"))
@@ -29,14 +29,14 @@ func blockscoutUp(url string) error {
 func blockscoutDown(url string) error {
 	framework.L.Info().Msg("Removing local Blockscout stack")
 	os.Setenv("BLOCKSCOUT_RPC_URL", url)
-	err := runCommand("bash", "-c", fmt.Sprintf(`
+	err := framework.RunCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
 		docker compose down -v
 	`, "blockscout"))
 	if err != nil {
 		return err
 	}
-	return runCommand("bash", "-c", fmt.Sprintf(`
+	return framework.RunCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
 		rm -rf blockscout-db-data && \
 		rm -rf logs && \
