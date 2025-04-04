@@ -653,7 +653,7 @@ func (m tmodel) View() string {
 func finalView(m tmodel) string {
 	doneStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
 	return doneStyle.Render(fmt.Sprintf(
-		"Done! Confirmed %d tickets, skipped %d. Exiting...\n",
+		"Done! Confirmed %d tickets, skipped %d. Press any key to exit...\n",
 		m.confirmed, m.skipped,
 	))
 }
