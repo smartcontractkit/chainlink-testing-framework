@@ -33,11 +33,11 @@ type Input struct {
 }
 
 type Output struct {
-	UseCache       bool   `toml:"use_cache"`
-	HostGRPCUrl    string `toml:"grpc_url"`
-	DockerGRPCUrl  string `toml:"docker_internal_grpc_url"`
-	HostWSRPCUrl   string `toml:"wsrpc_url"`
-	DockerWSRPCUrl string `toml:"docker_internal_wsrpc_url"`
+	UseCache         bool   `toml:"use_cache"`
+	ExternalGRPCUrl  string `toml:"grpc_url"`
+	InternalGRPCUrl  string `toml:"internal_grpc_url"`
+	ExternalWSRPCUrl string `toml:"wsrpc_url"`
+	InternalWSRPCUrl string `toml:"internal_wsrpc_url"`
 }
 
 func defaults(in *Input) {
@@ -94,7 +94,7 @@ func NewJD(in *Input) (*Output, error) {
 			h.PortBindings = framework.MapTheSamePort(bindPort)
 		},
 		Env: map[string]string{
-			"DATABASE_URL":              pgOut.JDDockerInternalURL,
+			"DATABASE_URL":              pgOut.JDInternalURL,
 			"PORT":                      in.GRPCPort,
 			"NODE_RPC_PORT":             in.WSRPCPort,
 			"CSA_KEY_ENCRYPTION_SECRET": in.CSAEncryptionKey,
@@ -122,11 +122,11 @@ func NewJD(in *Input) (*Output, error) {
 		return nil, err
 	}
 	out := &Output{
-		UseCache:       true,
-		HostGRPCUrl:    fmt.Sprintf("%s:%s", host, in.GRPCPort),
-		DockerGRPCUrl:  fmt.Sprintf("%s:%s", containerName, in.GRPCPort),
-		HostWSRPCUrl:   fmt.Sprintf("%s:%s", host, in.WSRPCPort),
-		DockerWSRPCUrl: fmt.Sprintf("%s:%s", containerName, in.WSRPCPort),
+		UseCache:         true,
+		ExternalGRPCUrl:  fmt.Sprintf("%s:%s", host, in.GRPCPort),
+		InternalGRPCUrl:  fmt.Sprintf("%s:%s", containerName, in.GRPCPort),
+		ExternalWSRPCUrl: fmt.Sprintf("%s:%s", host, in.WSRPCPort),
+		InternalWSRPCUrl: fmt.Sprintf("%s:%s", containerName, in.WSRPCPort),
 	}
 	in.Out = out
 	return out, nil

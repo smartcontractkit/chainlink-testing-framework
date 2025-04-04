@@ -12,7 +12,8 @@ type CITestConf struct {
 	Path                       string            `yaml:"path" json:"path"`
 	TestEnvType                string            `yaml:"test_env_type" json:"test_env_type"`
 	RunsOn                     string            `yaml:"runs_on" json:"runs_on"`
-	TestCmd                    string            `yaml:"test_cmd" json:"test_cmd"`
+	TestGoProjectPath          string            `yaml:"test_go_project_path" json:"test_go_project_path"` // Root path to the go project with the tests
+	TestCmd                    string            `yaml:"test_cmd" json:"test_cmd"`                         // Command to run the test in the TestGoProjectPath
 	TestConfigOverrideRequired bool              `yaml:"test_config_override_required" json:"test_config_override_required"`
 	TestConfigOverridePath     string            `yaml:"test_config_override_path" json:"test_config_override_path"`
 	TestSecretsRequired        bool              `yaml:"test_secrets_required" json:"test_secrets_required"`

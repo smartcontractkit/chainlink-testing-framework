@@ -8,8 +8,6 @@ This documentation is intended for:
 
 To get started with writing system-level tests, refer to the [Framework](./framework/getting_started.md) chapter, where we guide you from basic to more complex scenarios.
 
-If you want to build integration with Chainlink not in [Golang](https://go.dev/), please refer to our [Interactive](framework/interactive.md) chapter.
-
 See mono repository [tooling](monorepo-tools.md) to start working with Go modules.
 
 [Repository](https://github.com/smartcontractkit/chainlink-testing-framework) contains two major pieces:

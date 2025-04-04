@@ -109,6 +109,9 @@ scrape_configs:
 }
 
 func NewPromtail() error {
+	// since this container is dynamic we write it in Go, but it is a part of observability stack
+	// hence, we never remove it with TESTCONTAINERS_RYUK_DISABLED but only with "ctf obs d"
+	_ = os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 

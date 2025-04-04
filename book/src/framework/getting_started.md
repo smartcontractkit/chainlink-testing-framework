@@ -65,7 +65,3 @@ Spin up your `Blockscout` stack
 ctf bs up
 ```
 More [docs](observability/blockscout.md)
-
-## Interactive
-
-If you're a non-technical user or want to integrate with Chainlink using a language other than Golang, please follow our Interactive [setup](interactive.md) guide.

@@ -69,7 +69,7 @@ func testChain(t *testing.T, input *blockchain.Input) {
 	output, err := blockchain.NewBlockchainNetwork(input)
 	require.NoError(t, err)
 
-	rpcUrl := output.Nodes[0].HostHTTPUrl
+	rpcUrl := output.Nodes[0].ExternalHTTPUrl
 	t.Logf("Testing RPC: %s", rpcUrl)
 	reqBody := `{"jsonrpc": "2.0", "method": "eth_chainId", "params": [], "id": 1}`
 	resp, err := http.Post(rpcUrl, "application/json", strings.NewReader(reqBody)) // nolint:gosec

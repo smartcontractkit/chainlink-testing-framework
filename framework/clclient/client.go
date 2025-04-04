@@ -8,10 +8,12 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
@@ -67,7 +69,7 @@ func New(outs []*clnode.Output) ([]*ChainlinkClient, error) {
 	clients := make([]*ChainlinkClient, 0)
 	for _, out := range outs {
 		c, err := NewChainlinkClient(&Config{
-			URL:      out.Node.HostURL,
+			URL:      out.Node.ExternalURL,
 			Email:    out.Node.APIAuthUser,
 			Password: out.Node.APIAuthPassword,
 		})
@@ -125,6 +127,80 @@ func (c *ChainlinkClient) Health() (*HealthResponse, *http.Response, error) {
 		return nil, nil, err
 	}
 	return respBody, resp.RawResponse, err
+}
+
+// WaitHealthy waits until all the components (regex) return specified status
+func (c *ChainlinkClient) WaitHealthy(pattern, status string, attempts uint) error {
+	respBody := &HealthResponse{}
+	framework.L.Info().Str(NodeURL, c.Config.URL).Msg("Check CL node health")
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return fmt.Errorf("invalid regex pattern: %w", err)
+	}
+	err = retry.Do(
+		func() error {
+			framework.L.Info().Str(NodeURL, c.Config.URL).Uint("Attempts", attempts).Msg("Awaiting Chainlink node health status")
+			resp, err := c.APIClient.R().
+				SetResult(&respBody).
+				Get("/health")
+			if err != nil {
+				return fmt.Errorf("error connecting to chainlink node after %d attempts: %w", attempts, err)
+			}
+			if resp.StatusCode() >= 400 {
+				return fmt.Errorf("error connecting to chainlink node after %d attempts: %s", attempts, resp.Status())
+			}
+
+			var foundComponents bool
+			var notReadyComponents []string
+
+			for _, d := range respBody.Data {
+				framework.L.Debug().Str("Component", d.Attributes.Name).Msg("Checking component")
+				if re.MatchString(d.Attributes.Name) {
+					foundComponents = true
+					if d.Attributes.Status != status {
+						notReadyComponents = append(notReadyComponents,
+							fmt.Sprintf("%s Current: %s, Expected: %s",
+								d.Attributes.Name,
+								d.Attributes.Status,
+								status))
+					}
+				}
+			}
+
+			if !foundComponents {
+				return fmt.Errorf("no component found in health response")
+			}
+
+			if len(notReadyComponents) > 0 {
+				framework.L.Debug().
+					Strs("Components", notReadyComponents).
+					Msg("Components not yet ready")
+				return fmt.Errorf("%d components not ready", len(notReadyComponents))
+			}
+
+			return nil
+		},
+		retry.Attempts(attempts),
+		retry.Delay(1*time.Second),
+		retry.DelayType(retry.FixedDelay),
+		retry.OnRetry(func(n uint, err error) {
+			framework.L.Debug().
+				Uint("Attempt", n+1).
+				Uint("MaxAttempts", attempts).
+				Str("Pattern", pattern).
+				Msg("Retrying health check")
+		}),
+	)
+
+	if err != nil {
+		return fmt.Errorf("health check failed after %d attempts: %w", attempts, err)
+	}
+
+	framework.L.Info().
+		Str("pattern", pattern).
+		Str("status", status).
+		Msg("All matching components ready")
+	return nil
 }
 
 // CreateJobRaw creates a Chainlink job based on the provided spec string

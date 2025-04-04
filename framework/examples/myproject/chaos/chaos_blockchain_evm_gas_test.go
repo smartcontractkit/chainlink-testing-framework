@@ -80,7 +80,7 @@ func TestBlockchainGasChaos(t *testing.T) {
 	}{
 		{
 			name:             "Slow and low",
-			chainURL:         bc.Nodes[0].HostHTTPUrl,
+			chainURL:         bc.Nodes[0].ExternalHTTPUrl,
 			waitBetweenTests: 30 * time.Second,
 			increase:         big.NewInt(1e9),
 			gasFunc:          gasControlFunc,
@@ -90,7 +90,7 @@ func TestBlockchainGasChaos(t *testing.T) {
 		},
 		{
 			name:             "Fast and degen",
-			chainURL:         bc.Nodes[0].HostHTTPUrl,
+			chainURL:         bc.Nodes[0].ExternalHTTPUrl,
 			waitBetweenTests: 30 * time.Second,
 			increase:         big.NewInt(5e9),
 			gasFunc:          gasControlFunc,

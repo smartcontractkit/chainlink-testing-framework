@@ -34,21 +34,6 @@ func main() {
 		UsageText: "'ctf' is a useful utility that can:\n- clean up test docker containers\n- modify test files\n- create a local observability stack with Grafana/Loki/Pyroscope",
 		Commands: []*cli.Command{
 			{
-				Name:    "build",
-				Aliases: []string{"b"},
-				Usage:   "Build an environment interactively, suitable for non-technical users",
-				Subcommands: []*cli.Command{
-					{
-						Name:    "node_set",
-						Aliases: []string{"ns"},
-						Usage:   "Builds a NodeSet and connect it to some networks",
-						Action: func(c *cli.Context) error {
-							return runSetupForm()
-						},
-					},
-				},
-			},
-			{
 				Name:    "config",
 				Aliases: []string{"c"},
 				Usage:   "Shapes your test config, removes outputs, formatting ,etc",
@@ -78,23 +63,11 @@ func main() {
 				Usage:   "Control docker containers marked with 'framework=ctf' label",
 				Subcommands: []*cli.Command{
 					{
-						Name:    "clean",
-						Aliases: []string{"c"},
-						Usage:   "Cleanup all docker resources: volumes, images, build caches",
-						Action: func(c *cli.Context) error {
-							err := cleanUpDockerResources()
-							if err != nil {
-								return fmt.Errorf("failed to clean Docker resources: %w", err)
-							}
-							return nil
-						},
-					},
-					{
 						Name:    "remove",
 						Aliases: []string{"rm"},
 						Usage:   "Remove Docker containers and networks with 'framework=ctf' label",
 						Action: func(c *cli.Context) error {
-							err := removeTestContainers()
+							err := framework.RemoveTestContainers()
 							if err != nil {
 								return fmt.Errorf("failed to clean Docker resources: %w", err)
 							}
