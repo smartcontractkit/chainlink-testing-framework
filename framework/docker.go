@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -21,6 +22,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 	"golang.org/x/sync/errgroup"
 )
@@ -78,8 +80,8 @@ func DefaultTCName(name string) string {
 	return fmt.Sprintf("%s-%s", name, uuid.NewString()[0:5])
 }
 
-// runCommand executes a command and prints the output.
-func runCommand(name string, args ...string) error {
+// RunCommand executes a command and prints the output.
+func RunCommand(name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -314,9 +316,29 @@ func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string) error {
 func BuildImage(dctx, dfile, nameAndTag string) error {
 	dfilePath := filepath.Join(dctx, dfile)
 	if os.Getenv("CTF_CLNODE_DLV") == "true" {
-		return runCommand("docker", "build", "--build-arg", `GO_GCFLAGS=all=-N -l`, "-t", nameAndTag, "-f", dfilePath, dctx)
+		return RunCommand("docker", "build", "--build-arg", `GO_GCFLAGS=all=-N -l`, "-t", nameAndTag, "-f", dfilePath, dctx)
 	}
-	return runCommand("docker", "build", "-t", nameAndTag, "-f", dfilePath, dctx)
+	return RunCommand("docker", "build", "-t", nameAndTag, "-f", dfilePath, dctx)
+}
+
+// RemoveTestContainers removes all test containers, volumes and CTF docker network
+func RemoveTestContainers() error {
+	L.Info().Str("label", "framework=ctf").Msg("Cleaning up docker containers")
+	// Bash command for removing Docker containers and networks with "framework=ctf" label
+	cmd := exec.Command("bash", "-c", `
+		docker ps -aq --filter "label=framework=ctf" | xargs -r docker rm -f && \
+		docker network ls --filter "label=framework=ctf" -q | xargs -r docker network rm && \
+		docker volume ls -q | xargs -r docker volume rm || true
+	`)
+	L.Debug().Msg("Running command")
+	if L.GetLevel() == zerolog.DebugLevel {
+		fmt.Println(cmd.String())
+	}
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("error running clean command: %s", string(output))
+	}
+	return nil
 }
 
 // ExecContainer executes a command inside a running container by name and returns the combined stdout/stderr.
@@ -393,4 +415,41 @@ func ResourceLimitsFunc(h *container.HostConfig, resources *ContainerResources) 
 		h.CPUPeriod = 100000                        // Default period (100ms)
 		h.CPUQuota = int64(resources.CPUs * 100000) // Quota in microseconds (e.g., 0.5 CPUs = 50000)
 	}
+}
+
+func GenerateCustomPortsData(portsProvided []string) ([]string, nat.PortMap, error) {
+	exposedPorts := make([]string, 0)
+	portBindings := nat.PortMap{}
+	customPorts := make([]string, 0)
+	for _, p := range portsProvided {
+		if strings.Contains(p, ":") {
+			pp := strings.Split(p, ":")
+			if len(pp) != 2 {
+				return nil, nil, errors.New("custom_ports has ':' but you must provide both ports")
+			}
+			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", pp[1]))
+
+			dockerPort := nat.Port(fmt.Sprintf("%s/tcp", pp[1]))
+			hostPort := pp[0]
+			portBindings[dockerPort] = []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: hostPort,
+				},
+			}
+		} else {
+			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", p))
+
+			dockerPort := nat.Port(fmt.Sprintf("%s/tcp", p))
+			hostPort := p
+			portBindings[dockerPort] = []nat.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: hostPort,
+				},
+			}
+		}
+	}
+	exposedPorts = append(exposedPorts, customPorts...)
+	return exposedPorts, portBindings, nil
 }

@@ -30,6 +30,7 @@ type Input struct {
 	// there needs to be a matching .so file in contracts_dir
 	SolanaPrograms     map[string]string             `toml:"solana_programs"`
 	ContainerResources *framework.ContainerResources `toml:"resources"`
+	CustomPorts        []string                      `toml:"custom_ports"`
 }
 
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network
