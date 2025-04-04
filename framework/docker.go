@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -425,7 +424,7 @@ func GenerateCustomPortsData(portsProvided []string) ([]string, nat.PortMap, err
 		if strings.Contains(p, ":") {
 			pp := strings.Split(p, ":")
 			if len(pp) != 2 {
-				return nil, nil, errors.New("custom_ports has ':' but you must provide both ports")
+				return nil, nil, fmt.Errorf("custom_ports has ':' but you must provide both ports, you provided: %s", pp)
 			}
 			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", pp[1]))
 
