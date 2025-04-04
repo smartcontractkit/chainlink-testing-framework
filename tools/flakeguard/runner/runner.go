@@ -375,12 +375,13 @@ func (r *Runner) parseTestResults(runPrefix string, runCount int) ([]reports.Tes
 				}
 			}
 
+			// TODO: An argument could be made to check for entryLine.Action != "output" instead, but need to check edge cases
 			if (panicDetectionMode || raceDetectionMode) && entryLine.Action == "fail" { // End of panic or race output
+				var outputs []string
+				for _, entry := range detectedEntries {
+					outputs = append(outputs, entry.Output)
+				}
 				if panicDetectionMode {
-					var outputs []string
-					for _, entry := range detectedEntries {
-						outputs = append(outputs, entry.Output)
-					}
 					panicTest, timeout, err := attributePanicToTest(outputs)
 					if err != nil {
 						log.Warn().Err(err).Msg("Unable to attribute panic to a test")
@@ -418,9 +419,10 @@ func (r *Runner) parseTestResults(runPrefix string, runCount int) ([]reports.Tes
 						}
 					}
 				} else if raceDetectionMode {
-					raceTest, err := attributeRaceToTest(entryLine.Package, detectedEntries)
+					raceTest, err := attributeRaceToTest(outputs)
 					if err != nil {
-						return nil, err
+						log.Warn().Err(err).Msg("Unable to attribute race to a test")
+						raceTest = "UnableToAttributeRaceTestPleaseInvestigate"
 					}
 					raceTestKey := fmt.Sprintf("%s/%s", entryLine.Package, raceTest)
 
@@ -612,42 +614,46 @@ func (r *Runner) transformTestOutputFiles(filePaths []string) error {
 	return nil
 }
 
+var (
+	// Regex to extract a valid test function name from a panic or race message, e.g.
+	// github.com/smartcontractkit/chainlink/deployment/keystone/changeset_test.TestDeployBalanceReader(0xc000583c00)
+	nestedTestNameRe = regexp.MustCompile(`\.(Test[A-Z]\w+)(?:\.[^(]+)?\s*\(`)
+
+	ErrFailedToAttributePanic = errors.New("failed to attribute panic to test")
+	ErrFailedToAttributeRace  = errors.New("failed to attribute race to test")
+)
+
 // attributePanicToTest properly attributes panics to the test that caused them.
 func attributePanicToTest(outputs []string) (test string, timeout bool, err error) {
-	// Regex to extract a valid test function name from a panic message, e.g.
-	// github.com/smartcontractkit/chainlink/deployment/keystone/changeset_test.TestDeployBalanceReader(0xc000583c00)
-	nestedTestNameRe := regexp.MustCompile(`\.(Test[A-Z]\w+)(?:\.[^(]+)?\s*\(`)
 	// Regex to extract a valid test function name from a panic message if the panic is a timeout, e.g.
 	// TestTimedOut (10m0s)
 	timedOutTestNamRe := regexp.MustCompile(`^(Test\w+)\W+\(.*\)$`)
 
-	for _, o := range outputs {
-		outputs = append(outputs, o)
-		matchNestedTestName := nestedTestNameRe.FindStringSubmatch(o)
-		matchTimedOutTestName := timedOutTestNamRe.FindStringSubmatch(o)
+	for _, output := range outputs {
+		matchNestedTestName := nestedTestNameRe.FindStringSubmatch(output)
+		matchTimedOutTestName := timedOutTestNamRe.FindStringSubmatch(output)
 		if len(matchNestedTestName) > 1 {
 			return strings.TrimSpace(matchNestedTestName[1]), false, nil
 		} else if len(matchTimedOutTestName) > 1 {
 			return strings.TrimSpace(matchTimedOutTestName[1]), true, nil
 		}
 	}
-	return "", false, fmt.Errorf("failed to attribute panic to test, using regex '%s' and '%s' on these strings:\n\n%s",
-		nestedTestNameRe.String(), timedOutTestNamRe.String(), strings.Join(outputs, ""))
+	return "", false, fmt.Errorf("%w, using regex '%s' and '%s' on these strings:\n\n%s",
+		ErrFailedToAttributePanic, nestedTestNameRe.String(), timedOutTestNamRe.String(), strings.Join(outputs, ""),
+	)
 }
 
 // attributeRaceToTest properly attributes races to the test that caused them.
-func attributeRaceToTest(racePackage string, raceEntries []entry) (string, error) {
-	regexSanitizeRacePackage := filepath.Base(racePackage)
-	raceAttributionRe := regexp.MustCompile(fmt.Sprintf(`%s\.(Test[^\.\(]+)`, regexSanitizeRacePackage))
-	entriesOutputs := []string{}
-	for _, entry := range raceEntries {
-		entriesOutputs = append(entriesOutputs, entry.Output)
-		if matches := raceAttributionRe.FindStringSubmatch(entry.Output); len(matches) > 1 {
-			testName := strings.TrimSpace(matches[1])
-			return testName, nil
+func attributeRaceToTest(outputs []string) (string, error) {
+	for _, output := range outputs {
+		match := nestedTestNameRe.FindStringSubmatch(output)
+		if len(match) > 1 {
+			return strings.TrimSpace(match[1]), nil
 		}
 	}
-	return "", fmt.Errorf("failed to attribute race to test, using regex: %s on these strings:\n%s", raceAttributionRe.String(), strings.Join(entriesOutputs, ""))
+	return "", fmt.Errorf("%w, using regex '%s' on these strings:\n\n%s",
+		ErrFailedToAttributeRace, nestedTestNameRe.String(), strings.Join(outputs, ""),
+	)
 }
 
 // parseSubTest checks if a test name is a subtest and returns the parent and sub names.

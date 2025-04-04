@@ -20,7 +20,7 @@ func TestFail(t *testing.T) {
 
 func TestFailLargeOutput(t *testing.T) {
 	t.Parallel()
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		t.Log("This is a log line")
 	}
 	t.Fatal("This test always fails")
