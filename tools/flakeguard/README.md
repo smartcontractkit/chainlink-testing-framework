@@ -35,13 +35,21 @@ Both `find` and `run` commands support JSON output `--json`, making it easy to i
 ### Creating JIRA Tickets
 The `create-tickets` command allows you to automate the creation of JIRA tickets for flaky tests. It reads test results from a CSV file (typically exported from a Splunk view) and creates tickets in JIRA.
 
+#### Get data from Splunk
+
+1. Go to "Flakeguard - Test results for automated ticket creation" Report
+2. Select last 7 days
+3. Export it as CSV and download the file
+
+##### Run
+
 ```
 go run main.go create-tickets --jira-project=<JIRA_PROJECT_KEY> --flaky-test-json-db-path=<PATH_TO_FLAKY_TEST_DB_JSON> --assignee-mapping=<PATH_TO_JIRA_ASSIGNEE_MAPPING_JSON> --csv-path=<PATH_TO_CSV_FILE> [--skip-existing] [--dry-run]
 ```
 
 Example:
 ```
-go run main.go create-tickets --jira-project=DX --flaky-test-json-db-path=.flaky_test_db.json --assignee-mapping=.jira_assignee_mapping.json --skip-existing --csv-path '1742825894_77903.csv'
+go run main.go create-tickets --jira-project=DX --flaky-test-json-db-path=.flaky_test_db.json --assignee-mapping=.jira_assignee_mapping.json --skip-existing --csv-path '~/Downloads/1742825894_77903.csv'
 ```
 
 **Options:**

@@ -17,6 +17,7 @@ type Entry struct {
 	TestPackage string    `json:"test_package"`
 	TestName    string    `json:"test_name"`
 	JiraTicket  string    `json:"jira_ticket"`
+	AssigneeID  string    `json:"jira_assignee_id,omitempty"`
 	IsSkipped   bool      `json:"is_skipped,omitempty"`
 	SkippedAt   time.Time `json:"skipped_at,omitempty"`
 }
@@ -157,4 +158,16 @@ func getDefaultDBPath() string {
 // makeKey is a helper to combine the package and test name into a single map key.
 func makeKey(pkg, testName string) string {
 	return pkg + "::" + testName
+}
+
+// UpdateEntry updates an existing entry in the DB
+func (db *DB) UpdateEntry(entry Entry) {
+	key := makeKey(entry.TestPackage, entry.TestName)
+	db.data[key] = entry
+}
+
+// AddEntry adds a new entry to the DB
+func (db *DB) AddEntry(entry Entry) {
+	key := makeKey(entry.TestPackage, entry.TestName)
+	db.data[key] = entry
 }

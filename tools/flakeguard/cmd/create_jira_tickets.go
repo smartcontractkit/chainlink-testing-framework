@@ -3,11 +3,9 @@ package cmd
 import (
 	"context"
 	"encoding/csv"
-	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
-	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,21 +21,14 @@ import (
 )
 
 var (
-	csvPath             string
-	dryRun              bool
-	jiraProject         string
-	jiraIssueType       string
-	jiraSearchLabel     string // defaults to "flaky_test" if empty
-	testDBPath          string
-	assigneeMappingPath string
-	skipExisting        bool
+	csvPath         string
+	dryRun          bool
+	jiraProject     string
+	jiraIssueType   string
+	jiraSearchLabel string // defaults to "flaky_test" if empty
+	testDBPath      string
+	skipExisting    bool
 )
-
-// AssigneeMapping holds a regex pattern and its corresponding assignee.
-type AssigneeMapping struct {
-	Pattern  string `json:"pattern"`
-	Assignee string `json:"assignee"`
-}
 
 var CreateTicketsCmd = &cobra.Command{
 	Use:   "create-tickets",
@@ -54,8 +45,6 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
   already mapped to tests, so you won't be prompted again in the future.
 - After the TUI ends, a new CSV is produced, omitting any confirmed rows.
   The original CSV remains untouched.
-- Optionally, an assignee mapping file (JSON) can be provided to set the ticket’s assignee
-  based on the test package. The mapping supports regex.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// 1) Validate input
@@ -127,34 +116,6 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 			return nil
 		}
 
-		// Load assignee mapping (if provided)
-		var mappings []AssigneeMapping
-		if assigneeMappingPath != "" {
-			mappingData, err := os.ReadFile(assigneeMappingPath)
-			if err != nil {
-				log.Warn().Err(err).Msg("Failed to read assignee mapping file; proceeding without assignee mapping.")
-			} else {
-				if err := json.Unmarshal(mappingData, &mappings); err != nil {
-					log.Warn().Err(err).Msg("Failed to unmarshal assignee mapping; proceeding without assignee mapping.")
-				} else {
-					// Apply mapping: iterate over tickets and assign based on regex match.
-					for i := range tickets {
-						for _, mapping := range mappings {
-							re, err := regexp.Compile(mapping.Pattern)
-							if err != nil {
-								log.Warn().Msgf("Invalid regex pattern %q: %v", mapping.Pattern, err)
-								continue
-							}
-							if re.MatchString(tickets[i].TestPackage) {
-								tickets[i].Assignee = mapping.Assignee
-								break // use first matching mapping
-							}
-						}
-					}
-				}
-			}
-		}
-
 		// 5) Attempt Jira client creation
 		client, clientErr := jirautils.GetJiraClient()
 		if clientErr != nil {
@@ -213,14 +174,14 @@ ticket in a text-based UI. Press 'y' to confirm creation, 'n' to skip,
 }
 
 func init() {
-	CreateTicketsCmd.Flags().StringVar(&csvPath, "csv-path", "", "Path to the CSV file containing flaky test data")
-	CreateTicketsCmd.Flags().BoolVar(&dryRun, "dry-run", false, "If true, do not actually create tickets in Jira")
-	CreateTicketsCmd.Flags().StringVar(&jiraProject, "jira-project", "", "Jira project key (or env JIRA_PROJECT_KEY)")
-	CreateTicketsCmd.Flags().StringVar(&jiraIssueType, "jira-issue-type", "Task", "Type of Jira issue (Task, Bug, etc.)")
+	CreateTicketsCmd.Flags().StringVar(&csvPath, "csv-path", "", "Path to CSV file with flaky tests")
+	CreateTicketsCmd.Flags().BoolVar(&dryRun, "dry-run", false, "If true, do not create tickets in Jira")
+	CreateTicketsCmd.Flags().StringVar(&jiraProject, "jira-project", "", "Jira project key (default: JIRA_PROJECT_KEY env)")
+	CreateTicketsCmd.Flags().StringVar(&jiraIssueType, "jira-issue-type", "Task", "Jira issue type")
 	CreateTicketsCmd.Flags().StringVar(&jiraSearchLabel, "jira-search-label", "", "Jira label to filter existing tickets (default: flaky_test)")
 	CreateTicketsCmd.Flags().StringVar(&testDBPath, "test-db-path", "", "Path to the flaky test JSON database (default: ~/.flaky_tes_db.json)")
-	CreateTicketsCmd.Flags().StringVar(&assigneeMappingPath, "assignee-mapping", "", "Path to JSON file with assignee mapping (supports regex)")
 	CreateTicketsCmd.Flags().BoolVar(&skipExisting, "skip-existing", false, "Skip processing tickets that already have a Jira ticket ID")
+	InitCommonFlags(CreateTicketsCmd)
 }
 
 // -------------------------------------------------------------------------------------
@@ -231,13 +192,52 @@ func init() {
 func rowToFlakyTicket(row []string) model.FlakyTicket {
 	pkg := strings.TrimSpace(row[0])
 	testName := strings.TrimSpace(row[2])
-	flakeRate := strings.TrimSpace(row[7])
+	flakeRateStr := strings.TrimSpace(row[7]) // Keep the string for display
 	logs := strings.TrimSpace(row[9])
 
-	summary := fmt.Sprintf("Fix Flaky Test: %s (%s%% flake rate)", testName, flakeRate)
+	t := model.FlakyTicket{
+		TestPackage: pkg,
+		TestName:    testName,
+		// Summary and Description will be set later
+		Valid: true, // Assume valid initially
+	}
 
-	// Parse logs
+	// Priority Calculation
+	var flakeRate float64
+	var parseErr error
+	if flakeRateStr == "" {
+		log.Warn().Msgf("Missing Flake Rate for test %q (%s). Defaulting to Low priority.", testName, pkg)
+		t.Priority = "Low" // Default priority if empty
+		flakeRateStr = "0" // Use "0" for summary display if empty
+	} else {
+		flakeRate, parseErr = strconv.ParseFloat(flakeRateStr, 64)
+		if parseErr != nil {
+			log.Error().Err(parseErr).Msgf("Invalid Flake Rate '%s' for test %q (%s).", flakeRateStr, testName, pkg)
+			t.Valid = false
+			t.InvalidReason = fmt.Sprintf("Invalid Flake Rate: %s", flakeRateStr)
+		} else {
+			t.FlakeRate = flakeRate // Store numeric value
+			// Determine priority based on numeric value
+			switch {
+			case flakeRate < 1.0:
+				t.Priority = "Low"
+			case flakeRate >= 1.0 && flakeRate < 3.0:
+				t.Priority = "Medium"
+			case flakeRate >= 3.0 && flakeRate < 5.0:
+				t.Priority = "High"
+			default: // >= 5.0
+				t.Priority = "Very High"
+			}
+		}
+	}
+
+	// Use flakeRateStr for display in summary/description to keep the % format as originally intended
+	summary := fmt.Sprintf("Fix Flaky Test: %s (%s%% flake rate)", testName, flakeRateStr)
+	t.Summary = summary
+
+	// Parse logs (same as before)
 	var logSection string
+	// ... (keep existing log parsing logic) ...
 	if logs == "" {
 		logSection = "(Logs not available)"
 	} else {
@@ -248,7 +248,6 @@ func rowToFlakyTicket(row []string) model.FlakyTicket {
 			if link == "" {
 				continue
 			}
-			// Build a Jira wiki bullet for each log link
 			lines = append(lines, fmt.Sprintf("* [Run %d|%s]", runNumber, link))
 			runNumber++
 		}
@@ -259,7 +258,7 @@ func rowToFlakyTicket(row []string) model.FlakyTicket {
 		}
 	}
 
-	// Use Jira Wiki Markup rather than Markdown
+	// Use Jira Wiki Markup (same as before)
 	desc := fmt.Sprintf(`h2. Test Details:
 * *Package:* %s
 * *Test Name:* %s
@@ -277,19 +276,12 @@ h3. Action Items:
 `,
 		pkg,
 		testName,
-		flakeRate,
+		flakeRateStr,
 		logSection,
 	)
+	t.Description = desc
 
-	t := model.FlakyTicket{
-		TestPackage: pkg,
-		TestName:    testName,
-		Summary:     summary,
-		Description: desc,
-		Valid:       true,
-	}
-
-	// check required fields
+	// Check required fields
 	var missing []string
 	if pkg == "" {
 		missing = append(missing, "Package")
@@ -297,17 +289,23 @@ h3. Action Items:
 	if testName == "" {
 		missing = append(missing, "Test Name")
 	}
-	if flakeRate == "" {
-		missing = append(missing, "Flake Rate")
+	if flakeRateStr == "" && parseErr != nil { // Check if original was empty AND parsing failed (edge case)
+		missing = append(missing, "Flake Rate (missing or invalid)")
+	} else if flakeRateStr == "" {
+		missing = append(missing, "Flake Rate (missing)")
+	} else if parseErr != nil {
+		missing = append(missing, "Flake Rate (invalid format)")
 	}
 	if logs == "" {
 		missing = append(missing, "Logs")
 	}
 
-	if len(missing) > 0 {
+	// Only overwrite Valid/InvalidReason if previously valid
+	if t.Valid && len(missing) > 0 {
 		t.Valid = false
-		t.InvalidReason = fmt.Sprintf("Missing required: %s", strings.Join(missing, ", "))
+		t.InvalidReason = fmt.Sprintf("Missing/Invalid required fields: %s", strings.Join(missing, ", "))
 	}
+
 	return t
 }
 
@@ -434,7 +432,6 @@ func updatePromptExisting(m tmodel, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		t.ExistingJiraKey = m.inputValue
 		t.ExistingTicketSource = "localdb"
 		m.tickets[m.index] = t
-		m.LocalDB.Set(t.TestPackage, t.TestName, t.ExistingJiraKey)
 		m.mode = "normal"
 		m.inputValue = ""
 		return updateSkip(m)
@@ -451,7 +448,7 @@ func updateConfirm(m tmodel) (tea.Model, tea.Cmd) {
 
 	// Attempt Jira creation if not dry-run and we have a client.
 	if !m.DryRun && m.JiraClient != nil {
-		issueKey, err := jirautils.CreateTicketInJira(m.JiraClient, t.Summary, t.Description, m.JiraProject, m.JiraIssueType, t.Assignee)
+		issueKey, err := jirautils.CreateTicketInJira(m.JiraClient, t.Summary, t.Description, m.JiraProject, m.JiraIssueType, t.AssigneeId, t.Priority)
 		if err != nil {
 			log.Error().Err(err).Msgf("Failed to create Jira ticket: %s", t.Summary)
 		} else {
@@ -474,21 +471,20 @@ func updateConfirm(m tmodel) (tea.Model, tea.Cmd) {
 
 func updateTicketCreated(m tmodel, msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "n":
-		m.mode = "normal"
-		m.index++
-		if m.index >= len(m.tickets) {
-			m.quitting = true
-		}
-		return m, nil
-	case "e":
+	case "e": // Still allow 'e' to go to the prompt mode
 		m.mode = "promptExisting"
 		m.inputValue = ""
 		return m, nil
-	case "q", "esc", "ctrl+c":
+	case "q", "esc", "ctrl+c": // Still allow quitting
 		return updateQuit(m)
+	default: // Make continuing the default action for *any other key*
+		m.mode = "normal"
+		m.index++
+		if m.index >= len(m.tickets) {
+			m.quitting = true // Ensure it quits if this was the last ticket
+		}
+		return m, nil
 	}
-	return m, nil
 }
 
 func updateSkip(m tmodel) (tea.Model, tea.Cmd) {
@@ -538,6 +534,7 @@ func (m tmodel) View() string {
 		)
 	}
 
+	bodyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("7")) // For general text
 	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205"))
 	summaryStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("10"))
 	descHeaderStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("10"))
@@ -546,6 +543,10 @@ func (m tmodel) View() string {
 	errorStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("9"))
 	existingStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
 	redStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+	lowPriorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("10"))    // Green
+	mediumPriorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11")) // Blue/Purple
+	highPriorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("208"))  // Orange
+	veryHighPriorityStyle := errorStyle                                         // Use red for highest
 
 	t := m.tickets[m.index]
 
@@ -556,11 +557,15 @@ func (m tmodel) View() string {
 		header = headerStyle.Render(fmt.Sprintf("Ticket #%d of %d (Invalid)", m.index+1, len(m.tickets)))
 	}
 
-	// New: Assignee line above Summary
+	// Assignee
 	var assigneeLine string
-	if t.Assignee != "" {
-		assigneeLine = summaryStyle.Render("Assignee:") + "\n" + t.Assignee
+	var assigneeDisplayValue string
+	if t.AssigneeId != "" {
+		assigneeDisplayValue = fmt.Sprintf("%s (%s)", t.AssigneeId, t.AssigneeId)
+	} else {
+		assigneeDisplayValue = t.AssigneeId
 	}
+	assigneeLine = summaryStyle.Render("Assignee:") + "\n" + bodyStyle.Render(assigneeDisplayValue)
 
 	sum := summaryStyle.Render("Summary:")
 	sumBody := descBodyStyle.Render(t.Summary)
@@ -589,12 +594,30 @@ func (m tmodel) View() string {
 		invalidLine = errorStyle.Render(fmt.Sprintf("\nCannot create ticket: %s", t.InvalidReason))
 	}
 
+	var priorityLine string
+	if t.Priority != "" {
+		var style lipgloss.Style
+		switch t.Priority {
+		case "Low":
+			style = lowPriorityStyle
+		case "Medium":
+			style = mediumPriorityStyle
+		case "High":
+			style = highPriorityStyle
+		case "Very High": // Match the name used in calculation
+			style = veryHighPriorityStyle
+		default:
+			style = bodyStyle // Default style if unknown
+		}
+		priorityLine = summaryStyle.Render("Priority:") + "\n" + style.Render(t.Priority)
+	}
+
 	var helpLine string
 	if !t.Valid {
 		if t.ExistingJiraKey != "" {
-			helpLine = faintStyle.Render("\n[n] to next, [e] to update ticket id, [q] to quit.")
+			helpLine = faintStyle.Render("\n[n] to next, [e] to SET existing ticket id, [q] to quit.")
 		} else {
-			helpLine = faintStyle.Render("\n[n] to next, [e] to add existing ticket ID, [q] to quit.")
+			helpLine = faintStyle.Render("\n[n] to next, [e] to SET existing ticket id, [q] to quit.")
 		}
 	} else {
 		if t.ExistingJiraKey != "" {
@@ -605,19 +628,24 @@ func (m tmodel) View() string {
 			if m.DryRun || m.JiraClient == nil {
 				dryRunLabel = " (DRY RUN)"
 			}
-			helpLine = faintStyle.Render(fmt.Sprintf("\nPress [c] to create ticket%s, [n] to skip, [e] to enter existing ticket, [q] to quit.", dryRunLabel))
+			helpLine = faintStyle.Render(fmt.Sprintf("\nPress [c] to create NEW ticket%s, [n] to skip, [e] to SET existing ticket id, [q] to quit.", dryRunLabel))
 		}
 	}
 
-	return fmt.Sprintf("%s\n\n%s\n\n%s\n%s\n%s\n%s%s%s\n%s\n",
+	return lipgloss.JoinVertical(lipgloss.Left,
 		header,
+		"",
 		assigneeLine,
+		"",
+		priorityLine,
+		"",
 		sum,
 		sumBody,
 		descHeader,
 		descBody,
 		existingLine,
 		invalidLine,
+		"",
 		helpLine,
 	)
 }
@@ -642,42 +670,4 @@ func readFlakyTestsCSV(path string) ([][]string, error) {
 	defer f.Close()
 	r := csv.NewReader(f)
 	return r.ReadAll()
-}
-
-func writeRemainingTicketsCSV(newPath string, m tmodel) error {
-	confirmedRows := make(map[int]bool)
-	for _, t := range m.tickets {
-		if t.Confirmed || t.ExistingJiraKey != "" {
-			confirmedRows[t.RowIndex] = true
-		}
-	}
-	var newRecords [][]string
-	orig := m.originalRecords
-	if len(orig) > 0 {
-		newRecords = append(newRecords, orig[0])
-	}
-	for i := 1; i < len(orig); i++ {
-		if !confirmedRows[i] {
-			newRecords = append(newRecords, orig[i])
-		}
-	}
-	f, err := os.Create(newPath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	w := csv.NewWriter(f)
-	if err := w.WriteAll(newRecords); err != nil {
-		return err
-	}
-	w.Flush()
-	return w.Error()
-}
-
-func makeRemainingCSVPath(originalPath string) string {
-	ext := filepath.Ext(originalPath)
-	base := strings.TrimSuffix(filepath.Base(originalPath), ext)
-	dir := filepath.Dir(originalPath)
-	newName := base + ".remaining" + ext
-	return filepath.Join(dir, newName)
 }
