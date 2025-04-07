@@ -58,9 +58,6 @@ type Node struct {
 
 // NewBlockchainNetwork this is an abstraction that can spin up various blockchain network simulators
 func NewBlockchainNetwork(in *Input) (*Output, error) {
-	if in.Out != nil && in.Out.UseCache {
-		return in.Out, nil
-	}
 	var out *Output
 	var err error
 	switch in.Type {

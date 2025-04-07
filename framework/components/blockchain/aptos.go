@@ -22,7 +22,9 @@ func defaultAptos(in *Input) {
 		in.Image = "aptoslabs/tools:aptos-node-v1.27.2"
 	}
 	framework.L.Warn().Msg("Aptos node API can only be exposed on port 8080!")
-	in.CustomPorts = append(in.CustomPorts, "8080:8080", "8081:8081")
+	if in.CustomPorts == nil {
+		in.CustomPorts = append(in.CustomPorts, "8080:8080", "8081:8081")
+	}
 	in.Port = "8080"
 }
 
