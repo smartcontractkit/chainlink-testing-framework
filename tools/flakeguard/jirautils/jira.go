@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/rs/zerolog/log"
 )
+
+const PillarCustomFieldID = "customfield_11016" // Define constant for pillar field
 
 // GetJiraClient creates and returns a Jira client using env vars.
 func GetJiraClient() (*jira.Client, error) {
@@ -34,34 +35,6 @@ func GetJiraClient() (*jira.Client, error) {
 	}
 	return jira.NewClient(tp.Client(), fmt.Sprintf("https://%s", domain))
 }
-
-// Helper function to safely read response body
-func readResponseBody(resp *jira.Response) string {
-	if resp == nil || resp.Body == nil {
-		return "[no response body]"
-	}
-	defer resp.Body.Close()
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Sprintf("[error reading response body: %v]", err)
-	}
-	// Limit body size in logs/errors if necessary
-	// const maxBodyLog = 512
-	// if len(bodyBytes) > maxBodyLog {
-	//  return string(bodyBytes[:maxBodyLog]) + "... (truncated)"
-	// }
-	return string(bodyBytes)
-}
-
-// Helper function to safely get response status
-func getResponseStatus(resp *jira.Response) string {
-	if resp != nil {
-		return resp.Status
-	}
-	return "unknown"
-}
-
-const pillarCustomFieldID = "customfield_11016" // Define constant for pillar field
 
 // CreateTicketInJira creates a new Jira ticket with specified details.
 // Adds support for assignee, priority, labels, and pillar name.
@@ -110,7 +83,7 @@ func CreateTicketInJira(
 		}
 		// The exact structure depends on the custom field type in Jira (e.g., text, select list)
 		// For a simple text field or select list (by value):
-		issueFields.Unknowns[pillarCustomFieldID] = map[string]interface{}{"value": pillarName}
+		issueFields.Unknowns[PillarCustomFieldID] = map[string]interface{}{"value": pillarName}
 		// If it's a select list by ID, it would be map[string]interface{}{"id": "12345"}
 	}
 
@@ -213,4 +186,55 @@ func GetJiraLink(ticketKey string) string {
 		return fmt.Sprintf("https://%s/browse/%s", domain, ticketKey)
 	}
 	return ticketKey
+}
+
+func ExtractPillarValue(issue jira.Issue) string {
+	if issue.Fields == nil {
+		return ""
+	}
+	if pillarFieldRaw, ok := issue.Fields.Unknowns[PillarCustomFieldID]; ok && pillarFieldRaw != nil {
+		// Handle different possible structures for custom fields (text, select list value)
+		if pillarFieldMap, ok := pillarFieldRaw.(map[string]interface{}); ok {
+			if value, ok := pillarFieldMap["value"].(string); ok {
+				return value // Common for select lists
+			}
+			if value, ok := pillarFieldMap["name"].(string); ok {
+				return value // Sometimes 'name' is used
+			}
+		}
+		// Handle simple text field case
+		if value, ok := pillarFieldRaw.(string); ok {
+			return value
+		}
+	}
+	return "" // Not found or unexpected format
+}
+
+// UpdatePillarName updates the pillar name custom field for a given issue key.
+func UpdatePillarName(client *jira.Client, issueKey, targetPillar string) error {
+	if client == nil || issueKey == "" || targetPillar == "" {
+		return fmt.Errorf("client, issueKey, and targetPillar must be provided")
+	}
+	// Construct the payload carefully based on field type
+	// Assuming it's a select list identified by 'value'
+	updatePayload := map[string]interface{}{
+		"fields": map[string]interface{}{
+			PillarCustomFieldID: map[string]interface{}{
+				"value": targetPillar,
+			},
+		},
+	}
+
+	req, err := client.NewRequest("PUT", fmt.Sprintf("rest/api/2/issue/%s", issueKey), updatePayload)
+	if err != nil {
+		return fmt.Errorf("failed to create Jira update request: %w", err)
+	}
+
+	resp, err := client.Do(req, nil) // No need to decode response body for PUT usually
+	if err != nil {
+		errMsg := ReadJiraErrorResponse(resp) // Use helper if available
+		return fmt.Errorf("failed to update pillar name for %s: %w; response: %s", issueKey, err, errMsg)
+	}
+
+	return nil // Success
 }

@@ -1,19 +1,14 @@
 package cmd
 
 import (
-	// Keep if still needed locally, otherwise remove
 	"fmt"
-	"os"
 	"strings"
-	"time"
 
 	"github.com/andygrunwald/go-jira"
-	"github.com/briandowns/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/rs/zerolog/log"
 
-	// Import the new mapping package
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/jirautils"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/localdb"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/mapping"
@@ -21,215 +16,209 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Command flags (keep existing ones)
+// Command flags
 var (
-	ticketsJSONPath string
-	jiraComment     bool
-	ticketsDryRun   bool
-	hideSkipped     bool
-	missingPillars  bool
-	// Add flags for mapping files if they weren't already common
+	ticketsJSONPath     string
+	ticketsDryRun       bool
+	missingPillars      bool
 	userMappingPath     string
-	userTestMappingPath string // Although not directly used for assignment here, load it for consistency/future use
+	userTestMappingPath string
 )
 
+// Renamed from TicketsCmd to ReviewTicketsCmd
 var ReviewTicketsCmd = &cobra.Command{
 	Use:   "review-tickets",
-	Short: "Review tickets from --test-db-path",
-	Long: `Interactively review tickets from --test-db-path.
-    
+	Short: "Review tickets from the local database and sync Jira status",
+	Long: `Interactively review tickets stored in the local database (--test-db-path).
+
+Fetches current Pillar Name and Status from associated Jira tickets.
+Allows setting the Pillar Name in Jira based on assignee mappings.
+
+Data Source: Reads from the JSON file specified by --test-db-path.
+Jira Interaction: Requires JIRA_* environment variables for fetching status/pillar and pillar updates.
+
 Actions:
-  [s] mark as skipped (and optionally post a comment to the Jira ticket)
-  [u] unskip a ticket
-  [i] set pillar name based on user mapping (if assignee exists)
+  [i] set Jira pillar name based on assignee mapping (updates Jira)
   [p] previous ticket
   [n] next ticket
-  [q] quit`, // Added 'p' to description
+  [q] quit`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// 1) Load the local JSON database.
+		// 1) Load the local JSON database
 		db, err := localdb.LoadDBWithPath(ticketsJSONPath)
 		if err != nil {
-			log.Error().Err(err).Msg("Failed to load local DB")
-			os.Exit(1) // Keep exiting on critical load failure
+			log.Error().Err(err).Str("path", ticketsJSONPath).Msg("Failed to load local DB")
+			// Treat error as critical for this command
+			return fmt.Errorf("failed to load local DB: %w", err)
 		}
 
-		// 2) Load Mappings using the new package
+		// 2) Load Mappings
 		userMap, err := mapping.LoadUserMappings(userMappingPath)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to load user mappings")
-			return err // Return error to cobra
+			return err
 		}
-		// Load test mappings even if not used for assignment here, maybe for future validation?
 		_, err = mapping.LoadUserTestMappings(userTestMappingPath)
 		if err != nil {
-			// Non-fatal, just log a warning
 			log.Warn().Err(err).Msg("Failed to load user test mappings, continuing...")
 		}
 
 		// 3) Retrieve all entries from the DB.
 		entries := db.GetAllEntries()
 		if len(entries) == 0 {
-			log.Info().Msg("No tickets found in local DB") // Changed to Info
+			log.Info().Msg("No tickets found in local DB")
 			return nil
 		}
+		log.Info().Int("count", len(entries)).Msg("Loaded entries from local DB.")
 
-		// Convert entries to model.FlakyTicket
-		tickets := make([]model.FlakyTicket, len(entries))
-		for i, entry := range entries {
-			tickets[i] = model.FlakyTicket{
+		// 4) Convert DB entries to model.FlakyTicket for the TUI
+		tickets := make([]model.FlakyTicket, 0, len(entries))
+		for _, entry := range entries {
+			ticket := model.FlakyTicket{
 				TestPackage:     entry.TestPackage,
 				TestName:        entry.TestName,
 				ExistingJiraKey: entry.JiraTicket,
-				SkippedAt:       entry.SkippedAt,
-				AssigneeId:      entry.AssigneeID, // Load AssigneeID from DB
+				AssigneeId:      entry.AssigneeID,
 			}
-
-			// Check if the assignee from the DB exists in the user map
 			if entry.AssigneeID != "" {
 				if _, exists := userMap[entry.AssigneeID]; !exists {
-					tickets[i].MissingUserMapping = true
+					ticket.MissingUserMapping = true
 					log.Debug().Str("assignee", entry.AssigneeID).Str("test", entry.TestName).Msg("Assignee from DB not found in user_mapping.json")
 				}
 			}
-		}
-
-		// 4) Filter based on flags (hideSkipped)
-		if hideSkipped {
-			filtered := make([]model.FlakyTicket, 0, len(tickets))
-			for _, t := range tickets {
-				if t.SkippedAt.IsZero() {
-					filtered = append(filtered, t)
-				}
-			}
-			tickets = filtered
-			if len(tickets) == 0 {
-				log.Info().Msg("No non-skipped tickets found matching criteria.")
-				return nil
-			}
+			tickets = append(tickets, ticket)
 		}
 
 		// 5) Setup Jira client
 		jiraClient, clientErr := jirautils.GetJiraClient()
 		if clientErr != nil {
-			log.Warn().Msgf("Jira client not available: %v. Running in offline mode.", clientErr)
-			jiraClient = nil // Ensure it's nil if there's an error
+			log.Warn().Msgf("Jira client not available: %v. Running in offline mode (cannot fetch status/pillar or update).", clientErr)
+			jiraClient = nil
 		}
 
-		// 6) Fetch pillar names (only if Jira client exists)
-		if jiraClient != nil {
-			s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
-			s.Suffix = " Fetching pillar names from Jira..."
-			s.Start()
+		// 6) Fetch pillar names AND STATUS from Jira (if client available and tickets exist)
+		if jiraClient != nil && len(tickets) > 0 {
+			log.Info().Msg("Attempting to fetch Pillar Names & Status from Jira...")
 
-			// Collect Jira keys that need pillar names
-			var jiraKeys []string
-			keyToIndex := make(map[string][]int) // Map key to indices in the tickets slice
+			var jiraKeysToFetch []string
+			keyToIndexMap := make(map[string][]int)
 			for i, t := range tickets {
-				if t.ExistingJiraKey != "" && t.PillarName == "" { // Only fetch if not already known (and key exists)
-					jiraKeys = append(jiraKeys, t.ExistingJiraKey)
-					keyToIndex[t.ExistingJiraKey] = append(keyToIndex[t.ExistingJiraKey], i)
+				// Fetch if ticket has a key and we haven't already got Pillar OR Status
+				if t.ExistingJiraKey != "" && (t.PillarName == "" || t.JiraStatus == "") {
+					if _, exists := keyToIndexMap[t.ExistingJiraKey]; !exists {
+						jiraKeysToFetch = append(jiraKeysToFetch, t.ExistingJiraKey)
+					}
+					keyToIndexMap[t.ExistingJiraKey] = append(keyToIndexMap[t.ExistingJiraKey], i)
 				}
 			}
-			jiraKeys = uniqueStrings(jiraKeys) // Avoid duplicate JQL queries if multiple local entries point to the same ticket
 
-			if len(jiraKeys) > 0 {
-				// Batch processing logic (remains the same)
+			if len(jiraKeysToFetch) > 0 {
+				log.Debug().Int("count", len(jiraKeysToFetch)).Msg("Fetching Pillar/Status for unique Jira keys.")
 				batchSize := 50
-				for i := 0; i < len(jiraKeys); i += batchSize {
+				processedCount := 0 // Track keys processed for spinner
+				for i := 0; i < len(jiraKeysToFetch); i += batchSize {
 					end := i + batchSize
-					if end > len(jiraKeys) {
-						end = len(jiraKeys)
+					if end > len(jiraKeysToFetch) {
+						end = len(jiraKeysToFetch)
 					}
-					batch := jiraKeys[i:end]
+					batch := jiraKeysToFetch[i:end]
 					jql := fmt.Sprintf("key IN (%s)", strings.Join(batch, ","))
-					issues, _, err := jiraClient.Issue.Search(jql, &jira.SearchOptions{
-						Fields:     []string{"key", "customfield_11016"}, // customfield_11016 is Pillar Name
+
+					// Request Status field in addition to Pillar Name field
+					issues, _, searchErr := jiraClient.Issue.Search(jql, &jira.SearchOptions{
+						Fields:     []string{"key", jirautils.PillarCustomFieldID, "status"},
 						MaxResults: batchSize,
 					})
 
-					if err != nil {
-						log.Warn().Err(err).Msgf("Failed to fetch pillar names for batch of tickets starting at index %d", i)
-						continue // Skip this batch on error
+					if searchErr != nil {
+						log.Warn().Err(searchErr).Msgf("Failed to fetch Jira data batch (JQL: %s)", jql)
+						continue
 					}
 
-					// Update tickets with pillar names
+					// Update tickets with pillar names and status
 					for _, issue := range issues {
-						if indices, found := keyToIndex[issue.Key]; found {
-							pillarValue := ""
-							if issue.Fields != nil {
-								// Safely access the custom field
-								if pillarFieldRaw, ok := issue.Fields.Unknowns["customfield_11016"]; ok && pillarFieldRaw != nil {
-									if pillarField, ok := pillarFieldRaw.(map[string]interface{}); ok {
-										if value, ok := pillarField["value"].(string); ok {
-											pillarValue = value
-										}
-									}
-								}
+						processedCount++
+						if indices, found := keyToIndexMap[issue.Key]; found {
+							pillarValue := jirautils.ExtractPillarValue(issue) // Use helper
+							jiraStatus := ""
+							if issue.Fields != nil && issue.Fields.Status != nil {
+								jiraStatus = issue.Fields.Status.Name // Get status name
 							}
-							if pillarValue != "" {
-								for _, ticketIdx := range indices {
-									if ticketIdx < len(tickets) { // Bounds check
-										tickets[ticketIdx].PillarName = pillarValue
-										log.Debug().Str("ticket", issue.Key).Str("pillar", pillarValue).Msg("Pillar name fetched from Jira")
-									}
+
+							log.Debug().Str("ticket", issue.Key).Str("pillar", pillarValue).Str("status", jiraStatus).Msg("Data retrieved from Jira.")
+
+							for _, ticketIdx := range indices {
+								if ticketIdx < len(tickets) { // Bounds check
+									tickets[ticketIdx].PillarName = pillarValue
+									tickets[ticketIdx].JiraStatus = jiraStatus
 								}
-							} else {
-								log.Debug().Str("ticket", issue.Key).Msg("Pillar name field (customfield_11016) not found or empty in Jira response")
 							}
 						}
 					}
-					s.Suffix = fmt.Sprintf(" Fetching pillar names from Jira... (%d/%d)", end, len(jiraKeys))
 				}
+				log.Info().Int("count", processedCount).Msg("Finished fetching Jira data.")
 			} else {
-				log.Info().Msg("No tickets require pillar name fetching from Jira.")
+				log.Info().Msg("No tickets required fetching data from Jira.")
 			}
-			s.Stop()
-			fmt.Println() // Add a newline after spinner stops
+			fmt.Println()
 		}
 
-		// 7) Filter by missing pillars AFTER fetching
+		// 7) Filter by missing pillars AFTER fetching (if flag is set)
 		if missingPillars {
 			filtered := make([]model.FlakyTicket, 0, len(tickets))
 			for _, t := range tickets {
-				// A ticket is considered missing pillar if it has a Jira Key but no PillarName fetched/set
 				if t.ExistingJiraKey != "" && t.PillarName == "" {
 					filtered = append(filtered, t)
 				}
 			}
 			tickets = filtered
 			if len(tickets) == 0 {
-				log.Info().Msg("No tickets found with missing pillar names.")
+				log.Info().Msg("No tickets found with missing pillar names after filtering.")
 				return nil
 			}
+			log.Info().Int("count", len(tickets)).Msg("Filtered view to show only tickets missing pillar names.")
+		}
+
+		// Exit early if no tickets remain after all filtering
+		if len(tickets) == 0 {
+			log.Info().Msg("No tickets remaining after applying all filters.")
+			return nil
 		}
 
 		// 8) Initialize Bubble Tea model
-		m := initialTicketsModel(tickets, userMap) // Pass only userMap, testPatternMap not directly used in TUI actions here
+		m := initialTicketsModel(tickets, userMap)
 		m.JiraClient = jiraClient
-		m.LocalDB = db
-		m.JiraComment = jiraComment
+		m.LocalDB = db // Pass DB pointer
 		m.DryRun = ticketsDryRun
 
 		// 9) Run TUI
-		finalModel, err := tea.NewProgram(m).Run()
+		program := tea.NewProgram(m)
+		finalModel, err := program.Run()
 		if err != nil {
 			log.Error().Err(err).Msg("Error running tickets TUI")
-			os.Exit(1)
+			// Don't save DB on TUI error
+			return fmt.Errorf("error running TUI: %w", err)
 		}
-		_ = finalModel // Use the final model if needed, e.g., for summary stats
+		_ = finalModel
 
-		// 10) Save the local DB
-		if err := db.Save(); err != nil {
-			log.Error().Err(err).Msg("Failed to save local DB")
-			// Don't exit here, just log the error
+		// 10) Save the local DB (if not dry run)
+		if !ticketsDryRun {
+			if db == nil { // Safety check
+				log.Error().Msg("Cannot save DB: DB instance is nil")
+			} else if err := db.Save(); err != nil {
+				log.Error().Err(err).Msg("Failed to save local DB")
+			} else {
+				log.Info().Str("path", db.FilePath()).Msg("Local DB saved.")
+			}
 		} else {
-			log.Info().Str("path", db.FilePath()).Msg("Local DB saved successfully")
+			log.Info().Msg("Dry Run: Skipping save of local DB.")
 		}
+
+		log.Info().Msg("Review Tickets command finished.")
 		return nil
 	},
 }
 
-// Helper function for unique strings (used for Jira keys)
+// Helper function remains the same
 func uniqueStrings(input []string) []string {
 	seen := make(map[string]struct{}, len(input))
 	j := 0
@@ -244,42 +233,36 @@ func uniqueStrings(input []string) []string {
 	return input[:j]
 }
 
+// init function: Removed hide-skipped flag
 func init() {
-	ReviewTicketsCmd.Flags().StringVar(&ticketsJSONPath, "test-db-path", localdb.DefaultDBPath(), "Path to the JSON file containing tickets") // Use default path function
-	ReviewTicketsCmd.Flags().BoolVar(&jiraComment, "jira-comment", true, "If true, post a comment to the Jira ticket when marking as skipped/unskipped")
-	ReviewTicketsCmd.Flags().BoolVar(&ticketsDryRun, "dry-run", false, "If true, do not modify Jira tickets (comments, pillars) or save DB") // Updated help text
-	ReviewTicketsCmd.Flags().BoolVar(&hideSkipped, "hide-skipped", false, "If true, do not show tests already marked as skipped")
-	ReviewTicketsCmd.Flags().BoolVar(&missingPillars, "missing-pillars", false, "If true, only show tickets that have a Jira Key but no Pillar Name") // Updated help text
-	// Make mapping paths consistent flags
-	ReviewTicketsCmd.Flags().StringVar(&userMappingPath, "user-mapping-path", "user_mapping.json", "Path to the JSON file containing user mapping (JiraUserID -> PillarName)")
-	ReviewTicketsCmd.Flags().StringVar(&userTestMappingPath, "user-test-mapping-path", "user_test_mapping.json", "Path to the JSON file containing user test mapping (Pattern -> JiraUserID)")
+	ReviewTicketsCmd.Flags().StringVar(&ticketsJSONPath, "test-db-path", localdb.DefaultDBPath(), "Path to the JSON file for the flaky test database")
+	ReviewTicketsCmd.Flags().BoolVar(&ticketsDryRun, "dry-run", false, "Prevent changes to Jira (e.g., pillar updates)")
+	ReviewTicketsCmd.Flags().BoolVar(&missingPillars, "missing-pillars", false, "Only show tickets with a Jira Key but no Pillar Name")
+	ReviewTicketsCmd.Flags().StringVar(&userMappingPath, "user-mapping-path", "user_mapping.json", "Path to the user mapping JSON (JiraUserID -> PillarName)")
+	ReviewTicketsCmd.Flags().StringVar(&userTestMappingPath, "user-test-mapping-path", "user_test_mapping.json", "Path to the user test mapping JSON (Pattern -> JiraUserID)")
 }
 
 // -------------------------
 // TUI Model and Functions
 // -------------------------
 
-// ticketModel represents the state of the TUI.
 type ticketModel struct {
-	tickets     []model.FlakyTicket
-	index       int
-	JiraClient  *jira.Client
-	LocalDB     *localdb.DB
-	JiraComment bool
-	DryRun      bool
-	quitting    bool
-	infoMessage string
-	userMap     map[string]mapping.UserMapping // Use mapping.UserMapping
-	// testPatternMap not needed directly here anymore
+	tickets      []model.FlakyTicket
+	index        int
+	JiraClient   *jira.Client
+	LocalDB      *localdb.DB
+	DryRun       bool
+	quitting     bool
+	infoMessage  string
+	errorMessage string
+	userMap      map[string]mapping.UserMapping
 }
 
-// initialTicketsModel creates an initial model.
-// Use the UserMapping type from the mapping package.
+// initialTicketsModel remains the same structurally
 func initialTicketsModel(tickets []model.FlakyTicket, userMap map[string]mapping.UserMapping) ticketModel {
-	// Ensure index is valid if tickets slice is empty
 	idx := 0
 	if len(tickets) == 0 {
-		idx = -1 // Or handle appropriately in View/Update
+		idx = -1
 	}
 	return ticketModel{
 		tickets: tickets,
@@ -288,203 +271,161 @@ func initialTicketsModel(tickets []model.FlakyTicket, userMap map[string]mapping
 	}
 }
 
-// Init is part of the Bubble Tea model interface.
 func (m ticketModel) Init() tea.Cmd {
 	return nil
 }
 
-// Update processes keypresses.
+// Update function: Removed 's' and 'u' cases
 func (m ticketModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Handle case where there are no tickets
+	// Handle empty state or quit signals first
 	if m.index == -1 {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
+		if msg, ok := msg.(tea.KeyMsg); ok {
 			switch msg.String() {
 			case "q", "esc", "ctrl+c":
 				m.quitting = true
 				return m, tea.Quit
-			default:
-				return m, nil // Ignore other keys if no tickets
 			}
-		default:
-			return m, nil
 		}
+		return m, nil
+	}
+	if m.quitting {
+		return m, tea.Quit
 	}
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Clear messages on navigation/action attempts
+		m.infoMessage = ""
+		m.errorMessage = ""
+
 		key := msg.String()
 
 		switch key {
 		case "q", "esc", "ctrl+c":
 			m.quitting = true
+			log.Info().Msg("Quit signal received.")
 			return m, tea.Quit
+
 		case "p": // Previous
 			if m.index > 0 {
 				m.index--
-				m.infoMessage = "" // Clear message on navigation
+			} else {
+				m.infoMessage = "Already at the first ticket."
 			}
 			return m, nil
+
 		case "n": // Next
 			if m.index < len(m.tickets)-1 {
 				m.index++
-				m.infoMessage = "" // Clear message on navigation
-			}
-			return m, nil
-		case "s": // Skip
-			t := &m.tickets[m.index] // Use pointer to modify in place
-			if t.SkippedAt.IsZero() {
-				now := time.Now()
-				t.SkippedAt = now
-				m.infoMessage = fmt.Sprintf("Marked as skipped at %s", now.UTC().Format(time.RFC822))
-				// Update DB immediately (even in dry-run for TUI state, but save is conditional)
-				if err := m.LocalDB.UpsertEntry(t.TestPackage, t.TestName, t.ExistingJiraKey, t.SkippedAt, t.AssigneeId); err != nil {
-					log.Error().Err(err).Msg("Failed to update skip status in local DB state")
-					m.infoMessage = "Error updating skip status in DB"
-				}
-
-				if !m.DryRun && m.JiraClient != nil && t.ExistingJiraKey != "" && m.JiraComment {
-					comment := fmt.Sprintf("Test %s/%s marked as skipped via flakeguard on %s.", t.TestPackage, t.TestName, now.Format(time.RFC822))
-					go func(key, comment string) { // Post comment in background to avoid blocking TUI
-						err := jirautils.PostCommentToTicket(m.JiraClient, key, comment)
-						if err != nil {
-							// How to signal back to TUI? Could use a channel, but for now just log.
-							log.Error().Err(err).Str("ticket", key).Msg("Failed to post skip comment to Jira")
-						} else {
-							log.Info().Str("ticket", key).Msg("Skip comment posted to Jira")
-							// We can't easily update m.infoMessage from here without channels/Cmds
-						}
-					}(t.ExistingJiraKey, comment)
-					m.infoMessage += fmt.Sprintf(" (Posting comment to %s...)", jirautils.GetJiraLink(t.ExistingJiraKey))
-				} else if m.DryRun {
-					m.infoMessage += " (Dry Run - Jira comment not sent)"
-				}
 			} else {
-				m.infoMessage = "Already skipped."
+				m.infoMessage = "Already at the last ticket."
 			}
 			return m, nil
-		case "u": // Unskip
-			t := &m.tickets[m.index] // Use pointer
-			if !t.SkippedAt.IsZero() {
-				unskippedAt := t.SkippedAt // Store old time for comment
-				t.SkippedAt = time.Time{}  // Zero value means not skipped
-				m.infoMessage = fmt.Sprintf("Marked as unskipped (was skipped at %s)", unskippedAt.UTC().Format(time.RFC822))
-				// Update DB
-				if err := m.LocalDB.UpsertEntry(t.TestPackage, t.TestName, t.ExistingJiraKey, t.SkippedAt, t.AssigneeId); err != nil {
-					log.Error().Err(err).Msg("Failed to update unskip status in local DB state")
-					m.infoMessage = "Error updating unskip status in DB"
-				}
 
-				if !m.DryRun && m.JiraClient != nil && t.ExistingJiraKey != "" && m.JiraComment {
-					now := time.Now()
-					comment := fmt.Sprintf("Test %s/%s marked as unskipped via flakeguard on %s (was previously skipped).", t.TestPackage, t.TestName, now.Format(time.RFC822))
-					go func(key, comment string) { // Post comment in background
-						err := jirautils.PostCommentToTicket(m.JiraClient, key, comment)
-						if err != nil {
-							log.Error().Err(err).Str("ticket", key).Msg("Failed to post unskip comment to Jira")
-						} else {
-							log.Info().Str("ticket", key).Msg("Unskip comment posted to Jira")
-						}
-					}(t.ExistingJiraKey, comment)
-					m.infoMessage += fmt.Sprintf(" (Posting comment to %s...)", jirautils.GetJiraLink(t.ExistingJiraKey))
-				} else if m.DryRun {
-					m.infoMessage += " (Dry Run - Jira comment not sent)"
-				}
-			} else {
-				m.infoMessage = "Not currently skipped."
-			}
-			return m, nil
 		case "i": // Set Pillar Name based on mapping
+			// Check index validity before accessing ticket
+			if m.index < 0 || m.index >= len(m.tickets) {
+				m.errorMessage = "Internal error: Invalid index for 'i' action."
+				return m, nil
+			}
 			t := &m.tickets[m.index] // Use pointer
+
+			// Check prerequisites
 			if t.ExistingJiraKey == "" {
-				m.infoMessage = "Cannot set pillar name: No associated Jira ticket key."
+				m.errorMessage = "Cannot set pillar: No associated Jira key."
 				return m, nil
 			}
 			if t.AssigneeId == "" {
-				m.infoMessage = "Cannot set pillar name: Assignee ID is not set for this test."
+				m.errorMessage = "Cannot set pillar: Assignee ID not set."
 				return m, nil
 			}
 			if m.JiraClient == nil {
-				m.infoMessage = "Cannot set pillar name: Jira client is not available."
+				m.errorMessage = "Cannot set pillar: Jira client unavailable."
 				return m, nil
 			}
 			if m.DryRun {
-				m.infoMessage = "Cannot set pillar name: Running in Dry Run mode."
+				m.errorMessage = "Cannot set pillar: Dry Run mode enabled."
 				return m, nil
 			}
 
-			// Find the user mapping for the ticket's assignee
+			// Find mapping and target pillar name
 			userMapping, exists := m.userMap[t.AssigneeId]
 			if !exists {
-				m.infoMessage = fmt.Sprintf("Cannot set pillar name: No user mapping found for Assignee ID %s.", t.AssigneeId)
+				m.errorMessage = fmt.Sprintf("Cannot set pillar: No mapping for assignee %s.", t.AssigneeId)
 				return m, nil
 			}
-			if userMapping.PillarName == "" {
-				m.infoMessage = fmt.Sprintf("Cannot set pillar name: Pillar name is empty in mapping for Assignee ID %s.", t.AssigneeId)
-				return m, nil
-			}
-
-			// Update the Jira ticket
 			targetPillar := userMapping.PillarName
-			m.infoMessage = fmt.Sprintf("Attempting to set Pillar Name to '%s' for %s...", targetPillar, jirautils.GetJiraLink(t.ExistingJiraKey))
+			if targetPillar == "" {
+				m.errorMessage = fmt.Sprintf("Cannot set pillar: Pillar name empty in mapping for %s.", t.AssigneeId)
+				return m, nil
+			}
 
-			// Perform Jira update in background? Or block TUI? Let's block for immediate feedback.
-			issueUpdate := &jira.Issue{
-				Key: t.ExistingJiraKey,
-				Fields: &jira.IssueFields{
-					Unknowns: map[string]interface{}{
-						"customfield_11016": map[string]interface{}{ // Pillar Name field ID
-							"value": targetPillar,
-						},
-					},
-				},
+			// Prevent setting if already set to target? Optional.
+			if t.PillarName == targetPillar {
+				m.infoMessage = fmt.Sprintf("Pillar name is already '%s'.", targetPillar)
+				return m, nil
 			}
-			// Use UpdateIssue instead of Issue.Update for more flexibility if needed
-			updatedIssue, resp, err := m.JiraClient.Issue.Update(issueUpdate)
-			if err != nil {
-				errMsg := fmt.Sprintf("Failed to update pillar name for %s", t.ExistingJiraKey)
-				log.Error().Err(err).Interface("response", resp).Msg(errMsg)
-				m.infoMessage = fmt.Sprintf("%s: %v", errMsg, err)
+
+			// Perform Jira Update (synchronously for immediate feedback)
+			m.infoMessage = fmt.Sprintf("Attempting to set Pillar Name to '%s' for %s...", targetPillar, jirautils.GetJiraLink(t.ExistingJiraKey))
+			// Use the jirautils helper for updating the pillar field
+			updateErr := jirautils.UpdatePillarName(m.JiraClient, t.ExistingJiraKey, targetPillar)
+
+			if updateErr != nil {
+				errMsg := fmt.Sprintf("Failed to update pillar for %s", t.ExistingJiraKey)
+				log.Error().Err(updateErr).Str("ticket", t.ExistingJiraKey).Str("pillar", targetPillar).Msg(errMsg)
+				m.errorMessage = fmt.Sprintf("%s: %v", errMsg, updateErr)
+				m.infoMessage = "" // Clear "Attempting..."
 			} else {
-				log.Info().Str("ticket", updatedIssue.Key).Str("pillar", targetPillar).Msg("Pillar name updated successfully")
-				m.infoMessage = fmt.Sprintf("Pillar name set to '%s' for %s", targetPillar, jirautils.GetJiraLink(updatedIssue.Key))
-				// Update the local model state as well
+				log.Info().Str("ticket", t.ExistingJiraKey).Str("pillar", targetPillar).Msg("Pillar name updated successfully in Jira.")
+				m.infoMessage = fmt.Sprintf("Pillar name set to '%s' for %s", targetPillar, jirautils.GetJiraLink(t.ExistingJiraKey))
+				// Update the local model state as well so the view refreshes correctly
 				t.PillarName = targetPillar
+				m.errorMessage = ""
 			}
-			return m, nil // Return after processing 'i'
-		}
-	}
-	// Default: return current model if no key matched
+			return m, nil
+		} // End inner switch
+	} // End case KeyMsg
+
+	// Default: return current model if no key matched or not a keypress
 	return m, nil
 }
 
-// View renders the current ticket and available actions.
+// View function: Displays Jira Status instead of SkippedAt
 func (m ticketModel) View() string {
 	if m.quitting {
-		// Consider saving DB on quit signal if not already handled by RunE final save
-		return "Exiting tickets manager...\n"
+		return "Exiting review...\n"
 	}
 	if m.index == -1 || len(m.tickets) == 0 {
 		return "No tickets loaded or matching filters.\n\n[q] quit\n"
 	}
 	if m.index >= len(m.tickets) {
-		// Should not happen if navigation logic is correct, but handle defensively
-		return "Error: Invalid ticket index.\n"
+		return "Error: Invalid ticket index.\n\n[q] quit\n"
 	}
 
-	t := m.tickets[m.index]
+	t := m.tickets[m.index] // Get current ticket
 
-	// Define styles.
-	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("63"))          // Magenta/Purple
-	infoStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))                      // Grey
-	labelStyle := lipgloss.NewStyle().Bold(true).Width(12).Foreground(lipgloss.Color("39")) // Blue
+	// --- Styles ---
+	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("63")).PaddingBottom(1) // Magenta/Purple
+	infoStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("81"))                               // Cyan/Blueish
+	errorStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("196")).PaddingBottom(1) // Red
+	labelStyle := lipgloss.NewStyle().Bold(true).Width(12).Foreground(lipgloss.Color("39"))         // Blue, fixed width
 	valueStyle := lipgloss.NewStyle()
-	skippedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("208")) // Orange
-	activeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("40"))   // Green
-	errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))   // Red
+	// Add styles for Jira Status potentially
+	statusStyle := lipgloss.NewStyle() // Default style
+	// Example: Color based on status
+	switch strings.ToLower(t.JiraStatus) {
+	case "done", "resolved", "closed":
+		statusStyle = statusStyle.Foreground(lipgloss.Color("40")) // Green
+	case "in progress", "in review":
+		statusStyle = statusStyle.Foreground(lipgloss.Color("208")) // Orange
+	case "to do", "backlog", "open":
+		statusStyle = statusStyle.Foreground(lipgloss.Color("245")) // Grey
+	}
+
+	warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("208")) // Orange for warnings like missing mapping
 	dryRunStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("208")).Background(lipgloss.Color("235")).Padding(0, 1)
-	actionStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("63"))
-	helpStyle := lipgloss.NewStyle().Faint(true)
+	actionHelpStyle := lipgloss.NewStyle().Faint(true).PaddingTop(1)
 
 	var sb strings.Builder
 
@@ -493,80 +434,80 @@ func (m ticketModel) View() string {
 		sb.WriteString(dryRunStyle.Render("DRY RUN MODE") + "\n\n")
 	}
 
+	// Error Message Area
+	if m.errorMessage != "" {
+		sb.WriteString(errorStyle.Render("Error: "+m.errorMessage) + "\n")
+	}
+	// Info Message Area
+	if m.infoMessage != "" {
+		sb.WriteString(infoStyle.Render(m.infoMessage) + "\n\n")
+	}
+
 	// Header
-	sb.WriteString(headerStyle.Render(fmt.Sprintf("Ticket [%d / %d]", m.index+1, len(m.tickets))) + "\n\n")
+	sb.WriteString(headerStyle.Render(fmt.Sprintf("Review Ticket [%d / %d]", m.index+1, len(m.tickets))) + "\n")
 
 	// Details Table
 	sb.WriteString(fmt.Sprintf("%s %s\n", labelStyle.Render("Test Name:"), valueStyle.Render(t.TestName)))
 	sb.WriteString(fmt.Sprintf("%s %s\n", labelStyle.Render("Package:"), valueStyle.Render(t.TestPackage)))
-
-	if t.ExistingJiraKey != "" {
-		sb.WriteString(fmt.Sprintf("%s %s\n", labelStyle.Render("Jira Key:"), valueStyle.Render(jirautils.GetJiraLink(t.ExistingJiraKey))))
-	} else {
-		sb.WriteString(fmt.Sprintf("%s %s\n", labelStyle.Render("Jira Key:"), valueStyle.Render("-")))
-	}
+	sb.WriteString(fmt.Sprintf("%s %s\n", labelStyle.Render("Jira Key:"), valueStyle.Render(jirautils.GetJiraLink(t.ExistingJiraKey))))
 
 	// Assignee Info
 	assigneeVal := "-"
 	if t.AssigneeId != "" {
 		assigneeVal = t.AssigneeId
-		// Check if mapping exists
-		if _, exists := m.userMap[t.AssigneeId]; !exists {
-			assigneeVal += errorStyle.Render(" (Mapping Missing!)")
-		} else {
-			// Optionally show Pillar name from map if userMap is available
-			// assigneeVal += fmt.Sprintf(" (Pillar: %s)", m.userMap[t.AssigneeId].PillarName)
+		if t.MissingUserMapping {
+			assigneeVal += warningStyle.Render(" (Mapping Missing!)")
 		}
+	} else {
+		assigneeVal = lipgloss.NewStyle().Faint(true).Render("(Not Set)")
 	}
 	sb.WriteString(fmt.Sprintf("%s %s\n", labelStyle.Render("Assignee ID:"), valueStyle.Render(assigneeVal)))
 
-	// Pillar Name (fetched from Jira or set)
+	// Pillar Name
 	pillarVal := "-"
 	if t.PillarName != "" {
 		pillarVal = t.PillarName
 	} else if t.ExistingJiraKey != "" {
-		pillarVal = infoStyle.Render("(Not set in Jira)")
+		// Indicate if fetched or just not set
+		if m.JiraClient != nil { // Check if client was available to fetch
+			pillarVal = infoStyle.Render("(Not set in Jira)")
+		} else {
+			pillarVal = infoStyle.Render("(Jira unavailable)")
+		}
 	}
 	sb.WriteString(fmt.Sprintf("%s %s\n", labelStyle.Render("Pillar Name:"), valueStyle.Render(pillarVal)))
 
-	// Status
-	statusLabel := labelStyle.Render("Status:")
-	var statusValue string
-	if !t.SkippedAt.IsZero() {
-		statusValue = skippedStyle.Render(fmt.Sprintf("Skipped @ %s", t.SkippedAt.UTC().Format(time.RFC822)))
-	} else {
-		statusValue = activeStyle.Render("Active (Not Skipped)")
-	}
-	sb.WriteString(fmt.Sprintf("%s %s\n", statusLabel, statusValue))
-
-	// Info Message Area
-	if m.infoMessage != "" {
-		// Determine style based on content (simple check)
-		infoMsgStyle := infoStyle
-		lowerMsg := strings.ToLower(m.infoMessage)
-		if strings.Contains(lowerMsg, "fail") || strings.Contains(lowerMsg, "error") {
-			infoMsgStyle = errorStyle
-		} else if strings.Contains(lowerMsg, "success") || strings.Contains(lowerMsg, "set to") || strings.Contains(lowerMsg, "posted") {
-			infoMsgStyle = activeStyle // Use Green for success messages too
+	// --- Display Jira Status ---
+	statusVal := t.JiraStatus
+	if statusVal == "" {
+		if t.ExistingJiraKey != "" {
+			if m.JiraClient != nil {
+				statusVal = infoStyle.Render("(Status not fetched)")
+			} else {
+				statusVal = infoStyle.Render("(Jira unavailable)")
+			}
+		} else {
+			statusVal = "-" // No Jira key, no status
 		}
-		sb.WriteString("\n" + infoMsgStyle.Render(m.infoMessage) + "\n")
 	}
+	sb.WriteString(fmt.Sprintf("%s %s\n", labelStyle.Render("Jira Status:"), statusStyle.Render(statusVal))) // Apply style
 
-	// Actions
+	// --- Actions Help Text ---
 	actions := []string{
 		"[p]prev", "[n]next",
 	}
-	if t.SkippedAt.IsZero() {
-		actions = append(actions, "[s]skip")
-	} else {
-		actions = append(actions, "[u]unskip")
-	}
-	if t.ExistingJiraKey != "" && t.AssigneeId != "" && m.JiraClient != nil && !m.DryRun {
+	// Only show [i] if prerequisites are met AND pillar name is not already set
+	if t.ExistingJiraKey != "" &&
+		t.AssigneeId != "" &&
+		m.JiraClient != nil &&
+		!m.DryRun &&
+		t.PillarName == "" {
 		actions = append(actions, "[i]set_pillar")
 	}
+
 	actions = append(actions, "[q]quit")
 
-	sb.WriteString("\n" + actionStyle.Render("Actions:") + "\n" + helpStyle.Render(strings.Join(actions, "  ")))
+	sb.WriteString("\n" + lipgloss.NewStyle().Bold(true).Render("Actions:") + "\n" + actionHelpStyle.Render(strings.Join(actions, "  ")))
 
 	return sb.String()
 }
