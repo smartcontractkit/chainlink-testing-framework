@@ -23,7 +23,7 @@ chain_id = '1337'
 [[blockchain_a.out.nodes]]
 ws_url = 'ws://127.0.0.1:33447'
 http_url = 'http://127.0.0.1:33447'
-docker_internal_ws_url = 'ws://anvil-3716a:8900'
-docker_internal_http_url = 'http://anvil-3716a:8900'
+internal_ws_url = 'ws://anvil-3716a:8900'
+internal_http_url = 'http://anvil-3716a:8900'
 ```
 Set flag `use_cache = true` on any component output and run your test again

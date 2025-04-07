@@ -20,12 +20,12 @@ type testCase struct {
 func checkBasicOutputs(t *testing.T, output *clnode.Output) {
 	require.NotNil(t, output)
 	require.NotNil(t, output.Node)
-	require.Contains(t, output.Node.HostURL, "127.0.0.1")
-	require.Contains(t, output.Node.DockerURL, "cl-node")
-	require.Contains(t, output.Node.DockerP2PUrl, "cl-node")
+	require.Contains(t, output.Node.ExternalURL, "127.0.0.1")
+	require.Contains(t, output.Node.InternalURL, "cl-node")
+	require.Contains(t, output.Node.InternalP2PUrl, "cl-node")
 	require.NotNil(t, output.PostgreSQL)
 	require.Contains(t, output.PostgreSQL.Url, "postgresql://chainlink:thispasswordislongenough@127.0.0.1")
-	require.Contains(t, output.PostgreSQL.DockerInternalURL, "postgresql://chainlink:thispasswordislongenough@pg")
+	require.Contains(t, output.PostgreSQL.InternalURL, "postgresql://chainlink:thispasswordislongenough@pg")
 }
 
 func TestSmokeComponentDockerNodeWithSharedDB(t *testing.T) {

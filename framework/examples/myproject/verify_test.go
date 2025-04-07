@@ -25,11 +25,11 @@ func TestVerify(t *testing.T) {
 	require.NoError(t, err)
 
 	scSrc, err := seth.NewClientBuilder().
-		WithRpcUrl(bc.Nodes[0].HostWSUrl).
+		WithRpcUrl(bc.Nodes[0].ExternalWSUrl).
 		WithPrivateKeys([]string{blockchain.DefaultAnvilPrivateKey}).
 		Build()
 	require.NoError(t, err)
-	in.ContractsSrc.URL = bc.Nodes[0].HostWSUrl
+	in.ContractsSrc.URL = bc.Nodes[0].ExternalWSUrl
 	c, err := onchain.NewCounterDeployment(scSrc, in.ContractsSrc)
 	require.NoError(t, err)
 

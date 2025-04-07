@@ -375,16 +375,18 @@ func (r *Runner) parseTestResults(runPrefix string, runCount int) ([]reports.Tes
 				}
 			}
 
+			// TODO: An argument could be made to check for entryLine.Action != "output" instead, but need to check edge cases
 			if (panicDetectionMode || raceDetectionMode) && entryLine.Action == "fail" { // End of panic or race output
+				var outputs []string
+				for _, entry := range detectedEntries {
+					outputs = append(outputs, entry.Output)
+				}
 				if panicDetectionMode {
-					var outputs []string
-					for _, entry := range detectedEntries {
-						outputs = append(outputs, entry.Output)
-					}
 					panicTest, timeout, err := attributePanicToTest(outputs)
 					if err != nil {
-						log.Warn().Err(err).Msg("Unable to attribute panic to a test")
-						panicTest = "UnableToAttributePanicTestPleaseInvestigate"
+						log.Error().Msg("Unable to attribute panic to a test")
+						fmt.Println(err.Error())
+						panicTest = "UnableToAttributePanicToTestPleaseInvestigate"
 					}
 					panicTestKey := fmt.Sprintf("%s/%s", entryLine.Package, panicTest)
 
@@ -418,9 +420,11 @@ func (r *Runner) parseTestResults(runPrefix string, runCount int) ([]reports.Tes
 						}
 					}
 				} else if raceDetectionMode {
-					raceTest, err := attributeRaceToTest(entryLine.Package, detectedEntries)
+					raceTest, err := attributeRaceToTest(outputs)
 					if err != nil {
-						return nil, err
+						log.Warn().Msg("Unable to attribute race to a test")
+						fmt.Println(err.Error())
+						raceTest = "UnableToAttributeRaceTestPleaseInvestigate"
 					}
 					raceTestKey := fmt.Sprintf("%s/%s", entryLine.Package, raceTest)
 
@@ -612,42 +616,120 @@ func (r *Runner) transformTestOutputFiles(filePaths []string) error {
 	return nil
 }
 
-// attributePanicToTest properly attributes panics to the test that caused them.
-func attributePanicToTest(outputs []string) (test string, timeout bool, err error) {
-	// Regex to extract a valid test function name from a panic message, e.g.
+var (
+	// Regex to extract a valid test function name from a panic message.
+	// This is the most common situation for test panics, e.g.
 	// github.com/smartcontractkit/chainlink/deployment/keystone/changeset_test.TestDeployBalanceReader(0xc000583c00)
-	nestedTestNameRe := regexp.MustCompile(`\.(Test[A-Z]\w+)(?:\.[^(]+)?\s*\(`)
-	// Regex to extract a valid test function name from a panic message if the panic is a timeout, e.g.
-	// TestTimedOut (10m0s)
-	timedOutTestNamRe := regexp.MustCompile(`^(Test\w+)\W+\(.*\)$`)
+	nestedTestNameRe = regexp.MustCompile(`\.(Test[^\s]+?)(?:\.[^(]+)?\s*\(`)
 
-	for _, o := range outputs {
-		outputs = append(outputs, o)
-		matchNestedTestName := nestedTestNameRe.FindStringSubmatch(o)
-		matchTimedOutTestName := timedOutTestNamRe.FindStringSubmatch(o)
-		if len(matchNestedTestName) > 1 {
-			return strings.TrimSpace(matchNestedTestName[1]), false, nil
-		} else if len(matchTimedOutTestName) > 1 {
-			return strings.TrimSpace(matchTimedOutTestName[1]), true, nil
+	ErrFailedToAttributePanicToTest              = errors.New("failed to attribute panic to test")
+	ErrFailedToAttributeRaceToTest               = errors.New("failed to attribute race to test")
+	ErrFailedToParseTimeoutDuration              = errors.New("failed to parse timeout duration")
+	ErrFailedToExtractTimeoutDuration            = errors.New("failed to extract timeout duration")
+	ErrDetectedLogAfterCompleteFailedAttribution = errors.New("detected a log after test has completed panic, but failed to properly attribute it")
+	ErrDetectedTimeoutFailedParse                = errors.New("detected test timeout, but failed to parse the duration from the test")
+	ErrDetectedTimeoutFailedAttribution          = errors.New("detected test timeout, but failed to attribute the timeout to a specific test")
+)
+
+// attributePanicToTest properly attributes panics to the test that caused them.
+// There are a lot of edge cases and strange behavior in Go test output when it comes to panics.
+func attributePanicToTest(outputs []string) (test string, timeout bool, err error) {
+	var (
+		// Regex to check if the panic is from a log after a goroutine, e.g.
+		// panic: Log in goroutine after Test_workflowRegisteredHandler/skips_fetch_if_secrets_url_is_missing has completed: <Log line>
+		testLogAfterTestRe = regexp.MustCompile(`^panic: Log in goroutine after (Test[^\s]+) has completed:`)
+
+		// Check if the panic message indicates a timeout, e.g.
+		// panic: test timed out after 10m0s
+		didTestTimeoutRe = regexp.MustCompile(`^panic: test timed out after ([^\s]+)`)
+		// Regex to extract a valid test function name from a panic message if the panic is a timeout, e.g.
+		// TestTimedOut (10m0s)
+		timedOutTestNameRe = regexp.MustCompile(`^(Test[^\s]+)\s+\((.*)\)`)
+		timeoutDurationStr string
+		timeoutDuration    time.Duration
+	)
+
+	for _, output := range outputs {
+		output = strings.TrimSpace(output)
+		// Check if the panic message indicates a timeout
+		// If so, extract the timeout duration and switch to timeout mode
+		if didTestTimeoutRe.MatchString(output) {
+			timeout = true
+			if len(didTestTimeoutRe.FindStringSubmatch(output)) > 1 {
+				timeoutDurationStr = didTestTimeoutRe.FindStringSubmatch(output)[1]
+				timeoutDuration, err = time.ParseDuration(timeoutDurationStr)
+				if err != nil {
+					return "", true, fmt.Errorf("%w: %w using this output:\n\n%s", err, ErrFailedToParseTimeoutDuration, output)
+				}
+			} else {
+				return "", true, fmt.Errorf("%w using this output:\n\n%s", ErrFailedToExtractTimeoutDuration, output)
+			}
+		}
+
+		if testLogAfterTestRe.MatchString(output) {
+			// If the panic message indicates a log after a test, extract the test name
+			match := testLogAfterTestRe.FindStringSubmatch(output)
+			if len(match) > 1 {
+				testName := strings.TrimSpace(match[1])
+				return testName, timeout, nil
+			} else {
+				return "", false, fmt.Errorf(
+					"%w using this output:\n\n%s", ErrDetectedLogAfterCompleteFailedAttribution, strings.Join(outputs, ""),
+				)
+			}
+		}
+
+		// If in timeout mode, look for test names in the panic message and check if any match the timeout duration, e.g.
+		// 	panic: test timed out after 10m0s
+		//   running tests:
+		//     TestAddAndPromoteCandidatesForNewChain (22s) // Nope
+		//     TestAddAndPromoteCandidatesForNewChain/Remote_chains_owned_by_MCMS (22s) // Nope
+		//     TestTimeout (10m0s) // Yes
+		//     TestConnectNewChain/Use_production_router_(with_MCMS) (1m1s) // Nope
+		//     TestJobSpecChangeset (0s) // Nope
+		//     Test_ActiveCandidate (1m1s) // Nope
+		if timeout {
+			if timedOutTestNameRe.MatchString(output) {
+				matchTimedOutTestName := timedOutTestNameRe.FindStringSubmatch(output)
+				if len(matchTimedOutTestName) > 1 {
+					testName := strings.TrimSpace(matchTimedOutTestName[1])
+					testDurationStr := strings.TrimSpace(matchTimedOutTestName[2])
+					testDuration, err := time.ParseDuration(testDurationStr)
+					if err != nil {
+						return "", true, fmt.Errorf("%w: %w using this output:\n\n%s", err, ErrDetectedTimeoutFailedParse, output)
+					}
+					if testDuration >= timeoutDuration {
+						return testName, true, nil
+					}
+				}
+			}
+		} else {
+			matchNestedTestName := nestedTestNameRe.FindStringSubmatch(output)
+			if len(matchNestedTestName) > 1 {
+				return strings.TrimSpace(matchNestedTestName[1]), false, nil
+			}
 		}
 	}
-	return "", false, fmt.Errorf("failed to attribute panic to test, using regex '%s' and '%s' on these strings:\n\n%s",
-		nestedTestNameRe.String(), timedOutTestNamRe.String(), strings.Join(outputs, ""))
+	// If we reach here, we couldn't attribute the panic to a test in the loop
+
+	if timeout {
+		return "", timeout, fmt.Errorf("%w using this output:\n\n%s", ErrDetectedTimeoutFailedAttribution, strings.Join(outputs, ""))
+	}
+
+	return "", timeout, fmt.Errorf("%w using this output:\n\n%s", ErrFailedToAttributePanicToTest, strings.Join(outputs, ""))
 }
 
 // attributeRaceToTest properly attributes races to the test that caused them.
-func attributeRaceToTest(racePackage string, raceEntries []entry) (string, error) {
-	regexSanitizeRacePackage := filepath.Base(racePackage)
-	raceAttributionRe := regexp.MustCompile(fmt.Sprintf(`%s\.(Test[^\.\(]+)`, regexSanitizeRacePackage))
-	entriesOutputs := []string{}
-	for _, entry := range raceEntries {
-		entriesOutputs = append(entriesOutputs, entry.Output)
-		if matches := raceAttributionRe.FindStringSubmatch(entry.Output); len(matches) > 1 {
-			testName := strings.TrimSpace(matches[1])
-			return testName, nil
+func attributeRaceToTest(outputs []string) (string, error) {
+	for _, output := range outputs {
+		match := nestedTestNameRe.FindStringSubmatch(output)
+		if len(match) > 1 {
+			return strings.TrimSpace(match[1]), nil
 		}
 	}
-	return "", fmt.Errorf("failed to attribute race to test, using regex: %s on these strings:\n%s", raceAttributionRe.String(), strings.Join(entriesOutputs, ""))
+	return "", fmt.Errorf("%w, using this output:\n\n%s",
+		ErrFailedToAttributeRaceToTest, strings.Join(outputs, ""),
+	)
 }
 
 // parseSubTest checks if a test name is a subtest and returns the parent and sub names.

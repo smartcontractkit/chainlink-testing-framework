@@ -21,9 +21,8 @@ func defaultAptos(in *Input) {
 	if in.Image == "" {
 		in.Image = "aptoslabs/tools:aptos-node-v1.27.2"
 	}
-	if in.Port != "" {
-		framework.L.Warn().Msg("'port' field is set but only default port can be used: 8080")
-	}
+	framework.L.Warn().Msg("Aptos node API can only be exposed on port 8080!")
+	in.CustomPorts = append(in.CustomPorts, "8080:8080", "8081:8081")
 	in.Port = "8080"
 }
 
@@ -37,11 +36,28 @@ func newAptos(in *Input) (*Output, error) {
 		return nil, err
 	}
 
-	bindPort := fmt.Sprintf("%s/tcp", in.Port)
+	exposedPorts, bindings, err := framework.GenerateCustomPortsData(in.CustomPorts)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := []string{
+		"aptos",
+		"node",
+		"run-local-testnet",
+		"--with-faucet",
+		"--force-restart",
+		"--bind-to",
+		"0.0.0.0",
+	}
+
+	if len(in.DockerCmdParamsOverrides) > 0 {
+		cmd = append(cmd, in.DockerCmdParamsOverrides...)
+	}
 
 	req := testcontainers.ContainerRequest{
 		Image:        in.Image,
-		ExposedPorts: []string{in.Port},
+		ExposedPorts: exposedPorts,
 		WaitingFor:   wait.ForLog("Faucet is ready"),
 		Name:         containerName,
 		Labels:       framework.DefaultTCLabels(),
@@ -50,19 +66,11 @@ func newAptos(in *Input) (*Output, error) {
 			framework.DefaultNetworkName: {containerName},
 		},
 		HostConfigModifier: func(h *container.HostConfig) {
-			h.PortBindings = framework.MapTheSamePort(bindPort)
+			h.PortBindings = bindings
 			framework.ResourceLimitsFunc(h, in.ContainerResources)
 		},
 		ImagePlatform: "linux/amd64",
-		Cmd: []string{
-			"aptos",
-			"node",
-			"run-local-testnet",
-			"--with-faucet",
-			"--force-restart",
-			"--bind-to",
-			"0.0.0.0",
-		},
+		Cmd:           cmd,
 		Files: []testcontainers.ContainerFile{
 			{
 				HostFilePath:      absPath,
@@ -98,8 +106,8 @@ func newAptos(in *Input) (*Output, error) {
 		ContainerName: containerName,
 		Nodes: []*Node{
 			{
-				HostHTTPUrl:           fmt.Sprintf("http://%s:%s", host, in.Port),
-				DockerInternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
+				ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", host, in.Port),
+				InternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
 			},
 		},
 	}, nil

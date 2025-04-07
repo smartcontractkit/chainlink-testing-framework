@@ -42,8 +42,8 @@ func TestSuiSmoke(t *testing.T) {
 	_, err = fake.NewFakeDataProvider(in.MockerDataProvider)
 	require.NoError(t, err)
 
-	fmt.Printf("Sui host HTTP URL: %s", bc.Nodes[0].HostHTTPUrl)
-	fmt.Printf("Sui internal (docker) HTTP URL: %s", bc.Nodes[0].DockerInternalHTTPUrl)
+	fmt.Printf("Sui host HTTP URL: %s", bc.Nodes[0].ExternalHTTPUrl)
+	fmt.Printf("Sui internal (docker) HTTP URL: %s", bc.Nodes[0].InternalHTTPUrl)
 	for _, n := range in.NodeSet.NodeSpecs {
 		// configure each CL node for Sui, just an example
 		n.Node.TestConfigOverrides = `
@@ -55,7 +55,7 @@ func TestSuiSmoke(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("test something", func(t *testing.T) {
-		cli := sui.NewSuiClient(bc.Nodes[0].HostHTTPUrl)
+		cli := sui.NewSuiClient(bc.Nodes[0].ExternalHTTPUrl)
 
 		signerAccount, err := signer.NewSignertWithMnemonic(bc.NetworkSpecificData.SuiAccount.Mnemonic)
 		require.NoError(t, err)

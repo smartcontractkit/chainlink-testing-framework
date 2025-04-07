@@ -17,6 +17,10 @@ API is available on [localhost:8080](http://localhost:8080/v1)
   type = "aptos"
   image = "aptoslabs/tools:aptos-node-v1.18.0" # or aptoslabs/tools:nightly
   contracts_dir = "$your_dir"
+  # expose custom ports
+  custom_ports = ["2020", "4050:4050"]
+  # add command params
+  docker_cmd_params = ["--skip-metadata-apply"]
 ```
 
 ## Usage
@@ -53,10 +57,10 @@ func TestAptosSmoke(t *testing.T) {
 
 	t.Run("test something", func(t *testing.T) {
 		// use internal URL to connect Chainlink nodes
-		_ = bc.Nodes[0].DockerInternalHTTPUrl
+		_ = bc.Nodes[0].InternalHTTPUrl
 		// use host URL to interact
-		_ = bc.Nodes[0].HostHTTPUrl
-		r := resty.New().SetBaseURL(bc.Nodes[0].HostHTTPUrl).EnableTrace()
+		_ = bc.Nodes[0].ExternalHTTPUrl
+		r := resty.New().SetBaseURL(bc.Nodes[0].ExternalHTTPUrl).EnableTrace()
 		_, err := r.R().Get("/v1/transactions")
 		require.NoError(t, err)
 	})
