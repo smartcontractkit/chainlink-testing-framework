@@ -33,11 +33,10 @@ var (
 	userTestMappingPath string // Although not directly used for assignment here, load it for consistency/future use
 )
 
-// TicketsCmd ... (rest of the command definition remains the same)
-var TicketsCmd = &cobra.Command{
-	Use:   "tickets",
-	Short: "Manage tickets from flaky_test_db.json",
-	Long: `Interactively manage your tickets.
+var ReviewTicketsCmd = &cobra.Command{
+	Use:   "review-tickets",
+	Short: "Review tickets from --test-db-path",
+	Long: `Interactively review tickets from --test-db-path.
     
 Actions:
   [s] mark as skipped (and optionally post a comment to the Jira ticket)
@@ -246,14 +245,14 @@ func uniqueStrings(input []string) []string {
 }
 
 func init() {
-	TicketsCmd.Flags().StringVar(&ticketsJSONPath, "test-db-path", localdb.DefaultDBPath(), "Path to the JSON file containing tickets") // Use default path function
-	TicketsCmd.Flags().BoolVar(&jiraComment, "jira-comment", true, "If true, post a comment to the Jira ticket when marking as skipped/unskipped")
-	TicketsCmd.Flags().BoolVar(&ticketsDryRun, "dry-run", false, "If true, do not modify Jira tickets (comments, pillars) or save DB") // Updated help text
-	TicketsCmd.Flags().BoolVar(&hideSkipped, "hide-skipped", false, "If true, do not show tests already marked as skipped")
-	TicketsCmd.Flags().BoolVar(&missingPillars, "missing-pillars", false, "If true, only show tickets that have a Jira Key but no Pillar Name") // Updated help text
+	ReviewTicketsCmd.Flags().StringVar(&ticketsJSONPath, "test-db-path", localdb.DefaultDBPath(), "Path to the JSON file containing tickets") // Use default path function
+	ReviewTicketsCmd.Flags().BoolVar(&jiraComment, "jira-comment", true, "If true, post a comment to the Jira ticket when marking as skipped/unskipped")
+	ReviewTicketsCmd.Flags().BoolVar(&ticketsDryRun, "dry-run", false, "If true, do not modify Jira tickets (comments, pillars) or save DB") // Updated help text
+	ReviewTicketsCmd.Flags().BoolVar(&hideSkipped, "hide-skipped", false, "If true, do not show tests already marked as skipped")
+	ReviewTicketsCmd.Flags().BoolVar(&missingPillars, "missing-pillars", false, "If true, only show tickets that have a Jira Key but no Pillar Name") // Updated help text
 	// Make mapping paths consistent flags
-	TicketsCmd.Flags().StringVar(&userMappingPath, "user-mapping-path", "user_mapping.json", "Path to the JSON file containing user mapping (JiraUserID -> PillarName)")
-	TicketsCmd.Flags().StringVar(&userTestMappingPath, "user-test-mapping-path", "user_test_mapping.json", "Path to the JSON file containing user test mapping (Pattern -> JiraUserID)")
+	ReviewTicketsCmd.Flags().StringVar(&userMappingPath, "user-mapping-path", "user_mapping.json", "Path to the JSON file containing user mapping (JiraUserID -> PillarName)")
+	ReviewTicketsCmd.Flags().StringVar(&userTestMappingPath, "user-test-mapping-path", "user_test_mapping.json", "Path to the JSON file containing user test mapping (Pattern -> JiraUserID)")
 }
 
 // -------------------------

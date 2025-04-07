@@ -11,12 +11,10 @@ import (
 	"time"
 
 	"github.com/andygrunwald/go-jira"
-	"github.com/briandowns/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/rs/zerolog/log"
 
-	// Import mapping and other utils
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/jirautils"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/localdb"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/mapping"
@@ -176,7 +174,7 @@ Features:
 		} // End CSV processing loop
 
 		if len(tickets) == 0 {
-			log.Warn().Msg("No processable tickets found after filtering and validation.")
+			log.Warn().Msg("No new tickets to create found after filtering and validation.")
 			return nil
 		}
 
@@ -189,9 +187,6 @@ Features:
 
 		// 7) If Jira client exists, search for existing tickets online (for those without a key yet)
 		if client != nil {
-			s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
-			s.Suffix = " Searching Jira for potentially existing tickets..."
-			s.Start()
 			processedCount := 0
 			totalToSearch := 0
 			for _, t := range tickets {
@@ -205,7 +200,6 @@ Features:
 				if t.ExistingJiraKey == "" { // Only search if we don't have a key from DB
 					key, searchErr := findExistingTicket(client, jiraSearchLabel, *t) // findExistingTicket needs definition
 					processedCount++
-					s.Suffix = fmt.Sprintf(" Searching Jira... (%d/%d)", processedCount, totalToSearch)
 					if searchErr != nil {
 						// Log non-fatal search error
 						log.Warn().Err(searchErr).Str("summary", t.Summary).Msg("Jira search failed for test")
@@ -223,8 +217,6 @@ Features:
 					}
 				}
 			}
-			s.Stop()
-			fmt.Println() // Newline after spinner
 		}
 
 		// 8) Create Bubble Tea model
@@ -447,8 +439,9 @@ h3. Action Items
 # *Investigate:* Review logs and test code to identify the root cause of the flakiness.
 # *Fix:* Implement the necessary code changes or infrastructure adjustments.
 # *Verify:* Run the test locally multiple times and monitor in CI to confirm stability.
+# *Unskip:* Once confirmed stable, remove any test skip markers to re-enable the test in the CI pipeline.
 # *Close Ticket:* Close this ticket once the test is confirmed stable.
-# *Guidance:* Refer to the team's [Flaky Test Guide|https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/tools/flakeguard/e2e-flaky-test-guide.md] (Update link if needed).
+# *Guidance:* Refer to the team's [Flaky Test Guide|https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/tools/flakeguard/e2e-flaky-test-guide.md].
 `,
 		pkgDisplay,
 		testNameDisplay,
@@ -858,7 +851,6 @@ func updateConfirm(m createModel) (tea.Model, tea.Cmd) {
 		assigneeForJira = t.AssigneeId
 		if userMapping, exists := m.userMap[t.AssigneeId]; exists {
 			pillarName = userMapping.PillarName
-			log.Debug().Str("assignee", t.AssigneeId).Str("pillar", pillarName).Msg("Found pillar name for assignee")
 		} else {
 			log.Warn().Str("assignee", t.AssigneeId).Msg("Assignee ID present but no matching entry in user_mapping.json found.")
 		}

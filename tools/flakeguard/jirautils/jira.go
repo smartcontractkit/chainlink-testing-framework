@@ -112,14 +112,11 @@ func CreateTicketInJira(
 		// For a simple text field or select list (by value):
 		issueFields.Unknowns[pillarCustomFieldID] = map[string]interface{}{"value": pillarName}
 		// If it's a select list by ID, it would be map[string]interface{}{"id": "12345"}
-		log.Debug().Str("fieldId", pillarCustomFieldID).Str("value", pillarName).Msg("Adding pillar custom field")
 	}
 
 	issue := jira.Issue{
 		Fields: issueFields,
 	}
-
-	log.Debug().Interface("issuePayload", issue).Msg("Jira creation payload")
 
 	// Use context with the API call
 	createdIssue, resp, err := client.Issue.CreateWithContext(ctx, &issue)
@@ -134,7 +131,6 @@ func CreateTicketInJira(
 		return "", fmt.Errorf("jira API returned success but issue object is nil")
 	}
 
-	log.Info().Str("key", createdIssue.Key).Str("id", createdIssue.ID).Msg("Jira issue created successfully")
 	return createdIssue.Key, nil
 }
 
@@ -147,8 +143,6 @@ func DeleteTicketInJira(client *jira.Client, issueKey string) error {
 		return fmt.Errorf("issue key cannot be empty")
 	}
 
-	log.Warn().Str("key", issueKey).Msg("Attempting to permanently delete Jira ticket")
-
 	resp, err := client.Issue.DeleteWithContext(context.Background(), issueKey)
 	if err != nil {
 		errMsg := ReadJiraErrorResponse(resp)
@@ -156,10 +150,6 @@ func DeleteTicketInJira(client *jira.Client, issueKey string) error {
 		return fmt.Errorf("failed to delete issue %s: %w; response: %s", issueKey, err, errMsg)
 	}
 
-	// Check status code explicitly? Jira library might already handle non-2xx as errors.
-	// if resp.StatusCode != http.StatusNoContent { ... }
-
-	log.Info().Str("key", issueKey).Msg("Jira ticket deleted successfully")
 	return nil
 }
 
