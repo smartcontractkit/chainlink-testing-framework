@@ -55,7 +55,7 @@ You can also define a custom set of ports for any node.
 
     [nodeset.node_specs.node]
       # here we defined 2 new ports to listen and mapped them to our host machine
-      # syntax is "host:docker", if you provide only host port then we map 1-to-1
-      custom_ports = ["14000:15000", "20000"]
+      # syntax is "host:docker"
+      custom_ports = ["14000:15000"]
       image = "public.ecr.aws/chainlink/chainlink:v2.16.0"
 ```

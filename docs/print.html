@@ -1960,8 +1960,8 @@ export CTF_CONFIGS=load-profile-api-service-1.toml,load-profile-api-service-2.to
 
     [nodeset.node_specs.node]
       # here we defined 2 new ports to listen and mapped them to our host machine
-      # syntax is "host:docker", if you provide only host port then we map 1-to-1
-      custom_ports = ["14000:15000", "20000"]
+      # syntax is "host:docker"
+      custom_ports = ["14000:15000"]
       image = "public.ecr.aws/chainlink/chainlink:v2.16.0"
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><style>
@@ -3886,8 +3886,8 @@ Private: [11,2,35,236,230,251,215,68,220,208,166,157,229,181,164,26,150,230,218,
   type = "aptos"
   image = "aptoslabs/tools:aptos-node-v1.18.0" # or aptoslabs/tools:nightly
   contracts_dir = "$your_dir"
-  # expose custom ports
-  custom_ports = ["2020", "4050:4050"]
+  # expose custom ports, by default 8080 is API and 8081 is faucet
+  custom_ports = ["9080:8080", "9081:9081"]
   # add command params
   docker_cmd_params = ["--skip-metadata-apply"]
 </code></pre>
@@ -16640,7 +16640,7 @@ use <code>GetTestContainersGoTestLogger(*testing.T)</code> instead.</p>
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>a196f9a1</code></li>
+<li>Commit: <code>d828d47f</code></li>
 </ul>
 
                     </main>

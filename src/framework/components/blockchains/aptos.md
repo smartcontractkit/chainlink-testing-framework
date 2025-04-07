@@ -17,8 +17,8 @@ API is available on [localhost:8080](http://localhost:8080/v1)
   type = "aptos"
   image = "aptoslabs/tools:aptos-node-v1.18.0" # or aptoslabs/tools:nightly
   contracts_dir = "$your_dir"
-  # expose custom ports
-  custom_ports = ["2020", "4050:4050"]
+  # expose custom ports, by default 8080 is API and 8081 is faucet
+  custom_ports = ["9080:8080", "9081:9081"]
   # add command params
   docker_cmd_params = ["--skip-metadata-apply"]
 ```
