@@ -1,94 +1,171 @@
-# Flakeguard
+Flakeguard
+==========
 
 **Flakeguard** is a tool designed to help identify flaky tests within a Go project. Flaky tests are tests that intermittently fail without changes to the code, often due to race conditions or other non-deterministic behavior. Flakeguard assists by analyzing the impact of code changes on test packages and by running tests multiple times to determine stability.
 
-## Features
+In addition to detecting flaky tests, Flakeguard can also integrate with Jira to track known flaky tests. It maintains a local database of tests and their associated Jira tickets, allowing you to create and manage these tickets directly from the command line.
 
-- **Identify Impacted Tests**: Detects test packages that may be affected by changes in your Go project files.
-- **Run Tests for Flakiness**: Runs tests multiple times to determine their flakiness.
-- **Output Results in JSON**: Allows easy integration with CI pipelines and custom reporting.
-- **Supports Exclusion Lists**: Configurable to exclude specified packages or paths from the analysis.
-- **Recursive Dependency Analysis**: Detects all impacted packages through dependency levels.
+Features
+--------
 
-## Installation
+*   **Identify Impacted Tests:** Detects test packages that may be affected by changes in your Go project files.
+*   **Run Tests for Flakiness:** Runs tests multiple times to determine their flakiness.
+*   **Output Results in JSON:** Allows easy integration with CI pipelines and custom reporting.
+*   **Supports Exclusion Lists:** Configurable to exclude specified packages or paths from the analysis.
+*   **Recursive Dependency Analysis:** Detects all impacted packages through dependency levels.
+*   **Jira Integration (Optional):** Create, review, and manage flaky test tickets in Jira.
+*   **Local Database:** Store known flaky tests and their associated Jira tickets for easy reference.
 
-To install `flakeguard` CLI, you need to have Go installed on your machine. With Go installed, run the following command:
+Prerequisites
+-------------
 
-```sh
+1.  **Go:** Version 1.21 or later recommended.
+2.  **Jira API Access (optional):** Required only if you want to use the Jira-related commands (`create-tickets`, `review-tickets`, `sync-jira`):
+    *   `JIRA_DOMAIN`: Your Jira instance domain (e.g. _your-company.atlassian.net_).
+    *   `JIRA_EMAIL`: The email address associated with your Jira account used for API access.
+    *   `JIRA_API_KEY`: Your Jira API token (generate one in your Jira account settings).
+    *   `JIRA_PROJECT_KEY`: (Optional) The default Jira project key to use if `--jira-project` is not specified for `create-tickets`.
+
+Installation
+------------
+
+To install the `flakeguard` CLI, ensure you have Go installed. Then run:
+
 go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@latest
+
+You can also clone the repository and build from source:
+
+git clone https://github.com/smartcontractkit/chainlink-testing-framework.git
+cd chainlink-testing-framework/tools/flakeguard
+
+go build -o flakeguard main.go
+
+
+Usage (Flaky Test Detection)
+----------------------------------
+
+Flakeguard provides two primary commands for local detection of flaky tests without involving Jira: `find` and `run`.
+
+### `flakeguard find`
+
+The `find` command scans your Go project to determine which test packages may be impacted by recent file changes. It conducts a dependency analysis to see which test packages depend on the changed files, helping you focus your testing efforts on the most relevant areas.
+
+
+### `flakeguard run`
+
+After identifying packages of interest (via `flakeguard find` or otherwise), use the `run` command to execute tests multiple times to detect flakiness.
+
+
+Configuration Files (for Jira Integration)
+------------------------------------------
+
+When using Flakeguard’s Jira integration and local database features, you may need these configuration files:
+
+1.  ### Local Database (`flaky_tests_db.json `)
+    
+    *   **Purpose:** Stores mappings between test definitions (package + name) and their Jira tickets, along with the assignee ID.
+    *   **Location:** By default, stored as `flaky_tests_db.json ` in your user home directory (~). This path is determined by `localdb.DefaultDBPath()`.
+    *   **Override:** Use `--test-db-path` with any command to specify a different location.
+    *   **Format:** Internal JSON structure managed by the tool (_localdb/localdb.go_).
+2.  ### User Mapping (`user_mapping.json`)
+    
+    *   **Purpose:** Maps Jira User Account IDs to Pillar Names or team/group identifiers. Used by:
+        *   `create-tickets`: To set the Pillar Name custom field when creating a new Jira ticket if an assignee is determined.
+        *   `review-tickets`: To allow setting the Pillar Name (\[i\] action) based on the ticket's assignee stored in the local DB.
+    *   **Format:** A JSON array of objects.
+    
+    *   **Flag:** Use `--user-mapping-path` (default: `user_mapping.json`) when needed.
+3.  ### User Test Mapping (`user_test_mapping.json`)
+    
+    *   **Purpose:** Defines regex patterns to match test packages (or full test paths) to suggest an assignee (Jira User Account ID) for new tickets created by `create-tickets`. The first pattern match determines the suggested assignee.
+    *   **Format:** A JSON array of objects. The `.*` pattern can be used as a fallback.
+    
+    *   **Flag:** Use `--user-test-mapping-path` (default: `user_test_mapping.json`) when creating tickets.
+
+
+Usage (Jira Integration)
+------------------------
+
+If you only need to identify flaky tests locally (via `find` and `run`) and do not intend to create or manage Jira tickets, you can skip these commands.
+
+### `flakeguard create-tickets`
+
+Interactively process a CSV file of flaky tests, suggest assignees based on patterns, check for existing Jira tickets, and create new tickets if needed.
+
+*   **Key Features:**
+    *   Reads test details from CSV.
+    *   Suggests assignee using `user_test_mapping.json`.
+    *   Checks local DB and Jira for existing tickets.
+    *   Sets Pillar Name from `user_mapping.json` when creating new tickets.
+    *   Provides a text-based UI for review and confirmation.
+    *   Updates the local DB with created/manually assigned ticket keys.
+    *   Outputs tests that were not confirmed for ticket creation to a _\_remaining.csv_ file.
+*   **Flags:**
+    *   `--csv-path` (required): Path to the input CSV file of flaky tests.
+    *   `--jira-project`: Jira project key for new tickets (required if `JIRA_PROJECT_KEY` is not set).
+    *   `--jira-issue-type`: Jira issue type for new tickets (default: _Task_).
+    *   `--jira-search-label`: Label used to search for existing tickets (default: _flaky\_test_).
+    *   `--test-db-path`: Local database file path (default: `~/flaky_tests_db.json `).
+    *   `--user-mapping-path`: Path to user mapping JSON (default: `user_mapping.json`).
+    *   `--user-test-mapping-path`: Path to user-test mapping JSON (default: `user_test_mapping.json`).
+    *   `--skip-existing`: If set, automatically skips tests that already have a known Jira key.
+    *   `--dry-run`: Simulates actions without creating Jira tickets or modifying the DB.
+
+**Example:**
+
+```
+ go run main.go create-tickets \                      
+  --jira-project=DX \
+  --test-db-path=flaky_test_db.json \
+  --user-mapping-path=user_mapping.json \
+  --user-test-mapping-path=user_test_mapping.json \
+  --skip-existing \
+  --dry-run=false \
+  --csv-path '1744018947_31163.csv'
 ```
 
-## Usage
+### `flakeguard review-tickets`
 
-Flakeguard offers two main commands:
+Interactively review tickets in the local database. Fetches current status and Pillar Name from Jira, and lets you set the Pillar Name in Jira.
 
-- `find` identifies test packages affected by recent changes.
-- `run` executes tests multiple times to identify flaky tests
-- `create-tickets` automates the creation of Jira tickets for flaky tests detected by Flakeguard
+*   **Key Features:**
+    *   Reads test data from the local DB.
+    *   Fetches current Status and Pillar Name from Jira.
+    *   Displays Test Info, Assignee, Pillar Name, and Jira Status.
+    *   Allows setting the Pillar Name in Jira using the **\[i\]** action, based on `user_mapping.json`.
+*   **TUI Actions:**
+    *   **\[i\]** Set Pillar Name in Jira if it’s empty (and if prerequisites are met).
+    *   **\[p\]** View previous ticket.
+    *   **\[n\]** View next ticket.
+    *   **\[q\]** Quit the TUI.
+*   **Flags:**
+    *   `--test-db-path`: Local DB path (default: `~/flaky_tests_db.json `).
+    *   `--user-mapping-path`: Path to user mapping JSON (default: `user_mapping.json`).
+    *   `--user-test-mapping-path`: Path to user-test mapping JSON (default: `user_test_mapping.json`).
+    *   `--missing-pillars`: Only show tickets missing a Pillar Name.
+    *   `--dry-run`: Prevents the **\[i\]** action from actually updating Jira.
 
-Run with `--help` to see all flags for the commands.
-
-### JSON Output
-
-Both `find` and `run` commands support JSON output `--json`, making it easy to integrate Flakeguard with CI/CD pipelines and reporting tools.
-
-### Creating JIRA Tickets
-The `create-tickets` command allows you to automate the creation of JIRA tickets for flaky tests. It reads test results from a CSV file (typically exported from a Splunk view) and creates tickets in JIRA.
-
-```
-go run main.go create-tickets --jira-project=<JIRA_PROJECT_KEY> --flaky-test-json-db-path=<PATH_TO_FLAKY_TEST_DB_JSON> --assignee-mapping=<PATH_TO_JIRA_ASSIGNEE_MAPPING_JSON> --csv-path=<PATH_TO_CSV_FILE> [--skip-existing] [--dry-run]
-```
-
-Example:
-```
-go run main.go create-tickets --jira-project=DX --flaky-test-json-db-path=.flaky_test_db.json --assignee-mapping=.jira_assignee_mapping.json --skip-existing --csv-path '1742825894_77903.csv'
-```
-
-**Options:**
-
-- `--jira-project`: The JIRA project key where tickets should be created (e.g., `DX`).
-- `--test-db-path`: The path to a JSON database (`.json`) that stores information about existing flaky test tickets.
-- `--assignee-mapping`: The path to a JSON file (`.json`) that maps test packages to JIRA assignees.
-- `--csv-path`: The path to the CSV file containing the flaky test results.
-- `--skip-existing`: (Optional) Skips creating tickets for tests that already have corresponding JIRA tickets in the database or JIRA.
-- `--dry-run`: (Optional) Performs a dry run without actually creating JIRA tickets.
-
-**Environment Variables:**
-
-- `JIRA_DOMAIN`: The domain of your JIRA instance.
-- `JIRA_EMAIL`: The email address used to authenticate with JIRA.
-- `JIRA_API_KEY`: The API key used to authenticate with JIRA.
-
-### Managing Tickets
-The new tickets command lets you interactively manage your flaky test tickets stored in your local JSON database. With this command you can:
-
-- Mark tests as skipped: Post a comment to the associated JIRA ticket and update the local DB.
-- Unskip tests: Remove the skipped status and post an unskip comment.
-- Navigate tickets: Use a TUI to browse through tickets.
+**Examples:**
 
 ```
-go run main.go tickets --test-db-path=.flaky_test_db.json --jira-comment
+go run main.go review-tickets --test-db-path ".flaky_test_db.json" --dry-run=false --user-mapping-path "user_mapping.json"
 ```
 
-**Options:**
+### `flakeguard sync-jira`
 
-- `--test-db-path`: The path to a JSON database (.json) that stores information about your flaky test tickets.
-- `--jira-comment`: If set to true, posts a comment to the corresponding JIRA ticket when marking a test as skipped or unskipped.
-`--dry-run`: (Optional) Runs the command in dry-run mode without posting comments to JIRA.
-- `--hide-skipped`: (Optional) If set, tickets already marked as skipped are hidden from the interface.
+Scans Jira for all tickets matching a specific label and ensures they exist in the local database. Updates local assignees based on Jira's current assignee.
 
-**Environment Variables:**
+*   **Key Features:**
+    *   Fetches all Jira tickets
+    *   Adds missing tickets to the local DB (where the test package/name might be unknown).
+    *   Updates the _AssigneeID_ in the local DB if it differs from the current Jira assignee.
+*   **Flags:**
+    *   `--test-db-path`: Local DB file path (default: `~/flaky_tests_db.json `).
+    *   `--jira-search-label`: Label used to find relevant tickets (default: _flaky\_test_).
+    *   `--dry-run`: Shows what would be updated without modifying the DB.
 
-- `JIRA_DOMAIN`: The domain of your JIRA instance.
-- `JIRA_EMAIL`: The email address used to authenticate with JIRA.
-- `JIRA_API_KEY`: The API key used to authenticate with JIRA.
+**Example:**
 
-### Example Run
-
-You can find example usage and see outputs with:
-
-```sh
-make example             # Run an example flow of running tests, aggregating results, and reporting them to GitHub
-make example_flaky_panic # Run example flow with flaky and panicking tests
-ls example_results       # See results of each run and aggregation
+```
+go run main.go sync-jira --test-db-path=.flaky_test_db.json
 ```

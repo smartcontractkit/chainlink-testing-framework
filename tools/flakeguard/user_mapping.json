@@ -1,0 +1,82 @@
+[
+    {
+        "jira_user_id": "6175d3e016119e0069fdd14f",
+        "pillar_name": "Connectivity"
+    },
+    {
+        "jira_user_id": "638f597c3e79f12e57253913",
+        "pillar_name": "Platform Services"
+    },
+    {
+        "jira_user_id": "641949fb1273131f2ae1dd4e",
+        "pillar_name": "Data"
+    },
+    {
+        "jira_user_id": "63beffc42a526608c5501530",
+        "pillar_name": "Foundation"
+    },
+    {
+        "jira_user_id": "61c3bc0d68926d0068ad903d",
+        "pillar_name": "Dev Platform"
+    },
+    {
+        "jira_user_id": "712020:0403445b-a590-4e71-944c-e5b3c681dafb",
+        "pillar_name": "Connectivity"
+    },
+    {
+        "jira_user_id": "615260607a6be400718eefff",
+        "pillar_name": "Foundation"
+    },
+    {
+        "jira_user_id": "6115c23730fe4500702c1301",
+        "pillar_name": "Foundation"
+    },
+    {
+        "jira_user_id": "61b2b168744c4d006994b84c",
+        "pillar_name": "Dev Platform"
+    },
+    {
+        "jira_user_id": "620a6e93bba9ca0070c98e8f",
+        "pillar_name": "Connectivity"
+    },
+    {
+        "jira_user_id": "712020:76432787-cb4c-452a-92bf-4653a7b145ec",
+        "pillar_name": "Connectivity"
+    },
+    {
+        "jira_user_id": "712020:f11a58b4-3503-4d4d-9983-d4161c7d27a8",
+        "pillar_name": "Connectivity"
+    },
+    {
+        "jira_user_id": "712020:97d1a977-ba60-4d03-a15e-369daf238718",
+        "pillar_name": "Connectivity"
+    },
+    {
+        "jira_user_id": "712020:5ab0ffd6-6baa-4ea1-ace5-a57ae20db75a",
+        "pillar_name": "Connectivity"
+    },
+    {
+        "jira_user_id": "610c6e93ae72b2006f798c06",
+        "pillar_name": "Foundation"
+    },
+    {
+        "jira_user_id": "610c6ea1ec92ab0070ec5c07",
+        "pillar_name": "Data"
+    },
+    {
+        "jira_user_id": "712020:7aaa919f-fc27-42dc-9b1f-05fd49d5723b",
+        "pillar_name": "Integrations"
+    },
+    {
+        "jira_user_id": "61452c1eeaef340069a02d4a",
+        "pillar_name": "Integrations"
+    },
+    {
+        "jira_user_id": "712020:255a47f2-cfd0-4186-b8b3-9c502314f726",
+        "pillar_name": "Foundation"
+    },
+    {
+        "jira_user_id": "712020:0f7e9a75-6933-4dcb-91fd-b6bf1c903d6f",
+        "pillar_name": "Foundation"
+    }
+] 
