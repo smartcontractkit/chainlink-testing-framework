@@ -996,7 +996,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sum by (workflowName) (\n  increase(\n    platform_engine_workflow_completed_time_seconds_count{}[2m]\n  )\n) / (\n  sum by (workflowName) (\n    increase(\n      platform_engine_workflow_completed_time_seconds_count{}[2m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_earlyexit_time_seconds_count{}[2m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_error_time_seconds_count{}[2m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_timeout_time_seconds_count{}[2m]\n    ) or platform_engine_workflow_count{} * 0\n  )\n)",
+          "expr": "sum by (workflowName) (\n  increase(\n    platform_engine_workflow_completed_time_seconds_count{}[1m]\n  )\n) / (\n  sum by (workflowName) (\n    increase(\n      platform_engine_workflow_completed_time_seconds_count{}[1m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_earlyexit_time_seconds_count{}[1m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_error_time_seconds_count{}[1m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_timeout_time_seconds_count{}[1m]\n    ) or platform_engine_workflow_count{} * 0\n  )\n)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1098,7 +1098,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "group by (workflowName, workflowID) (rate(platform_engine_workflow_completed_time_seconds_count{}[2m]) > 0)",
+          "expr": "group by (workflowName, workflowID) (rate(platform_engine_workflow_completed_time_seconds_count{}[1m]) > 0)",
           "legendFormat": "{{workflowName}}",
           "range": true,
           "refId": "A"
@@ -1196,7 +1196,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sum by (workflowName) (\n  increase(\n    platform_engine_workflow_earlyexit_time_seconds_count{}[2m]\n  )\n) / (\n  sum by (workflowName) (\n    increase(\n      platform_engine_workflow_completed_time_seconds_count{}[2m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_earlyexit_time_seconds_count{}[2m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_error_time_seconds_count{}[2m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_timeout_time_seconds_count{}[2m]\n    ) or platform_engine_workflow_count{} * 0\n  )\n)",
+          "expr": "sum by (workflowName) (\n  increase(\n    platform_engine_workflow_earlyexit_time_seconds_count{}[1m]\n  )\n) / (\n  sum by (workflowName) (\n    increase(\n      platform_engine_workflow_completed_time_seconds_count{}[1m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_earlyexit_time_seconds_count{}[1m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_error_time_seconds_count{}[1m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_timeout_time_seconds_count{}[1m]\n    ) or platform_engine_workflow_count{} * 0\n  )\n)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1298,7 +1298,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "group by (workflowName, workflowID) (rate(platform_engine_workflow_earlyexit_time_seconds_count{}[2m]) > 0)",
+          "expr": "group by (workflowName, workflowID) (rate(platform_engine_workflow_earlyexit_time_seconds_count{}[1m]) > 0)",
           "legendFormat": "{{workflowName}}",
           "range": true,
           "refId": "A"
@@ -1396,7 +1396,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sum by (workflowName) (\n  increase(\n    platform_engine_workflow_error_time_seconds_count{}[2m]\n  )\n) / (\n  sum by (workflowName) (\n    increase(\n      platform_engine_workflow_completed_time_seconds_count{}[2m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_earlyexit_time_seconds_count{}[2m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_error_time_seconds_count{}[2m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_timeout_time_seconds_count{}[2m]\n    ) or platform_engine_workflow_count{} * 0\n  )\n)",
+          "expr": "sum by (workflowName) (\n  increase(\n    platform_engine_workflow_error_time_seconds_count{}[1m]\n  )\n) / (\n  sum by (workflowName) (\n    increase(\n      platform_engine_workflow_completed_time_seconds_count{}[1m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_earlyexit_time_seconds_count{}[1m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_error_time_seconds_count{}[1m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_timeout_time_seconds_count{}[1m]\n    ) or platform_engine_workflow_count{} * 0\n  )\n)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1498,7 +1498,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "group by (workflowName, workflowID) (rate(platform_engine_workflow_error_time_seconds_count{}[2m]) > 0)",
+          "expr": "group by (workflowName, workflowID) (rate(platform_engine_workflow_error_time_seconds_count{}[1m]))",
           "legendFormat": "{{workflowName}}",
           "range": true,
           "refId": "A"
@@ -1596,7 +1596,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sum by (workflowName) (\n  increase(\n    platform_engine_workflow_timeout_time_seconds_count{}[2m]\n  )\n) / (\n  sum by (workflowName) (\n    increase(\n      platform_engine_workflow_completed_time_seconds_count{}[2m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_earlyexit_time_seconds_count{}[2m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_error_time_seconds_count{}[2m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_timeout_time_seconds_count{}[2m]\n    ) or platform_engine_workflow_count{} * 0\n  )\n)",
+          "expr": "sum by (workflowName) (\n  increase(\n    platform_engine_workflow_timeout_time_seconds_count{}[1m]\n  )\n) / (\n  sum by (workflowName) (\n    increase(\n      platform_engine_workflow_completed_time_seconds_count{}[1m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_earlyexit_time_seconds_count{}[1m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_error_time_seconds_count{}[1m]\n    ) or platform_engine_workflow_count{} * 0\n  ) + sum by (workflowName) (\n    increase(\n      platform_engine_workflow_timeout_time_seconds_count{}[1m]\n    ) or platform_engine_workflow_count{} * 0\n  )\n)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1698,7 +1698,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "group by (workflowName, workflowID) (rate(platform_engine_workflow_timeout_time_seconds_count{}[2m]) > 0)",
+          "expr": "group by (workflowName, workflowID) (rate(platform_engine_workflow_timeout_time_seconds_count{}[1m]) > 0)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1795,7 +1795,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "max(histogram_quantile(0.95, sum(increase(platform_engine_workflow_completed_time_seconds_bucket{}[15m])) by (le, workflowName, csa_public_key))) by (workflowName)",
+          "expr": "max(histogram_quantile(0.95, sum(increase(platform_engine_workflow_completed_time_seconds_bucket{}[1m])) by (le, workflowName, csa_public_key))) by (workflowName)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1892,7 +1892,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "max(histogram_quantile(0.99, sum(increase(platform_engine_workflow_completed_time_seconds_bucket{}[15m])) by (le, workflowName, csa_public_key))) by (workflowName)",
+          "expr": "max(histogram_quantile(0.99, sum(increase(platform_engine_workflow_completed_time_seconds_bucket{}[1m])) by (le, workflowName, csa_public_key))) by (workflowName)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -1989,7 +1989,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "max(histogram_quantile(0.95, sum(increase(platform_engine_workflow_earlyexit_time_seconds_bucket{}[15m])) by (le, workflowName, csa_public_key))) by (workflowName)",
+          "expr": "max(histogram_quantile(0.95, sum(increase(platform_engine_workflow_earlyexit_time_seconds_bucket{}[1m])) by (le, workflowName, csa_public_key))) by (workflowName)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -2086,7 +2086,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "max(histogram_quantile(0.99, sum(increase(platform_engine_workflow_earlyexit_time_seconds_bucket{}[15m])) by (le, workflowName, csa_public_key))) by (workflowName)",
+          "expr": "max(histogram_quantile(0.99, sum(increase(platform_engine_workflow_earlyexit_time_seconds_bucket{}[1m])) by (le, workflowName, csa_public_key))) by (workflowName)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -2183,7 +2183,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "max(histogram_quantile(0.95, sum(increase(platform_engine_workflow_error_time_seconds_bucket{}[15m])) by (le, workflowName, csa_public_key))) by (workflowName)",
+          "expr": "max(histogram_quantile(0.95, sum(increase(platform_engine_workflow_error_time_seconds_bucket{}[1m])) by (le, workflowName, csa_public_key))) by (workflowName)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -2280,7 +2280,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "max(histogram_quantile(0.99, sum(increase(platform_engine_workflow_error_time_seconds_bucket{}[15m])) by (le, workflowName, csa_public_key))) by (workflowName)",
+          "expr": "max(histogram_quantile(0.99, sum(increase(platform_engine_workflow_error_time_seconds_bucket{}[1m])) by (le, workflowName, csa_public_key))) by (workflowName)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -2377,7 +2377,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "max(histogram_quantile(0.95, sum(increase(platform_engine_workflow_timeout_time_seconds_bucket{}[15m])) by (le, workflowName, csa_public_key))) by (workflowName)",
+          "expr": "max(histogram_quantile(0.95, sum(increase(platform_engine_workflow_timeout_time_seconds_bucket{}[1m])) by (le, workflowName, csa_public_key))) by (workflowName)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -2474,7 +2474,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "max(histogram_quantile(0.99, sum(increase(platform_engine_workflow_timeout_time_seconds_bucket{}[15m])) by (le, workflowName, csa_public_key))) by (workflowName)",
+          "expr": "max(histogram_quantile(0.99, sum(increase(platform_engine_workflow_timeout_time_seconds_bucket{}[1m])) by (le, workflowName, csa_public_key))) by (workflowName)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -3177,7 +3177,7 @@
       "type": "timeseries"
     }
   ],
-  "refresh": "30s",
+  "refresh": "10s",
   "schemaVersion": 38,
   "style": "dark",
   "tags": [
@@ -3188,75 +3188,10 @@
     " Performance"
   ],
   "templating": {
-    "list": [
-      {
-        "current": {
-          "selected": false,
-          "text": [
-            "otel-collector"
-          ],
-          "value": [
-            "otel-collector"
-          ]
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "PBFA97CFB590B2093"
-        },
-        "definition": "label_values(up,job)",
-        "description": "",
-        "hide": 0,
-        "includeAll": true,
-        "label": "Job",
-        "multi": true,
-        "name": "job",
-        "options": [],
-        "query": {
-          "query": "label_values(up,job)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
-        },
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
-        "type": "query"
-      },
-      {
-        "current": {
-          "selected": false,
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "PBFA97CFB590B2093"
-        },
-        "definition": "label_values(platform_engine_workflow_count,workflowID)",
-        "description": "",
-        "hide": 0,
-        "includeAll": true,
-        "label": "WorkflowID",
-        "multi": true,
-        "name": "workflowID",
-        "options": [],
-        "query": {
-          "query": "label_values(platform_engine_workflow_count,workflowID)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
-        },
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
-        "type": "query"
-      }
-    ]
+    "list": []
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-5m",
     "to": "now"
   },
   "timepicker": {},

@@ -4,12 +4,18 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+)
+
+const (
+	DefaultAptosAPIPort    = "8080"
+	DefaultAptosFaucetPort = "8081"
 )
 
 var (
@@ -21,9 +27,15 @@ func defaultAptos(in *Input) {
 	if in.Image == "" {
 		in.Image = "aptoslabs/tools:aptos-node-v1.27.2"
 	}
-	framework.L.Warn().Msg("Aptos node API can only be exposed on port 8080!")
-	in.CustomPorts = append(in.CustomPorts, "8080:8080", "8081:8081")
-	in.Port = "8080"
+	framework.L.Warn().Msgf("Aptos node API can only be exposed on port %s!", DefaultAptosAPIPort)
+	if in.Port == "" {
+		// enable default API exposed port
+		in.Port = DefaultAptosAPIPort
+	}
+	if in.CustomPorts == nil {
+		// enable default API and faucet forwarding
+		in.CustomPorts = append(in.CustomPorts, fmt.Sprintf("%s:%s", in.Port, DefaultAptosAPIPort), fmt.Sprintf("%s:%s", DefaultAptosFaucetPort, DefaultAptosFaucetPort))
+	}
 }
 
 func newAptos(in *Input) (*Output, error) {
@@ -40,6 +52,7 @@ func newAptos(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
+	exposedPorts = append(exposedPorts, in.Port)
 
 	cmd := []string{
 		"aptos",
@@ -100,13 +113,20 @@ func newAptos(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
+	// expose default API port if remapped
+	var exposedAPIPort string
+	for _, portPair := range in.CustomPorts {
+		if strings.Contains(portPair, fmt.Sprintf(":%s", DefaultAptosAPIPort)) {
+			exposedAPIPort = strings.Split(portPair, ":")[0]
+		}
+	}
 	return &Output{
 		UseCache:      true,
 		Family:        "aptos",
 		ContainerName: containerName,
 		Nodes: []*Node{
 			{
-				ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", host, in.Port),
+				ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", host, exposedAPIPort),
 				InternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
 			},
 		},
