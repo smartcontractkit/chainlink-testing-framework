@@ -214,7 +214,12 @@ Features:
 						t.ExistingJiraKey = key
 						t.ExistingTicketSource = "jira"
 						// Update local DB immediately with this finding
-						db.UpsertEntry(t.TestPackage, t.TestName, key, t.SkippedAt, t.AssigneeId) // Persist found key
+						// Use pointer to DB
+						errDb := db.UpsertEntry(t.TestPackage, t.TestName, key, t.SkippedAt, t.AssigneeId) // Persist found key
+						if errDb != nil {
+							log.Error().Err(errDb).Str("key", key).Msg("Failed to update local DB after finding ticket in Jira!")
+							// Continue anyway, TUI will reflect the found key but DB might be inconsistent until next run/save
+						}
 					}
 				}
 			}
@@ -229,7 +234,7 @@ Features:
 		m.JiraIssueType = jiraIssueType
 		m.JiraClient = client
 		m.originalRecords = originalRecords // Pass header + all data rows
-		m.LocalDB = db                      // Pass DB for TUI actions to update it
+		m.LocalDB = db                      // Pass DB POINTER for TUI actions to update it
 
 		// 9) Run TUI
 		finalModel, err := tea.NewProgram(m).Run()
@@ -243,22 +248,41 @@ Features:
 		if !ok {
 			log.Error().Msg("TUI returned unexpected model type")
 			// Still attempt to save DB
-			if errDb := db.Save(); errDb != nil {
-				log.Error().Err(errDb).Msg("Failed to save local DB after TUI error")
+			// Check if fm.LocalDB is nil before saving if using pointers? No, fm is the model struct itself.
+			// Need to use the 'db' pointer from the RunE scope.
+			if db != nil && !dryRun { // Check original db pointer and dryRun flag
+				if errDb := db.Save(); errDb != nil {
+					log.Error().Err(errDb).Msg("Failed to save local DB after TUI error")
+				}
 			}
 			return fmt.Errorf("TUI model error")
 		}
 
 		// 11) Save local DB with any changes made during TUI
-		if !fm.DryRun { // Only save if not in dry run
-			if err := fm.LocalDB.Save(); err != nil {
+		// Use the original 'db' pointer from the RunE scope, checking fm.DryRun
+		if !fm.DryRun {
+			if db == nil { // Safety check
+				log.Error().Msg("Cannot save DB: DB instance is nil")
+			} else if err := db.Save(); err != nil {
 				log.Error().Err(err).Msg("Failed to save local DB")
 				// Report error but don't necessarily exit
 			} else {
-				fmt.Printf("Local DB updated: %s\n", fm.LocalDB.FilePath())
+				fmt.Printf("Local DB updated: %s\n", db.FilePath())
 			}
 		} else {
 			log.Info().Msg("Dry Run: Local DB changes were not saved.")
+		}
+
+		// 12) Write remaining/skipped tests to a new CSV
+		// This part seems okay, uses data from finalModel (fm)
+		remainingFilePath := generateRemainingCSVPath(csvPath)
+		err = writeRemainingCSV(remainingFilePath, fm.originalRecords, fm.tickets, fm.processedIndices)
+		if err != nil {
+			log.Error().Err(err).Str("path", remainingFilePath).Msg("Failed to write remaining tests CSV")
+		} else {
+			// Check how many were actually written?
+			// For now just log success.
+			log.Info().Str("path", remainingFilePath).Msg("Remaining/skipped tests CSV generated.")
 		}
 
 		// Report summary TUI stats
@@ -472,9 +496,9 @@ func findExistingTicket(client *jira.Client, label string, ticket model.FlakyTic
 	issues, resp, err := client.Issue.SearchWithContext(context.Background(), jql, &jira.SearchOptions{MaxResults: 5}) // Fetch a few to check relevance? Or just 1?
 	if err != nil {
 		// Check for specific Jira errors if possible (e.g., invalid JQL)
-		errMsg := fmt.Sprintf("error searching Jira with JQL '%s'", jql)
-		log.Error().Err(err).Interface("response", resp).Msg(errMsg)
-		return "", fmt.Errorf("%s: %w", errMsg, err)
+		errMsg := jirautils.ReadJiraErrorResponse(resp) // Use helper to read response
+		log.Error().Err(err).Str("jql", jql).Str("response", errMsg).Msg("Error searching Jira")
+		return "", fmt.Errorf("error searching Jira: %w (response: %s)", err, errMsg)
 	}
 
 	if len(issues) == 0 {
@@ -535,11 +559,14 @@ func writeRemainingCSV(path string, originalRecords [][]string, processedTickets
 	}
 
 	// Iterate through original data rows (excluding header)
+	writtenCount := 0
 	for i, originalRow := range originalRecords {
 		if i == 0 {
 			continue
 		} // Skip header row
 		rowIndex := i + 1 // 1-based index matching ft.RowIndex
+
+		writeRow := true // Default to writing the row
 
 		// Check if this row index was processed by the TUI
 		if _, wasProcessed := processedIndices[rowIndex]; wasProcessed {
@@ -547,16 +574,27 @@ func writeRemainingCSV(path string, originalRecords [][]string, processedTickets
 			if ticket, exists := processedTicketMap[rowIndex]; exists && ticket.Confirmed {
 				// It was processed AND confirmed, so DO NOT write it to remaining CSV
 				log.Debug().Int("rowIndex", rowIndex).Str("test", ticket.TestName).Msg("Skipping confirmed ticket from remaining CSV output")
-				continue
+				writeRow = false // Do not write confirmed rows
 			}
-		}
-		// If it wasn't processed OR it was processed but NOT confirmed (skipped, error, etc.), write the original row.
-		if err := w.Write(originalRow); err != nil {
-			// Log error for the specific row but continue trying to write others
-			log.Error().Err(err).Int("rowIndex", rowIndex).Msg("Failed to write row to remaining CSV")
+			// Note: If it was processed but *not* confirmed (skipped, edited, deleted),
+			// writeRow remains true, so it WILL be included in the remaining file.
+		} else {
+			// If it wasn't processed at all (e.g., invalid row, --skip-existing),
+			// writeRow remains true, include it.
+			log.Debug().Int("rowIndex", rowIndex).Msg("Including unprocessed row in remaining CSV output")
 		}
 
+		// Write the original row if needed
+		if writeRow {
+			if err := w.Write(originalRow); err != nil {
+				// Log error for the specific row but continue trying to write others
+				log.Error().Err(err).Int("rowIndex", rowIndex).Msg("Failed to write row to remaining CSV")
+			} else {
+				writtenCount++
+			}
+		}
 	}
+	log.Info().Int("count", writtenCount).Str("path", path).Msg("Wrote remaining/unconfirmed tests to CSV.")
 
 	return w.Error() // Return any error encountered during flushing
 }
@@ -569,7 +607,7 @@ func writeRemainingCSV(path string, originalRecords [][]string, processedTickets
 type createModel struct {
 	tickets          []model.FlakyTicket // The filtered list of tickets to process in TUI
 	index            int                 // Current ticket being viewed
-	processedIndices map[int]bool        // Tracks RowIndex of tickets user interacted with (confirmed, skipped, edited)
+	processedIndices map[int]bool        // Tracks RowIndex of tickets user interacted with (confirmed, skipped, edited, deleted)
 	confirmed        int                 // Count of confirmed tickets
 	skipped          int                 // Count of skipped/existing tickets
 	quitting         bool
@@ -578,7 +616,7 @@ type createModel struct {
 	JiraIssueType    string
 	JiraClient       *jira.Client
 	originalRecords  [][]string                     // Needed for writing remaining CSV
-	LocalDB          *localdb.DB                    // Live DB instance for updates
+	LocalDB          *localdb.DB                    // Use pointer type consistent with RunE
 	userMap          map[string]mapping.UserMapping // For Pillar lookup
 	mode             string                         // "normal", "promptExisting", "ticketCreated", "confirmDelete"
 	inputValue       string                         // For prompt mode
@@ -647,7 +685,6 @@ func (m createModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func updateNormalMode(m createModel, msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Ensure we don't go out of bounds
 	if m.index >= len(m.tickets) || m.index < 0 {
-		// This case should ideally lead to quitting state handled elsewhere or logged
 		log.Error().Int("index", m.index).Int("len", len(m.tickets)).Msg("Invalid index in updateNormalMode")
 		m.quitting = true
 		return m, tea.Quit
@@ -658,7 +695,6 @@ func updateNormalMode(m createModel, msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		// Clear any feedback messages from the previous action/state
-		// before processing the new keypress for the current item.
 		m.infoMessage = ""
 		m.errorMessage = ""
 
@@ -670,14 +706,14 @@ func updateNormalMode(m createModel, msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "e": // Enter/Edit Existing Ticket ID
 			m.mode = "promptExisting"
 			m.inputValue = t.ExistingJiraKey // Pre-fill
+			// No ClearScreen needed going TO prompt usually
 			return m, nil
 
 		case "d": // Delete existing ticket (transition to confirm)
-			// Logic to check conditions and set mode/errorMessage...
 			if t.ExistingJiraKey != "" && m.JiraClient != nil && !m.DryRun {
 				m.mode = "confirmDelete"
-				// Set a specific message for confirmation, errorMessage might be okay here
-				m.errorMessage = fmt.Sprintf("Confirm delete %s? This cannot be undone.", jirautils.GetJiraLink(t.ExistingJiraKey)) // Reusing error for prompt
+				// Set prompt message using errorMessage field
+				m.errorMessage = fmt.Sprintf("Confirm delete %s? This cannot be undone.", jirautils.GetJiraLink(t.ExistingJiraKey))
 			} else if t.ExistingJiraKey == "" {
 				m.errorMessage = "No Jira ticket associated to delete."
 			} else if m.DryRun {
@@ -685,10 +721,10 @@ func updateNormalMode(m createModel, msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.errorMessage = "Cannot delete tickets: Jira client unavailable."
 			}
+			// No ClearScreen needed going TO prompt usually
 			return m, nil
 
 		case "c": // Confirm/Create Ticket
-			// Logic to check conditions...
 			if !t.Valid {
 				m.errorMessage = "Cannot create: Invalid data. Press [n] to skip."
 				return m, nil
@@ -697,11 +733,11 @@ func updateNormalMode(m createModel, msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.errorMessage = fmt.Sprintf("Cannot create: Ticket %s exists. Press [n] skip/[e] edit.", t.ExistingJiraKey)
 				return m, nil
 			}
-			// Call creation logic which might set messages
+			// updateConfirm handles ClearScreen internally on success/error
 			return updateConfirm(m)
 
 		case "n": // Skip / Next
-			// updateSkip now handles setting its own (optional) message or clearing errors
+			// updateSkip handles its own logic, doesn't usually need ClearScreen
 			return updateSkip(m)
 
 		default: // Ignore other keys
@@ -716,8 +752,10 @@ func updateNormalMode(m createModel, msg tea.Msg) (tea.Model, tea.Cmd) {
 func updatePromptExisting(m createModel, msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Ensure index is valid before processing
 	if m.index < 0 || m.index >= len(m.tickets) {
-		// ... (handle invalid index) ...
-		return m, nil
+		log.Warn().Int("index", m.index).Int("len", len(m.tickets)).Msg("Invalid index in updatePromptExisting")
+		m.errorMessage = "Internal error: invalid index"
+		m.mode = "normal"         // Go back to normal mode
+		return m, tea.ClearScreen // Clear screen as we transition back unexpectedly
 	}
 	t := &m.tickets[m.index] // Use pointer
 
@@ -739,7 +777,7 @@ func updatePromptExisting(m createModel, msg tea.Msg) (tea.Model, tea.Cmd) {
 				log.Error().Err(err).Str("test", t.TestName).Msg("Failed to update local DB entry from prompt")
 				m.errorMessage = fmt.Sprintf("Error saving to local DB: %v", err)
 				m.infoMessage = ""
-				return m, nil
+				return m, nil // Stay in prompt mode to show error
 			}
 
 			// --- Log Confirmation & Update Model State ---
@@ -771,8 +809,7 @@ func updatePromptExisting(m createModel, msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.quitting {
 				cmd = tea.Quit // If quitting, Quit command takes precedence
 			} else {
-				// Force a screen clear before rendering the next view
-				cmd = tea.ClearScreen
+				cmd = tea.ClearScreen // Force a screen clear before rendering the next view
 			}
 			return m, cmd // Return model and the command
 
@@ -781,17 +818,15 @@ func updatePromptExisting(m createModel, msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.inputValue = ""
 			m.errorMessage = ""
 			m.infoMessage = "Edit cancelled."
-			return m, tea.ClearScreen // Return ClearScreen command
+			return m, tea.ClearScreen // Clear screen on cancel
 
 		case tea.KeyBackspace:
-			// ... (no changes needed) ...
 			if len(m.inputValue) > 0 {
 				m.inputValue = m.inputValue[:len(m.inputValue)-1]
 			}
 			return m, nil
 
 		case tea.KeyRunes:
-			// ... (no changes needed) ...
 			if !strings.ContainsAny(string(msg.Runes), "\n\t\r") {
 				m.inputValue += string(msg.Runes)
 			}
@@ -811,13 +846,10 @@ func updateConfirm(m createModel) (tea.Model, tea.Cmd) {
 	if !t.Valid || t.ExistingJiraKey != "" {
 		m.errorMessage = "Cannot create ticket (invalid or already exists)."
 		m.mode = "normal"
-		return m, nil // Return nil command, stay in normal mode
+		return m, nil
 	}
 
 	m.processedIndices[t.RowIndex] = true
-	// Setting infoMessage here is probably not useful as it gets cleared immediately
-	// or overwritten by the confirmation screen.
-	// m.infoMessage = fmt.Sprintf("Processing creation for: %s...", t.Summary)
 
 	// --- Prepare Jira Creation ---
 	pillarName := ""
@@ -845,7 +877,7 @@ func updateConfirm(m createModel) (tea.Model, tea.Cmd) {
 			log.Error().Err(err).Msg(errMsg)
 			m.errorMessage = fmt.Sprintf("%s: %v", errMsg, err)
 			m.mode = "normal"
-			m.infoMessage = ""        // Clear info message on error
+			m.infoMessage = ""
 			return m, tea.ClearScreen // Clear screen before showing normal view with error
 		}
 		// --- Success Case ---
@@ -857,16 +889,12 @@ func updateConfirm(m createModel) (tea.Model, tea.Cmd) {
 		errDb := m.LocalDB.UpsertEntry(t.TestPackage, t.TestName, issueKey, t.SkippedAt, t.AssigneeId)
 		if errDb != nil {
 			log.Error().Err(errDb).Str("key", issueKey).Msg("Failed to update local DB after Jira creation!")
-			// Should we revert or just warn? Warn for now.
 			m.errorMessage = "WARN: Jira ticket created but failed to update local DB!"
 		}
 		m.confirmed++
-		m.mode = "ticketCreated" // Set mode for confirmation view
-		// Clear any previous messages before showing confirmation
+		m.mode = "ticketCreated"
 		m.errorMessage = ""
 		m.infoMessage = ""
-
-		// --- FIX: Return ClearScreen command ---
 		return m, tea.ClearScreen // Force clear before showing viewTicketCreated
 	} else {
 		// --- Dry Run or No Client Case ---
@@ -874,12 +902,9 @@ func updateConfirm(m createModel) (tea.Model, tea.Cmd) {
 		t.ExistingJiraKey = "DRYRUN-" + strconv.Itoa(1000+i)
 		t.ExistingTicketSource = "dryrun-created"
 		m.confirmed++
-		m.mode = "ticketCreated" // Set mode for confirmation view
-		// Clear any previous messages before showing confirmation
+		m.mode = "ticketCreated"
 		m.errorMessage = ""
-		m.infoMessage = "" // Info message will be generated by viewTicketCreated
-
-		// --- FIX: Return ClearScreen command ---
+		m.infoMessage = ""
 		return m, tea.ClearScreen // Force clear before showing viewTicketCreated
 	}
 }
@@ -901,11 +926,14 @@ func updateTicketCreated(m createModel, msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.infoMessage = "" // Clear confirmation message
 			m.errorMessage = ""
-			// If quitting, send Quit command, otherwise nil
+
+			var cmd tea.Cmd
 			if m.quitting {
-				return m, tea.Quit
+				cmd = tea.Quit
+			} else {
+				cmd = tea.ClearScreen // Clear screen before showing next item in normal view
 			}
-			return m, nil
+			return m, cmd
 		}
 	}
 	return m, nil
@@ -913,6 +941,14 @@ func updateTicketCreated(m createModel, msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // updateSkip handles the 'n' key press: increments skip count and advances.
 func updateSkip(m createModel) (tea.Model, tea.Cmd) {
+	// Ensure index is valid before processing
+	if m.index < 0 || m.index >= len(m.tickets) {
+		log.Warn().Int("index", m.index).Int("len", len(m.tickets)).Msg("Invalid index in updateSkip")
+		m.errorMessage = "Internal error: invalid index"
+		// Should probably not advance if index is bad
+		return m, nil
+	}
+
 	// Mark the current ticket as processed (interacted with)
 	t := &m.tickets[m.index]
 	m.processedIndices[t.RowIndex] = true
@@ -920,54 +956,63 @@ func updateSkip(m createModel) (tea.Model, tea.Cmd) {
 	m.skipped++
 	m.index++
 	m.errorMessage = ""
+	m.infoMessage = "" // Clear info message when skipping too
 
 	if m.index >= len(m.tickets) {
 		m.quitting = true
 		return m, tea.Quit // Quit after skipping the last item
 	}
+	// No ClearScreen needed usually when just advancing index in the same view type
 	return m, nil
 }
 
 // updateConfirmDelete handles the confirmation prompt for deleting a ticket.
 func updateConfirmDelete(m createModel, msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Ensure index is valid
+	if m.index < 0 || m.index >= len(m.tickets) {
+		// ... handle invalid index ...
+		m.mode = "normal"
+		return m, tea.ClearScreen
+	}
 	t := &m.tickets[m.index] // Use pointer
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch strings.ToLower(msg.String()) {
 		case "y": // Yes, delete the ticket
-			m.infoMessage = fmt.Sprintf("Attempting to delete Jira ticket %s...", t.ExistingJiraKey)
+			originalKey := t.ExistingJiraKey // Store key before clearing
+			m.infoMessage = fmt.Sprintf("Attempting to delete Jira ticket %s...", originalKey)
 			m.errorMessage = ""
 
-			// Call Jira delete function (needs implementation in jirautils)
-			err := jirautils.DeleteTicketInJira(m.JiraClient, t.ExistingJiraKey)
+			// Call Jira delete function
+			err := jirautils.DeleteTicketInJira(m.JiraClient, originalKey) // Pass original key
 
 			if err != nil {
-				errMsg := fmt.Sprintf("Failed to delete Jira ticket %s", t.ExistingJiraKey)
-				log.Error().Err(err).Msg(errMsg)
+				errMsg := fmt.Sprintf("Failed to delete Jira ticket %s", originalKey)
+				log.Error().Err(err).Str("key", originalKey).Msg(errMsg)
 				m.errorMessage = fmt.Sprintf("%s: %v", errMsg, err)
-				m.mode = "normal" // Go back to normal mode to show error
+				m.infoMessage = "" // Clear "Attempting..." message
 			} else {
-				log.Info().Str("key", t.ExistingJiraKey).Msg("Successfully deleted Jira ticket")
-				m.infoMessage = fmt.Sprintf("Deleted Jira ticket %s.", t.ExistingJiraKey)
+				log.Info().Str("key", originalKey).Msg("Successfully deleted Jira ticket")
+				m.infoMessage = fmt.Sprintf("Deleted Jira ticket %s.", originalKey)
 				// Clear association in the model and DB
 				t.ExistingJiraKey = ""
 				t.ExistingTicketSource = ""
-				m.LocalDB.UpsertEntry(t.TestPackage, t.TestName, "", t.SkippedAt, t.AssigneeId) // Remove key from DB
-				m.processedIndices[t.RowIndex] = true                                           // Mark as processed
-				// Decide if deleting counts as skip or something else? Let's count it as skipped for now.
-				// m.skipped++ // Or have a deleted counter?
-
-				// Should we advance after delete? Let's stay on the current item, now without a key.
-				m.mode = "normal"
+				errDb := m.LocalDB.UpsertEntry(t.TestPackage, t.TestName, "", t.SkippedAt, t.AssigneeId) // Update DB with empty key
+				if errDb != nil {
+					log.Error().Err(errDb).Str("test", t.TestName).Msg("Failed to update local DB after deleting Jira key")
+					m.errorMessage = fmt.Sprintf("WARN: Jira ticket deleted but failed to update local DB! Error: %v", errDb)
+				}
+				m.processedIndices[t.RowIndex] = true // Mark as processed
 			}
-			return m, tea.ClearScreen
+			m.mode = "normal"         // Go back to normal mode regardless of error to show result
+			return m, tea.ClearScreen // Clear confirm prompt before showing result in normal view
 
 		case "n", "esc": // No, cancel delete
 			m.infoMessage = "Delete cancelled."
 			m.errorMessage = ""
 			m.mode = "normal"
-			return m, nil
+			return m, tea.ClearScreen // Clear confirm prompt
 
 		default: // Any other key - ignore
 			return m, nil
@@ -976,20 +1021,10 @@ func updateConfirmDelete(m createModel, msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// updateQuit handles the final state before exiting.
-// Currently not explicitly called, quitting is handled by returning tea.Quit.
-// Could be used for cleanup if needed.
-// func updateQuit(m createModel) (tea.Model, tea.Cmd) {
-//     m.quitting = true
-//     return m, tea.Quit
-// }
-
 // View logic for create-tickets TUI
 func (m createModel) View() string {
 	// Handle quitting state
 	if m.quitting {
-		// The finalView function is called outside the TUI loop after it exits.
-		// This View just needs to handle the transition.
 		return "Processing complete. Exiting...\n"
 	}
 
@@ -1000,7 +1035,6 @@ func (m createModel) View() string {
 
 	// Handle potential out-of-bounds index defensively
 	if m.index >= len(m.tickets) {
-		// This indicates the TUI should be quitting, return the quitting message
 		return "Processing complete. Exiting...\n"
 	}
 
@@ -1049,7 +1083,7 @@ func viewNormal(m createModel) string {
 
 	// Error Message Area (Top)
 	if m.errorMessage != "" {
-		sb.WriteString(errorStyle.Render(m.errorMessage) + "\n\n")
+		sb.WriteString(errorStyle.Render("Error: "+m.errorMessage) + "\n\n") // Add Error prefix
 	}
 	// Info Message Area (Top, below error)
 	if m.infoMessage != "" {
@@ -1090,7 +1124,6 @@ func viewNormal(m createModel) string {
 				pillarVal = "(Pillar Not Set in Map)"
 			}
 		} else {
-			// This case shouldn't happen if MissingUserMapping logic is correct
 			pillarVal = errorStyle.Render("(Error: Map Lookup Failed)")
 		}
 	} else {
@@ -1129,22 +1162,31 @@ func viewNormal(m createModel) string {
 
 // viewTicketCreated renders the confirmation screen after creating a ticket.
 func viewTicketCreated(m createModel) string {
+	// Ensure index is valid
+	if m.index < 0 || m.index >= len(m.tickets) {
+		return "Error: Invalid index for ticket confirmation.\n"
+	}
 	t := m.tickets[m.index]
 	ticketStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Bold(true)   // Green Bold
 	urlStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("39")).Underline(true) // Blue Underline
 	helpStyle := lipgloss.NewStyle().Faint(true).PaddingTop(1)
+	labelStyle := lipgloss.NewStyle().Width(10) // Simple label style for this view
 
 	var sb strings.Builder
 
 	sb.WriteString(ticketStyle.Render("Ticket processed successfully!"))
 	sb.WriteString("\n\n")
-	sb.WriteString(fmt.Sprintf("  Summary: %s\n", t.Summary))
-	sb.WriteString(fmt.Sprintf("  Jira Key: %s\n", urlStyle.Render(jirautils.GetJiraLink(t.ExistingJiraKey)))) // Show link
+	sb.WriteString(fmt.Sprintf("%s%s\n", labelStyle.Render("Summary:"), t.Summary))
+	sb.WriteString(fmt.Sprintf("%s%s\n", labelStyle.Render("Jira Key:"), urlStyle.Render(jirautils.GetJiraLink(t.ExistingJiraKey))))
 	if t.AssigneeId != "" {
-		sb.WriteString(fmt.Sprintf("  Assignee: %s\n", t.AssigneeId))
+		sb.WriteString(fmt.Sprintf("%s%s\n", labelStyle.Render("Assignee:"), t.AssigneeId))
 	}
+	// Lookup pillar name again for display
 	if pillar, ok := m.userMap[t.AssigneeId]; ok && pillar.PillarName != "" {
-		sb.WriteString(fmt.Sprintf("  Pillar: %s\n", pillar.PillarName))
+		sb.WriteString(fmt.Sprintf("%s%s\n", labelStyle.Render("Pillar:"), pillar.PillarName))
+	} else if t.AssigneeId != "" {
+		// Indicate if pillar wasn't found/set even if assignee exists
+		sb.WriteString(fmt.Sprintf("%s%s\n", labelStyle.Render("Pillar:"), "(Not Set)"))
 	}
 
 	sb.WriteString(helpStyle.Render("\nPress any key to continue to the next test, or [q] to quit."))
@@ -1154,16 +1196,20 @@ func viewTicketCreated(m createModel) string {
 
 // viewPromptExisting renders the input prompt for the Jira key.
 func viewPromptExisting(m createModel) string {
+	// Ensure index is valid
+	if m.index < 0 || m.index >= len(m.tickets) {
+		return "Error: Invalid index for prompt.\n"
+	}
 	t := m.tickets[m.index]
 	promptStyle := lipgloss.NewStyle().Bold(true)
-	inputStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("82")).BorderStyle(lipgloss.NormalBorder()).Padding(0, 1)
+	inputStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("82")).BorderStyle(lipgloss.NormalBorder()).Padding(0, 1).Width(40) // Added width
 	helpStyle := lipgloss.NewStyle().Faint(true).PaddingTop(1)
 	errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).PaddingBottom(1) // Red
 
 	var sb strings.Builder
 
 	if m.errorMessage != "" {
-		sb.WriteString(errorStyle.Render(m.errorMessage) + "\n")
+		sb.WriteString(errorStyle.Render("Error: "+m.errorMessage) + "\n")
 	}
 
 	sb.WriteString(promptStyle.Render(fmt.Sprintf("Enter existing Jira Key for: %s", t.TestName)))
@@ -1177,17 +1223,22 @@ func viewPromptExisting(m createModel) string {
 
 // viewConfirmDelete renders the 'Are you sure?' prompt for deletion.
 func viewConfirmDelete(m createModel) string {
+	// Ensure index is valid
+	if m.index < 0 || m.index >= len(m.tickets) {
+		return "Error: Invalid index for delete confirmation.\n"
+	}
 	t := m.tickets[m.index]
-	promptStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("196")) // Red Bold
+	promptStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("196"))        // Red Bold
+	warningStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("208")).PaddingBottom(1) // Orange warning
 	helpStyle := lipgloss.NewStyle().Faint(true).PaddingTop(1)
 
 	var sb strings.Builder
 
 	sb.WriteString(promptStyle.Render(fmt.Sprintf("Permanently delete Jira ticket %s associated with test %s?", t.ExistingJiraKey, t.TestName)))
 	sb.WriteString("\n\n")
-	// Display the error message which contains the warning
+	// Display the warning message (stored in errorMessage for this mode)
 	if m.errorMessage != "" {
-		sb.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("208")).Render(m.errorMessage) + "\n\n") // Orange warning
+		sb.WriteString(warningStyle.Render(m.errorMessage) + "\n")
 	}
 
 	sb.WriteString(helpStyle.Render("[y] Yes, delete ticket  |  [n/esc] No, cancel"))
@@ -1197,11 +1248,16 @@ func viewConfirmDelete(m createModel) string {
 
 // buildHelpLine generates the dynamic help text based on the ticket state.
 func buildHelpLine(m createModel) string {
+	// Ensure index is valid
+	if m.index < 0 || m.index >= len(m.tickets) {
+		return "[q] Quit" // Basic help if index is invalid
+	}
 	t := m.tickets[m.index]
 	var actions []string
 
 	if t.Valid && t.ExistingJiraKey == "" {
 		createLabel := "[c] Create"
+		// Check DryRun flag on the model 'm', not the global 'dryRun'
 		if m.DryRun || m.JiraClient == nil {
 			createLabel += " (DryRun/Offline)"
 		}
@@ -1218,18 +1274,4 @@ func buildHelpLine(m createModel) string {
 	actions = append(actions, "[q] Quit")
 
 	return "Actions: " + strings.Join(actions, " | ")
-}
-
-// finalView is called *after* the TUI program exits.
-// It's not part of the BubbleTea View() interface directly.
-func finalView(m createModel) string {
-	// This function is likely called from RunE after tea.NewProgram().Run() finishes.
-	// We already print summary stats and remaining file path in RunE.
-	// So this function might not be strictly necessary anymore, or can be simpler.
-	doneStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("82")) // Green
-	return doneStyle.Render(fmt.Sprintf(
-		"Processing finished. Confirmed: %d, Skipped/Existing: %d.",
-		m.confirmed, m.skipped,
-	))
-	// The detailed summary is printed in RunE.
 }
