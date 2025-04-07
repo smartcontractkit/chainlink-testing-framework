@@ -264,6 +264,13 @@
     "jira_assignee_id": "6175d3e016119e0069fdd14f",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
+  "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/solana::TestGenericOps/with_mcms": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/solana",
+    "test_name": "TestGenericOps/with_mcms",
+    "jira_ticket": "DX-437",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
   "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/v1_6::TestUpdateBidirectionalLanesChangeset": {
     "test_package": "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/v1_6",
     "test_name": "TestUpdateBidirectionalLanesChangeset",
@@ -303,6 +310,20 @@
     "test_package": "github.com/smartcontractkit/chainlink/deployment/common/changeset/state",
     "test_name": "TestMCMSWithTimelockState_GenerateMCMSWithTimelockViewSolana",
     "jira_ticket": "DX-404",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/deployment/common/changeset::TestDeployMCMSWithTimelockV2SkipInitSolana": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/common/changeset",
+    "test_name": "TestDeployMCMSWithTimelockV2SkipInitSolana",
+    "jira_ticket": "DX-438",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/deployment/common/changeset::TestValidateV2": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/common/changeset",
+    "test_name": "TestValidateV2",
+    "jira_ticket": "DX-439",
     "jira_assignee_id": "6175d3e016119e0069fdd14f",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
