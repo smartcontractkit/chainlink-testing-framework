@@ -257,6 +257,20 @@
     "jira_assignee_id": "63beffc42a526608c5501530",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
+  "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/solana::TestGenericOps": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/solana",
+    "test_name": "TestGenericOps",
+    "jira_ticket": "DX-433",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/v1_6::TestUpdateBidirectionalLanesChangeset/Use_production_router_(with_MCMS)_\u0026_disable_afterwards": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/v1_6",
+    "test_name": "TestUpdateBidirectionalLanesChangeset/Use_production_router_(with_MCMS)_\u0026_disable_afterwards",
+    "jira_ticket": "DX-434",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
   "github.com/smartcontractkit/chainlink/deployment/ccip/changeset::TestDeployerGroupMCMS": {
     "test_package": "github.com/smartcontractkit/chainlink/deployment/ccip/changeset",
     "test_name": "TestDeployerGroupMCMS",
@@ -294,6 +308,13 @@
     "test_package": "github.com/smartcontractkit/chainlink/deployment/environment/memory",
     "test_name": "TestJobClientJobAPI",
     "jira_ticket": "DX-402",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/deployment/environment/memory::TestJobClientProposeJob": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/environment/memory",
+    "test_name": "TestJobClientProposeJob",
+    "jira_ticket": "DX-432",
     "jira_assignee_id": "6175d3e016119e0069fdd14f",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
@@ -391,6 +412,7 @@
     "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/keeper",
     "test_name": "TestKeeperEthIntegration",
     "jira_ticket": "DX-400",
+    "jira_assignee_id": "61c3bc0d68926d0068ad903d",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/v2/core/services/keeper::TestKeeperEthIntegration/eip1559_registry1_2": {
@@ -487,6 +509,7 @@
     "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
     "test_name": "TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop#01",
     "jira_ticket": "DX-401",
+    "jira_assignee_id": "61c3bc0d68926d0068ad903d",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop#01/Filtering_can_be_done_on_data_words_using_value_comparator": {
@@ -523,6 +546,7 @@
     "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
     "test_name": "TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop/QueryKeys/EVM_on_loop",
     "jira_ticket": "DX-401",
+    "jira_assignee_id": "61c3bc0d68926d0068ad903d",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop/QueryKeys/EVM_on_loop/QueryKeys_can_limit_results_with_cursor": {
