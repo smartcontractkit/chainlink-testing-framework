@@ -43,15 +43,12 @@ Actions:
   [n] next ticket
   [q] quit`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// 1) Load the local JSON database
 		db, err := localdb.LoadDBWithPath(ticketsJSONPath)
 		if err != nil {
 			log.Error().Err(err).Str("path", ticketsJSONPath).Msg("Failed to load local DB")
-			// Treat error as critical for this command
 			return fmt.Errorf("failed to load local DB: %w", err)
 		}
 
-		// 2) Load Mappings
 		userMap, err := mapping.LoadUserMappings(userMappingPath)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to load user mappings")
@@ -62,7 +59,6 @@ Actions:
 			log.Warn().Err(err).Msg("Failed to load user test mappings, continuing...")
 		}
 
-		// 3) Retrieve all entries from the DB.
 		entries := db.GetAllEntries()
 		if len(entries) == 0 {
 			log.Info().Msg("No tickets found in local DB")
@@ -70,7 +66,6 @@ Actions:
 		}
 		log.Info().Int("count", len(entries)).Msg("Loaded entries from local DB.")
 
-		// 4) Convert DB entries to model.FlakyTicket for the TUI
 		tickets := make([]model.FlakyTicket, 0, len(entries))
 		for _, entry := range entries {
 			ticket := model.FlakyTicket{
@@ -88,7 +83,6 @@ Actions:
 			tickets = append(tickets, ticket)
 		}
 
-		// 5) Setup Jira client
 		jiraClient, clientErr := jirautils.GetJiraClient()
 		if clientErr != nil {
 			log.Warn().Msgf("Jira client not available: %v. Running in offline mode (cannot fetch status/pillar or update).", clientErr)
@@ -162,7 +156,6 @@ Actions:
 			fmt.Println()
 		}
 
-		// 7) Filter by missing pillars AFTER fetching (if flag is set)
 		if missingPillars {
 			filtered := make([]model.FlakyTicket, 0, len(tickets))
 			for _, t := range tickets {
@@ -178,31 +171,26 @@ Actions:
 			log.Info().Int("count", len(tickets)).Msg("Filtered view to show only tickets missing pillar names.")
 		}
 
-		// Exit early if no tickets remain after all filtering
 		if len(tickets) == 0 {
 			log.Info().Msg("No tickets remaining after applying all filters.")
 			return nil
 		}
 
-		// 8) Initialize Bubble Tea model
 		m := initialTicketsModel(tickets, userMap)
 		m.JiraClient = jiraClient
-		m.LocalDB = db // Pass DB pointer
+		m.LocalDB = db
 		m.DryRun = ticketsDryRun
 
-		// 9) Run TUI
 		program := tea.NewProgram(m)
 		finalModel, err := program.Run()
 		if err != nil {
 			log.Error().Err(err).Msg("Error running tickets TUI")
-			// Don't save DB on TUI error
 			return fmt.Errorf("error running TUI: %w", err)
 		}
 		_ = finalModel
 
-		// 10) Save the local DB (if not dry run)
 		if !ticketsDryRun {
-			if db == nil { // Safety check
+			if db == nil {
 				log.Error().Msg("Cannot save DB: DB instance is nil")
 			} else if err := db.Save(); err != nil {
 				log.Error().Err(err).Msg("Failed to save local DB")
@@ -218,7 +206,6 @@ Actions:
 	},
 }
 
-// Helper function remains the same
 func uniqueStrings(input []string) []string {
 	seen := make(map[string]struct{}, len(input))
 	j := 0
@@ -233,7 +220,6 @@ func uniqueStrings(input []string) []string {
 	return input[:j]
 }
 
-// init function: Removed hide-skipped flag
 func init() {
 	ReviewTicketsCmd.Flags().StringVar(&ticketsJSONPath, "test-db-path", localdb.DefaultDBPath(), "Path to the JSON file for the flaky test database")
 	ReviewTicketsCmd.Flags().BoolVar(&ticketsDryRun, "dry-run", false, "Prevent changes to Jira (e.g., pillar updates)")
@@ -258,7 +244,6 @@ type ticketModel struct {
 	userMap      map[string]mapping.UserMapping
 }
 
-// initialTicketsModel remains the same structurally
 func initialTicketsModel(tickets []model.FlakyTicket, userMap map[string]mapping.UserMapping) ticketModel {
 	idx := 0
 	if len(tickets) == 0 {
@@ -275,9 +260,7 @@ func (m ticketModel) Init() tea.Cmd {
 	return nil
 }
 
-// Update function: Removed 's' and 'u' cases
 func (m ticketModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Handle empty state or quit signals first
 	if m.index == -1 {
 		if msg, ok := msg.(tea.KeyMsg); ok {
 			switch msg.String() {
@@ -294,7 +277,6 @@ func (m ticketModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// Clear messages on navigation/action attempts
 		m.infoMessage = ""
 		m.errorMessage = ""
 
@@ -323,14 +305,12 @@ func (m ticketModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "i": // Set Pillar Name based on mapping
-			// Check index validity before accessing ticket
 			if m.index < 0 || m.index >= len(m.tickets) {
 				m.errorMessage = "Internal error: Invalid index for 'i' action."
 				return m, nil
 			}
 			t := &m.tickets[m.index] // Use pointer
 
-			// Check prerequisites
 			if t.ExistingJiraKey == "" {
 				m.errorMessage = "Cannot set pillar: No associated Jira key."
 				return m, nil
@@ -368,7 +348,6 @@ func (m ticketModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Perform Jira Update (synchronously for immediate feedback)
 			m.infoMessage = fmt.Sprintf("Attempting to set Pillar Name to '%s' for %s...", targetPillar, jirautils.GetJiraLink(t.ExistingJiraKey))
-			// Use the jirautils helper for updating the pillar field
 			updateErr := jirautils.UpdatePillarName(m.JiraClient, t.ExistingJiraKey, targetPillar)
 
 			if updateErr != nil {
@@ -384,10 +363,9 @@ func (m ticketModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.errorMessage = ""
 			}
 			return m, nil
-		} // End inner switch
-	} // End case KeyMsg
+		}
+	}
 
-	// Default: return current model if no key matched or not a keypress
 	return m, nil
 }
 
@@ -403,17 +381,14 @@ func (m ticketModel) View() string {
 		return "Error: Invalid ticket index.\n\n[q] quit\n"
 	}
 
-	t := m.tickets[m.index] // Get current ticket
+	t := m.tickets[m.index]
 
-	// --- Styles ---
-	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("63")).PaddingBottom(1) // Magenta/Purple
-	infoStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("81"))                               // Cyan/Blueish
+	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("63")).PaddingBottom(1)
+	infoStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("81"))
 	errorStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("196")).PaddingBottom(1) // Red
-	labelStyle := lipgloss.NewStyle().Bold(true).Width(12).Foreground(lipgloss.Color("39"))         // Blue, fixed width
+	labelStyle := lipgloss.NewStyle().Bold(true).Width(12).Foreground(lipgloss.Color("39"))
 	valueStyle := lipgloss.NewStyle()
-	// Add styles for Jira Status potentially
-	statusStyle := lipgloss.NewStyle() // Default style
-	// Example: Color based on status
+	statusStyle := lipgloss.NewStyle()
 	switch strings.ToLower(t.JiraStatus) {
 	case "done", "resolved", "closed":
 		statusStyle = statusStyle.Foreground(lipgloss.Color("40")) // Green
@@ -477,7 +452,7 @@ func (m ticketModel) View() string {
 	}
 	sb.WriteString(fmt.Sprintf("%s %s\n", labelStyle.Render("Pillar Name:"), valueStyle.Render(pillarVal)))
 
-	// --- Display Jira Status ---
+	// Jira Status
 	statusVal := t.JiraStatus
 	if statusVal == "" {
 		if t.ExistingJiraKey != "" {
@@ -487,16 +462,15 @@ func (m ticketModel) View() string {
 				statusVal = infoStyle.Render("(Jira unavailable)")
 			}
 		} else {
-			statusVal = "-" // No Jira key, no status
+			statusVal = "-"
 		}
 	}
-	sb.WriteString(fmt.Sprintf("%s %s\n", labelStyle.Render("Jira Status:"), statusStyle.Render(statusVal))) // Apply style
+	sb.WriteString(fmt.Sprintf("%s %s\n", labelStyle.Render("Jira Status:"), statusStyle.Render(statusVal)))
 
-	// --- Actions Help Text ---
+	// Actions Help Text
 	actions := []string{
 		"[p]prev", "[n]next",
 	}
-	// Only show [i] if prerequisites are met AND pillar name is not already set
 	if t.ExistingJiraKey != "" &&
 		t.AssigneeId != "" &&
 		m.JiraClient != nil &&
