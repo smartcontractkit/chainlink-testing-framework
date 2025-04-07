@@ -2,9 +2,12 @@ package jirautils
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/andygrunwald/go-jira"
 	"github.com/rs/zerolog/log"
@@ -30,68 +33,6 @@ func GetJiraClient() (*jira.Client, error) {
 		Password: apiKey,
 	}
 	return jira.NewClient(tp.Client(), fmt.Sprintf("https://%s", domain))
-}
-
-// CreateTicketInJira creates a Jira issue with the specified details, including priority.
-func CreateTicketInJira(
-	client *jira.Client,
-	summary, description, projectKey, issueType, assigneeId, priorityName string,
-) (string, error) {
-
-	// --- Prepare Issue Fields ---
-	fields := &jira.IssueFields{
-		Project:     jira.Project{Key: projectKey},
-		Summary:     summary,
-		Description: description,
-		Type:        jira.IssueType{Name: issueType},
-		Labels:      []string{"flaky_test"}, // Default label
-	}
-
-	// Set Assignee only if assigneeId is provided
-	if assigneeId != "" {
-		fields.Assignee = &jira.User{AccountID: assigneeId}
-	}
-
-	// Find and Set Priority
-	if priorityName != "" {
-		priorities, resp, err := client.Priority.GetList()
-		if err != nil {
-			// Log the error but proceed without priority if fetching fails
-			status := "unknown"
-			if resp != nil {
-				status = resp.Status
-			}
-			log.Warn().Err(err).Str("status", status).Msgf("Failed to fetch Jira priorities. Creating ticket without setting priority '%s'.", priorityName)
-		} else {
-			foundPriority := false
-			for _, p := range priorities {
-				if p.Name == priorityName {
-					fields.Priority = &p // Set the Priority field with the found object
-					foundPriority = true
-					break
-				}
-			}
-			if !foundPriority {
-				// Log a warning if the specified priority name doesn't exist in Jira
-				log.Warn().Msgf("Priority '%s' not found in Jira instance. Creating ticket without this priority.", priorityName)
-			}
-		}
-	}
-
-	// Create the issue
-	issue := &jira.Issue{
-		Fields: fields,
-	}
-	newIssue, resp, err := client.Issue.CreateWithContext(context.Background(), issue)
-	if err != nil {
-		// Read response body for more detailed error context
-		errMsg := readResponseBody(resp)
-		log.Error().Err(err).Str("response_body", errMsg).Msg("Failed to create Jira issue")
-		// Return a more informative error message
-		return "", fmt.Errorf("error creating Jira issue (status: %s): %w; response: %s", getResponseStatus(resp), err, errMsg)
-	}
-
-	return newIssue.Key, nil
 }
 
 // Helper function to safely read response body
@@ -120,12 +61,105 @@ func getResponseStatus(resp *jira.Response) string {
 	return "unknown"
 }
 
-// DeleteTicketInJira deletes a Jira ticket with the given ticket key.
-func DeleteTicketInJira(client *jira.Client, ticketKey string) error {
-	resp, err := client.Issue.DeleteWithContext(context.Background(), ticketKey)
-	if err != nil {
-		return fmt.Errorf("error deleting Jira ticket %s: %w (resp: %v)", ticketKey, err, resp)
+const pillarCustomFieldID = "customfield_11016" // Define constant for pillar field
+
+// CreateTicketInJira creates a new Jira ticket with specified details.
+// Adds support for assignee, priority, labels, and pillar name.
+func CreateTicketInJira(
+	ctx context.Context, // Add context for cancellation/timeout
+	client *jira.Client,
+	summary, description, projectKey, issueType, assigneeID, priorityName string,
+	labels []string, // Add labels parameter
+	pillarName string, // Add pillarName parameter
+) (string, error) {
+	if client == nil {
+		return "", fmt.Errorf("jira client is nil")
 	}
+
+	// Basic validation
+	if summary == "" || projectKey == "" || issueType == "" {
+		return "", fmt.Errorf("summary, projectKey, and issueType are required")
+	}
+
+	// Prepare issue fields
+	issueFields := &jira.IssueFields{
+		Project:     jira.Project{Key: projectKey},
+		Summary:     summary,
+		Description: description,
+		Type:        jira.IssueType{Name: issueType},
+		Labels:      labels, // Add labels
+	}
+
+	// Add Assignee if provided
+	if assigneeID != "" {
+		issueFields.Assignee = &jira.User{AccountID: assigneeID} // Use AccountID typically
+		// Note: Sometimes 'Name' (username) is used instead of AccountID. Verify for your Jira instance.
+		// issueFields.Assignee = &jira.User{Name: assigneeID}
+	}
+
+	// Add Priority if provided
+	if priorityName != "" {
+		issueFields.Priority = &jira.Priority{Name: priorityName}
+	}
+
+	// Add Pillar Name (custom field) if provided
+	// Custom fields often require a specific structure (e.g., map[string]string{"value": "Pillar"})
+	if pillarName != "" {
+		if issueFields.Unknowns == nil {
+			issueFields.Unknowns = make(map[string]interface{})
+		}
+		// The exact structure depends on the custom field type in Jira (e.g., text, select list)
+		// For a simple text field or select list (by value):
+		issueFields.Unknowns[pillarCustomFieldID] = map[string]interface{}{"value": pillarName}
+		// If it's a select list by ID, it would be map[string]interface{}{"id": "12345"}
+		log.Debug().Str("fieldId", pillarCustomFieldID).Str("value", pillarName).Msg("Adding pillar custom field")
+	}
+
+	issue := jira.Issue{
+		Fields: issueFields,
+	}
+
+	log.Debug().Interface("issuePayload", issue).Msg("Jira creation payload")
+
+	// Use context with the API call
+	createdIssue, resp, err := client.Issue.CreateWithContext(ctx, &issue)
+	if err != nil {
+		// Try to read response body for more details
+		errMsg := ReadJiraErrorResponse(resp)
+		log.Error().Err(err).Str("responseBody", errMsg).Msg("Failed to create Jira issue")
+		// Return wrapped error with response details
+		return "", fmt.Errorf("failed to create Jira issue: %w; response: %s", err, errMsg)
+	}
+	if createdIssue == nil {
+		return "", fmt.Errorf("jira API returned success but issue object is nil")
+	}
+
+	log.Info().Str("key", createdIssue.Key).Str("id", createdIssue.ID).Msg("Jira issue created successfully")
+	return createdIssue.Key, nil
+}
+
+// DeleteTicketInJira permanently deletes a Jira ticket. Use with caution.
+func DeleteTicketInJira(client *jira.Client, issueKey string) error {
+	if client == nil {
+		return fmt.Errorf("jira client is nil")
+	}
+	if issueKey == "" {
+		return fmt.Errorf("issue key cannot be empty")
+	}
+
+	log.Warn().Str("key", issueKey).Msg("Attempting to permanently delete Jira ticket")
+
+	resp, err := client.Issue.DeleteWithContext(context.Background(), issueKey)
+	if err != nil {
+		errMsg := ReadJiraErrorResponse(resp)
+		log.Error().Err(err).Str("key", issueKey).Str("responseBody", errMsg).Msg("Failed to delete Jira issue")
+		return fmt.Errorf("failed to delete issue %s: %w; response: %s", issueKey, err, errMsg)
+	}
+
+	// Check status code explicitly? Jira library might already handle non-2xx as errors.
+	// if resp.StatusCode != http.StatusNoContent { ... }
+
+	log.Info().Str("key", issueKey).Msg("Jira ticket deleted successfully")
 	return nil
 }
 
@@ -140,6 +174,46 @@ func PostCommentToTicket(client *jira.Client, ticketKey, comment string) error {
 		return fmt.Errorf("failed to add comment to ticket %s: %w (response: %+v)", ticketKey, err, resp)
 	}
 	return nil
+}
+
+// ReadJiraErrorResponse tries to extract error messages from Jira's response body.
+func ReadJiraErrorResponse(resp *jira.Response) string {
+	if resp == nil || resp.Body == nil {
+		return "(No response body)"
+	}
+	defer resp.Body.Close() // Ensure body is closed
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Sprintf("(Failed to read response body: %v)", err)
+	}
+
+	bodyString := string(bodyBytes)
+
+	// Attempt to unmarshal into Jira's standard error structure
+	var jiraErr jira.Error
+	if err := json.Unmarshal(bodyBytes, &jiraErr); err == nil {
+		// Extract messages if available
+		var messages []string
+		if len(jiraErr.ErrorMessages) > 0 {
+			messages = append(messages, jiraErr.ErrorMessages...)
+		}
+		if len(jiraErr.Errors) > 0 {
+			for key, val := range jiraErr.Errors {
+				messages = append(messages, fmt.Sprintf("%s: %s", key, val))
+			}
+		}
+		if len(messages) > 0 {
+			return strings.Join(messages, "; ")
+		}
+	}
+
+	// If JSON parsing fails or yields no messages, return the raw body (truncated if too long)
+	maxLen := 500
+	if len(bodyString) > maxLen {
+		return bodyString[:maxLen] + "..."
+	}
+	return bodyString
 }
 
 // getJiraLink returns the full Jira URL for a given ticket key if JIRA_DOMAIN is set.
