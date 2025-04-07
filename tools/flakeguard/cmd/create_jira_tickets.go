@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -340,18 +341,30 @@ type tmodel struct {
 	JiraIssueType   string
 	JiraClient      *jira.Client
 	originalRecords [][]string
-
-	LocalDB localdb.DB // reference to our local DB
-
-	mode       string // "normal", "promptExisting", or "ticketCreated"
-	inputValue string // user-typed input for existing ticket
+	LocalDB         localdb.DB
+	userMap         map[string]UserMapping
+	mode            string
+	inputValue      string
 }
 
 func initialModel(tickets []model.FlakyTicket) tmodel {
+	// Load user mapping
+	userMap := make(map[string]UserMapping)
+	userMappingData, err := os.ReadFile("user_mapping.json")
+	if err == nil {
+		var userMappings []UserMapping
+		if err := json.Unmarshal(userMappingData, &userMappings); err == nil {
+			for _, user := range userMappings {
+				userMap[user.JiraUserID] = user
+			}
+		}
+	}
+
 	return tmodel{
 		tickets: tickets,
 		index:   0,
 		mode:    "normal",
+		userMap: userMap,
 	}
 }
 
@@ -448,6 +461,14 @@ func updateConfirm(m tmodel) (tea.Model, tea.Cmd) {
 
 	// Attempt Jira creation if not dry-run and we have a client.
 	if !m.DryRun && m.JiraClient != nil {
+		// Set pillar name if we have a user mapping
+		var pillarName string
+		if t.AssigneeId != "" {
+			if userMapping, exists := m.userMap[t.AssigneeId]; exists {
+				pillarName = userMapping.PillarName
+			}
+		}
+
 		issueKey, err := jirautils.CreateTicketInJira(m.JiraClient, t.Summary, t.Description, m.JiraProject, m.JiraIssueType, t.AssigneeId, t.Priority)
 		if err != nil {
 			log.Error().Err(err).Msgf("Failed to create Jira ticket: %s", t.Summary)
@@ -457,6 +478,26 @@ func updateConfirm(m tmodel) (tea.Model, tea.Cmd) {
 			t.ExistingJiraKey = issueKey
 			t.ExistingTicketSource = "jira"
 			m.LocalDB.Set(t.TestPackage, t.TestName, issueKey)
+
+			// Update pillar name if we have one
+			if pillarName != "" {
+				issue := &jira.Issue{
+					Key: issueKey,
+					Fields: &jira.IssueFields{
+						Unknowns: map[string]interface{}{
+							"customfield_11016": map[string]interface{}{
+								"value": pillarName,
+							},
+						},
+					},
+				}
+				_, _, err := m.JiraClient.Issue.Update(issue)
+				if err != nil {
+					log.Error().Err(err).Msgf("Failed to update pillar name for Jira ticket %s", issueKey)
+				} else {
+					log.Info().Msgf("Set pillar name to %s for ticket %s", pillarName, issueKey)
+				}
+			}
 		}
 	} else {
 		t.Confirmed = true
@@ -534,7 +575,7 @@ func (m tmodel) View() string {
 		)
 	}
 
-	bodyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("7")) // For general text
+	bodyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("7"))
 	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205"))
 	summaryStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("10"))
 	descHeaderStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("10"))
@@ -543,10 +584,10 @@ func (m tmodel) View() string {
 	errorStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("9"))
 	existingStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
 	redStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
-	lowPriorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("10"))    // Green
-	mediumPriorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11")) // Blue/Purple
-	highPriorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("208"))  // Orange
-	veryHighPriorityStyle := errorStyle                                         // Use red for highest
+	lowPriorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
+	mediumPriorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
+	highPriorityStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("208"))
+	veryHighPriorityStyle := errorStyle
 
 	t := m.tickets[m.index]
 
@@ -566,6 +607,17 @@ func (m tmodel) View() string {
 		assigneeDisplayValue = t.AssigneeId
 	}
 	assigneeLine = summaryStyle.Render("Assignee:") + "\n" + bodyStyle.Render(assigneeDisplayValue)
+
+	// Pillar Name
+	// Pillar Name
+	var pillarLine string
+	var pillarDisplayValue string
+	if t.AssigneeId != "" {
+		if userMapping, exists := m.userMap[t.AssigneeId]; exists {
+			pillarDisplayValue = userMapping.PillarName
+		}
+	}
+	pillarLine = summaryStyle.Render("Pillar Name:") + "\n" + bodyStyle.Render(pillarDisplayValue)
 
 	sum := summaryStyle.Render("Summary:")
 	sumBody := descBodyStyle.Render(t.Summary)
@@ -604,10 +656,10 @@ func (m tmodel) View() string {
 			style = mediumPriorityStyle
 		case "High":
 			style = highPriorityStyle
-		case "Very High": // Match the name used in calculation
+		case "Very High":
 			style = veryHighPriorityStyle
 		default:
-			style = bodyStyle // Default style if unknown
+			style = bodyStyle
 		}
 		priorityLine = summaryStyle.Render("Priority:") + "\n" + style.Render(t.Priority)
 	}
@@ -636,6 +688,8 @@ func (m tmodel) View() string {
 		header,
 		"",
 		assigneeLine,
+		"",
+		pillarLine,
 		"",
 		priorityLine,
 		"",
