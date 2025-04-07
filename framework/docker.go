@@ -421,32 +421,22 @@ func GenerateCustomPortsData(portsProvided []string) ([]string, nat.PortMap, err
 	portBindings := nat.PortMap{}
 	customPorts := make([]string, 0)
 	for _, p := range portsProvided {
-		if strings.Contains(p, ":") {
-			pp := strings.Split(p, ":")
-			if len(pp) != 2 {
-				return nil, nil, fmt.Errorf("custom_ports has ':' but you must provide both ports, you provided: %s", pp)
-			}
-			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", pp[1]))
+		if !strings.Contains(p, ":") {
+			return nil, nil, fmt.Errorf("custom ports must have format external_port:internal_port, you provided: %s", p)
+		}
+		pp := strings.Split(p, ":")
+		if len(pp) != 2 {
+			return nil, nil, fmt.Errorf("custom_ports has ':' but you must provide both ports, you provided: %s", pp)
+		}
+		customPorts = append(customPorts, fmt.Sprintf("%s/tcp", pp[1]))
 
-			dockerPort := nat.Port(fmt.Sprintf("%s/tcp", pp[1]))
-			hostPort := pp[0]
-			portBindings[dockerPort] = []nat.PortBinding{
-				{
-					HostIP:   "0.0.0.0",
-					HostPort: hostPort,
-				},
-			}
-		} else {
-			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", p))
-
-			dockerPort := nat.Port(fmt.Sprintf("%s/tcp", p))
-			hostPort := p
-			portBindings[dockerPort] = []nat.PortBinding{
-				{
-					HostIP:   "0.0.0.0",
-					HostPort: hostPort,
-				},
-			}
+		dockerPort := nat.Port(fmt.Sprintf("%s/tcp", pp[1]))
+		hostPort := pp[0]
+		portBindings[dockerPort] = []nat.PortBinding{
+			{
+				HostIP:   "0.0.0.0",
+				HostPort: hostPort,
+			},
 		}
 	}
 	exposedPorts = append(exposedPorts, customPorts...)
