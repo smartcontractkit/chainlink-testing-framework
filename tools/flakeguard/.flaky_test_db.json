@@ -264,6 +264,13 @@
     "jira_assignee_id": "6175d3e016119e0069fdd14f",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
+  "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/v1_6::TestUpdateBidirectionalLanesChangeset": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/v1_6",
+    "test_name": "TestUpdateBidirectionalLanesChangeset",
+    "jira_ticket": "DX-434",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
   "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/v1_6::TestUpdateBidirectionalLanesChangeset/Use_production_router_(with_MCMS)_\u0026_disable_afterwards": {
     "test_package": "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/v1_6",
     "test_name": "TestUpdateBidirectionalLanesChangeset/Use_production_router_(with_MCMS)_\u0026_disable_afterwards",
@@ -275,6 +282,7 @@
     "test_package": "github.com/smartcontractkit/chainlink/deployment/ccip/changeset",
     "test_name": "TestDeployerGroupMCMS",
     "jira_ticket": "DX-405",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/deployment/ccip/changeset::TestDeployerGroupMCMS/happy_path": {
@@ -399,6 +407,13 @@
     "test_name": "TestKeeperNodeDown/registry_1_3",
     "jira_ticket": "DX-398",
     "jira_assignee_id": "61b2b168744c4d006994b84c",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/integration-tests/smoke::TestKeeperRemove/registry_1_2": {
+    "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke",
+    "test_name": "TestKeeperRemove/registry_1_2",
+    "jira_ticket": "DX-435",
+    "jira_assignee_id": "638f597c3e79f12e57253913",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/v2/core/capabilities/integration_tests/keystone::Test_OneAtATimeTransmissionSchedule": {
@@ -540,6 +555,7 @@
     "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm",
     "test_name": "TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop/QueryKeys",
     "jira_ticket": "DX-401",
+    "jira_assignee_id": "61c3bc0d68926d0068ad903d",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents/RunChainComponentsInLoopEvmTests/EVM_on_loop/QueryKeys/EVM_on_loop": {
