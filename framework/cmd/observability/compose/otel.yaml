@@ -29,13 +29,10 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [batch]
       exporters: [debug, otlp]
     logs:
       receivers: [otlp]
-      processors: [batch]
       exporters: [debug, otlphttp/logs]
     metrics:
       receivers: [otlp]
-      processors: [batch]
       exporters: [debug, prometheus]
