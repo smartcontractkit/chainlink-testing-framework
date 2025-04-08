@@ -19,7 +19,7 @@ type CfgReorgTwoChains struct {
 	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
 	BlockchainB        *blockchain.Input `toml:"blockchain_b" validate:"required"`
 	MockerDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
-	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
+	NodeSets           []*ns.Input       `toml:"nodesets" validate:"required"`
 }
 
 func TestBlockchainReorgChaos(t *testing.T) {
@@ -56,9 +56,9 @@ func TestBlockchainReorgChaos(t *testing.T) {
 		},
 	}, bcB)
 	// override the configuration to connect with 2 networks
-	in.NodeSet.NodeSpecs[0].Node.TestConfigOverrides = srcNetworkCfg + dstNetworkConfig
+	in.NodeSets[0].NodeSpecs[0].Node.TestConfigOverrides = srcNetworkCfg + dstNetworkConfig
 	// create a node set
-	nodesOut, err := ns.NewSharedDBNodeSet(in.NodeSet, bcA)
+	nodesOut, err := ns.NewSharedDBNodeSet(in.NodeSets[0], bcA)
 	require.NoError(t, err)
 
 	c, err := clclient.New(nodesOut.CLNodes)

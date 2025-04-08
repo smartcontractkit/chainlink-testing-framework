@@ -111,13 +111,9 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 	eg := &errgroup.Group{}
 	mu := &sync.Mutex{}
 	for i := 0; i < in.Nodes; i++ {
-		var overrideIdx int
+		overrideIdx := i
 		var nodeName string
-		switch in.OverrideMode {
-		case "each":
-			overrideIdx = i
-		case "all":
-			overrideIdx = 0
+		if in.OverrideMode == "all" {
 			if len(in.NodeSpecs[overrideIdx].Node.CustomPorts) > 0 {
 				return nil, fmt.Errorf("custom_ports can be used only with override_mode = 'each'")
 			}

@@ -15,7 +15,7 @@ import (
 type CfgLogs struct {
 	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
 	MockerDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
-	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
+	NodeSets           []*ns.Input       `toml:"nodesets" validate:"required"`
 }
 
 func TestLogsSmoke(t *testing.T) {
@@ -45,7 +45,7 @@ func TestLogsSmoke(t *testing.T) {
 	require.NoError(t, err)
 	_, err = fake.NewFakeDataProvider(in.MockerDataProvider)
 	require.NoError(t, err)
-	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc)
+	out, err := ns.NewSharedDBNodeSet(in.NodeSets[0], bc)
 	require.NoError(t, err)
 
 	t.Run("test something", func(t *testing.T) {

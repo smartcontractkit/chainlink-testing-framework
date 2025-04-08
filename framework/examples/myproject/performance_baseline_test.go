@@ -19,7 +19,7 @@ import (
 type CfgLoad struct {
 	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
 	MockerDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
-	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
+	NodeSets           []*ns.Input       `toml:"nodesets" validate:"required"`
 }
 
 func TestPerformanceBaseline(t *testing.T) {
@@ -30,7 +30,7 @@ func TestPerformanceBaseline(t *testing.T) {
 	require.NoError(t, err)
 	_, err = fake.NewFakeDataProvider(in.MockerDataProvider)
 	require.NoError(t, err)
-	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc)
+	out, err := ns.NewSharedDBNodeSet(in.NodeSets[0], bc)
 	require.NoError(t, err)
 
 	var lokiCfg *wasp.LokiConfig

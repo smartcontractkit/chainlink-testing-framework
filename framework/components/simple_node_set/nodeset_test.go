@@ -39,34 +39,7 @@ func checkBasicOutputs(t *testing.T, output *ns.Output) {
 
 func TestSmokeComponentDockerNodeSetSharedDB(t *testing.T) {
 	testCases := []testCase{
-		{
-			name: "2 nodes cluster, override mode 'all'",
-			bcInput: &blockchain.Input{
-				Type:    "anvil",
-				Image:   "f4hrenh9it/foundry",
-				Port:    "8545",
-				ChainID: "31337",
-			},
-			nodeSetInput: &ns.Input{
-				Name:         "don-1",
-				Nodes:        2,
-				OverrideMode: "all",
-				DbInput: &postgres.Input{
-					Image: "postgres:12.0",
-				},
-				NodeSpecs: []*clnode.Input{
-					{
-						Node: &clnode.NodeInput{
-							Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",
-							Name:  "cl-node",
-						},
-					},
-				},
-			},
-			assertion: func(t *testing.T, output *ns.Output) {
-				checkBasicOutputs(t, output)
-			},
-		},
+		// only 'each' mode is available when using as code to simplify configuration
 		{
 			name: "2 nodes cluster, override mode 'each'",
 			bcInput: &blockchain.Input{

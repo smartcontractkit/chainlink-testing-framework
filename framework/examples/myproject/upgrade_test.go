@@ -36,7 +36,7 @@ const (
 type CfgReload struct {
 	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
 	MockerDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
-	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
+	NodeSets           []*ns.Input       `toml:"nodesets" validate:"required"`
 }
 
 func TestUpgrade(t *testing.T) {
@@ -49,7 +49,7 @@ func TestUpgrade(t *testing.T) {
 	require.NoError(t, err)
 
 	// deploy first time
-	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc)
+	out, err := ns.NewSharedDBNodeSet(in.NodeSets[0], bc)
 	require.NoError(t, err)
 
 	c, err := clclient.New(out.CLNodes)
@@ -57,18 +57,18 @@ func TestUpgrade(t *testing.T) {
 	_, _, err = c[0].CreateJobRaw(testJob)
 	require.NoError(t, err)
 
-	in.NodeSet.NodeSpecs[0].Node.Image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
-	in.NodeSet.NodeSpecs[0].Node.UserConfigOverrides = `
+	in.NodeSets[0].NodeSpecs[0].Node.Image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+	in.NodeSets[0].NodeSpecs[0].Node.UserConfigOverrides = `
 											[Log]
 											level = 'info'
 	`
-	in.NodeSet.NodeSpecs[4].Node.Image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
-	in.NodeSet.NodeSpecs[4].Node.UserConfigOverrides = `
+	in.NodeSets[0].NodeSpecs[4].Node.Image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+	in.NodeSets[0].NodeSpecs[4].Node.UserConfigOverrides = `
 											[Log]
 											level = 'info'
 	`
 
-	out, err = ns.UpgradeNodeSet(t, in.NodeSet, bc, 3*time.Second)
+	out, err = ns.UpgradeNodeSet(t, in.NodeSets[0], bc, 3*time.Second)
 	require.NoError(t, err)
 
 	jobs, _, err := c[0].ReadJobs()
