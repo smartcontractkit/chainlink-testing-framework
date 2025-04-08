@@ -88,7 +88,7 @@ func mergeInputs[T any]() (*T, error) {
 			fmt.Println(string(data))
 		}
 
-		data, err = transformAllOverrideModeForNodeSet(data)
+		data, err = transformAllOverrideModeForNodeSets(data)
 		if err != nil {
 			return nil, fmt.Errorf("error transforming node specs: %w", err)
 		}
@@ -146,38 +146,44 @@ func validate(s interface{}) error {
 	return nil
 }
 
-// transformAllOverrideModeForNodeSet we need this function so the test logic can be the same in both "each" and "all" override modes
+// transformAllOverrideModeForNodeSets we need this function so the test logic can be the same in both "each" and "all" override modes
 // we can't do UnmarshalTOML or UnmarshalText because our TOML library do not support it
-func transformAllOverrideModeForNodeSet(data []byte) ([]byte, error) {
+func transformAllOverrideModeForNodeSets(data []byte) ([]byte, error) {
 	var config map[string]interface{}
 	if err := toml.Unmarshal(data, &config); err != nil {
 		return nil, err
 	}
-	nodeset, ok := config["nodeset"].(map[string]interface{})
+	nodesets, ok := config["nodesets"].([]interface{})
 	if !ok {
 		return data, nil
 	}
-	if nodeset["override_mode"] != "all" {
-		return data, nil
-	}
-	nodes, ok := nodeset["nodes"].(int64)
-	if !ok || nodes <= 0 {
-		return nil, fmt.Errorf("invalid nodes count")
-	}
-	specs, ok := nodeset["node_specs"].([]interface{})
-	if !ok || len(specs) == 0 {
-		return nil, fmt.Errorf("node_specs must be provided")
-	}
-	firstSpec := specs[0].(map[string]interface{})
-	expanded := make([]interface{}, nodes)
-	for i := range expanded {
-		newSpec := make(map[string]interface{})
-		for k, v := range firstSpec {
-			newSpec[k] = v
+	for _, nodesetInterface := range nodesets {
+		nodeset, ok := nodesetInterface.(map[string]interface{})
+		if !ok {
+			continue
 		}
-		expanded[i] = newSpec
+		if nodeset["override_mode"] != "all" {
+			continue
+		}
+		nodes, ok := nodeset["nodes"].(int64)
+		if !ok || nodes <= 0 {
+			return nil, fmt.Errorf("nodesets.nodes must be provided")
+		}
+		specs, ok := nodeset["node_specs"].([]interface{})
+		if !ok || len(specs) == 0 {
+			return nil, fmt.Errorf("nodesets.node_specs must be provided")
+		}
+		firstSpec := specs[0].(map[string]interface{})
+		expanded := make([]interface{}, nodes)
+		for i := range expanded {
+			newSpec := make(map[string]interface{})
+			for k, v := range firstSpec {
+				newSpec[k] = v
+			}
+			expanded[i] = newSpec
+		}
+		nodeset["node_specs"] = expanded
 	}
-	nodeset["node_specs"] = expanded
 	return toml.Marshal(config)
 }
 

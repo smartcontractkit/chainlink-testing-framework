@@ -3,6 +3,7 @@ package examples
 import (
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
@@ -14,7 +15,7 @@ import (
 type Cfg struct {
 	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
 	MockerDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
-	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
+	NodeSets           []*ns.Input       `toml:"nodesets" validate:"required"`
 }
 
 func TestSmoke(t *testing.T) {
@@ -25,8 +26,9 @@ func TestSmoke(t *testing.T) {
 	require.NoError(t, err)
 	_, err = fake.NewFakeDataProvider(in.MockerDataProvider)
 	require.NoError(t, err)
-	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc)
+	out, err := ns.NewSharedDBNodeSet(in.NodeSets[0], bc)
 	require.NoError(t, err)
+	spew.Dump(in.NodeSets[0])
 
 	t.Run("test something", func(t *testing.T) {
 		for _, n := range out.CLNodes {

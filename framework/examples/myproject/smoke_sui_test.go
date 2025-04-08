@@ -20,7 +20,7 @@ import (
 type CfgSui struct {
 	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
 	MockerDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
-	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
+	NodeSets           []*ns.Input       `toml:"nodesets" validate:"required"`
 }
 
 func TestSuiSmoke(t *testing.T) {
@@ -44,14 +44,14 @@ func TestSuiSmoke(t *testing.T) {
 
 	fmt.Printf("Sui host HTTP URL: %s", bc.Nodes[0].ExternalHTTPUrl)
 	fmt.Printf("Sui internal (docker) HTTP URL: %s", bc.Nodes[0].InternalHTTPUrl)
-	for _, n := range in.NodeSet.NodeSpecs {
+	for _, n := range in.NodeSets[0].NodeSpecs {
 		// configure each CL node for Sui, just an example
 		n.Node.TestConfigOverrides = `
 											[Log]
 											level = 'info'
 `
 	}
-	out, err := ns.NewSharedDBNodeSet(in.NodeSet, nil)
+	out, err := ns.NewSharedDBNodeSet(in.NodeSets[0], nil)
 	require.NoError(t, err)
 
 	t.Run("test something", func(t *testing.T) {

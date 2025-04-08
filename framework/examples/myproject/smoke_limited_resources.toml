@@ -10,22 +10,22 @@
 [data_provider]
   port = 9111
 
-[nodeset]
+[[nodesets]]
   nodes = 5
   override_mode = "all"
 
-  [nodeset.db]
+  [nodesets.db]
     image = "postgres:12.0"
 
-    [nodeset.db.resources]
+    [nodesets.db.resources]
       cpus = 1
       memory_mb = 1048
 
-  [[nodeset.node_specs]]
+  [[nodesets.node_specs]]
 
-    [nodeset.node_specs.node]
+    [nodesets.node_specs.node]
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
 
-      [nodeset.node_specs.node.resources]
+      [nodesets.node_specs.node.resources]
         cpus = 1
         memory_mb = 1048
