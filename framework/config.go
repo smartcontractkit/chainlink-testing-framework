@@ -167,11 +167,11 @@ func transformAllOverrideModeForNodeSets(data []byte) ([]byte, error) {
 		}
 		nodes, ok := nodeset["nodes"].(int64)
 		if !ok || nodes <= 0 {
-			return nil, fmt.Errorf("invalid nodes count")
+			return nil, fmt.Errorf("nodesets.nodes must be provided")
 		}
 		specs, ok := nodeset["node_specs"].([]interface{})
 		if !ok || len(specs) == 0 {
-			return nil, fmt.Errorf("node_specs must be provided")
+			return nil, fmt.Errorf("nodesets.node_specs must be provided")
 		}
 		firstSpec := specs[0].(map[string]interface{})
 		expanded := make([]interface{}, nodes)
