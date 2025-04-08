@@ -256,18 +256,18 @@
       http_url = "http://127.0.0.1:8545"
       ws_url = "ws://127.0.0.1:8545"
 
-[nodeset]
+[[nodesets]]
 
-  [[nodeset.node_specs]]
+  [[nodesets.node_specs]]
   ...
 
-  [nodeset.out]
+  [nodesets.out]
     use_cache = true
 
-    [[nodeset.out.cl_nodes]]
+    [[nodesets.out.cl_nodes]]
       use_cache = true
 
-      [nodeset.out.cl_nodes.node]
+      [nodesets.out.cl_nodes.node]
         # set up your user/password for API authorization
         api_auth_user = 'notreal@fakeemail.ch'
         api_auth_password = 'fj293fbBnlQ!f9vNs'
@@ -275,7 +275,7 @@
         p2p_url = "http://127.0.0.1:12000"
         url = "http://127.0.0.1:10000"
 
-      [nodeset.out.cl_nodes.postgresql]
+      [nodesets.out.cl_nodes.postgresql]
         # set up a database URL so tests can connect to your database if needed
         url = "postgresql://chainlink:thispasswordislongenough@127.0.0.1:13000/db_0?sslmode=disable"
       

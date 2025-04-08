@@ -20,17 +20,17 @@ Create a configuration file `smoke.toml`
   type = "anvil"
   docker_cmd_params = ["-b", "1"]
 
-[nodeset]
+[[nodesets]]
   name = "don"
   nodes = 5
   override_mode = "all"
   
-  [nodeset.db]
+  [nodesets.db]
     image = "postgres:12.0"
 
-  [[nodeset.node_specs]]
+  [[nodesets.node_specs]]
 
-    [nodeset.node_specs.node]
+    [nodesets.node_specs.node]
       # path to your capability binaries
       capabilities = ["./kvstore"]
       # default capabilities directory

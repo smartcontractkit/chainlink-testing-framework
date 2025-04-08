@@ -433,16 +433,16 @@ OrbStack Version: 1.8.2 (1080200)
 </code></pre>
 <p>Download our <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8">CLI</a></p>
 <p>OS X <code>arm64</code> (M1/M2/M3 MacBooks)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.7.2/framework-v0.7.2-darwin-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.7.3/framework-v0.7.3-darwin-arm64.tar.gz | tar -xz
 </code></pre>
 <p>OS X <code>amd64</code> (old Intel chips)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.7.2/framework-v0.7.2-darwin-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.7.3/framework-v0.7.3-darwin-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>arm64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.7.2/framework-v0.7.2-linux-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.7.3/framework-v0.7.3-linux-arm64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>amd64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.7.2/framework-v0.7.2-linux-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.7.3/framework-v0.7.3-linux-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Allow it to run in <code>System Settings -&gt; Security Settings</code> (OS X)</p>
 <p><img src="framework/images/img.png" alt="img.png" /></p>
@@ -648,17 +648,17 @@ func TestMe(t *testing.T) {
   type = "anvil"
   docker_cmd_params = ["-b", "1"]
 
-[nodeset]
+[[nodesets]]
   name = "don"
   nodes = 5
   override_mode = "all"
   
-  [nodeset.db]
+  [nodesets.db]
     image = "postgres:12.0"
 
-  [[nodeset.node_specs]]
+  [[nodesets.node_specs]]
 
-    [nodeset.node_specs.node]
+    [nodesets.node_specs.node]
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
 </code></pre>
 <p>Create a file <code>smoke_test.go</code></p>
@@ -861,17 +861,17 @@ go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install gi
   type = "anvil"
   docker_cmd_params = ["-b", "1"]
 
-[nodeset]
+[[nodesets]]
   name = "don"
   nodes = 5
   override_mode = "all"
   
-  [nodeset.db]
+  [nodesets.db]
     image = "postgres:12.0"
 
-  [[nodeset.node_specs]]
+  [[nodesets.node_specs]]
 
-    [nodeset.node_specs.node]
+    [nodesets.node_specs.node]
       # path to your capability binaries
       capabilities = ["./kvstore"]
       # default capabilities directory
@@ -961,17 +961,17 @@ go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install gi
   type = "anvil"
   docker_cmd_params = ["-b", "1"]
 
-[nodeset]
+[[nodesets]]
   name = "don"
   nodes = 5
   override_mode = "all"
   
-  [nodeset.db]
+  [nodesets.db]
     image = "postgres:12.0"
 
-  [[nodeset.node_specs]]
+  [[nodesets.node_specs]]
 
-    [nodeset.node_specs.node]
+    [nodesets.node_specs.node]
       # Dockerfile path is relative to "docker_ctx"
       docker_file = "core/chainlink.Dockerfile"
       docker_ctx = "../.."
@@ -1058,45 +1058,45 @@ go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install gi
   type = "anvil"
   docker_cmd_params = ["-b", "1"]
 
-[nodeset]
+[[nodesets]]
   name = "don"
   nodes = 5
   override_mode = "each"
 
-  [nodeset.db]
+  [nodesets.db]
     image = "postgres:12.0"
 
-  [[nodeset.node_specs]]
+  [[nodesets.node_specs]]
 
-    [nodeset.node_specs.node]
+    [nodesets.node_specs.node]
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
       user_config_overrides = "      [Log]\n      level = 'info'\n      "
       user_secrets_overrides = ""
 
-  [[nodeset.node_specs]]
+  [[nodesets.node_specs]]
 
-    [nodeset.node_specs.node]
+    [nodesets.node_specs.node]
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
       user_config_overrides = "      [Log]\n      level = 'info'\n      "
       user_secrets_overrides = ""
 
-  [[nodeset.node_specs]]
+  [[nodesets.node_specs]]
 
-    [nodeset.node_specs.node]
+    [nodesets.node_specs.node]
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
       user_config_overrides = "      [Log]\n      level = 'info'\n      "
       user_secrets_overrides = ""
 
-  [[nodeset.node_specs]]
+  [[nodesets.node_specs]]
 
-    [nodeset.node_specs.node]
+    [nodesets.node_specs.node]
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
       user_config_overrides = "      [Log]\n      level = 'info'\n      "
       user_secrets_overrides = ""
 
-  [[nodeset.node_specs]]
+  [[nodesets.node_specs]]
 
-    [nodeset.node_specs.node]
+    [nodesets.node_specs.node]
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
       user_config_overrides = "      [Log]\n      level = 'info'\n      "
       user_secrets_overrides = ""
@@ -1924,7 +1924,7 @@ export CTF_CONFIGS=load-profile-api-service-1.toml,load-profile-api-service-2.to
 <li><a href="framework/components/../components/chainlink/nodeset.html">NodeSet</a> (Delve debugger): <code>40000..400XX</code> (if you are using debug image)</li>
 <li>Shared <code>PostgreSQL</code> volume is called <code>postgresql_data</code></li>
 </ul>
-<pre><code>[nodeset]
+<pre><code>[[nodesets]]
   # HTTP API port range start, each new node get port incremented (host machine)
   http_port_range_start = 10000
   # P2P API port range start, each new node get port incremented (host machine)
@@ -1933,7 +1933,7 @@ export CTF_CONFIGS=load-profile-api-service-1.toml,load-profile-api-service-2.to
 <ul>
 <li><a href="framework/components/../components/chainlink/nodeset.html">PostgreSQL</a>: <code>13000</code> (we do not allow to have multiple databases for now, for simplicity)</li>
 </ul>
-<pre><code>    [nodeset.node_specs.db]
+<pre><code>    [nodesets.node_specs.db]
       # PostgreSQL volume name
       volume_name = "a"
       # PostgreSQL port (host machine)
@@ -1942,23 +1942,23 @@ export CTF_CONFIGS=load-profile-api-service-1.toml,load-profile-api-service-2.to
 <p>When you run <code>ctf d rm</code> database volume will be <strong>removed</strong>.</p>
 <div class="warning">
 <p>One node set is enough for any kind of testing, if you need more nodes consider extending your existing node set:</p>
-<pre><code>[nodeset]
+<pre><code>[[nodesets]]
   nodes = 10
 </code></pre>
 </div>
 <h2 id="custom-ports"><a class="header" href="#custom-ports">Custom ports</a></h2>
 <p>You can also define a custom set of ports for any node.</p>
-<pre><code class="language-toml">[nodeset]
+<pre><code class="language-toml">[[nodesets]]
   name = "don"
   nodes = 5
   override_mode = "each"
   
-  [nodeset.db]
+  [nodesets.db]
     image = "postgres:12.0"
 
-  [[nodeset.node_specs]]
+  [[nodesets.node_specs]]
 
-    [nodeset.node_specs.node]
+    [nodesets.node_specs.node]
       # here we defined 2 new ports to listen and mapped them to our host machine
       # syntax is "host:docker"
       custom_ports = ["14000:15000"]
@@ -2795,18 +2795,18 @@ memory_mb = 1048
       http_url = "http://127.0.0.1:8545"
       ws_url = "ws://127.0.0.1:8545"
 
-[nodeset]
+[[nodesets]]
 
-  [[nodeset.node_specs]]
+  [[nodesets.node_specs]]
   ...
 
-  [nodeset.out]
+  [nodesets.out]
     use_cache = true
 
-    [[nodeset.out.cl_nodes]]
+    [[nodesets.out.cl_nodes]]
       use_cache = true
 
-      [nodeset.out.cl_nodes.node]
+      [nodesets.out.cl_nodes.node]
         # set up your user/password for API authorization
         api_auth_user = 'notreal@fakeemail.ch'
         api_auth_password = 'fj293fbBnlQ!f9vNs'
@@ -2814,7 +2814,7 @@ memory_mb = 1048
         p2p_url = "http://127.0.0.1:12000"
         url = "http://127.0.0.1:10000"
 
-      [nodeset.out.cl_nodes.postgresql]
+      [nodesets.out.cl_nodes.postgresql]
         # set up a database URL so tests can connect to your database if needed
         url = "postgresql://chainlink:thispasswordislongenough@127.0.0.1:13000/db_0?sslmode=disable"
       
@@ -4622,7 +4622,7 @@ Here we provide full configuration reference, if you want to copy and run it, pl
       ws_url = "ws://127.0.0.1:33955"
 </code></pre>
 <p>Then configure NodeSet</p>
-<pre><code class="language-toml">[nodeset]
+<pre><code class="language-toml">[[nodesets]]
   # unique NodeSet name
   name = "don"
   # amount of Chainlink nodes to spin up
@@ -4636,7 +4636,7 @@ Here we provide full configuration reference, if you want to copy and run it, pl
   # P2P API port range start, each new node get port incremented (host machine)
   p2p_port_range_start = 12000
   
-  [nodeset.db]
+  [nodesets.db]
     # PostgreSQL image version and tag
     image = "postgres:12.0"
     # Pulls the image every time if set to 'true', used like that in CI. Can be set to 'false' to speed up local runs
@@ -4644,9 +4644,9 @@ Here we provide full configuration reference, if you want to copy and run it, pl
     # PostgreSQL volume name
     volume_name = ""
 
-  [[nodeset.node_specs]]
+  [[nodesets.node_specs]]
 
-    [nodeset.node_specs.node]
+    [nodesets.node_specs.node]
       # custom ports that plugins may need to expose and map to the host machine
       custom_ports = [14000, 14001]
       # A list of paths to capability binaries
@@ -4677,16 +4677,16 @@ Here we provide full configuration reference, if you want to copy and run it, pl
       """
 
   # Outputs are the results of deploying a component that can be used by another component
-  [nodeset.out]
+  [nodesets.out]
     # If 'use_cache' equals 'true' we skip component setup when we run the test and return the outputs
     use_cache = true
     
     # Describes deployed or external Chainlink nodes
-    [[nodeset.out.cl_nodes]]
+    [[nodesets.out.cl_nodes]]
       use_cache = true
 
       # Describes deployed or external Chainlink node
-      [nodeset.out.cl_nodes.node]
+      [nodesets.out.cl_nodes.node]
         # API user name
         api_auth_user = 'notreal@fakeemail.ch'
         # API password
@@ -4696,15 +4696,15 @@ Here we provide full configuration reference, if you want to copy and run it, pl
         p2p_url = "http://127.0.0.1:32996"
         url = "http://127.0.0.1:33096"
       # Describes PostgreSQL instance
-      [nodeset.out.cl_nodes.postgresql]
+      [nodesets.out.cl_nodes.postgresql]
         # PostgreSQL connection string
         # in case of using external database can be overriden
         url = "postgresql://chainlink:thispasswordislongenough@127.0.0.1:33094/chainlink?sslmode=disable"
     
     # Can have more than one node, fields are the same, see above ^^
-    [[nodeset.out.cl_nodes]]
-      [nodeset.out.cl_nodes.node]
-      [nodeset.out.cl_nodes.postgresql]
+    [[nodesets.out.cl_nodes]]
+      [nodesets.out.cl_nodes.node]
+      [nodesets.out.cl_nodes.postgresql]
     ...
 </code></pre>
 <h2 id="usage-7"><a class="header" href="#usage-7">Usage</a></h2>
@@ -4720,7 +4720,7 @@ import (
 
 type Config struct {
 	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
-	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
+	NodeSets           []*ns.Input         `toml:"nodesets" validate:"required"`
 }
 
 func TestMe(t *testing.T) {
@@ -16640,7 +16640,7 @@ use <code>GetTestContainersGoTestLogger(*testing.T)</code> instead.</p>
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>d828d47f</code></li>
+<li>Commit: <code>29431925</code></li>
 </ul>
 
                     </main>

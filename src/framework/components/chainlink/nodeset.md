@@ -41,7 +41,7 @@ This component requires some Blockchain to be deployed, add this to config
 
 Then configure NodeSet
 ```toml
-[nodeset]
+[[nodesets]]
   # unique NodeSet name
   name = "don"
   # amount of Chainlink nodes to spin up
@@ -55,7 +55,7 @@ Then configure NodeSet
   # P2P API port range start, each new node get port incremented (host machine)
   p2p_port_range_start = 12000
   
-  [nodeset.db]
+  [nodesets.db]
     # PostgreSQL image version and tag
     image = "postgres:12.0"
     # Pulls the image every time if set to 'true', used like that in CI. Can be set to 'false' to speed up local runs
@@ -63,9 +63,9 @@ Then configure NodeSet
     # PostgreSQL volume name
     volume_name = ""
 
-  [[nodeset.node_specs]]
+  [[nodesets.node_specs]]
 
-    [nodeset.node_specs.node]
+    [nodesets.node_specs.node]
       # custom ports that plugins may need to expose and map to the host machine
       custom_ports = [14000, 14001]
       # A list of paths to capability binaries
@@ -96,16 +96,16 @@ Then configure NodeSet
       """
 
   # Outputs are the results of deploying a component that can be used by another component
-  [nodeset.out]
+  [nodesets.out]
     # If 'use_cache' equals 'true' we skip component setup when we run the test and return the outputs
     use_cache = true
     
     # Describes deployed or external Chainlink nodes
-    [[nodeset.out.cl_nodes]]
+    [[nodesets.out.cl_nodes]]
       use_cache = true
 
       # Describes deployed or external Chainlink node
-      [nodeset.out.cl_nodes.node]
+      [nodesets.out.cl_nodes.node]
         # API user name
         api_auth_user = 'notreal@fakeemail.ch'
         # API password
@@ -115,15 +115,15 @@ Then configure NodeSet
         p2p_url = "http://127.0.0.1:32996"
         url = "http://127.0.0.1:33096"
       # Describes PostgreSQL instance
-      [nodeset.out.cl_nodes.postgresql]
+      [nodesets.out.cl_nodes.postgresql]
         # PostgreSQL connection string
         # in case of using external database can be overriden
         url = "postgresql://chainlink:thispasswordislongenough@127.0.0.1:33094/chainlink?sslmode=disable"
     
     # Can have more than one node, fields are the same, see above ^^
-    [[nodeset.out.cl_nodes]]
-      [nodeset.out.cl_nodes.node]
-      [nodeset.out.cl_nodes.postgresql]
+    [[nodesets.out.cl_nodes]]
+      [nodesets.out.cl_nodes.node]
+      [nodesets.out.cl_nodes.postgresql]
     ...
 ```
 
@@ -141,7 +141,7 @@ import (
 
 type Config struct {
 	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
-	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
+	NodeSets           []*ns.Input         `toml:"nodesets" validate:"required"`
 }
 
 func TestMe(t *testing.T) {
