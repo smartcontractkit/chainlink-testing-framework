@@ -139,7 +139,7 @@ func (c *ChainlinkClient) WaitHealthy(pattern, status string, attempts uint) err
 	}
 	err = retry.Do(
 		func() error {
-			framework.L.Info().Str(NodeURL, c.Config.URL).Uint("Attempts", attempts).Msg("Awaiting Chainlink node health status")
+			framework.L.Debug().Str(NodeURL, c.Config.URL).Uint("Attempts", attempts).Msg("Awaiting Chainlink node health status")
 			resp, err := c.APIClient.R().
 				SetResult(&respBody).
 				Get("/health")
