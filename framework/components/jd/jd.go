@@ -34,6 +34,8 @@ type Input struct {
 
 type Output struct {
 	UseCache         bool   `toml:"use_cache"`
+	ContainerName    string `toml:"container_name"`
+	DBContainerName  string `toml:"db_container_name"`
 	ExternalGRPCUrl  string `toml:"grpc_url"`
 	InternalGRPCUrl  string `toml:"internal_grpc_url"`
 	ExternalWSRPCUrl string `toml:"wsrpc_url"`
@@ -123,6 +125,8 @@ func NewJD(in *Input) (*Output, error) {
 	}
 	out := &Output{
 		UseCache:         true,
+		ContainerName:    containerName,
+		DBContainerName:  pgOut.ContainerName,
 		ExternalGRPCUrl:  fmt.Sprintf("%s:%s", host, in.GRPCPort),
 		InternalGRPCUrl:  fmt.Sprintf("%s:%s", containerName, in.GRPCPort),
 		ExternalWSRPCUrl: fmt.Sprintf("%s:%s", host, in.WSRPCPort),

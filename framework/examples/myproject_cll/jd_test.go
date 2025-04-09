@@ -8,29 +8,38 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/jd"
-	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 )
 
 type CfgJD struct {
-	BlockchainA *blockchain.Input `toml:"blockchain_a" validate:"required"`
-	JD          *jd.Input         `toml:"jd" validate:"required"`
-	NodeSet     *ns.Input         `toml:"nodeset" validate:"required"`
+	Blockchain *blockchain.Input `toml:"blockchain" validate:"required"`
+	JD         *jd.Input         `toml:"jd" validate:"required"`
 }
 
-func TestJDAndNodeSet(t *testing.T) {
+func TestJD(t *testing.T) {
 	in, err := framework.Load[CfgJD](t)
 	require.NoError(t, err)
 
-	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
-	require.NoError(t, err)
-	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc)
-	require.NoError(t, err)
-	_, err = jd.NewJD(in.JD)
+	bcOut, err := blockchain.NewBlockchainNetwork(in.Blockchain)
 	require.NoError(t, err)
 
-	t.Run("test something", func(t *testing.T) {
-		for _, n := range out.CLNodes {
-			require.NotEmpty(t, n.Node.ExternalURL)
-		}
+	jdOut, err := jd.NewJD(in.JD)
+	require.NoError(t, err)
+	dc, err := framework.NewDockerClient()
+	require.NoError(t, err)
+	// find what to dump, RDS API here instead?
+	_, err = dc.ExecContainer(jdOut.DBContainerName, []string{"pg_dump", "-U", "chainlink", "-h", "localhost", "-p", "5432", "-d", "chainlink", "-F", "c", "-f", "jd.dump"})
+	require.NoError(t, err)
+
+	// copy your dump
+	err = dc.CopyFile(jdOut.DBContainerName, "jd.dump", "/")
+	require.NoError(t, err)
+
+	// restore
+	_, err = dc.ExecContainer(jdOut.DBContainerName, []string{"pg_restore", "-U", "chainlink", "-d", "chainlink", "jd.dump"})
+	require.NoError(t, err)
+
+	t.Run("test changesets with forked network and real JD state", func(t *testing.T) {
+		_ = bcOut
+		_ = jdOut
 	})
 }

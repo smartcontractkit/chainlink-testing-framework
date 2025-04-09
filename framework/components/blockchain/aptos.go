@@ -103,13 +103,18 @@ func newAptos(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	dc, err := framework.NewDockerClient()
+	if err != nil {
+		return nil, err
+	}
 	cmdStr := []string{"aptos", "init", "--network=local", "--assume-yes", fmt.Sprintf("--private-key=%s", DefaultAptosPrivateKey)}
-	_, err = framework.ExecContainer(containerName, cmdStr)
+	_, err = dc.ExecContainer(containerName, cmdStr)
 	if err != nil {
 		return nil, err
 	}
 	fundCmd := []string{"aptos", "account", "fund-with-faucet", "--account", DefaultAptosAccount, "--amount", "1000000000000"}
-	_, err = framework.ExecContainer(containerName, fundCmd)
+	_, err = dc.ExecContainer(containerName, fundCmd)
 	if err != nil {
 		return nil, err
 	}
