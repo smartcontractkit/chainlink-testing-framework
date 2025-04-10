@@ -259,12 +259,53 @@
       "type": "logs"
     },
     {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "description": "Workflow Custom Messages",
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      },
+      "id": 61,
+      "options": {
+        "dedupStrategy": "exact",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showLogContextToggle": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki"
+          },
+          "editorMode": "code",
+          "expr": "{service_name=~\".*chainlink\"} !~ \"heartbeat\"\n| json | __error__ = \"\"",
+          "format": "",
+          "legendFormat": "",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Workflow Custom Messages",
+      "transparent": true,
+      "type": "logs"
+    },
+    {
       "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 22
+        "y": 28
       },
       "id": 56,
       "panels": [
@@ -449,7 +490,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 23
+        "y": 29
       },
       "id": 57,
       "panels": [],
@@ -487,7 +528,7 @@
         "h": 4,
         "w": 12,
         "x": 0,
-        "y": 24
+        "y": 30
       },
       "id": 3,
       "options": {
@@ -559,7 +600,7 @@
         "h": 4,
         "w": 12,
         "x": 12,
-        "y": 24
+        "y": 30
       },
       "id": 4,
       "options": {
@@ -665,7 +706,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 28
+        "y": 34
       },
       "id": 6,
       "interval": "5s",
@@ -768,7 +809,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 36
+        "y": 42
       },
       "id": 7,
       "interval": "5s",
@@ -871,7 +912,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 44
+        "y": 50
       },
       "id": 8,
       "interval": "5s",
@@ -974,7 +1015,7 @@
         "h": 8,
         "w": 16,
         "x": 0,
-        "y": 52
+        "y": 58
       },
       "id": 9,
       "options": {
@@ -1071,7 +1112,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 52
+        "y": 58
       },
       "id": 10,
       "interval": "5s",
@@ -1174,7 +1215,7 @@
         "h": 8,
         "w": 16,
         "x": 0,
-        "y": 60
+        "y": 66
       },
       "id": 11,
       "options": {
@@ -1271,7 +1312,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 60
+        "y": 66
       },
       "id": 12,
       "interval": "5s",
@@ -1374,7 +1415,7 @@
         "h": 8,
         "w": 16,
         "x": 0,
-        "y": 68
+        "y": 74
       },
       "id": 13,
       "options": {
@@ -1471,7 +1512,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 68
+        "y": 74
       },
       "id": 14,
       "interval": "5s",
@@ -1574,7 +1615,7 @@
         "h": 8,
         "w": 16,
         "x": 0,
-        "y": 76
+        "y": 82
       },
       "id": 15,
       "options": {
@@ -1671,7 +1712,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 76
+        "y": 82
       },
       "id": 16,
       "interval": "5s",
@@ -1773,7 +1814,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 84
+        "y": 90
       },
       "id": 17,
       "options": {
@@ -1870,7 +1911,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 84
+        "y": 90
       },
       "id": 18,
       "options": {
@@ -1967,7 +2008,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 92
+        "y": 98
       },
       "id": 19,
       "options": {
@@ -2064,7 +2105,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 92
+        "y": 98
       },
       "id": 20,
       "options": {
@@ -2161,7 +2202,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 100
+        "y": 106
       },
       "id": 21,
       "options": {
@@ -2258,7 +2299,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 100
+        "y": 106
       },
       "id": 22,
       "options": {
@@ -2355,7 +2396,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 108
+        "y": 114
       },
       "id": 23,
       "options": {
@@ -2452,7 +2493,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 108
+        "y": 114
       },
       "id": 24,
       "options": {
@@ -2490,7 +2531,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 116
+        "y": 122
       },
       "id": 58,
       "panels": [],
@@ -2562,7 +2603,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 117
+        "y": 123
       },
       "id": 28,
       "options": {
@@ -2659,7 +2700,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 125
+        "y": 131
       },
       "id": 29,
       "options": {
@@ -2756,7 +2797,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 133
+        "y": 139
       },
       "id": 30,
       "options": {
@@ -2853,7 +2894,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 141
+        "y": 147
       },
       "id": 31,
       "options": {
@@ -2950,7 +2991,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 149
+        "y": 155
       },
       "id": 32,
       "options": {
@@ -3047,7 +3088,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 157
+        "y": 163
       },
       "id": 33,
       "options": {
@@ -3144,7 +3185,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 165
+        "y": 171
       },
       "id": 34,
       "options": {
@@ -3177,7 +3218,7 @@
       "type": "timeseries"
     }
   ],
-  "refresh": "10s",
+  "refresh": "30s",
   "schemaVersion": 38,
   "style": "dark",
   "tags": [
@@ -3191,7 +3232,7 @@
     "list": []
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {},

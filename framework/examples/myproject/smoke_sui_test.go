@@ -36,7 +36,9 @@ func TestSuiSmoke(t *testing.T) {
 	_ = bc.NetworkSpecificData.SuiAccount.SuiAddress
 
 	// execute any additional commands, to deploy contracts or set up
-	_, err = framework.ExecContainer(bc.ContainerName, []string{"ls", "-lah"})
+	dc, err := framework.NewDockerClient()
+	require.NoError(t, err)
+	_, err = dc.ExecContainer(bc.ContainerName, []string{"ls", "-lah"})
 	require.NoError(t, err)
 
 	_, err = fake.NewFakeDataProvider(in.MockerDataProvider)

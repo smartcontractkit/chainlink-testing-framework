@@ -26,7 +26,10 @@ func TestAptosSmoke(t *testing.T) {
 	_ = blockchain.DefaultAptosAccount
 	_ = blockchain.DefaultAptosPrivateKey
 
-	_, err = framework.ExecContainer(bc.ContainerName, []string{"ls", "-lah"})
+	dc, err := framework.NewDockerClient()
+	require.NoError(t, err)
+
+	_, err = dc.ExecContainer(bc.ContainerName, []string{"ls", "-lah"})
 	require.NoError(t, err)
 
 	t.Run("test something", func(t *testing.T) {

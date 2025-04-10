@@ -1,18 +1,7 @@
-
-[blockchain_a]
+[blockchain]
   type = "anvil"
-  docker_cmd_params = ["-b", "1"]
+  chain_id = "1337"
+  docker_cmd_params = ["--fork-url", "wss://avalanche-fuji-c-chain-rpc.publicnode.com", "--auto-impersonate", "-b", "1"]
 
 [jd]
-
-[[nodesets]]
-  nodes = 5
-  override_mode = "all"
-
-  [nodesets.db]
-    image = "postgres:12.0"
-
-  [[nodesets.node_specs]]
-
-    [nodesets.node_specs.node]
-      image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+  image = "job-distributor:0.9.0"

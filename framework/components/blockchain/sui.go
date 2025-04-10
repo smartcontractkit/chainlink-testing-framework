@@ -55,7 +55,11 @@ func fundAccount(url string, address string) error {
 // generateKeyData generates a wallet and returns all the data
 func generateKeyData(containerName string, keyCipherType string) (*SuiWalletInfo, error) {
 	cmdStr := []string{"sui", "keytool", "generate", keyCipherType, "--json"}
-	keyOut, err := framework.ExecContainer(containerName, cmdStr)
+	dc, err := framework.NewDockerClient()
+	if err != nil {
+		return nil, err
+	}
+	keyOut, err := dc.ExecContainer(containerName, cmdStr)
 	if err != nil {
 		return nil, err
 	}
