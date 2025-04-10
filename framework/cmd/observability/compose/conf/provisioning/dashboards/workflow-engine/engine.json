@@ -288,7 +288,7 @@
             "type": "loki"
           },
           "editorMode": "code",
-          "expr": "{service_name=\"unknown_service:chainlink\"} !~ \"heartbeat\"\n| json | __error__ = \"\"",
+          "expr": "{service_name=~\".*chainlink\"} !~ \"heartbeat\"\n| json | __error__ = \"\"",
           "format": "",
           "legendFormat": "",
           "queryType": "range",
