@@ -6,9 +6,6 @@ receivers:
       http:
         endpoint: 0.0.0.0:4318
 
-processors:
-  batch:
-
 exporters:
   debug:
     verbosity: detailed
@@ -25,6 +22,13 @@ exporters:
   prometheus:
     endpoint: "0.0.0.0:8889"
 
+processors:
+  transform:
+    log_statements:
+      - context: log
+        statements:
+          - set(body, Base64Decode(log.body.string))
+
 service:
   pipelines:
     traces:
@@ -32,6 +36,7 @@ service:
       exporters: [debug, otlp]
     logs:
       receivers: [otlp]
+      processors: [transform]
       exporters: [debug, otlphttp/logs]
     metrics:
       receivers: [otlp]

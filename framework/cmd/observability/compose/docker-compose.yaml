@@ -14,7 +14,7 @@ services:
       - "14250:14250" # jaeger grpc
       - "55680:55680" # otlp http legacy
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.96.0
+    image: otel/opentelemetry-collector-contrib:0.123.0
     volumes:
       - ./otel.yaml:/etc/otel/config.yaml
     command:
