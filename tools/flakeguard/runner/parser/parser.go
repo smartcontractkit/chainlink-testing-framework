@@ -282,8 +282,8 @@ func (p *defaultParser) parseTestResults(parseFilePaths []string, runPrefix stri
 					log.Error().Str("file", filePath).Bool("is_panic", panicDetectionMode).Bool("is_race", raceDetectionMode).Msg("Cannot attribute panic/race: Package context is missing.")
 				} else {
 					if panicDetectionMode {
-						// Call attribution function (now external)
-						panicTest, timeout, err := attributePanicToTest(outputs)
+						// Call exported attribution function
+						panicTest, timeout, err := AttributePanicToTest(outputs)
 						if err != nil {
 							log.Error().Str("file", filePath).Str("package", currentPackage).Err(err).Str("output_snippet", outputStr).Msg("Unable to attribute panic to a test")
 							panicTest = fmt.Sprintf("UnableToAttributePanicInPackage_%s", currentPackage) // Create a placeholder name
@@ -317,8 +317,8 @@ func (p *defaultParser) parseTestResults(parseFilePaths []string, runPrefix stri
 						result.FailedOutputs[runID] = append(result.FailedOutputs[runID], "--- END PANIC ---")
 
 					} else if raceDetectionMode {
-						// Call attribution function (now external)
-						raceTest, err := attributeRaceToTest(outputs)
+						// Call exported attribution function
+						raceTest, err := AttributeRaceToTest(outputs)
 						if err != nil {
 							log.Warn().Str("file", filePath).Str("package", currentPackage).Err(err).Str("output_snippet", outputStr).Msg("Unable to attribute race to a test")
 							raceTest = fmt.Sprintf("UnableToAttributeRaceInPackage_%s", currentPackage) // Create placeholder

@@ -11,22 +11,14 @@ import (
 )
 
 var (
-	// Regex to extract a valid test function name from a panic message.
-	// This is the most common situation for test panics, e.g.
-	// github.com/smartcontractkit/chainlink/deployment/keystone/changeset_test.TestDeployBalanceReader(0xc000583c00)
-	nestedTestNameRe = regexp.MustCompile(`\.(Test[^\s(]+)`) // Simpler regex, matches TestName directly after a dot
-
-	// Regex to check if the panic is from a log after a goroutine, e.g.
-	// panic: Log in goroutine after Test_workflowRegisteredHandler/skips_fetch_if_secrets_url_is_missing has completed: <Log line>
+	// Use the more precise original regex to avoid capturing .func suffixes
+	nestedTestNameRe = regexp.MustCompile(`\.(Test[^\s]+?)(?:\.[^(]+)?\s*\(`)
+	// Other regexes remain the same
 	testLogAfterTestRe = regexp.MustCompile(`^panic: Log in goroutine after (Test[^\s]+) has completed:`)
+	didTestTimeoutRe   = regexp.MustCompile(`^panic: test timed out after ([^\s]+)`)
+	timedOutTestNameRe = regexp.MustCompile(`^\s*(Test[^\s]+)\s+\((.*)\)`)
 
-	// Check if the panic message indicates a timeout, e.g.
-	// panic: test timed out after 10m0s
-	didTestTimeoutRe = regexp.MustCompile(`^panic: test timed out after ([^\s]+)`)
-	// Regex to extract a valid test function name from a panic message if the panic is a timeout, e.g.
-	// TestTimedOut (10m0s)
-	timedOutTestNameRe = regexp.MustCompile(`^\s*(Test[^\s]+)\s+\((.*)\)`) // Added optional leading space
-
+	// Exported Errors
 	ErrFailedToAttributePanicToTest              = errors.New("failed to attribute panic to test")
 	ErrFailedToAttributeRaceToTest               = errors.New("failed to attribute race to test")
 	ErrFailedToParseTimeoutDuration              = errors.New("failed to parse timeout duration")
@@ -36,13 +28,12 @@ var (
 	ErrDetectedTimeoutFailedAttribution          = errors.New("detected test timeout, but failed to attribute the timeout to a specific test")
 )
 
-// attributePanicToTest properly attributes panics to the test that caused them.
-// There are a lot of edge cases and strange behavior in Go test output when it comes to panics.
-func attributePanicToTest(outputs []string) (test string, timeout bool, err error) {
+// AttributePanicToTest properly attributes panics to the test that caused them.
+func AttributePanicToTest(outputs []string) (test string, timeout bool, err error) {
 	var (
 		timeoutDurationStr string
 		timeoutDuration    time.Duration
-		foundTestName      string // Store first plausible test name found
+		foundTestName      string // Store first plausible test name found as fallback
 	)
 
 	for _, output := range outputs {
@@ -64,12 +55,10 @@ func attributePanicToTest(outputs []string) (test string, timeout bool, err erro
 			var parseErr error
 			timeoutDuration, parseErr = time.ParseDuration(timeoutDurationStr)
 			if parseErr != nil {
-				// Log error but continue searching, maybe timeout reported differently later
 				log.Warn().Str("duration_str", timeoutDurationStr).Err(parseErr).Msg("Failed to parse timeout duration from initial panic line")
-				// Return error immediately? Or hope timedOutTestNameRe finds it? Let's return error.
+				// Use Errorf here to wrap the error
 				return "", true, fmt.Errorf("%w: %w using output line: %s", ErrFailedToParseTimeoutDuration, parseErr, output)
 			}
-			// Don't return yet, need to find the specific timed-out test name below
 			log.Debug().Dur("duration", timeoutDuration).Msg("Detected timeout panic")
 			continue // Continue scanning for the test name line
 		}
@@ -82,78 +71,75 @@ func attributePanicToTest(outputs []string) (test string, timeout bool, err erro
 				testDuration, parseErr := time.ParseDuration(testDurationStr)
 				if parseErr != nil {
 					log.Warn().Str("test", testName).Str("duration_str", testDurationStr).Err(parseErr).Msg("Failed to parse duration from timed-out test line")
-					// If we already have a timeoutDuration, maybe use this test name anyway?
-					// Let's continue searching for a perfect match first. Store this as potential.
-					if foundTestName == "" {
-						foundTestName = testName
-					}
+					// If duration parsing fails for a candidate test, immediately return a specific error
+					return "", true, fmt.Errorf("%w: test '%s' listed with unparseable duration '%s': %w", ErrDetectedTimeoutFailedParse, testName, testDurationStr, parseErr)
 				} else if testDuration >= timeoutDuration {
-					// Found the test that likely caused the timeout
 					log.Debug().Str("test", testName).Dur("test_duration", testDuration).Dur("timeout_duration", timeoutDuration).Msg("Attributed timeout panic via duration match")
-					return testName, true, nil // Found definitive match
+					return testName, true, nil // Found a valid match!
 				} else {
 					log.Debug().Str("test", testName).Dur("test_duration", testDuration).Dur("timeout_duration", timeoutDuration).Msg("Ignoring test line, duration too short for timeout")
 				}
 			}
 		}
 
-		// General check for test names within stack trace lines (less reliable but a fallback)
-		if match := nestedTestNameRe.FindStringSubmatch(output); len(match) > 1 {
-			testName := strings.TrimSpace(match[1])
-			// Avoid standard library test runners or internal functions
+		// General check for test names using the more precise regex
+		matchNestedTestName := nestedTestNameRe.FindStringSubmatch(output)
+		if len(matchNestedTestName) > 1 {
+			testName := strings.TrimSpace(matchNestedTestName[1]) // Group 1 captures the core test name
 			if !strings.HasPrefix(testName, "Test") {
-				continue
+				continue // Should not happen with this regex, but safety check
 			}
-			// Prioritize longer, more specific names if multiple matches found?
-			// For now, store the first plausible one found if we haven't found one yet.
+			// Store the first plausible name found as a fallback
 			if foundTestName == "" {
 				log.Debug().Str("test", testName).Str("line", output).Msg("Found potential test name in panic output")
 				foundTestName = testName
-				// Don't return yet, keep searching for more specific patterns (like timeout or log after test)
 			}
 		}
 	} // End loop over outputs
 
 	// Post-loop evaluation
 	if timeout {
+		// If we reach here, timeout was detected, but NO line matched BOTH name and duration threshold.
+		// Return the generic attribution failure error.
+		var errMsg string
 		if foundTestName != "" {
-			// If timeout was detected, and we found a potential test name (maybe without duration match), use it.
-			log.Warn().Str("test", foundTestName).Msg("Attributing timeout to test name found, but duration match was inconclusive or missing.")
-			return foundTestName, true, nil
+			// Include the fallback name if found, even though its duration didn't match/parse.
+			errMsg = fmt.Sprintf("timeout duration %s detected, found candidate test '%s' but duration did not meet threshold or failed parsing earlier", timeoutDurationStr, foundTestName)
+		} else {
+			errMsg = fmt.Sprintf("timeout duration %s detected, but no matching test found in output", timeoutDurationStr)
 		}
-		// If timeout detected but no test name found anywhere
-		return "", true, fmt.Errorf("%w in package context using output:\n%s", ErrDetectedTimeoutFailedAttribution, strings.Join(outputs, "\n"))
+		return "", true, fmt.Errorf("%w: %s: %w", ErrDetectedTimeoutFailedAttribution, errMsg, errors.New(strings.Join(outputs, "\n")))
 	}
 
 	if foundTestName != "" {
-		// If not a timeout, but we found a test name in the stack trace
+		// If not a timeout, but we found a test name via the general regex
 		log.Debug().Str("test", foundTestName).Msg("Attributed non-timeout panic via test name found in stack")
 		return foundTestName, false, nil
 	}
 
-	// If we reach here, no pattern matched successfully
-	return "", false, fmt.Errorf("%w using output:\n%s", ErrFailedToAttributePanicToTest, strings.Join(outputs, "\n"))
+	// If we reach here, no pattern matched successfully for non-timeout panic
+	// Use Errorf for the final error wrapping
+	return "", false, fmt.Errorf("%w: using output: %w", ErrFailedToAttributePanicToTest, errors.New(strings.Join(outputs, "\n")))
 }
 
-// attributeRaceToTest properly attributes races to the test that caused them.
-// Race output often includes stack traces mentioning the test function.
-func attributeRaceToTest(outputs []string) (string, error) {
+// AttributeRaceToTest properly attributes races to the test that caused them.
+func AttributeRaceToTest(outputs []string) (string, error) {
 	for _, output := range outputs {
 		output = strings.TrimSpace(output)
 		if output == "" {
 			continue
 		}
-		// Use the same regex as panic attribution fallback
-		if match := nestedTestNameRe.FindStringSubmatch(output); len(match) > 1 {
-			testName := strings.TrimSpace(match[1])
+		// Use the precise regex here too
+		match := nestedTestNameRe.FindStringSubmatch(output)
+		if len(match) > 1 {
+			testName := strings.TrimSpace(match[1]) // Group 1 captures the core test name
 			if strings.HasPrefix(testName, "Test") {
 				log.Debug().Str("test", testName).Str("line", output).Msg("Attributed race via test name match")
 				return testName, nil
 			}
 		}
 	}
-	// If no match found in any line
-	return "", fmt.Errorf("%w using output:\n%s",
-		ErrFailedToAttributeRaceToTest, strings.Join(outputs, "\n"),
-	)
+	// Use Errorf for the final error wrapping if loop completes without match
+	return "", fmt.Errorf("%w: using output: %w",
+		ErrFailedToAttributeRaceToTest, errors.New(strings.Join(outputs, "\n")))
 }
