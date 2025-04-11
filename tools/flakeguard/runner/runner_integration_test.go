@@ -1,6 +1,3 @@
-//go:build integration_tests
-// +build integration_tests
-
 // Integration tests for the runner package, executing real tests.
 package runner_test
 
@@ -72,6 +69,7 @@ func TestRunIntegration(t *testing.T) {
 				GoTestCountFlag:  &oneCount, // Force count=1 internally for predictability
 				OmitOutputs:      true,
 				IgnoreSubtestErr: false,
+				Tags:             []string{"example_package_tests"},
 			},
 			expectedTests: map[string]*expectedTestResult{
 				"TestFlaky":                           {exactRuns: &defaultRunCount, someSuccesses: true, someFailures: true},
@@ -104,6 +102,7 @@ func TestRunIntegration(t *testing.T) {
 				GoTestRaceFlag:   true,
 				OmitOutputs:      true,
 				IgnoreSubtestErr: false,
+				Tags:             []string{"example_package_tests"},
 			},
 			expectedTests: map[string]*expectedTestResult{
 				"TestRace": {race: true, maximumRuns: defaultRunCount, allFailures: true}, // Races cause failures
@@ -118,6 +117,7 @@ func TestRunIntegration(t *testing.T) {
 				SelectTests:     []string{"TestPanic"},
 				GoTestCountFlag: &oneCount, // Force count=1 for predictability
 				OmitOutputs:     true,
+				Tags:            []string{"example_package_tests"},
 			},
 			expectedTests: map[string]*expectedTestResult{
 				"TestPanic": {packagePanic: true, testPanic: true, maximumRuns: defaultRunCount, allFailures: true},
@@ -131,6 +131,7 @@ func TestRunIntegration(t *testing.T) {
 				SelectTests:     []string{"TestFlakyPanic"},
 				GoTestCountFlag: &oneCount,
 				OmitOutputs:     true,
+				Tags:            []string{"example_package_tests"},
 			},
 			expectedTests: map[string]*expectedTestResult{
 				// This test panics on first run, passes on second. We run 3 times.
@@ -148,6 +149,7 @@ func TestRunIntegration(t *testing.T) {
 				SelectTests:     []string{"TestSubTestsSomePanic"},
 				GoTestCountFlag: &oneCount,
 				OmitOutputs:     true,
+				Tags:            []string{"example_package_tests"},
 			},
 			expectedTests: map[string]*expectedTestResult{
 				"TestSubTestsSomePanic":       {exactRuns: &defaultRunCount, packagePanic: true, testPanic: true, allFailures: true}, // Parent fails due to subtest panic
@@ -164,6 +166,7 @@ func TestRunIntegration(t *testing.T) {
 				GoTestCountFlag: &oneCount,
 				FailFast:        true,
 				OmitOutputs:     true,
+				Tags:            []string{"example_package_tests"},
 			},
 			expectedTests: map[string]*expectedTestResult{
 				// Only one execution attempt happens because FailFast=true and TestFail fails.
