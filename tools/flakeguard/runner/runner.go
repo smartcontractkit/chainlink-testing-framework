@@ -11,24 +11,16 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/executor"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/parser"
-	// No parser import needed if files are in the same package
 )
 
 const (
 	RawOutputDir = "./flakeguard_raw_output"
-	// Removed RawOutputTransformedDir - belongs in parser.go
-)
-
-var (
-// buildErr remains defined in the parser package
-// Consider defining shared errors in a common errors package if needed elsewhere
 )
 
 // Runner describes the test run parameters and manages test execution and result parsing.
-// It now delegates command execution to an Executor and result parsing to a Parser.
+// It delegates command execution to an Executor and result parsing to a Parser.
 type Runner struct {
-	// Configuration fields (consider grouping into a Config struct if it grows larger)
-	// Keep only fields relevant to Runner's orchestration role or executor config
+	// Configuration fields
 	ProjectPath       string
 	Verbose           bool
 	RunCount          int
@@ -42,10 +34,9 @@ type Runner struct {
 	SkipTests         []string
 	SelectTests       []string
 
-	// Configuration for the parser
-	OmitOutputsOnSuccess           bool
-	MaxPassRatio                   float64 // TODO: Is this still used by Runner or belongs elsewhere?
+	// Configuration passed down to the parser
 	IgnoreParentFailuresOnSubtests bool
+	OmitOutputsOnSuccess           bool
 
 	// Dependencies
 	exec   executor.Executor // Injected Executor
@@ -68,10 +59,9 @@ func NewRunner(
 	failFast bool,
 	skipTests []string,
 	selectTests []string,
-	// Parser specific config
+	// Parser specific config (passed during initialization)
+	ignoreParentFailuresOnSubtests bool,
 	omitOutputsOnSuccess bool,
-	maxPassRatio float64, // Note: MaxPassRatio currently unused after refactor, belongs in reporting?
-	ignoreParentFailuresOnSubtests bool, // Passed to parser
 	// Dependencies (allow injection for testing)
 	exec executor.Executor,
 	p parser.Parser, // Use interface type directly
@@ -95,9 +85,8 @@ func NewRunner(
 		FailFast:                       failFast,
 		SkipTests:                      skipTests,
 		SelectTests:                    selectTests,
-		OmitOutputsOnSuccess:           omitOutputsOnSuccess,
-		MaxPassRatio:                   maxPassRatio,
 		IgnoreParentFailuresOnSubtests: ignoreParentFailuresOnSubtests,
+		OmitOutputsOnSuccess:           omitOutputsOnSuccess,
 		exec:                           exec,
 		parser:                         p,
 	}
@@ -117,6 +106,14 @@ func (r *Runner) getExecutorConfig() executor.Config {
 		SkipTests:         r.SkipTests,
 		SelectTests:       r.SelectTests,
 		RawOutputDir:      RawOutputDir, // Use the constant defined in this package
+	}
+}
+
+// Helper function to create parser.Config from Runner fields
+func (r *Runner) getParserConfig() parser.Config {
+	return parser.Config{
+		IgnoreParentFailuresOnSubtests: r.IgnoreParentFailuresOnSubtests,
+		OmitOutputsOnSuccess:           r.OmitOutputsOnSuccess,
 	}
 }
 
@@ -151,12 +148,12 @@ ParseResults:
 	}
 
 	log.Info().Int("file_count", len(rawOutputFiles)).Msg("Parsing output files")
+	// Create parser config and pass it
+	parserCfg := r.getParserConfig()
 	// Ignore the returned file paths here, as they aren't used in this flow
-	results, _, err := r.parser.ParseFiles(rawOutputFiles, "run", len(rawOutputFiles), r.IgnoreParentFailuresOnSubtests, r.OmitOutputsOnSuccess)
+	results, _, err := r.parser.ParseFiles(rawOutputFiles, "run", len(rawOutputFiles), parserCfg)
 	if err != nil {
 		// Check if it's a build error from the parser
-		// Use errors.Is with the error defined in the parser package (or a shared error package)
-		// Assuming parser.ErrBuild is exported:
 		if errors.Is(err, parser.ErrBuild) { // Updated check
 			// No extra wrapping needed if buildErr already provides enough context
 			return nil, err
@@ -195,8 +192,10 @@ func (r *Runner) RunTestCmd(testCmd []string) ([]reports.TestResult, error) {
 	}
 
 	log.Info().Int("file_count", len(rawOutputFiles)).Msg("Parsing output files from custom command")
+	// Create parser config and pass it
+	parserCfg := r.getParserConfig()
 	// Ignore the returned file paths here as well
-	results, _, err := r.parser.ParseFiles(rawOutputFiles, "run", len(rawOutputFiles), r.IgnoreParentFailuresOnSubtests, r.OmitOutputsOnSuccess)
+	results, _, err := r.parser.ParseFiles(rawOutputFiles, "run", len(rawOutputFiles), parserCfg)
 	if err != nil {
 		if errors.Is(err, parser.ErrBuild) { // Updated check
 			return nil, err
@@ -287,19 +286,24 @@ func (r *Runner) RerunFailedTests(failedTests []reports.TestResult, rerunCount i
 	}
 
 	log.Info().Int("file_count", len(rerunOutputFiles)).Msg("Parsing rerun output files")
+	// Create parser config and pass it
+	parserCfg := r.getParserConfig()
 	// For parsing reruns, the effective number of runs *per test included in the output* is `rerunCount`.
 	// The parser's `expectedRuns` helps adjust for potential overcounting within each file, using `rerunCount` seems correct here.
-	rerunResults, parsedFilePaths, err := r.parser.ParseFiles(rerunOutputFiles, "rerun", rerunCount, r.IgnoreParentFailuresOnSubtests, r.OmitOutputsOnSuccess)
+	rerunResults, parsedFilePaths, err := r.parser.ParseFiles(rerunOutputFiles, "rerun", rerunCount, parserCfg)
 	if err != nil {
 		// Check for build error specifically?
 		if errors.Is(err, parser.ErrBuild) { // Updated check
 			log.Error().Err(err).Msg("Build error occurred unexpectedly during test reruns")
 			// Fallthrough to return wrapped error
 		}
+		// Return the file paths even if parsing failed? No, the report wouldn't be useful.
 		return nil, nil, fmt.Errorf("failed to parse rerun results: %w", err)
 	}
 
 	// 5. Return Results
 	log.Info().Int("result_count", len(rerunResults)).Msg("Finished parsing rerun results")
+	// Return the parsed results AND the list of files parsed.
+	// Note: The function signature needs to change back to return []string
 	return rerunResults, parsedFilePaths, nil
 }

@@ -152,9 +152,8 @@ var RunTestsCmd = &cobra.Command{
 			skipTests,
 			selectTests,
 			// Parser specific config
+			ignoreParentFailuresOnSubtests, // Pass parser config directly
 			omitOutputsOnSuccess,
-			passRatioThreshold, // Pass the calculated threshold
-			ignoreParentFailuresOnSubtests,
 			// Dependencies (pass nil to get defaults)
 			nil, // exec
 			nil, // parser

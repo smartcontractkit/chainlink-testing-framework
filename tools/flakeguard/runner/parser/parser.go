@@ -60,7 +60,7 @@ func (e entry) String() string {
 type Parser interface {
 	// ParseFiles takes a list of raw output file paths, processes them (including potential transformation),
 	// and returns the aggregated test results and the list of file paths that were actually parsed.
-	ParseFiles(rawFilePaths []string, runPrefix string, expectedRuns int, ignoreParentFailures bool, omitSuccessOutputs bool) ([]reports.TestResult, []string, error)
+	ParseFiles(rawFilePaths []string, runPrefix string, expectedRuns int, cfg Config) ([]reports.TestResult, []string, error)
 }
 
 // Config holds configuration relevant to the parser.
@@ -85,11 +85,11 @@ func NewParser() Parser {
 
 // ParseFiles is the main entry point for the parser.
 // It orchestrates transformation (if needed) and parsing of multiple files.
-func (p *defaultParser) ParseFiles(rawFilePaths []string, runPrefix string, expectedRuns int, ignoreParentFailures bool, omitSuccessOutputs bool) ([]reports.TestResult, []string, error) {
+func (p *defaultParser) ParseFiles(rawFilePaths []string, runPrefix string, expectedRuns int, cfg Config) ([]reports.TestResult, []string, error) {
 	var parseFilePaths = rawFilePaths
 
-	// If the option is enabled, transform each JSON output file before parsing.
-	if ignoreParentFailures {
+	// Use cfg for transformation decision
+	if cfg.IgnoreParentFailuresOnSubtests {
 		err := p.transformTestOutputFiles(rawFilePaths)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed during output transformation: %w", err)
@@ -97,8 +97,8 @@ func (p *defaultParser) ParseFiles(rawFilePaths []string, runPrefix string, expe
 		parseFilePaths = p.transformedOutputFiles
 	}
 
-	// Now parse the selected files (raw or transformed)
-	results, err := p.parseTestResults(parseFilePaths, runPrefix, expectedRuns, omitSuccessOutputs)
+	// Pass cfg down to parseTestResults
+	results, err := p.parseTestResults(parseFilePaths, runPrefix, expectedRuns, cfg)
 	if err != nil {
 		return nil, parseFilePaths, err // Return paths even on error?
 	}
@@ -109,7 +109,7 @@ func (p *defaultParser) ParseFiles(rawFilePaths []string, runPrefix string, expe
 // parseTestResults reads the test output Go test json output files and returns processed TestResults.
 // This is the core logic moved from the original Runner.parseTestResults.
 // It now takes file paths directly.
-func (p *defaultParser) parseTestResults(parseFilePaths []string, runPrefix string, expectedRuns int, omitSuccessOutputs bool) ([]reports.TestResult, error) {
+func (p *defaultParser) parseTestResults(parseFilePaths []string, runPrefix string, expectedRuns int, cfg Config) ([]reports.TestResult, error) {
 	var (
 		testDetails         = make(map[string]*reports.TestResult) // Holds run, pass counts, and other details for each test
 		panickedPackages    = map[string]struct{}{}                // Packages with tests that panicked
@@ -185,10 +185,8 @@ func (p *defaultParser) parseTestResults(parseFilePaths []string, runPrefix stri
 			if entryLine.Test != "" {
 				// If it's a subtest, associate it with its parent for easier processing of panics later
 				key := fmt.Sprintf("%s/%s", entryLine.Package, entryLine.Test)
-				// Call the utility function (assuming it's accessible, might need import alias or move)
-				// For now, assume it's callable directly if parser stays in runner package temporarily, or needs adjustment.
-				// Let's assume we need to call a utility function `parseSubTest`.
-				parentTestName, subTestName := parseSubTest(entryLine.Test) // This needs to resolve
+				// Call the utility function (now internal to this package)
+				parentTestName, subTestName := parseSubTest(entryLine.Test) // Use internal parseSubTest
 				if subTestName != "" {
 					parentTestKey := fmt.Sprintf("%s/%s", entryLine.Package, parentTestName)
 					// Ensure slice exists before appending
@@ -554,7 +552,7 @@ func (p *defaultParser) parseTestResults(parseFilePaths []string, runPrefix stri
 			result.PackageOutputs = outputs
 		}
 
-		if omitSuccessOutputs {
+		if cfg.OmitOutputsOnSuccess {
 			result.PassedOutputs = make(map[string][]string)
 			result.Outputs = make(map[string][]string)
 		}
@@ -617,12 +615,8 @@ func (p *defaultParser) transformTestOutputFiles(filePaths []string) error {
 	return nil
 }
 
-// parseSubTest needs to be accessible here. It should be moved to a shared utility location
-// or this parser needs to be part of the runner package still.
-// Assuming it's moved to runner/utils.go and this file becomes part of the runner package
-// OR this file becomes parser package and imports runner (circular dependency risk) or utils.
-// Let's assume utils for now.
-// This function is currently duplicated - needs cleanup.
+// parseSubTest checks if a test name is a subtest and returns the parent and sub names.
+// Moved back into parser package and kept unexported.
 func parseSubTest(testName string) (parentTestName, subTestName string) {
 	parts := strings.SplitN(testName, "/", 2)
 	if len(parts) == 1 {
