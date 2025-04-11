@@ -59,8 +59,8 @@ func (e entry) String() string {
 // Parser defines the interface for parsing go test output.
 type Parser interface {
 	// ParseFiles takes a list of raw output file paths, processes them (including potential transformation),
-	// and returns the aggregated test results.
-	ParseFiles(rawFilePaths []string, runPrefix string, expectedRuns int, ignoreParentFailures bool, omitSuccessOutputs bool) ([]reports.TestResult, error)
+	// and returns the aggregated test results and the list of file paths that were actually parsed.
+	ParseFiles(rawFilePaths []string, runPrefix string, expectedRuns int, ignoreParentFailures bool, omitSuccessOutputs bool) ([]reports.TestResult, []string, error)
 }
 
 // Config holds configuration relevant to the parser.
@@ -85,16 +85,14 @@ func NewParser() Parser {
 
 // ParseFiles is the main entry point for the parser.
 // It orchestrates transformation (if needed) and parsing of multiple files.
-func (p *defaultParser) ParseFiles(rawFilePaths []string, runPrefix string, expectedRuns int, ignoreParentFailures bool, omitSuccessOutputs bool) ([]reports.TestResult, error) {
+func (p *defaultParser) ParseFiles(rawFilePaths []string, runPrefix string, expectedRuns int, ignoreParentFailures bool, omitSuccessOutputs bool) ([]reports.TestResult, []string, error) {
 	var parseFilePaths = rawFilePaths
 
 	// If the option is enabled, transform each JSON output file before parsing.
 	if ignoreParentFailures {
 		err := p.transformTestOutputFiles(rawFilePaths)
 		if err != nil {
-			// If transformation fails, should we attempt to parse raw files or return error?
-			// Returning error seems safer.
-			return nil, fmt.Errorf("failed during output transformation: %w", err)
+			return nil, nil, fmt.Errorf("failed during output transformation: %w", err)
 		}
 		parseFilePaths = p.transformedOutputFiles
 	}
@@ -102,10 +100,10 @@ func (p *defaultParser) ParseFiles(rawFilePaths []string, runPrefix string, expe
 	// Now parse the selected files (raw or transformed)
 	results, err := p.parseTestResults(parseFilePaths, runPrefix, expectedRuns, omitSuccessOutputs)
 	if err != nil {
-		return nil, err // Errors (like buildErr) are passed through
+		return nil, parseFilePaths, err // Return paths even on error?
 	}
 
-	return results, nil
+	return results, parseFilePaths, nil
 }
 
 // parseTestResults reads the test output Go test json output files and returns processed TestResults.

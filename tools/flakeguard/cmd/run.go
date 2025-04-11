@@ -10,10 +10,11 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/utils"
-	"github.com/spf13/cobra"
 )
 
 const (
@@ -135,24 +136,29 @@ var RunTestsCmd = &cobra.Command{
 			}
 		}
 
-		// Initialize the runner
-		testRunner := runner.Runner{
-			ProjectPath:                    projectPath,
-			Verbose:                        true,
-			RunCount:                       runCount,
-			GoTestTimeoutFlag:              goTestTimeoutFlag,
-			Tags:                           tags,
-			GoTestCountFlag:                goTestCountFlag,
-			GoTestRaceFlag:                 useRace,
-			SkipTests:                      skipTests,
-			SelectTests:                    selectTests,
-			UseShuffle:                     useShuffle,
-			ShuffleSeed:                    shuffleSeed,
-			OmitOutputsOnSuccess:           omitOutputsOnSuccess,
-			MaxPassRatio:                   passRatioThreshold, // Use the calculated threshold
-			IgnoreParentFailuresOnSubtests: ignoreParentFailuresOnSubtests,
-			FailFast:                       failFast,
-		}
+		// Initialize the runner USING THE CONSTRUCTOR
+		testRunner := runner.NewRunner(
+			projectPath,
+			true, // TODO: Use verbose flag?
+			// Runner specific config
+			runCount,
+			goTestCountFlag,
+			useRace,
+			goTestTimeoutFlag,
+			tags,
+			useShuffle,
+			shuffleSeed,
+			failFast,
+			skipTests,
+			selectTests,
+			// Parser specific config
+			omitOutputsOnSuccess,
+			passRatioThreshold, // Pass the calculated threshold
+			ignoreParentFailuresOnSubtests,
+			// Dependencies (pass nil to get defaults)
+			nil, // exec
+			nil, // parser
+		)
 
 		// Run the tests
 		var mainResults []reports.TestResult

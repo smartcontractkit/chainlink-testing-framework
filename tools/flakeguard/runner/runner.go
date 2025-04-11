@@ -151,7 +151,8 @@ ParseResults:
 	}
 
 	log.Info().Int("file_count", len(rawOutputFiles)).Msg("Parsing output files")
-	results, err := r.parser.ParseFiles(rawOutputFiles, "run", len(rawOutputFiles), r.IgnoreParentFailuresOnSubtests, r.OmitOutputsOnSuccess)
+	// Ignore the returned file paths here, as they aren't used in this flow
+	results, _, err := r.parser.ParseFiles(rawOutputFiles, "run", len(rawOutputFiles), r.IgnoreParentFailuresOnSubtests, r.OmitOutputsOnSuccess)
 	if err != nil {
 		// Check if it's a build error from the parser
 		// Use errors.Is with the error defined in the parser package (or a shared error package)
@@ -194,7 +195,8 @@ func (r *Runner) RunTestCmd(testCmd []string) ([]reports.TestResult, error) {
 	}
 
 	log.Info().Int("file_count", len(rawOutputFiles)).Msg("Parsing output files from custom command")
-	results, err := r.parser.ParseFiles(rawOutputFiles, "run", len(rawOutputFiles), r.IgnoreParentFailuresOnSubtests, r.OmitOutputsOnSuccess)
+	// Ignore the returned file paths here as well
+	results, _, err := r.parser.ParseFiles(rawOutputFiles, "run", len(rawOutputFiles), r.IgnoreParentFailuresOnSubtests, r.OmitOutputsOnSuccess)
 	if err != nil {
 		if errors.Is(err, parser.ErrBuild) { // Updated check
 			return nil, err
@@ -206,10 +208,10 @@ func (r *Runner) RunTestCmd(testCmd []string) ([]reports.TestResult, error) {
 }
 
 // RerunFailedTests reruns specific tests that failed in previous runs using the Executor and Parser.
-func (r *Runner) RerunFailedTests(failedTests []reports.TestResult, rerunCount int) ([]reports.TestResult, error) {
+func (r *Runner) RerunFailedTests(failedTests []reports.TestResult, rerunCount int) ([]reports.TestResult, []string, error) {
 	if len(failedTests) == 0 || rerunCount <= 0 {
 		log.Info().Msg("No failed tests provided or rerun count is zero. Skipping reruns.")
-		return []reports.TestResult{}, nil // Nothing to rerun
+		return []reports.TestResult{}, []string{}, nil // Nothing to rerun
 	}
 
 	// 1. Group failures by package
@@ -224,7 +226,7 @@ func (r *Runner) RerunFailedTests(failedTests []reports.TestResult, rerunCount i
 
 	if len(failingTestsByPackage) == 0 {
 		log.Warn().Msg("No valid failed tests found to rerun after filtering.")
-		return []reports.TestResult{}, nil
+		return []reports.TestResult{}, []string{}, nil
 	}
 
 	if r.Verbose {
@@ -281,23 +283,23 @@ func (r *Runner) RerunFailedTests(failedTests []reports.TestResult, rerunCount i
 	// 4. Parse Rerun Outputs
 	if len(rerunOutputFiles) == 0 {
 		log.Warn().Msg("No output files were generated during reruns (possibly due to execution errors).")
-		return []reports.TestResult{}, nil
+		return []reports.TestResult{}, []string{}, nil
 	}
 
 	log.Info().Int("file_count", len(rerunOutputFiles)).Msg("Parsing rerun output files")
 	// For parsing reruns, the effective number of runs *per test included in the output* is `rerunCount`.
 	// The parser's `expectedRuns` helps adjust for potential overcounting within each file, using `rerunCount` seems correct here.
-	rerunResults, err := r.parser.ParseFiles(rerunOutputFiles, "rerun", rerunCount, r.IgnoreParentFailuresOnSubtests, r.OmitOutputsOnSuccess)
+	rerunResults, parsedFilePaths, err := r.parser.ParseFiles(rerunOutputFiles, "rerun", rerunCount, r.IgnoreParentFailuresOnSubtests, r.OmitOutputsOnSuccess)
 	if err != nil {
 		// Check for build error specifically?
 		if errors.Is(err, parser.ErrBuild) { // Updated check
 			log.Error().Err(err).Msg("Build error occurred unexpectedly during test reruns")
 			// Fallthrough to return wrapped error
 		}
-		return nil, fmt.Errorf("failed to parse rerun results: %w", err)
+		return nil, nil, fmt.Errorf("failed to parse rerun results: %w", err)
 	}
 
 	// 5. Return Results
 	log.Info().Int("result_count", len(rerunResults)).Msg("Finished parsing rerun results")
-	return rerunResults, nil
+	return rerunResults, parsedFilePaths, nil
 }
