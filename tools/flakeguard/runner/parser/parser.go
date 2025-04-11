@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -104,425 +105,372 @@ func (p *defaultParser) ParseFiles(rawFilePaths []string, runPrefix string, expe
 	return results, parseFilePaths, nil
 }
 
-// parseTestResults reads the test output Go test json output files and returns processed TestResults.
+// rawEventData stores the original event along with its run ID.
+type rawEventData struct {
+	RunID string
+	Event entry
+}
+
+// testProcessingState holds temporary state while processing events for a single test.
+type testProcessingState struct {
+	result                  *reports.TestResult // Pointer to the result being built
+	processedRunIDs         map[string]bool     // runID -> true if terminal action processed
+	runOutcome              map[string]string   // runID -> "pass", "fail", "skip"
+	panicRaceOutputByRunID  map[string][]string // runID -> []string of panic/race output
+	temporaryOutputsByRunID map[string][]string // runID -> []string of normal output
+	panicDetectionMode      bool
+	raceDetectionMode       bool
+	detectedEntries         []entry // Raw entries collected during panic/race
+	key                     string  // Test key (pkg/TestName)
+	filePath                string  // File path currently being processed (for logging)
+}
+
+// parseTestResults orchestrates the multi-pass parsing approach.
 func (p *defaultParser) parseTestResults(parseFilePaths []string, runPrefix string, totalExpectedRunsPerTest int, cfg Config) ([]reports.TestResult, error) {
-	var (
-		testDetails         = make(map[string]*reports.TestResult) // Holds cumulative results
-		panickedPackages    = map[string]struct{}{}
-		racePackages        = map[string]struct{}{}
-		packageLevelOutputs = map[string][]string{}
-		testsWithSubTests   = map[string][]string{}
-		processedRunIDs     = make(map[string]map[string]bool) // map[testKey][runID] -> true if terminal action processed
-	)
+	eventsByTest, pkgOutputs, subTests, panickedPkgs, racedPkgs, err := p.collectAndGroupEvents(parseFilePaths, runPrefix)
+	if err != nil {
+		if errors.Is(err, ErrBuild) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("error during event collection: %w", err)
+	}
+
+	processedTestDetails, err := p.processEventsPerTest(eventsByTest, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("error during event processing: %w", err)
+	}
+
+	finalResults := p.aggregateAndFinalizeResults(processedTestDetails, subTests, panickedPkgs, racedPkgs, pkgOutputs, totalExpectedRunsPerTest, cfg)
+
+	return finalResults, nil
+}
+
+// --- Pass 1: Collect and Group Events ---
+func (p *defaultParser) collectAndGroupEvents(parseFilePaths []string, runPrefix string) (
+	eventsByTest map[string][]rawEventData,
+	packageLevelOutputs map[string][]string,
+	testsWithSubTests map[string][]string,
+	panickedPackages map[string]struct{},
+	racePackages map[string]struct{},
+	err error,
+) {
+	eventsByTest = make(map[string][]rawEventData)
+	packageLevelOutputs = make(map[string][]string)
+	testsWithSubTests = make(map[string][]string)
+	panickedPackages = make(map[string]struct{})
+	racePackages = make(map[string]struct{})
 
 	runNumber := 0
 	for _, filePath := range parseFilePaths {
 		runNumber++
 		runID := fmt.Sprintf("%s%d", runPrefix, runNumber)
-		panicDetectionMode := false
-		raceDetectionMode := false
-		detectedEntries := []entry{}
-
-		file, err := os.Open(filePath)
-		if err != nil {
-			// Try to provide more context about which file failed
-			log.Error().Str("file", filePath).Err(err).Msg("Failed to open test output file")
-			// Consider returning partial results or stopping? For now, return error.
-			return nil, fmt.Errorf("failed to open test output file '%s': %w", filePath, err)
+		file, fileErr := os.Open(filePath)
+		if fileErr != nil {
+			err = fmt.Errorf("failed to open test output file '%s': %w", filePath, fileErr)
+			return // Return immediately on file open error
 		}
 
 		scanner := bufio.NewScanner(file)
-		var precedingLines []string   // Store preceding lines for context
-		parsingErrorOccurred := false // Flag to track if we already logged a JSON parsing error for this file
-
+		parsingErrorOccurred := false
 		for scanner.Scan() {
-			line := scanner.Text()
-			precedingLines = append(precedingLines, line)
-
-			// Limit precedingLines to the last 15 lines
-			if len(precedingLines) > 15 {
-				precedingLines = precedingLines[len(precedingLines)-15:] // More efficient slice operation
-			}
-
+			lineBytes := scanner.Bytes()
 			var entryLine entry
-			if err := json.Unmarshal(scanner.Bytes(), &entryLine); err != nil {
-				// Log the error only once per file to avoid spamming
+			if jsonErr := json.Unmarshal(lineBytes, &entryLine); jsonErr != nil {
 				if !parsingErrorOccurred {
-					log.Warn().Str("file", filePath).Err(err).Str("line_content", line).Msg("Failed to parse JSON line in test output, subsequent lines might also fail")
-					parsingErrorOccurred = true // Set flag
+					log.Warn().Str("file", filePath).Err(jsonErr).Str("line_content", scanner.Text()).Msg("Failed to parse JSON line, skipping")
+					parsingErrorOccurred = true
 				}
-				continue // Skip processing this line
+				continue
 			}
 			if entryLine.Action == "build-fail" {
-				// Reset file reader to beginning to capture full build error context
-				_, seekErr := file.Seek(0, io.SeekStart) // Use io.SeekStart
+				// Read build error details
+				_, seekErr := file.Seek(0, io.SeekStart)
 				if seekErr != nil {
-					log.Error().Str("file", filePath).Err(seekErr).Msg("Failed to seek beginning of file to read build errors")
-					file.Close() // Close before returning
-					return nil, fmt.Errorf("%w from file '%s': %w", errFailedToShowBuild, filePath, ErrBuild)
+					log.Error().Str("file", filePath).Err(seekErr).Msg("Failed to seek to read build errors")
 				}
-				// Print all build errors
 				buildErrs, readErr := io.ReadAll(file)
-				file.Close() // Close file as we are returning
 				if readErr != nil {
-					log.Error().Str("file", filePath).Err(readErr).Msg("Failed to read build errors after seeking")
-					return nil, fmt.Errorf("%w from file '%s': %w", errFailedToShowBuild, filePath, ErrBuild)
+					log.Error().Str("file", filePath).Err(readErr).Msg("Failed to read build errors")
 				}
-				// Output build errors for user visibility
 				fmt.Fprintf(os.Stderr, "--- Build Error in %s ---\n%s\n-------------------------\n", filePath, string(buildErrs))
-				return nil, ErrBuild // Return the sentinel buildErr
+				file.Close()
+				err = ErrBuild // Set the sentinel error
+				return
 			}
-
-			var result *reports.TestResult
-			key := ""
-			if entryLine.Test != "" {
-				key = fmt.Sprintf("%s/%s", entryLine.Package, entryLine.Test)
-				parentTestName, subTestName := parseSubTest(entryLine.Test)
-				if subTestName != "" {
-					parentTestKey := fmt.Sprintf("%s/%s", entryLine.Package, parentTestName)
-					if _, ok := testsWithSubTests[parentTestKey]; !ok {
-						testsWithSubTests[parentTestKey] = []string{}
-					}
-					// Avoid adding duplicate subtest names
-					found := false
-					for _, st := range testsWithSubTests[parentTestKey] {
-						if st == subTestName {
-							found = true
-							break
+			if entryLine.Package != "" {
+				if startPanicRe.MatchString(entryLine.Output) {
+					panickedPackages[entryLine.Package] = struct{}{}
+				}
+				if startRaceRe.MatchString(entryLine.Output) {
+					racePackages[entryLine.Package] = struct{}{}
+				}
+				if entryLine.Test != "" {
+					key := fmt.Sprintf("%s/%s", entryLine.Package, entryLine.Test)
+					ev := rawEventData{RunID: runID, Event: entryLine}
+					eventsByTest[key] = append(eventsByTest[key], ev)
+					parentTestName, subTestName := parseSubTest(entryLine.Test)
+					if subTestName != "" {
+						parentTestKey := fmt.Sprintf("%s/%s", entryLine.Package, parentTestName)
+						if _, ok := testsWithSubTests[parentTestKey]; !ok {
+							testsWithSubTests[parentTestKey] = []string{}
+						}
+						found := false
+						for _, st := range testsWithSubTests[parentTestKey] {
+							if st == subTestName {
+								found = true
+								break
+							}
+						}
+						if !found {
+							testsWithSubTests[parentTestKey] = append(testsWithSubTests[parentTestKey], subTestName)
 						}
 					}
-					if !found {
-						testsWithSubTests[parentTestKey] = append(testsWithSubTests[parentTestKey], subTestName)
-					}
-				}
-				// Initialize result if first time seeing this test
-				if _, exists := testDetails[key]; !exists {
-					testDetails[key] = &reports.TestResult{
-						TestName:       entryLine.Test,
-						TestPackage:    entryLine.Package,
-						PassedOutputs:  make(map[string][]string),
-						FailedOutputs:  make(map[string][]string),
-						Outputs:        make(map[string][]string),
-						PackageOutputs: make([]string, 0),
-						Durations:      make([]time.Duration, 0),
-					}
-				}
-				result = testDetails[key]
-				if processedRunIDs[key] == nil {
-					processedRunIDs[key] = make(map[string]bool)
-				}
-			}
-
-			// --- Stage 1: Collect Output / Detect Panic/Race Start ---
-			if entryLine.Output != "" {
-				if panicDetectionMode || raceDetectionMode {
-					detectedEntries = append(detectedEntries, entryLine)
-					continue // Don't process output further if collecting for panic/race
-				} else if startPanicRe.MatchString(entryLine.Output) {
-					if entryLine.Package != "" {
-						panickedPackages[entryLine.Package] = struct{}{}
-					}
-					detectedEntries = append(detectedEntries, entryLine)
-					panicDetectionMode = true
-					continue
-				} else if startRaceRe.MatchString(entryLine.Output) {
-					if entryLine.Package != "" {
-						racePackages[entryLine.Package] = struct{}{}
-					}
-					detectedEntries = append(detectedEntries, entryLine)
-					raceDetectionMode = true
-					continue
-				} else if result != nil { // Regular test output
-					if result.Outputs[runID] == nil {
-						result.Outputs[runID] = []string{}
-					}
-					result.Outputs[runID] = append(result.Outputs[runID], entryLine.Output)
-				} else if entryLine.Package != "" { // Package output
+				} else if entryLine.Output != "" { // Package-level output
 					if _, exists := packageLevelOutputs[entryLine.Package]; !exists {
 						packageLevelOutputs[entryLine.Package] = []string{}
 					}
 					packageLevelOutputs[entryLine.Package] = append(packageLevelOutputs[entryLine.Package], entryLine.Output)
 				}
 			}
-
-			// --- Stage 2: Process Panic/Race Termination & Attribution ---
-			terminalAction := entryLine.Action == "pass" || entryLine.Action == "fail" || entryLine.Action == "skip"
-			if (panicDetectionMode || raceDetectionMode) && terminalAction {
-				var outputs []string
-				for _, entry := range detectedEntries {
-					outputs = append(outputs, entry.Output)
-				}
-				outputStr := strings.Join(outputs, "\n")
-				currentPackage := entryLine.Package // Use package from the terminating line
-				if currentPackage == "" && len(detectedEntries) > 0 {
-					currentPackage = detectedEntries[0].Package
-				}
-
-				var attributedTestKey string
-				var attributedTestName string
-				var isTimeout bool
-				var isPanic bool = panicDetectionMode
-				var isRace bool = raceDetectionMode
-
-				if currentPackage != "" {
-					if isPanic {
-						panicTest, timeout, attrErr := AttributePanicToTest(outputs)
-						if attrErr != nil {
-							log.Error().Str("file", filePath).Str("package", currentPackage).Err(attrErr).Str("output_snippet", outputStr).Msg("Unable to attribute panic")
-							panicTest = fmt.Sprintf("UnableToAttributePanicInPackage_%s", currentPackage)
-						}
-						attributedTestName = panicTest
-						isTimeout = timeout
-					} else { // isRace
-						raceTest, attrErr := AttributeRaceToTest(outputs)
-						if attrErr != nil {
-							log.Warn().Str("file", filePath).Str("package", currentPackage).Err(attrErr).Str("output_snippet", outputStr).Msg("Unable to attribute race")
-							raceTest = fmt.Sprintf("UnableToAttributeRaceInPackage_%s", currentPackage)
-						}
-						attributedTestName = raceTest
-					}
-					attributedTestKey = fmt.Sprintf("%s/%s", currentPackage, attributedTestName)
-					attrResult, exists := testDetails[attributedTestKey]
-					if !exists {
-						testDetails[attributedTestKey] = &reports.TestResult{
-							TestName:       attributedTestName,
-							TestPackage:    currentPackage,
-							PassedOutputs:  make(map[string][]string),
-							FailedOutputs:  make(map[string][]string),
-							Outputs:        make(map[string][]string),
-							PackageOutputs: make([]string, 0),
-							Durations:      make([]time.Duration, 0),
-						}
-						attrResult = testDetails[attributedTestKey]
-					}
-					if processedRunIDs[attributedTestKey] == nil {
-						processedRunIDs[attributedTestKey] = make(map[string]bool)
-					}
-					if attrResult.FailedOutputs == nil {
-						attrResult.FailedOutputs = make(map[string][]string)
-					}
-
-					attrResult.Panic = attrResult.Panic || isPanic // Persist flags
-					attrResult.Race = attrResult.Race || isRace
-					attrResult.Timeout = attrResult.Timeout || isTimeout
-
-					// Mark run processed (as failed)
-					if !processedRunIDs[attributedTestKey][runID] {
-						attrResult.Failures++
-						// Do NOT increment attrResult.Runs here, use processedRunIDs length at the end
-						processedRunIDs[attributedTestKey][runID] = true
-					}
-					// Prepend panic/race info to FailedOutputs
-					marker := ""
-					if isPanic {
-						marker = "--- PANIC DETECTED ---"
-					}
-					if isRace {
-						marker = "--- RACE DETECTED ---"
-					}
-					existingOutput := attrResult.FailedOutputs[runID]
-					attrResult.FailedOutputs[runID] = []string{marker}
-					attrResult.FailedOutputs[runID] = append(attrResult.FailedOutputs[runID], outputs...)
-					if isPanic {
-						attrResult.FailedOutputs[runID] = append(attrResult.FailedOutputs[runID], "--- END PANIC ---")
-					}
-					if isRace {
-						attrResult.FailedOutputs[runID] = append(attrResult.FailedOutputs[runID], "--- END RACE ---")
-					}
-					attrResult.FailedOutputs[runID] = append(attrResult.FailedOutputs[runID], existingOutput...) // Append any previously moved output
-				} else {
-					log.Error().Str("file", filePath).Msg("Cannot attribute panic/race: Package context is missing.")
-				}
-				// Reset detection state
-				detectedEntries = []entry{}
-				panicDetectionMode = false
-				raceDetectionMode = false
-			}
-
-			// --- Stage 3: Process Terminal Actions (Pass/Fail/Skip) & Move Output ---
-			if result != nil && terminalAction {
-				processed := processedRunIDs[key][runID] // Re-check if panic/race already processed this runID for this test
-
-				// Record duration first if applicable and not processed
-				if (entryLine.Action == "pass" || entryLine.Action == "fail") && !processed {
-					duration, parseErr := time.ParseDuration(strconv.FormatFloat(entryLine.Elapsed, 'f', -1, 64) + "s")
-					if parseErr == nil {
-						result.Durations = append(result.Durations, duration)
-					} else { /* log error */
-					}
-				}
-
-				switch entryLine.Action {
-				case "pass":
-					if !processed {
-						result.Successes++
-						processedRunIDs[key][runID] = true
-					}
-					// Move output AFTER processing state
-					if result.PassedOutputs == nil {
-						result.PassedOutputs = make(map[string][]string)
-					}
-					if outputs, ok := result.Outputs[runID]; ok {
-						result.PassedOutputs[runID] = append(result.PassedOutputs[runID], outputs...)
-						delete(result.Outputs, runID)
-					}
-				case "fail":
-					if !processed {
-						result.Failures++
-						processedRunIDs[key][runID] = true
-					}
-					// Move output AFTER processing state
-					if result.FailedOutputs == nil {
-						result.FailedOutputs = make(map[string][]string)
-					}
-					if outputs, ok := result.Outputs[runID]; ok {
-						result.FailedOutputs[runID] = append(result.FailedOutputs[runID], outputs...)
-						delete(result.Outputs, runID)
-					}
-					// Add placeholder only if no output was moved AND no panic/race marker exists (already checked via !processed)
-					if len(result.FailedOutputs[runID]) == 0 {
-						result.FailedOutputs[runID] = []string{"--- TEST FAILED (no specific output captured) ---"}
-					}
-				case "skip":
-					if !processed {
-						result.Skips++
-						processedRunIDs[key][runID] = true
-					}
-					result.Skipped = true
-					delete(result.Outputs, runID) // Discard collected output for skips
-				}
-			} // end processing terminal action
-		} // end scanner loop
-
-		if err := scanner.Err(); err != nil {
-			file.Close() // Close file before returning error
-			log.Error().Str("file", filePath).Err(err).Msg("Error reading test output file")
-			return nil, fmt.Errorf("reading test output file '%s': %w", filePath, err)
 		}
-		if err = file.Close(); err != nil {
-			log.Warn().Err(err).Str("file", filePath).Msg("Failed to close file after processing")
+		if scanErr := scanner.Err(); scanErr != nil {
+			file.Close()
+			err = fmt.Errorf("scanner error reading file '%s': %w", filePath, scanErr)
+			return
 		}
-	} // end file loop
+		file.Close()
+	} // End Pass 1 file loop
+	return
+}
 
-	// --- Post-processing --- (Panic Inheritance and Final Aggregation)
-	var finalResults []reports.TestResult
-	// 1. Panic Inheritance (Bubble down)
-	// Bubble panics down from parent tests to subtests
-	for parentTestKey, subTests := range testsWithSubTests {
-		if parentTestResult, exists := testDetails[parentTestKey]; exists {
-			if parentTestResult.Panic {
-				for _, subTest := range subTests {
-					subTestKey := fmt.Sprintf("%s/%s", parentTestKey, subTest) // Correct key construction
-					if subTestResult, exists := testDetails[subTestKey]; exists {
-						if !subTestResult.Skipped { // Don't mark skipped subtests as panicked
-							subTestResult.Panic = true
-							for runID := range subTestResult.FailedOutputs {
-								subTestResult.FailedOutputs[runID] = append([]string{"--- ATTRIBUTED PANIC (from parent test) ---"}, subTestResult.FailedOutputs[runID]...)
-							}
-							if subTestResult.Failures == 0 && subTestResult.Successes > 0 {
-								log.Warn().Str("subtest", subTestKey).Msg("Marking subtest as failed due to parent panic.")
-								subTestResult.Failures = subTestResult.Successes
-								subTestResult.Successes = 0
-								for runID, outputs := range subTestResult.PassedOutputs {
-									if subTestResult.FailedOutputs == nil {
-										subTestResult.FailedOutputs = make(map[string][]string)
-									}
-									subTestResult.FailedOutputs[runID] = append(subTestResult.FailedOutputs[runID], outputs...)
-								}
-								subTestResult.PassedOutputs = make(map[string][]string)
-							}
-						}
-					} else {
-						// log.Debug().Str("expected_subtest", subTestKey).Str("parent_test", parentTestKey).Msg("Expected subtest not found during panic bubbling.")
-					}
-				}
+// --- Pass 2: Process Events Per Test ---
+func (p *defaultParser) processEventsPerTest(eventsByTest map[string][]rawEventData, cfg Config) (map[string]*reports.TestResult, error) {
+	processedTestDetails := make(map[string]*reports.TestResult)
+	for key, rawEvents := range eventsByTest {
+		if len(rawEvents) == 0 {
+			continue
+		}
+		firstEvent := rawEvents[0].Event
+		result := &reports.TestResult{
+			TestName:       firstEvent.Test,
+			TestPackage:    firstEvent.Package,
+			PassedOutputs:  make(map[string][]string),
+			FailedOutputs:  make(map[string][]string),
+			PackageOutputs: make([]string, 0),
+			Durations:      make([]time.Duration, 0),
+		}
+		state := &testProcessingState{
+			result:                  result,
+			key:                     key,
+			processedRunIDs:         make(map[string]bool),
+			runOutcome:              make(map[string]string),
+			panicRaceOutputByRunID:  make(map[string][]string),
+			temporaryOutputsByRunID: make(map[string][]string),
+		}
+
+		for _, rawEv := range rawEvents {
+			p.processEvent(state, rawEv) // Process each event using helpers
+		}
+
+		p.finalizeOutputs(state, cfg)            // Move outputs based on final run outcomes
+		result.Runs = len(state.processedRunIDs) // Assign final run count
+		processedTestDetails[key] = result
+	} // end loop over tests
+	return processedTestDetails, nil
+}
+
+// processEvent is the main dispatcher for processing a single event for a test.
+func (p *defaultParser) processEvent(state *testProcessingState, rawEv rawEventData) {
+	runID := rawEv.RunID
+	event := rawEv.Event
+
+	// 1. Handle Output / Panic/Race Start Detection
+	if event.Output != "" {
+		panicRaceStarted := p.handleOutputEvent(state, event, runID)
+		if panicRaceStarted || state.panicDetectionMode || state.raceDetectionMode {
+			if state.panicDetectionMode || state.raceDetectionMode { // Ensure collection if already in state
+				state.detectedEntries = append(state.detectedEntries, event)
 			}
-		} else {
-			log.Warn().Str("parent_test", parentTestKey).Msg("Parent test mentioned in subtest key not found in results during panic bubbling.")
+			return
 		}
 	}
 
-	// 2. Final Calculation and Result List Generation
-	for key, result := range testDetails {
-		// Calculate final Runs based on processed actions for this test
-		finalRuns := 0
-		if runsMap, ok := processedRunIDs[key]; ok {
-			finalRuns = len(runsMap)
-		}
-		result.Runs = finalRuns // Assign the accurately counted runs
+	// 2. Handle Panic/Race Termination
+	p.handlePanicRaceTermination(state, event, runID)
 
-		// Apply Run Count Correction only if necessary
-		if !result.Skipped && result.Runs > totalExpectedRunsPerTest {
-			log.Warn().Str("test", key).Int("actualRuns", result.Runs).Int("expectedRuns", totalExpectedRunsPerTest).Msg("Correcting run count exceeding expected total runs")
-			targetRuns := totalExpectedRunsPerTest
-			// Recalculate/cap Successes and Failures based on targetRuns
-			if result.Panic || result.Race {
-				newFailures := result.Failures
-				if newFailures == 0 {
-					newFailures = 1
-				} // Panic/race is at least 1 failure
-				if newFailures > targetRuns {
-					newFailures = targetRuns
-				}
-				newSuccesses := targetRuns - newFailures
-				if newSuccesses < 0 {
-					newSuccesses = 0
-				}
-				result.Successes = newSuccesses
-				result.Failures = newFailures
-			} else { // Scale proportionally
-				if result.Runs > 0 {
-					newSuccesses := int(float64(result.Successes*targetRuns) / float64(result.Runs))
-					newFailures := targetRuns - newSuccesses
-					if newFailures < 0 {
-						newFailures = 0
-						newSuccesses = targetRuns
-					}
-					result.Successes = newSuccesses
-					result.Failures = newFailures
-				} else {
-					result.Successes = 0
-					result.Failures = targetRuns
-				}
+	// 3. Handle Terminal Actions (only if not already processed by panic/race)
+	terminalAction := event.Action == "pass" || event.Action == "fail" || event.Action == "skip"
+	if terminalAction && !state.processedRunIDs[runID] {
+		p.handleTerminalAction(state, event, runID)
+	}
+}
+
+// handleOutputEvent handles output collection and panic/race start detection.
+// Returns true if panic/race mode started.
+func (p *defaultParser) handleOutputEvent(state *testProcessingState, event entry, runID string) (panicRaceStarted bool) {
+	if state.panicDetectionMode || state.raceDetectionMode {
+		return false
+	}
+
+	if startPanicRe.MatchString(event.Output) {
+		state.detectedEntries = append(state.detectedEntries, event)
+		state.panicDetectionMode = true
+		return true
+	}
+	if startRaceRe.MatchString(event.Output) {
+		state.detectedEntries = append(state.detectedEntries, event)
+		state.raceDetectionMode = true
+		return true
+	}
+
+	// Store normal output
+	if state.temporaryOutputsByRunID[runID] == nil {
+		state.temporaryOutputsByRunID[runID] = []string{}
+	}
+	state.temporaryOutputsByRunID[runID] = append(state.temporaryOutputsByRunID[runID], event.Output)
+	return false
+}
+
+// handlePanicRaceTermination processes the end of a panic/race block.
+func (p *defaultParser) handlePanicRaceTermination(state *testProcessingState, event entry, runID string) {
+	terminalAction := event.Action == "pass" || event.Action == "fail" || event.Action == "skip"
+	if !(state.panicDetectionMode || state.raceDetectionMode) || !terminalAction {
+		return // Not in correct state or not a terminating action
+	}
+
+	var outputs []string
+	for _, de := range state.detectedEntries {
+		outputs = append(outputs, de.Output)
+	}
+	outputStr := strings.Join(outputs, "\n")
+	currentPackage := event.Package // Assume package from terminating event is correct
+	if currentPackage == "" && len(state.detectedEntries) > 0 {
+		currentPackage = state.detectedEntries[0].Package
+	}
+
+	attributedTestName := event.Test // Fallback
+	var isTimeout bool
+	var attrErr error
+
+	if currentPackage == "" {
+		log.Error().Str("file", state.filePath).Msg("Cannot attribute panic/race: Package context is missing.")
+	} else {
+		if state.panicDetectionMode {
+			attributedTestName, isTimeout, attrErr = AttributePanicToTest(outputs)
+			if attrErr != nil {
+				log.Error().Str("test", state.key).Err(attrErr).Str("output", outputStr).Msg("Panic attribution failed")
 			}
-			result.Runs = targetRuns // Cap the final run count
+			state.result.Panic = true
+			state.result.Timeout = isTimeout
+			if state.panicRaceOutputByRunID[runID] == nil {
+				state.panicRaceOutputByRunID[runID] = []string{}
+			}
+			state.panicRaceOutputByRunID[runID] = append(state.panicRaceOutputByRunID[runID], "--- PANIC DETECTED ---")
+			state.panicRaceOutputByRunID[runID] = append(state.panicRaceOutputByRunID[runID], outputs...)
+			state.panicRaceOutputByRunID[runID] = append(state.panicRaceOutputByRunID[runID], "--- END PANIC ---")
+		} else { // raceDetectionMode
+			attributedTestName, attrErr = AttributeRaceToTest(outputs)
+			if attrErr != nil {
+				log.Warn().Str("test", state.key).Err(attrErr).Str("output", outputStr).Msg("Race attribution failed")
+			}
+			state.result.Race = true
+			if state.panicRaceOutputByRunID[runID] == nil {
+				state.panicRaceOutputByRunID[runID] = []string{}
+			}
+			state.panicRaceOutputByRunID[runID] = append(state.panicRaceOutputByRunID[runID], "--- RACE DETECTED ---")
+			state.panicRaceOutputByRunID[runID] = append(state.panicRaceOutputByRunID[runID], outputs...)
+			state.panicRaceOutputByRunID[runID] = append(state.panicRaceOutputByRunID[runID], "--- END RACE ---")
+		}
+		if attributedTestName != state.result.TestName {
+			log.Warn().Str("event_test", state.result.TestName).Str("attributed_test", attributedTestName).Msg("Panic/Race attribution mismatch")
 		}
 
-		// Final PassRatio calculation
-		if !result.Skipped {
-			if result.Runs > 0 {
-				result.PassRatio = float64(result.Successes) / float64(result.Runs)
-			} else {
-				result.PassRatio = 0.0 // No runs, not skipped -> 0% pass
-			}
-		} else {
-			result.PassRatio = 1.0 // Skipped -> 100% (or undefined)
-			if result.Runs != 0 {
-				log.Warn().Str("test", key).Int("runs", result.Runs).Msg("Skipped test has non-zero run count, resetting runs to 0")
-				result.Runs = 0 // Skipped tests should have 0 runs
-			}
-		}
-
-		// Apply package-level flags/outputs
-		if _, panicked := panickedPackages[result.TestPackage]; panicked && !result.Skipped {
-			result.PackagePanic = true
-		}
-		if _, raced := racePackages[result.TestPackage]; raced && !result.Skipped {
-			// result.PackageRace = true // Uncomment when field exists
-		}
-		if outputs, exists := packageLevelOutputs[result.TestPackage]; exists {
-			result.PackageOutputs = outputs
-		}
-		if cfg.OmitOutputsOnSuccess {
-			result.PassedOutputs = make(map[string][]string)
-			result.Outputs = make(map[string][]string)
-		}
-		// Filter out results with no accurate runs and not skipped
-		if result.Runs > 0 || result.Skipped {
-			finalResults = append(finalResults, *result)
+		// Mark run as processed (failed) if not already done
+		if !state.processedRunIDs[runID] {
+			state.result.Failures++
+			state.processedRunIDs[runID] = true
+			state.runOutcome[runID] = "fail"
 		}
 	}
-	return finalResults, nil
+
+	// Reset state
+	state.detectedEntries = []entry{}
+	state.panicDetectionMode = false
+	state.raceDetectionMode = false
+}
+
+// handleTerminalAction processes pass/fail/skip actions.
+func (p *defaultParser) handleTerminalAction(state *testProcessingState, event entry, runID string) {
+	// Assumes called only if !state.processedRunIDs[runID]
+	switch event.Action {
+	case "pass":
+		state.result.Successes++
+		state.runOutcome[runID] = "pass"
+	case "fail":
+		state.result.Failures++
+		state.runOutcome[runID] = "fail"
+	case "skip":
+		state.result.Skips++
+		state.result.Skipped = true
+		state.runOutcome[runID] = "skip"
+		// No output to move for skip
+		delete(state.temporaryOutputsByRunID, runID)
+	}
+	state.processedRunIDs[runID] = true
+
+	if event.Action == "pass" || event.Action == "fail" {
+		duration, parseErr := time.ParseDuration(strconv.FormatFloat(event.Elapsed, 'f', -1, 64) + "s")
+		if parseErr == nil {
+			state.result.Durations = append(state.result.Durations, duration)
+		} else {
+			log.Warn().Str("test", state.key).Float64("elapsed", event.Elapsed).Err(parseErr).Msg("Failed to parse duration")
+		}
+	}
+}
+
+// finalizeOutputs moves collected temporary outputs to the correct final map based on run outcome.
+func (p *defaultParser) finalizeOutputs(state *testProcessingState, cfg Config) {
+	for runID, outcome := range state.runOutcome {
+		normalOutputs := state.temporaryOutputsByRunID[runID]
+		panicOrRaceOutputs := state.panicRaceOutputByRunID[runID]
+
+		if outcome == "pass" {
+			if !cfg.OmitOutputsOnSuccess {
+				if len(normalOutputs) > 0 {
+					if state.result.PassedOutputs[runID] == nil {
+						state.result.PassedOutputs[runID] = []string{}
+					}
+					state.result.PassedOutputs[runID] = append(state.result.PassedOutputs[runID], normalOutputs...)
+				}
+			}
+		} else if outcome == "fail" {
+			if len(panicOrRaceOutputs) > 0 || len(normalOutputs) > 0 {
+				if state.result.FailedOutputs[runID] == nil {
+					state.result.FailedOutputs[runID] = []string{}
+				}
+			}
+			if len(panicOrRaceOutputs) > 0 {
+				state.result.FailedOutputs[runID] = append(state.result.FailedOutputs[runID], panicOrRaceOutputs...)
+			}
+			if len(normalOutputs) > 0 {
+				state.result.FailedOutputs[runID] = append(state.result.FailedOutputs[runID], normalOutputs...)
+			}
+			if len(state.result.FailedOutputs[runID]) == 0 { // Add placeholder if still empty
+				state.result.FailedOutputs[runID] = []string{"--- TEST FAILED (no specific output captured) ---"}
+			}
+		} // Skip has no output to move
+	}
+	// No need to clear state.temporaryOutputsByRunID as state is ephemeral
+}
+
+// parseSubTest checks if a test name is a subtest and returns the parent and sub names.
+// Kept internal to parser package.
+func parseSubTest(testName string) (parentTestName, subTestName string) {
+	parts := strings.SplitN(testName, "/", 2)
+	if len(parts) == 1 {
+		return parts[0], ""
+	}
+	return parts[0], parts[1]
 }
 
 // transformTestOutputFiles transforms the test output JSON files to ignore parent failures when only subtests fail.
@@ -577,12 +525,127 @@ func (p *defaultParser) transformTestOutputFiles(filePaths []string) error {
 	return nil
 }
 
-// parseSubTest checks if a test name is a subtest and returns the parent and sub names.
-// Moved back into parser package and kept unexported.
-func parseSubTest(testName string) (parentTestName, subTestName string) {
-	parts := strings.SplitN(testName, "/", 2)
-	if len(parts) == 1 {
-		return parts[0], ""
+// --- Pass 3: Aggregate, Correct, Filter ---
+func (p *defaultParser) aggregateAndFinalizeResults(
+	processedTestDetails map[string]*reports.TestResult,
+	testsWithSubTests map[string][]string,
+	panickedPackages map[string]struct{},
+	racePackages map[string]struct{},
+	packageLevelOutputs map[string][]string,
+	totalExpectedRunsPerTest int,
+	cfg Config,
+) []reports.TestResult {
+	finalResults := make([]reports.TestResult, 0, len(processedTestDetails))
+
+	// 1. Panic Inheritance
+	for parentTestKey, subTests := range testsWithSubTests {
+		if parentTestResult, exists := processedTestDetails[parentTestKey]; exists {
+			if parentTestResult.Panic {
+				for _, subTestName := range subTests {
+					subTestKey := fmt.Sprintf("%s/%s", parentTestKey, subTestName)
+					if subTestResult, subExists := processedTestDetails[subTestKey]; subExists {
+						if !subTestResult.Skipped {
+							subTestResult.Panic = true
+							if subTestResult.Failures == 0 && subTestResult.Successes > 0 {
+								log.Warn().Str("subtest", subTestKey).Msg("Marking subtest as failed due to parent panic.")
+								subTestResult.Failures += subTestResult.Successes
+								subTestResult.Successes = 0
+								for runID, outputs := range subTestResult.PassedOutputs {
+									if subTestResult.FailedOutputs == nil {
+										subTestResult.FailedOutputs = make(map[string][]string)
+									}
+									subTestResult.FailedOutputs[runID] = append(subTestResult.FailedOutputs[runID], outputs...)
+								}
+								subTestResult.PassedOutputs = make(map[string][]string)
+							}
+						}
+					}
+				}
+			}
+		}
 	}
-	return parts[0], parts[1]
+
+	// 2. Final Calculation, Correction, Filtering
+	for key, result := range processedTestDetails {
+		// Run count was calculated correctly in Pass 2.
+		// Apply Run Count Correction (cap at totalExpectedRunsPerTest if needed)
+		if !result.Skipped && result.Runs > totalExpectedRunsPerTest {
+			log.Warn().Str("test", key).Int("actualRuns", result.Runs).Int("expectedRuns", totalExpectedRunsPerTest).Msg("Correcting run count exceeding expected total runs")
+			targetRuns := totalExpectedRunsPerTest
+			// Recalculate/cap Successes and Failures based on targetRuns
+			if result.Panic || result.Race {
+				newFailures := result.Failures
+				if newFailures == 0 {
+					newFailures = 1
+				}
+				if newFailures > targetRuns {
+					newFailures = targetRuns
+				}
+				newSuccesses := targetRuns - newFailures
+				if newSuccesses < 0 {
+					newSuccesses = 0
+				}
+				result.Successes = newSuccesses
+				result.Failures = newFailures
+			} else {
+				if result.Runs > 0 {
+					newSuccesses := int(float64(result.Successes*targetRuns) / float64(result.Runs))
+					newFailures := targetRuns - newSuccesses
+					if newFailures < 0 {
+						newFailures = 0
+						newSuccesses = targetRuns
+					}
+					result.Successes = newSuccesses
+					result.Failures = newFailures
+				} else {
+					result.Successes = 0
+					result.Failures = targetRuns
+				}
+			}
+			result.Runs = targetRuns // Cap the final run count
+		}
+
+		// Final PassRatio calculation
+		if !result.Skipped {
+			if result.Runs > 0 {
+				result.PassRatio = float64(result.Successes) / float64(result.Runs)
+			} else {
+				result.PassRatio = 0.0
+			}
+		} else {
+			result.PassRatio = 1.0
+			if result.Runs != 0 {
+				result.Runs = 0
+			}
+		}
+
+		// Apply package-level flags/outputs
+		if _, panicked := panickedPackages[result.TestPackage]; panicked && !result.Skipped {
+			result.PackagePanic = true
+		}
+		if _, raced := racePackages[result.TestPackage]; raced && !result.Skipped {
+			// result.PackageRace = true // Uncomment when field exists
+		}
+		if outputs, exists := packageLevelOutputs[result.TestPackage]; exists {
+			result.PackageOutputs = outputs
+		}
+
+		// Filter out results with no runs and not skipped
+		if result.Runs > 0 || result.Skipped {
+			if cfg.OmitOutputsOnSuccess {
+				result.PassedOutputs = make(map[string][]string)
+			}
+			finalResults = append(finalResults, *result)
+		}
+	}
+
+	// Sort results (optional)
+	sort.Slice(finalResults, func(i, j int) bool {
+		if finalResults[i].TestPackage != finalResults[j].TestPackage {
+			return finalResults[i].TestPackage < finalResults[j].TestPackage
+		}
+		return finalResults[i].TestName < finalResults[j].TestName
+	})
+
+	return finalResults
 }

@@ -213,45 +213,60 @@ func (r *Runner) RerunFailedTests(failedTests []reports.TestResult, rerunCount i
 		return []reports.TestResult{}, []string{}, nil // Nothing to rerun
 	}
 
-	// 1. Group failures by package
-	failingTestsByPackage := make(map[string][]string)
+	// Use a map for efficient lookup and update of currently failing tests
+	currentlyFailing := make(map[string]map[string]struct{}) // pkg -> testName -> exists
 	for _, tr := range failedTests {
 		if tr.TestPackage == "" || tr.TestName == "" {
 			log.Warn().Interface("test_result", tr).Msg("Skipping rerun for test result with missing package or name")
 			continue
 		}
-		failingTestsByPackage[tr.TestPackage] = append(failingTestsByPackage[tr.TestPackage], tr.TestName)
+		if _, ok := currentlyFailing[tr.TestPackage]; !ok {
+			currentlyFailing[tr.TestPackage] = make(map[string]struct{})
+		}
+		currentlyFailing[tr.TestPackage][tr.TestName] = struct{}{}
 	}
 
-	if len(failingTestsByPackage) == 0 {
+	if len(currentlyFailing) == 0 {
 		log.Warn().Msg("No valid failed tests found to rerun after filtering.")
 		return []reports.TestResult{}, []string{}, nil
 	}
 
 	if r.Verbose {
-		log.Info().Int("packages", len(failingTestsByPackage)).Int("rerun_count", rerunCount).Msg("Starting test reruns for failed tests")
+		log.Info().Int("packages", len(currentlyFailing)).Int("rerun_count", rerunCount).Msg("Starting test reruns for failed tests")
 	}
 
 	rerunOutputFiles := make([]string, 0)
-	baseExecCfg := r.getExecutorConfig() // Get base config for flags like -race, -timeout, -tags
+	baseExecCfg := r.getExecutorConfig()
 
 	// 2. Iterate Rerun Count
 	for i := 0; i < rerunCount; i++ {
-		if r.Verbose {
-			log.Info().Int("iteration", i+1).Int("total", rerunCount).Msg("Running rerun iteration")
+		if len(currentlyFailing) == 0 {
+			log.Info().Int("iteration", i).Msg("All previously failing tests passed in reruns. Stopping reruns early.")
+			break // Stop if no more tests are failing
 		}
-		// 3. Execute Rerun per Package
-		for pkg, tests := range failingTestsByPackage {
-			if len(tests) == 0 {
+
+		if r.Verbose {
+			log.Info().Int("iteration", i+1).Int("total", rerunCount).Int("tests_to_rerun", countMapKeys(currentlyFailing)).Msg("Running rerun iteration")
+		}
+
+		failingThisIteration := make(map[string]map[string]struct{}) // Track tests still failing *after this iteration*
+
+		// 3. Execute Rerun per Package for currently failing tests
+		for pkg, testsMap := range currentlyFailing {
+			if len(testsMap) == 0 {
 				continue
-			} // Should not happen based on grouping logic, but safe check
+			}
+
+			testsToRun := make([]string, 0, len(testsMap))
+			for testName := range testsMap {
+				testsToRun = append(testsToRun, testName)
+			}
 
 			// Escape test names for regex and join with |
-			escapedTests := make([]string, len(tests))
-			for j, testName := range tests {
+			escapedTests := make([]string, len(testsToRun))
+			for j, testName := range testsToRun {
 				escapedTests[j] = regexp.QuoteMeta(testName)
 			}
-			// Non-capturing group is slightly cleaner `(?:...)`
 			testPattern := fmt.Sprintf("^(?:%s)$", strings.Join(escapedTests, "|"))
 
 			// Create specific executor config for this rerun invocation
@@ -265,19 +280,31 @@ func (r *Runner) RerunFailedTests(failedTests []reports.TestResult, rerunCount i
 				log.Info().Str("package", pkg).Str("pattern", testPattern).Int("rerun_iter", i+1).Msg("Executing package rerun")
 			}
 
-			// Execute using RunTestPackage. Use 'i' as runIndex for unique temp file names.
-			// We don't care about the 'passed' bool here, only the output file.
-			jsonOutputPath, _, err := r.exec.RunTestPackage(rerunExecCfg, pkg, i)
+			jsonOutputPath, passed, err := r.exec.RunTestPackage(rerunExecCfg, pkg, i)
 			if err != nil {
-				// Log execution error but continue with other packages/iterations for reruns
-				log.Error().Err(err).Str("package", pkg).Int("rerun_iteration", i+1).Msg("Error executing rerun command, skipping this attempt")
-				continue // Skip this package/iteration on error
+				// If execution fails for a package, return the error immediately
+				log.Error().Err(err).Str("package", pkg).Int("rerun_iteration", i+1).Msg("Error executing rerun command for package")
+				return nil, nil, fmt.Errorf("error on rerun execution for package %s: %w", pkg, err)
 			}
 			if jsonOutputPath != "" {
 				rerunOutputFiles = append(rerunOutputFiles, jsonOutputPath)
 			}
-		}
-	}
+
+			// If the command failed (exit code != 0), keep all tests from this package in the failing list for the next iteration.
+			// Otherwise (passed=true), assume tests in this run passed and remove them from the failing list.
+			if !passed {
+				if _, ok := failingThisIteration[pkg]; !ok {
+					failingThisIteration[pkg] = make(map[string]struct{})
+				}
+				for testName := range testsMap {
+					failingThisIteration[pkg][testName] = struct{}{}
+				}
+			}
+		} // end loop over packages for this iteration
+
+		// Update the set of failing tests for the next iteration
+		currentlyFailing = failingThisIteration
+	} // end loop over rerunCount
 
 	// 4. Parse Rerun Outputs
 	if len(rerunOutputFiles) == 0 {
@@ -306,4 +333,13 @@ func (r *Runner) RerunFailedTests(failedTests []reports.TestResult, rerunCount i
 	// Return the parsed results AND the list of files parsed.
 	// Note: The function signature needs to change back to return []string
 	return rerunResults, parsedFilePaths, nil
+}
+
+// Helper function to count keys in the nested map for logging
+func countMapKeys(m map[string]map[string]struct{}) int {
+	count := 0
+	for _, subMap := range m {
+		count += len(subMap)
+	}
+	return count
 }
