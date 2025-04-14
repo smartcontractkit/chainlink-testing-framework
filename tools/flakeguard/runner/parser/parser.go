@@ -23,7 +23,6 @@ import (
 // Constants related to parsing and transformation outputs
 const (
 	// RawOutputTransformedDir defines the directory where transformed output files are stored.
-	// Keeping this consistent with the original runner for now.
 	RawOutputTransformedDir = "./flakeguard_raw_output_transformed"
 )
 
@@ -41,8 +40,6 @@ var (
 	startRaceRe  = regexp.MustCompile(`^WARNING: DATA RACE`)
 )
 
-// entry represents a single line of the go test -json output.
-// Moved from runner.go
 type entry struct {
 	Action  string  `json:"Action"`
 	Test    string  `json:"Test"`
@@ -51,32 +48,25 @@ type entry struct {
 	Elapsed float64 `json:"Elapsed"` // Decimal value in seconds
 }
 
-// String provides a string representation of an entry.
-// Moved from runner.go
 func (e entry) String() string {
 	return fmt.Sprintf("Action: %s, Test: %s, Package: %s, Output: %s, Elapsed: %f", e.Action, e.Test, e.Package, e.Output, e.Elapsed)
 }
 
-// Parser defines the interface for parsing go test output.
 type Parser interface {
 	// ParseFiles takes a list of raw output file paths, processes them (including potential transformation),
 	// and returns the aggregated test results and the list of file paths that were actually parsed.
 	ParseFiles(rawFilePaths []string, runPrefix string, expectedRuns int, cfg Config) ([]reports.TestResult, []string, error)
 }
 
-// Config holds configuration relevant to the parser.
 type Config struct {
 	IgnoreParentFailuresOnSubtests bool
 	OmitOutputsOnSuccess           bool
-	// Potentially add MaxPassRatio here if calculation moves to parser
 }
 
-// defaultParser implements the Parser interface.
 type defaultParser struct {
-	transformedOutputFiles []string // State for transformed files
+	transformedOutputFiles []string
 }
 
-// NewParser creates a new default parser.
 func NewParser() Parser {
 	return &defaultParser{
 		transformedOutputFiles: make([]string, 0),
@@ -87,7 +77,6 @@ func NewParser() Parser {
 func (p *defaultParser) ParseFiles(rawFilePaths []string, runPrefix string, expectedRuns int, cfg Config) ([]reports.TestResult, []string, error) {
 	var parseFilePaths = rawFilePaths
 
-	// Use cfg for transformation decision
 	if cfg.IgnoreParentFailuresOnSubtests {
 		err := p.transformTestOutputFiles(rawFilePaths)
 		if err != nil {
@@ -96,7 +85,6 @@ func (p *defaultParser) ParseFiles(rawFilePaths []string, runPrefix string, expe
 		parseFilePaths = p.transformedOutputFiles
 	}
 
-	// Pass cfg down to parseTestResults
 	results, err := p.parseTestResults(parseFilePaths, runPrefix, expectedRuns, cfg)
 	if err != nil {
 		return nil, parseFilePaths, err // Return paths even on error?
@@ -145,7 +133,6 @@ func (p *defaultParser) parseTestResults(parseFilePaths []string, runPrefix stri
 	return finalResults, nil
 }
 
-// --- Pass 1: Collect and Group Events ---
 func (p *defaultParser) collectAndGroupEvents(parseFilePaths []string, runPrefix string) (
 	eventsByTest map[string][]rawEventData,
 	packageLevelOutputs map[string][]string,
@@ -167,7 +154,7 @@ func (p *defaultParser) collectAndGroupEvents(parseFilePaths []string, runPrefix
 		file, fileErr := os.Open(filePath)
 		if fileErr != nil {
 			err = fmt.Errorf("failed to open test output file '%s': %w", filePath, fileErr)
-			return // Return immediately on file open error
+			return
 		}
 
 		scanner := bufio.NewScanner(file)
@@ -183,7 +170,6 @@ func (p *defaultParser) collectAndGroupEvents(parseFilePaths []string, runPrefix
 				continue
 			}
 			if entryLine.Action == "build-fail" {
-				// Read build error details
 				_, seekErr := file.Seek(0, io.SeekStart)
 				if seekErr != nil {
 					log.Error().Str("file", filePath).Err(seekErr).Msg("Failed to seek to read build errors")
@@ -194,7 +180,7 @@ func (p *defaultParser) collectAndGroupEvents(parseFilePaths []string, runPrefix
 				}
 				fmt.Fprintf(os.Stderr, "--- Build Error in %s ---\n%s\n-------------------------\n", filePath, string(buildErrs))
 				file.Close()
-				err = ErrBuild // Set the sentinel error
+				err = ErrBuild
 				return
 			}
 			if entryLine.Package != "" {
@@ -225,7 +211,7 @@ func (p *defaultParser) collectAndGroupEvents(parseFilePaths []string, runPrefix
 							testsWithSubTests[parentTestKey] = append(testsWithSubTests[parentTestKey], subTestName)
 						}
 					}
-				} else if entryLine.Output != "" { // Package-level output
+				} else if entryLine.Output != "" {
 					if _, exists := packageLevelOutputs[entryLine.Package]; !exists {
 						packageLevelOutputs[entryLine.Package] = []string{}
 					}
@@ -239,11 +225,10 @@ func (p *defaultParser) collectAndGroupEvents(parseFilePaths []string, runPrefix
 			return
 		}
 		file.Close()
-	} // End Pass 1 file loop
+	}
 	return
 }
 
-// --- Pass 2: Process Events Per Test ---
 func (p *defaultParser) processEventsPerTest(eventsByTest map[string][]rawEventData, cfg Config) (map[string]*reports.TestResult, error) {
 	processedTestDetails := make(map[string]*reports.TestResult)
 	for key, rawEvents := range eventsByTest {
@@ -269,13 +254,13 @@ func (p *defaultParser) processEventsPerTest(eventsByTest map[string][]rawEventD
 		}
 
 		for _, rawEv := range rawEvents {
-			p.processEvent(state, rawEv) // Process each event using helpers
+			p.processEvent(state, rawEv)
 		}
 
-		p.finalizeOutputs(state, cfg)            // Move outputs based on final run outcomes
-		result.Runs = len(state.processedRunIDs) // Assign final run count
+		p.finalizeOutputs(state, cfg)
+		result.Runs = len(state.processedRunIDs)
 		processedTestDetails[key] = result
-	} // end loop over tests
+	}
 	return processedTestDetails, nil
 }
 
@@ -288,7 +273,7 @@ func (p *defaultParser) processEvent(state *testProcessingState, rawEv rawEventD
 	if event.Output != "" {
 		panicRaceStarted := p.handleOutputEvent(state, event, runID)
 		if panicRaceStarted || state.panicDetectionMode || state.raceDetectionMode {
-			if state.panicDetectionMode || state.raceDetectionMode { // Ensure collection if already in state
+			if state.panicDetectionMode || state.raceDetectionMode {
 				state.detectedEntries = append(state.detectedEntries, event)
 			}
 			return
@@ -323,7 +308,6 @@ func (p *defaultParser) handleOutputEvent(state *testProcessingState, event entr
 		return true
 	}
 
-	// Store normal output
 	if state.temporaryOutputsByRunID[runID] == nil {
 		state.temporaryOutputsByRunID[runID] = []string{}
 	}
@@ -335,7 +319,7 @@ func (p *defaultParser) handleOutputEvent(state *testProcessingState, event entr
 func (p *defaultParser) handlePanicRaceTermination(state *testProcessingState, event entry, runID string) {
 	terminalAction := event.Action == "pass" || event.Action == "fail" || event.Action == "skip"
 	if !(state.panicDetectionMode || state.raceDetectionMode) || !terminalAction {
-		return // Not in correct state or not a terminating action
+		return
 	}
 
 	var outputs []string
@@ -343,12 +327,12 @@ func (p *defaultParser) handlePanicRaceTermination(state *testProcessingState, e
 		outputs = append(outputs, de.Output)
 	}
 	outputStr := strings.Join(outputs, "\n")
-	currentPackage := event.Package // Assume package from terminating event is correct
+	currentPackage := event.Package
 	if currentPackage == "" && len(state.detectedEntries) > 0 {
 		currentPackage = state.detectedEntries[0].Package
 	}
 
-	attributedTestName := event.Test // Fallback
+	attributedTestName := event.Test
 	var isTimeout bool
 	var attrErr error
 
@@ -401,7 +385,6 @@ func (p *defaultParser) handlePanicRaceTermination(state *testProcessingState, e
 
 // handleTerminalAction processes pass/fail/skip actions.
 func (p *defaultParser) handleTerminalAction(state *testProcessingState, event entry, runID string) {
-	// Assumes called only if !state.processedRunIDs[runID]
 	switch event.Action {
 	case "pass":
 		state.result.Successes++
@@ -413,7 +396,6 @@ func (p *defaultParser) handleTerminalAction(state *testProcessingState, event e
 		state.result.Skips++
 		state.result.Skipped = true
 		state.runOutcome[runID] = "skip"
-		// No output to move for skip
 		delete(state.temporaryOutputsByRunID, runID)
 	}
 	state.processedRunIDs[runID] = true
@@ -455,16 +437,14 @@ func (p *defaultParser) finalizeOutputs(state *testProcessingState, cfg Config) 
 			if len(normalOutputs) > 0 {
 				state.result.FailedOutputs[runID] = append(state.result.FailedOutputs[runID], normalOutputs...)
 			}
-			if len(state.result.FailedOutputs[runID]) == 0 { // Add placeholder if still empty
+			if len(state.result.FailedOutputs[runID]) == 0 {
 				state.result.FailedOutputs[runID] = []string{"--- TEST FAILED (no specific output captured) ---"}
 			}
-		} // Skip has no output to move
+		}
 	}
-	// No need to clear state.temporaryOutputsByRunID as state is ephemeral
 }
 
 // parseSubTest checks if a test name is a subtest and returns the parent and sub names.
-// Kept internal to parser package.
 func parseSubTest(testName string) (parentTestName, subTestName string) {
 	parts := strings.SplitN(testName, "/", 2)
 	if len(parts) == 1 {
@@ -474,9 +454,7 @@ func parseSubTest(testName string) (parentTestName, subTestName string) {
 }
 
 // transformTestOutputFiles transforms the test output JSON files to ignore parent failures when only subtests fail.
-// Moved from runner.go
 func (p *defaultParser) transformTestOutputFiles(filePaths []string) error {
-	// Clear previous transformed files
 	p.transformedOutputFiles = make([]string, 0, len(filePaths))
 	err := os.MkdirAll(RawOutputTransformedDir, 0o755)
 	if err != nil {
@@ -499,14 +477,12 @@ func (p *defaultParser) transformTestOutputFiles(filePaths []string) error {
 			return fmt.Errorf("failed to create transformed file '%s': %w", outPath, err)
 		}
 
-		// The transformer option is set to ignore parent failures when only subtests fail.
 		transformErr := transformer.TransformJSON(inFile, outFile, transformer.NewOptions(true))
 
 		closeErrIn := inFile.Close()
 		closeErrOut := outFile.Close()
 
 		if transformErr != nil {
-			// Attempt to remove partially written/failed transformed file
 			if removeErr := os.Remove(outPath); removeErr != nil {
 				log.Warn().Str("file", outPath).Err(removeErr).Msg("Failed to remove incomplete transformed file after error")
 			}
@@ -525,7 +501,6 @@ func (p *defaultParser) transformTestOutputFiles(filePaths []string) error {
 	return nil
 }
 
-// --- Pass 3: Aggregate, Correct, Filter ---
 func (p *defaultParser) aggregateAndFinalizeResults(
 	processedTestDetails map[string]*reports.TestResult,
 	testsWithSubTests map[string][]string,
@@ -537,7 +512,7 @@ func (p *defaultParser) aggregateAndFinalizeResults(
 ) []reports.TestResult {
 	finalResults := make([]reports.TestResult, 0, len(processedTestDetails))
 
-	// 1. Panic Inheritance
+	// Panic Inheritance
 	for parentTestKey, subTests := range testsWithSubTests {
 		if parentTestResult, exists := processedTestDetails[parentTestKey]; exists {
 			if parentTestResult.Panic {
@@ -565,14 +540,11 @@ func (p *defaultParser) aggregateAndFinalizeResults(
 		}
 	}
 
-	// 2. Final Calculation, Correction, Filtering
+	// Final Calculation, Correction, Filtering
 	for key, result := range processedTestDetails {
-		// Run count was calculated correctly in Pass 2.
-		// Apply Run Count Correction (cap at totalExpectedRunsPerTest if needed)
 		if !result.Skipped && result.Runs > totalExpectedRunsPerTest {
 			log.Warn().Str("test", key).Int("actualRuns", result.Runs).Int("expectedRuns", totalExpectedRunsPerTest).Msg("Correcting run count exceeding expected total runs")
 			targetRuns := totalExpectedRunsPerTest
-			// Recalculate/cap Successes and Failures based on targetRuns
 			if result.Panic || result.Race {
 				newFailures := result.Failures
 				if newFailures == 0 {
@@ -602,10 +574,9 @@ func (p *defaultParser) aggregateAndFinalizeResults(
 					result.Failures = targetRuns
 				}
 			}
-			result.Runs = targetRuns // Cap the final run count
+			result.Runs = targetRuns
 		}
 
-		// Final PassRatio calculation
 		if !result.Skipped {
 			if result.Runs > 0 {
 				result.PassRatio = float64(result.Successes) / float64(result.Runs)
@@ -623,9 +594,6 @@ func (p *defaultParser) aggregateAndFinalizeResults(
 		if _, panicked := panickedPackages[result.TestPackage]; panicked && !result.Skipped {
 			result.PackagePanic = true
 		}
-		if _, raced := racePackages[result.TestPackage]; raced && !result.Skipped {
-			// result.PackageRace = true // Uncomment when field exists
-		}
 		if outputs, exists := packageLevelOutputs[result.TestPackage]; exists {
 			result.PackageOutputs = outputs
 		}
@@ -639,7 +607,6 @@ func (p *defaultParser) aggregateAndFinalizeResults(
 		}
 	}
 
-	// Sort results (optional)
 	sort.Slice(finalResults, func(i, j int) bool {
 		if finalResults[i].TestPackage != finalResults[j].TestPackage {
 			return finalResults[i].TestPackage < finalResults[j].TestPackage

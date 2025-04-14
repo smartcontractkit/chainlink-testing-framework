@@ -7,8 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test cases adapted from original runner_test.go
-
 func TestAttributePanicToTest(t *testing.T) {
 	t.Parallel()
 
@@ -16,10 +14,9 @@ func TestAttributePanicToTest(t *testing.T) {
 		name             string
 		expectedTestName string
 		expectedTimeout  bool
-		expectedError    error // Use to check for specific attribution errors
+		expectedError    error
 		outputs          []string
 	}{
-		// Existing successful attribution cases...
 		{
 			name:             "properly attributed panic",
 			expectedTestName: "TestPanic",
@@ -85,7 +82,6 @@ func TestAttributePanicToTest(t *testing.T) {
 				"github.com/smartcontractkit/chainlink/deployment/keystone/changeset_test.TestDeployBalanceReader(0xc000583c00)",
 			},
 		},
-		// Existing failure/error cases...
 		{
 			name:          "empty output",
 			expectedError: ErrFailedToAttributePanicToTest,
@@ -124,55 +120,51 @@ func TestAttributePanicToTest(t *testing.T) {
 				"github.com/smartcontractkit/chainlink/v2/core/services/workflows.newTestEngine.func4(0x0)",
 			},
 		},
-		// --- NEW Test Cases ---
 		{
 			name:             "Panic with multiple Test names in stack",
-			expectedTestName: "TestInner", // Expect the first one encountered (closest to panic)
+			expectedTestName: "TestInner",
 			expectedTimeout:  false,
 			outputs: []string{
 				"panic: Something went wrong in helper",
 				"main.helperFunction()",
-				"main.TestInner(0xc00...)", // First encountered
-				"main.TestOuter(0xc00...)", // Second encountered
+				"main.TestInner(0xc00...)",
+				"main.TestOuter(0xc00...)",
 			},
 		},
 		{
 			name:             "Timeout with multiple matching durations",
-			expectedTestName: "TestA", // Expect the first one listed
+			expectedTestName: "TestA",
 			expectedTimeout:  true,
 			outputs: []string{
 				"panic: test timed out after 5m0s",
 				"running tests:",
-				"\tTestA (5m0s)",  // First match
-				"\tTestB (4m59s)", // Doesn't match
-				"\tTestC (5m1s)",  // Also matches, but later
-				"\tTestD (5m0s)",  // Also matches, but later
+				"\tTestA (5m0s)",
+				"\tTestB (4m59s)",
+				"\tTestC (5m1s)",
+				"\tTestD (5m0s)",
 			},
 		},
-		// --- UPDATED Test Case ---
 		{
 			name:            "fail to parse test duration in timeout list",
 			expectedTimeout: true,
-			expectedError:   ErrDetectedTimeoutFailedParse, // UPDATED Expected error
+			expectedError:   ErrDetectedTimeoutFailedParse,
 			outputs: []string{
 				"panic: test timed out after 10m0s\n",
 				"\trunning tests:\n",
-				"\t\tTestAddAndPromoteCandidatesForNewChain (malformedDurationStr)\n", // Key line
+				"\t\tTestAddAndPromoteCandidatesForNewChain (malformedDurationStr)\n",
 			},
 		},
 	}
 
 	for _, tc := range testCases {
-		tc := tc // Capture range variable
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			// Use exported function name
 			testName, timeout, err := AttributePanicToTest(tc.outputs)
 
 			assert.Equal(t, tc.expectedTimeout, timeout, "Timeout flag mismatch")
 			if tc.expectedError != nil {
 				require.Error(t, err, "Expected an error but got none")
-				// Use exported error names
 				assert.ErrorIs(t, err, tc.expectedError, "Error mismatch")
 				assert.Empty(t, testName, "Test name should be empty on error")
 			} else {
@@ -192,7 +184,6 @@ func TestAttributeRaceToTest(t *testing.T) {
 		expectedError    error
 		outputs          []string
 	}{
-		// Existing cases...
 		{
 			name:             "properly attributed race",
 			expectedTestName: "TestRace",
@@ -217,15 +208,13 @@ func TestAttributeRaceToTest(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc // Capture range variable
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			// Use exported function name
 			testName, err := AttributeRaceToTest(tc.outputs)
 
 			if tc.expectedError != nil {
 				require.Error(t, err, "Expected an error but got none")
-				// Use exported error name
 				assert.ErrorIs(t, err, tc.expectedError, "Error mismatch")
 				assert.Empty(t, testName, "Test name should be empty on error")
 			} else {

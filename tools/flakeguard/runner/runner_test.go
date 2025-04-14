@@ -13,17 +13,14 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner"
-	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/executor" // Need this for Config type
-	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/parser"   // Need this for Config/Err types
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/executor"
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/parser"
 )
-
-// --- Mock Executor ---
 
 type mockExecutor struct {
 	RunTestPackageFn func(cfg executor.Config, packageName string, runIndex int) (outputFilePath string, passed bool, err error)
 	RunCmdFn         func(cfg executor.Config, testCmd []string, runIndex int) (outputFilePath string, passed bool, err error)
 
-	// Recording calls
 	RunTestPackageCalls []executor.Config
 	RunCmdCalls         [][]string
 }
@@ -33,7 +30,6 @@ func (m *mockExecutor) RunTestPackage(cfg executor.Config, packageName string, r
 	if m.RunTestPackageFn != nil {
 		return m.RunTestPackageFn(cfg, packageName, runIndex)
 	}
-	// Default behavior
 	return fmt.Sprintf("mock_output_%s_%d.json", packageName, runIndex), true, nil
 }
 
@@ -42,16 +38,12 @@ func (m *mockExecutor) RunCmd(cfg executor.Config, testCmd []string, runIndex in
 	if m.RunCmdFn != nil {
 		return m.RunCmdFn(cfg, testCmd, runIndex)
 	}
-	// Default behavior
 	return fmt.Sprintf("mock_cmd_output_%d.json", runIndex), true, nil
 }
-
-// --- Mock Parser ---
 
 type mockParser struct {
 	ParseFilesFn func(rawFilePaths []string, runPrefix string, expectedRuns int, cfg parser.Config) ([]reports.TestResult, []string, error)
 
-	// Recording calls
 	ParseFilesCalls [][]string
 	LastParseCfg    parser.Config
 }
@@ -62,11 +54,8 @@ func (m *mockParser) ParseFiles(rawFilePaths []string, runPrefix string, expecte
 	if m.ParseFilesFn != nil {
 		return m.ParseFilesFn(rawFilePaths, runPrefix, expectedRuns, cfg)
 	}
-	// Default behavior
 	return []reports.TestResult{{TestName: "DefaultMockTest"}}, rawFilePaths, nil
 }
-
-// --- Test Functions ---
 
 func TestRunner_RunTestPackages(t *testing.T) {
 	t.Parallel()
@@ -76,7 +65,7 @@ func TestRunner_RunTestPackages(t *testing.T) {
 		runCount          int
 		failFast          bool
 		packages          []string
-		executorResponses map[string]struct { // map key: packageName-runIndex
+		executorResponses map[string]struct {
 			passed bool
 			err    error
 		}
@@ -107,7 +96,7 @@ func TestRunner_RunTestPackages(t *testing.T) {
 				fileCount int
 				cfg       parser.Config
 			}{fileCount: 4, cfg: parser.Config{IgnoreParentFailuresOnSubtests: false, OmitOutputsOnSuccess: false}},
-			expectedResultCount: 1, // Default mock parser returns 1 result
+			expectedResultCount: 1,
 			expectedError:       false,
 		},
 		{
@@ -119,8 +108,7 @@ func TestRunner_RunTestPackages(t *testing.T) {
 				passed bool
 				err    error
 			}{
-				"pkgA-0": {passed: false, err: nil}, // Fails on first run
-				// Other responses shouldn't matter as execution stops
+				"pkgA-0": {passed: false, err: nil},
 			},
 			expectedExecCalls: 1,
 			expectedParseArgs: struct {
@@ -143,7 +131,7 @@ func TestRunner_RunTestPackages(t *testing.T) {
 				"pkgA-1": {passed: true, err: fmt.Errorf("executor boom")},
 			},
 			expectedExecCalls:   2,
-			expectedResultCount: 0, // No parsing happens
+			expectedResultCount: 0,
 			expectedError:       true,
 		},
 		{
@@ -159,20 +147,18 @@ func TestRunner_RunTestPackages(t *testing.T) {
 			},
 			expectedExecCalls:   1,
 			expectedResultCount: 0,
-			expectedError:       true, // Parser will return an error in this case setup
+			expectedError:       true,
 		},
 	}
 
 	for _, tc := range testCases {
-		tc := tc // Capture range variable
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			// Mocks setup
 			mockExec := &mockExecutor{
 				RunTestPackageFn: func(cfg executor.Config, pkg string, idx int) (string, bool, error) {
 					key := fmt.Sprintf("%s-%d", pkg, idx)
 					resp, ok := tc.executorResponses[key]
 					if !ok {
-						// Default response if not specified
 						return fmt.Sprintf("mock_%s_%d.json", pkg, idx), true, nil
 					}
 					return fmt.Sprintf("mock_%s_%d.json", pkg, idx), resp.passed, resp.err
@@ -185,9 +171,8 @@ func TestRunner_RunTestPackages(t *testing.T) {
 				}
 			}
 
-			// Create Runner with mocks
 			r := runner.NewRunner(
-				".",   // Project path doesn't matter much for unit tests
+				".",
 				false, // Verbose
 				tc.runCount,
 				nil,   // goTestCountFlag
@@ -199,24 +184,19 @@ func TestRunner_RunTestPackages(t *testing.T) {
 				tc.failFast,
 				nil, // skipTests
 				nil, // selectTests
-				// Use parser config from expectations if set, else default
 				tc.expectedParseArgs.cfg.IgnoreParentFailuresOnSubtests,
 				tc.expectedParseArgs.cfg.OmitOutputsOnSuccess,
-				mockExec,  // Injected mock executor
-				mockParse, // Injected mock parser
+				mockExec,
+				mockParse,
 			)
 
-			// Execute
 			actualResults, err := r.RunTestPackages(tc.packages)
 
-			// Assertions
 			assert.Len(t, mockExec.RunTestPackageCalls, tc.expectedExecCalls, "Unexpected number of executor calls")
 
 			if tc.expectedError {
 				assert.Error(t, err)
-				// If the error came from the parser, it *was* called.
-				// If the error came from the executor, the parser *was not* called.
-				if tc.name == "Executor error stops execution" { // Only check parser calls if error was from executor
+				if tc.name == "Executor error stops execution" {
 					assert.Len(t, mockParse.ParseFilesCalls, 0, "Parser should not be called on executor error")
 				}
 			} else {
@@ -240,7 +220,7 @@ func TestRunner_RunTestCmd(t *testing.T) {
 		runCount          int
 		failFast          bool
 		cmd               []string
-		executorResponses []struct { // Slice index corresponds to run index
+		executorResponses []struct {
 			passed bool
 			err    error
 		}
@@ -310,9 +290,8 @@ func TestRunner_RunTestCmd(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc // Capture range variable
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			// Mocks setup
 			execCallCount := 0
 			mockExec := &mockExecutor{
 				RunCmdFn: func(cfg executor.Config, cmd []string, idx int) (string, bool, error) {
@@ -321,12 +300,11 @@ func TestRunner_RunTestCmd(t *testing.T) {
 						resp := tc.executorResponses[idx]
 						return fmt.Sprintf("mock_cmd_%d.json", idx), resp.passed, resp.err
 					}
-					return fmt.Sprintf("mock_cmd_%d.json", idx), true, nil // Default if not specified
+					return fmt.Sprintf("mock_cmd_%d.json", idx), true, nil
 				},
 			}
 			mockParse := &mockParser{}
 
-			// Create Runner with mocks
 			r := runner.NewRunner(
 				".", tc.failFast, // other fields default/nil
 				tc.runCount, nil, false, "", nil, false, "", tc.failFast, nil, nil,
@@ -335,10 +313,8 @@ func TestRunner_RunTestCmd(t *testing.T) {
 				mockExec, mockParse,
 			)
 
-			// Execute
 			actualResults, err := r.RunTestCmd(tc.cmd)
 
-			// Assertions
 			assert.Equal(t, tc.expectedExecCalls, execCallCount, "Unexpected number of executor RunCmd calls")
 
 			if tc.expectedError {
@@ -364,7 +340,7 @@ func TestRunner_RerunFailedTests(t *testing.T) {
 		name               string
 		initialFailedTests []reports.TestResult
 		rerunCount         int
-		executorResponses  map[string]struct { // map key: packageName-runIndex (rerun index)
+		executorResponses  map[string]struct {
 			passed bool
 			err    error
 		}
@@ -428,9 +404,8 @@ func TestRunner_RerunFailedTests(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc // Capture range variable
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			// Mocks setup
 			execCallCount := 0
 			mockExec := &mockExecutor{
 				RunTestPackageFn: func(cfg executor.Config, pkg string, idx int) (string, bool, error) {
@@ -458,13 +433,10 @@ func TestRunner_RerunFailedTests(t *testing.T) {
 			}
 			mockParse := &mockParser{}
 
-			// Create Runner
 			r := runner.NewRunner(".", false, 0, nil, false, "", nil, false, "", false, nil, nil, false, false, mockExec, mockParse)
 
-			// Execute
 			actualResults, _, err := r.RerunFailedTests(tc.initialFailedTests, tc.rerunCount)
 
-			// Assertions
 			assert.Equal(t, tc.expectedExecCalls, execCallCount, "Unexpected number of executor calls")
 
 			if tc.expectedError {
@@ -472,11 +444,10 @@ func TestRunner_RerunFailedTests(t *testing.T) {
 				assert.Len(t, mockParse.ParseFilesCalls, 0, "Parser should not be called on rerun executor error")
 			} else {
 				assert.NoError(t, err)
-				if tc.expectedExecCalls > 0 { // Only expect parser calls if executor was called
+				if tc.expectedExecCalls > 0 {
 					assert.Len(t, mockParse.ParseFilesCalls, 1, "Parser should be called once after reruns")
 					if len(mockParse.ParseFilesCalls) > 0 {
 						assert.Len(t, mockParse.ParseFilesCalls[0], tc.expectedParseArgs.fileCount, "Parser called with wrong number of files")
-						// Check parser config used during parse call
 						assert.Equal(t, r.IgnoreParentFailuresOnSubtests, mockParse.LastParseCfg.IgnoreParentFailuresOnSubtests, "Parser IgnoreParentFailures mismatch")
 						assert.Equal(t, r.OmitOutputsOnSuccess, mockParse.LastParseCfg.OmitOutputsOnSuccess, "Parser OmitOutputsOnSuccess mismatch")
 					}

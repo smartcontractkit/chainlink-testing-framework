@@ -14,17 +14,13 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner"
-	// We will use the actual runner, executor, and parser implementations
 )
 
 var (
-	// Use relative path from runner directory for example tests
 	flakyTestPackagePath = "./example_test_package"
-	// Use a subdirectory within runner for debug output
-	debugDir = "_debug_outputs_integration"
+	debugDir             = "_debug_outputs_integration"
 )
 
-// expectedTestResult mirrors the structure from the old tests
 type expectedTestResult struct {
 	allSuccesses  bool
 	someSuccesses bool
@@ -45,18 +41,17 @@ type expectedTestResult struct {
 	seen bool
 }
 
-// TestRunIntegration adapts the original TestRun to use the refactored runner.
 func TestRunIntegration(t *testing.T) {
 	var (
 		zeroRuns        = 0
 		oneCount        = 1
-		defaultRunCount = 3 // Use a smaller count for faster integration tests
+		defaultRunCount = 3
 		successPassRate = 1.0
 		failPassRate    = 0.0
 	)
 	testCases := []struct {
 		name           string
-		cfg            runnerConfig // Use a helper struct for clarity
+		cfg            runnerConfig
 		expectedTests  map[string]*expectedTestResult
 		expectBuildErr bool
 	}{
@@ -66,7 +61,7 @@ func TestRunIntegration(t *testing.T) {
 				ProjectPath:      "../",
 				RunCount:         defaultRunCount,
 				SkipTests:        []string{"TestPanic", "TestFlakyPanic", "TestSubTestsSomePanic", "TestTimeout"},
-				GoTestCountFlag:  &oneCount, // Force count=1 internally for predictability
+				GoTestCountFlag:  &oneCount,
 				OmitOutputs:      true,
 				IgnoreSubtestErr: false,
 				Tags:             []string{"example_package_tests"},
@@ -96,7 +91,7 @@ func TestRunIntegration(t *testing.T) {
 		{
 			name: "race (integration)",
 			cfg: runnerConfig{
-				ProjectPath:      "../", // Set ProjectPath relative to runner dir -> flakeguard dir
+				ProjectPath:      "../",
 				RunCount:         defaultRunCount,
 				SelectTests:      []string{"TestRace"},
 				GoTestRaceFlag:   true,
@@ -105,17 +100,16 @@ func TestRunIntegration(t *testing.T) {
 				Tags:             []string{"example_package_tests"},
 			},
 			expectedTests: map[string]*expectedTestResult{
-				"TestRace": {race: true, maximumRuns: defaultRunCount, allFailures: true}, // Races cause failures
+				"TestRace": {race: true, maximumRuns: defaultRunCount, allFailures: true},
 			},
 		},
-		// Add other cases like panic, subtest panic, failfast if needed
 		{
 			name: "always panic (integration)",
 			cfg: runnerConfig{
 				ProjectPath:     "../",
 				RunCount:        defaultRunCount,
 				SelectTests:     []string{"TestPanic"},
-				GoTestCountFlag: &oneCount, // Force count=1 for predictability
+				GoTestCountFlag: &oneCount,
 				OmitOutputs:     true,
 				Tags:            []string{"example_package_tests"},
 			},
@@ -177,19 +171,14 @@ func TestRunIntegration(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc // Capture range variable
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			// Integration tests cannot run in parallel as they modify shared state (files)
-			// t.Parallel()
-
-			// Adjust project path relative to this test file's location
 			absProjectPath, err := filepath.Abs(tc.cfg.ProjectPath)
 			require.NoError(t, err)
 
-			// Initialize runner using the constructor
 			testRunner := runner.NewRunner(
 				absProjectPath,
-				false, // Verbose off for integration tests unless debugging
+				false,
 				tc.cfg.RunCount,
 				tc.cfg.GoTestCountFlag,
 				tc.cfg.GoTestRaceFlag,
@@ -206,13 +195,10 @@ func TestRunIntegration(t *testing.T) {
 				nil, // Use default parser
 			)
 
-			// Use package path relative to the ProjectPath (flakeguard dir)
 			testResults, err := testRunner.RunTestPackages([]string{"./runner/example_test_package"})
 
 			if tc.expectBuildErr {
 				require.Error(t, err)
-				// Assuming ErrBuild is exported from parser and accessible via runner
-				// require.ErrorIs(t, err, runner.ErrBuild) // Need to check how to access this error
 				return
 			}
 			require.NoError(t, err)
@@ -240,7 +226,6 @@ func TestRunIntegration(t *testing.T) {
 				t.Logf("Saved failing test results to %s", resultsFileName)
 			})
 
-			// Assertions
 			checkTestResults(t, tc.expectedTests, testResults)
 		})
 	}
@@ -259,15 +244,9 @@ func checkTestResults(t *testing.T, expectedTests map[string]*expectedTestResult
 			require.False(t, expected.seen, "test '%s' was seen multiple times", result.TestName)
 			expected.seen = true
 
-			// Assertions adapted from original test
-			if !expected.testPanic { // Panics end up wrecking durations
-				// Can't reliably assert duration length == runs if some runs panicked and didn't report duration
-				// assert.Len(t, result.Durations, result.Runs, "test '%s' has mismatch of runs %d and duration counts %d", result.TestName, result.Runs, len(result.Durations))
+			if !expected.testPanic {
 				assert.False(t, result.Panic, "test '%s' should not have panicked", result.TestName)
 			}
-			// Runs count is now calculated differently (based on processed terminal actions)
-			// The assertion result.Runs == result.Successes + result.Failures is no longer always true if skips occurred.
-			// We rely on the specific run count assertions below.
 
 			if expected.minimumRuns != nil {
 				assert.GreaterOrEqual(t, result.Runs, *expected.minimumRuns, "test '%s' had fewer runs (%d) than expected minimum (%d)", result.TestName, result.Runs, *expected.minimumRuns)
@@ -298,7 +277,6 @@ func checkTestResults(t *testing.T, expectedTests map[string]*expectedTestResult
 			if expected.allFailures {
 				assert.Equal(t, result.Runs, result.Failures, "test '%s' has %d runs and should have failed all, only failed %d", result.TestName, result.Runs, result.Failures)
 				assert.Zero(t, result.Successes, "test '%s' has %d runs and should have failed all, but succeeded %d", result.TestName, result.Runs, result.Successes)
-				// Do not assert Race == false here, a test could fail for other reasons even if race detector was on
 			}
 			if expected.packagePanic {
 				assert.True(t, result.PackagePanic, "test '%s' should have package panicked", result.TestName)
@@ -306,7 +284,7 @@ func checkTestResults(t *testing.T, expectedTests map[string]*expectedTestResult
 			if expected.testPanic {
 				assert.True(t, result.Panic, "test '%s' should have panicked", result.TestName)
 				assert.True(t, result.PackagePanic, "test '%s' should have package panicked", result.TestName)
-				expected.someFailures = true // Panic implies failure
+				expected.someFailures = true
 			}
 			if expected.someFailures {
 				assert.Greater(t, result.Failures, 0, "test '%s' has %d runs and should have failed some runs, failed none", result.TestName, result.Runs)
@@ -321,13 +299,11 @@ func checkTestResults(t *testing.T, expectedTests map[string]*expectedTestResult
 			}
 			if expected.race {
 				assert.True(t, result.Race, "test '%s' should have a data race", result.TestName)
-				// A race condition implies a failure in Go's test output
 				assert.GreaterOrEqual(t, result.Failures, 1, "test '%s' should have failed due to race", result.TestName)
 			}
 		})
 	}
 
-	// Final check to ensure all expected tests were seen
 	allTestsRun := []string{}
 	for testName, expected := range expectedTests {
 		if expected.seen {
@@ -339,14 +315,6 @@ func checkTestResults(t *testing.T, expectedTests map[string]*expectedTestResult
 	}
 }
 
-// resultsString helper (copied from old test)
-func resultsString(result reports.TestResult) string {
-	resultCounts := result.Successes + result.Failures + result.Skips
-	return fmt.Sprintf("Runs: %d\nPanicked: %t\nRace: %t\nSuccesses: %d\nFailures: %d\nSkips: %d\nTotal Results: %d",
-		result.Runs, result.Panic, result.Race, result.Successes, result.Failures, result.Skips, resultCounts)
-}
-
-// runnerConfig helper struct for test cases
 type runnerConfig struct {
 	ProjectPath       string
 	RunCount          int

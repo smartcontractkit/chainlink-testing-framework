@@ -1,13 +1,11 @@
 .PHONY: test_unit
 test_unit:
-	# No longer need grep, example package excluded by build tag
 	go test ./... -timeout 5m -json -cover -covermode=count -coverprofile=unit-test-coverage.out 2>&1 | tee /tmp/gotest.log | gotestloghelper -ci
 
 .PHONY: test
 test:
 	go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest
 	set -euo pipefail
-	# No longer need grep, example package excluded by build tag
 	go test ./... -json -cover -coverprofile unit-test-coverage.out -v 2>&1 | tee /tmp/gotest.log | gotestfmt
 
 .PHONY: test-package
@@ -18,7 +16,6 @@ test-package:
 
 .PHONY: test-race
 test-race:
-	# No longer need grep, example package excluded by build tag
 	go test ./... -count=1 -race
 
 .PHONY: bench
