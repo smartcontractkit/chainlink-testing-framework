@@ -313,6 +313,31 @@ func handleReruns(exitHandler *summaryAndExit, testRunner *runner.Runner, mainRe
 		return // Exit successfully
 	}
 
+	// Check if we should skip reruns due to --test-cmd and command-line-arguments
+	if len(cfg.TestCmds) > 0 {
+		foundCommandLineArgs := false
+		for _, test := range failedTests {
+			if test.TestPackage == "command-line-arguments" {
+				foundCommandLineArgs = true
+				break
+			}
+		}
+
+		if foundCommandLineArgs {
+			warningMsg := "WARNING: Skipping all reruns because 'go test <file.go>' was detected within --test-cmd. " +
+				"Flakeguard cannot reliably rerun these tests as it loses the original directory context. " +
+				"Results are based on the initial run only. To enable reruns, use 'go test . -run TestPattern' instead of 'go test <file.go>' within your --test-cmd."
+			log.Warn().Msg(warningMsg)
+			// Use explicit newlines
+			fmt.Fprint(&exitHandler.buffer, "\nFailed Tests On The First Run:\n\n")
+			reports.PrintTestResultsTable(&exitHandler.buffer, failedTests, false, false, true, false, false, false)
+			fmt.Fprintf(&exitHandler.buffer, "\n\n%s\n", warningMsg) // Print the detailed warning
+			// Evaluate the initial run results as if reruns were disabled
+			handleNoReruns(exitHandler, mainReport, cfg)
+			return // Exit after handling based on the initial run
+		}
+	}
+
 	// Use explicit newlines
 	fmt.Fprint(&exitHandler.buffer, "\nFailed Tests On The First Run:\n\n")
 	reports.PrintTestResultsTable(&exitHandler.buffer, failedTests, false, false, true, false, false, false)
@@ -330,6 +355,7 @@ func handleReruns(exitHandler *summaryAndExit, testRunner *runner.Runner, mainRe
 		exitHandler.logErrorAndExit(err, "Error rerunning failed tests")
 	}
 
+	// --- Process Rerun Results ---
 	rerunReport, err := reports.NewTestReport(rerunResults,
 		reports.WithGoProject(goProject),
 		reports.WithCodeOwnersPath(cfg.CodeownersPath),
