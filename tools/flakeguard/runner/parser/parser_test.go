@@ -1011,3 +1011,67 @@ func assertResultBasic(t *testing.T, key string, expected, actual reports.TestRe
 	assert.Equal(t, expected.Skipped, actual.Skipped, "Skipped flag mismatch for %s", key)
 	assert.InDelta(t, expected.PassRatio, actual.PassRatio, 0.001, "PassRatio mismatch for %s", key)
 }
+
+// TestParseFiles_WithTransformationScenarios verifies the interaction between the parser and the transformer.
+func TestParseFiles_IgnoreParentFailures(t *testing.T) {
+	t.Parallel()
+	pkg := "github.com/test/transformpkg"
+
+	testCases := []struct {
+		name            string
+		inputFile       string
+		expectedResults map[string]reports.TestResult
+	}{
+		{
+			name: "Parent only fails due to subtest",
+			inputFile: buildOutput(
+				jsonLine("run", pkg, "TestParentTransform", "", 0),
+				jsonLine("output", pkg, "TestParentTransform", "parent setup output", 0), // Regular output
+				jsonLine("run", pkg, "TestParentTransform/SubFail", "", 0),
+				jsonLine("output", pkg, "TestParentTransform/SubFail", "sub fail output", 0),
+				jsonLine("output", pkg, "TestParentTransform/SubFail", "--- FAIL: TestParentTransform/SubFail (0.1s)", 0), // Subtest fail marker
+				jsonLine("fail", pkg, "TestParentTransform/SubFail", "", 0.1),
+				jsonLine("output", pkg, "TestParentTransform", "--- FAIL: TestParentTransform (0.2s)", 0), // Parent fail marker (due to subtest)
+				jsonLine("fail", pkg, "TestParentTransform", "", 0.2),
+			),
+			expectedResults: map[string]reports.TestResult{
+				fmt.Sprintf("%s/TestParentTransform", pkg):         {TestName: "TestParentTransform", TestPackage: pkg, Runs: 1, Successes: 1, Failures: 0, PassRatio: 1.0},
+				fmt.Sprintf("%s/TestParentTransform/SubFail", pkg): {TestName: "TestParentTransform/SubFail", TestPackage: pkg, Runs: 1, Successes: 0, Failures: 1, PassRatio: 0.0},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			parser := NewParser()
+			tempDir := t.TempDir()
+			fpath := filepath.Join(tempDir, "run1.json")
+			err := os.WriteFile(fpath, []byte(tc.inputFile), 0644)
+			require.NoError(t, err)
+
+			cfg := Config{IgnoreParentFailuresOnSubtests: true, OmitOutputsOnSuccess: false}
+			actualResults, _, err := parser.ParseFiles([]string{fpath}, "run", 1, cfg)
+			require.NoError(t, err)
+
+			require.Equal(t, len(tc.expectedResults), len(actualResults), "Unexpected number of results")
+			actualResultsMap := resultsToMap(actualResults)
+			for key, expected := range tc.expectedResults {
+				actual, ok := actualResultsMap[key]
+				require.True(t, ok, "Expected result for key '%s' not found", key)
+				assertResultBasic(t, key, expected, actual)
+				if expected.TestName == "TestParentTransform" {
+					require.Contains(t, actual.PassedOutputs, "run1", "PassedOutputs missing run1 for transformed parent")
+					assert.Contains(t, actual.PassedOutputs["run1"], "parent setup output", "Parent original output missing")
+					assert.Contains(t, actual.PassedOutputs["run1"], "--- PASS: TestParentTransform (0.2s)", "Parent output marker not transformed to PASS")
+				}
+				if expected.TestName == "TestParentTransform/SubFail" {
+					require.Contains(t, actual.FailedOutputs, "run1", "FailedOutputs missing run1 for failing subtest %s", key)
+					assert.Contains(t, actual.FailedOutputs["run1"], "sub fail output", "Subtest fail output missing for %s", key)
+					assert.Contains(t, actual.FailedOutputs["run1"], "--- FAIL: TestParentTransform/SubFail (0.1s)", "Subtest fail marker missing for %s", key)
+				}
+			}
+		})
+	}
+}
