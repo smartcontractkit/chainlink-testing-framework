@@ -308,3 +308,125 @@ func (cr *NamespaceScopedChaosRunner) RunPodStressCPU(ctx context.Context, cfg N
 	experiment.Create(ctx)
 	return experiment, nil
 }
+
+type PodCorruptCfg struct {
+	Namespace             string
+	Description           string
+	Corrupt               string
+	Correlation           string
+	LabelKey              string
+	LabelValues           []string
+	InjectionDuration     time.Duration
+	ExperimentCreateDelay time.Duration
+}
+
+// RunPodCorrupt initiates packet corruption for some pod in some namespace
+func (cr *NamespaceScopedChaosRunner) RunPodCorrupt(ctx context.Context, cfg PodCorruptCfg) (*Chaos, error) {
+	experiment, err := NewChaos(ChaosOpts{
+		Object: &v1alpha1.NetworkChaos{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       string(v1alpha1.TypeNetworkChaos),
+				APIVersion: "chaos-mesh.org/v1alpha1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("corrupt-%s", uuid.NewString()[0:5]),
+				Namespace: cfg.Namespace,
+			},
+			Spec: v1alpha1.NetworkChaosSpec{
+				Action:   v1alpha1.CorruptAction,
+				Duration: ptr.To[string]((cfg.InjectionDuration).String()),
+				TcParameter: v1alpha1.TcParameter{
+					Corrupt: &v1alpha1.CorruptSpec{
+						Corrupt:     cfg.Corrupt,
+						Correlation: cfg.Correlation,
+					},
+				},
+				PodSelector: v1alpha1.PodSelector{
+					Mode: v1alpha1.AllMode,
+					Selector: v1alpha1.PodSelectorSpec{
+						GenericSelectorSpec: v1alpha1.GenericSelectorSpec{
+							Namespaces: []string{cfg.Namespace},
+							ExpressionSelectors: v1alpha1.LabelSelectorRequirements{
+								{
+									Operator: "In",
+									Key:      cfg.LabelKey,
+									Values:   cfg.LabelValues,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Listeners: defaultListeners(cr.l),
+		Logger:    &cr.l,
+		Client:    cr.c,
+		Remove:    cr.remove,
+	})
+	if err != nil {
+		return nil, err
+	}
+	experiment.Create(ctx)
+	return experiment, nil
+}
+
+type PodLossCfg struct {
+	Namespace             string
+	Description           string
+	Loss                  string
+	Correlation           string
+	LabelKey              string
+	LabelValues           []string
+	InjectionDuration     time.Duration
+	ExperimentCreateDelay time.Duration
+}
+
+// RunPodLoss initiates packet loss for some pod in some namespace
+func (cr *NamespaceScopedChaosRunner) RunPodLoss(ctx context.Context, cfg PodLossCfg) (*Chaos, error) {
+	experiment, err := NewChaos(ChaosOpts{
+		Object: &v1alpha1.NetworkChaos{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       string(v1alpha1.TypeNetworkChaos),
+				APIVersion: "chaos-mesh.org/v1alpha1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("loss-%s", uuid.NewString()[0:5]),
+				Namespace: cfg.Namespace,
+			},
+			Spec: v1alpha1.NetworkChaosSpec{
+				Action:   v1alpha1.CorruptAction,
+				Duration: ptr.To[string]((cfg.InjectionDuration).String()),
+				TcParameter: v1alpha1.TcParameter{
+					Loss: &v1alpha1.LossSpec{
+						Loss:        cfg.Loss,
+						Correlation: cfg.Correlation,
+					},
+				},
+				PodSelector: v1alpha1.PodSelector{
+					Mode: v1alpha1.AllMode,
+					Selector: v1alpha1.PodSelectorSpec{
+						GenericSelectorSpec: v1alpha1.GenericSelectorSpec{
+							Namespaces: []string{cfg.Namespace},
+							ExpressionSelectors: v1alpha1.LabelSelectorRequirements{
+								{
+									Operator: "In",
+									Key:      cfg.LabelKey,
+									Values:   cfg.LabelValues,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Listeners: defaultListeners(cr.l),
+		Logger:    &cr.l,
+		Client:    cr.c,
+		Remove:    cr.remove,
+	})
+	if err != nil {
+		return nil, err
+	}
+	experiment.Create(ctx)
+	return experiment, nil
+}
