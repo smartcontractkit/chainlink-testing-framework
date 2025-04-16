@@ -1,3 +1,6 @@
+//go:build example_package_tests
+// +build example_package_tests
+
 package exampletestpackage
 
 import (

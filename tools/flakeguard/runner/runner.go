@@ -1,800 +1,345 @@
 package runner
 
 import (
-	"bufio"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/go-test-transform/pkg/transformer"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/reports"
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/executor"
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/parser"
 )
 
 const (
-	RawOutputDir            = "./flakeguard_raw_output"
-	RawOutputTransformedDir = "./flakeguard_raw_output_transformed"
+	RawOutputDir = "./flakeguard_raw_output"
 )
 
-var (
-	startPanicRe         = regexp.MustCompile(`^panic:`)
-	startRaceRe          = regexp.MustCompile(`^WARNING: DATA RACE`)
-	buildErr             = errors.New("failed to build test code")
-	failedToShowBuildErr = errors.New("flakeguard failed to show build errors")
-)
-
-// Runner describes the test run parameters and raw test outputs
+// Runner describes the test run parameters and manages test execution and result parsing.
+// It delegates command execution to an Executor and result parsing to a Parser.
 type Runner struct {
-	ProjectPath                    string   // Path to the Go project directory.
-	Verbose                        bool     // If true, provides detailed logging.
-	RunCount                       int      // Number of times to run the tests.
-	GoTestCountFlag                *int     // Run go test with -count flag.
-	GoTestRaceFlag                 bool     // Run go test with -race flag.
-	GoTestTimeoutFlag              string   // Run go test with -timeout flag
-	Tags                           []string // Build tags.
-	UseShuffle                     bool     // Enable test shuffling. -shuffle=on flag.
-	ShuffleSeed                    string   // Set seed for test shuffling -shuffle={seed} flag. Must be used with UseShuffle.
-	FailFast                       bool     // Stop on first test failure.
-	SkipTests                      []string // Test names to exclude.
-	SelectTests                    []string // Test names to include.
-	OmitOutputsOnSuccess           bool     // Set to true to omit test outputs on success.
-	MaxPassRatio                   float64  // Maximum pass ratio threshold for a test to be considered flaky.
-	IgnoreParentFailuresOnSubtests bool     // Ignore failures in parent tests when only subtests fail.
-	rawOutputFiles                 []string // Raw output files for each test run.
-	transformedOutputFiles         []string // Transformed output files for each test run.
+	// Configuration fields
+	ProjectPath       string
+	Verbose           bool
+	RunCount          int
+	GoTestCountFlag   *int
+	GoTestRaceFlag    bool
+	GoTestTimeoutFlag string
+	Tags              []string
+	UseShuffle        bool
+	ShuffleSeed       string
+	FailFast          bool
+	SkipTests         []string
+	SelectTests       []string
+
+	// Configuration passed down to the parser
+	IgnoreParentFailuresOnSubtests bool
+	OmitOutputsOnSuccess           bool
+
+	// Dependencies
+	exec   executor.Executor // Injected Executor
+	parser parser.Parser     // Injected Parser (interface defined in parser.go)
+
 }
 
-// RunTestPackages executes the tests for each provided package and aggregates all results.
-// It returns all test results and any error encountered during testing.
+// NewRunner creates a new Runner with the default command executor.
+func NewRunner(
+	projectPath string,
+	verbose bool,
+	// Runner specific config
+	runCount int,
+	goTestCountFlag *int,
+	goTestRaceFlag bool,
+	goTestTimeoutFlag string,
+	tags []string,
+	useShuffle bool,
+	shuffleSeed string,
+	failFast bool,
+	skipTests []string,
+	selectTests []string,
+	// Parser specific config (passed during initialization)
+	ignoreParentFailuresOnSubtests bool,
+	omitOutputsOnSuccess bool,
+	// Dependencies (allow injection for testing)
+	exec executor.Executor,
+	p parser.Parser, // Use interface type directly
+) *Runner {
+	if exec == nil {
+		exec = executor.NewCommandExecutor()
+	}
+	if p == nil {
+		p = parser.NewParser() // Use constructor from parser.go
+	}
+	return &Runner{
+		ProjectPath:                    projectPath,
+		Verbose:                        verbose,
+		RunCount:                       runCount,
+		GoTestCountFlag:                goTestCountFlag,
+		GoTestRaceFlag:                 goTestRaceFlag,
+		GoTestTimeoutFlag:              goTestTimeoutFlag,
+		Tags:                           tags,
+		UseShuffle:                     useShuffle,
+		ShuffleSeed:                    shuffleSeed,
+		FailFast:                       failFast,
+		SkipTests:                      skipTests,
+		SelectTests:                    selectTests,
+		IgnoreParentFailuresOnSubtests: ignoreParentFailuresOnSubtests,
+		OmitOutputsOnSuccess:           omitOutputsOnSuccess,
+		exec:                           exec,
+		parser:                         p,
+	}
+}
+
+// Helper function to create executor.Config from Runner fields
+func (r *Runner) getExecutorConfig() executor.Config {
+	return executor.Config{
+		ProjectPath:       r.ProjectPath,
+		Verbose:           r.Verbose,
+		GoTestCountFlag:   r.GoTestCountFlag,
+		GoTestRaceFlag:    r.GoTestRaceFlag,
+		GoTestTimeoutFlag: r.GoTestTimeoutFlag,
+		Tags:              r.Tags,
+		UseShuffle:        r.UseShuffle,
+		ShuffleSeed:       r.ShuffleSeed,
+		SkipTests:         r.SkipTests,
+		SelectTests:       r.SelectTests,
+		RawOutputDir:      RawOutputDir, // Use the constant defined in this package
+	}
+}
+
+// Helper function to create parser.Config from Runner fields
+func (r *Runner) getParserConfig() parser.Config {
+	return parser.Config{
+		IgnoreParentFailuresOnSubtests: r.IgnoreParentFailuresOnSubtests,
+		OmitOutputsOnSuccess:           r.OmitOutputsOnSuccess,
+	}
+}
+
 // RunTestPackages executes the tests for each provided package and aggregates all results.
 func (r *Runner) RunTestPackages(packages []string) ([]reports.TestResult, error) {
-	// Initial runs.
+	rawOutputFiles := make([]string, 0) // Collect output file paths for this run
+	execCfg := r.getExecutorConfig()
+
 	for _, p := range packages {
-		for i := range r.RunCount {
-			jsonFilePath, passed, err := r.runTestPackage(p, i)
+		for runIdx := 0; runIdx < r.RunCount; runIdx++ {
+			// Delegate execution to the executor
+			jsonFilePath, passed, err := r.exec.RunTestPackage(execCfg, p, runIdx)
 			if err != nil {
-				return nil, fmt.Errorf("failed to run tests in package %s: %w", p, err)
+				// Handle executor errors (e.g., command not found, setup issues)
+				return nil, fmt.Errorf("executor failed for package %s on run %d: %w", p, runIdx, err)
 			}
-			r.rawOutputFiles = append(r.rawOutputFiles, jsonFilePath)
+			if jsonFilePath != "" { // Append path even if tests failed (passed == false)
+				rawOutputFiles = append(rawOutputFiles, jsonFilePath)
+			}
 			if !passed && r.FailFast {
-				break
+				log.Warn().Msgf("FailFast enabled: Stopping run after failure in package %s", p)
+				goto ParseResults // Exit outer loop early
 			}
 		}
 	}
 
-	// Parse initial results.
-	results, err := r.parseTestResults("run", r.RunCount)
+ParseResults:
+	// Delegate parsing to the parser
+	if len(rawOutputFiles) == 0 {
+		log.Warn().Msg("No output files were generated, likely due to FailFast or an early error.")
+		return []reports.TestResult{}, nil // Return empty results
+	}
+
+	log.Info().Int("file_count", len(rawOutputFiles)).Msg("Parsing output files")
+	// Create parser config and pass it
+	parserCfg := r.getParserConfig()
+	// Ignore the returned file paths here, as they aren't used in this flow
+	results, _, err := r.parser.ParseFiles(rawOutputFiles, "run", len(rawOutputFiles), parserCfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse test results: %w", err)
-	}
-
-	return results, nil
-}
-
-// RunTestCmd runs an arbitrary command testCmd (like ["go", "run", "my_test.go", ...])
-// that produces the same JSON lines that 'go test -json' would produce on stdout.
-// It captures those lines in a temp file, then parses them for pass/fail/panic/race data.
-func (r *Runner) RunTestCmd(testCmd []string) ([]reports.TestResult, error) {
-	for i := range r.RunCount {
-		jsonOutputPath, passed, err := r.runCmd(testCmd, i)
-		if err != nil {
-			return nil, fmt.Errorf("failed to run test command: %w", err)
-		}
-		r.rawOutputFiles = append(r.rawOutputFiles, jsonOutputPath)
-		if !passed && r.FailFast {
-			break
-		}
-	}
-
-	results, err := r.parseTestResults("run", r.RunCount)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse test results: %w", err)
-	}
-
-	return results, nil
-}
-
-type exitCoder interface {
-	ExitCode() int
-}
-
-// runTestPackage runs the tests for a given package and returns the path to the output file.
-func (r *Runner) runTestPackage(packageName string, runCount int) (string, bool, error) {
-	args := []string{"test", packageName, "-json"}
-	if r.GoTestCountFlag != nil {
-		args = append(args, fmt.Sprintf("-count=%d", *r.GoTestCountFlag))
-	}
-	if r.GoTestRaceFlag {
-		args = append(args, "-race")
-	}
-	if r.GoTestTimeoutFlag != "" {
-		args = append(args, fmt.Sprintf("-timeout=%s", r.GoTestTimeoutFlag))
-	}
-	if len(r.Tags) > 0 {
-		args = append(args, fmt.Sprintf("-tags=%s", strings.Join(r.Tags, ",")))
-	}
-	if r.UseShuffle {
-		if r.ShuffleSeed != "" {
-			args = append(args, fmt.Sprintf("-shuffle=%s", r.ShuffleSeed))
-		} else {
-			args = append(args, "-shuffle=on")
-		}
-	}
-	if len(r.SkipTests) > 0 {
-		skipPattern := strings.Join(r.SkipTests, "|")
-		args = append(args, fmt.Sprintf("-skip=%s", skipPattern))
-	}
-	if len(r.SelectTests) > 0 {
-		selectPattern := strings.Join(r.SelectTests, "$|^")
-		args = append(args, fmt.Sprintf("-run=^%s$", selectPattern))
-	}
-
-	err := os.MkdirAll(RawOutputDir, 0o755)
-	if err != nil {
-		return "", false, fmt.Errorf("failed to create raw output directory: %w", err)
-	}
-	// Create a temporary file to store the output
-	saniPackageName := filepath.Base(packageName)
-	tmpFile, err := os.CreateTemp(RawOutputDir, fmt.Sprintf("test-output-%s-%d-*.json", saniPackageName, runCount))
-	if err != nil {
-		return "", false, fmt.Errorf("failed to create temp file: %w", err)
-	}
-	defer tmpFile.Close()
-
-	if r.Verbose {
-		log.Info().Str("raw output file", tmpFile.Name()).Str("command", fmt.Sprintf("go %s\n", strings.Join(args, " "))).Msg("Running command")
-	}
-
-	// Run the command with output directed to the file
-	cmd := exec.Command("go", args...)
-	cmd.Dir = r.ProjectPath
-	cmd.Stdout = tmpFile
-
-	err = cmd.Run()
-	if err != nil {
-		var exErr exitCoder
-		// Check if the error is due to a non-zero exit code
-		if errors.As(err, &exErr) && exErr.ExitCode() == 0 {
-			return "", false, fmt.Errorf("test command failed at %s: %w", packageName, err)
-		}
-		return tmpFile.Name(), false, nil // Test failed
-	}
-
-	return tmpFile.Name(), true, nil // Test succeeded
-}
-
-// runCmd runs the user-supplied command once, captures its JSON output,
-// and returns the temp file path, whether the test passed, and an error if any.
-func (r *Runner) runCmd(testCmd []string, runIndex int) (tempFilePath string, passed bool, err error) {
-	// Create temp file for JSON output
-	err = os.MkdirAll(RawOutputDir, 0o755)
-	if err != nil {
-		return "", false, fmt.Errorf("failed to create raw output directory: %w", err)
-	}
-	tmpFile, err := os.CreateTemp(RawOutputDir, fmt.Sprintf("test-output-cmd-run%d-*.json", runIndex+1))
-	if err != nil {
-		err = fmt.Errorf("failed to create temp file: %w", err)
-		return "", false, err
-	}
-	defer tmpFile.Close()
-
-	cmd := exec.Command(testCmd[0], testCmd[1:]...) //nolint:gosec
-	cmd.Dir = r.ProjectPath
-
-	cmd.Stdout = tmpFile
-	cmd.Stderr = os.Stderr
-
-	err = cmd.Run()
-
-	tempFilePath = tmpFile.Name()
-
-	// Determine pass/fail from exit code
-	type exitCoder interface {
-		ExitCode() int
-	}
-	var ec exitCoder
-	if errors.As(err, &ec) {
-		// Non-zero exit code => test failure
-		passed = ec.ExitCode() == 0
-		err = nil // Clear error since we handled it
-		return
-	} else if err != nil {
-		// Some other error that doesn't implement ExitCode() => real error
-		tempFilePath = ""
-		err = fmt.Errorf("error running test command: %w", err)
-		return tempFilePath, passed, err
-	}
-
-	// Otherwise, test passed
-	passed = true
-	return tempFilePath, passed, nil
-}
-
-type entry struct {
-	Action  string  `json:"Action"`
-	Test    string  `json:"Test"`
-	Package string  `json:"Package"`
-	Output  string  `json:"Output"`
-	Elapsed float64 `json:"Elapsed"` // Decimal value in seconds
-}
-
-func (e entry) String() string {
-	return fmt.Sprintf("Action: %s, Test: %s, Package: %s, Output: %s, Elapsed: %f", e.Action, e.Test, e.Package, e.Output, e.Elapsed)
-}
-
-// parseTestResults reads the test output Go test json output files and returns processed TestResults.
-//
-// Go test results have a lot of edge cases and strange behavior, especially when running in parallel,
-// and any panic throws the whole thing into disarray.
-// If any test in packageA panics, all tests in packageA will stop running and never report their results.
-// The test that panicked will report its panic in Go test output, but will often misattribute the panic to a different test.
-// It will also sometimes mark the test with both a panic and a failure, double-counting the test run.
-// It's possible to properly attribute panics to the test that caused them, but it's not possible to distinguish between
-// panics and failures at that point.
-// Subtests add more complexity, as panics in subtests are only reported in their parent's output,
-// and cannot be accurately attributed to the subtest that caused them.
-func (r *Runner) parseTestResults(runPrefix string, runCount int) ([]reports.TestResult, error) {
-	var parseFilePaths = r.rawOutputFiles
-
-	// If the option is enabled, transform each JSON output file before parsing.
-	if r.IgnoreParentFailuresOnSubtests {
-		err := r.transformTestOutputFiles(r.rawOutputFiles)
-		if err != nil {
+		// Check if it's a build error from the parser
+		if errors.Is(err, parser.ErrBuild) { // Updated check
+			// No extra wrapping needed if buildErr already provides enough context
 			return nil, err
 		}
-		parseFilePaths = r.transformedOutputFiles
+		return nil, fmt.Errorf("failed to parse test results: %w", err)
 	}
 
-	var (
-		testDetails         = make(map[string]*reports.TestResult) // Holds run, pass counts, and other details for each test
-		panickedPackages    = map[string]struct{}{}                // Packages with tests that panicked
-		racePackages        = map[string]struct{}{}                // Packages with tests that raced
-		packageLevelOutputs = map[string][]string{}                // Package-level outputs
-		testsWithSubTests   = map[string][]string{}                // Parent tests that have subtests
-		panicDetectionMode  = false
-		raceDetectionMode   = false
-		detectedEntries     = []entry{} // race or panic entries
-		expectedRuns        = runCount
-	)
+	return results, nil
+}
 
-	runNumber := 0
-	// Process each file
-	for _, filePath := range parseFilePaths {
-		runNumber++
-		runID := fmt.Sprintf("%s%d", runPrefix, runNumber)
-		file, err := os.Open(filePath)
+// RunTestCmd runs an arbitrary command testCmd that produces Go test JSON output.
+func (r *Runner) RunTestCmd(testCmd []string) ([]reports.TestResult, error) {
+	rawOutputFiles := make([]string, 0) // Reset output files for this run
+	execCfg := r.getExecutorConfig()
+
+	for i := 0; i < r.RunCount; i++ {
+		// Delegate execution to the executor
+		jsonOutputPath, passed, err := r.exec.RunCmd(execCfg, testCmd, i)
 		if err != nil {
-			return nil, fmt.Errorf("failed to open test output file: %w", err)
+			// Handle executor errors
+			return nil, fmt.Errorf("executor failed for custom command on run %d: %w", i, err)
+		}
+		if jsonOutputPath != "" {
+			rawOutputFiles = append(rawOutputFiles, jsonOutputPath)
+		}
+		if !passed && r.FailFast {
+			log.Warn().Msgf("FailFast enabled: Stopping run after custom command failure")
+			break // Exit loop early
+		}
+	}
+
+	// Delegate parsing to the parser
+	if len(rawOutputFiles) == 0 {
+		log.Warn().Msg("No output files were generated for custom command, likely due to FailFast or an early error.")
+		return []reports.TestResult{}, nil
+	}
+
+	log.Info().Int("file_count", len(rawOutputFiles)).Msg("Parsing output files from custom command")
+	// Create parser config and pass it
+	parserCfg := r.getParserConfig()
+	// Ignore the returned file paths here as well
+	results, _, err := r.parser.ParseFiles(rawOutputFiles, "run", len(rawOutputFiles), parserCfg)
+	if err != nil {
+		if errors.Is(err, parser.ErrBuild) { // Updated check
+			return nil, err
+		}
+		return nil, fmt.Errorf("failed to parse test results from custom command: %w", err)
+	}
+
+	return results, nil
+}
+
+// RerunFailedTests reruns specific tests that failed in previous runs using the Executor and Parser.
+func (r *Runner) RerunFailedTests(failedTests []reports.TestResult, rerunCount int) ([]reports.TestResult, []string, error) {
+	if len(failedTests) == 0 || rerunCount <= 0 {
+		log.Info().Msg("No failed tests provided or rerun count is zero. Skipping reruns.")
+		return []reports.TestResult{}, []string{}, nil // Nothing to rerun
+	}
+
+	// Use a map for efficient lookup and update of currently failing tests
+	currentlyFailing := make(map[string]map[string]struct{}) // pkg -> testName -> exists
+	for _, tr := range failedTests {
+		if tr.TestPackage == "" || tr.TestName == "" {
+			log.Warn().Interface("test_result", tr).Msg("Skipping rerun for test result with missing package or name")
+			continue
+		}
+		if _, ok := currentlyFailing[tr.TestPackage]; !ok {
+			currentlyFailing[tr.TestPackage] = make(map[string]struct{})
+		}
+		currentlyFailing[tr.TestPackage][tr.TestName] = struct{}{}
+	}
+
+	if len(currentlyFailing) == 0 {
+		log.Warn().Msg("No valid failed tests found to rerun after filtering.")
+		return []reports.TestResult{}, []string{}, nil
+	}
+
+	if r.Verbose {
+		log.Info().Int("packages", len(currentlyFailing)).Int("rerun_count", rerunCount).Msg("Starting test reruns for failed tests")
+	}
+
+	rerunOutputFiles := make([]string, 0)
+	baseExecCfg := r.getExecutorConfig()
+
+	// 2. Iterate Rerun Count
+	for i := 0; i < rerunCount; i++ {
+		if len(currentlyFailing) == 0 {
+			log.Info().Int("iteration", i).Msg("All previously failing tests passed in reruns. Stopping reruns early.")
+			break // Stop if no more tests are failing
 		}
 
-		scanner := bufio.NewScanner(file)
-		var precedingLines []string // Store preceding lines for context
-		var followingLines []string // To collect lines after an error
+		if r.Verbose {
+			log.Info().Int("iteration", i+1).Int("total", rerunCount).Int("tests_to_rerun", countMapKeys(currentlyFailing)).Msg("Running rerun iteration")
+		}
 
-		for scanner.Scan() {
-			line := scanner.Text()
-			precedingLines = append(precedingLines, line)
+		failingThisIteration := make(map[string]map[string]struct{}) // Track tests still failing *after this iteration*
 
-			// Limit precedingLines to the last 15 lines
-			if len(precedingLines) > 15 {
-				precedingLines = precedingLines[1:]
-			}
-
-			var entryLine entry
-			if err := json.Unmarshal(scanner.Bytes(), &entryLine); err != nil {
-				// Collect 15 lines after the error for more context
-				for scanner.Scan() && len(followingLines) < 15 {
-					followingLines = append(followingLines, scanner.Text())
-				}
-
-				// Combine precedingLines and followingLines to provide 15 lines before and after
-				context := append(precedingLines, followingLines...)
-				return nil, fmt.Errorf("failed to parse json test output near lines:\n%s\nerror: %w", strings.Join(context, "\n"), err)
-			}
-			if entryLine.Action == "build-fail" {
-				_, err := file.Seek(0, 0)
-				if err != nil {
-					return nil, fmt.Errorf("%w: %w", failedToShowBuildErr, buildErr)
-				}
-				// Print all build errors
-				buildErrs, err := io.ReadAll(file)
-				if err != nil {
-					return nil, fmt.Errorf("%w: %w", failedToShowBuildErr, buildErr)
-				}
-				fmt.Println(string(buildErrs))
-				return nil, buildErr
-			}
-
-			var result *reports.TestResult
-			if entryLine.Test != "" {
-				// If it's a subtest, associate it with its parent for easier processing of panics later
-				key := fmt.Sprintf("%s/%s", entryLine.Package, entryLine.Test)
-				parentTestName, subTestName := parseSubTest(entryLine.Test)
-				if subTestName != "" {
-					parentTestKey := fmt.Sprintf("%s/%s", entryLine.Package, parentTestName)
-					testsWithSubTests[parentTestKey] = append(testsWithSubTests[parentTestKey], subTestName)
-				}
-
-				if _, exists := testDetails[key]; !exists {
-					testDetails[key] = &reports.TestResult{
-						TestName:       entryLine.Test,
-						TestPackage:    entryLine.Package,
-						PassRatio:      0,
-						PassedOutputs:  make(map[string][]string),
-						FailedOutputs:  make(map[string][]string),
-						PackageOutputs: []string{},
-					}
-				}
-				result = testDetails[key]
-			}
-
-			if entryLine.Output != "" {
-				if panicDetectionMode || raceDetectionMode { // currently collecting panic or race output
-					detectedEntries = append(detectedEntries, entryLine)
-					continue
-				} else if startPanicRe.MatchString(entryLine.Output) { // found a panic, start collecting output
-					panickedPackages[entryLine.Package] = struct{}{}
-					detectedEntries = append(detectedEntries, entryLine)
-					panicDetectionMode = true
-					continue // Don't process this entry further
-				} else if startRaceRe.MatchString(entryLine.Output) {
-					racePackages[entryLine.Package] = struct{}{}
-					detectedEntries = append(detectedEntries, entryLine)
-					raceDetectionMode = true
-					continue // Don't process this entry further
-				} else if entryLine.Test != "" && entryLine.Action == "output" {
-					// Collect outputs regardless of pass or fail
-					if result.Outputs == nil {
-						result.Outputs = make(map[string][]string)
-					}
-					result.Outputs[runID] = append(result.Outputs[runID], entryLine.Output)
-				} else if entryLine.Test == "" {
-					if _, exists := packageLevelOutputs[entryLine.Package]; !exists {
-						packageLevelOutputs[entryLine.Package] = []string{}
-					}
-					packageLevelOutputs[entryLine.Package] = append(packageLevelOutputs[entryLine.Package], entryLine.Output)
-				} else {
-					// Collect outputs per run, per test action
-					switch entryLine.Action {
-					case "pass":
-						result.PassedOutputs[runID] = append(result.PassedOutputs[runID], entryLine.Output)
-					case "fail":
-						result.FailedOutputs[runID] = append(result.FailedOutputs[runID], entryLine.Output)
-					default:
-						// Handle other actions if necessary
-					}
-				}
-			}
-
-			// TODO: An argument could be made to check for entryLine.Action != "output" instead, but need to check edge cases
-			if (panicDetectionMode || raceDetectionMode) && entryLine.Action == "fail" { // End of panic or race output
-				var outputs []string
-				for _, entry := range detectedEntries {
-					outputs = append(outputs, entry.Output)
-				}
-				if panicDetectionMode {
-					panicTest, timeout, err := attributePanicToTest(outputs)
-					if err != nil {
-						log.Error().Msg("Unable to attribute panic to a test")
-						fmt.Println(err.Error())
-						panicTest = "UnableToAttributePanicToTestPleaseInvestigate"
-					}
-					panicTestKey := fmt.Sprintf("%s/%s", entryLine.Package, panicTest)
-
-					// Ensure the test exists in testDetails
-					result, exists := testDetails[panicTestKey]
-					if !exists {
-						// Create a new TestResult if it doesn't exist
-						result = &reports.TestResult{
-							TestName:       panicTest,
-							TestPackage:    entryLine.Package,
-							PassRatio:      0,
-							PassedOutputs:  make(map[string][]string),
-							FailedOutputs:  make(map[string][]string),
-							PackageOutputs: []string{},
-						}
-						testDetails[panicTestKey] = result
-					}
-
-					result.Panic = true
-					result.Timeout = timeout
-					result.Failures++
-					result.Runs++
-
-					// Handle outputs
-					for _, entry := range detectedEntries {
-						if entry.Test == "" {
-							result.PackageOutputs = append(result.PackageOutputs, entry.Output)
-						} else {
-							runID := fmt.Sprintf("run%d", runNumber)
-							result.FailedOutputs[runID] = append(result.FailedOutputs[runID], entry.Output)
-						}
-					}
-				} else if raceDetectionMode {
-					raceTest, err := attributeRaceToTest(outputs)
-					if err != nil {
-						log.Warn().Msg("Unable to attribute race to a test")
-						fmt.Println(err.Error())
-						raceTest = "UnableToAttributeRaceTestPleaseInvestigate"
-					}
-					raceTestKey := fmt.Sprintf("%s/%s", entryLine.Package, raceTest)
-
-					// Ensure the test exists in testDetails
-					result, exists := testDetails[raceTestKey]
-					if !exists {
-						// Create a new TestResult if it doesn't exist
-						result = &reports.TestResult{
-							TestName:       raceTest,
-							TestPackage:    entryLine.Package,
-							PassRatio:      0,
-							PassedOutputs:  make(map[string][]string),
-							FailedOutputs:  make(map[string][]string),
-							PackageOutputs: []string{},
-						}
-						testDetails[raceTestKey] = result
-					}
-
-					result.Race = true
-					result.Failures++
-					result.Runs++
-
-					// Handle outputs
-					for _, entry := range detectedEntries {
-						if entry.Test == "" {
-							result.PackageOutputs = append(result.PackageOutputs, entry.Output)
-						} else {
-							runID := fmt.Sprintf("run%d", runNumber)
-							result.FailedOutputs[runID] = append(result.FailedOutputs[runID], entry.Output)
-						}
-					}
-				}
-
-				detectedEntries = []entry{}
-				panicDetectionMode = false
-				raceDetectionMode = false
+		// 3. Execute Rerun per Package for currently failing tests
+		for pkg, testsMap := range currentlyFailing {
+			if len(testsMap) == 0 {
 				continue
 			}
 
-			switch entryLine.Action {
-			case "pass":
-				if entryLine.Test != "" {
-					duration, err := time.ParseDuration(strconv.FormatFloat(entryLine.Elapsed, 'f', -1, 64) + "s")
-					if err != nil {
-						return nil, fmt.Errorf("failed to parse duration: %w", err)
-					}
-					result.Durations = append(result.Durations, duration)
-					result.Successes++
-
-					// Move outputs to PassedOutputs
-					if result.PassedOutputs == nil {
-						result.PassedOutputs = make(map[string][]string)
-					}
-					result.PassedOutputs[runID] = result.Outputs[runID]
-					// Clear temporary outputs
-					delete(result.Outputs, runID)
-				}
-			case "fail":
-				if entryLine.Test != "" {
-					duration, err := time.ParseDuration(strconv.FormatFloat(entryLine.Elapsed, 'f', -1, 64) + "s")
-					if err != nil {
-						return nil, fmt.Errorf("failed to parse duration: %w", err)
-					}
-					result.Durations = append(result.Durations, duration)
-					result.Failures++
-
-					// Move outputs to FailedOutputs
-					if result.FailedOutputs == nil {
-						result.FailedOutputs = make(map[string][]string)
-					}
-					result.FailedOutputs[runID] = result.Outputs[runID]
-					// Clear temporary outputs
-					delete(result.Outputs, runID)
-				}
-			case "skip":
-				if entryLine.Test != "" {
-					result.Skipped = true
-					result.Skips++
-				}
-			case "output":
-				// Handled above when entryLine.Test is not empty
-			}
-			if entryLine.Test != "" {
-				result.Runs = result.Successes + result.Failures
-				if result.Runs > 0 {
-					result.PassRatio = float64(result.Successes) / float64(result.Runs)
-				} else {
-					result.PassRatio = 1
-				}
-			}
-		}
-
-		if err := scanner.Err(); err != nil {
-			return nil, fmt.Errorf("reading test output file: %w", err)
-		}
-		if err = file.Close(); err != nil {
-			log.Warn().Err(err).Str("file", filePath).Msg("failed to close file")
-		}
-	}
-
-	var results []reports.TestResult
-	// Check through parent tests for panics, and bubble possible panics down
-	for parentTestKey, subTests := range testsWithSubTests {
-		if parentTestResult, exists := testDetails[parentTestKey]; exists {
-			if parentTestResult.Panic {
-				for _, subTest := range subTests {
-					// Include parent test name in subTestKey
-					subTestKey := fmt.Sprintf("%s/%s/%s", parentTestResult.TestPackage, parentTestResult.TestName, subTest)
-					if subTestResult, exists := testDetails[subTestKey]; exists {
-						if subTestResult.Failures > 0 {
-							subTestResult.Panic = true
-							// Initialize Outputs map if nil
-							if subTestResult.FailedOutputs == nil {
-								subTestResult.FailedOutputs = make(map[string][]string)
-							}
-							// Add the message to each run's output
-							for runID := range subTestResult.FailedOutputs {
-								subTestResult.FailedOutputs[runID] = append(subTestResult.FailedOutputs[runID], "Panic in parent test")
-							}
-						}
-					} else {
-						log.Warn().Str("expected subtest", subTestKey).Str("parent test", parentTestKey).Msg("expected subtest not found in parent test")
-					}
-				}
-			}
-		} else {
-			log.Warn().Str("parent test", parentTestKey).Msg("expected parent test not found")
-		}
-	}
-	for _, result := range testDetails {
-		if result.Runs > expectedRuns { // Panics can introduce double-counting test failures, this is a correction for it
-			if result.Panic {
-				result.Failures = expectedRuns
-				result.Runs = expectedRuns
-			} else {
-				log.Warn().Str("test", result.TestName).Int("actual runs", result.Runs).Int("expected runs", expectedRuns).Msg("unexpected test runs")
-			}
-		}
-		// If a package panicked, all tests in that package will be marked as panicking
-		if _, panicked := panickedPackages[result.TestPackage]; panicked {
-			result.PackagePanic = true
-		}
-		if outputs, exists := packageLevelOutputs[result.TestPackage]; exists {
-			result.PackageOutputs = outputs
-		}
-		results = append(results, *result)
-	}
-
-	// Omit success outputs if requested
-	if r.OmitOutputsOnSuccess {
-		for i := range results {
-			results[i].PassedOutputs = make(map[string][]string)
-			results[i].Outputs = make(map[string][]string)
-		}
-	}
-
-	return results, nil
-}
-
-// transformTestOutputFiles transforms the test output JSON files to ignore parent failures when only subtests fail.
-// It returns the paths to the transformed files.
-func (r *Runner) transformTestOutputFiles(filePaths []string) error {
-	err := os.MkdirAll(RawOutputTransformedDir, 0o755)
-	if err != nil {
-		return fmt.Errorf("failed to create raw output directory: %w", err)
-	}
-	for _, origPath := range filePaths {
-		inFile, err := os.Open(origPath)
-		if err != nil {
-			return fmt.Errorf("failed to open original file %s: %w", origPath, err)
-		}
-		// Create a temporary file for the transformed output.
-		outFile, err := os.Create(filepath.Join(RawOutputTransformedDir, fmt.Sprintf("transformed-%s.json", filepath.Base(origPath))))
-		if err != nil {
-			inFile.Close()
-			return fmt.Errorf("failed to create transformed temp file: %w", err)
-		}
-		// Transform the JSON output.
-		// The transformer option is set to ignore parent failures when only subtests fail.
-		err = transformer.TransformJSON(inFile, outFile, transformer.NewOptions(true))
-		inFile.Close()
-		outFile.Close()
-		if err != nil {
-			return fmt.Errorf("failed to transform output file %s: %v", origPath, err)
-		}
-		// Use the transformed file path.
-		r.transformedOutputFiles = append(r.transformedOutputFiles, outFile.Name())
-	}
-	return nil
-}
-
-var (
-	// Regex to extract a valid test function name from a panic message.
-	// This is the most common situation for test panics, e.g.
-	// github.com/smartcontractkit/chainlink/deployment/keystone/changeset_test.TestDeployBalanceReader(0xc000583c00)
-	nestedTestNameRe = regexp.MustCompile(`\.(Test[^\s]+?)(?:\.[^(]+)?\s*\(`)
-
-	ErrFailedToAttributePanicToTest              = errors.New("failed to attribute panic to test")
-	ErrFailedToAttributeRaceToTest               = errors.New("failed to attribute race to test")
-	ErrFailedToParseTimeoutDuration              = errors.New("failed to parse timeout duration")
-	ErrFailedToExtractTimeoutDuration            = errors.New("failed to extract timeout duration")
-	ErrDetectedLogAfterCompleteFailedAttribution = errors.New("detected a log after test has completed panic, but failed to properly attribute it")
-	ErrDetectedTimeoutFailedParse                = errors.New("detected test timeout, but failed to parse the duration from the test")
-	ErrDetectedTimeoutFailedAttribution          = errors.New("detected test timeout, but failed to attribute the timeout to a specific test")
-)
-
-// attributePanicToTest properly attributes panics to the test that caused them.
-// There are a lot of edge cases and strange behavior in Go test output when it comes to panics.
-func attributePanicToTest(outputs []string) (test string, timeout bool, err error) {
-	var (
-		// Regex to check if the panic is from a log after a goroutine, e.g.
-		// panic: Log in goroutine after Test_workflowRegisteredHandler/skips_fetch_if_secrets_url_is_missing has completed: <Log line>
-		testLogAfterTestRe = regexp.MustCompile(`^panic: Log in goroutine after (Test[^\s]+) has completed:`)
-
-		// Check if the panic message indicates a timeout, e.g.
-		// panic: test timed out after 10m0s
-		didTestTimeoutRe = regexp.MustCompile(`^panic: test timed out after ([^\s]+)`)
-		// Regex to extract a valid test function name from a panic message if the panic is a timeout, e.g.
-		// TestTimedOut (10m0s)
-		timedOutTestNameRe = regexp.MustCompile(`^(Test[^\s]+)\s+\((.*)\)`)
-		timeoutDurationStr string
-		timeoutDuration    time.Duration
-	)
-
-	for _, output := range outputs {
-		output = strings.TrimSpace(output)
-		// Check if the panic message indicates a timeout
-		// If so, extract the timeout duration and switch to timeout mode
-		if didTestTimeoutRe.MatchString(output) {
-			timeout = true
-			if len(didTestTimeoutRe.FindStringSubmatch(output)) > 1 {
-				timeoutDurationStr = didTestTimeoutRe.FindStringSubmatch(output)[1]
-				timeoutDuration, err = time.ParseDuration(timeoutDurationStr)
-				if err != nil {
-					return "", true, fmt.Errorf("%w: %w using this output:\n\n%s", err, ErrFailedToParseTimeoutDuration, output)
-				}
-			} else {
-				return "", true, fmt.Errorf("%w using this output:\n\n%s", ErrFailedToExtractTimeoutDuration, output)
-			}
-		}
-
-		if testLogAfterTestRe.MatchString(output) {
-			// If the panic message indicates a log after a test, extract the test name
-			match := testLogAfterTestRe.FindStringSubmatch(output)
-			if len(match) > 1 {
-				testName := strings.TrimSpace(match[1])
-				return testName, timeout, nil
-			} else {
-				return "", false, fmt.Errorf(
-					"%w using this output:\n\n%s", ErrDetectedLogAfterCompleteFailedAttribution, strings.Join(outputs, ""),
-				)
-			}
-		}
-
-		// If in timeout mode, look for test names in the panic message and check if any match the timeout duration, e.g.
-		// 	panic: test timed out after 10m0s
-		//   running tests:
-		//     TestAddAndPromoteCandidatesForNewChain (22s) // Nope
-		//     TestAddAndPromoteCandidatesForNewChain/Remote_chains_owned_by_MCMS (22s) // Nope
-		//     TestTimeout (10m0s) // Yes
-		//     TestConnectNewChain/Use_production_router_(with_MCMS) (1m1s) // Nope
-		//     TestJobSpecChangeset (0s) // Nope
-		//     Test_ActiveCandidate (1m1s) // Nope
-		if timeout {
-			if timedOutTestNameRe.MatchString(output) {
-				matchTimedOutTestName := timedOutTestNameRe.FindStringSubmatch(output)
-				if len(matchTimedOutTestName) > 1 {
-					testName := strings.TrimSpace(matchTimedOutTestName[1])
-					testDurationStr := strings.TrimSpace(matchTimedOutTestName[2])
-					testDuration, err := time.ParseDuration(testDurationStr)
-					if err != nil {
-						return "", true, fmt.Errorf("%w: %w using this output:\n\n%s", err, ErrDetectedTimeoutFailedParse, output)
-					}
-					if testDuration >= timeoutDuration {
-						return testName, true, nil
-					}
-				}
-			}
-		} else {
-			matchNestedTestName := nestedTestNameRe.FindStringSubmatch(output)
-			if len(matchNestedTestName) > 1 {
-				return strings.TrimSpace(matchNestedTestName[1]), false, nil
-			}
-		}
-	}
-	// If we reach here, we couldn't attribute the panic to a test in the loop
-
-	if timeout {
-		return "", timeout, fmt.Errorf("%w using this output:\n\n%s", ErrDetectedTimeoutFailedAttribution, strings.Join(outputs, ""))
-	}
-
-	return "", timeout, fmt.Errorf("%w using this output:\n\n%s", ErrFailedToAttributePanicToTest, strings.Join(outputs, ""))
-}
-
-// attributeRaceToTest properly attributes races to the test that caused them.
-func attributeRaceToTest(outputs []string) (string, error) {
-	for _, output := range outputs {
-		match := nestedTestNameRe.FindStringSubmatch(output)
-		if len(match) > 1 {
-			return strings.TrimSpace(match[1]), nil
-		}
-	}
-	return "", fmt.Errorf("%w, using this output:\n\n%s",
-		ErrFailedToAttributeRaceToTest, strings.Join(outputs, ""),
-	)
-}
-
-// parseSubTest checks if a test name is a subtest and returns the parent and sub names.
-func parseSubTest(testName string) (parentTestName, subTestName string) {
-	parts := strings.SplitN(testName, "/", 2)
-	if len(parts) == 1 {
-		return parts[0], ""
-	}
-	return parts[0], parts[1]
-}
-
-func (r *Runner) RerunFailedTests(failedTests []reports.TestResult, rerunCount int) ([]reports.TestResult, []string, error) {
-	// Group the provided failed tests by package for more efficient reruns
-	failingTestsByPackage := make(map[string][]string)
-	for _, tr := range failedTests {
-		failingTestsByPackage[tr.TestPackage] = append(failingTestsByPackage[tr.TestPackage], tr.TestName)
-	}
-
-	if r.Verbose {
-		log.Info().Msgf("Rerunning failing tests grouped by package: %v", failingTestsByPackage)
-	}
-
-	// Rerun each failing test package up to RerunCount times
-	for i := range rerunCount {
-		for pkg, tests := range failingTestsByPackage {
-			// Build regex pattern to match all failing tests in this package
-			testPattern := fmt.Sprintf("^(%s)$", strings.Join(tests, "|"))
-
-			cmd := []string{
-				"go", "test",
-				pkg,
-				"-count=1",
-				"-run", testPattern,
-				"-json",
+			testsToRun := make([]string, 0, len(testsMap))
+			for testName := range testsMap {
+				testsToRun = append(testsToRun, testName)
 			}
 
-			// Add other test flags
-			if r.GoTestRaceFlag {
-				cmd = append(cmd, "-race")
+			// Escape test names for regex and join with |
+			escapedTests := make([]string, len(testsToRun))
+			for j, testName := range testsToRun {
+				escapedTests[j] = regexp.QuoteMeta(testName)
 			}
-			if r.GoTestTimeoutFlag != "" {
-				cmd = append(cmd, fmt.Sprintf("-timeout=%s", r.GoTestTimeoutFlag))
-			}
-			if len(r.Tags) > 0 {
-				cmd = append(cmd, fmt.Sprintf("-tags=%s", strings.Join(r.Tags, ",")))
-			}
+			testPattern := fmt.Sprintf("^(?:%s)$", strings.Join(escapedTests, "|"))
+
+			// Create specific executor config for this rerun invocation
+			rerunExecCfg := baseExecCfg // Copy base config
+			one := 1
+			rerunExecCfg.GoTestCountFlag = &one              // Force -count=1 for rerun
+			rerunExecCfg.SelectTests = []string{testPattern} // Target specific tests via -run
+			rerunExecCfg.SkipTests = nil                     // Ensure no tests are skipped via -skip
+
 			if r.Verbose {
-				cmd = append(cmd, "-v")
-				log.Info().Msgf("Rerun iteration %d for package %s: %v", i+1, pkg, cmd)
+				log.Info().Str("package", pkg).Str("pattern", testPattern).Int("rerun_iter", i+1).Msg("Executing package rerun")
 			}
 
-			// Run the package tests
-			jsonOutputPath, _, err := r.runCmd(cmd, i)
+			jsonOutputPath, passed, err := r.exec.RunTestPackage(rerunExecCfg, pkg, i)
 			if err != nil {
-				return nil, nil, fmt.Errorf("error on rerunCmd for package %s: %w", pkg, err)
+				// If execution fails for a package, return the error immediately
+				log.Error().Err(err).Str("package", pkg).Int("rerun_iteration", i+1).Msg("Error executing rerun command for package")
+				return nil, nil, fmt.Errorf("error on rerun execution for package %s: %w", pkg, err)
 			}
-			r.rawOutputFiles = append(r.rawOutputFiles, jsonOutputPath)
-		}
+			if jsonOutputPath != "" {
+				rerunOutputFiles = append(rerunOutputFiles, jsonOutputPath)
+			}
+
+			// If the command failed (exit code != 0), keep all tests from this package in the failing list for the next iteration.
+			// Otherwise (passed=true), assume tests in this run passed and remove them from the failing list.
+			if !passed {
+				if _, ok := failingThisIteration[pkg]; !ok {
+					failingThisIteration[pkg] = make(map[string]struct{})
+				}
+				for testName := range testsMap {
+					failingThisIteration[pkg][testName] = struct{}{}
+				}
+			}
+		} // end loop over packages for this iteration
+
+		// Update the set of failing tests for the next iteration
+		currentlyFailing = failingThisIteration
+	} // end loop over rerunCount
+
+	// 4. Parse Rerun Outputs
+	if len(rerunOutputFiles) == 0 {
+		log.Warn().Msg("No output files were generated during reruns (possibly due to execution errors).")
+		return []reports.TestResult{}, []string{}, nil
 	}
 
-	// Parse all rerun results at once with a consistent prefix
-	rerunResults, err := r.parseTestResults("rerun", rerunCount)
+	log.Info().Int("file_count", len(rerunOutputFiles)).Msg("Parsing rerun output files")
+	// Create parser config and pass it
+	parserCfg := r.getParserConfig()
+	// For parsing reruns, the effective number of runs *per test included in the output* is `rerunCount`.
+	// The parser's `expectedRuns` helps adjust for potential overcounting within each file, using `rerunCount` seems correct here.
+	rerunResults, parsedFilePaths, err := r.parser.ParseFiles(rerunOutputFiles, "rerun", rerunCount, parserCfg)
 	if err != nil {
-		return nil, r.rawOutputFiles, fmt.Errorf("failed to parse rerun results: %w", err)
+		// Check for build error specifically?
+		if errors.Is(err, parser.ErrBuild) { // Updated check
+			log.Error().Err(err).Msg("Build error occurred unexpectedly during test reruns")
+			// Fallthrough to return wrapped error
+		}
+		// Return the file paths even if parsing failed? No, the report wouldn't be useful.
+		return nil, nil, fmt.Errorf("failed to parse rerun results: %w", err)
 	}
 
-	return rerunResults, r.rawOutputFiles, nil
+	// 5. Return Results
+	log.Info().Int("result_count", len(rerunResults)).Msg("Finished parsing rerun results")
+	// Return the parsed results AND the list of files parsed.
+	// Note: The function signature needs to change back to return []string
+	return rerunResults, parsedFilePaths, nil
+}
+
+// Helper function to count keys in the nested map for logging
+func countMapKeys(m map[string]map[string]struct{}) int {
+	count := 0
+	for _, subMap := range m {
+		count += len(subMap)
+	}
+	return count
 }
