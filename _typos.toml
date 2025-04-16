@@ -1,5 +1,6 @@
 [files]
 extend-exclude = [
+    "**/logs.txt",
     "**/go-cache",
     "framework/examples/myproject_cll/README.md",
     "framework/components/blockchain/tron.go",

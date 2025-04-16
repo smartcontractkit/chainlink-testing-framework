@@ -2,12 +2,37 @@
 
 set -e
 
-# Find all 'go.mod' files, excluding the 'seth' directory, get their directories, and run an empty 'go test' in them to compile the tests.
-# Seth is excluded because it can't be tested like this, env vars are required and setup
-find "./" -path "./seth" -prune -o -type f -name 'go.mod' -print0 | while IFS= read -r -d $'\0' file; do
+echo "Compiling tests in all packages (excluding seth)"
+
+# Use a temporary file to track failures since variables in pipe loops don't persist
+FAILED_FILE=$(mktemp)
+trap 'rm -f "$FAILED_FILE"' EXIT
+
+# Find all 'go.mod' files, excluding the 'seth' directory
+find "./" -name "go.mod" -not -path "./seth/*" -print0 | while IFS= read -r -d $'\0' file; do
     dir=$(dirname "$file")
-    echo "Executing cd \"$dir\" && go test -run=^# ./..."
-    cd "$dir"
-    go test -run=^# ./...
-    cd -
+    echo "=== Compiling tests in $dir ==="
+
+    # Run in a subshell to avoid cd issues
+    (
+        cd "$dir"
+        # Check if there are any test files before running go test
+        if [ -n "$(find . -name '*_test.go' -print -quit)" ]; then
+            if ! go test -run=^# ./...; then
+                echo "Error: Failed to compile tests in $dir" >&2
+                exit 1  # This exits the subshell
+            fi
+        else
+            echo "No test files found in $dir"
+        fi
+    ) || echo "1" >> "$FAILED_FILE"  # Record failure
 done
+
+# Check if we had any failures
+if [ -s "$FAILED_FILE" ]; then
+    echo "Error: Some packages failed to compile" >&2
+    exit 1
+fi
+
+echo "Test compilation complete"
+exit 0
