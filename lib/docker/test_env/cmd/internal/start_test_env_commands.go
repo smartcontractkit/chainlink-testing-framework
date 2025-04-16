@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	flag "github.com/spf13/pflag"
-	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/log"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/config"
 	config_types "github.com/smartcontractkit/chainlink-testing-framework/lib/config/types"
@@ -102,7 +102,7 @@ func init() {
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
 	// Discard testcontainers logs
-	testcontainers.Logger = defaultlog.New(io.Discard, "", defaultlog.LstdFlags)
+	log.SetDefault(defaultlog.New(io.Discard, "", defaultlog.LstdFlags))
 }
 
 func startPrivateEthChainE(cmd *cobra.Command, args []string) error {
