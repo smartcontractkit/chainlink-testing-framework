@@ -78,3 +78,5 @@ require (
 )
 
 retract [v1.999.0-test-release, v1.999.999-test-release]
+
+retract v1.50.6
