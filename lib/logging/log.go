@@ -105,14 +105,13 @@ func GetTestLogger(t *testing.T) zerolog.Logger {
 // GetTestContainersGoTestLogger returns a logger that will write to the testing.T.Log function using the env var for log level
 // for logs that testcontainers-go will log out. nil can be passed to this and it will be treated as the default tc.Logger
 func GetTestContainersGoTestLogger(t *testing.T) tclog.Logger {
-	l := tclog.TestLogger(t)
 	if t != nil {
-		l = CustomT{
+		return CustomT{
 			T: t,
 			L: GetTestLogger(t),
 		}
 	}
-	return l
+	return tclog.Default()
 }
 
 // SplitStringIntoChunks takes a string and splits it into chunks of a specified size.
