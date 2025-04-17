@@ -6,7 +6,7 @@ require (
 	github.com/chaos-mesh/chaos-mesh/api v0.0.0-20240821051457-da69c6d9617a
 	github.com/google/uuid v1.6.0
 	github.com/pkg/errors v0.9.1
-	github.com/rs/zerolog v1.33.0
+	github.com/rs/zerolog v1.34.0
 	github.com/smartcontractkit/chainlink-testing-framework/lib/grafana v1.50.0
 	k8s.io/api v0.31.2
 	k8s.io/apimachinery v0.31.2
