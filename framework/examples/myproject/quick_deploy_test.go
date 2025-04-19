@@ -11,7 +11,6 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/examples/example_components/onchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
 
@@ -53,7 +52,7 @@ func TestQuickDeploy(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		ra, err := randAddr()
 		require.NoError(t, err)
-		err = simple_node_set.SendETH(c, blockchain.DefaultAnvilPrivateKey, ra, big.NewFloat(0.1))
+		err = ns.SendETH(c, blockchain.DefaultAnvilPrivateKey, ra, big.NewFloat(0.1))
 		require.NoError(t, err)
 	}
 	// start periodic mining so nodes can receive heads (async)
