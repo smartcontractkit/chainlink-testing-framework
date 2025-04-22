@@ -144,7 +144,8 @@ func newSolana(in *Input) (*Output, error) {
 
 	return &Output{
 		UseCache:      true,
-		Family:        "solana",
+		Type:          in.Type,
+		Family:        FamilySolana,
 		ContainerName: containerName,
 		Container:     c,
 		Nodes: []*Node{

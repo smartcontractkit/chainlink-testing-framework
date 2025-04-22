@@ -8,6 +8,27 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
+// Blockchain node type
+const (
+	TypeAnvil       = "anvil"
+	TypeAnvilZKSync = "anvil-zksync"
+	TypeGeth        = "geth"
+	TypeBesu        = "besu"
+	TypeSolana      = "solana"
+	TypeAptos       = "aptos"
+	TypeSui         = "sui"
+	TypeTron        = "tron"
+)
+
+// Blockchain node family
+const (
+	FamilyEVM    = "evm"
+	FamilySolana = "solana"
+	FamilyAptos  = "aptos"
+	FamilySui    = "sui"
+	FamilyTron   = "tron"
+)
+
 // Input is a blockchain network configuration params
 type Input struct {
 	// Common EVM fields
@@ -36,6 +57,7 @@ type Input struct {
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network
 type Output struct {
 	UseCache            bool                     `toml:"use_cache"`
+	Type                string                   `toml:"type"`
 	Family              string                   `toml:"family"`
 	ContainerName       string                   `toml:"container_name"`
 	NetworkSpecificData *NetworkSpecificData     `toml:"network_specific_data"`
@@ -61,21 +83,21 @@ func NewBlockchainNetwork(in *Input) (*Output, error) {
 	var out *Output
 	var err error
 	switch in.Type {
-	case "anvil":
+	case TypeAnvil:
 		out, err = newAnvil(in)
-	case "geth":
+	case TypeGeth:
 		out, err = newGeth(in)
-	case "besu":
+	case TypeBesu:
 		out, err = newBesu(in)
-	case "solana":
+	case TypeSolana:
 		out, err = newSolana(in)
-	case "aptos":
+	case TypeAptos:
 		out, err = newAptos(in)
-	case "sui":
+	case TypeSui:
 		out, err = newSui(in)
-	case "tron":
+	case TypeTron:
 		out, err = newTron(in)
-	case "anvil-zksync":
+	case TypeAnvilZKSync:
 		out, err = newAnvilZksync(in)
 	default:
 		return nil, fmt.Errorf("blockchain type is not supported or empty, must be 'anvil' or 'geth'")

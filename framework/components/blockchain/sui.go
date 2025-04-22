@@ -152,7 +152,8 @@ func newSui(in *Input) (*Output, error) {
 	}
 	return &Output{
 		UseCache:            true,
-		Family:              "sui",
+		Type:                in.Type,
+		Family:              FamilySui,
 		ContainerName:       containerName,
 		NetworkSpecificData: &NetworkSpecificData{SuiAccount: suiAccount},
 		Nodes: []*Node{

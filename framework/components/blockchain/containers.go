@@ -69,7 +69,8 @@ func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest, u
 
 	output := Output{
 		UseCache:      true,
-		Family:        "evm",
+		Type:          in.Type,
+		Family:        FamilyEVM,
 		ChainID:       in.ChainID,
 		ContainerName: containerName,
 		Container:     c,
