@@ -4,7 +4,7 @@
 ```toml
 [blockchain_a]
   type = "tron"
-  # image = "tronbox/tre" is default image
+  # image = "tronbox/tre:1.0.3" is default image
 ```
 Default port is `9090`
 
