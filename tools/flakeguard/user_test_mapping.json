@@ -36,7 +36,15 @@
         "pattern": "github.com/smartcontractkit/chainlink/deployment/data-feeds/changeset"
     },
     {
+        "jira_user_id": "6115c23730fe4500702c1301",
+        "pattern": "github.com/smartcontractkit/chainlink/v2/core/services.*"
+    },
+    {
+        "jira_user_id": "6115c23730fe4500702c1301",
+        "pattern": "github.com/smartcontractkit/chainlink/v2/core/capabilities.*"
+    },
+    {
         "jira_user_id": "638f597c3e79f12e57253913",
         "pattern": ".*"
     }
-] 
+]
