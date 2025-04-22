@@ -257,6 +257,13 @@
     "jira_assignee_id": "63beffc42a526608c5501530",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
+  "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/solana::TestAddTokenPool": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/solana",
+    "test_name": "TestAddTokenPool",
+    "jira_ticket": "DX-580",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
   "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/solana::TestGenericOps": {
     "test_package": "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/solana",
     "test_name": "TestGenericOps",
@@ -341,6 +348,27 @@
     "jira_assignee_id": "6175d3e016119e0069fdd14f",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
+  "github.com/smartcontractkit/chainlink/deployment/data-feeds/changeset::TestUpdateDataIDProxyMap": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/data-feeds/changeset",
+    "test_name": "TestUpdateDataIDProxyMap",
+    "jira_ticket": "DX-576",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/deployment/data-streams/changeset::TestDistributeBootstrapJobSpecs": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/data-streams/changeset",
+    "test_name": "TestDistributeBootstrapJobSpecs",
+    "jira_ticket": "DX-196",
+    "jira_assignee_id": "641949fb1273131f2ae1dd4e",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/deployment/data-streams/changeset::TestDistributeLLOJobSpecs": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/data-streams/changeset",
+    "test_name": "TestDistributeLLOJobSpecs",
+    "jira_ticket": "DX-577",
+    "jira_assignee_id": "641949fb1273131f2ae1dd4e",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
   "github.com/smartcontractkit/chainlink/deployment/environment/crib::TestShouldProvideEnvironmentConfig": {
     "test_package": "github.com/smartcontractkit/chainlink/deployment/environment/crib",
     "test_name": "TestShouldProvideEnvironmentConfig",
@@ -358,6 +386,20 @@
     "test_package": "github.com/smartcontractkit/chainlink/deployment/environment/memory",
     "test_name": "TestJobClientProposeJob",
     "jira_ticket": "DX-432",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/deployment/keystone/changeset::TestAcceptAllOwnership": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/keystone/changeset",
+    "test_name": "TestAcceptAllOwnership",
+    "jira_ticket": "DX-578",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/deployment/keystone/changeset::TestDeployFeedsConsumer": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/keystone/changeset",
+    "test_name": "TestDeployFeedsConsumer",
+    "jira_ticket": "DX-579",
     "jira_assignee_id": "6175d3e016119e0069fdd14f",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
@@ -431,12 +473,26 @@
     "jira_assignee_id": "6175d3e016119e0069fdd14f",
     "skipped_at": "2025-03-24T16:13:24.263916Z"
   },
+  "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestRevokeJobs": {
+    "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
+    "test_name": "TestRevokeJobs",
+    "jira_ticket": "DX-566",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestV1_5_Message_RMNRemote_Curse_Uncurse": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
     "test_name": "TestV1_5_Message_RMNRemote_Curse_Uncurse",
     "jira_ticket": "DX-293",
     "jira_assignee_id": "6175d3e016119e0069fdd14f",
     "skipped_at": "2025-03-24T16:06:00.975793Z"
+  },
+  "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::Test_CCIPGasPriceUpdatesDeviation": {
+    "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
+    "test_name": "Test_CCIPGasPriceUpdatesDeviation",
+    "jira_ticket": "DX-567",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
+    "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::Test_CCIPTokenPriceUpdates": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip",
@@ -455,6 +511,27 @@
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke",
     "test_name": "TestAutomationBasic/registry_2_2_with_mercury_v03",
     "jira_ticket": "DX-523",
+    "jira_assignee_id": "638f597c3e79f12e57253913",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/integration-tests/smoke::TestForwarderOCR2Basic": {
+    "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke",
+    "test_name": "TestForwarderOCR2Basic",
+    "jira_ticket": "DX-561",
+    "jira_assignee_id": "638f597c3e79f12e57253913",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/integration-tests/smoke::TestForwarderOCRBasic": {
+    "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke",
+    "test_name": "TestForwarderOCRBasic",
+    "jira_ticket": "DX-564",
+    "jira_assignee_id": "638f597c3e79f12e57253913",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/integration-tests/smoke::TestKeeperBlockCountPerTurn/registry_1_2": {
+    "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke",
+    "test_name": "TestKeeperBlockCountPerTurn/registry_1_2",
+    "jira_ticket": "DX-556",
     "jira_assignee_id": "638f597c3e79f12e57253913",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
@@ -479,10 +556,38 @@
     "jira_assignee_id": "638f597c3e79f12e57253913",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
+  "github.com/smartcontractkit/chainlink/integration-tests/smoke::TestKeeperRemove/registry_1_3": {
+    "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke",
+    "test_name": "TestKeeperRemove/registry_1_3",
+    "jira_ticket": "DX-557",
+    "jira_assignee_id": "638f597c3e79f12e57253913",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/integration-tests/smoke::TestLogPollerWithChaosFinalityTag": {
+    "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke",
+    "test_name": "TestLogPollerWithChaosFinalityTag",
+    "jira_ticket": "DX-562",
+    "jira_assignee_id": "638f597c3e79f12e57253913",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/integration-tests/smoke::TestLogPollerWithChaosPostgresFinalityTag": {
+    "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke",
+    "test_name": "TestLogPollerWithChaosPostgresFinalityTag",
+    "jira_ticket": "DX-563",
+    "jira_assignee_id": "638f597c3e79f12e57253913",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke::TestOCRJobReplacement": {
     "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke",
     "test_name": "TestOCRJobReplacement",
     "jira_ticket": "DX-528",
+    "jira_assignee_id": "638f597c3e79f12e57253913",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/integration-tests/smoke::TestVRFOwner": {
+    "test_package": "github.com/smartcontractkit/chainlink/integration-tests/smoke",
+    "test_name": "TestVRFOwner",
+    "jira_ticket": "DX-565",
     "jira_assignee_id": "638f597c3e79f12e57253913",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
@@ -491,6 +596,69 @@
     "test_name": "TestVRFv2Basic/Oracle_Withdraw",
     "jira_ticket": "DX-527",
     "jira_assignee_id": "638f597c3e79f12e57253913",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/capabilities/compute::TestCache": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/capabilities/compute",
+    "test_name": "TestCache",
+    "jira_ticket": "DX-558",
+    "jira_assignee_id": "638f597c3e79f12e57253913",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/capabilities/compute::TestCache_AddDuplicatedModule": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/capabilities/compute",
+    "test_name": "TestCache_AddDuplicatedModule",
+    "jira_ticket": "DX-574",
+    "jira_assignee_id": "6115c23730fe4500702c1301",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/capabilities/compute::TestComputeExecute": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/capabilities/compute",
+    "test_name": "TestComputeExecute",
+    "jira_ticket": "DX-560",
+    "jira_assignee_id": "6115c23730fe4500702c1301",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/capabilities/compute::TestCompute_SpendValueRelativeToComputeTime": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/capabilities/compute",
+    "test_name": "TestCompute_SpendValueRelativeToComputeTime",
+    "jira_ticket": "DX-568",
+    "jira_assignee_id": "6115c23730fe4500702c1301",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/capabilities/compute::TestCompute_SpendValueRelativeToComputeTime/0s": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/capabilities/compute",
+    "test_name": "TestCompute_SpendValueRelativeToComputeTime/0s",
+    "jira_ticket": "DX-569",
+    "jira_assignee_id": "6115c23730fe4500702c1301",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/capabilities/compute::TestCompute_SpendValueRelativeToComputeTime/1s": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/capabilities/compute",
+    "test_name": "TestCompute_SpendValueRelativeToComputeTime/1s",
+    "jira_ticket": "DX-570",
+    "jira_assignee_id": "6115c23730fe4500702c1301",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/capabilities/compute::TestCompute_SpendValueRelativeToComputeTime/2.5s": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/capabilities/compute",
+    "test_name": "TestCompute_SpendValueRelativeToComputeTime/2.5s",
+    "jira_ticket": "DX-571",
+    "jira_assignee_id": "6115c23730fe4500702c1301",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/capabilities/compute::TestCompute_SpendValueRelativeToComputeTime/2s": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/capabilities/compute",
+    "test_name": "TestCompute_SpendValueRelativeToComputeTime/2s",
+    "jira_ticket": "DX-572",
+    "jira_assignee_id": "6115c23730fe4500702c1301",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/capabilities/compute::TestCompute_SpendValueRelativeToComputeTime/3s": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/capabilities/compute",
+    "test_name": "TestCompute_SpendValueRelativeToComputeTime/3s",
+    "jira_ticket": "DX-573",
+    "jira_assignee_id": "6115c23730fe4500702c1301",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/v2/core/capabilities/integration_tests/keystone::Test_OneAtATimeTransmissionSchedule": {
@@ -521,11 +689,25 @@
     "jira_assignee_id": "61c3bc0d68926d0068ad903d",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
+  "github.com/smartcontractkit/chainlink/v2/core/services/keystore/keys/starkkey::TestStarknetKeyring_Marshal": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/keystore/keys/starkkey",
+    "test_name": "TestStarknetKeyring_Marshal",
+    "jira_ticket": "DX-559",
+    "jira_assignee_id": "6115c23730fe4500702c1301",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
   "github.com/smartcontractkit/chainlink/v2/core/services/ocr2/plugins/ocr2keeper/evmregistry/v21/logprovider::TestIntegration_LogRecoverer_Backfill": {
     "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/ocr2/plugins/ocr2keeper/evmregistry/v21/logprovider",
     "test_name": "TestIntegration_LogRecoverer_Backfill",
     "jira_ticket": "DX-121",
     "jira_assignee_id": "61c3bc0d68926d0068ad903d",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/ocr2/plugins/ocr2keeper::TestIntegration_KeeperPluginLogUpkeep_Retry": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/ocr2/plugins/ocr2keeper",
+    "test_name": "TestIntegration_KeeperPluginLogUpkeep_Retry",
+    "jira_ticket": "DX-575",
+    "jira_assignee_id": "6115c23730fe4500702c1301",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm::TestChainComponents": {
