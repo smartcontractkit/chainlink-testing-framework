@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -21,6 +23,7 @@ import (
 const (
 	FlakyTestsExitCode = 1
 	ErrorExitCode      = 2
+	RawOutputDir       = "./flakeguard_raw_output"
 )
 
 type runConfig struct {
@@ -252,6 +255,7 @@ func initializeRunner(cfg *runConfig) *runner.Runner {
 		cfg.SelectTests,
 		cfg.IgnoreParentFailuresOnSubtests,
 		cfg.OmitOutputsOnSuccess,
+		RawOutputDir,
 		nil, // exec
 		nil, // parser
 	)
@@ -259,6 +263,12 @@ func initializeRunner(cfg *runConfig) *runner.Runner {
 
 // generateMainReport creates the initial test report from the main run results.
 func generateMainReport(results []reports.TestResult, cfg *runConfig, goProject string) (*reports.TestReport, error) {
+	// Get the JSON output paths from the raw output directory
+	jsonOutputPaths, err := getJSONOutputPaths(RawOutputDir)
+	if err != nil {
+		log.Warn().Err(err).Msg("Failed to get JSON output paths")
+	}
+
 	reportVal, err := reports.NewTestReport(results,
 		reports.WithGoProject(goProject),
 		reports.WithCodeOwnersPath(cfg.CodeownersPath),
@@ -266,11 +276,31 @@ func generateMainReport(results []reports.TestResult, cfg *runConfig, goProject 
 		reports.WithGoRaceDetection(cfg.UseRace),
 		reports.WithExcludedTests(cfg.SkipTests),
 		reports.WithSelectedTests(cfg.SelectTests),
+		reports.WithJSONOutputPaths(jsonOutputPaths),
 	)
 	if err != nil {
 		return nil, err
 	}
 	return &reportVal, nil
+}
+
+// getJSONOutputPaths returns a list of JSON output files from the given directory
+func getJSONOutputPaths(dir string) ([]string, error) {
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to read directory %s: %w", dir, err)
+	}
+
+	var paths []string
+	for _, file := range files {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".json") {
+			paths = append(paths, filepath.Join(dir, file.Name()))
+		}
+	}
+	return paths, nil
 }
 
 // handleReruns manages the process of rerunning failed tests and reporting results.
@@ -384,6 +414,20 @@ func handleNoReruns(exitHandler *summaryAndExit, mainReport *reports.TestReport,
 	reports.RenderTestReport(&exitHandler.buffer, *mainReport, false, false)
 
 	if len(flakyTests) > 0 {
+		// Create a new report with only flaky tests to get their gotestsum output
+		flakyReport, err := reports.NewTestReport(flakyTests,
+			reports.WithJSONOutputPaths(mainReport.JSONOutputPaths),
+		)
+		if err != nil {
+			log.Error().Err(err).Msg("Error creating flaky tests report")
+		} else {
+			fmt.Fprint(&exitHandler.buffer, "\nFlaky Test Logs:\n\n")
+			err := flakyReport.PrintGotestsumOutput(&exitHandler.buffer, "pkgname")
+			if err != nil {
+				log.Error().Err(err).Msg("Error printing gotestsum output for flaky tests")
+			}
+		}
+
 		exitHandler.logMsgAndExit(zerolog.InfoLevel, "Found flaky tests.", FlakyTestsExitCode, map[string]interface{}{
 			"flaky_count":         len(flakyTests),
 			"stability_threshold": fmt.Sprintf("%.0f%%", cfg.MinPassRatio*100),
