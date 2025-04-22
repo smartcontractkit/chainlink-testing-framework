@@ -24,6 +24,7 @@ const (
 	defaultParrotImage   = "kalverra/parrot"
 	defaultParrotVersion = "v0.6.2"
 	defaultParrotPort    = "80"
+	defaultStartupTimeout = 10 * time.Second
 )
 
 // Parrot is a test environment component that wraps a Parrot server.
@@ -56,7 +57,6 @@ func NewParrot(networks []string, opts ...EnvComponentOption) *Parrot {
 		EnvComponent: EnvComponent{
 			ContainerName:  fmt.Sprintf("%s-%s", "parrot", uuid.NewString()[0:3]),
 			Networks:       networks,
-			StartupTimeout: 10 * time.Second,
 		},
 		l: log.Logger,
 	}
@@ -64,6 +64,11 @@ func NewParrot(networks []string, opts ...EnvComponentOption) *Parrot {
 	for _, opt := range opts {
 		opt(&p.EnvComponent)
 	}
+
+	if p.StartupTimeout == 0 {
+		p.StartupTimeout = defaultStartupTimeout
+	}
+
 	return p
 }
 
