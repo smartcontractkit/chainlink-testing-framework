@@ -127,7 +127,8 @@ func newAptos(in *Input) (*Output, error) {
 	}
 	return &Output{
 		UseCache:      true,
-		Family:        "aptos",
+		Type:          in.Type,
+		Family:        FamilyAptos,
 		ContainerName: containerName,
 		Nodes: []*Node{
 			{

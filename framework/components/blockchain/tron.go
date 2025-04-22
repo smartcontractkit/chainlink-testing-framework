@@ -115,7 +115,8 @@ func newTron(in *Input) (*Output, error) {
 	return &Output{
 		UseCache:      true,
 		ChainID:       in.ChainID,
-		Family:        "tron",
+		Type:          in.Type,
+		Family:        FamilyTron,
 		ContainerName: containerName,
 		Nodes: []*Node{
 			{
