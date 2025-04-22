@@ -21,9 +21,9 @@ import (
 )
 
 const (
-	defaultParrotImage   = "kalverra/parrot"
-	defaultParrotVersion = "v0.6.2"
-	defaultParrotPort    = "80"
+	defaultParrotImage    = "kalverra/parrot"
+	defaultParrotVersion  = "v0.6.2"
+	defaultParrotPort     = "80"
 	defaultStartupTimeout = 10 * time.Second
 )
 
@@ -55,8 +55,8 @@ type ParrotAdapterResult struct {
 func NewParrot(networks []string, opts ...EnvComponentOption) *Parrot {
 	p := &Parrot{
 		EnvComponent: EnvComponent{
-			ContainerName:  fmt.Sprintf("%s-%s", "parrot", uuid.NewString()[0:3]),
-			Networks:       networks,
+			ContainerName: fmt.Sprintf("%s-%s", "parrot", uuid.NewString()[0:3]),
+			Networks:      networks,
 		},
 		l: log.Logger,
 	}
