@@ -8,9 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/briandowns/spinner"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -25,6 +23,15 @@ const (
 	ErrorExitCode      = 2
 	RawOutputDir       = "./flakeguard_raw_output"
 )
+
+// runState holds the configuration and results throughout the run process.
+type runState struct {
+	cfg         *runConfig
+	goProject   string
+	testRunner  *runner.Runner
+	mainResults []reports.TestResult
+	mainReport  *reports.TestReport
+}
 
 type runConfig struct {
 	ProjectPath                    string
@@ -43,132 +50,309 @@ type runConfig struct {
 	SelectTests                    []string
 	UseShuffle                     bool
 	ShuffleSeed                    string
-	OmitOutputsOnSuccess           bool
 	IgnoreParentFailuresOnSubtests bool
 	FailFast                       bool
 	GoTestTimeout                  string
 	GoTestCount                    *int
 }
 
-type summaryAndExit struct {
+// outputManager manages the final output buffer and exit code.
+type outputManager struct {
 	buffer bytes.Buffer
 	code   int
 }
 
-func (s *summaryAndExit) flush() {
-	fmt.Print(s.buffer.String())
-	os.Exit(s.code)
+// flush prints the buffered output and exits with the stored code.
+func (o *outputManager) flush() {
+	fmt.Print(o.buffer.String())
+	os.Exit(o.code)
 }
 
-func (s *summaryAndExit) logErrorAndExit(err error, msg string, fields ...map[string]interface{}) {
+// logErrorAndExit logs an error, sets the exit code to ErrorExitCode, and flushes.
+func (o *outputManager) logErrorAndExit(err error, msg string, fields ...map[string]interface{}) {
 	l := log.Error().Err(err)
 	if len(fields) > 0 {
 		l = l.Fields(fields[0])
 	}
 	l.Msg(msg)
-	s.code = ErrorExitCode
-	s.flush()
+	fmt.Fprintf(&o.buffer, "[ERROR] %s: %v\n", msg, err)
+	o.code = ErrorExitCode
+	o.flush()
 }
 
-func (s *summaryAndExit) logMsgAndExit(level zerolog.Level, msg string, code int, fields ...map[string]interface{}) {
+// logMsgAndExit logs a message at a specific level, sets the exit code, and flushes.
+func (o *outputManager) logMsgAndExit(level zerolog.Level, msg string, code int, fields ...map[string]interface{}) {
 	l := log.WithLevel(level)
 	if len(fields) > 0 {
 		l = l.Fields(fields[0])
 	}
 	l.Msg(msg)
-	s.code = code
-	s.flush()
+	fmt.Fprintf(&o.buffer, "[%s] %s\n", level.String(), msg)
+	o.code = code
+	o.flush()
+}
+
+// info logs an informational message to zerolog and the output buffer.
+func (o *outputManager) info(step, totalSteps int, msg string) {
+	stepMsg := fmt.Sprintf("(%d/%d) %s", step, totalSteps, msg)
+	log.Info().Msg(stepMsg)
+	fmt.Fprintf(&o.buffer, "\n[INFO] %s\n", stepMsg)
+	fmt.Fprintf(&o.buffer, "%s\n", strings.Repeat("-", len(stepMsg)+7))
+}
+
+// detail adds a detail line under the current step in the buffer.
+func (o *outputManager) detail(msg string, args ...interface{}) {
+	formattedMsg := fmt.Sprintf(msg, args...)
+	fmt.Fprintf(&o.buffer, "  %s\n", formattedMsg)
+	log.Debug().Msg(formattedMsg)
+}
+
+// finalStatus adds final status messages (ERROR, WARNING, FAIL) to the buffer.
+func (o *outputManager) finalStatus(level zerolog.Level, msg string) {
+	log.WithLevel(level).Msg(msg)
+	levelStr := strings.ToUpper(level.String())
+	if level == zerolog.WarnLevel {
+		levelStr = "WARN"
+	}
+	fmt.Fprintf(&o.buffer, "[%s] %s\n", levelStr, msg)
 }
 
 var RunTestsCmd = &cobra.Command{
 	Use:   "run",
-	Short: "Run tests to check if they are flaky",
+	Short: "Run tests potentially multiple times, check for flakiness, and report results.",
+	Long: `Runs tests using 'go test -json'.
+Can run tests multiple times and rerun failed tests to detect flakiness.
+Provides a structured summary of the execution flow and final results,
+followed by detailed logs for all executed tests.
+
+Exit Codes:
+  0: Success (all tests passed stability requirements)
+  1: Flaky tests found or tests failed persistently after reruns
+  2: Error during execution (e.g., setup failure, command error)`,
 	Run: func(cmd *cobra.Command, args []string) {
-		exitHandler := &summaryAndExit{}
+		outputMgr := &outputManager{code: 0} // Default success
+		state := &runState{}
+		var err error
 
-		cfg, err := parseAndValidateFlags(cmd)
+		// Configuration & Setup
+		state.cfg, err = parseAndValidateFlags(cmd)
 		if err != nil {
-			exitHandler.logErrorAndExit(err, "Failed to parse or validate flags")
+			outputMgr.logErrorAndExit(err, "Failed to parse or validate flags")
 		}
 
-		goProject, err := utils.GetGoProjectName(cfg.ProjectPath)
+		state.goProject, err = utils.GetGoProjectName(state.cfg.ProjectPath)
 		if err != nil {
-			log.Warn().Err(err).Str("projectPath", cfg.ProjectPath).Msg("Failed to get pretty project path")
+			log.Warn().Err(err).Str("projectPath", state.cfg.ProjectPath).Msg("Failed to get pretty project path for report metadata")
 		}
 
-		if err := checkDependencies(cfg.ProjectPath); err != nil {
-			exitHandler.logErrorAndExit(err, "Error checking project dependencies")
+		state.testRunner = initializeRunner(state.cfg)
+
+		totalSteps := 3 // Prep, Initial Run, Final Summary
+		if state.cfg.RerunFailedCount > 0 {
+			totalSteps++ // Add Retry step
 		}
 
-		testPackages, err := determineTestPackages(cfg)
-		if err != nil {
-			exitHandler.logErrorAndExit(err, "Failed to determine test packages")
-		}
-
-		testRunner := initializeRunner(cfg)
-
-		s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
-		s.Suffix = " Running initial tests..."
-		s.Start()
-
-		var mainResults []reports.TestResult
-		var runErr error
-		if len(cfg.TestCmds) > 0 {
-			s.Suffix = " Running custom test command(s)..."
-			mainResults, runErr = testRunner.RunTestCmd(cfg.TestCmds)
+		// Preparation
+		outputMgr.info(1, totalSteps, "Preparing environment...")
+		if err := checkDependencies(state.cfg.ProjectPath); err != nil {
+			outputMgr.detail("Warning: Dependency check ('go mod tidy') failed: %v", err)
 		} else {
-			s.Suffix = " Running test packages..."
-			mainResults, runErr = testRunner.RunTestPackages(testPackages)
+			outputMgr.detail("Dependency check ('go mod tidy'): OK")
 		}
-		s.Stop()
+		outputMgr.detail("Preparation complete.")
+
+		// Initial Test Run
+		outputMgr.info(2, totalSteps, "Running initial tests...")
+
+		var runErr error
+		testPackages, determineErr := determineTestPackages(state.cfg)
+		if determineErr != nil {
+			outputMgr.logErrorAndExit(determineErr, "Failed to determine test packages")
+		}
+
+		if len(state.cfg.TestCmds) > 0 {
+			outputMgr.detail("Using custom test command(s)...")
+			state.mainResults, runErr = state.testRunner.RunTestCmd(state.cfg.TestCmds)
+		} else {
+			outputMgr.detail("Running test packages: %s", strings.Join(testPackages, ", "))
+			state.mainResults, runErr = state.testRunner.RunTestPackages(testPackages)
+		}
 
 		if runErr != nil {
-			exitHandler.logErrorAndExit(runErr, "Error running initial tests")
+			outputMgr.logErrorAndExit(runErr, "Error running initial tests")
 		}
-		if len(mainResults) == 0 {
-			exitHandler.logMsgAndExit(zerolog.ErrorLevel, "No tests were run.", ErrorExitCode)
+		if len(state.mainResults) == 0 {
+			outputMgr.logMsgAndExit(zerolog.ErrorLevel, "No tests were run.", ErrorExitCode)
 		}
 
-		mainReport, err := generateMainReport(mainResults, cfg, goProject)
+		state.mainReport, err = generateInitialReport(state.mainResults, state.cfg, state.goProject)
 		if err != nil {
-			exitHandler.logErrorAndExit(err, "Error creating main test report")
+			outputMgr.logErrorAndExit(err, "Error creating initial test report")
 		}
-		if cfg.MainResultsPath != "" {
-			if err := reports.SaveTestResultsToFile(mainResults, cfg.MainResultsPath); err != nil {
-				log.Error().Err(err).Str("path", cfg.MainResultsPath).Msg("Error saving main test results to file")
+
+		if state.cfg.MainResultsPath != "" {
+			if err := reports.SaveTestResultsToFile(state.mainResults, state.cfg.MainResultsPath); err != nil {
+				log.Error().Err(err).Str("path", state.cfg.MainResultsPath).Msg("Error saving main test results to file")
+				outputMgr.detail("Warning: Failed to save initial results to %s", state.cfg.MainResultsPath)
 			} else {
-				log.Info().Str("path", cfg.MainResultsPath).Msg("Main test report saved")
+				log.Info().Str("path", state.cfg.MainResultsPath).Msg("Main test report saved")
+				outputMgr.detail("Initial results saved to: %s", state.cfg.MainResultsPath)
 			}
 		}
 
-		if cfg.RerunFailedCount > 0 {
-			// Process the initial run, potentially display logs, and decide if reruns are needed.
-			failedTests, proceedToRerun := handleInitialRunResults(exitHandler, mainReport, cfg, goProject)
-			if !proceedToRerun {
-				// handleInitialRunResults will have set the exit code and printed messages.
-				exitHandler.flush() // Exit based on initial run results.
-				return
-			}
+		initialPassed, initialFailed, initialSkipped := countResults(state.mainResults)
+		totalInitial := len(state.mainResults) - initialSkipped
+		outputMgr.detail("Initial run completed:")
+		outputMgr.detail("  - %d total tests run (excluding skipped)", totalInitial)
+		outputMgr.detail("  - %d passed", initialPassed)
+		outputMgr.detail("  - %d failed", initialFailed)
+		if initialSkipped > 0 {
+			outputMgr.detail("  - %d skipped", initialSkipped)
+		}
 
-			// Execute the reruns and generate the rerun report.
-			rerunResults, rerunReport, err := executeAndReportReruns(exitHandler, testRunner, failedTests, cfg, goProject)
+		initialFailedTests := reports.FilterTests(state.mainResults, func(tr reports.TestResult) bool {
+			return !tr.Skipped && tr.Failures > 0
+		})
+
+		// Retry Failed Tests
+		persistentlyFailingTests := initialFailedTests
+		flakyTests := []reports.TestResult{}
+		var rerunReport *reports.TestReport
+
+		if state.cfg.RerunFailedCount > 0 && len(initialFailedTests) > 0 {
+			outputMgr.info(3, totalSteps, "Retrying failed tests...")
+
+			if handleCmdLineArgsEdgeCase(outputMgr, initialFailedTests, state.cfg) {
+				persistentlyFailingTests = initialFailedTests
+			} else {
+				suffix := fmt.Sprintf(" Rerunning %d failed test(s) up to %d times...", len(initialFailedTests), state.cfg.RerunFailedCount)
+				log.Info().Msg(suffix)
+
+				rerunResults, rerunJSONPaths, rerunErr := state.testRunner.RerunFailedTests(initialFailedTests, state.cfg.RerunFailedCount)
+
+				if rerunErr != nil {
+					outputMgr.logErrorAndExit(rerunErr, "Error rerunning failed tests")
+				}
+
+				rerunReportVal, err := reports.NewTestReport(rerunResults,
+					reports.WithGoProject(state.goProject),
+					reports.WithCodeOwnersPath(state.cfg.CodeownersPath),
+					reports.WithMaxPassRatio(1),
+					reports.WithExcludedTests(state.cfg.SkipTests),
+					reports.WithSelectedTests(state.cfg.SelectTests),
+					reports.WithJSONOutputPaths(rerunJSONPaths),
+				)
+				if err != nil {
+					outputMgr.logErrorAndExit(err, "Error creating rerun test report")
+				}
+				rerunReport = &rerunReportVal
+
+				if state.cfg.RerunResultsPath != "" && len(rerunResults) > 0 {
+					if err := reports.SaveTestResultsToFile(rerunResults, state.cfg.RerunResultsPath); err != nil {
+						log.Error().Err(err).Str("path", state.cfg.RerunResultsPath).Msg("Error saving rerun test results to file")
+						outputMgr.detail("Warning: Failed to save rerun results to %s", state.cfg.RerunResultsPath)
+					} else {
+						log.Info().Str("path", state.cfg.RerunResultsPath).Msg("Rerun test report saved")
+						outputMgr.detail("Rerun results saved to: %s", state.cfg.RerunResultsPath)
+					}
+				}
+
+				persistentlyFailingTests = []reports.TestResult{}
+				outputMgr.detail("Retry results:")
+				for _, result := range rerunResults {
+					if !result.Skipped && result.Successes == 0 {
+						persistentlyFailingTests = append(persistentlyFailingTests, result)
+						outputMgr.detail("  - %s: still FAIL", result.TestName)
+					} else if !result.Skipped && result.Successes > 0 && result.Runs > result.Successes {
+						flakyTests = append(flakyTests, result)
+						outputMgr.detail("  - %s: now PASS (flaky)", result.TestName)
+					} else if !result.Skipped {
+						outputMgr.detail("  - %s: now PASS", result.TestName)
+					}
+				}
+			}
+		} else if len(initialFailedTests) > 0 {
+			outputMgr.detail("No reruns configured or no initial failures to retry.")
+			if state.cfg.MinPassRatio < 1.0 {
+				for _, test := range initialFailedTests {
+					if test.PassRatio >= state.cfg.MinPassRatio {
+						flakyTests = append(flakyTests, test)
+						persistentlyFailingTests = reports.FilterTests(persistentlyFailingTests, func(pt reports.TestResult) bool {
+							return !(pt.TestPackage == test.TestPackage && pt.TestName == test.TestName)
+						})
+					}
+				}
+			}
+		}
+
+		// Final Summary
+		finalStepNum := 3
+		if state.cfg.RerunFailedCount > 0 {
+			finalStepNum = 4
+		}
+		outputMgr.info(finalStepNum, totalSteps, "Final summary")
+
+		finalFailCount := len(persistentlyFailingTests)
+		finalFlakyCount := len(flakyTests)
+		finalPassCount := totalInitial - finalFailCount - finalFlakyCount
+
+		outputMgr.detail("Total tests run: %d", totalInitial)
+		outputMgr.detail("  - Final PASS: %d", finalPassCount)
+		outputMgr.detail("  - Final FAIL: %d", finalFailCount)
+		outputMgr.detail("  - FLAKY:      %d", finalFlakyCount)
+
+		fmt.Fprintln(&outputMgr.buffer)
+
+		if finalFailCount > 0 {
+			outputMgr.finalStatus(zerolog.ErrorLevel, fmt.Sprintf("%d stable failing test(s) found", finalFailCount))
+			outputMgr.code = FlakyTestsExitCode
+		}
+		if finalFlakyCount > 0 {
+			outputMgr.finalStatus(zerolog.WarnLevel, fmt.Sprintf("%d flaky test(s) found", finalFlakyCount))
+			if outputMgr.code == 0 {
+				outputMgr.code = FlakyTestsExitCode
+			}
+		}
+
+		if outputMgr.code == 0 {
+			outputMgr.finalStatus(zerolog.InfoLevel, "All tests passed stability requirements.")
+		}
+
+		if outputMgr.code == FlakyTestsExitCode {
+			outputMgr.finalStatus(zerolog.ErrorLevel, fmt.Sprintf("Exit code = %d (failures or flaky tests detected)", outputMgr.code))
+		}
+
+		// Detailed Logs
+
+		fmt.Fprintf(&outputMgr.buffer, "\n%s\n", strings.Repeat("=", 60))
+		initialRunHeader := fmt.Sprintf("=== DETAILED LOGS FOR INITIAL RUN (Initial run count: %d) ===", state.cfg.RunCount)
+		fmt.Fprintf(&outputMgr.buffer, "%s\n", initialRunHeader)
+		fmt.Fprintf(&outputMgr.buffer, "%s\n\n", strings.Repeat("=", len(initialRunHeader)))
+
+		reportToLog := state.mainReport
+		if reportToLog != nil && len(reportToLog.Results) > 0 {
+			err = reportToLog.PrintGotestsumOutput(&outputMgr.buffer, "testname")
 			if err != nil {
-				// executeAndReportReruns logs the error and sets the exit code.
-				exitHandler.flush()
-				return
+				log.Error().Err(err).Msg("Error printing initial run gotestsum output")
+				fmt.Fprintf(&outputMgr.buffer, "\n[ERROR] Failed to print detailed initial run logs: %v\n", err)
 			}
-
-			// Evaluate the final outcome after reruns.
-			evaluateRerunOutcome(exitHandler, rerunReport, rerunResults, cfg)
-
 		} else {
-			// Handle the case where reruns are disabled.
-			handleNoReruns(exitHandler, mainReport, cfg)
+			fmt.Fprintf(&outputMgr.buffer, "No test execution data available for initial run logs.\n")
 		}
 
-		// If we reach here without an early exit, it implies success (or flaky tests handled by handleNoReruns).
-		// The exit code will be set by the specific handlers.
-		exitHandler.flush()
+		if rerunReport != nil && len(rerunReport.Results) > 0 {
+			retryHeader := fmt.Sprintf("=== DETAILED LOGS FOR RETRY ATTEMPTS (%d retries per test) ===", state.cfg.RerunFailedCount)
+			fmt.Fprintf(&outputMgr.buffer, "\n%s\n", strings.Repeat("=", len(retryHeader)))
+			fmt.Fprintf(&outputMgr.buffer, "%s\n", retryHeader)
+			fmt.Fprintf(&outputMgr.buffer, "%s\n\n", strings.Repeat("=", len(retryHeader)))
+			err = rerunReport.PrintGotestsumOutput(&outputMgr.buffer, "testname")
+			if err != nil {
+				log.Error().Err(err).Msg("Error printing retry gotestsum output")
+				fmt.Fprintf(&outputMgr.buffer, "\n[ERROR] Failed to print detailed retry logs: %v\n", err)
+			}
+		}
+
+		outputMgr.flush()
 	},
 }
 
@@ -192,7 +376,6 @@ func parseAndValidateFlags(cmd *cobra.Command) (*runConfig, error) {
 	cfg.SelectTests, _ = cmd.Flags().GetStringSlice("select-tests")
 	cfg.UseShuffle, _ = cmd.Flags().GetBool("shuffle")
 	cfg.ShuffleSeed, _ = cmd.Flags().GetString("shuffle-seed")
-	cfg.OmitOutputsOnSuccess, _ = cmd.Flags().GetBool("omit-test-outputs-on-success")
 	cfg.IgnoreParentFailuresOnSubtests, _ = cmd.Flags().GetBool("ignore-parent-failures-on-subtests")
 	cfg.FailFast, _ = cmd.Flags().GetBool("fail-fast")
 	cfg.GoTestTimeout, _ = cmd.Flags().GetString("go-test-timeout")
@@ -242,7 +425,7 @@ func parseAndValidateFlags(cmd *cobra.Command) (*runConfig, error) {
 // determineTestPackages decides which test packages to run based on the config.
 func determineTestPackages(cfg *runConfig) ([]string, error) {
 	if len(cfg.TestCmds) > 0 {
-		return nil, nil // Not needed if running custom commands
+		return nil, nil
 	}
 
 	var testPackages []string
@@ -260,6 +443,8 @@ func determineTestPackages(cfg *runConfig) ([]string, error) {
 
 // initializeRunner creates and configures a new test runner.
 func initializeRunner(cfg *runConfig) *runner.Runner {
+	// Force OmitOutputsOnSuccess to false because we are printing all logs at the end
+	omitOutputs := false
 	return runner.NewRunner(
 		cfg.ProjectPath,
 		true,
@@ -274,19 +459,19 @@ func initializeRunner(cfg *runConfig) *runner.Runner {
 		cfg.SkipTests,
 		cfg.SelectTests,
 		cfg.IgnoreParentFailuresOnSubtests,
-		cfg.OmitOutputsOnSuccess,
+		omitOutputs,
 		RawOutputDir,
 		nil, // exec
 		nil, // parser
 	)
 }
 
-// generateMainReport creates the initial test report from the main run results.
-func generateMainReport(results []reports.TestResult, cfg *runConfig, goProject string) (*reports.TestReport, error) {
+// generateInitialReport creates the initial test report from the main run results.
+func generateInitialReport(results []reports.TestResult, cfg *runConfig, goProject string) (*reports.TestReport, error) {
 	// Get the JSON output paths from the raw output directory
 	jsonOutputPaths, err := getJSONOutputPaths(RawOutputDir)
 	if err != nil {
-		log.Warn().Err(err).Msg("Failed to get JSON output paths")
+		log.Warn().Err(err).Msg("Failed to get JSON output paths for initial report")
 	}
 
 	reportVal, err := reports.NewTestReport(results,
@@ -299,12 +484,12 @@ func generateMainReport(results []reports.TestResult, cfg *runConfig, goProject 
 		reports.WithJSONOutputPaths(jsonOutputPaths),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating main test report: %w", err)
 	}
 	return &reportVal, nil
 }
 
-// getJSONOutputPaths returns a list of JSON output files from the given directory
+// getJSONOutputPaths returns a list of absolute paths for JSON output files from the given directory.
 func getJSONOutputPaths(dir string) ([]string, error) {
 	files, err := os.ReadDir(dir)
 	if err != nil {
@@ -317,35 +502,34 @@ func getJSONOutputPaths(dir string) ([]string, error) {
 	var paths []string
 	for _, file := range files {
 		if !file.IsDir() && strings.HasSuffix(file.Name(), ".json") {
-			paths = append(paths, filepath.Join(dir, file.Name()))
+			absPath, err := filepath.Abs(filepath.Join(dir, file.Name()))
+			if err != nil {
+				log.Warn().Err(err).Str("file", file.Name()).Msg("Failed to get absolute path for JSON output file")
+				continue
+			}
+			paths = append(paths, absPath)
 		}
 	}
 	return paths, nil
 }
 
-// handleInitialRunResults processes the results of the initial test run.
-// It prints summaries and logs for failed tests.
-// It returns the list of failed tests and a boolean indicating whether to proceed with reruns.
-func handleInitialRunResults(exitHandler *summaryAndExit, mainReport *reports.TestReport, cfg *runConfig, goProject string) ([]reports.TestResult, bool) {
-	failedTests := reports.FilterTests(mainReport.Results, func(tr reports.TestResult) bool {
-		// Consider a test "failed" initially if it wasn't skipped and didn't pass all its runs.
-		return !tr.Skipped && tr.PassRatio < 1.0
-	})
-
-	if len(failedTests) == 0 {
-		log.Info().Msg("All tests passed the initial run. No tests to rerun.")
-		fmt.Fprint(&exitHandler.buffer, "\nFlakeguard Initial Run Summary\n")
-		reports.RenderTestReport(&exitHandler.buffer, *mainReport, false, false)
-		exitHandler.code = 0 // Success
-		return nil, false    // Do not proceed to rerun
+// countResults counts the number of passed, failed, and skipped tests.
+func countResults(results []reports.TestResult) (passed, failed, skipped int) {
+	for _, r := range results {
+		if r.Skipped {
+			skipped++
+		} else if r.Failures == 0 && r.Runs > 0 {
+			passed++
+		} else if r.Failures > 0 {
+			failed++
+		}
 	}
+	return
+}
 
-	// Print summary of initially failed tests
-	fmt.Fprint(&exitHandler.buffer, "\nFailed Tests Summary (Initial Run):\n\n")
-	reports.PrintTestResultsTable(&exitHandler.buffer, failedTests, false, false, true, false, false, false)
-	fmt.Fprintln(&exitHandler.buffer)
-
-	// Check for the problematic 'go test file.go' case within --test-cmd
+// handleCmdLineArgsEdgeCase checks for and handles the 'go test file.go' edge case.
+// Returns true if the edge case was detected and handled, false otherwise.
+func handleCmdLineArgsEdgeCase(outputMgr *outputManager, failedTests []reports.TestResult, cfg *runConfig) bool {
 	foundCommandLineArgs := false
 	if len(cfg.TestCmds) > 0 {
 		for _, test := range failedTests {
@@ -357,151 +541,15 @@ func handleInitialRunResults(exitHandler *summaryAndExit, mainReport *reports.Te
 	}
 
 	if foundCommandLineArgs {
-		// Log warning but don't print logs as context might be unreliable
-		warningMsg := "WARNING: Skipping initial failure logs and all reruns because 'go test <file.go>' was detected within --test-cmd. " +
-			"Flakeguard cannot reliably determine log context or rerun these tests. " +
-			"Results are based on the initial run only. To enable logs and reruns, use 'go test . -run TestPattern' instead of 'go test <file.go>' within your --test-cmd."
+		warningMsg := "WARNING: Skipping reruns because 'go test <file.go>' was detected within --test-cmd. " +
+			"Flakeguard cannot reliably rerun these tests. " +
+			"Final results will be based on the initial run only. " +
+			"To enable reruns, use 'go test . -run TestPattern' instead of 'go test <file.go>' within your --test-cmd."
 		log.Warn().Msg(warningMsg)
-		fmt.Fprintf(&exitHandler.buffer, "\n%s\n", warningMsg)
-		// Treat this as if reruns were disabled, determining exit code based on MinPassRatio
-		handleNoReruns(exitHandler, mainReport, cfg)
-		return failedTests, false // Do not proceed to rerun
+		outputMgr.detail(warningMsg)
+		return true
 	}
-
-	// Print logs for initially failed tests (using gotestsum style)
-	fmt.Fprint(&exitHandler.buffer, "\nLogs from Initial Run for Failed Tests:\n\n")
-	failedOnlyReport, err := reports.NewTestReport(failedTests,
-		reports.WithGoProject(goProject), // Include for context
-		reports.WithJSONOutputPaths(mainReport.JSONOutputPaths),
-		// Potentially add other relevant options if PrintGotestsumOutput needs them
-	)
-	if err != nil {
-		log.Warn().Err(err).Msg("Failed to create temporary report for initial failed test logs. Skipping log output.")
-	} else {
-		// Use "testname" grouping for potentially better focus on individual test failures
-		err = failedOnlyReport.PrintGotestsumOutput(&exitHandler.buffer, "testname")
-		if err != nil {
-			log.Warn().Err(err).Msg("Error printing gotestsum output for initially failed tests")
-		}
-		fmt.Fprintln(&exitHandler.buffer) // Add a newline for spacing after logs
-	}
-
-	log.Info().Int("count", len(failedTests)).Int("rerun_count", cfg.RerunFailedCount).Msg("Proceeding to rerun failed tests...")
-	return failedTests, true // Proceed to rerun
-}
-
-// executeAndReportReruns performs the rerun of failed tests and generates a report.
-func executeAndReportReruns(exitHandler *summaryAndExit, testRunner *runner.Runner, failedTests []reports.TestResult, cfg *runConfig, goProject string) ([]reports.TestResult, *reports.TestReport, error) {
-	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
-	s.Suffix = " Rerunning failed tests..."
-	s.Start()
-	rerunResults, rerunJsonOutputPaths, err := testRunner.RerunFailedTests(failedTests, cfg.RerunFailedCount)
-	s.Stop()
-
-	if err != nil {
-		exitHandler.logErrorAndExit(err, "Error rerunning failed tests")
-		return nil, nil, err // Return error to signal failure
-	}
-
-	rerunReport, err := reports.NewTestReport(rerunResults,
-		reports.WithGoProject(goProject),
-		reports.WithCodeOwnersPath(cfg.CodeownersPath),
-		reports.WithMaxPassRatio(1), // Pass ratio for reruns is effectively 1 (did it pass at least once?)
-		reports.WithExcludedTests(cfg.SkipTests),
-		reports.WithSelectedTests(cfg.SelectTests),
-		reports.WithJSONOutputPaths(rerunJsonOutputPaths),
-	)
-	if err != nil {
-		exitHandler.logErrorAndExit(err, "Error creating rerun test report")
-		return rerunResults, nil, err // Return error
-	}
-
-	fmt.Fprint(&exitHandler.buffer, "Tests After Rerun:")
-	reports.PrintTestResultsTable(&exitHandler.buffer, rerunResults, false, false, true, true, true, true)
-	fmt.Fprintln(&exitHandler.buffer)
-
-	// Save the rerun test report to file
-	if cfg.RerunResultsPath != "" && len(rerunResults) > 0 {
-		if err := reports.SaveTestResultsToFile(rerunResults, cfg.RerunResultsPath); err != nil {
-			log.Error().Err(err).Str("path", cfg.RerunResultsPath).Msg("Error saving rerun test results to file")
-			// Don't treat this as a fatal error for the overall run
-		} else {
-			log.Info().Str("path", cfg.RerunResultsPath).Msg("Rerun test report saved")
-		}
-	}
-
-	return rerunResults, &rerunReport, nil // Success
-}
-
-// evaluateRerunOutcome determines the final exit code based on persistently failing tests after reruns.
-func evaluateRerunOutcome(exitHandler *summaryAndExit, rerunReport *reports.TestReport, rerunResults []reports.TestResult, cfg *runConfig) {
-	// Filter tests that still failed after reruns (0 successes)
-	failedAfterRerun := reports.FilterTests(rerunResults, func(tr reports.TestResult) bool {
-		return !tr.Skipped && tr.Successes == 0
-	})
-
-	if len(failedAfterRerun) > 0 {
-		fmt.Fprint(&exitHandler.buffer, "Persistently Failing Test Logs (After Reruns):")
-		err := rerunReport.PrintGotestsumOutput(&exitHandler.buffer, "testname") // Use testname grouping
-		if err != nil {
-			log.Error().Err(err).Msg("Error printing gotestsum output for persistently failing tests")
-		}
-
-		exitHandler.logMsgAndExit(zerolog.ErrorLevel, "Some tests are still failing after multiple reruns with no successful attempts.", ErrorExitCode, map[string]interface{}{
-			"persistently_failing_count": len(failedAfterRerun),
-			"rerun_attempts":             cfg.RerunFailedCount,
-		})
-	} else {
-		log.Info().Msg("All initially failing tests passed at least once after reruns.")
-		exitHandler.code = 0 // Success
-		// No need to call flush here, the main function will do it.
-	}
-}
-
-// handleNoReruns determines the outcome when reruns are disabled or skipped.
-func handleNoReruns(exitHandler *summaryAndExit, mainReport *reports.TestReport, cfg *runConfig) {
-	flakyTests := reports.FilterTests(mainReport.Results, func(tr reports.TestResult) bool {
-		// A test is flaky if it wasn't skipped and its pass ratio is below the threshold.
-		return !tr.Skipped && tr.PassRatio < cfg.MinPassRatio
-	})
-
-	// Print the final summary report only if it wasn't printed already (e.g., in the no-initial-failures case)
-	// We check if the buffer already contains the "Flakeguard Initial Run Summary" header
-	if !bytes.Contains(exitHandler.buffer.Bytes(), []byte("Flakeguard Initial Run Summary")) {
-		fmt.Fprint(&exitHandler.buffer, "Flakeguard Summary (No Reruns Performed)")
-		reports.RenderTestReport(&exitHandler.buffer, *mainReport, false, false)
-	}
-
-	if len(flakyTests) > 0 {
-		// Create a new report with only flaky tests to get their gotestsum output
-		// We need to ensure JSON paths are associated correctly for log retrieval.
-		flakyReport, err := reports.NewTestReport(flakyTests,
-			reports.WithJSONOutputPaths(mainReport.JSONOutputPaths),
-			// Add other necessary options if PrintGotestsumOutput depends on them
-		)
-		if err != nil {
-			log.Error().Err(err).Msg("Error creating flaky tests report for log printing")
-		} else {
-			fmt.Fprint(&exitHandler.buffer, "Flaky Test Logs (Based on Initial Run):")
-			err := flakyReport.PrintGotestsumOutput(&exitHandler.buffer, "testname") // Use testname grouping
-			if err != nil {
-				log.Error().Err(err).Msg("Error printing gotestsum output for flaky tests")
-			}
-		}
-
-		exitHandler.logMsgAndExit(zerolog.InfoLevel, "Found flaky tests based on initial run.", FlakyTestsExitCode, map[string]interface{}{
-			"flaky_count":         len(flakyTests),
-			"stability_threshold": fmt.Sprintf("%.0f%%", cfg.MinPassRatio*100),
-		})
-	} else {
-		// If no tests were flaky according to the threshold, it's a success.
-		// The exit code might already be 0 if set by handleInitialRunResults.
-		if exitHandler.code != 0 { // Only log success if not already handled (e.g., by the command-line-args warning path)
-			log.Info().Msg("All tests passed stability requirements based on the initial run.")
-			exitHandler.code = 0
-		}
-		// No need to call flush here, the main function will do it.
-	}
+	return false
 }
 
 // init sets up the cobra command flags.
@@ -512,13 +560,13 @@ func init() {
 	RunTestsCmd.Flags().StringSlice("test-packages", nil, "Comma-separated list of test packages to run")
 	RunTestsCmd.Flags().StringArray("test-cmd", nil,
 		"Optional custom test command(s) (e.g. 'go test -json ./... -v'), which must produce 'go test -json' output. "+
-			"Avoid 'go test <file.go>' syntax as it prevents reliable log output and reruns. Use 'go test . -run TestName' instead. "+
+			"Avoid 'go test <file.go>' syntax as it prevents reliable reruns. Use 'go test . -run TestName' instead. "+
 			"Can be specified multiple times.",
 	)
 	RunTestsCmd.Flags().StringSlice("skip-tests", nil, "Comma-separated list of test names (regex supported by `go test -skip`) to skip")
 	RunTestsCmd.Flags().StringSlice("select-tests", nil, "Comma-separated list of test names (regex supported by `go test -run`) to specifically run")
 	RunTestsCmd.Flags().IntP("run-count", "c", 1, "Number of times to run the tests (for main run)")
-	RunTestsCmd.Flags().Int("rerun-failed-count", 0, "Number of times to rerun tests that did not achieve 100% pass rate in the main run (0 disables reruns)")
+	RunTestsCmd.Flags().Int("rerun-failed-count", 0, "Number of times to rerun tests that failed the main run (0 disables reruns)")
 	RunTestsCmd.Flags().StringArray("tags", nil, "Passed on to the 'go test' command as the -tags flag")
 	RunTestsCmd.Flags().String("go-test-timeout", "", "Passed on to the 'go test' command as the -timeout flag (e.g., '30m')")
 	RunTestsCmd.Flags().Int("go-test-count", -1, "Passes the '-count' flag directly to 'go test'. Default (-1) omits the flag.")
@@ -528,9 +576,10 @@ func init() {
 	RunTestsCmd.Flags().Bool("fail-fast", false, "Stop test execution on the first failure (-failfast flag for 'go test')")
 	RunTestsCmd.Flags().String("main-results-path", "", "Path to save the main test results (JSON format)")
 	RunTestsCmd.Flags().String("rerun-results-path", "", "Path to save the rerun test results (JSON format)")
-	RunTestsCmd.Flags().Bool("omit-test-outputs-on-success", true, "Omit test outputs and package outputs for tests that pass all runs")
+	RunTestsCmd.Flags().Bool("omit-test-outputs-on-success", true, "DEPRECATED: No longer used, as all logs are shown at the end.")
+	_ = RunTestsCmd.Flags().MarkDeprecated("omit-test-outputs-on-success", "no longer used, as all logs are shown at the end.")
 	RunTestsCmd.Flags().Bool("ignore-parent-failures-on-subtests", false, "Ignore failures in parent tests when only subtests fail (affects parsing)")
-	RunTestsCmd.Flags().Float64("min-pass-ratio", 1.0, "The minimum pass ratio (0.0-1.0) required for a test in the main run to be considered stable.")
+	RunTestsCmd.Flags().Float64("min-pass-ratio", 1.0, "The minimum pass ratio (0.0-1.0) required for a test in the main run to be considered stable (relevant only if reruns are disabled).")
 	RunTestsCmd.Flags().Float64("max-pass-ratio", 1.0, "DEPRECATED: Use --min-pass-ratio instead. This flag will be removed in a future version.")
 	_ = RunTestsCmd.Flags().MarkDeprecated("max-pass-ratio", "use --min-pass-ratio instead")
 }
@@ -543,13 +592,11 @@ func checkDependencies(projectPath string) error {
 
 	var out bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &out // Capture stderr as well
+	cmd.Stderr = &out
 
 	if err := cmd.Run(); err != nil {
-		// Don't block execution, just warn, as sometimes tidy fails for unrelated reasons
 		log.Warn().Err(err).Str("output", out.String()).Msg("Dependency check ('go mod tidy') failed. Continuing execution, but dependencies might be inconsistent.")
-		// return fmt.Errorf("dependency check ('go mod tidy') failed: %w
-		return fmt.Errorf("dependency check ('go mod tidy') failed: %w\n%s", err, out.String())
+		return fmt.Errorf("dependency check ('go mod tidy') failed: %w - %s", err, out.String())
 	} else {
 		log.Debug().Msg("'go mod tidy' completed successfully.")
 	}
