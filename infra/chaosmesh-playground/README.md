@@ -24,3 +24,19 @@ Remove the environment
 ```
 devbox run down
 ```
+
+## Using Havoc
+
+To use our chaos testing framework and apply a single experiment either locally or remotely use
+```
+// main.stage
+aws sso login --profile=staging-crib
+kubectl config use-context main-stage-cluster-crib
+
+// OR local chaosmesh-playground
+kubectl config use-context kind-cm-playground
+
+go test -v -run TestChaosSample
+```
+
+Open `k9s` and search your namespace for `networkchaos`

@@ -6,6 +6,9 @@
 [data_provider]
   port = 9111
 
+[jd]
+  image = "job-distributor:0.9.0"
+
 [[nodesets]]
   name = "don"
   nodes = 5

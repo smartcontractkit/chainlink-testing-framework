@@ -104,6 +104,21 @@ func NewJD(in *Input) (*Output, error) {
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForListeningPort(nat.Port(fmt.Sprintf("%s/tcp", in.GRPCPort))),
 		),
+		LifecycleHooks: []tc.ContainerLifecycleHooks{
+			{
+				PostStarts: []tc.ContainerHook{
+					func(ctx context.Context, c tc.Container) error {
+						_, _, err := c.Exec(ctx, []string{
+							"sh", "-c", `iptables -A OUTPUT -d 10.0.0.0/8 -j ACCEPT && \
+                                     iptables -A OUTPUT -d 172.16.0.0/12 -j ACCEPT && \
+                                     iptables -A OUTPUT -d 192.168.0.0/16 -j ACCEPT && \
+                                     iptables -A OUTPUT -j DROP`,
+						})
+						return err
+					},
+				},
+			},
+		},
 	}
 	if req.Image == "" {
 		req.Image = TmpImageName
