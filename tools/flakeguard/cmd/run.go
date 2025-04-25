@@ -546,7 +546,7 @@ func handleCmdLineArgsEdgeCase(outputMgr *outputManager, failedTests []reports.T
 			"Final results will be based on the initial run only. " +
 			"To enable reruns, use 'go test . -run TestPattern' instead of 'go test <file.go>' within your --test-cmd."
 		log.Warn().Msg(warningMsg)
-		outputMgr.detail(warningMsg)
+		outputMgr.detail("%s", warningMsg)
 		return true
 	}
 	return false
