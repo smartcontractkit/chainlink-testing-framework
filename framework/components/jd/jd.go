@@ -29,6 +29,7 @@ type Input struct {
 	DockerFilePath   string          `toml:"docker_file"`
 	DockerContext    string          `toml:"docker_ctx"`
 	DBInput          *postgres.Input `toml:"db"`
+	NoDNS            bool            `toml:"no_dns"`
 	Out              *Output         `toml:"out"`
 }
 
@@ -93,6 +94,8 @@ func NewJD(in *Input) (*Output, error) {
 		},
 		ExposedPorts: []string{bindPort},
 		HostConfigModifier: func(h *container.HostConfig) {
+			// JobDistributor service must be isolated from internet by default!
+			framework.NoDNS(true, h)
 			h.PortBindings = framework.MapTheSamePort(bindPort)
 		},
 		Env: map[string]string{
@@ -104,21 +107,6 @@ func NewJD(in *Input) (*Output, error) {
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForListeningPort(nat.Port(fmt.Sprintf("%s/tcp", in.GRPCPort))),
 		),
-		LifecycleHooks: []tc.ContainerLifecycleHooks{
-			{
-				PostStarts: []tc.ContainerHook{
-					func(ctx context.Context, c tc.Container) error {
-						_, _, err := c.Exec(ctx, []string{
-							"sh", "-c", `iptables -A OUTPUT -d 10.0.0.0/8 -j ACCEPT && \
-                                     iptables -A OUTPUT -d 172.16.0.0/12 -j ACCEPT && \
-                                     iptables -A OUTPUT -d 192.168.0.0/16 -j ACCEPT && \
-                                     iptables -A OUTPUT -j DROP`,
-						})
-						return err
-					},
-				},
-			},
-		},
 	}
 	if req.Image == "" {
 		req.Image = TmpImageName

@@ -30,6 +30,7 @@ type Input struct {
 	OverrideMode       string          `toml:"override_mode" validate:"required,oneof=all each"`
 	DbInput            *postgres.Input `toml:"db" validate:"required"`
 	NodeSpecs          []*clnode.Input `toml:"node_specs" validate:"required"`
+	NoDNS              bool            `toml:"no_dns"`
 	Out                *Output         `toml:"out"`
 }
 

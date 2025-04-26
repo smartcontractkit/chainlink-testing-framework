@@ -35,7 +35,7 @@ func TestSmoke(t *testing.T) {
 	_, err = jd.NewJD(in.JD)
 	require.NoError(t, err)
 	spew.Dump(in.NodeSets[0])
-	_, err = networktest.NewNetworkTest(networktest.AlpineInput{Privileged: true, BlockInternet: true})
+	_, err = networktest.NewNetworkTest(networktest.Input{Privileged: true, BlockInternet: true})
 	require.NoError(t, err)
 	dc, err := framework.NewDockerClient()
 	require.NoError(t, err)

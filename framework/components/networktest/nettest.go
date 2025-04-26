@@ -1,5 +1,9 @@
 package networktest
 
+/*
+This component exists purely for Docker debug purposes
+*/
+
 import (
 	"context"
 	"fmt"
@@ -11,18 +15,18 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
-type AlpineInput struct {
-	Privileged    bool              // Whether to run in privileged mode
-	BlockInternet bool              // Whether to block internet access
-	Labels        map[string]string // Container labels
+type Input struct {
+	Name          string
+	NoDNS         bool
+	CustomNetwork bool
 }
 
-type AlpineOutput struct{}
+type Output struct{}
 
 // NewNetworkTest creates a minimal Alpine Linux container for network testing
-func NewNetworkTest(in AlpineInput) (*AlpineOutput, error) {
+func NewNetworkTest(in Input) error {
 	req := testcontainers.ContainerRequest{
-		Name:     "networktest",
+		Name:     in.Name,
 		Image:    "alpine:latest",
 		Networks: []string{framework.DefaultNetworkName},
 		NetworkAliases: map[string][]string{
@@ -32,30 +36,9 @@ func NewNetworkTest(in AlpineInput) (*AlpineOutput, error) {
 		WaitingFor: wait.ForLog(""),
 		Cmd:        []string{"/bin/sh", "-c", "while true; do sleep 30; done;"},
 	}
-
-	if in.BlockInternet {
-		req.HostConfigModifier = func(hc *container.HostConfig) {
-			hc.DNS = []string{"127.0.0.1"}
-			hc.CapAdd = []string{"NET_ADMIN"}
-			if in.Privileged {
-				hc.Privileged = true
-			}
-		}
-
-		req.LifecycleHooks = []testcontainers.ContainerLifecycleHooks{{
-			PostStarts: []testcontainers.ContainerHook{
-				func(ctx context.Context, c testcontainers.Container) error {
-					// Block all internet traffic while allowing local network
-					_, _, err := c.Exec(ctx, []string{
-						"sh", "-c", `iptables -A OUTPUT -d 10.0.0.0/8 -j ACCEPT &&
-		                          iptables -A OUTPUT -d 172.16.0.0/12 -j ACCEPT &&
-		                          iptables -A OUTPUT -d 192.168.0.0/16 -j ACCEPT &&
-		                          iptables -A OUTPUT -j DROP`,
-					})
-					return err
-				},
-			},
-		}}
+	req.HostConfigModifier = func(hc *container.HostConfig) {
+		// Remove external DNS
+		framework.NoDNS(in.NoDNS, hc)
 	}
 
 	_, err := testcontainers.GenericContainer(context.Background(), testcontainers.GenericContainerRequest{
@@ -63,8 +46,7 @@ func NewNetworkTest(in AlpineInput) (*AlpineOutput, error) {
 		Started:          true,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to start alpine container: %w", err)
+		return fmt.Errorf("failed to start alpine container: %w", err)
 	}
-
-	return &AlpineOutput{}, nil
+	return nil
 }
