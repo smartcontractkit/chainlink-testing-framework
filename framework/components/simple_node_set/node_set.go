@@ -136,6 +136,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 			nodeWithNodeSetPrefixName := fmt.Sprintf("%s-%s", in.Name, nodeName)
 
 			nodeSpec := &clnode.Input{
+				NoDNS:   in.NoDNS,
 				DbInput: in.DbInput,
 				Node: &clnode.NodeInput{
 					HTTPPort:                httpPortRangeStart + i,
