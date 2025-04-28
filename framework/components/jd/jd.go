@@ -29,7 +29,6 @@ type Input struct {
 	DockerFilePath   string          `toml:"docker_file"`
 	DockerContext    string          `toml:"docker_ctx"`
 	DBInput          *postgres.Input `toml:"db"`
-	NoDNS            bool            `toml:"no_dns"`
 	Out              *Output         `toml:"out"`
 }
 
@@ -94,7 +93,7 @@ func NewJD(in *Input) (*Output, error) {
 		},
 		ExposedPorts: []string{bindPort},
 		HostConfigModifier: func(h *container.HostConfig) {
-			// JobDistributor service must be isolated from internet by default!
+			// JobDistributor service is isolated from internet by default!
 			framework.NoDNS(true, h)
 			h.PortBindings = framework.MapTheSamePort(bindPort)
 		},

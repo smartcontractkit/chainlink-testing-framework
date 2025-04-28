@@ -7,8 +7,11 @@ exit status 1
 ```
 
 #### Solution
+Enable Docker to access your directory
+```
+Docker Desktop -> Settings -> Resources -> File Sharing
+```
 
-Use another directory with write access or change the directory access
 
 ## Can't run `anvil`, issue with `Rosetta`
 ```
