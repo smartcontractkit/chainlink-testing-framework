@@ -93,6 +93,8 @@ func NewJD(in *Input) (*Output, error) {
 		},
 		ExposedPorts: []string{bindPort},
 		HostConfigModifier: func(h *container.HostConfig) {
+			// JobDistributor service is isolated from internet by default!
+			framework.NoDNS(true, h)
 			h.PortBindings = framework.MapTheSamePort(bindPort)
 		},
 		Env: map[string]string{

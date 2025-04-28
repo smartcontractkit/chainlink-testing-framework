@@ -412,6 +412,7 @@ func ResourceLimitsFunc(h *container.HostConfig, resources *ContainerResources) 
 	}
 }
 
+// GenerateCustomPortsData generate custom ports data: exposed and forwarded port map
 func GenerateCustomPortsData(portsProvided []string) ([]string, nat.PortMap, error) {
 	exposedPorts := make([]string, 0)
 	portBindings := nat.PortMap{}
@@ -437,4 +438,11 @@ func GenerateCustomPortsData(portsProvided []string) ([]string, nat.PortMap, err
 	}
 	exposedPorts = append(exposedPorts, customPorts...)
 	return exposedPorts, portBindings, nil
+}
+
+// NoDNS removes default DNS server and sets it to localhost
+func NoDNS(noDNS bool, hc *container.HostConfig) {
+	if noDNS {
+		hc.DNS = []string{"127.0.0.1"}
+	}
 }

@@ -36,6 +36,7 @@ var (
 
 // Input represents Chainlink node input
 type Input struct {
+	NoDNS   bool            `toml:"no_dns"`
 	DbInput *postgres.Input `toml:"db" validate:"required"`
 	Node    *NodeInput      `toml:"node" validate:"required"`
 	Out     *Output         `toml:"out"`
@@ -252,6 +253,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	}
 	if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {
 		req.HostConfigModifier = func(h *container.HostConfig) {
+			framework.NoDNS(in.NoDNS, h)
 			h.PortBindings = portBindings
 			framework.ResourceLimitsFunc(h, in.Node.ContainerResources)
 		}
