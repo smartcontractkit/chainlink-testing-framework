@@ -1,0 +1,10 @@
+[blockchain_a]
+type = "ton"
+core_services = [
+  "genesis",
+  "tonhttpapi",
+  "event-cache",
+  "index-postgres",
+  "index-worker",
+  "index-api",
+]
