@@ -24,21 +24,8 @@ func TestJD(t *testing.T) {
 
 	jdOut, err := jd.NewJD(in.JD)
 	require.NoError(t, err)
-	dc, err := framework.NewDockerClient()
-	require.NoError(t, err)
-	// find what to dump, RDS API here instead?
-	_, err = dc.ExecContainer(jdOut.DBContainerName, []string{"pg_dump", "-U", "chainlink", "-h", "localhost", "-p", "5432", "-d", "chainlink", "-F", "c", "-f", "jd.dump"})
-	require.NoError(t, err)
 
-	// copy your dump
-	err = dc.CopyFile(jdOut.DBContainerName, "jd.dump", "/")
-	require.NoError(t, err)
-
-	// restore
-	_, err = dc.ExecContainer(jdOut.DBContainerName, []string{"pg_restore", "-U", "chainlink", "-d", "chainlink", "jd.dump"})
-	require.NoError(t, err)
-
-	t.Run("test changesets with forked network and real JD state", func(t *testing.T) {
+	t.Run("test changesets with forked network/JD state", func(t *testing.T) {
 		_ = bcOut
 		_ = jdOut
 	})

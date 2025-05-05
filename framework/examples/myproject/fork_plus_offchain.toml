@@ -1,19 +1,9 @@
 
-[blockchain_dst]
-  chain_id = "2337"
-#  docker_cmd_params = ["--fork-url", "wss://avalanche-fuji-c-chain-rpc.publicnode.com", "--auto-impersonate", "-b", "1"]
-  docker_cmd_params = ["-b", "1"]
-  port = "8545"
-  type = "anvil"
-
 [blockchain_src]
-  chain_id = "3337"
-#  docker_cmd_params = ["--fork-url", "wss://avalanche-fuji-c-chain-rpc.publicnode.com", "--auto-impersonate", "-b", "1"]
-  docker_cmd_params = ["-b", "1"]
-  port = "8555"
+  chain_id = "1337"
+  docker_cmd_params = ["--steps-tracing", "--fork-block-number", "25335999", "--fork-url", "https://rpcs.cldev.sh/base/sepolia/archive", "--auto-impersonate"]
+#  docker_cmd_params = ["-b", "1", "--steps-tracing"]
   type = "anvil"
-
-[contracts_dst]
 
 [contracts_src]
 
