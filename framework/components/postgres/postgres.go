@@ -22,6 +22,7 @@ const (
 	Port              = "5432"
 	ExposedStaticPort = 13000
 	Database          = "chainlink"
+	JDDatabase        = "job-distributor-db"
 	DBVolumeName      = "postgresql_data"
 )
 
@@ -32,6 +33,7 @@ type Input struct {
 	VolumeName         string                        `toml:"volume_name"`
 	Databases          int                           `toml:"databases"`
 	JDDatabase         bool                          `toml:"jd_database"`
+	JDSQLDumpPath      string                        `toml:"jd_sql_dump_path"`
 	PullImage          bool                          `toml:"pull_image"`
 	ContainerResources *framework.ContainerResources `toml:"resources"`
 	Out                *Output                       `toml:"out"`
@@ -64,10 +66,23 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 			"CREATE EXTENSION pg_stat_statements;",
 		)
 	}
-	if in.JDDatabase {
-		sqlCommands = append(sqlCommands, "CREATE DATABASE jd;")
-	}
 	sqlCommands = append(sqlCommands, "ALTER USER chainlink WITH SUPERUSER;")
+	if in.JDDatabase {
+		if in.JDSQLDumpPath != "" {
+			// if we have a full dump we replace RDS specific commands and apply it creating db and filling the tables
+			d, err := os.ReadFile(in.JDSQLDumpPath)
+			if err != nil {
+				return nil, fmt.Errorf("error reading JD dump file '%s': %v", in.JDSQLDumpPath, err)
+			}
+			// transaction_timeout is a custom RDS instruction, we must replace it
+			sqlMigration := strings.Replace(string(d), "SET transaction_timeout = 0;", "", -1)
+			sqlCommands = append(sqlCommands, sqlMigration)
+			sqlCommands = append(sqlCommands, "DELETE FROM public.csa_keypairs where id = 1;")
+		} else {
+			// if we don't have a dump we create an empty DB
+			sqlCommands = append(sqlCommands, fmt.Sprintf("CREATE DATABASE \"%s\";", JDDatabase))
+		}
+	}
 	initSQL := strings.Join(sqlCommands, "\n")
 	initFile, err := os.CreateTemp("", "init-*.sql")
 	if err != nil {
@@ -150,6 +165,9 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
+	//if in.JDSQLDumpPath != "" {
+	//	_, _, err := c.Exec(ctx, []string{""})
+	//}
 	o := &Output{
 		ContainerName: containerName,
 		InternalURL: fmt.Sprintf(
@@ -176,7 +194,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 			Password,
 			containerName,
 			Port,
-			"jd",
+			JDDatabase,
 		)
 		o.JDUrl = fmt.Sprintf(
 			"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
@@ -184,7 +202,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 			Password,
 			host,
 			portToExpose,
-			"jd",
+			JDDatabase,
 		)
 	}
 	return o, nil
