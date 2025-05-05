@@ -165,9 +165,6 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	//if in.JDSQLDumpPath != "" {
-	//	_, _, err := c.Exec(ctx, []string{""})
-	//}
 	o := &Output{
 		ContainerName: containerName,
 		InternalURL: fmt.Sprintf(
