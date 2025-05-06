@@ -50,6 +50,7 @@ test-all:
 
 goimports-all:
     @just _default_goimports k8s-test-runner
+    @just _default_goimports lib
     @just _default_goimports parrot
     @just _default_goimports tools/workflowresultparser
     @just _default_goimports tools/asciitable

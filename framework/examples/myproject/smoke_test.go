@@ -3,7 +3,6 @@ package examples
 import (
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
@@ -28,7 +27,6 @@ func TestSmoke(t *testing.T) {
 	require.NoError(t, err)
 	out, err := ns.NewSharedDBNodeSet(in.NodeSets[0], bc)
 	require.NoError(t, err)
-	spew.Dump(in.NodeSets[0])
 
 	t.Run("test something", func(t *testing.T) {
 		for _, n := range out.CLNodes {

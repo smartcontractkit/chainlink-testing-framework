@@ -119,8 +119,8 @@ type GrafanaResponse struct {
 }
 
 // PostDashboard sends a request to create or update a Grafana dashboard.
-// It returns the response containing the dashboard details, the HTTP response, 
-// and any error encountered during the request. This function is useful for 
+// It returns the response containing the dashboard details, the HTTP response,
+// and any error encountered during the request. This function is useful for
 // programmatically managing Grafana dashboards.
 func (c *Client) PostDashboard(dashboard PostDashboardRequest) (GrafanaResponse, *resty.Response, error) {
 	var grafanaResp GrafanaResponse

@@ -28,6 +28,7 @@ type Input struct {
 	CSAEncryptionKey string          `toml:"csa_encryption_key"`
 	DockerFilePath   string          `toml:"docker_file"`
 	DockerContext    string          `toml:"docker_ctx"`
+	JDSQLDumpPath    string          `toml:"jd_sql_dump_path"`
 	DBInput          *postgres.Input `toml:"db"`
 	Out              *Output         `toml:"out"`
 }
@@ -56,7 +57,7 @@ func defaults(in *Input) {
 
 func defaultJDDB() *postgres.Input {
 	return &postgres.Input{
-		Image:      "postgres:12",
+		Image:      "postgres:16",
 		Port:       14000,
 		Name:       "jd-db",
 		VolumeName: "jd",
@@ -77,6 +78,7 @@ func NewJD(in *Input) (*Output, error) {
 	if in.DBInput == nil {
 		in.DBInput = defaultJDDB()
 	}
+	in.DBInput.JDSQLDumpPath = in.JDSQLDumpPath
 	pgOut, err := postgres.NewPostgreSQL(in.DBInput)
 	if err != nil {
 		return nil, err
@@ -93,6 +95,8 @@ func NewJD(in *Input) (*Output, error) {
 		},
 		ExposedPorts: []string{bindPort},
 		HostConfigModifier: func(h *container.HostConfig) {
+			// JobDistributor service is isolated from internet by default!
+			framework.NoDNS(true, h)
 			h.PortBindings = framework.MapTheSamePort(bindPort)
 		},
 		Env: map[string]string{

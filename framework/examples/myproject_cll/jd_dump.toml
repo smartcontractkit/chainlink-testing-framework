@@ -1,0 +1,8 @@
+[blockchain]
+  type = "anvil"
+  chain_id = "1337"
+  docker_cmd_params = ["--fork-url", "wss://avalanche-fuji-c-chain-rpc.publicnode.com", "--auto-impersonate", "-b", "1"]
+
+[jd]
+  jd_sql_dump_path = "db.sql"
+  image = "job-distributor:0.9.0"
