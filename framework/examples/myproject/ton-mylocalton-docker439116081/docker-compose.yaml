@@ -1,0 +1,287 @@
+x-indexer-environment: &indexer-env
+  POSTGRES_DIALECT: postgresql+asyncpg
+  POSTGRES_HOST: index-postgres
+  POSTGRES_PORT: 5432
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: PostgreSQL1234
+  POSTGRES_DBNAME: ton_index
+  TON_INDEXER_IS_TESTNET: 0
+  TON_INDEXER_REDIS_DSN: redis://event-cache:6379
+
+  TON_WORKER_FROM: 1
+  TON_WORKER_DBROOT: /tondb
+  TON_WORKER_BINARY: ton-index-postgres-v2
+  TON_WORKER_ADDITIONAL_ARGS:
+
+
+services:
+  genesis:
+    container_name: genesis
+    image: ghcr.io/neodix42/mylocalton-docker:latest
+    restart: unless-stopped
+    ports:
+      - 8000:8000         # simple file http server
+      - 40004:40004       # lite-server
+      - "40003:40003/udp" # dht-server
+      - 40002:40002       # validator-console
+      - "40001:40001/udp" # validator public port
+    volumes:
+      - shared-data:/usr/share/data
+      - ton-db:/var/ton-work/db # docker persistent storage for ton db
+    environment:
+      - GENESIS=true
+      - NAME=genesis
+#      - ENABLE_FILE_HTTP_SERVER=false #default true
+#      - NEXT_BLOCK_GENERATION_DELAY=2 #default 2000 (2 seconds)
+#      - EXTERNAL_IP= # used to generate  external.global.config.json that allows remote users to connect to lite-server via public IP
+#      - VALIDATION_PERIOD=86400 # 24h, default 20min
+#      - MASTERCHAIN_ONLY=true   # default false
+#      - HIDE_PRIVATE_KEYS=true  # default false, defines whether to expose private keys  (faucet+validators) via htt-server on 127.0.0.1:8000 and generates new private keys for validators and faucets
+#      - VERBOSITY=4
+      - CUSTOM_PARAMETERS=--state-ttl 315360000 --archive-ttl 315360000
+
+    healthcheck:
+      test: /usr/local/bin/lite-client -a 127.0.0.1:40004 -b E7XwFSQzNkcRepUC23J2nRpASXpnsEKmyyHYV4u/FZY= -t 3 -c last
+      interval: 30s
+      timeout: 20s
+      retries: 10
+    networks:
+      default:
+        ipv4_address: 172.28.1.1
+
+  blockchain-explorer:
+    container_name: blockchain-explorer
+    image: ghcr.io/neodix42/mylocalton-docker-explorer:latest
+    restart: unless-stopped
+    environment:
+      - SERVER_PORT=8080
+    ports:
+      - 8080:8080
+    healthcheck:
+      test: curl -sS http://127.0.0.1:8080/last || echo 1
+      interval: 15s
+      timeout: 10s
+      retries: 3
+    volumes:
+      - shared-data:/usr/share/data
+    depends_on:
+      genesis:
+        condition: service_healthy
+
+#  validator-1:
+#    container_name: validator-1
+#    image: ghcr.io/neodix42/mylocalton-docker:latest
+#    restart: unless-stopped
+#    volumes:
+#      - shared-data:/usr/share/data
+#    environment:
+#      - NAME=validator-1
+#      - GENESIS_IP=172.28.1.1
+#    depends_on:
+#      - "genesis"
+#
+#  validator-2:
+#    container_name: validator-2
+#    image: ghcr.io/neodix42/mylocalton-docker:latest
+#    restart: unless-stopped
+#    volumes:
+#      - shared-data:/usr/share/data
+#    environment:
+#      - NAME=validator-2
+#      - GENESIS_IP=172.28.1.1
+#    depends_on:
+#      - "genesis"
+#
+#  validator-3:
+#    container_name: validator-3
+#    image: ghcr.io/neodix42/mylocalton-docker:latest
+#    restart: unless-stopped
+#    volumes:
+#      - shared-data:/usr/share/data
+#    environment:
+#      - NAME=validator-3
+#      - GENESIS_IP=172.28.1.1
+#    depends_on:
+#      - "genesis"
+#
+#  validator-4:
+#    container_name: validator-4
+#    image: ghcr.io/neodix42/mylocalton-docker:latest
+#    restart: unless-stopped
+#    volumes:
+#      - shared-data:/usr/share/data
+#    environment:
+#      - NAME=validator-4
+#      - GENESIS_IP=172.28.1.1
+#    depends_on:
+#      - "genesis"
+#
+#  validator-5:
+#    container_name: validator-5
+#    image: ghcr.io/neodix42/mylocalton-docker:latest
+#    restart: unless-stopped
+#    volumes:
+#      - shared-data:/usr/share/data
+#    environment:
+#      - NAME=validator-5
+#      - GENESIS_IP=172.28.1.1
+#    depends_on:
+#      - "genesis"
+
+  tonhttpapi:
+    container_name: ton-http-api
+    image: ghcr.io/neodix42/ton-http-api:latest
+    ports:
+      - 8081:8081
+    volumes:
+      - shared-data:/usr/share/data
+    environment:
+      - TON_API_CACHE_ENABLED
+      - TON_API_CACHE_REDIS_ENDPOINT
+      - TON_API_CACHE_REDIS_PORT
+      - TON_API_CACHE_REDIS_TIMEOUT
+      - TON_API_LOGS_JSONIFY=0
+      - TON_API_LOGS_LEVEL=ERROR
+      - TON_API_TONLIB_LITESERVER_CONFIG=/usr/share/data/global.config.json
+      - TON_API_TONLIB_KEYSTORE
+      - TON_API_TONLIB_PARALLEL_REQUESTS_PER_LITESERVER
+      - TON_API_TONLIB_CDLL_PATH=/usr/share/data/libtonlibjson.so
+      - TON_API_TONLIB_REQUEST_TIMEOUT
+      - TON_API_GET_METHODS_ENABLED=1
+      - TON_API_JSON_RPC_ENABLED=1
+    restart: unless-stopped
+    depends_on:
+      genesis:
+        condition: service_healthy
+    command: -c "gunicorn -k uvicorn.workers.UvicornWorker -w 1 --bind 0.0.0.0:8081 pyTON.main:app"
+    healthcheck:
+      test: curl -sS http://127.0.0.1:8081/healthcheck || echo 1
+      interval: 30s
+      timeout: 5s
+      retries: 10
+
+  faucet:
+    container_name: faucet
+    image: ghcr.io/neodix42/mylocalton-docker-faucet:latest
+    ports:
+      - 88:88
+    volumes:
+      - shared-data:/usr/share/data
+    restart: unless-stopped
+    depends_on:
+      genesis:
+        condition: service_healthy
+    environment:
+      - FAUCET_USE_RECAPTCHA=false # default true
+      - RECAPTCHA_SITE_KEY= # google reCaptcha v2
+      - RECAPTCHA_SECRET=   # google reCaptcha v2
+#      - MASTERCHAIN_ONLY=true   # default false, if true generates new addresses only in masterchain (-1)
+#      - FAUCET_REQUEST_EXPIRATION_PERIOD=3600 #  default 86400 seconds (24h)
+#      - FAUCET_SINGLE_GIVEAWAY=100    # default 10 toncoins
+      - SERVER_PORT=88
+    healthcheck:
+      test: curl -sS http://127.0.0.1:88|| echo 1
+
+#  data:
+#    container_name: data
+#    image: ghcr.io/neodix42/mylocalton-docker-data:latest
+#    ports:
+#      - 99:99
+#    volumes:
+#      - shared-data:/usr/share/data
+#    restart: unless-stopped
+#    depends_on:
+#      genesis:
+#        condition: service_healthy
+#    environment:
+#      - SERVER_PORT=99
+#      - PERIOD=5
+#    healthcheck:
+#      test: curl -sS http://127.0.0.1:99|| echo 1
+
+  restarter:
+    container_name: explorer-restarter
+    image: docker:cli
+    restart: unless-stopped
+    volumes: [ "/var/run/docker.sock:/var/run/docker.sock" ]
+    command: [ "/bin/sh", "-c", "while true; do sleep 3600; echo restarted; docker restart blockchain-explorer; done" ]
+    depends_on:
+      blockchain-explorer:
+        condition: service_healthy
+
+  # toncenter api v3
+  event-cache:
+    container_name: event-cache
+    image: redis:latest
+    restart: unless-stopped
+
+  index-postgres:
+    container_name: index-postgres
+    image: postgres:17
+    # ports:
+    #   - 5432:5432
+    environment: *indexer-env
+    command: postgres -c max_connections=1024 -c shared_buffers=4GB -c work_mem=64MB -c max_wal_size=1GB -c tcp_keepalives_idle=60 -c tcp_keepalives_interval=60 -c tcp_keepalives_count=60
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    shm_size: 2G
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  event-classifier:
+    container_name: event-classifier
+    image: toncenter/ton-indexer-classifier:v1.2.0-test
+    command: --pool-size 4 --prefetch-size 1000 --batch-size 100
+    environment: *indexer-env
+    restart: unless-stopped
+    depends_on:
+      - index-worker
+      - event-cache
+
+  index-api:
+    container_name: index-api
+    image: toncenter/ton-indexer-api:v1.2.0-test
+    command: -bind ":8082" -prefork -threads 4 -v2 http://tonhttpapi:8081/
+    ports:
+      - 8082:8082
+    environment: *indexer-env
+    restart: unless-stopped
+    depends_on:
+      - index-worker
+
+  index-worker:
+    container_name: index-worker
+    image: toncenter/ton-indexer-worker:v1.2.0-test
+    volumes:
+      - ton-db:/tondb
+      - index-workdir:/workdir
+    environment: *indexer-env
+    command: --working-dir /workdir --from 1 --threads 8
+    restart: unless-stopped
+    depends_on:
+      genesis:
+        condition: service_healthy
+      index-postgres:
+        condition: service_healthy
+volumes:
+  shared-data:
+  postgres-data:
+  index-workdir:
+  ton-db:
+# # uncomment if you want to mount this image in folder
+# driver: local
+# driver_opts:
+#   o: bind
+#   type: none
+#   device: /home/user/ton-db
+
+networks:
+  default:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16

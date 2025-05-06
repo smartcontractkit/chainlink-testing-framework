@@ -29,21 +29,21 @@ func TestTonSmoke(t *testing.T) {
 	t.Run("setup:connect", func(t *testing.T) {
 		connectionPool := liteclient.NewConnectionPool()
 		cfg, cferr := liteclient.GetConfigFromUrl(t.Context(), bc.NetworkSpecificData.TonGlobalConfigURL)
+
 		require.NoError(t, cferr, "Failed to get config from URL")
 		caerr := connectionPool.AddConnectionsFromConfig(t.Context(), cfg)
 		require.NoError(t, caerr, "Failed to add connections from config")
 		client = ton.NewAPIClient(connectionPool)
 
 		t.Run("setup:faucet", func(t *testing.T) {
-			// NOTE: This funder high-load wallet is from MyLocalTon pre-funded wallet
-			// ref: https://github.com/neodix42/mylocalton-docker#features
-			rawHlWallet, err := wallet.FromSeed(client, strings.Fields("twenty unfair stay entry during please water april fabric morning length lumber style tomorrow melody similar forum width ride render void rather custom coin"), wallet.HighloadV2Verified)
+			// network is already funded
+			rawHlWallet, err := wallet.FromSeed(client, strings.Fields(blockchain.DefaultTonHlWalletMnemonic), blockchain.DefaultTonHlWalletType)
 			require.NoError(t, err, "failed to create highload wallet")
-			mcFunderWallet, err := wallet.FromPrivateKeyWithOptions(client, rawHlWallet.PrivateKey(), wallet.HighloadV2Verified, wallet.WithWorkchain(-1))
+			mcFunderWallet, err := wallet.FromPrivateKeyWithOptions(client, rawHlWallet.PrivateKey(), blockchain.DefaultTonHlWalletType, wallet.WithWorkchain(-1))
 			require.NoError(t, err, "failed to create highload wallet")
-			funder, err := mcFunderWallet.GetSubwallet(uint32(42))
+			funder, err := mcFunderWallet.GetSubwallet(blockchain.DefaultTonHlWalletSubID)
 			require.NoError(t, err, "failed to get highload subwallet")
-			require.Equal(t, funder.Address().StringRaw(), "-1:5ee77ced0b7ae6ef88ab3f4350d8872c64667ffbe76073455215d3cdfab3294b", "funder address mismatch")
+			require.Equal(t, funder.Address().StringRaw(), blockchain.DefaultTonHlWalletAddress, "funder address mismatch")
 
 			master, err := client.GetMasterchainInfo(t.Context())
 			require.NoError(t, err, "failed to get masterchain info for funder balance check")
