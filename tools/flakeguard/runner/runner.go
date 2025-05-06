@@ -13,10 +13,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/runner/parser"
 )
 
-const (
-	RawOutputDir = "./flakeguard_raw_output"
-)
-
 // Runner describes the test run parameters and manages test execution and result parsing.
 // It delegates command execution to an Executor and result parsing to a Parser.
 type Runner struct {
@@ -33,8 +29,8 @@ type Runner struct {
 	FailFast          bool
 	SkipTests         []string
 	SelectTests       []string
+	RawOutputDir      string
 
-	// Configuration passed down to the parser
 	IgnoreParentFailuresOnSubtests bool
 	OmitOutputsOnSuccess           bool
 
@@ -48,7 +44,6 @@ type Runner struct {
 func NewRunner(
 	projectPath string,
 	verbose bool,
-	// Runner specific config
 	runCount int,
 	goTestCountFlag *int,
 	goTestRaceFlag bool,
@@ -59,12 +54,11 @@ func NewRunner(
 	failFast bool,
 	skipTests []string,
 	selectTests []string,
-	// Parser specific config (passed during initialization)
 	ignoreParentFailuresOnSubtests bool,
 	omitOutputsOnSuccess bool,
-	// Dependencies (allow injection for testing)
+	rawOutputDir string,
 	exec executor.Executor,
-	p parser.Parser, // Use interface type directly
+	p parser.Parser,
 ) *Runner {
 	if exec == nil {
 		exec = executor.NewCommandExecutor()
@@ -87,6 +81,7 @@ func NewRunner(
 		SelectTests:                    selectTests,
 		IgnoreParentFailuresOnSubtests: ignoreParentFailuresOnSubtests,
 		OmitOutputsOnSuccess:           omitOutputsOnSuccess,
+		RawOutputDir:                   rawOutputDir,
 		exec:                           exec,
 		parser:                         p,
 	}
@@ -105,7 +100,7 @@ func (r *Runner) getExecutorConfig() executor.Config {
 		ShuffleSeed:       r.ShuffleSeed,
 		SkipTests:         r.SkipTests,
 		SelectTests:       r.SelectTests,
-		RawOutputDir:      RawOutputDir, // Use the constant defined in this package
+		RawOutputDir:      r.RawOutputDir,
 	}
 }
 

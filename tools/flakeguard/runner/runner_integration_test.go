@@ -176,6 +176,9 @@ func TestRunIntegration(t *testing.T) {
 			absProjectPath, err := filepath.Abs(tc.cfg.ProjectPath)
 			require.NoError(t, err)
 
+			tempDir, err := os.MkdirTemp("", "flakeguard-test")
+			require.NoError(t, err)
+
 			testRunner := runner.NewRunner(
 				absProjectPath,
 				false,
@@ -191,6 +194,7 @@ func TestRunIntegration(t *testing.T) {
 				tc.cfg.SelectTests,
 				tc.cfg.IgnoreSubtestErr,
 				tc.cfg.OmitOutputs,
+				tempDir,
 				nil, // Use default executor
 				nil, // Use default parser
 			)
