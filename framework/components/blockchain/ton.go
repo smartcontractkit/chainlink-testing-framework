@@ -22,15 +22,11 @@ const (
 	DefaultTonSimpleServerPort = "8000"
 	DefaultTonTONExplorerPort  = "8080"
 	DefaultTonLiteServerPort   = "40004"
-)
 
-var (
 	// NOTE: Prefunded high-load wallet from MyLocalTon pre-funded wallet, that can send up to 254 messages per 1 external message
 	// https://docs.ton.org/v3/documentation/smart-contracts/contracts-specs/highload-wallet#highload-wallet-v2
 	DefaultTonHlWalletAddress  = "-1:5ee77ced0b7ae6ef88ab3f4350d8872c64667ffbe76073455215d3cdfab3294b"
 	DefaultTonHlWalletMnemonic = "twenty unfair stay entry during please water april fabric morning length lumber style tomorrow melody similar forum width ride render void rather custom coin"
-	DefaultTonHlWalletSubID    = uint32(42)
-	DefaultTonHlWalletType     = 123 // wallet.HighloadV2Verified
 )
 
 func defaultTon(in *Input) {

@@ -37,11 +37,11 @@ func TestTonSmoke(t *testing.T) {
 
 		t.Run("setup:faucet", func(t *testing.T) {
 			// network is already funded
-			rawHlWallet, err := wallet.FromSeed(client, strings.Fields(blockchain.DefaultTonHlWalletMnemonic), blockchain.DefaultTonHlWalletType)
+			rawHlWallet, err := wallet.FromSeed(client, strings.Fields(blockchain.DefaultTonHlWalletMnemonic), wallet.HighloadV2Verified)
 			require.NoError(t, err, "failed to create highload wallet")
-			mcFunderWallet, err := wallet.FromPrivateKeyWithOptions(client, rawHlWallet.PrivateKey(), blockchain.DefaultTonHlWalletType, wallet.WithWorkchain(-1))
+			mcFunderWallet, err := wallet.FromPrivateKeyWithOptions(client, rawHlWallet.PrivateKey(), wallet.HighloadV2Verified, wallet.WithWorkchain(-1))
 			require.NoError(t, err, "failed to create highload wallet")
-			funder, err := mcFunderWallet.GetSubwallet(blockchain.DefaultTonHlWalletSubID)
+			funder, err := mcFunderWallet.GetSubwallet(uint32(42))
 			require.NoError(t, err, "failed to get highload subwallet")
 			require.Equal(t, funder.Address().StringRaw(), blockchain.DefaultTonHlWalletAddress, "funder address mismatch")
 
