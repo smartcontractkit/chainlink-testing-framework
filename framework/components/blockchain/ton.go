@@ -114,9 +114,10 @@ func newTon(in *Input) (*Output, error) {
 	if err := stack.Up(ctx, upOpts...); err != nil {
 		return nil, fmt.Errorf("failed to start compose stack: %w", err)
 	}
-	cfgCtr, _ := stack.ServiceContainer(ctx, "genesis")
-	cfgHost, _ := cfgCtr.Host(ctx)
-	cfgPort, _ := cfgCtr.MappedPort(ctx, nat.Port(fmt.Sprintf("%s/tcp", DefaultTonSimpleServerPort)))
+
+	httpCtr, _ := stack.ServiceContainer(ctx, "genesis")
+	httpHost, _ := httpCtr.Host(ctx)
+	httpPort, _ := httpCtr.MappedPort(ctx, nat.Port(fmt.Sprintf("%s/tcp", DefaultTonSimpleServerPort)))
 
 	// discover lite‐server addr
 	liteCtr, _ := stack.ServiceContainer(ctx, "genesis")
@@ -135,7 +136,7 @@ func newTon(in *Input) (*Output, error) {
 			ExternalHTTPUrl: fmt.Sprintf("%s:%s", liteHost, litePort.Port()),
 		}},
 		NetworkSpecificData: &NetworkSpecificData{
-			TonGlobalConfigURL: fmt.Sprintf("http://%s:%s/localhost.global.config.json", cfgHost, cfgPort.Port()),
+			TonGlobalConfigURL: fmt.Sprintf("http://%s:%s/localhost.global.config.json", httpHost, httpPort.Port()),
 		},
 	}, nil
 }
