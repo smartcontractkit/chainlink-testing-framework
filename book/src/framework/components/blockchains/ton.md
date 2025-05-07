@@ -29,6 +29,12 @@ The TON implementation exposes several services:
 - TON Simple HTTP Server: Port 8000
 - TON Explorer: Port 8080
 
+> **Note**: By default, only the lite client service is exposed externally. Other services may need additional configuration to be accessible outside the Docker network.
+
+## Validator Configuration
+
+By default, the MyLocalTon environment starts with only one validator enabled. If multiple validators are needed (up to 6 are supported), the Docker Compose file must be provided with modified version with corresponding service definition in toml file before starting the environment.
+
 ## Usage
 
 ```go
