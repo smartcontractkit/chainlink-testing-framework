@@ -116,12 +116,12 @@ func newTon(in *Input) (*Output, error) {
 	}
 	cfgCtr, _ := stack.ServiceContainer(ctx, "genesis")
 	cfgHost, _ := cfgCtr.Host(ctx)
-	cfgPort, _ := cfgCtr.MappedPort(ctx, nat.Port("8000/tcp"))
+	cfgPort, _ := cfgCtr.MappedPort(ctx, nat.Port(fmt.Sprintf("%s/tcp", DefaultTonSimpleServerPort)))
 
 	// discover lite‐server addr
 	liteCtr, _ := stack.ServiceContainer(ctx, "genesis")
 	liteHost, _ := liteCtr.Host(ctx)
-	litePort, _ := liteCtr.MappedPort(ctx, nat.Port("40004/tcp"))
+	litePort, _ := liteCtr.MappedPort(ctx, nat.Port(fmt.Sprintf("%s/tcp", DefaultTonLiteServerPort)))
 
 	return &Output{
 		UseCache:      true,
