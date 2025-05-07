@@ -186,6 +186,7 @@ func TestRunner_RunTestPackages(t *testing.T) {
 				nil, // selectTests
 				tc.expectedParseArgs.cfg.IgnoreParentFailuresOnSubtests,
 				tc.expectedParseArgs.cfg.OmitOutputsOnSuccess,
+				"",
 				mockExec,
 				mockParse,
 			)
@@ -310,6 +311,7 @@ func TestRunner_RunTestCmd(t *testing.T) {
 				tc.runCount, nil, false, "", nil, false, "", tc.failFast, nil, nil,
 				tc.expectedParseArgs.cfg.IgnoreParentFailuresOnSubtests,
 				tc.expectedParseArgs.cfg.OmitOutputsOnSuccess,
+				"",
 				mockExec, mockParse,
 			)
 
@@ -433,7 +435,9 @@ func TestRunner_RerunFailedTests(t *testing.T) {
 			}
 			mockParse := &mockParser{}
 
-			r := runner.NewRunner(".", false, 0, nil, false, "", nil, false, "", false, nil, nil, false, false, mockExec, mockParse)
+			r := runner.NewRunner(".", false, 0, nil, false, "", nil, false, "", false, nil, nil, false, false,
+				"",
+				mockExec, mockParse)
 
 			actualResults, _, err := r.RerunFailedTests(tc.initialFailedTests, tc.rerunCount)
 
