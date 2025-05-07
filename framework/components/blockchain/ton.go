@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/docker/go-connections/nat"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-
 	"github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 const (
