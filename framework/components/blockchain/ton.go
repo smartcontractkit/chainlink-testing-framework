@@ -31,19 +31,21 @@ const (
 
 func defaultTon(in *Input) {
 	if in.Image == "" {
-		in.Image = "neodix42/mylocalton-docker:latest"
+		// Note: mylocalton is a compose file, not a single image. Reusing common image field
+		in.Image = "https://raw.githubusercontent.com/neodix42/mylocalton-docker/main/docker-compose.yaml"
+		// Note: mylocalton-docker's essential services, excluded explorer, restarter, faucet app,
+		in.CoreServices = []string{
+			"genesis", "tonhttpapi", "event-cache",
+			"index-postgres", "index-worker", "index-api",
+		}
 	}
-	if in.Port != "" {
-		framework.L.Warn().Msgf("'port' field is set but only default port can be used: %s", DefaultTonHTTPAPIPort)
-	}
-	in.Port = DefaultTonHTTPAPIPort
 }
 
 func newTon(in *Input) (*Output, error) {
 	defaultTon(in)
 	containerName := framework.DefaultTCName("blockchain-node")
 
-	resp, err := http.Get("https://raw.githubusercontent.com/neodix42/mylocalton-docker/main/docker-compose.yaml")
+	resp, err := http.Get(in.Image)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download docker-compose file: %v", err)
 	}
@@ -84,21 +86,18 @@ func newTon(in *Input) (*Output, error) {
 	}
 
 	var upOpts []compose.StackUpOption
-
-	// always wait for healthy
 	upOpts = append(upOpts, compose.Wait(true))
-	services := in.CoreServices
+	services := []string{}
+	// Note: in local env having all services could be useful(explorer, faucet), in CI we need only core services
 	if os.Getenv("CI") == "true" && len(services) == 0 {
-		services = []string{
-			"genesis", "tonhttpapi", "event-cache",
-			"index-postgres", "index-worker", "index-api",
-		}
+		services = in.CoreServices
 	}
 
 	if len(services) > 0 {
 		upOpts = append(upOpts, compose.RunServices(services...))
 	}
 
+	// always wait for healthy
 	const genesisBlockID = "E7XwFSQzNkcRepUC23J2nRpASXpnsEKmyyHYV4u/FZY="
 	execStrat := wait.ForExec([]string{
 		"/usr/local/bin/lite-client",
@@ -120,7 +119,6 @@ func newTon(in *Input) (*Output, error) {
 	cfgCtr, _ := stack.ServiceContainer(ctx, "genesis")
 	cfgHost, _ := cfgCtr.Host(ctx)
 	cfgPort, _ := cfgCtr.MappedPort(ctx, nat.Port("8000/tcp"))
-	globalCfgURL := fmt.Sprintf("http://%s:%s/localhost.global.config.json", cfgHost, cfgPort.Port())
 
 	// discover lite‐server addr
 	liteCtr, _ := stack.ServiceContainer(ctx, "genesis")
@@ -133,12 +131,13 @@ func newTon(in *Input) (*Output, error) {
 		Type:          in.Type,
 		Family:        FamilyTon,
 		ContainerName: containerName,
+		// Note: in case we need 1+ validators, we need to modify the compose file
 		Nodes: []*Node{{
-			// todo: do we need more access?
+			// todo: define if we need more access other than lite client(tonutils-go only needs lite client)
 			ExternalHTTPUrl: fmt.Sprintf("%s:%s", liteHost, litePort.Port()),
 		}},
 		NetworkSpecificData: &NetworkSpecificData{
-			TonGlobalConfigURL: globalCfgURL,
+			TonGlobalConfigURL: fmt.Sprintf("http://%s:%s/localhost.global.config.json", cfgHost, cfgPort.Port()),
 		},
 	}, nil
 }
