@@ -24,7 +24,7 @@ func TestTonSmoke(t *testing.T) {
 	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
 	require.NoError(t, err)
 
-	var client *ton.APIClient
+	var client ton.APIClientWrapped
 
 	t.Run("setup:connect", func(t *testing.T) {
 		connectionPool := liteclient.NewConnectionPool()
@@ -33,7 +33,7 @@ func TestTonSmoke(t *testing.T) {
 		require.NoError(t, cferr, "Failed to get config from URL")
 		caerr := connectionPool.AddConnectionsFromConfig(t.Context(), cfg)
 		require.NoError(t, caerr, "Failed to add connections from config")
-		client = ton.NewAPIClient(connectionPool)
+		client = ton.NewAPIClient(connectionPool).WithRetry()
 
 		t.Run("setup:faucet", func(t *testing.T) {
 			// network is already funded
@@ -43,12 +43,14 @@ func TestTonSmoke(t *testing.T) {
 			require.NoError(t, err, "failed to create highload wallet")
 			funder, err := mcFunderWallet.GetSubwallet(uint32(42))
 			require.NoError(t, err, "failed to get highload subwallet")
+
+			// double check funder address
 			require.Equal(t, funder.Address().StringRaw(), blockchain.DefaultTonHlWalletAddress, "funder address mismatch")
 
+			// check funder balance
 			master, err := client.GetMasterchainInfo(t.Context())
 			require.NoError(t, err, "failed to get masterchain info for funder balance check")
 			funderBalance, err := funder.GetBalance(t.Context(), master)
-			t.Log("Funder balance: ", funderBalance)
 			require.NoError(t, err, "failed to get funder balance")
 			require.Equal(t, funderBalance.Nano().String(), "1000000000000000", "funder balance mismatch")
 		})

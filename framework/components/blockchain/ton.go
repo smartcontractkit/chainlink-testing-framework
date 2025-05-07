@@ -31,10 +31,13 @@ const (
 
 func defaultTon(in *Input) {
 	if in.Image == "" {
-		// Note: mylocalton is a compose file, not a single image. Reusing common image field
+		// Note: mylocalton uses a compose file, not a single image. Reusing common image field
 		in.Image = "https://raw.githubusercontent.com/neodix42/mylocalton-docker/main/docker-compose.yaml"
+	}
+	// Note: in local env having all services could be useful(explorer, faucet), in CI we need only core services
+	if os.Getenv("CI") == "true" && len(in.TonCoreServices) == 0 {
 		// Note: mylocalton-docker's essential services, excluded explorer, restarter, faucet app,
-		in.CoreServices = []string{
+		in.TonCoreServices = []string{
 			"genesis", "tonhttpapi", "event-cache",
 			"index-postgres", "index-worker", "index-api",
 		}
@@ -87,14 +90,9 @@ func newTon(in *Input) (*Output, error) {
 
 	var upOpts []compose.StackUpOption
 	upOpts = append(upOpts, compose.Wait(true))
-	services := []string{}
-	// Note: in local env having all services could be useful(explorer, faucet), in CI we need only core services
-	if os.Getenv("CI") == "true" && len(services) == 0 {
-		services = in.CoreServices
-	}
 
-	if len(services) > 0 {
-		upOpts = append(upOpts, compose.RunServices(services...))
+	if len(in.TonCoreServices) > 0 {
+		upOpts = append(upOpts, compose.RunServices(in.TonCoreServices...))
 	}
 
 	// always wait for healthy
@@ -133,7 +131,7 @@ func newTon(in *Input) (*Output, error) {
 		ContainerName: containerName,
 		// Note: in case we need 1+ validators, we need to modify the compose file
 		Nodes: []*Node{{
-			// todo: define if we need more access other than lite client(tonutils-go only needs lite client)
+			// Note: define if we need more access other than lite client(tonutils-go only needs lite client)
 			ExternalHTTPUrl: fmt.Sprintf("%s:%s", liteHost, litePort.Port()),
 		}},
 		NetworkSpecificData: &NetworkSpecificData{

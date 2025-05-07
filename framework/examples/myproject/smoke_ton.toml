@@ -1,7 +1,7 @@
 [blockchain_a]
 type = "ton"
 image = "https://raw.githubusercontent.com/neodix42/mylocalton-docker/main/docker-compose.yaml"
-core_services = [
+ton_core_services = [
   "genesis",
   "tonhttpapi",
   "event-cache",
