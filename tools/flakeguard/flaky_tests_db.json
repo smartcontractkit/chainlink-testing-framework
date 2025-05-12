@@ -257,6 +257,20 @@
     "jira_assignee_id": "63beffc42a526608c5501530",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
+  "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/crossfamily/v1_6::TestAddEVMSolanaLaneBidirectional/MCMS_disabled": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/crossfamily/v1_6",
+    "test_name": "TestAddEVMSolanaLaneBidirectional/MCMS_disabled",
+    "jira_ticket": "DX-759",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/crossfamily/v1_6::TestAddEVMSolanaLaneBidirectional/MCMS_enabled": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/crossfamily/v1_6",
+    "test_name": "TestAddEVMSolanaLaneBidirectional/MCMS_enabled",
+    "jira_ticket": "DX-758",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
   "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/solana::TestAddTokenPool": {
     "test_package": "github.com/smartcontractkit/chainlink/deployment/ccip/changeset/solana",
     "test_name": "TestAddTokenPool",
@@ -331,6 +345,13 @@
     "test_package": "github.com/smartcontractkit/chainlink/deployment/common/changeset/solana",
     "test_name": "TestTransferToMCMSToTimelockSolana",
     "jira_ticket": "DX-524",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/deployment/common/changeset/solana::TestUpdateTimelockDelaySolana_Apply": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/common/changeset/solana",
+    "test_name": "TestUpdateTimelockDelaySolana_Apply",
+    "jira_ticket": "DX-762",
     "jira_assignee_id": "6175d3e016119e0069fdd14f",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
@@ -429,6 +450,27 @@
     "test_name": "TestDeployFeedsConsumer",
     "jira_ticket": "DX-579",
     "jira_assignee_id": "6175d3e016119e0069fdd14f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/deployment/keystone/changeset::TestKeystoneView": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/keystone/changeset",
+    "test_name": "TestKeystoneView",
+    "jira_ticket": "DX-757",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/deployment/keystone/changeset::TestKeystoneView/successfully_generates_a_view_of_the_keystone_state_with_multiple_contracts_of_the_same_type_per_chain": {
+    "test_package": "github.com/smartcontractkit/chainlink/deployment/keystone/changeset",
+    "test_name": "TestKeystoneView/successfully_generates_a_view_of_the_keystone_state_with_multiple_contracts_of_the_same_type_per_chain",
+    "jira_ticket": "DX-756",
+    "jira_assignee_id": "6175d3e016119e0069fdd14f",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/integration-tests/ccip-tests/smoke::TestSmokeCCIPMulticall": {
+    "test_package": "github.com/smartcontractkit/chainlink/integration-tests/ccip-tests/smoke",
+    "test_name": "TestSmokeCCIPMulticall",
+    "jira_ticket": "DX-760",
+    "jira_assignee_id": "638f597c3e79f12e57253913",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
   "github.com/smartcontractkit/chainlink/integration-tests/smoke/ccip::TestDeleteCCIPJobs": {
@@ -1015,6 +1057,13 @@
     "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/ocr2/plugins/ocr2keeper",
     "test_name": "TestIntegration_KeeperPluginLogUpkeep_Retry",
     "jira_ticket": "DX-575",
+    "jira_assignee_id": "6115c23730fe4500702c1301",
+    "skipped_at": "0001-01-01T00:00:00Z"
+  },
+  "github.com/smartcontractkit/chainlink/v2/core/services/ocrcommon::Test_SingletonPeerWrapper_Close": {
+    "test_package": "github.com/smartcontractkit/chainlink/v2/core/services/ocrcommon",
+    "test_name": "Test_SingletonPeerWrapper_Close",
+    "jira_ticket": "DX-761",
     "jira_assignee_id": "6115c23730fe4500702c1301",
     "skipped_at": "0001-01-01T00:00:00Z"
   },
