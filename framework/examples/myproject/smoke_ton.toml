@@ -1,11 +1,42 @@
 [blockchain_a]
-type = "ton"
-docker_compose_file_url = "https://raw.githubusercontent.com/neodix42/mylocalton-docker/main/docker-compose.yaml"
-ton_core_services = [
-  "genesis",
-  "tonhttpapi",
-  "event-cache",
-  "index-postgres",
-  "index-worker",
-  "index-api",
-]
+  type = "ton"
+  docker_compose_file_url = "https://raw.githubusercontent.com/neodix42/mylocalton-docker/main/docker-compose.yaml"
+  ton_core_services = [
+    "genesis",
+    "tonhttpapi",
+    "event-cache",
+    "index-postgres",
+    "index-worker",
+    "index-api",
+  ]
+
+[data_provider]
+  port = 9111
+
+[[nodesets]]
+  name = "don"
+  nodes = 5
+  override_mode = "each"
+
+  [nodesets.db]
+    image = "postgres:12.0"
+
+  [[nodesets.node_specs]]
+    [nodesets.node_specs.node]
+      image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+
+  [[nodesets.node_specs]]
+    [nodesets.node_specs.node]
+      image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+
+  [[nodesets.node_specs]]
+    [nodesets.node_specs.node]
+      image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+
+  [[nodesets.node_specs]]
+    [nodesets.node_specs.node]
+      image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+
+  [[nodesets.node_specs]]
+    [nodesets.node_specs.node]
+      image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
