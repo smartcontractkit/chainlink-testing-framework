@@ -119,11 +119,6 @@ func newTon(in *Input) (*Output, error) {
 	httpHost, _ := httpCtr.Host(ctx)
 	httpPort, _ := httpCtr.MappedPort(ctx, nat.Port(fmt.Sprintf("%s/tcp", DefaultTonSimpleServerPort)))
 
-	// discover lite‐server addr
-	liteCtr, _ := stack.ServiceContainer(ctx, "genesis")
-	liteHost, _ := liteCtr.Host(ctx)
-	litePort, _ := liteCtr.MappedPort(ctx, nat.Port(fmt.Sprintf("%s/tcp", DefaultTonLiteServerPort)))
-
 	return &Output{
 		UseCache:      true,
 		ChainID:       in.ChainID,
@@ -132,11 +127,8 @@ func newTon(in *Input) (*Output, error) {
 		ContainerName: containerName,
 		// Note: in case we need 1+ validators, we need to modify the compose file
 		Nodes: []*Node{{
-			// Note: define if we need more access other than lite client(tonutils-go only needs lite client)
-			ExternalHTTPUrl: fmt.Sprintf("%s:%s", liteHost, litePort.Port()),
+			// Note: define if we need more access other than the global config(tonutils-go only uses liteclients defined in the config)
+			ExternalHTTPUrl: fmt.Sprintf("%s:%s", httpHost, httpPort.Port()),
 		}},
-		NetworkSpecificData: &NetworkSpecificData{
-			TonGlobalConfigURL: fmt.Sprintf("http://%s:%s/localhost.global.config.json", httpHost, httpPort.Port()),
-		},
 	}, nil
 }

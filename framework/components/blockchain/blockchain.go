@@ -72,8 +72,7 @@ type Output struct {
 }
 
 type NetworkSpecificData struct {
-	SuiAccount         *SuiWalletInfo
-	TonGlobalConfigURL string `toml:"global_config_url"`
+	SuiAccount *SuiWalletInfo
 }
 
 // Node represents blockchain node output, URLs required for connection locally and inside docker network
