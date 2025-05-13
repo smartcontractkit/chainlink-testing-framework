@@ -72,7 +72,8 @@ func newAnvilZksync(in *Input) (*Output, error) {
 		"-c",
 		"/root/.foundry/bin/anvil-zksync" +
 			" --chain-id " + in.ChainID +
-			" --port " + in.Port}
+			" --port " + in.Port +
+			" --offline"}
 
 	framework.L.Info().Any("Cmd", strings.Join(req.Entrypoint, " ")).Msg("Creating anvil zkSync with command")
 
