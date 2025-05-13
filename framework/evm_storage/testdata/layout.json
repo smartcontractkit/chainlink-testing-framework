@@ -1,0 +1,118 @@
+{
+  "storage": [
+    {
+      "astId": 39389,
+      "contract": "src/Counter.sol:Counter",
+      "label": "number",
+      "offset": 0,
+      "slot": "0",
+      "type": "t_uint256"
+    },
+    {
+      "astId": 39392,
+      "contract": "src/Counter.sol:Counter",
+      "label": "values",
+      "offset": 0,
+      "slot": "1",
+      "type": "t_array(t_uint256)dyn_storage"
+    },
+    {
+      "astId": 39396,
+      "contract": "src/Counter.sol:Counter",
+      "label": "scores",
+      "offset": 0,
+      "slot": "2",
+      "type": "t_mapping(t_address,t_uint256)"
+    },
+    {
+      "astId": 39408,
+      "contract": "src/Counter.sol:Counter",
+      "label": "s_signers",
+      "offset": 0,
+      "slot": "3",
+      "type": "t_mapping(t_address,t_struct(Signer)39403_storage)"
+    },
+    {
+      "astId": 39412,
+      "contract": "src/Counter.sol:Counter",
+      "label": "a_signers",
+      "offset": 0,
+      "slot": "4",
+      "type": "t_array(t_struct(Signer)39403_storage)dyn_storage"
+    }
+  ],
+  "types": {
+    "t_address": {
+      "encoding": "inplace",
+      "label": "address",
+      "numberOfBytes": "20"
+    },
+    "t_array(t_struct(Signer)39403_storage)dyn_storage": {
+      "encoding": "dynamic_array",
+      "label": "struct Counter.Signer[]",
+      "numberOfBytes": "32",
+      "base": "t_struct(Signer)39403_storage"
+    },
+    "t_array(t_uint256)dyn_storage": {
+      "encoding": "dynamic_array",
+      "label": "uint256[]",
+      "numberOfBytes": "32",
+      "base": "t_uint256"
+    },
+    "t_mapping(t_address,t_struct(Signer)39403_storage)": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => struct Counter.Signer)",
+      "numberOfBytes": "32",
+      "value": "t_struct(Signer)39403_storage"
+    },
+    "t_mapping(t_address,t_uint256)": {
+      "encoding": "mapping",
+      "key": "t_address",
+      "label": "mapping(address => uint256)",
+      "numberOfBytes": "32",
+      "value": "t_uint256"
+    },
+    "t_struct(Signer)39403_storage": {
+      "encoding": "inplace",
+      "label": "struct Counter.Signer",
+      "numberOfBytes": "32",
+      "members": [
+        {
+          "astId": 39398,
+          "contract": "src/Counter.sol:Counter",
+          "label": "addr",
+          "offset": 0,
+          "slot": "0",
+          "type": "t_address"
+        },
+        {
+          "astId": 39400,
+          "contract": "src/Counter.sol:Counter",
+          "label": "index",
+          "offset": 20,
+          "slot": "0",
+          "type": "t_uint8"
+        },
+        {
+          "astId": 39402,
+          "contract": "src/Counter.sol:Counter",
+          "label": "group",
+          "offset": 21,
+          "slot": "0",
+          "type": "t_uint8"
+        }
+      ]
+    },
+    "t_uint256": {
+      "encoding": "inplace",
+      "label": "uint256",
+      "numberOfBytes": "32"
+    },
+    "t_uint8": {
+      "encoding": "inplace",
+      "label": "uint8",
+      "numberOfBytes": "1"
+    }
+  }
+}

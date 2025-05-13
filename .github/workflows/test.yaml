@@ -15,6 +15,9 @@ jobs:
         test:
           - path: framework
             vm: ubuntu-latest
+            regex: TestStorageMutations
+          - path: framework
+            vm: ubuntu-latest
             regex: TestSmoke
           - path: wasp
             vm: ubuntu22.04-16cores-64GB # ghv-ignore!
@@ -78,6 +81,10 @@ jobs:
           restore-keys: |
             go-modules-${{ matrix.test.path }}-${{ runner.os }}-test
             go-modules-${{ matrix.test.path }}-${{ runner.os }}
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
       - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
