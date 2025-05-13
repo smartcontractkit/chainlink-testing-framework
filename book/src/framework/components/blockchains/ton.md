@@ -71,7 +71,7 @@ func TestTonSmoke(t *testing.T) {
 		connectionPool := liteclient.NewConnectionPool()
 		
 		// Get the network configuration from the global config URL
-		cfg, cferr := liteclient.GetConfigFromUrl(t.Context(), bc.NetworkSpecificData.TonGlobalConfigURL)
+		cfg, cferr := liteclient.GetConfigFromUrl(t.Context(), fmt.Sprintf("http://%s/localhost.global.config.json", bc.Nodes[0].ExternalHTTPUrl))
 		require.NoError(t, cferr, "Failed to get config from URL")
 		
 		// Add connections from the config
@@ -130,14 +130,3 @@ MyLocalTon Docker environment comes with several pre-funded wallets that can be 
 6. Basechain Faucet Highload Wallet (Highload V2, QueryId: 0, Balance: 1 million TON)
 
 For the complete list of addresses and mnemonics, refer to the [MyLocalTon Docker documentation](https://github.com/neodix42/mylocalton-docker).
-
-## Features of the TON Test Environment
-
-- Flexible blockchain startup parametrization
-- Automated validator participation in elections
-- Support for 1-6 validators
-- 20-minute validation cycle (configurable)
-- Predefined lite-server for client connectivity
-- Integrated blockchain explorer
-- TON Index API v2 and v3 engines
-- Cross-platform support (arm64/amd64)
