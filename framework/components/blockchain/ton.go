@@ -135,9 +135,6 @@ func newTon(in *Input) (*Output, error) {
 		return nil, fmt.Errorf("failed to connect to network: %v", err)
 	}
 
-	httpHost, _ := genesisCtr.Host(ctx)
-	httpPort, _ := genesisCtr.MappedPort(ctx, nat.Port(fmt.Sprintf("%s/tcp", DefaultTonSimpleServerPort)))
-
 	// verify that the container is connected to the network
 	inspected, err := cli.ContainerInspect(ctx, genesisCtr.ID)
 	if err != nil {
@@ -151,6 +148,10 @@ func newTon(in *Input) (*Output, error) {
 
 	fmt.Printf("✅ TON genesis '%s' is on network %s with IP %s and Aliases %v\n",
 		genesisCtr.ID, framework.DefaultNetworkName, ns.IPAddress, ns.Aliases)
+
+	httpHost, _ := genesisCtr.Host(ctx)
+	httpPort, _ := genesisCtr.MappedPort(ctx, nat.Port(fmt.Sprintf("%s/tcp", DefaultTonSimpleServerPort)))
+
 	return &Output{
 		UseCache:      true,
 		ChainID:       in.ChainID,
