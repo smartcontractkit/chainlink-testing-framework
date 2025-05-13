@@ -30,9 +30,8 @@ const (
 )
 
 func defaultTon(in *Input) {
-	if in.Image == "" {
-		// Note: mylocalton uses a compose file, not a single image. Reusing common image field
-		in.Image = "https://raw.githubusercontent.com/neodix42/mylocalton-docker/main/docker-compose.yaml"
+	if in.DockerComposeFileURL == "" {
+		in.DockerComposeFileURL = "https://raw.githubusercontent.com/neodix42/mylocalton-docker/main/docker-compose.yaml"
 	}
 	// Note: in local env having all services could be useful(explorer, faucet), in CI we need only core services
 	if os.Getenv("CI") == "true" && len(in.TonCoreServices) == 0 {
@@ -48,7 +47,7 @@ func newTon(in *Input) (*Output, error) {
 	defaultTon(in)
 	containerName := framework.DefaultTCName("blockchain-node")
 
-	resp, err := http.Get(in.Image)
+	resp, err := http.Get(in.DockerComposeFileURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download docker-compose file: %v", err)
 	}
