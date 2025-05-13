@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
+	networkTypes "github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -114,10 +116,41 @@ func newTon(in *Input) (*Output, error) {
 		return nil, fmt.Errorf("failed to start compose stack: %w", err)
 	}
 
-	httpCtr, _ := stack.ServiceContainer(ctx, "genesis")
-	httpHost, _ := httpCtr.Host(ctx)
-	httpPort, _ := httpCtr.MappedPort(ctx, nat.Port(fmt.Sprintf("%s/tcp", DefaultTonSimpleServerPort)))
+	// node container is started, now we need to connect it to the network
+	genesisCtr, _ := stack.ServiceContainer(ctx, "genesis")
 
+	// grab and connect to the network
+	cli, _ := client.NewClientWithOpts(
+		client.FromEnv,
+		client.WithAPIVersionNegotiation(),
+	)
+	if err := cli.NetworkConnect(
+		ctx,
+		framework.DefaultNetworkName,
+		genesisCtr.ID,
+		&networkTypes.EndpointSettings{
+			Aliases: []string{containerName},
+		},
+	); err != nil {
+		return nil, fmt.Errorf("failed to connect to network: %v", err)
+	}
+
+	httpHost, _ := genesisCtr.Host(ctx)
+	httpPort, _ := genesisCtr.MappedPort(ctx, nat.Port(fmt.Sprintf("%s/tcp", DefaultTonSimpleServerPort)))
+
+	// verify that the container is connected to the network
+	inspected, err := cli.ContainerInspect(ctx, genesisCtr.ID)
+	if err != nil {
+		return nil, fmt.Errorf("inspect error: %w", err)
+	}
+
+	ns, ok := inspected.NetworkSettings.Networks[framework.DefaultNetworkName]
+	if !ok {
+		return nil, fmt.Errorf("container %s is NOT on network %s", genesisCtr.ID, framework.DefaultNetworkName)
+	}
+
+	fmt.Printf("✅ TON genesis '%s' is on network %s with IP %s and Aliases %v\n",
+		genesisCtr.ID, framework.DefaultNetworkName, ns.IPAddress, ns.Aliases)
 	return &Output{
 		UseCache:      true,
 		ChainID:       in.ChainID,
@@ -128,6 +161,7 @@ func newTon(in *Input) (*Output, error) {
 		Nodes: []*Node{{
 			// Note: define if we need more access other than the global config(tonutils-go only uses liteclients defined in the config)
 			ExternalHTTPUrl: fmt.Sprintf("%s:%s", httpHost, httpPort.Port()),
+			InternalHTTPUrl: fmt.Sprintf("%s:%s", containerName, httpPort.Port()),
 		}},
 	}, nil
 }
