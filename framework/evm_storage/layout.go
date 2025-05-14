@@ -101,17 +101,13 @@ func mapSlot(baseSlot string, key string) string {
 	return "0x" + hex.EncodeToString(hash)
 }
 
-func ShiftHexByOffset(hexStr string, offset int) string {
-	// Strip "0x"
+// ShiftHexByOffset is used to set values in slots with offsets
+func ShiftHexByOffset(hexStr string, offset uint) string {
 	hexStr = strings.TrimPrefix(hexStr, "0x")
-
-	// Parse into big.Int
 	n := new(big.Int)
 	n.SetString(hexStr, 16)
-
 	// Shift left by offset * 8 bits
-	n.Lsh(n, uint(offset*8))
-
+	n.Lsh(n, offset*8)
 	// Return as 0x-prefixed, 32-byte hex
 	return fmt.Sprintf("0x%064x", n)
 }
@@ -170,8 +166,10 @@ func MustEncodeStorageSlot(solidityType string, value interface{}) string {
 
 // MergeHex merges two hex strings with bitwise "OR"
 // should be used when you see values with offsets in smart contract storage layout.json file
-// example:
 //
+//	Example layout:
+//	╭----------------+-------------------------------------------+------+--------+-------+-------------------------╮
+//	| Name           | Type                                      | Slot | Offset | Bytes | Contract                |
 //	|----------------+-------------------------------------------+------+--------+-------+-------------------------|
 //	| number_uint8   | uint8                                     | 3    | 0      | 1     | src/Counter.sol:Counter |
 //	|----------------+-------------------------------------------+------+--------+-------+-------------------------|

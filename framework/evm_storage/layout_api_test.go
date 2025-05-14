@@ -16,7 +16,7 @@ import (
 
 // TestLayoutAPI that's the example of using helpers to override storage in your contracts
 func TestLayoutAPI(t *testing.T) {
-	//t.Skip("this test is for manual debugging and figuring out layout of custom structs")
+	t.Skip("this test is for manual debugging and figuring out layout of custom structs")
 	// load contract layout file, see testdata/layout.json
 	// more docs here - https://docs.soliditylang.org/en/latest/internals/layout_in_storage.html#
 	layout, err := evm_storage.New(layoutFile)
@@ -24,7 +24,7 @@ func TestLayoutAPI(t *testing.T) {
 		t.Fatalf("failed to load layout: %v", err)
 	}
 
-	encodeFunc := func(addr string, index uint8, group uint8) string {
+	encodeCustomStructFunc := func(addr string, index uint8, group uint8) string {
 		// huge structs can be packed differently to save space
 		// cast storage 0x5FbDB2315678afecb367f032d93F642f64180aa3 0x1 --rpc-url http://localhost:8545
 		addrBytes, _ := hex.DecodeString(strings.TrimPrefix(addr, "0x"))
@@ -82,7 +82,7 @@ func TestLayoutAPI(t *testing.T) {
 	}
 	{
 		slot := layout.MustArraySlot("a_signers", 1)
-		data := encodeFunc("0x00000000000000000000000000000000000000a5", 255, 42)
+		data := encodeCustomStructFunc("0x00000000000000000000000000000000000000a5", 255, 42)
 		fmt.Printf("setting slot: %s with data: %s\n", slot, data)
 		r := rpc.New(testRPCURL, nil)
 		err = r.AnvilSetStorageAt([]interface{}{contractAddr, slot, data})
@@ -91,7 +91,7 @@ func TestLayoutAPI(t *testing.T) {
 	}
 	{
 		slot := layout.MustMapSlot("s_signers", "0x00000000000000000000000000000000000000a5")
-		data := encodeFunc("0x00000000000000000000000000000000000000a5", 254, 40)
+		data := encodeCustomStructFunc("0x00000000000000000000000000000000000000a5", 254, 40)
 		fmt.Printf("setting slot: %s with data: %s\n", slot, data)
 		r := rpc.New(testRPCURL, nil)
 		err = r.AnvilSetStorageAt([]interface{}{contractAddr, slot, data})

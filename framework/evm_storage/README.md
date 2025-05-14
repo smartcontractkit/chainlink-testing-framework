@@ -4,7 +4,7 @@ This code is used in e2e tests where we need to modify production contracts with
 
 See a simple example where we override different types [struct](layout_api_test.go)
 
-Run it with
+Run it with (devbox shell)
 ```
 ./setup.sh
 go test -v -run TestLayoutAPI

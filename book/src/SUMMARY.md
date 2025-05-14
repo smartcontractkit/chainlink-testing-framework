@@ -62,6 +62,7 @@
   - [Performance]()
   - [Chaos](./framework/chaos/chaos.md)
   - [Fork Testing](./framework/fork.md)
+  - [Fork Testing (Mutating Storage)](./framework/fork_storage.md)
 - [Libraries](./libraries.md)
   - [Seth](./libs/seth.md)
   - [WASP](./libs/wasp/overview.md)
