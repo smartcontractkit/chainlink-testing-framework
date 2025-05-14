@@ -433,16 +433,16 @@ OrbStack Version: 1.8.2 (1080200)
 </code></pre>
 <p>Download our <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8">CLI</a></p>
 <p>OS X <code>arm64</code> (M1/M2/M3 MacBooks)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.7.9/framework-v0.7.9-darwin-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.8.0/framework-v0.8.0-darwin-arm64.tar.gz | tar -xz
 </code></pre>
 <p>OS X <code>amd64</code> (old Intel chips)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.7.9/framework-v0.7.9-darwin-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.8.0/framework-v0.8.0-darwin-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>arm64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.7.9/framework-v0.7.9-linux-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.8.0/framework-v0.8.0-linux-arm64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>amd64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.7.9/framework-v0.7.9-linux-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.8.0/framework-v0.8.0-linux-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Allow it to run in <code>System Settings -&gt; Security Settings</code> (OS X)</p>
 <p><img src="framework/images/img.png" alt="img.png" /></p>
@@ -5468,6 +5468,22 @@ just lint wasp
 
 </style>
 <h1 id="fork-testing-mutating-storage"><a class="header" href="#fork-testing-mutating-storage">Fork Testing (Mutating Storage)</a></h1>
+<p>We provide API to use <code>anvil_setStorageAt</code> more easily so in case you can't edit EVM smart contracts code you can still mutate your contract values.</p>
+<p>You need to build your contract layout first</p>
+<pre><code>forge build || forge inspect Counter storageLayout --json &gt; layout.json
+</code></pre>
+<p>And then you can use <code>AnvilSetStorageAt</code> to override contract's storage data</p>
+<pre><code>		r := rpc.New(rpcURL, nil)
+		err = r.AnvilSetStorageAt([]interface{}{contractAddr, slot, data})
+</code></pre>
+<p>See <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/evm_storage/layout_api_test.go">examples</a> of how you can use API to encode/mutate different values.</p>
+<p>Keep in mind that values &lt;32 bytes are packed together, see <code>encodeCustomStructFunc</code> example and <code>offset</code> example to understnad how to change them properly.</p>
+<pre><code>cd framework/evm_storage
+./setup.sh
+go test -v -run TestLayoutAPI
+./teardown.sh
+</code></pre>
+<p>Read more about Solidity storage layout <a href="https://docs.soliditylang.org/en/latest/internals/layout_in_storage.html#">here</a></p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -16975,7 +16991,7 @@ use <code>GetTestContainersGoTestLogger(*testing.T)</code> instead.</p>
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>29060a39</code></li>
+<li>Commit: <code>bc445908</code></li>
 </ul>
 
                     </main>

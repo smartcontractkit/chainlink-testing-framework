@@ -241,6 +241,22 @@
 
 </style>
 <h1 id="fork-testing-mutating-storage"><a class="header" href="#fork-testing-mutating-storage">Fork Testing (Mutating Storage)</a></h1>
+<p>We provide API to use <code>anvil_setStorageAt</code> more easily so in case you can't edit EVM smart contracts code you can still mutate your contract values.</p>
+<p>You need to build your contract layout first</p>
+<pre><code>forge build || forge inspect Counter storageLayout --json &gt; layout.json
+</code></pre>
+<p>And then you can use <code>AnvilSetStorageAt</code> to override contract's storage data</p>
+<pre><code>		r := rpc.New(rpcURL, nil)
+		err = r.AnvilSetStorageAt([]interface{}{contractAddr, slot, data})
+</code></pre>
+<p>See <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/evm_storage/layout_api_test.go">examples</a> of how you can use API to encode/mutate different values.</p>
+<p>Keep in mind that values &lt;32 bytes are packed together, see <code>encodeCustomStructFunc</code> example and <code>offset</code> example to understnad how to change them properly.</p>
+<pre><code>cd framework/evm_storage
+./setup.sh
+go test -v -run TestLayoutAPI
+./teardown.sh
+</code></pre>
+<p>Read more about Solidity storage layout <a href="https://docs.soliditylang.org/en/latest/internals/layout_in_storage.html#">here</a></p>
 
                     </main>
 
