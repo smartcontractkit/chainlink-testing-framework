@@ -41,7 +41,7 @@ func TestSecretsPrintMarshal(t *testing.T) {
 }
 
 func TestManualSecretsCRUD(t *testing.T) {
-	//t.Skip("Need AWS role to be enabled")
+	t.Skip("Need AWS role to be enabled")
 	// fill .envrc with AWS auth values and run manually
 	// export AWS_REGION="us-west-2"
 	// export AWS_ACCESS_KEY_ID=

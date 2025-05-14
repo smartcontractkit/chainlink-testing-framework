@@ -5,7 +5,7 @@
     "go-ethereum@1.13.5",
     "foundry@1.0.0",
     "git@latest",
-    "go@latest",
+    "go@1.24.0",
     "goreleaser@latest",
     "postgresql@15",
     "python@latest",
