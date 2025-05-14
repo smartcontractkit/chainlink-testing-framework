@@ -2,7 +2,7 @@
 
 This code is used in e2e tests where we need to modify production contracts with `Anvil`'s `anvil_setStorageAt`.
 
-See a simple example where we override an array [struct](layout_api_test.go)
+See a simple example where we override different types [struct](layout_api_test.go)
 
 Run it with
 ```
@@ -10,11 +10,15 @@ Run it with
 go test -v -run TestLayoutAPI
 ./teardown.sh
 ```
-Figure out proper encoding for your `encodeFunc` and use in your e2e tests.
+This test is more like a playground for you to figure out proper encoding for `encodeFunc` and use in your e2e tests.
 
-See more [tests](layout_test.go) as examples.
+See more package [tests](layout_test.go) as examples.
 
 Layout in `testdata/layout.json` can be found in `out` after `forge build` for any contract.
+
+To double-check the layout you can also use `forge inspect <ContractName> storageLayout` in your `forge` directory.
+
+To add more types for tests use `forge build && forge inspect Counter storageLayout --json > ../testdata/layout.json`
 
 ## Useful Debug Commands
 

@@ -2,7 +2,12 @@
 pragma solidity ^0.8.13;
 
 contract Counter {
-    uint256 public number;
+    address private _owner;
+    uint256 public number_uint256;
+    int256 public number_int256;
+    uint8 public number_uint8;
+    bool public boolean;
+    bytes32 public some_bytes;
     uint256[] public values;
     mapping(address => uint256) public scores;
 
@@ -12,11 +17,14 @@ contract Counter {
         uint8 index;
         uint8 group;
     }
+
     mapping(address => Signer) s_signers;
     Signer[] a_signers;
 
     constructor() public {
-        number = 1;
+        number_uint256 = 1;
+        number_int256 = 1;
+        number_uint8 = 1;
         values = [1, 2, 3];
         scores[address(0x5FbDB2315678afecb367f032d93F642f64180aa3)] = 1;
 
@@ -33,12 +41,17 @@ contract Counter {
         }
     }
 
+    // this function is needed to check private field mutation
+    function getOwner() external view returns (address) {
+        return _owner;
+    }
+
     function setNumber(uint256 newNumber) public {
-        number = newNumber;
+        number_uint256 = newNumber;
     }
 
     function increment() public {
-        number++;
+        number_uint256++;
     }
 
     function pushValue(uint256 value) public {

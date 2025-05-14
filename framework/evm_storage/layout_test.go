@@ -3,10 +3,12 @@ package evm_storage_test
 import (
 	"encoding/hex"
 	"fmt"
+	"math/big"
 	"os/exec"
 	"strings"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/evm_storage"
@@ -57,6 +59,14 @@ func TestStorageMutations(t *testing.T) {
 		t.Fatalf("failed to load layout: %v", err)
 	}
 
+	offsetPackingFunc := func() string {
+		data := evm_storage.MustEncodeStorageSlot("bool", true)
+		boolValue := evm_storage.ShiftHexByOffset(data, 1)
+		uint8Value := evm_storage.MustEncodeStorageSlot("uint8", uint8(8))
+		data = evm_storage.MergeHex(uint8Value, boolValue)
+		return data
+	}
+
 	structPackingFunc := func(addr string, index uint8, group uint8) string {
 		// huge structs can be packed differently to save space
 		// comment the teardown and use this command to understand the layout
@@ -79,15 +89,36 @@ func TestStorageMutations(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			Name:                  "Set number = 224",
-			Slot:                  layout.Slot("number"),
-			ValueHex:              "0x00000000000000000000000000000000000000000000000000000000000000E0",
+			Name:                  "Set number = 224 (uint256)",
+			Slot:                  layout.MustSlot("number_uint256"),
+			ValueHex:              evm_storage.MustEncodeStorageSlot("uint256", big.NewInt(224)),
 			ExpectValue:           "224",
-			AssertMethodSignature: "number()(uint256)",
+			AssertMethodSignature: "number_uint256()(uint256)",
+		},
+		{
+			Name:                  "Set number_int = 224 (int256)",
+			Slot:                  layout.MustSlot("number_int256"),
+			ValueHex:              evm_storage.MustEncodeStorageSlot("int256", big.NewInt(20)),
+			ExpectValue:           "20",
+			AssertMethodSignature: "number_int256()(int256)",
+		},
+		{
+			Name:                  "Set number_uint8 = 224 (uint8)",
+			Slot:                  layout.MustSlot("number_uint8"),
+			ValueHex:              evm_storage.MustEncodeStorageSlot("uint8", uint8(21)),
+			ExpectValue:           "21",
+			AssertMethodSignature: "number_uint8()(uint8)",
+		},
+		{
+			Name:                  "Set address = 0x5FbDB2315678afecb367f032d93F642f64180aa3 (private field)",
+			Slot:                  layout.MustSlot("_owner"),
+			ValueHex:              evm_storage.MustEncodeStorageSlot("address", common.HexToAddress("0x5FbDB2315678afecb367f032d93F642f64180aa3")),
+			ExpectValue:           "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+			AssertMethodSignature: "getOwner()(address)",
 		},
 		{
 			Name:                  "Set values[0] = 123",
-			Slot:                  layout.ArraySlot("values", 0),
+			Slot:                  layout.MustArraySlot("values", 0),
 			ValueHex:              "0x000000000000000000000000000000000000000000000000000000000000007b",
 			ExpectValue:           "123",
 			AssertMethodSignature: "values(uint256)(uint256)",
@@ -95,7 +126,7 @@ func TestStorageMutations(t *testing.T) {
 		},
 		{
 			Name:                  "Set values[2] = 777",
-			Slot:                  layout.ArraySlot("values", 2),
+			Slot:                  layout.MustArraySlot("values", 2),
 			ValueHex:              "0x0000000000000000000000000000000000000000000000000000000000000309",
 			ExpectValue:           "777",
 			AssertMethodSignature: "values(uint256)(uint256)",
@@ -103,7 +134,7 @@ func TestStorageMutations(t *testing.T) {
 		},
 		{
 			Name:                  "Set scores[dead] = 456",
-			Slot:                  layout.MapSlot("scores", "0x000000000000000000000000000000000000dead"),
+			Slot:                  layout.MustMapSlot("scores", "0x000000000000000000000000000000000000dead"),
 			ValueHex:              "0x00000000000000000000000000000000000000000000000000000000000001c8",
 			ExpectValue:           "456",
 			AssertMethodSignature: "scores(address)(uint256)",
@@ -111,7 +142,7 @@ func TestStorageMutations(t *testing.T) {
 		},
 		{
 			Name:                  "Overwrite a_signers[0] with addr=a5, index=255, group=42",
-			Slot:                  layout.ArraySlot("a_signers", 0),
+			Slot:                  layout.MustArraySlot("a_signers", 0),
 			ValueHex:              structPackingFunc("0x00000000000000000000000000000000000000a5", 255, 42),
 			AssertMethodSignature: "getASigner(uint256)(address,uint8,uint8)",
 			AssertMethodArgs:      []string{"0"},
@@ -119,7 +150,7 @@ func TestStorageMutations(t *testing.T) {
 		},
 		{
 			Name:                  "Overwrite a_signers[1] with addr=a5, index=255, group=42",
-			Slot:                  layout.ArraySlot("a_signers", 1),
+			Slot:                  layout.MustArraySlot("a_signers", 1),
 			ValueHex:              structPackingFunc("0x00000000000000000000000000000000000000a5", 255, 42),
 			AssertMethodSignature: "getASigner(uint256)(address,uint8,uint8)",
 			AssertMethodArgs:      []string{"1"},
@@ -127,7 +158,7 @@ func TestStorageMutations(t *testing.T) {
 		},
 		{
 			Name:                  "Overwrite s_signers[0x5FbDB2315678afecb367f032d93F642f64180aa3] with addr=a6, index=12, group=34",
-			Slot:                  layout.MapSlot("s_signers", "0x5cf8c07638e3be26449806d3dc21b622a946f877"),
+			Slot:                  layout.MustMapSlot("s_signers", "0x5cf8c07638e3be26449806d3dc21b622a946f877"),
 			ValueHex:              structPackingFunc("0x00000000000000000000000000000000000000a6", 12, 34),
 			AssertMethodSignature: "getSSigner(address)(address,uint8,uint8)",
 			AssertMethodArgs:      []string{"0x5cf8c07638e3be26449806d3dc21b622a946f877"},
@@ -135,11 +166,18 @@ func TestStorageMutations(t *testing.T) {
 		},
 		{
 			Name:                  "Overwrite s_signers[0x5FbDB2315678afecb367f032d93F642f64180aa4] with addr=a6, index=12, group=34",
-			Slot:                  layout.MapSlot("s_signers", "0x5FbDB2315678afecb367f032d93F642f64180aa4"),
+			Slot:                  layout.MustMapSlot("s_signers", "0x5FbDB2315678afecb367f032d93F642f64180aa4"),
 			ValueHex:              structPackingFunc("0x00000000000000000000000000000000000000a6", 14, 38),
 			AssertMethodSignature: "getSSigner(address)(address,uint8,uint8)",
 			AssertMethodArgs:      []string{"0x5FbDB2315678afecb367f032d93F642f64180aa4"},
 			ExpectValue:           "0x00000000000000000000000000000000000000a6 14 38",
+		},
+		{
+			Name:                  "Package bool and uint8 together",
+			Slot:                  layout.MustSlot("boolean"),
+			ValueHex:              offsetPackingFunc(),
+			AssertMethodSignature: "boolean()(bool)",
+			ExpectValue:           "true",
 		},
 	}
 
