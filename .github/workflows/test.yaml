@@ -82,7 +82,7 @@ jobs:
             go-modules-${{ matrix.test.path }}-${{ runner.os }}-test
             go-modules-${{ matrix.test.path }}-${{ runner.os }}
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
+        uses: foundry-rs/foundry-toolchain@82dee4ba654bd2146511f85f0d013af94670c4de # v1.4.0
         with:
           version: stable
       - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
