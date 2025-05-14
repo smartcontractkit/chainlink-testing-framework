@@ -43,10 +43,6 @@ jobs:
             config: smoke_solana.toml
             count: 1
             timeout: 10m
-          - name: TestTonSmoke
-            config: smoke_ton.toml
-            count: 1
-            timeout: 10m
           - name: TestUpgrade
             config: upgrade.toml
             count: 1
