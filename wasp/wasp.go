@@ -854,6 +854,20 @@ func (g *Generator) printStatsLoop() {
 	}()
 }
 
+// GetResponsesData extracts successful and failed response data from the Generator.
+// It returns a slice of successful response strings, OK responses, and failed responses.
+func (g *Generator) GetResponsesData() ([]string, []*Response, []*Response) {
+	g.responsesData.okDataMu.Lock()
+	defer g.responsesData.okDataMu.Unlock()
+	g.responsesData.failResponsesMu.Lock()
+	defer g.responsesData.failResponsesMu.Unlock()
+	okBodies := make([]string, 0)
+	for _, d := range g.responsesData.OKData.Data {
+		okBodies = append(okBodies, d.(string))
+	}
+	return okBodies, g.responsesData.OKResponses.Data, g.responsesData.FailResponses.Data
+}
+
 // LabelsMapToModel transforms a map of string key-value pairs into a model.LabelSet.
 // This enables user-defined labels to be integrated into the model for downstream processing.
 func LabelsMapToModel(m map[string]string) model.LabelSet {

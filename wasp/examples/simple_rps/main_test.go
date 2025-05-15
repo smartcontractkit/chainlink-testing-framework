@@ -29,7 +29,7 @@ func TestGun(t *testing.T) {
 		LoadType: wasp.RPS,
 		T:        t,
 		// just use plain line profile - 5 RPS for 10s
-		Schedule:   wasp.Plain(5, 60*time.Second),
+		Schedule:   wasp.Plain(5, 2*time.Second),
 		Gun:        NewExampleHTTPGun(srv.URL()),
 		Labels:     labels,
 		LokiConfig: wasp.NewEnvLokiConfig(),

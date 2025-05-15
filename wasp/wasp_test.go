@@ -39,7 +39,7 @@ func TestSmokeConcurrentGenerators(t *testing.T) {
 		// https://github.com/uber-go/ratelimit/blob/a12885fa6127db0aa3c29d33fc8ddeeb1fa1530c/limiter_atomic.go#L54
 		require.GreaterOrEqual(t, stats.Success.Load(), int64(2))
 
-		okData, okResponses, failResponses := convertResponsesData(gen)
+		okData, okResponses, failResponses := gen.GetResponsesData()
 		require.Contains(t, okData, "successCallData")
 		require.GreaterOrEqual(t, len(okData), 2)
 		require.GreaterOrEqual(t, okResponses[0].Duration, 50*time.Millisecond)
@@ -73,7 +73,7 @@ func TestSmokePositiveOneRequest(t *testing.T) {
 	require.Equal(t, stats.Failed.Load(), int64(0))
 	require.Equal(t, stats.Duration, gen.Cfg.duration.Nanoseconds())
 
-	okData, okResponses, failResponses := convertResponsesData(gen)
+	okData, okResponses, failResponses := gen.GetResponsesData()
 	require.GreaterOrEqual(t, len(okResponses), 2)
 	require.GreaterOrEqual(t, len(okData), 2)
 	require.Equal(t, okData[0], "successCallData")
@@ -106,7 +106,7 @@ func TestSmokePositiveCustomRateLimitUnit(t *testing.T) {
 	require.GreaterOrEqual(t, stats.Success.Load(), int64(4))
 	require.Equal(t, stats.CurrentRPS.Load(), int64(1))
 
-	okData, okResponses, failResponses := convertResponsesData(gen)
+	okData, okResponses, failResponses := gen.GetResponsesData()
 	require.GreaterOrEqual(t, okResponses[0].Duration, 10*time.Millisecond)
 	require.GreaterOrEqual(t, okResponses[3].Duration, 10*time.Millisecond)
 	require.GreaterOrEqual(t, len(okData), 4)
@@ -169,7 +169,7 @@ func TestSmokeFailedOneRequest(t *testing.T) {
 	require.Equal(t, stats.CurrentRPS.Load(), int64(1))
 	require.Equal(t, stats.Duration, gen.Cfg.duration.Nanoseconds())
 
-	okData, _, failResponses := convertResponsesData(gen)
+	okData, _, failResponses := gen.GetResponsesData()
 	require.Empty(t, okData)
 	require.GreaterOrEqual(t, failResponses[0].Duration, 50*time.Millisecond)
 	require.Equal(t, failResponses[0].Data.(string), "failedCallData")
@@ -200,7 +200,7 @@ func TestSmokeGenCallTimeout(t *testing.T) {
 	require.GreaterOrEqual(t, stats.CallTimeout.Load(), int64(1))
 	require.Equal(t, stats.CurrentRPS.Load(), int64(1))
 
-	okData, _, failResponses := convertResponsesData(gen)
+	okData, _, failResponses := gen.GetResponsesData()
 	require.Empty(t, okData)
 	require.Equal(t, failResponses[0].Data, nil)
 	require.Equal(t, failResponses[0].Error, ErrCallTimeout.Error())
@@ -230,7 +230,7 @@ func TestSmokeVUCallTimeout(t *testing.T) {
 
 	// in case of VU call timeout we mark them as timed out,
 	// proceeding to the next call and store no data
-	okData, _, failResponses := convertResponsesData(gen)
+	okData, _, failResponses := gen.GetResponsesData()
 	require.Empty(t, okData)
 	require.Equal(t, failResponses[0].Data, nil)
 	require.Equal(t, ErrCallTimeout.Error(), failResponses[0].Error)
@@ -344,7 +344,7 @@ func TestSmokeGenCallTimeoutWait(t *testing.T) {
 	require.GreaterOrEqual(t, stats.CallTimeout.Load(), int64(1))
 	require.Equal(t, true, stats.RunFailed.Load())
 
-	okData, _, failResponses := convertResponsesData(gen)
+	okData, _, failResponses := gen.GetResponsesData()
 	require.Empty(t, okData)
 	require.Equal(t, failResponses[0].Data, nil)
 	require.Equal(t, failResponses[0].Error, ErrCallTimeout.Error())
@@ -380,7 +380,7 @@ func TestSmokeCancelledByDeadlineWait(t *testing.T) {
 
 	// in case of gen.Stop() if we don't have test duration or if gen.Wait() and we have a deadline
 	// we are waiting for all requests, so result in that case must be successful
-	okData, _, failResponses := convertResponsesData(gen)
+	okData, _, failResponses := gen.GetResponsesData()
 	require.GreaterOrEqual(t, len(okData), 2)
 	require.Equal(t, okData[0], "successCallData")
 	require.Equal(t, okData[1], "successCallData")
@@ -412,7 +412,7 @@ func TestSmokeCancelledBeforeDeadline(t *testing.T) {
 	require.GreaterOrEqual(t, stats.Success.Load(), int64(1))
 	require.Equal(t, stats.CurrentRPS.Load(), int64(1))
 
-	okData, _, failResponses := convertResponsesData(gen)
+	okData, _, failResponses := gen.GetResponsesData()
 	require.Equal(t, okData[0], "successCallData")
 	require.Empty(t, failResponses)
 	require.Empty(t, gen.Errors())
@@ -454,7 +454,7 @@ func TestSmokeStaticRPSSchedulePrecision(t *testing.T) {
 	require.Equal(t, gen.Stats().Failed.Load(), int64(0))
 	require.Equal(t, gen.Stats().CallTimeout.Load(), int64(0))
 
-	okData, _, failResponses := convertResponsesData(gen)
+	okData, _, failResponses := gen.GetResponsesData()
 	require.GreaterOrEqual(t, len(okData), 950)
 	require.LessOrEqual(t, len(okData), 1010)
 	require.Empty(t, failResponses)
@@ -481,7 +481,7 @@ func TestSmokeCustomUnitPrecision(t *testing.T) {
 	require.Equal(t, stats.CallTimeout.Load(), int64(0))
 	require.Equal(t, stats.CurrentTimeUnit, gen.Cfg.RateLimitUnitDuration.Nanoseconds())
 
-	okData, _, failResponses := convertResponsesData(gen)
+	okData, _, failResponses := gen.GetResponsesData()
 	require.GreaterOrEqual(t, len(okData), 4950)
 	require.LessOrEqual(t, len(okData), 5010)
 	require.Empty(t, failResponses)
@@ -506,7 +506,7 @@ func TestSmokeStaticRPSScheduleIsNotBlocking(t *testing.T) {
 	require.Equal(t, gen.Stats().Failed.Load(), int64(0))
 	require.Equal(t, gen.Stats().CallTimeout.Load(), int64(0))
 
-	okData, _, failResponses := convertResponsesData(gen)
+	okData, _, failResponses := gen.GetResponsesData()
 	require.GreaterOrEqual(t, len(okData), 950)
 	require.LessOrEqual(t, len(okData), 1010)
 	require.Empty(t, failResponses)
@@ -675,7 +675,7 @@ func TestSmokeVUsIncrease(t *testing.T) {
 	require.Equal(t, false, failed)
 	require.Equal(t, int64(2), stats.CurrentVUs.Load())
 
-	okData, okResponses, failResponses := convertResponsesData(gen)
+	okData, okResponses, failResponses := gen.GetResponsesData()
 	require.GreaterOrEqual(t, okResponses[0].Duration, 50*time.Millisecond)
 	require.GreaterOrEqual(t, len(okResponses), 140)
 	require.GreaterOrEqual(t, len(okData), 140)
@@ -705,7 +705,7 @@ func TestSmokeVUsDecrease(t *testing.T) {
 	require.Equal(t, false, failed)
 	require.Equal(t, int64(1), stats.CurrentVUs.Load())
 
-	okData, okResponses, failResponses := convertResponsesData(gen)
+	okData, okResponses, failResponses := gen.GetResponsesData()
 	require.GreaterOrEqual(t, okResponses[0].Duration, 50*time.Millisecond)
 	require.GreaterOrEqual(t, len(okResponses), 140)
 	require.GreaterOrEqual(t, len(okData), 140)
@@ -756,7 +756,7 @@ func TestSamplingSuccessfulResults(t *testing.T) {
 	require.LessOrEqual(t, stats.SamplesRecorded.Load(), int64(65))
 	require.GreaterOrEqual(t, stats.SamplesSkipped.Load(), int64(35))
 	require.LessOrEqual(t, stats.SamplesSkipped.Load(), int64(65))
-	_, okResponses, failResponses := convertResponsesData(gen)
+	_, okResponses, failResponses := gen.GetResponsesData()
 	require.GreaterOrEqual(t, len(okResponses), 35)
 	require.LessOrEqual(t, len(okResponses), 65)
 	require.Empty(t, failResponses)
@@ -808,7 +808,7 @@ func TestProfiles(t *testing.T) {
 		g1Stats := g1.Stats()
 		require.Equal(t, int64(2), g1Stats.CurrentRPS.Load())
 
-		okData, okResponses, failResponses := convertResponsesData(g1)
+		okData, okResponses, failResponses := g1.GetResponsesData()
 		require.GreaterOrEqual(t, okResponses[0].Duration, 50*time.Millisecond)
 		require.Greater(t, len(okResponses), 10)
 		require.Greater(t, len(okData), 10)
@@ -821,7 +821,7 @@ func TestProfiles(t *testing.T) {
 		g2Stats := g2.Stats()
 		require.Equal(t, int64(1), g2Stats.CurrentVUs.Load())
 
-		okData, okResponses, failResponses = convertResponsesData(g2)
+		okData, okResponses, failResponses = g2.GetResponsesData()
 		require.GreaterOrEqual(t, okResponses[0].Duration, 50*time.Millisecond)
 		require.Greater(t, len(okResponses), 90)
 		require.Greater(t, len(okData), 90)
@@ -864,7 +864,7 @@ func TestProfiles(t *testing.T) {
 		require.NoError(t, err)
 		g1 := p.Generators[0]
 		g1Stats := g1.Stats()
-		_, okResponses, failResponses := convertResponsesData(g1)
+		_, okResponses, failResponses := g1.GetResponsesData()
 		require.Equal(t, int64(10), g1Stats.CurrentRPS.Load())
 		require.GreaterOrEqual(t, okResponses[0].Duration, 50*time.Millisecond)
 		require.GreaterOrEqual(t, len(okResponses), 70)
@@ -873,7 +873,7 @@ func TestProfiles(t *testing.T) {
 
 		g2 := p.Generators[1]
 		g2Stats := g2.Stats()
-		_, okResponses, failResponses = convertResponsesData(g2)
+		_, okResponses, failResponses = g2.GetResponsesData()
 		require.Equal(t, int64(1), g2Stats.CurrentVUs.Load())
 		require.Greater(t, len(okResponses), 110)
 		require.Empty(t, failResponses)
@@ -902,7 +902,7 @@ func TestSamplerStoresFailedResults(t *testing.T) {
 		stats := gen.Stats()
 		require.GreaterOrEqual(t, stats.SamplesRecorded.Load(), int64(400))
 		require.GreaterOrEqual(t, stats.SamplesSkipped.Load(), int64(0))
-		_, _, failResponses := convertResponsesData(gen)
+		_, _, failResponses := gen.GetResponsesData()
 		require.GreaterOrEqual(t, len(failResponses), 400)
 	})
 	t.Run("failed results are always stored - VU", func(t *testing.T) {
@@ -924,7 +924,7 @@ func TestSamplerStoresFailedResults(t *testing.T) {
 		stats := gen.Stats()
 		require.GreaterOrEqual(t, stats.SamplesRecorded.Load(), int64(600))
 		require.GreaterOrEqual(t, stats.SamplesSkipped.Load(), int64(0))
-		_, _, failResponses := convertResponsesData(gen)
+		_, _, failResponses := gen.GetResponsesData()
 		require.GreaterOrEqual(t, len(failResponses), 600)
 	})
 	t.Run("timed out results are always stored - RPS", func(t *testing.T) {
@@ -947,7 +947,7 @@ func TestSamplerStoresFailedResults(t *testing.T) {
 		stats := gen.Stats()
 		require.GreaterOrEqual(t, stats.SamplesRecorded.Load(), int64(400))
 		require.GreaterOrEqual(t, stats.SamplesSkipped.Load(), int64(0))
-		_, _, failResponses := convertResponsesData(gen)
+		_, _, failResponses := gen.GetResponsesData()
 		require.GreaterOrEqual(t, len(failResponses), 400)
 	})
 	t.Run("timed out results are always stored - VU", func(t *testing.T) {
@@ -970,7 +970,7 @@ func TestSamplerStoresFailedResults(t *testing.T) {
 		stats := gen.Stats()
 		require.GreaterOrEqual(t, stats.SamplesRecorded.Load(), int64(400))
 		require.GreaterOrEqual(t, stats.SamplesSkipped.Load(), int64(0))
-		_, _, failResponses := convertResponsesData(gen)
+		_, _, failResponses := gen.GetResponsesData()
 		require.GreaterOrEqual(t, len(failResponses), 600)
 	})
 }
@@ -999,7 +999,7 @@ func TestSmokePauseResumeGenerator(t *testing.T) {
 		_, failed := gen.Wait()
 		require.Equal(t, false, failed)
 		stats := gen.Stats()
-		_, okResponses, failResponses := convertResponsesData(gen)
+		_, okResponses, failResponses := gen.GetResponsesData()
 		require.Equal(t, int64(10), stats.CurrentRPS.Load())
 		require.GreaterOrEqual(t, len(okResponses), 60)
 		require.Empty(t, failResponses)
@@ -1027,7 +1027,7 @@ func TestSmokePauseResumeGenerator(t *testing.T) {
 		require.Equal(t, false, failed)
 
 		stats := gen.Stats()
-		_, okResponses, failResponses := convertResponsesData(gen)
+		_, okResponses, failResponses := gen.GetResponsesData()
 		require.Equal(t, int64(1), stats.CurrentVUs.Load())
 		require.GreaterOrEqual(t, len(okResponses), 110)
 		require.Empty(t, failResponses)
@@ -1061,7 +1061,7 @@ func TestSmokeNoDuplicateRequestsOnceOnStart(t *testing.T) {
 	require.Equal(t, stats.Failed.Load(), int64(0))
 	require.Equal(t, stats.Duration, gen.Cfg.duration.Nanoseconds())
 
-	okData, okResponses, failResponses := convertResponsesData(gen)
+	okData, okResponses, failResponses := gen.GetResponsesData()
 	require.GreaterOrEqual(t, len(okResponses), 1)
 	require.GreaterOrEqual(t, len(okData), 1)
 	require.Equal(t, okData[0], "successCallData")

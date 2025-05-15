@@ -56,17 +56,3 @@ func (m *MockGun) Call(l *Generator) *Response {
 	}
 	return &Response{Data: "successCallData"}
 }
-
-// convertResponsesData extracts successful and failed response data from the Generator.
-// It returns a slice of successful response strings, OK responses, and failed responses.
-func convertResponsesData(g *Generator) ([]string, []*Response, []*Response) {
-	g.responsesData.okDataMu.Lock()
-	defer g.responsesData.okDataMu.Unlock()
-	g.responsesData.failResponsesMu.Lock()
-	defer g.responsesData.failResponsesMu.Unlock()
-	ok := make([]string, 0)
-	for _, d := range g.responsesData.OKData.Data {
-		ok = append(ok, d.(string))
-	}
-	return ok, g.responsesData.OKResponses.Data, g.responsesData.FailResponses.Data
-}
