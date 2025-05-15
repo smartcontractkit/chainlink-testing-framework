@@ -21,6 +21,8 @@ type CITestConf struct {
 	RemoteRunnerMemory         string            `yaml:"remote_runner_memory" json:"remote_runner_memory"`
 	PyroscopeEnv               string            `yaml:"pyroscope_env" json:"pyroscope_env"`
 	Triggers                   []string          `yaml:"triggers" json:"triggers"`
+	InstallPluginsPublic       bool              `yaml:"install_plugins_public" json:"install_plugins_public"`
+	AptosCLI                   string            `yaml:"aptos_cli" json:"aptos_cli"`
 }
 
 type Config struct {
