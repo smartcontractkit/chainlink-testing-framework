@@ -104,13 +104,18 @@ func newTon(in *Input) (*Output, error) {
 	networkName := "ton"
 	lightCLientSubNet := "172.28.0.0/16"
 	//nolint:gosec
-	_ = exec.Command("docker", "network", "create",
+	cmd := exec.Command("docker", "network", "create",
 		"--driver=bridge",
 		"--attachable",
 		fmt.Sprintf("--subnet=%s", lightCLientSubNet),
 		"--label=framework=ctf",
 		networkName,
 	)
+	output, err := cmd.CombinedOutput()
+	framework.L.Info().Str("output", string(output)).Msg("TON Docker network created")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create docker network: %v", err)
+	}
 
 	tonServices := []containerTemplate{
 		{
