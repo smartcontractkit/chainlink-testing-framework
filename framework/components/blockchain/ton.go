@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"time"
 
-	"github.com/docker/docker/api/types/network"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
@@ -47,16 +47,15 @@ var (
 )
 
 type containerTemplate struct {
-	Name                     string
-	Image                    string
-	Env                      map[string]string
-	Mounts                   []testcontainers.ContainerMount
-	Ports                    []string
-	WaitFor                  wait.Strategy
-	Command                  []string
-	Network                  string
-	Alias                    string
-	EndpointSettingsModifier func(m map[string]*network.EndpointSettings)
+	Name    string
+	Image   string
+	Env     map[string]string
+	Mounts  []testcontainers.ContainerMount
+	Ports   []string
+	WaitFor wait.Strategy
+	Command []string
+	Network string
+	Alias   string
 }
 
 func commonContainer(
@@ -70,7 +69,6 @@ func commonContainer(
 	command []string,
 	network string,
 	alias string,
-	endpointModifier func(m map[string]*network.EndpointSettings),
 ) (testcontainers.Container, error) {
 	req := testcontainers.ContainerRequest{
 		Name:         name,
@@ -83,9 +81,8 @@ func commonContainer(
 		NetworkAliases: map[string][]string{
 			network: {alias},
 		},
-		WaitingFor:               waitStrategy,
-		EndpointSettingsModifier: endpointModifier,
-		Cmd:                      command,
+		WaitingFor: waitStrategy,
+		Cmd:        command,
 	}
 	return testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
@@ -105,24 +102,15 @@ func newTon(in *Input) (*Output, error) {
 	ctx := context.Background()
 
 	networkName := "ton"
-	lightClientIP := "172.28.1.1"
 	lightCLientSubNet := "172.28.0.0/16"
-	_, err := testcontainers.GenericNetwork(ctx, testcontainers.GenericNetworkRequest{
-		NetworkRequest: testcontainers.NetworkRequest{
-			Name:       networkName,
-			Labels:     framework.DefaultTCLabels(),
-			Driver:     "bridge",
-			Attachable: true,
-			IPAM: &network.IPAM{
-				Config: []network.IPAMConfig{
-					{Subnet: lightCLientSubNet},
-				},
-			},
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
+	//nolint:gosec
+	_ = exec.Command("docker", "network", "create",
+		"--driver=bridge",
+		"--attachable",
+		fmt.Sprintf("--subnet=%s", lightCLientSubNet),
+		"--label=framework=ctf",
+		networkName,
+	)
 
 	tonServices := []containerTemplate{
 		{
@@ -139,11 +127,6 @@ func newTon(in *Input) (*Output, error) {
 			}).WithStartupTimeout(2 * time.Minute),
 			Network: networkName,
 			Alias:   "genesis",
-			EndpointSettingsModifier: func(m map[string]*network.EndpointSettings) {
-				m[networkName].IPAMConfig = &network.EndpointIPAMConfig{
-					IPv4Address: lightClientIP,
-				}
-			},
 			Mounts: testcontainers.ContainerMounts{
 				{
 					Source: testcontainers.GenericVolumeMountSource{Name: "shared-data"},
@@ -207,22 +190,6 @@ func newTon(in *Input) (*Output, error) {
 			Alias:   "tonhttpapi",
 		},
 		{
-			Name:  "explorer",
-			Image: "ghcr.io/neodix42/mylocalton-docker-explorer:latest",
-			Env: map[string]string{
-				"SERVER_PORT": "8080",
-			},
-			Mounts: testcontainers.ContainerMounts{
-				{
-					Source: testcontainers.GenericVolumeMountSource{Name: "shared-data"},
-					Target: "/usr/share/data",
-				},
-			},
-			Ports:   []string{"8080:8080/tcp"},
-			Network: networkName,
-			Alias:   "explorer",
-		},
-		{
 			Name:  "faucet",
 			Image: "ghcr.io/neodix42/mylocalton-docker-faucet:latest",
 			Env: map[string]string{
@@ -245,6 +212,22 @@ func newTon(in *Input) (*Output, error) {
 	}
 
 	tonIndexingAndObservability := []containerTemplate{
+		{
+			Name:  "explorer",
+			Image: "ghcr.io/neodix42/mylocalton-docker-explorer:latest",
+			Env: map[string]string{
+				"SERVER_PORT": "8080",
+			},
+			Mounts: testcontainers.ContainerMounts{
+				{
+					Source: testcontainers.GenericVolumeMountSource{Name: "shared-data"},
+					Target: "/usr/share/data",
+				},
+			},
+			Ports:   []string{"8080:8080/tcp"},
+			Network: networkName,
+			Alias:   "explorer",
+		},
 		{
 			Name:  "index-worker",
 			Image: "toncenter/ton-indexer-worker:v1.2.0-test",
@@ -289,7 +272,7 @@ func newTon(in *Input) (*Output, error) {
 
 	containers := make([]testcontainers.Container, 0)
 	for _, s := range tonServices {
-		c, err := commonContainer(ctx, s.Name, s.Image, s.Env, s.Mounts, s.Ports, s.WaitFor, s.Command, s.Network, s.Alias, s.EndpointSettingsModifier)
+		c, err := commonContainer(ctx, s.Name, s.Image, s.Env, s.Mounts, s.Ports, s.WaitFor, s.Command, s.Network, s.Alias)
 		if err != nil {
 			return nil, fmt.Errorf("failed to start %s: %v", s.Name, err)
 		}
@@ -298,7 +281,7 @@ func newTon(in *Input) (*Output, error) {
 	// no need for indexers and block explorers in CI
 	if os.Getenv("CI") != "" {
 		for _, s := range tonIndexingAndObservability {
-			c, err := commonContainer(ctx, s.Name, s.Image, s.Env, s.Mounts, s.Ports, s.WaitFor, s.Command, s.Network, s.Alias, s.EndpointSettingsModifier)
+			c, err := commonContainer(ctx, s.Name, s.Image, s.Env, s.Mounts, s.Ports, s.WaitFor, s.Command, s.Network, s.Alias)
 			if err != nil {
 				return nil, fmt.Errorf("failed to start %s: %v", s.Name, err)
 			}
