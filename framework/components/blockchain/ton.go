@@ -36,9 +36,9 @@ func defaultTon(in *Input) {
 		in.DockerComposeFileURL = "https://raw.githubusercontent.com/neodix42/mylocalton-docker/main/docker-compose.yaml"
 	}
 	// Note: in local env having all services could be useful(explorer, faucet), in CI we need only core services
-	if os.Getenv("CI") == "true" && len(in.TonCoreServices) == 0 {
+	if os.Getenv("CI") == "true" && len(in.DockerComposeServices) == 0 {
 		// Note: mylocalton-docker's essential services, excluded explorer, restarter, faucet app,
-		in.TonCoreServices = []string{
+		in.DockerComposeServices = []string{
 			"genesis", "tonhttpapi", "event-cache",
 			"index-postgres", "index-worker", "index-api",
 		}
@@ -92,8 +92,8 @@ func newTon(in *Input) (*Output, error) {
 	var upOpts []compose.StackUpOption
 	upOpts = append(upOpts, compose.Wait(true))
 
-	if len(in.TonCoreServices) > 0 {
-		upOpts = append(upOpts, compose.RunServices(in.TonCoreServices...))
+	if len(in.DockerComposeServices) > 0 {
+		upOpts = append(upOpts, compose.RunServices(in.DockerComposeServices...))
 	}
 
 	// always wait for healthy
