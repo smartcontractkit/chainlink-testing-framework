@@ -6,18 +6,8 @@ TON (The Open Network) support in the framework utilizes MyLocalTon Docker Compo
 
 ```toml
 [blockchain_a]
-  type = "ton"
-  # By default uses MyLocalTon Docker Compose file
-  docker_compose_file_url = "https://raw.githubusercontent.com/neodix42/mylocalton-docker/main/docker-compose.yaml"
-  # Optional: Specify only core services needed for testing (useful in CI environments)
-  ton_core_services = [
-    "genesis",
-    "tonhttpapi",
-    "event-cache",
-    "index-postgres", 
-    "index-worker", 
-    "index-api"
-  ]
+    type = "ton"
+    image = "ghcr.io/neodix42/mylocalton-docker:latest"
 ```
 
 ## Default Ports
