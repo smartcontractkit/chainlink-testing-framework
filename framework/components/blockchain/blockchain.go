@@ -54,10 +54,6 @@ type Input struct {
 	SolanaPrograms     map[string]string             `toml:"solana_programs"`
 	ContainerResources *framework.ContainerResources `toml:"resources"`
 	CustomPorts        []string                      `toml:"custom_ports"`
-
-	// Ton - MyLocalTon essesntial services to run tests
-	DockerComposeFileURL string   `toml:"docker_compose_file_url"`
-	TonCoreServices      []string `toml:"ton_core_services"`
 }
 
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network
