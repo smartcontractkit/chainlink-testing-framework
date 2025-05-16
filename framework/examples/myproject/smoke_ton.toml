@@ -1,11 +1,3 @@
 [blockchain_a]
   type = "ton"
-  docker_compose_file_url = "https://raw.githubusercontent.com/neodix42/mylocalton-docker/main/docker-compose.yaml"
-  ton_core_services = [
-    "genesis",
-    "tonhttpapi",
-    "event-cache",
-    "index-postgres",
-    "index-worker",
-    "index-api",
-  ]
+  image = "ghcr.io/neodix42/mylocalton-docker:latest"
