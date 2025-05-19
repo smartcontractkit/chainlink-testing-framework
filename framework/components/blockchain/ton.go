@@ -288,7 +288,7 @@ func newTon(in *Input) (*Output, error) {
 		containers = append(containers, c)
 	}
 	// no need for indexers and block explorers in CI
-	if os.Getenv("CI") != "" {
+	if os.Getenv("CI") != "true" {
 		for _, s := range tonIndexingAndObservability {
 			c, err := commonContainer(ctx, s.Name, s.Image, s.Env, s.Mounts, s.Ports, s.WaitFor, s.Command, s.Network, s.Alias)
 			if err != nil {
