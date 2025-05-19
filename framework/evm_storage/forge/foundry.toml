@@ -1,0 +1,8 @@
+[profile.default]
+required_version = "0.1.0"
+src = "src"
+out = "out"
+libs = ["lib"]
+extra_output = ["storageLayout"]
+
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
