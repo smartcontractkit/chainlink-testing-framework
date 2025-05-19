@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/testcontainers/testcontainers-go"
@@ -114,7 +115,10 @@ func newTon(in *Input) (*Output, error) {
 	output, err := cmd.CombinedOutput()
 	framework.L.Info().Str("output", string(output)).Msg("TON Docker network created")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create docker network: %v", err)
+		if !strings.Contains(string(output), "already exists") {
+			return nil, fmt.Errorf("failed to create docker network: %v", err)
+		}
+		framework.L.Info().Msgf("Network %q already exists, ignoring", networkName)
 	}
 
 	tonServices := []containerTemplate{
