@@ -11,7 +11,7 @@ gh auth setup-git
 Download an example capability binary
 ```
 export export GOPRIVATE=github.com/smartcontractkit/capabilities
-go get github.com/smartcontractkit/capabilities/kvstore && go install github.com/smartcontractkit/capabilities/kvstore 
+go get github.com/smartcontractkit/capabilities/kvstore && go install github.com/smartcontractkit/capabilities/kvstore
 ```
 
 Create a configuration file `smoke.toml`
@@ -24,7 +24,7 @@ Create a configuration file `smoke.toml`
   name = "don"
   nodes = 5
   override_mode = "all"
-  
+
   [nodesets.db]
     image = "postgres:12.0"
 
@@ -34,7 +34,7 @@ Create a configuration file `smoke.toml`
       # path to your capability binaries
       capabilities = ["./kvstore"]
       # default capabilities directory
-      # capabilities_container_dir = "/home/capabilities"
+      # capabilities_container_dir = "/usr/local/bin"
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
 ```
 
@@ -45,7 +45,7 @@ CTF_CONFIGS=smoke.toml go test -v -run TestNodeSet
 
 Now you can configure your capability using `clclient.CreateJobRaw($raw_toml)`.
 
-Capabilities are uploaded to `/home/capabilities` by default.
+Capabilities are uploaded to `/usr/local/bins` by default.
 
 Summary:
 - We deployed a node set with some capabilities
