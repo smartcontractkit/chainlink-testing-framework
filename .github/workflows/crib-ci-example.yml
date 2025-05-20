@@ -1,0 +1,15 @@
+name: Test Direct Access
+on: [push]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up kubectl
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.TEST_KUBE }}" | base64 -d > ~/.kube/config
+      - name: Verify cluster access
+        run: kubectl cluster-info
