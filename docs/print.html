@@ -854,7 +854,7 @@ gh auth setup-git
 </code></pre>
 <p>Download an example capability binary</p>
 <pre><code>export export GOPRIVATE=github.com/smartcontractkit/capabilities
-go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install github.com/smartcontractkit/capabilities/kvstore 
+go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install github.com/smartcontractkit/capabilities/kvstore
 </code></pre>
 <p>Create a configuration file <code>smoke.toml</code></p>
 <pre><code class="language-toml">[blockchain_a]
@@ -865,7 +865,7 @@ go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install gi
   name = "don"
   nodes = 5
   override_mode = "all"
-  
+
   [nodesets.db]
     image = "postgres:12.0"
 
@@ -875,14 +875,14 @@ go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install gi
       # path to your capability binaries
       capabilities = ["./kvstore"]
       # default capabilities directory
-      # capabilities_container_dir = "/home/capabilities"
+      # capabilities_container_dir = "/usr/local/bin"
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
 </code></pre>
 <p>Run it</p>
 <pre><code class="language-bash">CTF_CONFIGS=smoke.toml go test -v -run TestNodeSet
 </code></pre>
 <p>Now you can configure your capability using <code>clclient.CreateJobRaw($raw_toml)</code>.</p>
-<p>Capabilities are uploaded to <code>/home/capabilities</code> by default.</p>
+<p>Capabilities are uploaded to <code>/usr/local/bins</code> by default.</p>
 <p>Summary:</p>
 <ul>
 <li>We deployed a node set with some capabilities</li>
@@ -4694,7 +4694,7 @@ Here we provide full configuration reference, if you want to copy and run it, pl
     # A list of paths to capability binaries
     capabilities = ["./capability_1", "./capability_2"]
     # Default capabilities directory inside container
-    capabilities_container_dir = "/home/capabilities"
+    capabilities_container_dir = "/usr/local/bin"
     # Image to use, you can either provide "image" or "docker_file" + "docker_ctx" fields
     image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
     # Path to your Chainlink Dockerfile
@@ -4892,7 +4892,7 @@ Here we provide full configuration reference, if you want to copy and run it, pl
   http_port_range_start = 10000
   # P2P API port range start, each new node get port incremented (host machine)
   p2p_port_range_start = 12000
-  
+
   [nodesets.db]
     # PostgreSQL image version and tag
     image = "postgres:12.0"
@@ -4909,7 +4909,7 @@ Here we provide full configuration reference, if you want to copy and run it, pl
       # A list of paths to capability binaries
       capabilities = ["./capability_1", "./capability_2"]
       # Default capabilities directory inside container
-      capabilities_container_dir = "/home/capabilities"
+      capabilities_container_dir = "/usr/local/bin"
       # Image to use, you can either provide "image" or "docker_file" + "docker_ctx" fields
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
       # Path to your Chainlink Dockerfile
@@ -4937,7 +4937,7 @@ Here we provide full configuration reference, if you want to copy and run it, pl
   [nodesets.out]
     # If 'use_cache' equals 'true' we skip component setup when we run the test and return the outputs
     use_cache = true
-    
+
     # Describes deployed or external Chainlink nodes
     [[nodesets.out.cl_nodes]]
       use_cache = true
@@ -4957,7 +4957,7 @@ Here we provide full configuration reference, if you want to copy and run it, pl
         # PostgreSQL connection string
         # in case of using external database can be overriden
         url = "postgresql://chainlink:thispasswordislongenough@127.0.0.1:33094/chainlink?sslmode=disable"
-    
+
     # Can have more than one node, fields are the same, see above ^^
     [[nodesets.out.cl_nodes]]
       [nodesets.out.cl_nodes.node]
@@ -16981,7 +16981,7 @@ use <code>GetTestContainersGoTestLogger(*testing.T)</code> instead.</p>
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>ada45282</code></li>
+<li>Commit: <code>532b1748</code></li>
 </ul>
 
                     </main>

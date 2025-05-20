@@ -289,7 +289,7 @@ Here we provide full configuration reference, if you want to copy and run it, pl
   http_port_range_start = 10000
   # P2P API port range start, each new node get port incremented (host machine)
   p2p_port_range_start = 12000
-  
+
   [nodesets.db]
     # PostgreSQL image version and tag
     image = "postgres:12.0"
@@ -306,7 +306,7 @@ Here we provide full configuration reference, if you want to copy and run it, pl
       # A list of paths to capability binaries
       capabilities = ["./capability_1", "./capability_2"]
       # Default capabilities directory inside container
-      capabilities_container_dir = "/home/capabilities"
+      capabilities_container_dir = "/usr/local/bin"
       # Image to use, you can either provide "image" or "docker_file" + "docker_ctx" fields
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
       # Path to your Chainlink Dockerfile
@@ -334,7 +334,7 @@ Here we provide full configuration reference, if you want to copy and run it, pl
   [nodesets.out]
     # If 'use_cache' equals 'true' we skip component setup when we run the test and return the outputs
     use_cache = true
-    
+
     # Describes deployed or external Chainlink nodes
     [[nodesets.out.cl_nodes]]
       use_cache = true
@@ -354,7 +354,7 @@ Here we provide full configuration reference, if you want to copy and run it, pl
         # PostgreSQL connection string
         # in case of using external database can be overriden
         url = "postgresql://chainlink:thispasswordislongenough@127.0.0.1:33094/chainlink?sslmode=disable"
-    
+
     # Can have more than one node, fields are the same, see above ^^
     [[nodesets.out.cl_nodes]]
       [nodesets.out.cl_nodes.node]

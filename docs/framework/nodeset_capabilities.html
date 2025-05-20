@@ -248,7 +248,7 @@ gh auth setup-git
 </code></pre>
 <p>Download an example capability binary</p>
 <pre><code>export export GOPRIVATE=github.com/smartcontractkit/capabilities
-go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install github.com/smartcontractkit/capabilities/kvstore 
+go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install github.com/smartcontractkit/capabilities/kvstore
 </code></pre>
 <p>Create a configuration file <code>smoke.toml</code></p>
 <pre><code class="language-toml">[blockchain_a]
@@ -259,7 +259,7 @@ go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install gi
   name = "don"
   nodes = 5
   override_mode = "all"
-  
+
   [nodesets.db]
     image = "postgres:12.0"
 
@@ -269,14 +269,14 @@ go get github.com/smartcontractkit/capabilities/kvstore &amp;&amp; go install gi
       # path to your capability binaries
       capabilities = ["./kvstore"]
       # default capabilities directory
-      # capabilities_container_dir = "/home/capabilities"
+      # capabilities_container_dir = "/usr/local/bin"
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
 </code></pre>
 <p>Run it</p>
 <pre><code class="language-bash">CTF_CONFIGS=smoke.toml go test -v -run TestNodeSet
 </code></pre>
 <p>Now you can configure your capability using <code>clclient.CreateJobRaw($raw_toml)</code>.</p>
-<p>Capabilities are uploaded to <code>/home/capabilities</code> by default.</p>
+<p>Capabilities are uploaded to <code>/usr/local/bins</code> by default.</p>
 <p>Summary:</p>
 <ul>
 <li>We deployed a node set with some capabilities</li>
