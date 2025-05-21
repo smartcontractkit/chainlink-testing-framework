@@ -18,7 +18,7 @@ This component requires some Blockchain to be deployed, add this to config
   # Anvil command line params, ex.: docker_cmd_params = ['--block-time=1', '...']
   docker_cmd_params = []
   # Docker image and tag
-  image = "f4hrenh9it/foundry:latest"
+  image = "ghcr.io/foundry-rs/foundry:stable"
   # External port to expose
   port = "8545"
   # Pulls the image every time if set to 'true', used like that in CI. Can be set to 'false' to speed up local runs

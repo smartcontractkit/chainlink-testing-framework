@@ -12,7 +12,7 @@ We support 3 EVM clients at the moment: [Geth](https://geth.ethereum.org/docs/fu
   # Anvil command line params, ex.: docker_cmd_params = ['--block-time=1', '...']
   docker_cmd_params = []
   # Docker image and tag
-  image = "f4hrenh9it/foundry:latest"
+  image = "ghcr.io/foundry-rs/foundry:stable"
   # External port to expose (HTTP API)
   port = "8545"
   # External port to expose (WS API)
