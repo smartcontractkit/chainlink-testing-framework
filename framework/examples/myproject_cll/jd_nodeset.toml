@@ -3,7 +3,6 @@
   chain_id = "1337"
 # uncomment to fork the chain
 #  docker_cmd_params = ["--fork-url", "wss://avalanche-fuji-c-chain-rpc.publicnode.com", "--auto-impersonate", "-b", "1"]
-  docker_cmd_params = ["-b", "1"]
   type = "anvil"
 
 [data_provider]
