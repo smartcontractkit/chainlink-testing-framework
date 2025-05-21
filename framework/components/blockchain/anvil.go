@@ -12,7 +12,7 @@ const (
 
 func defaultAnvil(in *Input) {
 	if in.Image == "" {
-		in.Image = "f4hrenh9it/foundry:latest"
+		in.Image = "ghcr.io/foundry-rs/foundry:stable"
 	}
 	if in.ChainID == "" {
 		in.ChainID = "1337"
