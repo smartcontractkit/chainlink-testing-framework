@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"fmt"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/s3provider"
 	"io/fs"
 	"log"
 	"os"
@@ -241,6 +242,35 @@ func main() {
 						ResultsFile:         "ctf-ci.json",
 					})
 					return err
+				},
+			},
+			{
+				Name:  "s3",
+				Usage: "Controls local S3",
+				Subcommands: []*cli.Command{
+					{
+						Name:        "up",
+						Usage:       "ctf s3 up",
+						Aliases:     []string{"u"},
+						Description: "Spins up a local S3 provider (minio)",
+						Action: func(c *cli.Context) error {
+							myS3, err := s3provider.NewMinioFactory().NewProvider(
+								s3provider.WithPort(9000),
+								s3provider.WithConsolePort(9001),
+							)
+							if err != nil {
+								return err
+							}
+							L.Info().Str("label", "framework=ctf").Msg(fmt.Sprintf(
+								"S3 provider running: Endpoint: %s\tAccessKey: %s\tSecretKey: %s\tBucket: %s",
+								myS3.GetEndpoint(),
+								myS3.GetAccessKey(),
+								myS3.GetSecretKey(),
+								myS3.GetBucket(),
+							))
+							return nil
+						},
+					},
 				},
 			},
 		},
