@@ -12,7 +12,7 @@ import (
 func TestNewMinioFactory(t *testing.T) {
 	port := freeport.GetOne(t)
 	consolePort := freeport.GetOne(t)
-	s3provider, err := NewMinioFactory().NewProvider(WithPort(port), WithConsolePort(consolePort))
+	s3provider, err := NewMinioFactory().New(WithPort(port), WithConsolePort(consolePort))
 	require.NoError(t, err)
 
 	t.Logf("URL: %s", s3provider.GetURL())

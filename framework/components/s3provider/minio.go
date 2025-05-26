@@ -11,6 +11,7 @@ import (
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 	"math/rand"
+	"os"
 	"strconv"
 )
 
@@ -31,6 +32,7 @@ type Minio struct {
 	secretKey   string
 	bucket      string
 	region      string
+	keep        bool
 }
 
 func (m Minio) GetSecretKey() string {
@@ -45,16 +47,12 @@ func (m Minio) GetBucket() string {
 	return m.bucket
 }
 
-func (m Minio) GetURL() string {
-	return fmt.Sprintf("http://%s:%d", m.host, m.port)
-}
-
 func (m Minio) GetConsoleURL() string {
 	return fmt.Sprintf("http://%s:%d", m.host, m.consolePort)
 }
 
 func (m Minio) GetEndpoint() string {
-	return fmt.Sprintf("%s:%d", m.host, m.consolePort)
+	return fmt.Sprintf("%s:%d", m.host, m.port)
 }
 
 func (m Minio) GetRegion() string {
@@ -69,7 +67,7 @@ func NewMinioFactory() ProviderFactory {
 	return MinioFactory{}
 }
 
-func (mf MinioFactory) NewProvider(options ...Option) (Provider, error) {
+func (mf MinioFactory) New(options ...Option) (Provider, error) {
 	m := &Minio{
 		port:        DefaultPort,
 		consolePort: DefaultConsolePort,
@@ -77,26 +75,51 @@ func (mf MinioFactory) NewProvider(options ...Option) (Provider, error) {
 		secretKey:   randomStr(40),
 		bucket:      DefaultBucket,
 		region:      DefaultRegion,
+		keep:        false,
 	}
 
 	for _, opt := range options {
 		opt(m)
 	}
 
+	var tcRyukDisabled string
+	if m.keep {
+		// store original env var to value
+		tcRyukDisabled = os.Getenv("TESTCONTAINERS_RYUK_DISABLED")
+		err := os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	ctx := context.Background()
 	containerName := framework.DefaultTCName(DefaultName)
 	bindPort := fmt.Sprintf("%d/tcp", m.port)
 	bindConsolePort := fmt.Sprintf("%d/tcp", m.consolePort)
+	networks := []string{"compose_default"}
+	networkAliases := map[string][]string{
+		"compose_default": {DefaultName},
+	}
+
+	if len(framework.DefaultNetworkName) == 0 {
+		// attach default ctf network if initiated
+		networks = append(networks, framework.DefaultNetworkName)
+		networkAliases[framework.DefaultNetworkName] = []string{
+			containerName,
+			DefaultName,
+		}
+	}
 
 	req := tc.ContainerRequest{
-		Name:     containerName,
-		Image:    DefaultImage,
-		Labels:   framework.DefaultTCLabels(),
-		Networks: []string{framework.DefaultNetworkName},
-		NetworkAliases: map[string][]string{
-			framework.DefaultNetworkName: {containerName},
+		Name:           containerName,
+		Image:          DefaultImage,
+		Labels:         framework.DefaultTCLabels(),
+		Networks:       networks,
+		NetworkAliases: networkAliases,
+		ExposedPorts: []string{
+			bindPort,
+			bindConsolePort,
 		},
-		ExposedPorts: []string{bindPort, bindConsolePort},
 		Env: map[string]string{
 			"MINIO_ROOT_USER":     m.accessKey,
 			"MINIO_ROOT_PASSWORD": m.secretKey,
@@ -105,7 +128,7 @@ func (mf MinioFactory) NewProvider(options ...Option) (Provider, error) {
 		Entrypoint: []string{
 			"minio",
 			"server",
-			"data",
+			"/data",
 			"--address",
 			fmt.Sprintf(":%d", m.port),
 			"--console-address",
@@ -113,32 +136,31 @@ func (mf MinioFactory) NewProvider(options ...Option) (Provider, error) {
 		},
 		HostConfigModifier: func(h *container.HostConfig) {
 			framework.NoDNS(true, h)
-			h.PortBindings = framework.MapTheSamePort(bindPort)
+			h.PortBindings = nat.PortMap{
+				nat.Port(bindPort): []nat.PortBinding{
+					{
+						HostIP:   "0.0.0.0",
+						HostPort: strconv.Itoa(m.port),
+					},
+				},
+				nat.Port(bindConsolePort): []nat.PortBinding{
+					{
+						HostIP:   "0.0.0.0",
+						HostPort: strconv.Itoa(m.consolePort),
+					},
+				},
+			}
 		},
 		WaitingFor: tcwait.ForAll(
-			tcwait.ForListeningPort(nat.Port(fmt.Sprintf("%d/tcp", m.port))),
+			tcwait.ForListeningPort(nat.Port(bindPort)),
+			tcwait.ForListeningPort(nat.Port(bindConsolePort)),
 		),
-	}
-	req.HostConfigModifier = func(h *container.HostConfig) {
-		h.PortBindings = nat.PortMap{
-			nat.Port(bindPort): []nat.PortBinding{
-				{
-					HostIP:   "0.0.0.0",
-					HostPort: strconv.Itoa(m.port),
-				},
-			},
-			nat.Port(bindPort): []nat.PortBinding{
-				{
-					HostIP:   "0.0.0.0",
-					HostPort: strconv.Itoa(m.consolePort),
-				},
-			},
-		}
 	}
 
 	c, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
+		Reuse:            m.keep,
 	})
 	if err != nil {
 		return nil, err
@@ -156,13 +178,23 @@ func (mf MinioFactory) NewProvider(options ...Option) (Provider, error) {
 		Secure: false,
 	})
 	if err != nil {
+		framework.L.Warn().Str("error", err.Error()).Msg("failed to create minio client")
 		return nil, err
 	}
 
 	// Initialize default bucket
 	err = minioClient.MakeBucket(ctx, m.GetBucket(), minio.MakeBucketOptions{Region: m.GetRegion()})
 	if err != nil {
+		framework.L.Warn().Str("error", err.Error()).Msg("failed to create minio bucket")
 		return nil, err
+	}
+
+	if m.keep {
+		// reverse env var to prev. value
+		err := os.Setenv("TESTCONTAINERS_RYUK_DISABLED", tcRyukDisabled)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return m, nil
@@ -177,6 +209,24 @@ func WithPort(port int) Option {
 func WithConsolePort(consolePort int) Option {
 	return func(m *Minio) {
 		m.consolePort = consolePort
+	}
+}
+
+func WithKeep() Option {
+	return func(m *Minio) {
+		m.keep = true
+	}
+}
+
+func WithAccessKey(accessKey string) Option {
+	return func(m *Minio) {
+		m.accessKey = accessKey
+	}
+}
+
+func WithSecretKey(secretKey string) Option {
+	return func(m *Minio) {
+		m.secretKey = secretKey
 	}
 }
 
