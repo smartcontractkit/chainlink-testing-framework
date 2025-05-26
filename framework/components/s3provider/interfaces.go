@@ -1,7 +1,6 @@
 package s3provider
 
 type Provider interface {
-	GetURL() string
 	GetEndpoint() string
 	GetConsoleURL() string
 	GetSecretKey() string
@@ -11,5 +10,5 @@ type Provider interface {
 }
 
 type ProviderFactory interface {
-	NewProvider(...Option) (Provider, error)
+	New(...Option) (Provider, error)
 }
