@@ -3,7 +3,6 @@ package main
 import (
 	"embed"
 	"fmt"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/s3provider"
 	"io/fs"
 	"log"
 	"os"
@@ -14,6 +13,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/s3provider"
 )
 
 //go:embed observability/*
