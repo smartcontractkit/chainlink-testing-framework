@@ -15,8 +15,6 @@ func TestNewMinioFactory(t *testing.T) {
 	s3provider, err := NewMinioFactory().New(WithPort(port), WithConsolePort(consolePort))
 	require.NoError(t, err)
 
-	t.Logf("URL: %s", s3provider.GetURL())
-
 	// Initialize minio client object.
 	minioClient, err := minio.New(s3provider.GetEndpoint(), &minio.Options{
 		Creds:  credentials.NewStaticV4(s3provider.GetAccessKey(), s3provider.GetSecretKey(), ""),
