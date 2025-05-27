@@ -3,6 +3,11 @@ package s3provider
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"net"
+	"os"
+	"strconv"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/minio/minio-go/v7"
@@ -10,9 +15,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
-	"math/rand"
-	"os"
-	"strconv"
 )
 
 const (
@@ -22,6 +24,9 @@ const (
 	DefaultRegion      = "us-east-1"
 	DefaultPort        = 9000
 	DefaultConsolePort = 9001
+
+	accessKeyLength = 20
+	secretKeyLength = 40
 )
 
 type Minio struct {
@@ -48,7 +53,7 @@ func (m Minio) GetBucket() string {
 }
 
 func (m Minio) GetConsoleURL() string {
-	return fmt.Sprintf("http://%s:%d", m.host, m.consolePort)
+	return fmt.Sprintf("http://%s", net.JoinHostPort(m.host, strconv.Itoa(m.consolePort)))
 }
 
 func (m Minio) GetEndpoint() string {
@@ -71,8 +76,8 @@ func (mf MinioFactory) New(options ...Option) (Provider, error) {
 	m := &Minio{
 		port:        DefaultPort,
 		consolePort: DefaultConsolePort,
-		accessKey:   randomStr(20),
-		secretKey:   randomStr(40),
+		accessKey:   randomStr(accessKeyLength),
+		secretKey:   randomStr(secretKeyLength),
 		bucket:      DefaultBucket,
 		region:      DefaultRegion,
 		keep:        false,
@@ -82,11 +87,16 @@ func (mf MinioFactory) New(options ...Option) (Provider, error) {
 		opt(m)
 	}
 
-	var tcRyukDisabled string
+	var (
+		tcRyukDisabled string
+		err            error
+	)
+
 	if m.keep {
 		// store original env var to value
 		tcRyukDisabled = os.Getenv("TESTCONTAINERS_RYUK_DISABLED")
-		err := os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+		err = os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+
 		if err != nil {
 			return nil, err
 		}
@@ -166,11 +176,10 @@ func (mf MinioFactory) New(options ...Option) (Provider, error) {
 		return nil, err
 	}
 
-	host, err := framework.GetHost(c)
+	m.host, err = framework.GetHost(c)
 	if err != nil {
 		return nil, err
 	}
-	m.host = host
 
 	// Initialize minio client object.
 	minioClient, err := minio.New(m.GetEndpoint(), &minio.Options{
@@ -179,6 +188,7 @@ func (mf MinioFactory) New(options ...Option) (Provider, error) {
 	})
 	if err != nil {
 		framework.L.Warn().Str("error", err.Error()).Msg("failed to create minio client")
+
 		return nil, err
 	}
 
@@ -186,6 +196,7 @@ func (mf MinioFactory) New(options ...Option) (Provider, error) {
 	err = minioClient.MakeBucket(ctx, m.GetBucket(), minio.MakeBucketOptions{Region: m.GetRegion()})
 	if err != nil {
 		framework.L.Warn().Str("error", err.Error()).Msg("failed to create minio bucket")
+
 		return nil, err
 	}
 
@@ -237,5 +248,6 @@ func randomStr(n int) string {
 	for i := range b {
 		b[i] = letterBytes[rand.Int63()%int64(len(letterBytes))]
 	}
+
 	return string(b)
 }

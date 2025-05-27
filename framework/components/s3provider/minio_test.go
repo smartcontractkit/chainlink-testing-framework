@@ -2,11 +2,12 @@ package s3provider
 
 import (
 	"context"
+	"testing"
+
 	"github.com/hashicorp/consul/sdk/freeport"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestNewMinioFactory(t *testing.T) {
