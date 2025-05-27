@@ -18,6 +18,7 @@ const (
 	TypeAptos       = "aptos"
 	TypeSui         = "sui"
 	TypeTron        = "tron"
+	TypeTon         = "ton"
 )
 
 // Blockchain node family
@@ -27,12 +28,13 @@ const (
 	FamilyAptos  = "aptos"
 	FamilySui    = "sui"
 	FamilyTron   = "tron"
+	FamilyTon    = "ton"
 )
 
 // Input is a blockchain network configuration params
 type Input struct {
 	// Common EVM fields
-	Type      string `toml:"type" validate:"required,oneof=anvil geth besu solana aptos tron sui" envconfig:"net_type"`
+	Type      string `toml:"type" validate:"required,oneof=anvil geth besu solana aptos tron sui ton" envconfig:"net_type"`
 	Image     string `toml:"image"`
 	PullImage bool   `toml:"pull_image"`
 	Port      string `toml:"port"`
@@ -99,6 +101,8 @@ func NewBlockchainNetwork(in *Input) (*Output, error) {
 		out, err = newTron(in)
 	case TypeAnvilZKSync:
 		out, err = newAnvilZksync(in)
+	case TypeTon:
+		out, err = newTon(in)
 	default:
 		return nil, fmt.Errorf("blockchain type is not supported or empty, must be 'anvil' or 'geth'")
 	}

@@ -23,7 +23,7 @@ func TestChains(t *testing.T) {
 			name: "Anvil",
 			input: &blockchain.Input{
 				Type:    "anvil",
-				Image:   "f4hrenh9it/foundry",
+				Image:   "ghcr.io/foundry-rs/foundry:stable",
 				Port:    "8547",
 				ChainID: "31337",
 			},

@@ -23,7 +23,7 @@ Here we provide full configuration reference, if you want to copy and run it, pl
     # A list of paths to capability binaries
     capabilities = ["./capability_1", "./capability_2"]
     # Default capabilities directory inside container
-    capabilities_container_dir = "/home/capabilities"
+    capabilities_container_dir = "/usr/local/bin"
     # Image to use, you can either provide "image" or "docker_file" + "docker_ctx" fields
     image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
     # Path to your Chainlink Dockerfile

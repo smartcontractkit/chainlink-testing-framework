@@ -44,7 +44,7 @@ func TestSmokeComponentDockerNodeSetSharedDB(t *testing.T) {
 			name: "2 nodes cluster, override mode 'each'",
 			bcInput: &blockchain.Input{
 				Type:    "anvil",
-				Image:   "f4hrenh9it/foundry",
+				Image:   "ghcr.io/foundry-rs/foundry:stable",
 				Port:    "8546",
 				ChainID: "31337",
 			},
