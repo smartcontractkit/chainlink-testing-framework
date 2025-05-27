@@ -1,0 +1,27 @@
+
+[[blockchains]]
+  chain_id = "1337"
+# uncomment to fork the chain
+#  docker_cmd_params = ["--fork-url", "wss://avalanche-fuji-c-chain-rpc.publicnode.com", "--auto-impersonate", "-b", "1"]
+  type = "anvil"
+
+[data_provider]
+  port = 9111
+
+[jd]
+# uncomment to load some specific staging/prod dump
+#   jd_sql_dump_path = "db.sql"
+  image = "job-distributor:0.9.0"
+
+[[nodesets]]
+  name = "don"
+  nodes = 5
+  override_mode = "all"
+
+  [nodesets.db]
+    image = "postgres:12.0"
+
+  [[nodesets.node_specs]]
+
+    [nodesets.node_specs.node]
+      image = "public.ecr.aws/chainlink/chainlink:v2.17.0"

@@ -18,7 +18,7 @@ This component requires some Blockchain to be deployed, add this to config
   # Anvil command line params, ex.: docker_cmd_params = ['--block-time=1', '...']
   docker_cmd_params = []
   # Docker image and tag
-  image = "f4hrenh9it/foundry:latest"
+  image = "ghcr.io/foundry-rs/foundry:stable"
   # External port to expose
   port = "8545"
   # Pulls the image every time if set to 'true', used like that in CI. Can be set to 'false' to speed up local runs
@@ -54,7 +54,7 @@ Then configure NodeSet
   http_port_range_start = 10000
   # P2P API port range start, each new node get port incremented (host machine)
   p2p_port_range_start = 12000
-  
+
   [nodesets.db]
     # PostgreSQL image version and tag
     image = "postgres:12.0"
@@ -71,7 +71,7 @@ Then configure NodeSet
       # A list of paths to capability binaries
       capabilities = ["./capability_1", "./capability_2"]
       # Default capabilities directory inside container
-      capabilities_container_dir = "/home/capabilities"
+      capabilities_container_dir = "/usr/local/bin"
       # Image to use, you can either provide "image" or "docker_file" + "docker_ctx" fields
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
       # Path to your Chainlink Dockerfile
@@ -99,7 +99,7 @@ Then configure NodeSet
   [nodesets.out]
     # If 'use_cache' equals 'true' we skip component setup when we run the test and return the outputs
     use_cache = true
-    
+
     # Describes deployed or external Chainlink nodes
     [[nodesets.out.cl_nodes]]
       use_cache = true
@@ -119,7 +119,7 @@ Then configure NodeSet
         # PostgreSQL connection string
         # in case of using external database can be overriden
         url = "postgresql://chainlink:thispasswordislongenough@127.0.0.1:33094/chainlink?sslmode=disable"
-    
+
     # Can have more than one node, fields are the same, see above ^^
     [[nodesets.out.cl_nodes]]
       [nodesets.out.cl_nodes.node]

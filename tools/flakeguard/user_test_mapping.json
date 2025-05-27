@@ -28,20 +28,24 @@
         "pattern": "github.com/smartcontractkit/chainlink/v2/core/services/relay.*"
     },
     {
-        "jira_user_id": "6175d3e016119e0069fdd14f",
-        "pattern": "github.com/smartcontractkit/chainlink/deployment.*"
-    },
-    {
-        "jira_user_id": "638f597c3e79f12e57253913",
-        "pattern": "github.com/smartcontractkit/chainlink/deployment/data-feeds/changeset"
-    },
-    {
         "jira_user_id": "6115c23730fe4500702c1301",
         "pattern": "github.com/smartcontractkit/chainlink/v2/core/services.*"
     },
     {
         "jira_user_id": "6115c23730fe4500702c1301",
         "pattern": "github.com/smartcontractkit/chainlink/v2/core/capabilities.*"
+    },
+    {
+        "jira_user_id": "638f597c3e79f12e57253913",
+        "pattern": "github.com/smartcontractkit/chainlink/deployment/data-feeds/changeset"
+    },
+    {
+        "jira_user_id": "712020:0403445b-a590-4e71-944c-e5b3c681dafb",
+        "pattern": "github.com/smartcontractkit/chainlink/deployment/ccip.*"
+    },
+    {
+        "jira_user_id": "6175d3e016119e0069fdd14f",
+        "pattern": "github.com/smartcontractkit/chainlink/deployment.*"
     },
     {
         "jira_user_id": "638f597c3e79f12e57253913",

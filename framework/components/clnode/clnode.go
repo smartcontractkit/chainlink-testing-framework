@@ -23,11 +23,12 @@ import (
 )
 
 const (
-	DefaultHTTPPort     = "6688"
-	DefaultP2PPort      = "6690"
-	DefaultDebuggerPort = 40000
-	TmpImageName        = "chainlink-tmp:latest"
-	CustomPortSeparator = ":"
+	DefaultHTTPPort        = "6688"
+	DefaultP2PPort         = "6690"
+	DefaultDebuggerPort    = 40000
+	TmpImageName           = "chainlink-tmp:latest"
+	CustomPortSeparator    = ":"
+	DefaultCapabilitiesDir = "/usr/local/bin"
 )
 
 var (
@@ -301,7 +302,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		},
 	}
 	if in.Node.CapabilityContainerDir == "" {
-		in.Node.CapabilityContainerDir = "/home/capabilities"
+		in.Node.CapabilityContainerDir = DefaultCapabilitiesDir
 	}
 	for _, cp := range in.Node.CapabilitiesBinaryPaths {
 		cpPath := filepath.Base(cp)

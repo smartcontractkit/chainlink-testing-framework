@@ -285,7 +285,7 @@ func StartAnvil(params []string) (*AnvilContainer, error) {
 	entryPoint := []string{"anvil", "--host", "0.0.0.0"}
 	entryPoint = append(entryPoint, params...)
 	req := testcontainers.ContainerRequest{
-		Image:        "ghcr.io/foundry-rs/foundry",
+		Image:        "ghcr.io/foundry-rs/foundry:stable",
 		ExposedPorts: []string{"8545/tcp"},
 		WaitingFor:   wait.ForListeningPort("8545").WithStartupTimeout(10 * time.Second),
 		Entrypoint:   entryPoint,

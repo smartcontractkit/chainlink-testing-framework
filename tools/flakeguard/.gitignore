@@ -9,3 +9,4 @@ test-output-*.json
 transformed-output-*.json
 flakeguard_raw_output/
 flakeguard_raw_output_transformed/
+.envrc
