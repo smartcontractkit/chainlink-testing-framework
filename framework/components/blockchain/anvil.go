@@ -45,7 +45,7 @@ func newAnvil(in *Input) (*Output, error) {
 	entryPoint = append(entryPoint, in.DockerCmdParamsOverrides...)
 	req.Entrypoint = entryPoint
 
-	framework.L.Info().Any("Cmd", strings.Join(entryPoint, " ")).Msg("Creating anvil with command")
+	framework.L.Info().Any("Cmd", strings.Join(entryPoint, " ")).Bool("HostNetworkMode", in.HostNetworkMode).Msg("Creating anvil with command")
 
 	return createGenericEvmContainer(in, req, false)
 }
