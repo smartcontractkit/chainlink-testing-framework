@@ -12,6 +12,7 @@ type CITestConf struct {
 	Path                       string            `yaml:"path" json:"path"`
 	TestEnvType                string            `yaml:"test_env_type" json:"test_env_type"`
 	RunsOn                     string            `yaml:"runs_on" json:"runs_on"`
+	RunsOnSelfHosted           string            `yaml:"runs_on_self_hosted" json:"runs_on_self_hosted,omitempty"`
 	TestGoProjectPath          string            `yaml:"test_go_project_path" json:"test_go_project_path"` // Root path to the go project with the tests
 	TestCmd                    string            `yaml:"test_cmd" json:"test_cmd"`                         // Command to run the test in the TestGoProjectPath
 	TestConfigOverrideRequired bool              `yaml:"test_config_override_required" json:"test_config_override_required"`
@@ -21,6 +22,8 @@ type CITestConf struct {
 	RemoteRunnerMemory         string            `yaml:"remote_runner_memory" json:"remote_runner_memory"`
 	PyroscopeEnv               string            `yaml:"pyroscope_env" json:"pyroscope_env"`
 	Triggers                   []string          `yaml:"triggers" json:"triggers"`
+	InstallPluginsPublic       bool              `yaml:"install_plugins_public" json:"install_plugins_public"` // Install public loop plugins from https://github.com/smartcontractkit/chainlink/tree/develop/plugins
+	AptosCLIVersion            string            `yaml:"aptos_cli_version" json:"aptos_cli_version"`
 }
 
 type Config struct {
