@@ -35,12 +35,13 @@ func baseRequest(in *Input, useWS ExposeWs) testcontainers.ContainerRequest {
 		NetworkAliases: map[string][]string{
 			framework.DefaultNetworkName: {containerName},
 		},
-		ExposedPorts: exposedPorts,
+		//ExposedPorts: exposedPorts,
 		HostConfigModifier: func(h *container.HostConfig) {
-			h.PortBindings = framework.MapTheSamePort(exposedPorts...)
 			framework.ResourceLimitsFunc(h, in.ContainerResources)
 			if in.HostNetworkMode {
 				h.NetworkMode = "host"
+			} else {
+				h.PortBindings = framework.MapTheSamePort(exposedPorts...)
 			}
 		},
 		WaitingFor: wait.ForListeningPort(nat.Port(in.Port)).WithStartupTimeout(15 * time.Second).WithPollInterval(200 * time.Millisecond),
@@ -62,10 +63,18 @@ func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest, u
 		return nil, err
 	}
 
-	bindPort := req.ExposedPorts[0]
-	mp, err := c.MappedPort(ctx, nat.Port(bindPort))
-	if err != nil {
-		return nil, err
+	// specific case to bridge with GAPv2 in CI
+	// we run blockchains on "host" network for connectivity
+	var exposedPort nat.Port
+	if in.HostNetworkMode {
+		exposedPort = nat.Port(in.Port)
+	} else {
+		bindPort := req.ExposedPorts[0]
+		ep, err := c.MappedPort(ctx, nat.Port(bindPort))
+		if err != nil {
+			return nil, err
+		}
+		exposedPort = ep
 	}
 
 	containerName := req.Name
@@ -79,8 +88,8 @@ func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest, u
 		Container:     c,
 		Nodes: []*Node{
 			{
-				ExternalWSUrl:   fmt.Sprintf("ws://%s:%s", host, mp.Port()),
-				ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", host, mp.Port()),
+				ExternalWSUrl:   fmt.Sprintf("ws://%s:%s", host, exposedPort),
+				ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", host, exposedPort),
 				InternalWSUrl:   fmt.Sprintf("ws://%s:%s", containerName, in.Port),
 				InternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
 			},
