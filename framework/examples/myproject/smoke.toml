@@ -1,5 +1,6 @@
 
 [blockchain_a]
+  host_network_mode = true
   docker_cmd_params = ["-b", "1"]
   type = "anvil"
 

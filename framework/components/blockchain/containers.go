@@ -39,6 +39,9 @@ func baseRequest(in *Input, useWS ExposeWs) testcontainers.ContainerRequest {
 		HostConfigModifier: func(h *container.HostConfig) {
 			h.PortBindings = framework.MapTheSamePort(exposedPorts...)
 			framework.ResourceLimitsFunc(h, in.ContainerResources)
+			if in.HostNetworkMode {
+				h.NetworkMode = "host"
+			}
 		},
 		WaitingFor: wait.ForListeningPort(nat.Port(in.Port)).WithStartupTimeout(15 * time.Second).WithPollInterval(200 * time.Millisecond),
 	}
