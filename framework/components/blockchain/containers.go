@@ -28,14 +28,13 @@ func baseRequest(in *Input, useWS ExposeWs) testcontainers.ContainerRequest {
 		exposedPorts = append(exposedPorts, fmt.Sprintf("%s/tcp", in.WSPort))
 	}
 
-	return testcontainers.ContainerRequest{
+	req := testcontainers.ContainerRequest{
 		Name:     containerName,
 		Labels:   framework.DefaultTCLabels(),
 		Networks: []string{framework.DefaultNetworkName},
 		NetworkAliases: map[string][]string{
 			framework.DefaultNetworkName: {containerName},
 		},
-		//ExposedPorts: exposedPorts,
 		HostConfigModifier: func(h *container.HostConfig) {
 			framework.ResourceLimitsFunc(h, in.ContainerResources)
 			if in.HostNetworkMode {
@@ -43,9 +42,14 @@ func baseRequest(in *Input, useWS ExposeWs) testcontainers.ContainerRequest {
 			} else {
 				h.PortBindings = framework.MapTheSamePort(exposedPorts...)
 			}
+			h.ExtraHosts = in.ExtraHosts
 		},
 		WaitingFor: wait.ForListeningPort(nat.Port(in.Port)).WithStartupTimeout(15 * time.Second).WithPollInterval(200 * time.Millisecond),
 	}
+	if !in.HostNetworkMode {
+		req.ExposedPorts = exposedPorts
+	}
+	return req
 }
 
 func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest, useWS bool) (*Output, error) {
