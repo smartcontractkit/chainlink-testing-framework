@@ -34,12 +34,10 @@ const (
 // Input is a blockchain network configuration params
 type Input struct {
 	// Common EVM fields
-	Type            string   `toml:"type" validate:"required,oneof=anvil geth besu solana aptos tron sui ton" envconfig:"net_type"`
-	Image           string   `toml:"image"`
-	PullImage       bool     `toml:"pull_image"`
-	Port            string   `toml:"port"`
-	HostNetworkMode bool     `toml:"host_network_mode"`
-	ExtraHosts      []string `toml:"extra_hosts"`
+	Type      string `toml:"type" validate:"required,oneof=anvil geth besu solana aptos tron sui ton" envconfig:"net_type"`
+	Image     string `toml:"image"`
+	PullImage bool   `toml:"pull_image"`
+	Port      string `toml:"port"`
 	// Not applicable to Solana, ws port for Solana is +1 of port
 	WSPort                   string   `toml:"port_ws"`
 	ChainID                  string   `toml:"chain_id"`
@@ -56,6 +54,11 @@ type Input struct {
 	SolanaPrograms     map[string]string             `toml:"solana_programs"`
 	ContainerResources *framework.ContainerResources `toml:"resources"`
 	CustomPorts        []string                      `toml:"custom_ports"`
+
+	// GAPv2 specific params
+	HostNetworkMode  bool     `toml:"host_network_mode"`
+	ExtraHosts       []string `toml:"extra_hosts"`
+	CertificatesPath string   `toml:"certificates_path"`
 }
 
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network

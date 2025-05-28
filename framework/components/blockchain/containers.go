@@ -29,12 +29,8 @@ func baseRequest(in *Input, useWS ExposeWs) testcontainers.ContainerRequest {
 	}
 
 	req := testcontainers.ContainerRequest{
-		Name:     containerName,
-		Labels:   framework.DefaultTCLabels(),
-		Networks: []string{framework.DefaultNetworkName},
-		NetworkAliases: map[string][]string{
-			framework.DefaultNetworkName: {containerName},
-		},
+		Name:   containerName,
+		Labels: framework.DefaultTCLabels(),
 		HostConfigModifier: func(h *container.HostConfig) {
 			framework.ResourceLimitsFunc(h, in.ContainerResources)
 			if in.HostNetworkMode {
@@ -48,6 +44,19 @@ func baseRequest(in *Input, useWS ExposeWs) testcontainers.ContainerRequest {
 	}
 	if !in.HostNetworkMode {
 		req.ExposedPorts = exposedPorts
+		req.Networks = []string{framework.DefaultNetworkName}
+		req.NetworkAliases = map[string][]string{
+			framework.DefaultNetworkName: {containerName},
+		}
+	}
+	if in.CertificatesPath != "" {
+		req.Files = []testcontainers.ContainerFile{
+			{
+				HostFilePath:      in.CertificatesPath,
+				ContainerFilePath: "/etc/ssl/certs/ca-certificates.crt",
+				FileMode:          0644,
+			},
+		}
 	}
 	return req
 }
