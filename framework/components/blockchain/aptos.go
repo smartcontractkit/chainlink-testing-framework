@@ -80,6 +80,14 @@ func newAptos(in *Input) (*Output, error) {
 		cmd = append(cmd, in.DockerCmdParamsOverrides...)
 	}
 
+	// Set image platform based on architecture
+	var imagePlatform string
+	if runtime.GOARCH == "arm64" {
+		imagePlatform = "linux/arm64"
+	} else {
+		imagePlatform = "linux/amd64"
+	}
+
 	req := testcontainers.ContainerRequest{
 		Image:        in.Image,
 		ExposedPorts: exposedPorts,
@@ -94,7 +102,7 @@ func newAptos(in *Input) (*Output, error) {
 			h.PortBindings = bindings
 			framework.ResourceLimitsFunc(h, in.ContainerResources)
 		},
-		ImagePlatform: "linux/amd64",
+		ImagePlatform: imagePlatform,
 		Cmd:           cmd,
 		Files: []testcontainers.ContainerFile{
 			{
