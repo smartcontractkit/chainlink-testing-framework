@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
@@ -14,8 +15,10 @@ import (
 )
 
 const (
-	DefaultAptosAPIPort    = "8080"
-	DefaultAptosFaucetPort = "8081"
+	DefaultAptosAPIPort     = "8080"
+	DefaultAptosFaucetPort  = "8081"
+	DefaultAptosArm64Image  = "ghcr.io/friedemannf/aptos-tools:aptos-node-v1.30.2-rc"
+	DefaultAptosX86_64Image = "aptoslabs/tools:aptos-node-v1.27.2"
 )
 
 var (
@@ -25,7 +28,16 @@ var (
 
 func defaultAptos(in *Input) {
 	if in.Image == "" {
-		in.Image = "aptoslabs/tools:aptos-node-v1.27.2"
+		// Aptos doesn't support an official arm64 image yet, so we use a custom image for now
+		// CI Runners use x86_64 images, so CI checks will use the official image
+		if runtime.GOARCH == "arm64" {
+			// Uses an unofficial image built for arm64
+			framework.L.Warn().Msgf("Using unofficial Aptos image for arm64 %s", DefaultAptosArm64Image)
+			in.Image = DefaultAptosArm64Image
+		} else {
+			// Official Aptos image
+			in.Image = DefaultAptosX86_64Image
+		}
 	}
 	framework.L.Warn().Msgf("Aptos node API can only be exposed on port %s!", DefaultAptosAPIPort)
 	if in.Port == "" {
@@ -68,6 +80,14 @@ func newAptos(in *Input) (*Output, error) {
 		cmd = append(cmd, in.DockerCmdParamsOverrides...)
 	}
 
+	// Set image platform based on architecture
+	var imagePlatform string
+	if runtime.GOARCH == "arm64" {
+		imagePlatform = "linux/arm64"
+	} else {
+		imagePlatform = "linux/amd64"
+	}
+
 	req := testcontainers.ContainerRequest{
 		Image:        in.Image,
 		ExposedPorts: exposedPorts,
@@ -82,7 +102,7 @@ func newAptos(in *Input) (*Output, error) {
 			h.PortBindings = bindings
 			framework.ResourceLimitsFunc(h, in.ContainerResources)
 		},
-		ImagePlatform: "linux/amd64",
+		ImagePlatform: imagePlatform,
 		Cmd:           cmd,
 		Files: []testcontainers.ContainerFile{
 			{
