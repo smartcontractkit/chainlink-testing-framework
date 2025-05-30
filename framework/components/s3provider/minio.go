@@ -3,7 +3,7 @@ package s3provider
 import (
 	"context"
 	"fmt"
-	"math/rand/v2"
+	randv2 "math/rand/v2"
 	"net"
 	"strconv"
 
@@ -12,10 +12,10 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 const (
@@ -276,7 +276,7 @@ const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 func randomStr(n int) string {
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letterBytes[rand.IntN(len(letterBytes))]
+		b[i] = letterBytes[randv2.IntN(len(letterBytes))]
 	}
 
 	return string(b)
