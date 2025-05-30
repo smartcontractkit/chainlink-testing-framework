@@ -1,0 +1,8 @@
+[local_s3]
+host = "minio"
+port = 9000
+console_port = 9001
+access_key = ""
+secret_key = ""
+bucket = "test-bucket"
+region = "us-east-1"

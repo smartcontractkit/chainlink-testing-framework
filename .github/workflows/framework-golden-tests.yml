@@ -63,6 +63,10 @@ jobs:
             config: scalability.toml
             count: 1
             timeout: 10m
+          - name: TestLocalS3
+            config: local_s3.toml
+            count: 1
+            timeout: 10m
     name: ${{ matrix.test.name }}
     steps:
       - name: Checkout repo
