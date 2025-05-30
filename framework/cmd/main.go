@@ -3,7 +3,6 @@ package main
 import (
 	"embed"
 	"fmt"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/s3provider"
 	"io/fs"
 	"log"
 	"os"
@@ -242,68 +241,6 @@ func main() {
 						ResultsFile:         "ctf-ci.json",
 					})
 					return err
-				},
-			},
-			{
-				Name:  "s3",
-				Usage: "Controls local S3",
-				Subcommands: []*cli.Command{
-					{
-						Name:        "up",
-						Usage:       "ctf s3 up",
-						Aliases:     []string{"u"},
-						Description: "Spins up a local S3 provider (minio)",
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:     "access-key",
-								Aliases:  []string{"a"},
-								Usage:    "set access key (default: randomly generated)",
-								Required: false,
-							},
-							&cli.StringFlag{
-								Name:     "secret-key",
-								Aliases:  []string{"s"},
-								Usage:    "set secret key (default: randomly generated)",
-								Required: false,
-							},
-						},
-						Action: func(c *cli.Context) error {
-							accessKey := c.String("access-key")
-							secretKey := c.String("secret-key")
-
-							var myS3 s3provider.Provider
-							var err error
-							if accessKey != "" && secretKey != "" {
-								myS3, err = s3provider.NewMinioFactory().New(
-									s3provider.WithPort(9000),
-									s3provider.WithConsolePort(9001),
-									s3provider.WithAccessKey(accessKey),
-									s3provider.WithSecretKey(secretKey),
-									s3provider.WithKeep(),
-								)
-							} else {
-								myS3, err = s3provider.NewMinioFactory().New(
-									s3provider.WithPort(9000),
-									s3provider.WithConsolePort(9001),
-									s3provider.WithKeep(),
-								)
-							}
-
-							if err != nil {
-								L.Error().Msg(err.Error())
-								return err
-							}
-							framework.L.Info().Msg(fmt.Sprintf(
-								"S3 provider running:\tEndpoint: %s\tConsole URL: %s\tAccessKey: %s\tSecretKey: %s\tBucket: %s",
-								myS3.GetEndpoint(),
-								myS3.GetConsoleURL(),
-								myS3.GetAccessKey(),
-								myS3.GetSecretKey(),
-								myS3.GetBucket(),
-							))
-							return nil
-						},
-					},
 				},
 			},
 		},

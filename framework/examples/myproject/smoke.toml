@@ -1,7 +1,5 @@
 
 [blockchain_a]
-  host_network_mode = true
-  extra_hosts = ["gap-rpc-proxy.public.main.prod.cldev.sh:127.0.0.1"]
   docker_cmd_params = ["-b", "1"]
   type = "anvil"
 
