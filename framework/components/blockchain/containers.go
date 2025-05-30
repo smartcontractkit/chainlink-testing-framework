@@ -13,6 +13,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
+const DefaultUbuntuCACertificatePath = "/etc/ssl/certs/ca-certificates.crt"
+
 type ExposeWs = bool
 
 const (
@@ -38,7 +40,6 @@ func baseRequest(in *Input, useWS ExposeWs) testcontainers.ContainerRequest {
 			} else {
 				h.PortBindings = framework.MapTheSamePort(exposedPorts...)
 			}
-			h.ExtraHosts = in.ExtraHosts
 		},
 		WaitingFor: wait.ForListeningPort(nat.Port(in.Port)).WithStartupTimeout(15 * time.Second).WithPollInterval(200 * time.Millisecond),
 	}
@@ -53,7 +54,7 @@ func baseRequest(in *Input, useWS ExposeWs) testcontainers.ContainerRequest {
 		req.Files = []testcontainers.ContainerFile{
 			{
 				HostFilePath:      in.CertificatesPath,
-				ContainerFilePath: "/etc/ssl/certs/ca-certificates.crt",
+				ContainerFilePath: DefaultUbuntuCACertificatePath,
 				FileMode:          0644,
 			},
 		}
