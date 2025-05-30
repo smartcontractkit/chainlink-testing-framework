@@ -48,20 +48,22 @@ type Output struct {
 	AccessKey      string `toml:"access_key"`
 	Bucket         string `toml:"bucket"`
 	ConsoleURL     string `toml:"console_url"`
+	ConsoleBaseURL string `toml:"console_base_url"`
 	Endpoint       string `toml:"endpoint"`
-	DockerEndpoint string `toml:"docker_endpoint"`
+	BaseEndpoint   string `toml:"base_endpoint"`
 	Region         string `toml:"region"`
 	UseCache       bool   `toml:"use_cache"`
 }
 
-func (m Minio) GetOutput() *Output {
+func (m Minio) Output() *Output {
 	return &Output{
 		AccessKey:      m.GetAccessKey(),
 		SecretKey:      m.GetSecretKey(),
 		Bucket:         m.GetBucket(),
 		ConsoleURL:     m.GetConsoleURL(),
+		ConsoleBaseURL: m.GetConsoleBaseURL(),
 		Endpoint:       m.GetEndpoint(),
-		DockerEndpoint: m.GetDockerEndpoint(),
+		BaseEndpoint:   m.GetBaseEndpoint(),
 		Region:         m.GetRegion(),
 	}
 }
@@ -82,11 +84,15 @@ func (m Minio) GetConsoleURL() string {
 	return fmt.Sprintf("http://%s", net.JoinHostPort(m.Host, strconv.Itoa(m.ConsolePort)))
 }
 
+func (m Minio) GetConsoleBaseURL() string {
+	return fmt.Sprintf("http://%s", net.JoinHostPort(DefaultHost, strconv.Itoa(m.ConsolePort)))
+}
+
 func (m Minio) GetEndpoint() string {
 	return fmt.Sprintf("%s:%d", m.Host, m.Port)
 }
 
-func (m Minio) GetDockerEndpoint() string {
+func (m Minio) GetBaseEndpoint() string {
 	return fmt.Sprintf("%s:%d", DefaultHost, m.Port)
 }
 
@@ -113,7 +119,7 @@ func (mf MinioFactory) NewFrom(input *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	return provider.GetOutput(), nil
+	return provider.Output(), nil
 }
 
 func DefaultMinio() *Minio {
@@ -150,7 +156,7 @@ func (mf MinioFactory) run(m *Minio) (Provider, error) {
 		"compose_default": {DefaultName},
 	}
 
-	if len(framework.DefaultNetworkName) == 0 {
+	if len(framework.DefaultNetworkName) > 0 {
 		// attach default ctf network if initiated
 		networks = append(networks, framework.DefaultNetworkName)
 		networkAliases[framework.DefaultNetworkName] = []string{

@@ -16,20 +16,28 @@ import (
 func TestNew(t *testing.T) {
 	port := freeport.GetOne(t)
 	consolePort := freeport.GetOne(t)
-	s3provider, err := NewMinioFactory().New(WithPort(port), WithConsolePort(consolePort))
+	accessKey, secretKey := randomStr(accessKeyLength), randomStr(secretKeyLength)
+	s3provider, err := NewMinioFactory().New(
+		WithPort(port),
+		WithConsolePort(consolePort),
+		WithAccessKey(accessKey),
+		WithSecretKey(secretKey),
+	)
 	require.NoError(t, err)
 
 	// Test Output
-	output := s3provider.GetOutput()
+	output := s3provider.Output()
 	require.True(t,
 		cmp.Equal(&Output{
-			Bucket:         DefaultBucket,
-			ConsoleURL:     s3provider.GetConsoleURL(),
-			Endpoint:       s3provider.GetEndpoint(),
-			DockerEndpoint: fmt.Sprintf("%s:%d", DefaultHost, port),
-			Region:         s3provider.GetRegion(),
-			UseCache:       false,
-		}, output, cmpopts.IgnoreFields(Output{}, "AccessKey", "SecretKey")))
+			AccessKey:    accessKey,
+			SecretKey:    secretKey,
+			Bucket:       DefaultBucket,
+			ConsoleURL:   s3provider.GetConsoleURL(),
+			Endpoint:     s3provider.GetEndpoint(),
+			BaseEndpoint: fmt.Sprintf("%s:%d", DefaultHost, port),
+			Region:       s3provider.GetRegion(),
+			UseCache:     false,
+		}, output))
 	require.Len(t, output.AccessKey, accessKeyLength)
 	require.Len(t, output.SecretKey, secretKeyLength)
 
@@ -59,12 +67,12 @@ func TestNewFrom(t *testing.T) {
 	fmt.Printf("%#v\n", output)
 	require.True(t,
 		cmp.Equal(&Output{
-			Bucket:         DefaultBucket,
-			ConsoleURL:     fmt.Sprintf("http://%s:%d", "127.0.0.1", consolePort),
-			Endpoint:       fmt.Sprintf("%s:%d", "127.0.0.1", port),
-			DockerEndpoint: fmt.Sprintf("%s:%d", "minio", port),
-			Region:         DefaultRegion,
-			UseCache:       false,
+			Bucket:       DefaultBucket,
+			ConsoleURL:   fmt.Sprintf("http://%s:%d", "127.0.0.1", consolePort),
+			Endpoint:     fmt.Sprintf("%s:%d", "127.0.0.1", port),
+			BaseEndpoint: fmt.Sprintf("%s:%d", "minio", port),
+			Region:       DefaultRegion,
+			UseCache:     false,
 		}, output, cmpopts.IgnoreFields(Output{}, "AccessKey", "SecretKey")))
 	require.Len(t, output.AccessKey, accessKeyLength)
 	require.Len(t, output.SecretKey, secretKeyLength)
