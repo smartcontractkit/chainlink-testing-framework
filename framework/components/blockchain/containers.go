@@ -79,16 +79,16 @@ func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest, u
 
 	// specific case to bridge with GAPv2 in CI
 	// we run blockchains on "host" network for connectivity
-	var exposedPort nat.Port
+	var exposedPort string
 	if in.HostNetworkMode {
-		exposedPort = nat.Port(in.Port)
+		exposedPort = in.Port
 	} else {
 		bindPort := req.ExposedPorts[0]
 		ep, err := c.MappedPort(ctx, nat.Port(bindPort))
 		if err != nil {
 			return nil, err
 		}
-		exposedPort = ep
+		exposedPort = ep.Port()
 	}
 
 	containerName := req.Name
