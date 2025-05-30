@@ -3,7 +3,7 @@ package s3provider
 import (
 	"context"
 	"fmt"
-	randv2 "math/rand/v2"
+	"math/rand/v2"
 	"net"
 	"strconv"
 
@@ -276,7 +276,7 @@ const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 func randomStr(n int) string {
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letterBytes[randv2.IntN(len(letterBytes))]
+		b[i] = letterBytes[rand.IntN(len(letterBytes))] // #nosec G404
 	}
 
 	return string(b)
