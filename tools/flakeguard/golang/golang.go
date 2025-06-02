@@ -213,10 +213,11 @@ type SkipTest struct {
 // SkipTests finds all package/test pairs provided and skips them
 func SkipTests(repoPath string, testsToSkip []SkipTest) error {
 	for _, testToSkip := range testsToSkip {
-		cmd := exec.Command("go", "list", "-json", testToSkip.Package)
+		cmd := exec.Command("go", "list", "-f", "{{.Dir}}", testToSkip.Package)
+		cmd.Dir = repoPath
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			return fmt.Errorf("error getting package path for %s: %w", testToSkip.Package, err)
+			return fmt.Errorf("error getting package path for %s: %w\nOutput:\n%s", testToSkip.Package, err, string(out))
 		}
 		packagePath := strings.TrimSpace(string(out))
 		log.Debug().Str("package", testToSkip.Package).Str("test", testToSkip.Name).Str("packagePath", packagePath).Msg("Skipping test")
