@@ -5,7 +5,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/printer"
+	"go/token"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -196,4 +202,90 @@ func FilterPackagesWithTests(pkgs []string) []string {
 		}
 	}
 	return testPkgs
+}
+
+// SkipTest is a struct that contains the package and name of the test to skip
+type SkipTest struct {
+	Package string
+	Name    string
+}
+
+// SkipTests finds all package/test pairs provided and skips them
+func SkipTests(repoPath string, testsToSkip []SkipTest) error {
+	for _, testToSkip := range testsToSkip {
+		cmd := exec.Command("go", "list", "-json", testToSkip.Package)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("error getting package path for %s: %w", testToSkip.Package, err)
+		}
+		packagePath := strings.TrimSpace(string(out))
+		log.Debug().Str("package", testToSkip.Package).Str("test", testToSkip.Name).Str("packagePath", packagePath).Msg("Skipping test")
+
+		err = filepath.Walk(filepath.Join(repoPath, packagePath), func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if info.IsDir() || !strings.HasSuffix(info.Name(), "_test.go") {
+				return nil
+			}
+
+			fset := token.NewFileSet()
+			fileAst, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+			if err != nil {
+				return err
+			}
+
+			found := false
+			ast.Inspect(fileAst, func(n ast.Node) bool {
+				fn, ok := n.(*ast.FuncDecl)
+				if !ok || fn.Name.Name != testToSkip.Name {
+					return true
+				}
+				// Check if first parameter is *testing.T
+				if fn.Type.Params != nil && len(fn.Type.Params.List) > 0 {
+					param := fn.Type.Params.List[0]
+					if starExpr, ok := param.Type.(*ast.StarExpr); ok {
+						if sel, ok := starExpr.X.(*ast.SelectorExpr); ok && sel.Sel.Name == "T" {
+							// Insert t.Skip as first statement
+							skipStmt := &ast.ExprStmt{
+								X: &ast.CallExpr{
+									Fun: &ast.SelectorExpr{
+										X:   ast.NewIdent(param.Names[0].Name),
+										Sel: ast.NewIdent("Skip"),
+									},
+									Args: []ast.Expr{
+										&ast.BasicLit{
+											Kind:  token.STRING,
+											Value: "\"skipped by flakeguard\"",
+										},
+									},
+								},
+							}
+							fn.Body.List = append([]ast.Stmt{skipStmt}, fn.Body.List...)
+							found = true
+							return false // stop
+						}
+					}
+				}
+				return true
+			})
+
+			if found {
+				// Write back the file
+				var out strings.Builder
+				if err := printer.Fprint(&out, fset, fileAst); err != nil {
+					return err
+				}
+				if err := os.WriteFile(path, []byte(out.String()), info.Mode()); err != nil {
+					return err
+				}
+				return filepath.SkipDir // stop walking
+			}
+			return fmt.Errorf("test function %s not found in package %s", testToSkip.Name, testToSkip.Package)
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

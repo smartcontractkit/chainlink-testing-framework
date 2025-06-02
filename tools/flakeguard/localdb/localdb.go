@@ -202,6 +202,20 @@ func (db *DB) GetAllEntries() []Entry {
 	return entries
 }
 
+// GetAllCurrentlyFlakyEntries returns all entries that currently have an open Jira ticket
+// for being a flaky test.
+func (db *DB) GetAllCurrentlyFlakyEntries() []Entry {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+	entries := make([]Entry, 0, len(db.data))
+	for _, entry := range db.data {
+		if entry.JiraTicket != "" {
+			entries = append(entries, entry)
+		}
+	}
+	return entries
+}
+
 // DefaultDBPath returns the default DB file path in the user's home directory.
 // Renamed from getDefaultDBPath to be exported.
 // If the user's home directory cannot be determined, it falls back to the current directory.

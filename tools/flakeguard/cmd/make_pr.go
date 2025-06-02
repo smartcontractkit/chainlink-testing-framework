@@ -9,6 +9,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/google/go-github/v72/github"
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/golang"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/localdb"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
@@ -36,14 +37,14 @@ func makePR(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	entries := db.GetAllEntries()
+	currentlyFlakyEntries := db.GetAllCurrentlyFlakyEntries()
 
 	branchName := fmt.Sprintf("flakeguard-skip-%s", time.Now().Format("20060102150405"))
-	w, err := repo.Worktree()
+	targetRepoWorktree, err := repo.Worktree()
 	if err != nil {
 		return err
 	}
-	err = w.Checkout(&git.CheckoutOptions{
+	err = targetRepoWorktree.Checkout(&git.CheckoutOptions{
 		Branch: plumbing.NewBranchReferenceName(branchName),
 		Create: true,
 	})
@@ -51,19 +52,24 @@ func makePR(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	for _, entry := range entries {
-		// Find the test function in the codebase and skip it
-
-		entry.SkippedAt = time.Now()
-		db.UpsertEntry(entry.TestPackage, entry.TestName, entry.JiraTicket, entry.SkippedAt, entry.AssigneeID)
-
+	testsToSkip := []golang.SkipTest{}
+	for _, entry := range currentlyFlakyEntries {
+		testsToSkip = append(testsToSkip, golang.SkipTest{
+			Package: entry.TestPackage,
+			Name:    entry.TestName,
+		})
 	}
 
-	_, err = w.Add(".")
+	err = golang.SkipTests(repoPath, testsToSkip)
 	if err != nil {
 		return err
 	}
-	_, err = w.Commit("Skips flaky tests", &git.CommitOptions{})
+
+	_, err = targetRepoWorktree.Add(".")
+	if err != nil {
+		return err
+	}
+	_, err = targetRepoWorktree.Commit("Skips flaky tests", &git.CommitOptions{})
 	if err != nil {
 		return err
 	}
