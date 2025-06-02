@@ -322,7 +322,7 @@ func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 										&ast.BasicLit{
 											Kind: token.STRING,
 											Value: fmt.Sprintf(
-												"Skipped by flakeguard: https://%s/issues/%s",
+												"\"Skipped by flakeguard: https://%s/issues/%s\"",
 												os.Getenv("JIRA_DOMAIN"),
 												testToSkip.JiraTicket,
 											),
