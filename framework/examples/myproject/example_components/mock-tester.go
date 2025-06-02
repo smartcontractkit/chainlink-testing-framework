@@ -21,6 +21,7 @@ func NewDockerFakeTester(url string) error {
 		Cmd:        []string{"curl", "-v", url},
 		Labels:     framework.DefaultTCLabels(),
 		WaitingFor: wait.ForExit(),
+		Networks: []string{framework.DefaultNetworkName, "default_compose"},
 	}
 	curlContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,

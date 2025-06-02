@@ -24,7 +24,12 @@ require (
 
 require (
 	github.com/danieljoos/wincred v1.2.1 // indirect
+	github.com/go-ini/ini v1.67.0 // indirect
+	github.com/minio/crc64nvme v1.0.0 // indirect
+	github.com/minio/md5-simd v1.1.2 // indirect
+	github.com/minio/minio-go/v7 v7.0.86 // indirect
 	github.com/oasisprotocol/curve25519-voi v0.0.0-20220328075252-7dd334e3daae // indirect
+	github.com/rs/xid v1.6.0 // indirect
 	github.com/sigurn/crc16 v0.0.0-20211026045750-20ab5afb07e3 // indirect
 	github.com/tjhop/slog-gokit v0.1.3 // indirect
 	github.com/urfave/cli v1.22.16 // indirect
