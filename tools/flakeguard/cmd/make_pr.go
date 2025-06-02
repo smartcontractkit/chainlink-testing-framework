@@ -65,14 +65,14 @@ func makePR(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to checkout default branch %s: %w", defaultBranch, err)
 	}
 
-	fmt.Print("Fetching latest changes from default branch, tap your yubikey if it's blinking...")
+	fmt.Printf("Fetching latest changes from default branch '%s', tap your yubikey if it's blinking...", defaultBranch)
 	err = repo.Fetch(&git.FetchOptions{})
 	if err != nil && err != git.NoErrAlreadyUpToDate {
 		return fmt.Errorf("failed to fetch latest: %w", err)
 	}
 	fmt.Println(" ✅")
 
-	fmt.Print("Pulling latest changes from default branch, tap your yubikey if it's blinking...")
+	fmt.Printf("Pulling latest changes from default branch '%s', tap your yubikey if it's blinking...", defaultBranch)
 	err = targetRepoWorktree.Pull(&git.PullOptions{})
 	if err != nil && err != git.NoErrAlreadyUpToDate {
 		return fmt.Errorf("failed to pull latest changes: %w", err)

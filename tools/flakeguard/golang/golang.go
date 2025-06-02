@@ -39,39 +39,50 @@ func List() (*utils.CmdOutput, error) {
 	return utils.ExecuteCmd("go", "list", "-json", "./...")
 }
 
-// Packages parses the output of `go list -json ./...` and returns a slice of Package structs
+// Packages finds all packages in the repository
 func Packages(repoPath string) ([]Package, error) {
-	cmd := exec.Command("go", "list", "-json", "./...")
-	cmd.Dir = repoPath
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("error getting packages: %w\nOutput:\n%s", err, string(out))
-	}
-
 	var packages []Package
-	scanner := bufio.NewScanner(bytes.NewReader(out))
-	var buffer bytes.Buffer
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		line = strings.TrimSpace(line)
-		buffer.WriteString(line)
-
-		if line == "}" {
-			var pkg Package
-			if err := json.Unmarshal(buffer.Bytes(), &pkg); err != nil {
-				return nil, err
-			}
-			packages = append(packages, pkg)
-			buffer.Reset()
+	// Find all go.mod files and run go list -json ./... in the directory of each go.mod file
+	// This is necessary because go list -json ./... only returns packages that are associated with the current go.mod file
+	err := filepath.Walk(repoPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
 		}
-	}
+		if info.Name() == "go.mod" {
+			cmd := exec.Command("go", "list", "-json", "./...")
+			cmd.Dir = filepath.Dir(path)
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				return fmt.Errorf("error getting packages: %w\nOutput:\n%s", err, string(out))
+			}
+			scanner := bufio.NewScanner(bytes.NewReader(out))
+			var buffer bytes.Buffer
 
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
+			for scanner.Scan() {
+				line := scanner.Text()
+				line = strings.TrimSpace(line)
+				buffer.WriteString(line)
 
-	return packages, nil
+				if line == "}" {
+					var pkg Package
+					if err := json.Unmarshal(buffer.Bytes(), &pkg); err != nil {
+						return err
+					}
+					packages = append(packages, pkg)
+					buffer.Reset()
+				}
+			}
+
+			if err := scanner.Err(); err != nil {
+				return err
+			}
+			return nil
+		}
+		return nil
+	})
+
+	return packages, err
 }
 
 func GetGoDepMap(packages []Package) DepMap {
@@ -236,7 +247,7 @@ type SkipTest struct {
 func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 	packages, err := Packages(repoPath)
 	if err != nil {
-		return fmt.Errorf("error getting packages: %w", err)
+		return err
 	}
 
 	for _, testToSkip := range testsToSkip {
@@ -251,7 +262,7 @@ func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 			}
 		}
 		if packageDir == "" {
-			return fmt.Errorf("package %s not found", packageDir)
+			return fmt.Errorf("directory for package '%s' not found", packageImportPath)
 		}
 
 		log.Debug().
@@ -309,8 +320,12 @@ func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 									},
 									Args: []ast.Expr{
 										&ast.BasicLit{
-											Kind:  token.STRING,
-											Value: "\"skipped by flakeguard\"",
+											Kind: token.STRING,
+											Value: fmt.Sprintf(
+												"Skipped by flakeguard: https://%s/issues/%s",
+												os.Getenv("JIRA_DOMAIN"),
+												testToSkip.JiraTicket,
+											),
 										},
 									},
 								},
