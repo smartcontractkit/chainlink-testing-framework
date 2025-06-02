@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync" // Import sync for mutex
 	"time"
 
@@ -16,11 +17,12 @@ const defaultDBFileName = ".flaky_test_db.json"
 // Entry represents one record in the local DB for a given test.
 // Removed IsSkipped as SkippedAt.IsZero() is the source of truth.
 type Entry struct {
-	TestPackage string    `json:"test_package"`
-	TestName    string    `json:"test_name"`
-	JiraTicket  string    `json:"jira_ticket,omitempty"` // Allow empty string
-	AssigneeID  string    `json:"jira_assignee_id,omitempty"`
-	SkippedAt   time.Time `json:"skipped_at,omitempty"`
+	TestPackage     string    `json:"test_package"`
+	TestName        string    `json:"test_name"`
+	JiraTicket      string    `json:"jira_ticket,omitempty"`       // The current Jira ticket for fixing the flaky test
+	PastJiraTickets []string  `json:"past_jira_tickets,omitempty"` // All past, closed Jira tickets for the test
+	AssigneeID      string    `json:"jira_assignee_id,omitempty"`
+	SkippedAt       time.Time `json:"skipped_at,omitempty"`
 }
 
 // DB is a simple in-memory map keyed by "pkg::testName" => Entry,
@@ -161,6 +163,11 @@ func (db *DB) UpsertEntry(testPackage, testName, jiraTicket string, skippedAt ti
 	// Update ALL fields based on input parameters
 	entry.TestPackage = testPackage // Ensure these are set even if entry was new
 	entry.TestName = testName
+	if entry.JiraTicket != jiraTicket && entry.JiraTicket != "" {
+		if !slices.Contains(entry.PastJiraTickets, entry.JiraTicket) {
+			entry.PastJiraTickets = append(entry.PastJiraTickets, entry.JiraTicket)
+		}
+	}
 	entry.JiraTicket = jiraTicket
 	entry.AssigneeID = assigneeID
 	entry.SkippedAt = skippedAt.UTC() // Always store in UTC

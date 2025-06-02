@@ -1,12 +1,10 @@
-Flakeguard
-==========
+# Flakeguard
 
 **Flakeguard** is a tool designed to help identify flaky tests within a Go project. Flaky tests are tests that intermittently fail without changes to the code, often due to race conditions or other non-deterministic behavior. Flakeguard assists by analyzing the impact of code changes on test packages and by running tests multiple times to determine stability.
 
 In addition to detecting flaky tests, Flakeguard can also integrate with Jira to track known flaky tests. It maintains a local database of tests and their associated Jira tickets, allowing you to create and manage these tickets directly from the command line.
 
-Features
---------
+## Features
 
 *   **Identify Impacted Tests:** Detects test packages that may be affected by changes in your Go project files.
 *   **Run Tests for Flakiness:** Runs tests multiple times to determine their flakiness.
@@ -16,8 +14,7 @@ Features
 *   **Jira Integration (Optional):** Create, review, and manage flaky test tickets in Jira.
 *   **Local Database:** Store known flaky tests and their associated Jira tickets for easy reference.
 
-Prerequisites
--------------
+## Prerequisites
 
 1.  **Go:** Version 1.21 or later recommended.
 2.  **Jira API Access (optional):** Required only if you want to use the Jira-related commands (`create-tickets`, `review-tickets`, `sync-jira`):
@@ -26,23 +23,24 @@ Prerequisites
     *   `JIRA_API_KEY`: Your Jira API token (generate one in your Jira account settings).
     *   `JIRA_PROJECT_KEY`: (Optional) The default Jira project key to use if `--jira-project` is not specified for `create-tickets`.
 
-Installation
-------------
+## Installation
 
 To install the `flakeguard` CLI, ensure you have Go installed. Then run:
 
+```sh
 go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@latest
+```
 
 You can also clone the repository and build from source:
 
+```sh
 git clone https://github.com/smartcontractkit/chainlink-testing-framework.git
 cd chainlink-testing-framework/tools/flakeguard
 
 go build -o flakeguard main.go
+```
 
-
-Usage (Flaky Test Detection)
-----------------------------------
+## Usage (Flaky Test Detection)
 
 Flakeguard provides two primary commands for local detection of flaky tests without involving Jira: `find` and `run`.
 
@@ -56,8 +54,7 @@ The `find` command scans your Go project to determine which test packages may be
 After identifying packages of interest (via `flakeguard find` or otherwise), use the `run` command to execute tests multiple times to detect flakiness.
 
 
-Configuration Files (for Jira Integration)
-------------------------------------------
+## Configuration Files (for Jira Integration)
 
 When using Flakeguard’s Jira integration and local database features, you may need these configuration files:
 
@@ -83,8 +80,7 @@ When using Flakeguard’s Jira integration and local database features, you may 
     *   **Flag:** Use `--user-test-mapping-path` (default: `user_test_mapping.json`) when creating tickets.
 
 
-Usage (Jira Integration)
-------------------------
+## Usage (Jira Integration)
 
 If you only need to identify flaky tests locally (via `find` and `run`) and do not intend to create or manage Jira tickets, you can skip these commands.
 
@@ -113,7 +109,7 @@ Interactively process a CSV file of flaky tests, suggest assignees based on patt
 
 **Example:**
 
-```
+```sh
  go run main.go create-tickets \                      
   --jira-project=DX \
   --test-db-path=flaky_test_db.json \
@@ -147,7 +143,7 @@ Interactively review tickets in the local database. Fetches current status and P
 
 **Examples:**
 
-```
+```sh
 go run main.go review-tickets --test-db-path ".flaky_test_db.json" --dry-run=false --user-mapping-path "user_mapping.json"
 ```
 
@@ -166,6 +162,6 @@ Scans Jira for all tickets matching a specific label and ensures they exist in t
 
 **Example:**
 
-```
+```sh
 go run main.go sync-jira --test-db-path=.flaky_test_db.json
 ```

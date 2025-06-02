@@ -117,12 +117,16 @@ Features:
 
 			// Check local DB first for existing ticket
 			if entry, found := db.GetEntry(ft.TestPackage, ft.TestName); found {
-				log.Debug().Str("test", ft.TestName).Str("db_ticket", entry.JiraTicket).Str("db_assignee", entry.AssigneeID).Time("db_skipped_at", entry.SkippedAt).Msg("Found existing entry in local DB")
+				log.Debug().
+					Str("test", ft.TestName).
+					Str("db_ticket", entry.JiraTicket).
+					Str("db_assignee", entry.AssigneeID).
+					Time("db_skipped_at", entry.SkippedAt).
+					Msg("Found existing entry in local DB")
 
-				if entry.JiraTicket != "" {
-					ft.ExistingJiraKey = entry.JiraTicket
-					ft.ExistingTicketSource = "localdb"
-				}
+				ft.RelatedJiraTickets = entry.PastJiraTickets
+				ft.ExistingJiraKey = entry.JiraTicket
+				ft.ExistingTicketSource = "localdb"
 				// Always assign SkippedAt and AssigneeID from the DB entry if found
 				ft.SkippedAt = entry.SkippedAt
 				if entry.AssigneeID != "" {
@@ -168,35 +172,6 @@ Features:
 		if clientErr != nil {
 			log.Warn().Msgf("No valid Jira client: %v\nWill skip searching or creating tickets in Jira.", clientErr)
 			client = nil
-		}
-
-		if client != nil {
-			processedCount := 0
-			totalToSearch := 0
-			for _, t := range tickets {
-				if t.ExistingJiraKey == "" {
-					totalToSearch++
-				}
-			}
-
-			for i := range tickets {
-				t := &tickets[i]
-				if t.ExistingJiraKey == "" {
-					key, searchErr := findExistingTicket(client, jiraSearchLabel, *t)
-					processedCount++
-					if searchErr != nil {
-						log.Warn().Err(searchErr).Str("summary", t.Summary).Msg("Jira search failed for test")
-					} else if key != "" {
-						log.Info().Str("test", t.TestName).Str("found_key", key).Str("label", jiraSearchLabel).Msg("Found existing ticket in Jira via search")
-						t.ExistingJiraKey = key
-						t.ExistingTicketSource = "jira"
-						errDb := db.UpsertEntry(t.TestPackage, t.TestName, key, t.SkippedAt, t.AssigneeId)
-						if errDb != nil {
-							log.Error().Err(errDb).Str("key", key).Msg("Failed to update local DB after finding ticket in Jira!")
-						}
-					}
-				}
-			}
 		}
 
 		m := initialCreateModel(tickets, userMap)
@@ -763,7 +738,19 @@ func updateConfirm(m createModel) (tea.Model, tea.Cmd) {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
-		issueKey, err := jirautils.CreateTicketInJira(ctx, m.JiraClient, t.Summary, t.Description, m.JiraProject, m.JiraIssueType, assigneeForJira, t.Priority, []string{jiraSearchLabel}, pillarName)
+		issueKey, err := jirautils.CreateTicketInJira(
+			ctx,
+			m.JiraClient,
+			t.Summary,
+			t.Description,
+			m.JiraProject,
+			m.JiraIssueType,
+			assigneeForJira,
+			t.Priority,
+			t.RelatedJiraTickets,
+			[]string{},
+			pillarName,
+		)
 
 		if err != nil {
 			errMsg := fmt.Sprintf("Failed to create Jira ticket for %q", t.Summary)
@@ -1033,6 +1020,11 @@ func viewNormal(m createModel) string {
 
 	sb.WriteString(descHeaderStyle.Render("Proposed Description:") + "\n")
 	sb.WriteString(descBodyStyle.Render(t.Description) + "\n")
+
+	if len(t.RelatedJiraTickets) > 0 {
+		sb.WriteString(descHeaderStyle.Render("Related Jira Tickets:") + "\n")
+		sb.WriteString(descBodyStyle.Render(strings.Join(t.RelatedJiraTickets, ", ")) + "\n")
+	}
 
 	// Help Line / Actions
 	sb.WriteString(helpStyle.Render(buildHelpLine(m)))
