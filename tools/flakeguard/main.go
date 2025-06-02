@@ -47,6 +47,7 @@ func init() {
 	rootCmd.AddCommand(cmd.ReviewTicketsCmd)
 	rootCmd.AddCommand(cmd.CreateTicketsCmd)
 	rootCmd.AddCommand(cmd.SyncJiraCmd)
+	rootCmd.AddCommand(cmd.MakePRCmd)
 }
 
 func main() {

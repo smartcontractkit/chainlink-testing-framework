@@ -33,14 +33,23 @@ type Package struct {
 
 type DepMap map[string][]string
 
-func GoList() (*utils.CmdOutput, error) {
+// List returns the output of `go list -json ./...`
+// Deprecated: Use Packages instead
+func List() (*utils.CmdOutput, error) {
 	return utils.ExecuteCmd("go", "list", "-json", "./...")
 }
 
-// ParsePackages parses the output of `go list -json ./...` and returns a slice of Package structs
-func ParsePackages(goList bytes.Buffer) ([]Package, error) {
+// Packages parses the output of `go list -json ./...` and returns a slice of Package structs
+func Packages(repoPath string) ([]Package, error) {
+	cmd := exec.Command("go", "list", "-json", "./...")
+	cmd.Dir = repoPath
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("error getting packages: %w\nOutput:\n%s", err, string(out))
+	}
+
 	var packages []Package
-	scanner := bufio.NewScanner(&goList)
+	scanner := bufio.NewScanner(bytes.NewReader(out))
 	var buffer bytes.Buffer
 
 	for scanner.Scan() {
@@ -58,8 +67,11 @@ func ParsePackages(goList bytes.Buffer) ([]Package, error) {
 		}
 	}
 
-	err := scanner.Err()
-	return packages, err
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return packages, nil
 }
 
 func GetGoDepMap(packages []Package) DepMap {
@@ -206,23 +218,49 @@ func FilterPackagesWithTests(pkgs []string) []string {
 
 // SkipTest is a struct that contains the package and name of the test to skip
 type SkipTest struct {
-	Package string
-	Name    string
+	Package    string
+	Name       string
+	JiraTicket string
+
+	// Set by SkipTests
+
+	// If the test was already skipped, or there were issues skipping it, this will be false
+	Skipped bool
+
+	// The file and line number of the test that was skipped
+	File string
+	Line int
 }
 
 // SkipTests finds all package/test pairs provided and skips them
-func SkipTests(repoPath string, testsToSkip []SkipTest) error {
-	for _, testToSkip := range testsToSkip {
-		cmd := exec.Command("go", "list", "-f", "{{.Dir}}", testToSkip.Package)
-		cmd.Dir = repoPath
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("error getting package path for %s: %w\nOutput:\n%s", testToSkip.Package, err, string(out))
-		}
-		packagePath := strings.TrimSpace(string(out))
-		log.Debug().Str("package", testToSkip.Package).Str("test", testToSkip.Name).Str("packagePath", packagePath).Msg("Skipping test")
+func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
+	packages, err := Packages(repoPath)
+	if err != nil {
+		return fmt.Errorf("error getting packages: %w", err)
+	}
 
-		err = filepath.Walk(filepath.Join(repoPath, packagePath), func(path string, info os.FileInfo, err error) error {
+	for _, testToSkip := range testsToSkip {
+		var (
+			packageDir        string
+			packageImportPath = testToSkip.Package
+		)
+		for _, pkg := range packages {
+			if pkg.ImportPath == packageImportPath {
+				packageDir = pkg.Dir
+				break
+			}
+		}
+		if packageDir == "" {
+			return fmt.Errorf("package %s not found", packageDir)
+		}
+
+		log.Debug().
+			Str("package_dir", packageDir).
+			Str("test", testToSkip.Name).
+			Str("package", packageImportPath).
+			Msg("Skipping test")
+
+		err := filepath.Walk(packageDir, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
@@ -247,7 +285,22 @@ func SkipTests(repoPath string, testsToSkip []SkipTest) error {
 					param := fn.Type.Params.List[0]
 					if starExpr, ok := param.Type.(*ast.StarExpr); ok {
 						if sel, ok := starExpr.X.(*ast.SelectorExpr); ok && sel.Sel.Name == "T" {
-							// Insert t.Skip as first statement
+							// Check if test is already skipped
+							for _, stmt := range fn.Body.List {
+								if exprStmt, ok := stmt.(*ast.ExprStmt); ok {
+									if callExpr, ok := exprStmt.X.(*ast.CallExpr); ok {
+										if selExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
+											if selExpr.Sel.Name == "Skip" {
+												// Test is already skipped, don't modify it
+												found = true
+												return false
+											}
+										}
+									}
+								}
+							}
+
+							// Test is not skipped, add skip statement
 							skipStmt := &ast.ExprStmt{
 								X: &ast.CallExpr{
 									Fun: &ast.SelectorExpr{
@@ -262,9 +315,12 @@ func SkipTests(repoPath string, testsToSkip []SkipTest) error {
 									},
 								},
 							}
+							testToSkip.File = path
+							testToSkip.Line = fset.Position(fn.Pos()).Line
+							testToSkip.Skipped = true
 							fn.Body.List = append([]ast.Stmt{skipStmt}, fn.Body.List...)
 							found = true
-							return false // stop
+							return false
 						}
 					}
 				}

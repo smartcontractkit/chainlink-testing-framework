@@ -94,11 +94,6 @@ func init() {
 }
 
 func findAffectedPackages(baseRef, projectPath string, excludes []string, levels int) []string {
-	goList, err := golang.GoList()
-	if err != nil {
-		log.Error().Err(err).Msg("Error getting go list")
-		os.Exit(ErrorExitCode)
-	}
 	gitDiff, err := git.Diff(baseRef)
 	if err != nil {
 		log.Error().Err(err).Msg("Error getting the git diff")
@@ -110,7 +105,7 @@ func findAffectedPackages(baseRef, projectPath string, excludes []string, levels
 		os.Exit(ErrorExitCode)
 	}
 
-	packages, err := golang.ParsePackages(goList.Stdout)
+	packages, err := golang.Packages(projectPath)
 	if err != nil {
 		log.Error().Err(err).Msg("Error parsing packages")
 		os.Exit(ErrorExitCode)
