@@ -157,10 +157,16 @@ func makePR(cmd *cobra.Command, args []string) error {
 	var (
 		skippedTestsPRBody        strings.Builder
 		alreadySkippedTestsPRBody strings.Builder
+		errorSkippingTestsPRBody  strings.Builder
 	)
 
 	for _, test := range testsToSkip {
-		if test.NewlySkipped {
+		if test.ErrorSkipping != nil {
+			errorSkippingTestsPRBody.WriteString(fmt.Sprintf("- Package: `%s`\n", test.Package))
+			errorSkippingTestsPRBody.WriteString(fmt.Sprintf("  Test: `%s`\n", test.Name))
+			errorSkippingTestsPRBody.WriteString(fmt.Sprintf("  Ticket: [%s](https://%s/browse/%s)\n", test.JiraTicket, os.Getenv("JIRA_DOMAIN"), test.JiraTicket))
+			errorSkippingTestsPRBody.WriteString(fmt.Sprintf("  Error: %s\n\n", test.ErrorSkipping))
+		} else if test.NewlySkipped {
 			skippedTestsPRBody.WriteString(fmt.Sprintf("- Package: `%s`\n", test.Package))
 			skippedTestsPRBody.WriteString(fmt.Sprintf("  Test: `%s`\n", test.Name))
 			skippedTestsPRBody.WriteString(fmt.Sprintf("  Ticket: [%s](https://%s/browse/%s)\n", test.JiraTicket, os.Getenv("JIRA_DOMAIN"), test.JiraTicket))
@@ -171,12 +177,23 @@ func makePR(cmd *cobra.Command, args []string) error {
 			alreadySkippedTestsPRBody.WriteString(fmt.Sprintf("  Ticket: [%s](https://%s/browse/%s)\n", test.JiraTicket, os.Getenv("JIRA_DOMAIN"), test.JiraTicket))
 		}
 	}
+	body := fmt.Sprintf(`## Tests That I Failed to Skip Automatically, Need Manual Intervention
+
+%s
+
+## Tests Skipped
+
+%s
+
+## Tests That Were Already Skipped
+
+%s`, errorSkippingTestsPRBody.String(), skippedTestsPRBody.String(), alreadySkippedTestsPRBody.String())
 
 	pr := &github.NewPullRequest{
 		Title:               github.Ptr(fmt.Sprintf("[%s] Flakeguard: Skip flaky tests", strings.Join(jiraTickets, "] ["))),
 		Head:                github.Ptr(branchName),
 		Base:                github.Ptr(defaultBranch),
-		Body:                github.Ptr(fmt.Sprintf("## Tests Skipped\n\n%s\n\n## Tests That Were Already Skipped\n\n%s", skippedTestsPRBody.String(), alreadySkippedTestsPRBody.String())),
+		Body:                github.Ptr(body),
 		MaintainerCanModify: github.Ptr(true),
 	}
 
