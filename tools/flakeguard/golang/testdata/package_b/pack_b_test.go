@@ -15,6 +15,6 @@ func TestPackBFailTrick(t *testing.T) {
 	t.Log("This test should not fail or get skipped by flakeguard")
 }
 
-func TestPackBAlreadySkipped(t *testing.T) {
+func TestPackBSkippedAlready(t *testing.T) {
 	t.Skip("This test should already be skipped, and not be skipped again")
 }

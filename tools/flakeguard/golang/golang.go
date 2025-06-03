@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -67,7 +68,7 @@ func Packages(repoPath string) ([]Package, error) {
 				if line == "}" {
 					var pkg Package
 					if err := json.Unmarshal(buffer.Bytes(), &pkg); err != nil {
-						return err
+						return fmt.Errorf("error unmarshalling go list output for file %s: %w", path, err)
 					}
 					packages = append(packages, pkg)
 					buffer.Reset()
@@ -75,7 +76,7 @@ func Packages(repoPath string) ([]Package, error) {
 			}
 
 			if err := scanner.Err(); err != nil {
-				return err
+				return fmt.Errorf("error scanning go list output for file %s: %w", path, err)
 			}
 			return nil
 		}
@@ -235,8 +236,9 @@ type SkipTest struct {
 
 	// Set by SkipTests
 	// These values might be useless info, but for now we'll keep them
-	NewlySkipped   bool // If the test was newly skipped after calling SkipTests
-	AlreadySkipped bool // If the test was already skipped before calling SkipTests
+	NewlySkipped   bool  // If the test was newly skipped after calling SkipTests
+	AlreadySkipped bool  // If the test was already skipped before calling SkipTests
+	ErrorSkipping  error // If we failed to skip the test, this will be set
 	File           string
 	Line           int
 }
@@ -252,7 +254,9 @@ func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 		var (
 			packageDir        string
 			packageImportPath = testToSkip.Package
+			found             = false
 		)
+
 		for _, pkg := range packages {
 			if pkg.ImportPath == packageImportPath {
 				packageDir = pkg.Dir
@@ -267,7 +271,7 @@ func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 			Str("package_dir", packageDir).
 			Str("test", testToSkip.Name).
 			Str("package", packageImportPath).
-			Msg("Skipping test")
+			Msg("Looking to skip test")
 
 		err := filepath.Walk(packageDir, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -276,87 +280,184 @@ func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 			if info.IsDir() || !strings.HasSuffix(info.Name(), "_test.go") {
 				return nil
 			}
-
 			fset := token.NewFileSet()
 			fileAst, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
 			if err != nil {
-				return err
+				return fmt.Errorf("error parsing file '%s': %w", path, err)
 			}
 
-			found := false
-			ast.Inspect(fileAst, func(n ast.Node) bool {
-				fn, ok := n.(*ast.FuncDecl)
-				if !ok || fn.Name.Name != testToSkip.Name {
-					return true
+			commentMap := ast.NewCommentMap(fset, fileAst, fileAst.Comments)
+			found = skipTest(path, fileAst, fset, testToSkip)
+			fileAst.Comments = commentMap.Filter(fileAst).Comments()
+
+			if found {
+				log.Debug().
+					Str("test", testToSkip.Name).
+					Str("file", path).
+					Msg("Skipped test")
+
+				// Write back the file
+				var out strings.Builder
+				if err := printer.Fprint(&out, fset, fileAst); err != nil {
+					return fmt.Errorf("error printing file '%s': %w", path, err)
 				}
-				// Check if first parameter is *testing.T
-				if fn.Type.Params != nil && len(fn.Type.Params.List) > 0 {
-					param := fn.Type.Params.List[0]
-					if starExpr, ok := param.Type.(*ast.StarExpr); ok {
-						if sel, ok := starExpr.X.(*ast.SelectorExpr); ok && sel.Sel.Name == "T" {
-							// Check if test is already skipped
-							for _, stmt := range fn.Body.List {
-								if exprStmt, ok := stmt.(*ast.ExprStmt); ok {
-									if callExpr, ok := exprStmt.X.(*ast.CallExpr); ok {
-										if selExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
-											if selExpr.Sel.Name == "Skip" {
-												// Test is already skipped, don't modify it
-												found = true
-												testToSkip.AlreadySkipped = true
-												return false
-											}
+				if err := os.WriteFile(path, []byte(out.String()), 0644); err != nil {
+					return fmt.Errorf("error writing file '%s': %w", path, err)
+				}
+				return filepath.SkipDir // stop walking
+			}
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("error skipping test '%s' in package '%s': %w", testToSkip.Name, testToSkip.Package, err)
+		}
+		if !found {
+			log.Warn().
+				Str("test", testToSkip.Name).
+				Str("package", testToSkip.Package).
+				Msg("Unable to skip test")
+
+			if testToSkip.ErrorSkipping == nil {
+				testToSkip.ErrorSkipping = fmt.Errorf("test '%s' not found in package '%s'", testToSkip.Name, testToSkip.Package)
+			} else {
+				testToSkip.ErrorSkipping = fmt.Errorf("error skipping test '%s' in package '%s': %w", testToSkip.Name, testToSkip.Package, testToSkip.ErrorSkipping)
+			}
+		}
+	}
+	return nil
+}
+
+// skipTest parses through the file AST and skips the test or subtest if it is found
+func skipTest(file string, fileAst *ast.File, fset *token.FileSet, testToSkip *SkipTest) (found bool) {
+	parentTest := testToSkip.Name
+	subTest := ""
+	if strings.Contains(testToSkip.Name, "/") {
+		subTest = filepath.Base(testToSkip.Name)
+		parentTest = filepath.Dir(testToSkip.Name)
+	}
+
+	ast.Inspect(fileAst, func(n ast.Node) bool {
+		fn, ok := n.(*ast.FuncDecl)
+		if !ok || fn.Name.Name != parentTest {
+			return true
+		}
+		// Check if first parameter is *testing.T
+		if fn.Type.Params != nil && len(fn.Type.Params.List) > 0 {
+			param := fn.Type.Params.List[0]
+			if starExpr, ok := param.Type.(*ast.StarExpr); ok {
+				if sel, ok := starExpr.X.(*ast.SelectorExpr); ok && sel.Sel.Name == "T" {
+					if subTest == "" {
+						// No subtest: only skip the parent test as before
+						for _, stmt := range fn.Body.List {
+							if exprStmt, ok := stmt.(*ast.ExprStmt); ok {
+								if callExpr, ok := exprStmt.X.(*ast.CallExpr); ok {
+									if selExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
+										if selExpr.Sel.Name == "Skip" {
+											// Test is already skipped, don't modify it
+											found = true
+											testToSkip.AlreadySkipped = true
+											return false
 										}
 									}
 								}
 							}
+						}
 
-							// Test is not skipped, add skip statement
-							skipStmt := &ast.ExprStmt{
-								X: &ast.CallExpr{
-									Fun: &ast.SelectorExpr{
-										X:   ast.NewIdent(param.Names[0].Name),
-										Sel: ast.NewIdent("Skip"),
-									},
-									Args: []ast.Expr{
-										&ast.BasicLit{
-											Kind: token.STRING,
-											Value: fmt.Sprintf(
-												"\"Skipped by flakeguard: https://%s/issues/%s\"",
-												os.Getenv("JIRA_DOMAIN"),
-												testToSkip.JiraTicket,
-											),
-										},
+						// Test is not skipped, add skip statement
+						skipStmt := &ast.ExprStmt{
+							X: &ast.CallExpr{
+								Fun: &ast.SelectorExpr{
+									X:   ast.NewIdent(param.Names[0].Name),
+									Sel: ast.NewIdent("Skip"),
+								},
+								Args: []ast.Expr{
+									&ast.BasicLit{
+										Kind: token.STRING,
+										Value: fmt.Sprintf(
+											"\"Skipped by flakeguard: https://%s/issues/%s\"",
+											os.Getenv("JIRA_DOMAIN"),
+											testToSkip.JiraTicket,
+										),
 									},
 								},
-							}
-							testToSkip.File = path
-							testToSkip.Line = fset.Position(fn.Pos()).Line
-							testToSkip.NewlySkipped = true
-							fn.Body.List = append([]ast.Stmt{skipStmt}, fn.Body.List...)
-							found = true
-							return false
+							},
 						}
+						testToSkip.File = file
+						testToSkip.Line = fset.Position(fn.Pos()).Line
+						testToSkip.NewlySkipped = true
+						fn.Body.List = append([]ast.Stmt{skipStmt}, fn.Body.List...)
+						found = true
+						return false
+					} else {
+						// Subtest: look for t.Run(subTest, ...)
+						ast.Inspect(fn.Body, func(n ast.Node) bool {
+							call, ok := n.(*ast.CallExpr)
+							if !ok {
+								return true
+							}
+							sel, ok := call.Fun.(*ast.SelectorExpr)
+							if !ok || sel.Sel.Name != "Run" {
+								return true
+							}
+							// Check if first argument is a string literal matching subTest
+							if len(call.Args) < 2 {
+								return true
+							}
+							if nameLit, ok := call.Args[0].(*ast.BasicLit); ok && nameLit.Kind == token.STRING {
+								name, _ := strconv.Unquote(nameLit.Value)
+								if name == subTest {
+									// Second argument should be a function literal
+									if fnLit, ok := call.Args[1].(*ast.FuncLit); ok {
+										// Check if already skipped
+										if len(fnLit.Body.List) > 0 {
+											if exprStmt, ok := fnLit.Body.List[0].(*ast.ExprStmt); ok {
+												if callExpr, ok := exprStmt.X.(*ast.CallExpr); ok {
+													if selExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
+														if selExpr.Sel.Name == "Skip" {
+															found = true
+															testToSkip.AlreadySkipped = true
+															return false
+														}
+													}
+												}
+											}
+										}
+										// Not skipped, insert skip
+										skipStmt := &ast.ExprStmt{
+											X: &ast.CallExpr{
+												Fun: &ast.SelectorExpr{
+													X:   ast.NewIdent(param.Names[0].Name),
+													Sel: ast.NewIdent("Skip"),
+												},
+												Args: []ast.Expr{
+													&ast.BasicLit{
+														Kind: token.STRING,
+														Value: fmt.Sprintf(
+															"\"Skipped by flakeguard: https://%s/issues/%s\"",
+															os.Getenv("JIRA_DOMAIN"),
+															testToSkip.JiraTicket,
+														),
+													},
+												},
+											},
+										}
+										fnLit.Body.List = append([]ast.Stmt{skipStmt}, fnLit.Body.List...)
+										testToSkip.File = file
+										testToSkip.Line = fset.Position(fnLit.Pos()).Line
+										testToSkip.NewlySkipped = true
+										found = true
+										return false
+									}
+								}
+							}
+							return true
+						})
 					}
 				}
-				return true
-			})
-
-			if found {
-				// Write back the file
-				var out strings.Builder
-				if err := printer.Fprint(&out, fset, fileAst); err != nil {
-					return err
-				}
-				if err := os.WriteFile(path, []byte(out.String()), info.Mode()); err != nil {
-					return err
-				}
-				return filepath.SkipDir // stop walking
 			}
-			return fmt.Errorf("test function %s not found in package %s", testToSkip.Name, testToSkip.Package)
-		})
-		if err != nil {
-			return err
 		}
-	}
-	return nil
+		return true
+	})
+
+	return found
 }

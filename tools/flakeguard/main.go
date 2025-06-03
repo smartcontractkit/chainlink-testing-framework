@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"os"
 	"time"
 
@@ -31,7 +30,7 @@ func Execute() {
 func init() {
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 	log.Logger = log.Output(zerolog.ConsoleWriter{
-		Out:        io.Discard,
+		Out:        os.Stdout,
 		TimeFormat: "15:04:05.00", // hh:mm:ss.ss format
 	})
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
