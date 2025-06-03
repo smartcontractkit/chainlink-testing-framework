@@ -28,7 +28,7 @@ var SyncJiraCmd = &cobra.Command{
 	Long: `Scans Jira for flaky test tickets and ensures they exist in the local database.
 
 This command performs the following actions:
-1. Searches Jira for all tickets matching the specified labels (default: flaky_test, flaky_test).
+1. Searches Jira for all tickets matching the specified labels (default: flakey_test, flaky_test).
 2. Fetches ticket summary and assignee information.
 3. Compares the found Jira tickets against the local database (by Jira Key).
 4. Adds entries to the local database for any Jira tickets not found locally.

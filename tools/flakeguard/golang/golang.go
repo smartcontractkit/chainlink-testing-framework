@@ -234,13 +234,11 @@ type SkipTest struct {
 	JiraTicket string
 
 	// Set by SkipTests
-
-	// If the test was already skipped, or there were issues skipping it, this will be false
-	Skipped bool
-
-	// The file and line number of the test that was skipped
-	File string
-	Line int
+	// These values might be useless info, but for now we'll keep them
+	NewlySkipped   bool // If the test was newly skipped after calling SkipTests
+	AlreadySkipped bool // If the test was already skipped before calling SkipTests
+	File           string
+	Line           int
 }
 
 // SkipTests finds all package/test pairs provided and skips them
@@ -304,6 +302,7 @@ func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 											if selExpr.Sel.Name == "Skip" {
 												// Test is already skipped, don't modify it
 												found = true
+												testToSkip.AlreadySkipped = true
 												return false
 											}
 										}
@@ -332,7 +331,7 @@ func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 							}
 							testToSkip.File = path
 							testToSkip.Line = fset.Position(fn.Pos()).Line
-							testToSkip.Skipped = true
+							testToSkip.NewlySkipped = true
 							fn.Body.List = append([]ast.Stmt{skipStmt}, fn.Body.List...)
 							found = true
 							return false

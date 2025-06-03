@@ -4,19 +4,15 @@ test_unit:
 
 .PHONY: test
 test:
-	go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest
-	set -euo pipefail
-	go test ./... -json -cover -coverprofile unit-test-coverage.out -v 2>&1 | tee /tmp/gotest.log | gotestfmt
+	gotestsum -- -cover ./...
 
 .PHONY: test-package
 test-package:
-	go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest
-	set -euo pipefail
-	go test -json -cover -coverprofile unit-test-coverage.out -v $(PKG) 2>&1 | tee /tmp/gotest.log | gotestfmt
+	gotestsum -- -cover ./$(PKG)
 
 .PHONY: test-race
 test-race:
-	go test ./... -count=1 -race
+	gotestsum -- -cover -count=1 -race
 
 .PHONY: bench
 bench:

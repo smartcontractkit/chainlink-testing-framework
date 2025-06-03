@@ -160,12 +160,12 @@ func makePR(cmd *cobra.Command, args []string) error {
 	)
 
 	for _, test := range testsToSkip {
-		if test.Skipped {
+		if test.NewlySkipped {
 			skippedTestsPRBody.WriteString(fmt.Sprintf("- Package: `%s`\n", test.Package))
 			skippedTestsPRBody.WriteString(fmt.Sprintf("  Test: `%s`\n", test.Name))
 			skippedTestsPRBody.WriteString(fmt.Sprintf("  Ticket: [%s](https://%s/browse/%s)\n", test.JiraTicket, os.Getenv("JIRA_DOMAIN"), test.JiraTicket))
 			skippedTestsPRBody.WriteString(fmt.Sprintf("  [View skip in PR](https://github.com/%s/%s/pull/%s/files#diff-%sL%d)\n\n", owner, repoName, branchName, commitHash, test.Line))
-		} else {
+		} else if test.AlreadySkipped {
 			alreadySkippedTestsPRBody.WriteString(fmt.Sprintf("- Package: `%s`\n", test.Package))
 			alreadySkippedTestsPRBody.WriteString(fmt.Sprintf("  Test: `%s`\n", test.Name))
 			alreadySkippedTestsPRBody.WriteString(fmt.Sprintf("  Ticket: [%s](https://%s/browse/%s)\n", test.JiraTicket, os.Getenv("JIRA_DOMAIN"), test.JiraTicket))
@@ -176,7 +176,7 @@ func makePR(cmd *cobra.Command, args []string) error {
 		Title:               github.Ptr(fmt.Sprintf("[%s] Flakeguard: Skip flaky tests", strings.Join(jiraTickets, "] ["))),
 		Head:                github.Ptr(branchName),
 		Base:                github.Ptr(defaultBranch),
-		Body:                github.Ptr(fmt.Sprintf("## Tests Skipped\n\n%s\n\n## Tests Already Skipped\n\n%s", skippedTestsPRBody.String(), alreadySkippedTestsPRBody.String())),
+		Body:                github.Ptr(fmt.Sprintf("## Tests Skipped\n\n%s\n\n## Tests That Were Already Skipped\n\n%s", skippedTestsPRBody.String(), alreadySkippedTestsPRBody.String())),
 		MaintainerCanModify: github.Ptr(true),
 	}
 

@@ -102,9 +102,11 @@ func TestSkipTests(t *testing.T) {
 
 	for _, test := range testsToSkip {
 		if test.Name == "TestPackAFail" || test.Name == "TestPackBFail" {
-			assert.True(t, test.Skipped, "Expected flaky test to be skipped")
+			assert.True(t, test.NewlySkipped, "Expected flaky test to be skipped")
+			assert.False(t, test.AlreadySkipped, "Expected flaky test to not be skipped again")
 		} else if test.Name == "TestPackAAlreadySkipped" || test.Name == "TestPackBAlreadySkipped" {
-			assert.False(t, test.Skipped, "Expected already skipped test to not be skipped again")
+			assert.True(t, test.AlreadySkipped, "Expected already skipped test to not be skipped again")
+			assert.False(t, test.NewlySkipped, "Expected already skipped test to not be skipped again")
 		}
 	}
 
