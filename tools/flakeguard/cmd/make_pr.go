@@ -93,15 +93,20 @@ func makePR(cmd *cobra.Command, args []string) error {
 	defer func() {
 		if cleanUpBranch {
 			fmt.Printf("Cleaning up branch %s...", branchName)
+			// First checkout default branch
 			err = targetRepoWorktree.Checkout(&git.CheckoutOptions{
 				Branch: plumbing.NewBranchReferenceName(defaultBranch),
+				Force:  true, // Force checkout to discard any changes for a clean default branch
 			})
 			if err != nil {
-				fmt.Printf("Failed to clean up branch: %v\n", err)
+				fmt.Printf("Failed to checkout default branch: %v\n", err)
+				return
 			}
+			// Then delete the local branch
 			err = repo.Storer.RemoveReference(plumbing.NewBranchReferenceName(branchName))
 			if err != nil {
-				fmt.Printf("Failed to remove branch: %v\n", err)
+				fmt.Printf("Failed to remove local branch: %v\n", err)
+				return
 			}
 			fmt.Println(" ✅")
 		}

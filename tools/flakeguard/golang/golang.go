@@ -68,7 +68,8 @@ func Packages(repoPath string) ([]Package, error) {
 				if line == "}" {
 					var pkg Package
 					if err := json.Unmarshal(buffer.Bytes(), &pkg); err != nil {
-						return fmt.Errorf("error unmarshalling go list output for file %s: %w", path, err)
+						_ = os.WriteFile(filepath.Join("go_list_output.json"), buffer.Bytes(), 0644)
+						return fmt.Errorf("error unmarshalling go list output for dir '%s', see 'go_list_output.json' for output: %w", cmd.Dir, err)
 					}
 					packages = append(packages, pkg)
 					buffer.Reset()
