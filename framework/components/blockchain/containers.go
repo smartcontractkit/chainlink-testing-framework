@@ -40,7 +40,7 @@ func baseRequest(in *Input, useWS ExposeWs) testcontainers.ContainerRequest {
 			h.PortBindings = framework.MapTheSamePort(exposedPorts...)
 			framework.ResourceLimitsFunc(h, in.ContainerResources)
 		},
-		WaitingFor: wait.ForListeningPort(nat.Port(in.Port)).WithStartupTimeout(15 * time.Second).WithPollInterval(200 * time.Millisecond),
+		WaitingFor: wait.ForListeningPort(nat.Port(in.Port)).WithStartupTimeout(1 * time.Minute).WithPollInterval(200 * time.Millisecond),
 	}
 }
 

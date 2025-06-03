@@ -191,7 +191,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 }
 
 func sortNodeOutsByHostPort(nodes []*clnode.Output) {
-	slices.SortFunc[[]*clnode.Output, *clnode.Output](nodes, func(a, b *clnode.Output) int {
+	slices.SortFunc(nodes, func(a, b *clnode.Output) int {
 		aa := strings.Split(a.Node.ExternalURL, ":")
 		bb := strings.Split(b.Node.ExternalURL, ":")
 		if aa[len(aa)-1] < bb[len(bb)-1] {

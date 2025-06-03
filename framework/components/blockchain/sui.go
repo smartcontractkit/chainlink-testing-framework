@@ -129,7 +129,7 @@ func newSui(in *Input) (*Output, error) {
 			},
 		},
 		// we need faucet for funding
-		WaitingFor: wait.ForListeningPort(DefaultFaucetPort).WithStartupTimeout(10 * time.Second).WithPollInterval(200 * time.Millisecond),
+		WaitingFor: wait.ForListeningPort(DefaultFaucetPort).WithStartupTimeout(1 * time.Minute).WithPollInterval(200 * time.Millisecond),
 	}
 
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
