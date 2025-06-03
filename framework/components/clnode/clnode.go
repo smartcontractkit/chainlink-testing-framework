@@ -249,7 +249,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		Entrypoint:   generateEntryPoint(),
 		WaitingFor: wait.ForHTTP("/").
 			WithPort(DefaultHTTPPort).
-			WithStartupTimeout(1 * time.Minute).
+			WithStartupTimeout(3 * time.Minute).
 			WithPollInterval(200 * time.Millisecond),
 	}
 	if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {

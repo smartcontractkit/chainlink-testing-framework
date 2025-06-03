@@ -13,6 +13,8 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
+const DefaultUbuntuCACertificatePath = "/etc/ssl/certs/ca-certificates.crt"
+
 type ExposeWs = bool
 
 const (
@@ -28,20 +30,36 @@ func baseRequest(in *Input, useWS ExposeWs) testcontainers.ContainerRequest {
 		exposedPorts = append(exposedPorts, fmt.Sprintf("%s/tcp", in.WSPort))
 	}
 
-	return testcontainers.ContainerRequest{
-		Name:     containerName,
-		Labels:   framework.DefaultTCLabels(),
-		Networks: []string{framework.DefaultNetworkName},
-		NetworkAliases: map[string][]string{
-			framework.DefaultNetworkName: {containerName},
-		},
-		ExposedPorts: exposedPorts,
+	req := testcontainers.ContainerRequest{
+		Name:   containerName,
+		Labels: framework.DefaultTCLabels(),
 		HostConfigModifier: func(h *container.HostConfig) {
-			h.PortBindings = framework.MapTheSamePort(exposedPorts...)
 			framework.ResourceLimitsFunc(h, in.ContainerResources)
+			if in.HostNetworkMode {
+				h.NetworkMode = "host"
+			} else {
+				h.PortBindings = framework.MapTheSamePort(exposedPorts...)
+			}
 		},
-		WaitingFor: wait.ForListeningPort(nat.Port(in.Port)).WithStartupTimeout(15 * time.Second).WithPollInterval(200 * time.Millisecond),
+		WaitingFor: wait.ForListeningPort(nat.Port(in.Port)).WithStartupTimeout(1 * time.Minute).WithPollInterval(200 * time.Millisecond),
 	}
+	if !in.HostNetworkMode {
+		req.ExposedPorts = exposedPorts
+		req.Networks = []string{framework.DefaultNetworkName}
+		req.NetworkAliases = map[string][]string{
+			framework.DefaultNetworkName: {containerName},
+		}
+	}
+	if in.CertificatesPath != "" {
+		req.Files = []testcontainers.ContainerFile{
+			{
+				HostFilePath:      in.CertificatesPath,
+				ContainerFilePath: DefaultUbuntuCACertificatePath,
+				FileMode:          0644,
+			},
+		}
+	}
+	return req
 }
 
 func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest, useWS bool) (*Output, error) {
@@ -59,10 +77,18 @@ func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest, u
 		return nil, err
 	}
 
-	bindPort := req.ExposedPorts[0]
-	mp, err := c.MappedPort(ctx, nat.Port(bindPort))
-	if err != nil {
-		return nil, err
+	// specific case to bridge with GAPv2 in CI
+	// we run blockchains on "host" network for connectivity
+	var exposedPort string
+	if in.HostNetworkMode {
+		exposedPort = in.Port
+	} else {
+		bindPort := req.ExposedPorts[0]
+		ep, err := c.MappedPort(ctx, nat.Port(bindPort))
+		if err != nil {
+			return nil, err
+		}
+		exposedPort = ep.Port()
 	}
 
 	containerName := req.Name
@@ -76,8 +102,8 @@ func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest, u
 		Container:     c,
 		Nodes: []*Node{
 			{
-				ExternalWSUrl:   fmt.Sprintf("ws://%s:%s", host, mp.Port()),
-				ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", host, mp.Port()),
+				ExternalWSUrl:   fmt.Sprintf("ws://%s:%s", host, exposedPort),
+				ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", host, exposedPort),
 				InternalWSUrl:   fmt.Sprintf("ws://%s:%s", containerName, in.Port),
 				InternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
 			},

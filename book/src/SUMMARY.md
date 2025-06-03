@@ -52,6 +52,8 @@
     - [Chainlink](framework/components/chainlink.md)
       - [Node](framework/components/chainlink/node.md)
       - [NodeSet](framework/components/chainlink/nodeset.md)
+    - [Storage](framework/components/storage.md)
+      - [S3](framework/components/storage/s3.md)
   - [Clients]()
     - [Chainlink]()
     - [RPC]()
