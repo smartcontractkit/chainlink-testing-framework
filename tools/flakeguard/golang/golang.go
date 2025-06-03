@@ -267,12 +267,6 @@ func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 			return fmt.Errorf("directory for package '%s' not found", packageImportPath)
 		}
 
-		log.Debug().
-			Str("package_dir", packageDir).
-			Str("test", testToSkip.Name).
-			Str("package", packageImportPath).
-			Msg("Looking to skip test")
-
 		err := filepath.Walk(packageDir, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
@@ -286,14 +280,14 @@ func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 				return fmt.Errorf("error parsing file '%s': %w", path, err)
 			}
 
-			commentMap := ast.NewCommentMap(fset, fileAst, fileAst.Comments)
 			found = skipTest(path, fileAst, fset, testToSkip)
-			fileAst.Comments = commentMap.Filter(fileAst).Comments()
 
 			if found {
 				log.Debug().
 					Str("test", testToSkip.Name).
-					Str("file", path).
+					Str("file", testToSkip.File).
+					Int("line", testToSkip.Line).
+					Str("package", testToSkip.Package).
 					Msg("Skipped test")
 
 				// Write back the file
@@ -312,16 +306,16 @@ func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 			return fmt.Errorf("error skipping test '%s' in package '%s': %w", testToSkip.Name, testToSkip.Package, err)
 		}
 		if !found {
-			log.Warn().
-				Str("test", testToSkip.Name).
-				Str("package", testToSkip.Package).
-				Msg("Unable to skip test")
-
 			if testToSkip.ErrorSkipping == nil {
 				testToSkip.ErrorSkipping = fmt.Errorf("test '%s' not found in package '%s'", testToSkip.Name, testToSkip.Package)
 			} else {
 				testToSkip.ErrorSkipping = fmt.Errorf("error skipping test '%s' in package '%s': %w", testToSkip.Name, testToSkip.Package, testToSkip.ErrorSkipping)
 			}
+			log.Warn().
+				Str("test", testToSkip.Name).
+				Str("package", testToSkip.Package).
+				Err(testToSkip.ErrorSkipping).
+				Msg("Unable to skip test")
 		}
 	}
 	return nil
@@ -347,7 +341,7 @@ func skipTest(file string, fileAst *ast.File, fset *token.FileSet, testToSkip *S
 			if starExpr, ok := param.Type.(*ast.StarExpr); ok {
 				if sel, ok := starExpr.X.(*ast.SelectorExpr); ok && sel.Sel.Name == "T" {
 					if subTest == "" {
-						// No subtest: only skip the parent test as before
+						// No subtest: only skip the parent test
 						for _, stmt := range fn.Body.List {
 							if exprStmt, ok := stmt.(*ast.ExprStmt); ok {
 								if callExpr, ok := exprStmt.X.(*ast.CallExpr); ok {
@@ -405,6 +399,7 @@ func skipTest(file string, fileAst *ast.File, fset *token.FileSet, testToSkip *S
 							}
 							if nameLit, ok := call.Args[0].(*ast.BasicLit); ok && nameLit.Kind == token.STRING {
 								name, _ := strconv.Unquote(nameLit.Value)
+								name = strings.ReplaceAll(name, " ", "_")
 								if name == subTest {
 									// Second argument should be a function literal
 									if fnLit, ok := call.Args[1].(*ast.FuncLit); ok {

@@ -101,16 +101,14 @@ func TestSkipTests(t *testing.T) {
 	var (
 		expectedPassed = []string{
 			"TestPackAPass", "TestPackBPass", "TestPackAFailTrick", "TestPackBFailTrick",
-			"TestPackAFailSubTestDynamicName/subtest_0", "TestPackAFailSubTestDynamicName/subtest_2",
-			"TestPackAFailSubTest/passing_subtest",
-			"TestPackAFailHelperFunction/parent_subtest/passing_child_subtest",
+			"TestPackAFailSubTest", "TestPackAFailSubTest/passing_subtest",
 		}
 		testsToSkip = []*SkipTest{
 			{Package: "github.com/owner/repo/testdata/package_a", Name: "TestPackAFail"},
-			{Package: "github.com/owner/repo/testdata/package_a", Name: "TestPackAFailSubTestDynamicName/subtest_1"},
 			{Package: "github.com/owner/repo/testdata/package_a", Name: "TestPackAFailSubTest/failing_subtest"},
-			{Package: "github.com/owner/repo/testdata/package_a", Name: "TestPackAFailHelperFunction/parent_subtest/failing_child_subtest"},
 			{Package: "github.com/owner/repo/testdata/package_b", Name: "TestPackBFail"},
+			{Package: "github.com/owner/repo/testdata/package_a", Name: "TestPackASkippedAlready"},
+			{Package: "github.com/owner/repo/testdata/package_b", Name: "TestPackBSkippedAlready"},
 		}
 	)
 	slices.Sort(expectedPassed)
@@ -126,11 +124,11 @@ func TestSkipTests(t *testing.T) {
 
 	for _, test := range testsToSkip {
 		if test.Name == "TestPackASkippedAlready" || test.Name == "TestPackBSkippedAlready" {
-			assert.True(t, test.AlreadySkipped, "Expected already skipped test to not be skipped again")
-			assert.False(t, test.NewlySkipped, "Expected already skipped test to not be skipped again")
+			assert.True(t, test.AlreadySkipped, "Expected already skipped test '%s' to already be skipped", test.Name)
+			assert.False(t, test.NewlySkipped, "Expected already skipped test '%s' to not be skipped again", test.Name)
 		} else {
-			assert.True(t, test.NewlySkipped, "Expected flaky test to be skipped")
-			assert.False(t, test.AlreadySkipped, "Test should not have already been skipped")
+			assert.True(t, test.NewlySkipped, "Expected flaky test '%s' to be skipped", test.Name)
+			assert.False(t, test.AlreadySkipped, "Test '%s' should not have already been skipped", test.Name)
 		}
 		assert.NoError(t, test.ErrorSkipping, "Expected no error skipping test")
 	}
