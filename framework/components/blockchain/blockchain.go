@@ -54,6 +54,10 @@ type Input struct {
 	SolanaPrograms     map[string]string             `toml:"solana_programs"`
 	ContainerResources *framework.ContainerResources `toml:"resources"`
 	CustomPorts        []string                      `toml:"custom_ports"`
+
+	// GAPv2 specific params
+	HostNetworkMode  bool   `toml:"host_network_mode"`
+	CertificatesPath string `toml:"certificates_path"`
 }
 
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network
