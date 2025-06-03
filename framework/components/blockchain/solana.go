@@ -103,7 +103,7 @@ func newSolana(in *Input) (*Output, error) {
 			framework.DefaultNetworkName: {containerName},
 		},
 		WaitingFor: wait.ForLog("Processed Slot: 1").
-			WithStartupTimeout(30 * time.Second).
+			WithStartupTimeout(1 * time.Minute).
 			WithPollInterval(100 * time.Millisecond),
 		HostConfigModifier: func(h *container.HostConfig) {
 			h.PortBindings = framework.MapTheSamePort(bindPort, wsBindPort)
