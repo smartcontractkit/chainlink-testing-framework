@@ -27,6 +27,7 @@ type FlakyTicket struct {
 	MissingUserMapping   bool      // true if the assignee ID exists but has no mapping in user_mapping.json
 	PillarName           string    // pillar name from Jira customfield_11016
 	JiraStatus           string    // status from Jira
+	RelatedJiraTickets   []string  // related Jira tickets
 }
 
 // MapTestPackageToUser maps a test package to a user ID using regex patterns

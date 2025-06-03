@@ -42,6 +42,7 @@ func CreateTicketInJira(
 	ctx context.Context, // Add context for cancellation/timeout
 	client *jira.Client,
 	summary, description, projectKey, issueType, assigneeID, priorityName string,
+	relatedJiraTickets []string,
 	labels []string, // Add labels parameter
 	pillarName string, // Add pillarName parameter
 ) (string, error) {
@@ -62,6 +63,12 @@ func CreateTicketInJira(
 		Type:        jira.IssueType{Name: issueType},
 		Labels:      labels, // Add labels
 	}
+	for _, relatedTicket := range relatedJiraTickets {
+		issueFields.IssueLinks = append(issueFields.IssueLinks, &jira.IssueLink{
+			ID:   relatedTicket,
+			Type: jira.IssueLinkType{Name: "Relates"},
+		})
+	}
 
 	// Add Assignee if provided
 	if assigneeID != "" {
@@ -79,12 +86,12 @@ func CreateTicketInJira(
 	// Custom fields often require a specific structure (e.g., map[string]string{"value": "Pillar"})
 	if pillarName != "" {
 		if issueFields.Unknowns == nil {
-			issueFields.Unknowns = make(map[string]interface{})
+			issueFields.Unknowns = make(map[string]any)
 		}
 		// The exact structure depends on the custom field type in Jira (e.g., text, select list)
 		// For a simple text field or select list (by value):
-		issueFields.Unknowns[PillarCustomFieldID] = map[string]interface{}{"value": pillarName}
-		// If it's a select list by ID, it would be map[string]interface{}{"id": "12345"}
+		issueFields.Unknowns[PillarCustomFieldID] = map[string]any{"value": pillarName}
+		// If it's a select list by ID, it would be map[string]any{"id": "12345"}
 	}
 
 	issue := jira.Issue{
@@ -194,7 +201,7 @@ func ExtractPillarValue(issue jira.Issue) string {
 	}
 	if pillarFieldRaw, ok := issue.Fields.Unknowns[PillarCustomFieldID]; ok && pillarFieldRaw != nil {
 		// Handle different possible structures for custom fields (text, select list value)
-		if pillarFieldMap, ok := pillarFieldRaw.(map[string]interface{}); ok {
+		if pillarFieldMap, ok := pillarFieldRaw.(map[string]any); ok {
 			if value, ok := pillarFieldMap["value"].(string); ok {
 				return value // Common for select lists
 			}
@@ -217,9 +224,9 @@ func UpdatePillarName(client *jira.Client, issueKey, targetPillar string) error 
 	}
 	// Construct the payload carefully based on field type
 	// Assuming it's a select list identified by 'value'
-	updatePayload := map[string]interface{}{
-		"fields": map[string]interface{}{
-			PillarCustomFieldID: map[string]interface{}{
+	updatePayload := map[string]any{
+		"fields": map[string]any{
+			PillarCustomFieldID: map[string]any{
 				"value": targetPillar,
 			},
 		},

@@ -9,6 +9,8 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/utils"
 )
 
@@ -185,4 +187,77 @@ func shouldExclude(excludes []string, item string) bool {
 		}
 	}
 	return false
+}
+
+// GetOwnerRepoDefaultBranchFromLocalRepo returns the owner, repo name, and default branch of a local git repository.
+// It uses the origin remote URL to determine the owner and repo name, and the default branch is determined from the
+// refs/remotes/origin/HEAD reference.
+func GetOwnerRepoDefaultBranchFromLocalRepo(repoPath string) (owner, repoName, defaultBranch string, err error) {
+	repo, err := git.PlainOpen(repoPath)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	// Get remote URL (origin)
+	remotes, err := repo.Remotes()
+	if err != nil {
+		return "", "", "", err
+	}
+	var originURL string
+	for _, remote := range remotes {
+		if remote.Config().Name == "origin" && len(remote.Config().URLs) > 0 {
+			originURL = remote.Config().URLs[0]
+			break
+		}
+	}
+	if originURL == "" {
+		return "", "", "", fmt.Errorf("origin remote not found")
+	}
+
+	// Parse owner and repo from URL
+	originURL = strings.TrimSuffix(originURL, ".git")
+	var path string
+	if strings.Contains(originURL, "@github.com:") {
+		parts := strings.SplitN(originURL, ":", 2)
+		if len(parts) == 2 {
+			path = parts[1]
+		}
+	} else if strings.HasPrefix(originURL, "https://") {
+		parts := strings.SplitN(originURL, "github.com/", 2)
+		if len(parts) == 2 {
+			path = parts[1]
+		}
+	}
+	if path == "" {
+		return "", "", "", fmt.Errorf("could not parse remote URL: %s", originURL)
+	}
+	segments := strings.Split(path, "/")
+	if len(segments) != 2 {
+		return "", "", "", fmt.Errorf("unexpected path format: %s", path)
+	}
+	owner, repoName = segments[0], segments[1]
+
+	// Find default branch from refs/remotes/origin/HEAD
+	refs, err := repo.References()
+	if err != nil {
+		return "", "", "", err
+	}
+	err = refs.ForEach(func(ref *plumbing.Reference) error {
+		if ref.Name().IsRemote() && ref.Name().String() == "refs/remotes/origin/HEAD" {
+			target := ref.Target().String()
+			parts := strings.Split(target, "/")
+			if len(parts) > 0 {
+				defaultBranch = parts[len(parts)-1]
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return "", "", "", err
+	}
+	if defaultBranch == "" {
+		return "", "", "", fmt.Errorf("could not determine default branch")
+	}
+
+	return owner, repoName, defaultBranch, nil
 }
