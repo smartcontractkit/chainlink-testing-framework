@@ -5,14 +5,17 @@ Let's create a full-fledged set of Chainlink nodes connected to some blockchain.
 Create a configuration file `smoke.toml`
 ```toml
 [blockchain_a]
-  type = "anvil"
   docker_cmd_params = ["-b", "1"]
+  type = "anvil"
+
+[data_provider]
+  port = 9111
 
 [[nodesets]]
   name = "don"
   nodes = 5
   override_mode = "all"
-  
+
   [nodesets.db]
     image = "postgres:12.0"
 
@@ -24,34 +27,39 @@ Create a configuration file `smoke.toml`
 
 Create a file `smoke_test.go`
 ```golang
-package yourpackage_test
+package examples
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
-type Config struct {
+type Cfg struct {
 	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
-	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
+	MockedDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
+	NodeSets           []*ns.Input       `toml:"nodesets" validate:"required"`
 }
 
 func TestNodeSet(t *testing.T) {
-	in, err := framework.Load[Config](t)
+	in, err := framework.Load[Cfg](t)
 	require.NoError(t, err)
 
 	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
 	require.NoError(t, err)
-	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc)
+	_, err = fake.NewFakeDataProvider(in.MockedDataProvider)
+	require.NoError(t, err)
+	out, err := ns.NewSharedDBNodeSet(in.NodeSets[0], bc)
 	require.NoError(t, err)
 
 	t.Run("test something", func(t *testing.T) {
 		for _, n := range out.CLNodes {
 			require.NotEmpty(t, n.Node.ExternalURL)
-			require.NotEmpty(t, n.Node.HostP2PURL)
 		}
 	})
 }
