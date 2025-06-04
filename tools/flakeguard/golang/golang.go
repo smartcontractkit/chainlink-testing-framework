@@ -312,6 +312,7 @@ func SkipTests(repoPath, openAIKey string, testsToSkip []*SkipTest) error {
 					Str("file", testToSkip.File).
 					Int("line", testToSkip.Line).
 					Str("package", testToSkip.Package).
+					Str("cost", fmt.Sprintf("$%.2f", totalOpenAICost)).
 					Msg("Skipped test using LLM assistance")
 
 				// We write the file back as part of the skipTestLLM function
@@ -482,6 +483,20 @@ func skipTestSimple(file string, fileAst *ast.File, fset *token.FileSet, testToS
 	return skipped
 }
 
+// https://openai.com/api/pricing/
+const (
+	gpt4_1NanoInputCostPer1MTokens  = 0.100
+	gpt4_1NanoOutputCostPer1MTokens = 0.400
+
+	gpt4_1MiniInputCostPer1MTokens  = 0.400
+	gpt4_1MiniOutputCostPer1MTokens = 1.600
+
+	gpt4_1InputCostPer1MTokens  = 2.000
+	gpt4_1OutputCostPer1MTokens = 8.000
+)
+
+var totalOpenAICost float64
+
 // skipTestLLM uses an LLM to skip a test or subtest
 // It's slower and more expensive, but can handle more complex cases than skipTestSimple
 // Use this when skipTestSimple fails to skip a test or subtest
@@ -517,12 +532,42 @@ Here is the code:\n\n%s`, testToSkip.Name, testToSkip.Name, string(fileContent))
 		option.WithAPIKey(openAIKey),
 	)
 
-	resp, err := client.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
+	completionParams := openai.ChatCompletionNewParams{
 		Model: openai.ChatModelGPT4_1Nano,
 		Messages: []openai.ChatCompletionMessageParamUnion{
 			openai.UserMessage(prompt),
 		},
-	})
+	}
+
+	// Estimate costs for OpenAI API calls
+	var (
+		cost             float64
+		inputMultiplier  float64
+		outputMultiplier float64
+	)
+	defer func() {
+		totalOpenAICost += cost
+	}()
+	switch openai.ChatModel(completionParams.Model) {
+	case openai.ChatModelGPT4_1Nano:
+		inputMultiplier = gpt4_1NanoInputCostPer1MTokens
+		outputMultiplier = gpt4_1NanoOutputCostPer1MTokens
+	case openai.ChatModelGPT4_1Mini:
+		inputMultiplier = gpt4_1MiniInputCostPer1MTokens
+		outputMultiplier = gpt4_1MiniOutputCostPer1MTokens
+	case openai.ChatModelGPT4_1:
+		inputMultiplier = gpt4_1InputCostPer1MTokens
+		outputMultiplier = gpt4_1OutputCostPer1MTokens
+	default:
+		log.Warn().
+			Str("model", string(completionParams.Model)).
+			Msg("Unknown OpenAI model, unable to accurately calculate cost")
+		inputMultiplier = gpt4_1InputCostPer1MTokens
+		outputMultiplier = gpt4_1OutputCostPer1MTokens
+	}
+
+	resp, err := client.Chat.Completions.New(context.Background(), completionParams)
+	cost += inputMultiplier * float64(len(prompt)) / 1_000_000
 	if err != nil {
 		testToSkip.ErrorSkipping = fmt.Errorf("OpenAI API error: %w", err)
 		return false
@@ -532,6 +577,7 @@ Here is the code:\n\n%s`, testToSkip.Name, testToSkip.Name, string(fileContent))
 		testToSkip.ErrorSkipping = fmt.Errorf("no response from OpenAI")
 		return false
 	}
+	cost += outputMultiplier * float64(len(resp.Choices[0].Message.Content)) / 1_000_000
 
 	response := strings.TrimSpace(resp.Choices[0].Message.Content)
 	if strings.Contains(response, "Test is already skipped") {
