@@ -12,3 +12,5 @@ flakeguard_raw_output_transformed/
 .envrc
 testdata-*/
 flakeguard.log
+
+packages_debug.json

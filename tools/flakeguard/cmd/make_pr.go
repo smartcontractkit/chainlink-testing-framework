@@ -35,7 +35,7 @@ var MakePRCmd = &cobra.Command{
 	Use:   "make-pr",
 	Short: "Make a PR to skip identified flaky tests",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		if !cmd.Flag("openAIKey").Changed {
+		if !cmd.Flag(openAIKeyFlag).Changed {
 			openAIKey = os.Getenv(openAIKeyEnvVar)
 		}
 		if openAIKey == "" {
@@ -103,28 +103,29 @@ func makePR(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to checkout new branch: %w", err)
 	}
 
-	cleanUpBranch := true
-	defer func() {
-		if cleanUpBranch {
-			fmt.Printf("Cleaning up branch %s...", branchName)
-			// First checkout default branch
-			err = targetRepoWorktree.Checkout(&git.CheckoutOptions{
-				Branch: plumbing.NewBranchReferenceName(defaultBranch),
-				Force:  true, // Force checkout to discard any changes for a clean default branch
-			})
-			if err != nil {
-				fmt.Printf("Failed to checkout default branch: %v\n", err)
-				return
-			}
-			// Then delete the local branch
-			err = repo.Storer.RemoveReference(plumbing.NewBranchReferenceName(branchName))
-			if err != nil {
-				fmt.Printf("Failed to remove local branch: %v\n", err)
-				return
-			}
-			fmt.Println(" ✅")
-		}
-	}()
+	// DEBUG: Maybe this shouldn't be used ever? Debugging is harder without the branch around.
+	// cleanUpBranch := true
+	// defer func() {
+	// 	if cleanUpBranch {
+	// 		fmt.Printf("Cleaning up branch %s...", branchName)
+	// 		// First checkout default branch
+	// 		err = targetRepoWorktree.Checkout(&git.CheckoutOptions{
+	// 			Branch: plumbing.NewBranchReferenceName(defaultBranch),
+	// 			Force:  true, // Force checkout to discard any changes for a clean default branch
+	// 		})
+	// 		if err != nil {
+	// 			fmt.Printf("Failed to checkout default branch: %v\n", err)
+	// 			return
+	// 		}
+	// 		// Then delete the local branch
+	// 		err = repo.Storer.RemoveReference(plumbing.NewBranchReferenceName(branchName))
+	// 		if err != nil {
+	// 			fmt.Printf("Failed to remove local branch: %v\n", err)
+	// 			return
+	// 		}
+	// 		fmt.Println(" ✅")
+	// 	}
+	// }()
 
 	if len(currentlyFlakyEntries) == 0 {
 		fmt.Println("No flaky tests found!")
@@ -260,7 +261,6 @@ func makePR(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create PR, got bad status: %s\n%s", resp.Status, string(body))
 	}
 
-	cleanUpBranch = false
 	fmt.Printf("PR created! https://github.com/%s/%s/pull/%d\n", owner, repoName, createdPR.GetNumber())
 	return nil
 }

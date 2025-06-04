@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
@@ -61,14 +62,24 @@ func Packages(repoPath string) ([]Package, error) {
 				return fmt.Errorf("error getting packages: %w\nOutput:\n%s", err, string(out))
 			}
 			scanner := bufio.NewScanner(bytes.NewReader(out))
-			var buffer bytes.Buffer
+			var (
+				buffer bytes.Buffer
+				inJSON bool
+			)
 
 			for scanner.Scan() {
 				line := scanner.Text()
 				line = strings.TrimSpace(line)
 				buffer.WriteString(line)
+				if !inJSON && !strings.HasPrefix(line, "{") {
+					continue
+				}
+				if !inJSON && strings.HasPrefix(line, "{") {
+					inJSON = true
+				}
 
 				if line == "}" {
+					inJSON = false
 					var pkg Package
 					if err := json.Unmarshal(buffer.Bytes(), &pkg); err != nil {
 						_ = os.WriteFile(filepath.Join("go_list_output.json"), buffer.Bytes(), 0644)
@@ -269,7 +280,15 @@ func SkipTests(repoPath, openAIKey string, testsToSkip []*SkipTest) error {
 			}
 		}
 		if packageDir == "" {
-			return fmt.Errorf("directory for package '%s' not found", packageImportPath)
+			// Print all packages to a file to help debug
+			packagesJSON, err := json.MarshalIndent(packages, "", "  ")
+			if err != nil {
+				return fmt.Errorf("error marshalling packages: %w", err)
+			}
+			if err := os.WriteFile("packages_debug.json", packagesJSON, 0644); err != nil {
+				return fmt.Errorf("error writing packages.json: %w", err)
+			}
+			return fmt.Errorf("directory for package '%s' not found, see 'packages_debug.json' for all found packages", packageImportPath)
 		}
 
 		err := filepath.Walk(packageDir, func(path string, info os.FileInfo, err error) error {
@@ -312,7 +331,7 @@ func SkipTests(repoPath, openAIKey string, testsToSkip []*SkipTest) error {
 					Str("file", testToSkip.File).
 					Int("line", testToSkip.Line).
 					Str("package", testToSkip.Package).
-					Str("cost", fmt.Sprintf("$%.2f", totalOpenAICost)).
+					Str("total_openai_cost", fmt.Sprintf("$%.2f", totalOpenAICost)).
 					Msg("Skipped test using LLM assistance")
 
 				// We write the file back as part of the skipTestLLM function
@@ -495,7 +514,9 @@ const (
 	gpt4_1OutputCostPer1MTokens = 8.000
 )
 
-var totalOpenAICost float64
+var (
+	totalOpenAICost float64
+)
 
 // skipTestLLM uses an LLM to skip a test or subtest
 // It's slower and more expensive, but can handle more complex cases than skipTestSimple
@@ -523,8 +544,8 @@ func skipTestLLM(file, openAIKey string, testToSkip *SkipTest) (skipped bool) {
 Given the following Go test file, find the exact spot where a t.Skip call would skip the test %s.
 You can assume the the t.Skip call will be inserted like so: if t.Name() == "%s" { t.Skip() }
 If the test provided is a subtest, we only want to skip that specific subtest.
-If you are able to find the spot where the t.Skip call would be inserted, return ONLY the line number where the t.Skip call would be inserted.
-If you are unable to find the spot where the t.Skip call would be inserted, return "Unable to skip test: <short reason why>".
+If you are able to find the spot where the t.Skip call should be inserted, return ONLY the line number where the t.Skip call would be inserted, no extra commentary.
+If you are unable to find the spot where the t.Skip call should be inserted, return "Unable to skip test: <short reason why>".
 If the test is already being skipped, return "Test is already skipped".
 Here is the code:\n\n%s`, testToSkip.Name, testToSkip.Name, string(fileContent))
 
@@ -566,8 +587,17 @@ Here is the code:\n\n%s`, testToSkip.Name, testToSkip.Name, string(fileContent))
 		outputMultiplier = gpt4_1OutputCostPer1MTokens
 	}
 
+	start := time.Now()
+
 	resp, err := client.Chat.Completions.New(context.Background(), completionParams)
+
+	duration := time.Since(start)
 	cost += inputMultiplier * float64(len(prompt)) / 1_000_000
+	log.Debug().
+		Str("model", string(completionParams.Model)).
+		Str("duration", duration.String()).
+		Str("cost", fmt.Sprintf("$%.2f", cost)).
+		Msg("OpenAI API call completed")
 	if err != nil {
 		testToSkip.ErrorSkipping = fmt.Errorf("OpenAI API error: %w", err)
 		return false
@@ -597,6 +627,9 @@ Here is the code:\n\n%s`, testToSkip.Name, testToSkip.Name, string(fileContent))
 	// This is cheaper and faster than having the LLM modify the file for us
 
 	// Parse the line number
+	response = strings.TrimPrefix(response, "Line")
+	response = strings.TrimPrefix(response, ":")
+	response = strings.TrimSpace(response)
 	lineNum, err := strconv.Atoi(response)
 	if err != nil {
 		testToSkip.ErrorSkipping = fmt.Errorf("OpenAI returned invalid line number '%s': %w", response, err)
