@@ -281,7 +281,26 @@ func SkipTests(repoPath, openAIKey string, testsToSkip []*SkipTest) error {
 		}
 		if packageDir == "" {
 			// Print all packages to a file to help debug
-			packagesJSON, err := json.MarshalIndent(packages, "", "  ")
+			type PackageInfo struct {
+				Dir         string   `json:"dir"`
+				ImportPath  string   `json:"importPath"`
+				Root        string   `json:"root"`
+				GoFiles     []string `json:"goFiles"`
+				TestGoFiles []string `json:"testGoFiles"`
+			}
+
+			packageInfos := make([]PackageInfo, len(packages))
+			for i, pkg := range packages {
+				packageInfos[i] = PackageInfo{
+					Dir:         pkg.Dir,
+					ImportPath:  pkg.ImportPath,
+					Root:        pkg.Root,
+					GoFiles:     pkg.GoFiles,
+					TestGoFiles: pkg.TestGoFiles,
+				}
+			}
+
+			packagesJSON, err := json.MarshalIndent(packageInfos, "", "  ")
 			if err != nil {
 				return fmt.Errorf("error marshalling packages: %w", err)
 			}
