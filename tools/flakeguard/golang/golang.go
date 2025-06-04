@@ -232,7 +232,7 @@ func FilterPackagesWithTests(pkgs []string) []string {
 	return testPkgs
 }
 
-// SkipTest is a struct that contains the package and name of the test to skip
+// SkipTest contains info about tests to skip, and the results of skipping them
 type SkipTest struct {
 	Package    string
 	Name       string
@@ -292,7 +292,7 @@ func SkipTests(repoPath, openAIKey string, testsToSkip []*SkipTest) error {
 					Str("file", testToSkip.File).
 					Int("line", testToSkip.Line).
 					Str("package", testToSkip.Package).
-					Msg("Skipped test")
+					Msg("Skipped test using simple AST parsing")
 
 				// Write back the file
 				var out strings.Builder
