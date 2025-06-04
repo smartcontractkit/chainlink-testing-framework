@@ -593,7 +593,7 @@ Here is the code:\n\n%s`, testToSkip.Name, testToSkip.Name, string(fileContent))
 
 	duration := time.Since(start)
 	cost += inputMultiplier * float64(len(prompt)) / 1_000_000
-	log.Debug().
+	log.Trace().
 		Str("model", string(completionParams.Model)).
 		Str("duration", duration.String()).
 		Str("cost", fmt.Sprintf("$%.2f", cost)).
