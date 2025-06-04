@@ -155,3 +155,7 @@ actionlint:
 # Serve MDBook locally
 book:
     cd book && mdbook serve -p 9999
+
+# Reload framework CLI for local development
+reload-cli:
+    cd framework/cmd && go get github.com/smartcontractkit/chainlink-testing-framework/framework/cmd && go install github.com/smartcontractkit/chainlink-testing-framework/framework/cmd && mv ~/go/bin/cmd ~/go/bin/ctf

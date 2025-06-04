@@ -12,9 +12,6 @@ func TestGun(t *testing.T) {
 	srv := wasp.NewHTTPMockServer(nil)
 	srv.Run()
 
-	//branch := os.Getenv("BRANCH")
-	//commit := os.Getenv("COMMIT")
-
 	// define labels for differentiate one run from another
 	labels := map[string]string{
 		// check variables in dashboard/dashboard.go
