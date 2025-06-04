@@ -22,6 +22,7 @@ import (
 
 const (
 	openAIKeyEnvVar = "OPENAI_API_KEY"
+	openAIKeyFlag   = "openai-key"
 )
 
 var (
@@ -34,12 +35,11 @@ var MakePRCmd = &cobra.Command{
 	Use:   "make-pr",
 	Short: "Make a PR to skip identified flaky tests",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		if cmd.Flag("openAIKey").Changed {
-			openAIKey = cmd.Flag("openAIKey").Value.String()
-		} else if os.Getenv(openAIKeyEnvVar) != "" {
+		if !cmd.Flag("openAIKey").Changed {
 			openAIKey = os.Getenv(openAIKeyEnvVar)
-		} else {
-			fmt.Printf("%s is not set, cannot use LLM to skip or fix flaky tests\n", openAIKeyEnvVar)
+		}
+		if openAIKey == "" {
+			fmt.Printf("Warning: OpenAI API key is not provided by flag '%s' or env var '%s', cannot use LLM to skip or fix flaky tests\n", openAIKeyFlag, openAIKeyEnvVar)
 		}
 	},
 	RunE: makePR,
@@ -267,5 +267,5 @@ func makePR(cmd *cobra.Command, args []string) error {
 
 func init() {
 	MakePRCmd.Flags().StringVarP(&repoPath, "repoPath", "r", ".", "Local path to the repository to make the PR for")
-	MakePRCmd.Flags().StringVarP(&openAIKey, "openAIKey", "k", "", fmt.Sprintf("OpenAI API key for using an LLM to help create the PR (can be set via %s environment variable)", openAIKeyEnvVar))
+	MakePRCmd.Flags().StringVarP(&openAIKey, openAIKeyFlag, "k", "", fmt.Sprintf("OpenAI API key for using an LLM to help create the PR (can be set via %s environment variable)", openAIKeyEnvVar))
 }
