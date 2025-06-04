@@ -3,6 +3,7 @@ package golang
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"go/ast"
@@ -15,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/openai/openai-go"
+	"github.com/openai/openai-go/option"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/utils"
 )
@@ -237,15 +240,16 @@ type SkipTest struct {
 
 	// Set by SkipTests
 	// These values might be useless info, but for now we'll keep them
-	NewlySkipped   bool  // If the test was newly skipped after calling SkipTests
-	AlreadySkipped bool  // If the test was already skipped before calling SkipTests
-	ErrorSkipping  error // If we failed to skip the test, this will be set
-	File           string
+	SimplySkipped  bool   // If the test was newly skipped using simple AST parsing methods
+	LLMSkipped     bool   // If the test was newly skipped using LLM assistance
+	AlreadySkipped bool   // If the test was already skipped before calling SkipTests
+	ErrorSkipping  error  // If we failed to skip the test, this will be set
+	File           string // The file that the test was skipped in
 	Line           int
 }
 
 // SkipTests finds all package/test pairs provided and skips them
-func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
+func SkipTests(repoPath, openAIKey string, testsToSkip []*SkipTest) error {
 	packages, err := Packages(repoPath)
 	if err != nil {
 		return err
@@ -281,8 +285,7 @@ func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 				return fmt.Errorf("error parsing file '%s': %w", path, err)
 			}
 
-			found = skipTest(path, fileAst, fset, testToSkip)
-
+			found = skipTestSimple(path, fileAst, fset, testToSkip)
 			if found {
 				log.Debug().
 					Str("test", testToSkip.Name).
@@ -299,6 +302,19 @@ func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 				if err := os.WriteFile(path, []byte(out.String()), 0644); err != nil {
 					return fmt.Errorf("error writing file '%s': %w", path, err)
 				}
+				return filepath.SkipDir // stop walking
+			}
+
+			found = skipTestLLM(path, openAIKey, testToSkip)
+			if found {
+				log.Debug().
+					Str("test", testToSkip.Name).
+					Str("file", testToSkip.File).
+					Int("line", testToSkip.Line).
+					Str("package", testToSkip.Package).
+					Msg("Skipped test using LLM assistance")
+
+				// We write the file back as part of the skipTestLLM function
 				return filepath.SkipDir // stop walking
 			}
 			return nil
@@ -322,13 +338,23 @@ func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 	return nil
 }
 
-// skipTest parses through the file AST and skips the test or subtest if it is found
-func skipTest(file string, fileAst *ast.File, fset *token.FileSet, testToSkip *SkipTest) (found bool) {
-	parentTest := testToSkip.Name
-	subTest := ""
+// skipTestSimple parses through the file AST and skips the test or subtest if it is found
+// This works for most simple cases, is fast and efficient, but can't handle more complex cases like when subtests or helper functions get involved
+func skipTestSimple(file string, fileAst *ast.File, fset *token.FileSet, testToSkip *SkipTest) (skipped bool) {
+	var (
+		parentTest = testToSkip.Name
+		subTest    string
+		jiraMsg    string
+	)
 	if strings.Contains(testToSkip.Name, "/") {
 		subTest = filepath.Base(testToSkip.Name)
 		parentTest = filepath.Dir(testToSkip.Name)
+	}
+
+	if os.Getenv("JIRA_DOMAIN") != "" && testToSkip.JiraTicket != "" {
+		jiraMsg = fmt.Sprintf("Skipped by flakeguard: https://%s/issues/%s", os.Getenv("JIRA_DOMAIN"), testToSkip.JiraTicket)
+	} else {
+		jiraMsg = fmt.Sprintf("Skipped by flakeguard: %s", testToSkip.JiraTicket)
 	}
 
 	ast.Inspect(fileAst, func(n ast.Node) bool {
@@ -349,7 +375,7 @@ func skipTest(file string, fileAst *ast.File, fset *token.FileSet, testToSkip *S
 									if selExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
 										if selExpr.Sel.Name == "Skip" {
 											// Test is already skipped, don't modify it
-											found = true
+											skipped = true
 											testToSkip.AlreadySkipped = true
 											return false
 										}
@@ -369,9 +395,8 @@ func skipTest(file string, fileAst *ast.File, fset *token.FileSet, testToSkip *S
 									&ast.BasicLit{
 										Kind: token.STRING,
 										Value: fmt.Sprintf(
-											"\"Skipped by flakeguard: https://%s/issues/%s\"",
-											os.Getenv("JIRA_DOMAIN"),
-											testToSkip.JiraTicket,
+											"\"%s\"",
+											jiraMsg,
 										),
 									},
 								},
@@ -379,9 +404,9 @@ func skipTest(file string, fileAst *ast.File, fset *token.FileSet, testToSkip *S
 						}
 						testToSkip.File = file
 						testToSkip.Line = fset.Position(fn.Pos()).Line
-						testToSkip.NewlySkipped = true
+						testToSkip.SimplySkipped = true
 						fn.Body.List = append([]ast.Stmt{skipStmt}, fn.Body.List...)
-						found = true
+						skipped = true
 						return false
 					} else {
 						// Subtest: look for t.Run(subTest, ...)
@@ -410,7 +435,7 @@ func skipTest(file string, fileAst *ast.File, fset *token.FileSet, testToSkip *S
 												if callExpr, ok := exprStmt.X.(*ast.CallExpr); ok {
 													if selExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
 														if selExpr.Sel.Name == "Skip" {
-															found = true
+															skipped = true
 															testToSkip.AlreadySkipped = true
 															return false
 														}
@@ -429,9 +454,8 @@ func skipTest(file string, fileAst *ast.File, fset *token.FileSet, testToSkip *S
 													&ast.BasicLit{
 														Kind: token.STRING,
 														Value: fmt.Sprintf(
-															"\"Skipped by flakeguard: https://%s/issues/%s\"",
-															os.Getenv("JIRA_DOMAIN"),
-															testToSkip.JiraTicket,
+															"\"%s\"",
+															jiraMsg,
 														),
 													},
 												},
@@ -440,8 +464,8 @@ func skipTest(file string, fileAst *ast.File, fset *token.FileSet, testToSkip *S
 										fnLit.Body.List = append([]ast.Stmt{skipStmt}, fnLit.Body.List...)
 										testToSkip.File = file
 										testToSkip.Line = fset.Position(fnLit.Pos()).Line
-										testToSkip.NewlySkipped = true
-										found = true
+										testToSkip.SimplySkipped = true
+										skipped = true
 										return false
 									}
 								}
@@ -455,5 +479,127 @@ func skipTest(file string, fileAst *ast.File, fset *token.FileSet, testToSkip *S
 		return true
 	})
 
-	return found
+	return skipped
+}
+
+// skipTestLLM uses an LLM to skip a test or subtest
+// It's slower and more expensive, but can handle more complex cases than skipTestSimple
+// Use this when skipTestSimple fails to skip a test or subtest
+func skipTestLLM(file, openAIKey string, testToSkip *SkipTest) (skipped bool) {
+	if openAIKey == "" {
+		return false
+	}
+
+	fileContent, err := os.ReadFile(file)
+	if err != nil {
+		testToSkip.ErrorSkipping = fmt.Errorf("failed to read file: %w", err)
+		return false
+	}
+
+	jiraDomain := os.Getenv("JIRA_DOMAIN")
+	jiraMsg := ""
+	if jiraDomain != "" && testToSkip.JiraTicket != "" {
+		jiraMsg = fmt.Sprintf("Skipped by flakeguard: https://%s/issues/%s", jiraDomain, testToSkip.JiraTicket)
+	} else {
+		jiraMsg = fmt.Sprintf("Skipped by flakeguard: %s", testToSkip.JiraTicket)
+	}
+
+	prompt := fmt.Sprintf(`You are an expert Go developer. 
+Given the following Go test file, find the exact spot where a t.Skip call would skip the test %s.
+You can assume the the t.Skip call will be inserted like so: if t.Name() == "%s" { t.Skip() }
+If the test provided is a subtest, we only want to skip that specific subtest.
+If you are able to find the spot where the t.Skip call would be inserted, return ONLY the line number where the t.Skip call would be inserted.
+If you are unable to find the spot where the t.Skip call would be inserted, return "Unable to skip test: <short reason why>".
+If the test is already being skipped, return "Test is already skipped".
+Here is the code:\n\n%s`, testToSkip.Name, testToSkip.Name, string(fileContent))
+
+	client := openai.NewClient(
+		option.WithAPIKey(openAIKey),
+	)
+
+	resp, err := client.Chat.Completions.New(context.Background(), openai.ChatCompletionNewParams{
+		Model: openai.ChatModelGPT4_1Nano,
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			openai.UserMessage(prompt),
+		},
+	})
+	if err != nil {
+		testToSkip.ErrorSkipping = fmt.Errorf("OpenAI API error: %w", err)
+		return false
+	}
+
+	if len(resp.Choices) == 0 {
+		testToSkip.ErrorSkipping = fmt.Errorf("no response from OpenAI")
+		return false
+	}
+
+	response := strings.TrimSpace(resp.Choices[0].Message.Content)
+	if strings.Contains(response, "Test is already skipped") {
+		testToSkip.AlreadySkipped = true
+		return true
+	}
+
+	if strings.Contains(response, "Unable to skip test") {
+		testToSkip.ErrorSkipping = fmt.Errorf(
+			"OpenAI could not find a way to skip the test: %s",
+			strings.TrimPrefix(response, "Unable to skip test: "),
+		)
+		return false
+	}
+
+	// We should only get back a line number, so let's parse it and add the skip statement
+	// This is cheaper and faster than having the LLM modify the file for us
+
+	// Parse the line number
+	lineNum, err := strconv.Atoi(response)
+	if err != nil {
+		testToSkip.ErrorSkipping = fmt.Errorf("OpenAI returned invalid line number '%s': %w", response, err)
+		return false
+	}
+
+	// Read the file and split into lines
+	lines := strings.Split(string(fileContent), "\n")
+
+	// Validate line number (1-based indexing from OpenAI, convert to 0-based)
+	if lineNum < 1 || lineNum > len(lines) {
+		testToSkip.ErrorSkipping = fmt.Errorf("line number %d suggested by OpenAI is out of range (file has %d lines)", lineNum, len(lines))
+		return false
+	}
+
+	// Get the indentation of the line we're inserting before
+	targetLineIndex := lineNum - 1 // Convert to 0-based index
+	var indentation string
+	if targetLineIndex < len(lines) {
+		// Extract indentation from the target line
+		line := lines[targetLineIndex]
+		for _, char := range line {
+			if char == ' ' || char == '\t' {
+				indentation += string(char)
+			} else {
+				break
+			}
+		}
+	}
+
+	// Create the skip statement with proper indentation
+	skipStatement := fmt.Sprintf("%sif t.Name() == \"%s\" { t.Skip(\"%s\") }", indentation, testToSkip.Name, jiraMsg)
+
+	// Insert the skip statement at the specified line
+	newLines := make([]string, 0, len(lines)+1)
+	newLines = append(newLines, lines[:targetLineIndex]...)
+	newLines = append(newLines, skipStatement)
+	newLines = append(newLines, lines[targetLineIndex:]...)
+
+	// Write the modified content back to the file
+	modifiedContent := strings.Join(newLines, "\n")
+	err = os.WriteFile(file, []byte(modifiedContent), 0644)
+	if err != nil {
+		testToSkip.ErrorSkipping = fmt.Errorf("failed to write modified file: %w", err)
+		return false
+	}
+
+	testToSkip.File = file
+	testToSkip.Line = lineNum
+	testToSkip.LLMSkipped = true
+	return true
 }

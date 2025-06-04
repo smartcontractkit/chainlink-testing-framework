@@ -119,15 +119,17 @@ func TestSkipTests(t *testing.T) {
 	slices.Sort(expectedSkipped)
 	// End setup
 
-	err = SkipTests(testRunDir, testsToSkip)
+	err = SkipTests(testRunDir, "", testsToSkip)
 	assert.NoError(t, err)
 
 	for _, test := range testsToSkip {
 		if test.Name == "TestPackASkippedAlready" || test.Name == "TestPackBSkippedAlready" {
 			assert.True(t, test.AlreadySkipped, "Expected already skipped test '%s' to already be skipped", test.Name)
-			assert.False(t, test.NewlySkipped, "Expected already skipped test '%s' to not be skipped again", test.Name)
+			assert.False(t, test.SimplySkipped, "Expected already skipped test '%s' to not be skipped again", test.Name)
+			assert.False(t, test.LLMSkipped, "Expected already skipped test '%s' to not be skipped again", test.Name)
 		} else {
-			assert.True(t, test.NewlySkipped, "Expected flaky test '%s' to be skipped", test.Name)
+			assert.True(t, test.SimplySkipped, "Expected flaky test '%s' to be simply skipped", test.Name)
+			assert.False(t, test.LLMSkipped, "Expected flaky test '%s' to be simply skipped", test.Name)
 			assert.False(t, test.AlreadySkipped, "Test '%s' should not have already been skipped", test.Name)
 		}
 		assert.NoError(t, test.ErrorSkipping, "Expected no error skipping test")

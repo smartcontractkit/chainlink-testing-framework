@@ -20,15 +20,29 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/localdb"
 )
 
+const (
+	openAIKeyEnvVar = "OPENAI_API_KEY"
+)
+
 var (
 	repoPath    string
 	localDBPath string
+	openAIKey   string
 )
 
 var MakePRCmd = &cobra.Command{
 	Use:   "make-pr",
 	Short: "Make a PR to skip identified flaky tests",
-	RunE:  makePR,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		if cmd.Flag("openAIKey").Changed {
+			openAIKey = cmd.Flag("openAIKey").Value.String()
+		} else if os.Getenv(openAIKeyEnvVar) != "" {
+			openAIKey = os.Getenv(openAIKeyEnvVar)
+		} else {
+			fmt.Printf("%s is not set, cannot use LLM to skip or fix flaky tests\n", openAIKeyEnvVar)
+		}
+	},
+	RunE: makePR,
 }
 
 func makePR(cmd *cobra.Command, args []string) error {
@@ -128,7 +142,7 @@ func makePR(cmd *cobra.Command, args []string) error {
 		jiraTickets = append(jiraTickets, entry.JiraTicket)
 	}
 
-	err = golang.SkipTests(repoPath, testsToSkip)
+	err = golang.SkipTests(repoPath, openAIKey, testsToSkip)
 	if err != nil {
 		return fmt.Errorf("failed to modify code to skip tests: %w", err)
 	}
@@ -163,6 +177,7 @@ func makePR(cmd *cobra.Command, args []string) error {
 		skippedTestsPRBody        strings.Builder
 		alreadySkippedTestsPRBody strings.Builder
 		errorSkippingTestsPRBody  strings.Builder
+		llmSkippedTestsPRBody     strings.Builder
 	)
 
 	for _, test := range testsToSkip {
@@ -171,7 +186,7 @@ func makePR(cmd *cobra.Command, args []string) error {
 			errorSkippingTestsPRBody.WriteString(fmt.Sprintf("  Test: `%s`\n", test.Name))
 			errorSkippingTestsPRBody.WriteString(fmt.Sprintf("  Ticket: [%s](https://%s/browse/%s)\n", test.JiraTicket, os.Getenv("JIRA_DOMAIN"), test.JiraTicket))
 			errorSkippingTestsPRBody.WriteString(fmt.Sprintf("  Error: %s\n\n", test.ErrorSkipping))
-		} else if test.NewlySkipped {
+		} else if test.SimplySkipped {
 			skippedTestsPRBody.WriteString(fmt.Sprintf("- Package: `%s`\n", test.Package))
 			skippedTestsPRBody.WriteString(fmt.Sprintf("  Test: `%s`\n", test.Name))
 			skippedTestsPRBody.WriteString(fmt.Sprintf("  Ticket: [%s](https://%s/browse/%s)\n", test.JiraTicket, os.Getenv("JIRA_DOMAIN"), test.JiraTicket))
@@ -180,19 +195,28 @@ func makePR(cmd *cobra.Command, args []string) error {
 			alreadySkippedTestsPRBody.WriteString(fmt.Sprintf("- Package: `%s`\n", test.Package))
 			alreadySkippedTestsPRBody.WriteString(fmt.Sprintf("  Test: `%s`\n", test.Name))
 			alreadySkippedTestsPRBody.WriteString(fmt.Sprintf("  Ticket: [%s](https://%s/browse/%s)\n", test.JiraTicket, os.Getenv("JIRA_DOMAIN"), test.JiraTicket))
+		} else if test.LLMSkipped {
+			llmSkippedTestsPRBody.WriteString(fmt.Sprintf("- Package: `%s`\n", test.Package))
+			llmSkippedTestsPRBody.WriteString(fmt.Sprintf("  Test: `%s`\n", test.Name))
+			llmSkippedTestsPRBody.WriteString(fmt.Sprintf("  Ticket: [%s](https://%s/browse/%s)\n", test.JiraTicket, os.Getenv("JIRA_DOMAIN"), test.JiraTicket))
+			llmSkippedTestsPRBody.WriteString(fmt.Sprintf("  [View skip in PR](https://github.com/%s/%s/pull/%s/files#diff-%sL%d)\n\n", owner, repoName, branchName, commitHash, test.Line))
 		}
 	}
-	body := fmt.Sprintf(`## Tests That I Failed to Skip Automatically, Need Manual Intervention
+	body := fmt.Sprintf(`## Tests That I Failed to Skip, Need Manual Intervention
 
 %s
 
-## Tests Skipped
+## Tests Skipped Using Simple AST Parsing
+
+%s
+
+## Tests Skipped Using LLM Assistance
 
 %s
 
 ## Tests That Were Already Skipped
 
-%s`, errorSkippingTestsPRBody.String(), skippedTestsPRBody.String(), alreadySkippedTestsPRBody.String())
+%s`, errorSkippingTestsPRBody.String(), skippedTestsPRBody.String(), llmSkippedTestsPRBody.String(), alreadySkippedTestsPRBody.String())
 
 	pr := &github.NewPullRequest{
 		Title:               github.Ptr(fmt.Sprintf("[%s] Flakeguard: Skip flaky tests", strings.Join(jiraTickets, "] ["))),
@@ -243,4 +267,5 @@ func makePR(cmd *cobra.Command, args []string) error {
 
 func init() {
 	MakePRCmd.Flags().StringVarP(&repoPath, "repoPath", "r", ".", "Local path to the repository to make the PR for")
+	MakePRCmd.Flags().StringVarP(&openAIKey, "openAIKey", "k", "", fmt.Sprintf("OpenAI API key for using an LLM to help create the PR (can be set via %s environment variable)", openAIKeyEnvVar))
 }
