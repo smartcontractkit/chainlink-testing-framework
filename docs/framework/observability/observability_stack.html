@@ -255,6 +255,10 @@
 <li><a href="http://localhost:3000/d/000000039/postgresql-database?orgId=1&amp;refresh=10s&amp;var-DS_PROMETHEUS=PBFA97CFB590B2093&amp;var-interval=$__auto_interval_interval&amp;var-namespace=&amp;var-release=&amp;var-instance=postgres_exporter_0:9187&amp;var-datname=All&amp;var-mode=All&amp;from=now-5m&amp;to=now">PostgreSQL</a></li>
 <li><a href="http://localhost:4040">Pyroscope</a></li>
 </ul>
+<h2 id="developing"><a class="header" href="#developing">Developing</a></h2>
+<p>Change compose files under <code>framework/cmd/observability</code> and restart the stack (removing volumes too)</p>
+<pre><code>just reload-cli &amp;&amp; ctf obs r
+</code></pre>
 
                     </main>
 
