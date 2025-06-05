@@ -102,7 +102,7 @@ func newSolana(in *Input) (*Output, error) {
 		NetworkAliases: map[string][]string{
 			framework.DefaultNetworkName: {containerName},
 		},
-		WaitingFor: wait.ForLog("Processed Slot: 1").
+		WaitingFor: wait.ForLog("Processed Slot:").
 			WithStartupTimeout(1 * time.Minute).
 			WithPollInterval(100 * time.Millisecond),
 		HostConfigModifier: func(h *container.HostConfig) {
