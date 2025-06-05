@@ -31,6 +31,25 @@ const (
 	DefaultTonHlWalletMnemonic = "twenty unfair stay entry during please water april fabric morning length lumber style tomorrow melody similar forum width ride render void rather custom coin"
 )
 
+var (
+	commonDBVars = map[string]string{
+		"POSTGRES_DIALECT":                  "postgresql+asyncpg",
+		"POSTGRES_HOST":                     "index-postgres",
+		"POSTGRES_PORT":                     "5432",
+		"POSTGRES_USER":                     "postgres",
+		"POSTGRES_DB":                       "ton_index",
+		"POSTGRES_PASSWORD":                 "PostgreSQL1234",
+		"POSTGRES_DBNAME":                   "ton_index",
+		"TON_INDEXER_TON_HTTP_API_ENDPOINT": "http://tonhttpapi:8081/",
+		"TON_INDEXER_IS_TESTNET":            "0",
+		"TON_INDEXER_REDIS_DSN":             "redis://redis:6379",
+		"TON_WORKER_FROM":                   "1",
+		"TON_WORKER_DBROOT":                 "/tondb",
+		"TON_WORKER_BINARY":                 "ton-index-postgres-v2",
+		"TON_WORKER_ADDITIONAL_ARGS":        "",
+	}
+)
+
 type containerTemplate struct {
 	Name    string
 	Image   string
@@ -54,25 +73,6 @@ type hostPortMapping struct {
 	FaucetPort   string
 	IndexAPIPort string
 }
-
-var (
-	commonDBVars = map[string]string{
-		"POSTGRES_DIALECT":                  "postgresql+asyncpg",
-		"POSTGRES_HOST":                     "index-postgres",
-		"POSTGRES_PORT":                     "5432",
-		"POSTGRES_USER":                     "postgres",
-		"POSTGRES_DB":                       "ton_index",
-		"POSTGRES_PASSWORD":                 "PostgreSQL1234",
-		"POSTGRES_DBNAME":                   "ton_index",
-		"TON_INDEXER_TON_HTTP_API_ENDPOINT": "http://tonhttpapi:8081/",
-		"TON_INDEXER_IS_TESTNET":            "0",
-		"TON_INDEXER_REDIS_DSN":             "redis://redis:6379",
-		"TON_WORKER_FROM":                   "1",
-		"TON_WORKER_DBROOT":                 "/tondb",
-		"TON_WORKER_BINARY":                 "ton-index-postgres-v2",
-		"TON_WORKER_ADDITIONAL_ARGS":        "",
-	}
-)
 
 func commonContainer(
 	ctx context.Context,
@@ -120,9 +120,9 @@ func generateUniquePortsFromBase(basePort string) (*hostPortMapping, error) {
 		return nil, fmt.Errorf("invalid base port %s: %w", basePort, err)
 	}
 
-	// Use larger multipliers to ensure no overlap between different base ports
-	// Each base port gets a range of 100 ports to avoid conflicts
-	portMultiplier := (base - DefaultTonSimpleServerPort) * 100 // 8000->0, 8001->100, 8002->200, etc.
+	// use larger multipliers to ensure no overlap between different base ports
+	// 8000->0, 8001->100, 8002->200, etc.
+	portMultiplier := (base - DefaultTonSimpleServerPort) * 100
 
 	mapping := &hostPortMapping{
 		SimpleServer: basePort,
@@ -169,6 +169,7 @@ func newTon(in *Input) (*Output, error) {
 			Labels:         framework.DefaultTCLabels(),
 		},
 	})
+	framework.L.Info().Str("output", string(networkName)).Msg("TON Docker network created")
 
 	tonServices := []containerTemplate{
 		{
