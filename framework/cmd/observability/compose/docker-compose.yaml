@@ -40,7 +40,7 @@ services:
     privileged: true
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.4.1
     user: '0:0'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -84,14 +84,14 @@ services:
       - tempo
 
   pyroscope:
-    image: 'pyroscope/pyroscope:latest'
+    image: 'grafana/pyroscope:1.13.4'
     ports:
       - '4040:4040'
     command:
       - 'server'
 
   postgres_exporter_0:
-    image: prometheuscommunity/postgres-exporter:latest
+    image: prometheuscommunity/postgres-exporter:v0.17.1
     container_name: postgres_exporter_0
     environment:
       - DATA_SOURCE_NAME=postgresql://chainlink:thispasswordislongenough@host.docker.internal:13000/db_0?sslmode=disable
@@ -100,7 +100,7 @@ services:
     restart: unless-stopped
 
   postgres_exporter_1:
-    image: prometheuscommunity/postgres-exporter:latest
+    image: prometheuscommunity/postgres-exporter:v0.17.1
     container_name: postgres_exporter_1
     environment:
       - DATA_SOURCE_NAME=postgresql://chainlink:thispasswordislongenough@host.docker.internal:13000/db_1?sslmode=disable
@@ -109,7 +109,7 @@ services:
     restart: unless-stopped
 
   postgres_exporter_2:
-    image: prometheuscommunity/postgres-exporter:latest
+    image: prometheuscommunity/postgres-exporter:v0.17.1
     container_name: postgres_exporter_2
     environment:
       - DATA_SOURCE_NAME=postgresql://chainlink:thispasswordislongenough@host.docker.internal:13000/db_2?sslmode=disable
@@ -118,7 +118,7 @@ services:
     restart: unless-stopped
 
   postgres_exporter_3:
-    image: prometheuscommunity/postgres-exporter:latest
+    image: prometheuscommunity/postgres-exporter:v0.17.1
     container_name: postgres_exporter_3
     environment:
       - DATA_SOURCE_NAME=postgresql://chainlink:thispasswordislongenough@host.docker.internal:13000/db_3?sslmode=disable
@@ -127,7 +127,7 @@ services:
     restart: unless-stopped
 
   postgres_exporter_4:
-    image: prometheuscommunity/postgres-exporter:latest
+    image: prometheuscommunity/postgres-exporter:v0.17.1
     container_name: postgres_exporter_4
     environment:
       - DATA_SOURCE_NAME=postgresql://chainlink:thispasswordislongenough@host.docker.internal:13000/db_4?sslmode=disable

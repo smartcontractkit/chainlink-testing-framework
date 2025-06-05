@@ -96,6 +96,18 @@ func main() {
 						Action:      func(c *cli.Context) error { return observabilityDown() },
 					},
 					{
+						Name:        "restart",
+						Usage:       "ctf obs r",
+						Aliases:     []string{"r"},
+						Description: "Restart a local observability stack",
+						Action: func(c *cli.Context) error {
+							if err := observabilityDown(); err != nil {
+								return err
+							}
+							return observabilityUp()
+						},
+					},
+					{
 						Name:        "load",
 						Usage:       "ctf obs l",
 						Aliases:     []string{"l"},
