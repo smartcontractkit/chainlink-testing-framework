@@ -291,7 +291,10 @@ func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 
 				// Write back the file
 				var out strings.Builder
-				if err := printer.Fprint(&out, fset, fileAst); err != nil {
+				customPrint := printer.Config{
+					Mode: printer.RawFormat, // Stop go from messing with whitespace when printing out the file (messes with git diff, not the place to do this)
+				}
+				if err := customPrint.Fprint(&out, fset, fileAst); err != nil {
 					return fmt.Errorf("error printing file '%s': %w", path, err)
 				}
 				if err := os.WriteFile(path, []byte(out.String()), 0644); err != nil {
