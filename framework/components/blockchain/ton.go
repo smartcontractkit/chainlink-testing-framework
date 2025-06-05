@@ -16,15 +16,7 @@ import (
 )
 
 const (
-	DefaultTonSimpleServerPort     = 8000
-	DefaultTonHTTPAPIPort          = 8081
-	DefaultTonIndexAPIPort         = 8082
-	DefaultTonTONExplorerPort      = 8080
-	DefaultTonFaucetPort           = 88
-	DefaultTonLiteServerPort       = 40004
-	DefaultTonDhtServerPort        = 40003
-	DefaultTonValidatorConsolePort = 40002
-	DefaultTonValidatorPublicPort  = 40001
+	DefaultTonSimpleServerPort = "8000"
 	// NOTE: Prefunded high-load wallet from MyLocalTon pre-funded wallet, that can send up to 254 messages per 1 external message
 	// https://docs.ton.org/v3/documentation/smart-contracts/contracts-specs/highload-wallet#highload-wallet-v2
 	DefaultTonHlWalletAddress  = "-1:5ee77ced0b7ae6ef88ab3f4350d8872c64667ffbe76073455215d3cdfab3294b"
@@ -33,20 +25,19 @@ const (
 
 var (
 	commonDBVars = map[string]string{
-		"POSTGRES_DIALECT":                  "postgresql+asyncpg",
-		"POSTGRES_HOST":                     "index-postgres",
-		"POSTGRES_PORT":                     "5432",
-		"POSTGRES_USER":                     "postgres",
-		"POSTGRES_DB":                       "ton_index",
-		"POSTGRES_PASSWORD":                 "PostgreSQL1234",
-		"POSTGRES_DBNAME":                   "ton_index",
-		"TON_INDEXER_TON_HTTP_API_ENDPOINT": "http://tonhttpapi:8081/",
-		"TON_INDEXER_IS_TESTNET":            "0",
-		"TON_INDEXER_REDIS_DSN":             "redis://redis:6379",
-		"TON_WORKER_FROM":                   "1",
-		"TON_WORKER_DBROOT":                 "/tondb",
-		"TON_WORKER_BINARY":                 "ton-index-postgres-v2",
-		"TON_WORKER_ADDITIONAL_ARGS":        "",
+		"POSTGRES_DIALECT":           "postgresql+asyncpg",
+		"POSTGRES_HOST":              "index-postgres",
+		"POSTGRES_PORT":              "5432",
+		"POSTGRES_USER":              "postgres",
+		"POSTGRES_DB":                "ton_index",
+		"POSTGRES_PASSWORD":          "PostgreSQL1234",
+		"POSTGRES_DBNAME":            "ton_index",
+		"TON_INDEXER_IS_TESTNET":     "0",
+		"TON_INDEXER_REDIS_DSN":      "redis://redis:6379",
+		"TON_WORKER_FROM":            "1",
+		"TON_WORKER_DBROOT":          "/tondb",
+		"TON_WORKER_BINARY":          "ton-index-postgres-v2",
+		"TON_WORKER_ADDITIONAL_ARGS": "",
 	}
 )
 
@@ -140,7 +131,7 @@ func defaultTon(in *Input) {
 		in.Image = "ghcr.io/neodix42/mylocalton-docker:latest"
 	}
 	if in.Port == "" {
-		in.Port = strconv.Itoa(DefaultTonSimpleServerPort)
+		in.Port = DefaultTonSimpleServerPort
 	}
 }
 
@@ -172,7 +163,7 @@ func newTon(in *Input) (*Output, error) {
 			Name:  fmt.Sprintf("TON-genesis-%s", instanceID),
 			Image: "ghcr.io/neodix42/mylocalton-docker:latest",
 			Ports: []string{
-				fmt.Sprintf("%s:8000/tcp", hostPorts.SimpleServer),
+				fmt.Sprintf("%s:%s/tcp", hostPorts.SimpleServer, DefaultTonSimpleServerPort),
 				// Note: LITE_PORT port is used by the lite-client to connect to the genesis node in config
 				fmt.Sprintf("%s:%s/tcp", hostPorts.LiteServer, hostPorts.LiteServer),
 				fmt.Sprintf("%s:40003/udp", hostPorts.DHTServer),
@@ -369,7 +360,7 @@ func newTon(in *Input) (*Output, error) {
 		Nodes: []*Node{{
 			// Note: define if we need more access other than the global config(tonutils-go only uses liteclients defined in the config)
 			ExternalHTTPUrl: fmt.Sprintf("%s:%s", "localhost", hostPorts.SimpleServer),
-			InternalHTTPUrl: fmt.Sprintf("%s:%s", name, "8000"),
+			InternalHTTPUrl: fmt.Sprintf("%s:%s", name, DefaultTonSimpleServerPort),
 		}},
 	}, nil
 }
