@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"go/ast"
 	"go/parser"
-	"go/printer"
 	"go/token"
 	"os"
 	"os/exec"
@@ -289,17 +288,6 @@ func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 					Str("package", testToSkip.Package).
 					Msg("Skipped test using simple AST parsing")
 
-				// Write back the file
-				var out strings.Builder
-				customPrint := printer.Config{
-					Mode: printer.RawFormat, // Stop go from messing with whitespace when printing out the file (messes with git diff, not the place to do this)
-				}
-				if err := customPrint.Fprint(&out, fset, fileAst); err != nil {
-					return fmt.Errorf("error printing file '%s': %w", path, err)
-				}
-				if err := os.WriteFile(path, []byte(out.String()), 0644); err != nil {
-					return fmt.Errorf("error writing file '%s': %w", path, err)
-				}
 				return filepath.SkipDir // stop walking
 			}
 			return nil
@@ -336,6 +324,7 @@ func skipTestSimple(file string, fileAst *ast.File, fset *token.FileSet, testToS
 		parentTest = testToSkip.Name
 		subTest    string
 		jiraMsg    string
+		tSymbol    string
 	)
 	if strings.Contains(testToSkip.Name, "/") {
 		subTest = filepath.Base(testToSkip.Name)
@@ -358,13 +347,14 @@ func skipTestSimple(file string, fileAst *ast.File, fset *token.FileSet, testToS
 			param := fn.Type.Params.List[0]
 			if starExpr, ok := param.Type.(*ast.StarExpr); ok {
 				if sel, ok := starExpr.X.(*ast.SelectorExpr); ok && sel.Sel.Name == "T" {
+					tSymbol = param.Names[0].Name
 					if subTest == "" {
 						// No subtest: only skip the parent test
 						for _, stmt := range fn.Body.List {
 							if exprStmt, ok := stmt.(*ast.ExprStmt); ok {
 								if callExpr, ok := exprStmt.X.(*ast.CallExpr); ok {
 									if selExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
-										if selExpr.Sel.Name == "Skip" {
+										if strings.HasPrefix(selExpr.Sel.Name, "Skip") {
 											// Test is already skipped, don't modify it
 											skipped = true
 											testToSkip.AlreadySkipped = true
@@ -375,32 +365,12 @@ func skipTestSimple(file string, fileAst *ast.File, fset *token.FileSet, testToS
 							}
 						}
 
-						// Test is not skipped, add skip statement
-						skipStmt := &ast.ExprStmt{
-							X: &ast.CallExpr{
-								Fun: &ast.SelectorExpr{
-									X:   ast.NewIdent(param.Names[0].Name),
-									Sel: ast.NewIdent("Skip"),
-								},
-								Args: []ast.Expr{
-									&ast.BasicLit{
-										Kind: token.STRING,
-										Value: fmt.Sprintf(
-											"\"%s\"",
-											jiraMsg,
-										),
-									},
-								},
-							},
-						}
 						testToSkip.File = file
 						testToSkip.Line = fset.Position(fn.Pos()).Line
 						testToSkip.SimplySkipped = true
-						fn.Body.List = append([]ast.Stmt{skipStmt}, fn.Body.List...)
 						skipped = true
 						return false
-					} else {
-						// Subtest: look for t.Run(subTest, ...)
+					} else { // Loop through the body of the parent test and try to find the subtest
 						ast.Inspect(fn.Body, func(n ast.Node) bool {
 							call, ok := n.(*ast.CallExpr)
 							if !ok {
@@ -425,7 +395,7 @@ func skipTestSimple(file string, fileAst *ast.File, fset *token.FileSet, testToS
 											if exprStmt, ok := fnLit.Body.List[0].(*ast.ExprStmt); ok {
 												if callExpr, ok := exprStmt.X.(*ast.CallExpr); ok {
 													if selExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
-														if selExpr.Sel.Name == "Skip" {
+														if strings.HasPrefix(selExpr.Sel.Name, "Skip") {
 															skipped = true
 															testToSkip.AlreadySkipped = true
 															return false
@@ -434,25 +404,7 @@ func skipTestSimple(file string, fileAst *ast.File, fset *token.FileSet, testToS
 												}
 											}
 										}
-										// Not skipped, insert skip
-										skipStmt := &ast.ExprStmt{
-											X: &ast.CallExpr{
-												Fun: &ast.SelectorExpr{
-													X:   ast.NewIdent(param.Names[0].Name),
-													Sel: ast.NewIdent("Skip"),
-												},
-												Args: []ast.Expr{
-													&ast.BasicLit{
-														Kind: token.STRING,
-														Value: fmt.Sprintf(
-															"\"%s\"",
-															jiraMsg,
-														),
-													},
-												},
-											},
-										}
-										fnLit.Body.List = append([]ast.Stmt{skipStmt}, fnLit.Body.List...)
+
 										testToSkip.File = file
 										testToSkip.Line = fset.Position(fnLit.Pos()).Line
 										testToSkip.SimplySkipped = true
@@ -470,6 +422,25 @@ func skipTestSimple(file string, fileAst *ast.File, fset *token.FileSet, testToS
 		return true
 	})
 
+	if skipped {
+		// Add the skip statement to the test by directly inserting it into the file strings
+		// We don't do it through the AST because it will try to do a bunch of formatting, which will mess with git diffs
+		// This is a bit of a hack, but it works
+		fileContent, err := os.ReadFile(file)
+		if err != nil {
+			testToSkip.ErrorSkipping = fmt.Errorf("failed to read file: %w", err)
+			return false
+		}
+
+		skipStmt := fmt.Sprintf("%s.Skip(\"%s\")", tSymbol, jiraMsg)
+		lines := strings.Split(string(fileContent), "\n")
+		lines[testToSkip.Line-1] = fmt.Sprintf("%s\n%s", lines[testToSkip.Line-1], skipStmt)
+		newContent := strings.Join(lines, "\n")
+		if err := os.WriteFile(file, []byte(newContent), 0644); err != nil {
+			testToSkip.ErrorSkipping = fmt.Errorf("failed to write file: %w", err)
+			return false
+		}
+	}
 	return skipped
 }
 

@@ -106,6 +106,7 @@ func TestSkipTests(t *testing.T) {
 		testsToSkip = []*SkipTest{
 			{Package: "github.com/owner/repo/testdata/package_a", Name: "TestPackAFail"},
 			{Package: "github.com/owner/repo/testdata/package_a", Name: "TestPackAFailSubTest/failing_subtest"},
+			{Package: "github.com/owner/repo/testdata/package_a", Name: "TestPackADifferentTName"},
 			{Package: "github.com/owner/repo/testdata/package_b", Name: "TestPackBFail"},
 			{Package: "github.com/owner/repo/testdata/package_a", Name: "TestPackASkippedAlready"},
 			{Package: "github.com/owner/repo/testdata/package_b", Name: "TestPackBSkippedAlready"},

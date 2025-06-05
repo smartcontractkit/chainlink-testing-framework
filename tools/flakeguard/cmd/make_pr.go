@@ -139,7 +139,7 @@ func makePR(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Print("Committing changes, tap your yubikey if it's blinking...")
-	commitHash, err := targetRepoWorktree.Commit(fmt.Sprintf("Skips flaky %d tests", len(testsToSkip)), &git.CommitOptions{})
+	commitHash, err := targetRepoWorktree.Commit(fmt.Sprintf("Skips flaky %d tests: %s", len(testsToSkip), strings.Join(jiraTickets, ", ")), &git.CommitOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to commit changes: %w", err)
 	}
@@ -163,42 +163,45 @@ func makePR(cmd *cobra.Command, args []string) error {
 		skippedTestsPRBody        strings.Builder
 		alreadySkippedTestsPRBody strings.Builder
 		errorSkippingTestsPRBody  strings.Builder
+		body                      strings.Builder
 	)
 
 	for _, test := range testsToSkip {
 		if test.ErrorSkipping != nil {
+			if errorSkippingTestsPRBody.Len() == 0 {
+				errorSkippingTestsPRBody.WriteString("## Tests That I Failed to Skip, Need Manual Intervention\n\n")
+			}
 			errorSkippingTestsPRBody.WriteString(fmt.Sprintf("- Package: `%s`\n", test.Package))
 			errorSkippingTestsPRBody.WriteString(fmt.Sprintf("  Test: `%s`\n", test.Name))
 			errorSkippingTestsPRBody.WriteString(fmt.Sprintf("  Ticket: [%s](https://%s/browse/%s)\n", test.JiraTicket, os.Getenv("JIRA_DOMAIN"), test.JiraTicket))
 			errorSkippingTestsPRBody.WriteString(fmt.Sprintf("  Error: %s\n\n", test.ErrorSkipping))
 		} else if test.SimplySkipped {
+			if skippedTestsPRBody.Len() == 0 {
+				skippedTestsPRBody.WriteString("## Tests Skipped Using Simple AST Parsing\n\n")
+			}
 			skippedTestsPRBody.WriteString(fmt.Sprintf("- Package: `%s`\n", test.Package))
 			skippedTestsPRBody.WriteString(fmt.Sprintf("  Test: `%s`\n", test.Name))
 			skippedTestsPRBody.WriteString(fmt.Sprintf("  Ticket: [%s](https://%s/browse/%s)\n", test.JiraTicket, os.Getenv("JIRA_DOMAIN"), test.JiraTicket))
 			skippedTestsPRBody.WriteString(fmt.Sprintf("  [View skip in PR](https://github.com/%s/%s/pull/%s/files#diff-%sL%d)\n\n", owner, repoName, branchName, commitHash, test.Line))
 		} else if test.AlreadySkipped {
+			if alreadySkippedTestsPRBody.Len() == 0 {
+				alreadySkippedTestsPRBody.WriteString("## Tests That Were Already Skipped\n\n")
+			}
 			alreadySkippedTestsPRBody.WriteString(fmt.Sprintf("- Package: `%s`\n", test.Package))
 			alreadySkippedTestsPRBody.WriteString(fmt.Sprintf("  Test: `%s`\n", test.Name))
 			alreadySkippedTestsPRBody.WriteString(fmt.Sprintf("  Ticket: [%s](https://%s/browse/%s)\n", test.JiraTicket, os.Getenv("JIRA_DOMAIN"), test.JiraTicket))
 		}
 	}
-	body := fmt.Sprintf(`## Tests That I Failed to Skip, Need Manual Intervention
 
-%s
-
-## Tests Skipped Using Simple AST Parsing
-
-%s
-
-## Tests That Were Already Skipped
-
-%s`, errorSkippingTestsPRBody.String(), skippedTestsPRBody.String(), alreadySkippedTestsPRBody.String())
+	body.WriteString(errorSkippingTestsPRBody.String())
+	body.WriteString(skippedTestsPRBody.String())
+	body.WriteString(alreadySkippedTestsPRBody.String())
 
 	pr := &github.NewPullRequest{
-		Title:               github.Ptr(fmt.Sprintf("[%s] Flakeguard: Skip flaky tests", strings.Join(jiraTickets, "] ["))),
+		Title:               github.Ptr(fmt.Sprintf("Flakeguard skip flaky tests. Tickets: [%s]", strings.Join(jiraTickets, "] ["))),
 		Head:                github.Ptr(branchName),
 		Base:                github.Ptr(defaultBranch),
-		Body:                github.Ptr(body),
+		Body:                github.Ptr(body.String()),
 		MaintainerCanModify: github.Ptr(true),
 	}
 

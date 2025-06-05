@@ -31,3 +31,8 @@ func TestPackAFailSubTest(t *testing.T) {
 		t.Log("This subtest should pass and not get skipped by flakeguard")
 	})
 }
+
+func TestPackADifferentTName(a *testing.T) {
+	a.Log("This tests should fail and get skipped by flakeguard")
+	a.FailNow()
+}
