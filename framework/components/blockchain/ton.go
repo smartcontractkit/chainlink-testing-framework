@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/testcontainers/testcontainers-go"
@@ -15,15 +16,15 @@ import (
 )
 
 const (
-	DefaultTonSimpleServerPort     = "8000"
-	DefaultTonHTTPAPIPort          = "8081"
-	DefaultTonIndexAPIPort         = "8082"
-	DefaultTonTONExplorerPort      = "8080"
-	DefaultTonFaucetPort           = "88"
-	DefaultTonLiteServerPort       = "40004"
-	DefaultTonDhtServerPort        = "40003"
-	DefaultTonValidatorConsolePort = "40002"
-	DefaultTonValidatorPublicPort  = "40001"
+	DefaultTonSimpleServerPort     = 8000
+	DefaultTonHTTPAPIPort          = 8081
+	DefaultTonIndexAPIPort         = 8082
+	DefaultTonTONExplorerPort      = 8080
+	DefaultTonFaucetPort           = 88
+	DefaultTonLiteServerPort       = 40004
+	DefaultTonDhtServerPort        = 40003
+	DefaultTonValidatorConsolePort = 40002
+	DefaultTonValidatorPublicPort  = 40001
 	// NOTE: Prefunded high-load wallet from MyLocalTon pre-funded wallet, that can send up to 254 messages per 1 external message
 	// https://docs.ton.org/v3/documentation/smart-contracts/contracts-specs/highload-wallet#highload-wallet-v2
 	DefaultTonHlWalletAddress  = "-1:5ee77ced0b7ae6ef88ab3f4350d8872c64667ffbe76073455215d3cdfab3294b"
@@ -43,20 +44,35 @@ type containerTemplate struct {
 }
 
 type hostPortMapping struct {
-	SimpleServer string // host → container 8000
-	HTTPAPIPort  string // host → container 8081
-	IndexAPIPort string // host → container 8082
-
-	// These four will be extracted from a free-port helper:
-	LiteServer   string // host → container 40004
-	DHTServer    string // host → container 40003 (UDP)
-	Console      string // host → container 40002
-	ValidatorUDP string // host → container 40001 (UDP)
-
-	// Faucet + Explorer can stay as random, too:
-	FaucetPort   string // host → container 88
-	ExplorerPort string // host → container 8080
+	SimpleServer string
+	LiteServer   string
+	DHTServer    string
+	Console      string
+	ValidatorUDP string
+	HTTPAPIPort  string
+	ExplorerPort string
+	FaucetPort   string
+	IndexAPIPort string
 }
+
+var (
+	commonDBVars = map[string]string{
+		"POSTGRES_DIALECT":                  "postgresql+asyncpg",
+		"POSTGRES_HOST":                     "index-postgres",
+		"POSTGRES_PORT":                     "5432",
+		"POSTGRES_USER":                     "postgres",
+		"POSTGRES_DB":                       "ton_index",
+		"POSTGRES_PASSWORD":                 "PostgreSQL1234",
+		"POSTGRES_DBNAME":                   "ton_index",
+		"TON_INDEXER_TON_HTTP_API_ENDPOINT": "http://tonhttpapi:8081/",
+		"TON_INDEXER_IS_TESTNET":            "0",
+		"TON_INDEXER_REDIS_DSN":             "redis://redis:6379",
+		"TON_WORKER_FROM":                   "1",
+		"TON_WORKER_DBROOT":                 "/tondb",
+		"TON_WORKER_BINARY":                 "ton-index-postgres-v2",
+		"TON_WORKER_ADDITIONAL_ARGS":        "",
+	}
+)
 
 func commonContainer(
 	ctx context.Context,
@@ -98,24 +114,26 @@ func randomID() string {
 	return hex.EncodeToString(b)
 }
 
-func allocateDynamicPorts(in *Input) (*hostPortMapping, error) {
-	if len(in.CustomPorts) < 8 {
-		return nil, fmt.Errorf(
-			"CustomPorts must contain at least 8 ports Got %d ports",
-			len(in.CustomPorts),
-		)
+func generateUniquePortsFromBase(basePort string) (*hostPortMapping, error) {
+	base, err := strconv.Atoi(basePort)
+	if err != nil {
+		return nil, fmt.Errorf("invalid base port %s: %w", basePort, err)
 	}
 
+	// Use larger multipliers to ensure no overlap between different base ports
+	// Each base port gets a range of 100 ports to avoid conflicts
+	portMultiplier := (base - DefaultTonSimpleServerPort) * 100 // 8000->0, 8001->100, 8002->200, etc.
+
 	mapping := &hostPortMapping{
-		SimpleServer: in.Port,
-		LiteServer:   in.CustomPorts[0],
-		DHTServer:    in.CustomPorts[1],
-		Console:      in.CustomPorts[2],
-		ValidatorUDP: in.CustomPorts[3],
-		HTTPAPIPort:  in.CustomPorts[4],
-		ExplorerPort: in.CustomPorts[5],
-		FaucetPort:   in.CustomPorts[6],
-		IndexAPIPort: in.CustomPorts[7],
+		SimpleServer: basePort,
+		HTTPAPIPort:  strconv.Itoa(DefaultTonHTTPAPIPort + portMultiplier),
+		ExplorerPort: strconv.Itoa(DefaultTonTONExplorerPort + portMultiplier),
+		IndexAPIPort: strconv.Itoa(DefaultTonIndexAPIPort + portMultiplier),
+		FaucetPort:   strconv.Itoa(DefaultTonFaucetPort + portMultiplier),
+		LiteServer:   strconv.Itoa(DefaultTonLiteServerPort + portMultiplier),
+		DHTServer:    strconv.Itoa(DefaultTonDhtServerPort + portMultiplier),
+		Console:      strconv.Itoa(DefaultTonValidatorConsolePort + portMultiplier),
+		ValidatorUDP: strconv.Itoa(DefaultTonValidatorPublicPort + portMultiplier),
 	}
 
 	return mapping, nil
@@ -126,20 +144,16 @@ func defaultTon(in *Input) {
 		in.Image = "ghcr.io/neodix42/mylocalton-docker:latest"
 	}
 	if in.Port == "" {
-		in.Port = "8000"
-	}
-	if len(in.CustomPorts) == 0 {
-		// Provide default dynamic ports - these should be overridden in parallel tests
-		in.CustomPorts = []string{"40004", "40003", "40002", "40001"}
+		in.Port = strconv.Itoa(DefaultTonSimpleServerPort)
 	}
 }
 
 func newTon(in *Input) (*Output, error) {
 	defaultTon(in)
 
-	hostPorts, err := allocateDynamicPorts(in)
+	hostPorts, err := generateUniquePortsFromBase(in.Port)
 	if err != nil {
-		return nil, fmt.Errorf("failed to allocate dynamic ports: %w", err)
+		return nil, fmt.Errorf("failed to generate unique ports: %w", err)
 	}
 
 	ctx := context.Background()
@@ -156,43 +170,23 @@ func newTon(in *Input) (*Output, error) {
 		},
 	})
 
-	commonDBVars := map[string]string{
-		"POSTGRES_DIALECT":  "postgresql+asyncpg",
-		"POSTGRES_HOST":     "index-postgres",
-		"POSTGRES_PORT":     "5432",
-		"POSTGRES_USER":     "postgres",
-		"POSTGRES_DB":       "ton_index",
-		"POSTGRES_PASSWORD": "PostgreSQL1234",
-		"POSTGRES_DBNAME":   "ton_index",
-
-		"TON_INDEXER_TON_HTTP_API_ENDPOINT": "http://tonhttpapi:8081/",
-		"TON_INDEXER_IS_TESTNET":            "0",
-		"TON_INDEXER_REDIS_DSN":             "redis://redis:6379",
-
-		"TON_WORKER_FROM":            "1",
-		"TON_WORKER_DBROOT":          "/tondb",
-		"TON_WORKER_BINARY":          "ton-index-postgres-v2",
-		"TON_WORKER_ADDITIONAL_ARGS": "",
-	}
-
 	tonServices := []containerTemplate{
 		{
 			Name:  fmt.Sprintf("TON-genesis-%s", instanceID),
 			Image: "ghcr.io/neodix42/mylocalton-docker:latest",
 			Ports: []string{
 				fmt.Sprintf("%s:8000/tcp", hostPorts.SimpleServer),
+				// Note: LITE_PORT port is used by the lite-client to connect to the genesis node in config
 				fmt.Sprintf("%s:%s/tcp", hostPorts.LiteServer, hostPorts.LiteServer),
-				fmt.Sprintf("%s:%s/udp", hostPorts.DHTServer, hostPorts.DHTServer),
-				fmt.Sprintf("%s:%s/tcp", hostPorts.Console, hostPorts.Console),
-				fmt.Sprintf("%s:%s/udp", hostPorts.ValidatorUDP, hostPorts.ValidatorUDP),
+				fmt.Sprintf("%s:40003/udp", hostPorts.DHTServer),
+				fmt.Sprintf("%s:40002/tcp", hostPorts.Console),
+				fmt.Sprintf("%s:40001/udp", hostPorts.ValidatorUDP),
 			},
 			Env: map[string]string{
-				"GENESIS":           "true",
-				"NAME":              "genesis",
+				"GENESIS": "true",
+				"NAME":    "genesis",
+				// Note: LITE_PORT port is used by the lite-client to connect to the genesis node in config
 				"LITE_PORT":         hostPorts.LiteServer,
-				"DHT_PORT":          hostPorts.DHTServer,
-				"CONSOLE_PORT":      hostPorts.Console,
-				"PUBLIC_PORT":       hostPorts.ValidatorUDP,
 				"CUSTOM_PARAMETERS": "--state-ttl 315360000 --archive-ttl 315360000",
 			},
 			WaitFor: wait.ForExec([]string{
@@ -248,8 +242,8 @@ func newTon(in *Input) (*Output, error) {
 				"POSTGRES_USER":          commonDBVars["POSTGRES_USER"],
 				"POSTGRES_PASSWORD":      commonDBVars["POSTGRES_PASSWORD"],
 				"POSTGRES_DBNAME":        commonDBVars["POSTGRES_DBNAME"],
-				"TON_INDEXER_IS_TESTNET": "0",
-				"TON_INDEXER_REDIS_DSN":  "redis://event-cache:6379",
+				"TON_INDEXER_IS_TESTNET": commonDBVars["TON_INDEXER_IS_TESTNET"],
+				"TON_INDEXER_REDIS_DSN":  commonDBVars["TON_INDEXER_REDIS_DSN"],
 			},
 			Mounts: testcontainers.ContainerMounts{
 				{
