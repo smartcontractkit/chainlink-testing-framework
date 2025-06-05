@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
+	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/git"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/utils"
 )
 
@@ -485,6 +486,208 @@ func skipTestSimple(file string, fileAst *ast.File, fset *token.FileSet, testToS
 			testToSkip.ErrorSkipping = fmt.Errorf("failed to write file: %w", err)
 			return
 		}
+	}
+}
+
+// SkipTestsViaGitHub finds all package/test pairs and modifies them using GitHub API
+// Returns a map of file paths to their modified content
+func SkipTestsViaGitHub(owner, repo, ref, githubToken string, testsToSkip []*SkipTest) (map[string]string, error) {
+	// First, discover the repository structure
+	structure, err := git.DiscoverRepoStructureViaGitHub(owner, repo, ref, githubToken)
+	if err != nil {
+		return nil, fmt.Errorf("failed to discover repository structure: %w", err)
+	}
+
+	modifiedFiles := make(map[string]string)
+
+	for _, testToSkip := range testsToSkip {
+		_, testFiles, err := git.FindPackageForTest(owner, repo, ref, testToSkip.Package, testToSkip.Name, githubToken, structure)
+		if err != nil {
+			testToSkip.ErrorSkipping = fmt.Errorf("failed to find package for test %s: %w", testToSkip.Name, err)
+			continue
+		}
+
+		var found bool
+		for _, testFile := range testFiles {
+			// Get file contents from GitHub
+			fileContent, err := git.GetFileContentsFromGitHub(owner, repo, ref, testFile, githubToken)
+			if err != nil {
+				log.Error().Err(err).Str("file", testFile).Msg("Failed to get file contents")
+				continue
+			}
+
+			// Parse the file and try to skip the test
+			fset := token.NewFileSet()
+			fileAst, err := parser.ParseFile(fset, testFile, fileContent, parser.ParseComments)
+			if err != nil {
+				log.Error().Err(err).Str("file", testFile).Msg("Failed to parse file")
+				continue
+			}
+
+			// Use the existing skipTestSimple logic but modify in memory
+			skipTestInMemory(testFile, fileAst, fset, testToSkip, fileContent, modifiedFiles)
+
+			if testToSkip.SimplySkipped || testToSkip.AlreadySkipped {
+				found = true
+				break
+			}
+		}
+
+		if !found && testToSkip.ErrorSkipping == nil {
+			testToSkip.ErrorSkipping = fmt.Errorf(
+				"cannot find '%s' in package '%s' via GitHub API, the test may be tricky to find, or may have moved or been deleted",
+				testToSkip.Name, testToSkip.Package,
+			)
+		}
+	}
+
+	return modifiedFiles, nil
+}
+
+// skipTestInMemory is similar to skipTestSimple but works with in-memory content and stores results in modifiedFiles
+func skipTestInMemory(file string, fileAst *ast.File, fset *token.FileSet, testToSkip *SkipTest, originalContent string, modifiedFiles map[string]string) {
+	var (
+		parentTest = testToSkip.Name
+		subTest    string
+		jiraMsg    string
+		tSymbol    string
+	)
+	if strings.Contains(testToSkip.Name, "/") {
+		subTest = filepath.Base(testToSkip.Name)
+		parentTest = filepath.Dir(testToSkip.Name)
+	}
+
+	if os.Getenv("JIRA_DOMAIN") != "" && testToSkip.JiraTicket != "" {
+		jiraMsg = fmt.Sprintf("Skipped by flakeguard: https://%s/issues/%s", os.Getenv("JIRA_DOMAIN"), testToSkip.JiraTicket)
+	} else if testToSkip.JiraTicket != "" {
+		jiraMsg = fmt.Sprintf("Skipped by flakeguard: %s", testToSkip.JiraTicket)
+	} else {
+		jiraMsg = "Skipped by flakeguard: No associated Jira ticket!"
+	}
+
+	ast.Inspect(fileAst, func(n ast.Node) bool {
+		fn, ok := n.(*ast.FuncDecl)
+		if !ok || fn.Name.Name != parentTest {
+			return true
+		}
+		// Check if first parameter is *testing.T
+		if fn.Type.Params != nil && len(fn.Type.Params.List) > 0 {
+			param := fn.Type.Params.List[0]
+			if starExpr, ok := param.Type.(*ast.StarExpr); ok {
+				if sel, ok := starExpr.X.(*ast.SelectorExpr); ok && sel.Sel.Name == "T" {
+					tSymbol = param.Names[0].Name
+					if subTest == "" {
+						// No subtest: only skip the parent test
+						for _, stmt := range fn.Body.List {
+							if exprStmt, ok := stmt.(*ast.ExprStmt); ok {
+								if callExpr, ok := exprStmt.X.(*ast.CallExpr); ok {
+									if selExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
+										if strings.HasPrefix(selExpr.Sel.Name, "Skip") {
+											// Test is already skipped, don't modify it
+											testToSkip.File = file
+											testToSkip.Line = fset.Position(fn.Pos()).Line
+											testToSkip.AlreadySkipped = true
+											return false
+										}
+									}
+								}
+							}
+						}
+
+						testToSkip.File = file
+						testToSkip.Line = fset.Position(fn.Pos()).Line
+						testToSkip.SimplySkipped = true
+						return false
+					} else { // Loop through the body of the parent test and try to find the subtest
+						ast.Inspect(fn.Body, func(n ast.Node) bool {
+							call, ok := n.(*ast.CallExpr)
+							if !ok {
+								return true
+							}
+							sel, ok := call.Fun.(*ast.SelectorExpr)
+							if !ok || sel.Sel.Name != "Run" {
+								return true
+							}
+							// Check if first argument is a string literal matching subTest
+							if len(call.Args) < 2 {
+								return true
+							}
+							if nameLit, ok := call.Args[0].(*ast.BasicLit); ok && nameLit.Kind == token.STRING {
+								name, _ := strconv.Unquote(nameLit.Value)
+								name = strings.ReplaceAll(name, " ", "_")
+								if name == subTest {
+									// Second argument should be a function literal
+									if fnLit, ok := call.Args[1].(*ast.FuncLit); ok {
+										// Check if already skipped
+										if len(fnLit.Body.List) > 0 {
+											if exprStmt, ok := fnLit.Body.List[0].(*ast.ExprStmt); ok {
+												if callExpr, ok := exprStmt.X.(*ast.CallExpr); ok {
+													if selExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
+														if strings.HasPrefix(selExpr.Sel.Name, "Skip") {
+															testToSkip.File = file
+															testToSkip.Line = fset.Position(fnLit.Pos()).Line
+															testToSkip.AlreadySkipped = true
+															return false
+														}
+													}
+												}
+											}
+										}
+
+										testToSkip.File = file
+										testToSkip.Line = fset.Position(fnLit.Pos()).Line
+										testToSkip.SimplySkipped = true
+										return false
+									}
+								}
+							}
+							return true
+						})
+					}
+				}
+			}
+		}
+		return true
+	})
+
+	if testToSkip.SimplySkipped {
+		// Modify the content in memory
+		lines := strings.Split(originalContent, "\n")
+		targetLineIndex := testToSkip.Line - 1
+
+		// Extract indentation from the target line or the next line with content
+		var indentation string
+		for i := targetLineIndex; i < len(lines); i++ {
+			line := lines[i]
+			if strings.TrimSpace(line) != "" {
+				// Extract leading whitespace
+				for _, char := range line {
+					if char == ' ' || char == '\t' {
+						indentation += string(char)
+					} else {
+						break
+					}
+				}
+				// Add one more level of indentation (assume tabs, but handle spaces too)
+				if strings.Contains(indentation, "\t") {
+					indentation += "\t"
+				} else {
+					indentation += "    " // 4 spaces as fallback
+				}
+				break
+			}
+		}
+
+		skipStmt := fmt.Sprintf("%s%s.Skip(\"%s\")", indentation, tSymbol, jiraMsg)
+
+		// Insert the skip statement after the target line
+		newLines := make([]string, 0, len(lines)+1)
+		newLines = append(newLines, lines[:targetLineIndex+1]...)
+		newLines = append(newLines, skipStmt)
+		newLines = append(newLines, lines[targetLineIndex+1:]...)
+
+		newContent := strings.Join(newLines, "\n")
+		modifiedFiles[file] = newContent
 	}
 }
 

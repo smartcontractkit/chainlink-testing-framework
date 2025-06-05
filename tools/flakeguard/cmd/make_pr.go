@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/google/go-github/v72/github"
 	"github.com/spf13/cobra"
@@ -80,13 +81,6 @@ func makePR(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to checkout default branch %s: %w", defaultBranch, err)
 	}
 
-	fmt.Printf("Fetching latest changes from default branch '%s', tap your yubikey if it's blinking...", defaultBranch)
-	err = repo.Fetch(&git.FetchOptions{})
-	if err != nil && err != git.NoErrAlreadyUpToDate {
-		return fmt.Errorf("failed to fetch latest: %w", err)
-	}
-	fmt.Println(" ✅")
-
 	fmt.Printf("Pulling latest changes from default branch '%s', tap your yubikey if it's blinking...", defaultBranch)
 	err = targetRepoWorktree.Pull(&git.PullOptions{})
 	if err != nil && err != git.NoErrAlreadyUpToDate {
@@ -104,28 +98,18 @@ func makePR(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to checkout new branch: %w", err)
 	}
 
-	cleanUpBranch := true
-	defer func() {
-		if cleanUpBranch {
-			fmt.Printf("Cleaning up branch %s...", branchName)
-			// First checkout default branch
-			err = targetRepoWorktree.Checkout(&git.CheckoutOptions{
-				Branch: plumbing.NewBranchReferenceName(defaultBranch),
-				Force:  true, // Force checkout to discard any changes for a clean default branch
-			})
-			if err != nil {
-				fmt.Printf("Failed to checkout default branch: %v\n", err)
-				return
-			}
-			// Then delete the local branch
-			err = repo.Storer.RemoveReference(plumbing.NewBranchReferenceName(branchName))
-			if err != nil {
-				fmt.Printf("Failed to remove local branch: %v\n", err)
-				return
-			}
-			fmt.Println(" ✅")
-		}
-	}()
+	// Push the new branch to GitHub before making any commits
+	fmt.Printf("Pushing new branch '%s' to GitHub, tap your yubikey if it's blinking...", branchName)
+	err = repo.Push(&git.PushOptions{
+		RemoteName: "origin",
+		RefSpecs: []config.RefSpec{
+			config.RefSpec(fmt.Sprintf("refs/heads/%s:refs/heads/%s", branchName, branchName)),
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to push new branch to GitHub: %w", err)
+	}
+	fmt.Println(" ✅")
 
 	if len(currentlyFlakyEntries) == 0 {
 		fmt.Println("No flaky tests found!")
@@ -146,11 +130,6 @@ func makePR(cmd *cobra.Command, args []string) error {
 	err = golang.SkipTests(repoPath, testsToSkip)
 	if err != nil {
 		return fmt.Errorf("failed to modify code to skip tests: %w", err)
-	}
-
-	_, err = targetRepoWorktree.Add(".")
-	if err != nil {
-		return fmt.Errorf("failed to add changes: %w", err)
 	}
 
 	fmt.Print("Committing changes, tap your yubikey if it's blinking...")
@@ -250,7 +229,6 @@ func makePR(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create PR, got bad status: %s\n%s", resp.Status, string(body))
 	}
 
-	cleanUpBranch = false
 	fmt.Printf("PR created! https://github.com/%s/%s/pull/%d\n", owner, repoName, createdPR.GetNumber())
 	return nil
 }

@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/google/go-github/v72/github"
 	"github.com/shurcooL/githubv4"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/utils"
 	"golang.org/x/oauth2"
@@ -409,4 +410,248 @@ func base64EncodeFile(path string) (string, error) {
 		return "", err
 	}
 	return buf.String(), nil
+}
+
+// GitHubFileInfo represents file information from GitHub API
+type GitHubFileInfo struct {
+	Name        string `json:"name"`
+	Path        string `json:"path"`
+	Type        string `json:"type"` // "file" or "dir"
+	DownloadURL string `json:"download_url"`
+	SHA         string `json:"sha"`
+}
+
+// GitHubRepoStructure represents the analyzed repository structure
+type GitHubRepoStructure struct {
+	GoModDirs    []string            // Directories containing go.mod files
+	TestFiles    map[string][]string // Package path -> list of test files
+	PackageFiles map[string][]string // Package path -> list of go files
+}
+
+// DiscoverRepoStructureViaGitHub analyzes repository structure using GitHub API
+// This replaces the need for local filesystem operations
+func DiscoverRepoStructureViaGitHub(owner, repo, ref, githubToken string) (*GitHubRepoStructure, error) {
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: githubToken})
+	tc := oauth2.NewClient(ctx, ts)
+	client := github.NewClient(tc)
+
+	structure := &GitHubRepoStructure{
+		GoModDirs:    []string{},
+		TestFiles:    make(map[string][]string),
+		PackageFiles: make(map[string][]string),
+	}
+
+	// Recursively walk the repository structure
+	err := walkGitHubDirectory(ctx, client, owner, repo, ref, "", structure)
+	if err != nil {
+		return nil, fmt.Errorf("failed to walk repository structure: %w", err)
+	}
+
+	return structure, nil
+}
+
+// walkGitHubDirectory recursively walks through GitHub repository directories
+func walkGitHubDirectory(ctx context.Context, client *github.Client, owner, repo, ref, path string, structure *GitHubRepoStructure) error {
+	_, directoryContent, _, err := client.Repositories.GetContents(ctx, owner, repo, path, &github.RepositoryContentGetOptions{Ref: ref})
+	if err != nil {
+		return fmt.Errorf("failed to get directory contents for %s: %w", path, err)
+	}
+
+	var goFiles []string
+	var testFiles []string
+
+	for _, content := range directoryContent {
+		if content.GetType() == "file" {
+			fileName := content.GetName()
+			filePath := content.GetPath()
+
+			// Check for go.mod files
+			if fileName == "go.mod" {
+				structure.GoModDirs = append(structure.GoModDirs, path)
+			}
+
+			// Check for Go files
+			if strings.HasSuffix(fileName, ".go") {
+				if strings.HasSuffix(fileName, "_test.go") {
+					testFiles = append(testFiles, filePath)
+				} else {
+					goFiles = append(goFiles, filePath)
+				}
+			}
+		} else if content.GetType() == "dir" {
+			// Recursively walk subdirectories
+			err := walkGitHubDirectory(ctx, client, owner, repo, ref, content.GetPath(), structure)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// If this directory has Go files, determine the package path
+	if len(goFiles) > 0 || len(testFiles) > 0 {
+		// For simplicity, use the directory path as package identifier
+		// In a real implementation, you might want to parse the package declaration
+		packagePath := path
+		if packagePath == "" {
+			packagePath = "." // root package
+		}
+
+		if len(goFiles) > 0 {
+			structure.PackageFiles[packagePath] = goFiles
+		}
+		if len(testFiles) > 0 {
+			structure.TestFiles[packagePath] = testFiles
+		}
+	}
+
+	return nil
+}
+
+// GetFileContentsFromGitHub fetches file contents from GitHub
+func GetFileContentsFromGitHub(owner, repo, ref, path, githubToken string) (string, error) {
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: githubToken})
+	tc := oauth2.NewClient(ctx, ts)
+	client := github.NewClient(tc)
+
+	fileContent, _, _, err := client.Repositories.GetContents(ctx, owner, repo, path, &github.RepositoryContentGetOptions{Ref: ref})
+	if err != nil {
+		return "", fmt.Errorf("failed to get file contents for %s: %w", path, err)
+	}
+
+	if fileContent == nil {
+		return "", fmt.Errorf("file content is nil for %s", path)
+	}
+
+	content, err := fileContent.GetContent()
+	if err != nil {
+		return "", fmt.Errorf("failed to decode file content for %s: %w", path, err)
+	}
+
+	return content, nil
+}
+
+// FindPackageForTest finds which package a test belongs to using GitHub API
+func FindPackageForTest(owner, repo, ref, testPackageImportPath, testName, githubToken string, structure *GitHubRepoStructure) (string, []string, error) {
+	// Convert import path to directory path
+	// This is a simplified approach - you might need more sophisticated logic
+	packageDir := strings.ReplaceAll(testPackageImportPath, "/", "/")
+
+	// Find test files in the package directory
+	testFiles, exists := structure.TestFiles[packageDir]
+	if !exists {
+		// Try alternative mappings or search through all test files
+		for dir, files := range structure.TestFiles {
+			// Check if this directory might contain the package we're looking for
+			if strings.Contains(dir, packageDir) || strings.HasSuffix(testPackageImportPath, filepath.Base(dir)) {
+				testFiles = files
+				packageDir = dir
+				break
+			}
+		}
+	}
+
+	if len(testFiles) == 0 {
+		return "", nil, fmt.Errorf("no test files found for package %s", testPackageImportPath)
+	}
+
+	return packageDir, testFiles, nil
+}
+
+// CreateBranchOnGitHub creates a new branch on GitHub from the base branch
+func CreateBranchOnGitHub(owner, repo, branchName, baseBranch, githubToken string) error {
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: githubToken})
+	tc := oauth2.NewClient(ctx, ts)
+	client := github.NewClient(tc)
+
+	// Get the reference of the base branch
+	baseRef, _, err := client.Git.GetRef(ctx, owner, repo, "refs/heads/"+baseBranch)
+	if err != nil {
+		return fmt.Errorf("failed to get base branch reference: %w", err)
+	}
+
+	// Create new branch reference
+	newRef := &github.Reference{
+		Ref: github.Ptr("refs/heads/" + branchName),
+		Object: &github.GitObject{
+			SHA: baseRef.Object.SHA,
+		},
+	}
+
+	_, _, err = client.Git.CreateRef(ctx, owner, repo, newRef)
+	if err != nil {
+		return fmt.Errorf("failed to create branch: %w", err)
+	}
+
+	return nil
+}
+
+// CommitFilesToGitHub commits multiple files to a GitHub branch using GraphQL API
+func CommitFilesToGitHub(owner, repo, branchName string, files map[string]string, commitMsg, githubToken string) (string, error) {
+	tok := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: githubToken})
+	token := oauth2.NewClient(context.Background(), tok)
+	graphqlClient := githubv4.NewClient(token)
+
+	// Prepare file additions
+	additions := []githubv4.FileAddition{}
+	for filePath, content := range files {
+		// Base64 encode the content
+		encoded := base64.StdEncoding.EncodeToString([]byte(content))
+		additions = append(additions, githubv4.FileAddition{
+			Path:     githubv4.String(filePath),
+			Contents: githubv4.Base64String(encoded),
+		})
+	}
+
+	var m struct {
+		CreateCommitOnBranch struct {
+			Commit struct {
+				URL string `graphql:"url"`
+				OID string `graphql:"oid"`
+			}
+		} `graphql:"createCommitOnBranch(input:$input)"`
+	}
+
+	splitMsg := strings.SplitN(commitMsg, "\n", 2)
+	headline := splitMsg[0]
+	body := ""
+	if len(splitMsg) > 1 {
+		body = splitMsg[1]
+	}
+
+	// Get current HEAD SHA of the branch
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: githubToken})
+	tc := oauth2.NewClient(ctx, ts)
+	restClient := github.NewClient(tc)
+
+	branchRef, _, err := restClient.Git.GetRef(ctx, owner, repo, "refs/heads/"+branchName)
+	if err != nil {
+		return "", fmt.Errorf("failed to get branch reference: %w", err)
+	}
+	expectedHeadOid := branchRef.Object.GetSHA()
+
+	// Create the GraphQL input
+	input := githubv4.CreateCommitOnBranchInput{
+		Branch: githubv4.CommittableBranch{
+			RepositoryNameWithOwner: githubv4.NewString(githubv4.String(fmt.Sprintf("%s/%s", owner, repo))),
+			BranchName:              githubv4.NewString(githubv4.String(branchName)),
+		},
+		Message: githubv4.CommitMessage{
+			Headline: githubv4.String(headline),
+			Body:     githubv4.NewString(githubv4.String(body)),
+		},
+		FileChanges: &githubv4.FileChanges{
+			Additions: &additions,
+		},
+		ExpectedHeadOid: githubv4.GitObjectID(expectedHeadOid),
+	}
+
+	if err := graphqlClient.Mutate(context.Background(), &m, input, nil); err != nil {
+		return "", fmt.Errorf("failed to create commit: %w", err)
+	}
+
+	return m.CreateCommitOnBranch.Commit.OID, nil
 }
