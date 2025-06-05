@@ -2,14 +2,13 @@ package blockchain
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/network"
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
@@ -97,14 +96,6 @@ func commonContainer(
 	})
 }
 
-func randomID() string {
-	b := make([]byte, 4)
-	if _, err := rand.Read(b); err != nil {
-		return fmt.Sprintf("%d", time.Now().UnixNano()) // fallback
-	}
-	return hex.EncodeToString(b)
-}
-
 func generateUniquePortsFromBase(basePort string) (*hostPortMapping, error) {
 	base, err := strconv.Atoi(basePort)
 	if err != nil {
@@ -145,22 +136,20 @@ func newTon(in *Input) (*Output, error) {
 
 	ctx := context.Background()
 
-	instanceID := randomID()
-	networkName := fmt.Sprintf("ton-%s", instanceID)
+	network, err := network.New(ctx,
+		network.WithAttachable(),
+		network.WithLabels(framework.DefaultTCLabels()),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create network: %w", err)
+	}
 
-	_, err = testcontainers.GenericNetwork(ctx, testcontainers.GenericNetworkRequest{
-		NetworkRequest: testcontainers.NetworkRequest{
-			Name:           networkName,
-			CheckDuplicate: true,
-			Attachable:     true,
-			Labels:         framework.DefaultTCLabels(),
-		},
-	})
+	networkName := network.Name
 	framework.L.Info().Str("output", string(networkName)).Msg("TON Docker network created")
 
 	tonServices := []containerTemplate{
 		{
-			Name:  fmt.Sprintf("TON-genesis-%s", instanceID),
+			Name:  fmt.Sprintf("TON-genesis-%s", networkName),
 			Image: "ghcr.io/neodix42/mylocalton-docker:latest",
 			Ports: []string{
 				fmt.Sprintf("%s:%s/tcp", hostPorts.SimpleServer, DefaultTonSimpleServerPort),
@@ -196,13 +185,13 @@ func newTon(in *Input) (*Output, error) {
 		},
 		{
 			Image:   "redis:latest",
-			Name:    fmt.Sprintf("TON-redis-%s", instanceID),
+			Name:    fmt.Sprintf("TON-redis-%s", networkName),
 			Network: networkName,
 			Alias:   "redis",
 		},
 		{
 			Image:   "postgres:17",
-			Name:    fmt.Sprintf("TON-index-postgres-%s", instanceID),
+			Name:    fmt.Sprintf("TON-index-postgres-%s", networkName),
 			Network: networkName,
 			Alias:   "index-postgres",
 			Env:     commonDBVars,
@@ -214,7 +203,7 @@ func newTon(in *Input) (*Output, error) {
 			},
 		},
 		{
-			Name:  fmt.Sprintf("TON-tonhttpapi-%s", instanceID),
+			Name:  fmt.Sprintf("TON-tonhttpapi-%s", networkName),
 			Image: "ghcr.io/neodix42/ton-http-api:latest",
 			Env: map[string]string{
 				"TON_API_LOGS_JSONIFY":             "0",
@@ -246,7 +235,7 @@ func newTon(in *Input) (*Output, error) {
 			Alias:   "tonhttpapi",
 		},
 		{
-			Name:  fmt.Sprintf("TON-faucet-%s", instanceID),
+			Name:  fmt.Sprintf("TON-faucet-%s", networkName),
 			Image: "ghcr.io/neodix42/mylocalton-docker-faucet:latest",
 			Env: map[string]string{
 				"FAUCET_USE_RECAPTCHA": "false",
@@ -269,7 +258,7 @@ func newTon(in *Input) (*Output, error) {
 
 	tonIndexingAndObservability := []containerTemplate{
 		{
-			Name:  fmt.Sprintf("TON-explorer-%s", instanceID),
+			Name:  fmt.Sprintf("TON-explorer-%s", networkName),
 			Image: "ghcr.io/neodix42/mylocalton-docker-explorer:latest",
 			Env: map[string]string{
 				"SERVER_PORT": "8080",
@@ -285,7 +274,7 @@ func newTon(in *Input) (*Output, error) {
 			Alias:   "explorer",
 		},
 		{
-			Name:  fmt.Sprintf("TON-index-worker-%s", instanceID),
+			Name:  fmt.Sprintf("TON-index-worker-%s", networkName),
 			Image: "toncenter/ton-indexer-worker:v1.2.0-test",
 			Env:   commonDBVars,
 			Mounts: testcontainers.ContainerMounts{
@@ -304,7 +293,7 @@ func newTon(in *Input) (*Output, error) {
 			Alias:   "index-worker",
 		},
 		{
-			Name:  fmt.Sprintf("TON-index-api-%s", instanceID),
+			Name:  fmt.Sprintf("TON-index-api-%s", networkName),
 			Image: "toncenter/ton-indexer-api:v1.2.0-test",
 			Env:   commonDBVars,
 			Ports: []string{fmt.Sprintf("%s:8082/tcp", hostPorts.IndexAPIPort)},
@@ -315,7 +304,7 @@ func newTon(in *Input) (*Output, error) {
 			Alias:   "index-api",
 		},
 		{
-			Name:  fmt.Sprintf("TON-event-classifier-%s", instanceID),
+			Name:  fmt.Sprintf("TON-event-classifier-%s", networkName),
 			Image: "toncenter/ton-indexer-classifier:v1.2.0-test",
 			Env:   commonDBVars,
 			WaitFor: wait.ForLog("Reading finished tasks").
