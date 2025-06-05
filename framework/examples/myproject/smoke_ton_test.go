@@ -54,5 +54,7 @@ func TestTonSmoke(t *testing.T) {
 			require.NoError(t, err, "failed to get funder balance")
 			require.Equal(t, funderBalance.Nano().String(), "1000000000000000", "funder balance mismatch")
 		})
+
+		// time.Sleep(500 * time.Second) // wait for connections to be established
 	})
 }
