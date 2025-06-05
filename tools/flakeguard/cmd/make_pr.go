@@ -20,29 +20,15 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/localdb"
 )
 
-const (
-	openAIKeyEnvVar = "OPENAI_API_KEY"
-	openAIKeyFlag   = "openai-key"
-)
-
 var (
 	repoPath    string
 	localDBPath string
-	openAIKey   string
 )
 
 var MakePRCmd = &cobra.Command{
 	Use:   "make-pr",
 	Short: "Make a PR to skip identified flaky tests",
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		if !cmd.Flag(openAIKeyFlag).Changed {
-			openAIKey = os.Getenv(openAIKeyEnvVar)
-		}
-		if openAIKey == "" {
-			fmt.Printf("Warning: OpenAI API key is not provided by flag '%s' or env var '%s', cannot use LLM to skip or fix flaky tests\n", openAIKeyFlag, openAIKeyEnvVar)
-		}
-	},
-	RunE: makePR,
+	RunE:  makePR,
 }
 
 func makePR(cmd *cobra.Command, args []string) error {
@@ -103,29 +89,28 @@ func makePR(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to checkout new branch: %w", err)
 	}
 
-	// DEBUG: Maybe this shouldn't be used ever? Debugging is harder without the branch around.
-	// cleanUpBranch := true
-	// defer func() {
-	// 	if cleanUpBranch {
-	// 		fmt.Printf("Cleaning up branch %s...", branchName)
-	// 		// First checkout default branch
-	// 		err = targetRepoWorktree.Checkout(&git.CheckoutOptions{
-	// 			Branch: plumbing.NewBranchReferenceName(defaultBranch),
-	// 			Force:  true, // Force checkout to discard any changes for a clean default branch
-	// 		})
-	// 		if err != nil {
-	// 			fmt.Printf("Failed to checkout default branch: %v\n", err)
-	// 			return
-	// 		}
-	// 		// Then delete the local branch
-	// 		err = repo.Storer.RemoveReference(plumbing.NewBranchReferenceName(branchName))
-	// 		if err != nil {
-	// 			fmt.Printf("Failed to remove local branch: %v\n", err)
-	// 			return
-	// 		}
-	// 		fmt.Println(" ✅")
-	// 	}
-	// }()
+	cleanUpBranch := true
+	defer func() {
+		if cleanUpBranch {
+			fmt.Printf("Cleaning up branch %s...", branchName)
+			// First checkout default branch
+			err = targetRepoWorktree.Checkout(&git.CheckoutOptions{
+				Branch: plumbing.NewBranchReferenceName(defaultBranch),
+				Force:  true, // Force checkout to discard any changes for a clean default branch
+			})
+			if err != nil {
+				fmt.Printf("Failed to checkout default branch: %v\n", err)
+				return
+			}
+			// Then delete the local branch
+			err = repo.Storer.RemoveReference(plumbing.NewBranchReferenceName(branchName))
+			if err != nil {
+				fmt.Printf("Failed to remove local branch: %v\n", err)
+				return
+			}
+			fmt.Println(" ✅")
+		}
+	}()
 
 	if len(currentlyFlakyEntries) == 0 {
 		fmt.Println("No flaky tests found!")
@@ -143,7 +128,7 @@ func makePR(cmd *cobra.Command, args []string) error {
 		jiraTickets = append(jiraTickets, entry.JiraTicket)
 	}
 
-	err = golang.SkipTests(repoPath, openAIKey, testsToSkip)
+	err = golang.SkipTests(repoPath, testsToSkip)
 	if err != nil {
 		return fmt.Errorf("failed to modify code to skip tests: %w", err)
 	}
@@ -178,7 +163,6 @@ func makePR(cmd *cobra.Command, args []string) error {
 		skippedTestsPRBody        strings.Builder
 		alreadySkippedTestsPRBody strings.Builder
 		errorSkippingTestsPRBody  strings.Builder
-		llmSkippedTestsPRBody     strings.Builder
 	)
 
 	for _, test := range testsToSkip {
@@ -196,11 +180,6 @@ func makePR(cmd *cobra.Command, args []string) error {
 			alreadySkippedTestsPRBody.WriteString(fmt.Sprintf("- Package: `%s`\n", test.Package))
 			alreadySkippedTestsPRBody.WriteString(fmt.Sprintf("  Test: `%s`\n", test.Name))
 			alreadySkippedTestsPRBody.WriteString(fmt.Sprintf("  Ticket: [%s](https://%s/browse/%s)\n", test.JiraTicket, os.Getenv("JIRA_DOMAIN"), test.JiraTicket))
-		} else if test.LLMSkipped {
-			llmSkippedTestsPRBody.WriteString(fmt.Sprintf("- Package: `%s`\n", test.Package))
-			llmSkippedTestsPRBody.WriteString(fmt.Sprintf("  Test: `%s`\n", test.Name))
-			llmSkippedTestsPRBody.WriteString(fmt.Sprintf("  Ticket: [%s](https://%s/browse/%s)\n", test.JiraTicket, os.Getenv("JIRA_DOMAIN"), test.JiraTicket))
-			llmSkippedTestsPRBody.WriteString(fmt.Sprintf("  [View skip in PR](https://github.com/%s/%s/pull/%s/files#diff-%sL%d)\n\n", owner, repoName, branchName, commitHash, test.Line))
 		}
 	}
 	body := fmt.Sprintf(`## Tests That I Failed to Skip, Need Manual Intervention
@@ -211,13 +190,9 @@ func makePR(cmd *cobra.Command, args []string) error {
 
 %s
 
-## Tests Skipped Using LLM Assistance
-
-%s
-
 ## Tests That Were Already Skipped
 
-%s`, errorSkippingTestsPRBody.String(), skippedTestsPRBody.String(), llmSkippedTestsPRBody.String(), alreadySkippedTestsPRBody.String())
+%s`, errorSkippingTestsPRBody.String(), skippedTestsPRBody.String(), alreadySkippedTestsPRBody.String())
 
 	pr := &github.NewPullRequest{
 		Title:               github.Ptr(fmt.Sprintf("[%s] Flakeguard: Skip flaky tests", strings.Join(jiraTickets, "] ["))),
@@ -227,13 +202,15 @@ func makePR(cmd *cobra.Command, args []string) error {
 		MaintainerCanModify: github.Ptr(true),
 	}
 
-	fmt.Println("PR Preview:")
-	fmt.Println("================================================")
-	fmt.Println(pr.Title)
+	fmt.Println()
+	fmt.Println("*** PR Preview ***")
+	fmt.Println()
+	fmt.Println(pr.GetTitle())
 	fmt.Println("--------------------------------")
 	fmt.Printf("Merging '%s' into '%s'\n", branchName, defaultBranch)
-	fmt.Println(pr.Body)
+	fmt.Println(pr.GetBody())
 	fmt.Println("================================================")
+	fmt.Println()
 
 	fmt.Printf("To preview the code changes in the GitHub UI, visit: https://github.com/%s/%s/compare/%s...%s\n", owner, repoName, defaultBranch, branchName)
 	fmt.Print("Would you like to create the PR automatically from the CLI? (y/N): ")
@@ -261,11 +238,11 @@ func makePR(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create PR, got bad status: %s\n%s", resp.Status, string(body))
 	}
 
+	cleanUpBranch = false
 	fmt.Printf("PR created! https://github.com/%s/%s/pull/%d\n", owner, repoName, createdPR.GetNumber())
 	return nil
 }
 
 func init() {
 	MakePRCmd.Flags().StringVarP(&repoPath, "repoPath", "r", ".", "Local path to the repository to make the PR for")
-	MakePRCmd.Flags().StringVarP(&openAIKey, openAIKeyFlag, "k", "", fmt.Sprintf("OpenAI API key for using an LLM to help create the PR (can be set via %s environment variable)", openAIKeyEnvVar))
 }

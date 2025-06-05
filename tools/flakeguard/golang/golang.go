@@ -1,7 +1,6 @@
 package golang
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -23,13 +22,13 @@ type Package struct {
 	Dir          string   `json:"Dir"`
 	ImportPath   string   `json:"ImportPath"`
 	Root         string   `json:"Root"`
-	Deps         []string `json:"Deps"`
-	TestImports  []string `json:"TestImports"`
-	XTestImports []string `json:"XTestImports"`
-	GoFiles      []string `json:"GoFiles"`
-	TestGoFiles  []string `json:"TestGoFiles"`
-	XTestGoFiles []string `json:"XTestGoFiles"`
-	EmbedFiles   []string `json:"EmbedFiles"`
+	Deps         []string `json:"Deps,omitempty"`
+	TestImports  []string `json:"TestImports,omitempty"`
+	XTestImports []string `json:"XTestImports,omitempty"`
+	GoFiles      []string `json:"GoFiles,omitempty"`
+	TestGoFiles  []string `json:"TestGoFiles,omitempty"`
+	XTestGoFiles []string `json:"XTestGoFiles,omitempty"`
+	EmbedFiles   []string `json:"EmbedFiles,omitempty"`
 }
 
 type DepMap map[string][]string
@@ -57,39 +56,25 @@ func Packages(repoPath string) ([]Package, error) {
 			if err != nil {
 				return fmt.Errorf("error getting packages: %w\nOutput:\n%s", err, string(out))
 			}
-			scanner := bufio.NewScanner(bytes.NewReader(out))
-			var (
-				buffer bytes.Buffer
-				inJSON bool
-			)
-
-			for scanner.Scan() {
-				line := scanner.Text()
-				line = strings.TrimSpace(line)
-				buffer.WriteString(line)
-				if !inJSON && !strings.HasPrefix(line, "{") {
-					continue
-				}
-				if !inJSON && strings.HasPrefix(line, "{") {
-					inJSON = true
-				}
-
-				if line == "}" {
-					inJSON = false
-					var pkg Package
-					if err := json.Unmarshal(buffer.Bytes(), &pkg); err != nil {
-						_ = os.WriteFile(filepath.Join("go_list_output.json"), buffer.Bytes(), 0644)
-						return fmt.Errorf("error unmarshalling go list output for dir '%s', see 'go_list_output.json' for output: %w", cmd.Dir, err)
-					}
-					packages = append(packages, pkg)
-					buffer.Reset()
-				}
+			// output sometimes contains go downloading things, need to strip that out
+			jsonStart := bytes.IndexByte(out, '{')
+			if jsonStart == -1 {
+				return fmt.Errorf("no JSON found in go list output for dir '%s': go list output:\n%s", cmd.Dir, string(out))
 			}
+			cleanOutput := out[jsonStart:]
 
-			if err := scanner.Err(); err != nil {
-				return fmt.Errorf("error scanning go list output for file %s: %w", path, err)
+			// go list -json outputs multiple JSON objects (one per package), not a JSON array
+			// So we need to decode each JSON object individually
+			var pkgs []Package
+			decoder := json.NewDecoder(bytes.NewReader(cleanOutput))
+			for decoder.More() {
+				var pkg Package
+				if err := decoder.Decode(&pkg); err != nil {
+					return fmt.Errorf("error unmarshalling go list output for dir '%s': %w\ngo list output:\n%s", cmd.Dir, err, string(cleanOutput))
+				}
+				pkgs = append(pkgs, pkg)
 			}
-			return nil
+			packages = append(packages, pkgs...)
 		}
 		return nil
 	})
@@ -248,7 +233,6 @@ type SkipTest struct {
 	// Set by SkipTests
 	// These values might be useless info, but for now we'll keep them
 	SimplySkipped  bool   // If the test was newly skipped using simple AST parsing methods
-	LLMSkipped     bool   // If the test was newly skipped using LLM assistance
 	AlreadySkipped bool   // If the test was already skipped before calling SkipTests
 	ErrorSkipping  error  // If we failed to skip the test, this will be set
 	File           string // The file that the test was skipped in
@@ -256,7 +240,7 @@ type SkipTest struct {
 }
 
 // SkipTests finds all package/test pairs provided and skips them
-func SkipTests(repoPath, openAIKey string, testsToSkip []*SkipTest) error {
+func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 	packages, err := Packages(repoPath)
 	if err != nil {
 		return err
@@ -276,34 +260,11 @@ func SkipTests(repoPath, openAIKey string, testsToSkip []*SkipTest) error {
 			}
 		}
 		if packageDir == "" {
-			// Print all packages to a file to help debug
-			type PackageInfo struct {
-				Dir         string   `json:"dir"`
-				ImportPath  string   `json:"importPath"`
-				Root        string   `json:"root"`
-				GoFiles     []string `json:"goFiles"`
-				TestGoFiles []string `json:"testGoFiles"`
-			}
-
-			packageInfos := make([]PackageInfo, len(packages))
-			for i, pkg := range packages {
-				packageInfos[i] = PackageInfo{
-					Dir:         pkg.Dir,
-					ImportPath:  pkg.ImportPath,
-					Root:        pkg.Root,
-					GoFiles:     pkg.GoFiles,
-					TestGoFiles: pkg.TestGoFiles,
-				}
-			}
-
-			packagesJSON, err := json.MarshalIndent(packageInfos, "", "  ")
-			if err != nil {
-				return fmt.Errorf("error marshalling packages: %w", err)
-			}
-			if err := os.WriteFile("packages_debug.json", packagesJSON, 0644); err != nil {
-				return fmt.Errorf("error writing packages.json: %w", err)
-			}
-			return fmt.Errorf("directory for package '%s' not found, see 'packages_debug.json' for all found packages", packageImportPath)
+			testToSkip.ErrorSkipping = fmt.Errorf(
+				"unable to find a directory for package '%s' to skip '%s', package may have moved or been deleted",
+				packageImportPath, testToSkip.Name,
+			)
+			return nil
 		}
 
 		err := filepath.Walk(packageDir, func(path string, info os.FileInfo, err error) error {
@@ -345,9 +306,15 @@ func SkipTests(repoPath, openAIKey string, testsToSkip []*SkipTest) error {
 		}
 		if !found {
 			if testToSkip.ErrorSkipping == nil {
-				testToSkip.ErrorSkipping = fmt.Errorf("test '%s' not found in package '%s'", testToSkip.Name, testToSkip.Package)
+				testToSkip.ErrorSkipping = fmt.Errorf(
+					"cannot find '%s' in package '%s', the test may be tricky for me to find, or may have moved or been deleted",
+					testToSkip.Name, testToSkip.Package,
+				)
 			} else {
-				testToSkip.ErrorSkipping = fmt.Errorf("error skipping test '%s' in package '%s': %w", testToSkip.Name, testToSkip.Package, testToSkip.ErrorSkipping)
+				testToSkip.ErrorSkipping = fmt.Errorf(
+					"error skipping '%s' in package '%s': %w",
+					testToSkip.Name, testToSkip.Package, testToSkip.ErrorSkipping,
+				)
 			}
 			log.Warn().
 				Str("test", testToSkip.Name).
