@@ -3,7 +3,6 @@ package golang
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"go/ast"
@@ -15,10 +14,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/option"
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/utils"
 )
@@ -342,20 +338,6 @@ func SkipTests(repoPath, openAIKey string, testsToSkip []*SkipTest) error {
 				}
 				return filepath.SkipDir // stop walking
 			}
-
-			found = skipTestLLM(path, openAIKey, testToSkip)
-			if found {
-				log.Debug().
-					Str("test", testToSkip.Name).
-					Str("file", testToSkip.File).
-					Int("line", testToSkip.Line).
-					Str("package", testToSkip.Package).
-					Str("total_openai_cost", fmt.Sprintf("$%.2f", totalOpenAICost)).
-					Msg("Skipped test using LLM assistance")
-
-				// We write the file back as part of the skipTestLLM function
-				return filepath.SkipDir // stop walking
-			}
 			return nil
 		})
 		if err != nil {
@@ -521,6 +503,9 @@ func skipTestSimple(file string, fileAst *ast.File, fset *token.FileSet, testToS
 	return skipped
 }
 
+/* WARNING: This was a fun experiment, but it gave massively disappointing results.
+ * Might be worth revisiting in the future, but this juice ain't worth the squeeze.
+
 // https://openai.com/api/pricing/
 const (
 	gpt4_1NanoInputCostPer1MTokens  = 0.100
@@ -540,6 +525,7 @@ var (
 // skipTestLLM uses an LLM to skip a test or subtest
 // It's slower and more expensive, but can handle more complex cases than skipTestSimple
 // Use this when skipTestSimple fails to skip a test or subtest
+
 func skipTestLLM(file, openAIKey string, testToSkip *SkipTest) (skipped bool) {
 	if openAIKey == "" {
 		return false
@@ -554,18 +540,25 @@ func skipTestLLM(file, openAIKey string, testToSkip *SkipTest) (skipped bool) {
 	jiraDomain := os.Getenv("JIRA_DOMAIN")
 	jiraMsg := ""
 	if jiraDomain != "" && testToSkip.JiraTicket != "" {
-		jiraMsg = fmt.Sprintf("Skipped by flakeguard: https://%s/issues/%s", jiraDomain, testToSkip.JiraTicket)
+		jiraMsg = fmt.Sprintf("Skipped by flakeguard LLM: https://%s/issues/%s", jiraDomain, testToSkip.JiraTicket)
 	} else {
-		jiraMsg = fmt.Sprintf("Skipped by flakeguard: %s", testToSkip.JiraTicket)
+		jiraMsg = fmt.Sprintf("Skipped by flakeguard LLM: %s", testToSkip.JiraTicket)
 	}
 
-	prompt := fmt.Sprintf(`You are an expert Go developer. 
-Given the following Go test file, find the exact spot where a t.Skip call would skip the test %s.
-You can assume the the t.Skip call will be inserted like so: if t.Name() == "%s" { t.Skip() }
+	prompt := fmt.Sprintf(`You are an expert Go developer.
+Given the following Go test file, find the exact spot where a t.Skip call would skip this test: %s.
 If the test provided is a subtest, we only want to skip that specific subtest.
-If you are able to find the spot where the t.Skip call should be inserted, return ONLY the line number where the t.Skip call would be inserted, no extra commentary.
-If you are unable to find the spot where the t.Skip call should be inserted, return "Unable to skip test: <short reason why>".
-If the test is already being skipped, return "Test is already skipped".
+If you are able to find the spot where the t.Skip call should be inserted, return ONLY the line number, and the necessary code to insert the t.Skip call.
+Do so in the following format:
+
+<line number>: <code to insert>
+
+Example:
+
+10: if tt.Name() == "%s" { tt.Skip() }
+
+If you are unable to find the spot where the t.Skip call should be inserted, return ONLY "Unable to skip test: <short reason why>".
+If the test is already being skipped, return ONLY "Test is already skipped".
 Here is the code:\n\n%s`, testToSkip.Name, testToSkip.Name, string(fileContent))
 
 	client := openai.NewClient(
@@ -642,18 +635,31 @@ Here is the code:\n\n%s`, testToSkip.Name, testToSkip.Name, string(fileContent))
 		return false
 	}
 
-	// We should only get back a line number, so let's parse it and add the skip statement
-	// This is cheaper and faster than having the LLM modify the file for us
-
-	// Parse the line number
+	// We should only get back a line number and line of code, so let's parse it and add the skip statement
+	// This is cheaper, faster, and more accurate than having the LLM parrot the whole file back to us
+	// Clean up the response a bit
 	response = strings.TrimPrefix(response, "Line")
 	response = strings.TrimPrefix(response, ":")
 	response = strings.TrimSpace(response)
-	lineNum, err := strconv.Atoi(response)
+
+	// Split the response into line number and code
+	parts := strings.SplitN(response, ":", 2)
+	if len(parts) != 2 {
+		testToSkip.ErrorSkipping = fmt.Errorf("OpenAI returned invalid response: %s", response)
+		return false
+	}
+	parts[0] = strings.TrimSpace(parts[0])
+	parts[1] = strings.TrimSpace(parts[1])
+
+	lineNum, err := strconv.Atoi(parts[0])
 	if err != nil {
 		testToSkip.ErrorSkipping = fmt.Errorf("OpenAI returned invalid line number '%s': %w", response, err)
 		return false
 	}
+	codeToInsert := parts[1]
+
+	// Add our jira message inside the t.Skip call
+	codeToInsert = strings.ReplaceAll(codeToInsert, "t.Skip()", fmt.Sprintf("t.Skip(\"%s\")", jiraMsg))
 
 	// Read the file and split into lines
 	lines := strings.Split(string(fileContent), "\n")
@@ -680,7 +686,7 @@ Here is the code:\n\n%s`, testToSkip.Name, testToSkip.Name, string(fileContent))
 	}
 
 	// Create the skip statement with proper indentation
-	skipStatement := fmt.Sprintf("%sif t.Name() == \"%s\" { t.Skip(\"%s\") }", indentation, testToSkip.Name, jiraMsg)
+	skipStatement := fmt.Sprintf("%s%s", indentation, codeToInsert)
 
 	// Insert the skip statement at the specified line
 	newLines := make([]string, 0, len(lines)+1)
@@ -701,3 +707,4 @@ Here is the code:\n\n%s`, testToSkip.Name, testToSkip.Name, string(fileContent))
 	testToSkip.LLMSkipped = true
 	return true
 }
+*/
