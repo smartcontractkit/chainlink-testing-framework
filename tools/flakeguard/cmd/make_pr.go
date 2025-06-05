@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/google/go-github/v72/github"
 	"github.com/spf13/cobra"
@@ -88,28 +87,18 @@ func makePR(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Println(" ✅")
 
-	// Create and checkout new branch
-	branchName := fmt.Sprintf("flakeguard-skip-%s", time.Now().Format("20060102150405"))
-	err = targetRepoWorktree.Checkout(&git.CheckoutOptions{
-		Branch: plumbing.NewBranchReferenceName(branchName),
-		Create: true,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to checkout new branch: %w", err)
-	}
-
-	// Push the new branch to GitHub before making any commits
-	fmt.Printf("Pushing new branch '%s' to GitHub, tap your yubikey if it's blinking...", branchName)
-	err = repo.Push(&git.PushOptions{
-		RemoteName: "origin",
-		RefSpecs: []config.RefSpec{
-			config.RefSpec(fmt.Sprintf("refs/heads/%s:refs/heads/%s", branchName, branchName)),
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to push new branch to GitHub: %w", err)
-	}
-	fmt.Println(" ✅")
+	// Cleanup default branch when we're done
+	defer func() {
+		fmt.Printf("Cleaning up branch %s...", defaultBranch)
+		err = targetRepoWorktree.Checkout(&git.CheckoutOptions{
+			Branch: plumbing.NewBranchReferenceName(defaultBranch),
+			Force:  true,
+		})
+		if err != nil {
+			fmt.Printf("Failed to checkout default branch: %v\n", err)
+		}
+		fmt.Println(" ✅")
+	}()
 
 	if len(currentlyFlakyEntries) == 0 {
 		fmt.Println("No flaky tests found!")
@@ -132,6 +121,7 @@ func makePR(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to modify code to skip tests: %w", err)
 	}
 
+	branchName := fmt.Sprintf("flakeguard-skip-%s", time.Now().Format("20060102150405"))
 	fmt.Print("Committing changes, tap your yubikey if it's blinking...")
 	sha, err := flake_git.MakeSignedCommit(repoPath, fmt.Sprintf("Skips flaky %d tests: %s", len(testsToSkip), strings.Join(jiraTickets, ", ")), branchName, githubToken)
 	if err != nil {

@@ -279,6 +279,37 @@ func MakeSignedCommit(repoPath, commitMessage, branch, githubToken string) (stri
 		return "", err
 	}
 
+	// Create the branch on GitHub using REST API
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: githubToken})
+	tc := oauth2.NewClient(ctx, ts)
+	restClient := github.NewClient(tc)
+
+	owner, repoName, _, err := GetOwnerRepoDefaultBranchFromLocalRepo(repoPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to get repo info: %w", err)
+	}
+
+	// Get the reference of the current HEAD (which should be the base branch)
+	headRef, err := repo.Head()
+	if err != nil {
+		return "", fmt.Errorf("failed to get HEAD reference: %w", err)
+	}
+	baseSHA := headRef.Hash().String()
+
+	// Create new branch reference on GitHub
+	newRef := &github.Reference{
+		Ref: github.Ptr("refs/heads/" + branch),
+		Object: &github.GitObject{
+			SHA: github.Ptr(baseSHA),
+		},
+	}
+
+	_, _, err = restClient.Git.CreateRef(ctx, owner, repoName, newRef)
+	if err != nil {
+		return "", fmt.Errorf("failed to create branch on GitHub: %w", err)
+	}
+
 	// Inspired by https://github.com/planetscale/ghcommit/tree/main
 
 	// process added / modified files:
@@ -358,17 +389,8 @@ func MakeSignedCommit(repoPath, commitMessage, branch, githubToken string) (stri
 		body = splitMsg[1]
 	}
 
-	owner, repoName, _, err := GetOwnerRepoDefaultBranchFromLocalRepo(repoPath)
-	if err != nil {
-		return "", err
-	}
-
-	// Get HEAD reference to get the current commit hash
-	headRef, err := repo.Head()
-	if err != nil {
-		return "", fmt.Errorf("failed to get HEAD reference: %w", err)
-	}
-	expectedHeadOid := headRef.Hash().String()
+	// Use the baseSHA from the branch creation as the expected head OID
+	expectedHeadOid := baseSHA
 	// create the $input struct for the graphQL createCommitOnBranch mutation request:
 	input := githubv4.CreateCommitOnBranchInput{
 		Branch: githubv4.CommittableBranch{
@@ -387,7 +409,7 @@ func MakeSignedCommit(repoPath, commitMessage, branch, githubToken string) (stri
 	}
 
 	if err := graphqlClient.Mutate(context.Background(), &m, input, nil); err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to create commit: %w", err)
 	}
 
 	return m.CreateCommitOnBranch.Commit.OID, nil
