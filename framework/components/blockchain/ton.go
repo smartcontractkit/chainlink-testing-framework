@@ -120,20 +120,16 @@ func generateUniquePortsFromBase(basePort string) (*hostPortMapping, error) {
 		return nil, fmt.Errorf("invalid base port %s: %w", basePort, err)
 	}
 
-	// use larger multipliers to ensure no overlap between different base ports
-	// 8000->0, 8001->100, 8002->200, etc.
-	portMultiplier := (base - DefaultTonSimpleServerPort) * 100
-
 	mapping := &hostPortMapping{
 		SimpleServer: basePort,
-		HTTPAPIPort:  strconv.Itoa(DefaultTonHTTPAPIPort + portMultiplier),
-		ExplorerPort: strconv.Itoa(DefaultTonTONExplorerPort + portMultiplier),
-		IndexAPIPort: strconv.Itoa(DefaultTonIndexAPIPort + portMultiplier),
-		FaucetPort:   strconv.Itoa(DefaultTonFaucetPort + portMultiplier),
-		LiteServer:   strconv.Itoa(DefaultTonLiteServerPort + portMultiplier),
-		DHTServer:    strconv.Itoa(DefaultTonDhtServerPort + portMultiplier),
-		Console:      strconv.Itoa(DefaultTonValidatorConsolePort + portMultiplier),
-		ValidatorUDP: strconv.Itoa(DefaultTonValidatorPublicPort + portMultiplier),
+		HTTPAPIPort:  strconv.Itoa(base + 10),
+		ExplorerPort: strconv.Itoa(base + 20),
+		IndexAPIPort: strconv.Itoa(base + 30),
+		FaucetPort:   strconv.Itoa(base + 40),
+		LiteServer:   strconv.Itoa(base + 50),
+		DHTServer:    strconv.Itoa(base + 60),
+		Console:      strconv.Itoa(base + 70),
+		ValidatorUDP: strconv.Itoa(base + 80),
 	}
 
 	return mapping, nil

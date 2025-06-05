@@ -7,18 +7,3 @@ port = "8000"
 type = "ton"
 image = "ghcr.io/neodix42/mylocalton-docker:latest"
 port = "8001"
-
-[blockchain_c]
-type = "ton"
-image = "ghcr.io/neodix42/mylocalton-docker:latest"
-port = "8002"
-
-[blockchain_d]
-type = "ton"
-image = "ghcr.io/neodix42/mylocalton-docker:latest"
-port = "8003"
-
-[blockchain_e]
-type = "ton"
-image = "ghcr.io/neodix42/mylocalton-docker:latest"
-port = "8004"

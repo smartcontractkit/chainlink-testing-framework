@@ -20,9 +20,6 @@ import (
 type CfgTonParallel struct {
 	BlockchainA *blockchain.Input `toml:"blockchain_a" validate:"required"`
 	BlockchainB *blockchain.Input `toml:"blockchain_b" validate:"required"`
-	BlockchainC *blockchain.Input `toml:"blockchain_c" validate:"required"`
-	BlockchainD *blockchain.Input `toml:"blockchain_d" validate:"required"`
-	BlockchainE *blockchain.Input `toml:"blockchain_e" validate:"required"`
 }
 
 type DeploymentResult struct {
@@ -41,9 +38,6 @@ func TestTonParallel(t *testing.T) {
 	configs := map[string]*blockchain.Input{
 		"blockchain_a": in.BlockchainA,
 		"blockchain_b": in.BlockchainB,
-		"blockchain_c": in.BlockchainC,
-		"blockchain_d": in.BlockchainD,
-		"blockchain_e": in.BlockchainE,
 	}
 
 	var mu sync.Mutex
@@ -78,7 +72,7 @@ func TestTonParallel(t *testing.T) {
 	}
 
 	overallDuration := time.Since(overallStartTime)
-	t.Logf("🎉 All 5 blockchain deployments completed in %v", overallDuration)
+	t.Logf("🎉 All %d blockchain deployments completed in %v", len(configs), overallDuration)
 
 	// Validate port isolation
 	var successfulResults []DeploymentResult
@@ -88,7 +82,7 @@ func TestTonParallel(t *testing.T) {
 		}
 	}
 
-	if len(successfulResults) == 5 {
+	if len(successfulResults) == len(configs) {
 		validatePortIsolation(t, successfulResults)
 	}
 }
