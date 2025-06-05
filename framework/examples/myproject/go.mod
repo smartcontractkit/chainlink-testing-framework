@@ -13,7 +13,6 @@ require (
 	github.com/blocto/solana-go-sdk v1.30.0
 	github.com/ethereum/go-ethereum v1.15.0
 	github.com/go-resty/resty/v2 v2.16.3
-	github.com/hashicorp/consul/sdk v0.16.2
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.8.9
 	github.com/smartcontractkit/chainlink-testing-framework/havoc v1.50.2
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.50.10
