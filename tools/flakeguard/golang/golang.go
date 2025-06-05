@@ -279,8 +279,10 @@ func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 				return fmt.Errorf("error parsing file '%s': %w", path, err)
 			}
 
-			found = skipTestSimple(path, fileAst, fset, testToSkip)
-			if found {
+			skipTestSimple(path, fileAst, fset, testToSkip)
+			// Let the outer loop know that we found the test to skip
+			found = testToSkip.SimplySkipped || testToSkip.AlreadySkipped
+			if testToSkip.SimplySkipped {
 				log.Debug().
 					Str("test", testToSkip.Name).
 					Str("file", testToSkip.File).
@@ -288,6 +290,15 @@ func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 					Str("package", testToSkip.Package).
 					Msg("Skipped test using simple AST parsing")
 
+				return filepath.SkipDir // stop walking
+			}
+			if testToSkip.AlreadySkipped {
+				log.Debug().
+					Str("test", testToSkip.Name).
+					Str("file", testToSkip.File).
+					Int("line", testToSkip.Line).
+					Str("package", testToSkip.Package).
+					Msg("Test was already skipped")
 				return filepath.SkipDir // stop walking
 			}
 			return nil
@@ -319,7 +330,8 @@ func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 
 // skipTestSimple parses through the file AST and skips the test or subtest if it is found
 // This works for most simple cases, is fast and efficient, but can't handle more complex cases like when subtests or helper functions get involved
-func skipTestSimple(file string, fileAst *ast.File, fset *token.FileSet, testToSkip *SkipTest) (skipped bool) {
+// Results of the skip are stored in the testToSkip struct, which must be inspected after calling this function
+func skipTestSimple(file string, fileAst *ast.File, fset *token.FileSet, testToSkip *SkipTest) {
 	var (
 		parentTest = testToSkip.Name
 		subTest    string
@@ -333,8 +345,10 @@ func skipTestSimple(file string, fileAst *ast.File, fset *token.FileSet, testToS
 
 	if os.Getenv("JIRA_DOMAIN") != "" && testToSkip.JiraTicket != "" {
 		jiraMsg = fmt.Sprintf("Skipped by flakeguard: https://%s/issues/%s", os.Getenv("JIRA_DOMAIN"), testToSkip.JiraTicket)
-	} else {
+	} else if testToSkip.JiraTicket != "" {
 		jiraMsg = fmt.Sprintf("Skipped by flakeguard: %s", testToSkip.JiraTicket)
+	} else {
+		jiraMsg = "Skipped by flakeguard: No associated Jira ticket!"
 	}
 
 	ast.Inspect(fileAst, func(n ast.Node) bool {
@@ -356,7 +370,8 @@ func skipTestSimple(file string, fileAst *ast.File, fset *token.FileSet, testToS
 									if selExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
 										if strings.HasPrefix(selExpr.Sel.Name, "Skip") {
 											// Test is already skipped, don't modify it
-											skipped = true
+											testToSkip.File = file
+											testToSkip.Line = fset.Position(fn.Pos()).Line
 											testToSkip.AlreadySkipped = true
 											return false
 										}
@@ -368,7 +383,6 @@ func skipTestSimple(file string, fileAst *ast.File, fset *token.FileSet, testToS
 						testToSkip.File = file
 						testToSkip.Line = fset.Position(fn.Pos()).Line
 						testToSkip.SimplySkipped = true
-						skipped = true
 						return false
 					} else { // Loop through the body of the parent test and try to find the subtest
 						ast.Inspect(fn.Body, func(n ast.Node) bool {
@@ -396,7 +410,8 @@ func skipTestSimple(file string, fileAst *ast.File, fset *token.FileSet, testToS
 												if callExpr, ok := exprStmt.X.(*ast.CallExpr); ok {
 													if selExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
 														if strings.HasPrefix(selExpr.Sel.Name, "Skip") {
-															skipped = true
+															testToSkip.File = file
+															testToSkip.Line = fset.Position(fnLit.Pos()).Line
 															testToSkip.AlreadySkipped = true
 															return false
 														}
@@ -408,7 +423,6 @@ func skipTestSimple(file string, fileAst *ast.File, fset *token.FileSet, testToS
 										testToSkip.File = file
 										testToSkip.Line = fset.Position(fnLit.Pos()).Line
 										testToSkip.SimplySkipped = true
-										skipped = true
 										return false
 									}
 								}
@@ -422,26 +436,56 @@ func skipTestSimple(file string, fileAst *ast.File, fset *token.FileSet, testToS
 		return true
 	})
 
-	if skipped {
+	if testToSkip.SimplySkipped {
 		// Add the skip statement to the test by directly inserting it into the file strings
 		// We don't do it through the AST because it will try to do a bunch of formatting, which will mess with git diffs
 		// This is a bit of a hack, but it works
 		fileContent, err := os.ReadFile(file)
 		if err != nil {
 			testToSkip.ErrorSkipping = fmt.Errorf("failed to read file: %w", err)
-			return false
+			return
 		}
 
-		skipStmt := fmt.Sprintf("%s.Skip(\"%s\")", tSymbol, jiraMsg)
 		lines := strings.Split(string(fileContent), "\n")
-		lines[testToSkip.Line-1] = fmt.Sprintf("%s\n%s", lines[testToSkip.Line-1], skipStmt)
-		newContent := strings.Join(lines, "\n")
+		targetLineIndex := testToSkip.Line - 1
+
+		// Extract indentation from the target line or the next line with content
+		var indentation string
+		for i := targetLineIndex; i < len(lines); i++ {
+			line := lines[i]
+			if strings.TrimSpace(line) != "" {
+				// Extract leading whitespace
+				for _, char := range line {
+					if char == ' ' || char == '\t' {
+						indentation += string(char)
+					} else {
+						break
+					}
+				}
+				// Add one more level of indentation (assume tabs, but handle spaces too)
+				if strings.Contains(indentation, "\t") {
+					indentation += "\t"
+				} else {
+					indentation += "    " // 4 spaces as fallback
+				}
+				break
+			}
+		}
+
+		skipStmt := fmt.Sprintf("%s%s.Skip(\"%s\")", indentation, tSymbol, jiraMsg)
+
+		// Insert the skip statement after the target line
+		newLines := make([]string, 0, len(lines)+1)
+		newLines = append(newLines, lines[:targetLineIndex+1]...)
+		newLines = append(newLines, skipStmt)
+		newLines = append(newLines, lines[targetLineIndex+1:]...)
+
+		newContent := strings.Join(newLines, "\n")
 		if err := os.WriteFile(file, []byte(newContent), 0644); err != nil {
 			testToSkip.ErrorSkipping = fmt.Errorf("failed to write file: %w", err)
-			return false
+			return
 		}
 	}
-	return skipped
 }
 
 /* WARNING: This was a fun experiment, but it gave massively disappointing results.
