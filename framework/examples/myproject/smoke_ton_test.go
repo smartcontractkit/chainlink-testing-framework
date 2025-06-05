@@ -2,10 +2,13 @@ package examples
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/consul/sdk/freeport"
 	"github.com/stretchr/testify/require"
+
 	"github.com/xssnick/tonutils-go/liteclient"
 	"github.com/xssnick/tonutils-go/ton"
 	"github.com/xssnick/tonutils-go/ton/wallet"
@@ -22,6 +25,7 @@ func TestTonSmoke(t *testing.T) {
 	in, err := framework.Load[CfgTon](t)
 	require.NoError(t, err)
 
+	in.BlockchainA.Port = strconv.Itoa(freeport.GetOne(t))
 	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
 	require.NoError(t, err)
 

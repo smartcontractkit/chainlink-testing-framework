@@ -45,11 +45,7 @@ jobs:
             timeout: 10m
           - name: TestTonSmoke
             config: smoke_ton.toml
-            count: 1
-            timeout: 10m
-          - name: TestTonParallel
-            config: parallel_ton.toml
-            count: 1
+            count: 3
             timeout: 10m
           - name: TestUpgrade
             config: upgrade.toml
