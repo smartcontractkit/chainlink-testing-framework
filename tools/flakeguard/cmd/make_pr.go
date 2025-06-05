@@ -156,6 +156,7 @@ func makePR(cmd *cobra.Command, args []string) error {
 	fmt.Print("Committing changes, tap your yubikey if it's blinking...")
 	sha, err := flake_git.MakeSignedCommit(repoPath, fmt.Sprintf("Skips flaky %d tests: %s", len(testsToSkip), strings.Join(jiraTickets, ", ")), branchName, githubToken)
 	if err != nil {
+		fmt.Println()
 		return fmt.Errorf("failed to commit changes: %w", err)
 	}
 	fmt.Printf(" %s ✅\n", sha)

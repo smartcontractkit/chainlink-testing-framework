@@ -278,7 +278,7 @@ func MakeSignedCommit(repoPath, commitMessage, branch, githubToken string) (stri
 		return "", err
 	}
 
-	// Code mostly stolen from https://github.com/planetscale/ghcommit/tree/main
+	// Inspired by https://github.com/planetscale/ghcommit/tree/main
 
 	// process added / modified files:
 	worktree, err := repo.Worktree()
