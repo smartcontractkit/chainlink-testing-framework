@@ -20,15 +20,30 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/localdb"
 )
 
+const (
+	githubTokenEnvVar = "GITHUB_TOKEN"
+	githubTokenFlag   = "githubToken"
+)
+
 var (
 	repoPath    string
 	localDBPath string
+	githubToken string
 )
 
 var MakePRCmd = &cobra.Command{
 	Use:   "make-pr",
 	Short: "Make a PR to skip identified flaky tests",
-	RunE:  makePR,
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if githubToken == "" {
+			githubToken = os.Getenv(githubTokenEnvVar)
+		}
+		if githubToken == "" {
+			return fmt.Errorf("GitHub token not set, set %s or use --%s", githubTokenEnvVar, githubTokenFlag)
+		}
+		return nil
+	},
+	RunE: makePR,
 }
 
 func makePR(cmd *cobra.Command, args []string) error {
@@ -139,22 +154,15 @@ func makePR(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Print("Committing changes, tap your yubikey if it's blinking...")
-	commitHash, err := targetRepoWorktree.Commit(fmt.Sprintf("Skips flaky %d tests: %s", len(testsToSkip), strings.Join(jiraTickets, ", ")), &git.CommitOptions{})
+	sha, err := flake_git.MakeSignedCommit(repoPath, fmt.Sprintf("Skips flaky %d tests: %s", len(testsToSkip), strings.Join(jiraTickets, ", ")), branchName, githubToken)
 	if err != nil {
 		return fmt.Errorf("failed to commit changes: %w", err)
 	}
-	fmt.Println(" ✅")
-
-	fmt.Print("Pushing changes to remote, tap your yubikey if it's blinking...")
-	err = repo.Push(&git.PushOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to push changes: %w", err)
-	}
-	fmt.Println(" ✅")
+	fmt.Printf(" %s ✅\n", sha)
 
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: os.Getenv("GITHUB_TOKEN")},
+		&oauth2.Token{AccessToken: githubToken},
 	)
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
@@ -182,7 +190,7 @@ func makePR(cmd *cobra.Command, args []string) error {
 			skippedTestsPRBody.WriteString(fmt.Sprintf("- Package: `%s`\n", test.Package))
 			skippedTestsPRBody.WriteString(fmt.Sprintf("  Test: `%s`\n", test.Name))
 			skippedTestsPRBody.WriteString(fmt.Sprintf("  Ticket: [%s](https://%s/browse/%s)\n", test.JiraTicket, os.Getenv("JIRA_DOMAIN"), test.JiraTicket))
-			skippedTestsPRBody.WriteString(fmt.Sprintf("  [View skip in PR](https://github.com/%s/%s/pull/%s/files#diff-%sL%d)\n\n", owner, repoName, branchName, commitHash, test.Line))
+			skippedTestsPRBody.WriteString(fmt.Sprintf("  [View skip in PR](https://github.com/%s/%s/pull/%s/files#diff-%sL%d)\n\n", owner, repoName, branchName, sha, test.Line))
 		} else if test.AlreadySkipped {
 			if alreadySkippedTestsPRBody.Len() == 0 {
 				alreadySkippedTestsPRBody.WriteString("## Tests That Were Already Skipped\n\n")
@@ -248,4 +256,5 @@ func makePR(cmd *cobra.Command, args []string) error {
 
 func init() {
 	MakePRCmd.Flags().StringVarP(&repoPath, "repoPath", "r", ".", "Local path to the repository to make the PR for")
+	MakePRCmd.Flags().StringVarP(&githubToken, githubTokenFlag, "t", "", fmt.Sprintf("GitHub token to use for the PR (can be set with %s)", githubTokenEnvVar))
 }

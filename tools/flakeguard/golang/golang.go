@@ -283,7 +283,7 @@ func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
 			// Let the outer loop know that we found the test to skip
 			found = testToSkip.SimplySkipped || testToSkip.AlreadySkipped
 			if testToSkip.SimplySkipped {
-				log.Debug().
+				log.Info().
 					Str("test", testToSkip.Name).
 					Str("file", testToSkip.File).
 					Int("line", testToSkip.Line).

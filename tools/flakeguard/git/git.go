@@ -2,7 +2,10 @@ package git
 
 import (
 	"bytes"
+	"context"
+	"encoding/base64"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,7 +14,9 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/shurcooL/githubv4"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/utils"
+	"golang.org/x/oauth2"
 )
 
 // FindChangedFiles executes a git diff against a specified base reference and pipes the output through a user-defined grep command or sequence.
@@ -260,4 +265,148 @@ func GetOwnerRepoDefaultBranchFromLocalRepo(repoPath string) (owner, repoName, d
 	}
 
 	return owner, repoName, defaultBranch, nil
+}
+
+// MakeSignedCommit adds all changes to a repo and creates a signed commit for GitHub
+func MakeSignedCommit(repoPath, commitMessage, branch, githubToken string) (string, error) {
+	tok := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: githubToken})
+	token := oauth2.NewClient(context.Background(), tok)
+	graphqlClient := githubv4.NewClient(token)
+
+	repo, err := git.PlainOpen(repoPath)
+	if err != nil {
+		return "", err
+	}
+
+	// Code mostly stolen from https://github.com/planetscale/ghcommit/tree/main
+
+	// process added / modified files:
+	worktree, err := repo.Worktree()
+	if err != nil {
+		return "", err
+	}
+
+	// Get the status of all files in the worktree
+	status, err := worktree.Status()
+	if err != nil {
+		return "", err
+	}
+
+	additions := []githubv4.FileAddition{}
+	deletions := []githubv4.FileDeletion{}
+
+	// Process each file based on its status
+	for filePath, fileStatus := range status {
+		switch fileStatus.Staging {
+		case git.Added, git.Modified:
+			// File is added or modified - add to additions
+			enc, err := base64EncodeFile(filepath.Join(repoPath, filePath))
+			if err != nil {
+				return "", err
+			}
+			additions = append(additions, githubv4.FileAddition{
+				Path:     githubv4.String(filePath),
+				Contents: githubv4.Base64String(enc),
+			})
+		case git.Deleted:
+			// File is deleted - add to deletions
+			deletions = append(deletions, githubv4.FileDeletion{
+				Path: githubv4.String(filePath),
+			})
+		}
+
+		// Also check worktree status (unstaged changes)
+		switch fileStatus.Worktree {
+		case git.Modified:
+			// Only add if not already processed from staging
+			if fileStatus.Staging != git.Added && fileStatus.Staging != git.Modified {
+				enc, err := base64EncodeFile(filepath.Join(repoPath, filePath))
+				if err != nil {
+					return "", err
+				}
+				additions = append(additions, githubv4.FileAddition{
+					Path:     githubv4.String(filePath),
+					Contents: githubv4.Base64String(enc),
+				})
+			}
+		case git.Deleted:
+			// Only add if not already processed from staging
+			if fileStatus.Staging != git.Deleted {
+				deletions = append(deletions, githubv4.FileDeletion{
+					Path: githubv4.String(filePath),
+				})
+			}
+		}
+	}
+
+	var m struct {
+		CreateCommitOnBranch struct {
+			Commit struct {
+				URL       string `graphql:"url"`
+				OID       string `graphql:"oid"`
+				Additions int    `graphql:"additions"`
+				Deletions int    `graphql:"deletions"`
+			}
+		} `graphql:"createCommitOnBranch(input:$input)"`
+	}
+
+	splitMsg := strings.SplitN(commitMessage, "\n", 2)
+	headline := splitMsg[0]
+	body := ""
+	if len(splitMsg) > 1 {
+		body = splitMsg[1]
+	}
+
+	owner, repoName, _, err := GetOwnerRepoDefaultBranchFromLocalRepo(repoPath)
+	if err != nil {
+		return "", err
+	}
+
+	// Get HEAD reference to get the current commit hash
+	headRef, err := repo.Head()
+	if err != nil {
+		return "", fmt.Errorf("failed to get HEAD reference: %w", err)
+	}
+	expectedHeadOid := headRef.Hash().String()
+	// create the $input struct for the graphQL createCommitOnBranch mutation request:
+	input := githubv4.CreateCommitOnBranchInput{
+		Branch: githubv4.CommittableBranch{
+			RepositoryNameWithOwner: githubv4.NewString(githubv4.String(fmt.Sprintf("%s/%s", owner, repoName))),
+			BranchName:              githubv4.NewString(githubv4.String(branch)),
+		},
+		Message: githubv4.CommitMessage{
+			Headline: githubv4.String(headline),
+			Body:     githubv4.NewString(githubv4.String(body)),
+		},
+		FileChanges: &githubv4.FileChanges{
+			Additions: &additions,
+			Deletions: &deletions,
+		},
+		ExpectedHeadOid: githubv4.GitObjectID(expectedHeadOid),
+	}
+
+	if err := graphqlClient.Mutate(context.Background(), &m, input, nil); err != nil {
+		return "", err
+	}
+
+	return m.CreateCommitOnBranch.Commit.OID, nil
+}
+
+func base64EncodeFile(path string) (string, error) {
+	in, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer in.Close() // nolint: errcheck
+
+	buf := bytes.Buffer{}
+	encoder := base64.NewEncoder(base64.StdEncoding, &buf)
+
+	if _, err := io.Copy(encoder, in); err != nil {
+		return "", err
+	}
+	if err := encoder.Close(); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
