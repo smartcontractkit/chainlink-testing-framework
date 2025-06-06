@@ -1077,8 +1077,6 @@ func TestParseFiles_IgnoreParentFailures(t *testing.T) {
 }
 
 func TestParseFiles_WithPanicEventFile(t *testing.T) {
-
-	t.Skip("Failing test, needs investigation")
 	t.Parallel()
 
 	parser := NewParser()
@@ -1090,20 +1088,72 @@ func TestParseFiles_WithPanicEventFile(t *testing.T) {
 	}
 
 	assert.Equal(t, 6, len(results), "Expected 6 test results from file.")
+
+	// Map test names to expected values for easier assertions
+	expected := map[string]struct {
+			pkg         string
+			pkgPanic    bool
+			panic       bool
+			passRatio   float64
+			runs        int
+			failures    int
+			successes   int
+			skipped     bool
+			skips       int
+	}{
+			"Test_EventHandlerStateSync": {
+					pkg: "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm/capabilities/workflows/syncer", pkgPanic: true, panic: false, passRatio: 1, runs: 1, failures: 0, successes: 1, skipped: false, skips: 0,
+			},
+			"Test_InitialStateSync": {
+					pkg: "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm/capabilities/workflows/syncer", pkgPanic: true, panic: false, passRatio: 1, runs: 1, failures: 0, successes: 1, skipped: false, skips: 0,
+			},
+			"Test_RegistrySyncer_SkipsEventsNotBelongingToDON": {
+					pkg: "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm/capabilities/workflows/syncer", pkgPanic: true, panic: false, passRatio: 1, runs: 1, failures: 0, successes: 1, skipped: false, skips: 0,
+			},
+			"Test_RegistrySyncer_WorkflowRegistered_InitiallyActivated": {
+					pkg: "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm/capabilities/workflows/syncer", pkgPanic: true, panic: true, passRatio: 0, runs: 1, failures: 1, successes: 0, skipped: false, skips: 0,
+			},
+			"Test_RegistrySyncer_WorkflowRegistered_InitiallyPaused": {
+					pkg: "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm/capabilities/workflows/syncer", pkgPanic: true, panic: false, passRatio: 1, runs: 1, failures: 0, successes: 1, skipped: false, skips: 0,
+			},
+			"Test_SecretsWorker": {
+					pkg: "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm/capabilities/workflows/syncer", pkgPanic: false, panic: false, passRatio: 1, runs: 0, failures: 0, successes: 0, skipped: true, skips: 1,
+			},
+	}
+
+	for _, r := range results {
+			exp, ok := expected[r.TestName]
+			require.True(t, ok, "Unexpected test name: %s", r.TestName)
+			assert.Equal(t, exp.pkg, r.TestPackage, "Package mismatch for %s", r.TestName)
+			assert.Equal(t, exp.pkgPanic, r.PackagePanic, "PackagePanic mismatch for %s", r.TestName)
+			assert.Equal(t, exp.panic, r.Panic, "Panic mismatch for %s", r.TestName)
+			assert.InDelta(t, exp.passRatio, r.PassRatio, 0.001, "PassRatio mismatch for %s", r.TestName)
+			assert.Equal(t, exp.runs, r.Runs, "Runs mismatch for %s", r.TestName)
+			assert.Equal(t, exp.failures, r.Failures, "Failures mismatch for %s", r.TestName)
+			assert.Equal(t, exp.successes, r.Successes, "Successes mismatch for %s", r.TestName)
+			assert.Equal(t, exp.skipped, r.Skipped, "Skipped mismatch for %s", r.TestName)
+			assert.Equal(t, exp.skips, r.Skips, "Skips count mismatch for %s", r.TestName)
+	}
+
+
 }
 
 func TestParseFiles_WithPanicEventFileSpecific(t *testing.T) {
-	t.Skip("Failing test, needs investigation")
 	t.Parallel()
 
 	parser := NewParser()
 	filePath := "testdata/events-with-panic-single.json"
 
 	results, _, err := parser.ParseFiles([]string{filePath}, "run", 1, Config{})
-
 	if err != nil {
 		t.Fatalf("Failed to parse event file: %v", err)
 	}
-
 	assert.Equal(t, 1, len(results), "Expected 6 test results from file.")
+
+	testResult := results[0]
+
+	assert.True(t, testResult.Panic, "Expected test result to be marked as panic")
+	assert.True(t, testResult.PackagePanic, "Expected test result to be marked as panic")
+	assert.Equal(t, "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm/capabilities/workflows/syncer", testResult.TestPackage, "Test package mismatch")
+	assert.Equal(t, "Test_RegistrySyncer_WorkflowRegistered_InitiallyActivated", testResult.TestName, "Test name mismatch")
 }

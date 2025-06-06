@@ -108,9 +108,9 @@ type testProcessingState struct {
 	temporaryOutputsByRunID map[string][]string // runID -> []string of normal output
 	panicDetectionMode      bool
 	raceDetectionMode       bool
-	detectedEntries         []entry // Raw entries collected during panic/race
-	key                     string  // Test key (pkg/TestName)
-	filePath                string  // File path currently being processed (for logging)
+	detectedEntries         []rawEventData // Raw entries collected during panic/race
+	key                     string         // Test key (pkg/TestName)
+	filePath                string         // File path currently being processed (for logging)
 }
 
 // parseTestResults orchestrates the multi-pass parsing approach.
@@ -257,6 +257,20 @@ func (p *defaultParser) processEventsPerTest(eventsByTest map[string][]rawEventD
 			p.processEvent(state, rawEv)
 		}
 
+		// If after processing all events, and these are still true
+		// it means there were no terminal actions (pass/fail/skip) after a panic or race.
+		if state.panicDetectionMode || state.raceDetectionMode {
+			firstDetected := state.detectedEntries[0]
+			terminalEvent := entry{
+				Action:  "fail",
+				Test:    firstDetected.Event.Test,
+				Package: firstDetected.Event.Package,
+				Output:  "",
+				Elapsed: 0.0, // No elapsed time
+			}
+			p.handlePanicRaceTermination(state, terminalEvent, firstDetected.RunID)
+		}
+
 		p.finalizeOutputs(state, cfg)
 		result.Runs = len(state.processedRunIDs)
 		processedTestDetails[key] = result
@@ -271,13 +285,28 @@ func (p *defaultParser) processEvent(state *testProcessingState, rawEv rawEventD
 
 	// 1. Handle Output / Panic/Race Start Detection
 	if event.Output != "" {
-		panicRaceStarted := p.handleOutputEvent(state, event, runID)
-		if panicRaceStarted || state.panicDetectionMode || state.raceDetectionMode {
-			if state.panicDetectionMode || state.raceDetectionMode {
-				state.detectedEntries = append(state.detectedEntries, event)
-			}
+		// already detected panic or race, collect non-empty outputs
+		if state.panicDetectionMode || state.raceDetectionMode {
+			state.detectedEntries = append(state.detectedEntries, rawEv)
 			return
 		}
+
+		if panicStarted := startPanicRe.MatchString(event.Output); panicStarted {
+			state.panicDetectionMode = true
+			state.detectedEntries = append(state.detectedEntries, rawEv)
+			return
+		}
+
+		if raceStarted := startRaceRe.MatchString(event.Output); raceStarted {
+			state.raceDetectionMode = true
+			state.detectedEntries = append(state.detectedEntries, rawEv)
+			return
+		}
+
+		if state.temporaryOutputsByRunID[runID] == nil {
+			state.temporaryOutputsByRunID[runID] = []string{}
+		}
+		state.temporaryOutputsByRunID[runID] = append(state.temporaryOutputsByRunID[runID], event.Output)
 	}
 
 	// 2. Handle Panic/Race Termination
@@ -290,31 +319,6 @@ func (p *defaultParser) processEvent(state *testProcessingState, rawEv rawEventD
 	}
 }
 
-// handleOutputEvent handles output collection and panic/race start detection.
-// Returns true if panic/race mode started.
-func (p *defaultParser) handleOutputEvent(state *testProcessingState, event entry, runID string) (panicRaceStarted bool) {
-	if state.panicDetectionMode || state.raceDetectionMode {
-		return false
-	}
-
-	if startPanicRe.MatchString(event.Output) {
-		state.detectedEntries = append(state.detectedEntries, event)
-		state.panicDetectionMode = true
-		return true
-	}
-	if startRaceRe.MatchString(event.Output) {
-		state.detectedEntries = append(state.detectedEntries, event)
-		state.raceDetectionMode = true
-		return true
-	}
-
-	if state.temporaryOutputsByRunID[runID] == nil {
-		state.temporaryOutputsByRunID[runID] = []string{}
-	}
-	state.temporaryOutputsByRunID[runID] = append(state.temporaryOutputsByRunID[runID], event.Output)
-	return false
-}
-
 // handlePanicRaceTermination processes the end of a panic/race block.
 func (p *defaultParser) handlePanicRaceTermination(state *testProcessingState, event entry, runID string) {
 	terminalAction := event.Action == "pass" || event.Action == "fail" || event.Action == "skip"
@@ -324,12 +328,12 @@ func (p *defaultParser) handlePanicRaceTermination(state *testProcessingState, e
 
 	var outputs []string
 	for _, de := range state.detectedEntries {
-		outputs = append(outputs, de.Output)
+		outputs = append(outputs, de.Event.Output)
 	}
 	outputStr := strings.Join(outputs, "\n")
 	currentPackage := event.Package
 	if currentPackage == "" && len(state.detectedEntries) > 0 {
-		currentPackage = state.detectedEntries[0].Package
+		currentPackage = state.detectedEntries[0].Event.Package
 	}
 
 	attributedTestName := event.Test
@@ -378,7 +382,7 @@ func (p *defaultParser) handlePanicRaceTermination(state *testProcessingState, e
 	}
 
 	// Reset state
-	state.detectedEntries = []entry{}
+	state.detectedEntries = []rawEventData{}
 	state.panicDetectionMode = false
 	state.raceDetectionMode = false
 }
