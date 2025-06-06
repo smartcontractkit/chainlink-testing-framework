@@ -1,3 +1,5 @@
 [blockchain_a]
   type = "ton"
   image = "ghcr.io/neodix42/mylocalton-docker:latest"
+  port = "8000"
+  
