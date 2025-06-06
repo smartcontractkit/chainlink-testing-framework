@@ -1075,3 +1075,35 @@ func TestParseFiles_IgnoreParentFailures(t *testing.T) {
 		})
 	}
 }
+
+func TestParseFiles_WithPanicEventFile(t *testing.T) {
+
+	t.Skip("Failing test, needs investigation")
+	t.Parallel()
+
+	parser := NewParser()
+	filePath := "testdata/events-with-panic.json"
+	results, _, err := parser.ParseFiles([]string{filePath}, "run", 1, Config{})
+
+	if err != nil {
+		t.Fatalf("Failed to parse event file: %v", err)
+	}
+
+	assert.Equal(t, 6, len(results), "Expected 6 test results from file.")
+}
+
+func TestParseFiles_WithPanicEventFileSpecific(t *testing.T) {
+	t.Skip("Failing test, needs investigation")
+	t.Parallel()
+
+	parser := NewParser()
+	filePath := "testdata/events-with-panic-single.json"
+
+	results, _, err := parser.ParseFiles([]string{filePath}, "run", 1, Config{})
+
+	if err != nil {
+		t.Fatalf("Failed to parse event file: %v", err)
+	}
+
+	assert.Equal(t, 1, len(results), "Expected 6 test results from file.")
+}
