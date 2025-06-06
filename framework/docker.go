@@ -496,7 +496,7 @@ var NaiveRetrier = func(l zerolog.Logger, ctx context.Context, startErr error, r
 // StartContainerWithRetry attempts to start a container with 3 retry attempts.
 // It will try to start the container with the provided retriers, if none are provided it will use the default retrier, which
 // simply tries to start the container again without any modifications.
-func StartContainerWithRetry(l zerolog.Logger, ctx context.Context, req tc.GenericContainerRequest, retriers ...StartContainerRetrier) (tc.Container, error) {
+func StartContainerWithRetry(ctx context.Context, l zerolog.Logger, req tc.GenericContainerRequest, retriers ...StartContainerRetrier) (tc.Container, error) {
 	var (
 		ct  tc.Container
 		err error

@@ -153,7 +153,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 		}
 		framework.ResourceLimitsFunc(h, in.ContainerResources)
 	}
-	c, err := framework.StartContainerWithRetry(framework.L, ctx, testcontainers.GenericContainerRequest{
+	c, err := framework.StartContainerWithRetry(ctx, framework.L, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 		Reuse:            true,

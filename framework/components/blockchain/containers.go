@@ -64,7 +64,7 @@ func baseRequest(in *Input, useWS ExposeWs) testcontainers.ContainerRequest {
 
 func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest, useWS bool) (*Output, error) {
 	ctx := context.Background()
-	c, err := framework.StartContainerWithRetry(framework.L, ctx, testcontainers.GenericContainerRequest{
+	c, err := framework.StartContainerWithRetry(ctx, framework.L, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})
