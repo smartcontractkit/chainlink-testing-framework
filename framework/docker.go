@@ -21,6 +21,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 	"golang.org/x/sync/errgroup"
@@ -445,4 +446,95 @@ func NoDNS(noDNS bool, hc *container.HostConfig) {
 	if noDNS {
 		hc.DNS = []string{"127.0.0.1"}
 	}
+}
+
+// Retry functions copied from lib/docker/docker.go to avoid depending on that package
+type StartContainerRetrier func(l zerolog.Logger, ctx context.Context, startErr error, req tc.GenericContainerRequest) (tc.Container, error)
+
+// NaiveRetrier is a simple retrier that tries to start the container again without any modifications.
+// It will remove the container if it exists and try to start it again.
+var NaiveRetrier = func(l zerolog.Logger, ctx context.Context, startErr error, req tc.GenericContainerRequest) (tc.Container, error) {
+	l.Debug().
+		Str("Start error", startErr.Error()).
+		Str("Retrier", "NaiveRetrier").
+		Msgf("Attempting to start %s container", req.Name)
+
+	req.Reuse = false // We need to force a new container to be created
+
+	removeErr := removeContainer(ctx, req)
+	if removeErr != nil {
+		l.Error().Err(removeErr).Msgf("Failed to remove %s container to initiate restart", req.Name)
+		return nil, removeErr
+	}
+
+	ct, err := tc.GenericContainer(ctx, req)
+	if err == nil {
+		l.Debug().
+			Str("Retrier", "NaiveRetrier").
+			Msgf("Successfully started %s container", req.Name)
+		return ct, nil
+	}
+	if ct != nil {
+		err := ct.Terminate(ctx)
+		if err != nil {
+			l.Error().
+				Err(err).
+				Msgf("Cannot terminate %s container to initiate restart", req.Name)
+			return nil, err
+		}
+	}
+
+	l.Debug().
+		Str("Original start error", startErr.Error()).
+		Str("Current start error", err.Error()).
+		Str("Retrier", "NaiveRetrier").
+		Msgf("Failed to start %s container,", req.Name)
+
+	return nil, startErr
+}
+
+// StartContainerWithRetry attempts to start a container with 3 retry attempts.
+// It will try to start the container with the provided retriers, if none are provided it will use the default retrier, which
+// simply tries to start the container again without any modifications.
+func StartContainerWithRetry(l zerolog.Logger, ctx context.Context, req tc.GenericContainerRequest, retriers ...StartContainerRetrier) (tc.Container, error) {
+	var (
+		ct  tc.Container
+		err error
+	)
+
+	ct, err = tc.GenericContainer(ctx, req)
+	if err == nil {
+		return ct, nil
+	}
+
+	if len(retriers) == 0 {
+		retriers = append(retriers, NaiveRetrier)
+	}
+
+	l.Warn().Err(err).Msgf("Cannot start %s container, retrying", req.Name)
+
+	req.Reuse = true // Try and see if we can reuse the container for a retry
+	for _, retrier := range retriers {
+		ct, err = retrier(l, ctx, err, req)
+		if err == nil {
+			return ct, nil
+		}
+	}
+
+	return nil, err
+}
+
+func removeContainer(ctx context.Context, req tc.GenericContainerRequest) error {
+	provider, providerErr := tc.NewDockerProvider()
+	if providerErr != nil {
+		return errors.Wrapf(providerErr, "failed to create Docker provider")
+	}
+
+	removeErr := provider.Client().ContainerRemove(ctx, req.Name, container.RemoveOptions{Force: true})
+	if removeErr != nil && strings.Contains(strings.ToLower(removeErr.Error()), "no such container") {
+		// container doesn't exist, nothing to remove
+		return nil
+	}
+
+	return removeErr
 }

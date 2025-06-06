@@ -116,10 +116,12 @@ func NewJD(in *Input) (*Output, error) {
 		}
 		req.KeepImage = false
 	}
-	c, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
+
+	c, err := framework.StartContainerWithRetry(framework.L, ctx, tc.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})
+
 	if err != nil {
 		return nil, err
 	}
