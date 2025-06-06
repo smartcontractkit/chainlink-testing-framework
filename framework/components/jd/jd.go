@@ -16,7 +16,7 @@ import (
 
 const (
 	TmpImageName            = "jd-local"
-	GRPCPort         string = "42242"
+	GRPCPort         string = "14231"
 	CSAEncryptionKey string = "!PASsword000!"
 	WSRPCPort        string = "8080"
 )
