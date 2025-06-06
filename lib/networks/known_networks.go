@@ -1007,6 +1007,32 @@ var (
 		DefaultGasLimit:           6000000,
 	}
 
+	BotanixMainnet = blockchain.EVMNetwork{
+		Name:                      "Botanix Mainnet",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.BotanixClientImplementation,
+		ChainID:                   3637,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       10000,
+		DefaultGasLimit:           6000000,
+	}
+
+	BotanixTestnet = blockchain.EVMNetwork{
+		Name:                      "Botanix Testnet",
+		SupportsEIP1559:           true,
+		ClientImplementation:      blockchain.BotanixClientImplementation,
+		ChainID:                   3636,
+		Simulated:                 false,
+		ChainlinkTransactionLimit: 5000,
+		Timeout:                   blockchain.StrDuration{Duration: 3 * time.Minute},
+		MinimumConfirmations:      1,
+		GasEstimationBuffer:       10000,
+		DefaultGasLimit:           6000000,
+	}
+
 	MappedNetworks = map[string]blockchain.EVMNetwork{
 		"SIMULATED":               SimulatedEVM,
 		"ANVIL":                   Anvil,
@@ -1076,6 +1102,8 @@ var (
 		"XLAYER_SEPOLIA":        XLayerSepolia,
 		"XLAYER_MAINNET":        XLayerMainnet,
 		"TREASURE_RUBY":         TreasureRuby,
+		"BOTANIX_MAINNET":       BotanixMainnet,
+		"BOTANIX_TESTNET":       BotanixTestnet,
 	}
 )
 
