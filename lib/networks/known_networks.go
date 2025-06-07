@@ -1018,6 +1018,7 @@ var (
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
 		DefaultGasLimit:           6000000,
+		FinalityTag:               true,
 	}
 
 	BotanixTestnet = blockchain.EVMNetwork{
@@ -1031,6 +1032,7 @@ var (
 		MinimumConfirmations:      1,
 		GasEstimationBuffer:       10000,
 		DefaultGasLimit:           6000000,
+		FinalityTag:               true,
 	}
 
 	MappedNetworks = map[string]blockchain.EVMNetwork{
