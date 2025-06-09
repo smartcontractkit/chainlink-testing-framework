@@ -7,7 +7,7 @@ replace github.com/smartcontractkit/chainlink-testing-framework/lib => ../lib
 require (
 	github.com/K-Phoen/grabana v0.22.2
 	github.com/coder/websocket v1.8.12
-	github.com/gin-gonic/gin v1.10.0
+	github.com/gin-gonic/gin v1.10.1
 	github.com/go-resty/resty/v2 v2.16.3
 	github.com/google/uuid v1.6.0
 	github.com/grafana/dskit v0.0.0-20241007172036-53283a0f6b41
