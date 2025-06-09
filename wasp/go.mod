@@ -16,7 +16,7 @@ require (
 	github.com/grafana/loki/v3 v3.0.0-20250221202516-b37eefe24f82
 	github.com/grafana/pyroscope-go v1.1.2
 	github.com/montanaflynn/stats v0.7.1
-	github.com/olekukonko/tablewriter v0.0.5
+	github.com/olekukonko/tablewriter v1.0.7
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/common v0.62.0
 	github.com/rs/zerolog v1.33.0
@@ -315,6 +315,8 @@ require (
 require (
 	github.com/ebitengine/purego v0.8.2 // indirect
 	github.com/hashicorp/go-metrics v0.5.4 // indirect
+	github.com/olekukonko/errors v0.0.0-20250405072817-4e6d85265da6 // indirect
+	github.com/olekukonko/ll v0.0.8 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.1 // indirect
 	github.com/tjhop/slog-gokit v0.1.3 // indirect
 )
