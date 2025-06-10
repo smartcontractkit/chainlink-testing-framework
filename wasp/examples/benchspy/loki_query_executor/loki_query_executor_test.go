@@ -96,6 +96,7 @@ func TestBenchSpy_Standard_Loki_Metrics(t *testing.T) {
 
 	compareAverages(t, string(benchspy.MedianLatency), currentAsStringSlice, previousAsStringSlice, 1.0)
 	compareAverages(t, string(benchspy.Percentile95Latency), currentAsStringSlice, previousAsStringSlice, 1.0)
+	compareAverages(t, string(benchspy.Percentile99Latency), currentAsStringSlice, previousAsStringSlice, 1.0)
 	compareAverages(t, string(benchspy.MaxLatency), currentAsStringSlice, previousAsStringSlice, 1.0)
 	compareAverages(t, string(benchspy.ErrorRate), currentAsStringSlice, previousAsStringSlice, 1.0)
 }
@@ -331,6 +332,7 @@ func TestBenchSpy_Standard_Loki_Metrics_Two_Generators(t *testing.T) {
 
 	compareAverages(t, string(benchspy.MedianLatency), currentAsStringSlice_vu1, previousAsStringSlice_vu1, 10.0)
 	compareAverages(t, string(benchspy.Percentile95Latency), currentAsStringSlice_vu1, previousAsStringSlice_vu1, 10.0)
+	compareAverages(t, string(benchspy.Percentile99Latency), currentAsStringSlice_vu1, previousAsStringSlice_vu1, 10.0)
 	compareAverages(t, string(benchspy.MaxLatency), currentAsStringSlice_vu1, previousAsStringSlice_vu1, 10.0)
 	compareAverages(t, string(benchspy.ErrorRate), currentAsStringSlice_vu1, previousAsStringSlice_vu1, 10.0)
 
@@ -339,6 +341,7 @@ func TestBenchSpy_Standard_Loki_Metrics_Two_Generators(t *testing.T) {
 
 	compareAverages(t, string(benchspy.MedianLatency), currentAsStringSlice_vu2, previousAsStringSlice_vu2, 10.0)
 	compareAverages(t, string(benchspy.Percentile95Latency), currentAsStringSlice_vu2, previousAsStringSlice_vu2, 10.0)
+	compareAverages(t, string(benchspy.Percentile99Latency), currentAsStringSlice_vu2, previousAsStringSlice_vu2, 10.0)
 	compareAverages(t, string(benchspy.MaxLatency), currentAsStringSlice_vu2, previousAsStringSlice_vu2, 10.0)
 	compareAverages(t, string(benchspy.ErrorRate), currentAsStringSlice_vu2, previousAsStringSlice_vu2, 10.0)
 }

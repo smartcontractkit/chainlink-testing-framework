@@ -62,6 +62,7 @@ func TestBenchSpy_Standard_Direct_Metrics(t *testing.T) {
 	defer cancelFn()
 
 	// currentReport is the report that we just created (baseLineReport)
+	// this will fail unless previous report has been committed
 	currentReport, previousReport, err := benchspy.FetchNewStandardReportAndLoadLatestPrevious(
 		fetchCtx,
 		"v2",
@@ -73,7 +74,7 @@ func TestBenchSpy_Standard_Direct_Metrics(t *testing.T) {
 	// make sure that previous report is the same as the baseline report
 	require.Equal(t, baseLineReport.CommitOrTag, previousReport.CommitOrTag, "current report should be the same as the original report")
 
-	hasErrors, errors := benchspy.CompareDirectWithThresholds(1.0, 1.0, 1.0, 1.0, currentReport, previousReport)
+	hasErrors, errors := benchspy.CompareDirectWithThresholds(1.0, 1.0, 1.0, 1.0, 1.0, currentReport, previousReport)
 	require.False(t, hasErrors, fmt.Sprintf("errors found: %v", errors))
 }
 
@@ -163,6 +164,6 @@ func TestBenchSpy_Standard_Direct_Metrics_Two_Generators(t *testing.T) {
 	// make sure that previous report is the same as the baseline report
 	require.Equal(t, baseLineReport.CommitOrTag, previousReport.CommitOrTag, "current report should be the same as the original report")
 
-	hasErrors, errors := benchspy.CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
+	hasErrors, errors := benchspy.CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
 	require.False(t, hasErrors, fmt.Sprintf("errors found: %v", errors))
 }
