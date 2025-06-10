@@ -69,7 +69,7 @@ package main
 //	)
 //	require.NoError(t, err, "failed to fetch current report or load the previous one")
 //
-//	hasErrors, errors := benchspy.CompareDirectWithThresholds(1.0, 1.0, 1.0, 1.0, currentReport, previousReport)
+//	hasErrors, errors := benchspy.CompareDirectWithThresholds(1.0, 1.0, 1.0, 1.0, 1.0, currentReport, previousReport)
 //	require.True(t, hasErrors, "Found no errors, but expected some")
 //	require.Equal(t, 3, len(errors), "Expected 3 errors, got %d", len(errors))
 //
