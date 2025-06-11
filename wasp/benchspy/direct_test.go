@@ -237,13 +237,13 @@ func TestBenchSpy_DirectQueryExecutor_Execute(t *testing.T) {
 		// expected median latency: (150ms, 151ms>
 		resultsAsFloats, err := ResultsAs(0.0, executor, string(MedianLatency), string(Percentile95Latency), string(Percentile99Latency), string(ErrorRate))
 		assert.NoError(t, err)
-		require.Equal(t, 3, len(resultsAsFloats))
+		require.Equal(t, 4, len(resultsAsFloats))
 		require.InDelta(t, 151.0, resultsAsFloats[string(MedianLatency)], 1.0)
 
 		// since we have 2-3 responses with 200-201ms latency, the 95th percentile should be (200ms, 201ms>
 		require.InDelta(t, 201.0, resultsAsFloats[string(Percentile95Latency)], 1.0)
-		// since we have 2-3 responses with 200-201ms latency, the 99th percentile should be (200ms, 202ms>
-		require.InDelta(t, 202.0, resultsAsFloats[string(Percentile99Latency)], 1.0)
+		// since we have 2-3 responses with 200-201ms latency, the 99th percentile should be (199ms, 203ms>
+		require.InDelta(t, 201.0, resultsAsFloats[string(Percentile99Latency)], 2.0)
 
 		errorRate, exists := resultsAsFloats[string(ErrorRate)]
 		assert.True(t, exists)

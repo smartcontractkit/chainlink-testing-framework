@@ -1621,7 +1621,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 		assert.True(t, failed)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from previous report", string(Percentile95Latency)))
-		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from current report", string(Percentile99Latency)))
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from previous report", string(Percentile99Latency)))
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from previous report", string(MaxLatency)))
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from previous report", string(ErrorRate)))
 	})
