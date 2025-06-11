@@ -155,6 +155,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 					TestSecretsOverrides:    in.NodeSpecs[overrideIdx].Node.TestSecretsOverrides,
 					UserSecretsOverrides:    in.NodeSpecs[overrideIdx].Node.UserSecretsOverrides,
 					ContainerResources:      in.NodeSpecs[overrideIdx].Node.ContainerResources,
+					EnvVars:                 in.NodeSpecs[overrideIdx].Node.EnvVars,
 				},
 			}
 
