@@ -61,6 +61,7 @@ type NodeInput struct {
 	CustomPorts             []string                      `toml:"custom_ports"`
 	DebuggerPort            int                           `toml:"debugger_port"`
 	ContainerResources      *framework.ContainerResources `toml:"resources"`
+	EnvVars                 map[string]string             `toml:"env_vars"`
 }
 
 // Output represents Chainlink node output, nodes and databases connection URLs
@@ -245,6 +246,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		NetworkAliases: map[string][]string{
 			framework.DefaultNetworkName: {containerName},
 		},
+		Env:          in.Node.EnvVars,
 		ExposedPorts: exposedPorts,
 		Entrypoint:   generateEntryPoint(),
 		WaitingFor: wait.ForHTTP("/").

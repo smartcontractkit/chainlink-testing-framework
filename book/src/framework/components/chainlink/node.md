@@ -47,6 +47,9 @@ Here we provide full configuration reference, if you want to copy and run it, pl
       mySecret = 'a'
       """
 
+    [cl_node.node.env_vars]
+      MY_FIRST_ENV_VAR = "env var value"
+
   # Outputs are the results of deploying a component that can be used by another component
   [cl_node.out]
     # If 'use_cache' equals 'true' we skip component setup when we run the test and return the outputs
