@@ -68,7 +68,7 @@ const (
 	ErrorRate           StandardLoadMetric = "error_rate"
 )
 
-var StandardLoadMetrics = []StandardLoadMetric{MedianLatency, Percentile95Latency, MaxLatency, ErrorRate}
+var StandardLoadMetrics = []StandardLoadMetric{MedianLatency, Percentile95Latency, Percentile99Latency, MaxLatency, ErrorRate}
 
 type StandardResourceMetric string
 
