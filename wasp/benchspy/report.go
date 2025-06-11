@@ -178,7 +178,7 @@ func CompareDirectWithThresholds(medianThreshold, p95Threshold, p99Threshold, ma
 		Str("Previous report", previousReport.CommitOrTag).
 		Float64("Median threshold", medianThreshold).
 		Float64("P95 threshold", p95Threshold).
-		Float64("P95 threshold", p99Threshold).
+		Float64("P99 threshold", p99Threshold).
 		Float64("Max threshold", maxThreshold).
 		Float64("Error rate threshold", errorRateThreshold).
 		Msg("Comparing Direct metrics with thresholds")
