@@ -145,7 +145,7 @@ func helperDownloadFile(url string) (int, error) {
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-
+			panic(err)
 		}
 	}(resp.Body)
 	return resp.StatusCode, nil
