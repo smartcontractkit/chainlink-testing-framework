@@ -1298,6 +1298,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 						return map[string]interface{}{
 							string(MedianLatency):       100.0,
 							string(Percentile95Latency): 200.0,
+							string(Percentile99Latency): 280.0,
 							string(MaxLatency):          300.0,
 							string(ErrorRate):           1.0,
 						}
@@ -1322,6 +1323,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 						return map[string]interface{}{
 							string(MedianLatency):       105.0, // 5% increase
 							string(Percentile95Latency): 210.0, // 5% increase
+							string(Percentile99Latency): 294.0, // 5% increase
 							string(MaxLatency):          315.0, // 5% increase
 							string(ErrorRate):           1.05,  // 5% increase
 						}
@@ -1331,7 +1333,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
+		failed, errs := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
 		assert.False(t, failed)
 		assert.Empty(t, errs)
 	})
@@ -1352,6 +1354,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 						return map[string]interface{}{
 							string(MedianLatency):       100.0,
 							string(Percentile95Latency): 200.0,
+							string(Percentile99Latency): 280.0,
 							string(MaxLatency):          300.0,
 							string(ErrorRate):           1.0,
 						}
@@ -1376,6 +1379,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 						return map[string]interface{}{
 							string(MedianLatency):       150.0, // 50% increase
 							string(Percentile95Latency): 200.0, // no increase
+							string(Percentile99Latency): 280.0, // no increase
 							string(MaxLatency):          300.0, // no increase
 							string(ErrorRate):           1.0,   // no increase
 						}
@@ -1385,7 +1389,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, err := CompareDirectWithThresholds(10.0, 1.0, 1.0, 1.0, currentReport, previousReport)
+		failed, err := CompareDirectWithThresholds(10.0, 1.0, 1.0, 1.0, 1.0, currentReport, previousReport)
 		assert.True(t, failed)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 50.0000%% different, which is higher than the threshold", string(MedianLatency)))
@@ -1407,6 +1411,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 						return map[string]interface{}{
 							string(MedianLatency):       100.0,
 							string(Percentile95Latency): 200.0,
+							string(Percentile99Latency): 280.0,
 							string(MaxLatency):          300.0,
 							string(ErrorRate):           1.0,
 						}
@@ -1431,6 +1436,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 						return map[string]interface{}{
 							string(MedianLatency):       150.0, // 50% increase
 							string(Percentile95Latency): 300.0, // 50% increase
+							string(Percentile99Latency): 420.0, // 50% increase
 							string(MaxLatency):          450.0, // 50% increase
 							string(ErrorRate):           2.0,   // 100% increase
 						}
@@ -1440,11 +1446,12 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
+		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
 		assert.True(t, failed)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 50.0000%% different, which is higher than the threshold", string(MedianLatency)))
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 50.0000%% different, which is higher than the threshold", string(Percentile95Latency)))
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 50.0000%% different, which is higher than the threshold", string(Percentile99Latency)))
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 50.0000%% different, which is higher than the threshold", string(MaxLatency)))
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 100.0000%% different, which is higher than the threshold", string(ErrorRate)))
 	})
@@ -1465,6 +1472,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 						return map[string]interface{}{
 							string(MedianLatency):       0.0,
 							string(Percentile95Latency): 0.0,
+							string(Percentile99Latency): 0.0,
 							string(MaxLatency):          0.0,
 							string(ErrorRate):           0.0,
 						}
@@ -1489,6 +1497,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 						return map[string]interface{}{
 							string(MedianLatency):       0.0,
 							string(Percentile95Latency): 0.0,
+							string(Percentile99Latency): 0.0,
 							string(MaxLatency):          0.0,
 							string(ErrorRate):           0.0,
 						}
@@ -1498,7 +1507,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
+		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
 		assert.False(t, failed)
 		assert.Nil(t, err)
 	})
@@ -1519,6 +1528,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 						return map[string]interface{}{
 							string(MedianLatency):       100.0,
 							string(Percentile95Latency): 0.0,
+							string(Percentile99Latency): 0.0,
 							string(MaxLatency):          0.0,
 							string(ErrorRate):           0.0,
 						}
@@ -1550,10 +1560,11 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
+		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
 		assert.True(t, failed)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from current report", string(Percentile95Latency)))
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from current report", string(Percentile99Latency)))
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from current report", string(MaxLatency)))
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from current report", string(ErrorRate)))
 	})
@@ -1596,6 +1607,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 						return map[string]interface{}{
 							string(MedianLatency):       105.0,
 							string(Percentile95Latency): 0.0,
+							string(Percentile99Latency): 0.0,
 							string(MaxLatency):          0.0,
 							string(ErrorRate):           0.0,
 						}
@@ -1605,10 +1617,11 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
+		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
 		assert.True(t, failed)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from previous report", string(Percentile95Latency)))
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from previous report", string(Percentile99Latency)))
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from previous report", string(MaxLatency)))
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from previous report", string(ErrorRate)))
 	})
@@ -1629,6 +1642,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 						return map[string]interface{}{
 							string(MedianLatency):       100.0,
 							string(Percentile95Latency): 0.0,
+							string(Percentile99Latency): 0.0,
 							string(MaxLatency):          0.0,
 							string(ErrorRate):           0.0,
 						}
@@ -1660,10 +1674,11 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
+		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
 		assert.True(t, failed)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from current report", string(Percentile95Latency)))
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from current report", string(Percentile99Latency)))
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from current report", string(MaxLatency)))
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s metric results were missing from current report", string(ErrorRate)))
 	})
@@ -1684,6 +1699,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 						return map[string]interface{}{
 							string(MedianLatency):       0.0,
 							string(Percentile95Latency): 0.0,
+							string(Percentile99Latency): 0.0,
 							string(MaxLatency):          0.0,
 							string(ErrorRate):           0.0,
 						}
@@ -1708,6 +1724,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 						return map[string]interface{}{
 							string(MedianLatency):       100.0,
 							string(Percentile95Latency): 200.0,
+							string(Percentile99Latency): 280.0,
 							string(MaxLatency):          300.0,
 							string(ErrorRate):           1.0,
 						}
@@ -1717,11 +1734,12 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
+		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
 		assert.True(t, failed)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 999.0000%% different, which is higher than the threshold", string(MedianLatency)))
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 999.0000%% different, which is higher than the threshold", string(Percentile95Latency)))
+		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 999.0000%% different, which is higher than the threshold", string(Percentile99Latency)))
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 999.0000%% different, which is higher than the threshold", string(MaxLatency)))
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 999.0000%% different, which is higher than the threshold", string(ErrorRate)))
 	})
@@ -1742,6 +1760,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 						return map[string]interface{}{
 							string(MedianLatency):       10.0,
 							string(Percentile95Latency): 20.0,
+							string(Percentile99Latency): 28.0,
 							string(MaxLatency):          311.0,
 							string(ErrorRate):           1.0,
 						}
@@ -1766,6 +1785,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 						return map[string]interface{}{
 							string(MedianLatency):       0.0,
 							string(Percentile95Latency): 0.0,
+							string(Percentile99Latency): 0.0,
 							string(MaxLatency):          0.0,
 							string(ErrorRate):           0.0,
 						}
@@ -1775,7 +1795,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
+		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
 		assert.False(t, failed)
 		assert.Nil(t, err)
 	})
@@ -1796,6 +1816,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 						return map[string]interface{}{
 							string(MedianLatency):       10.1,
 							string(Percentile95Latency): 10.1,
+							string(Percentile99Latency): 10.1,
 							string(MaxLatency):          10.0,
 							string(ErrorRate):           10.0,
 						}
@@ -1820,6 +1841,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 						return map[string]interface{}{
 							string(MedianLatency):       10.2,
 							string(Percentile95Latency): 10.1999,
+							string(Percentile99Latency): 10.19999,
 							string(MaxLatency):          0.0,
 							string(ErrorRate):           0.0,
 						}
@@ -1829,7 +1851,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, err := CompareDirectWithThresholds(0.99, 0.9892, 10.0, 10.0, currentReport, previousReport)
+		failed, err := CompareDirectWithThresholds(0.99, 0.9892, 0.977, 10.0, 10.0, currentReport, previousReport)
 		assert.True(t, failed)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), fmt.Sprintf("[test-gen] %s is 0.9901%% different, which is higher than the threshold", string(MedianLatency)))
@@ -1851,6 +1873,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 						return map[string]interface{}{
 							string(MedianLatency):       10.2,
 							string(Percentile95Latency): 10.1999,
+							string(Percentile99Latency): 280.0,
 							string(MaxLatency):          0.0,
 							string(ErrorRate):           0.0,
 						}
@@ -1860,17 +1883,17 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, report, nil)
+		failed, err := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, 10.0, report, nil)
 		assert.True(t, failed)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "one or both reports are nil")
 
-		failed, err = CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, nil, report)
+		failed, err = CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, 10.0, nil, report)
 		assert.True(t, failed)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "one or both reports are nil")
 
-		failed, err = CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, nil, nil)
+		failed, err = CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, 10.0, nil, nil)
 		assert.True(t, failed)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "one or both reports are nil")
@@ -1892,6 +1915,7 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 						return map[string]interface{}{
 							string(MedianLatency):       10.0,
 							string(Percentile95Latency): 10.0,
+							string(Percentile99Latency): 10.0,
 							string(MaxLatency):          0.0,
 							string(ErrorRate):           0.0,
 						}
@@ -1901,21 +1925,22 @@ func TestBenchSpy_CompareDirectWithThresholds(t *testing.T) {
 			},
 		}
 
-		failed, err := CompareDirectWithThresholds(-0.1, 100.0, 0.0, 100.0, report, report)
+		failed, err := CompareDirectWithThresholds(-0.1, 100.0, 0.0, 100.0, 100.0, report, report)
 		assert.True(t, failed)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "median threshold -0.1000 is not in the range [0, 100]")
 
-		failed, err = CompareDirectWithThresholds(1.0, 101.0, 0.0, 100.0, report, report)
+		failed, err = CompareDirectWithThresholds(1.0, 101.0, 0.0, 100.0, 10.0, report, report)
 		assert.True(t, failed)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "p95 threshold 101.0000 is not in the range [0, 100]")
 
-		failed, err = CompareDirectWithThresholds(-1, -1, -1, -1, report, report)
+		failed, err = CompareDirectWithThresholds(-1, -1, -1, -1, -1, report, report)
 		assert.True(t, failed)
 		assert.NotNil(t, err)
 		assert.Contains(t, err.Error(), "median threshold -1.0000 is not in the range [0, 100]")
 		assert.Contains(t, err.Error(), "p95 threshold -1.0000 is not in the range [0, 100]")
+		assert.Contains(t, err.Error(), "p99 threshold -1.0000 is not in the range [0, 100]")
 		assert.Contains(t, err.Error(), "max threshold -1.0000 is not in the range [0, 100]")
 		assert.Contains(t, err.Error(), "error rate threshold -1.0000 is not in the range [0, 100]")
 	})
@@ -2001,6 +2026,6 @@ func TestBenchSpy_Standard_Direct_Metrics_Two_Generators_E2E(t *testing.T) {
 	fetchErr = currentReport.FetchData(fetchCtx)
 	require.NoError(t, fetchErr, "failed to fetch data for original report")
 
-	hasErrors, errors := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
+	hasErrors, errors := CompareDirectWithThresholds(10.0, 10.0, 10.0, 10.0, 10.0, currentReport, previousReport)
 	require.False(t, hasErrors, fmt.Sprintf("errors found: %v", errors))
 }

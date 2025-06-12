@@ -168,7 +168,7 @@ func calculateDiffPercentage(current, previous float64) float64 {
 
 // CompareDirectWithThresholds evaluates the current and previous reports against specified thresholds.
 // It checks for significant differences in metrics and returns any discrepancies found, aiding in performance analysis.
-func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold float64, currentReport, previousReport *StandardReport) (bool, error) {
+func CompareDirectWithThresholds(medianThreshold, p95Threshold, p99Threshold, maxThreshold, errorRateThreshold float64, currentReport, previousReport *StandardReport) (bool, error) {
 	if currentReport == nil || previousReport == nil {
 		return true, errors.New("one or both reports are nil")
 	}
@@ -178,11 +178,12 @@ func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, er
 		Str("Previous report", previousReport.CommitOrTag).
 		Float64("Median threshold", medianThreshold).
 		Float64("P95 threshold", p95Threshold).
+		Float64("P99 threshold", p99Threshold).
 		Float64("Max threshold", maxThreshold).
 		Float64("Error rate threshold", errorRateThreshold).
 		Msg("Comparing Direct metrics with thresholds")
 
-	if thresholdsErr := validateThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold); thresholdsErr != nil {
+	if thresholdsErr := validateThresholds(medianThreshold, p95Threshold, p99Threshold, maxThreshold, errorRateThreshold); thresholdsErr != nil {
 		return true, thresholdsErr
 	}
 
@@ -234,6 +235,10 @@ func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, er
 			errors[genCfg.GenName] = append(errors[genCfg.GenName], err)
 		}
 
+		if err := compareValues(string(Percentile99Latency), genCfg.GenName, p99Threshold); err != nil {
+			errors[genCfg.GenName] = append(errors[genCfg.GenName], err)
+		}
+
 		if err := compareValues(string(MaxLatency), genCfg.GenName, maxThreshold); err != nil {
 			errors[genCfg.GenName] = append(errors[genCfg.GenName], err)
 		}
@@ -264,7 +269,7 @@ func concatenateGeneratorErrors(errors map[string][]error) error {
 	return goerrors.Join(errs...)
 }
 
-func validateThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold float64) error {
+func validateThresholds(medianThreshold, p95Threshold, p99Threshold, maxThreshold, errorRateThreshold float64) error {
 	var errs []error
 
 	var validateThreshold = func(name string, threshold float64) error {
@@ -279,6 +284,10 @@ func validateThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateTh
 	}
 
 	if err := validateThreshold("p95", p95Threshold); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := validateThreshold("p99", p99Threshold); err != nil {
 		errs = append(errs, err)
 	}
 

@@ -22,6 +22,7 @@ import (
 var (
 	Loki_MedianQuery = `quantile_over_time(0.5, {branch=~"%s", commit=~"%s", go_test_name=~"%s", test_data_type=~"responses", gen_name=~"%s"} | json| unwrap duration [10s]) by (go_test_name, gen_name) / 1e6`
 	Loki_95thQuery   = `quantile_over_time(0.95, {branch=~"%s", commit=~"%s", go_test_name=~"%s", test_data_type=~"responses", gen_name=~"%s"} | json| unwrap duration [10s]) by (go_test_name, gen_name) / 1e6`
+	Loki_99thQuery   = `quantile_over_time(0.99, {branch=~"%s", commit=~"%s", go_test_name=~"%s", test_data_type=~"responses", gen_name=~"%s"} | json| unwrap duration [10s]) by (go_test_name, gen_name) / 1e6`
 	Loki_MaxQuery    = `max(max_over_time({branch=~"%s", commit=~"%s", go_test_name=~"%s", test_data_type=~"responses", gen_name=~"%s"} | json| unwrap duration [10s]) by (go_test_name, gen_name) / 1e6)`
 	Loki_ErrorRate   = `sum(max_over_time({branch=~"%s", commit=~"%s", go_test_name=~"%s", test_data_type=~"stats", gen_name=~"%s"} | json| unwrap failed [%s]) by (node_id, go_test_name, gen_name)) by (__stream_shard__)`
 )
@@ -311,6 +312,8 @@ func (l *LokiQueryExecutor) standardQuery(standardMetric StandardLoadMetric, tes
 		return fmt.Sprintf(Loki_MedianQuery, branch, commit, testName, generatorName), nil
 	case Percentile95Latency:
 		return fmt.Sprintf(Loki_95thQuery, branch, commit, testName, generatorName), nil
+	case Percentile99Latency:
+		return fmt.Sprintf(Loki_99thQuery, branch, commit, testName, generatorName), nil
 	case MaxLatency:
 		return fmt.Sprintf(Loki_MaxQuery, branch, commit, testName, generatorName), nil
 	case ErrorRate:

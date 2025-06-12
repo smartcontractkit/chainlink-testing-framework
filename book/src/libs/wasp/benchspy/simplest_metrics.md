@@ -15,6 +15,7 @@ hasErrors, errors := benchspy.CompareDirectWithThresholds(
     // maximum differences in percentages for:
     1.0, // median latency
     1.0, // p95 latency
+    1.0, // p99 latency
     1.0, // max latency
     1.0, // error rate
     currentReport,
@@ -29,6 +30,7 @@ If there are errors they will be returned as `map[string][]errors`, where key is
 > Both `Direct` and `Loki` query executors support following standard performance metrics out of the box:
 > - `median_latency`
 > - `p95_latency`
+> - `p99_latency`
 > - `max_latency`
 > - `error_rate`
 
@@ -42,6 +44,8 @@ Generator: vu1
 | median_latency          | 50.1300 | 50.1179 | -0.0242 |
 +-------------------------+---------+---------+---------+
 | 95th_percentile_latency | 50.7387 | 50.7622 | 0.0463  |
++-------------------------+---------+---------+---------+
+| 99th_percentile_latency | 54.8192 | 51.0124 | -7.4624 |
 +-------------------------+---------+---------+---------+
 | max_latency             | 55.7195 | 51.7248 | -7.1692 |
 +-------------------------+---------+---------+---------+

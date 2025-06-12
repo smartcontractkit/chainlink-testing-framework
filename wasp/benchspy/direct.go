@@ -269,6 +269,11 @@ func (dqe *DirectQueryExecutor) standardQuery(standardMetric StandardLoadMetric)
 			return stats.Percentile(responsesToDurationFn(responses), 95)
 		}
 		return p95Fn, nil
+	case Percentile99Latency:
+		p99Fn := func(responses *wasp.SliceBuffer[*wasp.Response]) (float64, error) {
+			return stats.Percentile(responsesToDurationFn(responses), 99)
+		}
+		return p99Fn, nil
 	case MaxLatency:
 		maxFn := func(responses *wasp.SliceBuffer[*wasp.Response]) (float64, error) {
 			return stats.Max(responsesToDurationFn(responses))
