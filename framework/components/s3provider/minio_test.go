@@ -138,7 +138,7 @@ func helperUploadFile(minioClient *minio.Client, bucket string) (*minio.UploadIn
 
 func helperDownloadFile(url string) (int, error) {
 	fmt.Printf("Downloading: %s\n", url)
-	resp, err := http.Get(url)
+	resp, err := http.Get(url) //nolint:gosec //ignoring G107
 	if err != nil {
 		return 0, err
 	}
