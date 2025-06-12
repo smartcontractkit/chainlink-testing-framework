@@ -3,6 +3,8 @@ package s3provider
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -27,17 +29,19 @@ func TestNew(t *testing.T) {
 
 	// Test Output
 	output := s3provider.Output()
-	require.True(t,
-		cmp.Equal(&Output{
-			AccessKey:    accessKey,
-			SecretKey:    secretKey,
-			Bucket:       DefaultBucket,
-			ConsoleURL:   s3provider.GetConsoleURL(),
-			Endpoint:     s3provider.GetEndpoint(),
-			BaseEndpoint: fmt.Sprintf("%s:%d", DefaultHost, port),
-			Region:       s3provider.GetRegion(),
-			UseCache:     false,
-		}, output))
+	expected := &Output{
+		AccessKey:      accessKey,
+		SecretKey:      secretKey,
+		Bucket:         DefaultBucket,
+		ConsoleURL:     s3provider.GetConsoleURL(),
+		ConsoleBaseURL: s3provider.GetConsoleBaseURL(),
+		Endpoint:       s3provider.GetEndpoint(),
+		BaseEndpoint:   fmt.Sprintf("%s:%d", DefaultHost, port),
+		Region:         s3provider.GetRegion(),
+		UseCache:       false,
+	}
+	fmt.Printf("%#v\n%#v\n", expected, output)
+	require.True(t, cmp.Equal(expected, output))
 	require.Len(t, output.AccessKey, accessKeyLength)
 	require.Len(t, output.SecretKey, secretKeyLength)
 
@@ -48,7 +52,20 @@ func TestNew(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	helperUploadFile(t, minioClient, s3provider.GetBucket())
+	info, err := helperUploadFile(minioClient, s3provider.GetBucket())
+	require.NoError(t, err)
+	require.Equal(t, int64(7), info.Size)
+
+	statusCode, err := helperDownloadFile(
+		fmt.Sprintf(
+			"http://%s/%s/%s",
+			output.Endpoint,
+			output.Bucket,
+			info.Key,
+		),
+	)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, statusCode)
 }
 
 func TestNewFrom(t *testing.T) {
@@ -64,16 +81,17 @@ func TestNewFrom(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test Output
-	fmt.Printf("%#v\n", output)
-	require.True(t,
-		cmp.Equal(&Output{
-			Bucket:       DefaultBucket,
-			ConsoleURL:   fmt.Sprintf("http://%s:%d", "127.0.0.1", consolePort),
-			Endpoint:     fmt.Sprintf("%s:%d", "127.0.0.1", port),
-			BaseEndpoint: fmt.Sprintf("%s:%d", "minio", port),
-			Region:       DefaultRegion,
-			UseCache:     false,
-		}, output, cmpopts.IgnoreFields(Output{}, "AccessKey", "SecretKey")))
+	expected := &Output{
+		Bucket:         DefaultBucket,
+		ConsoleURL:     fmt.Sprintf("http://%s:%d", "127.0.0.1", consolePort),
+		ConsoleBaseURL: fmt.Sprintf("http://%s:%d", DefaultHost, consolePort),
+		Endpoint:       fmt.Sprintf("%s:%d", "127.0.0.1", port),
+		BaseEndpoint:   fmt.Sprintf("%s:%d", DefaultHost, port),
+		Region:         DefaultRegion,
+		UseCache:       false,
+	}
+	fmt.Printf("%#v\n%#v\n", expected, output)
+	require.True(t, cmp.Equal(expected, output, cmpopts.IgnoreFields(Output{}, "AccessKey", "SecretKey")))
 	require.Len(t, output.AccessKey, accessKeyLength)
 	require.Len(t, output.SecretKey, secretKeyLength)
 
@@ -84,10 +102,23 @@ func TestNewFrom(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	helperUploadFile(t, minioClient, output.Bucket)
+	info, err := helperUploadFile(minioClient, output.Bucket)
+	require.NoError(t, err)
+	require.Equal(t, int64(7), info.Size)
+
+	statusCode, err := helperDownloadFile(
+		fmt.Sprintf(
+			"http://%s/%s/%s",
+			output.Endpoint,
+			output.Bucket,
+			info.Key,
+		),
+	)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, statusCode)
 }
 
-func helperUploadFile(t *testing.T, minioClient *minio.Client, bucket string) {
+func helperUploadFile(minioClient *minio.Client, bucket string) (*minio.UploadInfo, error) {
 	// Test file upload
 	filename := "test.txt"
 	filePath := "./" + filename
@@ -99,6 +130,23 @@ func helperUploadFile(t *testing.T, minioClient *minio.Client, bucket string) {
 		filePath,
 		minio.PutObjectOptions{ContentType: contentType},
 	)
-	require.NoError(t, err)
-	require.Equal(t, int64(7), info.Size)
+	if err != nil {
+		return nil, err
+	}
+	return &info, nil
+}
+
+func helperDownloadFile(url string) (int, error) {
+	fmt.Printf("Downloading: %s\n", url)
+	resp, err := http.Get(url)
+	if err != nil {
+		return 0, err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(resp.Body)
+	return resp.StatusCode, nil
 }
