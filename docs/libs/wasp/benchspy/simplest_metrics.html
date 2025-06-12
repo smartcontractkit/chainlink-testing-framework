@@ -254,6 +254,7 @@ that checks whether any of the standard metrics has <strong>degraded</strong> mo
     // maximum differences in percentages for:
     1.0, // median latency
     1.0, // p95 latency
+    1.0, // p99 latency
     1.0, // max latency
     1.0, // error rate
     currentReport,
@@ -271,6 +272,7 @@ require.False(t, hasErrors, fmt.Sprintf("errors found: %v", errors))
 <ul>
 <li><code>median_latency</code></li>
 <li><code>p95_latency</code></li>
+<li><code>p99_latency</code></li>
 <li><code>max_latency</code></li>
 <li><code>error_rate</code></li>
 </ul>
@@ -284,6 +286,8 @@ require.False(t, hasErrors, fmt.Sprintf("errors found: %v", errors))
 | median_latency          | 50.1300 | 50.1179 | -0.0242 |
 +-------------------------+---------+---------+---------+
 | 95th_percentile_latency | 50.7387 | 50.7622 | 0.0463  |
++-------------------------+---------+---------+---------+
+| 99th_percentile_latency | 54.8192 | 51.0124 | -7.4624 |
 +-------------------------+---------+---------+---------+
 | max_latency             | 55.7195 | 51.7248 | -7.1692 |
 +-------------------------+---------+---------+---------+

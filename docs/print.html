@@ -433,16 +433,16 @@ OrbStack Version: 1.8.2 (1080200)
 </code></pre>
 <p>Download our <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8">CLI</a></p>
 <p>OS X <code>arm64</code> (M1/M2/M3 MacBooks)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.9.3/framework-v0.9.3-darwin-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.9.4/framework-v0.9.4-darwin-arm64.tar.gz | tar -xz
 </code></pre>
 <p>OS X <code>amd64</code> (old Intel chips)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.9.3/framework-v0.9.3-darwin-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.9.4/framework-v0.9.4-darwin-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>arm64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.9.3/framework-v0.9.3-linux-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.9.4/framework-v0.9.4-linux-arm64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>amd64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.9.3/framework-v0.9.3-linux-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.9.4/framework-v0.9.4-linux-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Allow it to run in <code>System Settings -&gt; Security Settings</code> (OS X)</p>
 <p><img src="framework/images/img.png" alt="img.png" /></p>
@@ -8830,6 +8830,7 @@ that checks whether any of the standard metrics has <strong>degraded</strong> mo
     // maximum differences in percentages for:
     1.0, // median latency
     1.0, // p95 latency
+    1.0, // p99 latency
     1.0, // max latency
     1.0, // error rate
     currentReport,
@@ -8847,6 +8848,7 @@ require.False(t, hasErrors, fmt.Sprintf("errors found: %v", errors))
 <ul>
 <li><code>median_latency</code></li>
 <li><code>p95_latency</code></li>
+<li><code>p99_latency</code></li>
 <li><code>max_latency</code></li>
 <li><code>error_rate</code></li>
 </ul>
@@ -8860,6 +8862,8 @@ require.False(t, hasErrors, fmt.Sprintf("errors found: %v", errors))
 | median_latency          | 50.1300 | 50.1179 | -0.0242 |
 +-------------------------+---------+---------+---------+
 | 95th_percentile_latency | 50.7387 | 50.7622 | 0.0463  |
++-------------------------+---------+---------+---------+
+| 99th_percentile_latency | 54.8192 | 51.0124 | -7.4624 |
 +-------------------------+---------+---------+---------+
 | max_latency             | 55.7195 | 51.7248 | -7.1692 |
 +-------------------------+---------+---------+---------+
@@ -9046,14 +9050,9 @@ In our case there's only a single generator, but in a complex test there might b
 	assert.LessOrEqual(t, math.Abs(diffPrecentage), maxPrecentageDiff, "%s medians are more than 1% different", metricName, fmt.Sprintf("%.4f", diffPrecentage))
 }
 
-compareAverages(
-    t,
-    string(benchspy.MedianLatency),
-    currentAsStringSlice,
-    previousAsStringSlice,
-    1.0,
-)
+compareAverages(t, string(benchspy.MedianLatency), currentAsStringSlice, previousAsStringSlice, 1.0)
 compareAverages(t, string(benchspy.Percentile95Latency), currentAsStringSlice, previousAsStringSlice, 1.0)
+compareAverages(t, string(benchspy.Percentile99Latency), currentAsStringSlice, previousAsStringSlice, 1.0)
 compareAverages(t, string(benchspy.MaxLatency), currentAsStringSlice, previousAsStringSlice, 1.0)
 compareAverages(t, string(benchspy.ErrorRate), currentAsStringSlice, previousAsStringSlice, 1.0)
 </code></pre>
@@ -9781,6 +9780,7 @@ require.NoError(t, err, "failed to fetch current report or load the previous one
 <pre><code class="language-go">hasFailed, error := benchspy.CompareDirectWithThresholds(
     1.0, // Max 1% worse median latency
     1.0, // Max 1% worse p95 latency
+    1.0, // Max 1% worse p99 latency
     1.0, // Max 1% worse maximum latency
     0.0, // No increase in error rate
     currentReport, previousReport)
@@ -10021,6 +10021,7 @@ because mock's latency has been increased from <code>50ms</code> to <code>60ms</
 <ul>
 <li>Median latency</li>
 <li>95th percentile latency</li>
+<li>99th percentile latency</li>
 <li>Max latency</li>
 <li>Error rate</li>
 </ul>
@@ -17198,7 +17199,7 @@ use <code>GetTestContainersGoTestLogger(*testing.T)</code> instead.</p>
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>d6febbda</code></li>
+<li>Commit: <code>39db1632</code></li>
 </ul>
 
                     </main>

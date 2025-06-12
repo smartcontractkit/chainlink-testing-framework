@@ -310,6 +310,7 @@ require.NoError(t, err, "failed to fetch current report or load the previous one
 <pre><code class="language-go">hasFailed, error := benchspy.CompareDirectWithThresholds(
     1.0, // Max 1% worse median latency
     1.0, // Max 1% worse p95 latency
+    1.0, // Max 1% worse p99 latency
     1.0, // Max 1% worse maximum latency
     0.0, // No increase in error rate
     currentReport, previousReport)
