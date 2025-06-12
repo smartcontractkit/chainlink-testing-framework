@@ -244,6 +244,36 @@ func (mf MinioFactory) run(m *Minio) (Provider, error) {
 		return nil, err
 	}
 
+	myPolicy := fmt.Sprintf(`
+		{
+			"Version": "2012-10-17",
+			"Statement": [
+				{
+					"Action": [
+						"s3:GetObject"
+					],
+					"Effect": "Allow",
+					"Principal": {
+						"AWS": [
+							"*"
+						]
+					},
+					"Resource": [
+						"arn:aws:s3:::%s/*"
+					],
+					"Sid": ""
+				}
+			]
+		}
+	`, m.GetBucket())
+
+	err = minioClient.SetBucketPolicy(ctx, m.GetBucket(), myPolicy)
+	if err != nil {
+		framework.L.Warn().Str("error", err.Error()).Msg("failed to set public policy to minio bucket")
+
+		return nil, err
+	}
+
 	return m, nil
 }
 
