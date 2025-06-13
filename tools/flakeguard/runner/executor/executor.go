@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -102,20 +103,20 @@ func (e *commandExecutor) RunTestPackage(cfg Config, packageName string, runInde
 	var stderrBuf bytes.Buffer
 	cmd.Stderr = &stderrBuf
 
-	stdoutBytes, err := cmd.Output()
-
-	writeErr := os.WriteFile(tempFilePath, stdoutBytes, 0644)
-	if writeErr != nil {
-		log.Error().Err(writeErr).Str("file", tempFilePath).Msg("Failed to write captured stdout to temp file")
-		_ = os.Remove(tempFilePath)
-		return "", false, fmt.Errorf("failed to write command output to %s: %w", tempFilePath, writeErr)
-	}
-
+	// Open the temp file for writing
+	tmpFileWriter, err := os.OpenFile(tempFilePath, os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
+		return "", false, fmt.Errorf("failed to open temp file for writing: %w", err)
+	}
+	defer tmpFileWriter.Close()
+
+	// Write to both STDOUT and the file
+	cmd.Stdout = io.MultiWriter(os.Stdout, tmpFileWriter)
+
+	if err := cmd.Run(); err != nil {
 		if stderrStr := stderrBuf.String(); stderrStr != "" {
 			log.Error().Str("package", packageName).Str("stderr", stderrStr).Msg("Command failed with error and stderr output")
 		}
-
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
 			return tempFilePath, false, nil
@@ -161,16 +162,17 @@ func (e *commandExecutor) RunCmd(cfg Config, testCmd []string, runIndex int) (te
 	var stderrBuf bytes.Buffer
 	cmd.Stderr = &stderrBuf
 
-	stdoutBytes, err := cmd.Output()
-
-	writeErr := os.WriteFile(tempFilePath, stdoutBytes, 0644)
-	if writeErr != nil {
-		log.Error().Err(writeErr).Str("file", tempFilePath).Msg("Failed to write captured stdout to temp file (cmd run)")
-		_ = os.Remove(tempFilePath)
-		return "", false, fmt.Errorf("failed to write command output to %s: %w", tempFilePath, writeErr)
-	}
-
+	// Open the temp file for writing
+	tmpFileWriter, err := os.OpenFile(tempFilePath, os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
+		return "", false, fmt.Errorf("failed to open temp file for writing: %w", err)
+	}
+	defer tmpFileWriter.Close()
+
+	// Write to both STDOUT and the file
+	cmd.Stdout = io.MultiWriter(os.Stdout, tmpFileWriter)
+
+	if err := cmd.Run(); err != nil {
 		if stderrStr := stderrBuf.String(); stderrStr != "" {
 			log.Error().Str("command", strings.Join(testCmd, " ")).Str("stderr", stderrStr).Msg("Custom command failed with error and stderr output")
 		}
