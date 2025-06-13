@@ -291,13 +291,13 @@ func (p *defaultParser) processEvent(state *testProcessingState, rawEv rawEventD
 			return
 		}
 
-		if panicStarted := startPanicRe.MatchString(event.Output); panicStarted {
+		if startPanicRe.MatchString(event.Output) {
 			state.panicDetectionMode = true
 			state.detectedEntries = append(state.detectedEntries, rawEv)
 			return
 		}
 
-		if raceStarted := startRaceRe.MatchString(event.Output); raceStarted {
+		if startRaceRe.MatchString(event.Output) {
 			state.raceDetectionMode = true
 			state.detectedEntries = append(state.detectedEntries, rawEv)
 			return

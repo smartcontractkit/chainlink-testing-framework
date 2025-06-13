@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"os"
 	"time"
 
@@ -29,13 +28,16 @@ func Execute() {
 }
 
 func init() {
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	zerolog.TimeFieldFormat = time.RFC3339Nano
-	log.Logger = log.Output(zerolog.ConsoleWriter{
-		Out:        io.Discard,
-		TimeFormat: "15:04:05.00", // hh:mm:ss.ss format
-	})
+	// log.Logger = log.Output(zerolog.ConsoleWriter{
+	// Out:        io.Discard,
+	// TimeFormat: "15:04:05.00", // hh:mm:ss.ss format
+	// })
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
+	log.Info().Msg("FlakeGuard tool initialized - 0.0.1")
 
 	rootCmd.AddCommand(cmd.FindTestsCmd)
 	rootCmd.AddCommand(cmd.RunTestsCmd)
