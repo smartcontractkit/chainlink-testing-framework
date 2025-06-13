@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard
 
-go 1.24.3
+go 1.24.0
 
 require (
 	github.com/andygrunwald/go-jira v1.16.0
