@@ -67,16 +67,16 @@ func (g *GithubClient) ListLatestCLCoreTags(count int) ([]*github.RepositoryTag,
 	return tags, err
 }
 
-func (g *GithubClient) DownloadAssetFromRelease(owner, repository, releaseTag, assetName string) ([]byte, error) {
+func (g *GithubClient) DownloadAssetFromRelease(owner, repository, releaseTag, assetName string) ([]byte, *github.Response, error) {
 	var content []byte
 
 	// assuming 180s is enough to fetch releases, find the asset we need and download it
 	// some assets might be 30+ MB, so we need to give it some time (for really slow connections)
 	ctx, cancelFn := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancelFn()
-	ghReleases, _, err := g.client.Repositories.ListReleases(ctx, owner, repository, &github.ListOptions{PerPage: 20})
+	ghReleases, ghResponse, err := g.client.Repositories.ListReleases(ctx, owner, repository, &github.ListOptions{PerPage: 20})
 	if err != nil {
-		return content, errors.Wrapf(err, "failed to list releases for %s", repository)
+		return content, ghResponse, errors.Wrapf(err, "failed to list releases for %s", repository)
 	}
 
 	var ghRelease *github.RepositoryRelease
@@ -92,7 +92,7 @@ func (g *GithubClient) DownloadAssetFromRelease(owner, repository, releaseTag, a
 	}
 
 	if ghRelease == nil {
-		return content, errors.New("failed to find release with tag: " + releaseTag)
+		return content, ghResponse, errors.New("failed to find release with tag: " + releaseTag)
 	}
 
 	var assetID int64
@@ -104,18 +104,18 @@ func (g *GithubClient) DownloadAssetFromRelease(owner, repository, releaseTag, a
 	}
 
 	if assetID == 0 {
-		return content, fmt.Errorf("failed to find asset %s for %s", assetName, *ghRelease.TagName)
+		return content, ghResponse, fmt.Errorf("failed to find asset %s for %s", assetName, *ghRelease.TagName)
 	}
 
 	asset, _, err := g.client.Repositories.DownloadReleaseAsset(ctx, owner, repository, assetID, g.client.Client())
 	if err != nil {
-		return content, errors.Wrapf(err, "failed to download asset %s for %s", assetName, *ghRelease.TagName)
+		return content, ghResponse, errors.Wrapf(err, "failed to download asset %s for %s", assetName, *ghRelease.TagName)
 	}
 
 	content, err = io.ReadAll(asset)
 	if err != nil {
-		return content, err
+		return content, ghResponse, err
 	}
 
-	return content, nil
+	return content, ghResponse, nil
 }
