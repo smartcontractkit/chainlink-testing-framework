@@ -58,6 +58,9 @@ type Input struct {
 	// GAPv2 specific params
 	HostNetworkMode  bool   `toml:"host_network_mode"`
 	CertificatesPath string `toml:"certificates_path"`
+
+	// Ton specific params
+	ServiceProfile string `toml:"service_profile" validate:"omitempty,oneof=core full"`
 }
 
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network

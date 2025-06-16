@@ -3,7 +3,6 @@ package blockchain
 import (
 	"context"
 	"fmt"
-	"os"
 	"strconv"
 	"time"
 
@@ -22,7 +21,16 @@ const (
 	DefaultTonHlWalletMnemonic = "twenty unfair stay entry during please water april fabric morning length lumber style tomorrow melody similar forum width ride render void rather custom coin"
 )
 
+const (
+	TonProfileCore = "core"
+	TonProfileFull = "full"
+)
+
 var (
+	tonServiceProfiles = map[string][]string{
+		TonProfileCore: {"genesis"},
+		TonProfileFull: {"genesis", "tonhttpapi", "faucet", "explorer", "redis", "index-postgres", "index-worker", "index-api", "event-classifier"},
+	}
 	commonDBVars = map[string]string{
 		"POSTGRES_DIALECT":           "postgresql+asyncpg",
 		"POSTGRES_HOST":              "index-postgres",
@@ -62,6 +70,188 @@ type hostPortMapping struct {
 	ExplorerPort string
 	FaucetPort   string
 	IndexAPIPort string
+}
+
+func (in *Input) resolveServices() []string {
+	if in.ServiceProfile != "" {
+		if services, exists := tonServiceProfiles[in.ServiceProfile]; exists {
+			return services
+		}
+	}
+	return []string{"genesis"}
+}
+
+func getServiceTemplate(serviceName, networkName string, hostPorts *hostPortMapping) *containerTemplate {
+	switch serviceName {
+	case "genesis":
+		return &containerTemplate{
+			Name:  fmt.Sprintf("TON-genesis-%s", networkName),
+			Image: "ghcr.io/neodix42/mylocalton-docker:latest",
+			Ports: []string{
+				fmt.Sprintf("%s:%s/tcp", hostPorts.SimpleServer, DefaultTonSimpleServerPort),
+				fmt.Sprintf("%s:%s/tcp", hostPorts.LiteServer, hostPorts.LiteServer),
+				fmt.Sprintf("%s:40003/udp", hostPorts.DHTServer),
+				fmt.Sprintf("%s:40002/tcp", hostPorts.Console),
+				fmt.Sprintf("%s:40001/udp", hostPorts.ValidatorUDP),
+			},
+			Env: map[string]string{
+				"GENESIS":           "true",
+				"NAME":              "genesis",
+				"LITE_PORT":         hostPorts.LiteServer,
+				"CUSTOM_PARAMETERS": "--state-ttl 315360000 --archive-ttl 315360000",
+			},
+			WaitFor: wait.ForExec([]string{
+				"/usr/local/bin/lite-client", "-a", fmt.Sprintf("127.0.0.1:%s", hostPorts.LiteServer), "-b",
+				"E7XwFSQzNkcRepUC23J2nRpASXpnsEKmyyHYV4u/FZY=", "-t", "3", "-c", "last",
+			}).WithStartupTimeout(2 * time.Minute),
+			Network: networkName,
+			Alias:   "genesis",
+			Mounts: testcontainers.ContainerMounts{
+				{
+					Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("shared-data-%s", networkName)},
+					Target: "/usr/share/data",
+				},
+				{
+					Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("ton-db-%s", networkName)},
+					Target: "/var/ton-work/db",
+				},
+			},
+		}
+	case "redis":
+		return &containerTemplate{
+			Image:   "redis:latest",
+			Name:    fmt.Sprintf("TON-redis-%s", networkName),
+			Network: networkName,
+			Alias:   "redis",
+		}
+	case "index-postgres":
+		return &containerTemplate{
+			Image:   "postgres:17",
+			Name:    fmt.Sprintf("TON-index-postgres-%s", networkName),
+			Network: networkName,
+			Alias:   "index-postgres",
+			Env:     commonDBVars,
+			Mounts: testcontainers.ContainerMounts{
+				{
+					Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("pg-%s", networkName)},
+					Target: "/var/lib/postgresql/data",
+				},
+			},
+		}
+	case "tonhttpapi":
+		return &containerTemplate{
+			Name:  fmt.Sprintf("TON-tonhttpapi-%s", networkName),
+			Image: "ghcr.io/neodix42/ton-http-api:latest",
+			Env: map[string]string{
+				"TON_API_LOGS_JSONIFY":             "0",
+				"TON_API_LOGS_LEVEL":               "ERROR",
+				"TON_API_TONLIB_LITESERVER_CONFIG": "/usr/share/data/global.config.json",
+				"TON_API_TONLIB_CDLL_PATH":         "/usr/share/data/libtonlibjson.so",
+				"TON_API_GET_METHODS_ENABLED":      "1",
+				"TON_API_JSON_RPC_ENABLED":         "1",
+				"POSTGRES_DIALECT":                 commonDBVars["POSTGRES_DIALECT"],
+				"POSTGRES_HOST":                    commonDBVars["POSTGRES_HOST"],
+				"POSTGRES_PORT":                    commonDBVars["POSTGRES_PORT"],
+				"POSTGRES_USER":                    commonDBVars["POSTGRES_USER"],
+				"POSTGRES_PASSWORD":                commonDBVars["POSTGRES_PASSWORD"],
+				"POSTGRES_DBNAME":                  commonDBVars["POSTGRES_DBNAME"],
+				"TON_INDEXER_IS_TESTNET":           commonDBVars["TON_INDEXER_IS_TESTNET"],
+				"TON_INDEXER_REDIS_DSN":            commonDBVars["TON_INDEXER_REDIS_DSN"],
+			},
+			Mounts: testcontainers.ContainerMounts{
+				{
+					Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("shared-data-%s", networkName)},
+					Target: "/usr/share/data",
+				},
+			},
+			Ports:   []string{fmt.Sprintf("%s:8081/tcp", hostPorts.HTTPAPIPort)},
+			WaitFor: wait.ForHTTP("/healthcheck").WithStartupTimeout(90 * time.Second),
+			Command: []string{"-c", "gunicorn -k uvicorn.workers.UvicornWorker -w 1 --bind 0.0.0.0:8081 pyTON.main:app"},
+			Network: networkName,
+			Alias:   "tonhttpapi",
+		}
+	case "faucet":
+		return &containerTemplate{
+			Name:  fmt.Sprintf("TON-faucet-%s", networkName),
+			Image: "ghcr.io/neodix42/mylocalton-docker-faucet:latest",
+			Env: map[string]string{
+				"FAUCET_USE_RECAPTCHA": "false",
+				"RECAPTCHA_SITE_KEY":   "",
+				"RECAPTCHA_SECRET":     "",
+				"SERVER_PORT":          "88",
+			},
+			Mounts: testcontainers.ContainerMounts{
+				{
+					Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("shared-data-%s", networkName)},
+					Target: "/usr/share/data",
+				},
+			},
+			Ports:   []string{fmt.Sprintf("%s:88/tcp", hostPorts.FaucetPort)},
+			WaitFor: wait.ForHTTP("/").WithStartupTimeout(90 * time.Second),
+			Network: networkName,
+			Alias:   "faucet",
+		}
+	case "explorer":
+		return &containerTemplate{
+			Name:  fmt.Sprintf("TON-explorer-%s", networkName),
+			Image: "ghcr.io/neodix42/mylocalton-docker-explorer:latest",
+			Env: map[string]string{
+				"SERVER_PORT": "8080",
+			},
+			Mounts: testcontainers.ContainerMounts{
+				{
+					Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("shared-data-%s", networkName)},
+					Target: "/usr/share/data",
+				},
+			},
+			Ports:   []string{fmt.Sprintf("%s:8080/tcp", hostPorts.ExplorerPort)},
+			Network: networkName,
+			Alias:   "explorer",
+		}
+	case "index-worker":
+		return &containerTemplate{
+			Name:  fmt.Sprintf("TON-index-worker-%s", networkName),
+			Image: "toncenter/ton-indexer-worker:v1.2.0-test",
+			Env:   commonDBVars,
+			Mounts: testcontainers.ContainerMounts{
+				{
+					Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("ton-db-%s", networkName)},
+					Target: "/tondb",
+				},
+				{
+					Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("index-workdir-%s", networkName)},
+					Target: "/workdir",
+				},
+			},
+			WaitFor: wait.ForLog("Starting indexing from seqno").WithStartupTimeout(90 * time.Second),
+			Command: []string{"--working-dir", "/workdir", "--from", "1", "--threads", "8"},
+			Network: networkName,
+			Alias:   "index-worker",
+		}
+	case "index-api":
+		return &containerTemplate{
+			Name:    fmt.Sprintf("TON-index-api-%s", networkName),
+			Image:   "toncenter/ton-indexer-api:v1.2.0-test",
+			Env:     commonDBVars,
+			Ports:   []string{fmt.Sprintf("%s:8082/tcp", hostPorts.IndexAPIPort)},
+			WaitFor: wait.ForHTTP("/").WithStartupTimeout(90 * time.Second),
+			Command: []string{"-bind", ":8082", "-prefork", "-threads", "4", "-v2", "http://tonhttpapi:8081/"},
+			Network: networkName,
+			Alias:   "index-api",
+		}
+	case "event-classifier":
+		return &containerTemplate{
+			Name:    fmt.Sprintf("TON-event-classifier-%s", networkName),
+			Image:   "toncenter/ton-indexer-classifier:v1.2.0-test",
+			Env:     commonDBVars,
+			WaitFor: wait.ForLog("Reading finished tasks").WithStartupTimeout(90 * time.Second),
+			Command: []string{"--pool-size", "4", "--prefetch-size", "1000", "--batch-size", "100"},
+			Network: networkName,
+			Alias:   "event-classifier",
+		}
+	default:
+		return nil
+	}
 }
 
 func commonContainer(
@@ -124,10 +314,15 @@ func defaultTon(in *Input) {
 	if in.Port == "" {
 		in.Port = DefaultTonSimpleServerPort
 	}
+	if in.ServiceProfile == "" {
+		in.ServiceProfile = TonProfileCore
+	}
 }
 
 func newTon(in *Input) (*Output, error) {
 	defaultTon(in)
+
+	services := in.resolveServices()
 
 	hostPorts, err := generateUniquePortsFromBase(in.Port)
 	if err != nil {
@@ -147,199 +342,32 @@ func newTon(in *Input) (*Output, error) {
 	networkName := network.Name
 	framework.L.Info().Str("output", string(networkName)).Msg("TON Docker network created")
 
-	tonServices := []containerTemplate{
-		{
-			Name:  fmt.Sprintf("TON-genesis-%s", networkName),
-			Image: "ghcr.io/neodix42/mylocalton-docker:latest",
-			Ports: []string{
-				fmt.Sprintf("%s:%s/tcp", hostPorts.SimpleServer, DefaultTonSimpleServerPort),
-				// Note: LITE_PORT port is used by the lite-client to connect to the genesis node in config
-				fmt.Sprintf("%s:%s/tcp", hostPorts.LiteServer, hostPorts.LiteServer),
-				fmt.Sprintf("%s:40003/udp", hostPorts.DHTServer),
-				fmt.Sprintf("%s:40002/tcp", hostPorts.Console),
-				fmt.Sprintf("%s:40001/udp", hostPorts.ValidatorUDP),
-			},
-			Env: map[string]string{
-				"GENESIS": "true",
-				"NAME":    "genesis",
-				// Note: LITE_PORT port is used by the lite-client to connect to the genesis node in config
-				"LITE_PORT":         hostPorts.LiteServer,
-				"CUSTOM_PARAMETERS": "--state-ttl 315360000 --archive-ttl 315360000",
-			},
-			WaitFor: wait.ForExec([]string{
-				"/usr/local/bin/lite-client", "-a", fmt.Sprintf("127.0.0.1:%s", hostPorts.LiteServer), "-b",
-				"E7XwFSQzNkcRepUC23J2nRpASXpnsEKmyyHYV4u/FZY=", "-t", "3", "-c", "last",
-			}).WithStartupTimeout(2 * time.Minute),
-			Network: networkName,
-			Alias:   "genesis",
-			Mounts: testcontainers.ContainerMounts{
-				{
-					Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("shared-data-%s", networkName)},
-					Target: "/usr/share/data",
-				},
-				{
-					Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("ton-db-%s", networkName)},
-					Target: "/var/ton-work/db",
-				},
-			},
-		},
-		{
-			Image:   "redis:latest",
-			Name:    fmt.Sprintf("TON-redis-%s", networkName),
-			Network: networkName,
-			Alias:   "redis",
-		},
-		{
-			Image:   "postgres:17",
-			Name:    fmt.Sprintf("TON-index-postgres-%s", networkName),
-			Network: networkName,
-			Alias:   "index-postgres",
-			Env:     commonDBVars,
-			Mounts: testcontainers.ContainerMounts{
-				{
-					Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("pg-%s", networkName)},
-					Target: "/var/lib/postgresql/data",
-				},
-			},
-		},
-		{
-			Name:  fmt.Sprintf("TON-tonhttpapi-%s", networkName),
-			Image: "ghcr.io/neodix42/ton-http-api:latest",
-			Env: map[string]string{
-				"TON_API_LOGS_JSONIFY":             "0",
-				"TON_API_LOGS_LEVEL":               "ERROR",
-				"TON_API_TONLIB_LITESERVER_CONFIG": "/usr/share/data/global.config.json",
-				"TON_API_TONLIB_CDLL_PATH":         "/usr/share/data/libtonlibjson.so",
-				"TON_API_GET_METHODS_ENABLED":      "1",
-				"TON_API_JSON_RPC_ENABLED":         "1",
-
-				"POSTGRES_DIALECT":       commonDBVars["POSTGRES_DIALECT"],
-				"POSTGRES_HOST":          commonDBVars["POSTGRES_HOST"],
-				"POSTGRES_PORT":          commonDBVars["POSTGRES_PORT"],
-				"POSTGRES_USER":          commonDBVars["POSTGRES_USER"],
-				"POSTGRES_PASSWORD":      commonDBVars["POSTGRES_PASSWORD"],
-				"POSTGRES_DBNAME":        commonDBVars["POSTGRES_DBNAME"],
-				"TON_INDEXER_IS_TESTNET": commonDBVars["TON_INDEXER_IS_TESTNET"],
-				"TON_INDEXER_REDIS_DSN":  commonDBVars["TON_INDEXER_REDIS_DSN"],
-			},
-			Mounts: testcontainers.ContainerMounts{
-				{
-					Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("shared-data-%s", networkName)},
-					Target: "/usr/share/data",
-				},
-			},
-			Ports:   []string{fmt.Sprintf("%s:8081/tcp", hostPorts.HTTPAPIPort)},
-			WaitFor: wait.ForHTTP("/healthcheck").WithStartupTimeout(90 * time.Second),
-			Command: []string{"-c", "gunicorn -k uvicorn.workers.UvicornWorker -w 1 --bind 0.0.0.0:8081 pyTON.main:app"},
-			Network: networkName,
-			Alias:   "tonhttpapi",
-		},
-		{
-			Name:  fmt.Sprintf("TON-faucet-%s", networkName),
-			Image: "ghcr.io/neodix42/mylocalton-docker-faucet:latest",
-			Env: map[string]string{
-				"FAUCET_USE_RECAPTCHA": "false",
-				"RECAPTCHA_SITE_KEY":   "",
-				"RECAPTCHA_SECRET":     "",
-				"SERVER_PORT":          "88",
-			},
-			Mounts: testcontainers.ContainerMounts{
-				{
-					Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("shared-data-%s", networkName)},
-					Target: "/usr/share/data",
-				},
-			},
-			Ports:   []string{fmt.Sprintf("%s:88/tcp", hostPorts.FaucetPort)},
-			WaitFor: wait.ForHTTP("/").WithStartupTimeout(90 * time.Second),
-			Network: networkName,
-			Alias:   "faucet",
-		},
-	}
-
-	tonIndexingAndObservability := []containerTemplate{
-		{
-			Name:  fmt.Sprintf("TON-explorer-%s", networkName),
-			Image: "ghcr.io/neodix42/mylocalton-docker-explorer:latest",
-			Env: map[string]string{
-				"SERVER_PORT": "8080",
-			},
-			Mounts: testcontainers.ContainerMounts{
-				{
-					Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("shared-data-%s", networkName)},
-					Target: "/usr/share/data",
-				},
-			},
-			Ports:   []string{fmt.Sprintf("%s:8080/tcp", hostPorts.ExplorerPort)},
-			Network: networkName,
-			Alias:   "explorer",
-		},
-		{
-			Name:  fmt.Sprintf("TON-index-worker-%s", networkName),
-			Image: "toncenter/ton-indexer-worker:v1.2.0-test",
-			Env:   commonDBVars,
-			Mounts: testcontainers.ContainerMounts{
-				{
-					Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("ton-db-%s", networkName)},
-					Target: "/tondb",
-				},
-				{
-					Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("index-workdir-%s", networkName)},
-					Target: "/workdir",
-				},
-			},
-			WaitFor: wait.ForLog("Starting indexing from seqno").WithStartupTimeout(90 * time.Second),
-			Command: []string{"--working-dir", "/workdir", "--from", "1", "--threads", "8"},
-			Network: networkName,
-			Alias:   "index-worker",
-		},
-		{
-			Name:  fmt.Sprintf("TON-index-api-%s", networkName),
-			Image: "toncenter/ton-indexer-api:v1.2.0-test",
-			Env:   commonDBVars,
-			Ports: []string{fmt.Sprintf("%s:8082/tcp", hostPorts.IndexAPIPort)},
-			WaitFor: wait.ForHTTP("/").
-				WithStartupTimeout(90 * time.Second),
-			Command: []string{"-bind", ":8082", "-prefork", "-threads", "4", "-v2", "http://tonhttpapi:8081/"},
-			Network: networkName,
-			Alias:   "index-api",
-		},
-		{
-			Name:  fmt.Sprintf("TON-event-classifier-%s", networkName),
-			Image: "toncenter/ton-indexer-classifier:v1.2.0-test",
-			Env:   commonDBVars,
-			WaitFor: wait.ForLog("Reading finished tasks").
-				WithStartupTimeout(90 * time.Second),
-			Command: []string{"--pool-size", "4", "--prefetch-size", "1000", "--batch-size", "100"},
-			Network: networkName,
-			Alias:   "event-classifier",
-		},
-	}
-
 	containers := make([]testcontainers.Container, 0)
-	for _, s := range tonServices {
-		c, err := commonContainer(ctx, s.Name, s.Image, s.Env, s.Mounts, s.Ports, s.WaitFor, s.Command, s.Network, s.Alias)
+	var genesisContainer testcontainers.Container
+
+	for _, svcName := range services {
+		tmpl := getServiceTemplate(svcName, networkName, hostPorts)
+		if tmpl == nil {
+			return nil, fmt.Errorf("unknown service: %s", svcName)
+		}
+
+		c, err := commonContainer(ctx, tmpl.Name, tmpl.Image, tmpl.Env, tmpl.Mounts,
+			tmpl.Ports, tmpl.WaitFor, tmpl.Command, tmpl.Network, tmpl.Alias)
 		if err != nil {
-			return nil, fmt.Errorf("failed to start %s: %v", s.Name, err)
+			return nil, fmt.Errorf("failed to start %s: %v", tmpl.Name, err)
 		}
 		containers = append(containers, c)
-	}
-	// no need for indexers and block explorers in CI
-	if os.Getenv("CI") != "true" {
-		for _, s := range tonIndexingAndObservability {
-			c, err := commonContainer(ctx, s.Name, s.Image, s.Env, s.Mounts, s.Ports, s.WaitFor, s.Command, s.Network, s.Alias)
-			if err != nil {
-				return nil, fmt.Errorf("failed to start %s: %v", s.Name, err)
-			}
-			containers = append(containers, c)
+
+		if svcName == "genesis" {
+			genesisContainer = c
 		}
 	}
 
-	genesisTonContainer := containers[0]
-
-	name, err := genesisTonContainer.Name(ctx)
+	name, err := genesisContainer.Name(ctx)
 	if err != nil {
 		return nil, err
 	}
+
 	return &Output{
 		UseCache:      true,
 		ChainID:       in.ChainID,

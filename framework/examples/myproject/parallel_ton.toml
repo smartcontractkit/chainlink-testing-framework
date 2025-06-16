@@ -1,9 +1,9 @@
 [blockchain_a]
 type = "ton"
 image = "ghcr.io/neodix42/mylocalton-docker:latest"
-port = "8000"
+port = "9000"
 
 [blockchain_b]
 type = "ton"
 image = "ghcr.io/neodix42/mylocalton-docker:latest"
-port = "8001"
+port = "9001"
