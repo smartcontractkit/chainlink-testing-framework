@@ -342,7 +342,6 @@ func newTon(in *Input) (*Output, error) {
 	networkName := network.Name
 	framework.L.Info().Str("output", string(networkName)).Msg("TON Docker network created")
 
-	containers := make([]testcontainers.Container, 0)
 	var genesisContainer testcontainers.Container
 
 	for _, svcName := range services {
@@ -356,7 +355,6 @@ func newTon(in *Input) (*Output, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to start %s: %v", tmpl.Name, err)
 		}
-		containers = append(containers, c)
 
 		if svcName == "genesis" {
 			genesisContainer = c
