@@ -112,7 +112,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 	eg := &errgroup.Group{}
 	mu := &sync.Mutex{}
 	for i := 0; i < in.Nodes; i++ {
-		overrideIdx := i
+		overrideIdx := 0
 		var nodeName string
 		if in.OverrideMode == "all" {
 			if len(in.NodeSpecs[overrideIdx].Node.CustomPorts) > 0 {
