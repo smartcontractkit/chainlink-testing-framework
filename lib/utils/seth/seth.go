@@ -6,13 +6,11 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
 
 	pkg_seth "github.com/smartcontractkit/chainlink-testing-framework/seth"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/config"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/k8s/environment"
 )
 
 var ErrInsufficientEphemeralKeys = `
@@ -220,36 +218,6 @@ func MergeSethAndEvmNetworkConfigs(evmNetwork blockchain.EVMNetwork, sethConfig 
 	sethConfig.Network = sethNetwork
 
 	return sethConfig, nil
-}
-
-// MustReplaceSimulatedNetworkUrlWithK8 replaces the simulated network URL with the K8 URL and returns the network.
-// If the network is not simulated, it will return the network unchanged.
-func MustReplaceSimulatedNetworkUrlWithK8(l zerolog.Logger, network blockchain.EVMNetwork, testEnvironment environment.Environment) blockchain.EVMNetwork {
-	if !network.Simulated {
-		return network
-	}
-
-	networkKeys := []string{"Simulated Geth", "Simulated-Geth"}
-	var keyToUse string
-
-	for _, key := range networkKeys {
-		_, ok := testEnvironment.URLs[key]
-		if ok {
-			keyToUse = key
-			break
-		}
-	}
-
-	if keyToUse == "" {
-		for k := range testEnvironment.URLs {
-			l.Info().Str("Network", k).Msg("Available networks")
-		}
-		panic("no network settings for Simulated Geth")
-	}
-
-	network.URLs = testEnvironment.URLs[keyToUse]
-
-	return network
 }
 
 // ValidateSethNetworkConfig validates the Seth network config

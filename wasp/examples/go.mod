@@ -6,6 +6,7 @@ replace github.com/smartcontractkit/chainlink-testing-framework/wasp => ../
 
 require (
 	github.com/go-resty/resty/v2 v2.16.3
+	github.com/grafana/pyroscope-go v1.1.2
 	github.com/montanaflynn/stats v0.7.1
 	github.com/prometheus/common v0.62.0
 	github.com/smartcontractkit/chainlink-testing-framework/wasp v1.50.4

@@ -19,6 +19,7 @@ import (
 type CfgForkChainsOffChain struct {
 	ContractsSrc  *onchain.Input    `toml:"contracts_src" validate:"required"`
 	BlockchainSrc *blockchain.Input `toml:"blockchain_src" validate:"required"`
+	BlockchainDst *blockchain.Input `toml:"blockchain_dst" validate:"required"`
 	// off-chain components
 	NodeSets []*ns.Input `toml:"nodesets" validate:"required"`
 }
@@ -31,6 +32,9 @@ func TestOffChainAndFork(t *testing.T) {
 	bcSrc, err := blockchain.NewBlockchainNetwork(in.BlockchainSrc)
 	require.NoError(t, err)
 
+	bcDst, err := blockchain.NewBlockchainNetwork(in.BlockchainDst)
+	require.NoError(t, err)
+
 	// create configs for 2 EVM networks
 	srcNetworkCfg, err := clnode.NewNetworkCfg(&clnode.EVMNetworkConfig{
 		MinIncomingConfirmations: 1,
@@ -38,12 +42,25 @@ func TestOffChainAndFork(t *testing.T) {
 		ChainID:                  bcSrc.ChainID,
 		EVMNodes: []*clnode.EVMNode{
 			{
+				Name:     "one",
 				SendOnly: false,
 				Order:    100,
 			},
 		},
 	}, bcSrc)
-	in.NodeSets[0].NodeSpecs[0].Node.TestConfigOverrides = srcNetworkCfg
+	dstNetworkCfg, err := clnode.NewNetworkCfg(&clnode.EVMNetworkConfig{
+		MinIncomingConfirmations: 1,
+		MinContractPayment:       "0.00001 link",
+		ChainID:                  bcDst.ChainID,
+		EVMNodes: []*clnode.EVMNode{
+			{
+				Name:     "two",
+				SendOnly: false,
+				Order:    100,
+			},
+		},
+	}, bcDst)
+	in.NodeSets[0].NodeSpecs[0].Node.TestConfigOverrides = srcNetworkCfg + dstNetworkCfg
 
 	_, err = ns.NewSharedDBNodeSet(in.NodeSets[0], bcSrc)
 	require.NoError(t, err)
