@@ -99,6 +99,12 @@ func newSui(in *Input) (*Output, error) {
 
 	bindPort := fmt.Sprintf("%s/tcp", in.Port)
 
+	// default to amd64, unless otherwise specified
+	imagePlatform := "linux/amd64"
+	if in.ImagePlatform != nil {
+		imagePlatform = *in.ImagePlatform
+	}
+
 	req := testcontainers.ContainerRequest{
 		Image:        in.Image,
 		ExposedPorts: []string{in.Port, DefaultFaucetPort},
@@ -112,7 +118,7 @@ func newSui(in *Input) (*Output, error) {
 			h.PortBindings = framework.MapTheSamePort(bindPort, DefaultFaucetPort)
 			framework.ResourceLimitsFunc(h, in.ContainerResources)
 		},
-		ImagePlatform: "linux/amd64",
+		ImagePlatform: imagePlatform,
 		Env: map[string]string{
 			"RUST_LOG": "off,sui_node=info",
 		},
