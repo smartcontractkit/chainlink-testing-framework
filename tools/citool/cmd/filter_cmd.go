@@ -7,7 +7,9 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -30,6 +32,7 @@ func filterTests(allTests []CITestConf, workflow, testType, ids string, envresol
 
 		if workflowMatch && typeMatch && idMatch {
 			test.IDSanitized = sanitizeTestID(test.ID)
+			test.RunsOnSelfHosted = processRunsOnSelfHosted(test.RunsOnSelfHosted)
 			filteredTests = append(filteredTests, test)
 		}
 		if envresolve {
@@ -89,6 +92,20 @@ func sanitizeTestID(id string) string {
 	re := regexp.MustCompile(`[^a-zA-Z0-9-_]+`)
 	// Replace all occurrences of disallowed characters with "_"
 	return re.ReplaceAllString(id, "_")
+}
+
+func processRunsOnSelfHosted(label string) string {
+	if label == "" {
+		return ""
+	}
+
+	runId := os.Getenv("GITHUB_RUN_ID")
+	if runId == "" {
+		runId = strconv.FormatInt(time.Now().UnixMilli(), 10)
+	}
+
+	newIdentifier := "runs-on=" + runId + "/"
+	return strings.Replace(label, "runs-on/", newIdentifier, 1)
 }
 
 // Utility function to check if a slice contains a string.
