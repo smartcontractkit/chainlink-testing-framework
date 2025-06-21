@@ -32,7 +32,6 @@ import (
 	"go.uber.org/atomic"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/k8s/environment"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/conversions"
 )
 
@@ -1395,25 +1394,6 @@ func NewEVMClientFromNetwork(networkSettings EVMNetwork, logger zerolog.Logger) 
 	return wrappedClient, nil
 }
 
-// NewEVMClient returns a multi-node EVM client connected to the specified network
-// Note: This should mostly be deprecated in favor of ConnectEVMClient. This is really only used when needing to connect
-// to simulated networks
-func NewEVMClient(networkSettings EVMNetwork, env *environment.Environment, logger zerolog.Logger) (EVMClient, error) {
-	if env == nil {
-		return nil, fmt.Errorf("environment nil, use ConnectEVMClient or provide a non-nil environment")
-	}
-
-	if networkSettings.Simulated {
-		if _, ok := env.URLs[networkSettings.Name]; !ok {
-			return nil, fmt.Errorf("network %s not found in environment", networkSettings.Name)
-		}
-		networkSettings.URLs = env.URLs[networkSettings.Name]
-		networkSettings.HTTPURLs = env.URLs[networkSettings.Name+"_http"]
-	}
-
-	return ConnectEVMClient(networkSettings, logger)
-}
-
 // ConnectEVMClient returns a multi-node EVM client connected to a specified network, using only URLs.
 // Should mostly be used for inside K8s, non-simulated tests.
 func ConnectEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMClient, error) {
@@ -1482,54 +1462,6 @@ func ConnectEVMClient(networkSettings EVMNetwork, logger zerolog.Logger) (EVMCli
 		}
 	}
 
-	return wrappedClient, nil
-}
-
-// ConcurrentEVMClient returns a multi-node EVM client connected to a specified network
-// It is used for concurrent interactions from different threads with the same network and from same owner
-// account. This ensures that correct nonce value is fetched when an instance of EVMClient is initiated using this method.
-// This is mainly useful for simulated networks as we don't use global nonce manager for them.
-func ConcurrentEVMClient(networkSettings EVMNetwork, env *environment.Environment, existing EVMClient, logger zerolog.Logger) (EVMClient, error) {
-	// if not simulated use the NewEVMClient
-	if !networkSettings.Simulated {
-		return ConnectEVMClient(networkSettings, logger)
-	}
-	ecl := &EthereumMultinodeClient{}
-	if env != nil {
-		if _, ok := env.URLs[existing.GetNetworkConfig().Name]; !ok {
-			return nil, fmt.Errorf("network %s not found in environment", existing.GetNetworkConfig().Name)
-		}
-		networkSettings.URLs = env.URLs[existing.GetNetworkConfig().Name]
-	}
-	for idx, networkURL := range networkSettings.URLs {
-		networkSettings.URL = networkURL
-		ec, err := newEVMClient(networkSettings, logger)
-		if err != nil {
-			logger.Info().
-				Err(err).
-				Str("URL Suffix", networkURL[len(networkURL)-6:]).
-				Msg("failed to create new EVM client")
-			continue
-		}
-		// a call to BalanceAt (can be any on chain call) to ensure the client is connected
-		_, err = ec.BalanceAt(context.Background(), ec.GetDefaultWallet().address)
-		if err == nil {
-			ec.SyncNonce(existing)
-			ec.SetID(idx)
-			ecl.Clients = append(ecl.Clients, ec)
-			break
-		}
-	}
-	if len(ecl.Clients) == 0 {
-		return nil, fmt.Errorf("failed to create new EVM client")
-	}
-	ecl.DefaultClient = ecl.Clients[0]
-	wrappedClient := wrapMultiClient(networkSettings, ecl)
-	ecl.SetWallets(existing.GetWallets())
-	if err := ecl.SetDefaultWalletByAddress(existing.GetDefaultWallet().address); err != nil {
-		return nil, err
-	}
-	// no need to fund the account as it is already funded in the existing client
 	return wrappedClient, nil
 }
 

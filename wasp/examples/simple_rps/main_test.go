@@ -4,10 +4,26 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/pyroscope-go"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 )
 
 func TestGun(t *testing.T) {
+
+	pyroscope.Start(pyroscope.Config{
+		ApplicationName: "wasp-test",
+		ServerAddress:   "http://localhost:4040",
+		Logger:          pyroscope.StandardLogger,
+		ProfileTypes: []pyroscope.ProfileType{
+			pyroscope.ProfileCPU,
+			pyroscope.ProfileAllocObjects,
+			pyroscope.ProfileAllocSpace,
+			pyroscope.ProfileInuseObjects,
+			pyroscope.ProfileInuseSpace,
+		},
+	})
+
 	// start mock http server
 	srv := wasp.NewHTTPMockServer(nil)
 	srv.Run()
