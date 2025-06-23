@@ -9,6 +9,7 @@ API is available on [localhost:9000](http://localhost:9000)
   type = "sui"
   image = "mysten/sui-tools:mainnet" # if omitted default is mysten/sui-tools:devnet
   contracts_dir = "$your_dir"
+  image_platform = "linux/amd64" # default one
 ```
 
 ## Usage
