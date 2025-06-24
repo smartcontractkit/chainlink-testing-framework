@@ -10,6 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.27.39
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.33.3
 	github.com/block-vision/sui-go-sdk v1.0.6
+	github.com/confluentinc/confluent-kafka-go v1.9.2
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/docker/docker v28.0.4+incompatible
 	github.com/docker/go-connections v0.5.0
@@ -22,6 +23,7 @@ require (
 	github.com/go-resty/resty/v2 v2.15.3
 	github.com/google/go-cmp v0.7.0
 	github.com/google/go-github/v50 v50.2.0
+	github.com/google/go-github/v72 v72.0.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/consul/sdk v0.16.2
 	github.com/minio/minio-go/v7 v7.0.68

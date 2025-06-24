@@ -6,7 +6,6 @@ services:
     depends_on:
       - redpanda-0
       - otel-lgtm
-
     restart: on-failure
     tty: true
     command: ["write-service"]
@@ -19,8 +18,9 @@ services:
       SERVER_METRICS_OTEL_EXPORTER_GRPC_ENDPOINT: ${SERVER_METRICS_OTEL_EXPORTER_GRPC_ENDPOINT:-otel-lgtm:4317}
       KAFKA_BROKERS: "redpanda-0:9092"
       SCHEMA_REGISTRY_URL: "http://redpanda-0:8081"
-      BASIC_AUTH_ENABLED: ${BASIC_AUTH_ENABLED:-true}
-      BASIC_AUTH_PREFIX: ${BASIC_AUTH_PREFIX:-CE_SA_}
+      # this has been modified and default values were removed, somehow we cannot override them in testcontainers-go
+      BASIC_AUTH_ENABLED: ${BASIC_AUTH_ENABLED:-}
+      BASIC_AUTH_PREFIX: ${BASIC_AUTH_PREFIX:-}
       CE_SA_BEHOLDER_DEMO_CLIENT: |
         {"username": "beholder-demo-client", "password": "password", "allowed_domains": ["*"]}
       CSA_AUTH_ENABLED: ${CSA_AUTH_ENABLED:-false}
@@ -33,8 +33,8 @@ services:
       - "9090:9090"
       - "9092:9091"
     healthcheck:
-      # test: [ "CMD", "grpc_health_probe", "-addr=localhost:50051" ]
-      test: [ "CMD-SHELL", "sleep 1"]
+      test: [ "CMD", "grpc_health_probe", "-addr=localhost:50051" ]
+      # test: [ "CMD-SHELL", "sleep 1"]
       interval: 200ms
       timeout: 10s
       retries: 10
