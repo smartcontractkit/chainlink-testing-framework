@@ -23,10 +23,10 @@ type protoFile struct {
 }
 
 type RepoConfiguration struct {
-	Owner   string
-	Repo    string
-	Ref     string   // ref or tag or commit SHA
-	Folders []string // if not provided, all protos will be fetched, otherwise only protos in these folders will be fetched
+	Owner   string   `toml:"owner"`
+	Repo    string   `toml:"repo"`
+	Ref     string   `toml:"ref"`     // ref or tag or commit SHA
+	Folders []string `toml:"folders"` // if not provided, all protos will be fetched, otherwise only protos in these folders will be fetched
 }
 
 // SubjectNamingStrategyFn is a function that is used to determine the subject name for a given proto file in a given repo
@@ -38,6 +38,21 @@ type RepoToSubjectNamingStrategyFn map[string]SubjectNamingStrategyFn
 // DefaultRepoToSubjectNamingStrategy is a map of repo names to SubjectNamingStrategyFn functions
 var DefaultRepoToSubjectNamingStrategy = RepoToSubjectNamingStrategyFn{
 	"chainlink-protos": ChainlinkProtosSubjectNamingStrategy,
+}
+
+func ValidateRepoConfiguration(repoConfig RepoConfiguration) error {
+	if repoConfig.Owner == "" {
+		return errors.New("owner is required")
+	}
+	if repoConfig.Repo == "" {
+		return errors.New("repo is required")
+	}
+
+	if repoConfig.Ref == "" {
+		return errors.New("ref is required")
+	}
+
+	return nil
 }
 
 func DefaultRegisterAndFetchProtos(ctx context.Context, client *github.Client, reposConfig []RepoConfiguration, schemaRegistryURL string) error {

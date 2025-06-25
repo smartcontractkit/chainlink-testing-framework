@@ -3,6 +3,9 @@ package chipingressset
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -68,8 +71,13 @@ func New(in *Input) (*Output, error) {
 	in = defaultChipIngress(in)
 	identifier := framework.DefaultTCName(DEFAULT_CHIP_INGRESS_SERVICE_NAME)
 
+	composeFilePath, fileErr := composeFilePath(in.ComposeFile)
+	if fileErr != nil {
+		return nil, errors.Wrap(fileErr, "failed to get compose file path")
+	}
+
 	stack, stackErr := compose.NewDockerComposeWith(
-		compose.WithStackFiles(in.ComposeFile),
+		compose.WithStackFiles(composeFilePath),
 		compose.StackIdentifier(identifier),
 	)
 	if stackErr != nil {
@@ -194,4 +202,31 @@ func New(in *Input) (*Output, error) {
 	}
 
 	return output, nil
+}
+
+func composeFilePath(rawFilePath string) (string, error) {
+	// if it's not a URL, return it as is and assume it's a local file
+	if !strings.HasPrefix(rawFilePath, "http") {
+		return rawFilePath, nil
+	}
+
+	resp, respErr := http.Get(rawFilePath)
+	if respErr != nil {
+		return "", errors.Wrap(respErr, "failed to download docker-compose file")
+	}
+	defer resp.Body.Close()
+
+	tempFile, tempErr := os.CreateTemp(".", "chip-ingress-docker-compose.yml")
+	if tempErr != nil {
+		return "", errors.Wrap(tempErr, "failed to create temp file")
+	}
+	defer tempFile.Close()
+
+	_, copyErr := io.Copy(tempFile, resp.Body)
+	if copyErr != nil {
+		tempFile.Close()
+		return "", errors.Wrap(copyErr, "failed to write compose file")
+	}
+
+	return tempFile.Name(), nil
 }
