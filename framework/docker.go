@@ -371,9 +371,28 @@ func RemoveTestContainers() error {
 	// Bash command for removing Docker containers and networks with "framework=ctf" label
 	cmd := exec.Command("bash", "-c", `
 		docker ps -aq --filter "label=framework=ctf" | xargs -r docker rm -f && \
-		docker network ls --filter "label=framework=ctf" -q | xargs -r docker network rm && \
-		docker volume ls -q | xargs -r docker volume rm || true
+		docker volume ls -q | xargs -r docker volume rm && \
+		docker network ls --filter "label=framework=ctf" -q | xargs -r docker network rm || true
 	`)
+	L.Debug().Msg("Running command")
+	if L.GetLevel() == zerolog.DebugLevel {
+		fmt.Println(cmd.String())
+	}
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("error running clean command: %s", string(output))
+	}
+	return nil
+}
+
+func RemoveTestStack(name string) error {
+	L.Info().Str("stack name", name).Msg("Cleaning up docker containers")
+	// Bash command for removing Docker containers and networks with "framework=ctf" label
+	cmd := exec.Command("bash", "-c", fmt.Sprintf(`
+		docker ps -a --filter "label=com.docker.compose.project" --format '{{.ID}} {{.Label "com.docker.compose.project"}}' \
+		| awk '$2 ~ /^%s/ { print $2 }' | sort -u \
+		| xargs -I{} docker compose -p {} down -v --remove-orphans
+	`, name))
 	L.Debug().Msg("Running command")
 	if L.GetLevel() == zerolog.DebugLevel {
 		fmt.Println(cmd.String())

@@ -17,8 +17,9 @@ type ChipConfig struct {
 	ChipIngress *chipingressset.Input `toml:"chip_ingress" validate:"required"`
 }
 
+// use config file: smoke_chip.toml
 func TestChipIngressSmoke(t *testing.T) {
-	os.Setenv("CTF_CONFIGS", "smoke_chip.toml")
+	t.Skip("skipping smoke test until we have a way to fetch Chip Ingress image")
 	in, err := framework.Load[ChipConfig](t)
 	require.NoError(t, err, "failed to load config")
 
@@ -41,15 +42,15 @@ func TestChipIngressSmoke(t *testing.T) {
 			client = github.NewClient(nil)
 		}
 
-		createTopicsErr := chipingressset.CreateTopics(ctx, out.RedPanda.KafkaExternalURL, in.ChipIngress.Topics)
+		createTopicsErr := chipingressset.CreateTopics(ctx, out.RedPanda.KafkaExternalURL, []string{"cre"})
 		require.NoError(t, createTopicsErr, "failed to create topics")
 
-		err := chipingressset.DefaultRegisterAndFetchProtos(ctx, client, []chipingressset.RepoConfiguration{
+		err := chipingressset.DefaultRegisterAndFetchProtos(ctx, client, []chipingressset.ProtoSchemaSet{
 			{
-				Owner:   "smartcontractkit",
-				Repo:    "chainlink-protos",
-				Ref:     "626c42d55bdcb36dffe0077fff58abba40acc3e5",
-				Folders: []string{"workflows"},
+				Owner:      "smartcontractkit",
+				Repository: "chainlink-protos",
+				Ref:        "626c42d55bdcb36dffe0077fff58abba40acc3e5",
+				Folders:    []string{"workflows"},
 			},
 		}, out.RedPanda.SchemaRegistryExternalURL)
 		require.NoError(t, err, "failed to register protos")

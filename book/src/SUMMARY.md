@@ -54,6 +54,7 @@
       - [NodeSet](framework/components/chainlink/nodeset.md)
     - [Storage](framework/components/storage.md)
       - [S3](framework/components/storage/s3.md)
+    - [Chip Ingress Set](framework/components//chipingresset/chip_ingress.md)
   - [Clients]()
     - [Chainlink]()
     - [RPC]()

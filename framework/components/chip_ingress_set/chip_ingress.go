@@ -32,13 +32,14 @@ type RedPandaOutput struct {
 	SchemaRegistryExternalURL string
 	KafkaInternalURL          string
 	KafkaExternalURL          string
+	ConsoleExternalURL        string
 }
 
 type Input struct {
-	ComposeFile string   `toml:"compose_file"`
-	Topics      []string `toml:"topics"`
-	Output      *Output  `toml:"output"`
-	UseCache    bool     `toml:"use_cache"`
+	ComposeFile         string   `toml:"compose_file"`
+	ExtraDockerNetworks []string `toml:"extra_docker_networks"`
+	Output              *Output  `toml:"output"`
+	UseCache            bool     `toml:"use_cache"`
 }
 
 func defaultChipIngress(in *Input) *Input {
@@ -49,12 +50,17 @@ func defaultChipIngress(in *Input) *Input {
 }
 
 const (
+	DEFAULT_STACK_NAME = "chip-ingress"
+
 	DEFAULT_CHIP_INGRESS_GRPC_PORT    = "50051"
 	DEFAULT_CHIP_INGRESS_SERVICE_NAME = "chip-ingress"
 
 	DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT = "18081"
 	DEFAULT_RED_PANDA_KAFKA_PORT           = "19092"
 	DEFAULT_RED_PANDA_SERVICE_NAME         = "redpanda-0"
+
+	DEFAULT_RED_PANDA_CONSOLE_SERVICE_NAME = "redpanda-console"
+	DEFAULT_RED_PANDA_CONSOLE_PORT         = "8080"
 )
 
 func New(in *Input) (*Output, error) {
@@ -69,7 +75,8 @@ func New(in *Input) (*Output, error) {
 	}
 
 	in = defaultChipIngress(in)
-	identifier := framework.DefaultTCName(DEFAULT_CHIP_INGRESS_SERVICE_NAME)
+	identifier := framework.DefaultTCName(DEFAULT_STACK_NAME)
+	framework.L.Debug().Str("Compose file", in.ComposeFile).Msgf("Starting Chip Ingress stack with identifier %s", framework.DefaultTCName(DEFAULT_STACK_NAME))
 
 	composeFilePath, fileErr := composeFilePath(in.ComposeFile)
 	if fileErr != nil {
@@ -119,10 +126,10 @@ func New(in *Input) (*Output, error) {
 	timeout := time.After(1 * time.Minute)
 	tick := time.Tick(500 * time.Millisecond)
 
-	// so let's try to connect to the default network a couple of times, there must be a race condition in Docker
+	// so let's try to connect to a Docker network a couple of times, there must be a race condition in Docker
 	// and even when network sandbox has been created and container is running, this call can still fail
 	// retrying is simpler than trying to figure out how to correctly wait for the network sandbox to be ready
-	var connectDefaultNetwork = func() error {
+	var connectNetwork = func(networkName string) error {
 		for {
 			select {
 			case <-timeout:
@@ -130,34 +137,39 @@ func New(in *Input) (*Output, error) {
 			case <-tick:
 				if networkErr := cli.NetworkConnect(
 					ctx,
-					framework.DefaultNetworkName,
+					networkName,
 					chipIngressContainer.ID,
 					&networkTypes.EndpointSettings{
 						Aliases: []string{identifier},
 					},
 				); networkErr != nil && !strings.Contains(networkErr.Error(), "already exists in network") {
-					fmt.Println("failed to connect to default network", networkErr)
+					framework.L.Trace().Msgf("failed to connect to default network: %v", networkErr)
 					continue
 				}
-				fmt.Println("connected to default network")
+				framework.L.Trace().Msgf("connected to %s network", networkName)
 				return nil
 			}
 		}
 	}
 
-	if connectErr := connectDefaultNetwork(); connectErr != nil {
-		return nil, errors.Wrap(connectErr, "failed to connect chip-ingress to default network")
-	}
+	networks := []string{framework.DefaultNetworkName}
+	networks = append(networks, in.ExtraDockerNetworks...)
 
-	// verify that the container is connected to framework's network
-	inspected, inspectErr := cli.ContainerInspect(ctx, chipIngressContainer.ID)
-	if inspectErr != nil {
-		return nil, errors.Wrapf(inspectErr, "failed to inspect container %s", chipIngressContainer.ID)
-	}
+	for _, networkName := range networks {
+		framework.L.Debug().Msgf("Connecting chip-ingress to %s network", networkName)
+		if connectErr := connectNetwork(networkName); connectErr != nil {
+			return nil, errors.Wrapf(connectErr, "failed to connect chip-ingress to %s network", networkName)
+		}
+		// verify that the container is connected to framework's network
+		inspected, inspectErr := cli.ContainerInspect(ctx, chipIngressContainer.ID)
+		if inspectErr != nil {
+			return nil, errors.Wrapf(inspectErr, "failed to inspect container %s", chipIngressContainer.ID)
+		}
 
-	_, ok := inspected.NetworkSettings.Networks[framework.DefaultNetworkName]
-	if !ok {
-		return nil, fmt.Errorf("container %s is NOT on network %s", chipIngressContainer.ID, framework.DefaultNetworkName)
+		_, ok := inspected.NetworkSettings.Networks[networkName]
+		if !ok {
+			return nil, fmt.Errorf("container %s is NOT on network %s", chipIngressContainer.ID, networkName)
+		}
 	}
 
 	// get hosts and ports for chip-ingress and redpanda
@@ -188,6 +200,20 @@ func New(in *Input) (*Output, error) {
 		return nil, errors.Wrap(redpandaExternalSchemaRegistryPortErr, "failed to get mapped port for Red Panda")
 	}
 
+	redpandaConsoleContainer, redpandaConsoleErr := stack.ServiceContainer(ctx, DEFAULT_RED_PANDA_CONSOLE_SERVICE_NAME)
+	if redpandaConsoleErr != nil {
+		return nil, errors.Wrap(redpandaConsoleErr, "failed to get redpanda-console container")
+	}
+
+	redpandaExternalConsoleHost, redpandaExternalConsoleHostErr := redpandaConsoleContainer.Host(ctx)
+	if redpandaExternalConsoleHostErr != nil {
+		return nil, errors.Wrap(redpandaExternalConsoleHostErr, "failed to get host for Red Panda Console")
+	}
+	redpandaExternalConsolePort, redpandaExternalConsolePortErr := redpandaConsoleContainer.MappedPort(ctx, DEFAULT_RED_PANDA_CONSOLE_PORT)
+	if redpandaExternalConsolePortErr != nil {
+		return nil, errors.Wrap(redpandaExternalConsolePortErr, "failed to get mapped port for Red Panda Console")
+	}
+
 	output := &Output{
 		ChipIngress: &ChipIngressOutput{
 			GRPCInternalURL: fmt.Sprintf("http://%s:%s", DEFAULT_CHIP_INGRESS_SERVICE_NAME, DEFAULT_CHIP_INGRESS_GRPC_PORT),
@@ -198,8 +224,11 @@ func New(in *Input) (*Output, error) {
 			SchemaRegistryExternalURL: fmt.Sprintf("http://%s:%s", redpandaExternalHost, redpandaExternalSchemaRegistryPort.Port()),
 			KafkaInternalURL:          fmt.Sprintf("%s:%s", DEFAULT_RED_PANDA_SERVICE_NAME, DEFAULT_RED_PANDA_KAFKA_PORT),
 			KafkaExternalURL:          fmt.Sprintf("%s:%s", redpandaExternalHost, redpandaExternalKafkaPort.Port()),
+			ConsoleExternalURL:        fmt.Sprintf("http://%s:%s", redpandaExternalConsoleHost, redpandaExternalConsolePort.Port()),
 		},
 	}
+
+	framework.L.Info().Msg("Chip Ingress stack start")
 
 	return output, nil
 }
@@ -216,7 +245,7 @@ func composeFilePath(rawFilePath string) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	tempFile, tempErr := os.CreateTemp(".", "chip-ingress-docker-compose.yml")
+	tempFile, tempErr := os.CreateTemp("", "chip-ingress-docker-compose-*.yml")
 	if tempErr != nil {
 		return "", errors.Wrap(tempErr, "failed to create temp file")
 	}

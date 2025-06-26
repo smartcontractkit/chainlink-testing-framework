@@ -22,29 +22,29 @@ type protoFile struct {
 	Content string
 }
 
-type RepoConfiguration struct {
-	Owner   string   `toml:"owner"`
-	Repo    string   `toml:"repo"`
-	Ref     string   `toml:"ref"`     // ref or tag or commit SHA
-	Folders []string `toml:"folders"` // if not provided, all protos will be fetched, otherwise only protos in these folders will be fetched
+type ProtoSchemaSet struct {
+	Owner      string   `toml:"owner"`
+	Repository string   `toml:"repository"`
+	Ref        string   `toml:"ref"`     // ref or tag or commit SHA
+	Folders    []string `toml:"folders"` // if not provided, all protos will be fetched, otherwise only protos in these folders will be fetched
 }
 
 // SubjectNamingStrategyFn is a function that is used to determine the subject name for a given proto file in a given repo
-type SubjectNamingStrategyFn func(path, source string, repoConfig RepoConfiguration) (string, error)
+type SubjectNamingStrategyFn func(path, source string, repoConfig ProtoSchemaSet) (string, error)
 
-// RepoToSubjectNamingStrategyFn is a map of repo names to SubjectNamingStrategyFn functions
-type RepoToSubjectNamingStrategyFn map[string]SubjectNamingStrategyFn
+// RepositoryToSubjectNamingStrategyFn is a map of repository names to SubjectNamingStrategyFn functions
+type RepositoryToSubjectNamingStrategyFn map[string]SubjectNamingStrategyFn
 
-// DefaultRepoToSubjectNamingStrategy is a map of repo names to SubjectNamingStrategyFn functions
-var DefaultRepoToSubjectNamingStrategy = RepoToSubjectNamingStrategyFn{
-	"chainlink-protos": ChainlinkProtosSubjectNamingStrategy,
+// DefaultRepositoryToSubjectNamingStrategy is a map of repository names to SubjectNamingStrategyFn functions
+var DefaultRepositoryToSubjectNamingStrategy = RepositoryToSubjectNamingStrategyFn{
+	"smartcontractkit/chainlink-protos": ChainlinkProtosSubjectNamingStrategy,
 }
 
-func ValidateRepoConfiguration(repoConfig RepoConfiguration) error {
+func ValidateRepoConfiguration(repoConfig ProtoSchemaSet) error {
 	if repoConfig.Owner == "" {
 		return errors.New("owner is required")
 	}
-	if repoConfig.Repo == "" {
+	if repoConfig.Repository == "" {
 		return errors.New("repo is required")
 	}
 
@@ -55,15 +55,17 @@ func ValidateRepoConfiguration(repoConfig RepoConfiguration) error {
 	return nil
 }
 
-func DefaultRegisterAndFetchProtos(ctx context.Context, client *github.Client, reposConfig []RepoConfiguration, schemaRegistryURL string) error {
-	return RegisterAndFetchProtos(ctx, client, reposConfig, schemaRegistryURL, DefaultRepoToSubjectNamingStrategy)
+func DefaultRegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSchemaSets []ProtoSchemaSet, schemaRegistryURL string) error {
+	return RegisterAndFetchProtos(ctx, client, protoSchemaSets, schemaRegistryURL, DefaultRepositoryToSubjectNamingStrategy)
 }
 
-func RegisterAndFetchProtos(ctx context.Context, client *github.Client, reposConfig []RepoConfiguration, schemaRegistryURL string, repoToSubjectNamingStrategy RepoToSubjectNamingStrategyFn) error {
-	for _, repoConfig := range reposConfig {
-		protos, protosErr := fetchProtoFilesInFolders(ctx, client, repoConfig.Owner, repoConfig.Repo, repoConfig.Ref, repoConfig.Folders)
+func RegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSchemaSets []ProtoSchemaSet, schemaRegistryURL string, repoToSubjectNamingStrategy RepositoryToSubjectNamingStrategyFn) error {
+	framework.L.Debug().Msgf("Registering and fetching protos from %d repositories", len(protoSchemaSets))
+
+	for _, protoSchemaSet := range protoSchemaSets {
+		protos, protosErr := fetchProtoFilesInFolders(ctx, client, protoSchemaSet.Owner, protoSchemaSet.Repository, protoSchemaSet.Ref, protoSchemaSet.Folders)
 		if protosErr != nil {
-			return errors.Wrapf(protosErr, "failed to fetch protos from %s/%s", repoConfig.Owner, repoConfig.Repo)
+			return errors.Wrapf(protosErr, "failed to fetch protos from %s/%s", protoSchemaSet.Owner, protoSchemaSet.Repository)
 		}
 
 		protoMap := make(map[string]string)
@@ -73,13 +75,13 @@ func RegisterAndFetchProtos(ctx context.Context, client *github.Client, reposCon
 			protoMap[pf.Path] = pf.Content
 
 			var subjectStrategy SubjectNamingStrategyFn
-			if strategy, ok := repoToSubjectNamingStrategy[repoConfig.Repo]; ok {
+			if strategy, ok := repoToSubjectNamingStrategy[protoSchemaSet.Owner+"/"+protoSchemaSet.Repository]; ok {
 				subjectStrategy = strategy
 			} else {
 				subjectStrategy = DefaultSubjectNamingStrategy
 			}
 
-			subject, nameErr := subjectStrategy(pf.Path, pf.Content, repoConfig)
+			subject, nameErr := subjectStrategy(pf.Path, pf.Content, protoSchemaSet)
 			if nameErr != nil {
 				return errors.Wrapf(nameErr, "failed to extract message name from %s", pf.Path)
 			}
@@ -88,23 +90,23 @@ func RegisterAndFetchProtos(ctx context.Context, client *github.Client, reposCon
 
 		registerErr := registerAllWithTopologicalSortingByTrial(schemaRegistryURL, protoMap, subjectMap)
 		if registerErr != nil {
-			return errors.Wrapf(registerErr, "failed to register protos from %s/%s", repoConfig.Owner, repoConfig.Repo)
+			return errors.Wrapf(registerErr, "failed to register protos from %s/%s", protoSchemaSet.Owner, protoSchemaSet.Repository)
 		}
 	}
 
 	return nil
 }
 
-func DefaultSubjectNamingStrategy(path, source string, repoConfig RepoConfiguration) (string, error) {
+func DefaultSubjectNamingStrategy(path, source string, protoSchemaSet ProtoSchemaSet) (string, error) {
 	messageName, nameErr := extractTopLevelMessageNamesWithRegex(source)
 	if nameErr != nil {
 		return "", errors.Wrapf(nameErr, "failed to extract message name from %s", path)
 	}
-	return repoConfig.Repo + "." + messageName, nil
+	return protoSchemaSet.Repository + "." + messageName, nil
 }
 
 // TODO once we have single source of truth for the relationship between protos and subjects, we need to modify this function
-func ChainlinkProtosSubjectNamingStrategy(path, source string, repoConfig RepoConfiguration) (string, error) {
+func ChainlinkProtosSubjectNamingStrategy(path, source string, protoSchemaSet ProtoSchemaSet) (string, error) {
 	messageName, nameErr := extractTopLevelMessageNamesWithRegex(source)
 	if nameErr != nil {
 		return "", errors.Wrapf(nameErr, "failed to extract message name from %s", path)
@@ -152,15 +154,17 @@ func extractTopLevelMessageNamesWithRegex(protoSrc string) (string, error) {
 }
 
 // Fetches .proto files from a GitHub repo optionally scoped to specific folders. It is recommended to use `*github.Client` with auth token to avoid rate limiting.
-func fetchProtoFilesInFolders(ctx context.Context, client *github.Client, owner, repo, ref string, folders []string) ([]protoFile, error) {
+func fetchProtoFilesInFolders(ctx context.Context, client *github.Client, owner, repository, ref string, folders []string) ([]protoFile, error) {
+	framework.L.Debug().Msgf("Fetching proto files from %s/%s in folders: %s", owner, repository, strings.Join(folders, ", "))
+
 	var files []protoFile
 
-	sha, shaErr := resolveRefSHA(ctx, client, owner, repo, ref)
+	sha, shaErr := resolveRefSHA(ctx, client, owner, repository, ref)
 	if shaErr != nil {
 		return nil, errors.Wrapf(shaErr, "cannot resolve ref %q", ref)
 	}
 
-	tree, _, treeErr := client.Git.GetTree(ctx, owner, repo, sha, true)
+	tree, _, treeErr := client.Git.GetTree(ctx, owner, repository, sha, true)
 	if treeErr != nil {
 		return nil, errors.Wrap(treeErr, "failed to fetch tree")
 	}
@@ -188,7 +192,7 @@ searchLoop:
 			}
 		}
 
-		rawURL := fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s/%s", owner, repo, sha, *entry.Path)
+		rawURL := fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s/%s", owner, repository, sha, *entry.Path)
 		resp, respErr := http.Get(rawURL)
 		if respErr != nil {
 			return nil, errors.Wrapf(respErr, "failed tofetch %s", *entry.Path)
@@ -218,17 +222,23 @@ searchLoop:
 		})
 	}
 
+	framework.L.Debug().Msgf("Fetched %d proto files from %s/%s", len(files), owner, repository)
+
+	if len(files) == 0 {
+		return nil, fmt.Errorf("no proto files found in %s/%s in folders %s", owner, repository, strings.Join(folders, ", "))
+	}
+
 	return files, nil
 }
 
-func resolveRefSHA(ctx context.Context, client *github.Client, owner, repo, ref string) (string, error) {
-	if refObj, _, err := client.Git.GetRef(ctx, owner, repo, "refs/tags/"+ref); err == nil {
+func resolveRefSHA(ctx context.Context, client *github.Client, owner, repository, ref string) (string, error) {
+	if refObj, _, err := client.Git.GetRef(ctx, owner, repository, "refs/tags/"+ref); err == nil {
 		return refObj.GetObject().GetSHA(), nil
 	}
-	if refObj, _, err := client.Git.GetRef(ctx, owner, repo, "refs/heads/"+ref); err == nil {
+	if refObj, _, err := client.Git.GetRef(ctx, owner, repository, "refs/heads/"+ref); err == nil {
 		return refObj.GetObject().GetSHA(), nil
 	}
-	if commit, _, err := client.Repositories.GetCommit(ctx, owner, repo, ref, nil); err == nil {
+	if commit, _, err := client.Repositories.GetCommit(ctx, owner, repository, ref, nil); err == nil {
 		return commit.GetSHA(), nil
 	}
 	return "", fmt.Errorf("ref %q not found", ref)
@@ -270,7 +280,7 @@ func registerAllWithTopologicalSortingByTrial(
 				continue
 			}
 
-			framework.L.Debug().Msgf("🔄 registering %s as %s\n", path, subject)
+			framework.L.Debug().Msgf("🔄 registering %s as %s", path, subject)
 			_, registerErr := registerSingleProto(schemaRegistryURL, subject, schema.Source, refs)
 			if registerErr != nil {
 				failures = append(failures, fmt.Sprintf("%s: %v", path, registerErr))
@@ -301,7 +311,7 @@ func registerAllWithTopologicalSortingByTrial(
 		}
 	}
 
-	framework.L.Info().Msg("✅ All schemas successfully registered.")
+	framework.L.Info().Msgf("✅ Successfully registered %d schemas", len(protoMap))
 	return nil
 }
 
@@ -309,6 +319,8 @@ func registerSingleProto(
 	registryURL, subject, schemaSrc string,
 	references []map[string]any,
 ) (int, error) {
+	framework.L.Trace().Msgf("Registering schema %s", subject)
+
 	body := map[string]any{
 		"schemaType": "PROTOBUF",
 		"schema":     schemaSrc,
@@ -344,6 +356,8 @@ func registerSingleProto(
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return 0, errors.Wrap(err, "failed to decode response")
 	}
+
+	framework.L.Debug().Msgf("Registered schema %s with ID %d", subject, result.ID)
 
 	return result.ID, nil
 }
