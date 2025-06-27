@@ -388,6 +388,7 @@ func RemoveTestContainers() error {
 func RemoveTestStack(name string) error {
 	L.Info().Str("stack name", name).Msg("Cleaning up docker containers")
 	// Bash command for removing Docker containers and networks with "framework=ctf" label
+	//nolint:gosec //ignoring G204
 	cmd := exec.Command("bash", "-c", fmt.Sprintf(`
 		docker ps -a --filter "label=com.docker.compose.project" --format '{{.ID}} {{.Label "com.docker.compose.project"}}' \
 		| awk '$2 ~ /^%s/ { print $2 }' | sort -u \
