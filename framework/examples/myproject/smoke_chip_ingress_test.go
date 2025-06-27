@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/go-github/v72/github"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	chipingressset "github.com/smartcontractkit/chainlink-testing-framework/framework/components/chip_ingress_set"
+	chipingressset "github.com/smartcontractkit/chainlink-testing-framework/framework/components/dockercompose/chip_ingress_set"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/oauth2"
 )

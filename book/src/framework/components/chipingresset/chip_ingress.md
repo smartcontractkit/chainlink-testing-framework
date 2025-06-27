@@ -34,7 +34,7 @@ Packge contains also a bunch of helper functions tha can:
 
 ### Topic management
 ```go
-import chipingressset "github.com/smartcontractkit/chainlink-testing-framework/framework/components/chip_ingress_set"
+import chipingressset "github.com/smartcontractkit/chainlink-testing-framework/framework/components/dockercompose/chip_ingress_set"
 
 topicsErr := chipingressset.DeleteAllTopics(cmd.Context(), redPandaKafkaURLFlag)
 if topicsErr != nil {

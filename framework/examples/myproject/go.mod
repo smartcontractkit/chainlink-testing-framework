@@ -4,6 +4,7 @@ go 1.24.2
 
 replace (
 	github.com/smartcontractkit/chainlink-testing-framework/framework => ../../
+	github.com/smartcontractkit/chainlink-testing-framework/framework/components/dockercompose => ../../components/dockercompose
 	github.com/smartcontractkit/chainlink-testing-framework/havoc => ../../../havoc
 	github.com/smartcontractkit/chainlink-testing-framework/wasp => ../../../wasp
 )
@@ -15,6 +16,7 @@ require (
 	github.com/go-resty/resty/v2 v2.16.3
 	github.com/google/go-github/v72 v72.0.0
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.8.9
+	github.com/smartcontractkit/chainlink-testing-framework/framework/components/dockercompose v0.0.0-00010101000000-000000000000
 	github.com/smartcontractkit/chainlink-testing-framework/havoc v1.50.2
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.50.10
 	github.com/smartcontractkit/chainlink-testing-framework/wasp v1.50.2
