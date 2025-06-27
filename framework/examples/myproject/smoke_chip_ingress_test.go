@@ -19,7 +19,8 @@ type ChipConfig struct {
 
 // use config file: smoke_chip.toml
 func TestChipIngressSmoke(t *testing.T) {
-	t.Skip("skipping smoke test until we have a way to fetch Chip Ingress image")
+	// t.Skip("skipping smoke test until we have a way to fetch Chip Ingress image")
+	os.Setenv("CTF_CONFIGS", "smoke_chip.toml")
 	in, err := framework.Load[ChipConfig](t)
 	require.NoError(t, err, "failed to load config")
 

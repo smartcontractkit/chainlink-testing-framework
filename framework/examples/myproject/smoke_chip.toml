@@ -1,3 +1,2 @@
 [chip_ingress]
-  compose_file='../../components/chip_ingress_set/docker-compose.yml'
-  topics=['cre']
+  compose_file='../../components/dockercompose/chip_ingress_set/docker-compose.yml'
