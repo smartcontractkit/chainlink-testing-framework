@@ -1,0 +1,363 @@
+package chipingressset
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"path/filepath"
+	"regexp"
+	"strings"
+
+	"github.com/google/go-github/v72/github"
+	"github.com/pkg/errors"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+)
+
+type protoFile struct {
+	Name    string
+	Path    string
+	Content string
+}
+
+type ProtoSchemaSet struct {
+	Owner      string   `toml:"owner"`
+	Repository string   `toml:"repository"`
+	Ref        string   `toml:"ref"`     // ref or tag or commit SHA
+	Folders    []string `toml:"folders"` // if not provided, all protos will be fetched, otherwise only protos in these folders will be fetched
+}
+
+// SubjectNamingStrategyFn is a function that is used to determine the subject name for a given proto file in a given repo
+type SubjectNamingStrategyFn func(path, source string, repoConfig ProtoSchemaSet) (string, error)
+
+// RepositoryToSubjectNamingStrategyFn is a map of repository names to SubjectNamingStrategyFn functions
+type RepositoryToSubjectNamingStrategyFn map[string]SubjectNamingStrategyFn
+
+// DefaultRepositoryToSubjectNamingStrategy is a map of repository names to SubjectNamingStrategyFn functions
+var DefaultRepositoryToSubjectNamingStrategy = RepositoryToSubjectNamingStrategyFn{
+	"smartcontractkit/chainlink-protos": ChainlinkProtosSubjectNamingStrategy,
+}
+
+func ValidateRepoConfiguration(repoConfig ProtoSchemaSet) error {
+	if repoConfig.Owner == "" {
+		return errors.New("owner is required")
+	}
+	if repoConfig.Repository == "" {
+		return errors.New("repo is required")
+	}
+
+	if repoConfig.Ref == "" {
+		return errors.New("ref is required")
+	}
+
+	return nil
+}
+
+func DefaultRegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSchemaSets []ProtoSchemaSet, schemaRegistryURL string) error {
+	return RegisterAndFetchProtos(ctx, client, protoSchemaSets, schemaRegistryURL, DefaultRepositoryToSubjectNamingStrategy)
+}
+
+func RegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSchemaSets []ProtoSchemaSet, schemaRegistryURL string, repoToSubjectNamingStrategy RepositoryToSubjectNamingStrategyFn) error {
+	framework.L.Debug().Msgf("Registering and fetching protos from %d repositories", len(protoSchemaSets))
+
+	for _, protoSchemaSet := range protoSchemaSets {
+		protos, protosErr := fetchProtoFilesInFolders(ctx, client, protoSchemaSet.Owner, protoSchemaSet.Repository, protoSchemaSet.Ref, protoSchemaSet.Folders)
+		if protosErr != nil {
+			return errors.Wrapf(protosErr, "failed to fetch protos from %s/%s", protoSchemaSet.Owner, protoSchemaSet.Repository)
+		}
+
+		protoMap := make(map[string]string)
+		subjectMap := make(map[string]string)
+
+		for _, pf := range protos {
+			protoMap[pf.Path] = pf.Content
+
+			var subjectStrategy SubjectNamingStrategyFn
+			if strategy, ok := repoToSubjectNamingStrategy[protoSchemaSet.Owner+"/"+protoSchemaSet.Repository]; ok {
+				subjectStrategy = strategy
+			} else {
+				subjectStrategy = DefaultSubjectNamingStrategy
+			}
+
+			subject, nameErr := subjectStrategy(pf.Path, pf.Content, protoSchemaSet)
+			if nameErr != nil {
+				return errors.Wrapf(nameErr, "failed to extract message name from %s", pf.Path)
+			}
+			subjectMap[pf.Path] = subject
+		}
+
+		registerErr := registerAllWithTopologicalSortingByTrial(schemaRegistryURL, protoMap, subjectMap)
+		if registerErr != nil {
+			return errors.Wrapf(registerErr, "failed to register protos from %s/%s", protoSchemaSet.Owner, protoSchemaSet.Repository)
+		}
+	}
+
+	return nil
+}
+
+func DefaultSubjectNamingStrategy(path, source string, protoSchemaSet ProtoSchemaSet) (string, error) {
+	messageName, nameErr := extractTopLevelMessageNamesWithRegex(source)
+	if nameErr != nil {
+		return "", errors.Wrapf(nameErr, "failed to extract message name from %s", path)
+	}
+	return protoSchemaSet.Repository + "." + messageName, nil
+}
+
+// TODO once we have single source of truth for the relationship between protos and subjects, we need to modify this function
+func ChainlinkProtosSubjectNamingStrategy(path, source string, protoSchemaSet ProtoSchemaSet) (string, error) {
+	messageName, nameErr := extractTopLevelMessageNamesWithRegex(source)
+	if nameErr != nil {
+		return "", errors.Wrapf(nameErr, "failed to extract message name from %s", path)
+	}
+
+	// this only covers BaseMessage
+	if strings.HasPrefix(path, "common") {
+		return "cre-pb." + messageName, nil
+	}
+
+	// this covers all other protos we currently have in the chainlink-protos repo
+	subject := "cre-workflows."
+	pathSplit := strings.Split(path, "/")
+	if len(pathSplit) > 1 {
+		for _, part := range pathSplit {
+			matches := regexp.MustCompile(`v[0-9]+`).FindAllStringSubmatch(part, -1)
+			if len(matches) > 0 {
+				subject += matches[0][0]
+			}
+		}
+	} else {
+		return "", fmt.Errorf("no subject found for %s", path)
+	}
+
+	return subject + "." + messageName, nil
+}
+
+// we use simple regex to extract top-level message names from a proto file
+// so that we don't need to parse the proto file with a parser (which would require a lot of dependencies)
+func extractTopLevelMessageNamesWithRegex(protoSrc string) (string, error) {
+	matches := regexp.MustCompile(`(?m)^\s*message\s+(\w+)\s*{`).FindAllStringSubmatch(protoSrc, -1)
+	var names []string
+	for _, match := range matches {
+		if len(match) >= 2 {
+			names = append(names, match[1])
+		}
+	}
+
+	if len(names) == 0 {
+		return "", fmt.Errorf("no message names found in %s", protoSrc)
+	}
+
+	// even though there could be more than 1 message in a single proto, we still need to register all of them under one subject
+	return names[0], nil
+}
+
+// Fetches .proto files from a GitHub repo optionally scoped to specific folders. It is recommended to use `*github.Client` with auth token to avoid rate limiting.
+func fetchProtoFilesInFolders(ctx context.Context, client *github.Client, owner, repository, ref string, folders []string) ([]protoFile, error) {
+	framework.L.Debug().Msgf("Fetching proto files from %s/%s in folders: %s", owner, repository, strings.Join(folders, ", "))
+
+	var files []protoFile
+
+	sha, shaErr := resolveRefSHA(ctx, client, owner, repository, ref)
+	if shaErr != nil {
+		return nil, errors.Wrapf(shaErr, "cannot resolve ref %q", ref)
+	}
+
+	tree, _, treeErr := client.Git.GetTree(ctx, owner, repository, sha, true)
+	if treeErr != nil {
+		return nil, errors.Wrap(treeErr, "failed to fetch tree")
+	}
+
+searchLoop:
+	for _, entry := range tree.Entries {
+		// skip non-blob entries and non-proto files
+		if entry.GetType() != "blob" || entry.Path == nil || !strings.HasSuffix(*entry.Path, ".proto") {
+			continue
+		}
+
+		// if folders are specified, check prefix match
+		var folderFound string
+		if len(folders) > 0 {
+			matched := false
+			for _, folder := range folders {
+				if strings.HasPrefix(*entry.Path, strings.TrimSuffix(folder, "/")+"/") {
+					matched = true
+					folderFound = folder
+					break
+				}
+			}
+			if !matched {
+				continue searchLoop
+			}
+		}
+
+		rawURL := fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s/%s", owner, repository, sha, *entry.Path)
+		resp, respErr := http.Get(rawURL)
+		if respErr != nil {
+			return nil, errors.Wrapf(respErr, "failed tofetch %s", *entry.Path)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != 200 {
+			return nil, errors.Errorf("bad status from GitHub for %s: %d", *entry.Path, resp.StatusCode)
+		}
+
+		body, bodyErr := io.ReadAll(resp.Body)
+		if bodyErr != nil {
+			return nil, errors.Wrapf(bodyErr, "failed to read body for %s", *entry.Path)
+		}
+
+		// subtract the folder from the path if it was provided, because if it is imported by some other protos
+		// most probably it will be imported as a relative path, so we need to remove the folder from the path
+		protoPath := *entry.Path
+		if folderFound != "" {
+			protoPath = strings.TrimPrefix(protoPath, strings.TrimSuffix(folderFound, "/")+"/")
+		}
+
+		files = append(files, protoFile{
+			Name:    filepath.Base(*entry.Path),
+			Path:    protoPath,
+			Content: string(body),
+		})
+	}
+
+	framework.L.Debug().Msgf("Fetched %d proto files from %s/%s", len(files), owner, repository)
+
+	if len(files) == 0 {
+		return nil, fmt.Errorf("no proto files found in %s/%s in folders %s", owner, repository, strings.Join(folders, ", "))
+	}
+
+	return files, nil
+}
+
+func resolveRefSHA(ctx context.Context, client *github.Client, owner, repository, ref string) (string, error) {
+	if refObj, _, err := client.Git.GetRef(ctx, owner, repository, "refs/tags/"+ref); err == nil {
+		return refObj.GetObject().GetSHA(), nil
+	}
+	if refObj, _, err := client.Git.GetRef(ctx, owner, repository, "refs/heads/"+ref); err == nil {
+		return refObj.GetObject().GetSHA(), nil
+	}
+	if commit, _, err := client.Repositories.GetCommit(ctx, owner, repository, ref, nil); err == nil {
+		return commit.GetSHA(), nil
+	}
+	return "", fmt.Errorf("ref %q not found", ref)
+}
+
+type schemaStatus struct {
+	Source     string
+	Registered bool
+	Version    int
+}
+
+// registerAllWithTopologicalSortingByTrial tries to register protos that have not been registered yet, and if it fails, it tries again with a different order
+// it keeps doing this until all protos are registered or it fails to register any more protos
+func registerAllWithTopologicalSortingByTrial(
+	schemaRegistryURL string,
+	protoMap map[string]string, // path -> proto source
+	subjectMap map[string]string, // path -> subject
+) error {
+	framework.L.Info().Msgf("🔄 registering %d protobuf schemas", len(protoMap))
+	schemas := map[string]*schemaStatus{}
+	for path, src := range protoMap {
+		schemas[path] = &schemaStatus{Source: src}
+	}
+
+	refs := []map[string]any{}
+
+	for {
+		progress := false
+		failures := []string{}
+
+		for path, schema := range schemas {
+			if schema.Registered {
+				continue
+			}
+
+			subject, ok := subjectMap[path]
+			if !ok {
+				failures = append(failures, fmt.Sprintf("%s: no subject found", path))
+				continue
+			}
+
+			framework.L.Debug().Msgf("🔄 registering %s as %s", path, subject)
+			_, registerErr := registerSingleProto(schemaRegistryURL, subject, schema.Source, refs)
+			if registerErr != nil {
+				failures = append(failures, fmt.Sprintf("%s: %v", path, registerErr))
+				continue
+			}
+
+			schema.Registered = true
+			schema.Version = 1
+			refs = append(refs, map[string]any{
+				"name":    path,
+				"subject": subject,
+				"version": 1,
+			})
+
+			framework.L.Info().Msgf("✔ registered: %s as %s", path, subject)
+			progress = true
+		}
+
+		if !progress {
+			if len(failures) > 0 {
+				framework.L.Error().Msg("❌ Failed to register remaining schemas:")
+				for _, msg := range failures {
+					framework.L.Error().Msg("  " + msg)
+				}
+				return fmt.Errorf("unable to register %d schemas", len(failures))
+			}
+			break
+		}
+	}
+
+	framework.L.Info().Msgf("✅ Successfully registered %d schemas", len(protoMap))
+	return nil
+}
+
+func registerSingleProto(
+	registryURL, subject, schemaSrc string,
+	references []map[string]any,
+) (int, error) {
+	framework.L.Trace().Msgf("Registering schema %s", subject)
+
+	body := map[string]any{
+		"schemaType": "PROTOBUF",
+		"schema":     schemaSrc,
+	}
+	if references != nil {
+		body["references"] = references
+	}
+
+	payload, payloadErr := json.Marshal(body)
+	if payloadErr != nil {
+		return 0, errors.Wrap(payloadErr, "failed to marshal payload")
+	}
+
+	url := fmt.Sprintf("%s/subjects/%s/versions", registryURL, subject)
+
+	resp, respErr := http.Post(url, "application/vnd.schemaregistry.v1+json", bytes.NewReader(payload))
+	if respErr != nil {
+		return 0, errors.Wrap(respErr, "failed to post to schema registry")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		data, dataErr := io.ReadAll(resp.Body)
+		if dataErr != nil {
+			return 0, errors.Wrap(dataErr, "failed to read response body")
+		}
+		return 0, fmt.Errorf("schema registry error (%d): %s", resp.StatusCode, data)
+	}
+
+	var result struct {
+		ID int `json:"id"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return 0, errors.Wrap(err, "failed to decode response")
+	}
+
+	framework.L.Debug().Msgf("Registered schema %s with ID %d", subject, result.ID)
+
+	return result.ID, nil
+}

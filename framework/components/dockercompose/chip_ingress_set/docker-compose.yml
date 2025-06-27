@@ -1,0 +1,102 @@
+# copied from https://github.com/smartcontractkit/atlas/blob/master/chip-ingress/docker-compose.yml
+services:
+
+  chip-ingress:
+    image: ${CHIP_INGRESS_IMAGE:-chip-ingress:latest}
+    container_name: chip-ingress
+    depends_on:
+      - redpanda-0
+    restart: on-failure
+    tty: true
+    command: ["write-service"]
+    environment:
+      SERVER_HOST: "0.0.0.0"
+      SERVER_GRPC_PORT: "50051"
+      SERVER_METRICS_PORT: "9090"
+      SERVER_HEALTHCHECKS_PORT: "9091"
+      SERVER_METRICS_IMPLEMENTATION: "otel"
+      # this has been modified from the original docker-compose.yml to use localhost:4317 as we don't have otel-lgtm service in this stack
+      # but we have our own observability stack, which is accessible via localhost (after starting it with ctf obs u)
+      SERVER_METRICS_OTEL_EXPORTER_GRPC_ENDPOINT: ${SERVER_METRICS_OTEL_EXPORTER_GRPC_ENDPOINT:-localhost:4317}
+      KAFKA_BROKERS: "redpanda-0:9092"
+      SCHEMA_REGISTRY_URL: "http://redpanda-0:8081"
+      # this has been modified and default values were removed, somehow we cannot override them in testcontainers-go
+      BASIC_AUTH_ENABLED: ${BASIC_AUTH_ENABLED:-}
+      BASIC_AUTH_PREFIX: ${BASIC_AUTH_PREFIX:-}
+      CE_SA_BEHOLDER_DEMO_CLIENT: |
+        {"username": "beholder-demo-client", "password": "password", "allowed_domains": ["*"]}
+      CSA_AUTH_ENABLED: ${CSA_AUTH_ENABLED:-false}
+      CSA_AUTH_ADDRESS: ${CSA_AUTH_ADDRESS:-}
+      CSA_AUTH_USERNAME: ${CSA_AUTH_USERNAME:-}
+      CSA_AUTH_PASSWORD: ${CSA_AUTH_PASSWORD:-}
+      CSA_AUTH_REQUIRE_TLS: ${CSA_AUTH_REQUIRE_TLS:-false}
+    ports:
+      - "50051:50051"
+      - "9090:9090"
+      - "9092:9091"
+    healthcheck:
+      # this has been modified from the original docker-compose.yml to use grpc_health_probe
+      test: [ "CMD", "grpc_health_probe", "-addr=localhost:50051" ]
+      interval: 200ms
+      timeout: 10s
+      retries: 10
+
+  redpanda-0:
+    image: docker.redpanda.com/redpandadata/redpanda
+    container_name: redpanda-0
+    hostname: redpanda-0
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda-0:9092,external://localhost:19092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --advertise-pandaproxy-addr internal://redpanda-0:8082,external://localhost:18082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      - --rpc-addr redpanda-0:33145
+      - --advertise-rpc-addr redpanda-0:33145
+      - --mode dev-container
+      - --smp 1
+      - --default-log-level=info
+      - --set redpanda.auto_create_topics_enabled=true
+    ports:
+      - "18081:18081"
+      - "18082:18082"
+      - "19092:19092"
+      - "19644:9644"
+    healthcheck:
+      test: curl -f http://localhost:9644/v1/status/ready || exit 1
+      interval: 1s
+      timeout: 10s
+      retries: 5
+      start_period: 1s
+
+  redpanda-console:
+    container_name: redpanda-console
+    image: docker.redpanda.com/redpandadata/console
+    entrypoint: /bin/sh
+    command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml; /app/console'
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda-0:9092"]
+          schemaRegistry:
+            enabled: true
+            urls: ["http://redpanda-0:8081"]
+          protobuf:
+            enabled: true
+            schemaRegistry:
+              enabled: true
+              refreshInterval: 5s
+        redpanda:
+          adminApi:
+            enabled: true
+            urls: ["http://redpanda-0:9644"]
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redpanda-0
+
+# removed otel-lgtm service as it's not needed for the stack to work
+# and we have our own observability stack
