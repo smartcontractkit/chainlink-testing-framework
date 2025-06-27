@@ -106,7 +106,14 @@ func New(in *Input) (*Output, error) {
 	}
 
 	stack.WaitForService(DEFAULT_CHIP_INGRESS_SERVICE_NAME,
-		wait.ForLog("GRPC server is live").WithPollInterval(200*time.Millisecond).WithStartupTimeout(1*time.Minute),
+		wait.ForAll(
+			wait.ForLog("GRPC server is live").WithPollInterval(200*time.Millisecond),
+			wait.ForListeningPort(DEFAULT_CHIP_INGRESS_GRPC_PORT),
+		).WithDeadline(1*time.Minute),
+	).WaitForService(DEFAULT_RED_PANDA_SERVICE_NAME,
+		wait.ForListeningPort(DEFAULT_RED_PANDA_KAFKA_PORT).WithStartupTimeout(1*time.Minute),
+	).WaitForService(DEFAULT_RED_PANDA_CONSOLE_SERVICE_NAME,
+		wait.ForListeningPort(DEFAULT_RED_PANDA_CONSOLE_PORT).WithStartupTimeout(1*time.Minute),
 	)
 
 	chipIngressContainer, ingressErr := stack.ServiceContainer(ctx, DEFAULT_CHIP_INGRESS_SERVICE_NAME)
