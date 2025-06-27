@@ -2,7 +2,7 @@
 services:
 
   chip-ingress:
-    image: ${CHIP_INGRESS_IMAGE:-chip-ingress:latest}
+    image: chip-ingress:qa-latest
     container_name: chip-ingress
     depends_on:
       - redpanda-0
