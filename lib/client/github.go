@@ -12,7 +12,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
 
-	"github.com/google/go-github/v41/github"
+	"github.com/google/go-github/v72/github"
 	"golang.org/x/oauth2"
 )
 
