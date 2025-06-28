@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	dario.cat/mergo v1.0.1
-	github.com/Masterminds/semver/v3 v3.3.0
+	github.com/Masterminds/semver/v3 v3.3.1
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go-v2/config v1.28.0
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.34.2
