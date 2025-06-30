@@ -360,9 +360,9 @@ func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string) error {
 func BuildImage(dctx, dfile, nameAndTag string) error {
 	dfilePath := filepath.Join(dctx, dfile)
 	if os.Getenv("CTF_CLNODE_DLV") == "true" {
-		return RunCommand("docker", "build", "--build-arg", `GO_GCFLAGS=all=-N -l`, "-t", nameAndTag, "-f", dfilePath, dctx)
+		return RunCommand("docker", "build", "--build-arg", `GO_GCFLAGS=all=-N -l`, "--build-arg", "CHAINLINK_USER=chainlink", "--build-arg", "CL_INSTALL_PRIVATE_PLUGINS=false", "-t", nameAndTag, "-f", dfilePath, dctx)
 	}
-	return RunCommand("docker", "build", "-t", nameAndTag, "-f", dfilePath, dctx)
+	return RunCommand("docker", "build", "--build-arg", "CHAINLINK_USER=chainlink", "--build-arg", "CL_INSTALL_PRIVATE_PLUGINS=false", "-t", nameAndTag, "-f", dfilePath, dctx)
 }
 
 // RemoveTestContainers removes all test containers, volumes and CTF docker network
