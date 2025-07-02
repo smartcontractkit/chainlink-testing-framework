@@ -28,3 +28,9 @@ Change compose files under `framework/cmd/observability` and restart the stack (
 just reload-cli && ctf obs r
 ```
 
+## Troubleshooting
+
+### `cadvisor` is not working
+Make sure your `Advanced` Docker settings look like this
+![img_2.png](img_2.png)
+
