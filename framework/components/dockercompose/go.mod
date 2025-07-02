@@ -7,6 +7,7 @@ replace github.com/smartcontractkit/chainlink-testing-framework/framework => ../
 require (
 	github.com/confluentinc/confluent-kafka-go v1.9.2
 	github.com/docker/docker v28.0.4+incompatible
+	github.com/docker/go-connections v0.5.0
 	github.com/google/go-github/v72 v72.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.0.0-00010101000000-000000000000
@@ -64,7 +65,6 @@ require (
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.8.2 // indirect
 	github.com/docker/go v1.5.1-1.0.20160303222718-d30aec9fd63c // indirect
-	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/ebitengine/purego v0.8.2 // indirect
