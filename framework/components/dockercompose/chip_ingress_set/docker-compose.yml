@@ -2,7 +2,8 @@
 services:
 
   chip-ingress:
-    image: chip-ingress:qa-latest
+    # added image (instead of build) to use image created by a setup script
+    image: ${CHIP_INGRESS_IMAGE:-chip-ingress:local-cre}
     container_name: chip-ingress
     depends_on:
       - redpanda-0
@@ -42,7 +43,8 @@ services:
       retries: 10
 
   redpanda-0:
-    image: docker.redpanda.com/redpandadata/redpanda
+    # using a specific version of the redpanda image to exclude potentially breaking changes
+    image: docker.redpanda.com/redpandadata/redpanda:v24.3.16
     container_name: redpanda-0
     hostname: redpanda-0
     command:
@@ -72,8 +74,9 @@ services:
       start_period: 1s
 
   redpanda-console:
+    # using a specific version of the console image to ensure compatibility, because v3.x.x uses incompatible configuration format
     container_name: redpanda-console
-    image: docker.redpanda.com/redpandadata/console
+    image: docker.redpanda.com/redpandadata/console:v2.8.6
     entrypoint: /bin/sh
     command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml; /app/console'
     environment:
