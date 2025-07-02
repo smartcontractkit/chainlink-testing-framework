@@ -3079,6 +3079,10 @@ rosetta error: Rosetta is only intended to run on Apple Silicon with a macOS hos
 <p>Change compose files under <code>framework/cmd/observability</code> and restart the stack (removing volumes too)</p>
 <pre><code>just reload-cli &amp;&amp; ctf obs r
 </code></pre>
+<h2 id="troubleshooting-1"><a class="header" href="#troubleshooting-1">Troubleshooting</a></h2>
+<h3 id="cadvisor-is-not-working"><a class="header" href="#cadvisor-is-not-working"><code>cadvisor</code> is not working</a></h3>
+<p>Make sure your <code>Advanced</code> Docker settings look like this
+<img src="framework/observability/img_2.png" alt="img_2.png" /></p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -13697,7 +13701,7 @@ for name, value := range alerts {
     fmt.Println("Alert named " + name + "was triggered. Details: " + string(value))
 }
 </code></pre>
-<h1 id="troubleshooting-1"><a class="header" href="#troubleshooting-1">Troubleshooting</a></h1>
+<h1 id="troubleshooting-2"><a class="header" href="#troubleshooting-2">Troubleshooting</a></h1>
 <p>To enable debug mode for the underlaying HTTP client set <code>RESTY_DEBUG</code> environment variable to <code>true</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
@@ -13902,7 +13906,7 @@ for _, logEntry := range results {
 <li><code>float64</code></li>
 </ul>
 <p>If it's neither of these types nor a <code>string</code> the client will return an error. Same will happen if <code>nil</code> is returned.</p>
-<h1 id="troubleshooting-2"><a class="header" href="#troubleshooting-2">Troubleshooting</a></h1>
+<h1 id="troubleshooting-3"><a class="header" href="#troubleshooting-3">Troubleshooting</a></h1>
 <p>If you find yourself in trouble these two environment variables might help you:</p>
 <ul>
 <li><code>RESTY_DEBUG</code> set to <code>true</code> will enable debug mode for the underlaying HTTP client</li>
@@ -14079,7 +14083,7 @@ if err != nil {
     }
 }
 </code></pre>
-<h1 id="troubleshooting-3"><a class="header" href="#troubleshooting-3">Troubleshooting</a></h1>
+<h1 id="troubleshooting-4"><a class="header" href="#troubleshooting-4">Troubleshooting</a></h1>
 <p>Enabling debug mode for the underlaying HTTP client can be achieved by setting <code>RESTY_DEBUG</code> environment variable to <code>true</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
@@ -17365,7 +17369,7 @@ use <code>GetTestContainersGoTestLogger(*testing.T)</code> instead.</p>
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>a9ba314d</code></li>
+<li>Commit: <code>543c96d4</code></li>
 </ul>
 
                     </main>
