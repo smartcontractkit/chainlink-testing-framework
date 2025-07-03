@@ -1,0 +1,25 @@
+server:
+  http_listen_port: 3200
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+        http:
+
+overrides:
+  max_traces_per_user: 50000
+
+storage:
+  trace:
+    backend: local
+    local:
+      path: /tmp/tempo/blocks
+    wal:
+      path: /tmp/tempo/wal
+
+compactor:
+  compaction:
+    max_block_bytes: 1073741824   # 1GB max block size
+    max_compaction_objects: 1000000
