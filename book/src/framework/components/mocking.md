@@ -25,7 +25,7 @@ Use `framework.HostDockerInternal()` to reference `host.docker.internal` in your
 
 ## Dockerized Usage
 
-Copy this example into your project, write the logic of fake, build and upload it and run.
+Copy this example into your project, write the logic of fake using `fake.JSON` and `fake.Func`, build and upload it and run.
 
 ## Install
 
@@ -62,6 +62,14 @@ task publish -- $tag
 See full [example](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/fake_docker_test.go)
 
 Run it
+```toml
+[fake]
+  # the image you've built
+  image = "test-fakes:myproduct-1.0"
+  # port for Gin server
+  port = 9111
+```
+
 ```
 CTF_CONFIGS=fake_docker.toml go test -v -run TestDockerFakes
 ```

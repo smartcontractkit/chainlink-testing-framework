@@ -414,9 +414,10 @@ require (
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
-// replicating the replace directive on cosmos SDK
 replace (
+	// replicating the replace directive on cosmos SDK
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
+	// this is needed because of github.com/smartcontractkit/chainlink-testing-framework/framework/components/dockercompose deps
 	go.opentelemetry.io/otel => go.opentelemetry.io/otel v1.35.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace => go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.34.0
 	go.opentelemetry.io/otel/metric => go.opentelemetry.io/otel/metric v1.35.0

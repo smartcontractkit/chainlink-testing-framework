@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
 )
@@ -17,7 +18,7 @@ func main() {
 		})
 	})
 	if err != nil {
-		panic(err)
+		log.Fatal().Err(err).Msg("failed to stark fake server API")
 	}
 	select {}
 }
