@@ -16,6 +16,7 @@ type Fork string
 const (
 	EthereumFork_Shanghai Fork = "Shanghai"
 	EthereumFork_Deneb    Fork = "Deneb"
+	EthereumFork_Electra  Fork = "Electra"
 )
 
 // ValidFutureForks returns the list of valid future forks for the given Ethereum fork
@@ -24,6 +25,8 @@ func (e Fork) ValidFutureForks() ([]Fork, error) {
 	case EthereumFork_Shanghai:
 		return []Fork{EthereumFork_Deneb}, nil
 	case EthereumFork_Deneb:
+		return []Fork{EthereumFork_Electra}, nil
+	case EthereumFork_Electra:
 		return []Fork{}, nil
 	default:
 		return []Fork{}, fmt.Errorf("unknown fork: %s", e)

@@ -29,11 +29,13 @@ const (
 var beaconForkToImageMap = map[ethereum.Fork]string{
 	ethereum.EthereumFork_Shanghai: "gcr.io/prysmaticlabs/prysm/beacon-chain:v4.1.1",
 	ethereum.EthereumFork_Deneb:    "gcr.io/prysmaticlabs/prysm/beacon-chain:v5.0.4",
+	ethereum.EthereumFork_Electra: "gcr.io/prysmaticlabs/prysm/beacon-chain:v6.0.4",
 }
 
 var validatorForkToImageMap = map[ethereum.Fork]string{
 	ethereum.EthereumFork_Shanghai: "gcr.io/prysmaticlabs/prysm/validator:v4.1.1",
 	ethereum.EthereumFork_Deneb:    "gcr.io/prysmaticlabs/prysm/validator:v5.0.4",
+	ethereum.EthereumFork_Electra: "gcr.io/prysmaticlabs/prysm/validator:v6.0.4",
 }
 
 type PrysmBeaconChain struct {
