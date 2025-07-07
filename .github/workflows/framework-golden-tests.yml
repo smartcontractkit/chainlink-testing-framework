@@ -71,6 +71,15 @@ jobs:
             config: local_s3.toml
             count: 1
             timeout: 10m
+          - name: TestFakes
+            config: fake.toml
+            count: 1
+            timeout: 10m
+            # TODO: sdlc auth
+#          - name: TestDockerFakes
+#            config: fake_docker.toml
+#            count: 1
+#            timeout: 10m
     name: ${{ matrix.test.name }}
     steps:
       - name: Checkout repo
