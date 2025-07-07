@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	_, err := fake.NewFakeDataProvider(nil)
+	_, err := fake.NewFakeDataProvider(&fake.Input{Port: 9111})
 	err = fake.JSON("GET", "/static-fake", map[string]any{
 		"response": "I'm a static fake, put JSON or anything inside me!",
 	}, 200)

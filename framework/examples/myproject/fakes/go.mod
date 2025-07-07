@@ -2,7 +2,7 @@ module github.com/smartcontractkit/chainlink-testing-framework/framework/example
 
 go 1.24.4
 
-replace github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake => ../../components/fake
+replace github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake => ../../../components/fake
 
 require (
 	github.com/gin-gonic/gin v1.10.1

@@ -26,5 +26,4 @@ RUN --mount=type=secret,id=ssh_key CGO_ENABLED=0 GOOS=linux go build -o /fake ma
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 COPY --from=builder /fake /fake
-EXPOSE 9111
 CMD ["/fake"]

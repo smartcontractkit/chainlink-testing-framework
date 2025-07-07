@@ -6,12 +6,45 @@ import (
 	"regexp"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
+
+const (
+	DefaultFakeServicePort = 9111
+)
+
+type Input struct {
+	Image string  `toml:"image"`
+	Port  int     `toml:"port" validate:"required"`
+	Out   *Output `toml:"out"`
+}
+
+type Output struct {
+	UseCache      bool   `toml:"use_cache"`
+	BaseURLHost   string `toml:"base_url_host"`
+	BaseURLDocker string `toml:"base_url_docker"`
+}
 
 var (
 	Service     *gin.Engine
 	validMethod = regexp.MustCompile("GET|POST|PATCH|PUT|DELETE")
 )
+
+// NewFakeDataProvider creates new fake data provider
+func NewFakeDataProvider(in *Input) (*Output, error) {
+	Service = gin.Default()
+	Service.Use(recordMiddleware())
+	go func() {
+		_ = Service.Run(fmt.Sprintf(":%d", in.Port))
+	}()
+	out := &Output{
+		BaseURLHost:   fmt.Sprintf("http://localhost:%d", in.Port),
+		BaseURLDocker: fmt.Sprintf("%s:%d", framework.HostDockerInternal(), in.Port),
+	}
+	in.Out = out
+	return out, nil
+}
 
 // validate validates method and path, does not allow to override mock
 func validate(method, path string) error {

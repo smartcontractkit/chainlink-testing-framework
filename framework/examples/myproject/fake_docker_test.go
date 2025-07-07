@@ -14,75 +14,32 @@ import (
 	components "github.com/smartcontractkit/chainlink-testing-framework/framework/examples/example_components"
 )
 
-type CfgFake struct {
+type CfgDockerFake struct {
 	BlockchainA *blockchain.Input `toml:"blockchain_a" validate:"required"`
 	Fake        *fake.Input       `toml:"fake" validate:"required"`
 	NodeSets    []*ns.Input       `toml:"nodesets" validate:"required"`
 }
 
-func TestFakes(t *testing.T) {
-	in, err := framework.Load[CfgFake](t)
+func TestDockerFakes(t *testing.T) {
+	in, err := framework.Load[CfgDockerFake](t)
 	require.NoError(t, err)
 
 	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
 	require.NoError(t, err)
-	fakeOut, err := fake.NewFakeDataProvider(in.Fake)
+	fakeOut, err := fake.NewDockerFakeDataProvider(in.Fake)
 	require.NoError(t, err)
 	_, err = ns.NewSharedDBNodeSet(in.NodeSets[0], bc)
 	require.NoError(t, err)
 
 	t.Run("test fake on host machine", func(t *testing.T) {
-		myFakeAPI := "/fake/api/one"
-		// use fake.Func if you need full control over response
-		err = fake.JSON(
-			"GET",
-			myFakeAPI,
-			map[string]any{
-				"data": "some_data",
-			}, 200,
-		)
-		require.NoError(t, err)
+		myFakeAPI := "/static-fake"
 		resp, err := resty.New().SetBaseURL(fakeOut.BaseURLHost).R().Get(myFakeAPI)
 		require.NoError(t, err)
 		require.Equal(t, 200, resp.StatusCode())
-
-		// you can also access all recorded requests and responses
-		data, err := fake.R.Get("GET", myFakeAPI)
-		for _, rec := range data {
-			fmt.Println(rec.Status)
-			fmt.Println(rec.Method)
-			fmt.Println(rec.Path)
-			fmt.Println(rec.Headers)
-			fmt.Println(rec.ReqBody)
-			fmt.Println(rec.ResBody)
-		}
-	})
-	t.Run("access fake from docker network", func(t *testing.T) {
-		myFakeAPI := "/fake/api/two"
-		err = fake.JSON(
-			"GET",
-			myFakeAPI,
-			map[string]any{
-				"data": "some_data",
-			}, 200,
-		)
-		require.NoError(t, err)
-
-		// use docker URL and path of your fake
-		_ = fmt.Sprintf("%s%s", fakeOut.BaseURLDocker, myFakeAPI)
 	})
 
 	t.Run("test fake inside Docker network", func(t *testing.T) {
-		myFakeAPI := "/fake/api/internal"
-		// use fake.Func if you need full control over response
-		err = fake.JSON(
-			"GET",
-			myFakeAPI,
-			map[string]any{
-				"data": "some_data",
-			}, 200,
-		)
-		require.NoError(t, err)
+		myFakeAPI := "/static-fake"
 		err := components.NewDockerFakeTester(fmt.Sprintf("%s%s", fakeOut.BaseURLDocker, myFakeAPI))
 		require.NoError(t, err)
 	})
