@@ -25,11 +25,13 @@ import (
 var generatorForkToImageMap = map[ethereum.Fork]string{
 	ethereum.EthereumFork_Shanghai: ethereum.GenesisGeneratorShanghaiImage,
 	ethereum.EthereumFork_Deneb:    ethereum.GenesisGeneratorDenebImage,
+	ethereum.EthereumFork_Electra:  ethereum.GenesisGeneratorElectraImage,
 }
 
 var generatorForkToDataDirMap = map[ethereum.Fork]string{
 	ethereum.EthereumFork_Shanghai: "/data/custom_config_data",
 	ethereum.EthereumFork_Deneb:    "/data/metadata",
+	ethereum.EthereumFork_Electra:  "/data/metadata",
 }
 
 type EthGenesisGenerator struct {
