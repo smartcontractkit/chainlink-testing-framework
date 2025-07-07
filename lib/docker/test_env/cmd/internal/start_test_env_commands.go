@@ -176,9 +176,9 @@ func startPrivateEthChainE(cmd *cobra.Command, args []string) error {
 			SlotsPerEpoch:  2,
 			SecondsPerSlot: 6,
 			ChainID:        chainId,
-			HardForkEpochs: map[string]int{"Deneb": 500},
+			HardForkEpochs: map[string]int{"Deneb": 200, "Electra": 1000,},
 		})
-
+			
 	if waitForFinalization {
 		builder = *builder.WithWaitingForFinalization()
 	}
