@@ -2,27 +2,16 @@ package fake
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 
 	"github.com/gin-gonic/gin"
-
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 var (
 	Service     *gin.Engine
 	validMethod = regexp.MustCompile("GET|POST|PATCH|PUT|DELETE")
 )
-
-type Input struct {
-	Port int     `toml:"port" validate:"required"`
-	Out  *Output `toml:"out"`
-}
-
-type Output struct {
-	BaseURLHost   string `toml:"base_url_host"`
-	BaseURLDocker string `toml:"base_url_docker"`
-}
 
 // validate validates method and path, does not allow to override mock
 func validate(method, path string) error {
@@ -40,7 +29,7 @@ func validate(method, path string) error {
 }
 
 // Func fakes method and path with a custom func
-func Func(method string, path string, f func(ctx *gin.Context)) error {
+func Func(method, path string, f func(ctx *gin.Context)) error {
 	if err := validate(method, path); err != nil {
 		return err
 	}
@@ -49,7 +38,7 @@ func Func(method string, path string, f func(ctx *gin.Context)) error {
 }
 
 // JSON fakes for method, path, response and status code
-func JSON(method string, path string, response map[string]any, statusCode int) error {
+func JSON(method, path string, response map[string]any, statusCode int) error {
 	if err := validate(method, path); err != nil {
 		return err
 	}
@@ -59,17 +48,10 @@ func JSON(method string, path string, response map[string]any, statusCode int) e
 	return nil
 }
 
-// NewFakeDataProvider creates new fake data provider
-func NewFakeDataProvider(in *Input) (*Output, error) {
-	Service = gin.Default()
-	Service.Use(recordMiddleware())
-	go func() {
-		_ = Service.Run(fmt.Sprintf(":%d", in.Port))
-	}()
-	out := &Output{
-		BaseURLHost:   fmt.Sprintf("http://localhost:%d", in.Port),
-		BaseURLDocker: fmt.Sprintf("%s:%d", framework.HostDockerInternal(), in.Port),
+// HostDockerInternal returns host.docker.internal that works both locally and in GHA
+func HostDockerInternal() string {
+	if os.Getenv("CI") == "true" {
+		return "http://172.17.0.1"
 	}
-	in.Out = out
-	return out, nil
+	return "http://host.docker.internal"
 }

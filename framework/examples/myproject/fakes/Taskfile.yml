@@ -1,0 +1,52 @@
+---
+version: '3'
+
+tasks:
+  default:
+    cmds:
+      - task --list-all
+    silent: true
+
+  build:
+    desc: Build the fake server
+    cmds:
+      - docker build --secret id=ssh_key,src=$HOME/.ssh/id-dctl --platform linux/amd64 -t test-fakes:{{.CLI_ARGS}} .
+      - docker tag test-fakes:{{.CLI_ARGS}} localhost:5000/test-fakes:{{.CLI_ARGS}}
+      - docker tag test-fakes:{{.CLI_ARGS}} 795953128386.dkr.ecr.us-west-2.amazonaws.com/test-fakes:{{.CLI_ARGS}}
+    silent: false
+
+  run:
+    desc: Run the fake server
+    cmds:
+      - docker run --rm -it -p 9111:9111 fake
+    silent: false
+  test:
+    desc: Execute test requests
+    cmds:
+      - curl "http://localhost:9111/static-fake"
+      - echo
+      - curl "http://localhost:9111/dynamic-fake"
+    silent: false
+
+  publish:
+    desc: Publish the updated image
+    cmds:
+      - aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin 795953128386.dkr.ecr.us-west-2.amazonaws.com
+      - docker tag test-fakes:{{.CLI_ARGS}} 795953128386.dkr.ecr.us-west-2.amazonaws.com/test-fakes:{{.CLI_ARGS}}
+      - docker push 795953128386.dkr.ecr.us-west-2.amazonaws.com/test-fakes:{{.CLI_ARGS}}
+    silent: false
+
+  aws-sdlc:
+    desc: Login to AWS and update K8s config
+    cmds:
+      - aws --profile=secure.ci sso login
+      - aws eks update-kubeconfig --name main-sdlc-cluster --profile secure.ci --alias secure.ci
+
+  new-ssh:
+    desc: Generate new SSH key to access private repositories from the inside of K8s
+    cmds:
+      - ssh-keygen -t ed25519 -f ~/.ssh/id-dctl -N "" -q
+      - echo "Go to GitHub profile, open Settings -> SSH and GPG keys, click 'New SSH Key'"
+      - echo "Select 'Authentication key' and paste your public key below:"
+      - cat ~/.ssh/id-dctl.pub
+    silent: true

@@ -17,7 +17,7 @@ import (
 type CfgFake struct {
 	BlockchainA *blockchain.Input `toml:"blockchain_a" validate:"required"`
 	Fake        *fake.Input       `toml:"fake" validate:"required"`
-	NodeSet     *ns.Input         `toml:"nodeset" validate:"required"`
+	NodeSets    []*ns.Input       `toml:"nodesets" validate:"required"`
 }
 
 func TestFakes(t *testing.T) {
@@ -28,7 +28,7 @@ func TestFakes(t *testing.T) {
 	require.NoError(t, err)
 	fakeOut, err := fake.NewFakeDataProvider(in.Fake)
 	require.NoError(t, err)
-	_, err = ns.NewSharedDBNodeSet(in.NodeSet, bc)
+	_, err = ns.NewSharedDBNodeSet(in.NodeSets[0], bc)
 	require.NoError(t, err)
 
 	t.Run("test fake on host machine", func(t *testing.T) {
