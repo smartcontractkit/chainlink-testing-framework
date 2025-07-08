@@ -224,6 +224,7 @@ func LoadCache[X any](t *testing.T) (*X, error) {
 	return Load[X](t)
 }
 
+// BaseConfigPath returns base config path, ex. env.toml,overrides.toml -> env.toml
 func BaseConfigPath() (string, error) {
 	configs := os.Getenv("CTF_CONFIGS")
 	if configs == "" {
@@ -233,6 +234,7 @@ func BaseConfigPath() (string, error) {
 	return strings.Split(configs, ",")[0], nil
 }
 
+// BaseConfigName returns base config name, ex. env.toml -> env
 func BaseConfigName() (string, error) {
 	cp, err := BaseConfigPath()
 	if err != nil {
@@ -241,6 +243,7 @@ func BaseConfigName() (string, error) {
 	return strings.Replace(cp, ".toml", "", -1), nil
 }
 
+// BaseCacheName returns base cache file name, ex.: env.toml -> env-cache.toml
 func BaseCacheName() (string, error) {
 	cp, err := BaseConfigPath()
 	if err != nil {
@@ -252,15 +255,17 @@ func BaseCacheName() (string, error) {
 
 func DefaultNetwork(once *sync.Once) error {
 	var net *testcontainers.DockerNetwork
-	var err error
+	var innerErr error
 	once.Do(func() {
-		net, err = network.New(
+		net, innerErr = network.New(
 			context.Background(),
 			network.WithLabels(map[string]string{"framework": "ctf"}),
 		)
-		DefaultNetworkName = net.Name
+		if innerErr == nil {
+			DefaultNetworkName = net.Name
+		}
 	})
-	return err
+	return innerErr
 }
 
 func RenderTemplate(tmpl string, data interface{}) (string, error) {

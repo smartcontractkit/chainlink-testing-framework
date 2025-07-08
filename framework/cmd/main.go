@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -115,7 +114,7 @@ func main() {
 						Aliases:     []string{"u"},
 						Description: "Spins up Blockscout stack",
 						Action: func(c *cli.Context) error {
-							return framework.BlockscoutUp(c.String("rpc"))
+							return framework.BlockScoutUp(c.String("rpc"))
 						},
 					},
 					{
@@ -124,7 +123,7 @@ func main() {
 						Aliases:     []string{"d"},
 						Description: "Removes Blockscout stack, wipes all Blockscout databases data",
 						Action: func(c *cli.Context) error {
-							return framework.BlockscoutDown(c.String("rpc"))
+							return framework.BlockScoutDown(c.String("rpc"))
 						},
 					},
 					{
@@ -134,10 +133,10 @@ func main() {
 						Description: "Reboots Blockscout stack",
 						Action: func(c *cli.Context) error {
 							rpc := c.String("rpc")
-							if err := framework.BlockscoutDown(rpc); err != nil {
+							if err := framework.BlockScoutDown(rpc); err != nil {
 								return err
 							}
-							return framework.BlockscoutUp(rpc)
+							return framework.BlockScoutUp(rpc)
 						},
 					},
 				},
@@ -149,60 +148,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-// extractAllFiles goes through the embedded directory and extracts all files to the current directory
-func extractAllFiles(embeddedDir string) error {
-	// Get current working directory where CLI is running
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
-	}
-
-	// Walk through the embedded files
-	err = fs.WalkDir(framework.EmbeddedObservabilityFiles, embeddedDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return fmt.Errorf("error walking the directory: %w", err)
-		}
-		if strings.Contains(path, "README.md") {
-			return nil
-		}
-
-		// Skip directories
-		if d.IsDir() {
-			return nil
-		}
-
-		// Read file content from embedded file system
-		content, err := framework.EmbeddedObservabilityFiles.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("failed to read file %s: %w", path, err)
-		}
-
-		// Determine the target path (strip out the `embeddedDir` part)
-		relativePath, err := filepath.Rel(embeddedDir, path)
-		if err != nil {
-			return fmt.Errorf("failed to determine relative path for %s: %w", path, err)
-		}
-		targetPath := filepath.Join(currentDir, relativePath)
-
-		// Create target directories if necessary
-		targetDir := filepath.Dir(targetPath)
-		err = os.MkdirAll(targetDir, os.ModePerm)
-		if err != nil {
-			return fmt.Errorf("failed to create directory %s: %w", targetDir, err)
-		}
-
-		// Write the file content to the target path
-		//nolint
-		err = os.WriteFile(targetPath, content, 0777)
-		if err != nil {
-			return fmt.Errorf("failed to write file %s: %w", targetPath, err)
-		}
-		return nil
-	})
-
-	return err
 }
 
 // PrettyPrintTOML pretty prints TOML
