@@ -19,8 +19,6 @@
   - [Test Configuration](./framework/test_configuration_overrides.md)
   - [Exposing Components](framework/components/state.md)
   - [Debugging Tests](framework/components/debug.md)
-  - [Debugging CI Runs](framework/components/debug_ci.md)
-  - [Analyzing CI Runs](framework/components/analyze_ci.md)
   - [Debugging K8s Chaos Tests](framework/chaos/debug-k8s.md)
   - [Components Cleanup](framework/components/cleanup.md)
   - [Components Caching](framework/components/caching.md)
