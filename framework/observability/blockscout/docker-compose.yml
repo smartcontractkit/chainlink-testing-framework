@@ -1,12 +1,12 @@
 services:
   redis-db:
     extends:
-      file: ./services/redis.yml
+      file: services/redis.yml
       service: redis-db
 
   db-init:
     extends:
-      file: ./services/db.yml
+      file: services/db.yml
       service: db-init
 
   db:
@@ -14,7 +14,7 @@ services:
       db-init:
         condition: service_completed_successfully
     extends:
-      file: ./services/db.yml
+      file: services/db.yml
       service: db
 
   backend:
@@ -22,7 +22,7 @@ services:
       - db
       - redis-db
     extends:
-      file: ./services/backend.yml
+      file: services/backend.yml
       service: backend
     links:
       - db:database
@@ -34,24 +34,24 @@ services:
 
   visualizer:
     extends:
-      file: ./services/visualizer.yml
+      file: services/visualizer.yml
       service: visualizer
 
   sig-provider:
     extends:
-      file: ./services/sig-provider.yml
+      file: services/sig-provider.yml
       service: sig-provider
 
   frontend:
     depends_on:
       - backend
     extends:
-      file: ./services/frontend.yml
+      file: services/frontend.yml
       service: frontend
 
   stats-db-init:
     extends:
-      file: ./services/stats.yml
+      file: services/stats.yml
       service: stats-db-init
 
   stats-db:
@@ -59,7 +59,7 @@ services:
       stats-db-init:
         condition: service_completed_successfully
     extends:
-      file: ./services/stats.yml
+      file: services/stats.yml
       service: stats-db
 
   stats:
@@ -67,7 +67,7 @@ services:
       - stats-db
       - backend
     extends:
-      file: ./services/stats.yml
+      file: services/stats.yml
       service: stats
 
   user-ops-indexer:
@@ -75,7 +75,7 @@ services:
       - db
       - backend
     extends:
-      file: ./services/user-ops-indexer.yml
+      file: services/user-ops-indexer.yml
       service: user-ops-indexer
 
   proxy:
@@ -84,5 +84,5 @@ services:
       - frontend
       - stats
     extends:
-      file: ./services/nginx.yml
+      file: services/nginx.yml
       service: proxy

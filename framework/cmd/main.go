@@ -1,9 +1,7 @@
 package main
 
 import (
-	"embed"
 	"fmt"
-	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -13,18 +11,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-)
-
-//go:embed observability/*
-var embeddedObservabilityFiles embed.FS
-
-const (
-	LocalCLNodeErrorsURL   = "http://localhost:3000/d/a7de535b-3e0f-4066-bed7-d505b6ec9ef1/cl-node-errors?orgId=1"
-	LocalWorkflowEngineURL = "http://localhost:3000/d/ce589a98-b4be-4f80-bed1-bc62f3e4414a/workflow-engine?orgId=1&refresh=30s"
-	LocalLogsURL           = "http://localhost:3000/explore?panes=%7B%22qZw%22:%7B%22datasource%22:%22P8E80F9AEF21F6940%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%22,%22queryType%22:%22range%22,%22datasource%22:%7B%22type%22:%22loki%22,%22uid%22:%22P8E80F9AEF21F6940%22%7D%7D%5D,%22range%22:%7B%22from%22:%22now-6h%22,%22to%22:%22now%22%7D%7D%7D&schemaVersion=1&orgId=1"
-	LocalPrometheusURL     = "http://localhost:3000/explore?panes=%7B%22qZw%22:%7B%22datasource%22:%22PBFA97CFB590B2093%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%22,%22range%22:true,%22datasource%22:%7B%22type%22:%22prometheus%22,%22uid%22:%22PBFA97CFB590B2093%22%7D%7D%5D,%22range%22:%7B%22from%22:%22now-6h%22,%22to%22:%22now%22%7D%7D%7D&schemaVersion=1&orgId=1"
-	LocalPostgresDebugURL  = "http://localhost:3000/d/000000039/postgresql-database?orgId=1&refresh=10s&var-DS_PROMETHEUS=PBFA97CFB590B2093&var-interval=$__auto_interval_interval&var-namespace=&var-release=&var-instance=postgres_exporter_0:9187&var-datname=All&var-mode=All&from=now-5m&to=now"
-	LocalPyroScopeURL      = "http://localhost:4040"
 )
 
 func main() {
@@ -86,14 +72,14 @@ func main() {
 						Usage:       "ctf obs up",
 						Aliases:     []string{"u"},
 						Description: "Spins up a local observability stack: Grafana, Loki, Pyroscope",
-						Action:      func(c *cli.Context) error { return observabilityUp() },
+						Action:      func(c *cli.Context) error { return framework.ObservabilityUp() },
 					},
 					{
 						Name:        "down",
 						Usage:       "ctf obs down",
 						Aliases:     []string{"d"},
 						Description: "Removes local observability stack",
-						Action:      func(c *cli.Context) error { return observabilityDown() },
+						Action:      func(c *cli.Context) error { return framework.ObservabilityDown() },
 					},
 					{
 						Name:        "restart",
@@ -101,48 +87,10 @@ func main() {
 						Aliases:     []string{"r"},
 						Description: "Restart a local observability stack",
 						Action: func(c *cli.Context) error {
-							if err := observabilityDown(); err != nil {
+							if err := framework.ObservabilityDown(); err != nil {
 								return err
 							}
-							return observabilityUp()
-						},
-					},
-					{
-						Name:        "load",
-						Usage:       "ctf obs l",
-						Aliases:     []string{"l"},
-						Description: "Loads logs to Loki",
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:    "raw-url",
-								Aliases: []string{"u"},
-								Usage:   "URL to GitHub raw log data",
-							},
-							&cli.StringFlag{
-								Name:    "dir",
-								Aliases: []string{"d"},
-								Usage:   "Directory to logs, output of 'gh run download $run_id'",
-							},
-							&cli.IntFlag{
-								Name:    "rps",
-								Aliases: []string{"r"},
-								Usage:   "RPS for uploading log chunks",
-								Value:   30,
-							},
-							&cli.IntFlag{
-								Name:    "chunk",
-								Aliases: []string{"c"},
-								Usage:   "Amount of chunks the files will be split in",
-								Value:   100,
-							},
-						},
-						Action: func(c *cli.Context) error {
-							return loadLogs(
-								c.String("raw-url"),
-								c.String("dir"),
-								c.Int("rps"),
-								c.Int("chunk"),
-							)
+							return framework.ObservabilityUp()
 						},
 					},
 				},
@@ -166,7 +114,7 @@ func main() {
 						Aliases:     []string{"u"},
 						Description: "Spins up Blockscout stack",
 						Action: func(c *cli.Context) error {
-							return blockscoutUp(c.String("rpc"))
+							return framework.BlockScoutUp(c.String("rpc"))
 						},
 					},
 					{
@@ -175,7 +123,7 @@ func main() {
 						Aliases:     []string{"d"},
 						Description: "Removes Blockscout stack, wipes all Blockscout databases data",
 						Action: func(c *cli.Context) error {
-							return blockscoutDown(c.String("rpc"))
+							return framework.BlockScoutDown(c.String("rpc"))
 						},
 					},
 					{
@@ -185,74 +133,12 @@ func main() {
 						Description: "Reboots Blockscout stack",
 						Action: func(c *cli.Context) error {
 							rpc := c.String("rpc")
-							if err := blockscoutDown(rpc); err != nil {
+							if err := framework.BlockScoutDown(rpc); err != nil {
 								return err
 							}
-							return blockscoutUp(rpc)
+							return framework.BlockScoutUp(rpc)
 						},
 					},
-				},
-			},
-
-			{
-				Name:  "ci",
-				Usage: "Analyze CI job durations and statistics",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "repository",
-						Aliases:  []string{"r"},
-						Usage:    "GitHub repository in format owner/repo",
-						Required: true,
-					},
-					&cli.StringFlag{
-						Name:     "workflow",
-						Aliases:  []string{"w"},
-						Usage:    "Name of GitHub workflow to analyze",
-						Required: true,
-					},
-					&cli.StringFlag{
-						Name:    "start",
-						Aliases: []string{"s"},
-						Value:   "1",
-						Usage:   "How many days to analyze",
-					},
-					&cli.StringFlag{
-						Name:    "end",
-						Aliases: []string{"e"},
-						Value:   "0",
-						Usage:   "How many days to analyze",
-					},
-					&cli.StringFlag{
-						Name:    "type",
-						Aliases: []string{"t"},
-						Usage:   "Analytics type: jobs or steps",
-					},
-					&cli.BoolFlag{
-						Name:  "debug",
-						Usage: "Dumps all the workflow/jobs files for debugging purposes",
-					},
-				},
-				Action: func(c *cli.Context) error {
-					repo := c.String("repository")
-					parts := strings.Split(repo, "/")
-					if len(parts) != 2 {
-						return fmt.Errorf("repository must be in format owner/repo, got: %s", repo)
-					}
-					typ := c.String("type")
-					if typ != "jobs" && typ != "steps" {
-						return fmt.Errorf("type must be 'jobs' or 'steps'")
-					}
-					_, err := AnalyzeCIRuns(&AnalysisConfig{
-						Debug:               c.Bool("debug"),
-						Owner:               parts[0],
-						Repo:                parts[1],
-						WorkflowName:        c.String("workflow"),
-						TimeDaysBeforeStart: c.Int("start"),
-						TimeDaysBeforeEnd:   c.Int("end"),
-						Typ:                 typ,
-						ResultsFile:         "ctf-ci.json",
-					})
-					return err
 				},
 			},
 		},
@@ -262,60 +148,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-// extractAllFiles goes through the embedded directory and extracts all files to the current directory
-func extractAllFiles(embeddedDir string) error {
-	// Get current working directory where CLI is running
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
-	}
-
-	// Walk through the embedded files
-	err = fs.WalkDir(embeddedObservabilityFiles, embeddedDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return fmt.Errorf("error walking the directory: %w", err)
-		}
-		if strings.Contains(path, "README.md") {
-			return nil
-		}
-
-		// Skip directories
-		if d.IsDir() {
-			return nil
-		}
-
-		// Read file content from embedded file system
-		content, err := embeddedObservabilityFiles.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("failed to read file %s: %w", path, err)
-		}
-
-		// Determine the target path (strip out the `embeddedDir` part)
-		relativePath, err := filepath.Rel(embeddedDir, path)
-		if err != nil {
-			return fmt.Errorf("failed to determine relative path for %s: %w", path, err)
-		}
-		targetPath := filepath.Join(currentDir, relativePath)
-
-		// Create target directories if necessary
-		targetDir := filepath.Dir(targetPath)
-		err = os.MkdirAll(targetDir, os.ModePerm)
-		if err != nil {
-			return fmt.Errorf("failed to create directory %s: %w", targetDir, err)
-		}
-
-		// Write the file content to the target path
-		//nolint
-		err = os.WriteFile(targetPath, content, 0777)
-		if err != nil {
-			return fmt.Errorf("failed to write file %s: %w", targetPath, err)
-		}
-		return nil
-	})
-
-	return err
 }
 
 // PrettyPrintTOML pretty prints TOML
