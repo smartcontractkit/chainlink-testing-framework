@@ -8,4 +8,4 @@ services:
     restart: always
     container_name: 'visualizer'
     env_file:
-      -  ../envs/common-visualizer.env
+      - ../envs/common-visualizer.env

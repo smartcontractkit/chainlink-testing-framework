@@ -8,4 +8,4 @@ services:
     restart: always
     container_name: 'smart-contract-verifier'
     env_file:
-      -  ../envs/common-smart-contract-verifier.env
+      - ../envs/common-smart-contract-verifier.env

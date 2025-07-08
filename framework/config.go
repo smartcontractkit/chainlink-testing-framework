@@ -38,20 +38,17 @@ const (
 )
 
 const (
-	OutputFieldNameTOML = "out"
-	OutputFieldName     = "Out"
-	OverridesFieldName  = "Overrides"
+	DefaultConfigFilePath    = "env.toml"
+	DefaultOverridesFilePath = "overrides.toml"
 )
 
 var (
-	once = &sync.Once{}
+	Once = &sync.Once{}
 	// Secrets is a singleton AWS Secrets Manager
 	// Loaded once on start inside Load and is safe to call concurrently
 	Secrets *AWSSecretsManager
 
 	DefaultNetworkName string
-
-	AllowedEmptyConfigurationFields = []string{OutputFieldName, OverridesFieldName}
 
 	Validator *validator.Validate = validator.New(validator.WithRequiredStructEnabled())
 
@@ -74,7 +71,7 @@ type ValidationError struct {
 func mergeInputs[T any]() (*T, error) {
 	var config T
 	paths := strings.Split(os.Getenv(EnvVarTestConfigs), ",")
-	_, err := getBaseConfigPath()
+	_, err := BaseConfigPath()
 	if err != nil {
 		return nil, err
 	}
@@ -82,9 +79,13 @@ func mergeInputs[T any]() (*T, error) {
 		L.Info().Str("Path", path).Msg("Loading configuration input")
 		data, err := os.ReadFile(filepath.Join(DefaultConfigDir, path))
 		if err != nil {
+			if path == DefaultOverridesFilePath {
+				L.Info().Str("Path", path).Msg("Overrides file not found or empty")
+				continue
+			}
 			return nil, fmt.Errorf("error reading config file %s: %w", path, err)
 		}
-		if L.GetLevel() == zerolog.DebugLevel {
+		if L.GetLevel() == zerolog.TraceLevel {
 			fmt.Println(string(data))
 		}
 
@@ -104,8 +105,8 @@ func mergeInputs[T any]() (*T, error) {
 			return nil, fmt.Errorf("failed to decode TOML config, strict mode: %s", err)
 		}
 	}
-	if L.GetLevel() == zerolog.DebugLevel {
-		L.Debug().Msg("Merged inputs")
+	if L.GetLevel() == zerolog.TraceLevel {
+		L.Trace().Msg("Merged inputs")
 		spew.Dump(config)
 	}
 	return &config, nil
@@ -201,10 +202,52 @@ func Load[X any](t *testing.T) (*X, error) {
 			require.NoError(t, err)
 		})
 	}
-	if err = DefaultNetwork(once); err != nil {
+	if err = DefaultNetwork(Once); err != nil {
 		L.Info().Err(err).Msg("docker network creation failed, either docker is not running or you are running in CRIB mode")
 	}
 	return input, nil
+}
+
+// LoadCache loads cached config with environment values
+func LoadCache[X any](t *testing.T) (*X, error) {
+	cfgPath := os.Getenv("CTF_CONFIGS")
+	L.Debug().Str("CTFConfigs", cfgPath).Msg("Loading configuration from cache")
+	if cfgPath == "" {
+		return nil, fmt.Errorf("CTF_CONFIGS environment variable not set when loading from cache")
+	}
+	firstConfig := strings.Split(cfgPath, ",")
+	cfgParts := strings.Split(firstConfig[0], ".")
+	if len(cfgParts) != 2 {
+		return nil, fmt.Errorf("invalid config path when loading from cache: %s", cfgPath)
+	}
+	_ = os.Setenv("CTF_CONFIGS", fmt.Sprintf("%s-cache.%s", cfgParts[0], cfgParts[1]))
+	return Load[X](t)
+}
+
+func BaseConfigPath() (string, error) {
+	configs := os.Getenv("CTF_CONFIGS")
+	if configs == "" {
+		return "", fmt.Errorf("no %s env var is provided, you should provide at least one test config in TOML", EnvVarTestConfigs)
+	}
+	L.Debug().Str("DevEnvConfigs", configs).Msg("Getting base config path")
+	return strings.Split(configs, ",")[0], nil
+}
+
+func BaseConfigName() (string, error) {
+	cp, err := BaseConfigPath()
+	if err != nil {
+		return "", err
+	}
+	return strings.Replace(cp, ".toml", "", -1), nil
+}
+
+func BaseCacheName() (string, error) {
+	cp, err := BaseConfigPath()
+	if err != nil {
+		return "", err
+	}
+	name := strings.Replace(cp, ".toml", "", -1)
+	return fmt.Sprintf("%s-cache.toml", name), nil
 }
 
 func DefaultNetwork(once *sync.Once) error {

@@ -11,6 +11,6 @@ services:
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     env_file:
-      -  ../envs/common-blockscout.env
+      - ../envs/common-blockscout.env
     volumes:
       - ./logs/:/app/logs/
