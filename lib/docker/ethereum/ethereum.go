@@ -23,7 +23,7 @@ const (
 func (e Fork) ValidFutureForks() ([]Fork, error) {
 	switch e {
 	case EthereumFork_Shanghai:
-		return []Fork{EthereumFork_Deneb}, nil
+		return []Fork{EthereumFork_Deneb, EthereumFork_Electra}, nil
 	case EthereumFork_Deneb:
 		return []Fork{EthereumFork_Electra}, nil
 	case EthereumFork_Electra:
