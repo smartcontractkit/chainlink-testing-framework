@@ -123,6 +123,7 @@ func newTon(in *Input) (*Output, error) {
 		Type:          in.Type,
 		Family:        FamilyTon,
 		ContainerName: name,
+		Container:     c,
 		Nodes: []*Node{{
 			// Note: define if we need more access other than the global config(tonutils-go only uses liteclients defined in the config)
 			ExternalHTTPUrl: fmt.Sprintf("%s:%s", "localhost", ports.SimpleServer),

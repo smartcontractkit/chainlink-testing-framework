@@ -24,6 +24,8 @@ func TestTonSmoke(t *testing.T) {
 
 	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
 	require.NoError(t, err)
+	// we can also explicitly terminate the container after the test
+	defer bc.Container.Terminate(t.Context())
 
 	var client ton.APIClientWrapped
 	t.Run("setup:connect", func(t *testing.T) {
