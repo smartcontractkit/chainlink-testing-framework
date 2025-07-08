@@ -182,7 +182,7 @@ func (g *Nethermind) WaitUntilChainIsReady(ctx context.Context, waitTime time.Du
 	if g.GetEthereumVersion() == config_types.EthereumVersion_Eth1 {
 		return nil
 	}
-	waitForFirstBlock := tcwait.NewLogStrategy("Improved post-merge block").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
+	waitForFirstBlock := tcwait.NewLogStrategy("Received New Block").WithPollInterval(1 * time.Second).WithStartupTimeout(waitTime)
 	return waitForFirstBlock.WaitUntilReady(ctx, *g.GetContainer())
 }
 
