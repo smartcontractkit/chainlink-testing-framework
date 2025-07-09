@@ -17,28 +17,26 @@ import (
 )
 
 type protoFile struct {
-	Name    string
-	Path    string
-	Content string
+	Name          string
+	Path          string
+	Content       string
+	IsImportOnly  bool   // true if this is an import-only schema
+	TargetMessage string // for import-only schemas, the message name this schema is for
 }
 
 type ProtoSchemaSet struct {
-	Owner      string   `toml:"owner"`
-	Repository string   `toml:"repository"`
-	Ref        string   `toml:"ref"`     // ref or tag or commit SHA
-	Folders    []string `toml:"folders"` // if not provided, all protos will be fetched, otherwise only protos in these folders will be fetched
+	Owner         string   `toml:"owner"`
+	Repository    string   `toml:"repository"`
+	Ref           string   `toml:"ref"`            // ref or tag or commit SHA
+	Folders       []string `toml:"folders"`        // if not provided, all protos will be fetched, otherwise only protos in these folders will be fetched
+	SubjectPrefix string   `toml:"subject_prefix"` // optional prefix for subjects
 }
 
 // SubjectNamingStrategyFn is a function that is used to determine the subject name for a given proto file in a given repo
-type SubjectNamingStrategyFn func(path, source string, repoConfig ProtoSchemaSet) (string, error)
+type SubjectNamingStrategyFn func(subjectPrefix string, protoFile protoFile, repoConfig ProtoSchemaSet) (string, error)
 
 // RepositoryToSubjectNamingStrategyFn is a map of repository names to SubjectNamingStrategyFn functions
 type RepositoryToSubjectNamingStrategyFn map[string]SubjectNamingStrategyFn
-
-// DefaultRepositoryToSubjectNamingStrategy is a map of repository names to SubjectNamingStrategyFn functions
-var DefaultRepositoryToSubjectNamingStrategy = RepositoryToSubjectNamingStrategyFn{
-	"smartcontractkit/chainlink-protos": ChainlinkProtosSubjectNamingStrategy,
-}
 
 func ValidateRepoConfiguration(repoConfig ProtoSchemaSet) error {
 	if repoConfig.Owner == "" {
@@ -56,7 +54,7 @@ func ValidateRepoConfiguration(repoConfig ProtoSchemaSet) error {
 }
 
 func DefaultRegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSchemaSets []ProtoSchemaSet, schemaRegistryURL string) error {
-	return RegisterAndFetchProtos(ctx, client, protoSchemaSets, schemaRegistryURL, DefaultRepositoryToSubjectNamingStrategy)
+	return RegisterAndFetchProtos(ctx, client, protoSchemaSets, schemaRegistryURL, map[string]SubjectNamingStrategyFn{})
 }
 
 func RegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSchemaSets []ProtoSchemaSet, schemaRegistryURL string, repoToSubjectNamingStrategy RepositoryToSubjectNamingStrategyFn) error {
@@ -69,10 +67,10 @@ func RegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSch
 		}
 
 		protoMap := make(map[string]string)
-		subjectMap := make(map[string]string)
+		subjects := make(map[string]string)
 
-		for _, pf := range protos {
-			protoMap[pf.Path] = pf.Content
+		for _, proto := range protos {
+			protoMap[proto.Path] = proto.Content
 
 			var subjectStrategy SubjectNamingStrategyFn
 			if strategy, ok := repoToSubjectNamingStrategy[protoSchemaSet.Owner+"/"+protoSchemaSet.Repository]; ok {
@@ -81,14 +79,14 @@ func RegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSch
 				subjectStrategy = DefaultSubjectNamingStrategy
 			}
 
-			subject, nameErr := subjectStrategy(pf.Path, pf.Content, protoSchemaSet)
+			subjectMessage, nameErr := subjectStrategy(protoSchemaSet.SubjectPrefix, proto, protoSchemaSet)
 			if nameErr != nil {
-				return errors.Wrapf(nameErr, "failed to extract message name from %s", pf.Path)
+				return errors.Wrapf(nameErr, "failed to extract message name from %s", proto.Path)
 			}
-			subjectMap[pf.Path] = subject
+			subjects[proto.Path] = subjectMessage
 		}
 
-		registerErr := registerAllWithTopologicalSortingByTrial(schemaRegistryURL, protoMap, subjectMap)
+		registerErr := registerAllWithTopologicalSortingByTrial(schemaRegistryURL, protoMap, subjects)
 		if registerErr != nil {
 			return errors.Wrapf(registerErr, "failed to register protos from %s/%s", protoSchemaSet.Owner, protoSchemaSet.Repository)
 		}
@@ -97,46 +95,39 @@ func RegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSch
 	return nil
 }
 
-func DefaultSubjectNamingStrategy(path, source string, protoSchemaSet ProtoSchemaSet) (string, error) {
-	messageName, nameErr := extractTopLevelMessageNamesWithRegex(source)
-	if nameErr != nil {
-		return "", errors.Wrapf(nameErr, "failed to extract message name from %s", path)
+func DefaultSubjectNamingStrategy(subjectPrefix string, proto protoFile, protoSchemaSet ProtoSchemaSet) (string, error) {
+	packageName, packageErr := extractPackageNameWithRegex(proto.Content)
+	if packageErr != nil {
+		return "", errors.Wrapf(packageErr, "failed to extract package name from %s", proto.Path)
 	}
-	return protoSchemaSet.Repository + "." + messageName, nil
+
+	messageNames, nameErr := extractTopLevelMessageNamesWithRegex(proto.Content)
+	if nameErr != nil {
+		return "", errors.Wrapf(nameErr, "failed to extract message name from %s", proto.Path)
+	}
+	messageName := messageNames[0]
+
+	return subjectPrefix + packageName + "." + messageName, nil
 }
 
-// TODO once we have single source of truth for the relationship between protos and subjects, we need to modify this function
-func ChainlinkProtosSubjectNamingStrategy(path, source string, protoSchemaSet ProtoSchemaSet) (string, error) {
-	messageName, nameErr := extractTopLevelMessageNamesWithRegex(source)
-	if nameErr != nil {
-		return "", errors.Wrapf(nameErr, "failed to extract message name from %s", path)
+// extractPackageNameWithRegex extracts the package name from a proto source file using regex.
+// It returns an error if no package name is found.
+func extractPackageNameWithRegex(protoSrc string) (string, error) {
+	matches := regexp.MustCompile(`(?m)^\s*package\s+([a-zA-Z0-9.]+)\s*;`).FindStringSubmatch(protoSrc)
+	if len(matches) < 2 {
+		return "", fmt.Errorf("no package name found in proto source")
 	}
 
-	// this only covers BaseMessage
-	if strings.HasPrefix(path, "common") {
-		return "cre-pb." + messageName, nil
+	if matches[1] == "" {
+		return "", fmt.Errorf("empty package name found in proto source")
 	}
 
-	// this covers all other protos we currently have in the chainlink-protos repo
-	subject := "cre-workflows."
-	pathSplit := strings.Split(path, "/")
-	if len(pathSplit) > 1 {
-		for _, part := range pathSplit {
-			matches := regexp.MustCompile(`v[0-9]+`).FindAllStringSubmatch(part, -1)
-			if len(matches) > 0 {
-				subject += matches[0][0]
-			}
-		}
-	} else {
-		return "", fmt.Errorf("no subject found for %s", path)
-	}
-
-	return subject + "." + messageName, nil
+	return matches[1], nil
 }
 
 // we use simple regex to extract top-level message names from a proto file
 // so that we don't need to parse the proto file with a parser (which would require a lot of dependencies)
-func extractTopLevelMessageNamesWithRegex(protoSrc string) (string, error) {
+func extractTopLevelMessageNamesWithRegex(protoSrc string) ([]string, error) {
 	matches := regexp.MustCompile(`(?m)^\s*message\s+(\w+)\s*{`).FindAllStringSubmatch(protoSrc, -1)
 	var names []string
 	for _, match := range matches {
@@ -146,11 +137,85 @@ func extractTopLevelMessageNamesWithRegex(protoSrc string) (string, error) {
 	}
 
 	if len(names) == 0 {
-		return "", fmt.Errorf("no message names found in %s", protoSrc)
+		return nil, fmt.Errorf("no message names found in %s", protoSrc)
 	}
 
-	// even though there could be more than 1 message in a single proto, we still need to register all of them under one subject
-	return names[0], nil
+	return names, nil
+}
+
+// createSchemasForProto creates schemas for a proto file:
+// 1. The original proto file (registered first, Red Panda uses first message by default)
+// 2. Import-only schemas for each additional message (2nd, 3rd, etc., skipping the first)
+func createSchemasForProto(proto protoFile) ([]protoFile, error) {
+	messageNames, err := extractTopLevelMessageNamesWithRegex(proto.Content)
+	if err != nil {
+		return nil, err
+	}
+
+	var schemas []protoFile
+
+	// First, add the original proto file
+	schemas = append(schemas, proto)
+
+	// If there are multiple messages, create import-only schemas for messages after the first
+	if len(messageNames) > 1 {
+		framework.L.Debug().Msgf("Creating import-only schemas for %d additional messages in %s: %v", len(messageNames)-1, proto.Path, messageNames[1:])
+
+		// Skip the first message (index 0) since it's covered by the original proto
+		for _, messageName := range messageNames[1:] {
+			importSchema, err := createImportOnlySchema(proto, messageName)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to create import-only schema for message %s", messageName)
+			}
+			schemas = append(schemas, importSchema)
+		}
+	}
+
+	return schemas, nil
+}
+
+// createImportOnlySchema creates an import-only schema for a specific message
+func createImportOnlySchema(originalProto protoFile, messageName string) (protoFile, error) {
+	// Extract syntax and package from original proto
+	syntax, err := extractSyntaxDeclaration(originalProto.Content)
+	if err != nil {
+		return protoFile{}, err
+	}
+
+	packageName, err := extractPackageNameWithRegex(originalProto.Content)
+	if err != nil {
+		return protoFile{}, err
+	}
+
+	// Create import-only schema content
+	var content strings.Builder
+	content.WriteString(syntax)
+	content.WriteString("\n\n")
+	content.WriteString(fmt.Sprintf("package %s;\n\n", packageName))
+	content.WriteString(fmt.Sprintf("import \"%s\";\n", originalProto.Path))
+
+	// Create new schema with clear prefix: import_MessageName_originalname.proto
+	baseNameWithoutExt := strings.TrimSuffix(originalProto.Name, ".proto")
+	newPath := fmt.Sprintf("import_only_%s_%s.proto", messageName, baseNameWithoutExt)
+	newName := fmt.Sprintf("import_only_%s_%s.proto", messageName, baseNameWithoutExt)
+
+	return protoFile{
+		Name:          newName,
+		Path:          newPath,
+		Content:       content.String(),
+		IsImportOnly:  true,
+		TargetMessage: messageName,
+	}, nil
+}
+
+// extractSyntaxDeclaration extracts the syntax declaration from a proto file
+func extractSyntaxDeclaration(protoContent string) (string, error) {
+	syntaxMatch := regexp.MustCompile(`(?m)^syntax\s*=\s*"[^"]+"\s*;`).FindString(protoContent)
+	if syntaxMatch == "" {
+		// Default to proto3 if no syntax specified
+		return `syntax = "proto3";`, nil
+	}
+	return syntaxMatch, nil
 }
 
 // Fetches .proto files from a GitHub repo optionally scoped to specific folders. It is recommended to use `*github.Client` with auth token to avoid rate limiting.
@@ -280,10 +345,12 @@ func registerAllWithTopologicalSortingByTrial(
 				continue
 			}
 
+			singleProtoFailures := []error{}
 			framework.L.Debug().Msgf("🔄 registering %s as %s", path, subject)
 			_, registerErr := registerSingleProto(schemaRegistryURL, subject, schema.Source, refs)
 			if registerErr != nil {
 				failures = append(failures, fmt.Sprintf("%s: %v", path, registerErr))
+				singleProtoFailures = append(singleProtoFailures, registerErr)
 				continue
 			}
 
@@ -296,6 +363,7 @@ func registerAllWithTopologicalSortingByTrial(
 			})
 
 			framework.L.Info().Msgf("✔ registered: %s as %s", path, subject)
+
 			progress = true
 		}
 
