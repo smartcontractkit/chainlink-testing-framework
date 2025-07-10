@@ -130,7 +130,6 @@
         - [K8s Remote Run](lib/k8s/REMOTE_RUN.md)
         - [K8s Tutorial](lib/k8s/TUTORIAL.md)
       - [Config](lib/config/config.md)
-      - [CRIB Connector](lib/crib.md)
       - [Docker](lib/docker/overview.md)
         - [Blockchain nodes](lib/docker/blockchain_nodes.md)
         - [Chainlink ecosystem](lib/docker/chainlink_ecosystem.md)
