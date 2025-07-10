@@ -17,6 +17,3 @@ It enables tests to run in any environment and serves as a single source of trut
 - **Caching**: Any component can use cached configs to skip setup for even faster test development.
 
 - **Integrated observability stack**: get all the info you need to develop end-to-end tests: metrics, logs, traces, profiles.
-
-###### * If all the images are cached, you are using [OrbStack](https://orbstack.dev/) with M1/M2/M3 chips and have at least 8CPU dedicated to Docker
-

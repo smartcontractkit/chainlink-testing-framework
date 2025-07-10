@@ -1,4 +1,4 @@
-# Faking Services
+# Fake Services
 
 The framework aims to equip you with all the necessary tools to write end-to-end system-level tests, while still allowing the flexibility to fake third-party services that are not critical to your testing scope.
 
