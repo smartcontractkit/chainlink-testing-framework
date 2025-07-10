@@ -1,13 +1,13 @@
 # 🚀 Getting started
 
 ## Prerequisites
-- `Docker` [OrbStack](https://orbstack.dev/) or [Docker Desktop](https://www.docker.com/products/docker-desktop/), we recommend OrbStack (faster, smaller memory footprint)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 - [Golang](https://go.dev/doc/install)
 
 Tested with
 ```
+Docker Desktop version 4.36.0
 Docker version 27.3.1
-OrbStack Version: 1.8.2 (1080200)
 ```
 
 ## Test setup
