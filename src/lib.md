@@ -11,7 +11,12 @@
 
 </div>
 
+<div class="warning">
+
 **DEPRECATED: This is v1 version and it is not actively maintained**
+
+</div>
+
 
 The purpose of this framework is to:
 - Interact with different blockchains
