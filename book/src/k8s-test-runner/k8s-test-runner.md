@@ -1,5 +1,9 @@
 ## Preparing to Run Tests on Staging
 
+<div class="warning">
+This is legacy documentation and code, it'd be sunset on next release
+</div>
+
 Ensure you complete the following steps before executing tests on the staging environment:
 
 1. **Connect to the VPN**

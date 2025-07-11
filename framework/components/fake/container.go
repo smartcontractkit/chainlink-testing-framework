@@ -45,7 +45,7 @@ func NewDockerFakeDataProvider(in *Input) (*Output, error) {
 	}
 	out := &Output{
 		BaseURLHost:   fmt.Sprintf("http://localhost:%d", in.Port),
-		BaseURLDocker: fmt.Sprintf("%s:%d", HostDockerInternal(), in.Port),
+		BaseURLDocker: fmt.Sprintf("http://%s:%d", containerName, in.Port),
 	}
 	in.Out = out
 	return out, nil
