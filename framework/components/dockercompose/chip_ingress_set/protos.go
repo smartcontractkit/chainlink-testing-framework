@@ -17,11 +17,9 @@ import (
 )
 
 type protoFile struct {
-	Name          string
-	Path          string
-	Content       string
-	IsImportOnly  bool   // true if this is an import-only schema
-	TargetMessage string // for import-only schemas, the message name this schema is for
+	Name    string
+	Path    string
+	Content string
 }
 
 type ProtoSchemaSet struct {
