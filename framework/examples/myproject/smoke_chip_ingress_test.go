@@ -48,10 +48,11 @@ func TestChipIngressSmoke(t *testing.T) {
 
 		err := chipingressset.DefaultRegisterAndFetchProtos(ctx, client, []chipingressset.ProtoSchemaSet{
 			{
-				Owner:      "smartcontractkit",
-				Repository: "chainlink-protos",
-				Ref:        "626c42d55bdcb36dffe0077fff58abba40acc3e5",
-				Folders:    []string{"workflows"},
+				Owner:         "smartcontractkit",
+				Repository:    "chainlink-protos",
+				Ref:           "95decc005a91a1fd2621af9d9f00cb36d8061067",
+				Folders:       []string{"workflows"},
+				SubjectPrefix: "cre-",
 			},
 		}, out.RedPanda.SchemaRegistryExternalURL)
 		require.NoError(t, err, "failed to register protos")
