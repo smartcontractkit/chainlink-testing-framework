@@ -11,6 +11,21 @@ TON (The Open Network) support in the framework utilizes MyLocalTon Docker envir
   port = "8000"
 ```
 
+## Genesis Container Parameters
+
+The genesis container supports additional environment variables that can be configured through the `custom_env` field. These parameters allow you to customize the blockchain behavior:
+
+```toml
+[blockchain_a]
+  type = "ton"
+  image = "ghcr.io/neodix42/mylocalton-docker:latest"
+  port = "8000"
+  custom_env = { VERSION_CAPABILITIES = "11" }
+```
+
+The custom_env parameters will override the default genesis container environment variables, allowing you to customize blockchain configuration as needed.
+More info on parameters can be found here <https://github.com/neodix42/mylocalton-docker/wiki/Genesis-setup-parameters>.
+
 ## Default Ports
 
 The TON implementation exposes essential services:
@@ -19,6 +34,7 @@ The TON implementation exposes essential services:
 * TON Lite Server: Port derived from base port + 100
 
 > Note: `tonutils-go` library is used for TON blockchain interactions, which requires a TON Lite Server connection. `tonutils-go` queries config file to determine the Lite Server connection details, which are provided by the MyLocalTon Docker environment.
+
 
 ## Usage
 

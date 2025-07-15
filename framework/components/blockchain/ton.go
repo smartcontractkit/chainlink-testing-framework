@@ -63,6 +63,23 @@ func newTon(in *Input) (*Output, error) {
 		return nil, err
 	}
 	networkName := network.Name
+
+	baseEnv := map[string]string{
+		"GENESIS":              "true",
+		"NAME":                 "genesis",
+		"LITE_PORT":            ports.LiteServer,
+		"CUSTOM_PARAMETERS":    "--state-ttl 315360000 --archive-ttl 315360000",
+		"VERSION_CAPABILITIES": "11",
+	}
+
+	// merge with additional environment variables from input
+	finalEnv := baseEnv
+	if in.CustomEnv != nil {
+		for key, value := range in.CustomEnv {
+			finalEnv[key] = value
+		}
+	}
+
 	req := testcontainers.ContainerRequest{
 		Image:           in.Image,
 		AlwaysPullImage: in.PullImage,
@@ -77,12 +94,7 @@ func newTon(in *Input) (*Output, error) {
 		Networks:       []string{networkName},
 		NetworkAliases: map[string][]string{networkName: {"genesis"}},
 		Labels:         framework.DefaultTCLabels(),
-		Env: map[string]string{
-			"GENESIS":           "true",
-			"NAME":              "genesis",
-			"LITE_PORT":         ports.LiteServer, // Note: exposed config file follows this env
-			"CUSTOM_PARAMETERS": "--state-ttl 315360000 --archive-ttl 315360000",
-		},
+		Env:            finalEnv,
 		WaitingFor: wait.ForExec([]string{
 			"/usr/local/bin/lite-client",
 			"-a", fmt.Sprintf("127.0.0.1:%s", ports.LiteServer),
