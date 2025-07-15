@@ -432,16 +432,16 @@ Docker version 27.3.1
 </code></pre>
 <p>Download our <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8">CLI</a></p>
 <p>OS X <code>arm64</code> (M1/M2/M3 MacBooks)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.2/framework-v0.10.2-darwin-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.3/framework-v0.10.3-darwin-arm64.tar.gz | tar -xz
 </code></pre>
 <p>OS X <code>amd64</code> (old Intel chips)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.2/framework-v0.10.2-darwin-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.3/framework-v0.10.3-darwin-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>arm64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.2/framework-v0.10.2-linux-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.3/framework-v0.10.3-linux-arm64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>amd64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.2/framework-v0.10.2-linux-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.3/framework-v0.10.3-linux-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Allow it to run in <code>System Settings -&gt; Security Settings</code> (OS X)</p>
 <p><img src="framework/images/img.png" alt="img.png" /></p>
@@ -542,16 +542,16 @@ Docker version 27.3.1
 </code></pre>
 <p>Download our <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8">CLI</a></p>
 <p>OS X <code>arm64</code> (M1/M2/M3 MacBooks)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.2/framework-v0.10.2-darwin-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.3/framework-v0.10.3-darwin-arm64.tar.gz | tar -xz
 </code></pre>
 <p>OS X <code>amd64</code> (old Intel chips)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.2/framework-v0.10.2-darwin-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.3/framework-v0.10.3-darwin-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>arm64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.2/framework-v0.10.2-linux-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.3/framework-v0.10.3-linux-arm64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>amd64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.2/framework-v0.10.2-linux-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.3/framework-v0.10.3-linux-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Allow it to run in <code>System Settings -&gt; Security Settings</code> (OS X)</p>
 <p><img src="framework/images/img.png" alt="img.png" /></p>
@@ -4445,6 +4445,18 @@ as per ZK Sync documentation.</p>
   image = "ghcr.io/neodix42/mylocalton-docker:latest"
   port = "8000"
 </code></pre>
+<h2 id="genesis-container-parameters"><a class="header" href="#genesis-container-parameters">Genesis Container Parameters</a></h2>
+<p>The genesis container supports additional environment variables that can be configured through the <code>custom_env</code> field. These parameters allow you to customize the blockchain behavior:</p>
+<pre><code class="language-toml">[blockchain_a]
+  type = "ton"
+  image = "ghcr.io/neodix42/mylocalton-docker:latest"
+  port = "8000"
+  
+  [blockchain_a.custom_env]
+  VERSION_CAPABILITIES = "11"
+</code></pre>
+<p>The custom_env parameters will override the default genesis container environment variables, allowing you to customize blockchain configuration as needed.
+More info on parameters can be found here <a href="https://github.com/neodix42/mylocalton-docker/wiki/Genesis-setup-parameters">https://github.com/neodix42/mylocalton-docker/wiki/Genesis-setup-parameters</a>.</p>
 <h2 id="default-ports"><a class="header" href="#default-ports">Default Ports</a></h2>
 <p>The TON implementation exposes essential services:</p>
 <ul>
@@ -17122,7 +17134,7 @@ go run ./tools/breakingchanges/cmd/main.go --ignore tools,wasp,havoc,seth # to i
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>8ff0c572</code></li>
+<li>Commit: <code>ace64fd1</code></li>
 </ul>
 
                     </main>
