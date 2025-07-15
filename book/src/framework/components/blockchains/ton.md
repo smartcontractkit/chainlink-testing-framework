@@ -20,7 +20,9 @@ The genesis container supports additional environment variables that can be conf
   type = "ton"
   image = "ghcr.io/neodix42/mylocalton-docker:latest"
   port = "8000"
-  custom_env = { VERSION_CAPABILITIES = "11" }
+  
+  [blockchain_a.custom_env]
+  VERSION_CAPABILITIES = "11"
 ```
 
 The custom_env parameters will override the default genesis container environment variables, allowing you to customize blockchain configuration as needed.
