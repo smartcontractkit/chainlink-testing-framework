@@ -61,6 +61,8 @@ type Input struct {
 
 	// Optional params
 	ImagePlatform *string `toml:"image_platform"`
+	// Custom environment variables for the container
+	CustomEnv map[string]string `toml:"custom_env"`
 }
 
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network

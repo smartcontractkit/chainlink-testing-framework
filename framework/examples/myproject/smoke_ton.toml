@@ -3,3 +3,5 @@
   image = "ghcr.io/neodix42/mylocalton-docker:latest"
   port = "8000"
   
+  [blockchain_a.custom_env]
+  VERSION_CAPABILITIES = "11"
