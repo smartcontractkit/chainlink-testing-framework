@@ -371,8 +371,7 @@ func RemoveTestContainers() error {
 	// Bash command for removing Docker containers and networks with "framework=ctf" label
 	cmd := exec.Command("bash", "-c", `
 		docker ps -aq --filter "label=framework=ctf" | xargs -r docker rm -f && \
-		docker volume ls -q | xargs -r docker volume rm && \
-		docker network ls --filter "label=framework=ctf" -q | xargs -r docker network rm || true
+		docker volume ls -q | xargs -r docker volume rm || true
 	`)
 	L.Debug().Msg("Running command")
 	if L.GetLevel() == zerolog.DebugLevel {

@@ -2,11 +2,11 @@ package framework
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -21,8 +21,6 @@ import (
 	"github.com/pelletier/go-toml/v2"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/network"
 )
 
 const (
@@ -43,15 +41,8 @@ const (
 )
 
 var (
-	Once = &sync.Once{}
-	// Secrets is a singleton AWS Secrets Manager
-	// Loaded once on start inside Load and is safe to call concurrently
-	Secrets *AWSSecretsManager
-
-	DefaultNetworkName string
-
-	Validator *validator.Validate = validator.New(validator.WithRequiredStructEnabled())
-
+	DefaultNetworkName  = "ctf"
+	Validator           = validator.New(validator.WithRequiredStructEnabled())
 	ValidatorTranslator ut.Translator
 )
 
@@ -202,7 +193,7 @@ func Load[X any](t *testing.T) (*X, error) {
 			require.NoError(t, err)
 		})
 	}
-	if err = DefaultNetwork(Once); err != nil {
+	if err = DefaultNetwork(nil); err != nil {
 		L.Info().Err(err).Msg("docker network creation failed, either docker is not running or you are running in CRIB mode")
 	}
 	return input, nil
@@ -253,19 +244,17 @@ func BaseCacheName() (string, error) {
 	return fmt.Sprintf("%s-cache.toml", name), nil
 }
 
-func DefaultNetwork(once *sync.Once) error {
-	var net *testcontainers.DockerNetwork
-	var innerErr error
-	once.Do(func() {
-		net, innerErr = network.New(
-			context.Background(),
-			network.WithLabels(map[string]string{"framework": "ctf"}),
-		)
-		if innerErr == nil {
-			DefaultNetworkName = net.Name
+func DefaultNetwork(_ *sync.Once) error {
+	netCmd := exec.Command("docker", "network", "create", DefaultNetworkName)
+	out, err := netCmd.CombinedOutput()
+	L.Debug().Str("Out", string(out)).Msg("Creating Docker network")
+	if err != nil {
+		if strings.Contains(string(out), "already exists") {
+			return nil
 		}
-	})
-	return innerErr
+		return err
+	}
+	return err
 }
 
 func RenderTemplate(tmpl string, data interface{}) (string, error) {

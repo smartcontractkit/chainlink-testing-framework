@@ -2,7 +2,6 @@ package jd_test
 
 import (
 	"os"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -16,7 +15,7 @@ import (
 // since JD is private this env var should be set locally and in CI
 // TODO: add ComponentDocker prefix to turn this on when we'll have access to ECRs
 func TestJD(t *testing.T) {
-	err := framework.DefaultNetwork(&sync.Once{})
+	err := framework.DefaultNetwork(nil)
 	require.NoError(t, err)
 	_, err = jd.NewJD(&jd.Input{
 		Image: os.Getenv("CTF_JD_IMAGE"),

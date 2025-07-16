@@ -1,7 +1,6 @@
 package simple_node_set_test
 
 import (
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -89,7 +88,7 @@ level = 'info'
 	}
 
 	for _, tc := range testCases {
-		err := framework.DefaultNetwork(&sync.Once{})
+		err := framework.DefaultNetwork(nil)
 		require.NoError(t, err)
 
 		t.Run(tc.name, func(t *testing.T) {

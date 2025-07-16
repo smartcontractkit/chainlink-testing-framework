@@ -1,7 +1,6 @@
 package clnode_test
 
 import (
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -51,7 +50,7 @@ func TestSmokeComponentDockerNodeWithSharedDB(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		err := framework.DefaultNetwork(&sync.Once{})
+		err := framework.DefaultNetwork(nil)
 		require.NoError(t, err)
 
 		t.Run(tc.name, func(t *testing.T) {
@@ -87,7 +86,7 @@ func TestSmokeComponentDockerNodeWithDB(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		err := framework.DefaultNetwork(&sync.Once{})
+		err := framework.DefaultNetwork(nil)
 		require.NoError(t, err)
 
 		t.Run(tc.name, func(t *testing.T) {
