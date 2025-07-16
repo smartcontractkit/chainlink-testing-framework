@@ -1,0 +1,74 @@
+services:
+  billing-platform-service:
+    restart: on-failure
+    tty: true
+    container_name: billing-platform-service
+    image: ${BILLING_PLATFORM_SERVICE_IMAGE:-}
+    command: ["grpc-service"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrations:
+        condition: service_started
+    ports:
+      - "2112:2112"
+      - "2222:2222"
+      - "2223:2223"
+      - "2257:2257"
+    environment:
+      PROMETHEUS_PORT: 2112
+      BILLING_SERVER_PORT: 2222
+      CREDIT_RESERVATION_SERVER_PORT: 2223
+      WORKFLOW_OWNERSHIP_PROOF_SERVER_PORT: 2257
+      WORKFLOW_OWNERSHIP_PROOF_SERVER_HOST: 0.0.0.0
+      STREAMS_API_URL: ${STREAMS_API_URL}
+      STREAMS_API_KEY: ${STREAMS_API_KEY}
+      STREAMS_API_SECRET: ${STREAMS_API_SECRET}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: billing_platform
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=localhost:2222"]
+      interval: 200ms
+      timeout: 10s
+      retries: 3
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres-billing-platform
+    restart: always
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: billing_platform
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD","pg_isready","-U","${POSTGRES_USER}","-d","${POSTGRES_DB}","-h","${POSTGRES_HOST}"]
+      interval: 5s
+      timeout: 10s
+      retries: 3
+    ports:
+      - "5432:5432"
+
+  migrations:
+    image: ${BILLING_PLATFORM_SERVICE_MIGRATION_IMAGE:-}
+    container_name: db-migrations-billing-platform
+    restart: on-failure
+    environment:
+      DBMATE_NO_DUMP_SCHEMA: true
+      DBMATE_WAIT: true
+      DATABASE_URL: postgres://postgres:postgres@postgres:postgres/billing_platform
+    networks:
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint:
+      - dbmate
+      - up
+      - --
+      - --url=${DATABASE_URL}
+      - --migrations-dir=/db
