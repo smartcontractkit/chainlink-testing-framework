@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"text/template"
 	"time"
@@ -192,7 +193,7 @@ func Load[X any](t *testing.T) (*X, error) {
 			require.NoError(t, err)
 		})
 	}
-	if err = DefaultNetwork(); err != nil {
+	if err = DefaultNetwork(nil); err != nil {
 		L.Info().Err(err).Msg("docker network creation failed, either docker is not running or you are running in CRIB mode")
 	}
 	return input, nil
@@ -243,12 +244,12 @@ func BaseCacheName() (string, error) {
 	return fmt.Sprintf("%s-cache.toml", name), nil
 }
 
-func DefaultNetwork() error {
+func DefaultNetwork(_ *sync.Once) error {
 	netCmd := exec.Command("docker", "network", "create", DefaultNetworkName)
-	out, err := netCmd.Output()
+	out, err := netCmd.CombinedOutput()
 	L.Debug().Str("Out", string(out)).Msg("Creating Docker network")
 	if err != nil {
-		if strings.Contains(err.Error(), "already exists") {
+		if strings.Contains(string(out), "already exists") {
 			return nil
 		}
 		return err

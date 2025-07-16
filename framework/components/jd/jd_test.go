@@ -15,7 +15,7 @@ import (
 // since JD is private this env var should be set locally and in CI
 // TODO: add ComponentDocker prefix to turn this on when we'll have access to ECRs
 func TestJD(t *testing.T) {
-	err := framework.DefaultNetwork()
+	err := framework.DefaultNetwork(nil)
 	require.NoError(t, err)
 	_, err = jd.NewJD(&jd.Input{
 		Image: os.Getenv("CTF_JD_IMAGE"),

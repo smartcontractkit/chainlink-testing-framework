@@ -50,7 +50,7 @@ func TestSmokeComponentDockerNodeWithSharedDB(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		err := framework.DefaultNetwork()
+		err := framework.DefaultNetwork(nil)
 		require.NoError(t, err)
 
 		t.Run(tc.name, func(t *testing.T) {
@@ -86,7 +86,7 @@ func TestSmokeComponentDockerNodeWithDB(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		err := framework.DefaultNetwork()
+		err := framework.DefaultNetwork(nil)
 		require.NoError(t, err)
 
 		t.Run(tc.name, func(t *testing.T) {
