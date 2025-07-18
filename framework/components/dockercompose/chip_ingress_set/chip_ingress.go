@@ -217,7 +217,7 @@ func New(in *Input) (*Output, error) {
 		},
 	}
 
-	framework.L.Info().Msg("Chip Ingress stack start")
+	framework.L.Info().Msg("Chip Ingress stack started")
 
 	return output, nil
 }
@@ -225,7 +225,10 @@ func New(in *Input) (*Output, error) {
 func composeFilePath(rawFilePath string) (string, error) {
 	// if it's not a URL, return it as is and assume it's a local file
 	if !strings.HasPrefix(rawFilePath, "http") {
-		return rawFilePath, nil
+		if !strings.HasPrefix(rawFilePath, "file://") {
+			return "", fmt.Errorf("docker compose URI must start either with 'file://', 'http://' or 'https://', but '%s' was found", rawFilePath)
+		}
+		return strings.TrimPrefix(rawFilePath, "file://"), nil
 	}
 
 	resp, respErr := http.Get(rawFilePath)
