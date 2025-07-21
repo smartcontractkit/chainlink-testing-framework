@@ -119,7 +119,7 @@
             "uid": "P8E80F9AEF21F6940"
           },
           "editorMode": "code",
-          "expr": "count_over_time(\n  {job=\"ctf\"} |= \"Sending transaction\" [1s]\n)",
+          "expr": "count_over_time(\n  {job=\"ctf\"} |= \"Sending transaction\" [$__interval]\n)",
           "legendFormat": "{{service_name}}",
           "queryType": "range",
           "refId": "A"
@@ -294,7 +294,7 @@
             "uid": "P8E80F9AEF21F6940"
           },
           "editorMode": "code",
-          "expr": "count_over_time(\n  {job=\"ctf\"} |= \"sent transaction\" [1s]\n)",
+          "expr": "count_over_time(\n  {job=\"ctf\"} |= \"sent transaction\" [$__interval]\n)",
           "legendFormat": "{{service_name}}",
           "queryType": "range",
           "refId": "A"
@@ -870,7 +870,7 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
+        "h": 5,
         "w": 5,
         "x": 10,
         "y": 16
@@ -1009,7 +1009,7 @@
     "list": []
   },
   "time": {
-    "from": "now-15m",
+    "from": "now-5m",
     "to": "now"
   },
   "timepicker": {},
