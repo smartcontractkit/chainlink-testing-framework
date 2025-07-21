@@ -12,7 +12,10 @@ It consists of 3 components:
 To add it to your stack use following TOML:
 ```toml
 [chip_ingress]
-  compose_file='../../components/chip_ingress_set/docker-compose.yml'
+  # using a local docker-compose file
+  compose_file='file://../../components/chip_ingress_set/docker-compose.yml'
+  # using a remote file
+  # compose_file='https://my.awesome.resource.io/docker-compose.yml'
   extra_docker_networks = ["my-existing-network"]
 ```
 
@@ -69,8 +72,7 @@ if token := os.Getenv("GITHUB_TOKEN"); token != "" {
 
 protoErr := chipingressset.DefaultRegisterAndFetchProtos(ctx, client, []chipingressset.RepoConfiguration{
     {
-        Owner:   "smartcontractkit",
-        Repo:    "chainlink-protos",
+        URI:   "https://github.com/smartcontractkit/chainlink-protostractkit",
         Ref:     "626c42d55bdcb36dffe0077fff58abba40acc3e5",
         Folders: []string{"workflows"},
     },
@@ -83,13 +85,21 @@ if protoErr != nil {
 Since `ProtoSchemaSet` has TOML tags you can also read it from a TOML file with this content:
 ```toml
 [[proto_schema_set]]
-owner = 'smartcontractkit'
-repository = 'chainlink-protos'
+# reading from remote registry (only github.com supported)
+uri = 'https://github.com/smartcontractkit/chainlink-protos'
 ref = '626c42d55bdcb36dffe0077fff58abba40acc3e5'
 folders = ['workflows']
+subject_prefix = 'cre-'
+
+[[proto_schema_set]]
+# reading from local folder
+uri = 'file://../../chainlink-protos'
+# ref is not supported, when reading from local folders
+folders = ['workflows']
+subject_prefix = 'cre-'
 ```
 
-using this code:
+And then use this Go code to register them:
 ```go
 var protoSchemaSets []chipingressset.ProtoSchemaSet
 for _, schemaSet := range configFiles {
@@ -113,4 +123,4 @@ for _, schemaSet := range configFiles {
 
 Registration logic is very simple and should handle cases of protos that import other protos as long they are all available in the `ProtoSchemaSet`s provided to the registration function. That function uses an algorithm called "topological sorting by trail", which will try to register all protos in a loop until it cannot register any more protos or it has registered all of them. That allows us to skip dependency parsing completely.
 
-Since Kafka doesn't have any automatic discoverability mechanism for subject - schema relationship (it has to be provided out-of-band) code currently only knows how to correctly register protos from [chainlink-protos](https://github.com/smartcontractkit/chainlink-protos) repository.
+Kafka doesn't have any automatic discoverability mechanism for subject - schema relationship (it has to be provided out-of-band). Currenly, we create the subject in the following way: <subject_prefix>.<package>.<1st-message-name>. Subject prefix is optional and if it's not present, then subject is equal to: <package>.<1st-message-name>. Only the first message in the `.proto` file is ever registered.

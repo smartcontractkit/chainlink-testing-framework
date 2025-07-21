@@ -432,16 +432,16 @@ Docker version 27.3.1
 </code></pre>
 <p>Download our <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8">CLI</a></p>
 <p>OS X <code>arm64</code> (M1/M2/M3 MacBooks)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.4/framework-v0.10.4-darwin-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.5/framework-v0.10.5-darwin-arm64.tar.gz | tar -xz
 </code></pre>
 <p>OS X <code>amd64</code> (old Intel chips)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.4/framework-v0.10.4-darwin-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.5/framework-v0.10.5-darwin-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>arm64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.4/framework-v0.10.4-linux-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.5/framework-v0.10.5-linux-arm64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>amd64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.4/framework-v0.10.4-linux-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.5/framework-v0.10.5-linux-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Allow it to run in <code>System Settings -&gt; Security Settings</code> (OS X)</p>
 <p><img src="framework/images/img.png" alt="img.png" /></p>
@@ -542,16 +542,16 @@ Docker version 27.3.1
 </code></pre>
 <p>Download our <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8">CLI</a></p>
 <p>OS X <code>arm64</code> (M1/M2/M3 MacBooks)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.4/framework-v0.10.4-darwin-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.5/framework-v0.10.5-darwin-arm64.tar.gz | tar -xz
 </code></pre>
 <p>OS X <code>amd64</code> (old Intel chips)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.4/framework-v0.10.4-darwin-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.5/framework-v0.10.5-darwin-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>arm64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.4/framework-v0.10.4-linux-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.5/framework-v0.10.5-linux-arm64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>amd64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.4/framework-v0.10.4-linux-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.5/framework-v0.10.5-linux-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Allow it to run in <code>System Settings -&gt; Security Settings</code> (OS X)</p>
 <p><img src="framework/images/img.png" alt="img.png" /></p>
@@ -4823,7 +4823,10 @@ func TestLocalS3(t *testing.T) {
 <h2 id="configuration-10"><a class="header" href="#configuration-10">Configuration</a></h2>
 <p>To add it to your stack use following TOML:</p>
 <pre><code class="language-toml">[chip_ingress]
-  compose_file='../../components/chip_ingress_set/docker-compose.yml'
+  # using a local docker-compose file
+  compose_file='file://../../components/chip_ingress_set/docker-compose.yml'
+  # using a remote file
+  # compose_file='https://my.awesome.resource.io/docker-compose.yml'
   extra_docker_networks = ["my-existing-network"]
 </code></pre>
 <p>Where compose file indicates the location of the <code>docker-compose.yml</code> file (remote URLs are supported) and <code>extra_docker_networks</code> an optional slice of existing Docker networks, to which whole stack should be connected to.</p>
@@ -4874,8 +4877,7 @@ if token := os.Getenv("GITHUB_TOKEN"); token != "" {
 
 protoErr := chipingressset.DefaultRegisterAndFetchProtos(ctx, client, []chipingressset.RepoConfiguration{
     {
-        Owner:   "smartcontractkit",
-        Repo:    "chainlink-protos",
+        URI:   "https://github.com/smartcontractkit/chainlink-protostractkit",
         Ref:     "626c42d55bdcb36dffe0077fff58abba40acc3e5",
         Folders: []string{"workflows"},
     },
@@ -4886,12 +4888,20 @@ if protoErr != nil {
 </code></pre>
 <p>Since <code>ProtoSchemaSet</code> has TOML tags you can also read it from a TOML file with this content:</p>
 <pre><code class="language-toml">[[proto_schema_set]]
-owner = 'smartcontractkit'
-repository = 'chainlink-protos'
+# reading from remote registry (only github.com supported)
+uri = 'https://github.com/smartcontractkit/chainlink-protos'
 ref = '626c42d55bdcb36dffe0077fff58abba40acc3e5'
 folders = ['workflows']
+subject_prefix = 'cre-'
+
+[[proto_schema_set]]
+# reading from local folder
+uri = 'file://../../chainlink-protos'
+# ref is not supported, when reading from local folders
+folders = ['workflows']
+subject_prefix = 'cre-'
 </code></pre>
-<p>using this code:</p>
+<p>And then use this Go code to register them:</p>
 <pre><code class="language-go">var protoSchemaSets []chipingressset.ProtoSchemaSet
 for _, schemaSet := range configFiles {
     file, fileErr := os.ReadFile(schemaSet)
@@ -4912,7 +4922,7 @@ for _, schemaSet := range configFiles {
 }
 </code></pre>
 <p>Registration logic is very simple and should handle cases of protos that import other protos as long they are all available in the <code>ProtoSchemaSet</code>s provided to the registration function. That function uses an algorithm called "topological sorting by trail", which will try to register all protos in a loop until it cannot register any more protos or it has registered all of them. That allows us to skip dependency parsing completely.</p>
-<p>Since Kafka doesn't have any automatic discoverability mechanism for subject - schema relationship (it has to be provided out-of-band) code currently only knows how to correctly register protos from <a href="https://github.com/smartcontractkit/chainlink-protos">chainlink-protos</a> repository.</p>
+<p>Kafka doesn't have any automatic discoverability mechanism for subject - schema relationship (it has to be provided out-of-band). Currenly, we create the subject in the following way: &lt;subject_prefix&gt;.<package>.&lt;1st-message-name&gt;. Subject prefix is optional and if it's not present, then subject is equal to: <package>.&lt;1st-message-name&gt;. Only the first message in the <code>.proto</code> file is ever registered.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -17134,7 +17144,7 @@ go run ./tools/breakingchanges/cmd/main.go --ignore tools,wasp,havoc,seth # to i
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>cac07d4b</code></li>
+<li>Commit: <code>4993f54b</code></li>
 </ul>
 
                     </main>
