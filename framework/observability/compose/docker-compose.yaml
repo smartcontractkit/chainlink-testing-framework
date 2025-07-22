@@ -76,7 +76,7 @@ services:
       - ./conf/provisioning/dashboards/cadvisor/cadvisor.json:/var/lib/grafana/dashboards/cadvisor/cadvisor.json
       - ./conf/provisioning/dashboards/clnode-errors/errors.json:/var/lib/grafana/dashboards/clnode-errors/errors.json
       - ./conf/provisioning/dashboards/workflow-engine/engine.json:/var/lib/grafana/dashboards/workflow-engine/engine.json
-      - ./conf/provisioning/dashboards/df-soak/df-soak.json:/var/lib/grafana/dashboards/df-soak/df-soak.json
+      - ../dashboards:/var/lib/grafana/dashboards/local
     ports:
       - '3000:3000'
     depends_on:
