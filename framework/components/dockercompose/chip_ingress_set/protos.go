@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -23,8 +24,7 @@ type protoFile struct {
 }
 
 type ProtoSchemaSet struct {
-	Owner         string   `toml:"owner"`
-	Repository    string   `toml:"repository"`
+	URI           string   `toml:"uri"`
 	Ref           string   `toml:"ref"`            // ref or tag or commit SHA
 	Folders       []string `toml:"folders"`        // if not provided, all protos will be fetched, otherwise only protos in these folders will be fetched
 	SubjectPrefix string   `toml:"subject_prefix"` // optional prefix for subjects
@@ -36,16 +36,31 @@ type SubjectNamingStrategyFn func(subjectPrefix string, protoFile protoFile, rep
 // RepositoryToSubjectNamingStrategyFn is a map of repository names to SubjectNamingStrategyFn functions
 type RepositoryToSubjectNamingStrategyFn map[string]SubjectNamingStrategyFn
 
-func ValidateRepoConfiguration(repoConfig ProtoSchemaSet) error {
-	if repoConfig.Owner == "" {
-		return errors.New("owner is required")
-	}
-	if repoConfig.Repository == "" {
-		return errors.New("repo is required")
+func validateRepoConfiguration(repoConfig ProtoSchemaSet) error {
+	if repoConfig.URI == "" {
+		return errors.New("uri is required")
 	}
 
-	if repoConfig.Ref == "" {
-		return errors.New("ref is required")
+	if !strings.HasPrefix(repoConfig.URI, "https://") && !strings.HasPrefix(repoConfig.URI, "file://") {
+		return errors.New("uri has to start with either 'file://' or 'https://'")
+	}
+
+	trimmedURI := strings.TrimPrefix(repoConfig.URI, "https://")
+	if !strings.HasPrefix(trimmedURI, "github.com") {
+		return fmt.Errorf("only repositories hosted at github.com are supported, but %s was found", repoConfig.URI)
+	}
+
+	parts := strings.Split(trimmedURI, "/")
+	if len(parts) < 3 {
+		return fmt.Errorf("URI should have following format: 'https://github.com/<OWNER>/<REPOSITORY>', but %s was found", repoConfig.URI)
+	}
+
+	if repoConfig.Ref == "" && strings.HasPrefix(repoConfig.URI, "https://") {
+		return errors.New("ref is required, when fetching protos from Github")
+	}
+
+	if repoConfig.Ref != "" && strings.HasPrefix(repoConfig.URI, "file://") {
+		return errors.New("ref is not supported with local protos")
 	}
 
 	return nil
@@ -59,9 +74,15 @@ func RegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSch
 	framework.L.Debug().Msgf("Registering and fetching protos from %d repositories", len(protoSchemaSets))
 
 	for _, protoSchemaSet := range protoSchemaSets {
-		protos, protosErr := fetchProtoFilesInFolders(ctx, client, protoSchemaSet.Owner, protoSchemaSet.Repository, protoSchemaSet.Ref, protoSchemaSet.Folders)
+		if valErr := validateRepoConfiguration(protoSchemaSet); valErr != nil {
+			return errors.Wrapf(valErr, "invalid repo configuration for schema set: %v", protoSchemaSet)
+		}
+	}
+
+	for _, protoSchemaSet := range protoSchemaSets {
+		protos, protosErr := fetchProtoFilesInFolders(ctx, client, protoSchemaSet.URI, protoSchemaSet.Ref, protoSchemaSet.Folders)
 		if protosErr != nil {
-			return errors.Wrapf(protosErr, "failed to fetch protos from %s/%s", protoSchemaSet.Owner, protoSchemaSet.Repository)
+			return errors.Wrapf(protosErr, "failed to fetch protos from %s", protoSchemaSet.URI)
 		}
 
 		protoMap := make(map[string]string)
@@ -71,7 +92,7 @@ func RegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSch
 			protoMap[proto.Path] = proto.Content
 
 			var subjectStrategy SubjectNamingStrategyFn
-			if strategy, ok := repoToSubjectNamingStrategy[protoSchemaSet.Owner+"/"+protoSchemaSet.Repository]; ok {
+			if strategy, ok := repoToSubjectNamingStrategy[protoSchemaSet.URI]; ok {
 				subjectStrategy = strategy
 			} else {
 				subjectStrategy = DefaultSubjectNamingStrategy
@@ -86,7 +107,7 @@ func RegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSch
 
 		registerErr := registerAllWithTopologicalSortingByTrial(schemaRegistryURL, protoMap, subjects)
 		if registerErr != nil {
-			return errors.Wrapf(registerErr, "failed to register protos from %s/%s", protoSchemaSet.Owner, protoSchemaSet.Repository)
+			return errors.Wrapf(registerErr, "failed to register protos from %s", protoSchemaSet.URI)
 		}
 	}
 
@@ -142,8 +163,22 @@ func extractTopLevelMessageNamesWithRegex(protoSrc string) ([]string, error) {
 }
 
 // Fetches .proto files from a GitHub repo optionally scoped to specific folders. It is recommended to use `*github.Client` with auth token to avoid rate limiting.
-func fetchProtoFilesInFolders(ctx context.Context, client *github.Client, owner, repository, ref string, folders []string) ([]protoFile, error) {
-	framework.L.Debug().Msgf("Fetching proto files from %s/%s in folders: %s", owner, repository, strings.Join(folders, ", "))
+func fetchProtoFilesInFolders(ctx context.Context, client *github.Client, uri, ref string, folders []string) ([]protoFile, error) {
+	framework.L.Debug().Msgf("Fetching proto files from %s in folders: %s", uri, strings.Join(folders, ", "))
+
+	if strings.HasPrefix(uri, "file://") {
+		return fetchProtosFromFilesystem(uri, folders)
+	}
+
+	parts := strings.Split(strings.TrimPrefix(uri, "https://"), "/")
+
+	return fetchProtosFromGithub(ctx, client, parts[1], parts[2], ref, folders)
+}
+
+func fetchProtosFromGithub(ctx context.Context, client *github.Client, owner, repository, ref string, folders []string) ([]protoFile, error) {
+	if client == nil {
+		return nil, errors.New("github client cannot be nil")
+	}
 
 	var files []protoFile
 
@@ -210,10 +245,77 @@ searchLoop:
 		})
 	}
 
-	framework.L.Debug().Msgf("Fetched %d proto files from %s/%s", len(files), owner, repository)
+	framework.L.Debug().Msgf("Fetched %d proto files from Github's %s/%s", len(files), owner, repository)
 
 	if len(files) == 0 {
 		return nil, fmt.Errorf("no proto files found in %s/%s in folders %s", owner, repository, strings.Join(folders, ", "))
+	}
+
+	return files, nil
+}
+
+func fetchProtosFromFilesystem(uri string, folders []string) ([]protoFile, error) {
+	var files []protoFile
+
+	protoDirPath := strings.TrimPrefix(uri, "file://")
+	walkErr := filepath.Walk(protoDirPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		var folderFound string
+		if len(folders) > 0 {
+			matched := false
+			for _, folder := range folders {
+				if strings.HasPrefix(strings.TrimPrefix(strings.TrimPrefix(path, protoDirPath), "/"), folder) {
+					matched = true
+					folderFound = folder
+					break
+				}
+			}
+
+			if !matched {
+				return nil
+			}
+		}
+
+		if !strings.HasSuffix(path, ".proto") {
+			return nil
+		}
+
+		content, contentErr := os.ReadFile(path)
+		if contentErr != nil {
+			return errors.Wrapf(contentErr, "failed to read file at %s", path)
+		}
+
+		// subtract the folder from the path if it was provided, because if it is imported by some other protos
+		// most probably it will be imported as a relative path, so we need to remove the folder from the path
+		protoPath := strings.TrimPrefix(strings.TrimPrefix(path, protoDirPath), "/")
+		if folderFound != "" {
+			protoPath = strings.TrimPrefix(strings.TrimPrefix(protoPath, folderFound), strings.TrimSuffix(folderFound, "/"))
+			protoPath = strings.TrimPrefix(protoPath, "/")
+		}
+
+		files = append(files, protoFile{
+			Name:    filepath.Base(path),
+			Path:    protoPath,
+			Content: string(content),
+		})
+
+		return nil
+	})
+	if walkErr != nil {
+		return nil, errors.Wrapf(walkErr, "failed to walk through directory %s", protoDirPath)
+	}
+
+	framework.L.Debug().Msgf("Fetched %d proto files from local %s", len(files), protoDirPath)
+
+	if len(files) == 0 {
+		return nil, fmt.Errorf("no proto files found in '%s' in folders %s", protoDirPath, strings.Join(folders, ", "))
 	}
 
 	return files, nil
