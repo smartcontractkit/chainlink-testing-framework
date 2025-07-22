@@ -252,6 +252,9 @@
 <p>Change compose files under <code>framework/cmd/observability</code> and restart the stack (removing volumes too)</p>
 <pre><code>just reload-cli &amp;&amp; ctf obs r
 </code></pre>
+<h2 id="local-dashboards-docker"><a class="header" href="#local-dashboards-docker">Local Dashboards (Docker)</a></h2>
+<p>You can create a dashboard using <a href="http://localhost:3000">UI</a> and put them under <code>$pwd/dashboards</code> folder then commit, they'll be loaded automatically on start and you can find them <a href="http://localhost:3000/dashboards">here</a> under <code>local</code> directory.</p>
+<p><code>$pwd</code> is you current working directory from which you call <code>ctf obs u</code></p>
 <h2 id="troubleshooting"><a class="header" href="#troubleshooting">Troubleshooting</a></h2>
 <h3 id="cadvisor-is-not-working"><a class="header" href="#cadvisor-is-not-working"><code>cadvisor</code> is not working</a></h3>
 <p>Make sure your <code>Advanced</code> Docker settings look like this
