@@ -167,7 +167,7 @@ func New(in *Input) (*Output, error) {
 		return nil, errors.Wrap(chipIngressExternalHostErr, "failed to get host for Chip Ingress")
 	}
 	// for some magical reason mapped port sometimes cannot be found, even though we wait for it to be ready, when starting the services
-	chipIngressExternalPort, chipIngressExternalPortErr := findMappdePort(ctx, 20*time.Second, chipIngressContainer, DEFAULT_CHIP_INGRESS_GRPC_PORT)
+	chipIngressExternalPort, chipIngressExternalPortErr := findMappdePort(ctx, 31*time.Second, chipIngressContainer, DEFAULT_CHIP_INGRESS_GRPC_PORT)
 	if chipIngressExternalPortErr != nil {
 		return nil, errors.Wrap(chipIngressExternalPortErr, "failed to get mapped port for Chip Ingress")
 	}
@@ -181,11 +181,11 @@ func New(in *Input) (*Output, error) {
 	if redpandaExternalHostErr != nil {
 		return nil, errors.Wrap(redpandaExternalHostErr, "failed to get host for Red Panda")
 	}
-	redpandaExternalKafkaPort, redpandaExternalKafkaPortErr := findMappdePort(ctx, 20*time.Second, redpandaContainer, DEFAULT_RED_PANDA_KAFKA_PORT)
+	redpandaExternalKafkaPort, redpandaExternalKafkaPortErr := findMappdePort(ctx, 31*time.Second, redpandaContainer, DEFAULT_RED_PANDA_KAFKA_PORT)
 	if redpandaExternalKafkaPortErr != nil {
 		return nil, errors.Wrap(redpandaExternalKafkaPortErr, "failed to get mapped port for Red Panda")
 	}
-	redpandaExternalSchemaRegistryPort, redpandaExternalSchemaRegistryPortErr := findMappdePort(ctx, 20*time.Second, redpandaContainer, DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT)
+	redpandaExternalSchemaRegistryPort, redpandaExternalSchemaRegistryPortErr := findMappdePort(ctx, 31*time.Second, redpandaContainer, DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT)
 	if redpandaExternalSchemaRegistryPortErr != nil {
 		return nil, errors.Wrap(redpandaExternalSchemaRegistryPortErr, "failed to get mapped port for Red Panda")
 	}
@@ -198,7 +198,7 @@ func New(in *Input) (*Output, error) {
 	if redpandaExternalConsoleHostErr != nil {
 		return nil, errors.Wrap(redpandaExternalConsoleHostErr, "failed to get host for Red Panda Console")
 	}
-	redpandaExternalConsolePort, redpandaExternalConsolePortErr := findMappdePort(ctx, 20*time.Second, redpandaConsoleContainer, DEFAULT_RED_PANDA_CONSOLE_PORT)
+	redpandaExternalConsolePort, redpandaExternalConsolePortErr := findMappdePort(ctx, 31*time.Second, redpandaConsoleContainer, DEFAULT_RED_PANDA_CONSOLE_PORT)
 	if redpandaExternalConsolePortErr != nil {
 		return nil, errors.Wrap(redpandaExternalConsolePortErr, "failed to get mapped port for Red Panda Console")
 	}
