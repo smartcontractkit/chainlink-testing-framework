@@ -45,6 +45,14 @@ func validateRepoConfiguration(repoConfig ProtoSchemaSet) error {
 		return errors.New("uri has to start with either 'file://' or 'https://'")
 	}
 
+	if strings.HasPrefix(repoConfig.URI, "file://") {
+		if repoConfig.Ref != "" {
+			return errors.New("ref is not supported with local protos with 'file://' prefix")
+		}
+
+		return nil
+	}
+
 	trimmedURI := strings.TrimPrefix(repoConfig.URI, "https://")
 	if !strings.HasPrefix(trimmedURI, "github.com") {
 		return fmt.Errorf("only repositories hosted at github.com are supported, but %s was found", repoConfig.URI)
@@ -55,12 +63,8 @@ func validateRepoConfiguration(repoConfig ProtoSchemaSet) error {
 		return fmt.Errorf("URI should have following format: 'https://github.com/<OWNER>/<REPOSITORY>', but %s was found", repoConfig.URI)
 	}
 
-	if repoConfig.Ref == "" && strings.HasPrefix(repoConfig.URI, "https://") {
-		return errors.New("ref is required, when fetching protos from Github")
-	}
-
-	if repoConfig.Ref != "" && strings.HasPrefix(repoConfig.URI, "file://") {
-		return errors.New("ref is not supported with local protos")
+	if repoConfig.Ref == "" {
+		return errors.New("ref is required, when fetching protos from Github repository")
 	}
 
 	return nil
