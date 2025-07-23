@@ -33,6 +33,9 @@ func defaultAnvil(in *Input) {
 
 // newAnvil deploy foundry anvil node
 func newAnvil(in *Input) (*Output, error) {
+	if in.Out != nil && in.Out.UseCache {
+		return in.Out, nil
+	}
 	defaultAnvil(in)
 	req := baseRequest(in, WithoutWsEndpoint)
 
