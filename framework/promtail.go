@@ -133,7 +133,7 @@ func NewPromtail() error {
 		Cmd:          cmd,
 		Networks:     []string{DefaultNetworkName},
 		NetworkAliases: map[string][]string{
-			DefaultNetworkName: {"loki"},
+			DefaultNetworkName: {"promtail"},
 		},
 		Files: []testcontainers.ContainerFile{
 			{
