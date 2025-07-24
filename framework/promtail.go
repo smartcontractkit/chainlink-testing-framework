@@ -60,7 +60,7 @@ scrape_configs:
 	lokiTenantID := os.Getenv("LOKI_TENANT_ID")
 
 	if lokiURL == "" {
-		lokiURL = "http://host.docker.internal:3030/loki/api/v1/push"
+		lokiURL = "http://loki:3100/loki/api/v1/push"
 	}
 	if lokiTenantID == "" {
 		lokiTenantID = "promtail"
@@ -131,6 +131,10 @@ func NewPromtail() error {
 		ExposedPorts: []string{"9080/tcp"},
 		Name:         "promtail",
 		Cmd:          cmd,
+		Networks:     []string{DefaultNetworkName},
+		NetworkAliases: map[string][]string{
+			DefaultNetworkName: {"promtail"},
+		},
 		Files: []testcontainers.ContainerFile{
 			{
 				HostFilePath:      pcn,

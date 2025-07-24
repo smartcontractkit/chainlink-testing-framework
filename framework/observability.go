@@ -117,10 +117,10 @@ func ObservabilityUp() error {
 	if err := extractAllFiles("observability"); err != nil {
 		return err
 	}
+	_ = DefaultNetwork(nil)
 	if err := NewPromtail(); err != nil {
 		return err
 	}
-	_ = DefaultNetwork(nil)
 	err := RunCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
 		docker compose up -d
