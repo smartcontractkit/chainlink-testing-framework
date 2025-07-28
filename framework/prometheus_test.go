@@ -1,4 +1,4 @@
-package prometheus
+package framework
 
 import (
 	"net/http"
@@ -15,7 +15,7 @@ func TestPrometheusQueryClient_Query(t *testing.T) {
 		response       string
 		expectedStatus string
 		expectedCount  int
-		validateResult func(t *testing.T, result *QueryResponse)
+		validateResult func(t *testing.T, result *PrometheusQueryResponse)
 	}{
 		{
 			name: "successful query with multiple metrics",
@@ -47,7 +47,7 @@ func TestPrometheusQueryClient_Query(t *testing.T) {
 			}`,
 			expectedStatus: "success",
 			expectedCount:  2,
-			validateResult: func(t *testing.T, result *QueryResponse) {
+			validateResult: func(t *testing.T, result *PrometheusQueryResponse) {
 				assert.Equal(t, "vector", result.Data.ResultType)
 				assert.Equal(t, "go_gc_duration_seconds", result.Data.Result[0].Metric["__name__"])
 				assert.Equal(t, "cadvisor:8080", result.Data.Result[0].Metric["instance"])
@@ -83,7 +83,7 @@ func TestPrometheusQueryClient_Query(t *testing.T) {
 			}`,
 			expectedStatus: "success",
 			expectedCount:  1,
-			validateResult: func(t *testing.T, result *QueryResponse) {
+			validateResult: func(t *testing.T, result *PrometheusQueryResponse) {
 				assert.Equal(t, "go_goroutines", result.Data.Result[0].Metric["__name__"])
 				assert.Equal(t, "localhost:9090", result.Data.Result[0].Metric["instance"])
 				assert.Equal(t, "prometheus", result.Data.Result[0].Metric["job"])
@@ -102,7 +102,7 @@ func TestPrometheusQueryClient_Query(t *testing.T) {
 			}`,
 			expectedStatus: "success",
 			expectedCount:  0,
-			validateResult: func(t *testing.T, result *QueryResponse) {
+			validateResult: func(t *testing.T, result *PrometheusQueryResponse) {
 				assert.Empty(t, result.Data.Result)
 			},
 		},
@@ -119,7 +119,7 @@ func TestPrometheusQueryClient_Query(t *testing.T) {
 				assert.NoError(t, err)
 			}))
 			defer mockServer.Close()
-			client := NewQueryClient(mockServer.URL)
+			client := NewPrometheusQueryClient(mockServer.URL)
 			timestamp := time.Unix(1753701299, 664000000)
 			result, err := client.Query("go_gc_duration_seconds", timestamp)
 			assert.NoError(t, err)
@@ -168,7 +168,7 @@ func TestPrometheusQueryClient_ErrorCases(t *testing.T) {
 			}))
 			defer mockServer.Close()
 
-			client := NewQueryClient(mockServer.URL)
+			client := NewPrometheusQueryClient(mockServer.URL)
 			result, err := client.Query("go_gc_duration_seconds", time.Now())
 
 			assert.Nil(t, result)
@@ -179,7 +179,7 @@ func TestPrometheusQueryClient_ErrorCases(t *testing.T) {
 }
 
 func TestPrometheusQueryClient_NetworkError(t *testing.T) {
-	client := NewQueryClient("http://invalid-url:9090")
+	client := NewPrometheusQueryClient("http://invalid-url:9090")
 	result, err := client.Query("go_gc_duration_seconds", time.Now())
 
 	assert.Nil(t, result)
@@ -284,7 +284,7 @@ func TestPrometheusQueryClientQueryRange(t *testing.T) {
 				assert.NoError(t, err)
 			}))
 			defer mockServer.Close()
-			client := NewQueryClient(mockServer.URL)
+			client := NewPrometheusQueryClient(mockServer.URL)
 			params := QueryRangeParams{
 				Query: "http_requests_total",
 				Start: time.Unix(1435781430, 0),
@@ -338,7 +338,7 @@ func TestPrometheusQueryClientQueryRange_ErrorCases(t *testing.T) {
 			}))
 			defer mockServer.Close()
 
-			client := NewQueryClient(mockServer.URL)
+			client := NewPrometheusQueryClient(mockServer.URL)
 			params := QueryRangeParams{
 				Query: "http_requests_total",
 				Start: time.Now().Add(-30 * time.Minute),
@@ -357,12 +357,12 @@ func TestPrometheusQueryClientQueryRange_ErrorCases(t *testing.T) {
 func TestPrometheusQueryClient_ResultToLabelsMap(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    *QueryResponse
+		input    *PrometheusQueryResponse
 		expected map[string][]interface{}
 	}{
 		{
 			name: "single metric with multiple labels",
-			input: &QueryResponse{
+			input: &PrometheusQueryResponse{
 				Data: struct {
 					ResultType string `json:"resultType"`
 					Result     []struct {
@@ -393,7 +393,7 @@ func TestPrometheusQueryClient_ResultToLabelsMap(t *testing.T) {
 		},
 		{
 			name: "multiple metrics with shared labels",
-			input: &QueryResponse{
+			input: &PrometheusQueryResponse{
 				Data: struct {
 					ResultType string `json:"resultType"`
 					Result     []struct {
@@ -433,7 +433,7 @@ func TestPrometheusQueryClient_ResultToLabelsMap(t *testing.T) {
 		},
 		{
 			name: "empty result",
-			input: &QueryResponse{
+			input: &PrometheusQueryResponse{
 				Data: struct {
 					ResultType string `json:"resultType"`
 					Result     []struct {
@@ -451,7 +451,7 @@ func TestPrometheusQueryClient_ResultToLabelsMap(t *testing.T) {
 		},
 		{
 			name: "metric with no labels",
-			input: &QueryResponse{
+			input: &PrometheusQueryResponse{
 				Data: struct {
 					ResultType string `json:"resultType"`
 					Result     []struct {

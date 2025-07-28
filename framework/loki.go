@@ -1,4 +1,4 @@
-package loki
+package framework
 
 import (
 	"context"
@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
-
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 // APIError is a custom error type for handling non-200 responses from the Loki API
@@ -45,8 +43,8 @@ type LogEntry struct {
 	Log       string
 }
 
-// Client represents a client to interact with Loki for querying logs
-type Client struct {
+// LokiClient represents a client to interact with Loki for querying logs
+type LokiClient struct {
 	BaseURL     string
 	TenantID    string
 	BasicAuth   BasicAuth
@@ -62,9 +60,9 @@ type QueryParams struct {
 	Limit     int
 }
 
-// NewQueryClient creates a new Loki client with the given parameters, initializes a logger, and configures Resty with debug mode
-func NewQueryClient(baseURL, tenantID string, auth BasicAuth, queryParams QueryParams) *Client {
-	framework.L.Info().
+// NewLokiQueryClient creates a new Loki client with the given parameters, initializes a logger, and configures Resty with debug mode
+func NewLokiQueryClient(baseURL, tenantID string, auth BasicAuth, queryParams QueryParams) *LokiClient {
+	L.Info().
 		Str("BaseURL", baseURL).
 		Str("TenantID", tenantID).
 		Msg("Initializing Loki Client")
@@ -75,7 +73,7 @@ func NewQueryClient(baseURL, tenantID string, auth BasicAuth, queryParams QueryP
 	restyClient := resty.New().
 		SetDebug(isDebug)
 
-	return &Client{
+	return &LokiClient{
 		BaseURL:     baseURL,
 		TenantID:    tenantID,
 		BasicAuth:   auth,
@@ -85,9 +83,9 @@ func NewQueryClient(baseURL, tenantID string, auth BasicAuth, queryParams QueryP
 }
 
 // QueryRange queries Loki logs based on the query parameters and returns the raw log entries
-func (lc *Client) QueryRange(ctx context.Context) ([]LogEntry, error) {
+func (lc *LokiClient) QueryRange(ctx context.Context) ([]LogEntry, error) {
 	// Log request details
-	framework.L.Info().
+	L.Info().
 		Str("Query", lc.QueryParams.Query).
 		Str("StartTime", lc.QueryParams.StartTime.Format(time.RFC3339Nano)).
 		Str("EndTime", lc.QueryParams.EndTime.Format(time.RFC3339Nano)).
@@ -117,7 +115,7 @@ func (lc *Client) QueryRange(ctx context.Context) ([]LogEntry, error) {
 	duration := time.Since(start)
 
 	if err != nil {
-		framework.L.Error().Err(err).Dur("duration", duration).Msg("Error querying Loki")
+		L.Error().Err(err).Dur("duration", duration).Msg("Error querying Loki")
 		return nil, err
 	}
 
@@ -127,7 +125,7 @@ func (lc *Client) QueryRange(ctx context.Context) ([]LogEntry, error) {
 		if len(bodySnippet) > 200 {
 			bodySnippet = bodySnippet[:200] + "..."
 		}
-		framework.L.Error().
+		L.Error().
 			Int("StatusCode", resp.StatusCode()).
 			Dur("duration", duration).
 			Str("ResponseBody", bodySnippet).
@@ -139,7 +137,7 @@ func (lc *Client) QueryRange(ctx context.Context) ([]LogEntry, error) {
 	}
 
 	// Log successful response
-	framework.L.Info().
+	L.Info().
 		Int("StatusCode", resp.StatusCode()).
 		Dur("duration", duration).
 		Msg("Successfully queried Loki API")
@@ -147,7 +145,7 @@ func (lc *Client) QueryRange(ctx context.Context) ([]LogEntry, error) {
 	// Parse the response into the Response struct
 	var lokiResp Response
 	if err := json.Unmarshal(resp.Body(), &lokiResp); err != nil {
-		framework.L.Error().Err(err).Msg("Error decoding response from Loki")
+		L.Error().Err(err).Msg("Error decoding response from Loki")
 		return nil, err
 	}
 
@@ -155,24 +153,24 @@ func (lc *Client) QueryRange(ctx context.Context) ([]LogEntry, error) {
 	logEntries := lc.extractRawLogEntries(lokiResp)
 
 	// Log the number of entries retrieved
-	framework.L.Info().Int("LogEntries", len(logEntries)).Msg("Successfully retrieved logs from Loki")
+	L.Info().Int("LogEntries", len(logEntries)).Msg("Successfully retrieved logs from Loki")
 
 	return logEntries, nil
 }
 
 // extractRawLogEntries processes the Response and returns raw log entries
-func (lc *Client) extractRawLogEntries(lokiResp Response) []LogEntry {
+func (lc *LokiClient) extractRawLogEntries(lokiResp Response) []LogEntry {
 	var logEntries []LogEntry
 
 	for _, result := range lokiResp.Data.Result {
 		for _, entry := range result.Values {
 			if len(entry) != 2 {
-				framework.L.Error().Interface("Log entry", entry).Msgf("Error parsing log entry. Expected 2 elements, got %d", len(entry))
+				L.Error().Interface("Log entry", entry).Msgf("Error parsing log entry. Expected 2 elements, got %d", len(entry))
 				continue
 			}
 			var timestamp string
 			if entry[0] == nil {
-				framework.L.Error().Msg("Error parsing timestamp. Entry at index 0, that should be a timestamp, is nil")
+				L.Error().Msg("Error parsing timestamp. Entry at index 0, that should be a timestamp, is nil")
 				continue
 			}
 			if timestampString, ok := entry[0].(string); ok {
@@ -182,7 +180,7 @@ func (lc *Client) extractRawLogEntries(lokiResp Response) []LogEntry {
 			} else if timestampFloat, ok := entry[0].(float64); ok {
 				timestamp = fmt.Sprintf("%f", timestampFloat)
 			} else {
-				framework.L.Error().Msgf("Error parsing timestamp. Expected string, int, or float64, got %T", entry[0])
+				L.Error().Msgf("Error parsing timestamp. Expected string, int, or float64, got %T", entry[0])
 				continue
 			}
 			logLine := entry[1].(string)

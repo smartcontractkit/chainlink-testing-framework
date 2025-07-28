@@ -1,4 +1,4 @@
-package loki
+package framework
 
 import (
 	"context"
@@ -43,7 +43,7 @@ func TestLokiClient_SuccessfulQuery(t *testing.T) {
 		EndTime:   time.Now(),
 		Limit:     100,
 	}
-	lokiClient := NewQueryClient(mockServer.URL, "test-tenant", auth, queryParams)
+	lokiClient := NewLokiQueryClient(mockServer.URL, "test-tenant", auth, queryParams)
 	logEntries, err := lokiClient.QueryRange(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, logEntries, 2)
@@ -69,7 +69,7 @@ func TestLokiClient_AuthenticationFailure(t *testing.T) {
 		EndTime:   time.Now(),
 		Limit:     100,
 	}
-	lokiClient := NewQueryClient(mockServer.URL, "test-tenant", auth, queryParams)
+	lokiClient := NewLokiQueryClient(mockServer.URL, "test-tenant", auth, queryParams)
 	logEntries, err := lokiClient.QueryRange(context.Background())
 	assert.Nil(t, logEntries)
 	assert.Error(t, err)
@@ -99,7 +99,7 @@ func TestLokiClient_InternalServerError(t *testing.T) {
 		EndTime:   time.Now(),
 		Limit:     100,
 	}
-	lokiClient := NewQueryClient(mockServer.URL, "test-tenant", auth, queryParams)
+	lokiClient := NewLokiQueryClient(mockServer.URL, "test-tenant", auth, queryParams)
 	logEntries, err := lokiClient.QueryRange(context.Background())
 	assert.Nil(t, logEntries)
 	assert.Error(t, err)
@@ -143,7 +143,7 @@ func TestLokiClient_DebugMode(t *testing.T) {
 		EndTime:   time.Now(),
 		Limit:     100,
 	}
-	lokiClient := NewQueryClient(mockServer.URL, "test-tenant", auth, queryParams)
+	lokiClient := NewLokiQueryClient(mockServer.URL, "test-tenant", auth, queryParams)
 	logEntries, err := lokiClient.QueryRange(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, logEntries, 2)

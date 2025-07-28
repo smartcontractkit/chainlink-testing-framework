@@ -1,4 +1,4 @@
-package prometheus
+package framework
 
 import (
 	"encoding/json"
@@ -10,23 +10,23 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-// QueryClient is a client for querying Prometheus metrics
-type QueryClient struct {
+// PrometheusQueryClient is a client for querying Prometheus metrics
+type PrometheusQueryClient struct {
 	client  *resty.Client
 	baseURL string
 }
 
-// NewQueryClient creates a new QueryClient
-func NewQueryClient(baseURL string) *QueryClient {
+// NewPrometheusQueryClient creates a new PrometheusQueryClient
+func NewPrometheusQueryClient(baseURL string) *PrometheusQueryClient {
 	isDebug := os.Getenv("RESTY_DEBUG") == "true"
-	return &QueryClient{
+	return &PrometheusQueryClient{
 		client:  resty.New().SetDebug(isDebug),
 		baseURL: strings.TrimSuffix(baseURL, "/"),
 	}
 }
 
-// QueryResponse represents the response from Prometheus API
-type QueryResponse struct {
+// PrometheusQueryResponse represents the response from Prometheus API
+type PrometheusQueryResponse struct {
 	Status string `json:"status"`
 	Data   struct {
 		ResultType string `json:"resultType"`
@@ -58,7 +58,7 @@ type QueryRangeParams struct {
 }
 
 // Query executes an instant query against the Prometheus API
-func (p *QueryClient) Query(query string, timestamp time.Time) (*QueryResponse, error) {
+func (p *PrometheusQueryClient) Query(query string, timestamp time.Time) (*PrometheusQueryResponse, error) {
 	url := fmt.Sprintf("%s/api/v1/query", p.baseURL)
 	resp, err := p.client.R().
 		SetQueryParams(map[string]string{
@@ -72,7 +72,7 @@ func (p *QueryClient) Query(query string, timestamp time.Time) (*QueryResponse, 
 	if resp.StatusCode() != 200 {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode())
 	}
-	var result QueryResponse
+	var result PrometheusQueryResponse
 	if err := json.Unmarshal(resp.Body(), &result); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
@@ -83,7 +83,7 @@ func (p *QueryClient) Query(query string, timestamp time.Time) (*QueryResponse, 
 }
 
 // QueryRange executes a range query against the Prometheus API
-func (p *QueryClient) QueryRange(params QueryRangeParams) (*QueryRangeResponse, error) {
+func (p *PrometheusQueryClient) QueryRange(params QueryRangeParams) (*QueryRangeResponse, error) {
 	url := fmt.Sprintf("%s/api/v1/query_range", p.baseURL)
 	resp, err := p.client.R().
 		SetQueryParams(map[string]string{
@@ -109,9 +109,9 @@ func (p *QueryClient) QueryRange(params QueryRangeParams) (*QueryRangeResponse, 
 	return &result, nil
 }
 
-// ToLabelsMap converts QueryResponse.Data.Result into a map where keys are
+// ToLabelsMap converts PrometheusQueryResponse.Data.Result into a map where keys are
 // metric labels in "k:v" format and values are slices of all values with that label
-func ToLabelsMap(response *QueryResponse) map[string][]interface{} {
+func ToLabelsMap(response *PrometheusQueryResponse) map[string][]interface{} {
 	resultMap := make(map[string][]interface{})
 	for _, res := range response.Data.Result {
 		for k, v := range res.Metric {
