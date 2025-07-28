@@ -7,13 +7,13 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-type Client struct {
+type GrafanaClient struct {
 	resty *resty.Client
 }
 
 // NewGrafanaClient initializes a new Grafana client with the specified URL and API key.
-func NewGrafanaClient(url, bearerToken string) *Client {
-	return &Client{
+func NewGrafanaClient(url, bearerToken string) *GrafanaClient {
+	return &GrafanaClient{
 		resty: resty.New().
 			SetBaseURL(url).
 			SetHeader("Authorization", "Bearer "+bearerToken),
@@ -49,7 +49,7 @@ func A(ns, text string, dashboardUIDs []string, from, to *time.Time) Annotation 
 }
 
 // Annotate adds annotation to all the dashboards, works for both single point annotation with just StartTime and for ranges with StartTime/EndTime
-func (c *Client) Annotate(annotation Annotation) ([]PostAnnotationResponse, []*resty.Response, error) {
+func (c *GrafanaClient) Annotate(annotation Annotation) ([]PostAnnotationResponse, []*resty.Response, error) {
 	var results []PostAnnotationResponse
 	var responses []*resty.Response
 

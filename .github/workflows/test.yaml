@@ -15,10 +15,16 @@ jobs:
         test:
           - path: framework
             vm: ubuntu-latest
-            regex: TestStorageMutations
+            regex: TestSmoke
           - path: framework
             vm: ubuntu-latest
-            regex: TestSmoke
+            regex: TestPrometheus
+          - path: framework
+            vm: ubuntu-latest
+            regex: TestLoki
+          - path: framework
+            vm: ubuntu-latest
+            regex: TestStorageMutations
           - path: wasp
             vm: ubuntu22.04-16cores-64GB # ghv-ignore!
             regex: TestSmoke

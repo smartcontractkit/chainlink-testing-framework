@@ -8,7 +8,6 @@ import (
 	"time"
 
 	f "github.com/smartcontractkit/chainlink-testing-framework/framework"
-	gf "github.com/smartcontractkit/chainlink-testing-framework/framework/grafana"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
 	"github.com/smartcontractkit/chainlink-testing-framework/havoc"
 
@@ -40,7 +39,7 @@ func TestK8sChaos(t *testing.T) {
 	c, err := havoc.NewChaosMeshClient()
 	require.NoError(t, err)
 	cr := havoc.NewNamespaceRunner(f.L, c, true)
-	gc := gf.NewGrafanaClient(os.Getenv("GRAFANA_URL"), os.Getenv("GRAFANA_TOKEN"))
+	gc := f.NewGrafanaClient(os.Getenv("GRAFANA_URL"), os.Getenv("GRAFANA_TOKEN"))
 	rpc0 := rpc.New(cfg.BlockchainHTTPURLs[0], nil)
 	rpc1 := rpc.New(cfg.BlockchainHTTPURLs[1], nil)
 
@@ -471,7 +470,7 @@ func TestK8sChaos(t *testing.T) {
 			n := time.Now()
 			testCase.run(t)
 			time.Sleep(f.MustParseDuration(cfg.ExperimentDuration))
-			_, _, err := gc.Annotate(gf.A(cfg.Namespace, testCase.name, cfg.DashboardUUIDs, havoc.Ptr(n), havoc.Ptr(time.Now())))
+			_, _, err := gc.Annotate(f.A(cfg.Namespace, testCase.name, cfg.DashboardUUIDs, havoc.Ptr(n), havoc.Ptr(time.Now())))
 			require.NoError(t, err)
 			testCase.validate(t)
 		})
