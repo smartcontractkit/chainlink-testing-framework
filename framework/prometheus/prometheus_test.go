@@ -49,16 +49,12 @@ func TestPrometheusQueryClient_Query(t *testing.T) {
 			expectedCount:  2,
 			validateResult: func(t *testing.T, result *QueryResponse) {
 				assert.Equal(t, "vector", result.Data.ResultType)
-
-				// Check first metric
 				assert.Equal(t, "go_gc_duration_seconds", result.Data.Result[0].Metric["__name__"])
 				assert.Equal(t, "cadvisor:8080", result.Data.Result[0].Metric["instance"])
 				assert.Equal(t, "cadvisor", result.Data.Result[0].Metric["job"])
 				assert.Equal(t, "0.5", result.Data.Result[0].Metric["quantile"])
 				assert.Equal(t, 1753701299.664, result.Data.Result[0].Value[0].(float64))
 				assert.Equal(t, "0.000187874", result.Data.Result[0].Value[1].(string))
-
-				// Check second metric
 				assert.Equal(t, "go_gc_duration_seconds", result.Data.Result[1].Metric["__name__"])
 				assert.Equal(t, "postgres_exporter:9187", result.Data.Result[1].Metric["instance"])
 				assert.Equal(t, "postgres", result.Data.Result[1].Metric["job"])
@@ -114,7 +110,6 @@ func TestPrometheusQueryClient_Query(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup mock server
 			mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "/api/v1/query", r.URL.Path)
 				assert.Equal(t, "go_gc_duration_seconds", r.URL.Query().Get("query"))
@@ -124,17 +119,12 @@ func TestPrometheusQueryClient_Query(t *testing.T) {
 				assert.NoError(t, err)
 			}))
 			defer mockServer.Close()
-
-			// Create client and make request
 			client := NewQueryClient(mockServer.URL)
 			timestamp := time.Unix(1753701299, 664000000)
 			result, err := client.Query("go_gc_duration_seconds", timestamp)
-
-			// Validate response
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedStatus, result.Status)
 			assert.Equal(t, tt.expectedCount, len(result.Data.Result))
-
 			if tt.validateResult != nil {
 				tt.validateResult(t, result)
 			}
@@ -234,7 +224,6 @@ func TestPrometheusQueryClientQueryRange(t *testing.T) {
 				assert.Equal(t, "http_requests_total", result.Data.Result[0].Metric["__name__"])
 				assert.Equal(t, "api-server", result.Data.Result[0].Metric["job"])
 				assert.Equal(t, "200", result.Data.Result[0].Metric["code"])
-
 				values := result.Data.Result[0].Values
 				assert.Len(t, values, 3)
 				assert.Equal(t, 1435781451.781, values[0][0].(float64))
@@ -271,13 +260,9 @@ func TestPrometheusQueryClientQueryRange(t *testing.T) {
 			expectedCount:  2,
 			validateResult: func(t *testing.T, result *QueryRangeResponse) {
 				assert.Equal(t, "matrix", result.Data.ResultType)
-
-				// Check first series
 				assert.Equal(t, "cpu_usage", result.Data.Result[0].Metric["__name__"])
 				assert.Equal(t, "server1", result.Data.Result[0].Metric["instance"])
 				assert.Equal(t, "0.45", result.Data.Result[0].Values[0][1].(string))
-
-				// Check second series
 				assert.Equal(t, "cpu_usage", result.Data.Result[1].Metric["__name__"])
 				assert.Equal(t, "server2", result.Data.Result[1].Metric["instance"])
 				assert.Equal(t, "0.62", result.Data.Result[1].Values[0][1].(string))
@@ -287,7 +272,6 @@ func TestPrometheusQueryClientQueryRange(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup mock server
 			mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "/api/v1/query_range", r.URL.Path)
 				assert.Equal(t, "http_requests_total", r.URL.Query().Get("query"))
@@ -300,8 +284,6 @@ func TestPrometheusQueryClientQueryRange(t *testing.T) {
 				assert.NoError(t, err)
 			}))
 			defer mockServer.Close()
-
-			// Create client and make request
 			client := NewQueryClient(mockServer.URL)
 			params := QueryRangeParams{
 				Query: "http_requests_total",
@@ -310,12 +292,9 @@ func TestPrometheusQueryClientQueryRange(t *testing.T) {
 				Step:  15 * time.Second,
 			}
 			result, err := client.QueryRange(params)
-
-			// Validate response
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedStatus, result.Status)
 			assert.Equal(t, tt.expectedCount, len(result.Data.Result))
-
 			if tt.validateResult != nil {
 				tt.validateResult(t, result)
 			}

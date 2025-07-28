@@ -19,6 +19,12 @@ jobs:
           - path: framework
             vm: ubuntu-latest
             regex: TestSmoke
+          - path: framework/prometheus
+            vm: ubuntu-latest
+            regex: TestPrometheus
+          - path: framework/loki
+            vm: ubuntu-latest
+            regex: TestLoki
           - path: wasp
             vm: ubuntu22.04-16cores-64GB # ghv-ignore!
             regex: TestSmoke

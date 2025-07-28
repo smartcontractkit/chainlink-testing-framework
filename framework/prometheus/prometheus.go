@@ -66,23 +66,19 @@ func (p *QueryClient) Query(query string, timestamp time.Time) (*QueryResponse, 
 			"time":  formatPrometheusTime(timestamp),
 		}).
 		Get(url)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute query: %w", err)
 	}
 	if resp.StatusCode() != 200 {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode())
 	}
-
 	var result QueryResponse
 	if err := json.Unmarshal(resp.Body(), &result); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
-
 	if result.Status != "success" {
 		return nil, fmt.Errorf("query failed with status: %s", result.Status)
 	}
-
 	return &result, nil
 }
 
@@ -97,23 +93,19 @@ func (p *QueryClient) QueryRange(params QueryRangeParams) (*QueryRangeResponse, 
 			"step":  formatDuration(params.Step),
 		}).
 		Get(url)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute range query: %w", err)
 	}
 	if resp.StatusCode() != 200 {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode())
 	}
-
 	var result QueryRangeResponse
 	if err := json.Unmarshal(resp.Body(), &result); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
-
 	if result.Status != "success" {
 		return nil, fmt.Errorf("range query failed with status: %s", result.Status)
 	}
-
 	return &result, nil
 }
 
@@ -121,15 +113,12 @@ func (p *QueryClient) QueryRange(params QueryRangeParams) (*QueryRangeResponse, 
 // metric labels in "k:v" format and values are slices of all values with that label
 func ToLabelsMap(response *QueryResponse) map[string][]interface{} {
 	resultMap := make(map[string][]interface{})
-
 	for _, res := range response.Data.Result {
-		// Process each metric label
 		for k, v := range res.Metric {
 			label := fmt.Sprintf("%s:%s", k, v)
 			resultMap[label] = append(resultMap[label], res.Value[1]) // Value[1] is the metric value
 		}
 	}
-
 	return resultMap
 }
 
