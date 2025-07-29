@@ -11,10 +11,8 @@ import (
 
 	networkTypes "github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -166,11 +164,6 @@ func New(in *Input) (*Output, error) {
 	if chipIngressExternalHostErr != nil {
 		return nil, errors.Wrap(chipIngressExternalHostErr, "failed to get host for Chip Ingress")
 	}
-	// for some magical reason mapped port sometimes cannot be found, even though we wait for it to be ready, when starting the services
-	chipIngressExternalPort, chipIngressExternalPortErr := findMappdePort(ctx, 31*time.Second, chipIngressContainer, DEFAULT_CHIP_INGRESS_GRPC_PORT)
-	if chipIngressExternalPortErr != nil {
-		return nil, errors.Wrap(chipIngressExternalPortErr, "failed to get mapped port for Chip Ingress")
-	}
 
 	redpandaContainer, redpandaErr := stack.ServiceContainer(ctx, DEFAULT_RED_PANDA_SERVICE_NAME)
 	if redpandaErr != nil {
@@ -181,14 +174,6 @@ func New(in *Input) (*Output, error) {
 	if redpandaExternalHostErr != nil {
 		return nil, errors.Wrap(redpandaExternalHostErr, "failed to get host for Red Panda")
 	}
-	redpandaExternalKafkaPort, redpandaExternalKafkaPortErr := findMappdePort(ctx, 31*time.Second, redpandaContainer, DEFAULT_RED_PANDA_KAFKA_PORT)
-	if redpandaExternalKafkaPortErr != nil {
-		return nil, errors.Wrap(redpandaExternalKafkaPortErr, "failed to get mapped port for Red Panda")
-	}
-	redpandaExternalSchemaRegistryPort, redpandaExternalSchemaRegistryPortErr := findMappdePort(ctx, 31*time.Second, redpandaContainer, DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT)
-	if redpandaExternalSchemaRegistryPortErr != nil {
-		return nil, errors.Wrap(redpandaExternalSchemaRegistryPortErr, "failed to get mapped port for Red Panda")
-	}
 
 	redpandaConsoleContainer, redpandaConsoleErr := stack.ServiceContainer(ctx, DEFAULT_RED_PANDA_CONSOLE_SERVICE_NAME)
 	if redpandaConsoleErr != nil {
@@ -198,22 +183,18 @@ func New(in *Input) (*Output, error) {
 	if redpandaExternalConsoleHostErr != nil {
 		return nil, errors.Wrap(redpandaExternalConsoleHostErr, "failed to get host for Red Panda Console")
 	}
-	redpandaExternalConsolePort, redpandaExternalConsolePortErr := findMappdePort(ctx, 31*time.Second, redpandaConsoleContainer, DEFAULT_RED_PANDA_CONSOLE_PORT)
-	if redpandaExternalConsolePortErr != nil {
-		return nil, errors.Wrap(redpandaExternalConsolePortErr, "failed to get mapped port for Red Panda Console")
-	}
 
 	output := &Output{
 		ChipIngress: &ChipIngressOutput{
 			GRPCInternalURL: fmt.Sprintf("http://%s:%s", DEFAULT_CHIP_INGRESS_SERVICE_NAME, DEFAULT_CHIP_INGRESS_GRPC_PORT),
-			GRPCExternalURL: fmt.Sprintf("http://%s:%s", chipIngressExternalHost, chipIngressExternalPort.Port()),
+			GRPCExternalURL: fmt.Sprintf("http://%s:%s", chipIngressExternalHost, DEFAULT_CHIP_INGRESS_GRPC_PORT),
 		},
 		RedPanda: &RedPandaOutput{
 			SchemaRegistryInternalURL: fmt.Sprintf("http://%s:%s", DEFAULT_RED_PANDA_SERVICE_NAME, DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT),
-			SchemaRegistryExternalURL: fmt.Sprintf("http://%s:%s", redpandaExternalHost, redpandaExternalSchemaRegistryPort.Port()),
+			SchemaRegistryExternalURL: fmt.Sprintf("http://%s:%s", redpandaExternalHost, DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT),
 			KafkaInternalURL:          fmt.Sprintf("%s:%s", DEFAULT_RED_PANDA_SERVICE_NAME, DEFAULT_RED_PANDA_KAFKA_PORT),
-			KafkaExternalURL:          fmt.Sprintf("%s:%s", redpandaExternalHost, redpandaExternalKafkaPort.Port()),
-			ConsoleExternalURL:        fmt.Sprintf("http://%s:%s", redpandaExternalConsoleHost, redpandaExternalConsolePort.Port()),
+			KafkaExternalURL:          fmt.Sprintf("%s:%s", redpandaExternalHost, DEFAULT_RED_PANDA_KAFKA_PORT),
+			ConsoleExternalURL:        fmt.Sprintf("http://%s:%s", redpandaExternalConsoleHost, DEFAULT_RED_PANDA_CONSOLE_PORT),
 		},
 	}
 
@@ -250,33 +231,6 @@ func composeFilePath(rawFilePath string) (string, error) {
 	}
 
 	return tempFile.Name(), nil
-}
-
-func findMappdePort(ctx context.Context, timeout time.Duration, container *testcontainers.DockerContainer, port nat.Port) (nat.Port, error) {
-	forCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	tickerInterval := 5 * time.Second
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-forCtx.Done():
-			return "", fmt.Errorf("timeout while waiting for mapped port for %s", port)
-		case <-ticker.C:
-			portCtx, portCancel := context.WithTimeout(ctx, tickerInterval)
-			defer portCancel()
-			mappedPort, mappedPortErr := container.MappedPort(portCtx, port)
-			if mappedPortErr != nil {
-				return "", errors.Wrapf(mappedPortErr, "failed to get mapped port for %s", port)
-			}
-			if mappedPort.Port() == "" {
-				return "", fmt.Errorf("mapped port for %s is empty", port)
-			}
-			return mappedPort, nil
-		}
-	}
 }
 
 func connectNetwork(connCtx context.Context, timeout time.Duration, dockerClient *client.Client, containerID, networkName, stackIdentifier string) error {
