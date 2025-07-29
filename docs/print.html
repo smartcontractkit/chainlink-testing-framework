@@ -432,16 +432,16 @@ Docker version 27.3.1
 </code></pre>
 <p>Download our <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8">CLI</a></p>
 <p>OS X <code>arm64</code> (M1/M2/M3 MacBooks)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.7/framework-v0.10.7-darwin-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.8/framework-v0.10.8-darwin-arm64.tar.gz | tar -xz
 </code></pre>
 <p>OS X <code>amd64</code> (old Intel chips)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.7/framework-v0.10.7-darwin-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.8/framework-v0.10.8-darwin-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>arm64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.7/framework-v0.10.7-linux-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.8/framework-v0.10.8-linux-arm64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>amd64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.7/framework-v0.10.7-linux-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.8/framework-v0.10.8-linux-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Allow it to run in <code>System Settings -&gt; Security Settings</code> (OS X)</p>
 <p><img src="framework/images/img.png" alt="img.png" /></p>
@@ -542,16 +542,16 @@ Docker version 27.3.1
 </code></pre>
 <p>Download our <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8">CLI</a></p>
 <p>OS X <code>arm64</code> (M1/M2/M3 MacBooks)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.7/framework-v0.10.7-darwin-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.8/framework-v0.10.8-darwin-arm64.tar.gz | tar -xz
 </code></pre>
 <p>OS X <code>amd64</code> (old Intel chips)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.7/framework-v0.10.7-darwin-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.8/framework-v0.10.8-darwin-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>arm64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.7/framework-v0.10.7-linux-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.8/framework-v0.10.8-linux-arm64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>amd64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.7/framework-v0.10.7-linux-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.8/framework-v0.10.8-linux-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Allow it to run in <code>System Settings -&gt; Security Settings</code> (OS X)</p>
 <p><img src="framework/images/img.png" alt="img.png" /></p>
@@ -4871,17 +4871,10 @@ if outErr != nil {
 ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 defer cancel()
 
-// we recommend to use GITHUB_TOKEN with read access to repositories with protos to avoid heavy rate limiting
-var client *github.Client
-if token := os.Getenv("GITHUB_TOKEN"); token != "" {
-    ts := oauth2.StaticTokenSource(&amp;oauth2.Token{AccessToken: token})
-    tc := oauth2.NewClient(ctx, ts)
-    client = github.NewClient(tc)
-} else {
-    client = github.NewClient(nil)
-}
-
-protoErr := chipingressset.DefaultRegisterAndFetchProtos(ctx, client, []chipingressset.RepoConfiguration{
+protoErr := chipingressset.DefaultRegisterAndFetchProtos(
+    ctx,
+    nil, // GH client will be created dynamically, if needed
+    []chipingressset.RepoConfiguration{
     {
         URI:   "https://github.com/smartcontractkit/chainlink-protostractkit",
         Ref:     "626c42d55bdcb36dffe0077fff58abba40acc3e5",
@@ -4929,6 +4922,8 @@ for _, schemaSet := range configFiles {
 </code></pre>
 <p>Registration logic is very simple and should handle cases of protos that import other protos as long they are all available in the <code>ProtoSchemaSet</code>s provided to the registration function. That function uses an algorithm called "topological sorting by trail", which will try to register all protos in a loop until it cannot register any more protos or it has registered all of them. That allows us to skip dependency parsing completely.</p>
 <p>Kafka doesn't have any automatic discoverability mechanism for subject - schema relationship (it has to be provided out-of-band). Currenly, we create the subject in the following way: &lt;subject_prefix&gt;.<package>.&lt;1st-message-name&gt;. Subject prefix is optional and if it's not present, then subject is equal to: <package>.&lt;1st-message-name&gt;. Only the first message in the <code>.proto</code> file is ever registered.</p>
+<h2 id="protobuf-caching"><a class="header" href="#protobuf-caching">Protobuf caching</a></h2>
+<p>Once fetched from <code>https://github.com</code> protobuf files will be saved in <code>.local/share/beholder/protobufs/&lt;OWNER&gt;/&lt;REPOSTIORY&gt;/&lt;SHA&gt;</code> folder and subsequently used. If saving to cache or reading from it fails, we will load files from the original source.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -17150,7 +17145,7 @@ go run ./tools/breakingchanges/cmd/main.go --ignore tools,wasp,havoc,seth # to i
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>2ffe9491</code></li>
+<li>Commit: <code>2445eb2f</code></li>
 </ul>
 
                     </main>
