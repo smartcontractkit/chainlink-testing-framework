@@ -60,17 +60,10 @@ if outErr != nil {
 ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 defer cancel()
 
-// we recommend to use GITHUB_TOKEN with read access to repositories with protos to avoid heavy rate limiting
-var client *github.Client
-if token := os.Getenv("GITHUB_TOKEN"); token != "" {
-    ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
-    tc := oauth2.NewClient(ctx, ts)
-    client = github.NewClient(tc)
-} else {
-    client = github.NewClient(nil)
-}
-
-protoErr := chipingressset.DefaultRegisterAndFetchProtos(ctx, client, []chipingressset.RepoConfiguration{
+protoErr := chipingressset.DefaultRegisterAndFetchProtos(
+    ctx,
+    nil, // GH client will be created dynamically, if needed
+    []chipingressset.RepoConfiguration{
     {
         URI:   "https://github.com/smartcontractkit/chainlink-protostractkit",
         Ref:     "626c42d55bdcb36dffe0077fff58abba40acc3e5",
@@ -124,3 +117,7 @@ for _, schemaSet := range configFiles {
 Registration logic is very simple and should handle cases of protos that import other protos as long they are all available in the `ProtoSchemaSet`s provided to the registration function. That function uses an algorithm called "topological sorting by trail", which will try to register all protos in a loop until it cannot register any more protos or it has registered all of them. That allows us to skip dependency parsing completely.
 
 Kafka doesn't have any automatic discoverability mechanism for subject - schema relationship (it has to be provided out-of-band). Currenly, we create the subject in the following way: <subject_prefix>.<package>.<1st-message-name>. Subject prefix is optional and if it's not present, then subject is equal to: <package>.<1st-message-name>. Only the first message in the `.proto` file is ever registered.
+
+## Protobuf caching
+
+Once fetched from `https://github.com` protobuf files will be saved in `.local/share/beholder/protobufs/<OWNER>/<REPOSTIORY>/<SHA>` folder and subsequently used. If saving to cache or reading from it fails, we will load files from the original source.

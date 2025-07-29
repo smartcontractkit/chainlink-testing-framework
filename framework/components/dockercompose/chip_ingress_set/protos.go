@@ -15,6 +15,7 @@ import (
 	"github.com/google/go-github/v72/github"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"golang.org/x/oauth2"
 )
 
 type protoFile struct {
@@ -83,8 +84,27 @@ func RegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSch
 		}
 	}
 
+	ghClientFn := func() *github.Client {
+		if client != nil {
+			return client
+		}
+
+		var client *github.Client
+
+		if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+			ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+			tc := oauth2.NewClient(ctx, ts)
+			client = github.NewClient(tc)
+		} else {
+			framework.L.Warn().Msg("GITHUB_TOKEN is not set, using unauthenticated GitHub client. This may cause rate limiting issues when downloading proto files")
+			client = github.NewClient(nil)
+		}
+
+		return client
+	}
+
 	for _, protoSchemaSet := range protoSchemaSets {
-		protos, protosErr := fetchProtoFilesInFolders(ctx, client, protoSchemaSet.URI, protoSchemaSet.Ref, protoSchemaSet.Folders)
+		protos, protosErr := fetchProtoFilesInFolders(ctx, ghClientFn, protoSchemaSet.URI, protoSchemaSet.Ref, protoSchemaSet.Folders)
 		if protosErr != nil {
 			return errors.Wrapf(protosErr, "failed to fetch protos from %s", protoSchemaSet.URI)
 		}
@@ -167,7 +187,7 @@ func extractTopLevelMessageNamesWithRegex(protoSrc string) ([]string, error) {
 }
 
 // Fetches .proto files from a GitHub repo optionally scoped to specific folders. It is recommended to use `*github.Client` with auth token to avoid rate limiting.
-func fetchProtoFilesInFolders(ctx context.Context, client *github.Client, uri, ref string, folders []string) ([]protoFile, error) {
+func fetchProtoFilesInFolders(ctx context.Context, clientFn func() *github.Client, uri, ref string, folders []string) ([]protoFile, error) {
 	framework.L.Debug().Msgf("Fetching proto files from %s in folders: %s", uri, strings.Join(folders, ", "))
 
 	if strings.HasPrefix(uri, "file://") {
@@ -176,14 +196,20 @@ func fetchProtoFilesInFolders(ctx context.Context, client *github.Client, uri, r
 
 	parts := strings.Split(strings.TrimPrefix(uri, "https://"), "/")
 
-	return fetchProtosFromGithub(ctx, client, parts[1], parts[2], ref, folders)
+	return fetchProtosFromGithub(ctx, clientFn, parts[1], parts[2], ref, folders)
 }
 
-func fetchProtosFromGithub(ctx context.Context, client *github.Client, owner, repository, ref string, folders []string) ([]protoFile, error) {
-	if client == nil {
-		return nil, errors.New("github client cannot be nil")
+func fetchProtosFromGithub(ctx context.Context, clientFn func() *github.Client, owner, repository, ref string, folders []string) ([]protoFile, error) {
+	cachedFiles, found, cacheErr := loadCachedProtoFiles(owner, repository, ref, folders)
+	if cacheErr != nil {
+		framework.L.Warn().Msgf("Failed to load cached proto files for %s/%s at ref %s: %v", owner, repository, ref, cacheErr)
+	}
+	if cacheErr == nil && found {
+		framework.L.Debug().Msgf("Using cached proto files for %s/%s at ref %s", owner, repository, ref)
+		return cachedFiles, nil
 	}
 
+	client := clientFn()
 	var files []protoFile
 
 	sha, shaErr := resolveRefSHA(ctx, client, owner, repository, ref)
@@ -255,7 +281,59 @@ searchLoop:
 		return nil, fmt.Errorf("no proto files found in %s/%s in folders %s", owner, repository, strings.Join(folders, ", "))
 	}
 
+	saveErr := saveProtoFilesToCache(owner, repository, ref, files)
+	if saveErr != nil {
+		framework.L.Warn().Msgf("Failed to save proto files to cache for %s/%s at ref %s: %v", owner, repository, ref, saveErr)
+	}
+
 	return files, nil
+}
+
+func loadCachedProtoFiles(owner, repository, ref string, _ []string) ([]protoFile, bool, error) {
+	cachePath, cacheErr := cacheFilePath(owner, repository, ref)
+	if cacheErr != nil {
+		return nil, false, errors.Wrapf(cacheErr, "failed to get cache file path for %s/%s at ref %s", owner, repository, ref)
+	}
+
+	if _, err := os.Stat(cachePath); os.IsNotExist(err) {
+		return nil, false, nil // cache not found
+	}
+
+	cachedFiles, cachedErr := fetchProtosFromFilesystem("file://"+cachePath, []string{}) // ignore folders since, we already filtered them when fetching from GitHub
+	if cachedErr != nil {
+		return nil, false, errors.Wrapf(cachedErr, "failed to load cached proto files from %s", cachePath)
+	}
+
+	return cachedFiles, true, nil
+}
+
+func saveProtoFilesToCache(owner, repository, ref string, files []protoFile) error {
+	cachePath, cacheErr := cacheFilePath(owner, repository, ref)
+	if cacheErr != nil {
+		return errors.Wrapf(cacheErr, "failed to get cache file path for %s/%s at ref %s", owner, repository, ref)
+	}
+
+	for _, file := range files {
+		path := filepath.Join(cachePath, file.Path)
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			return errors.Wrapf(err, "failed to create directory for cache file %s", cachePath)
+		}
+		if writeErr := os.WriteFile(path, []byte(file.Content), 0755); writeErr != nil {
+			return errors.Wrapf(writeErr, "failed to write cached proto files to %s", cachePath)
+		}
+	}
+
+	framework.L.Debug().Msgf("Saved %d proto files to cache at %s", len(files), cachePath)
+
+	return nil
+}
+
+func cacheFilePath(owner, repository, ref string) (string, error) {
+	homeDir, homeErr := os.UserHomeDir()
+	if homeErr != nil {
+		return "", errors.Wrap(homeErr, "failed to get user home directory")
+	}
+	return filepath.Join(homeDir, ".local", "share", "beholder", "protobufs", owner, repository, ref), nil
 }
 
 func fetchProtosFromFilesystem(uri string, folders []string) ([]protoFile, error) {
