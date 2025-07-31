@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/go-connections/nat"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 
@@ -59,7 +60,8 @@ func newTron(in *Input) (*Output, error) {
 	ctx := context.Background()
 
 	containerName := framework.DefaultTCName("blockchain-node")
-	bindPort := fmt.Sprintf("%s/tcp", in.Port)
+	// Tron container always listens on port 9090 internally
+	containerPort := fmt.Sprintf("%s/tcp", DefaultTronPort)
 
 	accounts, err := os.CreateTemp("", "accounts.json")
 	if err != nil {
@@ -79,14 +81,22 @@ func newTron(in *Input) (*Output, error) {
 		AlwaysPullImage: in.PullImage,
 		Image:           in.Image,
 		Name:            containerName,
-		ExposedPorts:    []string{bindPort},
+		ExposedPorts:    []string{containerPort},
 		Networks:        []string{framework.DefaultNetworkName},
 		NetworkAliases: map[string][]string{
 			framework.DefaultNetworkName: {containerName},
 		},
 		Labels: framework.DefaultTCLabels(),
 		HostConfigModifier: func(h *container.HostConfig) {
-			h.PortBindings = framework.MapTheSamePort(bindPort)
+			// Map user-provided host port to container's default port (9090)
+			h.PortBindings = nat.PortMap{
+				nat.Port(containerPort): []nat.PortBinding{
+					{
+						HostIP:   "0.0.0.0",
+						HostPort: in.Port,
+					},
+				},
+			}
 			framework.ResourceLimitsFunc(h, in.ContainerResources)
 		},
 		WaitingFor: wait.ForLog("Mnemonic").WithPollInterval(200 * time.Millisecond).WithStartupTimeout(1 * time.Minute),
@@ -121,7 +131,7 @@ func newTron(in *Input) (*Output, error) {
 		Nodes: []*Node{
 			{
 				ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", host, in.Port),
-				InternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
+				InternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, DefaultTronPort),
 			},
 		},
 	}, nil
