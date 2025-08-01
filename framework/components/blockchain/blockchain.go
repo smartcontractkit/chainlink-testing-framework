@@ -116,7 +116,7 @@ func NewBlockchainNetwork(in *Input) (*Output, error) {
 		return nil, fmt.Errorf("blockchain type is not supported or empty, must be 'anvil' or 'geth'")
 	}
 	if err != nil {
-		return nil, err
+		return out, err
 	}
 	in.Out = out
 	return out, nil

@@ -114,12 +114,16 @@ func newTron(in *Input) (*Output, error) {
 		Started:          true,
 	})
 	if err != nil {
-		return nil, err
+		return &Output{
+			Container: c,
+		}, err
 	}
 
 	host, err := c.Host(ctx)
 	if err != nil {
-		return nil, err
+		return &Output{
+			Container: c,
+		}, err
 	}
 
 	return &Output{
@@ -128,6 +132,7 @@ func newTron(in *Input) (*Output, error) {
 		Type:          in.Type,
 		Family:        FamilyTron,
 		ContainerName: containerName,
+		Container:     c,
 		Nodes: []*Node{
 			{
 				ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", host, in.Port),
