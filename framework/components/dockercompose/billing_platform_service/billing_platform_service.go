@@ -3,18 +3,12 @@ package billing_platform_service
 import (
 	"context"
 	"fmt"
-	"io"
-	"net/http"
-	"os"
-	"strings"
 	"time"
 
-	networkTypes "github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/testcontainers/testcontainers-go"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/dockercompose/utils"
 	"github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -30,6 +24,7 @@ type BillingPlatformServiceOutput struct {
 }
 
 type PostgresOutput struct {
+	DSN string
 }
 
 type Input struct {
@@ -58,10 +53,8 @@ func New(in *Input) (*Output, error) {
 		return nil, errors.New("input is nil")
 	}
 
-	if in.UseCache {
-		if in.Output != nil {
-			return in.Output, nil
-		}
+	if in.UseCache && in.Output != nil {
+		return in.Output, nil
 	}
 
 	in = defaultBillingPlatformService(in)
@@ -70,7 +63,7 @@ func New(in *Input) (*Output, error) {
 		Msgf("Starting Billing Platform Service stack with identifier %s",
 			framework.DefaultTCName(DEFAULT_STACK_NAME))
 
-	cFilePath, fileErr := composeFilePath(in.ComposeFile)
+	cFilePath, fileErr := utils.ComposeFilePath(in.ComposeFile, DEFAULT_STACK_NAME)
 	if fileErr != nil {
 		return nil, errors.Wrap(fileErr, "failed to get compose file path")
 	}
@@ -121,9 +114,9 @@ func New(in *Input) (*Output, error) {
 
 	for _, networkName := range networks {
 		framework.L.Debug().Msgf("Connecting billing-platform-service to %s network", networkName)
-		connectContex, connectCancel := context.WithTimeout(ctx, 30*time.Second)
+		connectCtx, connectCancel := context.WithTimeout(ctx, 30*time.Second)
 		defer connectCancel()
-		if connectErr := connectNetwork(connectContex, 30*time.Second, cli, billingContainer.ID, networkName, identifier); connectErr != nil {
+		if connectErr := utils.ConnectNetwork(connectCtx, 30*time.Second, cli, billingContainer.ID, networkName, identifier); connectErr != nil {
 			return nil, errors.Wrapf(connectErr, "failed to connect billing-platform-service to %s network", networkName)
 		}
 		// verify that the container is connected to framework's network
@@ -141,13 +134,13 @@ func New(in *Input) (*Output, error) {
 	}
 
 	// get hosts for billing platform service
-	billingExternalHost, billingExternalHostErr := billingContainer.Host(ctx)
+	billingExternalHost, billingExternalHostErr := utils.GetContainerHost(ctx, billingContainer)
 	if billingExternalHostErr != nil {
 		return nil, errors.Wrap(billingExternalHostErr, "failed to get host for Billing Platform Service")
 	}
 
 	// get mapped port for billing platform service
-	billingExternalPort, billingExternalPortErr := findMappedPort(ctx, 20*time.Second, billingContainer, DEFAULT_BILLING_PLATFORM_SERVICE_GRPC_PORT)
+	billingExternalPort, billingExternalPortErr := utils.FindMappedPort(ctx, 20*time.Second, billingContainer, DEFAULT_BILLING_PLATFORM_SERVICE_GRPC_PORT)
 	if billingExternalPortErr != nil {
 		return nil, errors.Wrap(billingExternalPortErr, "failed to get mapped port for Chip Ingress")
 	}
@@ -157,92 +150,12 @@ func New(in *Input) (*Output, error) {
 			GRPCInternalURL: fmt.Sprintf("http://%s:%s", DEFAULT_BILLING_PLATFORM_SERVICE_SERVICE_NAME, DEFAULT_BILLING_PLATFORM_SERVICE_GRPC_PORT),
 			GRPCExternalURL: fmt.Sprintf("http://%s:%s", billingExternalHost, billingExternalPort.Port()),
 		},
+		Postgres: &PostgresOutput{
+
+		}
 	}
 
-	framework.L.Info().Msg("Chip Ingress stack start")
+	framework.L.Info().Msg("Billing Platform Service stack start")
 
 	return output, nil
-}
-
-func composeFilePath(rawFilePath string) (string, error) {
-	// if it's not a URL, return it as is and assume it's a local file
-	if !strings.HasPrefix(rawFilePath, "http") {
-		return rawFilePath, nil
-	}
-
-	resp, respErr := http.Get(rawFilePath)
-	if respErr != nil {
-		return "", errors.Wrap(respErr, "failed to download docker-compose file")
-	}
-	defer resp.Body.Close()
-
-	tempFile, tempErr := os.CreateTemp("", "billing-platform-service-docker-compose-*.yml")
-	if tempErr != nil {
-		return "", errors.Wrap(tempErr, "failed to create temp file")
-	}
-	defer tempFile.Close()
-
-	_, copyErr := io.Copy(tempFile, resp.Body)
-	if copyErr != nil {
-		tempFile.Close()
-		return "", errors.Wrap(copyErr, "failed to write compose file")
-	}
-
-	return tempFile.Name(), nil
-}
-
-func findMappedPort(ctx context.Context, timeout time.Duration, container *testcontainers.DockerContainer, port nat.Port) (nat.Port, error) {
-	forCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	tickerInterval := 5 * time.Second
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-forCtx.Done():
-			return "", fmt.Errorf("timeout while waiting for mapped port for %s", port)
-		case <-ticker.C:
-			portCtx, portCancel := context.WithTimeout(ctx, tickerInterval)
-			defer portCancel()
-			mappedPort, mappedPortErr := container.MappedPort(portCtx, port)
-			if mappedPortErr != nil {
-				return "", errors.Wrapf(mappedPortErr, "failed to get mapped port for %s", port)
-			}
-			if mappedPort.Port() == "" {
-				return "", fmt.Errorf("mapped port for %s is empty", port)
-			}
-			return mappedPort, nil
-		}
-	}
-}
-
-func connectNetwork(connCtx context.Context, timeout time.Duration, dockerClient *client.Client, containerID, networkName, stackIdentifier string) error {
-	ticker := time.NewTicker(500 * time.Millisecond)
-	defer ticker.Stop()
-
-	networkCtx, networkCancel := context.WithTimeout(connCtx, timeout)
-	defer networkCancel()
-
-	for {
-		select {
-		case <-networkCtx.Done():
-			return fmt.Errorf("timeout while trying to connect billing-platform-service to default network")
-		case <-ticker.C:
-			if networkErr := dockerClient.NetworkConnect(
-				connCtx,
-				networkName,
-				containerID,
-				&networkTypes.EndpointSettings{
-					Aliases: []string{stackIdentifier},
-				},
-			); networkErr != nil && !strings.Contains(networkErr.Error(), "already exists in network") {
-				framework.L.Trace().Msgf("failed to connect to default network: %v", networkErr)
-				continue
-			}
-			framework.L.Trace().Msgf("connected to %s network", networkName)
-			return nil
-		}
-	}
 }
