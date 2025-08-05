@@ -945,6 +945,31 @@ func (c *ChainlinkClient) ImportVRFKey(vrfExportKey *VRFExportKey) (*VRFKey, *ht
 	return vrfKey, resp.RawResponse, err
 }
 
+// ReadWorkflowKeys reads all Workflow keys from the Chainlink node
+func (c *ChainlinkClient) ReadWorkflowKeys() (*WorkflowKeys, *http.Response, error) {
+	workflowKeys := &WorkflowKeys{}
+	framework.L.Info().Str(NodeURL, c.Config.URL).Msg("Reading Workflow Keys")
+	resp, err := c.APIClient.R().
+		SetResult(workflowKeys).
+		Get("/v2/keys/workflow")
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(workflowKeys.Data) == 0 {
+		framework.L.Warn().Str(NodeURL, c.Config.URL).Msg("Found no Workflow Keys on the node")
+	}
+	return workflowKeys, resp.RawResponse, err
+}
+
+// MustReadWorkflowKeys reads all Workflow keys from the Chainlink node
+func (c *ChainlinkClient) MustReadWorkflowKeys() (*WorkflowKeys, *http.Response, error) {
+	workflowKeys, res, err := c.ReadWorkflowKeys()
+	if err != nil {
+		return nil, res, err
+	}
+	return workflowKeys, res, VerifyStatusCode(res.StatusCode, http.StatusOK)
+}
+
 // CreateCSAKey creates a CSA key on the Chainlink node, only 1 CSA key per node
 func (c *ChainlinkClient) CreateCSAKey() (*CSAKey, *http.Response, error) {
 	csaKey := &CSAKey{}
