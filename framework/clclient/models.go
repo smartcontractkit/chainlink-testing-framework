@@ -211,6 +211,22 @@ type VRFKeys struct {
 	Data []VRFKey `json:"data"`
 }
 
+// WorkflowKeyAttributes is the model that represents the created workflow key attributes when read
+type WorkflowKeyAttributes struct {
+	PublicKey string `json:"publicKey"`
+}
+
+// WorkflowKey is the model that represents the created workflow key when read
+type WorkflowKey struct {
+	ID         string
+	Attributes WorkflowKeyAttributes
+}
+
+// WorkflowKeys is the model that represents the created workflow keys when read
+type WorkflowKeys struct {
+	Data []WorkflowKey `json:"data"`
+}
+
 // OCRKeys is the model that represents the created OCR keys when read
 type OCRKeys struct {
 	Data []OCRKeyData `json:"data"`
