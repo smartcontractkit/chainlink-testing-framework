@@ -21,6 +21,7 @@ import (
 	"github.com/pelletier/go-toml/v2"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/multierr"
 )
 
 const (
@@ -74,7 +75,12 @@ func mergeInputs[T any]() (*T, error) {
 				L.Info().Str("Path", path).Msg("Overrides file not found or empty")
 				continue
 			}
-			return nil, fmt.Errorf("error reading config file %s: %w", path, err)
+			var absError error
+			data, absError = os.ReadFile(path)
+			if absError != nil {
+				multiErr := multierr.Append(err, absError)
+				return nil, fmt.Errorf("error reading config file %s: %w", path, multiErr)
+			}
 		}
 		if L.GetLevel() == zerolog.TraceLevel {
 			fmt.Println(string(data))
