@@ -1,0 +1,81 @@
+apiVersion: 1
+
+datasources:
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    isDefault: false
+  - name: Loki
+    type: loki
+    isDefault: true
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      maxLines: 5000
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090 # Replace with your Prometheus URL
+    jsonData:
+      timeInterval: 5s # Adjust this interval as needed
+
+  - name: PostgreSQL 0
+    type: postgres
+    url: host.docker.internal:13000
+    database: db_0
+    user: chainlink
+    secureJsonData:
+      password: thispasswordislongenough
+    jsonData:
+      sslmode: disable
+    isDefault: false
+    editable: true
+
+  - name: PostgreSQL 1
+    type: postgres
+    url: host.docker.internal:13000
+    database: db_1
+    user: chainlink
+    secureJsonData:
+      password: thispasswordislongenough
+    jsonData:
+      sslmode: disable
+    isDefault: false
+    editable: true
+
+  - name: PostgreSQL 2
+    type: postgres
+    url: host.docker.internal:13000
+    database: db_2
+    user: chainlink
+    secureJsonData:
+      password: thispasswordislongenough
+    jsonData:
+      sslmode: disable
+    isDefault: false
+    editable: true
+
+  - name: PostgreSQL 3
+    type: postgres
+    url: host.docker.internal:13000
+    database: db_3
+    user: chainlink
+    secureJsonData:
+      password: thispasswordislongenough
+    jsonData:
+      sslmode: disable
+    isDefault: false
+    editable: true
+
+  - name: PostgreSQL 4
+    type: postgres
+    url: host.docker.internal:13000
+    database: db_4
+    user: chainlink
+    secureJsonData:
+      password: thispasswordislongenough
+    jsonData:
+      sslmode: disable
+    isDefault: false
+    editable: true
