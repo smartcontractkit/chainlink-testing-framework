@@ -272,7 +272,7 @@ func TestRPCAPI(t *testing.T) {
 
 		// Assert the delta is at least the requested advance
 		// (Anvil should add exactly `advance`, but we allow >= to be safe.)
-		require.GreaterOrEqual(t, int64(t2-t1), int64(advance), "timestamp did not advance by expected seconds")
+		require.GreaterOrEqual(t, t2-t1, advance, "timestamp did not advance by expected seconds")
 
 		t.Logf("advanced time by %d seconds: %d -> %d (Δ=%d)", advance, t1, t2, t2-t1)
 	})

@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"os"
 	"strconv"
