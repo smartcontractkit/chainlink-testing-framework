@@ -58,7 +58,7 @@ func (m *RPCClient) EVMIncreaseTime(seconds uint64) error {
 		"jsonrpc": "2.0",
 		"method":  "evm_increaseTime",
 		"params":  []interface{}{seconds},
-		"id":      rand.Int(),
+		"id":      rand.Int(), //nolint:gosec
 	}
 	if _, err := m.client.R().SetBody(payload).Post(m.URL); err != nil {
 		return errors.Wrap(err, "evm_increaseTime")
