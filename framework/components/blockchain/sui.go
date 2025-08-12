@@ -142,6 +142,7 @@ func newSui(in *Input) (*Output, error) {
 			"start",
 			"--force-regenesis",
 			"--with-faucet",
+			"--fullnode-rpc-port", in.Port,
 		},
 		Files: []testcontainers.ContainerFile{
 			{
