@@ -501,6 +501,8 @@ func registerAllWithTopologicalSorting(
 			for _, dep := range deps {
 				if depSubject, depExists := subjectMap[dep]; depExists {
 					// The schema registry expects import names without the 'workflows/' prefix
+					// So if the import is "workflows/v1/metadata.proto", the name should be "v1/metadata.proto"
+					// And if the import is "workflows/v2/cre_info.proto", the name should be "v2/cre_info.proto"
 					importName := dep
 					if strings.HasPrefix(dep, "workflows/") {
 						importName = strings.TrimPrefix(dep, "workflows/")
@@ -524,7 +526,9 @@ func registerAllWithTopologicalSorting(
 		}
 
 		// The schema registry expects import statements without the 'workflows/' prefix
-		modifiedSchema := strings.ReplaceAll(schema.Source, `"workflows/v2/`, `"v2/`)
+		// So we need to modify the protobuf content to replace "workflows/v1/..." with "v1/..." and "workflows/v2/..." with "v2/..."
+		modifiedSchema := strings.ReplaceAll(schema.Source, `"workflows/v1/`, `"v1/`)
+		modifiedSchema = strings.ReplaceAll(modifiedSchema, `"workflows/v2/`, `"v2/`)
 
 		_, registerErr := registerSingleProto(schemaRegistryURL, subject, modifiedSchema, fileRefs)
 		if registerErr != nil {
