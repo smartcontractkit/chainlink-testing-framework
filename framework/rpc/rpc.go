@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"os"
 	"strconv"
@@ -49,6 +49,21 @@ func New(url string, headers http.Header) *RPCClient {
 			SetHeaders(h).
 			SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}),
 	}
+}
+
+// EVMIncreaseTime jumps forward in time by `seconds`.
+// The parameter is a JSON number (in seconds)
+func (m *RPCClient) EVMIncreaseTime(seconds uint64) error {
+	payload := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  "evm_increaseTime",
+		"params":  []interface{}{seconds},
+		"id":      rand.Int(), //nolint:gosec
+	}
+	if _, err := m.client.R().SetBody(payload).Post(m.URL); err != nil {
+		return errors.Wrap(err, "evm_increaseTime")
+	}
+	return nil
 }
 
 // AnvilAutoImpersonate sets auto impersonification to true or false
