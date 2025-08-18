@@ -2,14 +2,33 @@
 
 You can use a local observability stack, framework is connected to it by default
 
+Default mode includes:
+- Prometheus
+- Loki
+- OTEL-collector
+- Grafana
 ```bash
+# start the observability stack
 ctf obs up
+# remove the stack with all the data (volumes)
+ctf obs d
+# restart the stack removing all the data (volumes)
+ctf obs r
 ```
 
-To remove it use
+Full stack has all the services above but also adds:
+- Cadvisor
+- Tempo
+- Pyroscope
+- PostgreSQL exporters for NodeSet databases
 
 ```bash
-ctf obs down
+# start the observability stack
+ctf obs up -f
+# remove the stack with all the data (volumes)
+ctf obs d -f
+# restart the stack removing all the data (volumes)
+ctf obs r -f
 ```
 
 Read more about how to check [logs](logs.md) and [profiles](profiling.md)
