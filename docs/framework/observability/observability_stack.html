@@ -242,10 +242,33 @@
 </style>
 <h1 id="local-observability-stack"><a class="header" href="#local-observability-stack">Local Observability Stack</a></h1>
 <p>You can use a local observability stack, framework is connected to it by default</p>
-<pre><code class="language-bash">ctf obs up
+<p>Default mode includes:</p>
+<ul>
+<li>Prometheus</li>
+<li>Loki</li>
+<li>OTEL-collector</li>
+<li>Grafana</li>
+</ul>
+<pre><code class="language-bash"># start the observability stack
+ctf obs up
+# remove the stack with all the data (volumes)
+ctf obs d
+# restart the stack removing all the data (volumes)
+ctf obs r
 </code></pre>
-<p>To remove it use</p>
-<pre><code class="language-bash">ctf obs down
+<p>Full stack has all the services above but also adds:</p>
+<ul>
+<li>Cadvisor</li>
+<li>Tempo</li>
+<li>Pyroscope</li>
+<li>PostgreSQL exporters for NodeSet databases</li>
+</ul>
+<pre><code class="language-bash"># start the observability stack
+ctf obs up -f
+# remove the stack with all the data (volumes)
+ctf obs d -f
+# restart the stack removing all the data (volumes)
+ctf obs r -f
 </code></pre>
 <p>Read more about how to check <a href="logs.html">logs</a> and <a href="profiling.html">profiles</a></p>
 <h2 id="developing"><a class="header" href="#developing">Developing</a></h2>

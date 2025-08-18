@@ -2892,10 +2892,33 @@ curl "http://localhost:9111/dynamic-fake"
 </style>
 <h1 id="local-observability-stack"><a class="header" href="#local-observability-stack">Local Observability Stack</a></h1>
 <p>You can use a local observability stack, framework is connected to it by default</p>
-<pre><code class="language-bash">ctf obs up
+<p>Default mode includes:</p>
+<ul>
+<li>Prometheus</li>
+<li>Loki</li>
+<li>OTEL-collector</li>
+<li>Grafana</li>
+</ul>
+<pre><code class="language-bash"># start the observability stack
+ctf obs up
+# remove the stack with all the data (volumes)
+ctf obs d
+# restart the stack removing all the data (volumes)
+ctf obs r
 </code></pre>
-<p>To remove it use</p>
-<pre><code class="language-bash">ctf obs down
+<p>Full stack has all the services above but also adds:</p>
+<ul>
+<li>Cadvisor</li>
+<li>Tempo</li>
+<li>Pyroscope</li>
+<li>PostgreSQL exporters for NodeSet databases</li>
+</ul>
+<pre><code class="language-bash"># start the observability stack
+ctf obs up -f
+# remove the stack with all the data (volumes)
+ctf obs d -f
+# restart the stack removing all the data (volumes)
+ctf obs r -f
 </code></pre>
 <p>Read more about how to check <a href="framework/observability/logs.html">logs</a> and <a href="framework/observability/profiling.html">profiles</a></p>
 <h2 id="developing"><a class="header" href="#developing">Developing</a></h2>
@@ -2978,10 +3001,33 @@ curl "http://localhost:9111/dynamic-fake"
 </style>
 <h1 id="local-observability-stack-1"><a class="header" href="#local-observability-stack-1">Local Observability Stack</a></h1>
 <p>You can use a local observability stack, framework is connected to it by default</p>
-<pre><code class="language-bash">ctf obs up
+<p>Default mode includes:</p>
+<ul>
+<li>Prometheus</li>
+<li>Loki</li>
+<li>OTEL-collector</li>
+<li>Grafana</li>
+</ul>
+<pre><code class="language-bash"># start the observability stack
+ctf obs up
+# remove the stack with all the data (volumes)
+ctf obs d
+# restart the stack removing all the data (volumes)
+ctf obs r
 </code></pre>
-<p>To remove it use</p>
-<pre><code class="language-bash">ctf obs down
+<p>Full stack has all the services above but also adds:</p>
+<ul>
+<li>Cadvisor</li>
+<li>Tempo</li>
+<li>Pyroscope</li>
+<li>PostgreSQL exporters for NodeSet databases</li>
+</ul>
+<pre><code class="language-bash"># start the observability stack
+ctf obs up -f
+# remove the stack with all the data (volumes)
+ctf obs d -f
+# restart the stack removing all the data (volumes)
+ctf obs r -f
 </code></pre>
 <p>Read more about how to check <a href="framework/observability/logs.html">logs</a> and <a href="framework/observability/profiling.html">profiles</a></p>
 <h2 id="developing-1"><a class="header" href="#developing-1">Developing</a></h2>
@@ -17145,7 +17191,7 @@ go run ./tools/breakingchanges/cmd/main.go --ignore tools,wasp,havoc,seth # to i
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>cae9a68b</code></li>
+<li>Commit: <code>71cd7191</code></li>
 </ul>
 
                     </main>
