@@ -85,6 +85,9 @@ func defaultSui(in *Input) {
 	if in.Port == "" {
 		in.Port = DefaultSuiNodePort
 	}
+	if in.FaucetPort == "" {
+		in.FaucetPort = DefaultFaucetPortNum
+	}
 }
 
 func newSui(in *Input) (*Output, error) {
@@ -127,7 +130,7 @@ func newSui(in *Input) (*Output, error) {
 				nat.Port(DefaultFaucetPort): []nat.PortBinding{
 					{
 						HostIP:   "0.0.0.0",
-						HostPort: DefaultFaucetPortNum,
+						HostPort: in.FaucetPort,
 					},
 				},
 			}
@@ -168,7 +171,7 @@ func newSui(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := fundAccount(fmt.Sprintf("http://%s:%s", "127.0.0.1", DefaultFaucetPortNum), suiAccount.SuiAddress); err != nil {
+	if err := fundAccount(fmt.Sprintf("http://%s:%s", "127.0.0.1", in.FaucetPort), suiAccount.SuiAddress); err != nil {
 		return nil, err
 	}
 	return &Output{
