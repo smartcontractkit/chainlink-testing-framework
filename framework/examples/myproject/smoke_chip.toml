@@ -1,2 +1,2 @@
 [chip_ingress]
-  compose_file='../../components/dockercompose/chip_ingress_set/docker-compose.yml'
+  compose_file='file://../../components/dockercompose/chip_ingress_set/docker-compose.yml'
