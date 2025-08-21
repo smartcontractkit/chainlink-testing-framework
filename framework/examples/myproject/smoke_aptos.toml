@@ -1,2 +1,4 @@
 [blockchain_a]
   type = "aptos"
+  custom_ports = ["9005:8080", "9006:8081"]
+  docker_cmd_params = ["--skip-metadata-apply"]

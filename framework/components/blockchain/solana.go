@@ -36,7 +36,7 @@ func defaultSolana(in *Input) {
 		in.Image = "f4hrenh9it/solana"
 	}
 	if in.Image == "" && ci {
-		in.Image = "solanalabs/solana:v1.18.26"
+		in.Image = "anzaxyz/agave:v2.1.13"
 	}
 	if in.Port == "" {
 		in.Port = "8999"
@@ -46,6 +46,7 @@ func defaultSolana(in *Input) {
 func newSolana(in *Input) (*Output, error) {
 	defaultSolana(in)
 	ctx := context.Background()
+
 	containerName := framework.DefaultTCName("blockchain-node")
 	// Solana do not allow to set ws port, it just uses --rpc-port=N and sets WS as N+1 automatically
 	bindPort := fmt.Sprintf("%s/tcp", in.Port)
@@ -89,6 +90,7 @@ func newSolana(in *Input) (*Output, error) {
 		"--rpc-port", in.Port,
 		"--mint", in.PublicKey,
 	}, flags...)
+	args = append(args, in.DockerCmdParamsOverrides...)
 
 	req := testcontainers.ContainerRequest{
 		AlwaysPullImage: in.PullImage,
@@ -100,8 +102,8 @@ func newSolana(in *Input) (*Output, error) {
 		NetworkAliases: map[string][]string{
 			framework.DefaultNetworkName: {containerName},
 		},
-		WaitingFor: wait.ForLog("Processed Slot: 1").
-			WithStartupTimeout(30 * time.Second).
+		WaitingFor: wait.ForLog("Processed Slot:").
+			WithStartupTimeout(1 * time.Minute).
 			WithPollInterval(100 * time.Millisecond),
 		HostConfigModifier: func(h *container.HostConfig) {
 			h.PortBindings = framework.MapTheSamePort(bindPort, wsBindPort)
@@ -142,15 +144,16 @@ func newSolana(in *Input) (*Output, error) {
 
 	return &Output{
 		UseCache:      true,
-		Family:        "solana",
+		Type:          in.Type,
+		Family:        FamilySolana,
 		ContainerName: containerName,
 		Container:     c,
 		Nodes: []*Node{
 			{
-				HostWSUrl:             fmt.Sprintf("ws://%s:%s", host, in.WSPort),
-				HostHTTPUrl:           fmt.Sprintf("http://%s:%s", host, in.Port),
-				DockerInternalWSUrl:   fmt.Sprintf("ws://%s:%s", containerName, in.WSPort),
-				DockerInternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
+				ExternalWSUrl:   fmt.Sprintf("ws://%s:%s", host, in.WSPort),
+				ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", host, in.Port),
+				InternalWSUrl:   fmt.Sprintf("ws://%s:%s", containerName, in.WSPort),
+				InternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
 			},
 		},
 	}, nil

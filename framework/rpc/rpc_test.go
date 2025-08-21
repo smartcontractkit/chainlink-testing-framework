@@ -181,7 +181,7 @@ func TestRPCAPI(t *testing.T) {
 		printGasPrices(t, client)
 
 		anvilClient := New(ac.URL, nil)
-		err = anvilClient.AnvilSetNextBlockBaseFeePerGas([]interface{}{"10000000000"})
+		err = anvilClient.AnvilSetNextBlockBaseFeePerGas(big.NewInt(10000000000))
 		require.NoError(t, err)
 		printGasPrices(t, client)
 		gasPrice, err := client.SuggestGasPrice(context.Background())
@@ -191,7 +191,7 @@ func TestRPCAPI(t *testing.T) {
 		_, err = sendTestTransaction(t, client, big.NewInt(1e9), big.NewInt(1e9), true)
 		require.Error(t, err)
 
-		err = anvilClient.AnvilSetNextBlockBaseFeePerGas([]interface{}{"1"})
+		err = anvilClient.AnvilSetNextBlockBaseFeePerGas(big.NewInt(1))
 		require.NoError(t, err)
 
 		_, err = sendTestTransaction(t, client, big.NewInt(1e9), big.NewInt(1e9), true)
@@ -211,7 +211,9 @@ func TestRPCAPI(t *testing.T) {
 		pm.Stop()
 		bn, err := client.BlockNumber(context.Background())
 		require.NoError(t, err)
+		//nolint:gosec
 		require.GreaterOrEqual(t, uint64(iterations), bn-1)
+		//nolint:gosec
 		require.LessOrEqual(t, uint64(iterations), bn+1)
 	})
 
@@ -234,10 +236,45 @@ func TestRPCAPI(t *testing.T) {
 		}
 		bn, err := client.BlockNumber(context.Background())
 		require.NoError(t, err)
+		//nolint:gosec
 		for i := 1; i <= int(bn); i++ {
 			block, err := client.BlockByNumber(context.Background(), big.NewInt(int64(i)))
 			require.NoError(t, err)
 			require.GreaterOrEqual(t, int64(block.Transactions().Len()), txnInBlock)
 		}
 	})
+
+	t.Run("(anvil) evm_increaseTime advances timestamp", func(t *testing.T) {
+		ac, err := StartAnvil([]string{"--no-mine"})
+		require.NoError(t, err)
+		client, err := ethclient.Dial(ac.URL)
+		require.NoError(t, err)
+
+		anvil := New(ac.URL, nil)
+
+		// Mine an initial block to establish a baseline timestamp
+		require.NoError(t, anvil.AnvilMine([]interface{}{1}))
+
+		// Read latest header/time
+		h1, err := client.HeaderByNumber(context.Background(), nil)
+		require.NoError(t, err)
+		t1 := h1.Time // uint64 (seconds)
+
+		// Jump forward in time, then mine exactly one block so the new timestamp is materialized
+		advance := uint64(60) // 1 minute
+		require.NoError(t, anvil.EVMIncreaseTime(advance))
+		require.NoError(t, anvil.AnvilMine([]interface{}{1}))
+
+		// Read new header/time
+		h2, err := client.HeaderByNumber(context.Background(), nil)
+		require.NoError(t, err)
+		t2 := h2.Time
+
+		// Assert the delta is at least the requested advance
+		// (Anvil should add exactly `advance`, but we allow >= to be safe.)
+		require.GreaterOrEqual(t, t2-t1, advance, "timestamp did not advance by expected seconds")
+
+		t.Logf("advanced time by %d seconds: %d -> %d (Δ=%d)", advance, t1, t2, t2-t1)
+	})
+
 }

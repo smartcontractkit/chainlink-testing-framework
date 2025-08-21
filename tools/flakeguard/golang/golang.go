@@ -5,7 +5,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/printer"
+	"go/token"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -27,32 +33,55 @@ type Package struct {
 
 type DepMap map[string][]string
 
-func GoList() (*utils.CmdOutput, error) {
+// List returns the output of `go list -json ./...`
+// Deprecated: Use Packages instead
+func List() (*utils.CmdOutput, error) {
 	return utils.ExecuteCmd("go", "list", "-json", "./...")
 }
 
-// ParsePackages parses the output of `go list -json ./...` and returns a slice of Package structs
-func ParsePackages(goList bytes.Buffer) ([]Package, error) {
+// Packages finds all packages in the repository
+func Packages(repoPath string) ([]Package, error) {
 	var packages []Package
-	scanner := bufio.NewScanner(&goList)
-	var buffer bytes.Buffer
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		line = strings.TrimSpace(line)
-		buffer.WriteString(line)
-
-		if line == "}" {
-			var pkg Package
-			if err := json.Unmarshal(buffer.Bytes(), &pkg); err != nil {
-				return nil, err
-			}
-			packages = append(packages, pkg)
-			buffer.Reset()
+	// Find all go.mod files and run go list -json ./... in the directory of each go.mod file
+	// This is necessary because go list -json ./... only returns packages that are associated with the current go.mod file
+	err := filepath.Walk(repoPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
 		}
-	}
+		if info.Name() == "go.mod" {
+			cmd := exec.Command("go", "list", "-json", "./...")
+			cmd.Dir = filepath.Dir(path)
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				return fmt.Errorf("error getting packages: %w\nOutput:\n%s", err, string(out))
+			}
+			scanner := bufio.NewScanner(bytes.NewReader(out))
+			var buffer bytes.Buffer
 
-	err := scanner.Err()
+			for scanner.Scan() {
+				line := scanner.Text()
+				line = strings.TrimSpace(line)
+				buffer.WriteString(line)
+
+				if line == "}" {
+					var pkg Package
+					if err := json.Unmarshal(buffer.Bytes(), &pkg); err != nil {
+						return err
+					}
+					packages = append(packages, pkg)
+					buffer.Reset()
+				}
+			}
+
+			if err := scanner.Err(); err != nil {
+				return err
+			}
+			return nil
+		}
+		return nil
+	})
+
 	return packages, err
 }
 
@@ -196,4 +225,138 @@ func FilterPackagesWithTests(pkgs []string) []string {
 		}
 	}
 	return testPkgs
+}
+
+// SkipTest is a struct that contains the package and name of the test to skip
+type SkipTest struct {
+	Package    string
+	Name       string
+	JiraTicket string
+
+	// Set by SkipTests
+	// These values might be useless info, but for now we'll keep them
+	NewlySkipped   bool // If the test was newly skipped after calling SkipTests
+	AlreadySkipped bool // If the test was already skipped before calling SkipTests
+	File           string
+	Line           int
+}
+
+// SkipTests finds all package/test pairs provided and skips them
+func SkipTests(repoPath string, testsToSkip []*SkipTest) error {
+	packages, err := Packages(repoPath)
+	if err != nil {
+		return err
+	}
+
+	for _, testToSkip := range testsToSkip {
+		var (
+			packageDir        string
+			packageImportPath = testToSkip.Package
+		)
+		for _, pkg := range packages {
+			if pkg.ImportPath == packageImportPath {
+				packageDir = pkg.Dir
+				break
+			}
+		}
+		if packageDir == "" {
+			return fmt.Errorf("directory for package '%s' not found", packageImportPath)
+		}
+
+		log.Debug().
+			Str("package_dir", packageDir).
+			Str("test", testToSkip.Name).
+			Str("package", packageImportPath).
+			Msg("Skipping test")
+
+		err := filepath.Walk(packageDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if info.IsDir() || !strings.HasSuffix(info.Name(), "_test.go") {
+				return nil
+			}
+
+			fset := token.NewFileSet()
+			fileAst, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+			if err != nil {
+				return err
+			}
+
+			found := false
+			ast.Inspect(fileAst, func(n ast.Node) bool {
+				fn, ok := n.(*ast.FuncDecl)
+				if !ok || fn.Name.Name != testToSkip.Name {
+					return true
+				}
+				// Check if first parameter is *testing.T
+				if fn.Type.Params != nil && len(fn.Type.Params.List) > 0 {
+					param := fn.Type.Params.List[0]
+					if starExpr, ok := param.Type.(*ast.StarExpr); ok {
+						if sel, ok := starExpr.X.(*ast.SelectorExpr); ok && sel.Sel.Name == "T" {
+							// Check if test is already skipped
+							for _, stmt := range fn.Body.List {
+								if exprStmt, ok := stmt.(*ast.ExprStmt); ok {
+									if callExpr, ok := exprStmt.X.(*ast.CallExpr); ok {
+										if selExpr, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
+											if selExpr.Sel.Name == "Skip" {
+												// Test is already skipped, don't modify it
+												found = true
+												testToSkip.AlreadySkipped = true
+												return false
+											}
+										}
+									}
+								}
+							}
+
+							// Test is not skipped, add skip statement
+							skipStmt := &ast.ExprStmt{
+								X: &ast.CallExpr{
+									Fun: &ast.SelectorExpr{
+										X:   ast.NewIdent(param.Names[0].Name),
+										Sel: ast.NewIdent("Skip"),
+									},
+									Args: []ast.Expr{
+										&ast.BasicLit{
+											Kind: token.STRING,
+											Value: fmt.Sprintf(
+												"\"Skipped by flakeguard: https://%s/issues/%s\"",
+												os.Getenv("JIRA_DOMAIN"),
+												testToSkip.JiraTicket,
+											),
+										},
+									},
+								},
+							}
+							testToSkip.File = path
+							testToSkip.Line = fset.Position(fn.Pos()).Line
+							testToSkip.NewlySkipped = true
+							fn.Body.List = append([]ast.Stmt{skipStmt}, fn.Body.List...)
+							found = true
+							return false
+						}
+					}
+				}
+				return true
+			})
+
+			if found {
+				// Write back the file
+				var out strings.Builder
+				if err := printer.Fprint(&out, fset, fileAst); err != nil {
+					return err
+				}
+				if err := os.WriteFile(path, []byte(out.String()), info.Mode()); err != nil {
+					return err
+				}
+				return filepath.SkipDir // stop walking
+			}
+			return fmt.Errorf("test function %s not found in package %s", testToSkip.Name, testToSkip.Package)
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

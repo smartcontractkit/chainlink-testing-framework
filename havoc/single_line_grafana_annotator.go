@@ -74,10 +74,11 @@ func (l SingleLineGrafanaAnnotator) OnChaosStarted(chaos Chaos) {
 		Time:         Ptr[time.Time](chaos.GetStartTime()),
 		Text:         sb.String(),
 	}
-	_, _, err = l.client.PostAnnotation(a)
+	_, resp, err := l.client.PostAnnotation(a)
 	if err != nil {
 		l.logger.Warn().Msgf("could not annotate on Grafana: %s", err)
 	}
+	l.logger.Debug().Any("GrafanaResponse", resp.String()).Msg("Annotated chaos experiment start")
 }
 
 func (l SingleLineGrafanaAnnotator) OnChaosPaused(chaos Chaos) {
@@ -126,82 +127,13 @@ func (l SingleLineGrafanaAnnotator) OnChaosEnded(chaos Chaos) {
 		Time:         Ptr[time.Time](chaos.GetEndTime()),
 		Text:         sb.String(),
 	}
-	_, _, err = l.client.PostAnnotation(a)
+	_, resp, err := l.client.PostAnnotation(a)
 	if err != nil {
 		l.logger.Warn().Msgf("could not annotate on Grafana: %s", err)
 	}
+	l.logger.Debug().Any("GrafanaResponse", resp.String()).Msg("Annotated chaos experiment end")
 }
 
-func (l SingleLineGrafanaAnnotator) OnChaosStatusUnknown(chaos Chaos) {
-}
-
-func (l SingleLineGrafanaAnnotator) OnScheduleCreated(s Schedule) {
-	var sb strings.Builder
-	sb.WriteString("<body>")
-	sb.WriteString(fmt.Sprintf("<h4>%s Schedule Created</h4>", s.Object.Spec.Type))
-	sb.WriteString(fmt.Sprintf("<div>Name: %s</div>", s.Object.ObjectMeta.Name))
-	sb.WriteString(fmt.Sprintf("<div>Schedule: %s</div>", s.Object.Spec.Schedule))
-	if s.Description != "" {
-		sb.WriteString(fmt.Sprintf("<div>Description: %s</div>", s.Description))
-	}
-	sb.WriteString(fmt.Sprintf("<div>Start Time: %s</div>", s.startTime.Format(time.RFC3339)))
-	sb.WriteString(fmt.Sprintf("<div>Duration: %s</div>", s.Duration.String()))
-
-	spec := s.Object.Spec.ScheduleItem
-	specBytes, err := json.MarshalIndent(spec, "", "  ")
-	if err == nil && len(specBytes) > 0 {
-		sb.WriteString("<br>")
-		sb.WriteString("<h5>Schedule Spec:</h5>")
-		sb.WriteString(string(specBytes))
-		sb.WriteString("<br>")
-	} else {
-		l.logger.Warn().Msgf("could not get chaos spec: %s", err)
-	}
-	sb.WriteString("</body>")
-
-	a := grafana.PostAnnotation{
-		DashboardUID: l.dashboardUID,
-		Time:         Ptr[time.Time](s.startTime),
-		Text:         sb.String(),
-	}
-	_, _, err = l.client.PostAnnotation(a)
-	if err != nil {
-		l.logger.Warn().Msgf("could not annotate on Grafana: %s", err)
-	}
-}
-
-func (l SingleLineGrafanaAnnotator) OnScheduleDeleted(s Schedule) {
-	var sb strings.Builder
-	sb.WriteString("<body>")
-	sb.WriteString(fmt.Sprintf("<h4>%s Schedule Ended</h4>", s.Object.Spec.Type))
-	sb.WriteString(fmt.Sprintf("<div>Name: %s</div>", s.Object.ObjectMeta.Name))
-	sb.WriteString(fmt.Sprintf("<div>Schedule: %s</div>", s.Object.Spec.Schedule))
-	if s.Description != "" {
-		sb.WriteString(fmt.Sprintf("<div>Description: %s</div>", s.Description))
-	}
-	sb.WriteString(fmt.Sprintf("<div>Start Time: %s</div>", s.startTime.Format(time.RFC3339)))
-	sb.WriteString(fmt.Sprintf("<div>End Time: %s</div>", s.endTime.Format(time.RFC3339)))
-	sb.WriteString(fmt.Sprintf("<div>Duration: %s</div>", s.Duration.String()))
-
-	spec := s.Object.Spec.ScheduleItem
-	specBytes, err := json.MarshalIndent(spec, "", "  ")
-	if err == nil && len(specBytes) > 0 {
-		sb.WriteString("<br>")
-		sb.WriteString("<h5>Schedule Spec:</h5>")
-		sb.WriteString(string(specBytes))
-		sb.WriteString("<br>")
-	} else {
-		l.logger.Warn().Msgf("could not get chaos spec: %s", err)
-	}
-	sb.WriteString("</body>")
-
-	a := grafana.PostAnnotation{
-		DashboardUID: l.dashboardUID,
-		Time:         Ptr[time.Time](s.endTime),
-		Text:         sb.String(),
-	}
-	_, _, err = l.client.PostAnnotation(a)
-	if err != nil {
-		l.logger.Warn().Msgf("could not annotate on Grafana: %s", err)
-	}
-}
+// OnChaosStatusUnknown handles the event when the status of a chaos experiment is unknown.
+// It allows listeners to respond appropriately to this specific status change in the chaos lifecycle.
+func (l SingleLineGrafanaAnnotator) OnChaosStatusUnknown(chaos Chaos) {}

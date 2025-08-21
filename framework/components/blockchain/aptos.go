@@ -3,11 +3,22 @@ package blockchain
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+	"runtime"
+	"strings"
+
 	"github.com/docker/docker/api/types/container"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"path/filepath"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+)
+
+const (
+	DefaultAptosAPIPort     = "8080"
+	DefaultAptosFaucetPort  = "8081"
+	DefaultAptosArm64Image  = "ghcr.io/friedemannf/aptos-tools:aptos-node-v1.30.2-rc"
+	DefaultAptosX86_64Image = "aptoslabs/tools:aptos-node-v1.27.2"
 )
 
 var (
@@ -17,12 +28,26 @@ var (
 
 func defaultAptos(in *Input) {
 	if in.Image == "" {
-		in.Image = "aptoslabs/tools:aptos-node-v1.18.0"
+		// Aptos doesn't support an official arm64 image yet, so we use a custom image for now
+		// CI Runners use x86_64 images, so CI checks will use the official image
+		if runtime.GOARCH == "arm64" {
+			// Uses an unofficial image built for arm64
+			framework.L.Warn().Msgf("Using unofficial Aptos image for arm64 %s", DefaultAptosArm64Image)
+			in.Image = DefaultAptosArm64Image
+		} else {
+			// Official Aptos image
+			in.Image = DefaultAptosX86_64Image
+		}
 	}
-	if in.Port != "" {
-		framework.L.Warn().Msg("'port' field is set but only default port can be used: 8080")
+	framework.L.Warn().Msgf("Aptos node API can only be exposed on port %s!", DefaultAptosAPIPort)
+	if in.Port == "" {
+		// enable default API exposed port
+		in.Port = DefaultAptosAPIPort
 	}
-	in.Port = "8080"
+	if in.CustomPorts == nil {
+		// enable default API and faucet forwarding
+		in.CustomPorts = append(in.CustomPorts, fmt.Sprintf("%s:%s", in.Port, DefaultAptosAPIPort), fmt.Sprintf("%s:%s", DefaultAptosFaucetPort, DefaultAptosFaucetPort))
+	}
 }
 
 func newAptos(in *Input) (*Output, error) {
@@ -35,11 +60,37 @@ func newAptos(in *Input) (*Output, error) {
 		return nil, err
 	}
 
-	bindPort := fmt.Sprintf("%s/tcp", in.Port)
+	exposedPorts, bindings, err := framework.GenerateCustomPortsData(in.CustomPorts)
+	if err != nil {
+		return nil, err
+	}
+	exposedPorts = append(exposedPorts, in.Port)
+
+	cmd := []string{
+		"aptos",
+		"node",
+		"run-local-testnet",
+		"--with-faucet",
+		"--force-restart",
+		"--bind-to",
+		"0.0.0.0",
+	}
+
+	if len(in.DockerCmdParamsOverrides) > 0 {
+		cmd = append(cmd, in.DockerCmdParamsOverrides...)
+	}
+
+	// Set image platform based on architecture
+	var imagePlatform string
+	if runtime.GOARCH == "arm64" {
+		imagePlatform = "linux/arm64"
+	} else {
+		imagePlatform = "linux/amd64"
+	}
 
 	req := testcontainers.ContainerRequest{
 		Image:        in.Image,
-		ExposedPorts: []string{in.Port},
+		ExposedPorts: exposedPorts,
 		WaitingFor:   wait.ForLog("Faucet is ready"),
 		Name:         containerName,
 		Labels:       framework.DefaultTCLabels(),
@@ -48,19 +99,11 @@ func newAptos(in *Input) (*Output, error) {
 			framework.DefaultNetworkName: {containerName},
 		},
 		HostConfigModifier: func(h *container.HostConfig) {
-			h.PortBindings = framework.MapTheSamePort(bindPort)
+			h.PortBindings = bindings
 			framework.ResourceLimitsFunc(h, in.ContainerResources)
 		},
-		ImagePlatform: "linux/amd64",
-		Cmd: []string{
-			"aptos",
-			"node",
-			"run-local-testnet",
-			"--with-faucet",
-			"--force-restart",
-			"--bind-to",
-			"0.0.0.0",
-		},
+		ImagePlatform: imagePlatform,
+		Cmd:           cmd,
 		Files: []testcontainers.ContainerFile{
 			{
 				HostFilePath:      absPath,
@@ -80,24 +123,37 @@ func newAptos(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	cmdStr := []string{"aptos", "init", "--network=local", "--assume-yes", fmt.Sprintf("--private-key=%s", DefaultAptosPrivateKey)}
-	_, err = framework.ExecContainer(containerName, cmdStr)
+
+	dc, err := framework.NewDockerClient()
 	if err != nil {
 		return nil, err
 	}
-	fundCmd := []string{"aptos", "account", "fund-with-faucet", "--account", DefaultAptosAccount}
-	_, err = framework.ExecContainer(containerName, fundCmd)
+	cmdStr := []string{"aptos", "init", "--network=local", "--assume-yes", fmt.Sprintf("--private-key=%s", DefaultAptosPrivateKey)}
+	_, err = dc.ExecContainer(containerName, cmdStr)
 	if err != nil {
 		return nil, err
+	}
+	fundCmd := []string{"aptos", "account", "fund-with-faucet", "--account", DefaultAptosAccount, "--amount", "1000000000000"}
+	_, err = dc.ExecContainer(containerName, fundCmd)
+	if err != nil {
+		return nil, err
+	}
+	// expose default API port if remapped
+	var exposedAPIPort string
+	for _, portPair := range in.CustomPorts {
+		if strings.Contains(portPair, fmt.Sprintf(":%s", DefaultAptosAPIPort)) {
+			exposedAPIPort = strings.Split(portPair, ":")[0]
+		}
 	}
 	return &Output{
 		UseCache:      true,
-		Family:        "aptos",
+		Type:          in.Type,
+		Family:        FamilyAptos,
 		ContainerName: containerName,
 		Nodes: []*Node{
 			{
-				HostHTTPUrl:           fmt.Sprintf("http://%s:%s", host, in.Port),
-				DockerInternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
+				ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", host, exposedAPIPort),
+				InternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
 			},
 		},
 	}, nil

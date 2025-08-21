@@ -7,8 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 )
 
 func TestBenchSpy_NewLokiQueryExecutor(t *testing.T) {
@@ -108,9 +109,9 @@ func TestBenchSpy_LokiQueryExecutor_IsComparable(t *testing.T) {
 	})
 
 	t.Run("different types", func(t *testing.T) {
-		invalidExector := &anotherQueryExecutor{}
+		invalidExecutor := &anotherQueryExecutor{}
 
-		err := executor1.IsComparable(invalidExector)
+		err := executor1.IsComparable(invalidExecutor)
 		assert.Error(t, err)
 	})
 

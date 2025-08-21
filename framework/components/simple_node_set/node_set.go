@@ -2,15 +2,17 @@ package simple_node_set
 
 import (
 	"fmt"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
-	"golang.org/x/sync/errgroup"
 	"os"
 	"slices"
 	"strings"
 	"sync"
+
+	"golang.org/x/sync/errgroup"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 )
 
 const (
@@ -20,6 +22,7 @@ const (
 
 // Input is a node set configuration input
 type Input struct {
+	Name               string          `toml:"name" validate:"required"`
 	Nodes              int             `toml:"nodes" validate:"required"`
 	HTTPPortRangeStart int             `toml:"http_port_range_start"`
 	P2PPortRangeStart  int             `toml:"p2p_port_range_start"`
@@ -27,6 +30,7 @@ type Input struct {
 	OverrideMode       string          `toml:"override_mode" validate:"required,oneof=all each"`
 	DbInput            *postgres.Input `toml:"db" validate:"required"`
 	NodeSpecs          []*clnode.Input `toml:"node_specs" validate:"required"`
+	NoDNS              bool            `toml:"no_dns"`
 	Out                *Output         `toml:"out"`
 }
 
@@ -67,7 +71,7 @@ func printURLs(out *Output) {
 	}
 	httpURLs, _, pgURLs := make([]string, 0), make([]string, 0), make([]string, 0)
 	for _, n := range out.CLNodes {
-		httpURLs = append(httpURLs, n.Node.HostURL)
+		httpURLs = append(httpURLs, n.Node.ExternalURL)
 		pgURLs = append(pgURLs, n.PostgreSQL.Url)
 	}
 	framework.L.Info().Any("UI", httpURLs).Send()
@@ -75,6 +79,10 @@ func printURLs(out *Output) {
 }
 
 func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
+	in.DbInput.Name = fmt.Sprintf("%s-%s", in.Name, "ns-postgresql")
+	in.DbInput.VolumeName = in.Name
+
+	// create database for each node
 	in.DbInput.Databases = in.Nodes
 	dbOut, err := postgres.NewPostgreSQL(in.DbInput)
 	if err != nil {
@@ -104,32 +112,31 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 	eg := &errgroup.Group{}
 	mu := &sync.Mutex{}
 	for i := 0; i < in.Nodes; i++ {
-		i := i
-		var overrideIdx int
+		overrideIdx := i
 		var nodeName string
-		switch in.OverrideMode {
-		case "each":
-			overrideIdx = i
-		case "all":
-			overrideIdx = 0
+		if in.OverrideMode == "all" {
 			if len(in.NodeSpecs[overrideIdx].Node.CustomPorts) > 0 {
 				return nil, fmt.Errorf("custom_ports can be used only with override_mode = 'each'")
 			}
 		}
-		if in.NodeSpecs[overrideIdx].Node.Name == "" {
-			nodeName = fmt.Sprintf("node%d", i)
-		}
+
 		eg.Go(func() error {
 			var net string
-			net, err = clnode.NewNetworkCfgOneNetworkAllNodes(bcOut)
-			if err != nil {
-				return err
+			var err error
+			if bcOut != nil {
+				net, err = clnode.NewNetworkCfgOneNetworkAllNodes(bcOut)
+				if err != nil {
+					return err
+				}
 			}
 			if in.NodeSpecs[overrideIdx].Node.TestConfigOverrides != "" {
 				net = in.NodeSpecs[overrideIdx].Node.TestConfigOverrides
 			}
+			nodeName = fmt.Sprintf("node%d", i)
+			nodeWithNodeSetPrefixName := fmt.Sprintf("%s-%s", in.Name, nodeName)
 
 			nodeSpec := &clnode.Input{
+				NoDNS:   in.NoDNS,
 				DbInput: in.DbInput,
 				Node: &clnode.NodeInput{
 					HTTPPort:                httpPortRangeStart + i,
@@ -137,7 +144,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 					DebuggerPort:            dlvPortStart + i,
 					CustomPorts:             in.NodeSpecs[overrideIdx].Node.CustomPorts,
 					Image:                   in.NodeSpecs[overrideIdx].Node.Image,
-					Name:                    nodeName,
+					Name:                    nodeWithNodeSetPrefixName,
 					PullImage:               in.NodeSpecs[overrideIdx].Node.PullImage,
 					DockerFilePath:          in.NodeSpecs[overrideIdx].Node.DockerFilePath,
 					DockerContext:           in.NodeSpecs[overrideIdx].Node.DockerContext,
@@ -148,6 +155,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 					TestSecretsOverrides:    in.NodeSpecs[overrideIdx].Node.TestSecretsOverrides,
 					UserSecretsOverrides:    in.NodeSpecs[overrideIdx].Node.UserSecretsOverrides,
 					ContainerResources:      in.NodeSpecs[overrideIdx].Node.ContainerResources,
+					EnvVars:                 in.NodeSpecs[overrideIdx].Node.EnvVars,
 				},
 			}
 
@@ -156,10 +164,10 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 			}
 
 			dbURLHost := strings.Replace(dbOut.Url, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i), -1)
-			dbURL := strings.Replace(dbOut.DockerInternalURL, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i), -1)
+			dbURL := strings.Replace(dbOut.InternalURL, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i), -1)
 			dbSpec := &postgres.Output{
-				Url:               dbURLHost,
-				DockerInternalURL: dbURL,
+				Url:         dbURLHost,
+				InternalURL: dbURL,
 			}
 
 			o, err := clnode.NewNode(nodeSpec, dbSpec)
@@ -184,13 +192,12 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 }
 
 func sortNodeOutsByHostPort(nodes []*clnode.Output) {
-	slices.SortFunc[[]*clnode.Output, *clnode.Output](nodes, func(a, b *clnode.Output) int {
-		aa := strings.Split(a.Node.HostURL, ":")
-		bb := strings.Split(b.Node.HostURL, ":")
+	slices.SortFunc(nodes, func(a, b *clnode.Output) int {
+		aa := strings.Split(a.Node.ExternalURL, ":")
+		bb := strings.Split(b.Node.ExternalURL, ":")
 		if aa[len(aa)-1] < bb[len(bb)-1] {
 			return -1
-		} else {
-			return 1
 		}
+		return 1
 	})
 }

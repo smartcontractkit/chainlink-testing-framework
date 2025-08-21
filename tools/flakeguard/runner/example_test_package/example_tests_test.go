@@ -1,3 +1,6 @@
+//go:build example_package_tests
+// +build example_package_tests
+
 package exampletestpackage
 
 import (
@@ -18,16 +21,22 @@ func TestFail(t *testing.T) {
 	t.Fatal("This test always fails")
 }
 
+func TestFailLargeOutput(t *testing.T) {
+	t.Parallel()
+	for range 1000 {
+		t.Log("This is a log line")
+	}
+	t.Fatal("This test always fails")
+}
+
 func TestSubTestsAllPass(t *testing.T) {
 	t.Parallel()
 
 	t.Run("Pass1", func(t *testing.T) {
-		t.Parallel()
 		t.Log("This subtest always passes")
 	})
 
 	t.Run("Pass2", func(t *testing.T) {
-		t.Parallel()
 		t.Log("This subtest always passes")
 	})
 }
@@ -36,12 +45,10 @@ func TestSubTestsAllFail(t *testing.T) {
 	t.Parallel()
 
 	t.Run("Fail1", func(t *testing.T) {
-		t.Parallel()
 		t.Fatal("This subtest always fails")
 	})
 
 	t.Run("Fail2", func(t *testing.T) {
-		t.Parallel()
 		t.Fatal("This subtest always fails")
 	})
 }
@@ -50,12 +57,10 @@ func TestSubTestsSomeFail(t *testing.T) {
 	t.Parallel()
 
 	t.Run("Pass", func(t *testing.T) {
-		t.Parallel()
 		t.Log("This subtest always passes")
 	})
 
 	t.Run("Fail", func(t *testing.T) {
-		t.Parallel()
 		t.Fatal("This subtest always fails")
 	})
 }
@@ -64,12 +69,10 @@ func TestSubTestsSomePanic(t *testing.T) {
 	t.Parallel()
 
 	t.Run("Pass", func(t *testing.T) {
-		t.Parallel()
 		t.Log("This subtest always passes")
 	})
 
 	t.Run("Panic", func(t *testing.T) {
-		t.Parallel()
 		panic("This subtest always panics")
 	})
 }
@@ -78,12 +81,10 @@ func TestFailInParentAfterSubTests(t *testing.T) {
 	t.Parallel()
 
 	t.Run("Pass1", func(t *testing.T) {
-		t.Parallel()
 		t.Log("This subtest always passes")
 	})
 
 	t.Run("Pass2", func(t *testing.T) {
-		t.Parallel()
 		t.Log("This subtest always passes")
 	})
 

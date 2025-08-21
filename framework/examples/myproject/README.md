@@ -1,4 +1,4 @@
-# End-to-End Testing Project Maturity Model
+# System Testing Maturity Model
 
 [![Smoke](https://img.shields.io/badge/Level_1-Smoke-blue?branch=maturity-model&job=TestSmoke)](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/framework-golden-tests.yml)
 [![Upgrade](https://img.shields.io/badge/Level_2-Upgrade-blue?branch=maturity-model&job=TestSmoke)](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/framework-golden-tests.yml)
@@ -6,9 +6,15 @@
 [![Resiliency](https://img.shields.io/badge/Level_4-Resiliency-blue?branch=maturity-model&job=TestSmoke)](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/framework-golden-tests.yml)
 [![Scalability](https://img.shields.io/badge/Level_5-Scalability-blue?branch=maturity-model&job=TestSmoke)](https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/framework-golden-tests.yml)
 
+System-level testing is where you test the entire system (all components working together) to ensure everything behaves as expected in a realistic environment:
+- Your own applications/services are deployed in a setup as close to production as possible (Docker, Kubernetes, cloud VMs, etc.).
+- Third-party dependencies (like APIs, databases, payment gateways) are replaced with high-fidelity fakes (mocks, stubs, or test versions) to avoid relying on real external systems.
+
+The goal is to catch integration issues, performance problems, and system-wide failures before going to production.
+
 ## Level 0
 
-The team creates and maintains a high-level test plan outlining the components involved and test cases in any format.
+The team creates and maintains a high-level system test plan outlining the components involved and test cases in any format.
 
 If the team decides on minimal or no manual testing and the project is trivial, they can consolidate all test cases into `go test` cases, outline the required implementations and commit templates up front.
 
@@ -62,7 +68,7 @@ Recommended test cases:
 - Stress test (limiting container resources)
 
 ## Level 5
-The team has complete ownership of their persistent staging environment.
+The team has complete ownership of their persistent staging environment or also uses ephemeral environments, usually with `K8s`.
 
 The team can use [components caching](https://smartcontractkit.github.io/chainlink-testing-framework/framework/components/caching.html) to reuse testing logic on staging and substitute staging environment URLs instead of an ephemeral environment.
 

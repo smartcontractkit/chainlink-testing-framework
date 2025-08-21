@@ -1,13 +1,13 @@
 package clnode_test
 
 import (
-	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
-	"github.com/stretchr/testify/require"
 )
 
 type testCase struct {
@@ -19,15 +19,15 @@ type testCase struct {
 func checkBasicOutputs(t *testing.T, output *clnode.Output) {
 	require.NotNil(t, output)
 	require.NotNil(t, output.Node)
-	require.Contains(t, output.Node.HostURL, "127.0.0.1")
-	require.Contains(t, output.Node.DockerURL, "cl-node")
-	require.Contains(t, output.Node.DockerP2PUrl, "cl-node")
+	require.Contains(t, output.Node.ExternalURL, "127.0.0.1")
+	require.Contains(t, output.Node.InternalURL, "cl-node")
+	require.Contains(t, output.Node.InternalP2PUrl, "cl-node")
 	require.NotNil(t, output.PostgreSQL)
 	require.Contains(t, output.PostgreSQL.Url, "postgresql://chainlink:thispasswordislongenough@127.0.0.1")
-	require.Contains(t, output.PostgreSQL.DockerInternalURL, "postgresql://chainlink:thispasswordislongenough@ns-postgresql")
+	require.Contains(t, output.PostgreSQL.InternalURL, "postgresql://chainlink:thispasswordislongenough@pg")
 }
 
-func TestComponentDockerNodeWithSharedDB(t *testing.T) {
+func TestSmokeComponentDockerNodeWithSharedDB(t *testing.T) {
 	testCases := []testCase{
 		{
 			name: "basic use case",
@@ -35,6 +35,7 @@ func TestComponentDockerNodeWithSharedDB(t *testing.T) {
 				DbInput: &postgres.Input{
 					Image:      "postgres:12.0",
 					Port:       16000,
+					Name:       "pg-1",
 					VolumeName: "a",
 				},
 				Node: &clnode.NodeInput{
@@ -49,7 +50,7 @@ func TestComponentDockerNodeWithSharedDB(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		err := framework.DefaultNetwork(&sync.Once{})
+		err := framework.DefaultNetwork(nil)
 		require.NoError(t, err)
 
 		t.Run(tc.name, func(t *testing.T) {
@@ -62,7 +63,7 @@ func TestComponentDockerNodeWithSharedDB(t *testing.T) {
 	}
 }
 
-func TestComponentDockerNodeWithDB(t *testing.T) {
+func TestSmokeComponentDockerNodeWithDB(t *testing.T) {
 	testCases := []testCase{
 		{
 			name: "basic use case",
@@ -70,6 +71,7 @@ func TestComponentDockerNodeWithDB(t *testing.T) {
 				DbInput: &postgres.Input{
 					Image:      "postgres:12.0",
 					Port:       15000,
+					Name:       "pg-2",
 					VolumeName: "b",
 				},
 				Node: &clnode.NodeInput{
@@ -84,7 +86,7 @@ func TestComponentDockerNodeWithDB(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		err := framework.DefaultNetwork(&sync.Once{})
+		err := framework.DefaultNetwork(nil)
 		require.NoError(t, err)
 
 		t.Run(tc.name, func(t *testing.T) {

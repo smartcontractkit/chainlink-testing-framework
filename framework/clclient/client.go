@@ -1,16 +1,25 @@
 package clclient
 
 import (
+	"crypto/ecdsa"
+	"crypto/rand"
 	"crypto/tls"
 	"fmt"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 	"math/big"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/avast/retry-go/v4"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/pkg/errors"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-resty/resty/v2"
@@ -60,7 +69,7 @@ func New(outs []*clnode.Output) ([]*ChainlinkClient, error) {
 	clients := make([]*ChainlinkClient, 0)
 	for _, out := range outs {
 		c, err := NewChainlinkClient(&Config{
-			URL:      out.Node.HostURL,
+			URL:      out.Node.ExternalURL,
 			Email:    out.Node.APIAuthUser,
 			Password: out.Node.APIAuthPassword,
 		})
@@ -118,6 +127,80 @@ func (c *ChainlinkClient) Health() (*HealthResponse, *http.Response, error) {
 		return nil, nil, err
 	}
 	return respBody, resp.RawResponse, err
+}
+
+// WaitHealthy waits until all the components (regex) return specified status
+func (c *ChainlinkClient) WaitHealthy(pattern, status string, attempts uint) error {
+	respBody := &HealthResponse{}
+	framework.L.Info().Str(NodeURL, c.Config.URL).Msg("Check CL node health")
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return fmt.Errorf("invalid regex pattern: %w", err)
+	}
+	err = retry.Do(
+		func() error {
+			framework.L.Debug().Str(NodeURL, c.Config.URL).Uint("Attempts", attempts).Msg("Awaiting Chainlink node health status")
+			resp, err := c.APIClient.R().
+				SetResult(&respBody).
+				Get("/health")
+			if err != nil {
+				return fmt.Errorf("error connecting to chainlink node after %d attempts: %w", attempts, err)
+			}
+			if resp.StatusCode() >= 400 {
+				return fmt.Errorf("error connecting to chainlink node after %d attempts: %s", attempts, resp.Status())
+			}
+
+			var foundComponents bool
+			var notReadyComponents []string
+
+			for _, d := range respBody.Data {
+				framework.L.Debug().Str("Component", d.Attributes.Name).Msg("Checking component")
+				if re.MatchString(d.Attributes.Name) {
+					foundComponents = true
+					if d.Attributes.Status != status {
+						notReadyComponents = append(notReadyComponents,
+							fmt.Sprintf("%s Current: %s, Expected: %s",
+								d.Attributes.Name,
+								d.Attributes.Status,
+								status))
+					}
+				}
+			}
+
+			if !foundComponents {
+				return fmt.Errorf("no component found in health response")
+			}
+
+			if len(notReadyComponents) > 0 {
+				framework.L.Debug().
+					Strs("Components", notReadyComponents).
+					Msg("Components not yet ready")
+				return fmt.Errorf("%d components not ready", len(notReadyComponents))
+			}
+
+			return nil
+		},
+		retry.Attempts(attempts),
+		retry.Delay(1*time.Second),
+		retry.DelayType(retry.FixedDelay),
+		retry.OnRetry(func(n uint, err error) {
+			framework.L.Debug().
+				Uint("Attempt", n+1).
+				Uint("MaxAttempts", attempts).
+				Str("Pattern", pattern).
+				Msg("Retrying health check")
+		}),
+	)
+
+	if err != nil {
+		return fmt.Errorf("health check failed after %d attempts: %w", attempts, err)
+	}
+
+	framework.L.Info().
+		Str("pattern", pattern).
+		Str("status", status).
+		Msg("All matching components ready")
+	return nil
 }
 
 // CreateJobRaw creates a Chainlink job based on the provided spec string
@@ -862,7 +945,32 @@ func (c *ChainlinkClient) ImportVRFKey(vrfExportKey *VRFExportKey) (*VRFKey, *ht
 	return vrfKey, resp.RawResponse, err
 }
 
-// CreateCSAKey creates a CSA key on the Chainlink node, only 1 CSA key per noe
+// ReadWorkflowKeys reads all Workflow keys from the Chainlink node
+func (c *ChainlinkClient) ReadWorkflowKeys() (*WorkflowKeys, *http.Response, error) {
+	workflowKeys := &WorkflowKeys{}
+	framework.L.Info().Str(NodeURL, c.Config.URL).Msg("Reading Workflow Keys")
+	resp, err := c.APIClient.R().
+		SetResult(workflowKeys).
+		Get("/v2/keys/workflow")
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(workflowKeys.Data) == 0 {
+		framework.L.Warn().Str(NodeURL, c.Config.URL).Msg("Found no Workflow Keys on the node")
+	}
+	return workflowKeys, resp.RawResponse, err
+}
+
+// MustReadWorkflowKeys reads all Workflow keys from the Chainlink node
+func (c *ChainlinkClient) MustReadWorkflowKeys() (*WorkflowKeys, *http.Response, error) {
+	workflowKeys, res, err := c.ReadWorkflowKeys()
+	if err != nil {
+		return nil, res, err
+	}
+	return workflowKeys, res, VerifyStatusCode(res.StatusCode, http.StatusOK)
+}
+
+// CreateCSAKey creates a CSA key on the Chainlink node, only 1 CSA key per node
 func (c *ChainlinkClient) CreateCSAKey() (*CSAKey, *http.Response, error) {
 	csaKey := &CSAKey{}
 	framework.L.Info().Str(NodeURL, c.Config.URL).Msg("Creating CSA Key")
@@ -1232,4 +1340,78 @@ func (c *ChainlinkClient) GetForwarders() (*Forwarders, *http.Response, error) {
 		return nil, nil, err
 	}
 	return response, resp.RawResponse, err
+}
+
+// NewETHKey generates a new Ethereum key pair and encrypts the private key using the provided password.
+// It returns the encrypted key in JSON format and the corresponding Ethereum address, or an error if the process fails.
+func NewETHKey(password string) ([]byte, common.Address, error) {
+	privateKey, err := ecdsa.GenerateKey(crypto.S256(), rand.Reader)
+	var address common.Address
+	if err != nil {
+		return nil, address, errors.Wrap(err, "failed to generate private key")
+	}
+	address = crypto.PubkeyToAddress(privateKey.PublicKey)
+	jsonKey, err := keystore.EncryptKey(&keystore.Key{
+		PrivateKey: privateKey,
+		Address:    address,
+	}, password, keystore.StandardScryptN, keystore.StandardScryptP)
+	if err != nil {
+		return nil, address, errors.Wrap(err, "failed to encrypt the keystore")
+	}
+	return jsonKey, address, nil
+}
+
+// ImportEVMKey imports EVM key to the node (encrypted go-ethereum JSON wallet format)
+func (c *ChainlinkClient) ImportEVMKey(key []byte, chainID string) (*http.Response, error) {
+	framework.L.Info().Str(NodeURL, c.Config.URL).Str("Key", string(key)).Msg("Importing EVM key")
+	// empty response, nothing to marshal
+	resp, err := c.APIClient.R().SetBody(key).Post(fmt.Sprintf("/v2/keys/eth/import?evmChainID=%s", chainID))
+	if err != nil {
+		return nil, err
+	}
+	return resp.RawResponse, err
+}
+
+// ImportEVMKeys imports an array of EVM keys to the nodes
+func ImportEVMKeys(cl []*ChainlinkClient, keys [][]byte, chainID string) error {
+	eg := &errgroup.Group{}
+	for i, c := range cl {
+		eg.Go(func() error {
+			_, err := c.ImportEVMKey(keys[i], chainID)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+	}
+	return eg.Wait()
+}
+
+// ImportP2PKey import P2P keys to the node (encrypted go-ethereum JSON wallet format, keystore.EncryptDataV3 + prefix)
+func (c *ChainlinkClient) ImportP2PKey(encryptedJSONKey []byte) (*P2PKey, *http.Response, error) {
+	p2pKey := &P2PKey{}
+	framework.L.Info().Str(NodeURL, c.Config.URL).Msg("Importing P2P Key")
+	resp, err := c.APIClient.R().
+		SetBody(encryptedJSONKey).
+		SetResult(p2pKey).
+		Post("/v2/keys/p2p/import")
+	if err != nil {
+		return nil, nil, err
+	}
+	return p2pKey, resp.RawResponse, err
+}
+
+// ImportP2PKeys imports an array of P2P keys to the nodes
+func ImportP2PKeys(cl []*ChainlinkClient, keys [][]byte) error {
+	eg := &errgroup.Group{}
+	for i, c := range cl {
+		eg.Go(func() error {
+			_, _, err := c.ImportP2PKey(keys[i])
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+	}
+	return eg.Wait()
 }

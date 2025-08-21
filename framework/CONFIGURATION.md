@@ -35,7 +35,7 @@ In `TOML`:
 ```
 [blockchain_a]
 chain_id = "1337"
-image = "f4hrenh9it/foundry:latest"
+image = "ghcr.io/foundry-rs/foundry:stable"
 port = "8500"
 type = "anvil"
 docker_cmd_params = ["-b", "1"]

@@ -2,14 +2,39 @@ package blockchain
 
 import (
 	"fmt"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+
 	"github.com/testcontainers/testcontainers-go"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+)
+
+// Blockchain node type
+const (
+	TypeAnvil       = "anvil"
+	TypeAnvilZKSync = "anvil-zksync"
+	TypeGeth        = "geth"
+	TypeBesu        = "besu"
+	TypeSolana      = "solana"
+	TypeAptos       = "aptos"
+	TypeSui         = "sui"
+	TypeTron        = "tron"
+	TypeTon         = "ton"
+)
+
+// Blockchain node family
+const (
+	FamilyEVM    = "evm"
+	FamilySolana = "solana"
+	FamilyAptos  = "aptos"
+	FamilySui    = "sui"
+	FamilyTron   = "tron"
+	FamilyTon    = "ton"
 )
 
 // Input is a blockchain network configuration params
 type Input struct {
 	// Common EVM fields
-	Type      string `toml:"type" validate:"required,oneof=anvil geth besu solana aptos tron sui" envconfig:"net_type"`
+	Type      string `toml:"type" validate:"required,oneof=anvil geth besu solana aptos tron sui ton" envconfig:"net_type"`
 	Image     string `toml:"image"`
 	PullImage bool   `toml:"pull_image"`
 	Port      string `toml:"port"`
@@ -28,11 +53,25 @@ type Input struct {
 	// there needs to be a matching .so file in contracts_dir
 	SolanaPrograms     map[string]string             `toml:"solana_programs"`
 	ContainerResources *framework.ContainerResources `toml:"resources"`
+	CustomPorts        []string                      `toml:"custom_ports"`
+
+	// Sui specific: faucet port for funding accounts
+	FaucetPort string `toml:"faucet_port"`
+
+	// GAPv2 specific params
+	HostNetworkMode  bool   `toml:"host_network_mode"`
+	CertificatesPath string `toml:"certificates_path"`
+
+	// Optional params
+	ImagePlatform *string `toml:"image_platform"`
+	// Custom environment variables for the container
+	CustomEnv map[string]string `toml:"custom_env"`
 }
 
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network
 type Output struct {
 	UseCache            bool                     `toml:"use_cache"`
+	Type                string                   `toml:"type"`
 	Family              string                   `toml:"family"`
 	ContainerName       string                   `toml:"container_name"`
 	NetworkSpecificData *NetworkSpecificData     `toml:"network_specific_data"`
@@ -47,34 +86,35 @@ type NetworkSpecificData struct {
 
 // Node represents blockchain node output, URLs required for connection locally and inside docker network
 type Node struct {
-	HostWSUrl             string `toml:"ws_url"`
-	HostHTTPUrl           string `toml:"http_url"`
-	DockerInternalWSUrl   string `toml:"docker_internal_ws_url"`
-	DockerInternalHTTPUrl string `toml:"docker_internal_http_url"`
+	ExternalWSUrl   string `toml:"ws_url"`
+	ExternalHTTPUrl string `toml:"http_url"`
+	InternalWSUrl   string `toml:"internal_ws_url"`
+	InternalHTTPUrl string `toml:"internal_http_url"`
 }
 
 // NewBlockchainNetwork this is an abstraction that can spin up various blockchain network simulators
 func NewBlockchainNetwork(in *Input) (*Output, error) {
-	if in.Out != nil && in.Out.UseCache {
-		return in.Out, nil
-	}
 	var out *Output
 	var err error
 	switch in.Type {
-	case "anvil":
+	case TypeAnvil:
 		out, err = newAnvil(in)
-	case "geth":
+	case TypeGeth:
 		out, err = newGeth(in)
-	case "besu":
+	case TypeBesu:
 		out, err = newBesu(in)
-	case "solana":
+	case TypeSolana:
 		out, err = newSolana(in)
-	case "aptos":
+	case TypeAptos:
 		out, err = newAptos(in)
-	case "sui":
+	case TypeSui:
 		out, err = newSui(in)
-	case "tron":
+	case TypeTron:
 		out, err = newTron(in)
+	case TypeAnvilZKSync:
+		out, err = newAnvilZksync(in)
+	case TypeTon:
+		out, err = newTon(in)
 	default:
 		return nil, fmt.Errorf("blockchain type is not supported or empty, must be 'anvil' or 'geth'")
 	}

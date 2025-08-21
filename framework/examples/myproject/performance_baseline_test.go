@@ -1,6 +1,12 @@
 package examples
 
 import (
+	"os"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
@@ -8,16 +14,12 @@ import (
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/examples/generators"
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
-	"github.com/stretchr/testify/require"
-	"os"
-	"testing"
-	"time"
 )
 
 type CfgLoad struct {
 	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
 	MockerDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
-	NodeSet            *ns.Input         `toml:"nodeset" validate:"required"`
+	NodeSets           []*ns.Input       `toml:"nodesets" validate:"required"`
 }
 
 func TestPerformanceBaseline(t *testing.T) {
@@ -28,7 +30,7 @@ func TestPerformanceBaseline(t *testing.T) {
 	require.NoError(t, err)
 	_, err = fake.NewFakeDataProvider(in.MockerDataProvider)
 	require.NoError(t, err)
-	out, err := ns.NewSharedDBNodeSet(in.NodeSet, bc)
+	out, err := ns.NewSharedDBNodeSet(in.NodeSets[0], bc)
 	require.NoError(t, err)
 
 	var lokiCfg *wasp.LokiConfig

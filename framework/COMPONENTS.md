@@ -88,7 +88,7 @@ An example of [composite component](components/node_set_extended/don.go)
 
 	return &NodeOut{
 	    UseCache: true,
-		DockerURL: fmt.Sprintf("http://%s:%s", containerName, in.Node.Port),
-		HostURL:   fmt.Sprintf("http://%s:%s", host, mp.Port()),
+		InternalURL: fmt.Sprintf("http://%s:%s", containerName, in.Node.Port),
+		ExternalURL:   fmt.Sprintf("http://%s:%s", host, mp.Port()),
 	}, nil
 ```

@@ -4,14 +4,15 @@
 
 [contracts_src]
 
-[nodeset]
+[[nodesets]]
+  name = "don"
   nodes = 5
   override_mode = "all"
 
-  [nodeset.db]
+  [nodesets.db]
     image = "postgres:15.6"
 
-  [[nodeset.node_specs]]
+  [[nodesets.node_specs]]
 
-    [nodeset.node_specs.node]
+    [nodesets.node_specs.node]
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"

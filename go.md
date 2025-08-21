@@ -7,6 +7,7 @@ flowchart LR
 	framework
 	click framework href "https://github.com/smartcontractkit/chainlink-testing-framework/framework"
 	framework/examples --> framework
+	framework/examples --> havoc
 	framework/examples --> wasp
 	click framework/examples href "https://github.com/smartcontractkit/chainlink-testing-framework/framework"
 	framework/examples_cll --> framework
@@ -15,10 +16,13 @@ flowchart LR
 	click grafana href "https://github.com/smartcontractkit/chainlink-testing-framework/grafana"
 	havoc --> lib/grafana
 	click havoc href "https://github.com/smartcontractkit/chainlink-testing-framework/havoc"
+	lib --> parrot
 	lib --> seth
 	click lib href "https://github.com/smartcontractkit/chainlink-testing-framework/lib"
 	lib/grafana
 	click lib/grafana href "https://github.com/smartcontractkit/chainlink-testing-framework/lib"
+	parrot
+	click parrot href "https://github.com/smartcontractkit/chainlink-testing-framework/parrot"
 	sentinel --> lib
 	click sentinel href "https://github.com/smartcontractkit/chainlink-testing-framework/sentinel"
 	seth

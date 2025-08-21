@@ -1,15 +1,17 @@
 package fake_test
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/go-resty/resty/v2"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/go-resty/resty/v2"
+	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
 )
 
-func TestComponentFake(t *testing.T) {
+func TestSmokeComponentFake(t *testing.T) {
 	cfg := &fake.Input{
 		Port: 9111,
 	}
@@ -81,6 +83,7 @@ func TestComponentFake(t *testing.T) {
 
 		// get request and response
 		recordedData, err := fake.R.Get(method, apiPath)
+		require.NoError(t, err)
 		require.Equal(t, []*fake.Record{
 			{
 				Method: "POST",

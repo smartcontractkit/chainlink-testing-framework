@@ -3,15 +3,17 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/testcontainers/testcontainers-go"
-	tcwait "github.com/testcontainers/testcontainers-go/wait"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/go-connections/nat"
+	"github.com/testcontainers/testcontainers-go"
+	tcwait "github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 const (
@@ -20,6 +22,7 @@ const (
 	Port              = "5432"
 	ExposedStaticPort = 13000
 	Database          = "chainlink"
+	JDDatabase        = "job-distributor-db"
 	DBVolumeName      = "postgresql_data"
 )
 
@@ -30,17 +33,18 @@ type Input struct {
 	VolumeName         string                        `toml:"volume_name"`
 	Databases          int                           `toml:"databases"`
 	JDDatabase         bool                          `toml:"jd_database"`
+	JDSQLDumpPath      string                        `toml:"jd_sql_dump_path"`
 	PullImage          bool                          `toml:"pull_image"`
 	ContainerResources *framework.ContainerResources `toml:"resources"`
 	Out                *Output                       `toml:"out"`
 }
 
 type Output struct {
-	Url                 string `toml:"url"`
-	ContainerName       string `toml:"container_name"`
-	DockerInternalURL   string `toml:"docker_internal_url"`
-	JDUrl               string `toml:"jd_url"`
-	JDDockerInternalURL string `toml:"jd_docker_internal_url"`
+	Url           string `toml:"url"`
+	ContainerName string `toml:"container_name"`
+	InternalURL   string `toml:"internal_url"`
+	JDUrl         string `toml:"jd_url"`
+	JDInternalURL string `toml:"jd_internal_url"`
 }
 
 func NewPostgreSQL(in *Input) (*Output, error) {
@@ -48,10 +52,10 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 
 	bindPort := fmt.Sprintf("%s/tcp", Port)
 	var containerName string
-	if in.Name != "" {
-		containerName = framework.DefaultTCName(in.Name)
+	if in.Name == "" {
+		containerName = "ns-postgresql"
 	} else {
-		containerName = framework.DefaultTCName("ns-postgresql")
+		containerName = in.Name
 	}
 
 	var sqlCommands []string
@@ -62,10 +66,23 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 			"CREATE EXTENSION pg_stat_statements;",
 		)
 	}
-	if in.JDDatabase {
-		sqlCommands = append(sqlCommands, "CREATE DATABASE jd;")
-	}
 	sqlCommands = append(sqlCommands, "ALTER USER chainlink WITH SUPERUSER;")
+	if in.JDDatabase {
+		if in.JDSQLDumpPath != "" {
+			// if we have a full dump we replace RDS specific commands and apply it creating db and filling the tables
+			d, err := os.ReadFile(in.JDSQLDumpPath)
+			if err != nil {
+				return nil, fmt.Errorf("error reading JD dump file '%s': %v", in.JDSQLDumpPath, err)
+			}
+			// transaction_timeout is a custom RDS instruction, we must replace it
+			sqlMigration := strings.Replace(string(d), "SET transaction_timeout = 0;", "", -1)
+			sqlCommands = append(sqlCommands, sqlMigration)
+			sqlCommands = append(sqlCommands, "DELETE FROM public.csa_keypairs where id = 1;")
+		} else {
+			// if we don't have a dump we create an empty DB
+			sqlCommands = append(sqlCommands, fmt.Sprintf("CREATE DATABASE \"%s\";", JDDatabase))
+		}
+	}
 	initSQL := strings.Join(sqlCommands, "\n")
 	initFile, err := os.CreateTemp("", "init-*.sql")
 	if err != nil {
@@ -80,7 +97,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 
 	req := testcontainers.ContainerRequest{
 		AlwaysPullImage: in.PullImage,
-		Image:           fmt.Sprintf("%s", in.Image),
+		Image:           in.Image,
 		Name:            containerName,
 		Labels:          framework.DefaultTCLabels(),
 		ExposedPorts:    []string{bindPort},
@@ -116,7 +133,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 		},
 		WaitingFor: tcwait.ForExec([]string{"psql", "-h", "127.0.0.1",
 			"-U", User, "-p", Port, "-c", "select", "1", "-d", Database}).
-			WithStartupTimeout(15 * time.Second).
+			WithStartupTimeout(3 * time.Minute).
 			WithPollInterval(200 * time.Millisecond),
 	}
 	var portToExpose int
@@ -150,7 +167,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 	}
 	o := &Output{
 		ContainerName: containerName,
-		DockerInternalURL: fmt.Sprintf(
+		InternalURL: fmt.Sprintf(
 			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
 			User,
 			Password,
@@ -168,13 +185,13 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 		),
 	}
 	if in.JDDatabase {
-		o.JDDockerInternalURL = fmt.Sprintf(
+		o.JDInternalURL = fmt.Sprintf(
 			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
 			User,
 			Password,
 			containerName,
 			Port,
-			"jd",
+			JDDatabase,
 		)
 		o.JDUrl = fmt.Sprintf(
 			"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
@@ -182,7 +199,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 			Password,
 			host,
 			portToExpose,
-			"jd",
+			JDDatabase,
 		)
 	}
 	return o, nil

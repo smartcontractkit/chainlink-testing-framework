@@ -3,18 +3,20 @@ package jd
 import (
 	"context"
 	"fmt"
+	"os"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
-	"os"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 )
 
 const (
 	TmpImageName            = "jd-local"
-	GRPCPort         string = "42242"
+	GRPCPort         string = "14231"
 	CSAEncryptionKey string = "!PASsword000!"
 	WSRPCPort        string = "8080"
 )
@@ -26,16 +28,19 @@ type Input struct {
 	CSAEncryptionKey string          `toml:"csa_encryption_key"`
 	DockerFilePath   string          `toml:"docker_file"`
 	DockerContext    string          `toml:"docker_ctx"`
+	JDSQLDumpPath    string          `toml:"jd_sql_dump_path"`
 	DBInput          *postgres.Input `toml:"db"`
 	Out              *Output         `toml:"out"`
 }
 
 type Output struct {
-	UseCache       bool   `toml:"use_cache"`
-	HostGRPCUrl    string `toml:"grpc_url"`
-	DockerGRPCUrl  string `toml:"docker_internal_grpc_url"`
-	HostWSRPCUrl   string `toml:"wsrpc_url"`
-	DockerWSRPCUrl string `toml:"docker_internal_wsrpc_url"`
+	UseCache         bool   `toml:"use_cache"`
+	ContainerName    string `toml:"container_name"`
+	DBContainerName  string `toml:"db_container_name"`
+	ExternalGRPCUrl  string `toml:"grpc_url"`
+	InternalGRPCUrl  string `toml:"internal_grpc_url"`
+	ExternalWSRPCUrl string `toml:"wsrpc_url"`
+	InternalWSRPCUrl string `toml:"internal_wsrpc_url"`
 }
 
 func defaults(in *Input) {
@@ -52,7 +57,7 @@ func defaults(in *Input) {
 
 func defaultJDDB() *postgres.Input {
 	return &postgres.Input{
-		Image:      "postgres:12",
+		Image:      "postgres:16",
 		Port:       14000,
 		Name:       "jd-db",
 		VolumeName: "jd",
@@ -73,6 +78,7 @@ func NewJD(in *Input) (*Output, error) {
 	if in.DBInput == nil {
 		in.DBInput = defaultJDDB()
 	}
+	in.DBInput.JDSQLDumpPath = in.JDSQLDumpPath
 	pgOut, err := postgres.NewPostgreSQL(in.DBInput)
 	if err != nil {
 		return nil, err
@@ -89,10 +95,12 @@ func NewJD(in *Input) (*Output, error) {
 		},
 		ExposedPorts: []string{bindPort},
 		HostConfigModifier: func(h *container.HostConfig) {
+			// JobDistributor service is isolated from internet by default!
+			framework.NoDNS(true, h)
 			h.PortBindings = framework.MapTheSamePort(bindPort)
 		},
 		Env: map[string]string{
-			"DATABASE_URL":              pgOut.JDDockerInternalURL,
+			"DATABASE_URL":              pgOut.JDInternalURL,
 			"PORT":                      in.GRPCPort,
 			"NODE_RPC_PORT":             in.WSRPCPort,
 			"CSA_KEY_ENCRYPTION_SECRET": in.CSAEncryptionKey,
@@ -120,11 +128,13 @@ func NewJD(in *Input) (*Output, error) {
 		return nil, err
 	}
 	out := &Output{
-		UseCache:       true,
-		HostGRPCUrl:    fmt.Sprintf("%s:%s", host, in.GRPCPort),
-		DockerGRPCUrl:  fmt.Sprintf("%s:%s", containerName, in.GRPCPort),
-		HostWSRPCUrl:   fmt.Sprintf("%s:%s", host, in.WSRPCPort),
-		DockerWSRPCUrl: fmt.Sprintf("%s:%s", containerName, in.WSRPCPort),
+		UseCache:         true,
+		ContainerName:    containerName,
+		DBContainerName:  pgOut.ContainerName,
+		ExternalGRPCUrl:  fmt.Sprintf("%s:%s", host, in.GRPCPort),
+		InternalGRPCUrl:  fmt.Sprintf("%s:%s", containerName, in.GRPCPort),
+		ExternalWSRPCUrl: fmt.Sprintf("%s:%s", host, in.WSRPCPort),
+		InternalWSRPCUrl: fmt.Sprintf("%s:%s", containerName, in.WSRPCPort),
 	}
 	in.Out = out
 	return out, nil

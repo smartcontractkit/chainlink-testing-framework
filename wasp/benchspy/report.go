@@ -11,8 +11,9 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
-	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 )
 
 // StandardReport is a report that contains all the necessary data for a performance test
@@ -24,21 +25,21 @@ type StandardReport struct {
 
 // Store saves the report to local storage as a JSON file.
 // It returns the absolute path of the stored file and any error encountered.
-func (b *StandardReport) Store() (string, error) {
-	return b.LocalStorage.Store(b.TestName, b.CommitOrTag, b)
+func (sr *StandardReport) Store() (string, error) {
+	return sr.LocalStorage.Store(sr.TestName, sr.CommitOrTag, sr)
 }
 
 // Load retrieves a report based on the specified test name and commit or tag.
 // It utilizes local storage to find and decode the corresponding report file,
 // ensuring that the report is available for further processing or analysis.
-func (b *StandardReport) Load(testName, commitOrTag string) error {
-	return b.LocalStorage.Load(testName, commitOrTag, b)
+func (sr *StandardReport) Load(testName, commitOrTag string) error {
+	return sr.LocalStorage.Load(testName, commitOrTag, sr)
 }
 
 // LoadLatest retrieves the most recent report for the specified test name from local storage.
 // It returns an error if the report cannot be loaded, enabling users to access historical test data efficiently.
-func (b *StandardReport) LoadLatest(testName string) error {
-	return b.LocalStorage.Load(testName, "", b)
+func (sr *StandardReport) LoadLatest(testName string) error {
+	return sr.LocalStorage.Load(testName, "", sr)
 }
 
 // ResultsAs retrieves and casts results from a query executor to a specified type.
@@ -167,7 +168,7 @@ func calculateDiffPercentage(current, previous float64) float64 {
 
 // CompareDirectWithThresholds evaluates the current and previous reports against specified thresholds.
 // It checks for significant differences in metrics and returns any discrepancies found, aiding in performance analysis.
-func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold float64, currentReport, previousReport *StandardReport) (bool, error) {
+func CompareDirectWithThresholds(medianThreshold, p95Threshold, p99Threshold, maxThreshold, errorRateThreshold float64, currentReport, previousReport *StandardReport) (bool, error) {
 	if currentReport == nil || previousReport == nil {
 		return true, errors.New("one or both reports are nil")
 	}
@@ -177,11 +178,12 @@ func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, er
 		Str("Previous report", previousReport.CommitOrTag).
 		Float64("Median threshold", medianThreshold).
 		Float64("P95 threshold", p95Threshold).
+		Float64("P99 threshold", p99Threshold).
 		Float64("Max threshold", maxThreshold).
 		Float64("Error rate threshold", errorRateThreshold).
 		Msg("Comparing Direct metrics with thresholds")
 
-	if thresholdsErr := validateThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold); thresholdsErr != nil {
+	if thresholdsErr := validateThresholds(medianThreshold, p95Threshold, p99Threshold, maxThreshold, errorRateThreshold); thresholdsErr != nil {
 		return true, thresholdsErr
 	}
 
@@ -214,9 +216,9 @@ func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, er
 		currentMetric := currentForGenerator[metricName]
 		previousMetric := previousForGenerator[metricName]
 
-		diffPrecentage := calculateDiffPercentage(currentMetric, previousMetric)
-		if diffPrecentage > maxDiffPercentage {
-			return fmt.Errorf("%s is %.4f%% different, which is higher than the threshold %.4f%%", metricName, diffPrecentage, maxDiffPercentage)
+		diffPercentage := calculateDiffPercentage(currentMetric, previousMetric)
+		if diffPercentage > maxDiffPercentage {
+			return fmt.Errorf("%s is %.4f%% different, which is higher than the threshold %.4f%%", metricName, diffPercentage, maxDiffPercentage)
 		}
 
 		return nil
@@ -230,6 +232,10 @@ func CompareDirectWithThresholds(medianThreshold, p95Threshold, maxThreshold, er
 		}
 
 		if err := compareValues(string(Percentile95Latency), genCfg.GenName, p95Threshold); err != nil {
+			errors[genCfg.GenName] = append(errors[genCfg.GenName], err)
+		}
+
+		if err := compareValues(string(Percentile99Latency), genCfg.GenName, p99Threshold); err != nil {
 			errors[genCfg.GenName] = append(errors[genCfg.GenName], err)
 		}
 
@@ -263,7 +269,7 @@ func concatenateGeneratorErrors(errors map[string][]error) error {
 	return goerrors.Join(errs...)
 }
 
-func validateThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateThreshold float64) error {
+func validateThresholds(medianThreshold, p95Threshold, p99Threshold, maxThreshold, errorRateThreshold float64) error {
 	var errs []error
 
 	var validateThreshold = func(name string, threshold float64) error {
@@ -278,6 +284,10 @@ func validateThresholds(medianThreshold, p95Threshold, maxThreshold, errorRateTh
 	}
 
 	if err := validateThreshold("p95", p95Threshold); err != nil {
+		errs = append(errs, err)
+	}
+
+	if err := validateThreshold("p99", p99Threshold); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -324,36 +334,31 @@ func PrintStandardDirectMetrics(currentReport, previousReport *StandardReport) {
 
 // FetchData retrieves data for the report within the specified time range.
 // It validates the time range and executes queries in parallel, returning any errors encountered during execution.
-func (b *StandardReport) FetchData(ctx context.Context) error {
+func (sr *StandardReport) FetchData(ctx context.Context) error {
 	L.Info().
-		Str("Test name", b.TestName).
-		Str("Reference", b.CommitOrTag).
+		Str("Test name", sr.TestName).
+		Str("Reference", sr.CommitOrTag).
 		Msg("Fetching data for standard report")
 
-	if b.TestStart.IsZero() || b.TestEnd.IsZero() {
+	if sr.TestStart.IsZero() || sr.TestEnd.IsZero() {
 		return errors.New("start and end times are not set")
 	}
 
 	errGroup, errCtx := errgroup.WithContext(ctx)
-	for _, queryExecutor := range b.QueryExecutors {
+	for _, queryExecutor := range sr.QueryExecutors {
 		errGroup.Go(func() error {
-			// feature: PLAIN SEGEMENT ONLY
+			// feature: PLAIN SEGMENT ONLY
 			// go over all schedules and execute the code below only for ones with type "plain"
 			// and then concatenate that data and return that; if parallelizing then we should first
 			// create a slice of plain segments and then, when sending results over channel include the index,
 			// so that we can concatenate them in the right order
-			queryExecutor.TimeRange(b.TestStart, b.TestEnd)
+			queryExecutor.TimeRange(sr.TestStart, sr.TestEnd)
 
 			// in case someone skipped helper functions and didn't set the start and end times
 			if validateErr := queryExecutor.Validate(); validateErr != nil {
 				return validateErr
 			}
-
-			if execErr := queryExecutor.Execute(errCtx); execErr != nil {
-				return execErr
-			}
-
-			return nil
+			return queryExecutor.Execute(errCtx)
 		})
 	}
 
@@ -362,8 +367,8 @@ func (b *StandardReport) FetchData(ctx context.Context) error {
 	}
 
 	L.Info().
-		Str("Test name", b.TestName).
-		Str("Reference", b.CommitOrTag).
+		Str("Test name", sr.TestName).
+		Str("Reference", sr.CommitOrTag).
 		Msg("Finished fetching data for standard report")
 
 	return nil
@@ -372,7 +377,7 @@ func (b *StandardReport) FetchData(ctx context.Context) error {
 // IsComparable checks if the current report can be compared with another report.
 // It validates the type of the other report and ensures that their basic data and query executors are comparable.
 // This function is useful for verifying report consistency before performing further analysis.
-func (b *StandardReport) IsComparable(otherReport Reporter) error {
+func (sr *StandardReport) IsComparable(otherReport Reporter) error {
 	L.Debug().
 		Str("Expected type", "*StandardReport").
 		Msg("Checking if reports are comparable")
@@ -383,12 +388,12 @@ func (b *StandardReport) IsComparable(otherReport Reporter) error {
 
 	asStandardReport := otherReport.(*StandardReport)
 
-	basicErr := b.BasicData.IsComparable(asStandardReport.BasicData)
+	basicErr := sr.BasicData.IsComparable(asStandardReport.BasicData)
 	if basicErr != nil {
 		return basicErr
 	}
 
-	for _, queryExecutor := range b.QueryExecutors {
+	for _, queryExecutor := range sr.QueryExecutors {
 		queryErr := queryExecutor.IsComparable(queryExecutor)
 		if queryErr != nil {
 			return queryErr
@@ -634,7 +639,7 @@ func generatorHasLabels(g *wasp.Generator) bool {
 // UnmarshalJSON decodes JSON data into a StandardReport struct.
 // It populates the QueryExecutors and ResourceFetchers fields,
 // allowing for dynamic handling of JSON structures in reports.
-func (s *StandardReport) UnmarshalJSON(data []byte) error {
+func (sr *StandardReport) UnmarshalJSON(data []byte) error {
 	// helper struct with QueryExecutors as json.RawMessage
 	type Alias StandardReport
 	var raw struct {
@@ -653,8 +658,8 @@ func (s *StandardReport) UnmarshalJSON(data []byte) error {
 		return queryErr
 	}
 
-	*s = StandardReport(raw.Alias)
-	s.QueryExecutors = queryExecutors
+	*sr = StandardReport(raw.Alias)
+	sr.QueryExecutors = queryExecutors
 	return nil
 }
 

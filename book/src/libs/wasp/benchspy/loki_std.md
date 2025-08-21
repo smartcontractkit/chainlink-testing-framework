@@ -112,14 +112,9 @@ var compareAverages = func(t *testing.T, metricName string, currentAsStringSlice
 	assert.LessOrEqual(t, math.Abs(diffPrecentage), maxPrecentageDiff, "%s medians are more than 1% different", metricName, fmt.Sprintf("%.4f", diffPrecentage))
 }
 
-compareAverages(
-    t,
-    string(benchspy.MedianLatency),
-    currentAsStringSlice,
-    previousAsStringSlice,
-    1.0,
-)
+compareAverages(t, string(benchspy.MedianLatency), currentAsStringSlice, previousAsStringSlice, 1.0)
 compareAverages(t, string(benchspy.Percentile95Latency), currentAsStringSlice, previousAsStringSlice, 1.0)
+compareAverages(t, string(benchspy.Percentile99Latency), currentAsStringSlice, previousAsStringSlice, 1.0)
 compareAverages(t, string(benchspy.MaxLatency), currentAsStringSlice, previousAsStringSlice, 1.0)
 compareAverages(t, string(benchspy.ErrorRate), currentAsStringSlice, previousAsStringSlice, 1.0)
 ```

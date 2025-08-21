@@ -2,20 +2,22 @@ package examples
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/go-resty/resty/v2"
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 	components "github.com/smartcontractkit/chainlink-testing-framework/framework/examples/example_components"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 type CfgFake struct {
 	BlockchainA *blockchain.Input `toml:"blockchain_a" validate:"required"`
 	Fake        *fake.Input       `toml:"fake" validate:"required"`
-	NodeSet     *ns.Input         `toml:"nodeset" validate:"required"`
+	NodeSets    []*ns.Input       `toml:"nodesets" validate:"required"`
 }
 
 func TestFakes(t *testing.T) {
@@ -26,7 +28,7 @@ func TestFakes(t *testing.T) {
 	require.NoError(t, err)
 	fakeOut, err := fake.NewFakeDataProvider(in.Fake)
 	require.NoError(t, err)
-	_, err = ns.NewSharedDBNodeSet(in.NodeSet, bc)
+	_, err = ns.NewSharedDBNodeSet(in.NodeSets[0], bc)
 	require.NoError(t, err)
 
 	t.Run("test fake on host machine", func(t *testing.T) {
@@ -70,7 +72,7 @@ func TestFakes(t *testing.T) {
 		_ = fmt.Sprintf("%s%s", fakeOut.BaseURLDocker, myFakeAPI)
 	})
 
-	t.Run("verify that containers can access internally both locally and in CI", func(t *testing.T) {
+	t.Run("test fake inside Docker network", func(t *testing.T) {
 		myFakeAPI := "/fake/api/internal"
 		// use fake.Func if you need full control over response
 		err = fake.JSON(

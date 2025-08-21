@@ -8,19 +8,22 @@ Create a configuration file `smoke.toml`
   type = "anvil"
   docker_cmd_params = ["-b", "1"]
 
-[nodeset]
+[[nodesets]]
+  name = "don"
   nodes = 5
   override_mode = "all"
   
-  [nodeset.db]
+  [nodesets.db]
     image = "postgres:12.0"
 
-  [[nodeset.node_specs]]
+  [[nodesets.node_specs]]
 
-    [nodeset.node_specs.node]
+    [nodesets.node_specs.node]
       # Dockerfile path is relative to "docker_ctx"
       docker_file = "core/chainlink.Dockerfile"
       docker_ctx = "../.."
+      # Or pin the image after the first build and work on the test
+      image = "chainlink-tmp:latest"
 ```
 
 These paths will work for `e2e/capabilities` in our main [repository](https://github.com/smartcontractkit/chainlink/tree/ctf-v2-tests/e2e/capabilities)

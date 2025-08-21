@@ -10,8 +10,8 @@ type SliceBuffer[T any] struct {
 // NewSliceBuffer creates a new SliceBuffer with the specified capacity.
 // It provides an efficient way to store and manage a fixed number of elements,
 // enabling optimized access and manipulation in concurrent and decentralized applications.
-func NewSliceBuffer[T any](cap int) *SliceBuffer[T] {
-	return &SliceBuffer[T]{Capacity: cap, Data: make([]T, 0)}
+func NewSliceBuffer[T any](capacity int) *SliceBuffer[T] {
+	return &SliceBuffer[T]{Capacity: capacity, Data: make([]T, 0)}
 }
 
 // Append adds an element to the SliceBuffer. When the buffer reaches its capacity, it overwrites the oldest item.

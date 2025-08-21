@@ -1,0 +1,26 @@
+
+[blockchain_a]
+  chain_id = "1337"
+  port = "8545"
+  type = "geth"
+
+[blockchain_b]
+  chain_id = "2337"
+  port = "8555"
+  type = "geth"
+
+[data_provider]
+  port = 9111
+
+[[nodesets]]
+  name = "don"
+  nodes = 5
+  override_mode = "all"
+
+  [nodesets.db]
+    image = "postgres:12.0"
+
+  [[nodesets.node_specs]]
+
+    [nodesets.node_specs.node]
+      image = "public.ecr.aws/chainlink/chainlink:v2.17.0"

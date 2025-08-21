@@ -1,13 +1,15 @@
 package examples
 
 import (
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/examples/example_components/onchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/seth"
-	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 type VerifyCfg struct {
@@ -23,11 +25,11 @@ func TestVerify(t *testing.T) {
 	require.NoError(t, err)
 
 	scSrc, err := seth.NewClientBuilder().
-		WithRpcUrl(bc.Nodes[0].HostWSUrl).
+		WithRpcUrl(bc.Nodes[0].ExternalWSUrl).
 		WithPrivateKeys([]string{blockchain.DefaultAnvilPrivateKey}).
 		Build()
 	require.NoError(t, err)
-	in.ContractsSrc.URL = bc.Nodes[0].HostWSUrl
+	in.ContractsSrc.URL = bc.Nodes[0].ExternalWSUrl
 	c, err := onchain.NewCounterDeployment(scSrc, in.ContractsSrc)
 	require.NoError(t, err)
 

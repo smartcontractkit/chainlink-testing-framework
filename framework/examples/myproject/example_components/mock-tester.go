@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 // NewDockerFakeTester is a small utility to test how docker host resolves in different CI environments
@@ -19,6 +21,7 @@ func NewDockerFakeTester(url string) error {
 		Cmd:        []string{"curl", "-v", url},
 		Labels:     framework.DefaultTCLabels(),
 		WaitingFor: wait.ForExit(),
+		Networks:   []string{framework.DefaultNetworkName, "default_compose"},
 	}
 	curlContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,

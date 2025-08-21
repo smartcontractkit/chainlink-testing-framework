@@ -1,26 +1,16 @@
 package main
 
 import (
-	"embed"
 	"fmt"
-	"github.com/pelletier/go-toml"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/urfave/cli/v2"
-	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
-)
 
-//go:embed observability/*
-var embeddedObservabilityFiles embed.FS
+	"github.com/pelletier/go-toml"
+	"github.com/urfave/cli/v2"
 
-const (
-	LocalLogsURL          = "http://localhost:3000/explore?panes=%7B%22qZw%22:%7B%22datasource%22:%22P8E80F9AEF21F6940%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%22,%22queryType%22:%22range%22,%22datasource%22:%7B%22type%22:%22loki%22,%22uid%22:%22P8E80F9AEF21F6940%22%7D%7D%5D,%22range%22:%7B%22from%22:%22now-6h%22,%22to%22:%22now%22%7D%7D%7D&schemaVersion=1&orgId=1"
-	LocalPrometheusURL    = "http://localhost:3000/explore?panes=%7B%22qZw%22:%7B%22datasource%22:%22PBFA97CFB590B2093%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%22,%22range%22:true,%22datasource%22:%7B%22type%22:%22prometheus%22,%22uid%22:%22PBFA97CFB590B2093%22%7D%7D%5D,%22range%22:%7B%22from%22:%22now-6h%22,%22to%22:%22now%22%7D%7D%7D&schemaVersion=1&orgId=1"
-	LocalPostgresDebugURL = "http://localhost:3000/d/000000039/postgresql-database?orgId=1&refresh=10s&var-DS_PROMETHEUS=PBFA97CFB590B2093&var-interval=$__auto_interval_interval&var-namespace=&var-release=&var-instance=postgres_exporter_0:9187&var-datname=All&var-mode=All&from=now-5m&to=now"
-	LocalPyroScopeURL     = "http://localhost:4040"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 func main() {
@@ -29,21 +19,6 @@ func main() {
 		Usage:     "Chainlink Testing Framework CLI",
 		UsageText: "'ctf' is a useful utility that can:\n- clean up test docker containers\n- modify test files\n- create a local observability stack with Grafana/Loki/Pyroscope",
 		Commands: []*cli.Command{
-			{
-				Name:    "build",
-				Aliases: []string{"b"},
-				Usage:   "Build an environment interactively, suitable for non-technical users",
-				Subcommands: []*cli.Command{
-					{
-						Name:    "node_set",
-						Aliases: []string{"ns"},
-						Usage:   "Builds a NodeSet and connect it to some networks",
-						Action: func(c *cli.Context) error {
-							return runSetupForm()
-						},
-					},
-				},
-			},
 			{
 				Name:    "config",
 				Aliases: []string{"c"},
@@ -74,23 +49,11 @@ func main() {
 				Usage:   "Control docker containers marked with 'framework=ctf' label",
 				Subcommands: []*cli.Command{
 					{
-						Name:    "clean",
-						Aliases: []string{"c"},
-						Usage:   "Cleanup all docker resources: volumes, images, build caches",
-						Action: func(c *cli.Context) error {
-							err := cleanUpDockerResources()
-							if err != nil {
-								return fmt.Errorf("failed to clean Docker resources: %w", err)
-							}
-							return nil
-						},
-					},
-					{
 						Name:    "remove",
 						Aliases: []string{"rm"},
 						Usage:   "Remove Docker containers and networks with 'framework=ctf' label",
 						Action: func(c *cli.Context) error {
-							err := removeTestContainers()
+							err := framework.RemoveTestContainers()
 							if err != nil {
 								return fmt.Errorf("failed to clean Docker resources: %w", err)
 							}
@@ -105,18 +68,63 @@ func main() {
 				Usage:   "Spins up a local observability stack: Grafana, Loki, Pyroscope",
 				Subcommands: []*cli.Command{
 					{
-						Name:        "up",
-						Usage:       "ctf obs up",
-						Aliases:     []string{"u"},
-						Description: "Spins up a local observability stack: Grafana, Loki, Pyroscope",
-						Action:      func(c *cli.Context) error { return observabilityUp() },
+						Name:    "up",
+						Usage:   "ctf obs up",
+						Aliases: []string{"u"},
+						Flags: []cli.Flag{
+							&cli.BoolFlag{
+								Name:    "full",
+								Aliases: []string{"f"},
+								Usage:   "Spin up all the observability services",
+								Value:   false,
+							},
+						},
+						Description: "Spins up a local observability stack. Has two modes, standard (Loki, Prometheus, Grafana and OTEL) and full including also Tempo, Cadvisor and PostgreSQL metrics",
+						Action: func(c *cli.Context) error {
+							if c.Bool("full") {
+								return framework.ObservabilityUpFull()
+							}
+							return framework.ObservabilityUp()
+						},
 					},
 					{
-						Name:        "down",
-						Usage:       "ctf obs down",
-						Aliases:     []string{"d"},
+						Name:    "down",
+						Usage:   "ctf obs down",
+						Aliases: []string{"d"},
+						Flags: []cli.Flag{
+							&cli.BoolFlag{
+								Name:    "full",
+								Aliases: []string{"f"},
+								Usage:   "Removes all the observability services (this flag exists for compatibility, all the services are always removed with 'down')",
+								Value:   false,
+							},
+						},
 						Description: "Removes local observability stack",
-						Action:      func(c *cli.Context) error { return observabilityDown() },
+						Action:      func(c *cli.Context) error { return framework.ObservabilityDown() },
+					},
+					{
+						Name:    "restart",
+						Usage:   "ctf obs r",
+						Aliases: []string{"r"},
+						Flags: []cli.Flag{
+							&cli.BoolFlag{
+								Name:    "full",
+								Aliases: []string{"f"},
+								Usage:   "Restart all observability services (this flag exists for compatibility, all the services are always removed with 'down')",
+								Value:   false,
+							},
+						},
+						Description: "Restart a local observability stack",
+						Action: func(c *cli.Context) error {
+							// always remove all the containers and volumes to clean up the data
+							if err := framework.ObservabilityDown(); err != nil {
+								return err
+							}
+							if c.Bool("full") {
+								return framework.ObservabilityUpFull()
+							}
+							return framework.ObservabilityUp()
+						},
 					},
 				},
 			},
@@ -139,7 +147,7 @@ func main() {
 						Aliases:     []string{"u"},
 						Description: "Spins up Blockscout stack",
 						Action: func(c *cli.Context) error {
-							return blockscoutUp(c.String("rpc"))
+							return framework.BlockScoutUp(c.String("rpc"))
 						},
 					},
 					{
@@ -148,7 +156,7 @@ func main() {
 						Aliases:     []string{"d"},
 						Description: "Removes Blockscout stack, wipes all Blockscout databases data",
 						Action: func(c *cli.Context) error {
-							return blockscoutDown(c.String("rpc"))
+							return framework.BlockScoutDown(c.String("rpc"))
 						},
 					},
 					{
@@ -158,10 +166,10 @@ func main() {
 						Description: "Reboots Blockscout stack",
 						Action: func(c *cli.Context) error {
 							rpc := c.String("rpc")
-							if err := blockscoutDown(rpc); err != nil {
+							if err := framework.BlockScoutDown(rpc); err != nil {
 								return err
 							}
-							return blockscoutUp(rpc)
+							return framework.BlockScoutUp(rpc)
 						},
 					},
 				},
@@ -173,59 +181,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-// extractAllFiles goes through the embedded directory and extracts all files to the current directory
-func extractAllFiles(embeddedDir string) error {
-	// Get current working directory where CLI is running
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
-	}
-
-	// Walk through the embedded files
-	err = fs.WalkDir(embeddedObservabilityFiles, embeddedDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return fmt.Errorf("error walking the directory: %w", err)
-		}
-		if strings.Contains(path, "README.md") {
-			return nil
-		}
-
-		// Skip directories
-		if d.IsDir() {
-			return nil
-		}
-
-		// Read file content from embedded file system
-		content, err := embeddedObservabilityFiles.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("failed to read file %s: %w", path, err)
-		}
-
-		// Determine the target path (strip out the `embeddedDir` part)
-		relativePath, err := filepath.Rel(embeddedDir, path)
-		if err != nil {
-			return fmt.Errorf("failed to determine relative path for %s: %w", path, err)
-		}
-		targetPath := filepath.Join(currentDir, relativePath)
-
-		// Create target directories if necessary
-		targetDir := filepath.Dir(targetPath)
-		err = os.MkdirAll(targetDir, os.ModePerm)
-		if err != nil {
-			return fmt.Errorf("failed to create directory %s: %w", targetDir, err)
-		}
-
-		// Write the file content to the target path
-		err = os.WriteFile(targetPath, content, 0777)
-		if err != nil {
-			return fmt.Errorf("failed to write file %s: %w", targetPath, err)
-		}
-		return nil
-	})
-
-	return err
 }
 
 // PrettyPrintTOML pretty prints TOML
@@ -244,6 +199,7 @@ func PrettyPrintTOML(inputFile string, outputFile string) error {
 		return fmt.Errorf("error converting to TOML string: %v", err)
 	}
 
+	//nolint
 	err = os.WriteFile(outputFile, []byte(dumpData), 0644)
 	if err != nil {
 		return fmt.Errorf("error writing to output file: %v", err)

@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"fmt"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
@@ -9,7 +10,7 @@ import (
 func VerifyContract(out *Output, address, foundryDir, contractFile, contractName, compilerVersion string) error {
 	args := []string{
 		"verify-contract",
-		"--rpc-url", out.Nodes[0].HostHTTPUrl,
+		"--rpc-url", out.Nodes[0].ExternalHTTPUrl,
 		"--chain-id",
 		out.ChainID,
 		fmt.Sprintf("--compiler-version=%s", compilerVersion),

@@ -3,7 +3,6 @@ package seth
 import (
 	"context"
 	"crypto/ecdsa"
-	"errors"
 	"time"
 
 	"math/big"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/pkg/errors"
 	"go.uber.org/ratelimit"
 )
 
@@ -39,8 +39,32 @@ type KeyNonce struct {
 	Nonce  uint64
 }
 
+func validateNonceManagerConfig(nonceManagerCfg *NonceManagerCfg) error {
+	if nonceManagerCfg.KeySyncRateLimitSec <= 0 {
+		return errors.New("key_sync_rate_limit_sec should be positive")
+	}
+	if nonceManagerCfg.KeySyncTimeout == nil || nonceManagerCfg.KeySyncTimeout.Duration() <= 0 {
+		return errors.New("key_sync_timeout should be positive")
+	}
+	if nonceManagerCfg.KeySyncRetries <= 0 {
+		return errors.New("key_sync_retries should be positive")
+	}
+
+	return nil
+}
+
 // NewNonceManager creates a new nonce manager that tracks nonce for each address
 func NewNonceManager(cfg *Config, addrs []common.Address, privKeys []*ecdsa.PrivateKey) (*NonceManager, error) {
+	if cfg == nil {
+		return nil, errors.New(ErrSethConfigIsNil)
+	}
+	if cfg.NonceManager == nil {
+		return nil, errors.New(ErrNonceManagerConfigIsNil)
+	}
+	if cfgErr := validateNonceManagerConfig(cfg.NonceManager); cfgErr != nil {
+		return nil, errors.Wrap(cfgErr, "failed to validate nonce manager config")
+	}
+
 	nonces := make(map[common.Address]int64)
 	for _, addr := range addrs {
 		nonces[addr] = 0

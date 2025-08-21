@@ -504,28 +504,18 @@ func classifyCongestion(congestionMetric float64) string {
 }
 
 func (m *Client) HistoricalFeeData(priority string) (baseFee float64, historicalGasTipCap float64, err error) {
-	estimator := NewGasEstimator(m)
-	stats, err := estimator.Stats(m.Cfg.Network.GasPriceEstimationBlocks, 99)
-	if err != nil {
-		L.Debug().
-			Msgf("Failed to get fee history due to: %s", err.Error())
+	var percentileTip float64
 
-		return
-	}
-
+	// based on priority decide, which percentile to use to get historical tip values, when calling FeeHistory
 	switch priority {
 	case Priority_Degen:
-		baseFee = stats.GasPrice.Max
-		historicalGasTipCap = stats.TipCap.Max
+		percentileTip = 100
 	case Priority_Fast:
-		baseFee = stats.GasPrice.Perc99
-		historicalGasTipCap = stats.TipCap.Perc99
+		percentileTip = 99
 	case Priority_Standard:
-		baseFee = stats.GasPrice.Perc50
-		historicalGasTipCap = stats.TipCap.Perc50
+		percentileTip = 50
 	case Priority_Slow:
-		baseFee = stats.GasPrice.Perc25
-		historicalGasTipCap = stats.TipCap.Perc25
+		percentileTip = 25
 	default:
 		err = fmt.Errorf("unknown priority: %s", priority)
 		L.Debug().
@@ -533,8 +523,38 @@ func (m *Client) HistoricalFeeData(priority string) (baseFee float64, historical
 			Msgf("Unknown priority: %s", err.Error())
 
 		return
-
 	}
+
+	estimator := NewGasEstimator(m)
+	stats, err := estimator.Stats(m.Cfg.Network.GasPriceEstimationBlocks, percentileTip)
+	if err != nil {
+		L.Debug().
+			Msgf("Failed to get fee history due to: %s", err.Error())
+
+		return
+	}
+
+	// base fee should still be based on priority, because FeeHistory returns whole base fee history, not just the requested percentile
+	switch priority {
+	case Priority_Degen:
+		baseFee = stats.GasPrice.Max
+	case Priority_Fast:
+		baseFee = stats.GasPrice.Perc99
+	case Priority_Standard:
+		baseFee = stats.GasPrice.Perc50
+	case Priority_Slow:
+		baseFee = stats.GasPrice.Perc25
+	default:
+		err = fmt.Errorf("unknown priority: %s", priority)
+		L.Debug().
+			Str("Priority", priority).
+			Msgf("Unknown priority: %s", err.Error())
+
+		return
+	}
+
+	// since we have already requested reward percentiles based on priority, let's now use the median, i.e. most common tip
+	historicalGasTipCap = stats.TipCap.Perc50
 
 	return
 }

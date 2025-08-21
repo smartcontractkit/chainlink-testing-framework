@@ -3,11 +3,13 @@ package examples
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/blocto/solana-go-sdk/client"
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 type CfgSolana struct {
@@ -23,9 +25,9 @@ func TestSolanaSmoke(t *testing.T) {
 
 	t.Run("test something", func(t *testing.T) {
 		// use internal URL to connect Chainlink nodes
-		_ = bc.Nodes[0].DockerInternalHTTPUrl
+		_ = bc.Nodes[0].InternalHTTPUrl
 		// use host URL to deploy contracts
-		c := client.NewClient(bc.Nodes[0].HostHTTPUrl)
+		c := client.NewClient(bc.Nodes[0].ExternalHTTPUrl)
 		latestSlot, err := c.GetSlotWithConfig(context.Background(), client.GetSlotConfig{Commitment: "processed"})
 		require.NoError(t, err)
 		fmt.Printf("Latest slot: %v\n", latestSlot)

@@ -2,24 +2,26 @@ package framework
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
-	"github.com/go-playground/validator/v10"
-	"github.com/pelletier/go-toml/v2"
-	"github.com/rs/zerolog"
-	"github.com/stretchr/testify/require"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/network"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 	"text/template"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
+	"github.com/go-playground/locales/en"
+	ut "github.com/go-playground/universal-translator"
+	"github.com/go-playground/validator/v10"
+	"github.com/pelletier/go-toml/v2"
+	"github.com/rs/zerolog"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/multierr"
 )
 
 const (
@@ -27,28 +29,29 @@ const (
 )
 
 const (
-	EnvVarTestConfigs       = "CTF_CONFIGS"
+	EnvVarTestConfigs = "CTF_CONFIGS"
+	//nolint
 	EnvVarAWSSecretsManager = "CTF_AWS_SECRETS_MANAGER"
 	// EnvVarCI this is a default env variable many CI runners use so code can detect we run in CI
 	EnvVarCI = "CI"
 )
 
 const (
-	OutputFieldNameTOML = "out"
-	OutputFieldName     = "Out"
-	OverridesFieldName  = "Overrides"
+	DefaultConfigFilePath    = "env.toml"
+	DefaultOverridesFilePath = "overrides.toml"
 )
 
 var (
-	once = &sync.Once{}
-	// Secrets is a singleton AWS Secrets Manager
-	// Loaded once on start inside Load and is safe to call concurrently
-	Secrets *AWSSecretsManager
-
-	DefaultNetworkName string
-
-	AllowedEmptyConfigurationFields = []string{OutputFieldName, OverridesFieldName}
+	DefaultNetworkName  = "ctf"
+	Validator           = validator.New(validator.WithRequiredStructEnabled())
+	ValidatorTranslator ut.Translator
 )
+
+func init() {
+	eng := en.New()
+	uni := ut.New(eng, eng)
+	ValidatorTranslator, _ = uni.GetTranslator("en")
+}
 
 type ValidationError struct {
 	Field   string
@@ -60,7 +63,7 @@ type ValidationError struct {
 func mergeInputs[T any]() (*T, error) {
 	var config T
 	paths := strings.Split(os.Getenv(EnvVarTestConfigs), ",")
-	_, err := getBaseConfigPath()
+	_, err := BaseConfigPath()
 	if err != nil {
 		return nil, err
 	}
@@ -68,10 +71,24 @@ func mergeInputs[T any]() (*T, error) {
 		L.Info().Str("Path", path).Msg("Loading configuration input")
 		data, err := os.ReadFile(filepath.Join(DefaultConfigDir, path))
 		if err != nil {
-			return nil, fmt.Errorf("error reading config file %s: %w", path, err)
+			if path == DefaultOverridesFilePath {
+				L.Info().Str("Path", path).Msg("Overrides file not found or empty")
+				continue
+			}
+			var absError error
+			data, absError = os.ReadFile(path)
+			if absError != nil {
+				multiErr := multierr.Append(err, absError)
+				return nil, fmt.Errorf("error reading config file %s: %w", path, multiErr)
+			}
 		}
-		if L.GetLevel() == zerolog.DebugLevel {
+		if L.GetLevel() == zerolog.TraceLevel {
 			fmt.Println(string(data))
+		}
+
+		data, err = transformAllOverrideModeForNodeSets(data)
+		if err != nil {
+			return nil, fmt.Errorf("error transforming node specs: %w", err)
 		}
 
 		decoder := toml.NewDecoder(strings.NewReader(string(data)))
@@ -85,8 +102,8 @@ func mergeInputs[T any]() (*T, error) {
 			return nil, fmt.Errorf("failed to decode TOML config, strict mode: %s", err)
 		}
 	}
-	if L.GetLevel() == zerolog.DebugLevel {
-		L.Debug().Msg("Merged inputs")
+	if L.GetLevel() == zerolog.TraceLevel {
+		L.Trace().Msg("Merged inputs")
 		spew.Dump(config)
 	}
 	return &config, nil
@@ -94,14 +111,22 @@ func mergeInputs[T any]() (*T, error) {
 
 func validateWithCustomErr(cfg interface{}) []ValidationError {
 	var validationErrors []ValidationError
-	validate := validator.New(validator.WithRequiredStructEnabled())
-	err := validate.Struct(cfg)
+	err := Validator.Struct(cfg)
 	if err != nil {
+		//nolint
 		for _, err := range err.(validator.ValidationErrors) {
+			customMessage := err.Translate(ValidatorTranslator)
+			defaultMessage := fmt.Sprintf("validation failed on '%s' with tag '%s'", err.Field(), err.Tag())
+
+			messageToUse := customMessage
+			if strings.HasPrefix(customMessage, "validation failed") {
+				messageToUse = defaultMessage
+			}
+
 			validationErrors = append(validationErrors, ValidationError{
 				Field:   err.StructNamespace(),
 				Value:   err.Value(),
-				Message: fmt.Sprintf("validation failed on '%s' with tag '%s'", err.Field(), err.Tag()),
+				Message: messageToUse,
 			})
 		}
 	}
@@ -119,6 +144,47 @@ func validate(s interface{}) error {
 	return nil
 }
 
+// transformAllOverrideModeForNodeSets we need this function so the test logic can be the same in both "each" and "all" override modes
+// we can't do UnmarshalTOML or UnmarshalText because our TOML library do not support it
+func transformAllOverrideModeForNodeSets(data []byte) ([]byte, error) {
+	var config map[string]interface{}
+	if err := toml.Unmarshal(data, &config); err != nil {
+		return nil, err
+	}
+	nodesets, ok := config["nodesets"].([]interface{})
+	if !ok {
+		return data, nil
+	}
+	for _, nodesetInterface := range nodesets {
+		nodeset, ok := nodesetInterface.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if nodeset["override_mode"] != "all" {
+			continue
+		}
+		nodes, ok := nodeset["nodes"].(int64)
+		if !ok || nodes <= 0 {
+			return nil, fmt.Errorf("nodesets.nodes must be provided")
+		}
+		specs, ok := nodeset["node_specs"].([]interface{})
+		if !ok || len(specs) == 0 {
+			return nil, fmt.Errorf("nodesets.node_specs must be provided")
+		}
+		firstSpec := specs[0].(map[string]interface{})
+		expanded := make([]interface{}, nodes)
+		for i := range expanded {
+			newSpec := make(map[string]interface{})
+			for k, v := range firstSpec {
+				newSpec[k] = v
+			}
+			expanded[i] = newSpec
+		}
+		nodeset["node_specs"] = expanded
+	}
+	return toml.Marshal(config)
+}
+
 func Load[X any](t *testing.T) (*X, error) {
 	input, err := mergeInputs[X]()
 	if err != nil {
@@ -127,36 +193,73 @@ func Load[X any](t *testing.T) (*X, error) {
 	if err := validate(input); err != nil {
 		return nil, err
 	}
-	t.Cleanup(func() {
-		err := Store[X](input)
-		require.NoError(t, err)
-		err = WriteAllContainersLogs(fmt.Sprintf("%s-%s", DefaultCTFLogsDir, t.Name()))
-		require.NoError(t, err)
-		err = checkAllNodeLogErrors()
-		require.NoError(t, err)
-	})
-	// TODO: not all the people have AWS access, sadly enough, uncomment when granted
-	//if os.Getenv(EnvVarAWSSecretsManager) == "true" {
-	//	Secrets, err = NewAWSSecretsManager(1 * time.Minute)
-	//	if err != nil {
-	//		return nil, fmt.Errorf("failed to connect AWSSecretsManager: %w", err)
-	//	}
-	//}
-	err = DefaultNetwork(once)
-	require.NoError(t, err)
+	if t != nil {
+		t.Cleanup(func() {
+			err := Store[X](input)
+			require.NoError(t, err)
+		})
+	}
+	if err = DefaultNetwork(nil); err != nil {
+		L.Info().Err(err).Msg("docker network creation failed, either docker is not running or you are running in CRIB mode")
+	}
 	return input, nil
 }
 
-func DefaultNetwork(once *sync.Once) error {
-	var net *testcontainers.DockerNetwork
-	var err error
-	once.Do(func() {
-		net, err = network.New(
-			context.Background(),
-			network.WithLabels(map[string]string{"framework": "ctf"}),
-		)
-		DefaultNetworkName = net.Name
-	})
+// LoadCache loads cached config with environment values
+func LoadCache[X any](t *testing.T) (*X, error) {
+	cfgPath := os.Getenv("CTF_CONFIGS")
+	L.Debug().Str("CTFConfigs", cfgPath).Msg("Loading configuration from cache")
+	if cfgPath == "" {
+		return nil, fmt.Errorf("CTF_CONFIGS environment variable not set when loading from cache")
+	}
+	firstConfig := strings.Split(cfgPath, ",")
+	cfgParts := strings.Split(firstConfig[0], ".")
+	if len(cfgParts) != 2 {
+		return nil, fmt.Errorf("invalid config path when loading from cache: %s", cfgPath)
+	}
+	_ = os.Setenv("CTF_CONFIGS", fmt.Sprintf("%s-cache.%s", cfgParts[0], cfgParts[1]))
+	return Load[X](t)
+}
+
+// BaseConfigPath returns base config path, ex. env.toml,overrides.toml -> env.toml
+func BaseConfigPath() (string, error) {
+	configs := os.Getenv("CTF_CONFIGS")
+	if configs == "" {
+		return "", fmt.Errorf("no %s env var is provided, you should provide at least one test config in TOML", EnvVarTestConfigs)
+	}
+	L.Debug().Str("DevEnvConfigs", configs).Msg("Getting base config path")
+	return strings.Split(configs, ",")[0], nil
+}
+
+// BaseConfigName returns base config name, ex. env.toml -> env
+func BaseConfigName() (string, error) {
+	cp, err := BaseConfigPath()
+	if err != nil {
+		return "", err
+	}
+	return strings.Replace(cp, ".toml", "", -1), nil
+}
+
+// BaseCacheName returns base cache file name, ex.: env.toml -> env-cache.toml
+func BaseCacheName() (string, error) {
+	cp, err := BaseConfigPath()
+	if err != nil {
+		return "", err
+	}
+	name := strings.Replace(cp, ".toml", "", -1)
+	return fmt.Sprintf("%s-cache.toml", name), nil
+}
+
+func DefaultNetwork(_ *sync.Once) error {
+	netCmd := exec.Command("docker", "network", "create", DefaultNetworkName)
+	out, err := netCmd.CombinedOutput()
+	L.Debug().Str("Out", string(out)).Msg("Creating Docker network")
+	if err != nil {
+		if strings.Contains(string(out), "already exists") {
+			return nil
+		}
+		return err
+	}
 	return err
 }
 
@@ -190,7 +293,7 @@ func Store[T any](cfg *T) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(DefaultConfigDir, cachedOutName), d, os.ModePerm)
+	return os.WriteFile(filepath.Join(DefaultConfigDir, cachedOutName), d, 0600)
 }
 
 // JSONStrDuration is JSON friendly duration that can be parsed from "1h2m0s" Go format
@@ -218,4 +321,14 @@ func (d *JSONStrDuration) UnmarshalJSON(b []byte) error {
 	default:
 		return errors.New("invalid duration")
 	}
+}
+
+// MustParseDuration parses a duration string in Go's format and returns the corresponding time.Duration.
+// It panics if the string cannot be parsed, ensuring that the caller receives a valid duration.
+func MustParseDuration(s string) time.Duration {
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		L.Fatal().Msg("cannot parse duration, should be Go format 1h2m3s")
+	}
+	return d
 }

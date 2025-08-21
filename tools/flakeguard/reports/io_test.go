@@ -14,11 +14,12 @@ import (
 )
 
 const (
-	splunkToken              = "test-token"
-	splunkEvent  SplunkEvent = "test"
-	reportID                 = "123"
-	testRunCount             = 15
-	uniqueTests              = 18
+	splunkToken   = "test-token"
+	splunkEvent   = "test"
+	reportID      = "123"
+	totalTestRuns = 270
+	testRunCount  = 15
+	uniqueTests   = 19
 )
 
 func TestAggregateResultFilesSplunk(t *testing.T) {
@@ -45,6 +46,8 @@ func TestAggregateResultFilesSplunk(t *testing.T) {
 			require.Equal(t, splunkEvent, report.Event.Event, "event mismatch")
 			require.Equal(t, reportID, report.Event.Data.ID, "report ID mismatch")
 			require.False(t, report.Event.Incomplete, "report should not be incomplete")
+			require.NotNil(t, report.Event.Data.SummaryData, "report summary data is nil")
+			require.Len(t, report.Event.Data.Results, 0, "shouldn't send all result data to splunk")
 			reportRequestsReceived++
 		} else {
 			results, err := unBatchSplunkResults(bodyBytes)
@@ -63,8 +66,14 @@ func TestAggregateResultFilesSplunk(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	report, err := LoadAndAggregate("./testdata", WithReportID(reportID), WithSplunk(srv.URL, splunkToken, splunkEvent))
+	results, err := LoadAndAggregate("./testdata")
 	require.NoError(t, err, "LoadAndAggregate failed")
+
+	report, err := NewTestReport(results, WithReportID(reportID))
+	require.NoError(t, err, "NewTestReport failed")
+
+	err = SendTestReportToSplunk(srv.URL, splunkToken, splunkEvent, report)
+	require.NoError(t, err, "SendReportToSplunk failed")
 	verifyAggregatedReport(t, report)
 	assert.Equal(t, 1, reportRequestsReceived, "unexpected number of report requests")
 	assert.Equal(t, uniqueTests, resultRequestsReceived, "unexpected number of report requests")
@@ -73,16 +82,20 @@ func TestAggregateResultFilesSplunk(t *testing.T) {
 func TestAggregateResultFiles(t *testing.T) {
 	t.Parallel()
 
-	report, err := LoadAndAggregate("./testdata", WithReportID(reportID))
+	results, err := LoadAndAggregate("./testdata")
 	require.NoError(t, err, "LoadAndAggregate failed")
+
+	report, err := NewTestReport(results, WithReportID(reportID))
+	require.NoError(t, err, "NewTestReport failed")
+
 	verifyAggregatedReport(t, report)
 }
 
-func verifyAggregatedReport(t *testing.T, report *TestReport) {
+func verifyAggregatedReport(t *testing.T, report TestReport) {
 	require.NotNil(t, report, "report is nil")
 	require.Equal(t, reportID, report.ID, "report ID mismatch")
 	require.Equal(t, uniqueTests, len(report.Results), "report results count mismatch")
-	require.Equal(t, testRunCount, report.TestRunCount, "report test run count mismatch")
+	require.Equal(t, totalTestRuns, report.SummaryData.TotalRuns, "report test total runs mismatch")
 	require.Equal(t, false, report.RaceDetection, "race detection should be false")
 
 	var (
@@ -104,8 +117,6 @@ func verifyAggregatedReport(t *testing.T, report *TestReport) {
 	}
 
 	t.Run("verify TestFail", func(t *testing.T) {
-		t.Parallel()
-
 		require.Equal(t, testFailName, testFail.TestName, "TestFail not found")
 		assert.False(t, testFail.Panic, "TestFail should not panic")
 		assert.False(t, testFail.Skipped, "TestFail should not be skipped")
@@ -116,8 +127,6 @@ func verifyAggregatedReport(t *testing.T, report *TestReport) {
 	})
 
 	t.Run("verify TestSkipped", func(t *testing.T) {
-		t.Parallel()
-
 		require.Equal(t, testSkippedName, testSkipped.TestName, "TestSkip not found")
 		assert.False(t, testSkipped.Panic, "TestSkipped should not panic")
 		assert.Zero(t, testSkipped.Runs, "TestSkipped should not pass")
@@ -127,8 +136,6 @@ func verifyAggregatedReport(t *testing.T, report *TestReport) {
 	})
 
 	t.Run("verify TestPass", func(t *testing.T) {
-		t.Parallel()
-
 		require.Equal(t, testPassName, testPass.TestName, "TestPass not found")
 		assert.False(t, testPass.Panic, "TestPass should not panic")
 		assert.Equal(t, testRunCount, testPass.Runs, "TestPass should run every time")
@@ -139,17 +146,15 @@ func verifyAggregatedReport(t *testing.T, report *TestReport) {
 	})
 }
 
-func BenchmarkTestAggregateResultFiles(b *testing.B) {
+func BenchmarkAggregateResultFiles(b *testing.B) {
 	zerolog.SetGlobalLevel(zerolog.Disabled)
 	for i := 0; i < b.N; i++ {
-		_, err := LoadAndAggregate("./testdata", WithReportID(reportID))
-		if err != nil {
-			b.Fatalf("LoadAndAggregate failed: %v", err)
-		}
+		_, err := LoadAndAggregate("./testdata")
+		require.NoError(b, err, "LoadAndAggregate failed")
 	}
 }
 
-func BenchmarkTestAggregateResultFilesSplunk(b *testing.B) {
+func BenchmarkAggregateResultFilesSplunk(b *testing.B) {
 	zerolog.SetGlobalLevel(zerolog.Disabled)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -158,9 +163,7 @@ func BenchmarkTestAggregateResultFilesSplunk(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := LoadAndAggregate("./testdata", WithReportID(reportID), WithSplunk(srv.URL, splunkToken, "test"))
-		if err != nil {
-			b.Fatalf("LoadAndAggregate failed: %v", err)
-		}
+		_, err := LoadAndAggregate("./testdata")
+		require.NoError(b, err, "LoadAndAggregate failed")
 	}
 }

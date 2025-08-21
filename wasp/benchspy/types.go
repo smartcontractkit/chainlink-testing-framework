@@ -63,11 +63,12 @@ type StandardLoadMetric string
 const (
 	MedianLatency       StandardLoadMetric = "median_latency"
 	Percentile95Latency StandardLoadMetric = "95th_percentile_latency"
+	Percentile99Latency StandardLoadMetric = "99th_percentile_latency"
 	MaxLatency          StandardLoadMetric = "max_latency"
 	ErrorRate           StandardLoadMetric = "error_rate"
 )
 
-var StandardLoadMetrics = []StandardLoadMetric{MedianLatency, Percentile95Latency, MaxLatency, ErrorRate}
+var StandardLoadMetrics = []StandardLoadMetric{MedianLatency, Percentile95Latency, Percentile99Latency, MaxLatency, ErrorRate}
 
 type StandardResourceMetric string
 

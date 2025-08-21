@@ -2,8 +2,10 @@ package network_debug_sub_contract
 
 import "math/big"
 
+// nolint
 const constant = "package main"
 
+// nolint
 var variable = "package main"
 
 type SomeType struct {
@@ -15,6 +17,7 @@ type Interface interface {
 	DoSomething()
 }
 
+// nolint
 func main() {
 	_ = constant
 	_ = variable

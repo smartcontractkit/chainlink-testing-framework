@@ -27,8 +27,9 @@ func NewRangeGrafanaAnnotator(grafanaURL, grafanaToken, dashboardUID string, log
 	}
 }
 
-func (l RangeGrafanaAnnotator) OnChaosCreated(chaos Chaos) {
-}
+func (l RangeGrafanaAnnotator) OnChaosCreated(chaos Chaos) {}
+
+func (l RangeGrafanaAnnotator) OnChaosCreationFailed(chaos Chaos, reason error) {}
 
 func (l RangeGrafanaAnnotator) OnChaosStarted(chaos Chaos) {
 	experiment, _ := chaos.GetExperimentStatus()
@@ -72,11 +73,11 @@ func (l RangeGrafanaAnnotator) OnChaosStarted(chaos Chaos) {
 		Time:         Ptr[time.Time](chaos.GetStartTime()),
 		Text:         sb.String(),
 	}
-	res, _, err := l.client.PostAnnotation(a)
+	res, resp, err := l.client.PostAnnotation(a)
 	if err != nil {
 		l.logger.Warn().Msgf("could not annotate on Grafana: %s", err)
 	}
-
+	l.logger.Debug().Any("GrafanaResponse", resp.String()).Msg("Annotated chaos experiment start")
 	l.chaosMap[chaos.GetChaosName()] = res.ID
 }
 
@@ -141,101 +142,14 @@ func (l RangeGrafanaAnnotator) OnChaosEnded(chaos Chaos) {
 		TimeEnd:      Ptr[time.Time](chaos.GetEndTime()),
 		Text:         sb.String(),
 	}
-	res, _, err := l.client.PostAnnotation(a)
+	res, resp, err := l.client.PostAnnotation(a)
 	if err != nil {
 		l.logger.Warn().Msgf("could not annotate on Grafana: %s", err)
 	}
+	l.logger.Debug().Any("GrafanaResponse", resp.String()).Msg("Annotated chaos experiment end")
 	l.chaosMap[chaos.GetChaosName()] = res.ID
 }
 
-func (l RangeGrafanaAnnotator) OnChaosStatusUnknown(chaos Chaos) {
-}
-
-func (l RangeGrafanaAnnotator) OnScheduleCreated(chaos Schedule) {
-	var sb strings.Builder
-	sb.WriteString("<body>")
-	sb.WriteString(fmt.Sprintf("<h4>%s Schedule Created</h4>", chaos.Object.Spec.Type))
-	sb.WriteString(fmt.Sprintf("<div>Name: %s</div>", chaos.Object.ObjectMeta.Name))
-	sb.WriteString(fmt.Sprintf("<div>Schedule: %s</div>", chaos.Object.Spec.Schedule))
-	if chaos.Description != "" {
-		sb.WriteString(fmt.Sprintf("<div>Description: %s</div>", chaos.Description))
-	}
-	sb.WriteString(fmt.Sprintf("<div>Start Time: %s</div>", chaos.startTime.Format(time.RFC3339)))
-	sb.WriteString(fmt.Sprintf("<div>Duration: %s</div>", chaos.Duration.String()))
-
-	spec := chaos.Object.Spec.ScheduleItem
-	specBytes, err := json.MarshalIndent(spec, "", "  ")
-	if err == nil && len(specBytes) > 0 {
-		sb.WriteString("<br>")
-		sb.WriteString("<h5>Spec:</h5>")
-		sb.WriteString(string(specBytes))
-		sb.WriteString("<br>")
-	} else {
-		l.logger.Warn().Msgf("could not get chaos spec: %s", err)
-	}
-	sb.WriteString("</body>")
-
-	a := grafana.PostAnnotation{
-		DashboardUID: l.dashboardUID,
-		Time:         Ptr[time.Time](chaos.startTime),
-		Text:         sb.String(),
-	}
-	res, _, err := l.client.PostAnnotation(a)
-	if err != nil {
-		l.logger.Warn().Msgf("could not annotate on Grafana: %s", err)
-	}
-
-	l.chaosMap[chaos.Object.GetName()] = res.ID
-}
-
-func (l RangeGrafanaAnnotator) OnScheduleDeleted(chaos Schedule) {
-	annotationID, exists := l.chaosMap[chaos.Object.GetName()]
-	if !exists {
-		l.logger.Error().Msgf("No Grafana annotation ID found for Chaos: %s", chaos.Object.GetName())
-		return
-	}
-
-	var sb strings.Builder
-	sb.WriteString("<body>")
-	sb.WriteString(fmt.Sprintf("<h4>%s Schedule</h4>", chaos.Object.Spec.Type))
-	sb.WriteString(fmt.Sprintf("<div>Name: %s</div>", chaos.Object.ObjectMeta.Name))
-	sb.WriteString(fmt.Sprintf("<div>Schedule: %s</div>", chaos.Object.Spec.Schedule))
-	if chaos.Description != "" {
-		sb.WriteString(fmt.Sprintf("<div>Description: %s</div>", chaos.Description))
-	}
-	sb.WriteString(fmt.Sprintf("<div>Start Time: %s</div>", chaos.startTime.Format(time.RFC3339)))
-	sb.WriteString(fmt.Sprintf("<div>End Time: %s</div>", chaos.endTime.Format(time.RFC3339)))
-	sb.WriteString(fmt.Sprintf("<div>Duration: %s</div>", chaos.Duration.String()))
-
-	spec := chaos.Object.Spec.ScheduleItem
-	specBytes, err := json.MarshalIndent(spec, "", "  ")
-	if err == nil && len(specBytes) > 0 {
-		sb.WriteString("<br>")
-		sb.WriteString("<h5>Spec:</h5>")
-		sb.WriteString(string(specBytes))
-		sb.WriteString("<br>")
-	} else {
-		l.logger.Warn().Msgf("could not get chaos spec: %s", err)
-	}
-	sb.WriteString("</body>")
-
-	// Delete the temporary start annotation
-	_, err = l.client.DeleteAnnotation(annotationID)
-	if err != nil {
-		l.logger.Error().Msgf("could not delete temporary start annotation: %s", err)
-	}
-	delete(l.chaosMap, chaos.Object.GetName())
-
-	// Create the final annotation (time range)
-	a := grafana.PostAnnotation{
-		DashboardUID: l.dashboardUID,
-		Time:         Ptr[time.Time](chaos.startTime),
-		TimeEnd:      Ptr[time.Time](chaos.endTime),
-		Text:         sb.String(),
-	}
-	res, _, err := l.client.PostAnnotation(a)
-	if err != nil {
-		l.logger.Warn().Msgf("could not annotate on Grafana: %s", err)
-	}
-	l.chaosMap[chaos.Object.GetName()] = res.ID
-}
+// OnChaosStatusUnknown handles the event when the status of a chaos experiment is unknown.
+// It allows listeners to respond appropriately to this specific status change in the chaos lifecycle.
+func (l RangeGrafanaAnnotator) OnChaosStatusUnknown(chaos Chaos) {}

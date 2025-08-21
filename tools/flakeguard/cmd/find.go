@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/rs/zerolog/log"
 	"github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard/git"
@@ -32,7 +33,8 @@ var FindTestsCmd = &cobra.Command{
 		if findByTestFilesDiff {
 			changedTestFiles, err := git.FindChangedFiles(projectPath, baseRef, "grep '_test\\.go$'")
 			if err != nil {
-				log.Fatal().Err(err).Msg("Error finding changed test files")
+				log.Error().Err(err).Msg("Error finding changed test files")
+				os.Exit(ErrorExitCode)
 			}
 			if onlyShowChangedTestFiles {
 				outputResults(changedTestFiles, jsonOutput)
@@ -43,7 +45,8 @@ var FindTestsCmd = &cobra.Command{
 			}
 			changedTestPkgs, err = golang.GetFilePackages(changedTestFiles)
 			if err != nil {
-				log.Fatal().Err(err).Msg("Error getting package names for test files")
+				log.Error().Err(err).Msg("Error getting package names for test files")
+				os.Exit(ErrorExitCode)
 			}
 		}
 
@@ -85,27 +88,27 @@ func init() {
 	FindTestsCmd.Flags().Bool("only-show-changed-test-files", false, "Only show the changed test files and exit")
 
 	if err := FindTestsCmd.MarkFlagRequired("base-ref"); err != nil {
-		log.Fatal().Err(err).Msg("Error marking base-ref as required")
+		log.Error().Err(err).Msg("Error marking base-ref as required")
+		os.Exit(ErrorExitCode)
 	}
 }
 
 func findAffectedPackages(baseRef, projectPath string, excludes []string, levels int) []string {
-	goList, err := golang.GoList()
-	if err != nil {
-		log.Fatal().Err(err).Msg("Error getting go list")
-	}
 	gitDiff, err := git.Diff(baseRef)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error getting the git diff")
+		log.Error().Err(err).Msg("Error getting the git diff")
+		os.Exit(ErrorExitCode)
 	}
 	gitModDiff, err := git.ModDiff(baseRef, projectPath)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error getting the git mod diff")
+		log.Error().Err(err).Msg("Error getting the git mod diff")
+		os.Exit(ErrorExitCode)
 	}
 
-	packages, err := golang.ParsePackages(goList.Stdout)
+	packages, err := golang.Packages(projectPath)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error parsing packages")
+		log.Error().Err(err).Msg("Error parsing packages")
+		os.Exit(ErrorExitCode)
 	}
 
 	fileMap := golang.GetGoFileMap(packages, true)
@@ -113,12 +116,14 @@ func findAffectedPackages(baseRef, projectPath string, excludes []string, levels
 	var changedPackages []string
 	changedPackages, err = git.GetChangedGoPackagesFromDiff(gitDiff.Stdout, projectPath, excludes, fileMap)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error getting changed packages")
+		log.Error().Err(err).Msg("Error getting changed packages")
+		os.Exit(ErrorExitCode)
 	}
 
 	changedModPackages, err := git.GetGoModChangesFromDiff(gitModDiff.Stdout)
 	if err != nil {
-		log.Fatal().Err(err).Msg("Error getting go.mod changes")
+		log.Error().Err(err).Msg("Error getting go.mod changes")
+		os.Exit(ErrorExitCode)
 	}
 
 	depMap := golang.GetGoDepMap(packages)
@@ -156,7 +161,8 @@ func outputResults(packages []string, jsonOutput bool) {
 	if jsonOutput {
 		data, err := json.Marshal(packages)
 		if err != nil {
-			log.Fatal().Err(err).Msg("Error marshaling test packages to JSON")
+			log.Error().Err(err).Msg("Error marshaling test packages to JSON")
+			os.Exit(ErrorExitCode)
 		}
 		log.Debug().Str("output", string(data)).Msg("JSON")
 	} else {

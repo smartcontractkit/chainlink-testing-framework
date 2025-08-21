@@ -4,15 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/block-vision/sui-go-sdk/models"
-	"github.com/docker/docker/api/types/container"
-	"github.com/go-resty/resty/v2"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/block-vision/sui-go-sdk/models"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/go-connections/nat"
+	"github.com/go-resty/resty/v2"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 const (
@@ -53,7 +56,11 @@ func fundAccount(url string, address string) error {
 // generateKeyData generates a wallet and returns all the data
 func generateKeyData(containerName string, keyCipherType string) (*SuiWalletInfo, error) {
 	cmdStr := []string{"sui", "keytool", "generate", keyCipherType, "--json"}
-	keyOut, err := framework.ExecContainer(containerName, cmdStr)
+	dc, err := framework.NewDockerClient()
+	if err != nil {
+		return nil, err
+	}
+	keyOut, err := dc.ExecContainer(containerName, cmdStr)
 	if err != nil {
 		return nil, err
 	}
@@ -75,10 +82,12 @@ func defaultSui(in *Input) {
 	if in.Image == "" {
 		in.Image = "mysten/sui-tools:devnet"
 	}
-	if in.Port != "" {
-		framework.L.Warn().Msgf("'port' field is set but only default port can be used: %s", DefaultSuiNodePort)
+	if in.Port == "" {
+		in.Port = DefaultSuiNodePort
 	}
-	in.Port = DefaultSuiNodePort
+	if in.FaucetPort == "" {
+		in.FaucetPort = DefaultFaucetPortNum
+	}
 }
 
 func newSui(in *Input) (*Output, error) {
@@ -91,11 +100,18 @@ func newSui(in *Input) (*Output, error) {
 		return nil, err
 	}
 
-	bindPort := fmt.Sprintf("%s/tcp", in.Port)
+	// Sui container always listens on port 9000 internally
+	containerPort := fmt.Sprintf("%s/tcp", DefaultSuiNodePort)
+
+	// default to amd64, unless otherwise specified
+	imagePlatform := "linux/amd64"
+	if in.ImagePlatform != nil {
+		imagePlatform = *in.ImagePlatform
+	}
 
 	req := testcontainers.ContainerRequest{
 		Image:        in.Image,
-		ExposedPorts: []string{in.Port, DefaultFaucetPort},
+		ExposedPorts: []string{containerPort, DefaultFaucetPort},
 		Name:         containerName,
 		Labels:       framework.DefaultTCLabels(),
 		Networks:     []string{framework.DefaultNetworkName},
@@ -103,10 +119,24 @@ func newSui(in *Input) (*Output, error) {
 			framework.DefaultNetworkName: {containerName},
 		},
 		HostConfigModifier: func(h *container.HostConfig) {
-			h.PortBindings = framework.MapTheSamePort(bindPort, DefaultFaucetPort)
+			// Map user-provided host port to container's default port (9000)
+			h.PortBindings = nat.PortMap{
+				nat.Port(containerPort): []nat.PortBinding{
+					{
+						HostIP:   "0.0.0.0",
+						HostPort: in.Port,
+					},
+				},
+				nat.Port(DefaultFaucetPort): []nat.PortBinding{
+					{
+						HostIP:   "0.0.0.0",
+						HostPort: in.FaucetPort,
+					},
+				},
+			}
 			framework.ResourceLimitsFunc(h, in.ContainerResources)
 		},
-		ImagePlatform: "linux/amd64",
+		ImagePlatform: imagePlatform,
 		Env: map[string]string{
 			"RUST_LOG": "off,sui_node=info",
 		},
@@ -123,7 +153,7 @@ func newSui(in *Input) (*Output, error) {
 			},
 		},
 		// we need faucet for funding
-		WaitingFor: wait.ForListeningPort(DefaultFaucetPort).WithStartupTimeout(10 * time.Second).WithPollInterval(200 * time.Millisecond),
+		WaitingFor: wait.ForListeningPort(DefaultFaucetPort).WithStartupTimeout(1 * time.Minute).WithPollInterval(200 * time.Millisecond),
 	}
 
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -141,18 +171,19 @@ func newSui(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := fundAccount(fmt.Sprintf("http://%s:%s", "127.0.0.1", DefaultFaucetPortNum), suiAccount.SuiAddress); err != nil {
+	if err := fundAccount(fmt.Sprintf("http://%s:%s", "127.0.0.1", in.FaucetPort), suiAccount.SuiAddress); err != nil {
 		return nil, err
 	}
 	return &Output{
 		UseCache:            true,
-		Family:              "sui",
+		Type:                in.Type,
+		Family:              FamilySui,
 		ContainerName:       containerName,
 		NetworkSpecificData: &NetworkSpecificData{SuiAccount: suiAccount},
 		Nodes: []*Node{
 			{
-				HostHTTPUrl:           fmt.Sprintf("http://%s:%s", host, in.Port),
-				DockerInternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
+				ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", host, in.Port),
+				InternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, DefaultSuiNodePort),
 			},
 		},
 	}, nil

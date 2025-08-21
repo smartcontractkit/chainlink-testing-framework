@@ -1,17 +1,19 @@
 package examples
 
 import (
+	"math/big"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/examples/example_components/onchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
-	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
-	"time"
 
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 )
@@ -44,8 +46,8 @@ func TestQuickDeploy(t *testing.T) {
 	require.NoError(t, err)
 
 	// deploy all the contracts and start periodic mining in tests later
-	in.ContractsSrc.URL = bcSrc.Nodes[0].HostWSUrl
-	c, err := ethclient.Dial(bcSrc.Nodes[0].HostWSUrl)
+	in.ContractsSrc.URL = bcSrc.Nodes[0].ExternalWSUrl
+	c, err := ethclient.Dial(bcSrc.Nodes[0].ExternalWSUrl)
 	require.NoError(t, err)
 
 	for i := 0; i < 100; i++ {
@@ -55,7 +57,7 @@ func TestQuickDeploy(t *testing.T) {
 		require.NoError(t, err)
 	}
 	// start periodic mining so nodes can receive heads (async)
-	miner := rpc.NewRemoteAnvilMiner(bcSrc.Nodes[0].HostHTTPUrl, nil)
+	miner := rpc.NewRemoteAnvilMiner(bcSrc.Nodes[0].ExternalHTTPUrl, nil)
 	miner.MinePeriodically(5 * time.Second)
 
 	t.Run("quickly deploy contracts then test with some block speed", func(t *testing.T) {

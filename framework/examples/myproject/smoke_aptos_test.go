@@ -1,11 +1,13 @@
 package examples
 
 import (
+	"testing"
+
 	"github.com/go-resty/resty/v2"
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 type CfgAptos struct {
@@ -24,15 +26,18 @@ func TestAptosSmoke(t *testing.T) {
 	_ = blockchain.DefaultAptosAccount
 	_ = blockchain.DefaultAptosPrivateKey
 
-	_, err = framework.ExecContainer(bc.ContainerName, []string{"ls", "-lah"})
+	dc, err := framework.NewDockerClient()
+	require.NoError(t, err)
+
+	_, err = dc.ExecContainer(bc.ContainerName, []string{"ls", "-lah"})
 	require.NoError(t, err)
 
 	t.Run("test something", func(t *testing.T) {
 		// use internal URL to connect Chainlink nodes
-		_ = bc.Nodes[0].DockerInternalHTTPUrl
+		_ = bc.Nodes[0].InternalHTTPUrl
 		// use host URL to interact
-		_ = bc.Nodes[0].HostHTTPUrl
-		r := resty.New().SetBaseURL(bc.Nodes[0].HostHTTPUrl).EnableTrace()
+		_ = bc.Nodes[0].ExternalHTTPUrl
+		r := resty.New().SetBaseURL(bc.Nodes[0].ExternalHTTPUrl).EnableTrace()
 		_, err := r.R().Get("/v1/transactions")
 		require.NoError(t, err)
 	})

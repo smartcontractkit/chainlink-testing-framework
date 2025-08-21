@@ -10,7 +10,7 @@ A **Generator** is a component that encapsulates all the characteristics of load
 * [Sampling](./sampler.md)
 * Timeouts
 
-> [!WARNING]  
+> [!WARNING]
 > RPS load type can only be used with a `Gun`, while VUs can only be used with a `VirtualUser`.
 
 ---

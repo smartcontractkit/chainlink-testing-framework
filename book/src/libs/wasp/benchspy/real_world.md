@@ -90,6 +90,7 @@ Let’s assume you want to ensure that none of the performance metrics degrade b
 hasFailed, error := benchspy.CompareDirectWithThresholds(
     1.0, // Max 1% worse median latency
     1.0, // Max 1% worse p95 latency
+    1.0, // Max 1% worse p99 latency
     1.0, // Max 1% worse maximum latency
     0.0, // No increase in error rate
     currentReport, previousReport)

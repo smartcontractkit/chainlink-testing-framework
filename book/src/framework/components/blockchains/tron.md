@@ -4,7 +4,7 @@
 ```toml
 [blockchain_a]
   type = "tron"
-  # image = "tronbox/tre" is default image
+  # image = "tronbox/tre:1.0.3" is default image
 ```
 Default port is `9090`
 
@@ -35,12 +35,12 @@ func TestTRONSmoke(t *testing.T) {
 
 	t.Run("test something", func(t *testing.T) {
 		// use internal URL to connect Chainlink nodes
-		_ = bc.Nodes[0].DockerInternalHTTPUrl
+		_ = bc.Nodes[0].InternalHTTPUrl
 		// use host URL to interact
-		_ = bc.Nodes[0].HostHTTPUrl
+		_ = bc.Nodes[0].ExternalHTTPUrl
 
-		// use bc.Nodes[0].HostHTTPUrl + "/wallet" to access full node
-		// use bc.Nodes[0].HostHTTPUrl + "/walletsolidity" to access Solidity node
+		// use bc.Nodes[0].ExternalHTTPUrl + "/wallet" to access full node
+		// use bc.Nodes[0].ExternalHTTPUrl + "/walletsolidity" to access Solidity node
 	})
 }
 ```

@@ -26,6 +26,7 @@ type Chaos struct {
 	startTime     time.Time
 	endTime       time.Time
 	logger        *zerolog.Logger
+	remove        bool
 }
 
 // ChaosStatus represents the status of a chaos experiment.
@@ -49,8 +50,12 @@ type ChaosOpts struct {
 	Client      client.Client
 	Listeners   []ChaosListener
 	Logger      *zerolog.Logger
+	Remove      bool
 }
 
+// NewChaos creates a new Chaos instance based on the provided options.
+// It requires a client, a chaos object, and a logger to function properly.
+// This function is essential for initializing chaos experiments in a Kubernetes environment.
 func NewChaos(opts ChaosOpts) (*Chaos, error) {
 	if opts.Client == nil {
 		return nil, errors.New("client is required")
@@ -69,6 +74,7 @@ func NewChaos(opts ChaosOpts) (*Chaos, error) {
 		Client:      opts.Client,
 		listeners:   opts.Listeners,
 		logger:      opts.Logger,
+		remove:      opts.Remove,
 	}, nil
 }
 
@@ -158,11 +164,15 @@ func (c *Chaos) Resume(ctx context.Context) error {
 	return nil
 }
 
+// Delete stops the chaos operation, updates its status, and removes the chaos object if specified.
+// It notifies listeners of the operation's completion and handles any errors encountered during the process.
 func (c *Chaos) Delete(ctx context.Context) error {
-	// Cancel the monitoring goroutine
-	if c.cancelMonitor != nil {
-		c.cancelMonitor()
-	}
+	defer func() {
+		// Cancel the monitoring goroutine
+		if c.cancelMonitor != nil {
+			c.cancelMonitor()
+		}
+	}()
 
 	// If the chaos was running or paused, update the status and notify listeners
 	if c.Status == StatusPaused || c.Status == StatusRunning {
@@ -175,14 +185,13 @@ func (c *Chaos) Delete(ctx context.Context) error {
 		c.notifyListeners("finished", nil)
 	}
 
-	if err := c.Client.Delete(ctx, c.Object); err != nil {
-		return errors.Wrap(err, "failed to delete chaos object")
+	if c.remove {
+		if err := c.Client.Delete(ctx, c.Object); err != nil {
+			return errors.Wrap(err, "failed to delete chaos object")
+		}
+		c.Status = StatusDeleted
+		c.logger.Info().Str("name", c.GetChaosName()).Msg("Chaos deleted")
 	}
-
-	c.Status = StatusDeleted
-
-	c.logger.Info().Str("name", c.GetChaosName()).Msg("Chaos deleted")
-
 	return nil
 }
 

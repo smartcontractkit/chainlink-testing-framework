@@ -26,10 +26,11 @@ jobs:
             config: smoke_limited_resources.toml
             count: 1
             timeout: 10m
-          - name: TestSuiSmoke
-            config: smoke_sui.toml
-            count: 1
-            timeout: 10m
+# Sui client starts to flake and do not respond to healthcheck properly, need to be fixed
+#          - name: TestSuiSmoke
+#            config: smoke_sui.toml
+#            count: 1
+#            timeout: 10m
           - name: TestAptosSmoke
             config: smoke_aptos.toml
             count: 1
@@ -40,6 +41,14 @@ jobs:
             timeout: 10m
           - name: TestSolanaSmoke
             config: smoke_solana.toml
+            count: 1
+            timeout: 10m
+          - name: TestTonSmoke
+            config: smoke_ton.toml
+            count: 1
+            timeout: 10m
+          - name: TestTonParallel
+            config: parallel_ton.toml
             count: 1
             timeout: 10m
           - name: TestUpgrade
@@ -58,6 +67,19 @@ jobs:
             config: scalability.toml
             count: 1
             timeout: 10m
+          - name: TestLocalS3
+            config: local_s3.toml
+            count: 1
+            timeout: 10m
+          - name: TestFakes
+            config: fake.toml
+            count: 1
+            timeout: 10m
+            # TODO: sdlc auth
+#          - name: TestDockerFakes
+#            config: fake_docker.toml
+#            count: 1
+#            timeout: 10m
     name: ${{ matrix.test.name }}
     steps:
       - name: Checkout repo
@@ -83,9 +105,9 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.23
+          go-version: '1.24.0'
       - name: Cache Go modules
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cache/go-build

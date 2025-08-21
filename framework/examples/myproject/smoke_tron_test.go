@@ -1,10 +1,12 @@
 package examples
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 type CfgTron struct {
@@ -23,11 +25,11 @@ func TestTRONSmoke(t *testing.T) {
 
 	t.Run("test something", func(t *testing.T) {
 		// use internal URL to connect Chainlink nodes
-		_ = bc.Nodes[0].DockerInternalHTTPUrl
+		_ = bc.Nodes[0].InternalHTTPUrl
 		// use host URL to interact
-		_ = bc.Nodes[0].HostHTTPUrl
+		_ = bc.Nodes[0].ExternalHTTPUrl
 
-		// use bc.Nodes[0].HostHTTPUrl + "/wallet" to access full node
-		// use bc.Nodes[0].HostHTTPUrl + "/walletsolidity" to access Solidity node
+		// use bc.Nodes[0].ExternalHTTPUrl + "/wallet" to access full node
+		// use bc.Nodes[0].ExternalHTTPUrl + "/walletsolidity" to access Solidity node
 	})
 }

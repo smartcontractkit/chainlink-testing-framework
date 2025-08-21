@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 )
@@ -33,8 +34,8 @@ func NewNetworkCfg(in *EVMNetworkConfig, out *blockchain.Output) (string, error)
 	}
 	for i, n := range out.Nodes {
 		in.EVMNodes[i].Name = fmt.Sprintf("node-%s-%d", uuid.NewString()[0:5], i)
-		in.EVMNodes[i].WsUrl = n.DockerInternalWSUrl
-		in.EVMNodes[i].HttpUrl = n.DockerInternalHTTPUrl
+		in.EVMNodes[i].WsUrl = n.InternalWSUrl
+		in.EVMNodes[i].HttpUrl = n.InternalHTTPUrl
 	}
 	in.ChainID = out.ChainID
 	resultCfg, err := framework.RenderTemplate(`
@@ -70,8 +71,8 @@ func NewNetworkCfgOneNetworkAllNodes(out *blockchain.Output) (string, error) {
 	{{range .Nodes}}
 	[[EVM.Nodes]]
 	Name = 'default'
-	WsUrl = '{{.DockerInternalWSUrl}}'
-	HttpUrl = '{{.DockerInternalHTTPUrl}}'
+	WsUrl = '{{.InternalWSUrl}}'
+	HttpUrl = '{{.InternalHTTPUrl}}'
 	{{end}}
 	`, out)
 	if err != nil {

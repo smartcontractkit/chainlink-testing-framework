@@ -1,0 +1,615 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: geth-1337
+  labels:
+    app.kubernetes.io/instance: geth-1337
+spec:
+  selector:
+    matchLabels:
+      app: http-ping-app
+      app.kubernetes.io/instance: geth-1337
+  template:
+    metadata:
+      labels:
+        app: http-ping-app
+        app.kubernetes.io/instance: geth-1337
+    spec:
+      containers:
+        - name: http-ping-container
+          image: python:3.9
+          command:
+            - sh
+            - -c
+            - |
+              apt-get update && apt-get install -y dnsutils iputils-ping
+              python -m http.server 8080 &
+              while true; do
+                POD_IPS=$(nslookup http-ping-service | awk '/Address/ {print $2}' | tail -n +2)
+                for IP in $POD_IPS; do
+                  if [ "$IP" != "$(hostname -i)" ]; then
+                    LATENCY=$(ping -c 1 $IP | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
+                    echo "$IP ->> $LATENCY ms"
+                  fi
+                done
+                sleep 1
+              done
+          ports:
+            - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: geth-2337
+  labels:
+    app.kubernetes.io/instance: geth-2337
+spec:
+  selector:
+    matchLabels:
+      app: http-ping-app
+      app.kubernetes.io/instance: geth-2337
+  template:
+    metadata:
+      labels:
+        app: http-ping-app
+        app.kubernetes.io/instance: geth-2337
+    spec:
+      containers:
+        - name: http-ping-container
+          image: python:3.9
+          command:
+            - sh
+            - -c
+            - |
+              apt-get update && apt-get install -y dnsutils iputils-ping
+              python -m http.server 8080 &
+              while true; do
+                POD_IPS=$(nslookup http-ping-service | awk '/Address/ {print $2}' | tail -n +2)
+                for IP in $POD_IPS; do
+                  if [ "$IP" != "$(hostname -i)" ]; then
+                    LATENCY=$(ping -c 1 $IP | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
+                    echo "$IP ->> $LATENCY ms"
+                  fi
+                done
+                sleep 1
+              done
+          ports:
+            - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-0
+  labels:
+    app.kubernetes.io/instance: ccip-0
+spec:
+  selector:
+    matchLabels:
+      app: http-ping-app
+      app.kubernetes.io/instance: ccip-0
+  template:
+    metadata:
+      labels:
+        app: http-ping-app
+        app.kubernetes.io/instance: ccip-0
+    spec:
+      containers:
+        - name: http-ping-container
+          image: python:3.9
+          command:
+            - sh
+            - -c
+            - |
+              apt-get update && apt-get install -y dnsutils iputils-ping
+              python -m http.server 8080 &
+              while true; do
+                POD_IPS=$(nslookup http-ping-service | awk '/Address/ {print $2}' | tail -n +2)
+                for IP in $POD_IPS; do
+                  if [ "$IP" != "$(hostname -i)" ]; then
+                    LATENCY=$(ping -c 1 $IP | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
+                    echo "$IP ->> $LATENCY ms"
+                  fi
+                done
+                sleep 1
+              done
+          ports:
+            - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-1
+  labels:
+    app.kubernetes.io/instance: ccip-1
+spec:
+  selector:
+    matchLabels:
+      app: http-ping-app
+      app.kubernetes.io/instance: ccip-1
+  template:
+    metadata:
+      labels:
+        app: http-ping-app
+        app.kubernetes.io/instance: ccip-1
+    spec:
+      containers:
+        - name: http-ping-container
+          image: python:3.9
+          command:
+            - sh
+            - -c
+            - |
+              apt-get update && apt-get install -y dnsutils iputils-ping
+              python -m http.server 8080 &
+              while true; do
+                POD_IPS=$(nslookup http-ping-service | awk '/Address/ {print $2}' | tail -n +2)
+                for IP in $POD_IPS; do
+                  if [ "$IP" != "$(hostname -i)" ]; then
+                    LATENCY=$(ping -c 1 $IP | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
+                    echo "$IP ->> $LATENCY ms"
+                  fi
+                done
+                sleep 1
+              done
+          ports:
+            - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-2
+  labels:
+    app.kubernetes.io/instance: ccip-2
+spec:
+  selector:
+    matchLabels:
+      app: http-ping-app
+      app.kubernetes.io/instance: ccip-2
+  template:
+    metadata:
+      labels:
+        app: http-ping-app
+        app.kubernetes.io/instance: ccip-2
+    spec:
+      containers:
+        - name: http-ping-container
+          image: python:3.9
+          command:
+            - sh
+            - -c
+            - |
+              apt-get update && apt-get install -y dnsutils iputils-ping
+              python -m http.server 8080 &
+              while true; do
+                POD_IPS=$(nslookup http-ping-service | awk '/Address/ {print $2}' | tail -n +2)
+                for IP in $POD_IPS; do
+                  if [ "$IP" != "$(hostname -i)" ]; then
+                    LATENCY=$(ping -c 1 $IP | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
+                    echo "$IP ->> $LATENCY ms"
+                  fi
+                done
+                sleep 1
+              done
+          ports:
+            - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-3
+  labels:
+    app.kubernetes.io/instance: ccip-3
+spec:
+  selector:
+    matchLabels:
+      app: http-ping-app
+      app.kubernetes.io/instance: ccip-3
+  template:
+    metadata:
+      labels:
+        app: http-ping-app
+        app.kubernetes.io/instance: ccip-3
+    spec:
+      containers:
+        - name: http-ping-container
+          image: python:3.9
+          command:
+            - sh
+            - -c
+            - |
+              apt-get update && apt-get install -y dnsutils iputils-ping
+              python -m http.server 8080 &
+              while true; do
+                POD_IPS=$(nslookup http-ping-service | awk '/Address/ {print $2}' | tail -n +2)
+                for IP in $POD_IPS; do
+                  if [ "$IP" != "$(hostname -i)" ]; then
+                    LATENCY=$(ping -c 1 $IP | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
+                    echo "$IP ->> $LATENCY ms"
+                  fi
+                done
+                sleep 1
+              done
+          ports:
+            - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-0
+  labels:
+    app.kubernetes.io/instance: chainlink-don-db-0
+spec:
+  selector:
+    matchLabels:
+      app: http-ping-app
+      app.kubernetes.io/instance: chainlink-don-db-0
+  template:
+    metadata:
+      labels:
+        app: http-ping-app
+        app.kubernetes.io/instance: chainlink-don-db-0
+    spec:
+      containers:
+        - name: http-ping-container
+          image: python:3.9
+          command:
+            - sh
+            - -c
+            - |
+              apt-get update && apt-get install -y dnsutils iputils-ping
+              python -m http.server 8080 &
+              while true; do
+                POD_IPS=$(nslookup http-ping-service | awk '/Address/ {print $2}' | tail -n +2)
+                for IP in $POD_IPS; do
+                  if [ "$IP" != "$(hostname -i)" ]; then
+                    LATENCY=$(ping -c 1 $IP | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
+                    echo "$IP ->> $LATENCY ms"
+                  fi
+                done
+                sleep 1
+              done
+          ports:
+            - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-1
+  labels:
+    app.kubernetes.io/instance: chainlink-don-db-1
+spec:
+  selector:
+    matchLabels:
+      app: http-ping-app
+      app.kubernetes.io/instance: chainlink-don-db-1
+  template:
+    metadata:
+      labels:
+        app: http-ping-app
+        app.kubernetes.io/instance: chainlink-don-db-1
+    spec:
+      containers:
+        - name: http-ping-container
+          image: python:3.9
+          command:
+            - sh
+            - -c
+            - |
+              apt-get update && apt-get install -y dnsutils iputils-ping
+              python -m http.server 8080 &
+              while true; do
+                POD_IPS=$(nslookup http-ping-service | awk '/Address/ {print $2}' | tail -n +2)
+                for IP in $POD_IPS; do
+                  if [ "$IP" != "$(hostname -i)" ]; then
+                    LATENCY=$(ping -c 1 $IP | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
+                    echo "$IP ->> $LATENCY ms"
+                  fi
+                done
+                sleep 1
+              done
+          ports:
+            - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-2
+  labels:
+    app.kubernetes.io/instance: chainlink-don-db-2
+spec:
+  selector:
+    matchLabels:
+      app: http-ping-app
+      app.kubernetes.io/instance: chainlink-don-db-2
+  template:
+    metadata:
+      labels:
+        app: http-ping-app
+        app.kubernetes.io/instance: chainlink-don-db-2
+    spec:
+      containers:
+        - name: http-ping-container
+          image: python:3.9
+          command:
+            - sh
+            - -c
+            - |
+              apt-get update && apt-get install -y dnsutils iputils-ping
+              python -m http.server 8080 &
+              while true; do
+                POD_IPS=$(nslookup http-ping-service | awk '/Address/ {print $2}' | tail -n +2)
+                for IP in $POD_IPS; do
+                  if [ "$IP" != "$(hostname -i)" ]; then
+                    LATENCY=$(ping -c 1 $IP | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
+                    echo "$IP ->> $LATENCY ms"
+                  fi
+                done
+                sleep 1
+              done
+          ports:
+            - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-3
+  labels:
+    app.kubernetes.io/instance: chainlink-don-db-3
+spec:
+  selector:
+    matchLabels:
+      app: http-ping-app
+      app.kubernetes.io/instance: chainlink-don-db-3
+  template:
+    metadata:
+      labels:
+        app: http-ping-app
+        app.kubernetes.io/instance: chainlink-don-db-3
+    spec:
+      containers:
+        - name: http-ping-container
+          image: python:3.9
+          command:
+            - sh
+            - -c
+            - |
+              apt-get update && apt-get install -y dnsutils iputils-ping
+              python -m http.server 8080 &
+              while true; do
+                POD_IPS=$(nslookup http-ping-service | awk '/Address/ {print $2}' | tail -n +2)
+                for IP in $POD_IPS; do
+                  if [ "$IP" != "$(hostname -i)" ]; then
+                    LATENCY=$(ping -c 1 $IP | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
+                    echo "$IP ->> $LATENCY ms"
+                  fi
+                done
+                sleep 1
+              done
+          ports:
+            - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db-4
+  labels:
+    app.kubernetes.io/instance: chainlink-don-db-4
+spec:
+  selector:
+    matchLabels:
+      app: http-ping-app
+      app.kubernetes.io/instance: chainlink-don-db-4
+  template:
+    metadata:
+      labels:
+        app: http-ping-app
+        app.kubernetes.io/instance: chainlink-don-db-4
+    spec:
+      containers:
+        - name: http-ping-container
+          image: python:3.9
+          command:
+            - sh
+            - -c
+            - |
+              apt-get update && apt-get install -y dnsutils iputils-ping
+              python -m http.server 8080 &
+              while true; do
+                POD_IPS=$(nslookup http-ping-service | awk '/Address/ {print $2}' | tail -n +2)
+                for IP in $POD_IPS; do
+                  if [ "$IP" != "$(hostname -i)" ]; then
+                    LATENCY=$(ping -c 1 $IP | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
+                    echo "$IP ->> $LATENCY ms"
+                  fi
+                done
+                sleep 1
+              done
+          ports:
+            - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rmn-0
+  labels:
+    app.kubernetes.io/instance: rmn-0
+spec:
+  selector:
+    matchLabels:
+      app: http-ping-app
+      app.kubernetes.io/instance: rmn-0
+  template:
+    metadata:
+      labels:
+        app: http-ping-app
+        app.kubernetes.io/instance: rmn-0
+    spec:
+      containers:
+        - name: http-ping-container
+          image: python:3.9
+          command:
+            - sh
+            - -c
+            - |
+              apt-get update && apt-get install -y dnsutils iputils-ping
+              python -m http.server 8080 &
+              while true; do
+                POD_IPS=$(nslookup http-ping-service | awk '/Address/ {print $2}' | tail -n +2)
+                for IP in $POD_IPS; do
+                  if [ "$IP" != "$(hostname -i)" ]; then
+                    LATENCY=$(ping -c 1 $IP | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
+                    echo "$IP ->> $LATENCY ms"
+                  fi
+                done
+                sleep 1
+              done
+          ports:
+            - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rmn-1
+  labels:
+    instance: rmn-1
+spec:
+  selector:
+    matchLabels:
+      app: http-ping-app
+      app.kubernetes.io/instance: rmn-1
+  template:
+    metadata:
+      labels:
+        app: http-ping-app
+        app.kubernetes.io/instance: rmn-1
+    spec:
+      containers:
+        - name: http-ping-container
+          image: python:3.9
+          command:
+            - sh
+            - -c
+            - |
+              apt-get update && apt-get install -y dnsutils iputils-ping
+              python -m http.server 8080 &
+              while true; do
+                POD_IPS=$(nslookup http-ping-service | awk '/Address/ {print $2}' | tail -n +2)
+                for IP in $POD_IPS; do
+                  if [ "$IP" != "$(hostname -i)" ]; then
+                    LATENCY=$(ping -c 1 $IP | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
+                    echo "$IP ->> $LATENCY ms"
+                  fi
+                done
+                sleep 1
+              done
+          ports:
+            - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rmn-2
+  labels:
+    app.kubernetes.io/instance: rmn-2
+spec:
+  selector:
+    matchLabels:
+      app: http-ping-app
+      app.kubernetes.io/instance: rmn-2
+  template:
+    metadata:
+      labels:
+        app: http-ping-app
+        app.kubernetes.io/instance: rmn-2
+    spec:
+      containers:
+        - name: http-ping-container
+          image: python:3.9
+          command:
+            - sh
+            - -c
+            - |
+              apt-get update && apt-get install -y dnsutils iputils-ping
+              python -m http.server 8080 &
+              while true; do
+                POD_IPS=$(nslookup http-ping-service | awk '/Address/ {print $2}' | tail -n +2)
+                for IP in $POD_IPS; do
+                  if [ "$IP" != "$(hostname -i)" ]; then
+                    LATENCY=$(ping -c 1 $IP | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
+                    echo "$IP ->> $LATENCY ms"
+                  fi
+                done
+                sleep 1
+              done
+          ports:
+            - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rmn-3
+  labels:
+    app.kubernetes.io/instance: rmn-3
+spec:
+  selector:
+    matchLabels:
+      app: http-ping-app
+      app.kubernetes.io/instance: rmn-3
+  template:
+    metadata:
+      labels:
+        app: http-ping-app
+        app.kubernetes.io/instance: rmn-3
+    spec:
+      containers:
+        - name: http-ping-container
+          image: python:3.9
+          command:
+            - sh
+            - -c
+            - |
+              apt-get update && apt-get install -y dnsutils iputils-ping
+              python -m http.server 8080 &
+              while true; do
+                POD_IPS=$(nslookup http-ping-service | awk '/Address/ {print $2}' | tail -n +2)
+                for IP in $POD_IPS; do
+                  if [ "$IP" != "$(hostname -i)" ]; then
+                    LATENCY=$(ping -c 1 $IP | grep 'time=' | awk -F'time=' '{print $2}' | awk '{print $1}')
+                    echo "$IP ->> $LATENCY ms"
+                  fi
+                done
+                sleep 1
+              done
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: http-ping-service
+spec:
+  selector:
+    app: http-ping-app
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: production-app-that-must-be-safe
+spec:
+  selector:
+    matchLabels:
+      app: production-app
+  template:
+    metadata:
+      labels:
+        app: production-app
+    spec:
+      containers:
+        - name: ping-container
+          image: ubuntu:latest
+          command: ["sh", "-c", "apt-get update && apt-get install -y iputils-ping && while true; do ping -c 1 google.com; sleep 1; done"]

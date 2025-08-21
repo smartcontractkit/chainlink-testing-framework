@@ -1,30 +1,21 @@
 
-[blockchain_dst]
-  chain_id = "2337"
-#  docker_cmd_params = ["--fork-url", "wss://avalanche-fuji-c-chain-rpc.publicnode.com", "--auto-impersonate", "-b", "1"]
-  docker_cmd_params = ["-b", "1"]
-  port = "8545"
-  type = "anvil"
-
 [blockchain_src]
-  chain_id = "3337"
-#  docker_cmd_params = ["--fork-url", "wss://avalanche-fuji-c-chain-rpc.publicnode.com", "--auto-impersonate", "-b", "1"]
-  docker_cmd_params = ["-b", "1"]
-  port = "8555"
+  chain_id = "1337"
+  docker_cmd_params = ["--steps-tracing", "--fork-block-number", "25335999", "--fork-url", "https://rpcs.cldev.sh/base/sepolia/archive", "--auto-impersonate"]
+#  docker_cmd_params = ["-b", "1", "--steps-tracing"]
   type = "anvil"
-
-[contracts_dst]
 
 [contracts_src]
 
-[nodeset]
+[[nodesets]]
+  name = "don"
   nodes = 5
   override_mode = "all"
 
-  [nodeset.db]
+  [nodesets.db]
     image = "postgres:12.0"
 
-  [[nodeset.node_specs]]
+  [[nodesets.node_specs]]
 
-    [nodeset.node_specs.node]
+    [nodesets.node_specs.node]
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"

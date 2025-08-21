@@ -16,6 +16,9 @@ arm64 f4hrenh9it/solana:latest - used locally
   contracts_dir = "."
   # optional, in case you need some custom image
   # image = "solanalabs/solana:v1.18.26"
+  # you can add docker cmd params, for example to clone some contracts
+  docker_cmd_params = ["--clone", "y9MdSjD9Beg9EFaeQGdMpESFWLNdSfZKQKeYLBfmnjJ", "-u", "https://api.mainnet-beta.solana.com"]
+
 
 # optional
 # To deploy a solana program, we can provide a mapping of program name to program id.
@@ -57,9 +60,9 @@ func TestSolanaSmoke(t *testing.T) {
 
 	t.Run("test something", func(t *testing.T) {
 		// use internal URL to connect chainlink nodes
-		_ = bc.Nodes[0].DockerInternalHTTPUrl
+		_ = bc.Nodes[0].InternalHTTPUrl
 		// use host URL to deploy contracts
-		c := client.NewClient(bc.Nodes[0].HostHTTPUrl)
+		c := client.NewClient(bc.Nodes[0].ExternalHTTPUrl)
 		latestSlot, err := c.GetSlotWithConfig(context.Background(), client.GetSlotConfig{Commitment: "processed"})
 		require.NoError(t, err)
 		fmt.Printf("Latest slot: %v\n", latestSlot)

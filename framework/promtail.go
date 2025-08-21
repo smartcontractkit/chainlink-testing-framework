@@ -3,15 +3,16 @@ package framework
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
+	"text/template"
+	"time"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/pkg/errors"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"os"
-	"strings"
-	"text/template"
-	"time"
 )
 
 type Config struct {
@@ -59,7 +60,7 @@ scrape_configs:
 	lokiTenantID := os.Getenv("LOKI_TENANT_ID")
 
 	if lokiURL == "" {
-		lokiURL = "http://host.docker.internal:3030/loki/api/v1/push"
+		lokiURL = "http://loki:3100/loki/api/v1/push"
 	}
 	if lokiTenantID == "" {
 		lokiTenantID = "promtail"
@@ -108,6 +109,9 @@ scrape_configs:
 }
 
 func NewPromtail() error {
+	// since this container is dynamic we write it in Go, but it is a part of observability stack
+	// hence, we never remove it with TESTCONTAINERS_RYUK_DISABLED but only with "ctf obs d"
+	_ = os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
@@ -127,6 +131,10 @@ func NewPromtail() error {
 		ExposedPorts: []string{"9080/tcp"},
 		Name:         "promtail",
 		Cmd:          cmd,
+		Networks:     []string{DefaultNetworkName},
+		NetworkAliases: map[string][]string{
+			DefaultNetworkName: {"promtail"},
+		},
 		Files: []testcontainers.ContainerFile{
 			{
 				HostFilePath:      pcn,

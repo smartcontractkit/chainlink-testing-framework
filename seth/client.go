@@ -39,6 +39,9 @@ const (
 	// unused by Seth, but used by upstream
 	ErrNoKeyLoaded = "failed to load private key"
 
+	ErrSethConfigIsNil         = "seth config is nil"
+	ErrNetworkIsNil            = "no Network is set in the Seth config"
+	ErrNonceManagerConfigIsNil = "nonce manager config is nil"
 	ErrReadOnlyWithPrivateKeys = "read-only mode is enabled, but you tried to load private keys"
 	ErrReadOnlyEphemeralKeys   = "ephemeral mode is not supported in read-only mode"
 	ErrReadOnlyGasBumping      = "gas bumping is not supported in read-only mode"
@@ -86,9 +89,8 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 	initDefaultLogging()
 
 	if cfg == nil {
-		return nil, errors.New("seth config cannot be nil")
+		return nil, errors.New(ErrSethConfigIsNil)
 	}
-
 	if cfgErr := cfg.Validate(); cfgErr != nil {
 		return nil, cfgErr
 	}
@@ -145,7 +147,7 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 
 	// even if the ethclient that was passed supports tracing, we still need the RPC URL, because we cannot get from
 	// the instance of ethclient, since it doesn't expose any such method
-	if (cfg.ethclient != nil && shouldIntialiseTracer(cfg.ethclient, cfg) && len(cfg.Network.URLs) > 0) || cfg.ethclient == nil {
+	if (cfg.ethclient != nil && shouldInitializeTracer(cfg.ethclient, cfg) && len(cfg.Network.URLs) > 0) || cfg.ethclient == nil {
 		tr, err := NewTracer(cs, &abiFinder, cfg, contractAddressToNameMap, addrs)
 		if err != nil {
 			return nil, errors.Wrap(err, ErrCreateTracer)
@@ -179,6 +181,12 @@ func NewClientRaw(
 	pkeys []*ecdsa.PrivateKey,
 	opts ...ClientOpt,
 ) (*Client, error) {
+	if cfg == nil {
+		return nil, errors.New(ErrSethConfigIsNil)
+	}
+	if cfgErr := cfg.Validate(); cfgErr != nil {
+		return nil, cfgErr
+	}
 	if cfg.ReadOnly && (len(addrs) > 0 || len(pkeys) > 0) {
 		return nil, errors.New(ErrReadOnlyWithPrivateKeys)
 	}
@@ -339,7 +347,7 @@ func NewClientRaw(
 
 	// we cannot use the tracer with simulated backend, because it doesn't expose a method to get rpcClient (even though it has one)
 	// and Tracer needs rpcClient to call debug_traceTransaction
-	if shouldIntialiseTracer(c.Client, cfg) && c.Cfg.TracingLevel != TracingLevel_None && c.Tracer == nil {
+	if shouldInitializeTracer(c.Client, cfg) && c.Cfg.TracingLevel != TracingLevel_None && c.Tracer == nil {
 		if c.ContractStore == nil {
 			cs, err := NewContractStore(filepath.Join(cfg.ConfigDir, cfg.ABIDir), filepath.Join(cfg.ConfigDir, cfg.BINDir), cfg.GethWrappersDirs)
 			if err != nil {
@@ -1015,6 +1023,14 @@ func (m *Client) DeployContract(auth *bind.TransactOpts, name string, abi abi.AB
 		}
 	}
 
+	if m.Cfg.Hooks != nil && m.Cfg.Hooks.ContractDeployment.Pre != nil {
+		if err := m.Cfg.Hooks.ContractDeployment.Pre(auth, name, abi, bytecode, params...); err != nil {
+			return DeploymentData{}, errors.Wrap(err, "pre-hook failed")
+		}
+	} else {
+		L.Trace().Msg("No pre-contract deployment hook defined. Skipping")
+	}
+
 	address, tx, contract, err := bind.DeployContract(auth, abi, bytecode, m.Client, params...)
 	if err != nil {
 		return DeploymentData{}, wrapErrInMessageWithASuggestion(err)
@@ -1031,7 +1047,14 @@ func (m *Client) DeployContract(auth *bind.TransactOpts, name string, abi abi.AB
 		m.ContractStore.AddABI(name, abi)
 	}
 
-	// retry is needed both for gas bumping and for waiting for deployment to finish (sometimes there's no code at address the first time we check)
+	if m.Cfg.Hooks != nil && m.Cfg.Hooks.ContractDeployment.Post != nil {
+		if err := m.Cfg.Hooks.ContractDeployment.Post(m, tx); err != nil {
+			return DeploymentData{}, errors.Wrap(err, "post-hook failed")
+		}
+	} else {
+		L.Trace().Msg("No post-contract deployment hook defined. Skipping")
+	}
+
 	if err := retry.Do(
 		func() error {
 			ctx, cancel := context.WithTimeout(context.Background(), m.Cfg.Network.TxnTimeout.Duration())
@@ -1409,7 +1432,7 @@ func (m *Client) mergeLogMeta(pe *DecodedTransactionLog, l types.Log) {
 	pe.Removed = l.Removed
 }
 
-func shouldIntialiseTracer(client simulated.Client, cfg *Config) bool {
+func shouldInitializeTracer(client simulated.Client, cfg *Config) bool {
 	return len(cfg.Network.URLs) > 0 && supportsTracing(client)
 }
 

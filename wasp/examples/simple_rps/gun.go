@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/go-resty/resty/v2"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 )
 
@@ -29,7 +30,7 @@ func (m *ExampleGun) Call(l *wasp.Generator) *wasp.Response {
 		return &wasp.Response{Data: result, Error: err.Error()}
 	}
 	if r.Status() != "200 OK" {
-		return &wasp.Response{Data: result, Error: "not 200"}
+		return &wasp.Response{Data: result, Error: "not 200", Failed: true}
 	}
 	return &wasp.Response{Data: result}
 }

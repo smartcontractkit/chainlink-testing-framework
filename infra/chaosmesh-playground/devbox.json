@@ -1,0 +1,38 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.13.5/.schema/devbox.schema.json",
+  "packages": [
+    "kind@0.26.0",
+    "kubernetes-helm@3.17.0",
+    "kubectl@1.32.1",
+    "k9s@0.32.7"
+  ],
+  "shell": {
+    "init_hook": [
+      "echo 'Welcome to devbox!' > /dev/null"
+    ],
+    "scripts": {
+      "up": [
+        "kind create cluster --name cm-playground --config kind.yaml",
+        "helm repo add chaos-mesh https://charts.chaos-mesh.org",
+        "kubectl create ns chaos-mesh",
+        "helm install chaos-mesh chaos-mesh/chaos-mesh -n=chaos-mesh --set chaosDaemon.runtime=containerd --set chaosDaemon.socketPath=/run/containerd/containerd.sock --version 2.7.0",
+        "kubectl apply -f dummy-cluster.yaml"
+      ],
+      "down": [
+        "kind delete cluster --name cm-playground"
+      ],
+      "rm-chaos": [
+        "kubectl delete networkchaos --all -A",
+        "kubectl delete podchaos --all -A",
+        "kubectl delete iochaos --all -A",
+        "kubectl delete timechaos --all -A",
+        "kubectl delete stresschaos --all -A",
+        "kubectl delete dnschaos --all -A",
+        "kubectl delete kernelchaos --all -A"
+      ],
+      "context": [
+        "kubectl config set-context"
+      ]
+    }
+  }
+}

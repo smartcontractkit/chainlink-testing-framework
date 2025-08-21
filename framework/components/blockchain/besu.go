@@ -1,21 +1,12 @@
 package blockchain
 
-import (
-	"context"
-	"fmt"
-	"github.com/docker/docker/api/types/container"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"time"
-
-	"github.com/docker/go-connections/nat"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
-)
-
 const (
 	DefaultBesuPrivateKey1 = "8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63"
 	DefaultBesuPrivateKey2 = "c87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3"
 	DefaultBesuPrivateKey3 = "ae6ae8e5ccbfb04590405997ee2d52d2b330726137b875053c36d94e974d162f"
+	DefaultBesuPublicKey1  = "0xfe3b557e8fb62b89f4916b721be55ceb828dbd73"
+	DefaultBesuPublicKey2  = "0x627306090abaB3A6e1400e9345bC60c78a8BEf57"
+	DefaultBesuPublicKey3  = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
 )
 
 func defaultBesu(in *Input) {
@@ -35,7 +26,11 @@ func defaultBesu(in *Input) {
 
 func newBesu(in *Input) (*Output, error) {
 	defaultBesu(in)
-	ctx := context.Background()
+	req := baseRequest(in, WithWsEndpoint)
+
+	req.Image = in.Image
+	req.AlwaysPullImage = in.PullImage
+
 	defaultCmd := []string{
 		"--network=dev",
 		"--miner-enabled",
@@ -51,64 +46,7 @@ func newBesu(in *Input) (*Output, error) {
 		"--data-path=/tmp/tmpDatdir",
 	}
 	entryPoint := append(defaultCmd, in.DockerCmdParamsOverrides...)
+	req.Cmd = entryPoint
 
-	containerName := framework.DefaultTCName("blockchain-node")
-	bindPort := fmt.Sprintf("%s/tcp", in.Port)
-	bindPortWs := fmt.Sprintf("%s/tcp", in.WSPort)
-
-	req := testcontainers.ContainerRequest{
-		AlwaysPullImage: in.PullImage,
-		Image:           in.Image,
-		Name:            containerName,
-		ExposedPorts:    []string{bindPort, bindPortWs},
-		Networks:        []string{framework.DefaultNetworkName},
-		NetworkAliases: map[string][]string{
-			framework.DefaultNetworkName: {containerName},
-		},
-		Labels: framework.DefaultTCLabels(),
-		HostConfigModifier: func(h *container.HostConfig) {
-			h.PortBindings = framework.MapTheSamePort(bindPortWs, bindPort)
-			framework.ResourceLimitsFunc(h, in.ContainerResources)
-		},
-		WaitingFor: wait.ForListeningPort(nat.Port(in.Port)).WithStartupTimeout(15 * time.Second).WithPollInterval(200 * time.Millisecond),
-		Cmd:        entryPoint,
-	}
-
-	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	host, err := c.Host(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	mp, err := c.MappedPort(ctx, nat.Port(bindPort))
-	if err != nil {
-		return nil, err
-	}
-	mpWs, err := c.MappedPort(ctx, nat.Port(bindPortWs))
-	if err != nil {
-		return nil, err
-	}
-
-	return &Output{
-		UseCache:      true,
-		ChainID:       in.ChainID,
-		Family:        "evm",
-		ContainerName: containerName,
-		Container:     c,
-		Nodes: []*Node{
-			{
-				HostHTTPUrl:           fmt.Sprintf("http://%s:%s", host, mp.Port()),
-				HostWSUrl:             fmt.Sprintf("ws://%s:%s", host, mpWs.Port()),
-				DockerInternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
-				DockerInternalWSUrl:   fmt.Sprintf("ws://%s:%s", containerName, in.WSPort),
-			},
-		},
-	}, nil
+	return createGenericEvmContainer(in, req, true)
 }

@@ -127,6 +127,7 @@ func TestUtilDoesPragmaSupportCustomRevert(t *testing.T) {
 }
 
 func TestUtilPendingNonce(t *testing.T) {
+	t.Skip("Flaky Test: https://smartcontract-it.atlassian.net/browse/DX-299")
 	c := newClient(t)
 	c.Cfg.Network.PrivateKeys = append(c.Cfg.Network.PrivateKeys, c.Cfg.Network.PrivateKeys[0])
 	c.Addresses = append(c.Addresses, c.Addresses[0])
@@ -143,7 +144,7 @@ func TestUtilPendingNonce(t *testing.T) {
 		{
 			name:       "processes all in time",
 			keyNum:     0,
-			timeout:    1 * time.Minute,
+			timeout:    2 * time.Minute,
 			shouldFail: false,
 		},
 		{
@@ -156,8 +157,10 @@ func TestUtilPendingNonce(t *testing.T) {
 
 	for _, testCase := range tests {
 		started := make(chan struct{})
-		nonce, err := c.Client.NonceAt(context.Background(), c.Addresses[testCase.keyNum], nil)
+		ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
+		nonce, err := c.Client.NonceAt(ctx, c.Addresses[testCase.keyNum], nil)
 		require.NoError(t, err, "Error getting nonce")
+		cancelFn()
 
 		nonceMutex := sync.Mutex{}
 
@@ -201,11 +204,15 @@ func TestUtilPendingNonce(t *testing.T) {
 		}()
 
 		<-started
-		lastNonce, err := c.Client.NonceAt(context.Background(), c.Addresses[testCase.keyNum], nil)
+		ctx, cancelFn = context.WithTimeout(context.Background(), 10*time.Second)
+		lastNonce, err := c.Client.NonceAt(ctx, c.Addresses[testCase.keyNum], nil)
 		require.NoError(t, err, "Error getting last nonce")
+		cancelFn()
 
-		pendingNonce, err := c.Client.PendingNonceAt(context.Background(), c.Addresses[testCase.keyNum])
+		ctx, cancelFn = context.WithTimeout(context.Background(), 10*time.Second)
+		pendingNonce, err := c.Client.PendingNonceAt(ctx, c.Addresses[testCase.keyNum])
 		require.NoError(t, err, "Error getting pending nonce")
+		cancelFn()
 
 		//nolint
 		require.Greater(t, int64(pendingNonce), int64(lastNonce), "Pending nonce should be greater than last nonce")

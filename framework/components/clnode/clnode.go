@@ -15,18 +15,20 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 )
 
 const (
-	DefaultHTTPPort     = "6688"
-	DefaultP2PPort      = "6690"
-	DefaultDebuggerPort = 40000
-	TmpImageName        = "chainlink-tmp:latest"
-	CustomPortSeparator = ":"
+	DefaultHTTPPort        = "6688"
+	DefaultP2PPort         = "6690"
+	DefaultDebuggerPort    = 40000
+	TmpImageName           = "chainlink-tmp:latest"
+	CustomPortSeparator    = ":"
+	DefaultCapabilitiesDir = "/usr/local/bin"
 )
 
 var (
@@ -35,6 +37,7 @@ var (
 
 // Input represents Chainlink node input
 type Input struct {
+	NoDNS   bool            `toml:"no_dns"`
 	DbInput *postgres.Input `toml:"db" validate:"required"`
 	Node    *NodeInput      `toml:"node" validate:"required"`
 	Out     *Output         `toml:"out"`
@@ -58,6 +61,7 @@ type NodeInput struct {
 	CustomPorts             []string                      `toml:"custom_ports"`
 	DebuggerPort            int                           `toml:"debugger_port"`
 	ContainerResources      *framework.ContainerResources `toml:"resources"`
+	EnvVars                 map[string]string             `toml:"env_vars"`
 }
 
 // Output represents Chainlink node output, nodes and databases connection URLs
@@ -72,9 +76,9 @@ type NodeOut struct {
 	APIAuthUser     string `toml:"api_auth_user"`
 	APIAuthPassword string `toml:"api_auth_password"`
 	ContainerName   string `toml:"container_name"`
-	HostURL         string `toml:"url"`
-	DockerURL       string `toml:"docker_internal_url"`
-	DockerP2PUrl    string `toml:"p2p_docker_internal_url"`
+	ExternalURL     string `toml:"url"`
+	InternalURL     string `toml:"internal_url"`
+	InternalP2PUrl  string `toml:"p2p_internal_url"`
 	InternalIP      string `toml:"internal_ip"`
 }
 
@@ -135,7 +139,7 @@ func generateEntryPoint() []string {
 // exposes custom_ports in format "host:docker" or map 1-to-1 if only "host" port is provided
 func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
 	httpPort := fmt.Sprintf("%s/tcp", DefaultHTTPPort)
-	innerDebuggerPort := fmt.Sprintf("%d/tcp", DefaultDebuggerPort)
+	exposedPorts := []string{httpPort}
 	portBindings := nat.PortMap{
 		nat.Port(httpPort): []nat.PortBinding{
 			{
@@ -143,19 +147,21 @@ func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
 				HostPort: strconv.Itoa(in.Node.HTTPPort),
 			},
 		},
-		nat.Port(innerDebuggerPort): []nat.PortBinding{
-			{
-				HostIP:   "0.0.0.0",
-				HostPort: strconv.Itoa(in.Node.DebuggerPort),
-			},
-		},
+	}
+	if os.Getenv("CTF_CLNODE_DLV") == "true" {
+		innerDebuggerPort := fmt.Sprintf("%d/tcp", DefaultDebuggerPort)
+		portBindings[nat.Port(innerDebuggerPort)] = append(portBindings[nat.Port(innerDebuggerPort)], nat.PortBinding{
+			HostIP:   "0.0.0.0",
+			HostPort: strconv.Itoa(in.Node.DebuggerPort),
+		})
+		exposedPorts = append(exposedPorts, strconv.Itoa(DefaultDebuggerPort))
 	}
 	customPorts := make([]string, 0)
 	for _, p := range in.Node.CustomPorts {
 		if strings.Contains(p, CustomPortSeparator) {
 			pp := strings.Split(p, CustomPortSeparator)
 			if len(pp) != 2 {
-				return nil, nil, errors.New("custom_ports has ':' but you must provide both ports")
+				return nil, nil, fmt.Errorf("custom_ports has ':' but you must provide both ports, you provided: %s", pp)
 			}
 			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", pp[1]))
 
@@ -180,7 +186,6 @@ func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
 			}
 		}
 	}
-	exposedPorts := []string{httpPort, strconv.Itoa(DefaultDebuggerPort)}
 	exposedPorts = append(exposedPorts, customPorts...)
 	return exposedPorts, portBindings, nil
 }
@@ -241,12 +246,17 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		NetworkAliases: map[string][]string{
 			framework.DefaultNetworkName: {containerName},
 		},
+		Env:          in.Node.EnvVars,
 		ExposedPorts: exposedPorts,
 		Entrypoint:   generateEntryPoint(),
-		WaitingFor:   wait.ForHTTP("/").WithPort(DefaultHTTPPort).WithStartupTimeout(1 * time.Minute).WithPollInterval(200 * time.Millisecond),
+		WaitingFor: wait.ForHTTP("/").
+			WithPort(DefaultHTTPPort).
+			WithStartupTimeout(3 * time.Minute).
+			WithPollInterval(200 * time.Millisecond),
 	}
 	if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {
 		req.HostConfigModifier = func(h *container.HostConfig) {
+			framework.NoDNS(in.NoDNS, h)
 			h.PortBindings = portBindings
 			framework.ResourceLimitsFunc(h, in.Node.ContainerResources)
 		}
@@ -294,7 +304,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		},
 	}
 	if in.Node.CapabilityContainerDir == "" {
-		in.Node.CapabilityContainerDir = "/home/capabilities"
+		in.Node.CapabilityContainerDir = DefaultCapabilitiesDir
 	}
 	for _, cp := range in.Node.CapabilitiesBinaryPaths {
 		cpPath := filepath.Base(cp)
@@ -338,9 +348,9 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		APIAuthUser:     DefaultAPIUser,
 		APIAuthPassword: DefaultAPIPassword,
 		ContainerName:   containerName,
-		HostURL:         fmt.Sprintf("http://%s:%s", host, mp.Port()),
-		DockerURL:       fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
-		DockerP2PUrl:    fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
+		ExternalURL:     fmt.Sprintf("http://%s:%s", host, mp.Port()),
+		InternalURL:     fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
+		InternalP2PUrl:  fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
 		InternalIP:      ip,
 	}, nil
 }
@@ -391,7 +401,7 @@ func generateSecretsConfig(connString, password string) (string, error) {
 }
 
 func writeDefaultSecrets(pgOut *postgres.Output) (*os.File, error) {
-	secretsOverrides, err := generateSecretsConfig(pgOut.DockerInternalURL, DefaultTestKeystorePassword)
+	secretsOverrides, err := generateSecretsConfig(pgOut.InternalURL, DefaultTestKeystorePassword)
 	if err != nil {
 		return nil, err
 	}

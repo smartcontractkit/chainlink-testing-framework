@@ -1,19 +1,19 @@
 package simple_node_set_test
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
-	"github.com/stretchr/testify/require"
-	"sync"
-	"testing"
 )
 
 type testCase struct {
 	name         string
-	funding      float64
 	bcInput      *blockchain.Input
 	nodeSetInput *ns.Input
 	assertion    func(t *testing.T, output *ns.Output)
@@ -24,56 +24,31 @@ func checkBasicOutputs(t *testing.T, output *ns.Output) {
 	require.NotNil(t, output.CLNodes)
 	require.Len(t, output.CLNodes, 2)
 	require.Contains(t, output.CLNodes[0].PostgreSQL.Url, "postgresql://chainlink:thispasswordislongenough@127.0.0.1")
-	require.Contains(t, output.CLNodes[0].PostgreSQL.DockerInternalURL, "postgresql://chainlink:thispasswordislongenough@ns-postgresql-")
-	require.Contains(t, output.CLNodes[0].Node.HostURL, "127.0.0.1")
-	require.Contains(t, output.CLNodes[0].Node.DockerURL, "node")
-	require.Contains(t, output.CLNodes[0].Node.DockerP2PUrl, "node")
+	require.Contains(t, output.CLNodes[0].PostgreSQL.InternalURL, "postgresql://chainlink:thispasswordislongenough@don")
+	require.Contains(t, output.CLNodes[0].Node.ExternalURL, "127.0.0.1")
+	require.Contains(t, output.CLNodes[0].Node.InternalURL, "node")
+	require.Contains(t, output.CLNodes[0].Node.InternalP2PUrl, "node")
 
 	require.Contains(t, output.CLNodes[1].PostgreSQL.Url, "postgresql://chainlink:thispasswordislongenough@127.0.0.1")
-	require.Contains(t, output.CLNodes[1].PostgreSQL.DockerInternalURL, "postgresql://chainlink:thispasswordislongenough@ns-postgresql-")
-	require.Contains(t, output.CLNodes[1].Node.HostURL, "127.0.0.1")
-	require.Contains(t, output.CLNodes[1].Node.DockerURL, "node")
-	require.Contains(t, output.CLNodes[1].Node.DockerP2PUrl, "node")
+	require.Contains(t, output.CLNodes[1].PostgreSQL.InternalURL, "postgresql://chainlink:thispasswordislongenough@don")
+	require.Contains(t, output.CLNodes[1].Node.ExternalURL, "127.0.0.1")
+	require.Contains(t, output.CLNodes[1].Node.InternalURL, "node")
+	require.Contains(t, output.CLNodes[1].Node.InternalP2PUrl, "node")
 }
 
-func TestComponentDockerNodeSetSharedDB(t *testing.T) {
+func TestSmokeComponentDockerNodeSetSharedDB(t *testing.T) {
 	testCases := []testCase{
-		{
-			name: "2 nodes cluster, override mode 'all'",
-			bcInput: &blockchain.Input{
-				Type:    "anvil",
-				Image:   "f4hrenh9it/foundry",
-				Port:    "8545",
-				ChainID: "31337",
-			},
-			nodeSetInput: &ns.Input{
-				Nodes:        2,
-				OverrideMode: "all",
-				DbInput: &postgres.Input{
-					Image: "postgres:12.0",
-				},
-				NodeSpecs: []*clnode.Input{
-					{
-						Node: &clnode.NodeInput{
-							Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",
-							Name:  "cl-node",
-						},
-					},
-				},
-			},
-			assertion: func(t *testing.T, output *ns.Output) {
-				checkBasicOutputs(t, output)
-			},
-		},
+		// only 'each' mode is available when using as code to simplify configuration
 		{
 			name: "2 nodes cluster, override mode 'each'",
 			bcInput: &blockchain.Input{
 				Type:    "anvil",
-				Image:   "f4hrenh9it/foundry",
+				Image:   "ghcr.io/foundry-rs/foundry:stable",
 				Port:    "8546",
 				ChainID: "31337",
 			},
 			nodeSetInput: &ns.Input{
+				Name:               "don-2",
 				Nodes:              2,
 				OverrideMode:       "each",
 				HTTPPortRangeStart: 20000,
@@ -113,7 +88,7 @@ level = 'info'
 	}
 
 	for _, tc := range testCases {
-		err := framework.DefaultNetwork(&sync.Once{})
+		err := framework.DefaultNetwork(nil)
 		require.NoError(t, err)
 
 		t.Run(tc.name, func(t *testing.T) {

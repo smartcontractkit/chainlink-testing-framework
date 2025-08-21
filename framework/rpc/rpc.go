@@ -5,11 +5,16 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"math/rand"
+	"math/big"
+	"math/rand/v2"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/ethereum/go-ethereum/core/types"
+
+	f "github.com/smartcontractkit/chainlink-testing-framework/framework"
 
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -20,6 +25,8 @@ import (
 
 // RPCClient is an RPC client for various node simulators
 // API Reference https://book.getfoundry.sh/reference/anvil/
+// TODO: fix in next PRs
+// nolint
 type RPCClient struct {
 	client *resty.Client
 	URL    string
@@ -44,8 +51,24 @@ func New(url string, headers http.Header) *RPCClient {
 	}
 }
 
+// EVMIncreaseTime jumps forward in time by `seconds`.
+// The parameter is a JSON number (in seconds)
+func (m *RPCClient) EVMIncreaseTime(seconds uint64) error {
+	payload := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  "evm_increaseTime",
+		"params":  []interface{}{seconds},
+		"id":      rand.Int(), //nolint:gosec
+	}
+	if _, err := m.client.R().SetBody(payload).Post(m.URL); err != nil {
+		return errors.Wrap(err, "evm_increaseTime")
+	}
+	return nil
+}
+
 // AnvilAutoImpersonate sets auto impersonification to true or false
 func (m *RPCClient) AnvilAutoImpersonate(b bool) error {
+	//nolint:gosec
 	rInt := rand.Int()
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -62,6 +85,7 @@ func (m *RPCClient) AnvilAutoImpersonate(b bool) error {
 // AnvilMine calls "evm_mine", mines one or more blocks, see the reference on RPCClient
 // API Reference https://book.getfoundry.sh/reference/anvil/
 func (m *RPCClient) AnvilMine(params []interface{}) error {
+	//nolint:gosec
 	rInt := rand.Int()
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -78,6 +102,7 @@ func (m *RPCClient) AnvilMine(params []interface{}) error {
 // AnvilSetAutoMine calls "evm_setAutomine", turns automatic mining on, see the reference on RPCClient
 // API Reference https://book.getfoundry.sh/reference/anvil/
 func (m *RPCClient) AnvilSetAutoMine(flag bool) error {
+	//nolint:gosec
 	rInt := rand.Int()
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -95,6 +120,7 @@ func (m *RPCClient) AnvilSetAutoMine(flag bool) error {
 // AnvilTxPoolStatus calls "txpool_status", returns txpool status, see the reference on RPCClient
 // API Reference https://book.getfoundry.sh/reference/anvil/
 func (m *RPCClient) AnvilTxPoolStatus(params []interface{}) (*TxStatusResponse, error) {
+	//nolint:gosec
 	rInt := rand.Int()
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -115,12 +141,14 @@ func (m *RPCClient) AnvilTxPoolStatus(params []interface{}) (*TxStatusResponse, 
 
 // AnvilSetMinGasPrice sets min gas price (pre-EIP-1559 anvil is required)
 // API Reference https://book.getfoundry.sh/reference/anvil/
-func (m *RPCClient) AnvilSetMinGasPrice(params []interface{}) error {
+func (m *RPCClient) AnvilSetMinGasPrice(gas uint64) error {
+	hexGasPrice := fmt.Sprintf("0x%x", gas)
+	//nolint:gosec
 	rInt := rand.Int()
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
 		"method":  "anvil_setMinGasPrice",
-		"params":  params,
+		"params":  []interface{}{hexGasPrice},
 		"id":      rInt,
 	}
 	if _, err := m.client.R().SetBody(payload).Post(m.URL); err != nil {
@@ -131,12 +159,13 @@ func (m *RPCClient) AnvilSetMinGasPrice(params []interface{}) error {
 
 // AnvilSetNextBlockBaseFeePerGas sets next block base fee per gas value
 // API Reference https://book.getfoundry.sh/reference/anvil/
-func (m *RPCClient) AnvilSetNextBlockBaseFeePerGas(params []interface{}) error {
+func (m *RPCClient) AnvilSetNextBlockBaseFeePerGas(gas *big.Int) error {
+	//nolint:gosec
 	rInt := rand.Int()
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
 		"method":  "anvil_setNextBlockBaseFeePerGas",
-		"params":  params,
+		"params":  []interface{}{gas.String()},
 		"id":      rInt,
 	}
 	if _, err := m.client.R().SetBody(payload).Post(m.URL); err != nil {
@@ -148,6 +177,7 @@ func (m *RPCClient) AnvilSetNextBlockBaseFeePerGas(params []interface{}) error {
 // AnvilSetBlockGasLimit sets next block gas limit
 // API Reference https://book.getfoundry.sh/reference/anvil/
 func (m *RPCClient) AnvilSetBlockGasLimit(params []interface{}) error {
+	//nolint:gosec
 	rInt := rand.Int()
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -164,6 +194,7 @@ func (m *RPCClient) AnvilSetBlockGasLimit(params []interface{}) error {
 // AnvilDropTransaction removes transaction from tx pool
 // API Reference https://book.getfoundry.sh/reference/anvil/
 func (m *RPCClient) AnvilDropTransaction(params []interface{}) error {
+	//nolint:gosec
 	rInt := rand.Int()
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -180,6 +211,7 @@ func (m *RPCClient) AnvilDropTransaction(params []interface{}) error {
 // AnvilSetStorageAt sets storage at address
 // API Reference https://book.getfoundry.sh/reference/anvil/
 func (m *RPCClient) AnvilSetStorageAt(params []interface{}) error {
+	//nolint:gosec
 	rInt := rand.Int()
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -199,6 +231,7 @@ type CurrentBlockResponse struct {
 
 // Call "eth_blockNumber" to get the current block number
 func (m *RPCClient) BlockNumber() (int64, error) {
+	//nolint:gosec
 	rInt := rand.Int()
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -221,6 +254,38 @@ func (m *RPCClient) BlockNumber() (int64, error) {
 	return bn, nil
 }
 
+type BlockResponse struct {
+	Jsonrpc string        `json:"jsonrpc"`
+	ID      int           `json:"id"`
+	Result  *types.Header `json:"result"`
+}
+
+// GetHeaderByNumber retrieves block details by block number
+// this is purely debug method to verify the gas chaos is applied
+func (m *RPCClient) GetHeaderByNumber(blockNumber int64) (*types.Header, error) {
+	//nolint:gosec
+	rInt := rand.Int()
+	blockNumberHex := fmt.Sprintf("0x%x", blockNumber)
+	payload := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  "eth_getBlockByNumber",
+		"params":  []interface{}{blockNumberHex, false},
+		"id":      rInt,
+	}
+	resp, err := m.client.R().SetBody(payload).Post(m.URL)
+	if err != nil {
+		return nil, errors.Wrap(err, "eth_getBlockByNumber")
+	}
+	var blk *BlockResponse
+	if err := json.Unmarshal(resp.Body(), &blk); err != nil {
+		return nil, err
+	}
+	if blk.Result == nil {
+		return nil, errors.New("block not found")
+	}
+	return blk.Result, nil
+}
+
 func (m *RPCClient) GethSetHead(blocksBack int) error {
 	decimalLastBlock, err := m.BlockNumber()
 	if err != nil {
@@ -229,6 +294,7 @@ func (m *RPCClient) GethSetHead(blocksBack int) error {
 	moveToBlock := decimalLastBlock - int64(blocksBack)
 	moveToBlockHex := strconv.FormatInt(moveToBlock, 16)
 
+	//nolint:gosec
 	rInt := rand.Int()
 	payload := map[string]interface{}{
 		"jsonrpc": "2.0",
@@ -263,7 +329,7 @@ func StartAnvil(params []string) (*AnvilContainer, error) {
 	entryPoint := []string{"anvil", "--host", "0.0.0.0"}
 	entryPoint = append(entryPoint, params...)
 	req := testcontainers.ContainerRequest{
-		Image:        "ghcr.io/foundry-rs/foundry",
+		Image:        "ghcr.io/foundry-rs/foundry:stable",
 		ExposedPorts: []string{"8545/tcp"},
 		WaitingFor:   wait.ForListeningPort("8545").WithStartupTimeout(10 * time.Second),
 		Entrypoint:   entryPoint,
@@ -282,4 +348,19 @@ func StartAnvil(params []string) (*AnvilContainer, error) {
 	}
 	url := fmt.Sprintf("http://localhost:%s", mappedPort.Port())
 	return &AnvilContainer{Container: container, URL: url}, nil
+}
+
+// PrintBlockBaseFee prints block base fee
+// this is purely debug method to verify gas chaos is applied
+func (m *RPCClient) PrintBlockBaseFee() error {
+	bn, err := m.BlockNumber()
+	if err != nil {
+		return err
+	}
+	b, err := m.GetHeaderByNumber(bn)
+	if err != nil {
+		return err
+	}
+	f.L.Info().Uint64("BaseFee", b.BaseFee.Uint64()).Msg("Current block")
+	return nil
 }

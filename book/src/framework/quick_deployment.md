@@ -9,7 +9,7 @@ You can control the mining pace to accelerate contract deployment. Start anvil w
 Set the `miner` speed,
 ```golang
 	// start periodic mining so nodes can receive heads (async)
-	miner := rpc.NewRemoteAnvilMiner(bcSrc.Nodes[0].HostHTTPUrl, nil)
+	miner := rpc.NewRemoteAnvilMiner(bcSrc.Nodes[0].ExternalHTTPUrl, nil)
 	miner.MinePeriodically(5 * time.Second)
 ```
 

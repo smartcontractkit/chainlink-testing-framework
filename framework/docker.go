@@ -2,23 +2,28 @@ package framework
 
 import (
 	"archive/tar"
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/docker/docker/api/types/container"
-	filters2 "github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
-	"github.com/google/uuid"
-	tc "github.com/testcontainers/testcontainers-go"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
+	"testing"
+
+	"github.com/docker/docker/api/types/container"
+	dfilter "github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
+	"github.com/google/uuid"
+	"github.com/rs/zerolog"
+	tc "github.com/testcontainers/testcontainers-go"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -74,8 +79,8 @@ func DefaultTCName(name string) string {
 	return fmt.Sprintf("%s-%s", name, uuid.NewString()[0:5])
 }
 
-// runCommand executes a command and prints the output.
-func runCommand(name string, args ...string) error {
+// RunCommand executes a command and prints the output.
+func RunCommand(name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -105,6 +110,51 @@ func NewDockerClient() (*DockerClient, error) {
 		return nil, fmt.Errorf("failed to create Docker client: %w", err)
 	}
 	return &DockerClient{cli: cli}, nil
+}
+
+// ExecContainer executes a command inside a running container by name and returns the combined stdout/stderr.
+func (dc *DockerClient) ExecContainer(containerName string, command []string) (string, error) {
+	L.Info().Strs("Command", command).Str("ContainerName", containerName).Msg("Executing command")
+	ctx := context.Background()
+	containers, err := dc.cli.ContainerList(ctx, container.ListOptions{
+		All: true,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to list containers: %w", err)
+	}
+	var containerID string
+	for _, cont := range containers {
+		for _, name := range cont.Names {
+			if name == "/"+containerName {
+				containerID = cont.ID
+				break
+			}
+		}
+	}
+	if containerID == "" {
+		return "", fmt.Errorf("container with name '%s' not found", containerName)
+	}
+
+	execConfig := container.ExecOptions{
+		Cmd:          command,
+		AttachStdout: true,
+		AttachStderr: true,
+	}
+	execID, err := dc.cli.ContainerExecCreate(ctx, containerID, execConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to create exec instance: %w", err)
+	}
+	resp, err := dc.cli.ContainerExecAttach(ctx, execID.ID, container.ExecStartOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to attach to exec instance: %w", err)
+	}
+	defer resp.Close()
+	output, err := io.ReadAll(resp.Reader)
+	if err != nil {
+		return "", fmt.Errorf("failed to read exec output: %w", err)
+	}
+	L.Info().Str("Output", string(output)).Msg("Command output")
+	return string(output), nil
 }
 
 // CopyFile copies a file into a container by name
@@ -176,30 +226,70 @@ func (dc *DockerClient) copyToContainer(containerID, sourceFile, targetPath stri
 	return nil
 }
 
-// WriteAllContainersLogs writes all Docker container logs to the default logs directory
-func WriteAllContainersLogs(dir string) error {
+// SearchLogFile searches logfile using regex and return matches or error
+func SearchLogFile(fp string, regex string) ([]string, error) {
+	file, err := os.Open(fp)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	re, err := regexp.Compile(regex)
+	if err != nil {
+		return nil, err
+	}
+	matches := make([]string, 0)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if re.MatchString(line) {
+			L.Info().Str("Regex", regex).Msg("Log match found")
+			matches = append(matches, line)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return matches, err
+	}
+	return matches, nil
+}
+
+func SaveAndCheckLogs(t *testing.T) error {
+	_, err := SaveContainerLogs(fmt.Sprintf("%s-%s", DefaultCTFLogsDir, t.Name()))
+	if err != nil {
+		return err
+	}
+	err = CheckCLNodeContainerErrors()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// SaveContainerLogs writes all Docker container logs to some directory
+func SaveContainerLogs(dir string) ([]string, error) {
 	L.Info().Msg("Writing Docker containers logs")
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		if err := os.MkdirAll(dir, 0755); err != nil {
-			return fmt.Errorf("failed to create directory %s: %w", dir, err)
+			return nil, fmt.Errorf("failed to create directory %s: %w", dir, err)
 		}
 	}
 	provider, err := tc.NewDockerProvider()
 	if err != nil {
-		return fmt.Errorf("failed to create Docker provider: %w", err)
+		return nil, fmt.Errorf("failed to create Docker provider: %w", err)
 	}
 	containers, err := provider.Client().ContainerList(context.Background(), container.ListOptions{
 		All: true,
-		Filters: filters2.NewArgs(filters2.KeyValuePair{
+		Filters: dfilter.NewArgs(dfilter.KeyValuePair{
 			Key:   "label",
 			Value: "framework=ctf",
 		}),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to list Docker containers: %w", err)
+		return nil, fmt.Errorf("failed to list Docker containers: %w", err)
 	}
 
 	eg := &errgroup.Group{}
+	logFilePaths := make([]string, 0)
 
 	for _, containerInfo := range containers {
 		eg.Go(func() error {
@@ -217,6 +307,7 @@ func WriteAllContainersLogs(dir string) error {
 				L.Error().Err(err).Str("Container", containerName).Msg("failed to create container log file")
 				return err
 			}
+			logFilePaths = append(logFilePaths, logFilePath)
 			// Parse and write logs
 			header := make([]byte, 8) // Docker stream header is 8 bytes
 			for {
@@ -249,7 +340,10 @@ func WriteAllContainersLogs(dir string) error {
 			return nil
 		})
 	}
-	return eg.Wait()
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+	return logFilePaths, nil
 }
 
 func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string) error {
@@ -266,59 +360,48 @@ func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string) error {
 func BuildImage(dctx, dfile, nameAndTag string) error {
 	dfilePath := filepath.Join(dctx, dfile)
 	if os.Getenv("CTF_CLNODE_DLV") == "true" {
-		return runCommand("docker", "build", "--build-arg", `GO_GCFLAGS=all=-N -l`, "-t", nameAndTag, "-f", dfilePath, dctx)
-	} else {
-		return runCommand("docker", "build", "-t", nameAndTag, "-f", dfilePath, dctx)
+		return RunCommand("docker", "build", "--build-arg", `GO_GCFLAGS=all=-N -l`, "--build-arg", "CHAINLINK_USER=chainlink", "--build-arg", "CL_INSTALL_PRIVATE_PLUGINS=false", "-t", nameAndTag, "-f", dfilePath, dctx)
 	}
+	return RunCommand("docker", "build", "--build-arg", "CHAINLINK_USER=chainlink", "--build-arg", "CL_INSTALL_PRIVATE_PLUGINS=false", "-t", nameAndTag, "-f", dfilePath, dctx)
 }
 
-// ExecContainer executes a command inside a running container by name and returns the combined stdout/stderr.
-func ExecContainer(containerName string, command []string) (string, error) {
-	L.Info().Strs("Command", command).Str("ContainerName", containerName).Msg("Executing command")
-	p, err := tc.NewDockerProvider()
+// RemoveTestContainers removes all test containers, volumes and CTF docker network
+func RemoveTestContainers() error {
+	L.Info().Str("label", "framework=ctf").Msg("Cleaning up docker containers")
+	// Bash command for removing Docker containers and networks with "framework=ctf" label
+	cmd := exec.Command("bash", "-c", `
+		docker ps -aq --filter "label=framework=ctf" | xargs -r docker rm -f && \
+		docker volume ls -q | xargs -r docker volume rm || true
+	`)
+	L.Debug().Msg("Running command")
+	if L.GetLevel() == zerolog.DebugLevel {
+		fmt.Println(cmd.String())
+	}
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", err
+		return fmt.Errorf("error running clean command: %s", string(output))
 	}
-	ctx := context.Background()
-	containers, err := p.Client().ContainerList(ctx, container.ListOptions{
-		All: true,
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to list containers: %w", err)
-	}
-	var containerID string
-	for _, cont := range containers {
-		for _, name := range cont.Names {
-			if name == "/"+containerName {
-				containerID = cont.ID
-				break
-			}
-		}
-	}
-	if containerID == "" {
-		return "", fmt.Errorf("container with name '%s' not found", containerName)
-	}
+	return nil
+}
 
-	execConfig := container.ExecOptions{
-		Cmd:          command,
-		AttachStdout: true,
-		AttachStderr: true,
+func RemoveTestStack(name string) error {
+	L.Info().Str("stack name", name).Msg("Cleaning up docker containers")
+	// Bash command for removing Docker containers and networks with "framework=ctf" label
+	//nolint:gosec //ignoring G204
+	cmd := exec.Command("bash", "-c", fmt.Sprintf(`
+		docker ps -a --filter "label=com.docker.compose.project" --format '{{.ID}} {{.Label "com.docker.compose.project"}}' \
+		| awk '$2 ~ /^%s/ { print $2 }' | sort -u \
+		| xargs -I{} docker compose -p {} down -v --remove-orphans
+	`, name))
+	L.Debug().Msg("Running command")
+	if L.GetLevel() == zerolog.DebugLevel {
+		fmt.Println(cmd.String())
 	}
-	execID, err := p.Client().ContainerExecCreate(ctx, containerID, execConfig)
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("failed to create exec instance: %w", err)
+		return fmt.Errorf("error running clean command: %s", string(output))
 	}
-	resp, err := p.Client().ContainerExecAttach(ctx, execID.ID, container.ExecStartOptions{})
-	if err != nil {
-		return "", fmt.Errorf("failed to attach to exec instance: %w", err)
-	}
-	defer resp.Close()
-	output, err := io.ReadAll(resp.Reader)
-	if err != nil {
-		return "", fmt.Errorf("failed to read exec output: %w", err)
-	}
-	L.Info().Str("Output", string(output)).Msg("Command output")
-	return string(output), nil
+	return nil
 }
 
 type ContainerResources struct {
@@ -332,7 +415,9 @@ func ResourceLimitsFunc(h *container.HostConfig, resources *ContainerResources) 
 		return
 	}
 	if resources.MemoryMb > 0 {
-		h.Memory = int64(resources.MemoryMb) * 1024 * 1024            // Memory in Mb
+		//nolint:gosec
+		h.Memory = int64(resources.MemoryMb) * 1024 * 1024 // Memory in Mb
+		//nolint:gosec
 		h.MemoryReservation = int64(resources.MemoryMb) * 1024 * 1024 // Total memory that can be reserved (soft) in Mb
 		// https://docs.docker.com/engine/containers/resource_constraints/ if both values are equal swap is off, read the docs
 		h.MemorySwap = h.Memory
@@ -343,5 +428,40 @@ func ResourceLimitsFunc(h *container.HostConfig, resources *ContainerResources) 
 		// CPUPeriod and CPUQuota are absolute and easier to control
 		h.CPUPeriod = 100000                        // Default period (100ms)
 		h.CPUQuota = int64(resources.CPUs * 100000) // Quota in microseconds (e.g., 0.5 CPUs = 50000)
+	}
+}
+
+// GenerateCustomPortsData generate custom ports data: exposed and forwarded port map
+func GenerateCustomPortsData(portsProvided []string) ([]string, nat.PortMap, error) {
+	exposedPorts := make([]string, 0)
+	portBindings := nat.PortMap{}
+	customPorts := make([]string, 0)
+	for _, p := range portsProvided {
+		if !strings.Contains(p, ":") {
+			return nil, nil, fmt.Errorf("custom ports must have format external_port:internal_port, you provided: %s", p)
+		}
+		pp := strings.Split(p, ":")
+		if len(pp) != 2 {
+			return nil, nil, fmt.Errorf("custom_ports has ':' but you must provide both ports, you provided: %s", pp)
+		}
+		customPorts = append(customPorts, fmt.Sprintf("%s/tcp", pp[1]))
+
+		dockerPort := nat.Port(fmt.Sprintf("%s/tcp", pp[1]))
+		hostPort := pp[0]
+		portBindings[dockerPort] = []nat.PortBinding{
+			{
+				HostIP:   "0.0.0.0",
+				HostPort: hostPort,
+			},
+		}
+	}
+	exposedPorts = append(exposedPorts, customPorts...)
+	return exposedPorts, portBindings, nil
+}
+
+// NoDNS removes default DNS server and sets it to localhost
+func NoDNS(noDNS bool, hc *container.HostConfig) {
+	if noDNS {
+		hc.DNS = []string{"127.0.0.1"}
 	}
 }

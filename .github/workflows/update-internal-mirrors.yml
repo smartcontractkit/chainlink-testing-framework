@@ -1,0 +1,82 @@
+name: Update Mirrors
+on:
+  push:
+    tags:
+      - main
+  workflow_dispatch:
+  schedule: # Schedule to run twice a day at 8:00 AM and 8:00 PM
+    - cron: '0 8,20 * * *'
+
+concurrency:
+  group: update-mirrors-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  update-mirrors:
+    runs-on: ubuntu-latest
+    environment: integration
+    strategy:
+      fail-fast: false
+      matrix:
+        mirror:
+          # note library just means it is part of the official library
+          - name: library/postgres
+            expression: '^v?[0-9]+\.[0-9]+$'
+          - name: ethereum/client-go
+            expression: '^(alltools-v|v)?[0-9]\.[0-9]+\.[0-9]+$'
+          - name: friendsofgo/killgrave
+            expression: '^v?[0-9]+\.[0-9]+\.[0-9]+$'
+          - name: mockserver/mockserver
+            expression: '^v?[0-9]+\.[0-9]+\.[0-9]+$'
+          - name: testcontainers/ryuk
+            expression: '^v?[0-9]+\.[0-9]+\.[0-9]+$'
+          - name: confluentinc/cp-kafka
+            expression: '^v?[0-9]+\.[0-9]+\.[0-9]+$'
+          - name: confluentinc/cp-schema-registry
+            expression: '^v?[0-9]+\.[0-9]+\.[0-9]+$'
+          - name: confluentinc/cp-zookeeper
+            expression: '^v?[0-9]+\.[0-9]+\.[0-9]+$'
+          - name: hyperledger/besu
+            expression: '^v?[0-9]+\.[0-9]+(\.[0-9]+)?$'
+            page_size: 300
+          - name: thorax/erigon
+            expression: '^v?[0-9]+\.[0-9]+\.[0-9]+$'
+          - name: nethermind/nethermind
+            expression: '^v?[0-9]+\.[0-9]+\.[0-9]+$'
+          - name: ghcr.io/paradigmxyz/reth
+            expression: '^v?[0-9]+\.[0-9]+\.[0-9]+$'
+          - name: wiremock/wiremock
+            expression: '^v?[0-9]+\.[0-9]+\.[0-9]+$'
+          - name: tofelb/ethereum-genesis-generator
+            expression: '.*'
+    # This one only has latest tag, probably only want to update it when we know for sure it's a new version we want
+    #  - name: protolambda/eth2-val-tools
+    #   expression: 'latest'
+    permissions:
+      id-token: write
+      contents: read
+      packages: read
+    steps:
+      - name: Update image
+        uses: smartcontractkit/chainlink-testing-framework/.github/actions/update-internal-mirrors@e7e2434b9616f4e984fa57024ce43f6a9f26688f
+        with:
+          aws_region: ${{ secrets.QA_AWS_REGION }}
+          role_to_assume: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
+          aws_account_number: ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}
+          image_name: ${{matrix.mirror.name}}
+          expression: ${{matrix.mirror.expression}}
+          page_size: ${{matrix.mirror.page_size}}
+          github_token: ${{ secrets.RETH_GH_TOKEN }} # needed only for checking GHRC.io repositories
+
+  update-other-images:
+    runs-on: ubuntu-latest
+    environment: integration
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Update other images
+        uses: smartcontractkit/chainlink-testing-framework/.github/actions/update-internal-mirrors@e7e2434b9616f4e984fa57024ce43f6a9f26688f
+        with:
+          aws_region: ${{ secrets.QA_AWS_REGION }}
+          role_to_assume: ${{ secrets.QA_AWS_ROLE_TO_ASSUME }}
+          aws_account_number: ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}
