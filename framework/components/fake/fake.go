@@ -1,7 +1,9 @@
 package fake
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"regexp"
 
@@ -28,16 +30,31 @@ type Output struct {
 
 var (
 	Service     *gin.Engine
+	server      *http.Server
 	validMethod = regexp.MustCompile("GET|POST|PATCH|PUT|DELETE")
 )
 
 // NewFakeDataProvider creates new fake data provider
 func NewFakeDataProvider(in *Input) (*Output, error) {
+	if server != nil {
+		return nil, fmt.Errorf("fake service is already running, call TerminateService first")
+	}
+
 	Service = gin.Default()
 	Service.Use(recordMiddleware())
+
+	server = &http.Server{
+		Addr:    fmt.Sprintf(":%d", in.Port),
+		Handler: Service,
+	}
+
 	go func() {
-		_ = Service.Run(fmt.Sprintf(":%d", in.Port))
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			// Log error but don't panic - server might be intentionally shut down
+			fmt.Printf("Fake service error: %v\n", err)
+		}
 	}()
+
 	out := &Output{
 		BaseURLHost:   fmt.Sprintf("http://localhost:%d", in.Port),
 		BaseURLDocker: fmt.Sprintf("%s:%d", framework.HostDockerInternal(), in.Port),
@@ -79,6 +96,24 @@ func JSON(method, path string, response map[string]any, statusCode int) error {
 		c.JSON(statusCode, response)
 	})
 	return nil
+}
+
+// TerminateService synchronously shuts down the fake service
+func TerminateService(ctx context.Context) error {
+	if server == nil {
+		return nil
+	}
+	if err := server.Shutdown(ctx); err != nil {
+		return fmt.Errorf("failed to shutdown fake service gracefully: %w", err)
+	}
+	Service = nil
+	server = nil
+	return nil
+}
+
+// IsServiceRunning returns true if the fake service is currently running
+func IsServiceRunning() bool {
+	return server != nil && Service != nil
 }
 
 // HostDockerInternal returns host.docker.internal that works both locally and in GHA
