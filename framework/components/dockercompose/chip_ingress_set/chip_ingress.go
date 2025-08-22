@@ -18,21 +18,21 @@ import (
 )
 
 type Output struct {
-	ChipIngress *ChipIngressOutput
-	RedPanda    *RedPandaOutput
+	ChipIngress *ChipIngressOutput `toml:"chip_ingress"`
+	RedPanda    *RedPandaOutput    `toml:"redpanda"`
 }
 
 type ChipIngressOutput struct {
-	GRPCInternalURL string
-	GRPCExternalURL string
+	GRPCInternalURL string `toml:"grpc_internal_url"`
+	GRPCExternalURL string `toml:"grpc_external_url"`
 }
 
 type RedPandaOutput struct {
-	SchemaRegistryInternalURL string
-	SchemaRegistryExternalURL string
-	KafkaInternalURL          string
-	KafkaExternalURL          string
-	ConsoleExternalURL        string
+	SchemaRegistryInternalURL string `toml:"schema_registry_internal_url"`
+	SchemaRegistryExternalURL string `toml:"schema_registry_external_url"`
+	KafkaInternalURL          string `toml:"kafka_internal_url"`
+	KafkaExternalURL          string `toml:"kafka_external_url"`
+	ConsoleExternalURL        string `toml:"console_external_url"`
 }
 
 type Input struct {
@@ -206,6 +206,8 @@ func New(in *Input) (*Output, error) {
 		},
 	}
 
+	in.Output = output
+	in.UseCache = true
 	framework.L.Info().Msg("Chip Ingress stack started")
 
 	return output, nil
