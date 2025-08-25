@@ -135,6 +135,20 @@ services:
       - '9304:9187'
     restart: unless-stopped
 
+  process-exporter:
+    image: ncabatoff/process-exporter:latest
+    container_name: process-exporter
+    pid: host
+    privileged: true
+    volumes:
+      - /proc:/host/proc:ro
+      - ./conf/process-exporter.yaml:/config.yaml:ro
+    command:
+      - "--procfs=/host/proc"
+      - "--config.path=/config.yaml"
+    ports:
+      - "9256:9256"
+
 volumes:
   loki_data:
   grafana_data:
