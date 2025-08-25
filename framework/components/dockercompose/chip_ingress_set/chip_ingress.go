@@ -94,11 +94,21 @@ func New(in *Input) (*Output, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
+	// Start the stackwith all environment variables from the host process
+	// set BASIC_AUTH_ENABLED and BASIC_AUTH_PREFIX to false and empty string and allow them to be overridden by the host process
+	envVars := make(map[string]string)
+	envVars["BASIC_AUTH_ENABLED"] = "false"
+	envVars["BASIC_AUTH_PREFIX"] = ""
+
+	for _, env := range os.Environ() {
+		pair := strings.SplitN(env, "=", 2)
+		if len(pair) == 2 {
+			envVars[pair[0]] = pair[1]
+		}
+	}
+
 	upErr := stack.
-		WithEnv(map[string]string{
-			"BASIC_AUTH_ENABLED": "false",
-			"BASIC_AUTH_PREFIX":  "",
-		}).
+		WithEnv(envVars).
 		Up(ctx)
 
 	if upErr != nil {
