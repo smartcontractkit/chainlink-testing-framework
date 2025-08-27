@@ -79,9 +79,9 @@ func RegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSch
 	framework.L.Info().Msgf("Registering and fetching protos from %d repositories", len(protoSchemaSets))
 
 	for _, protoSchemaSet := range protoSchemaSets {
-		framework.L.Info().Msgf("Processing proto schema set: %s", protoSchemaSet.URI)
+		framework.L.Debug().Msgf("Processing proto schema set: %s", protoSchemaSet.URI)
 		if len(protoSchemaSet.ExcludeFiles) > 0 {
-			framework.L.Info().Msgf("Excluding files: %s", strings.Join(protoSchemaSet.ExcludeFiles, ", "))
+			framework.L.Debug().Msgf("Excluding files: %s", strings.Join(protoSchemaSet.ExcludeFiles, ", "))
 		}
 		if valErr := validateRepoConfiguration(protoSchemaSet); valErr != nil {
 			return errors.Wrapf(valErr, "invalid repo configuration for schema set: %v", protoSchemaSet)
@@ -129,7 +129,7 @@ func RegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSch
 			subjects[proto.Path] = subjectMessage
 		}
 
-		registerErr := registerAllWithTopologicalSorting(schemaRegistryURL, protoMap, subjects)
+		registerErr := registerAllWithTopologicalSorting(schemaRegistryURL, protoMap, subjects, protoSchemaSet.Folders)
 		if registerErr != nil {
 			return errors.Wrapf(registerErr, "failed to register protos from %s", protoSchemaSet.URI)
 		}
@@ -303,7 +303,7 @@ searchLoop:
 		return nil, fmt.Errorf("no proto files found in %s/%s in folders %s", owner, repository, strings.Join(folders, ", "))
 	}
 
-	framework.L.Info().Msgf("Fetched %d proto files from %s/%s", len(files), owner, repository)
+	framework.L.Debug().Msgf("Fetched %d proto files from %s/%s", len(files), owner, repository)
 
 	saveErr := saveProtoFilesToCache(owner, repository, ref, files)
 	if saveErr != nil {
@@ -457,6 +457,7 @@ func registerAllWithTopologicalSorting(
 	schemaRegistryURL string,
 	protoMap map[string]string, // path -> proto source
 	subjectMap map[string]string, // path -> subject
+	folders []string, // folders configuration used to determine import prefix transformations
 ) error {
 	framework.L.Info().Msgf("Registering %d protobuf schemas", len(protoMap))
 
@@ -471,7 +472,7 @@ func registerAllWithTopologicalSorting(
 		return errors.Wrap(sortErr, "failed to sort files topologically")
 	}
 
-	framework.L.Info().Msgf("Registration order (topologically sorted): %v", sortedFiles)
+	framework.L.Debug().Msgf("Registration order (topologically sorted): %v", sortedFiles)
 
 	schemas := map[string]*schemaStatus{}
 	for path, src := range protoMap {
@@ -495,18 +496,18 @@ func registerAllWithTopologicalSorting(
 			return fmt.Errorf("no subject found for %s", path)
 		}
 
+		// Determine which folder prefixes should be stripped based on configuration
+		prefixesToStrip := determineFolderPrefixesToStrip(folders)
+
 		// Build references only for files that have dependencies
 		var fileRefs []map[string]any
 		if deps, hasDeps := dependencies[path]; hasDeps && len(deps) > 0 {
 			for _, dep := range deps {
 				if depSubject, depExists := subjectMap[dep]; depExists {
-					// The schema registry expects import names without the 'workflows/' prefix
-					// So if the import is "workflows/v1/metadata.proto", the name should be "v1/metadata.proto"
-					// And if the import is "workflows/v2/cre_info.proto", the name should be "v2/cre_info.proto"
-					importName := dep
-					if strings.HasPrefix(dep, "workflows/") {
-						importName = strings.TrimPrefix(dep, "workflows/")
-					}
+					// The schema registry expects import names without the configured folder prefixes
+					// So if folders=["workflows"] and the import is "workflows/v1/metadata.proto",
+					// the name should be "v1/metadata.proto"
+					importName := stripFolderPrefix(dep, prefixesToStrip)
 
 					fileRefs = append(fileRefs, map[string]any{
 						"name":    importName,
@@ -519,16 +520,15 @@ func registerAllWithTopologicalSorting(
 
 		// Check if schema is already registered
 		if existingID, exists := checkSchemaExists(schemaRegistryURL, subject); exists {
-			framework.L.Info().Msgf("Schema %s already exists with ID %d, skipping registration", subject, existingID)
+			framework.L.Debug().Msgf("Schema %s already exists with ID %d, skipping registration", subject, existingID)
 			schema.Registered = true
 			schema.Version = existingID
 			continue
 		}
 
-		// The schema registry expects import statements without the 'workflows/' prefix
-		// So we need to modify the protobuf content to replace "workflows/v1/..." with "v1/..." and "workflows/v2/..." with "v2/..."
-		modifiedSchema := strings.ReplaceAll(schema.Source, `"workflows/v1/`, `"v1/`)
-		modifiedSchema = strings.ReplaceAll(modifiedSchema, `"workflows/v2/`, `"v2/`)
+		// The schema registry expects import statements without the configured folder prefixes
+		// Transform the schema content to remove these prefixes from import statements
+		modifiedSchema := transformSchemaContent(schema.Source, prefixesToStrip)
 
 		_, registerErr := registerSingleProto(schemaRegistryURL, subject, modifiedSchema, fileRefs)
 		if registerErr != nil {
@@ -618,11 +618,44 @@ func registerSingleProto(
 	return result.ID, nil
 }
 
+// determineFolderPrefixesToStrip determines which folder prefixes should be stripped from import paths
+// based on the folders configuration. The schema registry expects import names to be relative to the
+// configured folders, so we strip these prefixes to make imports work correctly.
+func determineFolderPrefixesToStrip(folders []string) []string {
+	var prefixes []string
+	for _, folder := range folders {
+		// Ensure folder ends with / for prefix matching
+		prefix := strings.TrimSuffix(folder, "/") + "/"
+		prefixes = append(prefixes, prefix)
+	}
+	return prefixes
+}
+
+// stripFolderPrefix removes any configured folder prefixes from the given path
+func stripFolderPrefix(path string, prefixes []string) string {
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(path, prefix) {
+			return strings.TrimPrefix(path, prefix)
+		}
+	}
+	return path
+}
+
+// transformSchemaContent removes folder prefixes from import statements in protobuf source
+func transformSchemaContent(content string, prefixes []string) string {
+	modified := content
+	for _, prefix := range prefixes {
+		// Transform import statements like "workflows/v1/" to "v1/"
+		modified = strings.ReplaceAll(modified, `"`+prefix, `"`)
+	}
+	return modified
+}
+
 // buildDependencyGraph builds a dependency graph from protobuf files
 func buildDependencyGraph(protoMap map[string]string) (map[string][]string, error) {
 	dependencies := make(map[string][]string)
 
-	framework.L.Info().Msgf("Building dependency graph for %d proto files", len(protoMap))
+	framework.L.Debug().Msgf("Building dependency graph for %d proto files", len(protoMap))
 
 	// Initialize dependencies map
 	for path := range protoMap {
@@ -641,9 +674,12 @@ func buildDependencyGraph(protoMap map[string]string) (map[string][]string, erro
 
 			// Check if this import exists in our protoMap
 			if _, exists := protoMap[importPath]; exists {
-				// Check for self-reference
+				// Check for self-reference - this indicates either an invalid proto file
+				// or a potential bug in our import/path handling
 				if importPath == path {
-					framework.L.Warn().Msgf("Self-reference detected: %s imports itself!", path)
+					framework.L.Warn().Msgf("Self-reference detected: file %s imports itself (import: %s). This suggests either an invalid proto file or a path normalization issue. Skipping this dependency to avoid cycles.", path, importPath)
+					// Continue without adding the dependency to avoid cycles, but don't fail registration
+					// as this might be a recoverable issue or edge case
 					continue
 				}
 
