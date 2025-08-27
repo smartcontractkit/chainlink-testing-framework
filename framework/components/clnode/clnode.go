@@ -29,6 +29,8 @@ const (
 	TmpImageName           = "chainlink-tmp:latest"
 	CustomPortSeparator    = ":"
 	DefaultCapabilitiesDir = "/usr/local/bin"
+	ConfigVolumeName       = "clnode-config"
+	HomeVolumeName         = "clnode-home"
 )
 
 var (
@@ -253,6 +255,23 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 			WithPort(DefaultHTTPPort).
 			WithStartupTimeout(3 * time.Minute).
 			WithPollInterval(200 * time.Millisecond),
+		Mounts: tc.ContainerMounts{
+			{
+				// various configuration files
+				Source: tc.GenericVolumeMountSource{
+					Name: ConfigVolumeName + "-" + in.Node.Name,
+				},
+				Target: "/config",
+			},
+			{
+				// kv store of the OCR jobs and other state files are stored
+				// in the user's home instead of the DB
+				Source: tc.GenericVolumeMountSource{
+					Name: HomeVolumeName + "-" + in.Node.Name,
+				},
+				Target: "/home/chainlink",
+			},
+		},
 	}
 	if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {
 		req.HostConfigModifier = func(h *container.HostConfig) {
