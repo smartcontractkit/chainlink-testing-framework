@@ -293,7 +293,17 @@ func Store[T any](cfg *T) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(DefaultConfigDir, cachedOutName), d, 0600)
+
+	writePath := filepath.Join(DefaultConfigDir, cachedOutName)
+	if _, err := os.Stat(writePath); err != nil {
+		var absErr error
+		writePath, absErr = filepath.Abs(cachedOutName)
+		if absErr != nil {
+			return fmt.Errorf("error getting absolute path for config file %s: %w", cachedOutName, absErr)
+		}
+	}
+
+	return os.WriteFile(writePath, d, 0600)
 }
 
 // JSONStrDuration is JSON friendly duration that can be parsed from "1h2m0s" Go format
