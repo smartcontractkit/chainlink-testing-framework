@@ -18,21 +18,21 @@ import (
 )
 
 type Output struct {
-	ChipIngress *ChipIngressOutput
-	RedPanda    *RedPandaOutput
+	ChipIngress *ChipIngressOutput `toml:"chip_ingress"`
+	RedPanda    *RedPandaOutput    `toml:"redpanda"`
 }
 
 type ChipIngressOutput struct {
-	GRPCInternalURL string
-	GRPCExternalURL string
+	GRPCInternalURL string `toml:"grpc_internal_url"`
+	GRPCExternalURL string `toml:"grpc_external_url"`
 }
 
 type RedPandaOutput struct {
-	SchemaRegistryInternalURL string
-	SchemaRegistryExternalURL string
-	KafkaInternalURL          string
-	KafkaExternalURL          string
-	ConsoleExternalURL        string
+	SchemaRegistryInternalURL string `toml:"schema_registry_internal_url"`
+	SchemaRegistryExternalURL string `toml:"schema_registry_external_url"`
+	KafkaInternalURL          string `toml:"kafka_internal_url"`
+	KafkaExternalURL          string `toml:"kafka_external_url"`
+	ConsoleExternalURL        string `toml:"console_external_url"`
 }
 
 type Input struct {
@@ -94,11 +94,21 @@ func New(in *Input) (*Output, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
+	// Start the stackwith all environment variables from the host process
+	// set BASIC_AUTH_ENABLED and BASIC_AUTH_PREFIX to false and empty string and allow them to be overridden by the host process
+	envVars := make(map[string]string)
+	envVars["BASIC_AUTH_ENABLED"] = "false"
+	envVars["BASIC_AUTH_PREFIX"] = ""
+
+	for _, env := range os.Environ() {
+		pair := strings.SplitN(env, "=", 2)
+		if len(pair) == 2 {
+			envVars[pair[0]] = pair[1]
+		}
+	}
+
 	upErr := stack.
-		WithEnv(map[string]string{
-			"BASIC_AUTH_ENABLED": "false",
-			"BASIC_AUTH_PREFIX":  "",
-		}).
+		WithEnv(envVars).
 		Up(ctx)
 
 	if upErr != nil {
@@ -117,6 +127,7 @@ func New(in *Input) (*Output, error) {
 			wait.ForListeningPort(DEFAULT_RED_PANDA_KAFKA_PORT).WithPollInterval(100*time.Millisecond),
 			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT).WithPollInterval(100*time.Millisecond),
 			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_KAFKA_PORT).WithPollInterval(100*time.Millisecond),
+			wait.ForHTTP("/v1/status/ready").WithPort("9644"), // admin API port
 		).WithDeadline(2*time.Minute),
 	).WaitForService(DEFAULT_RED_PANDA_CONSOLE_SERVICE_NAME,
 		wait.ForAll(
@@ -205,6 +216,8 @@ func New(in *Input) (*Output, error) {
 		},
 	}
 
+	in.Output = output
+	in.UseCache = true
 	framework.L.Info().Msg("Chip Ingress stack started")
 
 	return output, nil

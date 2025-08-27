@@ -68,27 +68,60 @@ func main() {
 				Usage:   "Spins up a local observability stack: Grafana, Loki, Pyroscope",
 				Subcommands: []*cli.Command{
 					{
-						Name:        "up",
-						Usage:       "ctf obs up",
-						Aliases:     []string{"u"},
-						Description: "Spins up a local observability stack: Grafana, Loki, Pyroscope",
-						Action:      func(c *cli.Context) error { return framework.ObservabilityUp() },
+						Name:    "up",
+						Usage:   "ctf obs up",
+						Aliases: []string{"u"},
+						Flags: []cli.Flag{
+							&cli.BoolFlag{
+								Name:    "full",
+								Aliases: []string{"f"},
+								Usage:   "Spin up all the observability services",
+								Value:   false,
+							},
+						},
+						Description: "Spins up a local observability stack. Has two modes, standard (Loki, Prometheus, Grafana and OTEL) and full including also Tempo, Cadvisor and PostgreSQL metrics",
+						Action: func(c *cli.Context) error {
+							if c.Bool("full") {
+								return framework.ObservabilityUpFull()
+							}
+							return framework.ObservabilityUp()
+						},
 					},
 					{
-						Name:        "down",
-						Usage:       "ctf obs down",
-						Aliases:     []string{"d"},
+						Name:    "down",
+						Usage:   "ctf obs down",
+						Aliases: []string{"d"},
+						Flags: []cli.Flag{
+							&cli.BoolFlag{
+								Name:    "full",
+								Aliases: []string{"f"},
+								Usage:   "Removes all the observability services (this flag exists for compatibility, all the services are always removed with 'down')",
+								Value:   false,
+							},
+						},
 						Description: "Removes local observability stack",
 						Action:      func(c *cli.Context) error { return framework.ObservabilityDown() },
 					},
 					{
-						Name:        "restart",
-						Usage:       "ctf obs r",
-						Aliases:     []string{"r"},
+						Name:    "restart",
+						Usage:   "ctf obs r",
+						Aliases: []string{"r"},
+						Flags: []cli.Flag{
+							&cli.BoolFlag{
+								Name:    "full",
+								Aliases: []string{"f"},
+								Usage:   "Restart all observability services (this flag exists for compatibility, all the services are always removed with 'down')",
+								Value:   false,
+							},
+						},
 						Description: "Restart a local observability stack",
 						Action: func(c *cli.Context) error {
+							// always remove all the containers and volumes to clean up the data
 							if err := framework.ObservabilityDown(); err != nil {
 								return err
+							}
+							if c.Bool("full") {
+								return framework.ObservabilityUpFull()
 							}
 							return framework.ObservabilityUp()
 						},

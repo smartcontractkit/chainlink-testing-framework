@@ -10,6 +10,7 @@ import (
 
 	"github.com/block-vision/sui-go-sdk/models"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/go-connections/nat"
 	"github.com/go-resty/resty/v2"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -81,10 +82,12 @@ func defaultSui(in *Input) {
 	if in.Image == "" {
 		in.Image = "mysten/sui-tools:devnet"
 	}
-	if in.Port != "" {
-		framework.L.Warn().Msgf("'port' field is set but only default port can be used: %s", DefaultSuiNodePort)
+	if in.Port == "" {
+		in.Port = DefaultSuiNodePort
 	}
-	in.Port = DefaultSuiNodePort
+	if in.FaucetPort == "" {
+		in.FaucetPort = DefaultFaucetPortNum
+	}
 }
 
 func newSui(in *Input) (*Output, error) {
@@ -97,7 +100,8 @@ func newSui(in *Input) (*Output, error) {
 		return nil, err
 	}
 
-	bindPort := fmt.Sprintf("%s/tcp", in.Port)
+	// Sui container always listens on port 9000 internally
+	containerPort := fmt.Sprintf("%s/tcp", DefaultSuiNodePort)
 
 	// default to amd64, unless otherwise specified
 	imagePlatform := "linux/amd64"
@@ -107,7 +111,7 @@ func newSui(in *Input) (*Output, error) {
 
 	req := testcontainers.ContainerRequest{
 		Image:        in.Image,
-		ExposedPorts: []string{in.Port, DefaultFaucetPort},
+		ExposedPorts: []string{containerPort, DefaultFaucetPort},
 		Name:         containerName,
 		Labels:       framework.DefaultTCLabels(),
 		Networks:     []string{framework.DefaultNetworkName},
@@ -115,7 +119,21 @@ func newSui(in *Input) (*Output, error) {
 			framework.DefaultNetworkName: {containerName},
 		},
 		HostConfigModifier: func(h *container.HostConfig) {
-			h.PortBindings = framework.MapTheSamePort(bindPort, DefaultFaucetPort)
+			// Map user-provided host port to container's default port (9000)
+			h.PortBindings = nat.PortMap{
+				nat.Port(containerPort): []nat.PortBinding{
+					{
+						HostIP:   "0.0.0.0",
+						HostPort: in.Port,
+					},
+				},
+				nat.Port(DefaultFaucetPort): []nat.PortBinding{
+					{
+						HostIP:   "0.0.0.0",
+						HostPort: in.FaucetPort,
+					},
+				},
+			}
 			framework.ResourceLimitsFunc(h, in.ContainerResources)
 		},
 		ImagePlatform: imagePlatform,
@@ -153,7 +171,7 @@ func newSui(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := fundAccount(fmt.Sprintf("http://%s:%s", "127.0.0.1", DefaultFaucetPortNum), suiAccount.SuiAddress); err != nil {
+	if err := fundAccount(fmt.Sprintf("http://%s:%s", "127.0.0.1", in.FaucetPort), suiAccount.SuiAddress); err != nil {
 		return nil, err
 	}
 	return &Output{
@@ -165,7 +183,7 @@ func newSui(in *Input) (*Output, error) {
 		Nodes: []*Node{
 			{
 				ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", host, in.Port),
-				InternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, in.Port),
+				InternalHTTPUrl: fmt.Sprintf("http://%s:%s", containerName, DefaultSuiNodePort),
 			},
 		},
 	}, nil

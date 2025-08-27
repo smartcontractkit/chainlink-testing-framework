@@ -55,6 +55,9 @@ type Input struct {
 	ContainerResources *framework.ContainerResources `toml:"resources"`
 	CustomPorts        []string                      `toml:"custom_ports"`
 
+	// Sui specific: faucet port for funding accounts
+	FaucetPort string `toml:"faucet_port"`
+
 	// GAPv2 specific params
 	HostNetworkMode  bool   `toml:"host_network_mode"`
 	CertificatesPath string `toml:"certificates_path"`
