@@ -128,6 +128,7 @@ func New(in *Input) (*Output, error) {
 			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT).WithPollInterval(100*time.Millisecond),
 			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_KAFKA_PORT).WithPollInterval(100*time.Millisecond),
 			wait.ForHTTP("/v1/status/ready").WithPort("9644"), // admin API port
+			wait.ForHTTP("/status/ready").WithPort(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT).WithPollInterval(100*time.Millisecond),
 		).WithDeadline(2*time.Minute),
 	).WaitForService(DEFAULT_RED_PANDA_CONSOLE_SERVICE_NAME,
 		wait.ForAll(

@@ -1,0 +1,84 @@
+name: Framework Docker Compose Tests
+on:
+  push:
+
+jobs:
+  test:
+    defaults:
+      run:
+        working-directory: framework/examples/myproject
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - name: TestChipIngressSmoke
+            config: smoke_chip.toml
+            count: 1
+            timeout: 3m
+    name: ${{ matrix.test.name }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with:
+          role-to-assume: ${{ secrets.AWS_CTF_READ_ACCESS_ROLE_ARN }}
+          aws-region: us-west-2
+
+      - name: Login to Amazon ECR
+        id: login-ecr-private
+        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
+        with:
+          registries: ${{ format('{0},{1}', secrets.AWS_ACCOUNT_ID_SDLC, secrets.AWS_ACCOUNT_ID_PROD) }}
+        env:
+          AWS_REGION: us-west-2
+
+      - name: Check for changes in Docker Components
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: changes
+        with:
+          filters: |
+            src:
+              - 'framework/components/dockercompose/**'
+              - '.github/workflows/framework-components-tests.yml'
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.0'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-modules-${{ hashFiles('framework/examples/myproject/go.sum') }}-${{ runner.os }}-framework-golden-examples
+          restore-keys: |
+            go-modules-${{ runner.os }}-framework-golden-examples
+            go-modules-${{ runner.os }}
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Run System Tests
+        if: steps.changes.outputs.src == 'true'
+        env:
+          CTF_CONFIGS: ${{ matrix.test.config }}
+          CHIP_INGRESS_IMAGE: ${{ secrets.AWS_ACCOUNT_ID_PROD }}.dkr.ecr.us-west-2.amazonaws.com/atlas-chip-ingress:qa-latest
+          CTF_LOG_LEVEL: debug
+        run: |
+          go test -timeout ${{ matrix.test.timeout }} -v -count ${{ matrix.test.count }} -run ${{ matrix.test.name }}
+
+      - name: Upload Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-logs-${{ matrix.test.name }}
+          path: framework/examples/myproject/logs
+          retention-days: 1
