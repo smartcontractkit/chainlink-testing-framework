@@ -18,7 +18,7 @@ jobs:
           - name: TestChipIngressSmoke
             config: smoke_chip.toml
             count: 1
-            timeout: 10m
+            timeout: 3m
     name: ${{ matrix.test.name }}
     steps:
       - name: Checkout repo
@@ -71,6 +71,7 @@ jobs:
         env:
           CTF_CONFIGS: ${{ matrix.test.config }}
           CHIP_INGRESS_IMAGE: ${{ secrets.AWS_ACCOUNT_ID_PROD }}.dkr.ecr.us-west-2.amazonaws.com/atlas-chip-ingress:qa-latest
+          CTF_LOG_LEVEL: debug
         run: |
           go test -timeout ${{ matrix.test.timeout }} -v -count ${{ matrix.test.count }} -run ${{ matrix.test.name }}
 

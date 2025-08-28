@@ -11,7 +11,9 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/google/go-github/v72/github"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
@@ -510,23 +512,33 @@ func registerSingleProto(
 	}
 
 	url := fmt.Sprintf("%s/subjects/%s/versions", registryURL, subject)
-	// Force IPv4 to avoid Docker IPv6 port forwarding issues
-	url = strings.Replace(url, "localhost", "127.0.0.1", 1)
-	framework.L.Debug().Msgf("Registering schema to URL: %s", url)
+	maxAttempts := uint(10)
 
-	resp, respErr := http.Post(url, "application/vnd.schemaregistry.v1+json", bytes.NewReader(payload))
-	if respErr != nil {
-		return 0, errors.Wrap(respErr, "failed to post to schema registry")
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 300 {
-		data, dataErr := io.ReadAll(resp.Body)
-		if dataErr != nil {
-			return 0, errors.Wrap(dataErr, "failed to read response body")
+	var resp *http.Response
+	retry.Do(func() error {
+		var respErr error
+		resp, respErr = http.Post(url, "application/vnd.schemaregistry.v1+json", bytes.NewReader(payload))
+		if respErr != nil {
+			return errors.Wrap(respErr, "failed to post to schema registry")
 		}
-		return 0, fmt.Errorf("schema registry error (%d): %s", resp.StatusCode, data)
-	}
+
+		if resp.StatusCode >= 300 {
+			data, dataErr := io.ReadAll(resp.Body)
+			if dataErr != nil {
+				return errors.Wrap(dataErr, "failed to read response body")
+			}
+			return fmt.Errorf("schema registry error (%d): %s", resp.StatusCode, data)
+		}
+
+		return nil
+	}, retry.Attempts(maxAttempts), retry.Delay(100*time.Millisecond), retry.DelayType(retry.BackOffDelay), retry.OnRetry(func(n uint, err error) {
+		framework.L.Debug().Str("attempt/max", fmt.Sprintf("%d/%d", n, maxAttempts)).Msgf("Retrying to register schema %s: %v", subject, err)
+	}), retry.RetryIf(func(err error) bool {
+		// we don't want to retry all errors, because some of them are are expected (e.g. missing dependencies)
+		// and will be handled by higher-level code
+		return strings.Contains(err.Error(), "connection reset by peer")
+	}))
+	defer resp.Body.Close()
 
 	var result struct {
 		ID int `json:"id"`
