@@ -510,6 +510,9 @@ func registerSingleProto(
 	}
 
 	url := fmt.Sprintf("%s/subjects/%s/versions", registryURL, subject)
+	// Force IPv4 to avoid Docker IPv6 port forwarding issues
+	url = strings.Replace(url, "localhost", "127.0.0.1", 1)
+	framework.L.Debug().Msgf("Registering schema to URL: %s", url)
 
 	resp, respErr := http.Post(url, "application/vnd.schemaregistry.v1+json", bytes.NewReader(payload))
 	if respErr != nil {
