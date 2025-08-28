@@ -131,6 +131,20 @@ func RegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSch
 			subjects[proto.Path] = subjectMessage
 		}
 
+		// Determine which folder prefixes should be stripped based on configuration, i.e. if our proto is located in `workflows/workflows/v1/metadata.proto`
+		// and folders=["workflows"], then we should strip "workflows/" from both the path and the subject name, so that the path becomes `workflows/v1/metadata.proto`
+		// and the subject name becomes `workflows.v1.metadata`.
+		// or in other words, we treat "workflows/" folder as the root folder for all protos in this schema set and strip it from the paths derived from the repository structure.
+		prefixesToStrip := determineFolderPrefixesToStrip(protoSchemaSet.Folders)
+
+		for path := range protoMap {
+			strippedPath := stripFolderPrefix(path, prefixesToStrip)
+			protoMap[strippedPath] = protoMap[path]
+			subjects[strippedPath] = subjects[path]
+			delete(protoMap, path)
+			delete(subjects, path)
+		}
+
 		registerErr := registerAllWithTopologicalSorting(schemaRegistryURL, protoMap, subjects, protoSchemaSet.Folders)
 		if registerErr != nil {
 			return errors.Wrapf(registerErr, "failed to register protos from %s", protoSchemaSet.URI)
@@ -498,21 +512,13 @@ func registerAllWithTopologicalSorting(
 			return fmt.Errorf("no subject found for %s", path)
 		}
 
-		// Determine which folder prefixes should be stripped based on configuration
-		prefixesToStrip := determineFolderPrefixesToStrip(folders)
-
 		// Build references only for files that have dependencies
 		var fileRefs []map[string]any
 		if deps, hasDeps := dependencies[path]; hasDeps && len(deps) > 0 {
 			for _, dep := range deps {
 				if depSubject, depExists := subjectMap[dep]; depExists {
-					// The schema registry expects import names without the configured folder prefixes
-					// So if folders=["workflows"] and the import is "workflows/v1/metadata.proto",
-					// the name should be "v1/metadata.proto"
-					importName := stripFolderPrefix(dep, prefixesToStrip)
-
 					fileRefs = append(fileRefs, map[string]any{
-						"name":    importName,
+						"name":    dep,
 						"subject": depSubject,
 						"version": 1,
 					})
@@ -528,11 +534,7 @@ func registerAllWithTopologicalSorting(
 			continue
 		}
 
-		// The schema registry expects import statements without the configured folder prefixes
-		// Transform the schema content to remove these prefixes from import statements
-		modifiedSchema := transformSchemaContent(schema.Source, prefixesToStrip)
-
-		_, registerErr := registerSingleProto(schemaRegistryURL, subject, modifiedSchema, fileRefs)
+		_, registerErr := registerSingleProto(schemaRegistryURL, subject, schema.Source, fileRefs)
 		if registerErr != nil {
 			return errors.Wrapf(registerErr, "failed to register %s as %s", path, subject)
 		}
@@ -551,24 +553,42 @@ func registerAllWithTopologicalSorting(
 func checkSchemaExists(registryURL, subject string) (int, bool) {
 	url := fmt.Sprintf("%s/subjects/%s/versions", registryURL, subject)
 
-	resp, err := http.Get(url)
-	if err != nil {
-		framework.L.Debug().Msgf("Failed to check schema existence for %s: %v", subject, err)
+	maxAttempts := uint(10)
+	var resp *http.Response
+	existErr := retry.Do(func() error {
+		var err error
+		resp, err = http.Get(url)
+		if err != nil {
+			framework.L.Debug().Msgf("Failed to check schema existence for %s: %v", subject, err)
+			return err
+		}
+
+		if resp.StatusCode == 200 {
+			return nil
+		}
+
+		return nil
+	}, retry.Attempts(10), retry.Delay(100*time.Millisecond), retry.DelayType(retry.BackOffDelay), retry.OnRetry(func(n uint, err error) {
+		framework.L.Debug().Str("attempt/max", fmt.Sprintf("%d/%d", n, maxAttempts)).Msgf("Retrying to check schema existence for %s: %v", subject, err)
+	}), retry.RetryIf(func(err error) bool {
+		return strings.Contains(err.Error(), "connection reset by peer")
+	}))
+
+	if existErr != nil {
 		return 0, false
 	}
+
 	defer resp.Body.Close()
 
-	if resp.StatusCode == 200 {
-		var versions []struct {
-			ID int `json:"id"`
-		}
-		if err := json.NewDecoder(resp.Body).Decode(&versions); err != nil {
-			framework.L.Debug().Msgf("Failed to decode versions for %s: %v", subject, err)
-			return 0, false
-		}
-		if len(versions) > 0 {
-			return versions[len(versions)-1].ID, true
-		}
+	var versions []struct {
+		ID int `json:"id"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&versions); err != nil {
+		framework.L.Debug().Msgf("Failed to decode versions for %s: %v", subject, err)
+		return 0, false
+	}
+	if len(versions) > 0 {
+		return versions[len(versions)-1].ID, true
 	}
 
 	return 0, false
@@ -597,7 +617,7 @@ func registerSingleProto(
 	maxAttempts := uint(10)
 
 	var resp *http.Response
-	retry.Do(func() error {
+	registerErr := retry.Do(func() error {
 		var respErr error
 		resp, respErr = http.Post(url, "application/vnd.schemaregistry.v1+json", bytes.NewReader(payload))
 		if respErr != nil {
@@ -620,6 +640,10 @@ func registerSingleProto(
 		// and will be handled by higher-level code
 		return strings.Contains(err.Error(), "connection reset by peer")
 	}))
+	if registerErr != nil {
+		return 0, errors.Wrapf(registerErr, "failed to register schema for subject %s", subject)
+	}
+
 	defer resp.Body.Close()
 
 	var result struct {
@@ -649,8 +673,8 @@ func determineFolderPrefixesToStrip(folders []string) []string {
 // stripFolderPrefix removes any configured folder prefixes from the given path
 func stripFolderPrefix(path string, prefixes []string) string {
 	for _, prefix := range prefixes {
-		if strings.HasPrefix(path, prefix) {
-			return strings.TrimPrefix(path, prefix)
+		if after, ok := strings.CutPrefix(path, prefix); ok {
+			return after
 		}
 	}
 	return path
