@@ -22,7 +22,7 @@ require (
 	github.com/rs/zerolog v1.33.0
 	github.com/smartcontractkit/chainlink-testing-framework/lib v1.50.20-0.20250106135623-15722ca32b64
 	github.com/smartcontractkit/chainlink-testing-framework/lib/grafana v1.50.0
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.0
 	go.uber.org/ratelimit v0.3.1
 	google.golang.org/grpc v1.70.0 // indirect
 	k8s.io/api v0.32.2
