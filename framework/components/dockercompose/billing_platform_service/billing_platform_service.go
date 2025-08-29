@@ -13,6 +13,8 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
+const DefaultPostgresDSN = "postgres://postgres:postgres@postgres:5432/billing_platform"
+
 type Output struct {
 	BillingPlatformService *BillingPlatformServiceOutput
 	Postgres               *PostgresOutput
@@ -151,8 +153,8 @@ func New(in *Input) (*Output, error) {
 			GRPCExternalURL: fmt.Sprintf("http://%s:%s", billingExternalHost, billingExternalPort.Port()),
 		},
 		Postgres: &PostgresOutput{
-
-		}
+			DSN: DefaultPostgresDSN,
+		},
 	}
 
 	framework.L.Info().Msg("Billing Platform Service stack start")
