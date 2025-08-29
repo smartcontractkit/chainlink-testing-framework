@@ -65,4 +65,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  populate_test_data:
+    image: ${BILLING_PLATFORM_SERVICE_IMAGE:-billing-platform-service:local-cre}
+    container_name: db-migrations-billing-platform
+    restart: on-failure
+    command: ["populate-db", "--environment=local"]
+    depends_on:
+      billing-platform-service:
+        condition: service_started
+    networks:
+      - backend
     
