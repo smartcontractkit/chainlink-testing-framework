@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 	"github.com/pkg/errors"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/dockercompose/utils"
+	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -21,8 +23,12 @@ type Output struct {
 }
 
 type BillingPlatformServiceOutput struct {
-	GRPCInternalURL string
-	GRPCExternalURL string
+	BillingGRPCInternalURL   string
+	BillingGRPCExternalURL   string
+	CreditGRPCInternalURL    string
+	CreditGRPCExternalURL    string
+	OwnershipGRPCInternalURL string
+	OwnershipGRPCExternalURL string
 }
 
 type PostgresOutput struct {
@@ -46,8 +52,10 @@ func defaultBillingPlatformService(in *Input) *Input {
 const (
 	DEFAULT_STACK_NAME = "billing-platform-service"
 
-	DEFAULT_BILLING_PLATFORM_SERVICE_GRPC_PORT    = "2022"
-	DEFAULT_BILLING_PLATFORM_SERVICE_SERVICE_NAME = "billing-platform-service"
+	DEFAULT_BILLING_PLATFORM_SERVICE_BILLING_GRPC_PORT   = "2222"
+	DEFAULT_BILLING_PLATFORM_SERVICE_CREDIT_GRPC_PORT    = "2223"
+	DEFAULT_BILLING_PLATFORM_SERVICE_OWNERSHIP_GRPC_PORT = "2257"
+	DEFAULT_BILLING_PLATFORM_SERVICE_SERVICE_NAME        = "billing-platform-service"
 )
 
 func New(in *Input) (*Output, error) {
@@ -90,7 +98,9 @@ func New(in *Input) (*Output, error) {
 	stack.WaitForService(DEFAULT_BILLING_PLATFORM_SERVICE_SERVICE_NAME,
 		wait.ForAll(
 			wait.ForLog("GRPC server is live").WithPollInterval(200*time.Millisecond),
-			wait.ForListeningPort(DEFAULT_BILLING_PLATFORM_SERVICE_GRPC_PORT),
+			wait.ForListeningPort(DEFAULT_BILLING_PLATFORM_SERVICE_BILLING_GRPC_PORT),
+			wait.ForListeningPort(DEFAULT_BILLING_PLATFORM_SERVICE_CREDIT_GRPC_PORT),
+			wait.ForListeningPort(DEFAULT_BILLING_PLATFORM_SERVICE_OWNERSHIP_GRPC_PORT),
 		).WithDeadline(1*time.Minute),
 	)
 
@@ -141,17 +151,14 @@ func New(in *Input) (*Output, error) {
 		return nil, errors.Wrap(billingExternalHostErr, "failed to get host for Billing Platform Service")
 	}
 
-	// get mapped port for billing platform service
-	billingExternalPort, billingExternalPortErr := utils.FindMappedPort(ctx, 20*time.Second, billingContainer, DEFAULT_BILLING_PLATFORM_SERVICE_GRPC_PORT)
-	if billingExternalPortErr != nil {
-		return nil, errors.Wrap(billingExternalPortErr, "failed to get mapped port for Chip Ingress")
+	// get mapped ports for billing platform service
+	serviceOutput, err := getExternalPorts(ctx, billingExternalHost, billingContainer)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get mapped port for Billing Platform Service")
 	}
 
 	output := &Output{
-		BillingPlatformService: &BillingPlatformServiceOutput{
-			GRPCInternalURL: fmt.Sprintf("http://%s:%s", DEFAULT_BILLING_PLATFORM_SERVICE_SERVICE_NAME, DEFAULT_BILLING_PLATFORM_SERVICE_GRPC_PORT),
-			GRPCExternalURL: fmt.Sprintf("http://%s:%s", billingExternalHost, billingExternalPort.Port()),
-		},
+		BillingPlatformService: serviceOutput,
 		Postgres: &PostgresOutput{
 			DSN: DefaultPostgresDSN,
 		},
@@ -160,4 +167,38 @@ func New(in *Input) (*Output, error) {
 	framework.L.Info().Msg("Billing Platform Service stack start")
 
 	return output, nil
+}
+
+func getExternalPorts(ctx context.Context, billingExternalHost string, billingContainer *testcontainers.DockerContainer) (*BillingPlatformServiceOutput, error) {
+	ports := map[string]nat.Port{
+		"billing":   DEFAULT_BILLING_PLATFORM_SERVICE_BILLING_GRPC_PORT,
+		"credit":    DEFAULT_BILLING_PLATFORM_SERVICE_CREDIT_GRPC_PORT,
+		"ownership": DEFAULT_BILLING_PLATFORM_SERVICE_OWNERSHIP_GRPC_PORT,
+	}
+
+	output := BillingPlatformServiceOutput{}
+
+	for name, defaultPort := range ports {
+		externalPort, err := utils.FindMappedPort(ctx, 20*time.Second, billingContainer, defaultPort)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get mapped port for Billing Platform Service")
+		}
+
+		internal := fmt.Sprintf("http://%s:%s", DEFAULT_BILLING_PLATFORM_SERVICE_SERVICE_NAME, defaultPort)
+		external := fmt.Sprintf("http://%s:%s", billingExternalHost, externalPort.Port())
+
+		switch name {
+		case "billing":
+			output.BillingGRPCInternalURL = internal
+			output.BillingGRPCExternalURL = external
+		case "credit":
+			output.CreditGRPCInternalURL = internal
+			output.CreditGRPCExternalURL = external
+		case "ownership":
+			output.OwnershipGRPCInternalURL = internal
+			output.OwnershipGRPCExternalURL = external
+		}
+	}
+
+	return &output, nil
 }
