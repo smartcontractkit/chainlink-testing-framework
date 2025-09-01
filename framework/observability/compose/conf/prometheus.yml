@@ -66,3 +66,7 @@ scrape_configs:
         target_label: groupname
         replacement: "$1"
         action: replace
+  - job_name: container-sd
+    file_sd_configs:
+      - files: [ "/etc/prometheus/targets/merged.json" ]
+        refresh_interval: 15s
