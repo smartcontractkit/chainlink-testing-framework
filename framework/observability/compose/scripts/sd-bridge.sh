@@ -1,84 +1,48 @@
 #!/usr/bin/env bash
-# sd-bridge.sh
-# Discover Docker containers by label, pull each container's discovery JSON, merge, de-duplicate,
-# and write a single Prometheus file_sd JSON. Optionally serve the same JSON over HTTP.
+# sd-bridge.sh (simplified)
+# Discover Docker containers by label, pull each container's discovery JSON,
+# add labels, merge + de-duplicate, and write a single file_sd JSON.
 
 set -Eeuo pipefail
 
-# ---------- Configuration via env vars ----------
-LABEL_MATCH="${LABEL_MATCH:-prom_sd=true}"      # filter for worker containers
+# --- Config (env) ---
+LABEL_MATCH="${LABEL_MATCH:-framework=ctf}"
 DEFAULT_PATH="${DISCOVERY_PATH:-/discovery}"
 DEFAULT_PORT="${DISCOVERY_PORT:-6688}"
 DEFAULT_SCHEME="${DISCOVERY_SCHEME:-http}"
-PREFER_NETWORK="${NETWORK_NAME:-}"              # optional Docker network to prefer for IP
-OUT="${OUT:-/out/merged.json}"                  # file_sd output
-SLEEP="${SLEEP:-15}"                            # seconds between scans
-REQUEST_TIMEOUT="${REQUEST_TIMEOUT:-5}"         # curl timeout seconds
+PREFER_NETWORK="${NETWORK_NAME:-}"
+OUT="${OUT:-/out/merged.json}"
+SLEEP="${SLEEP:-15}"
+REQUEST_TIMEOUT="${REQUEST_TIMEOUT:-5}"
+REWRITE_TO_IP="${REWRITE_TO_IP:-0}"   # set to 1 to replace host with container IP
 
-# Optional lightweight HTTP serving of OUT for http_sd
-SERVE_ADDR="${SERVE_ADDR:-}"                    # example: ":8080" to serve /targets
-SERVE_PATH="${SERVE_PATH:-/targets}"            # URL path
-
-# ---------- Helpers ----------
+# --- Helpers ---
 log(){ printf '[sd-bridge] %s\n' "$*" >&2; }
 get_ip(){
-  local cid="$1"; local net="$2"
+  local cid="$1" net="$2"
   if [[ -n "$net" ]]; then
     docker inspect "$cid" | jq -r --arg n "$net" '.[0].NetworkSettings.Networks[$n].IPAddress // empty'
   else
     docker inspect "$cid" | jq -r '.[0].NetworkSettings.Networks | to_entries[0].value.IPAddress // empty'
   fi
 }
-get_label(){
-  local cid="$1" key="$2"
-  docker inspect "$cid" | jq -r --arg k "$key" '.[0].Config.Labels[$k] // empty'
-}
+get_label(){ docker inspect "$1" | jq -r --arg k "$2" '.[0].Config.Labels[$k] // empty'; }
+get_name(){  docker inspect "$1" | jq -r '.[0].Name | ltrimstr("/")'; }
 merge_and_dedupe(){
-  # stdin: many JSON arrays of target groups
-  # out: one array, grouped by identical labels with unique sorted targets
   jq -s '
     add // []
     | map({targets: (.targets // []), labels: (.labels // {})})
-    | sort_by(.labels)
     | group_by(.labels)
     | map({labels: (.[0].labels), targets: ([.[].targets[]] | unique | sort)})
   '
 }
-atomic_write(){
-  local path="$1"; local tmp="$1.tmp"
-  cat > "$tmp" && mv "$tmp" "$path"
-}
+atomic_write(){ local p="$1" t="$1.tmp"; cat >"$t" && mv "$t" "$p"; }
 
-# ---------- Optional HTTP server ----------
-serve_http(){
-  # Serves OUT at SERVE_PATH. Requires busybox httpd or python3 in the container.
-  if command -v busybox >/dev/null 2>&1; then
-    log "serving http_sd at ${SERVE_ADDR}${SERVE_PATH} using busybox httpd"
-    # Busybox serves a directory. Symlink requested path to OUT.
-    local root; root="$(dirname "$OUT")"; mkdir -p "$root"
-    # Keep a symlink named targets.json and rewrite on change
-    ln -sf "$(basename "$OUT")" "$root/targets.json"
-    exec busybox httpd -f -p "${SERVE_ADDR#:}" -h "$root"
-  elif command -v python3 >/dev/null 2>&1; then
-    log "serving http_sd at ${SERVE_ADDR}${SERVE_PATH} using python http.server"
-    cd "$(dirname "$OUT")" && exec python3 -m http.server "${SERVE_ADDR#:}"
-  else
-    log "no http server available in image; install busybox or python3"
-    sleep infinity
-  fi
-}
-
-# Ensure output dir and initial file
+# --- Init ---
 mkdir -p "$(dirname "$OUT")"
 echo '[]' | atomic_write "$OUT"
 
-# If SERVE_ADDR is set, background a tiny polling loop that keeps a shadow file named targets.json
-if [[ -n "$SERVE_ADDR" ]]; then
-  # Run server in background subshell so main loop continues to update OUT
-  serve_http &
-fi
-
-# ---------- Main loop ----------
+# --- Main loop ---
 while true; do
   mapfile -t cids < <(docker ps -q --filter "label=$LABEL_MATCH" || true)
   if (( ${#cids[@]} == 0 )); then
@@ -90,16 +54,38 @@ while true; do
   files=()
   for cid in "${cids[@]}"; do
     ip="$(get_ip "$cid" "$PREFER_NETWORK")"
-    if [[ -z "$ip" ]]; then log "skip ${cid:0:12}: no IP"; continue; fi
+    [[ -z "$ip" ]] && { log "skip ${cid:0:12}: no IP"; continue; }
+    name="$(get_name "$cid")"
 
-    # Per container overrides via labels
-    path="$(get_label "$cid" prom_sd_path)"; path="${path:-$DEFAULT_PATH}"
-    port="$(get_label "$cid" prom_sd_port)"; port="${port:-$DEFAULT_PORT}"
+    # Per-container overrides (optional)
+    path="$(get_label "$cid" prom_sd_path)";  path="${path:-$DEFAULT_PATH}"
+    port="$(get_label "$cid" prom_sd_port)";  port="${port:-$DEFAULT_PORT}"
     scheme="$(get_label "$cid" prom_sd_scheme)"; scheme="${scheme:-$DEFAULT_SCHEME}"
 
     url="${scheme}://${ip}:${port}${path}"
     f="$(mktemp)"; files+=("$f")
     if curl -fsSL --max-time "$REQUEST_TIMEOUT" "$url" | jq '.' > "$f" 2>/dev/null; then
+      # Add labels (and optionally rewrite host -> container IP)
+      if [[ "$REWRITE_TO_IP" == "1" ]]; then
+        jq --arg ip "$ip" --arg name "$name" '
+          map(
+            .targets |= map($ip + ":" + (split(":")[1])) |
+            .labels = ((.labels // {}) + {
+              container_name: $name,
+              scrape_path: (.labels.__metrics_path__ // "")
+            })
+          )
+        ' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+      else
+        jq --arg name "$name" '
+          map(
+            .labels = ((.labels // {}) + {
+              container_name: $name,
+              scrape_path: (.labels.__metrics_path__ // "")
+            })
+          )
+        ' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+      fi
       log "ok ${url}"
     else
       log "fail ${url}; using []"
@@ -116,5 +102,4 @@ while true; do
   fi
 
   sleep "$SLEEP"
-
 done
