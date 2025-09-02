@@ -35,3 +35,7 @@ scrape_configs:
   - job_name: 'postgres_exporter_4'
     static_configs:
       - targets: ['postgres_exporter_4:9187']
+  - job_name: 'node-sd'
+    file_sd_configs:
+      - files: ["/etc/prometheus/targets/merged.json"]
+        refresh_interval: 15s

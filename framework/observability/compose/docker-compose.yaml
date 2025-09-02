@@ -45,6 +45,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./conf/prometheus.yml:/etc/prometheus/prometheus.yml
+      - sd-targets:/etc/prometheus/targets
     ports:
       - '9099:9090'
 
@@ -135,6 +136,21 @@ services:
       - '9304:9187'
     restart: unless-stopped
 
+  sd-merge:
+    image: alpine:3.20
+    command: [ "/bin/sh","-c","apk add --no-cache bash curl jq docker-cli && exec bash scripts/sd-merge.sh" ]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - sd-targets:/out
+      - ./scripts:/scripts:ro
+    environment:
+      LABEL_MATCH: "framework=ctf"
+      DISCOVERY_PATH: "/discovery"
+      DISCOVERY_PORT: "6688"
+      DISCOVERY_SCHEME: "http"
+      OUT: "/out/merged.json"
+      SLEEP: "15"
+
 volumes:
   loki_data:
   grafana_data:
@@ -142,6 +158,7 @@ volumes:
   grafana_logs:
   grafana_plugins:
   tempo_data:
+  sd-targets:
 
 networks:
   default:
