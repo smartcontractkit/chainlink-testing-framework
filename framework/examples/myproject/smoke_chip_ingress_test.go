@@ -2,7 +2,6 @@ package examples
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -17,8 +16,6 @@ type ChipConfig struct {
 
 // use config file: smoke_chip.toml
 func TestChipIngressSmoke(t *testing.T) {
-	t.Skip("skipping smoke test until we have a way to fetch Chip Ingress image")
-	os.Setenv("CTF_CONFIGS", "smoke_chip.toml")
 	in, err := framework.Load[ChipConfig](t)
 	require.NoError(t, err, "failed to load config")
 
@@ -37,7 +34,7 @@ func TestChipIngressSmoke(t *testing.T) {
 		err := chipingressset.DefaultRegisterAndFetchProtos(ctx, nil, []chipingressset.ProtoSchemaSet{
 			{
 				URI:           "https://github.com/smartcontractkit/chainlink-protos",
-				Ref:           "95decc005a91a1fd2621af9d9f00cb36d8061067",
+				Ref:           "49a301ac36cad84ac8dd7fae6749d3a124b6819b",
 				Folders:       []string{"workflows"},
 				SubjectPrefix: "cre-",
 			},

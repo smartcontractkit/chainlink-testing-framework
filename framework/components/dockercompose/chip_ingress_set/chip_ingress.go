@@ -94,11 +94,21 @@ func New(in *Input) (*Output, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
+	// Start the stackwith all environment variables from the host process
+	// set BASIC_AUTH_ENABLED and BASIC_AUTH_PREFIX to false and empty string and allow them to be overridden by the host process
+	envVars := make(map[string]string)
+	envVars["BASIC_AUTH_ENABLED"] = "false"
+	envVars["BASIC_AUTH_PREFIX"] = ""
+
+	for _, env := range os.Environ() {
+		pair := strings.SplitN(env, "=", 2)
+		if len(pair) == 2 {
+			envVars[pair[0]] = pair[1]
+		}
+	}
+
 	upErr := stack.
-		WithEnv(map[string]string{
-			"BASIC_AUTH_ENABLED": "false",
-			"BASIC_AUTH_PREFIX":  "",
-		}).
+		WithEnv(envVars).
 		Up(ctx)
 
 	if upErr != nil {
@@ -118,6 +128,7 @@ func New(in *Input) (*Output, error) {
 			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT).WithPollInterval(100*time.Millisecond),
 			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_KAFKA_PORT).WithPollInterval(100*time.Millisecond),
 			wait.ForHTTP("/v1/status/ready").WithPort("9644"), // admin API port
+			wait.ForHTTP("/status/ready").WithPort(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT).WithPollInterval(100*time.Millisecond),
 		).WithDeadline(2*time.Minute),
 	).WaitForService(DEFAULT_RED_PANDA_CONSOLE_SERVICE_NAME,
 		wait.ForAll(

@@ -5,6 +5,7 @@ go 1.24.2
 replace github.com/smartcontractkit/chainlink-testing-framework/framework => ../../../framework
 
 require (
+	github.com/avast/retry-go/v4 v4.6.1
 	github.com/confluentinc/confluent-kafka-go v1.9.2
 	github.com/docker/docker v28.0.4+incompatible
 	github.com/google/go-github/v72 v72.0.0
