@@ -65,6 +65,10 @@ func NewSharedDBNodeSet(in *Input, bcOut *blockchain.Output) (*Output, error) {
 	return out, nil
 }
 
+func NodeNamePrefix(nodeSetName string) string {
+	return nodeSetName + "-" + "node"
+}
+
 func printURLs(out *Output) {
 	if out == nil {
 		return
@@ -113,7 +117,6 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 	mu := &sync.Mutex{}
 	for i := 0; i < in.Nodes; i++ {
 		overrideIdx := i
-		var nodeName string
 		if in.OverrideMode == "all" {
 			if len(in.NodeSpecs[overrideIdx].Node.CustomPorts) > 0 {
 				return nil, fmt.Errorf("custom_ports can be used only with override_mode = 'each'")
@@ -132,8 +135,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 			if in.NodeSpecs[overrideIdx].Node.TestConfigOverrides != "" {
 				net = in.NodeSpecs[overrideIdx].Node.TestConfigOverrides
 			}
-			nodeName = fmt.Sprintf("node%d", i)
-			nodeWithNodeSetPrefixName := fmt.Sprintf("%s-%s", in.Name, nodeName)
+			nodeWithNodeSetPrefixName := NodeNamePrefix(in.Name) + "-" + fmt.Sprint(i)
 
 			nodeSpec := &clnode.Input{
 				NoDNS:   in.NoDNS,
