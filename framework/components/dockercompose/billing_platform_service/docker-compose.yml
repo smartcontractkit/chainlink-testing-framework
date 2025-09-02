@@ -57,7 +57,7 @@ services:
     image: ${BILLING_PLATFORM_SERVICE_IMAGE:-billing-platform-service:local-cre}
     container_name: db-migrations-billing-platform
     restart: on-failure
-    command: ["db", "migrate", "--url=${DATABASE_URL}"]
+    command: ["db", "create-and-migrate", "--url=${DATABASE_URL}"]
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:postgres/billing_platform
     networks:
