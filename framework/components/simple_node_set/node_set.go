@@ -135,7 +135,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 			if in.NodeSpecs[overrideIdx].Node.TestConfigOverrides != "" {
 				net = in.NodeSpecs[overrideIdx].Node.TestConfigOverrides
 			}
-			nodeWithNodeSetPrefixName := NodeNamePrefix(in.Name) + "-" + fmt.Sprint(i)
+			nodeWithNodeSetPrefixName := NodeNamePrefix(in.Name) + fmt.Sprint(i)
 
 			nodeSpec := &clnode.Input{
 				NoDNS:   in.NoDNS,
