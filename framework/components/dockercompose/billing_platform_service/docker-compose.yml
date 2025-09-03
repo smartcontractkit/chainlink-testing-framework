@@ -77,4 +77,7 @@ services:
     command: ["populate-db", "--environment=local"]
     networks:
       - backend
-    
+
+networks:
+  backend:
+    driver: bridge
