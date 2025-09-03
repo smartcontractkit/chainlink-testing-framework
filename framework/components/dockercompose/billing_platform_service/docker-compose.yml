@@ -1,20 +1,16 @@
 services:
+
   billing-platform-service:
-    restart: on-failure
-    tty: true
-    container_name: billing-platform-service
     image: ${BILLING_PLATFORM_SERVICE_IMAGE:-billing-platform-service:local-cre}
-    command: ["grpc-service"]
+    container_name: billing-platform-service
     depends_on:
       postgres:
         condition: service_healthy
       migrations:
         condition: service_started
-    ports:
-      - "2112:2112"
-      - "2222:2222"
-      - "2223:2223"
-      - "2257:2257"
+    restart: on-failure
+    tty: true
+    command: ["grpc-service"]
     environment:
       PROMETHEUS_PORT: 2112
       BILLING_SERVER_PORT: 2222
@@ -29,6 +25,11 @@ services:
       DB_NAME: billing_platform
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
+    ports:
+      - "2112:2112"
+      - "2222:2222"
+      - "2223:2223"
+      - "2257:2257"
     healthcheck:
       test: ["CMD", "grpc_health_probe", "-addr=localhost:2222"]
       interval: 200ms
@@ -45,35 +46,35 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
     healthcheck:
       test: ["CMD","pg_isready","-U","${POSTGRES_USER}","-d","${POSTGRES_DB}","-h","${POSTGRES_HOST}"]
       interval: 5s
       timeout: 10s
       retries: 3
-    ports:
-      - "5432:5432"
 
   migrations:
     image: ${BILLING_PLATFORM_SERVICE_IMAGE:-billing-platform-service:local-cre}
     container_name: db-migrations-billing-platform
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: on-failure
     command: ["db", "create-and-migrate", "--url=${DATABASE_URL}"]
     environment:
       DATABASE_URL: postgres://postgres:postgres@postgres:postgres/billing_platform
     networks:
       - backend
-    depends_on:
-      postgres:
-        condition: service_healthy
 
   populate_test_data:
     image: ${BILLING_PLATFORM_SERVICE_IMAGE:-billing-platform-service:local-cre}
     container_name: db-migrations-billing-platform
-    restart: on-failure
-    command: ["populate-db", "--environment=local"]
     depends_on:
       billing-platform-service:
         condition: service_started
+    restart: on-failure
+    command: ["populate-db", "--environment=local"]
     networks:
       - backend
     
