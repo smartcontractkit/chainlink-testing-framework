@@ -2,6 +2,7 @@
 # sd-merge.sh
 # Discover Docker containers by label, fetch each container's /discovery JSON,
 # add labels (container_name, scrape_path), merge + dedupe, and write a single file_sd JSON.
+# TODO: This script should be removed once we convert the prom metrics to OTEL
 
 set -Eeuo pipefail
 
