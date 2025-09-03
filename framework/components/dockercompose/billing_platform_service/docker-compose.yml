@@ -62,8 +62,6 @@ services:
         condition: service_healthy
     restart: on-failure
     command: ["db", "create-and-migrate", "--url", "postgres://postgres:postgres@postgres:5432/billing_platform"]
-    networks:
-      - backend
 
   populate_test_data:
     image: ${BILLING_PLATFORM_SERVICE_IMAGE:-billing-platform-service:local-cre}
@@ -73,9 +71,3 @@ services:
         condition: service_started
     restart: on-failure
     command: ["populate-db", "--environment=local"]
-    networks:
-      - backend
-
-networks:
-  backend:
-    driver: bridge
