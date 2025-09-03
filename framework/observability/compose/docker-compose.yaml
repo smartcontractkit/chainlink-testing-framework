@@ -137,19 +137,28 @@ services:
     restart: unless-stopped
 
   sd-merge:
-    image: alpine:3.20
-    command: [ "/bin/sh","-c","apk add --no-cache bash curl jq docker-cli && exec bash scripts/sd-merge.sh" ]
+    image: golang:1.24-alpine
+    working_dir: /app
+    command: ["/bin/sh","-lc",
+      "apk add --no-cache git ca-certificates && \
+       /usr/local/go/bin/go build -trimpath -ldflags='-s -w' -o /usr/local/bin/sd-merge . && \
+       exec /usr/local/bin/sd-merge"
+    ]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - sd-targets:/out
-      - ./scripts:/scripts:ro
+      - ../service_discovery:/app:ro
     environment:
       LABEL_MATCH: "framework=ctf"
       DISCOVERY_PATH: "/discovery"
       DISCOVERY_PORT: "6688"
       DISCOVERY_SCHEME: "http"
       OUT: "/out/merged.json"
-      SLEEP: "15"
+      SLEEP: "30"
+      REQUEST_TIMEOUT: "5"
+    restart: unless-stopped
+
+
 
 volumes:
   loki_data:
