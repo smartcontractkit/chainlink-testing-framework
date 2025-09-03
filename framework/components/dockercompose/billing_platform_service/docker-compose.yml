@@ -69,7 +69,7 @@ services:
 
   populate_test_data:
     image: ${BILLING_PLATFORM_SERVICE_IMAGE:-billing-platform-service:local-cre}
-    container_name: db-migrations-billing-platform
+    container_name: populate-data-billing-platform
     depends_on:
       billing-platform-service:
         condition: service_started
