@@ -86,4 +86,4 @@ services:
       billing-platform-service:
         condition: service_started
     restart: on-failure
-    command: ["db", "populate-data", "--environment=local"]
+    command: ["db", "populate-data", "--environment=local", "--billing-client-url=billing-platform-service:2222", "--linking-client-url=billing-platform-service:2257"]
