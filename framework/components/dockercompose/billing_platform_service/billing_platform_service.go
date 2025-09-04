@@ -3,6 +3,8 @@ package billing_platform_service
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/client"
@@ -90,7 +92,46 @@ func New(in *Input) (*Output, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
-	upErr := stack.Up(ctx)
+	// Start the stackwith all environment variables from the host process
+	// set development defaults for necessary environment variables and allow them to be overridden by the host process
+	envVars := make(map[string]string)
+
+	envVars["MAINNET_WORKFLOW_REGISTRY_CHAIN_SELECTOR"] = "7759470850252068959"                          // Anvil Devnet
+	envVars["MAINNET_WORKFLOW_REGISTRY_CONTRACT_ADDRESS"] = "0xA15BB66138824a1c7167f5E85b957d04Dd34E468" // Deployed via Linking integration tests
+	envVars["MAINNET_WORKFLOW_REGISTRY_RPC_URL"] = "http://anvil:8545"                                   // Anvil inside Docker
+	envVars["MAINNET_WORKFLOW_REGISTRY_FINALITY_DEPTH"] = "0"                                            // Instant finality on devnet
+	envVars["TESTNET_WORKFLOW_REGISTRY_CHAIN_SELECTOR"] = "10344971235874465080"                         // Base Sepolia
+	envVars["TESTNET_WORKFLOW_REGISTRY_CONTRACT_ADDRESS"] = "0xED1D0d87706a466151d67A6a06d69534C97BE66F" // Used for Billing integration tests
+	envVars["TESTNET_WORKFLOW_REGISTRY_RPC_URL"] = "http://anvil:8545"                                   // Anvil inside Docker
+	envVars["TESTNET_WORKFLOW_REGISTRY_FINALITY_DEPTH"] = "10"                                           // Arbitrary value, adjust as needed
+	envVars["KMS_PROOF_SIGNING_KEY_ID"] = "00000000-0000-0000-0000-000000000001"                         // provisioned via LocalStack
+	envVars["VERIFIER_INITIAL_INTERVAL"] = "0s"                                                          // reduced to force verifier to start immediately in integration tests
+	envVars["VERIFIER_MAXIMUM_INTERVAL"] = "1s"                                                          // reduced to force verifier to start immediately in integration tests
+	envVars["LINKING_REQUEST_COOLDOWN"] = "0s"                                                           // reduced to force consequtive linking requests to be processed immediately in integration tests
+
+	envVars["MAINNET_CAPABILITIES_REGISTRY_CHAIN_SELECTOR"] = "10344971235874465080"                         // Base Sepolia
+	envVars["MAINNET_CAPABILITIES_REGISTRY_CONTRACT_ADDRESS"] = "0x4c0a7d8f1b2e3c5f6a9b8e2d3c4f5e6b7a8b9c0d" // dummy address
+	envVars["MAINNET_CAPABILITIES_REGISTRY_RPC_URL"] = "http://anvil:8545"                                   // Anvil RPC URL
+	envVars["MAINNET_CAPABILITIES_REGISTRY_FINALITY_DEPTH"] = "10"                                           // Arbitrary value, adjust as needed
+	envVars["TESTNET_CAPABILITIES_REGISTRY_CHAIN_SELECTOR"] = "10344971235874465080"                         // Base Sepolia
+	envVars["TESTNET_CAPABILITIES_REGISTRY_CONTRACT_ADDRESS"] = "0x4c0a7d8f1b2e3c5f6a9b8e2d3c4f5e6b7a8b9c0d" // dummy address
+	envVars["TESTNET_CAPABILITIES_REGISTRY_RPC_URL"] = "http://anvil:8545"                                   // Anvil RPC URL
+	envVars["TESTNET_CAPABILITIES_REGISTRY_FINALITY_DEPTH"] = "10"                                           // Arbitrary value, adjust as needed
+
+	envVars["STREAMS_API_URL"] = ""
+	envVars["STREAMS_API_KEY"] = ""
+	envVars["STREAMS_API_SECRET"] = ""
+
+	for _, env := range os.Environ() {
+		pair := strings.SplitN(env, "=", 2)
+		if len(pair) == 2 {
+			envVars[pair[0]] = pair[1]
+		}
+	}
+
+	upErr := stack.
+		WithEnv(envVars).
+		Up(ctx)
 
 	if upErr != nil {
 		return nil, errors.Wrap(upErr, "failed to start stack for Billing Platform Service")

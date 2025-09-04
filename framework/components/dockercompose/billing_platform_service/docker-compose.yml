@@ -70,4 +70,4 @@ services:
       billing-platform-service:
         condition: service_started
     restart: on-failure
-    command: ["populate-db", "--environment=local"]
+    command: ["db", "populate-data", "--environment=local"]
