@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -43,6 +44,11 @@ type Input struct {
 	ExtraDockerNetworks []string `toml:"extra_docker_networks"`
 	Output              *Output  `toml:"output"`
 	UseCache            bool     `toml:"use_cache"`
+	ChainSelector       uint64   `toml:"chain_selector"`
+	StreamsAPIURL       string   `toml:"streams_api_url"`
+	StreamsAPIKey       string   `toml:"streams_api_key"`
+	StreamsAPISecret    string   `toml:"streams_api_secret"`
+	RPCURL              string   `toml:"rpc_url"`
 }
 
 func defaultBillingPlatformService(in *Input) *Input {
@@ -96,31 +102,23 @@ func New(in *Input) (*Output, error) {
 	// set development defaults for necessary environment variables and allow them to be overridden by the host process
 	envVars := make(map[string]string)
 
-	envVars["MAINNET_WORKFLOW_REGISTRY_CHAIN_SELECTOR"] = "7759470850252068959"                          // Anvil Devnet
+	envVars["MAINNET_WORKFLOW_REGISTRY_CHAIN_SELECTOR"] = strconv.FormatUint(in.ChainSelector, 10)       // Anvil Devnet
 	envVars["MAINNET_WORKFLOW_REGISTRY_CONTRACT_ADDRESS"] = "0xA15BB66138824a1c7167f5E85b957d04Dd34E468" // Deployed via Linking integration tests
-	envVars["MAINNET_WORKFLOW_REGISTRY_RPC_URL"] = "http://anvil:8545"                                   // Anvil inside Docker
+	envVars["MAINNET_WORKFLOW_REGISTRY_RPC_URL"] = in.RPCURL                                             // Anvil inside Docker
 	envVars["MAINNET_WORKFLOW_REGISTRY_FINALITY_DEPTH"] = "0"                                            // Instant finality on devnet
-	envVars["TESTNET_WORKFLOW_REGISTRY_CHAIN_SELECTOR"] = "10344971235874465080"                         // Base Sepolia
-	envVars["TESTNET_WORKFLOW_REGISTRY_CONTRACT_ADDRESS"] = "0xED1D0d87706a466151d67A6a06d69534C97BE66F" // Used for Billing integration tests
-	envVars["TESTNET_WORKFLOW_REGISTRY_RPC_URL"] = "http://anvil:8545"                                   // Anvil inside Docker
-	envVars["TESTNET_WORKFLOW_REGISTRY_FINALITY_DEPTH"] = "10"                                           // Arbitrary value, adjust as needed
 	envVars["KMS_PROOF_SIGNING_KEY_ID"] = "00000000-0000-0000-0000-000000000001"                         // provisioned via LocalStack
 	envVars["VERIFIER_INITIAL_INTERVAL"] = "0s"                                                          // reduced to force verifier to start immediately in integration tests
 	envVars["VERIFIER_MAXIMUM_INTERVAL"] = "1s"                                                          // reduced to force verifier to start immediately in integration tests
 	envVars["LINKING_REQUEST_COOLDOWN"] = "0s"                                                           // reduced to force consequtive linking requests to be processed immediately in integration tests
 
-	envVars["MAINNET_CAPABILITIES_REGISTRY_CHAIN_SELECTOR"] = "10344971235874465080"                         // Base Sepolia
+	envVars["MAINNET_CAPABILITIES_REGISTRY_CHAIN_SELECTOR"] = strconv.FormatUint(in.ChainSelector, 10)       // Base Sepolia
 	envVars["MAINNET_CAPABILITIES_REGISTRY_CONTRACT_ADDRESS"] = "0x4c0a7d8f1b2e3c5f6a9b8e2d3c4f5e6b7a8b9c0d" // dummy address
-	envVars["MAINNET_CAPABILITIES_REGISTRY_RPC_URL"] = "http://anvil:8545"                                   // Anvil RPC URL
+	envVars["MAINNET_CAPABILITIES_REGISTRY_RPC_URL"] = in.RPCURL                                             // Anvil RPC URL
 	envVars["MAINNET_CAPABILITIES_REGISTRY_FINALITY_DEPTH"] = "10"                                           // Arbitrary value, adjust as needed
-	envVars["TESTNET_CAPABILITIES_REGISTRY_CHAIN_SELECTOR"] = "10344971235874465080"                         // Base Sepolia
-	envVars["TESTNET_CAPABILITIES_REGISTRY_CONTRACT_ADDRESS"] = "0x4c0a7d8f1b2e3c5f6a9b8e2d3c4f5e6b7a8b9c0d" // dummy address
-	envVars["TESTNET_CAPABILITIES_REGISTRY_RPC_URL"] = "http://anvil:8545"                                   // Anvil RPC URL
-	envVars["TESTNET_CAPABILITIES_REGISTRY_FINALITY_DEPTH"] = "10"                                           // Arbitrary value, adjust as needed
 
-	envVars["STREAMS_API_URL"] = ""
-	envVars["STREAMS_API_KEY"] = ""
-	envVars["STREAMS_API_SECRET"] = ""
+	envVars["STREAMS_API_URL"] = in.StreamsAPIURL
+	envVars["STREAMS_API_KEY"] = in.StreamsAPIKey
+	envVars["STREAMS_API_SECRET"] = in.StreamsAPISecret
 
 	for _, env := range os.Environ() {
 		pair := strings.SplitN(env, "=", 2)
