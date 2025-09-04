@@ -34,6 +34,7 @@ services:
       MAINNET_CAPABILITIES_REGISTRY_RPC_URL: ${MAINNET_CAPABILITIES_REGISTRY_RPC_URL:-}
       TESTNET_CAPABILITIES_REGISTRY_RPC_URL: ${MAINNET_CAPABILITIES_REGISTRY_RPC_URL:-}
       MAINNET_CAPABILITIES_REGISTRY_FINALITY_DEPTH: ${MAINNET_CAPABILITIES_REGISTRY_FINALITY_DEPTH:-}
+      TEST_OWNERS: ${TEST_OWNERS:-}
       STREAMS_API_URL: ${STREAMS_API_URL:-}
       STREAMS_API_KEY: ${STREAMS_API_KEY:-}
       STREAMS_API_SECRET: ${STREAMS_API_SECRET:-}
@@ -87,4 +88,6 @@ services:
       billing-platform-service:
         condition: service_started
     restart: on-failure
-    command: ["db", "populate-data", "--environment=local", "--billing-client-url=billing-platform-service:2222", "--skip-linking"]
+    command: ["db", "populate-data", "--environment=local", "--billing-client-url=billing-platform-service:2222", "--linking-client-url=billing-platform-service:2257"]
+    environment:
+      TEST_OWNERS: ${TEST_OWNERS:-}

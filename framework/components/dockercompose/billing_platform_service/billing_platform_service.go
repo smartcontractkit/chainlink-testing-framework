@@ -51,6 +51,7 @@ type Input struct {
 	RPCURL                      string   `toml:"rpc_url"`
 	WorkflowRegistryAddress     string   `toml:"workflow_registry_address"`
 	CapabilitiesRegistryAddress string   `toml:"capabilities_registry_address"`
+	WorkflowOwners              []string `toml:"workflow_owners"`
 }
 
 func defaultBillingPlatformService(in *Input) *Input {
@@ -118,6 +119,7 @@ func New(in *Input) (*Output, error) {
 	envVars["MAINNET_CAPABILITIES_REGISTRY_RPC_URL"] = in.RPCURL
 	envVars["MAINNET_CAPABILITIES_REGISTRY_FINALITY_DEPTH"] = "10" // Arbitrary value, adjust as needed
 
+	envVars["TEST_OWNERS"] = strings.Join(in.WorkflowOwners, ",")
 	envVars["STREAMS_API_URL"] = in.StreamsAPIURL
 	envVars["STREAMS_API_KEY"] = in.StreamsAPIKey
 	envVars["STREAMS_API_SECRET"] = in.StreamsAPISecret
