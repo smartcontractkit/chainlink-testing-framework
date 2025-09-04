@@ -65,11 +65,12 @@ func newTon(in *Input) (*Output, error) {
 	networkName := network.Name
 
 	baseEnv := map[string]string{
-		"GENESIS":              "true",
-		"NAME":                 "genesis",
-		"LITE_PORT":            ports.LiteServer,
-		"CUSTOM_PARAMETERS":    "--state-ttl 315360000 --archive-ttl 315360000",
-		"VERSION_CAPABILITIES": "11",
+		"GENESIS":                        "true",
+		"NAME":                           "genesis",
+		"LITE_PORT":                      ports.LiteServer,
+		"CUSTOM_PARAMETERS":              "--state-ttl 315360000 --archive-ttl 315360000",
+		"EMBEDDED_FILE_HTTP_SERVER":      "true",
+		"EMBEDDED_FILE_HTTP_SERVER_PORT": in.Port,
 	}
 
 	// merge with additional environment variables from input
