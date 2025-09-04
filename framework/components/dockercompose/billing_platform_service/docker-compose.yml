@@ -12,6 +12,7 @@ services:
     tty: true
     command: ["grpc-service"]
     environment:
+      DISABLE_AUTH: true
       PROMETHEUS_PORT: 2112
       BILLING_SERVER_PORT: 2222
       CREDIT_RESERVATION_SERVER_PORT: 2223
