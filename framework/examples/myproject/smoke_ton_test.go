@@ -28,6 +28,7 @@ func TestTonSmoke(t *testing.T) {
 	defer bc.Container.Terminate(t.Context())
 
 	var client ton.APIClientWrapped
+
 	t.Run("setup:connect", func(t *testing.T) {
 		connectionPool := liteclient.NewConnectionPool()
 		cfg, cferr := liteclient.GetConfigFromUrl(t.Context(), fmt.Sprintf("http://%s/localhost.global.config.json", bc.Nodes[0].ExternalHTTPUrl))

@@ -1,7 +1,8 @@
 [blockchain_a]
   type = "ton"
-  image = "ghcr.io/neodix42/mylocalton-docker:dev"
+  image = "ghcr.io/neodix42/mylocalton-docker:v3.7"
   port = "8000"
   
   [blockchain_a.custom_env]
-  VERSION_CAPABILITIES = "11"
+  EMBEDDED_FILE_HTTP_SERVER = "true"
+  EMBEDDED_FILE_HTTP_SERVER_PORT = "8000"
