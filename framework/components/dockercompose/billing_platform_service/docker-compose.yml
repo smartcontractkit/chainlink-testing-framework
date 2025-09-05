@@ -10,13 +10,12 @@ services:
         condition: service_started
     restart: on-failure
     tty: true
-    command: ["grpc-service"]
+    command: ["grpc", "billing", "reserve"]
     environment:
       DISABLE_AUTH: true
       PROMETHEUS_PORT: 2112
       BILLING_SERVER_PORT: 2222
       CREDIT_RESERVATION_SERVER_PORT: 2223
-      WORKFLOW_OWNERSHIP_PROOF_SERVER_PORT: 2257
       WORKFLOW_OWNERSHIP_PROOF_SERVER_HOST: 0.0.0.0
       MAINNET_WORKFLOW_REGISTRY_CHAIN_SELECTOR: ${MAINNET_WORKFLOW_REGISTRY_CHAIN_SELECTOR:-}
       TESTNET_WORKFLOW_REGISTRY_CHAIN_SELECTOR: ${MAINNET_WORKFLOW_REGISTRY_CHAIN_SELECTOR:-}
@@ -48,7 +47,6 @@ services:
       - "2112:2112"
       - "2222:2222"
       - "2223:2223"
-      - "2257:2257"
     healthcheck:
       test: ["CMD", "grpc_health_probe", "-addr=localhost:2222"]
       interval: 200ms
@@ -89,6 +87,6 @@ services:
       billing-platform-service:
         condition: service_started
     restart: on-failure
-    command: ["db", "populate-data", "--environment=local", "--billing-client-url=billing-platform-service:2222", "--linking-client-url=billing-platform-service:2257"]
+    command: ["db", "populate-data", "--environment=local", "--billing-client-url=billing-platform-service:2222", "--simple-linking", "--dsn=postgres://postgres:postgres@postgres:5432/billing_platform?sslmode=disable"]
     environment:
       TEST_OWNERS: ${TEST_OWNERS:-}
