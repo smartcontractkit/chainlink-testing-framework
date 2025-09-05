@@ -3,7 +3,6 @@ package examples
 import (
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/xssnick/tonutils-go/liteclient"
@@ -28,7 +27,6 @@ func TestTonSmoke(t *testing.T) {
 	defer bc.Container.Terminate(t.Context())
 
 	var client ton.APIClientWrapped
-	time.Sleep(5 * time.Minute)
 
 	t.Run("setup:connect", func(t *testing.T) {
 		connectionPool := liteclient.NewConnectionPool()
