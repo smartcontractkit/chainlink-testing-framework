@@ -90,3 +90,4 @@ services:
     command: ["db", "populate-data", "--environment=local", "--billing-client-url=billing-platform-service:2222", "--simple-linking", "--dsn=postgres://postgres:postgres@postgres:5432/billing_platform?sslmode=disable"]
     environment:
       TEST_OWNERS: ${TEST_OWNERS:-}
+      MAINNET_CAPABILITIES_REGISTRY_CHAIN_SELECTOR: ${MAINNET_CAPABILITIES_REGISTRY_CHAIN_SELECTOR:-}
