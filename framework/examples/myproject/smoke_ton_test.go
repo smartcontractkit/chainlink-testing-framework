@@ -1,9 +1,9 @@
 package examples
 
 import (
-	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/xssnick/tonutils-go/liteclient"
@@ -28,10 +28,12 @@ func TestTonSmoke(t *testing.T) {
 	defer bc.Container.Terminate(t.Context())
 
 	var client ton.APIClientWrapped
+	time.Sleep(5 * time.Minute)
 
 	t.Run("setup:connect", func(t *testing.T) {
 		connectionPool := liteclient.NewConnectionPool()
-		cfg, cferr := liteclient.GetConfigFromUrl(t.Context(), fmt.Sprintf("http://%s/localhost.global.config.json", bc.Nodes[0].ExternalHTTPUrl))
+		// ExternalHTTPUrl already includes the full config path for direct use
+		cfg, cferr := liteclient.GetConfigFromUrl(t.Context(), bc.Nodes[0].ExternalHTTPUrl)
 
 		require.NoError(t, cferr, "Failed to get config from URL")
 		caerr := connectionPool.AddConnectionsFromConfig(t.Context(), cfg)
