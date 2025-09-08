@@ -432,16 +432,16 @@ Docker version 27.3.1
 </code></pre>
 <p>Download our <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8">CLI</a></p>
 <p>OS X <code>arm64</code> (M1/M2/M3 MacBooks)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.19/framework-v0.10.19-darwin-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.20/framework-v0.10.20-darwin-arm64.tar.gz | tar -xz
 </code></pre>
 <p>OS X <code>amd64</code> (old Intel chips)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.19/framework-v0.10.19-darwin-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.20/framework-v0.10.20-darwin-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>arm64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.19/framework-v0.10.19-linux-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.20/framework-v0.10.20-linux-arm64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>amd64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.19/framework-v0.10.19-linux-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.20/framework-v0.10.20-linux-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Allow it to run in <code>System Settings -&gt; Security Settings</code> (OS X)</p>
 <p><img src="framework/images/img.png" alt="img.png" /></p>
@@ -542,16 +542,16 @@ Docker version 27.3.1
 </code></pre>
 <p>Download our <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8">CLI</a></p>
 <p>OS X <code>arm64</code> (M1/M2/M3 MacBooks)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.19/framework-v0.10.19-darwin-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.20/framework-v0.10.20-darwin-arm64.tar.gz | tar -xz
 </code></pre>
 <p>OS X <code>amd64</code> (old Intel chips)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.19/framework-v0.10.19-darwin-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.20/framework-v0.10.20-darwin-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>arm64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.19/framework-v0.10.19-linux-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.20/framework-v0.10.20-linux-arm64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>amd64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.19/framework-v0.10.19-linux-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.10.20/framework-v0.10.20-linux-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Allow it to run in <code>System Settings -&gt; Security Settings</code> (OS X)</p>
 <p><img src="framework/images/img.png" alt="img.png" /></p>
@@ -4509,6 +4509,8 @@ as per ZK Sync documentation.</p>
 </code></pre>
 <p>The custom_env parameters will override the default genesis container environment variables, allowing you to customize blockchain configuration as needed.
 More info on parameters can be found here <a href="https://github.com/neodix42/mylocalton-docker/wiki/Genesis-setup-parameters">https://github.com/neodix42/mylocalton-docker/wiki/Genesis-setup-parameters</a>.</p>
+<h2 id="network-configuration"><a class="header" href="#network-configuration">Network Configuration</a></h2>
+<p>The framework provides seamless access to the TON network configuration by embedding the config URL directly in the node URLs. The <code>ExternalHTTPUrl</code> and <code>InternalHTTPUrl</code> include the full path to <code>localhost.global.config.json</code>, which can be used directly with <code>liteclient.GetConfigFromUrl()</code> without additional URL formatting.</p>
 <h2 id="default-ports"><a class="header" href="#default-ports">Default Ports</a></h2>
 <p>The TON implementation exposes essential services:</p>
 <ul>
@@ -4516,7 +4518,7 @@ More info on parameters can be found here <a href="https://github.com/neodix42/m
 <li>TON Lite Server: Port derived from base port + 100</li>
 </ul>
 <blockquote>
-<p>Note: <code>tonutils-go</code> library is used for TON blockchain interactions, which requires a TON Lite Server connection. <code>tonutils-go</code> queries config file to determine the Lite Server connection details, which are provided by the MyLocalTon Docker environment.</p>
+<p>Note: <code>tonutils-go</code> library is used for TON blockchain interactions, which requires a TON Lite Server connection. The framework embeds the config URL directly in the node URLs for convenient access to the global configuration file needed by <code>tonutils-go</code>.</p>
 </blockquote>
 <h2 id="usage-6"><a class="header" href="#usage-6">Usage</a></h2>
 <pre><code class="language-go">package examples
@@ -4553,8 +4555,9 @@ func TestTonSmoke(t *testing.T) {
     // Create a connection pool
     connectionPool := liteclient.NewConnectionPool()
     
-    // Get the network configuration from the global config URL
-    cfg, cferr := liteclient.GetConfigFromUrl(t.Context(), fmt.Sprintf("http://%s/localhost.global.config.json", bc.Nodes[0].ExternalHTTPUrl))
+    // Get the network configuration directly from the embedded config URL
+    // The ExternalHTTPUrl already includes the full path to localhost.global.config.json
+    cfg, cferr := liteclient.GetConfigFromUrl(t.Context(), bc.Nodes[0].ExternalHTTPUrl)
     require.NoError(t, cferr, "Failed to get config from URL")
     
     // Add connections from the config
@@ -17191,7 +17194,7 @@ go run ./tools/breakingchanges/cmd/main.go --ignore tools,wasp,havoc,seth # to i
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>69e20bc2</code></li>
+<li>Commit: <code>cd133448</code></li>
 </ul>
 
                     </main>
