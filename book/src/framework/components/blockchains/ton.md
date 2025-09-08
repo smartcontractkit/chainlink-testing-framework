@@ -28,6 +28,10 @@ The genesis container supports additional environment variables that can be conf
 The custom_env parameters will override the default genesis container environment variables, allowing you to customize blockchain configuration as needed.
 More info on parameters can be found here <https://github.com/neodix42/mylocalton-docker/wiki/Genesis-setup-parameters>.
 
+## Network Configuration
+
+The framework provides seamless access to the TON network configuration by embedding the config URL directly in the node URLs. The `ExternalHTTPUrl` and `InternalHTTPUrl` include the full path to `localhost.global.config.json`, which can be used directly with `liteclient.GetConfigFromUrl()` without additional URL formatting.
+
 ## Default Ports
 
 The TON implementation exposes essential services:
@@ -35,8 +39,7 @@ The TON implementation exposes essential services:
 * TON Simple HTTP Server: Port 8000
 * TON Lite Server: Port derived from base port + 100
 
-> Note: `tonutils-go` library is used for TON blockchain interactions, which requires a TON Lite Server connection. `tonutils-go` queries config file to determine the Lite Server connection details, which are provided by the MyLocalTon Docker environment.
-
+> Note: `tonutils-go` library is used for TON blockchain interactions, which requires a TON Lite Server connection. The framework embeds the config URL directly in the node URLs for convenient access to the global configuration file needed by `tonutils-go`.
 
 ## Usage
 
@@ -75,8 +78,9 @@ func TestTonSmoke(t *testing.T) {
     // Create a connection pool
     connectionPool := liteclient.NewConnectionPool()
     
-    // Get the network configuration from the global config URL
-    cfg, cferr := liteclient.GetConfigFromUrl(t.Context(), fmt.Sprintf("http://%s/localhost.global.config.json", bc.Nodes[0].ExternalHTTPUrl))
+    // Get the network configuration directly from the embedded config URL
+    // The ExternalHTTPUrl already includes the full path to localhost.global.config.json
+    cfg, cferr := liteclient.GetConfigFromUrl(t.Context(), bc.Nodes[0].ExternalHTTPUrl)
     require.NoError(t, cferr, "Failed to get config from URL")
     
     // Add connections from the config

@@ -16,11 +16,12 @@ import (
 
 const (
 	DefaultTonSimpleServerPort = "8000"
-	liteServerPortOffset       = 100 // internal, arbitrary offset for lite server port
 	// NOTE: Prefunded high-load wallet from MyLocalTon pre-funded wallet, that can send up to 254 messages per 1 external message
 	// https://docs.ton.org/v3/documentation/smart-contracts/contracts-specs/highload-wallet#highload-wallet-v2
 	DefaultTonHlWalletAddress  = "-1:5ee77ced0b7ae6ef88ab3f4350d8872c64667ffbe76073455215d3cdfab3294b"
 	DefaultTonHlWalletMnemonic = "twenty unfair stay entry during please water april fabric morning length lumber style tomorrow melody similar forum width ride render void rather custom coin"
+
+	liteServerPortOffset = 100 // internal, arbitrary offset for lite server port
 )
 
 type portMapping struct {
@@ -138,9 +139,9 @@ func newTon(in *Input) (*Output, error) {
 		ContainerName: name,
 		Container:     c,
 		Nodes: []*Node{{
-			// Note: define if we need more access other than the global config(tonutils-go only uses liteclients defined in the config)
-			ExternalHTTPUrl: fmt.Sprintf("%s:%s", "localhost", ports.SimpleServer),
-			InternalHTTPUrl: fmt.Sprintf("%s:%s", name, DefaultTonSimpleServerPort),
+			// URLs now include the full config path for direct use with liteclient.GetConfigFromUrl()
+			ExternalHTTPUrl: fmt.Sprintf("http://localhost:%s/localhost.global.config.json", ports.SimpleServer),
+			InternalHTTPUrl: fmt.Sprintf("http://%s:%s/localhost.global.config.json", name, DefaultTonSimpleServerPort),
 		}},
 	}, nil
 }
