@@ -2,10 +2,7 @@ package blockchain
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 
@@ -13,6 +10,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/network"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"github.com/xssnick/tonutils-go/liteclient"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
@@ -27,60 +25,13 @@ const (
 	liteServerPortOffset = 100 // internal, arbitrary offset for lite server port
 )
 
-// TON config structures (e.g.: ton-blockchain.github.io/testnet-global.config.json)
-type tonLiteServer struct {
-	IP   int64 `json:"ip"`
-	Port int   `json:"port"`
-	ID   struct {
-		Key  string `json:"key"`
-		Type string `json:"@type"`
-	} `json:"id"`
-}
-
-type tonConfig struct {
-	LiteServers []tonLiteServer `json:"liteservers"`
-}
-
-// convert int64 IP to string format (matches https://github.com/xssnick/tonutils-go/liteclient/connection.go/intToIP4)
-func intToIP4(ip int64) string {
-	uip := uint32(ip) //nolint:gosec // IP conversion is safe for TON format
-	return fmt.Sprintf("%d.%d.%d.%d",
-		(uip>>24)&0xFF,
-		(uip>>16)&0xFF,
-		(uip>>8)&0xFF,
-		uip&0xFF)
-}
-
-// fetch and parse TON config to generate liteserver URLs
-func fetchTonConfig(configURL string) ([]string, error) {
-	parsedURL, err := url.Parse(configURL)
-	if err != nil {
-		return nil, fmt.Errorf("invalid config URL: %w", err)
-	}
-	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
-		return nil, fmt.Errorf("invalid URL scheme: %s", parsedURL.Scheme)
-	}
-
-	resp, err := http.Get(configURL) //nolint:gosec // URL is validated above
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch config: %w", err)
-	}
-	defer resp.Body.Close()
-	defer resp.Body.Close()
-
-	var config tonConfig
-	if err := json.NewDecoder(resp.Body).Decode(&config); err != nil {
-		return nil, fmt.Errorf("failed to decode config: %w", err)
-	}
-
-	var liteServerURLs []string
-	for _, ls := range config.LiteServers {
-		ipStr := intToIP4(ls.IP)
-		url := fmt.Sprintf("liteserver://%s@%s:%d", ls.ID.Key, ipStr, ls.Port)
-		liteServerURLs = append(liteServerURLs, url)
-	}
-
-	return liteServerURLs, nil
+// intToIP4 converts int64 IP to string format (matches tonutils-go implementation)
+func intToIP4(ipInt int64) string {
+	b0 := strconv.FormatInt((ipInt>>24)&0xff, 10)
+	b1 := strconv.FormatInt((ipInt>>16)&0xff, 10)
+	b2 := strconv.FormatInt((ipInt>>8)&0xff, 10)
+	b3 := strconv.FormatInt((ipInt & 0xff), 10)
+	return b0 + "." + b1 + "." + b2 + "." + b3
 }
 
 type portMapping struct {
@@ -163,11 +114,11 @@ func newTon(in *Input) (*Output, error) {
 			"-t", "3", "-c", "last",
 		}).WithStartupTimeout(2 * time.Minute),
 		Mounts: testcontainers.ContainerMounts{
-			{
+			testcontainers.ContainerMount{
 				Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("shared-data-%s", networkName)},
 				Target: "/usr/share/data",
 			},
-			{
+			testcontainers.ContainerMount{
 				Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("ton-db-%s", networkName)},
 				Target: "/var/ton-work/db",
 			},
@@ -190,17 +141,27 @@ func newTon(in *Input) (*Output, error) {
 		return nil, err
 	}
 
-	// fetch config and generate liteserver URLs from actual config
+	// Fetch config using tonutils-go
 	configURL := fmt.Sprintf("http://localhost:%s/localhost.global.config.json", ports.SimpleServer)
 
-	liteServerURLs, err := fetchTonConfig(configURL)
+	config, err := liteclient.GetConfigFromUrl(ctx, configURL)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch TON config: %w", err)
 	}
 
-	if len(liteServerURLs) == 0 {
+	if len(config.Liteservers) == 0 {
 		return nil, fmt.Errorf("no liteservers found in config")
 	}
+
+	// Use the first liteserver to create URLs
+	ls := config.Liteservers[0]
+	ipStr := intToIP4(ls.IP)
+	publicKey := ls.ID.Key
+	port := ls.Port
+
+	// Create external and internal URLs
+	externalURL := fmt.Sprintf("liteserver://%s@%s:%d", publicKey, ipStr, port)
+	internalURL := fmt.Sprintf("liteserver://%s@%s:%d", publicKey, name, port)
 
 	return &Output{
 		UseCache:      true,
@@ -210,9 +171,9 @@ func newTon(in *Input) (*Output, error) {
 		ContainerName: name,
 		Container:     c,
 		Nodes: []*Node{{
-			// URLs now contain liteserver://publickey@host:port
-			ExternalHTTPUrl: liteServerURLs[0],
-			InternalHTTPUrl: liteServerURLs[0],
+			// URLs now contain liteserver://publickey@host:port connections
+			ExternalHTTPUrl: externalURL,
+			InternalHTTPUrl: internalURL,
 		}},
 	}, nil
 }
