@@ -1,8 +1,11 @@
 package examples
 
 import (
+	"context"
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/xssnick/tonutils-go/liteclient"
@@ -12,6 +15,45 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 )
+
+// getConnectionPoolFromLiteserverURL parses a liteserver:// URL and creates a connection pool
+func getConnectionPoolFromLiteserverURL(ctx context.Context, liteserverURL string) (*liteclient.ConnectionPool, error) {
+	// Parse the liteserver URL, expected format: liteserver://publickey@host:port
+	if !strings.HasPrefix(liteserverURL, "liteserver://") {
+		return nil, fmt.Errorf("invalid liteserver URL format: expected liteserver:// prefix")
+	}
+
+	// remove the liteserver:// prefix
+	urlPart := strings.TrimPrefix(liteserverURL, "liteserver://")
+
+	// split by @ to separate publickey and host:port
+	parts := strings.Split(urlPart, "@")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid liteserver URL format: expected publickey@host:port")
+	}
+
+	publicKey := parts[0]
+	hostPort := parts[1]
+
+	connectionPool := liteclient.NewConnectionPool()
+
+	// mirror the exact logic from AddConnectionsFromConfig
+	timeout := 3 * time.Second
+	if dl, ok := ctx.Deadline(); ok {
+		timeout = time.Until(dl)
+	}
+
+	// create personal context for the connection attempt
+	connCtx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	err := connectionPool.AddConnection(connCtx, hostPort, publicKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add liteserver connection: %w", err)
+	}
+
+	return connectionPool, nil
+}
 
 type CfgTon struct {
 	BlockchainA *blockchain.Input `toml:"blockchain_a" validate:"required"`
@@ -29,13 +71,14 @@ func TestTonSmoke(t *testing.T) {
 	var client ton.APIClientWrapped
 
 	t.Run("setup:connect", func(t *testing.T) {
-		connectionPool := liteclient.NewConnectionPool()
-		// ExternalHTTPUrl already includes the full config path for direct use
-		cfg, cferr := liteclient.GetConfigFromUrl(t.Context(), bc.Nodes[0].ExternalHTTPUrl)
+		// bc.Nodes[0].ExternalHTTPUrl now contains: "liteserver://publickey@host:port"
+		liteserverURL := bc.Nodes[0].ExternalHTTPUrl
 
-		require.NoError(t, cferr, "Failed to get config from URL")
-		caerr := connectionPool.AddConnectionsFromConfig(t.Context(), cfg)
-		require.NoError(t, caerr, "Failed to add connections from config")
+		// Create connection pool from liteserver URL
+		connectionPool, err := getConnectionPoolFromLiteserverURL(t.Context(), liteserverURL)
+		require.NoError(t, err, "Failed to create connection pool from liteserver URL")
+
+		// Create API client
 		client = ton.NewAPIClient(connectionPool).WithRetry()
 
 		t.Run("setup:faucet", func(t *testing.T) {

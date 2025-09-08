@@ -2,7 +2,10 @@ package blockchain
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 
@@ -23,6 +26,62 @@ const (
 
 	liteServerPortOffset = 100 // internal, arbitrary offset for lite server port
 )
+
+// TON config structures (e.g.: ton-blockchain.github.io/testnet-global.config.json)
+type tonLiteServer struct {
+	IP   int64 `json:"ip"`
+	Port int   `json:"port"`
+	ID   struct {
+		Key  string `json:"key"`
+		Type string `json:"@type"`
+	} `json:"id"`
+}
+
+type tonConfig struct {
+	LiteServers []tonLiteServer `json:"liteservers"`
+}
+
+// convert int64 IP to string format (matches https://github.com/xssnick/tonutils-go/liteclient/connection.go/intToIP4)
+func intToIP4(ip int64) string {
+	uip := uint32(ip) //nolint:gosec // IP conversion is safe for TON format
+	return fmt.Sprintf("%d.%d.%d.%d",
+		(uip>>24)&0xFF,
+		(uip>>16)&0xFF,
+		(uip>>8)&0xFF,
+		uip&0xFF)
+}
+
+// fetch and parse TON config to generate liteserver URLs
+func fetchTonConfig(configURL string) ([]string, error) {
+	parsedURL, err := url.Parse(configURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid config URL: %w", err)
+	}
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return nil, fmt.Errorf("invalid URL scheme: %s", parsedURL.Scheme)
+	}
+
+	resp, err := http.Get(configURL) //nolint:gosec // URL is validated above
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch config: %w", err)
+	}
+	defer resp.Body.Close()
+	defer resp.Body.Close()
+
+	var config tonConfig
+	if err := json.NewDecoder(resp.Body).Decode(&config); err != nil {
+		return nil, fmt.Errorf("failed to decode config: %w", err)
+	}
+
+	var liteServerURLs []string
+	for _, ls := range config.LiteServers {
+		ipStr := intToIP4(ls.IP)
+		url := fmt.Sprintf("liteserver://%s@%s:%d", ls.ID.Key, ipStr, ls.Port)
+		liteServerURLs = append(liteServerURLs, url)
+	}
+
+	return liteServerURLs, nil
+}
 
 type portMapping struct {
 	SimpleServer string
@@ -131,6 +190,18 @@ func newTon(in *Input) (*Output, error) {
 		return nil, err
 	}
 
+	// fetch config and generate liteserver URLs from actual config
+	configURL := fmt.Sprintf("http://localhost:%s/localhost.global.config.json", ports.SimpleServer)
+
+	liteServerURLs, err := fetchTonConfig(configURL)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(liteServerURLs) == 0 {
+		return nil, fmt.Errorf("no liteservers found in config")
+	}
+
 	return &Output{
 		UseCache:      true,
 		ChainID:       in.ChainID,
@@ -139,9 +210,9 @@ func newTon(in *Input) (*Output, error) {
 		ContainerName: name,
 		Container:     c,
 		Nodes: []*Node{{
-			// URLs now include the full config path for direct use with liteclient.GetConfigFromUrl()
-			ExternalHTTPUrl: fmt.Sprintf("http://localhost:%s/localhost.global.config.json", ports.SimpleServer),
-			InternalHTTPUrl: fmt.Sprintf("http://%s:%s/localhost.global.config.json", name, DefaultTonSimpleServerPort),
+			// URLs now contain liteserver://publickey@host:port
+			ExternalHTTPUrl: liteServerURLs[0],
+			InternalHTTPUrl: liteServerURLs[0],
 		}},
 	}, nil
 }
