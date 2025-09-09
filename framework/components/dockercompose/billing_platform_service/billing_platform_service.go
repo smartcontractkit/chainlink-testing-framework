@@ -61,8 +61,6 @@ func defaultBillingPlatformService(in *Input) *Input {
 }
 
 const (
-	DEFAULT_STACK_NAME = "billing-platform-service"
-
 	DEFAULT_BILLING_PLATFORM_SERVICE_BILLING_GRPC_PORT = "2222"
 	DEFAULT_BILLING_PLATFORM_SERVICE_CREDIT_GRPC_PORT  = "2223"
 	DEFAULT_POSTGRES_PORT                              = "5432"
@@ -70,6 +68,14 @@ const (
 	DEFAULT_POSTGRES_SERVICE_NAME                      = "postgres"
 )
 
+// New starts a Billing Platform Service stack using docker-compose. Various env vars are set to sensible defaults and
+// input values, but can be overridden by the host process env vars if needed.
+//
+// Import env vars that can be set to override defaults:
+//   - TEST_OWNERS = comma separated list of workflow owners
+//   - STREAMS_API_URL = URL for the Streams API; can use a mock server if needed
+//   - STREAMS_API_KEY = API key if using a staging or prod Streams API
+//   - STREAMS_API_SECRET = API secret if using a staging or prod Streams API
 func New(in *Input) (*Output, error) {
 	if in == nil {
 		return nil, errors.New("input is nil")
@@ -80,12 +86,12 @@ func New(in *Input) (*Output, error) {
 	}
 
 	in = defaultBillingPlatformService(in)
-	identifier := framework.DefaultTCName(DEFAULT_STACK_NAME)
+	identifier := framework.DefaultTCName(DEFAULT_BILLING_PLATFORM_SERVICE_SERVICE_NAME)
 	framework.L.Debug().Str("Compose file", in.ComposeFile).
 		Msgf("Starting Billing Platform Service stack with identifier %s",
-			framework.DefaultTCName(DEFAULT_STACK_NAME))
+			framework.DefaultTCName(DEFAULT_BILLING_PLATFORM_SERVICE_SERVICE_NAME))
 
-	cFilePath, fileErr := utils.ComposeFilePath(in.ComposeFile, DEFAULT_STACK_NAME)
+	cFilePath, fileErr := utils.ComposeFilePath(in.ComposeFile, DEFAULT_BILLING_PLATFORM_SERVICE_SERVICE_NAME)
 	if fileErr != nil {
 		return nil, errors.Wrap(fileErr, "failed to get compose file path")
 	}
@@ -105,6 +111,8 @@ func New(in *Input) (*Output, error) {
 	// set development defaults for necessary environment variables and allow them to be overridden by the host process
 	envVars := make(map[string]string)
 
+	envVars["BILLING_SERVICE_PORT"] = DEFAULT_BILLING_PLATFORM_SERVICE_BILLING_GRPC_PORT
+	envVars["CREDIT_RESERVATION_SERVICE_PORT"] = DEFAULT_BILLING_PLATFORM_SERVICE_CREDIT_GRPC_PORT
 	envVars["MAINNET_WORKFLOW_REGISTRY_CHAIN_SELECTOR"] = strconv.FormatUint(in.ChainSelector, 10)
 	envVars["MAINNET_WORKFLOW_REGISTRY_CONTRACT_ADDRESS"] = in.WorkflowRegistryAddress
 	envVars["MAINNET_WORKFLOW_REGISTRY_RPC_URL"] = in.RPCURL
@@ -151,8 +159,8 @@ func New(in *Input) (*Output, error) {
 	stack.WaitForService(DEFAULT_BILLING_PLATFORM_SERVICE_SERVICE_NAME,
 		wait.ForAll(
 			wait.ForLog("GRPC server is live").WithPollInterval(200*time.Millisecond),
-			wait.ForListeningPort(DEFAULT_BILLING_PLATFORM_SERVICE_BILLING_GRPC_PORT),
-			wait.ForListeningPort(DEFAULT_BILLING_PLATFORM_SERVICE_CREDIT_GRPC_PORT),
+			wait.ForListeningPort(nat.Port(envVars["BILLING_SERVICE_PORT"])),
+			wait.ForListeningPort(nat.Port(envVars["CREDIT_RESERVATION_SERVICE_PORT"])),
 		).WithDeadline(1*time.Minute),
 	)
 
@@ -215,7 +223,7 @@ func New(in *Input) (*Output, error) {
 	}
 
 	// get mapped ports for billing platform service
-	serviceOutput, err := getExternalPorts(ctx, billingExternalHost, billingContainer)
+	serviceOutput, err := getExternalPorts(ctx, billingExternalHost, envVars, billingContainer)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get mapped port for Billing Platform Service")
 	}
@@ -237,10 +245,10 @@ func New(in *Input) (*Output, error) {
 	return output, nil
 }
 
-func getExternalPorts(ctx context.Context, billingExternalHost string, billingContainer *testcontainers.DockerContainer) (*BillingPlatformServiceOutput, error) {
+func getExternalPorts(ctx context.Context, billingExternalHost string, envVars map[string]string, billingContainer *testcontainers.DockerContainer) (*BillingPlatformServiceOutput, error) {
 	ports := map[string]nat.Port{
-		"billing": DEFAULT_BILLING_PLATFORM_SERVICE_BILLING_GRPC_PORT,
-		"credit":  DEFAULT_BILLING_PLATFORM_SERVICE_CREDIT_GRPC_PORT,
+		"billing": nat.Port(envVars["BILLING_SERVICE_PORT"]),
+		"credit":  nat.Port(envVars["CREDIT_RESERVATION_SERVICE_PORT"]),
 	}
 
 	output := BillingPlatformServiceOutput{}
