@@ -1,34 +1,52 @@
 services:
+
   billing-platform-service:
-    restart: on-failure
-    tty: true
+    image: ${BILLING_PLATFORM_SERVICE_IMAGE:-billing-platform-service:local-cre}
     container_name: billing-platform-service
-    image: ${BILLING_PLATFORM_SERVICE_IMAGE:-}
-    command: ["grpc-service"]
     depends_on:
       postgres:
         condition: service_healthy
       migrations:
         condition: service_started
-    ports:
-      - "2112:2112"
-      - "2222:2222"
-      - "2223:2223"
-      - "2257:2257"
+    restart: on-failure
+    tty: true
+    command: ["grpc", "billing", "reserve"]
     environment:
+      DISABLE_AUTH: true
       PROMETHEUS_PORT: 2112
       BILLING_SERVER_PORT: 2222
       CREDIT_RESERVATION_SERVER_PORT: 2223
-      WORKFLOW_OWNERSHIP_PROOF_SERVER_PORT: 2257
       WORKFLOW_OWNERSHIP_PROOF_SERVER_HOST: 0.0.0.0
-      STREAMS_API_URL: ${STREAMS_API_URL}
-      STREAMS_API_KEY: ${STREAMS_API_KEY}
-      STREAMS_API_SECRET: ${STREAMS_API_SECRET}
+      MAINNET_WORKFLOW_REGISTRY_CHAIN_SELECTOR: ${MAINNET_WORKFLOW_REGISTRY_CHAIN_SELECTOR:-}
+      TESTNET_WORKFLOW_REGISTRY_CHAIN_SELECTOR: ${MAINNET_WORKFLOW_REGISTRY_CHAIN_SELECTOR:-}
+      MAINNET_WORKFLOW_REGISTRY_CONTRACT_ADDRESS: ${MAINNET_WORKFLOW_REGISTRY_CONTRACT_ADDRESS:-}
+      TESTNET_WORKFLOW_REGISTRY_CONTRACT_ADDRESS: ${MAINNET_WORKFLOW_REGISTRY_CONTRACT_ADDRESS:-}
+      MAINNET_WORKFLOW_REGISTRY_RPC_URL: ${MAINNET_WORKFLOW_REGISTRY_RPC_URL:-}
+      TESTNET_WORKFLOW_REGISTRY_RPC_URL: ${MAINNET_WORKFLOW_REGISTRY_RPC_URL:-}
+      MAINNET_WORKFLOW_REGISTRY_FINALITY_DEPTH: ${MAINNET_WORKFLOW_REGISTRY_FINALITY_DEPTH:-}
+      KMS_PROOF_SIGNING_KEY_ID: ${KMS_PROOF_SIGNING_KEY_ID:-}
+      VERIFIER_INITIAL_INTERVAL: ${VERIFIER_INITIAL_INTERVAL:-}
+      VERIFIER_MAXIMUM_INTERVAL: ${VERIFIER_MAXIMUM_INTERVAL:-}
+      LINKING_REQUEST_COOLDOWN: ${LINKING_REQUEST_COOLDOWN:-}
+      MAINNET_CAPABILITIES_REGISTRY_CHAIN_SELECTOR: ${MAINNET_CAPABILITIES_REGISTRY_CHAIN_SELECTOR:-}
+      TESTNET_CAPABILITIES_REGISTRY_CHAIN_SELECTOR: ${MAINNET_CAPABILITIES_REGISTRY_CHAIN_SELECTOR:-}
+      MAINNET_CAPABILITIES_REGISTRY_CONTRACT_ADDRESS: ${MAINNET_CAPABILITIES_REGISTRY_CONTRACT_ADDRESS:-}
+      MAINNET_CAPABILITIES_REGISTRY_RPC_URL: ${MAINNET_CAPABILITIES_REGISTRY_RPC_URL:-}
+      TESTNET_CAPABILITIES_REGISTRY_RPC_URL: ${MAINNET_CAPABILITIES_REGISTRY_RPC_URL:-}
+      MAINNET_CAPABILITIES_REGISTRY_FINALITY_DEPTH: ${MAINNET_CAPABILITIES_REGISTRY_FINALITY_DEPTH:-}
+      TEST_OWNERS: ${TEST_OWNERS:-}
+      STREAMS_API_URL: ${STREAMS_API_URL:-}
+      STREAMS_API_KEY: ${STREAMS_API_KEY:-}
+      STREAMS_API_SECRET: ${STREAMS_API_SECRET:-}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: billing_platform
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
+    ports:
+      - "2112:2112"
+      - "2222:2222"
+      - "2223:2223"
     healthcheck:
       test: ["CMD", "grpc_health_probe", "-addr=localhost:2222"]
       interval: 200ms
@@ -45,30 +63,31 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD","pg_isready","-U","${POSTGRES_USER}","-d","${POSTGRES_DB}","-h","${POSTGRES_HOST}"]
       interval: 5s
       timeout: 10s
       retries: 3
-    ports:
-      - "5432:5432"
 
   migrations:
-    image: ${BILLING_PLATFORM_SERVICE_MIGRATION_IMAGE:-}
+    image: ${BILLING_PLATFORM_SERVICE_IMAGE:-billing-platform-service:local-cre}
     container_name: db-migrations-billing-platform
-    restart: on-failure
-    environment:
-      DBMATE_NO_DUMP_SCHEMA: true
-      DBMATE_WAIT: true
-      DATABASE_URL: postgres://postgres:postgres@postgres:postgres/billing_platform
-    networks:
-      - backend
     depends_on:
       postgres:
         condition: service_healthy
-    entrypoint:
-      - dbmate
-      - up
-      - --
-      - --url=${DATABASE_URL}
-      - --migrations-dir=/db
+    restart: on-failure
+    command: ["db", "create-and-migrate", "--url", "${DEFAULT_DSN:-}"]
+
+  populate_test_data:
+    image: ${BILLING_PLATFORM_SERVICE_IMAGE:-billing-platform-service:local-cre}
+    container_name: populate-data-billing-platform
+    depends_on:
+      billing-platform-service:
+        condition: service_started
+    restart: on-failure
+    command: ["db", "populate-data", "--environment=local", "--billing-client-url=billing-platform-service:2222", "--simple-linking", "--dsn=${DEFAULT_DSN:-}"]
+    environment:
+      TEST_OWNERS: ${TEST_OWNERS:-}
+      MAINNET_CAPABILITIES_REGISTRY_CHAIN_SELECTOR: ${MAINNET_CAPABILITIES_REGISTRY_CHAIN_SELECTOR:-}
