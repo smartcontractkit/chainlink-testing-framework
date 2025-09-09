@@ -24,6 +24,9 @@ const (
 
 func baseRequest(in *Input, useWS ExposeWs) testcontainers.ContainerRequest {
 	containerName := framework.DefaultTCName("blockchain-node")
+	if in.ContainerName != "" {
+		containerName = in.ContainerName
+	}
 	bindPort := fmt.Sprintf("%s/tcp", in.Port)
 	exposedPorts := []string{bindPort}
 	if useWS {

@@ -34,10 +34,11 @@ const (
 // Input is a blockchain network configuration params
 type Input struct {
 	// Common EVM fields
-	Type      string `toml:"type" validate:"required,oneof=anvil geth besu solana aptos tron sui ton" envconfig:"net_type"`
-	Image     string `toml:"image"`
-	PullImage bool   `toml:"pull_image"`
-	Port      string `toml:"port"`
+	Type          string `toml:"type" validate:"required,oneof=anvil geth besu solana aptos tron sui ton" envconfig:"net_type"`
+	Image         string `toml:"image"`
+	PullImage     bool   `toml:"pull_image"`
+	Port          string `toml:"port"`
+	ContainerName string `toml:"container_name"`
 	// Not applicable to Solana, ws port for Solana is +1 of port
 	WSPort                   string   `toml:"port_ws"`
 	ChainID                  string   `toml:"chain_id"`
