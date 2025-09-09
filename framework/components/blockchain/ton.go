@@ -18,13 +18,15 @@ import (
 )
 
 const (
-	DefaultTonSimpleServerPort = "8000"
 	// NOTE: Prefunded high-load wallet from MyLocalTon pre-funded wallet, that can send up to 254 messages per 1 external message
 	// https://docs.ton.org/v3/documentation/smart-contracts/contracts-specs/highload-wallet#highload-wallet-v2
 	DefaultTonHlWalletAddress  = "-1:5ee77ced0b7ae6ef88ab3f4350d8872c64667ffbe76073455215d3cdfab3294b"
 	DefaultTonHlWalletMnemonic = "twenty unfair stay entry during please water april fabric morning length lumber style tomorrow melody similar forum width ride render void rather custom coin"
-
-	liteServerPortOffset = 100 // internal, arbitrary offset for lite server port
+	// internals
+	defaultTonHTTPServerPort   = "8000"
+	defaultLiteServerPort      = "40000"
+	defaultLiteServerPublicKey = "E7XwFSQzNkcRepUC23J2nRpASXpnsEKmyyHYV4u/FZY="
+	liteServerPortOffset       = 100 // arbitrary offset for lite server port
 )
 
 // TON config structures (e.g.: ton-blockchain.github.io/testnet-global.config.json)
@@ -84,11 +86,8 @@ func fetchTonConfig(configURL string) ([]string, error) {
 }
 
 type portMapping struct {
-	SimpleServer string
-	LiteServer   string
-	DHTServer    string
-	Console      string
-	ValidatorUDP string
+	HTTPServer string
+	LiteServer string
 }
 
 func defaultTon(in *Input) {
@@ -96,7 +95,7 @@ func defaultTon(in *Input) {
 		in.Image = "ghcr.io/neodix42/mylocalton-docker:latest"
 	}
 	if in.Port == "" {
-		in.Port = DefaultTonSimpleServerPort
+		in.Port = defaultTonHTTPServerPort
 	}
 }
 
@@ -109,8 +108,8 @@ func newTon(in *Input) (*Output, error) {
 	}
 
 	ports := &portMapping{
-		SimpleServer: in.Port,
-		LiteServer:   strconv.Itoa(base + liteServerPortOffset),
+		HTTPServer: in.Port,
+		LiteServer: strconv.Itoa(base + liteServerPortOffset),
 	}
 
 	ctx := context.Background()
@@ -125,12 +124,14 @@ func newTon(in *Input) (*Output, error) {
 	networkName := network.Name
 
 	baseEnv := map[string]string{
-		"GENESIS":                        "true",
-		"NAME":                           "genesis",
-		"LITE_PORT":                      ports.LiteServer,
-		"CUSTOM_PARAMETERS":              "--state-ttl 315360000 --archive-ttl 315360000",
+		"GENESIS": "true",
+		"NAME":    "genesis",
+
 		"EMBEDDED_FILE_HTTP_SERVER":      "true",
-		"EMBEDDED_FILE_HTTP_SERVER_PORT": in.Port,
+		"EMBEDDED_FILE_HTTP_SERVER_PORT": defaultTonHTTPServerPort,
+		"LITE_PORT":                      defaultLiteServerPort,
+
+		"CUSTOM_PARAMETERS": "--state-ttl 315360000 --archive-ttl 315360000",
 	}
 
 	// merge with additional environment variables from input
@@ -146,8 +147,8 @@ func newTon(in *Input) (*Output, error) {
 		AlwaysPullImage: in.PullImage,
 		Name:            framework.DefaultTCName("ton-genesis"),
 		ExposedPorts: []string{
-			fmt.Sprintf("%s:%s/tcp", ports.SimpleServer, DefaultTonSimpleServerPort),
-			fmt.Sprintf("%s:%s/tcp", ports.LiteServer, ports.LiteServer),
+			fmt.Sprintf("%s:%s/tcp", ports.HTTPServer, defaultTonHTTPServerPort),
+			fmt.Sprintf("%s:%s/tcp", ports.LiteServer, defaultLiteServerPort),
 			"40003/udp",
 			"40002/tcp",
 			"40001/udp",
@@ -158,8 +159,8 @@ func newTon(in *Input) (*Output, error) {
 		Env:            finalEnv,
 		WaitingFor: wait.ForExec([]string{
 			"/usr/local/bin/lite-client",
-			"-a", fmt.Sprintf("127.0.0.1:%s", ports.LiteServer),
-			"-b", "E7XwFSQzNkcRepUC23J2nRpASXpnsEKmyyHYV4u/FZY=",
+			"-a", fmt.Sprintf("127.0.0.1:%s", defaultLiteServerPort),
+			"-b", defaultLiteServerPublicKey,
 			"-t", "3", "-c", "last",
 		}).WithStartupTimeout(2 * time.Minute),
 		Mounts: testcontainers.ContainerMounts{
@@ -181,6 +182,11 @@ func newTon(in *Input) (*Output, error) {
 		ContainerRequest: req,
 		Started:          true,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	host, err := c.Host(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -211,8 +217,8 @@ func newTon(in *Input) (*Output, error) {
 		Container:     c,
 		Nodes: []*Node{{
 			// URLs now contain liteserver://publickey@host:port
-			ExternalHTTPUrl: liteServerURLs[0],
-			InternalHTTPUrl: liteServerURLs[0],
+			ExternalHTTPUrl: fmt.Sprintf("liteserver://%s@%s:%s", defaultLiteServerPublicKey, host, ports.LiteServer),
+			InternalHTTPUrl: fmt.Sprintf("liteserver://%s@%s:%s", defaultLiteServerPublicKey, name, ports.LiteServer),
 		}},
 	}, nil
 }
