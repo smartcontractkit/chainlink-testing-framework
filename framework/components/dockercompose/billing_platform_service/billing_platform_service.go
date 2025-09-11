@@ -111,8 +111,6 @@ func New(in *Input) (*Output, error) {
 	// set development defaults for necessary environment variables and allow them to be overridden by the host process
 	envVars := make(map[string]string)
 
-	envVars["BILLING_SERVER_PORT"] = DEFAULT_BILLING_PLATFORM_SERVICE_BILLING_GRPC_PORT
-	envVars["CREDIT_RESERVATION_SERVER_PORT"] = DEFAULT_BILLING_PLATFORM_SERVICE_CREDIT_GRPC_PORT
 	envVars["MAINNET_WORKFLOW_REGISTRY_CHAIN_SELECTOR"] = strconv.FormatUint(in.ChainSelector, 10)
 	envVars["MAINNET_WORKFLOW_REGISTRY_CONTRACT_ADDRESS"] = in.WorkflowRegistryAddress
 	envVars["MAINNET_WORKFLOW_REGISTRY_RPC_URL"] = in.RPCURL
@@ -159,8 +157,8 @@ func New(in *Input) (*Output, error) {
 	stack.WaitForService(DEFAULT_BILLING_PLATFORM_SERVICE_SERVICE_NAME,
 		wait.ForAll(
 			wait.ForLog("GRPC server is live").WithPollInterval(200*time.Millisecond),
-			wait.ForListeningPort(nat.Port(envVars["BILLING_SERVER_PORT"])),
-			wait.ForListeningPort(nat.Port(envVars["CREDIT_RESERVATION_SERVER_PORT"])),
+			wait.ForListeningPort(nat.Port(DEFAULT_BILLING_PLATFORM_SERVICE_BILLING_GRPC_PORT)),
+			wait.ForListeningPort(nat.Port(DEFAULT_BILLING_PLATFORM_SERVICE_CREDIT_GRPC_PORT)),
 		).WithDeadline(1*time.Minute),
 	)
 
@@ -247,8 +245,8 @@ func New(in *Input) (*Output, error) {
 
 func getExternalPorts(ctx context.Context, billingExternalHost string, envVars map[string]string, billingContainer *testcontainers.DockerContainer) (*BillingPlatformServiceOutput, error) {
 	ports := map[string]nat.Port{
-		"billing": nat.Port(envVars["BILLING_SERVER_PORT"]),
-		"credit":  nat.Port(envVars["CREDIT_RESERVATION_SERVER_PORT"]),
+		"billing": DEFAULT_BILLING_PLATFORM_SERVICE_BILLING_GRPC_PORT,
+		"credit":  DEFAULT_BILLING_PLATFORM_SERVICE_CREDIT_GRPC_PORT,
 	}
 
 	output := BillingPlatformServiceOutput{}
