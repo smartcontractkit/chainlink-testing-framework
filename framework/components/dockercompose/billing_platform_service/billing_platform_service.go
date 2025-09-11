@@ -221,7 +221,7 @@ func New(in *Input) (*Output, error) {
 	}
 
 	// get mapped ports for billing platform service
-	serviceOutput, err := getExternalPorts(ctx, billingExternalHost, envVars, billingContainer)
+	serviceOutput, err := getExternalPorts(ctx, billingExternalHost, billingContainer)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get mapped port for Billing Platform Service")
 	}
@@ -243,7 +243,7 @@ func New(in *Input) (*Output, error) {
 	return output, nil
 }
 
-func getExternalPorts(ctx context.Context, billingExternalHost string, envVars map[string]string, billingContainer *testcontainers.DockerContainer) (*BillingPlatformServiceOutput, error) {
+func getExternalPorts(ctx context.Context, billingExternalHost string, billingContainer *testcontainers.DockerContainer) (*BillingPlatformServiceOutput, error) {
 	ports := map[string]nat.Port{
 		"billing": DEFAULT_BILLING_PLATFORM_SERVICE_BILLING_GRPC_PORT,
 		"credit":  DEFAULT_BILLING_PLATFORM_SERVICE_CREDIT_GRPC_PORT,
