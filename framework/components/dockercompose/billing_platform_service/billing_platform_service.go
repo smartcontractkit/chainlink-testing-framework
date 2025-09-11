@@ -159,8 +159,8 @@ func New(in *Input) (*Output, error) {
 	stack.WaitForService(DEFAULT_BILLING_PLATFORM_SERVICE_SERVICE_NAME,
 		wait.ForAll(
 			wait.ForLog("GRPC server is live").WithPollInterval(200*time.Millisecond),
-			wait.ForListeningPort(nat.Port(envVars["BILLING_SERVICE_PORT"])),
-			wait.ForListeningPort(nat.Port(envVars["CREDIT_RESERVATION_SERVICE_PORT"])),
+			wait.ForListeningPort(nat.Port(envVars["BILLING_SERVER_PORT"])),
+			wait.ForListeningPort(nat.Port(envVars["CREDIT_RESERVATION_SERVER_PORT"])),
 		).WithDeadline(1*time.Minute),
 	)
 
