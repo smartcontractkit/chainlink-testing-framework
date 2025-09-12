@@ -443,6 +443,7 @@ func (g *Generator) runVU(vu VirtualUser) {
 			}()
 			select {
 			case <-g.ResponsesCtx.Done():
+				g.runTeardownWithTimeout(vu)
 				cancel()
 				return
 			case <-vu.StopChan():

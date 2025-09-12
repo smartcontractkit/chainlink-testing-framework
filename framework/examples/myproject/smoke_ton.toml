@@ -1,7 +1,6 @@
 [blockchain_a]
   type = "ton"
-  image = "ghcr.io/neodix42/mylocalton-docker:dev"
-  port = "8000"
+  image = "ghcr.io/neodix42/mylocalton-docker:v3.7"
+  port = "9000"
   
   [blockchain_a.custom_env]
-  VERSION_CAPABILITIES = "11"

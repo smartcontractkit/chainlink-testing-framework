@@ -28,15 +28,20 @@ The genesis container supports additional environment variables that can be conf
 The custom_env parameters will override the default genesis container environment variables, allowing you to customize blockchain configuration as needed.
 More info on parameters can be found here <https://github.com/neodix42/mylocalton-docker/wiki/Genesis-setup-parameters>.
 
+## Network Configuration
+
+The framework provides direct access to TON liteserver connections through pre-formatted liteserver URLs. The `ExternalHTTPUrl` and `InternalHTTPUrl` contain ready-to-use liteserver connection strings in the format `liteserver://publickey@host:port`, eliminating the need to fetch and parse separate configuration files.
+
 ## Default Ports
 
-The TON implementation exposes essential services:
+The TON implementation exposes essential services through port mapping:
 
-* TON Simple HTTP Server: Port 8000
-* TON Lite Server: Port derived from base port + 100
+* **TON Simple HTTP Server**: External dynamic port → Internal port 8000
+* **TON Lite Server**: External dynamic port → Internal dynamic port (base + 100 offset)
 
-> Note: `tonutils-go` library is used for TON blockchain interactions, which requires a TON Lite Server connection. `tonutils-go` queries config file to determine the Lite Server connection details, which are provided by the MyLocalTon Docker environment.
+The framework automatically handles port mapping and provides ready-to-use liteserver connection URLs.
 
+> Note: `tonutils-go` library is used for TON blockchain interactions, which requires a TON Lite Server connection. The framework provides direct liteserver:// URLs that can be used immediately without additional configuration parsing.
 
 ## Usage
 
@@ -44,6 +49,8 @@ The TON implementation exposes essential services:
 package examples
 
 import (
+  "context"
+  "fmt"
   "strings"
   "testing"
 
@@ -60,6 +67,34 @@ type CfgTon struct {
   BlockchainA *blockchain.Input `toml:"blockchain_a" validate:"required"`
 }
 
+// getConnectionPoolFromLiteserverURL parses a liteserver:// URL and creates a connection pool
+func getConnectionPoolFromLiteserverURL(ctx context.Context, liteserverURL string) (*liteclient.ConnectionPool, error) {
+  // Parse the liteserver URL, expected format: liteserver://publickey@host:port
+  if !strings.HasPrefix(liteserverURL, "liteserver://") {
+    return nil, fmt.Errorf("invalid liteserver URL format: expected liteserver:// prefix")
+  }
+
+  // Remove the liteserver:// prefix
+  urlPart := strings.TrimPrefix(liteserverURL, "liteserver://")
+
+  // Split by @ to separate publickey and host:port
+  parts := strings.Split(urlPart, "@")
+  if len(parts) != 2 {
+    return nil, fmt.Errorf("invalid liteserver URL format: expected publickey@host:port")
+  }
+
+  publicKey := parts[0]
+  hostPort := parts[1]
+
+  connectionPool := liteclient.NewConnectionPool()
+  err := connectionPool.AddConnection(ctx, hostPort, publicKey)
+  if err != nil {
+    return nil, fmt.Errorf("failed to add liteserver connection: %w", err)
+  }
+
+  return connectionPool, nil
+}
+
 func TestTonSmoke(t *testing.T) {
   in, err := framework.Load[CfgTon](t)
   require.NoError(t, err)
@@ -72,18 +107,14 @@ func TestTonSmoke(t *testing.T) {
   var client ton.APIClientWrapped
 
   t.Run("setup:connect", func(t *testing.T) {
-    // Create a connection pool
-    connectionPool := liteclient.NewConnectionPool()
-    
-    // Get the network configuration from the global config URL
-    cfg, cferr := liteclient.GetConfigFromUrl(t.Context(), fmt.Sprintf("http://%s/localhost.global.config.json", bc.Nodes[0].ExternalHTTPUrl))
-    require.NoError(t, cferr, "Failed to get config from URL")
-    
-    // Add connections from the config
-    caerr := connectionPool.AddConnectionsFromConfig(t.Context(), cfg)
-    require.NoError(t, caerr, "Failed to add connections from config")
-    
-    // Create an API client with retry functionality
+    // bc.Nodes[0].ExternalHTTPUrl now contains: "liteserver://publickey@host:port"
+    liteserverURL := bc.Nodes[0].ExternalHTTPUrl
+
+    // Create connection pool from liteserver URL
+    connectionPool, err := getConnectionPoolFromLiteserverURL(t.Context(), liteserverURL)
+    require.NoError(t, err, "Failed to create connection pool from liteserver URL")
+
+    // Create API client
     client = ton.NewAPIClient(connectionPool).WithRetry()
 
     t.Run("setup:faucet", func(t *testing.T) {
