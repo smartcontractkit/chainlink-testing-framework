@@ -2,8 +2,6 @@ module github.com/smartcontractkit/chainlink-testing-framework/framework
 
 go 1.24.2
 
-replace github.com/smartcontractkit/chainlink-testing-framework/seth => ../seth
-
 require (
 	dario.cat/mergo v1.0.1
 	github.com/avast/retry-go/v4 v4.6.1
