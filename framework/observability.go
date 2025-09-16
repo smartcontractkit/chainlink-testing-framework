@@ -84,6 +84,17 @@ func BlockScoutUp(url string) error {
 		return err
 	}
 	os.Setenv("BLOCKSCOUT_RPC_URL", url)
+	// old migrations for v15 is still applied somehow, cleaning up DB helps
+	if err := RunCommand("bash", "-c", fmt.Sprintf(`
+		cd %s && \
+		rm -rf blockscout-db-data && \
+		rm -rf logs && \
+		rm -rf redis-data && \
+		rm -rf stats-db-data && \
+		rm -rf dets
+	`, filepath.Join("blockscout", "services"))); err != nil {
+		return err
+	}
 	err := RunCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
 		docker compose up -d
@@ -111,7 +122,8 @@ func BlockScoutDown(url string) error {
 		rm -rf blockscout-db-data && \
 		rm -rf logs && \
 		rm -rf redis-data && \
-		rm -rf stats-db-data
+		rm -rf stats-db-data && \
+		rm -rf dets
 	`, filepath.Join("blockscout", "services")))
 }
 
