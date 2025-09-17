@@ -180,5 +180,5 @@ func ObservabilityDown() error {
 	if err != nil {
 		return err
 	}
-	return nil
+	return RunCommand("bash", "-c", "rm -rf compose/")
 }
