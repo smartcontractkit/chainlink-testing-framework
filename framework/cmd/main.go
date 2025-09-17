@@ -147,7 +147,10 @@ func main() {
 						Aliases:     []string{"u"},
 						Description: "Spins up Blockscout stack",
 						Action: func(c *cli.Context) error {
-							return framework.BlockScoutUp(c.String("rpc"))
+							return framework.BlockScoutUp(
+								c.String("rpc"),
+								c.String("chain-id"),
+							)
 						},
 					},
 					{
@@ -169,7 +172,10 @@ func main() {
 							if err := framework.BlockScoutDown(rpc); err != nil {
 								return err
 							}
-							return framework.BlockScoutUp(rpc)
+							return framework.BlockScoutUp(
+								c.String("rpc"),
+								c.String("chain-id"),
+							)
 						},
 					},
 				},

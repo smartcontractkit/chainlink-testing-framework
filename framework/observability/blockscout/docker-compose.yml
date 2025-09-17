@@ -17,6 +17,13 @@ services:
       file: ./services/db.yml
       service: db
 
+  sc-verifier:
+    extends:
+      file: ./services/smart-contract-verifier.yml
+      service: smart-contract-verifier
+    ports:
+      - 8082:8050
+
   backend:
     depends_on:
       - db
@@ -32,10 +39,12 @@ services:
     links:
       - db:database
     environment:
-        ETHEREUM_JSONRPC_HTTP_URL: http://host.docker.internal:8545/
-        ETHEREUM_JSONRPC_TRACE_URL: http://host.docker.internal:8545/
-        ETHEREUM_JSONRPC_WS_URL: ws://host.docker.internal:8545/
-        CHAIN_ID: '1337'
+      ETHEREUM_JSONRPC_HTTP_URL: ${BLOCKSCOUT_RPC_URL:-http://host.docker.internal:8555}
+      ETHEREUM_JSONRPC_TRACE_URL: ${BLOCKSCOUT_RPC_URL:-http://host.docker.internal:8555}
+      MICROSERVICE_SC_VERIFIER_ENABLED: true
+      MICROSERVICE_SC_VERIFIER_URL: http://smart-contract-verifier:8050/
+      MICROSERVICE_SC_VERIFIER_TYPE: sc_verifier
+      CHAIN_ID: ${BLOCKSCOUT_CHAIN_ID:-1337}
 
   nft_media_handler:
     depends_on:
@@ -103,3 +112,4 @@ services:
     extends:
       file: ./services/nginx.yml
       service: proxy
+

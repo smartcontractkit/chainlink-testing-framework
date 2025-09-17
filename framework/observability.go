@@ -78,12 +78,13 @@ func extractAllFiles(embeddedDir string) error {
 	return err
 }
 
-func BlockScoutUp(url string) error {
+func BlockScoutUp(url, chainID string) error {
 	L.Info().Msg("Creating local Blockscout stack")
 	if err := extractAllFiles("observability"); err != nil {
 		return err
 	}
 	os.Setenv("BLOCKSCOUT_RPC_URL", url)
+	os.Setenv("BLOCKSCOUT_CHAID_ID", chainID)
 	// old migrations for v15 is still applied somehow, cleaning up DB helps
 	if err := RunCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
@@ -117,14 +118,7 @@ func BlockScoutDown(url string) error {
 	if err != nil {
 		return err
 	}
-	return RunCommand("bash", "-c", fmt.Sprintf(`
-		cd %s && \
-		rm -rf blockscout-db-data && \
-		rm -rf logs && \
-		rm -rf redis-data && \
-		rm -rf stats-db-data && \
-		rm -rf dets
-	`, filepath.Join("blockscout", "services")))
+	return RunCommand("bash", "-c", "rm -rf blockscout/")
 }
 
 func ObservabilityUp() error {
