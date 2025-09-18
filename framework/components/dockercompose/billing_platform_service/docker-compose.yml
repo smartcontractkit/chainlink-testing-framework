@@ -47,6 +47,8 @@ services:
       - "2112:2112"
       - "2222:2222"
       - "2223:2223"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "grpc_health_probe", "-addr=localhost:2222"]
       interval: 200ms
