@@ -57,12 +57,26 @@ func defaultTron(in *Input) {
 
 func newTron(in *Input) (*Output, error) {
 	defaultTron(in)
+	framework.L.Info().
+		Str("image", in.Image).
+		Str("type", in.Type).
+		Str("port", in.Port).
+		Bool("pull_image", in.PullImage).
+		Msg("Starting TRON blockchain node setup")
+
 	ctx := context.Background()
 
 	containerName := framework.DefaultTCName("blockchain-node")
 	// Tron container always listens on port 9090 internally
 	containerPort := fmt.Sprintf("%s/tcp", DefaultTronPort)
 
+	framework.L.Info().
+		Str("container_name", containerName).
+		Str("container_port", containerPort).
+		Str("host_port", in.Port).
+		Msg("TRON container configuration prepared")
+
+	framework.L.Info().Msg("Creating temporary accounts.json file for TRON")
 	accounts, err := os.CreateTemp("", "accounts.json")
 	if err != nil {
 		return nil, err
@@ -76,6 +90,10 @@ func newTron(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
+	framework.L.Info().
+		Str("accounts_file", accounts.Name()).
+		Int("private_keys_count", len(TRONAccounts.PrivateKeys)).
+		Msg("TRON accounts file created successfully")
 
 	req := testcontainers.ContainerRequest{
 		AlwaysPullImage: in.PullImage,
@@ -109,6 +127,11 @@ func newTron(in *Input) (*Output, error) {
 		},
 	}
 
+	framework.L.Info().
+		Str("image", in.Image).
+		Str("network", framework.DefaultNetworkName).
+		Msg("Starting TRON container")
+
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
@@ -121,6 +144,12 @@ func newTron(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	framework.L.Info().
+		Str("host", host).
+		Str("external_url", fmt.Sprintf("http://%s:%s", host, in.Port)).
+		Str("internal_url", fmt.Sprintf("http://%s:%s", containerName, DefaultTronPort)).
+		Msg("TRON container started successfully")
 
 	return &Output{
 		UseCache:      true,
