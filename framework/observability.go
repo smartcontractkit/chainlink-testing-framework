@@ -173,12 +173,10 @@ func ObservabilityUpFull() error {
 
 func ObservabilityDown() error {
 	L.Info().Msg("Removing local observability stack")
-	err := RunCommand("bash", "-c", fmt.Sprintf(`
+	_ = RunCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
 		docker compose down -v && docker rm -f promtail
 	`, "compose"))
-	if err != nil {
-		return err
-	}
-	return RunCommand("bash", "-c", "rm -rf compose/")
+	_ = RunCommand("bash", "-c", "rm -rf compose/")
+	return nil
 }

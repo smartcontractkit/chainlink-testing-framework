@@ -15,12 +15,15 @@ exporters:
     endpoint: "http://loki:3100/otlp"
     tls:
       insecure: true
-  otlp:
-    endpoint: "http://tempo:4317"
+  otlp/traces:
+    endpoint: "tempo:4317"
     tls:
       insecure: true
   prometheus:
     endpoint: "0.0.0.0:8889"
+    resource_to_telemetry_conversion:
+      enabled: true
+    add_metric_suffixes: false
 
 processors:
   transform:
@@ -33,7 +36,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      exporters: [debug, otlp]
+      exporters: [debug, otlp/traces]
     logs:
       receivers: [otlp]
       processors: [transform]
