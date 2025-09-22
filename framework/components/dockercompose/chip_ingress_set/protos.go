@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -145,7 +147,7 @@ func RegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSch
 			delete(subjects, path)
 		}
 
-		registerErr := registerAllWithTopologicalSorting(schemaRegistryURL, protoMap, subjects, protoSchemaSet.Folders)
+		registerErr := registerAllWithTopologicalSorting(schemaRegistryURL, protoMap, subjects)
 		if registerErr != nil {
 			return errors.Wrapf(registerErr, "failed to register protos from %s", protoSchemaSet.URI)
 		}
@@ -473,7 +475,6 @@ func registerAllWithTopologicalSorting(
 	schemaRegistryURL string,
 	protoMap map[string]string, // path -> proto source
 	subjectMap map[string]string, // path -> subject
-	folders []string, // folders configuration used to determine import prefix transformations
 ) error {
 	framework.L.Info().Msgf("Registering %d protobuf schemas", len(protoMap))
 
@@ -571,7 +572,7 @@ func checkSchemaExists(registryURL, subject string) (int, bool) {
 	}, retry.Attempts(10), retry.Delay(100*time.Millisecond), retry.DelayType(retry.BackOffDelay), retry.OnRetry(func(n uint, err error) {
 		framework.L.Debug().Str("attempt/max", fmt.Sprintf("%d/%d", n, maxAttempts)).Msgf("Retrying to check schema existence for %s: %v", subject, err)
 	}), retry.RetryIf(func(err error) bool {
-		return strings.Contains(err.Error(), "connection reset by peer")
+		return isRetryableError(err)
 	}))
 
 	if existErr != nil {
@@ -613,13 +614,31 @@ func registerSingleProto(
 		return 0, errors.Wrap(payloadErr, "failed to marshal payload")
 	}
 
-	url := fmt.Sprintf("%s/subjects/%s/versions", registryURL, subject)
+	parsedURL, urlErr := url.Parse(fmt.Sprintf("%s/subjects/%s/versions", registryURL, subject))
+	if urlErr != nil {
+		return 0, errors.Wrap(urlErr, "failed to parse schema registry URL")
+	}
+
 	maxAttempts := uint(10)
+	client := http.Client{Transport: &http.Transport{
+		DisableKeepAlives: true,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			// prefer ipv4 to avoid issues with some local setups
+			return (&net.Dialer{Timeout: 10 * time.Second}).DialContext(ctx, "tcp4", addr)
+		},
+	}}
 
 	var resp *http.Response
 	registerErr := retry.Do(func() error {
 		var respErr error
-		resp, respErr = http.Post(url, "application/vnd.schemaregistry.v1+json", bytes.NewReader(payload))
+		resp, respErr = client.Do(&http.Request{
+			Method: "POST",
+			URL:    parsedURL,
+			Header: map[string][]string{
+				"Content-Type": {"application/vnd.schemaregistry.v1+json"},
+			},
+			Body: io.NopCloser(bytes.NewReader(payload)),
+		})
 		if respErr != nil {
 			return errors.Wrap(respErr, "failed to post to schema registry")
 		}
@@ -638,7 +657,7 @@ func registerSingleProto(
 	}), retry.RetryIf(func(err error) bool {
 		// we don't want to retry all errors, because some of them are are expected (e.g. missing dependencies)
 		// and will be handled by higher-level code
-		return strings.Contains(err.Error(), "connection reset by peer")
+		return isRetryableError(err)
 	}))
 	if registerErr != nil {
 		return 0, errors.Wrapf(registerErr, "failed to register schema for subject %s", subject)
@@ -778,4 +797,22 @@ func topologicalSort(dependencies map[string][]string) ([]string, error) {
 	}
 
 	return result, nil
+}
+
+func isRetryableError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	retryableErrorMessages := []string{
+		"connection reset by peer",
+		"EOF",
+	}
+
+	for _, msg := range retryableErrorMessages {
+		if strings.Contains(err.Error(), msg) {
+			return true
+		}
+	}
+	return false
 }

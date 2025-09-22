@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -124,10 +126,7 @@ func New(in *Input) (*Output, error) {
 	).WaitForService(DEFAULT_RED_PANDA_SERVICE_NAME,
 		wait.ForAll(
 			wait.ForListeningPort(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT).WithPollInterval(100*time.Millisecond),
-			wait.ForListeningPort(DEFAULT_RED_PANDA_KAFKA_PORT).WithPollInterval(100*time.Millisecond),
 			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT).WithPollInterval(100*time.Millisecond),
-			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_KAFKA_PORT).WithPollInterval(100*time.Millisecond),
-			wait.ForHTTP("/v1/status/ready").WithPort("9644"), // admin API port
 			wait.ForHTTP("/status/ready").WithPort(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT).WithPollInterval(100*time.Millisecond),
 		).WithDeadline(2*time.Minute),
 	).WaitForService(DEFAULT_RED_PANDA_CONSOLE_SERVICE_NAME,
@@ -221,7 +220,7 @@ func New(in *Input) (*Output, error) {
 	in.UseCache = true
 	framework.L.Info().Msg("Chip Ingress stack started")
 
-	return output, nil
+	return output, checkSchemaRegistryReadiness(2*time.Minute, 300*time.Millisecond, output.RedPanda.SchemaRegistryExternalURL, 3)
 }
 
 func composeFilePath(rawFilePath string) (string, error) {
@@ -279,6 +278,89 @@ func connectNetwork(connCtx context.Context, timeout time.Duration, dockerClient
 			}
 			framework.L.Trace().Msgf("connected to %s network", networkName)
 			return nil
+		}
+	}
+}
+
+// checkSchemaRegistryReadiness verifies that the Schema Registry answers 2xx on GET /subjects
+// for minSuccessCount *consecutive* attempts, polling every `interval`, with an overall `timeout`.
+func checkSchemaRegistryReadiness(timeout, interval time.Duration, registryURL string, minSuccessCount int) error {
+	if minSuccessCount < 1 {
+		minSuccessCount = 1
+	}
+	u, uErr := url.Parse(registryURL)
+	if uErr != nil {
+		return fmt.Errorf("parse registry URL: %w", uErr)
+	}
+	var pErr error
+	u.Path, pErr = url.JoinPath(u.Path, "/subjects") // keeps existing base path, adds /subjects
+	if pErr != nil {
+		return fmt.Errorf("join /subjects path: %w", pErr)
+	}
+
+	// Fresh connection per request; prefer IPv4 to avoid ::1 races.
+	tr := &http.Transport{
+		DisableKeepAlives: true,
+		DialContext: func(ctx context.Context, _, addr string) (net.Conn, error) {
+			d := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
+			return d.DialContext(ctx, "tcp4", addr)
+		},
+		ForceAttemptHTTP2: false, // optional; stick to HTTP/1.1 for simplicity
+	}
+	client := &http.Client{
+		Transport: tr,
+		Timeout:   10 * time.Second, // per-request timeout
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	t := time.NewTicker(interval)
+	defer t.Stop()
+
+	consecutive := 0
+	var lastErr error
+
+	for {
+		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+		// small belt-and-suspenders to ensure no reuse even if transport changes
+		req.Close = true
+
+		resp, err := client.Do(req)
+		if err == nil {
+			// Always drain & close.
+			io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+		}
+
+		if err == nil && resp.StatusCode/100 == 2 {
+			framework.L.Debug().Msgf("schema registry ready check succeeded with status %d (%d/%d)", resp.StatusCode, consecutive+1, minSuccessCount)
+			consecutive++
+			if consecutive >= minSuccessCount {
+				framework.L.Debug().Msg("schema registry is ready")
+				return nil
+			}
+		} else {
+			consecutive = 0
+			if err != nil {
+				framework.L.Debug().Msgf("schema registry ready check failed with error %v (need %d/%d consecutive successes)", err, consecutive, minSuccessCount)
+				lastErr = fmt.Errorf("GET /subjects failed: %w", err)
+			} else {
+				framework.L.Debug().Msgf("schema registry ready check failed with error %v and status code %d (need %d/%d consecutive successes)", err, resp.StatusCode, consecutive, minSuccessCount)
+				lastErr = fmt.Errorf("GET /subjects status %d", resp.StatusCode)
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			if lastErr == nil {
+				lastErr = ctx.Err()
+			}
+			return fmt.Errorf("schema registry not ready after %s; needed %d consecutive successes (got %d): %w",
+				timeout, minSuccessCount, consecutive, lastErr)
+		case <-t.C:
+			framework.L.Debug().Msg("schema registry not ready yet, retrying...")
+			// poll again
 		}
 	}
 }
