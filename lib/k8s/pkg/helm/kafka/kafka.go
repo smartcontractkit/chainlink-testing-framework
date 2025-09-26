@@ -1,6 +1,9 @@
 package kafka
 
 import (
+	"fmt"
+	os "os"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/k8s/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/k8s/environment"
 )
@@ -121,11 +124,15 @@ func New(props map[string]interface{}) environment.ConnectedChart {
 
 // NewVersioned enables choosing a specific helm chart version
 func NewVersioned(helmVersion string, props map[string]interface{}) environment.ConnectedChart {
+	reg := os.Getenv("BITNAMI_PRIVATE_REGISTRY")
+	if reg == "" {
+		panic("BITNAMI_PRIVATE_REGISTRY not set, it is required for Helm charts")
+	}
 	dp := defaultProps()
 	config.MustMerge(&dp, props)
 	return Chart{
 		Name:    "kafka",
-		Path:    "bitnami/kafka",
+		Path:    fmt.Sprintf("%s/charts/debian-12/kafka", reg),
 		Values:  &dp,
 		Version: helmVersion,
 	}
