@@ -1,6 +1,9 @@
 package kafka
 
 import (
+	"fmt"
+	os "os"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/k8s/config"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/k8s/environment"
 )
@@ -50,14 +53,22 @@ func (m Chart) ExportData(e *environment.Environment) error {
 	return nil
 }
 
-func defaultProps() map[string]interface{} {
+func defaultProps(reg string) map[string]interface{} {
 	return map[string]interface{}{
+		"global": map[string]interface{}{
+			"security": map[string]interface{}{
+				"allowInsecureImages": true,
+			},
+		},
+		"image": map[string]interface{}{
+			"registry":   reg,
+			"repository": "containers/debian-12",
+			"tag":        "4.1.0",
+			"debug":      true,
+		},
 		"auth": map[string]interface{}{
 			"clientProtocol":      "plaintext",
 			"interBrokerProtocol": "plaintext",
-		},
-		"image": map[string]interface{}{
-			"debug": true,
 		},
 		"provisioning": map[string]interface{}{
 			"enabled": true,
@@ -121,11 +132,15 @@ func New(props map[string]interface{}) environment.ConnectedChart {
 
 // NewVersioned enables choosing a specific helm chart version
 func NewVersioned(helmVersion string, props map[string]interface{}) environment.ConnectedChart {
-	dp := defaultProps()
+	reg := os.Getenv("BITNAMI_PRIVATE_REGISTRY")
+	if reg == "" {
+		panic("BITNAMI_PRIVATE_REGISTRY not set, it is required for Helm charts")
+	}
+	dp := defaultProps(reg)
 	config.MustMerge(&dp, props)
 	return Chart{
 		Name:    "kafka",
-		Path:    "bitnami/kafka",
+		Path:    fmt.Sprintf("%s/charts/debian-12/kafka:32.4.6", reg),
 		Values:  &dp,
 		Version: helmVersion,
 	}
