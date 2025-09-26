@@ -53,13 +53,20 @@ func (m Chart) ExportData(e *environment.Environment) error {
 	return nil
 }
 
-func defaultProps() map[string]interface{} {
+func defaultProps(reg string) map[string]interface{} {
 	return map[string]interface{}{
-		"auth": map[string]interface{}{
-			"enabled": "false",
+		"global": map[string]interface{}{
+			"security": map[string]interface{}{
+				"allowInsecureImages": true,
+			},
 		},
 		"image": map[string]interface{}{
-			"tag": "1.7.10",
+			"registry":   reg,
+			"repository": "containers/debian-12",
+			"tag":        "3.4.2",
+		},
+		"auth": map[string]interface{}{
+			"enabled": "false",
 		},
 		"influxdb": map[string]interface{}{
 			"readinessProbe": map[string]interface{}{
@@ -95,11 +102,11 @@ func NewVersioned(helmVersion string, props map[string]interface{}) environment.
 	if reg == "" {
 		panic("BITNAMI_PRIVATE_REGISTRY not set, it is required for Helm charts")
 	}
-	dp := defaultProps()
+	dp := defaultProps(reg)
 	config.MustMerge(&dp, props)
 	return Chart{
 		Name:    "influxdb",
-		Path:    fmt.Sprintf("%s/charts/debian-12/influxdb", reg),
+		Path:    fmt.Sprintf("%s/charts/debian-12/influxdb:7.1.47", reg),
 		Values:  &dp,
 		Version: helmVersion,
 	}

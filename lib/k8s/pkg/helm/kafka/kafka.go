@@ -53,14 +53,22 @@ func (m Chart) ExportData(e *environment.Environment) error {
 	return nil
 }
 
-func defaultProps() map[string]interface{} {
+func defaultProps(reg string) map[string]interface{} {
 	return map[string]interface{}{
+		"global": map[string]interface{}{
+			"security": map[string]interface{}{
+				"allowInsecureImages": true,
+			},
+		},
+		"image": map[string]interface{}{
+			"registry":   reg,
+			"repository": "containers/debian-12",
+			"tag":        "4.1.0",
+			"debug":      true,
+		},
 		"auth": map[string]interface{}{
 			"clientProtocol":      "plaintext",
 			"interBrokerProtocol": "plaintext",
-		},
-		"image": map[string]interface{}{
-			"debug": true,
 		},
 		"provisioning": map[string]interface{}{
 			"enabled": true,
@@ -128,11 +136,11 @@ func NewVersioned(helmVersion string, props map[string]interface{}) environment.
 	if reg == "" {
 		panic("BITNAMI_PRIVATE_REGISTRY not set, it is required for Helm charts")
 	}
-	dp := defaultProps()
+	dp := defaultProps(reg)
 	config.MustMerge(&dp, props)
 	return Chart{
 		Name:    "kafka",
-		Path:    fmt.Sprintf("%s/charts/debian-12/kafka", reg),
+		Path:    fmt.Sprintf("%s/charts/debian-12/kafka:32.4.6", reg),
 		Values:  &dp,
 		Version: helmVersion,
 	}
