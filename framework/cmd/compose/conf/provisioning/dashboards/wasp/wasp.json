@@ -1,0 +1,1432 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": 17447,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P5DCFC7561CCDE821"
+      },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 16,
+      "panels": [],
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P5DCFC7561CCDE821"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "WASP Load Stats",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "editable": false,
+      "error": false,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "thresholds",
+            "seriesBy": "last"
+          },
+          "mappings": [],
+          "noValue": "N/A",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          },
+          "unit": ""
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 0,
+        "y": 1
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        },
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.2.6",
+      "renderer": "flot",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(last_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n\t\t\t| json\n\t\t\t| unwrap current_rps [1s]) by (node_id, go_test_name, gen_name)) by (__stream_shard__)",
+          "format": "time_series",
+          "legendFormat": "{{go_test_name}} {{gen_name}} RPS",
+          "refId": "A"
+        }
+      ],
+      "title": "RPS (Now)",
+      "transparent": true,
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "editable": false,
+      "error": false,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "thresholds",
+            "seriesBy": "last"
+          },
+          "mappings": [],
+          "noValue": "N/A",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          },
+          "unit": ""
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 4,
+        "y": 1
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        },
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.2.6",
+      "renderer": "flot",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(max_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n\t\t\t| json\n\t\t\t| unwrap current_instances [$__range]) by (node_id, go_test_name, gen_name)) by (__stream_shard__)",
+          "format": "time_series",
+          "legendFormat": "{{go_test_name}} {{gen_name}} VUs",
+          "refId": "A"
+        }
+      ],
+      "title": "VUs (Now)",
+      "transparent": true,
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "editable": false,
+      "error": false,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "thresholds",
+            "seriesBy": "last"
+          },
+          "mappings": [],
+          "noValue": "N/A",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          },
+          "unit": ""
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 8,
+        "y": 1
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        },
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.2.6",
+      "renderer": "flot",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\"} [1s])) by (node_id, go_test_name, gen_name)",
+          "format": "time_series",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Responses/sec",
+          "refId": "A"
+        }
+      ],
+      "title": "Responses/sec (Now)",
+      "transparent": true,
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "editable": false,
+      "error": false,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "thresholds",
+            "seriesBy": "last"
+          },
+          "mappings": [],
+          "noValue": "N/A",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          },
+          "unit": ""
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 12,
+        "y": 1
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        },
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.2.6",
+      "renderer": "flot",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "\n\t\t\tsum(max_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n\t\t\t| json\n\t\t\t| unwrap success [$__range]) by (node_id, go_test_name, gen_name)) by (__stream_shard__)\n\t\t\t",
+          "format": "time_series",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Successful requests",
+          "refId": "A"
+        }
+      ],
+      "title": "Successful requests (Total)",
+      "transparent": true,
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "editable": false,
+      "error": false,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "thresholds",
+            "seriesBy": "last"
+          },
+          "mappings": [],
+          "noValue": "N/A",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          },
+          "unit": ""
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 16,
+        "y": 1
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        },
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.2.6",
+      "renderer": "flot",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "\n\t\t\tsum(max_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n\t\t\t| json\n\t\t\t| unwrap failed [$__range]) by (node_id, go_test_name, gen_name)) by (__stream_shard__)\n\t\t\t",
+          "format": "time_series",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Errored requests",
+          "refId": "A"
+        }
+      ],
+      "title": "Errored requests (Total)",
+      "transparent": true,
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "editable": false,
+      "error": false,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "thresholds",
+            "seriesBy": "last"
+          },
+          "mappings": [],
+          "noValue": "N/A",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          },
+          "unit": ""
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 20,
+        "y": 1
+      },
+      "id": 6,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {
+          "titleSize": 12,
+          "valueSize": 20
+        },
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.2.6",
+      "renderer": "flot",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "\n\t\t\tsum(max_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n\t\t\t| json\n\t\t\t| unwrap callTimeout [$__range]) by (node_id, go_test_name, gen_name)) by (__stream_shard__)\n\t\t\t",
+          "format": "time_series",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Timed out requests",
+          "refId": "A"
+        }
+      ],
+      "title": "Timed out requests (Total)",
+      "transparent": true,
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "editable": false,
+      "error": false,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "palette-classic",
+            "seriesBy": "last"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "",
+            "spanNulls": false,
+            "stacking": {
+              "group": "",
+              "mode": ""
+            },
+            "thresholdsStyle": {
+              "mode": ""
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          },
+          "unit": ""
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "height": "300px",
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "\n\t\t\tmax_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n\t\t\t| json\n\t\t\t| unwrap current_rps [$__interval]) by (node_id, go_test_name, gen_name)\n\t\t\t",
+          "format": "time_series",
+          "legendFormat": "{{go_test_name}} {{gen_name}} RPS",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "\n\t\t\tsum(last_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n\t\t\t| json\n\t\t\t| unwrap current_rps [$__interval]) by (node_id, go_test_name, gen_name))\n\t\t\t",
+          "format": "time_series",
+          "legendFormat": "{{go_test_name}} Total RPS",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "\n\t\t\tmax_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n\t\t\t| json\n\t\t\t| unwrap current_instances [$__interval]) by (node_id, go_test_name, gen_name)\n\t\t\t",
+          "format": "time_series",
+          "legendFormat": "{{go_test_name}} {{gen_name}} VUs",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "\n\t\t\tsum(last_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n\t\t\t| json\n\t\t\t| unwrap current_instances [$__interval]) by (node_id, go_test_name, gen_name))\n\t\t\t",
+          "format": "time_series",
+          "legendFormat": "{{go_test_name}} Total VUs",
+          "refId": "D"
+        }
+      ],
+      "title": "RPS/VUs per schedule segments",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "editable": false,
+      "error": false,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "palette-classic",
+            "seriesBy": "last"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Responses",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "",
+            "spanNulls": false,
+            "stacking": {
+              "group": "",
+              "mode": ""
+            },
+            "thresholdsStyle": {
+              "mode": ""
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          },
+          "unit": "Responses"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "height": "300px",
+      "id": 8,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\", call_group=~\"${call_group:pipe}\"} [1s])) by (node_id, go_test_name, gen_name, call_group)",
+          "format": "time_series",
+          "legendFormat": "{{go_test_name}} {{gen_name}} {{call_group}} responses/sec",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "sum(count_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\"} [1s])) by (node_id, go_test_name, gen_name)",
+          "format": "time_series",
+          "legendFormat": "{{go_test_name}} Total responses/sec",
+          "refId": "B"
+        }
+      ],
+      "title": "Responses/sec (Generator, CallGroup)",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "editable": false,
+      "error": false,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "palette-classic",
+            "seriesBy": "last"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "ms",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "",
+            "spanNulls": false,
+            "stacking": {
+              "group": "",
+              "mode": ""
+            },
+            "thresholdsStyle": {
+              "mode": ""
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "height": "300px",
+      "id": 9,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "\n\t\t\t\tquantile_over_time(0.99, {branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\"}\n\t\t\t\t| json\n\t\t\t\t| unwrap duration [$__interval]) by (go_test_name, gen_name) / 1e6",
+          "format": "time_series",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Q 99 - {{error}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "\n\t\t\t\tquantile_over_time(0.95, {branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\"}\n\t\t\t\t| json\n\t\t\t\t| unwrap duration [$__interval]) by (go_test_name, gen_name) / 1e6",
+          "format": "time_series",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Q 95 - {{error}}",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "\n\t\t\t\tquantile_over_time(0.50, {branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\"}\n\t\t\t\t| json\n\t\t\t\t| unwrap duration [$__interval]) by (go_test_name, gen_name) / 1e6",
+          "format": "time_series",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Q 50 - {{error}}",
+          "refId": "C"
+        }
+      ],
+      "title": "Latency quantiles over groups (99, 95, 50)",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "editable": false,
+      "error": false,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "palette-classic",
+            "seriesBy": "last"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "ms",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "",
+            "spanNulls": false,
+            "stacking": {
+              "group": "",
+              "mode": ""
+            },
+            "thresholdsStyle": {
+              "mode": ""
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": []
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "height": "300px",
+      "id": 10,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "\n\t\t\t\tlast_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\", call_group=~\"${call_group}\"}\n\t\t\t\t| json\n\t\t\t\t| unwrap duration [$__interval]) / 1e6",
+          "format": "time_series",
+          "legendFormat": "{{go_test_name}} {{gen_name}} {{call_group}} T: {{timeout}} E: {{error}}",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "\n\t\t\t\tlast_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\"}\n\t\t\t\t| json\n\t\t\t\t| unwrap duration [$__interval]) / 1e6",
+          "format": "time_series",
+          "legendFormat": "{{go_test_name}} {{gen_name}} all groups T: {{timeout}} E: {{error}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Responses latencies by types over time (Generator, CallGroup)",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "P5DCFC7561CCDE821"
+      },
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "id": 17,
+      "panels": [],
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "P5DCFC7561CCDE821"
+          },
+          "refId": "A"
+        }
+      ],
+      "title": "WASP Load Test",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "editable": false,
+      "error": false,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "thresholds",
+            "seriesBy": "last"
+          },
+          "mappings": [],
+          "noValue": "N/A",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": ""
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 24,
+        "x": 0,
+        "y": 25
+      },
+      "height": "100px",
+      "id": 11,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "",
+        "orientation": "vertical",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "10.2.6",
+      "renderer": "flot",
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "\n                sum(bytes_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", gen_name=~\"${gen_name:pipe}\"} [$__range]) * 1e-6)\n                ",
+          "format": "time_series",
+          "legendFormat": "Overall logs size",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "\n                sum(bytes_rate({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", gen_name=~\"${gen_name:pipe}\"} [$__interval]) * 1e-6)\n                ",
+          "format": "time_series",
+          "legendFormat": "Logs size per second",
+          "refId": "B"
+        }
+      ],
+      "title": "Latest segment stats",
+      "transparent": true,
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "editable": false,
+      "error": false,
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "green",
+            "mode": "palette-classic",
+            "seriesBy": "last"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "CallResults",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "",
+            "spanNulls": false,
+            "stacking": {
+              "group": "",
+              "mode": ""
+            },
+            "thresholdsStyle": {
+              "mode": ""
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": ""
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 28
+      },
+      "height": "200px",
+      "id": 12,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "\n                sum(last_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n                | json\n                | unwrap samples_recorded [$__interval])) by (go_test_name, gen_name)\n                ",
+          "format": "time_series",
+          "legendFormat": "{{go_test_name}} {{gen_name}} recorded",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "\n                sum(last_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n                | json\n                | unwrap samples_skipped [$__interval])) by (go_test_name, gen_name)\n                ",
+          "format": "time_series",
+          "legendFormat": "{{go_test_name}} {{gen_name}} skipped",
+          "refId": "B"
+        }
+      ],
+      "title": "CallResult sampling (successful results)",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "editable": false,
+      "error": false,
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
+      "height": "300px",
+      "id": 13,
+      "options": {
+        "dedupStrategy": "",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": false,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "{branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}",
+          "refId": "A"
+        }
+      ],
+      "title": "Stats logs",
+      "transparent": true,
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "editable": false,
+      "error": false,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 42
+      },
+      "height": "300px",
+      "id": 14,
+      "options": {
+        "dedupStrategy": "",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": false,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "{branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\"} |~ \"failed\\\":true\"",
+          "refId": "A"
+        }
+      ],
+      "title": "Failed responses",
+      "transparent": true,
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "editable": false,
+      "error": false,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 42
+      },
+      "height": "300px",
+      "id": 15,
+      "options": {
+        "dedupStrategy": "",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": false,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "expr": "{branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\"} |~ \"timeout\\\":true\"",
+          "refId": "A"
+        }
+      ],
+      "title": "Timed out responses",
+      "transparent": true,
+      "type": "logs"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": [
+    "generated",
+    "load-test"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allFormat": "",
+        "allValue": "",
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "definition": "",
+        "hide": 0,
+        "includeAll": true,
+        "label": "go_test_name",
+        "multi": true,
+        "multiFormat": "",
+        "name": "go_test_name",
+        "options": [],
+        "query": "label_values(go_test_name)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 3,
+        "type": "query"
+      },
+      {
+        "allFormat": "",
+        "allValue": "",
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "definition": "",
+        "hide": 0,
+        "includeAll": true,
+        "label": "gen_name",
+        "multi": true,
+        "multiFormat": "",
+        "name": "gen_name",
+        "options": [],
+        "query": "label_values(gen_name)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 3,
+        "type": "query"
+      },
+      {
+        "allFormat": "",
+        "allValue": "",
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "definition": "",
+        "hide": 0,
+        "includeAll": true,
+        "label": "branch",
+        "multi": true,
+        "multiFormat": "",
+        "name": "branch",
+        "options": [],
+        "query": "label_values(branch)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 3,
+        "type": "query"
+      },
+      {
+        "allFormat": "",
+        "allValue": "",
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "definition": "",
+        "hide": 0,
+        "includeAll": true,
+        "label": "commit",
+        "multi": true,
+        "multiFormat": "",
+        "name": "commit",
+        "options": [],
+        "query": "label_values(commit)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 3,
+        "type": "query"
+      },
+      {
+        "allFormat": "",
+        "allValue": "",
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "loki",
+          "uid": "P8E80F9AEF21F6940"
+        },
+        "definition": "",
+        "hide": 0,
+        "includeAll": true,
+        "label": "call_group",
+        "multi": true,
+        "multiFormat": "",
+        "name": "call_group",
+        "options": [],
+        "query": "label_values(call_group)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 3,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ],
+    "time_options": [
+      "5m",
+      "15m",
+      "1h",
+      "6h",
+      "12h",
+      "24h",
+      "2d",
+      "7d",
+      "30d"
+    ]
+  },
+  "timezone": "",
+  "title": "WASP Load Test",
+  "uid": "WASPLoadTests",
+  "version": 11,
+  "weekStart": ""
+}
