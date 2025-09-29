@@ -4,14 +4,14 @@ go 1.24.0
 
 require (
 	dario.cat/mergo v1.0.1
-	github.com/Masterminds/semver/v3 v3.3.0
+	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aws/aws-sdk-go-v2/config v1.28.0
 	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.34.2
 	github.com/aws/constructs-go/constructs/v10 v10.4.2
-	github.com/aws/jsii-runtime-go v1.104.0
+	github.com/aws/jsii-runtime-go v1.114.1
 	github.com/barkimedes/go-deepcopy v0.0.0-20220514131651-17c30cfc62df
-	github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.7.5
+	github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.70.17
 	github.com/chaos-mesh/chaos-mesh/api v0.0.0-20240709130330-9f4feec7553f
 	github.com/docker/docker v28.0.1+incompatible
 	github.com/docker/go-connections v0.5.0
@@ -36,13 +36,13 @@ require (
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.50.10
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.36.0
 	go.uber.org/atomic v1.11.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/net v0.34.0
 	golang.org/x/oauth2 v0.24.0
-	golang.org/x/sync v0.10.0
+	golang.org/x/sync v0.16.0
 	golang.org/x/text v0.21.0
 	k8s.io/api v0.31.2
 	k8s.io/apimachinery v0.31.2
@@ -189,7 +189,7 @@ require (
 	go.uber.org/ratelimit v0.3.1 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
-	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/term v0.28.0 // indirect
 	golang.org/x/time v0.6.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
