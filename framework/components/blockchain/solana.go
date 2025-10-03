@@ -44,6 +44,9 @@ func defaultSolana(in *Input) {
 }
 
 func newSolana(in *Input) (*Output, error) {
+	if in.Out != nil && in.Out.UseCache {
+		return in.Out, nil
+	}
 	defaultSolana(in)
 	ctx := context.Background()
 
