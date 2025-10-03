@@ -346,10 +346,10 @@ func SaveContainerLogs(dir string) ([]string, error) {
 	return logFilePaths, nil
 }
 
-func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string) error {
+func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string, buildArgs map[string]string) error {
 	var err error
 	once.Do(func() {
-		err = BuildImage(dctx, dfile, nameAndTag)
+		err = BuildImage(dctx, dfile, nameAndTag, buildArgs)
 		if err != nil {
 			err = fmt.Errorf("failed to build Docker image: %w", err)
 		}
@@ -357,12 +357,22 @@ func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string) error {
 	return err
 }
 
-func BuildImage(dctx, dfile, nameAndTag string) error {
+func BuildImage(dctx, dfile, nameAndTag string, buildArgs map[string]string) error {
 	dfilePath := filepath.Join(dctx, dfile)
 	if os.Getenv("CTF_CLNODE_DLV") == "true" {
-		return RunCommand("docker", "build", "--build-arg", `GO_GCFLAGS=all=-N -l`, "--build-arg", "CHAINLINK_USER=chainlink", "--build-arg", "CL_INSTALL_PRIVATE_PLUGINS=false", "-t", nameAndTag, "-f", dfilePath, dctx)
+		commandParts := []string{"docker", "build", "--build-arg", `GO_GCFLAGS=all=-N -l`, "--build-arg", "CHAINLINK_USER=chainlink", "--build-arg", "CL_INSTALL_PRIVATE_PLUGINS=false"}
+		for k, v := range buildArgs {
+			commandParts = append(commandParts, "--build-arg", fmt.Sprintf("%s=%s", k, v))
+		}
+		commandParts = append(commandParts, "-t", nameAndTag, "-f", dfilePath, dctx)
+		return RunCommand(commandParts[0], commandParts[1:]...)
 	}
-	return RunCommand("docker", "build", "--build-arg", "CHAINLINK_USER=chainlink", "--build-arg", "CL_INSTALL_PRIVATE_PLUGINS=false", "-t", nameAndTag, "-f", dfilePath, dctx)
+	commandParts := []string{"docker", "build", "--build-arg", "CHAINLINK_USER=chainlink", "--build-arg", "CL_INSTALL_PRIVATE_PLUGINS=false"}
+	for k, v := range buildArgs {
+		commandParts = append(commandParts, "--build-arg", fmt.Sprintf("%s=%s", k, v))
+	}
+	commandParts = append(commandParts, "-t", nameAndTag, "-f", dfilePath, dctx)
+	return RunCommand(commandParts[0], commandParts[1:]...)
 }
 
 // RemoveTestContainers removes all test containers, volumes and CTF docker network
