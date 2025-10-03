@@ -125,3 +125,24 @@ func NewBlockchainNetwork(in *Input) (*Output, error) {
 	in.Out = out
 	return out, nil
 }
+
+type ChainFamily string
+
+func TypeToFamily(t string) (ChainFamily, error) {
+	switch t {
+	case TypeAnvil, TypeGeth, TypeBesu, TypeAnvilZKSync:
+		return ChainFamily(FamilyEVM), nil
+	case TypeSolana:
+		return ChainFamily(FamilySolana), nil
+	case TypeAptos:
+		return ChainFamily(FamilyAptos), nil
+	case TypeSui:
+		return ChainFamily(FamilySui), nil
+	case TypeTron:
+		return ChainFamily(FamilyTron), nil
+	case TypeTon:
+		return ChainFamily(FamilyTon), nil
+	default:
+		return "", fmt.Errorf("blockchain type is not supported or empty: %s", t)
+	}
+}
