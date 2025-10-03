@@ -51,6 +51,7 @@ type NodeInput struct {
 	Name                    string                        `toml:"name"`
 	DockerFilePath          string                        `toml:"docker_file"`
 	DockerContext           string                        `toml:"docker_ctx"`
+	DockerBuildArgs         map[string]string             `toml:"docker_build_args"`
 	PullImage               bool                          `toml:"pull_image"`
 	CapabilitiesBinaryPaths []string                      `toml:"capabilities"`
 	CapabilityContainerDir  string                        `toml:"capabilities_container_dir"`
@@ -340,7 +341,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	}
 	if req.Image == "" {
 		req.Image = TmpImageName
-		if err := framework.BuildImageOnce(once, in.Node.DockerContext, in.Node.DockerFilePath, req.Image); err != nil {
+		if err := framework.BuildImageOnce(once, in.Node.DockerContext, in.Node.DockerFilePath, req.Image, nil); err != nil {
 			return nil, err
 		}
 		req.KeepImage = false

@@ -111,7 +111,7 @@ func NewJD(in *Input) (*Output, error) {
 	}
 	if req.Image == "" {
 		req.Image = TmpImageName
-		if err := framework.BuildImage(in.DockerContext, in.DockerFilePath, req.Image); err != nil {
+		if err := framework.BuildImage(in.DockerContext, in.DockerFilePath, req.Image, nil); err != nil {
 			return nil, err
 		}
 		req.KeepImage = false

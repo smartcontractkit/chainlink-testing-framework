@@ -150,6 +150,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 					PullImage:               in.NodeSpecs[overrideIdx].Node.PullImage,
 					DockerFilePath:          in.NodeSpecs[overrideIdx].Node.DockerFilePath,
 					DockerContext:           in.NodeSpecs[overrideIdx].Node.DockerContext,
+					DockerBuildArgs:         in.NodeSpecs[overrideIdx].Node.DockerBuildArgs,
 					CapabilitiesBinaryPaths: in.NodeSpecs[overrideIdx].Node.CapabilitiesBinaryPaths,
 					CapabilityContainerDir:  in.NodeSpecs[overrideIdx].Node.CapabilityContainerDir,
 					TestConfigOverrides:     net,
