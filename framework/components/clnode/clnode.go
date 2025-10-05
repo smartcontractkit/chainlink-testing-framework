@@ -341,7 +341,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	}
 	if req.Image == "" {
 		req.Image = TmpImageName
-		if err := framework.BuildImageOnce(once, in.Node.DockerContext, in.Node.DockerFilePath, req.Image, nil); err != nil {
+		if err := framework.BuildImageOnce(once, in.Node.DockerContext, in.Node.DockerFilePath, req.Image, in.Node.DockerBuildArgs); err != nil {
 			return nil, err
 		}
 		req.KeepImage = false
