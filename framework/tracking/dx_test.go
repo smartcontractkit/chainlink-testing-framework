@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestOverlyLongMetadataTruncation(t *testing.T) {
+func TestDXOverlyLongMetadataTruncation(t *testing.T) {
 	metadata := map[string]any{
 		"to_truncate": "abcde" + strings.Repeat("1234567890", 110), // overly long
 		"note":        "keep this short",
@@ -27,7 +27,7 @@ func TestOverlyLongMetadataTruncation(t *testing.T) {
 	require.NotEqual(t, metadata["to_truncate"], truncated["to_truncate"], "to_truncate should be truncated")
 }
 
-func TestOnlyOneOveryLongMetadataTruncationNoPriority(t *testing.T) {
+func TestDXOnlyOneOveryLongMetadataTruncationNoPriority(t *testing.T) {
 	metadata := map[string]any{
 		"to_truncate":     "abcde" + strings.Repeat("1234567890", 110), // overly long
 		"do_not_truncate": "abcde" + strings.Repeat("1234567890", 50),
@@ -48,7 +48,7 @@ func TestOnlyOneOveryLongMetadataTruncationNoPriority(t *testing.T) {
 	require.Equal(t, metadata["do_not_truncate"], truncated["do_not_truncate"], "do_not_truncate should not be truncated")
 }
 
-func TestyOneOveryLongMetadataTruncationNonExistingPriority(t *testing.T) {
+func TestDXOneOveryLongMetadataTruncationNonExistingPriority(t *testing.T) {
 	metadata := map[string]any{
 		"to_truncate":     "abcde" + strings.Repeat("1234567890", 110), // overly long
 		"do_not_truncate": "abcde" + strings.Repeat("1234567890", 50),
@@ -69,7 +69,7 @@ func TestyOneOveryLongMetadataTruncationNonExistingPriority(t *testing.T) {
 	require.Equal(t, metadata["do_not_truncate"], truncated["do_not_truncate"], "do_not_truncate should not be truncated")
 }
 
-func TestTogetherOveryLongMetadataTruncationNoPriority(t *testing.T) {
+func TestDXTogetherOveryLongMetadataTruncationNoPriority(t *testing.T) {
 	metadata := map[string]any{
 		"to_truncate":     "abcde" + strings.Repeat("1234567890", 60), // together both fields are overly long and one of them has to be truncated
 		"do_not_truncate": "abcde" + strings.Repeat("1234567890", 60),
@@ -98,7 +98,7 @@ func TestTogetherOveryLongMetadataTruncationNoPriority(t *testing.T) {
 	require.Len(t, truncatedFields, 1, "only one field should be truncated")
 }
 
-func TestNoTruncation(t *testing.T) {
+func TestDXNoTruncation(t *testing.T) {
 	// exactly 1024 bytes
 	metadata := map[string]any{
 		"all_good": "abcde" + strings.Repeat("x", 951),
@@ -118,7 +118,7 @@ func TestNoTruncation(t *testing.T) {
 	require.Equal(t, metadata["all_good"], truncated["all_good"], "all_good should not be truncated")
 }
 
-func TestNoTruncationAndNoPriority(t *testing.T) {
+func TestDXNoTruncationAndNoPriority(t *testing.T) {
 	// exactly 1024 bytes
 	metadata := map[string]any{
 		"all_good": "abcde" + strings.Repeat("x", 951),
@@ -138,7 +138,7 @@ func TestNoTruncationAndNoPriority(t *testing.T) {
 	require.Equal(t, metadata["all_good"], truncated["all_good"], "all_good should not be truncated")
 }
 
-func TestEmptyMetadata(t *testing.T) {
+func TestDXEmptyMetadata(t *testing.T) {
 	metadata := map[string]any{}
 
 	truncated, truncateErr := truncateMetadata(metadata, []string{"nonexistent"})
@@ -151,7 +151,7 @@ func TestEmptyMetadata(t *testing.T) {
 	require.Len(t, metadata, len(truncated), "empty metadata should remain empty")
 }
 
-func TestNonStringValuesOnly(t *testing.T) {
+func TestDXNonStringValuesOnly(t *testing.T) {
 	metadata := map[string]any{
 		"number":  12345,
 		"boolean": true,
@@ -174,7 +174,7 @@ func TestNonStringValuesOnly(t *testing.T) {
 	require.Equal(t, metadata["null"], truncated["null"], "null should not be truncated")
 }
 
-func TestMixedStringAndNonStringValues(t *testing.T) {
+func TestDXMixedStringAndNonStringValues(t *testing.T) {
 	metadata := map[string]any{
 		"long_string": "abcde" + strings.Repeat("1234567890", 100), // overly long
 		"number":      12345,
@@ -198,7 +198,7 @@ func TestMixedStringAndNonStringValues(t *testing.T) {
 	require.Contains(t, truncated["long_string"].(string), "(... truncated)", "truncated string should have suffix")
 }
 
-func TestMixedStringAndNonStringValuesNoTruncation(t *testing.T) {
+func TestDXMixedStringAndNonStringValuesNoTruncation(t *testing.T) {
 	metadata := map[string]any{
 		"not_long_string": "abcde" + strings.Repeat("1234567890", 10), // overly long
 		"number":          12345,
@@ -222,7 +222,7 @@ func TestMixedStringAndNonStringValuesNoTruncation(t *testing.T) {
 	require.Equal(t, metadata["not_long_string"], truncated["not_long_string"], "truncated string should have suffix")
 }
 
-func TestPriorityFieldsNeedTruncation(t *testing.T) {
+func TestDXPriorityFieldsNeedTruncation(t *testing.T) {
 	metadata := map[string]any{
 		"priority1": "abcde" + strings.Repeat("1234567890", 50), // long priority field
 		"priority2": "abcde" + strings.Repeat("abcdefghij", 50), // another long priority field
@@ -244,7 +244,7 @@ func TestPriorityFieldsNeedTruncation(t *testing.T) {
 	require.Equal(t, metadata["regular"], truncated["regular"], "regular should not be truncated since priority fields are truncated first")
 }
 
-func TestEmptyStrings(t *testing.T) {
+func TestDXEmptyStrings(t *testing.T) {
 	metadata := map[string]any{
 		"empty1": "",
 		"empty2": "",
@@ -265,7 +265,7 @@ func TestEmptyStrings(t *testing.T) {
 	require.NotEqual(t, metadata["filled"], truncated["filled"], "filled should be truncated")
 }
 
-func TestExtremelyLargeDataThatCannotFit(t *testing.T) {
+func TestDXExtremelyLargeDataThatCannotFit(t *testing.T) {
 	// Create metadata so large that even after truncation it won't fit
 	metadata := map[string]any{
 		"huge1": "abcde" + strings.Repeat("1234567890", 200),
@@ -289,7 +289,7 @@ func TestExtremelyLargeDataThatCannotFit(t *testing.T) {
 	}
 }
 
-func TestPriorityFieldsDoNotExist(t *testing.T) {
+func TestDXPriorityFieldsDoNotExist(t *testing.T) {
 	metadata := map[string]any{
 		"existing": "abcde" + strings.Repeat("1234567890", 100), // overly long
 		"short":    "short",

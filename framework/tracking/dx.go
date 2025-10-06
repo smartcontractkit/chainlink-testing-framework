@@ -306,7 +306,7 @@ func (t *DxTracker) readGHUsername() (string, error) {
 
 // readDXAPIToken retrieves the API token from GitHub repository secrets.
 func (t *DxTracker) readDXAPIToken(APITokenVariableName string) (string, error) {
-	cmd := exec.Command("gh", "variable", "get", APITokenVariableName, "--repo", "smartcontractkit/local-cre-dx-tracking")
+	cmd := exec.Command("gh", "variable", "get", APITokenVariableName, "--repo", "smartcontractkit/get-dx-tracking")
 	output, err := cmd.Output()
 	if err != nil {
 		return "", errors.Wrap(err, "failed to run GH CLI")

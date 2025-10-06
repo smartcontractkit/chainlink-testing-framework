@@ -25,9 +25,9 @@ jobs:
           - path: framework
             vm: ubuntu-latest
             regex: TestStorageMutations
-          - path: framework/tracking
+          - path: framework
             vm: ubuntu-latest
-            regex: ./...
+            regex: TestDX
           - path: wasp
             vm: ubuntu22.04-16cores-64GB # ghv-ignore!
             regex: TestSmoke
