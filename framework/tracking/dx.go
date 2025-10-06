@@ -51,6 +51,7 @@ func (t *NoOpTracker) Track(event string, metadata map[string]any) error {
 type DxTracker struct {
 	mode     Mode
 	testMode bool
+	product  Product
 
 	logger zerolog.Logger
 
@@ -61,7 +62,7 @@ type DxTracker struct {
 // NewDxTracker initializes a tracker with automatic GitHub CLI integration for authentication.
 // APITokenVariableName is the name of the GitHub repository variable containing the DX API token.
 // Each DX project has its own token for tracking purposes.
-func NewDxTracker(APITokenVariableName, product string) (Tracker, error) {
+func NewDxTracker(APITokenVariableName string, product Product) (Tracker, error) {
 	t := &DxTracker{}
 
 	lvlStr := os.Getenv(EnvVarLogLevel)
@@ -77,7 +78,6 @@ func NewDxTracker(APITokenVariableName, product string) (Tracker, error) {
 
 	if os.Getenv(EnvVarDisableTracking) == "true" {
 		t.logger.Debug().Msg("Tracking disabled by environment variable")
-
 		return &NoOpTracker{}, nil
 	}
 
@@ -94,6 +94,7 @@ func NewDxTracker(APITokenVariableName, product string) (Tracker, error) {
 		return nil, errors.New("product is required. Each DX project has its own token for tracking purposes")
 	}
 	product = strings.ToLower(product)
+	t.product = product
 
 	c, isConfigAvailable, configErr := openConfig()
 	if configErr != nil {
@@ -109,7 +110,7 @@ func NewDxTracker(APITokenVariableName, product string) (Tracker, error) {
 		// and if so, try to configure tracker with it
 		if t.checkIfGhCLIAvailable() {
 			var configErr error
-			c, configErr = t.buildConfigWithGhCLI(APITokenVariableName, product)
+			c, configErr = t.buildConfigWithGhCLI(APITokenVariableName, product, c)
 			if configErr != nil {
 				t.mode = ModeOffline
 				t.logger.Warn().Msgf("Failed to build config with GH CLI: %s", configErr.Error())
@@ -139,6 +140,14 @@ func NewDxTracker(APITokenVariableName, product string) (Tracker, error) {
 			if sendErr != nil {
 				log.Debug().Msgf("Failed to send saved events: %s\n", sendErr)
 			}
+
+			// also try to send legacy events if product is local_CRE
+			if product == "local_cre" {
+				legacySendErr := t.sendSavedLegacyEvents()
+				if legacySendErr != nil {
+					log.Debug().Msgf("Failed to send saved legacy events: %s\n", legacySendErr)
+				}
+			}
 		}()
 	}
 
@@ -147,20 +156,39 @@ func NewDxTracker(APITokenVariableName, product string) (Tracker, error) {
 	return t, nil
 }
 
-func (t *DxTracker) buildConfigWithGhCLI(APITokenVariableName, product string) (*config, error) {
+func (t *DxTracker) buildConfigWithGhCLI(APITokenVariableName, product string, existinConfig *config) (*config, error) {
 	var userNameErr error
-	c := &config{}
-	c.GithubUsername, userNameErr = t.readGHUsername()
-	if userNameErr != nil {
-		return nil, errors.Wrap(userNameErr, "failed to read github username")
+	var c *config
+
+	if existinConfig != nil {
+		c = existinConfig
+	} else {
+		c = &config{}
+	}
+
+	if c.GithubUsername == "" {
+		c.GithubUsername, userNameErr = t.readGHUsername()
+		if userNameErr != nil {
+			return nil, errors.Wrap(userNameErr, "failed to read github username")
+		}
 	}
 
 	apiToken, apiTokenErr := t.readDXAPIToken(APITokenVariableName)
 	if apiTokenErr != nil {
 		return nil, errors.Wrap(apiTokenErr, "failed to read DX API token")
 	}
-	c.APITokens = map[Product]string{
-		product: apiToken,
+
+	if len(c.APITokens) == 0 {
+		c.APITokens = map[Product]string{
+			product: apiToken,
+		}
+	} else {
+		c.APITokens[product] = apiToken
+	}
+
+	// just in case
+	if !isConfigValid(c, product) {
+		return nil, errors.New("incomplete config, missing API token or GitHub username")
 	}
 
 	saveErr := saveConfig(c)
@@ -334,7 +362,6 @@ func (t *DxTracker) readDXAPIToken(APITokenVariableName string) (string, error) 
 }
 
 // config stores authentication credentials for the DX API.
-// deprecated: legacyConfig is used to read old config files and migrate them to the new format. Use config instead.
 type legacyConfig struct {
 	DxAPIToken     string `json:"dx_api_token"`
 	GithubUsername string `json:"github_username"`
@@ -347,8 +374,31 @@ type config struct {
 }
 
 // openConfig attempts to load existing configuration from the user's home directory.
-// If a legacy config is found, it is migrated to the new format.
 func openConfig() (*config, bool, error) {
+	configPath, pathErr := configPath()
+	if pathErr != nil {
+		return nil, false, errors.Wrap(pathErr, "failed to get config path")
+	}
+
+	if _, statErr := os.Stat(configPath); os.IsNotExist(statErr) {
+		return nil, false, nil
+	}
+
+	configContent, readErr := os.ReadFile(configPath)
+	if readErr != nil {
+		return nil, false, errors.Wrap(readErr, "failed to read config file")
+	}
+
+	var localConfig config
+	unmarshalErr := json.Unmarshal(configContent, &localConfig)
+	if unmarshalErr != nil {
+		return nil, false, errors.Wrap(unmarshalErr, "failed to unmarshal config file")
+	}
+
+	return &localConfig, true, nil
+}
+
+func openLegacyConfig() (*legacyConfig, bool, error) {
 	configPath, pathErr := configPath()
 	if pathErr != nil {
 		return nil, false, errors.Wrap(pathErr, "failed to get config path")
@@ -369,30 +419,7 @@ func openConfig() (*config, bool, error) {
 		return nil, false, errors.Wrap(legacyUnmarshalErr, "failed to unmarshal legacy config file")
 	}
 
-	if legacyConfig.DxAPIToken != "" && legacyConfig.GithubUsername != "" {
-		newConfig := config{
-			GithubUsername: legacyConfig.GithubUsername,
-			APITokens: map[Product]string{
-				// it is the only product that uses tracking at the moment
-				"local_CRE": legacyConfig.DxAPIToken,
-			},
-		}
-
-		saveErr := saveConfig(&newConfig)
-		if saveErr != nil {
-			return nil, false, errors.Wrap(saveErr, "failed to save new config")
-		}
-
-		return &newConfig, true, nil
-	}
-
-	var localConfig config
-	unmarshalErr := json.Unmarshal(configContent, &localConfig)
-	if unmarshalErr != nil {
-		return nil, false, errors.Wrap(unmarshalErr, "failed to unmarshal config file")
-	}
-
-	return &localConfig, true, nil
+	return &legacyConfig, true, nil
 }
 
 // isConfigValid ensures both API token and GitHub username are present.
@@ -401,13 +428,24 @@ func isConfigValid(c *config, product string) bool {
 }
 
 // saveConfig persists configuration to the user's home directory with proper permissions.
+// it also migrates legacy config if available
 func saveConfig(c *config) error {
+	legacyConfig, isLegacyConfigAvailable, legacyConfigErr := openLegacyConfig()
+	if legacyConfigErr != nil {
+		return errors.Wrap(legacyConfigErr, "failed to open legacy config")
+	}
+
+	if isLegacyConfigAvailable && legacyConfig.DxAPIToken != "" && legacyConfig.GithubUsername != "" {
+		// local CRE is the only product that used legacy config
+		c.APITokens["local_cre"] = legacyConfig.DxAPIToken
+	}
+
 	configPath, pathErr := configPath()
 	if pathErr != nil {
 		return errors.Wrap(pathErr, "failed to get config path")
 	}
 
-	mkdirErr := os.MkdirAll(filepath.Dir(configPath), 0755)
+	mkdirErr := os.MkdirAll(filepath.Dir(configPath), 0o755)
 	if mkdirErr != nil {
 		return errors.Wrap(mkdirErr, "failed to create config directory")
 	}
@@ -442,12 +480,12 @@ type event struct {
 func (t *DxTracker) saveEvent(name string, timestamp int64, metadata map[string]any) error {
 	t.logger.Debug().Msgf("Saving event. Name: %s, Timestamp: %d, Metadata: %v", name, timestamp, metadata)
 
-	storagePath, pathErr := storagePath()
+	storagePath, pathErr := storagePath(t.product)
 	if pathErr != nil {
 		return errors.Wrap(pathErr, "failed to get storage path")
 	}
 
-	mkdirErr := os.MkdirAll(filepath.Dir(storagePath), 0755)
+	mkdirErr := os.MkdirAll(filepath.Dir(storagePath), 0o755)
 	if mkdirErr != nil {
 		return errors.Wrap(mkdirErr, "failed to create storage directory")
 	}
@@ -476,32 +514,26 @@ func (t *DxTracker) saveEvent(name string, timestamp int64, metadata map[string]
 		return errors.Wrap(err, "failed to marshal events to JSON")
 	}
 
-	if err := os.WriteFile(storagePath, jsonData, 0600); err != nil {
+	if err := os.WriteFile(storagePath, jsonData, 0o600); err != nil {
 		return errors.Wrap(err, "failed to write event to storage file")
 	}
 
 	return nil
 }
 
-// sendSavedEvents attempts to send all queued events and clears the queue on success.
-func (t *DxTracker) sendSavedEvents() error {
-	storagePath, pathErr := storagePath()
-	if pathErr != nil {
-		return errors.Wrap(pathErr, "failed to get storage path")
-	}
-
-	stats, statErr := os.Stat(storagePath)
+func readEvents(path string) ([]event, error) {
+	stats, statErr := os.Stat(path)
 	if os.IsNotExist(statErr) {
-		return nil
+		return nil, nil
 	}
 
 	if stats.Size() == 0 {
-		return nil
+		return nil, nil
 	}
 
-	storageFile, storageErr := os.OpenFile(storagePath, os.O_RDONLY, 0644)
+	storageFile, storageErr := os.OpenFile(path, os.O_RDONLY, 0644)
 	if storageErr != nil {
-		return errors.Wrap(storageErr, "failed to open storage file")
+		return nil, errors.Wrap(storageErr, "failed to open storage file")
 	}
 	defer storageFile.Close()
 
@@ -509,7 +541,27 @@ func (t *DxTracker) sendSavedEvents() error {
 
 	decoderErr := json.NewDecoder(storageFile).Decode(&events)
 	if decoderErr != nil {
-		return errors.Wrap(decoderErr, "failed to decode events from storage file")
+		return nil, errors.Wrap(decoderErr, "failed to decode events from storage file")
+	}
+
+	return events, nil
+}
+
+// sendSavedEvents attempts to send all queued events and clears the queue on success.
+func (t *DxTracker) sendSavedEvents() error {
+	storagePath, pathErr := storagePath(t.product)
+	if pathErr != nil {
+		return errors.Wrap(pathErr, "failed to get storage path")
+	}
+
+	events, readErr := readEvents(storagePath)
+	if readErr != nil {
+		return errors.Wrap(readErr, "failed to read saved events")
+	}
+
+	if len(events) == 0 {
+		t.logger.Debug().Msg("No saved events to send")
+		return nil
 	}
 
 	t.logger.Debug().Msgf("Sending %d saved events", len(events))
@@ -545,11 +597,76 @@ func (t *DxTracker) sendSavedEvents() error {
 	return nil
 }
 
-// clearSavedEvents removes all queued events after successful transmission.
-func (t *DxTracker) clearSavedEvents() error {
-	storagePath, pathErr := storagePath()
+func (t *DxTracker) sendSavedLegacyEvents() error {
+	storagePath, pathErr := legacyStoragePath()
 	if pathErr != nil {
 		return errors.Wrap(pathErr, "failed to get storage path")
+	}
+
+	events, readErr := readEvents(storagePath)
+	if readErr != nil {
+		return errors.Wrap(readErr, "failed to read saved events")
+	}
+
+	if len(events) == 0 {
+		t.logger.Debug().Msg("No saved legacy events to send")
+		return nil
+	}
+
+	t.logger.Debug().Msgf("Sending %d saved legacy events", len(events))
+
+	failedEvents := []event{}
+
+	for _, event := range events {
+		sendErr := t.sendEvent(event.Name, event.Timestamp, event.Metadata)
+		if sendErr != nil {
+			failedEvents = append(failedEvents, event)
+			t.logger.Debug().Msgf("Failed to send event: %s", sendErr.Error())
+		}
+	}
+
+	clearErr := t.clearSavedLegacyEvents()
+	if clearErr != nil {
+		return errors.Wrap(clearErr, "failed to clear saved legacy events")
+	}
+
+	// if there are failed events, save them to the storage file to try again later
+	if len(failedEvents) > 0 {
+		t.logger.Warn().Msgf("Failed to send %d legacy events", len(failedEvents))
+		for _, event := range failedEvents {
+			saveErr := t.saveEvent(event.Name, event.Timestamp, event.Metadata)
+			if saveErr != nil {
+				t.logger.Warn().Msgf("Failed to save failed legacy event: %s", saveErr.Error())
+			}
+		}
+	} else {
+		t.logger.Debug().Msg("All saved legacy events sent successfully")
+	}
+
+	return nil
+}
+
+// clearSavedEvents removes all queued events after successful transmission.
+func (t *DxTracker) clearSavedEvents() error {
+	storagePath, pathErr := storagePath(t.product)
+	if pathErr != nil {
+		return errors.Wrap(pathErr, "failed to get storage path")
+	}
+
+	storageFile, openErr := os.OpenFile(storagePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
+	if openErr != nil {
+		return errors.Wrap(openErr, "failed to truncate storage file")
+	}
+	defer storageFile.Close()
+
+	return nil
+}
+
+// clearSavedLegacyEvents removes all queued events after successful transmission.
+func (t *DxTracker) clearSavedLegacyEvents() error {
+	storagePath, pathErr := legacyStoragePath()
+	if pathErr != nil {
+		return errors.Wrap(pathErr, "failed to get legacy storage path")
 	}
 
 	storageFile, openErr := os.OpenFile(storagePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
@@ -579,7 +696,17 @@ func validateEvent(event string, timestamp int64, metadata map[string]any) error
 }
 
 // storagePath returns the path to the events queue file in the user's home directory.
-func storagePath() (string, error) {
+func storagePath(product Product) (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", errors.Wrap(err, "failed to get user home directory")
+	}
+
+	return filepath.Join(homeDir, ".local", "share", "dx", product+"_events.json"), nil
+}
+
+// legacyStoragePath returns the path to the events queue file in the user's home directory.
+func legacyStoragePath() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get user home directory")
