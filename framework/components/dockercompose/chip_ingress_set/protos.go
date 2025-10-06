@@ -560,7 +560,7 @@ func checkSchemaExists(registryURL, subject string) (int, bool) {
 		var err error
 		resp, err = http.Get(url)
 		if err != nil {
-			framework.L.Debug().Msgf("Failed to check schema existence for %s: %v", subject, err)
+			framework.L.Error().Msgf("Failed to check schema existence for %s: %v", subject, err)
 			return err
 		}
 
@@ -569,13 +569,18 @@ func checkSchemaExists(registryURL, subject string) (int, bool) {
 		}
 
 		return nil
-	}, retry.Attempts(10), retry.Delay(100*time.Millisecond), retry.DelayType(retry.BackOffDelay), retry.OnRetry(func(n uint, err error) {
-		framework.L.Debug().Str("attempt/max", fmt.Sprintf("%d/%d", n, maxAttempts)).Msgf("Retrying to check schema existence for %s: %v", subject, err)
-	}), retry.RetryIf(func(err error) bool {
-		return isRetryableError(err)
-	}))
+	}, retry.Attempts(10),
+		retry.Delay(500*time.Millisecond),
+		retry.DelayType(retry.BackOffDelay),
+		retry.OnRetry(func(n uint, err error) {
+			framework.L.Warn().Str("attempt/max", fmt.Sprintf("%d/%d", n, maxAttempts)).Msgf("Retrying to check schema existence for %s: %v", subject, err)
+		}),
+		retry.RetryIf(func(err error) bool {
+			return isRetryableError(err)
+		}))
 
 	if existErr != nil {
+		framework.L.Warn().Str("subject", subject).Err(existErr).Msgf("All %d attempts to check schema existence failed. Last error: %v", maxAttempts, existErr)
 		return 0, false
 	}
 
