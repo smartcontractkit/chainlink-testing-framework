@@ -61,7 +61,7 @@ type DxTracker struct {
 // NewDxTracker initializes a tracker with automatic GitHub CLI integration for authentication.
 // APITokenVariableName is the name of the GitHub repository variable containing the DX API token.
 // Each DX project has its own token for tracking purposes.
-func NewDxTracker(APITokenVariableName string) (Tracker, error) {
+func NewDxTracker(APITokenVariableName, product string) (Tracker, error) {
 	t := &DxTracker{}
 
 	lvlStr := os.Getenv(EnvVarLogLevel)
@@ -86,13 +86,22 @@ func NewDxTracker(APITokenVariableName string) (Tracker, error) {
 		t.logger.Debug().Msg("Tracking in test mode")
 	}
 
+	if APITokenVariableName == "" {
+		return nil, errors.New("API token variable name is required. It is the name of the GitHub repository variable containing the DX API token")
+	}
+
+	if product == "" {
+		return nil, errors.New("product is required. Each DX project has its own token for tracking purposes")
+	}
+	product = strings.ToLower(product)
+
 	c, isConfigAvailable, configErr := openConfig()
 	if configErr != nil {
 		return nil, errors.Wrap(configErr, "failed to open local config")
 	}
 
 	// if local config is available read it and set mode to online
-	if isConfigAvailable && isConfigValid(c) {
+	if isConfigAvailable && isConfigValid(c, product) {
 		t.logger.Debug().Msg("Valid local config found")
 		t.mode = ModeOnline
 	} else {
@@ -100,7 +109,7 @@ func NewDxTracker(APITokenVariableName string) (Tracker, error) {
 		// and if so, try to configure tracker with it
 		if t.checkIfGhCLIAvailable() {
 			var configErr error
-			c, configErr = t.buildConfigWithGhCLI(APITokenVariableName)
+			c, configErr = t.buildConfigWithGhCLI(APITokenVariableName, product)
 			if configErr != nil {
 				t.mode = ModeOffline
 				t.logger.Warn().Msgf("Failed to build config with GH CLI: %s", configErr.Error())
@@ -121,7 +130,8 @@ func NewDxTracker(APITokenVariableName string) (Tracker, error) {
 	}
 
 	if t.mode == ModeOnline {
-		t.apiToken = c.DxAPIToken
+		// at this point config should be available and valid, since we've checked it above
+		t.apiToken = c.APITokens[product]
 		t.githubUsername = c.GithubUsername
 
 		go func() {
@@ -137,7 +147,7 @@ func NewDxTracker(APITokenVariableName string) (Tracker, error) {
 	return t, nil
 }
 
-func (t *DxTracker) buildConfigWithGhCLI(APITokenVariableName string) (*config, error) {
+func (t *DxTracker) buildConfigWithGhCLI(APITokenVariableName, product string) (*config, error) {
 	var userNameErr error
 	c := &config{}
 	c.GithubUsername, userNameErr = t.readGHUsername()
@@ -145,10 +155,12 @@ func (t *DxTracker) buildConfigWithGhCLI(APITokenVariableName string) (*config, 
 		return nil, errors.Wrap(userNameErr, "failed to read github username")
 	}
 
-	var apiTokenErr error
-	c.DxAPIToken, apiTokenErr = t.readDXAPIToken(APITokenVariableName)
+	apiToken, apiTokenErr := t.readDXAPIToken(APITokenVariableName)
 	if apiTokenErr != nil {
 		return nil, errors.Wrap(apiTokenErr, "failed to read DX API token")
+	}
+	c.APITokens = map[Product]string{
+		product: apiToken,
 	}
 
 	saveErr := saveConfig(c)
@@ -322,12 +334,20 @@ func (t *DxTracker) readDXAPIToken(APITokenVariableName string) (string, error) 
 }
 
 // config stores authentication credentials for the DX API.
-type config struct {
+// deprecated: legacyConfig is used to read old config files and migrate them to the new format. Use config instead.
+type legacyConfig struct {
 	DxAPIToken     string `json:"dx_api_token"`
 	GithubUsername string `json:"github_username"`
 }
 
+type Product = string
+type config struct {
+	GithubUsername string             `json:"github_username"`
+	APITokens      map[Product]string `json:"tokens"`
+}
+
 // openConfig attempts to load existing configuration from the user's home directory.
+// If a legacy config is found, it is migrated to the new format.
 func openConfig() (*config, bool, error) {
 	configPath, pathErr := configPath()
 	if pathErr != nil {
@@ -343,6 +363,29 @@ func openConfig() (*config, bool, error) {
 		return nil, false, errors.Wrap(readErr, "failed to read config file")
 	}
 
+	var legacyConfig legacyConfig
+	legacyUnmarshalErr := json.Unmarshal(configContent, &legacyConfig)
+	if legacyUnmarshalErr != nil {
+		return nil, false, errors.Wrap(legacyUnmarshalErr, "failed to unmarshal legacy config file")
+	}
+
+	if legacyConfig.DxAPIToken != "" && legacyConfig.GithubUsername != "" {
+		newConfig := config{
+			GithubUsername: legacyConfig.GithubUsername,
+			APITokens: map[Product]string{
+				// it is the only product that uses tracking at the moment
+				"local_CRE": legacyConfig.DxAPIToken,
+			},
+		}
+
+		saveErr := saveConfig(&newConfig)
+		if saveErr != nil {
+			return nil, false, errors.Wrap(saveErr, "failed to save new config")
+		}
+
+		return &newConfig, true, nil
+	}
+
 	var localConfig config
 	unmarshalErr := json.Unmarshal(configContent, &localConfig)
 	if unmarshalErr != nil {
@@ -353,8 +396,8 @@ func openConfig() (*config, bool, error) {
 }
 
 // isConfigValid ensures both API token and GitHub username are present.
-func isConfigValid(c *config) bool {
-	return c.DxAPIToken != "" && c.GithubUsername != ""
+func isConfigValid(c *config, product string) bool {
+	return c.APITokens[product] != "" && c.GithubUsername != ""
 }
 
 // saveConfig persists configuration to the user's home directory with proper permissions.
