@@ -659,11 +659,11 @@ func registerSingleProto(
 				return errors.Wrap(bodyErr, "failed to read response body")
 			}
 
-			if resp.StatusCode >= 400 && resp.StatusCode <= 500 {
+			if resp.StatusCode >= 400 && resp.StatusCode < 500 {
 				return retry.Unrecoverable(fmt.Errorf("schema registry error (%d): %s", resp.StatusCode, string(body)))
 			}
 
-			return fmt.Errorf("schema registry error (%d): %s", resp.StatusCode, body)
+			return fmt.Errorf("schema registry error (%d): %s", resp.StatusCode, string(body))
 		}
 
 		return nil
