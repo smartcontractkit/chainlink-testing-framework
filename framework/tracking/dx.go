@@ -156,12 +156,12 @@ func NewDxTracker(APITokenVariableName string, product Product) (Tracker, error)
 	return t, nil
 }
 
-func (t *DxTracker) buildConfigWithGhCLI(APITokenVariableName, product string, existinConfig *config) (*config, error) {
+func (t *DxTracker) buildConfigWithGhCLI(APITokenVariableName, product string, existingConfig *config) (*config, error) {
 	var userNameErr error
 	var c *config
 
-	if existinConfig != nil {
-		c = existinConfig
+	if existingConfig != nil {
+		c = existingConfig
 	} else {
 		c = &config{}
 	}
@@ -280,7 +280,13 @@ func (t *DxTracker) sendEvent(name string, timestamp int64, metadata map[string]
 	}
 
 	if !dxResp.Ok {
-		return fmt.Errorf("failed to send event, error: %s", *dxResp.Error)
+		var errMsg string
+		if dxResp.Error != nil {
+			errMsg = *dxResp.Error
+		} else {
+			errMsg = "unknown error"
+		}
+		return fmt.Errorf("failed to send event, error: %s", errMsg)
 	}
 
 	return nil

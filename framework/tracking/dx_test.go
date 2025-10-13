@@ -27,7 +27,7 @@ func TestDXOverlyLongMetadataTruncation(t *testing.T) {
 	require.NotEqual(t, metadata["to_truncate"], truncated["to_truncate"], "to_truncate should be truncated")
 }
 
-func TestDXOnlyOneOveryLongMetadataTruncationNoPriority(t *testing.T) {
+func TestDXOnlyOneOverlyLongMetadataTruncationNoPriority(t *testing.T) {
 	metadata := map[string]any{
 		"to_truncate":     "abcde" + strings.Repeat("1234567890", 110), // overly long
 		"do_not_truncate": "abcde" + strings.Repeat("1234567890", 50),
