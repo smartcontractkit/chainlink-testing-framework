@@ -4,6 +4,7 @@ go 1.24.2
 
 require (
 	dario.cat/mergo v1.0.1
+	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/avast/retry-go/v4 v4.6.1
 	github.com/block-vision/sui-go-sdk v1.0.6
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc

@@ -114,7 +114,18 @@ func NewDockerClient() (*DockerClient, error) {
 
 // ExecContainer executes a command inside a running container by name and returns the combined stdout/stderr.
 func (dc *DockerClient) ExecContainer(containerName string, command []string) (string, error) {
-	L.Info().Strs("Command", command).Str("ContainerName", containerName).Msg("Executing command")
+	execConfig := container.ExecOptions{
+		Cmd:          command,
+		AttachStdout: true,
+		AttachStderr: true,
+	}
+
+	return dc.ExecContainerOptions(containerName, execConfig)
+}
+
+// ExecContainer executes a command inside a running container by name and returns the combined stdout/stderr.
+func (dc *DockerClient) ExecContainerOptions(containerName string, execConfig container.ExecOptions) (string, error) {
+	L.Info().Strs("Command", execConfig.Cmd).Str("ContainerName", containerName).Msg("Executing command")
 	ctx := context.Background()
 	containers, err := dc.cli.ContainerList(ctx, container.ListOptions{
 		All: true,
@@ -135,11 +146,6 @@ func (dc *DockerClient) ExecContainer(containerName string, command []string) (s
 		return "", fmt.Errorf("container with name '%s' not found", containerName)
 	}
 
-	execConfig := container.ExecOptions{
-		Cmd:          command,
-		AttachStdout: true,
-		AttachStderr: true,
-	}
 	execID, err := dc.cli.ContainerExecCreate(ctx, containerID, execConfig)
 	if err != nil {
 		return "", fmt.Errorf("failed to create exec instance: %w", err)
