@@ -103,7 +103,7 @@ func (g *Nethermind) getEth2ContainerRequest() (*tc.ContainerRequest, error) {
 		// ImagePlatform: "linux/x86_64",  //don't even try this on Apple Silicon, the node won't start due to .NET error
 		ExposedPorts: []string{NatPortFormat(DEFAULT_EVM_NODE_HTTP_PORT), NatPortFormat(DEFAULT_EVM_NODE_WS_PORT), NatPortFormat(ETH2_EXECUTION_PORT)},
 		WaitingFor: tcwait.ForAll(
-			tcwait.ForLog("Nethermind initialization completed").
+			tcwait.ForLog("Initialization Completed").
 				WithPollInterval(1 * time.Second),
 		).WithStartupTimeoutDefault(g.StartupTimeout),
 		Cmd: command,
