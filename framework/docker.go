@@ -114,47 +114,13 @@ func NewDockerClient() (*DockerClient, error) {
 
 // ExecContainer executes a command inside a running container by name and returns the combined stdout/stderr.
 func (dc *DockerClient) ExecContainer(containerName string, command []string) (string, error) {
-	L.Info().Strs("Command", command).Str("ContainerName", containerName).Msg("Executing command")
-	ctx := context.Background()
-	containers, err := dc.cli.ContainerList(ctx, container.ListOptions{
-		All: true,
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to list containers: %w", err)
-	}
-	var containerID string
-	for _, cont := range containers {
-		for _, name := range cont.Names {
-			if name == "/"+containerName {
-				containerID = cont.ID
-				break
-			}
-		}
-	}
-	if containerID == "" {
-		return "", fmt.Errorf("container with name '%s' not found", containerName)
-	}
-
 	execConfig := container.ExecOptions{
 		Cmd:          command,
 		AttachStdout: true,
 		AttachStderr: true,
 	}
-	execID, err := dc.cli.ContainerExecCreate(ctx, containerID, execConfig)
-	if err != nil {
-		return "", fmt.Errorf("failed to create exec instance: %w", err)
-	}
-	resp, err := dc.cli.ContainerExecAttach(ctx, execID.ID, container.ExecStartOptions{})
-	if err != nil {
-		return "", fmt.Errorf("failed to attach to exec instance: %w", err)
-	}
-	defer resp.Close()
-	output, err := io.ReadAll(resp.Reader)
-	if err != nil {
-		return "", fmt.Errorf("failed to read exec output: %w", err)
-	}
-	L.Info().Str("Output", string(output)).Msg("Command output")
-	return string(output), nil
+
+	return dc.ExecContainerOptions(containerName, execConfig)
 }
 
 // ExecContainer executes a command inside a running container by name and returns the combined stdout/stderr.
