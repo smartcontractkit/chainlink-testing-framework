@@ -279,34 +279,23 @@ func SaveContainerLogs(dir string) ([]string, error) {
 			return nil, fmt.Errorf("failed to create directory %s: %w", dir, err)
 		}
 	}
-	provider, err := tc.NewDockerProvider()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Docker provider: %w", err)
-	}
-	containers, err := provider.Client().ContainerList(context.Background(), container.ListOptions{
+
+	logStream, lErr := StreamContainerLogs(container.ListOptions{
 		All: true,
 		Filters: dfilter.NewArgs(dfilter.KeyValuePair{
 			Key:   "label",
 			Value: "framework=ctf",
 		}),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list Docker containers: %w", err)
+	}, container.LogsOptions{ShowStdout: true, ShowStderr: true})
+
+	if lErr != nil {
+		return nil, lErr
 	}
 
 	eg := &errgroup.Group{}
 	logFilePaths := make([]string, 0)
-
-	for _, containerInfo := range containers {
+	for containerName, reader := range logStream {
 		eg.Go(func() error {
-			containerName := containerInfo.Names[0]
-			L.Debug().Str("Container", containerName).Msg("Collecting logs")
-			logOptions := container.LogsOptions{ShowStdout: true, ShowStderr: true}
-			logs, err := provider.Client().ContainerLogs(context.Background(), containerInfo.ID, logOptions)
-			if err != nil {
-				L.Error().Err(err).Str("Container", containerName).Msg("failed to fetch logs for container")
-				return err
-			}
 			logFilePath := filepath.Join(dir, fmt.Sprintf("%s.log", containerName))
 			logFile, err := os.Create(logFilePath)
 			if err != nil {
@@ -317,7 +306,7 @@ func SaveContainerLogs(dir string) ([]string, error) {
 			// Parse and write logs
 			header := make([]byte, 8) // Docker stream header is 8 bytes
 			for {
-				_, err := io.ReadFull(logs, header)
+				_, err := io.ReadFull(reader, header)
 				if err == io.EOF {
 					break
 				}
@@ -331,7 +320,7 @@ func SaveContainerLogs(dir string) ([]string, error) {
 
 				// Read the log message
 				msg := make([]byte, msgSize)
-				_, err = io.ReadFull(logs, msg)
+				_, err = io.ReadFull(reader, msg)
 				if err != nil {
 					L.Error().Err(err).Str("Container", containerName).Msg("failed to read log message")
 					break
@@ -350,6 +339,54 @@ func SaveContainerLogs(dir string) ([]string, error) {
 		return nil, err
 	}
 	return logFilePaths, nil
+}
+
+var ExitedCtfContainersListOpts = container.ListOptions{
+	All: true,
+	Filters: dfilter.NewArgs(dfilter.KeyValuePair{
+		Key:   "label",
+		Value: "framework=ctf",
+	},
+		dfilter.KeyValuePair{
+			Key:   "status",
+			Value: "exited"},
+		dfilter.KeyValuePair{
+			Key:   "status",
+			Value: "dead"}),
+}
+
+func StreamContainerLogs(listOptions container.ListOptions, logOptions container.LogsOptions) (map[string]io.ReadCloser, error) {
+	L.Info().Msg("Streaming Docker containers logs")
+	provider, err := tc.NewDockerProvider()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Docker provider: %w", err)
+	}
+	containers, err := provider.Client().ContainerList(context.Background(), listOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list Docker containers: %w", err)
+	}
+
+	eg := &errgroup.Group{}
+	logMap := make(map[string]io.ReadCloser)
+
+	for _, containerInfo := range containers {
+		eg.Go(func() error {
+			containerName := containerInfo.Names[0]
+			L.Debug().Str("Container", containerName).Msg("Collecting logs")
+			logs, err := provider.Client().ContainerLogs(context.Background(), containerInfo.ID, logOptions)
+			if err != nil {
+				L.Error().Err(err).Str("Container", containerName).Msg("failed to fetch logs for container")
+				return err
+			}
+			logMap[containerName] = logs
+			return nil
+		})
+	}
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+
+	return logMap, nil
 }
 
 func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string, buildArgs map[string]string) error {
