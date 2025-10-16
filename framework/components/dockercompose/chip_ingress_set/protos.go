@@ -175,7 +175,7 @@ func DefaultSubjectNamingStrategy(subjectPrefix string, proto protoFile, protoSc
 // extractPackageNameWithRegex extracts the package name from a proto source file using regex.
 // It returns an error if no package name is found.
 func extractPackageNameWithRegex(protoSrc string) (string, error) {
-	matches := regexp.MustCompile(`(?m)^\s*package\s+([a-zA-Z0-9.]+)\s*;`).FindStringSubmatch(protoSrc)
+	matches := regexp.MustCompile(`(?m)^\s*package\s+([a-zA-_Z0-9.]+)\s*;`).FindStringSubmatch(protoSrc)
 	if len(matches) < 2 {
 		return "", fmt.Errorf("no package name found in proto source")
 	}
