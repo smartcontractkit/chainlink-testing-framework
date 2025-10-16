@@ -139,15 +139,16 @@ func RegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSch
 		// or in other words, we treat "workflows/" folder as the root folder for all protos in this schema set and strip it from the paths derived from the repository structure.
 		prefixesToStrip := determineFolderPrefixesToStrip(protoSchemaSet.Folders)
 
+		strippedProtdMap := make(map[string]string)
+		strippedSubjects := make(map[string]string)
+
 		for path := range protoMap {
 			strippedPath := stripFolderPrefix(path, prefixesToStrip)
-			protoMap[strippedPath] = protoMap[path]
-			subjects[strippedPath] = subjects[path]
-			delete(protoMap, path)
-			delete(subjects, path)
+			strippedProtdMap[strippedPath] = protoMap[path]
+			strippedSubjects[strippedPath] = subjects[path]
 		}
 
-		registerErr := registerAllWithTopologicalSorting(schemaRegistryURL, protoMap, subjects)
+		registerErr := registerAllWithTopologicalSorting(schemaRegistryURL, strippedProtdMap, strippedSubjects)
 		if registerErr != nil {
 			return errors.Wrapf(registerErr, "failed to register protos from %s", protoSchemaSet.URI)
 		}
@@ -174,7 +175,7 @@ func DefaultSubjectNamingStrategy(subjectPrefix string, proto protoFile, protoSc
 // extractPackageNameWithRegex extracts the package name from a proto source file using regex.
 // It returns an error if no package name is found.
 func extractPackageNameWithRegex(protoSrc string) (string, error) {
-	matches := regexp.MustCompile(`(?m)^\s*package\s+([a-zA-Z0-9.]+)\s*;`).FindStringSubmatch(protoSrc)
+	matches := regexp.MustCompile(`(?m)^\s*package\s+([a-zA-Z0-9._]+)\s*;`).FindStringSubmatch(protoSrc)
 	if len(matches) < 2 {
 		return "", fmt.Errorf("no package name found in proto source")
 	}
