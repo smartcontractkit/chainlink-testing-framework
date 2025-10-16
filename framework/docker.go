@@ -368,6 +368,7 @@ func StreamContainerLogs(listOptions container.ListOptions, logOptions container
 
 	eg := &errgroup.Group{}
 	logMap := make(map[string]io.ReadCloser)
+	var mutex sync.Mutex
 
 	for _, containerInfo := range containers {
 		eg.Go(func() error {
@@ -378,6 +379,8 @@ func StreamContainerLogs(listOptions container.ListOptions, logOptions container
 				L.Error().Err(err).Str("Container", containerName).Msg("failed to fetch logs for container")
 				return err
 			}
+			mutex.Lock()
+			defer mutex.Unlock()
 			logMap[containerName] = logs
 			return nil
 		})
