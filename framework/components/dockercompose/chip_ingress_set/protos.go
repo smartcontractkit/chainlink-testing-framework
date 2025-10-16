@@ -139,15 +139,16 @@ func RegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSch
 		// or in other words, we treat "workflows/" folder as the root folder for all protos in this schema set and strip it from the paths derived from the repository structure.
 		prefixesToStrip := determineFolderPrefixesToStrip(protoSchemaSet.Folders)
 
+		strippeProtdMap := make(map[string]string)
+		strippedSubjects := make(map[string]string)
+
 		for path := range protoMap {
 			strippedPath := stripFolderPrefix(path, prefixesToStrip)
-			protoMap[strippedPath] = protoMap[path]
-			subjects[strippedPath] = subjects[path]
-			delete(protoMap, path)
-			delete(subjects, path)
+			strippeProtdMap[strippedPath] = protoMap[path]
+			strippedSubjects[strippedPath] = subjects[path]
 		}
 
-		registerErr := registerAllWithTopologicalSorting(schemaRegistryURL, protoMap, subjects)
+		registerErr := registerAllWithTopologicalSorting(schemaRegistryURL, strippeProtdMap, strippedSubjects)
 		if registerErr != nil {
 			return errors.Wrapf(registerErr, "failed to register protos from %s", protoSchemaSet.URI)
 		}
