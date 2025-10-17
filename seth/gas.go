@@ -2,9 +2,11 @@ package seth
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 
 	"github.com/montanaflynn/stats"
+	"github.com/pkg/errors"
 )
 
 // GasEstimator estimates gas prices
@@ -21,22 +23,32 @@ func NewGasEstimator(c *Client) *GasEstimator {
 
 // Stats calculates gas price and tip cap suggestions based on historical fee data over a specified number of blocks.
 // It computes quantiles for base fees and tip caps and provides suggested gas price and tip cap values.
-func (m *GasEstimator) Stats(fromNumber uint64, priorityPerc float64) (GasSuggestions, error) {
-	bn, err := m.Client.Client.BlockNumber(context.Background())
+func (m *GasEstimator) Stats(ctx context.Context, blockCount uint64, priorityPerc float64) (GasSuggestions, error) {
+	estimations := GasSuggestions{}
+
+	if blockCount == 0 {
+		return estimations, errors.New("block count must be greater than zero")
+	}
+
+	currentBlock, err := m.Client.Client.BlockNumber(ctx)
 	if err != nil {
-		return GasSuggestions{}, err
+		return GasSuggestions{}, fmt.Errorf("failed to get current block number: %w", err)
 	}
-	if fromNumber == 0 {
-		if bn > 100 {
-			fromNumber = bn - 100
-		} else {
-			fromNumber = 1
-		}
+	if currentBlock == 0 {
+		return GasSuggestions{}, errors.New("current block number is zero. No fee history available")
 	}
-	hist, err := m.Client.Client.FeeHistory(context.Background(), fromNumber, big.NewInt(int64(bn)), []float64{priorityPerc})
+	if blockCount >= currentBlock {
+		blockCount = currentBlock - 1
+	}
+
+	hist, err := m.Client.Client.FeeHistory(ctx, blockCount, big.NewInt(int64(currentBlock)), []float64{priorityPerc})
 	if err != nil {
-		return GasSuggestions{}, err
+		return GasSuggestions{}, fmt.Errorf("failed to get fee history: %w", err)
 	}
+	L.Trace().
+		Interface("History", hist).
+		Msg("Fee history")
+
 	baseFees := make([]float64, 0)
 	for _, bf := range hist.BaseFee {
 		if bf == nil {
@@ -48,8 +60,14 @@ func (m *GasEstimator) Stats(fromNumber uint64, priorityPerc float64) (GasSugges
 	}
 	gasPercs, err := quantilesFromFloatArray(baseFees)
 	if err != nil {
-		return GasSuggestions{}, err
+		return GasSuggestions{}, fmt.Errorf("failed to calculate quantiles from fee history for base fee: %w", err)
 	}
+	estimations.BaseFeePerc = gasPercs
+
+	L.Trace().
+		Interface("Gas percentiles ", gasPercs).
+		Msg("Base fees")
+
 	tips := make([]float64, 0)
 	for _, bf := range hist.Reward {
 		if len(bf) == 0 {
@@ -64,25 +82,33 @@ func (m *GasEstimator) Stats(fromNumber uint64, priorityPerc float64) (GasSugges
 	}
 	tipPercs, err := quantilesFromFloatArray(tips)
 	if err != nil {
-		return GasSuggestions{}, err
+		return GasSuggestions{}, fmt.Errorf("failed to calculate quantiles from fee history for tip cap: %w", err)
 	}
-	suggestedGasPrice, err := m.Client.Client.SuggestGasPrice(context.Background())
-	if err != nil {
-		return GasSuggestions{}, err
-	}
-	suggestedGasTipCap, err := m.Client.Client.SuggestGasTipCap(context.Background())
-	if err != nil {
-		return GasSuggestions{}, err
-	}
+	estimations.TipCapPerc = tipPercs
 	L.Trace().
-		Interface("History", hist).
-		Msg("Fee history")
-	return GasSuggestions{
-		GasPrice:           gasPercs,
-		TipCap:             tipPercs,
-		SuggestedGasPrice:  suggestedGasPrice,
-		SuggestedGasTipCap: suggestedGasTipCap,
-	}, nil
+		Interface("Gas percentiles ", tipPercs).
+		Msg("Tip caps")
+
+	suggestedGasPrice, err := m.Client.Client.SuggestGasPrice(ctx)
+	if err != nil {
+		return GasSuggestions{}, fmt.Errorf("failed to get suggested gas price: %w", err)
+	}
+	estimations.SuggestedGasPrice = suggestedGasPrice
+
+	suggestedGasTipCap, err := m.Client.Client.SuggestGasTipCap(ctx)
+	if err != nil {
+		return GasSuggestions{}, fmt.Errorf("failed to get suggested gas tip cap: %w", err)
+	}
+
+	estimations.SuggestedGasTipCap = suggestedGasTipCap
+
+	header, err := m.Client.Client.HeaderByNumber(ctx, nil)
+	if err != nil {
+		return GasSuggestions{}, fmt.Errorf("failed to get latest block header: %w", err)
+	}
+	estimations.LastBaseFee = header.BaseFee
+
+	return estimations, nil
 }
 
 // GasPercentiles contains gas percentiles
@@ -95,8 +121,9 @@ type GasPercentiles struct {
 }
 
 type GasSuggestions struct {
-	GasPrice           *GasPercentiles
-	TipCap             *GasPercentiles
+	BaseFeePerc        *GasPercentiles
+	TipCapPerc         *GasPercentiles
+	LastBaseFee        *big.Int
 	SuggestedGasPrice  *big.Int
 	SuggestedGasTipCap *big.Int
 }
