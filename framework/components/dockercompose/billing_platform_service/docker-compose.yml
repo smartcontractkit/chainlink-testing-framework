@@ -34,6 +34,8 @@ services:
       MAINNET_CAPABILITIES_REGISTRY_RPC_URL: ${MAINNET_CAPABILITIES_REGISTRY_RPC_URL:-}
       TESTNET_CAPABILITIES_REGISTRY_RPC_URL: ${MAINNET_CAPABILITIES_REGISTRY_RPC_URL:-}
       MAINNET_CAPABILITIES_REGISTRY_FINALITY_DEPTH: ${MAINNET_CAPABILITIES_REGISTRY_FINALITY_DEPTH:-}
+      N_WORKFLOW_ORACLES: 4
+      ORGANIZATION_ID: "integration-test-aggregation-org-happy-path-odd-quorum"
       TEST_OWNERS: ${TEST_OWNERS:-}
       STREAMS_API_URL: ${STREAMS_API_URL:-}
       STREAMS_API_KEY: ${STREAMS_API_KEY:-}
@@ -89,7 +91,16 @@ services:
       billing-platform-service:
         condition: service_started
     restart: on-failure
-    command: ["db", "populate-data", "--environment=local", "--billing-client-url=billing-platform-service:2222", "--simple-linking", "--dsn=${DEFAULT_DSN:-}"]
+    command: ["db", "populate-data", "--linking-mode=basic"]
     environment:
+      N_WORKFLOW_ORACLES: 4
+      ORGANIZATION_ID: "integration-test-aggregation-org-happy-path-odd-quorum"
+      BILLING_CLIENT_URL: "billing-platform-service:2222"
       TEST_OWNERS: ${TEST_OWNERS:-}
+      DISABLE_AUTH: true
       MAINNET_CAPABILITIES_REGISTRY_CHAIN_SELECTOR: ${MAINNET_CAPABILITIES_REGISTRY_CHAIN_SELECTOR:-}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: billing_platform
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
