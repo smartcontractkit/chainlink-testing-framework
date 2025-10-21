@@ -41,7 +41,7 @@ func (m *GasEstimator) Stats(ctx context.Context, blockCount uint64, priorityPer
 		blockCount = currentBlock - 1
 	}
 
-	hist, err := m.Client.Client.FeeHistory(ctx, blockCount, big.NewInt(int64(currentBlock)), []float64{priorityPerc})
+	hist, err := m.Client.Client.FeeHistory(ctx, blockCount, big.NewInt(mustSafeInt64(currentBlock)), []float64{priorityPerc})
 	if err != nil {
 		return GasSuggestions{}, fmt.Errorf("failed to get fee history: %w", err)
 	}
