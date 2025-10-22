@@ -568,12 +568,16 @@ For real networks, the estimation process differs for legacy transactions and th
 
 ##### Legacy Transactions
 
+Unless priority is set to `auto`, when we will defer to what the RPC node suggests, following logic is used:
+
 1. **Initial Price**: Query the network node for the current suggested gas price.
 2. **Priority Adjustment**: Modify the initial price based on `gas_price_estimation_tx_priority`. Higher priority increases the price to ensure faster inclusion in a block.
 3. **Congestion Analysis**: Examine the last X blocks (as specified by `gas_price_estimation_blocks`) to determine network congestion, calculating the usage rate of gas in each block and giving recent blocks more weight. Disabled if `gas_price_estimation_blocks` equals `0`.
 4. **Buffering**: Add a buffer to the adjusted gas price to increase transaction reliability during high congestion.
 
 ##### EIP-1559 Transactions
+
+Unless priority is set to `auto`, when we will defer to what the RPC node suggests, following logic is used:
 
 1. **Tip Fee Query**: Ask the node for the current recommended tip fee.
 2. **Fee History Analysis**: Gather the base fee and tip history from recent blocks to establish a fee baseline.

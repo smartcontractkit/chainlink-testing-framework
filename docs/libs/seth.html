@@ -740,6 +740,7 @@ gas_price_estimation_tx_priority = "slow"
 </ul>
 <p>For real networks, the estimation process differs for legacy transactions and those compliant with EIP-1559:</p>
 <h5 id="legacy-transactions"><a class="header" href="#legacy-transactions">Legacy Transactions</a></h5>
+<p>Unless priority is set to <code>auto</code>, when we will defer to what the RPC node suggests, following logic is used:</p>
 <ol>
 <li><strong>Initial Price</strong>: Query the network node for the current suggested gas price.</li>
 <li><strong>Priority Adjustment</strong>: Modify the initial price based on <code>gas_price_estimation_tx_priority</code>. Higher priority increases the price to ensure faster inclusion in a block.</li>
@@ -747,6 +748,7 @@ gas_price_estimation_tx_priority = "slow"
 <li><strong>Buffering</strong>: Add a buffer to the adjusted gas price to increase transaction reliability during high congestion.</li>
 </ol>
 <h5 id="eip-1559-transactions"><a class="header" href="#eip-1559-transactions">EIP-1559 Transactions</a></h5>
+<p>Unless priority is set to <code>auto</code>, when we will defer to what the RPC node suggests, following logic is used:</p>
 <ol>
 <li><strong>Tip Fee Query</strong>: Ask the node for the current recommended tip fee.</li>
 <li><strong>Fee History Analysis</strong>: Gather the base fee and tip history from recent blocks to establish a fee baseline.</li>
