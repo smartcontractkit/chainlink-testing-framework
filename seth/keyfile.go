@@ -41,19 +41,18 @@ func ReturnFunds(c *Client, toAddr string) error {
 		toAddr = c.Addresses[0].Hex()
 	}
 
-	gasPrice, err := c.GetSuggestedLegacyFees(context.Background(), Priority_Standard)
+	ctx, cancel := context.WithTimeout(context.Background(), c.Cfg.Network.TxnTimeout.Duration())
+	defer cancel()
+	gasPrice, err := c.GetSuggestedLegacyFees(ctx, Priority_Standard)
 	if err != nil {
 		gasPrice = big.NewInt(c.Cfg.Network.GasPrice)
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	eg, egCtx := errgroup.WithContext(ctx)
 
 	if len(c.Addresses) == 1 {
 		return errors.New("No addresses to return funds from. Have you passed correct key file?")
 	}
 
+	eg, egCtx := errgroup.WithContext(ctx)
 	for i := 1; i < len(c.Addresses); i++ {
 		idx := i //nolint
 		eg.Go(func() error {

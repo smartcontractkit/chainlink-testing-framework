@@ -223,10 +223,15 @@ func (c *Config) Validate() error {
 		case Priority_Fast:
 		case Priority_Standard:
 		case Priority_Slow:
+		case Priority_Auto:
 		default:
-			return errors.New("when automating gas estimation is enabled priority must be fast, standard or slow. fix it or disable gas estimation")
+			return errors.New("when automating gas estimation is enabled priority must be auto, fast, standard or slow. fix it or disable gas estimation")
 		}
 
+		if c.GasBump != nil && c.GasBump.Retries > 0 &&
+			c.Network.GasPriceEstimationTxPriority == Priority_Auto {
+			return errors.New("gas bumping is not compatible with auto priority gas estimation")
+		}
 	}
 
 	if c.Network.GasLimit != 0 {

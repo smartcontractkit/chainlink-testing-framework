@@ -94,6 +94,9 @@ var PriorityBasedGasBumpingStrategyFn = func(priority string) GasBumpStrategyFn 
 			newGasPrice, _ := newGasPriceFloat.Int64()
 			return big.NewInt(newGasPrice)
 		}
+	case Priority_Auto:
+		// No bumping for Auto priority
+		fallthrough
 	default:
 		return func(gasPrice *big.Int) *big.Int {
 			return gasPrice
@@ -105,6 +108,11 @@ var PriorityBasedGasBumpingStrategyFn = func(priority string) GasBumpStrategyFn 
 // Errors might be returned, because transaction was no longer pending, max gas price was reached or there was an error sending the transaction (e.g. nonce too low, meaning that original transaction was mined).
 var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) (*types.Transaction, error) {
 	L.Info().Msgf("Transaction wasn't confirmed in %s. Bumping gas", client.Cfg.Network.TxnTimeout.String())
+
+	// If original transaction used auto priority, we cannot bump it
+	if client.Cfg.Network.GasPriceEstimationTxPriority == Priority_Auto {
+		return nil, errors.New("gas bumping is not supported for auto priority transactions")
+	}
 
 	ctxPending, cancelPending := context.WithTimeout(context.Background(), client.Cfg.Network.TxnTimeout.Duration())
 	_, isPending, err := client.Client.TransactionByHash(ctxPending, tx.Hash())

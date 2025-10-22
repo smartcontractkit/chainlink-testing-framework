@@ -434,6 +434,60 @@ func TestConfig_SimulatedBackend(t *testing.T) {
 	require.IsType(t, backend.Client(), client.Client, "expected simulated client")
 }
 
+func TestConfig_SimulatedBackend_Priority_Auto(t *testing.T) {
+	backend, cancelFn := StartSimulatedBackend([]common.Address{common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")})
+	t.Cleanup(func() {
+		cancelFn()
+	})
+
+	builder := seth.NewClientBuilder()
+
+	client, err := builder.
+		WithNetworkName("simulated").
+		WithEthClient(backend.Client()).
+		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+		WithGasPriceEstimations(true, 10, seth.Priority_Auto, 1).
+		Build()
+
+	require.NoError(t, err, "failed to build client")
+	require.Equal(t, 1, len(client.PrivateKeys), "expected 1 private key")
+	require.Equal(t, 1, len(client.Addresses), "expected 1 addresse")
+	require.IsType(t, backend.Client(), client.Client, "expected simulated client")
+
+	linkAbi, err := link_token.LinkTokenMetaData.GetAbi()
+	require.NoError(t, err, "failed to get LINK ABI")
+
+	_, err = client.DeployContract(client.NewTXOpts(), "LinkToken", *linkAbi, common.FromHex(link_token.LinkTokenMetaData.Bin))
+	require.NoError(t, err, "failed to deploy LINK contract")
+}
+
+func TestConfig_SimulatedBackend_No_Historical_Fees(t *testing.T) {
+	backend, cancelFn := StartSimulatedBackend([]common.Address{common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")})
+	t.Cleanup(func() {
+		cancelFn()
+	})
+
+	builder := seth.NewClientBuilder()
+
+	client, err := builder.
+		WithNetworkName("simulated").
+		WithEthClient(backend.Client()).
+		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+		WithGasPriceEstimations(true, 0, seth.Priority_Standard, 1).
+		Build()
+
+	require.NoError(t, err, "failed to build client")
+	require.Equal(t, 1, len(client.PrivateKeys), "expected 1 private key")
+	require.Equal(t, 1, len(client.Addresses), "expected 1 addresse")
+	require.IsType(t, backend.Client(), client.Client, "expected simulated client")
+
+	linkAbi, err := link_token.LinkTokenMetaData.GetAbi()
+	require.NoError(t, err, "failed to get LINK ABI")
+
+	_, err = client.DeployContract(client.NewTXOpts(), "LinkToken", *linkAbi, common.FromHex(link_token.LinkTokenMetaData.Bin))
+	require.NoError(t, err, "failed to deploy LINK contract")
+}
+
 func TestConfig_SimulatedBackend_ContractDeploymentHooks(t *testing.T) {
 	backend, cancelFn := StartSimulatedBackend([]common.Address{common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")})
 	t.Cleanup(func() {

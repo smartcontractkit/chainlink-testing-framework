@@ -320,7 +320,10 @@ func NewClientRaw(
 		if cfg.ReadOnly {
 			return nil, errors.New(ErrReadOnlyEphemeralKeys)
 		}
-		gasPrice, err := c.GetSuggestedLegacyFees(context.Background(), Priority_Standard)
+		ctx, cancel := context.WithTimeout(context.Background(), c.Cfg.Network.TxnTimeout.D)
+		defer cancel()
+
+		gasPrice, err := c.GetSuggestedLegacyFees(ctx, c.Cfg.Network.GasPriceEstimationTxPriority)
 		if err != nil {
 			gasPrice = big.NewInt(c.Cfg.Network.GasPrice)
 		}
@@ -331,8 +334,6 @@ func NewClientRaw(
 		}
 		L.Warn().Msg("Ephemeral mode, all funds will be lost!")
 
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
 		eg, egCtx := errgroup.WithContext(ctx)
 		// root key is element 0 in ephemeral
 		for _, addr := range c.Addresses[1:] {
@@ -408,7 +409,7 @@ func (m *Client) checkRPCHealth() error {
 	ctx, cancel := context.WithTimeout(context.Background(), m.Cfg.Network.TxnTimeout.Duration())
 	defer cancel()
 
-	gasPrice, err := m.GetSuggestedLegacyFees(context.Background(), Priority_Standard)
+	gasPrice, err := m.GetSuggestedLegacyFees(context.Background(), m.Cfg.Network.GasPriceEstimationTxPriority)
 	if err != nil {
 		gasPrice = big.NewInt(m.Cfg.Network.GasPrice)
 	}
@@ -772,8 +773,11 @@ func (m *Client) AnySyncedKey() int {
 }
 
 type GasEstimations struct {
-	GasPrice  *big.Int
+	// GasPrice for legacy transactions. If nil, RPC node will auto-estimate.
+	GasPrice *big.Int
+	// GasTipCap for EIP-1559 transactions. If nil, RPC node will auto-estimate.
 	GasTipCap *big.Int
+	// GasFeeCap for EIP-1559 transactions. If nil, RPC node will auto-estimate.
 	GasFeeCap *big.Int
 }
 
@@ -825,9 +829,8 @@ func (m *Client) getProposedTransactionOptions(keyNum int) (*bind.TransactOpts, 
 pending nonce for key %d is higher than last nonce, there are %d pending transactions.
 
 This issue is caused by one of two things:
-1. You are using the same keyNum in multiple goroutines, which is not supported. Each goroutine should use an unique keyNum.
-2. You have stuck transaction(s). Speed them up by sending replacement transactions with higher gas price before continuing, otherwise future transactions most probably will also get stuck.
-`
+1. You are using the same keyNum in multiple goroutines, which is not supported. Each goroutine should use an unique keyNum
+2. You have stuck transaction(s). Speed them up by sending replacement transactions with higher gas price before continuing, otherwise future transactions most probably will also get stuck`
 			err := fmt.Errorf(errMsg, keyNum, nonceStatus.PendingNonce-nonceStatus.LastNonce)
 			m.Errors = append(m.Errors, err)
 			// can't return nil, otherwise RPC wrapper will panic, and we might lose funds on testnets/mainnets, that's why
@@ -889,6 +892,15 @@ func (m *Client) NewDefaultGasEstimationRequest() GasEstimationRequest {
 // estimation errors or network is a simulated one.
 func (m *Client) CalculateGasEstimations(request GasEstimationRequest) GasEstimations {
 	estimations := GasEstimations{}
+
+	if request.Priority == Priority_Auto {
+		// Return empty estimations with nil gas prices and fees.
+		// This signals to the RPC node to auto-estimate gas prices.
+		// The nil values will be passed to bind.TransactOpts, which treats
+		// nil gas fields as a request for automatic estimation.
+		L.Debug().Msg("Auto priority selected, skipping gas estimations")
+		return estimations
+	}
 
 	if m.Cfg.IsSimulatedNetwork() || !request.GasEstimationEnabled {
 		estimations.GasPrice = big.NewInt(request.FallbackGasPrice)
@@ -978,7 +990,15 @@ func (m *Client) configureTransactionOpts(
 		opts.GasPrice = nil
 		opts.GasTipCap = estimations.GasTipCap
 		opts.GasFeeCap = estimations.GasFeeCap
+
+		// Log when using auto-estimated gas (all nil values)
+		if opts.GasTipCap == nil && opts.GasFeeCap == nil {
+			L.Debug().Msg("Using RPC node's automatic gas estimation (EIP-1559)")
+		}
+	} else if opts.GasPrice == nil {
+		L.Debug().Msg("Using RPC node's automatic gas estimation (Legacy)")
 	}
+
 	for _, f := range o {
 		f(opts)
 	}

@@ -118,23 +118,23 @@ func RunCLI(args []string) error {
 					ge := seth.NewGasEstimator(C)
 					blocks := cCtx.Uint64("blocks")
 					tipPerc := cCtx.Float64("tipPercentile")
-					stats, err := ge.Stats(blocks, tipPerc)
+					stats, err := ge.Stats(cCtx.Context, blocks, tipPerc)
 					if err != nil {
 						return err
 					}
 					seth.L.Info().
-						Interface("Max", stats.GasPrice.Max).
-						Interface("99", stats.GasPrice.Perc99).
-						Interface("75", stats.GasPrice.Perc75).
-						Interface("50", stats.GasPrice.Perc50).
-						Interface("25", stats.GasPrice.Perc25).
+						Interface("Max", stats.BaseFeePerc.Max).
+						Interface("99", stats.BaseFeePerc.Perc99).
+						Interface("75", stats.BaseFeePerc.Perc75).
+						Interface("50", stats.BaseFeePerc.Perc50).
+						Interface("25", stats.BaseFeePerc.Perc25).
 						Msg("Base fee (Wei)")
 					seth.L.Info().
-						Interface("Max", stats.TipCap.Max).
-						Interface("99", stats.TipCap.Perc99).
-						Interface("75", stats.TipCap.Perc75).
-						Interface("50", stats.TipCap.Perc50).
-						Interface("25", stats.TipCap.Perc25).
+						Interface("Max", stats.TipCapPerc.Max).
+						Interface("99", stats.TipCapPerc.Perc99).
+						Interface("75", stats.TipCapPerc.Perc75).
+						Interface("50", stats.TipCapPerc.Perc50).
+						Interface("25", stats.TipCapPerc.Perc25).
 						Msg("Priority fee (Wei)")
 					seth.L.Info().
 						Interface("GasPrice", stats.SuggestedGasPrice).
