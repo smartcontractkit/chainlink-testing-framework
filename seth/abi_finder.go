@@ -1,6 +1,7 @@
 package seth
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -127,7 +128,37 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 	}
 
 	if result.Method == nil {
-		return ABIFinderResult{}, errors.New(ErrNoABIMethod)
+		abiCount := len(a.ContractStore.ABIs)
+		abiSample := ""
+		if abiCount > 0 {
+			// Show first few ABIs as examples (max 5)
+			sampleSize := min(abiCount, 5)
+			samples := make([]string, 0, sampleSize)
+			count := 0
+			for abiName := range a.ContractStore.ABIs {
+				if count >= sampleSize {
+					break
+				}
+				samples = append(samples, strings.TrimSuffix(abiName, ".abi"))
+				count++
+			}
+			abiSample = fmt.Sprintf("\nExample ABIs loaded: %s", strings.Join(samples, ", "))
+			if abiCount > sampleSize {
+				abiSample += fmt.Sprintf(" (and %d more)", abiCount-sampleSize)
+			}
+		}
+
+		return ABIFinderResult{}, fmt.Errorf("no ABI found with method signature %s for contract at address %s.\n"+
+			"Checked %d ABIs but none matched.%s\n"+
+			"This usually means:\n"+
+			"  1. The contract ABI wasn't loaded into Seth's contract store\n"+
+			"  2. The method signature doesn't match any known ABI\n"+
+			"  3. You're calling a non-existent contract address\n"+
+			"Solutions:\n"+
+			"  1. Add the contract's ABI to the directory specified by 'abi_dir'\n"+
+			"  2. Use ContractStore.AddABI() to add it programmatically\n"+
+			"  3. Deploy the contract via Seth so it's automatically registered",
+			stringSignature, address, abiCount, abiSample)
 	}
 
 	return result, nil

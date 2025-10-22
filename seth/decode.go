@@ -125,7 +125,7 @@ func (m *Client) DecodeSendErr(txErr error) error {
 	reason, decodingErr := m.DecodeCustomABIErr(txErr)
 
 	if decodingErr == nil && reason != "" {
-		return errors.Wrap(txErr, reason)
+		return fmt.Errorf("%s: %w", reason, txErr)
 	}
 
 	L.Trace().
@@ -434,7 +434,9 @@ func (m *Client) decodeTransaction(l zerolog.Logger, tx *types.Transaction, rece
 
 	txInput, err = decodeTxInputs(l, txData, abiResult.Method)
 	if err != nil {
-		return defaultTxn, errors.Wrap(err, ErrDecodeInput)
+		return defaultTxn, fmt.Errorf("failed to decode transaction input for method '%s': %w\n"+
+			"The transaction data doesn't match the expected ABI method signature",
+			abiResult.Method.Name, err)
 	}
 
 	var txIndex uint
@@ -537,7 +539,9 @@ func (m *Client) CallMsgFromTx(tx *types.Transaction) (ethereum.CallMsg, error) 
 	signer := types.LatestSignerForChainID(tx.ChainId())
 	sender, err := types.Sender(signer, tx)
 	if err != nil {
-		return ethereum.CallMsg{}, errors.Wrapf(err, "failed to get sender from transaction")
+		return ethereum.CallMsg{}, fmt.Errorf("failed to get sender from transaction %s: %w\n"+
+			"This usually means the transaction signature is invalid or doesn't match the chain ID",
+			tx.Hash().Hex(), err)
 	}
 
 	if tx.Type() == types.LegacyTxType {
@@ -566,7 +570,12 @@ func (m *Client) CallMsgFromTx(tx *types.Transaction) (ethereum.CallMsg, error) 
 func (m *Client) DownloadContractAndGetPragma(address common.Address, block *big.Int) (Pragma, error) {
 	bytecode, err := m.Client.CodeAt(context.Background(), address, block)
 	if err != nil {
-		return Pragma{}, errors.Wrap(err, "failed to get contract code")
+		return Pragma{}, fmt.Errorf("failed to get contract code at address %s (block %s): %w\n"+
+			"Ensure:\n"+
+			"  1. The address contains a deployed contract\n"+
+			"  2. The block number is valid\n"+
+			"  3. RPC node is synced and accessible",
+			address.Hex(), block.String(), err)
 	}
 
 	pragma, err := DecodePragmaVersion(common.Bytes2Hex(bytecode))
@@ -665,7 +674,9 @@ func decodeTxOutputs(l zerolog.Logger, payload []byte, method *abi.Method) (map[
 	} else {
 		err := method.Outputs.UnpackIntoMap(outputMap, payload)
 		if err != nil {
-			return nil, errors.Wrap(err, ErrDecodeOutput)
+			return nil, fmt.Errorf("failed to decode transaction output for method '%s': %w\n"+
+				"The output data doesn't match the expected ABI return types",
+				method.Name, err)
 		}
 	}
 	l.Trace().Interface("Outputs", outputMap).Msg("Transaction outputs")
@@ -690,7 +701,9 @@ func decodeEventFromLog(
 	if len(lo.GetData()) != 0 {
 		err := a.UnpackIntoMap(eventsMap, eventABISpec.Name, lo.GetData())
 		if err != nil {
-			return nil, nil, errors.Wrap(err, ErrDecodedLogNonIndexed)
+			return nil, nil, fmt.Errorf("failed to decode non-indexed log data for event '%s': %w\n"+
+				"The log data doesn't match the expected event signature",
+				eventABISpec.Name, err)
 		}
 		l.Trace().Interface("Non-indexed", eventsMap).Send()
 	}
@@ -715,7 +728,9 @@ func decodeEventFromLog(
 		l.Trace().Interface("Indexed", indexed).Send()
 		err := abi.ParseTopicsIntoMap(topicsMap, indexed, indexedTopics)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, ErrDecodeILogIndexed)
+			return nil, nil, fmt.Errorf("failed to decode indexed log topics for event '%s': %w\n"+
+				"The indexed topic data doesn't match the expected event indexed parameters",
+				eventABISpec.Name, err)
 		}
 		l.Trace().Interface("Indexed", topicsMap).Send()
 	}

@@ -458,7 +458,9 @@ func (t *Tracer) decodeCall(byteSignature []byte, rawCall Call) (*DecodedCall, e
 	if rawCall.Output != "" {
 		output, err := hexutil.Decode(rawCall.Output)
 		if err != nil {
-			return defaultCall, errors.Wrap(err, ErrDecodeOutput)
+			return defaultCall, fmt.Errorf("failed to decode call output for method '%s': %w\n"+
+				"The hex-encoded output is invalid",
+				abiResult.Method.Name, err)
 		}
 		txOutput, err = decodeTxOutputs(L, output, abiResult.Method)
 		if err != nil {
@@ -618,7 +620,8 @@ func (t *Tracer) decodeContractLogs(l zerolog.Logger, logs []TraceLog, a abi.ABI
 				l.Trace().Str("Name", evSpec.RawName).Str("Signature", evSpec.Sig).Msg("Unpacking event")
 				eventsMap, topicsMap, err := decodeEventFromLog(l, a, evSpec, lo)
 				if err != nil {
-					return nil, errors.Wrap(err, ErrDecodeLog)
+					return nil, fmt.Errorf("failed to decode log for event '%s' (signature: %s): %w",
+						evSpec.RawName, evSpec.Sig, err)
 				}
 				parsedEvent := decodedLogFromMaps(&DecodedCommonLog{}, eventsMap, topicsMap)
 				if decodedLog, ok := parsedEvent.(*DecodedCommonLog); ok {

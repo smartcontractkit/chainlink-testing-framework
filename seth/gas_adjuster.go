@@ -381,6 +381,16 @@ func (m *Client) eip1559FeesFromHistory(ctx context.Context, priority string) (b
 		err = fmt.Errorf("failed to fetch EIP1559 historical fees: %w", retryErr)
 		return
 	}
+
+	if baseFee64 == 0.0 {
+		err = fmt.Errorf("historical base fee is 0.0. This might indicate insufficient or invalid fee data from the node.\n" +
+			"Possible solutions:\n" +
+			"  1. Reduce 'gas_price_estimation_blocks' in config\n" +
+			"  2. Check RPC node capabilities and accessibility\n" +
+			"  3. Verify the network supports EIP-1559 fee history queries")
+		return
+	}
+
 	baseFee = big.NewInt(int64(baseFee64))
 
 	L.Debug().
@@ -446,6 +456,27 @@ func (m *Client) currentIP1559Fees(ctx context.Context) (baseFee *big.Int, tipCa
 		return
 	}
 
+	if baseFee == nil || baseFee.Int64() == 0 {
+		err = fmt.Errorf("RPC node returned base fee of 0, which is invalid for EIP-1559 transactions.\n" +
+			"This might indicate:\n" +
+			"  1. Network doesn't support EIP-1559 (use legacy transactions instead)\n" +
+			"  2. RPC node configuration issue\n" +
+			"Solution: Disable gas estimation and set explicit gas prices in config:\n" +
+			"  - Set gas_price_estimation_enabled = false\n" +
+			"  - Set gas_fee_cap and gas_tip_cap for EIP-1559 networks\n" +
+			"  - Or use eip1559_dynamic_fees = false to switch to legacy transactions")
+		return
+	}
+
+	if tipCap == nil {
+		err = fmt.Errorf("RPC node returned nil gas tip cap.\n" +
+			"This indicates an RPC error when fetching EIP-1559 gas suggestions.\n" +
+			"Solution: Disable gas estimation and set explicit gas prices in config:\n" +
+			"  - Set gas_price_estimation_enabled = false\n" +
+			"  - Set gas_fee_cap and gas_tip_cap for EIP-1559 networks")
+		return
+	}
+
 	baseFee64, _ := baseFee.Float64()
 	tipCap64, _ := tipCap.Float64()
 	L.Debug().
@@ -472,7 +503,14 @@ func (m *Client) GetSuggestedLegacyFees(ctx context.Context, priority string) (a
 		}
 
 		if suggestedGasPrice.Int64() == 0 {
-			return errors.New("suggested gas price is 0")
+			return fmt.Errorf("RPC node returned gas price of 0, which is invalid.\n" +
+				"This might indicate:\n" +
+				"  1. Network doesn't support gas price estimation (some test networks)\n" +
+				"  2. RPC node configuration issue\n" +
+				"Solution: Disable gas estimation and set explicit gas prices in config:\n" +
+				"  - Set gas_price_estimation_enabled = false\n" +
+				"  - For EIP-1559 networks: set gas_fee_cap and gas_tip_cap\n" +
+				"  - For legacy networks: set gas_price")
 		}
 
 		return nil

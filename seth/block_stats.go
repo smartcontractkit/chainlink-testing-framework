@@ -62,7 +62,9 @@ func (cs *BlockStats) Stats(startBlock *big.Int, endBlock *big.Int) error {
 		endBlock = latestBlockNumber
 	}
 	if endBlock != nil && startBlock.Int64() > endBlock.Int64() {
-		return fmt.Errorf("start block is less than the end block")
+		return fmt.Errorf("start block (%d) is greater than end block (%d). "+
+			"Ensure start block comes before end block in the range",
+			startBlock.Int64(), endBlock.Int64())
 	}
 	L.Info().
 		Int64("EndBlock", endBlock.Int64()).
@@ -107,7 +109,7 @@ func (cs *BlockStats) Stats(startBlock *big.Int, endBlock *big.Int) error {
 // CalculateBlockDurations calculates and logs the duration, TPS, gas used, and gas limit between each consecutive block
 func (cs *BlockStats) CalculateBlockDurations(blocks []*types.Block) error {
 	if len(blocks) == 0 {
-		return fmt.Errorf("no blocks no analyze")
+		return fmt.Errorf("no blocks to analyze. Cannot calculate block durations without block data")
 	}
 	var (
 		durations          []time.Duration

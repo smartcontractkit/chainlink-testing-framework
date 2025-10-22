@@ -3,6 +3,7 @@ package seth
 import (
 	"context"
 	"crypto/ecdsa"
+	"fmt"
 	"time"
 
 	"math/big"
@@ -10,12 +11,11 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/pkg/errors"
 	"go.uber.org/ratelimit"
 )
 
 const (
-	ErrKeySyncTimeout = "key sync timeout, consider increasing key_sync_timeout in seth.toml, or increasing the number of keys"
+	ErrKeySyncTimeout = "key sync timeout, consider increasing key_sync_timeout in config (seth.toml or ClientBuilder), or increasing the number of keys"
 	ErrKeySync        = "failed to sync the key"
 	ErrNonce          = "failed to get nonce"
 	TimeoutKeyNum     = -80001
@@ -41,13 +41,22 @@ type KeyNonce struct {
 
 func validateNonceManagerConfig(nonceManagerCfg *NonceManagerCfg) error {
 	if nonceManagerCfg.KeySyncRateLimitSec <= 0 {
-		return errors.New("key_sync_rate_limit_sec should be positive")
+		return fmt.Errorf("key_sync_rate_limit_sec must be positive (current: %d). "+
+			"This controls how many sync attempts per second are allowed. "+
+			"Set it in the 'nonce_manager' section of config (seth.toml or ClientBuilder)",
+			nonceManagerCfg.KeySyncRateLimitSec)
 	}
 	if nonceManagerCfg.KeySyncTimeout == nil || nonceManagerCfg.KeySyncTimeout.Duration() <= 0 {
-		return errors.New("key_sync_timeout should be positive")
+		return fmt.Errorf("key_sync_timeout must be positive (current: %v). "+
+			"This is how long to wait for a key to sync before timing out. "+
+			"Set it in the 'nonce_manager' section of config (seth.toml or ClientBuilder)",
+			nonceManagerCfg.KeySyncTimeout)
 	}
 	if nonceManagerCfg.KeySyncRetries <= 0 {
-		return errors.New("key_sync_retries should be positive")
+		return fmt.Errorf("key_sync_retries must be positive (current: %d). "+
+			"This is how many times to retry syncing a key before giving up. "+
+			"Set it in the 'nonce_manager' section of config (seth.toml or ClientBuilder)",
+			nonceManagerCfg.KeySyncRetries)
 	}
 
 	return nil
@@ -56,13 +65,23 @@ func validateNonceManagerConfig(nonceManagerCfg *NonceManagerCfg) error {
 // NewNonceManager creates a new nonce manager that tracks nonce for each address
 func NewNonceManager(cfg *Config, addrs []common.Address, privKeys []*ecdsa.PrivateKey) (*NonceManager, error) {
 	if cfg == nil {
-		return nil, errors.New(ErrSethConfigIsNil)
+		return nil, fmt.Errorf("Seth configuration is nil. Cannot create nonce manager without valid configuration.\n" +
+			"This usually means you're trying to create a nonce manager before initializing Seth.\n" +
+			"Solutions:\n" +
+			"  1. Use NewClient() or NewClientWithConfig() to create a Seth client first\n" +
+			"  2. If using ClientBuilder, ensure you call Build() before accessing the nonce manager\n" +
+			"  3. Check that your configuration file (seth.toml) exists and is valid")
 	}
 	if cfg.NonceManager == nil {
-		return nil, errors.New(ErrNonceManagerConfigIsNil)
+		return nil, fmt.Errorf("nonce manager configuration is nil. " +
+			"Add a [nonce_manager] section to your config (seth.toml) or use ClientBuilder with:\n" +
+			"  - key_sync_rate_limit_per_sec\n" +
+			"  - key_sync_timeout\n" +
+			"  - key_sync_retries\n" +
+			"  - key_sync_retry_delay")
 	}
 	if cfgErr := validateNonceManagerConfig(cfg.NonceManager); cfgErr != nil {
-		return nil, errors.Wrap(cfgErr, "failed to validate nonce manager config")
+		return nil, fmt.Errorf("nonce manager configuration validation failed: %w", cfgErr)
 	}
 
 	nonces := make(map[common.Address]int64)
@@ -121,8 +140,16 @@ func (m *NonceManager) anySyncedKey() int {
 	case <-ctx.Done():
 		m.Lock()
 		defer m.Unlock()
-		L.Error().Msg(ErrKeySyncTimeout)
-		m.Client.Errors = append(m.Client.Errors, errors.New(ErrKeySync))
+		timeoutErr := fmt.Errorf("key synchronization timed out after %s. "+
+			"This means the nonce couldn't be synchronized before the timeout.\n"+
+			"Solutions:\n"+
+			"  1. Increase 'key_sync_timeout' in config (seth.toml or ClientBuilder) - current: %s\n"+
+			"  2. Reduce 'key_sync_rate_limit_per_sec' to allow faster sync attempts\n"+
+			"  3. Add more keys with 'ephemeral_addresses_number'\n"+
+			"  4. Check RPC node performance and connectivity",
+			m.cfg.KeySyncTimeout.Duration(), m.cfg.KeySyncTimeout.Duration())
+		L.Error().Msg(timeoutErr.Error())
+		m.Client.Errors = append(m.Client.Errors, timeoutErr)
 		return TimeoutKeyNum //so that it's pretty unique number of invalid key
 	case keyData := <-m.SyncedKeys:
 		L.Trace().
@@ -140,7 +167,13 @@ func (m *NonceManager) anySyncedKey() int {
 						Msg("Key is syncing")
 					nonce, err := m.Client.Client.NonceAt(context.Background(), m.Addresses[keyData.KeyNum], nil)
 					if err != nil {
-						return errors.New(ErrNonce)
+						return fmt.Errorf("failed to get nonce for address %s (key #%d): %w\n"+
+							"This usually indicates:\n"+
+							"  1. RPC node connection issues\n"+
+							"  2. Network congestion or high latency\n"+
+							"  3. Address doesn't exist on the network\n"+
+							"Consider increasing key_sync_timeout in your config",
+							m.Addresses[keyData.KeyNum].Hex(), keyData.KeyNum, err)
 					}
 					if nonce == keyData.Nonce+1 {
 						L.Trace().
@@ -162,13 +195,19 @@ func (m *NonceManager) anySyncedKey() int {
 						Interface("Address", m.Addresses[keyData.KeyNum]).
 						Msg("Key NOT synced")
 
-					return errors.New(ErrKeySync)
+					return fmt.Errorf("key #%d (address: %s) sync failed. "+
+						"Expected nonce %d, but got %d. "+
+						"This indicates the transaction hasn't been mined yet",
+						keyData.KeyNum, m.Addresses[keyData.KeyNum].Hex(),
+						keyData.Nonce+1, nonce)
 				},
 				retry.Attempts(m.cfg.KeySyncRetries),
 				retry.Delay(m.cfg.KeySyncRetryDelay.Duration()),
 			)
 			if err != nil {
-				m.Client.Errors = append(m.Client.Errors, errors.New(ErrKeySync))
+				syncErr := fmt.Errorf("failed to sync key #%d after %d retries: %w",
+					keyData.KeyNum, m.cfg.KeySyncRetries, err)
+				m.Client.Errors = append(m.Client.Errors, syncErr)
 			}
 		}()
 		return keyData.KeyNum

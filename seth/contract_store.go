@@ -13,7 +13,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -111,7 +110,12 @@ func NewContractStore(abiPath, binPath string, gethWrappersPaths []string) (*Con
 
 	err = cs.loadGethWrappers(gethWrappersPaths)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to load geth wrappers from %v", gethWrappersPaths)
+		return nil, fmt.Errorf("failed to load geth wrappers from %v: %w\n"+
+			"Ensure:\n"+
+			"  1. The paths point to valid Go files with geth-generated contract wrappers\n"+
+			"  2. Files contain properly formatted ABI JSON in comments\n"+
+			"  3. The wrapper files were generated with abigen tool",
+			gethWrappersPaths, err)
 	}
 
 	return cs, nil
@@ -129,18 +133,29 @@ func (c *ContractStore) loadABIs(abiPath string) error {
 				L.Debug().Str("File", f.Name()).Msg("ABI file loaded")
 				ff, err := os.Open(filepath.Join(abiPath, f.Name()))
 				if err != nil {
-					return errors.Wrap(err, ErrOpenABIFile)
+					return fmt.Errorf("failed to open ABI file '%s': %w\n"+
+						"Ensure the file exists and has proper read permissions",
+						filepath.Join(abiPath, f.Name()), err)
 				}
 				a, err := abi.JSON(ff)
 				if err != nil {
-					return errors.Wrap(err, ErrParseABI)
+					return fmt.Errorf("failed to parse ABI file '%s': %w\n"+
+						"Ensure the file contains valid JSON ABI format. "+
+						"ABI files should be generated from contract compilation (e.g., solc, hardhat, foundry)",
+						f.Name(), err)
 				}
 				c.ABIs[f.Name()] = a
 				foundABI = true
 			}
 		}
 		if !foundABI {
-			return fmt.Errorf("no ABI files found in '%s'. Fix the path or comment out 'abi_dir' setting", abiPath)
+			return fmt.Errorf("no ABI files found in '%s'. "+
+				"Ensure:\n"+
+				"  1. The directory exists and is readable\n"+
+				"  2. Files have .abi extension\n"+
+				"  3. Path is correct (should be relative to config file or absolute)\n"+
+				"Or comment out 'abi_dir' in config if not using ABI files",
+				abiPath)
 		}
 	}
 
@@ -159,14 +174,23 @@ func (c *ContractStore) loadBINs(binPath string) error {
 				L.Debug().Str("File", f.Name()).Msg("BIN file loaded")
 				bin, err := os.ReadFile(filepath.Join(binPath, f.Name()))
 				if err != nil {
-					return errors.Wrap(err, ErrOpenBINFile)
+					return fmt.Errorf("failed to open BIN file '%s': %w\n"+
+						"Ensure the file exists and has proper read permissions",
+						filepath.Join(binPath, f.Name()), err)
 				}
 				c.BINs[f.Name()] = common.FromHex(string(bin))
 				foundBIN = true
 			}
 		}
 		if !foundBIN {
-			return fmt.Errorf("no BIN files found in '%s'. Fix the path or comment out 'bin_dir' setting", binPath)
+			return fmt.Errorf("no BIN files (bytecode) found in '%s'. "+
+				"BIN files are needed for contract deployment. "+
+				"Ensure:\n"+
+				"  1. Files have .bin extension\n"+
+				"  2. They contain compiled contract bytecode (hex-encoded)\n"+
+				"  3. Path is correct (should be relative to config file or absolute)\n"+
+				"Or comment out 'bin_dir' in config if deploying contracts via other means",
+				binPath)
 		}
 	}
 
@@ -253,12 +277,18 @@ TOP_LOOP:
 	// this cleans up all escape and similar characters that might interfere with the JSON unmarshalling
 	var rawAbi interface{}
 	if err := json.Unmarshal([]byte(abiContent), &rawAbi); err != nil {
-		return "", nil, errors.Wrap(err, "failed to unmarshal ABI content")
+		return "", nil, fmt.Errorf("failed to unmarshal ABI content from '%s': %w\n"+
+			"The ABI JSON in the wrapper file is malformed. "+
+			"Ensure the file was generated correctly with abigen",
+			filePath, err)
 	}
 
 	parsedAbi, err := abi.JSON(strings.NewReader(fmt.Sprint(rawAbi)))
 	if err != nil {
-		return "", nil, errors.Wrap(err, "failed to parse ABI content")
+		return "", nil, fmt.Errorf("failed to parse ABI content from '%s': %w\n"+
+			"The ABI structure is invalid. "+
+			"Regenerate the wrapper file with abigen",
+			filePath, err)
 	}
 
 	return contractName, &parsedAbi, nil

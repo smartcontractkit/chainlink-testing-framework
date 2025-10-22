@@ -47,7 +47,9 @@ func (m *Client) RetryTxAndDecode(f func() (*types.Transaction, error)) (*Decode
 
 	dt, err := m.Decode(tx, nil)
 	if err != nil {
-		return &DecodedTransaction{}, errors.Wrap(err, "error decoding transaction")
+		return &DecodedTransaction{}, fmt.Errorf("error decoding transaction %s: %w\n"+
+			"Failed to decode transaction details after waiting for confirmation",
+			tx.Hash().Hex(), err)
 	}
 
 	return dt, nil
