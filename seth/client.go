@@ -3,6 +3,7 @@ package seth
 import (
 	"context"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -21,7 +22,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 )
@@ -89,8 +89,8 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 	initDefaultLogging()
 
 	if cfg == nil {
-		return nil, fmt.Errorf("Seth configuration is nil. "+
-			"Ensure you're calling NewClientWithConfig() with a valid config, or use NewClient() to load from SETH_CONFIG_PATH environment variable. "+
+		return nil, fmt.Errorf("Seth configuration is nil. " +
+			"Ensure you're calling NewClientWithConfig() with a valid config, or use NewClient() to load from SETH_CONFIG_PATH environment variable. " +
 			"See documentation for configuration examples")
 	}
 	if cfgErr := cfg.Validate(); cfgErr != nil {
@@ -199,18 +199,18 @@ func NewClientRaw(
 	opts ...ClientOpt,
 ) (*Client, error) {
 	if cfg == nil {
-		return nil, fmt.Errorf("Seth configuration is nil. "+
-			"Provide a valid Config when calling NewClientRaw(). "+
+		return nil, fmt.Errorf("Seth configuration is nil. " +
+			"Provide a valid Config when calling NewClientRaw(). " +
 			"Consider using NewClient() or NewClientWithConfig() instead")
 	}
 	if cfgErr := cfg.Validate(); cfgErr != nil {
 		return nil, cfgErr
 	}
 	if cfg.ReadOnly && (len(addrs) > 0 || len(pkeys) > 0) {
-		return nil, fmt.Errorf("configuration conflict: read-only mode is enabled, but private keys were provided. "+
-			"Read-only mode is for querying blockchain state only (no transactions).\n"+
-			"To fix:\n"+
-			"  1. Remove private keys if you only need to read data\n"+
+		return nil, fmt.Errorf("configuration conflict: read-only mode is enabled, but private keys were provided. " +
+			"Read-only mode is for querying blockchain state only (no transactions).\n" +
+			"To fix:\n" +
+			"  1. Remove private keys if you only need to read data\n" +
 			"  2. Set 'read_only = false' in config if you need to send transactions")
 	}
 
@@ -219,7 +219,7 @@ func NewClientRaw(
 	if cfg.ethclient == nil {
 		L.Info().Msg("Creating new ethereum client")
 		if len(cfg.Network.URLs) == 0 {
-			return nil, fmt.Errorf("no RPC URLs provided. "+
+			return nil, fmt.Errorf("no RPC URLs provided. " +
 				"Set RPC URLs in your seth.toml config under 'urls_secret = [\"http://...\"]' or provide via WithRpcUrl() when using ClientBuilder")
 		}
 
@@ -323,9 +323,9 @@ func NewClientRaw(
 
 	if cfg.CheckRpcHealthOnStart {
 		if cfg.ReadOnly {
-			return nil, fmt.Errorf("RPC health check is not supported in read-only mode because it requires sending transactions. "+
-				"Either:\n"+
-				"  1. Set 'read_only = false' to enable transaction capabilities\n"+
+			return nil, fmt.Errorf("RPC health check is not supported in read-only mode because it requires sending transactions. " +
+				"Either:\n" +
+				"  1. Set 'read_only = false' to enable transaction capabilities\n" +
 				"  2. Set 'check_rpc_health_on_start = false' to skip the health check")
 		}
 		if c.NonceManager == nil {
@@ -338,9 +338,9 @@ func NewClientRaw(
 	}
 
 	if cfg.PendingNonceProtectionEnabled && cfg.ReadOnly {
-		return nil, fmt.Errorf("pending nonce protection is not supported in read-only mode because it requires transaction monitoring. "+
-			"Either:\n"+
-			"  1. Set 'read_only = false' to enable transaction capabilities\n"+
+		return nil, fmt.Errorf("pending nonce protection is not supported in read-only mode because it requires transaction monitoring. " +
+			"Either:\n" +
+			"  1. Set 'read_only = false' to enable transaction capabilities\n" +
 			"  2. Set 'pending_nonce_protection_enabled = false'")
 	}
 
@@ -356,14 +356,14 @@ func NewClientRaw(
 
 	if cfg.ephemeral {
 		if len(c.Addresses) == 0 {
-			return nil, fmt.Errorf("ephemeral mode requires exactly one root private key to fund ephemeral addresses, but no keys were loaded. "+
-				"Load the root private key via:\n"+
-				"  1. SETH_ROOT_PRIVATE_KEY environment variable\n"+
-				"  2. 'root_private_key' in seth.toml\n"+
+			return nil, fmt.Errorf("ephemeral mode requires exactly one root private key to fund ephemeral addresses, but no keys were loaded. " +
+				"Load the root private key via:\n" +
+				"  1. SETH_ROOT_PRIVATE_KEY environment variable\n" +
+				"  2. 'root_private_key' in seth.toml\n" +
 				"  3. WithPrivateKeys() when using ClientBuilder")
 		}
 		if cfg.ReadOnly {
-			return nil, fmt.Errorf("ephemeral mode is not supported in read-only mode because it requires funding transactions. "+
+			return nil, fmt.Errorf("ephemeral mode is not supported in read-only mode because it requires funding transactions. " +
 				"Set 'read_only = false' or disable ephemeral mode by removing 'ephemeral_addresses_number' from config")
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), c.Cfg.Network.TxnTimeout.D)
@@ -439,9 +439,9 @@ func NewClientRaw(
 	}
 
 	if c.Cfg.GasBump != nil && c.Cfg.GasBump.Retries != 0 && c.Cfg.ReadOnly {
-		return nil, fmt.Errorf("gas bumping is not supported in read-only mode because it requires sending replacement transactions. "+
-			"Either:\n"+
-			"  1. Set 'read_only = false' to enable transaction capabilities\n"+
+		return nil, fmt.Errorf("gas bumping is not supported in read-only mode because it requires sending replacement transactions. " +
+			"Either:\n" +
+			"  1. Set 'read_only = false' to enable transaction capabilities\n" +
 			"  2. Set 'gas_bump.retries = 0' to disable gas bumping")
 	}
 
@@ -1294,10 +1294,10 @@ type DeploymentData struct {
 // name of ABI file (you can omit the .abi suffix).
 func (m *Client) DeployContractFromContractStore(auth *bind.TransactOpts, name string, params ...interface{}) (DeploymentData, error) {
 	if m.ContractStore == nil {
-		return DeploymentData{}, fmt.Errorf("contract store is nil. Cannot deploy contract from store.\n"+
-			"This usually means:\n"+
-			"  1. Seth client wasn't properly initialized\n"+
-			"  2. ABI directory path is incorrect in config\n"+
+		return DeploymentData{}, fmt.Errorf("contract store is nil. Cannot deploy contract from store.\n" +
+			"This usually means:\n" +
+			"  1. Seth client wasn't properly initialized\n" +
+			"  2. ABI directory path is incorrect in config\n" +
 			"Ensure 'abi_dir' and 'bin_dir' are set in seth.toml or use DeployContract() with explicit ABI/bytecode")
 	}
 

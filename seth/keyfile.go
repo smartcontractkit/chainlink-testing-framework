@@ -3,12 +3,12 @@ package seth
 import (
 	"context"
 	"crypto/ecdsa"
+	"errors"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 )
 

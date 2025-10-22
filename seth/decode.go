@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
-	verr "errors"
+	"errors"
 	"fmt"
 	"math/big"
 	"path/filepath"
@@ -17,7 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
 
@@ -103,7 +102,7 @@ func getDefaultDecodedCall() *DecodedCall {
 // Last, but not least, if gas bumps are enabled, we will try to bump gas on transaction mining timeout and resubmit it with higher gas.
 func (m *Client) Decode(tx *types.Transaction, txErr error) (*DecodedTransaction, error) {
 	if len(m.Errors) > 0 {
-		return nil, verr.Join(m.Errors...)
+		return nil, errors.Join(m.Errors...)
 	}
 
 	if decodedErr := m.DecodeSendErr(txErr); decodedErr != nil {

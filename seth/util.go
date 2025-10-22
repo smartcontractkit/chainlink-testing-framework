@@ -5,6 +5,7 @@ import (
 	"database/sql/driver"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -18,7 +19,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/pkg/errors"
 
 	network_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/NetworkDebugContract"
 	network_sub_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/NetworkDebugSubContract"
@@ -236,7 +236,7 @@ func (d *Duration) Scan(v interface{}) (err error) {
 		*d, err = MakeDuration(time.Duration(tv))
 		return err
 	default:
-		return errors.Errorf(`don't know how to parse "%s" of type %T as a `+
+		return fmt.Errorf(`don't know how to parse "%s" of type %T as a `+
 			`models.Duration`, tv, tv)
 	}
 }

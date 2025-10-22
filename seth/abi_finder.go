@@ -1,12 +1,12 @@
 package seth
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/pkg/errors"
 )
 
 type ABIFinder struct {

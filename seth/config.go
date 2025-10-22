@@ -130,8 +130,8 @@ func DefaultClient(rpcUrl string, privateKeys []string) (*Client, error) {
 func ReadConfig() (*Config, error) {
 	cfgPath := os.Getenv(CONFIG_FILE_ENV_VAR)
 	if cfgPath == "" {
-		return nil, fmt.Errorf("SETH_CONFIG_PATH environment variable is not set. "+
-			"Set it to the absolute path of your seth.toml configuration file.\n"+
+		return nil, fmt.Errorf("SETH_CONFIG_PATH environment variable is not set. " +
+			"Set it to the absolute path of your seth.toml configuration file.\n" +
 			"Example: export SETH_CONFIG_PATH=/path/to/your/seth.toml")
 	}
 	var cfg *Config
@@ -234,12 +234,12 @@ func ReadConfig() (*Config, error) {
 // If any configuration is invalid, it returns an error.
 func (c *Config) Validate() error {
 	if c.Network == nil {
-		return fmt.Errorf("network configuration is nil. "+
-			"This usually means the network wasn't selected or configured properly.\n"+
-			"Solutions:\n"+
-			"  1. Set SETH_NETWORK environment variable to match a network name in seth.toml (e.g., SETH_NETWORK=sepolia)\n"+
-			"  2. Ensure your seth.toml has a [[networks]] section with 'name' field matching SETH_NETWORK\n"+
-			"  3. Use ClientBuilder with WithNetwork() to configure the network programmatically\n"+
+		return fmt.Errorf("network configuration is nil. " +
+			"This usually means the network wasn't selected or configured properly.\n" +
+			"Solutions:\n" +
+			"  1. Set SETH_NETWORK environment variable to match a network name in seth.toml (e.g., SETH_NETWORK=sepolia)\n" +
+			"  2. Ensure your seth.toml has a [[networks]] section with 'name' field matching SETH_NETWORK\n" +
+			"  3. Use ClientBuilder with WithNetwork() to configure the network programmatically\n" +
 			"See documentation for configuration examples")
 	}
 
@@ -325,17 +325,17 @@ func (c *Config) Validate() error {
 	}
 
 	if c.ethclient == nil && len(c.Network.URLs) == 0 {
-		return fmt.Errorf("no RPC URLs configured. "+
-			"You can provide RPC URLs via:\n"+
-			"  1. 'urls_secret' field in seth.toml: urls_secret = [\"http://your-rpc-url\"]\n"+
-			"  2. WithRPCURLs() when using ClientBuilder\n"+
+		return fmt.Errorf("no RPC URLs configured. " +
+			"You can provide RPC URLs via:\n" +
+			"  1. 'urls_secret' field in seth.toml: urls_secret = [\"http://your-rpc-url\"]\n" +
+			"  2. WithRPCURLs() when using ClientBuilder\n" +
 			"  3. WithEthClient() to provide a pre-configured ethclient instance")
 	}
 
 	if c.ethclient != nil && len(c.Network.URLs) > 0 {
-		return fmt.Errorf("configuration conflict: both ethclient instance and RPC URLs are set. "+
-			"You cannot set both. Either:\n"+
-			"  1. Use the provided ethclient (remove 'urls_secret' from config)\n"+
+		return fmt.Errorf("configuration conflict: both ethclient instance and RPC URLs are set. " +
+			"You cannot set both. Either:\n" +
+			"  1. Use the provided ethclient (remove 'urls_secret' from config)\n" +
 			"  2. Use RPC URLs from config (don't provide ethclient)")
 	}
 

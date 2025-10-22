@@ -2,6 +2,7 @@ package seth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/pkg/errors"
 )
 
 /* these are the common errors of RPCs */

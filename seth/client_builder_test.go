@@ -2,6 +2,7 @@ package seth_test
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"math/big"
 	"os"
 	"strings"
@@ -13,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/pkg/errors"
 
 	"github.com/pelletier/go-toml/v2"
 
