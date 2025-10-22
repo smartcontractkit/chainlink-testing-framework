@@ -2,7 +2,6 @@ package seth
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -128,10 +127,12 @@ type Call struct {
 
 func NewTracer(cs *ContractStore, abiFinder *ABIFinder, cfg *Config, contractAddressToNameMap ContractMap, addresses []common.Address) (*Tracer, error) {
 	if cfg == nil {
-		return nil, errors.New("seth config is nil")
+		return nil, fmt.Errorf("seth configuration is nil. Cannot create tracer without valid configuration.\n" +
+			"Ensure you're calling NewClient() or NewClientWithConfig() with a valid config")
 	}
 	if cfg.Network == nil {
-		return nil, errors.New("no Network is set in the config")
+		return nil, fmt.Errorf("network configuration is not set. Cannot create tracer without network details.\n" +
+			"Ensure your config has a valid [network] section or use ClientBuilder.WithNetwork()")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Network.DialTimeout.Duration())
@@ -188,7 +189,15 @@ func (t *Tracer) TraceGethTX(txHash string) ([]*DecodedCall, error) {
 func (t *Tracer) PrintTXTrace(txHash string) error {
 	trace := t.getTrace(txHash)
 	if trace == nil {
-		return errors.New(ErrNoTrace)
+		return fmt.Errorf("no trace data available for this transaction. " +
+			"This usually means:\n" +
+			"  1. RPC node doesn't support debug_traceTransaction\n" +
+			"  2. Transaction hasn't been mined yet\n" +
+			"  3. Trace data was cleaned up (old transaction)\n" +
+			"Solutions:\n" +
+			"  1. Use an archive node or node with tracing enabled\n" +
+			"  2. Wait for transaction to be mined\n" +
+			"  3. Set tracing_level = 'NONE' to disable tracing")
 	}
 	l := L.With().Str("Transaction", txHash).Logger()
 	l.Trace().Interface("4Byte", trace.FourByte).Msg("Calls function signatures (names)")
@@ -257,11 +266,14 @@ func (t *Tracer) DecodeTrace(l zerolog.Logger, trace Trace) ([]*DecodedCall, err
 
 	var getSignature = func(input string) (string, error) {
 		if len(input) < 10 {
-			err := errors.New(ErrInvalidMethodSignature)
+			err := fmt.Errorf("invalid method signature detected in trace. "+
+				"Expected 4-byte hex signature (0x12345678), but got invalid format: '%s'.\n"+
+				"This is likely an internal error. Please open a GitHub issue at https://github.com/smartcontractkit/chainlink-testing-framework/issues with transaction details",
+				input)
 			l.Err(err).
 				Str("Input", input).
 				Send()
-			return "", errors.New(ErrInvalidMethodSignature)
+			return "", err
 		}
 
 		return input[2:10], nil
@@ -317,7 +329,13 @@ func (t *Tracer) DecodeTrace(l zerolog.Logger, trace Trace) ([]*DecodedCall, err
 		for _, call := range calls {
 			methodCounter++
 			if methodCounter >= len(methods) {
-				return errors.New("method counter exceeds the number of methods. This indicates there's a logical error in tracing. Please reach out to Test Tooling team")
+				return fmt.Errorf("internal error: method counter (%d) exceeds available methods (%d). "+
+					"This is a bug in the tracing logic.\n"+
+					"Please open a GitHub issue at https://github.com/smartcontractkit/chainlink-testing-framework/issues with:\n"+
+					"  1. Transaction hash: %s\n"+
+					"  2. Your configuration file\n"+
+					"  3. Network name and RPC endpoint",
+					methodCounter, len(methods), trace.TxHash)
 			}
 
 			methodHex := methods[methodCounter]
@@ -510,96 +528,102 @@ func (t *Tracer) checkForMissingCalls(trace Trace) []*DecodedCall {
 	actual := countAllTracedCallsFn(trace.CallTrace.Calls, 1) // +1 for the main call
 
 	diff := expected - actual
-	if diff != 0 {
-		L.Debug().
-			Int("Debugged calls", actual).
-			Int("4byte signatures", len(trace.FourByte)).
-			Msgf("Number of calls and signatures does not match. There were %d more call that were't debugged", diff)
+	if diff == 0 {
+		return []*DecodedCall{}
+	}
 
-		unknownCall := &DecodedCall{
-			CommonData: CommonData{Method: NO_DATA,
-				Input:  map[string]interface{}{"warning": NO_DATA},
-				Output: map[string]interface{}{"warning": NO_DATA},
+	if diff > 0 {
+		L.Debug().
+			Int("Traced calls", actual).
+			Int("Expected calls (from 4byte signatures)", expected).
+			Msgf("Call trace mismatch: %d call(s) have signatures but weren't found in trace (possibly optimized out or internal)", diff)
+	} else {
+		L.Debug().
+			Int("Traced calls", actual).
+			Int("Expected calls (from 4byte signatures)", expected).
+			Msgf("Call trace mismatch: %d more call(s) in trace than signatures found (possibly DELEGATECALL or internal calls)", -diff)
+	}
+
+	unknownCall := &DecodedCall{
+		CommonData: CommonData{Method: NO_DATA,
+			Input:  map[string]interface{}{"warning": NO_DATA},
+			Output: map[string]interface{}{"warning": NO_DATA},
+		},
+		FromAddress: UNKNOWN,
+		ToAddress:   UNKNOWN,
+		Events: []DecodedCommonLog{
+			{Signature: NO_DATA, EventData: map[string]interface{}{"warning": NO_DATA}},
+		},
+	}
+
+	var missingSignatures []string
+	var findSignatureFn func(fourByteSign string, calls []Call) bool
+	findSignatureFn = func(fourByteSign string, calls []Call) bool {
+		for _, c := range calls {
+			if strings.Contains(c.Input, fourByteSign) {
+				return true
+			}
+
+			if findSignatureFn(fourByteSign, c.Calls) {
+				return true
+			}
+		}
+
+		return false
+	}
+	for k := range trace.FourByte {
+		if strings.Contains(trace.CallTrace.Input, k) {
+			continue
+		}
+
+		found := findSignatureFn(k, trace.CallTrace.Calls)
+
+		if !found {
+			missingSignatures = append(missingSignatures, k)
+		}
+	}
+
+	missedCalls := make([]*DecodedCall, 0, len(missingSignatures))
+
+	for _, missingSig := range missingSignatures {
+		byteSignature := common.Hex2Bytes(strings.TrimPrefix(missingSig, "0x"))
+
+		abiResult, err := t.ABIFinder.FindABIByMethod(UNKNOWN, byteSignature)
+		if err != nil {
+			L.Info().
+				Str("Signature", missingSig).
+				Msg("Method not found in any ABI instance. Unable to provide any more tracing information")
+
+			missedCalls = append(missedCalls, unknownCall)
+			continue
+		}
+
+		toAddress := t.ContractAddressToNameMap.GetContractAddress(abiResult.ContractName())
+		comment := WrnMissingCallTrace
+		if abiResult.DuplicateCount > 0 {
+			comment = fmt.Sprintf("%s; Potentially inaccurate - method present in %d other contracts", comment, abiResult.DuplicateCount)
+		}
+
+		missedCalls = append(missedCalls, &DecodedCall{
+			CommonData: CommonData{
+				Signature: missingSig,
+				Method:    abiResult.Method.Name,
+				Input:     map[string]interface{}{"warning": NO_DATA},
+				Output:    map[string]interface{}{"warning": NO_DATA},
 			},
 			FromAddress: UNKNOWN,
-			ToAddress:   UNKNOWN,
+			ToAddress:   toAddress,
+			To:          abiResult.ContractName(),
+			From:        UNKNOWN,
+			Comment:     comment,
 			Events: []DecodedCommonLog{
 				{Signature: NO_DATA, EventData: map[string]interface{}{"warning": NO_DATA}},
 			},
-		}
-
-		var missingSignatures []string
-		var findSignatureFn func(fourByteSign string, calls []Call) bool
-		findSignatureFn = func(fourByteSign string, calls []Call) bool {
-			for _, c := range calls {
-				if strings.Contains(c.Input, fourByteSign) {
-					return true
-				}
-
-				if findSignatureFn(fourByteSign, c.Calls) {
-					return true
-				}
-			}
-
-			return false
-		}
-		for k := range trace.FourByte {
-			if strings.Contains(trace.CallTrace.Input, k) {
-				continue
-			}
-
-			found := findSignatureFn(k, trace.CallTrace.Calls)
-
-			if !found {
-				missingSignatures = append(missingSignatures, k)
-			}
-		}
-
-		missedCalls := make([]*DecodedCall, 0, len(missingSignatures))
-
-		for _, missingSig := range missingSignatures {
-			byteSignature := common.Hex2Bytes(strings.TrimPrefix(missingSig, "0x"))
-
-			abiResult, err := t.ABIFinder.FindABIByMethod(UNKNOWN, byteSignature)
-			if err != nil {
-				L.Info().
-					Str("Signature", missingSig).
-					Msg("Method not found in any ABI instance. Unable to provide any more tracing information")
-
-				missedCalls = append(missedCalls, unknownCall)
-				continue
-			}
-
-			toAddress := t.ContractAddressToNameMap.GetContractAddress(abiResult.ContractName())
-			comment := WrnMissingCallTrace
-			if abiResult.DuplicateCount > 0 {
-				comment = fmt.Sprintf("%s; Potentially inaccurate - method present in %d other contracts", comment, abiResult.DuplicateCount)
-			}
-
-			missedCalls = append(missedCalls, &DecodedCall{
-				CommonData: CommonData{
-					Signature: missingSig,
-					Method:    abiResult.Method.Name,
-					Input:     map[string]interface{}{"warning": NO_DATA},
-					Output:    map[string]interface{}{"warning": NO_DATA},
-				},
-				FromAddress: UNKNOWN,
-				ToAddress:   toAddress,
-				To:          abiResult.ContractName(),
-				From:        UNKNOWN,
-				Comment:     comment,
-				Events: []DecodedCommonLog{
-					{Signature: NO_DATA, EventData: map[string]interface{}{"warning": NO_DATA}},
-				},
-			})
-		}
-
-		return missedCalls
+		})
 	}
 
-	return []*DecodedCall{}
+	return missedCalls
 }
-
 func (t *Tracer) SaveDecodedCallsAsJson(dirname string) error {
 	for txHash, calls := range t.GetAllDecodedCalls() {
 		_, err := saveAsJson(calls, dirname, txHash)
@@ -684,7 +708,14 @@ func (t *Tracer) printDecodedCallData(l zerolog.Logger, calls []*DecodedCall, re
 		l.Debug().Str(fmt.Sprintf("%s- Method signature", indentation), dc.Signature).Send()
 		l.Debug().Str(fmt.Sprintf("%s- Method name", indentation), dc.Method).Send()
 		l.Debug().Str(fmt.Sprintf("%s- Gas used/limit", indentation), fmt.Sprintf("%d/%d", dc.GasUsed, dc.GasLimit)).Send()
-		l.Debug().Str(fmt.Sprintf("%s- Gas left", indentation), fmt.Sprintf("%d", dc.GasLimit-dc.GasUsed)).Send()
+
+		gasLeft := int64(dc.GasLimit) - int64(dc.GasUsed)
+		if gasLeft < 0 {
+			l.Debug().Str(fmt.Sprintf("%s- Gas left", indentation), fmt.Sprintf("%d (negative due to gas refunds or stipends)", gasLeft)).Send()
+		} else {
+			l.Debug().Str(fmt.Sprintf("%s- Gas left", indentation), fmt.Sprintf("%d", gasLeft)).Send()
+		}
+
 		if dc.Comment != "" {
 			l.Debug().Str(fmt.Sprintf("%s- Comment", indentation), dc.Comment).Send()
 		}

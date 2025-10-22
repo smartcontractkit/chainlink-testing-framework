@@ -1,7 +1,6 @@
 package seth
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -47,11 +46,21 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 		contractName := a.ContractMap.GetContractName(address)
 		abiInstanceCandidate, ok := a.ContractStore.ABIs[contractName+".abi"]
 		if !ok {
-			err := errors.New(ErrNoAbiFound)
+			err := fmt.Errorf("no ABI found for contract '%s' at address %s, even though it's registered in the contract map. "+
+				"This happens when:\n"+
+				"  1. Contract address is in the contract map but ABI file is missing from abi_dir\n"+
+				"  2. ABI files were moved or deleted after contract deployment\n"+
+				"  3. Contract map is corrupted or out of sync\n"+
+				"Troubleshooting:\n"+
+				"  1. Verify ABI file '%s.abi' exists in the configured abi_dir\n"+
+				"  2. Check if save_deployed_contracts_map = true in config\n"+
+				"  3. Re-deploy the contract or manually add ABI with ContractStore.AddABI()\n"+
+				"  4. For external contracts, obtain and add the ABI manually",
+				contractName, address, contractName)
 			L.Err(err).
 				Str("Contract", contractName).
 				Str("Address", address).
-				Msg("ABI not found, even though contract is known. This should not happen. Contract map might be corrupted")
+				Msg("ABI not found for known contract")
 			return ABIFinderResult{}, err
 		}
 
@@ -150,14 +159,17 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 
 		return ABIFinderResult{}, fmt.Errorf("no ABI found with method signature %s for contract at address %s.\n"+
 			"Checked %d ABIs but none matched.%s\n"+
-			"This usually means:\n"+
-			"  1. The contract ABI wasn't loaded into Seth's contract store\n"+
-			"  2. The method signature doesn't match any known ABI\n"+
-			"  3. You're calling a non-existent contract address\n"+
-			"Solutions:\n"+
-			"  1. Add the contract's ABI to the directory specified by 'abi_dir'\n"+
-			"  2. Use ContractStore.AddABI() to add it programmatically\n"+
-			"  3. Deploy the contract via Seth so it's automatically registered",
+			"Possible causes:\n"+
+			"  1. Contract ABI not loaded (check abi_dir and contract_map_file)\n"+
+			"  2. Method signature doesn't match any function in loaded ABIs\n"+
+			"  3. Contract address not registered in contract map\n"+
+			"  4. Wrong contract address (check deployment logs)\n"+
+			"Troubleshooting:\n"+
+			"  1. Verify contract was deployed with DeployContract() or loaded with LoadContract()\n"+
+			"  2. Check the method signature is correct (case-sensitive, including parameter types)\n"+
+			"  3. Ensure ABI file exists in the directory specified by 'abi_dir'\n"+
+			"  4. Review contract_map_file for address-to-name mappings\n"+
+			"  5. Use ContractStore.AddABI() to manually add the ABI",
 			stringSignature, address, abiCount, abiSample)
 	}
 

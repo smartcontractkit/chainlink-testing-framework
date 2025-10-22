@@ -83,7 +83,18 @@ func (m *Client) CalculateSubKeyFunding(addrs, gasPrice, rooKeyBuffer int64) (*F
 		Msg("Root key balance")
 
 	if freeBalance.Cmp(big.NewInt(0)) < 0 {
-		return nil, fmt.Errorf(ErrInsufficientRootKeyBalance, freeBalance.String())
+		return nil, fmt.Errorf("insufficient root key balance.\n"+
+			"Current balance: %s wei (%s ETH)\n"+
+			"Required for operation: %s wei (%s ETH)\n"+
+			"Deficit: %s wei (%s ETH)\n"+
+			"Solutions:\n"+
+			"  1. Fund the root key address with more ETH\n"+
+			"  2. Reduce number of ephemeral keys (current: %d)\n"+
+			"  3. Lower root_key_funds_buffer in config (current: %d ETH)",
+			balance.String(), WeiToEther(balance).Text('f', 6),
+			new(big.Int).Add(totalFee, rootKeyBuffer).String(), WeiToEther(new(big.Int).Add(totalFee, rootKeyBuffer)).Text('f', 6),
+			new(big.Int).Abs(freeBalance).String(), WeiToEther(new(big.Int).Abs(freeBalance)).Text('f', 6),
+			addrs, rooKeyBuffer)
 	}
 
 	addrFunding := new(big.Int).Div(freeBalance, big.NewInt(addrs))
@@ -96,7 +107,21 @@ func (m *Client) CalculateSubKeyFunding(addrs, gasPrice, rooKeyBuffer int64) (*F
 		Msg("Using hardcoded ephemeral funding")
 
 	if freeBalance.Cmp(requiredBalance) < 0 {
-		return nil, fmt.Errorf(ErrInsufficientRootKeyBalance, freeBalance.String())
+		return nil, fmt.Errorf("insufficient root key balance for funding %d ephemeral keys.\n"+
+			"Available balance: %s wei (%s ETH)\n"+
+			"Required balance: %s wei (%s ETH)\n"+
+			"Per-key funding: %s wei (%s ETH)\n"+
+			"Solutions:\n"+
+			"  1. Fund the root key with at least %s ETH\n"+
+			"  2. Reduce ephemeral_addresses_number to %d or fewer in config\n"+
+			"  3. Reduce root_key_funds_buffer (currently reserves %d ETH)",
+			addrs,
+			freeBalance.String(), WeiToEther(freeBalance).Text('f', 6),
+			requiredBalance.String(), WeiToEther(requiredBalance).Text('f', 6),
+			addrFunding.String(), WeiToEther(addrFunding).Text('f', 6),
+			WeiToEther(requiredBalance).Text('f', 6),
+			new(big.Int).Div(freeBalance, addrFunding).Int64(),
+			rooKeyBuffer)
 	}
 
 	bd := &FundingDetails{
@@ -161,7 +186,13 @@ type Duration struct{ D time.Duration }
 
 func MakeDuration(d time.Duration) (Duration, error) {
 	if d < time.Duration(0) {
-		return Duration{}, fmt.Errorf("cannot make negative time duration: %s", d)
+		return Duration{}, fmt.Errorf("invalid negative duration: %s\n"+
+			"Duration values must be non-negative.\n"+
+			"Check your configuration values for:\n"+
+			"  - pending_transaction_timeout\n"+
+			"  - transaction_timeout\n"+
+			"  - Any other time.Duration config fields",
+			d)
 	}
 	return Duration{D: d}, nil
 }
