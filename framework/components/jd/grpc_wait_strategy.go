@@ -64,7 +64,7 @@ func (g *GRPCHealthStrategy) WaitUntilReady(ctx context.Context, target tcwait.S
 			}
 
 			// Get host and port
-			host, err := framework.GetHost(target.(tc.Container))
+			host, err := framework.GetHost(target.(tc.Container)) //nolint:contextcheck //don't want modify the signture of GetHost() yet
 			if err != nil {
 				continue
 			}

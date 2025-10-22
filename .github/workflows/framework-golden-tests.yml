@@ -75,7 +75,7 @@ jobs:
             config: fake.toml
             count: 1
             timeout: 10m
-            # TODO: sdlc auth
+            # TODO: sdlc auth (move to framework-golden-tests-private.yml, which has that auth set up)
 #          - name: TestDockerFakes
 #            config: fake_docker.toml
 #            count: 1

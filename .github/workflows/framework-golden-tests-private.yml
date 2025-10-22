@@ -67,7 +67,7 @@ jobs:
             go-modules-${{ runner.os }}
       - name: Install dependencies
         run: go mod download
-      - name: Run System Tests
+      - name: Run Tests
         if: steps.changes.outputs.src == 'true'
         env:
           CTF_CONFIGS: ${{ matrix.test.config }}
