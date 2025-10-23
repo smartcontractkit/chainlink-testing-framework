@@ -709,7 +709,7 @@ func (t *Tracer) printDecodedCallData(l zerolog.Logger, calls []*DecodedCall, re
 		l.Debug().Str(fmt.Sprintf("%s- Method name", indentation), dc.Method).Send()
 		l.Debug().Str(fmt.Sprintf("%s- Gas used/limit", indentation), fmt.Sprintf("%d/%d", dc.GasUsed, dc.GasLimit)).Send()
 
-		gasLeft := int64(dc.GasLimit) - int64(dc.GasUsed)
+		gasLeft := mustSafeInt64(dc.GasLimit) - mustSafeInt64(dc.GasUsed)
 		if gasLeft < 0 {
 			l.Debug().Str(fmt.Sprintf("%s- Gas left", indentation), fmt.Sprintf("%d (negative due to gas refunds or stipends)", gasLeft)).Send()
 		} else {

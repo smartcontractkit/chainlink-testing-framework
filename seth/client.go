@@ -28,25 +28,7 @@ import (
 
 const (
 	ErrEmptyConfigPath          = "toml config path is empty, set SETH_CONFIG_PATH"
-	ErrCreateABIStore           = "failed to create ABI store"
-	ErrReadingKeys              = "failed to read keys"
-	ErrCreateNonceManager       = "failed to create nonce manager"
-	ErrCreateTracer             = "failed to create tracer"
-	ErrReadContractMap          = "failed to read deployed contract map"
-	ErrRpcHealthCheckFailed     = "RPC health check failed ¯\\_(ツ)_/¯"
 	ErrContractDeploymentFailed = "contract deployment failed"
-	ErrNoPksEphemeralMode       = "no private keys loaded, cannot fund ephemeral addresses"
-	// unused by Seth, but used by upstream
-	ErrNoKeyLoaded = "failed to load private key"
-
-	ErrSethConfigIsNil         = "seth config is nil"
-	ErrNetworkIsNil            = "no Network is set in the Seth config"
-	ErrNonceManagerConfigIsNil = "nonce manager config is nil"
-	ErrReadOnlyWithPrivateKeys = "read-only mode is enabled, but you tried to load private keys"
-	ErrReadOnlyEphemeralKeys   = "ephemeral mode is not supported in read-only mode"
-	ErrReadOnlyGasBumping      = "gas bumping is not supported in read-only mode"
-	ErrReadOnlyRpcHealth       = "RPC health check is not supported in read-only mode"
-	ErrReadOnlyPendingNonce    = "pending nonce protection is not supported in read-only mode"
 
 	ContractMapFilePattern          = "deployed_contracts_%s_%s.toml"
 	RevertedTransactionsFilePattern = "reverted_transactions_%s_%s.json"
@@ -89,7 +71,7 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 	initDefaultLogging()
 
 	if cfg == nil {
-		return nil, fmt.Errorf("Seth configuration is nil. " +
+		return nil, fmt.Errorf("seth configuration is nil. " +
 			"Ensure you're calling NewClientWithConfig() with a valid config, or use NewClient() to load from SETH_CONFIG_PATH environment variable. " +
 			"See documentation for configuration examples")
 	}

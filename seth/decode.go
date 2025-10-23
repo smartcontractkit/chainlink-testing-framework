@@ -617,13 +617,7 @@ func (m *Client) callAndGetRevertReason(tx *types.Transaction, rc *types.Receipt
 		return err
 	}
 	if decodedABIErrString != "" {
-		return fmt.Errorf("failed to decode ABI from contract code: %s\n"+
-			"This happens when:\n"+
-			"  1. Contract bytecode doesn't contain valid ABI metadata\n"+
-			"  2. Contract wasn't compiled with metadata (--metadata-hash none)\n"+
-			"  3. Contract code at the address is not a valid contract\n"+
-			"For third-party contracts, manually load the ABI instead of relying on auto-detection",
-			decodedABIErrString)
+		return fmt.Errorf("transaction reverted with custom error: %s", decodedABIErrString)
 	}
 
 	if plainStringErr != nil {

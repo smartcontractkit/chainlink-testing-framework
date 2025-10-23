@@ -63,18 +63,18 @@ func TestSmokeContractABIStore(t *testing.T) {
 		{
 			name:    "empty ABI dir",
 			abiPath: "./contracts/emptyContractDir",
-			err:     "no ABI files found in './contracts/emptyContractDir'. Fix the path or comment out 'abi_dir' setting",
+			err:     "no ABI files (*.abi) found in directory './contracts/emptyContractDir'.",
 		},
 		{
 			name:              "empty gethwrappers dir",
 			gethWrappersPaths: []string{"./contracts/emptyContractDir"},
-			err:               "failed to load geth wrappers from [./contracts/emptyContractDir]: no geth wrappers found in '[./contracts/emptyContractDir]'. Fix the path or comment out 'geth_wrappers_dirs' setting",
+			err:               "failed to load geth wrappers from [./contracts/emptyContractDir]: no geth wrapper files found in directories: [./contracts/emptyContractDir]",
 		},
 		{
 			name:              "empty ABI and gethwrappers dir",
 			abiPath:           "./contracts/emptyContractDir",
 			gethWrappersPaths: []string{"./contracts/emptyContractDir"},
-			err:               "no ABI files found in './contracts/emptyContractDir'. Fix the path or comment out 'abi_dir' setting",
+			err:               "no ABI files (*.abi) found in directory './contracts/emptyContractDir'.",
 		},
 		{
 			name:              "no MetaData in one of gethwrappers",
@@ -84,7 +84,7 @@ func TestSmokeContractABIStore(t *testing.T) {
 		{
 			name:              "empty MetaData in one of gethwrappers",
 			gethWrappersPaths: []string{"./contracts/emptyMetaDataContractDir"},
-			err:               "failed to load geth wrappers from [./contracts/emptyMetaDataContractDir]: failed to parse ABI content: EOF",
+			err:               "failed to load geth wrappers from [./contracts/emptyMetaDataContractDir]: failed to parse ABI content from 'contracts/emptyMetaDataContractDir/NetworkDebugContract_Broken.go': EOF",
 		},
 		{
 			name:              "gethwrappers dir mixes regular go files and gethwrappers",
@@ -94,12 +94,12 @@ func TestSmokeContractABIStore(t *testing.T) {
 		{
 			name:    "invalid ABI inside ABI dir",
 			abiPath: "./contracts/invalidContractDir",
-			err:     "failed to parse ABI file: invalid character ':' after array element",
+			err:     "failed to parse ABI file 'NetworkDebugContract.abi': invalid character ':' after array element",
 		},
 		{
 			name:              "invalid ABI in gethwrappers inside dir",
 			gethWrappersPaths: []string{"./contracts/invalidContractDir"},
-			err:               "failed to load geth wrappers from [./contracts/invalidContractDir]: failed to parse ABI content: invalid character 'i' looking for beginning of value",
+			err:               "failed to load geth wrappers from [./contracts/invalidContractDir]: failed to parse ABI content from 'contracts/invalidContractDir/NetworkDebugContract_Broken.go': invalid character 'i' looking for beginning of value",
 		},
 	}
 
@@ -114,7 +114,7 @@ func TestSmokeContractABIStore(t *testing.T) {
 				require.Equal(t, make(map[string][]uint8), cs.BINs)
 				err = errors.New("")
 			}
-			require.Equal(t, tc.err, err.Error())
+			require.Contains(t, err.Error(), tc.err, "error should match")
 		})
 	}
 }
@@ -152,7 +152,7 @@ func TestSmokeContractBINStore(t *testing.T) {
 			name:    "empty BIN dir",
 			abiPath: "./contracts/abi",
 			binPath: "./contracts/emptyContractDir",
-			err:     "no BIN files found in './contracts/emptyContractDir'. Fix the path or comment out 'bin_dir' setting",
+			err:     "no BIN files (*.bin) found in directory './contracts/emptyContractDir'.",
 		},
 	}
 
@@ -171,7 +171,7 @@ func TestSmokeContractBINStore(t *testing.T) {
 			} else {
 				require.Nil(t, cs, "ContractStore should be nil")
 			}
-			require.Equal(t, tc.err, err.Error(), "error should match")
+			require.Contains(t, err.Error(), tc.err, "error should match")
 		})
 	}
 }

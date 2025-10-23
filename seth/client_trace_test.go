@@ -1229,7 +1229,7 @@ func TestTraceContractAll(t *testing.T) {
 	require.NoError(t, txErr, "transaction sending should not fail")
 	_, decodeErr := c.Decode(revertedTx, txErr)
 	require.Error(t, decodeErr, "transaction should have reverted")
-	require.Equal(t, "error type: CustomErr, error values: [12 21]", decodeErr.Error(), "expected error message to contain the reverted error type and values")
+	require.Equal(t, "transaction reverted with custom error: error type: CustomErr, error values: [12 21]", decodeErr.Error(), "expected error message to contain the reverted error type and values")
 
 	okTx, txErr := TestEnv.DebugContract.AddCounter(c.NewTXOpts(), big.NewInt(1), big.NewInt(2))
 	require.NoError(t, txErr, "transaction should not have reverted")
@@ -1282,7 +1282,7 @@ func TestTraceContractOnlyReverted(t *testing.T) {
 	require.NoError(t, txErr, "transaction sending should not fail")
 	_, decodeErr := c.Decode(revertedTx, txErr)
 	require.Error(t, decodeErr, "transaction should have reverted")
-	require.Equal(t, "error type: CustomErr, error values: [12 21]", decodeErr.Error(), "expected error message to contain the reverted error type and values")
+	require.Equal(t, "transaction reverted with custom error: error type: CustomErr, error values: [12 21]", decodeErr.Error(), "expected error message to contain the reverted error type and values")
 
 	okTx, txErr := TestEnv.DebugContract.AddCounter(c.NewTXOpts(), big.NewInt(1), big.NewInt(2))
 	require.NoError(t, txErr, "transaction should not have reverted")
@@ -1320,7 +1320,7 @@ func TestTraceContractNone(t *testing.T) {
 	require.NoError(t, txErr, "transaction sending should not fail")
 	_, decodeErr := c.Decode(revertedTx, txErr)
 	require.Error(t, decodeErr, "transaction should have reverted")
-	require.Equal(t, "error type: CustomErr, error values: [12 21]", decodeErr.Error(), "expected error message to contain the reverted error type and values")
+	require.Equal(t, "transaction reverted with custom error: error type: CustomErr, error values: [12 21]", decodeErr.Error(), "expected error message to contain the reverted error type and values")
 
 	okTx, txErr := TestEnv.DebugContract.AddCounter(c.NewTXOpts(), big.NewInt(1), big.NewInt(2))
 	require.NoError(t, txErr, "transaction should not have reverted")
@@ -1341,7 +1341,7 @@ func TestTraceContractRevertedErrNoValues(t *testing.T) {
 	require.NoError(t, txErr, "transaction should have reverted")
 	_, decodeErr := c.Decode(tx, txErr)
 	require.Error(t, decodeErr, "transaction should have reverted")
-	require.Equal(t, "error type: CustomErrNoValues, error values: []", decodeErr.Error(), "expected error message to contain the reverted error type and values")
+	require.Equal(t, "transaction reverted with custom error: error type: CustomErrNoValues, error values: []", decodeErr.Error(), "expected error message to contain the reverted error type and values")
 	require.Equal(t, 1, len(c.Tracer.GetAllDecodedCalls()), "expected 1 decoded transacton")
 
 	expectedCall := &seth.DecodedCall{
@@ -1373,7 +1373,7 @@ func TestTraceCallRevertFunctionInTheContract(t *testing.T) {
 	require.NoError(t, txErr, "transaction should have reverted")
 	_, decodeErr := c.Decode(tx, txErr)
 	require.Error(t, decodeErr, "transaction should have reverted")
-	require.Equal(t, "error type: CustomErr, error values: [12 21]", decodeErr.Error(), "expected error message to contain the reverted error type and values")
+	require.Equal(t, "transaction reverted with custom error: error type: CustomErr, error values: [12 21]", decodeErr.Error(), "expected error message to contain the reverted error type and values")
 	require.Equal(t, 1, len(c.Tracer.GetAllDecodedCalls()), "expected 1 decoded transacton")
 
 	expectedCall := &seth.DecodedCall{
@@ -1407,7 +1407,7 @@ func TestTraceCallRevertFunctionInSubContract(t *testing.T) {
 	require.NoError(t, txErr, "transaction should have reverted")
 	_, decodeErr := c.Decode(tx, txErr)
 	require.Error(t, decodeErr, "transaction should have reverted")
-	require.Equal(t, "error type: CustomErr, error values: [1001 2]", decodeErr.Error(), "expected error message to contain the reverted error type and values")
+	require.Equal(t, "transaction reverted with custom error: error type: CustomErr, error values: [1001 2]", decodeErr.Error(), "expected error message to contain the reverted error type and values")
 	require.Equal(t, 1, len(c.Tracer.GetAllDecodedCalls()), "expected 1 decoded transaction")
 
 	expectedCall := &seth.DecodedCall{
@@ -1446,7 +1446,7 @@ func TestTraceCallRevertInCallback(t *testing.T) {
 	require.NoError(t, txErr, "transaction should have reverted")
 	_, decodeErr := c.Decode(tx, txErr)
 	require.Error(t, decodeErr, "transaction should have reverted")
-	require.Equal(t, "error type: CustomErr, error values: [99 101]", decodeErr.Error(), "expected error message to contain the reverted error type and values")
+	require.Equal(t, "transaction reverted with custom error: error type: CustomErr, error values: [99 101]", decodeErr.Error(), "expected error message to contain the reverted error type and values")
 }
 
 func TestTraceOldPragmaNoRevertReason(t *testing.T) {
@@ -1493,7 +1493,7 @@ func TestTraceeRevertReasonNonRootSender(t *testing.T) {
 	require.NoError(t, txErr, "transaction should have reverted")
 	_, decodeErr := c.Decode(tx, txErr)
 	require.Error(t, decodeErr, "transaction should have reverted")
-	require.Equal(t, "error type: CustomErr, error values: [1001 2]", decodeErr.Error(), "expected error message to contain the reverted error type and values")
+	require.Equal(t, "transaction reverted with custom error: error type: CustomErr, error values: [1001 2]", decodeErr.Error(), "expected error message to contain the reverted error type and values")
 	require.Equal(t, 1, len(c.Tracer.GetAllDecodedCalls()), "expected 1 decoded transaction")
 
 	expectedCall := &seth.DecodedCall{
