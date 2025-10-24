@@ -258,32 +258,6 @@ func (m *Client) waitUntilMined(l zerolog.Logger, tx *types.Transaction) (*types
 	return tx, receipt, nil
 }
 
-func (m *Client) handleTxDecodingError(l zerolog.Logger, decoded DecodedTransaction, decodeErr error) {
-	tx := decoded.Transaction
-
-	if m.Cfg.hasOutput(TraceOutput_JSON) {
-		l.Trace().
-			Err(decodeErr).
-			Msg("Failed to decode transaction. Saving transaction data hash as JSON")
-
-		err := CreateOrAppendToJsonArray(m.Cfg.revertedTransactionsFile, tx.Hash().Hex())
-		if err != nil {
-			l.Warn().
-				Err(err).
-				Str("TXHash", tx.Hash().Hex()).
-				Msg("Failed to save reverted transaction hash to file")
-		} else {
-			l.Trace().
-				Str("TXHash", tx.Hash().Hex()).
-				Msg("Saved reverted transaction to file")
-		}
-	}
-
-	if m.Cfg.hasOutput(TraceOutput_Console) {
-		m.printDecodedTXData(l, &decoded)
-	}
-}
-
 func (m *Client) handleTracingError(l zerolog.Logger, decoded DecodedTransaction, traceErr, revertErr error) {
 	if m.Cfg.hasOutput(TraceOutput_JSON) {
 		l.Trace().
