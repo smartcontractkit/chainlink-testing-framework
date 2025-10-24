@@ -679,7 +679,7 @@ func (m *Client) HistoricalFeeData(ctx context.Context, priority string) (baseFe
 		percentileTip = 25
 	default:
 		err = fmt.Errorf("unsupported transaction priority '%s'. "+
-			"Valid priorities: 'fast', 'standard', 'slow'. "+
+			"Valid priorities: 'degen' (internal), 'fast', 'standard', 'slow'. "+
 			"Set 'gas_price_estimation_tx_priority' in your config (seth.toml or ClientBuilder)",
 			priority)
 		L.Debug().
@@ -712,7 +712,7 @@ func (m *Client) HistoricalFeeData(ctx context.Context, priority string) (baseFe
 		baseFee = stats.BaseFeePerc.Perc25
 	default:
 		err = fmt.Errorf("unsupported transaction priority '%s'. "+
-			"Valid priorities: 'fast', 'standard', 'slow'. "+
+			"Valid priorities: 'degen' (internal), 'fast', 'standard', 'slow'. "+
 			"Set 'gas_price_estimation_tx_priority' in your config (seth.toml or ClientBuilder)",
 			priority)
 		L.Debug().

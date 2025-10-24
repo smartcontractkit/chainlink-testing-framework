@@ -137,28 +137,8 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 	}
 
 	if result.Method == nil {
-		abiCount := len(a.ContractStore.ABIs)
-		abiSample := ""
-		if abiCount > 0 {
-			// Show first few ABIs as examples (max 5)
-			sampleSize := min(abiCount, 5)
-			samples := make([]string, 0, sampleSize)
-			count := 0
-			for abiName := range a.ContractStore.ABIs {
-				if count >= sampleSize {
-					break
-				}
-				samples = append(samples, strings.TrimSuffix(abiName, ".abi"))
-				count++
-			}
-			abiSample = fmt.Sprintf("\nExample ABIs loaded: %s", strings.Join(samples, ", "))
-			if abiCount > sampleSize {
-				abiSample += fmt.Sprintf(" (and %d more)", abiCount-sampleSize)
-			}
-		}
-
 		return ABIFinderResult{}, fmt.Errorf("no ABI found with method signature %s for contract at address %s.\n"+
-			"Checked %d ABIs but none matched.%s\n"+
+			"Checked %d ABIs but none matched.\n"+
 			"Possible causes:\n"+
 			"  1. Contract ABI not loaded (check abi_dir and contract_map_file)\n"+
 			"  2. Method signature doesn't match any function in loaded ABIs\n"+
@@ -170,7 +150,7 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 			"  3. Ensure ABI file exists in the directory specified by 'abi_dir'\n"+
 			"  4. Review contract_map_file for address-to-name mappings\n"+
 			"  5. Use ContractStore.AddABI() to manually add the ABI",
-			stringSignature, address, abiCount, abiSample)
+			stringSignature, address, len(a.ContractStore.ABIs))
 	}
 
 	return result, nil

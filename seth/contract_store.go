@@ -243,7 +243,7 @@ func (c *ContractStore) loadGethWrappers(gethWrappersPaths []string) error {
 			"  2. Generate wrappers using abigen:\n"+
 			"     abigen --abi contract.abi --bin contract.bin --pkg wrappers --out contract_wrapper.go\n"+
 			"  3. Ensure wrapper files contain ABI metadata (check for 'ABI' variable)\n"+
-			"  4. If not using geth wrappers, remove 'geth_wrappers_dirs' from config",
+			"  4. If not using geth wrappers, remove 'geth_wrappers_dirs' from config (seth.toml or ClientBuilder)",
 			gethWrappersPaths)
 	}
 

@@ -65,7 +65,7 @@ func validateNonceManagerConfig(nonceManagerCfg *NonceManagerCfg) error {
 // NewNonceManager creates a new nonce manager that tracks nonce for each address
 func NewNonceManager(cfg *Config, addrs []common.Address, privKeys []*ecdsa.PrivateKey) (*NonceManager, error) {
 	if cfg == nil {
-		return nil, fmt.Errorf("Seth configuration is nil. Cannot create nonce manager without valid configuration.\n" +
+		return nil, fmt.Errorf("seth configuration is nil. Cannot create nonce manager without valid configuration.\n" +
 			"This usually means you're trying to create a nonce manager before initializing Seth.\n" +
 			"Solutions:\n" +
 			"  1. Use NewClient() or NewClientWithConfig() to create a Seth client first\n" +

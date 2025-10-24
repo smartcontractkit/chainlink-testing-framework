@@ -30,6 +30,9 @@ const (
 	ErrEmptyConfigPath          = "toml config path is empty, set SETH_CONFIG_PATH"
 	ErrContractDeploymentFailed = "contract deployment failed"
 
+	// unused by Seth, but used by upstream
+	ErrNoKeyLoaded = "failed to load private key"
+
 	ContractMapFilePattern          = "deployed_contracts_%s_%s.toml"
 	RevertedTransactionsFilePattern = "reverted_transactions_%s_%s.json"
 )
@@ -148,7 +151,13 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 		tr, err := NewTracer(cs, &abiFinder, cfg, contractAddressToNameMap, addrs)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create transaction tracer: %w\n"+
-				"This is usually caused by RPC connection issues. Verify your RPC endpoint is accessible",
+				"Possible causes:\n"+
+				"  1. RPC endpoint is not accessible\n"+
+				"  2. RPC node doesn't support debug_traceTransaction API\n"+
+				"Solutions:\n"+
+				"  1. Verify RPC endpoint URL is correct and accessible\n"+
+				"  2. Use an RPC node with debug API enabled (archive node recommended)\n"+
+				"  3. Set tracing_level = 'NONE' in config to disable tracing",
 				err)
 		}
 		opts = append(opts, WithTracer(tr))
@@ -181,7 +190,7 @@ func NewClientRaw(
 	opts ...ClientOpt,
 ) (*Client, error) {
 	if cfg == nil {
-		return nil, fmt.Errorf("Seth configuration is nil. " +
+		return nil, fmt.Errorf("seth configuration is nil. " +
 			"Provide a valid Config when calling NewClientRaw(). " +
 			"Consider using NewClient() or NewClientWithConfig() instead")
 	}
@@ -393,7 +402,13 @@ func NewClientRaw(
 		tr, err := NewTracer(c.ContractStore, c.ABIFinder, cfg, c.ContractAddressToNameMap, addrs)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create transaction tracer: %w\n"+
-				"Ensure RPC endpoint supports debug_traceTransaction or set tracing_level = 'NONE'",
+				"Possible causes:\n"+
+				"  1. RPC endpoint is not accessible\n"+
+				"  2. RPC node doesn't support debug_traceTransaction API\n"+
+				"Solutions:\n"+
+				"  1. Verify RPC endpoint URL is correct and accessible\n"+
+				"  2. Use an RPC node with debug API enabled (archive node recommended)\n"+
+				"  3. Set tracing_level = 'NONE' in config to disable tracing",
 				err)
 		}
 
@@ -1280,7 +1295,10 @@ func (m *Client) DeployContractFromContractStore(auth *bind.TransactOpts, name s
 			"This usually means:\n" +
 			"  1. Seth client wasn't properly initialized\n" +
 			"  2. ABI directory path is incorrect in config\n" +
-			"Ensure 'abi_dir' and 'bin_dir' are set in seth.toml or use DeployContract() with explicit ABI/bytecode")
+			"Solutions:\n" +
+			"  1. Set 'abi_dir' and 'bin_dir' in seth.toml config file\n" +
+			"  2. Use ClientBuilder: builder.WithABIDir(path).WithBINDir(path)\n" +
+			"  3. Use DeployContract() method with explicit ABI/bytecode instead")
 	}
 
 	name = strings.TrimSuffix(name, ".abi")
@@ -1288,62 +1306,18 @@ func (m *Client) DeployContractFromContractStore(auth *bind.TransactOpts, name s
 
 	contractAbi, ok := m.ContractStore.ABIs[name+".abi"]
 	if !ok {
-		abiCount := len(m.ContractStore.ABIs)
-		abiSample := ""
-		if abiCount > 0 {
-			// Show first few ABIs as examples (max 5)
-			sampleSize := 5
-			if abiCount < sampleSize {
-				sampleSize = abiCount
-			}
-			samples := make([]string, 0, sampleSize)
-			count := 0
-			for abiName := range m.ContractStore.ABIs {
-				if count >= sampleSize {
-					break
-				}
-				samples = append(samples, strings.TrimSuffix(abiName, ".abi"))
-				count++
-			}
-			abiSample = fmt.Sprintf("\nExample ABIs available: %s", strings.Join(samples, ", "))
-			if abiCount > sampleSize {
-				abiSample += fmt.Sprintf(" (and %d more)", abiCount-sampleSize)
-			}
-		}
 		return DeploymentData{}, fmt.Errorf("ABI for contract '%s' not found in contract store.\n"+
-			"Total ABIs loaded: %d%s\n"+
+			"Total ABIs loaded: %d\n"+
 			"Ensure the ABI file '%s.abi' exists in the directory specified by 'abi_dir' in your config",
-			name, abiCount, abiSample, name)
+			name, len(m.ContractStore.ABIs), name)
 	}
 
 	bytecode, ok := m.ContractStore.BINs[name+".bin"]
 	if !ok {
-		binCount := len(m.ContractStore.BINs)
-		binSample := ""
-		if binCount > 0 {
-			// Show first few BINs as examples (max 5)
-			sampleSize := 5
-			if binCount < sampleSize {
-				sampleSize = binCount
-			}
-			samples := make([]string, 0, sampleSize)
-			count := 0
-			for binName := range m.ContractStore.BINs {
-				if count >= sampleSize {
-					break
-				}
-				samples = append(samples, strings.TrimSuffix(binName, ".bin"))
-				count++
-			}
-			binSample = fmt.Sprintf("\nExample BINs available: %s", strings.Join(samples, ", "))
-			if binCount > sampleSize {
-				binSample += fmt.Sprintf(" (and %d more)", binCount-sampleSize)
-			}
-		}
 		return DeploymentData{}, fmt.Errorf("bytecode (BIN) for contract '%s' not found in contract store.\n"+
-			"Total BINs loaded: %d%s\n"+
+			"Total BINs loaded: %d\n"+
 			"Ensure the BIN file '%s.bin' exists in the directory specified by 'bin_dir' in your config",
-			name, binCount, binSample, name)
+			name, len(m.ContractStore.BINs), name)
 	}
 
 	data, err := m.DeployContract(auth, name, contractAbi, bytecode, params...)
@@ -1587,7 +1561,7 @@ func (m *Client) validateAddressesKeyNum(keyNum int) error {
 		if len(m.Addresses) == 0 {
 			return fmt.Errorf("no addresses loaded, but tried to use key #%d.\n"+
 				"This should not happen if private keys were loaded correctly. "+
-				"Please report this as a bug",
+				"Please report this issue at https://github.com/smartcontractkit/chainlink-testing-framework/issues with the stack trace",
 				keyNum)
 		}
 		return fmt.Errorf("keyNum %d is out of range. Available addresses: 0-%d (total: %d addresses loaded).\n"+

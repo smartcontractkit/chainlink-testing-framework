@@ -139,9 +139,8 @@ func ReadConfig() (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read Seth config file at '%s': %w\n"+
 			"Ensure:\n"+
-			"  1. The file exists at the specified path\n"+
-			"  2. You have read permissions for the file\n"+
-			"  3. The path is correct (set via SETH_CONFIG_PATH or parameter)",
+			"  1. The file exists at the specified path (set via SETH_CONFIG_PATH)\n"+
+			"  2. You have read permissions for the file",
 			cfgPath, err)
 	}
 	err = toml.Unmarshal(d, &cfg)
@@ -214,9 +213,8 @@ func ReadConfig() (*Config, error) {
 		return nil, fmt.Errorf("no root private key was set. "+
 			"You can provide the root private key via:\n"+
 			"  1. %s environment variable (without 0x prefix)\n"+
-			"  2. 'root_private_key' field in seth.toml\n"+
-			"  3. WithPrivateKeys() when using ClientBuilder\n"+
-			"WARNING: Never commit private keys to source control. Use environment variables or secure secret management",
+			"  2. 'private_keys_secret' array in seth.toml [[networks]] section\n"+
+			"WARNING: Never commit private keys to source control. We recommend to use the environment variable.",
 			ROOT_PRIVATE_KEY_ENV_VAR)
 	}
 	cfg.Network.PrivateKeys = append(cfg.Network.PrivateKeys, rootPrivateKey)
@@ -298,7 +296,7 @@ func (c *Config) Validate() error {
 	case TracingLevel_All:
 	default:
 		return fmt.Errorf("invalid tracing level '%s'. Must be one of: 'NONE', 'REVERTED', 'ALL'. "+
-			"Set 'tracing_level' in your seth.toml config.\n"+
+			"Set 'tracing_level' in your seth.toml config or via WithTracing() option, if using ClientBuilder().\n"+
 			"Recommended: 'REVERTED' for debugging failed transactions, 'NONE' to disable tracing completely",
 			c.TracingLevel)
 	}
@@ -310,7 +308,7 @@ func (c *Config) Validate() error {
 		case TraceOutput_DOT:
 		default:
 			return fmt.Errorf("invalid trace output '%s'. Must be one of: 'console', 'json', 'dot'. "+
-				"Set 'trace_outputs' in your seth.toml config. "+
+				"Set 'trace_outputs' in your seth.toml config or via WithTracing() option, if using ClientBuilder()"+
 				"You can specify multiple outputs as an array",
 				output)
 		}

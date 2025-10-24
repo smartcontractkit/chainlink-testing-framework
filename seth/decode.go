@@ -440,7 +440,10 @@ func (m *Client) decodeTransaction(l zerolog.Logger, tx *types.Transaction, rece
 	txInput, err = decodeTxInputs(l, txData, abiResult.Method)
 	if err != nil {
 		return defaultTxn, fmt.Errorf("failed to decode transaction input for method '%s': %w\n"+
-			"The transaction data doesn't match the expected ABI method signature",
+			"This could be due to:\n"+
+			"  1. Transaction data doesn't match the ABI method signature\n"+
+			"  2. Incorrect ABI for this contract\n"+
+			"  3. Malformed transaction data",
 			abiResult.Method.Name, err)
 	}
 
