@@ -532,8 +532,6 @@ func (m *Client) TransferETHFromKey(ctx context.Context, fromKeyNum int, to stri
 			fromKeyNum, m.Addresses[fromKeyNum].Hex(), err)
 	}
 
-	ctx, sendCancel := context.WithTimeout(ctx, m.Cfg.Network.TxnTimeout.Duration())
-	defer sendCancel()
 	err = m.Client.SendTransaction(ctx, signedTx)
 	if err != nil {
 		return fmt.Errorf("failed to send transaction to network: %w\n"+
@@ -1345,12 +1343,13 @@ func (t TransactionLog) GetData() []byte {
 	return t.Data
 }
 
-func (m *Client) decodeContractLogs(l zerolog.Logger, logs []types.Log, allABIs []*abi.ABI) ([]DecodedTransactionLog, error) {
+func (m *Client) decodeContractLogs(l zerolog.Logger, logs []types.Log, allABIs []*abi.ABI) ([]DecodedTransactionLog, []EventDecodingError, error) {
 	l.Trace().
 		Msg("Decoding events")
 	sigMap := buildEventSignatureMap(allABIs)
 
 	var eventsParsed []DecodedTransactionLog
+	var decodeErrors []EventDecodingError
 	for _, lo := range logs {
 		if len(lo.Topics) == 0 {
 			l.Debug().
@@ -1384,6 +1383,7 @@ func (m *Client) decodeContractLogs(l zerolog.Logger, logs []types.Log, allABIs 
 
 		// Iterate over possible events with the same signature
 		matched := false
+		var decodeAttempts []ABIDecodingError
 		for _, evWithABI := range possibleEvents {
 			evSpec := evWithABI.EventSpec
 			contractABI := evWithABI.ContractABI
@@ -1421,19 +1421,28 @@ func (m *Client) decodeContractLogs(l zerolog.Logger, logs []types.Log, allABIs 
 			}
 
 			// Proceed to decode the event
+			// Find ABI name for this contract ABI
+			abiName := m.findABIName(contractABI)
 			d := TransactionLog{lo.Topics, lo.Data}
 			l.Trace().
 				Str("Name", evSpec.RawName).
 				Str("Signature", evSpec.Sig).
+				Str("ABI", abiName).
 				Msg("Unpacking event")
 
 			eventsMap, topicsMap, err := decodeEventFromLog(l, *contractABI, *evSpec, d)
 			if err != nil {
-				l.Error().
+				l.Debug().
 					Err(err).
 					Str("Event", evSpec.Name).
-					Msg("Failed to decode event; skipping")
-				continue // Skip this event instead of returning an error
+					Str("ABI", abiName).
+					Msg("Failed to decode event; trying next ABI")
+				decodeAttempts = append(decodeAttempts, ABIDecodingError{
+					ABIName:   abiName,
+					EventName: evSpec.Name,
+					Error:     err.Error(),
+				})
+				continue // Try next ABI instead of giving up
 			}
 
 			parsedEvent := decodedLogFromMaps(&DecodedTransactionLog{}, eventsMap, topicsMap)
@@ -1455,12 +1464,36 @@ func (m *Client) decodeContractLogs(l zerolog.Logger, logs []types.Log, allABIs 
 		}
 
 		if !matched {
+			// Record the decode failure
+			topics := make([]string, len(lo.Topics))
+			for i, topic := range lo.Topics {
+				topics[i] = topic.Hex()
+			}
+			
+			decodeError := EventDecodingError{
+				Signature: eventSig,
+				LogIndex:  lo.Index,
+				Address:   lo.Address.Hex(),
+				Topics:    topics,
+				Errors:    decodeAttempts,
+			}
+			decodeErrors = append(decodeErrors, decodeError)
+			
+			abiNames := make([]string, len(decodeAttempts))
+			for i, attempt := range decodeAttempts {
+				abiNames[i] = attempt.ABIName
+			}
+			
 			l.Warn().
 				Str("Signature", eventSig).
-				Msg("No matching event with valid indexed parameter count found for log")
+				Uint("LogIndex", lo.Index).
+				Str("Address", lo.Address.Hex()).
+				Strs("AttemptedABIs", abiNames).
+				Int("FailedAttempts", len(decodeAttempts)).
+				Msg("Failed to decode event log")
 		}
 	}
-	return eventsParsed, nil
+	return eventsParsed, decodeErrors, nil
 }
 
 type eventWithABI struct {
@@ -1482,6 +1515,21 @@ func buildEventSignatureMap(allABIs []*abi.ABI) map[string][]*eventWithABI {
 	}
 
 	return sigMap
+}
+
+// findABIName finds the name of the ABI in the ContractStore, returns "unknown" if not found
+func (m *Client) findABIName(targetABI *abi.ABI) string {
+	if m.ContractStore == nil {
+		return "unknown"
+	}
+	
+	for name, storedABI := range m.ContractStore.ABIs {
+		if reflect.DeepEqual(storedABI, *targetABI) {
+			return strings.TrimSuffix(name, ".abi")
+		}
+	}
+	
+	return "unknown"
 }
 
 // WaitUntilNoPendingTxForRootKey waits until there's no pending transaction for root key. If after timeout there are still pending transactions, it returns error.

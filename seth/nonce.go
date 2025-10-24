@@ -107,7 +107,7 @@ func (m *NonceManager) UpdateNonces() error {
 	for addr := range m.Nonces {
 		nonce, err := m.Client.Client.NonceAt(context.Background(), addr, nil)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to updated nonces for address '%s': %w", addr, err)
 		}
 		m.Nonces[addr] = mustSafeInt64(nonce)
 	}

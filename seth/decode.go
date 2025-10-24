@@ -36,12 +36,29 @@ const (
 // DecodedTransaction decoded transaction
 type DecodedTransaction struct {
 	CommonData
-	Index       uint                    `json:"index"`
-	Hash        string                  `json:"hash,omitempty"`
-	Protected   bool                    `json:"protected,omitempty"`
-	Transaction *types.Transaction      `json:"transaction,omitempty"`
-	Receipt     *types.Receipt          `json:"receipt,omitempty"`
-	Events      []DecodedTransactionLog `json:"events,omitempty"`
+	Index              uint                    `json:"index"`
+	Hash               string                  `json:"hash,omitempty"`
+	Protected          bool                    `json:"protected,omitempty"`
+	Transaction        *types.Transaction      `json:"transaction,omitempty"`
+	Receipt            *types.Receipt          `json:"receipt,omitempty"`
+	Events             []DecodedTransactionLog `json:"events,omitempty"`
+	EventDecodingErrors []EventDecodingError    `json:"event_decoding_errors,omitempty"`
+}
+
+// EventDecodingError represents a failed event decode attempt
+type EventDecodingError struct {
+	Signature    string                 `json:"signature"`
+	LogIndex     uint                   `json:"log_index"`
+	Address      string                 `json:"address"`
+	Topics       []string               `json:"topics,omitempty"`
+	Errors       []ABIDecodingError     `json:"errors,omitempty"`
+}
+
+// ABIDecodingError represents a single ABI decode attempt failure
+type ABIDecodingError struct {
+	ABIName    string `json:"abi_name"`
+	EventName  string `json:"event_name"`
+	Error      string `json:"error"`
 }
 
 type CommonData struct {
@@ -448,6 +465,7 @@ func (m *Client) decodeTransaction(l zerolog.Logger, tx *types.Transaction, rece
 	}
 
 	var txIndex uint
+	var decodeErrors []EventDecodingError
 
 	if receipt != nil {
 		l.Trace().Interface("Receipt", receipt).Msg("TX receipt")
@@ -463,7 +481,8 @@ func (m *Client) decodeTransaction(l zerolog.Logger, tx *types.Transaction, rece
 			allABIs = m.ContractStore.GetAllABIs()
 		}
 
-		txEvents, err = m.decodeContractLogs(l, logsValues, allABIs)
+		var err error
+		txEvents, decodeErrors, err = m.decodeContractLogs(l, logsValues, allABIs)
 		if err != nil {
 			return defaultTxn, err
 		}
@@ -475,12 +494,13 @@ func (m *Client) decodeTransaction(l zerolog.Logger, tx *types.Transaction, rece
 			Method:    abiResult.Method.Sig,
 			Input:     txInput,
 		},
-		Index:       txIndex,
-		Receipt:     receipt,
-		Transaction: tx,
-		Protected:   tx.Protected(),
-		Hash:        tx.Hash().String(),
-		Events:      txEvents,
+		Index:               txIndex,
+		Receipt:             receipt,
+		Transaction:         tx,
+		Protected:           tx.Protected(),
+		Hash:                tx.Hash().String(),
+		Events:              txEvents,
+		EventDecodingErrors: decodeErrors,
 	}
 
 	return ptx, nil
@@ -499,7 +519,34 @@ func (m *Client) printDecodedTXData(l zerolog.Logger, ptx *DecodedTransaction) {
 	for _, e := range ptx.Events {
 		l.Debug().
 			Str("Signature", e.Signature).
-			Interface("Log", e.EventData).Send()
+			Str("Address", e.Address.Hex()).
+			Interface("Topics", e.Topics).
+			Interface("Data", e.EventData).
+			Msg("Event emitted")
+	}
+	
+	// Print event decoding errors separately
+	if len(ptx.EventDecodingErrors) > 0 {
+		l.Warn().
+			Int("Failed event decodes", len(ptx.EventDecodingErrors)).
+			Msg("Some events could not be decoded")
+		
+		for _, decodeErr := range ptx.EventDecodingErrors {
+			abiNames := make([]string, len(decodeErr.Errors))
+			errorMsgs := make([]string, len(decodeErr.Errors))
+			for i, abiErr := range decodeErr.Errors {
+				abiNames[i] = abiErr.ABIName
+				errorMsgs[i] = fmt.Sprintf("%s.%s: %s", abiErr.ABIName, abiErr.EventName, abiErr.Error)
+			}
+			
+			l.Warn().
+				Str("Signature", decodeErr.Signature).
+				Uint("LogIndex", decodeErr.LogIndex).
+				Str("Address", decodeErr.Address).
+				Strs("AttemptedABIs", abiNames).
+				Strs("Errors", errorMsgs).
+				Msg("Failed to decode event log")
+		}
 	}
 }
 

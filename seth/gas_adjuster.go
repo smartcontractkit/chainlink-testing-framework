@@ -2,6 +2,7 @@ package seth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum/core/types"
+	"go.uber.org/ratelimit"
 )
 
 const (
@@ -56,7 +58,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 			return cachedHeader, nil
 		}
 
-		timeout := blocksNumber / 100
+		timeout := blocksNumber / 10
 		if timeout < 3 {
 			timeout = 3
 		} else if timeout > 6 {
@@ -94,7 +96,9 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 	var wg sync.WaitGroup
 	dataCh := make(chan *types.Header)
 
+	limit := ratelimit.New(4) // 4 concurrent requests
 	go func() {
+		limit.Take()
 		for header := range dataCh {
 			headers = append(headers, header)
 			// placed here, because we want to wait for all headers to be received and added to slice before continuing
@@ -262,6 +266,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 			Float64("BaseFee", baseFee64).
 			Int64("SuggestedTip", currentGasTip.Int64()).
 			Msgf("Incorrect gas data received from node: base fee was 0. Skipping gas estimation")
+		err = errors.New("incorrect gas data received from node: base fee was 0. Skipping gas estimation")
 		return
 	}
 
@@ -734,16 +739,18 @@ func calculateGasUsedRatio(headers []*types.Header) float64 {
 		return 0
 	}
 
-	var totalRatio float64
+	var totalGasUsedRatio float64
+	validHeaders := 0
 	for _, header := range headers {
-		if header.GasLimit == 0 {
-			continue
+		if header.GasLimit > 0 {
+			totalGasUsedRatio += float64(header.GasUsed) / float64(header.GasLimit)
+			validHeaders++
 		}
-		ratio := float64(header.GasUsed) / float64(header.GasLimit)
-		totalRatio += ratio
 	}
-	averageRatio := totalRatio / float64(len(headers))
-	return averageRatio
+	if validHeaders == 0 {
+		return 0.0
+	}
+	return totalGasUsedRatio / float64(validHeaders)
 }
 
 func calculateMagnitudeDifference(first, second *big.Float) (int, string) {
