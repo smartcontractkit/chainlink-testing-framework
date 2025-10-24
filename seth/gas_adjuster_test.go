@@ -32,8 +32,43 @@ func TestGasAdjuster_CalculateMagnitudeDifference(t *testing.T) {
 		{
 			name:         "Similar magnitude (within 1 order)",
 			first:        big.NewFloat(30_000_000_000), // 30 gwei
-			second:       big.NewFloat(2_000_000_000),  // 2 gwei
+			second:       big.NewFloat(31_000_000_000), // 31 gwei
 			expectedDiff: 0,
+			expectedText: "the same order of magnitude",
+		},
+		{
+			name:         "Similar magnitude (within 1 order)",
+			first:        big.NewFloat(100_000_000_000), // 100 gwei
+			second:       big.NewFloat(99_999_999_999),  // 99.999999999 gwei
+			expectedDiff: 0,
+			expectedText: "the same order of magnitude",
+		},
+		{
+			name:         "Similar magnitude (within 1 order)",
+			first:        big.NewFloat(30_000_000_000), // 30 gwei
+			second:       big.NewFloat(99_999_999_999), // 99.999999999 gwei
+			expectedDiff: 0,
+			expectedText: "the same order of magnitude",
+		},
+		{
+			name:         "Similar magnitude (within 1 order)",
+			first:        big.NewFloat(99_999_999_999), // 99.999999999 gwei
+			second:       big.NewFloat(30_000_000_000), // 30 gwei
+			expectedDiff: 0,
+			expectedText: "the same order of magnitude",
+		},
+		{
+			name:         "Similar magnitude (within 1 order)",
+			first:        big.NewFloat(99_999_999_999),  // 99.999999999 gwei
+			second:       big.NewFloat(100_000_000_000), // 100 gwei
+			expectedDiff: 0,
+			expectedText: "the same order of magnitude",
+		},
+		{
+			name:         "Just under 1 order of magnitude (same order)",
+			first:        big.NewFloat(9_999_999_999), // 9.999... gwei
+			second:       big.NewFloat(1_000_000_000), // 1 gwei
+			expectedDiff: 0,                           // Still same order (diff = 0.9999...)
 			expectedText: "the same order of magnitude",
 		},
 		{
@@ -71,11 +106,13 @@ func TestGasAdjuster_CalculateMagnitudeDifference(t *testing.T) {
 			diff, text := calculateMagnitudeDifference(tt.first, tt.second)
 
 			if diff != tt.expectedDiff {
-				t.Errorf("calculateMagnitudeDifference() diff = %v, want %v", diff, tt.expectedDiff)
+				t.Errorf("calculateMagnitudeDifference(first=%s wei, second=%s wei)\n  diff = %v, want %v",
+					tt.first.Text('f', 0), tt.second.Text('f', 0), diff, tt.expectedDiff)
 			}
 
 			if text != tt.expectedText {
-				t.Errorf("calculateMagnitudeDifference() text = %v, want %v", text, tt.expectedText)
+				t.Errorf("calculateMagnitudeDifference(first=%s wei, second=%s wei)\n  text = %q, want %q",
+					tt.first.Text('f', 0), tt.second.Text('f', 0), text, tt.expectedText)
 			}
 		})
 	}
@@ -226,13 +263,17 @@ func TestGasAdjuster_FeeEqualizerLogic(t *testing.T) {
 			resultTip := currentGasTip.Int64()
 
 			if resultBaseFee != tt.expectedBaseFee {
-				t.Errorf("Base fee after adjustment = %d, want %d\nDescription: %s",
-					resultBaseFee, tt.expectedBaseFee, tt.description)
+				t.Errorf("Base fee after adjustment = %d wei (%.4f gwei), want %d wei (%.4f gwei)\nDescription: %s",
+					resultBaseFee, float64(resultBaseFee)/1e9,
+					tt.expectedBaseFee, float64(tt.expectedBaseFee)/1e9,
+					tt.description)
 			}
 
 			if resultTip != tt.expectedTip {
-				t.Errorf("Tip after adjustment = %d, want %d\nDescription: %s",
-					resultTip, tt.expectedTip, tt.description)
+				t.Errorf("Tip after adjustment = %d wei (%.4f gwei), want %d wei (%.4f gwei)\nDescription: %s",
+					resultTip, float64(resultTip)/1e9,
+					tt.expectedTip, float64(tt.expectedTip)/1e9,
+					tt.description)
 			}
 
 			if baseFeeAdjusted != tt.shouldAdjustBaseFee {

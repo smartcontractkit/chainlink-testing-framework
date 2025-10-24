@@ -787,12 +787,16 @@ func calculateMagnitudeDifference(first, second *big.Float) (int, string) {
 	secondOrderOfMagnitude := math.Log10(secondFloat)
 
 	diff := firstOrderOfMagnitude - secondOrderOfMagnitude
+	absDiff := math.Abs(diff)
+
+	// Values within the same order of magnitude (less than 10x difference)
+	if absDiff < 1 {
+		return 0, "the same order of magnitude"
+	}
 
 	if diff < 0 {
 		intDiff := math.Floor(diff)
 		return int(intDiff), fmt.Sprintf("%d orders of magnitude smaller", int(math.Abs(intDiff)))
-	} else if diff > 0 && diff <= 1 {
-		return 0, "the same order of magnitude"
 	}
 
 	intDiff := int(math.Ceil(diff))
