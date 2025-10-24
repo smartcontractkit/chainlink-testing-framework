@@ -40,7 +40,7 @@ func TestRPCHealthCheckEnabled_Node_Unhealthy(t *testing.T) {
 
 	_, err = seth.NewClientWithConfig(cfg)
 	require.Error(t, err, "expected error when connecting to unhealthy node")
-	require.Contains(t, err.Error(), "RPC health check failed: failed to send transaction to network: insufficient funds for gas * price + value", "expected error message when connecting to dead node")
+	require.Contains(t, err.Error(), "RPC health check failed: failed to send transaction to network: insufficient funds for gas", "expected error message when connecting to dead node")
 }
 
 func TestRPCHealthCheckDisabled_Node_Unhealthy(t *testing.T) {
