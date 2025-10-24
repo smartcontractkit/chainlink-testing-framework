@@ -61,7 +61,7 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 				Str("Contract", contractName).
 				Str("Address", address).
 				Msg("ABI not found for known contract")
-			return ABIFinderResult{}, err
+			return ABIFinderResult{}, fmt.Errorf("%w: %v", ErrNoABIMethod, err)
 		}
 
 		methodCandidate, err := abiInstanceCandidate.MethodById(signature)
@@ -99,7 +99,7 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 				Str("Supposed address", address).
 				Msg("Method not found in known ABI instance. This should not happen. Contract map might be corrupted")
 
-			return ABIFinderResult{}, err
+			return ABIFinderResult{}, fmt.Errorf("%w: %v", ErrNoABIMethod, err)
 		}
 
 		result.Method = methodCandidate
@@ -137,7 +137,7 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 	}
 
 	if result.Method == nil {
-		return ABIFinderResult{}, fmt.Errorf("no ABI found with method signature %s for contract at address %s.\n"+
+		err := fmt.Errorf("no ABI found with method signature %s for contract at address %s.\n"+
 			"Checked %d ABIs but none matched.\n"+
 			"Possible causes:\n"+
 			"  1. Contract ABI not loaded (check abi_dir and contract_map_file)\n"+
@@ -151,6 +151,8 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 			"  4. Review contract_map_file for address-to-name mappings\n"+
 			"  5. Use ContractStore.AddABI() to manually add the ABI",
 			stringSignature, address, len(a.ContractStore.ABIs))
+
+		return ABIFinderResult{}, fmt.Errorf("%w: %v", ErrNoABIMethod, err)
 	}
 
 	return result, nil

@@ -32,7 +32,7 @@ func NewClientBuilder() *ClientBuilder {
 		DialTimeout:                    MustMakeDuration(DefaultDialTimeout),
 		TransferGasFee:                 DefaultTransferGasFee,
 		GasPriceEstimationEnabled:      true,
-		GasPriceEstimationBlocks:       200,
+		GasPriceEstimationBlocks:       20,
 		GasPriceEstimationTxPriority:   Priority_Standard,
 		GasPrice:                       DefaultGasPrice,
 		GasFeeCap:                      DefaultGasFeeCap,

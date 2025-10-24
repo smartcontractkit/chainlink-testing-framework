@@ -58,12 +58,12 @@ jobs:
             network-type: Anvil
             url: "http://localhost:8545"
             extra_flags: "''"
-          - regex: "'TestContractMap|TestGasEstimator|TestRPCHealthCheck|TestUtil|TestContract'"
+          - regex: "'TestContractMap|TestGasEstimator|TestRPCHealthCheck|TestUtil|TestContract|TestGasAdjuster'"
             network-type: Geth
             url: "ws://localhost:8546"
             extra_flags: "-race"
             # TODO: still expects Geth WS URL for some reason
-          - regex: "'TestContractMap|TestGasEstimator|TestRPCHealthCheck|TestUtil|TestContract'"
+          - regex: "'TestContractMap|TestGasEstimator|TestRPCHealthCheck|TestUtil|TestContract|TestGasAdjuster'"
             network-type: Anvil
             url: "http://localhost:8545"
             extra_flags: "-race"

@@ -20,28 +20,40 @@ import (
 	"github.com/rs/zerolog"
 )
 
-const (
-	ErrDecodeInput          = "failed to decode transaction input"
-	ErrDecodeOutput         = "failed to decode transaction output"
-	ErrDecodeLog            = "failed to decode log"
-	ErrDecodedLogNonIndexed = "failed to decode non-indexed log data"
-	ErrDecodeILogIndexed    = "failed to decode indexed log data"
-	ErrTooShortTxData       = "tx data is less than 4 bytes, can't decode"
-	ErrRPCJSONCastError     = "failed to cast CallMsg error as rpc.DataError"
-	ErrUnableToDecode       = "unable to decode revert reason"
+var (
+	ErrNoABIMethod = errors.New("no ABI method found")
+)
 
+const (
 	WarnNoContractStore = "ContractStore is nil, use seth.NewContractStore(...) to decode transactions"
 )
 
 // DecodedTransaction decoded transaction
 type DecodedTransaction struct {
 	CommonData
-	Index       uint                    `json:"index"`
-	Hash        string                  `json:"hash,omitempty"`
-	Protected   bool                    `json:"protected,omitempty"`
-	Transaction *types.Transaction      `json:"transaction,omitempty"`
-	Receipt     *types.Receipt          `json:"receipt,omitempty"`
-	Events      []DecodedTransactionLog `json:"events,omitempty"`
+	Index               uint                    `json:"index"`
+	Hash                string                  `json:"hash,omitempty"`
+	Protected           bool                    `json:"protected,omitempty"`
+	Transaction         *types.Transaction      `json:"transaction,omitempty"`
+	Receipt             *types.Receipt          `json:"receipt,omitempty"`
+	Events              []DecodedTransactionLog `json:"events,omitempty"`
+	EventDecodingErrors []EventDecodingError    `json:"event_decoding_errors,omitempty"`
+}
+
+// EventDecodingError represents a failed event decode attempt
+type EventDecodingError struct {
+	Signature string             `json:"signature"`
+	LogIndex  uint               `json:"log_index"`
+	Address   string             `json:"address"`
+	Topics    []string           `json:"topics,omitempty"`
+	Errors    []ABIDecodingError `json:"errors,omitempty"`
+}
+
+// ABIDecodingError represents a single ABI decode attempt failure
+type ABIDecodingError struct {
+	ABIName   string `json:"abi_name"`
+	EventName string `json:"event_name"`
+	Error     string `json:"error"`
 }
 
 type CommonData struct {
@@ -179,11 +191,6 @@ func (m *Client) DecodeTx(tx *types.Transaction) (*DecodedTransaction, error) {
 			Msg("No post-decode hook found. Skipping")
 	}
 
-	if decodeErr != nil && errors.Is(decodeErr, errors.New(ErrNoABIMethod)) {
-		m.handleTxDecodingError(l, *decoded, decodeErr)
-		return decoded, revertErr
-	}
-
 	if m.Cfg.TracingLevel == TracingLevel_None {
 		m.handleDisabledTracing(l, *decoded)
 		return decoded, revertErr
@@ -249,32 +256,6 @@ func (m *Client) waitUntilMined(l zerolog.Logger, tx *types.Transaction) (*types
 	}
 
 	return tx, receipt, nil
-}
-
-func (m *Client) handleTxDecodingError(l zerolog.Logger, decoded DecodedTransaction, decodeErr error) {
-	tx := decoded.Transaction
-
-	if m.Cfg.hasOutput(TraceOutput_JSON) {
-		l.Trace().
-			Err(decodeErr).
-			Msg("Failed to decode transaction. Saving transaction data hash as JSON")
-
-		err := CreateOrAppendToJsonArray(m.Cfg.revertedTransactionsFile, tx.Hash().Hex())
-		if err != nil {
-			l.Warn().
-				Err(err).
-				Str("TXHash", tx.Hash().Hex()).
-				Msg("Failed to save reverted transaction hash to file")
-		} else {
-			l.Trace().
-				Str("TXHash", tx.Hash().Hex()).
-				Msg("Saved reverted transaction to file")
-		}
-	}
-
-	if m.Cfg.hasOutput(TraceOutput_Console) {
-		m.printDecodedTXData(l, &decoded)
-	}
 }
 
 func (m *Client) handleTracingError(l zerolog.Logger, decoded DecodedTransaction, traceErr, revertErr error) {
@@ -448,6 +429,7 @@ func (m *Client) decodeTransaction(l zerolog.Logger, tx *types.Transaction, rece
 	}
 
 	var txIndex uint
+	var decodeErrors []EventDecodingError
 
 	if receipt != nil {
 		l.Trace().Interface("Receipt", receipt).Msg("TX receipt")
@@ -463,7 +445,8 @@ func (m *Client) decodeTransaction(l zerolog.Logger, tx *types.Transaction, rece
 			allABIs = m.ContractStore.GetAllABIs()
 		}
 
-		txEvents, err = m.decodeContractLogs(l, logsValues, allABIs)
+		var err error
+		txEvents, decodeErrors, err = m.decodeContractLogs(l, logsValues, allABIs)
 		if err != nil {
 			return defaultTxn, err
 		}
@@ -475,12 +458,13 @@ func (m *Client) decodeTransaction(l zerolog.Logger, tx *types.Transaction, rece
 			Method:    abiResult.Method.Sig,
 			Input:     txInput,
 		},
-		Index:       txIndex,
-		Receipt:     receipt,
-		Transaction: tx,
-		Protected:   tx.Protected(),
-		Hash:        tx.Hash().String(),
-		Events:      txEvents,
+		Index:               txIndex,
+		Receipt:             receipt,
+		Transaction:         tx,
+		Protected:           tx.Protected(),
+		Hash:                tx.Hash().String(),
+		Events:              txEvents,
+		EventDecodingErrors: decodeErrors,
 	}
 
 	return ptx, nil
@@ -499,7 +483,34 @@ func (m *Client) printDecodedTXData(l zerolog.Logger, ptx *DecodedTransaction) {
 	for _, e := range ptx.Events {
 		l.Debug().
 			Str("Signature", e.Signature).
-			Interface("Log", e.EventData).Send()
+			Str("Address", e.Address.Hex()).
+			Interface("Topics", e.Topics).
+			Interface("Data", e.EventData).
+			Msg("Event emitted")
+	}
+
+	// Print event decoding errors separately
+	if len(ptx.EventDecodingErrors) > 0 {
+		l.Warn().
+			Int("Failed event decodes", len(ptx.EventDecodingErrors)).
+			Msg("Some events could not be decoded")
+
+		for _, decodeErr := range ptx.EventDecodingErrors {
+			abiNames := make([]string, len(decodeErr.Errors))
+			errorMsgs := make([]string, len(decodeErr.Errors))
+			for i, abiErr := range decodeErr.Errors {
+				abiNames[i] = abiErr.ABIName
+				errorMsgs[i] = fmt.Sprintf("%s.%s: %s", abiErr.ABIName, abiErr.EventName, abiErr.Error)
+			}
+
+			l.Warn().
+				Str("Signature", decodeErr.Signature).
+				Uint("LogIndex", decodeErr.LogIndex).
+				Str("Address", decodeErr.Address).
+				Strs("AttemptedABIs", abiNames).
+				Strs("Errors", errorMsgs).
+				Msg("Failed to decode event log")
+		}
 	}
 }
 

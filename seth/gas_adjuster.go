@@ -2,16 +2,17 @@ package seth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
 	"slices"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum/core/types"
+	"go.uber.org/ratelimit"
 )
 
 const (
@@ -35,19 +36,21 @@ const (
 )
 
 var (
-	ZeroGasSuggestedErr = "either base fee or suggested tip is 0"
-	BlockFetchingErr    = "failed to fetch enough block headers for congestion calculation"
+	ErrGasEstimation = errors.New("incorrect gas data received from node. Skipping gas estimation")
+	ErrBlockFetching = errors.New("failed to fetch enough block headers for congestion calculation")
 )
 
 // CalculateNetworkCongestionMetric calculates a simple congestion metric based on the last N blocks
 // according to selected strategy.
 func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy string) (float64, error) {
 	if m.HeaderCache == nil {
-		return 0, fmt.Errorf("header cache is not initialized. " +
+		err := fmt.Errorf("header cache is not initialized. " +
 			"This is an internal error that shouldn't happen. " +
 			"If you see this, please open a GitHub issue at https://github.com/smartcontractkit/chainlink-testing-framework/issues with your configuration details")
+		err = fmt.Errorf("%w: %v", ErrBlockFetching, err)
+		return 0, err
 	}
-	var getHeaderData = func(bn *big.Int) (*types.Header, error) {
+	var getHeaderData = func(ctx context.Context, bn *big.Int) (*types.Header, error) {
 		if bn == nil {
 			return nil, fmt.Errorf("block number is nil")
 		}
@@ -56,14 +59,14 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 			return cachedHeader, nil
 		}
 
-		timeout := blocksNumber / 100
+		timeout := blocksNumber / 10
 		if timeout < 3 {
 			timeout = 3
 		} else if timeout > 6 {
 			timeout = 6
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(mustSafeInt64(timeout))*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, time.Duration(mustSafeInt64(timeout))*time.Second)
 		defer cancel()
 		header, err := m.Client.HeaderByNumber(ctx, bn)
 		if err != nil {
@@ -78,13 +81,15 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 	defer cancel()
 	lastBlockNumber, err := m.Client.BlockNumber(ctx)
 	if err != nil {
+		err = fmt.Errorf("%w: %v", ErrBlockFetching, err)
 		return 0, err
 	}
 
 	L.Trace().Msgf("Block range for gas calculation: %d - %d", lastBlockNumber-blocksNumber, lastBlockNumber)
 
-	lastBlock, err := getHeaderData(big.NewInt(mustSafeInt64(lastBlockNumber)))
+	lastBlock, err := getHeaderData(ctx, big.NewInt(mustSafeInt64(lastBlockNumber)))
 	if err != nil {
+		err = fmt.Errorf("%w: %v", ErrBlockFetching, err)
 		return 0, err
 	}
 
@@ -93,6 +98,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 
 	var wg sync.WaitGroup
 	dataCh := make(chan *types.Header)
+	defer close(dataCh) // defer in case something panics, once it is closed then draining goroutine will exit
 
 	go func() {
 		for header := range dataCh {
@@ -102,6 +108,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 		}
 	}()
 
+	limit := ratelimit.New(4) // 4 concurrent requests
 	startTime := time.Now()
 	for i := lastBlockNumber; i > lastBlockNumber-blocksNumber; i-- {
 		// better safe than sorry (might happen for brand-new chains)
@@ -111,7 +118,8 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 
 		wg.Add(1)
 		go func(bn *big.Int) {
-			header, err := getHeaderData(bn)
+			limit.Take()
+			header, err := getHeaderData(ctx, bn)
 			if err != nil {
 				L.Debug().Msgf("Failed to get block %d header due to: %s", bn.Int64(), err.Error())
 				wg.Done()
@@ -122,14 +130,13 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 	}
 
 	wg.Wait()
-	close(dataCh)
 
 	endTime := time.Now()
 	L.Debug().Msgf("Time to fetch %d block headers: %v", blocksNumber, endTime.Sub(startTime))
 
 	minBlockCount := int(float64(blocksNumber) * 0.8)
 	if len(headers) < minBlockCount {
-		return 0, fmt.Errorf("failed to fetch sufficient block headers for gas estimation. "+
+		err := fmt.Errorf("failed to fetch sufficient block headers for gas estimation. "+
 			"Needed at least %d blocks, but only got %d (%.1f%% success rate).\n"+
 			"This usually indicates:\n"+
 			"  1. RPC node is experiencing high latency or load\n"+
@@ -141,6 +148,9 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 			"  3. Disable gas estimation: set gas_price_estimation_enabled = false\n"+
 			"  4. Reduce gas_price_estimation_blocks to fetch fewer blocks",
 			minBlockCount, len(headers), float64(len(headers))/float64(blocksNumber)*100)
+		err = fmt.Errorf("%w: %v", ErrBlockFetching, err)
+
+		return 0, err
 	}
 
 	switch strategy {
@@ -149,10 +159,12 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 	case CongestionStrategy_NewestFirst:
 		return calculateNewestFirstNetworkCongestionMetric(headers), nil
 	default:
-		return 0, fmt.Errorf("unknown network congestion strategy '%s'. "+
+		err := fmt.Errorf("unknown network congestion strategy '%s'. "+
 			"Valid strategies are: 'simple' (equal weight) or 'newest_first' (recent blocks weighted more).\n"+
 			"This is likely a configuration error. Check your gas estimation settings",
 			strategy)
+		err = fmt.Errorf("%w: %v", ErrBlockFetching, err)
+		return 0, err
 	}
 }
 
@@ -205,6 +217,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 			// fallback to current fees if historical fetching fails
 			baseFee, currentGasTip, err = m.currentIP1559Fees(ctx)
 			if err != nil {
+				err = fmt.Errorf("%w: %v", ErrGasEstimation, err)
 				return
 			}
 			L.Debug().Msg("Falling back to current EIP-1559 fees for gas estimation")
@@ -212,6 +225,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 	} else {
 		baseFee, currentGasTip, err = m.currentIP1559Fees(ctx)
 		if err != nil {
+			err = fmt.Errorf("%w: %v", ErrGasEstimation, err)
 			return
 		}
 	}
@@ -223,6 +237,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 			"  1. Use a different RPC endpoint\n" +
 			"  2. Disable gas estimation: set gas_price_estimation_enabled = false in config\n" +
 			"  3. Set explicit gas values: gas_price, gas_fee_cap, and gas_tip_cap (in your config (seth.toml or ClientBuilder)")
+		err = fmt.Errorf("%w: %v", ErrGasEstimation, err)
 		return
 	}
 
@@ -248,7 +263,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 				L.Debug().Msg("Suggested tip is 0.0. Will use historical base fee as tip.")
 				currentGasTip = big.NewInt(int64(baseFee64))
 			}
-		} else if baseFeeTipMagnitudeDiff < 3 {
+		} else if baseFeeTipMagnitudeDiff < -3 {
 			L.Debug().Msg("Historical base fee is 3 orders of magnitude lower than suggested tip. Will use suggested tip as base fee.")
 			baseFee64 = float64(currentGasTip.Int64())
 		} else if baseFeeTipMagnitudeDiff > 3 {
@@ -262,6 +277,8 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 			Float64("BaseFee", baseFee64).
 			Int64("SuggestedTip", currentGasTip.Int64()).
 			Msgf("Incorrect gas data received from node: base fee was 0. Skipping gas estimation")
+		err = errors.New("incorrect gas data received from node: base fee was 0. Skipping gas estimation")
+		err = fmt.Errorf("%w: %v", ErrGasEstimation, err)
 		return
 	}
 
@@ -278,6 +295,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 	var adjustmentFactor float64
 	adjustmentFactor, err = getAdjustmentFactor(priority)
 	if err != nil {
+		err = fmt.Errorf("%w: %v", ErrGasEstimation, err)
 		return
 	}
 
@@ -310,6 +328,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 			var bufferAdjustment float64
 			bufferAdjustment, err = getCongestionFactor(congestionClassification)
 			if err != nil {
+				err = fmt.Errorf("%w: %v", ErrGasEstimation, err)
 				return
 			}
 
@@ -320,7 +339,8 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 			// Apply buffer also to the tip
 			bufferedTipCapFloat := new(big.Float).Mul(new(big.Float).SetInt(adjustedTipCap), big.NewFloat(bufferAdjustment))
 			adjustedTipCap, _ = bufferedTipCapFloat.Int(nil)
-		} else if !strings.Contains(err.Error(), BlockFetchingErr) {
+		} else if !errors.Is(err, ErrBlockFetching) {
+			err = fmt.Errorf("%w: %v", ErrGasEstimation, err)
 			return
 		} else {
 			L.Debug().
@@ -545,7 +565,7 @@ func (m *Client) GetSuggestedLegacyFees(ctx context.Context, priority string) (a
 		}))
 
 	if retryErr != nil {
-		err = retryErr
+		err = fmt.Errorf("%w: %v", ErrGasEstimation, retryErr)
 		return
 	}
 
@@ -557,6 +577,7 @@ func (m *Client) GetSuggestedLegacyFees(ctx context.Context, priority string) (a
 	var adjustmentFactor float64
 	adjustmentFactor, err = getAdjustmentFactor(priority)
 	if err != nil {
+		err = fmt.Errorf("%w: %v", ErrGasEstimation, err)
 		return
 	}
 
@@ -584,13 +605,15 @@ func (m *Client) GetSuggestedLegacyFees(ctx context.Context, priority string) (a
 			var bufferAdjustment float64
 			bufferAdjustment, err = getCongestionFactor(congestionClassification)
 			if err != nil {
+				err = fmt.Errorf("%w: %v", ErrGasEstimation, err)
 				return
 			}
 
 			// Calculate and apply the buffer.
 			bufferedGasPriceFloat := new(big.Float).Mul(new(big.Float).SetInt(adjustedGasPrice), big.NewFloat(bufferAdjustment))
 			adjustedGasPrice, _ = bufferedGasPriceFloat.Int(nil)
-		} else if !strings.Contains(err.Error(), BlockFetchingErr) {
+		} else if !errors.Is(err, ErrBlockFetching) {
+			err = fmt.Errorf("%w: %v", ErrGasEstimation, err)
 			return
 		} else {
 			L.Debug().
@@ -734,16 +757,18 @@ func calculateGasUsedRatio(headers []*types.Header) float64 {
 		return 0
 	}
 
-	var totalRatio float64
+	var totalGasUsedRatio float64
+	validHeaders := 0
 	for _, header := range headers {
-		if header.GasLimit == 0 {
-			continue
+		if header.GasLimit > 0 {
+			totalGasUsedRatio += float64(header.GasUsed) / float64(header.GasLimit)
+			validHeaders++
 		}
-		ratio := float64(header.GasUsed) / float64(header.GasLimit)
-		totalRatio += ratio
 	}
-	averageRatio := totalRatio / float64(len(headers))
-	return averageRatio
+	if validHeaders == 0 {
+		return 0.0
+	}
+	return totalGasUsedRatio / float64(validHeaders)
 }
 
 func calculateMagnitudeDifference(first, second *big.Float) (int, string) {
@@ -762,12 +787,16 @@ func calculateMagnitudeDifference(first, second *big.Float) (int, string) {
 	secondOrderOfMagnitude := math.Log10(secondFloat)
 
 	diff := firstOrderOfMagnitude - secondOrderOfMagnitude
+	absDiff := math.Abs(diff)
+
+	// Values within the same order of magnitude (less than 10x difference)
+	if absDiff < 1 {
+		return 0, "the same order of magnitude"
+	}
 
 	if diff < 0 {
 		intDiff := math.Floor(diff)
 		return int(intDiff), fmt.Sprintf("%d orders of magnitude smaller", int(math.Abs(intDiff)))
-	} else if diff > 0 && diff <= 1 {
-		return 0, "the same order of magnitude"
 	}
 
 	intDiff := int(math.Ceil(diff))

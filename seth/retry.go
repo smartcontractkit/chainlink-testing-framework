@@ -71,35 +71,32 @@ var NoOpGasBumpStrategyFn = func(previousGasPrice *big.Int) *big.Int {
 // PriorityBasedGasBumpingStrategyFn is a function that returns a gas bump strategy based on the priority.
 // For Fast priority it bumps gas price by 30%, for Standard by 15%, for Slow by 5% and for the rest it does nothing.
 var PriorityBasedGasBumpingStrategyFn = func(priority string) GasBumpStrategyFn {
+	divisor := big.NewInt(100)
+
 	switch priority {
 	case Priority_Degen:
 		// +100%
 		return func(gasPrice *big.Int) *big.Int {
-			return gasPrice.Mul(gasPrice, big.NewInt(2))
+			multiplier := big.NewInt(200)
+			return new(big.Int).Div(new(big.Int).Mul(gasPrice, multiplier), divisor)
 		}
 	case Priority_Fast:
 		// +30%
 		return func(gasPrice *big.Int) *big.Int {
-			gasPriceFloat, _ := gasPrice.Float64()
-			newGasPriceFloat := big.NewFloat(0.0).Mul(big.NewFloat(gasPriceFloat), big.NewFloat(1.3))
-			newGasPrice, _ := newGasPriceFloat.Int64()
-			return big.NewInt(newGasPrice)
+			multiplier := big.NewInt(130)
+			return new(big.Int).Div(new(big.Int).Mul(gasPrice, multiplier), divisor)
 		}
 	case Priority_Standard:
 		// 15%
 		return func(gasPrice *big.Int) *big.Int {
-			gasPriceFloat, _ := gasPrice.Float64()
-			newGasPriceFloat := big.NewFloat(0.0).Mul(big.NewFloat(gasPriceFloat), big.NewFloat(1.15))
-			newGasPrice, _ := newGasPriceFloat.Int64()
-			return big.NewInt(newGasPrice)
+			multiplier := big.NewInt(115)
+			return new(big.Int).Div(new(big.Int).Mul(gasPrice, multiplier), divisor)
 		}
 	case Priority_Slow:
 		// 5%
 		return func(gasPrice *big.Int) *big.Int {
-			gasPriceFloat, _ := gasPrice.Float64()
-			newGasPriceFloat := big.NewFloat(0.0).Mul(big.NewFloat(gasPriceFloat), big.NewFloat(1.05))
-			newGasPrice, _ := newGasPriceFloat.Int64()
-			return big.NewInt(newGasPrice)
+			multiplier := big.NewInt(105)
+			return new(big.Int).Div(new(big.Int).Mul(gasPrice, multiplier), divisor)
 		}
 	case Priority_Auto:
 		// No bumping for Auto priority
@@ -251,14 +248,38 @@ var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) 
 			Str("Gas fee blob diff", fmt.Sprintf("%s wei /%s ether", gasBlobFeeCapDiff, WeiToEther(gasBlobFeeCapDiff).Text('f', -1))).
 			Msg("Bumping gas fee cap and tip cap for Blob transaction")
 
+		var value *uint256.Int
+		if tx.Value() != nil {
+			var overflow bool
+			value, overflow = uint256.FromBig(tx.Value())
+			if overflow {
+				return nil, fmt.Errorf("blob transaction value %s overflows uint256", tx.Value().String())
+			}
+		}
+
+		gasFeeCap, overflow := uint256.FromBig(newGasFeeCap)
+		if overflow {
+			return nil, fmt.Errorf("gas fee cap %s overflows uint256 after bumping", newGasFeeCap.String())
+		}
+
+		gasTipCap, overflow := uint256.FromBig(newGasTipCap)
+		if overflow {
+			return nil, fmt.Errorf("gas tip cap %s overflows uint256 after bumping", newGasTipCap.String())
+		}
+
+		blobFeeCap, overflow := uint256.FromBig(newBlobFeeCap)
+		if overflow {
+			return nil, fmt.Errorf("blob fee cap %s overflows uint256 after bumping", newBlobFeeCap.String())
+		}
+
 		txData := &types.BlobTx{
 			Nonce:      tx.Nonce(),
 			To:         *tx.To(),
-			Value:      uint256.NewInt(tx.Value().Uint64()),
+			Value:      value,
 			Gas:        tx.Gas(),
-			GasFeeCap:  uint256.NewInt(newGasFeeCap.Uint64()),
-			GasTipCap:  uint256.NewInt(newGasTipCap.Uint64()),
-			BlobFeeCap: uint256.NewInt(newBlobFeeCap.Uint64()),
+			GasFeeCap:  gasFeeCap,
+			GasTipCap:  gasTipCap,
+			BlobFeeCap: blobFeeCap,
 			BlobHashes: tx.BlobHashes(),
 			Data:       tx.Data(),
 		}
