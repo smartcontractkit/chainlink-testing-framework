@@ -98,7 +98,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 
 	var wg sync.WaitGroup
 	dataCh := make(chan *types.Header)
-	defer close(dataCh)
+	defer close(dataCh) // defer in case something panics, once it is closed then draining goroutine will exit
 
 	go func() {
 		for header := range dataCh {
