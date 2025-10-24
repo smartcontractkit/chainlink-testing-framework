@@ -38,6 +38,7 @@ func (m *GasEstimator) Stats(ctx context.Context, blockCount uint64, priorityPer
 			"Alternatively, set 'gas_price_estimation_blocks = 0' to disable block-based estimation",
 			err)
 	}
+
 	if currentBlock == 0 {
 		return GasSuggestions{}, fmt.Errorf("current block number is zero, which indicates either:\n" +
 			"  1. The network hasn't produced any blocks yet (check if network is running)\n" +
@@ -47,7 +48,7 @@ func (m *GasEstimator) Stats(ctx context.Context, blockCount uint64, priorityPer
 			"You can set 'gas_price_estimation_blocks = 0' to disable block-based estimation")
 	}
 	if blockCount >= currentBlock {
-		blockCount = currentBlock - 1
+		blockCount = max(currentBlock-1, 1) // avoid a case, when we ask for more blocks than exist and when currentBlock = 1
 	}
 
 	hist, err := m.Client.Client.FeeHistory(ctx, blockCount, big.NewInt(mustSafeInt64(currentBlock)), []float64{priorityPerc})

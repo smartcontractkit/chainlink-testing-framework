@@ -375,7 +375,11 @@ func NewClientRaw(
 		// root key is element 0 in ephemeral
 		for _, addr := range c.Addresses[1:] {
 			eg.Go(func() error {
-				return c.TransferETHFromKey(egCtx, 0, addr.Hex(), bd.AddrFunding, gasPrice)
+				err := c.TransferETHFromKey(egCtx, 0, addr.Hex(), bd.AddrFunding, gasPrice)
+				if err != nil {
+					return fmt.Errorf("failed to fund ephemeral address %s: %w", addr.Hex(), err)
+				}
+				return nil
 			})
 		}
 		if err := eg.Wait(); err != nil {
@@ -987,7 +991,7 @@ func (m *Client) CalculateGasEstimations(request GasEstimationRequest) GasEstima
 	defer cancel()
 
 	var disableEstimationsIfNeeded = func(err error) {
-		if errors.Is(err, GasEstimationErr) {
+		if errors.Is(err, ErrGasEstimation) {
 			L.Warn().Msg("Received incorrect gas estimations. Disabling them and reverting to hardcoded values. Remember to update your config!")
 			m.Cfg.Network.GasPriceEstimationEnabled = false
 		}
