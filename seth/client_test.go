@@ -1,6 +1,7 @@
 package seth_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -40,7 +41,9 @@ func TestRPCHealthCheckEnabled_Node_Unhealthy(t *testing.T) {
 
 	_, err = seth.NewClientWithConfig(cfg)
 	require.Error(t, err, "expected error when connecting to unhealthy node")
-	require.Contains(t, err.Error(), "RPC health check failed: failed to send transaction to network: insufficient funds for gas", "expected error message when connecting to dead node")
+	// Geth returns "insufficient funds for gas" error
+	// Anvil returns "insufficient funds for gas" error
+	require.Contains(t, strings.ToLower(err.Error()), strings.ToLower("RPC health check failed: failed to send transaction to network: Insufficient funds for gas"), "expected error message when connecting to dead node")
 }
 
 func TestRPCHealthCheckDisabled_Node_Unhealthy(t *testing.T) {
