@@ -2,6 +2,7 @@ package seth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -14,13 +15,12 @@ import (
 	"github.com/rs/zerolog"
 )
 
+var (
+	ErrNoFourByteFound = errors.New("no method signatures found in tracing data")
+)
+
 const (
-	ErrNoTrace                = "no trace found"
-	ErrNoABIMethod            = "no ABI method found"
-	ErrNoAbiFound             = "no ABI found in Contract Store"
-	ErrNoFourByteFound        = "no method signatures found in tracing data"
-	ErrInvalidMethodSignature = "no method signature found or it's not 4 bytes long"
-	WrnMissingCallTrace       = "This call was missing from call trace, but it's signature was present in 4bytes trace. Most data is missing; Call order remains unknown"
+	WrnMissingCallTrace = "This call was missing from call trace, but it's signature was present in 4bytes trace. Most data is missing; Call order remains unknown"
 
 	FAILED_TO_DECODE = "failed to decode"
 	UNKNOWN          = "unknown"
@@ -259,7 +259,7 @@ func (t *Tracer) DecodeTrace(l zerolog.Logger, trace Trace) ([]*DecodedCall, err
 
 	// we can still decode the calls without 4byte signatures
 	if len(trace.FourByte) == 0 {
-		L.Debug().Msg(ErrNoFourByteFound)
+		L.Debug().Msg(ErrNoFourByteFound.Error())
 	}
 
 	methods := make([]string, 0, len(trace.CallTrace.Calls)+1)
@@ -268,7 +268,8 @@ func (t *Tracer) DecodeTrace(l zerolog.Logger, trace Trace) ([]*DecodedCall, err
 		if len(input) < 10 {
 			err := fmt.Errorf("invalid method signature detected in trace. "+
 				"Expected 4-byte hex signature (0x12345678), but got invalid format: '%s'.\n"+
-				"This is likely an internal error. Please open a GitHub issue at https://github.com/smartcontractkit/chainlink-testing-framework/issues with transaction details",
+				"Unless the transaction is a simple ETH transfer with no data or a fallback function,"+
+				"this is likely an internal error. Please open a GitHub issue at https://github.com/smartcontractkit/chainlink-testing-framework/issues with transaction details",
 				input)
 			l.Err(err).
 				Str("Input", input).

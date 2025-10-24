@@ -20,45 +20,40 @@ import (
 	"github.com/rs/zerolog"
 )
 
-const (
-	ErrDecodeInput          = "failed to decode transaction input"
-	ErrDecodeOutput         = "failed to decode transaction output"
-	ErrDecodeLog            = "failed to decode log"
-	ErrDecodedLogNonIndexed = "failed to decode non-indexed log data"
-	ErrDecodeILogIndexed    = "failed to decode indexed log data"
-	ErrTooShortTxData       = "tx data is less than 4 bytes, can't decode"
-	ErrRPCJSONCastError     = "failed to cast CallMsg error as rpc.DataError"
-	ErrUnableToDecode       = "unable to decode revert reason"
+var (
+	ErrNoABIMethod = errors.New("no ABI method found")
+)
 
+const (
 	WarnNoContractStore = "ContractStore is nil, use seth.NewContractStore(...) to decode transactions"
 )
 
 // DecodedTransaction decoded transaction
 type DecodedTransaction struct {
 	CommonData
-	Index              uint                    `json:"index"`
-	Hash               string                  `json:"hash,omitempty"`
-	Protected          bool                    `json:"protected,omitempty"`
-	Transaction        *types.Transaction      `json:"transaction,omitempty"`
-	Receipt            *types.Receipt          `json:"receipt,omitempty"`
-	Events             []DecodedTransactionLog `json:"events,omitempty"`
+	Index               uint                    `json:"index"`
+	Hash                string                  `json:"hash,omitempty"`
+	Protected           bool                    `json:"protected,omitempty"`
+	Transaction         *types.Transaction      `json:"transaction,omitempty"`
+	Receipt             *types.Receipt          `json:"receipt,omitempty"`
+	Events              []DecodedTransactionLog `json:"events,omitempty"`
 	EventDecodingErrors []EventDecodingError    `json:"event_decoding_errors,omitempty"`
 }
 
 // EventDecodingError represents a failed event decode attempt
 type EventDecodingError struct {
-	Signature    string                 `json:"signature"`
-	LogIndex     uint                   `json:"log_index"`
-	Address      string                 `json:"address"`
-	Topics       []string               `json:"topics,omitempty"`
-	Errors       []ABIDecodingError     `json:"errors,omitempty"`
+	Signature string             `json:"signature"`
+	LogIndex  uint               `json:"log_index"`
+	Address   string             `json:"address"`
+	Topics    []string           `json:"topics,omitempty"`
+	Errors    []ABIDecodingError `json:"errors,omitempty"`
 }
 
 // ABIDecodingError represents a single ABI decode attempt failure
 type ABIDecodingError struct {
-	ABIName    string `json:"abi_name"`
-	EventName  string `json:"event_name"`
-	Error      string `json:"error"`
+	ABIName   string `json:"abi_name"`
+	EventName string `json:"event_name"`
+	Error     string `json:"error"`
 }
 
 type CommonData struct {
@@ -196,7 +191,7 @@ func (m *Client) DecodeTx(tx *types.Transaction) (*DecodedTransaction, error) {
 			Msg("No post-decode hook found. Skipping")
 	}
 
-	if decodeErr != nil && errors.Is(decodeErr, errors.New(ErrNoABIMethod)) {
+	if decodeErr != nil && errors.Is(decodeErr, ErrNoABIMethod) {
 		m.handleTxDecodingError(l, *decoded, decodeErr)
 		return decoded, revertErr
 	}
@@ -524,13 +519,13 @@ func (m *Client) printDecodedTXData(l zerolog.Logger, ptx *DecodedTransaction) {
 			Interface("Data", e.EventData).
 			Msg("Event emitted")
 	}
-	
+
 	// Print event decoding errors separately
 	if len(ptx.EventDecodingErrors) > 0 {
 		l.Warn().
 			Int("Failed event decodes", len(ptx.EventDecodingErrors)).
 			Msg("Some events could not be decoded")
-		
+
 		for _, decodeErr := range ptx.EventDecodingErrors {
 			abiNames := make([]string, len(decodeErr.Errors))
 			errorMsgs := make([]string, len(decodeErr.Errors))
@@ -538,7 +533,7 @@ func (m *Client) printDecodedTXData(l zerolog.Logger, ptx *DecodedTransaction) {
 				abiNames[i] = abiErr.ABIName
 				errorMsgs[i] = fmt.Sprintf("%s.%s: %s", abiErr.ABIName, abiErr.EventName, abiErr.Error)
 			}
-			
+
 			l.Warn().
 				Str("Signature", decodeErr.Signature).
 				Uint("LogIndex", decodeErr.LogIndex).

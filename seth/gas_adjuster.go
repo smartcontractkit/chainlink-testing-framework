@@ -7,7 +7,6 @@ import (
 	"math"
 	"math/big"
 	"slices"
-	"strings"
 	"sync"
 	"time"
 
@@ -37,17 +36,19 @@ const (
 )
 
 var (
-	ZeroGasSuggestedErr = "either base fee or suggested tip is 0"
-	BlockFetchingErr    = "failed to fetch enough block headers for congestion calculation"
+	GasEstimationErr = errors.New("incorrect gas data received from node. Skipping gas estimation")
+	BlockFetchingErr = errors.New("failed to fetch enough block headers for congestion calculation")
 )
 
 // CalculateNetworkCongestionMetric calculates a simple congestion metric based on the last N blocks
 // according to selected strategy.
 func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy string) (float64, error) {
 	if m.HeaderCache == nil {
-		return 0, fmt.Errorf("header cache is not initialized. " +
+		err := fmt.Errorf("header cache is not initialized. " +
 			"This is an internal error that shouldn't happen. " +
 			"If you see this, please open a GitHub issue at https://github.com/smartcontractkit/chainlink-testing-framework/issues with your configuration details")
+		err = fmt.Errorf("%w: %v", BlockFetchingErr, err)
+		return 0, err
 	}
 	var getHeaderData = func(bn *big.Int) (*types.Header, error) {
 		if bn == nil {
@@ -80,6 +81,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 	defer cancel()
 	lastBlockNumber, err := m.Client.BlockNumber(ctx)
 	if err != nil {
+		err = fmt.Errorf("%w: %v", BlockFetchingErr, err)
 		return 0, err
 	}
 
@@ -87,6 +89,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 
 	lastBlock, err := getHeaderData(big.NewInt(mustSafeInt64(lastBlockNumber)))
 	if err != nil {
+		err = fmt.Errorf("%w: %v", BlockFetchingErr, err)
 		return 0, err
 	}
 
@@ -133,7 +136,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 
 	minBlockCount := int(float64(blocksNumber) * 0.8)
 	if len(headers) < minBlockCount {
-		return 0, fmt.Errorf("failed to fetch sufficient block headers for gas estimation. "+
+		err := fmt.Errorf("failed to fetch sufficient block headers for gas estimation. "+
 			"Needed at least %d blocks, but only got %d (%.1f%% success rate).\n"+
 			"This usually indicates:\n"+
 			"  1. RPC node is experiencing high latency or load\n"+
@@ -145,6 +148,9 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 			"  3. Disable gas estimation: set gas_price_estimation_enabled = false\n"+
 			"  4. Reduce gas_price_estimation_blocks to fetch fewer blocks",
 			minBlockCount, len(headers), float64(len(headers))/float64(blocksNumber)*100)
+		err = fmt.Errorf("%w: %v", BlockFetchingErr, err)
+
+		return 0, err
 	}
 
 	switch strategy {
@@ -153,10 +159,12 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 	case CongestionStrategy_NewestFirst:
 		return calculateNewestFirstNetworkCongestionMetric(headers), nil
 	default:
-		return 0, fmt.Errorf("unknown network congestion strategy '%s'. "+
+		err := fmt.Errorf("unknown network congestion strategy '%s'. "+
 			"Valid strategies are: 'simple' (equal weight) or 'newest_first' (recent blocks weighted more).\n"+
 			"This is likely a configuration error. Check your gas estimation settings",
 			strategy)
+		err = fmt.Errorf("%w: %v", BlockFetchingErr, err)
+		return 0, err
 	}
 }
 
@@ -209,6 +217,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 			// fallback to current fees if historical fetching fails
 			baseFee, currentGasTip, err = m.currentIP1559Fees(ctx)
 			if err != nil {
+				err = fmt.Errorf("%w: %v", GasEstimationErr, err)
 				return
 			}
 			L.Debug().Msg("Falling back to current EIP-1559 fees for gas estimation")
@@ -216,6 +225,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 	} else {
 		baseFee, currentGasTip, err = m.currentIP1559Fees(ctx)
 		if err != nil {
+			err = fmt.Errorf("%w: %v", GasEstimationErr, err)
 			return
 		}
 	}
@@ -227,6 +237,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 			"  1. Use a different RPC endpoint\n" +
 			"  2. Disable gas estimation: set gas_price_estimation_enabled = false in config\n" +
 			"  3. Set explicit gas values: gas_price, gas_fee_cap, and gas_tip_cap (in your config (seth.toml or ClientBuilder)")
+		err = fmt.Errorf("%w: %v", GasEstimationErr, err)
 		return
 	}
 
@@ -267,6 +278,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 			Int64("SuggestedTip", currentGasTip.Int64()).
 			Msgf("Incorrect gas data received from node: base fee was 0. Skipping gas estimation")
 		err = errors.New("incorrect gas data received from node: base fee was 0. Skipping gas estimation")
+		err = fmt.Errorf("%w: %v", GasEstimationErr, err)
 		return
 	}
 
@@ -283,6 +295,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 	var adjustmentFactor float64
 	adjustmentFactor, err = getAdjustmentFactor(priority)
 	if err != nil {
+		err = fmt.Errorf("%w: %v", GasEstimationErr, err)
 		return
 	}
 
@@ -315,6 +328,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 			var bufferAdjustment float64
 			bufferAdjustment, err = getCongestionFactor(congestionClassification)
 			if err != nil {
+				err = fmt.Errorf("%w: %v", GasEstimationErr, err)
 				return
 			}
 
@@ -325,7 +339,8 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 			// Apply buffer also to the tip
 			bufferedTipCapFloat := new(big.Float).Mul(new(big.Float).SetInt(adjustedTipCap), big.NewFloat(bufferAdjustment))
 			adjustedTipCap, _ = bufferedTipCapFloat.Int(nil)
-		} else if !strings.Contains(err.Error(), BlockFetchingErr) {
+		} else if !errors.Is(err, BlockFetchingErr) {
+			err = fmt.Errorf("%w: %v", GasEstimationErr, err)
 			return
 		} else {
 			L.Debug().
@@ -550,7 +565,7 @@ func (m *Client) GetSuggestedLegacyFees(ctx context.Context, priority string) (a
 		}))
 
 	if retryErr != nil {
-		err = retryErr
+		err = fmt.Errorf("%w: %v", GasEstimationErr, retryErr)
 		return
 	}
 
@@ -562,6 +577,7 @@ func (m *Client) GetSuggestedLegacyFees(ctx context.Context, priority string) (a
 	var adjustmentFactor float64
 	adjustmentFactor, err = getAdjustmentFactor(priority)
 	if err != nil {
+		err = fmt.Errorf("%w: %v", GasEstimationErr, err)
 		return
 	}
 
@@ -589,13 +605,15 @@ func (m *Client) GetSuggestedLegacyFees(ctx context.Context, priority string) (a
 			var bufferAdjustment float64
 			bufferAdjustment, err = getCongestionFactor(congestionClassification)
 			if err != nil {
+				err = fmt.Errorf("%w: %v", GasEstimationErr, err)
 				return
 			}
 
 			// Calculate and apply the buffer.
 			bufferedGasPriceFloat := new(big.Float).Mul(new(big.Float).SetInt(adjustedGasPrice), big.NewFloat(bufferAdjustment))
 			adjustedGasPrice, _ = bufferedGasPriceFloat.Int(nil)
-		} else if !strings.Contains(err.Error(), BlockFetchingErr) {
+		} else if !errors.Is(err, BlockFetchingErr) {
+			err = fmt.Errorf("%w: %v", GasEstimationErr, err)
 			return
 		} else {
 			L.Debug().

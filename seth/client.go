@@ -987,7 +987,7 @@ func (m *Client) CalculateGasEstimations(request GasEstimationRequest) GasEstima
 	defer cancel()
 
 	var disableEstimationsIfNeeded = func(err error) {
-		if strings.Contains(err.Error(), ZeroGasSuggestedErr) {
+		if errors.Is(err, GasEstimationErr) {
 			L.Warn().Msg("Received incorrect gas estimations. Disabling them and reverting to hardcoded values. Remember to update your config!")
 			m.Cfg.Network.GasPriceEstimationEnabled = false
 		}
@@ -1469,7 +1469,7 @@ func (m *Client) decodeContractLogs(l zerolog.Logger, logs []types.Log, allABIs 
 			for i, topic := range lo.Topics {
 				topics[i] = topic.Hex()
 			}
-			
+
 			decodeError := EventDecodingError{
 				Signature: eventSig,
 				LogIndex:  lo.Index,
@@ -1478,12 +1478,12 @@ func (m *Client) decodeContractLogs(l zerolog.Logger, logs []types.Log, allABIs 
 				Errors:    decodeAttempts,
 			}
 			decodeErrors = append(decodeErrors, decodeError)
-			
+
 			abiNames := make([]string, len(decodeAttempts))
 			for i, attempt := range decodeAttempts {
 				abiNames[i] = attempt.ABIName
 			}
-			
+
 			l.Warn().
 				Str("Signature", eventSig).
 				Uint("LogIndex", lo.Index).
@@ -1522,13 +1522,13 @@ func (m *Client) findABIName(targetABI *abi.ABI) string {
 	if m.ContractStore == nil {
 		return "unknown"
 	}
-	
+
 	for name, storedABI := range m.ContractStore.ABIs {
 		if reflect.DeepEqual(storedABI, *targetABI) {
 			return strings.TrimSuffix(name, ".abi")
 		}
 	}
-	
+
 	return "unknown"
 }
 
