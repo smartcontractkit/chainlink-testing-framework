@@ -5383,9 +5383,27 @@ just lint wasp
 </li>
 </ul>
 <p>Check <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/chaos/chaos_blockchain_evm_gas_test.go">gas</a> and <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/chaos/chaos_blockchain_evm_reorg_test.go">reorg</a> examples, the same example work for <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/chaos/chaos_k8s_test.go">K8s</a>.</p>
-<h2 id="debugging"><a class="header" href="#debugging">Debugging</a></h2>
-<p>To debug <code>Docker</code> applications you can just use <code>CTFv2</code> deployments.</p>
+<h2 id="debugging-and-developing-chaos-suites"><a class="header" href="#debugging-and-developing-chaos-suites">Debugging and Developing Chaos Suites</a></h2>
+<p>To debug <code>Docker</code> applications you can just use <code>CTFv2</code> deployments and Docker logs.</p>
 <p>To debug <code>K8s</code> please use our <a href="framework/chaos/../chaos/debug-k8s.html">simulator</a>.</p>
+<p>The simplest way to start is to spin up the simulator and run <code>K8s</code> tests:</p>
+<pre><code>cd infra/chaosmesh-playground
+devbox run up
+k9s
+</code></pre>
+<p>Then go to <code>default</code> namespace and check which example pods we have, run the tests</p>
+<pre><code>cd framework/examples/myproject/chaos
+CTF_CONFIGS=chaos_k8s.toml go test -v -run TestK8sChaos
+</code></pre>
+<p>Reorg and gas tests will fail and that's fine, you should run them on a real <code>Geth</code> deployment.</p>
+<p>Grafana's annotations required <code>GRAFANA_URL</code> environment variable to be set</p>
+<pre><code>export GRAFANA_URL=...
+export GRAFANA_TOKEN=...
+</code></pre>
+<p>If you want CRDs to stay use <code>remove_k8s_chaos</code> flag in <code>chaos-k8s.toml</code></p>
+<pre><code>    remove_k8s_chaos = false
+</code></pre>
+<p>Then search for <code>:podchaos</code> and <code>:networkchaos</code> in <code>k9s</code> to inspect the CRDs</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -17222,7 +17240,7 @@ go run ./tools/breakingchanges/cmd/main.go --ignore tools,wasp,havoc,seth # to i
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>b5b830aa</code></li>
+<li>Commit: <code>56787ccc</code></li>
 </ul>
 
                     </main>
