@@ -26,11 +26,6 @@ exporters:
     add_metric_suffixes: false
 
 processors:
-  transform:
-    log_statements:
-      - context: log
-        statements:
-          - set(body, Base64Decode(log.body.string))
 
 service:
   pipelines:
@@ -39,7 +34,6 @@ service:
       exporters: [debug, otlp/traces]
     logs:
       receivers: [otlp]
-      processors: [transform]
       exporters: [debug, otlphttp/logs]
     metrics:
       receivers: [otlp]
