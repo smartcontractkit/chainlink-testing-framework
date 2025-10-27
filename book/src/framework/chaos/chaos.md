@@ -58,8 +58,32 @@ We also offer a set of blockchain-specific experiments, which typically involve 
 
 Check [gas](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/chaos/chaos_blockchain_evm_gas_test.go) and [reorg](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/chaos/chaos_blockchain_evm_reorg_test.go) examples, the same example work for [K8s](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/chaos/chaos_k8s_test.go).
 
-## Debugging
+## Debugging and Developing Chaos Suites
 
-To debug `Docker` applications you can just use `CTFv2` deployments.
+To debug `Docker` applications you can just use `CTFv2` deployments and Docker logs.
 
 To debug `K8s` please use our [simulator](../chaos/debug-k8s.md).
+
+The simplest way to start is to spin up the simulator and run `K8s` tests:
+```
+cd infra/chaosmesh-playground
+devbox run up
+k9s
+```
+Then go to `default` namespace and check which example pods we have, run the tests
+```
+cd framework/examples/myproject/chaos
+CTF_CONFIGS=chaos_k8s.toml go test -v -run TestK8sChaos
+```
+Reorg and gas tests will fail and that's fine, you should run them on a real `Geth` deployment.
+
+Grafana's annotations required `GRAFANA_URL` environment variable to be set
+```
+export GRAFANA_URL=...
+export GRAFANA_TOKEN=...
+```
+If you want CRDs to stay use `remove_k8s_chaos` flag in `chaos-k8s.toml`
+```
+    remove_k8s_chaos = false
+```
+Then search for `:podchaos` and `:networkchaos` in `k9s` to inspect the CRDs
