@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	tc "github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
@@ -19,6 +21,7 @@ const (
 	GRPCPort         string = "14231"
 	CSAEncryptionKey string = "!PASsword000!"
 	WSRPCPort        string = "8080"
+	WSRPCHealthPort  string = "8081"
 )
 
 type Input struct {
@@ -78,6 +81,9 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	if jdImg != "" {
 		in.Image = jdImg
 	}
+	if in.WSRPCPort == WSRPCHealthPort {
+		return nil, fmt.Errorf("wsrpc port cannot be the same as wsrpc health port")
+	}
 	if in.DBInput == nil {
 		in.DBInput = defaultJDDB()
 	}
@@ -87,7 +93,8 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		return nil, err
 	}
 	containerName := framework.DefaultTCName("jd")
-	bindPort := fmt.Sprintf("%s/tcp", in.GRPCPort)
+	grpcPort := fmt.Sprintf("%s/tcp", in.GRPCPort)
+	wsHealthPort := fmt.Sprintf("%s/tcp", WSRPCHealthPort)
 	req := tc.ContainerRequest{
 		Name:     containerName,
 		Image:    in.Image,
@@ -96,11 +103,11 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		NetworkAliases: map[string][]string{
 			framework.DefaultNetworkName: {containerName},
 		},
-		ExposedPorts: []string{bindPort},
+		ExposedPorts: []string{grpcPort, wsHealthPort},
 		HostConfigModifier: func(h *container.HostConfig) {
 			// JobDistributor service is isolated from internet by default!
 			framework.NoDNS(true, h)
-			h.PortBindings = framework.MapTheSamePort(bindPort)
+			h.PortBindings = framework.MapTheSamePort(grpcPort)
 		},
 		Env: map[string]string{
 			"DATABASE_URL":              pgOut.JDInternalURL,
@@ -110,6 +117,13 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		},
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForListeningPort(nat.Port(fmt.Sprintf("%s/tcp", in.GRPCPort))),
+			wait.ForHTTP("/healthz").
+				WithPort(nat.Port(fmt.Sprintf("%s/tcp", WSRPCHealthPort))). // WSRPC health endpoint uses different port than WSRPC
+				WithStartupTimeout(1*time.Minute).
+				WithPollInterval(200*time.Millisecond),
+			NewGRPCHealthStrategy(nat.Port(fmt.Sprintf("%s/tcp", in.GRPCPort))).
+				WithTimeout(1*time.Minute).
+				WithPollInterval(200*time.Millisecond),
 		),
 	}
 	if req.Image == "" {
