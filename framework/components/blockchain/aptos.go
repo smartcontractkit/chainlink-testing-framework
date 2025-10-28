@@ -128,12 +128,12 @@ func newAptos(ctx context.Context, in *Input) (*Output, error) {
 		return nil, err
 	}
 	cmdStr := []string{"aptos", "init", "--network=local", "--assume-yes", fmt.Sprintf("--private-key=%s", DefaultAptosPrivateKey)}
-	_, err = dc.ExecContainer(containerName, cmdStr)
+	_, err = dc.ExecContainerWithContext(ctx, containerName, cmdStr)
 	if err != nil {
 		return nil, err
 	}
 	fundCmd := []string{"aptos", "account", "fund-with-faucet", "--account", DefaultAptosAccount, "--amount", "1000000000000"}
-	_, err = dc.ExecContainer(containerName, fundCmd)
+	_, err = dc.ExecContainerWithContext(ctx, containerName, fundCmd)
 	if err != nil {
 		return nil, err
 	}

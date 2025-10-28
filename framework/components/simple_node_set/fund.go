@@ -87,7 +87,7 @@ func FundNodesWithContext(ctx context.Context, c *ethclient.Client, nodes []*clc
 		if err != nil {
 			return err
 		}
-		if err := SendETH(c, pkey, ek.Attributes.Address, big.NewFloat(ethAmount)); err != nil {
+		if err := SendETHWithContext(ctx, c, pkey, ek.Attributes.Address, big.NewFloat(ethAmount)); err != nil {
 			return er.Wrapf(err, "failed to fund CL node %s", ek.Attributes.Address)
 		}
 	}

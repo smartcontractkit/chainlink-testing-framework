@@ -74,7 +74,7 @@ func createGenericEvmContainer(ctx context.Context, in *Input, req testcontainer
 		return nil, err
 	}
 
-	host, err := framework.GetHost(c)
+	host, err := framework.GetHostWithContext(ctx, c)
 	if err != nil {
 		return nil, err
 	}

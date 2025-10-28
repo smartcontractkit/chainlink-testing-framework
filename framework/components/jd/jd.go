@@ -88,7 +88,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		in.DBInput = defaultJDDB()
 	}
 	in.DBInput.JDSQLDumpPath = in.JDSQLDumpPath
-	pgOut, err := postgres.NewPostgreSQL(in.DBInput)
+	pgOut, err := postgres.NewWithContext(ctx, in.DBInput)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +140,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	host, err := framework.GetHost(c)
+	host, err := framework.GetHostWithContext(ctx, c)
 	if err != nil {
 		return nil, err
 	}

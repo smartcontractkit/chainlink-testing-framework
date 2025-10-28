@@ -97,7 +97,7 @@ func NewNodeWithDBAndContext(ctx context.Context, in *Input) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
-	pgOut, err := postgres.NewPostgreSQL(in.DbInput)
+	pgOut, err := postgres.NewWithContext(ctx, in.DbInput)
 	if err != nil {
 		return nil, err
 	}
@@ -365,7 +365,7 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 	if err != nil {
 		return nil, err
 	}
-	host, err := framework.GetHost(c)
+	host, err := framework.GetHostWithContext(ctx, c)
 	if err != nil {
 		return nil, err
 	}

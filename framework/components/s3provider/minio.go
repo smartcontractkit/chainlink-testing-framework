@@ -227,7 +227,7 @@ func (mf MinioFactory) run(ctx context.Context, m *Minio) (Provider, error) {
 		return nil, err
 	}
 
-	m.Host, err = framework.GetHost(c)
+	m.Host, err = framework.GetHostWithContext(ctx, c)
 	if err != nil {
 		return nil, err
 	}
