@@ -1,5 +1,7 @@
 package s3provider
 
+import "context"
+
 // Provider is the interface that wraps S3 interaction methods.
 type Provider interface {
 	GetEndpoint() string
@@ -17,4 +19,6 @@ type Provider interface {
 type ProviderFactory interface {
 	New(...Option) (Provider, error)
 	NewFrom(*Input) (*Output, error)
+	NewWithContext(ctx context.Context, options ...Option) (Provider, error)
+	NewWithContextFrom(ctx context.Context, input *Input) (*Output, error)
 }

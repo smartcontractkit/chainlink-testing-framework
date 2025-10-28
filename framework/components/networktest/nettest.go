@@ -23,8 +23,12 @@ type Input struct {
 
 type Output struct{}
 
-// NewNetworkTest creates a minimal Alpine Linux container for network testing
 func NewNetworkTest(in Input) error {
+	return NewWithContext(context.Background(), in)
+}
+
+// NewNetworkTest creates a minimal Alpine Linux container for network testing
+func NewWithContext(ctx context.Context, in Input) error {
 	req := testcontainers.ContainerRequest{
 		Name:     in.Name,
 		Image:    "alpine:latest",
@@ -41,7 +45,7 @@ func NewNetworkTest(in Input) error {
 		framework.NoDNS(in.NoDNS, hc)
 	}
 
-	_, err := testcontainers.GenericContainer(context.Background(), testcontainers.GenericContainerRequest{
+	_, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})

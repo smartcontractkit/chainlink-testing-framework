@@ -66,10 +66,13 @@ func defaultJDDB() *postgres.Input {
 }
 
 func NewJD(in *Input) (*Output, error) {
+	return NewWithContext(context.Background(), in)
+}
+
+func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
-	ctx := context.Background()
 	defaults(in)
 	jdImg := os.Getenv("CTF_JD_IMAGE")
 	if jdImg != "" {

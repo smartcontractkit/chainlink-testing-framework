@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -41,7 +42,7 @@ RUN curl -L https://raw.githubusercontent.com/matter-labs/foundry-zksync/main/in
 // creating a dockerfile in a temporary directory with the necessary commands to install
 // foundry-zksync.
 // see: https://foundry-book.zksync.io/getting-started/installation#using-foundry-with-docker
-func newAnvilZksync(in *Input) (*Output, error) {
+func newAnvilZksync(ctx context.Context, in *Input) (*Output, error) {
 	defaultAnvilZksync(in)
 	req := baseRequest(in, WithoutWsEndpoint)
 
@@ -77,7 +78,7 @@ func newAnvilZksync(in *Input) (*Output, error) {
 
 	framework.L.Info().Any("Cmd", strings.Join(req.Entrypoint, " ")).Msg("Creating anvil zkSync with command")
 
-	output, err := createGenericEvmContainer(in, req, false)
+	output, err := createGenericEvmContainer(ctx, in, req, false)
 	if err != nil {
 		return nil, err
 	}

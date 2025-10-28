@@ -90,9 +90,8 @@ func defaultSui(in *Input) {
 	}
 }
 
-func newSui(in *Input) (*Output, error) {
+func newSui(ctx context.Context, in *Input) (*Output, error) {
 	defaultSui(in)
-	ctx := context.Background()
 	containerName := framework.DefaultTCName("blockchain-node")
 
 	absPath, err := filepath.Abs(in.ContractsDir)

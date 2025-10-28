@@ -88,6 +88,12 @@ type NodeOut struct {
 // NewNodeWithDB create a new Chainlink node with some image:tag and one or several configs
 // see config params: TestConfigOverrides, UserConfigOverrides, etc
 func NewNodeWithDB(in *Input) (*Output, error) {
+	return NewNodeWithDBAndContext(context.Background(), in)
+}
+
+// NewNodeWithDBAndContext create a new Chainlink node with some image:tag and one or several configs
+// see config params: TestConfigOverrides, UserConfigOverrides, etc
+func NewNodeWithDBAndContext(ctx context.Context, in *Input) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
@@ -95,7 +101,7 @@ func NewNodeWithDB(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	nodeOut, err := newNode(in, pgOut)
+	nodeOut, err := newNode(ctx, in, pgOut)
 	if err != nil {
 		return nil, err
 	}
@@ -109,10 +115,14 @@ func NewNodeWithDB(in *Input) (*Output, error) {
 }
 
 func NewNode(in *Input, pgOut *postgres.Output) (*Output, error) {
+	return NewNodeWithContext(context.Background(), in, pgOut)
+}
+
+func NewNodeWithContext(ctx context.Context, in *Input, pgOut *postgres.Output) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
-	nodeOut, err := newNode(in, pgOut)
+	nodeOut, err := newNode(ctx, in, pgOut)
 	if err != nil {
 		return nil, err
 	}
@@ -193,9 +203,7 @@ func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
 	return exposedPorts, portBindings, nil
 }
 
-func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
-	ctx := context.Background()
-
+func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	passwordPath, err := WriteTmpFile(DefaultPasswordTxt, "password.txt")
 	if err != nil {
 		return nil, err

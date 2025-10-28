@@ -50,9 +50,8 @@ func defaultAptos(in *Input) {
 	}
 }
 
-func newAptos(in *Input) (*Output, error) {
+func newAptos(ctx context.Context, in *Input) (*Output, error) {
 	defaultAptos(in)
-	ctx := context.Background()
 	containerName := framework.DefaultTCName("blockchain-node")
 
 	absPath, err := filepath.Abs(in.ContractsDir)

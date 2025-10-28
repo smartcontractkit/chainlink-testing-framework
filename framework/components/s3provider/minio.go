@@ -109,13 +109,17 @@ func NewMinioFactory() ProviderFactory {
 }
 
 func (mf MinioFactory) NewFrom(input *Input) (*Output, error) {
+	return mf.NewWithContextFrom(context.Background(), input)
+}
+
+func (mf MinioFactory) NewWithContextFrom(ctx context.Context, input *Input) (*Output, error) {
 	// Fill in defaults on empty
 	err := mergo.Merge(input, DefaultMinio())
 	if err != nil {
 		return nil, err
 	}
 
-	provider, err := mf.run(input)
+	provider, err := mf.run(ctx, input)
 	if err != nil {
 		return nil, err
 	}
@@ -135,19 +139,22 @@ func DefaultMinio() *Minio {
 }
 
 func (mf MinioFactory) New(options ...Option) (Provider, error) {
+	return mf.NewWithContext(context.Background(), options...)
+}
+
+func (mf MinioFactory) NewWithContext(ctx context.Context, options ...Option) (Provider, error) {
 	m := DefaultMinio()
 
 	for _, opt := range options {
 		opt(m)
 	}
 
-	return mf.run(m)
+	return mf.run(ctx, m)
 }
 
-func (mf MinioFactory) run(m *Minio) (Provider, error) {
+func (mf MinioFactory) run(ctx context.Context, m *Minio) (Provider, error) {
 	var err error
 
-	ctx := context.Background()
 	containerName := framework.DefaultTCName(DefaultName)
 	bindPort := fmt.Sprintf("%d/tcp", m.Port)
 	bindConsolePort := fmt.Sprintf("%d/tcp", m.ConsolePort)
