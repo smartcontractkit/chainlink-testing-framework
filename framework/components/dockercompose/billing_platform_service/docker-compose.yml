@@ -40,6 +40,7 @@ services:
       STREAMS_API_URL: ${STREAMS_API_URL:-}
       STREAMS_API_KEY: ${STREAMS_API_KEY:-}
       STREAMS_API_SECRET: ${STREAMS_API_SECRET:-}
+      ETH_FEED_ID: ${ETH_FEED_ID:-}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: billing_platform
@@ -99,6 +100,7 @@ services:
       TEST_OWNERS: ${TEST_OWNERS:-}
       DISABLE_AUTH: true
       MAINNET_CAPABILITIES_REGISTRY_CHAIN_SELECTOR: ${MAINNET_CAPABILITIES_REGISTRY_CHAIN_SELECTOR:-}
+      ETH_FEED_ID: ${ETH_FEED_ID:-}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: billing_platform

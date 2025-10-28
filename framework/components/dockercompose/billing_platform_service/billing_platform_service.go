@@ -114,11 +114,12 @@ func New(in *Input) (*Output, error) {
 	envVars["MAINNET_WORKFLOW_REGISTRY_CHAIN_SELECTOR"] = strconv.FormatUint(in.ChainSelector, 10)
 	envVars["MAINNET_WORKFLOW_REGISTRY_CONTRACT_ADDRESS"] = in.WorkflowRegistryAddress
 	envVars["MAINNET_WORKFLOW_REGISTRY_RPC_URL"] = in.RPCURL
-	envVars["MAINNET_WORKFLOW_REGISTRY_FINALITY_DEPTH"] = "0"                    // Instant finality on devnet
-	envVars["KMS_PROOF_SIGNING_KEY_ID"] = "00000000-0000-0000-0000-000000000001" // provisioned via LocalStack
-	envVars["VERIFIER_INITIAL_INTERVAL"] = "0s"                                  // reduced to force verifier to start immediately in integration tests
-	envVars["VERIFIER_MAXIMUM_INTERVAL"] = "1s"                                  // reduced to force verifier to start immediately in integration tests
-	envVars["LINKING_REQUEST_COOLDOWN"] = "0s"                                   // reduced to force consequtive linking requests to be processed immediately in integration tests
+	envVars["MAINNET_WORKFLOW_REGISTRY_FINALITY_DEPTH"] = "0"                                     // Instant finality on devnet
+	envVars["KMS_PROOF_SIGNING_KEY_ID"] = "00000000-0000-0000-0000-000000000001"                  // provisioned via LocalStack
+	envVars["VERIFIER_INITIAL_INTERVAL"] = "0s"                                                   // reduced to force verifier to start immediately in integration tests
+	envVars["VERIFIER_MAXIMUM_INTERVAL"] = "1s"                                                   // reduced to force verifier to start immediately in integration tests
+	envVars["LINKING_REQUEST_COOLDOWN"] = "0s"                                                    // reduced to force consequtive linking requests to be processed immediately in integration tests
+	envVars["ETH_FEED_ID"] = "0x000359843a543ee2fe414dc14c7e7920ef10f4372990b79d6361cdc0dd1ba782" // set as default eth feed ID
 
 	envVars["MAINNET_CAPABILITIES_REGISTRY_CHAIN_SELECTOR"] = strconv.FormatUint(in.ChainSelector, 10)
 	envVars["MAINNET_CAPABILITIES_REGISTRY_CONTRACT_ADDRESS"] = in.CapabilitiesRegistryAddress
