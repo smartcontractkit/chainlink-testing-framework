@@ -64,7 +64,7 @@ func (g *GRPCHealthStrategy) WaitUntilReady(ctx context.Context, target tcwait.S
 			}
 
 			// Get host and port
-			host, err := framework.GetHost(target.(tc.Container)) //nolint:contextcheck //don't want modify the signture of GetHost() yet
+			host, err := framework.GetHost(target.(tc.Container)) //nolint:contextcheck //don't want modify the signature of GetHost() yet
 			if err != nil {
 				continue
 			}
@@ -105,7 +105,7 @@ func (g *GRPCHealthStrategy) tryHealthCheck(ctx context.Context, address string,
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Create health check client
 	healthClient := grpc_health_v1.NewHealthClient(conn)
