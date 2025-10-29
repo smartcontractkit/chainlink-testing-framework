@@ -1,6 +1,7 @@
 package simple_node_set
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"slices"
@@ -44,6 +45,12 @@ type Output struct {
 // NewSharedDBNodeSet create a new node set with a shared database instance
 // all the nodes have their own isolated database
 func NewSharedDBNodeSet(in *Input, bcOut *blockchain.Output) (*Output, error) {
+	return NewSharedDBNodeSetWithContext(context.Background(), in, bcOut)
+}
+
+// NewSharedDBNodeSetWithContext create a new node set with a shared database instance
+// all the nodes have their own isolated database
+func NewSharedDBNodeSetWithContext(ctx context.Context, in *Input, bcOut *blockchain.Output) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
@@ -58,7 +65,7 @@ func NewSharedDBNodeSet(in *Input, bcOut *blockchain.Output) (*Output, error) {
 	if len(in.NodeSpecs) != in.Nodes && in.OverrideMode == "each" {
 		return nil, fmt.Errorf("amount of 'nodes' must be equal to specs provided in override_mode='each'")
 	}
-	out, err = sharedDBSetup(in, bcOut)
+	out, err = sharedDBSetup(ctx, in, bcOut)
 	if err != nil {
 		return nil, err
 	}
@@ -82,13 +89,13 @@ func printURLs(out *Output) {
 	framework.L.Debug().Any("DB", pgURLs).Send()
 }
 
-func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
+func sharedDBSetup(ctx context.Context, in *Input, bcOut *blockchain.Output) (*Output, error) {
 	in.DbInput.Name = fmt.Sprintf("%s-%s", in.Name, "ns-postgresql")
 	in.DbInput.VolumeName = in.Name
 
 	// create database for each node
 	in.DbInput.Databases = in.Nodes
-	dbOut, err := postgres.NewPostgreSQL(in.DbInput)
+	dbOut, err := postgres.NewWithContext(ctx, in.DbInput)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +180,7 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 				InternalURL: dbURL,
 			}
 
-			o, err := clnode.NewNode(nodeSpec, dbSpec)
+			o, err := clnode.NewNodeWithContext(ctx, nodeSpec, dbSpec)
 			if err != nil {
 				return err
 			}

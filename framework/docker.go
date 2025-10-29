@@ -42,7 +42,11 @@ func IsDockerRunning() bool {
 }
 
 func GetHost(container tc.Container) (string, error) {
-	host, err := container.Host(context.Background())
+	return GetHostWithContext(context.Background(), container)
+}
+
+func GetHostWithContext(ctx context.Context, container tc.Container) (string, error) {
+	host, err := container.Host(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -114,19 +118,28 @@ func NewDockerClient() (*DockerClient, error) {
 
 // ExecContainer executes a command inside a running container by name and returns the combined stdout/stderr.
 func (dc *DockerClient) ExecContainer(containerName string, command []string) (string, error) {
+	return dc.ExecContainerWithContext(context.Background(), containerName, command)
+}
+
+// ExecContainerWithContext executes a command inside a running container by name and returns the combined stdout/stderr.
+func (dc *DockerClient) ExecContainerWithContext(ctx context.Context, containerName string, command []string) (string, error) {
 	execConfig := container.ExecOptions{
 		Cmd:          command,
 		AttachStdout: true,
 		AttachStderr: true,
 	}
 
-	return dc.ExecContainerOptions(containerName, execConfig)
+	return dc.ExecContainerOptionsWithContext(ctx, containerName, execConfig)
 }
 
 // ExecContainer executes a command inside a running container by name and returns the combined stdout/stderr.
 func (dc *DockerClient) ExecContainerOptions(containerName string, execConfig container.ExecOptions) (string, error) {
+	return dc.ExecContainerOptionsWithContext(context.Background(), containerName, execConfig)
+}
+
+// ExecContainerOptionsWithContext executes a command inside a running container by name and returns the combined stdout/stderr.
+func (dc *DockerClient) ExecContainerOptionsWithContext(ctx context.Context, containerName string, execConfig container.ExecOptions) (string, error) {
 	L.Info().Strs("Command", execConfig.Cmd).Str("ContainerName", containerName).Msg("Executing command")
-	ctx := context.Background()
 	containers, err := dc.cli.ContainerList(ctx, container.ListOptions{
 		All: true,
 	})

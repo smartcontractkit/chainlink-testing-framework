@@ -65,8 +65,7 @@ func baseRequest(in *Input, useWS ExposeWs) testcontainers.ContainerRequest {
 	return req
 }
 
-func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest, useWS bool) (*Output, error) {
-	ctx := context.Background()
+func createGenericEvmContainer(ctx context.Context, in *Input, req testcontainers.ContainerRequest, useWS bool) (*Output, error) {
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
@@ -75,7 +74,7 @@ func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest, u
 		return nil, err
 	}
 
-	host, err := framework.GetHost(c)
+	host, err := framework.GetHostWithContext(ctx, c)
 	if err != nil {
 		return nil, err
 	}

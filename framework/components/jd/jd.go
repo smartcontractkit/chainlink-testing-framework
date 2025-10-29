@@ -69,10 +69,13 @@ func defaultJDDB() *postgres.Input {
 }
 
 func NewJD(in *Input) (*Output, error) {
+	return NewWithContext(context.Background(), in)
+}
+
+func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
-	ctx := context.Background()
 	defaults(in)
 	jdImg := os.Getenv("CTF_JD_IMAGE")
 	if jdImg != "" {
@@ -85,7 +88,7 @@ func NewJD(in *Input) (*Output, error) {
 		in.DBInput = defaultJDDB()
 	}
 	in.DBInput.JDSQLDumpPath = in.JDSQLDumpPath
-	pgOut, err := postgres.NewPostgreSQL(in.DBInput)
+	pgOut, err := postgres.NewWithContext(ctx, in.DBInput)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +140,7 @@ func NewJD(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	host, err := framework.GetHost(c)
+	host, err := framework.GetHostWithContext(ctx, c)
 	if err != nil {
 		return nil, err
 	}

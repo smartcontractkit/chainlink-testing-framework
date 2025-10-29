@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/testcontainers/testcontainers-go"
@@ -93,29 +94,34 @@ type Node struct {
 	InternalHTTPUrl string `toml:"internal_http_url"`
 }
 
-// NewBlockchainNetwork this is an abstraction that can spin up various blockchain network simulators
 func NewBlockchainNetwork(in *Input) (*Output, error) {
+	// pass context to input if needed in the future
+	return NewWithContext(context.Background(), in)
+}
+
+// NewBlockchainNetwork this is an abstraction that can spin up various blockchain network simulators
+func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	var out *Output
 	var err error
 	switch in.Type {
 	case TypeAnvil:
-		out, err = newAnvil(in)
+		out, err = newAnvil(ctx, in)
 	case TypeGeth:
-		out, err = newGeth(in)
+		out, err = newGeth(ctx, in)
 	case TypeBesu:
-		out, err = newBesu(in)
+		out, err = newBesu(ctx, in)
 	case TypeSolana:
-		out, err = newSolana(in)
+		out, err = newSolana(ctx, in)
 	case TypeAptos:
-		out, err = newAptos(in)
+		out, err = newAptos(ctx, in)
 	case TypeSui:
-		out, err = newSui(in)
+		out, err = newSui(ctx, in)
 	case TypeTron:
-		out, err = newTron(in)
+		out, err = newTron(ctx, in)
 	case TypeAnvilZKSync:
-		out, err = newAnvilZksync(in)
+		out, err = newAnvilZksync(ctx, in)
 	case TypeTon:
-		out, err = newTon(in)
+		out, err = newTon(ctx, in)
 	default:
 		return nil, fmt.Errorf("blockchain type is not supported or empty, must be 'anvil' or 'geth'")
 	}

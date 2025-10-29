@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -77,7 +78,7 @@ func defaultGeth(in *Input) {
 	}
 }
 
-func newGeth(in *Input) (*Output, error) {
+func newGeth(ctx context.Context, in *Input) (*Output, error) {
 	defaultGeth(in)
 	req := baseRequest(in, WithoutWsEndpoint)
 	defaultCmd := []string{
@@ -184,5 +185,5 @@ func newGeth(in *Input) (*Output, error) {
 	}
 	req.Cmd = entryPoint
 
-	return createGenericEvmContainer(in, req, false)
+	return createGenericEvmContainer(ctx, in, req, false)
 }

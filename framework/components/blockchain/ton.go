@@ -40,7 +40,7 @@ func defaultTon(in *Input) {
 	}
 }
 
-func newTon(in *Input) (*Output, error) {
+func newTon(ctx context.Context, in *Input) (*Output, error) {
 	defaultTon(in)
 
 	base, err := strconv.Atoi(in.Port)
@@ -52,8 +52,6 @@ func newTon(in *Input) (*Output, error) {
 		HTTPServer: in.Port,
 		LiteServer: strconv.Itoa(base + liteServerPortOffset),
 	}
-
-	ctx := context.Background()
 
 	network, err := network.New(ctx,
 		network.WithAttachable(),
