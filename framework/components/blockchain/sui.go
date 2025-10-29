@@ -54,13 +54,13 @@ func fundAccount(url string, address string) error {
 }
 
 // generateKeyData generates a wallet and returns all the data
-func generateKeyData(containerName string, keyCipherType string) (*SuiWalletInfo, error) {
+func generateKeyData(ctx context.Context, containerName string, keyCipherType string) (*SuiWalletInfo, error) {
 	cmdStr := []string{"sui", "keytool", "generate", keyCipherType, "--json"}
 	dc, err := framework.NewDockerClient()
 	if err != nil {
 		return nil, err
 	}
-	keyOut, err := dc.ExecContainer(containerName, cmdStr)
+	keyOut, err := dc.ExecContainerWithContext(ctx, containerName, cmdStr)
 	if err != nil {
 		return nil, err
 	}
@@ -90,9 +90,8 @@ func defaultSui(in *Input) {
 	}
 }
 
-func newSui(in *Input) (*Output, error) {
+func newSui(ctx context.Context, in *Input) (*Output, error) {
 	defaultSui(in)
-	ctx := context.Background()
 	containerName := framework.DefaultTCName("blockchain-node")
 
 	absPath, err := filepath.Abs(in.ContractsDir)
@@ -167,7 +166,7 @@ func newSui(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	suiAccount, err := generateKeyData(containerName, "ed25519")
+	suiAccount, err := generateKeyData(ctx, containerName, "ed25519")
 	if err != nil {
 		return nil, err
 	}

@@ -77,6 +77,18 @@ const (
 //   - STREAMS_API_KEY = API key if using a staging or prod Streams API
 //   - STREAMS_API_SECRET = API secret if using a staging or prod Streams API
 func New(in *Input) (*Output, error) {
+	return NewWithContext(context.Background(), in)
+}
+
+// NewWithContext starts a Billing Platform Service stack using docker-compose. Various env vars are set to sensible defaults and
+// input values, but can be overridden by the host process env vars if needed.
+//
+// Import env vars that can be set to override defaults:
+//   - TEST_OWNERS = comma separated list of workflow owners
+//   - STREAMS_API_URL = URL for the Streams API; can use a mock server if needed
+//   - STREAMS_API_KEY = API key if using a staging or prod Streams API
+//   - STREAMS_API_SECRET = API secret if using a staging or prod Streams API
+func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	if in == nil {
 		return nil, errors.New("input is nil")
 	}
@@ -104,7 +116,7 @@ func New(in *Input) (*Output, error) {
 		return nil, errors.Wrap(stackErr, "failed to create compose stack for Billing Platform Service")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 
 	// Start the stackwith all environment variables from the host process

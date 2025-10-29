@@ -66,6 +66,10 @@ const (
 )
 
 func New(in *Input) (*Output, error) {
+	return NewWithContext(context.Background(), in)
+}
+
+func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	if in == nil {
 		return nil, errors.New("input is nil")
 	}
@@ -93,7 +97,7 @@ func New(in *Input) (*Output, error) {
 		return nil, errors.Wrap(stackErr, "failed to create compose stack for Chip Ingress")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 
 	// Start the stackwith all environment variables from the host process
@@ -220,7 +224,7 @@ func New(in *Input) (*Output, error) {
 	in.UseCache = true
 	framework.L.Info().Msg("Chip Ingress stack started")
 
-	return output, checkSchemaRegistryReadiness(2*time.Minute, 300*time.Millisecond, output.RedPanda.SchemaRegistryExternalURL, 3)
+	return output, checkSchemaRegistryReadiness(ctx, 2*time.Minute, 300*time.Millisecond, output.RedPanda.SchemaRegistryExternalURL, 3)
 }
 
 func composeFilePath(rawFilePath string) (string, error) {
@@ -284,7 +288,7 @@ func connectNetwork(connCtx context.Context, timeout time.Duration, dockerClient
 
 // checkSchemaRegistryReadiness verifies that the Schema Registry answers 2xx on GET /subjects
 // for minSuccessCount *consecutive* attempts, polling every `interval`, with an overall `timeout`.
-func checkSchemaRegistryReadiness(timeout, interval time.Duration, registryURL string, minSuccessCount int) error {
+func checkSchemaRegistryReadiness(ctx context.Context, timeout, interval time.Duration, registryURL string, minSuccessCount int) error {
 	if minSuccessCount < 1 {
 		minSuccessCount = 1
 	}
@@ -312,7 +316,7 @@ func checkSchemaRegistryReadiness(timeout, interval time.Duration, registryURL s
 		Timeout:   10 * time.Second, // per-request timeout
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	t := time.NewTicker(interval)
