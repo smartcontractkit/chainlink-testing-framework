@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -31,12 +32,13 @@ var idJSONRaw = `
 `
 
 func defaultSolana(in *Input) {
-	ci := os.Getenv("CI") == "true"
-	if in.Image == "" && !ci {
-		in.Image = "f4hrenh9it/solana"
-	}
-	if in.Image == "" && ci {
-		in.Image = "anzaxyz/agave:v2.1.13"
+	if in.Image == "" {
+		// Official arm64 image does not exist for Solana so use custom built one
+		if runtime.GOARCH == "arm64" {
+			in.Image = "f4hrenh9it/solana"
+		} else {
+			in.Image = "anzaxyz/agave:v2.1.13"
+		}
 	}
 	if in.Port == "" {
 		in.Port = "8999"
