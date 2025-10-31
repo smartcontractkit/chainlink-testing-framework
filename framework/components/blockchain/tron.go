@@ -55,12 +55,11 @@ func defaultTron(in *Input) {
 	}
 }
 
-func newTron(in *Input) (*Output, error) {
+func newTron(ctx context.Context, in *Input) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
 	defaultTron(in)
-	ctx := context.Background()
 
 	containerName := framework.DefaultTCName("blockchain-node")
 	// Tron container always listens on port 9090 internally

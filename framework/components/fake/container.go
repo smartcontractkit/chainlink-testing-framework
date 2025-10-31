@@ -14,10 +14,14 @@ import (
 
 // NewDockerFakeDataProvider creates new fake data provider in Docker using testcontainers-go
 func NewDockerFakeDataProvider(in *Input) (*Output, error) {
+	return NewWithContext(context.Background(), in)
+}
+
+// NewWithContext creates new fake data provider in Docker using testcontainers-go
+func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
-	ctx := context.Background()
 	bindPort := fmt.Sprintf("%d/tcp", in.Port)
 	containerName := framework.DefaultTCName("fake")
 	req := tc.ContainerRequest{

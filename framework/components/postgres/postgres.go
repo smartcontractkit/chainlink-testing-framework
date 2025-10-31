@@ -48,8 +48,10 @@ type Output struct {
 }
 
 func NewPostgreSQL(in *Input) (*Output, error) {
-	ctx := context.Background()
+	return NewWithContext(context.Background(), in)
+}
 
+func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	bindPort := fmt.Sprintf("%s/tcp", Port)
 	var containerName string
 	if in.Name == "" {
@@ -161,7 +163,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	host, err := framework.GetHost(c)
+	host, err := framework.GetHostWithContext(ctx, c)
 	if err != nil {
 		return nil, err
 	}

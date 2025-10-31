@@ -1,4 +1,5 @@
-name: Framework Golden Tests Examples
+name: Framework Golden Private Tests Examples
+# Groups tests that require access to private container registries
 on:
   push:
 
@@ -8,8 +9,7 @@ jobs:
       run:
         working-directory: framework/examples/myproject
     env:
-      LOKI_TENANT_ID: promtail
-      LOKI_URL: http://localhost:3030/loki/api/v1/push
+      CTF_JD_IMAGE: "${{secrets.AWS_ACCOUNT_ID_PROD}}.dkr.ecr.us-west-2.amazonaws.com/job-distributor:0.22.1"
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -18,64 +18,11 @@ jobs:
       fail-fast: false
       matrix:
         test:
-          - name: TestSmoke
-            config: smoke.toml
+          - name: TestPrivate
+            config: jd.toml
             count: 1
             timeout: 10m
-          - name: TestSmokeLimitedResources
-            config: smoke_limited_resources.toml
-            count: 1
-            timeout: 10m
-# Sui client starts to flake and do not respond to healthcheck properly, need to be fixed
-#          - name: TestSuiSmoke
-#            config: smoke_sui.toml
-#            count: 1
-#            timeout: 10m
-          - name: TestAptosSmoke
-            config: smoke_aptos.toml
-            count: 1
-            timeout: 10m
-          - name: TestTRONSmoke
-            config: smoke_tron.toml
-            count: 1
-            timeout: 10m
-          - name: TestSolanaSmoke
-            config: smoke_solana.toml
-            count: 1
-            timeout: 10m
-          - name: TestTonSmoke
-            config: smoke_ton.toml
-            count: 1
-            timeout: 10m
-          - name: TestTonParallel
-            config: parallel_ton.toml
-            count: 1
-            timeout: 10m
-          - name: TestUpgrade
-            config: upgrade.toml
-            count: 1
-            timeout: 10m
-          - name: TestPerformanceBaseline
-            config: performance_baseline.toml
-            count: 1
-            timeout: 10m
-          - name: TestChaos
-            config: chaos.toml
-            count: 1
-            timeout: 10m
-          - name: TestScalability
-            config: scalability.toml
-            count: 1
-            timeout: 10m
-          - name: TestLocalS3
-            config: local_s3.toml
-            count: 1
-            timeout: 10m
-          - name: TestFakes
-            config: fake.toml
-            count: 1
-            timeout: 10m
-            # TODO: sdlc auth (move to framework-golden-tests-private.yml, which has that auth set up)
+            # TODO: sdlc auth
 #          - name: TestDockerFakes
 #            config: fake_docker.toml
 #            count: 1
@@ -87,13 +34,15 @@ jobs:
       - name: Configure AWS credentials using OIDC
         uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
         with:
-          role-to-assume: ${{ secrets.PUBLIC_AWS_ECR_ROLE }}
-          aws-region: us-east-1
-      - name: Authenticate to ECR Public
-        id: login-ecr-public
+          role-to-assume: ${{ secrets.AWS_CTF_READ_ACCESS_ROLE_ARN }}
+          aws-region: us-west-2
+      - name: Login to Amazon ECR
+        id: login-ecr-private
         uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
         with:
-          registry-type: public
+          registries: ${{ format('{0},{1}', secrets.AWS_ACCOUNT_ID_SDLC, secrets.AWS_ACCOUNT_ID_PROD) }}
+        env:
+          AWS_REGION: us-west-2
       - name: Check for changes in Framework
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
         id: changes
@@ -118,7 +67,7 @@ jobs:
             go-modules-${{ runner.os }}
       - name: Install dependencies
         run: go mod download
-      - name: Run System Tests
+      - name: Run Tests
         if: steps.changes.outputs.src == 'true'
         env:
           CTF_CONFIGS: ${{ matrix.test.config }}

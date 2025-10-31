@@ -43,12 +43,11 @@ func defaultSolana(in *Input) {
 	}
 }
 
-func newSolana(in *Input) (*Output, error) {
+func newSolana(ctx context.Context, in *Input) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
 	defaultSolana(in)
-	ctx := context.Background()
 
 	containerName := framework.DefaultTCName("blockchain-node")
 	// Solana do not allow to set ws port, it just uses --rpc-port=N and sets WS as N+1 automatically
@@ -140,7 +139,7 @@ func newSolana(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	host, err := framework.GetHost(c)
+	host, err := framework.GetHostWithContext(ctx, c)
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"context"
 	"strings"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
@@ -31,8 +32,7 @@ func defaultAnvil(in *Input) {
 	}
 }
 
-// newAnvil deploy foundry anvil node
-func newAnvil(in *Input) (*Output, error) {
+func newAnvil(ctx context.Context, in *Input) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
@@ -50,5 +50,5 @@ func newAnvil(in *Input) (*Output, error) {
 
 	framework.L.Info().Any("Cmd", strings.Join(entryPoint, " ")).Msg("Creating anvil with command")
 
-	return createGenericEvmContainer(in, req, false)
+	return createGenericEvmContainer(ctx, in, req, false)
 }
