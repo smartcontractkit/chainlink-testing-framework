@@ -1,4 +1,4 @@
-package havoc
+package wasp
 
 // ChaosListener is an interface that can be implemented by clients to listen to and react to chaos events.
 type ChaosListener interface {

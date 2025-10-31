@@ -154,6 +154,13 @@ func DefaultLokiConfig() *LokiConfig {
 	}
 }
 
+// LocalCTFObsConfig is a default local config for "ctf obs" command observability stack
+func LocalCTFObsConfig() *LokiConfig {
+	d := DefaultLokiConfig()
+	d.URL = "http://localhost:3030/loki/api/v1/push"
+	return d
+}
+
 // NewEnvLokiConfig creates a LokiConfig populated with settings from environment variables.
 func NewEnvLokiConfig() *LokiConfig {
 	d := DefaultLokiConfig()

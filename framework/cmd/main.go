@@ -11,6 +11,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 )
 
 func main() {
@@ -19,6 +20,111 @@ func main() {
 		Usage:     "Chainlink Testing Framework CLI",
 		UsageText: "'ctf' is a useful utility that can:\n- clean up test docker containers\n- modify test files\n- create a local observability stack with Grafana/Loki/Pyroscope",
 		Commands: []*cli.Command{
+			{
+				Name:    "gen",
+				Aliases: []string{"g"},
+				Usage:   "Generates various test templates",
+				Subcommands: []*cli.Command{
+					{
+						Name:    "load",
+						Aliases: []string{"l"},
+						Usage:   "Generates a load/chaos test template for Kubernetes namespace",
+						Description: `Scans a Kubernetes namespace and generates load testing templates for discovered services.
+
+Prerequisites:
+
+	Connect to K8s and don't forget to switch context first:
+		kubectl config use-context <your_ctx>
+	By default test sends data to a local CTF stack, see //TODO comments to change that, spin up the stack:
+		ctf obs up
+
+Usage:
+
+	Generate basic kill/latency tests:
+		ctf gen k8s-load my-namespace
+	With workload:
+		ctf gen k8s-load -w my-namespace
+	With workload and name:
+		ctf gen k8s-load -w -n TestSomething my-namespace
+
+Be aware that any TODO requires your attention before your run the final test!
+`,
+						ArgsUsage: "--workload --name $name --output-dir $dir --module $go_mod_name [NAMESPACE]",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:    "name",
+								Aliases: []string{"n"},
+								Value:   "TestLoadChaos",
+								Usage:   "Test suite name",
+							},
+							&cli.StringFlag{
+								Name:    "output-dir",
+								Aliases: []string{"o"},
+								Value:   "wasp-test",
+								Usage:   "Output directory for generated files",
+							},
+							&cli.StringFlag{
+								Name:    "module",
+								Aliases: []string{"m"},
+								Value:   "github.com/smartcontractkit/chainlink-testing-framework/wasp-test",
+								Usage:   "Go module name for generated project",
+							},
+							&cli.BoolFlag{
+								Name:    "workload",
+								Aliases: []string{"w"},
+								Value:   false,
+								Usage:   "Include workload generation in tests",
+							},
+							&cli.StringFlag{
+								Name:    "pod-label-key",
+								Aliases: []string{"k"},
+								Value:   "app.kubernetes.io/instance",
+								Usage:   "Default unique pod key, read more here: https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/",
+							},
+						},
+						Action: func(c *cli.Context) error {
+							if c.Args().Len() == 0 {
+								return fmt.Errorf("Kubernetes namespace argument is required")
+							}
+							ns := c.Args().First()
+							testSuiteName := c.String("name")
+							podLabelKey := c.String("pod-label-key")
+							outputDir := c.String("output-dir")
+							moduleName := c.String("module")
+							includeWorkload := c.Bool("workload")
+							framework.L.Info().
+								Str("SuiteName", testSuiteName).
+								Str("OutputDir", outputDir).
+								Str("GoModuleName", moduleName).
+								Bool("Workload", includeWorkload).
+								Msg("Generating load&chaos test template")
+
+							k8sClient, err := wasp.NewK8s()
+							if err != nil {
+								return fmt.Errorf("failed to create K8s client")
+							}
+
+							cg, err := wasp.NewLoadTestGenBuilder(k8sClient, ns).
+								TestSuiteName(testSuiteName).
+								UniqPodLabelKey(podLabelKey).
+								Workload(includeWorkload).
+								OutputDir(outputDir).
+								GoModName(moduleName).
+								Build()
+							if err != nil {
+								return fmt.Errorf("failed to create codegen: %w", err)
+							}
+							if err := cg.Read(); err != nil {
+								return fmt.Errorf("failed to scan namespace: %w", err)
+							}
+							if err := cg.Write(); err != nil {
+								return fmt.Errorf("failed to generate module: %w", err)
+							}
+							return nil
+						},
+					},
+				},
+			},
 			{
 				Name:    "config",
 				Aliases: []string{"c"},
@@ -206,7 +312,7 @@ func PrettyPrintTOML(inputFile string, outputFile string) error {
 	}
 
 	//nolint
-	err = os.WriteFile(outputFile, []byte(dumpData), 0644)
+	err = os.WriteFile(outputFile, []byte(dumpData), 0o644)
 	if err != nil {
 		return fmt.Errorf("error writing to output file: %v", err)
 	}

@@ -12,6 +12,7 @@
   - [CLI](./framework/cli.md)
   - [Configuration](./framework/configuration.md)
   - [Debugging Tests](framework/components/debug.md)
+  - [Generating Tests](framework/generate.md)
   - [Creating your own components](./developing/developing_components.md)
   - [Exposing Components](framework/components/state.md)
   - [Asserting Logs](./developing/asserting_logs.md)
