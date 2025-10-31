@@ -432,16 +432,16 @@ Docker version 27.3.1
 </code></pre>
 <p>Download our <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8">CLI</a></p>
 <p>OS X <code>arm64</code> (M1/M2/M3 MacBooks)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.11.4/framework-v0.11.4-darwin-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.11.6/framework-v0.11.6-darwin-arm64.tar.gz | tar -xz
 </code></pre>
 <p>OS X <code>amd64</code> (old Intel chips)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.11.4/framework-v0.11.4-darwin-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.11.6/framework-v0.11.6-darwin-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>arm64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.11.4/framework-v0.11.4-linux-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.11.6/framework-v0.11.6-linux-arm64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>amd64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.11.4/framework-v0.11.4-linux-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.11.6/framework-v0.11.6-linux-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Allow it to run in <code>System Settings -&gt; Security Settings</code> (OS X)</p>
 <p><img src="framework/images/img.png" alt="img.png" /></p>
@@ -542,16 +542,16 @@ Docker version 27.3.1
 </code></pre>
 <p>Download our <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8">CLI</a></p>
 <p>OS X <code>arm64</code> (M1/M2/M3 MacBooks)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.11.4/framework-v0.11.4-darwin-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.11.6/framework-v0.11.6-darwin-arm64.tar.gz | tar -xz
 </code></pre>
 <p>OS X <code>amd64</code> (old Intel chips)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.11.4/framework-v0.11.4-darwin-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.11.6/framework-v0.11.6-darwin-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>arm64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.11.4/framework-v0.11.4-linux-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.11.6/framework-v0.11.6-linux-arm64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>amd64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.11.4/framework-v0.11.4-linux-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.11.6/framework-v0.11.6-linux-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Allow it to run in <code>System Settings -&gt; Security Settings</code> (OS X)</p>
 <p><img src="framework/images/img.png" alt="img.png" /></p>
@@ -3881,8 +3881,8 @@ func TestDON(t *testing.T) {
 </style>
 <h1 id="solana-blockchain-client"><a class="header" href="#solana-blockchain-client">Solana Blockchain Client</a></h1>
 <p>Since <code>Solana</code> doesn't have official image for <code>arm64</code> we built it, images we use are:</p>
-<pre><code>amd64 solanalabs/solana:v1.18.26 - used in CI
-arm64 f4hrenh9it/solana:latest - used locally
+<pre><code>amd64 solanalabs/solana:v1.18.26
+arm64 public.ecr.aws/w0i8p0z9/solana-validator:main-1dcdbc4
 </code></pre>
 <h2 id="configuration-3"><a class="header" href="#configuration-3">Configuration</a></h2>
 <pre><code class="language-toml">[blockchain_a]
@@ -17240,7 +17240,7 @@ go run ./tools/breakingchanges/cmd/main.go --ignore tools,wasp,havoc,seth # to i
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>2fcbdd86</code></li>
+<li>Commit: <code>f47ecdf6</code></li>
 </ul>
 
                     </main>
