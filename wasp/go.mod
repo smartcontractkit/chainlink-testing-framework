@@ -318,21 +318,17 @@ require (
 )
 
 require (
-	github.com/smartcontractkit/chainlink-testing-framework/framework v0.11.3
-	github.com/urfave/cli/v2 v2.27.7
-)
-
-require (
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
+	github.com/creack/pty v1.1.24 // indirect
 	github.com/ebitengine/purego v0.8.2 // indirect
 	github.com/google/go-github/v72 v72.0.0 // indirect
+	github.com/hashicorp/consul/sdk v0.16.2 // indirect
 	github.com/hashicorp/go-metrics v0.5.4 // indirect
 	github.com/moby/go-archive v0.1.0 // indirect
+	github.com/moby/sys/atomicwriter v0.1.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.25.1 // indirect
 	github.com/tjhop/slog-gokit v0.1.3 // indirect
-	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 )
 
 retract [v1.999.0-test-release, v1.999.999-test-release]
