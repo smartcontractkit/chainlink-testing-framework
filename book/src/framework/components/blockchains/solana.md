@@ -3,7 +3,7 @@
 Since `Solana` doesn't have official image for `arm64` we built it, images we use are:
 ```
 amd64 solanalabs/solana:v1.18.26
-arm64 f4hrenh9it/solana:latest
+arm64 public.ecr.aws/w0i8p0z9/solana-validator:main-1dcdbc4
 ```
 
 ## Configuration

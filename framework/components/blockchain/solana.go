@@ -35,7 +35,7 @@ func defaultSolana(in *Input) {
 	if in.Image == "" {
 		// Official arm64 image does not exist for Solana so use custom built one
 		if runtime.GOARCH == "arm64" {
-			in.Image = "f4hrenh9it/solana"
+			in.Image = "public.ecr.aws/w0i8p0z9/solana-validator:main-1dcdbc4"
 		} else {
 			in.Image = "anzaxyz/agave:v2.1.13"
 		}
