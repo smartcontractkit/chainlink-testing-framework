@@ -426,7 +426,7 @@ func (g *LoadTestCodegen) Write() error {
 		return err
 	}
 	goModPath := filepath.Join(g.cfg.outputDir, "go.mod")
-	if err := os.WriteFile(goModPath, []byte(goModContent), 0o644); err != nil {
+	if err := os.WriteFile(goModPath, []byte(goModContent), 0600); err != nil {
 		return fmt.Errorf("failed to write go.mod: %w", err)
 	}
 
@@ -436,13 +436,14 @@ func (g *LoadTestCodegen) Write() error {
 		return err
 	}
 	testPath := filepath.Join(g.cfg.outputDir, "chaos_test.go")
-	if err := os.WriteFile(testPath, []byte(testContent), 0o644); err != nil {
+	if err := os.WriteFile(testPath, []byte(testContent), 0600); err != nil {
 		return fmt.Errorf("failed to write test file: %w", err)
 	}
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return err
 	}
+	// nolint
 	defer os.Chdir(currentDir)
 	if err := os.Chdir(g.cfg.outputDir); err != nil {
 		return err

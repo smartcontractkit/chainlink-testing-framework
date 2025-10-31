@@ -53,7 +53,7 @@ func TestGenerateData(t *testing.T) {
 				Pods: tt.mockPods,
 				Err:  tt.mockError,
 			}
-			generator, err:= NewLoadTestGenBuilder(mockClient, tt.namespace).
+			generator, err := NewLoadTestGenBuilder(mockClient, tt.namespace).
 				Workload(tt.includeWorkload).Build()
 			require.NoError(t, err)
 			err = generator.Read()
@@ -124,7 +124,8 @@ func TestGenerateFiles(t *testing.T) {
 				OutputDir(tmpDir).
 				GoModName("github.com/test/chaos-tests").
 				Build()
-			
+			require.NoError(t, err)
+
 			require.NoError(t, generator.Read())
 			require.NoError(t, generator.Write())
 
