@@ -13,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient/simulated"
 	"github.com/pelletier/go-toml/v2"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -131,16 +130,29 @@ func DefaultClient(rpcUrl string, privateKeys []string) (*Client, error) {
 func ReadConfig() (*Config, error) {
 	cfgPath := os.Getenv(CONFIG_FILE_ENV_VAR)
 	if cfgPath == "" {
-		return nil, errors.New(ErrEmptyConfigPath)
+		return nil, fmt.Errorf("SETH_CONFIG_PATH environment variable is not set. " +
+			"Set it to the absolute path of your seth.toml configuration file.\n" +
+			"Example: export SETH_CONFIG_PATH=/path/to/your/seth.toml")
 	}
 	var cfg *Config
 	d, err := os.ReadFile(cfgPath)
 	if err != nil {
-		return nil, errors.Wrap(err, ErrReadSethConfig)
+		return nil, fmt.Errorf("failed to read Seth config file at '%s': %w\n"+
+			"Ensure:\n"+
+			"  1. The file exists at the specified path (set via SETH_CONFIG_PATH)\n"+
+			"  2. You have read permissions for the file",
+			cfgPath, err)
 	}
 	err = toml.Unmarshal(d, &cfg)
 	if err != nil {
-		return nil, errors.Wrap(err, ErrUnmarshalSethConfig)
+		return nil, fmt.Errorf("failed to parse Seth TOML config from '%s': %w\n"+
+			"Ensure the file contains valid TOML syntax. "+
+			"Common issues:\n"+
+			"  1. Missing quotes around string values\n"+
+			"  2. Invalid array or table syntax\n"+
+			"  3. Duplicate keys\n"+
+			"See example config: https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/seth/seth.toml",
+			cfgPath, err)
 	}
 	absPath, err := filepath.Abs(cfgPath)
 	if err != nil {
@@ -162,7 +174,15 @@ func ReadConfig() (*Config, error) {
 		url := os.Getenv(URL_ENV_VAR)
 
 		if url == "" {
-			return nil, fmt.Errorf("network not selected, set %s=... or %s=..., check TOML config for available networks", NETWORK_ENV_VAR, URL_ENV_VAR)
+			availableNetworks := make([]string, 0, len(cfg.Networks))
+			for _, n := range cfg.Networks {
+				availableNetworks = append(availableNetworks, n.Name)
+			}
+			return nil, fmt.Errorf("network not selected. Set either:\n"+
+				"  - SETH_NETWORK to one of: %s\n"+
+				"  - SETH_URL to a custom RPC endpoint\n"+
+				"Check your TOML config at %s for network details",
+				strings.Join(availableNetworks, ", "), cfgPath)
 		}
 
 		//look for default network
@@ -182,13 +202,20 @@ func ReadConfig() (*Config, error) {
 		}
 
 		if cfg.Network == nil {
-			return nil, fmt.Errorf("default network not defined in the TOML file")
+			return nil, fmt.Errorf("default network not defined in the TOML file at %s. "+
+				"Add a network with name='%s' or specify a network using SETH_NETWORK environment variable",
+				cfgPath, DefaultNetworkName)
 		}
 	}
 
 	rootPrivateKey := os.Getenv(ROOT_PRIVATE_KEY_ENV_VAR)
 	if rootPrivateKey == "" {
-		return nil, errors.Errorf(ErrEmptyRootPrivateKey, ROOT_PRIVATE_KEY_ENV_VAR)
+		return nil, fmt.Errorf("no root private key was set. "+
+			"You can provide the root private key via:\n"+
+			"  1. %s environment variable (without 0x prefix)\n"+
+			"  2. 'private_keys_secret' array in seth.toml [[networks]] section\n"+
+			"WARNING: Never commit private keys to source control. We recommend to use the environment variable.",
+			ROOT_PRIVATE_KEY_ENV_VAR)
 	}
 	cfg.Network.PrivateKeys = append(cfg.Network.PrivateKeys, rootPrivateKey)
 	if cfg.Network.DialTimeout == nil {
@@ -205,7 +232,13 @@ func ReadConfig() (*Config, error) {
 // If any configuration is invalid, it returns an error.
 func (c *Config) Validate() error {
 	if c.Network == nil {
-		return errors.New(ErrNetworkIsNil)
+		return fmt.Errorf("network configuration is nil. " +
+			"This usually means the network wasn't selected or configured properly.\n" +
+			"Solutions:\n" +
+			"  1. Set SETH_NETWORK environment variable to match a network name in seth.toml (e.g., SETH_NETWORK=sepolia)\n" +
+			"  2. Ensure your seth.toml has a [[networks]] section with 'name' field matching SETH_NETWORK\n" +
+			"  3. Use ClientBuilder with WithNetwork() to configure the network programmatically\n" +
+			"See documentation for configuration examples")
 	}
 
 	if c.Network.GasPriceEstimationEnabled {
@@ -225,12 +258,20 @@ func (c *Config) Validate() error {
 		case Priority_Slow:
 		case Priority_Auto:
 		default:
-			return errors.New("when automating gas estimation is enabled priority must be auto, fast, standard or slow. fix it or disable gas estimation")
+			return fmt.Errorf("invalid gas estimation priority '%s'. "+
+				"Must be one of: 'auto', 'fast', 'standard' or 'slow'. "+
+				"Set 'gas_price_estimation_tx_priority' in your seth.toml config. "+
+				"To disable gas estimation, set 'gas_price_estimation_enabled = false'",
+				c.Network.GasPriceEstimationTxPriority)
 		}
 
 		if c.GasBump != nil && c.GasBump.Retries > 0 &&
 			c.Network.GasPriceEstimationTxPriority == Priority_Auto {
-			return errors.New("gas bumping is not compatible with auto priority gas estimation")
+			return fmt.Errorf("configuration conflict: gas bumping (retries=%d) is not compatible with auto priority gas estimation. "+
+				"Either:\n"+
+				"  1. Set gas_price_estimation_tx_priority to 'fast', 'standard', or 'slow'\n"+
+				"  2. Set gas_bump.retries = 0 to disable gas bumping",
+				c.GasBump.Retries)
 		}
 	}
 
@@ -254,7 +295,10 @@ func (c *Config) Validate() error {
 	case TracingLevel_Reverted:
 	case TracingLevel_All:
 	default:
-		return errors.New("tracing level must be one of: NONE, REVERTED, ALL")
+		return fmt.Errorf("invalid tracing level '%s'. Must be one of: 'NONE', 'REVERTED', 'ALL'. "+
+			"Set 'tracing_level' in your seth.toml config or via WithTracing() option, if using ClientBuilder().\n"+
+			"Recommended: 'REVERTED' for debugging failed transactions, 'NONE' to disable tracing completely",
+			c.TracingLevel)
 	}
 
 	for _, output := range c.TraceOutputs {
@@ -263,7 +307,10 @@ func (c *Config) Validate() error {
 		case TraceOutput_JSON:
 		case TraceOutput_DOT:
 		default:
-			return errors.New("trace output must be one of: console, json, dot")
+			return fmt.Errorf("invalid trace output '%s'. Must be one of: 'console', 'json', 'dot'. "+
+				"Set 'trace_outputs' in your seth.toml config or via WithTracing() option, if using ClientBuilder()"+
+				"You can specify multiple outputs as an array",
+				output)
 		}
 	}
 
@@ -276,11 +323,18 @@ func (c *Config) Validate() error {
 	}
 
 	if c.ethclient == nil && len(c.Network.URLs) == 0 {
-		return errors.New("at least one url should be present in config in 'secret_urls = []'")
+		return fmt.Errorf("no RPC URLs configured. " +
+			"You can provide RPC URLs via:\n" +
+			"  1. 'urls_secret' field in seth.toml: urls_secret = [\"http://your-rpc-url\"]\n" +
+			"  2. WithRPCURLs() when using ClientBuilder\n" +
+			"  3. WithEthClient() to provide a pre-configured ethclient instance")
 	}
 
 	if c.ethclient != nil && len(c.Network.URLs) > 0 {
-		return errors.New(EthClientAndUrlsSet)
+		return fmt.Errorf("configuration conflict: both ethclient instance and RPC URLs are set. " +
+			"You cannot set both. Either:\n" +
+			"  1. Use the provided ethclient (remove 'urls_secret' from config)\n" +
+			"  2. Use RPC URLs from config (don't provide ethclient)")
 	}
 
 	return nil

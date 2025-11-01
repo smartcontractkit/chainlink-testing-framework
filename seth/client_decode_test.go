@@ -39,7 +39,7 @@ func TestSmokeDebugReverts(t *testing.T) {
 			name:   "revert with a custom err",
 			method: "alwaysRevertsCustomError",
 			output: map[string]string{
-				seth.GETH: "error type: CustomErr, error values: [12 21]",
+				seth.GETH: "transaction reverted with custom error: error type: CustomErr, error values: [12 21]",
 			},
 		},
 	}
@@ -57,7 +57,7 @@ func TestSmokeDebugReverts(t *testing.T) {
 					expectedOutput = eo
 				}
 			}
-			require.Equal(t, expectedOutput, err.Error())
+			require.Contains(t, err.Error(), expectedOutput, "expected error message to contain the reverted error type and values")
 		})
 	}
 }

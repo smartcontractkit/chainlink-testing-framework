@@ -11,7 +11,6 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/pkg/errors"
 )
 
 /* these are the common errors of RPCs */
@@ -42,12 +41,20 @@ func (m *Client) RetryTxAndDecode(f func() (*types.Transaction, error)) (*Decode
 	)
 
 	if err != nil {
-		return &DecodedTransaction{}, errors.New(ErrRetryTimeout)
+		return &DecodedTransaction{}, fmt.Errorf("transaction retry timed out after multiple attempts. " +
+			"The RPC connection was repeatedly refused.\n" +
+			"Troubleshooting:\n" +
+			"  1. Check if the RPC node is online and accessible\n" +
+			"  2. Verify network connectivity\n" +
+			"  3. Try a different RPC endpoint\n" +
+			"  4. Check if there are firewall/proxy issues")
 	}
 
 	dt, err := m.Decode(tx, nil)
 	if err != nil {
-		return &DecodedTransaction{}, errors.Wrap(err, "error decoding transaction")
+		return &DecodedTransaction{}, fmt.Errorf("error decoding transaction %s: %w\n"+
+			"Failed to decode transaction details after waiting for confirmation",
+			tx.Hash().Hex(), err)
 	}
 
 	return dt, nil
@@ -111,7 +118,12 @@ var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) 
 
 	// If original transaction used auto priority, we cannot bump it
 	if client.Cfg.Network.GasPriceEstimationTxPriority == Priority_Auto {
-		return nil, errors.New("gas bumping is not supported for auto priority transactions")
+		return nil, fmt.Errorf("gas bumping is not supported when using 'auto' priority. " +
+			"The 'auto' mode lets the RPC node set gas prices automatically, " +
+			"which conflicts with manual gas bumping.\n" +
+			"Solutions:\n" +
+			"  1. Set gas_price_estimation_tx_priority to 'fast', 'standard', or 'slow'\n" +
+			"  2. Set gas_bump.retries = 0 to disable gas bumping")
 	}
 
 	ctxPending, cancelPending := context.WithTimeout(context.Background(), client.Cfg.Network.TxnTimeout.Duration())
@@ -123,7 +135,8 @@ var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) 
 
 	if err != nil && !isPending {
 		L.Debug().Str("Tx hash", tx.Hash().Hex()).Msg("Transaction was confirmed before bumping gas")
-		return nil, errors.New("transaction was confirmed before bumping gas")
+		return nil, fmt.Errorf("transaction was already confirmed before gas bumping attempt. " +
+			"This means the original transaction was mined successfully. No action needed")
 	}
 
 	signer := types.LatestSignerForChainID(tx.ChainId())
@@ -211,7 +224,9 @@ var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) 
 		replacementTx, err = types.SignNewTx(privateKey, signer, txData)
 	case types.BlobTxType:
 		if tx.To() == nil {
-			return nil, fmt.Errorf("blob tx with nil recipient is not supported")
+			return nil, fmt.Errorf("blob transaction with nil recipient is not supported for gas bumping. " +
+				"Blob transactions (EIP-4844) with nil recipients are not standard and cannot be replaced.\n" +
+				"This is likely a bug - blob transactions should always have a recipient address")
 		}
 		newGasFeeCap := client.Cfg.GasBump.StrategyFn(tx.GasFeeCap())
 		newGasTipCap := client.Cfg.GasBump.StrategyFn(tx.GasTipCap())
@@ -273,7 +288,14 @@ var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) 
 		replacementTx, err = types.SignNewTx(privateKey, signer, txData)
 
 	default:
-		return nil, fmt.Errorf("unsupported tx type %d", tx.Type())
+		return nil, fmt.Errorf("unsupported transaction type %d for gas bumping. "+
+			"Seth currently supports gas bumping for:\n"+
+			"  - Type 0: Legacy transactions\n"+
+			"  - Type 1: EIP-2930 (access list) transactions\n"+
+			"  - Type 2: EIP-1559 (dynamic fee) transactions\n"+
+			"  - Type 3: Blob transactions (with recipient)\n"+
+			"If you need support for this transaction type, please open a GitHub issue at https://github.com/smartcontractkit/chainlink-testing-framework/issues",
+			tx.Type())
 	}
 
 	if err != nil {

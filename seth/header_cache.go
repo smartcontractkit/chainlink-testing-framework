@@ -44,7 +44,9 @@ func (c *LFUHeaderCache) Get(blockNumber int64) (*types.Header, bool) {
 // Set adds or updates a header in the cache.
 func (c *LFUHeaderCache) Set(header *types.Header) error {
 	if header == nil {
-		return fmt.Errorf("header is nil")
+		return fmt.Errorf("cannot add nil header to cache. " +
+			"This indicates a bug in Seth or the calling code. " +
+			"Please report this issue at https://github.com/smartcontractkit/chainlink-testing-framework/issues with the stack trace")
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()

@@ -2,6 +2,8 @@ package seth_test
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"math/big"
 	"os"
 	"testing"
@@ -11,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient/simulated"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/seth"
@@ -150,7 +151,7 @@ func NewDebugContractSetup() (
 
 	nm, err := seth.NewNonceManager(cfg, addrs, pkeys)
 	if err != nil {
-		return nil, nil, common.Address{}, common.Address{}, nil, errors.Wrap(err, seth.ErrCreateNonceManager)
+		return nil, nil, common.Address{}, common.Address{}, nil, fmt.Errorf("failed to create nonce manager: %w", err)
 	}
 
 	c, err := seth.NewClientRaw(cfg, addrs, pkeys, seth.WithContractStore(cs), seth.WithTracer(tracer), seth.WithNonceManager(nm))
