@@ -52,8 +52,6 @@ const (
 	GoModTemplate = `module {{.ModuleName}}
 
 go 1.25
-
-replace github.com/smartcontractkit/chainlink-testing-framework/wasp => ../../../wasp/
 `
 
 	// TableTestTmpl is a load/chaos table test template
