@@ -171,6 +171,9 @@ func sharedDBSetup(ctx context.Context, in *Input, bcOut *blockchain.Output) (*O
 
 			if envImage != "" {
 				nodeSpec.Node.Image = envImage
+				// unset docker build context and file path to avoid conflicts, image provided via env var takes precedence
+				nodeSpec.Node.DockerContext = ""
+				nodeSpec.Node.DockerFilePath = ""
 			}
 
 			dbURLHost := strings.Replace(dbOut.Url, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i), -1)
