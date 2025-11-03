@@ -42,16 +42,18 @@ var _ TestCodeGenerator = (*LoadTestCodegen)(nil)
 
 const (
 	DefaultTestSuiteName = "TestGeneratedLoadChaos"
+	DefaultUniqLabel     = "app.kubernetes.io/instance"
 	DefaultTestModule    = "main"
 )
 
 /* Templates */
 
 const (
-	// TODO: remove this replace after merge
 	GoModTemplate = `module {{.ModuleName}}
 
 go 1.25
+
+replace github.com/smartcontractkit/chainlink-testing-framework/wasp => ../../../wasp/
 `
 
 	// TableTestTmpl is a load/chaos table test template
@@ -222,8 +224,8 @@ require.NoError(t, err)`
         Namespace:         cfg.Chaos.Namespace,
         LabelKey:          "{{.LabelKey}}",
         LabelValues:       []string{"{{.LabelValue}}"},
-        Latency:           400 * time.Millisecond,
-        Jitter:            20 * time.Millisecond,
+        Latency:           {{.LatencyMs}} * time.Millisecond,
+        Jitter:            {{.JitterMs}} * time.Millisecond,
         Correlation:       "0",
         InjectionDuration: f.MustParseDuration(cfg.Chaos.ExperimentInjectionDuration),
     })
@@ -264,6 +266,8 @@ type PodFailParams struct {
 type PodDelayParams struct {
 	LabelKey   string
 	LabelValue string
+	LatencyMs  int
+	JitterMs   int
 }
 
 // K8sPodsInterface defines the interface for Kubernetes interactions
@@ -314,12 +318,14 @@ func (m *MockK8s) GetPods(ctx context.Context, namespace string) (*corev1.PodLis
 type LoadTestBuilder struct {
 	namespace       string
 	testSuiteName   string
-	k8sClient       K8sPodsInterface
 	pods            []corev1.Pod
 	uniqPodLabelKey string
+	latencyMs       int
+	jitterMs        int
 	includeWorkload bool
 	outputDir       string
 	moduleName      string
+	k8sClient       K8sPodsInterface
 }
 
 // LoadTestCodegen is a load test code generator that creates workload and chaos experiments
@@ -331,7 +337,8 @@ type LoadTestCodegen struct {
 func NewLoadTestGenBuilder(client K8sPodsInterface, namespace string) *LoadTestBuilder {
 	return &LoadTestBuilder{
 		namespace:       namespace,
-		testSuiteName:   DefaultGenName,
+		testSuiteName:   DefaultTestSuiteName,
+		uniqPodLabelKey: DefaultUniqLabel,
 		k8sClient:       client,
 		includeWorkload: false,
 		outputDir:       ".",
@@ -345,6 +352,18 @@ func (g *LoadTestBuilder) TestSuiteName(n string) *LoadTestBuilder {
 		n = fmt.Sprintf("Test%s", n)
 	}
 	g.testSuiteName = n
+	return g
+}
+
+// Latency sets default latency for delay experiments
+func (g *LoadTestBuilder) Latency(l int) *LoadTestBuilder {
+	g.latencyMs = l
+	return g
+}
+
+// Jitter sets default jitter for delay experiments
+func (g *LoadTestBuilder) Jitter(j int) *LoadTestBuilder {
+	g.jitterMs = j
 	return g
 }
 
@@ -426,7 +445,7 @@ func (g *LoadTestCodegen) Write() error {
 		return err
 	}
 	goModPath := filepath.Join(g.cfg.outputDir, "go.mod")
-	if err := os.WriteFile(goModPath, []byte(goModContent), 0600); err != nil {
+	if err := os.WriteFile(goModPath, []byte(goModContent), 0o600); err != nil {
 		return fmt.Errorf("failed to write go.mod: %w", err)
 	}
 
@@ -436,7 +455,7 @@ func (g *LoadTestCodegen) Write() error {
 		return err
 	}
 	testPath := filepath.Join(g.cfg.outputDir, "chaos_test.go")
-	if err := os.WriteFile(testPath, []byte(testContent), 0600); err != nil {
+	if err := os.WriteFile(testPath, []byte(testContent), 0o600); err != nil {
 		return fmt.Errorf("failed to write test file: %w", err)
 	}
 	currentDir, err := os.Getwd()
@@ -500,6 +519,12 @@ func (g *LoadTestCodegen) GenerateLoadTest() (string, string) {
 func (g *LoadTestCodegen) GenerateTestCases() ([]TestCaseParams, error) {
 	var testCases []TestCaseParams
 
+	for _, pod := range g.cfg.pods {
+		if _, ok := pod.Labels[g.cfg.uniqPodLabelKey]; !ok {
+			return nil, fmt.Errorf("pod %s doesn't have uniq label key %s", pod.Name, g.cfg.uniqPodLabelKey)
+		}
+	}
+
 	// Pod failures
 	for _, pod := range g.cfg.pods {
 		r, err := render(PodFailTmpl, PodFailParams{
@@ -520,6 +545,8 @@ func (g *LoadTestCodegen) GenerateTestCases() ([]TestCaseParams, error) {
 		r, err := render(PodDelayTmpl, PodDelayParams{
 			LabelKey:   g.cfg.uniqPodLabelKey,
 			LabelValue: pod.Labels[g.cfg.uniqPodLabelKey],
+			LatencyMs:  g.cfg.latencyMs,
+			JitterMs:   g.cfg.jitterMs,
 		})
 		if err != nil {
 			return nil, err

@@ -54,7 +54,7 @@ Be aware that any TODO requires your attention before your run the final test!
 							&cli.StringFlag{
 								Name:    "name",
 								Aliases: []string{"n"},
-								Value:   "TestLoadChaos",
+								Value:   "TestGeneratedLoadChaos",
 								Usage:   "Test suite name",
 							},
 							&cli.StringFlag{
@@ -81,6 +81,18 @@ Be aware that any TODO requires your attention before your run the final test!
 								Value:   "app.kubernetes.io/instance",
 								Usage:   "Default unique pod key, read more here: https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/",
 							},
+							&cli.StringFlag{
+								Name:    "latency-ms",
+								Aliases: []string{"l"},
+								Value:   "300",
+								Usage:   "Default latency for delay experiments in milliseconds",
+							},
+							&cli.StringFlag{
+								Name:    "jitter-ms",
+								Aliases: []string{"j"},
+								Value:   "100",
+								Usage:   "Default jitter for delay experiments in milliseconds",
+							},
 						},
 						Action: func(c *cli.Context) error {
 							if c.Args().Len() == 0 {
@@ -89,6 +101,8 @@ Be aware that any TODO requires your attention before your run the final test!
 							ns := c.Args().First()
 							testSuiteName := c.String("name")
 							podLabelKey := c.String("pod-label-key")
+							latencyMs := c.Int("latency-ms")
+							jitterMs := c.Int("jitter-ms")
 							outputDir := c.String("output-dir")
 							moduleName := c.String("module")
 							includeWorkload := c.Bool("workload")
@@ -107,6 +121,8 @@ Be aware that any TODO requires your attention before your run the final test!
 							cg, err := wasp.NewLoadTestGenBuilder(k8sClient, ns).
 								TestSuiteName(testSuiteName).
 								UniqPodLabelKey(podLabelKey).
+								Latency(latencyMs).
+								Jitter(jitterMs).
 								Workload(includeWorkload).
 								OutputDir(outputDir).
 								GoModName(moduleName).
