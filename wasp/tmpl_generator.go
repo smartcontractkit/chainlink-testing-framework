@@ -467,7 +467,7 @@ func (g *LoadTestCodegen) Write() error {
 	}
 	_, err = exec.Command("go", "mod", "tidy").CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to tidy generated module")
+		return fmt.Errorf("failed to tidy generated module: %w", err)
 	}
 	log.Info().
 		Str("OutputDir", g.cfg.outputDir).
