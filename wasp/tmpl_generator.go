@@ -100,7 +100,7 @@ func {{.TableTestName}}(t *testing.T) {
 				ExperimentDuration:          "10s",
 				ExperimentInjectionDuration: "5s",
 				// TODO: whether to remove the chaos instance CRDs or not, useful for debugging in corner cases where logs can't help
-				RemoveK8sChaos:              true,
+				RemoveK8sChaos:              false,
 			},
 		}
 
