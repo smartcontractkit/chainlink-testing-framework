@@ -1,4 +1,4 @@
-package havoc
+package wasp
 
 import (
 	"encoding/json"

@@ -600,14 +600,18 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: production-app-that-must-be-safe
+  labels:
+    app.kubernetes.io/instance: production-app
 spec:
   selector:
     matchLabels:
       app: production-app
+      app.kubernetes.io/instance: production-app
   template:
     metadata:
       labels:
         app: production-app
+        app.kubernetes.io/instance: production-app
     spec:
       containers:
         - name: ping-container

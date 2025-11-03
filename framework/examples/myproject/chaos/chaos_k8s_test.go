@@ -9,7 +9,7 @@ import (
 
 	f "github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
-	"github.com/smartcontractkit/chainlink-testing-framework/havoc"
+	havoc "github.com/smartcontractkit/chainlink-testing-framework/wasp/havoc"
 
 	"github.com/stretchr/testify/require"
 )
