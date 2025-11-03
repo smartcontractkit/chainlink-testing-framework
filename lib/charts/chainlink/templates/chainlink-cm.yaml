@@ -14,7 +14,7 @@ data:
   init.sql: |
     CREATE EXTENSION pg_stat_statements;
   default.toml: |
-    RootDir = './clroot'
+    RootDir = '/home/chainlink'
 
     [Log]
     JSONConsole = true
