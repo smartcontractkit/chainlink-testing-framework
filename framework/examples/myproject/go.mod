@@ -6,7 +6,6 @@ replace (
 	github.com/smartcontractkit/chainlink-testing-framework/framework => ../../
 	github.com/smartcontractkit/chainlink-testing-framework/framework/components/dockercompose => ../../components/dockercompose
 	github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake => ../../components/fake
-	github.com/smartcontractkit/chainlink-testing-framework/havoc => ../../../havoc
 	github.com/smartcontractkit/chainlink-testing-framework/wasp => ../../../wasp
 )
 
@@ -18,9 +17,8 @@ require (
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.8.9
 	github.com/smartcontractkit/chainlink-testing-framework/framework/components/dockercompose v0.0.0-00010101000000-000000000000
 	github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake v0.0.0-20250707095700-c7855f06ddd1
-	github.com/smartcontractkit/chainlink-testing-framework/havoc v1.50.2
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.50.10
-	github.com/smartcontractkit/chainlink-testing-framework/wasp v1.50.2
+	github.com/smartcontractkit/chainlink-testing-framework/wasp v1.51.1
 	github.com/smartcontractkit/chainlink/v2 v2.20.0
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.37.0
@@ -52,6 +50,7 @@ require (
 	github.com/docker/go v1.5.1-1.0.20160303222718-d30aec9fd63c // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203 // indirect
+	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/fsnotify/fsevents v0.2.0 // indirect
 	github.com/fvbommel/sortorder v1.1.0 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
@@ -229,7 +228,7 @@ require (
 	github.com/gogo/googleapis v1.4.1 // indirect
 	github.com/gogo/protobuf v1.3.3 // indirect
 	github.com/gogo/status v1.1.1 // indirect
-	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
+	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/google/btree v1.1.3 // indirect
@@ -381,7 +380,7 @@ require (
 	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8 // indirect
 	golang.org/x/mod v0.25.0 // indirect
 	golang.org/x/net v0.40.0 // indirect
-	golang.org/x/oauth2 v0.27.0 // indirect
+	golang.org/x/oauth2 v0.32.0 // indirect
 	golang.org/x/sync v0.15.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/term v0.32.0 // indirect

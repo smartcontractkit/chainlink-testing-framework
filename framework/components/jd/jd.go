@@ -79,7 +79,10 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	defaults(in)
 	jdImg := os.Getenv("CTF_JD_IMAGE")
 	if jdImg != "" {
+		// unset docker build context and file path to avoid conflicts, image provided via env var takes precedence
 		in.Image = jdImg
+		in.DockerContext = ""
+		in.DockerFilePath = ""
 	}
 	if in.WSRPCPort == WSRPCHealthPort {
 		return nil, fmt.Errorf("wsrpc port cannot be the same as wsrpc health port")
