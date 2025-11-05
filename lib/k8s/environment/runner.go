@@ -471,5 +471,6 @@ func jobEnvVars(props *Props) *[]*k8s.EnvVar {
 	for k, v := range env {
 		cdk8sVars = append(cdk8sVars, a.EnvVarStr(k, v))
 	}
+	cdk8sVars = append(cdk8sVars, a.EnvVarStr("RUN_QUARANTINED_TESTS", "true"))
 	return &cdk8sVars
 }
