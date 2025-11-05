@@ -297,6 +297,9 @@ func job(chart cdk8s.Chart, props *Props) {
 						Annotations: a.ConvertAnnotations(defaultRunnerPodAnnotations),
 					},
 					Spec: &k8s.PodSpec{
+						SecurityContext: &k8s.PodSecurityContext{
+							RunAsNonRoot: ptr.Ptr(true),
+						},
 						ServiceAccountName: ptr.Ptr("default"),
 						Containers:         container(props),
 						RestartPolicy:      ptr.Ptr(restartPolicy),
