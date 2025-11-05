@@ -299,9 +299,9 @@ func job(chart cdk8s.Chart, props *Props) {
 					Spec: &k8s.PodSpec{
 						SecurityContext: &k8s.PodSecurityContext{
 							RunAsNonRoot: ptr.Ptr(true),
-							RunAsUser:    ptr.Ptr(float64(1001)),
-							RunAsGroup:   ptr.Ptr(float64(1001)),
-							FsGroup:      ptr.Ptr(float64(1001)),
+							RunAsUser:    ptr.Ptr(float64(10000)),
+							RunAsGroup:   ptr.Ptr(float64(10000)),
+							FsGroup:      ptr.Ptr(float64(10000)),
 						},
 						ServiceAccountName: ptr.Ptr("default"),
 						Containers:         container(props),
