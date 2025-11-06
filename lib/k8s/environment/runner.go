@@ -297,6 +297,12 @@ func job(chart cdk8s.Chart, props *Props) {
 						Annotations: a.ConvertAnnotations(defaultRunnerPodAnnotations),
 					},
 					Spec: &k8s.PodSpec{
+						SecurityContext: &k8s.PodSecurityContext{
+							RunAsNonRoot: ptr.Ptr(true),
+							RunAsUser:    ptr.Ptr(float64(1001)),
+							RunAsGroup:   ptr.Ptr(float64(1001)),
+							FsGroup:      ptr.Ptr(float64(1001)),
+						},
 						ServiceAccountName: ptr.Ptr("default"),
 						Containers:         container(props),
 						RestartPolicy:      ptr.Ptr(restartPolicy),
@@ -467,5 +473,6 @@ func jobEnvVars(props *Props) *[]*k8s.EnvVar {
 	for k, v := range env {
 		cdk8sVars = append(cdk8sVars, a.EnvVarStr(k, v))
 	}
+	cdk8sVars = append(cdk8sVars, a.EnvVarStr("RUN_QUARANTINED_TESTS", "true"))
 	return &cdk8sVars
 }
