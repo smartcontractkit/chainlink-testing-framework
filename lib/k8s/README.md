@@ -7,11 +7,13 @@
 We were using this `K8s` framework specifically in `sdlc` cluster but after migration to `main.stage` we use it only on-demand for some legacy tests.
 
 ### Building Base Image for K8s Tests
-Is rarely required but sometimes we need infrequent updates.
+This is rarely required, but sometimes infrequent updates are needed.
 
-Go to SSO [home](https://sso.smartcontract.com/app/UserHome) and find AWS tile, use creds for `secure-sdlc` account in your terminal, then build and push the image.
-
-You can find `sdlc` registry id in AWS UI.
+Go to SSO [home](https://sso.smartcontract.com/app/UserHome) and find `AWS -> secure-sdlc`, copy the registry ID
+```
+<sdlc_registry_id> | secure-sdlc@smartcontract.com
+```
+use creds for this account in your terminal, paste the <sdlc_registry_id> then build and push the image.
 
 ```bash
 make build
