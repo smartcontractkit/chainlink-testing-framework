@@ -27,6 +27,12 @@ func Plain(from int64, duration time.Duration) []*Segment {
 // Each Segment has a duration equal to the total duration divided by the number of steps.
 // Use this function to create uniformly distributed segments over a specified time period.
 func Steps(from, increase int64, steps int, duration time.Duration) []*Segment {
+	if from == 0 {
+		from = 1
+	}
+	if steps == 0 {
+		panic("steps can't be 0 in wasp.Steps schedule")
+	}
 	segments := make([]*Segment, 0)
 	perStepDuration := duration / time.Duration(steps)
 	for i := 0; i < steps; i++ {

@@ -121,6 +121,29 @@ func BlockScoutDown(url string) error {
 	return RunCommand("bash", "-c", "rm -rf blockscout/")
 }
 
+// ObservabilityUpOnlyLoki slim stack with only Loki to verify specific logs of CL nodes or services in tests
+func ObservabilityUpOnlyLoki() error {
+	L.Info().Msg("Creating local observability stack")
+	if err := extractAllFiles("observability"); err != nil {
+		return err
+	}
+	_ = DefaultNetwork(nil)
+	if err := NewPromtail(); err != nil {
+		return err
+	}
+	err := RunCommand("bash", "-c", fmt.Sprintf(`
+		cd %s && \
+		docker compose up -d loki grafana
+	`, "compose"))
+	if err != nil {
+		return err
+	}
+	fmt.Println()
+	L.Info().Msgf("Loki: %s", LocalLogsURL)
+	return nil
+}
+
+// ObservabilityUp standard stack with logs/metrics for load testing and observability
 func ObservabilityUp() error {
 	L.Info().Msg("Creating local observability stack")
 	if err := extractAllFiles("observability"); err != nil {
@@ -145,6 +168,7 @@ func ObservabilityUp() error {
 	return nil
 }
 
+// ObservabilityUpFull full stack for load testing and performance investigations
 func ObservabilityUpFull() error {
 	L.Info().Msg("Creating full local observability stack")
 	if err := extractAllFiles("observability"); err != nil {
