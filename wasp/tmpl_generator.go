@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"text/template"
 
@@ -51,7 +52,7 @@ const (
 const (
 	GoModTemplate = `module {{.ModuleName}}
 
-go 1.25
+go {{.RuntimeVersion}}
 `
 
 	// TableTestTmpl is a load/chaos table test template
@@ -235,7 +236,8 @@ require.NoError(t, err)
 
 // GoModParams params for generating go.mod file
 type GoModParams struct {
-	ModuleName string
+	ModuleName     string
+	RuntimeVersion string
 }
 
 // TableTestParams params for generating a table test
@@ -480,7 +482,8 @@ func (g *LoadTestCodegen) Write() error {
 // GenerateGoMod generates a go.mod file
 func (g *LoadTestCodegen) GenerateGoMod() (string, error) {
 	data := GoModParams{
-		ModuleName: g.cfg.moduleName,
+		ModuleName:     g.cfg.moduleName,
+		RuntimeVersion: strings.Replace(runtime.Version(), "go", "", -1),
 	}
 	return render(GoModTemplate, data)
 }
@@ -533,7 +536,7 @@ func (g *LoadTestCodegen) GenerateTestCases() ([]TestCaseParams, error) {
 			return nil, err
 		}
 		testCases = append(testCases, TestCaseParams{
-			Name:    fmt.Sprintf("Fail pod %s", pod.Name),
+			Name:    fmt.Sprintf("Fail pod %s=%s", g.cfg.uniqPodLabelKey, pod.Labels[g.cfg.uniqPodLabelKey]),
 			RunFunc: r,
 		})
 	}
@@ -551,7 +554,7 @@ func (g *LoadTestCodegen) GenerateTestCases() ([]TestCaseParams, error) {
 		}
 
 		testCases = append(testCases, TestCaseParams{
-			Name:    fmt.Sprintf("Network delay for %s", pod.Name),
+			Name:    fmt.Sprintf("Delay network for pod %s=%s", g.cfg.uniqPodLabelKey, pod.Labels[g.cfg.uniqPodLabelKey]),
 			RunFunc: r,
 		})
 	}
