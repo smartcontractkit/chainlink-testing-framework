@@ -1,11 +1,11 @@
 package seth
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient/simulated"
-	"github.com/pkg/errors"
 )
 
 const (
