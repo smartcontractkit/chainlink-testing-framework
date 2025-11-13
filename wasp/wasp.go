@@ -38,7 +38,7 @@ var (
 	ErrTeardown               = errors.New("generator request teardown error")
 	ErrStartFrom              = errors.New("from must be > 0")
 	ErrInvalidSegmentDuration = errors.New("SegmentDuration must be defined")
-	ErrMissingSegmentType     = errors.New("Segment Type myst be set")
+	ErrMissingSegmentType     = errors.New("Segment Type must be set")
 	ErrNoGun                  = errors.New("rps load scheduleSegments selected but gun implementation is nil")
 	ErrNoVU                   = errors.New("vu load scheduleSegments selected but vu implementation is nil")
 	ErrInvalidLabels          = errors.New("invalid Loki labels, labels should be [a-z][A-Z][0-9] and _")
@@ -125,7 +125,7 @@ type Segment struct {
 // It returns an error if the starting point is non-positive or the duration is zero.
 // Use it to ensure the Segment is properly configured before processing.
 func (ls *Segment) Validate() error {
-	if ls.From <= 0 {
+	if ls.From < 0 {
 		return ErrStartFrom
 	}
 	if ls.Duration == 0 {
@@ -476,6 +476,12 @@ func (g *Generator) processSegment() bool {
 	g.currentSegment = g.scheduleSegments[g.stats.CurrentSegment.Load()]
 	g.currentSegmentMu.Unlock()
 	g.stats.CurrentSegment.Add(1)
+	if g.currentSegment.From == 0 {
+		g.currentSegment.From = 1
+		g.Pause()
+	} else {
+		g.Resume()
+	}
 	g.currentSegment.StartTime = time.Now()
 	switch g.Cfg.LoadType {
 	case RPS:
