@@ -26,6 +26,57 @@ func main() {
 				Usage:   "Generates various test templates",
 				Subcommands: []*cli.Command{
 					{
+						Name:    "env",
+						Aliases: []string{"e"},
+						Usage:   "Generate a Chainlink Node developer environment",
+						Description: `This utility generate a Chainlink Node Cluster (DON) environment.
+Default setup includes:
+- Anvil (EVM emulator from Foundry) or Geth blockchain nodes
+- Chainlink Nodes
+- Fake server (for 3rd party dependencies)
+- Test boilerplates, CI and documentation
+
+Usage:
+
+	Generate a basic environment:
+		ctf gen env --cli myenv --nodes 4
+`,
+						ArgsUsage: "",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:    "cli",
+								Aliases: []string{"c"},
+								Usage:   "Your devenv CLI binary name",
+							},
+							&cli.IntFlag{
+								Name:    "nodes",
+								Aliases: []string{"n"},
+								Value:   4,
+								Usage:   "Chainlink Nodes",
+							},
+						},
+						Action: func(c *cli.Context) error {
+							nodes := c.Int("nodes")
+							cliName := c.String("cli")
+							if cliName == "" {
+								return fmt.Errorf("CLI name can't be empty, choose your CLI name")
+							}
+							framework.L.Info().
+								Str("Name", cliName).
+								Int("CLNodes", nodes).
+								Msg("Generating developer environment")
+
+							cg, err := framework.NewEnvBuilder(cliName, nodes).Build()
+							if err != nil {
+								return fmt.Errorf("failed to create codegen: %w", err)
+							}
+							if err := cg.Write(); err != nil {
+								return fmt.Errorf("failed to generate module: %w", err)
+							}
+							return nil
+						},
+					},
+					{
 						Name:    "load",
 						Aliases: []string{"l"},
 						Usage:   "Generates a load/chaos test template for Kubernetes namespace",
