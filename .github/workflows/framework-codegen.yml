@@ -10,7 +10,7 @@ jobs:
     env:
       LOKI_TENANT_ID: promtail
       LOKI_URL: http://localhost:3030/loki/api/v1/push
-    runs-on: ubuntu-latest
+    runs-on: ubuntu24.04-16cores-64GB
     permissions:
       id-token: write
       contents: read
