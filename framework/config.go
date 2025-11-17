@@ -237,7 +237,7 @@ func BaseConfigName() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return strings.Replace(cp, ".toml", "", -1), nil
+	return strings.ReplaceAll(cp, ".toml", ""), nil
 }
 
 // BaseCacheName returns base cache file name, ex.: env.toml -> env-cache.toml
@@ -246,7 +246,7 @@ func BaseCacheName() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	name := strings.Replace(cp, ".toml", "", -1)
+	name := strings.ReplaceAll(cp, ".toml", "")
 	return fmt.Sprintf("%s-cache.toml", name), nil
 }
 
@@ -282,12 +282,12 @@ func Store[T any](cfg *T) error {
 	if err != nil {
 		return err
 	}
-	newCacheName := strings.Replace(baseConfigPath, ".toml", "", -1)
+	newCacheName := strings.ReplaceAll(baseConfigPath, ".toml", "")
 	if strings.Contains(newCacheName, "cache") {
 		L.Info().Str("Cache", baseConfigPath).Msg("Cache file already exists, skipping")
 		return nil
 	}
-	cachedOutName := fmt.Sprintf("%s-cache.toml", strings.Replace(baseConfigPath, ".toml", "", -1))
+	cachedOutName := fmt.Sprintf("%s-cache.toml", strings.ReplaceAll(baseConfigPath, ".toml", ""))
 	L.Info().Str("OutputFile", cachedOutName).Msg("Storing configuration output")
 	d, err := toml.Marshal(cfg)
 	if err != nil {
@@ -303,7 +303,7 @@ func Store[T any](cfg *T) error {
 		}
 	}
 
-	return os.WriteFile(writePath, d, 0600)
+	return os.WriteFile(writePath, d, 0o600)
 }
 
 // JSONStrDuration is JSON friendly duration that can be parsed from "1h2m0s" Go format

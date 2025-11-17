@@ -1472,7 +1472,6 @@ type ProductConfigurationSimple struct {
 // TableTestParams params for generating a table test
 type TableTestParams struct {
 	Package       string
-	Namespace     string
 	TableTestName string
 	TestCases     []TestCaseParams
 	WorkloadCode  string
@@ -1490,7 +1489,6 @@ type TestCaseParams struct {
 // EnvBuilder builder for load test codegen
 type EnvBuilder struct {
 	nodes       int
-	namespace   string
 	outputDir   string
 	packageName string
 	cliName     string
@@ -1550,7 +1548,10 @@ func (g *EnvCodegen) Read() error {
 // Write generates a complete boilerplate, can be multiple files
 func (g *EnvCodegen) Write() error {
 	// Create output directory
-	if err := os.MkdirAll(g.cfg.outputDir, os.ModePerm); err != nil {
+	if err := os.MkdirAll( //nolint:gosec
+		g.cfg.outputDir,
+		os.ModePerm,
+	); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
@@ -1559,7 +1560,7 @@ func (g *EnvCodegen) Write() error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(
+	if err := os.WriteFile( //nolint:gosec
 		filepath.Join(g.cfg.outputDir, "go.mod"),
 		[]byte(goModContent),
 		os.ModePerm,
@@ -1572,7 +1573,7 @@ func (g *EnvCodegen) Write() error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(
+	if err := os.WriteFile( //nolint:gosec
 		filepath.Join(g.cfg.outputDir, "Justfile"),
 		[]byte(justContents),
 		os.ModePerm,
@@ -1585,7 +1586,7 @@ func (g *EnvCodegen) Write() error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(
+	if err := os.WriteFile( //nolint:gosec
 		filepath.Join(g.cfg.outputDir, "env.toml"),
 		[]byte(tomlContents),
 		os.ModePerm,
@@ -1594,7 +1595,10 @@ func (g *EnvCodegen) Write() error {
 	}
 
 	cliDir := filepath.Join(g.cfg.outputDir, "cmd", g.cfg.cliName)
-	if err := os.MkdirAll(cliDir, os.ModePerm); err != nil {
+	if err := os.MkdirAll( //nolint:gosec
+		cliDir,
+		os.ModePerm,
+	); err != nil {
 		return fmt.Errorf("failed to create CLI directory: %w", err)
 	}
 
@@ -1603,7 +1607,7 @@ func (g *EnvCodegen) Write() error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(
+	if err := os.WriteFile( //nolint:gosec
 		filepath.Join(cliDir, fmt.Sprintf("%s.go", g.cfg.cliName)),
 		[]byte(cliContents),
 		os.ModePerm,
@@ -1616,7 +1620,7 @@ func (g *EnvCodegen) Write() error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(
+	if err := os.WriteFile( //nolint:gosec
 		filepath.Join(cliDir, "completion.go"),
 		[]byte(completionContents),
 		os.ModePerm,
@@ -1629,7 +1633,7 @@ func (g *EnvCodegen) Write() error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(
+	if err := os.WriteFile( //nolint:gosec
 		filepath.Join(g.cfg.outputDir, "tools.go"),
 		[]byte(toolsContents),
 		os.ModePerm,
@@ -1642,7 +1646,7 @@ func (g *EnvCodegen) Write() error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(
+	if err := os.WriteFile( //nolint:gosec
 		filepath.Join(g.cfg.outputDir, "config.go"),
 		[]byte(configFileContents),
 		os.ModePerm,
@@ -1655,7 +1659,7 @@ func (g *EnvCodegen) Write() error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(
+	if err := os.WriteFile( //nolint:gosec
 		filepath.Join(g.cfg.outputDir, "cldf.go"),
 		[]byte(cldfContents),
 		os.ModePerm,
@@ -1668,7 +1672,7 @@ func (g *EnvCodegen) Write() error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(
+	if err := os.WriteFile( //nolint:gosec
 		filepath.Join(g.cfg.outputDir, "environment.go"),
 		[]byte(envFileContents),
 		os.ModePerm,
@@ -1681,12 +1685,12 @@ func (g *EnvCodegen) Write() error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(
+	if err := os.WriteFile( //nolint:gosec
 		filepath.Join(g.cfg.outputDir, "product_configuration.go"),
 		[]byte(prodConfigFileContents),
 		os.ModePerm,
 	); err != nil {
-		return fmt.Errorf("failed to write product configration file: %w", err)
+		return fmt.Errorf("failed to write product configuration file: %w", err)
 	}
 
 	// tidy and finalize
@@ -1716,7 +1720,7 @@ func (g *EnvCodegen) Write() error {
 func (g *EnvCodegen) GenerateGoMod() (string, error) {
 	data := GoModParams{
 		ModuleName:     g.cfg.moduleName,
-		RuntimeVersion: strings.Replace(runtime.Version(), "go", "", -1),
+		RuntimeVersion: strings.ReplaceAll(runtime.Version(), "go", ""),
 	}
 	return render(GoModTemplate, data)
 }
