@@ -29,17 +29,28 @@ func main() {
 						Name:    "env",
 						Aliases: []string{"e"},
 						Usage:   "Generate a Chainlink Node developer environment",
-						Description: `This utility generate a Chainlink Node Cluster (DON) environment.
-Default setup includes:
-- Anvil (EVM emulator from Foundry) or Geth blockchain nodes
-- Chainlink Nodes
-- Fake server (for 3rd party dependencies)
-- Test boilerplates, CI and documentation
+						Description: `🔗 Chainlink's Developer Environment Generator 🔗
+
+Prerequisites:
+	We are using Just, please install it first -  https://github.com/casey/just
 
 Usage:
 
-	Generate a basic environment:
-		ctf gen env --cli myenv --nodes 4
+	⚙️ Generate basic environment:
+		ctf gen env --cli myenv --product-name Knilniahc --nodes 4
+
+	🔧 Address all TODO comments and customize it if needed
+
+	💻 Enter the shell and spin up the environment:
+		cd devenv && just cli && myenv sh
+		
+	🔍 Implement system-level smoke tests (tests/smoke_test.go) and run them:
+		myenv test smoke
+		
+	📈 Implement load/chaos tests (tests/load_test.go) and run them:
+		myenv test load
+		
+	🔄 Enforce quality standards in CI: copy .github/workflows to your CI folder and commit
 `,
 						ArgsUsage: "",
 						Flags: []cli.Flag{
@@ -47,6 +58,17 @@ Usage:
 								Name:    "cli",
 								Aliases: []string{"c"},
 								Usage:   "Your devenv CLI binary name",
+							},
+							&cli.StringFlag{
+								Name:    "product-name",
+								Aliases: []string{"r"},
+								Usage:   "Your product name",
+							},
+							&cli.StringFlag{
+								Name:    "product-configuration-type",
+								Aliases: []string{"p"},
+								Value:   "evm-single",
+								Usage:   "Product configuration type/layout (single network, multi-network, etc)",
 							},
 							&cli.IntFlag{
 								Name:    "nodes",
@@ -56,17 +78,23 @@ Usage:
 							},
 						},
 						Action: func(c *cli.Context) error {
+							productConfType := c.String("product-configuration-type")
 							nodes := c.Int("nodes")
 							cliName := c.String("cli")
 							if cliName == "" {
 								return fmt.Errorf("CLI name can't be empty, choose your CLI name")
 							}
+							productName := c.String("product-name")
+							if productName == "" {
+								return fmt.Errorf("Product name must be specified, call your product somehow, any name")
+							}
 							framework.L.Info().
 								Str("Name", cliName).
 								Int("CLNodes", nodes).
+								Str("ProductConfigurationType", productConfType).
 								Msg("Generating developer environment")
 
-							cg, err := framework.NewEnvBuilder(cliName, nodes).Build()
+							cg, err := framework.NewEnvBuilder(cliName, nodes, productConfType, productName).Build()
 							if err != nil {
 								return fmt.Errorf("failed to create codegen: %w", err)
 							}

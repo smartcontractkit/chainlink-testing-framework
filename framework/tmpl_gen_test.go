@@ -41,28 +41,39 @@ type TestCfg struct {
 // TestSmokeGenerateEnvPositive top-down approach tests until all the environment variations aren't stable
 func TestSmokeGenerateEnvPositive(t *testing.T) {
 	tests := []struct {
-		name      string
-		goModName string
-		cliName   string
-		outputDir string
-		nodes     int
+		name        string
+		goModName   string
+		cliName     string
+		productName string
+		productType string
+		outputDir   string
+		nodes       int
 	}{
 		// all variations of env, test they can be generated and create valid services
 		// that can pass healthchecks
 		{
-			name:      "basic 2 nodes env",
-			goModName: "devenv",
-			cliName:   "tcli",
-			outputDir: "test-env",
-			nodes:     2,
+			name:        "basic 2 nodes env",
+			goModName:   "devenv",
+			cliName:     "tcli",
+			productName: "myproduct",
+			productType: "evm-single",
+			outputDir:   "test-env",
+			nodes:       2,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defer os.RemoveAll(tt.outputDir)
-			defer runCmd(t, tt.outputDir, tt.cliName, `down`)
-			cg, err := framework.NewEnvBuilder(tt.cliName, tt.nodes).
+			t.Cleanup(func() {
+				runCmd(t, tt.outputDir, tt.cliName, `down`)
+				os.RemoveAll(tt.outputDir)
+			})
+			cg, err := framework.NewEnvBuilder(
+				tt.cliName,
+				tt.nodes,
+				tt.productType,
+				tt.productName,
+			).
 				GoModName(tt.goModName).
 				OutputDir(tt.outputDir).
 				Build()

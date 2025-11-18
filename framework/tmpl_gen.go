@@ -9,13 +9,9 @@ import (
 	"runtime"
 	"strings"
 	"text/template"
+	"unicode"
 
 	"github.com/rs/zerolog/log"
-)
-
-const (
-	// DefaultTestSuiteName default table test name
-	DefaultTestSuiteName = "TestSmokeE2E"
 )
 
 /* Templates */
@@ -75,6 +71,96 @@ replace (
 	    image = "public.ecr.aws/chainlink/chainlink:2.26.0"
 	{{- end }}
 `
+
+	// CISmokeTmpl is a continuous integration template for end-to-end smoke tests
+	CISmokeTmpl = `name: End-to-end {{ .ProductName }} Tests
+
+on:
+  pull_request:
+
+defaults:
+  run:
+    working-directory: {{ .DevEnvRelPath }}
+
+concurrency:
+  group: {{"${{"}} github.workflow {{"}}"}}-{{"${{"}} github.ref {{"}}"}}-{{"${{"}} github.sha {{"}}"}}
+  cancel-in-progress: true
+
+jobs:
+  e2e-tests:
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: smoke
+            config: env.toml
+          # Add more test configurations as needed
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: Install Just
+        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
+        with:
+          just-version: '1.40.0'
+
+      - name: Authenticate to AWS ECR
+        uses: ./.github/actions/aws-ecr-auth
+        with:
+          role-to-assume: {{"${{"}} secrets.CCV_IAM_ROLE {{"}}"}}
+          aws-region: us-east-1
+          registry-type: public
+
+      - name: Authenticate to AWS ECR (JD)
+        uses: ./.github/actions/aws-ecr-auth
+        with:
+          role-to-assume: {{"${{"}} secrets.CCV_IAM_ROLE {{"}}"}}
+          aws-region: us-west-2
+          registry-type: private
+          registries: {{"${{"}} secrets.JD_REGISTRY {{"}}"}}
+
+      - name: Set up Go
+        uses: actions/setup-go@v6 # v6
+        with:
+          cache: true
+          go-version-file: {{ .DevEnvRelPath }}/go.mod
+          cache-dependency-path: {{ .DevEnvRelPath }}/go.sum
+
+      - name: Download Go dependencies
+        run: |
+          go mod download
+
+      - name: Run CCV environment
+        env:
+          JD_IMAGE: {{"${{"}} secrets.JD_IMAGE {{"$}}"}}
+        run: |
+          cd cmd/{{ .CLIName }} && go install . && cd -
+          ccv u {{"${{"}} matrix.config {{"}}"}}
+
+      - name: Run tests
+        working-directory: build/devenv/tests
+        run: |
+          set -o pipefail
+          go test -v -count=1 -run 'Test{{"${{"}} matrix.name {{"}}"}}'
+
+      - name: Upload Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-logs-{{"${{"}} matrix.name {{"}}"}}
+          path: {{ .DevEnvRelPath }}/tests/logs
+          retention-days: 1
+`
+
 	// CompletionTmpl is a go-prompt library completion template providing interactive prompt
 	CompletionTmpl = `package main
 
@@ -105,11 +191,8 @@ func getSubCommands(parent string) []prompt.Suggest {
 	switch parent {
 	case "test":
 		return []prompt.Suggest{
-			{Text: "soak", Description: "Run {{ .CLIName }} soak test"},
-			{Text: "rpc-latency", Description: "Default soak test + 400ms RPC latency (all chains)"},
-			{Text: "gas-spikes", Description: "Default soak test + slow and fast gas spikes"},
-			{Text: "reorgs", Description: "Default soak test + reorgs (Requires 'up env.toml,env-geth.toml' environment"},
-			{Text: "chaos", Description: "Default soak test + chaos (restarts, latency, data loss between services)"},
+			{Text: "smoke", Description: "Run {{ .CLIName }} smoke test"},
+			{Text: "load", Description: "Run {{ .CLIName }} load test"},
 		}
 	case "bs":
 		return []prompt.Suggest{
@@ -251,12 +334,12 @@ import (
 
 const (
 		LocalWASPLoadDashboard = "http://localhost:3000/d/WASPLoadTests/wasp-load-test?orgId=1&from=now-5m&to=now&refresh=5s"
-		Local{{ .CLIName}}Dashboard      = "http://localhost:3000/d/f8a04cef-653f-46d3-86df-87c532300672/svr-soak-test?orgId=1&refresh=5s"
+		Local{{ .ProductName }}Dashboard      = "http://localhost:3000/d/f8a04cef-653f-46d3-86df-87c532300672/svr-soak-test?orgId=1&refresh=5s"
 )
 
 var rootCmd = &cobra.Command{
 	Use:   "{{ .CLIName }}",
-	Short: "A {{ .CLIName }} local environment tool",
+	Short: "A {{ .ProductName }} local environment tool",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		debug, err := cmd.Flags().GetBool("debug")
 		if err != nil {
@@ -394,8 +477,8 @@ var obsUpCmd = &cobra.Command{
 			if err != nil {
 				return fmt.Errorf("observability up failed: %w", err)
 			}
-			devenv.Plog.Info().Msgf("{{ .CLIName }} Dashboard: %s", Local{{ .CLIName }}Dashboard)
-			devenv.Plog.Info().Msgf("{{ .CLIName }} Load Test Dashboard: %s", LocalWASPLoadDashboard)
+			devenv.Plog.Info().Msgf("{{ .ProductName }} Dashboard: %s", Local{{ .ProductName }}Dashboard)
+			devenv.Plog.Info().Msgf("{{ .ProductName }} Load Test Dashboard: %s", LocalWASPLoadDashboard)
 			return nil
 		},
 }
@@ -427,8 +510,8 @@ var obsRestartCmd = &cobra.Command{
 			if err != nil {
 				return fmt.Errorf("observability up failed: %w", err)
 			}
-			devenv.Plog.Info().Msgf("{{ .CLIName }} Dashboard: %s", Local{{ .CLIName }}Dashboard)
-			devenv.Plog.Info().Msgf("{{ .CLIName }} Load Test Dashboard: %s", LocalWASPLoadDashboard)
+			devenv.Plog.Info().Msgf("{{ .ProductName }} Dashboard: %s", Local{{ .ProductName }}Dashboard)
+			devenv.Plog.Info().Msgf("{{ .ProductName }} Load Test Dashboard: %s", LocalWASPLoadDashboard)
 			return nil
 		},
 }
@@ -443,16 +526,10 @@ var testCmd = &cobra.Command{
 			}
 			var testPattern string
 			switch args[0] {
-			case "soak":
-				testPattern = "TestSoak"
-			case "rpc-latency":
-				testPattern = "TestSoak/rpc_latency"
-			case "gas-spikes":
-				testPattern = "TestSoak/gas"
-			case "reorg":
-				testPattern = "TestSoak/reorg"
-			case "chaos":
-				testPattern = "TestSoak/chaos"
+			case "smoke":
+				testPattern = "TestSmoke"
+			case "load":
+				testPattern = "TestLoadChaos"
 			default:
 				return fmt.Errorf("test suite %s is unknown, choose between smoke or load", args[0])
 			}
@@ -529,8 +606,200 @@ func main() {
 			os.Exit(1)
 		}
 }`
-	// TestsTmpl is a an e2e table test template
-	TestsTmpl = ``
+	// LoadTestTmpl is a load/chaos test template
+	LoadTestTmpl = `package devenv_test
+
+import (
+		"testing"
+		"time"
+
+		"github.com/go-resty/resty/v2"
+		"github.com/stretchr/testify/require"
+
+		de "{{ .GoModName }}"
+
+		"github.com/smartcontractkit/chainlink-testing-framework/framework/chaos"
+		"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
+		"github.com/smartcontractkit/chainlink-testing-framework/wasp"
+)
+
+type ExampleGun struct {
+		target string
+		client *resty.Client
+		Data   []string
+}
+
+func NewExampleHTTPGun(target string) *ExampleGun {
+		return &ExampleGun{
+			client: resty.New(),
+			target: target,
+			Data:   make([]string, 0),
+		}
+}
+
+// Call implements example gun call, assertions on response bodies should be done here
+func (m *ExampleGun) Call(l *wasp.Generator) *wasp.Response {
+		var result map[string]any
+		r, err := m.client.R().
+			SetResult(&result).
+			Get(m.target)
+		if err != nil {
+			return &wasp.Response{Data: result, Error: err.Error()}
+		}
+		if r.Status() != "200 OK" {
+			return &wasp.Response{Data: result, Error: "not 200", Failed: true}
+		}
+		return &wasp.Response{Data: result}
+}
+
+func TestLoadChaos(t *testing.T) {
+		in, err := de.LoadOutput[de.Cfg]("../env-out.toml")
+		require.NoError(t, err)
+
+		clNodes, err := clclient.New(in.NodeSets[0].Out.CLNodes)
+		require.NoError(t, err)
+
+		// use local observability stack for Docker load/chaos tests
+		t.Setenv("LOKI_URL", "http://localhost:3030/loki/api/v1/push")
+
+		// define labels for differentiate one run from another
+		labels := map[string]string{
+			"go_test_name": "generator_healthcheck",
+			"gen_name":     "generator_healthcheck",
+			"branch":       "test",
+			"commit":       "test",
+		}
+
+		// create a WASP generator
+		gen, err := wasp.NewGenerator(&wasp.Config{
+			LoadType: wasp.RPS,
+			T:        t,
+			// just use plain line profile - 1 RPS for 60s
+			Schedule:   wasp.Plain(1, 60*time.Second),
+			Gun:        NewExampleHTTPGun("https://example.com"),
+			Labels:     labels,
+			LokiConfig: wasp.NewEnvLokiConfig(),
+		})
+		require.NoError(t, err)
+		gen.Run(false)
+
+		// define chaos test cases
+		testCases := []struct {
+			name     string
+			command  string
+			wait     time.Duration
+			validate func(c []*clclient.ChainlinkClient) error
+		}{
+			{
+				name:    "Reboot the pods",
+				wait:    1 * time.Minute,
+				command: "stop --duration=20s --restart re2:don-node0",
+				validate: func(c []*clclient.ChainlinkClient) error {
+					_, _, err := c[0].ReadBridges()
+					return err
+				},
+			},
+			{
+				name:    "Introduce network delay",
+				wait:    1 * time.Minute,
+				command: "netem --tc-image=gaiadocker/iproute2 --duration=1m delay --time=1000 re2:don-node.*",
+				validate: func(c []*clclient.ChainlinkClient) error {
+					_, _, err := c[0].ReadBridges()
+					return err
+				},
+			},
+		}
+
+		// Run chaos test cases
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Log(tc.name)
+				_, err = chaos.ExecPumba(tc.command, tc.wait)
+				require.NoError(t, err)
+				err = tc.validate(clNodes)
+				require.NoError(t, err)
+			})
+		}
+		// wait for the workload to finish
+		_, failed := gen.Wait()
+		require.False(t, failed)
+}
+`
+	// SmokeTestTmpl is a smoke test template
+	SmokeTestTmpl = `package devenv_test
+
+import (
+		"fmt"
+		"strconv"
+		"testing"
+		"time"
+
+		de "{{ .GoModName }}"
+
+		"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
+		"github.com/stretchr/testify/require"
+
+		f "github.com/smartcontractkit/chainlink-testing-framework/framework"
+)
+
+var L = de.Plog
+
+func TestSmoke(t *testing.T) {
+		in, err := de.LoadOutput[de.Cfg]("../env-out.toml")
+		require.NoError(t, err)
+		c, _, _, err := de.ETHClient(in)
+		require.NoError(t, err)
+		clNodes, err := clclient.New(in.NodeSets[0].Out.CLNodes)
+		require.NoError(t, err)
+
+		tests := []struct {
+			name    string
+			clNodes []*clclient.ChainlinkClient
+		}{
+			{
+				name: "feature_1",
+			},
+			{
+				name: "feature_2",
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				_, _ = c, clNodes
+			})
+		}
+}
+
+// assertResources is a simple assertion on resources if you run with the observability stack (obs up)
+func assertResources(t *testing.T, in *de.Cfg, start, end time.Time) {
+		pc := f.NewPrometheusQueryClient(f.LocalPrometheusBaseURL)
+		// no more than 10% CPU for this test
+		maxCPU := 10.0
+		cpuResp, err := pc.Query("sum(rate(container_cpu_usage_seconds_total{name=~\".*don.*\"}[5m])) by (name) *100", end)
+		require.NoError(t, err)
+		cpu := f.ToLabelsMap(cpuResp)
+		for i := 0; i < in.NodeSets[0].Nodes; i++ {
+			nodeLabel := fmt.Sprintf("name:don-node%d", i)
+			nodeCpu, err := strconv.ParseFloat(cpu[nodeLabel][0].(string), 64)
+			L.Info().Int("Node", i).Float64("CPU", nodeCpu).Msg("CPU usage percentage")
+			require.NoError(t, err)
+			require.LessOrEqual(t, nodeCpu, maxCPU)
+		}
+		// no more than 200mb for this test
+		maxMem := int(200e6) // 200mb
+		memoryResp, err := pc.Query("sum(container_memory_rss{name=~\".*don.*\"}) by (name)", end)
+		require.NoError(t, err)
+		mem := f.ToLabelsMap(memoryResp)
+		for i := 0; i < in.NodeSets[0].Nodes; i++ {
+			nodeLabel := fmt.Sprintf("name:don-node%d", i)
+			nodeMem, err := strconv.Atoi(mem[nodeLabel][0].(string))
+			L.Info().Int("Node", i).Int("Memory", nodeMem).Msg("Total memory")
+			require.NoError(t, err)
+			require.LessOrEqual(t, nodeMem, maxMem)
+		}
+}
+`
 	// CLDFTmpl is a Chainlink Deployments Framework template
 	CLDFTmpl = `package {{ .PackageName }}
 
@@ -1146,8 +1415,8 @@ func NewEnvironment() (*Cfg, error) {
 		return in, Store[Cfg](in)
 }
 `
-	// SingleNetworkProductConfigurationTmpl is an single-network product configuration template
-	SingleNetworkProductConfigurationTmpl = `package {{ .PackageName }}
+	// SingleNetworkProductConfigurationTmpl is an single-network EVM product configuration template
+	SingleNetworkEVMProductConfigurationTmpl = `package {{ .PackageName }}
 
 import (
 	"context"
@@ -1412,6 +1681,23 @@ cli:
 
 /* Template params in heirarchical order, module -> file(table test) -> test */
 
+// SmokeTestParams params for generating end-to-end test template
+type SmokeTestParams struct {
+	GoModName string
+}
+
+// LoadTestParams params for generating end-to-end test template
+type LoadTestParams struct {
+	GoModName string
+}
+
+// GoModParams params for generating go.mod file
+type CISmokeParams struct {
+	ProductName   string
+	DevEnvRelPath string
+	CLIName       string
+}
+
 // GoModParams params for generating go.mod file
 type GoModParams struct {
 	ModuleName     string
@@ -1442,6 +1728,7 @@ type CLIParams struct {
 	PackageName     string
 	CLIName         string
 	DevEnvPkgImport string
+	ProductName     string
 }
 
 // CLDFParams cldf.go file params
@@ -1488,10 +1775,12 @@ type TestCaseParams struct {
 
 // EnvBuilder builder for load test codegen
 type EnvBuilder struct {
+	productName string
 	nodes       int
 	outputDir   string
 	packageName string
 	cliName     string
+	productType string
 	moduleName  string
 }
 
@@ -1501,13 +1790,15 @@ type EnvCodegen struct {
 }
 
 // NewEnvBuilder creates a new Chainlink Cluster developer environment
-func NewEnvBuilder(cliName string, nodes int) *EnvBuilder {
+func NewEnvBuilder(cliName string, nodes int, productType string, productName string) *EnvBuilder {
 	return &EnvBuilder{
+		productName: productName,
 		cliName:     cliName,
 		nodes:       nodes,
 		packageName: "devenv",
 		outputDir:   "devenv",
-		moduleName:  fmt.Sprintf("github.com/smartcontractkit/%s/devenv", cliName),
+		productType: productType,
+		moduleName:  fmt.Sprintf("github.com/smartcontractkit/%s/devenv", productName),
 	}
 }
 
@@ -1524,9 +1815,23 @@ func (g *EnvBuilder) GoModName(name string) *EnvBuilder {
 }
 
 // validate verifier that we can build codegen with provided params
-// empty for now, add validation here if later it'd become more complex
+// fixing input params if possible
 func (g *EnvBuilder) validate() error {
+	// to avoid issues in different contexts we only allow lower-case letters, no special symbols or numerics
+	g.productName = onlyLetters(g.productName)
+	g.cliName = onlyLetters(g.cliName)
+	g.moduleName = onlyLetters(g.moduleName)
 	return nil
+}
+
+// onlyLetters strip any symbol except letters
+func onlyLetters(name string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsLetter(r) && unicode.IsLower(r) {
+			return r
+		}
+		return -1
+	}, name)
 }
 
 // Validate validate generation params
@@ -1681,16 +1986,80 @@ func (g *EnvCodegen) Write() error {
 	}
 
 	// Generate product_configuration.go
-	prodConfigFileContents, err := g.GenerateSingleNetworkProductConfiguration()
+	switch g.cfg.productType {
+	case "evm-single":
+		prodConfigFileContents, err := g.GenerateSingleNetworkProductConfiguration()
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile( //nolint:gosec
+			filepath.Join(g.cfg.outputDir, "product_configuration.go"),
+			[]byte(prodConfigFileContents),
+			os.ModePerm,
+		); err != nil {
+			return fmt.Errorf("failed to write product configuration file: %w", err)
+		}
+	case "multi-network":
+		return fmt.Errorf("product configuration 'multi-network' is not supported yet")
+	default:
+		return fmt.Errorf("unknown product configuration type: %s, known types are 'evm-single' or 'multi-network'", g.cfg.productType)
+	}
+
+	// create CI directory
+	ciDir := filepath.Join(g.cfg.outputDir, ".github", "workflows")
+	if err := os.MkdirAll( //nolint:gosec
+		ciDir,
+		os.ModePerm,
+	); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Generate GitHub CI smoke test workflow
+	ciSmokeContents, err := g.GenerateCISmoke()
 	if err != nil {
 		return err
 	}
 	if err := os.WriteFile( //nolint:gosec
-		filepath.Join(g.cfg.outputDir, "product_configuration.go"),
-		[]byte(prodConfigFileContents),
+		filepath.Join(ciDir, "devenv-smoke-test.yml"),
+		[]byte(ciSmokeContents),
 		os.ModePerm,
 	); err != nil {
-		return fmt.Errorf("failed to write product configuration file: %w", err)
+		return fmt.Errorf("failed to write CI smoke workflow file: %w", err)
+	}
+
+	// create e2e tests directory
+	e2eDir := filepath.Join(g.cfg.outputDir, "tests")
+	if err := os.MkdirAll( //nolint:gosec
+		e2eDir,
+		os.ModePerm,
+	); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// generate smoke tests
+	smokeTestsContent, err := g.GenerateSmokeTests()
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile( //nolint:gosec
+		filepath.Join(e2eDir, "smoke_test.go"),
+		[]byte(smokeTestsContent),
+		os.ModePerm,
+	); err != nil {
+		return fmt.Errorf("failed to write smoke tests file: %w", err)
+	}
+
+	// generate load/chaos tests
+	loadTestsContent, err := g.GenerateLoadTests()
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile( //nolint:gosec
+		filepath.Join(e2eDir, "load_test.go"),
+		[]byte(loadTestsContent),
+		os.ModePerm,
+	); err != nil {
+		return fmt.Errorf("failed to write load tests file: %w", err)
 	}
 
 	// tidy and finalize
@@ -1716,8 +2085,42 @@ func (g *EnvCodegen) Write() error {
 	return nil
 }
 
+// GenerateSmokeTests generates a smoke test template
+func (g *EnvCodegen) GenerateLoadTests() (string, error) {
+	log.Info().Msg("Generating load test template")
+	data := LoadTestParams{
+		GoModName: g.cfg.moduleName,
+	}
+	return render(LoadTestTmpl, data)
+}
+
+// GenerateSmokeTests generates a smoke test template
+func (g *EnvCodegen) GenerateSmokeTests() (string, error) {
+	log.Info().Msg("Generating smoke test template")
+	data := SmokeTestParams{
+		GoModName: g.cfg.moduleName,
+	}
+	return render(SmokeTestTmpl, data)
+}
+
+// GenerateCISmoke generates a smoke test CI workflow
+func (g *EnvCodegen) GenerateCISmoke() (string, error) {
+	log.Info().Msg("Generating GitHub CI smoke test")
+	p, err := dirPathRelFromGitRoot(g.cfg.outputDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to find relative devenv path from Git root: %w", err)
+	}
+	data := CISmokeParams{
+		DevEnvRelPath: p,
+		ProductName:   g.cfg.productName,
+		CLIName:       g.cfg.cliName,
+	}
+	return render(CISmokeTmpl, data)
+}
+
 // GenerateGoMod generates a go.mod file
 func (g *EnvCodegen) GenerateGoMod() (string, error) {
+	log.Info().Msg("Generating Go module")
 	data := GoModParams{
 		ModuleName:     g.cfg.moduleName,
 		RuntimeVersion: strings.ReplaceAll(runtime.Version(), "go", ""),
@@ -1727,6 +2130,7 @@ func (g *EnvCodegen) GenerateGoMod() (string, error) {
 
 // GenerateDefaultTOMLConfig generate default env.toml config
 func (g *EnvCodegen) GenerateDefaultTOMLConfig() (string, error) {
+	log.Info().Msg("Generating default environment config (env.toml)")
 	p := ConfigTOMLParams{
 		PackageName: g.cfg.packageName,
 		Nodes:       g.cfg.nodes,
@@ -1737,6 +2141,7 @@ func (g *EnvCodegen) GenerateDefaultTOMLConfig() (string, error) {
 
 // GenerateJustfile generate Justfile to build and publish Docker images
 func (g *EnvCodegen) GenerateJustfile() (string, error) {
+	log.Info().Msg("Generating Justfile")
 	p := JustfileParams{
 		PackageName: g.cfg.packageName,
 		CLIName:     g.cfg.cliName,
@@ -1746,6 +2151,7 @@ func (g *EnvCodegen) GenerateJustfile() (string, error) {
 
 // GenerateCLICompletion generate CLI completion for "go-prompt" library
 func (g *EnvCodegen) GenerateCLICompletion() (string, error) {
+	log.Info().Msg("Generating shell completion")
 	p := CLICompletionParams{
 		PackageName: g.cfg.packageName,
 		CLIName:     g.cfg.cliName,
@@ -1755,24 +2161,28 @@ func (g *EnvCodegen) GenerateCLICompletion() (string, error) {
 
 // GenerateCLI generate Cobra CLI
 func (g *EnvCodegen) GenerateCLI() (string, error) {
+	log.Info().Msg("Generating Cobra CLI")
 	p := CLIParams{
 		PackageName:     g.cfg.packageName,
 		CLIName:         g.cfg.cliName,
+		ProductName:     g.cfg.productName,
 		DevEnvPkgImport: g.cfg.moduleName,
 	}
 	return render(CLITmpl, p)
 }
 
-// GenerateSingleNetworkProductConfiguration generate a single-network product configuration
+// GenerateSingleNetworkProductConfiguration generate a single-network EVM product configuration
 func (g *EnvCodegen) GenerateSingleNetworkProductConfiguration() (string, error) {
+	log.Info().Msg("Configuring EVM network")
 	p := ProductConfigurationSimple{
 		PackageName: g.cfg.packageName,
 	}
-	return render(SingleNetworkProductConfigurationTmpl, p)
+	return render(SingleNetworkEVMProductConfigurationTmpl, p)
 }
 
 // GenerateEnvironment generate environment.go, our environment composition function
 func (g *EnvCodegen) GenerateEnvironment() (string, error) {
+	log.Info().Msg("Generating environment composition (environment.go)")
 	p := EnvParams{
 		PackageName: g.cfg.packageName,
 	}
@@ -1781,6 +2191,7 @@ func (g *EnvCodegen) GenerateEnvironment() (string, error) {
 
 // GenerateCLDF generate CLDF helpers
 func (g *EnvCodegen) GenerateCLDF() (string, error) {
+	log.Info().Msg("Generating CLDF helpers")
 	p := CLDFParams{
 		PackageName: g.cfg.packageName,
 	}
@@ -1789,6 +2200,7 @@ func (g *EnvCodegen) GenerateCLDF() (string, error) {
 
 // GenerateDebugTools generate debug tools (tracing)
 func (g *EnvCodegen) GenerateDebugTools() (string, error) {
+	log.Info().Msg("Generating debug tools")
 	p := ToolsParams{
 		PackageName: g.cfg.packageName,
 	}
@@ -1797,6 +2209,7 @@ func (g *EnvCodegen) GenerateDebugTools() (string, error) {
 
 // GenerateConfig generate read/write utilities for TOML configs
 func (g *EnvCodegen) GenerateConfig() (string, error) {
+	log.Info().Msg("Generating config tools")
 	p := ConfigParams{
 		PackageName: g.cfg.packageName,
 	}
@@ -1806,25 +2219,63 @@ func (g *EnvCodegen) GenerateConfig() (string, error) {
 // GenerateTableTest generates all possible experiments for a namespace
 // first generate all small pieces then insert into a table test template
 func (g *EnvCodegen) GenerateTableTest() (string, error) {
+	log.Info().Msg("Generating end-to-end table tests template")
 	// TODO: generate a table test when we'll have chain-specific interface solidified
 	return "", nil
 }
 
 // GenerateTestCases generates table test cases
 func (g *EnvCodegen) GenerateTestCases() ([]TestCaseParams, error) {
+	log.Info().Msg("Generating test cases")
 	// TODO: generate test cases when we'll have chain-specific interface solidified
 	return []TestCaseParams{}, nil
+}
+
+/* Utility */
+
+func getGitRoot() (string, error) {
+	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("not a git repository or git not installed: %w", err)
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
+func dirPathRelFromGitRoot(name string) (string, error) {
+	gitRoot, err := getGitRoot()
+	if err != nil {
+		return "", err
+	}
+	var devenvPath string
+	err = filepath.Walk(gitRoot, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() && info.Name() == name {
+			devenvPath, err = filepath.Rel(gitRoot, path)
+			if err != nil {
+				return err
+			}
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	if err != nil {
+		return "", fmt.Errorf("devenv directory not found: %w", err)
+	}
+	return devenvPath, nil
 }
 
 // render is just an internal function to parse and render template
 func render(tmpl string, data any) (string, error) {
 	parsed, err := template.New("").Parse(tmpl)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse table test template: %w", err)
+		return "", fmt.Errorf("failed to parse text template: %w", err)
 	}
 	var buf bytes.Buffer
 	if err := parsed.Execute(&buf, data); err != nil {
-		return "", fmt.Errorf("failed to generate table test: %w", err)
+		return "", fmt.Errorf("failed to generate text: %w", err)
 	}
 	return buf.String(), err
 }
