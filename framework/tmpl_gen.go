@@ -2196,7 +2196,7 @@ func Store[T any](cfg *T) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(DefaultConfigDir, outCacheName), d, 0o600)
+	return os.WriteFile(filepath.Join(DefaultConfigDir, outCacheName), d, 0o644)
 }
 
 // LoadOutput loads config output file from path.

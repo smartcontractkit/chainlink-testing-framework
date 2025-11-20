@@ -92,6 +92,9 @@ func TestSmokeGenerateDevEnv(t *testing.T) {
 			clClients, err := clclient.New(cfg.NodeSets[0].Out.CLNodes)
 			require.NoError(t, err)
 
+			pollEvery := 2 * time.Second
+			timeout := 2 * time.Minute
+
 			// verify that all the services are healthy
 			require.Eventually(t, func() bool {
 				failedServices := false
@@ -107,7 +110,7 @@ func TestSmokeGenerateDevEnv(t *testing.T) {
 					}
 				}
 				return !failedServices
-			}, 2*time.Minute, 2*time.Second)
+			}, timeout, pollEvery)
 		})
 	}
 }
