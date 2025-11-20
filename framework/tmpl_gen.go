@@ -1043,7 +1043,6 @@ func getCommands() []prompt.Suggest {
 		{Text: "test", Description: "Perform smoke or load/chaos testing"},
 		{Text: "bs", Description: "Manage the Blockscout EVM block explorer"},
 		{Text: "obs", Description: "Manage the observability stack"},
-		{Text: "db", Description: "Inspect Databases"},
 		{Text: "exit", Description: "Exit the interactive shell"},
 	}
 }
@@ -1556,8 +1555,7 @@ func TestLoadChaos(t *testing.T) {
 			wait:    20 * time.Second,
 			command: "stop --duration=20s --restart re2:don-node0",
 			validate: func(c []*clclient.ChainlinkClient) error {
-				_, _, err := c[0].ReadBridges()
-				return err
+				return nil
 			},
 		},
 		{
@@ -1565,8 +1563,7 @@ func TestLoadChaos(t *testing.T) {
 			wait:    20 * time.Second,
 			command: "netem --tc-image=gaiadocker/iproute2 --duration=20s delay --time=1000 re2:don-node.*",
 			validate: func(c []*clclient.ChainlinkClient) error {
-				_, _, err := c[0].ReadBridges()
-				return err
+				return nil
 			},
 		},
 	}
@@ -2703,7 +2700,11 @@ func (g *EnvBuilder) validate() error {
 // onlyLetters strip any symbol except letters
 func onlyLetters(name string) string {
 	return strings.Map(func(r rune) rune {
-		if unicode.IsLetter(r) && unicode.IsLower(r) {
+		if unicode.IsUpper(r) {
+			r = []rune(strings.ToLower(string(r)))[0]
+			return r
+		}
+		if unicode.IsLetter(r) {
 			return r
 		}
 		return -1

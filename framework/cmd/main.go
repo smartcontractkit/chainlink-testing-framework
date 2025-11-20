@@ -108,6 +108,7 @@ Usage:
 							fmt.Printf("📁 Your environment directory is: %s\n", outputDir)
 							fmt.Printf("💻 Your CLI name is: %s\n", cliName)
 							fmt.Printf("📜 More docs can be found in %s/README.md\n", outputDir)
+							fmt.Printf("⬛ Entering the shell..\n")
 							fmt.Println()
 							
 							cmd := exec.Command("just", "cli")
