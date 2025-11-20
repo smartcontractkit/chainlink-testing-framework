@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/pelletier/go-toml"
@@ -25,6 +27,119 @@ func main() {
 				Aliases: []string{"g"},
 				Usage:   "Generates various test templates",
 				Subcommands: []*cli.Command{
+					{
+						Name:    "env",
+						Aliases: []string{"e"},
+						Usage:   "Generate a Chainlink Node developer environment",
+						Description: `🔗 Chainlink's Developer Environment Generator 🔗
+
+Prerequisites:
+	Just will be automatically installed if not available (via Homebrew on macOS).
+	For other platforms, please install it manually: https://github.com/casey/just
+
+Usage:
+
+	⚙️ Generate basic environment:
+		ctf gen env --cli myenv --output-dir devenv --product-name Knilniahc --nodes 4
+
+	📜 Read the docs in devenv/README.md
+
+	🔧 Address all TODO comments and customize it
+`,
+						ArgsUsage: "",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:    "cli",
+								Aliases: []string{"c"},
+								Usage:   "Your devenv CLI binary name",
+							},
+							&cli.StringFlag{
+								Name:    "output-dir",
+								Aliases: []string{"o"},
+								Value:   "devenv",
+								Usage:   "Your devenv directory",
+							},
+							&cli.StringFlag{
+								Name:    "product-name",
+								Aliases: []string{"r"},
+								Usage:   "Your product name",
+							},
+							&cli.StringFlag{
+								Name:    "product-configuration-type",
+								Aliases: []string{"p"},
+								Value:   "evm-single",
+								Usage:   "Product configuration type/layout (single network, multi-network, etc)",
+							},
+							&cli.IntFlag{
+								Name:    "nodes",
+								Aliases: []string{"n"},
+								Value:   4,
+								Usage:   "Chainlink Nodes",
+							},
+						},
+						Action: func(c *cli.Context) error {
+							outputDir := c.String("output-dir")
+							productConfType := c.String("product-configuration-type")
+							nodes := c.Int("nodes")
+							cliName := c.String("cli")
+							if cliName == "" {
+								return fmt.Errorf("CLI name can't be empty, choose your CLI name")
+							}
+							productName := c.String("product-name")
+							if productName == "" {
+								return fmt.Errorf("Product name must be specified, call your product somehow, any name")
+							}
+							framework.L.Info().
+								Str("OutputDir", outputDir).
+								Str("Name", cliName).
+								Int("CLNodes", nodes).
+								Str("ProductConfigurationType", productConfType).
+								Msg("Generating developer environment")
+
+							cg, err := framework.NewEnvBuilder(cliName, nodes, productConfType, productName).
+								OutputDir(outputDir).
+								Build()
+							if err != nil {
+								return fmt.Errorf("failed to create codegen: %w", err)
+							}
+							if err := cg.Write(); err != nil {
+								return fmt.Errorf("failed to generate module: %w", err)
+							}
+
+							fmt.Println()
+							fmt.Printf("📁 Your environment directory is: %s\n", outputDir)
+							fmt.Printf("💻 Your CLI name is: %s\n", cliName)
+							fmt.Printf("📜 More docs can be found in %s/README.md\n", outputDir)
+							fmt.Printf("⬛ Entering the shell..\n")
+							fmt.Println()
+
+							// Ensure 'just' is installed before proceeding
+							if err := ensureJustInstalled(); err != nil {
+								return fmt.Errorf("failed to ensure 'just' is installed: %w", err)
+							}
+
+							cmd := exec.Command("just", "cli")
+							cmd.Env = os.Environ()
+							cmd.Dir = outputDir
+							out, err := cmd.CombinedOutput()
+							if err != nil {
+								return fmt.Errorf("failed to build CLI via Justfile: %w, output: %s", err, string(out))
+							}
+							if err := os.Chdir(outputDir); err != nil {
+								return err
+							}
+							cmd = exec.Command(cliName, "sh")
+							cmd.Env = os.Environ()
+							cmd.Stdin = os.Stdin
+							cmd.Stdout = os.Stdout
+							cmd.Stderr = os.Stderr
+							err = cmd.Run()
+							if err != nil {
+								return fmt.Errorf("failed to enter devenv shell: %w", err)
+							}
+							return nil
+						},
+					},
 					{
 						Name:    "load",
 						Aliases: []string{"l"},
@@ -358,4 +473,37 @@ func RemoveCacheFiles() error {
 	}
 	framework.L.Info().Msg("All cache files has been removed")
 	return nil
+}
+
+// ensureJustInstalled checks if 'just' is available in PATH, and if not, attempts to install it.
+// On macOS, it tries to install via Homebrew. On other platforms, it provides installation instructions.
+func ensureJustInstalled() error {
+	// Check if just is already available
+	if _, err := exec.LookPath("just"); err == nil {
+		return nil
+	}
+
+	fmt.Println("⚠️  'just' command not found in PATH")
+	fmt.Println("📦 Attempting to install 'just'...")
+
+	// Try to install via Homebrew on macOS
+	if runtime.GOOS == "darwin" {
+		// Check if Homebrew is available
+		if _, err := exec.LookPath("brew"); err == nil {
+			fmt.Println("🍺 Installing 'just' via Homebrew...")
+			cmd := exec.Command("brew", "install", "just")
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			if err := cmd.Run(); err != nil {
+				return fmt.Errorf("failed to install 'just' via Homebrew: %w. Please install manually: brew install just", err)
+			}
+			fmt.Println("✅ Successfully installed 'just'")
+			return nil
+		}
+		// Homebrew not available, provide instructions
+		return fmt.Errorf("'just' is not installed and Homebrew is not available. Please install 'just' manually:\n  brew install just\n  Or visit: https://github.com/casey/just")
+	}
+
+	// For non-macOS platforms, provide installation instructions
+	return fmt.Errorf("'just' is not installed. Please install it manually:\n  Visit: https://github.com/casey/just\n  Or use your package manager (e.g., apt install just, pacman -S just)")
 }

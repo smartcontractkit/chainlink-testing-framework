@@ -1,0 +1,63 @@
+name: Framework Code Generation
+on:
+  push:
+
+jobs:
+  test:
+    defaults:
+      run:
+        working-directory: framework/
+    env:
+      LOKI_TENANT_ID: promtail
+      LOKI_URL: http://localhost:3030/loki/api/v1/push
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - name: TestSmokeGenerate
+            count: 1
+            timeout: 10m
+    name: ${{ matrix.test.name }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with:
+          role-to-assume: ${{ secrets.PUBLIC_AWS_ECR_ROLE }}
+          aws-region: us-east-1
+      - name: Authenticate to ECR Public
+        id: login-ecr-public
+        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
+        with:
+          registry-type: public
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: framework/go.mod
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-modules-${{ hashFiles('framework/go.sum') }}-${{ runner.os }}-framework-codegen
+          restore-keys: |
+            go-modules-${{ runner.os }}-framework-codegen
+            go-modules-${{ runner.os }}
+      - name: Install dependencies
+        run: go mod download
+      - name: Run Codegen Tests
+        run: |
+          go test -timeout ${{ matrix.test.timeout }} -v -count ${{ matrix.test.count }} -run ${{ matrix.test.name }}
+      - name: Upload Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-logs-${{ matrix.test.name }}
+          path: framework/logs
+          retention-days: 1
