@@ -303,7 +303,7 @@ func Store[T any](cfg *T) error {
 		}
 	}
 
-	return os.WriteFile(writePath, d, 0o600)
+	return os.WriteFile(writePath, d, 0o644)
 }
 
 // JSONStrDuration is JSON friendly duration that can be parsed from "1h2m0s" Go format
