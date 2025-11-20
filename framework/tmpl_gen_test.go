@@ -38,11 +38,10 @@ type TestCfg struct {
 	NodeSets    []*ns.Input         `toml:"nodesets"    validate:"required"`
 }
 
-// TestSmokeGenerateEnvPositive top-down approach tests until all the environment variations aren't stable
-func TestSmokeGenerateEnvPositive(t *testing.T) {
+// TestSmokeGenerateDevEnv top-down approach tests until all the environment variations aren't stable
+func TestSmokeGenerateDevEnv(t *testing.T) {
 	tests := []struct {
 		name        string
-		goModName   string
 		cliName     string
 		productName string
 		productType string
@@ -53,7 +52,6 @@ func TestSmokeGenerateEnvPositive(t *testing.T) {
 		// that can pass healthchecks
 		{
 			name:        "basic 2 nodes env",
-			goModName:   "devenv",
 			cliName:     "tcli",
 			productName: "myproduct",
 			productType: "evm-single",
@@ -74,7 +72,6 @@ func TestSmokeGenerateEnvPositive(t *testing.T) {
 				tt.productType,
 				tt.productName,
 			).
-				GoModName(tt.goModName).
 				OutputDir(tt.outputDir).
 				Build()
 			require.NoError(t, err)
@@ -111,21 +108,6 @@ func TestSmokeGenerateEnvPositive(t *testing.T) {
 				}
 				return !failedServices
 			}, 2*time.Minute, 2*time.Second)
-		})
-	}
-}
-
-func TestSmokeGenerateDataNegative(t *testing.T) {
-	tests := []struct {
-		name string
-	}{
-		{
-			name: "single pod but incorrect instance annotation",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
 		})
 	}
 }

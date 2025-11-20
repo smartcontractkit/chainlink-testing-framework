@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -32,25 +33,16 @@ func main() {
 						Description: `🔗 Chainlink's Developer Environment Generator 🔗
 
 Prerequisites:
-	We are using Just, please install it first -  https://github.com/casey/just
+	We are using Just, please install it first - https://github.com/casey/just
 
 Usage:
 
 	⚙️ Generate basic environment:
-		ctf gen env --cli myenv --product-name Knilniahc --nodes 4
+		ctf gen env --cli myenv --output-dir devenv --product-name Knilniahc --nodes 4
+	
+	📜 Read the docs in devenv/README.md
 
-	🔧 Address all TODO comments and customize it if needed
-
-	💻 Enter the shell and spin up the environment:
-		cd devenv && just cli && myenv sh
-		
-	🔍 Implement system-level smoke tests (tests/smoke_test.go) and run them:
-		myenv test smoke
-		
-	📈 Implement load/chaos tests (tests/load_test.go) and run them:
-		myenv test load
-		
-	🔄 Enforce quality standards in CI: copy .github/workflows to your CI folder and commit
+	🔧 Address all TODO comments and customize it
 `,
 						ArgsUsage: "",
 						Flags: []cli.Flag{
@@ -58,6 +50,12 @@ Usage:
 								Name:    "cli",
 								Aliases: []string{"c"},
 								Usage:   "Your devenv CLI binary name",
+							},
+							&cli.StringFlag{
+								Name:    "output-dir",
+								Aliases: []string{"o"},
+								Value:   "devenv",
+								Usage:   "Your devenv directory",
 							},
 							&cli.StringFlag{
 								Name:    "product-name",
@@ -78,6 +76,7 @@ Usage:
 							},
 						},
 						Action: func(c *cli.Context) error {
+							outputDir := c.String("output-dir")
 							productConfType := c.String("product-configuration-type")
 							nodes := c.Int("nodes")
 							cliName := c.String("cli")
@@ -89,17 +88,46 @@ Usage:
 								return fmt.Errorf("Product name must be specified, call your product somehow, any name")
 							}
 							framework.L.Info().
+								Str("OutputDir", outputDir).
 								Str("Name", cliName).
 								Int("CLNodes", nodes).
 								Str("ProductConfigurationType", productConfType).
 								Msg("Generating developer environment")
 
-							cg, err := framework.NewEnvBuilder(cliName, nodes, productConfType, productName).Build()
+							cg, err := framework.NewEnvBuilder(cliName, nodes, productConfType, productName).
+								OutputDir(outputDir).
+								Build()
 							if err != nil {
 								return fmt.Errorf("failed to create codegen: %w", err)
 							}
 							if err := cg.Write(); err != nil {
 								return fmt.Errorf("failed to generate module: %w", err)
+							}
+							
+							fmt.Println()
+							fmt.Printf("📁 Your environment directory is: %s\n", outputDir)
+							fmt.Printf("💻 Your CLI name is: %s\n", cliName)
+							fmt.Printf("📜 More docs can be found in %s/README.md\n", outputDir)
+							fmt.Println()
+							
+							cmd := exec.Command("just", "cli")
+							cmd.Env = os.Environ()
+							cmd.Dir = outputDir
+							out, err := cmd.CombinedOutput()
+							if err != nil {
+								return fmt.Errorf("failed to build CLI via Justfile: %w, output: %s", err, string(out))
+							}
+							if err := os.Chdir(outputDir); err != nil {
+								return err
+							}
+							cmd = exec.Command(cliName, "sh")
+							cmd.Env = os.Environ()
+							cmd.Stdin = os.Stdin
+							cmd.Stdout = os.Stdout
+							cmd.Stderr = os.Stderr
+							err = cmd.Run()
+							if err != nil {
+								return fmt.Errorf("failed to enter devenv shell: %w", err)
 							}
 							return nil
 						},

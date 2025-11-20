@@ -17,6 +17,37 @@ import (
 /* Templates */
 
 const (
+	// ProductDashboardUUID is a default product dashboard uuid, can be static since it's our local environment
+	ProductDashboardUUID = "f8a04cef-653f-46d3-86df-87c532300672"
+
+	ReadmeTmpl = `## Chainlink Developer Environment
+
+This template provides a complete Chainlink development environment with pre-configured infrastructure and observability tools, enabling rapid development while maintaining high quality standards.
+
+🔧 Address all **TODO** comments and implement "product_configuration.go"
+
+💻 Enter the shell:
+` + "```" + `bash
+just cli && {{ .CLIName }} sh
+` + "```" + `
+
+🚀 Spin up the environment
+` + "```" + `bash
+up ↵
+` + "```" + `
+
+🔍 Implement system-level smoke tests (tests/smoke_test.go) and run them:
+` + "```" + `bash
+test smoke ↵
+` + "```" + `
+
+📈 Implement load/chaos tests (tests/load_test.go) and run them:
+` + "```" + `bash
+test load ↵
+` + "```" + `
+
+🔄 **Enforce** quality standards in CI: copy .github/workflows to your CI folder, commit and make them pass
+`
 	// GoModTemplate go module template
 	GoModTemplate = `module {{.ModuleName}}
 
@@ -36,6 +67,746 @@ replace (
 	github.com/smartcontractkit/chainlink-testing-framework/lib => github.com/smartcontractkit/chainlink-testing-framework/lib v1.54.4
 )
 `
+	// GitIgnoreTmpl default gitignore template
+	GitIgnoreTmpl = `compose/
+blockscout/
+env-out.toml`
+
+	// GrafanaDashboardTmpl is a Grafana dashboard template for your product
+	GrafanaDashboardTmpl = `{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 34,
+      "panels": [],
+      "title": "Container Resources",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 1
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(container_cpu_usage_seconds_total{name=~\".*don.*|.*fake.*\"}[5m])) by (name) *100",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "{{"{{"}}name{{"}}"}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "CPU Usage",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 1
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(container_network_receive_bytes_total{name=~\".*don.*|.*fake.*\"}[5m])) by (name)",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "{{"{{"}}name{{"}}"}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Received Network Traffic",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "sum(container_memory_rss{name=~\".*don.*|.*fake.*\"}) by (name)",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "{{"{{"}}name{{"}}"}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Memory Usage",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.1.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(container_network_transmit_bytes_total{name=~\".*don.*|.*fake.*\"}[5m])) by (name)",
+          "interval": "",
+          "legendFormat": "{{"{{"}}name{{"}}"}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Sent Network Traffic",
+      "transparent": true,
+      "type": "timeseries"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 15
+      },
+      "id": 11,
+      "panels": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "description": "CL Node Logs",
+          "gridPos": {
+            "h": 5,
+            "w": 24,
+            "x": 0,
+            "y": 16
+          },
+          "id": 6,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": false,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "editorMode": "code",
+              "expr": "{job=\"ctf\", container=~\".*don-node.*\"}",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ],
+          "title": "CL Node Logs",
+          "transparent": true,
+          "type": "logs"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "description": "P2P Discovery Report",
+          "gridPos": {
+            "h": 5,
+            "w": 24,
+            "x": 0,
+            "y": 21
+          },
+          "id": 8,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": false,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "editorMode": "code",
+              "expr": "{job=\"ctf\"} |= \"DiscoveryProtocol: Status report\"",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ],
+          "title": "P2P Discovery Report",
+          "transparent": true,
+          "type": "logs"
+        }
+      ],
+      "title": "CL Node Stats",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 35,
+      "panels": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 24,
+            "x": 0,
+            "y": 17
+          },
+          "id": 40,
+          "options": {
+            "code": {
+              "language": "plaintext",
+              "showLineNumbers": false,
+              "showMiniMap": false
+            },
+            "content": "# Pprof profiling with Pyroscope\nSelect \"service_name\" variable to start.\n\nFor more info you can also use native [UI](http://localhost:4040)",
+            "mode": "markdown"
+          },
+          "pluginVersion": "10.1.0",
+          "transparent": true,
+          "type": "text"
+        },
+        {
+          "datasource": {
+            "type": "grafana-pyroscope-datasource",
+            "uid": "P02E4190217B50628"
+          },
+          "description": "CPU",
+          "gridPos": {
+            "h": 9,
+            "w": 24,
+            "x": 0,
+            "y": 21
+          },
+          "id": 36,
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-pyroscope-datasource",
+                "uid": "P02E4190217B50628"
+              },
+              "groupBy": [],
+              "labelSelector": "{service_name=\"${service_name}\"}",
+              "profileTypeId": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+              "queryType": "profile",
+              "refId": "A"
+            }
+          ],
+          "title": "CPU",
+          "transparent": true,
+          "type": "flamegraph"
+        },
+        {
+          "datasource": {
+            "type": "grafana-pyroscope-datasource",
+            "uid": "P02E4190217B50628"
+          },
+          "description": "Memory (alloc_objects)",
+          "gridPos": {
+            "h": 9,
+            "w": 24,
+            "x": 0,
+            "y": 30
+          },
+          "id": 37,
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-pyroscope-datasource",
+                "uid": "P02E4190217B50628"
+              },
+              "groupBy": [],
+              "labelSelector": "{service_name=\"${service_name}\"}",
+              "profileTypeId": "memory:alloc_objects:count:space:bytes",
+              "queryType": "profile",
+              "refId": "A"
+            }
+          ],
+          "title": "Memory (alloc_objects)",
+          "transparent": true,
+          "type": "flamegraph"
+        },
+        {
+          "datasource": {
+            "type": "grafana-pyroscope-datasource",
+            "uid": "P02E4190217B50628"
+          },
+          "description": "Goroutines",
+          "gridPos": {
+            "h": 9,
+            "w": 24,
+            "x": 0,
+            "y": 39
+          },
+          "id": 39,
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-pyroscope-datasource",
+                "uid": "P02E4190217B50628"
+              },
+              "groupBy": [],
+              "labelSelector": "{service_name=\"${service_name}\"}",
+              "profileTypeId": "goroutines:goroutine:count:goroutine:count",
+              "queryType": "profile",
+              "refId": "A"
+            }
+          ],
+          "title": "Goroutines",
+          "transparent": true,
+          "type": "flamegraph"
+        },
+        {
+          "datasource": {
+            "type": "grafana-pyroscope-datasource",
+            "uid": "P02E4190217B50628"
+          },
+          "description": "Mutex",
+          "gridPos": {
+            "h": 9,
+            "w": 24,
+            "x": 0,
+            "y": 48
+          },
+          "id": 38,
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-pyroscope-datasource",
+                "uid": "P02E4190217B50628"
+              },
+              "groupBy": [],
+              "labelSelector": "{service_name=\"${service_name}\"}",
+              "profileTypeId": "mutex:contentions:count:contentions:count",
+              "queryType": "profile",
+              "refId": "A"
+            }
+          ],
+          "title": "Mutex",
+          "transparent": true,
+          "type": "flamegraph"
+        }
+      ],
+      "title": "Pyroscope",
+      "type": "row"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "chainlink-node",
+          "value": "chainlink-node"
+        },
+        "description": "service_name",
+        "hide": 0,
+        "includeAll": false,
+        "label": "service_name",
+        "multi": false,
+        "name": "service_name",
+        "options": [
+          {
+            "selected": true,
+            "text": "chainlink-node",
+            "value": "chainlink-node"
+          }
+        ],
+        "query": "chainlink-node",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "{{ .ProductName }} Services",
+  "uid": "{{ .UUID }}",
+  "version": 1,
+  "weekStart": ""
+}`
 	// ConfigTOMLTmpl is a default env.toml template for devenv describind components configuration
 	ConfigTOMLTmpl = `[on_chain]
   link_contract_address = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"
@@ -72,6 +843,96 @@ replace (
 	{{- end }}
 `
 
+	// CILoadChaosTemplate is a continuous integration template for end-to-end load/chaos tests
+	CILoadChaosTemplate = `name: End-to-end {{ .ProductName }} Load and Chaos Tests
+
+on:
+ pull_request:
+
+defaults:
+ run:
+   working-directory: {{ .DevEnvRelPath }}
+
+concurrency:
+ group: {{"${{"}} github.workflow {{"}}"}}-{{"${{"}} github.ref {{"}}"}}
+ cancel-in-progress: true
+
+jobs:
+ e2e-tests:
+   permissions:
+     id-token: write
+     contents: read
+     pull-requests: write
+   runs-on: ubuntu-latest
+   strategy:
+     matrix:
+       include:
+         - name: LoadChaos
+           config: env.toml
+         # TODO: Add more test and environment configurations as needed
+   steps:
+     - name: Checkout code
+       uses: actions/checkout@v5
+       with:
+         fetch-depth: 0
+
+     - name: Set up Docker Buildx
+       uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+     - name: Install Just
+       uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
+       with:
+         just-version: '1.40.0'
+
+     - name: Authenticate to AWS ECR
+       uses: ./.github/actions/aws-ecr-auth
+       with:
+         role-to-assume: {{"${{"}} secrets.CCV_IAM_ROLE {{"}}"}}
+         aws-region: us-east-1
+         registry-type: public
+
+     - name: Authenticate to AWS ECR (JD)
+       uses: ./.github/actions/aws-ecr-auth
+       with:
+         role-to-assume: {{"${{"}} secrets.CCV_IAM_ROLE {{"}}"}}
+         aws-region: us-west-2
+         registry-type: private
+         registries: {{"${{"}} secrets.JD_REGISTRY {{"}}"}}
+
+     - name: Set up Go
+       uses: actions/setup-go@v6 # v6
+       with:
+         cache: true
+         go-version-file: {{ .DevEnvRelPath }}/go.mod
+         cache-dependency-path: {{ .DevEnvRelPath }}/go.sum
+
+     - name: Download Go dependencies
+       run: |
+         go mod download
+
+     - name: Run CCV environment
+       env:
+         JD_IMAGE: {{"${{"}} secrets.JD_IMAGE {{"$}}"}}
+       run: |
+         cd cmd/{{ .CLIName }} && go install . && cd -
+         {{ .CLIName }} u {{"${{"}} matrix.config {{"}}"}}
+         {{ .CLIName }} obs u -f
+
+     - name: Run tests
+       working-directory: build/devenv/tests
+       run: |
+         set -o pipefail
+         go test -v -count=1 -run 'Test{{"${{"}} matrix.name {{"}}"}}'
+
+     - name: Upload Logs
+       if: always()
+       uses: actions/upload-artifact@v4
+       with:
+         name: container-logs-{{"${{"}} matrix.name {{"}}"}}
+         path: {{ .DevEnvRelPath }}/tests/logs
+         retention-days: 1
+`
+
 	// CISmokeTmpl is a continuous integration template for end-to-end smoke tests
 	CISmokeTmpl = `name: End-to-end {{ .ProductName }} Tests
 
@@ -83,7 +944,7 @@ defaults:
     working-directory: {{ .DevEnvRelPath }}
 
 concurrency:
-  group: {{"${{"}} github.workflow {{"}}"}}-{{"${{"}} github.ref {{"}}"}}-{{"${{"}} github.sha {{"}}"}}
+  group: {{"${{"}} github.workflow {{"}}"}}-{{"${{"}} github.ref {{"}}"}}
   cancel-in-progress: true
 
 jobs:
@@ -96,9 +957,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: smoke
+          - name: Smoke
             config: env.toml
-          # Add more test configurations as needed
+          # TODO: Add more test and environment configurations as needed
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -144,7 +1005,7 @@ jobs:
           JD_IMAGE: {{"${{"}} secrets.JD_IMAGE {{"$}}"}}
         run: |
           cd cmd/{{ .CLIName }} && go install . && cd -
-          ccv u {{"${{"}} matrix.config {{"}}"}}
+          {{ .CLIName }} u {{"${{"}} matrix.config {{"}}"}}
 
       - name: Run tests
         working-directory: build/devenv/tests
@@ -334,7 +1195,7 @@ import (
 
 const (
 		LocalWASPLoadDashboard = "http://localhost:3000/d/WASPLoadTests/wasp-load-test?orgId=1&from=now-5m&to=now&refresh=5s"
-		Local{{ .ProductName }}Dashboard      = "http://localhost:3000/d/f8a04cef-653f-46d3-86df-87c532300672/svr-soak-test?orgId=1&refresh=5s"
+		Local{{ .ProductName }}Dashboard      = "http://localhost:3000/d/{{ .DashboardUUID }}/{{ .ProductName}}?orgId=1&refresh=5s"
 )
 
 var rootCmd = &cobra.Command{
@@ -354,493 +1215,493 @@ var rootCmd = &cobra.Command{
 }
 
 var restartCmd = &cobra.Command{
-		Use:     "restart",
-		Aliases: []string{"r"},
-		Args:    cobra.RangeArgs(0, 1),
-		Short:   "Restart development environment, remove apps and apply default configuration again",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			var configFile string
-			if len(args) > 0 {
-				configFile = args[0]
-			} else {
-				configFile = "env.toml"
-			}
-			framework.L.Info().Str("Config", configFile).Msg("Reconfiguring development environment")
-			_ = os.Setenv("CTF_CONFIGS", configFile)
-			_ = os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
-			framework.L.Info().Msg("Tearing down the development environment")
-			err := framework.RemoveTestContainers()
-			if err != nil {
-				return fmt.Errorf("failed to clean Docker resources: %w", err)
-			}
-			_, err = devenv.NewEnvironment()
-			return err
-		},
+	Use:     "restart",
+	Aliases: []string{"r"},
+	Args:    cobra.RangeArgs(0, 1),
+	Short:   "Restart development environment, remove apps and apply default configuration again",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var configFile string
+		if len(args) > 0 {
+			configFile = args[0]
+		} else {
+			configFile = "env.toml"
+		}
+		framework.L.Info().Str("Config", configFile).Msg("Reconfiguring development environment")
+		_ = os.Setenv("CTF_CONFIGS", configFile)
+		_ = os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+		framework.L.Info().Msg("Tearing down the development environment")
+		err := framework.RemoveTestContainers()
+		if err != nil {
+			return fmt.Errorf("failed to clean Docker resources: %w", err)
+		}
+		_, err = devenv.NewEnvironment()
+		return err
+	},
 }
 
 var upCmd = &cobra.Command{
-		Use:     "up",
-		Aliases: []string{"u"},
-		Short:   "Spin up the development environment",
-		Args:    cobra.RangeArgs(0, 1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			var configFile string
-			if len(args) > 0 {
-				configFile = args[0]
-			} else {
-				configFile = "env.toml"
-			}
-			framework.L.Info().Str("Config", configFile).Msg("Creating development environment")
-			_ = os.Setenv("CTF_CONFIGS", configFile)
-			_ = os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
-			_, err := devenv.NewEnvironment()
-			if err != nil {
-				return err
-			}
-			return nil
-		},
+	Use:     "up",
+	Aliases: []string{"u"},
+	Short:   "Spin up the development environment",
+	Args:    cobra.RangeArgs(0, 1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var configFile string
+		if len(args) > 0 {
+			configFile = args[0]
+		} else {
+			configFile = "env.toml"
+		}
+		framework.L.Info().Str("Config", configFile).Msg("Creating development environment")
+		_ = os.Setenv("CTF_CONFIGS", configFile)
+		_ = os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+		_, err := devenv.NewEnvironment()
+		if err != nil {
+			return err
+		}
+		return nil
+	},
 }
 
 var downCmd = &cobra.Command{
-		Use:     "down",
-		Aliases: []string{"d"},
-		Short:   "Tear down the development environment",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			framework.L.Info().Msg("Tearing down the development environment")
-			err := framework.RemoveTestContainers()
-			if err != nil {
-				return fmt.Errorf("failed to clean Docker resources: %w", err)
-			}
-			return nil
-		},
+	Use:     "down",
+	Aliases: []string{"d"},
+	Short:   "Tear down the development environment",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		framework.L.Info().Msg("Tearing down the development environment")
+		err := framework.RemoveTestContainers()
+		if err != nil {
+			return fmt.Errorf("failed to clean Docker resources: %w", err)
+		}
+		return nil
+	},
 }
 
 var bsCmd = &cobra.Command{
-		Use:   "bs",
-		Short: "Manage the Blockscout EVM block explorer",
-		Long:  "Spin up or down the Blockscout EVM block explorer",
+	Use:   "bs",
+	Short: "Manage the Blockscout EVM block explorer",
+	Long:  "Spin up or down the Blockscout EVM block explorer",
 }
 
 var bsUpCmd = &cobra.Command{
-		Use:     "up",
-		Aliases: []string{"u"},
-		Short:   "Spin up Blockscout EVM block explorer",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			url, _ := bsCmd.Flags().GetString("url")
-			chainID, _ := bsCmd.Flags().GetString("chain-id")
-			return framework.BlockScoutUp(url, chainID)
-		},
+	Use:     "up",
+	Aliases: []string{"u"},
+	Short:   "Spin up Blockscout EVM block explorer",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		url, _ := bsCmd.Flags().GetString("url")
+		chainID, _ := bsCmd.Flags().GetString("chain-id")
+		return framework.BlockScoutUp(url, chainID)
+	},
 }
 
 var bsDownCmd = &cobra.Command{
-		Use:     "down",
-		Aliases: []string{"d"},
-		Short:   "Spin down Blockscout EVM block explorer",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			url, _ := bsCmd.Flags().GetString("url")
-			return framework.BlockScoutDown(url)
-		},
+	Use:     "down",
+	Aliases: []string{"d"},
+	Short:   "Spin down Blockscout EVM block explorer",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		url, _ := bsCmd.Flags().GetString("url")
+		return framework.BlockScoutDown(url)
+	},
 }
 
 var bsRestartCmd = &cobra.Command{
-		Use:     "restart",
-		Aliases: []string{"r"},
-		Short:   "Restart the Blockscout EVM block explorer",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			url, _ := bsCmd.Flags().GetString("url")
-			chainID, _ := bsCmd.Flags().GetString("chain-id")
-			if err := framework.BlockScoutDown(url); err != nil {
-				return err
-			}
-			return framework.BlockScoutUp(url, chainID)
-		},
+	Use:     "restart",
+	Aliases: []string{"r"},
+	Short:   "Restart the Blockscout EVM block explorer",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		url, _ := bsCmd.Flags().GetString("url")
+		chainID, _ := bsCmd.Flags().GetString("chain-id")
+		if err := framework.BlockScoutDown(url); err != nil {
+			return err
+		}
+		return framework.BlockScoutUp(url, chainID)
+	},
 }
 
 var obsCmd = &cobra.Command{
-		Use:   "obs",
-		Short: "Manage the observability stack",
-		Long:  "Spin up or down the observability stack with subcommands 'up' and 'down'",
+	Use:   "obs",
+	Short: "Manage the observability stack",
+	Long:  "Spin up or down the observability stack with subcommands 'up' and 'down'",
 }
 
 var obsUpCmd = &cobra.Command{
-		Use:     "up",
-		Aliases: []string{"u"},
-		Short:   "Spin up the observability stack",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			full, _ := cmd.Flags().GetBool("full")
-			var err error
-			if full {
-				err = framework.ObservabilityUpFull()
-			} else {
-				err = framework.ObservabilityUp()
-			}
-			if err != nil {
-				return fmt.Errorf("observability up failed: %w", err)
-			}
-			devenv.Plog.Info().Msgf("{{ .ProductName }} Dashboard: %s", Local{{ .ProductName }}Dashboard)
-			devenv.Plog.Info().Msgf("{{ .ProductName }} Load Test Dashboard: %s", LocalWASPLoadDashboard)
-			return nil
-		},
+	Use:     "up",
+	Aliases: []string{"u"},
+	Short:   "Spin up the observability stack",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		full, _ := cmd.Flags().GetBool("full")
+		var err error
+		if full {
+			err = framework.ObservabilityUpFull()
+		} else {
+			err = framework.ObservabilityUp()
+		}
+		if err != nil {
+			return fmt.Errorf("observability up failed: %w", err)
+		}
+		devenv.Plog.Info().Msgf("{{ .ProductName }} Dashboard: %s", Local{{ .ProductName }}Dashboard)
+		devenv.Plog.Info().Msgf("{{ .ProductName }} Load Test Dashboard: %s", LocalWASPLoadDashboard)
+		return nil
+	},
 }
 
 var obsDownCmd = &cobra.Command{
-		Use:     "down",
-		Aliases: []string{"d"},
-		Short:   "Spin down the observability stack",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return framework.ObservabilityDown()
-		},
+	Use:     "down",
+	Aliases: []string{"d"},
+	Short:   "Spin down the observability stack",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return framework.ObservabilityDown()
+	},
 }
 
 var obsRestartCmd = &cobra.Command{
-		Use:     "restart",
-		Aliases: []string{"r"},
-		Short:   "Restart the observability stack (data wipe)",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := framework.ObservabilityDown(); err != nil {
-				return fmt.Errorf("observability down failed: %w", err)
-			}
-			full, _ := cmd.Flags().GetBool("full")
-			var err error
-			if full {
-				err = framework.ObservabilityUpFull()
-			} else {
-				err = framework.ObservabilityUp()
-			}
-			if err != nil {
-				return fmt.Errorf("observability up failed: %w", err)
-			}
-			devenv.Plog.Info().Msgf("{{ .ProductName }} Dashboard: %s", Local{{ .ProductName }}Dashboard)
-			devenv.Plog.Info().Msgf("{{ .ProductName }} Load Test Dashboard: %s", LocalWASPLoadDashboard)
-			return nil
-		},
+	Use:     "restart",
+	Aliases: []string{"r"},
+	Short:   "Restart the observability stack (data wipe)",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := framework.ObservabilityDown(); err != nil {
+			return fmt.Errorf("observability down failed: %w", err)
+		}
+		full, _ := cmd.Flags().GetBool("full")
+		var err error
+		if full {
+			err = framework.ObservabilityUpFull()
+		} else {
+			err = framework.ObservabilityUp()
+		}
+		if err != nil {
+			return fmt.Errorf("observability up failed: %w", err)
+		}
+		devenv.Plog.Info().Msgf("{{ .ProductName }} Dashboard: %s", Local{{ .ProductName }}Dashboard)
+		devenv.Plog.Info().Msgf("{{ .ProductName }} Load Test Dashboard: %s", LocalWASPLoadDashboard)
+		return nil
+	},
 }
 
 var testCmd = &cobra.Command{
-		Use:     "test",
-		Aliases: []string{"t"},
-		Short:   "Run the tests",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) != 1 {
-				return fmt.Errorf("specify the test suite: smoke or load")
-			}
-			var testPattern string
-			switch args[0] {
-			case "smoke":
-				testPattern = "TestSmoke"
-			case "load":
-				testPattern = "TestLoadChaos"
-			default:
-				return fmt.Errorf("test suite %s is unknown, choose between smoke or load", args[0])
-			}
+	Use:     "test",
+	Aliases: []string{"t"},
+	Short:   "Run the tests",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) != 1 {
+			return fmt.Errorf("specify the test suite: smoke or load")
+		}
+		var testPattern string
+		switch args[0] {
+		case "smoke":
+			testPattern = "TestSmoke"
+		case "load":
+			testPattern = "TestLoadChaos"
+		default:
+			return fmt.Errorf("test suite %s is unknown, choose between smoke or load", args[0])
+		}
 
-			testCmd := exec.Command("go", "test", "-v", "-run", testPattern)
-			testCmd.Dir = "./tests"
-			testCmd.Stdout = os.Stdout
-			testCmd.Stderr = os.Stderr
-			testCmd.Stdin = os.Stdin
+		testCmd := exec.Command("go", "test", "-v", "-run", testPattern)
+		testCmd.Dir = "./tests"
+		testCmd.Stdout = os.Stdout
+		testCmd.Stderr = os.Stderr
+		testCmd.Stdin = os.Stdin
 
-			if err := testCmd.Run(); err != nil {
-				if exitError, ok := err.(*exec.ExitError); ok {
-					if status, ok := exitError.Sys().(syscall.WaitStatus); ok {
-						os.Exit(status.ExitStatus())
-					}
-					os.Exit(1)
+		if err := testCmd.Run(); err != nil {
+			if exitError, ok := err.(*exec.ExitError); ok {
+				if status, ok := exitError.Sys().(syscall.WaitStatus); ok {
+					os.Exit(status.ExitStatus())
 				}
-				return fmt.Errorf("failed to run test command: %w", err)
+				os.Exit(1)
 			}
-			return nil
-		},
+			return fmt.Errorf("failed to run test command: %w", err)
+		}
+		return nil
+	},
 }
 
 func init() {
-		rootCmd.PersistentFlags().BoolP("debug", "d", false, "Enable running services with dlv to allow remote debugging.")
+	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Enable running services with dlv to allow remote debugging.")
 
-		rootCmd.AddCommand(testCmd)
+	rootCmd.AddCommand(testCmd)
 
-		// Blockscout, on-chain debug
-		bsCmd.PersistentFlags().StringP("url", "u", "http://host.docker.internal:8555", "EVM RPC node URL (default to dst chain on 8555")
-		bsCmd.PersistentFlags().StringP("chain-id", "c", "2337", "RPC's Chain ID")
-		bsCmd.AddCommand(bsUpCmd)
-		bsCmd.AddCommand(bsDownCmd)
-		bsCmd.AddCommand(bsRestartCmd)
-		rootCmd.AddCommand(bsCmd)
+	// Blockscout, on-chain debug
+	bsCmd.PersistentFlags().StringP("url", "u", "http://host.docker.internal:8555", "EVM RPC node URL (default to dst chain on 8555")
+	bsCmd.PersistentFlags().StringP("chain-id", "c", "2337", "RPC's Chain ID")
+	bsCmd.AddCommand(bsUpCmd)
+	bsCmd.AddCommand(bsDownCmd)
+	bsCmd.AddCommand(bsRestartCmd)
+	rootCmd.AddCommand(bsCmd)
 
-		// observability
-		obsCmd.PersistentFlags().BoolP("full", "f", false, "Enable full observability stack with additional components")
-		obsCmd.AddCommand(obsRestartCmd)
-		obsCmd.AddCommand(obsUpCmd)
-		obsCmd.AddCommand(obsDownCmd)
-		rootCmd.AddCommand(obsCmd)
+	// observability
+	obsCmd.PersistentFlags().BoolP("full", "f", false, "Enable full observability stack with additional components")
+	obsCmd.AddCommand(obsRestartCmd)
+	obsCmd.AddCommand(obsUpCmd)
+	obsCmd.AddCommand(obsDownCmd)
+	rootCmd.AddCommand(obsCmd)
 
-		// main env commands
-		rootCmd.AddCommand(upCmd)
-		rootCmd.AddCommand(restartCmd)
-		rootCmd.AddCommand(downCmd)
+	// main env commands
+	rootCmd.AddCommand(upCmd)
+	rootCmd.AddCommand(restartCmd)
+	rootCmd.AddCommand(downCmd)
 }
 
 func checkDockerIsRunning() {
-		cli, err := client.NewClientWithOpts(client.FromEnv)
-		if err != nil {
-			fmt.Println("Can't create Docker client, please check if Docker daemon is running!")
-			os.Exit(1)
-		}
-		defer cli.Close()
-		_, err = cli.Ping(context.Background())
-		if err != nil {
-			fmt.Println("Docker is not running, please start Docker daemon first!")
-			os.Exit(1)
-		}
+	cli, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		fmt.Println("Can't create Docker client, please check if Docker daemon is running!")
+		os.Exit(1)
+	}
+	defer cli.Close()
+	_, err = cli.Ping(context.Background())
+	if err != nil {
+		fmt.Println("Docker is not running, please start Docker daemon first!")
+		os.Exit(1)
+	}
 }
 
 func main() {
-		checkDockerIsRunning()
-		if len(os.Args) == 2 && (os.Args[1] == "shell" || os.Args[1] == "sh") {
-			_ = os.Setenv("CTF_CONFIGS", "env.toml") // Set default config for shell
+	checkDockerIsRunning()
+	if len(os.Args) == 2 && (os.Args[1] == "shell" || os.Args[1] == "sh") {
+		_ = os.Setenv("CTF_CONFIGS", "env.toml") // Set default config for shell
 
-			StartShell()
-			return
-		}
-		if err := rootCmd.Execute(); err != nil {
-			devenv.Plog.Err(err).Send()
-			os.Exit(1)
-		}
+		StartShell()
+		return
+	}
+	if err := rootCmd.Execute(); err != nil {
+		devenv.Plog.Err(err).Send()
+		os.Exit(1)
+	}
 }`
 	// LoadTestTmpl is a load/chaos test template
 	LoadTestTmpl = `package devenv_test
 
 import (
-		"testing"
-		"time"
+	"testing"
+	"time"
 
-		"github.com/go-resty/resty/v2"
-		"github.com/stretchr/testify/require"
+	"github.com/go-resty/resty/v2"
+	"github.com/stretchr/testify/require"
 
-		de "{{ .GoModName }}"
+	de "{{ .GoModName }}"
 
-		"github.com/smartcontractkit/chainlink-testing-framework/framework/chaos"
-		"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
-		"github.com/smartcontractkit/chainlink-testing-framework/wasp"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/chaos"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
+	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
 )
 
 type ExampleGun struct {
-		target string
-		client *resty.Client
-		Data   []string
+	target string
+	client *resty.Client
+	Data   []string
 }
 
 func NewExampleHTTPGun(target string) *ExampleGun {
-		return &ExampleGun{
-			client: resty.New(),
-			target: target,
-			Data:   make([]string, 0),
-		}
+	return &ExampleGun{
+		client: resty.New(),
+		target: target,
+		Data:   make([]string, 0),
+	}
 }
 
 // Call implements example gun call, assertions on response bodies should be done here
 func (m *ExampleGun) Call(l *wasp.Generator) *wasp.Response {
-		var result map[string]any
-		r, err := m.client.R().
-			SetResult(&result).
-			Get(m.target)
-		if err != nil {
-			return &wasp.Response{Data: result, Error: err.Error()}
-		}
-		if r.Status() != "200 OK" {
-			return &wasp.Response{Data: result, Error: "not 200", Failed: true}
-		}
-		return &wasp.Response{Data: result}
+	var result map[string]any
+	r, err := m.client.R().
+		SetResult(&result).
+		Get(m.target)
+	if err != nil {
+		return &wasp.Response{Data: result, Error: err.Error()}
+	}
+	if r.Status() != "200 OK" {
+		return &wasp.Response{Data: result, Error: "not 200", Failed: true}
+	}
+	return &wasp.Response{Data: result}
 }
 
 func TestLoadChaos(t *testing.T) {
-		in, err := de.LoadOutput[de.Cfg]("../env-out.toml")
-		require.NoError(t, err)
+	in, err := de.LoadOutput[de.Cfg]("../env-out.toml")
+	require.NoError(t, err)
 
-		clNodes, err := clclient.New(in.NodeSets[0].Out.CLNodes)
-		require.NoError(t, err)
+	clNodes, err := clclient.New(in.NodeSets[0].Out.CLNodes)
+	require.NoError(t, err)
 
-		// use local observability stack for Docker load/chaos tests
-		t.Setenv("LOKI_URL", "http://localhost:3030/loki/api/v1/push")
+	// use local observability stack for Docker load/chaos tests
+	t.Setenv("LOKI_URL", "http://localhost:3030/loki/api/v1/push")
 
-		// define labels for differentiate one run from another
-		labels := map[string]string{
-			"go_test_name": "generator_healthcheck",
-			"gen_name":     "generator_healthcheck",
-			"branch":       "test",
-			"commit":       "test",
-		}
+	// define labels for differentiate one run from another
+	labels := map[string]string{
+		"go_test_name": "generator_healthcheck",
+		"gen_name":     "generator_healthcheck",
+		"branch":       "test",
+		"commit":       "test",
+	}
 
-		// create a WASP generator
-		gen, err := wasp.NewGenerator(&wasp.Config{
-			LoadType: wasp.RPS,
-			T:        t,
-			// just use plain line profile - 1 RPS for 60s
-			Schedule:   wasp.Plain(1, 60*time.Second),
-			Gun:        NewExampleHTTPGun("https://example.com"),
-			Labels:     labels,
-			LokiConfig: wasp.NewEnvLokiConfig(),
+	// create a WASP generator
+	gen, err := wasp.NewGenerator(&wasp.Config{
+		LoadType: wasp.RPS,
+		T:        t,
+		// just use plain line profile - 1 RPS for 60s
+		Schedule:   wasp.Plain(1, 60*time.Second),
+		Gun:        NewExampleHTTPGun("https://example.com"),
+		Labels:     labels,
+		LokiConfig: wasp.NewEnvLokiConfig(),
+	})
+	require.NoError(t, err)
+	gen.Run(false)
+
+	// define chaos test cases
+	testCases := []struct {
+		name     string
+		command  string
+		wait     time.Duration
+		validate func(c []*clclient.ChainlinkClient) error
+	}{
+		{
+			name:    "Reboot the pods",
+			wait:    20 * time.Second,
+			command: "stop --duration=20s --restart re2:don-node0",
+			validate: func(c []*clclient.ChainlinkClient) error {
+				_, _, err := c[0].ReadBridges()
+				return err
+			},
+		},
+		{
+			name:    "Introduce network delay",
+			wait:    20 * time.Second,
+			command: "netem --tc-image=gaiadocker/iproute2 --duration=20s delay --time=1000 re2:don-node.*",
+			validate: func(c []*clclient.ChainlinkClient) error {
+				_, _, err := c[0].ReadBridges()
+				return err
+			},
+		},
+	}
+
+	// Run chaos test cases
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Log(tc.name)
+			_, err = chaos.ExecPumba(tc.command, tc.wait)
+			require.NoError(t, err)
+			err = tc.validate(clNodes)
+			require.NoError(t, err)
 		})
-		require.NoError(t, err)
-		gen.Run(false)
-
-		// define chaos test cases
-		testCases := []struct {
-			name     string
-			command  string
-			wait     time.Duration
-			validate func(c []*clclient.ChainlinkClient) error
-		}{
-			{
-				name:    "Reboot the pods",
-				wait:    1 * time.Minute,
-				command: "stop --duration=20s --restart re2:don-node0",
-				validate: func(c []*clclient.ChainlinkClient) error {
-					_, _, err := c[0].ReadBridges()
-					return err
-				},
-			},
-			{
-				name:    "Introduce network delay",
-				wait:    1 * time.Minute,
-				command: "netem --tc-image=gaiadocker/iproute2 --duration=1m delay --time=1000 re2:don-node.*",
-				validate: func(c []*clclient.ChainlinkClient) error {
-					_, _, err := c[0].ReadBridges()
-					return err
-				},
-			},
-		}
-
-		// Run chaos test cases
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				t.Log(tc.name)
-				_, err = chaos.ExecPumba(tc.command, tc.wait)
-				require.NoError(t, err)
-				err = tc.validate(clNodes)
-				require.NoError(t, err)
-			})
-		}
-		// wait for the workload to finish
-		_, failed := gen.Wait()
-		require.False(t, failed)
+	}
+	// wait for the workload to finish
+	_, failed := gen.Wait()
+	require.False(t, failed)
 }
 `
 	// SmokeTestTmpl is a smoke test template
 	SmokeTestTmpl = `package devenv_test
 
 import (
-		"fmt"
-		"strconv"
-		"testing"
-		"time"
+	"fmt"
+	"strconv"
+	"testing"
+	"time"
 
-		de "{{ .GoModName }}"
+	de "{{ .GoModName }}"
 
-		"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
-		"github.com/stretchr/testify/require"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
+	"github.com/stretchr/testify/require"
 
-		f "github.com/smartcontractkit/chainlink-testing-framework/framework"
+	f "github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 var L = de.Plog
 
 func TestSmoke(t *testing.T) {
-		in, err := de.LoadOutput[de.Cfg]("../env-out.toml")
-		require.NoError(t, err)
-		c, _, _, err := de.ETHClient(in)
-		require.NoError(t, err)
-		clNodes, err := clclient.New(in.NodeSets[0].Out.CLNodes)
-		require.NoError(t, err)
+	in, err := de.LoadOutput[de.Cfg]("../env-out.toml")
+	require.NoError(t, err)
+	c, _, _, err := de.ETHClient(in)
+	require.NoError(t, err)
+	clNodes, err := clclient.New(in.NodeSets[0].Out.CLNodes)
+	require.NoError(t, err)
 
-		tests := []struct {
-			name    string
-			clNodes []*clclient.ChainlinkClient
-		}{
-			{
-				name: "feature_1",
-			},
-			{
-				name: "feature_2",
-			},
-		}
+	tests := []struct {
+		name    string
+		clNodes []*clclient.ChainlinkClient
+	}{
+		{
+			name: "feature_1",
+		},
+		{
+			name: "feature_2",
+		},
+	}
 
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				_, _ = c, clNodes
-			})
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _ = c, clNodes
+		})
+	}
 }
 
 // assertResources is a simple assertion on resources if you run with the observability stack (obs up)
 func assertResources(t *testing.T, in *de.Cfg, start, end time.Time) {
-		pc := f.NewPrometheusQueryClient(f.LocalPrometheusBaseURL)
-		// no more than 10% CPU for this test
-		maxCPU := 10.0
-		cpuResp, err := pc.Query("sum(rate(container_cpu_usage_seconds_total{name=~\".*don.*\"}[5m])) by (name) *100", end)
+	pc := f.NewPrometheusQueryClient(f.LocalPrometheusBaseURL)
+	// no more than 10% CPU for this test
+	maxCPU := 10.0
+	cpuResp, err := pc.Query("sum(rate(container_cpu_usage_seconds_total{name=~\".*don.*\"}[5m])) by (name) *100", end)
+	require.NoError(t, err)
+	cpu := f.ToLabelsMap(cpuResp)
+	for i := 0; i < in.NodeSets[0].Nodes; i++ {
+		nodeLabel := fmt.Sprintf("name:don-node%d", i)
+		nodeCpu, err := strconv.ParseFloat(cpu[nodeLabel][0].(string), 64)
+		L.Info().Int("Node", i).Float64("CPU", nodeCpu).Msg("CPU usage percentage")
 		require.NoError(t, err)
-		cpu := f.ToLabelsMap(cpuResp)
-		for i := 0; i < in.NodeSets[0].Nodes; i++ {
-			nodeLabel := fmt.Sprintf("name:don-node%d", i)
-			nodeCpu, err := strconv.ParseFloat(cpu[nodeLabel][0].(string), 64)
-			L.Info().Int("Node", i).Float64("CPU", nodeCpu).Msg("CPU usage percentage")
-			require.NoError(t, err)
-			require.LessOrEqual(t, nodeCpu, maxCPU)
-		}
-		// no more than 200mb for this test
-		maxMem := int(200e6) // 200mb
-		memoryResp, err := pc.Query("sum(container_memory_rss{name=~\".*don.*\"}) by (name)", end)
+		require.LessOrEqual(t, nodeCpu, maxCPU)
+	}
+	// no more than 200mb for this test
+	maxMem := int(200e6) // 200mb
+	memoryResp, err := pc.Query("sum(container_memory_rss{name=~\".*don.*\"}) by (name)", end)
+	require.NoError(t, err)
+	mem := f.ToLabelsMap(memoryResp)
+	for i := 0; i < in.NodeSets[0].Nodes; i++ {
+		nodeLabel := fmt.Sprintf("name:don-node%d", i)
+		nodeMem, err := strconv.Atoi(mem[nodeLabel][0].(string))
+		L.Info().Int("Node", i).Int("Memory", nodeMem).Msg("Total memory")
 		require.NoError(t, err)
-		mem := f.ToLabelsMap(memoryResp)
-		for i := 0; i < in.NodeSets[0].Nodes; i++ {
-			nodeLabel := fmt.Sprintf("name:don-node%d", i)
-			nodeMem, err := strconv.Atoi(mem[nodeLabel][0].(string))
-			L.Info().Int("Node", i).Int("Memory", nodeMem).Msg("Total memory")
-			require.NoError(t, err)
-			require.LessOrEqual(t, nodeMem, maxMem)
-		}
+		require.LessOrEqual(t, nodeMem, maxMem)
+	}
 }
 `
 	// CLDFTmpl is a Chainlink Deployments Framework template
 	CLDFTmpl = `package {{ .PackageName }}
 
 import (
-		"context"
-		"crypto/ecdsa"
-		"errors"
-		"fmt"
-		"math/big"
-		"strings"
-		"time"
+	"context"
+	"crypto/ecdsa"
+	"errors"
+	"fmt"
+	"math/big"
+	"strings"
+	"time"
 
-		"github.com/Masterminds/semver/v3"
-		"github.com/ethereum/go-ethereum/accounts/abi/bind"
-		"github.com/ethereum/go-ethereum/common"
-		"github.com/ethereum/go-ethereum/core/types"
-		"github.com/ethereum/go-ethereum/crypto"
-		"github.com/ethereum/go-ethereum/ethclient"
-		"github.com/smartcontractkit/chainlink-common/pkg/logger"
-		"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-		"github.com/smartcontractkit/chainlink-deployments-framework/operations"
-		"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/link_token"
-		"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-		"go.uber.org/zap"
-		"golang.org/x/sync/errgroup"
-		"google.golang.org/grpc"
-		"google.golang.org/grpc/credentials/insecure"
+	"github.com/Masterminds/semver/v3"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
+	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
+	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/link_token"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
-		chainsel "github.com/smartcontractkit/chain-selectors"
-		cldfchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
-		cldfevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-		cldfevmprovider "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
-		cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
-		csav1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/csa"
-		jobv1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
-		nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
+	chainsel "github.com/smartcontractkit/chain-selectors"
+	cldfchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
+	cldfevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
+	cldfevmprovider "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
+	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
+	csav1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/csa"
+	jobv1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
+	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 )
 
 const (
-		AnvilKey0                     = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
-		DefaultNativeTransferGasPrice = 21000
+	AnvilKey0                     = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+	DefaultNativeTransferGasPrice = 21000
 )
 
 const LinkToken cldf.ContractType = "LinkToken"
@@ -1222,23 +2083,23 @@ func MultiplyEIP1559GasPrices(client *ethclient.Client, fcMult, tcMult int64) (*
 	DebugToolsTmpl = `package {{ .PackageName }}
 
 import (
-		"os"
-		"runtime/trace"
+	"os"
+	"runtime/trace"
 )
 
 
 func tracing() func() {
-		f, err := os.Create("trace.out")
-		if err != nil {
-			panic("can't create trace.out file")
-		}
-		if err := trace.Start(f); err != nil {
-			panic("can't start tracing")
-		}
-		return func() {
-			trace.Stop()
-			f.Close()
-		}
+	f, err := os.Create("trace.out")
+	if err != nil {
+		panic("can't create trace.out file")
+	}
+	if err := trace.Start(f); err != nil {
+		panic("can't start tracing")
+	}
+	return func() {
+		trace.Stop()
+		f.Close()
+	}
 }
 `
 	// ConfigTmpl is a template for reading and writing devenv configuration (env.toml, env-out.toml)
@@ -1257,27 +2118,27 @@ GetNetworkPrivateKey is used to get your network private key from the env var we
 */
 
 import (
-		"errors"
-		"fmt"
-		"os"
-		"path/filepath"
-		"strings"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
-		"github.com/davecgh/go-spew/spew"
-		"github.com/pelletier/go-toml/v2"
-		"github.com/rs/zerolog"
-		"github.com/rs/zerolog/log"
+	"github.com/davecgh/go-spew/spew"
+	"github.com/pelletier/go-toml/v2"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 const (
-		// DefaultConfigDir is the default directory we are expecting TOML config to be.
-		DefaultConfigDir = "."
-		// EnvVarTestConfigs is the environment variable name to read config paths from, ex.: CTF_CONFIGS=env.toml,overrides.toml.
-		EnvVarTestConfigs = "CTF_CONFIGS"
-		// DefaultOverridesFilePath is the default overrides.toml file path.
-		DefaultOverridesFilePath = "overrides.toml"
-		// DefaultAnvilKey is a default, well-known Anvil first key
-		DefaultAnvilKey = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+	// DefaultConfigDir is the default directory we are expecting TOML config to be.
+	DefaultConfigDir = "."
+	// EnvVarTestConfigs is the environment variable name to read config paths from, ex.: CTF_CONFIGS=env.toml,overrides.toml.
+	EnvVarTestConfigs = "CTF_CONFIGS"
+	// DefaultOverridesFilePath is the default overrides.toml file path.
+	DefaultOverridesFilePath = "overrides.toml"
+	// DefaultAnvilKey is a default, well-known Anvil first key
+	DefaultAnvilKey = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 )
 
 var L = log.Output(zerolog.ConsoleWriter{Out: os.Stderr}).Level(zerolog.InfoLevel)
@@ -1285,86 +2146,86 @@ var L = log.Output(zerolog.ConsoleWriter{Out: os.Stderr}).Level(zerolog.InfoLeve
 // Load loads TOML configurations from environment variable, ex.: CTF_CONFIGS=env.toml,overrides.toml
 // and unmarshalls the files from left to right overriding keys.
 func Load[T any]() (*T, error) {
-		var config T
-		paths := strings.Split(os.Getenv(EnvVarTestConfigs), ",")
-		for _, path := range paths {
-			L.Info().Str("Path", path).Msg("Loading configuration input")
-			data, err := os.ReadFile(filepath.Join(DefaultConfigDir, path)) //nolint:gosec
-			if err != nil {
-				if path == DefaultOverridesFilePath {
-					L.Info().Str("Path", path).Msg("Overrides file not found or empty")
-					continue
-				}
-				return nil, fmt.Errorf("error reading config file %s: %w", path, err)
+	var config T
+	paths := strings.Split(os.Getenv(EnvVarTestConfigs), ",")
+	for _, path := range paths {
+		L.Info().Str("Path", path).Msg("Loading configuration input")
+		data, err := os.ReadFile(filepath.Join(DefaultConfigDir, path)) //nolint:gosec
+		if err != nil {
+			if path == DefaultOverridesFilePath {
+				L.Info().Str("Path", path).Msg("Overrides file not found or empty")
+				continue
 			}
-			if L.GetLevel() == zerolog.TraceLevel {
-				fmt.Println(string(data)) //nolint:forbidigo
-			}
-
-			decoder := toml.NewDecoder(strings.NewReader(string(data)))
-			decoder.DisallowUnknownFields()
-
-			if err := decoder.Decode(&config); err != nil {
-				var details *toml.StrictMissingError
-				if errors.As(err, &details) {
-					fmt.Println(details.String()) //nolint:forbidigo
-				}
-				return nil, fmt.Errorf("failed to decode TOML config, strict mode: %s", err)
-			}
+			return nil, fmt.Errorf("error reading config file %s: %w", path, err)
 		}
 		if L.GetLevel() == zerolog.TraceLevel {
-			L.Trace().Msg("Merged inputs")
-			spew.Dump(config) //nolint:forbidigo
+			fmt.Println(string(data)) //nolint:forbidigo
 		}
-		return &config, nil
+
+		decoder := toml.NewDecoder(strings.NewReader(string(data)))
+		decoder.DisallowUnknownFields()
+
+		if err := decoder.Decode(&config); err != nil {
+			var details *toml.StrictMissingError
+			if errors.As(err, &details) {
+				fmt.Println(details.String()) //nolint:forbidigo
+			}
+			return nil, fmt.Errorf("failed to decode TOML config, strict mode: %s", err)
+		}
+	}
+	if L.GetLevel() == zerolog.TraceLevel {
+		L.Trace().Msg("Merged inputs")
+		spew.Dump(config) //nolint:forbidigo
+	}
+	return &config, nil
 }
 
 // Store writes config to a file, adds -cache.toml suffix if it's an initial configuration.
 func Store[T any](cfg *T) error {
-		baseConfigPath, err := BaseConfigPath()
-		if err != nil {
-			return err
-		}
-		newCacheName := strings.ReplaceAll(baseConfigPath, ".toml", "")
-		var outCacheName string
-		if strings.Contains(newCacheName, "cache") {
-			L.Info().Str("Cache", baseConfigPath).Msg("Cache file already exists, overriding")
-			outCacheName = baseConfigPath
-		} else {
-			outCacheName = fmt.Sprintf("%s-out.toml", strings.ReplaceAll(baseConfigPath, ".toml", ""))
-		}
-		L.Info().Str("OutputFile", outCacheName).Msg("Storing configuration output")
-		d, err := toml.Marshal(cfg)
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(filepath.Join(DefaultConfigDir, outCacheName), d, 0o600)
+	baseConfigPath, err := BaseConfigPath()
+	if err != nil {
+		return err
+	}
+	newCacheName := strings.ReplaceAll(baseConfigPath, ".toml", "")
+	var outCacheName string
+	if strings.Contains(newCacheName, "cache") {
+		L.Info().Str("Cache", baseConfigPath).Msg("Cache file already exists, overriding")
+		outCacheName = baseConfigPath
+	} else {
+		outCacheName = fmt.Sprintf("%s-out.toml", strings.ReplaceAll(baseConfigPath, ".toml", ""))
+	}
+	L.Info().Str("OutputFile", outCacheName).Msg("Storing configuration output")
+	d, err := toml.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(DefaultConfigDir, outCacheName), d, 0o600)
 }
 
 // LoadOutput loads config output file from path.
 func LoadOutput[T any](path string) (*T, error) {
-		_ = os.Setenv(EnvVarTestConfigs, path)
-		return Load[T]()
+	_ = os.Setenv(EnvVarTestConfigs, path)
+	return Load[T]()
 }
 
 // BaseConfigPath returns base config path, ex. env.toml,overrides.toml -> env.toml.
 func BaseConfigPath() (string, error) {
-		configs := os.Getenv(EnvVarTestConfigs)
-		if configs == "" {
-			return "", fmt.Errorf("no %s env var is provided, you should provide at least one test config in TOML", EnvVarTestConfigs)
-		}
-		L.Debug().Str("Configs", configs).Msg("Getting base config path")
-		return strings.Split(configs, ",")[0], nil
+	configs := os.Getenv(EnvVarTestConfigs)
+	if configs == "" {
+		return "", fmt.Errorf("no %s env var is provided, you should provide at least one test config in TOML", EnvVarTestConfigs)
+	}
+	L.Debug().Str("Configs", configs).Msg("Getting base config path")
+	return strings.Split(configs, ",")[0], nil
 }
 
 // GetNetworkPrivateKey gets network private key or fallback to default simulator key (Anvil's first key)
 func GetNetworkPrivateKey() string {
-		pk := os.Getenv("PRIVATE_KEY")
-		if pk == "" {
-			// that's the first Anvil and Geth private key, serves as a fallback for local testing if not overridden
-			return DefaultAnvilKey
-		}
-		return pk
+	pk := os.Getenv("PRIVATE_KEY")
+	if pk == "" {
+		// that's the first Anvil and Geth private key, serves as a fallback for local testing if not overridden
+		return DefaultAnvilKey
+	}
+	return pk
 }
 `
 	// EnvironmentTmpl is an environment.go template - main file for environment composition
@@ -1388,31 +2249,31 @@ type Cfg struct {
 }
 
 func NewEnvironment() (*Cfg, error) {
-		endTracing := tracing()
-		defer endTracing()
+	endTracing := tracing()
+	defer endTracing()
 
-		if err := framework.DefaultNetwork(nil); err != nil {
-			return nil, err
-		}
-		in, err := Load[Cfg]()
-		if err != nil {
-			return nil, fmt.Errorf("failed to load configuration: %w", err)
-		}
-		_, err = blockchain.NewBlockchainNetwork(in.Blockchains[0])
-		if err != nil {
-			return nil, fmt.Errorf("failed to create blockchain network 1337: %w", err)
-		}
-		if err := DefaultProductConfiguration(in, ConfigureNodesNetwork); err != nil {
-			return nil, fmt.Errorf("failed to setup default CLDF orchestration: %w", err)
-		}
-		_, err = ns.NewSharedDBNodeSet(in.NodeSets[0], nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create new shared db node set: %w", err)
-		}
-		if err := DefaultProductConfiguration(in, ConfigureProductContractsJobs); err != nil {
-			return nil, fmt.Errorf("failed to setup default CLDF orchestration: %w", err)
-		}
-		return in, Store[Cfg](in)
+	if err := framework.DefaultNetwork(nil); err != nil {
+		return nil, err
+	}
+	in, err := Load[Cfg]()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
+	}
+	_, err = blockchain.NewBlockchainNetwork(in.Blockchains[0])
+	if err != nil {
+		return nil, fmt.Errorf("failed to create blockchain network 1337: %w", err)
+	}
+	if err := DefaultProductConfiguration(in, ConfigureNodesNetwork); err != nil {
+		return nil, fmt.Errorf("failed to setup default CLDF orchestration: %w", err)
+	}
+	_, err = ns.NewSharedDBNodeSet(in.NodeSets[0], nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new shared db node set: %w", err)
+	}
+	if err := DefaultProductConfiguration(in, ConfigureProductContractsJobs); err != nil {
+		return nil, fmt.Errorf("failed to setup default CLDF orchestration: %w", err)
+	}
+	return in, Store[Cfg](in)
 }
 `
 	// SingleNetworkProductConfigurationTmpl is an single-network EVM product configuration template
@@ -1442,14 +2303,14 @@ const (
 var Plog = log.Output(zerolog.ConsoleWriter{Out: os.Stderr}).Level(zerolog.DebugLevel).With().Fields(map[string]any{"component": "on_chain"}).Logger()
 
 type OnChain struct {
-		LinkContractAddress              string                 ` + "`" + `toml:"link_contract_address"` + "`" + `
-		CLNodesFundingETH                float64                ` + "`" + `toml:"cl_nodes_funding_eth"` + "`" + `
-		CLNodesFundingLink               float64                ` + "`" + `toml:"cl_nodes_funding_link"` + "`" + `
-		VerificationTimeoutSec           time.Duration          ` + "`" + `toml:"verification_timeout_sec"` + "`" + `
-		ContractsConfigurationTimeoutSec time.Duration          ` + "`" + `toml:"contracts_configuration_timeout_sec"` + "`" + `
-		GasSettings                      *GasSettings           ` + "`" + `toml:"gas_settings"` + "`" + `
-		Verify                           bool                   ` + "`" + `toml:"verify"` + "`" + `
-		DeployedContracts                *DeployedContracts     ` + "`" + `toml:"deployed_contracts"` + "`" + `
+	LinkContractAddress              string                 ` + "`" + `toml:"link_contract_address"` + "`" + `
+	CLNodesFundingETH                float64                ` + "`" + `toml:"cl_nodes_funding_eth"` + "`" + `
+	CLNodesFundingLink               float64                ` + "`" + `toml:"cl_nodes_funding_link"` + "`" + `
+	VerificationTimeoutSec           time.Duration          ` + "`" + `toml:"verification_timeout_sec"` + "`" + `
+	ContractsConfigurationTimeoutSec time.Duration          ` + "`" + `toml:"contracts_configuration_timeout_sec"` + "`" + `
+	GasSettings                      *GasSettings           ` + "`" + `toml:"gas_settings"` + "`" + `
+	Verify                           bool                   ` + "`" + `toml:"verify"` + "`" + `
+	DeployedContracts                *DeployedContracts     ` + "`" + `toml:"deployed_contracts"` + "`" + `
 }
 
 type DeployedContracts struct {
@@ -1458,13 +2319,13 @@ type DeployedContracts struct {
 
 
 type GasSettings struct {
-		FeeCapMultiplier int64 ` + "`" + `toml:"fee_cap_multiplier"` + "`" + `
-		TipCapMultiplier int64 ` + "`" + `toml:"tip_cap_multiplier"` + "`" + `
+	FeeCapMultiplier int64 ` + "`" + `toml:"fee_cap_multiplier"` + "`" + `
+	TipCapMultiplier int64 ` + "`" + `toml:"tip_cap_multiplier"` + "`" + `
 }
 
 type Jobs struct {
-		ConfigPollIntervalSeconds time.Duration ` + "`" + `toml:"config_poll_interval_sec"` + "`" + `
-		MaxTaskDurationSec        time.Duration ` + "`" + `toml:"max_task_duration_sec"` + "`" + `
+	ConfigPollIntervalSeconds time.Duration ` + "`" + `toml:"config_poll_interval_sec"` + "`" + `
+	MaxTaskDurationSec        time.Duration ` + "`" + `toml:"max_task_duration_sec"` + "`" + `
 }
 
 type ConfigPhase int
@@ -1675,7 +2536,7 @@ push-fakes:
     just fakes/push
 
 # Rebuild CLI
-cli:
+@cli:
     pushd cmd/{{ .CLIName }} > /dev/null && go install -ldflags="-X main.Version=1.0.0" . && popd > /dev/null`
 )
 
@@ -1691,8 +2552,15 @@ type LoadTestParams struct {
 	GoModName string
 }
 
-// GoModParams params for generating go.mod file
+// CISmokeParams params for generating CI smoke tests file
 type CISmokeParams struct {
+	ProductName   string
+	DevEnvRelPath string
+	CLIName       string
+}
+
+// CILoadChaosParams params for generating CI load&chaos tests file
+type CILoadChaosParams struct {
 	ProductName   string
 	DevEnvRelPath string
 	CLIName       string
@@ -1702,6 +2570,20 @@ type CISmokeParams struct {
 type GoModParams struct {
 	ModuleName     string
 	RuntimeVersion string
+}
+
+// ReadmeParams params for generating README.md file
+type ReadmeParams struct {
+	CLIName string
+}
+
+// GitIgnoreParams default .gitignore params
+type GitIgnoreParams struct{}
+
+// GrafanaDashboardParams default Grafana dashboard params
+type GrafanaDashboardParams struct {
+	ProductName string
+	UUID        string
 }
 
 // ConfigTOMLParams default env.toml params
@@ -1729,6 +2611,7 @@ type CLIParams struct {
 	CLIName         string
 	DevEnvPkgImport string
 	ProductName     string
+	DashboardUUID   string
 }
 
 // CLDFParams cldf.go file params
@@ -1798,7 +2681,6 @@ func NewEnvBuilder(cliName string, nodes int, productType string, productName st
 		packageName: "devenv",
 		outputDir:   "devenv",
 		productType: productType,
-		moduleName:  fmt.Sprintf("github.com/smartcontractkit/%s/devenv", productName),
 	}
 }
 
@@ -1808,19 +2690,13 @@ func (g *EnvBuilder) OutputDir(dir string) *EnvBuilder {
 	return g
 }
 
-// GoModName sets the Go module name for the generated project
-func (g *EnvBuilder) GoModName(name string) *EnvBuilder {
-	g.moduleName = name
-	return g
-}
-
 // validate verifier that we can build codegen with provided params
 // fixing input params if possible
 func (g *EnvBuilder) validate() error {
-	// to avoid issues in different contexts we only allow lower-case letters, no special symbols or numerics
+	// to avoid issues in different contexts (go.mod, CI, env variables) we only allow lower-case letters, no special symbols or numerics
 	g.productName = onlyLetters(g.productName)
 	g.cliName = onlyLetters(g.cliName)
-	g.moduleName = onlyLetters(g.moduleName)
+	g.moduleName = fmt.Sprintf("github.com/smartcontractkit/%s/devenv", g.productName)
 	return nil
 }
 
@@ -1908,7 +2784,7 @@ func (g *EnvCodegen) Write() error {
 	}
 
 	// Generate CLI file
-	cliContents, err := g.GenerateCLI()
+	cliContents, err := g.GenerateCLI(ProductDashboardUUID)
 	if err != nil {
 		return err
 	}
@@ -1933,6 +2809,19 @@ func (g *EnvCodegen) Write() error {
 		return fmt.Errorf("failed to write CLI completion file: %w", err)
 	}
 
+	// Generate README.md file
+	readmeContents, err := g.GenerateReadme()
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile( //nolint:gosec
+		filepath.Join(g.cfg.outputDir, "README.md"),
+		[]byte(readmeContents),
+		os.ModePerm,
+	); err != nil {
+		return fmt.Errorf("failed to write README.md file: %w", err)
+	}
+
 	// Generate tools.go
 	toolsContents, err := g.GenerateDebugTools()
 	if err != nil {
@@ -1943,7 +2832,7 @@ func (g *EnvCodegen) Write() error {
 		[]byte(toolsContents),
 		os.ModePerm,
 	); err != nil {
-		return fmt.Errorf("failed to write config file: %w", err)
+		return fmt.Errorf("failed to write tools file: %w", err)
 	}
 
 	// Generate config.go
@@ -2027,13 +2916,26 @@ func (g *EnvCodegen) Write() error {
 		return fmt.Errorf("failed to write CI smoke workflow file: %w", err)
 	}
 
+	// Generate GitHub CI load&chaos test workflow
+	ciLoadChaosContents, err := g.GenerateCILoadChaos()
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile( //nolint:gosec
+		filepath.Join(ciDir, "devenv-load-chaos-test.yml"),
+		[]byte(ciLoadChaosContents),
+		os.ModePerm,
+	); err != nil {
+		return fmt.Errorf("failed to write CI load&chaos workflow file: %w", err)
+	}
+
 	// create e2e tests directory
 	e2eDir := filepath.Join(g.cfg.outputDir, "tests")
 	if err := os.MkdirAll( //nolint:gosec
 		e2eDir,
 		os.ModePerm,
 	); err != nil {
-		return fmt.Errorf("failed to create output directory: %w", err)
+		return fmt.Errorf("failed to create tests directory: %w", err)
 	}
 
 	// generate smoke tests
@@ -2060,6 +2962,41 @@ func (g *EnvCodegen) Write() error {
 		os.ModePerm,
 	); err != nil {
 		return fmt.Errorf("failed to write load tests file: %w", err)
+	}
+
+	// create Grafana dashboards directory
+	dashboardsDir := filepath.Join(g.cfg.outputDir, "dashboards")
+	if err := os.MkdirAll( //nolint:gosec
+		dashboardsDir,
+		os.ModePerm,
+	); err != nil {
+		return fmt.Errorf("failed to create dashboards directory: %w", err)
+	}
+
+	// generate Grafana dashboard
+	grafanaDashboardContents, err := g.GenerateGrafanaDashboard(ProductDashboardUUID)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile( //nolint:gosec
+		filepath.Join(dashboardsDir, "environment.json"),
+		[]byte(grafanaDashboardContents),
+		os.ModePerm,
+	); err != nil {
+		return fmt.Errorf("failed to write Grafana dashboard file: %w", err)
+	}
+
+	// generate .gitignore file
+	gitIgnoreContents, err := g.GenerateGitIgnore()
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile( //nolint:gosec
+		filepath.Join(g.cfg.outputDir, ".gitignore"),
+		[]byte(gitIgnoreContents),
+		os.ModePerm,
+	); err != nil {
+		return fmt.Errorf("failed to write gitignore file: %w", err)
 	}
 
 	// tidy and finalize
@@ -2103,6 +3040,21 @@ func (g *EnvCodegen) GenerateSmokeTests() (string, error) {
 	return render(SmokeTestTmpl, data)
 }
 
+// GenerateCILoadChaos generates a load&chaos test CI workflow
+func (g *EnvCodegen) GenerateCILoadChaos() (string, error) {
+	log.Info().Msg("Generating GitHub CI load&chaos test")
+	p, err := dirPathRelFromGitRoot(g.cfg.outputDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to find relative devenv path from Git root: %w", err)
+	}
+	data := CILoadChaosParams{
+		DevEnvRelPath: p,
+		ProductName:   g.cfg.productName,
+		CLIName:       g.cfg.cliName,
+	}
+	return render(CILoadChaosTemplate, data)
+}
+
 // GenerateCISmoke generates a smoke test CI workflow
 func (g *EnvCodegen) GenerateCISmoke() (string, error) {
 	log.Info().Msg("Generating GitHub CI smoke test")
@@ -2126,6 +3078,32 @@ func (g *EnvCodegen) GenerateGoMod() (string, error) {
 		RuntimeVersion: strings.ReplaceAll(runtime.Version(), "go", ""),
 	}
 	return render(GoModTemplate, data)
+}
+
+// GenerateReadme generates a readme file
+func (g *EnvCodegen) GenerateReadme() (string, error) {
+	log.Info().Msg("Generating README file")
+	data := ReadmeParams{
+		CLIName: g.cfg.cliName,
+	}
+	return render(ReadmeTmpl, data)
+}
+
+// GenerateGitIgnore generate .gitignore file
+func (g *EnvCodegen) GenerateGitIgnore() (string, error) {
+	log.Info().Msg("Generating .gitignore file")
+	p := GitIgnoreParams{}
+	return render(GitIgnoreTmpl, p)
+}
+
+// GenerateGrafanaDashboard generate default Grafana dashboard
+func (g *EnvCodegen) GenerateGrafanaDashboard(uuid string) (string, error) {
+	log.Info().Msg("Generating default environment dashboard for Grafana")
+	p := GrafanaDashboardParams{
+		ProductName: g.cfg.productName,
+		UUID:        uuid,
+	}
+	return render(GrafanaDashboardTmpl, p)
 }
 
 // GenerateDefaultTOMLConfig generate default env.toml config
@@ -2160,13 +3138,14 @@ func (g *EnvCodegen) GenerateCLICompletion() (string, error) {
 }
 
 // GenerateCLI generate Cobra CLI
-func (g *EnvCodegen) GenerateCLI() (string, error) {
+func (g *EnvCodegen) GenerateCLI(dashboardUUID string) (string, error) {
 	log.Info().Msg("Generating Cobra CLI")
 	p := CLIParams{
 		PackageName:     g.cfg.packageName,
 		CLIName:         g.cfg.cliName,
 		ProductName:     g.cfg.productName,
 		DevEnvPkgImport: g.cfg.moduleName,
+		DashboardUUID:   dashboardUUID,
 	}
 	return render(CLITmpl, p)
 }
@@ -2233,7 +3212,7 @@ func (g *EnvCodegen) GenerateTestCases() ([]TestCaseParams, error) {
 
 /* Utility */
 
-func getGitRoot() (string, error) {
+func gitRoot() (string, error) {
 	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
 	output, err := cmd.Output()
 	if err != nil {
@@ -2242,8 +3221,10 @@ func getGitRoot() (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
+// dirPathRelFromGitRoot gets directory path relative from Git root
+// used in CI templates to set default execution directory
 func dirPathRelFromGitRoot(name string) (string, error) {
-	gitRoot, err := getGitRoot()
+	gitRoot, err := gitRoot()
 	if err != nil {
 		return "", err
 	}
