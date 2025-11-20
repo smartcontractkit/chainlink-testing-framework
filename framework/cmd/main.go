@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/pelletier/go-toml"
@@ -33,7 +34,8 @@ func main() {
 						Description: `🔗 Chainlink's Developer Environment Generator 🔗
 
 Prerequisites:
-	We are using Just, please install it first - https://github.com/casey/just
+	Just will be automatically installed if not available (via Homebrew on macOS).
+	For other platforms, please install it manually: https://github.com/casey/just
 
 Usage:
 
@@ -110,6 +112,11 @@ Usage:
 							fmt.Printf("📜 More docs can be found in %s/README.md\n", outputDir)
 							fmt.Printf("⬛ Entering the shell..\n")
 							fmt.Println()
+
+							// Ensure 'just' is installed before proceeding
+							if err := ensureJustInstalled(); err != nil {
+								return fmt.Errorf("failed to ensure 'just' is installed: %w", err)
+							}
 
 							cmd := exec.Command("just", "cli")
 							cmd.Env = os.Environ()
@@ -466,4 +473,37 @@ func RemoveCacheFiles() error {
 	}
 	framework.L.Info().Msg("All cache files has been removed")
 	return nil
+}
+
+// ensureJustInstalled checks if 'just' is available in PATH, and if not, attempts to install it.
+// On macOS, it tries to install via Homebrew. On other platforms, it provides installation instructions.
+func ensureJustInstalled() error {
+	// Check if just is already available
+	if _, err := exec.LookPath("just"); err == nil {
+		return nil
+	}
+
+	fmt.Println("⚠️  'just' command not found in PATH")
+	fmt.Println("📦 Attempting to install 'just'...")
+
+	// Try to install via Homebrew on macOS
+	if runtime.GOOS == "darwin" {
+		// Check if Homebrew is available
+		if _, err := exec.LookPath("brew"); err == nil {
+			fmt.Println("🍺 Installing 'just' via Homebrew...")
+			cmd := exec.Command("brew", "install", "just")
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			if err := cmd.Run(); err != nil {
+				return fmt.Errorf("failed to install 'just' via Homebrew: %w. Please install manually: brew install just", err)
+			}
+			fmt.Println("✅ Successfully installed 'just'")
+			return nil
+		}
+		// Homebrew not available, provide instructions
+		return fmt.Errorf("'just' is not installed and Homebrew is not available. Please install 'just' manually:\n  brew install just\n  Or visit: https://github.com/casey/just")
+	}
+
+	// For non-macOS platforms, provide installation instructions
+	return fmt.Errorf("'just' is not installed. Please install it manually:\n  Visit: https://github.com/casey/just\n  Or use your package manager (e.g., apt install just, pacman -S just)")
 }
