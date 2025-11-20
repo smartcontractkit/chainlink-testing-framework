@@ -39,7 +39,7 @@ Usage:
 
 	⚙️ Generate basic environment:
 		ctf gen env --cli myenv --output-dir devenv --product-name Knilniahc --nodes 4
-	
+
 	📜 Read the docs in devenv/README.md
 
 	🔧 Address all TODO comments and customize it
@@ -103,14 +103,14 @@ Usage:
 							if err := cg.Write(); err != nil {
 								return fmt.Errorf("failed to generate module: %w", err)
 							}
-							
+
 							fmt.Println()
 							fmt.Printf("📁 Your environment directory is: %s\n", outputDir)
 							fmt.Printf("💻 Your CLI name is: %s\n", cliName)
 							fmt.Printf("📜 More docs can be found in %s/README.md\n", outputDir)
 							fmt.Printf("⬛ Entering the shell..\n")
 							fmt.Println()
-							
+
 							cmd := exec.Command("just", "cli")
 							cmd.Env = os.Environ()
 							cmd.Dir = outputDir
