@@ -12,7 +12,6 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -44,7 +43,9 @@ var (
 // according to selected strategy.
 func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy string) (float64, error) {
 	if m.HeaderCache == nil {
-		return 0, fmt.Errorf("header cache is nil")
+		return 0, fmt.Errorf("header cache is not initialized. " +
+			"This is an internal error that shouldn't happen. " +
+			"If you see this, please open a GitHub issue at https://github.com/smartcontractkit/chainlink-testing-framework/issues with your configuration details")
 	}
 	var getHeaderData = func(bn *big.Int) (*types.Header, error) {
 		if bn == nil {
@@ -128,7 +129,18 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 
 	minBlockCount := int(float64(blocksNumber) * 0.8)
 	if len(headers) < minBlockCount {
-		return 0, fmt.Errorf("%s. Wanted at least %d, got %d", BlockFetchingErr, minBlockCount, len(headers))
+		return 0, fmt.Errorf("failed to fetch sufficient block headers for gas estimation. "+
+			"Needed at least %d blocks, but only got %d (%.1f%% success rate).\n"+
+			"This usually indicates:\n"+
+			"  1. RPC node is experiencing high latency or load\n"+
+			"  2. Network connectivity issues\n"+
+			"  3. RPC rate limiting\n"+
+			"Solutions:\n"+
+			"  1. Retry the transaction (temporary RPC issue)\n"+
+			"  2. Use a different RPC endpoint\n"+
+			"  3. Disable gas estimation: set gas_price_estimation_enabled = false\n"+
+			"  4. Reduce gas_price_estimation_blocks to fetch fewer blocks",
+			minBlockCount, len(headers), float64(len(headers))/float64(blocksNumber)*100)
 	}
 
 	switch strategy {
@@ -137,7 +149,10 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 	case CongestionStrategy_NewestFirst:
 		return calculateNewestFirstNetworkCongestionMetric(headers), nil
 	default:
-		return 0, fmt.Errorf("unknown congestion strategy: %s", strategy)
+		return 0, fmt.Errorf("unknown network congestion strategy '%s'. "+
+			"Valid strategies are: 'simple' (equal weight) or 'newest_first' (recent blocks weighted more).\n"+
+			"This is likely a configuration error. Check your gas estimation settings",
+			strategy)
 	}
 }
 
@@ -202,7 +217,12 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 	}
 	// defensive programming
 	if baseFee == nil || currentGasTip == nil {
-		err = errors.New(ZeroGasSuggestedErr)
+		err = fmt.Errorf("RPC node returned nil gas price or zero gas tip. " +
+			"This indicates the node's gas estimation is not working properly.\n" +
+			"Solutions:\n" +
+			"  1. Use a different RPC endpoint\n" +
+			"  2. Disable gas estimation: set gas_price_estimation_enabled = false in config\n" +
+			"  3. Set explicit gas values: gas_price, gas_fee_cap, and gas_tip_cap (in your config (seth.toml or ClientBuilder)")
 		return
 	}
 
@@ -381,6 +401,16 @@ func (m *Client) eip1559FeesFromHistory(ctx context.Context, priority string) (b
 		err = fmt.Errorf("failed to fetch EIP1559 historical fees: %w", retryErr)
 		return
 	}
+
+	if baseFee64 == 0.0 {
+		err = fmt.Errorf("historical base fee is 0.0. This might indicate insufficient or invalid fee data from the node.\n" +
+			"Possible solutions:\n" +
+			"  1. Reduce 'gas_price_estimation_blocks' in config\n" +
+			"  2. Check RPC node capabilities and accessibility\n" +
+			"  3. Verify the network supports EIP-1559 fee history queries")
+		return
+	}
+
 	baseFee = big.NewInt(int64(baseFee64))
 
 	L.Debug().
@@ -446,6 +476,27 @@ func (m *Client) currentIP1559Fees(ctx context.Context) (baseFee *big.Int, tipCa
 		return
 	}
 
+	if baseFee == nil || baseFee.Int64() == 0 {
+		err = fmt.Errorf("RPC node returned base fee of 0, which is invalid for EIP-1559 transactions.\n" +
+			"This might indicate:\n" +
+			"  1. Network doesn't support EIP-1559 (use legacy transactions instead)\n" +
+			"  2. RPC node configuration issue\n" +
+			"Solution: Disable gas estimation and set explicit gas prices in config:\n" +
+			"  - Set gas_price_estimation_enabled = false\n" +
+			"  - Set gas_fee_cap and gas_tip_cap for EIP-1559 networks\n" +
+			"  - Or use eip1559_dynamic_fees = false to switch to legacy transactions")
+		return
+	}
+
+	if tipCap == nil {
+		err = fmt.Errorf("RPC node returned nil gas tip cap.\n" +
+			"This indicates an RPC error when fetching EIP-1559 gas suggestions.\n" +
+			"Solution: Disable gas estimation and set explicit gas prices in config:\n" +
+			"  - Set gas_price_estimation_enabled = false\n" +
+			"  - Set gas_fee_cap and gas_tip_cap for EIP-1559 networks")
+		return
+	}
+
 	baseFee64, _ := baseFee.Float64()
 	tipCap64, _ := tipCap.Float64()
 	L.Debug().
@@ -472,7 +523,14 @@ func (m *Client) GetSuggestedLegacyFees(ctx context.Context, priority string) (a
 		}
 
 		if suggestedGasPrice.Int64() == 0 {
-			return errors.New("suggested gas price is 0")
+			return fmt.Errorf("RPC node returned gas price of 0, which is invalid.\n" +
+				"This might indicate:\n" +
+				"  1. Network doesn't support gas price estimation (some test networks)\n" +
+				"  2. RPC node configuration issue\n" +
+				"Solution: Disable gas estimation and set explicit gas prices in config:\n" +
+				"  - Set gas_price_estimation_enabled = false\n" +
+				"  - For EIP-1559 networks: set gas_fee_cap and gas_tip_cap\n" +
+				"  - For legacy networks: set gas_price")
 		}
 
 		return nil
@@ -568,7 +626,10 @@ func getAdjustmentFactor(priority string) (float64, error) {
 	case Priority_Slow:
 		return 0.8, nil
 	default:
-		return 0, fmt.Errorf("unsupported priority: %s", priority)
+		return 0, fmt.Errorf("unsupported transaction priority '%s'. "+
+			"Valid priorities: 'fast', 'standard', 'slow', 'auto'. "+
+			"Set 'gas_price_estimation_tx_priority' in your config (seth.toml or ClientBuilder)",
+			priority)
 	}
 }
 
@@ -583,7 +644,10 @@ func getCongestionFactor(congestionClassification string) (float64, error) {
 	case Congestion_VeryHigh:
 		return 1.40, nil
 	default:
-		return 0, fmt.Errorf("unsupported congestion classification: %s", congestionClassification)
+		return 0, fmt.Errorf("unsupported congestion classification '%s'. "+
+			"Valid classifications: 'low', 'medium', 'high', 'extreme'. "+
+			"This is likely an internal error. Please open a GitHub issue at https://github.com/smartcontractkit/chainlink-testing-framework/issues",
+			congestionClassification)
 	}
 }
 
@@ -614,7 +678,10 @@ func (m *Client) HistoricalFeeData(ctx context.Context, priority string) (baseFe
 	case Priority_Slow:
 		percentileTip = 25
 	default:
-		err = fmt.Errorf("unknown priority: %s", priority)
+		err = fmt.Errorf("unsupported transaction priority '%s'. "+
+			"Valid priorities: 'degen' (internal), 'fast', 'standard', 'slow'. "+
+			"Set 'gas_price_estimation_tx_priority' in your config (seth.toml or ClientBuilder)",
+			priority)
 		L.Debug().
 			Str("Priority", priority).
 			Msgf("Unknown priority: %s", err.Error())
@@ -644,7 +711,10 @@ func (m *Client) HistoricalFeeData(ctx context.Context, priority string) (baseFe
 	case Priority_Slow:
 		baseFee = stats.BaseFeePerc.Perc25
 	default:
-		err = fmt.Errorf("unsupported priority: %s", priority)
+		err = fmt.Errorf("unsupported transaction priority '%s'. "+
+			"Valid priorities: 'degen' (internal), 'fast', 'standard', 'slow'. "+
+			"Set 'gas_price_estimation_tx_priority' in your config (seth.toml or ClientBuilder)",
+			priority)
 		L.Debug().
 			Str("Priority", priority).
 			Msgf("Unsupported priority: %s", err.Error())

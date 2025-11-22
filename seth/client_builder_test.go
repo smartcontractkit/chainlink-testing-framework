@@ -2,6 +2,7 @@ package seth_test
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"math/big"
 	"os"
 	"strings"
@@ -13,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/pkg/errors"
 
 	"github.com/pelletier/go-toml/v2"
 
@@ -339,7 +339,7 @@ func TestConfig_NoPrivateKeys_TxOpts(t *testing.T) {
 
 	_ = client.NewTXOpts()
 	require.Equal(t, 1, len(client.Errors), "expected 1 error")
-	require.Equal(t, "no private keys were loaded, but keyNum 0 was requested", client.Errors[0].Error(), "expected error message")
+	require.Contains(t, client.Errors[0].Error(), "no private keys loaded, but tried to use key #0.", "expected error message")
 }
 
 func TestConfig_NoPrivateKeys_Tracing(t *testing.T) {

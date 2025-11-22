@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
-	verr "errors"
+	"errors"
 	"fmt"
 	"math/big"
 	"path/filepath"
@@ -17,7 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
 
@@ -103,7 +102,7 @@ func getDefaultDecodedCall() *DecodedCall {
 // Last, but not least, if gas bumps are enabled, we will try to bump gas on transaction mining timeout and resubmit it with higher gas.
 func (m *Client) Decode(tx *types.Transaction, txErr error) (*DecodedTransaction, error) {
 	if len(m.Errors) > 0 {
-		return nil, verr.Join(m.Errors...)
+		return nil, errors.Join(m.Errors...)
 	}
 
 	if decodedErr := m.DecodeSendErr(txErr); decodedErr != nil {
@@ -125,7 +124,7 @@ func (m *Client) DecodeSendErr(txErr error) error {
 	reason, decodingErr := m.DecodeCustomABIErr(txErr)
 
 	if decodingErr == nil && reason != "" {
-		return errors.Wrap(txErr, reason)
+		return fmt.Errorf("%s: %w", reason, txErr)
 	}
 
 	L.Trace().
@@ -416,7 +415,13 @@ func (m *Client) decodeTransaction(l zerolog.Logger, tx *types.Transaction, rece
 
 	sig := txData[:4]
 	if m.ABIFinder == nil {
-		l.Err(errors.New("ABIFInder is nil")).Msg("ABIFinder is required for transaction decoding")
+		err := fmt.Errorf("ABIFinder is not initialized, cannot decode transaction. " +
+			"This is an internal error - ABIFinder should be set during client initialization.\n" +
+			"If you see this error:\n" +
+			"  1. Ensure you're using NewClient() or NewClientWithConfig() to create the client\n" +
+			"  2. Don't manually modify client.ABIFinder\n" +
+			"  3. If the issue persists, please open a GitHub issue at https://github.com/smartcontractkit/chainlink-testing-framework/issues")
+		l.Err(err).Msg("ABIFinder is required for transaction decoding")
 		return defaultTxn, nil
 	}
 
@@ -434,7 +439,12 @@ func (m *Client) decodeTransaction(l zerolog.Logger, tx *types.Transaction, rece
 
 	txInput, err = decodeTxInputs(l, txData, abiResult.Method)
 	if err != nil {
-		return defaultTxn, errors.Wrap(err, ErrDecodeInput)
+		return defaultTxn, fmt.Errorf("failed to decode transaction input for method '%s': %w\n"+
+			"This could be due to:\n"+
+			"  1. Transaction data doesn't match the ABI method signature\n"+
+			"  2. Incorrect ABI for this contract\n"+
+			"  3. Malformed transaction data",
+			abiResult.Method.Name, err)
 	}
 
 	var txIndex uint
@@ -498,7 +508,13 @@ func (m *Client) DecodeCustomABIErr(txErr error) (string, error) {
 	//nolint
 	cerr, ok := txErr.(rpc.DataError)
 	if !ok {
-		return "", errors.New(ErrRPCJSONCastError)
+		return "", fmt.Errorf("failed to extract revert reason from RPC error response. " +
+			"The RPC response format is not recognized.\n" +
+			"This could mean:\n" +
+			"  1. Your RPC node uses a non-standard error format\n" +
+			"  2. The transaction didn't revert (unexpected state)\n" +
+			"  3. RPC node is experiencing issues\n" +
+			"The transaction trace may still contain useful information")
 	}
 	if m.ContractStore == nil {
 		L.Warn().Msg(WarnNoContractStore)
@@ -537,7 +553,9 @@ func (m *Client) CallMsgFromTx(tx *types.Transaction) (ethereum.CallMsg, error) 
 	signer := types.LatestSignerForChainID(tx.ChainId())
 	sender, err := types.Sender(signer, tx)
 	if err != nil {
-		return ethereum.CallMsg{}, errors.Wrapf(err, "failed to get sender from transaction")
+		return ethereum.CallMsg{}, fmt.Errorf("failed to get sender from transaction %s: %w\n"+
+			"This usually means the transaction signature is invalid or doesn't match the chain ID",
+			tx.Hash().Hex(), err)
 	}
 
 	if tx.Type() == types.LegacyTxType {
@@ -566,7 +584,12 @@ func (m *Client) CallMsgFromTx(tx *types.Transaction) (ethereum.CallMsg, error) 
 func (m *Client) DownloadContractAndGetPragma(address common.Address, block *big.Int) (Pragma, error) {
 	bytecode, err := m.Client.CodeAt(context.Background(), address, block)
 	if err != nil {
-		return Pragma{}, errors.Wrap(err, "failed to get contract code")
+		return Pragma{}, fmt.Errorf("failed to get contract code at address %s (block %s): %w\n"+
+			"Ensure:\n"+
+			"  1. The address contains a deployed contract\n"+
+			"  2. The block number is valid\n"+
+			"  3. RPC node is synced and accessible",
+			address.Hex(), block.String(), err)
 	}
 
 	pragma, err := DecodePragmaVersion(common.Bytes2Hex(bytecode))
@@ -597,7 +620,7 @@ func (m *Client) callAndGetRevertReason(tx *types.Transaction, rc *types.Receipt
 		return err
 	}
 	if decodedABIErrString != "" {
-		return errors.New(decodedABIErrString)
+		return fmt.Errorf("transaction reverted with custom error: %s", decodedABIErrString)
 	}
 
 	if plainStringErr != nil {
@@ -629,7 +652,13 @@ func (m *Client) callAndGetRevertReason(tx *types.Transaction, rc *types.Receipt
 func decodeTxInputs(l zerolog.Logger, txData []byte, method *abi.Method) (map[string]interface{}, error) {
 	l.Trace().Msg("Parsing tx inputs")
 	if (len(txData)) < 4 {
-		return nil, errors.New(ErrTooShortTxData)
+		return nil, fmt.Errorf("transaction data is too short to contain a valid function call. "+
+			"Expected at least 4 bytes for function selector, got %d bytes.\n"+
+			"This might indicate:\n"+
+			"  1. Plain ETH transfer (no function call)\n"+
+			"  2. Invalid/corrupted transaction data\n"+
+			"  3. Contract deployment (not a function call)",
+			len(txData))
 	}
 
 	inputMap := make(map[string]interface{})
@@ -665,7 +694,9 @@ func decodeTxOutputs(l zerolog.Logger, payload []byte, method *abi.Method) (map[
 	} else {
 		err := method.Outputs.UnpackIntoMap(outputMap, payload)
 		if err != nil {
-			return nil, errors.Wrap(err, ErrDecodeOutput)
+			return nil, fmt.Errorf("failed to decode transaction output for method '%s': %w\n"+
+				"The output data doesn't match the expected ABI return types",
+				method.Name, err)
 		}
 	}
 	l.Trace().Interface("Outputs", outputMap).Msg("Transaction outputs")
@@ -690,7 +721,9 @@ func decodeEventFromLog(
 	if len(lo.GetData()) != 0 {
 		err := a.UnpackIntoMap(eventsMap, eventABISpec.Name, lo.GetData())
 		if err != nil {
-			return nil, nil, errors.Wrap(err, ErrDecodedLogNonIndexed)
+			return nil, nil, fmt.Errorf("failed to decode non-indexed log data for event '%s': %w\n"+
+				"The log data doesn't match the expected event signature",
+				eventABISpec.Name, err)
 		}
 		l.Trace().Interface("Non-indexed", eventsMap).Send()
 	}
@@ -715,7 +748,9 @@ func decodeEventFromLog(
 		l.Trace().Interface("Indexed", indexed).Send()
 		err := abi.ParseTopicsIntoMap(topicsMap, indexed, indexedTopics)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, ErrDecodeILogIndexed)
+			return nil, nil, fmt.Errorf("failed to decode indexed log topics for event '%s': %w\n"+
+				"The indexed topic data doesn't match the expected event indexed parameters",
+				eventABISpec.Name, err)
 		}
 		l.Trace().Interface("Indexed", topicsMap).Send()
 	}

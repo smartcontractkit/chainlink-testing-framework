@@ -1,11 +1,11 @@
 package seth
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 
 	pkg_seth "github.com/smartcontractkit/chainlink-testing-framework/seth"
@@ -112,27 +112,29 @@ func GetChainClient(c config.SethConfig, network blockchain.EVMNetwork) (*pkg_se
 func GetChainClientWithConfigFunction(c config.SethConfig, network blockchain.EVMNetwork, configFn ConfigFunction) (*pkg_seth.Client, error) {
 	readSethCfg := c.GetSethConfig()
 	if readSethCfg == nil {
-		return nil, errors.New("Seth config not found")
+		return nil, fmt.Errorf("Seth config not found in the provided configuration. " +
+			"Ensure your TOML config file has a [Seth] section with required settings. " +
+			"See example: https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/seth/seth.toml")
 	}
 
 	sethCfg, err := MergeSethAndEvmNetworkConfigs(network, *readSethCfg)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error merging seth and evm network configs")
+		return nil, fmt.Errorf("error merging seth and evm network configs: %w", err)
 	}
 
 	err = configFn(&sethCfg)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error applying seth config function")
+		return nil, fmt.Errorf("error applying seth config function: %w", err)
 	}
 
 	err = ValidateSethNetworkConfig(sethCfg.Network)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error validating seth network config")
+		return nil, fmt.Errorf("error validating seth network config: %w", err)
 	}
 
 	chainClient, err := pkg_seth.NewClientWithConfig(&sethCfg)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error creating seth client")
+		return nil, fmt.Errorf("error creating seth client: %w", err)
 	}
 
 	return chainClient, nil
@@ -255,33 +257,47 @@ func MustReplaceSimulatedNetworkUrlWithK8(l zerolog.Logger, network blockchain.E
 // ValidateSethNetworkConfig validates the Seth network config
 func ValidateSethNetworkConfig(cfg *pkg_seth.Network) error {
 	if cfg == nil {
-		return errors.New("network cannot be nil")
+		return fmt.Errorf("network configuration cannot be nil. " +
+			"Ensure your Seth config has properly configured network settings")
 	}
 	if len(cfg.URLs) == 0 {
-		return errors.New("URLs are required")
+		return fmt.Errorf("network URLs are required. " +
+			"Add RPC endpoint URLs in the 'urls_secret' field of your network config")
 	}
 	if len(cfg.PrivateKeys) == 0 {
-		return errors.New("PrivateKeys are required")
+		return fmt.Errorf("private keys are required. " +
+			"Add at least one private key in 'private_keys_secret' or via environment variables")
 	}
 	if cfg.TransferGasFee == 0 {
-		return errors.New("TransferGasFee needs to be above 0. It's the gas fee for a simple transfer transaction")
+		return fmt.Errorf("transfer_gas_fee must be greater than 0. " +
+			"This is the gas fee for a simple transfer transaction. " +
+			"Set 'transfer_gas_fee' in your network config")
 	}
 	if cfg.TxnTimeout.Duration() == 0 {
-		return errors.New("TxnTimeout needs to be above 0. It's the timeout for a transaction")
+		return fmt.Errorf("transaction timeout must be greater than 0. " +
+			"Set 'txn_timeout' in your network config (e.g., '30s', '1m')")
 	}
 	if cfg.EIP1559DynamicFees {
 		if cfg.GasFeeCap == 0 {
-			return errors.New("GasFeeCap needs to be above 0. It's the maximum fee per gas for a transaction (including tip)")
+			return fmt.Errorf("gas_fee_cap must be greater than 0 for EIP-1559 transactions. " +
+				"This is the maximum fee per gas (base fee + tip). " +
+				"Set 'gas_fee_cap' in your network config")
 		}
 		if cfg.GasTipCap == 0 {
-			return errors.New("GasTipCap needs to be above 0. It's the maximum tip per gas for a transaction")
+			return fmt.Errorf("gas_tip_cap must be greater than 0 for EIP-1559 transactions. " +
+				"This is the maximum priority fee per gas. " +
+				"Set 'gas_tip_cap' in your network config")
 		}
 		if cfg.GasFeeCap <= cfg.GasTipCap {
-			return errors.New("GasFeeCap needs to be above GasTipCap (as it is base fee + tip cap)")
+			return fmt.Errorf("gas_fee_cap (%d) must be greater than gas_tip_cap (%d). "+
+				"Fee cap should be base fee + tip cap. "+
+				"Adjust your network config accordingly",
+				cfg.GasFeeCap, cfg.GasTipCap)
 		}
 	} else {
 		if cfg.GasPrice == 0 {
-			return errors.New("GasPrice needs to be above 0. It's the price of gas for a transaction")
+			return fmt.Errorf("gas_price must be greater than 0 for legacy transactions. " +
+				"Set 'gas_price' in your network config")
 		}
 	}
 
