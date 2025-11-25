@@ -25,6 +25,7 @@ type CITestConf struct {
 	InstallPluginsPublic       bool              `yaml:"install_plugins_public" json:"install_plugins_public"` // Install public loop plugins from https://github.com/smartcontractkit/chainlink/tree/develop/plugins
 	AptosCLIVersion            string            `yaml:"aptos_cli_version" json:"aptos_cli_version"`
 	SuiCLIVersion              string            `yaml:"sui_cli_version" json:"sui_cli_version"`
+	FreeDiskSpace              bool              `yaml:"free_disk_space" json:"free_disk_space"`
 }
 
 type Config struct {
