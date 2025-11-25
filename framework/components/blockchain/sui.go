@@ -80,7 +80,7 @@ func generateKeyData(ctx context.Context, containerName string, keyCipherType st
 
 func defaultSui(in *Input) {
 	if in.Image == "" {
-		in.Image = "mysten/sui-tools:devnet"
+		in.Image = "mysten/sui-tools:devnet-v1.61.0"
 	}
 	if in.Port == "" {
 		in.Port = DefaultSuiNodePort
