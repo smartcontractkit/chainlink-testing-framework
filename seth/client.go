@@ -3,6 +3,7 @@ package seth
 import (
 	"context"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -21,32 +22,16 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
 )
 
 const (
 	ErrEmptyConfigPath          = "toml config path is empty, set SETH_CONFIG_PATH"
-	ErrCreateABIStore           = "failed to create ABI store"
-	ErrReadingKeys              = "failed to read keys"
-	ErrCreateNonceManager       = "failed to create nonce manager"
-	ErrCreateTracer             = "failed to create tracer"
-	ErrReadContractMap          = "failed to read deployed contract map"
-	ErrRpcHealthCheckFailed     = "RPC health check failed ¯\\_(ツ)_/¯"
 	ErrContractDeploymentFailed = "contract deployment failed"
-	ErrNoPksEphemeralMode       = "no private keys loaded, cannot fund ephemeral addresses"
+
 	// unused by Seth, but used by upstream
 	ErrNoKeyLoaded = "failed to load private key"
-
-	ErrSethConfigIsNil         = "seth config is nil"
-	ErrNetworkIsNil            = "no Network is set in the Seth config"
-	ErrNonceManagerConfigIsNil = "nonce manager config is nil"
-	ErrReadOnlyWithPrivateKeys = "read-only mode is enabled, but you tried to load private keys"
-	ErrReadOnlyEphemeralKeys   = "ephemeral mode is not supported in read-only mode"
-	ErrReadOnlyGasBumping      = "gas bumping is not supported in read-only mode"
-	ErrReadOnlyRpcHealth       = "RPC health check is not supported in read-only mode"
-	ErrReadOnlyPendingNonce    = "pending nonce protection is not supported in read-only mode"
 
 	ContractMapFilePattern          = "deployed_contracts_%s_%s.toml"
 	RevertedTransactionsFilePattern = "reverted_transactions_%s_%s.json"
@@ -89,7 +74,9 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 	initDefaultLogging()
 
 	if cfg == nil {
-		return nil, errors.New(ErrSethConfigIsNil)
+		return nil, fmt.Errorf("seth configuration is nil. " +
+			"Ensure you're calling NewClientWithConfig() with a valid config, or use NewClient() to load from SETH_CONFIG_PATH environment variable. " +
+			"See documentation for configuration examples")
 	}
 	if cfgErr := cfg.Validate(); cfgErr != nil {
 		return nil, cfgErr
@@ -100,7 +87,13 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 	cfg.setEphemeralAddrs()
 	cs, err := NewContractStore(filepath.Join(cfg.ConfigDir, cfg.ABIDir), filepath.Join(cfg.ConfigDir, cfg.BINDir), cfg.GethWrappersDirs)
 	if err != nil {
-		return nil, errors.Wrap(err, ErrCreateABIStore)
+		return nil, fmt.Errorf("failed to create ABI/contract store: %w\n"+
+			"Check that:\n"+
+			"  1. 'abi_dir' path is correct (current: %s)\n"+
+			"  2. 'bin_dir' path is correct (current: %s)\n"+
+			"  3. These directories exist and are readable\n"+
+			"  4. Or comment out these settings if not using ABI/BIN files",
+			err, cfg.ABIDir, cfg.BINDir)
 	}
 	if cfg.ephemeral {
 		// we don't care about any other keys, only the root key
@@ -117,11 +110,16 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 	}
 	addrs, pkeys, err := cfg.ParseKeys()
 	if err != nil {
-		return nil, errors.Wrap(err, ErrReadingKeys)
+		return nil, fmt.Errorf("failed to parse private keys: %w\n"+
+			"Ensure private keys are valid hex strings (64 characters, without 0x prefix). "+
+			"Keys should be set in SETH_ROOT_PRIVATE_KEY env var or 'private_keys_secret' in seth.toml",
+			err)
 	}
 	nm, err := NewNonceManager(cfg, addrs, pkeys)
 	if err != nil {
-		return nil, errors.Wrap(err, ErrCreateNonceManager)
+		return nil, fmt.Errorf("failed to create nonce manager: %w\n"+
+			"This is usually a configuration issue. Check 'nonce_manager' settings in your config (seth.toml or ClientBuilder)",
+			err)
 	}
 
 	if !cfg.IsSimulatedNetwork() && cfg.SaveDeployedContractsMap && cfg.ContractMapFile == "" {
@@ -135,7 +133,9 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 	if !cfg.IsSimulatedNetwork() {
 		contractAddressToNameMap.addressMap, err = LoadDeployedContracts(cfg.ContractMapFile)
 		if err != nil {
-			return nil, errors.Wrap(err, ErrReadContractMap)
+			return nil, fmt.Errorf("failed to load deployed contracts map from '%s': %w\n"+
+				"If this is a fresh deployment or you don't need contract mapping, ignore this error by setting save_deployed_contracts_map = false",
+				cfg.ContractMapFile, err)
 		}
 	} else {
 		L.Debug().Msg("Simulated network, contract map won't be read from file")
@@ -150,7 +150,15 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 	if (cfg.ethclient != nil && shouldInitializeTracer(cfg.ethclient, cfg) && len(cfg.Network.URLs) > 0) || cfg.ethclient == nil {
 		tr, err := NewTracer(cs, &abiFinder, cfg, contractAddressToNameMap, addrs)
 		if err != nil {
-			return nil, errors.Wrap(err, ErrCreateTracer)
+			return nil, fmt.Errorf("failed to create transaction tracer: %w\n"+
+				"Possible causes:\n"+
+				"  1. RPC endpoint is not accessible\n"+
+				"  2. RPC node doesn't support debug_traceTransaction API\n"+
+				"Solutions:\n"+
+				"  1. Verify RPC endpoint URL is correct and accessible\n"+
+				"  2. Use an RPC node with debug API enabled (archive node recommended)\n"+
+				"  3. Set tracing_level = 'NONE' in config to disable tracing",
+				err)
 		}
 		opts = append(opts, WithTracer(tr))
 	}
@@ -182,13 +190,19 @@ func NewClientRaw(
 	opts ...ClientOpt,
 ) (*Client, error) {
 	if cfg == nil {
-		return nil, errors.New(ErrSethConfigIsNil)
+		return nil, fmt.Errorf("seth configuration is nil. " +
+			"Provide a valid Config when calling NewClientRaw(). " +
+			"Consider using NewClient() or NewClientWithConfig() instead")
 	}
 	if cfgErr := cfg.Validate(); cfgErr != nil {
 		return nil, cfgErr
 	}
 	if cfg.ReadOnly && (len(addrs) > 0 || len(pkeys) > 0) {
-		return nil, errors.New(ErrReadOnlyWithPrivateKeys)
+		return nil, fmt.Errorf("configuration conflict: read-only mode is enabled, but private keys were provided. " +
+			"Read-only mode is for querying blockchain state only (no transactions).\n" +
+			"To fix:\n" +
+			"  1. Remove private keys if you only need to read data\n" +
+			"  2. Set 'read_only = false' in config if you need to send transactions")
 	}
 
 	var firstUrl string
@@ -196,7 +210,8 @@ func NewClientRaw(
 	if cfg.ethclient == nil {
 		L.Info().Msg("Creating new ethereum client")
 		if len(cfg.Network.URLs) == 0 {
-			return nil, errors.New("no RPC URL provided")
+			return nil, fmt.Errorf("no RPC URLs provided. " +
+				"Set RPC URLs in your seth.toml config under 'urls_secret = [\"http://...\"]' or provide via WithRpcUrl() when using ClientBuilder")
 		}
 
 		if len(cfg.Network.URLs) > 1 {
@@ -213,7 +228,13 @@ func NewClientRaw(
 			}),
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to connect RPC client to '%s' due to: %w", cfg.MustFirstNetworkURL(), err)
+			return nil, fmt.Errorf("failed to connect to RPC endpoint '%s': %w\n"+
+				"Troubleshooting steps:\n"+
+				"  1. Verify the URL is correct and accessible\n"+
+				"  2. Check if the RPC node is running\n"+
+				"  3. Verify network connectivity and firewall rules\n"+
+				"  4. Check if dial_timeout (%s) is sufficient for your network",
+				cfg.MustFirstNetworkURL(), err, cfg.Network.DialTimeout.String())
 		}
 		client = ethclient.NewClient(rpcClient)
 		firstUrl = cfg.MustFirstNetworkURL()
@@ -243,7 +264,10 @@ func NewClientRaw(
 	if cfg.Network.ChainID == 0 {
 		chainId, err := c.Client.ChainID(context.Background())
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to get chain ID")
+			return nil, fmt.Errorf("failed to get chain ID from RPC: %w\n"+
+				"Ensure the RPC endpoint is accessible and the network is running. "+
+				"You can also set 'chain_id' explicitly in your seth.toml to avoid this check",
+				err)
 		}
 		cfg.Network.ChainID = chainId.Uint64()
 		c.ChainID = mustSafeInt64(cfg.Network.ChainID)
@@ -256,7 +280,9 @@ func NewClientRaw(
 		if !cfg.IsSimulatedNetwork() {
 			c.ContractAddressToNameMap.addressMap, err = LoadDeployedContracts(cfg.ContractMapFile)
 			if err != nil {
-				return nil, errors.Wrap(err, ErrReadContractMap)
+				return nil, fmt.Errorf("failed to load deployed contracts map from '%s': %w\n"+
+					"If this is a fresh deployment or you don't need contract mapping, ignore this error by setting save_deployed_contracts_map = false",
+					cfg.ContractMapFile, err)
 			}
 			if len(c.ContractAddressToNameMap.addressMap) > 0 {
 				L.Info().
@@ -288,7 +314,10 @@ func NewClientRaw(
 
 	if cfg.CheckRpcHealthOnStart {
 		if cfg.ReadOnly {
-			return nil, errors.New(ErrReadOnlyRpcHealth)
+			return nil, fmt.Errorf("RPC health check is not supported in read-only mode because it requires sending transactions. " +
+				"Either:\n" +
+				"  1. Set 'read_only = false' to enable transaction capabilities\n" +
+				"  2. Set 'check_rpc_health_on_start = false' to skip the health check")
 		}
 		if c.NonceManager == nil {
 			L.Debug().Msg("Nonce manager is not set, RPC health check will be skipped. Client will most probably fail on first transaction")
@@ -300,7 +329,10 @@ func NewClientRaw(
 	}
 
 	if cfg.PendingNonceProtectionEnabled && cfg.ReadOnly {
-		return nil, errors.New(ErrReadOnlyPendingNonce)
+		return nil, fmt.Errorf("pending nonce protection is not supported in read-only mode because it requires transaction monitoring. " +
+			"Either:\n" +
+			"  1. Set 'read_only = false' to enable transaction capabilities\n" +
+			"  2. Set 'pending_nonce_protection_enabled = false'")
 	}
 
 	cfg.setEphemeralAddrs()
@@ -315,10 +347,15 @@ func NewClientRaw(
 
 	if cfg.ephemeral {
 		if len(c.Addresses) == 0 {
-			return nil, errors.New(ErrNoPksEphemeralMode)
+			return nil, fmt.Errorf("ephemeral mode requires exactly one root private key to fund ephemeral addresses, but no keys were loaded. " +
+				"Load the root private key via:\n" +
+				"  1. SETH_ROOT_PRIVATE_KEY environment variable\n" +
+				"  2. 'root_private_key' in seth.toml\n" +
+				"  3. WithPrivateKeys() when using ClientBuilder")
 		}
 		if cfg.ReadOnly {
-			return nil, errors.New(ErrReadOnlyEphemeralKeys)
+			return nil, fmt.Errorf("ephemeral mode is not supported in read-only mode because it requires funding transactions. " +
+				"Set 'read_only = false' or disable ephemeral mode by removing 'ephemeral_addresses_number' from config")
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), c.Cfg.Network.TxnTimeout.D)
 		defer cancel()
@@ -352,7 +389,9 @@ func NewClientRaw(
 		if c.ContractStore == nil {
 			cs, err := NewContractStore(filepath.Join(cfg.ConfigDir, cfg.ABIDir), filepath.Join(cfg.ConfigDir, cfg.BINDir), cfg.GethWrappersDirs)
 			if err != nil {
-				return nil, errors.Wrap(err, ErrCreateABIStore)
+				return nil, fmt.Errorf("failed to create contract store for tracing: %w\n"+
+					"Tracing requires ABI files. Check 'abi_dir' configuration or disable tracing with tracing_level = 'NONE'",
+					err)
 			}
 			c.ContractStore = cs
 		}
@@ -362,7 +401,15 @@ func NewClientRaw(
 		}
 		tr, err := NewTracer(c.ContractStore, c.ABIFinder, cfg, c.ContractAddressToNameMap, addrs)
 		if err != nil {
-			return nil, errors.Wrap(err, ErrCreateTracer)
+			return nil, fmt.Errorf("failed to create transaction tracer: %w\n"+
+				"Possible causes:\n"+
+				"  1. RPC endpoint is not accessible\n"+
+				"  2. RPC node doesn't support debug_traceTransaction API\n"+
+				"Solutions:\n"+
+				"  1. Verify RPC endpoint URL is correct and accessible\n"+
+				"  2. Use an RPC node with debug API enabled (archive node recommended)\n"+
+				"  3. Set tracing_level = 'NONE' in config to disable tracing",
+				err)
 		}
 
 		c.Tracer = tr
@@ -389,7 +436,10 @@ func NewClientRaw(
 	}
 
 	if c.Cfg.GasBump != nil && c.Cfg.GasBump.Retries != 0 && c.Cfg.ReadOnly {
-		return nil, errors.New(ErrReadOnlyGasBumping)
+		return nil, fmt.Errorf("gas bumping is not supported in read-only mode because it requires sending replacement transactions. " +
+			"Either:\n" +
+			"  1. Set 'read_only = false' to enable transaction capabilities\n" +
+			"  2. Set 'gas_bump.retries = 0' to disable gas bumping")
 	}
 
 	// if gas bumping is enabled, but no strategy is set, we set the default one; otherwise we set the no-op strategy (defensive programming to avoid NPE)
@@ -420,7 +470,15 @@ func (m *Client) checkRPCHealth() error {
 
 	err = m.TransferETHFromKey(ctx, 0, m.Addresses[0].Hex(), big.NewInt(10_000), gasPrice)
 	if err != nil {
-		return errors.Wrap(err, ErrRpcHealthCheckFailed)
+		return fmt.Errorf("RPC health check failed: %w\n"+
+			"The health check sends a small self-transfer transaction to verify RPC functionality.\n"+
+			"Possible issues:\n"+
+			"  1. RPC node is not accepting transactions\n"+
+			"  2. Root key has insufficient balance\n"+
+			"  3. Network connectivity problems\n"+
+			"  4. Gas price estimation failed\n"+
+			"You can disable this check with 'check_rpc_health_on_start = false' in config (seth.toml or ClientBuilder)",
+			err)
 	}
 
 	L.Info().Msg("RPC health check passed <---------------- !!!!! ----------------")
@@ -441,7 +499,9 @@ func (m *Client) TransferETHFromKey(ctx context.Context, fromKeyNum int, to stri
 
 	chainID, err := m.Client.ChainID(ctx)
 	if err != nil {
-		return errors.Wrap(err, "failed to get network ID")
+		return fmt.Errorf("failed to get chain ID from RPC: %w\n"+
+			"Ensure the RPC endpoint is accessible. Chain ID is required for EIP-155 transaction signing",
+			err)
 	}
 
 	var gasLimit int64
@@ -467,14 +527,23 @@ func (m *Client) TransferETHFromKey(ctx context.Context, fromKeyNum int, to stri
 	L.Debug().Interface("TransferTx", rawTx).Send()
 	signedTx, err := types.SignNewTx(m.PrivateKeys[fromKeyNum], types.NewEIP155Signer(chainID), rawTx)
 	if err != nil {
-		return errors.Wrap(err, "failed to sign tx")
+		return fmt.Errorf("failed to sign transaction with key #%d (address: %s): %w\n"+
+			"Verify the private key is valid and corresponds to the expected address",
+			fromKeyNum, m.Addresses[fromKeyNum].Hex(), err)
 	}
 
 	ctx, sendCancel := context.WithTimeout(ctx, m.Cfg.Network.TxnTimeout.Duration())
 	defer sendCancel()
 	err = m.Client.SendTransaction(ctx, signedTx)
 	if err != nil {
-		return errors.Wrap(err, "failed to send transaction")
+		return fmt.Errorf("failed to send transaction to network: %w\n"+
+			"Common causes:\n"+
+			"  1. RPC node rejected the transaction\n"+
+			"  2. Gas price too low (try increasing gas_price or gas_fee_cap)\n"+
+			"  3. Nonce conflict (transaction with same nonce already pending)\n"+
+			"  4. Insufficient funds for gas (check account balance)\n"+
+			"  5. Transaction timeout (check transaction_timeout in config)",
+			err)
 	}
 	l := L.With().Str("Transaction", signedTx.Hash().Hex()).Logger()
 	l.Info().
@@ -852,7 +921,13 @@ This issue is caused by one of two things:
 
 	opts, err := bind.NewKeyedTransactorWithChainID(m.PrivateKeys[keyNum], big.NewInt(m.ChainID))
 	if err != nil {
-		err = errors.Wrapf(err, "failed to create transactor for key %d", keyNum)
+		err = fmt.Errorf("failed to create transactor for key #%d (address: %s, chain ID: %d): %w\n"+
+			"This usually indicates:\n"+
+			"  1. Invalid private key format\n"+
+			"  2. Chain ID mismatch\n"+
+			"  3. Key not properly loaded\n"+
+			"Verify the private key is valid and chain_id is correct in config",
+			keyNum, m.Addresses[keyNum].Hex(), m.ChainID, err)
 		m.Errors = append(m.Errors, err)
 		// can't return nil, otherwise RPC wrapper will panic and we might lose funds on testnets/mainnets, that's why
 		// error is passed in Context here to avoid panic, whoever is using Seth should make sure that there is no error
@@ -970,7 +1045,14 @@ func (m *Client) EstimateGasLimitForFundTransfer(from, to common.Address, amount
 	})
 	if err != nil {
 		L.Debug().Msgf("Failed to estimate gas for fund transfer due to: %s", err.Error())
-		return 0, errors.Wrapf(err, "failed to estimate gas for fund transfer")
+		return 0, fmt.Errorf("failed to estimate gas for fund transfer from %s to %s (amount: %s wei): %w\n"+
+			"Possible causes:\n"+
+			"  1. Insufficient balance in sender account\n"+
+			"  2. Invalid recipient address\n"+
+			"  3. RPC node doesn't support gas estimation\n"+
+			"  4. Network congestion or RPC issues\n"+
+			"Try setting an explicit gas_limit in config if estimation continues to fail",
+			from.Hex(), to.Hex(), amount.String(), err)
 	}
 	return gasLimit, nil
 }
@@ -1039,13 +1121,19 @@ func (m *Client) DeployContract(auth *bind.TransactOpts, name string, abi abi.AB
 
 	if auth.Context != nil {
 		if err, ok := auth.Context.Value(ContextErrorKey{}).(error); ok {
-			return DeploymentData{}, errors.Wrapf(err, "aborted contract deployment for %s, because context passed in transaction options had an error set", name)
+			return DeploymentData{}, fmt.Errorf("aborted contract deployment for '%s': context error: %w\n"+
+				"This usually means there was an error creating transaction options. "+
+				"Check the error above for details about what went wrong",
+				name, err)
 		}
 	}
 
 	if m.Cfg.Hooks != nil && m.Cfg.Hooks.ContractDeployment.Pre != nil {
 		if err := m.Cfg.Hooks.ContractDeployment.Pre(auth, name, abi, bytecode, params...); err != nil {
-			return DeploymentData{}, errors.Wrap(err, "pre-hook failed")
+			return DeploymentData{}, fmt.Errorf("contract deployment pre-hook failed for '%s': %w\n"+
+				"The pre-deployment hook returned an error. "+
+				"Check your hook implementation for issues",
+				name, err)
 		}
 	} else {
 		L.Trace().Msg("No pre-contract deployment hook defined. Skipping")
@@ -1069,7 +1157,10 @@ func (m *Client) DeployContract(auth *bind.TransactOpts, name string, abi abi.AB
 
 	if m.Cfg.Hooks != nil && m.Cfg.Hooks.ContractDeployment.Post != nil {
 		if err := m.Cfg.Hooks.ContractDeployment.Post(m, tx); err != nil {
-			return DeploymentData{}, errors.Wrap(err, "post-hook failed")
+			return DeploymentData{}, fmt.Errorf("contract deployment post-hook failed for transaction %s: %w\n"+
+				"The post-deployment hook returned an error. "+
+				"Check your hook implementation for issues",
+				tx.Hash().Hex(), err)
 		}
 	} else {
 		L.Trace().Msg("No post-contract deployment hook defined. Skipping")
@@ -1092,7 +1183,15 @@ func (m *Client) DeployContract(auth *bind.TransactOpts, name string, abi abi.AB
 				cancel()
 
 				if receipt.Status == 0 {
-					return errors.New("deployment transaction was reverted")
+					return fmt.Errorf("contract '%s' deployment transaction was reverted. "+
+						"Transaction hash: %s\n"+
+						"Common causes:\n"+
+						"  1. Constructor parameters are incorrect\n"+
+						"  2. Insufficient gas limit\n"+
+						"  3. Constructor validation/require failed\n"+
+						"  4. Contract bytecode is invalid\n"+
+						"Check transaction trace with decode for the specific revert reason",
+						name, tx.Hash().Hex())
 				}
 			}
 
@@ -1192,7 +1291,14 @@ type DeploymentData struct {
 // name of ABI file (you can omit the .abi suffix).
 func (m *Client) DeployContractFromContractStore(auth *bind.TransactOpts, name string, params ...interface{}) (DeploymentData, error) {
 	if m.ContractStore == nil {
-		return DeploymentData{}, errors.New("ABIStore is nil")
+		return DeploymentData{}, fmt.Errorf("contract store is nil. Cannot deploy contract from store.\n" +
+			"This usually means:\n" +
+			"  1. Seth client wasn't properly initialized\n" +
+			"  2. ABI directory path is incorrect in config\n" +
+			"Solutions:\n" +
+			"  1. Set 'abi_dir' and 'bin_dir' in seth.toml config file\n" +
+			"  2. Use ClientBuilder: builder.WithABIDir(path).WithBINDir(path)\n" +
+			"  3. Use DeployContract() method with explicit ABI/bytecode instead")
 	}
 
 	name = strings.TrimSuffix(name, ".abi")
@@ -1200,12 +1306,18 @@ func (m *Client) DeployContractFromContractStore(auth *bind.TransactOpts, name s
 
 	contractAbi, ok := m.ContractStore.ABIs[name+".abi"]
 	if !ok {
-		return DeploymentData{}, errors.New("ABI not found")
+		return DeploymentData{}, fmt.Errorf("ABI for contract '%s' not found in contract store.\n"+
+			"Total ABIs loaded: %d\n"+
+			"Ensure the ABI file '%s.abi' exists in the directory specified by 'abi_dir' in your config",
+			name, len(m.ContractStore.ABIs), name)
 	}
 
 	bytecode, ok := m.ContractStore.BINs[name+".bin"]
 	if !ok {
-		return DeploymentData{}, errors.New("BIN not found")
+		return DeploymentData{}, fmt.Errorf("bytecode (BIN) for contract '%s' not found in contract store.\n"+
+			"Total BINs loaded: %d\n"+
+			"Ensure the BIN file '%s.bin' exists in the directory specified by 'bin_dir' in your config",
+			name, len(m.ContractStore.BINs), name)
 	}
 
 	data, err := m.DeployContract(auth, name, contractAbi, bytecode, params...)
@@ -1396,7 +1508,14 @@ func (m *Client) WaitUntilNoPendingTx(address common.Address, timeout time.Durat
 	for {
 		select {
 		case <-waitTimeout.C:
-			return fmt.Errorf("after '%s' address '%s' still had pending transactions", timeout, address)
+			return fmt.Errorf("timeout after %s: address %s still has pending transactions. "+
+				"This means transactions haven't been mined within the timeout period.\n"+
+				"Troubleshooting:\n"+
+				"  1. Check if the network is processing transactions (check block explorer)\n"+
+				"  2. Gas price might be too low (increase gas_price or gas_fee_cap)\n"+
+				"  3. Network congestion (wait longer or increase timeout)\n"+
+				"  4. Enable gas bumping: set gas_bump.retries > 0 in config",
+				timeout, address.Hex())
 		case <-ticker.C:
 			nonceStatus, err := m.getNonceStatus(address)
 			// if there is an error, we can't be sure if there are pending transactions or not, let's retry on next tick
@@ -1419,9 +1538,19 @@ func (m *Client) WaitUntilNoPendingTx(address common.Address, timeout time.Durat
 func (m *Client) validatePrivateKeysKeyNum(keyNum int) error {
 	if keyNum >= len(m.PrivateKeys) || keyNum < 0 {
 		if len(m.PrivateKeys) == 0 {
-			return fmt.Errorf("no private keys were loaded, but keyNum %d was requested", keyNum)
+			return fmt.Errorf("no private keys loaded, but tried to use key #%d.\n"+
+				"Load private keys by:\n"+
+				"  1. Setting SETH_ROOT_PRIVATE_KEY environment variable\n"+
+				"  2. Adding 'private_keys_secret' to your seth.toml network config\n"+
+				"  3. Using WithPrivateKeys() with ClientBuilder",
+				keyNum)
 		}
-		return fmt.Errorf("keyNum is out of range for known private keys. Expected %d to %d. Got: %d", 0, len(m.PrivateKeys)-1, keyNum)
+		return fmt.Errorf("keyNum %d is out of range. Available keys: 0-%d (total: %d keys loaded).\n"+
+			"Common causes:\n"+
+			"  1. Using keyNum from another test/context\n"+
+			"  2. Not enough keys configured for parallel test execution\n"+
+			"  3. Consider enabling ephemeral_addresses_number in your config for more keys",
+			keyNum, len(m.PrivateKeys)-1, len(m.PrivateKeys))
 	}
 
 	return nil
@@ -1430,9 +1559,14 @@ func (m *Client) validatePrivateKeysKeyNum(keyNum int) error {
 func (m *Client) validateAddressesKeyNum(keyNum int) error {
 	if keyNum >= len(m.Addresses) || keyNum < 0 {
 		if len(m.Addresses) == 0 {
-			return fmt.Errorf("no addresses were loaded, but keyNum %d was requested", keyNum)
+			return fmt.Errorf("no addresses loaded, but tried to use key #%d.\n"+
+				"This should not happen if private keys were loaded correctly. "+
+				"Please report this issue at https://github.com/smartcontractkit/chainlink-testing-framework/issues with the stack trace",
+				keyNum)
 		}
-		return fmt.Errorf("keyNum is out of range for known addresses. Expected %d to %d. Got: %d", 0, len(m.Addresses)-1, keyNum)
+		return fmt.Errorf("keyNum %d is out of range. Available addresses: 0-%d (total: %d addresses loaded).\n"+
+			"This indicates the keyNum is invalid for the current client configuration",
+			keyNum, len(m.Addresses)-1, len(m.Addresses))
 	}
 
 	return nil

@@ -3,12 +3,12 @@ package seth
 import (
 	"context"
 	"crypto/ecdsa"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -22,7 +22,11 @@ func NewAddress() (string, string, error) {
 	publicKey := privateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
-		return "", "", errors.New("error casting public key to ECDSA")
+		return "", "", fmt.Errorf("failed to cast generated public key to ECDSA type.\n"+
+			"This is an internal error in the crypto.GenerateKey() function.\n"+
+			"Expected type: *ecdsa.PublicKey, got: %T\n"+
+			"Please report this issue: https://github.com/smartcontractkit/chainlink-testing-framework/issues",
+			publicKey)
 	}
 	address := crypto.PubkeyToAddress(*publicKeyECDSA).Hex()
 	L.Info().
@@ -49,7 +53,13 @@ func ReturnFunds(c *Client, toAddr string) error {
 	}
 
 	if len(c.Addresses) == 1 {
-		return errors.New("No addresses to return funds from. Have you passed correct key file?")
+		return fmt.Errorf("no ephemeral addresses found to return funds from.\n"+
+			"Current addresses count: %d (only root key present)\n"+
+			"This indicates either:\n"+
+			"  1. Key file doesn't contain ephemeral addresses\n"+
+			"  2. Wrong key file was loaded\n"+
+			"  3. Ephemeral keys were never created (set 'ephemeral_addresses_number' > 0 in config)",
+			len(c.Addresses))
 	}
 
 	eg, egCtx := errgroup.WithContext(ctx)
