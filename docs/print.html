@@ -4702,12 +4702,15 @@ rosetta error: Rosetta is only intended to run on Apple Silicon with a macOS hos
 </code></pre>
 <h4 id="solution-1"><a class="header" href="#solution-1">Solution</a></h4>
 <p>Update your docker to <code>Docker version 27.3.1, build ce12230</code></p>
-<h2 id="cant-see-any-docker-metrics-with-cadvisor"><a class="header" href="#cant-see-any-docker-metrics-with-cadvisor">Can't see any docker metrics with Cadvisor</a></h2>
-<p>Cadvisor container can't mount some layers</p>
+<h2 id="cant-see-any-docker-metrics-with-cadvisor"><a class="header" href="#cant-see-any-docker-metrics-with-cadvisor">Can't see any Docker metrics with Cadvisor</a></h2>
+<p>CPU/Memory metrics are not displayed on dashboards.</p>
+<p>Cadvisor container can't mount some layers.</p>
 <pre><code>E1209 13:14:49.908130       1 manager.go:1116] Failed to create existing container: /docker/aa40875c382af890861447fa8aaf6908978041b9077bb81029971d23929f8c4d: failed to identify the read-write layer ID for container "aa40875c382af890861447fa8aaf6908978041b9077bb81029971d23929f8c4d". - open /rootfs/var/lib/docker/image/overlayfs/layerdb/mounts/aa40875c382af890861447fa8aaf6908978041b9077bb81029971d23929f8c4d/mount-id: no such file or directory
 </code></pre>
-<p>Disable <code>containerd</code> images ( Settings -&gt; General ), see <a href="https://github.com/google/cadvisor/pull/3569">issue</a>.</p>
-<p><img src="framework/components/img.png" alt="img.png" /></p>
+<p>This can happen due to <code>Docker Desktop</code> updates, the issue is that the symlink to Docker socket is broken.</p>
+<h4 id="solution-2"><a class="header" href="#solution-2">Solution</a></h4>
+<p>Disable and enable the option <code>Allow the default Docker socket to be used</code> again to relink it properly.</p>
+<p><img src="framework/components/../images/cadvisor_socket.png" alt="cadvisor_socket.png" /></p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -16859,7 +16862,7 @@ go run ./tools/breakingchanges/cmd/main.go --ignore tools,wasp,havoc,seth # to i
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>9dd72293</code></li>
+<li>Commit: <code>17ca79b5</code></li>
 </ul>
 
                     </main>
