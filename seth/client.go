@@ -27,6 +27,8 @@ import (
 )
 
 const (
+	WrnEmptyFromInCallOpts = "you are running Seth without keys, key %d was not found. In case remote blockchain node is used (msg.sender) will be empty. Private functions which check msg.sender may require the correct key to be used"
+
 	ErrEmptyConfigPath          = "toml config path is empty, set SETH_CONFIG_PATH"
 	ErrCreateABIStore           = "failed to create ABI store"
 	ErrReadingKeys              = "failed to read keys"
@@ -582,12 +584,13 @@ func WithBlockNumber(bn uint64) CallOpt {
 
 // NewCallOpts returns a new sequential call options wrapper
 func (m *Client) NewCallOpts(o ...CallOpt) *bind.CallOpts {
-	if errCallOpts := m.errCallOptsIfAddressCountTooLow(0); errCallOpts != nil {
-		return errCallOpts
-	}
 	co := &bind.CallOpts{
 		Pending: false,
-		From:    m.Addresses[0],
+	}
+	if len(m.Addresses) > 0 {
+		co.From = m.Addresses[0]
+	} else {
+		L.Warn().Msgf(WrnEmptyFromInCallOpts, 0)
 	}
 	for _, f := range o {
 		f(co)
@@ -597,41 +600,18 @@ func (m *Client) NewCallOpts(o ...CallOpt) *bind.CallOpts {
 
 // NewCallKeyOpts returns a new sequential call options wrapper from the key N
 func (m *Client) NewCallKeyOpts(keyNum int, o ...CallOpt) *bind.CallOpts {
-	if errCallOpts := m.errCallOptsIfAddressCountTooLow(keyNum); errCallOpts != nil {
-		return errCallOpts
-	}
-
 	co := &bind.CallOpts{
 		Pending: false,
-		From:    m.Addresses[keyNum],
+	}
+	if len(m.Addresses) >= keyNum {
+		co.From = m.Addresses[keyNum]
+	} else {
+		L.Warn().Msgf(WrnEmptyFromInCallOpts, keyNum)
 	}
 	for _, f := range o {
 		f(co)
 	}
 	return co
-}
-
-// errCallOptsIfAddressCountTooLow returns non-nil CallOpts with error in Context if keyNum is out of range
-func (m *Client) errCallOptsIfAddressCountTooLow(keyNum int) *bind.CallOpts {
-	if err := m.validateAddressesKeyNum(keyNum); err != nil {
-		errText := err.Error()
-		if keyNum == TimeoutKeyNum {
-			errText += " (this is a probably because we didn't manage to find any synced key before timeout)"
-		}
-
-		err := errors.New(errText)
-		m.Errors = append(m.Errors, err)
-		opts := &bind.CallOpts{}
-
-		// can't return nil, otherwise RPC wrapper will panic and we might lose funds on testnets/mainnets, that's why
-		// error is passed in Context here to avoid panic, whoever is using Seth should make sure that there is no error
-		// present in Context before using *bind.TransactOpts
-		opts.Context = context.WithValue(context.Background(), ContextErrorKey{}, err)
-
-		return opts
-	}
-
-	return nil
 }
 
 // errTxOptsIfPrivateKeysCountTooLow returns non-nil TransactOpts with error in Context if keyNum is out of range
@@ -913,14 +893,14 @@ func (m *Client) CalculateGasEstimations(request GasEstimationRequest) GasEstima
 	ctx, cancel := context.WithTimeout(context.Background(), m.Cfg.Network.TxnTimeout.Duration())
 	defer cancel()
 
-	var disableEstimationsIfNeeded = func(err error) {
+	disableEstimationsIfNeeded := func(err error) {
 		if strings.Contains(err.Error(), ZeroGasSuggestedErr) {
 			L.Warn().Msg("Received incorrect gas estimations. Disabling them and reverting to hardcoded values. Remember to update your config!")
 			m.Cfg.Network.GasPriceEstimationEnabled = false
 		}
 	}
 
-	var calculateLegacyFees = func() {
+	calculateLegacyFees := func() {
 		gasPrice, err := m.GetSuggestedLegacyFees(ctx, request.Priority)
 		if err != nil {
 			disableEstimationsIfNeeded(err)
