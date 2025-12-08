@@ -1419,3 +1419,24 @@ type ForwarderAttributes struct {
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
+
+type WorkflowDebugEvents struct {
+	Data WorkflowDebugEventsData `json:"data"`
+}
+
+type WorkflowDebugEventsData struct {
+	Type       string                        `json:"type"`
+	ID         string                        `json:"id"`
+	Attributes WorkflowDebugEventsAttributes `json:"attributes"`
+}
+
+type WorkflowDebugEventsAttributes struct {
+	Events []WorkflowDebugEvent `json:"events"`
+}
+
+type WorkflowDebugEvent struct {
+	Timestamp time.Time `json:"timestamp"`
+	Sequence  int64     `json:"sequence"`
+	Message   []byte    `json:"message"` // protobuf encoded
+	Type      string    `json:"type"`    // protobuf type name
+}

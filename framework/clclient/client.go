@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -1430,4 +1431,23 @@ func ImportP2PKeys(cl []*ChainlinkClient, keys [][]byte) error {
 		})
 	}
 	return eg.Wait()
+}
+
+func (c *ChainlinkClient) ReadWorkflowEvents(workflowID string, sequence int64, limit int) (*WorkflowDebugEvents, *http.Response, error) {
+	specObj := &WorkflowDebugEvents{}
+	framework.L.Info().Str(NodeURL, c.Config.URL).Str("ID", workflowID).Int64("sequence", sequence).Int("limit", limit).Msg("Reading Workflow Events")
+	resp, err := c.APIClient.R().
+		SetResult(&specObj).
+		SetPathParams(map[string]string{
+			"id": workflowID,
+		}).
+		SetQueryParams(map[string]string{
+			"sequence": strconv.FormatInt(sequence, 10),
+			"limit":    strconv.Itoa(limit),
+		}).
+		Get("/v2/debug/workflow/{id}/events?sequence={sequenceg}")
+	if err != nil {
+		return nil, nil, err
+	}
+	return specObj, resp.RawResponse, err
 }
