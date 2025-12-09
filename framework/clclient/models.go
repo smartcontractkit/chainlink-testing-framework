@@ -1440,3 +1440,24 @@ type WorkflowDebugEvent struct {
 	Message   []byte    `json:"message"` // protobuf encoded
 	Type      string    `json:"type"`    // protobuf type name
 }
+
+type WorkflowOrphanEvents struct {
+	Data WorkflowOrphanEventsData `json:"data"`
+}
+
+type WorkflowOrphanEventsData struct {
+	Type       string                        `json:"type"`
+	ID         string                        `json:"id"`
+	Attributes WorkflowDebugEventsAttributes `json:"attributes"`
+}
+
+type WorkflowOrphanEventsAttributes struct {
+	Events []WorkflowOrphanEvent `json:"events"`
+}
+
+type WorkflowOrphanEvent struct {
+	Timestamp time.Time `json:"timestamp"`
+	Sequence  int64     `json:"sequence"`
+	Message   []byte    `json:"message"` // protobuf encoded
+	Type      string    `json:"type"`    // protobuf type name
+}

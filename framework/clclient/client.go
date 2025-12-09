@@ -1445,7 +1445,23 @@ func (c *ChainlinkClient) ReadWorkflowEvents(workflowID string, sequence int64, 
 			"sequence": strconv.FormatInt(sequence, 10),
 			"limit":    strconv.Itoa(limit),
 		}).
-		Get("/v2/debug/workflow/{id}/events?sequence={sequenceg}")
+		Get("/v2/debug/workflow/{id}/events?sequence={sequence}&limit={limit}")
+	if err != nil {
+		return nil, nil, err
+	}
+	return specObj, resp.RawResponse, err
+}
+
+func (c *ChainlinkClient) ReadOrphanEvents(sequence int64, limit int) (*WorkflowOrphanEvents, *http.Response, error) {
+	specObj := &WorkflowOrphanEvents{}
+	framework.L.Info().Str(NodeURL, c.Config.URL).Int64("sequence", sequence).Int("limit", limit).Msg("Reading Workflow Orphan Events")
+	resp, err := c.APIClient.R().
+		SetResult(&specObj).
+		SetQueryParams(map[string]string{
+			"sequence": strconv.FormatInt(sequence, 10),
+			"limit":    strconv.Itoa(limit),
+		}).
+		Get("/v2/debug/workflow/orphan_events?sequence={sequence}&limit={limit}")
 	if err != nil {
 		return nil, nil, err
 	}
