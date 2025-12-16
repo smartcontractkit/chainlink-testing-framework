@@ -14,19 +14,28 @@ import (
 	networkTypes "github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/pkg/errors"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 type Output struct {
 	ChipIngress *ChipIngressOutput `toml:"chip_ingress"`
+	ChipConfig  *ChipConfigOutput  `toml:"chip_config"`
 	RedPanda    *RedPandaOutput    `toml:"redpanda"`
 }
 
 type ChipIngressOutput struct {
 	GRPCInternalURL string `toml:"grpc_internal_url"`
 	GRPCExternalURL string `toml:"grpc_external_url"`
+}
+
+type ChipConfigOutput struct {
+	GRPCInternalURL string `toml:"grpc_internal_url"`
+	GRPCExternalURL string `toml:"grpc_external_url"`
+	Username        string `toml:"username"`
+	Password        string `toml:"password"`
 }
 
 type RedPandaOutput struct {
@@ -56,6 +65,12 @@ const (
 
 	DEFAULT_CHIP_INGRESS_GRPC_PORT    = "50051"
 	DEFAULT_CHIP_INGRESS_SERVICE_NAME = "chip-ingress"
+
+	DEFAULT_CHIP_CONFIG_EXTERNAL_PORT = "50052"
+	DEFAULT_CHIP_CONFIG_INTERNAL_PORT = "50051"
+	DEFAULT_CHIP_CONFIG_SERVICE_NAME  = "chip-config"
+	DEFAULT_CHIP_CONFIG_USERNAME      = "admin"
+	DEFAULT_CHIP_CONFIG_PASSWORD      = "password"
 
 	DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT = "18081"
 	DEFAULT_RED_PANDA_KAFKA_PORT           = "19092"
@@ -138,6 +153,11 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 			wait.ForListeningPort(DEFAULT_RED_PANDA_CONSOLE_PORT).WithPollInterval(100*time.Millisecond),
 			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_CONSOLE_PORT).WithPollInterval(100*time.Millisecond),
 		).WithDeadline(2*time.Minute),
+	).WaitForService(DEFAULT_CHIP_CONFIG_SERVICE_NAME,
+		wait.ForAll(
+			wait.ForListeningPort(DEFAULT_CHIP_CONFIG_INTERNAL_PORT).WithPollInterval(100*time.Millisecond),
+			wait.NewHostPortStrategy(DEFAULT_CHIP_CONFIG_EXTERNAL_PORT).WithPollInterval(100*time.Millisecond),
+		),
 	)
 
 	chipIngressContainer, ingressErr := stack.ServiceContainer(ctx, DEFAULT_CHIP_INGRESS_SERVICE_NAME)
@@ -181,17 +201,25 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		framework.L.Debug().Msgf("Container %s is connected to network %s", chipIngressContainer.ID, networkName)
 	}
 
-	// get hosts and ports for chip-ingress and redpanda
+	// get hosts and ports for chip ingress, chip config and redpanda
 	chipIngressExternalHost, chipIngressExternalHostErr := chipIngressContainer.Host(ctx)
 	if chipIngressExternalHostErr != nil {
 		return nil, errors.Wrap(chipIngressExternalHostErr, "failed to get host for Chip Ingress")
+	}
+
+	chipConfigContainer, chipConfigErr := stack.ServiceContainer(ctx, DEFAULT_CHIP_CONFIG_SERVICE_NAME)
+	if chipConfigErr != nil {
+		return nil, errors.Wrap(chipConfigErr, "failed to get chip-config container")
+	}
+	chipConfigExternalHost, chipConfigExternalHostErr := chipConfigContainer.Host(ctx)
+	if chipConfigExternalHostErr != nil {
+		return nil, errors.Wrap(chipConfigExternalHostErr, "failed to get host for Chip Config")
 	}
 
 	redpandaContainer, redpandaErr := stack.ServiceContainer(ctx, DEFAULT_RED_PANDA_SERVICE_NAME)
 	if redpandaErr != nil {
 		return nil, errors.Wrap(redpandaErr, "failed to get redpanda container")
 	}
-
 	redpandaExternalHost, redpandaExternalHostErr := redpandaContainer.Host(ctx)
 	if redpandaExternalHostErr != nil {
 		return nil, errors.Wrap(redpandaExternalHostErr, "failed to get host for Red Panda")
@@ -210,6 +238,12 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		ChipIngress: &ChipIngressOutput{
 			GRPCInternalURL: fmt.Sprintf("http://%s:%s", DEFAULT_CHIP_INGRESS_SERVICE_NAME, DEFAULT_CHIP_INGRESS_GRPC_PORT),
 			GRPCExternalURL: fmt.Sprintf("http://%s:%s", chipIngressExternalHost, DEFAULT_CHIP_INGRESS_GRPC_PORT),
+		},
+		ChipConfig: &ChipConfigOutput{
+			GRPCInternalURL: fmt.Sprintf("%s:%s", DEFAULT_CHIP_CONFIG_SERVICE_NAME, DEFAULT_CHIP_CONFIG_INTERNAL_PORT),
+			GRPCExternalURL: fmt.Sprintf("%s:%s", chipConfigExternalHost, DEFAULT_CHIP_CONFIG_EXTERNAL_PORT),
+			Username:        DEFAULT_CHIP_CONFIG_USERNAME,
+			Password:        DEFAULT_CHIP_CONFIG_PASSWORD,
 		},
 		RedPanda: &RedPandaOutput{
 			SchemaRegistryInternalURL: fmt.Sprintf("http://%s:%s", DEFAULT_RED_PANDA_SERVICE_NAME, DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT),

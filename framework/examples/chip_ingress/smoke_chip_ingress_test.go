@@ -1,13 +1,15 @@
-package examples
+package chip_ingress_test
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	chipingressset "github.com/smartcontractkit/chainlink-testing-framework/framework/components/dockercompose/chip_ingress_set"
-	"github.com/stretchr/testify/require"
 )
 
 type ChipConfig struct {
@@ -16,6 +18,7 @@ type ChipConfig struct {
 
 // use config file: smoke_chip.toml
 func TestChipIngressSmoke(t *testing.T) {
+	os.Setenv("CTF_CONFIGS", "smoke_chip.toml")
 	in, err := framework.Load[ChipConfig](t)
 	require.NoError(t, err, "failed to load config")
 
@@ -31,14 +34,14 @@ func TestChipIngressSmoke(t *testing.T) {
 		createTopicsErr := chipingressset.CreateTopics(ctx, out.RedPanda.KafkaExternalURL, []string{"cre"})
 		require.NoError(t, createTopicsErr, "failed to create topics")
 
-		err := chipingressset.DefaultRegisterAndFetchProtos(ctx, nil, []chipingressset.ProtoSchemaSet{
+		err := chipingressset.FetchAndRegisterProtos(ctx, nil, out.ChipConfig, []chipingressset.SchemaSet{
 			{
-				URI:           "https://github.com/smartcontractkit/chainlink-protos",
-				Ref:           "a653ed4c82a02ec6c0d501dd5af80d02a00009db",
-				Folders:       []string{"workflows"},
-				SubjectPrefix: "cre-",
+				URI:        "https://github.com/smartcontractkit/chainlink-protos",
+				Ref:        "dad9bce66f2b034febfdb6d540c9a02c9b744f47", // first SHA that has workflows/chip-cre.json file
+				SchemaDir:  "workflows",
+				ConfigFile: "chip-cre.json",
 			},
-		}, out.RedPanda.SchemaRegistryExternalURL)
+		})
 		require.NoError(t, err, "failed to register protos")
 	})
 
@@ -50,13 +53,13 @@ func TestChipIngressSmoke(t *testing.T) {
 		createTopicsErr := chipingressset.CreateTopics(ctx, out.RedPanda.KafkaExternalURL, []string{"cre"})
 		require.NoError(t, createTopicsErr, "failed to create topics")
 
-		err := chipingressset.DefaultRegisterAndFetchProtos(ctx, nil, []chipingressset.ProtoSchemaSet{
+		err := chipingressset.FetchAndRegisterProtos(ctx, nil, out.ChipConfig, []chipingressset.SchemaSet{
 			{
-				URI:           "file://../../../../chainlink-protos", // works also with absolute path
-				Folders:       []string{"workflows"},
-				SubjectPrefix: "cre-",
+				URI:        "file://../../../../chainlink-protos", // works also with absolute path
+				SchemaDir:  "workflows",
+				ConfigFile: "chip-cre.json",
 			},
-		}, out.RedPanda.SchemaRegistryExternalURL)
+		})
 		require.NoError(t, err, "failed to register protos")
 	})
 }

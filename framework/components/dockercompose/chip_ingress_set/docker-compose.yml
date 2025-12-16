@@ -42,6 +42,48 @@ services:
       timeout: 10s
       retries: 10
 
+  chip-config:
+    image: ${CHIP_CONFIG_IMAGE:-chip-config:local-cre}
+    container_name: chip-config
+    hostname: chip-config
+    command:
+      - start
+    ports:
+      - "50052:50051"
+    environment:
+      SCHEMA_REGISTRY_URL: http://redpanda-0:8081
+      # SERVER_METRICS_OTEL_EXPORTER_GRPC_ENDPOINT: otel-lgtm:4317
+      SCHEMA_CACHE_ENABLED: true
+      BASIC_AUTH_PREFIX: CC_SA_
+      CC_SA_ADMIN: '{"username": "admin", "password": "password", "allowed_domains":["*"]}'
+      DB_DATABASE: chip_config
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_INSTANCE: postgres-chip-config
+      DB_PORT: 5432
+      LOG_LEVEL: debug
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres-chip-config
+    restart: always
+    environment:
+      POSTGRES_DB: chip_config
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}", "-h", "localhost" ]
+      interval: 5s
+      timeout: 10s
+      retries: 3
+    expose:
+      - 5437
+    ports:
+      - 5437:5432
+
   redpanda-0:
     # modified from the original:
     # - pin point a specific version of the redpanda image to exclude potentially breaking changes
@@ -76,7 +118,6 @@ services:
       start_period: 1s
 
   redpanda-console:
-
     container_name: redpanda-console
     # modified from the original:
     # - pin point a specific version of the console image to ensure compatibility, because v3.x.x uses incompatible configuration format
