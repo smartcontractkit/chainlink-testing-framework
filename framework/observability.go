@@ -100,7 +100,7 @@ func BlockScoutUp(url, chainID string) error {
 	}
 	blockscoutDir := filepath.Join(obsDir, "blockscout")
 	os.Setenv("BLOCKSCOUT_RPC_URL", url)
-	os.Setenv("BLOCKSCOUT_CHAID_ID", chainID)
+	os.Setenv("BLOCKSCOUT_CHAIN_ID", chainID)
 	// old migrations for v15 is still applied somehow, cleaning up DB helps
 	if err := RunCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
