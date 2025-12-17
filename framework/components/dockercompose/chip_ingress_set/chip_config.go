@@ -139,8 +139,8 @@ func parseSchemaConfig(configFilePath, schemaDir string) (*registrationConfig, m
 		key := fmt.Sprintf("%s:%s", s.Entity, s.Path)
 		// if the schema already exists, that means it is referenced by another schema.
 		// so we just need to add the references to the existing schema in the map
-		if s, ok := schemas[key]; ok {
-			s.References = append(s.References, s.References...)
+		if existing, ok := schemas[key]; ok {
+			existing.References = append(existing.References, s.References...)
 			continue
 		}
 
