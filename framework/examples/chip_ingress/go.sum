@@ -106,6 +106,8 @@ github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMn
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cloudevents/sdk-go/binding/format/protobuf/v2 v2.16.1 h1:nLaJZcVAnaqch3K83AyzHfY2DmQM18/L7jvkmKSfkpI=
 github.com/cloudevents/sdk-go/binding/format/protobuf/v2 v2.16.1/go.mod h1:6Q+F2puKpJ6zWv+R02BVnizJICf7++oRT5zwpZQAsbk=
+github.com/cloudevents/sdk-go/v2 v2.16.1 h1:G91iUdqvl88BZ1GYYr9vScTj5zzXSyEuqbfE63gbu9Q=
+github.com/cloudevents/sdk-go/v2 v2.16.1/go.mod h1:v/kVOaWjNfbvc6tkhhlkhvLapj8Aa8kvXiH5GiOHCKI=
 github.com/cloudflare/cfssl v0.0.0-20180223231731-4e2dcbde5004 h1:lkAMpLVBDaj17e85keuznYcH5rqI438v41pKcBl4ZxQ=
 github.com/cloudflare/cfssl v0.0.0-20180223231731-4e2dcbde5004/go.mod h1:yMWuSON2oQp+43nFtAV/uvKQIFpSPerB57DCt9t8sSA=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
@@ -610,8 +612,8 @@ github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 h1:JIAuq3EE
 github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966/go.mod h1:sUM3LWHvSMaG192sy56D9F7CNvL7jUJVXoqM1QKLnog=
 github.com/smartcontractkit/atlas/chip-config v0.0.0-20251113222840-7b4e9ee68fd1 h1:zLB8OA72TaUeAORR6/NtKBMSltKIDLXb7AATf2j4Wsc=
 github.com/smartcontractkit/atlas/chip-config v0.0.0-20251113222840-7b4e9ee68fd1/go.mod h1:+iONAHfTRJLIZ9Sz9z1QPgb4OSm/mPm/mbq72cIm+k0=
-github.com/smartcontractkit/chainlink-common/pkg/chipingress v0.0.11-0.20251124154339-4a9ab3aeeed9 h1:AbDvfmtKk5WNbK4MMhuNMLrKG7Z18Ob/T3ySOXA3fdQ=
-github.com/smartcontractkit/chainlink-common/pkg/chipingress v0.0.11-0.20251124154339-4a9ab3aeeed9/go.mod h1:Zpvul9sTcZNAZOVzt5vBl1XZGNvQebFpnpn3/KOQvOQ=
+github.com/smartcontractkit/chainlink-common/pkg/chipingress v0.0.11-0.20251211140724-319861e514c4 h1:NOUsjsMzNecbjiPWUQGlRSRAutEvCFrqqyETDJeh5q4=
+github.com/smartcontractkit/chainlink-common/pkg/chipingress v0.0.11-0.20251211140724-319861e514c4/go.mod h1:Zpvul9sTcZNAZOVzt5vBl1XZGNvQebFpnpn3/KOQvOQ=
 github.com/spdx/tools-golang v0.5.3 h1:ialnHeEYUC4+hkm5vJm4qz2x+oEJbS0mAMFrNXdQraY=
 github.com/spdx/tools-golang v0.5.3/go.mod h1:/ETOahiAo96Ob0/RAIBmFZw6XN0yTnyr/uFZm2NTMhI=
 github.com/spf13/cast v0.0.0-20150508191742-4d07383ffe94/go.mod h1:r2rcYCSwa1IExKTDiTfzaxqT2FNHs8hODu4LnUfgKEg=
@@ -672,6 +674,8 @@ github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea h1:SXhTLE6pb6eld/
 github.com/tonistiigi/units v0.0.0-20180711220420-6950e57a87ea/go.mod h1:WPnis/6cRcDZSUvVmezrxJPkiO87ThFYsoUiMwWNDJk=
 github.com/tonistiigi/vt100 v0.0.0-20240514184818-90bafcd6abab h1:H6aJ0yKQ0gF49Qb2z5hI1UHxSQt4JMyxebFR15KnApw=
 github.com/tonistiigi/vt100 v0.0.0-20240514184818-90bafcd6abab/go.mod h1:ulncasL3N9uLrVann0m+CDlJKWsIAP34MPcOJF6VRvc=
+github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6KllzawFIhcdPw=
+github.com/valyala/bytebufferpool v1.0.0/go.mod h1:6bBcMArwyJ5K/AmCkWv1jt77kVWyCJ6HpOuEn7z0Csc=
 github.com/vbatts/tar-split v0.11.6 h1:4SjTW5+PU11n6fZenf2IPoV8/tz3AaYHMWjf23envGs=
 github.com/vbatts/tar-split v0.11.6/go.mod h1:dqKNtesIOr2j2Qv3W/cHjnvk9I8+G7oAkFDFN6TCBEI=
 github.com/x448/float16 v0.8.4 h1:qLwI1I70+NjRFUR3zs1JPUCgaCXSh3SW62uAKT1mSBM=

@@ -6,7 +6,7 @@ jobs:
   test:
     defaults:
       run:
-        working-directory: framework/examples/myproject
+        working-directory: framework/examples/chip_ingress
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -70,7 +70,8 @@ jobs:
         if: steps.changes.outputs.src == 'true'
         env:
           CTF_CONFIGS: ${{ matrix.test.config }}
-          CHIP_INGRESS_IMAGE: ${{ secrets.AWS_ACCOUNT_ID_PROD }}.dkr.ecr.us-west-2.amazonaws.com/atlas-chip-ingress:qa-latest
+          CHIP_INGRESS_IMAGE: ${{ secrets.AWS_ACCOUNT_ID_PROD }}.dkr.ecr.us-west-2.amazonaws.com/atlas-chip-ingress:da84cb72d3a160e02896247d46ab4b9806ebee2f
+          CHIP_CONFIG_IMAGE: ${{ secrets.AWS_ACCOUNT_ID_PROD }}.dkr.ecr.us-west-2.amazonaws.com/atlas-chip-config:7b4e9ee68fd1c737dd3480b5a3ced0188f29b969
           CTF_LOG_LEVEL: debug
         run: |
           go test -timeout ${{ matrix.test.timeout }} -v -count ${{ matrix.test.count }} -run ${{ matrix.test.name }}

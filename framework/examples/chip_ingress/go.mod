@@ -24,7 +24,6 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
-	github.com/avast/retry-go/v4 v4.6.1 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.31.0 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.27.39 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.37 // indirect
@@ -44,6 +43,7 @@ require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cloudevents/sdk-go/binding/format/protobuf/v2 v2.16.1 // indirect
+	github.com/cloudevents/sdk-go/v2 v2.16.1 // indirect
 	github.com/compose-spec/compose-go/v2 v2.6.0 // indirect
 	github.com/confluentinc/confluent-kafka-go v1.9.2 // indirect
 	github.com/containerd/console v1.0.4 // indirect
@@ -170,7 +170,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 // indirect
 	github.com/smartcontractkit/atlas/chip-config v0.0.0-20251113222840-7b4e9ee68fd1 // indirect
-	github.com/smartcontractkit/chainlink-common/pkg/chipingress v0.0.11-0.20251124154339-4a9ab3aeeed9 // indirect
+	github.com/smartcontractkit/chainlink-common/pkg/chipingress v0.0.11-0.20251211140724-319861e514c4 // indirect
 	github.com/spf13/cobra v1.10.1 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/testcontainers/testcontainers-go v0.38.0 // indirect

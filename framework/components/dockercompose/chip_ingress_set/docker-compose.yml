@@ -31,6 +31,12 @@ services:
       CSA_AUTH_USERNAME: ${CSA_AUTH_USERNAME:-}
       CSA_AUTH_PASSWORD: ${CSA_AUTH_PASSWORD:-}
       CSA_AUTH_REQUIRE_TLS: ${CSA_AUTH_REQUIRE_TLS:-false}
+      CHIP_CONFIG_ENABLED: ${CHIP_CONFIG_ENABLED:-true}
+      CHIP_CONFIG_REQUIRE_TLS: ${CHIP_CONFIG_REQUIRE_TLS:-false}
+      CHIP_CONFIG_AUTH_USERNAME: ${CHIP_CONFIG_AUTH_USERNAME:-admin}
+      CHIP_CONFIG_AUTH_PASSWORD: ${CHIP_CONFIG_AUTH_PASSWORD:-password}
+      CHIP_CONFIG_HOST: ${CHIP_CONFIG_HOST:-chip-config}
+      CHIP_CONFIG_PORT: ${CHIP_CONFIG_PORT:-50051}
     ports:
       - "50051:50051"
       - "9090:9090"
@@ -75,7 +81,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}", "-h", "localhost" ]
+      test: [ "CMD", "pg_isready", "-U", "postgres", "-d", "chip_config", "-h", "localhost" ]
       interval: 5s
       timeout: 10s
       retries: 3

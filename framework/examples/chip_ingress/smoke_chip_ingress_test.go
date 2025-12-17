@@ -2,7 +2,6 @@ package chip_ingress_test
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -18,7 +17,6 @@ type ChipConfig struct {
 
 // use config file: smoke_chip.toml
 func TestChipIngressSmoke(t *testing.T) {
-	os.Setenv("CTF_CONFIGS", "smoke_chip.toml")
 	in, err := framework.Load[ChipConfig](t)
 	require.NoError(t, err, "failed to load config")
 
@@ -34,7 +32,7 @@ func TestChipIngressSmoke(t *testing.T) {
 		createTopicsErr := chipingressset.CreateTopics(ctx, out.RedPanda.KafkaExternalURL, []string{"cre"})
 		require.NoError(t, createTopicsErr, "failed to create topics")
 
-		err := chipingressset.FetchAndRegisterProtos(ctx, nil, out.ChipConfig, []chipingressset.SchemaSet{
+		err := chipingressset.FetchAndRegisterProtos(ctx, nil, out.ChipIngress, []chipingressset.SchemaSet{
 			{
 				URI:        "https://github.com/smartcontractkit/chainlink-protos",
 				Ref:        "dad9bce66f2b034febfdb6d540c9a02c9b744f47", // first SHA that has workflows/chip-cre.json file
@@ -53,7 +51,7 @@ func TestChipIngressSmoke(t *testing.T) {
 		createTopicsErr := chipingressset.CreateTopics(ctx, out.RedPanda.KafkaExternalURL, []string{"cre"})
 		require.NoError(t, createTopicsErr, "failed to create topics")
 
-		err := chipingressset.FetchAndRegisterProtos(ctx, nil, out.ChipConfig, []chipingressset.SchemaSet{
+		err := chipingressset.FetchAndRegisterProtos(ctx, nil, out.ChipIngress, []chipingressset.SchemaSet{
 			{
 				URI:        "file://../../../../chainlink-protos", // works also with absolute path
 				SchemaDir:  "workflows",

@@ -51,6 +51,7 @@ require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cloudevents/sdk-go/binding/format/protobuf/v2 v2.16.1 // indirect
+	github.com/cloudevents/sdk-go/v2 v2.16.1 // indirect
 	github.com/compose-spec/compose-go/v2 v2.6.0 // indirect
 	github.com/containerd/console v1.0.4 // indirect
 	github.com/containerd/containerd/api v1.8.0 // indirect

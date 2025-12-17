@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/oauth2"
 
+	"github.com/smartcontractkit/chainlink-common/pkg/chipingress"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
@@ -30,7 +31,7 @@ func (s *SchemaSet) ConfigFileName() string {
 	return "chip.json"
 }
 
-func FetchAndRegisterProtos(ctx context.Context, client *github.Client, chipConfigOutput *ChipConfigOutput, schemaSet []SchemaSet) error {
+func FetchAndRegisterProtos(ctx context.Context, client *github.Client, chipIngressOutput *ChipIngressOutput, schemaSet []SchemaSet) error {
 	framework.L.Info().Msgf("Registering and fetching schemas from %d repositories", len(schemaSet))
 
 	for _, set := range schemaSet {
@@ -64,7 +65,7 @@ func FetchAndRegisterProtos(ctx context.Context, client *github.Client, chipConf
 		schemaDir := filepath.Join(repoPath, set.SchemaDir)
 		configFilePath := filepath.Join(schemaDir, set.ConfigFileName())
 
-		registerErr := registerWithChipConfigService(ctx, chipConfigOutput, schemaDir, configFilePath)
+		registerErr := registerWithChipConfigService(ctx, chipIngressOutput, schemaDir, configFilePath)
 		if registerErr != nil {
 			return errors.Wrapf(registerErr, "failed to register schemas from '%s' using Chip Config", set.URI)
 		}
@@ -73,7 +74,7 @@ func FetchAndRegisterProtos(ctx context.Context, client *github.Client, chipConf
 	return nil
 }
 
-func registerWithChipConfigService(ctx context.Context, chipConfigOutput *ChipConfigOutput, schemaDir, configFilePath string) error {
+func registerWithChipConfigService(ctx context.Context, chipIngressOutput *ChipIngressOutput, schemaDir, configFilePath string) error {
 	registrationConfig, schemas, rErr := parseSchemaConfig(configFilePath, schemaDir)
 	if rErr != nil {
 		return fmt.Errorf("failed to parse schema config: %w", rErr)
@@ -84,14 +85,14 @@ func registerWithChipConfigService(ctx context.Context, chipConfigOutput *ChipCo
 
 	pbSchemas := convertToPbSchemas(schemas, registrationConfig.Domain)
 
-	client, err := chipConfigClient(ctx, chipConfigOutput)
-	if err != nil {
-		return err
+	client, cErr := chipingress.NewClient(chipIngressOutput.GRPCExternalURL)
+	if cErr != nil {
+		return fmt.Errorf("failed to create Chip client: %w", cErr)
 	}
 
-	_, err = client.RegisterSchema(ctx, pbSchemas...)
-	if err != nil {
-		return err
+	_, regErr := client.RegisterSchemas(ctx, pbSchemas...)
+	if regErr != nil {
+		return fmt.Errorf("failed to register schemas: %w", regErr)
 	}
 
 	fmt.Printf("✅ Registered %d schema(s)\n", len(pbSchemas))

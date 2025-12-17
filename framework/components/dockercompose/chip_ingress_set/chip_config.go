@@ -14,35 +14,12 @@ import (
 	"github.com/jhump/protocompile"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
-	cc "github.com/smartcontractkit/atlas/chip-config/client" // TODO: can we move it to chainlink-common?
 	"github.com/smartcontractkit/chainlink-common/pkg/chipingress/pb"
 )
 
 // code copied from: https://github.com/smartcontractkit/atlas/blob/master/chip-cli/config/config.go and https://github.com/smartcontractkit/atlas/blob/master/chip-cli/config/proto_validator.go
-// reason: avoid dependency on the chip-cli module in the testing framework
-func chipConfigClient(ctx context.Context, chipConfigOutput *ChipConfigOutput) (cc.ChipConfigClient, error) {
-	fmt.Printf("🔌 Initiating connection to Chip Config at \033[1m%s\033[0m...\n\n", chipConfigOutput.GRPCExternalURL)
-
-	var clientOpts []cc.ClientOpt
-	clientOpts = append(clientOpts, cc.WithBasicAuth(chipConfigOutput.Username, chipConfigOutput.Password))
-
-	client, err := cc.NewChipConfigClient(chipConfigOutput.GRPCExternalURL, clientOpts...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Chip Config client: %w", err)
-	}
-
-	// Check we can connect to the server
-	_, pErr := client.Ping(ctx)
-	if pErr != nil {
-		return nil, fmt.Errorf("failed to connect to Chip Config: %w", pErr)
-	}
-
-	fmt.Printf("🔗 Connected to Chip Config\n\n")
-
-	return client, nil
-}
-
-func convertToPbSchemas(schemas map[string]*Schema, domain string) []*pb.Schema {
+// reason: avoid dependency on the private atlas module
+func convertToPbSchemas(schemas map[string]*schema, domain string) []*pb.Schema {
 	pbSchemas := make([]*pb.Schema, len(schemas))
 
 	for i, schema := range slices.Collect(maps.Values(schemas)) {
@@ -84,41 +61,41 @@ func convertToPbSchemas(schemas map[string]*Schema, domain string) []*pb.Schema 
 	return pbSchemas
 }
 
-type RegistrationConfig struct {
+type registrationConfig struct {
 	Domain  string   `json:"domain"`
-	Schemas []Schema `json:"schemas"`
+	Schemas []schema `json:"schemas"`
 }
 
-type Schema struct {
+type schema struct {
 	Entity        string            `json:"entity"`
 	Path          string            `json:"path"`
-	References    []SchemaReference `json:"references,omitempty"`
+	References    []schemaReference `json:"references,omitempty"`
 	SchemaContent string
-	Metadata      Metadata `json:"metadata,omitempty"`
+	Metadata      metadata `json:"metadata,omitempty"`
 }
 
-type Metadata struct {
-	Stores map[string]Store `json:"stores"`
+type metadata struct {
+	Stores map[string]store `json:"stores"`
 }
 
-type Store struct {
+type store struct {
 	Index     []string `json:"index"`
 	Partition []string `json:"partition"`
 }
 
-type SchemaReference struct {
+type schemaReference struct {
 	Name   string `json:"name"`
 	Entity string `json:"entity"`
 	Path   string `json:"path"`
 }
 
-func parseSchemaConfig(configFilePath, schemaDir string) (*RegistrationConfig, map[string]*Schema, error) {
+func parseSchemaConfig(configFilePath, schemaDir string) (*registrationConfig, map[string]*schema, error) {
 	cfg, err := readConfig(configFilePath)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	if err := ValidateEntityNames(cfg, schemaDir); err != nil {
+	if err := validateEntityNames(cfg, schemaDir); err != nil {
 		return nil, nil, fmt.Errorf("entity name validation failed: %w", err)
 	}
 
@@ -126,12 +103,11 @@ func parseSchemaConfig(configFilePath, schemaDir string) (*RegistrationConfig, m
 	// We will use a map to store the schemas by entity and path
 	// this is because more than one schema may reference the same schema
 	// technically, since SR is idempotent, this is not strictly necessary, as duplicate registrations are noop
-	schemas := make(map[string]*Schema)
+	schemas := make(map[string]*schema)
 
-	for _, schema := range cfg.Schemas {
-
+	for _, s := range cfg.Schemas {
 		// For each of the schemas, we need to get the references schema content
-		for _, reference := range schema.References {
+		for _, reference := range s.References {
 
 			// read schema contents
 			refSchemaContent, err := os.ReadFile(path.Join(schemaDir, reference.Path))
@@ -147,7 +123,7 @@ func parseSchemaConfig(configFilePath, schemaDir string) (*RegistrationConfig, m
 				continue
 			}
 
-			schemas[key] = &Schema{
+			schemas[key] = &schema{
 				Entity:        reference.Entity,
 				Path:          reference.Path,
 				SchemaContent: string(refSchemaContent),
@@ -155,24 +131,24 @@ func parseSchemaConfig(configFilePath, schemaDir string) (*RegistrationConfig, m
 		}
 
 		// add the root schema to the map
-		schemaContent, err := os.ReadFile(path.Join(schemaDir, schema.Path))
+		schemaContent, err := os.ReadFile(path.Join(schemaDir, s.Path))
 		if err != nil {
 			return nil, nil, fmt.Errorf("error reading schema: %v", err)
 		}
 
-		key := fmt.Sprintf("%s:%s", schema.Entity, schema.Path)
+		key := fmt.Sprintf("%s:%s", s.Entity, s.Path)
 		// if the schema already exists, that means it is referenced by another schema.
 		// so we just need to add the references to the existing schema in the map
 		if s, ok := schemas[key]; ok {
-			s.References = append(s.References, schema.References...)
+			s.References = append(s.References, s.References...)
 			continue
 		}
 
-		schemas[key] = &Schema{
-			Entity:        schema.Entity,
-			Path:          schema.Path,
+		schemas[key] = &schema{
+			Entity:        s.Entity,
+			Path:          s.Path,
 			SchemaContent: string(schemaContent),
-			References:    schema.References,
+			References:    s.References,
 		}
 
 	}
@@ -180,14 +156,14 @@ func parseSchemaConfig(configFilePath, schemaDir string) (*RegistrationConfig, m
 	return cfg, schemas, nil
 }
 
-func readConfig(path string) (*RegistrationConfig, error) {
+func readConfig(path string) (*registrationConfig, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open config file '%s': %w", path, err)
 	}
 	defer f.Close()
 
-	var cfg RegistrationConfig
+	var cfg registrationConfig
 
 	dErr := json.NewDecoder(f).Decode(&cfg)
 	if dErr != nil {
@@ -197,10 +173,10 @@ func readConfig(path string) (*RegistrationConfig, error) {
 	return &cfg, nil
 }
 
-// ValidateEntityNames validates that all entity names in the config match the fully qualified
+// validateEntityNames validates that all entity names in the config match the fully qualified
 // protobuf names (package.MessageName) from their corresponding proto files.
 // It collects all validation errors and returns them together for better user experience.
-func ValidateEntityNames(cfg *RegistrationConfig, schemaDir string) error {
+func validateEntityNames(cfg *registrationConfig, schemaDir string) error {
 	var errors []string
 
 	for _, schema := range cfg.Schemas {
