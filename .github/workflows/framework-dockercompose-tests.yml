@@ -66,7 +66,7 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
-      - name: Run System Tests
+      - name: Run Docker Compose Tests
         if: steps.changes.outputs.src == 'true'
         env:
           CTF_CONFIGS: ${{ matrix.test.config }}
