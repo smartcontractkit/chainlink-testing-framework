@@ -11,7 +11,6 @@ require (
 	github.com/google/go-github/v72 v72.0.0
 	github.com/jhump/protocompile v0.0.0-20221021153901-4f6f732835e8
 	github.com/pkg/errors v0.9.1
-	github.com/smartcontractkit/atlas/chip-config v0.0.0-20251113222840-7b4e9ee68fd1
 	github.com/smartcontractkit/chainlink-common/pkg/chipingress v0.0.11-0.20251211140724-319861e514c4
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.0.0-00010101000000-000000000000
 	github.com/smartcontractkit/freeport v0.1.3-0.20250716200817-cb5dfd0e369e
@@ -212,6 +211,7 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.41.0 // indirect
 	golang.org/x/exp v0.0.0-20250718183923-645b1fa84792 // indirect
+	golang.org/x/mod v0.27.0 // indirect
 	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
