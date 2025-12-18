@@ -63,7 +63,7 @@ type Input struct {
 	FaucetPort string `toml:"faucet_port"`
 
 	// Canton specific
-	NumberOfValidators int `toml:"number_of_validators"`
+	NumberOfCantonValidators int `toml:"number_of_canton_validators"`
 
 	// GAPv2 specific params
 	HostNetworkMode  bool   `toml:"host_network_mode"`

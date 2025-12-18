@@ -114,8 +114,7 @@ server {
 	`
 
 	// Add additional validators
-	for i := range numberOfValidators {
-		i += 1 // start from 1 since SV is 0
+	for i := 1; i <= numberOfValidators; i++ {
 		template += fmt.Sprintf(`
 # Participant %[1]d
 	server {

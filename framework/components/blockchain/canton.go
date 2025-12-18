@@ -11,8 +11,8 @@ import (
 )
 
 func newCanton(ctx context.Context, in *Input) (*Output, error) {
-	if in.NumberOfValidators >= 100 {
-		return nil, fmt.Errorf("number of validators too high: %d, max is 99", in.NumberOfValidators)
+	if in.NumberOfCantonValidators >= 100 {
+		return nil, fmt.Errorf("number of validators too high: %d, max is 99", in.NumberOfCantonValidators)
 	}
 
 	// TODO - remove debug prints
@@ -25,7 +25,7 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	fmt.Println("Network created:", dockerNetwork.Name)
 
 	// Set up Postgres container
-	postgresReq := canton.PostgresContainerRequest(in.NumberOfValidators, dockerNetwork.Name)
+	postgresReq := canton.PostgresContainerRequest(in.NumberOfCantonValidators, dockerNetwork.Name)
 	fmt.Printf("Starting postgres container %s...\n", postgresReq.Name)
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: postgresReq,
@@ -38,7 +38,7 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	fmt.Println("Postgres container started")
 
 	// Set up Canton container
-	cantonReq := canton.CantonContainerRequest(dockerNetwork.Name, in.NumberOfValidators, in.Image)
+	cantonReq := canton.CantonContainerRequest(dockerNetwork.Name, in.NumberOfCantonValidators, in.Image)
 	fmt.Printf("Starting canton container %s...\n", cantonReq.Name)
 	cantonContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: cantonReq,
@@ -51,7 +51,7 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	fmt.Println("Canton container started")
 
 	// Set up Splice container
-	spliceReq := canton.SpliceContainerRequest(dockerNetwork.Name, in.NumberOfValidators, in.Image)
+	spliceReq := canton.SpliceContainerRequest(dockerNetwork.Name, in.NumberOfCantonValidators, in.Image)
 	fmt.Printf("Starting splice container %s...\n", spliceReq.Name)
 	spliceContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: spliceReq,
@@ -64,7 +64,7 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	fmt.Println("Splice container started")
 
 	// Set up Nginx container
-	nginxReq := canton.NginxContainerRequest(dockerNetwork.Name, in.NumberOfValidators, in.Port)
+	nginxReq := canton.NginxContainerRequest(dockerNetwork.Name, in.NumberOfCantonValidators, in.Port)
 	fmt.Printf("Starting nginx container %s...\n", nginxReq.Name)
 	nginxContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: nginxReq,

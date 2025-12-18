@@ -29,8 +29,7 @@ curl -f http://localhost:5014/api/sv/readyz
 # SV
 curl -f "http://localhost:${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}00/api/validator/readyz"
 `
-	for i := range numberOfValidators {
-		i += 1 // start from 1 since SV is 0
+	for i := 1; i <= numberOfValidators; i++ {
 		script += fmt.Sprintf(`
 # Participant %02[1]d
 curl -f "http://localhost:${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}%02[1]d/api/validator/readyz"
@@ -275,8 +274,7 @@ canton.validator-apps.sv-validator_backend = ${_validator_backend} {
 
 `
 	// Add additional participants
-	for i := range numberOfValidators {
-		i += 1 // start from 1 since SV is 0
+	for i := 1; i <= numberOfValidators; i++ {
 		config += fmt.Sprintf(`
 # Participant %02[1]d
 canton.validator-apps.participant%[1]d-validator_backend = ${_validator_backend} {

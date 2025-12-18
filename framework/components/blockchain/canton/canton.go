@@ -46,8 +46,7 @@ grpcurl -plaintext "localhost:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}
 
 	`
 	// Add additional participants
-	for i := range numberOfValidators {
-		i += 1 // start from 1 since SV is 0
+	for i := 1; i <= numberOfValidators; i++ {
 		script += fmt.Sprintf(`
 # Participant %02[1]d
 echo "Checking ${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}%02[1]d"
@@ -280,8 +279,7 @@ canton.participants.sv = ${_participant} {
 	`
 
 	// Add additional participants
-	for i := range numberOfValidators {
-		i += 1 // start from 1 since SV is 0
+	for i := 1; i <= numberOfValidators; i++ {
 		config += fmt.Sprintf(`
 # Participant %02[1]d
 canton.participants.participant%[1]d = ${_participant} {
