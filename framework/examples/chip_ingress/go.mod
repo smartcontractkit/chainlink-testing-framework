@@ -7,6 +7,9 @@ replace (
 	github.com/smartcontractkit/chainlink-testing-framework/framework/components/dockercompose => ../../components/dockercompose
 )
 
+// make vulnerability scanner happy
+replace github.com/containerd/containerd/v2 => github.com/containerd/containerd/v2 v2.1.5
+
 require (
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.8.9
 	github.com/smartcontractkit/chainlink-testing-framework/framework/components/dockercompose v0.0.0-00010101000000-000000000000

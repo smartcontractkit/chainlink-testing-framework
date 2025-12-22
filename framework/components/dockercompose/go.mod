@@ -4,6 +4,9 @@ go 1.25.3
 
 replace github.com/smartcontractkit/chainlink-testing-framework/framework => ../../../framework
 
+// make vulnerability scanner happy
+replace github.com/containerd/containerd/v2 => github.com/containerd/containerd/v2 v2.1.5
+
 require (
 	github.com/confluentinc/confluent-kafka-go v1.9.2
 	github.com/docker/docker v28.5.1+incompatible
