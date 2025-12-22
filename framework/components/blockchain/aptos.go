@@ -17,8 +17,8 @@ import (
 const (
 	DefaultAptosAPIPort     = "8080"
 	DefaultAptosFaucetPort  = "8081"
-	DefaultAptosArm64Image  = "ghcr.io/friedemannf/aptos-tools:aptos-node-v1.36.6"
-	DefaultAptosX86_64Image = "aptoslabs/tools:aptos-node-v1.36.6"
+	DefaultAptosArm64Image  = "ghcr.io/friedemannf/aptos-tools:aptos-node-v1.38.6"
+	DefaultAptosX86_64Image = "aptoslabs/tools:aptos-node-v1.38.6"
 )
 
 var (
