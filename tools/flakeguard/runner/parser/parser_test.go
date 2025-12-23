@@ -1091,50 +1091,49 @@ func TestParseFiles_WithPanicEventFile(t *testing.T) {
 
 	// Map test names to expected values for easier assertions
 	expected := map[string]struct {
-			pkg         string
-			pkgPanic    bool
-			panic       bool
-			passRatio   float64
-			runs        int
-			failures    int
-			successes   int
-			skipped     bool
-			skips       int
+		pkg       string
+		pkgPanic  bool
+		panic     bool
+		passRatio float64
+		runs      int
+		failures  int
+		successes int
+		skipped   bool
+		skips     int
 	}{
-			"Test_EventHandlerStateSync": {
-					pkg: "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm/capabilities/workflows/syncer", pkgPanic: true, panic: false, passRatio: 1, runs: 1, failures: 0, successes: 1, skipped: false, skips: 0,
-			},
-			"Test_InitialStateSync": {
-					pkg: "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm/capabilities/workflows/syncer", pkgPanic: true, panic: false, passRatio: 1, runs: 1, failures: 0, successes: 1, skipped: false, skips: 0,
-			},
-			"Test_RegistrySyncer_SkipsEventsNotBelongingToDON": {
-					pkg: "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm/capabilities/workflows/syncer", pkgPanic: true, panic: false, passRatio: 1, runs: 1, failures: 0, successes: 1, skipped: false, skips: 0,
-			},
-			"Test_RegistrySyncer_WorkflowRegistered_InitiallyActivated": {
-					pkg: "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm/capabilities/workflows/syncer", pkgPanic: true, panic: true, passRatio: 0, runs: 1, failures: 1, successes: 0, skipped: false, skips: 0,
-			},
-			"Test_RegistrySyncer_WorkflowRegistered_InitiallyPaused": {
-					pkg: "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm/capabilities/workflows/syncer", pkgPanic: true, panic: false, passRatio: 1, runs: 1, failures: 0, successes: 1, skipped: false, skips: 0,
-			},
-			"Test_SecretsWorker": {
-					pkg: "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm/capabilities/workflows/syncer", pkgPanic: false, panic: false, passRatio: 1, runs: 0, failures: 0, successes: 0, skipped: true, skips: 1,
-			},
+		"Test_EventHandlerStateSync": {
+			pkg: "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm/capabilities/workflows/syncer", pkgPanic: true, panic: false, passRatio: 1, runs: 1, failures: 0, successes: 1, skipped: false, skips: 0,
+		},
+		"Test_InitialStateSync": {
+			pkg: "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm/capabilities/workflows/syncer", pkgPanic: true, panic: false, passRatio: 1, runs: 1, failures: 0, successes: 1, skipped: false, skips: 0,
+		},
+		"Test_RegistrySyncer_SkipsEventsNotBelongingToDON": {
+			pkg: "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm/capabilities/workflows/syncer", pkgPanic: true, panic: false, passRatio: 1, runs: 1, failures: 0, successes: 1, skipped: false, skips: 0,
+		},
+		"Test_RegistrySyncer_WorkflowRegistered_InitiallyActivated": {
+			pkg: "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm/capabilities/workflows/syncer", pkgPanic: true, panic: true, passRatio: 0, runs: 1, failures: 1, successes: 0, skipped: false, skips: 0,
+		},
+		"Test_RegistrySyncer_WorkflowRegistered_InitiallyPaused": {
+			pkg: "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm/capabilities/workflows/syncer", pkgPanic: true, panic: false, passRatio: 1, runs: 1, failures: 0, successes: 1, skipped: false, skips: 0,
+		},
+		"Test_SecretsWorker": {
+			pkg: "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm/capabilities/workflows/syncer", pkgPanic: false, panic: false, passRatio: 1, runs: 0, failures: 0, successes: 0, skipped: true, skips: 1,
+		},
 	}
 
 	for _, r := range results {
-			exp, ok := expected[r.TestName]
-			require.True(t, ok, "Unexpected test name: %s", r.TestName)
-			assert.Equal(t, exp.pkg, r.TestPackage, "Package mismatch for %s", r.TestName)
-			assert.Equal(t, exp.pkgPanic, r.PackagePanic, "PackagePanic mismatch for %s", r.TestName)
-			assert.Equal(t, exp.panic, r.Panic, "Panic mismatch for %s", r.TestName)
-			assert.InDelta(t, exp.passRatio, r.PassRatio, 0.001, "PassRatio mismatch for %s", r.TestName)
-			assert.Equal(t, exp.runs, r.Runs, "Runs mismatch for %s", r.TestName)
-			assert.Equal(t, exp.failures, r.Failures, "Failures mismatch for %s", r.TestName)
-			assert.Equal(t, exp.successes, r.Successes, "Successes mismatch for %s", r.TestName)
-			assert.Equal(t, exp.skipped, r.Skipped, "Skipped mismatch for %s", r.TestName)
-			assert.Equal(t, exp.skips, r.Skips, "Skips count mismatch for %s", r.TestName)
+		exp, ok := expected[r.TestName]
+		require.True(t, ok, "Unexpected test name: %s", r.TestName)
+		assert.Equal(t, exp.pkg, r.TestPackage, "Package mismatch for %s", r.TestName)
+		assert.Equal(t, exp.pkgPanic, r.PackagePanic, "PackagePanic mismatch for %s", r.TestName)
+		assert.Equal(t, exp.panic, r.Panic, "Panic mismatch for %s", r.TestName)
+		assert.InDelta(t, exp.passRatio, r.PassRatio, 0.001, "PassRatio mismatch for %s", r.TestName)
+		assert.Equal(t, exp.runs, r.Runs, "Runs mismatch for %s", r.TestName)
+		assert.Equal(t, exp.failures, r.Failures, "Failures mismatch for %s", r.TestName)
+		assert.Equal(t, exp.successes, r.Successes, "Successes mismatch for %s", r.TestName)
+		assert.Equal(t, exp.skipped, r.Skipped, "Skipped mismatch for %s", r.TestName)
+		assert.Equal(t, exp.skips, r.Skips, "Skips count mismatch for %s", r.TestName)
 	}
-
 
 }
 
