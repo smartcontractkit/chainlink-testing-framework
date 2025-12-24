@@ -8,7 +8,6 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/network"
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
@@ -21,7 +20,6 @@ const (
 	DefaultTonHlWalletMnemonic = "twenty unfair stay entry during please water april fabric morning length lumber style tomorrow melody similar forum width ride render void rather custom coin"
 	// internals
 	defaultTonHTTPServerPort   = "8000"
-	defaultLiteServerPort      = "40000"
 	defaultLiteServerPublicKey = "E7XwFSQzNkcRepUC23J2nRpASXpnsEKmyyHYV4u/FZY="
 	liteServerPortOffset       = 100 // arbitrary offset for lite server port
 )
@@ -53,22 +51,13 @@ func newTon(ctx context.Context, in *Input) (*Output, error) {
 		LiteServer: strconv.Itoa(base + liteServerPortOffset),
 	}
 
-	network, err := network.New(ctx,
-		network.WithAttachable(),
-		network.WithLabels(framework.DefaultTCLabels()),
-	)
-	if err != nil {
-		return nil, err
-	}
-	networkName := network.Name
-
 	baseEnv := map[string]string{
 		"GENESIS": "true",
 		"NAME":    "genesis",
 
 		"EMBEDDED_FILE_HTTP_SERVER":      "true",
-		"EMBEDDED_FILE_HTTP_SERVER_PORT": defaultTonHTTPServerPort,
-		"LITE_PORT":                      defaultLiteServerPort,
+		"EMBEDDED_FILE_HTTP_SERVER_PORT": ports.HTTPServer,
+		"LITE_PORT":                      ports.LiteServer,
 
 		"CUSTOM_PARAMETERS": "--state-ttl 315360000 --archive-ttl 315360000",
 	}
@@ -80,14 +69,15 @@ func newTon(ctx context.Context, in *Input) (*Output, error) {
 			finalEnv[key] = value
 		}
 	}
+	networkName := framework.DefaultNetworkName
 
 	req := testcontainers.ContainerRequest{
 		Image:           in.Image,
 		AlwaysPullImage: in.PullImage,
 		Name:            framework.DefaultTCName("ton-genesis"),
 		ExposedPorts: []string{
-			fmt.Sprintf("%s:%s/tcp", ports.HTTPServer, defaultTonHTTPServerPort),
-			fmt.Sprintf("%s:%s/tcp", ports.LiteServer, defaultLiteServerPort),
+			fmt.Sprintf("%s:%s/tcp", ports.HTTPServer, ports.HTTPServer),
+			fmt.Sprintf("%s:%s/tcp", ports.LiteServer, ports.LiteServer),
 			"40003/udp",
 			"40002/tcp",
 			"40001/udp",
@@ -98,7 +88,7 @@ func newTon(ctx context.Context, in *Input) (*Output, error) {
 		Env:            finalEnv,
 		WaitingFor: wait.ForExec([]string{
 			"/usr/local/bin/lite-client",
-			"-a", fmt.Sprintf("127.0.0.1:%s", defaultLiteServerPort),
+			"-a", fmt.Sprintf("127.0.0.1:%s", ports.LiteServer),
 			"-b", defaultLiteServerPublicKey,
 			"-t", "3", "-c", "last",
 		}).WithStartupTimeout(2 * time.Minute),
