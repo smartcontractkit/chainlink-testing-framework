@@ -15,9 +15,10 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/smartcontractkit/freeport"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/dockercompose/utils"
-	"github.com/smartcontractkit/freeport"
 )
 
 const DefaultPostgresDSN = "postgres://postgres:postgres@postgres:5432/billing_platform?sslmode=disable"

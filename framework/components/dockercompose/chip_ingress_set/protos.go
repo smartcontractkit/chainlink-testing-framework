@@ -14,6 +14,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/smartcontractkit/chainlink-common/pkg/chipingress"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
