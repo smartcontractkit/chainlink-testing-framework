@@ -19,6 +19,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-common/pkg/chipingress"
 	"github.com/smartcontractkit/chainlink-common/pkg/chipingress/pb"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
