@@ -6,6 +6,10 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"os"
+	"strings"
+	"text/template"
+
 	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsec2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
@@ -16,9 +20,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/crypto/ssh"
-	"os"
-	"strings"
-	"text/template"
 )
 
 const (
