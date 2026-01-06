@@ -7,12 +7,10 @@ services:
       - tempo_data:/tmp/tempo
     ports:
       - "3200:3200"   # tempo
-#      - "5317:4317"   # otlp grpc
-#      - "5318:4318"   # otlp http
       - "9411:9411"   # zipkin
       - "14268:14268" # jaeger ingest
       - "14250:14250" # jaeger grpc
-      - "55680:55680" # otlp http legacy
+      - "14400:55680" # otlp http legacy
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.123.0
     volumes:
