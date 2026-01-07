@@ -10,62 +10,68 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain/canton"
 )
 
+// newCanton sets up a Canton blockchain network with the specified number of validators.
+// It creates a Docker network and starts the necessary containers for Postgres, Canton, Splice, and an Nginx reverse proxy.
+//
+// The reverse proxy is used to allow access to all validator participants through a single HTTP endpoint.
+// The following routes are configured for each participant and the Super Validator (SV):
+//   - http://[PARTICIPANT].json-ledger-api.localhost:[PORT] 	-> JSON Ledger API
+//   - grpc://[PARTICIPANT].grpc-ledger-api.localhost:[PORT] 	-> gRPC Ledger API
+//   - http://[PARTICIPANT].admin-api.localhost:[PORT] 			-> Admin API
+//   - http://[PARTICIPANT].wallet.localhost:[PORT] 			-> Wallet API
+//   - http://[PARTICIPANT].http-health-check.localhost:[PORT] 	-> HTTP Health Check
+//   - grpc://[PARTICIPANT].grpc-health-check.localhost:[PORT] 	-> gRPC Health Check
+// To access a participant's endpoints, replace [PARTICIPANT] with the participant's identifier, i.e. `sv`, `participant01`, `participant02`, ...
+//
+// Additionally, the global Scan service is accessible via:
+//   - http://scan.localhost:[PORT]/api/scan 					-> Scan API
+//   - http://scan.localhost:[PORT]/registry 					-> Scan Registry
+// The PORT is the same for all routes and is specified in the input parameters.
+//
+// Note: The maximum number of validators supported is 99, participants are numbered starting from `participant01` through `participant99`.
 func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	if in.NumberOfCantonValidators >= 100 {
 		return nil, fmt.Errorf("number of validators too high: %d, max is 99", in.NumberOfCantonValidators)
 	}
 
-	// TODO - remove debug prints
-	fmt.Println("Starting Canton blockchain node...")
-	fmt.Println("Creating network...")
+	// Create separate Docker network for Canton stack
 	dockerNetwork, err := network.New(ctx, network.WithAttachable())
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("Network created:", dockerNetwork.Name)
 
 	// Set up Postgres container
 	postgresReq := canton.PostgresContainerRequest(in.NumberOfCantonValidators, dockerNetwork.Name)
-	fmt.Printf("Starting postgres container %s...\n", postgresReq.Name)
-	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	_, err = testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: postgresReq,
 		Started:          true,
 	})
 	if err != nil {
 		return nil, err
 	}
-	_ = c
-	fmt.Println("Postgres container started")
 
 	// Set up Canton container
 	cantonReq := canton.CantonContainerRequest(dockerNetwork.Name, in.NumberOfCantonValidators, in.Image)
-	fmt.Printf("Starting canton container %s...\n", cantonReq.Name)
-	cantonContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	_, err = testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: cantonReq,
 		Started:          true,
 	})
 	if err != nil {
 		return nil, err
 	}
-	_ = cantonContainer
-	fmt.Println("Canton container started")
 
 	// Set up Splice container
 	spliceReq := canton.SpliceContainerRequest(dockerNetwork.Name, in.NumberOfCantonValidators, in.Image)
-	fmt.Printf("Starting splice container %s...\n", spliceReq.Name)
-	spliceContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	_, err = testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: spliceReq,
 		Started:          true,
 	})
 	if err != nil {
 		return nil, err
 	}
-	_ = spliceContainer
-	fmt.Println("Splice container started")
 
 	// Set up Nginx container
 	nginxReq := canton.NginxContainerRequest(dockerNetwork.Name, in.NumberOfCantonValidators, in.Port)
-	fmt.Printf("Starting nginx container %s...\n", nginxReq.Name)
 	nginxContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: nginxReq,
 		Started:          true,
@@ -73,7 +79,6 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("Nginx container started")
 
 	host, err := nginxContainer.Host(ctx)
 	if err != nil {
@@ -88,7 +93,6 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 		Nodes: []*Node{
 			{
 				ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", host, in.Port),
-				InternalHTTPUrl: fmt.Sprintf("http://%s:%s", nginxReq.Name, in.Port), // TODO - should be docker-internal port instead?
 			},
 		},
 	}, nil
