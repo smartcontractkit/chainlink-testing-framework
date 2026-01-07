@@ -15,7 +15,11 @@ import (
 // UpgradeNodeSet updates nodes configuration TOML files
 // this API is discouraged, however, you can use it if nodes require restart or configuration updates, temporarily!
 func UpgradeNodeSet(t *testing.T, in *Input, bc *blockchain.Output, wait time.Duration) (*Output, error) {
-	uniq := fmt.Sprintf("%s-%s-%s", framework.DefaultCTFLogsDir, t.Name(), uuid.NewString()[0:4])
+	return UpgradeNodeSetWithTag(t.Name(), in, bc, wait)
+}
+
+func UpgradeNodeSetWithTag(tag string, in *Input, bc *blockchain.Output, wait time.Duration) (*Output, error) {
+	uniq := fmt.Sprintf("%s-%s-%s", framework.DefaultCTFLogsDir, tag, uuid.NewString()[0:4])
 	if _, err := framework.SaveContainerLogs(uniq); err != nil {
 		return nil, err
 	}
