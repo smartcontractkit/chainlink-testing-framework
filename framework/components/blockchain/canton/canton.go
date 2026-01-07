@@ -13,7 +13,7 @@ import (
 // Canton Defaults
 const (
 	SpliceVersion = "0.5.3"
-	CantonImage   = "ghcr.io/digital-asset/decentralized-canton-sync/docker/canton"
+	Image         = "ghcr.io/digital-asset/decentralized-canton-sync/docker/canton"
 )
 
 // JWT Auth defaults
@@ -309,7 +309,7 @@ canton.participants.participant%[1]d = ${_participant} {
 	return config
 }
 
-func CantonContainerRequest(
+func ContainerRequest(
 	networkName string,
 	numberOfValidators int,
 	spliceVersion string, // optional, will default to SpliceVersion if empty
@@ -319,7 +319,7 @@ func CantonContainerRequest(
 	}
 	cantonContainerName := framework.DefaultTCName("canton")
 	cantonReq := testcontainers.ContainerRequest{
-		Image:    fmt.Sprintf("%s:%s", CantonImage, spliceVersion),
+		Image:    fmt.Sprintf("%s:%s", Image, spliceVersion),
 		Name:     cantonContainerName,
 		Networks: []string{networkName},
 		NetworkAliases: map[string][]string{

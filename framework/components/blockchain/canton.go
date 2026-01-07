@@ -21,11 +21,13 @@ import (
 //   - http://[PARTICIPANT].wallet.localhost:[PORT] 			-> Wallet API
 //   - http://[PARTICIPANT].http-health-check.localhost:[PORT] 	-> HTTP Health Check
 //   - grpc://[PARTICIPANT].grpc-health-check.localhost:[PORT] 	-> gRPC Health Check
+//
 // To access a participant's endpoints, replace [PARTICIPANT] with the participant's identifier, i.e. `sv`, `participant01`, `participant02`, ...
 //
 // Additionally, the global Scan service is accessible via:
 //   - http://scan.localhost:[PORT]/api/scan 					-> Scan API
 //   - http://scan.localhost:[PORT]/registry 					-> Scan Registry
+//
 // The PORT is the same for all routes and is specified in the input parameters.
 //
 // Note: The maximum number of validators supported is 99, participants are numbered starting from `participant01` through `participant99`.
@@ -51,7 +53,7 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	}
 
 	// Set up Canton container
-	cantonReq := canton.CantonContainerRequest(dockerNetwork.Name, in.NumberOfCantonValidators, in.Image)
+	cantonReq := canton.ContainerRequest(dockerNetwork.Name, in.NumberOfCantonValidators, in.Image)
 	_, err = testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: cantonReq,
 		Started:          true,
