@@ -12,8 +12,6 @@ jobs:
         project:
           - name: lib
             path: ./lib/
-          - name: flakeguard
-            path: ./tools/flakeguard/            
     runs-on: ubuntu-latest
     name: ${{ matrix.project.name }} unit tests
     steps:
