@@ -88,7 +88,8 @@ type Output struct {
 }
 
 type NetworkSpecificData struct {
-	SuiAccount *SuiWalletInfo
+	SuiAccount      *SuiWalletInfo
+	CantonEndpoints *CantonEndpoints
 }
 
 // Node represents blockchain node output, URLs required for connection locally and inside docker network

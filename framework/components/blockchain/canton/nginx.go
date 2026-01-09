@@ -3,8 +3,10 @@ package canton
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
@@ -40,6 +42,14 @@ http {
 	error_log /var/log/nginx/error.log;
 	
 	include /etc/nginx/conf.d/participants.conf;
+	
+	server {
+		server_name localhost;
+		location /readyz {
+			add_header Content-Type text/plain;
+			return 200 'OK';
+		}
+	}
 }
 `
 
@@ -47,7 +57,7 @@ func getNginxTemplate(numberOfValidators int) string {
 	template := `
 # SV
 server {
-    listen      8080;
+    listen 		8080;
     server_name sv.json-ledger-api.localhost;
     location / {
         proxy_pass http://canton:${CANTON_PARTICIPANT_JSON_API_PORT_PREFIX}00;
@@ -58,7 +68,7 @@ server {
 }
 
 server {
-    listen      8080 http2;
+    listen 		8080 http2;
     server_name sv.grpc-ledger-api.localhost;
     location / {
         grpc_pass grpc://canton:${CANTON_PARTICIPANT_LEDGER_API_PORT_PREFIX}00;
@@ -66,7 +76,7 @@ server {
 }
 
 server {
-    listen 8080;
+    listen 		8080;
     server_name sv.http-health-check.localhost;
     location / {
         proxy_pass http://canton:${CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX}00;
@@ -74,15 +84,15 @@ server {
 }
 
 server {
-    listen 8080;
+    listen 		8080 http2;
     server_name sv.grpc-health-check.localhost;
     location / {
-        proxy_pass http://canton:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}00;
+        grpc_pass grpc://canton:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}00;
     }
 }
 
 server {
-    listen 8080 http2;
+    listen 		8080 http2;
     server_name sv.admin-api.localhost;
     location / {
         grpc_pass grpc://canton:${CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX}00;
@@ -90,8 +100,8 @@ server {
 }
 
 server {
-    listen 8080;
-    server_name sv.wallet.localhost;
+    listen 		8080;
+    server_name sv.validator-api.localhost;
     location /api/validator {
         rewrite ^\/(.*) /$1 break;
         proxy_pass http://splice:${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}00/api/validator;
@@ -99,7 +109,7 @@ server {
 }
 
 server {
-	listen 8080;
+	listen 		8080;
 	server_name scan.localhost;
 	
 	location /api/scan {
@@ -129,7 +139,7 @@ server {
 	}
 	
 	server {
-		listen      8080 http2;
+		listen 		8080 http2;
 		server_name participant%[1]d.grpc-ledger-api.localhost;
 		location / {
 			grpc_pass grpc://canton:${CANTON_PARTICIPANT_LEDGER_API_PORT_PREFIX}%02[1]d;
@@ -137,7 +147,7 @@ server {
 	}
 	
 	server {
-		listen 8080;
+		listen 		8080;
 		server_name participant%[1]d.http-health-check.localhost;
 		location / {
 			proxy_pass http://canton:${CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX}%02[1]d;
@@ -145,15 +155,15 @@ server {
 	}
 	
 	server {
-		listen 8080;
+		listen 		8080 http2;
 		server_name participant%[1]d.grpc-health-check.localhost;
 		location / {
-			proxy_pass http://canton:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}%02[1]d;
+			grpc_pass grpc://canton:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}%02[1]d;
 		}
 	}
 	
 	server {
-		listen 8080 http2;
+		listen 		8080 http2;
 		server_name participant%[1]d.admin-api.localhost;
 		location / {
 			grpc_pass grpc://canton:${CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX}%02[1]d;
@@ -161,8 +171,8 @@ server {
 	}
 	
 	server {
-		listen 8080;
-		server_name participant%[1]d.wallet.localhost;
+		listen 		8080;
+		server_name participant%[1]d.validator-api.localhost;
 		location /api/validator {
 			rewrite ^\/(.*) /$1 break;
 			proxy_pass http://splice:${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}%02[1]d/api/validator;
@@ -180,6 +190,9 @@ func NginxContainerRequest(
 	port string,
 ) testcontainers.ContainerRequest {
 	nginxContainerName := framework.DefaultTCName("nginx")
+	if port == "" {
+		port = "8080"
+	}
 	nginxReq := testcontainers.ContainerRequest{
 		Image:    DefaultNginxImage,
 		Name:     nginxContainerName,
@@ -187,6 +200,7 @@ func NginxContainerRequest(
 		NetworkAliases: map[string][]string{
 			networkName: {"nginx"},
 		},
+		WaitingFor:   wait.ForHTTP("/readyz").WithStartupTimeout(time.Second * 10),
 		ExposedPorts: []string{fmt.Sprintf("%s:8080", port)},
 		Env: map[string]string{
 			"CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX": DefaultHTTPHealthcheckPortPrefix,

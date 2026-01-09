@@ -18,8 +18,8 @@ const (
 
 // JWT Auth defaults
 const (
-	DefaultAuthProviderAudience = "https://chain.link"
-	DefaultUserName             = "api-user"
+	AuthProviderAudience = "https://chain.link"
+	AuthProviderSecret   = "unsafe"
 )
 
 // Port prefixes for participants
@@ -272,7 +272,7 @@ canton.participants.sv = ${_participant} {
       secret = "unsafe"
     }]
 
-    user-management-service.additional-admin-user-id = ${API_USER_NAME}
+    user-management-service.additional-admin-user-id = "user-sv"
   }
 }
 
@@ -299,7 +299,7 @@ canton.participants.participant%[1]d = ${_participant} {
       secret = "unsafe"
     }]
 
-    user-management-service.additional-admin-user-id = ${API_USER_NAME}
+    user-management-service.additional-admin-user-id = "user-participant%[1]d"
   }
 }
 
@@ -334,8 +334,7 @@ func ContainerRequest(
 			"DB_USER":   DefaultPostgresUser,
 			"DB_PASS":   DefaultPostgresPass,
 
-			"API_AUDIENCE":  DefaultAuthProviderAudience,
-			"API_USER_NAME": DefaultUserName,
+			"API_AUDIENCE": AuthProviderAudience,
 
 			"CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX": DefaultHTTPHealthcheckPortPrefix,
 			"CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX": DefaultGRPCHealthcheckPortPrefix,

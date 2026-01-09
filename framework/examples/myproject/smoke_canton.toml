@@ -1,0 +1,4 @@
+[blockchain_a]
+  type = "canton"
+  number_of_canton_validators = 5
+  port = "8088"

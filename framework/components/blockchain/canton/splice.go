@@ -109,7 +109,7 @@ _sv_participant_client = {
     }
     auth-config {
         type = "self-signed"
-        user = ${API_USER_NAME}
+        user = "user-sv"
         audience = ${API_AUDIENCE}
         secret = "unsafe"
     }
@@ -149,7 +149,7 @@ canton {
       address = canton
       port = 5007
     }
-    sv-user=${API_USER_NAME}
+    sv-user = "user-sv"
     splice-instance-names = ${_splice-instance-names}
   }
 
@@ -205,8 +205,8 @@ canton {
         audience = ${API_AUDIENCE}
         secret = "unsafe"
     }
-    ledger-api-user = ${API_USER_NAME}
-    validator-ledger-api-user = ${API_USER_NAME}
+    ledger-api-user = "user-sv"
+    validator-ledger-api-user = "user-sv"
 
     automation {
       paused-triggers = [
@@ -258,7 +258,7 @@ canton.validator-apps.sv-validator_backend = ${_validator_backend} {
 		type = "trust-single"
 		url="http://localhost:5012"
 	}
-	sv-user=${API_USER_NAME}
+	sv-user="user-sv"
 	sv-validator=true
 	storage.config.properties.databaseName = validator-sv
 	admin-api.port = ${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}00
@@ -268,7 +268,7 @@ canton.validator-apps.sv-validator_backend = ${_validator_backend} {
 		audience = ${API_AUDIENCE}
 		secret = "unsafe"
 	}
-	ledger-api-user = ${API_USER_NAME}
+	ledger-api-user = "user-sv"
 	validator-wallet-users.0 = "sv"
 }
 
@@ -290,7 +290,7 @@ canton.validator-apps.participant%[1]d-validator_backend = ${_validator_backend}
 			client-config.port = ${CANTON_PARTICIPANT_LEDGER_API_PORT_PREFIX}%02[1]d
 			auth-config = {
 				type = "self-signed"
-				user = ${API_USER_NAME}
+				user = "user-participant%[1]d"
 				audience = ${API_AUDIENCE}
 				secret = "unsafe"
 			}
@@ -301,7 +301,7 @@ canton.validator-apps.participant%[1]d-validator_backend = ${_validator_backend}
 		audience = ${API_AUDIENCE}
 		secret = "unsafe"
 	}
-	ledger-api-user = ${API_USER_NAME}
+	ledger-api-user = "user-participant%[1]d"
 	validator-wallet-users.0="participant%[1]d"
 
 	domains.global.buy-extra-traffic {
@@ -342,10 +342,8 @@ func SpliceContainerRequest(
 			"DB_USER":   DefaultPostgresUser,
 			"DB_PASS":   DefaultPostgresPass,
 
-			"API_AUDIENCE": DefaultAuthProviderAudience,
-			"SPLICE_APP_VALIDATOR_LEDGER_API_AUTH_AUDIENCE": DefaultAuthProviderAudience,
-			"SPLICE_APP_VALIDATOR_AUTH_AUDIENCE":            DefaultAuthProviderAudience,
-			"API_USER_NAME":                                 DefaultUserName,
+			"API_AUDIENCE": AuthProviderAudience,
+			"SPLICE_APP_VALIDATOR_LEDGER_API_AUTH_AUDIENCE": AuthProviderAudience,
 
 			"CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX":  DefaultParticipantAdminApiPortPrefix,
 			"CANTON_PARTICIPANT_LEDGER_API_PORT_PREFIX": DefaultLedgerApiPortPrefix,
