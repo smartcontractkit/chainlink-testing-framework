@@ -212,7 +212,7 @@ canton {
       paused-triggers = [
         "org.lfdecentralizedtrust.splice.sv.automation.delegatebased.ExpiredAmuletTrigger",
         "org.lfdecentralizedtrust.splice.sv.automation.delegatebased.ExpiredLockedAmuletTrigger",
-        "org.lfdecentralizedtrust.splice.sv.automation.delegatebased.ExpiredAnsSubscriptionTrigger"
+        "org.lfdecentralizedtrust.splice.sv.automation.delegatebased.ExpiredAnsSubscriptionTrigger",
         "org.lfdecentralizedtrust.splice.sv.automation.delegatebased.ExpiredAnsEntryTrigger",
         "org.lfdecentralizedtrust.splice.sv.automation.delegatebased.ExpireTransferPreapprovalsTrigger",
       ]
