@@ -72,11 +72,11 @@ _validator_backend {
   }
   participant-client = {
     admin-api = {
-      address = canton
+      address = ${CANTON_CONTAINER_NAME}
       port = 5002
     }
     ledger-api.client-config = {
-      address = canton
+      address = ${CANTON_CONTAINER_NAME}
       port = 5001
     }
   }
@@ -99,19 +99,19 @@ canton.features.enable-testing-commands = yes
 # SV
 _sv_participant_client = {
   admin-api {
-    address = canton
+    address = ${CANTON_CONTAINER_NAME}
     port = ${CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX}00
   }
   ledger-api {
     client-config {
-      address = canton
+      address = ${CANTON_CONTAINER_NAME}
       port = ${CANTON_PARTICIPANT_LEDGER_API_PORT_PREFIX}00
     }
     auth-config {
         type = "self-signed"
         user = "user-sv"
         audience = ${API_AUDIENCE}
-        secret = "unsafe"
+        secret = ${API_SECRET}
     }
   }
 }
@@ -142,11 +142,11 @@ canton {
     }
     participant-client = ${_sv_participant_client}
     sequencer-admin-client = {
-      address = canton
+      address = ${CANTON_CONTAINER_NAME}
       port = 5009
     }
     mediator-admin-client = {
-      address = canton
+      address = ${CANTON_CONTAINER_NAME}
       port = 5007
     }
     sv-user = "user-sv"
@@ -165,17 +165,17 @@ canton {
     local-synchronizer-node {
       sequencer {
         admin-api {
-          address = canton
+          address = ${CANTON_CONTAINER_NAME}
           port = 5009
         }
         internal-api {
-          address = canton
+          address = ${CANTON_CONTAINER_NAME}
           port = 5008
         }
-        external-public-api-url = "http://canton:5008"
+        external-public-api-url = "http://"${CANTON_CONTAINER_NAME}":5008"
       }
       mediator.admin-api {
-        address = canton
+        address = ${CANTON_CONTAINER_NAME}
         port = 5007
       }
     }
@@ -203,7 +203,7 @@ canton {
     auth = {
         algorithm = "hs-256-unsafe"
         audience = ${API_AUDIENCE}
-        secret = "unsafe"
+        secret = ${API_SECRET}
     }
     ledger-api-user = "user-sv"
     validator-ledger-api-user = "user-sv"
@@ -266,7 +266,7 @@ canton.validator-apps.sv-validator_backend = ${_validator_backend} {
 	auth = {
 		algorithm = "hs-256-unsafe"
 		audience = ${API_AUDIENCE}
-		secret = "unsafe"
+		secret = ${API_SECRET}
 	}
 	ledger-api-user = "user-sv"
 	validator-wallet-users.0 = "sv"
@@ -292,14 +292,14 @@ canton.validator-apps.participant%[1]d-validator_backend = ${_validator_backend}
 				type = "self-signed"
 				user = "user-participant%[1]d"
 				audience = ${API_AUDIENCE}
-				secret = "unsafe"
+				secret = ${API_SECRET}
 			}
 		}
 	}
 	auth = {
 		algorithm = "hs-256-unsafe"
 		audience = ${API_AUDIENCE}
-		secret = "unsafe"
+		secret = ${API_SECRET}
 	}
 	ledger-api-user = "user-participant%[1]d"
 	validator-wallet-users.0="participant%[1]d"
@@ -318,9 +318,10 @@ canton.sv-apps.sv.expected-validator-onboardings += { secret = "participant%[1]d
 }
 
 func SpliceContainerRequest(
-	networkName string,
 	numberOfValidators int,
 	spliceVersion string,
+	postgresContainerName string,
+	cantonContainerName string,
 ) testcontainers.ContainerRequest {
 	if spliceVersion == "" {
 		spliceVersion = SpliceVersion
@@ -329,21 +330,24 @@ func SpliceContainerRequest(
 	spliceReq := testcontainers.ContainerRequest{
 		Image:    fmt.Sprintf("%s:%s", SpliceImage, spliceVersion),
 		Name:     spliceContainerName,
-		Networks: []string{networkName},
+		Networks: []string{framework.DefaultNetworkName},
 		NetworkAliases: map[string][]string{
-			networkName: {"splice"},
+			framework.DefaultNetworkName: {spliceContainerName},
 		},
 		WaitingFor: wait.ForExec([]string{
 			"/bin/bash",
 			"/app/health-check.sh",
 		}).WithStartupTimeout(time.Minute * 3),
 		Env: map[string]string{
-			"DB_SERVER": "postgres",
+			"DB_SERVER": postgresContainerName,
 			"DB_USER":   DefaultPostgresUser,
 			"DB_PASS":   DefaultPostgresPass,
 
 			"API_AUDIENCE": AuthProviderAudience,
+			"API_SECRET":   AuthProviderSecret,
 			"SPLICE_APP_VALIDATOR_LEDGER_API_AUTH_AUDIENCE": AuthProviderAudience,
+
+			"CANTON_CONTAINER_NAME": cantonContainerName,
 
 			"CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX":  DefaultParticipantAdminApiPortPrefix,
 			"CANTON_PARTICIPANT_LEDGER_API_PORT_PREFIX": DefaultLedgerApiPortPrefix,

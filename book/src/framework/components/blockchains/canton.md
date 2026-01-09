@@ -116,7 +116,7 @@ func TestCantonSmoke(t *testing.T) {
 				NotBefore: jwt.NewNumericDate(time.Now()),
 				IssuedAt:  jwt.NewNumericDate(time.Now()),
 				ID:        "",
-			}).SignedString([]byte("unsafe"))
+            }).SignedString([]byte(canton.AuthProviderSecret))
 
 			// JSON Ledger API
 			fmt.Println("Calling JSON Ledger API")

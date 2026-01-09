@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/network"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain/canton"
 )
@@ -56,15 +55,9 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 		return nil, fmt.Errorf("number of validators too high: %d, max is 99", in.NumberOfCantonValidators)
 	}
 
-	// Create separate Docker network for Canton stack
-	dockerNetwork, err := network.New(ctx, network.WithAttachable())
-	if err != nil {
-		return nil, err
-	}
-
 	// Set up Postgres container
-	postgresReq := canton.PostgresContainerRequest(in.NumberOfCantonValidators, dockerNetwork.Name)
-	_, err = testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	postgresReq := canton.PostgresContainerRequest(in.NumberOfCantonValidators)
+	_, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: postgresReq,
 		Started:          true,
 	})
@@ -73,7 +66,7 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	}
 
 	// Set up Canton container
-	cantonReq := canton.ContainerRequest(dockerNetwork.Name, in.NumberOfCantonValidators, in.Image)
+	cantonReq := canton.ContainerRequest(in.NumberOfCantonValidators, in.Image, postgresReq.Name)
 	_, err = testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: cantonReq,
 		Started:          true,
@@ -83,7 +76,7 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	}
 
 	// Set up Splice container
-	spliceReq := canton.SpliceContainerRequest(dockerNetwork.Name, in.NumberOfCantonValidators, in.Image)
+	spliceReq := canton.SpliceContainerRequest(in.NumberOfCantonValidators, in.Image, postgresReq.Name, cantonReq.Name)
 	_, err = testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: spliceReq,
 		Started:          true,
@@ -93,7 +86,7 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	}
 
 	// Set up Nginx container
-	nginxReq := canton.NginxContainerRequest(dockerNetwork.Name, in.NumberOfCantonValidators, in.Port)
+	nginxReq := canton.NginxContainerRequest(in.NumberOfCantonValidators, in.Port, cantonReq.Name, spliceReq.Name)
 	nginxContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: nginxReq,
 		Started:          true,

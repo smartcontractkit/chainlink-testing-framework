@@ -60,7 +60,7 @@ server {
     listen 		8080;
     server_name sv.json-ledger-api.localhost;
     location / {
-        proxy_pass http://canton:${CANTON_PARTICIPANT_JSON_API_PORT_PREFIX}00;
+        proxy_pass http://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_JSON_API_PORT_PREFIX}00;
 		add_header Access-Control-Allow-Origin *;
 		add_header Access-Control-Allow-Methods 'GET, POST, OPTIONS';
 		add_header Access-Control-Allow-Headers 'Origin, Content-Type, Accept';
@@ -71,7 +71,7 @@ server {
     listen 		8080 http2;
     server_name sv.grpc-ledger-api.localhost;
     location / {
-        grpc_pass grpc://canton:${CANTON_PARTICIPANT_LEDGER_API_PORT_PREFIX}00;
+        grpc_pass grpc://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_LEDGER_API_PORT_PREFIX}00;
     }
 }
 
@@ -79,7 +79,7 @@ server {
     listen 		8080;
     server_name sv.http-health-check.localhost;
     location / {
-        proxy_pass http://canton:${CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX}00;
+        proxy_pass http://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX}00;
     }
 }
 
@@ -87,7 +87,7 @@ server {
     listen 		8080 http2;
     server_name sv.grpc-health-check.localhost;
     location / {
-        grpc_pass grpc://canton:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}00;
+        grpc_pass grpc://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}00;
     }
 }
 
@@ -95,7 +95,7 @@ server {
     listen 		8080 http2;
     server_name sv.admin-api.localhost;
     location / {
-        grpc_pass grpc://canton:${CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX}00;
+        grpc_pass grpc://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX}00;
     }
 }
 
@@ -104,7 +104,7 @@ server {
     server_name sv.validator-api.localhost;
     location /api/validator {
         rewrite ^\/(.*) /$1 break;
-        proxy_pass http://splice:${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}00/api/validator;
+        proxy_pass http://${SPLICE_CONTAINER_NAME}:${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}00/api/validator;
     }
 }
 
@@ -114,11 +114,11 @@ server {
 	
 	location /api/scan {
 		rewrite ^\/(.*) /$1 break;
-		proxy_pass http://splice:5012/api/scan;
+		proxy_pass http://${SPLICE_CONTAINER_NAME}:5012/api/scan;
 	}
 	location /registry {
 		rewrite ^\/(.*) /$1 break;
-		proxy_pass http://splice:5012/registry;
+		proxy_pass http://${SPLICE_CONTAINER_NAME}:5012/registry;
 	}
 }
 	`
@@ -131,7 +131,7 @@ server {
 		listen      8080;
 		server_name participant%[1]d.json-ledger-api.localhost;
 		location / {
-			proxy_pass http://canton:${CANTON_PARTICIPANT_JSON_API_PORT_PREFIX}%02[1]d;
+			proxy_pass http://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_JSON_API_PORT_PREFIX}%02[1]d;
 			add_header Access-Control-Allow-Origin *;
 			add_header Access-Control-Allow-Methods 'GET, POST, OPTIONS';
 			add_header Access-Control-Allow-Headers 'Origin, Content-Type, Accept';
@@ -142,7 +142,7 @@ server {
 		listen 		8080 http2;
 		server_name participant%[1]d.grpc-ledger-api.localhost;
 		location / {
-			grpc_pass grpc://canton:${CANTON_PARTICIPANT_LEDGER_API_PORT_PREFIX}%02[1]d;
+			grpc_pass grpc://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_LEDGER_API_PORT_PREFIX}%02[1]d;
 		}
 	}
 	
@@ -150,7 +150,7 @@ server {
 		listen 		8080;
 		server_name participant%[1]d.http-health-check.localhost;
 		location / {
-			proxy_pass http://canton:${CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX}%02[1]d;
+			proxy_pass http://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX}%02[1]d;
 		}
 	}
 	
@@ -158,7 +158,7 @@ server {
 		listen 		8080 http2;
 		server_name participant%[1]d.grpc-health-check.localhost;
 		location / {
-			grpc_pass grpc://canton:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}%02[1]d;
+			grpc_pass grpc://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}%02[1]d;
 		}
 	}
 	
@@ -166,7 +166,7 @@ server {
 		listen 		8080 http2;
 		server_name participant%[1]d.admin-api.localhost;
 		location / {
-			grpc_pass grpc://canton:${CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX}%02[1]d;
+			grpc_pass grpc://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX}%02[1]d;
 		}
 	}
 	
@@ -175,7 +175,7 @@ server {
 		server_name participant%[1]d.validator-api.localhost;
 		location /api/validator {
 			rewrite ^\/(.*) /$1 break;
-			proxy_pass http://splice:${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}%02[1]d/api/validator;
+			proxy_pass http://${SPLICE_CONTAINER_NAME}:${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}%02[1]d/api/validator;
 		}
 	}
 		`, i)
@@ -185,9 +185,10 @@ server {
 }
 
 func NginxContainerRequest(
-	networkName string,
 	numberOfValidators int,
 	port string,
+	cantonContainerName string,
+	spliceContainerName string,
 ) testcontainers.ContainerRequest {
 	nginxContainerName := framework.DefaultTCName("nginx")
 	if port == "" {
@@ -196,9 +197,9 @@ func NginxContainerRequest(
 	nginxReq := testcontainers.ContainerRequest{
 		Image:    DefaultNginxImage,
 		Name:     nginxContainerName,
-		Networks: []string{networkName},
+		Networks: []string{framework.DefaultNetworkName},
 		NetworkAliases: map[string][]string{
-			networkName: {"nginx"},
+			framework.DefaultNetworkName: {nginxContainerName},
 		},
 		WaitingFor:   wait.ForHTTP("/readyz").WithStartupTimeout(time.Second * 10),
 		ExposedPorts: []string{fmt.Sprintf("%s:8080", port)},
@@ -209,6 +210,9 @@ func NginxContainerRequest(
 			"CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX":        DefaultParticipantAdminApiPortPrefix,
 			"CANTON_PARTICIPANT_LEDGER_API_PORT_PREFIX":       DefaultLedgerApiPortPrefix,
 			"SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX":          DefaultSpliceValidatorAdminApiPortPrefix,
+
+			"CANTON_CONTAINER_NAME": cantonContainerName,
+			"SPLICE_CONTAINER_NAME": spliceContainerName,
 		},
 		Files: []testcontainers.ContainerFile{
 			{

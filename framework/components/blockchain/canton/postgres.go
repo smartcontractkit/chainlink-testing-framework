@@ -43,7 +43,6 @@ fi
 
 func PostgresContainerRequest(
 	numberOfValidators int,
-	networkName string,
 ) testcontainers.ContainerRequest {
 	postgresDatabases := []string{
 		"sequencer",
@@ -61,9 +60,9 @@ func PostgresContainerRequest(
 	postgresReq := testcontainers.ContainerRequest{
 		Image:    DefaultPostgresImage,
 		Name:     postgresContainerName,
-		Networks: []string{networkName},
+		Networks: []string{framework.DefaultNetworkName},
 		NetworkAliases: map[string][]string{
-			networkName: {"postgres"},
+			framework.DefaultNetworkName: {postgresContainerName},
 		},
 		WaitingFor: wait.ForExec([]string{
 			"pg_isready",

@@ -269,7 +269,7 @@ canton.participants.sv = ${_participant} {
     auth-services = [{
       type = unsafe-jwt-hmac-256
       target-audience = ${API_AUDIENCE}
-      secret = "unsafe"
+      secret = ${API_SECRET}
     }]
 
     user-management-service.additional-admin-user-id = "user-sv"
@@ -296,7 +296,7 @@ canton.participants.participant%[1]d = ${_participant} {
     auth-services = [{
       type = unsafe-jwt-hmac-256
       target-audience = ${API_AUDIENCE}
-      secret = "unsafe"
+      secret = ${API_SECRET}
     }]
 
     user-management-service.additional-admin-user-id = "user-participant%[1]d"
@@ -310,9 +310,9 @@ canton.participants.participant%[1]d = ${_participant} {
 }
 
 func ContainerRequest(
-	networkName string,
 	numberOfValidators int,
 	spliceVersion string, // optional, will default to SpliceVersion if empty
+	postgresContainerName string,
 ) testcontainers.ContainerRequest {
 	if spliceVersion == "" {
 		spliceVersion = SpliceVersion
@@ -321,20 +321,21 @@ func ContainerRequest(
 	cantonReq := testcontainers.ContainerRequest{
 		Image:    fmt.Sprintf("%s:%s", Image, spliceVersion),
 		Name:     cantonContainerName,
-		Networks: []string{networkName},
+		Networks: []string{framework.DefaultNetworkName},
 		NetworkAliases: map[string][]string{
-			networkName: {"canton"},
+			framework.DefaultNetworkName: {cantonContainerName},
 		},
 		WaitingFor: wait.ForExec([]string{
 			"/bin/bash",
 			"/app/health-check.sh",
 		}),
 		Env: map[string]string{
-			"DB_SERVER": "postgres",
+			"DB_SERVER": postgresContainerName,
 			"DB_USER":   DefaultPostgresUser,
 			"DB_PASS":   DefaultPostgresPass,
 
 			"API_AUDIENCE": AuthProviderAudience,
+			"API_SECRET":   AuthProviderSecret,
 
 			"CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX": DefaultHTTPHealthcheckPortPrefix,
 			"CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX": DefaultGRPCHealthcheckPortPrefix,
