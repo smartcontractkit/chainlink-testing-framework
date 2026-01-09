@@ -52,7 +52,7 @@ type CantonParticipantEndpoints struct {
 // Note: The maximum number of validators supported is 99, participants are numbered starting from `participant1` through `participant99`.
 func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	if in.NumberOfCantonValidators >= 100 {
-		return nil, fmt.Errorf("number of validators too high: %d, max is 99", in.NumberOfCantonValidators)
+		return nil, fmt.Errorf("number of validators too high: %d, valid range is 0-99", in.NumberOfCantonValidators)
 	}
 
 	// Set up Postgres container
