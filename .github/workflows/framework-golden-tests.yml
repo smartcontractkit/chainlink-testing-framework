@@ -35,6 +35,10 @@ jobs:
             config: smoke_aptos.toml
             count: 1
             timeout: 10m
+          - name: TestCantonSmoke
+            config: smoke_canton.toml
+            count: 1
+            timeout: 10m
           - name: TestTRONSmoke
             config: smoke_tron.toml
             count: 1

@@ -20,6 +20,7 @@ const (
 	TypeSui         = "sui"
 	TypeTron        = "tron"
 	TypeTon         = "ton"
+	TypeCanton      = "canton"
 )
 
 // Blockchain node family
@@ -30,12 +31,13 @@ const (
 	FamilySui    = "sui"
 	FamilyTron   = "tron"
 	FamilyTon    = "ton"
+	FamilyCanton = "canton"
 )
 
 // Input is a blockchain network configuration params
 type Input struct {
 	// Common EVM fields
-	Type          string `toml:"type" validate:"required,oneof=anvil geth besu solana aptos tron sui ton" envconfig:"net_type"`
+	Type          string `toml:"type" validate:"required,oneof=anvil geth besu solana aptos tron sui ton canton" envconfig:"net_type"`
 	Image         string `toml:"image"`
 	PullImage     bool   `toml:"pull_image"`
 	Port          string `toml:"port"`
@@ -60,6 +62,9 @@ type Input struct {
 	// Sui specific: faucet port for funding accounts
 	FaucetPort string `toml:"faucet_port"`
 
+	// Canton specific
+	NumberOfCantonValidators int `toml:"number_of_canton_validators"`
+
 	// GAPv2 specific params
 	HostNetworkMode  bool   `toml:"host_network_mode"`
 	CertificatesPath string `toml:"certificates_path"`
@@ -83,7 +88,8 @@ type Output struct {
 }
 
 type NetworkSpecificData struct {
-	SuiAccount *SuiWalletInfo
+	SuiAccount      *SuiWalletInfo
+	CantonEndpoints *CantonEndpoints
 }
 
 // Node represents blockchain node output, URLs required for connection locally and inside docker network
@@ -122,6 +128,8 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		out, err = newAnvilZksync(ctx, in)
 	case TypeTon:
 		out, err = newTon(ctx, in)
+	case TypeCanton:
+		out, err = newCanton(ctx, in)
 	default:
 		return nil, fmt.Errorf("blockchain type is not supported or empty, must be 'anvil' or 'geth'")
 	}
@@ -148,6 +156,8 @@ func TypeToFamily(t string) (ChainFamily, error) {
 		return ChainFamily(FamilyTron), nil
 	case TypeTon:
 		return ChainFamily(FamilyTon), nil
+	case TypeCanton:
+		return ChainFamily(FamilyCanton), nil
 	default:
 		return "", fmt.Errorf("blockchain type is not supported or empty: %s", t)
 	}
