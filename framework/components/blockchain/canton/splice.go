@@ -309,7 +309,7 @@ canton.validator-apps.participant%[1]d-validator_backend = ${_validator_backend}
 		target-throughput = "20000"
 	}
 }
-		
+
 canton.sv-apps.sv.expected-validator-onboardings += { secret = "participant%[1]d-validator-onboarding-secret" }
 		`, i)
 	}
