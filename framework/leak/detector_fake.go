@@ -9,11 +9,9 @@ import (
 var _ PromQuerier = (*FakeQueryClient)(nil)
 
 type FakeQueryClient struct {
-	startRespCalled bool
-	endRespCalled   bool
-	isStartResp     bool
-	startResp       *f.PrometheusQueryResponse
-	endResp         *f.PrometheusQueryResponse
+	isStartResp bool
+	startResp   *f.PrometheusQueryResponse
+	endResp     *f.PrometheusQueryResponse
 }
 
 func NewFakeQueryClient() *FakeQueryClient {
@@ -37,12 +35,12 @@ func (qc *FakeQueryClient) Query(query string, timestamp time.Time) (*f.Promethe
 
 func PromSingleValueResponse(val string) *f.PrometheusQueryResponse {
 	return &f.PrometheusQueryResponse{
-		Status: "",
 		Data: &f.PromQueryResponseData{
 			Result: []f.PromQueryResponseResult{
 				{
 					Metric: map[string]string{},
-					Value:  []interface{}{"", val},
+					// timestamp is irrelevant in tests, we trust Prometheus
+					Value: []interface{}{"", val},
 				},
 			},
 		},
