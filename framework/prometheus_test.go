@@ -363,17 +363,8 @@ func TestPrometheusQueryClient_ResultToLabelsMap(t *testing.T) {
 		{
 			name: "single metric with multiple labels",
 			input: &PrometheusQueryResponse{
-				Data: struct {
-					ResultType string `json:"resultType"`
-					Result     []struct {
-						Metric map[string]string `json:"metric"`
-						Value  []interface{}     `json:"value"`
-					} `json:"result"`
-				}{
-					Result: []struct {
-						Metric map[string]string `json:"metric"`
-						Value  []interface{}     `json:"value"`
-					}{
+				Data: &PromQueryResponseData{
+					Result: []PromQueryResponseResult{
 						{
 							Metric: map[string]string{
 								"__name__": "http_requests_total",
@@ -394,17 +385,8 @@ func TestPrometheusQueryClient_ResultToLabelsMap(t *testing.T) {
 		{
 			name: "multiple metrics with shared labels",
 			input: &PrometheusQueryResponse{
-				Data: struct {
-					ResultType string `json:"resultType"`
-					Result     []struct {
-						Metric map[string]string `json:"metric"`
-						Value  []interface{}     `json:"value"`
-					} `json:"result"`
-				}{
-					Result: []struct {
-						Metric map[string]string `json:"metric"`
-						Value  []interface{}     `json:"value"`
-					}{
+				Data: &PromQueryResponseData{
+					Result: []PromQueryResponseResult{
 						{
 							Metric: map[string]string{
 								"__name__": "http_requests_total",
@@ -434,17 +416,8 @@ func TestPrometheusQueryClient_ResultToLabelsMap(t *testing.T) {
 		{
 			name: "empty result",
 			input: &PrometheusQueryResponse{
-				Data: struct {
-					ResultType string `json:"resultType"`
-					Result     []struct {
-						Metric map[string]string `json:"metric"`
-						Value  []interface{}     `json:"value"`
-					} `json:"result"`
-				}{
-					Result: []struct {
-						Metric map[string]string `json:"metric"`
-						Value  []interface{}     `json:"value"`
-					}{},
+				Data: &PromQueryResponseData{
+					Result: nil,
 				},
 			},
 			expected: map[string][]interface{}{},
@@ -452,17 +425,8 @@ func TestPrometheusQueryClient_ResultToLabelsMap(t *testing.T) {
 		{
 			name: "metric with no labels",
 			input: &PrometheusQueryResponse{
-				Data: struct {
-					ResultType string `json:"resultType"`
-					Result     []struct {
-						Metric map[string]string `json:"metric"`
-						Value  []interface{}     `json:"value"`
-					} `json:"result"`
-				}{
-					Result: []struct {
-						Metric map[string]string `json:"metric"`
-						Value  []interface{}     `json:"value"`
-					}{
+				Data: &PromQueryResponseData{
+					Result: []PromQueryResponseResult{
 						{
 							Metric: map[string]string{},
 							Value:  []interface{}{float64(1435781451.781), "1"},

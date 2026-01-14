@@ -7,8 +7,9 @@ import (
 
 	f "github.com/smartcontractkit/chainlink-testing-framework/framework"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/leak"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/leak"
 )
 
 func mustTime(start string) time.Time {
