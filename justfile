@@ -14,7 +14,7 @@ install-loghelper:
 
 # Lint a module, example: just lint wasp
 lint dir_path:
-    cd {{dir_path}} && golangci-lint --color=always run -v -c {{invocation_directory()}}/.golangci.yaml
+    cd {{dir_path}} && golangci-lint --color=always run --fix -v -c {{invocation_directory()}}/.golangci.yaml
 
 # Lint all the modules
 lint-all:
