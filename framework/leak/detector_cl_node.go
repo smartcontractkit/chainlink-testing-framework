@@ -55,7 +55,7 @@ func NewCLNodesLeakDetector(c *ResourceLeakChecker, opts ...func(*CLNodesLeakDet
 	}
 	switch cd.Mode {
 	case "devenv":
-		cd.CPUQuery = `sum(rate(container_cpu_usage_seconds_total{name=~"don-node%d"}[5m])) * 100`
+		cd.CPUQuery = `sum(rate(container_cpu_usage_seconds_total{name="don-node%d"}[1h])) * 100`
 		cd.MemoryQuery = `quantile_over_time(0.5, container_memory_rss{name="don-node%d"}[1h]) / 1024 / 1024`
 	case "griddle":
 		return nil, fmt.Errorf("not implemented yet")
