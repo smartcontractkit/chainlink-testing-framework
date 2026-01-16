@@ -16,6 +16,7 @@ import (
 )
 
 func TestCyclicHog(t *testing.T) {
+	t.Skip("unskip when debugging new queries")
 	ctx := context.Background()
 	hog, err := SetupResourceHog(
 		ctx,
@@ -36,6 +37,7 @@ func TestCyclicHog(t *testing.T) {
 }
 
 func TestVerifyCyclicHog(t *testing.T) {
+	t.Skip("unskip when debugging new queries")
 	lc := leak.NewResourceLeakChecker()
 	// cpu
 	diff, err := lc.MeasureDelta(&leak.CheckConfig{
