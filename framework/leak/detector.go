@@ -66,9 +66,9 @@ type CheckConfig struct {
 	WarmUpDuration time.Duration
 }
 
-// MeasureLeak measures resource leak between start and end timestamps
+// MeasureDelta measures resource leak delta between start and end timestamps
 // WarmUpDuration is used to ignore warm up interval results for more stable comparison
-func (rc *ResourceLeakChecker) MeasureLeak(
+func (rc *ResourceLeakChecker) MeasureDelta(
 	c *CheckConfig,
 ) (float64, error) {
 	if c.Start.After(c.End) {
@@ -91,10 +91,10 @@ func (rc *ResourceLeakChecker) MeasureLeak(
 	resStart := memStart.Data.Result
 	resEnd := memEnd.Data.Result
 	if len(resStart) == 0 {
-		return 0, fmt.Errorf("no results for start timestamp: %s", c.Start)
+		return 0, fmt.Errorf("no results for start timestamp: %s, query: %s", startWithWarmUp, c.Query)
 	}
 	if len(resEnd) == 0 {
-		return 0, fmt.Errorf("no results for end timestamp: %s", c.End)
+		return 0, fmt.Errorf("no results for end timestamp: %s, query: %s", c.End, c.Query)
 	}
 
 	if len(resStart[0].Value) < 2 {
@@ -113,21 +113,21 @@ func (rc *ResourceLeakChecker) MeasureLeak(
 		return 0, fmt.Errorf("invalid Prometheus response value for timestamp: %s, value: %v", c.End, memEnd.Data.Result[0].Value[1])
 	}
 
-	memStartValFloat, err := strconv.ParseFloat(memStartVal, 64)
+	startValFloat, err := strconv.ParseFloat(memStartVal, 64)
 	if err != nil {
 		return 0, fmt.Errorf("start quantile can't be parsed from string: %w", err)
 	}
-	memEndValFloat, err := strconv.ParseFloat(memEndVal, 64)
+	endValFloat, err := strconv.ParseFloat(memEndVal, 64)
 	if err != nil {
 		return 0, fmt.Errorf("start quantile can't be parsed from string: %w", err)
 	}
 
-	totalIncreasePercentage := (memEndValFloat / memStartValFloat * 100) - 100
+	totalIncreasePercentage := (endValFloat / startValFloat * 100) - 100
 
-	f.L.Debug().
-		Float64("Start", memStartValFloat).
-		Float64("End", memEndValFloat).
+	f.L.Info().
+		Float64("Start", startValFloat).
+		Float64("End", endValFloat).
 		Float64("Increase", totalIncreasePercentage).
-		Msg("Memory increase total (percentage)")
+		Msg("Increase total (percentage)")
 	return totalIncreasePercentage, nil
 }

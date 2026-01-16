@@ -22,6 +22,7 @@
   - [Components Resources](framework/components/resources.md)
   - [Containers Network Isolation](framework/components/network_isolation.md)
   - [Fake Services](framework/components/mocking.md)
+  - [Detecting Resource Leaks](framework/resource_leaks.md)
   - [Copying Files](framework/copying_files.md)
   - [External Environment](framework/components/external.md)
 - [Observability Stack](framework/observability/observability_stack.md)
