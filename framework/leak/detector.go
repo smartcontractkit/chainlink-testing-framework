@@ -66,9 +66,9 @@ type CheckConfig struct {
 	WarmUpDuration time.Duration
 }
 
-// MeasureLeak measures resource leak between start and end timestamps
+// MeasureDelta measures resource leak delta between start and end timestamps
 // WarmUpDuration is used to ignore warm up interval results for more stable comparison
-func (rc *ResourceLeakChecker) MeasureLeak(
+func (rc *ResourceLeakChecker) MeasureDelta(
 	c *CheckConfig,
 ) (float64, error) {
 	if c.Start.After(c.End) {

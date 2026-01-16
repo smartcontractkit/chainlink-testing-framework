@@ -41,18 +41,6 @@ type PromQueryResponseResult struct {
 	Value  []interface{}     `json:"value"`
 }
 
-// QueryRangeResponse represents the response from Prometheus range query API
-type QueryRangeResponse struct {
-	Status string `json:"status"`
-	Data   struct {
-		ResultType string `json:"resultType"`
-		Result     []struct {
-			Metric map[string]string `json:"metric"`
-			Values [][]interface{}   `json:"values"`
-		} `json:"result"`
-	} `json:"data"`
-}
-
 // QueryRangeParams contains parameters for range queries
 type QueryRangeParams struct {
 	Query string
@@ -87,7 +75,7 @@ func (p *PrometheusQueryClient) Query(query string, timestamp time.Time) (*Prome
 }
 
 // QueryRange executes a range query against the Prometheus API
-func (p *PrometheusQueryClient) QueryRange(params QueryRangeParams) (*QueryRangeResponse, error) {
+func (p *PrometheusQueryClient) QueryRange(params QueryRangeParams) (*PrometheusQueryResponse, error) {
 	url := fmt.Sprintf("%s/api/v1/query_range", p.baseURL)
 	resp, err := p.client.R().
 		SetQueryParams(map[string]string{
@@ -103,7 +91,7 @@ func (p *PrometheusQueryClient) QueryRange(params QueryRangeParams) (*QueryRange
 	if resp.StatusCode() != 200 {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode())
 	}
-	var result QueryRangeResponse
+	var result PrometheusQueryResponse
 	if err := json.Unmarshal(resp.Body(), &result); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}

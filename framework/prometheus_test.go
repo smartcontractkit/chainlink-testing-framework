@@ -193,7 +193,7 @@ func TestPrometheusQueryClientQueryRange(t *testing.T) {
 		response       string
 		expectedStatus string
 		expectedCount  int
-		validateResult func(t *testing.T, result *QueryRangeResponse)
+		validateResult func(t *testing.T, result *PrometheusQueryResponse)
 	}{
 		{
 			name: "successful range query with multiple data points",
@@ -219,7 +219,7 @@ func TestPrometheusQueryClientQueryRange(t *testing.T) {
 			}`,
 			expectedStatus: "success",
 			expectedCount:  1,
-			validateResult: func(t *testing.T, result *QueryRangeResponse) {
+			validateResult: func(t *testing.T, result *PrometheusQueryResponse) {
 				assert.Equal(t, "matrix", result.Data.ResultType)
 				assert.Equal(t, "http_requests_total", result.Data.Result[0].Metric["__name__"])
 				assert.Equal(t, "api-server", result.Data.Result[0].Metric["job"])
@@ -258,7 +258,7 @@ func TestPrometheusQueryClientQueryRange(t *testing.T) {
 			}`,
 			expectedStatus: "success",
 			expectedCount:  2,
-			validateResult: func(t *testing.T, result *QueryRangeResponse) {
+			validateResult: func(t *testing.T, result *PrometheusQueryResponse) {
 				assert.Equal(t, "matrix", result.Data.ResultType)
 				assert.Equal(t, "cpu_usage", result.Data.Result[0].Metric["__name__"])
 				assert.Equal(t, "server1", result.Data.Result[0].Metric["instance"])

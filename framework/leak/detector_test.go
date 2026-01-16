@@ -104,7 +104,7 @@ func TestMeasure(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			qc.SetResponses(tc.startResponse, tc.endResponse)
-			diff, err := lc.MeasureLeak(&leak.CheckConfig{
+			diff, err := lc.MeasureDelta(&leak.CheckConfig{
 				// Prometheus returns good errors when query is invalid
 				// so we do not test it since there is no additional validation
 				Query:          ``,
@@ -148,7 +148,7 @@ func TestRealPrometheusLowLevelAPI(t *testing.T) {
 
 	lc := leak.NewResourceLeakChecker()
 	for i := range donNodes {
-		diff, err := lc.MeasureLeak(&leak.CheckConfig{
+		diff, err := lc.MeasureDelta(&leak.CheckConfig{
 			Query:          fmt.Sprintf(`quantile_over_time(0.5, container_memory_rss{name="don-node%d"}[1h]) / 1024 / 1024`, i),
 			Start:          mustTime("2026-01-12T21:53:00Z"),
 			End:            mustTime("2026-01-13T10:11:00Z"),

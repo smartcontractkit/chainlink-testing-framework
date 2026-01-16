@@ -55,8 +55,8 @@ func NewCLNodesLeakDetector(c *ResourceLeakChecker, opts ...func(*CLNodesLeakDet
 	}
 	switch cd.Mode {
 	case "devenv":
-		cd.CPUQuery = `sum(rate(container_cpu_usage_seconds_total{name="don-node%d"}[1h])) * 100`
-		cd.MemoryQuery = `quantile_over_time(0.5, container_memory_rss{name="don-node%d"}[1h]) / 1024 / 1024`
+		cd.CPUQuery = `sum(rate(container_cpu_usage_seconds_total{name="don-node%d"}[5m])) * 100`
+		cd.MemoryQuery = `avg_over_time(container_memory_rss{name="don-node%d"}[5m]) / 1024 / 1024`
 	case "griddle":
 		return nil, fmt.Errorf("not implemented yet")
 	default:
@@ -74,7 +74,7 @@ func (cd *CLNodesLeakDetector) Check(t *CLNodesCheck) error {
 	cpuDiffs := make([]float64, 0)
 	errs := make([]error, 0)
 	for i := range t.NumNodes {
-		memoryDiff, err := cd.c.MeasureLeak(&CheckConfig{
+		memoryDiff, err := cd.c.MeasureDelta(&CheckConfig{
 			Query:          fmt.Sprintf(cd.MemoryQuery, i),
 			Start:          t.Start,
 			End:            t.End,
@@ -84,7 +84,7 @@ func (cd *CLNodesLeakDetector) Check(t *CLNodesCheck) error {
 			return fmt.Errorf("memory leak check failed: %w", err)
 		}
 		memoryDiffs = append(memoryDiffs, memoryDiff)
-		cpuDiff, err := cd.c.MeasureLeak(&CheckConfig{
+		cpuDiff, err := cd.c.MeasureDelta(&CheckConfig{
 			Query:          fmt.Sprintf(cd.CPUQuery, i),
 			Start:          t.Start,
 			End:            t.End,
