@@ -15,7 +15,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func TestRunHog(t *testing.T) {
+func TestCyclicHog(t *testing.T) {
 	ctx := context.Background()
 	hog, err := SetupResourceHog(
 		ctx,
@@ -35,13 +35,14 @@ func TestRunHog(t *testing.T) {
 	})
 }
 
-func TestVerifyHog(t *testing.T) {
+func TestVerifyCyclicHog(t *testing.T) {
 	lc := leak.NewResourceLeakChecker()
 	// cpu
 	diff, err := lc.MeasureDelta(&leak.CheckConfig{
-		Query: `sum(rate(container_cpu_usage_seconds_total{name="resource-hog"}[5m])) * 100`,
-		Start: mustTime("2026-01-16T13:20:30Z"),
-		End:   mustTime("2026-01-16T13:39:45Z"),
+		Query:          `avg_over_time((sum(rate(container_cpu_usage_seconds_total{name="resource-hog"}[5m])) * 100)[5m:2m])`,
+		Start:          mustTime("2026-01-16T13:20:30Z"),
+		End:            mustTime("2026-01-16T13:32:40Z"),
+		WarmUpDuration: 2 * time.Minute,
 	})
 	fmt.Println(diff)
 	require.NoError(t, err)
