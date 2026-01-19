@@ -64,12 +64,6 @@ Usage:
 								Aliases: []string{"r"},
 								Usage:   "Your product name",
 							},
-							&cli.StringFlag{
-								Name:    "product-configuration-type",
-								Aliases: []string{"p"},
-								Value:   "evm-single",
-								Usage:   "Product configuration type/layout (single network, multi-network, etc)",
-							},
 							&cli.IntFlag{
 								Name:    "nodes",
 								Aliases: []string{"n"},
@@ -79,7 +73,6 @@ Usage:
 						},
 						Action: func(c *cli.Context) error {
 							outputDir := c.String("output-dir")
-							productConfType := c.String("product-configuration-type")
 							nodes := c.Int("nodes")
 							cliName := c.String("cli")
 							if cliName == "" {
@@ -93,17 +86,22 @@ Usage:
 								Str("OutputDir", outputDir).
 								Str("Name", cliName).
 								Int("CLNodes", nodes).
-								Str("ProductConfigurationType", productConfType).
 								Msg("Generating developer environment")
 
-							cg, err := framework.NewEnvBuilder(cliName, nodes, productConfType, productName).
+							cg, err := framework.NewEnvBuilder(cliName, nodes, productName).
 								OutputDir(outputDir).
 								Build()
 							if err != nil {
 								return fmt.Errorf("failed to create codegen: %w", err)
 							}
 							if err := cg.Write(); err != nil {
-								return fmt.Errorf("failed to generate module: %w", err)
+								return fmt.Errorf("failed to generate environment: %w", err)
+							}
+							if err := cg.WriteFakes(); err != nil {
+								return fmt.Errorf("failed to generate fakes: %w", err)
+							}
+							if err := cg.WriteProducts(); err != nil {
+								return fmt.Errorf("failed to generate products: %w", err)
 							}
 
 							fmt.Println()

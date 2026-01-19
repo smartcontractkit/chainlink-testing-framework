@@ -16,19 +16,19 @@ import (
 )
 
 func TestCyclicHog(t *testing.T) {
-	t.Skip("unskip when debugging new queries")
+	// t.Skip("unskip when debugging new queries")
 	ctx := context.Background()
 	hog, err := SetupResourceHog(
 		ctx,
 		"resource-hog:latest",
 		map[string]string{
-			"WORKERS": "1,2,3,2,1",
-			"MEMORY":  "1,2,3,2,1",
+			"WORKERS": "1,2,3,4,5,5,4,3,2,1",
+			"MEMORY":  "1,2,3,4,5,5,4,3,2,1",
 			"REPEAT":  "1",
 		},
 	)
 	require.NoError(t, err)
-	time.Sleep(15 * time.Minute)
+	time.Sleep(2 * time.Hour)
 	t.Cleanup(func() {
 		if err := hog.Terminate(ctx); err != nil {
 			log.Printf("Failed to terminate container: %v", err)
