@@ -3,10 +3,17 @@ package blockchain
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain/canton"
+)
+
+const (
+	DefaultCantonPort = "8080"
+	TokenExpiry       = time.Hour * 24
 )
 
 type CantonEndpoints struct {
@@ -27,6 +34,8 @@ type CantonParticipantEndpoints struct {
 
 	HTTPHealthCheckURL string // responds on GET /health
 	GRPCHealthCheckURL string // grpc.health.v1.Health/Check
+
+	JWT string // JWT for this participant
 }
 
 // newCanton sets up a Canton blockchain network with the specified number of validators.
@@ -53,6 +62,9 @@ type CantonParticipantEndpoints struct {
 func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	if in.NumberOfCantonValidators >= 100 {
 		return nil, fmt.Errorf("number of validators too high: %d, valid range is 0-99", in.NumberOfCantonValidators)
+	}
+	if in.Port == "" {
+		in.Port = DefaultCantonPort
 	}
 
 	// Set up Postgres container
@@ -100,6 +112,18 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 		return nil, err
 	}
 
+	svToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
+		Issuer:    "",
+		Subject:   "user-sv",
+		Audience:  []string{canton.AuthProviderAudience},
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExpiry)),
+		NotBefore: jwt.NewNumericDate(time.Now()),
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+		ID:        "",
+	}).SignedString([]byte(canton.AuthProviderSecret))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create token for sv: %w", err)
+	}
 	endpoints := &CantonEndpoints{
 		ScanAPIURL:     fmt.Sprintf("http://scan.%s:%s/api/scan", host, in.Port),
 		RegistryAPIURL: fmt.Sprintf("http://scan.%s:%s/registry", host, in.Port),
@@ -110,10 +134,23 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 			ValidatorAPIURL:    fmt.Sprintf("http://sv.validator-api.%s:%s/api/validator", host, in.Port),
 			HTTPHealthCheckURL: fmt.Sprintf("http://sv.http-health-check.%s:%s", host, in.Port),
 			GRPCHealthCheckURL: fmt.Sprintf("sv.grpc-health-check.%s:%s", host, in.Port),
+			JWT:                svToken,
 		},
 		Participants: nil,
 	}
 	for i := 1; i <= in.NumberOfCantonValidators; i++ {
+		token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
+			Issuer:    "",
+			Subject:   fmt.Sprintf("user-participant%v", i),
+			Audience:  []string{canton.AuthProviderAudience},
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExpiry)),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ID:        "",
+		}).SignedString([]byte(canton.AuthProviderSecret))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create token for participant%v: %w", i, err)
+		}
 		participantEndpoints := CantonParticipantEndpoints{
 			JSONLedgerAPIURL:   fmt.Sprintf("http://participant%d.json-ledger-api.%s:%s", i, host, in.Port),
 			GRPCLedgerAPIURL:   fmt.Sprintf("participant%d.grpc-ledger-api.%s:%s", i, host, in.Port),
@@ -121,6 +158,7 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 			ValidatorAPIURL:    fmt.Sprintf("http://participant%d.validator-api.%s:%s/api/validator", i, host, in.Port),
 			HTTPHealthCheckURL: fmt.Sprintf("http://participant%d.http-health-check.%s:%s", i, host, in.Port),
 			GRPCHealthCheckURL: fmt.Sprintf("participant%d.grpc-health-check.%s:%s", i, host, in.Port),
+			JWT:                token,
 		}
 		endpoints.Participants = append(endpoints.Participants, participantEndpoints)
 	}
@@ -129,6 +167,7 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 		UseCache:      false,
 		Type:          in.Type,
 		Family:        FamilyCanton,
+		ChainID:       in.ChainID,
 		ContainerName: nginxReq.Name,
 		NetworkSpecificData: &NetworkSpecificData{
 			CantonEndpoints: endpoints,

@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/fullstorydev/grpcurl"
 	"github.com/go-resty/resty/v2"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/jhump/protoreflect/grpcreflect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,7 +17,6 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain/canton"
 )
 
 type CfgCanton struct {
@@ -48,38 +45,30 @@ func TestCantonSmoke(t *testing.T) {
 
 	testParticipant := func(t *testing.T, name string, endpoints blockchain.CantonParticipantEndpoints) {
 		t.Run(fmt.Sprintf("Test %s endpoints", name), func(t *testing.T) {
-			j, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
-				Issuer:    "",
-				Subject:   fmt.Sprintf("user-%s", name),
-				Audience:  []string{canton.AuthProviderAudience},
-				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)),
-				NotBefore: jwt.NewNumericDate(time.Now()),
-				IssuedAt:  jwt.NewNumericDate(time.Now()),
-				ID:        "",
-			}).SignedString([]byte(canton.AuthProviderSecret))
+			require.NoError(t, err)
 
 			// JSON Ledger API
 			fmt.Println("Calling JSON Ledger API")
-			resp, err := resty.New().SetBaseURL(endpoints.JSONLedgerAPIURL).SetAuthToken(j).R().
+			resp, err := resty.New().SetBaseURL(endpoints.JSONLedgerAPIURL).SetAuthToken(endpoints.JWT).R().
 				Get("/v2/packages")
 			assert.NoError(t, err)
 			fmt.Println(resp)
 
 			// gRPC Ledger API - use reflection
 			fmt.Println("Calling gRPC Ledger API")
-			res, err := callGRPC(t.Context(), endpoints.GRPCLedgerAPIURL, "com.daml.ledger.api.v2.admin.PartyManagementService/GetParties", `{}`, []string{fmt.Sprintf("Authorization: Bearer %s", j)})
+			res, err := callGRPC(t.Context(), endpoints.GRPCLedgerAPIURL, "com.daml.ledger.api.v2.admin.PartyManagementService/GetParties", `{}`, []string{fmt.Sprintf("Authorization: Bearer %s", endpoints.JWT)})
 			assert.NoError(t, err)
 			fmt.Println(res)
 
 			// gRPC Admin API - use reflection
 			fmt.Println("Calling gRPC Admin API")
-			res, err = callGRPC(t.Context(), endpoints.AdminAPIURL, "com.digitalasset.canton.admin.participant.v30.PackageService/ListDars", `{}`, []string{fmt.Sprintf("Authorization: Bearer %s", j)})
+			res, err = callGRPC(t.Context(), endpoints.AdminAPIURL, "com.digitalasset.canton.admin.participant.v30.PackageService/ListDars", `{}`, []string{fmt.Sprintf("Authorization: Bearer %s", endpoints.JWT)})
 			assert.NoError(t, err)
 			fmt.Println(res)
 
 			// Validator API
 			fmt.Println("Calling Validator API")
-			resp, err = resty.New().SetBaseURL(endpoints.ValidatorAPIURL).SetAuthToken(j).R().
+			resp, err = resty.New().SetBaseURL(endpoints.ValidatorAPIURL).SetAuthToken(endpoints.JWT).R().
 				Get("/v0/admin/users")
 			assert.NoError(t, err)
 			fmt.Println(resp)
