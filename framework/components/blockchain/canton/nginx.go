@@ -191,9 +191,6 @@ func NginxContainerRequest(
 	spliceContainerName string,
 ) testcontainers.ContainerRequest {
 	nginxContainerName := framework.DefaultTCName("nginx")
-	if port == "" {
-		port = "8080"
-	}
 	nginxReq := testcontainers.ContainerRequest{
 		Image:    DefaultNginxImage,
 		Name:     nginxContainerName,
