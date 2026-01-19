@@ -62,7 +62,7 @@ func TestSmokeGenerateDevEnv(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Cleanup(func() {
 				runCmd(t, tt.outputDir, tt.cliName, `down`)
-				// os.RemoveAll(tt.outputDir)
+				os.RemoveAll(tt.outputDir)
 			})
 			cg, err := framework.NewEnvBuilder(
 				tt.cliName,
