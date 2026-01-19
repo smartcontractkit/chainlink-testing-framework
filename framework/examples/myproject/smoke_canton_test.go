@@ -45,8 +45,6 @@ func TestCantonSmoke(t *testing.T) {
 
 	testParticipant := func(t *testing.T, name string, endpoints blockchain.CantonParticipantEndpoints) {
 		t.Run(fmt.Sprintf("Test %s endpoints", name), func(t *testing.T) {
-			require.NoError(t, err)
-
 			// JSON Ledger API
 			fmt.Println("Calling JSON Ledger API")
 			resp, err := resty.New().SetBaseURL(endpoints.JSONLedgerAPIURL).SetAuthToken(endpoints.JWT).R().
