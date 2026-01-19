@@ -55,9 +55,9 @@ func NewCLNodesLeakDetector(c *ResourceLeakChecker, opts ...func(*CLNodesLeakDet
 	}
 	switch cd.Mode {
 	case "devenv":
-		// aggregate it on 5m interval with 2m step for mitigating spikes
-		cd.CPUQuery = `avg_over_time((sum(rate(container_cpu_usage_seconds_total{name="don-node%d"}[5m])) * 100)[5m:2m])`
-		cd.MemoryQuery = `avg_over_time(container_memory_rss{name="don-node%d"}[5m]) / 1024 / 1024`
+		// avg from intervals of 30m with 5m step to mitigate spikes
+		cd.CPUQuery = `avg_over_time((sum(rate(container_cpu_usage_seconds_total{name="don-node%d"}[30m])))[30m:5m]) * 100`
+		cd.MemoryQuery = `avg_over_time(container_memory_rss{name="don-node%d"}[30m]) / 1024 / 1024`
 	case "griddle":
 		return nil, fmt.Errorf("not implemented yet")
 	default:
