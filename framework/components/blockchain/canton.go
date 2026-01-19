@@ -13,7 +13,7 @@ import (
 
 const (
 	DefaultCantonPort = "8080"
-	TokenExpiry       = time.Hour * 24
+	TokenExpiry       = time.Hour * 24 * 365 * 10 // 10 years
 )
 
 type CantonEndpoints struct {
