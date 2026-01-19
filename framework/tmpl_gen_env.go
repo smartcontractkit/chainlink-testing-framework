@@ -855,7 +855,7 @@ name = "{{ .ProductName }}"
 instances = 1
 
 [fake_server]
-  image = "ocr2-fakes:latest"
+  image = "{{ .ProductName }}-fakes:latest"
   port = 9111
 
 [[blockchains]]

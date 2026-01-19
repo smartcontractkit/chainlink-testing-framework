@@ -80,3 +80,5 @@ parrot/*.json
 parrot/*.log
 # Executable
 parrot/parrot
+# Devenv (generated manually)
+devenv/
