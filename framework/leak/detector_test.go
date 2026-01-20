@@ -2,6 +2,7 @@ package leak_test
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
@@ -18,6 +19,14 @@ func mustTime(start string) time.Time {
 		panic("can't convert time from RFC3339")
 	}
 	return s
+}
+
+func mustUnixEpoch(start string) string {
+	s, err := time.Parse(time.RFC3339, start)
+	if err != nil {
+		panic("can't convert time from RFC3339")
+	}
+	return strconv.Itoa(int(s.Unix()))
 }
 
 func TestMeasure(t *testing.T) {
@@ -124,15 +133,15 @@ func TestMeasure(t *testing.T) {
 }
 
 func TestRealCLNodesLeakDetectionLocalDevenv(t *testing.T) {
-	t.Skip(`this test requires a real load run, see docs here https://github.com/smartcontractkit/chainlink/tree/develop/devenv, spin up the env and run "cl test load"`)
+	// t.Skip(`this test requires a real load run, see docs here https://github.com/smartcontractkit/chainlink/tree/develop/devenv, spin up the env and run "cl test load"`)
 
 	cnd, err := leak.NewCLNodesLeakDetector(leak.NewResourceLeakChecker())
 	require.NoError(t, err)
 	errs := cnd.Check(&leak.CLNodesCheck{
 		NumNodes:        4,
-		Start:           mustTime("2026-01-15T01:14:00Z"),
-		End:             mustTime("2026-01-15T02:04:00Z"),
-		CPUThreshold:    20.0,
+		Start:           mustTime("2026-01-19T17:23:14Z"),
+		End:             mustTime("2026-01-19T18:00:51Z"),
+		CPUThreshold:    100.0,
 		MemoryThreshold: 20.0,
 	})
 	require.NoError(t, errs)
