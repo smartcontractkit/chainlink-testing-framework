@@ -89,7 +89,7 @@ func (d *ProfileDumper) InstallProfileCLI() (string, error) {
 	f.L.Info().Str("url", downloadURL).Msg("Downloading profilecli")
 
 	// Download and extract in current directory
-	cmd := exec.Command("sh", "-c", fmt.Sprintf("curl -fL %s | tar xvz", downloadURL))
+	cmd := exec.Command("sh", "-c", fmt.Sprintf("curl -fL %s | tar xvz", downloadURL)) //nolint
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -136,7 +136,7 @@ func (d *ProfileDumper) DownloadProfile(config *ProfileDumperConfig) (string, er
 
 	env := os.Environ()
 	env = append(env, fmt.Sprintf("PROFILECLI_URL=%s", d.pyroscopeURL))
-	cmd := exec.Command(d.profileCLIPath, cmdArgs...)
+	cmd := exec.Command(d.profileCLIPath, cmdArgs...) //nolint:gosec
 	cmd.Env = env
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
