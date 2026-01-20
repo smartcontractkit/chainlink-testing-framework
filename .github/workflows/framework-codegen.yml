@@ -51,6 +51,10 @@ jobs:
             go-modules-${{ runner.os }}
       - name: Install dependencies
         run: go mod download
+      - name: Install Just
+        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
+        with:
+          just-version: "1.40.0"
       - name: Run Codegen Tests
         run: |
           go test -timeout ${{ matrix.test.timeout }} -v -count ${{ matrix.test.count }} -run ${{ matrix.test.name }}

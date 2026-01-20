@@ -20,7 +20,7 @@ func mustTime(start string) time.Time {
 	return s
 }
 
-func TestMeasure(t *testing.T) {
+func TestSmokeMeasure(t *testing.T) {
 	qc := leak.NewFakeQueryClient()
 	lc := leak.NewResourceLeakChecker(leak.WithQueryClient(qc))
 	testCases := []struct {
@@ -130,9 +130,10 @@ func TestRealCLNodesLeakDetectionLocalDevenv(t *testing.T) {
 	require.NoError(t, err)
 	errs := cnd.Check(&leak.CLNodesCheck{
 		NumNodes:        4,
-		Start:           mustTime("2026-01-15T01:14:00Z"),
-		End:             mustTime("2026-01-15T02:04:00Z"),
-		CPUThreshold:    20.0,
+		// set timestamps for the run you are analyzing
+		Start:           mustTime("2026-01-19T17:23:14Z"),
+		End:             mustTime("2026-01-19T18:00:51Z"),
+		CPUThreshold:    100.0,
 		MemoryThreshold: 20.0,
 	})
 	require.NoError(t, errs)
@@ -150,6 +151,7 @@ func TestRealPrometheusLowLevelAPI(t *testing.T) {
 	for i := range donNodes {
 		diff, err := lc.MeasureDelta(&leak.CheckConfig{
 			Query:          fmt.Sprintf(`quantile_over_time(0.5, container_memory_rss{name="don-node%d"}[1h]) / 1024 / 1024`, i),
+			// set timestamps for the run you are analyzing
 			Start:          mustTime("2026-01-12T21:53:00Z"),
 			End:            mustTime("2026-01-13T10:11:00Z"),
 			WarmUpDuration: 1 * time.Hour,

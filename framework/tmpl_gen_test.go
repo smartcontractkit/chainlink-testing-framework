@@ -44,7 +44,6 @@ func TestSmokeGenerateDevEnv(t *testing.T) {
 		name        string
 		cliName     string
 		productName string
-		productType string
 		outputDir   string
 		nodes       int
 	}{
@@ -54,7 +53,6 @@ func TestSmokeGenerateDevEnv(t *testing.T) {
 			name:        "basic 2 nodes env",
 			cliName:     "tcli",
 			productName: "myproduct",
-			productType: "evm-single",
 			outputDir:   "test-env",
 			nodes:       2,
 		},
@@ -69,13 +67,16 @@ func TestSmokeGenerateDevEnv(t *testing.T) {
 			cg, err := framework.NewEnvBuilder(
 				tt.cliName,
 				tt.nodes,
-				tt.productType,
 				tt.productName,
 			).
 				OutputDir(tt.outputDir).
 				Build()
 			require.NoError(t, err)
 			err = cg.Write()
+			require.NoError(t, err)
+			err = cg.WriteFakes()
+			require.NoError(t, err)
+			err = cg.WriteProducts()
 			require.NoError(t, err)
 			runCmd(t, filepath.Join(tt.outputDir, "cmd", tt.cliName), `go`, `install`, `.`)
 			runCmd(t, tt.outputDir, tt.cliName, `up`)

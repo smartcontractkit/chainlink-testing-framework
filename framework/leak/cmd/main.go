@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	StepTick = 3 * time.Minute
+	StepTick = 20 * time.Minute
 )
 
 func main() {
@@ -20,7 +20,6 @@ func main() {
 	workersSchedule := os.Getenv("WORKERS")
 	memorySchedule := os.Getenv("MEMORY")
 	repeatStr := os.Getenv("REPEAT")
-
 	leaks := make([][]byte, 0)
 	workerCounter := 0
 

@@ -48,6 +48,47 @@ test load ↵
 
 🔄 **Enforce** quality standards in CI: copy .github/workflows to your CI folder, commit and make them pass
 `
+	// ProductsInterfaceTmpl common interface for arbitrary products deployed in devenv
+	ProductsInterfaceTmpl = `package {{ .PackageName }}
+
+import (
+	"context"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
+
+	nodeset "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
+)
+
+// Product describes a minimal set of methods that each legacy product must implement
+type Product interface {
+	Load() error
+
+	Store(path string, instanceIdx int) error
+
+	GenerateNodesSecrets(
+		ctx context.Context,
+		fs *fake.Input,
+		bc *blockchain.Input,
+		ns *nodeset.Input,
+	) (string, error)
+
+	GenerateNodesConfig(
+		ctx context.Context,
+		fs *fake.Input,
+		bc *blockchain.Input,
+		ns *nodeset.Input,
+	) (string, error)
+
+	ConfigureJobsAndContracts(
+		ctx context.Context,
+		fs *fake.Input,
+		bc *blockchain.Input,
+		ns *nodeset.Input,
+	) error
+}
+`
+
 	// GoModTemplate go module template
 	GoModTemplate = `module {{.ModuleName}}
 
@@ -808,18 +849,14 @@ env-out.toml`
   "weekStart": ""
 }`
 	// ConfigTOMLTmpl is a default env.toml template for devenv describind components configuration
-	ConfigTOMLTmpl = `[on_chain]
-  link_contract_address = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"
-  cl_nodes_funding_eth = 50
-  cl_nodes_funding_link = 50
-  verification_timeout_sec = 400
-  contracts_configuration_timeout_sec = 60
-  verify = false
+	ConfigTOMLTmpl = `
+[[products]]
+name = "{{ .ProductName }}"
+instances = 1
 
-  [on_chain.gas_settings]
-  fee_cap_multiplier = 2
-  tip_cap_multiplier = 2
-
+[fake_server]
+  image = "{{ .ProductName }}-fakes:latest"
+  port = 9111
 
 [[blockchains]]
   chain_id = "1337"
@@ -1078,10 +1115,11 @@ func getSubCommands(parent string) []prompt.Suggest {
 		fallthrough
 	case "restart":
 		return []prompt.Suggest{
-			{Text: "env.toml", Description: "Spin up Anvil <> Anvil local chains, all services, 4 CL nodes"},
-			{Text: "env.toml,env-cl-rebuild.toml", Description: "Spin up Anvil <> Anvil local chains, all services, 4 CL nodes (custom build)"},
-			{Text: "env.toml,env-geth.toml", Description: "Spin up Geth <> Geth local chains (clique), all services, 4 CL nodes"},
-			{Text: "env.toml,env-fuji-fantom.toml", Description: "Spin up testnets: Fuji <> Fantom, all services, 4 CL nodes"},
+			{Text: "env.toml,products/{{ .ProductName }}/basic.toml", Description: "Spin up Anvil <> Anvil local chains, all services, 4 CL nodes"},
+			{Text: "env.toml,products/{{ .ProductName }}/basic.toml,products/{{ .ProductName }}/soak.toml", Description: "Spin up Anvil <> Anvil local chains, all services, 4 CL nodes"},
+			{Text: "env.toml,products/{{ .ProductName }}/basic.toml,env-cl-rebuild.toml", Description: "Spin up Anvil <> Anvil local chains, all services, 4 CL nodes (custom build)"},
+			{Text: "env.toml,products/{{ .ProductName }}/basic.toml,env-geth.toml", Description: "Spin up Geth <> Geth local chains (clique), all services, 4 CL nodes"},
+			{Text: "env.toml,products/{{ .ProductName }}/basic.toml,env-fuji-fantom.toml", Description: "Spin up testnets: Fuji <> Fantom, all services, 4 CL nodes"},
 		}
 	default:
 		return []prompt.Suggest{}
@@ -1223,7 +1261,7 @@ var restartCmd = &cobra.Command{
 		if len(args) > 0 {
 			configFile = args[0]
 		} else {
-			configFile = "env.toml"
+			configFile = "env.toml,products/{{ .ProductName }}/basic.toml"
 		}
 		framework.L.Info().Str("Config", configFile).Msg("Reconfiguring development environment")
 		_ = os.Setenv("CTF_CONFIGS", configFile)
@@ -1233,8 +1271,7 @@ var restartCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("failed to clean Docker resources: %w", err)
 		}
-		_, err = devenv.NewEnvironment()
-		return err
+		return devenv.NewEnvironment(context.Background())
 	},
 }
 
@@ -1248,16 +1285,12 @@ var upCmd = &cobra.Command{
 		if len(args) > 0 {
 			configFile = args[0]
 		} else {
-			configFile = "env.toml"
+			configFile = "env.toml,products/{{ .ProductName }}/basic.toml"
 		}
 		framework.L.Info().Str("Config", configFile).Msg("Creating development environment")
 		_ = os.Setenv("CTF_CONFIGS", configFile)
 		_ = os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
-		_, err := devenv.NewEnvironment()
-		if err != nil {
-			return err
-		}
-		return nil
+		return devenv.NewEnvironment(context.Background())
 	},
 }
 
@@ -1337,8 +1370,8 @@ var obsUpCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("observability up failed: %w", err)
 		}
-		devenv.Plog.Info().Msgf("{{ .ProductName }} Dashboard: %s", Local{{ .ProductName }}Dashboard)
-		devenv.Plog.Info().Msgf("{{ .ProductName }} Load Test Dashboard: %s", LocalWASPLoadDashboard)
+		devenv.L.Info().Msgf("{{ .ProductName }} Dashboard: %s", Local{{ .ProductName }}Dashboard)
+		devenv.L.Info().Msgf("{{ .ProductName }} Load Test Dashboard: %s", LocalWASPLoadDashboard)
 		return nil
 	},
 }
@@ -1370,8 +1403,8 @@ var obsRestartCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("observability up failed: %w", err)
 		}
-		devenv.Plog.Info().Msgf("{{ .ProductName }} Dashboard: %s", Local{{ .ProductName }}Dashboard)
-		devenv.Plog.Info().Msgf("{{ .ProductName }} Load Test Dashboard: %s", LocalWASPLoadDashboard)
+		devenv.L.Info().Msgf("{{ .ProductName }} Dashboard: %s", Local{{ .ProductName }}Dashboard)
+		devenv.L.Info().Msgf("{{ .ProductName }} Load Test Dashboard: %s", LocalWASPLoadDashboard)
 		return nil
 	},
 }
@@ -1462,7 +1495,7 @@ func main() {
 		return
 	}
 	if err := rootCmd.Execute(); err != nil {
-		devenv.Plog.Err(err).Send()
+		devenv.L.Err(err).Send()
 		os.Exit(1)
 	}
 }`
@@ -1477,6 +1510,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	de "{{ .GoModName }}"
+
+	"github.com/smartcontractkit/{{ .ProductName }}/devenv/products"
+	"github.com/smartcontractkit/{{ .ProductName }}/devenv/products/{{ .ProductName }}"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/chaos"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
@@ -1515,6 +1551,10 @@ func (m *ExampleGun) Call(l *wasp.Generator) *wasp.Response {
 func TestLoadChaos(t *testing.T) {
 	in, err := de.LoadOutput[de.Cfg]("../env-out.toml")
 	require.NoError(t, err)
+	inProduct, err := products.LoadOutput[productone.Configurator]("../env-out.toml")
+	require.NoError(t, err)
+
+	_ = inProduct
 
 	clNodes, err := clclient.New(in.NodeSets[0].Out.CLNodes)
 	require.NoError(t, err)
@@ -1583,32 +1623,33 @@ func TestLoadChaos(t *testing.T) {
 	require.False(t, failed)
 }
 `
-	// SmokeTestTmpl is a smoke test template
-	SmokeTestTmpl = `package devenv_test
+
+	SmokeTestImplTmpl = `package devenv_test
 
 import (
-	"fmt"
-	"strconv"
 	"testing"
-	"time"
 
 	de "{{ .GoModName }}"
 
+	"github.com/smartcontractkit/{{ .ProductName }}/devenv/products"
+	"github.com/smartcontractkit/{{ .ProductName }}/devenv/products/{{ .ProductName }}"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
 	"github.com/stretchr/testify/require"
-
-	f "github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
-var L = de.Plog
+var L = de.L
 
 func TestSmoke(t *testing.T) {
 	in, err := de.LoadOutput[de.Cfg]("../env-out.toml")
 	require.NoError(t, err)
-	c, _, _, err := de.ETHClient(in)
+	inProduct, err := products.LoadOutput[productone.Configurator]("../env-out.toml")
 	require.NoError(t, err)
 	clNodes, err := clclient.New(in.NodeSets[0].Out.CLNodes)
 	require.NoError(t, err)
+
+	_ = in
+	_ = inProduct
 
 	tests := []struct {
 		name    string
@@ -1624,86 +1665,26 @@ func TestSmoke(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, _ = c, clNodes
+			_ = clNodes
 		})
 	}
 }
-
-// assertResources is a simple assertion on resources if you run with the observability stack (obs up)
-func assertResources(t *testing.T, in *de.Cfg, start, end time.Time) {
-	pc := f.NewPrometheusQueryClient(f.LocalPrometheusBaseURL)
-	// no more than 10% CPU for this test
-	maxCPU := 10.0
-	cpuResp, err := pc.Query("sum(rate(container_cpu_usage_seconds_total{name=~\".*don.*\"}[5m])) by (name) *100", end)
-	require.NoError(t, err)
-	cpu := f.ToLabelsMap(cpuResp)
-	for i := 0; i < in.NodeSets[0].Nodes; i++ {
-		nodeLabel := fmt.Sprintf("name:don-node%d", i)
-		nodeCpu, err := strconv.ParseFloat(cpu[nodeLabel][0].(string), 64)
-		L.Info().Int("Node", i).Float64("CPU", nodeCpu).Msg("CPU usage percentage")
-		require.NoError(t, err)
-		require.LessOrEqual(t, nodeCpu, maxCPU)
-	}
-	// no more than 200mb for this test
-	maxMem := int(200e6) // 200mb
-	memoryResp, err := pc.Query("sum(container_memory_rss{name=~\".*don.*\"}) by (name)", end)
-	require.NoError(t, err)
-	mem := f.ToLabelsMap(memoryResp)
-	for i := 0; i < in.NodeSets[0].Nodes; i++ {
-		nodeLabel := fmt.Sprintf("name:don-node%d", i)
-		nodeMem, err := strconv.Atoi(mem[nodeLabel][0].(string))
-		L.Info().Int("Node", i).Int("Memory", nodeMem).Msg("Total memory")
-		require.NoError(t, err)
-		require.LessOrEqual(t, nodeMem, maxMem)
-	}
-}
 `
-	// CLDFTmpl is a Chainlink Deployments Framework template
-	CLDFTmpl = `package {{ .PackageName }}
+	// JDTmpl is a JobDistributor client wrappers
+	JDTmpl = `package {{ .PackageName }}
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"math/big"
-	"strings"
-	"time"
 
-	"github.com/Masterminds/semver/v3"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/smartcontractkit/chainlink-common/pkg/logger"
-	"github.com/smartcontractkit/chainlink-deployments-framework/datastore"
-	"github.com/smartcontractkit/chainlink-deployments-framework/operations"
-	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/link_token"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"go.uber.org/zap"
-	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	chainsel "github.com/smartcontractkit/chain-selectors"
-	cldfchain "github.com/smartcontractkit/chainlink-deployments-framework/chain"
-	cldfevm "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm"
-	cldfevmprovider "github.com/smartcontractkit/chainlink-deployments-framework/chain/evm/provider"
-	cldf "github.com/smartcontractkit/chainlink-deployments-framework/deployment"
 	csav1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/csa"
 	jobv1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
 	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 )
-
-const (
-	AnvilKey0                     = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
-	DefaultNativeTransferGasPrice = 21000
-)
-
-const LinkToken cldf.ContractType = "LinkToken"
-
-var _ cldf.ChangeSet[[]uint64] = DeployLinkToken
 
 type JobDistributor struct {
 	nodev1.NodeServiceClient
@@ -1715,208 +1696,6 @@ type JobDistributor struct {
 type JDConfig struct {
 	GRPC  string
 	WSRPC string
-}
-
-// DeployLinkToken deploys a link token contract to the chain identified by the ChainSelector.
-func DeployLinkToken(e cldf.Environment, chains []uint64) (cldf.ChangesetOutput, error) { //nolint:gocritic
-	newAddresses := cldf.NewMemoryAddressBook()
-	deployGrp := errgroup.Group{}
-	for _, chain := range chains {
-		family, err := chainsel.GetSelectorFamily(chain)
-		if err != nil {
-			return cldf.ChangesetOutput{AddressBook: newAddresses}, err
-		}
-		var deployFn func() error
-		switch family {
-		case chainsel.FamilyEVM:
-			// Deploy EVM LINK token
-			deployFn = func() error {
-				_, err := deployLinkTokenContractEVM(
-					e.Logger, e.BlockChains.EVMChains()[chain], newAddresses,
-				)
-				return err
-			}
-		default:
-			return cldf.ChangesetOutput{}, fmt.Errorf("unsupported chain family %s", family)
-		}
-		deployGrp.Go(func() error {
-			err := deployFn()
-			if err != nil {
-				e.Logger.Errorw("Failed to deploy link token", "chain", chain, "err", err)
-				return fmt.Errorf("failed to deploy link token for chain %d: %w", chain, err)
-			}
-			return nil
-		})
-	}
-	return cldf.ChangesetOutput{AddressBook: newAddresses}, deployGrp.Wait()
-}
-
-func deployLinkTokenContractEVM(
-		lggr logger.Logger,
-		chain cldfevm.Chain, //nolint:gocritic
-		ab cldf.AddressBook,
-) (*cldf.ContractDeploy[*link_token.LinkToken], error) {
-	linkToken, err := cldf.DeployContract[*link_token.LinkToken](lggr, chain, ab,
-		func(chain cldfevm.Chain) cldf.ContractDeploy[*link_token.LinkToken] {
-			var (
-				linkTokenAddr common.Address
-				tx            *types.Transaction
-				linkToken     *link_token.LinkToken
-				err2          error
-			)
-			if !chain.IsZkSyncVM {
-				linkTokenAddr, tx, linkToken, err2 = link_token.DeployLinkToken(
-					chain.DeployerKey,
-					chain.Client,
-				)
-			} else {
-				linkTokenAddr, _, linkToken, err2 = link_token.DeployLinkTokenZk(
-					nil,
-					chain.ClientZkSyncVM,
-					chain.DeployerKeyZkSyncVM,
-					chain.Client,
-				)
-			}
-			return cldf.ContractDeploy[*link_token.LinkToken]{
-				Address:  linkTokenAddr,
-				Contract: linkToken,
-				Tx:       tx,
-				Tv:       cldf.NewTypeAndVersion(LinkToken, *semver.MustParse("1.0.0")),
-				Err:      err2,
-			}
-		})
-	if err != nil {
-		lggr.Errorw("Failed to deploy link token", "chain", chain.String(), "err", err)
-		return linkToken, err
-	}
-	return linkToken, nil
-}
-
-// LoadCLDFEnvironment loads CLDF environment with a memory data store and JD client.
-func LoadCLDFEnvironment(in *Cfg) (cldf.Environment, error) {
-	ctx := context.Background()
-
-	getCtx := func() context.Context {
-		return ctx
-	}
-
-	// This only generates a brand new datastore and does not load any existing data.
-	// We will need to figure out how data will be persisted and loaded in the future.
-	ds := datastore.NewMemoryDataStore().Seal()
-
-	lggr, err := logger.NewWith(func(config *zap.Config) {
-		config.Development = true
-		config.Encoding = "console"
-	})
-	if err != nil {
-		return cldf.Environment{}, fmt.Errorf("failed to create logger: %w", err)
-	}
-
-	blockchains, err := loadCLDFChains(in.Blockchains)
-	if err != nil {
-		return cldf.Environment{}, fmt.Errorf("failed to load CLDF chains: %w", err)
-	}
-
-	jd, err := NewJDClient(ctx, JDConfig{
-		GRPC:  in.JD.Out.ExternalGRPCUrl,
-		WSRPC: in.JD.Out.ExternalWSRPCUrl,
-	})
-	if err != nil {
-		return cldf.Environment{},
-			fmt.Errorf("failed to load offchain client: %w", err)
-	}
-
-	opBundle := operations.NewBundle(
-		getCtx,
-		lggr,
-		operations.NewMemoryReporter(),
-		operations.WithOperationRegistry(operations.NewOperationRegistry()),
-	)
-
-	return cldf.Environment{
-		Name:              "local",
-		Logger:            lggr,
-		ExistingAddresses: cldf.NewMemoryAddressBook(),
-		DataStore:         ds,
-		Offchain:          jd,
-		GetContext:        getCtx,
-		OperationsBundle:  opBundle,
-		BlockChains:       cldfchain.NewBlockChainsFromSlice(blockchains),
-	}, nil
-}
-
-func loadCLDFChains(bcis []*blockchain.Input) ([]cldfchain.BlockChain, error) {
-	blockchains := make([]cldfchain.BlockChain, 0)
-	for _, bci := range bcis {
-		switch bci.Type {
-		case "anvil":
-			bc, err := loadEVMChain(bci)
-			if err != nil {
-				return blockchains, fmt.Errorf("failed to load EVM chain %s: %w", bci.ChainID, err)
-			}
-
-			blockchains = append(blockchains, bc)
-		default:
-			return blockchains, fmt.Errorf("unsupported chain type %s", bci.Type)
-		}
-	}
-
-	return blockchains, nil
-}
-
-func loadEVMChain(bci *blockchain.Input) (cldfchain.BlockChain, error) {
-	if bci.Out == nil {
-		return nil, fmt.Errorf("output configuration for %s blockchain %s is not set", bci.Type, bci.ChainID)
-	}
-
-	chainDetails, err := chainsel.GetChainDetailsByChainIDAndFamily(bci.ChainID, chainsel.FamilyEVM)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get chain details for %s: %w", bci.ChainID, err)
-	}
-
-	chain, err := cldfevmprovider.NewRPCChainProvider(
-		chainDetails.ChainSelector,
-		cldfevmprovider.RPCChainProviderConfig{
-			DeployerTransactorGen: cldfevmprovider.TransactorFromRaw(
-				// TODO: we need to figure out a reliable way to get secrets here that is
-				// TODO: - easy for developers
-				// TODO: - works the same way locally, in K8s and in CI
-				// TODO: - do not require specific AWS access like AWSSecretsManager
-				// TODO: for now it's just an Anvil 0 key
-				AnvilKey0,
-			),
-			RPCs: []cldf.RPC{
-				{
-					Name:               "default",
-					WSURL:              bci.Out.Nodes[0].ExternalWSUrl,
-					HTTPURL:            bci.Out.Nodes[0].ExternalHTTPUrl,
-					PreferredURLScheme: cldf.URLSchemePreferenceHTTP,
-				},
-			},
-			ConfirmFunctor: cldfevmprovider.ConfirmFuncGeth(1 * time.Minute),
-		},
-	).Initialize(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize EVM chain %s: %w", bci.ChainID, err)
-	}
-
-	return chain, nil
-}
-
-// NewJDClient creates a new JobDistributor client.
-func NewJDClient(ctx context.Context, cfg JDConfig) (cldf.OffchainClient, error) {
-	conn, err := NewJDConnection(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect Job Distributor service. Err: %w", err)
-	}
-	jd := &JobDistributor{
-		WSRPC:             cfg.WSRPC,
-		NodeServiceClient: nodev1.NewNodeServiceClient(conn),
-		JobServiceClient:  jobv1.NewJobServiceClient(conn),
-		CSAServiceClient:  csav1.NewCSAServiceClient(conn),
-	}
-
-	return jd, err
 }
 
 func (jd JobDistributor) GetCSAPublicKey(ctx context.Context) (string, error) {
@@ -1962,119 +1741,6 @@ func NewJDConnection(cfg JDConfig) (*grpc.ClientConn, error) {
 
 	return conn, nil
 }
-
-// FundNodeEIP1559 funds CL node using RPC URL, recipient address and amount of funds to send (ETH).
-// Uses EIP-1559 transaction type.
-func FundNodeEIP1559(c *ethclient.Client, pkey, recipientAddress string, amountOfFundsInETH float64) error {
-	amount := new(big.Float).Mul(big.NewFloat(amountOfFundsInETH), big.NewFloat(1e18))
-	amountWei, _ := amount.Int(nil)
-	Plog.Info().Str("Addr", recipientAddress).Str("Wei", amountWei.String()).Msg("Funding Node")
-
-	chainID, err := c.NetworkID(context.Background())
-	if err != nil {
-		return err
-	}
-	privateKeyStr := strings.TrimPrefix(pkey, "0x")
-	privateKey, err := crypto.HexToECDSA(privateKeyStr)
-	if err != nil {
-		return err
-	}
-	publicKey := privateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		return errors.New("error casting public key to ECDSA")
-	}
-	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
-
-	nonce, err := c.PendingNonceAt(context.Background(), fromAddress)
-	if err != nil {
-		return err
-	}
-	feeCap, err := c.SuggestGasPrice(context.Background())
-	if err != nil {
-		return err
-	}
-	tipCap, err := c.SuggestGasTipCap(context.Background())
-	if err != nil {
-		return err
-	}
-	recipient := common.HexToAddress(recipientAddress)
-	tx := types.NewTx(&types.DynamicFeeTx{
-		ChainID:   chainID,
-		Nonce:     nonce,
-		To:        &recipient,
-		Value:     amountWei,
-		Gas:       DefaultNativeTransferGasPrice,
-		GasFeeCap: feeCap,
-		GasTipCap: tipCap,
-	})
-	signedTx, err := types.SignTx(tx, types.NewLondonSigner(chainID), privateKey)
-	if err != nil {
-		return err
-	}
-	err = c.SendTransaction(context.Background(), signedTx)
-	if err != nil {
-		return err
-	}
-	if _, err := bind.WaitMined(context.Background(), c, signedTx); err != nil {
-		return err
-	}
-	Plog.Info().Str("Wei", amountWei.String()).Msg("Funded with ETH")
-	return nil
-}
-
-/*
-This is just a basic ETH client, CLDF should provide something like this
-*/
-
-// ETHClient creates a basic Ethereum client using PRIVATE_KEY env var and tip/cap gas settings
-func ETHClient(in *Cfg) (*ethclient.Client, *bind.TransactOpts, string, error) {
-	rpcURL := in.Blockchains[0].Out.Nodes[0].ExternalWSUrl
-	client, err := ethclient.Dial(rpcURL)
-	if err != nil {
-		return nil, nil, "", fmt.Errorf("could not connect to eth client: %w", err)
-	}
-	privateKey, err := crypto.HexToECDSA(GetNetworkPrivateKey())
-	if err != nil {
-		return nil, nil, "", fmt.Errorf("could not parse private key: %w", err)
-	}
-	publicKey := privateKey.PublicKey
-	address := crypto.PubkeyToAddress(publicKey).String()
-	chainID, err := client.ChainID(context.Background())
-	if err != nil {
-		return nil, nil, "", fmt.Errorf("could not get chain ID: %w", err)
-	}
-	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
-	if err != nil {
-		return nil, nil, "", fmt.Errorf("could not create transactor: %w", err)
-	}
-	gasSettings := in.OnChain.GasSettings
-	fc, tc, err := MultiplyEIP1559GasPrices(client, gasSettings.FeeCapMultiplier, gasSettings.TipCapMultiplier)
-	if err != nil {
-		return nil, nil, "", fmt.Errorf("could not get bumped gas price: %w", err)
-	}
-	auth.GasFeeCap = fc
-	auth.GasTipCap = tc
-	Plog.Info().
-		Str("GasFeeCap", fc.String()).
-		Str("GasTipCap", tc.String()).
-		Msg("Default gas prices set")
-	return client, auth, address, nil
-}
-
-// MultiplyEIP1559GasPrices returns bumped EIP1159 gas prices increased by multiplier
-func MultiplyEIP1559GasPrices(client *ethclient.Client, fcMult, tcMult int64) (*big.Int, *big.Int, error) {
-	feeCap, err := client.SuggestGasPrice(context.Background())
-	if err != nil {
-		return nil, nil, err
-	}
-	tipCap, err := client.SuggestGasTipCap(context.Background())
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return new(big.Int).Mul(feeCap, big.NewInt(fcMult)), new(big.Int).Mul(tipCap, big.NewInt(tcMult)), nil
-}
 `
 	// DebugToolsTmpl is a template for various debug tools, tracing, tx debug, etc
 	DebugToolsTmpl = `package {{ .PackageName }}
@@ -2102,18 +1768,6 @@ func tracing() func() {
 	// ConfigTmpl is a template for reading and writing devenv configuration (env.toml, env-out.toml)
 	ConfigTmpl = `package {{ .PackageName }}
 
-/*
-This file provides a simple boilerplate for TOML configuration with overrides
-It has 4 functions: Load[T], Store[T], LoadCache[T] and GetNetworkPrivateKey
-
-To configure the environment we use a set of files we read from the env var CTF_CONFIGS=env.toml,overrides.toml (can be more than 2) in Load[T]
-To store infra or product component outputs we use Store[T] that creates env-cache.toml file.
-This file can be used in tests or in any other code that integrated with dev environment.
-LoadCache[T] is used if you need to write outputs the second time.
-
-GetNetworkPrivateKey is used to get your network private key from the env var we are using across all our environments, or fallback to default Anvil's key.
-*/
-
 import (
 	"errors"
 	"fmt"
@@ -2124,7 +1778,6 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -2137,8 +1790,6 @@ const (
 	// DefaultAnvilKey is a default, well-known Anvil first key
 	DefaultAnvilKey = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 )
-
-var L = log.Output(zerolog.ConsoleWriter{Out: os.Stderr}).Level(zerolog.InfoLevel)
 
 // Load loads TOML configurations from environment variable, ex.: CTF_CONFIGS=env.toml,overrides.toml
 // and unmarshalls the files from left to right overriding keys.
@@ -2160,7 +1811,6 @@ func Load[T any]() (*T, error) {
 		}
 
 		decoder := toml.NewDecoder(strings.NewReader(string(data)))
-		decoder.DisallowUnknownFields()
 
 		if err := decoder.Decode(&config); err != nil {
 			var details *toml.StrictMissingError
@@ -2225,293 +1875,141 @@ func GetNetworkPrivateKey() string {
 	return pk
 }
 `
+
 	// EnvironmentTmpl is an environment.go template - main file for environment composition
 	EnvironmentTmpl = `package {{ .PackageName }}
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"os"
+	"strings"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/jd"
+	"github.com/smartcontractkit/{{ .ProductName }}/devenv/products/{{ .ProductName }}"
 
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 )
 
-type Cfg struct {
-    OnChain         *OnChain                ` + "`" + `toml:"on_chain"` + "`" + `
-    Blockchains []*blockchain.Input ` + "`" + `toml:"blockchains" validate:"required"` + "`" + `
-    NodeSets    []*ns.Input         ` + "`" + `toml:"nodesets"    validate:"required"` + "`" + `
-    JD          *jd.Input           ` + "`" + `toml:"jd"` + "`" + `
+var L = log.Output(zerolog.ConsoleWriter{Out: os.Stderr}).Level(zerolog.DebugLevel).With().Fields(map[string]any{"component": "{{ .ProductName }}"}).Logger()
+
+type ProductInfo struct {
+	Name      string ` + "`" + `toml:"name"` + "`" + `
+	Instances int    ` + "`" + `toml:"instances"` + "`" + `
 }
 
-func NewEnvironment() (*Cfg, error) {
-	endTracing := tracing()
-	defer endTracing()
+type Cfg struct {
+	Products    []*ProductInfo      ` + "`" + `toml:"products"` + "`" + `
+	Blockchains []*blockchain.Input ` + "`" + `toml:"blockchains" validate:"required"` + "`" + `
+	FakeServer  *fake.Input         ` + "`" + `toml:"fake_server" validate:"required"` + "`" + `
+	NodeSets    []*ns.Input         ` + "`" + `toml:"nodesets"    validate:"required"` + "`" + `
+	JD          *jd.Input           ` + "`" + `toml:"jd"` + "`" + `
+}
 
+func newProduct(name string) (Product, error) {
+	switch name {
+	case "{{ .ProductName }}":
+		return {{ .ProductName }}.NewConfigurator(), nil
+	default:
+		return nil, fmt.Errorf("unknown product type: %s", name)
+	}
+}
+
+func NewEnvironment(ctx context.Context) error {
 	if err := framework.DefaultNetwork(nil); err != nil {
-		return nil, err
+		return err
 	}
 	in, err := Load[Cfg]()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load configuration: %w", err)
+		return fmt.Errorf("failed to load configuration: %w", err)
 	}
 	_, err = blockchain.NewBlockchainNetwork(in.Blockchains[0])
 	if err != nil {
-		return nil, fmt.Errorf("failed to create blockchain network 1337: %w", err)
+		return fmt.Errorf("failed to create blockchain network 1337: %w", err)
 	}
-	if err := DefaultProductConfiguration(in, ConfigureNodesNetwork); err != nil {
-		return nil, fmt.Errorf("failed to setup default CLDF orchestration: %w", err)
+	if os.Getenv("FAKE_SERVER_IMAGE") != "" {
+		in.FakeServer.Image = os.Getenv("FAKE_SERVER_IMAGE")
+	}
+	_, err = fake.NewDockerFakeDataProvider(in.FakeServer)
+	if err != nil {
+		return fmt.Errorf("failed to create fake data provider: %w", err)
+	}
+
+	// get all the product orchestrations, generate product specific overrides
+	productConfigurators := make([]Product, 0)
+	nodeConfigs := make([]string, 0)
+	nodeSecrets := make([]string, 0)
+	for _, product := range in.Products {
+		p, err := newProduct(product.Name)
+		if err != nil {
+			return err
+		}
+		if err = p.Load(); err != nil {
+			return fmt.Errorf("failed to load product config: %w", err)
+		}
+
+		cfg, err := p.GenerateNodesConfig(ctx, in.FakeServer, in.Blockchains[0], in.NodeSets[0])
+		if err != nil {
+			return fmt.Errorf("failed to generate CL nodes config: %w", err)
+		}
+		nodeConfigs = append(nodeConfigs, cfg)
+
+		secrets, err := p.GenerateNodesSecrets(ctx, in.FakeServer, in.Blockchains[0], in.NodeSets[0])
+		if err != nil {
+			return fmt.Errorf("failed to generate CL nodes config: %w", err)
+		}
+		nodeSecrets = append(nodeSecrets, secrets)
+
+		productConfigurators = append(productConfigurators, p)
+	}
+
+	// merge overrides, spin up node sets and write infrastructure outputs
+	// infra is always common for all the products, if it can't be we should fail
+	// user should use different infra layout in env.toml then
+	for _, ns := range in.NodeSets[0].NodeSpecs {
+		ns.Node.TestConfigOverrides = strings.Join(nodeConfigs, "\n")
+		ns.Node.TestSecretsOverrides = strings.Join(nodeSecrets, "\n")
+		if os.Getenv("CHAINLINK_IMAGE") != "" {
+			ns.Node.Image = os.Getenv("CHAINLINK_IMAGE")
+		}
 	}
 	_, err = ns.NewSharedDBNodeSet(in.NodeSets[0], nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create new shared db node set: %w", err)
+		return fmt.Errorf("failed to create new shared db node set: %w", err)
 	}
-	if err := DefaultProductConfiguration(in, ConfigureProductContractsJobs); err != nil {
-		return nil, fmt.Errorf("failed to setup default CLDF orchestration: %w", err)
-	}
-	return in, Store[Cfg](in)
-}
-`
-	// SingleNetworkProductConfigurationTmpl is an single-network EVM product configuration template
-	SingleNetworkEVMProductConfigurationTmpl = `package {{ .PackageName }}
-
-import (
-	"context"
-	"fmt"
-	"math/big"
-	"os"
-	"time"
-
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-	"github.com/smartcontractkit/chainlink-evm/gethwrappers/shared/generated/link_token"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
-)
-
-const (
-		ConfigureNodesNetwork ConfigPhase = iota
-		ConfigureProductContractsJobs
-)
-
-var Plog = log.Output(zerolog.ConsoleWriter{Out: os.Stderr}).Level(zerolog.DebugLevel).With().Fields(map[string]any{"component": "on_chain"}).Logger()
-
-type OnChain struct {
-	LinkContractAddress              string                 ` + "`" + `toml:"link_contract_address"` + "`" + `
-	CLNodesFundingETH                float64                ` + "`" + `toml:"cl_nodes_funding_eth"` + "`" + `
-	CLNodesFundingLink               float64                ` + "`" + `toml:"cl_nodes_funding_link"` + "`" + `
-	VerificationTimeoutSec           time.Duration          ` + "`" + `toml:"verification_timeout_sec"` + "`" + `
-	ContractsConfigurationTimeoutSec time.Duration          ` + "`" + `toml:"contracts_configuration_timeout_sec"` + "`" + `
-	GasSettings                      *GasSettings           ` + "`" + `toml:"gas_settings"` + "`" + `
-	Verify                           bool                   ` + "`" + `toml:"verify"` + "`" + `
-	DeployedContracts                *DeployedContracts     ` + "`" + `toml:"deployed_contracts"` + "`" + `
-}
-
-type DeployedContracts struct {
-	SomeContractAddr string ` + "`" + `toml:"some_contract_addr"` + "`" + `
-}
-
-
-type GasSettings struct {
-	FeeCapMultiplier int64 ` + "`" + `toml:"fee_cap_multiplier"` + "`" + `
-	TipCapMultiplier int64 ` + "`" + `toml:"tip_cap_multiplier"` + "`" + `
-}
-
-type Jobs struct {
-	ConfigPollIntervalSeconds time.Duration ` + "`" + `toml:"config_poll_interval_sec"` + "`" + `
-	MaxTaskDurationSec        time.Duration ` + "`" + `toml:"max_task_duration_sec"` + "`" + `
-}
-
-type ConfigPhase int
-
-// deployLinkAndMint is a universal action that deploys link token and mints required amount of LINK token for all the nodes.
-func deployLinkAndMint(ctx context.Context, in *Cfg, c *ethclient.Client, auth *bind.TransactOpts, rootAddr string, transmitters []common.Address) (*link_token.LinkToken, error) {
-	addr, tx, lt, err := link_token.DeployLinkToken(auth, c)
-	if err != nil {
-		return nil, fmt.Errorf("could not create link token contract: %w", err)
-	}
-	_, err = bind.WaitDeployed(ctx, c, tx)
-	if err != nil {
-		return nil, err
-	}
-	Plog.Info().Str("Address", addr.Hex()).Msg("Deployed link token contract")
-	tx, err = lt.GrantMintRole(auth, common.HexToAddress(rootAddr))
-	if err != nil {
-		return nil, fmt.Errorf("could not grant mint role: %w", err)
-	}
-	_, err = bind.WaitMined(ctx, c, tx)
-	if err != nil {
-		return nil, err
-	}
-	// mint for public keys of nodes directly instead of transferring
-	for _, transmitter := range transmitters {
-		amount := new(big.Float).Mul(big.NewFloat(in.OnChain.CLNodesFundingLink), big.NewFloat(1e18))
-		amountWei, _ := amount.Int(nil)
-		Plog.Info().Msgf("Minting LINK for transmitter address: %s", transmitter.Hex())
-		tx, err = lt.Mint(auth, transmitter, amountWei)
-		if err != nil {
-			return nil, fmt.Errorf("could not transfer link token contract: %w", err)
-		}
-		_, err = bind.WaitMined(ctx, c, tx)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return lt, nil
-}
-
-
-func configureContracts(in *Cfg, c *ethclient.Client, auth *bind.TransactOpts, cl []*clclient.ChainlinkClient, rootAddr string, transmitters []common.Address) (*DeployedContracts, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), in.OnChain.ContractsConfigurationTimeoutSec*time.Second)
-	defer cancel()
-	Plog.Info().Msg("Deploying LINK token contract")
-	_, err := deployLinkAndMint(ctx, in, c, auth, rootAddr, transmitters)
-	if err != nil {
-		return nil, fmt.Errorf("could not create link token contract and mint: %w", err)
-	}
-	// TODO: use client and deploy your contracts
-	return &DeployedContracts{
-		SomeContractAddr: "",
-	}, nil
-}
-
-func configureJobs(in *Cfg, clNodes []*clclient.ChainlinkClient, contracts *DeployedContracts) error {
-	bootstrapNode := clNodes[0]
-	workerNodes := clNodes[1:]
-	// TODO: define your jobs
-	job := ""
-	_, _, err := bootstrapNode.CreateJobRaw(job)
-	if err != nil {
-		return fmt.Errorf("creating bootstrap job have failed: %w", err)
+	if err := Store[Cfg](in); err != nil {
+		return err
 	}
 
-	for _, chainlinkNode := range workerNodes {
-		// TODO: define your job for nodes here
-		job := ""
-		_, _, err = chainlinkNode.CreateJobRaw(job)
-		if err != nil {
-			return fmt.Errorf("creating job on node have failed: %w", err)
-		}
-	}
-	return nil
-}
-
-// DefaultProductConfiguration is default product configuration that includes:
-// - Deploying required prerequisites (LINK token, shared contracts)
-// - Applying product-specific changesets
-// - Creating cldf.Environment, connecting to components, see *Cfg fields
-// - Generating CL nodes configs
-// All the data can be added *Cfg struct like and is synced between local machine and remote environment
-// so later both local and remote tests can use it.
-func DefaultProductConfiguration(in *Cfg, phase ConfigPhase) error {
-	pkey := GetNetworkPrivateKey()
-	if pkey == "" {
-		return fmt.Errorf("PRIVATE_KEY environment variable not set")
-	}
-	switch phase {
-	case ConfigureNodesNetwork:
-		Plog.Info().Msg("Applying default CL nodes configuration")
-		node := in.Blockchains[0].Out.Nodes[0]
-		chainID := in.Blockchains[0].ChainID
-		// configure node set and generate CL nodes configs
-		netConfig := fmt.Sprintf(` + "`" + `
-    [[EVM]]
-    LogPollInterval = '1s'
-    BlockBackfillDepth = 100
-    LinkContractAddress = '%s'
-    ChainID = '%s'
-    MinIncomingConfirmations = 1
-    MinContractPayment = '0.0000001 link'
-    FinalityDepth = %d
-
-    [[EVM.Nodes]]
-    Name = 'default'
-    WsUrl = '%s'
-    HttpUrl = '%s'
-
-    [Feature]
-    FeedsManager = true
-    LogPoller = true
-    UICSAKeys = true
-    [OCR2]
-    Enabled = true
-    SimulateTransactions = false
-    DefaultTransactionQueueDepth = 1
-    [P2P.V2]
-    Enabled = true
-    ListenAddresses = ['0.0.0.0:6690']
-
-	   [Log]
-   JSONConsole = true
-   Level = 'debug'
-   [Pyroscope]
-   ServerAddress = 'http://host.docker.internal:4040'
-   Environment = 'local'
-   [WebServer]
-    SessionTimeout = '999h0m0s'
-    HTTPWriteTimeout = '3m'
-   SecureCookies = false
-   HTTPPort = 6688
-   [WebServer.TLS]
-   HTTPSPort = 0
-    [WebServer.RateLimit]
-    Authenticated = 5000
-    Unauthenticated = 5000
-   [JobPipeline]
-   [JobPipeline.HTTPRequest]
-   DefaultTimeout = '1m'
-    [Log.File]
-    MaxSize = '0b'
-` + "`" + `, in.OnChain.LinkContractAddress, chainID, 5, node.InternalWSUrl, node.InternalHTTPUrl)
-		for _, nodeSpec := range in.NodeSets[0].NodeSpecs {
-			nodeSpec.Node.TestConfigOverrides = netConfig
-		}
-		Plog.Info().Msg("Nodes network configuration is finished")
-	case ConfigureProductContractsJobs:
-		Plog.Info().Msg("Connecting to CL nodes")
-		nodeClients, err := clclient.New(in.NodeSets[0].Out.CLNodes)
-		if err != nil {
-			return err
-		}
-		transmitters := make([]common.Address, 0)
-		ethKeyAddresses := make([]string, 0)
-		for i, nc := range nodeClients {
-			addr, err := nc.ReadPrimaryETHKey(in.Blockchains[0].ChainID)
+	// deploy all products and all instances,
+	// product config function controls what to read and how to orchestrate each instance
+	// via their own TOML part, we only deploy N instances of product M
+	for productIdx, productInfo := range in.Products {
+		for productInstance := range productInfo.Instances {
+			err = productConfigurators[productIdx].ConfigureJobsAndContracts(
+				ctx,
+				in.FakeServer,
+				in.Blockchains[0],
+				in.NodeSets[0],
+			)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to setup default product deployment: %w", err)
 			}
-			ethKeyAddresses = append(ethKeyAddresses, addr.Attributes.Address)
-			transmitters = append(transmitters, common.HexToAddress(addr.Attributes.Address))
-			Plog.Info().
-				Int("Idx", i).
-				Str("ETH", addr.Attributes.Address).
-				Msg("Node info")
-		}
-		// ETH examples
-		c, auth, rootAddr, err := ETHClient(in)
-		if err != nil {
-			return fmt.Errorf("could not create basic eth client: %w", err)
-		}
-		for _, addr := range ethKeyAddresses {
-			if err := FundNodeEIP1559(c, pkey, addr, in.OnChain.CLNodesFundingETH); err != nil {
-				return err
+			if err := productConfigurators[productIdx].Store("env-out.toml", productInstance); err != nil {
+				return errors.New("failed to store product config")
 			}
 		}
-		contracts, err := configureContracts(in, c, auth, nodeClients, rootAddr, transmitters)
-		if err != nil {
-			return err
-		}
-		if err := configureJobs(in, nodeClients, contracts); err != nil {
-			return err
-		}
-		Plog.Info().Str("BootstrapNode", in.NodeSets[0].Out.CLNodes[0].Node.ExternalURL).Send()
-		for _, n := range in.NodeSets[0].Out.CLNodes[1:] {
-			Plog.Info().Str("Node", n.Node.ExternalURL).Send()
-		}
-		in.OnChain.DeployedContracts = contracts
+	}
+	L.Info().Str("BootstrapNode", in.NodeSets[0].Out.CLNodes[0].Node.ExternalURL).Send()
+	for _, n := range in.NodeSets[0].Out.CLNodes[1:] {
+		L.Info().Str("Node", n.Node.ExternalURL).Send()
 	}
 	return nil
 }
@@ -2541,12 +2039,14 @@ push-fakes:
 
 // SmokeTestParams params for generating end-to-end test template
 type SmokeTestParams struct {
-	GoModName string
+	GoModName   string
+	ProductName string
 }
 
 // LoadTestParams params for generating end-to-end test template
 type LoadTestParams struct {
-	GoModName string
+	GoModName   string
+	ProductName string
 }
 
 // CISmokeParams params for generating CI smoke tests file
@@ -2586,6 +2086,7 @@ type GrafanaDashboardParams struct {
 // ConfigTOMLParams default env.toml params
 type ConfigTOMLParams struct {
 	PackageName string
+	ProductName string
 	Nodes       int
 	NodeIndices []int
 }
@@ -2599,6 +2100,7 @@ type JustfileParams struct {
 // CLICompletionParams cli.go file params
 type CLICompletionParams struct {
 	PackageName string
+	ProductName string
 	CLIName     string
 }
 
@@ -2626,9 +2128,15 @@ type ConfigParams struct {
 	PackageName string
 }
 
+// DevEnvInterfaceParams interface.go file params
+type DevEnvInterfaceParams struct {
+	PackageName string
+}
+
 // EnvParams environment.go file params
 type EnvParams struct {
 	PackageName string
+	ProductName string
 }
 
 // ProductConfigurationSimple product_configuration.go file params
@@ -2660,7 +2168,6 @@ type EnvBuilder struct {
 	outputDir   string
 	packageName string
 	cliName     string
-	productType string
 	moduleName  string
 }
 
@@ -2670,14 +2177,13 @@ type EnvCodegen struct {
 }
 
 // NewEnvBuilder creates a new Chainlink Cluster developer environment
-func NewEnvBuilder(cliName string, nodes int, productType string, productName string) *EnvBuilder {
+func NewEnvBuilder(cliName string, nodes int, productName string) *EnvBuilder {
 	return &EnvBuilder{
 		productName: productName,
 		cliName:     cliName,
 		nodes:       nodes,
 		packageName: "devenv",
 		outputDir:   "devenv",
-		productType: productType,
 	}
 }
 
@@ -2727,7 +2233,7 @@ func (g *EnvCodegen) Read() error {
 	return nil
 }
 
-// Write generates a complete boilerplate, can be multiple files
+// Write generates a complete devenv boilerplate, can be multiple files
 func (g *EnvCodegen) Write() error {
 	// Create output directory
 	if err := os.MkdirAll( //nolint:gosec
@@ -2849,17 +2355,30 @@ func (g *EnvCodegen) Write() error {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
-	// Generate cldf.go
-	cldfContents, err := g.GenerateCLDF()
+	// Generate jd.go
+	cldfContents, err := g.GenerateJD()
 	if err != nil {
 		return err
 	}
 	if err := os.WriteFile( //nolint:gosec
-		filepath.Join(g.cfg.outputDir, "cldf.go"),
+		filepath.Join(g.cfg.outputDir, "jd.go"),
 		[]byte(cldfContents),
 		os.ModePerm,
 	); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	// Generate interface.go
+	interfaceContents, err := g.GenerateProductsInterface()
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile( //nolint:gosec
+		filepath.Join(g.cfg.outputDir, "interface.go"),
+		[]byte(interfaceContents),
+		os.ModePerm,
+	); err != nil {
+		return fmt.Errorf("failed to write products interface file: %w", err)
 	}
 
 	// Generate environment.go
@@ -2873,26 +2392,6 @@ func (g *EnvCodegen) Write() error {
 		os.ModePerm,
 	); err != nil {
 		return fmt.Errorf("failed to write environment file: %w", err)
-	}
-
-	// Generate product_configuration.go
-	switch g.cfg.productType {
-	case "evm-single":
-		prodConfigFileContents, err := g.GenerateSingleNetworkProductConfiguration()
-		if err != nil {
-			return err
-		}
-		if err := os.WriteFile( //nolint:gosec
-			filepath.Join(g.cfg.outputDir, "product_configuration.go"),
-			[]byte(prodConfigFileContents),
-			os.ModePerm,
-		); err != nil {
-			return fmt.Errorf("failed to write product configuration file: %w", err)
-		}
-	case "multi-network":
-		return fmt.Errorf("product configuration 'multi-network' is not supported yet")
-	default:
-		return fmt.Errorf("unknown product configuration type: %s, known types are 'evm-single' or 'multi-network'", g.cfg.productType)
 	}
 
 	// create CI directory
@@ -3000,26 +2499,6 @@ func (g *EnvCodegen) Write() error {
 		return fmt.Errorf("failed to write gitignore file: %w", err)
 	}
 
-	// tidy and finalize
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	// nolint
-	defer os.Chdir(currentDir)
-	if err := os.Chdir(g.cfg.outputDir); err != nil {
-		return err
-	}
-	log.Info().Msg("Downloading dependencies and running 'go mod tidy' ..")
-	_, err = exec.Command("go", "mod", "tidy").CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to tidy generated module: %w", err)
-	}
-	log.Info().
-		Str("OutputDir", g.cfg.outputDir).
-		Str("Module", g.cfg.moduleName).
-		Msg("Developer environment generated")
 	return nil
 }
 
@@ -3027,7 +2506,8 @@ func (g *EnvCodegen) Write() error {
 func (g *EnvCodegen) GenerateLoadTests() (string, error) {
 	log.Info().Msg("Generating load test template")
 	data := LoadTestParams{
-		GoModName: g.cfg.moduleName,
+		GoModName:   g.cfg.moduleName,
+		ProductName: g.cfg.productName,
 	}
 	return render(LoadTestTmpl, data)
 }
@@ -3036,9 +2516,10 @@ func (g *EnvCodegen) GenerateLoadTests() (string, error) {
 func (g *EnvCodegen) GenerateSmokeTests() (string, error) {
 	log.Info().Msg("Generating smoke test template")
 	data := SmokeTestParams{
-		GoModName: g.cfg.moduleName,
+		GoModName:   g.cfg.moduleName,
+		ProductName: g.cfg.productName,
 	}
-	return render(SmokeTestTmpl, data)
+	return render(SmokeTestImplTmpl, data)
 }
 
 // GenerateCILoadChaos generates a load&chaos test CI workflow
@@ -3112,6 +2593,7 @@ func (g *EnvCodegen) GenerateDefaultTOMLConfig() (string, error) {
 	log.Info().Msg("Generating default environment config (env.toml)")
 	p := ConfigTOMLParams{
 		PackageName: g.cfg.packageName,
+		ProductName: g.cfg.productName,
 		Nodes:       g.cfg.nodes,
 		NodeIndices: make([]int, g.cfg.nodes),
 	}
@@ -3133,6 +2615,7 @@ func (g *EnvCodegen) GenerateCLICompletion() (string, error) {
 	log.Info().Msg("Generating shell completion")
 	p := CLICompletionParams{
 		PackageName: g.cfg.packageName,
+		ProductName: g.cfg.productName,
 		CLIName:     g.cfg.cliName,
 	}
 	return render(CompletionTmpl, p)
@@ -3151,31 +2634,23 @@ func (g *EnvCodegen) GenerateCLI(dashboardUUID string) (string, error) {
 	return render(CLITmpl, p)
 }
 
-// GenerateSingleNetworkProductConfiguration generate a single-network EVM product configuration
-func (g *EnvCodegen) GenerateSingleNetworkProductConfiguration() (string, error) {
-	log.Info().Msg("Configuring EVM network")
-	p := ProductConfigurationSimple{
-		PackageName: g.cfg.packageName,
-	}
-	return render(SingleNetworkEVMProductConfigurationTmpl, p)
-}
-
 // GenerateEnvironment generate environment.go, our environment composition function
 func (g *EnvCodegen) GenerateEnvironment() (string, error) {
 	log.Info().Msg("Generating environment composition (environment.go)")
 	p := EnvParams{
 		PackageName: g.cfg.packageName,
+		ProductName: g.cfg.productName,
 	}
 	return render(EnvironmentTmpl, p)
 }
 
-// GenerateCLDF generate CLDF helpers
-func (g *EnvCodegen) GenerateCLDF() (string, error) {
-	log.Info().Msg("Generating CLDF helpers")
+// GenerateJD generate JD helpers
+func (g *EnvCodegen) GenerateJD() (string, error) {
+	log.Info().Msg("Generating JD helpers")
 	p := CLDFParams{
 		PackageName: g.cfg.packageName,
 	}
-	return render(CLDFTmpl, p)
+	return render(JDTmpl, p)
 }
 
 // GenerateDebugTools generate debug tools (tracing)
@@ -3194,6 +2669,15 @@ func (g *EnvCodegen) GenerateConfig() (string, error) {
 		PackageName: g.cfg.packageName,
 	}
 	return render(ConfigTmpl, p)
+}
+
+// GenerateProductsInterface generate devenv interface to run arbitrary products
+func (g *EnvCodegen) GenerateProductsInterface() (string, error) {
+	log.Info().Msg("Generating devenv interface")
+	p := DevEnvInterfaceParams{
+		PackageName: g.cfg.packageName,
+	}
+	return render(ProductsInterfaceTmpl, p)
 }
 
 // GenerateTableTest generates all possible experiments for a namespace

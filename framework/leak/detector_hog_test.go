@@ -22,13 +22,13 @@ func TestCyclicHog(t *testing.T) {
 		ctx,
 		"resource-hog:latest",
 		map[string]string{
-			"WORKERS": "1,2,3,2,1",
-			"MEMORY":  "1,2,3,2,1",
+			"WORKERS": "1,2,3,4,5,5,4,3,2,1",
+			"MEMORY":  "1,2,3,4,5,5,4,3,2,1",
 			"REPEAT":  "1",
 		},
 	)
 	require.NoError(t, err)
-	time.Sleep(15 * time.Minute)
+	time.Sleep(2 * time.Hour)
 	t.Cleanup(func() {
 		if err := hog.Terminate(ctx); err != nil {
 			log.Printf("Failed to terminate container: %v", err)
@@ -41,19 +41,22 @@ func TestVerifyCyclicHog(t *testing.T) {
 	lc := leak.NewResourceLeakChecker()
 	// cpu
 	diff, err := lc.MeasureDelta(&leak.CheckConfig{
-		Query:          `avg_over_time((sum(rate(container_cpu_usage_seconds_total{name="resource-hog"}[5m])) * 100)[5m:2m])`,
-		Start:          mustTime("2026-01-16T13:20:30Z"),
-		End:            mustTime("2026-01-16T13:32:40Z"),
-		WarmUpDuration: 2 * time.Minute,
+		Query:          `avg_over_time((sum(rate(container_cpu_usage_seconds_total{name="resource-hog"}[30m])))[30m:5m]) * 100`,
+		// set timestamps for the run you are analyzing
+		Start:          mustTime("2026-01-19T10:30:00Z"),
+		End:            mustTime("2026-01-19T12:29:15Z"),
+		WarmUpDuration: 10 * time.Minute,
 	})
 	fmt.Println(diff)
 	require.NoError(t, err)
 
 	// mem
 	diff, err = lc.MeasureDelta(&leak.CheckConfig{
-		Query: `avg_over_time(container_memory_rss{name="resource-hog"}[5m]) / 1024 / 1024`,
-		Start: mustTime("2026-01-16T13:20:30Z"),
-		End:   mustTime("2026-01-16T13:38:25Z"),
+		Query:          `avg_over_time(container_memory_rss{name="resource-hog"}[30m]) / 1024 / 1024`,
+		// set timestamps for the run you are analyzing
+		Start:          mustTime("2026-01-19T10:30:00Z"),
+		End:            mustTime("2026-01-19T12:29:15Z"),
+		WarmUpDuration: 10 * time.Minute,
 	})
 	fmt.Println(diff)
 	require.NoError(t, err)
