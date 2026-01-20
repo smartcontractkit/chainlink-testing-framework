@@ -133,7 +133,7 @@ func TestMeasure(t *testing.T) {
 }
 
 func TestRealCLNodesLeakDetectionLocalDevenv(t *testing.T) {
-	// t.Skip(`this test requires a real load run, see docs here https://github.com/smartcontractkit/chainlink/tree/develop/devenv, spin up the env and run "cl test load"`)
+	t.Skip(`this test requires a real load run, see docs here https://github.com/smartcontractkit/chainlink/tree/develop/devenv, spin up the env and run "cl test load"`)
 
 	cnd, err := leak.NewCLNodesLeakDetector(leak.NewResourceLeakChecker())
 	require.NoError(t, err)
