@@ -2,7 +2,6 @@ package leak_test
 
 import (
 	"fmt"
-	"strconv"
 	"testing"
 	"time"
 
@@ -21,15 +20,7 @@ func mustTime(start string) time.Time {
 	return s
 }
 
-func mustUnixEpoch(start string) string {
-	s, err := time.Parse(time.RFC3339, start)
-	if err != nil {
-		panic("can't convert time from RFC3339")
-	}
-	return strconv.Itoa(int(s.Unix()))
-}
-
-func TestMeasure(t *testing.T) {
+func TestSmokeMeasure(t *testing.T) {
 	qc := leak.NewFakeQueryClient()
 	lc := leak.NewResourceLeakChecker(leak.WithQueryClient(qc))
 	testCases := []struct {
