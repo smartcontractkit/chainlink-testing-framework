@@ -44,11 +44,11 @@ import (
 var L = log.Output(zerolog.ConsoleWriter{Out: os.Stderr}).Level(zerolog.DebugLevel).With().Fields(map[string]any{"component": "{{ .ProductName }}"}).Logger()
 
 type ProductConfig struct {
-	Out *ProductConfigOutput ` + "`" +`toml:"out"` + "`" + `
+	Out *ProductConfigOutput ` + "`" + `toml:"out"` + "`" + `
 }
 
 type ProductConfigOutput struct {
-	ExampleField string ` + "`" +`toml:"example"` + "`" + `
+	ExampleField string ` + "`" + `toml:"example"` + "`" + `
 }
 
 type Configurator struct {
