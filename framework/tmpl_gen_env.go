@@ -1115,10 +1115,11 @@ func getSubCommands(parent string) []prompt.Suggest {
 		fallthrough
 	case "restart":
 		return []prompt.Suggest{
-			{Text: "env.toml", Description: "Spin up Anvil <> Anvil local chains, all services, 4 CL nodes"},
-			{Text: "env.toml,env-cl-rebuild.toml", Description: "Spin up Anvil <> Anvil local chains, all services, 4 CL nodes (custom build)"},
-			{Text: "env.toml,env-geth.toml", Description: "Spin up Geth <> Geth local chains (clique), all services, 4 CL nodes"},
-			{Text: "env.toml,env-fuji-fantom.toml", Description: "Spin up testnets: Fuji <> Fantom, all services, 4 CL nodes"},
+			{Text: "env.toml,products/{{ .ProductName }}/basic.toml", Description: "Spin up Anvil <> Anvil local chains, all services, 4 CL nodes"},
+			{Text: "env.toml,products/{{ .ProductName }}/basic.toml,products/{{ .ProductName }}/soak.toml", Description: "Spin up Anvil <> Anvil local chains, all services, 4 CL nodes"},
+			{Text: "env.toml,products/{{ .ProductName }}/basic.toml,env-cl-rebuild.toml", Description: "Spin up Anvil <> Anvil local chains, all services, 4 CL nodes (custom build)"},
+			{Text: "env.toml,products/{{ .ProductName }}/basic.toml,env-geth.toml", Description: "Spin up Geth <> Geth local chains (clique), all services, 4 CL nodes"},
+			{Text: "env.toml,products/{{ .ProductName }}/basic.toml,env-fuji-fantom.toml", Description: "Spin up testnets: Fuji <> Fantom, all services, 4 CL nodes"},
 		}
 	default:
 		return []prompt.Suggest{}
@@ -1260,7 +1261,7 @@ var restartCmd = &cobra.Command{
 		if len(args) > 0 {
 			configFile = args[0]
 		} else {
-			configFile = "env.toml"
+			configFile = "env.toml,products/{{ .ProductName }}/basic.toml"
 		}
 		framework.L.Info().Str("Config", configFile).Msg("Reconfiguring development environment")
 		_ = os.Setenv("CTF_CONFIGS", configFile)
@@ -1284,7 +1285,7 @@ var upCmd = &cobra.Command{
 		if len(args) > 0 {
 			configFile = args[0]
 		} else {
-			configFile = "env.toml"
+			configFile = "env.toml,products/{{ .ProductName }}/basic.toml"
 		}
 		framework.L.Info().Str("Config", configFile).Msg("Creating development environment")
 		_ = os.Setenv("CTF_CONFIGS", configFile)
@@ -1510,6 +1511,9 @@ import (
 
 	de "{{ .GoModName }}"
 
+	"github.com/smartcontractkit/{{ .ProductName }}/devenv/products"
+	"github.com/smartcontractkit/{{ .ProductName }}/devenv/products/{{ .ProductName }}"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/chaos"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
 	"github.com/smartcontractkit/chainlink-testing-framework/wasp"
@@ -1547,6 +1551,10 @@ func (m *ExampleGun) Call(l *wasp.Generator) *wasp.Response {
 func TestLoadChaos(t *testing.T) {
 	in, err := de.LoadOutput[de.Cfg]("../env-out.toml")
 	require.NoError(t, err)
+	inProduct, err := products.LoadOutput[productone.Configurator]("../env-out.toml")
+	require.NoError(t, err)
+
+	_ = inProduct
 
 	clNodes, err := clclient.New(in.NodeSets[0].Out.CLNodes)
 	require.NoError(t, err)
@@ -1615,21 +1623,19 @@ func TestLoadChaos(t *testing.T) {
 	require.False(t, failed)
 }
 `
-	// SmokeTestTmpl is a smoke test template
-	SmokeTestTmpl = `package devenv_test
+
+	SmokeTestImplTmpl = `package devenv_test
 
 import (
-	"fmt"
-	"strconv"
 	"testing"
-	"time"
 
 	de "{{ .GoModName }}"
 
+	"github.com/smartcontractkit/{{ .ProductName }}/devenv/products"
+	"github.com/smartcontractkit/{{ .ProductName }}/devenv/products/{{ .ProductName }}"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
 	"github.com/stretchr/testify/require"
-
-	f "github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 var L = de.L
@@ -1637,10 +1643,13 @@ var L = de.L
 func TestSmoke(t *testing.T) {
 	in, err := de.LoadOutput[de.Cfg]("../env-out.toml")
 	require.NoError(t, err)
-	c, _, _, err := de.ETHClient(in)
+	inProduct, err := products.LoadOutput[productone.Configurator]("../env-out.toml")
 	require.NoError(t, err)
 	clNodes, err := clclient.New(in.NodeSets[0].Out.CLNodes)
 	require.NoError(t, err)
+
+	_ = in
+	_ = inProduct
 
 	tests := []struct {
 		name    string
@@ -1656,37 +1665,8 @@ func TestSmoke(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, _ = c, clNodes
+			_ = clNodes
 		})
-	}
-}
-
-// assertResources is a simple assertion on resources if you run with the observability stack (obs up)
-func assertResources(t *testing.T, in *de.Cfg, start, end time.Time) {
-	pc := f.NewPrometheusQueryClient(f.LocalPrometheusBaseURL)
-	// no more than 10% CPU for this test
-	maxCPU := 10.0
-	cpuResp, err := pc.Query("sum(rate(container_cpu_usage_seconds_total{name=~\".*don.*\"}[5m])) by (name) *100", end)
-	require.NoError(t, err)
-	cpu := f.ToLabelsMap(cpuResp)
-	for i := 0; i < in.NodeSets[0].Nodes; i++ {
-		nodeLabel := fmt.Sprintf("name:don-node%d", i)
-		nodeCpu, err := strconv.ParseFloat(cpu[nodeLabel][0].(string), 64)
-		L.Info().Int("Node", i).Float64("CPU", nodeCpu).Msg("CPU usage percentage")
-		require.NoError(t, err)
-		require.LessOrEqual(t, nodeCpu, maxCPU)
-	}
-	// no more than 200mb for this test
-	maxMem := int(200e6) // 200mb
-	memoryResp, err := pc.Query("sum(container_memory_rss{name=~\".*don.*\"}) by (name)", end)
-	require.NoError(t, err)
-	mem := f.ToLabelsMap(memoryResp)
-	for i := 0; i < in.NodeSets[0].Nodes; i++ {
-		nodeLabel := fmt.Sprintf("name:don-node%d", i)
-		nodeMem, err := strconv.Atoi(mem[nodeLabel][0].(string))
-		L.Info().Int("Node", i).Int("Memory", nodeMem).Msg("Total memory")
-		require.NoError(t, err)
-		require.LessOrEqual(t, nodeMem, maxMem)
 	}
 }
 `
@@ -1831,7 +1811,6 @@ func Load[T any]() (*T, error) {
 		}
 
 		decoder := toml.NewDecoder(strings.NewReader(string(data)))
-		decoder.DisallowUnknownFields()
 
 		if err := decoder.Decode(&config); err != nil {
 			var details *toml.StrictMissingError
@@ -2060,12 +2039,14 @@ push-fakes:
 
 // SmokeTestParams params for generating end-to-end test template
 type SmokeTestParams struct {
-	GoModName string
+	GoModName   string
+	ProductName string
 }
 
 // LoadTestParams params for generating end-to-end test template
 type LoadTestParams struct {
-	GoModName string
+	GoModName   string
+	ProductName string
 }
 
 // CISmokeParams params for generating CI smoke tests file
@@ -2119,6 +2100,7 @@ type JustfileParams struct {
 // CLICompletionParams cli.go file params
 type CLICompletionParams struct {
 	PackageName string
+	ProductName string
 	CLIName     string
 }
 
@@ -2524,7 +2506,8 @@ func (g *EnvCodegen) Write() error {
 func (g *EnvCodegen) GenerateLoadTests() (string, error) {
 	log.Info().Msg("Generating load test template")
 	data := LoadTestParams{
-		GoModName: g.cfg.moduleName,
+		GoModName:   g.cfg.moduleName,
+		ProductName: g.cfg.productName,
 	}
 	return render(LoadTestTmpl, data)
 }
@@ -2533,9 +2516,10 @@ func (g *EnvCodegen) GenerateLoadTests() (string, error) {
 func (g *EnvCodegen) GenerateSmokeTests() (string, error) {
 	log.Info().Msg("Generating smoke test template")
 	data := SmokeTestParams{
-		GoModName: g.cfg.moduleName,
+		GoModName:   g.cfg.moduleName,
+		ProductName: g.cfg.productName,
 	}
-	return render(SmokeTestTmpl, data)
+	return render(SmokeTestImplTmpl, data)
 }
 
 // GenerateCILoadChaos generates a load&chaos test CI workflow
@@ -2631,6 +2615,7 @@ func (g *EnvCodegen) GenerateCLICompletion() (string, error) {
 	log.Info().Msg("Generating shell completion")
 	p := CLICompletionParams{
 		PackageName: g.cfg.packageName,
+		ProductName: g.cfg.productName,
 		CLIName:     g.cfg.cliName,
 	}
 	return render(CompletionTmpl, p)
