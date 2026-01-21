@@ -70,6 +70,7 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 
 	// Set up Postgres container
 	postgresReq := canton.PostgresContainerRequest(in.NumberOfCantonValidators)
+	fmt.Printf("canton: starting postgres container %s\n", postgresReq.Name)
 	postgresContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: postgresReq,
 		Started:          true,
@@ -77,12 +78,15 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("canton: postgres container %s started\n", postgresReq.Name)
 	if err := waitForPostgresDatabases(ctx, postgresContainer, in.NumberOfCantonValidators); err != nil {
 		return nil, err
 	}
+	fmt.Printf("canton: postgres container %s ready for all databases\n", postgresReq.Name)
 
 	// Set up Canton container
 	cantonReq := canton.ContainerRequest(in.NumberOfCantonValidators, in.Image, postgresReq.Name)
+	fmt.Printf("canton: starting canton container %s\n", cantonReq.Name)
 	_, err = testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: cantonReq,
 		Started:          true,
@@ -90,9 +94,11 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("canton: canton container %s started\n", cantonReq.Name)
 
 	// Set up Splice container
 	spliceReq := canton.SpliceContainerRequest(in.NumberOfCantonValidators, in.Image, postgresReq.Name, cantonReq.Name)
+	fmt.Printf("canton: starting splice container %s\n", spliceReq.Name)
 	_, err = testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: spliceReq,
 		Started:          true,
@@ -100,9 +106,11 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("canton: splice container %s started\n", spliceReq.Name)
 
 	// Set up Nginx container
 	nginxReq := canton.NginxContainerRequest(in.NumberOfCantonValidators, in.Port, cantonReq.Name, spliceReq.Name)
+	fmt.Printf("canton: starting nginx container\n")
 	nginxContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: nginxReq,
 		Started:          true,
@@ -110,6 +118,7 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("canton: nginx container %s started\n", nginxReq.Name)
 
 	host, err := nginxContainer.Host(ctx)
 	if err != nil {
@@ -180,6 +189,12 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 }
 
 func waitForPostgresDatabases(ctx context.Context, postgresContainer testcontainers.Container, numberOfValidators int) error {
+	fmt.Println("canton: waiting for postgres stability")
+	if err := waitForPostgresStable(ctx, postgresContainer); err != nil {
+		return err
+	}
+	fmt.Println("canton: postgres stability confirmed")
+
 	databases := []string{
 		"canton",
 		"sequencer",
@@ -195,6 +210,7 @@ func waitForPostgresDatabases(ctx context.Context, postgresContainer testcontain
 	}
 
 	for _, db := range databases {
+		fmt.Printf("canton: waiting for postgres database %s\n", db)
 		if err := wait.ForExec([]string{
 			"psql",
 			"-U", canton.DefaultPostgresUser,
@@ -203,7 +219,44 @@ func waitForPostgresDatabases(ctx context.Context, postgresContainer testcontain
 		}).WithStartupTimeout(2*time.Minute).WaitUntilReady(ctx, postgresContainer); err != nil {
 			return fmt.Errorf("postgres not ready for database %s: %w", db, err)
 		}
+		fmt.Printf("canton: postgres database %s ready\n", db)
 	}
 
 	return nil
+}
+
+func waitForPostgresStable(ctx context.Context, postgresContainer testcontainers.Container) error {
+	fmt.Println("canton: waiting for postgres to be ready (first check)")
+	deadline := time.Now().Add(2 * time.Minute)
+	var lastErr error
+	for time.Now().Before(deadline) {
+		if err := wait.ForExec([]string{
+			"pg_isready",
+			"-U", canton.DefaultPostgresUser,
+			"-d", canton.DefaultPostgresDB,
+		}).WaitUntilReady(ctx, postgresContainer); err != nil {
+			lastErr = err
+			fmt.Printf("canton: postgres not ready (first check): %v\n", err)
+			time.Sleep(2 * time.Second)
+			continue
+		}
+
+		fmt.Println("canton: postgres ready on first check, waiting before second check")
+		time.Sleep(3 * time.Second)
+		if err := wait.ForExec([]string{
+			"pg_isready",
+			"-U", canton.DefaultPostgresUser,
+			"-d", canton.DefaultPostgresDB,
+		}).WaitUntilReady(ctx, postgresContainer); err != nil {
+			lastErr = err
+			fmt.Printf("canton: postgres not ready (second check): %v\n", err)
+			time.Sleep(2 * time.Second)
+			continue
+		}
+
+		fmt.Println("canton: postgres ready on second check")
+		return nil
+	}
+
+	return fmt.Errorf("postgres did not become stable: %w", lastErr)
 }
