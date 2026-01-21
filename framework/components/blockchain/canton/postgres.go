@@ -64,11 +64,14 @@ func PostgresContainerRequest(
 		NetworkAliases: map[string][]string{
 			framework.DefaultNetworkName: {postgresContainerName},
 		},
-		WaitingFor: wait.ForExec([]string{
-			"pg_isready",
-			"-U", DefaultPostgresUser,
-			"-d", DefaultPostgresDB,
-		}),
+		WaitingFor: wait.ForAll(
+			wait.ForLog("database system is ready to accept connections").WithOccurrence(2),
+			wait.ForExec([]string{
+				"pg_isready",
+				"-U", DefaultPostgresUser,
+				"-d", DefaultPostgresDB,
+			}),
+		),
 		Env: map[string]string{
 			"POSTGRES_USER":           DefaultPostgresUser,
 			"POSTGRES_PASSWORD":       DefaultPostgresPass,
