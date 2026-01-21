@@ -60,7 +60,7 @@ services:
       - -ruler.storage.local.directory=/etc/loki/rules
 
   grafana:
-    image: grafana/grafana:10.1.0
+    image: grafana/grafana:12.3.1
     environment:
       - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=grafana-pyroscope-app
     volumes:

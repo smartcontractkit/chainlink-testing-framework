@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
-//go:embed observability/*
+//go:embed observability
 var EmbeddedObservabilityFiles embed.FS
 
 const (
@@ -24,8 +25,30 @@ const (
 	LocalPostgresDebugURL  = "http://localhost:3000/d/000000039/postgresql-database?orgId=1&refresh=5s&var-DS_PROMETHEUS=PBFA97CFB590B2093&var-interval=$__auto_interval_interval&var-namespace=&var-release=&var-instance=postgres_exporter_0:9187&var-datname=All&var-mode=All&from=now-15m&to=now"
 	LocalPyroScopeURL      = "http://localhost:4040/?query=process_cpu%3Acpu%3Ananoseconds%3Acpu%3Ananoseconds%7Bservice_name%3D%22chainlink-node%22%7D&from=now-15m"
 
-	CTFCacheDir = ".local/share/ctf"
+	CTFObservabilityCacheDir      = ".local/share/ctf"
+	CTFLocalDashboardsDirRelative = "dashboards"
 )
+
+// copyLocalDashboards syncs local dashboards to CTF observability cache dir
+func copyLocalDashboards(obsDir string) error {
+	wd, _ := os.Getwd()
+	localDir := filepath.Join(wd, CTFLocalDashboardsDirRelative)
+	L.Info().
+		Str("From", localDir).
+		Str("To", obsDir).
+		Msg("Copying local dashboards")
+	cmd := exec.Command(
+		"cp",
+		"-r",
+		localDir,
+		obsDir,
+	)
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("failed to sync local dashboard dirs, from %s to %s, error: %w", localDir, obsDir, err)
+	}
+	return nil
+}
 
 // getObservabilityDir returns the fixed directory where observability files are extracted
 func getObservabilityDir() (string, error) {
@@ -33,7 +56,7 @@ func getObservabilityDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get home directory: %w", err)
 	}
-	return filepath.Join(homeDir, CTFCacheDir), nil
+	return filepath.Join(homeDir, CTFObservabilityCacheDir), nil
 }
 
 // extractAllFiles goes through the embedded directory and extracts all files to the fixed observability directory
@@ -86,8 +109,11 @@ func extractAllFiles(embeddedDir string) error {
 		}
 		return nil
 	})
-
-	return err
+	if err != nil {
+		return err
+	}
+	// copy dashboards from a local dir to CTF cache dir
+	return copyLocalDashboards(obsDir)
 }
 
 func BlockScoutUp(url, chainID string) error {
