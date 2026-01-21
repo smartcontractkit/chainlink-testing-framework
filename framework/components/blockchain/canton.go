@@ -7,6 +7,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain/canton"
 )
@@ -69,11 +70,14 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 
 	// Set up Postgres container
 	postgresReq := canton.PostgresContainerRequest(in.NumberOfCantonValidators)
-	_, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+	postgresContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: postgresReq,
 		Started:          true,
 	})
 	if err != nil {
+		return nil, err
+	}
+	if err := waitForPostgresDatabases(ctx, postgresContainer, in.NumberOfCantonValidators); err != nil {
 		return nil, err
 	}
 
@@ -173,4 +177,33 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 			CantonEndpoints: endpoints,
 		},
 	}, nil
+}
+
+func waitForPostgresDatabases(ctx context.Context, postgresContainer testcontainers.Container, numberOfValidators int) error {
+	databases := []string{
+		"canton",
+		"sequencer",
+		"mediator",
+		"scan",
+		"sv",
+		"participant-sv",
+		"validator-sv",
+	}
+	for i := 1; i <= numberOfValidators; i++ {
+		databases = append(databases, fmt.Sprintf("participant-%d", i))
+		databases = append(databases, fmt.Sprintf("validator-%d", i))
+	}
+
+	for _, db := range databases {
+		if err := wait.ForExec([]string{
+			"psql",
+			"-U", canton.DefaultPostgresUser,
+			"-d", db,
+			"-c", "select 1",
+		}).WithStartupTimeout(2*time.Minute).WaitUntilReady(ctx, postgresContainer); err != nil {
+			return fmt.Errorf("postgres not ready for database %s: %w", db, err)
+		}
+	}
+
+	return nil
 }
