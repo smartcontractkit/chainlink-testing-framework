@@ -364,6 +364,7 @@ func SpliceContainerRequest(
 				FileMode:          0755,
 			},
 		},
+		Labels: framework.DefaultTCLabels(),
 	}
 
 	return spliceReq

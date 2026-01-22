@@ -87,6 +87,7 @@ func PostgresContainerRequest(
 			"-c", "max_connections=2000",
 			"-c", "log_statement=all",
 		},
+		Labels: framework.DefaultTCLabels(),
 	}
 
 	return postgresReq
