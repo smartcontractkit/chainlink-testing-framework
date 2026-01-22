@@ -222,6 +222,7 @@ func NginxContainerRequest(
 				FileMode:          0755,
 			},
 		},
+		Labels: framework.DefaultTCLabels(),
 	}
 
 	return nginxReq

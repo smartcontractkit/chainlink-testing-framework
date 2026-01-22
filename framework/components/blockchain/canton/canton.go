@@ -354,6 +354,7 @@ func ContainerRequest(
 				FileMode:          0755,
 			},
 		},
+		Labels: framework.DefaultTCLabels(),
 	}
 
 	return cantonReq
