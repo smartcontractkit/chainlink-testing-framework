@@ -37,28 +37,42 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
 	nodeset "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 	"github.com/smartcontractkit/{{ .ProductName }}/devenv/products"
 )
 
+/*
+This is the implementation of your product configuration running on Chainlink platform.
+*/
+
 var L = log.Output(zerolog.ConsoleWriter{Out: os.Stderr}).Level(zerolog.DebugLevel).With().Fields(map[string]any{"component": "{{ .ProductName }}"}).Logger()
 
+// ProductConfig contains fields you want to be configurable for your product setup, don't forget to add "toml" annotations, use snake_case.
+// Out field is mandatory if you want tests to read some data about your product.
 type ProductConfig struct {
 	Out *ProductConfigOutput ` + "`" + `toml:"out"` + "`" + `
 }
 
+// ProductConfigOutput contains fields that are exposed after your product is deployed,
+// for example: contract addresses, services URLs, etc.
 type ProductConfigOutput struct {
 	ExampleField string ` + "`" + `toml:"example"` + "`" + `
 }
 
+// Configurator is your product configurator, it may contain configs for multiple instances of your product deployed on a single environment.
+// For example, for soak/volume testing it makes sense to deploy 10-100 feeds with slightly diferent configurations to figure out performance and resource consumption.
 type Configurator struct {
 	Config []*ProductConfig ` + "`" + `toml:"{{ .ProductName }}"` + "`" + `
 }
 
+// NewConfigurator creates new configurator instance
 func NewConfigurator() *Configurator {
 	return &Configurator{}
 }
 
+// Load implements loading product-specific config from TOML file, see products/config.go
+// Most of the time you don't need to change anything here.
 func (m *Configurator) Load() error {
 	cfg, err := products.Load[Configurator]()
 	if err != nil {
@@ -68,6 +82,9 @@ func (m *Configurator) Load() error {
 	return nil
 }
 
+// Store implements storing your configuration outputs in "env-out.toml" file.
+// You may store different outputs for each instance of your product (for example different outputs for each OCR feed when you deploy tens of them).
+// Most of the time you don't need to change anything here.
 func (m *Configurator) Store(path string, idx int) error {
 	if err := products.Store(".", m); err != nil {
 		return fmt.Errorf("failed to store product config: %w", err)
@@ -75,46 +92,67 @@ func (m *Configurator) Store(path string, idx int) error {
 	return nil
 }
 
+// GenerateNodesConfig implements how your product configures Chainlink nodes via TOML config
+// Use Chainlink client from framework if needed and generate TOML config for Chainlink nodes.
 func (m *Configurator) GenerateNodesConfig(
 	ctx context.Context,
 	fs *fake.Input,
-	bc *blockchain.Input,
-	ns *nodeset.Input,
+	bc []*blockchain.Input,
+	ns []*nodeset.Input,
 ) (string, error) {
 	L.Info().Msg("Generating Chainlink node config")
-	// node
-	_ = bc.Out.Nodes[0]
+	// in this case we have only a single node set
+	firstNodeSet := ns[0]
+	_ = firstNodeSet
+
+	// in this case we only have a single blockchain type
+	firstBlockchain := bc[0]
+
+	// environment config for CL nodes
+	_ = firstBlockchain.Out.Nodes[0]
 	// chain ID
-	_ = bc.Out.ChainID
+	_ = firstBlockchain.Out.ChainID
 	return "", nil
 }
 
 func (m *Configurator) GenerateNodesSecrets(
 	ctx context.Context,
 	fs *fake.Input,
-	bc *blockchain.Input,
-	ns *nodeset.Input,
+	bc []*blockchain.Input,
+	ns []*nodeset.Input,
 ) (string, error) {
 	L.Info().Msg("Generating Chainlink node secrets")
-	// node
-	_ = bc.Out.Nodes[0]
-	// chain ID
-	_ = bc.Out.ChainID
+	// in this case we only have a single blockchain type
+	firstBlockchain := bc[0]
+	// blockchain info for blockchain 0 and node 0
+	_ = firstBlockchain.Out.Nodes[0]
+	// chain ID for blockchain 0
+	_ = firstBlockchain.Out.ChainID
 	return "", nil
 }
 
 func (m *Configurator) ConfigureJobsAndContracts(
 	ctx context.Context,
+	productIdx int,
 	fake *fake.Input,
-	bc *blockchain.Input,
-	ns *nodeset.Input,
+	bc []*blockchain.Input,
+	ns []*nodeset.Input,
 ) error {
+	// in this case we have only a single node set
+	firstNodeSet := ns[0]
+	// connect to Chainlink nodes and use the client to get keys and other data if needed
+	cl, err := clclient.New(firstNodeSet.Out.CLNodes)
+	if err != nil {
+		return err
+	}
+	_ = cl
+
 	// write an example output of your product configuration
 	// contract addresses, URLs, etc
 	// in soak test case it may hold multiple configs and have different outputs
 	// for each instance
 	m.Config[0].Out = &ProductConfigOutput{ExampleField: "my_data"}
-	L.Info().Msg("Configuring product: {{ .ProductName }}")
+	L.Info().Msg("Configuring product: productone")
 	return nil
 }
 `
