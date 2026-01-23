@@ -1438,10 +1438,7 @@ func ReplayLogPollerFromBlock(cl []*ChainlinkClient, fromBlock, evmChainID int64
 	for _, c := range cl {
 		eg.Go(func() error {
 			_, _, err := c.ReplayLogPollerFromBlock(fromBlock, evmChainID)
-			if err != nil {
-				return err
-			}
-			return nil
+			return err
 		})
 	}
 	return eg.Wait()
