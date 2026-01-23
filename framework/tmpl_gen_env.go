@@ -72,7 +72,7 @@ test perf ↵
 You can use ` + "`" + `restart ↵` + "`" + ` for quick iteration or ` + "`" + `mycli r` + "`" + `
 The same works for observability stack: ` + "`" + `obs r -f ↵` + "`" + ` or ` + "`" + `{{ .CLIName }} obs r -f` + "`" + `
 
-We are using WASP load generator to make our tests composable and protocol agonstic, read more [here](https://smartcontractkit.github.io/chainlink-testing-framework/libs/wasp/overview.html?highlight=wasp#wasp---overview).
+We are using WASP load generator to make our tests composable and protocol agnostic, read more [here](https://smartcontractkit.github.io/chainlink-testing-framework/libs/wasp/overview.html?highlight=wasp#wasp---overview).
 
 🔄 **Enforce** quality standards in CI: copy [workflow](.github/workflows/devenv-perf-test.yml) to your CI folder, commit and make them pass
 

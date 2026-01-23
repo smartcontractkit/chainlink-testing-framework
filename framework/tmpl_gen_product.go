@@ -61,7 +61,7 @@ type ProductConfigOutput struct {
 }
 
 // Configurator is your product configurator, it may contain configs for multiple instances of your product deployed on a single environment.
-// For example, for soak/volume testing it makes sense to deploy 10-100 feeds with slightly diferent configurations to figure out performance and resource consumption.
+// For example, for soak/volume testing it makes sense to deploy 10-100 feeds with slightly different configurations to figure out performance and resource consumption.
 type Configurator struct {
 	Config []*ProductConfig ` + "`" + `toml:"{{ .ProductName }}"` + "`" + `
 }
