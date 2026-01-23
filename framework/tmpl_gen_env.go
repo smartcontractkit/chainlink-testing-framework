@@ -87,6 +87,28 @@ just build-fakes
 
 See how you can access your fake HTTP methods in [functional tests](./tests/{{ .ProductName }}/func_test.go)
 
+## Running multiple instances of a product on a single environment
+
+Just increase the amount of instances in [env.toml](./env.toml)
+` + "```" + `bash
+[[products]]
+name = "{{ .ProductName }}"
+instances = 20
+` + "```" + `
+
+Your implementation of ` + "`" + `ConfigureJobsAndContracts` + "`" + ` method should be able to deploy multiple instances.
+
+You may use ` + "`" + `instanceIdx` + "`" + ` to run different deployments for each instance.
+
+
+## Running multiple products in a single environment
+
+Is simple, just copy [{{ .ProductName }}](./products/{{ .ProductName }})) and [tests/{{ .ProductName }}](./tests/{{ .ProductName }}) directories and add a new entry [here](./environment.go) in "newProduct" function.
+
+## Adding more Node sets (DONs)
+
+See [env.toml](./env.toml) comments.
+
 `
 	// ProductsInterfaceTmpl common interface for arbitrary products deployed in devenv
 	ProductsInterfaceTmpl = `package {{ .PackageName }}
@@ -150,7 +172,7 @@ go {{.RuntimeVersion}}
 require (
 	github.com/smartcontractkit/chainlink-evm v0.0.0-20250709215002-07f34ab867df
 	github.com/smartcontractkit/chainlink-deployments-framework v0.17.0
-	github.com/smartcontractkit/chainlink-testing-framework/framework v0.11.10
+	github.com/smartcontractkit/chainlink-testing-framework/framework v0.13.5
 )
 
 replace github.com/fbsobreira/gotron-sdk => github.com/smartcontractkit/chainlink-tron/relayer/gotron-sdk v0.0.5-0.20250528121202-292529af39df
@@ -921,6 +943,7 @@ instances = 1
 [[nodesets]]
   name = "don"
   nodes = {{ .Nodes }}
+  http_port_range_start = 10000
   override_mode = "each"
 
   [nodesets.db]
@@ -929,12 +952,28 @@ instances = 1
 	{{- range .NodeIndices }}
 	[[nodesets.node_specs]]
 	    [nodesets.node_specs.node]
-	    image = "public.ecr.aws/chainlink/chainlink:2.26.0"
+	    image = "public.ecr.aws/chainlink/chainlink:2.31.0"
 	{{- end }}
+# additional nodeset to demonstrate how to add many
+# you need to add "nodesets.http_port_range_start" and "nodesets.db.port" so these nodesets
+# can be separated
+[[nodesets]]
+  name = "don-2"
+  nodes = 1
+  http_port_range_start = 20000
+  override_mode = "each"
+
+  [nodesets.db]
+    image = "postgres:15.0"
+    port = 13001
+	[[nodesets.node_specs]]
+	    [nodesets.node_specs.node]
+	    image = "public.ecr.aws/chainlink/chainlink:2.31.0"
+
 `
 
-	// CILoadChaosTemplate is a continuous integration template for end-to-end load/chaos tests
-	CILoadChaosTemplate = `name: End-to-end {{ .ProductName }} Perf Tests
+	// CINonFunctionalTmpl is a continuous integration template for end-to-end load/chaos tests
+	CINonFunctionalTmpl = `name: End-to-end {{ .ProductName }} Perf Tests
 
 on:
  pull_request:
@@ -1009,7 +1048,7 @@ jobs:
          {{ .CLIName }} obs u -f
 
      - name: Run tests
-       working-directory: build/devenv/tests
+       working-directory: {{ .DevEnvRelPath }}/tests/{{ .ProductName }}
        run: |
          set -o pipefail
          go test -v -count=1 -run 'Test{{"${{"}} matrix.name {{"}}"}}'
@@ -1019,12 +1058,12 @@ jobs:
        uses: actions/upload-artifact@v4
        with:
          name: container-logs-{{"${{"}} matrix.name {{"}}"}}
-         path: {{ .DevEnvRelPath }}/tests/logs
+         path: {{ .DevEnvRelPath }}/tests/{{ .ProductName }}/logs
          retention-days: 1
 `
 
-	// CISmokeTmpl is a continuous integration template for end-to-end smoke tests
-	CISmokeTmpl = `name: End-to-end {{ .ProductName }} Tests
+	// CIFunctionalTmpl is a continuous integration template for end-to-end smoke tests
+	CIFunctionalTmpl = `name: End-to-end {{ .ProductName }} Tests
 
 on:
   pull_request:
@@ -1098,7 +1137,7 @@ jobs:
           {{ .CLIName }} u {{"${{"}} matrix.config {{"}}"}}
 
       - name: Run tests
-        working-directory: build/devenv/tests
+        working-directory: {{ .DevEnvRelPath }}/tests/{{ .ProductName }}
         run: |
           set -o pipefail
           go test -v -count=1 -run 'Test{{"${{"}} matrix.name {{"}}"}}'
@@ -1108,7 +1147,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: container-logs-{{"${{"}} matrix.name {{"}}"}}
-          path: {{ .DevEnvRelPath }}/tests/logs
+          path: {{ .DevEnvRelPath }}/tests/{{ .ProductName }}/logs
           retention-days: 1
 `
 
@@ -2034,18 +2073,20 @@ func NewEnvironment(ctx context.Context) error {
 	// merge overrides, spin up node sets and write infrastructure outputs
 	// infra is always common for all the products, if it can't be we should fail
 	// user should use different infra layout in env.toml then
-	for _, ns := range in.NodeSets[0].NodeSpecs {
-		ns.Node.TestConfigOverrides = strings.Join(nodeConfigs, "\n")
-		ns.Node.TestSecretsOverrides = strings.Join(nodeSecrets, "\n")
-		if os.Getenv("CHAINLINK_IMAGE") != "" {
-			ns.Node.Image = os.Getenv("CHAINLINK_IMAGE")
+	for _, nodeSet := range in.NodeSets {
+		for _, nodeSpec := range nodeSet.NodeSpecs {
+			nodeSpec.Node.TestConfigOverrides = strings.Join(nodeConfigs, "\n")
+			nodeSpec.Node.TestSecretsOverrides = strings.Join(nodeSecrets, "\n")
+			if os.Getenv("CHAINLINK_IMAGE") != "" {
+				nodeSpec.Node.Image = os.Getenv("CHAINLINK_IMAGE")
+			}
+		}
+		_, err = ns.NewSharedDBNodeSet(nodeSet, nil)
+		if err != nil {
+			return fmt.Errorf("failed to create new shared db node set: %w", err)
 		}
 	}
-	_, err = ns.NewSharedDBNodeSet(in.NodeSets[0], nil)
-	if err != nil {
-		return fmt.Errorf("failed to create new shared db node set: %w", err)
-	}
-	if err := Store[Cfg](in); err != nil {
+	if err := Store(in); err != nil {
 		return err
 	}
 
@@ -2451,7 +2492,7 @@ func (g *EnvCodegen) Write() error {
 	}
 
 	// Generate GitHub CI smoke test workflow
-	ciSmokeContents, err := g.GenerateCISmoke()
+	ciSmokeContents, err := g.GenerateCIFunctional()
 	if err != nil {
 		return err
 	}
@@ -2571,7 +2612,7 @@ func (g *EnvCodegen) GenerateSmokeTests() (string, error) {
 
 // GenerateCIPerf generates a load&chaos test CI workflow
 func (g *EnvCodegen) GenerateCIPerf() (string, error) {
-	log.Info().Msg("Generating GitHub CI load&chaos test")
+	log.Info().Msg("Generating GitHub CI workflow for non-functional tests")
 	p, err := dirPathRelFromGitRoot(g.cfg.outputDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to find relative devenv path from Git root: %w", err)
@@ -2581,12 +2622,12 @@ func (g *EnvCodegen) GenerateCIPerf() (string, error) {
 		ProductName:   g.cfg.productName,
 		CLIName:       g.cfg.cliName,
 	}
-	return render(CILoadChaosTemplate, data)
+	return render(CINonFunctionalTmpl, data)
 }
 
-// GenerateCISmoke generates a smoke test CI workflow
-func (g *EnvCodegen) GenerateCISmoke() (string, error) {
-	log.Info().Msg("Generating GitHub CI smoke test")
+// GenerateCIFunctional generates a functional test CI workflow
+func (g *EnvCodegen) GenerateCIFunctional() (string, error) {
+	log.Info().Msg("Generating GitHub CI workflow for functional tests")
 	p, err := dirPathRelFromGitRoot(g.cfg.outputDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to find relative devenv path from Git root: %w", err)
@@ -2596,7 +2637,7 @@ func (g *EnvCodegen) GenerateCISmoke() (string, error) {
 		ProductName:   g.cfg.productName,
 		CLIName:       g.cfg.cliName,
 	}
-	return render(CISmokeTmpl, data)
+	return render(CIFunctionalTmpl, data)
 }
 
 // GenerateGoMod generates a go.mod file
