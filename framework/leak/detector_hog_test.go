@@ -41,7 +41,7 @@ func TestVerifyCyclicHog(t *testing.T) {
 	lc := leak.NewResourceLeakChecker()
 	// cpu
 	diff, err := lc.MeasureDelta(&leak.CheckConfig{
-		Query:          `avg_over_time((sum(rate(container_cpu_usage_seconds_total{name="resource-hog"}[30m])))[30m:5m]) * 100`,
+		Query: `avg_over_time((sum(rate(container_cpu_usage_seconds_total{name="resource-hog"}[30m])))[30m:5m]) * 100`,
 		// set timestamps for the run you are analyzing
 		Start:          mustTime("2026-01-19T10:30:00Z"),
 		End:            mustTime("2026-01-19T12:29:15Z"),
@@ -52,7 +52,7 @@ func TestVerifyCyclicHog(t *testing.T) {
 
 	// mem
 	diff, err = lc.MeasureDelta(&leak.CheckConfig{
-		Query:          `avg_over_time(container_memory_rss{name="resource-hog"}[30m]) / 1024 / 1024`,
+		Query: `avg_over_time(container_memory_rss{name="resource-hog"}[30m]) / 1024 / 1024`,
 		// set timestamps for the run you are analyzing
 		Start:          mustTime("2026-01-19T10:30:00Z"),
 		End:            mustTime("2026-01-19T12:29:15Z"),

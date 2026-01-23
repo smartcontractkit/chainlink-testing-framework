@@ -129,7 +129,7 @@ func TestRealCLNodesLeakDetectionLocalDevenv(t *testing.T) {
 	cnd, err := leak.NewCLNodesLeakDetector(leak.NewResourceLeakChecker())
 	require.NoError(t, err)
 	errs := cnd.Check(&leak.CLNodesCheck{
-		NumNodes:        4,
+		NumNodes: 4,
 		// set timestamps for the run you are analyzing
 		Start:           mustTime("2026-01-19T17:23:14Z"),
 		End:             mustTime("2026-01-19T18:00:51Z"),
@@ -150,7 +150,7 @@ func TestRealPrometheusLowLevelAPI(t *testing.T) {
 	lc := leak.NewResourceLeakChecker()
 	for i := range donNodes {
 		diff, err := lc.MeasureDelta(&leak.CheckConfig{
-			Query:          fmt.Sprintf(`quantile_over_time(0.5, container_memory_rss{name="don-node%d"}[1h]) / 1024 / 1024`, i),
+			Query: fmt.Sprintf(`quantile_over_time(0.5, container_memory_rss{name="don-node%d"}[1h]) / 1024 / 1024`, i),
 			// set timestamps for the run you are analyzing
 			Start:          mustTime("2026-01-12T21:53:00Z"),
 			End:            mustTime("2026-01-13T10:11:00Z"),

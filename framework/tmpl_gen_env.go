@@ -22,31 +22,93 @@ const (
 
 	ReadmeTmpl = `## Chainlink Developer Environment
 
-This template provides a complete Chainlink development environment with pre-configured infrastructure and observability tools, enabling rapid development while maintaining high quality standards.
+This template provides a complete Chainlink development environment with pre-configured infrastructure and observability tools.
 
-🔧 Address all **TODO** comments and implement "product_configuration.go"
+The goal of this local environment is to:
+- Provide a simple and modular environment harness for developers to accelerate "inner" developer loop
+- Implement standard functional system-level tests
+- Implement standard non-functional system-level tests
+- Implement standard 3rd party dependencies fakes so other teams can see your product requirements clearly
 
-💻 Enter the shell:
+💻 Enter the shell to start:
 ` + "```" + `bash
 just cli && {{ .CLIName }} sh
 ` + "```" + `
 
-🚀 Spin up the environment
+## Functional Testing
+
+🚀 Implement your product configuration (see comnents in [configurator.go](./products/productone/configurator.go))
+
+Start the environment.
 ` + "```" + `bash
 up ↵
 ` + "```" + `
 
-🔍 Implement system-level smoke tests (tests/smoke_test.go) and run them:
+🔍 Implement system-level functional tests [func_test.go](./tests/{{ .ProductName }}/func_test.go) and run them:
 ` + "```" + `bash
-test smoke ↵
+test func ↵
 ` + "```" + `
 
-📈 Implement load/chaos tests (tests/load_test.go) and run them:
+You can use ` + "`" + `restart ↵` + "`" + ` for quick iteration or ` + "`" + `{{ .CLIName }} r` + "`" + `
+
+🔄 **Enforce** quality standards in CI: copy [workflow](.github/workflows/devenv-func-test.yml) to your CI folder, commit and make them pass
+
+## Non-functional Testing
+
+📈 Start the observability stack
 ` + "```" + `bash
-test load ↵
+obs u -f ↵
 ` + "```" + `
 
-🔄 **Enforce** quality standards in CI: copy .github/workflows to your CI folder, commit and make them pass
+📈 Implement your product observability and [dashboard](http://localhost:3000/dashboards) (your dashboard is local/{{ .ProductName }} Services)
+To reflect changes you can restart the environment and it'd be uploaded automatically from [dashboards](./dashboards/{{ .ProductName }}.json)
+
+📈 Implement load/chaos tests [perf_test.go](./tests/{{ .ProductName }}/perf_test.go) and run them:
+` + "```" + `bash
+obs up -f ↵ # spin up the observability stack first
+test perf ↵
+` + "```" + `
+
+You can use ` + "`" + `restart ↵` + "`" + ` for quick iteration or ` + "`" + `mycli r` + "`" + `
+The same works for observability stack: ` + "`" + `obs r -f ↵` + "`" + ` or ` + "`" + `{{ .CLIName }} obs r -f` + "`" + `
+
+We are using WASP load generator to make our tests composable and protocol agnostic, read more [here](https://smartcontractkit.github.io/chainlink-testing-framework/libs/wasp/overview.html?highlight=wasp#wasp---overview).
+
+🔄 **Enforce** quality standards in CI: copy [workflow](.github/workflows/devenv-perf-test.yml) to your CI folder, commit and make them pass
+
+## Fakes (HTTP)
+
+To speed up development and integration with 3rd party services we have a "fakes" Docker container ready.
+
+🔍 Implement [fakes](./fakes/main.go) for 3rd party services your need, rebuild the container and run:
+` + "```" + `bash
+just build-fakes
+` + "```" + `
+
+See how you can access your fake HTTP methods in [functional tests](./tests/{{ .ProductName }}/func_test.go)
+
+## Running multiple instances of a product on a single environment
+
+Just increase the amount of instances in [env.toml](./env.toml)
+` + "```" + `bash
+[[products]]
+name = "{{ .ProductName }}"
+instances = 20
+` + "```" + `
+
+Your implementation of ` + "`" + `ConfigureJobsAndContracts` + "`" + ` method should be able to deploy multiple instances.
+
+You may use ` + "`" + `instanceIdx` + "`" + ` to run different deployments for each instance.
+
+
+## Running multiple products in a single environment
+
+Is simple, just copy [{{ .ProductName }}](./products/{{ .ProductName }})) and [tests/{{ .ProductName }}](./tests/{{ .ProductName }}) directories and add a new entry [here](./environment.go) in "newProduct" function.
+
+## Adding more Node sets (DONs)
+
+See [env.toml](./env.toml) comments.
+
 `
 	// ProductsInterfaceTmpl common interface for arbitrary products deployed in devenv
 	ProductsInterfaceTmpl = `package {{ .PackageName }}
@@ -60,31 +122,44 @@ import (
 	nodeset "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 )
 
-// Product describes a minimal set of methods that each legacy product must implement
+// Product describes a minimal set of methods that each product should implement
+// some methods may be empty in case you don't need them (GenerateNodesSecrets for example)
 type Product interface {
+	// Load describes how to load your product-specific config
 	Load() error
 
+	// Store describes how to store your product-speicifc config output
+	// The output may include URLs to you services, CLDF contracts addresses and more
 	Store(path string, instanceIdx int) error
 
+	// GenerateNodesSecrets describes how to generate secrets for Chainlink nodes for your product
+	// deployed on multiple blockchains and nodesets
 	GenerateNodesSecrets(
 		ctx context.Context,
 		fs *fake.Input,
-		bc *blockchain.Input,
-		ns *nodeset.Input,
+		bc []*blockchain.Input,
+		ns []*nodeset.Input,
 	) (string, error)
 
+	// GenerateNodesConfig describes how to generate Chainlink node config
+	// specific to your product deployed on multiple blockchains and nodesets
 	GenerateNodesConfig(
 		ctx context.Context,
 		fs *fake.Input,
-		bc *blockchain.Input,
-		ns *nodeset.Input,
+		bc []*blockchain.Input,
+		ns []*nodeset.Input,
 	) (string, error)
 
+	// ConfigureJobsAndContracts describe how to configure jobs and contracts
+	// specifically to your product deployed on multiple blockchains and nodesets
+	// Configuration may be called multiple times if "instances" key is specificed in "env.toml"
+	// the implementation should be aware of it and be able to configure multiple instances of the product
 	ConfigureJobsAndContracts(
 		ctx context.Context,
+		instanceIdx int,
 		fs *fake.Input,
-		bc *blockchain.Input,
-		ns *nodeset.Input,
+		bc []*blockchain.Input,
+		ns []*nodeset.Input,
 	) error
 }
 `
@@ -97,7 +172,7 @@ go {{.RuntimeVersion}}
 require (
 	github.com/smartcontractkit/chainlink-evm v0.0.0-20250709215002-07f34ab867df
 	github.com/smartcontractkit/chainlink-deployments-framework v0.17.0
-	github.com/smartcontractkit/chainlink-testing-framework/framework v0.11.10
+	github.com/smartcontractkit/chainlink-testing-framework/framework v0.13.5
 )
 
 replace github.com/fbsobreira/gotron-sdk => github.com/smartcontractkit/chainlink-tron/relayer/gotron-sdk v0.0.5-0.20250528121202-292529af39df
@@ -868,6 +943,7 @@ instances = 1
 [[nodesets]]
   name = "don"
   nodes = {{ .Nodes }}
+  http_port_range_start = 10000
   override_mode = "each"
 
   [nodesets.db]
@@ -876,12 +952,28 @@ instances = 1
 	{{- range .NodeIndices }}
 	[[nodesets.node_specs]]
 	    [nodesets.node_specs.node]
-	    image = "public.ecr.aws/chainlink/chainlink:2.26.0"
+	    image = "public.ecr.aws/chainlink/chainlink:2.31.0"
 	{{- end }}
+# additional nodeset to demonstrate how to add many
+# you need to add "nodesets.http_port_range_start" and "nodesets.db.port" so these nodesets
+# can be separated
+[[nodesets]]
+  name = "don-2"
+  nodes = 1
+  http_port_range_start = 20000
+  override_mode = "each"
+
+  [nodesets.db]
+    image = "postgres:15.0"
+    port = 13001
+	[[nodesets.node_specs]]
+	    [nodesets.node_specs.node]
+	    image = "public.ecr.aws/chainlink/chainlink:2.31.0"
+
 `
 
-	// CILoadChaosTemplate is a continuous integration template for end-to-end load/chaos tests
-	CILoadChaosTemplate = `name: End-to-end {{ .ProductName }} Load and Chaos Tests
+	// CINonFunctionalTmpl is a continuous integration template for end-to-end load/chaos tests
+	CINonFunctionalTmpl = `name: End-to-end {{ .ProductName }} Perf Tests
 
 on:
  pull_request:
@@ -956,7 +1048,7 @@ jobs:
          {{ .CLIName }} obs u -f
 
      - name: Run tests
-       working-directory: build/devenv/tests
+       working-directory: {{ .DevEnvRelPath }}/tests/{{ .ProductName }}
        run: |
          set -o pipefail
          go test -v -count=1 -run 'Test{{"${{"}} matrix.name {{"}}"}}'
@@ -966,12 +1058,12 @@ jobs:
        uses: actions/upload-artifact@v4
        with:
          name: container-logs-{{"${{"}} matrix.name {{"}}"}}
-         path: {{ .DevEnvRelPath }}/tests/logs
+         path: {{ .DevEnvRelPath }}/tests/{{ .ProductName }}/logs
          retention-days: 1
 `
 
-	// CISmokeTmpl is a continuous integration template for end-to-end smoke tests
-	CISmokeTmpl = `name: End-to-end {{ .ProductName }} Tests
+	// CIFunctionalTmpl is a continuous integration template for end-to-end smoke tests
+	CIFunctionalTmpl = `name: End-to-end {{ .ProductName }} Tests
 
 on:
   pull_request:
@@ -1045,7 +1137,7 @@ jobs:
           {{ .CLIName }} u {{"${{"}} matrix.config {{"}}"}}
 
       - name: Run tests
-        working-directory: build/devenv/tests
+        working-directory: {{ .DevEnvRelPath }}/tests/{{ .ProductName }}
         run: |
           set -o pipefail
           go test -v -count=1 -run 'Test{{"${{"}} matrix.name {{"}}"}}'
@@ -1055,7 +1147,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: container-logs-{{"${{"}} matrix.name {{"}}"}}
-          path: {{ .DevEnvRelPath }}/tests/logs
+          path: {{ .DevEnvRelPath }}/tests/{{ .ProductName }}/logs
           retention-days: 1
 `
 
@@ -1077,7 +1169,7 @@ func getCommands() []prompt.Suggest {
 		{Text: "up", Description: "Spin up the development environment"},
 		{Text: "down", Description: "Tear down the development environment"},
 		{Text: "restart", Description: "Restart the development environment"},
-		{Text: "test", Description: "Perform smoke or load/chaos testing"},
+		{Text: "test", Description: "Perform functional/non-functional testing"},
 		{Text: "bs", Description: "Manage the Blockscout EVM block explorer"},
 		{Text: "obs", Description: "Manage the observability stack"},
 		{Text: "exit", Description: "Exit the interactive shell"},
@@ -1088,8 +1180,8 @@ func getSubCommands(parent string) []prompt.Suggest {
 	switch parent {
 	case "test":
 		return []prompt.Suggest{
-			{Text: "smoke", Description: "Run {{ .CLIName }} smoke test"},
-			{Text: "load", Description: "Run {{ .CLIName }} load test"},
+			{Text: "func", Description: "Run {{ .CLIName }} functional tests"},
+			{Text: "perf", Description: "Run {{ .CLIName }} non-functional (performance) tests"},
 		}
 	case "bs":
 		return []prompt.Suggest{
@@ -1371,7 +1463,7 @@ var obsUpCmd = &cobra.Command{
 			return fmt.Errorf("observability up failed: %w", err)
 		}
 		devenv.L.Info().Msgf("{{ .ProductName }} Dashboard: %s", Local{{ .ProductName }}Dashboard)
-		devenv.L.Info().Msgf("{{ .ProductName }} Load Test Dashboard: %s", LocalWASPLoadDashboard)
+		devenv.L.Info().Msgf("{{ .ProductName }} Perf Test Dashboard: %s", LocalWASPLoadDashboard)
 		return nil
 	},
 }
@@ -1404,7 +1496,7 @@ var obsRestartCmd = &cobra.Command{
 			return fmt.Errorf("observability up failed: %w", err)
 		}
 		devenv.L.Info().Msgf("{{ .ProductName }} Dashboard: %s", Local{{ .ProductName }}Dashboard)
-		devenv.L.Info().Msgf("{{ .ProductName }} Load Test Dashboard: %s", LocalWASPLoadDashboard)
+		devenv.L.Info().Msgf("{{ .ProductName }} Perf Dashboard: %s", LocalWASPLoadDashboard)
 		return nil
 	},
 }
@@ -1415,20 +1507,20 @@ var testCmd = &cobra.Command{
 	Short:   "Run the tests",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
-			return fmt.Errorf("specify the test suite: smoke or load")
+			return fmt.Errorf("specify the test suite: func or perf")
 		}
 		var testPattern string
 		switch args[0] {
-		case "smoke":
-			testPattern = "TestSmoke"
-		case "load":
-			testPattern = "TestLoadChaos"
+		case "func":
+			testPattern = "TestFunctional"
+		case "perf":
+			testPattern = "TestNonFunctional"
 		default:
 			return fmt.Errorf("test suite %s is unknown, choose between smoke or load", args[0])
 		}
 
 		testCmd := exec.Command("go", "test", "-v", "-run", testPattern)
-		testCmd.Dir = "./tests"
+		testCmd.Dir = "./tests/{{ .ProductName }}"
 		testCmd.Stdout = os.Stdout
 		testCmd.Stderr = os.Stderr
 		testCmd.Stdin = os.Stdin
@@ -1548,10 +1640,10 @@ func (m *ExampleGun) Call(l *wasp.Generator) *wasp.Response {
 	return &wasp.Response{Data: result}
 }
 
-func TestLoadChaos(t *testing.T) {
-	in, err := de.LoadOutput[de.Cfg]("../env-out.toml")
+func TestNonFunctional(t *testing.T) {
+	in, err := de.LoadOutput[de.Cfg]("../../env-out.toml")
 	require.NoError(t, err)
-	inProduct, err := products.LoadOutput[productone.Configurator]("../env-out.toml")
+	inProduct, err := products.LoadOutput[{{ .ProductName }}.Configurator]("../../env-out.toml")
 	require.NoError(t, err)
 
 	_ = inProduct
@@ -1629,6 +1721,7 @@ func TestLoadChaos(t *testing.T) {
 import (
 	"testing"
 
+	"github.com/go-resty/resty/v2"
 	de "{{ .GoModName }}"
 
 	"github.com/smartcontractkit/{{ .ProductName }}/devenv/products"
@@ -1640,15 +1733,20 @@ import (
 
 var L = de.L
 
-func TestSmoke(t *testing.T) {
-	in, err := de.LoadOutput[de.Cfg]("../env-out.toml")
+func TestFunctional(t *testing.T) {
+	in, err := de.LoadOutput[de.Cfg]("../../env-out.toml")
 	require.NoError(t, err)
-	inProduct, err := products.LoadOutput[productone.Configurator]("../env-out.toml")
+	inProduct, err := products.LoadOutput[{{ .ProductName }}.Configurator]("../../env-out.toml")
 	require.NoError(t, err)
 	clNodes, err := clclient.New(in.NodeSets[0].Out.CLNodes)
 	require.NoError(t, err)
 
+	// environment TOML config
 	_ = in
+	// fake server endpoint
+	r := resty.New().SetBaseURL(in.FakeServer.Out.BaseURLHost)
+	_, _ = r.R().Get("/my-fake-endpoint")
+	// product config
 	_ = inProduct
 
 	tests := []struct {
@@ -1930,9 +2028,11 @@ func NewEnvironment(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
-	_, err = blockchain.NewBlockchainNetwork(in.Blockchains[0])
-	if err != nil {
-		return fmt.Errorf("failed to create blockchain network 1337: %w", err)
+	for _, bcNet := range in.Blockchains {
+		_, err = blockchain.NewBlockchainNetwork(bcNet)
+		if err != nil {
+			return fmt.Errorf("failed to create blockchain network %s: %w", bcNet.ChainID, err)
+		}
 	}
 	if os.Getenv("FAKE_SERVER_IMAGE") != "" {
 		in.FakeServer.Image = os.Getenv("FAKE_SERVER_IMAGE")
@@ -1955,13 +2055,13 @@ func NewEnvironment(ctx context.Context) error {
 			return fmt.Errorf("failed to load product config: %w", err)
 		}
 
-		cfg, err := p.GenerateNodesConfig(ctx, in.FakeServer, in.Blockchains[0], in.NodeSets[0])
+		cfg, err := p.GenerateNodesConfig(ctx, in.FakeServer, in.Blockchains, in.NodeSets)
 		if err != nil {
 			return fmt.Errorf("failed to generate CL nodes config: %w", err)
 		}
 		nodeConfigs = append(nodeConfigs, cfg)
 
-		secrets, err := p.GenerateNodesSecrets(ctx, in.FakeServer, in.Blockchains[0], in.NodeSets[0])
+		secrets, err := p.GenerateNodesSecrets(ctx, in.FakeServer, in.Blockchains, in.NodeSets)
 		if err != nil {
 			return fmt.Errorf("failed to generate CL nodes config: %w", err)
 		}
@@ -1973,18 +2073,20 @@ func NewEnvironment(ctx context.Context) error {
 	// merge overrides, spin up node sets and write infrastructure outputs
 	// infra is always common for all the products, if it can't be we should fail
 	// user should use different infra layout in env.toml then
-	for _, ns := range in.NodeSets[0].NodeSpecs {
-		ns.Node.TestConfigOverrides = strings.Join(nodeConfigs, "\n")
-		ns.Node.TestSecretsOverrides = strings.Join(nodeSecrets, "\n")
-		if os.Getenv("CHAINLINK_IMAGE") != "" {
-			ns.Node.Image = os.Getenv("CHAINLINK_IMAGE")
+	for _, nodeSet := range in.NodeSets {
+		for _, nodeSpec := range nodeSet.NodeSpecs {
+			nodeSpec.Node.TestConfigOverrides = strings.Join(nodeConfigs, "\n")
+			nodeSpec.Node.TestSecretsOverrides = strings.Join(nodeSecrets, "\n")
+			if os.Getenv("CHAINLINK_IMAGE") != "" {
+				nodeSpec.Node.Image = os.Getenv("CHAINLINK_IMAGE")
+			}
+		}
+		_, err = ns.NewSharedDBNodeSet(nodeSet, nil)
+		if err != nil {
+			return fmt.Errorf("failed to create new shared db node set: %w", err)
 		}
 	}
-	_, err = ns.NewSharedDBNodeSet(in.NodeSets[0], nil)
-	if err != nil {
-		return fmt.Errorf("failed to create new shared db node set: %w", err)
-	}
-	if err := Store[Cfg](in); err != nil {
+	if err := Store(in); err != nil {
 		return err
 	}
 
@@ -1995,9 +2097,10 @@ func NewEnvironment(ctx context.Context) error {
 		for productInstance := range productInfo.Instances {
 			err = productConfigurators[productIdx].ConfigureJobsAndContracts(
 				ctx,
+				productInstance,
 				in.FakeServer,
-				in.Blockchains[0],
-				in.NodeSets[0],
+				in.Blockchains,
+				in.NodeSets,
 			)
 			if err != nil {
 				return fmt.Errorf("failed to setup default product deployment: %w", err)
@@ -2007,9 +2110,11 @@ func NewEnvironment(ctx context.Context) error {
 			}
 		}
 	}
-	L.Info().Str("BootstrapNode", in.NodeSets[0].Out.CLNodes[0].Node.ExternalURL).Send()
-	for _, n := range in.NodeSets[0].Out.CLNodes[1:] {
-		L.Info().Str("Node", n.Node.ExternalURL).Send()
+	for nsIdx, ns := range in.NodeSets {
+		L.Info().Int("Idx", nsIdx).Str("Name", ns.Name).Msg("Created node set")
+		for _, n := range ns.Out.CLNodes {
+			L.Info().Str("Node", n.Node.ExternalURL).Send()
+		}
 	}
 	return nil
 }
@@ -2071,7 +2176,8 @@ type GoModParams struct {
 
 // ReadmeParams params for generating README.md file
 type ReadmeParams struct {
-	CLIName string
+	CLIName     string
+	ProductName string
 }
 
 // GitIgnoreParams default .gitignore params
@@ -2118,11 +2224,6 @@ type CLDFParams struct {
 	PackageName string
 }
 
-// ToolsParams tools.go file params
-type ToolsParams struct {
-	PackageName string
-}
-
 // ConfigParams config.go file params
 type ConfigParams struct {
 	PackageName string
@@ -2161,7 +2262,7 @@ type TestCaseParams struct {
 
 /* Codegen logic */
 
-// EnvBuilder builder for load test codegen
+// EnvBuilder builder for perf test codegen
 type EnvBuilder struct {
 	productName string
 	nodes       int
@@ -2171,7 +2272,7 @@ type EnvBuilder struct {
 	moduleName  string
 }
 
-// EnvCodegen is a load test code generator that creates workload and chaos experiments
+// EnvCodegen is a perf test code generator that creates workload and chaos experiments
 type EnvCodegen struct {
 	cfg *EnvBuilder
 }
@@ -2329,19 +2430,6 @@ func (g *EnvCodegen) Write() error {
 		return fmt.Errorf("failed to write README.md file: %w", err)
 	}
 
-	// Generate tools.go
-	toolsContents, err := g.GenerateDebugTools()
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile( //nolint:gosec
-		filepath.Join(g.cfg.outputDir, "tools.go"),
-		[]byte(toolsContents),
-		os.ModePerm,
-	); err != nil {
-		return fmt.Errorf("failed to write tools file: %w", err)
-	}
-
 	// Generate config.go
 	configFileContents, err := g.GenerateConfig()
 	if err != nil {
@@ -2404,64 +2492,64 @@ func (g *EnvCodegen) Write() error {
 	}
 
 	// Generate GitHub CI smoke test workflow
-	ciSmokeContents, err := g.GenerateCISmoke()
+	ciSmokeContents, err := g.GenerateCIFunctional()
 	if err != nil {
 		return err
 	}
 	if err := os.WriteFile( //nolint:gosec
-		filepath.Join(ciDir, "devenv-smoke-test.yml"),
+		filepath.Join(ciDir, "devenv-func-test.yml"),
 		[]byte(ciSmokeContents),
 		os.ModePerm,
 	); err != nil {
 		return fmt.Errorf("failed to write CI smoke workflow file: %w", err)
 	}
 
-	// Generate GitHub CI load&chaos test workflow
-	ciLoadChaosContents, err := g.GenerateCILoadChaos()
+	// Generate GitHub CI workflow for perf tests
+	ciLoadChaosContents, err := g.GenerateCIPerf()
 	if err != nil {
 		return err
 	}
 	if err := os.WriteFile( //nolint:gosec
-		filepath.Join(ciDir, "devenv-load-chaos-test.yml"),
+		filepath.Join(ciDir, "devenv-perf-test.yml"),
 		[]byte(ciLoadChaosContents),
 		os.ModePerm,
 	); err != nil {
 		return fmt.Errorf("failed to write CI load&chaos workflow file: %w", err)
 	}
 
-	// create e2e tests directory
-	e2eDir := filepath.Join(g.cfg.outputDir, "tests")
+	// create e2e tests directory for the product
+	testsDir := filepath.Join(g.cfg.outputDir, "tests", g.cfg.productName)
 	if err := os.MkdirAll( //nolint:gosec
-		e2eDir,
+		testsDir,
 		os.ModePerm,
 	); err != nil {
 		return fmt.Errorf("failed to create tests directory: %w", err)
 	}
 
-	// generate smoke tests
+	// generate functional tests template
 	smokeTestsContent, err := g.GenerateSmokeTests()
 	if err != nil {
 		return err
 	}
 	if err := os.WriteFile( //nolint:gosec
-		filepath.Join(e2eDir, "smoke_test.go"),
+		filepath.Join(testsDir, "func_test.go"),
 		[]byte(smokeTestsContent),
 		os.ModePerm,
 	); err != nil {
 		return fmt.Errorf("failed to write smoke tests file: %w", err)
 	}
 
-	// generate load/chaos tests
+	// generate non-functional (performance) tests template
 	loadTestsContent, err := g.GenerateLoadTests()
 	if err != nil {
 		return err
 	}
 	if err := os.WriteFile( //nolint:gosec
-		filepath.Join(e2eDir, "load_test.go"),
+		filepath.Join(testsDir, "perf_test.go"),
 		[]byte(loadTestsContent),
 		os.ModePerm,
 	); err != nil {
-		return fmt.Errorf("failed to write load tests file: %w", err)
+		return fmt.Errorf("failed to write perf tests file: %w", err)
 	}
 
 	// create Grafana dashboards directory
@@ -2479,7 +2567,7 @@ func (g *EnvCodegen) Write() error {
 		return err
 	}
 	if err := os.WriteFile( //nolint:gosec
-		filepath.Join(dashboardsDir, "environment.json"),
+		filepath.Join(dashboardsDir, g.cfg.productName+".json"),
 		[]byte(grafanaDashboardContents),
 		os.ModePerm,
 	); err != nil {
@@ -2504,7 +2592,7 @@ func (g *EnvCodegen) Write() error {
 
 // GenerateSmokeTests generates a smoke test template
 func (g *EnvCodegen) GenerateLoadTests() (string, error) {
-	log.Info().Msg("Generating load test template")
+	log.Info().Msg("Generating perf test template")
 	data := LoadTestParams{
 		GoModName:   g.cfg.moduleName,
 		ProductName: g.cfg.productName,
@@ -2522,9 +2610,9 @@ func (g *EnvCodegen) GenerateSmokeTests() (string, error) {
 	return render(SmokeTestImplTmpl, data)
 }
 
-// GenerateCILoadChaos generates a load&chaos test CI workflow
-func (g *EnvCodegen) GenerateCILoadChaos() (string, error) {
-	log.Info().Msg("Generating GitHub CI load&chaos test")
+// GenerateCIPerf generates a load&chaos test CI workflow
+func (g *EnvCodegen) GenerateCIPerf() (string, error) {
+	log.Info().Msg("Generating GitHub CI workflow for non-functional tests")
 	p, err := dirPathRelFromGitRoot(g.cfg.outputDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to find relative devenv path from Git root: %w", err)
@@ -2534,12 +2622,12 @@ func (g *EnvCodegen) GenerateCILoadChaos() (string, error) {
 		ProductName:   g.cfg.productName,
 		CLIName:       g.cfg.cliName,
 	}
-	return render(CILoadChaosTemplate, data)
+	return render(CINonFunctionalTmpl, data)
 }
 
-// GenerateCISmoke generates a smoke test CI workflow
-func (g *EnvCodegen) GenerateCISmoke() (string, error) {
-	log.Info().Msg("Generating GitHub CI smoke test")
+// GenerateCIFunctional generates a functional test CI workflow
+func (g *EnvCodegen) GenerateCIFunctional() (string, error) {
+	log.Info().Msg("Generating GitHub CI workflow for functional tests")
 	p, err := dirPathRelFromGitRoot(g.cfg.outputDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to find relative devenv path from Git root: %w", err)
@@ -2549,7 +2637,7 @@ func (g *EnvCodegen) GenerateCISmoke() (string, error) {
 		ProductName:   g.cfg.productName,
 		CLIName:       g.cfg.cliName,
 	}
-	return render(CISmokeTmpl, data)
+	return render(CIFunctionalTmpl, data)
 }
 
 // GenerateGoMod generates a go.mod file
@@ -2566,7 +2654,8 @@ func (g *EnvCodegen) GenerateGoMod() (string, error) {
 func (g *EnvCodegen) GenerateReadme() (string, error) {
 	log.Info().Msg("Generating README file")
 	data := ReadmeParams{
-		CLIName: g.cfg.cliName,
+		CLIName:     g.cfg.cliName,
+		ProductName: g.cfg.productName,
 	}
 	return render(ReadmeTmpl, data)
 }
@@ -2651,15 +2740,6 @@ func (g *EnvCodegen) GenerateJD() (string, error) {
 		PackageName: g.cfg.packageName,
 	}
 	return render(JDTmpl, p)
-}
-
-// GenerateDebugTools generate debug tools (tracing)
-func (g *EnvCodegen) GenerateDebugTools() (string, error) {
-	log.Info().Msg("Generating debug tools")
-	p := ToolsParams{
-		PackageName: g.cfg.packageName,
-	}
-	return render(DebugToolsTmpl, p)
 }
 
 // GenerateConfig generate read/write utilities for TOML configs

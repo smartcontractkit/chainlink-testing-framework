@@ -62,6 +62,7 @@ func TestSmokeGenerateDevEnv(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Cleanup(func() {
 				runCmd(t, tt.outputDir, tt.cliName, `down`)
+				// remove this line if test fails and see what can't be compiled
 				os.RemoveAll(tt.outputDir)
 			})
 			cg, err := framework.NewEnvBuilder(
