@@ -152,7 +152,7 @@ func (m *Configurator) ConfigureJobsAndContracts(
 	// in soak test case it may hold multiple configs and have different outputs
 	// for each instance
 	m.Config[0].Out = &ProductConfigOutput{ExampleField: "my_data"}
-	L.Info().Msg("Configuring product: productone")
+	L.Info().Msg("Configuring product: {{ .ProductName }}")
 	return nil
 }
 `

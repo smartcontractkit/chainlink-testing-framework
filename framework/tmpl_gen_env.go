@@ -1643,7 +1643,7 @@ func (m *ExampleGun) Call(l *wasp.Generator) *wasp.Response {
 func TestNonFunctional(t *testing.T) {
 	in, err := de.LoadOutput[de.Cfg]("../../env-out.toml")
 	require.NoError(t, err)
-	inProduct, err := products.LoadOutput[productone.Configurator]("../../env-out.toml")
+	inProduct, err := products.LoadOutput[{{ .ProductName }}.Configurator]("../../env-out.toml")
 	require.NoError(t, err)
 
 	_ = inProduct
@@ -1736,7 +1736,7 @@ var L = de.L
 func TestFunctional(t *testing.T) {
 	in, err := de.LoadOutput[de.Cfg]("../../env-out.toml")
 	require.NoError(t, err)
-	inProduct, err := products.LoadOutput[productone.Configurator]("../../env-out.toml")
+	inProduct, err := products.LoadOutput[{{ .ProductName }}.Configurator]("../../env-out.toml")
 	require.NoError(t, err)
 	clNodes, err := clclient.New(in.NodeSets[0].Out.CLNodes)
 	require.NoError(t, err)
