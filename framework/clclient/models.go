@@ -3,6 +3,7 @@ package clclient
 import (
 	"bytes"
 	"fmt"
+	"math/big"
 	"text/template"
 	"time"
 
@@ -1418,4 +1419,17 @@ type ForwarderAttributes struct {
 	ChainID   string    `json:"evmChainId"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+type ReplayResponse struct {
+	Data ReplayResponseData `json:"data"`
+}
+
+type ReplayResponseData struct {
+	Attributes ReplayResponseAttributes `json:"attributes"`
+}
+
+type ReplayResponseAttributes struct {
+	Message    string   `json:"message"`
+	EVMChainID *big.Int `json:"evmChainID"`
 }

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -1430,4 +1431,37 @@ func ImportP2PKeys(cl []*ChainlinkClient, keys [][]byte) error {
 		})
 	}
 	return eg.Wait()
+}
+
+func ReplayLogPollerFromBlock(cl []*ChainlinkClient, fromBlock, evmChainID int64) error {
+	eg := &errgroup.Group{}
+	for _, c := range cl {
+		eg.Go(func() error {
+			_, _, err := c.ReplayLogPollerFromBlock(fromBlock, evmChainID)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+	}
+	return eg.Wait()
+}
+
+func (c *ChainlinkClient) ReplayLogPollerFromBlock(fromBlock, evmChainID int64) (*ReplayResponse, *http.Response, error) {
+	specObj := &ReplayResponse{}
+	resp, err := c.APIClient.R().
+		SetResult(&specObj).
+		SetQueryParams(map[string]string{
+			"family":  "evm",
+			"ChainID": strconv.FormatInt(evmChainID, 10),
+		}).
+		SetPathParams(map[string]string{
+			"fromBlock": strconv.FormatInt(fromBlock, 10),
+		}).
+		Post("/v2/replay_from_block/{fromBlock}")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return specObj, resp.RawResponse, err
 }
