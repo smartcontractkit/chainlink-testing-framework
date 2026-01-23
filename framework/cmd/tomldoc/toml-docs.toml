@@ -1,0 +1,230 @@
+# Fake HTTP server representing 3rd party dependencies
+[fakes]
+  image = ''
+  port = 0
+
+  [fakes.out]
+    use_cache = false
+    base_url_host = ''
+    base_url_docker = ''
+
+# Various blockchains, see 'type' field comments
+[[blockchains]]
+  # Type can be one of: anvil geth besu solana aptos tron sui ton canton, this struct describes common configuration we are using across all blockchains
+  type = ''
+  # Blockchain node image in format: $registry:$image, ex.: ghcr.io/foundry-rs/foundry:stable
+  image = ''
+  # Whether to pull image or not when creating Docker container
+  pull_image = false
+  # The port Docker container will expose
+  port = ''
+  # Docker container name
+  container_name = ''
+  # WebSocket port container will expose
+  port_ws = ''
+  # Blockchain chain ID
+  chain_id = ''
+  # Docker command parameters override, ex. for Anvil: ["-b", "1", "--mixed-mining"]
+  docker_cmd_params = []
+  # Public key to mint when solana-test-validator starts
+  public_key = ''
+  # Solana's contracts directory
+  contracts_dir = ''
+  custom_ports = []
+  faucet_port = ''
+  number_of_canton_validators = 0
+  host_network_mode = false
+  certificates_path = ''
+  image_platform = ''
+
+  # blockchain deployment output
+  [blockchains.out]
+    use_cache = false
+    type = ''
+    family = ''
+    container_name = ''
+    chain_id = ''
+
+    [blockchains.out.network_specific_data]
+      [blockchains.out.network_specific_data.SuiAccount]
+        Alias = ''
+        Flag = 0
+        KeyScheme = ''
+        Mnemonic = ''
+        PeerId = ''
+        PublicBase64Key = ''
+        SuiAddress = ''
+
+      [blockchains.out.network_specific_data.CantonEndpoints]
+        ScanAPIURL = ''
+        RegistryAPIURL = ''
+
+        [blockchains.out.network_specific_data.CantonEndpoints.SuperValidator]
+          JSONLedgerAPIURL = ''
+          GRPCLedgerAPIURL = ''
+          AdminAPIURL = ''
+          ValidatorAPIURL = ''
+          HTTPHealthCheckURL = ''
+          GRPCHealthCheckURL = ''
+          JWT = ''
+
+        [[blockchains.out.network_specific_data.CantonEndpoints.Participants]]
+          JSONLedgerAPIURL = ''
+          GRPCLedgerAPIURL = ''
+          AdminAPIURL = ''
+          ValidatorAPIURL = ''
+          HTTPHealthCheckURL = ''
+          GRPCHealthCheckURL = ''
+          JWT = ''
+
+    [[blockchains.out.nodes]]
+      ws_url = ''
+      http_url = ''
+      internal_ws_url = ''
+      internal_http_url = ''
+
+  # Solana's programs, map of program name to program ID, there needs to be a matching .so file in contracts_dir
+  [blockchains.solana_programs]
+
+  # Docker container resources
+  [blockchains.resources]
+    # CPU shares, ex.: 2
+    cpus = 0.0
+    # Memory in MegaBytes, ex.:"200"
+    memory_mb = 0
+
+  [blockchains.custom_env]
+
+# Chainlink Node Set including multiple Chainlink nodes forming a DON
+[[nodesets]]
+  name = ''
+  nodes = 0
+  http_port_range_start = 0
+  p2p_port_range_start = 0
+  dlv_port_range_start = 0
+  override_mode = ''
+  no_dns = false
+
+  [nodesets.db]
+    image = ''
+    port = 0
+    name = ''
+    volume_name = ''
+    databases = 0
+    jd_database = false
+    jd_sql_dump_path = ''
+    pull_image = false
+
+    [nodesets.db.resources]
+      # CPU shares, ex.: 2
+      cpus = 0.0
+      # Memory in MegaBytes, ex.:"200"
+      memory_mb = 0
+
+    [nodesets.db.out]
+      url = ''
+      container_name = ''
+      internal_url = ''
+      jd_url = ''
+      jd_internal_url = ''
+
+  [[nodesets.node_specs]]
+    no_dns = false
+
+    [nodesets.node_specs.db]
+      image = ''
+      port = 0
+      name = ''
+      volume_name = ''
+      databases = 0
+      jd_database = false
+      jd_sql_dump_path = ''
+      pull_image = false
+
+      [nodesets.node_specs.db.resources]
+        # CPU shares, ex.: 2
+        cpus = 0.0
+        # Memory in MegaBytes, ex.:"200"
+        memory_mb = 0
+
+      [nodesets.node_specs.db.out]
+        url = ''
+        container_name = ''
+        internal_url = ''
+        jd_url = ''
+        jd_internal_url = ''
+
+    [nodesets.node_specs.node]
+      image = ''
+      name = ''
+      docker_file = ''
+      docker_ctx = ''
+      pull_image = false
+      capabilities = []
+      capabilities_container_dir = ''
+      test_config_overrides = ''
+      user_config_overrides = ''
+      test_secrets_overrides = ''
+      user_secrets_overrides = ''
+      port = 0
+      p2p_port = 0
+      custom_ports = []
+      debugger_port = 0
+
+      [nodesets.node_specs.node.docker_build_args]
+
+      [nodesets.node_specs.node.resources]
+        # CPU shares, ex.: 2
+        cpus = 0.0
+        # Memory in MegaBytes, ex.:"200"
+        memory_mb = 0
+
+      [nodesets.node_specs.node.env_vars]
+
+    [nodesets.node_specs.out]
+      use_cache = false
+
+      [nodesets.node_specs.out.node]
+        api_auth_user = ''
+        api_auth_password = ''
+        container_name = ''
+        url = ''
+        internal_url = ''
+        p2p_internal_url = ''
+        internal_ip = ''
+
+      [nodesets.node_specs.out.postgresql]
+        url = ''
+        container_name = ''
+        internal_url = ''
+        jd_url = ''
+        jd_internal_url = ''
+
+  [nodesets.out]
+    use_cache = false
+
+    [nodesets.out.db_out]
+      url = ''
+      container_name = ''
+      internal_url = ''
+      jd_url = ''
+      jd_internal_url = ''
+
+    [[nodesets.out.cl_nodes]]
+      use_cache = false
+
+      [nodesets.out.cl_nodes.node]
+        api_auth_user = ''
+        api_auth_password = ''
+        container_name = ''
+        url = ''
+        internal_url = ''
+        p2p_internal_url = ''
+        internal_ip = ''
+
+      [nodesets.out.cl_nodes.postgresql]
+        url = ''
+        container_name = ''
+        internal_url = ''
+        jd_url = ''
+        jd_internal_url = ''

@@ -37,26 +37,26 @@ const (
 // Input is a blockchain network configuration params
 type Input struct {
 	// Common EVM fields
-	Type          string `toml:"type" validate:"required,oneof=anvil geth besu solana aptos tron sui ton canton" envconfig:"net_type"`
-	Image         string `toml:"image"`
-	PullImage     bool   `toml:"pull_image"`
-	Port          string `toml:"port"`
-	ContainerName string `toml:"container_name"`
+	Type          string `toml:"type" validate:"required,oneof=anvil geth besu solana aptos tron sui ton canton" envconfig:"net_type" comment:"Type can be one of: anvil geth besu solana aptos tron sui ton canton, this struct describes common configuration we are using across all blockchains"`
+	Image         string `toml:"image" comment:"Blockchain node image in format: $registry:$image, ex.: ghcr.io/foundry-rs/foundry:stable"`
+	PullImage     bool   `toml:"pull_image" comment:"Whether to pull image or not when creating Docker container"`
+	Port          string `toml:"port" comment:"The port Docker container will expose"`
+	ContainerName string `toml:"container_name" comment:"Docker container name"`
 	// Not applicable to Solana, ws port for Solana is +1 of port
-	WSPort                   string   `toml:"port_ws"`
-	ChainID                  string   `toml:"chain_id"`
-	DockerCmdParamsOverrides []string `toml:"docker_cmd_params"`
-	Out                      *Output  `toml:"out"`
+	WSPort                   string   `toml:"port_ws" comment:"WebSocket port container will expose"`
+	ChainID                  string   `toml:"chain_id" comment:"Blockchain chain ID"`
+	DockerCmdParamsOverrides []string `toml:"docker_cmd_params" comment:"Docker command parameters override, ex. for Anvil: [\"-b\", \"1\", \"--mixed-mining\"]"`
+	Out                      *Output  `toml:"out" comment:"blockchain deployment output"`
 
 	// Solana fields
 	// publickey to mint when solana-test-validator starts
-	PublicKey    string `toml:"public_key"`
-	ContractsDir string `toml:"contracts_dir"`
+	PublicKey    string `toml:"public_key" comment:"Public key to mint when solana-test-validator starts"`
+	ContractsDir string `toml:"contracts_dir" comment:"Solana's contracts directory"`
 	// programs to deploy on solana-test-validator start
 	// a map of program name to program id
 	// there needs to be a matching .so file in contracts_dir
-	SolanaPrograms     map[string]string             `toml:"solana_programs"`
-	ContainerResources *framework.ContainerResources `toml:"resources"`
+	SolanaPrograms     map[string]string             `toml:"solana_programs" comment:"Solana's programs, map of program name to program ID, there needs to be a matching .so file in contracts_dir"`
+	ContainerResources *framework.ContainerResources `toml:"resources" comment:"Docker container resources"`
 	CustomPorts        []string                      `toml:"custom_ports"`
 
 	// Sui specific: faucet port for funding accounts

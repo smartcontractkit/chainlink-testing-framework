@@ -474,8 +474,8 @@ func RemoveTestStack(name string) error {
 }
 
 type ContainerResources struct {
-	CPUs     float64 `toml:"cpus" validate:"gte=0"`
-	MemoryMb uint    `toml:"memory_mb"`
+	CPUs     float64 `toml:"cpus" validate:"gte=0" comment:"CPU shares, ex.: 2"`
+	MemoryMb uint    `toml:"memory_mb" comment:"Memory in MegaBytes, ex.:\"200\""`
 }
 
 // ResourceLimitsFunc returns a function to configure container resources based on the human-readable CPUs and memory in Mb
