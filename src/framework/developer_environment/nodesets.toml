@@ -1,0 +1,232 @@
+[[nodesets]]
+  # Node set name, ex.:'don-1', Docker containers will be prefixed with this name so tests can distinguish one DON from another
+  name = ''
+  # Number of nodes in node set
+  nodes = 0
+  # HTTP ports range starting with port X and increasing by 1
+  http_port_range_start = 0
+  # P2P ports range starting with port X and increasing by 1
+  p2p_port_range_start = 0
+  # Delve debugger ports range starting with port X and increasing by 1
+  dlv_port_range_start = 0
+  # Override mode, applicable only to 'localcre'. Changes how config overrides to TOML nodes apply
+  override_mode = ''
+  # Turn DNS on, helpful to isolate container from the internet
+  no_dns = false
+
+  # Shared node set data base input for PostgreSQL
+  [nodesets.db]
+    # PostgreSQL Docker image in format: $registry:$tag
+    image = ''
+    # PostgreSQL connection port
+    port = 0
+    # PostgreSQL container name
+    name = ''
+    # PostgreSQL docker volume name
+    volume_name = ''
+    # Number of pre-created databases for Chainlink nodes
+    databases = 0
+    # Whether to create JobDistributor database or not
+    jd_database = false
+    # JobDistributor database dump path to load
+    jd_sql_dump_path = ''
+    # Whether to pull PostgreSQL image or not
+    pull_image = false
+
+    # Docker container resources
+    [nodesets.db.resources]
+      # CPU shares, ex.: 2
+      cpus = 0.0
+      # Memory in MegaBytes, ex.:"200"
+      memory_mb = 0
+
+    # PostgreSQL config output
+    [nodesets.db.out]
+      # PostgreSQL connection URL
+      url = ''
+      # Docker container name
+      container_name = ''
+      # PostgreSQL internal connection URL
+      internal_url = ''
+      # PostgreSQL internal connection URL to JobDistributor database
+      jd_url = ''
+      # PostgreSQL internal connection URL to JobDistributor database
+      jd_internal_url = ''
+
+  # Chainlink node TOML configurations
+  [[nodesets.node_specs]]
+    # whether to allow DNS in Docker containers or not, useful for isolating containers from network if set to 'false'
+    no_dns = false
+
+    # PostgreSQL database configuration
+    [nodesets.node_specs.db]
+      # PostgreSQL Docker image in format: $registry:$tag
+      image = ''
+      # PostgreSQL connection port
+      port = 0
+      # PostgreSQL container name
+      name = ''
+      # PostgreSQL docker volume name
+      volume_name = ''
+      # Number of pre-created databases for Chainlink nodes
+      databases = 0
+      # Whether to create JobDistributor database or not
+      jd_database = false
+      # JobDistributor database dump path to load
+      jd_sql_dump_path = ''
+      # Whether to pull PostgreSQL image or not
+      pull_image = false
+
+      # Docker container resources
+      [nodesets.node_specs.db.resources]
+        # CPU shares, ex.: 2
+        cpus = 0.0
+        # Memory in MegaBytes, ex.:"200"
+        memory_mb = 0
+
+      # PostgreSQL config output
+      [nodesets.node_specs.db.out]
+        # PostgreSQL connection URL
+        url = ''
+        # Docker container name
+        container_name = ''
+        # PostgreSQL internal connection URL
+        internal_url = ''
+        # PostgreSQL internal connection URL to JobDistributor database
+        jd_url = ''
+        # PostgreSQL internal connection URL to JobDistributor database
+        jd_internal_url = ''
+
+    # Chainlink node configuration
+    [nodesets.node_specs.node]
+      # Chainlink node Docker image in format $registry:$tag
+      image = ''
+      # Chainlink node Docker container name
+      name = ''
+      # Docker file path to rebuild, relative to 'docker_ctx' field path
+      docker_file = ''
+      # Docker build context path
+      docker_ctx = ''
+      # Whether to pull Docker image or not
+      pull_image = false
+      # Chainlink CRE capabilities paths for WASM binaries
+      capabilities = []
+      # path to capabilities inside Docker container (capabilities are copied inside container from local path)
+      capabilities_container_dir = ''
+      # node config overrides field for programmatic usage in tests
+      test_config_overrides = ''
+      # node config overrides field for manual overrides from env.toml configs
+      user_config_overrides = ''
+      # node secrets config overrides field for programmatic usage in tests
+      test_secrets_overrides = ''
+      # node secrets config overrides field for manual overrides from env.toml configs
+      user_secrets_overrides = ''
+      # Chainlink node API HTTP port
+      port = 0
+      # Chainlink node P2P port
+      p2p_port = 0
+      # Custom ports pairs in format $host_port_number:$docker_port_number
+      custom_ports = []
+      # Delve debugger port
+      debugger_port = 0
+
+      # Docker build args in format key = value or map format, ex.: "CL_IS_PROD_BUILD" = "false" 
+      [nodesets.node_specs.node.docker_build_args]
+
+      # Docker container resources
+      [nodesets.node_specs.node.resources]
+        # CPU shares, ex.: 2
+        cpus = 0.0
+        # Memory in MegaBytes, ex.:"200"
+        memory_mb = 0
+
+      # Docker container environment variables
+      [nodesets.node_specs.node.env_vars]
+
+    # Chainlink node configuration output
+    [nodesets.node_specs.out]
+      # Whether to respect caching or not, if cache = true component won't be deployed again
+      use_cache = false
+
+      # Chainlink node config output
+      [nodesets.node_specs.out.node]
+        # User name for basic login/password authorization in Chainlink node
+        api_auth_user = ''
+        # Password for basic login/password authorization in Chainlink node
+        api_auth_password = ''
+        # Node Docker contaner name
+        container_name = ''
+        # Node external API HTTP URL
+        url = ''
+        # Node internal API HTTP URL
+        internal_url = ''
+        # Node internal P2P URL
+        p2p_internal_url = ''
+        # Node internal IP
+        internal_ip = ''
+
+      # PostgreSQL config output
+      [nodesets.node_specs.out.postgresql]
+        # PostgreSQL connection URL
+        url = ''
+        # Docker container name
+        container_name = ''
+        # PostgreSQL internal connection URL
+        internal_url = ''
+        # PostgreSQL internal connection URL to JobDistributor database
+        jd_url = ''
+        # PostgreSQL internal connection URL to JobDistributor database
+        jd_internal_url = ''
+
+  # Nodeset config output
+  [nodesets.out]
+    # Whether to respect caching or not, if cache = true component won't be deployed again
+    use_cache = false
+
+    # Nodeset shared database output (PostgreSQL)
+    [nodesets.out.db_out]
+      # PostgreSQL connection URL
+      url = ''
+      # Docker container name
+      container_name = ''
+      # PostgreSQL internal connection URL
+      internal_url = ''
+      # PostgreSQL internal connection URL to JobDistributor database
+      jd_url = ''
+      # PostgreSQL internal connection URL to JobDistributor database
+      jd_internal_url = ''
+
+    # Chainlink node config outputs
+    [[nodesets.out.cl_nodes]]
+      # Whether to respect caching or not, if cache = true component won't be deployed again
+      use_cache = false
+
+      # Chainlink node config output
+      [nodesets.out.cl_nodes.node]
+        # User name for basic login/password authorization in Chainlink node
+        api_auth_user = ''
+        # Password for basic login/password authorization in Chainlink node
+        api_auth_password = ''
+        # Node Docker contaner name
+        container_name = ''
+        # Node external API HTTP URL
+        url = ''
+        # Node internal API HTTP URL
+        internal_url = ''
+        # Node internal P2P URL
+        p2p_internal_url = ''
+        # Node internal IP
+        internal_ip = ''
+
+      # PostgreSQL config output
+      [nodesets.out.cl_nodes.postgresql]
+        # PostgreSQL connection URL
+        url = ''
+        # Docker container name
+        container_name = ''
+        # PostgreSQL internal connection URL
+        internal_url = ''
+        # PostgreSQL internal connection URL to JobDistributor database
+        jd_url = ''
+        # PostgreSQL internal connection URL to JobDistributor database
+        jd_internal_url = ''

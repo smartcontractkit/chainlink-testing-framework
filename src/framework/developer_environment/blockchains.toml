@@ -1,0 +1,130 @@
+[[blockchains]]
+  # Type can be one of: anvil geth besu solana aptos tron sui ton canton, this struct describes common configuration we are using across all blockchains
+  type = ''
+  # Blockchain node image in format: $registry:$image, ex.: ghcr.io/foundry-rs/foundry:stable
+  image = ''
+  # Whether to pull image or not when creating Docker container
+  pull_image = false
+  # The port Docker container will expose
+  port = ''
+  # Docker container name
+  container_name = ''
+  # WebSocket port container will expose
+  port_ws = ''
+  # Blockchain chain ID
+  chain_id = ''
+  # Docker command parameters override, ex. for Anvil: ["-b", "1", "--mixed-mining"]
+  docker_cmd_params = []
+  # Public key to mint when solana-test-validator starts
+  public_key = ''
+  # Solana's contracts directory
+  contracts_dir = ''
+  # Custom ports pairs in format $host_port_number:$docker_port_number
+  custom_ports = []
+  # Sui blockchain network faucet port
+  faucet_port = ''
+  # Number of Canton network validators
+  number_of_canton_validators = 0
+  # GAPv2 specific paramter: host netowork mode, if 'true' will run environment in host network mode
+  host_network_mode = false
+  # GAPv2 specific parameter: path to default Ubuntu's certificates
+  certificates_path = ''
+  # Docker image platform, default is 'linux/amd64'
+  image_platform = ''
+
+  # blockchain deployment output
+  [blockchains.out]
+    # Whether to respect caching or not, if cache = true component won't be deployed again
+    use_cache = false
+    # Type can be one of: anvil geth besu solana aptos tron sui ton canton, this struct describes common configuration we are using across all blockchains
+    type = ''
+    # Blockchain family, can be one of: evm solana aptos sui tron ton canton
+    family = ''
+    # Blockchain Docker container name
+    container_name = ''
+    # Chain ID
+    chain_id = ''
+
+    # Blockchain network-specific data
+    [blockchains.out.network_specific_data]
+      # Sui network account info
+      [blockchains.out.network_specific_data.sui_account]
+        # Alias key name, usually null
+        alias = ''
+        # -
+        flag = 0
+        # Sui key scheme
+        key_scheme = ''
+        # Sui key mnemonic
+        mnemonic = ''
+        # Sui key peer ID
+        peer_id = ''
+        # Sui key in base64 format
+        public_base64_key = ''
+        # Sui key address
+        sui_address = ''
+
+      # Canton network endpoints info
+      [blockchains.out.network_specific_data.canton_endpoints]
+        # https://docs.sync.global/app_dev/scan_api/index.html
+        scan_api_url = ''
+        # https://docs.sync.global/app_dev/token_standard/index.html#api-references
+        registry_api_url = ''
+
+        # Canton network super validator
+        [blockchains.out.network_specific_data.canton_endpoints.super_validator]
+          # https://docs.digitalasset.com/build/3.5/reference/json-api/json-api.html
+          json_ledger_api_url = ''
+          # https://docs.digitalasset.com/build/3.5/reference/lapi-proto-docs.html
+          grpc_ledger_api_url = ''
+          # https://docs.digitalasset.com/operate/3.5/howtos/configure/apis/admin_api.html
+          admin_api_url = ''
+          # https://docs.sync.global/app_dev/validator_api/index.html
+          validator_api_url = ''
+          # HTTP health check endpoint, responds on GET /health
+          http_health_check_url = ''
+          # GRPC health check endpoint, responds to grpc.health.v1.Health/Check
+          grpc_health_check_url = ''
+          # JSON Web Token for this participant
+          jwt = ''
+
+        # Canton participant endpoints
+        [[blockchains.out.network_specific_data.canton_endpoints.participants]]
+          # https://docs.digitalasset.com/build/3.5/reference/json-api/json-api.html
+          json_ledger_api_url = ''
+          # https://docs.digitalasset.com/build/3.5/reference/lapi-proto-docs.html
+          grpc_ledger_api_url = ''
+          # https://docs.digitalasset.com/operate/3.5/howtos/configure/apis/admin_api.html
+          admin_api_url = ''
+          # https://docs.sync.global/app_dev/validator_api/index.html
+          validator_api_url = ''
+          # HTTP health check endpoint, responds on GET /health
+          http_health_check_url = ''
+          # GRPC health check endpoint, responds to grpc.health.v1.Health/Check
+          grpc_health_check_url = ''
+          # JSON Web Token for this participant
+          jwt = ''
+
+    # Blockchain nodes info
+    [[blockchains.out.nodes]]
+      # External blockchain node WebSocket URL
+      ws_url = ''
+      # External blockchain node HTTP URL
+      http_url = ''
+      # Internal blockchain node WebSocket URL
+      internal_ws_url = ''
+      # Internal blockchain node HTTP URL
+      internal_http_url = ''
+
+  # Solana's programs, map of program name to program ID, there needs to be a matching .so file in contracts_dir
+  [blockchains.solana_programs]
+
+  # Docker container resources
+  [blockchains.resources]
+    # CPU shares, ex.: 2
+    cpus = 0.0
+    # Memory in MegaBytes, ex.:"200"
+    memory_mb = 0
+
+  # Docker container environment variables in TOML format key = value
+  [blockchains.custom_env]
