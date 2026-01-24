@@ -1,10 +1,11 @@
 package main
 
 import (
-	"flag"
 	"log"
 	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 
 	toml "github.com/pelletier/go-toml/v2"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
@@ -23,6 +24,20 @@ type AllStructDocs struct {
 	NodeSets    []*simple_node_set.Input `toml:"nodesets" comment:"Chainlink Node Set including multiple Chainlink nodes forming a DON"`
 }
 
+func callDefaultIfExists(obj any) {
+	v := reflect.ValueOf(obj)
+	if v.Kind() == reflect.Ptr && !v.IsNil() {
+		typ := v.Type()
+		for i := 0; i < typ.NumMethod(); i++ {
+			method := typ.Method(i)
+			if strings.HasPrefix(method.Name, "Default") {
+				v.Method(i).Call(nil)
+				return
+			}
+		}
+	}
+}
+
 // initializeAny initializes any object so we can call Unmarshal method for all the fields
 func initializeAny(obj any) {
 	v := reflect.ValueOf(obj).Elem()
@@ -30,6 +45,8 @@ func initializeAny(obj any) {
 	if v.Kind() != reflect.Struct {
 		return
 	}
+	// Call Default() on the current struct if it exists
+	callDefaultIfExists(obj)
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
 		fieldType := v.Type().Field(i)
@@ -97,25 +114,44 @@ func initializeAny(obj any) {
 	}
 }
 
-func main() {
-	outputFile := flag.String("output", "toml-docs.toml", "Output file to write all the struct examples to")
-	flag.Parse()
-	f, err := os.Create(*outputFile)
+func encodeAndWrite(outputFilePath string, obj any) {
+	f, err := os.Create(outputFilePath)
 	if err != nil {
 		log.Fatalf("Error creating file: %v", err)
 	}
 	defer f.Close()
-
 	encoder := toml.NewEncoder(f)
 	// this also writes "comment" lines from fields as # comment on top of each field
 	encoder.SetIndentTables(true)
-
-	// initialize all the framework structs
-	all := &AllStructDocs{}
-	initializeAny(all)
-
 	// encode and write examples
-	if err := encoder.Encode(&all); err != nil {
+	if err := encoder.Encode(obj); err != nil {
 		log.Fatalf("Error encoding to file: %v", err)
 	}
+}
+
+func main() {
+	bookFilePath := filepath.Join("src", "framework", "developer_environment")
+
+	// can be generalized but we want a nice page with headers for each component
+	// components rarely change, fields do
+	// top-level TOML tags are set how they are most commonly used,
+	// as slices, if we can deploy more than a single component
+
+	f := struct {
+		Fakes *fake.Input `toml:"fakes"`
+	}{}
+	initializeAny(&f)
+	encodeAndWrite(filepath.Join(bookFilePath, "fake.toml"), &f)
+
+	b := struct {
+		Blockchains []*blockchain.Input `toml:"blockchains"`
+	}{}
+	initializeAny(&b)
+	encodeAndWrite(filepath.Join(bookFilePath, "blockchains.toml"), &b)
+
+	ns := struct {
+		NodeSets []*simple_node_set.Input `toml:"nodesets"`
+	}{}
+	initializeAny(&ns)
+	encodeAndWrite(filepath.Join(bookFilePath, "nodesets.toml"), &ns)
 }
