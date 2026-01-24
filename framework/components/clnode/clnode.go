@@ -33,56 +33,86 @@ const (
 	HomeVolumeName         = "clnode-home"
 )
 
-var (
-	once = &sync.Once{}
-)
+var once = &sync.Once{}
 
 // Input represents Chainlink node input
 type Input struct {
-	NoDNS   bool            `toml:"no_dns"`
-	DbInput *postgres.Input `toml:"db" validate:"required"`
-	Node    *NodeInput      `toml:"node" validate:"required"`
-	Out     *Output         `toml:"out"`
+	// NoDNS whether to allow DNS in Docker containers or not, useful for isolating containers from network if set to 'false'
+	NoDNS bool `toml:"no_dns" comment:"whether to allow DNS in Docker containers or not, useful for isolating containers from network if set to 'false'"`
+	// DbInput PostgreSQL database configuration
+	DbInput *postgres.Input `toml:"db" validate:"required" comment:"PostgreSQL database configuration"`
+	// Node Chainlink node configuration
+	Node *NodeInput `toml:"node" validate:"required" comment:"Chainlink node configuration"`
+	// Out Chainlink node configuration output
+	Out *Output `toml:"out" comment:"Chainlink node configuration output"`
 }
 
 // NodeInput is CL nod container inputs
 type NodeInput struct {
-	Image                   string                        `toml:"image" validate:"required"`
-	Name                    string                        `toml:"name"`
-	DockerFilePath          string                        `toml:"docker_file"`
-	DockerContext           string                        `toml:"docker_ctx"`
-	DockerBuildArgs         map[string]string             `toml:"docker_build_args"`
-	PullImage               bool                          `toml:"pull_image"`
-	CapabilitiesBinaryPaths []string                      `toml:"capabilities"`
-	CapabilityContainerDir  string                        `toml:"capabilities_container_dir"`
-	TestConfigOverrides     string                        `toml:"test_config_overrides"`
-	UserConfigOverrides     string                        `toml:"user_config_overrides"`
-	TestSecretsOverrides    string                        `toml:"test_secrets_overrides"`
-	UserSecretsOverrides    string                        `toml:"user_secrets_overrides"`
-	HTTPPort                int                           `toml:"port"`
-	P2PPort                 int                           `toml:"p2p_port"`
-	CustomPorts             []string                      `toml:"custom_ports"`
-	DebuggerPort            int                           `toml:"debugger_port"`
-	ContainerResources      *framework.ContainerResources `toml:"resources"`
-	EnvVars                 map[string]string             `toml:"env_vars"`
+	// Image Chainlink node Docker image in format $registry:$tag
+	Image string `toml:"image" validate:"required" comment:"Chainlink node Docker image in format $registry:$tag"`
+	// Name Chainlink node Docker container name
+	Name string `toml:"name" comment:"Chainlink node Docker container name"`
+	// DockerFilePath Docker file path to rebuild, relative to 'docker_ctx' field path
+	DockerFilePath string `toml:"docker_file" comment:"Docker file path to rebuild, relative to 'docker_ctx' field path"`
+	// DockerContext Docker build context path
+	DockerContext string `toml:"docker_ctx" comment:"Docker build context path"`
+	// DockerBuildArgs Docker build args
+	DockerBuildArgs map[string]string `toml:"docker_build_args" comment:"Docker build args in format key = value or map format, ex.: \"CL_IS_PROD_BUILD\" = \"false\" "`
+	// PullImage whether to pull Docker image or not
+	PullImage bool `toml:"pull_image" comment:"Whether to pull Docker image or not"`
+	// CapabilitiesBinaryPaths Chainlink CRE capabilities paths for WASM binaries
+	CapabilitiesBinaryPaths []string `toml:"capabilities" comment:"Chainlink CRE capabilities paths for WASM binaries"`
+	// CapabilityContainerDir path to capabilities inside Docker container (capabilities are copied inside container from local path)
+	CapabilityContainerDir string `toml:"capabilities_container_dir" comment:"path to capabilities inside Docker container (capabilities are copied inside container from local path)"`
+	// TestConfigOverrides node config overrides field for programmatic usage in tests
+	TestConfigOverrides string `toml:"test_config_overrides" comment:"node config overrides field for programmatic usage in tests"`
+	// UserConfigOverrides node config overrides field for manual overrides from env.toml configs
+	UserConfigOverrides string `toml:"user_config_overrides" comment:"node config overrides field for manual overrides from env.toml configs"`
+	// TestSecretsOverrides node secrets config overrides field for programmatic usage in tests
+	TestSecretsOverrides string `toml:"test_secrets_overrides" comment:"node secrets config overrides field for programmatic usage in tests"`
+	// UserSecretsOverrides node secrets config overrides field for manual overrides from env.toml configs
+	UserSecretsOverrides string `toml:"user_secrets_overrides" comment:"node secrets config overrides field for manual overrides from env.toml configs"`
+	// HTTPPort Chainlink node API HTTP port
+	HTTPPort int `toml:"port" comment:"Chainlink node API HTTP port"`
+	// P2PPort Chainlink node P2P port
+	P2PPort int `toml:"p2p_port" comment:"Chainlink node P2P port"`
+	// CustomPorts Custom ports pairs in format $host_port_number:$docker_port_number
+	CustomPorts []string `toml:"custom_ports" comment:"Custom ports pairs in format $host_port_number:$docker_port_number"`
+	// DebuggerPort Delve debugger port
+	DebuggerPort int `toml:"debugger_port" comment:"Delve debugger port"`
+	// ContainerResources Docker container resources
+	ContainerResources *framework.ContainerResources `toml:"resources" comment:"Docker container resources"`
+	// EnvVars Docker container environment variables
+	EnvVars map[string]string `toml:"env_vars" comment:"Docker container environment variables"`
 }
 
 // Output represents Chainlink node output, nodes and databases connection URLs
 type Output struct {
-	UseCache   bool             `toml:"use_cache"`
-	Node       *NodeOut         `toml:"node"`
-	PostgreSQL *postgres.Output `toml:"postgresql"`
+	// UseCache Whether to respect caching or not, if cache = true component won't be deployed again
+	UseCache bool `toml:"use_cache" comment:"Whether to respect caching or not, if cache = true component won't be deployed again"`
+	// Node Chainlink node config output
+	Node *NodeOut `toml:"node" comment:"Chainlink node config output"`
+	// PostgreSQL PostgreSQL config output
+	PostgreSQL *postgres.Output `toml:"postgresql" comment:"PostgreSQL config output"`
 }
 
 // NodeOut is CL node container output, URLs to connect
 type NodeOut struct {
-	APIAuthUser     string `toml:"api_auth_user"`
-	APIAuthPassword string `toml:"api_auth_password"`
-	ContainerName   string `toml:"container_name"`
-	ExternalURL     string `toml:"url"`
-	InternalURL     string `toml:"internal_url"`
-	InternalP2PUrl  string `toml:"p2p_internal_url"`
-	InternalIP      string `toml:"internal_ip"`
+	// APIAuthUser user name for basic login/password authorization in Chainlink node
+	APIAuthUser string `toml:"api_auth_user" comment:"User name for basic login/password authorization in Chainlink node"`
+	// APIAuthPassword password for basic login/password authorization in Chainlink node
+	APIAuthPassword string `toml:"api_auth_password" comment:"Password for basic login/password authorization in Chainlink node"`
+	// ContainerName node Docker contaienr name
+	ContainerName string `toml:"container_name" comment:"Node Docker contaner name"`
+	// ExternalURL node external API HTTP URL
+	ExternalURL string `toml:"url" comment:"Node external API HTTP URL"`
+	// InternalURL node internal API HTTP URL
+	InternalURL string `toml:"internal_url" comment:"Node internal API HTTP URL"`
+	// InternalP2PUrl node internal P2P URL
+	InternalP2PUrl string `toml:"p2p_internal_url" comment:"Node internal P2P URL"`
+	// InternalIP node internal IP
+	InternalIP string `toml:"internal_ip" comment:"Node internal IP"`
 }
 
 // NewNodeWithDB create a new Chainlink node with some image:tag and one or several configs
@@ -293,42 +323,42 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 		{
 			HostFilePath:      cfgPath.Name(),
 			ContainerFilePath: "/config/config",
-			FileMode:          0644,
+			FileMode:          0o644,
 		},
 		{
 			HostFilePath:      secretsPath.Name(),
 			ContainerFilePath: "/config/secrets",
-			FileMode:          0644,
+			FileMode:          0o644,
 		},
 		{
 			HostFilePath:      overridesFile.Name(),
 			ContainerFilePath: "/config/overrides",
-			FileMode:          0644,
+			FileMode:          0o644,
 		},
 		{
 			HostFilePath:      userOverridesFile.Name(),
 			ContainerFilePath: "/config/user-overrides",
-			FileMode:          0644,
+			FileMode:          0o644,
 		},
 		{
 			HostFilePath:      secretsOverridesFile.Name(),
 			ContainerFilePath: "/config/secrets-overrides",
-			FileMode:          0644,
+			FileMode:          0o644,
 		},
 		{
 			HostFilePath:      userSecretsOverridesFile.Name(),
 			ContainerFilePath: "/config/user-secrets-overrides",
-			FileMode:          0644,
+			FileMode:          0o644,
 		},
 		{
 			HostFilePath:      passwordPath.Name(),
 			ContainerFilePath: "/config/node_password",
-			FileMode:          0644,
+			FileMode:          0o644,
 		},
 		{
 			HostFilePath:      apiCredentialsPath.Name(),
 			ContainerFilePath: "/config/apicredentials",
-			FileMode:          0644,
+			FileMode:          0o644,
 		},
 	}
 	if in.Node.CapabilityContainerDir == "" {
@@ -340,7 +370,7 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 		files = append(files, tc.ContainerFile{
 			HostFilePath:      cp,
 			ContainerFilePath: filepath.Join(in.Node.CapabilityContainerDir, cpPath),
-			FileMode:          0777,
+			FileMode:          0o777,
 		})
 	}
 	req.Files = append(req.Files, files...)

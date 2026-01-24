@@ -27,24 +27,39 @@ const (
 )
 
 type Input struct {
-	Image              string                        `toml:"image" validate:"required"`
-	Port               int                           `toml:"port"`
-	Name               string                        `toml:"name"`
-	VolumeName         string                        `toml:"volume_name"`
-	Databases          int                           `toml:"databases"`
-	JDDatabase         bool                          `toml:"jd_database"`
-	JDSQLDumpPath      string                        `toml:"jd_sql_dump_path"`
-	PullImage          bool                          `toml:"pull_image"`
-	ContainerResources *framework.ContainerResources `toml:"resources"`
-	Out                *Output                       `toml:"out"`
+	// Image PostgreSQL Docker image in format: $registry:$tag
+	Image string `toml:"image" validate:"required" comment:"PostgreSQL Docker image in format: $registry:$tag"`
+	// Port PostgreSQL connection port
+	Port int `toml:"port" comment:"PostgreSQL connection port"`
+	// Name PostgreSQL container name
+	Name string `toml:"name" comment:"PostgreSQL container name"`
+	// VolumeName PostgreSQL Docker volume name
+	VolumeName string `toml:"volume_name" comment:"PostgreSQL docker volume name"`
+	// Databases number of pre-created databases for Chainlink nodes
+	Databases int `toml:"databases" comment:"Number of pre-created databases for Chainlink nodes"`
+	// JDDatabase whether to create JobDistributor database or not
+	JDDatabase bool `toml:"jd_database" comment:"Whether to create JobDistributor database or not"`
+	// JDSQLDumpPath JobDistributor SQL dump path to load
+	JDSQLDumpPath string `toml:"jd_sql_dump_path" comment:"JobDistributor database dump path to load"`
+	// PullImage whether to pull PostgreSQL image or not
+	PullImage bool `toml:"pull_image" comment:"Whether to pull PostgreSQL image or not"`
+	// ContainerResources Docker container resources
+	ContainerResources *framework.ContainerResources `toml:"resources" comment:"Docker container resources"`
+	// Out PostgreSQL config output
+	Out *Output `toml:"out" comment:"PostgreSQL config output"`
 }
 
 type Output struct {
-	Url           string `toml:"url"`
-	ContainerName string `toml:"container_name"`
-	InternalURL   string `toml:"internal_url"`
-	JDUrl         string `toml:"jd_url"`
-	JDInternalURL string `toml:"jd_internal_url"`
+	// URL PostgreSQL connection URL
+	Url string `toml:"url" comment:"PostgreSQL connection URL"`
+	// ContainerName PostgreSQL Docker container name
+	ContainerName string `toml:"container_name" comment:"Docker container name"`
+	// InternalURL PostgreSQL internal connection URL
+	InternalURL string `toml:"internal_url" comment:"PostgreSQL internal connection URL"`
+	// JDUrl PostgreSQL external connection URL to JobDistributor database
+	JDUrl string `toml:"jd_url" comment:"PostgreSQL internal connection URL to JobDistributor database"`
+	// JDInternalURL PostgreSQL internal connection URL to JobDistributor database
+	JDInternalURL string `toml:"jd_internal_url" comment:"PostgreSQL internal connection URL to JobDistributor database"`
 }
 
 func NewPostgreSQL(in *Input) (*Output, error) {
@@ -122,7 +137,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 			{
 				HostFilePath:      initFile.Name(),
 				ContainerFilePath: "/docker-entrypoint-initdb.d/init.sql",
-				FileMode:          0644,
+				FileMode:          0o644,
 			},
 		},
 		Mounts: testcontainers.ContainerMounts{
@@ -133,8 +148,10 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 				Target: "/var/lib/postgresql/data",
 			},
 		},
-		WaitingFor: tcwait.ForExec([]string{"psql", "-h", "127.0.0.1",
-			"-U", User, "-p", Port, "-c", "select", "1", "-d", Database}).
+		WaitingFor: tcwait.ForExec([]string{
+			"psql", "-h", "127.0.0.1",
+			"-U", User, "-p", Port, "-c", "select", "1", "-d", Database,
+		}).
 			WithStartupTimeout(3 * time.Minute).
 			WithPollInterval(200 * time.Millisecond),
 	}

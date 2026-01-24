@@ -1,11 +1,11 @@
-module github.com/smartcontractkit/chainlink-testing-framework/framework/tomldoc
+module github.com/smartcontractkit/chainlink-testing-framework/book
 
 go 1.24.4
 
 replace (
-	github.com/smartcontractkit/chainlink-testing-framework/framework => ../../
-	github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake => ../../components/fake
-	github.com/smartcontractkit/chainlink-testing-framework/wasp => ../../../wasp
+	github.com/smartcontractkit/chainlink-testing-framework/framework => ../framework
+	github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake => ../framework/components/fake
+	github.com/smartcontractkit/chainlink-testing-framework/wasp => ../../wasp
 )
 
 require (

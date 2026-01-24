@@ -12,30 +12,41 @@ import (
 )
 
 const (
+	// DefaultCantonPort is a default Canton container port
 	DefaultCantonPort = "8080"
-	TokenExpiry       = time.Hour * 24 * 365 * 10 // 10 years
+	// TokenExpiry is JWT token expiry
+	TokenExpiry = time.Hour * 24 * 365 * 10 // 10 years
 )
 
 type CantonEndpoints struct {
-	ScanAPIURL     string // https://docs.sync.global/app_dev/scan_api/index.html
-	RegistryAPIURL string // https://docs.sync.global/app_dev/token_standard/index.html#api-references
+	// ScanAPIURL https://docs.sync.global/app_dev/scan_api/index.html
+	ScanAPIURL string `toml:"scan_api_url" comment:"https://docs.sync.global/app_dev/scan_api/index.html"`
+	// RegistryAPIURL https://docs.sync.global/app_dev/token_standard/index.html#api-references
+	RegistryAPIURL string `toml:"registry_api_url" comment:"https://docs.sync.global/app_dev/token_standard/index.html#api-references"`
 
-	// The endpoints for the super validator
-	SuperValidator CantonParticipantEndpoints
-	// The endpoints for the participants, in order from participant1 to participantN - depending on the number of validators requested
-	Participants []CantonParticipantEndpoints
+	// SuperValidator The endpoints for the super validator
+	SuperValidator CantonParticipantEndpoints `toml:"super_validator" comment:"Canton network super validator"`
+	// Participants The endpoints for the participants, in order from participant1 to participantN - depending on the number of validators requested
+	Participants []CantonParticipantEndpoints `toml:"participants" comment:"Canton participant endpoints"`
 }
 
 type CantonParticipantEndpoints struct {
-	JSONLedgerAPIURL string // https://docs.digitalasset.com/build/3.5/reference/json-api/json-api.html
-	GRPCLedgerAPIURL string // https://docs.digitalasset.com/build/3.5/reference/lapi-proto-docs.html
-	AdminAPIURL      string // https://docs.digitalasset.com/operate/3.5/howtos/configure/apis/admin_api.html
-	ValidatorAPIURL  string // https://docs.sync.global/app_dev/validator_api/index.html
+	// JSONLedgerAPIURL https://docs.digitalasset.com/build/3.5/reference/json-api/json-api.html
+	JSONLedgerAPIURL string `toml:"json_ledger_api_url" comment:"https://docs.digitalasset.com/build/3.5/reference/json-api/json-api.html"`
+	// GRPCLedgerAPIURL https://docs.digitalasset.com/build/3.5/reference/lapi-proto-docs.html
+	GRPCLedgerAPIURL string `toml:"grpc_ledger_api_url" comment:"https://docs.digitalasset.com/build/3.5/reference/lapi-proto-docs.html"`
+	// AdminAPIURL https://docs.digitalasset.com/operate/3.5/howtos/configure/apis/admin_api.html
+	AdminAPIURL string `toml:"admin_api_url" comment:"https://docs.digitalasset.com/operate/3.5/howtos/configure/apis/admin_api.html"`
+	// ValidatorAPIURL https://docs.sync.global/app_dev/validator_api/index.html
+	ValidatorAPIURL string `toml:"validator_api_url" comment:"https://docs.sync.global/app_dev/validator_api/index.html"`
 
-	HTTPHealthCheckURL string // responds on GET /health
-	GRPCHealthCheckURL string // grpc.health.v1.Health/Check
+	// HTTPHealthCheckURL responds on GET /health
+	HTTPHealthCheckURL string `toml:"http_health_check_url" comment:"HTTP health check endpoint, responds on GET /health"`
+	// GRPCHealthCheckURL grpc.health.v1.Health/Check
+	GRPCHealthCheckURL string `toml:"grpc_health_check_url" comment:"GRPC health check endpoint, responds to grpc.health.v1.Health/Check"`
 
-	JWT string // JWT for this participant
+	// JWT JSON Web Token for this participant
+	JWT string `toml:"jwt" comment:"JSON Web Token for this participant"`
 }
 
 // newCanton sets up a Canton blockchain network with the specified number of validators.

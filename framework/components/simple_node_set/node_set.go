@@ -23,23 +23,26 @@ const (
 
 // Input is a node set configuration input
 type Input struct {
-	Name               string          `toml:"name" validate:"required"`
-	Nodes              int             `toml:"nodes" validate:"required"`
-	HTTPPortRangeStart int             `toml:"http_port_range_start"`
-	P2PPortRangeStart  int             `toml:"p2p_port_range_start"`
-	DlvPortRangeStart  int             `toml:"dlv_port_range_start"`
-	OverrideMode       string          `toml:"override_mode" validate:"required,oneof=all each"`
-	DbInput            *postgres.Input `toml:"db" validate:"required"`
-	NodeSpecs          []*clnode.Input `toml:"node_specs" validate:"required"`
-	NoDNS              bool            `toml:"no_dns"`
-	Out                *Output         `toml:"out"`
+	Name               string          `toml:"name" validate:"required" comment:"Node set name, ex.:'don-1', Docker containers will be prefixed with this name so tests can distinguish one DON from another"`
+	Nodes              int             `toml:"nodes" validate:"required" comment:"Number of nodes in node set"`
+	HTTPPortRangeStart int             `toml:"http_port_range_start" comment:"HTTP ports range starting with port X and increasing by 1"`
+	P2PPortRangeStart  int             `toml:"p2p_port_range_start" comment:"P2P ports range starting with port X and increasing by 1"`
+	DlvPortRangeStart  int             `toml:"dlv_port_range_start" comment:"Delve debugger ports range starting with port X and increasing by 1"`
+	OverrideMode       string          `toml:"override_mode" validate:"required,oneof=all each" comment:"Override mode, applicable only to 'localcre'. Changes how config overrides to TOML nodes apply"`
+	DbInput            *postgres.Input `toml:"db" validate:"required" comment:"Shared node set data base input for PostgreSQL"`
+	NodeSpecs          []*clnode.Input `toml:"node_specs" validate:"required" comment:"Chainlink node TOML configurations"`
+	NoDNS              bool            `toml:"no_dns" comment:"Turn DNS on, helpful to isolate container from the internet"`
+	Out                *Output         `toml:"out" comment:"Nodeset config output"`
 }
 
 // Output is a node set configuration output, used for caching or external components
 type Output struct {
-	UseCache bool             `toml:"use_cache"`
-	DBOut    *postgres.Output `toml:"db_out"`
-	CLNodes  []*clnode.Output `toml:"cl_nodes"`
+	// UseCache Whether to respect caching or not, if cache = true component won't be deployed again
+	UseCache bool `toml:"use_cache" comment:"Whether to respect caching or not, if cache = true component won't be deployed again"`
+	// DBOut Nodeset shared database output (PostgreSQL)
+	DBOut *postgres.Output `toml:"db_out" comment:"Nodeset shared database output (PostgreSQL)"`
+	// CLNodes Chainlink node config outputs
+	CLNodes []*clnode.Output `toml:"cl_nodes" comment:"Chainlink node config outputs"`
 }
 
 // NewSharedDBNodeSet create a new node set with a shared database instance

@@ -57,47 +57,47 @@ type Input struct {
 	// there needs to be a matching .so file in contracts_dir
 	SolanaPrograms     map[string]string             `toml:"solana_programs" comment:"Solana's programs, map of program name to program ID, there needs to be a matching .so file in contracts_dir"`
 	ContainerResources *framework.ContainerResources `toml:"resources" comment:"Docker container resources"`
-	CustomPorts        []string                      `toml:"custom_ports"`
+	CustomPorts        []string                      `toml:"custom_ports" comment:"Custom ports pairs in format $host_port_number:$docker_port_number"`
 
 	// Sui specific: faucet port for funding accounts
-	FaucetPort string `toml:"faucet_port"`
+	FaucetPort string `toml:"faucet_port" comment:"Sui blockchain network faucet port"`
 
 	// Canton specific
-	NumberOfCantonValidators int `toml:"number_of_canton_validators"`
+	NumberOfCantonValidators int `toml:"number_of_canton_validators" comment:"Number of Canton network validators"`
 
 	// GAPv2 specific params
-	HostNetworkMode  bool   `toml:"host_network_mode"`
-	CertificatesPath string `toml:"certificates_path"`
+	HostNetworkMode  bool   `toml:"host_network_mode" comment:"GAPv2 specific paramter: host netowork mode, if 'true' will run environment in host network mode"`
+	CertificatesPath string `toml:"certificates_path" comment:"GAPv2 specific parameter: path to default Ubuntu's certificates"`
 
 	// Optional params
-	ImagePlatform *string `toml:"image_platform"`
+	ImagePlatform *string `toml:"image_platform" comment:"Docker image platform, default is 'linux/amd64'"`
 	// Custom environment variables for the container
-	CustomEnv map[string]string `toml:"custom_env"`
+	CustomEnv map[string]string `toml:"custom_env" comment:"Docker container environment variables in TOML format key = value"`
 }
 
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network
 type Output struct {
-	UseCache            bool                     `toml:"use_cache"`
-	Type                string                   `toml:"type"`
-	Family              string                   `toml:"family"`
-	ContainerName       string                   `toml:"container_name"`
-	NetworkSpecificData *NetworkSpecificData     `toml:"network_specific_data"`
+	UseCache            bool                     `toml:"use_cache" comment:"Whether to respect caching or not, if cache = true component won't be deployed again"`
+	Type                string                   `toml:"type" comment:"Type can be one of: anvil geth besu solana aptos tron sui ton canton, this struct describes common configuration we are using across all blockchains"`
+	Family              string                   `toml:"family" comment:"Blockchain family, can be one of: evm solana aptos sui tron ton canton"`
+	ContainerName       string                   `toml:"container_name" comment:"Blockchain Docker container name"`
+	NetworkSpecificData *NetworkSpecificData     `toml:"network_specific_data" comment:"Blockchain network-specific data"`
 	Container           testcontainers.Container `toml:"-"`
-	ChainID             string                   `toml:"chain_id"`
-	Nodes               []*Node                  `toml:"nodes"`
+	ChainID             string                   `toml:"chain_id" comment:"Chain ID"`
+	Nodes               []*Node                  `toml:"nodes" comment:"Blockchain nodes info"`
 }
 
 type NetworkSpecificData struct {
-	SuiAccount      *SuiWalletInfo
-	CantonEndpoints *CantonEndpoints
+	SuiAccount      *SuiWalletInfo   `toml:"sui_account" comment:"Sui network account info"`
+	CantonEndpoints *CantonEndpoints `toml:"canton_endpoints" comment:"Canton network endpoints info"`
 }
 
 // Node represents blockchain node output, URLs required for connection locally and inside docker network
 type Node struct {
-	ExternalWSUrl   string `toml:"ws_url"`
-	ExternalHTTPUrl string `toml:"http_url"`
-	InternalWSUrl   string `toml:"internal_ws_url"`
-	InternalHTTPUrl string `toml:"internal_http_url"`
+	ExternalWSUrl   string `toml:"ws_url" comment:"External blockchain node WebSocket URL"`
+	ExternalHTTPUrl string `toml:"http_url" comment:"External blockchain node HTTP URL"`
+	InternalWSUrl   string `toml:"internal_ws_url" comment:"Internal blockchain node WebSocket URL"`
+	InternalHTTPUrl string `toml:"internal_http_url" comment:"Internal blockchain node HTTP URL"`
 }
 
 func NewBlockchainNetwork(in *Input) (*Output, error) {
