@@ -1,0 +1,1059 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Seth</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('light')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../framework/overview.html"><strong aria-hidden="true">2.</strong> Framework</a></li><li class="chapter-item expanded "><a href="../framework/developer_environment/overview.html"><strong aria-hidden="true">3.</strong> Developer Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../framework/developer_environment/toml.html"><strong aria-hidden="true">3.1.</strong> Configuration</a></li></ol></li><li class="chapter-item expanded "><a href="../framework/getting_started.html"><strong aria-hidden="true">4.</strong> Basic Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../framework/getting_started.html"><strong aria-hidden="true">4.1.</strong> Getting Started</a></li></ol></li><li class="chapter-item expanded "><a href="../framework/configuration.html"><strong aria-hidden="true">5.</strong> Advanced Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../framework/cli.html"><strong aria-hidden="true">5.1.</strong> CLI</a></li><li class="chapter-item expanded "><a href="../framework/configuration.html"><strong aria-hidden="true">5.2.</strong> Configuration</a></li><li class="chapter-item expanded "><a href="../framework/components/debug.html"><strong aria-hidden="true">5.3.</strong> Debugging Tests</a></li><li class="chapter-item expanded "><a href="../developing/developing_components.html"><strong aria-hidden="true">5.4.</strong> Creating your own components</a></li><li class="chapter-item expanded "><a href="../framework/components/state.html"><strong aria-hidden="true">5.5.</strong> Exposing Components</a></li><li class="chapter-item expanded "><a href="../developing/asserting_logs.html"><strong aria-hidden="true">5.6.</strong> Asserting Logs</a></li><li class="chapter-item expanded "><a href="../framework/quick_deployment.html"><strong aria-hidden="true">5.7.</strong> Quick Contracts Deployment</a></li><li class="chapter-item expanded "><a href="../framework/verify.html"><strong aria-hidden="true">5.8.</strong> Verifying Contracts</a></li><li class="chapter-item expanded "><a href="../framework/cl_node_keys_import.html"><strong aria-hidden="true">5.9.</strong> CL Node Keys Import</a></li><li class="chapter-item expanded "><a href="../framework/test_configuration_overrides.html"><strong aria-hidden="true">5.10.</strong> Test Configuration</a></li><li class="chapter-item expanded "><a href="../framework/chaos/debug-k8s.html"><strong aria-hidden="true">5.11.</strong> Debugging K8s Chaos Tests</a></li><li class="chapter-item expanded "><a href="../framework/components/cleanup.html"><strong aria-hidden="true">5.12.</strong> Components Cleanup</a></li><li class="chapter-item expanded "><a href="../framework/components/caching.html"><strong aria-hidden="true">5.13.</strong> Components Caching</a></li><li class="chapter-item expanded "><a href="../framework/components/resources.html"><strong aria-hidden="true">5.14.</strong> Components Resources</a></li><li class="chapter-item expanded "><a href="../framework/components/network_isolation.html"><strong aria-hidden="true">5.15.</strong> Containers Network Isolation</a></li><li class="chapter-item expanded "><a href="../framework/components/mocking.html"><strong aria-hidden="true">5.16.</strong> Fake Services</a></li><li class="chapter-item expanded "><a href="../framework/resource_leaks.html"><strong aria-hidden="true">5.17.</strong> Detecting Resource Leaks</a></li><li class="chapter-item expanded "><a href="../framework/copying_files.html"><strong aria-hidden="true">5.18.</strong> Copying Files</a></li><li class="chapter-item expanded "><a href="../framework/components/external.html"><strong aria-hidden="true">5.19.</strong> External Environment</a></li></ol></li><li class="chapter-item expanded "><a href="../framework/observability/observability_stack.html"><strong aria-hidden="true">6.</strong> Observability Stack</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../framework/observability/observability_stack.html"><strong aria-hidden="true">6.1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../framework/observability/metrics.html"><strong aria-hidden="true">6.2.</strong> Metrics</a></li><li class="chapter-item expanded "><a href="../framework/observability/logs.html"><strong aria-hidden="true">6.3.</strong> Logs</a></li><li class="chapter-item expanded "><a href="../framework/observability/profiling.html"><strong aria-hidden="true">6.4.</strong> Profiling</a></li><li class="chapter-item expanded "><a href="../framework/observability/postgresql.html"><strong aria-hidden="true">6.5.</strong> PostgreSQL</a></li><li class="chapter-item expanded "><a href="../framework/observability/blockscout.html"><strong aria-hidden="true">6.6.</strong> BlockScout</a></li></ol></li><li class="chapter-item expanded "><a href="../framework/components/overview.html"><strong aria-hidden="true">7.</strong> Components</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../framework/components/overview.html"><strong aria-hidden="true">7.1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../framework/components/blockchains/overview.html"><strong aria-hidden="true">7.2.</strong> Blockchains</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../framework/components/blockchains/evm.html"><strong aria-hidden="true">7.2.1.</strong> EVM</a></li><li class="chapter-item expanded "><a href="../framework/components/blockchains/solana.html"><strong aria-hidden="true">7.2.2.</strong> Solana</a></li><li class="chapter-item expanded "><a href="../framework/components/blockchains/aptos.html"><strong aria-hidden="true">7.2.3.</strong> Aptos</a></li><li class="chapter-item expanded "><a href="../framework/components/blockchains/sui.html"><strong aria-hidden="true">7.2.4.</strong> Sui</a></li><li class="chapter-item expanded "><a href="../framework/components/blockchains/tron.html"><strong aria-hidden="true">7.2.5.</strong> TRON</a></li><li class="chapter-item expanded "><a href="../framework/components/blockchains/zksync.html"><strong aria-hidden="true">7.2.6.</strong> ZKSync</a></li><li class="chapter-item expanded "><a href="../framework/components/blockchains/ton.html"><strong aria-hidden="true">7.2.7.</strong> Ton</a></li></ol></li><li class="chapter-item expanded "><a href="../framework/components/storage.html"><strong aria-hidden="true">7.3.</strong> Storage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../framework/components/storage/s3.html"><strong aria-hidden="true">7.3.1.</strong> S3</a></li></ol></li><li class="chapter-item expanded "><a href="../framework/components/chipingresset/chip_ingress.html"><strong aria-hidden="true">7.4.</strong> Chip Ingress Set</a></li></ol></li><li class="chapter-item expanded "><a href="../framework/components/troubleshooting.html"><strong aria-hidden="true">8.</strong> Troubleshooting</a></li><li class="chapter-item expanded "><a href="../monorepo-tools.html"><strong aria-hidden="true">9.</strong> Mono Repository Tooling</a></li><li class="chapter-item expanded "><a href="../framework/testing.html"><strong aria-hidden="true">10.</strong> Testing Maturity Model</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../framework/chaos/chaos.html"><strong aria-hidden="true">10.1.</strong> Chaos Testing</a></li><li class="chapter-item expanded "><a href="../framework/fork.html"><strong aria-hidden="true">10.2.</strong> Fork Testing</a></li><li class="chapter-item expanded "><a href="../framework/fork_storage.html"><strong aria-hidden="true">10.3.</strong> Fork Testing (Mutating Storage)</a></li></ol></li><li class="chapter-item expanded "><a href="../libraries.html"><strong aria-hidden="true">11.</strong> Libraries</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../libraries.html"><strong aria-hidden="true">11.1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../libs/wasp/overview.html"><strong aria-hidden="true">11.2.</strong> WASP</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../libs/wasp/getting_started.html"><strong aria-hidden="true">11.2.1.</strong> Getting started</a></li><li class="chapter-item expanded "><a href="../libs/wasp/first_test.html"><strong aria-hidden="true">11.2.2.</strong> First test (RPS test)</a></li><li class="chapter-item expanded "><a href="../libs/wasp/stateful_test.html"><strong aria-hidden="true">11.2.3.</strong> Stateful test</a></li><li class="chapter-item expanded "><a href="../libs/wasp/user_journey_test.html"><strong aria-hidden="true">11.2.4.</strong> User Journey test</a></li><li class="chapter-item expanded "><a href="../libs/wasp/profile_test.html"><strong aria-hidden="true">11.2.5.</strong> Profile test</a></li><li class="chapter-item expanded "><div><strong aria-hidden="true">11.2.6.</strong> Testing alerts</div></li><li class="chapter-item expanded "><a href="../libs/wasp/configuration.html"><strong aria-hidden="true">11.2.7.</strong> Configuration</a></li><li class="chapter-item expanded "><a href="../libs/wasp/k8s.html"><strong aria-hidden="true">11.2.8.</strong> k8s</a></li><li class="chapter-item expanded "><a href="../libs/wasp/components/overview.html"><strong aria-hidden="true">11.2.9.</strong> Components</a></li><li><ol class="section"><li class="chapter-item expanded "><div><strong aria-hidden="true">11.2.9.1.</strong> Alert Checker</div></li><li class="chapter-item expanded "><a href="../libs/wasp/components/dashboard.html"><strong aria-hidden="true">11.2.9.2.</strong> Dashboard</a></li><li class="chapter-item expanded "><a href="../libs/wasp/components/generator.html"><strong aria-hidden="true">11.2.9.3.</strong> Generator</a></li><li class="chapter-item expanded "><a href="../libs/wasp/components/loki.html"><strong aria-hidden="true">11.2.9.4.</strong> Loki</a></li><li class="chapter-item expanded "><a href="../libs/wasp/components/profile.html"><strong aria-hidden="true">11.2.9.5.</strong> Profile</a></li><li class="chapter-item expanded "><a href="../libs/wasp/components/sampler.html"><strong aria-hidden="true">11.2.9.6.</strong> Sampler</a></li><li class="chapter-item expanded "><a href="../libs/wasp/components/schedule.html"><strong aria-hidden="true">11.2.9.7.</strong> Schedule</a></li></ol></li><li class="chapter-item expanded "><a href="../libs/wasp/benchspy/overview.html"><strong aria-hidden="true">11.2.10.</strong> BenchSpy</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../libs/wasp/benchspy/getting_started.html"><strong aria-hidden="true">11.2.10.1.</strong> Getting started</a></li><li class="chapter-item expanded "><a href="../libs/wasp/benchspy/first_test.html"><strong aria-hidden="true">11.2.10.2.</strong> Your first test</a></li><li class="chapter-item expanded "><a href="../libs/wasp/benchspy/simplest_metrics.html"><strong aria-hidden="true">11.2.10.3.</strong> Simplest metrics</a></li><li class="chapter-item expanded "><a href="../libs/wasp/benchspy/loki_std.html"><strong aria-hidden="true">11.2.10.4.</strong> Standard Loki metrics</a></li><li class="chapter-item expanded "><a href="../libs/wasp/benchspy/loki_custom.html"><strong aria-hidden="true">11.2.10.5.</strong> Custom Loki metrics</a></li><li class="chapter-item expanded "><a href="../libs/wasp/benchspy/prometheus_std.html"><strong aria-hidden="true">11.2.10.6.</strong> Standard Prometheus metrics</a></li><li class="chapter-item expanded "><a href="../libs/wasp/benchspy/prometheus_custom.html"><strong aria-hidden="true">11.2.10.7.</strong> Custom Prometheus metrics</a></li><li class="chapter-item expanded "><a href="../libs/wasp/benchspy/loki_dillema.html"><strong aria-hidden="true">11.2.10.8.</strong> To Loki or not to Loki?</a></li><li class="chapter-item expanded "><a href="../libs/wasp/benchspy/real_world.html"><strong aria-hidden="true">11.2.10.9.</strong> Real world example</a></li><li class="chapter-item expanded "><a href="../libs/wasp/benchspy/debugging.html"><strong aria-hidden="true">11.2.10.10.</strong> Debugging</a></li><li class="chapter-item expanded "><a href="../libs/wasp/benchspy/reports/overview.html"><strong aria-hidden="true">11.2.10.11.</strong> Reports</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../libs/wasp/benchspy/reports/standard_report.html"><strong aria-hidden="true">11.2.10.11.1.</strong> Standard Report</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../libs/wasp/benchspy/reports/new_executor.html"><strong aria-hidden="true">11.2.10.11.1.1.</strong> Adding new QueryExecutor</a></li><li class="chapter-item expanded "><div><strong aria-hidden="true">11.2.10.11.1.2.</strong> Adding new standard load metric</div></li><li class="chapter-item expanded "><div><strong aria-hidden="true">11.2.10.11.1.3.</strong> Adding new standard resource metric</div></li></ol></li><li class="chapter-item expanded "><a href="../libs/wasp/benchspy/reports/new_report.html"><strong aria-hidden="true">11.2.10.11.2.</strong> Defining a new report</a></li></ol></li><li class="chapter-item expanded "><div><strong aria-hidden="true">11.2.10.12.</strong> Adding new storage</div></li></ol></li><li class="chapter-item expanded "><a href="../libs/wasp/how-to/overview.html"><strong aria-hidden="true">11.2.11.</strong> How to</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../libs/wasp/how-to/start_local_observability_stack.html"><strong aria-hidden="true">11.2.11.1.</strong> Start local observability stack</a></li><li class="chapter-item expanded "><a href="../libs/wasp/how-to/run_included_tests.html"><strong aria-hidden="true">11.2.11.2.</strong> Try it out quickly</a></li><li class="chapter-item expanded "><a href="../libs/wasp/how-to/chose_rps_vu.html"><strong aria-hidden="true">11.2.11.3.</strong> Chose between RPS and VUs</a></li><li class="chapter-item expanded "><a href="../libs/wasp/how-to/rps_per_minute.html"><strong aria-hidden="true">11.2.11.4.</strong> Configure requests per minute or hour</a></li><li class="chapter-item expanded "><a href="../libs/wasp/how-to/define_nfr_check_alerts.html"><strong aria-hidden="true">11.2.11.5.</strong> Define NFRs and check alerts</a></li><li class="chapter-item expanded "><a href="../libs/wasp/how-to/use_labels.html"><strong aria-hidden="true">11.2.11.6.</strong> Use labels</a></li><li class="chapter-item expanded "><a href="../libs/wasp/how-to/incorporate_load_tests.html"><strong aria-hidden="true">11.2.11.7.</strong> Incorporate load tests in your workflow</a></li><li class="chapter-item expanded "><a href="../libs/wasp/how-to/reuse_dashboard_components.html"><strong aria-hidden="true">11.2.11.8.</strong> Reuse dashboard components</a></li><li class="chapter-item expanded "><a href="../libs/wasp/how-to/parallelise_load.html"><strong aria-hidden="true">11.2.11.9.</strong> Parallelize load</a></li><li class="chapter-item expanded "><a href="../libs/wasp/how-to/debug_loki_errors.html"><strong aria-hidden="true">11.2.11.10.</strong> Debug Loki errors</a></li></ol></li><li class="chapter-item expanded "><a href="../libs/havoc.html"><strong aria-hidden="true">11.2.12.</strong> Havoc</a></li><li class="chapter-item expanded "><a href="../libs/seth.html" class="active"><strong aria-hidden="true">11.2.13.</strong> Seth</a></li></ol></li><li class="chapter-item expanded "><a href="../libs/sentinel.html"><strong aria-hidden="true">11.3.</strong> Sentinel</a></li></ol></li><li class="chapter-item expanded "><li class="spacer"></li><li class="chapter-item expanded "><a href="../legacy.html"><strong aria-hidden="true">12.</strong> Legacy</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../legacy.html"><strong aria-hidden="true">12.1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../lib.html"><strong aria-hidden="true">12.2.</strong> CTFv1</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lib/blockchain.html"><strong aria-hidden="true">12.2.1.</strong> Blockchain</a></li><li class="chapter-item expanded "><a href="../lib/concurrency.html"><strong aria-hidden="true">12.2.2.</strong> Concurrency</a></li><li class="chapter-item expanded "><a href="../lib/client.html"><strong aria-hidden="true">12.2.3.</strong> Client</a></li><li><ol class="section"><li class="chapter-item expanded "><div><strong aria-hidden="true">12.2.3.1.</strong> Anvil</div></li><li class="chapter-item expanded "><a href="../lib/client/aws_secrets_manager.html"><strong aria-hidden="true">12.2.3.2.</strong> AWS Secrets Manager</a></li><li class="chapter-item expanded "><a href="../lib/client/github.html"><strong aria-hidden="true">12.2.3.3.</strong> Github</a></li><li class="chapter-item expanded "><a href="../lib/client/grafana.html"><strong aria-hidden="true">12.2.3.4.</strong> Grafana</a></li><li class="chapter-item expanded "><a href="../lib/client/kafka.html"><strong aria-hidden="true">12.2.3.5.</strong> Kafka</a></li><li class="chapter-item expanded "><a href="../lib/client/loki.html"><strong aria-hidden="true">12.2.3.6.</strong> Loki</a></li><li class="chapter-item expanded "><a href="../lib/client/mockserver.html"><strong aria-hidden="true">12.2.3.7.</strong> MockServer</a></li><li class="chapter-item expanded "><a href="../lib/client/postgres.html"><strong aria-hidden="true">12.2.3.8.</strong> Postgres</a></li><li class="chapter-item expanded "><a href="../lib/client/prometheus.html"><strong aria-hidden="true">12.2.3.9.</strong> Prometheus</a></li></ol></li><li class="chapter-item expanded "><a href="../lib/k8s_new/overview.html"><strong aria-hidden="true">12.2.4.</strong> Kubernetes</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lib/k8s_new/environments.html"><strong aria-hidden="true">12.2.4.1.</strong> Creating environments</a></li><li class="chapter-item expanded "><a href="../lib/k8s_new/remote_runner.html"><strong aria-hidden="true">12.2.4.2.</strong> Using remote runner</a></li><li class="chapter-item expanded "><a href="../lib/k8s_new/test_secrets.html"><strong aria-hidden="true">12.2.4.3.</strong> Passing test secrets</a></li><li class="chapter-item expanded "><a href="../lib/k8s/labels.html"><strong aria-hidden="true">12.2.4.4.</strong> chain.link labels</a></li></ol></li><li class="chapter-item expanded "><a href="../lib/k8s/KUBERNETES.html"><strong aria-hidden="true">12.2.5.</strong> Kubernetes (legacy docs)</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lib/k8s/REMOTE_RUN.html"><strong aria-hidden="true">12.2.5.1.</strong> K8s Remote Run</a></li><li class="chapter-item expanded "><a href="../lib/k8s/TUTORIAL.html"><strong aria-hidden="true">12.2.5.2.</strong> K8s Tutorial</a></li></ol></li><li class="chapter-item expanded "><a href="../lib/config/config.html"><strong aria-hidden="true">12.2.6.</strong> Config</a></li><li class="chapter-item expanded "><a href="../lib/docker/overview.html"><strong aria-hidden="true">12.2.7.</strong> Docker</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../lib/docker/blockchain_nodes.html"><strong aria-hidden="true">12.2.7.1.</strong> Blockchain nodes</a></li><li class="chapter-item expanded "><a href="../lib/docker/chainlink_ecosystem.html"><strong aria-hidden="true">12.2.7.2.</strong> Chainlink ecosystem</a></li><li class="chapter-item expanded "><div><strong aria-hidden="true">12.2.7.3.</strong> Third party apps</div></li><li class="chapter-item expanded "><a href="../lib/docker/test_helpers.html"><strong aria-hidden="true">12.2.7.4.</strong> Test helpers</a></li></ol></li><li class="chapter-item expanded "><a href="../lib/logging.html"><strong aria-hidden="true">12.2.8.</strong> Logging</a></li></ol></li><li class="chapter-item expanded "><a href="../k8s-test-runner/k8s-test-runner.html"><strong aria-hidden="true">12.3.</strong> K8s Test Runner</a></li></ol></li><li class="chapter-item expanded "><li class="spacer"></li><li class="chapter-item expanded "><a href="../releasing_modules.html"><strong aria-hidden="true">13.</strong> Releasing modules</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded "><a href="../build_info.html"><strong aria-hidden="true">14.</strong> Build info</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title"></h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="seth"><a class="header" href="#seth">Seth</a></h1>
+<p>Reliable and debug-friendly Ethereum client</p>
+<p><a href="https://goreportcard.com/report/github.com/smartcontractkit/chainlink-testing-framework/seth"><img src="https://goreportcard.com/badge/github.com/smartcontractkit/chainlink-testing-framework/seth" alt="Go Report Card" /></a>
+<a href="https://github.com/smartcontractkit/seth/actions/workflows/test_decode.yml"><img src="https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/seth-test-decode.yml/badge.svg" alt="Decoding tests" /></a>
+<a href="https://github.com/smartcontractkit/seth/actions/workflows/test_trace.yml"><img src="https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/seth-test-trace.yml/badge.svg" alt="Tracing tests" /></a>
+<a href="https://github.com/smartcontractkit/seth/actions/workflows/test_cli.yml"><img src="https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/seth-test-bumping.yml/badge.svg" alt="Gas bumping tests" /></a>
+<a href="https://github.com/smartcontractkit/seth/actions/workflows/test_api.yml"><img src="https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/seth-test-api.yml/badge.svg" alt="API tests" /></a>
+<a href="https://github.com/smartcontractkit/seth/actions/workflows/test_cli.yml"><img src="https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/seth-test-cli.yml/badge.svg" alt="CLI tests" /></a>
+<a href="https://github.com/smartcontractkit/seth/actions/workflows/test_decode_testnet.yml"><img src="https://github.com/smartcontractkit/chainlink-testing-framework/actions/workflows/seth-test-decode-testnet.yml/badge.svg" alt="Integration tests (testnets)" /></a>
+<br/></p>
+<h1 id="content"><a class="header" href="#content">Content</a></h1>
+<ol>
+<li><a href="#goals">Goals</a></li>
+<li><a href="#features">Features</a></li>
+<li><a href="#examples">Examples</a></li>
+<li><a href="#setup">Setup</a>
+<ol>
+<li><a href="#building-test-contracts">Building test contracts</a></li>
+<li><a href="#testing">Testing</a></li>
+</ol>
+</li>
+<li><a href="#config">Configuration</a>
+<ol>
+<li><a href="#simplified-configuration">Simplified configuration</a></li>
+<li><a href="#clientbuilder">ClientBuilder</a>
+<ol>
+<li><a href="#simulated-backend">Simulated Backend</a></li>
+</ol>
+</li>
+<li><a href="#supported-env-vars">Supported env vars</a></li>
+<li><a href="#toml-configuration">TOML configuration</a></li>
+</ol>
+</li>
+<li><a href="#automatic-gas-estimator">Automated gas price estimation</a></li>
+<li><a href="#dot-graphs">DOT Graphs of transactions</a></li>
+<li><a href="#using-multiple-keys">Using multiple private keys</a></li>
+<li><a href="#experimental-features">Experimental features</a></li>
+<li><a href="#gas-bumping-for-slow-transactions">Gas bumping for slow transactions</a></li>
+<li><a href="#cli">CLI</a></li>
+<li><a href="#manual-gas-price-estimation">Manual gas price estimation</a></li>
+<li><a href="#block-stats">Block Stats</a></li>
+<li><a href="#single-transaction-tracing">Single transaction tracing</a></li>
+<li><a href="#bulk-transaction-tracing">Bulk transaction tracing</a></li>
+<li><a href="#rpc-traffic-logging">RPC traffic logging</a></li>
+<li><a href="#read-only-mode">Read-only mode</a></li>
+<li><a href="#abi-finder">ABI Finder</a></li>
+<li><a href="#contract-map">Contract Map</a></li>
+<li><a href="#contract-store">Contract Store</a></li>
+</ol>
+<h2 id="goals"><a class="header" href="#goals">Goals</a></h2>
+<ul>
+<li>Be a thin, debuggable and battle tested wrapper on top of <code>go-ethereum</code></li>
+<li>Decode all transaction inputs/outputs/logs for all ABIs you are working with, automatically</li>
+<li>Simple synchronous API</li>
+<li>Do not handle <code>nonces</code> on the client side, trust the server</li>
+<li>Do not wrap <code>bind</code> generated contracts, small set of additional debug API</li>
+<li>Resilient: should execute transactions even if there is a gas spike or an RPC outage (failover)</li>
+<li>Well tested: should provide a suite of e2e tests that can be run on testnets to check integration</li>
+</ul>
+<h2 id="features"><a class="header" href="#features">Features</a></h2>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Decode named inputs</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Decode named outputs</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Decode anonymous outputs</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Decode logs</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Decode indexed logs</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Decode old string reverts</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Decode new typed reverts</li>
+<li><input disabled="" type="checkbox" checked=""/>
+EIP-1559 support</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Multi-keys client support</li>
+<li><input disabled="" type="checkbox" checked=""/>
+CLI to manipulate test keys</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Simple manual gas price estimation</li>
+<li><input disabled="" type="checkbox"/>
+Fail over client logic</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Decode collided event hashes</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Tracing support (4byte)</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Tracing support (callTracer)</li>
+<li><input disabled="" type="checkbox"/>
+Tracing support (prestate)</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Tracing decoding</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Tracing tests</li>
+<li><input disabled="" type="checkbox" checked=""/>
+More tests for corner cases of decoding/tracing</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Saving of deployed contracts mapping (<code>address -&gt; ABI_name</code>) for live networks</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Reading of deployed contracts mappings for live networks</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Automatic gas estimator (experimental)</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Block stats CLI</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Check if address has a pending nonce (transaction) and panic if it does</li>
+<li><input disabled="" type="checkbox" checked=""/>
+DOT graph output for tracing</li>
+<li><input disabled="" type="checkbox" checked=""/>
+Gas bumping for slow transactions</li>
+</ul>
+<p>You can read more about how ABI finding and contract map works <a href="../../../seth/docs/abi_finder_contract_map.html">here</a> and about contract store here <a href="../../../seth/docs/contract_store.html">here</a>.</p>
+<h2 id="examples"><a class="header" href="#examples">Examples</a></h2>
+<p>Check <a href="https://github.com/smartcontractkit/chainlink-testing-framework/tree/main/seth/examples">examples</a> folder</p>
+<p>Lib provides a small amount of helpers for decoding handling that you can use with vanilla <code>go-ethereum</code> generated wrappers</p>
+<pre><code class="language-golang">// Decode waits for transaction and decode all the data/errors
+Decode(tx *types.Transaction, txErr error) (*DecodedTransaction, error)
+
+// NewTXOpts returns a new sequential transaction options wrapper,
+// sets opts.GasPrice and opts.GasLimit from seth.toml or override with options
+NewTXOpts(o ...TransactOpt) *bind.TransactOpts
+
+// NewCallOpts returns a new call options wrapper
+NewCallOpts(o ...CallOpt) *bind.CallOpts
+</code></pre>
+<p>By default, we are using the <code>root</code> key <code>0</code>, but you can also use any of the private keys passed as part of <code>Network</code> configuration in <code>seth.toml</code> or ephemeral keys.</p>
+<pre><code class="language-golang">// NewCallKeyOpts returns a new sequential call options wrapper from the key N
+NewCallKeyOpts(keyNum int, o ...CallOpt) *bind.CallOpts
+
+// NewTXKeyOpts returns a new transaction options wrapper called from the key N
+NewTXKeyOpts(keyNum int, o ...TransactOpt) *bind.TransactOpts
+</code></pre>
+<p>Start <code>Geth</code> in a separate terminal, then run the examples</p>
+<pre><code class="language-sh">make GethSync
+cd examples
+go test -v
+</code></pre>
+<h2 id="setup"><a class="header" href="#setup">Setup</a></h2>
+<p>We are using <a href="https://nixos.org/">nix</a></p>
+<p>Enter the shell</p>
+<pre><code class="language-sh">nix develop
+</code></pre>
+<h2 id="building-test-contracts"><a class="header" href="#building-test-contracts">Building test contracts</a></h2>
+<p>We have <code>go-ethereum</code> and <a href="https://github.com/foundry-rs/foundry">foundry</a> tools inside <code>nix</code> shell</p>
+<pre><code class="language-sh">make build
+</code></pre>
+<h2 id="testing"><a class="header" href="#testing">Testing</a></h2>
+<p>To run tests on a local network, first start it</p>
+<pre><code class="language-sh">make AnvilSync
+</code></pre>
+<p>Or use latest <code>Geth</code></p>
+<pre><code class="language-sh">make GethSync
+</code></pre>
+<p>You can use default <code>hardhat</code> key <code>ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80</code> to run tests</p>
+<p>Run the <a href="../../../seth/client_decode_test.go">decode</a> tests</p>
+<pre><code class="language-sh">make network=Anvil root_private_key=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 test
+make network=Geth root_private_key=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 test
+</code></pre>
+<p>Check other params in <a href="../../../seth/seth.toml">seth.toml</a>, select any network and use your key for testnets</p>
+<p>User facing API tests are <a href="../../../seth/client_api_test.go">here</a></p>
+<pre><code class="language-sh">make network=Anvil root_private_key=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 test_api
+make network=Geth root_private_key=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 test_api
+</code></pre>
+<p>CLI tests</p>
+<pre><code class="language-sh">make network=Anvil root_private_key=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 test_cli
+make network=Geth root_private_key=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 test_cli
+</code></pre>
+<p>Tracing tests</p>
+<pre><code class="language-sh">make network=Anvil root_private_key=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 test_trace
+make network=Geth root_private_key=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 test_trace
+</code></pre>
+<h1 id="config"><a class="header" href="#config">Config</a></h1>
+<h3 id="simplified-configuration"><a class="header" href="#simplified-configuration">Simplified configuration</a></h3>
+<p>If you do not want to set all the parameters, you can use a simplified progammatical configuration. Here's an example:</p>
+<pre><code class="language-golang">cfg := seth.DefaultConfig("ws://localhost:8546", []string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"})
+client, err := seth.NewClientWithConfig(cfg)
+if err != nil {
+    log.Fatal(err)
+}
+</code></pre>
+<p>This config uses what we consider reasonable defaults, such as:</p>
+<ul>
+<li>5 minute transaction confirmation timeout</li>
+<li>1 minute RPC node dial timeout</li>
+<li>enabled EIP-1559 dynamic fees and automatic gas prices estimation (with 200 blocks history; will auto-disable itself if RPC doesn't support EIP-1559)</li>
+<li>tracing only of reverted transaction to console and DOT graphs</li>
+<li>checking of RPC node health on client creation</li>
+<li>no ephemeral keys</li>
+</ul>
+<h3 id="clientbuilder"><a class="header" href="#clientbuilder">ClientBuilder</a></h3>
+<p>You can also use a <code>ClientBuilder</code> to build a config programmatically. Here's an extensive example:</p>
+<pre><code class="language-golang">client, err := NewClientBuilder().
+    // network
+    WithNetworkName("my network").
+	// if empty we will ask the RPC node for the chain ID
+	WithNetworkChainId(1337).
+    WithRpcUrl("ws://localhost:8546").
+    WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+    WithRpcDialTimeout(10*time.Second).
+    WithTransactionTimeouts(1*time.Minute).
+    // addresses
+    WithEphemeralAddresses(10, 10).
+    // tracing
+    WithTracing(seth.TracingLevel_All, []string{seth.TraceOutput_Console}).
+    // protections
+    WithProtections(true, true, seth.MustMakeDuration(2*time.Minute)).
+    // artifacts folder
+    WithArtifactsFolder("some_folder").
+	// folder with gethwrappers for ABI decoding
+    WithGethWrappersFolders([]string{"./gethwrappers/ccip", "./gethwrappers/keystone"}).
+    // nonce manager
+    WithNonceManager(10, 3, 60, 5).
+    // EIP-1559 and gas estimations
+    WithEIP1559DynamicFees(true).
+    WithDynamicGasPrices(120_000_000_000, 44_000_000_000).
+    // estimate gas prices based on the information from the RPC based on 10 last blocks
+    // adjust the value to fast priority and 3 attempts to get the estimations
+    WithGasPriceEstimations(true, 10, seth.Priority_Fast, 3).
+    // gas bumping: retries, max gas price, bumping strategy function
+    WithGasBumping(5, 100_000_000_000, PriorityBasedGasBumpingStrategyFn).
+    Build()
+
+if err != nil {
+    log.Fatal(err)
+}
+</code></pre>
+<p>By default, it uses the same values as simplified configuration, but you can override them by calling the appropriate methods. Builder includes only options
+that we thought to be most useful, it's not a 1:1 mapping of all fields in the <code>Config</code> struct. Therefore, if you need to set some more advanced options, you should create the <code>Config</code> struct directly,
+use TOML config or manually set the fields on the <code>Config</code> struct returned by the builder.</p>
+<p>It' also possible to use the builder to create a new config from an existing one:</p>
+<pre><code class="language-golang">client, err := NewClientBuilderWithConfig(&amp;existingConfig).
+        UseNetworkWithChainId(1337).
+        WithEIP1559DynamicFees(false).
+	    Build()
+
+if err != nil {
+    log.Fatal(err)
+}
+</code></pre>
+<p>This can be useful if you already have a config, but want to modify it slightly. This approach will only work if you pass it the full config, since it will not apply any defaults. It can also be useful if you read TOML config with multiple <code>Networks</code> and you want to specify which one you want to use. Although for that use case it's better to make use of the following approach:</p>
+<pre><code class="language-go">// assuming that "readSethNetworks" knows how to read the TOML file and convert it to []*seth.Network
+/* example content of networks.toml:
+[[networks]]
+name = "Anvil"
+dial_timeout = "1m"
+transaction_timeout = "30s"
+urls_secret = ["ws://localhost:8545"]
+transfer_gas_fee = 21_000
+gas_limit = 10_000_000
+# legacy transactions
+gas_price = 1_000_000_000
+# EIP-1559 transactions
+# disabled as it makes some of our tests fail
+# eip_1559_dynamic_fees = true
+gas_fee_cap = 1_000_000_000
+gas_tip_cap = 1_000_000_000
+
+[[networks]]
+name = "Geth"
+dial_timeout = "1m"
+transaction_timeout = "30s"
+urls_secret = ["ws://localhost:8546"]
+transfer_gas_fee = 21_000
+gas_limit = 8_000_000
+# legacy transactions
+gas_price = 1_000_000_000
+# EIP-1559 transactions
+# disabled as it makes some of our tests fail
+# eip_1559_dynamic_fees = true
+gas_fee_cap = 10_000_000_000
+gas_tip_cap = 3_000_000_000
+*/
+networks, err := readSethNetworks("networks.toml")
+if err != nil {
+    log.Fatal(err)
+}
+
+client, err := NewClientBuilderWithConfig(&amp;existingConfig).
+        UseNetworkWithName("Anvil"). // or alternatively use UseNetworkWithChainId (if you defined it for you network)
+	    Build()
+
+if err != nil {
+    log.Fatal(err)
+}
+</code></pre>
+<h3 id="simulated-backend"><a class="header" href="#simulated-backend">Simulated Backend</a></h3>
+<p>Last, but not least, <code>ClientBuilder</code> allows you to pass custom implementation of <code>simulated.Client</code> interface, which include Geth's <a href="https://github.com/ethereum/go-ethereum/blob/master/ethclient/simulated/backend.go">Simulated Backend</a>, which might be very useful for rapid testing against
+in-memory environment. When using that option bear in mind that:</p>
+<ul>
+<li>passing RPC URL is not allowed and will result in error</li>
+<li>tracing is disabled</li>
+</ul>
+<blockquote>
+<p>[!NOTE]
+Simulated Backend doesn't support tracing, because it doesn't expose the JSON-RPC <code>Call(result interface{}, method string, args ...interface{})</code> method, which we use to fetch debug information.</p>
+</blockquote>
+<p>So how do you use Seth with simulated backend?</p>
+<pre><code class="language-go">var startBackend := func(fundedAddresses []common.Address) (*simulated.Backend, context.CancelFunc) {
+toFund := make(map[common.Address]types.Account)
+	for _, address := range fundedAddresses {
+		toFund[address] = types.Account{
+			Balance: big.NewInt(1000000000000000000), // 1 Ether
+		}
+	}
+	backend := simulated.NewBackend(toFund)
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+
+    // 100ms block time
+	ticker := time.NewTicker(100 * time.Millisecond)
+	go func() {
+		for {
+			select {
+			case &lt;-ticker.C:
+				backend.Commit()
+			case &lt;-ctx.Done():
+				backend.Close()
+				return
+			}
+		}
+	}()
+
+	return backend, cancelFn
+}
+
+// 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266 is the default dev account
+backend, cancelFn := startBackend(
+    []common.Address{common.HexToAddress("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")},
+)
+defer func() { cancelFn() }()
+
+client, err := builder.
+    WithNetworkName("simulated").
+    WithEthClient(backend.Client()).
+    WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+    Build()
+
+require.NoError(t, err, "failed to build client")
+_ = client
+</code></pre>
+<blockquote>
+<p>[!WARNING]
+When using <code>simulated.Backend</code> do remember that it doesn't automatically mine blocks. You need to call <code>backend.Commit()</code> manually
+to mine a new block and have your transactions processed. The best way to do it is having a goroutine running in the background
+that either mines at specific intervals or when it receives a message on channel.</p>
+</blockquote>
+<h3 id="hooks"><a class="header" href="#hooks">Hooks</a></h3>
+<p>Seth supports pre/post operation hooks for two functions:</p>
+<ul>
+<li><code>DeployContract()</code></li>
+<li><code>Decode</code> (also <code>DecodeTx</code>)</li>
+</ul>
+<p>As the name suggest each will be executed before and after mentioned operation. By default, no hooks are set. Adding hooks doesn't influence retry/gas bumping logic.</p>
+<p>You can either set hooks directly on the <code>seth.Config</code> object (not recommended) or pass them to the <code>ClientBuilder</code>:</p>
+<pre><code class="language-go">// assuming backend is the simulated backend, to show how we can speed up contract deployments by calling `Commit()` right after deploying the contract
+hooks := seth.Hooks{
+    ContractDeployment: seth.ContractDeploymentHooks{
+        Post: func(client *seth.Client, tx *types.Transaction) error {
+            backend.Commit()
+            return nil
+        },
+    },
+}
+
+client, err := builder.
+    WithNetworkName("simulated").
+    WithHooks(hooks).
+    WithEthClient(backend.Client()).
+    WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+    Build()
+
+if err != nil {
+    log.Fatal(err)
+}
+</code></pre>
+<h3 id="supported-env-vars"><a class="header" href="#supported-env-vars">Supported env vars</a></h3>
+<p>Some crucial data is stored in env vars, create <code>.envrc</code> and use <code>source .envrc</code>, or use <code>direnv</code></p>
+<pre><code class="language-sh">export SETH_LOG_LEVEL=info # global logger level
+export SETH_CONFIG_PATH=seth.toml # path to the toml config
+export SETH_NETWORK=Geth # selected network
+export SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 # root private key
+
+alias seth="SETH_CONFIG_PATH=seth.toml go run cmd/seth/seth.go" # useful alias for CLI
+</code></pre>
+<blockquote>
+<p>Find the log level options <a href="https://github.com/rs/zerolog?tab=readme-ov-file#leveled-logging">here</a></p>
+</blockquote>
+<p>Alternatively if you don't have a network defined in the TOML you can still use the CLI by providing these 2 key env vars:</p>
+<pre><code class="language-sh">export SETH_URL=https://rpc.fuji.testnet.anyswap.exchange
+export SETH_CHAIN_ID=43113
+
+go run cmd/seth/seth.go ... # your command
+</code></pre>
+<p>In that case you should still pass network name with <code>-n</code> flag.</p>
+<h3 id="toml-configuration"><a class="header" href="#toml-configuration">TOML configuration</a></h3>
+<p>Set up your ABI directory (relative to <code>seth.toml</code>)</p>
+<pre><code class="language-toml">abi_dir = "contracts/abi"
+</code></pre>
+<p>Setup your BIN directory (relative to <code>seth.toml</code>)</p>
+<pre><code class="language-toml">bin_dir = "contracts/bin"
+</code></pre>
+<p>Decide whether you want to generate any <code>ephemeral</code> keys:</p>
+<pre><code class="language-toml"># Set number of ephemeral keys to be generated (0 for no ephemeral keys). Each key will receive a proportion of native tokens from root private key's balance with the value equal to `(root_balance / ephemeral_keys_number) - transfer_fee * ephemeral_keys_number`.
+ephemeral_addresses_number = 10
+</code></pre>
+<p>You can enable auto-tracing for all transactions meeting configured level, which means that every time you use <code>Decode()</code> we will decode the transaction and also trace all calls made within the transaction, together with all inputs, outputs, logs and events. Three tracing levels are available:</p>
+<ul>
+<li><code>all</code> - trace all transactions</li>
+<li><code>reverted</code> - trace only reverted transactions (that's default setting used if you don't set <code>tracing_level</code>)</li>
+<li><code>none</code> - don't trace any transactions</li>
+</ul>
+<p>Example:</p>
+<pre><code class="language-toml">tracing_level = "reverted"
+</code></pre>
+<p>Additionally, you can decide where tracing/decoding data goes to. There are three options:</p>
+<ul>
+<li><code>console</code> - we will print all tracing data to the console</li>
+<li><code>json</code> - we will save tracing data for each transaction to a JSON file</li>
+<li><code>dot</code> - we will save tracing data for each transaction to a DOT file (graph)</li>
+</ul>
+<pre><code class="language-toml">trace_outputs = ["console", "json", "dot"]
+</code></pre>
+<p>For info on viewing DOT files please check the <a href="#dot-graphs">DOT graphs</a> section below.</p>
+<p>Example:
+<img src="../../../seth/docs/tracing_example.png" alt="image" />
+These two options should be used with care, when <code>tracing_level</code> is set to <code>all</code> as they might generate a lot of data.</p>
+<p>If you want to check if the RPC is healthy on start, you can enable it with:</p>
+<pre><code class="language-toml">check_rpc_health_on_start = false
+</code></pre>
+<p>It will execute a simple check of transferring 10k wei from root key to root key and check if the transaction was successful.</p>
+<p>You can also enable pending nonce protection that will check if given key has any pending transactions. By default, we will wait 1 minute for all transactions to be mined. If any of them is still pending, we will panic. You can enable it with:</p>
+<pre><code class="language-toml">pending_nonce_protection_enabled = true
+pending_nonce_protection_timeout = "5m"
+</code></pre>
+<p>If you want to use HTTP instead of WS you can do so by setting to true:</p>
+<pre><code class="language-toml">force_http = false
+</code></pre>
+<p>You can add more networks like this:</p>
+<pre><code class="language-toml">[[Networks]]
+name = "Fuji"
+transaction_timeout = "30s"
+# gas limit should be explicitly set only if you are connecting to a node that's incapable of estimating gas limit itself (should only happen for very old versions)
+# gas_limit = 9_000_000
+# hardcoded gas limit for sending funds that will be used if estimation of gas limit fails
+transfer_gas_fee = 21_000
+# legacy transactions
+gas_price = 1_000_000_000
+# EIP-1559 transactions
+eip_1559_dynamic_fees = true
+gas_fee_cap = 25_000_000_000
+gas_tip_cap = 1_800_000_000
+urls_secret = ["..."]
+# if set to true we will dynamically estimate gas for every transaction (explained in more detail below)
+gas_price_estimation_enabled = true
+# how many last blocks to use, when estimating gas for a transaction
+gas_price_estimation_blocks = 1000
+# priority of the transaction, can be "fast", "standard" or "slow" (the higher the priority, the higher adjustment factor and buffer will be used for gas estimation) [default: "standard"]
+gas_price_estimation_tx_priority = "slow"
+</code></pre>
+<p>If you don't we will use the default settings for <code>Default</code> network.</p>
+<p>ChainID is not needed, as it's fetched from the node.</p>
+<p>If you want to save addresses of deployed contracts, you can enable it with:</p>
+<pre><code class="language-toml">save_deployed_contracts_map = true
+</code></pre>
+<p>If you want to re-use previously deployed contracts you can indicate file name in <code>seth.toml</code>:</p>
+<pre><code class="language-toml">contract_map_file = "deployed_contracts_mumbai.toml"
+</code></pre>
+<p>Both features only work for live networks. Otherwise, they are ignored, and nothing is saved/read from for simulated networks.</p>
+<h3 id="automatic-gas-estimator"><a class="header" href="#automatic-gas-estimator">Automatic Gas Estimator</a></h3>
+<p>This section explains how to configure and understand the automatic gas estimator, which is crucial for executing transactions on Ethereum-based networks. Here’s what you need to know:</p>
+<h4 id="configuration-requirements"><a class="header" href="#configuration-requirements">Configuration Requirements</a></h4>
+<p>Before using the automatic gas estimator, it's essential to set the default gas-related parameters for your network:</p>
+<ul>
+<li><strong>Non-EIP-1559 Networks</strong>: Set the <code>gas_price</code> to define the cost per unit of gas if your network doesn't support EIP-1559.</li>
+<li><strong>EIP-1559 Networks</strong>: If your network supports EIP-1559, set the following:
+<ul>
+<li><code>eip_1559_dynamic_fees</code>: Enables dynamic fee structure.</li>
+<li><code>gas_fee_cap</code>: The maximum fee you're willing to pay per gas.</li>
+<li><code>gas_tip_cap</code>: An optional tip to prioritize your transaction within a block (although if it's set to <code>0</code> there's a high chance your transaction will take longer to execute as it will be less attractive to miners, so do set it).</li>
+</ul>
+</li>
+</ul>
+<p>These settings act as a fallback if the gas estimation fails. Additionally, always specify <code>transfer_gas_fee</code> for the fee associated with token transfers.</p>
+<p>If you do not know if your network supports EIP-1559, but you want to give it a try it's recommended that you also set <code>gas_price</code> as a fallback. When we try to use EIP-1559 during gas price estimation, but it fails, we will fallback to using non-EIP-1559 logic. If that one fails as well, we will use hardcoded <code>gas_price</code> value.</p>
+<h4 id="how-gas-estimation-works"><a class="header" href="#how-gas-estimation-works">How Gas Estimation Works</a></h4>
+<p>Gas estimation varies based on whether the network is a private Ethereum Network or a live network.</p>
+<ul>
+<li><strong>Private Ethereum Networks</strong>: no estimation is needed. We always use hardcoded values.</li>
+</ul>
+<p>For real networks, the estimation process differs for legacy transactions and those compliant with EIP-1559:</p>
+<h5 id="legacy-transactions"><a class="header" href="#legacy-transactions">Legacy Transactions</a></h5>
+<p>Unless priority is set to <code>auto</code>, when we will defer to what the RPC node suggests, following logic is used:</p>
+<ol>
+<li><strong>Initial Price</strong>: Query the network node for the current suggested gas price.</li>
+<li><strong>Priority Adjustment</strong>: Modify the initial price based on <code>gas_price_estimation_tx_priority</code>. Higher priority increases the price to ensure faster inclusion in a block.</li>
+<li><strong>Congestion Analysis</strong>: Examine the last X blocks (as specified by <code>gas_price_estimation_blocks</code>) to determine network congestion, calculating the usage rate of gas in each block and giving recent blocks more weight. Disabled if <code>gas_price_estimation_blocks</code> equals <code>0</code>.</li>
+<li><strong>Buffering</strong>: Add a buffer to the adjusted gas price to increase transaction reliability during high congestion.</li>
+</ol>
+<h5 id="eip-1559-transactions"><a class="header" href="#eip-1559-transactions">EIP-1559 Transactions</a></h5>
+<p>Unless priority is set to <code>auto</code>, when we will defer to what the RPC node suggests, following logic is used:</p>
+<ol>
+<li><strong>Tip Fee Query</strong>: Ask the node for the current recommended tip fee.</li>
+<li><strong>Fee History Analysis</strong>: Gather the base fee and tip history from recent blocks to establish a fee baseline.</li>
+<li><strong>Fee Selection</strong>: Use the greatest of the node's suggested tip or the historical average tip for upcoming calculations.</li>
+<li><strong>Priority and Adjustment</strong>: Increase the base and tip fees based on transaction priority (<code>gas_price_estimation_tx_priority</code>), which influences how much you are willing to spend to expedite your transaction.</li>
+<li><strong>Final Fee Calculation</strong>: Sum the base fee and adjusted tip to set the <code>gas_fee_cap</code>.</li>
+<li><strong>Congestion Buffer</strong>: Similar to legacy transactions, analyze congestion and apply a buffer to both the fee cap and the tip to secure transaction inclusion.</li>
+</ol>
+<p>Regardless of transaction type, if fetching data from RPC or calculating prices fails due to any issue and <code>gas_price_estimation_attempt_count</code> is &gt; 1 we will retry it N-1 number of times.</p>
+<p>Understanding and setting these parameters correctly ensures that your transactions are processed efficiently and cost-effectively on the network.</p>
+<p>When fetching historical base fee and tip data, we will use the last <code>gas_price_estimation_blocks</code> blocks. If it's set to <code>0</code> we will default to <code>100</code> last blocks. If the blockchain has less than <code>100</code> blocks we will use all of them.</p>
+<p>Finally, <code>gas_price_estimation_tx_priority</code> is also used, when deciding, which percentile to use for base fee and tip for historical fee data. Here's how that looks:</p>
+<pre><code class="language-golang">case Priority_Fast:
+    baseFee = stats.GasPrice.Perc99
+    historicalGasTipCap = stats.TipCap.Perc99
+case Priority_Standard:
+    baseFee = stats.GasPrice.Perc50
+    historicalGasTipCap = stats.TipCap.Perc50
+case Priority_Slow:
+    baseFee = stats.GasPrice.Perc25
+    historicalGasTipCap = stats.TipCap.Perc25
+</code></pre>
+<h5 id="adjustment-factor"><a class="header" href="#adjustment-factor">Adjustment factor</a></h5>
+<p>All values are multiplied by the adjustment factor, which is calculated based on <code>gas_price_estimation_tx_priority</code>:</p>
+<pre><code class="language-golang">case Priority_Fast:
+    return 1.2
+case Priority_Standard:
+    return 1.0
+case Priority_Slow:
+    return 0.8
+</code></pre>
+<p>For fast transactions we will increase gas price by 20%, for standard we will use the value as is and for slow we will decrease it by 20%.</p>
+<h5 id="buffer-percents"><a class="header" href="#buffer-percents">Buffer percents</a></h5>
+<p>If <code>gas_price_estimation_blocks</code> is higher than <code>0</code> we further adjust the gas price by adding a buffer to it, based on congestion rate:</p>
+<pre><code class="language-golang">case Congestion_Low:
+    return 1.10, nil
+case Congestion_Medium:
+    return 1.20, nil
+case Congestion_High:
+    return 1.30, nil
+case Congestion_VeryHigh:
+    return 1.40, nil
+</code></pre>
+<p>For low congestion rate we will increase gas price by 10%, for medium by 20%, for high by 30% and for very high by 40%. We cache block header data in an in-memory cache, so we don't have to fetch it every time we estimate gas. The cache has capacity equal to <code>gas_price_estimation_blocks</code> and every time we add a new element, we remove one that is least frequently used and oldest (with block number being a constant and chain always moving forward it makes no sense to keep old blocks). It's important to know that in order to use congestion metrics we need to fetch at least 80% of the requested blocks. If that fails, we will skip this part of the estimation and only adjust the gas price based on priority.
+For both transaction types if any of the steps fails, we fall back to hardcoded values.</p>
+<h5 id="gas-estimations-attemps"><a class="header" href="#gas-estimations-attemps">Gas estimations attemps</a></h5>
+<p>If for any reason fetching gas price suggestions or fee history from the RPC fails, or subsequent calulation of percentiles fails, it can be retried. This behaviour is controlled by <code>gas_price_estimation_attempt_count</code>, which if empty or set to <code>0</code> will default to
+just one attempt, which means that if it fails, it won't be retried. Set it to <code>2</code> to allow a single retry, etc.</p>
+<blockquote>
+<p>[!NOTE]
+To disable gas estimation set <code>gas_price_estimation_enabled</code> to <code>false</code>. Setting <code>gas_price_estimation_attempt_count</code> to <code>0</code> won't have such effect.</p>
+</blockquote>
+<h3 id="dot-graphs"><a class="header" href="#dot-graphs">DOT graphs</a></h3>
+<p>There are multiple ways of visualising DOT graphs:</p>
+<ul>
+<li><code>xdot</code> application [recommended]</li>
+<li>VSCode Extensions</li>
+<li>online viewers</li>
+</ul>
+<h3 id="xdot"><a class="header" href="#xdot">xdot</a></h3>
+<p>To install simply run <code>homebrew install xdot</code> and then run <code>xdot &lt;path_to_dot_file&gt;</code>. This tool seems to be the best for the job, since the viewer is interactive and supports tooltips, which in our case contain extra tracing information.</p>
+<h3 id="vscode-extensions"><a class="header" href="#vscode-extensions">VSCode Extensions</a></h3>
+<p>There are multiple extensions that can be used to view DOT files in VSCode. We recommend using <a href="https://marketplace.visualstudio.com/items?itemName=EFanZh.graphviz-preview">Graphviz Preview</a>. The downside is that it doesn't support tooltips.</p>
+<h3 id="goland"><a class="header" href="#goland">Goland</a></h3>
+<p>We were unable to find any (working) plugins for DOT graph visualization. If you do know any, please let us know.</p>
+<h3 id="online-viewers"><a class="header" href="#online-viewers">Online viewers</a></h3>
+<p>There's at least a dozen of them available, but none of them support tooltips and most can't handle our multi-line labels. These two are known to work, though:</p>
+<ul>
+<li><a href="https://www.devtoolsdaily.com/graphviz/">Devtools/daily</a></li>
+<li><a href="https://sketchviz.com/">Sketchviz</a></li>
+</ul>
+<h3 id="using-multiple-keys"><a class="header" href="#using-multiple-keys">Using multiple keys</a></h3>
+<p>If you want to use existing multiple keys (instead of ephemeral ones) you can pass them as part of the network configuration. In that case it's recommended to <strong>not</strong> read them from TOML file. If you need to read them for the filesystem/os it's best if you use environment variables.
+Once you've read them in a safe manner you should programmatically add them to Seth's Config struct (which safe parts can be read from TOML file). You can either add them directly to <code>Network</code>, if it's already set up, or you can add them to <code>Networks</code> slice to the network you intend to use.</p>
+<p>For example you could start by reading the TOML configuration first:</p>
+<pre><code class="language-golang">cfg, err := seth.ReadCfg()
+if err != nil {
+    log.Fatal(err)
+}
+</code></pre>
+<p>Then read the private keys in a safe manner. For example from a secure vault or environment variables:</p>
+<pre><code class="language-golang">var privateKeys []string
+var err error
+privateKeys, err = some_utils.ReadPrivateKeysFromEnv()
+if err != nil {
+    log.Fatal(err)
+}
+</code></pre>
+<p>and then add them to the <code>Network</code> you plan to use. Let's assume it's called <code>Sepolia</code>:</p>
+<pre><code class="language-golang">for i, network := range cfg.Networks {
+    if network.Name == "Sepolia" {
+        cfg.Networks[i].PrivateKeys = privateKeys
+    }
+}
+</code></pre>
+<p>Or if you aren't using <code>[[Networks]]</code> in your TOML config and have just a single <code>Network</code>:</p>
+<pre><code class="language-golang">cfg.Network.PrivateKeys = privateKeys
+</code></pre>
+<p>Or... you can use the convenience function <code>AppendPksToNetwork()</code> to have them added to both the <code>Network</code> and <code>Networks</code> slice:</p>
+<pre><code class="language-golang">added := cfg.AppendPksToNetwork(privateKeys, "Sepolia")
+if !added {
+    log.Fatal("Network Sepolia not found in the config")
+}
+</code></pre>
+<p>Finally, proceed to create a new Seth instance:</p>
+<pre><code class="language-golang">seth, err := seth.NewClientWithConfig(cfg)
+if err != nil {
+    log.Fatal(err)
+}
+</code></pre>
+<p>A working example can be found <a href="../../../seth/examples/example_test.go">here</a> as <code>TestSmokeExampleMultiKeyFromEnv</code> test.</p>
+<p>Currently, there's no safe way to pass multiple keys to CLI. In that case TOML is the only way to go, but you should be mindful that if you commit the TOML file with keys in it, you should assume they are compromised and all funds on them are lost.</p>
+<h3 id="experimental-features"><a class="header" href="#experimental-features">Experimental features</a></h3>
+<p>In order to enable an experimental feature you need to pass its name in config. It's a global config, you cannot enable it per-network. Example:</p>
+<pre><code class="language-toml"># other settings before...
+tracing_level = "reverted"
+trace_outputs = ["console"]
+experiments_enabled = ["slow_funds_return", "eip_1559_fee_equalizer"]
+</code></pre>
+<p>Here's what they do:</p>
+<ul>
+<li><code>slow_funds_return</code> will work only in <code>core</code> and when enabled it changes tx priority to <code>slow</code> and increases transaction timeout to 30 minutes.</li>
+<li><code>eip_1559_fee_equalizer</code> in case of EIP-1559 transactions if it detects that historical base fee and suggested/historical tip are more than 3 orders of magnitude apart, it will use the higher value for both (this helps in cases where base fee is almost 0 and transaction is never processed).</li>
+</ul>
+<h2 id="gas-bumping-for-slow-transactions"><a class="header" href="#gas-bumping-for-slow-transactions">Gas bumping for slow transactions</a></h2>
+<p>Seth has built-in gas bumping mechanism for slow transactions. If a transaction is not mined within a certain time frame (<code>Network</code>'s transaction timeout), Seth will automatically bump the gas price and resubmit the transaction. This feature is disabled by default and can be enabled by setting the <code>[gas_bumps] retries</code> to a non-zero number:</p>
+<pre><code class="language-toml">[gas_bumps]
+retries = 5
+</code></pre>
+<p>Once enabled, by default the amount, by which gas price is bumped depends on <code>gas_price_estimation_tx_priority</code> setting and is calculated as follows:</p>
+<ul>
+<li><code>Priority_Fast</code>: 30% increase</li>
+<li><code>Priority_Standard</code>: 15% increase</li>
+<li><code>Priority_Slow</code>: 5% increase</li>
+<li>everything else: no increase</li>
+</ul>
+<p>You can cap max gas price by settings (in wei):</p>
+<pre><code class="language-toml">[gas_bumps]
+max_gas_price = 1000000000000
+</code></pre>
+<p>Once the gas price bump would go above the limit we stop bumping and use the last gas price that was below the limit.</p>
+<p>How gas price is calculated depends on transaction type:</p>
+<ul>
+<li>for legacy transactions it's just the gas price</li>
+<li>for EIP-1559 transactions it's the sum of gas fee cap and tip cap</li>
+<li>for Blob transactions (EIP-4844) it's the sum of gas fee cap and tip cap and max fee per blob</li>
+<li>for AccessList transactions (EIP-2930) it's just the gas price</li>
+</ul>
+<p>Please note that Blob and AccessList support remains experimental and is not tested.</p>
+<p>If you want to use a custom bumping strategy, you can use a function with <a href="../../../seth/retry.go">GasBumpStrategyFn</a> type. Here's an example of a custom strategy that bumps the gas price by 100% for every retry:</p>
+<pre><code class="language-golang">var customGasBumpStrategyFn = func(gasPrice *big.Int) *big.Int {
+    return new(big.Int).Mul(gasPrice, big.NewInt(2))
+}
+</code></pre>
+<p>To use this strategy, you need to pass it to the <code>WithGasBumping</code> function in the <code>ClientBuilder</code>:</p>
+<pre><code class="language-golang">var hundredGwei in64 = 100_000_000_000
+client, err := builder.
+    // other settings...
+    WithGasBumping(5, hundredGwei, customGasBumpStrategyFn).
+    Build()
+</code></pre>
+<p>Or set it directly on Seth's config:</p>
+<pre><code class="language-golang">// assuming sethClient is already created
+sethClient.Config.GasBumps.StrategyFn = customGasBumpStrategyFn
+</code></pre>
+<p>Since strategy function only accepts a single parameter, if you want to base its behaviour on anything else than that you will need to capture these values from the context, in which you define the strategy function. For example, you can use a closure to capture the initial gas price:</p>
+<pre><code class="language-golang">gasOracleClient := NewGasOracleClient()
+
+var oracleGasBumpStrategyFn = func(gasPrice *big.Int) *big.Int {
+    // get the current gas price from the oracle
+    suggestedGasPrice := gasOracleClient.GetCurrentGasPrice()
+
+	// if oracle suggests a higher gas price, use it
+    if suggestedGasPrice.Cmp(gasPrice) == 1 {
+        return suggestedGasPrice
+    }
+
+	// otherwise bump by 100%
+    return new(big.Int).Mul(gasPrice, big.NewInt(2))
+}
+</code></pre>
+<p>Same strategy is applied to all types of transactions, regardless whether it's gas price, gas fee cap, gas tip cap or max blob fee.</p>
+<p>When enabled, gas bumping is used in two places:</p>
+<ul>
+<li>during contract deployment via <code>DeployContract</code> function</li>
+<li>inside <code>Decode()</code> function</li>
+</ul>
+<p>It is recommended to decrease transaction timeout when using gas bumping, as it will be effectively increased by the number of retries. So if you were running with 5 minutes timeout and 0 retries, you should set it to 1 minute and 5 retries
+or 30 seconds and 10 retries.</p>
+<p>Don't worry if while bumping logic executes previous transaction gets mined. In that case sending replacement transaction with higher gas will fail (because it is using the same nonce as original transaction) and we will retry waiting for the mining of the original transaction.</p>
+<p><strong>Gas bumping is only applied for submitted transaction. If transaction was rejected by the node (e.g. because of too low base fee) we will not bump the gas price nor try to submit it, because original transaction submission happens outside of Seth.</strong></p>
+<h2 id="cli"><a class="header" href="#cli">CLI</a></h2>
+<p>You can either define the network you want to interact with in your TOML config and then refer it in the CLI command, or you can pass all network parameters via env vars. Most of the examples below show how to use the former approach.</p>
+<h3 id="manual-gas-price-estimation"><a class="header" href="#manual-gas-price-estimation">Manual gas price estimation</a></h3>
+<p>In order to adjust gas price for a transaction, you can use <code>seth gas</code> command</p>
+<pre><code class="language-sh">seth -n Fuji gas -b 10000 -tp 0.99
+</code></pre>
+<p>This will analyze last 10k blocks and give you 25/50/75/99th/Max percentiles for base fees and tip fees</p>
+<p><code>-tp 0.99</code> requests the 99th tip percentile across all the transaction in one block and calculates 25/50/75/99th/Max across all blocks</p>
+<h3 id="block-stats"><a class="header" href="#block-stats">Block Stats</a></h3>
+<p>If you need to get some insights into network stats and create a realistic load/chaos profile with simulators (<code>anvil</code> as an example), you can use <code>stats</code> CLI command</p>
+<h4 id="define-your-network-in-sethtoml"><a class="header" href="#define-your-network-in-sethtoml">Define your network in <code>seth.toml</code></a></h4>
+<p>Edit your <code>seth.toml</code></p>
+<pre><code class="language-toml">[[networks]]
+name = "MyCustomNetwork"
+urls_secret = ["..."]
+
+[block_stats]
+rpc_requests_per_second_limit = 5
+</code></pre>
+<p>Then check the stats for the last N blocks</p>
+<pre><code class="language-sh">seth -n MyCustomNetwork stats -s -10
+</code></pre>
+<p>To check stats for the interval (A, B)</p>
+<pre><code class="language-sh">seth -n MyCustomNetwork stats -s A -e B
+</code></pre>
+<h4 id="pass-all-network-parameters-via-env-vars"><a class="header" href="#pass-all-network-parameters-via-env-vars">Pass all network parameters via env vars</a></h4>
+<p>If you don't have a network defined in the TOML you can still use the CLI by providing the RPC url via cmd arg.</p>
+<p>Then check the stats for the last N blocks</p>
+<pre><code class="language-sh">seth -u "https://my-rpc.network.io" stats -s -10
+</code></pre>
+<p>To check stats for the interval (A, B)</p>
+<pre><code class="language-sh">seth -u "https://my-rpc.network.io" stats -s A -e B
+</code></pre>
+<p>Results can help you to understand if network is stable, what is avg block time, gas price, block utilization and transactions per second.</p>
+<pre><code class="language-toml"># Stats
+perc_95_tps = 8.0
+perc_95_block_duration = '3s'
+perc_95_block_gas_used = 1305450
+perc_95_block_gas_limit = 15000000
+perc_95_block_base_fee = 25000000000
+avg_tps = 2.433333333333333
+avg_block_duration = '2s'
+avg_block_gas_used = 493233
+avg_block_gas_limit = 15000000
+avg_block_base_fee = 25000000000
+
+# Recommended performance/chaos test parameters
+duration = '2m0s'
+block_gas_base_fee_initial_value = 25000000000
+block_gas_base_fee_bump_percentage = '100.00% (no bump required)'
+block_gas_usage_percentage = '3.28822000% gas used (no congestion)'
+avg_tps = 3.0
+max_tps = 8.0
+</code></pre>
+<h3 id="single-transaction-tracing"><a class="header" href="#single-transaction-tracing">Single transaction tracing</a></h3>
+<p>You can trace a single transaction using <code>seth trace</code> command. Example with <code>seth</code> alias mentioned before:</p>
+<pre><code class="language-sh">seth -u "https://my-rpc.network.io" trace -t 0x4c21294bf4c0a19de16e0fca74e1ea1687ba96c3cab64f6fca5640fb7b84df65
+</code></pre>
+<p>or if you want to use a predefined-network:</p>
+<pre><code class="language-sh">seth -n=Geth trace -t 0x4c21294bf4c0a19de16e0fca74e1ea1687ba96c3cab64f6fca5640fb7b84df65
+</code></pre>
+<h3 id="bulk-transaction-tracing"><a class="header" href="#bulk-transaction-tracing">Bulk transaction tracing</a></h3>
+<p>You can trace multiple transactions at once using <code>seth trace</code> command for a predefined network named <code>Geth</code>. Example:</p>
+<pre><code class="language-sh">seth -n=Geth trace -f reverted_transactions.json
+</code></pre>
+<p>or by passing all the RPC parameter with a flag:</p>
+<pre><code class="language-sh">seth -u "https://my-rpc.network.io" trace -f reverted_transactions.json
+</code></pre>
+<p>You need to pass a file with a list of transaction hashes to trace. The file should be a JSON array of transaction hashes, like this:</p>
+<pre><code class="language-json">[
+  "0x...",
+  "0x...",
+  "0x...",
+  ...
+]
+</code></pre>
+<p>(Note that currently Seth automatically creates <code>reverted_transactions_&lt;network&gt;_&lt;date&gt;.json</code> with all reverted transactions, so you can use this file as input for the <code>trace</code> command.)</p>
+<h3 id="rpc-traffic-logging"><a class="header" href="#rpc-traffic-logging">RPC Traffic logging</a></h3>
+<p>With <code>SETH_LOG_LEVEL=trace</code> we will also log to console all traffic between Seth and RPC node. This can be useful for debugging as you can see all the requests and responses.</p>
+<h3 id="read-only-mode"><a class="header" href="#read-only-mode">Read-only mode</a></h3>
+<p>It's possible to use Seth in read-only mode only for transaction confirmation and tracing. Following operations will fail:</p>
+<ul>
+<li>contract deployment (we need a pk to sign the transaction)</li>
+<li>new transaction options (we need the pk/address to check nonce)</li>
+<li>RPC health check (we need a pk to send a transaction to ourselves)</li>
+<li>pending nonce protection (we need an address to check pending transactions)</li>
+<li>ephemeral keys (we need a pk to fund them)</li>
+<li>gas bumping (we need a pk to sign the transaction)</li>
+</ul>
+<p>The easiest way to enable read-only mode is to client via <code>ClientBuilder</code>:</p>
+<pre><code class="language-golang">	client, err := builder.
+		WithNetworkName("my network").
+		WithRpcUrl("ws://localhost:8546").
+		WithEphemeralAddresses(10, 1000).
+		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+		WithReadOnlyMode().
+		Build()
+</code></pre>
+<p>when builder is called with <code>WithReadOnlyMode()</code> it will disable all the operations mentioned above and all the configuration settings related to them.</p>
+<p>Additionally, when the client is build anc <code>cfg.ReadOnly = true</code> is set, we will validate that:</p>
+<ul>
+<li>no addresses and private keys are passed</li>
+<li>no ephemeral addresses are to be created</li>
+<li>RPC health check is disabled</li>
+<li>pending nonce protection is disabled</li>
+<li>gas bumping is disabled</li>
+</ul>
+<h2 id="abi-finder"><a class="header" href="#abi-finder">ABI Finder</a></h2>
+<p>In order to be able to decode and trace transactions and calls between smart contracts we need their ABIs. Unfortunately, it might happen that two or more contracts have methods with the same signatures, which might result in incorrect tracing. To make that problem less severe we have decided to add a single point of entry for contract deployment in Seth to track what contract is deployed at which address and thus minimise incorrect tracing due to potentially ambiguous method signatures.</p>
+<p>There are two possible starting points:</p>
+<ol>
+<li>
+<p>We don’t know what contract (ABI) is located at a given address. That is the case, when the contract either wasn’t uploaded via Seth or we haven’t supplied Seth with a contract map as part of its configuration (more on that later).</p>
+<p>a. We sequentially iterate over all known ABIs (map: <code>name -&gt; ABI_name</code>) checking whether it has a method with a given signature. Once we get a first match we upsert that (<code>address -&gt; ABI_name</code>) data into the contract map and return the ABI.</p>
+<pre><code>The caveat here is that if the method we are searching for is present in more than one ABI we might associate the address with an incorrect address (we use the first match).
+</code></pre>
+<p>b. If no match is found we return an error.</p>
+</li>
+<li>
+<p>We know what ABI is located at a given address. That is the case, when we have either uploaded the contract via Seth, provided Seth with a contract map or already traced a transaction to that address and found an ABI with matching method signature.</p>
+<p>a. We fetch the corresponding ABI and check if it indeed contains the method we are looking for (as mentioned earlier in some cases it might not be the case, because we associated the ABI with address using a different method that it shared with some other contract).</p>
+<p>b. If it does, we return the ABI.</p>
+<p>c. If it doesn’t we iterate again over all known ABIs, in the same way as in <code>1a</code>. If we find a match we update the (<code>address -&gt; ABI_name</code>) association in the contract map and return the ABI.</p>
+<pre><code>It is possible that this will happen multiple times, if we have multiple contracts with multiple identical methods, but given a sufficiently diverse set of methods that were called we should eventually arrive at a fully correct contract map.
+</code></pre>
+<p>d. If no match is found we will return an error.</p>
+</li>
+</ol>
+<h3 id="example"><a class="header" href="#example">Example</a></h3>
+<p><img src="./images/tracing_example.png" alt="tracing_example" /></p>
+<h2 id="contract-map"><a class="header" href="#contract-map">Contract Map</a></h2>
+<p>We support in-memory contract map and a TOML file-based one that keeps the association of (<code>address -&gt; ABI_name</code>). The latter map is only used for non-simulated networks. Every time we deploy a contract we save (<code>address -&gt; ABI_name</code>) entry in the in-memory map. If the network is not a simulated one we also save it in a file. That file can later be pointed to in Seth configuration and we will load the contract map from it (<strong>currently without validating whether we have all the ABIs mentioned in the file</strong>).</p>
+<p>When saving contract deployment information we can either generate filename for you (if you didn’t configure Seth to use a particular file) using the pattern of <code>deployed_contracts_${network_name}_${timestamp}.toml</code> or use the filename provided in Seth TOML configuration file.</p>
+<p>It has to be noted that the file-based contract map is currently updated only, when new contracts are deployed. There’s no mechanism for updating it if we found the mapping invalid (which might be the case if you manually created the entry in the file).</p>
+<h2 id="contract-store"><a class="header" href="#contract-store">Contract Store</a></h2>
+<p>Contract store is a component that stores ABIs and contracts' bytecodes. In theory, Seth can be used without it, but it would have very limited usage as transaction decoding and tracing cannot work without ABIs. Thus in practice, we enforce a non-empty Contract Store durin Seth initialisation.</p>
+<p>Another use of Contract Store is simplified contract deployment. For that we also need the contract's bytecode. The contract store can be used to store the bytecode of the contract and then deploy it using the <code>DeployContractFromContractStore(auth *bind.TransactOpts, name string, backend bind.ContractBackend, params ...interface{})</code> method. When Seth is intialisied with the contract store and no bytecode files (<code>*.bin</code>) are provided, it will log a warning, but initialise successfully nonetheless.</p>
+<p>If bytecode file wasn't provided, you need to use <code>DeployContract(auth *bind.TransactOpts, name string, abi abi.ABI, bytecode []byte, backend bind.ContractBackend, params ...interface{})</code> method, which expects you to provide contract name (best if equal to the name of the ABI file), bytecode and the ABI.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../libs/havoc.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../libs/sentinel.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../libs/havoc.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../libs/sentinel.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
