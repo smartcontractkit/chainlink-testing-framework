@@ -52,6 +52,9 @@ type CantonParticipantEndpoints struct {
 // newCanton sets up a Canton blockchain network with the specified number of validators.
 // It creates a Docker network and starts the necessary containers for Postgres, Canton, Splice, and an Nginx reverse proxy.
 //
+// Startup timeout: note spinning up a Canton network can take several minutes due to the initialization of  the Splice service.
+// tests utilizing this function should set an appropriate timeout to accommodate for this. CTF will time out after 1 hour by default.
+//
 // The reverse proxy is used to allow access to all validator participants through a single HTTP endpoint.
 // The following routes are configured for each participant and the Super Validator (SV):
 //   - http://[PARTICIPANT].json-ledger-api.localhost:[PORT] 	-> JSON Ledger API		=> https://docs.digitalasset.com/build/3.3/reference/json-api/json-api.html
