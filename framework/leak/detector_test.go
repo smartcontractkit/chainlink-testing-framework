@@ -118,7 +118,7 @@ func TestSmokeMeasure(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			require.Equal(t, tc.expectedDiff, diff)
+			require.Equal(t, tc.expectedDiff, diff.Delta)
 		})
 	}
 }

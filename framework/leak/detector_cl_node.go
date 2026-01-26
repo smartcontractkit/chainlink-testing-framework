@@ -13,6 +13,7 @@ import (
 // it is recommended to set some WarmUpDuration, 20% of overall test time
 // to have more stable results
 type CLNodesCheck struct {
+	CheckMode       string
 	NumNodes        int
 	Start           time.Time
 	End             time.Time
@@ -24,7 +25,7 @@ type CLNodesCheck struct {
 // CLNodesLeakDetector is Chainlink node specific resource leak detector
 // can be used with both local and remote Chainlink node sets (DONs)
 type CLNodesLeakDetector struct {
-	Mode                                       string
+	EnvironmentType                            string
 	CPUQuery, MemoryQuery, ContainerAliveQuery string
 	c                                          *ResourceLeakChecker
 }
@@ -51,10 +52,10 @@ func NewCLNodesLeakDetector(c *ResourceLeakChecker, opts ...func(*CLNodesLeakDet
 	for _, o := range opts {
 		o(cd)
 	}
-	if cd.Mode == "" {
-		cd.Mode = "devenv"
+	if cd.EnvironmentType == "" {
+		cd.EnvironmentType = "devenv"
 	}
-	switch cd.Mode {
+	switch cd.EnvironmentType {
 	case "devenv":
 		cd.ContainerAliveQuery = `time() - container_start_time_seconds{name=~"don-node%d"}`
 		// avg from intervals of 1h with 30m step to mitigate spikes
@@ -98,12 +99,13 @@ func (cd *CLNodesLeakDetector) Check(t *CLNodesCheck) error {
 	if t.NumNodes == 0 {
 		return fmt.Errorf("cl nodes num must be > 0")
 	}
-	memoryDiffs := make([]float64, 0)
-	cpuDiffs := make([]float64, 0)
+	memMeasurements := make([]*Measurement, 0)
+	cpuMeasurements := make([]*Measurement, 0)
 	uptimes := make([]float64, 0)
 	errs := make([]error, 0)
 	for i := range t.NumNodes {
-		memoryDiff, err := cd.c.MeasureDelta(&CheckConfig{
+		memMeasurement, err := cd.c.MeasureDelta(&CheckConfig{
+			CheckMode:           t.CheckMode,
 			Query:          fmt.Sprintf(cd.MemoryQuery, i),
 			Start:          t.Start,
 			End:            t.End,
@@ -112,8 +114,10 @@ func (cd *CLNodesLeakDetector) Check(t *CLNodesCheck) error {
 		if err != nil {
 			return fmt.Errorf("memory leak check failed: %w", err)
 		}
-		memoryDiffs = append(memoryDiffs, memoryDiff)
-		cpuDiff, err := cd.c.MeasureDelta(&CheckConfig{
+		memMeasurements = append(memMeasurements, memMeasurement)
+
+		cpuMeasurement, err := cd.c.MeasureDelta(&CheckConfig{
+			CheckMode:           t.CheckMode,
 			Query:          fmt.Sprintf(cd.CPUQuery, i),
 			Start:          t.Start,
 			End:            t.End,
@@ -122,20 +126,39 @@ func (cd *CLNodesLeakDetector) Check(t *CLNodesCheck) error {
 		if err != nil {
 			return fmt.Errorf("cpu leak check failed: %w", err)
 		}
-		cpuDiffs = append(cpuDiffs, cpuDiff)
+		cpuMeasurements = append(cpuMeasurements, cpuMeasurement)
 
-		if memoryDiff >= t.MemoryThreshold {
-			errs = append(errs, fmt.Errorf(
-				"Memory leak detected for node %d and interval: [%s -> %s], diff: %.f",
-				i, t.Start, t.End, memoryDiff,
-			))
+		switch t.CheckMode {
+		case CheckModePercentage:
+			fallthrough
+		case CheckModeDiff:
+			if memMeasurement.Delta >= t.MemoryThreshold {
+				errs = append(errs, fmt.Errorf(
+					"Memory leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
+					i, t.Start, t.End, memMeasurement, t.CheckMode,
+				))
+			}
+			if cpuMeasurement.Delta >= t.CPUThreshold {
+				errs = append(errs, fmt.Errorf(
+					"CPU leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
+					i, t.Start, t.End, cpuMeasurement, t.CheckMode,
+				))
+			}
+		case CheckModeAbsolute:
+			if memMeasurement.End >= t.MemoryThreshold {
+				errs = append(errs, fmt.Errorf(
+					"Memory leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
+					i, t.Start, t.End, memMeasurement, t.CheckMode,
+				))
+			}
+			if cpuMeasurement.End >= t.CPUThreshold {
+				errs = append(errs, fmt.Errorf(
+					"CPU leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
+					i, t.Start, t.End, cpuMeasurement, t.CheckMode,
+				))
+			}
 		}
-		if cpuDiff >= t.CPUThreshold {
-			errs = append(errs, fmt.Errorf(
-				"CPU leak detected for node %d and interval: [%s -> %s], diff: %.f",
-				i, t.Start, t.End, cpuDiff,
-			))
-		}
+
 		uptime, err := cd.checkContainerUptime(t, i)
 		if err != nil {
 			errs = append(errs, fmt.Errorf(
@@ -146,8 +169,8 @@ func (cd *CLNodesLeakDetector) Check(t *CLNodesCheck) error {
 		uptimes = append(uptimes, uptime)
 	}
 	framework.L.Info().
-		Any("MemoryDiffs", memoryDiffs).
-		Any("CPUDiffs", cpuDiffs).
+		Any("MemoryDiffs", memMeasurements).
+		Any("CPUDiffs", cpuMeasurements).
 		Any("Uptimes", uptimes).
 		Str("TestDuration", t.End.Sub(t.Start).String()).
 		Float64("TestDurationSec", t.End.Sub(t.Start).Seconds()).
