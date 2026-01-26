@@ -60,17 +60,25 @@ func NewResourceLeakChecker(opts ...func(*ResourceLeakChecker)) *ResourceLeakChe
 
 // CheckConfig describes leak check configuration
 type CheckConfig struct {
-	CheckMode           string
-	Query          string
-	Start          time.Time
-	End            time.Time
+	// ComparisonMode how do we compaore start/end values: percentage, diff or absolute
+	ComparisonMode string
+	// Query prometheus query
+	Query string
+	// Start start time
+	Start time.Time
+	// End end time
+	End time.Time
+	// WarmUpDuration duration that will be excluded from comparison, load/soak test warmup duration
 	WarmUpDuration time.Duration
 }
 
 const (
-	CheckModePercentage = "percentage"
-	CheckModeDiff       = "diff"
-	CheckModeAbsolute   = "absolute"
+	// ComparisonModePercentage compares start and end values in percentage
+	ComparisonModePercentage = "percentage"
+	// ComparisonModeDiff compares start and end values by subtracting start from end
+	ComparisonModeDiff = "diff"
+	// ComparisonModeAbsolute compares only end values with threshold
+	ComparisonModeAbsolute = "absolute"
 )
 
 type Measurement struct {
@@ -136,15 +144,15 @@ func (rc *ResourceLeakChecker) MeasureDelta(
 	}
 
 	var delta float64
-	switch c.CheckMode {
-	case CheckModePercentage:
+	switch c.ComparisonMode {
+	case ComparisonModePercentage:
 		delta = (endValFloat / startValFloat * 100) - 100
-	case CheckModeDiff:
+	case ComparisonModeDiff:
 		delta = endValFloat - startValFloat
 	}
 
 	f.L.Info().
-		Str("Mode", c.CheckMode).
+		Str("Mode", c.ComparisonMode).
 		Float64("Start", startValFloat).
 		Float64("End", endValFloat).
 		Float64("Increase", delta).

@@ -13,21 +13,34 @@ import (
 // it is recommended to set some WarmUpDuration, 20% of overall test time
 // to have more stable results
 type CLNodesCheck struct {
-	CheckMode       string
-	NumNodes        int
-	Start           time.Time
-	End             time.Time
-	WarmUpDuration  time.Duration
-	CPUThreshold    float64
+	// ComparisonMode how do we compaore start/end values: percentage, diff or absolute
+	ComparisonMode string
+	// NumNodes number of Chainlink nodes
+	NumNodes int
+	// Start start time
+	Start time.Time
+	// End end time
+	End time.Time
+	// WarmUpDuration duration that will be excluded from comparison, load/soak test warmup duration
+	WarmUpDuration time.Duration
+	// CPUThreshold CPU threshold as a float: 200.0 means full 2 CPU cores
+	CPUThreshold float64
+	// MemoryThreshold memory threshold in Megabytes
 	MemoryThreshold float64
 }
 
 // CLNodesLeakDetector is Chainlink node specific resource leak detector
 // can be used with both local and remote Chainlink node sets (DONs)
 type CLNodesLeakDetector struct {
-	EnvironmentType                            string
-	CPUQuery, MemoryQuery, ContainerAliveQuery string
-	c                                          *ResourceLeakChecker
+	// EnvironmentType compare in a local Docker (devenv) environment or in remote K8s environment
+	EnvironmentType string
+	// CPUQuery Prometheus query for CPU
+	CPUQuery string
+	// MemoryQuery Prometheus query for memory
+	MemoryQuery string
+	// ContainerAliveQuery Prometheus memory for checking if container was alive the whole time
+	ContainerAliveQuery string
+	c                   *ResourceLeakChecker
 }
 
 // WithCPUQuery allows to override CPU leak query (Prometheus)
@@ -105,7 +118,7 @@ func (cd *CLNodesLeakDetector) Check(t *CLNodesCheck) error {
 	errs := make([]error, 0)
 	for i := range t.NumNodes {
 		memMeasurement, err := cd.c.MeasureDelta(&CheckConfig{
-			CheckMode:           t.CheckMode,
+			ComparisonMode: t.ComparisonMode,
 			Query:          fmt.Sprintf(cd.MemoryQuery, i),
 			Start:          t.Start,
 			End:            t.End,
@@ -117,7 +130,7 @@ func (cd *CLNodesLeakDetector) Check(t *CLNodesCheck) error {
 		memMeasurements = append(memMeasurements, memMeasurement)
 
 		cpuMeasurement, err := cd.c.MeasureDelta(&CheckConfig{
-			CheckMode:           t.CheckMode,
+			ComparisonMode: t.ComparisonMode,
 			Query:          fmt.Sprintf(cd.CPUQuery, i),
 			Start:          t.Start,
 			End:            t.End,
@@ -128,33 +141,33 @@ func (cd *CLNodesLeakDetector) Check(t *CLNodesCheck) error {
 		}
 		cpuMeasurements = append(cpuMeasurements, cpuMeasurement)
 
-		switch t.CheckMode {
-		case CheckModePercentage:
+		switch t.ComparisonMode {
+		case ComparisonModePercentage:
 			fallthrough
-		case CheckModeDiff:
+		case ComparisonModeDiff:
 			if memMeasurement.Delta >= t.MemoryThreshold {
 				errs = append(errs, fmt.Errorf(
 					"Memory leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
-					i, t.Start, t.End, memMeasurement, t.CheckMode,
+					i, t.Start, t.End, memMeasurement, t.ComparisonMode,
 				))
 			}
 			if cpuMeasurement.Delta >= t.CPUThreshold {
 				errs = append(errs, fmt.Errorf(
 					"CPU leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
-					i, t.Start, t.End, cpuMeasurement, t.CheckMode,
+					i, t.Start, t.End, cpuMeasurement, t.ComparisonMode,
 				))
 			}
-		case CheckModeAbsolute:
+		case ComparisonModeAbsolute:
 			if memMeasurement.End >= t.MemoryThreshold {
 				errs = append(errs, fmt.Errorf(
 					"Memory leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
-					i, t.Start, t.End, memMeasurement, t.CheckMode,
+					i, t.Start, t.End, memMeasurement, t.ComparisonMode,
 				))
 			}
 			if cpuMeasurement.End >= t.CPUThreshold {
 				errs = append(errs, fmt.Errorf(
 					"CPU leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
-					i, t.Start, t.End, cpuMeasurement, t.CheckMode,
+					i, t.Start, t.End, cpuMeasurement, t.ComparisonMode,
 				))
 			}
 		}
