@@ -1,0 +1,14 @@
+[fakes]
+  # Fake service image, usually can be found in our ECR with $project-fakes name
+  image = ''
+  # The port which Docker container is exposing
+  port = 0
+
+  # Fakes service config output
+  [fakes.out]
+    # Whether to respect caching or not, if cache = true component won't be deployed again
+    use_cache = false
+    # Base URL which can be used when running locally
+    base_url_host = ''
+    # Base URL to reach fakes service from other Docker containers
+    base_url_docker = ''

@@ -9,7 +9,7 @@ cargo install mdbook-mermaid
 
 Run it locally
 ```
-make run
+make toml && make run
 ```
 Open your browser [here](http://localhost:9999/)
 
