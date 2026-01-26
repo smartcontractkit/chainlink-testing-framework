@@ -82,3 +82,5 @@ parrot/*.log
 parrot/parrot
 # Devenv (generated manually)
 devenv/
+# Generated TOML definitions
+book/src/framework/developer_environment/**.toml
