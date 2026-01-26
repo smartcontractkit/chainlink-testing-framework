@@ -3,7 +3,6 @@ package canton
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -337,7 +336,7 @@ func SpliceContainerRequest(
 		WaitingFor: wait.ForExec([]string{
 			"/bin/bash",
 			"/app/health-check.sh",
-		}).WithStartupTimeout(time.Minute * 10),
+		}),
 		Env: map[string]string{
 			"DB_SERVER": postgresContainerName,
 			"DB_USER":   DefaultPostgresUser,
