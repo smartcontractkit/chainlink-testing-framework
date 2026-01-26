@@ -149,6 +149,8 @@ func (rc *ResourceLeakChecker) MeasureDelta(
 		delta = (endValFloat / startValFloat * 100) - 100
 	case ComparisonModeDiff:
 		delta = endValFloat - startValFloat
+	default:
+		return nil, fmt.Errorf("comparison mode is incorrect: %s, see available leak.ComparisonMode constants", c.ComparisonMode)
 	}
 
 	f.L.Info().

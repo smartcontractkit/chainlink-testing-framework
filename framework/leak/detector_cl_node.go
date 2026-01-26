@@ -170,6 +170,8 @@ func (cd *CLNodesLeakDetector) Check(t *CLNodesCheck) error {
 					i, t.Start, t.End, cpuMeasurement, t.ComparisonMode,
 				))
 			}
+		default:
+			return fmt.Errorf("comparison mode is incorrect: %s, see available leak.ComparisonMode constants", t.ComparisonMode)
 		}
 
 		uptime, err := cd.checkContainerUptime(t, i)
