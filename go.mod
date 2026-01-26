@@ -137,5 +137,7 @@ require (
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
+replace github.com/consensys/gnark-crypto => github.com/consensys/gnark-crypto v0.12.1
+
 // replicating the replace directive on cosmos SDK
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
