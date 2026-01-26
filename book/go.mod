@@ -6,6 +6,7 @@ replace (
 	github.com/smartcontractkit/chainlink-testing-framework/framework => ../framework
 	github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake => ../framework/components/fake
 	github.com/smartcontractkit/chainlink-testing-framework/wasp => ../../wasp
+	github.com/smartcontractkit/chainlink-testing-framework/wasp-tests => ../../wasp/examples
 )
 
 require (
