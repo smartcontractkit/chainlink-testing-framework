@@ -4,6 +4,8 @@ go 1.24.2
 
 replace github.com/smartcontractkit/chainlink-testing-framework/wasp => ../wasp
 
+replace github.com/smartcontractkit/chainlink-testing-framework/wasp-tests => ../wasp/examples
+
 require (
 	dario.cat/mergo v1.0.1
 	github.com/Masterminds/semver/v3 v3.4.0

@@ -15,15 +15,15 @@ const (
 )
 
 type Input struct {
-	Image string  `toml:"image"`
-	Port  int     `toml:"port" validate:"required"`
-	Out   *Output `toml:"out"`
+	Image string  `toml:"image" comment:"Fake service image, usually can be found in our ECR with $project-fakes name"`
+	Port  int     `toml:"port" validate:"required" comment:"The port which Docker container is exposing"`
+	Out   *Output `toml:"out" comment:"Fakes service config output"`
 }
 
 type Output struct {
-	UseCache      bool   `toml:"use_cache"`
-	BaseURLHost   string `toml:"base_url_host"`
-	BaseURLDocker string `toml:"base_url_docker"`
+	UseCache      bool   `toml:"use_cache" comment:"Whether to respect caching or not, if cache = true component won't be deployed again"`
+	BaseURLHost   string `toml:"base_url_host" comment:"Base URL which can be used when running locally"`
+	BaseURLDocker string `toml:"base_url_docker" comment:"Base URL to reach fakes service from other Docker containers"`
 }
 
 var (

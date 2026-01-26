@@ -26,13 +26,13 @@ const (
 
 // SuiWalletInfo info about Sui account/wallet
 type SuiWalletInfo struct {
-	Alias           *string `json:"alias"`           // Alias key name, usually "null"
-	Flag            int     `json:"flag"`            // Flag is an integer
-	KeyScheme       string  `json:"keyScheme"`       // Key scheme is a string
-	Mnemonic        string  `json:"mnemonic"`        // Mnemonic is a string
-	PeerId          string  `json:"peerId"`          // Peer ID is a string
-	PublicBase64Key string  `json:"publicBase64Key"` // Public key in Base64 format
-	SuiAddress      string  `json:"suiAddress"`      // Sui address is a 0x prefixed hex string
+	Alias           *string `toml:"alias" json:"alias" comment:"Alias key name, usually null"`                   // Alias key name, usually "null"
+	Flag            int     `toml:"flag" json:"flag" comment:"-"`                                                            // Flag is an integer
+	KeyScheme       string  `toml:"key_scheme" json:"keyScheme" comment:"Sui key scheme"`                        // Key scheme is a string
+	Mnemonic        string  `toml:"mnemonic" json:"mnemonic" comment:"Sui key mnemonic"`                         // Mnemonic is a string
+	PeerId          string  `toml:"peer_id" json:"peerId" comment:"Sui key peer ID"`                                                       // Peer ID is a string
+	PublicBase64Key string  `toml:"public_base64_key" json:"publicBase64Key" comment:"Sui key in base64 format"` // Public key in Base64 format
+	SuiAddress      string  `toml:"sui_address" json:"suiAddress" comment:"Sui key address"`                     // Sui address is a 0x prefixed hex string
 }
 
 // funds provided key using local faucet
