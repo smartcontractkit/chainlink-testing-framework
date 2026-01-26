@@ -145,7 +145,7 @@ func TestRealPrometheusLowLevelAPI(t *testing.T) {
 
 	// demonstrates how to use low-level API for custom queries with CL nodes example
 	donNodes := 4
-	resourceLeaks := make([]float64, 0)
+	resourceLeaks := make([]*leak.Measurement, 0)
 
 	lc := leak.NewResourceLeakChecker()
 	for i := range donNodes {
