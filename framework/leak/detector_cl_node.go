@@ -32,8 +32,6 @@ type CLNodesCheck struct {
 // CLNodesLeakDetector is Chainlink node specific resource leak detector
 // can be used with both local and remote Chainlink node sets (DONs)
 type CLNodesLeakDetector struct {
-	// EnvironmentType compare in a local Docker (devenv) environment or in remote K8s environment
-	EnvironmentType string
 	// CPUQuery Prometheus query for CPU
 	CPUQuery string
 	// MemoryQuery Prometheus query for memory
@@ -62,29 +60,19 @@ func WithMemoryQuery(q string) func(*CLNodesLeakDetector) {
 // NewCLNodesLeakDetector create new Chainlink node specific resource leak detector with Prometheus client
 func NewCLNodesLeakDetector(c *ResourceLeakChecker, opts ...func(*CLNodesLeakDetector)) (*CLNodesLeakDetector, error) {
 	cd := &CLNodesLeakDetector{
-		c: c,
+		c:                   c,
+		ContainerAliveQuery: `time() - container_start_time_seconds{name=~"don-node%d"}`,
+		// avg from intervals of 1h with 30m step to mitigate spikes
+		// these queries is for estimating soak tests which runs for 2h+
+		CPUQuery:    `avg_over_time((sum(rate(container_cpu_usage_seconds_total{name="don-node%d"}[1h])))[1h:30m]) * 100`,
+		MemoryQuery: `avg_over_time(container_memory_rss{name="don-node%d"}[1h:30m]) / 1024 / 1024`,
+		// these are for very stable soak tests where we want to catch even a small deviation
+		// by measuring only the end value
+		CPUQueryAbsolute:    `sum(rate(container_cpu_usage_seconds_total{name="don-node%d"}[5m])) * 100`,
+		MemoryQueryAbsolute: `avg_over_time(container_memory_rss{name="don-node%d"}[5m:5m]) / 1024 / 1024`,
 	}
 	for _, o := range opts {
 		o(cd)
-	}
-	if cd.EnvironmentType == "" {
-		cd.EnvironmentType = "devenv"
-	}
-	switch cd.EnvironmentType {
-	case "devenv":
-		cd.ContainerAliveQuery = `time() - container_start_time_seconds{name=~"don-node%d"}`
-		// avg from intervals of 1h with 30m step to mitigate spikes
-		// these queries is for estimating soak tests which runs for 2h+
-		cd.CPUQuery = `avg_over_time((sum(rate(container_cpu_usage_seconds_total{name="don-node%d"}[1h])))[1h:30m]) * 100`
-		cd.MemoryQuery = `avg_over_time(container_memory_rss{name="don-node%d"}[1h:30m]) / 1024 / 1024`
-		// these are for very stable soak tests where we want to catch even a small deviation
-		// by measuring only the end value
-		cd.CPUQueryAbsolute = `sum(rate(container_cpu_usage_seconds_total{name="don-node%d"}[5m])) * 100`
-		cd.MemoryQueryAbsolute = `avg_over_time(container_memory_rss{name="don-node%d"}[5m:5m]) / 1024 / 1024`
-	case "griddle":
-		return nil, fmt.Errorf("not implemented yet")
-	default:
-		return nil, fmt.Errorf("invalid mode, use: 'devenv' or 'griddle'")
 	}
 	return cd, nil
 }
