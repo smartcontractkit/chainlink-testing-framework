@@ -129,13 +129,14 @@ func TestRealCLNodesLeakDetectionLocalDevenv(t *testing.T) {
 	cnd, err := leak.NewCLNodesLeakDetector(leak.NewResourceLeakChecker())
 	require.NoError(t, err)
 	errs := cnd.Check(&leak.CLNodesCheck{
-		ComparisonMode: leak.ComparisonModePercentage,
+		ComparisonMode: leak.ComparisonModeAbsolute,
 		NumNodes:       4,
 		// set timestamps for the run you are analyzing
-		Start:           mustTime("2026-01-19T17:23:14Z"),
-		End:             mustTime("2026-01-19T18:00:51Z"),
-		CPUThreshold:    100.0,
-		MemoryThreshold: 20.0,
+		Start:           mustTime("2026-01-27T03:14:00Z"),
+		End:             mustTime("2026-01-27T05:26:00Z"),
+		WarmUpDuration:  30 * time.Minute,
+		CPUThreshold:    50.0,
+		MemoryThreshold: 200.0,
 	})
 	require.NoError(t, errs)
 	fmt.Println(errs)

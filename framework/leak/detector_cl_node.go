@@ -37,7 +37,9 @@ type CLNodesLeakDetector struct {
 	// CPUQuery Prometheus query for CPU
 	CPUQuery string
 	// MemoryQuery Prometheus query for memory
-	MemoryQuery string
+	MemoryQuery         string
+	CPUQueryAbsolute    string
+	MemoryQueryAbsolute string
 	// ContainerAliveQuery Prometheus memory for checking if container was alive the whole time
 	ContainerAliveQuery string
 	c                   *ResourceLeakChecker
@@ -72,8 +74,13 @@ func NewCLNodesLeakDetector(c *ResourceLeakChecker, opts ...func(*CLNodesLeakDet
 	case "devenv":
 		cd.ContainerAliveQuery = `time() - container_start_time_seconds{name=~"don-node%d"}`
 		// avg from intervals of 1h with 30m step to mitigate spikes
+		// these queries is for estimating soak tests which runs for 2h+
 		cd.CPUQuery = `avg_over_time((sum(rate(container_cpu_usage_seconds_total{name="don-node%d"}[1h])))[1h:30m]) * 100`
 		cd.MemoryQuery = `avg_over_time(container_memory_rss{name="don-node%d"}[1h:30m]) / 1024 / 1024`
+		// these are for very stable soak tests where we want to catch even a small deviation
+		// by measuring only the end value
+		cd.CPUQueryAbsolute = `sum(rate(container_cpu_usage_seconds_total{name="don-node%d"}[5m])) * 100`
+		cd.MemoryQueryAbsolute = `avg_over_time(container_memory_rss{name="don-node%d"}[5m:5m]) / 1024 / 1024`
 	case "griddle":
 		return nil, fmt.Errorf("not implemented yet")
 	default:
@@ -117,57 +124,81 @@ func (cd *CLNodesLeakDetector) Check(t *CLNodesCheck) error {
 	uptimes := make([]float64, 0)
 	errs := make([]error, 0)
 	for i := range t.NumNodes {
-		memMeasurement, err := cd.c.MeasureDelta(&CheckConfig{
-			ComparisonMode: t.ComparisonMode,
-			Query:          fmt.Sprintf(cd.MemoryQuery, i),
-			Start:          t.Start,
-			End:            t.End,
-			WarmUpDuration: t.WarmUpDuration,
-		})
-		if err != nil {
-			return fmt.Errorf("memory leak check failed: %w", err)
-		}
-		memMeasurements = append(memMeasurements, memMeasurement)
-
-		cpuMeasurement, err := cd.c.MeasureDelta(&CheckConfig{
-			ComparisonMode: t.ComparisonMode,
-			Query:          fmt.Sprintf(cd.CPUQuery, i),
-			Start:          t.Start,
-			End:            t.End,
-			WarmUpDuration: t.WarmUpDuration,
-		})
-		if err != nil {
-			return fmt.Errorf("cpu leak check failed: %w", err)
-		}
-		cpuMeasurements = append(cpuMeasurements, cpuMeasurement)
 
 		switch t.ComparisonMode {
 		case ComparisonModePercentage:
 			fallthrough
 		case ComparisonModeDiff:
+			memMeasurement, err := cd.c.MeasureDelta(&CheckConfig{
+				ComparisonMode: t.ComparisonMode,
+				Query:          fmt.Sprintf(cd.MemoryQuery, i),
+				Start:          t.Start,
+				End:            t.End,
+				WarmUpDuration: t.WarmUpDuration,
+			})
+			if err != nil {
+				return fmt.Errorf("memory leak check failed: %w", err)
+			}
+			memMeasurements = append(memMeasurements, memMeasurement)
+
+			cpuMeasurement, err := cd.c.MeasureDelta(&CheckConfig{
+				ComparisonMode: t.ComparisonMode,
+				Query:          fmt.Sprintf(cd.CPUQuery, i),
+				Start:          t.Start,
+				End:            t.End,
+				WarmUpDuration: t.WarmUpDuration,
+			})
+			if err != nil {
+				return fmt.Errorf("cpu leak check failed: %w", err)
+			}
+			cpuMeasurements = append(cpuMeasurements, cpuMeasurement)
+
 			if memMeasurement.Delta >= t.MemoryThreshold {
 				errs = append(errs, fmt.Errorf(
 					"Memory leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
-					i, t.Start, t.End, memMeasurement, t.ComparisonMode,
+					i, t.Start, t.End, memMeasurement.Delta, t.ComparisonMode,
 				))
 			}
 			if cpuMeasurement.Delta >= t.CPUThreshold {
 				errs = append(errs, fmt.Errorf(
 					"CPU leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
-					i, t.Start, t.End, cpuMeasurement, t.ComparisonMode,
+					i, t.Start, t.End, cpuMeasurement.Delta, t.ComparisonMode,
 				))
 			}
 		case ComparisonModeAbsolute:
+			memMeasurement, err := cd.c.MeasureDelta(&CheckConfig{
+				ComparisonMode: t.ComparisonMode,
+				Query:          fmt.Sprintf(cd.MemoryQueryAbsolute, i),
+				Start:          t.Start,
+				End:            t.End,
+				WarmUpDuration: t.WarmUpDuration,
+			})
+			if err != nil {
+				return fmt.Errorf("memory leak check failed: %w", err)
+			}
+			memMeasurements = append(memMeasurements, memMeasurement)
+
+			cpuMeasurement, err := cd.c.MeasureDelta(&CheckConfig{
+				ComparisonMode: t.ComparisonMode,
+				Query:          fmt.Sprintf(cd.CPUQueryAbsolute, i),
+				Start:          t.Start,
+				End:            t.End,
+				WarmUpDuration: t.WarmUpDuration,
+			})
+			if err != nil {
+				return fmt.Errorf("cpu leak check failed: %w", err)
+			}
+			cpuMeasurements = append(cpuMeasurements, cpuMeasurement)
 			if memMeasurement.End >= t.MemoryThreshold {
 				errs = append(errs, fmt.Errorf(
 					"Memory leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
-					i, t.Start, t.End, memMeasurement, t.ComparisonMode,
+					i, t.Start, t.End, memMeasurement.End, t.ComparisonMode,
 				))
 			}
 			if cpuMeasurement.End >= t.CPUThreshold {
 				errs = append(errs, fmt.Errorf(
 					"CPU leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
-					i, t.Start, t.End, cpuMeasurement, t.ComparisonMode,
+					i, t.Start, t.End, cpuMeasurement.End, t.ComparisonMode,
 				))
 			}
 		default:

@@ -81,6 +81,7 @@ const (
 	ComparisonModeAbsolute = "absolute"
 )
 
+// Measurement measurement of start/end test timestamps + delta between them
 type Measurement struct {
 	Start float64
 	End   float64
@@ -149,6 +150,7 @@ func (rc *ResourceLeakChecker) MeasureDelta(
 		delta = (endValFloat / startValFloat * 100) - 100
 	case ComparisonModeDiff:
 		delta = endValFloat - startValFloat
+	case ComparisonModeAbsolute:
 	default:
 		return nil, fmt.Errorf("comparison mode is incorrect: %s, see available leak.ComparisonMode constants", c.ComparisonMode)
 	}
