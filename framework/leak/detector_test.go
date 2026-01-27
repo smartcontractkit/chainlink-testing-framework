@@ -25,6 +25,7 @@ func TestSmokeMeasure(t *testing.T) {
 	lc := leak.NewResourceLeakChecker(leak.WithQueryClient(qc))
 	testCases := []struct {
 		name           string
+		mode           string
 		startTime      time.Time
 		endTime        time.Time
 		startResponse  *f.PrometheusQueryResponse
@@ -34,7 +35,8 @@ func TestSmokeMeasure(t *testing.T) {
 		errorContains  string
 	}{
 		{
-			name:          "diff is correct and > 0",
+			name:          "diff is correct and > 0 (percentage mode)",
+			mode:          leak.ComparisonModePercentage,
 			startTime:     mustTime("2026-01-12T21:53:00Z"),
 			endTime:       mustTime("2026-01-13T10:11:00Z"),
 			startResponse: leak.PromSingleValueResponse("10"),
@@ -42,7 +44,26 @@ func TestSmokeMeasure(t *testing.T) {
 			expectedDiff:  100,
 		},
 		{
+			name:          "diff is correct and > 0 (diff mode)",
+			mode:          leak.ComparisonModeDiff,
+			startTime:     mustTime("2026-01-12T21:53:00Z"),
+			endTime:       mustTime("2026-01-13T10:11:00Z"),
+			startResponse: leak.PromSingleValueResponse("10"),
+			endResponse:   leak.PromSingleValueResponse("20"),
+			expectedDiff:  10,
+		},
+		{
+			name:          "diff is correct and > 0 (absolute)",
+			mode:          leak.ComparisonModeAbsolute,
+			startTime:     mustTime("2026-01-12T21:53:00Z"),
+			endTime:       mustTime("2026-01-13T10:11:00Z"),
+			startResponse: leak.PromSingleValueResponse("10"),
+			endResponse:   leak.PromSingleValueResponse("20"),
+			expectedDiff:  20,
+		},
+		{
 			name:          "diff is correct and < 0",
+			mode:          leak.ComparisonModePercentage,
 			startTime:     mustTime("2026-01-12T21:53:00Z"),
 			endTime:       mustTime("2026-01-13T10:11:00Z"),
 			startResponse: leak.PromSingleValueResponse("20"),
@@ -51,6 +72,7 @@ func TestSmokeMeasure(t *testing.T) {
 		},
 		{
 			name:          "start > end time",
+			mode:          leak.ComparisonModePercentage,
 			startTime:     mustTime("2026-01-13T10:11:00Z"),
 			endTime:       mustTime("2026-01-12T21:53:00Z"),
 			startResponse: leak.PromSingleValueResponse("10"),
@@ -59,6 +81,7 @@ func TestSmokeMeasure(t *testing.T) {
 		},
 		{
 			name:           "works with warm up duration",
+			mode:           leak.ComparisonModePercentage,
 			startTime:      mustTime("2026-01-01T10:00:00Z"),
 			endTime:        mustTime("2026-01-01T11:00:00Z"),
 			startResponse:  leak.PromSingleValueResponse("10"),
@@ -68,6 +91,7 @@ func TestSmokeMeasure(t *testing.T) {
 		},
 		{
 			name:           "warm up is too long",
+			mode:           leak.ComparisonModePercentage,
 			startTime:      mustTime("2026-01-01T10:00:00Z"),
 			endTime:        mustTime("2026-01-01T11:00:00Z"),
 			startResponse:  leak.PromSingleValueResponse("10"),
@@ -77,6 +101,7 @@ func TestSmokeMeasure(t *testing.T) {
 		},
 		{
 			name:      "no results for start time",
+			mode:      leak.ComparisonModePercentage,
 			startTime: mustTime("2026-01-12T21:53:00Z"),
 			endTime:   mustTime("2026-01-13T10:11:00Z"),
 			startResponse: &f.PrometheusQueryResponse{
@@ -89,6 +114,7 @@ func TestSmokeMeasure(t *testing.T) {
 		},
 		{
 			name:          "no results for end time",
+			mode:          leak.ComparisonModePercentage,
 			startTime:     mustTime("2026-01-12T21:53:00Z"),
 			endTime:       mustTime("2026-01-13T10:11:00Z"),
 			startResponse: leak.PromSingleValueResponse("10"),
@@ -105,6 +131,7 @@ func TestSmokeMeasure(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			qc.SetResponses(tc.startResponse, tc.endResponse)
 			diff, err := lc.MeasureDelta(&leak.CheckConfig{
+				ComparisonMode: tc.mode,
 				// Prometheus returns good errors when query is invalid
 				// so we do not test it since there is no additional validation
 				Query:          ``,
@@ -118,6 +145,10 @@ func TestSmokeMeasure(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
+			if tc.mode == leak.ComparisonModeAbsolute {
+				require.Equal(t, tc.expectedDiff, diff.End)
+				return
+			}
 			require.Equal(t, tc.expectedDiff, diff.Delta)
 		})
 	}
