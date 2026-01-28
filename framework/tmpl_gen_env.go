@@ -37,7 +37,9 @@ just cli && {{ .CLIName }} sh
 
 ## Functional Testing
 
-🚀 Implement your product configuration (see comnents in [configurator.go](./products/productone/configurator.go))
+🔍 Implement your product configuration (see comnents in [configurator.go](./products/productone/configurator.go))
+
+Add any additional product services using this [template](./services/svc.go)
 
 Start the environment.
 ` + "```" + `bash
