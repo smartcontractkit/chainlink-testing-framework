@@ -1047,7 +1047,7 @@ jobs:
 
      - name: Run CCV environment
        env:
-         JD_IMAGE: {{"${{"}} secrets.JD_IMAGE {{"$}}"}}
+         JD_IMAGE: {{"${{"}} secrets.JD_IMAGE {{"}}"}}
        run: |
          cd cmd/{{ .CLIName }} && go install . && cd -
          {{ .CLIName }} u {{"${{"}} matrix.config {{"}}"}}
@@ -1067,6 +1067,40 @@ jobs:
          path: {{ .DevEnvRelPath }}/tests/{{ .ProductName }}/logs
          retention-days: 1
 `
+
+	CIECRAuthActionTmpl = `name: 'AWS ECR Authentication'
+description: 'Configure AWS credentials and authenticate to ECR Public'
+inputs:
+  role-to-assume:
+    description: 'IAM role to assume'
+    required: true
+  aws-region:
+    description: 'AWS region'
+    required: true
+    default: 'us-west-2'
+  registry-type:
+    description: 'ECR registry type'
+    required: false
+    default: 'private'
+  registries:
+    description: 'ECR registry to login'
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure AWS credentials using OIDC
+      uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+      with:
+        role-to-assume: {{"${{"}} inputs.role-to-assume {{"}}"}}
+        aws-region: {{"${{"}} inputs.aws-region {{"}}"}}
+    - name: Authenticate to ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
+      with:
+        registry-type: {{"${{"}} inputs.registry-type {{"}}"}}
+        registries: {{"${{"}} inputs.registries {{"}}"}}
+        `
 
 	// CIFunctionalTmpl is a continuous integration template for end-to-end smoke tests
 	CIFunctionalTmpl = `name: End-to-end {{ .ProductName }} Tests
@@ -1137,7 +1171,7 @@ jobs:
 
       - name: Run CCV environment
         env:
-          JD_IMAGE: {{"${{"}} secrets.JD_IMAGE {{"$}}"}}
+          JD_IMAGE: {{"${{"}} secrets.JD_IMAGE {{"}}"}}
         run: |
           cd cmd/{{ .CLIName }} && go install . && cd -
           {{ .CLIName }} u {{"${{"}} matrix.config {{"}}"}}
@@ -2166,6 +2200,9 @@ type LoadTestParams struct {
 	ProductName string
 }
 
+// CIECRAuthAction params for generating CI share action for auth
+type CIECRAuthAction struct{}
+
 // CISmokeParams params for generating CI smoke tests file
 type CISmokeParams struct {
 	ProductName   string
@@ -2503,6 +2540,27 @@ func (g *EnvCodegen) Write() error {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
+	// generate shared auth local action
+	awsECRAuthDir := filepath.Join(g.cfg.outputDir, ".github", "actions", "aws-ecr-auth")
+	if err := os.MkdirAll( //nolint:gosec
+		awsECRAuthDir,
+		os.ModePerm,
+	); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	ecrAuthCIContents, err := g.GenerateECRAuthAction()
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile( //nolint:gosec
+		filepath.Join(awsECRAuthDir, "action.yml"),
+		[]byte(ecrAuthCIContents),
+		os.ModePerm,
+	); err != nil {
+		return fmt.Errorf("failed to write ECR action workflow file: %w", err)
+	}
+
 	// Generate GitHub CI smoke test workflow
 	ciSmokeContents, err := g.GenerateCIFunctional()
 	if err != nil {
@@ -2620,6 +2678,13 @@ func (g *EnvCodegen) GenerateSmokeTests() (string, error) {
 		ProductName: g.cfg.productName,
 	}
 	return render(SmokeTestImplTmpl, data)
+}
+
+// GenerateECRAuthAction generates a shared ECR Auth action
+func (g *EnvCodegen) GenerateECRAuthAction() (string, error) {
+	log.Info().Msg("Generating GitHub CI workflow deps")
+	data := CIECRAuthAction{}
+	return render(CIECRAuthActionTmpl, data)
 }
 
 // GenerateCIPerf generates a load&chaos test CI workflow
