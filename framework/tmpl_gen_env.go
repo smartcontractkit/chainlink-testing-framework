@@ -933,6 +933,10 @@ instances = 1
   image = "{{ .ProductName }}-fakes:latest"
   port = 9111
 
+[example_service]
+  image = "busybox:latest"
+  port = 9501
+
 [[blockchains]]
   chain_id = "1337"
   docker_cmd_params = ["-b", "1", "--mixed-mining", "--slots-in-an-epoch", "1"]
@@ -1992,6 +1996,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/jd"
 	"github.com/smartcontractkit/{{ .ProductName }}/devenv/products/{{ .ProductName }}"
+	"github.com/smartcontractkit/datastreams/devenv/services"
 
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 )
@@ -2005,6 +2010,7 @@ type ProductInfo struct {
 
 type Cfg struct {
 	Products    []*ProductInfo      ` + "`" + `toml:"products"` + "`" + `
+	Service     *services.ExampleSvcInput ` + "`" + `toml:"example_service"` + "`" + `
 	Blockchains []*blockchain.Input ` + "`" + `toml:"blockchains" validate:"required"` + "`" + `
 	FakeServer  *fake.Input         ` + "`" + `toml:"fake_server" validate:"required"` + "`" + `
 	NodeSets    []*ns.Input         ` + "`" + `toml:"nodesets"    validate:"required"` + "`" + `
@@ -2040,6 +2046,10 @@ func NewEnvironment(ctx context.Context) error {
 	_, err = fake.NewDockerFakeDataProvider(in.FakeServer)
 	if err != nil {
 		return fmt.Errorf("failed to create fake data provider: %w", err)
+	}
+
+	if err := services.NewService(in.Service); err != nil {
+		return fmt.Errorf("failed to create example service: %w", err)
 	}
 
 	// get all the product orchestrations, generate product specific overrides
