@@ -123,17 +123,17 @@ func NewService(in *ExampleSvcInput) error {
 	`
 )
 
-type SvcImplParams struct {
-	ProductName string
-}
+// SvcImplParams service template params
+type SvcImplParams struct{}
 
+// GenerateServiceImpl generates example service implementation
 func (g *EnvCodegen) GenerateServiceImpl() (string, error) {
 	log.Info().Msg("Generating service implementation")
 	p := SvcImplParams{}
 	return render(ProductComponentImpl, p)
 }
 
-// WriteFakes writes all files related to fake services used in testing
+// WriteServices write all things related to example service template
 func (g *EnvCodegen) WriteServices() error {
 	servicesRoot := filepath.Join(g.cfg.outputDir, "services")
 	if err := os.MkdirAll( //nolint:gosec
