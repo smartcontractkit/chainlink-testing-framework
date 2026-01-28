@@ -97,6 +97,9 @@ Usage:
 							if err := cg.Write(); err != nil {
 								return fmt.Errorf("failed to generate environment: %w", err)
 							}
+							if err := cg.WriteServices(); err != nil {
+								return fmt.Errorf("failed to generate services: %w", err)
+							}
 							if err := cg.WriteFakes(); err != nil {
 								return fmt.Errorf("failed to generate fakes: %w", err)
 							}
