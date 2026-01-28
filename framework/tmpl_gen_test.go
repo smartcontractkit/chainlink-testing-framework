@@ -75,6 +75,8 @@ func TestSmokeGenerateDevEnv(t *testing.T) {
 			require.NoError(t, err)
 			err = cg.Write()
 			require.NoError(t, err)
+			err = cg.WriteServices()
+			require.NoError(t, err)
 			err = cg.WriteFakes()
 			require.NoError(t, err)
 			err = cg.WriteProducts()

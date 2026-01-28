@@ -1996,7 +1996,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/jd"
 	"github.com/smartcontractkit/{{ .ProductName }}/devenv/products/{{ .ProductName }}"
-	"github.com/smartcontractkit/datastreams/devenv/services"
+	"github.com/smartcontractkit/{{ .ProductName }}/devenv/services"
 
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 )
