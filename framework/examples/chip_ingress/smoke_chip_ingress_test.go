@@ -20,13 +20,13 @@ func TestChipIngressSmoke(t *testing.T) {
 	in, err := framework.Load[ChipConfig](t)
 	require.NoError(t, err, "failed to load config")
 
-	out, err := chipingressset.New(in.ChipIngress)
+	out, err := chipingressset.NewWithContext(t.Context(), in.ChipIngress)
 	require.NoError(t, err, "failed to create chip ingress set")
 	require.NotEmpty(t, out.ChipIngress.GRPCExternalURL, "GRPCExternalURL is not set")
 	require.NotEmpty(t, out.RedPanda.SchemaRegistryExternalURL, "SchemaRegistryExternalURL is not set")
 
 	t.Run("remote chainlink-protos can be registered", func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 		defer cancel()
 
 		createTopicsErr := chipingressset.CreateTopics(ctx, out.RedPanda.KafkaExternalURL, []string{"cre"})
@@ -45,7 +45,7 @@ func TestChipIngressSmoke(t *testing.T) {
 
 	t.Run("local protos can be registered", func(t *testing.T) {
 		t.Skip("we can only one run of these nested at a time, because they register the same protos")
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 		defer cancel()
 
 		createTopicsErr := chipingressset.CreateTopics(ctx, out.RedPanda.KafkaExternalURL, []string{"cre"})
