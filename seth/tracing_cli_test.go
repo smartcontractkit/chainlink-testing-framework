@@ -21,7 +21,7 @@ func TestCLITracing(t *testing.T) {
 	tx, txErr := TestEnv.DebugContract.AlwaysRevertsCustomError(c.NewTXOpts())
 	require.NoError(t, txErr, "transaction should have reverted")
 
-	_, err = c.WaitMined(context.Background(), seth.L, c.Client, tx)
+	_, err = c.WaitMined(context.Background(), *c.Logger(), c.Client, tx)
 	require.NoError(t, err, "should have waited for transaction to be mined")
 
 	err = seth.CreateOrAppendToJsonArray(file.Name(), tx.Hash().Hex())

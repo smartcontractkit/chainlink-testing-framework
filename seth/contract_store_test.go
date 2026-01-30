@@ -106,7 +106,7 @@ func TestSmokeContractABIStore(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			var err error
-			cs, err := seth.NewContractStore(tc.abiPath, "", tc.gethWrappersPaths)
+			cs, err := seth.NewContractStore(tc.abiPath, "", tc.gethWrappersPaths, seth.NewLogger())
 			if err == nil {
 				require.NotNil(t, cs.ABIs, "ABIs should not be nil")
 				require.Equal(t, tc.expectedABICount, len(cs.ABIs), "ABIs should have the expected count")
@@ -159,7 +159,7 @@ func TestSmokeContractBINStore(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			var err error
-			cs, err := seth.NewContractStore(tc.abiPath, tc.binPath, nil)
+			cs, err := seth.NewContractStore(tc.abiPath, tc.binPath, nil, seth.NewLogger())
 			if err == nil {
 				require.NotEmpty(t, cs.ABIs, "ABIs should not be empty")
 				err = errors.New("")

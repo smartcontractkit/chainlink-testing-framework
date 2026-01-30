@@ -1,16 +1,19 @@
 package seth
 
 import (
+	"reflect"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 )
 
 type ABIFinder struct {
 	ContractMap   ContractMap
 	ContractStore *ContractStore
+	log           *zerolog.Logger
 }
 
 type ABIFinderResult struct {
@@ -24,11 +27,28 @@ func (a *ABIFinderResult) ContractName() string {
 	return strings.TrimSuffix(a.contractName, ".abi")
 }
 
-func NewABIFinder(contractMap ContractMap, contractStore *ContractStore) ABIFinder {
+func NewABIFinder(contractMap ContractMap, contractStore *ContractStore, logger zerolog.Logger) ABIFinder {
+	finderLogger := logger
+	if reflect.ValueOf(finderLogger).IsZero() {
+		finderLogger = newLogger()
+	}
 	return ABIFinder{
 		ContractMap:   contractMap,
 		ContractStore: contractStore,
+		log:           &finderLogger,
 	}
+}
+
+func (a *ABIFinder) logger() *zerolog.Logger {
+	if a == nil {
+		l := newLogger()
+		return &l
+	}
+	if a.log == nil {
+		l := newLogger()
+		a.log = &l
+	}
+	return a.log
 }
 
 // FindABIByMethod finds the ABI method and instance for the given contract address and signature
@@ -47,7 +67,7 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 		abiInstanceCandidate, ok := a.ContractStore.ABIs[contractName+".abi"]
 		if !ok {
 			err := errors.New(ErrNoAbiFound)
-			L.Err(err).
+			a.logger().Err(err).
 				Str("Contract", contractName).
 				Str("Address", address).
 				Msg("ABI not found, even though contract is known. This should not happen. Contract map might be corrupted")
@@ -65,7 +85,7 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 			for correctedContractName, correctedAbi := range a.ContractStore.ABIs {
 				correctedMethod, abiErr := correctedAbi.MethodById(signature)
 				if abiErr == nil {
-					L.Debug().
+					a.logger().Debug().
 						Str("Address", address).
 						Str("Old ABI", contractName).
 						Str("New ABI", correctedContractName).
@@ -83,7 +103,7 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 				}
 			}
 
-			L.Err(err).
+			a.logger().Err(err).
 				Str("Signature", stringSignature).
 				Str("Supposed contract", contractName).
 				Str("Supposed address", address).
@@ -109,7 +129,7 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 	for abiName, abiInstanceCandidate := range a.ContractStore.ABIs {
 		methodCandidate, err := abiInstanceCandidate.MethodById(signature)
 		if err != nil {
-			L.Trace().
+			a.logger().Trace().
 				Err(err).
 				Str("Signature", stringSignature).
 				Msg("Method not found")

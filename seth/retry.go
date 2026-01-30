@@ -26,6 +26,7 @@ const (
 
 // RetryTxAndDecode executes transaction several times, retries if connection is lost and decodes all the data
 func (m *Client) RetryTxAndDecode(f func() (*types.Transaction, error)) (*DecodedTransaction, error) {
+	logger := m.Logger()
 	var tx *types.Transaction
 	err := retry.Do(
 		func() error {
@@ -33,7 +34,7 @@ func (m *Client) RetryTxAndDecode(f func() (*types.Transaction, error)) (*Decode
 			tx, err = f()
 			return err
 		}, retry.OnRetry(func(i uint, _ error) {
-			L.Debug().Uint("Attempt", i).Msg("Retrying transaction...")
+			logger.Debug().Uint("Attempt", i).Msg("Retrying transaction...")
 		}),
 		retry.DelayType(retry.FixedDelay),
 		retry.Attempts(10), retry.Delay(time.Duration(1)*time.Second), retry.RetryIf(func(err error) bool {
@@ -107,7 +108,8 @@ var PriorityBasedGasBumpingStrategyFn = func(priority string) GasBumpStrategyFn 
 // prepareReplacementTransaction bumps gas price of the transaction if it wasn't confirmed in time. It returns a signed replacement transaction.
 // Errors might be returned, because transaction was no longer pending, max gas price was reached or there was an error sending the transaction (e.g. nonce too low, meaning that original transaction was mined).
 var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) (*types.Transaction, error) {
-	L.Info().Msgf("Transaction wasn't confirmed in %s. Bumping gas", client.Cfg.Network.TxnTimeout.String())
+	logger := client.Logger()
+	logger.Info().Msgf("Transaction wasn't confirmed in %s. Bumping gas", client.Cfg.Network.TxnTimeout.String())
 
 	// If original transaction used auto priority, we cannot bump it
 	if client.Cfg.Network.GasPriceEstimationTxPriority == Priority_Auto {
@@ -122,7 +124,7 @@ var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) 
 	}
 
 	if err != nil && !isPending {
-		L.Debug().Str("Tx hash", tx.Hash().Hex()).Msg("Transaction was confirmed before bumping gas")
+		logger.Debug().Str("Tx hash", tx.Hash().Hex()).Msg("Transaction was confirmed before bumping gas")
 		return nil, errors.New("transaction was confirmed before bumping gas")
 	}
 
@@ -150,7 +152,7 @@ var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) 
 
 	var checkMaxPrice = func(gasPrice, maxGasPrice *big.Int) error {
 		if !client.Cfg.HasMaxBumpGasPrice() {
-			L.Debug().Msg("Max gas price for gas bump is not set, skipping check")
+			logger.Debug().Msg("Max gas price for gas bump is not set, skipping check")
 			return nil
 		}
 
@@ -168,7 +170,7 @@ var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) 
 			return nil, err
 		}
 		gasPriceDiff := big.NewInt(0).Sub(newGasPrice, tx.GasPrice())
-		L.Debug().
+		logger.Debug().
 			Str("Old gas price", fmt.Sprintf("%s wei /%s ether", tx.GasPrice(), WeiToEther(tx.GasPrice()).Text('f', -1))).
 			Str("New gas price", fmt.Sprintf("%s wei /%s ether", newGasPrice, WeiToEther(newGasPrice).Text('f', -1))).
 			Str("Diff", fmt.Sprintf("%s wei /%s ether", gasPriceDiff, WeiToEther(gasPriceDiff).Text('f', -1))).
@@ -190,7 +192,7 @@ var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) 
 		}
 		gasFeeCapDiff := big.NewInt(0).Sub(newGasFeeCap, tx.GasFeeCap())
 		gasTipCapDiff := big.NewInt(0).Sub(newGasTipCap, tx.GasTipCap())
-		L.Debug().
+		logger.Debug().
 			Str("Old gas fee cap", fmt.Sprintf("%s wei /%s ether", tx.GasFeeCap(), WeiToEther(tx.GasFeeCap()).Text('f', -1))).
 			Str("New gas fee cap", fmt.Sprintf("%s wei /%s ether", newGasFeeCap, WeiToEther(newGasFeeCap).Text('f', -1))).
 			Str("Gas fee cap diff", fmt.Sprintf("%s wei /%s ether", gasFeeCapDiff, WeiToEther(gasFeeCapDiff).Text('f', -1))).
@@ -224,7 +226,7 @@ var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) 
 		gasTipCapDiff := big.NewInt(0).Sub(newGasTipCap, tx.GasTipCap())
 		gasBlobFeeCapDiff := big.NewInt(0).Sub(newBlobFeeCap, tx.BlobGasFeeCap())
 
-		L.Debug().
+		logger.Debug().
 			Str("Old gas fee cap", fmt.Sprintf("%s wei /%s ether", tx.GasFeeCap(), WeiToEther(tx.GasFeeCap()).Text('f', -1))).
 			Str("New gas fee cap", fmt.Sprintf("%s wei /%s ether", newGasFeeCap, WeiToEther(newGasFeeCap).Text('f', -1))).
 			Str("Gas fee cap diff", fmt.Sprintf("%s wei /%s ether", gasFeeCapDiff, WeiToEther(gasFeeCapDiff).Text('f', -1))).
@@ -255,7 +257,7 @@ var prepareReplacementTransaction = func(client *Client, tx *types.Transaction) 
 			return nil, err
 		}
 		gasPriceDiff := big.NewInt(0).Sub(newGasPrice, tx.GasPrice())
-		L.Debug().
+		logger.Debug().
 			Str("Old gas price", fmt.Sprintf("%s wei /%s ether", tx.GasPrice(), WeiToEther(tx.GasPrice()).Text('f', -1))).
 			Str("New gas price", fmt.Sprintf("%s wei /%s ether", newGasPrice, WeiToEther(newGasPrice).Text('f', -1))).
 			Str("Diff", fmt.Sprintf("%s wei /%s ether", gasPriceDiff, WeiToEther(gasPriceDiff).Text('f', -1))).

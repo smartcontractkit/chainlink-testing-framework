@@ -2,9 +2,11 @@ package seth
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/rs/zerolog"
 )
 
 type cacheItem struct {
@@ -17,15 +19,33 @@ type LFUHeaderCache struct {
 	capacity uint64
 	mu       *sync.RWMutex
 	cache    map[int64]*cacheItem //key is block number
+	log      *zerolog.Logger
 }
 
 // NewLFUBlockCache creates a new LFU cache with the given capacity.
-func NewLFUBlockCache(capacity uint64) *LFUHeaderCache {
+func NewLFUBlockCache(capacity uint64, logger zerolog.Logger) *LFUHeaderCache {
+	cacheLogger := logger
+	if reflect.ValueOf(cacheLogger).IsZero() {
+		cacheLogger = newLogger()
+	}
 	return &LFUHeaderCache{
 		capacity: capacity,
 		cache:    make(map[int64]*cacheItem),
 		mu:       &sync.RWMutex{},
+		log:      &cacheLogger,
 	}
+}
+
+func (c *LFUHeaderCache) logger() *zerolog.Logger {
+	if c == nil {
+		l := newLogger()
+		return &l
+	}
+	if c.log == nil {
+		l := newLogger()
+		c.log = &l
+	}
+	return c.log
 }
 
 // Get retrieves a header from the cache.
@@ -35,7 +55,7 @@ func (c *LFUHeaderCache) Get(blockNumber int64) (*types.Header, bool) {
 
 	if item, found := c.cache[blockNumber]; found {
 		item.frequency++
-		L.Trace().Msgf("Found header %d in cache", blockNumber)
+		c.logger().Trace().Msgf("Found header %d in cache", blockNumber)
 		return item.header, true
 	}
 	return nil, false
@@ -50,7 +70,7 @@ func (c *LFUHeaderCache) Set(header *types.Header) error {
 	defer c.mu.Unlock()
 
 	if oldHeader, found := c.cache[header.Number.Int64()]; found {
-		L.Trace().Msgf("Setting header %d in cache", header.Number.Int64())
+		c.logger().Trace().Msgf("Setting header %d in cache", header.Number.Int64())
 		c.cache[int64(header.Number.Int64())] = &cacheItem{header: header, frequency: oldHeader.frequency + 1}
 		return nil
 	}
@@ -58,7 +78,7 @@ func (c *LFUHeaderCache) Set(header *types.Header) error {
 	if uint64(len(c.cache)) >= c.capacity {
 		c.evict()
 	}
-	L.Trace().Msgf("Setting header %d in cache", header.Number.Int64())
+	c.logger().Trace().Msgf("Setting header %d in cache", header.Number.Int64())
 	c.cache[int64(header.Number.Int64())] = &cacheItem{header: header, frequency: 1}
 
 	return nil
@@ -80,6 +100,6 @@ func (c *LFUHeaderCache) evict() {
 			oldestBlockNumber = item.header.Number.Uint64()
 		}
 	}
-	L.Trace().Msgf("Evicted header %d from cache", evictKey)
+	c.logger().Trace().Msgf("Evicted header %d from cache", evictKey)
 	delete(c.cache, evictKey)
 }

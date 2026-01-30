@@ -41,6 +41,20 @@ type Tracer struct {
 	ABIFinder                *ABIFinder
 	tracesMutex              *sync.RWMutex
 	decodedMutex             *sync.RWMutex
+	logger                   *zerolog.Logger
+}
+
+// Logger returns the tracer's logger, creating one if needed.
+func (t *Tracer) Logger() *zerolog.Logger {
+	if t == nil {
+		l := newLogger()
+		return &l
+	}
+	if t.logger == nil {
+		l := newLogger()
+		t.logger = &l
+	}
+	return t.logger
 }
 
 func (t *Tracer) getTrace(txHash string) *Trace {
@@ -126,12 +140,16 @@ type Call struct {
 	Calls   []Call     `json:"calls"`
 }
 
-func NewTracer(cs *ContractStore, abiFinder *ABIFinder, cfg *Config, contractAddressToNameMap ContractMap, addresses []common.Address) (*Tracer, error) {
+func NewTracer(cs *ContractStore, abiFinder *ABIFinder, cfg *Config, contractAddressToNameMap ContractMap, addresses []common.Address, logger *zerolog.Logger) (*Tracer, error) {
 	if cfg == nil {
 		return nil, errors.New("seth config is nil")
 	}
 	if cfg.Network == nil {
 		return nil, errors.New("no Network is set in the config")
+	}
+	if logger == nil {
+		l := newLogger()
+		logger = &l
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Network.DialTimeout.Duration())
@@ -152,17 +170,19 @@ func NewTracer(cs *ContractStore, abiFinder *ABIFinder, cfg *Config, contractAdd
 		ABIFinder:                abiFinder,
 		tracesMutex:              &sync.RWMutex{},
 		decodedMutex:             &sync.RWMutex{},
+		logger:                   logger,
 	}, nil
 }
 
 func (t *Tracer) TraceGethTX(txHash string) ([]*DecodedCall, error) {
+	logger := t.Logger()
 	fourByte, err := t.trace4Byte(txHash)
 	if err != nil {
-		L.Debug().Err(err).Msg("Failed to trace 4byte signatures. Some tracing data might be missing")
+		logger.Debug().Err(err).Msg("Failed to trace 4byte signatures. Some tracing data might be missing")
 	}
 	opCodesTrace, err := t.traceOpCodesTracer(txHash)
 	if err != nil {
-		L.Debug().Err(err).Msg("Failed to trace opcodes. Some tracing data will be missing")
+		logger.Debug().Err(err).Msg("Failed to trace opcodes. Some tracing data will be missing")
 	}
 
 	callTrace, err := t.traceCallTracer(txHash)
@@ -177,7 +197,8 @@ func (t *Tracer) TraceGethTX(txHash string) ([]*DecodedCall, error) {
 		OpCodesTrace: opCodesTrace,
 	})
 
-	decodedCalls, err := t.DecodeTrace(L, *t.getTrace(txHash))
+	traceLogger := logger.With().Str("Transaction", txHash).Logger()
+	decodedCalls, err := t.DecodeTrace(traceLogger, *t.getTrace(txHash))
 	if err != nil {
 		return []*DecodedCall{}, err
 	}
@@ -186,11 +207,12 @@ func (t *Tracer) TraceGethTX(txHash string) ([]*DecodedCall, error) {
 }
 
 func (t *Tracer) PrintTXTrace(txHash string) error {
+	logger := t.Logger()
 	trace := t.getTrace(txHash)
 	if trace == nil {
 		return errors.New(ErrNoTrace)
 	}
-	l := L.With().Str("Transaction", txHash).Logger()
+	l := logger.With().Str("Transaction", txHash).Logger()
 	l.Trace().Interface("4Byte", trace.FourByte).Msg("Calls function signatures (names)")
 	l.Trace().Interface("CallTrace", trace.CallTrace).Msg("Full call trace with logs")
 	return nil
@@ -241,16 +263,17 @@ func (t *Tracer) traceOpCodesTracer(txHash string) (map[string]interface{}, erro
 // DecodeTrace decodes the trace of a transaction including all subcalls. It returns a list of decoded calls.
 // Depending on the config it also saves the decoded calls as JSON files.
 func (t *Tracer) DecodeTrace(l zerolog.Logger, trace Trace) ([]*DecodedCall, error) {
+	baseLogger := t.Logger()
 	var decodedCalls []*DecodedCall
 
 	if t.ContractStore == nil {
-		L.Warn().Msg(WarnNoContractStore)
+		baseLogger.Warn().Msg(WarnNoContractStore)
 		return []*DecodedCall{}, nil
 	}
 
 	// we can still decode the calls without 4byte signatures
 	if len(trace.FourByte) == 0 {
-		L.Debug().Msg(ErrNoFourByteFound)
+		baseLogger.Debug().Msg(ErrNoFourByteFound)
 	}
 
 	methods := make([]string, 0, len(trace.CallTrace.Calls)+1)
@@ -297,7 +320,7 @@ func (t *Tracer) DecodeTrace(l zerolog.Logger, trace Trace) ([]*DecodedCall, err
 		return nil, err
 	}
 
-	decodedMainCall, err := t.decodeCall(common.Hex2Bytes(methods[0]), trace.CallTrace.AsCall())
+	decodedMainCall, err := t.decodeCall(l, common.Hex2Bytes(methods[0]), trace.CallTrace.AsCall())
 	if err != nil {
 		l.Debug().
 			Err(err).
@@ -322,7 +345,7 @@ func (t *Tracer) DecodeTrace(l zerolog.Logger, trace Trace) ([]*DecodedCall, err
 
 			methodHex := methods[methodCounter]
 			methodByte := common.Hex2Bytes(methodHex)
-			decodedSubCall, err := t.decodeCall(methodByte, call)
+			decodedSubCall, err := t.decodeCall(l, methodByte, call)
 			if err != nil {
 				l.Debug().
 					Err(err).
@@ -366,7 +389,7 @@ func (t *Tracer) DecodeTrace(l zerolog.Logger, trace Trace) ([]*DecodedCall, err
 	return decodedCalls, nil
 }
 
-func (t *Tracer) decodeCall(byteSignature []byte, rawCall Call) (*DecodedCall, error) {
+func (t *Tracer) decodeCall(l zerolog.Logger, byteSignature []byte, rawCall Call) (*DecodedCall, error) {
 	var txInput map[string]interface{}
 	var txOutput map[string]interface{}
 	var txEvents []DecodedCommonLog
@@ -397,7 +420,7 @@ func (t *Tracer) decodeCall(byteSignature []byte, rawCall Call) (*DecodedCall, e
 	if rawCall.Value != "" && rawCall.Value != "0x0" {
 		decimalValue, err := strconv.ParseInt(strings.TrimPrefix(rawCall.Value, "0x"), 16, 64)
 		if err != nil {
-			L.Debug().
+			l.Debug().
 				Err(err).
 				Str("Value", rawCall.Value).
 				Msg("Failed to parse value")
@@ -409,7 +432,7 @@ func (t *Tracer) decodeCall(byteSignature []byte, rawCall Call) (*DecodedCall, e
 	if rawCall.Gas != "" && rawCall.Gas != "0x0" {
 		decimalValue, err := strconv.ParseInt(strings.TrimPrefix(rawCall.Gas, "0x"), 16, 64)
 		if err != nil {
-			L.Debug().
+			l.Debug().
 				Err(err).
 				Str("Gas", rawCall.Gas).
 				Msg("Failed to parse value")
@@ -421,7 +444,7 @@ func (t *Tracer) decodeCall(byteSignature []byte, rawCall Call) (*DecodedCall, e
 	if rawCall.GasUsed != "" && rawCall.GasUsed != "0x0" {
 		decimalValue, err := strconv.ParseInt(strings.TrimPrefix(rawCall.GasUsed, "0x"), 16, 64)
 		if err != nil {
-			L.Debug().
+			l.Debug().
 				Err(err).
 				Str("GasUsed", rawCall.GasUsed).
 				Msg("Failed to parse value")
@@ -436,7 +459,7 @@ func (t *Tracer) decodeCall(byteSignature []byte, rawCall Call) (*DecodedCall, e
 		} else {
 			defaultCall.Comment = CommentMissingABI
 		}
-		L.Debug().
+		l.Debug().
 			Str("Method signature", common.Bytes2Hex(byteSignature)).
 			Str("Contract", rawCall.To).
 			Msgf("Method not found in any ABI instance. Unable to provide full tracing information. Reason: %s", err.Error())
@@ -448,9 +471,9 @@ func (t *Tracer) decodeCall(byteSignature []byte, rawCall Call) (*DecodedCall, e
 	defaultCall.Method = abiResult.Method.Sig
 	defaultCall.Signature = common.Bytes2Hex(abiResult.Method.ID)
 
-	txInput, err = decodeTxInputs(L, common.Hex2Bytes(strings.TrimPrefix(rawCall.Input, "0x")), abiResult.Method)
+	txInput, err = decodeTxInputs(l, common.Hex2Bytes(strings.TrimPrefix(rawCall.Input, "0x")), abiResult.Method)
 	if err != nil {
-		L.Debug().Err(err).Msg("Failed to decode inputs")
+		l.Debug().Err(err).Msg("Failed to decode inputs")
 	} else {
 		defaultCall.Input = txInput
 	}
@@ -460,18 +483,18 @@ func (t *Tracer) decodeCall(byteSignature []byte, rawCall Call) (*DecodedCall, e
 		if err != nil {
 			return defaultCall, errors.Wrap(err, ErrDecodeOutput)
 		}
-		txOutput, err = decodeTxOutputs(L, output, abiResult.Method)
+		txOutput, err = decodeTxOutputs(l, output, abiResult.Method)
 		if err != nil {
-			L.Debug().Err(err).Msg("Failed to decode outputs")
+			l.Debug().Err(err).Msg("Failed to decode outputs")
 		} else {
 			defaultCall.Output = txOutput
 		}
 
 	}
 
-	txEvents, err = t.decodeContractLogs(L, rawCall.Logs, abiResult.ABI)
+	txEvents, err = t.decodeContractLogs(l, rawCall.Logs, abiResult.ABI)
 	if err != nil {
-		L.Debug().Err(err).Msg("Failed to decode logs")
+		l.Debug().Err(err).Msg("Failed to decode logs")
 	} else {
 		defaultCall.Events = txEvents
 	}
@@ -490,6 +513,7 @@ func (t *Tracer) isOwnAddress(addr string) bool {
 }
 
 func (t *Tracer) checkForMissingCalls(trace Trace) []*DecodedCall {
+	logger := t.Logger()
 	expected := 0
 	for _, v := range trace.FourByte {
 		expected += v.Times
@@ -509,7 +533,7 @@ func (t *Tracer) checkForMissingCalls(trace Trace) []*DecodedCall {
 
 	diff := expected - actual
 	if diff != 0 {
-		L.Debug().
+		logger.Debug().
 			Int("Debugged calls", actual).
 			Int("4byte signatures", len(trace.FourByte)).
 			Msgf("Number of calls and signatures does not match. There were %d more call that were't debugged", diff)
@@ -560,7 +584,7 @@ func (t *Tracer) checkForMissingCalls(trace Trace) []*DecodedCall {
 
 			abiResult, err := t.ABIFinder.FindABIByMethod(UNKNOWN, byteSignature)
 			if err != nil {
-				L.Info().
+				logger.Info().
 					Str("Signature", missingSig).
 					Msg("Method not found in any ABI instance. Unable to provide any more tracing information")
 
@@ -660,6 +684,7 @@ func (t *Tracer) printDecodedCallData(l zerolog.Logger, calls []*DecodedCall, re
 	if !t.Cfg.hasOutput(TraceOutput_Console) {
 		return
 	}
+	logger := t.Logger()
 	var getIndentation = func(dc *DecodedCall) string {
 		var indentation string
 		for i := 0; i < dc.NestingLevel; i++ {
@@ -668,7 +693,7 @@ func (t *Tracer) printDecodedCallData(l zerolog.Logger, calls []*DecodedCall, re
 		return indentation
 	}
 
-	L.Debug().
+	logger.Debug().
 		Msg("----------- Decoding transaction trace started -----------")
 
 	for i, dc := range calls {
@@ -706,10 +731,10 @@ func (t *Tracer) printDecodedCallData(l zerolog.Logger, calls []*DecodedCall, re
 		}
 	}
 
-	L.Debug().
+	logger.Debug().
 		Msg("----------- Decoding transaction trace started -----------")
 
 	if revertErr != nil {
-		L.Error().Err(revertErr).Msg("Transaction reverted")
+		logger.Error().Err(revertErr).Msg("Transaction reverted")
 	}
 }

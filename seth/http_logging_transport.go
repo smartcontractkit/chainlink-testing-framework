@@ -8,20 +8,28 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog"
 )
 
 // LoggingTransport is a custom transport to log requests and responses
 type LoggingTransport struct {
 	Transport http.RoundTripper
+	logger    *zerolog.Logger
 }
 
 // RoundTrip implements the RoundTripper interface
 func (t *LoggingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	logger := t.logger
+	if logger == nil {
+		l := newLogger()
+		logger = &l
+	}
 	start := time.Now()
 
 	reqDump, err := httputil.DumpRequestOut(req, true)
 	if err != nil {
-		L.Warn().Err(err).Msg("Error dumping request")
+		logger.Warn().Err(err).Msg("Error dumping request")
 	} else {
 		fmt.Printf("Request:\n%s\n", string(reqDump))
 	}
@@ -38,7 +46,7 @@ func (t *LoggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 
 	respDump, err := httputil.DumpResponse(resp, true)
 	if err != nil {
-		L.Warn().Err(err).Msg("Error dumping response")
+		logger.Warn().Err(err).Msg("Error dumping response")
 	} else {
 		fmt.Printf("Response:\n%s\n", string(respDump))
 	}
@@ -49,7 +57,11 @@ func (t *LoggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 
 // NewLoggingTransport creates a new logging transport for GAP or default transport
 // controlled by SETH_LOG_LEVEL
-func NewLoggingTransport() http.RoundTripper {
+func NewLoggingTransport(logger *zerolog.Logger) http.RoundTripper {
+	if logger == nil {
+		l := newLogger()
+		logger = &l
+	}
 	if strings.EqualFold(os.Getenv(LogLevelEnvVar), "trace") {
 		return &LoggingTransport{
 			// TODO: GAP, add proper certificates
@@ -57,6 +69,7 @@ func NewLoggingTransport() http.RoundTripper {
 				//nolint
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 			},
+			logger: logger,
 		}
 	}
 

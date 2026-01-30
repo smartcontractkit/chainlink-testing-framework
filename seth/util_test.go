@@ -155,6 +155,7 @@ func TestUtilPendingNonce(t *testing.T) {
 		},
 	}
 
+	logger := c.Logger()
 	for _, testCase := range tests {
 		started := make(chan struct{})
 		ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
@@ -183,13 +184,13 @@ func TestUtilPendingNonce(t *testing.T) {
 		go func() {
 			for i := 1; i <= 5000; i++ {
 				go func(index int) {
-					seth.L.Debug().Msgf("Starting tx %d", index)
+					logger.Debug().Msgf("Starting tx %d", index)
 
 					opts := c.NewTXOpts()
 					//nolint
 					nonceToUse := int64(getNonceAndIncrement())
 					opts.Nonce = big.NewInt(nonceToUse)
-					defer seth.L.Debug().Msgf("Finished tx %d with nonce %d", index, nonceToUse)
+					defer logger.Debug().Msgf("Finished tx %d with nonce %d", index, nonceToUse)
 
 					_, _, _, err := network_sub_contract.DeployNetworkDebugSubContract(opts, c.Client)
 					require.NoError(t, err, "Error adding counter")

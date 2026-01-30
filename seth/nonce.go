@@ -6,11 +6,13 @@ import (
 	"time"
 
 	"math/big"
+	"reflect"
 	"sync"
 
 	"github.com/avast/retry-go"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"go.uber.org/ratelimit"
 )
 
@@ -32,6 +34,19 @@ type NonceManager struct {
 	Addresses   []common.Address
 	PrivateKeys []*ecdsa.PrivateKey
 	Nonces      map[common.Address]int64
+	log         *zerolog.Logger
+}
+
+func (m *NonceManager) logger() *zerolog.Logger {
+	if m == nil {
+		l := newLogger()
+		return &l
+	}
+	if m.log == nil {
+		l := newLogger()
+		m.log = &l
+	}
+	return m.log
 }
 
 type KeyNonce struct {
@@ -54,7 +69,7 @@ func validateNonceManagerConfig(nonceManagerCfg *NonceManagerCfg) error {
 }
 
 // NewNonceManager creates a new nonce manager that tracks nonce for each address
-func NewNonceManager(cfg *Config, addrs []common.Address, privKeys []*ecdsa.PrivateKey) (*NonceManager, error) {
+func NewNonceManager(cfg *Config, addrs []common.Address, privKeys []*ecdsa.PrivateKey, logger zerolog.Logger) (*NonceManager, error) {
 	if cfg == nil {
 		return nil, errors.New(ErrSethConfigIsNil)
 	}
@@ -63,6 +78,10 @@ func NewNonceManager(cfg *Config, addrs []common.Address, privKeys []*ecdsa.Priv
 	}
 	if cfgErr := validateNonceManagerConfig(cfg.NonceManager); cfgErr != nil {
 		return nil, errors.Wrap(cfgErr, "failed to validate nonce manager config")
+	}
+	nmLogger := logger
+	if reflect.ValueOf(nmLogger).IsZero() {
+		nmLogger = newLogger()
 	}
 
 	nonces := make(map[common.Address]int64)
@@ -77,12 +96,13 @@ func NewNonceManager(cfg *Config, addrs []common.Address, privKeys []*ecdsa.Priv
 		Addresses:   addrs,
 		PrivateKeys: privKeys,
 		SyncedKeys:  make(chan *KeyNonce, len(addrs)),
+		log:         &nmLogger,
 	}, nil
 }
 
 // UpdateNonces syncs nonces for addresses
 func (m *NonceManager) UpdateNonces() error {
-	L.Debug().Interface("Addrs", m.Addresses).Msg("Updating nonces for addresses")
+	m.logger().Debug().Interface("Addrs", m.Addresses).Msg("Updating nonces for addresses")
 	m.Lock()
 	defer m.Unlock()
 	for addr := range m.Nonces {
@@ -92,7 +112,7 @@ func (m *NonceManager) UpdateNonces() error {
 		}
 		m.Nonces[addr] = mustSafeInt64(nonce)
 	}
-	L.Debug().Interface("Nonces", m.Nonces).Msg("Updated nonces for addresses")
+	m.logger().Debug().Interface("Nonces", m.Nonces).Msg("Updated nonces for addresses")
 	m.SyncedKeys = make(chan *KeyNonce, len(m.Addresses))
 	for keyNum, addr := range m.Addresses[1:] {
 		m.SyncedKeys <- &KeyNonce{
@@ -121,11 +141,11 @@ func (m *NonceManager) anySyncedKey() int {
 	case <-ctx.Done():
 		m.Lock()
 		defer m.Unlock()
-		L.Error().Msg(ErrKeySyncTimeout)
+		m.logger().Error().Msg(ErrKeySyncTimeout)
 		m.Client.Errors = append(m.Client.Errors, errors.New(ErrKeySync))
 		return TimeoutKeyNum //so that it's pretty unique number of invalid key
 	case keyData := <-m.SyncedKeys:
-		L.Trace().
+		m.logger().Trace().
 			Interface("KeyNum", keyData.KeyNum).
 			Uint64("Nonce", keyData.Nonce).
 			Interface("Address", m.Addresses[keyData.KeyNum]).
@@ -134,7 +154,7 @@ func (m *NonceManager) anySyncedKey() int {
 			err := retry.Do(
 				func() error {
 					m.rl.Take()
-					L.Trace().
+					m.logger().Trace().
 						Interface("KeyNum", keyData.KeyNum).
 						Interface("Address", m.Addresses[keyData.KeyNum]).
 						Msg("Key is syncing")
@@ -143,7 +163,7 @@ func (m *NonceManager) anySyncedKey() int {
 						return errors.New(ErrNonce)
 					}
 					if nonce == keyData.Nonce+1 {
-						L.Trace().
+						m.logger().Trace().
 							Interface("KeyNum", keyData.KeyNum).
 							Uint64("Nonce", nonce).
 							Interface("Address", m.Addresses[keyData.KeyNum]).
@@ -155,7 +175,7 @@ func (m *NonceManager) anySyncedKey() int {
 						return nil
 					}
 
-					L.Trace().
+					m.logger().Trace().
 						Interface("KeyNum", keyData.KeyNum).
 						Uint64("Nonce", nonce).
 						Int("Expected nonce", mustSafeInt(keyData.Nonce+1)).

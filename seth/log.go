@@ -2,31 +2,28 @@ package seth
 
 import (
 	"os"
+	"strings"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
 const (
 	LogLevelEnvVar = "SETH_LOG_LEVEL"
 )
 
-var (
-	L zerolog.Logger
-)
-
-func init() {
-	initDefaultLogging()
-}
-
-func initDefaultLogging() {
-	lvlStr := os.Getenv(LogLevelEnvVar)
+func newLogger() zerolog.Logger {
+	lvlStr := strings.TrimSpace(os.Getenv(LogLevelEnvVar))
 	if lvlStr == "" {
-		lvlStr = "info"
+		lvlStr = zerolog.InfoLevel.String()
 	}
 	lvl, err := zerolog.ParseLevel(lvlStr)
 	if err != nil {
 		panic(err)
 	}
-	L = log.Output(zerolog.ConsoleWriter{Out: os.Stderr}).Level(lvl)
+	return zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr}).Level(lvl).With().Timestamp().Logger()
+}
+
+// NewLogger returns a zerolog.Logger configured using the environment defaults.
+func NewLogger() zerolog.Logger {
+	return newLogger()
 }

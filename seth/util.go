@@ -52,6 +52,7 @@ func NewEphemeralKeys(addrs int64) ([]string, error) {
 
 // CalculateSubKeyFunding calculates all required params to split funds from the root key to N test keys
 func (m *Client) CalculateSubKeyFunding(addrs, gasPrice, rooKeyBuffer int64) (*FundingDetails, error) {
+	logger := m.Logger()
 	if err := m.validateAddressesKeyNum(0); err != nil {
 		return nil, err
 	}
@@ -75,7 +76,7 @@ func (m *Client) CalculateSubKeyFunding(addrs, gasPrice, rooKeyBuffer int64) (*F
 	rootKeyBuffer := new(big.Int).Mul(big.NewInt(rooKeyBuffer), big.NewInt(1_000_000_000_000_000_000))
 	freeBalance := new(big.Int).Sub(balance, big.NewInt(0).Add(totalFee, rootKeyBuffer))
 
-	L.Info().
+	logger.Info().
 		Str("Balance (wei/ether)", fmt.Sprintf("%s/%s", balance.String(), WeiToEther(balance).Text('f', -1))).
 		Str("Total fee (wei/ether)", fmt.Sprintf("%s/%s", totalFee.String(), WeiToEther(totalFee).Text('f', -1))).
 		Str("Free Balance (wei/ether)", fmt.Sprintf("%s/%s", freeBalance.String(), WeiToEther(freeBalance).Text('f', -1))).
@@ -89,7 +90,7 @@ func (m *Client) CalculateSubKeyFunding(addrs, gasPrice, rooKeyBuffer int64) (*F
 	addrFunding := new(big.Int).Div(freeBalance, big.NewInt(addrs))
 	requiredBalance := big.NewInt(0).Mul(addrFunding, big.NewInt(addrs))
 
-	L.Debug().
+	logger.Debug().
 		Str("Funding per ephemeral key (wei/ether)", fmt.Sprintf("%s/%s", addrFunding.String(), WeiToEther(addrFunding).Text('f', -1))).
 		Str("Available balance (wei/ether)", fmt.Sprintf("%s/%s", freeBalance.String(), WeiToEther(freeBalance).Text('f', -1))).
 		Interface("Required balance (wei/ether)", fmt.Sprintf("%s/%s", requiredBalance.String(), WeiToEther(requiredBalance).Text('f', -1))).
@@ -106,7 +107,7 @@ func (m *Client) CalculateSubKeyFunding(addrs, gasPrice, rooKeyBuffer int64) (*F
 		AddrFunding:        addrFunding,
 		NetworkTransferFee: networkTransferFee,
 	}
-	L.Info().
+	logger.Info().
 		Interface("RootBalance", bd.RootBalance.String()).
 		Interface("RootKeyBuffer", rootKeyBuffer.String()).
 		Interface("TransferFeesTotal", bd.TotalFee.String()).
@@ -119,18 +120,19 @@ func (m *Client) CalculateSubKeyFunding(addrs, gasPrice, rooKeyBuffer int64) (*F
 }
 
 func (m *Client) DeployDebugSubContract() (*network_sub_debug_contract.NetworkDebugSubContract, common.Address, error) {
+	logger := m.Logger()
 	address, tx, instance, err := network_sub_debug_contract.DeployNetworkDebugSubContract(m.NewTXOpts(), m.Client)
 	if err != nil {
 		return nil, common.Address{}, err
 	}
-	L.Info().
+	logger.Info().
 		Str("Address", address.Hex()).
 		Str("TXHash", tx.Hash().Hex()).
 		Msg("Deploying sub-debug contract")
 	if _, err := bind.WaitDeployed(context.Background(), m.Client, tx); err != nil {
 		return nil, common.Address{}, err
 	}
-	L.Info().
+	logger.Info().
 		Str("Address", address.Hex()).
 		Str("TXHash", tx.Hash().Hex()).
 		Msg("Sub-debug contract deployed")
@@ -138,18 +140,19 @@ func (m *Client) DeployDebugSubContract() (*network_sub_debug_contract.NetworkDe
 }
 
 func (m *Client) DeployDebugContract(subDbgAddr common.Address) (*network_debug_contract.NetworkDebugContract, common.Address, error) {
+	logger := m.Logger()
 	address, tx, instance, err := network_debug_contract.DeployNetworkDebugContract(m.NewTXOpts(), m.Client, subDbgAddr)
 	if err != nil {
 		return nil, common.Address{}, err
 	}
-	L.Info().
+	logger.Info().
 		Str("Address", address.Hex()).
 		Str("TXHash", tx.Hash().Hex()).
 		Msg("Deploying debug contract")
 	if _, err := bind.WaitDeployed(context.Background(), m.Client, tx); err != nil {
 		return nil, common.Address{}, err
 	}
-	L.Info().
+	logger.Info().
 		Str("Address", address.Hex()).
 		Str("TXHash", tx.Hash().Hex()).
 		Msg("Debug contract deployed")
