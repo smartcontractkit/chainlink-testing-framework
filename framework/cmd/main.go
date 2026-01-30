@@ -157,11 +157,11 @@ Prerequisites:
 Usage:
 
 	Generate basic kill/latency tests:
-		ctf gen k8s-load my-namespace
+		ctf gen load my-namespace
 	With workload:
-		ctf gen k8s-load -w my-namespace
+		ctf gen load -w my-namespace
 	With workload and name:
-		ctf gen k8s-load -w -n TestSomething my-namespace
+		ctf gen load -w -n TestSomething my-namespace
 
 Be aware that any TODO requires your attention before your run the final test!
 `,

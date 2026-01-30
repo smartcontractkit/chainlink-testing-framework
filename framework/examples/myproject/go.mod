@@ -18,7 +18,7 @@ require (
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.12.6
 	github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake v0.0.0-20250707095700-c7855f06ddd1
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.50.10
-	github.com/smartcontractkit/chainlink-testing-framework/wasp v1.51.1
+	github.com/smartcontractkit/chainlink-testing-framework/wasp v1.51.2
 	github.com/smartcontractkit/chainlink/v2 v2.20.0
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.37.0

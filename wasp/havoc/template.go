@@ -35,6 +35,8 @@ func NewNamespaceRunner(l zerolog.Logger, c client.Client, remove bool) *Namespa
 }
 
 type PodPartitionCfg struct {
+	Mode                  v1alpha1.SelectorMode
+	Value                 string
 	Namespace             string
 	Description           string
 	LabelFromKey          string
@@ -49,6 +51,9 @@ type PodPartitionCfg struct {
 // It configures the experiment based on the provided PodPartitionCfg and executes it.
 // This function is useful for testing the resilience of applications under network partition scenarios.
 func (cr *NamespaceScopedChaosRunner) RunPodPartition(ctx context.Context, cfg PodPartitionCfg) (*Chaos, error) {
+	if cfg.Mode == "" {
+		cfg.Mode = v1alpha1.OneMode
+	}
 	experiment, err := NewChaos(ChaosOpts{
 		Object: &v1alpha1.NetworkChaos{
 			TypeMeta: metav1.TypeMeta{
@@ -63,7 +68,8 @@ func (cr *NamespaceScopedChaosRunner) RunPodPartition(ctx context.Context, cfg P
 				Action:   v1alpha1.PartitionAction,
 				Duration: ptr.To[string]((cfg.InjectionDuration).String()),
 				PodSelector: v1alpha1.PodSelector{
-					Mode: v1alpha1.AllMode,
+					Mode:  cfg.Mode,
+					Value: cfg.Value,
 					Selector: v1alpha1.PodSelectorSpec{
 						GenericSelectorSpec: v1alpha1.GenericSelectorSpec{
 							Namespaces: []string{cfg.Namespace},
@@ -107,6 +113,8 @@ func (cr *NamespaceScopedChaosRunner) RunPodPartition(ctx context.Context, cfg P
 }
 
 type PodDelayCfg struct {
+	Mode                  v1alpha1.SelectorMode
+	Value                 string
 	Namespace             string
 	Description           string
 	Latency               time.Duration
@@ -122,6 +130,9 @@ type PodDelayCfg struct {
 // It configures the delay parameters and applies them to the targeted namespace.
 // This function is useful for testing the resilience of applications under network latency conditions.
 func (cr *NamespaceScopedChaosRunner) RunPodDelay(ctx context.Context, cfg PodDelayCfg) (*Chaos, error) {
+	if cfg.Mode == "" {
+		cfg.Mode = v1alpha1.OneMode
+	}
 	experiment, err := NewChaos(ChaosOpts{
 		Object: &v1alpha1.NetworkChaos{
 			TypeMeta: metav1.TypeMeta{
@@ -143,7 +154,8 @@ func (cr *NamespaceScopedChaosRunner) RunPodDelay(ctx context.Context, cfg PodDe
 					},
 				},
 				PodSelector: v1alpha1.PodSelector{
-					Mode: v1alpha1.AllMode,
+					Mode:  cfg.Mode,
+					Value: cfg.Value,
 					Selector: v1alpha1.PodSelectorSpec{
 						GenericSelectorSpec: v1alpha1.GenericSelectorSpec{
 							Namespaces: []string{cfg.Namespace},
@@ -172,6 +184,8 @@ func (cr *NamespaceScopedChaosRunner) RunPodDelay(ctx context.Context, cfg PodDe
 }
 
 type PodFailCfg struct {
+	Mode                  v1alpha1.SelectorMode
+	Value                 string
 	Namespace             string
 	Description           string
 	LabelKey              string
@@ -184,6 +198,9 @@ type PodFailCfg struct {
 // It creates a Chaos object that simulates pod failures for a specified duration,
 // allowing users to test the resilience of their applications under failure conditions.
 func (cr *NamespaceScopedChaosRunner) RunPodFail(ctx context.Context, cfg PodFailCfg) (*Chaos, error) {
+	if cfg.Mode == "" {
+		cfg.Mode = v1alpha1.OneMode
+	}
 	experiment, err := NewChaos(ChaosOpts{
 		Description: cfg.Description,
 		DelayCreate: cfg.ExperimentCreateDelay,
@@ -201,7 +218,8 @@ func (cr *NamespaceScopedChaosRunner) RunPodFail(ctx context.Context, cfg PodFai
 				Duration: ptr.To[string](cfg.InjectionDuration.String()),
 				ContainerSelector: v1alpha1.ContainerSelector{
 					PodSelector: v1alpha1.PodSelector{
-						Mode: v1alpha1.AllMode,
+						Mode:  cfg.Mode,
+						Value: cfg.Value,
 						Selector: v1alpha1.PodSelectorSpec{
 							GenericSelectorSpec: v1alpha1.GenericSelectorSpec{
 								Namespaces: []string{cfg.Namespace},
@@ -231,6 +249,8 @@ func (cr *NamespaceScopedChaosRunner) RunPodFail(ctx context.Context, cfg PodFai
 }
 
 type NodeCPUStressConfig struct {
+	Mode                    v1alpha1.SelectorMode
+	Value                   string
 	Namespace               string
 	Description             string
 	Cores                   int
@@ -246,6 +266,9 @@ type NodeCPUStressConfig struct {
 // It creates a scheduled chaos experiment that applies CPU load based on the provided configuration.
 // This function is useful for testing the resilience of applications under CPU stress conditions.
 func (cr *NamespaceScopedChaosRunner) RunPodStressCPU(ctx context.Context, cfg NodeCPUStressConfig) (*Chaos, error) {
+	if cfg.Mode == "" {
+		cfg.Mode = v1alpha1.OneMode
+	}
 	experiment, err := NewChaos(ChaosOpts{
 		Description: cfg.Description,
 		DelayCreate: cfg.ExperimentCreateDelay,
@@ -268,7 +291,8 @@ func (cr *NamespaceScopedChaosRunner) RunPodStressCPU(ctx context.Context, cfg N
 						StressChaos: &v1alpha1.StressChaosSpec{
 							ContainerSelector: v1alpha1.ContainerSelector{
 								PodSelector: v1alpha1.PodSelector{
-									Mode: v1alpha1.AllMode,
+									Mode:  cfg.Mode,
+									Value: cfg.Value,
 									Selector: v1alpha1.PodSelectorSpec{
 										GenericSelectorSpec: v1alpha1.GenericSelectorSpec{
 											Namespaces: []string{cfg.Namespace},
@@ -310,6 +334,8 @@ func (cr *NamespaceScopedChaosRunner) RunPodStressCPU(ctx context.Context, cfg N
 }
 
 type PodCorruptCfg struct {
+	Mode                  v1alpha1.SelectorMode
+	Value                 string
 	Namespace             string
 	Description           string
 	Corrupt               string
@@ -322,6 +348,9 @@ type PodCorruptCfg struct {
 
 // RunPodCorrupt initiates packet corruption for some pod in some namespace
 func (cr *NamespaceScopedChaosRunner) RunPodCorrupt(ctx context.Context, cfg PodCorruptCfg) (*Chaos, error) {
+	if cfg.Mode == "" {
+		cfg.Mode = v1alpha1.OneMode
+	}
 	experiment, err := NewChaos(ChaosOpts{
 		Object: &v1alpha1.NetworkChaos{
 			TypeMeta: metav1.TypeMeta{
@@ -342,7 +371,8 @@ func (cr *NamespaceScopedChaosRunner) RunPodCorrupt(ctx context.Context, cfg Pod
 					},
 				},
 				PodSelector: v1alpha1.PodSelector{
-					Mode: v1alpha1.AllMode,
+					Mode:  cfg.Mode,
+					Value: cfg.Value,
 					Selector: v1alpha1.PodSelectorSpec{
 						GenericSelectorSpec: v1alpha1.GenericSelectorSpec{
 							Namespaces: []string{cfg.Namespace},
@@ -371,6 +401,8 @@ func (cr *NamespaceScopedChaosRunner) RunPodCorrupt(ctx context.Context, cfg Pod
 }
 
 type PodLossCfg struct {
+	Mode                  v1alpha1.SelectorMode
+	Value                 string
 	Namespace             string
 	Description           string
 	Loss                  string
@@ -383,6 +415,9 @@ type PodLossCfg struct {
 
 // RunPodLoss initiates packet loss for some pod in some namespace
 func (cr *NamespaceScopedChaosRunner) RunPodLoss(ctx context.Context, cfg PodLossCfg) (*Chaos, error) {
+	if cfg.Mode == "" {
+		cfg.Mode = v1alpha1.OneMode
+	}
 	experiment, err := NewChaos(ChaosOpts{
 		Object: &v1alpha1.NetworkChaos{
 			TypeMeta: metav1.TypeMeta{
@@ -403,7 +438,8 @@ func (cr *NamespaceScopedChaosRunner) RunPodLoss(ctx context.Context, cfg PodLos
 					},
 				},
 				PodSelector: v1alpha1.PodSelector{
-					Mode: v1alpha1.AllMode,
+					Mode:  cfg.Mode,
+					Value: cfg.Value,
 					Selector: v1alpha1.PodSelectorSpec{
 						GenericSelectorSpec: v1alpha1.GenericSelectorSpec{
 							Namespaces: []string{cfg.Namespace},
