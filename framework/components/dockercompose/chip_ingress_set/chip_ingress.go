@@ -13,6 +13,7 @@ import (
 
 	networkTypes "github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 	"github.com/pkg/errors"
 	"github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -81,6 +82,9 @@ const (
 
 	DEFAULT_RED_PANDA_CONSOLE_SERVICE_NAME = "redpanda-console"
 	DEFAULT_RED_PANDA_CONSOLE_PORT         = "8080"
+
+	ChipIngressGRPCHostPortEnvVar = "CHIP_INGRESS_GRPC_HOST_PORT"
+	ChipIngressGRPCPortEnvVar     = "CHIP_INGRESS_GRPC_PORT"
 )
 
 func New(in *Input) (*Output, error) {
@@ -123,6 +127,8 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	envVars := make(map[string]string)
 	envVars["BASIC_AUTH_ENABLED"] = "false"
 	envVars["BASIC_AUTH_PREFIX"] = ""
+	envVars[ChipIngressGRPCHostPortEnvVar] = DEFAULT_CHIP_INGRESS_GRPC_PORT
+	envVars[ChipIngressGRPCPortEnvVar] = DEFAULT_CHIP_INGRESS_GRPC_PORT
 
 	for _, env := range os.Environ() {
 		pair := strings.SplitN(env, "=", 2)
@@ -139,11 +145,21 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		return nil, errors.Wrap(upErr, "failed to start stack for Chip Ingress")
 	}
 
+	chipIngressGRPCHostPort := DEFAULT_CHIP_INGRESS_GRPC_PORT
+	if v, ok := envVars[ChipIngressGRPCHostPortEnvVar]; ok && v != "" {
+		chipIngressGRPCHostPort = v
+	}
+
+	chipIngressGRPCPort := DEFAULT_CHIP_INGRESS_GRPC_PORT
+	if v, ok := envVars[ChipIngressGRPCPortEnvVar]; ok && v != "" {
+		chipIngressGRPCPort = v
+	}
+
 	stack.WaitForService(DEFAULT_CHIP_INGRESS_SERVICE_NAME,
 		wait.ForAll(
 			wait.ForLog("GRPC server is live").WithPollInterval(100*time.Millisecond),
-			wait.ForListeningPort(DEFAULT_CHIP_INGRESS_GRPC_PORT).WithPollInterval(100*time.Millisecond),
-			wait.NewHostPortStrategy(DEFAULT_CHIP_INGRESS_GRPC_PORT).WithPollInterval(100*time.Millisecond),
+			wait.ForListeningPort(nat.Port(chipIngressGRPCPort)).WithPollInterval(100*time.Millisecond),
+			wait.NewHostPortStrategy(nat.Port(chipIngressGRPCHostPort)).WithPollInterval(100*time.Millisecond),
 		).WithDeadline(2*time.Minute),
 	).WaitForService(DEFAULT_RED_PANDA_SERVICE_NAME,
 		wait.ForAll(
@@ -239,8 +255,8 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 
 	output := &Output{
 		ChipIngress: &ChipIngressOutput{
-			GRPCInternalURL: fmt.Sprintf("%s:%s", DEFAULT_CHIP_INGRESS_SERVICE_NAME, DEFAULT_CHIP_INGRESS_GRPC_PORT),
-			GRPCExternalURL: fmt.Sprintf("%s:%s", chipIngressExternalHost, DEFAULT_CHIP_INGRESS_GRPC_PORT),
+			GRPCInternalURL: fmt.Sprintf("%s:%s", DEFAULT_CHIP_INGRESS_SERVICE_NAME, chipIngressGRPCPort),
+			GRPCExternalURL: fmt.Sprintf("%s:%s", chipIngressExternalHost, chipIngressGRPCHostPort),
 		},
 		ChipConfig: &ChipConfigOutput{
 			GRPCInternalURL: fmt.Sprintf("%s:%s", DEFAULT_CHIP_CONFIG_SERVICE_NAME, DEFAULT_CHIP_CONFIG_INTERNAL_PORT),
