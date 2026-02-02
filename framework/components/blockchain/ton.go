@@ -72,14 +72,14 @@ func newTon(ctx context.Context, in *Input) (*Output, error) {
 		}
 	}
 
-	network, err := network.New(ctx,
+	n, err := network.New(ctx,
 		network.WithAttachable(),
 		network.WithLabels(framework.DefaultTCLabels()),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create network: %w", err)
 	}
-	networkName := network.Name
+	networkName := n.Name
 
 	req := testcontainers.ContainerRequest{
 		Image:           in.Image,
