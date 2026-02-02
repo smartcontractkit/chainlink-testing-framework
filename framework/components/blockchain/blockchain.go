@@ -21,23 +21,25 @@ const (
 	TypeTron        = "tron"
 	TypeTon         = "ton"
 	TypeCanton      = "canton"
+	TypeStellar     = "stellar"
 )
 
 // Blockchain node family
 const (
-	FamilyEVM    = "evm"
-	FamilySolana = "solana"
-	FamilyAptos  = "aptos"
-	FamilySui    = "sui"
-	FamilyTron   = "tron"
-	FamilyTon    = "ton"
-	FamilyCanton = "canton"
+	FamilyEVM     = "evm"
+	FamilySolana  = "solana"
+	FamilyAptos   = "aptos"
+	FamilySui     = "sui"
+	FamilyTron    = "tron"
+	FamilyTon     = "ton"
+	FamilyCanton  = "canton"
+	FamilyStellar = "stellar"
 )
 
 // Input is a blockchain network configuration params
 type Input struct {
 	// Common EVM fields
-	Type          string `toml:"type" validate:"required,oneof=anvil geth besu solana aptos tron sui ton canton" envconfig:"net_type" comment:"Type can be one of: anvil geth besu solana aptos tron sui ton canton, this struct describes common configuration we are using across all blockchains"`
+	Type          string `toml:"type" validate:"required,oneof=anvil geth besu solana aptos tron sui ton canton stellar" envconfig:"net_type" comment:"Type can be one of: anvil geth besu solana aptos tron sui ton canton stellar, this struct describes common configuration we are using across all blockchains"`
 	Image         string `toml:"image" comment:"Blockchain node image in format: $registry:$image, ex.: ghcr.io/foundry-rs/foundry:stable"`
 	PullImage     bool   `toml:"pull_image" comment:"Whether to pull image or not when creating Docker container"`
 	Port          string `toml:"port" comment:"The port Docker container will expose"`
@@ -78,8 +80,8 @@ type Input struct {
 // Output is a blockchain network output, ChainID and one or more nodes that forms the network
 type Output struct {
 	UseCache            bool                     `toml:"use_cache" comment:"Whether to respect caching or not, if cache = true component won't be deployed again"`
-	Type                string                   `toml:"type" comment:"Type can be one of: anvil geth besu solana aptos tron sui ton canton, this struct describes common configuration we are using across all blockchains"`
-	Family              string                   `toml:"family" comment:"Blockchain family, can be one of: evm solana aptos sui tron ton canton"`
+	Type                string                   `toml:"type" comment:"Type can be one of: anvil geth besu solana aptos tron sui ton canton stellar, this struct describes common configuration we are using across all blockchains"`
+	Family              string                   `toml:"family" comment:"Blockchain family, can be one of: evm solana aptos sui tron ton canton stellar"`
 	ContainerName       string                   `toml:"container_name" comment:"Blockchain Docker container name"`
 	NetworkSpecificData *NetworkSpecificData     `toml:"network_specific_data" comment:"Blockchain network-specific data"`
 	Container           testcontainers.Container `toml:"-"`
@@ -88,8 +90,9 @@ type Output struct {
 }
 
 type NetworkSpecificData struct {
-	SuiAccount      *SuiWalletInfo   `toml:"sui_account" comment:"Sui network account info"`
-	CantonEndpoints *CantonEndpoints `toml:"canton_endpoints" comment:"Canton network endpoints info"`
+	SuiAccount      *SuiWalletInfo      `toml:"sui_account" comment:"Sui network account info"`
+	CantonEndpoints *CantonEndpoints    `toml:"canton_endpoints" comment:"Canton network endpoints info"`
+	StellarNetwork  *StellarNetworkInfo `toml:"stellar_network" comment:"Stellar network info"`
 }
 
 // Node represents blockchain node output, URLs required for connection locally and inside docker network
@@ -130,6 +133,8 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		out, err = newTon(ctx, in)
 	case TypeCanton:
 		out, err = newCanton(ctx, in)
+	case TypeStellar:
+		out, err = newStellar(ctx, in)
 	default:
 		return nil, fmt.Errorf("blockchain type is not supported or empty, must be 'anvil' or 'geth'")
 	}
@@ -158,6 +163,8 @@ func TypeToFamily(t string) (ChainFamily, error) {
 		return ChainFamily(FamilyTon), nil
 	case TypeCanton:
 		return ChainFamily(FamilyCanton), nil
+	case TypeStellar:
+		return ChainFamily(FamilyStellar), nil
 	default:
 		return "", fmt.Errorf("blockchain type is not supported or empty: %s", t)
 	}
