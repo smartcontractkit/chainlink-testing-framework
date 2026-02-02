@@ -79,6 +79,7 @@ func newTon(ctx context.Context, in *Input) (*Output, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create network: %w", err)
 	}
+
 	networkName := n.Name
 
 	req := testcontainers.ContainerRequest{
