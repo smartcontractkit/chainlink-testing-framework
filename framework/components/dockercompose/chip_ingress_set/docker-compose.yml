@@ -3,7 +3,7 @@ services:
 
   chip-ingress:
     # added image (instead of build) to use image created by a setup script
-    image: ${CHIP_INGRESS_IMAGE:-chip-ingress:local-cre}
+    image: ${CHIP_INGRESS_IMAGE:-}
     container_name: chip-ingress
     depends_on:
       - redpanda-0
@@ -49,7 +49,7 @@ services:
       retries: 10
 
   chip-config:
-    image: ${CHIP_CONFIG_IMAGE:-chip-config:local-cre}
+    image: ${CHIP_CONFIG_IMAGE:-}
     container_name: chip-config
     hostname: chip-config
     command:
