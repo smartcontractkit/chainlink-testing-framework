@@ -122,7 +122,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 
-	// Start the stackwith all environment variables from the host process
+	// Start the stack with all environment variables from the host process
 	// set BASIC_AUTH_ENABLED and BASIC_AUTH_PREFIX to false and empty string and allow them to be overridden by the host process
 	envVars := make(map[string]string)
 	envVars["BASIC_AUTH_ENABLED"] = "false"
@@ -136,6 +136,16 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 			envVars[pair[0]] = pair[1]
 		}
 	}
+
+	if _, ok := envVars["CHIP_INGRESS_IMAGE"]; !ok {
+		return nil, errors.New("CHIP_INGRESS_IMAGE env var is not set")
+	}
+
+	if _, ok := envVars["CHIP_CONFIG_IMAGE"]; !ok {
+		return nil, errors.New("CHIP_CONFIG_IMAGE env var is not set")
+	}
+
+	fmt.Printf("Chip Ingress image: %s | Chip Config image: %s\n", envVars["CHIP_INGRESS_IMAGE"], envVars["CHIP_CONFIG_IMAGE"])
 
 	upErr := stack.
 		WithEnv(envVars).
