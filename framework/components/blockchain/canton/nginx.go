@@ -53,7 +53,7 @@ http {
 }
 `
 
-func getNginxTemplate(numberOfValidators int) string {
+func getNginxTemplate(numberOfValidators int, enableSplice bool) string {
 	template := `
 # SV
 server {
@@ -96,9 +96,11 @@ server {
     server_name sv.admin-api.localhost;
     location / {
         grpc_pass grpc://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX}00;
-    }
+	}
 }
-
+`
+	if enableSplice {
+		template += `
 server {
     listen 		8080;
     server_name sv.validator-api.localhost;
@@ -121,7 +123,8 @@ server {
 		proxy_pass http://${SPLICE_CONTAINER_NAME}:5012/registry;
 	}
 }
-	`
+`
+	}
 
 	// Add additional validators
 	for i := 1; i <= numberOfValidators; i++ {
@@ -169,7 +172,9 @@ server {
 			grpc_pass grpc://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX}%02[1]d;
 		}
 	}
-	
+`, i)
+		if enableSplice {
+			template += fmt.Sprintf(`
 	server {
 		listen 		8080;
 		server_name participant%[1]d.validator-api.localhost;
@@ -179,6 +184,12 @@ server {
 		}
 	}
 		`, i)
+		}
+	}
+
+	// Ensure template ends with a newline
+	if !strings.HasSuffix(template, "\n") {
+		template += "\n"
 	}
 
 	return template
@@ -189,6 +200,7 @@ func NginxContainerRequest(
 	port string,
 	cantonContainerName string,
 	spliceContainerName string,
+	enableSplice bool,
 ) testcontainers.ContainerRequest {
 	nginxContainerName := framework.DefaultTCName("nginx")
 	nginxReq := testcontainers.ContainerRequest{
@@ -200,24 +212,33 @@ func NginxContainerRequest(
 		},
 		WaitingFor:   wait.ForHTTP("/readyz").WithStartupTimeout(time.Second * 10),
 		ExposedPorts: []string{fmt.Sprintf("%s:8080", port)},
-		Env: map[string]string{
-			"CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX": DefaultHTTPHealthcheckPortPrefix,
-			"CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX": DefaultGRPCHealthcheckPortPrefix,
-			"CANTON_PARTICIPANT_JSON_API_PORT_PREFIX":         DefaultParticipantJsonApiPortPrefix,
-			"CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX":        DefaultParticipantAdminApiPortPrefix,
-			"CANTON_PARTICIPANT_LEDGER_API_PORT_PREFIX":       DefaultLedgerApiPortPrefix,
-			"SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX":          DefaultSpliceValidatorAdminApiPortPrefix,
-
-			"CANTON_CONTAINER_NAME": cantonContainerName,
-			"SPLICE_CONTAINER_NAME": spliceContainerName,
-		},
+		Env: func() map[string]string {
+			env := map[string]string{
+				"CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX": DefaultHTTPHealthcheckPortPrefix,
+				"CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX": DefaultGRPCHealthcheckPortPrefix,
+				"CANTON_PARTICIPANT_JSON_API_PORT_PREFIX":         DefaultParticipantJsonApiPortPrefix,
+				"CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX":        DefaultParticipantAdminApiPortPrefix,
+				"CANTON_PARTICIPANT_LEDGER_API_PORT_PREFIX":       DefaultLedgerApiPortPrefix,
+				"CANTON_CONTAINER_NAME":                           cantonContainerName,
+			}
+			// Always set Splice variables to avoid envsubst issues, even if Splice is disabled
+			// (they won't be used in the template when enableSplice is false)
+			if enableSplice {
+				env["SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX"] = DefaultSpliceValidatorAdminApiPortPrefix
+				env["SPLICE_CONTAINER_NAME"] = spliceContainerName
+			} else {
+				env["SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX"] = ""
+				env["SPLICE_CONTAINER_NAME"] = ""
+			}
+			return env
+		}(),
 		Files: []testcontainers.ContainerFile{
 			{
 				Reader:            strings.NewReader(nginxConfig),
 				ContainerFilePath: "/etc/nginx/nginx.conf",
 				FileMode:          0755,
 			}, {
-				Reader:            strings.NewReader(getNginxTemplate(numberOfValidators)),
+				Reader:            strings.NewReader(getNginxTemplate(numberOfValidators, enableSplice)),
 				ContainerFilePath: "/etc/nginx/templates/participants.conf.template",
 				FileMode:          0755,
 			},

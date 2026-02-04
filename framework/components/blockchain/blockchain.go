@@ -65,7 +65,8 @@ type Input struct {
 	FaucetPort string `toml:"faucet_port" comment:"Sui blockchain network faucet port"`
 
 	// Canton specific
-	NumberOfCantonValidators int `toml:"number_of_canton_validators" comment:"Number of Canton network validators"`
+	NumberOfCantonValidators int  `toml:"number_of_canton_validators" comment:"Number of Canton network validators"`
+	EnableSplice             bool `toml:"enable_splice" comment:"Whether to enable Splice service for Canton network (default: false). Splice is only needed when interacting with CC (Cross-Chain) features."`
 
 	// GAPv2 specific params
 	HostNetworkMode  bool   `toml:"host_network_mode" comment:"GAPv2 specific paramter: host netowork mode, if 'true' will run environment in host network mode"`

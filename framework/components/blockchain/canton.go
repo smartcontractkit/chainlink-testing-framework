@@ -50,9 +50,10 @@ type CantonParticipantEndpoints struct {
 }
 
 // newCanton sets up a Canton blockchain network with the specified number of validators.
-// It creates a Docker network and starts the necessary containers for Postgres, Canton, Splice, and an Nginx reverse proxy.
+// It creates a Docker network and starts the necessary containers for Postgres, Canton, optionally Splice, and an Nginx reverse proxy.
 //
-// Startup timeout: note spinning up a Canton network can take several minutes due to the initialization of  the Splice service.
+// Startup timeout: note spinning up a Canton network can take several minutes if Splice is enabled due to the initialization of the Splice service.
+// By default, Splice is disabled (EnableSplice=false) to reduce startup time. Enable it only when interacting with CC (Cross-Chain) features.
 // tests utilizing this function should set an appropriate timeout to accommodate for this. CTF will time out after 1 hour by default.
 //
 // The reverse proxy is used to allow access to all validator participants through a single HTTP endpoint.
@@ -101,18 +102,22 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 		return nil, err
 	}
 
-	// Set up Splice container
-	spliceReq := canton.SpliceContainerRequest(in.NumberOfCantonValidators, in.Image, postgresReq.Name, cantonReq.Name)
-	_, err = testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: spliceReq,
-		Started:          true,
-	})
-	if err != nil {
-		return nil, err
+	// Set up Splice container (optional, only if enabled)
+	var spliceContainerName string
+	if in.EnableSplice {
+		spliceReq := canton.SpliceContainerRequest(in.NumberOfCantonValidators, in.Image, postgresReq.Name, cantonReq.Name)
+		_, err = testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+			ContainerRequest: spliceReq,
+			Started:          true,
+		})
+		if err != nil {
+			return nil, err
+		}
+		spliceContainerName = spliceReq.Name
 	}
 
 	// Set up Nginx container
-	nginxReq := canton.NginxContainerRequest(in.NumberOfCantonValidators, in.Port, cantonReq.Name, spliceReq.Name)
+	nginxReq := canton.NginxContainerRequest(in.NumberOfCantonValidators, in.Port, cantonReq.Name, spliceContainerName, in.EnableSplice)
 	nginxContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: nginxReq,
 		Started:          true,
