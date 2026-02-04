@@ -3,12 +3,11 @@ package blockchain
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/network"
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
@@ -23,13 +22,7 @@ const (
 	defaultTonHTTPServerPort   = "8000"
 	defaultLiteServerPort      = "40000"
 	defaultLiteServerPublicKey = "E7XwFSQzNkcRepUC23J2nRpASXpnsEKmyyHYV4u/FZY="
-	liteServerPortOffset       = 100 // arbitrary offset for lite server port
 )
-
-type portMapping struct {
-	HTTPServer string
-	LiteServer string
-}
 
 func defaultTon(in *Input) {
 	if in.Image == "" {
@@ -43,15 +36,7 @@ func defaultTon(in *Input) {
 func newTon(ctx context.Context, in *Input) (*Output, error) {
 	defaultTon(in)
 
-	base, err := strconv.Atoi(in.Port)
-	if err != nil {
-		return nil, fmt.Errorf("invalid base port %s: %w", in.Port, err)
-	}
-
-	ports := &portMapping{
-		HTTPServer: in.Port,
-		LiteServer: strconv.Itoa(base + liteServerPortOffset),
-	}
+	containerName := framework.DefaultTCName("ton-genesis")
 
 	baseEnv := map[string]string{
 		"GENESIS": "true",
@@ -72,31 +57,20 @@ func newTon(ctx context.Context, in *Input) (*Output, error) {
 		}
 	}
 
-	n, err := network.New(ctx,
-		network.WithAttachable(),
-		network.WithLabels(framework.DefaultTCLabels()),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create network: %w", err)
-	}
-
-	networkName := n.Name
-
 	req := testcontainers.ContainerRequest{
 		Image:           in.Image,
 		AlwaysPullImage: in.PullImage,
-		Name:            framework.DefaultTCName("ton-genesis"),
+		Name:            containerName,
 		ExposedPorts: []string{
-			fmt.Sprintf("%s:%s/tcp", ports.HTTPServer, defaultTonHTTPServerPort),
-			fmt.Sprintf("%s:%s/tcp", ports.LiteServer, defaultLiteServerPort),
-			"40003/udp",
-			"40002/tcp",
-			"40001/udp",
+			fmt.Sprintf("%s/tcp", defaultTonHTTPServerPort),
+			fmt.Sprintf("%s/tcp", defaultLiteServerPort),
 		},
-		Networks:       []string{networkName},
-		NetworkAliases: map[string][]string{networkName: {"genesis"}},
-		Labels:         framework.DefaultTCLabels(),
-		Env:            finalEnv,
+		Networks: []string{framework.DefaultNetworkName},
+		NetworkAliases: map[string][]string{
+			framework.DefaultNetworkName: {containerName},
+		},
+		Labels: framework.DefaultTCLabels(),
+		Env:    finalEnv,
 		WaitingFor: wait.ForExec([]string{
 			"/usr/local/bin/lite-client",
 			"-a", fmt.Sprintf("127.0.0.1:%s", defaultLiteServerPort),
@@ -105,15 +79,29 @@ func newTon(ctx context.Context, in *Input) (*Output, error) {
 		}).WithStartupTimeout(2 * time.Minute),
 		Mounts: testcontainers.ContainerMounts{
 			{
-				Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("shared-data-%s", networkName)},
+				Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("ton-data-%s", containerName)},
 				Target: "/usr/share/data",
 			},
 			{
-				Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("ton-db-%s", networkName)},
+				Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("ton-db-%s", containerName)},
 				Target: "/var/ton-work/db",
 			},
 		},
 		HostConfigModifier: func(h *container.HostConfig) {
+			h.PortBindings = nat.PortMap{
+				nat.Port(fmt.Sprintf("%s/tcp", defaultTonHTTPServerPort)): []nat.PortBinding{
+					{
+						HostIP:   "0.0.0.0",
+						HostPort: in.Port,
+					},
+				},
+				nat.Port(fmt.Sprintf("%s/tcp", defaultLiteServerPort)): []nat.PortBinding{
+					{
+						HostIP:   "0.0.0.0",
+						HostPort: "", // Docker assigns a dynamic available port
+					},
+				},
+			}
 			framework.ResourceLimitsFunc(h, in.ContainerResources)
 		},
 	}
@@ -126,14 +114,18 @@ func newTon(ctx context.Context, in *Input) (*Output, error) {
 		return nil, err
 	}
 
-	host, err := c.Host(ctx)
+	host, err := framework.GetHostWithContext(ctx, c)
 	if err != nil {
 		return nil, err
 	}
 
-	name, err := c.Name(ctx)
+	httpMappedPort, err := c.MappedPort(ctx, nat.Port(fmt.Sprintf("%s/tcp", defaultTonHTTPServerPort)))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get mapped HTTP port: %w", err)
+	}
+	lsMappedPort, err := c.MappedPort(ctx, nat.Port(fmt.Sprintf("%s/tcp", defaultLiteServerPort)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get mapped LiteServer port: %w", err)
 	}
 
 	return &Output{
@@ -141,12 +133,13 @@ func newTon(ctx context.Context, in *Input) (*Output, error) {
 		ChainID:       in.ChainID,
 		Type:          in.Type,
 		Family:        FamilyTon,
-		ContainerName: name,
+		ContainerName: containerName,
 		Container:     c,
 		Nodes: []*Node{{
-			// URLs now contain liteserver://publickey@host:port
-			ExternalHTTPUrl: fmt.Sprintf("liteserver://%s@%s:%s", defaultLiteServerPublicKey, host, ports.LiteServer),
-			InternalHTTPUrl: fmt.Sprintf("liteserver://%s@%s:%s", defaultLiteServerPublicKey, name, ports.LiteServer),
+			ExternalHTTPUrl: fmt.Sprintf("liteserver://%s@%s:%s", defaultLiteServerPublicKey, host, lsMappedPort.Port()),
+			InternalHTTPUrl: fmt.Sprintf("li1teserver://%s@%s:%s", defaultLiteServerPublicKey, containerName, defaultLiteServerPort),
+			ExternalWSUrl:   fmt.Sprintf("http://%s:%s", host, httpMappedPort.Port()),
+			InternalWSUrl:   fmt.Sprintf("http://%s:%s", containerName, defaultTonHTTPServerPort),
 		}},
 	}, nil
 }
