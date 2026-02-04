@@ -124,14 +124,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 
-	// Start the stack with all environment variables from the host process
-	// set BASIC_AUTH_ENABLED and BASIC_AUTH_PREFIX to false and empty string and allow them to be overridden by the host process
 	envVars := make(map[string]string)
-	envVars["BASIC_AUTH_ENABLED"] = "false"
-	envVars["BASIC_AUTH_PREFIX"] = ""
-	envVars[ChipIngressGRPCHostPortEnvVar] = DEFAULT_CHIP_INGRESS_GRPC_PORT
-	envVars[ChipIngressGRPCPortEnvVar] = DEFAULT_CHIP_INGRESS_GRPC_PORT
-
 	for _, env := range os.Environ() {
 		pair := strings.SplitN(env, "=", 2)
 		if len(pair) == 2 {

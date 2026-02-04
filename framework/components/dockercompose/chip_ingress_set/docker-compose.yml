@@ -12,7 +12,7 @@ services:
     command: ["write-service"]
     environment:
       SERVER_HOST: "0.0.0.0"
-      SERVER_GRPC_PORT: "${CHIP_INGRESS_GRPC_PORT}"
+      SERVER_GRPC_PORT: "${CHIP_INGRESS_GRPC_PORT:-50051}"
       SERVER_METRICS_PORT: "9090"
       SERVER_HEALTHCHECKS_PORT: "9091"
       SERVER_METRICS_IMPLEMENTATION: "otel"
@@ -22,7 +22,7 @@ services:
       KAFKA_BROKERS: "redpanda-0:9092"
       SCHEMA_REGISTRY_URL: "http://redpanda-0:8081"
       # this has been modified and default values were removed, somehow we cannot override them in testcontainers-go
-      BASIC_AUTH_ENABLED: ${BASIC_AUTH_ENABLED:-}
+      BASIC_AUTH_ENABLED: ${BASIC_AUTH_ENABLED:-false}
       BASIC_AUTH_PREFIX: ${BASIC_AUTH_PREFIX:-}
       CE_SA_BEHOLDER_DEMO_CLIENT: |
         {"username": "beholder-demo-client", "password": "password", "allowed_domains": ["*"]}
@@ -38,7 +38,7 @@ services:
       CHIP_CONFIG_HOST: ${CHIP_CONFIG_HOST:-chip-config}
       CHIP_CONFIG_PORT: ${CHIP_CONFIG_PORT:-50051}
     ports:
-      - "${CHIP_INGRESS_GRPC_HOST_PORT}:${CHIP_INGRESS_GRPC_PORT}"
+      - "${CHIP_INGRESS_GRPC_HOST_PORT:-50051}:${CHIP_INGRESS_GRPC_PORT:-50051}"
       - "9090:9090"
       - "9092:9091"
     healthcheck:
@@ -71,6 +71,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    restart: on-failure
 
   postgres:
     image: postgres:16-alpine
