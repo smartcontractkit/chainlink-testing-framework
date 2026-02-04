@@ -264,7 +264,7 @@
 <h2 id="blockchains"><a class="header" href="#blockchains">Blockchains</a></h2>
 <p>Various types of blockchain nodes.</p>
 <pre><code class="language-toml">[[blockchains]]
-  # Type can be one of: anvil geth besu solana aptos tron sui ton canton, this struct describes common configuration we are using across all blockchains
+  # Type can be one of: anvil geth besu solana aptos tron sui ton canton stellar, this struct describes common configuration we are using across all blockchains
   type = ''
   # Blockchain node image in format: $registry:$image, ex.: ghcr.io/foundry-rs/foundry:stable
   image = ''
@@ -301,9 +301,9 @@
   [blockchains.out]
     # Whether to respect caching or not, if cache = true component won't be deployed again
     use_cache = false
-    # Type can be one of: anvil geth besu solana aptos tron sui ton canton, this struct describes common configuration we are using across all blockchains
+    # Type can be one of: anvil geth besu solana aptos tron sui ton canton stellar, this struct describes common configuration we are using across all blockchains
     type = ''
-    # Blockchain family, can be one of: evm solana aptos sui tron ton canton
+    # Blockchain family, can be one of: evm solana aptos sui tron ton canton stellar
     family = ''
     # Blockchain Docker container name
     container_name = ''
@@ -369,6 +369,13 @@
           grpc_health_check_url = ''
           # JSON Web Token for this participant
           jwt = ''
+
+      # Stellar network info
+      [blockchains.out.network_specific_data.stellar_network]
+        # Stellar network passphrase
+        network_passphrase = ''
+        # Friendbot faucet URL for funding accounts
+        friendbot_url = ''
 
     # Blockchain nodes info
     [[blockchains.out.nodes]]
