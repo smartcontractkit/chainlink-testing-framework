@@ -97,7 +97,6 @@ server {
     location / {
         grpc_pass grpc://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX}00;
 	}
-}
 `
 	if enableSplice {
 		template += `
@@ -187,11 +186,6 @@ server {
 		}
 	}
 
-	// Ensure template ends with a newline
-	if !strings.HasSuffix(template, "\n") {
-		template += "\n"
-	}
-
 	return template
 }
 
@@ -211,7 +205,7 @@ func NginxContainerRequest(
 			framework.DefaultNetworkName: {nginxContainerName},
 		},
 		WaitingFor:   wait.ForHTTP("/readyz").WithStartupTimeout(time.Second * 10),
-		ExposedPorts: []string{fmt.Sprintf("%s:8080", port)},
+		ExposedPorts: []string{fmt.Sprintf("%s:8080", port), "8080/tcp"},
 		Env: func() map[string]string {
 			env := map[string]string{
 				"CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX": DefaultHTTPHealthcheckPortPrefix,
@@ -221,14 +215,9 @@ func NginxContainerRequest(
 				"CANTON_PARTICIPANT_LEDGER_API_PORT_PREFIX":       DefaultLedgerApiPortPrefix,
 				"CANTON_CONTAINER_NAME":                           cantonContainerName,
 			}
-			// Always set Splice variables to avoid envsubst issues, even if Splice is disabled
-			// (they won't be used in the template when enableSplice is false)
 			if enableSplice {
 				env["SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX"] = DefaultSpliceValidatorAdminApiPortPrefix
 				env["SPLICE_CONTAINER_NAME"] = spliceContainerName
-			} else {
-				env["SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX"] = ""
-				env["SPLICE_CONTAINER_NAME"] = ""
 			}
 			return env
 		}(),
