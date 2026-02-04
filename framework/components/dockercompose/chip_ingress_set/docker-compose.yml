@@ -3,7 +3,7 @@ services:
 
   chip-ingress:
     # added image (instead of build) to use image created by a setup script
-    image: "${CHIP_INGRESS_IMAGE:-}"
+    image: "${CHIP_INGRESS_IMAGE}"
     container_name: chip-ingress
     depends_on:
       - redpanda-0
@@ -12,7 +12,7 @@ services:
     command: ["write-service"]
     environment:
       SERVER_HOST: "0.0.0.0"
-      SERVER_GRPC_PORT: "${CHIP_INGRESS_GRPC_PORT:-}"
+      SERVER_GRPC_PORT: "${CHIP_INGRESS_GRPC_PORT}"
       SERVER_METRICS_PORT: "9090"
       SERVER_HEALTHCHECKS_PORT: "9091"
       SERVER_METRICS_IMPLEMENTATION: "otel"
@@ -38,7 +38,7 @@ services:
       CHIP_CONFIG_HOST: ${CHIP_CONFIG_HOST:-chip-config}
       CHIP_CONFIG_PORT: ${CHIP_CONFIG_PORT:-50051}
     ports:
-      - "${CHIP_INGRESS_GRPC_HOST_PORT:-}:${CHIP_INGRESS_GRPC_PORT:-}"
+      - "${CHIP_INGRESS_GRPC_HOST_PORT}:${CHIP_INGRESS_GRPC_PORT}"
       - "9090:9090"
       - "9092:9091"
     healthcheck:
@@ -49,7 +49,7 @@ services:
       retries: 10
 
   chip-config:
-    image: "${CHIP_CONFIG_IMAGE:-}"
+    image: "${CHIP_CONFIG_IMAGE}"
     container_name: chip-config
     hostname: chip-config
     command:

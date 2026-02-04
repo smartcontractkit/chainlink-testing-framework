@@ -85,6 +85,8 @@ const (
 
 	ChipIngressGRPCHostPortEnvVar = "CHIP_INGRESS_GRPC_HOST_PORT"
 	ChipIngressGRPCPortEnvVar     = "CHIP_INGRESS_GRPC_PORT"
+	ChipIngressImageEnvVar        = "CHIP_INGRESS_IMAGE"
+	ChipConfigImageEnvVar         = "CHIP_CONFIG_IMAGE"
 )
 
 func New(in *Input) (*Output, error) {
@@ -137,15 +139,13 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		}
 	}
 
-	if _, ok := envVars["CHIP_INGRESS_IMAGE"]; !ok {
-		return nil, errors.New("CHIP_INGRESS_IMAGE env var is not set")
+	if _, ok := envVars[ChipIngressImageEnvVar]; !ok {
+		return nil, fmt.Errorf("%s env var is not set", ChipIngressImageEnvVar)
 	}
 
-	if _, ok := envVars["CHIP_CONFIG_IMAGE"]; !ok {
-		return nil, errors.New("CHIP_CONFIG_IMAGE env var is not set")
+	if _, ok := envVars[ChipConfigImageEnvVar]; !ok {
+		return nil, fmt.Errorf("%s env var is not set", ChipConfigImageEnvVar)
 	}
-
-	fmt.Printf("Chip Ingress image: %s | Chip Config image: %s\n", envVars["CHIP_INGRESS_IMAGE"], envVars["CHIP_CONFIG_IMAGE"])
 
 	upErr := stack.
 		WithEnv(envVars).
