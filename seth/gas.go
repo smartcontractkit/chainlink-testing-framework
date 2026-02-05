@@ -7,6 +7,7 @@ import (
 
 	"github.com/montanaflynn/stats"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 )
 
 // GasEstimator estimates gas prices
@@ -14,6 +15,14 @@ type GasEstimator struct {
 	Client              *Client
 	BlockGasLimits      []uint64
 	TransactionGasPrice []uint64
+}
+
+func (m *GasEstimator) logger() *zerolog.Logger {
+	if m == nil || m.Client == nil {
+		l := newLogger()
+		return &l
+	}
+	return m.Client.Logger()
 }
 
 // NewGasEstimator creates a new gas estimator
@@ -25,6 +34,7 @@ func NewGasEstimator(c *Client) *GasEstimator {
 // It computes quantiles for base fees and tip caps and provides suggested gas price and tip cap values.
 func (m *GasEstimator) Stats(ctx context.Context, blockCount uint64, priorityPerc float64) (GasSuggestions, error) {
 	estimations := GasSuggestions{}
+	logger := m.logger()
 
 	if blockCount == 0 {
 		return estimations, errors.New("block count must be greater than zero")
@@ -45,7 +55,7 @@ func (m *GasEstimator) Stats(ctx context.Context, blockCount uint64, priorityPer
 	if err != nil {
 		return GasSuggestions{}, fmt.Errorf("failed to get fee history: %w", err)
 	}
-	L.Trace().
+	logger.Trace().
 		Interface("History", hist).
 		Msg("Fee history")
 
@@ -64,7 +74,7 @@ func (m *GasEstimator) Stats(ctx context.Context, blockCount uint64, priorityPer
 	}
 	estimations.BaseFeePerc = gasPercs
 
-	L.Trace().
+	logger.Trace().
 		Interface("Gas percentiles ", gasPercs).
 		Msg("Base fees")
 
@@ -85,7 +95,7 @@ func (m *GasEstimator) Stats(ctx context.Context, blockCount uint64, priorityPer
 		return GasSuggestions{}, fmt.Errorf("failed to calculate quantiles from fee history for tip cap: %w", err)
 	}
 	estimations.TipCapPerc = tipPercs
-	L.Trace().
+	logger.Trace().
 		Interface("Gas percentiles ", tipPercs).
 		Msg("Tip caps")
 

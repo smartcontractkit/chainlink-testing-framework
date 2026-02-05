@@ -122,24 +122,25 @@ func RunCLI(args []string) error {
 					if err != nil {
 						return err
 					}
-					seth.L.Info().
+					clientLogger := C.Logger()
+					clientLogger.Info().
 						Interface("Max", stats.BaseFeePerc.Max).
 						Interface("99", stats.BaseFeePerc.Perc99).
 						Interface("75", stats.BaseFeePerc.Perc75).
 						Interface("50", stats.BaseFeePerc.Perc50).
 						Interface("25", stats.BaseFeePerc.Perc25).
 						Msg("Base fee (Wei)")
-					seth.L.Info().
+					clientLogger.Info().
 						Interface("Max", stats.TipCapPerc.Max).
 						Interface("99", stats.TipCapPerc.Perc99).
 						Interface("75", stats.TipCapPerc.Perc75).
 						Interface("50", stats.TipCapPerc.Perc50).
 						Interface("25", stats.TipCapPerc.Perc25).
 						Msg("Priority fee (Wei)")
-					seth.L.Info().
+					clientLogger.Info().
 						Interface("GasPrice", stats.SuggestedGasPrice).
 						Msg("Suggested gas price now")
-					seth.L.Info().
+					clientLogger.Info().
 						Interface("GasTipCap", stats.SuggestedGasTipCap).
 						Msg("Suggested gas tip cap now")
 
@@ -160,7 +161,7 @@ func RunCLI(args []string) error {
 						return err
 					}
 
-					seth.L.Info().Msgf("Fallback prices for TOML config:\n%s", string(marshalled))
+					clientLogger.Info().Msgf("Fallback prices for TOML config:\n%s", string(marshalled))
 
 					return err
 				},
@@ -290,10 +291,11 @@ func RunCLI(args []string) error {
 						return err
 					}
 
-					seth.L.Info().Msgf("Tracing transactions from %s file", file)
+					clientLogger := client.Logger()
+					clientLogger.Info().Msgf("Tracing transactions from %s file", file)
 
 					for _, txHash := range transactions {
-						seth.L.Info().Msgf("Tracing transaction %s", txHash)
+						clientLogger.Info().Msgf("Tracing transaction %s", txHash)
 						ctx, cancel := context.WithTimeout(context.Background(), cfg.Network.TxnTimeout.Duration())
 						tx, _, err := client.Client.TransactionByHash(ctx, common.HexToHash(txHash))
 						cancel()
@@ -303,7 +305,7 @@ func RunCLI(args []string) error {
 
 						_, err = client.Decode(tx, nil)
 						if err != nil {
-							seth.L.Info().Msgf("Possible revert reason: %s", err.Error())
+							clientLogger.Info().Msgf("Possible revert reason: %s", err.Error())
 						}
 					}
 					return err

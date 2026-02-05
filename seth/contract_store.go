@@ -8,12 +8,14 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 )
 
 const (
@@ -28,6 +30,19 @@ type ContractStore struct {
 	ABIs ABIStore
 	BINs map[string][]byte
 	mu   *sync.RWMutex
+	log  *zerolog.Logger
+}
+
+func (c *ContractStore) logger() *zerolog.Logger {
+	if c == nil {
+		l := newLogger()
+		return &l
+	}
+	if c.log == nil {
+		l := newLogger()
+		c.log = &l
+	}
+	return c.log
 }
 
 type ABIStore map[string]abi.ABI
@@ -92,11 +107,15 @@ func (c *ContractStore) AddBIN(name string, bin []byte) {
 }
 
 // NewContractStore creates a new Contract store
-func NewContractStore(abiPath, binPath string, gethWrappersPaths []string) (*ContractStore, error) {
-	cs := &ContractStore{ABIs: make(ABIStore), BINs: make(map[string][]byte), mu: &sync.RWMutex{}}
+func NewContractStore(abiPath, binPath string, gethWrappersPaths []string, logger zerolog.Logger) (*ContractStore, error) {
+	csLogger := logger
+	if reflect.ValueOf(csLogger).IsZero() {
+		csLogger = newLogger()
+	}
+	cs := &ContractStore{ABIs: make(ABIStore), BINs: make(map[string][]byte), mu: &sync.RWMutex{}, log: &csLogger}
 
 	if len(gethWrappersPaths) > 0 && abiPath != "" {
-		L.Debug().Msg("ABI files are loaded from both ABI path and Geth wrappers path. This might result in ABI duplication. It shouldn't cause any issues, but it's best to chose only one method.")
+		cs.logger().Debug().Msg("ABI files are loaded from both ABI path and Geth wrappers path. This might result in ABI duplication. It shouldn't cause any issues, but it's best to chose only one method.")
 	}
 
 	err := cs.loadABIs(abiPath)
@@ -126,7 +145,7 @@ func (c *ContractStore) loadABIs(abiPath string) error {
 		var foundABI bool
 		for _, f := range files {
 			if strings.HasSuffix(f.Name(), ".abi") {
-				L.Debug().Str("File", f.Name()).Msg("ABI file loaded")
+				c.logger().Debug().Str("File", f.Name()).Msg("ABI file loaded")
 				ff, err := os.Open(filepath.Join(abiPath, f.Name()))
 				if err != nil {
 					return errors.Wrap(err, ErrOpenABIFile)
@@ -156,7 +175,7 @@ func (c *ContractStore) loadBINs(binPath string) error {
 		var foundBIN bool
 		for _, f := range files {
 			if strings.HasSuffix(f.Name(), ".bin") {
-				L.Debug().Str("File", f.Name()).Msg("BIN file loaded")
+				c.logger().Debug().Str("File", f.Name()).Msg("BIN file loaded")
 				bin, err := os.ReadFile(filepath.Join(binPath, f.Name()))
 				if err != nil {
 					return errors.Wrap(err, ErrOpenBINFile)
@@ -187,7 +206,7 @@ func (c *ContractStore) loadGethWrappers(gethWrappersPaths []string) error {
 					if !strings.Contains(err.Error(), ErrNoABIInFile) {
 						return err
 					}
-					L.Debug().Msgf("ABI not found in file due to: %s. Skipping", err.Error())
+					c.logger().Debug().Msgf("ABI not found in file due to: %s. Skipping", err.Error())
 
 					return nil
 				}

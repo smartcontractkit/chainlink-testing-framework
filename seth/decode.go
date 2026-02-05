@@ -128,7 +128,7 @@ func (m *Client) DecodeSendErr(txErr error) error {
 		return errors.Wrap(txErr, reason)
 	}
 
-	L.Trace().
+	m.Logger().Trace().
 		Msg("No decode-able error found, returning original error")
 	return txErr
 }
@@ -140,13 +140,15 @@ func (m *Client) DecodeSendErr(txErr error) error {
 // because we want to return the decoded transaction even if it was reverted.
 // Last, but not least, if gas bumps are enabled, we will try to bump gas on transaction mining timeout and resubmit it with higher gas.
 func (m *Client) DecodeTx(tx *types.Transaction) (*DecodedTransaction, error) {
+	logger := m.Logger()
+
 	if tx == nil {
-		L.Trace().
+		logger.Trace().
 			Msg("Skipping decoding, because transaction is nil. Nothing to decode")
 		return nil, nil
 	}
 
-	l := L.With().Str("Transaction", tx.Hash().Hex()).Logger()
+	l := logger.With().Str("Transaction", tx.Hash().Hex()).Logger()
 
 	if m.Cfg.Hooks != nil && m.Cfg.Hooks.TxDecoding.Pre != nil {
 		if err := m.Cfg.Hooks.TxDecoding.Pre(m); err != nil {
@@ -220,10 +222,11 @@ func (m *Client) waitUntilMined(l zerolog.Logger, tx *types.Transaction) (*types
 			cancel()
 
 			return err
-		}, retry.OnRetry(func(i uint, retryErr error) {
+		},
+		retry.OnRetry(func(i uint, retryErr error) {
 			replacementTx, replacementErr := prepareReplacementTransaction(m, tx)
 			if replacementErr != nil {
-				L.Debug().Str("Replacement error", replacementErr.Error()).Str("Current error", retryErr.Error()).Uint("Attempt", i).Msg("Failed to prepare replacement transaction. Retrying with the original one")
+				l.Debug().Str("Replacement error", replacementErr.Error()).Str("Current error", retryErr.Error()).Uint("Attempt", i).Msg("Failed to prepare replacement transaction. Retrying with the original one")
 				return
 			}
 			l.Debug().Str("Current error", retryErr.Error()).Uint("Attempt", i).Msg("Waiting for transaction to be confirmed after gas bump")
@@ -329,7 +332,7 @@ func (m *Client) handleSuccessfulTracing(l zerolog.Logger, decoded DecodedTransa
 	}
 
 	if m.Cfg.hasOutput(TraceOutput_Console) {
-		m.Tracer.printDecodedCallData(L, decodedCalls, revertErr)
+		m.Tracer.printDecodedCallData(*m.Logger(), decodedCalls, revertErr)
 		if err := m.Tracer.PrintTXTrace(decoded.Hash); err != nil {
 			l.Trace().
 				Err(err).
@@ -338,7 +341,7 @@ func (m *Client) handleSuccessfulTracing(l zerolog.Logger, decoded DecodedTransa
 	}
 
 	if m.Cfg.hasOutput(TraceOutput_DOT) {
-		if err := m.Tracer.generateDotGraph(decoded.Hash, decodedCalls, revertErr); err != nil {
+		if err := m.Tracer.generateDotGraph(l, decoded.Hash, decodedCalls, revertErr); err != nil {
 			l.Trace().
 				Err(err).
 				Msg("Failed to generate DOT graph")
@@ -348,7 +351,7 @@ func (m *Client) handleSuccessfulTracing(l zerolog.Logger, decoded DecodedTransa
 
 func (m *Client) handleDisabledTracing(l zerolog.Logger, decoded DecodedTransaction) {
 	tx := decoded.Transaction
-	L.Trace().
+	m.Logger().Trace().
 		Str("Transaction Hash", tx.Hash().Hex()).
 		Msg("Tracing level is NONE, skipping decoding")
 	if m.Cfg.hasOutput(TraceOutput_Console) {
@@ -495,17 +498,18 @@ func (m *Client) printDecodedTXData(l zerolog.Logger, ptx *DecodedTransaction) {
 
 // DecodeCustomABIErr decodes typed Solidity errors
 func (m *Client) DecodeCustomABIErr(txErr error) (string, error) {
+	logger := m.Logger()
 	//nolint
 	cerr, ok := txErr.(rpc.DataError)
 	if !ok {
 		return "", errors.New(ErrRPCJSONCastError)
 	}
 	if m.ContractStore == nil {
-		L.Warn().Msg(WarnNoContractStore)
+		logger.Warn().Msg(WarnNoContractStore)
 		return "", nil
 	}
 	if cerr.ErrorData() != nil {
-		L.Trace().Msg("Decoding custom ABI error from tx error")
+		logger.Trace().Msg("Decoding custom ABI error from tx error")
 		for _, a := range m.ContractStore.ABIs {
 			for k, abiError := range a.Errors {
 				data, err := hex.DecodeString(cerr.ErrorData().(string)[2:])
@@ -521,13 +525,13 @@ func (m *Client) DecodeCustomABIErr(txErr error) (string, error) {
 					if err != nil {
 						return "", err
 					}
-					L.Trace().Interface("Error", k).Interface("Args", v).Msg("Revert Reason")
+					logger.Trace().Interface("Error", k).Interface("Args", v).Msg("Revert Reason")
 					return fmt.Sprintf("error type: %s, error values: %v", k, v), nil
 				}
 			}
 		}
 	} else {
-		L.Debug().Msg("Transaction submission error doesn't contain any data. Impossible to decode the revert reason")
+		logger.Debug().Msg("Transaction submission error doesn't contain any data. Impossible to decode the revert reason")
 	}
 	return "", nil
 }
@@ -579,7 +583,8 @@ func (m *Client) DownloadContractAndGetPragma(address common.Address, block *big
 
 // callAndGetRevertReason executes transaction locally and gets revert reason
 func (m *Client) callAndGetRevertReason(tx *types.Transaction, rc *types.Receipt) error {
-	L.Trace().Msg("Decoding revert error")
+	logger := m.Logger()
+	logger.Trace().Msg("Decoding revert error")
 	// bind should support custom errors decoding soon, not yet merged
 	// https://github.com/ethereum/go-ethereum/issues/26823
 	// there are 2 types of possible errors, plain old assert/revert string
@@ -587,7 +592,7 @@ func (m *Client) callAndGetRevertReason(tx *types.Transaction, rc *types.Receipt
 	// if there is no match we print the error from CallMsg call
 	msg, err := m.CallMsgFromTx(tx)
 	if err != nil {
-		L.Debug().Msgf("Failed to extract required data from transaction due to: %s, We won't be able to decode revert reason.", err.Error())
+		logger.Debug().Msgf("Failed to extract required data from transaction due to: %s, We won't be able to decode revert reason.", err.Error())
 		return nil
 	}
 	_, plainStringErr := m.Client.CallContract(context.Background(), msg, rc.BlockNumber)
@@ -601,22 +606,22 @@ func (m *Client) callAndGetRevertReason(tx *types.Transaction, rc *types.Receipt
 	}
 
 	if plainStringErr != nil {
-		L.Debug().Msg("Failed to decode revert reason")
+		logger.Debug().Msg("Failed to decode revert reason")
 
 		if plainStringErr.Error() == "execution reverted" && tx != nil && rc != nil {
 			if tx.To() != nil {
 				pragma, err := m.DownloadContractAndGetPragma(*tx.To(), rc.BlockNumber)
 				if err == nil {
 					if DoesPragmaSupportCustomRevert(pragma) {
-						L.Warn().Str("Pragma", fmt.Sprint(pragma)).Msg("Custom revert reason is supported by pragma, but we could not decode it. If you are sure that this contract has custom revert reasons this might indicate a bug in Seth. Please contact the Test Tooling team.")
+						logger.Warn().Str("Pragma", fmt.Sprint(pragma)).Msg("Custom revert reason is supported by pragma, but we could not decode it. If you are sure that this contract has custom revert reasons this might indicate a bug in Seth. Please contact the Test Tooling team.")
 					} else {
-						L.Info().Str("Pragma", fmt.Sprint(pragma)).Msg("Custom revert reason is not supported by pragma version (must be >= 0.8.4). There's nothing more we can do to get custom revert reason.")
+						logger.Info().Str("Pragma", fmt.Sprint(pragma)).Msg("Custom revert reason is not supported by pragma version (must be >= 0.8.4). There's nothing more we can do to get custom revert reason.")
 					}
 				} else {
-					L.Debug().Msgf("Failed to decode pragma version due to: %s. Contract either uses very old version or was compiled without metadata. We won't be able to decode revert reason.", err.Error())
+					logger.Debug().Msgf("Failed to decode pragma version due to: %s. Contract either uses very old version or was compiled without metadata. We won't be able to decode revert reason.", err.Error())
 				}
 			} else {
-				L.Debug().Msg("Transaction has no recipient address. Most likely it's a contract creation transaction. We don't support decoding revert reasons for contract creation transactions yet.")
+				logger.Debug().Msg("Transaction has no recipient address. Most likely it's a contract creation transaction. We don't support decoding revert reasons for contract creation transactions yet.")
 			}
 		}
 

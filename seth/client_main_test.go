@@ -111,7 +111,7 @@ func newClientWithContractMapFromEnv(t *testing.T) *seth.Client {
 	c.ContractAddressToNameMap = contractMap
 
 	// now let's recreate the Tracer, so that it has the same contract map
-	tracer, err := seth.NewTracer(c.ContractStore, c.ABIFinder, c.Cfg, contractMap, c.Addresses)
+	tracer, err := seth.NewTracer(c.ContractStore, c.ABIFinder, c.Cfg, contractMap, c.Addresses, c.Logger())
 	require.NoError(t, err, "failed to create tracer")
 
 	c.Tracer = tracer
@@ -132,7 +132,8 @@ func NewDebugContractSetup() (
 	if err != nil {
 		return nil, nil, common.Address{}, common.Address{}, nil, err
 	}
-	cs, err := seth.NewContractStore("./contracts/abi", "./contracts/bin", nil)
+	logger := seth.NewLogger()
+	cs, err := seth.NewContractStore("./contracts/abi", "./contracts/bin", nil, logger)
 	if err != nil {
 		return nil, nil, common.Address{}, common.Address{}, nil, err
 	}
@@ -142,13 +143,13 @@ func NewDebugContractSetup() (
 	}
 	contractMap := seth.NewEmptyContractMap()
 
-	abiFinder := seth.NewABIFinder(contractMap, cs)
-	tracer, err := seth.NewTracer(cs, &abiFinder, cfg, contractMap, addrs)
+	abiFinder := seth.NewABIFinder(contractMap, cs, logger)
+	tracer, err := seth.NewTracer(cs, &abiFinder, cfg, contractMap, addrs, &logger)
 	if err != nil {
 		return nil, nil, common.Address{}, common.Address{}, nil, err
 	}
 
-	nm, err := seth.NewNonceManager(cfg, addrs, pkeys)
+	nm, err := seth.NewNonceManager(cfg, addrs, pkeys, logger)
 	if err != nil {
 		return nil, nil, common.Address{}, common.Address{}, nil, errors.Wrap(err, seth.ErrCreateNonceManager)
 	}
@@ -213,7 +214,8 @@ func TestMain(m *testing.M) {
 			ContractMap:             contractMap,
 		}
 	} else {
-		seth.L.Warn().Msg("Skipping main suite setup")
+		logger := seth.NewLogger()
+		logger.Warn().Msg("Skipping main suite setup")
 	}
 
 	os.Exit(m.Run())

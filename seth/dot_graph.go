@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/awalterschulze/gographviz"
+	"github.com/rs/zerolog"
 )
 
 func findShortestPath(calls []*DecodedCall) []string {
@@ -79,7 +80,7 @@ func findShortestPath(calls []*DecodedCall) []string {
 
 var defaultTruncateTo = 20
 
-func (t *Tracer) generateDotGraph(txHash string, calls []*DecodedCall, revertErr error) error {
+func (t *Tracer) generateDotGraph(l zerolog.Logger, txHash string, calls []*DecodedCall, revertErr error) error {
 	if !t.Cfg.hasOutput(TraceOutput_DOT) {
 		return nil
 	}
@@ -119,10 +120,10 @@ func (t *Tracer) generateDotGraph(txHash string, calls []*DecodedCall, revertErr
 		_, exists := callHashToID[hash]
 		if exists {
 			// This could be also valid if the same call is present twice in the trace, but in typical scenarios that should not happen
-			L.Warn().Msg("The same call was present twice. This should not happen and might indicate a bug in the tracer. Check debug log for details and contact the Test Tooling team")
+			l.Warn().Msg("The same call was present twice. This should not happen and might indicate a bug in the tracer. Check debug log for details and contact the Test Tooling team")
 			marshalled, err := json.Marshal(call)
 			if err == nil {
-				L.Debug().Msgf("Call: %v", marshalled)
+				l.Debug().Msgf("Call: %v", marshalled)
 			}
 			continue
 
@@ -295,8 +296,8 @@ func (t *Tracer) generateDotGraph(txHash string, calls []*DecodedCall, revertErr
 		return fmt.Errorf("error writing to file: %v", err)
 	}
 
-	L.Debug().Msgf("DOT graph saved to %s", filePath)
-	L.Debug().Msgf("To view run: xdot %s", filePath)
+	l.Debug().Msgf("DOT graph saved to %s", filePath)
+	l.Debug().Msgf("To view run: xdot %s", filePath)
 
 	return nil
 }

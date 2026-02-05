@@ -84,11 +84,25 @@ type Client struct {
 	ContractAddressToNameMap ContractMap
 	ABIFinder                *ABIFinder
 	HeaderCache              *LFUHeaderCache
+	logger                   *zerolog.Logger
+}
+
+// Logger returns the logger associated with the client, creating one if necessary.
+func (c *Client) Logger() *zerolog.Logger {
+	if c == nil {
+		l := newLogger()
+		return &l
+	}
+	if c.logger == nil {
+		l := newLogger()
+		c.logger = &l
+	}
+	return c.logger
 }
 
 // NewClientWithConfig creates a new seth client with all deps setup from config
 func NewClientWithConfig(cfg *Config) (*Client, error) {
-	initDefaultLogging()
+	logger := newLogger()
 
 	if cfg == nil {
 		return nil, errors.New(ErrSethConfigIsNil)
@@ -97,10 +111,10 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 		return nil, cfgErr
 	}
 
-	L.Debug().Msgf("Using tracing level: %s", cfg.TracingLevel)
+	logger.Debug().Msgf("Using tracing level: %s", cfg.TracingLevel)
 
 	cfg.setEphemeralAddrs()
-	cs, err := NewContractStore(filepath.Join(cfg.ConfigDir, cfg.ABIDir), filepath.Join(cfg.ConfigDir, cfg.BINDir), cfg.GethWrappersDirs)
+	cs, err := NewContractStore(filepath.Join(cfg.ConfigDir, cfg.ABIDir), filepath.Join(cfg.ConfigDir, cfg.BINDir), cfg.GethWrappersDirs, logger)
 	if err != nil {
 		return nil, errors.Wrap(err, ErrCreateABIStore)
 	}
@@ -108,7 +122,7 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 		// we don't care about any other keys, only the root key
 		// you should not use ephemeral mode with more than 1 key
 		if len(cfg.Network.PrivateKeys) > 1 {
-			L.Warn().Msg("Ephemeral mode is enabled, but more than 1 key is loaded. Only the first key will be used")
+			logger.Warn().Msg("Ephemeral mode is enabled, but more than 1 key is loaded. Only the first key will be used")
 		}
 		cfg.Network.PrivateKeys = cfg.Network.PrivateKeys[:1]
 		pkeys, err := NewEphemeralKeys(*cfg.EphemeralAddrs)
@@ -121,7 +135,7 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, ErrReadingKeys)
 	}
-	nm, err := NewNonceManager(cfg, addrs, pkeys)
+	nm, err := NewNonceManager(cfg, addrs, pkeys, logger)
 	if err != nil {
 		return nil, errors.Wrap(err, ErrCreateNonceManager)
 	}
@@ -140,24 +154,30 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 			return nil, errors.Wrap(err, ErrReadContractMap)
 		}
 	} else {
-		L.Debug().Msg("Simulated network, contract map won't be read from file")
+		logger.Debug().Msg("Simulated network, contract map won't be read from file")
 	}
 
-	abiFinder := NewABIFinder(contractAddressToNameMap, cs)
+	abiFinder := NewABIFinder(contractAddressToNameMap, cs, logger)
 
 	var opts []ClientOpt
 
 	// even if the ethclient that was passed supports tracing, we still need the RPC URL, because we cannot get from
 	// the instance of ethclient, since it doesn't expose any such method
 	if (cfg.ethclient != nil && shouldInitializeTracer(cfg.ethclient, cfg) && len(cfg.Network.URLs) > 0) || cfg.ethclient == nil {
-		tr, err := NewTracer(cs, &abiFinder, cfg, contractAddressToNameMap, addrs)
+		tr, err := NewTracer(cs, &abiFinder, cfg, contractAddressToNameMap, addrs, &logger)
 		if err != nil {
 			return nil, errors.Wrap(err, ErrCreateTracer)
 		}
 		opts = append(opts, WithTracer(tr))
 	}
 
-	opts = append(opts, WithContractStore(cs), WithNonceManager(nm), WithContractMap(contractAddressToNameMap), WithABIFinder(&abiFinder))
+	opts = append(opts,
+		WithLogger(logger),
+		WithContractStore(cs),
+		WithNonceManager(nm),
+		WithContractMap(contractAddressToNameMap),
+		WithABIFinder(&abiFinder),
+	)
 
 	return NewClientRaw(
 		cfg,
@@ -183,6 +203,7 @@ func NewClientRaw(
 	pkeys []*ecdsa.PrivateKey,
 	opts ...ClientOpt,
 ) (*Client, error) {
+	baseLogger := newLogger()
 	if cfg == nil {
 		return nil, errors.New(ErrSethConfigIsNil)
 	}
@@ -196,13 +217,13 @@ func NewClientRaw(
 	var firstUrl string
 	var client simulated.Client
 	if cfg.ethclient == nil {
-		L.Info().Msg("Creating new ethereum client")
+		baseLogger.Info().Msg("Creating new ethereum client")
 		if len(cfg.Network.URLs) == 0 {
 			return nil, errors.New("no RPC URL provided")
 		}
 
 		if len(cfg.Network.URLs) > 1 {
-			L.Warn().Msg("Multiple RPC URLs provided, only the first one will be used")
+			baseLogger.Warn().Msg("Multiple RPC URLs provided, only the first one will be used")
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), cfg.Network.DialTimeout.Duration())
@@ -211,7 +232,7 @@ func NewClientRaw(
 			cfg.MustFirstNetworkURL(),
 			rpc.WithHeaders(cfg.RPCHeaders),
 			rpc.WithHTTPClient(&http.Client{
-				Transport: NewLoggingTransport(),
+				Transport: NewLoggingTransport(&baseLogger),
 			}),
 		)
 		if err != nil {
@@ -220,7 +241,7 @@ func NewClientRaw(
 		client = ethclient.NewClient(rpcClient)
 		firstUrl = cfg.MustFirstNetworkURL()
 	} else {
-		L.Info().
+		baseLogger.Info().
 			Str("Type", reflect.TypeOf(cfg.ethclient).String()).
 			Msg("Using provided ethereum client")
 		client = cfg.ethclient
@@ -236,6 +257,7 @@ func NewClientRaw(
 		ChainID:     mustSafeInt64(cfg.Network.ChainID),
 		Context:     ctx,
 		CancelFunc:  cancelFunc,
+		logger:      &baseLogger,
 	}
 
 	for _, o := range opts {
@@ -261,21 +283,21 @@ func NewClientRaw(
 				return nil, errors.Wrap(err, ErrReadContractMap)
 			}
 			if len(c.ContractAddressToNameMap.addressMap) > 0 {
-				L.Info().
+				c.Logger().Info().
 					Int("Size", len(c.ContractAddressToNameMap.addressMap)).
 					Str("File name", cfg.ContractMapFile).
 					Msg("No contract map provided, read it from file")
 			} else {
-				L.Info().
+				c.Logger().Info().
 					Msg("No contract map provided and no file found, created new one")
 			}
 		} else {
-			L.Debug().Msg("Simulated network, contract map won't be read from file")
-			L.Info().
+			c.Logger().Debug().Msg("Simulated network, contract map won't be read from file")
+			c.Logger().Info().
 				Msg("No contract map provided and no file found, created new one")
 		}
 	} else {
-		L.Info().
+		c.Logger().Info().
 			Int("Size", len(c.ContractAddressToNameMap.addressMap)).
 			Msg("Contract map was provided")
 	}
@@ -293,7 +315,7 @@ func NewClientRaw(
 			return nil, errors.New(ErrReadOnlyRpcHealth)
 		}
 		if c.NonceManager == nil {
-			L.Debug().Msg("Nonce manager is not set, RPC health check will be skipped. Client will most probably fail on first transaction")
+			c.Logger().Debug().Msg("Nonce manager is not set, RPC health check will be skipped. Client will most probably fail on first transaction")
 		} else {
 			if err := c.checkRPCHealth(); err != nil {
 				return nil, err
@@ -307,7 +329,7 @@ func NewClientRaw(
 
 	cfg.setEphemeralAddrs()
 
-	L.Info().
+	c.Logger().Info().
 		Str("NetworkName", cfg.Network.Name).
 		Interface("Addresses", addrs).
 		Str("RPC", firstUrl).
@@ -334,7 +356,7 @@ func NewClientRaw(
 		if err != nil {
 			return nil, err
 		}
-		L.Warn().Msg("Ephemeral mode, all funds will be lost!")
+		c.Logger().Warn().Msg("Ephemeral mode, all funds will be lost!")
 
 		eg, egCtx := errgroup.WithContext(ctx)
 		// root key is element 0 in ephemeral
@@ -352,17 +374,17 @@ func NewClientRaw(
 	// and Tracer needs rpcClient to call debug_traceTransaction
 	if shouldInitializeTracer(c.Client, cfg) && c.Cfg.TracingLevel != TracingLevel_None && c.Tracer == nil {
 		if c.ContractStore == nil {
-			cs, err := NewContractStore(filepath.Join(cfg.ConfigDir, cfg.ABIDir), filepath.Join(cfg.ConfigDir, cfg.BINDir), cfg.GethWrappersDirs)
+			cs, err := NewContractStore(filepath.Join(cfg.ConfigDir, cfg.ABIDir), filepath.Join(cfg.ConfigDir, cfg.BINDir), cfg.GethWrappersDirs, *c.Logger())
 			if err != nil {
 				return nil, errors.Wrap(err, ErrCreateABIStore)
 			}
 			c.ContractStore = cs
 		}
 		if c.ABIFinder == nil {
-			abiFinder := NewABIFinder(c.ContractAddressToNameMap, c.ContractStore)
+			abiFinder := NewABIFinder(c.ContractAddressToNameMap, c.ContractStore, *c.Logger())
 			c.ABIFinder = &abiFinder
 		}
-		tr, err := NewTracer(c.ContractStore, c.ABIFinder, cfg, c.ContractAddressToNameMap, addrs)
+		tr, err := NewTracer(c.ContractStore, c.ABIFinder, cfg, c.ContractAddressToNameMap, addrs, c.Logger())
 		if err != nil {
 			return nil, errors.Wrap(err, ErrCreateTracer)
 		}
@@ -374,12 +396,12 @@ func NewClientRaw(
 	c.Cfg.revertedTransactionsFile = filepath.Join(c.Cfg.ArtifactsDir, fmt.Sprintf(RevertedTransactionsFilePattern, c.Cfg.Network.Name, now))
 
 	if c.Cfg.Network.GasPriceEstimationEnabled {
-		L.Debug().Msg("Gas estimation is enabled")
-		L.Debug().Msg("Initializing LFU block header cache")
-		c.HeaderCache = NewLFUBlockCache(c.Cfg.Network.GasPriceEstimationBlocks)
+		c.Logger().Debug().Msg("Gas estimation is enabled")
+		c.Logger().Debug().Msg("Initializing LFU block header cache")
+		c.HeaderCache = NewLFUBlockCache(c.Cfg.Network.GasPriceEstimationBlocks, *c.Logger())
 
 		if c.Cfg.Network.EIP1559DynamicFees {
-			L.Debug().Msg("Checking if EIP-1559 is supported by the network")
+			c.Logger().Debug().Msg("Checking if EIP-1559 is supported by the network")
 			c.CalculateGasEstimations(GasEstimationRequest{
 				GasEstimationEnabled: true,
 				FallbackGasPrice:     c.Cfg.Network.GasPrice,
@@ -407,7 +429,7 @@ func NewClientRaw(
 }
 
 func (m *Client) checkRPCHealth() error {
-	L.Info().Str("RPC node", m.URL).Msg("---------------- !!!!! ----------------> Checking RPC health")
+	m.Logger().Info().Str("RPC node", m.URL).Msg("---------------- !!!!! ----------------> Checking RPC health")
 	ctx, cancel := context.WithTimeout(context.Background(), m.Cfg.Network.TxnTimeout.Duration())
 	defer cancel()
 
@@ -425,7 +447,7 @@ func (m *Client) checkRPCHealth() error {
 		return errors.Wrap(err, ErrRpcHealthCheckFailed)
 	}
 
-	L.Info().Msg("RPC health check passed <---------------- !!!!! ----------------")
+	m.Logger().Info().Msg("RPC health check passed <---------------- !!!!! ----------------")
 	return nil
 }
 
@@ -466,7 +488,7 @@ func (m *Client) TransferETHFromKey(ctx context.Context, fromKeyNum int, to stri
 		Gas:      mustSafeUint64(gasLimit),
 		GasPrice: gasPrice,
 	}
-	L.Debug().Interface("TransferTx", rawTx).Send()
+	m.Logger().Debug().Interface("TransferTx", rawTx).Send()
 	signedTx, err := types.SignNewTx(m.PrivateKeys[fromKeyNum], types.NewEIP155Signer(chainID), rawTx)
 	if err != nil {
 		return errors.Wrap(err, "failed to sign tx")
@@ -478,7 +500,7 @@ func (m *Client) TransferETHFromKey(ctx context.Context, fromKeyNum int, to stri
 	if err != nil {
 		return errors.Wrap(err, "failed to send transaction")
 	}
-	l := L.With().Str("Transaction", signedTx.Hash().Hex()).Logger()
+	l := m.Logger().With().Str("Transaction", signedTx.Hash().Hex()).Logger()
 	l.Info().
 		Int("FromKeyNum", fromKeyNum).
 		Str("To", to).
@@ -527,6 +549,13 @@ func (m *Client) WaitMined(ctx context.Context, l zerolog.Logger, b bind.DeployB
 
 // ClientOpt is a client functional option
 type ClientOpt func(c *Client)
+
+// WithLogger sets a custom logger for the client
+func WithLogger(logger zerolog.Logger) ClientOpt {
+	return func(c *Client) {
+		c.logger = &logger
+	}
+}
 
 // WithContractStore ContractStore functional option
 func WithContractStore(as *ContractStore) ClientOpt {
@@ -590,7 +619,7 @@ func (m *Client) NewCallOpts(o ...CallOpt) *bind.CallOpts {
 	if len(m.Addresses) > 0 {
 		co.From = m.Addresses[0]
 	} else {
-		L.Warn().Msgf(WrnEmptyFromInCallOpts, 0)
+		m.Logger().Warn().Msgf(WrnEmptyFromInCallOpts, 0)
 	}
 	for _, f := range o {
 		f(co)
@@ -606,7 +635,7 @@ func (m *Client) NewCallKeyOpts(keyNum int, o ...CallOpt) *bind.CallOpts {
 	if len(m.Addresses) >= keyNum {
 		co.From = m.Addresses[keyNum]
 	} else {
-		L.Warn().Msgf(WrnEmptyFromInCallOpts, keyNum)
+		m.Logger().Warn().Msgf(WrnEmptyFromInCallOpts, keyNum)
 	}
 	for _, f := range o {
 		f(co)
@@ -710,7 +739,7 @@ type ContextErrorKey struct{}
 func (m *Client) NewTXOpts(o ...TransactOpt) *bind.TransactOpts {
 	opts, nonce, estimations := m.getProposedTransactionOptions(0)
 	m.configureTransactionOpts(opts, nonce.PendingNonce, estimations, o...)
-	L.Debug().
+	m.Logger().Debug().
 		Interface("Nonce", opts.Nonce).
 		Interface("Value", opts.Value).
 		Interface("GasPrice", opts.GasPrice).
@@ -728,14 +757,14 @@ func (m *Client) NewTXKeyOpts(keyNum int, o ...TransactOpt) *bind.TransactOpts {
 		return errTxOpts
 	}
 
-	L.Debug().
+	m.Logger().Debug().
 		Interface("KeyNum", keyNum).
 		Interface("Address", m.Addresses[keyNum]).
 		Msg("Estimating transaction")
 	opts, nonceStatus, estimations := m.getProposedTransactionOptions(keyNum)
 
 	m.configureTransactionOpts(opts, nonceStatus.PendingNonce, estimations, o...)
-	L.Debug().
+	m.Logger().Debug().
 		Interface("KeyNum", keyNum).
 		Interface("Nonce", opts.Nonce).
 		Interface("Value", opts.Value).
@@ -771,7 +800,7 @@ func (m *Client) getNonceStatus(address common.Address) (NonceStatus, error) {
 	defer cancel()
 	pendingNonce, err := m.Client.PendingNonceAt(ctx, address)
 	if err != nil {
-		L.Error().Err(err).Msg("Failed to get pending nonce from RPC node")
+		m.Logger().Error().Err(err).Msg("Failed to get pending nonce from RPC node")
 		return NonceStatus{}, err
 	}
 
@@ -818,13 +847,13 @@ This issue is caused by one of two things:
 			// present in Context before using *bind.TransactOpts
 			ctx = context.WithValue(context.Background(), ContextErrorKey{}, err)
 		}
-		L.Debug().
+		m.Logger().Debug().
 			Msg("Pending nonce protection is enabled. Nonce status is OK")
 	}
 
 	estimations := m.CalculateGasEstimations(m.NewDefaultGasEstimationRequest())
 
-	L.Debug().
+	m.Logger().Debug().
 		Interface("KeyNum", keyNum).
 		Uint64("Nonce", nonceStatus.PendingNonce).
 		Interface("GasEstimations", estimations).
@@ -878,7 +907,7 @@ func (m *Client) CalculateGasEstimations(request GasEstimationRequest) GasEstima
 		// This signals to the RPC node to auto-estimate gas prices.
 		// The nil values will be passed to bind.TransactOpts, which treats
 		// nil gas fields as a request for automatic estimation.
-		L.Debug().Msg("Auto priority selected, skipping gas estimations")
+		m.Logger().Debug().Msg("Auto priority selected, skipping gas estimations")
 		return estimations
 	}
 
@@ -895,7 +924,7 @@ func (m *Client) CalculateGasEstimations(request GasEstimationRequest) GasEstima
 
 	disableEstimationsIfNeeded := func(err error) {
 		if strings.Contains(err.Error(), ZeroGasSuggestedErr) {
-			L.Warn().Msg("Received incorrect gas estimations. Disabling them and reverting to hardcoded values. Remember to update your config!")
+			m.Logger().Warn().Msg("Received incorrect gas estimations. Disabling them and reverting to hardcoded values. Remember to update your config!")
 			m.Cfg.Network.GasPriceEstimationEnabled = false
 		}
 	}
@@ -904,7 +933,7 @@ func (m *Client) CalculateGasEstimations(request GasEstimationRequest) GasEstima
 		gasPrice, err := m.GetSuggestedLegacyFees(ctx, request.Priority)
 		if err != nil {
 			disableEstimationsIfNeeded(err)
-			L.Debug().Err(err).Msg("Failed to get suggested Legacy fees. Using hardcoded values")
+			m.Logger().Debug().Err(err).Msg("Failed to get suggested Legacy fees. Using hardcoded values")
 			estimations.GasPrice = big.NewInt(request.FallbackGasPrice)
 		} else {
 			estimations.GasPrice = gasPrice
@@ -914,16 +943,16 @@ func (m *Client) CalculateGasEstimations(request GasEstimationRequest) GasEstima
 	if m.Cfg.Network.EIP1559DynamicFees {
 		maxFee, priorityFee, err := m.GetSuggestedEIP1559Fees(ctx, request.Priority)
 		if err != nil {
-			L.Debug().Err(err).Msg("Failed to get suggested EIP1559 fees. Using hardcoded values")
+			m.Logger().Debug().Err(err).Msg("Failed to get suggested EIP1559 fees. Using hardcoded values")
 			estimations.GasFeeCap = big.NewInt(request.FallbackGasFeeCap)
 			estimations.GasTipCap = big.NewInt(request.FallbackGasTipCap)
 
 			disableEstimationsIfNeeded(err)
 
 			if strings.Contains(err.Error(), "method eth_maxPriorityFeePerGas") || strings.Contains(err.Error(), "method eth_maxFeePerGas") || strings.Contains(err.Error(), "method eth_feeHistory") || strings.Contains(err.Error(), "expected input list for types.txdata") {
-				L.Warn().Msg("EIP1559 fees are not supported by the network. Switching to Legacy fees. Remember to update your config!")
+				m.Logger().Warn().Msg("EIP1559 fees are not supported by the network. Switching to Legacy fees. Remember to update your config!")
 				if m.Cfg.Network.GasPrice == 0 {
-					L.Warn().Msg("Gas price is 0. If Legacy estimations fail, there will no fallback price and transactions will start fail. Set gas price in config and disable EIP1559DynamicFees")
+					m.Logger().Warn().Msg("Gas price is 0. If Legacy estimations fail, there will no fallback price and transactions will start fail. Set gas price in config and disable EIP1559DynamicFees")
 				}
 				m.Cfg.Network.EIP1559DynamicFees = false
 				calculateLegacyFees()
@@ -949,7 +978,7 @@ func (m *Client) EstimateGasLimitForFundTransfer(from, to common.Address, amount
 		Value: amount,
 	})
 	if err != nil {
-		L.Debug().Msgf("Failed to estimate gas for fund transfer due to: %s", err.Error())
+		m.Logger().Debug().Msgf("Failed to estimate gas for fund transfer due to: %s", err.Error())
 		return 0, errors.Wrapf(err, "failed to estimate gas for fund transfer")
 	}
 	return gasLimit, nil
@@ -973,10 +1002,10 @@ func (m *Client) configureTransactionOpts(
 
 		// Log when using auto-estimated gas (all nil values)
 		if opts.GasTipCap == nil && opts.GasFeeCap == nil {
-			L.Debug().Msg("Using RPC node's automatic gas estimation (EIP-1559)")
+			m.Logger().Debug().Msg("Using RPC node's automatic gas estimation (EIP-1559)")
 		}
 	} else if opts.GasPrice == nil {
-		L.Debug().Msg("Using RPC node's automatic gas estimation (Legacy)")
+		m.Logger().Debug().Msg("Using RPC node's automatic gas estimation (Legacy)")
 	}
 
 	for _, f := range o {
@@ -1014,7 +1043,7 @@ func (cl *ContractLoader[T]) LoadContract(name string, address common.Address, a
 // available at the address, so that when the method returns it's safe to interact with it. It also saves the contract address and ABI name
 // to the contract map, so that we can use that, when tracing transactions. It is suggested to use name identical to the name of the contract Solidity file.
 func (m *Client) DeployContract(auth *bind.TransactOpts, name string, abi abi.ABI, bytecode []byte, params ...interface{}) (DeploymentData, error) {
-	L.Info().
+	m.Logger().Info().
 		Msgf("Started deploying %s contract", name)
 
 	if auth.Context != nil {
@@ -1028,7 +1057,7 @@ func (m *Client) DeployContract(auth *bind.TransactOpts, name string, abi abi.AB
 			return DeploymentData{}, errors.Wrap(err, "pre-hook failed")
 		}
 	} else {
-		L.Trace().Msg("No pre-contract deployment hook defined. Skipping")
+		m.Logger().Trace().Msg("No pre-contract deployment hook defined. Skipping")
 	}
 
 	address, tx, contract, err := bind.DeployContract(auth, abi, bytecode, m.Client, params...)
@@ -1036,7 +1065,7 @@ func (m *Client) DeployContract(auth *bind.TransactOpts, name string, abi abi.AB
 		return DeploymentData{}, wrapErrInMessageWithASuggestion(err)
 	}
 
-	L.Info().
+	m.Logger().Info().
 		Str("Address", address.Hex()).
 		Str("TXHash", tx.Hash().Hex()).
 		Msgf("Waiting for %s contract deployment to finish", name)
@@ -1052,7 +1081,7 @@ func (m *Client) DeployContract(auth *bind.TransactOpts, name string, abi abi.AB
 			return DeploymentData{}, errors.Wrap(err, "post-hook failed")
 		}
 	} else {
-		L.Trace().Msg("No post-contract deployment hook defined. Skipping")
+		m.Logger().Trace().Msg("No post-contract deployment hook defined. Skipping")
 	}
 
 	if err := retry.Do(
@@ -1082,14 +1111,14 @@ func (m *Client) DeployContract(auth *bind.TransactOpts, name string, abi abi.AB
 			case errors.Is(retryErr, context.DeadlineExceeded):
 				replacementTx, replacementErr := prepareReplacementTransaction(m, tx)
 				if replacementErr != nil {
-					L.Debug().Str("Current error", retryErr.Error()).Str("Replacement error", replacementErr.Error()).Uint("Attempt", i+1).Msg("Failed to prepare replacement transaction for contract deployment. Retrying with the original one")
+					m.Logger().Debug().Str("Current error", retryErr.Error()).Str("Replacement error", replacementErr.Error()).Uint("Attempt", i+1).Msg("Failed to prepare replacement transaction for contract deployment. Retrying with the original one")
 					return
 				}
 				tx = replacementTx
 			default:
 				// do nothing, just wait again until it's mined
 			}
-			L.Debug().Str("Current error", retryErr.Error()).Uint("Attempt", i+1).Msg("Waiting for contract to be deployed")
+			m.Logger().Debug().Str("Current error", retryErr.Error()).Uint("Attempt", i+1).Msg("Waiting for contract to be deployed")
 		}),
 		retry.DelayType(retry.FixedDelay),
 		// if gas bump retries are set to 0, we still want to retry 10 times, because what we will be retrying will be other errors (no code at address, etc.)
@@ -1113,7 +1142,7 @@ func (m *Client) DeployContract(auth *bind.TransactOpts, name string, abi abi.AB
 		return DeploymentData{}, wrapErrInMessageWithASuggestion(m.rewriteDeploymentError(err))
 	}
 
-	L.Info().
+	m.Logger().Info().
 		Str("Address", address.Hex()).
 		Str("TXHash", tx.Hash().Hex()).
 		Msgf("Deployed %s contract", name)
@@ -1123,7 +1152,7 @@ func (m *Client) DeployContract(auth *bind.TransactOpts, name string, abi abi.AB
 	}
 
 	if err := SaveDeployedContract(m.Cfg.ContractMapFile, name, address.Hex()); err != nil {
-		L.Warn().
+		m.Logger().Warn().
 			Err(err).
 			Msg("Failed to save deployed contract address to file")
 	}
@@ -1381,13 +1410,13 @@ func (m *Client) WaitUntilNoPendingTx(address common.Address, timeout time.Durat
 			nonceStatus, err := m.getNonceStatus(address)
 			// if there is an error, we can't be sure if there are pending transactions or not, let's retry on next tick
 			if err != nil {
-				L.Debug().Err(err).Msg("Failed to get nonce status")
+				m.Logger().Debug().Err(err).Msg("Failed to get nonce status")
 				continue
 			}
-			L.Debug().Msgf("Nonce status for address %s: %v", address.Hex(), nonceStatus)
+			m.Logger().Debug().Msgf("Nonce status for address %s: %v", address.Hex(), nonceStatus)
 
 			if nonceStatus.PendingNonce > nonceStatus.LastNonce {
-				L.Debug().Uint64("Pending transactions", nonceStatus.PendingNonce-nonceStatus.LastNonce).Msgf("There are still pending transactions for %s", address.Hex())
+				m.Logger().Debug().Uint64("Pending transactions", nonceStatus.PendingNonce-nonceStatus.LastNonce).Msgf("There are still pending transactions for %s", address.Hex())
 				continue
 			}
 

@@ -103,7 +103,7 @@ func TestContractMapNewClientIsCreatedEvenIfNoContractMapFileExists(t *testing.T
 	// change network name so that is not treated as simulated
 	cfg.Network.Name = "geth2"
 	cfg.ContractMapFile = cfg.GenerateContractMapFileName()
-	nm, err := seth.NewNonceManager(cfg, TestEnv.Client.Addresses, TestEnv.Client.PrivateKeys)
+	nm, err := seth.NewNonceManager(cfg, TestEnv.Client.Addresses, TestEnv.Client.PrivateKeys, seth.NewLogger())
 	require.NoError(t, err, "failed to create nonce manager")
 
 	newClient, err := seth.NewClientRaw(cfg, TestEnv.Client.Addresses, TestEnv.Client.PrivateKeys, seth.WithNonceManager(nm), seth.WithContractStore(TestEnv.Client.ContractStore))

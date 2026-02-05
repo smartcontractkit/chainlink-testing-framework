@@ -14,6 +14,7 @@ import (
 
 // NewAddress creates a new address
 func NewAddress() (string, string, error) {
+	logger := newLogger()
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
 		return "", "", err
@@ -25,7 +26,7 @@ func NewAddress() (string, string, error) {
 		return "", "", errors.New("error casting public key to ECDSA")
 	}
 	address := crypto.PubkeyToAddress(*publicKeyECDSA).Hex()
-	L.Info().
+	logger.Info().
 		Str("Addr", address).
 		Msg("New address created")
 
@@ -34,6 +35,7 @@ func NewAddress() (string, string, error) {
 
 // ReturnFunds returns funds to the root key from all other keys
 func ReturnFunds(c *Client, toAddr string) error {
+	logger := c.Logger()
 	if toAddr == "" {
 		if err := c.validateAddressesKeyNum(0); err != nil {
 			return err
@@ -60,7 +62,7 @@ func ReturnFunds(c *Client, toAddr string) error {
 			balance, err := c.Client.BalanceAt(ctx, c.Addresses[idx], nil)
 			balanceCancel()
 			if err != nil {
-				L.Error().Err(err).Msg("Error getting balance")
+				logger.Error().Err(err).Msg("Error getting balance")
 				return err
 			}
 
@@ -77,7 +79,7 @@ func ReturnFunds(c *Client, toAddr string) error {
 			fundsToReturn := new(big.Int).Sub(balance, big.NewInt(networkTransferFee))
 
 			if fundsToReturn.Cmp(big.NewInt(0)) == -1 {
-				L.Warn().
+				logger.Warn().
 					Str("Key", c.Addresses[idx].Hex()).
 					Interface("Balance", balance).
 					Interface("NetworkFee", networkTransferFee).
@@ -86,7 +88,7 @@ func ReturnFunds(c *Client, toAddr string) error {
 				return nil
 			}
 
-			L.Info().
+			logger.Info().
 				Str("Key", c.Addresses[idx].Hex()).
 				Interface("Balance", balance).
 				Interface("NetworkFee", c.Cfg.Network.GasPrice*gasLimit).

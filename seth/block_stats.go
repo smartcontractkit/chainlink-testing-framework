@@ -12,6 +12,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/pelletier/go-toml/v2"
+	"github.com/rs/zerolog"
 	"go.uber.org/ratelimit"
 	"golang.org/x/sync/errgroup"
 )
@@ -31,6 +32,7 @@ func (cfg *BlockStatsConfig) Validate() error {
 type BlockStats struct {
 	Limiter ratelimit.Limiter
 	Client  *Client
+	log     *zerolog.Logger
 }
 
 // NewBlockStats creates a new instance of BlockStats
@@ -38,7 +40,20 @@ func NewBlockStats(c *Client) (*BlockStats, error) {
 	return &BlockStats{
 		Limiter: ratelimit.New(c.Cfg.BlockStatsConfig.RPCRateLimit, ratelimit.WithoutSlack),
 		Client:  c,
+		log:     c.Logger(),
 	}, nil
+}
+
+func (cs *BlockStats) logger() *zerolog.Logger {
+	if cs == nil {
+		l := newLogger()
+		return &l
+	}
+	if cs.log == nil {
+		l := newLogger()
+		cs.log = &l
+	}
+	return cs.log
 }
 
 // Stats fetches and logs the blocks' statistics from startBlock to endBlock
@@ -64,7 +79,7 @@ func (cs *BlockStats) Stats(startBlock *big.Int, endBlock *big.Int) error {
 	if endBlock != nil && startBlock.Int64() > endBlock.Int64() {
 		return fmt.Errorf("start block is less than the end block")
 	}
-	L.Info().
+	cs.logger().Info().
 		Int64("EndBlock", endBlock.Int64()).
 		Int64("StartBlock", startBlock.Int64()).
 		Msg("Calculating stats for blocks interval")
@@ -79,12 +94,12 @@ func (cs *BlockStats) Stats(startBlock *big.Int, endBlock *big.Int) error {
 			if err != nil {
 				// invalid blocks on some networks, ignore them for now
 				if strings.Contains(err.Error(), "value overflows uint256") {
-					L.Error().Err(err).Int64("BlockNumber", bn).Msg("skipped block")
+					cs.logger().Error().Err(err).Int64("BlockNumber", bn).Msg("skipped block")
 					return nil
 					// that means we need a raw RPC adapter, some chains has block formats that can't be marshalled with
 					// any version of go-ethereum
 				} else if strings.Contains(err.Error(), "transaction type not supported") {
-					L.Error().Err(err).Int64("BlockNumber", bn).Msg("skipped block")
+					cs.logger().Error().Err(err).Int64("BlockNumber", bn).Msg("skipped block")
 					return nil
 				}
 				return err
@@ -153,7 +168,7 @@ func (cs *BlockStats) CalculateBlockDurations(blocks []*types.Block) error {
 		}
 		tpsValues = append(tpsValues, tps)
 
-		L.Debug().
+		cs.logger().Debug().
 			Uint64("BlockNumber", blocks[i].Number().Uint64()).
 			Time("BlockTime", time.Unix(mustSafeInt64(blocks[i].Time()), 0)).
 			Str("Duration", duration.String()).
@@ -192,7 +207,7 @@ func (cs *BlockStats) CalculateBlockDurations(blocks []*types.Block) error {
 	percentile95BlockBaseFee := blockBaseFeeValues[index95]
 	percentile95BlockSize := blockSizeValues[index95]
 
-	L.Debug().
+	cs.logger().Debug().
 		Int("Blocks", len(blocks)).
 		Float64("AverageTPS", averageTPS).
 		Dur("AvgBlockDuration", averageDuration).
@@ -278,13 +293,13 @@ func (cs *BlockStats) CalculateBlockDurations(blocks []*types.Block) error {
 	if err != nil {
 		return err
 	}
-	L.Info().Msgf("Stats:\n%s", string(marshalled))
+	cs.logger().Info().Msgf("Stats:\n%s", string(marshalled))
 
 	marshalled, err = toml.Marshal(perfStats)
 	if err != nil {
 		return err
 	}
-	L.Info().Msgf("Recommended performance/chaos test parameters:\n%s", string(marshalled))
+	cs.logger().Info().Msgf("Recommended performance/chaos test parameters:\n%s", string(marshalled))
 	return nil
 }
 

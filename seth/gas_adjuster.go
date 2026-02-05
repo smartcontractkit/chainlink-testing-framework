@@ -46,6 +46,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 	if m.HeaderCache == nil {
 		return 0, fmt.Errorf("header cache is nil")
 	}
+	logger := m.Logger()
 	var getHeaderData = func(bn *big.Int) (*types.Header, error) {
 		if bn == nil {
 			return nil, fmt.Errorf("block number is nil")
@@ -80,7 +81,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 		return 0, err
 	}
 
-	L.Trace().Msgf("Block range for gas calculation: %d - %d", lastBlockNumber-blocksNumber, lastBlockNumber)
+	logger.Trace().Msgf("Block range for gas calculation: %d - %d", lastBlockNumber-blocksNumber, lastBlockNumber)
 
 	lastBlock, err := getHeaderData(big.NewInt(mustSafeInt64(lastBlockNumber)))
 	if err != nil {
@@ -112,7 +113,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 		go func(bn *big.Int) {
 			header, err := getHeaderData(bn)
 			if err != nil {
-				L.Debug().Msgf("Failed to get block %d header due to: %s", bn.Int64(), err.Error())
+				logger.Debug().Msgf("Failed to get block %d header due to: %s", bn.Int64(), err.Error())
 				wg.Done()
 				return
 			}
@@ -124,7 +125,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 	close(dataCh)
 
 	endTime := time.Now()
-	L.Debug().Msgf("Time to fetch %d block headers: %v", blocksNumber, endTime.Sub(startTime))
+	logger.Debug().Msgf("Time to fetch %d block headers: %v", blocksNumber, endTime.Sub(startTime))
 
 	minBlockCount := int(float64(blocksNumber) * 0.8)
 	if len(headers) < minBlockCount {
@@ -181,7 +182,8 @@ func calculateNewestFirstNetworkCongestionMetric(headers []*types.Header) float6
 
 // GetSuggestedEIP1559Fees returns suggested tip/fee cap calculated based on historical data, current congestion, and priority.
 func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (maxFeeCap *big.Int, adjustedTipCap *big.Int, err error) {
-	L.Info().Msg("Calculating suggested EIP-1559 fees")
+	logger := m.Logger()
+	logger.Info().Msg("Calculating suggested EIP-1559 fees")
 
 	var baseFee, currentGasTip *big.Int
 	if m.Cfg.Network.GasPriceEstimationBlocks != 0 && m.Cfg.Network.GasPriceEstimationTxPriority != Priority_Auto {
@@ -192,7 +194,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 			if err != nil {
 				return
 			}
-			L.Debug().Msg("Falling back to current EIP-1559 fees for gas estimation")
+			logger.Debug().Msg("Falling back to current EIP-1559 fees for gas estimation")
 		}
 	} else {
 		baseFee, currentGasTip, err = m.currentIP1559Fees(ctx)
@@ -207,7 +209,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 	}
 
 	if m.Cfg.Network.GasPriceEstimationTxPriority == Priority_Auto {
-		L.Info().Msg("Auto priority selected. Returning current gas fees without adjustments.")
+		logger.Info().Msg("Auto priority selected. Returning current gas fees without adjustments.")
 		maxFeeCap = new(big.Int).Add(baseFee, currentGasTip)
 		adjustedTipCap = currentGasTip
 		return
@@ -216,29 +218,29 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 	baseFee64, _ := baseFee.Float64()
 
 	if m.Cfg.IsExperimentEnabled(Experiment_Eip1559FeeEqualier) {
-		L.Debug().Msg("FeeEqualier experiment is enabled. Will adjust base fee and tip to be of the same order of magnitude.")
+		logger.Debug().Msg("FeeEqualier experiment is enabled. Will adjust base fee and tip to be of the same order of magnitude.")
 		baseFeeTipMagnitudeDiff, _ := calculateMagnitudeDifference(big.NewFloat(baseFee64), new(big.Float).SetInt(currentGasTip))
 
 		//one of values is 0, infinite order of magnitude smaller or larger
 		if baseFeeTipMagnitudeDiff == -0 {
 			if baseFee64 == 0.0 {
-				L.Debug().Msg("Historical base fee is 0.0. Will use suggested tip as base fee.")
+				logger.Debug().Msg("Historical base fee is 0.0. Will use suggested tip as base fee.")
 				baseFee64 = float64(currentGasTip.Int64())
 			} else {
-				L.Debug().Msg("Suggested tip is 0.0. Will use historical base fee as tip.")
+				logger.Debug().Msg("Suggested tip is 0.0. Will use historical base fee as tip.")
 				currentGasTip = big.NewInt(int64(baseFee64))
 			}
 		} else if baseFeeTipMagnitudeDiff < 3 {
-			L.Debug().Msg("Historical base fee is 3 orders of magnitude lower than suggested tip. Will use suggested tip as base fee.")
+			logger.Debug().Msg("Historical base fee is 3 orders of magnitude lower than suggested tip. Will use suggested tip as base fee.")
 			baseFee64 = float64(currentGasTip.Int64())
 		} else if baseFeeTipMagnitudeDiff > 3 {
-			L.Debug().Msg("Suggested tip is 3 orders of magnitude lower than historical base fee. Will use historical base fee as tip.")
+			logger.Debug().Msg("Suggested tip is 3 orders of magnitude lower than historical base fee. Will use historical base fee as tip.")
 			currentGasTip = big.NewInt(int64(baseFee64))
 		}
 	}
 
 	if baseFee64 == 0.0 {
-		L.Debug().
+		logger.Debug().
 			Float64("BaseFee", baseFee64).
 			Int64("SuggestedTip", currentGasTip.Int64()).
 			Msgf("Incorrect gas data received from node: base fee was 0. Skipping gas estimation")
@@ -246,7 +248,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 	}
 
 	if currentGasTip.Int64() == 0 {
-		L.Debug().
+		logger.Debug().
 			Int64("SuggestedTip", currentGasTip.Int64()).
 			Str("Fallback gas tip", fmt.Sprintf("%d wei / %s ether", m.Cfg.Network.GasTipCap, WeiToEther(big.NewInt(m.Cfg.Network.GasTipCap)).Text('f', -1))).
 			Msg("Suggested tip is 0.0. Although not strictly incorrect, it is unusual. Will use fallback value instead")
@@ -279,7 +281,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 		if err == nil {
 			congestionClassification := classifyCongestion(congestionMetric)
 
-			L.Debug().
+			logger.Debug().
 				Str("CongestionMetric", fmt.Sprintf("%.4f", congestionMetric)).
 				Str("CongestionClassification", congestionClassification).
 				Float64("AdjustmentFactor", adjustmentFactor).
@@ -303,7 +305,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 		} else if !strings.Contains(err.Error(), BlockFetchingErr) {
 			return
 		} else {
-			L.Debug().
+			logger.Debug().
 				Msgf("Failed to calculate congestion metric due to: %s. Skipping congestion buffer adjustment", err.Error())
 
 			// set error to nil, as we can still calculate the fees, but without congestion buffer
@@ -318,25 +320,25 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 	gasTipDiff := big.NewInt(0).Sub(adjustedTipCap, currentGasTip)
 	gasCapDiff := big.NewInt(0).Sub(maxFeeCap, initialFeeCap)
 
-	L.Debug().
+	logger.Debug().
 		Str("Diff (Wei/Ether)", fmt.Sprintf("%s wei / %s ether", gasTipDiff.String(), WeiToEther(gasTipDiff).Text('f', -1))).
 		Str("Initial Tip", fmt.Sprintf("%s wei / %s ether", currentGasTip.String(), WeiToEther(currentGasTip).Text('f', -1))).
 		Str("Final Tip", fmt.Sprintf("%s wei / %s ether", adjustedTipCap.String(), WeiToEther(adjustedTipCap).Text('f', -1))).
 		Msg("Tip adjustment")
 
-	L.Debug().
+	logger.Debug().
 		Str("Diff (Wei/Ether)", fmt.Sprintf("%s wei / %s ether", baseFeeDiff.String(), WeiToEther(baseFeeDiff).Text('f', -1))).
 		Str("Initial Base Fee", fmt.Sprintf("%s wei / %s ether", big.NewInt(int64(baseFee64)).String(), WeiToEther(big.NewInt(int64(baseFee64))).Text('f', -1))).
 		Str("Final Base Fee", fmt.Sprintf("%s wei / %s ether", adjustedBaseFee.String(), WeiToEther(adjustedBaseFee).Text('f', -1))).
 		Msg("Base Fee adjustment")
 
-	L.Debug().
+	logger.Debug().
 		Str("Diff (Wei/Ether)", fmt.Sprintf("%s wei / %s ether", gasCapDiff.String(), WeiToEther(gasCapDiff).Text('f', -1))).
 		Str("Initial Fee Cap", fmt.Sprintf("%s wei / %s ether", initialFeeCap.String(), WeiToEther(initialFeeCap).Text('f', -1))).
 		Str("Final Fee Cap", fmt.Sprintf("%s wei / %s ether", maxFeeCap.String(), WeiToEther(maxFeeCap).Text('f', -1))).
 		Msg("Fee Cap adjustment")
 
-	L.Info().
+	logger.Info().
 		Str("GasTipCap", fmt.Sprintf("%s wei / %s ether", adjustedTipCap.String(), WeiToEther(adjustedTipCap).Text('f', -1))).
 		Str("GasFeeCap", fmt.Sprintf("%s wei / %s ether", maxFeeCap.String(), WeiToEther(maxFeeCap).Text('f', -1))).
 		Msg("Calculated suggested EIP-1559 fees")
@@ -345,7 +347,8 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 }
 
 func (m *Client) eip1559FeesFromHistory(ctx context.Context, priority string) (baseFee *big.Int, tipCap *big.Int, err error) {
-	L.Debug().Msg("Fetching EIP-1559 fee history for gas estimation")
+	logger := m.Logger()
+	logger.Debug().Msg("Fetching EIP-1559 fee history for gas estimation")
 
 	var baseFee64, historicalSuggestedTip64 float64
 	attempts := getSafeGasEstimationsAttemptCount(m.Cfg)
@@ -358,7 +361,7 @@ func (m *Client) eip1559FeesFromHistory(ctx context.Context, priority string) (b
 			return tipErr
 		}
 
-		L.Debug().
+		logger.Debug().
 			Str("CurrentGasTip", fmt.Sprintf("%s wei / %s ether", suggestedGasTip.String(), WeiToEther(suggestedGasTip).Text('f', -1))).
 			Msg("Current suggested gas tip")
 
@@ -373,7 +376,7 @@ func (m *Client) eip1559FeesFromHistory(ctx context.Context, priority string) (b
 		retry.LastErrorOnly(true),
 		retry.DelayType(retry.FixedDelay),
 		retry.OnRetry(func(i uint, retryErr error) {
-			L.Debug().
+			logger.Debug().
 				Msgf("Retrying historical EIP1559 fees fetching due to: %s. Attempt %d/%d", retryErr.Error(), (i + 1), attempts)
 		}))
 
@@ -383,7 +386,7 @@ func (m *Client) eip1559FeesFromHistory(ctx context.Context, priority string) (b
 	}
 	baseFee = big.NewInt(int64(baseFee64))
 
-	L.Debug().
+	logger.Debug().
 		Str("HistoricalBaseFee", fmt.Sprintf("%.0f wei / %s ether", baseFee64, WeiToEther(big.NewInt(int64(baseFee64))).Text('f', -1))).
 		Str("HistoricalSuggestedTip", fmt.Sprintf("%.0f wei / %s ether", historicalSuggestedTip64, WeiToEther(big.NewInt(int64(historicalSuggestedTip64))).Text('f', -1))).
 		Str("Priority", priority).
@@ -391,19 +394,19 @@ func (m *Client) eip1559FeesFromHistory(ctx context.Context, priority string) (b
 
 	_, tipMagnitudeDiffText := calculateMagnitudeDifference(big.NewFloat(historicalSuggestedTip64), new(big.Float).SetInt(suggestedGasTip))
 
-	L.Debug().
+	logger.Debug().
 		Msgf("Historical tip is %s than suggested tip", tipMagnitudeDiffText)
 
 	tipCap = suggestedGasTip
 	if big.NewInt(int64(historicalSuggestedTip64)).Cmp(tipCap) > 0 {
-		L.Debug().Msg("Historical suggested tip is higher than current suggested tip. Will use it instead.")
+		logger.Debug().Msg("Historical suggested tip is higher than current suggested tip. Will use it instead.")
 		tipCap = big.NewInt(int64(historicalSuggestedTip64))
 	} else {
-		L.Debug().Msg("Suggested tip is higher than historical tip. Will use suggested tip.")
+		logger.Debug().Msg("Suggested tip is higher than historical tip. Will use suggested tip.")
 	}
 
 	tipCap64, _ := tipCap.Float64()
-	L.Debug().
+	logger.Debug().
 		Str("BaseFee", fmt.Sprintf("%.0f wei / %s ether", baseFee64, WeiToEther(big.NewInt(int64(baseFee64))).Text('f', -1))).
 		Str("SuggestedTip", fmt.Sprintf("%.0f wei / %s ether", tipCap64, WeiToEther(tipCap).Text('f', -1))).
 		Str("Priority", priority).
@@ -413,7 +416,8 @@ func (m *Client) eip1559FeesFromHistory(ctx context.Context, priority string) (b
 }
 
 func (m *Client) currentIP1559Fees(ctx context.Context) (baseFee *big.Int, tipCap *big.Int, err error) {
-	L.Debug().Msg("Fetching current EIP-1559 gas fees for gas estimation")
+	logger := m.Logger()
+	logger.Debug().Msg("Fetching current EIP-1559 gas fees for gas estimation")
 
 	attempts := getSafeGasEstimationsAttemptCount(m.Cfg)
 	retryErr := retry.Do(func() error {
@@ -437,7 +441,7 @@ func (m *Client) currentIP1559Fees(ctx context.Context) (baseFee *big.Int, tipCa
 		retry.LastErrorOnly(true),
 		retry.DelayType(retry.FixedDelay),
 		retry.OnRetry(func(i uint, retryErr error) {
-			L.Debug().
+			logger.Debug().
 				Msgf("Retrying suggested EIP1559 fees fetching due to: %s. Attempt %d/%d", retryErr.Error(), (i + 1), attempts)
 		}))
 
@@ -448,7 +452,7 @@ func (m *Client) currentIP1559Fees(ctx context.Context) (baseFee *big.Int, tipCa
 
 	baseFee64, _ := baseFee.Float64()
 	tipCap64, _ := tipCap.Float64()
-	L.Debug().
+	logger.Debug().
 		Str("BaseFee", fmt.Sprintf("%.0f wei / %s ether", baseFee64, WeiToEther(baseFee).Text('f', -1))).
 		Str("SuggestedTip", fmt.Sprintf("%.0f wei / %s ether", tipCap64, WeiToEther(tipCap).Text('f', -1))).
 		Msg("Fetched current EIP-1559 gas fees successfully")
@@ -458,7 +462,8 @@ func (m *Client) currentIP1559Fees(ctx context.Context) (baseFee *big.Int, tipCa
 
 // GetSuggestedLegacyFees calculates the suggested gas price based on historical data, current congestion, and priority.
 func (m *Client) GetSuggestedLegacyFees(ctx context.Context, priority string) (adjustedGasPrice *big.Int, err error) {
-	L.Info().
+	logger := m.Logger()
+	logger.Info().
 		Msg("Calculating suggested Legacy fees")
 
 	var suggestedGasPrice *big.Int
@@ -482,7 +487,7 @@ func (m *Client) GetSuggestedLegacyFees(ctx context.Context, priority string) (a
 		retry.LastErrorOnly(true),
 		retry.DelayType(retry.FixedDelay),
 		retry.OnRetry(func(i uint, retryErr error) {
-			L.Debug().
+			logger.Debug().
 				Msgf("Retrying fetching of legacy suggested gas price due to: %s. Attempt %d/%d", retryErr.Error(), (i + 1), attempts)
 		}))
 
@@ -515,7 +520,7 @@ func (m *Client) GetSuggestedLegacyFees(ctx context.Context, priority string) (a
 		if err == nil {
 			congestionClassification := classifyCongestion(congestionMetric)
 
-			L.Debug().
+			logger.Debug().
 				Str("CongestionMetric", fmt.Sprintf("%.4f", congestionMetric)).
 				Str("CongestionClassification", congestionClassification).
 				Float64("AdjustmentFactor", adjustmentFactor).
@@ -535,7 +540,7 @@ func (m *Client) GetSuggestedLegacyFees(ctx context.Context, priority string) (a
 		} else if !strings.Contains(err.Error(), BlockFetchingErr) {
 			return
 		} else {
-			L.Debug().
+			logger.Debug().
 				Msgf("Failed to calculate congestion metric due to: %s. Skipping congestion buffer adjustment", err.Error())
 
 			// set error to nil, as we can still calculate the fees, but without congestion buffer
@@ -544,13 +549,13 @@ func (m *Client) GetSuggestedLegacyFees(ctx context.Context, priority string) (a
 		}
 	}
 
-	L.Debug().
+	logger.Debug().
 		Str("Diff (Wei/Ether)", fmt.Sprintf("%s/%s", big.NewInt(0).Sub(adjustedGasPrice, suggestedGasPrice).String(), WeiToEther(big.NewInt(0).Sub(adjustedGasPrice, suggestedGasPrice)).Text('f', -1))).
 		Str("Initial GasPrice (Wei/Ether)", fmt.Sprintf("%s/%s", suggestedGasPrice.String(), WeiToEther(suggestedGasPrice).Text('f', -1))).
 		Str("Final GasPrice (Wei/Ether)", fmt.Sprintf("%s/%s", adjustedGasPrice.String(), WeiToEther(adjustedGasPrice).Text('f', -1))).
 		Msg("Suggested Legacy fees")
 
-	L.Info().
+	logger.Info().
 		Str("GasPrice", fmt.Sprintf("%s wei / %s ether", adjustedGasPrice.String(), WeiToEther(adjustedGasPrice).Text('f', -1))).
 		Msg("Calculated suggested Legacy fees")
 
@@ -601,6 +606,7 @@ func classifyCongestion(congestionMetric float64) string {
 }
 
 func (m *Client) HistoricalFeeData(ctx context.Context, priority string) (baseFee float64, historicalGasTipCap float64, err error) {
+	logger := m.Logger()
 	var percentileTip float64
 
 	// based on priority decide, which percentile to use to get historical tip values, when calling FeeHistory
@@ -615,7 +621,7 @@ func (m *Client) HistoricalFeeData(ctx context.Context, priority string) (baseFe
 		percentileTip = 25
 	default:
 		err = fmt.Errorf("unknown priority: %s", priority)
-		L.Debug().
+		logger.Debug().
 			Str("Priority", priority).
 			Msgf("Unknown priority: %s", err.Error())
 
@@ -625,7 +631,7 @@ func (m *Client) HistoricalFeeData(ctx context.Context, priority string) (baseFe
 	estimator := NewGasEstimator(m)
 	stats, err := estimator.Stats(ctx, m.Cfg.Network.GasPriceEstimationBlocks, percentileTip)
 	if err != nil {
-		L.Debug().
+		logger.Debug().
 			Str("Priority", priority).
 			Str("Block count", fmt.Sprintf("%d", m.Cfg.Network.GasPriceEstimationBlocks)).
 			Msgf("Failed to get fee history due to: %s", err.Error())
@@ -645,7 +651,7 @@ func (m *Client) HistoricalFeeData(ctx context.Context, priority string) (baseFe
 		baseFee = stats.BaseFeePerc.Perc25
 	default:
 		err = fmt.Errorf("unsupported priority: %s", priority)
-		L.Debug().
+		logger.Debug().
 			Str("Priority", priority).
 			Msgf("Unsupported priority: %s", err.Error())
 
