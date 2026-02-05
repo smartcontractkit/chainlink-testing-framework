@@ -2,6 +2,7 @@ package chip_ingress_test
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -19,6 +20,8 @@ type ChipConfig struct {
 func TestChipIngressSmoke(t *testing.T) {
 	in, err := framework.Load[ChipConfig](t)
 	require.NoError(t, err, "failed to load config")
+	require.NotEmpty(t, os.Getenv("CHIP_CONFIG_IMAGE"), "CHIP_CONFIG_IMAGE env var is not set")
+	require.NotEmpty(t, os.Getenv("CHIP_INGRESS_IMAGE"), "CHIP_INGRESS_IMAGE env var is not set")
 
 	out, err := chipingressset.NewWithContext(t.Context(), in.ChipIngress)
 	require.NoError(t, err, "failed to create chip ingress set")
