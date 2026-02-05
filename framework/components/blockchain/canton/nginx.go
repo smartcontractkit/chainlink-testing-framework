@@ -44,12 +44,13 @@ http {
 	include /etc/nginx/conf.d/participants.conf;
 	
 	server {
-		server_name localhost;
-		location /readyz {
+		listen 8080 default_server;
+		server_name _;
+		location = /readyz {
 			add_header Content-Type text/plain;
-			return 200 'OK';
+			return 200 "OK";
 		}
-	}
+	} 
 }
 `
 
@@ -97,6 +98,7 @@ server {
     location / {
         grpc_pass grpc://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX}00;
 	}
+}
 `
 	if enableSplice {
 		template += `
@@ -205,7 +207,7 @@ func NginxContainerRequest(
 			framework.DefaultNetworkName: {nginxContainerName},
 		},
 		WaitingFor:   wait.ForHTTP("/readyz").WithStartupTimeout(time.Second * 10),
-		ExposedPorts: []string{fmt.Sprintf("%s:8080", port), "8080/tcp"},
+		ExposedPorts: []string{fmt.Sprintf("%s:8080", port)},
 		Env: func() map[string]string {
 			env := map[string]string{
 				"CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX": DefaultHTTPHealthcheckPortPrefix,

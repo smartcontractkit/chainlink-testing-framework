@@ -104,8 +104,8 @@ canton {
 
 _participant {
   init {
-    generate-topology-transactions-and-keys = false
-    identity.type = manual
+    generate-topology-transactions-and-keys = true
+    # identity.type = manual
   }
 
   monitoring.grpc-health-server {
