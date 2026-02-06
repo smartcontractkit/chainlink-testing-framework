@@ -134,6 +134,7 @@ func newStellar(ctx context.Context, in *Input) (*Output, error) {
 		Msg("Stellar node is ready")
 
 	return &Output{
+		ChainID:       in.ChainID,
 		UseCache:      true,
 		Type:          in.Type,
 		Family:        FamilyStellar,
