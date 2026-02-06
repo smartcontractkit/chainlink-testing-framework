@@ -1,0 +1,28 @@
+# Print all the commands
+default:
+    @just --list
+
+# Create a local Kind environment
+kind-up:
+    kind create cluster --name pods --config kind.yml
+    kind load docker-image job-distributor:local --name pods
+
+# Destroy a local Kind environment
+kind-down:
+    kind delete cluster --name pods
+
+# Switch K8s context to local Kind environment
+ctx:
+    kubectl config use-context kind-pods
+
+# Start environment example
+start:
+    go run environment.go
+
+# Stop environment example
+stop:
+    kubectl delete ns pods
+
+# Forwards all services ports using Kubefwd
+forward namespace:
+    sudo kubefwd -n {{namespace}} svc

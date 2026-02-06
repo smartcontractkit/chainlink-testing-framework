@@ -1,0 +1,49 @@
+name: Deploy Tests
+on: [push]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    permissions:
+      id-token: write
+      contents: read
+    runs-on: ${{ matrix.test.vm }}
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - test: test-deploy
+            vm: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install dependencies
+        run: go mod download
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: go-modules-${{ hashFiles('go.sum') }}-${{ runner.os }}-test
+          restore-keys: |
+            go-modules-${{ runner.os }}-test
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          just-version: '1.39.0'
+      - name: Create k8s Kind Cluster
+        uses: helm/kind-action@v1
+      - name: Run tests
+        env:
+          CI: true
+        run: |
+          just ${{ matrix.test.test }}
+      - name: Check test coverage
+        uses: vladopajic/go-test-coverage@v2
+        with:
+          config: ./.testcoverage.yml

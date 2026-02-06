@@ -1,0 +1,20 @@
+exclude: '(\.bin|\.abi)'
+
+repos:
+  - repo: local
+    hooks:
+      - id: go-lint
+        name: Check Go Lint
+        entry: ./.githooks/go-lint
+        language: script
+        pass_filenames: false
+      - id: go-test
+        name: Run Snapshot Tests
+        entry: ./.githooks/go-test
+        language: script
+        pass_filenames: false
+      - id: typos
+        name: Typos
+        entry: ./.githooks/typos
+        language: script
+        pass_filenames: false
