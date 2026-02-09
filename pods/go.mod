@@ -2,6 +2,7 @@ module github.com/smartcontractkit/pods
 
 go 1.24.0
 
+
 require (
 	github.com/aws/constructs-go/constructs/v10 v10.4.2
 	github.com/aws/jsii-runtime-go v1.108.0

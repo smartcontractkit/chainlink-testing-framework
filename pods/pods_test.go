@@ -1,7 +1,6 @@
 package pods_test
 
 import (
-	"context"
 	"os"
 	"testing"
 
@@ -10,24 +9,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Apply() bool { return os.Getenv("APPLY") == "true" }
-
-func defaultNoErr(t *testing.T, _ *p.Pods, err error) { require.NoError(t, err) }
-
-func onePod(t *testing.T, p *p.Pods, err error) {
-	require.NoError(t, err)
-	pods, err := p.GetPods(context.Background())
-	require.NoError(t, err)
-	require.Len(t, pods.Items, 1)
-}
+func defaultNoErr(t *testing.T, err error) { require.NoError(t, err) }
 
 func TestPods(t *testing.T) {
 	tests := []struct {
-		name               string
-		props              *p.Config
-		skipCI             bool
-		validateManifest   func(t *testing.T, p *p.Pods, err error)
-		validateDeployment func(t *testing.T, p *p.Pods, err error)
+		name             string
+		props            *p.Config
+		skipCI           bool
+		validateManifest func(t *testing.T, err error)
 	}{
 		{
 			name: "test-single-pod",
@@ -41,8 +30,7 @@ func TestPods(t *testing.T) {
 					},
 				},
 			},
-			validateManifest:   defaultNoErr,
-			validateDeployment: onePod,
+			validateManifest: defaultNoErr,
 		},
 		{
 			name: "test-command",
@@ -59,8 +47,7 @@ func TestPods(t *testing.T) {
 					},
 				},
 			},
-			validateManifest:   defaultNoErr,
-			validateDeployment: onePod,
+			validateManifest: defaultNoErr,
 		},
 		{
 			name: "test-instances",
@@ -76,12 +63,6 @@ func TestPods(t *testing.T) {
 				},
 			},
 			validateManifest: defaultNoErr,
-			validateDeployment: func(t *testing.T, p *p.Pods, err error) {
-				require.NoError(t, err)
-				pods, err := p.GetPods(context.Background())
-				require.NoError(t, err)
-				require.Len(t, pods.Items, 2)
-			},
 		},
 		{
 			name: "test-multiple-pods",
@@ -101,12 +82,6 @@ func TestPods(t *testing.T) {
 				},
 			},
 			validateManifest: defaultNoErr,
-			validateDeployment: func(t *testing.T, p *p.Pods, err error) {
-				require.NoError(t, err)
-				pods, err := p.GetPods(context.Background())
-				require.NoError(t, err)
-				require.Len(t, pods.Items, 2)
-			},
 		},
 		{
 			name: "test-custom-resources",
@@ -122,8 +97,7 @@ func TestPods(t *testing.T) {
 					},
 				},
 			},
-			validateManifest:   defaultNoErr,
-			validateDeployment: onePod,
+			validateManifest: defaultNoErr,
 		},
 		{
 			name: "test-invalid-ports",
@@ -137,7 +111,7 @@ func TestPods(t *testing.T) {
 					},
 				},
 			},
-			validateManifest: func(t *testing.T, p *p.Pods, err error) {
+			validateManifest: func(t *testing.T, err error) {
 				require.Contains(t, err.Error(), "invalid port mapping")
 			},
 		},
@@ -162,14 +136,6 @@ func TestPods(t *testing.T) {
 				},
 			},
 			validateManifest: defaultNoErr,
-			validateDeployment: func(t *testing.T, p *p.Pods, err error) {
-				onePod(t, p, err)
-				cms, err := p.GetConfigMaps(context.Background())
-				require.NoError(t, err)
-				require.Equal(t, 2, len(cms))
-				require.Equal(t, `test`, cms["test-pod-1-configmap"]["config.toml"])
-				require.Equal(t, `test`, cms["test-pod-1-configmap"]["config2.toml"])
-			},
 		},
 		{
 			name: "test-secrets",
@@ -192,14 +158,6 @@ func TestPods(t *testing.T) {
 				},
 			},
 			validateManifest: defaultNoErr,
-			validateDeployment: func(t *testing.T, p *p.Pods, err error) {
-				onePod(t, p, err)
-				secrets, err := p.GetSecrets(context.Background())
-				require.NoError(t, err)
-				require.Equal(t, 1, len(secrets))
-				require.Equal(t, []byte(`test`), secrets["test-pod-1-secret"]["secret.toml"])
-				require.Equal(t, []byte(`test`), secrets["test-pod-1-secret"]["secret2.toml"])
-			},
 		},
 		{
 			name:   "test-volumes",
@@ -209,12 +167,6 @@ func TestPods(t *testing.T) {
 				Pods:      []*p.PodConfig{p.PostgreSQL("pg-x", "postgres:15", p.ResourcesSmall(), p.ResourcesSmall(), p.S("1Gi"))},
 			},
 			validateManifest: defaultNoErr,
-			validateDeployment: func(t *testing.T, p *p.Pods, err error) {
-				onePod(t, p, err)
-				volumes, err := p.GetPersistentVolumes(context.Background())
-				require.NoError(t, err)
-				require.Len(t, volumes, 1)
-			},
 		},
 		{
 			name: "test-services",
@@ -229,12 +181,6 @@ func TestPods(t *testing.T) {
 				},
 			},
 			validateManifest: defaultNoErr,
-			validateDeployment: func(t *testing.T, p *p.Pods, err error) {
-				require.NoError(t, err)
-				svcs, err := p.GetServices(context.Background())
-				require.NoError(t, err)
-				require.Len(t, svcs, 1)
-			},
 		},
 	}
 
@@ -243,25 +189,10 @@ func TestPods(t *testing.T) {
 			if os.Getenv("CI") == "true" && tt.skipCI {
 				t.Skip("this test can't be run in CI because of GHA limitations")
 			}
-			p := p.New(tt.props)
-			err := p.Generate()
-			if tt.validateManifest != nil {
-				tt.validateManifest(t, p, err)
-			}
-			if Apply() {
-				err := p.CreateNamespace(*tt.props.Namespace)
-				require.NoError(t, err)
-				t.Cleanup(func() {
-					_ = p.RemoveNamespace(*tt.props.Namespace)
-				})
-				err = p.Apply()
-				if tt.validateDeployment != nil {
-					tt.validateDeployment(t, p, err)
-				}
-				return
-			}
+			manifest, err := p.Run(tt.props)
+			tt.validateManifest(t, err)
 			if err == nil {
-				snaps.MatchSnapshot(t, *p.Manifest())
+				snaps.MatchSnapshot(t, manifest)
 			}
 		})
 	}

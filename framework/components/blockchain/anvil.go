@@ -2,9 +2,15 @@ package blockchain
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"strings"
 
+	"github.com/smartcontractkit/pods"
+	"github.com/smartcontractkit/pods/imports/k8s"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components"
 )
 
 const (
@@ -30,6 +36,9 @@ func defaultAnvil(in *Input) {
 	if in.Port == "" {
 		in.Port = "8545"
 	}
+	if in.ContainerName == "" {
+		in.ContainerName = "anvil"
+	}
 }
 
 func newAnvil(ctx context.Context, in *Input) (*Output, error) {
@@ -50,5 +59,44 @@ func newAnvil(ctx context.Context, in *Input) (*Output, error) {
 
 	framework.L.Info().Any("Cmd", strings.Join(entryPoint, " ")).Msg("Creating anvil with command")
 
-	return createGenericEvmContainer(ctx, in, req, false)
+	ns := os.Getenv(components.K8sNamespaceEnvVar)
+
+	if ns != "" {
+		_, err := pods.Run(&pods.Config{
+			Namespace: pods.S(ns),
+			Pods: []*pods.PodConfig{
+				{
+					Name:    pods.S(in.ContainerName),
+					Image:   &in.Image,
+					Ports:   []string{fmt.Sprintf("%s:%s", in.Port, in.Port)},
+					Command: pods.S(strings.Join(entryPoint, " ")),
+					Limits:  pods.ResourcesSmall(),
+					ContainerSecurityContext: &k8s.SecurityContext{
+						RunAsUser:  pods.I(999),
+						RunAsGroup: pods.I(999),
+					},
+				},
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		return &Output{
+			UseCache:      true,
+			Type:          in.Type,
+			Family:        FamilyEVM,
+			ChainID:       in.ChainID,
+			ContainerName: in.ContainerName,
+			Nodes: []*Node{
+				{
+					ExternalWSUrl:   fmt.Sprintf("ws://%s:%s", fmt.Sprintf("%s-svc", in.ContainerName), in.Port),
+					ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", fmt.Sprintf("%s-svc", in.ContainerName), in.Port),
+					InternalWSUrl:   fmt.Sprintf("ws://%s:%s", fmt.Sprintf("%s-svc", in.ContainerName), in.Port),
+					InternalHTTPUrl: fmt.Sprintf("http://%s:%s", fmt.Sprintf("%s-svc", in.ContainerName), in.Port),
+				},
+			},
+		}, nil
+	} else {
+		return createGenericEvmContainer(ctx, in, req, false)
+	}
 }

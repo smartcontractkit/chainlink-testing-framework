@@ -113,7 +113,8 @@ func SizedVolumeClaim(size *string) []*k8s.KubePersistentVolumeClaimProps { // c
 				Name: S("data"),
 			},
 			Spec: &k8s.PersistentVolumeClaimSpec{
-				AccessModes: &[]*string{S("ReadWriteOnce")},
+				AccessModes:      &[]*string{S("ReadWriteOnce")},
+				StorageClassName: S("gp3"),
 				Resources: &k8s.VolumeResourceRequirements{
 					Requests: &map[string]k8s.Quantity{
 						"storage": k8s.Quantity_FromString(size),

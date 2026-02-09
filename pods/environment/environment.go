@@ -52,8 +52,7 @@ func NewEnvironment() error {
 		},
 	}
 
-	k8sDeployment := p.New(cfg)
-	err := k8sDeployment.CreateNamespace(ns)
+	k8sDeployment, err := p.New(cfg)
 	if err != nil {
 		return err
 	}

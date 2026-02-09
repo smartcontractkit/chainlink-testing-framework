@@ -13,12 +13,17 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/aws/jsii-runtime-go"
+	"github.com/smartcontractkit/pods"
+	"github.com/smartcontractkit/pods/imports/k8s"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 )
 
@@ -170,7 +175,7 @@ func generateEntryPoint() []string {
 		"/bin/sh", "-c",
 	}
 	if os.Getenv("CTF_CLNODE_DLV") == "true" {
-		entrypoint = append(entrypoint, "dlv  exec /usr/local/bin/chainlink --continue --listen=0.0.0.0:40000 --headless=true --api-version=2 --accept-multiclient -- -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials")
+		entrypoint = append(entrypoint, "dlv exec /usr/local/bin/chainlink --continue --listen=0.0.0.0:40000 --headless=true --api-version=2 --accept-multiclient -- -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials")
 	} else {
 		entrypoint = append(entrypoint, "chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials")
 	}
@@ -242,11 +247,20 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 	if err != nil {
 		return nil, err
 	}
-	cfgPath, err := writeDefaultConfig()
+	cfg, err := generateDefaultConfig()
 	if err != nil {
 		return nil, err
 	}
-	secretsPath, err := writeDefaultSecrets(pgOut)
+	cfgPath, err := WriteTmpFile(cfg, "config.toml")
+	if err != nil {
+		return nil, err
+	}
+
+	secretsData, err := generateSecretsConfig(pgOut.InternalURL, DefaultTestKeystorePassword)
+	if err != nil {
+		return nil, err
+	}
+	secretsPath, err := WriteTmpFile(secretsData, "secrets.toml")
 	if err != nil {
 		return nil, err
 	}
@@ -278,139 +292,205 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 	if err != nil {
 		return nil, err
 	}
-	req := tc.ContainerRequest{
-		AlwaysPullImage: in.Node.PullImage,
-		Image:           in.Node.Image,
-		Name:            containerName,
-		Labels:          framework.DefaultTCLabels(),
-		Networks:        []string{framework.DefaultNetworkName},
-		NetworkAliases: map[string][]string{
-			framework.DefaultNetworkName: {containerName},
-		},
-		Env:          in.Node.EnvVars,
-		ExposedPorts: exposedPorts,
-		Entrypoint:   generateEntryPoint(),
-		WaitingFor: wait.ForHTTP("/").
-			WithPort(DefaultHTTPPort).
-			WithStartupTimeout(3 * time.Minute).
-			WithPollInterval(200 * time.Millisecond),
-		Mounts: tc.ContainerMounts{
-			{
-				// various configuration files
-				Source: tc.GenericVolumeMountSource{
-					Name: ConfigVolumeName + "-" + in.Node.Name,
+
+	ns := os.Getenv(components.K8sNamespaceEnvVar)
+	// k8s deployment
+	if ns != "" {
+		pods.Lock()
+		defer pods.Unlock()
+		_, err := pods.Run(&pods.Config{
+			Namespace: pods.S(ns),
+			Pods: []*pods.PodConfig{
+				{
+					Name:   pods.S(containerName),
+					Image:  pods.S(in.Node.Image),
+					Env:    &[]*k8s.EnvVar{},
+					Limits: pods.ResourcesSmall(),
+					Ports:  []string{"6688:6688", "6690:6690"},
+					ContainerSecurityContext: &k8s.SecurityContext{
+						RunAsNonRoot: jsii.Bool(true),
+						RunAsUser:    pods.I(14933),
+						RunAsGroup:   pods.I(999),
+					},
+					ConfigMap: map[string]*string{
+						"config.toml":         pods.S(cfg),
+						"overrides.toml":      pods.S(in.Node.TestConfigOverrides),
+						"user-overrides.toml": pods.S(in.Node.UserConfigOverrides),
+						"node_password":       pods.S(DefaultPasswordTxt),
+						"apicredentials": pods.S(fmt.Sprintf(`%s
+			%s`, DefaultAPIUser, DefaultAPIPassword)),
+					},
+					ConfigMapMountPath: map[string]*string{
+						"config.toml":         pods.S("/config/config"),
+						"overrides.toml":      pods.S("/config/overrides"),
+						"user-overrides.toml": pods.S("/config/user-overrides"),
+						"node_password":       pods.S("/config/node_password"),
+						"apicredentials":      pods.S("/config/apicredentials"),
+					},
+					Secrets: map[string]*string{
+						"secrets.toml":                pods.S(secretsData),
+						"secrets-overrides.toml":      pods.S(in.Node.TestSecretsOverrides),
+						"secrets-user-overrides.toml": pods.S(in.Node.UserSecretsOverrides),
+					},
+					SecretsMountPath: map[string]*string{
+						"secrets.toml":                pods.S("/config/secrets"),
+						"secrets-overrides.toml":      pods.S("/config/secrets-overrides"),
+						"secrets-user-overrides.toml": pods.S("/config/user-secrets-overrides"),
+					},
+					// Command:          pods.S("chainlink -c /config/config -s /config/secrets node start -d -a /config/apicredentials"),
+					Command: pods.S("chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials"),
+					// TODO: override the same way as in Docker
+					// Command: pods.S(strings.Join(generateEntryPoint(), " ")),
 				},
-				Target: "/config",
 			},
-			{
-				// kv store of the OCR jobs and other state files are stored
-				// in the user's home instead of the DB
-				Source: tc.GenericVolumeMountSource{
-					Name: HomeVolumeName + "-" + in.Node.Name,
-				},
-				Target: "/home/chainlink",
-			},
-		},
-	}
-	if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {
-		req.HostConfigModifier = func(h *container.HostConfig) {
-			framework.NoDNS(in.NoDNS, h)
-			h.PortBindings = portBindings
-			framework.ResourceLimitsFunc(h, in.Node.ContainerResources)
-		}
-	}
-	files := []tc.ContainerFile{
-		{
-			HostFilePath:      cfgPath.Name(),
-			ContainerFilePath: "/config/config",
-			FileMode:          0o644,
-		},
-		{
-			HostFilePath:      secretsPath.Name(),
-			ContainerFilePath: "/config/secrets",
-			FileMode:          0o644,
-		},
-		{
-			HostFilePath:      overridesFile.Name(),
-			ContainerFilePath: "/config/overrides",
-			FileMode:          0o644,
-		},
-		{
-			HostFilePath:      userOverridesFile.Name(),
-			ContainerFilePath: "/config/user-overrides",
-			FileMode:          0o644,
-		},
-		{
-			HostFilePath:      secretsOverridesFile.Name(),
-			ContainerFilePath: "/config/secrets-overrides",
-			FileMode:          0o644,
-		},
-		{
-			HostFilePath:      userSecretsOverridesFile.Name(),
-			ContainerFilePath: "/config/user-secrets-overrides",
-			FileMode:          0o644,
-		},
-		{
-			HostFilePath:      passwordPath.Name(),
-			ContainerFilePath: "/config/node_password",
-			FileMode:          0o644,
-		},
-		{
-			HostFilePath:      apiCredentialsPath.Name(),
-			ContainerFilePath: "/config/apicredentials",
-			FileMode:          0o644,
-		},
-	}
-	if in.Node.CapabilityContainerDir == "" {
-		in.Node.CapabilityContainerDir = DefaultCapabilitiesDir
-	}
-	for _, cp := range in.Node.CapabilitiesBinaryPaths {
-		cpPath := filepath.Base(cp)
-		framework.L.Info().Any("Path", cpPath).Str("Binary", cpPath).Msg("Copying capability binary")
-		files = append(files, tc.ContainerFile{
-			HostFilePath:      cp,
-			ContainerFilePath: filepath.Join(in.Node.CapabilityContainerDir, cpPath),
-			FileMode:          0o777,
 		})
-	}
-	req.Files = append(req.Files, files...)
-	if req.Image != "" && (in.Node.DockerFilePath != "" || in.Node.DockerContext != "") {
-		return nil, errors.New("you provided both 'image' and one of 'docker_file', 'docker_ctx' fields. Please provide either 'image' or params to build a local one")
-	}
-	if req.Image == "" {
-		req.Image = TmpImageName
-		if err := framework.BuildImageOnce(once, in.Node.DockerContext, in.Node.DockerFilePath, req.Image, in.Node.DockerBuildArgs); err != nil {
+		if err != nil {
 			return nil, err
 		}
-		req.KeepImage = false
-	}
-	c, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		return nil, err
-	}
-	ip, err := c.ContainerIP(ctx)
-	if err != nil {
-		return nil, err
-	}
-	host, err := framework.GetHostWithContext(ctx, c)
-	if err != nil {
-		return nil, err
-	}
+		return &NodeOut{
+			APIAuthUser:     DefaultAPIUser,
+			APIAuthPassword: DefaultAPIPassword,
+			ContainerName:   containerName,
+			ExternalURL:     fmt.Sprintf("http://%s:%s", fmt.Sprintf("%s-svc", containerName), DefaultHTTPPort),
+			InternalURL:     fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
+			InternalP2PUrl:  fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
+		}, nil
+	} else {
+		// local deployment
+		req := tc.ContainerRequest{
+			AlwaysPullImage: in.Node.PullImage,
+			Image:           in.Node.Image,
+			Name:            containerName,
+			Labels:          framework.DefaultTCLabels(),
+			Networks:        []string{framework.DefaultNetworkName},
+			NetworkAliases: map[string][]string{
+				framework.DefaultNetworkName: {containerName},
+			},
+			Env:          in.Node.EnvVars,
+			ExposedPorts: exposedPorts,
+			Entrypoint:   generateEntryPoint(),
+			WaitingFor: wait.ForHTTP("/").
+				WithPort(DefaultHTTPPort).
+				WithStartupTimeout(3 * time.Minute).
+				WithPollInterval(200 * time.Millisecond),
+			Mounts: tc.ContainerMounts{
+				{
+					// various configuration files
+					Source: tc.GenericVolumeMountSource{
+						Name: ConfigVolumeName + "-" + in.Node.Name,
+					},
+					Target: "/config",
+				},
+				{
+					// kv store of the OCR jobs and other state files are stored
+					// in the user's home instead of the DB
+					Source: tc.GenericVolumeMountSource{
+						Name: HomeVolumeName + "-" + in.Node.Name,
+					},
+					Target: "/home/chainlink",
+				},
+			},
+		}
+		if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {
+			req.HostConfigModifier = func(h *container.HostConfig) {
+				framework.NoDNS(in.NoDNS, h)
+				h.PortBindings = portBindings
+				framework.ResourceLimitsFunc(h, in.Node.ContainerResources)
+			}
+		}
+		files := []tc.ContainerFile{
+			{
+				HostFilePath:      cfgPath.Name(),
+				ContainerFilePath: "/config/config",
+				FileMode:          0o644,
+			},
+			{
+				HostFilePath:      secretsPath.Name(),
+				ContainerFilePath: "/config/secrets",
+				FileMode:          0o644,
+			},
+			{
+				HostFilePath:      overridesFile.Name(),
+				ContainerFilePath: "/config/overrides",
+				FileMode:          0o644,
+			},
+			{
+				HostFilePath:      userOverridesFile.Name(),
+				ContainerFilePath: "/config/user-overrides",
+				FileMode:          0o644,
+			},
+			{
+				HostFilePath:      secretsOverridesFile.Name(),
+				ContainerFilePath: "/config/secrets-overrides",
+				FileMode:          0o644,
+			},
+			{
+				HostFilePath:      userSecretsOverridesFile.Name(),
+				ContainerFilePath: "/config/user-secrets-overrides",
+				FileMode:          0o644,
+			},
+			{
+				HostFilePath:      passwordPath.Name(),
+				ContainerFilePath: "/config/node_password",
+				FileMode:          0o644,
+			},
+			{
+				HostFilePath:      apiCredentialsPath.Name(),
+				ContainerFilePath: "/config/apicredentials",
+				FileMode:          0o644,
+			},
+		}
+		if in.Node.CapabilityContainerDir == "" {
+			in.Node.CapabilityContainerDir = DefaultCapabilitiesDir
+		}
+		for _, cp := range in.Node.CapabilitiesBinaryPaths {
+			cpPath := filepath.Base(cp)
+			framework.L.Info().Any("Path", cpPath).Str("Binary", cpPath).Msg("Copying capability binary")
+			files = append(files, tc.ContainerFile{
+				HostFilePath:      cp,
+				ContainerFilePath: filepath.Join(in.Node.CapabilityContainerDir, cpPath),
+				FileMode:          0o777,
+			})
+		}
+		req.Files = append(req.Files, files...)
+		if req.Image != "" && (in.Node.DockerFilePath != "" || in.Node.DockerContext != "") {
+			return nil, errors.New("you provided both 'image' and one of 'docker_file', 'docker_ctx' fields. Please provide either 'image' or params to build a local one")
+		}
+		if req.Image == "" {
+			req.Image = TmpImageName
+			if err := framework.BuildImageOnce(once, in.Node.DockerContext, in.Node.DockerFilePath, req.Image, in.Node.DockerBuildArgs); err != nil {
+				return nil, err
+			}
+			req.KeepImage = false
+		}
+		c, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
+			ContainerRequest: req,
+			Started:          true,
+		})
+		if err != nil {
+			return nil, err
+		}
+		ip, err := c.ContainerIP(ctx)
+		if err != nil {
+			return nil, err
+		}
+		host, err := framework.GetHostWithContext(ctx, c)
+		if err != nil {
+			return nil, err
+		}
 
-	mp := nat.Port(fmt.Sprintf("%d/tcp", in.Node.HTTPPort))
+		mp := nat.Port(fmt.Sprintf("%d/tcp", in.Node.HTTPPort))
 
-	return &NodeOut{
-		APIAuthUser:     DefaultAPIUser,
-		APIAuthPassword: DefaultAPIPassword,
-		ContainerName:   containerName,
-		ExternalURL:     fmt.Sprintf("http://%s:%s", host, mp.Port()),
-		InternalURL:     fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
-		InternalP2PUrl:  fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
-		InternalIP:      ip,
-	}, nil
+		return &NodeOut{
+			APIAuthUser:     DefaultAPIUser,
+			APIAuthPassword: DefaultAPIPassword,
+			ContainerName:   containerName,
+			ExternalURL:     fmt.Sprintf("http://%s:%s", host, mp.Port()),
+			InternalURL:     fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
+			InternalP2PUrl:  fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
+			InternalIP:      ip,
+		}, nil
+	}
 }
 
 type DefaultCLNodeConfig struct {
@@ -456,22 +536,6 @@ func generateSecretsConfig(connString, password string) (string, error) {
 		return "", err
 	}
 	return output.String(), nil
-}
-
-func writeDefaultSecrets(pgOut *postgres.Output) (*os.File, error) {
-	secretsOverrides, err := generateSecretsConfig(pgOut.InternalURL, DefaultTestKeystorePassword)
-	if err != nil {
-		return nil, err
-	}
-	return WriteTmpFile(secretsOverrides, "secrets.toml")
-}
-
-func writeDefaultConfig() (*os.File, error) {
-	cfg, err := generateDefaultConfig()
-	if err != nil {
-		return nil, err
-	}
-	return WriteTmpFile(cfg, "config.toml")
 }
 
 // WriteTmpFile writes the provided data string to a specified filepath and returns the file and any error encountered.

@@ -7,14 +7,12 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake"
 	ns "github.com/smartcontractkit/chainlink-testing-framework/framework/components/simple_node_set"
 )
 
 type Cfg struct {
-	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
-	MockedDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
-	NodeSets           []*ns.Input       `toml:"nodesets" validate:"required"`
+	BlockchainA *blockchain.Input `toml:"blockchain_a" validate:"required"`
+	NodeSets    []*ns.Input       `toml:"nodesets" validate:"required"`
 }
 
 func TestSmoke(t *testing.T) {
@@ -22,8 +20,6 @@ func TestSmoke(t *testing.T) {
 	require.NoError(t, err)
 
 	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
-	require.NoError(t, err)
-	_, err = fake.NewFakeDataProvider(in.MockedDataProvider)
 	require.NoError(t, err)
 	out, err := ns.NewSharedDBNodeSet(in.NodeSets[0], bc)
 	require.NoError(t, err)

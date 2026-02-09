@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/aws/jsii-runtime-go"
@@ -150,6 +151,10 @@ func (k *API) CreateNamespace(name string) error {
 	}
 	_, err := k.ClientSet.CoreV1().Namespaces().Create(context.Background(), namespace, metav1.CreateOptions{})
 	if err != nil { // coverage-ignore
+		if strings.Contains(err.Error(), "already exists") {
+			L.Info().Str("Namespace", name).Msg("Namespace already exists, proceeding..")
+			return nil
+		}
 		return fmt.Errorf("failed to create namespace: %v", err)
 	}
 	return nil
@@ -185,13 +190,13 @@ func (k *API) Apply(manifest string) error {
 	if err != nil {
 		return fmt.Errorf("kubectl apply failed: %w\nOutput: %s", err, string(output))
 	}
-	_, err = k.WaitForAllPodsReady(context.Background(), 3*time.Minute)
+	_, err = k.waitAllPodsReady(context.Background(), 3*time.Minute)
 	return err
 }
 
-// WaitForAllPodsReady waits until all Pods in the namespace are ready or the timeout is reached.
+// waitAllPodsReady waits until all Pods in the namespace are ready or the timeout is reached.
 // It retries the check periodically until the condition is met or the timeout occurs.
-func (k *API) WaitForAllPodsReady(ctx context.Context, timeout time.Duration) (bool, error) {
+func (k *API) waitAllPodsReady(ctx context.Context, timeout time.Duration) (bool, error) {
 	L.Info().Str("Namespace", k.namespace).Msg("Waiting for all pods to be ready")
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()

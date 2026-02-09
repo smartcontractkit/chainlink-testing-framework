@@ -8,10 +8,19 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
+	"github.com/google/uuid"
 	"github.com/smartcontractkit/pods/imports/k8s"
+)
+
+// JSIIGlobalMu is a global mutex for cdk8s JSII runtime
+// allows to generate manifests in a goroutine-safe way
+var (
+	Client       *API
+	JSIIGlobalMu = &sync.Mutex{}
 )
 
 // Config describes Pods library configuration
@@ -65,29 +74,47 @@ type PodConfig struct {
 	VolumeClaimTemplates []*k8s.KubePersistentVolumeClaimProps
 }
 
-type Pods struct {
-	*API
+// App is an application context with cdk8s app, chart and generated manifest
+type App struct {
 	cfg      *Config
 	app      cdk8s.App
 	chart    cdk8s.Chart
 	manifest *string
 }
 
-// New creates and generates a new K8s YAML manifest
-func New(cfg *Config) *Pods {
-	api, err := NewAPI(*cfg.Namespace)
+// Run creates and generates a new K8s YAML manifest
+func Run(cfg *Config) (string, error) {
+	var err error
+	Client, err = NewAPI(*cfg.Namespace)
 	if err != nil {
-		return nil
+		return "", fmt.Errorf("failed to create K8s client: %w", err)
 	}
-	p := &Pods{
+	if Client != nil {
+		if err := Client.CreateNamespace(*cfg.Namespace); err != nil {
+			return "", fmt.Errorf("failed to create namespace: %s, %w", *cfg.Namespace, err)
+		}
+	}
+	p := &App{
 		cfg: cfg,
-		API: api,
 	}
-	return p
+	if err := p.generate(); err != nil {
+		return "", err
+	}
+	return *p.Manifest(), p.apply()
 }
 
-// Generate provides a simplified Docker Compose like API for K8s and generates YAML a manifest to deploy
-func (n *Pods) Generate() error {
+// Lock locks all interactions with JSII runtime, only single thread at a time
+func Lock() {
+	JSIIGlobalMu.Lock()
+}
+
+// Unlock unlocks all interactions with JSII runtime
+func Unlock() {
+	JSIIGlobalMu.Unlock()
+}
+
+// generate provides a simplified Docker Compose like API for K8s and generates YAML a manifest to deploy
+func (n *App) generate() error {
 	n.app = cdk8s.NewApp(nil)
 	n.chart = cdk8s.NewChart(n.app, S("pods-chart"), nil)
 	for _, podConfig := range n.cfg.Pods {
@@ -339,12 +366,15 @@ func (n *Pods) Generate() error {
 	return nil
 }
 
-func (n *Pods) apply() error {
+func (n *App) apply() error {
+	if os.Getenv("SNAPSHOT_TESTS") == "true" { // coverage-ignore
+		return nil
+	}
 	if n.manifest == nil {
 		return fmt.Errorf("manifest is not generated. Call Generate() first")
 	}
-	tmpFile := "pods.tmp.yml"
-	err := os.WriteFile(tmpFile, []byte(*n.manifest), 0600)
+	tmpFile := fmt.Sprintf("pods-%s.tmp.yml", uuid.NewString()[0:5])
+	err := os.WriteFile(tmpFile, []byte(*n.manifest), 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to write manifest to file: %v", err)
 	}
@@ -358,25 +388,12 @@ func (n *Pods) apply() error {
 	return nil
 }
 
-// Apply runs "kubectl apply" with custom readiness assertions
-func (n *Pods) Apply() error {
-	if err := n.Generate(); err != nil {
-		return err
-	}
-	if err := n.apply(); err != nil {
-		return err
-	}
-	_, err := n.WaitForAllPodsReady(context.Background(), 3*time.Minute)
+func WaitReady(t time.Duration) error {
+	_, err := Client.waitAllPodsReady(context.Background(), t)
 	return err
 }
 
-func (n *Pods) ResetPodsConfig() {
-	n.cfg.Pods = make([]*PodConfig, 0)
-}
-
 // Manifest returns current generated YAML manifest
-func (n *Pods) Manifest() *string {
+func (n *App) Manifest() *string {
 	return n.manifest
 }
-
-func ApplyFlag() bool { return os.Getenv("APPLY") == "true" }

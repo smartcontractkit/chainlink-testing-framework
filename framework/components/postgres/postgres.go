@@ -8,12 +8,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/smartcontractkit/pods"
+	"github.com/smartcontractkit/pods/imports/k8s"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/components"
 )
 
 const (
@@ -50,7 +54,7 @@ type Input struct {
 }
 
 type Output struct {
-	// URL PostgreSQL connection URL
+	// Url PostgreSQL connection Url
 	Url string `toml:"url" comment:"PostgreSQL connection URL"`
 	// ContainerName PostgreSQL Docker container name
 	ContainerName string `toml:"container_name" comment:"Docker container name"`
@@ -112,114 +116,185 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		return nil, err
 	}
 
-	req := testcontainers.ContainerRequest{
-		AlwaysPullImage: in.PullImage,
-		Image:           in.Image,
-		Name:            containerName,
-		Labels:          framework.DefaultTCLabels(),
-		ExposedPorts:    []string{bindPort},
-		Networks:        []string{framework.DefaultNetworkName},
-		NetworkAliases: map[string][]string{
-			framework.DefaultNetworkName: {containerName},
-		},
-		Env: map[string]string{
-			"POSTGRES_USER":     User,
-			"POSTGRES_PASSWORD": Password,
-			"POSTGRES_DB":       Database,
-		},
-		Cmd: []string{
-			"postgres", "-c",
-			fmt.Sprintf("port=%s", Port),
-			"-c", "shared_preload_libraries=pg_stat_statements",
-			"-c", "pg_stat_statements.track=all",
-		},
-		Files: []testcontainers.ContainerFile{
-			{
-				HostFilePath:      initFile.Name(),
-				ContainerFilePath: "/docker-entrypoint-initdb.d/init.sql",
-				FileMode:          0o644,
-			},
-		},
-		Mounts: testcontainers.ContainerMounts{
-			{
-				Source: testcontainers.GenericVolumeMountSource{
-					Name: fmt.Sprintf("%s%s", DBVolumeName, in.VolumeName),
-				},
-				Target: "/var/lib/postgresql/data",
-			},
-		},
-		WaitingFor: tcwait.ForExec([]string{
-			"psql", "-h", "127.0.0.1",
-			"-U", User, "-p", Port, "-c", "select", "1", "-d", Database,
-		}).
-			WithStartupTimeout(3 * time.Minute).
-			WithPollInterval(200 * time.Millisecond),
-	}
 	var portToExpose int
 	if in.Port != 0 {
 		portToExpose = in.Port
 	} else {
 		portToExpose = ExposedStaticPort
 	}
-	req.HostConfigModifier = func(h *container.HostConfig) {
-		h.PortBindings = nat.PortMap{
-			nat.Port(bindPort): []nat.PortBinding{
+
+	var o *Output
+
+	ns := os.Getenv(components.K8sNamespaceEnvVar)
+	// k8s deployment
+	if ns != "" {
+		_, err := pods.Run(&pods.Config{
+			Namespace: pods.S(ns),
+			Pods: []*pods.PodConfig{
 				{
-					HostIP:   "0.0.0.0",
-					HostPort: strconv.Itoa(portToExpose),
+					Name:  pods.S(in.Name),
+					Image: pods.S(in.Image),
+					Ports: []string{fmt.Sprintf("%d:%s", portToExpose, Port)},
+					Env: &[]*k8s.EnvVar{
+						{
+							Name:  pods.S("POSTGRES_USER"),
+							Value: pods.S("chainlink"),
+						},
+						{
+							Name:  pods.S("POSTGRES_PASSWORD"),
+							Value: pods.S("thispasswordislongenough"),
+						},
+						{
+							Name:  pods.S("POSTGRES_DB"),
+							Value: pods.S("chainlink"),
+						},
+					},
+					Limits: pods.ResourcesMedium(),
+					ContainerSecurityContext: &k8s.SecurityContext{
+						RunAsUser:  pods.I(999),
+						RunAsGroup: pods.I(999),
+					},
+					PodSecurityContext: &k8s.PodSecurityContext{
+						FsGroup: pods.I(999),
+					},
+					ConfigMap: map[string]*string{
+						"init.sql": pods.S(initSQL),
+					},
+					ConfigMapMountPath: map[string]*string{
+						"init.sql": pods.S("/docker-entrypoint-initdb.d/init.sql"),
+					},
+					VolumeClaimTemplates: pods.SizedVolumeClaim(pods.S("4Gi")),
 				},
 			},
+		})
+		if err != nil {
+			return nil, err
 		}
-		framework.ResourceLimitsFunc(h, in.ContainerResources)
-	}
-	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-		Reuse:            true,
-	})
-	if err != nil {
-		return nil, err
-	}
-	host, err := framework.GetHostWithContext(ctx, c)
-	if err != nil {
-		return nil, err
-	}
-	o := &Output{
-		ContainerName: containerName,
-		InternalURL: fmt.Sprintf(
-			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
-			User,
-			Password,
-			containerName,
-			Port,
-			Database,
-		),
-		Url: fmt.Sprintf(
-			"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
-			User,
-			Password,
-			host,
-			portToExpose,
-			Database,
-		),
-	}
-	if in.JDDatabase {
-		o.JDInternalURL = fmt.Sprintf(
-			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
-			User,
-			Password,
-			containerName,
-			Port,
-			JDDatabase,
-		)
-		o.JDUrl = fmt.Sprintf(
-			"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
-			User,
-			Password,
-			host,
-			portToExpose,
-			JDDatabase,
-		)
+		o = &Output{
+			ContainerName: containerName,
+			InternalURL: fmt.Sprintf(
+				"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
+				User,
+				Password,
+				fmt.Sprintf("%s-svc", in.Name),
+				// use svc internally too
+				portToExpose,
+				Database,
+			),
+			Url: fmt.Sprintf(
+				"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
+				User,
+				Password,
+				fmt.Sprintf("%s-svc", in.Name),
+				portToExpose,
+				Database,
+			),
+		}
+	} else {
+		// local deployment
+		req := testcontainers.ContainerRequest{
+			AlwaysPullImage: in.PullImage,
+			Image:           in.Image,
+			Name:            containerName,
+			Labels:          framework.DefaultTCLabels(),
+			ExposedPorts:    []string{bindPort},
+			Networks:        []string{framework.DefaultNetworkName},
+			NetworkAliases: map[string][]string{
+				framework.DefaultNetworkName: {containerName},
+			},
+			Env: map[string]string{
+				"POSTGRES_USER":     User,
+				"POSTGRES_PASSWORD": Password,
+				"POSTGRES_DB":       Database,
+			},
+			Cmd: []string{
+				"postgres", "-c",
+				fmt.Sprintf("port=%s", Port),
+				"-c", "shared_preload_libraries=pg_stat_statements",
+				"-c", "pg_stat_statements.track=all",
+			},
+			Files: []testcontainers.ContainerFile{
+				{
+					HostFilePath:      initFile.Name(),
+					ContainerFilePath: "/docker-entrypoint-initdb.d/init.sql",
+					FileMode:          0o644,
+				},
+			},
+			Mounts: testcontainers.ContainerMounts{
+				{
+					Source: testcontainers.GenericVolumeMountSource{
+						Name: fmt.Sprintf("%s%s", DBVolumeName, in.VolumeName),
+					},
+					Target: "/var/lib/postgresql/data",
+				},
+			},
+			WaitingFor: tcwait.ForExec([]string{
+				"psql", "-h", "127.0.0.1",
+				"-U", User, "-p", Port, "-c", "select", "1", "-d", Database,
+			}).
+				WithStartupTimeout(3 * time.Minute).
+				WithPollInterval(200 * time.Millisecond),
+		}
+		req.HostConfigModifier = func(h *container.HostConfig) {
+			h.PortBindings = nat.PortMap{
+				nat.Port(bindPort): []nat.PortBinding{
+					{
+						HostIP:   "0.0.0.0",
+						HostPort: strconv.Itoa(portToExpose),
+					},
+				},
+			}
+			framework.ResourceLimitsFunc(h, in.ContainerResources)
+		}
+		c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+			ContainerRequest: req,
+			Started:          true,
+			Reuse:            true,
+		})
+		if err != nil {
+			return nil, err
+		}
+		host, err := framework.GetHostWithContext(ctx, c)
+		if err != nil {
+			return nil, err
+		}
+		o = &Output{
+			ContainerName: containerName,
+			InternalURL: fmt.Sprintf(
+				"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
+				User,
+				Password,
+				containerName,
+				Port,
+				Database,
+			),
+			Url: fmt.Sprintf(
+				"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
+				User,
+				Password,
+				host,
+				portToExpose,
+				Database,
+			),
+		}
+		if in.JDDatabase {
+			o.JDInternalURL = fmt.Sprintf(
+				"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
+				User,
+				Password,
+				containerName,
+				Port,
+				JDDatabase,
+			)
+			o.JDUrl = fmt.Sprintf(
+				"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
+				User,
+				Password,
+				host,
+				portToExpose,
+				JDDatabase,
+			)
+		}
 	}
 	return o, nil
 }
