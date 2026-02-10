@@ -13,8 +13,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/aws/jsii-runtime-go"
-
 	"github.com/smartcontractkit/chainlink-testing-framework/pods"
 
 	v1 "k8s.io/api/core/v1"
@@ -25,7 +23,6 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
 )
 
@@ -295,13 +292,9 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 		return nil, err
 	}
 
-	ns := os.Getenv(components.K8sNamespaceEnvVar)
 	// k8s deployment
-	if ns != "" {
-		pods.Lock()
-		defer pods.Unlock()
+	if pods.K8sEnabled() {
 		_, err := pods.Run(&pods.Config{
-			Namespace: pods.S(ns),
 			Pods: []*pods.PodConfig{
 				{
 					Name:     pods.S(containerName),
@@ -312,7 +305,7 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 					Ports:    []string{"6688:6688", "6690:6690"},
 					ContainerSecurityContext: &v1.SecurityContext{
 						// these are specific things we need to staging cluster
-						RunAsNonRoot: jsii.Bool(true),
+						RunAsNonRoot: pods.Bool(true),
 						RunAsUser:    pods.I64(14933),
 						RunAsGroup:   pods.I64(999),
 					},

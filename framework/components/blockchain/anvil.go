@@ -3,7 +3,6 @@ package blockchain
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	v1 "k8s.io/api/core/v1"
@@ -11,7 +10,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/pods"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components"
 )
 
 const (
@@ -60,11 +58,8 @@ func newAnvil(ctx context.Context, in *Input) (*Output, error) {
 
 	framework.L.Info().Any("Cmd", strings.Join(entryPoint, " ")).Msg("Creating anvil with command")
 
-	ns := os.Getenv(components.K8sNamespaceEnvVar)
-
-	if ns != "" {
+	if pods.K8sEnabled() {
 		_, err := pods.Run(&pods.Config{
-			Namespace: pods.S(ns),
 			Pods: []*pods.PodConfig{
 				{
 					Name:     pods.S(in.ContainerName),

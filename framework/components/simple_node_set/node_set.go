@@ -14,7 +14,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/pods"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
@@ -205,7 +204,7 @@ func sharedDBSetup(ctx context.Context, in *Input, bcOut *blockchain.Output) (*O
 	}
 	sortNodeOutsByHostPort(nodeOuts)
 	// wait for all K8s services at once
-	if os.Getenv(components.K8sNamespaceEnvVar) != "" {
+	if pods.K8sEnabled() {
 		if err := pods.WaitReady(3 * time.Minute); err != nil {
 			return nil, err
 		}

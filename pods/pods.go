@@ -3,7 +3,6 @@ package pods
 import (
 	"context"
 	"fmt"
-	"log"
 	"maps"
 	"os"
 	"os/exec"
@@ -11,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/google/uuid"
 	appsv1 "k8s.io/api/apps/v1"
@@ -26,14 +27,16 @@ import (
 )
 
 const (
-	ManifestsDir = "pods-out"
+	ManifestsDir       = "pods-out"
+	K8sNamespaceEnvVar = "KUBERNETES_NAMESPACE"
 )
 
+// Client is a global K8s client that we use for all deployments
 var Client *API
 
 // Config describes Pods library configuration
 type Config struct {
-	Namespace *string
+	Namespace string
 	Pods      []*PodConfig
 }
 
@@ -82,19 +85,26 @@ type PodConfig struct {
 type App struct {
 	cfg      *Config
 	objects  []any
-	manifest *string
+	manifest string
+}
+
+func K8sEnabled() bool {
+	return os.Getenv(K8sNamespaceEnvVar) != ""
 }
 
 // Run generates and applies a new K8s YAML manifest
 func Run(cfg *Config) (string, error) {
 	var err error
-	Client, err = NewAPI(*cfg.Namespace)
+	if cfg.Namespace == "" {
+		cfg.Namespace = os.Getenv(K8sNamespaceEnvVar)
+	}
+	Client, err = NewAPI(cfg.Namespace)
 	if err != nil {
 		return "", fmt.Errorf("failed to create K8s client: %w", err)
 	}
 	if Client != nil {
-		if err := Client.CreateNamespace(*cfg.Namespace); err != nil {
-			return "", fmt.Errorf("failed to create namespace: %s, %w", *cfg.Namespace, err)
+		if err := Client.CreateNamespace(cfg.Namespace); err != nil {
+			return "", fmt.Errorf("failed to create namespace: %s, %w", cfg.Namespace, err)
 		}
 	}
 	p := &App{
@@ -103,23 +113,14 @@ func Run(cfg *Config) (string, error) {
 	if err := p.generate(); err != nil {
 		return "", err
 	}
-	return *p.Manifest(), p.apply()
+	return p.Manifest(), p.apply()
 }
 
-// Lock and Unlock are no longer needed (kept for API compatibility)
-func Lock() {
-	// No-op since we're not using JSII
-}
-
-func Unlock() {
-	// No-op since we're not using JSII
-}
-
-// generate provides a simplified Docker Compose like API for K8s and generates YAML a manifest to deploy
+// generate provides a simplified template that is focused on deploying K8s Pods
 func (n *App) generate() error {
 	for _, podConfig := range n.cfg.Pods {
 		podName := *podConfig.Name
-		namespace := *n.cfg.Namespace
+		namespace := n.cfg.Namespace
 
 		// Define resources
 		if podConfig.Requests == nil {
@@ -130,7 +131,7 @@ func (n *App) generate() error {
 		}
 
 		// Define labels
-		labels := map[string]string{"app": podName, "generated-by": "pods"}
+		labels := map[string]string{"app": podName, "generated-by": "ctfv2"}
 		maps.Copy(labels, podConfig.Labels)
 
 		// Define annotations
@@ -373,17 +374,17 @@ func (n *App) generate() error {
 		for i, portMapping := range podConfig.Ports {
 			parts := strings.Split(portMapping, ":")
 			if len(parts) != 2 {
-				log.Fatalf("Invalid port mapping: %s", portMapping)
+				L.Fatal().Msgf("Invalid port mapping: %s", portMapping)
 			}
 
 			port, err := strconv.ParseInt(parts[0], 10, 32)
 			if err != nil {
-				log.Fatalf("Invalid port number: %s", parts[0])
+				L.Fatal().Msgf("Invalid port number: %s", parts[0])
 			}
 
 			targetPort, err := strconv.ParseInt(parts[1], 10, 32)
 			if err != nil {
-				log.Fatalf("Invalid container port number: %s", parts[1])
+				L.Fatal().Msgf("Invalid container port number: %s", parts[1])
 			}
 
 			servicePorts = append(servicePorts, corev1.ServicePort{
@@ -424,9 +425,8 @@ func (n *App) generate() error {
 		yamlDocs = append(yamlDocs, string(yamlBytes))
 	}
 
-	fullYAML := strings.Join(yamlDocs, "---\n")
-	n.manifest = &fullYAML
-	log.Printf("Generated YAML:\n%s", fullYAML)
+	n.manifest = strings.Join(yamlDocs, "---\n")
+	L.Debug().Msgf("Generated YAML:\n%s", n.manifest)
 	return nil
 }
 
@@ -434,13 +434,13 @@ func (n *App) apply() error {
 	if os.Getenv("SNAPSHOT_TESTS") == "true" {
 		return nil
 	}
-	if n.manifest == nil {
+	if n.manifest == "" {
 		return fmt.Errorf("manifest is empty, nothing to generate")
 	}
 	_ = os.Mkdir(ManifestsDir, os.ModePerm)
 	// write generate manifest
 	manifestFile := filepath.Join(ManifestsDir, fmt.Sprintf("pods-%s.tmp.yml", uuid.NewString()[0:5]))
-	err := os.WriteFile(manifestFile, []byte(*n.manifest), 0o600)
+	err := os.WriteFile(manifestFile, []byte(n.manifest), 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to write manifest to file: %w", err)
 	}
@@ -450,7 +450,7 @@ func (n *App) apply() error {
 	if err != nil {
 		return fmt.Errorf("failed to apply manifest: %v\nOutput: %s", err, string(output))
 	}
-	log.Printf("Manifest applied successfully: %s", manifestFile)
+	L.Info().Str("Manifest", manifestFile).Msg("Manifest applied successfully")
 	return nil
 }
 
@@ -460,7 +460,7 @@ func WaitReady(t time.Duration) error {
 }
 
 // Manifest returns current generated YAML manifest
-func (n *App) Manifest() *string {
+func (n *App) Manifest() string {
 	return n.manifest
 }
 

@@ -21,7 +21,7 @@ func TestPods(t *testing.T) {
 		{
 			name: "test-single-pod",
 			props: &p.Config{
-				Namespace: p.S("test-single-pod"),
+				Namespace: "test-single-pod",
 				Pods: []*p.PodConfig{
 					{
 						Name:  p.S("test-pod-1"),
@@ -35,7 +35,7 @@ func TestPods(t *testing.T) {
 		{
 			name: "test-command",
 			props: &p.Config{
-				Namespace: p.S("test-command"),
+				Namespace: "test-command",
 				Pods: []*p.PodConfig{
 					{
 						Name:        p.S("anvil"),
@@ -52,7 +52,7 @@ func TestPods(t *testing.T) {
 		{
 			name: "test-instances",
 			props: &p.Config{
-				Namespace: p.S("test-instances"),
+				Namespace: "test-instances",
 				Pods: []*p.PodConfig{
 					{
 						Name:     p.S("test-pod-1"),
@@ -67,7 +67,7 @@ func TestPods(t *testing.T) {
 		{
 			name: "test-multiple-pods",
 			props: &p.Config{
-				Namespace: p.S("test-multiple-pods"),
+				Namespace: "test-multiple-pods",
 				Pods: []*p.PodConfig{
 					{
 						Name:  p.S("test-pod-1"),
@@ -86,7 +86,7 @@ func TestPods(t *testing.T) {
 		{
 			name: "test-custom-resources",
 			props: &p.Config{
-				Namespace: p.S("test-custom-resources"),
+				Namespace: "test-custom-resources",
 				Pods: []*p.PodConfig{
 					{
 						Name:     p.S("test-pod-1"),
@@ -102,7 +102,7 @@ func TestPods(t *testing.T) {
 		{
 			name: "test-invalid-ports",
 			props: &p.Config{
-				Namespace: p.S("test-invalid-ports"),
+				Namespace: "test-invalid-ports",
 				Pods: []*p.PodConfig{
 					{
 						Name:  p.S("test-pod-1"),
@@ -118,7 +118,7 @@ func TestPods(t *testing.T) {
 		{
 			name: "test-configmaps",
 			props: &p.Config{
-				Namespace: p.S("test-configmaps"),
+				Namespace: "test-configmaps",
 				Pods: []*p.PodConfig{
 					{
 						Name:  p.S("test-pod-1"),
@@ -140,7 +140,7 @@ func TestPods(t *testing.T) {
 		{
 			name: "test-secrets",
 			props: &p.Config{
-				Namespace: p.S("test-secrets"),
+				Namespace: "test-secrets",
 				Pods: []*p.PodConfig{
 					{
 						Name:  p.S("test-pod-1"),
@@ -162,7 +162,7 @@ func TestPods(t *testing.T) {
 		{
 			name: "test-services",
 			props: &p.Config{
-				Namespace: p.S("test-services"),
+				Namespace: "test-services",
 				Pods: []*p.PodConfig{
 					{
 						Name:  p.S("test-pod-1"),

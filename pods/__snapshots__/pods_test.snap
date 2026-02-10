@@ -11,14 +11,14 @@ spec:
   selector:
     matchLabels:
       app: test-pod-1
-      generated-by: pods
+      generated-by: ctfv2
   strategy: {}
   template:
     metadata:
       creationTimestamp: null
       labels:
         app: test-pod-1
-        generated-by: pods
+        generated-by: ctfv2
       namespace: test-single-pod
     spec:
       containers:
@@ -49,7 +49,7 @@ spec:
     targetPort: 80
   selector:
     app: test-pod-1
-    generated-by: pods
+    generated-by: ctfv2
   type: LoadBalancer
 status:
   loadBalancer: {}
@@ -68,14 +68,14 @@ spec:
   selector:
     matchLabels:
       app: test-pod-1
-      generated-by: pods
+      generated-by: ctfv2
   strategy: {}
   template:
     metadata:
       creationTimestamp: null
       labels:
         app: test-pod-1
-        generated-by: pods
+        generated-by: ctfv2
       namespace: test-multiple-pods
     spec:
       containers:
@@ -106,7 +106,7 @@ spec:
     targetPort: 80
   selector:
     app: test-pod-1
-    generated-by: pods
+    generated-by: ctfv2
   type: LoadBalancer
 status:
   loadBalancer: {}
@@ -122,14 +122,14 @@ spec:
   selector:
     matchLabels:
       app: test-pod-2
-      generated-by: pods
+      generated-by: ctfv2
   strategy: {}
   template:
     metadata:
       creationTimestamp: null
       labels:
         app: test-pod-2
-        generated-by: pods
+        generated-by: ctfv2
       namespace: test-multiple-pods
     spec:
       containers:
@@ -160,7 +160,7 @@ spec:
     targetPort: 80
   selector:
     app: test-pod-2
-    generated-by: pods
+    generated-by: ctfv2
   type: LoadBalancer
 status:
   loadBalancer: {}
@@ -179,14 +179,14 @@ spec:
   selector:
     matchLabels:
       app: test-pod-1
-      generated-by: pods
+      generated-by: ctfv2
   strategy: {}
   template:
     metadata:
       creationTimestamp: null
       labels:
         app: test-pod-1
-        generated-by: pods
+        generated-by: ctfv2
       namespace: test-custom-resources
     spec:
       containers:
@@ -217,7 +217,7 @@ spec:
     targetPort: 80
   selector:
     app: test-pod-1
-    generated-by: pods
+    generated-by: ctfv2
   type: LoadBalancer
 status:
   loadBalancer: {}
@@ -246,14 +246,14 @@ spec:
   selector:
     matchLabels:
       app: test-pod-1
-      generated-by: pods
+      generated-by: ctfv2
   strategy: {}
   template:
     metadata:
       creationTimestamp: null
       labels:
         app: test-pod-1
-        generated-by: pods
+        generated-by: ctfv2
       namespace: test-configmaps
     spec:
       containers:
@@ -304,7 +304,7 @@ spec:
     targetPort: 80
   selector:
     app: test-pod-1
-    generated-by: pods
+    generated-by: ctfv2
   type: LoadBalancer
 status:
   loadBalancer: {}
@@ -333,14 +333,14 @@ spec:
   selector:
     matchLabels:
       app: test-pod-1
-      generated-by: pods
+      generated-by: ctfv2
   strategy: {}
   template:
     metadata:
       creationTimestamp: null
       labels:
         app: test-pod-1
-        generated-by: pods
+        generated-by: ctfv2
       namespace: test-secrets
     spec:
       containers:
@@ -391,7 +391,7 @@ spec:
     targetPort: 80
   selector:
     app: test-pod-1
-    generated-by: pods
+    generated-by: ctfv2
   type: LoadBalancer
 status:
   loadBalancer: {}
@@ -410,14 +410,14 @@ spec:
   selector:
     matchLabels:
       app: test-pod-1
-      generated-by: pods
+      generated-by: ctfv2
   strategy: {}
   template:
     metadata:
       creationTimestamp: null
       labels:
         app: test-pod-1
-        generated-by: pods
+        generated-by: ctfv2
       namespace: test-instances
     spec:
       containers:
@@ -448,7 +448,7 @@ spec:
     targetPort: 80
   selector:
     app: test-pod-1
-    generated-by: pods
+    generated-by: ctfv2
   type: LoadBalancer
 status:
   loadBalancer: {}
@@ -563,14 +563,14 @@ spec:
   selector:
     matchLabels:
       app: test-pod-1
-      generated-by: pods
+      generated-by: ctfv2
   strategy: {}
   template:
     metadata:
       creationTimestamp: null
       labels:
         app: test-pod-1
-        generated-by: pods
+        generated-by: ctfv2
       namespace: test-services
     spec:
       containers:
@@ -601,7 +601,7 @@ spec:
     targetPort: 80
   selector:
     app: test-pod-1
-    generated-by: pods
+    generated-by: ctfv2
   type: LoadBalancer
 status:
   loadBalancer: {}
@@ -621,7 +621,7 @@ spec:
     matchLabels:
       app: anvil
       chain.link/component: cl
-      generated-by: pods
+      generated-by: ctfv2
   strategy: {}
   template:
     metadata:
@@ -631,7 +631,7 @@ spec:
       labels:
         app: anvil
         chain.link/component: cl
-        generated-by: pods
+        generated-by: ctfv2
       namespace: test-command
     spec:
       containers:
@@ -667,7 +667,7 @@ spec:
   selector:
     app: anvil
     chain.link/component: cl
-    generated-by: pods
+    generated-by: ctfv2
   type: LoadBalancer
 status:
   loadBalancer: {}

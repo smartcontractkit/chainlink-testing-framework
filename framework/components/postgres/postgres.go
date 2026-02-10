@@ -18,7 +18,6 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework/components"
 )
 
 const (
@@ -126,11 +125,9 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 
 	var o *Output
 
-	ns := os.Getenv(components.K8sNamespaceEnvVar)
 	// k8s deployment
-	if ns != "" {
+	if pods.K8sEnabled() {
 		_, err := pods.Run(&pods.Config{
-			Namespace: pods.S(ns),
 			Pods: []*pods.PodConfig{
 				{
 					Name:  pods.S(in.Name),
@@ -192,111 +189,111 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 				Database,
 			),
 		}
-	} else {
-		// local deployment
-		req := testcontainers.ContainerRequest{
-			AlwaysPullImage: in.PullImage,
-			Image:           in.Image,
-			Name:            containerName,
-			Labels:          framework.DefaultTCLabels(),
-			ExposedPorts:    []string{bindPort},
-			Networks:        []string{framework.DefaultNetworkName},
-			NetworkAliases: map[string][]string{
-				framework.DefaultNetworkName: {containerName},
+		return o, nil
+	}
+	// local deployment
+	req := testcontainers.ContainerRequest{
+		AlwaysPullImage: in.PullImage,
+		Image:           in.Image,
+		Name:            containerName,
+		Labels:          framework.DefaultTCLabels(),
+		ExposedPorts:    []string{bindPort},
+		Networks:        []string{framework.DefaultNetworkName},
+		NetworkAliases: map[string][]string{
+			framework.DefaultNetworkName: {containerName},
+		},
+		Env: map[string]string{
+			"POSTGRES_USER":     User,
+			"POSTGRES_PASSWORD": Password,
+			"POSTGRES_DB":       Database,
+		},
+		Cmd: []string{
+			"postgres", "-c",
+			fmt.Sprintf("port=%s", Port),
+			"-c", "shared_preload_libraries=pg_stat_statements",
+			"-c", "pg_stat_statements.track=all",
+		},
+		Files: []testcontainers.ContainerFile{
+			{
+				HostFilePath:      initFile.Name(),
+				ContainerFilePath: "/docker-entrypoint-initdb.d/init.sql",
+				FileMode:          0o644,
 			},
-			Env: map[string]string{
-				"POSTGRES_USER":     User,
-				"POSTGRES_PASSWORD": Password,
-				"POSTGRES_DB":       Database,
+		},
+		Mounts: testcontainers.ContainerMounts{
+			{
+				Source: testcontainers.GenericVolumeMountSource{
+					Name: fmt.Sprintf("%s%s", DBVolumeName, in.VolumeName),
+				},
+				Target: "/var/lib/postgresql/data",
 			},
-			Cmd: []string{
-				"postgres", "-c",
-				fmt.Sprintf("port=%s", Port),
-				"-c", "shared_preload_libraries=pg_stat_statements",
-				"-c", "pg_stat_statements.track=all",
-			},
-			Files: []testcontainers.ContainerFile{
+		},
+		WaitingFor: tcwait.ForExec([]string{
+			"psql", "-h", "127.0.0.1",
+			"-U", User, "-p", Port, "-c", "select", "1", "-d", Database,
+		}).
+			WithStartupTimeout(3 * time.Minute).
+			WithPollInterval(200 * time.Millisecond),
+	}
+	req.HostConfigModifier = func(h *container.HostConfig) {
+		h.PortBindings = nat.PortMap{
+			nat.Port(bindPort): []nat.PortBinding{
 				{
-					HostFilePath:      initFile.Name(),
-					ContainerFilePath: "/docker-entrypoint-initdb.d/init.sql",
-					FileMode:          0o644,
+					HostIP:   "0.0.0.0",
+					HostPort: strconv.Itoa(portToExpose),
 				},
 			},
-			Mounts: testcontainers.ContainerMounts{
-				{
-					Source: testcontainers.GenericVolumeMountSource{
-						Name: fmt.Sprintf("%s%s", DBVolumeName, in.VolumeName),
-					},
-					Target: "/var/lib/postgresql/data",
-				},
-			},
-			WaitingFor: tcwait.ForExec([]string{
-				"psql", "-h", "127.0.0.1",
-				"-U", User, "-p", Port, "-c", "select", "1", "-d", Database,
-			}).
-				WithStartupTimeout(3 * time.Minute).
-				WithPollInterval(200 * time.Millisecond),
 		}
-		req.HostConfigModifier = func(h *container.HostConfig) {
-			h.PortBindings = nat.PortMap{
-				nat.Port(bindPort): []nat.PortBinding{
-					{
-						HostIP:   "0.0.0.0",
-						HostPort: strconv.Itoa(portToExpose),
-					},
-				},
-			}
-			framework.ResourceLimitsFunc(h, in.ContainerResources)
-		}
-		c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-			ContainerRequest: req,
-			Started:          true,
-			Reuse:            true,
-		})
-		if err != nil {
-			return nil, err
-		}
-		host, err := framework.GetHostWithContext(ctx, c)
-		if err != nil {
-			return nil, err
-		}
-		o = &Output{
-			ContainerName: containerName,
-			InternalURL: fmt.Sprintf(
-				"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
-				User,
-				Password,
-				containerName,
-				Port,
-				Database,
-			),
-			Url: fmt.Sprintf(
-				"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
-				User,
-				Password,
-				host,
-				portToExpose,
-				Database,
-			),
-		}
-		if in.JDDatabase {
-			o.JDInternalURL = fmt.Sprintf(
-				"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
-				User,
-				Password,
-				containerName,
-				Port,
-				JDDatabase,
-			)
-			o.JDUrl = fmt.Sprintf(
-				"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
-				User,
-				Password,
-				host,
-				portToExpose,
-				JDDatabase,
-			)
-		}
+		framework.ResourceLimitsFunc(h, in.ContainerResources)
+	}
+	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+		Reuse:            true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	host, err := framework.GetHostWithContext(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	o = &Output{
+		ContainerName: containerName,
+		InternalURL: fmt.Sprintf(
+			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
+			User,
+			Password,
+			containerName,
+			Port,
+			Database,
+		),
+		Url: fmt.Sprintf(
+			"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
+			User,
+			Password,
+			host,
+			portToExpose,
+			Database,
+		),
+	}
+	if in.JDDatabase {
+		o.JDInternalURL = fmt.Sprintf(
+			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
+			User,
+			Password,
+			containerName,
+			Port,
+			JDDatabase,
+		)
+		o.JDUrl = fmt.Sprintf(
+			"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
+			User,
+			Password,
+			host,
+			portToExpose,
+			JDDatabase,
+		)
 	}
 	return o, nil
 }
