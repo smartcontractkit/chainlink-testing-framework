@@ -25,11 +25,8 @@ require (
 )
 
 require (
-	github.com/aws/constructs-go/constructs/v10 v10.4.2 // indirect
-	github.com/aws/jsii-runtime-go v1.126.0 // indirect
 	github.com/bufbuild/protocompile v0.14.1 // indirect
 	github.com/buger/goterm v1.0.4 // indirect
-	github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.70.47 // indirect
 	github.com/cncf/xds/go v0.0.0-20250121191232-2f005788dc42 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
@@ -56,12 +53,10 @@ require (
 	github.com/spiffe/go-spiffe/v2 v2.5.0 // indirect
 	github.com/tjhop/slog-gokit v0.1.3 // indirect
 	github.com/urfave/cli v1.22.16 // indirect
-	github.com/yuin/goldmark v1.4.13 // indirect
 	github.com/zeebo/errs v1.4.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.31.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.31.0 // indirect
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.31.0 // indirect
-	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 )
 
 require (
