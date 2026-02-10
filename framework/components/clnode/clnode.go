@@ -14,8 +14,10 @@ import (
 	"time"
 
 	"github.com/aws/jsii-runtime-go"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/pods"
-	"github.com/smartcontractkit/chainlink-testing-framework/pods/imports/k8s"
+
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
@@ -302,41 +304,42 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 			Namespace: pods.S(ns),
 			Pods: []*pods.PodConfig{
 				{
-					Name:   pods.S(containerName),
-					Image:  pods.S(in.Node.Image),
-					Env:    &[]*k8s.EnvVar{},
-					Limits: pods.ResourcesSmall(),
-					Ports:  []string{"6688:6688", "6690:6690"},
-					ContainerSecurityContext: &k8s.SecurityContext{
+					Name:     pods.S(containerName),
+					Image:    pods.S(in.Node.Image),
+					Env:      []v1.EnvVar{},
+					Requests: pods.ResourcesMedium(),
+					Limits:   pods.ResourcesMedium(),
+					Ports:    []string{"6688:6688", "6690:6690"},
+					ContainerSecurityContext: &v1.SecurityContext{
 						// these are specific things we need to staging cluster
 						RunAsNonRoot: jsii.Bool(true),
-						RunAsUser:    pods.I(14933),
-						RunAsGroup:   pods.I(999),
+						RunAsUser:    pods.I64(14933),
+						RunAsGroup:   pods.I64(999),
 					},
-					ConfigMap: map[string]*string{
-						"config.toml":         pods.S(cfg),
-						"overrides.toml":      pods.S(in.Node.TestConfigOverrides),
-						"user-overrides.toml": pods.S(in.Node.UserConfigOverrides),
-						"node_password":       pods.S(DefaultPasswordTxt),
-						"apicredentials": pods.S(fmt.Sprintf(`%s
-			%s`, DefaultAPIUser, DefaultAPIPassword)),
+					ConfigMap: map[string]string{
+						"config.toml":         cfg,
+						"overrides.toml":      in.Node.TestConfigOverrides,
+						"user-overrides.toml": in.Node.UserConfigOverrides,
+						"node_password":       DefaultPasswordTxt,
+						"apicredentials": fmt.Sprintf(`%s
+			%s`, DefaultAPIUser, DefaultAPIPassword),
 					},
-					ConfigMapMountPath: map[string]*string{
-						"config.toml":         pods.S("/config/config"),
-						"overrides.toml":      pods.S("/config/overrides"),
-						"user-overrides.toml": pods.S("/config/user-overrides"),
-						"node_password":       pods.S("/config/node_password"),
-						"apicredentials":      pods.S("/config/apicredentials"),
+					ConfigMapMountPath: map[string]string{
+						"config.toml":         "/config/config",
+						"overrides.toml":      "/config/overrides",
+						"user-overrides.toml": "/config/user-overrides",
+						"node_password":       "/config/node_password",
+						"apicredentials":      "/config/apicredentials",
 					},
-					Secrets: map[string]*string{
-						"secrets.toml":                pods.S(secretsData),
-						"secrets-overrides.toml":      pods.S(in.Node.TestSecretsOverrides),
-						"secrets-user-overrides.toml": pods.S(in.Node.UserSecretsOverrides),
+					Secrets: map[string]string{
+						"secrets.toml":                secretsData,
+						"secrets-overrides.toml":      in.Node.TestSecretsOverrides,
+						"secrets-user-overrides.toml": in.Node.UserSecretsOverrides,
 					},
-					SecretsMountPath: map[string]*string{
-						"secrets.toml":                pods.S("/config/secrets"),
-						"secrets-overrides.toml":      pods.S("/config/secrets-overrides"),
-						"secrets-user-overrides.toml": pods.S("/config/user-secrets-overrides"),
+					SecretsMountPath: map[string]string{
+						"secrets.toml":                "/config/secrets",
+						"secrets-overrides.toml":      "/config/secrets-overrides",
+						"secrets-user-overrides.toml": "/config/user-secrets-overrides",
 					},
 					Command: pods.S("chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials"),
 				},

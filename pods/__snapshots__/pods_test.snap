@@ -3,51 +3,56 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  creationTimestamp: null
   name: test-pod-1-deployment
   namespace: test-single-pod
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: test-pod-1
       generated-by: pods
+  strategy: {}
   template:
     metadata:
-      annotations: {}
+      creationTimestamp: null
       labels:
         app: test-pod-1
         generated-by: pods
       namespace: test-single-pod
     spec:
       containers:
-        - image: nginx:latest
-          name: test-pod-1-container
-          ports:
-            - containerPort: 80
-              name: port-0
-          resources:
-            limits:
-              cpu: 250m
-              memory: 1Gi
-            requests:
-              cpu: 250m
-              memory: 1Gi
-          volumeMounts: []
-      volumes: []
+      - image: nginx:latest
+        name: test-pod-1-container
+        ports:
+        - containerPort: 80
+          name: port-0
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+status: {}
 /-/-/-/
 apiVersion: v1
 kind: Service
 metadata:
+  creationTimestamp: null
   name: test-pod-1-svc
   namespace: test-single-pod
 spec:
   ports:
-    - name: port-0
-      port: 80
-      targetPort: 80
+  - name: port-0
+    port: 80
+    targetPort: 80
   selector:
     app: test-pod-1
     generated-by: pods
   type: LoadBalancer
+status:
+  loadBalancer: {}
 
 ---
 
@@ -55,100 +60,110 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  creationTimestamp: null
   name: test-pod-1-deployment
   namespace: test-multiple-pods
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: test-pod-1
       generated-by: pods
+  strategy: {}
   template:
     metadata:
-      annotations: {}
+      creationTimestamp: null
       labels:
         app: test-pod-1
         generated-by: pods
       namespace: test-multiple-pods
     spec:
       containers:
-        - image: nginx:latest
-          name: test-pod-1-container
-          ports:
-            - containerPort: 80
-              name: port-0
-          resources:
-            limits:
-              cpu: 250m
-              memory: 1Gi
-            requests:
-              cpu: 250m
-              memory: 1Gi
-          volumeMounts: []
-      volumes: []
+      - image: nginx:latest
+        name: test-pod-1-container
+        ports:
+        - containerPort: 80
+          name: port-0
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+status: {}
 /-/-/-/
 apiVersion: v1
 kind: Service
 metadata:
+  creationTimestamp: null
   name: test-pod-1-svc
   namespace: test-multiple-pods
 spec:
   ports:
-    - name: port-0
-      port: 80
-      targetPort: 80
+  - name: port-0
+    port: 80
+    targetPort: 80
   selector:
     app: test-pod-1
     generated-by: pods
   type: LoadBalancer
+status:
+  loadBalancer: {}
 /-/-/-/
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  creationTimestamp: null
   name: test-pod-2-deployment
   namespace: test-multiple-pods
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: test-pod-2
       generated-by: pods
+  strategy: {}
   template:
     metadata:
-      annotations: {}
+      creationTimestamp: null
       labels:
         app: test-pod-2
         generated-by: pods
       namespace: test-multiple-pods
     spec:
       containers:
-        - image: nginx:latest
-          name: test-pod-2-container
-          ports:
-            - containerPort: 80
-              name: port-0
-          resources:
-            limits:
-              cpu: 250m
-              memory: 1Gi
-            requests:
-              cpu: 250m
-              memory: 1Gi
-          volumeMounts: []
-      volumes: []
+      - image: nginx:latest
+        name: test-pod-2-container
+        ports:
+        - containerPort: 80
+          name: port-0
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+status: {}
 /-/-/-/
 apiVersion: v1
 kind: Service
 metadata:
+  creationTimestamp: null
   name: test-pod-2-svc
   namespace: test-multiple-pods
 spec:
   ports:
-    - name: port-0
-      port: 80
-      targetPort: 80
+  - name: port-0
+    port: 80
+    targetPort: 80
   selector:
     app: test-pod-2
     generated-by: pods
   type: LoadBalancer
+status:
+  loadBalancer: {}
 
 ---
 
@@ -156,130 +171,143 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  creationTimestamp: null
   name: test-pod-1-deployment
   namespace: test-custom-resources
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: test-pod-1
       generated-by: pods
+  strategy: {}
   template:
     metadata:
-      annotations: {}
+      creationTimestamp: null
       labels:
         app: test-pod-1
         generated-by: pods
       namespace: test-custom-resources
     spec:
       containers:
-        - image: nginx:latest
-          name: test-pod-1-container
-          ports:
-            - containerPort: 80
-              name: port-0
-          resources:
-            limits:
-              cpu: 500m
-              memory: 2Gi
-            requests:
-              cpu: 250m
-              memory: 1Gi
-          volumeMounts: []
-      volumes: []
+      - image: nginx:latest
+        name: test-pod-1-container
+        ports:
+        - containerPort: 80
+          name: port-0
+        resources:
+          limits:
+            cpu: 500m
+            memory: 2Gi
+          requests:
+            cpu: 250m
+            memory: 1Gi
+status: {}
 /-/-/-/
 apiVersion: v1
 kind: Service
 metadata:
+  creationTimestamp: null
   name: test-pod-1-svc
   namespace: test-custom-resources
 spec:
   ports:
-    - name: port-0
-      port: 80
-      targetPort: 80
+  - name: port-0
+    port: 80
+    targetPort: 80
   selector:
     app: test-pod-1
     generated-by: pods
   type: LoadBalancer
+status:
+  loadBalancer: {}
 
 ---
 
 [TestPods/test-configmaps - 1]
 apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: test-pod-1-configmap
-  namespace: test-configmaps
 data:
   config.toml: test
   config2.toml: test
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: test-pod-1-configmap
+  namespace: test-configmaps
 /-/-/-/
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  creationTimestamp: null
   name: test-pod-1-deployment
   namespace: test-configmaps
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: test-pod-1
       generated-by: pods
+  strategy: {}
   template:
     metadata:
-      annotations: {}
+      creationTimestamp: null
       labels:
         app: test-pod-1
         generated-by: pods
       namespace: test-configmaps
     spec:
       containers:
-        - image: nginx:latest
-          name: test-pod-1-container
-          ports:
-            - containerPort: 80
-              name: port-0
-          resources:
-            limits:
-              cpu: 250m
-              memory: 1Gi
-            requests:
-              cpu: 250m
-              memory: 1Gi
-          volumeMounts:
-            - mountPath: /config.toml
-              name: test-pod-1-configmap-volume-0
-              subPath: config.toml
-            - mountPath: /config2.toml
-              name: test-pod-1-configmap-volume-1
-              subPath: config2.toml
-      volumes:
-        - configMap:
-            items:
-              - key: config.toml
-                path: config.toml
-            name: test-pod-1-configmap
+      - image: nginx:latest
+        name: test-pod-1-container
+        ports:
+        - containerPort: 80
+          name: port-0
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+        volumeMounts:
+        - mountPath: /config.toml
           name: test-pod-1-configmap-volume-0
-        - configMap:
-            items:
-              - key: config2.toml
-                path: config2.toml
-            name: test-pod-1-configmap
+          subPath: config.toml
+        - mountPath: /config2.toml
           name: test-pod-1-configmap-volume-1
+          subPath: config2.toml
+      volumes:
+      - configMap:
+          items:
+          - key: config.toml
+            path: config.toml
+          name: test-pod-1-configmap
+        name: test-pod-1-configmap-volume-0
+      - configMap:
+          items:
+          - key: config2.toml
+            path: config2.toml
+          name: test-pod-1-configmap
+        name: test-pod-1-configmap-volume-1
+status: {}
 /-/-/-/
 apiVersion: v1
 kind: Service
 metadata:
+  creationTimestamp: null
   name: test-pod-1-svc
   namespace: test-configmaps
 spec:
   ports:
-    - name: port-0
-      port: 80
-      targetPort: 80
+  - name: port-0
+    port: 80
+    targetPort: 80
   selector:
     app: test-pod-1
     generated-by: pods
   type: LoadBalancer
+status:
+  loadBalancer: {}
 
 ---
 
@@ -287,6 +315,7 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
+  creationTimestamp: null
   name: test-pod-1-secret
   namespace: test-secrets
 stringData:
@@ -296,69 +325,76 @@ stringData:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  creationTimestamp: null
   name: test-pod-1-deployment
   namespace: test-secrets
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: test-pod-1
       generated-by: pods
+  strategy: {}
   template:
     metadata:
-      annotations: {}
+      creationTimestamp: null
       labels:
         app: test-pod-1
         generated-by: pods
       namespace: test-secrets
     spec:
       containers:
-        - image: nginx:latest
-          name: test-pod-1-container
-          ports:
-            - containerPort: 80
-              name: port-0
-          resources:
-            limits:
-              cpu: 250m
-              memory: 1Gi
-            requests:
-              cpu: 250m
-              memory: 1Gi
-          volumeMounts:
-            - mountPath: /secret.toml
-              name: test-pod-1-secret-volume-0
-              subPath: secret.toml
-            - mountPath: /secret2.toml
-              name: test-pod-1-secret-volume-1
-              subPath: secret2.toml
+      - image: nginx:latest
+        name: test-pod-1-container
+        ports:
+        - containerPort: 80
+          name: port-0
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+        volumeMounts:
+        - mountPath: /secret.toml
+          name: test-pod-1-secret-volume-0
+          subPath: secret.toml
+        - mountPath: /secret2.toml
+          name: test-pod-1-secret-volume-1
+          subPath: secret2.toml
       volumes:
-        - name: test-pod-1-secret-volume-0
-          secret:
-            items:
-              - key: secret.toml
-                path: secret.toml
-            secretName: test-pod-1-secret
-        - name: test-pod-1-secret-volume-1
-          secret:
-            items:
-              - key: secret2.toml
-                path: secret2.toml
-            secretName: test-pod-1-secret
+      - name: test-pod-1-secret-volume-0
+        secret:
+          items:
+          - key: secret.toml
+            path: secret.toml
+          secretName: test-pod-1-secret
+      - name: test-pod-1-secret-volume-1
+        secret:
+          items:
+          - key: secret2.toml
+            path: secret2.toml
+          secretName: test-pod-1-secret
+status: {}
 /-/-/-/
 apiVersion: v1
 kind: Service
 metadata:
+  creationTimestamp: null
   name: test-pod-1-svc
   namespace: test-secrets
 spec:
   ports:
-    - name: port-0
-      port: 80
-      targetPort: 80
+  - name: port-0
+    port: 80
+    targetPort: 80
   selector:
     app: test-pod-1
     generated-by: pods
   type: LoadBalancer
+status:
+  loadBalancer: {}
 
 ---
 
@@ -366,6 +402,7 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  creationTimestamp: null
   name: test-pod-1-deployment
   namespace: test-instances
 spec:
@@ -374,44 +411,47 @@ spec:
     matchLabels:
       app: test-pod-1
       generated-by: pods
+  strategy: {}
   template:
     metadata:
-      annotations: {}
+      creationTimestamp: null
       labels:
         app: test-pod-1
         generated-by: pods
       namespace: test-instances
     spec:
       containers:
-        - image: nginx:latest
-          name: test-pod-1-container
-          ports:
-            - containerPort: 80
-              name: port-0
-          resources:
-            limits:
-              cpu: 250m
-              memory: 1Gi
-            requests:
-              cpu: 250m
-              memory: 1Gi
-          volumeMounts: []
-      volumes: []
+      - image: nginx:latest
+        name: test-pod-1-container
+        ports:
+        - containerPort: 80
+          name: port-0
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+status: {}
 /-/-/-/
 apiVersion: v1
 kind: Service
 metadata:
+  creationTimestamp: null
   name: test-pod-1-svc
   namespace: test-instances
 spec:
   ports:
-    - name: port-0
-      port: 80
-      targetPort: 80
+  - name: port-0
+    port: 80
+    targetPort: 80
   selector:
     app: test-pod-1
     generated-by: pods
   type: LoadBalancer
+status:
+  loadBalancer: {}
 
 ---
 
@@ -515,51 +555,56 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  creationTimestamp: null
   name: test-pod-1-deployment
   namespace: test-services
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: test-pod-1
       generated-by: pods
+  strategy: {}
   template:
     metadata:
-      annotations: {}
+      creationTimestamp: null
       labels:
         app: test-pod-1
         generated-by: pods
       namespace: test-services
     spec:
       containers:
-        - image: nginx:latest
-          name: test-pod-1-container
-          ports:
-            - containerPort: 80
-              name: port-0
-          resources:
-            limits:
-              cpu: 250m
-              memory: 1Gi
-            requests:
-              cpu: 250m
-              memory: 1Gi
-          volumeMounts: []
-      volumes: []
+      - image: nginx:latest
+        name: test-pod-1-container
+        ports:
+        - containerPort: 80
+          name: port-0
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+status: {}
 /-/-/-/
 apiVersion: v1
 kind: Service
 metadata:
+  creationTimestamp: null
   name: test-pod-1-svc
   namespace: test-services
 spec:
   ports:
-    - name: port-0
-      port: 80
-      targetPort: 80
+  - name: port-0
+    port: 80
+    targetPort: 80
   selector:
     app: test-pod-1
     generated-by: pods
   type: LoadBalancer
+status:
+  loadBalancer: {}
 
 ---
 
@@ -567,18 +612,22 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  creationTimestamp: null
   name: anvil-deployment
   namespace: test-command
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: anvil
       chain.link/component: cl
       generated-by: pods
+  strategy: {}
   template:
     metadata:
       annotations:
         custom-annotation: custom
+      creationTimestamp: null
       labels:
         app: anvil
         chain.link/component: cl
@@ -586,39 +635,41 @@ spec:
       namespace: test-command
     spec:
       containers:
-        - command:
-            - anvil
-            - --host=0.0.0.0
-            - -b=1
-          image: ghcr.io/foundry-rs/foundry
-          name: anvil-container
-          ports:
-            - containerPort: 8545
-              name: port-0
-          resources:
-            limits:
-              cpu: 250m
-              memory: 1Gi
-            requests:
-              cpu: 250m
-              memory: 1Gi
-          volumeMounts: []
-      volumes: []
+      - command:
+        - anvil
+        - --host=0.0.0.0
+        - -b=1
+        image: ghcr.io/foundry-rs/foundry
+        name: anvil-container
+        ports:
+        - containerPort: 8545
+          name: port-0
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+status: {}
 /-/-/-/
 apiVersion: v1
 kind: Service
 metadata:
+  creationTimestamp: null
   name: anvil-svc
   namespace: test-command
 spec:
   ports:
-    - name: port-0
-      port: 8545
-      targetPort: 8545
+  - name: port-0
+    port: 8545
+    targetPort: 8545
   selector:
     app: anvil
     chain.link/component: cl
     generated-by: pods
   type: LoadBalancer
+status:
+  loadBalancer: {}
 
 ---

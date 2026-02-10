@@ -30,19 +30,3 @@ Add new features to `pods.go`, add new tests to `pods_test.go` and make pre-comm
 Run `just test-deploy-cover` to check coverage.
 
 Create additional directories for product-specific deployments if needed.
-
-### Importing CRDs and K8s manifests
-
-```
-devbox shell
-# filter current cluster CRDs, grep 'monitoring'
-just crds monitoring
-# save it as YAML
-just crd servicemonitors.monitoring.coreos.com crds/monitoring.coreos.com
-# import as Go code
-just import crds/monitoring.coreos.com.yml
-```
-
-### K8s bindings versions
-
-Check available `cdk8s` bindings [versions](https://github.com/cdk8s-team/cdk8s/tree/master/kubernetes-schemas).

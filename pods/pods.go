@@ -4,31 +4,32 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
 	"github.com/google/uuid"
-	"github.com/smartcontractkit/chainlink-testing-framework/pods/imports/k8s"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
+	"sigs.k8s.io/yaml"
 )
 
 const (
 	ManifestsDir = "pods-out"
 )
 
-var (
-	Client *API
-	// JSIIGlobalMu is a global mutex for cdk8s JSII runtime
-	// allows to generate manifests in a goroutine-safe way
-	// since some calls to "k8s" package simplify the deployment
-	// this client should be used on the client side to lock
-	JSIIGlobalMu = &sync.Mutex{}
-)
+var Client *API
 
 // Config describes Pods library configuration
 type Config struct {
@@ -41,8 +42,8 @@ type PodConfig struct {
 	StatefulSet bool
 	// Name is a pod name
 	Name *string
-	// Replicas amount of replicase for a pod
-	Replicas *float64
+	// Replicas amount of replicas for a pod
+	Replicas *int32
 	// Labels are K8s labels added to a pod
 	Labels map[string]string
 	// Annotations are K8s annotations added to a pod
@@ -50,42 +51,37 @@ type PodConfig struct {
 	// Image docker image URI in format $repo/$image_name:$tag, ex. "public.ecr.aws/chainlink/chainlink:v2.17.0"
 	Image *string
 	// Env represents container environment variables
-	Env *[]*k8s.EnvVar
+	Env []corev1.EnvVar
 	// Command is a container command to run on start
 	Command *string
 	// Ports is a list of $svc:$container ports, ex.: ["8080:80", "9090:90"]
 	Ports []string
 	// ConfigMap is a map of files in ConfigMap, ex.: "config.toml": `some_toml`
-	// ConfigMap key should be used in ConfigMapMountPath with a path to mount the file
-	ConfigMap map[string]*string
+	ConfigMap map[string]string
 	// ConfigMapMountPath mounts files with paths, ex.: "config.toml": "/config.toml"
-	ConfigMapMountPath map[string]*string
+	ConfigMapMountPath map[string]string
 	// Secrets is a map of files in K8s Secret, ex. "secrets.toml": `some_secret`
-	// Secrets key should be used in SecretsMountPath with a path to mount the secret
-	Secrets map[string]*string
+	Secrets map[string]string
 	// SecretsMountPath mounts secrets with paths, ex.: "secrets.toml": "/secrets.toml"
-	SecretsMountPath map[string]*string
+	SecretsMountPath map[string]string
 	// ReadinessProbe is container readiness probe definition
-	ReadinessProbe *k8s.Probe
-	// Requests is K8s resources requests on CPU/Mem, see Resources func and examples in tests
-	Requests map[string]k8s.Quantity
-	// Limits is K8s resources limits on CPU/Mem, see Resources func and examples in tests
-	Limits map[string]k8s.Quantity
+	ReadinessProbe *corev1.Probe
+	// Requests is K8s resources requests on CPU/Mem
+	Requests map[string]string
+	// Limits is K8s resources limits on CPU/Mem
+	Limits map[string]string
 	// ContainerSecurityContext is a container security context
-	ContainerSecurityContext *k8s.SecurityContext
+	ContainerSecurityContext *corev1.SecurityContext
 	// PodSecurityContext is a Pod security context
-	PodSecurityContext *k8s.PodSecurityContext
+	PodSecurityContext *corev1.PodSecurityContext
 	// VolumeClaimTemplates is a list K8s persistent volume claim templates
-	// mostly used with databases, see SizedVolumeClaim used with PostgreSQL
-	// if one template is present we deploy a StatefulSet
-	VolumeClaimTemplates []*k8s.KubePersistentVolumeClaimProps
+	VolumeClaimTemplates []corev1.PersistentVolumeClaim
 }
 
-// App is an application context with cdk8s app, chart and generated manifest
+// App is an application context with generated manifests
 type App struct {
 	cfg      *Config
-	app      cdk8s.App
-	chart    cdk8s.Chart
+	objects  []any
 	manifest *string
 }
 
@@ -110,90 +106,97 @@ func Run(cfg *Config) (string, error) {
 	return *p.Manifest(), p.apply()
 }
 
-// Lock locks all interactions with JSII runtime, only single thread at a time
+// Lock and Unlock are no longer needed (kept for API compatibility)
 func Lock() {
-	JSIIGlobalMu.Lock()
+	// No-op since we're not using JSII
 }
 
-// Unlock unlocks all interactions with JSII runtime
 func Unlock() {
-	JSIIGlobalMu.Unlock()
+	// No-op since we're not using JSII
 }
 
 // generate provides a simplified Docker Compose like API for K8s and generates YAML a manifest to deploy
 func (n *App) generate() error {
-	n.app = cdk8s.NewApp(nil)
-	n.chart = cdk8s.NewChart(n.app, S("pods-chart"), nil)
 	for _, podConfig := range n.cfg.Pods {
 		podName := *podConfig.Name
-		namespace := n.cfg.Namespace
+		namespace := *n.cfg.Namespace
 
 		// Define resources
 		if podConfig.Requests == nil {
-			podConfig.Requests = ResourcesSmall()
+			podConfig.Requests = ResourcesMedium()
 		}
 		if podConfig.Limits == nil {
-			podConfig.Limits = ResourcesSmall()
+			podConfig.Limits = ResourcesMedium()
 		}
 
 		// Define labels
-		labels := map[string]*string{"app": S(podName), "generated-by": S("pods")}
-		for k, v := range podConfig.Labels {
-			labels[k] = S(v)
-		}
+		labels := map[string]string{"app": podName, "generated-by": "pods"}
+		maps.Copy(labels, podConfig.Labels)
 
 		// Define annotations
-		annotations := map[string]*string{}
-		for k, v := range podConfig.Annotations {
-			annotations[k] = S(v)
-		}
+		annotations := map[string]string{}
+		maps.Copy(annotations, podConfig.Annotations)
 
-		// Create ConfigMaps if provided
+		// Create ConfigMap if provided
 		if len(podConfig.ConfigMap) > 0 {
-			k8s.NewKubeConfigMap(n.chart, S(fmt.Sprintf("%s-configmap", podName)), &k8s.KubeConfigMapProps{
-				Metadata: &k8s.ObjectMeta{
-					Name:      S(fmt.Sprintf("%s-configmap", podName)),
+			configMap := &corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "ConfigMap",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-configmap", podName),
 					Namespace: namespace,
 				},
-				Data: &podConfig.ConfigMap,
-			})
+				Data: podConfig.ConfigMap,
+			}
+			n.objects = append(n.objects, configMap)
 		}
 
-		// Create Secrets if provided
+		// Create Secret if provided
 		if len(podConfig.Secrets) > 0 {
-			k8s.NewKubeSecret(n.chart, S(fmt.Sprintf("%s-secret", podName)), &k8s.KubeSecretProps{
-				Metadata: &k8s.ObjectMeta{
-					Name:      S(fmt.Sprintf("%s-secret", podName)),
+			secret := &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "Secret",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-secret", podName),
 					Namespace: namespace,
 				},
-				StringData: &podConfig.Secrets,
-			})
+				StringData: podConfig.Secrets,
+			}
+			n.objects = append(n.objects, secret)
 		}
 
 		// Define volumes and volume mounts
-		var volumes []*k8s.Volume
-		var volumeMounts []*k8s.VolumeMount
+		var volumes []corev1.Volume
+		var volumeMounts []corev1.VolumeMount
 
 		// Prepare ConfigMap volumes
 		idx := 0
 		for _, fileName := range SortedKeys(podConfig.ConfigMapMountPath) {
 			mountPath := podConfig.ConfigMapMountPath[fileName]
-			volumes = append(volumes, &k8s.Volume{
-				Name: S(fmt.Sprintf("%s-configmap-volume-%d", podName, idx)),
-				ConfigMap: &k8s.ConfigMapVolumeSource{
-					Name: S(fmt.Sprintf("%s-configmap", podName)),
-					Items: &[]*k8s.KeyToPath{
-						{
-							Key:  S(fileName),
-							Path: S(fileName),
+			volumes = append(volumes, corev1.Volume{
+				Name: fmt.Sprintf("%s-configmap-volume-%d", podName, idx),
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: fmt.Sprintf("%s-configmap", podName),
+						},
+						Items: []corev1.KeyToPath{
+							{
+								Key:  fileName,
+								Path: fileName,
+							},
 						},
 					},
 				},
 			})
-			volumeMounts = append(volumeMounts, &k8s.VolumeMount{
-				Name:      S(fmt.Sprintf("%s-configmap-volume-%d", podName, idx)),
+			volumeMounts = append(volumeMounts, corev1.VolumeMount{
+				Name:      fmt.Sprintf("%s-configmap-volume-%d", podName, idx),
 				MountPath: mountPath,
-				SubPath:   S(fileName),
+				SubPath:   fileName,
 			})
 			idx++
 		}
@@ -202,192 +205,244 @@ func (n *App) generate() error {
 		idx = 0
 		for _, fileName := range SortedKeys(podConfig.SecretsMountPath) {
 			mountPath := podConfig.SecretsMountPath[fileName]
-			volumes = append(volumes, &k8s.Volume{
-				Name: S(fmt.Sprintf("%s-secret-volume-%d", podName, idx)),
-				Secret: &k8s.SecretVolumeSource{
-					SecretName: S(fmt.Sprintf("%s-secret", podName)),
-					Items: &[]*k8s.KeyToPath{
-						{
-							Key:  S(fileName),
-							Path: S(fileName),
+			volumes = append(volumes, corev1.Volume{
+				Name: fmt.Sprintf("%s-secret-volume-%d", podName, idx),
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: fmt.Sprintf("%s-secret", podName),
+						Items: []corev1.KeyToPath{
+							{
+								Key:  fileName,
+								Path: fileName,
+							},
 						},
 					},
 				},
 			})
-			volumeMounts = append(volumeMounts, &k8s.VolumeMount{
-				Name:      S(fmt.Sprintf("%s-secret-volume-%d", podName, idx)),
+			volumeMounts = append(volumeMounts, corev1.VolumeMount{
+				Name:      fmt.Sprintf("%s-secret-volume-%d", podName, idx),
 				MountPath: mountPath,
-				SubPath:   S(fileName),
+				SubPath:   fileName,
 			})
 			idx++
 		}
 
 		// Parse port mappings for the container
-		var containerPorts []*k8s.ContainerPort
+		var containerPorts []corev1.ContainerPort
 		for i, portMapping := range podConfig.Ports {
 			parts := strings.Split(portMapping, ":")
 			if len(parts) != 2 {
 				return fmt.Errorf("invalid port mapping: %s, should be \"$svc_port:$container_port\"", portMapping)
 			}
 
-			containerPort, err := strconv.ParseFloat(parts[1], 64)
+			containerPort, err := strconv.ParseInt(parts[1], 10, 32)
 			if err != nil {
 				return fmt.Errorf("invalid container port number: %s", parts[1])
 			}
 
-			containerPorts = append(containerPorts, &k8s.ContainerPort{
-				Name: S(fmt.Sprintf("port-%d", i)),
-				// Use HostPort field here to enable node exposed port
-				ContainerPort: &containerPort,
+			containerPorts = append(containerPorts, corev1.ContainerPort{
+				Name:          fmt.Sprintf("port-%d", i),
+				ContainerPort: int32(containerPort),
 			})
 		}
 
-		container := &k8s.Container{
-			Name:            S(fmt.Sprintf("%s-container", podName)),
-			Image:           podConfig.Image,
-			Env:             podConfig.Env,
-			Ports:           &containerPorts,
-			Resources:       &k8s.ResourceRequirements{Limits: &podConfig.Limits, Requests: &podConfig.Requests},
-			VolumeMounts:    &volumeMounts,
+		// Convert resources to Kubernetes format
+		resourceRequests := corev1.ResourceList{}
+		for k, v := range podConfig.Requests {
+			quantity, err := resource.ParseQuantity(v)
+			if err != nil {
+				return fmt.Errorf("invalid resource request %s=%s: %w", k, v, err)
+			}
+			switch k {
+			case "cpu":
+				resourceRequests[corev1.ResourceCPU] = quantity
+			case "memory":
+				resourceRequests[corev1.ResourceMemory] = quantity
+			}
+		}
+
+		resourceLimits := corev1.ResourceList{}
+		for k, v := range podConfig.Limits {
+			quantity, err := resource.ParseQuantity(v)
+			if err != nil {
+				return fmt.Errorf("invalid resource limit %s=%s: %w", k, v, err)
+			}
+			switch k {
+			case "cpu":
+				resourceLimits[corev1.ResourceCPU] = quantity
+			case "memory":
+				resourceLimits[corev1.ResourceMemory] = quantity
+			}
+		}
+
+		container := corev1.Container{
+			Name:  fmt.Sprintf("%s-container", podName),
+			Image: *podConfig.Image,
+			Env:   podConfig.Env,
+			Ports: containerPorts,
+			Resources: corev1.ResourceRequirements{
+				Requests: resourceRequests,
+				Limits:   resourceLimits,
+			},
+			VolumeMounts:    volumeMounts,
 			SecurityContext: podConfig.ContainerSecurityContext,
 			ReadinessProbe:  podConfig.ReadinessProbe,
 		}
 
 		// Transform container command
 		if podConfig.Command != nil {
-			cmds := strings.Split(*podConfig.Command, " ")
-			L.Info().Msg(fmt.Sprintf("commands: %s", strings.Join(cmds, " ")))
-			command := make([]*string, 0)
-			for _, cmd := range cmds {
-				command = append(command, S(cmd))
-			}
-			container.Command = &command
-			L.Debug().Str("Cmd", *podConfig.Command).Msg("Container command")
+			container.Command = strings.Split(*podConfig.Command, " ")
+			log.Printf("Container command: %s", *podConfig.Command)
 		}
 
 		// Override replicas
-		replicas := I(1)
+		replicas := int32(1)
 		if podConfig.Replicas != nil {
-			replicas = podConfig.Replicas
+			replicas = *podConfig.Replicas
 		}
 
-		// Create Deployment or StatefulSet if any volume claim is present
+		// Create StatefulSet if volume claims present or StatefulSet flag is true
 		if len(podConfig.VolumeClaimTemplates) > 0 || podConfig.StatefulSet {
-			k8s.NewKubeStatefulSet(n.chart, S(fmt.Sprintf("%s-statefulset", podName)), &k8s.KubeStatefulSetProps{
-				Metadata: &k8s.ObjectMeta{
-					Name:      S(fmt.Sprintf("%s-statefulset", podName)),
+			statefulSet := &appsv1.StatefulSet{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "apps/v1",
+					Kind:       "StatefulSet",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-statefulset", podName),
 					Namespace: namespace,
 				},
-				Spec: &k8s.StatefulSetSpec{
-					ServiceName: S(fmt.Sprintf("%s-svc", podName)),
-					Replicas:    replicas,
-					Selector: &k8s.LabelSelector{
-						MatchLabels: &labels,
+				Spec: appsv1.StatefulSetSpec{
+					ServiceName: fmt.Sprintf("%s-svc", podName),
+					Replicas:    &replicas,
+					Selector: &metav1.LabelSelector{
+						MatchLabels: labels,
 					},
-					Template: &k8s.PodTemplateSpec{
-						Metadata: &k8s.ObjectMeta{
-							Name:        S(fmt.Sprintf("%s-pp", podName)),
-							Labels:      &labels,
-							Annotations: &annotations,
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:        fmt.Sprintf("%s-pod", podName),
+							Labels:      labels,
+							Annotations: annotations,
 							Namespace:   namespace,
 						},
-						Spec: &k8s.PodSpec{
+						Spec: corev1.PodSpec{
 							SecurityContext: podConfig.PodSecurityContext,
-							Containers:      &[]*k8s.Container{container},
-							Volumes:         &volumes,
+							Containers:      []corev1.Container{container},
+							Volumes:         volumes,
 						},
 					},
-					VolumeClaimTemplates: &podConfig.VolumeClaimTemplates,
+					VolumeClaimTemplates: podConfig.VolumeClaimTemplates,
 				},
-			})
+			}
+			n.objects = append(n.objects, statefulSet)
 		} else {
-			k8s.NewKubeDeployment(n.chart, S(fmt.Sprintf("%s-deployment", podName)), &k8s.KubeDeploymentProps{
-				Metadata: &k8s.ObjectMeta{
-					Name:      S(fmt.Sprintf("%s-deployment", podName)),
+			// Create Deployment
+			deployment := &appsv1.Deployment{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "apps/v1",
+					Kind:       "Deployment",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-deployment", podName),
 					Namespace: namespace,
 				},
-				Spec: &k8s.DeploymentSpec{
-					Replicas: podConfig.Replicas,
-					Selector: &k8s.LabelSelector{
-						MatchLabels: &labels,
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &replicas,
+					Selector: &metav1.LabelSelector{
+						MatchLabels: labels,
 					},
-					Template: &k8s.PodTemplateSpec{
-						Metadata: &k8s.ObjectMeta{
-							Labels:      &labels,
-							Annotations: &annotations,
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels:      labels,
+							Annotations: annotations,
 							Namespace:   namespace,
 						},
-						Spec: &k8s.PodSpec{
+						Spec: corev1.PodSpec{
 							SecurityContext: podConfig.PodSecurityContext,
-							Containers:      &[]*k8s.Container{container},
-							Volumes:         &volumes,
+							Containers:      []corev1.Container{container},
+							Volumes:         volumes,
 						},
 					},
 				},
-			})
+			}
+			n.objects = append(n.objects, deployment)
 		}
 
 		// Parse port mappings for the service
-		var servicePorts []*k8s.ServicePort
+		var servicePorts []corev1.ServicePort
 		for i, portMapping := range podConfig.Ports {
 			parts := strings.Split(portMapping, ":")
 			if len(parts) != 2 {
 				log.Fatalf("Invalid port mapping: %s", portMapping)
 			}
 
-			port, err := strconv.ParseFloat(parts[0], 64)
+			port, err := strconv.ParseInt(parts[0], 10, 32)
 			if err != nil {
 				log.Fatalf("Invalid port number: %s", parts[0])
 			}
 
-			containerPort, err := strconv.ParseFloat(parts[1], 64)
+			targetPort, err := strconv.ParseInt(parts[1], 10, 32)
 			if err != nil {
 				log.Fatalf("Invalid container port number: %s", parts[1])
 			}
 
-			servicePorts = append(servicePorts, &k8s.ServicePort{
-				Name:       S(fmt.Sprintf("port-%d", i)),
-				Port:       &port,
-				TargetPort: k8s.IntOrString_FromNumber(&containerPort),
+			servicePorts = append(servicePorts, corev1.ServicePort{
+				Name:       fmt.Sprintf("port-%d", i),
+				Port:       int32(port),
+				TargetPort: intstr.FromInt(int(targetPort)),
 			})
 		}
 
 		if len(servicePorts) > 0 {
-			// Create the KubeService with the parsed ports
-			k8s.NewKubeService(n.chart, S(fmt.Sprintf("%s-svc", podName)), &k8s.KubeServiceProps{
-				Metadata: &k8s.ObjectMeta{
-					Name:      S(fmt.Sprintf("%s-svc", podName)),
+			// Create the Service
+			service := &corev1.Service{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "Service",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-svc", podName),
 					Namespace: namespace,
 				},
-				Spec: &k8s.ServiceSpec{
-					Type:     S("LoadBalancer"),
-					Ports:    &servicePorts,
-					Selector: &labels,
+				Spec: corev1.ServiceSpec{
+					Type:     corev1.ServiceTypeLoadBalancer,
+					Ports:    servicePorts,
+					Selector: labels,
 				},
-			})
+			}
+			n.objects = append(n.objects, service)
 		}
 	}
-	yaml := n.app.SynthYaml()
-	L.Debug().Msg(*yaml)
-	n.manifest = yaml
+
+	// Generate YAML from all objects
+	yamlDocs := make([]string, 0, len(n.objects))
+	for _, obj := range n.objects {
+		yamlBytes, err := yaml.Marshal(obj)
+		if err != nil {
+			return fmt.Errorf("failed to marshal object to YAML: %w", err)
+		}
+		yamlDocs = append(yamlDocs, string(yamlBytes))
+	}
+
+	fullYAML := strings.Join(yamlDocs, "---\n")
+	n.manifest = &fullYAML
+	log.Printf("Generated YAML:\n%s", fullYAML)
 	return nil
 }
 
 func (n *App) apply() error {
-	if os.Getenv("SNAPSHOT_TESTS") == "true" { // coverage-ignore
+	if os.Getenv("SNAPSHOT_TESTS") == "true" {
 		return nil
 	}
 	if n.manifest == nil {
 		return fmt.Errorf("manifest is empty, nothing to generate")
 	}
-	// re-create deployments dir
-	_ = os.RemoveAll(ManifestsDir)
 	_ = os.Mkdir(ManifestsDir, os.ModePerm)
 	// write generate manifest
 	manifestFile := filepath.Join(ManifestsDir, fmt.Sprintf("pods-%s.tmp.yml", uuid.NewString()[0:5]))
 	err := os.WriteFile(manifestFile, []byte(*n.manifest), 0o600)
 	if err != nil {
-		return fmt.Errorf("failed to write manifest to file: %v", err)
+		return fmt.Errorf("failed to write manifest to file: %w", err)
 	}
 	// apply the manifest
 	cmd := exec.Command("kubectl", "apply", "-f", manifestFile, "--wait=true")
@@ -395,8 +450,7 @@ func (n *App) apply() error {
 	if err != nil {
 		return fmt.Errorf("failed to apply manifest: %v\nOutput: %s", err, string(output))
 	}
-	L.Info().Str("Path", manifestFile).Msg("Manifest applied successfully:")
-	L.Info().Msg(string(output))
+	log.Printf("Manifest applied successfully: %s", manifestFile)
 	return nil
 }
 
@@ -408,4 +462,28 @@ func WaitReady(t time.Duration) error {
 // Manifest returns current generated YAML manifest
 func (n *App) Manifest() *string {
 	return n.manifest
+}
+
+// NewKubernetesClient creates a new Kubernetes client
+func NewKubernetesClient() (*kubernetes.Clientset, error) {
+	var config *rest.Config
+	var err error
+
+	// Try in-cluster config first
+	config, err = rest.InClusterConfig()
+	if err != nil {
+		// Fall back to kubeconfig
+		kubeconfig := filepath.Join(homedir.HomeDir(), ".kube", "config")
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get kubeconfig: %w", err)
+		}
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create clientset: %w", err)
+	}
+
+	return clientset, nil
 }

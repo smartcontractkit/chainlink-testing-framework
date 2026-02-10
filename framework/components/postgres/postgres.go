@@ -8,8 +8,9 @@ import (
 	"strings"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/pods"
-	"github.com/smartcontractkit/chainlink-testing-framework/pods/imports/k8s"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
@@ -135,35 +136,36 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 					Name:  pods.S(in.Name),
 					Image: pods.S(in.Image),
 					Ports: []string{fmt.Sprintf("%d:%s", portToExpose, Port)},
-					Env: &[]*k8s.EnvVar{
+					Env: []v1.EnvVar{
 						{
-							Name:  pods.S("POSTGRES_USER"),
-							Value: pods.S("chainlink"),
+							Name:  "POSTGRES_USER",
+							Value: "chainlink",
 						},
 						{
-							Name:  pods.S("POSTGRES_PASSWORD"),
-							Value: pods.S("thispasswordislongenough"),
+							Name:  "POSTGRES_PASSWORD",
+							Value: "thispasswordislongenough",
 						},
 						{
-							Name:  pods.S("POSTGRES_DB"),
-							Value: pods.S("chainlink"),
+							Name:  "POSTGRES_DB",
+							Value: "chainlink",
 						},
 					},
-					Limits: pods.ResourcesMedium(),
-					ContainerSecurityContext: &k8s.SecurityContext{
-						RunAsUser:  pods.I(999),
-						RunAsGroup: pods.I(999),
+					Requests: pods.ResourcesLarge(),
+					Limits:   pods.ResourcesLarge(),
+					ContainerSecurityContext: &v1.SecurityContext{
+						RunAsUser:  pods.I64(999),
+						RunAsGroup: pods.I64(999),
 					},
-					PodSecurityContext: &k8s.PodSecurityContext{
-						FsGroup: pods.I(999),
+					PodSecurityContext: &v1.PodSecurityContext{
+						FSGroup: pods.I64(999),
 					},
-					ConfigMap: map[string]*string{
-						"init.sql": pods.S(initSQL),
+					ConfigMap: map[string]string{
+						"init.sql": initSQL,
 					},
-					ConfigMapMountPath: map[string]*string{
-						"init.sql": pods.S("/docker-entrypoint-initdb.d/init.sql"),
+					ConfigMapMountPath: map[string]string{
+						"init.sql": "/docker-entrypoint-initdb.d/init.sql",
 					},
-					VolumeClaimTemplates: pods.SizedVolumeClaim(pods.S("4Gi")),
+					VolumeClaimTemplates: pods.SizedVolumeClaim("4Gi"),
 				},
 			},
 		})

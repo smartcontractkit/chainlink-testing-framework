@@ -124,13 +124,13 @@ func TestPods(t *testing.T) {
 						Name:  p.S("test-pod-1"),
 						Image: p.S("nginx:latest"),
 						Ports: []string{"80:80"},
-						ConfigMap: map[string]*string{
-							"config.toml":  p.S(`test`),
-							"config2.toml": p.S(`test`),
+						ConfigMap: map[string]string{
+							"config.toml":  `test`,
+							"config2.toml": `test`,
 						},
-						ConfigMapMountPath: map[string]*string{
-							"config.toml":  p.S("/config.toml"),
-							"config2.toml": p.S("/config2.toml"),
+						ConfigMapMountPath: map[string]string{
+							"config.toml":  "/config.toml",
+							"config2.toml": "/config2.toml",
 						},
 					},
 				},
@@ -146,25 +146,16 @@ func TestPods(t *testing.T) {
 						Name:  p.S("test-pod-1"),
 						Image: p.S("nginx:latest"),
 						Ports: []string{"80:80"},
-						Secrets: map[string]*string{
-							"secret.toml":  p.S(`test`),
-							"secret2.toml": p.S(`test`),
+						Secrets: map[string]string{
+							"secret.toml":  `test`,
+							"secret2.toml": `test`,
 						},
-						SecretsMountPath: map[string]*string{
-							"secret.toml":  p.S("/secret.toml"),
-							"secret2.toml": p.S("/secret2.toml"),
+						SecretsMountPath: map[string]string{
+							"secret.toml":  "/secret.toml",
+							"secret2.toml": "/secret2.toml",
 						},
 					},
 				},
-			},
-			validateManifest: defaultNoErr,
-		},
-		{
-			name:   "test-volumes",
-			skipCI: true,
-			props: &p.Config{
-				Namespace: p.S("test-volumes"),
-				Pods:      []*p.PodConfig{p.PostgreSQL("pg-x", "postgres:15", p.ResourcesSmall(), p.ResourcesSmall(), p.S("1Gi"))},
 			},
 			validateManifest: defaultNoErr,
 		},

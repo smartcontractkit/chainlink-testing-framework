@@ -6,8 +6,9 @@ import (
 	"os"
 	"strings"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/pods"
-	"github.com/smartcontractkit/chainlink-testing-framework/pods/imports/k8s"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components"
@@ -66,14 +67,15 @@ func newAnvil(ctx context.Context, in *Input) (*Output, error) {
 			Namespace: pods.S(ns),
 			Pods: []*pods.PodConfig{
 				{
-					Name:    pods.S(in.ContainerName),
-					Image:   &in.Image,
-					Ports:   []string{fmt.Sprintf("%s:%s", in.Port, in.Port)},
-					Command: pods.S(strings.Join(entryPoint, " ")),
-					Limits:  pods.ResourcesSmall(),
-					ContainerSecurityContext: &k8s.SecurityContext{
-						RunAsUser:  pods.I(999),
-						RunAsGroup: pods.I(999),
+					Name:     pods.S(in.ContainerName),
+					Image:    &in.Image,
+					Ports:    []string{fmt.Sprintf("%s:%s", in.Port, in.Port)},
+					Command:  pods.S(strings.Join(entryPoint, " ")),
+					Requests: pods.ResourcesMedium(),
+					Limits:   pods.ResourcesMedium(),
+					ContainerSecurityContext: &v1.SecurityContext{
+						RunAsUser:  pods.I64(999),
+						RunAsGroup: pods.I64(999),
 					},
 				},
 			},
