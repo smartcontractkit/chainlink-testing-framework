@@ -5,8 +5,8 @@ go 1.24.4
 replace (
 	github.com/smartcontractkit/chainlink-testing-framework/framework => ../../
 	github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake => ../../components/fake
+	github.com/smartcontractkit/chainlink-testing-framework/pods => ../../../pods
 	github.com/smartcontractkit/chainlink-testing-framework/wasp => ../../../wasp
-	github.com/smartcontractkit/pods => ../../../pods
 )
 
 require (
@@ -115,7 +115,7 @@ require (
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
 	github.com/shirou/gopsutil/v4 v4.25.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/smartcontractkit/pods v0.0.0-00010101000000-000000000000 // indirect
+	github.com/smartcontractkit/chainlink-testing-framework/pods v0.0.0-00010101000000-000000000000 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/supranational/blst v0.3.13 // indirect
 	github.com/testcontainers/testcontainers-go v0.37.0 // indirect

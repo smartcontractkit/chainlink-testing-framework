@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/smartcontractkit/pods"
-	p "github.com/smartcontractkit/pods"
+	"github.com/smartcontractkit/chainlink-testing-framework/pods"
+	p "github.com/smartcontractkit/chainlink-testing-framework/pods"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"

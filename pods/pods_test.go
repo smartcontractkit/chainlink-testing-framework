@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/gkampitakis/go-snaps/snaps"
-	p "github.com/smartcontractkit/pods"
+	p "github.com/smartcontractkit/chainlink-testing-framework/pods"
 	"github.com/stretchr/testify/require"
 )
 

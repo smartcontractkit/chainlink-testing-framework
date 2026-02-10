@@ -5,7 +5,7 @@ go 1.24.4
 replace (
 	github.com/smartcontractkit/chainlink-testing-framework/framework => ../framework
 	github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake => ../framework/components/fake
-	github.com/smartcontractkit/pods => ../pods
+	github.com/smartcontractkit/chainlink-testing-framework/pods => ../pods
 )
 
 require (
@@ -49,7 +49,7 @@ require (
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rs/cors v1.11.1 // indirect
-	github.com/smartcontractkit/pods v0.0.0-00010101000000-000000000000 // indirect
+	github.com/smartcontractkit/chainlink-testing-framework/pods v0.0.0-00010101000000-000000000000 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect

@@ -4,7 +4,7 @@ go 1.24.4
 
 replace (
 	github.com/smartcontractkit/chainlink-testing-framework/framework => ../../../framework
-	github.com/smartcontractkit/pods => ../../../pods
+	github.com/smartcontractkit/chainlink-testing-framework/pods => ../../../pods
 )
 
 require (

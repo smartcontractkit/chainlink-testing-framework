@@ -2,11 +2,11 @@ package monitoringcoreoscom
 
 import (
 	_jsii_ "github.com/aws/jsii-runtime-go/runtime"
-	_init_ "github.com/smartcontractkit/pods/imports/monitoringcoreoscom/jsii"
+	_init_ "github.com/smartcontractkit/chainlink-testing-framework/pods/imports/monitoringcoreoscom/jsii"
 
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	"github.com/smartcontractkit/pods/imports/monitoringcoreoscom/internal"
+	"github.com/smartcontractkit/chainlink-testing-framework/pods/imports/monitoringcoreoscom/internal"
 )
 
 // ServiceMonitor defines monitoring for a set of services.

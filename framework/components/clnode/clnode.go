@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/aws/jsii-runtime-go"
-	"github.com/smartcontractkit/pods"
-	"github.com/smartcontractkit/pods/imports/k8s"
+	"github.com/smartcontractkit/chainlink-testing-framework/pods"
+	"github.com/smartcontractkit/chainlink-testing-framework/pods/imports/k8s"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"

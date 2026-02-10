@@ -2,11 +2,11 @@ package k8s
 
 import (
 	_jsii_ "github.com/aws/jsii-runtime-go/runtime"
-	_init_ "github.com/smartcontractkit/pods/imports/k8s/jsii"
+	_init_ "github.com/smartcontractkit/chainlink-testing-framework/pods/imports/k8s/jsii"
 
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	"github.com/smartcontractkit/pods/imports/k8s/internal"
+	"github.com/smartcontractkit/chainlink-testing-framework/pods/imports/k8s/internal"
 )
 
 // Service is a named abstraction of software service (for example, mysql) consisting of local port (for example 3306) that the proxy listens on, and the selector that determines which pods will answer requests sent through the proxy.

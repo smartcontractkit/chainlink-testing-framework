@@ -2,7 +2,7 @@ package monitoringcoreoscom
 
 import (
 	_jsii_ "github.com/aws/jsii-runtime-go/runtime"
-	_init_ "github.com/smartcontractkit/pods/imports/monitoringcoreoscom/jsii"
+	_init_ "github.com/smartcontractkit/chainlink-testing-framework/pods/imports/monitoringcoreoscom/jsii"
 )
 
 // Name or number of the target port of the `Pod` object behind the Service, the port must be specified with container port property.

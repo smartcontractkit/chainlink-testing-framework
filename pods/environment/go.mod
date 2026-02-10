@@ -1,12 +1,12 @@
-module github.com/smartcontractkit/pods/example-env
+module github.com/smartcontractkit/chainlink-testing-framework/pods/example-env
 
 go 1.24.3
 
-replace github.com/smartcontractkit/pods => ../
+replace github.com/smartcontractkit/chainlink-testing-framework/pods => ../
 
 require (
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.10.24
-	github.com/smartcontractkit/pods v0.0.0-00010101000000-000000000000
+	github.com/smartcontractkit/chainlink-testing-framework/pods v0.0.0-00010101000000-000000000000
 )
 
 require (

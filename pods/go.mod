@@ -1,4 +1,4 @@
-module github.com/smartcontractkit/pods
+module github.com/smartcontractkit/chainlink-testing-framework/pods
 
 go 1.24.0
 

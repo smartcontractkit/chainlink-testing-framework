@@ -2,11 +2,11 @@ package k8s
 
 import (
 	_jsii_ "github.com/aws/jsii-runtime-go/runtime"
-	_init_ "github.com/smartcontractkit/pods/imports/k8s/jsii"
+	_init_ "github.com/smartcontractkit/chainlink-testing-framework/pods/imports/k8s/jsii"
 
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
-	"github.com/smartcontractkit/pods/imports/k8s/internal"
+	"github.com/smartcontractkit/chainlink-testing-framework/pods/imports/k8s/internal"
 )
 
 // ResourceSlice represents one or more resources in a pool of similar resources, managed by a common driver.

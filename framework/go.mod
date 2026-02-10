@@ -3,9 +3,9 @@ module github.com/smartcontractkit/chainlink-testing-framework/framework
 go 1.24.2
 
 replace (
+	github.com/smartcontractkit/chainlink-testing-framework/pods => ../pods
 	github.com/smartcontractkit/chainlink-testing-framework/wasp => ../wasp
 	github.com/smartcontractkit/chainlink-testing-framework/wasp-tests => ../wasp/examples
-	github.com/smartcontractkit/pods => ../pods
 )
 
 require (
@@ -31,8 +31,8 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.3
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.33.0
+	github.com/smartcontractkit/chainlink-testing-framework/pods v0.0.0-00010101000000-000000000000
 	github.com/smartcontractkit/chainlink-testing-framework/wasp v1.51.2
-	github.com/smartcontractkit/pods v0.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.10.0
 	github.com/testcontainers/testcontainers-go v0.37.0
 	github.com/urfave/cli/v2 v2.27.7

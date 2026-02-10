@@ -14,7 +14,7 @@ import (
 
 	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
 	"github.com/google/uuid"
-	"github.com/smartcontractkit/pods/imports/k8s"
+	"github.com/smartcontractkit/chainlink-testing-framework/pods/imports/k8s"
 )
 
 const (

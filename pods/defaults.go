@@ -5,7 +5,7 @@ import (
 	"sort"
 
 	"github.com/aws/jsii-runtime-go"
-	"github.com/smartcontractkit/pods/imports/k8s"
+	"github.com/smartcontractkit/chainlink-testing-framework/pods/imports/k8s"
 )
 
 func S(s string) *string { return jsii.String(s) }

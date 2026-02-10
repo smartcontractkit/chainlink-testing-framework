@@ -2,7 +2,7 @@ package k8s
 
 import (
 	_jsii_ "github.com/aws/jsii-runtime-go/runtime"
-	_init_ "github.com/smartcontractkit/pods/imports/k8s/jsii"
+	_init_ "github.com/smartcontractkit/chainlink-testing-framework/pods/imports/k8s/jsii"
 )
 
 type IntOrString interface {

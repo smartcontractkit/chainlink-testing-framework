@@ -35,12 +35,12 @@ update-snapshots:
 
 # Run all deployment tests
 test-deploy:
-    APPLY=true go test -v -count 1 -race -cover -coverprofile=cover.out -covermode=atomic -coverpkg=github.com/smartcontractkit/pods -run TestPods ./... && go tool cover -html cover.out
+    APPLY=true go test -v -count 1 -race -cover -coverprofile=cover.out -covermode=atomic -coverpkg=github.com/smartcontractkit/chainlink-testing-framework/pods -run TestPods ./... && go tool cover -html cover.out
 
 # Check coverage thresholds
 cover-action:
     go install github.com/vladopajic/go-test-coverage/v2@latest
-    APPLY=true go test -v -count 1 -race -cover -coverprofile=cover.out -covermode=atomic -coverpkg=github.com/smartcontractkit/pods -run TestPods ./...
+    APPLY=true go test -v -count 1 -race -cover -coverprofile=cover.out -covermode=atomic -coverpkg=github.com/smartcontractkit/chainlink-testing-framework/pods -run TestPods ./...
     go-test-coverage --badge-file-name=cover.svg --config=./.testcoverage.yml
 
 # Run go mod tidy
