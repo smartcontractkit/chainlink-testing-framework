@@ -130,8 +130,8 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		_, err := pods.Run(&pods.Config{
 			Pods: []*pods.PodConfig{
 				{
-					Name:  pods.S(in.Name),
-					Image: pods.S(in.Image),
+					Name:  pods.Ptr(in.Name),
+					Image: pods.Ptr(in.Image),
 					Ports: []string{fmt.Sprintf("%d:%s", portToExpose, Port)},
 					Env: []v1.EnvVar{
 						{
@@ -150,11 +150,11 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 					Requests: pods.ResourcesLarge(),
 					Limits:   pods.ResourcesLarge(),
 					ContainerSecurityContext: &v1.SecurityContext{
-						RunAsUser:  pods.I64(999),
-						RunAsGroup: pods.I64(999),
+						RunAsUser:  pods.Ptr[int64](999),
+						RunAsGroup: pods.Ptr[int64](999),
 					},
 					PodSecurityContext: &v1.PodSecurityContext{
-						FSGroup: pods.I64(999),
+						FSGroup: pods.Ptr[int64](999),
 					},
 					ConfigMap: map[string]string{
 						"init.sql": initSQL,

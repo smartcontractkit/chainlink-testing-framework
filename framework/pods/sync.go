@@ -77,11 +77,11 @@ func (t *TestRunner) copyTests() error {
 
 func TestPodConfig() *PodConfig {
 	config := &PodConfig{
-		Name:        S("ubuntu"),
-		Image:       S("golang:1.24.3-alpine"),
+		Name:        Ptr("ubuntu"),
+		Image:       Ptr("golang:1.24.3-alpine"),
 		Limits:      ResourcesMedium(),
 		Ports:       []string{"40000:40000"},
-		Command:     S("sleep 999999999"),
+		Command:     Ptr("sleep 999999999"),
 		StatefulSet: true,
 	}
 	L.Debug().Interface("config", config).Msg("Created pod configuration")

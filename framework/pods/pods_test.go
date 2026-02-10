@@ -24,8 +24,8 @@ func TestPods(t *testing.T) {
 				Namespace: "test-single-pod",
 				Pods: []*p.PodConfig{
 					{
-						Name:  p.S("test-pod-1"),
-						Image: p.S("nginx:latest"),
+						Name:  p.Ptr("test-pod-1"),
+						Image: p.Ptr("nginx:latest"),
 						Ports: []string{"80:80"},
 					},
 				},
@@ -38,12 +38,12 @@ func TestPods(t *testing.T) {
 				Namespace: "test-command",
 				Pods: []*p.PodConfig{
 					{
-						Name:        p.S("anvil"),
+						Name:        p.Ptr("anvil"),
 						Labels:      map[string]string{"chain.link/component": "cl"},
 						Annotations: map[string]string{"custom-annotation": "custom"},
-						Image:       p.S("ghcr.io/foundry-rs/foundry"),
+						Image:       p.Ptr("ghcr.io/foundry-rs/foundry"),
 						Ports:       []string{"8545:8545"},
-						Command:     p.S("anvil --host=0.0.0.0 -b=1"),
+						Command:     p.Ptr("anvil --host=0.0.0.0 -b=1"),
 					},
 				},
 			},
@@ -55,10 +55,10 @@ func TestPods(t *testing.T) {
 				Namespace: "test-instances",
 				Pods: []*p.PodConfig{
 					{
-						Name:     p.S("test-pod-1"),
-						Image:    p.S("nginx:latest"),
+						Name:     p.Ptr("test-pod-1"),
+						Image:    p.Ptr("nginx:latest"),
 						Ports:    []string{"80:80"},
-						Replicas: p.I(2),
+						Replicas: p.Ptr[int32](2),
 					},
 				},
 			},
@@ -70,13 +70,13 @@ func TestPods(t *testing.T) {
 				Namespace: "test-multiple-pods",
 				Pods: []*p.PodConfig{
 					{
-						Name:  p.S("test-pod-1"),
-						Image: p.S("nginx:latest"),
+						Name:  p.Ptr("test-pod-1"),
+						Image: p.Ptr("nginx:latest"),
 						Ports: []string{"80:80"},
 					},
 					{
-						Name:  p.S("test-pod-2"),
-						Image: p.S("nginx:latest"),
+						Name:  p.Ptr("test-pod-2"),
+						Image: p.Ptr("nginx:latest"),
 						Ports: []string{"80:80"},
 					},
 				},
@@ -89,8 +89,8 @@ func TestPods(t *testing.T) {
 				Namespace: "test-custom-resources",
 				Pods: []*p.PodConfig{
 					{
-						Name:     p.S("test-pod-1"),
-						Image:    p.S("nginx:latest"),
+						Name:     p.Ptr("test-pod-1"),
+						Image:    p.Ptr("nginx:latest"),
 						Ports:    []string{"80:80"},
 						Requests: p.Resources("250m", "1Gi"),
 						Limits:   p.Resources("500m", "2Gi"),
@@ -105,8 +105,8 @@ func TestPods(t *testing.T) {
 				Namespace: "test-invalid-ports",
 				Pods: []*p.PodConfig{
 					{
-						Name:  p.S("test-pod-1"),
-						Image: p.S("nginx:latest"),
+						Name:  p.Ptr("test-pod-1"),
+						Image: p.Ptr("nginx:latest"),
 						Ports: []string{"80"},
 					},
 				},
@@ -121,8 +121,8 @@ func TestPods(t *testing.T) {
 				Namespace: "test-configmaps",
 				Pods: []*p.PodConfig{
 					{
-						Name:  p.S("test-pod-1"),
-						Image: p.S("nginx:latest"),
+						Name:  p.Ptr("test-pod-1"),
+						Image: p.Ptr("nginx:latest"),
 						Ports: []string{"80:80"},
 						ConfigMap: map[string]string{
 							"config.toml":  `test`,
@@ -143,8 +143,8 @@ func TestPods(t *testing.T) {
 				Namespace: "test-secrets",
 				Pods: []*p.PodConfig{
 					{
-						Name:  p.S("test-pod-1"),
-						Image: p.S("nginx:latest"),
+						Name:  p.Ptr("test-pod-1"),
+						Image: p.Ptr("nginx:latest"),
 						Ports: []string{"80:80"},
 						Secrets: map[string]string{
 							"secret.toml":  `test`,
@@ -165,8 +165,8 @@ func TestPods(t *testing.T) {
 				Namespace: "test-services",
 				Pods: []*p.PodConfig{
 					{
-						Name:  p.S("test-pod-1"),
-						Image: p.S("nginx:latest"),
+						Name:  p.Ptr("test-pod-1"),
+						Image: p.Ptr("nginx:latest"),
 						Ports: []string{"80:80"},
 					},
 				},

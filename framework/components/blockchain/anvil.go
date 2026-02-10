@@ -62,15 +62,15 @@ func newAnvil(ctx context.Context, in *Input) (*Output, error) {
 		_, err := pods.Run(&pods.Config{
 			Pods: []*pods.PodConfig{
 				{
-					Name:     pods.S(in.ContainerName),
+					Name:     pods.Ptr(in.ContainerName),
 					Image:    &in.Image,
 					Ports:    []string{fmt.Sprintf("%s:%s", in.Port, in.Port)},
-					Command:  pods.S(strings.Join(entryPoint, " ")),
+					Command:  pods.Ptr(strings.Join(entryPoint, " ")),
 					Requests: pods.ResourcesMedium(),
 					Limits:   pods.ResourcesMedium(),
 					ContainerSecurityContext: &v1.SecurityContext{
-						RunAsUser:  pods.I64(999),
-						RunAsGroup: pods.I64(999),
+						RunAsUser:  pods.Ptr[int64](999),
+						RunAsGroup: pods.Ptr[int64](999),
 					},
 				},
 			},

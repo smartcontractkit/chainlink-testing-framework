@@ -35,7 +35,7 @@ const (
 
 type CfgReload struct {
 	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
-	MockerDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
+	MockedDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
 	NodeSets           []*ns.Input       `toml:"nodesets" validate:"required"`
 }
 
@@ -45,7 +45,7 @@ func TestUpgrade(t *testing.T) {
 
 	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
 	require.NoError(t, err)
-	_, err = fake.NewFakeDataProvider(in.MockerDataProvider)
+	_, err = fake.NewFakeDataProvider(in.MockedDataProvider)
 	require.NoError(t, err)
 
 	// deploy first time

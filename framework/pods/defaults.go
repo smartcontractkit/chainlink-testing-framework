@@ -15,21 +15,8 @@ func Resources(cpu, mem string) map[string]string {
 	}
 }
 
-func S(s string) *string {
-	return &s
-}
-
-func I(i int) *int32 {
-	val := int32(i)
-	return &val
-}
-
-func I64(i int64) *int64 {
-	return &i
-}
-
-func Bool(b bool) *bool {
-	return &b
+func Ptr[T any](value T) *T {
+	return &value
 }
 
 // ResourcesSmall returns small resource limits/requests
@@ -66,6 +53,16 @@ func SortedKeys(m map[string]string) []string {
 	return keys
 }
 
+func EnvsFromMap(envVars map[string]string) []v1.EnvVar {
+	result := make([]v1.EnvVar, 0, len(envVars))
+	for k, v := range envVars {
+		result = append(result, v1.EnvVar{
+			Name:  k,
+			Value: v,
+		})
+	}
+	return result
+}
 
 func SizedVolumeClaim(size string) []v1.PersistentVolumeClaim {
 	storageQuantity, err := resource.ParseQuantity(size)
@@ -83,7 +80,7 @@ func SizedVolumeClaim(size string) []v1.PersistentVolumeClaim {
 				AccessModes: []v1.PersistentVolumeAccessMode{
 					v1.ReadWriteOnce,
 				},
-				StorageClassName: S("gp3"),
+				StorageClassName: Ptr("gp3"),
 				Resources: v1.VolumeResourceRequirements{
 					Requests: v1.ResourceList{
 						v1.ResourceStorage: storageQuantity,

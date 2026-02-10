@@ -297,17 +297,20 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 		_, err := pods.Run(&pods.Config{
 			Pods: []*pods.PodConfig{
 				{
-					Name:     pods.S(containerName),
-					Image:    pods.S(in.Node.Image),
-					Env:      []v1.EnvVar{},
+					Name:     pods.Ptr(containerName),
+					Image:    pods.Ptr(in.Node.Image),
+					Env:      pods.EnvsFromMap(in.Node.EnvVars),
 					Requests: pods.ResourcesMedium(),
 					Limits:   pods.ResourcesMedium(),
-					Ports:    []string{"6688:6688", "6690:6690"},
+					Ports: []string{
+						fmt.Sprintf("%d:%s", in.Node.HTTPPort, DefaultHTTPPort),
+						fmt.Sprintf("%d:%s", in.Node.P2PPort, DefaultP2PPort),
+					},
 					ContainerSecurityContext: &v1.SecurityContext{
-						// these are specific things we need to staging cluster
-						RunAsNonRoot: pods.Bool(true),
-						RunAsUser:    pods.I64(14933),
-						RunAsGroup:   pods.I64(999),
+						// these are specific things we need for staging cluster
+						RunAsNonRoot: pods.Ptr(true),
+						RunAsUser:    pods.Ptr[int64](14933),
+						RunAsGroup:   pods.Ptr[int64](999),
 					},
 					ConfigMap: map[string]string{
 						"config.toml":         cfg,
@@ -334,7 +337,7 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 						"secrets-overrides.toml":      "/config/secrets-overrides",
 						"secrets-user-overrides.toml": "/config/user-secrets-overrides",
 					},
-					Command: pods.S("chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials"),
+					Command: pods.Ptr("chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials"),
 				},
 			},
 		})
