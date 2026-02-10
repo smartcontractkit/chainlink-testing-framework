@@ -4,12 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 
-	"github.com/aws/jsii-runtime-go"
-	"github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -48,25 +45,6 @@ func NewAPI(namespace string) (*API, error) {
 	}, nil
 }
 
-func NewApp(ns string) (*API, cdk8s.App, cdk8s.Chart, error) {
-	app := cdk8s.NewApp(nil)
-	chart := cdk8s.NewChart(app, jsii.String("composite-chart"), &cdk8s.ChartProps{
-		Namespace: S(ns),
-	})
-	api, err := NewAPI(ns)
-	if err != nil {
-		return api, app, chart, err
-	}
-	if api == nil {
-		return api, app, chart, nil
-	}
-	err = api.CreateNamespace(ns)
-	if err != nil {
-		return api, app, chart, err
-	}
-	return api, app, chart, nil
-}
-
 // GetPods returns a list of Pods in the specified namespace.
 func (k *API) GetPods(ctx context.Context) (*corev1.PodList, error) {
 	pods, err := k.ClientSet.CoreV1().Pods(k.namespace).List(ctx, metav1.ListOptions{})
@@ -74,50 +52,6 @@ func (k *API) GetPods(ctx context.Context) (*corev1.PodList, error) {
 		return nil, fmt.Errorf("failed to list pods: %v", err)
 	}
 	return pods, nil
-}
-
-// GetConfigMaps returns a map of ConfigMap names to their data in the specified namespace.
-func (k *API) GetConfigMaps(ctx context.Context) (map[string]map[string]string, error) {
-	configMaps, err := k.ClientSet.CoreV1().ConfigMaps(k.namespace).List(ctx, metav1.ListOptions{})
-	if err != nil { // coverage-ignore
-		return nil, fmt.Errorf("failed to list ConfigMaps: %v", err)
-	}
-	result := make(map[string]map[string]string)
-	for _, cm := range configMaps.Items {
-		result[cm.Name] = cm.Data
-	}
-	return result, nil
-}
-
-// GetSecrets returns a map of Secret names to their data in the specified namespace.
-func (k *API) GetSecrets(ctx context.Context) (map[string]map[string][]byte, error) {
-	secrets, err := k.ClientSet.CoreV1().Secrets(k.namespace).List(ctx, metav1.ListOptions{})
-	if err != nil { // coverage-ignore
-		return nil, fmt.Errorf("failed to list Secrets: %v", err)
-	}
-	result := make(map[string]map[string][]byte)
-	for _, secret := range secrets.Items {
-		result[secret.Name] = secret.Data
-	}
-	return result, nil
-}
-
-// GetPersistentVolumes returns a map of Pod names to their volumes in the specified namespace.
-func (k *API) GetPersistentVolumes(ctx context.Context) ([]corev1.PersistentVolume, error) { // coverage-ignore
-	vols, err := k.ClientSet.CoreV1().PersistentVolumes().List(ctx, metav1.ListOptions{})
-	if err != nil { // coverage-ignore
-		return nil, fmt.Errorf("failed to list Pods: %v", err)
-	}
-	return vols.Items, nil
-}
-
-// GetServices returns a list of Services in the specified namespace.
-func (k *API) GetServices(ctx context.Context) ([]corev1.Service, error) { // coverage-ignore
-	services, err := k.ClientSet.CoreV1().Services(k.namespace).List(ctx, metav1.ListOptions{})
-	if err != nil { // coverage-ignore
-		return nil, fmt.Errorf("failed to list services: %v", err)
-	}
-	return services.Items, nil
 }
 
 // AllPodsReady checks if all Pods in the namespace are ready.
@@ -167,31 +101,6 @@ func (k *API) RemoveNamespace(name string) error {
 		return fmt.Errorf("failed to delete namespace: %v", err)
 	}
 	return nil
-}
-
-// Apply applied manifests and waits
-func (k *API) Apply(manifest string) error {
-	if manifest == "" {
-		return fmt.Errorf("manifest is empty, nothing to apply")
-	}
-	tmpFile, err := os.Create("tmp.yml")
-	if err != nil {
-		return fmt.Errorf("failed to create temp file: %w", err)
-	}
-	if _, err := tmpFile.WriteString(manifest); err != nil {
-		return fmt.Errorf("failed to write manifest: %w", err)
-	}
-	tmpFile.Close()
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
-	defer cancel()
-	//nolint
-	cmd := exec.CommandContext(ctx, "kubectl", "apply", "-f", tmpFile.Name(), "--wait")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("kubectl apply failed: %w\nOutput: %s", err, string(output))
-	}
-	_, err = k.waitAllPodsReady(context.Background(), 3*time.Minute)
-	return err
 }
 
 // waitAllPodsReady waits until all Pods in the namespace are ready or the timeout is reached.

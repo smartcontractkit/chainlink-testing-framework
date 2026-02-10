@@ -1,5 +1,0 @@
-[files]
-extend-exclude = [
-    "imports/*",
-    "crds/*"
-]

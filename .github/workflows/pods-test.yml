@@ -1,5 +1,8 @@
-name: Deploy Tests
+name: Snapshot Tests
 on: [push]
+defaults:
+  run:
+    working-directory: framework/pods
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -13,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         test:
-          - test: test-deploy
+          - test: test
             vm: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,14 +39,6 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           just-version: '1.39.0'
-      - name: Create k8s Kind Cluster
-        uses: helm/kind-action@v1
       - name: Run tests
-        env:
-          CI: true
         run: |
           just ${{ matrix.test.test }}
-      - name: Check test coverage
-        uses: vladopajic/go-test-coverage@v2
-        with:
-          config: ./.testcoverage.yml
