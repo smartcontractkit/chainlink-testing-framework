@@ -2,12 +2,12 @@ module github.com/smartcontractkit/pods
 
 go 1.24.0
 
-
 require (
 	github.com/aws/constructs-go/constructs/v10 v10.4.2
 	github.com/aws/jsii-runtime-go v1.108.0
 	github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.69.49
 	github.com/gkampitakis/go-snaps v0.5.11
+	github.com/google/uuid v1.6.0
 	github.com/rs/zerolog v1.33.0
 	github.com/stretchr/testify v1.10.0
 	k8s.io/api v0.32.3
@@ -33,7 +33,6 @@ require (
 	github.com/google/gnostic-models v0.6.9 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect

@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -16,10 +17,16 @@ import (
 	"github.com/smartcontractkit/pods/imports/k8s"
 )
 
-// JSIIGlobalMu is a global mutex for cdk8s JSII runtime
-// allows to generate manifests in a goroutine-safe way
+const (
+	ManifestsDir = "pods-out"
+)
+
 var (
-	Client       *API
+	Client *API
+	// JSIIGlobalMu is a global mutex for cdk8s JSII runtime
+	// allows to generate manifests in a goroutine-safe way
+	// since some calls to "k8s" package simplify the deployment
+	// this client should be used on the client side to lock
 	JSIIGlobalMu = &sync.Mutex{}
 )
 
@@ -82,7 +89,7 @@ type App struct {
 	manifest *string
 }
 
-// Run creates and generates a new K8s YAML manifest
+// Run generates and applies a new K8s YAML manifest
 func Run(cfg *Config) (string, error) {
 	var err error
 	Client, err = NewAPI(*cfg.Namespace)
@@ -130,7 +137,7 @@ func (n *App) generate() error {
 		}
 
 		// Define labels
-		labels := map[string]*string{"app": S(podName), "generated-by": S("cdk8s")}
+		labels := map[string]*string{"app": S(podName), "generated-by": S("pods")}
 		for k, v := range podConfig.Labels {
 			labels[k] = S(v)
 		}
@@ -230,7 +237,7 @@ func (n *App) generate() error {
 
 			containerPorts = append(containerPorts, &k8s.ContainerPort{
 				Name: S(fmt.Sprintf("port-%d", i)),
-				// Use HostPort here to enable node exposed port
+				// Use HostPort field here to enable node exposed port
 				ContainerPort: &containerPort,
 			})
 		}
@@ -361,7 +368,7 @@ func (n *App) generate() error {
 		}
 	}
 	yaml := n.app.SynthYaml()
-	L.Info().Msg(*yaml)
+	L.Debug().Msg(*yaml)
 	n.manifest = yaml
 	return nil
 }
@@ -371,19 +378,24 @@ func (n *App) apply() error {
 		return nil
 	}
 	if n.manifest == nil {
-		return fmt.Errorf("manifest is not generated. Call Generate() first")
+		return fmt.Errorf("manifest is empty, nothing to generate")
 	}
-	tmpFile := fmt.Sprintf("pods-%s.tmp.yml", uuid.NewString()[0:5])
-	err := os.WriteFile(tmpFile, []byte(*n.manifest), 0o600)
+	// re-create deployments dir
+	_ = os.RemoveAll(ManifestsDir)
+	_ = os.Mkdir(ManifestsDir, os.ModePerm)
+	// write generate manifest
+	manifestFile := filepath.Join(ManifestsDir, fmt.Sprintf("pods-%s.tmp.yml", uuid.NewString()[0:5]))
+	err := os.WriteFile(manifestFile, []byte(*n.manifest), 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to write manifest to file: %v", err)
 	}
-	cmd := exec.Command("kubectl", "apply", "-f", tmpFile, "--wait=true")
+	// apply the manifest
+	cmd := exec.Command("kubectl", "apply", "-f", manifestFile, "--wait=true")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to apply manifest: %v\nOutput: %s", err, string(output))
 	}
-	L.Info().Msg("Manifest applied successfully:")
+	L.Info().Str("Path", manifestFile).Msg("Manifest applied successfully:")
 	L.Info().Msg(string(output))
 	return nil
 }

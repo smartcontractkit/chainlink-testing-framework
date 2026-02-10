@@ -152,7 +152,7 @@ func (k *API) CreateNamespace(name string) error {
 	_, err := k.ClientSet.CoreV1().Namespaces().Create(context.Background(), namespace, metav1.CreateOptions{})
 	if err != nil { // coverage-ignore
 		if strings.Contains(err.Error(), "already exists") {
-			L.Info().Str("Namespace", name).Msg("Namespace already exists, proceeding..")
+			L.Debug().Str("Namespace", name).Msg("Namespace already exists, proceeding..")
 			return nil
 		}
 		return fmt.Errorf("failed to create namespace: %v", err)
