@@ -9,6 +9,7 @@ import (
 	"github.com/docker/docker/api/types/mount"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 
 	"github.com/testcontainers/testcontainers-go"
 )
@@ -184,6 +185,10 @@ func newGeth(ctx context.Context, in *Input) (*Output, error) {
 		},
 	}
 	req.Cmd = entryPoint
+
+	if pods.K8sEnabled() {
+		return nil, fmt.Errorf("K8s support is not yet implemented")
+	}
 
 	return createGenericEvmContainer(ctx, in, req, false)
 }

@@ -1,12 +1,14 @@
 package pods_test
 
 import (
+	"context"
 	"os"
 	"testing"
 
 	"github.com/gkampitakis/go-snaps/snaps"
-	p "github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 	"github.com/stretchr/testify/require"
+
+	p "github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 )
 
 func defaultNoErr(t *testing.T, err error) { require.NoError(t, err) }
@@ -180,7 +182,7 @@ func TestPods(t *testing.T) {
 			if os.Getenv("CI") == "true" && tt.skipCI {
 				t.Skip("this test can't be run in CI because of GHA limitations")
 			}
-			manifest, err := p.Run(tt.props)
+			manifest, err := p.Run(context.Background(), tt.props)
 			tt.validateManifest(t, err)
 			if err == nil {
 				snaps.MatchSnapshot(t, manifest)

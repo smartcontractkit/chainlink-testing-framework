@@ -40,7 +40,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	bindPort := fmt.Sprintf("%d/tcp", in.Port)
 	containerName := framework.DefaultTCName("fake")
 	if pods.K8sEnabled() {
-		_, err := pods.Run(&pods.Config{
+		_, err := pods.Run(ctx, &pods.Config{
 			Pods: []*pods.PodConfig{
 				{
 					Name:     pods.Ptr(containerName),

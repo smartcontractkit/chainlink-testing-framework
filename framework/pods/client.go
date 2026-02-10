@@ -77,13 +77,13 @@ func (k *API) AllPodsReady(ctx context.Context) (bool, error) {
 }
 
 // CreateNamespace creates a new Kubernetes namespace with the specified name.
-func (k *API) CreateNamespace(name string) error {
+func (k *API) CreateNamespace(ctx context.Context, name string) error {
 	namespace := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
 	}
-	_, err := k.ClientSet.CoreV1().Namespaces().Create(context.Background(), namespace, metav1.CreateOptions{})
+	_, err := k.ClientSet.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{})
 	if err != nil { // coverage-ignore
 		if strings.Contains(err.Error(), "already exists") {
 			L.Debug().Str("Namespace", name).Msg("Namespace already exists, proceeding..")

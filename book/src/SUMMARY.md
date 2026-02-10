@@ -6,6 +6,7 @@
   - [Configuration](./framework/developer_environment/toml.md)
 - [Basic Usage](./framework/getting_started.md)
   - [Getting Started](./framework/getting_started.md)
+  - [Running in Kubernetes](./framework/kubernetes.md)
 - [Advanced Usage](./framework/configuration.md)
   - [CLI](./framework/cli.md)
   - [Configuration](./framework/configuration.md)

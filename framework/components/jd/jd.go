@@ -14,6 +14,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 )
 
 const (
@@ -98,6 +99,11 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	containerName := framework.DefaultTCName("jd")
 	grpcPort := fmt.Sprintf("%s/tcp", in.GRPCPort)
 	wsHealthPort := fmt.Sprintf("%s/tcp", WSRPCHealthPort)
+
+	if pods.K8sEnabled() {
+		return nil, fmt.Errorf("K8s support is not yet implemented")
+	}
+
 	req := tc.ContainerRequest{
 		Name:     containerName,
 		Image:    in.Image,

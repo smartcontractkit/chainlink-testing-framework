@@ -205,7 +205,7 @@ func sharedDBSetup(ctx context.Context, in *Input, bcOut *blockchain.Output) (*O
 	sortNodeOutsByHostPort(nodeOuts)
 	// wait for all K8s services at once
 	if pods.K8sEnabled() {
-		if err := pods.WaitReady(3 * time.Minute); err != nil {
+		if err := pods.WaitReady(ctx, 3*time.Minute); err != nil {
 			return nil, err
 		}
 	}

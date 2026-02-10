@@ -93,7 +93,7 @@ func K8sEnabled() bool {
 }
 
 // Run generates and applies a new K8s YAML manifest
-func Run(cfg *Config) (string, error) {
+func Run(ctx context.Context, cfg *Config) (string, error) {
 	var err error
 	if cfg.Namespace == "" {
 		cfg.Namespace = os.Getenv(K8sNamespaceEnvVar)
@@ -103,7 +103,7 @@ func Run(cfg *Config) (string, error) {
 		return "", fmt.Errorf("failed to create K8s client: %w", err)
 	}
 	if Client != nil {
-		if err := Client.CreateNamespace(cfg.Namespace); err != nil {
+		if err := Client.CreateNamespace(ctx, cfg.Namespace); err != nil {
 			return "", fmt.Errorf("failed to create namespace: %s, %w", cfg.Namespace, err)
 		}
 	}
@@ -454,8 +454,8 @@ func (n *App) apply() error {
 	return nil
 }
 
-func WaitReady(t time.Duration) error {
-	_, err := Client.waitAllPodsReady(context.Background(), t)
+func WaitReady(ctx context.Context, t time.Duration) error {
+	_, err := Client.waitAllPodsReady(ctx, t)
 	return err
 }
 

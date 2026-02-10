@@ -294,7 +294,7 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 
 	// k8s deployment
 	if pods.K8sEnabled() {
-		_, err := pods.Run(&pods.Config{
+		_, err := pods.Run(ctx, &pods.Config{
 			Pods: []*pods.PodConfig{
 				{
 					Name:     pods.Ptr(containerName),

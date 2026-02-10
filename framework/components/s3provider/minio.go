@@ -16,6 +16,7 @@ import (
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 )
 
 const (
@@ -113,6 +114,9 @@ func (mf MinioFactory) NewFrom(input *Input) (*Output, error) {
 }
 
 func (mf MinioFactory) NewWithContextFrom(ctx context.Context, input *Input) (*Output, error) {
+	if pods.K8sEnabled() {
+		return nil, fmt.Errorf("K8s support is not yet implemented")
+	}
 	// Fill in defaults on empty
 	err := mergo.Merge(input, DefaultMinio())
 	if err != nil {

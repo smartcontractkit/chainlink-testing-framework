@@ -13,6 +13,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 )
 
 type Input struct {
@@ -29,6 +30,9 @@ func NewNetworkTest(in Input) error {
 
 // NewNetworkTest creates a minimal Alpine Linux container for network testing
 func NewWithContext(ctx context.Context, in Input) error {
+	if pods.K8sEnabled() {
+		return fmt.Errorf("K8s support is not yet implemented")
+	}
 	req := testcontainers.ContainerRequest{
 		Name:     in.Name,
 		Image:    "alpine:latest",
