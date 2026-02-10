@@ -96,7 +96,6 @@ func newAnvil(ctx context.Context, in *Input) (*Output, error) {
 				},
 			},
 		}, nil
-	} else {
-		return createGenericEvmContainer(ctx, in, req, false)
 	}
+	return createGenericEvmContainer(ctx, in, req, false)
 }

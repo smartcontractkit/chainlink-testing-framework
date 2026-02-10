@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/smartcontractkit/pods"
 	p "github.com/smartcontractkit/pods"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
@@ -52,15 +53,10 @@ func NewEnvironment() error {
 		},
 	}
 
-	k8sDeployment, err := p.New(cfg)
+	_, err := p.Run(cfg)
 	if err != nil {
 		return err
 	}
-	err = k8sDeployment.Apply()
-	if err != nil {
-		return err
-	}
-	k8sDeployment.ResetPodsConfig()
 
 	for i := 0; i < 2; i++ {
 		cfg.Pods = append(cfg.Pods, &p.PodConfig{
@@ -116,12 +112,12 @@ func NewEnvironment() error {
 		cfg.Pods = append(cfg.Pods, p.PostgreSQL(fmt.Sprintf("postgres-%d", i), pgImg, p.ResourcesSmall(), p.ResourcesSmall(), p.S("10Gi")))
 	}
 
-	err = k8sDeployment.Apply()
+	_, err = p.Run(cfg)
 	if err != nil {
 		return err
 	}
 
-	return p.NewForwarder(k8sDeployment.API).
+	return p.NewForwarder(pods.Client).
 		Forward([]p.PortForwardConfig{
 			{
 				ServiceName:   "anvil-svc",

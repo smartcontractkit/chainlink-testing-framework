@@ -308,6 +308,7 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 					Limits: pods.ResourcesSmall(),
 					Ports:  []string{"6688:6688", "6690:6690"},
 					ContainerSecurityContext: &k8s.SecurityContext{
+						// these are specific things we need to staging cluster
 						RunAsNonRoot: jsii.Bool(true),
 						RunAsUser:    pods.I(14933),
 						RunAsGroup:   pods.I(999),
@@ -337,10 +338,7 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 						"secrets-overrides.toml":      pods.S("/config/secrets-overrides"),
 						"secrets-user-overrides.toml": pods.S("/config/user-secrets-overrides"),
 					},
-					// Command:          pods.S("chainlink -c /config/config -s /config/secrets node start -d -a /config/apicredentials"),
 					Command: pods.S("chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials"),
-					// TODO: override the same way as in Docker
-					// Command: pods.S(strings.Join(generateEntryPoint(), " ")),
 				},
 			},
 		})
@@ -355,142 +353,141 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 			InternalURL:     fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
 			InternalP2PUrl:  fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
 		}, nil
-	} else {
-		// local deployment
-		req := tc.ContainerRequest{
-			AlwaysPullImage: in.Node.PullImage,
-			Image:           in.Node.Image,
-			Name:            containerName,
-			Labels:          framework.DefaultTCLabels(),
-			Networks:        []string{framework.DefaultNetworkName},
-			NetworkAliases: map[string][]string{
-				framework.DefaultNetworkName: {containerName},
-			},
-			Env:          in.Node.EnvVars,
-			ExposedPorts: exposedPorts,
-			Entrypoint:   generateEntryPoint(),
-			WaitingFor: wait.ForHTTP("/").
-				WithPort(DefaultHTTPPort).
-				WithStartupTimeout(3 * time.Minute).
-				WithPollInterval(200 * time.Millisecond),
-			Mounts: tc.ContainerMounts{
-				{
-					// various configuration files
-					Source: tc.GenericVolumeMountSource{
-						Name: ConfigVolumeName + "-" + in.Node.Name,
-					},
-					Target: "/config",
-				},
-				{
-					// kv store of the OCR jobs and other state files are stored
-					// in the user's home instead of the DB
-					Source: tc.GenericVolumeMountSource{
-						Name: HomeVolumeName + "-" + in.Node.Name,
-					},
-					Target: "/home/chainlink",
-				},
-			},
-		}
-		if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {
-			req.HostConfigModifier = func(h *container.HostConfig) {
-				framework.NoDNS(in.NoDNS, h)
-				h.PortBindings = portBindings
-				framework.ResourceLimitsFunc(h, in.Node.ContainerResources)
-			}
-		}
-		files := []tc.ContainerFile{
-			{
-				HostFilePath:      cfgPath.Name(),
-				ContainerFilePath: "/config/config",
-				FileMode:          0o644,
-			},
-			{
-				HostFilePath:      secretsPath.Name(),
-				ContainerFilePath: "/config/secrets",
-				FileMode:          0o644,
-			},
-			{
-				HostFilePath:      overridesFile.Name(),
-				ContainerFilePath: "/config/overrides",
-				FileMode:          0o644,
-			},
-			{
-				HostFilePath:      userOverridesFile.Name(),
-				ContainerFilePath: "/config/user-overrides",
-				FileMode:          0o644,
-			},
-			{
-				HostFilePath:      secretsOverridesFile.Name(),
-				ContainerFilePath: "/config/secrets-overrides",
-				FileMode:          0o644,
-			},
-			{
-				HostFilePath:      userSecretsOverridesFile.Name(),
-				ContainerFilePath: "/config/user-secrets-overrides",
-				FileMode:          0o644,
-			},
-			{
-				HostFilePath:      passwordPath.Name(),
-				ContainerFilePath: "/config/node_password",
-				FileMode:          0o644,
-			},
-			{
-				HostFilePath:      apiCredentialsPath.Name(),
-				ContainerFilePath: "/config/apicredentials",
-				FileMode:          0o644,
-			},
-		}
-		if in.Node.CapabilityContainerDir == "" {
-			in.Node.CapabilityContainerDir = DefaultCapabilitiesDir
-		}
-		for _, cp := range in.Node.CapabilitiesBinaryPaths {
-			cpPath := filepath.Base(cp)
-			framework.L.Info().Any("Path", cpPath).Str("Binary", cpPath).Msg("Copying capability binary")
-			files = append(files, tc.ContainerFile{
-				HostFilePath:      cp,
-				ContainerFilePath: filepath.Join(in.Node.CapabilityContainerDir, cpPath),
-				FileMode:          0o777,
-			})
-		}
-		req.Files = append(req.Files, files...)
-		if req.Image != "" && (in.Node.DockerFilePath != "" || in.Node.DockerContext != "") {
-			return nil, errors.New("you provided both 'image' and one of 'docker_file', 'docker_ctx' fields. Please provide either 'image' or params to build a local one")
-		}
-		if req.Image == "" {
-			req.Image = TmpImageName
-			if err := framework.BuildImageOnce(once, in.Node.DockerContext, in.Node.DockerFilePath, req.Image, in.Node.DockerBuildArgs); err != nil {
-				return nil, err
-			}
-			req.KeepImage = false
-		}
-		c, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
-			ContainerRequest: req,
-			Started:          true,
-		})
-		if err != nil {
-			return nil, err
-		}
-		ip, err := c.ContainerIP(ctx)
-		if err != nil {
-			return nil, err
-		}
-		host, err := framework.GetHostWithContext(ctx, c)
-		if err != nil {
-			return nil, err
-		}
-
-		mp := nat.Port(fmt.Sprintf("%d/tcp", in.Node.HTTPPort))
-
-		return &NodeOut{
-			APIAuthUser:     DefaultAPIUser,
-			APIAuthPassword: DefaultAPIPassword,
-			ContainerName:   containerName,
-			ExternalURL:     fmt.Sprintf("http://%s:%s", host, mp.Port()),
-			InternalURL:     fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
-			InternalP2PUrl:  fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
-			InternalIP:      ip,
-		}, nil
 	}
+	// local deployment
+	req := tc.ContainerRequest{
+		AlwaysPullImage: in.Node.PullImage,
+		Image:           in.Node.Image,
+		Name:            containerName,
+		Labels:          framework.DefaultTCLabels(),
+		Networks:        []string{framework.DefaultNetworkName},
+		NetworkAliases: map[string][]string{
+			framework.DefaultNetworkName: {containerName},
+		},
+		Env:          in.Node.EnvVars,
+		ExposedPorts: exposedPorts,
+		Entrypoint:   generateEntryPoint(),
+		WaitingFor: wait.ForHTTP("/").
+			WithPort(DefaultHTTPPort).
+			WithStartupTimeout(3 * time.Minute).
+			WithPollInterval(200 * time.Millisecond),
+		Mounts: tc.ContainerMounts{
+			{
+				// various configuration files
+				Source: tc.GenericVolumeMountSource{
+					Name: ConfigVolumeName + "-" + in.Node.Name,
+				},
+				Target: "/config",
+			},
+			{
+				// kv store of the OCR jobs and other state files are stored
+				// in the user's home instead of the DB
+				Source: tc.GenericVolumeMountSource{
+					Name: HomeVolumeName + "-" + in.Node.Name,
+				},
+				Target: "/home/chainlink",
+			},
+		},
+	}
+	if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {
+		req.HostConfigModifier = func(h *container.HostConfig) {
+			framework.NoDNS(in.NoDNS, h)
+			h.PortBindings = portBindings
+			framework.ResourceLimitsFunc(h, in.Node.ContainerResources)
+		}
+	}
+	files := []tc.ContainerFile{
+		{
+			HostFilePath:      cfgPath.Name(),
+			ContainerFilePath: "/config/config",
+			FileMode:          0o644,
+		},
+		{
+			HostFilePath:      secretsPath.Name(),
+			ContainerFilePath: "/config/secrets",
+			FileMode:          0o644,
+		},
+		{
+			HostFilePath:      overridesFile.Name(),
+			ContainerFilePath: "/config/overrides",
+			FileMode:          0o644,
+		},
+		{
+			HostFilePath:      userOverridesFile.Name(),
+			ContainerFilePath: "/config/user-overrides",
+			FileMode:          0o644,
+		},
+		{
+			HostFilePath:      secretsOverridesFile.Name(),
+			ContainerFilePath: "/config/secrets-overrides",
+			FileMode:          0o644,
+		},
+		{
+			HostFilePath:      userSecretsOverridesFile.Name(),
+			ContainerFilePath: "/config/user-secrets-overrides",
+			FileMode:          0o644,
+		},
+		{
+			HostFilePath:      passwordPath.Name(),
+			ContainerFilePath: "/config/node_password",
+			FileMode:          0o644,
+		},
+		{
+			HostFilePath:      apiCredentialsPath.Name(),
+			ContainerFilePath: "/config/apicredentials",
+			FileMode:          0o644,
+		},
+	}
+	if in.Node.CapabilityContainerDir == "" {
+		in.Node.CapabilityContainerDir = DefaultCapabilitiesDir
+	}
+	for _, cp := range in.Node.CapabilitiesBinaryPaths {
+		cpPath := filepath.Base(cp)
+		framework.L.Info().Any("Path", cpPath).Str("Binary", cpPath).Msg("Copying capability binary")
+		files = append(files, tc.ContainerFile{
+			HostFilePath:      cp,
+			ContainerFilePath: filepath.Join(in.Node.CapabilityContainerDir, cpPath),
+			FileMode:          0o777,
+		})
+	}
+	req.Files = append(req.Files, files...)
+	if req.Image != "" && (in.Node.DockerFilePath != "" || in.Node.DockerContext != "") {
+		return nil, errors.New("you provided both 'image' and one of 'docker_file', 'docker_ctx' fields. Please provide either 'image' or params to build a local one")
+	}
+	if req.Image == "" {
+		req.Image = TmpImageName
+		if err := framework.BuildImageOnce(once, in.Node.DockerContext, in.Node.DockerFilePath, req.Image, in.Node.DockerBuildArgs); err != nil {
+			return nil, err
+		}
+		req.KeepImage = false
+	}
+	c, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	ip, err := c.ContainerIP(ctx)
+	if err != nil {
+		return nil, err
+	}
+	host, err := framework.GetHostWithContext(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+
+	mp := nat.Port(fmt.Sprintf("%d/tcp", in.Node.HTTPPort))
+
+	return &NodeOut{
+		APIAuthUser:     DefaultAPIUser,
+		APIAuthPassword: DefaultAPIPassword,
+		ContainerName:   containerName,
+		ExternalURL:     fmt.Sprintf("http://%s:%s", host, mp.Port()),
+		InternalURL:     fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
+		InternalP2PUrl:  fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
+		InternalIP:      ip,
+	}, nil
 }
 
 type DefaultCLNodeConfig struct {

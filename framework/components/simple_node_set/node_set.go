@@ -11,12 +11,13 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/smartcontractkit/pods"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/postgres"
-	"github.com/smartcontractkit/pods"
 )
 
 const (
@@ -205,7 +206,9 @@ func sharedDBSetup(ctx context.Context, in *Input, bcOut *blockchain.Output) (*O
 	sortNodeOutsByHostPort(nodeOuts)
 	// wait for all K8s services at once
 	if os.Getenv(components.K8sNamespaceEnvVar) != "" {
-		pods.WaitReady(3 * time.Minute)
+		if err := pods.WaitReady(3 * time.Minute); err != nil {
+			return nil, err
+		}
 	}
 	return &Output{
 		UseCache: true,
