@@ -137,7 +137,7 @@ func newTon(ctx context.Context, in *Input) (*Output, error) {
 		Container:     c,
 		Nodes: []*Node{{
 			ExternalHTTPUrl: fmt.Sprintf("liteserver://%s@%s:%s", defaultLiteServerPublicKey, host, lsMappedPort.Port()),
-			InternalHTTPUrl: fmt.Sprintf("li1teserver://%s@%s:%s", defaultLiteServerPublicKey, containerName, defaultLiteServerPort),
+			InternalHTTPUrl: fmt.Sprintf("liteserver://%s@%s:%s", defaultLiteServerPublicKey, containerName, defaultLiteServerPort),
 			ExternalWSUrl:   fmt.Sprintf("http://%s:%s", host, httpMappedPort.Port()),
 			InternalWSUrl:   fmt.Sprintf("http://%s:%s", containerName, defaultTonHTTPServerPort),
 		}},
