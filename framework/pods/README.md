@@ -11,7 +11,7 @@ It meant to be used with `CTFv2` framework to run components on `K8s`.
 ### Real world example (Chainlink Node Set)
 
 In this example we'll spin up a local `Kind` cluster and deploy a Chainlink cluster,
-just [40 lines](https://github.com/smartcontractkit/chainlink-testing-framework/pods/blob/master/examples/nodeset_test.go) of code (without product
+just [40 lines](https://github.com/smartcontractkit/chainlink-testing-framework/framework/pods/blob/master/examples/nodeset_test.go) of code (without product
 configuration).
 
 Follow the [README](./environment/README.md)

@@ -5,7 +5,6 @@ go 1.25.3
 replace (
 	github.com/smartcontractkit/chainlink-testing-framework/framework => ../../
 	github.com/smartcontractkit/chainlink-testing-framework/framework/components/dockercompose => ../../components/dockercompose
-	github.com/smartcontractkit/chainlink-testing-framework/pods => ../../../pods
 )
 
 // make vulnerability scanner happy

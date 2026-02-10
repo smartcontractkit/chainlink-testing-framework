@@ -13,7 +13,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/pods"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 
 	v1 "k8s.io/api/core/v1"
 

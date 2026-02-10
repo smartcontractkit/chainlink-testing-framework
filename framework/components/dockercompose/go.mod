@@ -2,10 +2,7 @@ module github.com/smartcontractkit/chainlink-testing-framework/framework/compone
 
 go 1.25.3
 
-replace (
-	github.com/smartcontractkit/chainlink-testing-framework/framework => ../../../framework
-	github.com/smartcontractkit/chainlink-testing-framework/pods => ../../../pods
-)
+replace github.com/smartcontractkit/chainlink-testing-framework/framework => ../../../framework
 
 // make vulnerability scanner happy
 replace github.com/containerd/containerd/v2 => github.com/containerd/containerd/v2 v2.1.5

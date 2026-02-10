@@ -5,7 +5,6 @@ go 1.24.4
 replace (
 	github.com/smartcontractkit/chainlink-testing-framework/framework => ../../
 	github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake => ../../components/fake
-	github.com/smartcontractkit/chainlink-testing-framework/pods => ../../../pods
 	github.com/smartcontractkit/chainlink-testing-framework/wasp => ../../../wasp
 )
 
@@ -53,7 +52,6 @@ require (
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/sigurn/crc16 v0.0.0-20211026045750-20ab5afb07e3 // indirect
-	github.com/smartcontractkit/chainlink-testing-framework/pods v0.0.0-00010101000000-000000000000 // indirect
 	github.com/spf13/cobra v1.9.1 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.5.0 // indirect
 	github.com/tjhop/slog-gokit v0.1.3 // indirect

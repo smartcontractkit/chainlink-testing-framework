@@ -2,10 +2,7 @@ module github.com/smartcontractkit/chainlink-testing-framework/framework/compone
 
 go 1.24.4
 
-replace (
-	github.com/smartcontractkit/chainlink-testing-framework/framework => ../../../framework
-	github.com/smartcontractkit/chainlink-testing-framework/pods => ../../../pods
-)
+replace github.com/smartcontractkit/chainlink-testing-framework/framework => ../../../framework
 
 require (
 	github.com/docker/docker v28.3.3+incompatible

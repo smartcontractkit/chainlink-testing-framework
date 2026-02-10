@@ -7,7 +7,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/pods"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
