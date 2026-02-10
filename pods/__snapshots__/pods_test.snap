@@ -9,13 +9,13 @@ spec:
   selector:
     matchLabels:
       app: test-pod-1
-      generated-by: cdk8s
+      generated-by: pods
   template:
     metadata:
       annotations: {}
       labels:
         app: test-pod-1
-        generated-by: cdk8s
+        generated-by: pods
       namespace: test-single-pod
     spec:
       containers:
@@ -46,7 +46,7 @@ spec:
       targetPort: 80
   selector:
     app: test-pod-1
-    generated-by: cdk8s
+    generated-by: pods
   type: LoadBalancer
 
 ---
@@ -61,13 +61,13 @@ spec:
   selector:
     matchLabels:
       app: test-pod-1
-      generated-by: cdk8s
+      generated-by: pods
   template:
     metadata:
       annotations: {}
       labels:
         app: test-pod-1
-        generated-by: cdk8s
+        generated-by: pods
       namespace: test-multiple-pods
     spec:
       containers:
@@ -98,7 +98,7 @@ spec:
       targetPort: 80
   selector:
     app: test-pod-1
-    generated-by: cdk8s
+    generated-by: pods
   type: LoadBalancer
 /-/-/-/
 apiVersion: apps/v1
@@ -110,13 +110,13 @@ spec:
   selector:
     matchLabels:
       app: test-pod-2
-      generated-by: cdk8s
+      generated-by: pods
   template:
     metadata:
       annotations: {}
       labels:
         app: test-pod-2
-        generated-by: cdk8s
+        generated-by: pods
       namespace: test-multiple-pods
     spec:
       containers:
@@ -147,7 +147,7 @@ spec:
       targetPort: 80
   selector:
     app: test-pod-2
-    generated-by: cdk8s
+    generated-by: pods
   type: LoadBalancer
 
 ---
@@ -162,13 +162,13 @@ spec:
   selector:
     matchLabels:
       app: test-pod-1
-      generated-by: cdk8s
+      generated-by: pods
   template:
     metadata:
       annotations: {}
       labels:
         app: test-pod-1
-        generated-by: cdk8s
+        generated-by: pods
       namespace: test-custom-resources
     spec:
       containers:
@@ -199,7 +199,7 @@ spec:
       targetPort: 80
   selector:
     app: test-pod-1
-    generated-by: cdk8s
+    generated-by: pods
   type: LoadBalancer
 
 ---
@@ -223,13 +223,13 @@ spec:
   selector:
     matchLabels:
       app: test-pod-1
-      generated-by: cdk8s
+      generated-by: pods
   template:
     metadata:
       annotations: {}
       labels:
         app: test-pod-1
-        generated-by: cdk8s
+        generated-by: pods
       namespace: test-configmaps
     spec:
       containers:
@@ -278,7 +278,7 @@ spec:
       targetPort: 80
   selector:
     app: test-pod-1
-    generated-by: cdk8s
+    generated-by: pods
   type: LoadBalancer
 
 ---
@@ -302,13 +302,13 @@ spec:
   selector:
     matchLabels:
       app: test-pod-1
-      generated-by: cdk8s
+      generated-by: pods
   template:
     metadata:
       annotations: {}
       labels:
         app: test-pod-1
-        generated-by: cdk8s
+        generated-by: pods
       namespace: test-secrets
     spec:
       containers:
@@ -357,7 +357,7 @@ spec:
       targetPort: 80
   selector:
     app: test-pod-1
-    generated-by: cdk8s
+    generated-by: pods
   type: LoadBalancer
 
 ---
@@ -373,13 +373,13 @@ spec:
   selector:
     matchLabels:
       app: test-pod-1
-      generated-by: cdk8s
+      generated-by: pods
   template:
     metadata:
       annotations: {}
       labels:
         app: test-pod-1
-        generated-by: cdk8s
+        generated-by: pods
       namespace: test-instances
     spec:
       containers:
@@ -410,7 +410,7 @@ spec:
       targetPort: 80
   selector:
     app: test-pod-1
-    generated-by: cdk8s
+    generated-by: pods
   type: LoadBalancer
 
 ---
@@ -436,14 +436,14 @@ spec:
   selector:
     matchLabels:
       app: pg-x
-      generated-by: cdk8s
+      generated-by: pods
   serviceName: pg-x-svc
   template:
     metadata:
       annotations: {}
       labels:
         app: pg-x
-        generated-by: cdk8s
+        generated-by: pods
       name: pg-x-pp
       namespace: test-volumes
     spec:
@@ -506,7 +506,7 @@ spec:
       targetPort: 5432
   selector:
     app: pg-x
-    generated-by: cdk8s
+    generated-by: pods
   type: LoadBalancer
 
 ---
@@ -521,13 +521,13 @@ spec:
   selector:
     matchLabels:
       app: test-pod-1
-      generated-by: cdk8s
+      generated-by: pods
   template:
     metadata:
       annotations: {}
       labels:
         app: test-pod-1
-        generated-by: cdk8s
+        generated-by: pods
       namespace: test-services
     spec:
       containers:
@@ -558,7 +558,7 @@ spec:
       targetPort: 80
   selector:
     app: test-pod-1
-    generated-by: cdk8s
+    generated-by: pods
   type: LoadBalancer
 
 ---
@@ -574,7 +574,7 @@ spec:
     matchLabels:
       app: anvil
       chain.link/component: cl
-      generated-by: cdk8s
+      generated-by: pods
   template:
     metadata:
       annotations:
@@ -582,7 +582,7 @@ spec:
       labels:
         app: anvil
         chain.link/component: cl
-        generated-by: cdk8s
+        generated-by: pods
       namespace: test-command
     spec:
       containers:
@@ -618,7 +618,7 @@ spec:
   selector:
     app: anvil
     chain.link/component: cl
-    generated-by: cdk8s
+    generated-by: pods
   type: LoadBalancer
 
 ---
