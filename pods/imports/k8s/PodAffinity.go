@@ -1,5 +1,6 @@
 package k8s
 
+
 // Pod affinity is a group of inter pod affinity scheduling rules.
 type PodAffinity struct {
 	// The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions.
@@ -11,3 +12,4 @@ type PodAffinity struct {
 	// If the affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to a pod label update), the system may or may not try to eventually evict the pod from its node. When there are multiple elements, the lists of nodes corresponding to each podAffinityTerm are intersected, i.e. all terms must be satisfied.
 	RequiredDuringSchedulingIgnoredDuringExecution *[]*PodAffinityTerm `field:"optional" json:"requiredDuringSchedulingIgnoredDuringExecution" yaml:"requiredDuringSchedulingIgnoredDuringExecution"`
 }
+

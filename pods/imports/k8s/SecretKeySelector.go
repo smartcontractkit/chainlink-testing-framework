@@ -1,5 +1,6 @@
 package k8s
 
+
 // SecretKeySelector selects a key of a Secret.
 type SecretKeySelector struct {
 	// The key of the secret to select from.
@@ -13,3 +14,4 @@ type SecretKeySelector struct {
 	// Specify whether the Secret or its key must be defined.
 	Optional *bool `field:"optional" json:"optional" yaml:"optional"`
 }
+

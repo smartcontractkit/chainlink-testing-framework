@@ -1,5 +1,6 @@
 package k8s
 
+
 // Endpoints is a collection of endpoints that implement the actual service. Example:.
 //
 // Name: "mysvc",
@@ -23,3 +24,4 @@ type KubeEndpointsProps struct {
 	// Addresses are placed into subsets according to the IPs they share. A single address with multiple ports, some of which are ready and some of which are not (because they come from different containers) will result in the address being displayed in different subsets for the different ports. No address will appear in both Addresses and NotReadyAddresses in the same subset. Sets of addresses and ports that comprise a service.
 	Subsets *[]*EndpointSubset `field:"optional" json:"subsets" yaml:"subsets"`
 }
+

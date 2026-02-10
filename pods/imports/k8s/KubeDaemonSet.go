@@ -122,6 +122,7 @@ func (j *jsiiProxy_KubeDaemonSet) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.apps.v1.DaemonSet" API object.
 func NewKubeDaemonSet(scope constructs.Construct, id *string, props *KubeDaemonSetProps) KubeDaemonSet {
 	_init_.Initialize()
@@ -313,3 +314,4 @@ func (k *jsiiProxy_KubeDaemonSet) ToString() *string {
 
 	return returns
 }
+

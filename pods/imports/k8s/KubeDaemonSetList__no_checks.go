@@ -23,3 +23,4 @@ func validateKubeDaemonSetList_OfParameters(c constructs.IConstruct) error {
 func validateNewKubeDaemonSetListParameters(scope constructs.Construct, id *string, props *KubeDaemonSetListProps) error {
 	return nil
 }
+

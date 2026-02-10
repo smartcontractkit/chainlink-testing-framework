@@ -1,5 +1,6 @@
 package k8s
 
+
 // TCPSocketAction describes an action based on opening a socket.
 type TcpSocketAction struct {
 	// Number or name of the port to access on the container.
@@ -9,3 +10,4 @@ type TcpSocketAction struct {
 	// Optional: Host name to connect to, defaults to the pod IP.
 	Host *string `field:"optional" json:"host" yaml:"host"`
 }
+

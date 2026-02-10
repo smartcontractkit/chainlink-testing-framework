@@ -1,5 +1,6 @@
 package k8s
 
+
 // StatusCause provides more information about an api.Status failure, including cases when multiple errors are encountered.
 type StatusCause struct {
 	// The field of the resource that has caused this error, as named by its JSON serialization.
@@ -19,3 +20,4 @@ type StatusCause struct {
 	// If this value is empty there is no information available.
 	Reason *string `field:"optional" json:"reason" yaml:"reason"`
 }
+

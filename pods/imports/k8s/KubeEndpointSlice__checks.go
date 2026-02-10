@@ -63,3 +63,4 @@ func validateNewKubeEndpointSliceParameters(scope constructs.Construct, id *stri
 
 	return nil
 }
+

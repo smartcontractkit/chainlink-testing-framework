@@ -1,5 +1,6 @@
 package k8s
 
+
 // MetricIdentifier defines the name and optionally selector for a metric.
 type MetricIdentifierV2 struct {
 	// name is the name of the given metric.
@@ -9,3 +10,4 @@ type MetricIdentifierV2 struct {
 	// When unset, just the metricName will be used to gather metrics.
 	Selector *LabelSelector `field:"optional" json:"selector" yaml:"selector"`
 }
+

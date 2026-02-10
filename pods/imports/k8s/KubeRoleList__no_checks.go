@@ -23,3 +23,4 @@ func validateKubeRoleList_OfParameters(c constructs.IConstruct) error {
 func validateNewKubeRoleListParameters(scope constructs.Construct, id *string, props *KubeRoleListProps) error {
 	return nil
 }
+

@@ -122,6 +122,7 @@ func (j *jsiiProxy_KubeReplicaSetList) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.apps.v1.ReplicaSetList" API object.
 func NewKubeReplicaSetList(scope constructs.Construct, id *string, props *KubeReplicaSetListProps) KubeReplicaSetList {
 	_init_.Initialize()
@@ -313,3 +314,4 @@ func (k *jsiiProxy_KubeReplicaSetList) ToString() *string {
 
 	return returns
 }
+

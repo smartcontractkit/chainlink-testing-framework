@@ -1,6 +1,6 @@
 package k8s
 
-// TypedObjectReference contains enough information to let you locate the typed referenced object.
+
 type TypedObjectReference struct {
 	// Kind is the type of resource being referenced.
 	Kind *string `field:"required" json:"kind" yaml:"kind"`
@@ -13,3 +13,4 @@ type TypedObjectReference struct {
 	// Namespace is the namespace of resource being referenced Note that when a namespace is specified, a gateway.networking.k8s.io/ReferenceGrant object is required in the referent namespace to allow that namespace's owner to accept the reference. See the ReferenceGrant documentation for details. (Alpha) This field requires the CrossNamespaceVolumeDataSource feature gate to be enabled.
 	Namespace *string `field:"optional" json:"namespace" yaml:"namespace"`
 }
+

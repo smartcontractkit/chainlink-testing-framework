@@ -1,5 +1,6 @@
 package k8s
 
+
 // IngressClassParametersReference identifies an API object.
 //
 // This can be used to specify a cluster or namespace-scoped resource.
@@ -21,3 +22,4 @@ type IngressClassParametersReference struct {
 	// This may be set to "Cluster" (default) or "Namespace".
 	Scope *string `field:"optional" json:"scope" yaml:"scope"`
 }
+

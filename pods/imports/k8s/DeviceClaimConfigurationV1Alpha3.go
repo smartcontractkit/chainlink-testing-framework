@@ -1,5 +1,6 @@
 package k8s
 
+
 // DeviceClaimConfiguration is used for configuration parameters in DeviceClaim.
 type DeviceClaimConfigurationV1Alpha3 struct {
 	// Opaque provides driver-specific configuration parameters.
@@ -9,3 +10,4 @@ type DeviceClaimConfigurationV1Alpha3 struct {
 	// If empty, it applies to all requests.
 	Requests *[]*string `field:"optional" json:"requests" yaml:"requests"`
 }
+

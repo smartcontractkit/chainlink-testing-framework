@@ -1,5 +1,6 @@
 package k8s
 
+
 // ResourcePool describes the pool that ResourceSlices belong to.
 type ResourcePoolV1Alpha3 struct {
 	// Generation tracks the change in a pool over time.
@@ -19,3 +20,4 @@ type ResourcePoolV1Alpha3 struct {
 	// Consumers can use this to check whether they have seen all ResourceSlices belonging to the same pool.
 	ResourceSliceCount *float64 `field:"required" json:"resourceSliceCount" yaml:"resourceSliceCount"`
 }
+

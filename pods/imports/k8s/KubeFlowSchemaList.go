@@ -122,6 +122,7 @@ func (j *jsiiProxy_KubeFlowSchemaList) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.flowcontrol.v1.FlowSchemaList" API object.
 func NewKubeFlowSchemaList(scope constructs.Construct, id *string, props *KubeFlowSchemaListProps) KubeFlowSchemaList {
 	_init_.Initialize()
@@ -313,3 +314,4 @@ func (k *jsiiProxy_KubeFlowSchemaList) ToString() *string {
 
 	return returns
 }
+

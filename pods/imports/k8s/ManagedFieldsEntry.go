@@ -31,3 +31,4 @@ type ManagedFieldsEntry struct {
 	// The timestamp will also be updated if a field is added, the manager changes any of the owned fields value or removes a field. The timestamp does not update when a field is removed from the entry because another manager took it over.
 	Time *time.Time `field:"optional" json:"time" yaml:"time"`
 }
+

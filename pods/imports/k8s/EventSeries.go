@@ -11,3 +11,4 @@ type EventSeries struct {
 	// lastObservedTime is the time when last Event from the series was seen before last heartbeat.
 	LastObservedTime *time.Time `field:"required" json:"lastObservedTime" yaml:"lastObservedTime"`
 }
+

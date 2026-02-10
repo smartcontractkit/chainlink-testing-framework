@@ -1,5 +1,6 @@
 package k8s
 
+
 // RuleWithOperations is a tuple of Operations and Resources.
 //
 // It is recommended to make sure that all the tuple expansions are valid.
@@ -31,3 +32,4 @@ type RuleWithOperations struct {
 	//
 	Scope *string `field:"optional" json:"scope" yaml:"scope"`
 }
+

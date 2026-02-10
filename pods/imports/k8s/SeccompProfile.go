@@ -1,5 +1,6 @@
 package k8s
 
+
 // SeccompProfile defines a pod/container's seccomp profile settings.
 //
 // Only one profile source may be set.
@@ -13,3 +14,4 @@ type SeccompProfile struct {
 	// The profile must be preconfigured on the node to work. Must be a descending path, relative to the kubelet's configured seccomp profile location. Must be set if type is "Localhost". Must NOT be set for any other type.
 	LocalhostProfile *string `field:"optional" json:"localhostProfile" yaml:"localhostProfile"`
 }
+

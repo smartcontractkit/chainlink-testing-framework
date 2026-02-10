@@ -1,5 +1,6 @@
 package k8s
 
+
 // TokenReviewSpec is a description of the token authentication request.
 type TokenReviewSpec struct {
 	// Audiences is a list of the identifiers that the resource server presented with the token identifies as.
@@ -9,3 +10,4 @@ type TokenReviewSpec struct {
 	// Token is the opaque bearer token.
 	Token *string `field:"optional" json:"token" yaml:"token"`
 }
+

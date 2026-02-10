@@ -122,6 +122,7 @@ func (j *jsiiProxy_KubeStatus) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.apimachinery.pkg.apis.meta.v1.Status" API object.
 func NewKubeStatus(scope constructs.Construct, id *string, props *KubeStatusProps) KubeStatus {
 	_init_.Initialize()
@@ -313,3 +314,4 @@ func (k *jsiiProxy_KubeStatus) ToString() *string {
 
 	return returns
 }
+

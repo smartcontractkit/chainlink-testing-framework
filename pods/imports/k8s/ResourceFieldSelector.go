@@ -1,5 +1,6 @@
 package k8s
 
+
 // ResourceFieldSelector represents container resources (cpu, memory) and their output format.
 type ResourceFieldSelector struct {
 	// Required: resource to select.
@@ -9,3 +10,4 @@ type ResourceFieldSelector struct {
 	// Specifies the output format of the exposed resources, defaults to "1".
 	Divisor Quantity `field:"optional" json:"divisor" yaml:"divisor"`
 }
+

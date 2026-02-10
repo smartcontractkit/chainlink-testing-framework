@@ -1,5 +1,6 @@
 package k8s
 
+
 // DeviceRequest is a request for devices required for a claim.
 //
 // This is typically a request for a single resource like a device, but can also ask for several identical devices.
@@ -19,8 +20,6 @@ type DeviceRequestV1Alpha3 struct {
 	// AdminAccess indicates that this is a claim for administrative access to the device(s).
 	//
 	// Claims with AdminAccess are expected to be used for monitoring or other management services for a device.  They ignore all ordinary claims to the device with respect to access modes and any resource allocations.
-	//
-	// This is an alpha field and requires enabling the DRAAdminAccess feature gate. Admin access is disabled if this field is unset or set to false, otherwise it is enabled.
 	AdminAccess *bool `field:"optional" json:"adminAccess" yaml:"adminAccess"`
 	// AllocationMode and its related fields define how devices are allocated to satisfy this request. Supported values are:.
 	//
@@ -45,3 +44,4 @@ type DeviceRequestV1Alpha3 struct {
 	// All selectors must be satisfied for a device to be considered.
 	Selectors *[]*DeviceSelectorV1Alpha3 `field:"optional" json:"selectors" yaml:"selectors"`
 }
+

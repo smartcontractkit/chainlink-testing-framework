@@ -1,5 +1,6 @@
 package k8s
 
+
 // Information about the condition of a component.
 type ComponentCondition struct {
 	// Status of the condition for a component.
@@ -19,3 +20,4 @@ type ComponentCondition struct {
 	// For example, information about a health check.
 	Message *string `field:"optional" json:"message" yaml:"message"`
 }
+

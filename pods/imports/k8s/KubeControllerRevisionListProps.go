@@ -1,5 +1,6 @@
 package k8s
 
+
 // ControllerRevisionList is a resource containing a list of ControllerRevision objects.
 type KubeControllerRevisionListProps struct {
 	// Items is the list of ControllerRevisions.
@@ -7,3 +8,4 @@ type KubeControllerRevisionListProps struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata.
 	Metadata *ListMeta `field:"optional" json:"metadata" yaml:"metadata"`
 }
+

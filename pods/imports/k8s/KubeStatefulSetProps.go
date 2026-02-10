@@ -1,5 +1,6 @@
 package k8s
 
+
 // StatefulSet represents a set of pods with consistent identities.
 //
 // Identities are defined as:
@@ -15,3 +16,4 @@ type KubeStatefulSetProps struct {
 	// Spec defines the desired identities of pods in this set.
 	Spec *StatefulSetSpec `field:"optional" json:"spec" yaml:"spec"`
 }
+

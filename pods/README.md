@@ -31,7 +31,7 @@ Run `just test-deploy-cover` to check coverage.
 
 Create additional directories for product-specific deployments if needed.
 
-### Importing CRDs
+### Importing CRDs and K8s manifests
 
 ```
 devbox shell

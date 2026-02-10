@@ -122,6 +122,7 @@ func (j *jsiiProxy_KubeValidatingAdmissionPolicyBindingListV1Beta1) Node() const
 	return returns
 }
 
+
 // Defines a "io.k8s.api.admissionregistration.v1beta1.ValidatingAdmissionPolicyBindingList" API object.
 func NewKubeValidatingAdmissionPolicyBindingListV1Beta1(scope constructs.Construct, id *string, props *KubeValidatingAdmissionPolicyBindingListV1Beta1Props) KubeValidatingAdmissionPolicyBindingListV1Beta1 {
 	_init_.Initialize()
@@ -313,3 +314,4 @@ func (k *jsiiProxy_KubeValidatingAdmissionPolicyBindingListV1Beta1) ToString() *
 
 	return returns
 }
+

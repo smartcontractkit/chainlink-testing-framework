@@ -1,5 +1,6 @@
 package k8s
 
+
 // CELDeviceSelector contains a CEL expression for selecting a device.
 type CelDeviceSelectorV1Alpha3 struct {
 	// Expression is a CEL expression which evaluates a single device.
@@ -31,7 +32,6 @@ type CelDeviceSelectorV1Alpha3 struct {
 	// For ease of use, the cel.bind() function is enabled, and can be used to simplify expressions that access multiple attributes with the same domain. For example:
 	//
 	// cel.bind(dra, device.attributes["dra.example.com"], dra.someBool && dra.anotherBool)
-	//
-	// The length of the expression must be smaller or equal to 10 Ki. The cost of evaluating it is also limited based on the estimated number of logical steps.
 	Expression *string `field:"required" json:"expression" yaml:"expression"`
 }
+

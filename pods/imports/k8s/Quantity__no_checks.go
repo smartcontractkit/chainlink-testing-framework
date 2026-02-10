@@ -11,3 +11,4 @@ func validateQuantity_FromNumberParameters(value *float64) error {
 func validateQuantity_FromStringParameters(value *string) error {
 	return nil
 }
+

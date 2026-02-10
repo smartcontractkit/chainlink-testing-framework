@@ -1,5 +1,6 @@
 package k8s
 
+
 // Node affinity is a group of node affinity scheduling rules.
 type NodeAffinity struct {
 	// The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions.
@@ -11,3 +12,4 @@ type NodeAffinity struct {
 	// If the affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to an update), the system may or may not try to eventually evict the pod from its node.
 	RequiredDuringSchedulingIgnoredDuringExecution *NodeSelector `field:"optional" json:"requiredDuringSchedulingIgnoredDuringExecution" yaml:"requiredDuringSchedulingIgnoredDuringExecution"`
 }
+

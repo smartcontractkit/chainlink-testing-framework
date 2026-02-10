@@ -1,5 +1,6 @@
 package k8s
 
+
 // IngressList is a collection of Ingress.
 type KubeIngressListProps struct {
 	// items is the list of Ingress.
@@ -9,3 +10,4 @@ type KubeIngressListProps struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	Metadata *ListMeta `field:"optional" json:"metadata" yaml:"metadata"`
 }
+

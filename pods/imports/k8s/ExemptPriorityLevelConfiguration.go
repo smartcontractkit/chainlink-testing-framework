@@ -1,5 +1,6 @@
 package k8s
 
+
 // ExemptPriorityLevelConfiguration describes the configurable aspects of the handling of exempt requests.
 //
 // In the mandatory exempt configuration object the values in the fields here can be modified by authorized users, unlike the rest of the `spec`.
@@ -19,3 +20,4 @@ type ExemptPriorityLevelConfiguration struct {
 	// Bigger numbers mean a larger nominal concurrency limit, at the expense of every other priority level. This field has a default value of zero.
 	NominalConcurrencyShares *float64 `field:"optional" json:"nominalConcurrencyShares" yaml:"nominalConcurrencyShares"`
 }
+

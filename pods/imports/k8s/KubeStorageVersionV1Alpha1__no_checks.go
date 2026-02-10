@@ -23,3 +23,4 @@ func validateKubeStorageVersionV1Alpha1_OfParameters(c constructs.IConstruct) er
 func validateNewKubeStorageVersionV1Alpha1Parameters(scope constructs.Construct, id *string, props *KubeStorageVersionV1Alpha1Props) error {
 	return nil
 }
+

@@ -23,3 +23,4 @@ func validateKubeValidatingWebhookConfiguration_OfParameters(c constructs.IConst
 func validateNewKubeValidatingWebhookConfigurationParameters(scope constructs.Construct, id *string, props *KubeValidatingWebhookConfigurationProps) error {
 	return nil
 }
+

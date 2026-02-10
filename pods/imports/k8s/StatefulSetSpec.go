@@ -1,5 +1,6 @@
 package k8s
 
+
 // A StatefulSetSpec is the specification of a StatefulSet.
 type StatefulSetSpec struct {
 	// selector is a label query over pods that should match the replica count.
@@ -26,7 +27,7 @@ type StatefulSetSpec struct {
 	Ordinals *StatefulSetOrdinals `field:"optional" json:"ordinals" yaml:"ordinals"`
 	// persistentVolumeClaimRetentionPolicy describes the lifecycle of persistent volume claims created from volumeClaimTemplates.
 	//
-	// By default, all persistent volume claims are created as needed and retained until manually deleted. This policy allows the lifecycle to be altered, for example by deleting persistent volume claims when their stateful set is deleted, or when their pod is scaled down.
+	// By default, all persistent volume claims are created as needed and retained until manually deleted. This policy allows the lifecycle to be altered, for example by deleting persistent volume claims when their stateful set is deleted, or when their pod is scaled down. This requires the StatefulSetAutoDeletePVC feature gate to be enabled, which is beta.
 	PersistentVolumeClaimRetentionPolicy *StatefulSetPersistentVolumeClaimRetentionPolicy `field:"optional" json:"persistentVolumeClaimRetentionPolicy" yaml:"persistentVolumeClaimRetentionPolicy"`
 	// podManagementPolicy controls how pods are created during initial scale up, when replacing pods on nodes, or when scaling down.
 	//
@@ -47,3 +48,4 @@ type StatefulSetSpec struct {
 	// The StatefulSet controller is responsible for mapping network identities to claims in a way that maintains the identity of a pod. Every claim in this list must have at least one matching (by name) volumeMount in one container in the template. A claim in this list takes precedence over any volumes in the template, with the same name.
 	VolumeClaimTemplates *[]*KubePersistentVolumeClaimProps `field:"optional" json:"volumeClaimTemplates" yaml:"volumeClaimTemplates"`
 }
+

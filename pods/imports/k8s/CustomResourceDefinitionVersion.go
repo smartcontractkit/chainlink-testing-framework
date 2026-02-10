@@ -1,5 +1,6 @@
 package k8s
 
+
 // CustomResourceDefinitionVersion describes a version for CRD.
 type CustomResourceDefinitionVersion struct {
 	// name is the version name, e.g. “v1”, “v2beta1”, etc. The custom resources are served under this version at `/apis/<group>/<version>/...` if `served` is true.
@@ -33,3 +34,4 @@ type CustomResourceDefinitionVersion struct {
 	// subresources specify what subresources this version of the defined custom resource have.
 	Subresources *CustomResourceSubresources `field:"optional" json:"subresources" yaml:"subresources"`
 }
+

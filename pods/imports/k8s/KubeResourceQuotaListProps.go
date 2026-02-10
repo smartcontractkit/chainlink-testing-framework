@@ -1,5 +1,6 @@
 package k8s
 
+
 // ResourceQuotaList is a list of ResourceQuota items.
 type KubeResourceQuotaListProps struct {
 	// Items is a list of ResourceQuota objects.
@@ -11,3 +12,4 @@ type KubeResourceQuotaListProps struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 	Metadata *ListMeta `field:"optional" json:"metadata" yaml:"metadata"`
 }
+

@@ -1,5 +1,6 @@
 package k8s
 
+
 // StatefulSetOrdinals describes the policy used for replica ordinal assignment in this StatefulSet.
 type StatefulSetOrdinals struct {
 	// start is the number representing the first replica's index.
@@ -10,3 +11,4 @@ type StatefulSetOrdinals struct {
 	// [0, .spec.replicas).
 	Start *float64 `field:"optional" json:"start" yaml:"start"`
 }
+

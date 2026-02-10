@@ -1,5 +1,6 @@
 package k8s
 
+
 // Node is a worker node in Kubernetes.
 //
 // Each node will have a unique identifier in the cache (i.e. in etcd).
@@ -13,3 +14,4 @@ type KubeNodeProps struct {
 	// https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	Spec *NodeSpec `field:"optional" json:"spec" yaml:"spec"`
 }
+

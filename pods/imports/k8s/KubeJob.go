@@ -122,6 +122,7 @@ func (j *jsiiProxy_KubeJob) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.batch.v1.Job" API object.
 func NewKubeJob(scope constructs.Construct, id *string, props *KubeJobProps) KubeJob {
 	_init_.Initialize()
@@ -313,3 +314,4 @@ func (k *jsiiProxy_KubeJob) ToString() *string {
 
 	return returns
 }
+

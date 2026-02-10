@@ -1,5 +1,6 @@
 package k8s
 
+
 // LimitedPriorityLevelConfiguration specifies how to handle requests that are subject to limits.
 //
 // It addresses two issues:
@@ -35,3 +36,4 @@ type LimitedPriorityLevelConfiguration struct {
 	// Setting this field to zero supports the construction of a "jail" for this priority level that is used to hold some request(s).
 	NominalConcurrencyShares *float64 `field:"optional" json:"nominalConcurrencyShares" yaml:"nominalConcurrencyShares"`
 }
+

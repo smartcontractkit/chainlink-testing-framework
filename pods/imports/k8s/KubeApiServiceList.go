@@ -122,6 +122,7 @@ func (j *jsiiProxy_KubeApiServiceList) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.kube-aggregator.pkg.apis.apiregistration.v1.APIServiceList" API object.
 func NewKubeApiServiceList(scope constructs.Construct, id *string, props *KubeApiServiceListProps) KubeApiServiceList {
 	_init_.Initialize()
@@ -313,3 +314,4 @@ func (k *jsiiProxy_KubeApiServiceList) ToString() *string {
 
 	return returns
 }
+

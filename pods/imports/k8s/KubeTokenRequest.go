@@ -122,6 +122,7 @@ func (j *jsiiProxy_KubeTokenRequest) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.authentication.v1.TokenRequest" API object.
 func NewKubeTokenRequest(scope constructs.Construct, id *string, props *KubeTokenRequestProps) KubeTokenRequest {
 	_init_.Initialize()
@@ -313,3 +314,4 @@ func (k *jsiiProxy_KubeTokenRequest) ToString() *string {
 
 	return returns
 }
+

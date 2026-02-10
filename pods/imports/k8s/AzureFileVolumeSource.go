@@ -1,5 +1,6 @@
 package k8s
 
+
 // AzureFile represents an Azure File Service mount on the host and bind mount to the pod.
 type AzureFileVolumeSource struct {
 	// secretName is the  name of secret that contains Azure Storage Account Name and Key.
@@ -11,3 +12,4 @@ type AzureFileVolumeSource struct {
 	// ReadOnly here will force the ReadOnly setting in VolumeMounts.
 	ReadOnly *bool `field:"optional" json:"readOnly" yaml:"readOnly"`
 }
+

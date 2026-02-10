@@ -63,3 +63,4 @@ func validateNewKubeResourceSliceV1Alpha3Parameters(scope constructs.Construct, 
 
 	return nil
 }
+

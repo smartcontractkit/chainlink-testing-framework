@@ -63,3 +63,4 @@ func validateNewKubeCustomResourceDefinitionParameters(scope constructs.Construc
 
 	return nil
 }
+

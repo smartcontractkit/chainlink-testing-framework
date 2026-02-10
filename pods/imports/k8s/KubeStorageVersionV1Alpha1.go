@@ -122,6 +122,7 @@ func (j *jsiiProxy_KubeStorageVersionV1Alpha1) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.apiserverinternal.v1alpha1.StorageVersion" API object.
 func NewKubeStorageVersionV1Alpha1(scope constructs.Construct, id *string, props *KubeStorageVersionV1Alpha1Props) KubeStorageVersionV1Alpha1 {
 	_init_.Initialize()
@@ -313,3 +314,4 @@ func (k *jsiiProxy_KubeStorageVersionV1Alpha1) ToString() *string {
 
 	return returns
 }
+

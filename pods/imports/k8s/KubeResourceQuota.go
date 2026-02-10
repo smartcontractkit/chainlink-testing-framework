@@ -122,6 +122,7 @@ func (j *jsiiProxy_KubeResourceQuota) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.core.v1.ResourceQuota" API object.
 func NewKubeResourceQuota(scope constructs.Construct, id *string, props *KubeResourceQuotaProps) KubeResourceQuota {
 	_init_.Initialize()
@@ -313,3 +314,4 @@ func (k *jsiiProxy_KubeResourceQuota) ToString() *string {
 
 	return returns
 }
+

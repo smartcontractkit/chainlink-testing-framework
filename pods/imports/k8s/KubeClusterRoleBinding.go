@@ -124,6 +124,7 @@ func (j *jsiiProxy_KubeClusterRoleBinding) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.rbac.v1.ClusterRoleBinding" API object.
 func NewKubeClusterRoleBinding(scope constructs.Construct, id *string, props *KubeClusterRoleBindingProps) KubeClusterRoleBinding {
 	_init_.Initialize()
@@ -315,3 +316,4 @@ func (k *jsiiProxy_KubeClusterRoleBinding) ToString() *string {
 
 	return returns
 }
+

@@ -1,5 +1,6 @@
 package k8s
 
+
 // NetworkPolicyPeer describes a peer to allow traffic to/from.
 //
 // Only certain combinations of fields are allowed.
@@ -21,3 +22,4 @@ type NetworkPolicyPeer struct {
 	// If namespaceSelector is also set, then the NetworkPolicyPeer as a whole selects the pods matching podSelector in the Namespaces selected by NamespaceSelector. Otherwise it selects the pods matching podSelector in the policy's own namespace.
 	PodSelector *LabelSelector `field:"optional" json:"podSelector" yaml:"podSelector"`
 }
+

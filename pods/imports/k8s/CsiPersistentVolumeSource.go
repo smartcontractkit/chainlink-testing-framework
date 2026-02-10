@@ -1,6 +1,7 @@
 package k8s
 
-// Represents storage that is managed by an external CSI volume driver.
+
+// Represents storage that is managed by an external CSI volume driver (Beta feature).
 type CsiPersistentVolumeSource struct {
 	// driver is the name of the driver to use for this volume.
 	//
@@ -43,3 +44,4 @@ type CsiPersistentVolumeSource struct {
 	// volumeAttributes of the volume to publish.
 	VolumeAttributes *map[string]*string `field:"optional" json:"volumeAttributes" yaml:"volumeAttributes"`
 }
+

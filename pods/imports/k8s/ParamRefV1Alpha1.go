@@ -1,5 +1,6 @@
 package k8s
 
+
 // ParamRef describes how to locate the params to be used as input to expressions of rules applied by a policy binding.
 type ParamRefV1Alpha1 struct {
 	// `name` is the name of the resource being referenced.
@@ -33,3 +34,4 @@ type ParamRefV1Alpha1 struct {
 	// One of `name` or `selector` must be set, but `name` and `selector` are mutually exclusive properties. If one is set, the other must be unset.
 	Selector *LabelSelector `field:"optional" json:"selector" yaml:"selector"`
 }
+

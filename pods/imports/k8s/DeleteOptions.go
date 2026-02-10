@@ -1,5 +1,6 @@
 package k8s
 
+
 // DeleteOptions may be provided when deleting an API object.
 type DeleteOptions struct {
 	// APIVersion defines the versioned schema of this representation of an object.
@@ -16,10 +17,6 @@ type DeleteOptions struct {
 	// Default: a per object value if not specified. zero means delete immediately.
 	//
 	GracePeriodSeconds *float64 `field:"optional" json:"gracePeriodSeconds" yaml:"gracePeriodSeconds"`
-	// if set to true, it will trigger an unsafe deletion of the resource in case the normal deletion flow fails with a corrupt object error.
-	//
-	// A resource is considered corrupt if it can not be retrieved from the underlying storage successfully because of a) its data can not be transformed e.g. decryption failure, or b) it fails to decode into an object. NOTE: unsafe deletion ignores finalizer constraints, skips precondition checks, and removes the object from the storage. WARNING: This may potentially break the cluster if the workload associated with the resource being unsafe-deleted relies on normal deletion flow. Use only if you REALLY know what you are doing. The default value is false, and the user must opt in to enable it
-	IgnoreStoreReadErrorWithClusterBreakingPotential *bool `field:"optional" json:"ignoreStoreReadErrorWithClusterBreakingPotential" yaml:"ignoreStoreReadErrorWithClusterBreakingPotential"`
 	// Kind is a string value representing the REST resource this object represents.
 	//
 	// Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
@@ -35,3 +32,4 @@ type DeleteOptions struct {
 	// Either this field or OrphanDependents may be set, but not both. The default policy is decided by the existing finalizer set in the metadata.finalizers and the resource-specific default policy. Acceptable values are: 'Orphan' - orphan the dependents; 'Background' - allow the garbage collector to delete the dependents in the background; 'Foreground' - a cascading policy that deletes all dependents in the foreground.
 	PropagationPolicy *string `field:"optional" json:"propagationPolicy" yaml:"propagationPolicy"`
 }
+

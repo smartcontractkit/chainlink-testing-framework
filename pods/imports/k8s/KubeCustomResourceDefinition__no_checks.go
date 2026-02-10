@@ -23,3 +23,4 @@ func validateKubeCustomResourceDefinition_OfParameters(c constructs.IConstruct) 
 func validateNewKubeCustomResourceDefinitionParameters(scope constructs.Construct, id *string, props *KubeCustomResourceDefinitionProps) error {
 	return nil
 }
+

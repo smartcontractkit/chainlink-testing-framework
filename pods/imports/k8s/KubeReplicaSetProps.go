@@ -1,5 +1,6 @@
 package k8s
 
+
 // ReplicaSet ensures that a specified number of pod replicas are running at any given time.
 type KubeReplicaSetProps struct {
 	// If the Labels of a ReplicaSet are empty, they are defaulted to be the same as the Pod(s) that the ReplicaSet manages.
@@ -11,3 +12,4 @@ type KubeReplicaSetProps struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	Spec *ReplicaSetSpec `field:"optional" json:"spec" yaml:"spec"`
 }
+

@@ -1,5 +1,6 @@
 package k8s
 
+
 // ClusterTrustBundle is a cluster-scoped container for X.509 trust anchors (root certificates).
 //
 // ClusterTrustBundle objects are considered to be readable by any authenticated user in the cluster, because they can be mounted by pods using the `clusterTrustBundle` projection.  All service accounts have read access to ClusterTrustBundles by default.  Users who only have namespace-level access to a cluster can read ClusterTrustBundles by impersonating a serviceaccount that they have access to.
@@ -11,3 +12,4 @@ type KubeClusterTrustBundleV1Alpha1Props struct {
 	// metadata contains the object metadata.
 	Metadata *ObjectMeta `field:"optional" json:"metadata" yaml:"metadata"`
 }
+

@@ -1,5 +1,6 @@
 package k8s
 
+
 // IngressClassSpec provides information about the class of an Ingress.
 type IngressClassSpec struct {
 	// controller refers to the name of the controller that should handle this class.
@@ -11,3 +12,4 @@ type IngressClassSpec struct {
 	// This is optional if the controller does not require extra parameters.
 	Parameters *IngressClassParametersReference `field:"optional" json:"parameters" yaml:"parameters"`
 }
+

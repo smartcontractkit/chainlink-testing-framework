@@ -1,5 +1,6 @@
 package k8s
 
+
 // PodsMetricSource indicates how to scale on a metric describing each pod in the current scale target (for example, transactions-processed-per-second).
 //
 // The values will be averaged together before being compared to the target value.
@@ -9,3 +10,4 @@ type PodsMetricSourceV2 struct {
 	// target specifies the target value for the given metric.
 	Target *MetricTargetV2 `field:"required" json:"target" yaml:"target"`
 }
+

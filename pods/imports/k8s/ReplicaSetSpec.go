@@ -1,5 +1,6 @@
 package k8s
 
+
 // ReplicaSetSpec is the specification of a ReplicaSet.
 type ReplicaSetSpec struct {
 	// Selector is a label query over pods that should match the replica count.
@@ -23,3 +24,4 @@ type ReplicaSetSpec struct {
 	// More info: https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller#pod-template
 	Template *PodTemplateSpec `field:"optional" json:"template" yaml:"template"`
 }
+

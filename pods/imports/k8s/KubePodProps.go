@@ -1,5 +1,6 @@
 package k8s
 
+
 // Pod is a collection of containers that can run on a host.
 //
 // This resource is created by clients and scheduled onto hosts.
@@ -13,3 +14,4 @@ type KubePodProps struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	Spec *PodSpec `field:"optional" json:"spec" yaml:"spec"`
 }
+

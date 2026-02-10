@@ -1,5 +1,6 @@
 package k8s
 
+
 // NamespaceList is a list of Namespaces.
 type KubeNamespaceListProps struct {
 	// Items is the list of Namespace objects in the list.
@@ -11,3 +12,4 @@ type KubeNamespaceListProps struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 	Metadata *ListMeta `field:"optional" json:"metadata" yaml:"metadata"`
 }
+

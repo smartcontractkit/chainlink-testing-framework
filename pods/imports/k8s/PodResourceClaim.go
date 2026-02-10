@@ -1,5 +1,6 @@
 package k8s
 
+
 // PodResourceClaim references exactly one ResourceClaim, either directly or by naming a ResourceClaimTemplate which is then turned into a ResourceClaim for the pod.
 //
 // It adds a name to it that uniquely identifies the ResourceClaim inside the Pod. Containers that need access to the ResourceClaim reference it with this name.
@@ -21,3 +22,4 @@ type PodResourceClaim struct {
 	// Exactly one of ResourceClaimName and ResourceClaimTemplateName must be set.
 	ResourceClaimTemplateName *string `field:"optional" json:"resourceClaimTemplateName" yaml:"resourceClaimTemplateName"`
 }
+

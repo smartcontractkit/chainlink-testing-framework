@@ -1,5 +1,6 @@
 package k8s
 
+
 // ValidatingAdmissionPolicySpec is the specification of the desired behavior of the AdmissionPolicy.
 type ValidatingAdmissionPolicySpec struct {
 	// auditAnnotations contains CEL expressions which are used to produce audit annotations for the audit event of the API request.
@@ -52,3 +53,4 @@ type ValidatingAdmissionPolicySpec struct {
 	// The expression of a variable can refer to other variables defined earlier in the list but not those after. Thus, Variables must be sorted by the order of first appearance and acyclic.
 	Variables *[]*Variable `field:"optional" json:"variables" yaml:"variables"`
 }
+

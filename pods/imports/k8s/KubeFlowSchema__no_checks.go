@@ -23,3 +23,4 @@ func validateKubeFlowSchema_OfParameters(c constructs.IConstruct) error {
 func validateNewKubeFlowSchemaParameters(scope constructs.Construct, id *string, props *KubeFlowSchemaProps) error {
 	return nil
 }
+

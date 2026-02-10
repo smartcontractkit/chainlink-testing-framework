@@ -1,5 +1,6 @@
 package k8s
 
+
 // ObjectReference contains enough information to let you inspect or modify the referred object.
 type ObjectReference struct {
 	// API version of the referent.
@@ -27,3 +28,4 @@ type ObjectReference struct {
 	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids
 	Uid *string `field:"optional" json:"uid" yaml:"uid"`
 }
+

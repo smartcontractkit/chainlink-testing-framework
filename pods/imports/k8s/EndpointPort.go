@@ -1,5 +1,6 @@
 package k8s
 
+
 // EndpointPort is a tuple that describes a single port.
 type EndpointPort struct {
 	// The port number of the endpoint.
@@ -28,3 +29,4 @@ type EndpointPort struct {
 	//
 	Protocol *string `field:"optional" json:"protocol" yaml:"protocol"`
 }
+

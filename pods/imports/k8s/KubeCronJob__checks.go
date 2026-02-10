@@ -57,3 +57,4 @@ func validateNewKubeCronJobParameters(scope constructs.Construct, id *string, pr
 
 	return nil
 }
+

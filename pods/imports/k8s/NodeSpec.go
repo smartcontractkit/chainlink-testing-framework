@@ -1,5 +1,6 @@
 package k8s
 
+
 // NodeSpec describes the attributes that a node is created with.
 type NodeSpec struct {
 	// Deprecated: Previously used to specify the source of the node's configuration for the DynamicKubeletConfig feature.
@@ -25,3 +26,4 @@ type NodeSpec struct {
 	// By default, node is schedulable. More info: https://kubernetes.io/docs/concepts/nodes/node/#manual-node-administration
 	Unschedulable *bool `field:"optional" json:"unschedulable" yaml:"unschedulable"`
 }
+

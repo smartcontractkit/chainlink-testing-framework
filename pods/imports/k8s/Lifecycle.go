@@ -1,5 +1,6 @@
 package k8s
 
+
 // Lifecycle describes actions that the management system should take in response to container lifecycle events.
 //
 // For the PostStart and PreStop lifecycle handlers, management of the container blocks until the action is complete, unless the container process fails, in which case the handler is aborted.
@@ -13,3 +14,4 @@ type Lifecycle struct {
 	// The handler is not called if the container crashes or exits. The Pod's termination grace period countdown begins before the PreStop hook is executed. Regardless of the outcome of the handler, the container will eventually terminate within the Pod's termination grace period (unless delayed by finalizers). Other management of the container blocks until the hook completes or until the termination grace period is reached. More info: https://kubernetes.io/docs/concepts/containers/container-lifecycle-hooks/#container-hooks
 	PreStop *LifecycleHandler `field:"optional" json:"preStop" yaml:"preStop"`
 }
+

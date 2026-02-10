@@ -1,5 +1,6 @@
 package k8s
 
+
 // A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
 type LabelSelectorRequirement struct {
 	// key is the label key that the selector applies to.
@@ -13,3 +14,4 @@ type LabelSelectorRequirement struct {
 	// If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
 	Values *[]*string `field:"optional" json:"values" yaml:"values"`
 }
+

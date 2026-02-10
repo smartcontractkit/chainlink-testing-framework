@@ -57,3 +57,4 @@ func validateNewKubePriorityLevelConfigurationParameters(scope constructs.Constr
 
 	return nil
 }
+

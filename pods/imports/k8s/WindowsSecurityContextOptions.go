@@ -1,5 +1,6 @@
 package k8s
 
+
 // WindowsSecurityContextOptions contain Windows-specific options and credentials.
 type WindowsSecurityContextOptions struct {
 	// GMSACredentialSpec is where the GMSA admission webhook (https://github.com/kubernetes-sigs/windows-gmsa) inlines the contents of the GMSA credential spec named by the GMSACredentialSpecName field.
@@ -17,3 +18,4 @@ type WindowsSecurityContextOptions struct {
 	//
 	RunAsUserName *string `field:"optional" json:"runAsUserName" yaml:"runAsUserName"`
 }
+

@@ -57,3 +57,4 @@ func validateNewKubeLeaseParameters(scope constructs.Construct, id *string, prop
 
 	return nil
 }
+

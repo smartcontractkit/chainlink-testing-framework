@@ -1,5 +1,6 @@
 package k8s
 
+
 // NetworkPolicyList is a list of NetworkPolicy objects.
 type KubeNetworkPolicyListProps struct {
 	// items is a list of schema objects.
@@ -9,3 +10,4 @@ type KubeNetworkPolicyListProps struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	Metadata *ListMeta `field:"optional" json:"metadata" yaml:"metadata"`
 }
+

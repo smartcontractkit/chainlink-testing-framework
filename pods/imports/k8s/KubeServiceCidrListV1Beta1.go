@@ -122,6 +122,7 @@ func (j *jsiiProxy_KubeServiceCidrListV1Beta1) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.networking.v1beta1.ServiceCIDRList" API object.
 func NewKubeServiceCidrListV1Beta1(scope constructs.Construct, id *string, props *KubeServiceCidrListV1Beta1Props) KubeServiceCidrListV1Beta1 {
 	_init_.Initialize()
@@ -313,3 +314,4 @@ func (k *jsiiProxy_KubeServiceCidrListV1Beta1) ToString() *string {
 
 	return returns
 }
+

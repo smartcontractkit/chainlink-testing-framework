@@ -1,5 +1,6 @@
 package k8s
 
+
 // ResourceClaimTemplate is used to produce ResourceClaim objects.
 //
 // This is an alpha type and requires enabling the DynamicResourceAllocation feature gate.
@@ -11,3 +12,4 @@ type KubeResourceClaimTemplateV1Alpha3Props struct {
 	// Standard object metadata.
 	Metadata *ObjectMeta `field:"optional" json:"metadata" yaml:"metadata"`
 }
+

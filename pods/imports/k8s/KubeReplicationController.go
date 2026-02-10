@@ -122,6 +122,7 @@ func (j *jsiiProxy_KubeReplicationController) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.core.v1.ReplicationController" API object.
 func NewKubeReplicationController(scope constructs.Construct, id *string, props *KubeReplicationControllerProps) KubeReplicationController {
 	_init_.Initialize()
@@ -313,3 +314,4 @@ func (k *jsiiProxy_KubeReplicationController) ToString() *string {
 
 	return returns
 }
+

@@ -55,3 +55,4 @@ type KubeEventProps struct {
 	// It is machine-readable. This field cannot be empty for new Events.
 	Type *string `field:"optional" json:"type" yaml:"type"`
 }
+

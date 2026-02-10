@@ -23,3 +23,4 @@ func validateKubeResourceQuota_OfParameters(c constructs.IConstruct) error {
 func validateNewKubeResourceQuotaParameters(scope constructs.Construct, id *string, props *KubeResourceQuotaProps) error {
 	return nil
 }
+

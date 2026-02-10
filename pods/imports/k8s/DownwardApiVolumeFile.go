@@ -1,5 +1,6 @@
 package k8s
 
+
 // DownwardAPIVolumeFile represents information to create the file containing the pod field.
 type DownwardApiVolumeFile struct {
 	// Required: Path is  the relative path name of the file to be created.
@@ -15,3 +16,4 @@ type DownwardApiVolumeFile struct {
 	// Selects a resource of the container: only resources limits and requests (limits.cpu, limits.memory, requests.cpu and requests.memory) are currently supported.
 	ResourceFieldRef *ResourceFieldSelector `field:"optional" json:"resourceFieldRef" yaml:"resourceFieldRef"`
 }
+

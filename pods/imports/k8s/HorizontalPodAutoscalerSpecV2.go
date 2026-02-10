@@ -1,5 +1,6 @@
 package k8s
 
+
 // HorizontalPodAutoscalerSpec describes the desired functionality of the HorizontalPodAutoscaler.
 type HorizontalPodAutoscalerSpecV2 struct {
 	// maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale up.
@@ -21,3 +22,4 @@ type HorizontalPodAutoscalerSpecV2 struct {
 	// It defaults to 1 pod.  minReplicas is allowed to be 0 if the alpha feature gate HPAScaleToZero is enabled and at least one Object or External metric is configured.  Scaling is active as long as at least one metric value is available.
 	MinReplicas *float64 `field:"optional" json:"minReplicas" yaml:"minReplicas"`
 }
+

@@ -122,6 +122,7 @@ func (j *jsiiProxy_KubeIpAddressListV1Beta1) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.networking.v1beta1.IPAddressList" API object.
 func NewKubeIpAddressListV1Beta1(scope constructs.Construct, id *string, props *KubeIpAddressListV1Beta1Props) KubeIpAddressListV1Beta1 {
 	_init_.Initialize()
@@ -313,3 +314,4 @@ func (k *jsiiProxy_KubeIpAddressListV1Beta1) ToString() *string {
 
 	return returns
 }
+

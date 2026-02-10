@@ -57,3 +57,4 @@ func validateNewKubeIpAddressV1Beta1Parameters(scope constructs.Construct, id *s
 
 	return nil
 }
+

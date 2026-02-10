@@ -1,5 +1,6 @@
 package k8s
 
+
 // Adds and removes POSIX capabilities from running containers.
 type Capabilities struct {
 	// Added capabilities.
@@ -7,3 +8,4 @@ type Capabilities struct {
 	// Removed capabilities.
 	Drop *[]*string `field:"optional" json:"drop" yaml:"drop"`
 }
+

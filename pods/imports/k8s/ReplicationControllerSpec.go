@@ -1,5 +1,6 @@
 package k8s
 
+
 // ReplicationControllerSpec is the specification of a replication controller.
 type ReplicationControllerSpec struct {
 	// Minimum number of seconds for which a newly created pod should be ready without any of its container crashing, for it to be considered available.
@@ -23,3 +24,4 @@ type ReplicationControllerSpec struct {
 	// This takes precedence over a TemplateRef. The only allowed template.spec.restartPolicy value is "Always". More info: https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller#pod-template
 	Template *PodTemplateSpec `field:"optional" json:"template" yaml:"template"`
 }
+

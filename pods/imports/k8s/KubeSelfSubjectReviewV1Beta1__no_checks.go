@@ -23,3 +23,4 @@ func validateKubeSelfSubjectReviewV1Beta1_OfParameters(c constructs.IConstruct) 
 func validateNewKubeSelfSubjectReviewV1Beta1Parameters(scope constructs.Construct, id *string, props *KubeSelfSubjectReviewV1Beta1Props) error {
 	return nil
 }
+

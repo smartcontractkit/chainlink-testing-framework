@@ -23,3 +23,4 @@ func validateKubeConfigMap_OfParameters(c constructs.IConstruct) error {
 func validateNewKubeConfigMapParameters(scope constructs.Construct, id *string, props *KubeConfigMapProps) error {
 	return nil
 }
+

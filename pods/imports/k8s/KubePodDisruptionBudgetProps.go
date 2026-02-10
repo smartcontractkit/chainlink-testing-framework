@@ -1,5 +1,6 @@
 package k8s
 
+
 // PodDisruptionBudget is an object to define the max disruption that can be caused to a collection of pods.
 type KubePodDisruptionBudgetProps struct {
 	// Standard object's metadata.
@@ -9,3 +10,4 @@ type KubePodDisruptionBudgetProps struct {
 	// Specification of the desired behavior of the PodDisruptionBudget.
 	Spec *PodDisruptionBudgetSpec `field:"optional" json:"spec" yaml:"spec"`
 }
+

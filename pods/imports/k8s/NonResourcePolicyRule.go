@@ -1,5 +1,6 @@
 package k8s
 
+
 // NonResourcePolicyRule is a predicate that matches non-resource requests according to their verb and the target non-resource URL.
 //
 // A NonResourcePolicyRule matches a request if and only if both (a) at least one member of verbs matches the request and (b) at least one member of nonResourceURLs matches the request.
@@ -19,3 +20,4 @@ type NonResourcePolicyRule struct {
 	// "*" matches all verbs. If it is present, it must be the only entry. Required.
 	Verbs *[]*string `field:"required" json:"verbs" yaml:"verbs"`
 }
+

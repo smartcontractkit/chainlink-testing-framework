@@ -23,3 +23,4 @@ func validateKubeStatus_OfParameters(c constructs.IConstruct) error {
 func validateNewKubeStatusParameters(scope constructs.Construct, id *string, props *KubeStatusProps) error {
 	return nil
 }
+

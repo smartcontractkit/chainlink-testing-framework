@@ -1,5 +1,6 @@
 package k8s
 
+
 // IngressSpec describes the Ingress the user wishes to exist.
 type IngressSpec struct {
 	// defaultBackend is the backend that should handle requests that don't match any rule.
@@ -19,3 +20,4 @@ type IngressSpec struct {
 	// Currently the Ingress only supports a single TLS port, 443. If multiple members of this list specify different hosts, they will be multiplexed on the same port according to the hostname specified through the SNI TLS extension, if the ingress controller fulfilling the ingress supports SNI.
 	Tls *[]*IngressTls `field:"optional" json:"tls" yaml:"tls"`
 }
+

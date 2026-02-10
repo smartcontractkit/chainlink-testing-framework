@@ -29,3 +29,4 @@ type LeaseSpec struct {
 	// If the field is not specified, there is no active coordination for this lease. (Alpha) Using this field requires the CoordinatedLeaderElection feature gate to be enabled.
 	Strategy *string `field:"optional" json:"strategy" yaml:"strategy"`
 }
+

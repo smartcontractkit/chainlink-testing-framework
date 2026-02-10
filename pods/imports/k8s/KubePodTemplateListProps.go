@@ -1,5 +1,6 @@
 package k8s
 
+
 // PodTemplateList is a list of PodTemplates.
 type KubePodTemplateListProps struct {
 	// List of pod templates.
@@ -9,3 +10,4 @@ type KubePodTemplateListProps struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 	Metadata *ListMeta `field:"optional" json:"metadata" yaml:"metadata"`
 }
+

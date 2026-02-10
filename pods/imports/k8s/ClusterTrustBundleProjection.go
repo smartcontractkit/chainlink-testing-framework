@@ -1,5 +1,6 @@
 package k8s
 
+
 // ClusterTrustBundleProjection describes how to select a set of ClusterTrustBundle objects and project their contents into the pod filesystem.
 type ClusterTrustBundleProjection struct {
 	// Relative path from the volume root to write the bundle.
@@ -21,3 +22,4 @@ type ClusterTrustBundleProjection struct {
 	// Mutually-exclusive with name.  The contents of all selected ClusterTrustBundles will be unified and deduplicated.
 	SignerName *string `field:"optional" json:"signerName" yaml:"signerName"`
 }
+

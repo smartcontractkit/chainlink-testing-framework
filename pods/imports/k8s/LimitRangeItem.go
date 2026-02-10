@@ -1,5 +1,6 @@
 package k8s
 
+
 // LimitRangeItem defines a min/max usage limit for any resource that matches on kind.
 type LimitRangeItem struct {
 	// Type of resource that this limit applies to.
@@ -17,3 +18,4 @@ type LimitRangeItem struct {
 	// Min usage constraints on this kind by resource name.
 	Min *map[string]Quantity `field:"optional" json:"min" yaml:"min"`
 }
+

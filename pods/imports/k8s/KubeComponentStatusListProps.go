@@ -1,5 +1,6 @@
 package k8s
 
+
 // Status of all the conditions for the component as a list of ComponentStatus objects.
 //
 // Deprecated: This API is deprecated in v1.19+
@@ -11,3 +12,4 @@ type KubeComponentStatusListProps struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 	Metadata *ListMeta `field:"optional" json:"metadata" yaml:"metadata"`
 }
+

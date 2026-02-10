@@ -63,3 +63,4 @@ func validateNewKubeValidatingAdmissionPolicyBindingListParameters(scope constru
 
 	return nil
 }
+

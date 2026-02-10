@@ -1,5 +1,6 @@
 package k8s
 
+
 // MetricTarget defines the target value, average value, or average utilization of a specific metric.
 type MetricTargetV2 struct {
 	// type represents whether the metric type is Utilization, Value, or AverageValue.
@@ -13,3 +14,4 @@ type MetricTargetV2 struct {
 	// value is the target value of the metric (as a quantity).
 	Value Quantity `field:"optional" json:"value" yaml:"value"`
 }
+

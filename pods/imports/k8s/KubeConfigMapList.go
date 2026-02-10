@@ -122,6 +122,7 @@ func (j *jsiiProxy_KubeConfigMapList) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.core.v1.ConfigMapList" API object.
 func NewKubeConfigMapList(scope constructs.Construct, id *string, props *KubeConfigMapListProps) KubeConfigMapList {
 	_init_.Initialize()
@@ -313,3 +314,4 @@ func (k *jsiiProxy_KubeConfigMapList) ToString() *string {
 
 	return returns
 }
+

@@ -1,5 +1,6 @@
 package k8s
 
+
 // NetworkPolicyIngressRule describes a particular set of traffic that is allowed to the pods matched by a NetworkPolicySpec's podSelector.
 //
 // The traffic must match both ports and from.
@@ -13,3 +14,4 @@ type NetworkPolicyIngressRule struct {
 	// Each item in this list is combined using a logical OR. If this field is empty or missing, this rule matches all ports (traffic not restricted by port). If this field is present and contains at least one item, then this rule allows traffic only if the traffic matches at least one port in the list.
 	Ports *[]*NetworkPolicyPort `field:"optional" json:"ports" yaml:"ports"`
 }
+

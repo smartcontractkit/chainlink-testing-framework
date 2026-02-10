@@ -1,5 +1,6 @@
 package k8s
 
+
 // EnvVar represents an environment variable present in a Container.
 type EnvVar struct {
 	// Name of the environment variable.
@@ -17,3 +18,4 @@ type EnvVar struct {
 	// Cannot be used if value is not empty.
 	ValueFrom *EnvVarSource `field:"optional" json:"valueFrom" yaml:"valueFrom"`
 }
+

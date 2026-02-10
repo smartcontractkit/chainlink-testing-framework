@@ -1,8 +1,5 @@
 language: go
 app: go run .
 imports:
-  - k8s
   - k8s@1.31.0
-  - k8s@1.32.0
-  - crd.yml
   - crds/monitoring.coreos.com.yml

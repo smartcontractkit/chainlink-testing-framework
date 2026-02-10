@@ -1,5 +1,6 @@
 package k8s
 
+
 // A scoped-resource selector requirement is a selector that contains values, a scope name, and an operator that relates the scope name and values.
 type ScopedResourceSelectorRequirement struct {
 	// Represents a scope's relationship to a set of values.
@@ -13,3 +14,4 @@ type ScopedResourceSelectorRequirement struct {
 	// If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
 	Values *[]*string `field:"optional" json:"values" yaml:"values"`
 }
+

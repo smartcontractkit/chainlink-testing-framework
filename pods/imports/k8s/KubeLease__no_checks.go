@@ -23,3 +23,4 @@ func validateKubeLease_OfParameters(c constructs.IConstruct) error {
 func validateNewKubeLeaseParameters(scope constructs.Construct, id *string, props *KubeLeaseProps) error {
 	return nil
 }
+

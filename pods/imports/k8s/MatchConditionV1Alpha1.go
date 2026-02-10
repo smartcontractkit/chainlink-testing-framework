@@ -1,5 +1,6 @@
 package k8s
 
+
 type MatchConditionV1Alpha1 struct {
 	// Expression represents the expression which will be evaluated by CEL.
 	//
@@ -20,3 +21,4 @@ type MatchConditionV1Alpha1 struct {
 	// Required.
 	Name *string `field:"required" json:"name" yaml:"name"`
 }
+

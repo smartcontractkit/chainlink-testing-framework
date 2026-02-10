@@ -1,5 +1,6 @@
 package k8s
 
+
 // Affinity is a group of affinity scheduling rules.
 type Affinity struct {
 	// Describes node affinity scheduling rules for the pod.
@@ -9,3 +10,4 @@ type Affinity struct {
 	// Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, zone, etc. as some other pod(s)).
 	PodAntiAffinity *PodAntiAffinity `field:"optional" json:"podAntiAffinity" yaml:"podAntiAffinity"`
 }
+

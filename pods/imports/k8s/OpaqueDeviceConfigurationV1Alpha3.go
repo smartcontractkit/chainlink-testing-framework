@@ -1,5 +1,6 @@
 package k8s
 
+
 // OpaqueDeviceConfiguration contains configuration parameters for a driver in a format defined by the driver vendor.
 type OpaqueDeviceConfigurationV1Alpha3 struct {
 	// Driver is used to determine which kubelet plugin needs to be passed these configuration parameters.
@@ -11,7 +12,6 @@ type OpaqueDeviceConfigurationV1Alpha3 struct {
 	// Parameters can contain arbitrary data.
 	//
 	// It is the responsibility of the driver developer to handle validation and versioning. Typically this includes self-identification and a version ("kind" + "apiVersion" for Kubernetes types), with conversion between different versions.
-	//
-	// The length of the raw data must be smaller or equal to 10 Ki.
 	Parameters interface{} `field:"required" json:"parameters" yaml:"parameters"`
 }
+

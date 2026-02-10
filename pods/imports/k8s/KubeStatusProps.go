@@ -1,5 +1,6 @@
 package k8s
 
+
 // Status is a return value for calls that don't return other objects.
 type KubeStatusProps struct {
 	// Suggested HTTP return code for this status, 0 if not set.
@@ -19,3 +20,4 @@ type KubeStatusProps struct {
 	// If this value is empty there is no information available. A Reason clarifies an HTTP status code but does not override it.
 	Reason *string `field:"optional" json:"reason" yaml:"reason"`
 }
+

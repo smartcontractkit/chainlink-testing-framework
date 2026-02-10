@@ -1,8 +1,9 @@
 package k8s
 
+
 // VolumeAttachmentSource represents a volume that should be attached.
 //
-// Right now only PersistentVolumes can be attached via external attacher, in the future we may allow also inline volumes in pods. Exactly one member can be set.
+// Right now only PersistenVolumes can be attached via external attacher, in future we may allow also inline volumes in pods. Exactly one member can be set.
 type VolumeAttachmentSource struct {
 	// inlineVolumeSpec contains all the information necessary to attach a persistent volume defined by a pod's inline VolumeSource.
 	//
@@ -11,3 +12,4 @@ type VolumeAttachmentSource struct {
 	// persistentVolumeName represents the name of the persistent volume to attach.
 	PersistentVolumeName *string `field:"optional" json:"persistentVolumeName" yaml:"persistentVolumeName"`
 }
+

@@ -1,5 +1,6 @@
 package k8s
 
+
 // RollingUpdateStatefulSetStrategy is used to communicate parameter for RollingUpdateStatefulSetStrategyType.
 type RollingUpdateStatefulSetStrategy struct {
 	// The maximum number of pods that can be unavailable during the update.
@@ -13,3 +14,4 @@ type RollingUpdateStatefulSetStrategy struct {
 	// During a rolling update, all pods from ordinal Replicas-1 to Partition are updated. All pods from ordinal Partition-1 to 0 remain untouched. This is helpful in being able to do a canary based deployment. The default value is 0.
 	Partition *float64 `field:"optional" json:"partition" yaml:"partition"`
 }
+

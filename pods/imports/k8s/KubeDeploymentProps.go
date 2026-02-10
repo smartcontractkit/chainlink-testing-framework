@@ -1,5 +1,6 @@
 package k8s
 
+
 // Deployment enables declarative updates for Pods and ReplicaSets.
 type KubeDeploymentProps struct {
 	// Standard object's metadata.
@@ -9,3 +10,4 @@ type KubeDeploymentProps struct {
 	// Specification of the desired behavior of the Deployment.
 	Spec *DeploymentSpec `field:"optional" json:"spec" yaml:"spec"`
 }
+

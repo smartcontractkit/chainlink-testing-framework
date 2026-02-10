@@ -24,6 +24,7 @@ func (j *jsiiProxy_IntOrString) Value() interface{} {
 	return returns
 }
 
+
 func IntOrString_FromNumber(value *float64) IntOrString {
 	_init_.Initialize()
 
@@ -59,3 +60,4 @@ func IntOrString_FromString(value *string) IntOrString {
 
 	return returns
 }
+

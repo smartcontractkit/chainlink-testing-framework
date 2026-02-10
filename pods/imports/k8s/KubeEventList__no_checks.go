@@ -23,3 +23,4 @@ func validateKubeEventList_OfParameters(c constructs.IConstruct) error {
 func validateNewKubeEventListParameters(scope constructs.Construct, id *string, props *KubeEventListProps) error {
 	return nil
 }
+

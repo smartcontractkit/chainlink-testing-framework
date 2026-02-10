@@ -1,5 +1,6 @@
 package k8s
 
+
 // ResourceQuota sets aggregate quota restrictions enforced per namespace.
 type KubeResourceQuotaProps struct {
 	// Standard object's metadata.
@@ -11,3 +12,4 @@ type KubeResourceQuotaProps struct {
 	// https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	Spec *ResourceQuotaSpec `field:"optional" json:"spec" yaml:"spec"`
 }
+

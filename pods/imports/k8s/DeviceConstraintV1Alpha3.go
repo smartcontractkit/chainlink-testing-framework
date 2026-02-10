@@ -1,5 +1,6 @@
 package k8s
 
+
 // DeviceConstraint must have exactly one field set besides Requests.
 type DeviceConstraintV1Alpha3 struct {
 	// MatchAttribute requires that all devices in question have this attribute and that its type and value are the same across those devices.
@@ -13,3 +14,4 @@ type DeviceConstraintV1Alpha3 struct {
 	// If a request is fulfilled by multiple devices, then all of the devices must satisfy the constraint. If this is not specified, this constraint applies to all requests in this claim.
 	Requests *[]*string `field:"optional" json:"requests" yaml:"requests"`
 }
+

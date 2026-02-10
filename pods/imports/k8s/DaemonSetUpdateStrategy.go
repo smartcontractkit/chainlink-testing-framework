@@ -1,5 +1,6 @@
 package k8s
 
+
 // DaemonSetUpdateStrategy is a struct used to control the update strategy for a DaemonSet.
 type DaemonSetUpdateStrategy struct {
 	// Rolling update config params.
@@ -13,3 +14,4 @@ type DaemonSetUpdateStrategy struct {
 	//
 	Type *string `field:"optional" json:"type" yaml:"type"`
 }
+

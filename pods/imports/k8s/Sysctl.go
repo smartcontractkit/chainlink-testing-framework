@@ -1,5 +1,6 @@
 package k8s
 
+
 // Sysctl defines a kernel parameter to be set.
 type Sysctl struct {
 	// Name of a property to set.
@@ -7,3 +8,4 @@ type Sysctl struct {
 	// Value of a property to set.
 	Value *string `field:"required" json:"value" yaml:"value"`
 }
+

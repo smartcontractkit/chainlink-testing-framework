@@ -1,5 +1,6 @@
 package k8s
 
+
 // Variable is the definition of a variable that is used for composition.
 type VariableV1Alpha1 struct {
 	// Expression is the expression that will be evaluated as the value of the variable.
@@ -11,3 +12,4 @@ type VariableV1Alpha1 struct {
 	// The name must be a valid CEL identifier and unique among all variables. The variable can be accessed in other expressions through `variables` For example, if name is "foo", the variable will be available as `variables.foo`
 	Name *string `field:"required" json:"name" yaml:"name"`
 }
+

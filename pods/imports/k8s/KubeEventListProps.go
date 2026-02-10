@@ -1,5 +1,6 @@
 package k8s
 
+
 // EventList is a list of Event objects.
 type KubeEventListProps struct {
 	// items is a list of schema objects.
@@ -9,3 +10,4 @@ type KubeEventListProps struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	Metadata *ListMeta `field:"optional" json:"metadata" yaml:"metadata"`
 }
+

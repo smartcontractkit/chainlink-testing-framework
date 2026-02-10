@@ -1,5 +1,6 @@
 package k8s
 
+
 // DeviceClaim defines how to request devices with a ResourceClaim.
 type DeviceClaimV1Alpha3 struct {
 	// This field holds configuration for multiple potential drivers which could satisfy requests in this claim.
@@ -13,3 +14,4 @@ type DeviceClaimV1Alpha3 struct {
 	// If empty, nothing needs to be allocated.
 	Requests *[]*DeviceRequestV1Alpha3 `field:"optional" json:"requests" yaml:"requests"`
 }
+

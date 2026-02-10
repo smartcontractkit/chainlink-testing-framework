@@ -1,5 +1,6 @@
 package k8s
 
+
 // NetworkPolicyEgressRule describes a particular set of traffic that is allowed out of pods matched by a NetworkPolicySpec's podSelector.
 //
 // The traffic must match both ports and to. This type is beta-level in 1.8
@@ -13,3 +14,4 @@ type NetworkPolicyEgressRule struct {
 	// Items in this list are combined using a logical OR operation. If this field is empty or missing, this rule matches all destinations (traffic not restricted by destination). If this field is present and contains at least one item, this rule allows traffic only if the traffic matches at least one item in the to list.
 	To *[]*NetworkPolicyPeer `field:"optional" json:"to" yaml:"to"`
 }
+

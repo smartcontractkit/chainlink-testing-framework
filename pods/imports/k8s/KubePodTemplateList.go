@@ -122,6 +122,7 @@ func (j *jsiiProxy_KubePodTemplateList) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.core.v1.PodTemplateList" API object.
 func NewKubePodTemplateList(scope constructs.Construct, id *string, props *KubePodTemplateListProps) KubePodTemplateList {
 	_init_.Initialize()
@@ -313,3 +314,4 @@ func (k *jsiiProxy_KubePodTemplateList) ToString() *string {
 
 	return returns
 }
+

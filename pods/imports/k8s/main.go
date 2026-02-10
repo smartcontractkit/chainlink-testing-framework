@@ -25,12 +25,12 @@ func init() {
 		reflect.TypeOf((*AppArmorProfile)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
-		"k8s.ApplyConfigurationV1Alpha1",
-		reflect.TypeOf((*ApplyConfigurationV1Alpha1)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
 		"k8s.AuditAnnotation",
 		reflect.TypeOf((*AuditAnnotation)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.AuditAnnotationV1Alpha1",
+		reflect.TypeOf((*AuditAnnotationV1Alpha1)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.AuditAnnotationV1Beta1",
@@ -57,10 +57,6 @@ func init() {
 		reflect.TypeOf((*BasicDeviceV1Alpha3)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
-		"k8s.BasicDeviceV1Beta1",
-		reflect.TypeOf((*BasicDeviceV1Beta1)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
 		"k8s.BoundObjectReference",
 		reflect.TypeOf((*BoundObjectReference)(nil)).Elem(),
 	)
@@ -71,10 +67,6 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.CelDeviceSelectorV1Alpha3",
 		reflect.TypeOf((*CelDeviceSelectorV1Alpha3)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
-		"k8s.CelDeviceSelectorV1Beta1",
-		reflect.TypeOf((*CelDeviceSelectorV1Beta1)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.CephFsPersistentVolumeSource",
@@ -237,76 +229,36 @@ func init() {
 		reflect.TypeOf((*DeviceAttributeV1Alpha3)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
-		"k8s.DeviceAttributeV1Beta1",
-		reflect.TypeOf((*DeviceAttributeV1Beta1)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
-		"k8s.DeviceCapacityV1Beta1",
-		reflect.TypeOf((*DeviceCapacityV1Beta1)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
 		"k8s.DeviceClaimConfigurationV1Alpha3",
 		reflect.TypeOf((*DeviceClaimConfigurationV1Alpha3)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
-		"k8s.DeviceClaimConfigurationV1Beta1",
-		reflect.TypeOf((*DeviceClaimConfigurationV1Beta1)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.DeviceClaimV1Alpha3",
 		reflect.TypeOf((*DeviceClaimV1Alpha3)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
-		"k8s.DeviceClaimV1Beta1",
-		reflect.TypeOf((*DeviceClaimV1Beta1)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
 		"k8s.DeviceClassConfigurationV1Alpha3",
 		reflect.TypeOf((*DeviceClassConfigurationV1Alpha3)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
-		"k8s.DeviceClassConfigurationV1Beta1",
-		reflect.TypeOf((*DeviceClassConfigurationV1Beta1)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.DeviceClassSpecV1Alpha3",
 		reflect.TypeOf((*DeviceClassSpecV1Alpha3)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
-		"k8s.DeviceClassSpecV1Beta1",
-		reflect.TypeOf((*DeviceClassSpecV1Beta1)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
 		"k8s.DeviceConstraintV1Alpha3",
 		reflect.TypeOf((*DeviceConstraintV1Alpha3)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
-		"k8s.DeviceConstraintV1Beta1",
-		reflect.TypeOf((*DeviceConstraintV1Beta1)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.DeviceRequestV1Alpha3",
 		reflect.TypeOf((*DeviceRequestV1Alpha3)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
-		"k8s.DeviceRequestV1Beta1",
-		reflect.TypeOf((*DeviceRequestV1Beta1)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
 		"k8s.DeviceSelectorV1Alpha3",
 		reflect.TypeOf((*DeviceSelectorV1Alpha3)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
-		"k8s.DeviceSelectorV1Beta1",
-		reflect.TypeOf((*DeviceSelectorV1Beta1)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
 		"k8s.DeviceV1Alpha3",
 		reflect.TypeOf((*DeviceV1Alpha3)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
-		"k8s.DeviceV1Beta1",
-		reflect.TypeOf((*DeviceV1Beta1)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.DownwardApiProjection",
@@ -385,6 +337,10 @@ func init() {
 		reflect.TypeOf((*ExemptPriorityLevelConfiguration)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
+		"k8s.ExemptPriorityLevelConfigurationV1Beta3",
+		reflect.TypeOf((*ExemptPriorityLevelConfigurationV1Beta3)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
 		"k8s.ExternalDocumentation",
 		reflect.TypeOf((*ExternalDocumentation)(nil)).Elem(),
 	)
@@ -421,8 +377,16 @@ func init() {
 		reflect.TypeOf((*FlowDistinguisherMethod)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
+		"k8s.FlowDistinguisherMethodV1Beta3",
+		reflect.TypeOf((*FlowDistinguisherMethodV1Beta3)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
 		"k8s.FlowSchemaSpec",
 		reflect.TypeOf((*FlowSchemaSpec)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.FlowSchemaSpecV1Beta3",
+		reflect.TypeOf((*FlowSchemaSpecV1Beta3)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.ForZone",
@@ -443,6 +407,10 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.GlusterfsVolumeSource",
 		reflect.TypeOf((*GlusterfsVolumeSource)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.GroupSubjectV1Beta3",
+		reflect.TypeOf((*GroupSubjectV1Beta3)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.GroupVersionResourceV1Alpha1",
@@ -568,10 +536,6 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.JobTemplateSpec",
 		reflect.TypeOf((*JobTemplateSpec)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
-		"k8s.JsonPatchV1Alpha1",
-		reflect.TypeOf((*JsonPatchV1Alpha1)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.JsonSchemaProps",
@@ -1414,32 +1378,6 @@ func init() {
 		reflect.TypeOf((*KubeDeviceClassListV1Alpha3Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
-		"k8s.KubeDeviceClassListV1Beta1",
-		reflect.TypeOf((*KubeDeviceClassListV1Beta1)(nil)).Elem(),
-		[]_jsii_.Member{
-			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
-			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
-			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
-			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
-			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
-			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
-			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
-			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
-			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
-			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
-			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
-		},
-		func() interface{} {
-			j := jsiiProxy_KubeDeviceClassListV1Beta1{}
-			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
-			return &j
-		},
-	)
-	_jsii_.RegisterStruct(
-		"k8s.KubeDeviceClassListV1Beta1Props",
-		reflect.TypeOf((*KubeDeviceClassListV1Beta1Props)(nil)).Elem(),
-	)
-	_jsii_.RegisterClass(
 		"k8s.KubeDeviceClassV1Alpha3",
 		reflect.TypeOf((*KubeDeviceClassV1Alpha3)(nil)).Elem(),
 		[]_jsii_.Member{
@@ -1464,32 +1402,6 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.KubeDeviceClassV1Alpha3Props",
 		reflect.TypeOf((*KubeDeviceClassV1Alpha3Props)(nil)).Elem(),
-	)
-	_jsii_.RegisterClass(
-		"k8s.KubeDeviceClassV1Beta1",
-		reflect.TypeOf((*KubeDeviceClassV1Beta1)(nil)).Elem(),
-		[]_jsii_.Member{
-			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
-			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
-			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
-			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
-			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
-			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
-			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
-			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
-			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
-			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
-			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
-		},
-		func() interface{} {
-			j := jsiiProxy_KubeDeviceClassV1Beta1{}
-			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
-			return &j
-		},
-	)
-	_jsii_.RegisterStruct(
-		"k8s.KubeDeviceClassV1Beta1Props",
-		reflect.TypeOf((*KubeDeviceClassV1Beta1Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
 		"k8s.KubeEndpointSlice",
@@ -1721,9 +1633,61 @@ func init() {
 		"k8s.KubeFlowSchemaListProps",
 		reflect.TypeOf((*KubeFlowSchemaListProps)(nil)).Elem(),
 	)
+	_jsii_.RegisterClass(
+		"k8s.KubeFlowSchemaListV1Beta3",
+		reflect.TypeOf((*KubeFlowSchemaListV1Beta3)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubeFlowSchemaListV1Beta3{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubeFlowSchemaListV1Beta3Props",
+		reflect.TypeOf((*KubeFlowSchemaListV1Beta3Props)(nil)).Elem(),
+	)
 	_jsii_.RegisterStruct(
 		"k8s.KubeFlowSchemaProps",
 		reflect.TypeOf((*KubeFlowSchemaProps)(nil)).Elem(),
+	)
+	_jsii_.RegisterClass(
+		"k8s.KubeFlowSchemaV1Beta3",
+		reflect.TypeOf((*KubeFlowSchemaV1Beta3)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubeFlowSchemaV1Beta3{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubeFlowSchemaV1Beta3Props",
+		reflect.TypeOf((*KubeFlowSchemaV1Beta3Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
 		"k8s.KubeHorizontalPodAutoscaler",
@@ -2060,8 +2024,8 @@ func init() {
 		},
 	)
 	_jsii_.RegisterClass(
-		"k8s.KubeLeaseCandidateListV1Alpha2",
-		reflect.TypeOf((*KubeLeaseCandidateListV1Alpha2)(nil)).Elem(),
+		"k8s.KubeLeaseCandidateListV1Alpha1",
+		reflect.TypeOf((*KubeLeaseCandidateListV1Alpha1)(nil)).Elem(),
 		[]_jsii_.Member{
 			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
 			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
@@ -2076,18 +2040,18 @@ func init() {
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
 		},
 		func() interface{} {
-			j := jsiiProxy_KubeLeaseCandidateListV1Alpha2{}
+			j := jsiiProxy_KubeLeaseCandidateListV1Alpha1{}
 			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
 			return &j
 		},
 	)
 	_jsii_.RegisterStruct(
-		"k8s.KubeLeaseCandidateListV1Alpha2Props",
-		reflect.TypeOf((*KubeLeaseCandidateListV1Alpha2Props)(nil)).Elem(),
+		"k8s.KubeLeaseCandidateListV1Alpha1Props",
+		reflect.TypeOf((*KubeLeaseCandidateListV1Alpha1Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
-		"k8s.KubeLeaseCandidateV1Alpha2",
-		reflect.TypeOf((*KubeLeaseCandidateV1Alpha2)(nil)).Elem(),
+		"k8s.KubeLeaseCandidateV1Alpha1",
+		reflect.TypeOf((*KubeLeaseCandidateV1Alpha1)(nil)).Elem(),
 		[]_jsii_.Member{
 			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
 			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
@@ -2102,14 +2066,14 @@ func init() {
 			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
 		},
 		func() interface{} {
-			j := jsiiProxy_KubeLeaseCandidateV1Alpha2{}
+			j := jsiiProxy_KubeLeaseCandidateV1Alpha1{}
 			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
 			return &j
 		},
 	)
 	_jsii_.RegisterStruct(
-		"k8s.KubeLeaseCandidateV1Alpha2Props",
-		reflect.TypeOf((*KubeLeaseCandidateV1Alpha2Props)(nil)).Elem(),
+		"k8s.KubeLeaseCandidateV1Alpha1Props",
+		reflect.TypeOf((*KubeLeaseCandidateV1Alpha1Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
 		"k8s.KubeLeaseList",
@@ -2218,110 +2182,6 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.KubeLocalSubjectAccessReviewProps",
 		reflect.TypeOf((*KubeLocalSubjectAccessReviewProps)(nil)).Elem(),
-	)
-	_jsii_.RegisterClass(
-		"k8s.KubeMutatingAdmissionPolicyBindingListV1Alpha1",
-		reflect.TypeOf((*KubeMutatingAdmissionPolicyBindingListV1Alpha1)(nil)).Elem(),
-		[]_jsii_.Member{
-			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
-			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
-			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
-			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
-			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
-			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
-			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
-			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
-			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
-			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
-			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
-		},
-		func() interface{} {
-			j := jsiiProxy_KubeMutatingAdmissionPolicyBindingListV1Alpha1{}
-			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
-			return &j
-		},
-	)
-	_jsii_.RegisterStruct(
-		"k8s.KubeMutatingAdmissionPolicyBindingListV1Alpha1Props",
-		reflect.TypeOf((*KubeMutatingAdmissionPolicyBindingListV1Alpha1Props)(nil)).Elem(),
-	)
-	_jsii_.RegisterClass(
-		"k8s.KubeMutatingAdmissionPolicyBindingV1Alpha1",
-		reflect.TypeOf((*KubeMutatingAdmissionPolicyBindingV1Alpha1)(nil)).Elem(),
-		[]_jsii_.Member{
-			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
-			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
-			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
-			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
-			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
-			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
-			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
-			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
-			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
-			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
-			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
-		},
-		func() interface{} {
-			j := jsiiProxy_KubeMutatingAdmissionPolicyBindingV1Alpha1{}
-			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
-			return &j
-		},
-	)
-	_jsii_.RegisterStruct(
-		"k8s.KubeMutatingAdmissionPolicyBindingV1Alpha1Props",
-		reflect.TypeOf((*KubeMutatingAdmissionPolicyBindingV1Alpha1Props)(nil)).Elem(),
-	)
-	_jsii_.RegisterClass(
-		"k8s.KubeMutatingAdmissionPolicyListV1Alpha1",
-		reflect.TypeOf((*KubeMutatingAdmissionPolicyListV1Alpha1)(nil)).Elem(),
-		[]_jsii_.Member{
-			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
-			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
-			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
-			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
-			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
-			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
-			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
-			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
-			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
-			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
-			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
-		},
-		func() interface{} {
-			j := jsiiProxy_KubeMutatingAdmissionPolicyListV1Alpha1{}
-			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
-			return &j
-		},
-	)
-	_jsii_.RegisterStruct(
-		"k8s.KubeMutatingAdmissionPolicyListV1Alpha1Props",
-		reflect.TypeOf((*KubeMutatingAdmissionPolicyListV1Alpha1Props)(nil)).Elem(),
-	)
-	_jsii_.RegisterClass(
-		"k8s.KubeMutatingAdmissionPolicyV1Alpha1",
-		reflect.TypeOf((*KubeMutatingAdmissionPolicyV1Alpha1)(nil)).Elem(),
-		[]_jsii_.Member{
-			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
-			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
-			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
-			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
-			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
-			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
-			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
-			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
-			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
-			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
-			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
-		},
-		func() interface{} {
-			j := jsiiProxy_KubeMutatingAdmissionPolicyV1Alpha1{}
-			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
-			return &j
-		},
-	)
-	_jsii_.RegisterStruct(
-		"k8s.KubeMutatingAdmissionPolicyV1Alpha1Props",
-		reflect.TypeOf((*KubeMutatingAdmissionPolicyV1Alpha1Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
 		"k8s.KubeMutatingWebhookConfiguration",
@@ -2740,6 +2600,58 @@ func init() {
 		reflect.TypeOf((*KubePodProps)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
+		"k8s.KubePodSchedulingContextListV1Alpha3",
+		reflect.TypeOf((*KubePodSchedulingContextListV1Alpha3)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubePodSchedulingContextListV1Alpha3{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubePodSchedulingContextListV1Alpha3Props",
+		reflect.TypeOf((*KubePodSchedulingContextListV1Alpha3Props)(nil)).Elem(),
+	)
+	_jsii_.RegisterClass(
+		"k8s.KubePodSchedulingContextV1Alpha3",
+		reflect.TypeOf((*KubePodSchedulingContextV1Alpha3)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubePodSchedulingContextV1Alpha3{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubePodSchedulingContextV1Alpha3Props",
+		reflect.TypeOf((*KubePodSchedulingContextV1Alpha3Props)(nil)).Elem(),
+	)
+	_jsii_.RegisterClass(
 		"k8s.KubePodTemplate",
 		reflect.TypeOf((*KubePodTemplate)(nil)).Elem(),
 		[]_jsii_.Member{
@@ -2891,9 +2803,61 @@ func init() {
 		"k8s.KubePriorityLevelConfigurationListProps",
 		reflect.TypeOf((*KubePriorityLevelConfigurationListProps)(nil)).Elem(),
 	)
+	_jsii_.RegisterClass(
+		"k8s.KubePriorityLevelConfigurationListV1Beta3",
+		reflect.TypeOf((*KubePriorityLevelConfigurationListV1Beta3)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubePriorityLevelConfigurationListV1Beta3{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubePriorityLevelConfigurationListV1Beta3Props",
+		reflect.TypeOf((*KubePriorityLevelConfigurationListV1Beta3Props)(nil)).Elem(),
+	)
 	_jsii_.RegisterStruct(
 		"k8s.KubePriorityLevelConfigurationProps",
 		reflect.TypeOf((*KubePriorityLevelConfigurationProps)(nil)).Elem(),
+	)
+	_jsii_.RegisterClass(
+		"k8s.KubePriorityLevelConfigurationV1Beta3",
+		reflect.TypeOf((*KubePriorityLevelConfigurationV1Beta3)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubePriorityLevelConfigurationV1Beta3{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubePriorityLevelConfigurationV1Beta3Props",
+		reflect.TypeOf((*KubePriorityLevelConfigurationV1Beta3Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
 		"k8s.KubeReplicaSet",
@@ -3026,32 +2990,6 @@ func init() {
 		reflect.TypeOf((*KubeResourceClaimListV1Alpha3Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
-		"k8s.KubeResourceClaimListV1Beta1",
-		reflect.TypeOf((*KubeResourceClaimListV1Beta1)(nil)).Elem(),
-		[]_jsii_.Member{
-			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
-			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
-			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
-			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
-			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
-			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
-			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
-			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
-			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
-			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
-			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
-		},
-		func() interface{} {
-			j := jsiiProxy_KubeResourceClaimListV1Beta1{}
-			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
-			return &j
-		},
-	)
-	_jsii_.RegisterStruct(
-		"k8s.KubeResourceClaimListV1Beta1Props",
-		reflect.TypeOf((*KubeResourceClaimListV1Beta1Props)(nil)).Elem(),
-	)
-	_jsii_.RegisterClass(
 		"k8s.KubeResourceClaimTemplateListV1Alpha3",
 		reflect.TypeOf((*KubeResourceClaimTemplateListV1Alpha3)(nil)).Elem(),
 		[]_jsii_.Member{
@@ -3076,32 +3014,6 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.KubeResourceClaimTemplateListV1Alpha3Props",
 		reflect.TypeOf((*KubeResourceClaimTemplateListV1Alpha3Props)(nil)).Elem(),
-	)
-	_jsii_.RegisterClass(
-		"k8s.KubeResourceClaimTemplateListV1Beta1",
-		reflect.TypeOf((*KubeResourceClaimTemplateListV1Beta1)(nil)).Elem(),
-		[]_jsii_.Member{
-			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
-			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
-			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
-			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
-			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
-			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
-			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
-			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
-			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
-			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
-			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
-		},
-		func() interface{} {
-			j := jsiiProxy_KubeResourceClaimTemplateListV1Beta1{}
-			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
-			return &j
-		},
-	)
-	_jsii_.RegisterStruct(
-		"k8s.KubeResourceClaimTemplateListV1Beta1Props",
-		reflect.TypeOf((*KubeResourceClaimTemplateListV1Beta1Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
 		"k8s.KubeResourceClaimTemplateV1Alpha3",
@@ -3130,32 +3042,6 @@ func init() {
 		reflect.TypeOf((*KubeResourceClaimTemplateV1Alpha3Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
-		"k8s.KubeResourceClaimTemplateV1Beta1",
-		reflect.TypeOf((*KubeResourceClaimTemplateV1Beta1)(nil)).Elem(),
-		[]_jsii_.Member{
-			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
-			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
-			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
-			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
-			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
-			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
-			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
-			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
-			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
-			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
-			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
-		},
-		func() interface{} {
-			j := jsiiProxy_KubeResourceClaimTemplateV1Beta1{}
-			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
-			return &j
-		},
-	)
-	_jsii_.RegisterStruct(
-		"k8s.KubeResourceClaimTemplateV1Beta1Props",
-		reflect.TypeOf((*KubeResourceClaimTemplateV1Beta1Props)(nil)).Elem(),
-	)
-	_jsii_.RegisterClass(
 		"k8s.KubeResourceClaimV1Alpha3",
 		reflect.TypeOf((*KubeResourceClaimV1Alpha3)(nil)).Elem(),
 		[]_jsii_.Member{
@@ -3180,32 +3066,6 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.KubeResourceClaimV1Alpha3Props",
 		reflect.TypeOf((*KubeResourceClaimV1Alpha3Props)(nil)).Elem(),
-	)
-	_jsii_.RegisterClass(
-		"k8s.KubeResourceClaimV1Beta1",
-		reflect.TypeOf((*KubeResourceClaimV1Beta1)(nil)).Elem(),
-		[]_jsii_.Member{
-			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
-			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
-			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
-			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
-			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
-			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
-			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
-			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
-			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
-			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
-			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
-		},
-		func() interface{} {
-			j := jsiiProxy_KubeResourceClaimV1Beta1{}
-			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
-			return &j
-		},
-	)
-	_jsii_.RegisterStruct(
-		"k8s.KubeResourceClaimV1Beta1Props",
-		reflect.TypeOf((*KubeResourceClaimV1Beta1Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
 		"k8s.KubeResourceQuota",
@@ -3260,58 +3120,6 @@ func init() {
 		reflect.TypeOf((*KubeResourceQuotaProps)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
-		"k8s.KubeResourceSliceListV1Alpha3",
-		reflect.TypeOf((*KubeResourceSliceListV1Alpha3)(nil)).Elem(),
-		[]_jsii_.Member{
-			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
-			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
-			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
-			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
-			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
-			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
-			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
-			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
-			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
-			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
-			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
-		},
-		func() interface{} {
-			j := jsiiProxy_KubeResourceSliceListV1Alpha3{}
-			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
-			return &j
-		},
-	)
-	_jsii_.RegisterStruct(
-		"k8s.KubeResourceSliceListV1Alpha3Props",
-		reflect.TypeOf((*KubeResourceSliceListV1Alpha3Props)(nil)).Elem(),
-	)
-	_jsii_.RegisterClass(
-		"k8s.KubeResourceSliceListV1Beta1",
-		reflect.TypeOf((*KubeResourceSliceListV1Beta1)(nil)).Elem(),
-		[]_jsii_.Member{
-			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
-			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
-			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
-			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
-			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
-			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
-			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
-			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
-			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
-			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
-			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
-		},
-		func() interface{} {
-			j := jsiiProxy_KubeResourceSliceListV1Beta1{}
-			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
-			return &j
-		},
-	)
-	_jsii_.RegisterStruct(
-		"k8s.KubeResourceSliceListV1Beta1Props",
-		reflect.TypeOf((*KubeResourceSliceListV1Beta1Props)(nil)).Elem(),
-	)
-	_jsii_.RegisterClass(
 		"k8s.KubeResourceSliceV1Alpha3",
 		reflect.TypeOf((*KubeResourceSliceV1Alpha3)(nil)).Elem(),
 		[]_jsii_.Member{
@@ -3336,32 +3144,6 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.KubeResourceSliceV1Alpha3Props",
 		reflect.TypeOf((*KubeResourceSliceV1Alpha3Props)(nil)).Elem(),
-	)
-	_jsii_.RegisterClass(
-		"k8s.KubeResourceSliceV1Beta1",
-		reflect.TypeOf((*KubeResourceSliceV1Beta1)(nil)).Elem(),
-		[]_jsii_.Member{
-			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
-			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
-			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
-			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
-			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
-			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
-			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
-			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
-			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
-			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
-			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
-		},
-		func() interface{} {
-			j := jsiiProxy_KubeResourceSliceV1Beta1{}
-			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
-			return &j
-		},
-	)
-	_jsii_.RegisterStruct(
-		"k8s.KubeResourceSliceV1Beta1Props",
-		reflect.TypeOf((*KubeResourceSliceV1Beta1Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
 		"k8s.KubeRole",
@@ -3648,6 +3430,32 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.KubeSelfSubjectReviewProps",
 		reflect.TypeOf((*KubeSelfSubjectReviewProps)(nil)).Elem(),
+	)
+	_jsii_.RegisterClass(
+		"k8s.KubeSelfSubjectReviewV1Alpha1",
+		reflect.TypeOf((*KubeSelfSubjectReviewV1Alpha1)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubeSelfSubjectReviewV1Alpha1{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubeSelfSubjectReviewV1Alpha1Props",
+		reflect.TypeOf((*KubeSelfSubjectReviewV1Alpha1Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
 		"k8s.KubeSelfSubjectReviewV1Beta1",
@@ -4240,6 +4048,32 @@ func init() {
 		reflect.TypeOf((*KubeValidatingAdmissionPolicyBindingListProps)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
+		"k8s.KubeValidatingAdmissionPolicyBindingListV1Alpha1",
+		reflect.TypeOf((*KubeValidatingAdmissionPolicyBindingListV1Alpha1)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubeValidatingAdmissionPolicyBindingListV1Alpha1{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubeValidatingAdmissionPolicyBindingListV1Alpha1Props",
+		reflect.TypeOf((*KubeValidatingAdmissionPolicyBindingListV1Alpha1Props)(nil)).Elem(),
+	)
+	_jsii_.RegisterClass(
 		"k8s.KubeValidatingAdmissionPolicyBindingListV1Beta1",
 		reflect.TypeOf((*KubeValidatingAdmissionPolicyBindingListV1Beta1)(nil)).Elem(),
 		[]_jsii_.Member{
@@ -4268,6 +4102,32 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.KubeValidatingAdmissionPolicyBindingProps",
 		reflect.TypeOf((*KubeValidatingAdmissionPolicyBindingProps)(nil)).Elem(),
+	)
+	_jsii_.RegisterClass(
+		"k8s.KubeValidatingAdmissionPolicyBindingV1Alpha1",
+		reflect.TypeOf((*KubeValidatingAdmissionPolicyBindingV1Alpha1)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubeValidatingAdmissionPolicyBindingV1Alpha1{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubeValidatingAdmissionPolicyBindingV1Alpha1Props",
+		reflect.TypeOf((*KubeValidatingAdmissionPolicyBindingV1Alpha1Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
 		"k8s.KubeValidatingAdmissionPolicyBindingV1Beta1",
@@ -4322,6 +4182,32 @@ func init() {
 		reflect.TypeOf((*KubeValidatingAdmissionPolicyListProps)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
+		"k8s.KubeValidatingAdmissionPolicyListV1Alpha1",
+		reflect.TypeOf((*KubeValidatingAdmissionPolicyListV1Alpha1)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubeValidatingAdmissionPolicyListV1Alpha1{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubeValidatingAdmissionPolicyListV1Alpha1Props",
+		reflect.TypeOf((*KubeValidatingAdmissionPolicyListV1Alpha1Props)(nil)).Elem(),
+	)
+	_jsii_.RegisterClass(
 		"k8s.KubeValidatingAdmissionPolicyListV1Beta1",
 		reflect.TypeOf((*KubeValidatingAdmissionPolicyListV1Beta1)(nil)).Elem(),
 		[]_jsii_.Member{
@@ -4350,6 +4236,32 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.KubeValidatingAdmissionPolicyProps",
 		reflect.TypeOf((*KubeValidatingAdmissionPolicyProps)(nil)).Elem(),
+	)
+	_jsii_.RegisterClass(
+		"k8s.KubeValidatingAdmissionPolicyV1Alpha1",
+		reflect.TypeOf((*KubeValidatingAdmissionPolicyV1Alpha1)(nil)).Elem(),
+		[]_jsii_.Member{
+			_jsii_.MemberMethod{JsiiMethod: "addDependency", GoMethod: "AddDependency"},
+			_jsii_.MemberMethod{JsiiMethod: "addJsonPatch", GoMethod: "AddJsonPatch"},
+			_jsii_.MemberProperty{JsiiProperty: "apiGroup", GoGetter: "ApiGroup"},
+			_jsii_.MemberProperty{JsiiProperty: "apiVersion", GoGetter: "ApiVersion"},
+			_jsii_.MemberProperty{JsiiProperty: "chart", GoGetter: "Chart"},
+			_jsii_.MemberProperty{JsiiProperty: "kind", GoGetter: "Kind"},
+			_jsii_.MemberProperty{JsiiProperty: "metadata", GoGetter: "Metadata"},
+			_jsii_.MemberProperty{JsiiProperty: "name", GoGetter: "Name"},
+			_jsii_.MemberProperty{JsiiProperty: "node", GoGetter: "Node"},
+			_jsii_.MemberMethod{JsiiMethod: "toJson", GoMethod: "ToJson"},
+			_jsii_.MemberMethod{JsiiMethod: "toString", GoMethod: "ToString"},
+		},
+		func() interface{} {
+			j := jsiiProxy_KubeValidatingAdmissionPolicyV1Alpha1{}
+			_jsii_.InitJsiiProxy(&j.Type__cdk8sApiObject)
+			return &j
+		},
+	)
+	_jsii_.RegisterStruct(
+		"k8s.KubeValidatingAdmissionPolicyV1Alpha1Props",
+		reflect.TypeOf((*KubeValidatingAdmissionPolicyV1Alpha1Props)(nil)).Elem(),
 	)
 	_jsii_.RegisterClass(
 		"k8s.KubeValidatingAdmissionPolicyV1Beta1",
@@ -4598,8 +4510,8 @@ func init() {
 		reflect.TypeOf((*LabelSelectorRequirement)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
-		"k8s.LeaseCandidateSpecV1Alpha2",
-		reflect.TypeOf((*LeaseCandidateSpecV1Alpha2)(nil)).Elem(),
+		"k8s.LeaseCandidateSpecV1Alpha1",
+		reflect.TypeOf((*LeaseCandidateSpecV1Alpha1)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.LeaseSpec",
@@ -4626,8 +4538,16 @@ func init() {
 		reflect.TypeOf((*LimitResponse)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
+		"k8s.LimitResponseV1Beta3",
+		reflect.TypeOf((*LimitResponseV1Beta3)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
 		"k8s.LimitedPriorityLevelConfiguration",
 		reflect.TypeOf((*LimitedPriorityLevelConfiguration)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.LimitedPriorityLevelConfigurationV1Beta3",
+		reflect.TypeOf((*LimitedPriorityLevelConfigurationV1Beta3)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.ListMeta",
@@ -4682,20 +4602,8 @@ func init() {
 		reflect.TypeOf((*MetricTargetV2)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
-		"k8s.MutatingAdmissionPolicyBindingSpecV1Alpha1",
-		reflect.TypeOf((*MutatingAdmissionPolicyBindingSpecV1Alpha1)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
-		"k8s.MutatingAdmissionPolicySpecV1Alpha1",
-		reflect.TypeOf((*MutatingAdmissionPolicySpecV1Alpha1)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
 		"k8s.MutatingWebhook",
 		reflect.TypeOf((*MutatingWebhook)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
-		"k8s.MutationV1Alpha1",
-		reflect.TypeOf((*MutationV1Alpha1)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.NamedRuleWithOperations",
@@ -4770,6 +4678,10 @@ func init() {
 		reflect.TypeOf((*NonResourcePolicyRule)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
+		"k8s.NonResourcePolicyRuleV1Beta3",
+		reflect.TypeOf((*NonResourcePolicyRuleV1Beta3)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
 		"k8s.ObjectFieldSelector",
 		reflect.TypeOf((*ObjectFieldSelector)(nil)).Elem(),
 	)
@@ -4788,10 +4700,6 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.OpaqueDeviceConfigurationV1Alpha3",
 		reflect.TypeOf((*OpaqueDeviceConfigurationV1Alpha3)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
-		"k8s.OpaqueDeviceConfigurationV1Beta1",
-		reflect.TypeOf((*OpaqueDeviceConfigurationV1Beta1)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.Overhead",
@@ -4902,6 +4810,10 @@ func init() {
 		reflect.TypeOf((*PodResourceClaim)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
+		"k8s.PodSchedulingContextSpecV1Alpha3",
+		reflect.TypeOf((*PodSchedulingContextSpecV1Alpha3)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
 		"k8s.PodSchedulingGate",
 		reflect.TypeOf((*PodSchedulingGate)(nil)).Elem(),
 	)
@@ -4930,6 +4842,10 @@ func init() {
 		reflect.TypeOf((*PolicyRulesWithSubjects)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
+		"k8s.PolicyRulesWithSubjectsV1Beta3",
+		reflect.TypeOf((*PolicyRulesWithSubjectsV1Beta3)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
 		"k8s.PortworxVolumeSource",
 		reflect.TypeOf((*PortworxVolumeSource)(nil)).Elem(),
 	)
@@ -4946,8 +4862,16 @@ func init() {
 		reflect.TypeOf((*PriorityLevelConfigurationReference)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
+		"k8s.PriorityLevelConfigurationReferenceV1Beta3",
+		reflect.TypeOf((*PriorityLevelConfigurationReferenceV1Beta3)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
 		"k8s.PriorityLevelConfigurationSpec",
 		reflect.TypeOf((*PriorityLevelConfigurationSpec)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.PriorityLevelConfigurationSpecV1Beta3",
+		reflect.TypeOf((*PriorityLevelConfigurationSpecV1Beta3)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.Probe",
@@ -4970,6 +4894,10 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.QueuingConfiguration",
 		reflect.TypeOf((*QueuingConfiguration)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.QueuingConfigurationV1Beta3",
+		reflect.TypeOf((*QueuingConfigurationV1Beta3)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.QuobyteVolumeSource",
@@ -5004,16 +4932,8 @@ func init() {
 		reflect.TypeOf((*ResourceClaimSpecV1Alpha3)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
-		"k8s.ResourceClaimSpecV1Beta1",
-		reflect.TypeOf((*ResourceClaimSpecV1Beta1)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
 		"k8s.ResourceClaimTemplateSpecV1Alpha3",
 		reflect.TypeOf((*ResourceClaimTemplateSpecV1Alpha3)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
-		"k8s.ResourceClaimTemplateSpecV1Beta1",
-		reflect.TypeOf((*ResourceClaimTemplateSpecV1Beta1)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.ResourceFieldSelector",
@@ -5028,12 +4948,12 @@ func init() {
 		reflect.TypeOf((*ResourcePolicyRule)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
-		"k8s.ResourcePoolV1Alpha3",
-		reflect.TypeOf((*ResourcePoolV1Alpha3)(nil)).Elem(),
+		"k8s.ResourcePolicyRuleV1Beta3",
+		reflect.TypeOf((*ResourcePolicyRuleV1Beta3)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
-		"k8s.ResourcePoolV1Beta1",
-		reflect.TypeOf((*ResourcePoolV1Beta1)(nil)).Elem(),
+		"k8s.ResourcePoolV1Alpha3",
+		reflect.TypeOf((*ResourcePoolV1Alpha3)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.ResourceQuotaSpec",
@@ -5046,10 +4966,6 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.ResourceSliceSpecV1Alpha3",
 		reflect.TypeOf((*ResourceSliceSpecV1Alpha3)(nil)).Elem(),
-	)
-	_jsii_.RegisterStruct(
-		"k8s.ResourceSliceSpecV1Beta1",
-		reflect.TypeOf((*ResourceSliceSpecV1Beta1)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.RoleRef",
@@ -5140,6 +5056,10 @@ func init() {
 		reflect.TypeOf((*SelfSubjectRulesReviewSpec)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
+		"k8s.ServiceAccountSubjectV1Beta3",
+		reflect.TypeOf((*ServiceAccountSubjectV1Beta3)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
 		"k8s.ServiceAccountTokenProjection",
 		reflect.TypeOf((*ServiceAccountTokenProjection)(nil)).Elem(),
 	)
@@ -5216,6 +5136,10 @@ func init() {
 		reflect.TypeOf((*SubjectAccessReviewSpec)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
+		"k8s.SubjectV1Beta3",
+		reflect.TypeOf((*SubjectV1Beta3)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
 		"k8s.SuccessPolicy",
 		reflect.TypeOf((*SuccessPolicy)(nil)).Elem(),
 	)
@@ -5272,8 +5196,16 @@ func init() {
 		reflect.TypeOf((*TypedObjectReference)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
+		"k8s.UserSubjectV1Beta3",
+		reflect.TypeOf((*UserSubjectV1Beta3)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
 		"k8s.ValidatingAdmissionPolicyBindingSpec",
 		reflect.TypeOf((*ValidatingAdmissionPolicyBindingSpec)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.ValidatingAdmissionPolicyBindingSpecV1Alpha1",
+		reflect.TypeOf((*ValidatingAdmissionPolicyBindingSpecV1Alpha1)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.ValidatingAdmissionPolicyBindingSpecV1Beta1",
@@ -5282,6 +5214,10 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.ValidatingAdmissionPolicySpec",
 		reflect.TypeOf((*ValidatingAdmissionPolicySpec)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.ValidatingAdmissionPolicySpecV1Alpha1",
+		reflect.TypeOf((*ValidatingAdmissionPolicySpecV1Alpha1)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.ValidatingAdmissionPolicySpecV1Beta1",
@@ -5298,6 +5234,10 @@ func init() {
 	_jsii_.RegisterStruct(
 		"k8s.ValidationRule",
 		reflect.TypeOf((*ValidationRule)(nil)).Elem(),
+	)
+	_jsii_.RegisterStruct(
+		"k8s.ValidationV1Alpha1",
+		reflect.TypeOf((*ValidationV1Alpha1)(nil)).Elem(),
 	)
 	_jsii_.RegisterStruct(
 		"k8s.ValidationV1Beta1",

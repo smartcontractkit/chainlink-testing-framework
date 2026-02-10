@@ -1,5 +1,6 @@
 package k8s
 
+
 // SecretEnvSource selects a Secret to populate the environment variables with.
 //
 // The contents of the target Secret's Data field will represent the key-value pairs as environment variables.
@@ -11,3 +12,4 @@ type SecretEnvSource struct {
 	// Specify whether the Secret must be defined.
 	Optional *bool `field:"optional" json:"optional" yaml:"optional"`
 }
+

@@ -11,7 +11,7 @@ import (
 
 // Binding ties one object to another;
 //
-// for example, a pod is bound to a node by a scheduler.
+// for example, a pod is bound to a node by a scheduler. Deprecated in 1.7, please use the bindings subresource of pods instead.
 type KubeBinding interface {
 	cdk8s.ApiObject
 	// The group portion of the API version (e.g. `authorization.k8s.io`).
@@ -123,6 +123,7 @@ func (j *jsiiProxy_KubeBinding) Node() constructs.Node {
 	)
 	return returns
 }
+
 
 // Defines a "io.k8s.api.core.v1.Binding" API object.
 func NewKubeBinding(scope constructs.Construct, id *string, props *KubeBindingProps) KubeBinding {
@@ -315,3 +316,4 @@ func (k *jsiiProxy_KubeBinding) ToString() *string {
 
 	return returns
 }
+

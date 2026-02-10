@@ -124,6 +124,7 @@ func (j *jsiiProxy_KubeVolumeAttachment) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.storage.v1.VolumeAttachment" API object.
 func NewKubeVolumeAttachment(scope constructs.Construct, id *string, props *KubeVolumeAttachmentProps) KubeVolumeAttachment {
 	_init_.Initialize()
@@ -315,3 +316,4 @@ func (k *jsiiProxy_KubeVolumeAttachment) ToString() *string {
 
 	return returns
 }
+

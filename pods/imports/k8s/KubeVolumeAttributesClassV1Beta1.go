@@ -124,6 +124,7 @@ func (j *jsiiProxy_KubeVolumeAttributesClassV1Beta1) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.storage.v1beta1.VolumeAttributesClass" API object.
 func NewKubeVolumeAttributesClassV1Beta1(scope constructs.Construct, id *string, props *KubeVolumeAttributesClassV1Beta1Props) KubeVolumeAttributesClassV1Beta1 {
 	_init_.Initialize()
@@ -315,3 +316,4 @@ func (k *jsiiProxy_KubeVolumeAttributesClassV1Beta1) ToString() *string {
 
 	return returns
 }
+

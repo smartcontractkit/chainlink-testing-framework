@@ -23,3 +23,4 @@ func validateKubeReplicaSet_OfParameters(c constructs.IConstruct) error {
 func validateNewKubeReplicaSetParameters(scope constructs.Construct, id *string, props *KubeReplicaSetProps) error {
 	return nil
 }
+

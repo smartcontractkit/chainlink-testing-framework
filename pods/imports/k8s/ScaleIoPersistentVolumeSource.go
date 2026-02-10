@@ -1,5 +1,6 @@
 package k8s
 
+
 // ScaleIOPersistentVolumeSource represents a persistent ScaleIO volume.
 type ScaleIoPersistentVolumeSource struct {
 	// gateway is the host address of the ScaleIO API Gateway.
@@ -35,3 +36,4 @@ type ScaleIoPersistentVolumeSource struct {
 	// volumeName is the name of a volume already created in the ScaleIO system that is associated with this volume source.
 	VolumeName *string `field:"optional" json:"volumeName" yaml:"volumeName"`
 }
+

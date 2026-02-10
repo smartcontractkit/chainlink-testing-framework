@@ -1,5 +1,6 @@
 package k8s
 
+
 // ImageVolumeSource represents a image volume resource.
 type ImageVolumeSource struct {
 	// Policy for pulling OCI objects.
@@ -13,3 +14,4 @@ type ImageVolumeSource struct {
 	// Behaves in the same way as pod.spec.containers[*].image. Pull secrets will be assembled in the same way as for the container image by looking up node credentials, SA image pull secrets, and pod spec image pull secrets. More info: https://kubernetes.io/docs/concepts/containers/images This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets.
 	Reference *string `field:"optional" json:"reference" yaml:"reference"`
 }
+

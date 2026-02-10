@@ -23,3 +23,4 @@ func validateKubeSecret_OfParameters(c constructs.IConstruct) error {
 func validateNewKubeSecretParameters(scope constructs.Construct, id *string, props *KubeSecretProps) error {
 	return nil
 }
+

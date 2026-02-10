@@ -63,3 +63,4 @@ func validateNewKubeStorageVersionMigrationListV1Alpha1Parameters(scope construc
 
 	return nil
 }
+

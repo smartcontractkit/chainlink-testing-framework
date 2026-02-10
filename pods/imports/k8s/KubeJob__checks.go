@@ -57,3 +57,4 @@ func validateNewKubeJobParameters(scope constructs.Construct, id *string, props 
 
 	return nil
 }
+

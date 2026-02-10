@@ -1,5 +1,6 @@
 package k8s
 
+
 // PodDNSConfig defines the DNS parameters of a pod in addition to those generated from DNSPolicy.
 type PodDnsConfig struct {
 	// A list of DNS name server IP addresses.
@@ -15,3 +16,4 @@ type PodDnsConfig struct {
 	// This will be appended to the base search paths generated from DNSPolicy. Duplicated search paths will be removed.
 	Searches *[]*string `field:"optional" json:"searches" yaml:"searches"`
 }
+

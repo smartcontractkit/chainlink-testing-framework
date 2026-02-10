@@ -1,5 +1,6 @@
 package k8s
 
+
 // NamedRuleWithOperations is a tuple of Operations and Resources with ResourceNames.
 type NamedRuleWithOperationsV1Beta1 struct {
 	// APIGroups is the API groups the resources belong to.
@@ -33,3 +34,4 @@ type NamedRuleWithOperationsV1Beta1 struct {
 	//
 	Scope *string `field:"optional" json:"scope" yaml:"scope"`
 }
+

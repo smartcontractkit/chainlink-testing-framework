@@ -1,5 +1,6 @@
 package k8s
 
+
 // DeploymentSpec is the specification of the desired behavior of the Deployment.
 type DeploymentSpec struct {
 	// Label selector for pods.
@@ -39,3 +40,4 @@ type DeploymentSpec struct {
 	// The deployment strategy to use to replace existing pods with new ones.
 	Strategy *DeploymentStrategy `field:"optional" json:"strategy" yaml:"strategy"`
 }
+

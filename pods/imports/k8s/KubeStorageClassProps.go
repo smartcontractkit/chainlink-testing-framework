@@ -1,5 +1,6 @@
 package k8s
 
+
 // StorageClass describes the parameters for a class of storage for which PersistentVolumes can be dynamically provisioned.
 //
 // StorageClasses are non-namespaced; the name of the storage class according to etcd is in ObjectMeta.Name.
@@ -33,3 +34,4 @@ type KubeStorageClassProps struct {
 	// When unset, VolumeBindingImmediate is used. This field is only honored by servers that enable the VolumeScheduling feature.
 	VolumeBindingMode *string `field:"optional" json:"volumeBindingMode" yaml:"volumeBindingMode"`
 }
+

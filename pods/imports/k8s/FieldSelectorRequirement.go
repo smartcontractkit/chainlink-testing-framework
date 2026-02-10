@@ -1,5 +1,6 @@
 package k8s
 
+
 // FieldSelectorRequirement is a selector that contains values, a key, and an operator that relates the key and values.
 type FieldSelectorRequirement struct {
 	// key is the field selector key that the requirement applies to.
@@ -13,3 +14,4 @@ type FieldSelectorRequirement struct {
 	// If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty.
 	Values *[]*string `field:"optional" json:"values" yaml:"values"`
 }
+

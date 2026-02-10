@@ -1,5 +1,6 @@
 package k8s
 
+
 // ValidationRule describes a validation rule written in the CEL expression language.
 type ValidationRule struct {
 	// Rule represents the expression which will be evaluated by CEL.
@@ -63,3 +64,4 @@ type ValidationRule struct {
 	// The HTTP status code returned to the caller will match the reason of the reason of the first failed validation rule. The currently supported reasons are: "FieldValueInvalid", "FieldValueForbidden", "FieldValueRequired", "FieldValueDuplicate". If not set, default to use "FieldValueInvalid". All future added reasons must be accepted by clients when reading this value and unknown reasons should be treated as FieldValueInvalid.
 	Reason *string `field:"optional" json:"reason" yaml:"reason"`
 }
+

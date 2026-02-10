@@ -1,5 +1,6 @@
 package k8s
 
+
 // Represents a vSphere volume resource.
 type VsphereVirtualDiskVolumeSource struct {
 	// volumePath is the path that identifies vSphere volume vmdk.
@@ -13,3 +14,4 @@ type VsphereVirtualDiskVolumeSource struct {
 	// storagePolicyName is the storage Policy Based Management (SPBM) profile name.
 	StoragePolicyName *string `field:"optional" json:"storagePolicyName" yaml:"storagePolicyName"`
 }
+

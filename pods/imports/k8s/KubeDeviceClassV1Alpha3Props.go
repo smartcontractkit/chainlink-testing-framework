@@ -1,5 +1,6 @@
 package k8s
 
+
 // DeviceClass is a vendor- or admin-provided resource that contains device configuration and selectors.
 //
 // It can be referenced in the device requests of a claim to apply these presets. Cluster scoped.
@@ -15,3 +16,4 @@ type KubeDeviceClassV1Alpha3Props struct {
 	// Standard object metadata.
 	Metadata *ObjectMeta `field:"optional" json:"metadata" yaml:"metadata"`
 }
+

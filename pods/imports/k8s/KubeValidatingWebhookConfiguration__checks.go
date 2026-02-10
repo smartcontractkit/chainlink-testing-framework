@@ -57,3 +57,4 @@ func validateNewKubeValidatingWebhookConfigurationParameters(scope constructs.Co
 
 	return nil
 }
+

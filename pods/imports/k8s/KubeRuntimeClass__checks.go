@@ -63,3 +63,4 @@ func validateNewKubeRuntimeClassParameters(scope constructs.Construct, id *strin
 
 	return nil
 }
+

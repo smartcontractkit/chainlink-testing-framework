@@ -1,5 +1,6 @@
 package k8s
 
+
 // JobTemplateSpec describes the data a Job should have when created from a template.
 type JobTemplateSpec struct {
 	// Standard object's metadata of the jobs created from this template.
@@ -11,3 +12,4 @@ type JobTemplateSpec struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	Spec *JobSpec `field:"optional" json:"spec" yaml:"spec"`
 }
+

@@ -11,3 +11,4 @@ func validateIntOrString_FromNumberParameters(value *float64) error {
 func validateIntOrString_FromStringParameters(value *string) error {
 	return nil
 }
+

@@ -124,6 +124,7 @@ func (j *jsiiProxy_KubeStorageClass) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.storage.v1.StorageClass" API object.
 func NewKubeStorageClass(scope constructs.Construct, id *string, props *KubeStorageClassProps) KubeStorageClass {
 	_init_.Initialize()
@@ -315,3 +316,4 @@ func (k *jsiiProxy_KubeStorageClass) ToString() *string {
 
 	return returns
 }
+

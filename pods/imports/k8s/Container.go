@@ -1,5 +1,6 @@
 package k8s
 
+
 // A single application container that you want to run within a pod.
 type Container struct {
 	// Name of the container specified as a DNS_LABEL.
@@ -107,3 +108,4 @@ type Container struct {
 	// If not specified, the container runtime's default will be used, which might be configured in the container image. Cannot be updated.
 	WorkingDir *string `field:"optional" json:"workingDir" yaml:"workingDir"`
 }
+

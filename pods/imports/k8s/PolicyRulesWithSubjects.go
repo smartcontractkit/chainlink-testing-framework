@@ -1,5 +1,6 @@
 package k8s
 
+
 // PolicyRulesWithSubjects prescribes a test that applies to a request to an apiserver.
 //
 // The test considers the subject making the request, the verb being requested, and the resource to be acted upon. This PolicyRulesWithSubjects matches a request if and only if both (a) at least one member of subjects matches the request and (b) at least one member of resourceRules or nonResourceRules matches the request.
@@ -15,3 +16,4 @@ type PolicyRulesWithSubjects struct {
 	// At least one of `resourceRules` and `nonResourceRules` has to be non-empty.
 	ResourceRules *[]*ResourcePolicyRule `field:"optional" json:"resourceRules" yaml:"resourceRules"`
 }
+

@@ -1,5 +1,6 @@
 package k8s
 
+
 // ResourceAttributes includes the authorization attributes available for resource requests to the Authorizer interface.
 type ResourceAttributes struct {
 	// fieldSelector describes the limitation on access based on field.  It can only limit access, not broaden it.
@@ -39,3 +40,4 @@ type ResourceAttributes struct {
 	// "*" means all.
 	Version *string `field:"optional" json:"version" yaml:"version"`
 }
+

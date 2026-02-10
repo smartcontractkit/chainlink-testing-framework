@@ -122,6 +122,7 @@ func (j *jsiiProxy_KubeScale) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.autoscaling.v1.Scale" API object.
 func NewKubeScale(scope constructs.Construct, id *string, props *KubeScaleProps) KubeScale {
 	_init_.Initialize()
@@ -313,3 +314,4 @@ func (k *jsiiProxy_KubeScale) ToString() *string {
 
 	return returns
 }
+

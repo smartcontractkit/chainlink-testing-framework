@@ -126,6 +126,7 @@ func (j *jsiiProxy_KubeClusterTrustBundleV1Alpha1) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.certificates.v1alpha1.ClusterTrustBundle" API object.
 func NewKubeClusterTrustBundleV1Alpha1(scope constructs.Construct, id *string, props *KubeClusterTrustBundleV1Alpha1Props) KubeClusterTrustBundleV1Alpha1 {
 	_init_.Initialize()
@@ -317,3 +318,4 @@ func (k *jsiiProxy_KubeClusterTrustBundleV1Alpha1) ToString() *string {
 
 	return returns
 }
+

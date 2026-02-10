@@ -1,5 +1,6 @@
 package k8s
 
+
 // ResourceSliceSpec contains the information published by the driver in one ResourceSlice.
 type ResourceSliceSpecV1Alpha3 struct {
 	// Driver identifies the DRA driver providing the capacity information.
@@ -33,3 +34,4 @@ type ResourceSliceSpecV1Alpha3 struct {
 	// Exactly one of NodeName, NodeSelector and AllNodes must be set.
 	NodeSelector *NodeSelector `field:"optional" json:"nodeSelector" yaml:"nodeSelector"`
 }
+

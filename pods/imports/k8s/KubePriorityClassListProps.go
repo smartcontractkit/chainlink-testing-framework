@@ -1,5 +1,6 @@
 package k8s
 
+
 // PriorityClassList is a collection of priority classes.
 type KubePriorityClassListProps struct {
 	// items is the list of PriorityClasses.
@@ -7,3 +8,4 @@ type KubePriorityClassListProps struct {
 	// Standard list metadata More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata.
 	Metadata *ListMeta `field:"optional" json:"metadata" yaml:"metadata"`
 }
+

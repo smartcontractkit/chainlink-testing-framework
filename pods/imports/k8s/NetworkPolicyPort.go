@@ -1,5 +1,6 @@
 package k8s
 
+
 // NetworkPolicyPort describes a port to allow traffic on.
 type NetworkPolicyPort struct {
 	// endPort indicates that the range of ports from port to endPort if set, inclusive, should be allowed by the policy.
@@ -15,3 +16,4 @@ type NetworkPolicyPort struct {
 	// If not specified, this field defaults to TCP.
 	Protocol *string `field:"optional" json:"protocol" yaml:"protocol"`
 }
+

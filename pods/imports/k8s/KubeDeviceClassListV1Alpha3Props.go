@@ -1,5 +1,6 @@
 package k8s
 
+
 // DeviceClassList is a collection of classes.
 type KubeDeviceClassListV1Alpha3Props struct {
 	// Items is the list of resource classes.
@@ -7,3 +8,4 @@ type KubeDeviceClassListV1Alpha3Props struct {
 	// Standard list metadata.
 	Metadata *ListMeta `field:"optional" json:"metadata" yaml:"metadata"`
 }
+

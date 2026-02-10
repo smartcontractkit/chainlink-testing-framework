@@ -1,5 +1,6 @@
 package k8s
 
+
 // The pod this Toleration is attached to tolerates any taint that matches the triple <key,value,effect> using the matching operator <operator>.
 type Toleration struct {
 	// Effect indicates the taint effect to match.
@@ -25,3 +26,4 @@ type Toleration struct {
 	// If the operator is Exists, the value should be empty, otherwise just a regular string.
 	Value *string `field:"optional" json:"value" yaml:"value"`
 }
+

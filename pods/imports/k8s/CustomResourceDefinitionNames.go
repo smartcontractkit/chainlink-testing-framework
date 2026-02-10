@@ -1,5 +1,6 @@
 package k8s
 
+
 // CustomResourceDefinitionNames indicates the names to serve this CustomResourceDefinition.
 type CustomResourceDefinitionNames struct {
 	// kind is the serialized kind of the resource.
@@ -29,3 +30,4 @@ type CustomResourceDefinitionNames struct {
 	//
 	Singular *string `field:"optional" json:"singular" yaml:"singular"`
 }
+

@@ -1,5 +1,6 @@
 package k8s
 
+
 // Namespace provides a scope for Names.
 //
 // Use of multiple namespaces is optional.
@@ -13,3 +14,4 @@ type KubeNamespaceProps struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	Spec *NamespaceSpec `field:"optional" json:"spec" yaml:"spec"`
 }
+

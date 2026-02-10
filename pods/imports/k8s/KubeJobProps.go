@@ -1,5 +1,6 @@
 package k8s
 
+
 // Job represents the configuration of a single job.
 type KubeJobProps struct {
 	// Standard object's metadata.
@@ -11,3 +12,4 @@ type KubeJobProps struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	Spec *JobSpec `field:"optional" json:"spec" yaml:"spec"`
 }
+

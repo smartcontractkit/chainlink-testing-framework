@@ -1,5 +1,6 @@
 package k8s
 
+
 // FlexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
 type FlexVolumeSource struct {
 	// driver is the name of the driver to use for this volume.
@@ -19,3 +20,4 @@ type FlexVolumeSource struct {
 	// This may be empty if no secret object is specified. If the secret object contains more than one secret, all secrets are passed to the plugin scripts.
 	SecretRef *LocalObjectReference `field:"optional" json:"secretRef" yaml:"secretRef"`
 }
+

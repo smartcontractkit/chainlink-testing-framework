@@ -1,5 +1,6 @@
 package k8s
 
+
 // EndpointConditions represents the current condition of an endpoint.
 type EndpointConditions struct {
 	// ready indicates that this endpoint is prepared to receive traffic, according to whatever system is managing the endpoint.
@@ -15,3 +16,4 @@ type EndpointConditions struct {
 	// A nil value indicates an unknown state. Consumers should interpret this unknown state to mean that the endpoint is not terminating.
 	Terminating *bool `field:"optional" json:"terminating" yaml:"terminating"`
 }
+

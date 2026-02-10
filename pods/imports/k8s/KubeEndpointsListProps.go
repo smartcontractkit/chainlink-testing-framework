@@ -1,5 +1,6 @@
 package k8s
 
+
 // EndpointsList is a list of endpoints.
 type KubeEndpointsListProps struct {
 	// List of endpoints.
@@ -9,3 +10,4 @@ type KubeEndpointsListProps struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
 	Metadata *ListMeta `field:"optional" json:"metadata" yaml:"metadata"`
 }
+

@@ -23,3 +23,4 @@ func validateKubeJob_OfParameters(c constructs.IConstruct) error {
 func validateNewKubeJobParameters(scope constructs.Construct, id *string, props *KubeJobProps) error {
 	return nil
 }
+

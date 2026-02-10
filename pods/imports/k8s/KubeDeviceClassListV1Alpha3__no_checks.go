@@ -23,3 +23,4 @@ func validateKubeDeviceClassListV1Alpha3_OfParameters(c constructs.IConstruct) e
 func validateNewKubeDeviceClassListV1Alpha3Parameters(scope constructs.Construct, id *string, props *KubeDeviceClassListV1Alpha3Props) error {
 	return nil
 }
+

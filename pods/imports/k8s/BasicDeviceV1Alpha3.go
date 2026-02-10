@@ -1,5 +1,6 @@
 package k8s
 
+
 // BasicDevice defines one device instance.
 type BasicDeviceV1Alpha3 struct {
 	// Attributes defines the set of attributes for this device.
@@ -15,3 +16,4 @@ type BasicDeviceV1Alpha3 struct {
 	// The maximum number of attributes and capacities combined is 32.
 	Capacity *map[string]Quantity `field:"optional" json:"capacity" yaml:"capacity"`
 }
+

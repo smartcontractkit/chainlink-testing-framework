@@ -23,3 +23,4 @@ func validateKubePriorityClassList_OfParameters(c constructs.IConstruct) error {
 func validateNewKubePriorityClassListParameters(scope constructs.Construct, id *string, props *KubePriorityClassListProps) error {
 	return nil
 }
+

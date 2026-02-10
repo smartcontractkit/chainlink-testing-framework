@@ -1,5 +1,6 @@
 package k8s
 
+
 // EnvVarSource represents a source for the value of an EnvVar.
 type EnvVarSource struct {
 	// Selects a key of a ConfigMap.
@@ -11,3 +12,4 @@ type EnvVarSource struct {
 	// Selects a key of a secret in the pod's namespace.
 	SecretKeyRef *SecretKeySelector `field:"optional" json:"secretKeyRef" yaml:"secretKeyRef"`
 }
+

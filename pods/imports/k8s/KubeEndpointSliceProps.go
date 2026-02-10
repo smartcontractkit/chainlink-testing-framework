@@ -1,5 +1,6 @@
 package k8s
 
+
 // EndpointSlice represents a subset of the endpoints that implement a service.
 //
 // For a given service there may be multiple EndpointSlice objects, selected by labels, which must be joined to produce the full set of endpoints.
@@ -19,3 +20,4 @@ type KubeEndpointSliceProps struct {
 	// Each port must have a unique name. When ports is empty, it indicates that there are no defined ports. When a port is defined with a nil port value, it indicates "all ports". Each slice may include a maximum of 100 ports.
 	Ports *[]*EndpointPort `field:"optional" json:"ports" yaml:"ports"`
 }
+

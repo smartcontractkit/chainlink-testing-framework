@@ -124,6 +124,7 @@ func (j *jsiiProxy_KubeEvent) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.events.v1.Event" API object.
 func NewKubeEvent(scope constructs.Construct, id *string, props *KubeEventProps) KubeEvent {
 	_init_.Initialize()
@@ -315,3 +316,4 @@ func (k *jsiiProxy_KubeEvent) ToString() *string {
 
 	return returns
 }
+

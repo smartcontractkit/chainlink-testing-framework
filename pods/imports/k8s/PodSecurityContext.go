@@ -1,5 +1,6 @@
 package k8s
 
+
 // PodSecurityContext holds pod-level security attributes and common container settings.
 //
 // Some fields are also present in container.securityContext.  Field values of container.securityContext take precedence over field values of PodSecurityContext.
@@ -38,20 +39,6 @@ type PodSecurityContext struct {
 	//
 	// Note that this field cannot be set when spec.os.name is windows.
 	SeccompProfile *SeccompProfile `field:"optional" json:"seccompProfile" yaml:"seccompProfile"`
-	// seLinuxChangePolicy defines how the container's SELinux label is applied to all volumes used by the Pod.
-	//
-	// It has no effect on nodes that do not support SELinux or to volumes does not support SELinux. Valid values are "MountOption" and "Recursive".
-	//
-	// "Recursive" means relabeling of all files on all Pod volumes by the container runtime. This may be slow for large volumes, but allows mixing privileged and unprivileged Pods sharing the same volume on the same node.
-	//
-	// "MountOption" mounts all eligible Pod volumes with `-o context` mount option. This requires all Pods that share the same volume to use the same SELinux label. It is not possible to share the same volume among privileged and unprivileged Pods. Eligible volumes are in-tree FibreChannel and iSCSI volumes, and all CSI volumes whose CSI driver announces SELinux support by setting spec.seLinuxMount: true in their CSIDriver instance. Other volumes are always re-labelled recursively. "MountOption" value is allowed only when SELinuxMount feature gate is enabled.
-	//
-	// If not specified and SELinuxMount feature gate is enabled, "MountOption" is used. If not specified and SELinuxMount feature gate is disabled, "MountOption" is used for ReadWriteOncePod volumes and "Recursive" for all other volumes.
-	//
-	// This field affects only Pods that have SELinux label set, either in PodSecurityContext or in SecurityContext of all containers.
-	//
-	// All Pods that use the same volume should use the same seLinuxChangePolicy, otherwise some pods can get stuck in ContainerCreating state. Note that this field cannot be set when spec.os.name is windows.
-	SeLinuxChangePolicy *string `field:"optional" json:"seLinuxChangePolicy" yaml:"seLinuxChangePolicy"`
 	// The SELinux context to be applied to all containers.
 	//
 	// If unspecified, the container runtime will allocate a random SELinux context for each container.  May also be set in SecurityContext.  If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence for that container. Note that this field cannot be set when spec.os.name is windows.
@@ -73,3 +60,4 @@ type PodSecurityContext struct {
 	// If unspecified, the options within a container's SecurityContext will be used. If set in both SecurityContext and PodSecurityContext, the value specified in SecurityContext takes precedence. Note that this field cannot be set when spec.os.name is linux.
 	WindowsOptions *WindowsSecurityContextOptions `field:"optional" json:"windowsOptions" yaml:"windowsOptions"`
 }
+

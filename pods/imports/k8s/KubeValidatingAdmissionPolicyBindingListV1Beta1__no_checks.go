@@ -23,3 +23,4 @@ func validateKubeValidatingAdmissionPolicyBindingListV1Beta1_OfParameters(c cons
 func validateNewKubeValidatingAdmissionPolicyBindingListV1Beta1Parameters(scope constructs.Construct, id *string, props *KubeValidatingAdmissionPolicyBindingListV1Beta1Props) error {
 	return nil
 }
+

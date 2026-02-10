@@ -1,5 +1,6 @@
 package k8s
 
+
 // ClusterRoleList is a collection of ClusterRoles.
 type KubeClusterRoleListProps struct {
 	// Items is a list of ClusterRoles.
@@ -7,3 +8,4 @@ type KubeClusterRoleListProps struct {
 	// Standard object's metadata.
 	Metadata *ListMeta `field:"optional" json:"metadata" yaml:"metadata"`
 }
+

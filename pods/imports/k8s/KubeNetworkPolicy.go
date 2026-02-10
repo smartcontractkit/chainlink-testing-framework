@@ -122,6 +122,7 @@ func (j *jsiiProxy_KubeNetworkPolicy) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.networking.v1.NetworkPolicy" API object.
 func NewKubeNetworkPolicy(scope constructs.Construct, id *string, props *KubeNetworkPolicyProps) KubeNetworkPolicy {
 	_init_.Initialize()
@@ -313,3 +314,4 @@ func (k *jsiiProxy_KubeNetworkPolicy) ToString() *string {
 
 	return returns
 }
+

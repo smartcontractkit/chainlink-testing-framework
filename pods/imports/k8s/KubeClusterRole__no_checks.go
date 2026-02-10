@@ -23,3 +23,4 @@ func validateKubeClusterRole_OfParameters(c constructs.IConstruct) error {
 func validateNewKubeClusterRoleParameters(scope constructs.Construct, id *string, props *KubeClusterRoleProps) error {
 	return nil
 }
+

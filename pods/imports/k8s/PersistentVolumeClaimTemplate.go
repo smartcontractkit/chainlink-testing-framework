@@ -1,5 +1,6 @@
 package k8s
 
+
 // PersistentVolumeClaimTemplate is used to produce PersistentVolumeClaim objects as part of an EphemeralVolumeSource.
 type PersistentVolumeClaimTemplate struct {
 	// The specification for the PersistentVolumeClaim.
@@ -11,3 +12,4 @@ type PersistentVolumeClaimTemplate struct {
 	// No other fields are allowed and will be rejected during validation.
 	Metadata *ObjectMeta `field:"optional" json:"metadata" yaml:"metadata"`
 }
+

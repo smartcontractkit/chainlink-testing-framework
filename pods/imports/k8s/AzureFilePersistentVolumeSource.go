@@ -1,5 +1,6 @@
 package k8s
 
+
 // AzureFile represents an Azure File Service mount on the host and bind mount to the pod.
 type AzureFilePersistentVolumeSource struct {
 	// secretName is the name of secret that contains Azure Storage Account Name and Key.
@@ -13,3 +14,4 @@ type AzureFilePersistentVolumeSource struct {
 	// secretNamespace is the namespace of the secret that contains Azure Storage Account Name and Key default is the same as the Pod.
 	SecretNamespace *string `field:"optional" json:"secretNamespace" yaml:"secretNamespace"`
 }
+

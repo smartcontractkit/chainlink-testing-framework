@@ -1,5 +1,6 @@
 package k8s
 
+
 // IngressClassList is a collection of IngressClasses.
 type KubeIngressClassListProps struct {
 	// items is the list of IngressClasses.
@@ -7,3 +8,4 @@ type KubeIngressClassListProps struct {
 	// Standard list metadata.
 	Metadata *ListMeta `field:"optional" json:"metadata" yaml:"metadata"`
 }
+

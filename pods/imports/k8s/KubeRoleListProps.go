@@ -1,5 +1,6 @@
 package k8s
 
+
 // RoleList is a collection of Roles.
 type KubeRoleListProps struct {
 	// Items is a list of Roles.
@@ -7,3 +8,4 @@ type KubeRoleListProps struct {
 	// Standard object's metadata.
 	Metadata *ListMeta `field:"optional" json:"metadata" yaml:"metadata"`
 }
+

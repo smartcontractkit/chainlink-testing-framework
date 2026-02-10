@@ -23,3 +23,4 @@ func validateKubeBinding_OfParameters(c constructs.IConstruct) error {
 func validateNewKubeBindingParameters(scope constructs.Construct, id *string, props *KubeBindingProps) error {
 	return nil
 }
+

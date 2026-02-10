@@ -1,5 +1,6 @@
 package k8s
 
+
 // PolicyRule holds information that describes a policy rule, but does not contain information about who the rule applies to or which namespace the rule applies to.
 type PolicyRule struct {
 	// Verbs is a list of Verbs that apply to ALL the ResourceKinds contained in this rule.
@@ -23,3 +24,4 @@ type PolicyRule struct {
 	// '*' represents all resources.
 	Resources *[]*string `field:"optional" json:"resources" yaml:"resources"`
 }
+

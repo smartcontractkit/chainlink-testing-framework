@@ -1,5 +1,6 @@
 package k8s
 
+
 // RoleRef contains information that points to the role being used.
 type RoleRef struct {
 	// APIGroup is the group for the resource being referenced.
@@ -9,3 +10,4 @@ type RoleRef struct {
 	// Name is the name of resource being referenced.
 	Name *string `field:"required" json:"name" yaml:"name"`
 }
+

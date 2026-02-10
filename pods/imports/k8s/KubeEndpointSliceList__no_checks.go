@@ -23,3 +23,4 @@ func validateKubeEndpointSliceList_OfParameters(c constructs.IConstruct) error {
 func validateNewKubeEndpointSliceListParameters(scope constructs.Construct, id *string, props *KubeEndpointSliceListProps) error {
 	return nil
 }
+

@@ -23,3 +23,4 @@ func validateKubeSubjectAccessReview_OfParameters(c constructs.IConstruct) error
 func validateNewKubeSubjectAccessReviewParameters(scope constructs.Construct, id *string, props *KubeSubjectAccessReviewProps) error {
 	return nil
 }
+

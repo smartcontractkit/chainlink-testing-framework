@@ -1,5 +1,6 @@
 package k8s
 
+
 // CronJob represents the configuration of a single cron job.
 type KubeCronJobProps struct {
 	// Standard object's metadata.
@@ -11,3 +12,4 @@ type KubeCronJobProps struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
 	Spec *CronJobSpec `field:"optional" json:"spec" yaml:"spec"`
 }
+

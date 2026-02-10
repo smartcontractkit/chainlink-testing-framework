@@ -1,5 +1,6 @@
 package k8s
 
+
 // CSIStorageCapacity stores the result of one CSI GetCapacity call.
 //
 // For a given StorageClass, this describes the available capacity in a particular topology segment.  This can be used when considering where to instantiate new PersistentVolumes.
@@ -37,3 +38,4 @@ type KubeCsiStorageCapacityProps struct {
 	// If not set, the storage is not accessible from any node in the cluster. If empty, the storage is accessible from all nodes. This field is immutable.
 	NodeTopology *LabelSelector `field:"optional" json:"nodeTopology" yaml:"nodeTopology"`
 }
+

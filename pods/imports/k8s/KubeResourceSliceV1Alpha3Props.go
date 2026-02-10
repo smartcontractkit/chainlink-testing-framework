@@ -1,5 +1,6 @@
 package k8s
 
+
 // ResourceSlice represents one or more resources in a pool of similar resources, managed by a common driver.
 //
 // A pool may span more than one ResourceSlice, and exactly how many ResourceSlices comprise a pool is determined by the driver.
@@ -21,3 +22,4 @@ type KubeResourceSliceV1Alpha3Props struct {
 	// Standard object metadata.
 	Metadata *ObjectMeta `field:"optional" json:"metadata" yaml:"metadata"`
 }
+

@@ -23,3 +23,4 @@ func validateKubeIngressClass_OfParameters(c constructs.IConstruct) error {
 func validateNewKubeIngressClassParameters(scope constructs.Construct, id *string, props *KubeIngressClassProps) error {
 	return nil
 }
+

@@ -1,5 +1,6 @@
 package k8s
 
+
 // DeviceAttribute must have exactly one field set.
 type DeviceAttributeV1Alpha3 struct {
 	// BoolValue is a true/false value.
@@ -13,3 +14,4 @@ type DeviceAttributeV1Alpha3 struct {
 	// VersionValue is a semantic version according to semver.org spec 2.0.0. Must not be longer than 64 characters.
 	Version *string `field:"optional" json:"version" yaml:"version"`
 }
+

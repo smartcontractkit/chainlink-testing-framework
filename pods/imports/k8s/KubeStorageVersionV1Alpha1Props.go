@@ -1,5 +1,6 @@
 package k8s
 
+
 // Storage version of a specific resource.
 type KubeStorageVersionV1Alpha1Props struct {
 	// Spec is an empty spec.
@@ -9,3 +10,4 @@ type KubeStorageVersionV1Alpha1Props struct {
 	// The name is <group>.<resource>.
 	Metadata *ObjectMeta `field:"optional" json:"metadata" yaml:"metadata"`
 }
+

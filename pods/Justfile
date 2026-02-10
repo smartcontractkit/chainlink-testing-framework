@@ -76,6 +76,9 @@ crds filter:
 crd name file:
     kubectl get crd {{name}} -o yaml > {{file}}.yml
 
+import-k8s:
+    cdk8s import
+
 # Generate cdk8s bindings for Golang
 import file:
     cdk8s import {{file}} --language go

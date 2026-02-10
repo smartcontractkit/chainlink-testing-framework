@@ -1,5 +1,6 @@
 package k8s
 
+
 // Projection that may be projected along with other supported volume types.
 //
 // Exactly one of these fields must be set.
@@ -21,3 +22,4 @@ type VolumeProjection struct {
 	// serviceAccountToken is information about the serviceAccountToken data to project.
 	ServiceAccountToken *ServiceAccountTokenProjection `field:"optional" json:"serviceAccountToken" yaml:"serviceAccountToken"`
 }
+

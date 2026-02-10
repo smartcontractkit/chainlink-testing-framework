@@ -23,3 +23,4 @@ func validateKubeServiceAccount_OfParameters(c constructs.IConstruct) error {
 func validateNewKubeServiceAccountParameters(scope constructs.Construct, id *string, props *KubeServiceAccountProps) error {
 	return nil
 }
+

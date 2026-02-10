@@ -23,3 +23,4 @@ func validateKubeStorageClass_OfParameters(c constructs.IConstruct) error {
 func validateNewKubeStorageClassParameters(scope constructs.Construct, id *string, props *KubeStorageClassProps) error {
 	return nil
 }
+

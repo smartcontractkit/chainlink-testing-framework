@@ -1,5 +1,6 @@
 package k8s
 
+
 // ServicePort contains information on service's port.
 type ServicePort struct {
 	// The port that will be exposed by this service.
@@ -36,3 +37,4 @@ type ServicePort struct {
 	// Number must be in the range 1 to 65535. Name must be an IANA_SVC_NAME. If this is a string, it will be looked up as a named port in the target Pod's container ports. If this is not specified, the value of the 'port' field is used (an identity map). This field is ignored for services with clusterIP=None, and should be omitted or set equal to the 'port' field. More info: https://kubernetes.io/docs/concepts/services-networking/service/#defining-a-service
 	TargetPort IntOrString `field:"optional" json:"targetPort" yaml:"targetPort"`
 }
+

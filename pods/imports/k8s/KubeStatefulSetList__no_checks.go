@@ -23,3 +23,4 @@ func validateKubeStatefulSetList_OfParameters(c constructs.IConstruct) error {
 func validateNewKubeStatefulSetListParameters(scope constructs.Construct, id *string, props *KubeStatefulSetListProps) error {
 	return nil
 }
+

@@ -23,3 +23,4 @@ func validateKubeVolumeAttributesClassListV1Beta1_OfParameters(c constructs.ICon
 func validateNewKubeVolumeAttributesClassListV1Beta1Parameters(scope constructs.Construct, id *string, props *KubeVolumeAttributesClassListV1Beta1Props) error {
 	return nil
 }
+

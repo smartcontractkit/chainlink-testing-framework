@@ -1,5 +1,6 @@
 package k8s
 
+
 // CustomResourceDefinitionSpec describes how a user wants their resource to appear.
 type CustomResourceDefinitionSpec struct {
 	// group is the API group of the defined custom resource.
@@ -23,3 +24,4 @@ type CustomResourceDefinitionSpec struct {
 	// apiVersion, kind, metadata and known fields inside metadata are always preserved. This field is deprecated in favor of setting `x-preserve-unknown-fields` to true in `spec.versions[*].schema.openAPIV3Schema`. See https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/#field-pruning for details.
 	PreserveUnknownFields *bool `field:"optional" json:"preserveUnknownFields" yaml:"preserveUnknownFields"`
 }
+

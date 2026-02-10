@@ -1,8 +1,9 @@
 package k8s
 
+
 // Probe describes a health check to be performed against a container to determine whether it is alive or ready to receive traffic.
 type Probe struct {
-	// Exec specifies a command to execute in the container.
+	// Exec specifies the action to take.
 	Exec *ExecAction `field:"optional" json:"exec" yaml:"exec"`
 	// Minimum consecutive failures for the probe to be considered failed after having succeeded.
 	//
@@ -10,9 +11,9 @@ type Probe struct {
 	// Default: 3. Minimum value is 1.
 	//
 	FailureThreshold *float64 `field:"optional" json:"failureThreshold" yaml:"failureThreshold"`
-	// GRPC specifies a GRPC HealthCheckRequest.
+	// GRPC specifies an action involving a GRPC port.
 	Grpc *GrpcAction `field:"optional" json:"grpc" yaml:"grpc"`
-	// HTTPGet specifies an HTTP GET request to perform.
+	// HTTPGet specifies the http request to perform.
 	HttpGet *HttpGetAction `field:"optional" json:"httpGet" yaml:"httpGet"`
 	// Number of seconds after the container has started before liveness probes are initiated.
 	//
@@ -30,7 +31,7 @@ type Probe struct {
 	// Default: 1. Must be 1 for liveness and startup. Minimum value is 1.
 	//
 	SuccessThreshold *float64 `field:"optional" json:"successThreshold" yaml:"successThreshold"`
-	// TCPSocket specifies a connection to a TCP port.
+	// TCPSocket specifies an action involving a TCP port.
 	TcpSocket *TcpSocketAction `field:"optional" json:"tcpSocket" yaml:"tcpSocket"`
 	// Optional duration in seconds the pod needs to terminate gracefully upon probe failure.
 	//
@@ -43,3 +44,4 @@ type Probe struct {
 	//
 	TimeoutSeconds *float64 `field:"optional" json:"timeoutSeconds" yaml:"timeoutSeconds"`
 }
+

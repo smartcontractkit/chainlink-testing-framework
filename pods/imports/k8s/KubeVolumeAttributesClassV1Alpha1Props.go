@@ -1,5 +1,6 @@
 package k8s
 
+
 // VolumeAttributesClass represents a specification of mutable volume attributes defined by the CSI driver.
 //
 // The class can be specified during dynamic provisioning of PersistentVolumeClaims, and changed in the PersistentVolumeClaim spec after provisioning.
@@ -17,3 +18,4 @@ type KubeVolumeAttributesClassV1Alpha1Props struct {
 	// This field is required and must contain at least one key/value pair. The keys cannot be empty, and the maximum number of parameters is 512, with a cumulative max size of 256K. If the CSI driver rejects invalid parameters, the target PersistentVolumeClaim will be set to an "Infeasible" state in the modifyVolumeStatus field.
 	Parameters *map[string]*string `field:"optional" json:"parameters" yaml:"parameters"`
 }
+

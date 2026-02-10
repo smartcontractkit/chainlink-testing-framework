@@ -1,5 +1,6 @@
 package k8s
 
+
 // JobSpec describes how the job execution will look like.
 type JobSpec struct {
 	// Describes the pod that will be created when executing a job.
@@ -36,7 +37,7 @@ type JobSpec struct {
 	//
 	// The k8s Job controller reconciles jobs which don't have this field at all or the field value is the reserved string `kubernetes.io/job-controller`, but skips reconciling Jobs with a custom value for this field. The value must be a valid domain-prefixed path (e.g. acme.io/foo) - all characters before the first "/" must be a valid subdomain as defined by RFC 1123. All characters trailing the first "/" must be valid HTTP Path characters as defined by RFC 3986. The value cannot exceed 63 characters. This field is immutable.
 	//
-	// This field is beta-level. The job controller accepts setting the field when the feature gate JobManagedBy is enabled (enabled by default).
+	// This field is alpha-level. The job controller accepts setting the field when the feature gate JobManagedBy is enabled (disabled by default).
 	ManagedBy *string `field:"optional" json:"managedBy" yaml:"managedBy"`
 	// manualSelector controls generation of pod labels and pod selectors.
 	//
@@ -84,3 +85,4 @@ type JobSpec struct {
 	// If this field is set, ttlSecondsAfterFinished after the Job finishes, it is eligible to be automatically deleted. When the Job is being deleted, its lifecycle guarantees (e.g. finalizers) will be honored. If this field is unset, the Job won't be automatically deleted. If this field is set to zero, the Job becomes eligible to be deleted immediately after it finishes.
 	TtlSecondsAfterFinished *float64 `field:"optional" json:"ttlSecondsAfterFinished" yaml:"ttlSecondsAfterFinished"`
 }
+

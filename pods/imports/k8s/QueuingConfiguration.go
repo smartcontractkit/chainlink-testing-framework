@@ -1,5 +1,6 @@
 package k8s
 
+
 // QueuingConfiguration holds the configuration parameters for queuing.
 type QueuingConfiguration struct {
 	// `handSize` is a small positive number that configures the shuffle sharding of requests into queues.
@@ -15,3 +16,4 @@ type QueuingConfiguration struct {
 	// The queues exist independently at each apiserver. The value must be positive.  Setting it to 1 effectively precludes shufflesharding and thus makes the distinguisher method of associated flow schemas irrelevant.  This field has a default value of 64.
 	Queues *float64 `field:"optional" json:"queues" yaml:"queues"`
 }
+

@@ -1,5 +1,6 @@
 package k8s
 
+
 // PodDisruptionBudgetSpec is a description of a PodDisruptionBudget.
 type PodDisruptionBudgetSpec struct {
 	// An eviction is allowed if at most "maxUnavailable" pods selected by "selector" are unavailable after the eviction, i.e. even in absence of the evicted pod. For example, one can prevent all voluntary evictions by specifying 0. This is a mutually exclusive setting with "minAvailable".
@@ -25,3 +26,4 @@ type PodDisruptionBudgetSpec struct {
 	// This field is beta-level. The eviction API uses this field when the feature gate PDBUnhealthyPodEvictionPolicy is enabled (enabled by default).
 	UnhealthyPodEvictionPolicy *string `field:"optional" json:"unhealthyPodEvictionPolicy" yaml:"unhealthyPodEvictionPolicy"`
 }
+

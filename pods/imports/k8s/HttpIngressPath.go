@@ -1,5 +1,6 @@
 package k8s
 
+
 // HTTPIngressPath associates a path with a backend.
 //
 // Incoming urls matching the path are forwarded to the backend.
@@ -25,3 +26,4 @@ type HttpIngressPath struct {
 	// Currently it can contain characters disallowed from the conventional "path" part of a URL as defined by RFC 3986. Paths must begin with a '/' and must be present when using PathType with value "Exact" or "Prefix".
 	Path *string `field:"optional" json:"path" yaml:"path"`
 }
+

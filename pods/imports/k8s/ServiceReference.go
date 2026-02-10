@@ -1,5 +1,6 @@
 package k8s
 
+
 // ServiceReference holds a reference to Service.legacy.k8s.io.
 type ServiceReference struct {
 	// `name` is the name of the service.
@@ -19,3 +20,4 @@ type ServiceReference struct {
 	//
 	Port *float64 `field:"optional" json:"port" yaml:"port"`
 }
+

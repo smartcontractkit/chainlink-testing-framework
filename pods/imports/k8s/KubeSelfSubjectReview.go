@@ -124,6 +124,7 @@ func (j *jsiiProxy_KubeSelfSubjectReview) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.authentication.v1.SelfSubjectReview" API object.
 func NewKubeSelfSubjectReview(scope constructs.Construct, id *string, props *KubeSelfSubjectReviewProps) KubeSelfSubjectReview {
 	_init_.Initialize()
@@ -315,3 +316,4 @@ func (k *jsiiProxy_KubeSelfSubjectReview) ToString() *string {
 
 	return returns
 }
+

@@ -1,5 +1,6 @@
 package k8s
 
+
 // PortworxVolumeSource represents a Portworx volume resource.
 type PortworxVolumeSource struct {
 	// volumeID uniquely identifies a Portworx volume.
@@ -13,3 +14,4 @@ type PortworxVolumeSource struct {
 	// ReadOnly here will force the ReadOnly setting in VolumeMounts.
 	ReadOnly *bool `field:"optional" json:"readOnly" yaml:"readOnly"`
 }
+

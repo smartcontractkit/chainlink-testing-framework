@@ -21,3 +21,4 @@ func validateQuantity_FromStringParameters(value *string) error {
 
 	return nil
 }
+

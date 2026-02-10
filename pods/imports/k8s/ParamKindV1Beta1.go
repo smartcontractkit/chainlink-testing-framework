@@ -1,5 +1,6 @@
 package k8s
 
+
 // ParamKind is a tuple of Group Kind and Version.
 type ParamKindV1Beta1 struct {
 	// APIVersion is the API group version the resources belong to.
@@ -11,3 +12,4 @@ type ParamKindV1Beta1 struct {
 	// Required.
 	Kind *string `field:"optional" json:"kind" yaml:"kind"`
 }
+

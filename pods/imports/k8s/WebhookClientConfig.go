@@ -1,5 +1,6 @@
 package k8s
 
+
 // WebhookClientConfig contains the information to make a TLS connection with the webhook.
 type WebhookClientConfig struct {
 	// `caBundle` is a PEM encoded CA bundle which will be used to validate the webhook's server certificate.
@@ -25,3 +26,4 @@ type WebhookClientConfig struct {
 	// Attempting to use a user or basic auth e.g. "user:password@" is not allowed. Fragments ("#...") and query parameters ("?...") are not allowed, either.
 	Url *string `field:"optional" json:"url" yaml:"url"`
 }
+

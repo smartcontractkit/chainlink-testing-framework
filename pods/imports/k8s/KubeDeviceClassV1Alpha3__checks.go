@@ -63,3 +63,4 @@ func validateNewKubeDeviceClassV1Alpha3Parameters(scope constructs.Construct, id
 
 	return nil
 }
+

@@ -1,5 +1,6 @@
 package k8s
 
+
 // Secret holds secret data of a certain type.
 //
 // The total bytes of the values in the Data field must be less than MaxSecretSize bytes.
@@ -25,3 +26,4 @@ type KubeSecretProps struct {
 	// More info: https://kubernetes.io/docs/concepts/configuration/secret/#secret-types
 	Type *string `field:"optional" json:"type" yaml:"type"`
 }
+

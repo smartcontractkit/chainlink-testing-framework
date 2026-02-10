@@ -1,5 +1,6 @@
 package k8s
 
+
 // Selects a key from a ConfigMap.
 type ConfigMapKeySelector struct {
 	// The key to select.
@@ -11,3 +12,4 @@ type ConfigMapKeySelector struct {
 	// Specify whether the ConfigMap or its key must be defined.
 	Optional *bool `field:"optional" json:"optional" yaml:"optional"`
 }
+

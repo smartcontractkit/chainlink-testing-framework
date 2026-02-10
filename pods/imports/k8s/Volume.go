@@ -1,5 +1,6 @@
 package k8s
 
+
 // Volume represents a named volume in a pod that may be accessed by any container in the pod.
 type Volume struct {
 	// name of the volume.
@@ -8,27 +9,21 @@ type Volume struct {
 	Name *string `field:"required" json:"name" yaml:"name"`
 	// awsElasticBlockStore represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod.
 	//
-	// Deprecated: AWSElasticBlockStore is deprecated. All operations for the in-tree awsElasticBlockStore type are redirected to the ebs.csi.aws.com CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+	// More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 	AwsElasticBlockStore *AwsElasticBlockStoreVolumeSource `field:"optional" json:"awsElasticBlockStore" yaml:"awsElasticBlockStore"`
 	// azureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
-	//
-	// Deprecated: AzureDisk is deprecated. All operations for the in-tree azureDisk type are redirected to the disk.csi.azure.com CSI driver.
 	AzureDisk *AzureDiskVolumeSource `field:"optional" json:"azureDisk" yaml:"azureDisk"`
 	// azureFile represents an Azure File Service mount on the host and bind mount to the pod.
-	//
-	// Deprecated: AzureFile is deprecated. All operations for the in-tree azureFile type are redirected to the file.csi.azure.com CSI driver.
 	AzureFile *AzureFileVolumeSource `field:"optional" json:"azureFile" yaml:"azureFile"`
 	// cephFS represents a Ceph FS mount on the host that shares a pod's lifetime.
-	//
-	// Deprecated: CephFS is deprecated and the in-tree cephfs type is no longer supported.
 	Cephfs *CephFsVolumeSource `field:"optional" json:"cephfs" yaml:"cephfs"`
 	// cinder represents a cinder volume attached and mounted on kubelets host machine.
 	//
-	// Deprecated: Cinder is deprecated. All operations for the in-tree cinder type are redirected to the cinder.csi.openstack.org CSI driver. More info: https://examples.k8s.io/mysql-cinder-pd/README.md
+	// More info: https://examples.k8s.io/mysql-cinder-pd/README.md
 	Cinder *CinderVolumeSource `field:"optional" json:"cinder" yaml:"cinder"`
 	// configMap represents a configMap that should populate this volume.
 	ConfigMap *ConfigMapVolumeSource `field:"optional" json:"configMap" yaml:"configMap"`
-	// csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.
+	// csi (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers (Beta feature).
 	Csi *CsiVolumeSource `field:"optional" json:"csi" yaml:"csi"`
 	// downwardAPI represents downward API about the pod that should populate this volume.
 	DownwardApi *DownwardApiVolumeSource `field:"optional" json:"downwardApi" yaml:"downwardApi"`
@@ -56,24 +51,22 @@ type Volume struct {
 	// fc represents a Fibre Channel resource that is attached to a kubelet's host machine and then exposed to the pod.
 	Fc *FcVolumeSource `field:"optional" json:"fc" yaml:"fc"`
 	// flexVolume represents a generic volume resource that is provisioned/attached using an exec based plugin.
-	//
-	// Deprecated: FlexVolume is deprecated. Consider using a CSIDriver instead.
 	FlexVolume *FlexVolumeSource `field:"optional" json:"flexVolume" yaml:"flexVolume"`
 	// flocker represents a Flocker volume attached to a kubelet's host machine.
 	//
-	// This depends on the Flocker control service being running. Deprecated: Flocker is deprecated and the in-tree flocker type is no longer supported.
+	// This depends on the Flocker control service being running.
 	Flocker *FlockerVolumeSource `field:"optional" json:"flocker" yaml:"flocker"`
 	// gcePersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod.
 	//
-	// Deprecated: GCEPersistentDisk is deprecated. All operations for the in-tree gcePersistentDisk type are redirected to the pd.csi.storage.gke.io CSI driver. More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+	// More info: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
 	GcePersistentDisk *GcePersistentDiskVolumeSource `field:"optional" json:"gcePersistentDisk" yaml:"gcePersistentDisk"`
 	// gitRepo represents a git repository at a particular revision.
 	//
-	// Deprecated: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
+	// DEPRECATED: GitRepo is deprecated. To provision a container with a git repo, mount an EmptyDir into an InitContainer that clones the repo using git, then mount the EmptyDir into the Pod's container.
 	GitRepo *GitRepoVolumeSource `field:"optional" json:"gitRepo" yaml:"gitRepo"`
 	// glusterfs represents a Glusterfs mount on the host that shares a pod's lifetime.
 	//
-	// Deprecated: Glusterfs is deprecated and the in-tree glusterfs type is no longer supported. More info: https://examples.k8s.io/volumes/glusterfs/README.md
+	// More info: https://examples.k8s.io/volumes/glusterfs/README.md
 	Glusterfs *GlusterfsVolumeSource `field:"optional" json:"glusterfs" yaml:"glusterfs"`
 	// hostPath represents a pre-existing file or directory on the host machine that is directly exposed to the container.
 	//
@@ -98,37 +91,26 @@ type Volume struct {
 	// More info: https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
 	PersistentVolumeClaim *PersistentVolumeClaimVolumeSource `field:"optional" json:"persistentVolumeClaim" yaml:"persistentVolumeClaim"`
 	// photonPersistentDisk represents a PhotonController persistent disk attached and mounted on kubelets host machine.
-	//
-	// Deprecated: PhotonPersistentDisk is deprecated and the in-tree photonPersistentDisk type is no longer supported.
 	PhotonPersistentDisk *PhotonPersistentDiskVolumeSource `field:"optional" json:"photonPersistentDisk" yaml:"photonPersistentDisk"`
 	// portworxVolume represents a portworx volume attached and mounted on kubelets host machine.
-	//
-	// Deprecated: PortworxVolume is deprecated. All operations for the in-tree portworxVolume type are redirected to the pxd.portworx.com CSI driver when the CSIMigrationPortworx feature-gate is on.
 	PortworxVolume *PortworxVolumeSource `field:"optional" json:"portworxVolume" yaml:"portworxVolume"`
 	// projected items for all in one resources secrets, configmaps, and downward API.
 	Projected *ProjectedVolumeSource `field:"optional" json:"projected" yaml:"projected"`
 	// quobyte represents a Quobyte mount on the host that shares a pod's lifetime.
-	//
-	// Deprecated: Quobyte is deprecated and the in-tree quobyte type is no longer supported.
 	Quobyte *QuobyteVolumeSource `field:"optional" json:"quobyte" yaml:"quobyte"`
 	// rbd represents a Rados Block Device mount on the host that shares a pod's lifetime.
 	//
-	// Deprecated: RBD is deprecated and the in-tree rbd type is no longer supported. More info: https://examples.k8s.io/volumes/rbd/README.md
+	// More info: https://examples.k8s.io/volumes/rbd/README.md
 	Rbd *RbdVolumeSource `field:"optional" json:"rbd" yaml:"rbd"`
 	// scaleIO represents a ScaleIO persistent volume attached and mounted on Kubernetes nodes.
-	//
-	// Deprecated: ScaleIO is deprecated and the in-tree scaleIO type is no longer supported.
 	ScaleIo *ScaleIoVolumeSource `field:"optional" json:"scaleIo" yaml:"scaleIo"`
 	// secret represents a secret that should populate this volume.
 	//
 	// More info: https://kubernetes.io/docs/concepts/storage/volumes#secret
 	Secret *SecretVolumeSource `field:"optional" json:"secret" yaml:"secret"`
 	// storageOS represents a StorageOS volume attached and mounted on Kubernetes nodes.
-	//
-	// Deprecated: StorageOS is deprecated and the in-tree storageos type is no longer supported.
 	Storageos *StorageOsVolumeSource `field:"optional" json:"storageos" yaml:"storageos"`
 	// vsphereVolume represents a vSphere volume attached and mounted on kubelets host machine.
-	//
-	// Deprecated: VsphereVolume is deprecated. All operations for the in-tree vsphereVolume type are redirected to the csi.vsphere.vmware.com CSI driver.
 	VsphereVolume *VsphereVirtualDiskVolumeSource `field:"optional" json:"vsphereVolume" yaml:"vsphereVolume"`
 }
+

@@ -122,6 +122,7 @@ func (j *jsiiProxy_KubeDeviceClassListV1Alpha3) Node() constructs.Node {
 	return returns
 }
 
+
 // Defines a "io.k8s.api.resource.v1alpha3.DeviceClassList" API object.
 func NewKubeDeviceClassListV1Alpha3(scope constructs.Construct, id *string, props *KubeDeviceClassListV1Alpha3Props) KubeDeviceClassListV1Alpha3 {
 	_init_.Initialize()
@@ -313,3 +314,4 @@ func (k *jsiiProxy_KubeDeviceClassListV1Alpha3) ToString() *string {
 
 	return returns
 }
+

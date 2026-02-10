@@ -1,5 +1,6 @@
 package k8s
 
+
 // DeploymentStrategy describes how to replace existing pods with new ones.
 type DeploymentStrategy struct {
 	// Rolling update config params.
@@ -13,3 +14,4 @@ type DeploymentStrategy struct {
 	//
 	Type *string `field:"optional" json:"type" yaml:"type"`
 }
+

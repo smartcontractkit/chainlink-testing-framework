@@ -1,5 +1,6 @@
 package k8s
 
+
 // EnvFromSource represents the source of a set of ConfigMaps.
 type EnvFromSource struct {
 	// The ConfigMap to select from.
@@ -11,3 +12,4 @@ type EnvFromSource struct {
 	// The Secret to select from.
 	SecretRef *SecretEnvSource `field:"optional" json:"secretRef" yaml:"secretRef"`
 }
+

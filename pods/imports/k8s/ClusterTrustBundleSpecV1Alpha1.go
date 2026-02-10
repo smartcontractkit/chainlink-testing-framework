@@ -1,5 +1,6 @@
 package k8s
 
+
 // ClusterTrustBundleSpec contains the signer and trust anchors.
 type ClusterTrustBundleSpecV1Alpha1 struct {
 	// trustBundle contains the individual X.509 trust anchors for this bundle, as PEM bundle of PEM-wrapped, DER-formatted X.509 certificates.
@@ -19,3 +20,4 @@ type ClusterTrustBundleSpecV1Alpha1 struct {
 	// List/watch requests for ClusterTrustBundles can filter on this field using a `spec.signerName=NAME` field selector.
 	SignerName *string `field:"optional" json:"signerName" yaml:"signerName"`
 }
+

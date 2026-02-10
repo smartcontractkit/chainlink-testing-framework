@@ -1,5 +1,6 @@
 package k8s
 
+
 // CSIDriverSpec is the specification of a CSIDriver.
 type CsiDriverSpec struct {
 	// attachRequired indicates this CSI volume driver requires an attach operation (because it implements the CSI ControllerPublishVolume() method), and that the Kubernetes attach detach controller should call the attach volume interface which checks the volumeattachment status and waits until the volume is attached before proceeding to mounting.
@@ -78,3 +79,4 @@ type CsiDriverSpec struct {
 	// This field is beta. This field is immutable.
 	VolumeLifecycleModes *[]*string `field:"optional" json:"volumeLifecycleModes" yaml:"volumeLifecycleModes"`
 }
+
