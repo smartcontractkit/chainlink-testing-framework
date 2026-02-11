@@ -136,19 +136,21 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 					Env: []v1.EnvVar{
 						{
 							Name:  "POSTGRES_USER",
-							Value: "chainlink",
+							Value: User,
 						},
 						{
 							Name:  "POSTGRES_PASSWORD",
-							Value: "thispasswordislongenough",
+							Value: Password,
 						},
 						{
 							Name:  "POSTGRES_DB",
-							Value: "chainlink",
+							Value: Database,
 						},
 					},
 					Requests: pods.ResourcesLarge(),
 					Limits:   pods.ResourcesLarge(),
+					// container and pod security settings are specific to
+					// 'postgres' Docker image
 					ContainerSecurityContext: &v1.SecurityContext{
 						RunAsUser:  pods.Ptr[int64](999),
 						RunAsGroup: pods.Ptr[int64](999),
@@ -188,6 +190,24 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 				portToExpose,
 				Database,
 			),
+		}
+		if in.JDDatabase {
+			o.JDInternalURL = fmt.Sprintf(
+				"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
+				User,
+				Password,
+				fmt.Sprintf("%s-svc", in.Name),
+				Port,
+				JDDatabase,
+			)
+			o.JDUrl = fmt.Sprintf(
+				"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
+				User,
+				Password,
+				fmt.Sprintf("%s-svc", in.Name),
+				portToExpose,
+				JDDatabase,
+			)
 		}
 		return o, nil
 	}

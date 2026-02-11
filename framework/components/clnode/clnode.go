@@ -181,6 +181,18 @@ func generateEntryPoint() []string {
 	return entrypoint
 }
 
+// natPortsToK8sFormat transforms nat.PortMap
+// to Pods port pair format: $external_port:$internal_port
+func natPortsToK8sFormat(nat nat.PortMap) []string {
+	out := make([]string, 0)
+	for port, portBinding := range nat {
+		for _, b := range portBinding {
+			out = append(out, fmt.Sprintf("%s:%s", b.HostPort, strconv.Itoa(port.Int())))
+		}
+	}
+	return out
+}
+
 // generatePortBindings generates exposed ports and port bindings
 // exposes default CL node port
 // exposes custom_ports in format "host:docker" or map 1-to-1 if only "host" port is provided
@@ -302,10 +314,7 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 					Env:      pods.EnvsFromMap(in.Node.EnvVars),
 					Requests: pods.ResourcesMedium(),
 					Limits:   pods.ResourcesMedium(),
-					Ports: []string{
-						fmt.Sprintf("%d:%s", in.Node.HTTPPort, DefaultHTTPPort),
-						fmt.Sprintf("%d:%s", in.Node.P2PPort, DefaultP2PPort),
-					},
+					Ports:    natPortsToK8sFormat(portBindings),
 					ContainerSecurityContext: &v1.SecurityContext{
 						// these are specific things we need for staging cluster
 						RunAsNonRoot: pods.Ptr(true),

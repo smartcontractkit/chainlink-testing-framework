@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	RetryDelay = 1 * time.Second
+	RetryDelay    = 1 * time.Second
+	K8sAPITimeout = 2 * time.Minute
 )
 
 // PortForwardConfig represents a single port forward configuration
@@ -210,7 +211,9 @@ func (m *PortForwardManager) attemptForward(cfg PortForwardConfig) error {
 
 // getTargetPodAndPort finds the target pod and resolves the port
 func (m *PortForwardManager) getTargetPodAndPort(cfg PortForwardConfig, namespace string) (*corev1.Pod, int, error) {
-	service, err := m.cs.CoreV1().Services(namespace).Get(context.TODO(), cfg.ServiceName, metav1.GetOptions{})
+	ctx, cancel := context.WithTimeout(context.Background(), K8sAPITimeout)
+	defer cancel()
+	service, err := m.cs.CoreV1().Services(namespace).Get(ctx, cfg.ServiceName, metav1.GetOptions{})
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to get service: %w", err)
 	}
@@ -218,7 +221,7 @@ func (m *PortForwardManager) getTargetPodAndPort(cfg PortForwardConfig, namespac
 	if len(service.Spec.Selector) == 0 {
 		return nil, 0, fmt.Errorf("service %s has no selector", cfg.ServiceName)
 	}
-	pods, err := m.cs.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{
+	pods, err := m.cs.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: labels.FormatLabels(service.Spec.Selector),
 	})
 	if err != nil {

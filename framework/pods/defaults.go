@@ -80,7 +80,6 @@ func SizedVolumeClaim(size string) []v1.PersistentVolumeClaim {
 				AccessModes: []v1.PersistentVolumeAccessMode{
 					v1.ReadWriteOnce,
 				},
-				StorageClassName: Ptr("gp3"),
 				Resources: v1.VolumeResourceRequirements{
 					Requests: v1.ResourceList{
 						v1.ResourceStorage: storageQuantity,
