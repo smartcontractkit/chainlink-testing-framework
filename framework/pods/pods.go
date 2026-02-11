@@ -11,8 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rs/zerolog/log"
-
 	"github.com/google/uuid"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -293,7 +291,6 @@ func (n *App) generate() error {
 		// Transform container command
 		if podConfig.Command != nil {
 			container.Command = strings.Split(*podConfig.Command, " ")
-			log.Printf("Container command: %s", *podConfig.Command)
 		}
 
 		// Override replicas

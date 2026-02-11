@@ -357,7 +357,7 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 			APIAuthUser:     DefaultAPIUser,
 			APIAuthPassword: DefaultAPIPassword,
 			ContainerName:   containerName,
-			ExternalURL:     fmt.Sprintf("http://%s:%s", fmt.Sprintf("%s-svc", containerName), DefaultHTTPPort),
+			ExternalURL:     fmt.Sprintf("http://%s:%d", fmt.Sprintf("%s-svc", containerName), in.Node.HTTPPort),
 			InternalURL:     fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
 			InternalP2PUrl:  fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
 		}, nil
