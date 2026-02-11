@@ -8,6 +8,10 @@ import (
 	"strings"
 	"time"
 
+	v1 "k8s.io/api/core/v1"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
@@ -50,7 +54,7 @@ type Input struct {
 }
 
 type Output struct {
-	// URL PostgreSQL connection URL
+	// Url PostgreSQL connection Url
 	Url string `toml:"url" comment:"PostgreSQL connection URL"`
 	// ContainerName PostgreSQL Docker container name
 	ContainerName string `toml:"container_name" comment:"Docker container name"`
@@ -112,6 +116,102 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		return nil, err
 	}
 
+	var portToExpose int
+	if in.Port != 0 {
+		portToExpose = in.Port
+	} else {
+		portToExpose = ExposedStaticPort
+	}
+
+	var o *Output
+
+	// k8s deployment
+	if pods.K8sEnabled() {
+		_, err := pods.Run(ctx, &pods.Config{
+			Pods: []*pods.PodConfig{
+				{
+					Name:  pods.Ptr(in.Name),
+					Image: pods.Ptr(in.Image),
+					Ports: []string{fmt.Sprintf("%d:%s", portToExpose, Port)},
+					Env: []v1.EnvVar{
+						{
+							Name:  "POSTGRES_USER",
+							Value: User,
+						},
+						{
+							Name:  "POSTGRES_PASSWORD",
+							Value: Password,
+						},
+						{
+							Name:  "POSTGRES_DB",
+							Value: Database,
+						},
+					},
+					Requests: pods.ResourcesLarge(),
+					Limits:   pods.ResourcesLarge(),
+					// container and pod security settings are specific to
+					// 'postgres' Docker image
+					ContainerSecurityContext: &v1.SecurityContext{
+						RunAsUser:  pods.Ptr[int64](999),
+						RunAsGroup: pods.Ptr[int64](999),
+					},
+					PodSecurityContext: &v1.PodSecurityContext{
+						FSGroup: pods.Ptr[int64](999),
+					},
+					ConfigMap: map[string]string{
+						"init.sql": initSQL,
+					},
+					ConfigMapMountPath: map[string]string{
+						"init.sql": "/docker-entrypoint-initdb.d/init.sql",
+					},
+					VolumeClaimTemplates: pods.SizedVolumeClaim("4Gi"),
+				},
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		o = &Output{
+			ContainerName: containerName,
+			InternalURL: fmt.Sprintf(
+				"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
+				User,
+				Password,
+				fmt.Sprintf("%s-svc", in.Name),
+				// use svc internally too
+				portToExpose,
+				Database,
+			),
+			Url: fmt.Sprintf(
+				"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
+				User,
+				Password,
+				fmt.Sprintf("%s-svc", in.Name),
+				portToExpose,
+				Database,
+			),
+		}
+		if in.JDDatabase {
+			o.JDInternalURL = fmt.Sprintf(
+				"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
+				User,
+				Password,
+				fmt.Sprintf("%s-svc", in.Name),
+				Port,
+				JDDatabase,
+			)
+			o.JDUrl = fmt.Sprintf(
+				"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
+				User,
+				Password,
+				fmt.Sprintf("%s-svc", in.Name),
+				portToExpose,
+				JDDatabase,
+			)
+		}
+		return o, nil
+	}
+	// local deployment
 	req := testcontainers.ContainerRequest{
 		AlwaysPullImage: in.PullImage,
 		Image:           in.Image,
@@ -155,12 +255,6 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 			WithStartupTimeout(3 * time.Minute).
 			WithPollInterval(200 * time.Millisecond),
 	}
-	var portToExpose int
-	if in.Port != 0 {
-		portToExpose = in.Port
-	} else {
-		portToExpose = ExposedStaticPort
-	}
 	req.HostConfigModifier = func(h *container.HostConfig) {
 		h.PortBindings = nat.PortMap{
 			nat.Port(bindPort): []nat.PortBinding{
@@ -184,7 +278,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	o := &Output{
+	o = &Output{
 		ContainerName: containerName,
 		InternalURL: fmt.Sprintf(
 			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",

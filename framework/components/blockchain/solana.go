@@ -16,6 +16,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 )
 
 var configYmlRaw = `
@@ -95,6 +96,10 @@ func newSolana(ctx context.Context, in *Input) (*Output, error) {
 		"--mint", in.PublicKey,
 	}, flags...)
 	args = append(args, in.DockerCmdParamsOverrides...)
+
+	if pods.K8sEnabled() {
+		return nil, fmt.Errorf("K8s support is not yet implemented")
+	}
 
 	req := testcontainers.ContainerRequest{
 		AlwaysPullImage: in.PullImage,

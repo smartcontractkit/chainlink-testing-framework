@@ -11,6 +11,7 @@ import (
 	"github.com/docker/go-connections/nat"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -77,6 +78,10 @@ func newTron(ctx context.Context, in *Input) (*Output, error) {
 	_, err = accounts.WriteString(string(accountsData))
 	if err != nil {
 		return nil, err
+	}
+
+	if pods.K8sEnabled() {
+		return nil, fmt.Errorf("K8s support is not yet implemented")
 	}
 
 	req := testcontainers.ContainerRequest{

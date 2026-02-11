@@ -16,6 +16,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 )
 
 const (
@@ -27,10 +28,10 @@ const (
 // SuiWalletInfo info about Sui account/wallet
 type SuiWalletInfo struct {
 	Alias           *string `toml:"alias" json:"alias" comment:"Alias key name, usually null"`                   // Alias key name, usually "null"
-	Flag            int     `toml:"flag" json:"flag" comment:"-"`                                                            // Flag is an integer
+	Flag            int     `toml:"flag" json:"flag" comment:"-"`                                                // Flag is an integer
 	KeyScheme       string  `toml:"key_scheme" json:"keyScheme" comment:"Sui key scheme"`                        // Key scheme is a string
 	Mnemonic        string  `toml:"mnemonic" json:"mnemonic" comment:"Sui key mnemonic"`                         // Mnemonic is a string
-	PeerId          string  `toml:"peer_id" json:"peerId" comment:"Sui key peer ID"`                                                       // Peer ID is a string
+	PeerId          string  `toml:"peer_id" json:"peerId" comment:"Sui key peer ID"`                             // Peer ID is a string
 	PublicBase64Key string  `toml:"public_base64_key" json:"publicBase64Key" comment:"Sui key in base64 format"` // Public key in Base64 format
 	SuiAddress      string  `toml:"sui_address" json:"suiAddress" comment:"Sui key address"`                     // Sui address is a 0x prefixed hex string
 }
@@ -106,6 +107,10 @@ func newSui(ctx context.Context, in *Input) (*Output, error) {
 	imagePlatform := "linux/amd64"
 	if in.ImagePlatform != nil {
 		imagePlatform = *in.ImagePlatform
+	}
+
+	if pods.K8sEnabled() {
+		return nil, fmt.Errorf("K8s support is not yet implemented")
 	}
 
 	req := testcontainers.ContainerRequest{

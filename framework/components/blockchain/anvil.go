@@ -2,7 +2,12 @@ package blockchain
 
 import (
 	"context"
+	"fmt"
 	"strings"
+
+	v1 "k8s.io/api/core/v1"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
@@ -30,6 +35,9 @@ func defaultAnvil(in *Input) {
 	if in.Port == "" {
 		in.Port = "8545"
 	}
+	if in.ContainerName == "" {
+		in.ContainerName = "anvil"
+	}
 }
 
 func newAnvil(ctx context.Context, in *Input) (*Output, error) {
@@ -50,5 +58,41 @@ func newAnvil(ctx context.Context, in *Input) (*Output, error) {
 
 	framework.L.Info().Any("Cmd", strings.Join(entryPoint, " ")).Msg("Creating anvil with command")
 
+	if pods.K8sEnabled() {
+		_, err := pods.Run(ctx, &pods.Config{
+			Pods: []*pods.PodConfig{
+				{
+					Name:     pods.Ptr(in.ContainerName),
+					Image:    &in.Image,
+					Ports:    []string{fmt.Sprintf("%s:%s", in.Port, in.Port)},
+					Command:  pods.Ptr(strings.Join(entryPoint, " ")),
+					Requests: pods.ResourcesMedium(),
+					Limits:   pods.ResourcesMedium(),
+					ContainerSecurityContext: &v1.SecurityContext{
+						RunAsUser:  pods.Ptr[int64](999),
+						RunAsGroup: pods.Ptr[int64](999),
+					},
+				},
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		return &Output{
+			UseCache:      true,
+			Type:          in.Type,
+			Family:        FamilyEVM,
+			ChainID:       in.ChainID,
+			ContainerName: in.ContainerName,
+			Nodes: []*Node{
+				{
+					ExternalWSUrl:   fmt.Sprintf("ws://%s:%s", fmt.Sprintf("%s-svc", in.ContainerName), in.Port),
+					ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", fmt.Sprintf("%s-svc", in.ContainerName), in.Port),
+					InternalWSUrl:   fmt.Sprintf("ws://%s:%s", fmt.Sprintf("%s-svc", in.ContainerName), in.Port),
+					InternalHTTPUrl: fmt.Sprintf("http://%s:%s", fmt.Sprintf("%s-svc", in.ContainerName), in.Port),
+				},
+			},
+		}, nil
+	}
 	return createGenericEvmContainer(ctx, in, req, false)
 }

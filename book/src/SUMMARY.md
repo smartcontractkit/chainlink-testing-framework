@@ -25,6 +25,7 @@
   - [Fake Services](framework/components/mocking.md)
   - [Detecting Resource Leaks](framework/resource_leaks.md)
   - [Copying Files](framework/copying_files.md)
+  - [Running in Kubernetes](./framework/kubernetes.md)
   - [External Environment](framework/components/external.md)
 - [Observability Stack](framework/observability/observability_stack.md)
   - [Overview](framework/observability/observability_stack.md)

@@ -13,6 +13,10 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
+
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -170,11 +174,23 @@ func generateEntryPoint() []string {
 		"/bin/sh", "-c",
 	}
 	if os.Getenv("CTF_CLNODE_DLV") == "true" {
-		entrypoint = append(entrypoint, "dlv  exec /usr/local/bin/chainlink --continue --listen=0.0.0.0:40000 --headless=true --api-version=2 --accept-multiclient -- -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials")
+		entrypoint = append(entrypoint, "dlv exec /usr/local/bin/chainlink --continue --listen=0.0.0.0:40000 --headless=true --api-version=2 --accept-multiclient -- -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials")
 	} else {
 		entrypoint = append(entrypoint, "chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials")
 	}
 	return entrypoint
+}
+
+// natPortsToK8sFormat transforms nat.PortMap
+// to Pods port pair format: $external_port:$internal_port
+func natPortsToK8sFormat(nat nat.PortMap) []string {
+	out := make([]string, 0)
+	for port, portBinding := range nat {
+		for _, b := range portBinding {
+			out = append(out, fmt.Sprintf("%s:%s", b.HostPort, strconv.Itoa(port.Int())))
+		}
+	}
+	return out
 }
 
 // generatePortBindings generates exposed ports and port bindings
@@ -242,11 +258,20 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 	if err != nil {
 		return nil, err
 	}
-	cfgPath, err := writeDefaultConfig()
+	cfg, err := generateDefaultConfig()
 	if err != nil {
 		return nil, err
 	}
-	secretsPath, err := writeDefaultSecrets(pgOut)
+	cfgPath, err := WriteTmpFile(cfg, "config.toml")
+	if err != nil {
+		return nil, err
+	}
+
+	secretsData, err := generateSecretsConfig(pgOut.InternalURL, DefaultTestKeystorePassword)
+	if err != nil {
+		return nil, err
+	}
+	secretsPath, err := WriteTmpFile(secretsData, "secrets.toml")
 	if err != nil {
 		return nil, err
 	}
@@ -278,6 +303,66 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 	if err != nil {
 		return nil, err
 	}
+
+	// k8s deployment
+	if pods.K8sEnabled() {
+		_, err := pods.Run(ctx, &pods.Config{
+			Pods: []*pods.PodConfig{
+				{
+					Name:     pods.Ptr(containerName),
+					Image:    pods.Ptr(in.Node.Image),
+					Env:      pods.EnvsFromMap(in.Node.EnvVars),
+					Requests: pods.ResourcesMedium(),
+					Limits:   pods.ResourcesMedium(),
+					Ports:    natPortsToK8sFormat(portBindings),
+					ContainerSecurityContext: &v1.SecurityContext{
+						// these are specific things we need for staging cluster
+						RunAsNonRoot: pods.Ptr(true),
+						RunAsUser:    pods.Ptr[int64](14933),
+						RunAsGroup:   pods.Ptr[int64](999),
+					},
+					ConfigMap: map[string]string{
+						"config.toml":         cfg,
+						"overrides.toml":      in.Node.TestConfigOverrides,
+						"user-overrides.toml": in.Node.UserConfigOverrides,
+						"node_password":       DefaultPasswordTxt,
+						"apicredentials": fmt.Sprintf(`%s
+			%s`, DefaultAPIUser, DefaultAPIPassword),
+					},
+					ConfigMapMountPath: map[string]string{
+						"config.toml":         "/config/config",
+						"overrides.toml":      "/config/overrides",
+						"user-overrides.toml": "/config/user-overrides",
+						"node_password":       "/config/node_password",
+						"apicredentials":      "/config/apicredentials",
+					},
+					Secrets: map[string]string{
+						"secrets.toml":                secretsData,
+						"secrets-overrides.toml":      in.Node.TestSecretsOverrides,
+						"secrets-user-overrides.toml": in.Node.UserSecretsOverrides,
+					},
+					SecretsMountPath: map[string]string{
+						"secrets.toml":                "/config/secrets",
+						"secrets-overrides.toml":      "/config/secrets-overrides",
+						"secrets-user-overrides.toml": "/config/user-secrets-overrides",
+					},
+					Command: pods.Ptr("chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials"),
+				},
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		return &NodeOut{
+			APIAuthUser:     DefaultAPIUser,
+			APIAuthPassword: DefaultAPIPassword,
+			ContainerName:   containerName,
+			ExternalURL:     fmt.Sprintf("http://%s:%d", fmt.Sprintf("%s-svc", containerName), in.Node.HTTPPort),
+			InternalURL:     fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
+			InternalP2PUrl:  fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
+		}, nil
+	}
+	// local deployment
 	req := tc.ContainerRequest{
 		AlwaysPullImage: in.Node.PullImage,
 		Image:           in.Node.Image,
@@ -456,22 +541,6 @@ func generateSecretsConfig(connString, password string) (string, error) {
 		return "", err
 	}
 	return output.String(), nil
-}
-
-func writeDefaultSecrets(pgOut *postgres.Output) (*os.File, error) {
-	secretsOverrides, err := generateSecretsConfig(pgOut.InternalURL, DefaultTestKeystorePassword)
-	if err != nil {
-		return nil, err
-	}
-	return WriteTmpFile(secretsOverrides, "secrets.toml")
-}
-
-func writeDefaultConfig() (*os.File, error) {
-	cfg, err := generateDefaultConfig()
-	if err != nil {
-		return nil, err
-	}
-	return WriteTmpFile(cfg, "config.toml")
 }
 
 // WriteTmpFile writes the provided data string to a specified filepath and returns the file and any error encountered.

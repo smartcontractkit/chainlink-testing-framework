@@ -7,8 +7,11 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"golang.org/x/sync/errgroup"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
@@ -200,6 +203,12 @@ func sharedDBSetup(ctx context.Context, in *Input, bcOut *blockchain.Output) (*O
 		return nil, err
 	}
 	sortNodeOutsByHostPort(nodeOuts)
+	// wait for all K8s services at once
+	if pods.K8sEnabled() {
+		if err := pods.WaitReady(ctx, 3*time.Minute); err != nil {
+			return nil, err
+		}
+	}
 	return &Output{
 		UseCache: true,
 		DBOut:    dbOut,

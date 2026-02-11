@@ -11,6 +11,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 )
 
 const (
@@ -55,6 +56,10 @@ func newTon(ctx context.Context, in *Input) (*Output, error) {
 		for key, value := range in.CustomEnv {
 			finalEnv[key] = value
 		}
+	}
+
+	if pods.K8sEnabled() {
+		return nil, fmt.Errorf("K8s support is not yet implemented")
 	}
 
 	req := testcontainers.ContainerRequest{

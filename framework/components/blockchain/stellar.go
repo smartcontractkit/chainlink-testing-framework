@@ -14,6 +14,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 )
 
 const (
@@ -73,6 +74,10 @@ func newStellar(ctx context.Context, in *Input) (*Output, error) {
 	// Allow additional command overrides
 	if len(in.DockerCmdParamsOverrides) > 0 {
 		cmd = append(cmd, in.DockerCmdParamsOverrides...)
+	}
+
+	if pods.K8sEnabled() {
+		return nil, fmt.Errorf("K8s support is not yet implemented")
 	}
 
 	req := testcontainers.ContainerRequest{

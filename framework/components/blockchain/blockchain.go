@@ -68,7 +68,7 @@ type Input struct {
 	NumberOfCantonValidators int `toml:"number_of_canton_validators" comment:"Number of Canton network validators"`
 
 	// GAPv2 specific params
-	HostNetworkMode  bool   `toml:"host_network_mode" comment:"GAPv2 specific paramter: host netowork mode, if 'true' will run environment in host network mode"`
+	HostNetworkMode  bool   `toml:"host_network_mode" comment:"GAPv2 specific parameter: host netowork mode, if 'true' will run environment in host network mode"`
 	CertificatesPath string `toml:"certificates_path" comment:"GAPv2 specific parameter: path to default Ubuntu's certificates"`
 
 	// Optional params
