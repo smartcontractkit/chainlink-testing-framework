@@ -9,6 +9,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain/canton"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 )
 
 const (
@@ -79,6 +80,10 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	}
 	if in.Port == "" {
 		in.Port = DefaultCantonPort
+	}
+
+	if pods.K8sEnabled() {
+		return nil, fmt.Errorf("K8s support is not yet implemented")
 	}
 
 	// Set up Postgres container

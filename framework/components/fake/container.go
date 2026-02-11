@@ -6,11 +6,26 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/go-connections/nat"
+	v1 "k8s.io/api/core/v1"
+
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 )
+
+type Input struct {
+	Image string  `toml:"image" comment:"Fake service image, usually can be found in our ECR with $project-fakes name"`
+	Port  int     `toml:"port" validate:"required" comment:"The port which Docker container is exposing"`
+	Out   *Output `toml:"out" comment:"Fakes service config output"`
+}
+
+type Output struct {
+	UseCache      bool   `toml:"use_cache" comment:"Whether to respect caching or not, if cache = true component won't be deployed again"`
+	BaseURLHost   string `toml:"base_url_host" comment:"Base URL which can be used when running locally"`
+	BaseURLDocker string `toml:"base_url_docker" comment:"Base URL to reach fakes service from other Docker containers"`
+}
 
 // NewDockerFakeDataProvider creates new fake data provider in Docker using testcontainers-go
 func NewDockerFakeDataProvider(in *Input) (*Output, error) {
@@ -24,6 +39,33 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	}
 	bindPort := fmt.Sprintf("%d/tcp", in.Port)
 	containerName := framework.DefaultTCName("fake")
+	if pods.K8sEnabled() {
+		_, err := pods.Run(ctx, &pods.Config{
+			Pods: []*pods.PodConfig{
+				{
+					Name:     pods.Ptr(containerName),
+					Image:    &in.Image,
+					Ports:    []string{fmt.Sprintf("%d:%d", in.Port, in.Port)},
+					Requests: pods.ResourcesSmall(),
+					Limits:   pods.ResourcesSmall(),
+					ContainerSecurityContext: &v1.SecurityContext{
+						RunAsUser:  pods.Ptr[int64](999),
+						RunAsGroup: pods.Ptr[int64](999),
+					},
+				},
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		in.Out = &Output{
+			BaseURLHost:   fmt.Sprintf("http://%s:%d", fmt.Sprintf("%s-svc", containerName), in.Port),
+			BaseURLDocker: fmt.Sprintf("http://%s:%d", containerName, in.Port),
+		}
+		return in.Out, nil
+	}
+	// if pods.K8sEnabled() {
+	// }
 	req := tc.ContainerRequest{
 		Name:     containerName,
 		Image:    in.Image,
@@ -47,10 +89,9 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	out := &Output{
+	in.Out = &Output{
 		BaseURLHost:   fmt.Sprintf("http://localhost:%d", in.Port),
 		BaseURLDocker: fmt.Sprintf("http://%s:%d", containerName, in.Port),
 	}
-	in.Out = out
-	return out, nil
+	return in.Out, nil
 }

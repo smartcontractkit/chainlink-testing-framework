@@ -35,3 +35,4 @@ promtail-config.yml
 **/*cache.toml
 **/postgresql_data
 **/postgresql_data/*
+**/pods-out
