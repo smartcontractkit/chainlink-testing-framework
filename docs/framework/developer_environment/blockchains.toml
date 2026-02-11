@@ -25,7 +25,7 @@
   faucet_port = ''
   # Number of Canton network validators
   number_of_canton_validators = 0
-  # GAPv2 specific paramter: host netowork mode, if 'true' will run environment in host network mode
+  # GAPv2 specific parameter: host netowork mode, if 'true' will run environment in host network mode
   host_network_mode = false
   # GAPv2 specific parameter: path to default Ubuntu's certificates
   certificates_path = ''
