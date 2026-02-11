@@ -198,12 +198,19 @@ func natPortsToK8sFormat(nat nat.PortMap) []string {
 // exposes custom_ports in format "host:docker" or map 1-to-1 if only "host" port is provided
 func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
 	httpPort := fmt.Sprintf("%s/tcp", DefaultHTTPPort)
-	exposedPorts := []string{httpPort}
+	p2pPort := fmt.Sprintf("%s/udp", DefaultP2PPort)
+	exposedPorts := []string{httpPort, p2pPort}
 	portBindings := nat.PortMap{
 		nat.Port(httpPort): []nat.PortBinding{
 			{
 				HostIP:   "0.0.0.0",
 				HostPort: strconv.Itoa(in.Node.HTTPPort),
+			},
+		},
+		nat.Port(p2pPort): []nat.PortBinding{
+			{
+				HostIP:   "0.0.0.0",
+				HostPort: strconv.Itoa(in.Node.P2PPort),
 			},
 		},
 	}

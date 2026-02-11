@@ -60,7 +60,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		}
 		in.Out = &Output{
 			BaseURLHost:   fmt.Sprintf("http://%s:%d", fmt.Sprintf("%s-svc", containerName), in.Port),
-			BaseURLDocker: fmt.Sprintf("http://%s:%d", containerName, in.Port),
+			BaseURLDocker: fmt.Sprintf("http://%s:%d", fmt.Sprintf("%s-svc", containerName), in.Port),
 		}
 		return in.Out, nil
 	}
