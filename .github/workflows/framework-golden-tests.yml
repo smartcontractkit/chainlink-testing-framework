@@ -55,10 +55,11 @@ jobs:
             config: parallel_ton.toml
             count: 1
             timeout: 10m
-          - name: TestUpgrade
-            config: upgrade.toml
-            count: 1
-            timeout: 10m
+          # Disabled for now, we need to replace Pumba chaos driver
+          # - name: TestUpgrade
+          #   config: upgrade.toml
+          #   count: 1
+          #   timeout: 10m
           - name: TestPerformanceBaseline
             config: performance_baseline.toml
             count: 1
@@ -122,8 +123,6 @@ jobs:
             go-modules-${{ runner.os }}
       - name: Install dependencies
         run: go mod download
-      - name: Set up Docker
-        uses: docker/setup-docker-action@v4
       - name: Run System Tests
         if: steps.changes.outputs.src == 'true'
         env:
