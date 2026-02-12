@@ -64,6 +64,8 @@ type Output struct {
 	JDUrl string `toml:"jd_url" comment:"PostgreSQL internal connection URL to JobDistributor database"`
 	// JDInternalURL PostgreSQL internal connection URL to JobDistributor database
 	JDInternalURL string `toml:"jd_internal_url" comment:"PostgreSQL internal connection URL to JobDistributor database"`
+	// K8sService is a Kubernetes service spec used to connect locally
+	K8sService *v1.Service `toml:"k8s_service" comment:"Kubernetes service spec used to connect locally"`
 }
 
 func NewPostgreSQL(in *Input) (*Output, error) {
@@ -127,7 +129,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 
 	// k8s deployment
 	if pods.K8sEnabled() {
-		_, err := pods.Run(ctx, &pods.Config{
+		_, svc, err := pods.Run(ctx, &pods.Config{
 			Pods: []*pods.PodConfig{
 				{
 					Name:  pods.Ptr(in.Name),
@@ -147,8 +149,8 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 							Value: Database,
 						},
 					},
-					Requests: pods.ResourcesLarge(),
-					Limits:   pods.ResourcesLarge(),
+					Requests: pods.ResourcesMedium(),
+					Limits:   pods.ResourcesMedium(),
 					// container and pod security settings are specific to
 					// 'postgres' Docker image
 					ContainerSecurityContext: &v1.SecurityContext{
@@ -172,6 +174,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 			return nil, err
 		}
 		o = &Output{
+			K8sService:    svc,
 			ContainerName: containerName,
 			InternalURL: fmt.Sprintf(
 				"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
@@ -186,7 +189,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 				"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
 				User,
 				Password,
-				fmt.Sprintf("%s-svc", in.Name),
+				"localhost",
 				portToExpose,
 				Database,
 			),
@@ -204,7 +207,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 				"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
 				User,
 				Password,
-				fmt.Sprintf("%s-svc", in.Name),
+				"localhost",
 				portToExpose,
 				JDDatabase,
 			)

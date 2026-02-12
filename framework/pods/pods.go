@@ -79,39 +79,50 @@ type PodConfig struct {
 	VolumeClaimTemplates []corev1.PersistentVolumeClaim
 }
 
-// App is an application context with generated manifests
+// App is an application context with a generated Kubernetes manifest
 type App struct {
 	cfg      *Config
 	objects  []any
+	svcObj   *corev1.Service
 	manifest string
 }
 
+// K8sEnabled is a flag that means Kubernetes in enabled, used in framework components
 func K8sEnabled() bool {
 	return os.Getenv(K8sNamespaceEnvVar) != ""
 }
 
 // Run generates and applies a new K8s YAML manifest
-func Run(ctx context.Context, cfg *Config) (string, error) {
+func Run(ctx context.Context, cfg *Config) (string, *corev1.Service, error) {
 	var err error
 	if cfg.Namespace == "" {
 		cfg.Namespace = os.Getenv(K8sNamespaceEnvVar)
 	}
 	Client, err = NewAPI(cfg.Namespace)
 	if err != nil {
-		return "", fmt.Errorf("failed to create K8s client: %w", err)
+		return "", nil, fmt.Errorf("failed to create K8s client: %w", err)
 	}
 	if Client != nil {
 		if err := Client.CreateNamespace(ctx, cfg.Namespace); err != nil {
-			return "", fmt.Errorf("failed to create namespace: %s, %w", cfg.Namespace, err)
+			return "", nil, fmt.Errorf("failed to create namespace: %s, %w", cfg.Namespace, err)
 		}
 	}
 	p := &App{
 		cfg: cfg,
 	}
 	if err := p.generate(); err != nil {
-		return "", err
+		return p.Manifest(), nil, err
 	}
-	return p.Manifest(), p.apply()
+	svc, err := p.apply()
+	if err != nil {
+		return p.Manifest(), svc, err
+	}
+	return p.Manifest(), svc, nil
+}
+
+// GetConnectionDetails returns connection details needed to forward ports
+func (n *App) GetConnectionDetails() *corev1.Service {
+	return n.svcObj
 }
 
 // generate provides a simplified template that is focused on deploying K8s Pods
@@ -408,6 +419,7 @@ func (n *App) generate() error {
 					Selector: labels,
 				},
 			}
+			n.svcObj = service
 			n.objects = append(n.objects, service)
 		}
 	}
@@ -427,30 +439,59 @@ func (n *App) generate() error {
 	return nil
 }
 
-func (n *App) apply() error {
+func (n *App) apply() (*corev1.Service, error) {
 	if os.Getenv("SNAPSHOT_TESTS") == "true" {
-		return nil
+		return nil, nil
 	}
 	if n.manifest == "" {
-		return fmt.Errorf("manifest is empty, nothing to generate")
+		return nil, fmt.Errorf("manifest is empty, nothing to generate")
 	}
 	_ = os.Mkdir(ManifestsDir, os.ModePerm)
 	// write generate manifest
 	manifestFile := filepath.Join(ManifestsDir, fmt.Sprintf("pods-%s.tmp.yml", uuid.NewString()[0:5]))
 	err := os.WriteFile(manifestFile, []byte(n.manifest), 0o600)
 	if err != nil {
-		return fmt.Errorf("failed to write manifest to file: %w", err)
+		return nil, fmt.Errorf("failed to write manifest to file: %w", err)
 	}
 	// apply the manifest
 	cmd := exec.Command("kubectl", "apply", "-f", manifestFile, "--wait=true")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("failed to apply manifest: %v\nOutput: %s", err, string(output))
+		return nil, fmt.Errorf("failed to apply manifest: %v\nOutput: %s", err, string(output))
 	}
 	L.Info().Str("Manifest", manifestFile).Msg("Manifest applied successfully")
-	return nil
+	return n.svcObj, Connect(n.svcObj)
 }
 
+// Connect connects service to localhost, the same method is used internally
+// by environment and externally by tests
+// 'blocking' means it'd wait until first successful port connection
+func Connect(svc *corev1.Service) error {
+	ns := os.Getenv(K8sNamespaceEnvVar)
+	if ns == "" {
+		return fmt.Errorf("empty namespace")
+	}
+	var err error
+	if Client == nil {
+		Client, err = NewAPI(ns)
+		if err != nil {
+			return err
+		}
+	}
+	f := NewForwarder(Client)
+	forwardConfigs := make([]PortForwardConfig, 0)
+	for _, p := range svc.Spec.Ports {
+		forwardConfigs = append(forwardConfigs, PortForwardConfig{
+			Namespace:   ns,
+			ServiceName: svc.Name,
+			LocalPort:   int(p.Port),
+			ServicePort: int(p.Port),
+		})
+	}
+	return f.Forward(forwardConfigs)
+}
+
+// WaitReady waits for all pods to be in status ready
 func WaitReady(ctx context.Context, t time.Duration) error {
 	_, err := Client.waitAllPodsReady(ctx, t)
 	return err

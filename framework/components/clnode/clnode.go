@@ -117,6 +117,8 @@ type NodeOut struct {
 	InternalP2PUrl string `toml:"p2p_internal_url" comment:"Node internal P2P URL"`
 	// InternalIP node internal IP
 	InternalIP string `toml:"internal_ip" comment:"Node internal IP"`
+	// K8sService is a Kubernetes service spec used to connect locally
+	K8sService *v1.Service `toml:"k8s_service" comment:"Kubernetes service spec used to connect locally"`
 }
 
 // NewNodeWithDB create a new Chainlink node with some image:tag and one or several configs
@@ -313,7 +315,7 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 
 	// k8s deployment
 	if pods.K8sEnabled() {
-		_, err := pods.Run(ctx, &pods.Config{
+		_, svc, err := pods.Run(ctx, &pods.Config{
 			Pods: []*pods.PodConfig{
 				{
 					Name:     pods.Ptr(containerName),
@@ -364,9 +366,10 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 			APIAuthUser:     DefaultAPIUser,
 			APIAuthPassword: DefaultAPIPassword,
 			ContainerName:   containerName,
-			ExternalURL:     fmt.Sprintf("http://%s:%d", fmt.Sprintf("%s-svc", containerName), in.Node.HTTPPort),
+			ExternalURL:     fmt.Sprintf("http://%s:%d", "localhost", in.Node.HTTPPort),
 			InternalURL:     fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
 			InternalP2PUrl:  fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
+			K8sService:      svc,
 		}, nil
 	}
 	// local deployment
