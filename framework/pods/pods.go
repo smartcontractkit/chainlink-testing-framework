@@ -113,7 +113,7 @@ func Run(ctx context.Context, cfg *Config) (string, *corev1.Service, error) {
 	if err := p.generate(); err != nil {
 		return p.Manifest(), nil, err
 	}
-	svc, err := p.apply()
+	svc, err := p.apply() //nolint
 	if err != nil {
 		return p.Manifest(), svc, err
 	}
