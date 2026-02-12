@@ -33,6 +33,10 @@ const (
 	ChainlinkKeyPassword string = "twochains"
 	// NodeURL string for logging
 	NodeURL string = "Node URL"
+	// CLClientRetries default CL node client retries
+	CLClientRetries = 10
+	// CLClientRetryInterval default CL node client retry interval
+	CLClientRetryInterval = 3 * time.Second
 )
 
 var (
@@ -86,7 +90,13 @@ func initRestyClient(url string, email string, password string, headers map[stri
 	isDebug := os.Getenv("RESTY_DEBUG") == "true"
 	// G402 - TODO: certificates
 	//nolint
-	rc := resty.New().SetBaseURL(url).SetHeaders(headers).SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}).SetDebug(isDebug)
+	rc := resty.New().
+		SetBaseURL(url).
+		SetHeaders(headers).
+		SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}).
+		SetDebug(isDebug).
+		SetRetryWaitTime(CLClientRetryInterval).
+		SetRetryCount(CLClientRetries)
 	if timeout != nil {
 		rc.SetTimeout(*timeout)
 	}
@@ -192,7 +202,6 @@ func (c *ChainlinkClient) WaitHealthy(pattern, status string, attempts uint) err
 				Msg("Retrying health check")
 		}),
 	)
-
 	if err != nil {
 		return fmt.Errorf("health check failed after %d attempts: %w", attempts, err)
 	}

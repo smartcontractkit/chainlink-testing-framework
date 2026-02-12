@@ -459,14 +459,17 @@ func (n *App) apply() (*corev1.Service, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to apply manifest: %v\nOutput: %s", err, string(output))
 	}
+	// if err := WaitReady(context.Background(), 3*time.Minute); err != nil {
+	// 	return n.svcObj, nil
+	// }
 	L.Info().Str("Manifest", manifestFile).Msg("Manifest applied successfully")
-	return n.svcObj, Connect(n.svcObj)
+	return n.svcObj, Connect(n.svcObj, false)
 }
 
 // Connect connects service to localhost, the same method is used internally
 // by environment and externally by tests
 // 'blocking' means it'd wait until first successful port connection
-func Connect(svc *corev1.Service) error {
+func Connect(svc *corev1.Service, waitForConnection bool) error {
 	ns := os.Getenv(K8sNamespaceEnvVar)
 	if ns == "" {
 		return fmt.Errorf("empty namespace")
@@ -488,7 +491,7 @@ func Connect(svc *corev1.Service) error {
 			ServicePort: int(p.Port),
 		})
 	}
-	return f.Forward(forwardConfigs)
+	return f.Forward(forwardConfigs, waitForConnection)
 }
 
 // WaitReady waits for all pods to be in status ready

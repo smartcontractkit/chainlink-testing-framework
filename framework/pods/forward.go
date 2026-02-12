@@ -104,7 +104,7 @@ func (m *PortForwardManager) forwardAndRetry(cfg PortForwardConfig, stopChan <-c
 			L.Info().Msgf("Stopped retry loop for %s", key)
 			return
 		default:
-			L.Info().
+			L.Debug().
 				Str("ServiceName", cfg.ServiceName).
 				Int("LocalPort", cfg.LocalPort).
 				Msg("Starting forwarder")
@@ -137,10 +137,6 @@ func (m *PortForwardManager) forwardAndRetry(cfg PortForwardConfig, stopChan <-c
 // attemptForward establishes and monitors a single port forward connection
 func (m *PortForwardManager) attemptForward(cfg PortForwardConfig, signalReadyChan chan struct{}) error {
 	namespace := cfg.Namespace
-	if namespace == "" {
-		namespace = "default"
-	}
-
 	// Get target pod for forwarding
 	targetPod, targetPort, err := m.getTargetPodAndPort(cfg, namespace)
 	if err != nil {
@@ -189,7 +185,11 @@ func (m *PortForwardManager) attemptForward(cfg PortForwardConfig, signalReadyCh
 	case <-readyChan:
 		l.Info().
 			Msg("🟢 established connection for")
-		signalReadyChan <- struct{}{}
+		// signal if client is waiting for the first connection established
+		select {
+		case signalReadyChan <- struct{}{}:
+		default:
+		}
 		// error is received when someone is trying to call the local port
 		// and connection is broken, it is not proactively checked
 		select {
@@ -261,28 +261,31 @@ func (m *PortForwardManager) getTargetPodAndPort(cfg PortForwardConfig, namespac
 }
 
 // Forward starts multiple port forwards concurrently
-func (m *PortForwardManager) Forward(configs []PortForwardConfig) error {
+func (m *PortForwardManager) Forward(configs []PortForwardConfig, waitForConnection bool) error {
 	for _, cfg := range configs {
 		if err := cfg.validate(); err != nil {
 			return err
 		}
 		m.startForwardService(cfg)
 	}
-	// this code is used so library users can block until first successful connection
-	eg := &errgroup.Group{}
-	for _, fwd := range m.forwards {
-		eg.Go(func() error {
-			L.Info().Msg("Awaiting for first established connection")
-			select {
-			case <-fwd.signalClientReadyChan:
-				L.Info().Msg("Connection established")
-				return nil
-			case <-time.After(2 * time.Minute):
-				return fmt.Errorf("failed to forward ports until deadline")
-			}
-		})
+	if waitForConnection {
+		// this code is used so library users can block until first successful connection
+		eg := &errgroup.Group{}
+		for _, fwd := range m.forwards {
+			eg.Go(func() error {
+				L.Info().Msg("Awaiting for first established connection")
+				select {
+				case <-fwd.signalClientReadyChan:
+					L.Info().Msg("Connection established")
+					return nil
+				case <-time.After(2 * time.Minute):
+					return fmt.Errorf("failed to forward ports until deadline")
+				}
+			})
+		}
+		return eg.Wait()
 	}
-	return eg.Wait()
+	return nil
 }
 
 // StopAll stops all active port forwards
