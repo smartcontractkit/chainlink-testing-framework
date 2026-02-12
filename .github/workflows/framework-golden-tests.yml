@@ -122,6 +122,8 @@ jobs:
             go-modules-${{ runner.os }}
       - name: Install dependencies
         run: go mod download
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v4
       - name: Run System Tests
         if: steps.changes.outputs.src == 'true'
         env:
