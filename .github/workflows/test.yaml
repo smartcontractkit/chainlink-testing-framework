@@ -98,6 +98,8 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           just-version: '1.39.0'
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v4
       - name: Run tests
         run: |
           just test ${{ matrix.test.path }} ${{ matrix.test.regex }}
