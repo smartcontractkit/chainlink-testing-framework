@@ -123,6 +123,102 @@
       # Internal blockchain node HTTP URL
       internal_http_url = ''
 
+      # Kubernetes service spec used to connect locally
+      [blockchains.out.nodes.k8s_service]
+        Kind = ''
+        APIVersion = ''
+        Name = ''
+        GenerateName = ''
+        Namespace = ''
+        SelfLink = ''
+        UID = ''
+        ResourceVersion = ''
+        Generation = 0
+        CreationTimestamp = '0001-01-01T00:00:00Z'
+        DeletionTimestamp = '0001-01-01T00:00:00Z'
+        DeletionGracePeriodSeconds = 0
+        Finalizers = []
+
+        [blockchains.out.nodes.k8s_service.Labels]
+
+        [blockchains.out.nodes.k8s_service.Annotations]
+
+        [[blockchains.out.nodes.k8s_service.OwnerReferences]]
+          APIVersion = ''
+          Kind = ''
+          Name = ''
+          UID = ''
+          Controller = false
+          BlockOwnerDeletion = false
+
+        [[blockchains.out.nodes.k8s_service.ManagedFields]]
+          Manager = ''
+          Operation = ''
+          APIVersion = ''
+          Time = '0001-01-01T00:00:00Z'
+          FieldsType = ''
+          Subresource = ''
+
+          [blockchains.out.nodes.k8s_service.ManagedFields.FieldsV1]
+            Raw = []
+
+        [blockchains.out.nodes.k8s_service.Spec]
+          ClusterIP = ''
+          ClusterIPs = []
+          Type = ''
+          ExternalIPs = []
+          SessionAffinity = ''
+          LoadBalancerIP = ''
+          LoadBalancerSourceRanges = []
+          ExternalName = ''
+          ExternalTrafficPolicy = ''
+          HealthCheckNodePort = 0
+          PublishNotReadyAddresses = false
+          IPFamilies = []
+          IPFamilyPolicy = ''
+          AllocateLoadBalancerNodePorts = false
+          LoadBalancerClass = ''
+          InternalTrafficPolicy = ''
+          TrafficDistribution = ''
+
+          [[blockchains.out.nodes.k8s_service.Spec.Ports]]
+            Name = ''
+            Protocol = ''
+            AppProtocol = ''
+            Port = 0
+            NodePort = 0
+
+            [blockchains.out.nodes.k8s_service.Spec.Ports.TargetPort]
+              Type = 0
+              IntVal = 0
+              StrVal = ''
+
+          [blockchains.out.nodes.k8s_service.Spec.Selector]
+
+          [blockchains.out.nodes.k8s_service.Spec.SessionAffinityConfig]
+            [blockchains.out.nodes.k8s_service.Spec.SessionAffinityConfig.ClientIP]
+              TimeoutSeconds = 0
+
+        [blockchains.out.nodes.k8s_service.Status]
+          [blockchains.out.nodes.k8s_service.Status.LoadBalancer]
+            [[blockchains.out.nodes.k8s_service.Status.LoadBalancer.Ingress]]
+              IP = ''
+              Hostname = ''
+              IPMode = ''
+
+              [[blockchains.out.nodes.k8s_service.Status.LoadBalancer.Ingress.Ports]]
+                Port = 0
+                Protocol = ''
+                Error = ''
+
+          [[blockchains.out.nodes.k8s_service.Status.Conditions]]
+            Type = ''
+            Status = ''
+            ObservedGeneration = 0
+            LastTransitionTime = '0001-01-01T00:00:00Z'
+            Reason = ''
+            Message = ''
+
   # Solana's programs, map of program name to program ID, there needs to be a matching .so file in contracts_dir
   [blockchains.solana_programs]
 

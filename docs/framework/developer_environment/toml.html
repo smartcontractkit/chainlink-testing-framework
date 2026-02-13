@@ -260,6 +260,102 @@
     base_url_host = ''
     # Base URL to reach fakes service from other Docker containers
     base_url_docker = ''
+
+    # Kubernetes service spec used to connect locally
+    [fakes.out.k8s_service]
+      Kind = ''
+      APIVersion = ''
+      Name = ''
+      GenerateName = ''
+      Namespace = ''
+      SelfLink = ''
+      UID = ''
+      ResourceVersion = ''
+      Generation = 0
+      CreationTimestamp = '0001-01-01T00:00:00Z'
+      DeletionTimestamp = '0001-01-01T00:00:00Z'
+      DeletionGracePeriodSeconds = 0
+      Finalizers = []
+
+      [fakes.out.k8s_service.Labels]
+
+      [fakes.out.k8s_service.Annotations]
+
+      [[fakes.out.k8s_service.OwnerReferences]]
+        APIVersion = ''
+        Kind = ''
+        Name = ''
+        UID = ''
+        Controller = false
+        BlockOwnerDeletion = false
+
+      [[fakes.out.k8s_service.ManagedFields]]
+        Manager = ''
+        Operation = ''
+        APIVersion = ''
+        Time = '0001-01-01T00:00:00Z'
+        FieldsType = ''
+        Subresource = ''
+
+        [fakes.out.k8s_service.ManagedFields.FieldsV1]
+          Raw = []
+
+      [fakes.out.k8s_service.Spec]
+        ClusterIP = ''
+        ClusterIPs = []
+        Type = ''
+        ExternalIPs = []
+        SessionAffinity = ''
+        LoadBalancerIP = ''
+        LoadBalancerSourceRanges = []
+        ExternalName = ''
+        ExternalTrafficPolicy = ''
+        HealthCheckNodePort = 0
+        PublishNotReadyAddresses = false
+        IPFamilies = []
+        IPFamilyPolicy = ''
+        AllocateLoadBalancerNodePorts = false
+        LoadBalancerClass = ''
+        InternalTrafficPolicy = ''
+        TrafficDistribution = ''
+
+        [[fakes.out.k8s_service.Spec.Ports]]
+          Name = ''
+          Protocol = ''
+          AppProtocol = ''
+          Port = 0
+          NodePort = 0
+
+          [fakes.out.k8s_service.Spec.Ports.TargetPort]
+            Type = 0
+            IntVal = 0
+            StrVal = ''
+
+        [fakes.out.k8s_service.Spec.Selector]
+
+        [fakes.out.k8s_service.Spec.SessionAffinityConfig]
+          [fakes.out.k8s_service.Spec.SessionAffinityConfig.ClientIP]
+            TimeoutSeconds = 0
+
+      [fakes.out.k8s_service.Status]
+        [fakes.out.k8s_service.Status.LoadBalancer]
+          [[fakes.out.k8s_service.Status.LoadBalancer.Ingress]]
+            IP = ''
+            Hostname = ''
+            IPMode = ''
+
+            [[fakes.out.k8s_service.Status.LoadBalancer.Ingress.Ports]]
+              Port = 0
+              Protocol = ''
+              Error = ''
+
+        [[fakes.out.k8s_service.Status.Conditions]]
+          Type = ''
+          Status = ''
+          ObservedGeneration = 0
+          LastTransitionTime = '0001-01-01T00:00:00Z'
+          Reason = ''
+          Message = ''
 </code></pre>
 <h2 id="blockchains"><a class="header" href="#blockchains">Blockchains</a></h2>
 <p>Various types of blockchain nodes.</p>
@@ -388,6 +484,102 @@
       # Internal blockchain node HTTP URL
       internal_http_url = ''
 
+      # Kubernetes service spec used to connect locally
+      [blockchains.out.nodes.k8s_service]
+        Kind = ''
+        APIVersion = ''
+        Name = ''
+        GenerateName = ''
+        Namespace = ''
+        SelfLink = ''
+        UID = ''
+        ResourceVersion = ''
+        Generation = 0
+        CreationTimestamp = '0001-01-01T00:00:00Z'
+        DeletionTimestamp = '0001-01-01T00:00:00Z'
+        DeletionGracePeriodSeconds = 0
+        Finalizers = []
+
+        [blockchains.out.nodes.k8s_service.Labels]
+
+        [blockchains.out.nodes.k8s_service.Annotations]
+
+        [[blockchains.out.nodes.k8s_service.OwnerReferences]]
+          APIVersion = ''
+          Kind = ''
+          Name = ''
+          UID = ''
+          Controller = false
+          BlockOwnerDeletion = false
+
+        [[blockchains.out.nodes.k8s_service.ManagedFields]]
+          Manager = ''
+          Operation = ''
+          APIVersion = ''
+          Time = '0001-01-01T00:00:00Z'
+          FieldsType = ''
+          Subresource = ''
+
+          [blockchains.out.nodes.k8s_service.ManagedFields.FieldsV1]
+            Raw = []
+
+        [blockchains.out.nodes.k8s_service.Spec]
+          ClusterIP = ''
+          ClusterIPs = []
+          Type = ''
+          ExternalIPs = []
+          SessionAffinity = ''
+          LoadBalancerIP = ''
+          LoadBalancerSourceRanges = []
+          ExternalName = ''
+          ExternalTrafficPolicy = ''
+          HealthCheckNodePort = 0
+          PublishNotReadyAddresses = false
+          IPFamilies = []
+          IPFamilyPolicy = ''
+          AllocateLoadBalancerNodePorts = false
+          LoadBalancerClass = ''
+          InternalTrafficPolicy = ''
+          TrafficDistribution = ''
+
+          [[blockchains.out.nodes.k8s_service.Spec.Ports]]
+            Name = ''
+            Protocol = ''
+            AppProtocol = ''
+            Port = 0
+            NodePort = 0
+
+            [blockchains.out.nodes.k8s_service.Spec.Ports.TargetPort]
+              Type = 0
+              IntVal = 0
+              StrVal = ''
+
+          [blockchains.out.nodes.k8s_service.Spec.Selector]
+
+          [blockchains.out.nodes.k8s_service.Spec.SessionAffinityConfig]
+            [blockchains.out.nodes.k8s_service.Spec.SessionAffinityConfig.ClientIP]
+              TimeoutSeconds = 0
+
+        [blockchains.out.nodes.k8s_service.Status]
+          [blockchains.out.nodes.k8s_service.Status.LoadBalancer]
+            [[blockchains.out.nodes.k8s_service.Status.LoadBalancer.Ingress]]
+              IP = ''
+              Hostname = ''
+              IPMode = ''
+
+              [[blockchains.out.nodes.k8s_service.Status.LoadBalancer.Ingress.Ports]]
+                Port = 0
+                Protocol = ''
+                Error = ''
+
+          [[blockchains.out.nodes.k8s_service.Status.Conditions]]
+            Type = ''
+            Status = ''
+            ObservedGeneration = 0
+            LastTransitionTime = '0001-01-01T00:00:00Z'
+            Reason = ''
+            Message = ''
+
   # Solana's programs, map of program name to program ID, there needs to be a matching .so file in contracts_dir
   [blockchains.solana_programs]
 
@@ -458,6 +650,102 @@
       # PostgreSQL internal connection URL to JobDistributor database
       jd_internal_url = ''
 
+      # Kubernetes service spec used to connect locally
+      [nodesets.db.out.k8s_service]
+        Kind = ''
+        APIVersion = ''
+        Name = ''
+        GenerateName = ''
+        Namespace = ''
+        SelfLink = ''
+        UID = ''
+        ResourceVersion = ''
+        Generation = 0
+        CreationTimestamp = '0001-01-01T00:00:00Z'
+        DeletionTimestamp = '0001-01-01T00:00:00Z'
+        DeletionGracePeriodSeconds = 0
+        Finalizers = []
+
+        [nodesets.db.out.k8s_service.Labels]
+
+        [nodesets.db.out.k8s_service.Annotations]
+
+        [[nodesets.db.out.k8s_service.OwnerReferences]]
+          APIVersion = ''
+          Kind = ''
+          Name = ''
+          UID = ''
+          Controller = false
+          BlockOwnerDeletion = false
+
+        [[nodesets.db.out.k8s_service.ManagedFields]]
+          Manager = ''
+          Operation = ''
+          APIVersion = ''
+          Time = '0001-01-01T00:00:00Z'
+          FieldsType = ''
+          Subresource = ''
+
+          [nodesets.db.out.k8s_service.ManagedFields.FieldsV1]
+            Raw = []
+
+        [nodesets.db.out.k8s_service.Spec]
+          ClusterIP = ''
+          ClusterIPs = []
+          Type = ''
+          ExternalIPs = []
+          SessionAffinity = ''
+          LoadBalancerIP = ''
+          LoadBalancerSourceRanges = []
+          ExternalName = ''
+          ExternalTrafficPolicy = ''
+          HealthCheckNodePort = 0
+          PublishNotReadyAddresses = false
+          IPFamilies = []
+          IPFamilyPolicy = ''
+          AllocateLoadBalancerNodePorts = false
+          LoadBalancerClass = ''
+          InternalTrafficPolicy = ''
+          TrafficDistribution = ''
+
+          [[nodesets.db.out.k8s_service.Spec.Ports]]
+            Name = ''
+            Protocol = ''
+            AppProtocol = ''
+            Port = 0
+            NodePort = 0
+
+            [nodesets.db.out.k8s_service.Spec.Ports.TargetPort]
+              Type = 0
+              IntVal = 0
+              StrVal = ''
+
+          [nodesets.db.out.k8s_service.Spec.Selector]
+
+          [nodesets.db.out.k8s_service.Spec.SessionAffinityConfig]
+            [nodesets.db.out.k8s_service.Spec.SessionAffinityConfig.ClientIP]
+              TimeoutSeconds = 0
+
+        [nodesets.db.out.k8s_service.Status]
+          [nodesets.db.out.k8s_service.Status.LoadBalancer]
+            [[nodesets.db.out.k8s_service.Status.LoadBalancer.Ingress]]
+              IP = ''
+              Hostname = ''
+              IPMode = ''
+
+              [[nodesets.db.out.k8s_service.Status.LoadBalancer.Ingress.Ports]]
+                Port = 0
+                Protocol = ''
+                Error = ''
+
+          [[nodesets.db.out.k8s_service.Status.Conditions]]
+            Type = ''
+            Status = ''
+            ObservedGeneration = 0
+            LastTransitionTime = '0001-01-01T00:00:00Z'
+            Reason = ''
+            Message = ''
+
   # Chainlink node TOML configurations
   [[nodesets.node_specs]]
     # whether to allow DNS in Docker containers or not, useful for isolating containers from network if set to 'false'
@@ -501,6 +789,102 @@
         jd_url = ''
         # PostgreSQL internal connection URL to JobDistributor database
         jd_internal_url = ''
+
+        # Kubernetes service spec used to connect locally
+        [nodesets.node_specs.db.out.k8s_service]
+          Kind = ''
+          APIVersion = ''
+          Name = ''
+          GenerateName = ''
+          Namespace = ''
+          SelfLink = ''
+          UID = ''
+          ResourceVersion = ''
+          Generation = 0
+          CreationTimestamp = '0001-01-01T00:00:00Z'
+          DeletionTimestamp = '0001-01-01T00:00:00Z'
+          DeletionGracePeriodSeconds = 0
+          Finalizers = []
+
+          [nodesets.node_specs.db.out.k8s_service.Labels]
+
+          [nodesets.node_specs.db.out.k8s_service.Annotations]
+
+          [[nodesets.node_specs.db.out.k8s_service.OwnerReferences]]
+            APIVersion = ''
+            Kind = ''
+            Name = ''
+            UID = ''
+            Controller = false
+            BlockOwnerDeletion = false
+
+          [[nodesets.node_specs.db.out.k8s_service.ManagedFields]]
+            Manager = ''
+            Operation = ''
+            APIVersion = ''
+            Time = '0001-01-01T00:00:00Z'
+            FieldsType = ''
+            Subresource = ''
+
+            [nodesets.node_specs.db.out.k8s_service.ManagedFields.FieldsV1]
+              Raw = []
+
+          [nodesets.node_specs.db.out.k8s_service.Spec]
+            ClusterIP = ''
+            ClusterIPs = []
+            Type = ''
+            ExternalIPs = []
+            SessionAffinity = ''
+            LoadBalancerIP = ''
+            LoadBalancerSourceRanges = []
+            ExternalName = ''
+            ExternalTrafficPolicy = ''
+            HealthCheckNodePort = 0
+            PublishNotReadyAddresses = false
+            IPFamilies = []
+            IPFamilyPolicy = ''
+            AllocateLoadBalancerNodePorts = false
+            LoadBalancerClass = ''
+            InternalTrafficPolicy = ''
+            TrafficDistribution = ''
+
+            [[nodesets.node_specs.db.out.k8s_service.Spec.Ports]]
+              Name = ''
+              Protocol = ''
+              AppProtocol = ''
+              Port = 0
+              NodePort = 0
+
+              [nodesets.node_specs.db.out.k8s_service.Spec.Ports.TargetPort]
+                Type = 0
+                IntVal = 0
+                StrVal = ''
+
+            [nodesets.node_specs.db.out.k8s_service.Spec.Selector]
+
+            [nodesets.node_specs.db.out.k8s_service.Spec.SessionAffinityConfig]
+              [nodesets.node_specs.db.out.k8s_service.Spec.SessionAffinityConfig.ClientIP]
+                TimeoutSeconds = 0
+
+          [nodesets.node_specs.db.out.k8s_service.Status]
+            [nodesets.node_specs.db.out.k8s_service.Status.LoadBalancer]
+              [[nodesets.node_specs.db.out.k8s_service.Status.LoadBalancer.Ingress]]
+                IP = ''
+                Hostname = ''
+                IPMode = ''
+
+                [[nodesets.node_specs.db.out.k8s_service.Status.LoadBalancer.Ingress.Ports]]
+                  Port = 0
+                  Protocol = ''
+                  Error = ''
+
+            [[nodesets.node_specs.db.out.k8s_service.Status.Conditions]]
+              Type = ''
+              Status = ''
+              ObservedGeneration = 0
+              LastTransitionTime = '0001-01-01T00:00:00Z'
+              Reason = ''
+              Message = ''
 
     # Chainlink node configuration
     [nodesets.node_specs.node]
@@ -570,6 +954,102 @@
         # Node internal IP
         internal_ip = ''
 
+        # Kubernetes service spec used to connect locally
+        [nodesets.node_specs.out.node.k8s_service]
+          Kind = ''
+          APIVersion = ''
+          Name = ''
+          GenerateName = ''
+          Namespace = ''
+          SelfLink = ''
+          UID = ''
+          ResourceVersion = ''
+          Generation = 0
+          CreationTimestamp = '0001-01-01T00:00:00Z'
+          DeletionTimestamp = '0001-01-01T00:00:00Z'
+          DeletionGracePeriodSeconds = 0
+          Finalizers = []
+
+          [nodesets.node_specs.out.node.k8s_service.Labels]
+
+          [nodesets.node_specs.out.node.k8s_service.Annotations]
+
+          [[nodesets.node_specs.out.node.k8s_service.OwnerReferences]]
+            APIVersion = ''
+            Kind = ''
+            Name = ''
+            UID = ''
+            Controller = false
+            BlockOwnerDeletion = false
+
+          [[nodesets.node_specs.out.node.k8s_service.ManagedFields]]
+            Manager = ''
+            Operation = ''
+            APIVersion = ''
+            Time = '0001-01-01T00:00:00Z'
+            FieldsType = ''
+            Subresource = ''
+
+            [nodesets.node_specs.out.node.k8s_service.ManagedFields.FieldsV1]
+              Raw = []
+
+          [nodesets.node_specs.out.node.k8s_service.Spec]
+            ClusterIP = ''
+            ClusterIPs = []
+            Type = ''
+            ExternalIPs = []
+            SessionAffinity = ''
+            LoadBalancerIP = ''
+            LoadBalancerSourceRanges = []
+            ExternalName = ''
+            ExternalTrafficPolicy = ''
+            HealthCheckNodePort = 0
+            PublishNotReadyAddresses = false
+            IPFamilies = []
+            IPFamilyPolicy = ''
+            AllocateLoadBalancerNodePorts = false
+            LoadBalancerClass = ''
+            InternalTrafficPolicy = ''
+            TrafficDistribution = ''
+
+            [[nodesets.node_specs.out.node.k8s_service.Spec.Ports]]
+              Name = ''
+              Protocol = ''
+              AppProtocol = ''
+              Port = 0
+              NodePort = 0
+
+              [nodesets.node_specs.out.node.k8s_service.Spec.Ports.TargetPort]
+                Type = 0
+                IntVal = 0
+                StrVal = ''
+
+            [nodesets.node_specs.out.node.k8s_service.Spec.Selector]
+
+            [nodesets.node_specs.out.node.k8s_service.Spec.SessionAffinityConfig]
+              [nodesets.node_specs.out.node.k8s_service.Spec.SessionAffinityConfig.ClientIP]
+                TimeoutSeconds = 0
+
+          [nodesets.node_specs.out.node.k8s_service.Status]
+            [nodesets.node_specs.out.node.k8s_service.Status.LoadBalancer]
+              [[nodesets.node_specs.out.node.k8s_service.Status.LoadBalancer.Ingress]]
+                IP = ''
+                Hostname = ''
+                IPMode = ''
+
+                [[nodesets.node_specs.out.node.k8s_service.Status.LoadBalancer.Ingress.Ports]]
+                  Port = 0
+                  Protocol = ''
+                  Error = ''
+
+            [[nodesets.node_specs.out.node.k8s_service.Status.Conditions]]
+              Type = ''
+              Status = ''
+              ObservedGeneration = 0
+              LastTransitionTime = '0001-01-01T00:00:00Z'
+              Reason = ''
+              Message = ''
+
       # PostgreSQL config output
       [nodesets.node_specs.out.postgresql]
         # PostgreSQL connection URL
@@ -582,6 +1062,102 @@
         jd_url = ''
         # PostgreSQL internal connection URL to JobDistributor database
         jd_internal_url = ''
+
+        # Kubernetes service spec used to connect locally
+        [nodesets.node_specs.out.postgresql.k8s_service]
+          Kind = ''
+          APIVersion = ''
+          Name = ''
+          GenerateName = ''
+          Namespace = ''
+          SelfLink = ''
+          UID = ''
+          ResourceVersion = ''
+          Generation = 0
+          CreationTimestamp = '0001-01-01T00:00:00Z'
+          DeletionTimestamp = '0001-01-01T00:00:00Z'
+          DeletionGracePeriodSeconds = 0
+          Finalizers = []
+
+          [nodesets.node_specs.out.postgresql.k8s_service.Labels]
+
+          [nodesets.node_specs.out.postgresql.k8s_service.Annotations]
+
+          [[nodesets.node_specs.out.postgresql.k8s_service.OwnerReferences]]
+            APIVersion = ''
+            Kind = ''
+            Name = ''
+            UID = ''
+            Controller = false
+            BlockOwnerDeletion = false
+
+          [[nodesets.node_specs.out.postgresql.k8s_service.ManagedFields]]
+            Manager = ''
+            Operation = ''
+            APIVersion = ''
+            Time = '0001-01-01T00:00:00Z'
+            FieldsType = ''
+            Subresource = ''
+
+            [nodesets.node_specs.out.postgresql.k8s_service.ManagedFields.FieldsV1]
+              Raw = []
+
+          [nodesets.node_specs.out.postgresql.k8s_service.Spec]
+            ClusterIP = ''
+            ClusterIPs = []
+            Type = ''
+            ExternalIPs = []
+            SessionAffinity = ''
+            LoadBalancerIP = ''
+            LoadBalancerSourceRanges = []
+            ExternalName = ''
+            ExternalTrafficPolicy = ''
+            HealthCheckNodePort = 0
+            PublishNotReadyAddresses = false
+            IPFamilies = []
+            IPFamilyPolicy = ''
+            AllocateLoadBalancerNodePorts = false
+            LoadBalancerClass = ''
+            InternalTrafficPolicy = ''
+            TrafficDistribution = ''
+
+            [[nodesets.node_specs.out.postgresql.k8s_service.Spec.Ports]]
+              Name = ''
+              Protocol = ''
+              AppProtocol = ''
+              Port = 0
+              NodePort = 0
+
+              [nodesets.node_specs.out.postgresql.k8s_service.Spec.Ports.TargetPort]
+                Type = 0
+                IntVal = 0
+                StrVal = ''
+
+            [nodesets.node_specs.out.postgresql.k8s_service.Spec.Selector]
+
+            [nodesets.node_specs.out.postgresql.k8s_service.Spec.SessionAffinityConfig]
+              [nodesets.node_specs.out.postgresql.k8s_service.Spec.SessionAffinityConfig.ClientIP]
+                TimeoutSeconds = 0
+
+          [nodesets.node_specs.out.postgresql.k8s_service.Status]
+            [nodesets.node_specs.out.postgresql.k8s_service.Status.LoadBalancer]
+              [[nodesets.node_specs.out.postgresql.k8s_service.Status.LoadBalancer.Ingress]]
+                IP = ''
+                Hostname = ''
+                IPMode = ''
+
+                [[nodesets.node_specs.out.postgresql.k8s_service.Status.LoadBalancer.Ingress.Ports]]
+                  Port = 0
+                  Protocol = ''
+                  Error = ''
+
+            [[nodesets.node_specs.out.postgresql.k8s_service.Status.Conditions]]
+              Type = ''
+              Status = ''
+              ObservedGeneration = 0
+              LastTransitionTime = '0001-01-01T00:00:00Z'
+              Reason = ''
+              Message = ''
 
   # Nodeset config output
   [nodesets.out]
@@ -600,6 +1176,102 @@
       jd_url = ''
       # PostgreSQL internal connection URL to JobDistributor database
       jd_internal_url = ''
+
+      # Kubernetes service spec used to connect locally
+      [nodesets.out.db_out.k8s_service]
+        Kind = ''
+        APIVersion = ''
+        Name = ''
+        GenerateName = ''
+        Namespace = ''
+        SelfLink = ''
+        UID = ''
+        ResourceVersion = ''
+        Generation = 0
+        CreationTimestamp = '0001-01-01T00:00:00Z'
+        DeletionTimestamp = '0001-01-01T00:00:00Z'
+        DeletionGracePeriodSeconds = 0
+        Finalizers = []
+
+        [nodesets.out.db_out.k8s_service.Labels]
+
+        [nodesets.out.db_out.k8s_service.Annotations]
+
+        [[nodesets.out.db_out.k8s_service.OwnerReferences]]
+          APIVersion = ''
+          Kind = ''
+          Name = ''
+          UID = ''
+          Controller = false
+          BlockOwnerDeletion = false
+
+        [[nodesets.out.db_out.k8s_service.ManagedFields]]
+          Manager = ''
+          Operation = ''
+          APIVersion = ''
+          Time = '0001-01-01T00:00:00Z'
+          FieldsType = ''
+          Subresource = ''
+
+          [nodesets.out.db_out.k8s_service.ManagedFields.FieldsV1]
+            Raw = []
+
+        [nodesets.out.db_out.k8s_service.Spec]
+          ClusterIP = ''
+          ClusterIPs = []
+          Type = ''
+          ExternalIPs = []
+          SessionAffinity = ''
+          LoadBalancerIP = ''
+          LoadBalancerSourceRanges = []
+          ExternalName = ''
+          ExternalTrafficPolicy = ''
+          HealthCheckNodePort = 0
+          PublishNotReadyAddresses = false
+          IPFamilies = []
+          IPFamilyPolicy = ''
+          AllocateLoadBalancerNodePorts = false
+          LoadBalancerClass = ''
+          InternalTrafficPolicy = ''
+          TrafficDistribution = ''
+
+          [[nodesets.out.db_out.k8s_service.Spec.Ports]]
+            Name = ''
+            Protocol = ''
+            AppProtocol = ''
+            Port = 0
+            NodePort = 0
+
+            [nodesets.out.db_out.k8s_service.Spec.Ports.TargetPort]
+              Type = 0
+              IntVal = 0
+              StrVal = ''
+
+          [nodesets.out.db_out.k8s_service.Spec.Selector]
+
+          [nodesets.out.db_out.k8s_service.Spec.SessionAffinityConfig]
+            [nodesets.out.db_out.k8s_service.Spec.SessionAffinityConfig.ClientIP]
+              TimeoutSeconds = 0
+
+        [nodesets.out.db_out.k8s_service.Status]
+          [nodesets.out.db_out.k8s_service.Status.LoadBalancer]
+            [[nodesets.out.db_out.k8s_service.Status.LoadBalancer.Ingress]]
+              IP = ''
+              Hostname = ''
+              IPMode = ''
+
+              [[nodesets.out.db_out.k8s_service.Status.LoadBalancer.Ingress.Ports]]
+                Port = 0
+                Protocol = ''
+                Error = ''
+
+          [[nodesets.out.db_out.k8s_service.Status.Conditions]]
+            Type = ''
+            Status = ''
+            ObservedGeneration = 0
+            LastTransitionTime = '0001-01-01T00:00:00Z'
+            Reason = ''
+            Message = ''
 
     # Chainlink node config outputs
     [[nodesets.out.cl_nodes]]
@@ -623,6 +1295,102 @@
         # Node internal IP
         internal_ip = ''
 
+        # Kubernetes service spec used to connect locally
+        [nodesets.out.cl_nodes.node.k8s_service]
+          Kind = ''
+          APIVersion = ''
+          Name = ''
+          GenerateName = ''
+          Namespace = ''
+          SelfLink = ''
+          UID = ''
+          ResourceVersion = ''
+          Generation = 0
+          CreationTimestamp = '0001-01-01T00:00:00Z'
+          DeletionTimestamp = '0001-01-01T00:00:00Z'
+          DeletionGracePeriodSeconds = 0
+          Finalizers = []
+
+          [nodesets.out.cl_nodes.node.k8s_service.Labels]
+
+          [nodesets.out.cl_nodes.node.k8s_service.Annotations]
+
+          [[nodesets.out.cl_nodes.node.k8s_service.OwnerReferences]]
+            APIVersion = ''
+            Kind = ''
+            Name = ''
+            UID = ''
+            Controller = false
+            BlockOwnerDeletion = false
+
+          [[nodesets.out.cl_nodes.node.k8s_service.ManagedFields]]
+            Manager = ''
+            Operation = ''
+            APIVersion = ''
+            Time = '0001-01-01T00:00:00Z'
+            FieldsType = ''
+            Subresource = ''
+
+            [nodesets.out.cl_nodes.node.k8s_service.ManagedFields.FieldsV1]
+              Raw = []
+
+          [nodesets.out.cl_nodes.node.k8s_service.Spec]
+            ClusterIP = ''
+            ClusterIPs = []
+            Type = ''
+            ExternalIPs = []
+            SessionAffinity = ''
+            LoadBalancerIP = ''
+            LoadBalancerSourceRanges = []
+            ExternalName = ''
+            ExternalTrafficPolicy = ''
+            HealthCheckNodePort = 0
+            PublishNotReadyAddresses = false
+            IPFamilies = []
+            IPFamilyPolicy = ''
+            AllocateLoadBalancerNodePorts = false
+            LoadBalancerClass = ''
+            InternalTrafficPolicy = ''
+            TrafficDistribution = ''
+
+            [[nodesets.out.cl_nodes.node.k8s_service.Spec.Ports]]
+              Name = ''
+              Protocol = ''
+              AppProtocol = ''
+              Port = 0
+              NodePort = 0
+
+              [nodesets.out.cl_nodes.node.k8s_service.Spec.Ports.TargetPort]
+                Type = 0
+                IntVal = 0
+                StrVal = ''
+
+            [nodesets.out.cl_nodes.node.k8s_service.Spec.Selector]
+
+            [nodesets.out.cl_nodes.node.k8s_service.Spec.SessionAffinityConfig]
+              [nodesets.out.cl_nodes.node.k8s_service.Spec.SessionAffinityConfig.ClientIP]
+                TimeoutSeconds = 0
+
+          [nodesets.out.cl_nodes.node.k8s_service.Status]
+            [nodesets.out.cl_nodes.node.k8s_service.Status.LoadBalancer]
+              [[nodesets.out.cl_nodes.node.k8s_service.Status.LoadBalancer.Ingress]]
+                IP = ''
+                Hostname = ''
+                IPMode = ''
+
+                [[nodesets.out.cl_nodes.node.k8s_service.Status.LoadBalancer.Ingress.Ports]]
+                  Port = 0
+                  Protocol = ''
+                  Error = ''
+
+            [[nodesets.out.cl_nodes.node.k8s_service.Status.Conditions]]
+              Type = ''
+              Status = ''
+              ObservedGeneration = 0
+              LastTransitionTime = '0001-01-01T00:00:00Z'
+              Reason = ''
+              Message = ''
+
       # PostgreSQL config output
       [nodesets.out.cl_nodes.postgresql]
         # PostgreSQL connection URL
@@ -635,6 +1403,102 @@
         jd_url = ''
         # PostgreSQL internal connection URL to JobDistributor database
         jd_internal_url = ''
+
+        # Kubernetes service spec used to connect locally
+        [nodesets.out.cl_nodes.postgresql.k8s_service]
+          Kind = ''
+          APIVersion = ''
+          Name = ''
+          GenerateName = ''
+          Namespace = ''
+          SelfLink = ''
+          UID = ''
+          ResourceVersion = ''
+          Generation = 0
+          CreationTimestamp = '0001-01-01T00:00:00Z'
+          DeletionTimestamp = '0001-01-01T00:00:00Z'
+          DeletionGracePeriodSeconds = 0
+          Finalizers = []
+
+          [nodesets.out.cl_nodes.postgresql.k8s_service.Labels]
+
+          [nodesets.out.cl_nodes.postgresql.k8s_service.Annotations]
+
+          [[nodesets.out.cl_nodes.postgresql.k8s_service.OwnerReferences]]
+            APIVersion = ''
+            Kind = ''
+            Name = ''
+            UID = ''
+            Controller = false
+            BlockOwnerDeletion = false
+
+          [[nodesets.out.cl_nodes.postgresql.k8s_service.ManagedFields]]
+            Manager = ''
+            Operation = ''
+            APIVersion = ''
+            Time = '0001-01-01T00:00:00Z'
+            FieldsType = ''
+            Subresource = ''
+
+            [nodesets.out.cl_nodes.postgresql.k8s_service.ManagedFields.FieldsV1]
+              Raw = []
+
+          [nodesets.out.cl_nodes.postgresql.k8s_service.Spec]
+            ClusterIP = ''
+            ClusterIPs = []
+            Type = ''
+            ExternalIPs = []
+            SessionAffinity = ''
+            LoadBalancerIP = ''
+            LoadBalancerSourceRanges = []
+            ExternalName = ''
+            ExternalTrafficPolicy = ''
+            HealthCheckNodePort = 0
+            PublishNotReadyAddresses = false
+            IPFamilies = []
+            IPFamilyPolicy = ''
+            AllocateLoadBalancerNodePorts = false
+            LoadBalancerClass = ''
+            InternalTrafficPolicy = ''
+            TrafficDistribution = ''
+
+            [[nodesets.out.cl_nodes.postgresql.k8s_service.Spec.Ports]]
+              Name = ''
+              Protocol = ''
+              AppProtocol = ''
+              Port = 0
+              NodePort = 0
+
+              [nodesets.out.cl_nodes.postgresql.k8s_service.Spec.Ports.TargetPort]
+                Type = 0
+                IntVal = 0
+                StrVal = ''
+
+            [nodesets.out.cl_nodes.postgresql.k8s_service.Spec.Selector]
+
+            [nodesets.out.cl_nodes.postgresql.k8s_service.Spec.SessionAffinityConfig]
+              [nodesets.out.cl_nodes.postgresql.k8s_service.Spec.SessionAffinityConfig.ClientIP]
+                TimeoutSeconds = 0
+
+          [nodesets.out.cl_nodes.postgresql.k8s_service.Status]
+            [nodesets.out.cl_nodes.postgresql.k8s_service.Status.LoadBalancer]
+              [[nodesets.out.cl_nodes.postgresql.k8s_service.Status.LoadBalancer.Ingress]]
+                IP = ''
+                Hostname = ''
+                IPMode = ''
+
+                [[nodesets.out.cl_nodes.postgresql.k8s_service.Status.LoadBalancer.Ingress.Ports]]
+                  Port = 0
+                  Protocol = ''
+                  Error = ''
+
+            [[nodesets.out.cl_nodes.postgresql.k8s_service.Status.Conditions]]
+              Type = ''
+              Status = ''
+              ObservedGeneration = 0
+              LastTransitionTime = '0001-01-01T00:00:00Z'
+              Reason = ''
+              Message = ''
 </code></pre>
 
                     </main>
