@@ -18,6 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
@@ -38,6 +39,8 @@ const (
 	DefaultRetryInterval = 5 * time.Second
 	// DefaultTimeout is a default CL node client timeout
 	DefaultTimeout = 10 * time.Second
+	// DefaultAuthRetryCount is a default CL node authorization retry count
+	DefaultAuthRetryCount = 20
 )
 
 var (
@@ -95,7 +98,7 @@ func initRestyClient(url string, email string, password string, headers map[stri
 	rc := resty.New().
 		SetBaseURL(url).
 		SetHeaders(headers).
-		SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}).
+		SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}). //nolint:gosec
 		SetDebug(isDebug).
 		SetRetryWaitTime(DefaultRetryInterval).
 		SetRetryCount(DefaultRetries).
@@ -104,20 +107,24 @@ func initRestyClient(url string, email string, password string, headers map[stri
 		}).
 		SetTimeout(DefaultTimeout)
 
-	rc.AddRetryCondition(
-		func(r *resty.Response, err error) bool {
-			if err != nil || r.StatusCode() == http.StatusNotFound {
-				return true
-			}
-			if r.StatusCode() == http.StatusUnauthorized {
-				Authorize(rc, s)
-				return true
-			}
-			return false
-		},
-	)
+	rc.AddRetryCondition(func(r *resty.Response, err error) bool {
+		return r.StatusCode() == http.StatusNotFound
+	})
 
-	Authorize(rc, s)
+	// Retry the connection on boot up, retrying authorization every time slows down AddRetryCondition too much
+	var err error
+	for i := 0; i < DefaultAuthRetryCount; i++ {
+		err = Authorize(rc, s)
+		if err != nil {
+			log.Warn().Err(err).Str("URL", url).Interface("Session Details", s).Msg("Error connecting to Chainlink node, retrying")
+			time.Sleep(DefaultRetryInterval)
+		} else {
+			break
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error connecting to chainlink node after %d attempts: %w", DefaultAuthRetryCount, err)
+	}
 	framework.L.Debug().Str("URL", url).Msg("Connected to Chainlink node")
 	return rc, nil
 }
