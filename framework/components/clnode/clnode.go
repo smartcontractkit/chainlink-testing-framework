@@ -313,6 +313,11 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 		return nil, err
 	}
 
+	defaultHTTPPortInt, err := strconv.Atoi(DefaultHTTPPort)
+	if err != nil {
+		return nil, err
+	}
+
 	// k8s deployment
 	if pods.K8sEnabled() {
 		_, svc, err := pods.Run(ctx, &pods.Config{
@@ -330,6 +335,7 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 						RunAsUser:    pods.Ptr[int64](14933),
 						RunAsGroup:   pods.Ptr[int64](999),
 					},
+					ReadinessProbe: pods.TCPReadyProbe(defaultHTTPPortInt),
 					ConfigMap: map[string]string{
 						"config.toml":         cfg,
 						"overrides.toml":      in.Node.TestConfigOverrides,
