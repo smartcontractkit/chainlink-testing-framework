@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -17,16 +18,21 @@ import (
 )
 
 const (
-	RetryDelay    = 1 * time.Second
-	K8sAPITimeout = 2 * time.Minute
+	// ClientReadyTimeout is a timeout client (tests) will wait until abandoning attempts
+	ClientReadyTimeout = 1 * time.Minute
+	// RetryDelay is a delay before retrying forwarding
+	RetryDelay = 1 * time.Second
+	// K8sFunctionCallTimeout is a common K8s API timeout we use in functions
+	// function may contain multiple calls
+	K8sFunctionCallTimeout = 2 * time.Minute
 )
 
 // PortForwardConfig represents a single port forward configuration
 type PortForwardConfig struct {
-	ServiceName   string
-	LocalPort     int
-	ContainerPort int
-	Namespace     string
+	ServiceName string
+	LocalPort   int
+	ServicePort int
+	Namespace   string
 }
 
 func (c PortForwardConfig) validate() error {
@@ -36,8 +42,8 @@ func (c PortForwardConfig) validate() error {
 	if c.LocalPort == 0 {
 		return fmt.Errorf("empty local port")
 	}
-	if c.ContainerPort == 0 {
-		return fmt.Errorf("empty container port")
+	if c.ServicePort == 0 {
+		return fmt.Errorf("empty service port")
 	}
 	if c.ServiceName == "" {
 		return fmt.Errorf("empty service name")
@@ -57,7 +63,9 @@ type PortForwardManager struct {
 // forwardInfo holds information about a running port forward
 type forwardInfo struct {
 	stopChan chan struct{}
-	cleanup  func()
+	// signalClientReadyChan is used to signal the caller when first connection is established
+	signalClientReadyChan chan struct{}
+	cleanup               func()
 }
 
 // NewForwarder creates a new manager for multiple port forwards
@@ -72,20 +80,21 @@ func NewForwarder(api *API) *PortForwardManager {
 // startForwardService starts forwarding a single service port with retry logic
 func (m *PortForwardManager) startForwardService(cfg PortForwardConfig) {
 	key := fmt.Sprintf("%s:%d", cfg.ServiceName, cfg.LocalPort)
-	stopChan := make(chan struct{})
+	stopChan, readyChan := make(chan struct{}), make(chan struct{})
 
 	m.mu.Lock()
 	m.forwards[key] = &forwardInfo{
-		stopChan: stopChan,
-		cleanup:  func() { close(stopChan) },
+		stopChan:              stopChan,
+		signalClientReadyChan: readyChan,
+		cleanup:               func() { close(stopChan) },
 	}
 	m.mu.Unlock()
 
-	go m.forwardAndRetry(cfg, stopChan)
+	go m.forwardAndRetry(cfg, stopChan, readyChan)
 }
 
 // forwardAndRetry continuously attempts to forward the port with retries
-func (m *PortForwardManager) forwardAndRetry(cfg PortForwardConfig, stopChan <-chan struct{}) {
+func (m *PortForwardManager) forwardAndRetry(cfg PortForwardConfig, stopChan <-chan struct{}, readyChan chan struct{}) {
 	key := fmt.Sprintf("%s:%d", cfg.ServiceName, cfg.LocalPort)
 	consecutiveFailures := 0
 
@@ -95,21 +104,21 @@ func (m *PortForwardManager) forwardAndRetry(cfg PortForwardConfig, stopChan <-c
 			L.Info().Msgf("Stopped retry loop for %s", key)
 			return
 		default:
-			L.Info().
+			L.Debug().
 				Str("ServiceName", cfg.ServiceName).
 				Int("LocalPort", cfg.LocalPort).
 				Msg("Starting forwarder")
-			err := m.attemptForward(cfg)
+			err := m.attemptForward(cfg, readyChan)
 
 			if err != nil {
 				// Connection failed or broke - retry
 				consecutiveFailures++
-				L.Error().
+				L.Debug().
 					Err(err).
 					Str("Key", key).
 					Int("Attempt", consecutiveFailures).
 					Msg("Port forward failed")
-				L.Info().Msgf("Retrying %s in %v", key, RetryDelay)
+				L.Debug().Msgf("Retrying %s in %v", key, RetryDelay)
 				select {
 				case <-stopChan:
 					return
@@ -126,12 +135,8 @@ func (m *PortForwardManager) forwardAndRetry(cfg PortForwardConfig, stopChan <-c
 }
 
 // attemptForward establishes and monitors a single port forward connection
-func (m *PortForwardManager) attemptForward(cfg PortForwardConfig) error {
+func (m *PortForwardManager) attemptForward(cfg PortForwardConfig, signalReadyChan chan struct{}) error {
 	namespace := cfg.Namespace
-	if namespace == "" {
-		namespace = "default"
-	}
-
 	// Get target pod for forwarding
 	targetPod, targetPort, err := m.getTargetPodAndPort(cfg, namespace)
 	if err != nil {
@@ -143,7 +148,7 @@ func (m *PortForwardManager) attemptForward(cfg PortForwardConfig) error {
 		Int("LocalPort", cfg.LocalPort).Logger()
 
 	l.Info().Msgf("Forwarding service %s:%d -> pod %s:%d -> localhost:%d",
-		cfg.ServiceName, cfg.ContainerPort, targetPod.Name, targetPort, cfg.LocalPort)
+		cfg.ServiceName, cfg.ServicePort, targetPod.Name, targetPort, cfg.LocalPort)
 
 	// run port forward
 	stopChan := make(chan struct{})
@@ -179,7 +184,12 @@ func (m *PortForwardManager) attemptForward(cfg PortForwardConfig) error {
 	select {
 	case <-readyChan:
 		l.Info().
-			Msg("🟢 established connection for %s:%d")
+			Msg("🟢 established connection")
+		// signal if client is waiting for the first connection established
+		select {
+		case signalReadyChan <- struct{}{}:
+		default:
+		}
 		// error is received when someone is trying to call the local port
 		// and connection is broken, it is not proactively checked
 		select {
@@ -211,7 +221,7 @@ func (m *PortForwardManager) attemptForward(cfg PortForwardConfig) error {
 
 // getTargetPodAndPort finds the target pod and resolves the port
 func (m *PortForwardManager) getTargetPodAndPort(cfg PortForwardConfig, namespace string) (*corev1.Pod, int, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), K8sAPITimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), K8sFunctionCallTimeout)
 	defer cancel()
 	service, err := m.cs.CoreV1().Services(namespace).Get(ctx, cfg.ServiceName, metav1.GetOptions{})
 	if err != nil {
@@ -243,7 +253,7 @@ func (m *PortForwardManager) getTargetPodAndPort(cfg PortForwardConfig, namespac
 	if targetPod == nil {
 		return nil, 0, fmt.Errorf("no running pods found for service %s", cfg.ServiceName)
 	}
-	targetPort, err := m.resolveServicePort(service, cfg.ContainerPort, targetPod)
+	targetPort, err := m.resolveServicePort(service, cfg.ServicePort, targetPod)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to resolve port: %w", err)
 	}
@@ -251,12 +261,29 @@ func (m *PortForwardManager) getTargetPodAndPort(cfg PortForwardConfig, namespac
 }
 
 // Forward starts multiple port forwards concurrently
-func (m *PortForwardManager) Forward(configs []PortForwardConfig) error {
+func (m *PortForwardManager) Forward(configs []PortForwardConfig, waitForConnection bool) error {
 	for _, cfg := range configs {
 		if err := cfg.validate(); err != nil {
 			return err
 		}
 		m.startForwardService(cfg)
+	}
+	if waitForConnection {
+		// this code is used so library users can block until first successful connection
+		eg := &errgroup.Group{}
+		for _, fwd := range m.forwards {
+			eg.Go(func() error {
+				L.Info().Msg("Awaiting for first established connection")
+				select {
+				case <-fwd.signalClientReadyChan:
+					L.Info().Msg("Connection established")
+					return nil
+				case <-time.After(2 * time.Minute):
+					return fmt.Errorf("failed to forward ports until deadline")
+				}
+			})
+		}
+		return eg.Wait()
 	}
 	return nil
 }

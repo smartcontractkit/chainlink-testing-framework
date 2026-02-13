@@ -25,6 +25,8 @@ type Output struct {
 	UseCache      bool   `toml:"use_cache" comment:"Whether to respect caching or not, if cache = true component won't be deployed again"`
 	BaseURLHost   string `toml:"base_url_host" comment:"Base URL which can be used when running locally"`
 	BaseURLDocker string `toml:"base_url_docker" comment:"Base URL to reach fakes service from other Docker containers"`
+	// K8sService is a Kubernetes service spec used to connect locally
+	K8sService *v1.Service `toml:"k8s_service" comment:"Kubernetes service spec used to connect locally"`
 }
 
 // NewDockerFakeDataProvider creates new fake data provider in Docker using testcontainers-go
@@ -40,7 +42,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	bindPort := fmt.Sprintf("%d/tcp", in.Port)
 	containerName := framework.DefaultTCName("fake")
 	if pods.K8sEnabled() {
-		_, err := pods.Run(ctx, &pods.Config{
+		_, svc, err := pods.Run(ctx, &pods.Config{
 			Pods: []*pods.PodConfig{
 				{
 					Name:     pods.Ptr(containerName),
@@ -59,13 +61,12 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 			return nil, err
 		}
 		in.Out = &Output{
-			BaseURLHost:   fmt.Sprintf("http://%s:%d", fmt.Sprintf("%s-svc", containerName), in.Port),
-			BaseURLDocker: fmt.Sprintf("http://%s:%d", containerName, in.Port),
+			K8sService:    svc,
+			BaseURLHost:   fmt.Sprintf("http://%s:%d", "localhost", in.Port),
+			BaseURLDocker: fmt.Sprintf("http://%s:%d", fmt.Sprintf("%s-svc", containerName), in.Port),
 		}
 		return in.Out, nil
 	}
-	// if pods.K8sEnabled() {
-	// }
 	req := tc.ContainerRequest{
 		Name:     containerName,
 		Image:    in.Image,

@@ -55,10 +55,11 @@ jobs:
             config: parallel_ton.toml
             count: 1
             timeout: 10m
-          - name: TestUpgrade
-            config: upgrade.toml
-            count: 1
-            timeout: 10m
+          # Disabled for now, we need to replace Pumba chaos driver
+          # - name: TestUpgrade
+          #   config: upgrade.toml
+          #   count: 1
+          #   timeout: 10m
           - name: TestPerformanceBaseline
             config: performance_baseline.toml
             count: 1
