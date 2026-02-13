@@ -1,6 +1,7 @@
 services:
   tempo:
-    image: grafana/tempo:2.3.1
+    image: grafana/tempo:2.7.1
+    user: '0:0'
     command: [ "-config.file=/etc/tempo.yaml" ]
     volumes:
       - ./tempo.yaml:/etc/tempo.yaml
@@ -10,7 +11,11 @@ services:
       - "9411:9411"   # zipkin
       - "14268:14268" # jaeger ingest
       - "14250:14250" # jaeger grpc
-      - "14400:55680" # otlp http legacy
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    restart: unless-stopped
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.123.0
     volumes:
@@ -40,6 +45,10 @@ services:
   prometheus:
     image: prom/prometheus:v3.4.1
     user: '0:0'
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.enable-remote-write-receiver'
+      - '--enable-feature=exemplar-storage'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./conf/prometheus.yml:/etc/prometheus/prometheus.yml
@@ -88,8 +97,9 @@ services:
     ports:
       - '4040:4040'
     command:
-      - 'server'
+      - '-config.file=/etc/pyroscope/config.yaml'
     volumes:
+      - ./pyroscope-config.yaml:/etc/pyroscope/config.yaml
       - pyroscope-storage:/var/lib/pyroscope
 
   postgres_exporter_0:

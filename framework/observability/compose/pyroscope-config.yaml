@@ -1,0 +1,22 @@
+# Pyroscope server configuration
+# Increased limits to preserve more profile data for comparison analysis
+
+limits:
+  # Ingestion rate limits (default: 4 MiB/s rate, 2 MiB burst)
+  ingestion_rate_mb: 100
+  ingestion_burst_size_mb: 50
+  
+  # Disable sample limit to prevent profile rejection (default: 16000)
+  max_profile_stacktrace_samples: 0
+  
+  # Increase max stacktrace depth (default: 1000)
+  max_profile_stacktrace_depth: 2000
+  
+  # Increase default flame graph nodes shown (default: 8192)
+  max_flamegraph_nodes_default: 100000
+  
+  # Disable max flame graph nodes limit (default: 1048576)
+  max_flamegraph_nodes_max: 0
+  
+  # Increase max profile size (default: 4MB)
+  max_profile_size_bytes: 16777216

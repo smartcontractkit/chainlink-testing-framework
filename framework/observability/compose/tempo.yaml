@@ -6,10 +6,54 @@ distributor:
     otlp:
       protocols:
         grpc:
+          endpoint: 0.0.0.0:4317
         http:
+          endpoint: 0.0.0.0:4318
+
+# Query frontend for TraceQL metrics
+query_frontend:
+  search:
+    duration_slo: 5s
+    throughput_bytes_slo: 1.073741824e+09
+  metrics:
+    max_duration: 0s
+
+# Querier configuration
+querier:
+  search:
+    prefer_self: 10
+
+# Metrics generator for Grafana Drilldown (RED metrics from traces)
+metrics_generator:
+  registry:
+    external_labels:
+      source: tempo
+  storage:
+    path: /tmp/tempo/generator/wal
+    remote_write:
+      - url: http://prometheus:9090/api/v1/write
+        send_exemplars: true
+  processor:
+    service_graphs:
+      dimensions:
+        - service.name
+        - service.namespace
+    span_metrics:
+      dimensions:
+        - service.name
+        - span.name
+        - span.kind
+        - status.code
+    local_blocks:
+      flush_to_storage: false
+      max_block_bytes: 100000000  # 100MB max block size for metrics generator
 
 overrides:
   max_traces_per_user: 50000
+  metrics_generator_processors:
+    - service-graphs
+    - span-metrics
+    - local-blocks
 
 storage:
   trace:
