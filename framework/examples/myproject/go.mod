@@ -16,7 +16,7 @@ require (
 	github.com/go-resty/resty/v2 v2.16.5
 	github.com/jhump/protoreflect v1.17.0
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.12.6
-	github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake v0.14.1-0.20260213152806-127459e8e914
+	github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake v0.14.1-0.20260213164828-895e6febd040
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.50.10
 	github.com/smartcontractkit/chainlink-testing-framework/wasp v1.51.2
 	github.com/smartcontractkit/chainlink/v2 v2.20.0

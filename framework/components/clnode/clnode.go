@@ -192,7 +192,8 @@ func natPortsToK8sFormat(in *Input, nat nat.PortMap) []string {
 			out = append(out, fmt.Sprintf("%s:%s", b.HostPort, strconv.Itoa(port.Int())))
 		}
 	}
-	out = append(out, fmt.Sprintf("%s:%d", DefaultP2PPort, in.Node.P2PPort))
+	// we are exposing P2P port in K8s via service
+	out = append(out, fmt.Sprintf("%d:%s", in.Node.P2PPort, DefaultP2PPort))
 	return out
 }
 
