@@ -38,8 +38,8 @@ type TestCfg struct {
 	NodeSets    []*ns.Input         `toml:"nodesets"    validate:"required"`
 }
 
-// TestSmokeGenerateDevEnv top-down approach tests until all the environment variations aren't stable
-func TestSmokeGenerateDevEnv(t *testing.T) {
+// TestGenerateDevEnv top-down approach tests until all the environment variations aren't stable
+func TestGenerateDevEnv(t *testing.T) {
 	tests := []struct {
 		name        string
 		cliName     string

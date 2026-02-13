@@ -185,13 +185,15 @@ func generateEntryPoint() []string {
 
 // natPortsToK8sFormat transforms nat.PortMap
 // to Pods port pair format: $external_port:$internal_port
-func natPortsToK8sFormat(nat nat.PortMap) []string {
+func natPortsToK8sFormat(in *Input, nat nat.PortMap) []string {
 	out := make([]string, 0)
 	for port, portBinding := range nat {
 		for _, b := range portBinding {
 			out = append(out, fmt.Sprintf("%s:%s", b.HostPort, strconv.Itoa(port.Int())))
 		}
 	}
+	// we are exposing P2P port in K8s via service
+	out = append(out, fmt.Sprintf("%d:%s", in.Node.P2PPort, DefaultP2PPort))
 	return out
 }
 
@@ -200,19 +202,12 @@ func natPortsToK8sFormat(nat nat.PortMap) []string {
 // exposes custom_ports in format "host:docker" or map 1-to-1 if only "host" port is provided
 func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
 	httpPort := fmt.Sprintf("%s/tcp", DefaultHTTPPort)
-	p2pPort := fmt.Sprintf("%s/udp", DefaultP2PPort)
-	exposedPorts := []string{httpPort, p2pPort}
+	exposedPorts := []string{httpPort}
 	portBindings := nat.PortMap{
 		nat.Port(httpPort): []nat.PortBinding{
 			{
 				HostIP:   "0.0.0.0",
 				HostPort: strconv.Itoa(in.Node.HTTPPort),
-			},
-		},
-		nat.Port(p2pPort): []nat.PortBinding{
-			{
-				HostIP:   "0.0.0.0",
-				HostPort: strconv.Itoa(in.Node.P2PPort),
 			},
 		},
 	}
@@ -328,7 +323,7 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 					Env:      pods.EnvsFromMap(in.Node.EnvVars),
 					Requests: pods.ResourcesMedium(),
 					Limits:   pods.ResourcesMedium(),
-					Ports:    natPortsToK8sFormat(portBindings),
+					Ports:    natPortsToK8sFormat(in, portBindings),
 					ContainerSecurityContext: &v1.SecurityContext{
 						// these are specific things we need for staging cluster
 						RunAsNonRoot: pods.Ptr(true),
