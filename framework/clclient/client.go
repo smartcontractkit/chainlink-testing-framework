@@ -24,7 +24,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-resty/resty/v2"
-	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -96,26 +95,20 @@ func initRestyClient(url string, email string, password string, headers map[stri
 		SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}).
 		SetDebug(isDebug).
 		SetRetryWaitTime(CLClientRetryInterval).
-		SetRetryCount(CLClientRetries)
+		SetRetryCount(CLClientRetries).
+		AddRetryCondition(
+			func(r *resty.Response, err error) bool {
+				return err != nil || r.StatusCode() == http.StatusUnauthorized
+			},
+		)
 	if timeout != nil {
 		rc.SetTimeout(*timeout)
 	}
-	session := &Session{Email: email, Password: password}
-	// Retry the connection on boot up, sometimes pods can still be starting up and not ready to accept connections
-	var resp *resty.Response
-	var err error
-	retryCount := 20
-	for i := 0; i < retryCount; i++ {
-		resp, err = rc.R().SetBody(session).Post("/sessions")
-		if err != nil {
-			log.Warn().Err(err).Str("URL", url).Interface("Session Details", session).Msg("Error connecting to Chainlink node, retrying")
-			time.Sleep(5 * time.Second)
-		} else {
-			break
-		}
-	}
+	resp, err := rc.R().
+		SetBody(&Session{Email: email, Password: password}).
+		Post("/sessions")
 	if err != nil {
-		return nil, fmt.Errorf("error connecting to chainlink node after %d attempts: %w", retryCount, err)
+		return nil, fmt.Errorf("error authorizing in CL node", err)
 	}
 	rc.SetCookies(resp.Cookies())
 	framework.L.Debug().Str("URL", url).Msg("Connected to Chainlink node")
