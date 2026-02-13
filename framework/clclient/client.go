@@ -33,9 +33,9 @@ const (
 	// NodeURL string for logging
 	NodeURL string = "Node URL"
 	// CLClientRetries default CL node client retries
-	CLClientRetries = 10
+	CLClientRetries = 30
 	// CLClientRetryInterval default CL node client retry interval
-	CLClientRetryInterval = 3 * time.Second
+	CLClientRetryInterval = 4 * time.Second
 )
 
 var (

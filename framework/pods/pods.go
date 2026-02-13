@@ -459,9 +459,6 @@ func (n *App) apply() (*corev1.Service, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to apply manifest: %v\nOutput: %s", err, string(output))
 	}
-	// if err := WaitReady(context.Background(), 3*time.Minute); err != nil {
-	// 	return n.svcObj, nil
-	// }
 	L.Info().Str("Manifest", manifestFile).Msg("Manifest applied successfully")
 	return n.svcObj, Connect(n.svcObj, false)
 }
