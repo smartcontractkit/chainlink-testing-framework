@@ -32,10 +32,12 @@ const (
 	ChainlinkKeyPassword string = "twochains"
 	// NodeURL string for logging
 	NodeURL string = "Node URL"
-	// CLClientRetries default CL node client retries
-	CLClientRetries = 30
-	// CLClientRetryInterval default CL node client retry interval
-	CLClientRetryInterval = 4 * time.Second
+	// DefaultRetries default CL node client retries
+	DefaultRetries = 30
+	// DefaultRetryInterval default CL node client retry interval
+	DefaultRetryInterval = 5 * time.Second
+	// DefaultTimeout is a default CL node client timeout
+	DefaultTimeout = 10 * time.Second
 )
 
 var (
@@ -85,34 +87,50 @@ func New(outs []*clnode.Output) ([]*ChainlinkClient, error) {
 	return clients, nil
 }
 
-func initRestyClient(url string, email string, password string, headers map[string]string, timeout *time.Duration) (*resty.Client, error) {
+func initRestyClient(url string, email string, password string, headers map[string]string, _ *time.Duration) (*resty.Client, error) {
 	isDebug := os.Getenv("RESTY_DEBUG") == "true"
 	// G402 - TODO: certificates
 	//nolint
+	s := &Session{Email: email, Password: password}
 	rc := resty.New().
 		SetBaseURL(url).
 		SetHeaders(headers).
 		SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}).
 		SetDebug(isDebug).
-		SetRetryWaitTime(CLClientRetryInterval).
-		SetRetryCount(CLClientRetries).
-		AddRetryCondition(
-			func(r *resty.Response, err error) bool {
-				return err != nil || r.StatusCode() == http.StatusUnauthorized
-			},
-		)
-	if timeout != nil {
-		rc.SetTimeout(*timeout)
-	}
-	resp, err := rc.R().
-		SetBody(&Session{Email: email, Password: password}).
-		Post("/sessions")
-	if err != nil {
-		return nil, fmt.Errorf("error authorizing in CL node", err)
-	}
-	rc.SetCookies(resp.Cookies())
+		SetRetryWaitTime(DefaultRetryInterval).
+		SetRetryCount(DefaultRetries).
+		SetRetryAfter(func(c *resty.Client, r *resty.Response) (time.Duration, error) {
+			return DefaultRetryInterval, nil
+		}).
+		SetTimeout(DefaultTimeout)
+
+	rc.AddRetryCondition(
+		func(r *resty.Response, err error) bool {
+			if err != nil || r.StatusCode() == http.StatusNotFound {
+				return true
+			}
+			if r.StatusCode() == http.StatusUnauthorized {
+				Authorize(rc, s)
+				return true
+			}
+			return false
+		},
+	)
+
+	Authorize(rc, s)
 	framework.L.Debug().Str("URL", url).Msg("Connected to Chainlink node")
 	return rc, nil
+}
+
+func Authorize(rc *resty.Client, session *Session) error {
+	resp, err := rc.R().
+		SetBody(session).
+		Post("/sessions")
+	if err != nil {
+		return fmt.Errorf("error authorizing in CL node: %w", err)
+	}
+	rc.SetCookies(resp.Cookies())
+	return nil
 }
 
 // URL Chainlink instance http url
