@@ -184,7 +184,7 @@ func (m *PortForwardManager) attemptForward(cfg PortForwardConfig, signalReadyCh
 	select {
 	case <-readyChan:
 		l.Info().
-			Msg("🟢 established connection for")
+			Msg("🟢 established connection")
 		// signal if client is waiting for the first connection established
 		select {
 		case signalReadyChan <- struct{}{}:
