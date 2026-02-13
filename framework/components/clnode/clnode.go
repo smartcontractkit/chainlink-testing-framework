@@ -117,6 +117,8 @@ type NodeOut struct {
 	InternalP2PUrl string `toml:"p2p_internal_url" comment:"Node internal P2P URL"`
 	// InternalIP node internal IP
 	InternalIP string `toml:"internal_ip" comment:"Node internal IP"`
+	// K8sService is a Kubernetes service spec used to connect locally
+	K8sService *v1.Service `toml:"k8s_service" comment:"Kubernetes service spec used to connect locally"`
 }
 
 // NewNodeWithDB create a new Chainlink node with some image:tag and one or several configs
@@ -198,12 +200,19 @@ func natPortsToK8sFormat(nat nat.PortMap) []string {
 // exposes custom_ports in format "host:docker" or map 1-to-1 if only "host" port is provided
 func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
 	httpPort := fmt.Sprintf("%s/tcp", DefaultHTTPPort)
-	exposedPorts := []string{httpPort}
+	p2pPort := fmt.Sprintf("%s/udp", DefaultP2PPort)
+	exposedPorts := []string{httpPort, p2pPort}
 	portBindings := nat.PortMap{
 		nat.Port(httpPort): []nat.PortBinding{
 			{
 				HostIP:   "0.0.0.0",
 				HostPort: strconv.Itoa(in.Node.HTTPPort),
+			},
+		},
+		nat.Port(p2pPort): []nat.PortBinding{
+			{
+				HostIP:   "0.0.0.0",
+				HostPort: strconv.Itoa(in.Node.P2PPort),
 			},
 		},
 	}
@@ -304,9 +313,14 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 		return nil, err
 	}
 
+	defaultHTTPPortInt, err := strconv.Atoi(DefaultHTTPPort)
+	if err != nil {
+		return nil, err
+	}
+
 	// k8s deployment
 	if pods.K8sEnabled() {
-		_, err := pods.Run(ctx, &pods.Config{
+		_, svc, err := pods.Run(ctx, &pods.Config{
 			Pods: []*pods.PodConfig{
 				{
 					Name:     pods.Ptr(containerName),
@@ -321,6 +335,7 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 						RunAsUser:    pods.Ptr[int64](14933),
 						RunAsGroup:   pods.Ptr[int64](999),
 					},
+					ReadinessProbe: pods.TCPReadyProbe(defaultHTTPPortInt),
 					ConfigMap: map[string]string{
 						"config.toml":         cfg,
 						"overrides.toml":      in.Node.TestConfigOverrides,
@@ -357,9 +372,10 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 			APIAuthUser:     DefaultAPIUser,
 			APIAuthPassword: DefaultAPIPassword,
 			ContainerName:   containerName,
-			ExternalURL:     fmt.Sprintf("http://%s:%d", fmt.Sprintf("%s-svc", containerName), in.Node.HTTPPort),
+			ExternalURL:     fmt.Sprintf("http://%s:%d", "localhost", in.Node.HTTPPort),
 			InternalURL:     fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
 			InternalP2PUrl:  fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
+			K8sService:      svc,
 		}, nil
 	}
 	// local deployment

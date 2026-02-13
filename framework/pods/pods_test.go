@@ -182,7 +182,7 @@ func TestPods(t *testing.T) {
 			if os.Getenv("CI") == "true" && tt.skipCI {
 				t.Skip("this test can't be run in CI because of GHA limitations")
 			}
-			manifest, err := p.Run(context.Background(), tt.props)
+			manifest, _, err := p.Run(context.Background(), tt.props)
 			tt.validateManifest(t, err)
 			if err == nil {
 				snaps.MatchSnapshot(t, manifest)

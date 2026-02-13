@@ -6,7 +6,24 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
+
+// TCPReadyProbe is a default TCP port probe
+func TCPReadyProbe(port int) *v1.Probe {
+	return &v1.Probe{
+		ProbeHandler: v1.ProbeHandler{
+			TCPSocket: &v1.TCPSocketAction{
+				Port: intstr.FromInt(port),
+			},
+		},
+		InitialDelaySeconds: 5,
+		PeriodSeconds:       10,
+		FailureThreshold:    3,
+		SuccessThreshold:    1,
+		TimeoutSeconds:      5,
+	}
+}
 
 func Resources(cpu, mem string) map[string]string {
 	return map[string]string{

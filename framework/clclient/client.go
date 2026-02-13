@@ -18,13 +18,13 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-resty/resty/v2"
-	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -33,6 +33,14 @@ const (
 	ChainlinkKeyPassword string = "twochains"
 	// NodeURL string for logging
 	NodeURL string = "Node URL"
+	// DefaultRetries default CL node client retries
+	DefaultRetries = 30
+	// DefaultRetryInterval default CL node client retry interval
+	DefaultRetryInterval = 5 * time.Second
+	// DefaultTimeout is a default CL node client timeout
+	DefaultTimeout = 10 * time.Second
+	// DefaultAuthRetryCount is a default CL node authorization retry count
+	DefaultAuthRetryCount = 20
 )
 
 var (
@@ -82,34 +90,54 @@ func New(outs []*clnode.Output) ([]*ChainlinkClient, error) {
 	return clients, nil
 }
 
-func initRestyClient(url string, email string, password string, headers map[string]string, timeout *time.Duration) (*resty.Client, error) {
+func initRestyClient(url string, email string, password string, headers map[string]string, _ *time.Duration) (*resty.Client, error) {
 	isDebug := os.Getenv("RESTY_DEBUG") == "true"
 	// G402 - TODO: certificates
 	//nolint
-	rc := resty.New().SetBaseURL(url).SetHeaders(headers).SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}).SetDebug(isDebug)
-	if timeout != nil {
-		rc.SetTimeout(*timeout)
-	}
-	session := &Session{Email: email, Password: password}
-	// Retry the connection on boot up, sometimes pods can still be starting up and not ready to accept connections
-	var resp *resty.Response
+	s := &Session{Email: email, Password: password}
+	rc := resty.New().
+		SetBaseURL(url).
+		SetHeaders(headers).
+		SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}). //nolint:gosec
+		SetDebug(isDebug).
+		SetRetryWaitTime(DefaultRetryInterval).
+		SetRetryCount(DefaultRetries).
+		SetRetryAfter(func(c *resty.Client, r *resty.Response) (time.Duration, error) {
+			return DefaultRetryInterval, nil
+		}).
+		SetTimeout(DefaultTimeout)
+
+	rc.AddRetryCondition(func(r *resty.Response, err error) bool {
+		return r.StatusCode() == http.StatusNotFound
+	})
+
+	// Retry the connection on boot up, retrying authorization every time slows down AddRetryCondition too much
 	var err error
-	retryCount := 20
-	for i := 0; i < retryCount; i++ {
-		resp, err = rc.R().SetBody(session).Post("/sessions")
+	for i := 0; i < DefaultAuthRetryCount; i++ {
+		err = Authorize(rc, s)
 		if err != nil {
-			log.Warn().Err(err).Str("URL", url).Interface("Session Details", session).Msg("Error connecting to Chainlink node, retrying")
-			time.Sleep(5 * time.Second)
+			log.Warn().Err(err).Str("URL", url).Interface("Session Details", s).Msg("Error connecting to Chainlink node, retrying")
+			time.Sleep(DefaultRetryInterval)
 		} else {
 			break
 		}
 	}
 	if err != nil {
-		return nil, fmt.Errorf("error connecting to chainlink node after %d attempts: %w", retryCount, err)
+		return nil, fmt.Errorf("error connecting to chainlink node after %d attempts: %w", DefaultAuthRetryCount, err)
 	}
-	rc.SetCookies(resp.Cookies())
 	framework.L.Debug().Str("URL", url).Msg("Connected to Chainlink node")
 	return rc, nil
+}
+
+func Authorize(rc *resty.Client, session *Session) error {
+	resp, err := rc.R().
+		SetBody(session).
+		Post("/sessions")
+	if err != nil {
+		return fmt.Errorf("error authorizing in CL node: %w", err)
+	}
+	rc.SetCookies(resp.Cookies())
+	return nil
 }
 
 // URL Chainlink instance http url
@@ -192,7 +220,6 @@ func (c *ChainlinkClient) WaitHealthy(pattern, status string, attempts uint) err
 				Msg("Retrying health check")
 		}),
 	)
-
 	if err != nil {
 		return fmt.Errorf("health check failed after %d attempts: %w", attempts, err)
 	}

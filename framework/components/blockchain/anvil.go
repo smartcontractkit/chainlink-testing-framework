@@ -59,7 +59,7 @@ func newAnvil(ctx context.Context, in *Input) (*Output, error) {
 	framework.L.Info().Any("Cmd", strings.Join(entryPoint, " ")).Msg("Creating anvil with command")
 
 	if pods.K8sEnabled() {
-		_, err := pods.Run(ctx, &pods.Config{
+		_, svc, err := pods.Run(ctx, &pods.Config{
 			Pods: []*pods.PodConfig{
 				{
 					Name:     pods.Ptr(in.ContainerName),
@@ -86,8 +86,9 @@ func newAnvil(ctx context.Context, in *Input) (*Output, error) {
 			ContainerName: in.ContainerName,
 			Nodes: []*Node{
 				{
-					ExternalWSUrl:   fmt.Sprintf("ws://%s:%s", fmt.Sprintf("%s-svc", in.ContainerName), in.Port),
-					ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", fmt.Sprintf("%s-svc", in.ContainerName), in.Port),
+					K8sService:      svc,
+					ExternalWSUrl:   fmt.Sprintf("ws://%s:%s", "localhost", in.Port),
+					ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", "localhost", in.Port),
 					InternalWSUrl:   fmt.Sprintf("ws://%s:%s", fmt.Sprintf("%s-svc", in.ContainerName), in.Port),
 					InternalHTTPUrl: fmt.Sprintf("http://%s:%s", fmt.Sprintf("%s-svc", in.ContainerName), in.Port),
 				},

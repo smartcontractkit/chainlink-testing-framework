@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	v1 "k8s.io/api/core/v1"
+
 	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
@@ -101,6 +103,8 @@ type Node struct {
 	ExternalHTTPUrl string `toml:"http_url" comment:"External blockchain node HTTP URL"`
 	InternalWSUrl   string `toml:"internal_ws_url" comment:"Internal blockchain node WebSocket URL"`
 	InternalHTTPUrl string `toml:"internal_http_url" comment:"Internal blockchain node HTTP URL"`
+	// K8sService is a Kubernetes service spec used to connect locally
+	K8sService *v1.Service `toml:"k8s_service" comment:"Kubernetes service spec used to connect locally"`
 }
 
 func NewBlockchainNetwork(in *Input) (*Output, error) {
