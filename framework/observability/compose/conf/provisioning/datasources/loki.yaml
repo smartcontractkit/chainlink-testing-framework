@@ -3,22 +3,46 @@ apiVersion: 1
 datasources:
   - name: Tempo
     type: tempo
+    uid: tempo
     access: proxy
     url: http://tempo:3200
     isDefault: false
+    jsonData:
+      tracesToLogsV2:
+        datasourceUid: P8E80F9AEF21F6940
+        spanStartTimeShift: '-1h'
+        spanEndTimeShift: '1h'
+        filterByTraceID: true
+        filterBySpanID: true
+      tracesToProfiles:
+        datasourceUid: pyroscope
+        profileTypeId: 'process_cpu:cpu:nanoseconds:cpu:nanoseconds'
+        customQuery: true
+        query: '{service_name="chainlink-node"}'
+      serviceMap:
+        datasourceUid: PBFA97CFB590B2093
+      nodeGraph:
+        enabled: true
   - name: Loki
     type: loki
+    uid: P8E80F9AEF21F6940
     isDefault: true
     access: proxy
     url: http://loki:3100
     jsonData:
       maxLines: 5000
+      derivedFields:
+        - datasourceUid: tempo
+          matcherRegex: '"traceID":"([a-f0-9]+)"'
+          name: TraceID
+          url: '$${__value.raw}'
   - name: Prometheus
     type: prometheus
+    uid: PBFA97CFB590B2093
     access: proxy
-    url: http://prometheus:9090 # Replace with your Prometheus URL
+    url: http://prometheus:9090
     jsonData:
-      timeInterval: 5s # Adjust this interval as needed
+      timeInterval: 5s
 
   - name: PostgreSQL 0
     type: postgres
@@ -82,8 +106,11 @@ datasources:
 
   - name: Pyroscope
     type: grafana-pyroscope-datasource
+    uid: pyroscope
     access: proxy
     url: http://pyroscope:4040
     isDefault: false
     version: 1
     editable: true
+    jsonData:
+      maxNodes: 100000
