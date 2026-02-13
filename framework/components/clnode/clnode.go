@@ -185,13 +185,14 @@ func generateEntryPoint() []string {
 
 // natPortsToK8sFormat transforms nat.PortMap
 // to Pods port pair format: $external_port:$internal_port
-func natPortsToK8sFormat(nat nat.PortMap) []string {
+func natPortsToK8sFormat(in *Input, nat nat.PortMap) []string {
 	out := make([]string, 0)
 	for port, portBinding := range nat {
 		for _, b := range portBinding {
 			out = append(out, fmt.Sprintf("%s:%s", b.HostPort, strconv.Itoa(port.Int())))
 		}
 	}
+	out = append(out, fmt.Sprintf("%s:%d", DefaultP2PPort, in.Node.P2PPort))
 	return out
 }
 
@@ -321,7 +322,7 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 					Env:      pods.EnvsFromMap(in.Node.EnvVars),
 					Requests: pods.ResourcesMedium(),
 					Limits:   pods.ResourcesMedium(),
-					Ports:    natPortsToK8sFormat(portBindings),
+					Ports:    natPortsToK8sFormat(in, portBindings),
 					ContainerSecurityContext: &v1.SecurityContext{
 						// these are specific things we need for staging cluster
 						RunAsNonRoot: pods.Ptr(true),
