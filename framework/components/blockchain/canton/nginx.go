@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	DefaultNginxImage = "nginx:1.27.0"
+	DefaultNginxImage = "nginx:1.29.5"
 )
 
 const nginxConfig = `
