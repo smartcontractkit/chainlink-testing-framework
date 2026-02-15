@@ -38,7 +38,7 @@ func TestCantonSmoke(t *testing.T) {
 	})
 	t.Run("Test registry endpoint", func(t *testing.T) {
 		resp, err := resty.New().SetBaseURL(bc.NetworkSpecificData.CantonEndpoints.RegistryAPIURL).R().
-			Get("/metadata/v1/instruments")
+			Get("/registry/metadata/v1/instruments")
 		assert.NoError(t, err)
 		fmt.Println(resp)
 	})

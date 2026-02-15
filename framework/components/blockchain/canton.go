@@ -46,6 +46,8 @@ type CantonParticipantEndpoints struct {
 	// GRPCHealthCheckURL grpc.health.v1.Health/Check
 	GRPCHealthCheckURL string `toml:"grpc_health_check_url" comment:"GRPC health check endpoint, responds to grpc.health.v1.Health/Check"`
 
+	// UserID is the user id associated with this participant, the JWT will have a subject claim set for this user.
+	UserID string `toml:"user_id" comment:"the user id associated with this participant, used in the JWT token"`
 	// JWT JSON Web Token for this participant
 	JWT string `toml:"jwt" comment:"JSON Web Token for this participant"`
 }
@@ -69,7 +71,7 @@ type CantonParticipantEndpoints struct {
 //
 // Additionally, the global Scan service is accessible via:
 //   - http://scan.localhost:[PORT]/api/scan 					-> Scan API				=> https://docs.sync.global/app_dev/scan_api/index.html
-//   - http://scan.localhost:[PORT]/registry 					-> Token Standard API	=> https://docs.sync.global/app_dev/token_standard/index.html#api-references
+//   - http://scan.localhost:[PORT]			 					-> Token Standard API	=> https://docs.sync.global/app_dev/token_standard/index.html#api-references
 //
 // The PORT is the same for all routes and is specified in the input parameters, defaulting to 8080.
 //
@@ -131,9 +133,10 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 		return nil, err
 	}
 
+	svUser := "user-sv"
 	svToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
 		Issuer:    "",
-		Subject:   "user-sv",
+		Subject:   svUser,
 		Audience:  []string{canton.AuthProviderAudience},
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExpiry)),
 		NotBefore: jwt.NewNumericDate(time.Now()),
@@ -145,7 +148,7 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	}
 	endpoints := &CantonEndpoints{
 		ScanAPIURL:     fmt.Sprintf("http://scan.%s:%s/api/scan", host, in.Port),
-		RegistryAPIURL: fmt.Sprintf("http://scan.%s:%s/registry", host, in.Port),
+		RegistryAPIURL: fmt.Sprintf("http://scan.%s:%s", host, in.Port), // Don't add /registry to URL as this is part of the OpenAPI spec and the base URL should point to the root
 		SuperValidator: CantonParticipantEndpoints{
 			JSONLedgerAPIURL:   fmt.Sprintf("http://sv.json-ledger-api.%s:%s", host, in.Port),
 			GRPCLedgerAPIURL:   fmt.Sprintf("sv.grpc-ledger-api.%s:%s", host, in.Port),
@@ -153,14 +156,16 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 			ValidatorAPIURL:    fmt.Sprintf("http://sv.validator-api.%s:%s/api/validator", host, in.Port),
 			HTTPHealthCheckURL: fmt.Sprintf("http://sv.http-health-check.%s:%s", host, in.Port),
 			GRPCHealthCheckURL: fmt.Sprintf("sv.grpc-health-check.%s:%s", host, in.Port),
+			UserID:             svUser,
 			JWT:                svToken,
 		},
 		Participants: nil,
 	}
 	for i := 1; i <= in.NumberOfCantonValidators; i++ {
+		participantUser := fmt.Sprintf("user-participant%v", i)
 		token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
 			Issuer:    "",
-			Subject:   fmt.Sprintf("user-participant%v", i),
+			Subject:   participantUser,
 			Audience:  []string{canton.AuthProviderAudience},
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(TokenExpiry)),
 			NotBefore: jwt.NewNumericDate(time.Now()),
@@ -177,6 +182,7 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 			ValidatorAPIURL:    fmt.Sprintf("http://participant%d.validator-api.%s:%s/api/validator", i, host, in.Port),
 			HTTPHealthCheckURL: fmt.Sprintf("http://participant%d.http-health-check.%s:%s", i, host, in.Port),
 			GRPCHealthCheckURL: fmt.Sprintf("participant%d.grpc-health-check.%s:%s", i, host, in.Port),
+			UserID:             participantUser,
 			JWT:                token,
 		}
 		endpoints.Participants = append(endpoints.Participants, participantEndpoints)

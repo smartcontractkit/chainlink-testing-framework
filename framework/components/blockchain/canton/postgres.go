@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	DefaultPostgresImage = "postgres:14"
+	DefaultPostgresImage = "postgres:18"
 	DefaultPostgresUser  = "canton"
 	DefaultPostgresPass  = "password"
 	DefaultPostgresDB    = "canton"
