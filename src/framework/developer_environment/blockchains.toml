@@ -85,6 +85,8 @@
           http_health_check_url = ''
           # GRPC health check endpoint, responds to grpc.health.v1.Health/Check
           grpc_health_check_url = ''
+          # the user id associated with this participant, used in the JWT token
+          user_id = ''
           # JSON Web Token for this participant
           jwt = ''
 
@@ -102,6 +104,8 @@
           http_health_check_url = ''
           # GRPC health check endpoint, responds to grpc.health.v1.Health/Check
           grpc_health_check_url = ''
+          # the user id associated with this participant, used in the JWT token
+          user_id = ''
           # JSON Web Token for this participant
           jwt = ''
 
