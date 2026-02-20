@@ -289,7 +289,7 @@ Be aware that any TODO requires your attention before your run the final test!
 							&cli.StringFlag{
 								Name:    "buildcmd",
 								Aliases: []string{"b"},
-								Usage:   "Environment bootstrap command",
+								Usage:   "Environment build command",
 								Value:   "just cli",
 							},
 							&cli.StringFlag{

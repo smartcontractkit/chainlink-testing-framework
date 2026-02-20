@@ -39,19 +39,16 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 		client.WithAPIVersionNegotiation(),
 	)
 	if err != nil {
-		L.Error().Err(err).Msg("Failed to create Docker client")
 		return fmt.Errorf("failed to create Docker client: %w", err)
 	}
 	defer cli.Close()
 	inspect, err := cli.ContainerInspect(ctx, containerName)
 	if err != nil {
-		L.Error().Err(err).Msg("Failed to inspect container")
 		return fmt.Errorf("failed to inspect container %s: %w", containerName, err)
 	}
 	L.Info().Msg("Stopping container")
 	stopOpts := container.StopOptions{}
 	if err := cli.ContainerStop(ctx, containerName, stopOpts); err != nil {
-		L.Error().Err(err).Msg("Failed to stop container")
 		return fmt.Errorf("failed to stop container %s: %w", containerName, err)
 	}
 	L.Info().Msg("Container stopped successfully")
@@ -59,28 +56,24 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 	// keep the volumes
 	removeOpts := container.RemoveOptions{RemoveVolumes: false}
 	if err := cli.ContainerRemove(ctx, containerName, removeOpts); err != nil {
-		L.Error().Err(err).Msg("Failed to remove container")
 		return fmt.Errorf("failed to remove container %s: %w", containerName, err)
 	}
 	L.Info().Msg("Container removed successfully")
 	L.Info().Msg("Pulling new image")
 	pullReader, err := cli.ImagePull(ctx, newImage, image.PullOptions{})
 	if err != nil {
-		L.Error().Err(err).Msg("Failed to pull image")
 		return fmt.Errorf("failed to pull image %s: %w", newImage, err)
 	}
 	defer pullReader.Close()
 
-	// Optionally log pull progress (can be verbose)
+	// log pull process for debug
 	if L.GetLevel() <= zerolog.DebugLevel {
 		io.Copy(os.Stdout, pullReader)
 	} else {
-		// Just consume the reader to ensure pull completes
 		io.Copy(io.Discard, pullReader)
 	}
 	L.Info().Msg("Image pulled successfully")
 
-	// Create new container with same configuration but new image
 	L.Info().Msg("Creating new container with updated image")
 	inspect.Config.Image = newImage
 
@@ -93,14 +86,13 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 	}
 	createResp, err := cli.ContainerCreate(
 		ctx,
-		inspect.Config,     // Use original config with updated image
-		inspect.HostConfig, // Keep same host config
+		inspect.Config,
+		inspect.HostConfig,
 		networkingConfig,
 		nil,
 		containerName,
 	)
 	if err != nil {
-		L.Error().Err(err).Msg("Failed to create container")
 		return fmt.Errorf("failed to create container with image %s: %w", newImage, err)
 	}
 	L.Debug().
@@ -109,7 +101,6 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 	L.Info().Msg("Starting new container")
 	startOpts := container.StartOptions{}
 	if err := cli.ContainerStart(ctx, createResp.ID, startOpts); err != nil {
-		L.Error().Err(err).Msg("Failed to start container")
 		return fmt.Errorf("failed to start container %s: %w", containerName, err)
 	}
 	L.Info().
@@ -120,14 +111,13 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 
 // RestoreToDevelop restores git back to the develop branch
 func RestoreToDevelop() error {
-	output, err := ExecCmd(L, "git checkout develop")
+	_, err := ExecCmd(L, "git checkout develop")
 	if err != nil {
 		return fmt.Errorf("failed to checkout develop branch: %w", err)
 	}
 
 	L.Info().
 		Str("Branch", "develop").
-		Str("output", string(output)).
 		Msg("Successfully restored to develop branch")
 	return nil
 }
@@ -162,7 +152,7 @@ func RollbackToEarliestSemverTag(tagsBack int, include, exclude []string) ([]str
 		Str("EarliestTag", earliestTag).
 		Msg("Selected previous tag")
 
-	output, err = ExecCmd(L, "git checkout "+earliestTag)
+	_, err = ExecCmd(L, "git checkout "+earliestTag)
 	if err != nil {
 		L.Error().
 			Str("Tag", earliestTag).
