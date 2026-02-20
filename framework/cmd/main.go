@@ -258,9 +258,112 @@ Be aware that any TODO requires your attention before your run the final test!
 				},
 			},
 			{
-				Name:    "config",
+				Name:    "compat",
 				Aliases: []string{"c"},
-				Usage:   "Shapes your test config, removes outputs, formatting ,etc",
+				Usage:   "Performs cluster compatibility testing",
+				Subcommands: []*cli.Command{
+					{
+						Name:    "restore",
+						Aliases: []string{"r"},
+						Usage:   "Restores back to develop",
+						Action: func(c *cli.Context) error {
+							return framework.RestoreToDevelop()
+						},
+					},
+					{
+						Name:    "backward",
+						Aliases: []string{"b"},
+						Flags: []cli.Flag{
+							&cli.IntFlag{
+								Name:    "versions_back",
+								Aliases: []string{"v"},
+								Usage:   "How many versions back to test",
+								Value:   1,
+							},
+							&cli.IntFlag{
+								Name:    "nodes",
+								Aliases: []string{"n"},
+								Usage:   "How many nodes to upgrade",
+								Value:   3,
+							},
+							&cli.StringFlag{
+								Name:    "buildcmd",
+								Aliases: []string{"b"},
+								Usage:   "Environment build command",
+								Value:   "just cli",
+							},
+							&cli.StringFlag{
+								Name:    "envcmd",
+								Aliases: []string{"e"},
+								Usage:   "Environment bootstrap command",
+							},
+							&cli.StringFlag{
+								Name:    "testcmd",
+								Aliases: []string{"t"},
+								Usage:   "Test verification command",
+							},
+							&cli.StringSliceFlag{
+								Name:  "include",
+								Usage: "Patterns to include specific tags (e.g., beta,rc,v0,v1)",
+							},
+							&cli.StringSliceFlag{
+								Name:  "exclude",
+								Usage: "Patterns to exclude specific tags (e.g., beta,rc,v0,v1)",
+								Value: cli.NewStringSlice("beta", "rc", "v0", "v1", "ccip", "cre", "datastreams"),
+							},
+						},
+						Usage: "Rollbacks N versions back, runs the test the upgrades CL nodes with new versions",
+						Action: func(c *cli.Context) error {
+							versionsBack := c.Int("versions_back")
+							include := c.StringSlice("include")
+							exclude := c.StringSlice("exclude")
+
+							buildcmd := c.String("buildcmd")
+							envcmd := c.String("envcmd")
+							testcmd := c.String("testcmd")
+							nodes := c.String("nodes")
+							// test logic is:
+							// - rollback to selected tag
+							// - spin up the env and perform the initial smoke test
+							// - upgrade some CL nodes
+							// - perform the test again
+							tags, err := framework.RollbackToEarliestSemverTag(versionsBack, include, exclude)
+							if err != nil {
+								return err
+							}
+							if envcmd == "" || testcmd == "" {
+								framework.L.Info().Msg("No envcmd or testcmd provided, skipping")
+								return nil
+							}
+							if _, err := framework.ExecCmdWithContext(c.Context, framework.L, buildcmd); err != nil {
+								return err
+							}
+							if _, err := framework.ExecCmdWithContext(c.Context, framework.L, envcmd); err != nil {
+								return err
+							}
+							if _, err := framework.ExecCmd(framework.L, testcmd); err != nil {
+								return err
+							}
+							tag := strings.ReplaceAll(tags[0], "v", "")
+							for i := range nodes {
+								if err := framework.UpgradeContainer(
+									c.Context,
+									fmt.Sprintf("don-node%d", i),
+									fmt.Sprintf("smartcontract/chainlink:%s", tag)); err != nil {
+									return err
+								}
+							}
+							if _, err := framework.ExecCmd(framework.L, testcmd); err != nil {
+								return err
+							}
+							return nil
+						},
+					},
+				},
+			},
+			{
+				Name:  "config",
+				Usage: "Shapes your test config, removes outputs, formatting ,etc",
 				Subcommands: []*cli.Command{
 					{
 						Name:    "fmt",
