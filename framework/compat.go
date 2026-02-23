@@ -52,7 +52,7 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 		return fmt.Errorf("failed to remove container %s: %w", containerName, err)
 	}
 	l.Debug().Msg("Pulling new image")
-	if _, err := ExecCmd(fmt.Sprintf("docker pull %s", newImage)); err != nil {
+	if _, err := ExecCmdWithContext(ctx, fmt.Sprintf("docker pull %s", newImage)); err != nil {
 		return fmt.Errorf("failed to pull image %s: %w", newImage, err)
 	}
 	l.Debug().Msg("Image pulled successfully")
