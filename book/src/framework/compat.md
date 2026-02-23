@@ -12,4 +12,6 @@ ctf compat backward \
 --versions_back 3
 ```
 
+Since some of our products have a different release and tagging strategies you should add `+compat` tags to all released versions and use this tool in CI to check compatibility on `+compat` tag.
+
 Use `ctf compat restore` to rollback to current branch (default is `develop`)
