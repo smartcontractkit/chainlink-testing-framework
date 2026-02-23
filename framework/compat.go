@@ -6,15 +6,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"sort"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
-	"github.com/rs/zerolog"
 
 	"github.com/Masterminds/semver/v3"
 )
@@ -26,11 +23,11 @@ import (
 
 // UpgradeContainer stops a container, removes it, and creates a new one with the specified image
 func UpgradeContainer(ctx context.Context, containerName, newImage string) error {
-	L = L.With().
+	l := L.With().
 		Str("Container", containerName).
 		Str("Image", newImage).
 		Logger()
-	L.Info().Msg("Upgrading container")
+	l.Info().Msg("Upgrading container")
 	cli, err := client.NewClientWithOpts(
 		client.FromEnv,
 		client.WithAPIVersionNegotiation(),
@@ -43,31 +40,22 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 	if err != nil {
 		return fmt.Errorf("failed to inspect container %s: %w", containerName, err)
 	}
-	L.Debug().Msg("Stopping container")
+	l.Debug().Msg("Stopping container")
 	stopOpts := container.StopOptions{}
 	if err := cli.ContainerStop(ctx, containerName, stopOpts); err != nil {
 		return fmt.Errorf("failed to stop container %s: %w", containerName, err)
 	}
-	L.Debug().Msg("Removing container")
+	l.Debug().Msg("Removing container")
 	// keep the volumes
 	removeOpts := container.RemoveOptions{RemoveVolumes: false}
 	if err := cli.ContainerRemove(ctx, containerName, removeOpts); err != nil {
 		return fmt.Errorf("failed to remove container %s: %w", containerName, err)
 	}
-	L.Debug().Msg("Pulling new image")
-	pullReader, err := cli.ImagePull(ctx, newImage, image.PullOptions{})
-	if err != nil {
+	l.Debug().Msg("Pulling new image")
+	if _, err := ExecCmd(fmt.Sprintf("docker pull %s", newImage)); err != nil {
 		return fmt.Errorf("failed to pull image %s: %w", newImage, err)
 	}
-	defer pullReader.Close()
-
-	// log pull process for debug
-	if L.GetLevel() <= zerolog.DebugLevel {
-		_, _ = io.Copy(os.Stdout, pullReader)
-	} else {
-		_, _ = io.Copy(io.Discard, pullReader)
-	}
-	L.Debug().Msg("Image pulled successfully")
+	l.Debug().Msg("Image pulled successfully")
 
 	inspect.Config.Image = newImage
 
@@ -89,15 +77,15 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 	if err != nil {
 		return fmt.Errorf("failed to create container with image %s: %w", newImage, err)
 	}
-	L.Debug().
+	l.Debug().
 		Str("ContainerID", createResp.ID).
 		Msg("Container created")
-	L.Debug().Msg("Starting new container")
+	l.Debug().Msg("Starting new container")
 	startOpts := container.StartOptions{}
 	if err := cli.ContainerStart(ctx, createResp.ID, startOpts); err != nil {
 		return fmt.Errorf("failed to start container %s: %w", containerName, err)
 	}
-	L.Info().
+	l.Info().
 		Str("ContainerID", createResp.ID[:12]).
 		Msg("Container successfully rebooted with new image")
 	return nil
