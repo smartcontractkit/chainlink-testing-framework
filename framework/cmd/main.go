@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 
 	"github.com/pelletier/go-toml"
@@ -265,9 +266,16 @@ Be aware that any TODO requires your attention before your run the final test!
 					{
 						Name:    "restore",
 						Aliases: []string{"r"},
-						Usage:   "Restores back to develop",
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:  "base_branch",
+								Usage: "Base branch on which to restore",
+								Value: "develop",
+							},
+						},
+						Usage: "Restores back to develop",
 						Action: func(c *cli.Context) error {
-							return framework.RestoreToDevelop()
+							return framework.RestoreToBranch(c.String("base_branch"))
 						},
 					},
 					{
@@ -285,6 +293,12 @@ Be aware that any TODO requires your attention before your run the final test!
 								Aliases: []string{"n"},
 								Usage:   "How many nodes to upgrade",
 								Value:   3,
+							},
+							&cli.StringFlag{
+								Name:    "registry",
+								Aliases: []string{"r"},
+								Usage:   "Docker Image registry for Chainlink node",
+								Value:   "smartcontract/chainlink",
 							},
 							&cli.StringFlag{
 								Name:    "buildcmd",
@@ -309,24 +323,26 @@ Be aware that any TODO requires your attention before your run the final test!
 							&cli.StringSliceFlag{
 								Name:  "exclude",
 								Usage: "Patterns to exclude specific tags (e.g., beta,rc,v0,v1)",
-								Value: cli.NewStringSlice("beta", "rc", "v0", "v1", "ccip", "cre", "datastreams"),
+								Value: cli.NewStringSlice("beta", "rc", "v0", "ccip", "cre", "datastreams"),
 							},
 						},
 						Usage: "Rollbacks N versions back, runs the test the upgrades CL nodes with new versions",
 						Action: func(c *cli.Context) error {
 							versionsBack := c.Int("versions_back")
+							registry := c.String("registry")
 							include := c.StringSlice("include")
 							exclude := c.StringSlice("exclude")
 
 							buildcmd := c.String("buildcmd")
 							envcmd := c.String("envcmd")
 							testcmd := c.String("testcmd")
-							nodes := c.String("nodes")
+							nodes := c.Int("nodes")
 							// test logic is:
 							// - rollback to selected tag
 							// - spin up the env and perform the initial smoke test
-							// - upgrade some CL nodes
+							// - upgrade N CL nodes with preversing DB volume (shared database)
 							// - perform the test again
+							// - repeat until all the new versions are validated
 							tags, err := framework.RollbackToEarliestSemverTag(versionsBack, include, exclude)
 							if err != nil {
 								return err
@@ -335,26 +351,33 @@ Be aware that any TODO requires your attention before your run the final test!
 								framework.L.Info().Msg("No envcmd or testcmd provided, skipping")
 								return nil
 							}
-							if _, err := framework.ExecCmdWithContext(c.Context, framework.L, buildcmd); err != nil {
+							if _, err := framework.ExecCmdWithContext(c.Context, buildcmd); err != nil {
 								return err
 							}
-							if _, err := framework.ExecCmdWithContext(c.Context, framework.L, envcmd); err != nil {
+							if _, err := framework.ExecCmdWithContext(c.Context, envcmd); err != nil {
 								return err
 							}
-							if _, err := framework.ExecCmd(framework.L, testcmd); err != nil {
+							if _, err := framework.ExecCmdWithContext(c.Context, testcmd); err != nil {
 								return err
 							}
-							tag := strings.ReplaceAll(tags[0], "v", "")
-							for i := range nodes {
-								if err := framework.UpgradeContainer(
-									c.Context,
-									fmt.Sprintf("don-node%d", i),
-									fmt.Sprintf("smartcontract/chainlink:%s", tag)); err != nil {
+							// reverse and skip current version
+							slices.Reverse(tags)
+							tags = tags[1:]
+							// TODO: remove it with real tags when they match
+							for _, tag := range tags {
+								tagToPull := strings.ReplaceAll(tag, "+compat", "")
+								for i := range nodes {
+									err := framework.UpgradeContainer(
+										c.Context,
+										fmt.Sprintf("don-node%d", i),
+										fmt.Sprintf("%s:%s", registry, tagToPull))
+									if err != nil {
+										return err
+									}
+								}
+								if _, err := framework.ExecCmd(testcmd); err != nil {
 									return err
 								}
-							}
-							if _, err := framework.ExecCmd(framework.L, testcmd); err != nil {
-								return err
 							}
 							return nil
 						},

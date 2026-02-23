@@ -6,33 +6,30 @@ import (
 	"io"
 	"os/exec"
 	"strings"
-
-	"github.com/rs/zerolog"
 )
 
 // ExecCmd executes a command and logs the output interactively
-func ExecCmd(l zerolog.Logger, command string) ([]byte, error) {
-	return ExecCmdWithContext(context.Background(), l, command)
+func ExecCmd(command string) ([]byte, error) {
+	return ExecCmdWithContext(context.Background(), command)
 }
 
 // ExecCmdWithContext a command and logs the output interactively
-func ExecCmdWithContext(ctx context.Context, l zerolog.Logger, command string) ([]byte, error) {
+func ExecCmdWithContext(ctx context.Context, command string) ([]byte, error) {
 	return ExecCmdWithOpts(
 		ctx,
-		l,
 		command,
 		func(m string) {
-			l.Debug().Str("Stream", "stdout").Msg(m)
+			L.Debug().Str("Stream", "stdout").Msg(m)
 		},
 		func(m string) {
-			l.Debug().Str("Stream", "stderr").Msg(m)
+			L.Debug().Str("Stream", "stderr").Msg(m)
 		},
 	)
 }
 
-func ExecCmdWithOpts(ctx context.Context, l zerolog.Logger, command string, stdoutFunc func(string), stderrFunc func(string)) ([]byte, error) {
+func ExecCmdWithOpts(ctx context.Context, command string, stdoutFunc func(string), stderrFunc func(string)) ([]byte, error) {
 	c := strings.Split(command, " ")
-	l.Info().Interface("Command", command).Msg("Executing command")
+	L.Info().Interface("Command", command).Msg("Executing command")
 	cmd := exec.CommandContext(ctx, c[0], c[1:]...) // #nosec: G204
 
 	stderr, err := cmd.StderrPipe()

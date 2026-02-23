@@ -17,9 +17,6 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/ecr"
 )
 
 /*
@@ -33,7 +30,7 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 		Str("Container", containerName).
 		Str("Image", newImage).
 		Logger()
-	L.Info().Msg("Starting container reboot with new image")
+	L.Info().Msg("Upgrading container")
 	cli, err := client.NewClientWithOpts(
 		client.FromEnv,
 		client.WithAPIVersionNegotiation(),
@@ -46,20 +43,18 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 	if err != nil {
 		return fmt.Errorf("failed to inspect container %s: %w", containerName, err)
 	}
-	L.Info().Msg("Stopping container")
+	L.Debug().Msg("Stopping container")
 	stopOpts := container.StopOptions{}
 	if err := cli.ContainerStop(ctx, containerName, stopOpts); err != nil {
 		return fmt.Errorf("failed to stop container %s: %w", containerName, err)
 	}
-	L.Info().Msg("Container stopped successfully")
-	L.Info().Msg("Removing container")
+	L.Debug().Msg("Removing container")
 	// keep the volumes
 	removeOpts := container.RemoveOptions{RemoveVolumes: false}
 	if err := cli.ContainerRemove(ctx, containerName, removeOpts); err != nil {
 		return fmt.Errorf("failed to remove container %s: %w", containerName, err)
 	}
-	L.Info().Msg("Container removed successfully")
-	L.Info().Msg("Pulling new image")
+	L.Debug().Msg("Pulling new image")
 	pullReader, err := cli.ImagePull(ctx, newImage, image.PullOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to pull image %s: %w", newImage, err)
@@ -72,9 +67,8 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 	} else {
 		io.Copy(io.Discard, pullReader)
 	}
-	L.Info().Msg("Image pulled successfully")
+	L.Debug().Msg("Image pulled successfully")
 
-	L.Info().Msg("Creating new container with updated image")
 	inspect.Config.Image = newImage
 
 	networkingConfig := &network.NetworkingConfig{
@@ -98,7 +92,7 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 	L.Debug().
 		Str("ContainerID", createResp.ID).
 		Msg("Container created")
-	L.Info().Msg("Starting new container")
+	L.Debug().Msg("Starting new container")
 	startOpts := container.StartOptions{}
 	if err := cli.ContainerStart(ctx, createResp.ID, startOpts); err != nil {
 		return fmt.Errorf("failed to start container %s: %w", containerName, err)
@@ -109,13 +103,12 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 	return nil
 }
 
-// RestoreToDevelop restores git back to the develop branch
-func RestoreToDevelop() error {
-	_, err := ExecCmd(L, "git checkout develop")
+// RestoreToBranch restores git back to the develop branch
+func RestoreToBranch(baseBranch string) error {
+	_, err := ExecCmd(fmt.Sprintf("git checkout %s", baseBranch))
 	if err != nil {
 		return fmt.Errorf("failed to checkout develop branch: %w", err)
 	}
-
 	L.Info().
 		Str("Branch", "develop").
 		Msg("Successfully restored to develop branch")
@@ -125,7 +118,7 @@ func RestoreToDevelop() error {
 // RollbackToEarliestSemverTag gets all semver tags, sorts them, and rolls back to the earliest tag
 // returns all the tags starting from the oldest one
 func RollbackToEarliestSemverTag(tagsBack int, include, exclude []string) ([]string, error) {
-	output, err := ExecCmd(L, "git tag --list")
+	output, err := ExecCmd("git tag --list")
 	if err != nil {
 		return nil, fmt.Errorf("failed to list git tags: %w", err)
 	}
@@ -152,7 +145,7 @@ func RollbackToEarliestSemverTag(tagsBack int, include, exclude []string) ([]str
 		Str("EarliestTag", earliestTag).
 		Msg("Selected previous tag")
 
-	_, err = ExecCmd(L, "git checkout "+earliestTag)
+	_, err = ExecCmd("git checkout " + earliestTag)
 	if err != nil {
 		L.Error().
 			Str("Tag", earliestTag).
@@ -238,106 +231,72 @@ func GetTagsFromURL(url, imageTagSuffix string, nopSuffixes, ignores []string) (
 	return tags, nil
 }
 
-// GetECRRepositoryTags returns a list of image tags from an ECR repository
-func GetECRRepositoryTags(suffix, repoName, registryID, region string, ignores []string) ([]string, error) {
-	fmt.Printf("Fetching tags for repository: %s in region %s\n", repoName, region)
-
-	cfg, err := config.LoadDefaultConfig(context.TODO(),
-		config.WithRegion(region),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("config load error: %w", err)
-	}
-
-	client := ecr.NewFromConfig(cfg)
-
-	input := &ecr.DescribeImagesInput{
-		RepositoryName: aws.String(repoName),
-		RegistryId:     aws.String(registryID),
-		MaxResults:     aws.Int32(1000), // Max allowed is 1000
-	}
-
-	var allTags []string
-	pageCount := 0
-	imageCount := 0
-	taggedImageCount := 0
-
-	paginator := ecr.NewDescribeImagesPaginator(client, input)
-	for paginator.HasMorePages() {
-		pageCount++
-		page, err := paginator.NextPage(context.TODO())
-		if err != nil {
-			return nil, fmt.Errorf("failed to describe images page %d: %w", pageCount, err)
-		}
-
-		fmt.Printf("Processing page %d with %d images\n", pageCount, len(page.ImageDetails))
-
-		for _, image := range page.ImageDetails {
-			imageCount++
-			if len(image.ImageTags) > 0 {
-				taggedImageCount++
-				for _, t := range image.ImageTags {
-					ignored := false
-					for _, ignore := range ignores {
-						if strings.Contains(t, ignore) {
-							ignored = true
-						}
-					}
-					if strings.Contains(t, suffix) && !ignored {
-						allTags = append(allTags, t)
-					}
-				}
-			}
-		}
-	}
-	return allTags, nil
-}
-
 // SortSemverTags parses valid versions and returns them sorted from latest to lowest
 func SortSemverTags(versions []string, include []string, exclude []string) []string {
-	parsedVersions := make([]*semver.Version, 0)
+	if len(versions) == 0 {
+		return []string{}
+	}
+	// parse semver, exclude invalid tags
+	parsedVersions := make([]*semver.Version, 0, len(versions))
 	for _, v := range versions {
 		parsed, err := semver.NewVersion(v)
 		if err != nil {
-			L.Debug().
-				Str("Tag", v).
-				Msg("Skipping invalid semver tag")
+			L.Trace().Str("tag", v).Msg("Skipping invalid semver tag")
 			continue
 		}
 		parsedVersions = append(parsedVersions, parsed)
 	}
 
+	// descending order
 	sort.Slice(parsedVersions, func(i, j int) bool {
 		return parsedVersions[i].GreaterThan(parsedVersions[j])
 	})
 
-	result := make([]string, len(parsedVersions))
-	for i, v := range parsedVersions {
-		result[i] = v.Original()
-	}
-
-	// ignore non GA tags
-	tags := make([]string, 0)
-	for _, r := range result {
-		excluded := false
-		for _, f := range exclude {
-			if strings.Contains(r, f) {
-				excluded = true
-			}
-		}
-		included := false
-		for _, f := range include {
-			if strings.Contains(r, f) {
-				included = true
-			}
-		}
-		if included && !excluded {
-			tags = append(tags, r)
-		}
-	}
+	// fliter include/exclude
+	filtered := filterVersions(parsedVersions, include, exclude)
 	L.Info().
-		Strs("Include", include).
-		Strs("Exclude", exclude).
+		Strs("include", include).
+		Strs("exclude", exclude).
 		Msg("Applied filters")
-	return tags
+	return filtered
+}
+
+// filterVersions applies include/exclude filters to parsed versions
+func filterVersions(versions []*semver.Version, include, exclude []string) []string {
+	if len(include) == 0 {
+		include = []string{""} // Include all by default
+	}
+	result := make([]string, 0, len(versions))
+
+	for _, v := range versions {
+		original := v.Original()
+		if matchesFilter(original, include, exclude) {
+			result = append(result, original)
+		}
+	}
+	return result
+}
+
+// matchesFilter checks if a version string matches the include/exclude criteria
+func matchesFilter(version string, include, exclude []string) bool {
+	for _, pattern := range exclude {
+		if strings.Contains(version, pattern) {
+			return false
+		}
+	}
+	for _, pattern := range include {
+		if strings.Contains(version, pattern) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchesAny(s string, patterns []string) bool {
+	for _, p := range patterns {
+		if strings.Contains(s, p) {
+			return true
+		}
+	}
+	return false
 }
