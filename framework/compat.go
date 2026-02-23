@@ -63,9 +63,9 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 
 	// log pull process for debug
 	if L.GetLevel() <= zerolog.DebugLevel {
-		io.Copy(os.Stdout, pullReader)
+		_, _ = io.Copy(os.Stdout, pullReader)
 	} else {
-		io.Copy(io.Discard, pullReader)
+		_, _ = io.Copy(io.Discard, pullReader)
 	}
 	L.Debug().Msg("Image pulled successfully")
 
@@ -175,7 +175,7 @@ func GetTagsFromURL(url, imageTagSuffix string, nopSuffixes, ignores []string) (
 		Strs("NOPs", nopSuffixes).
 		Strs("IgnoreSuffix", ignores).
 		Msg("Fetching tags from snapshot")
-	resp, err := http.Get(url)
+	resp, err := http.Get(url) //nolint:gosec
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch URL: %w", err)
 	}
@@ -286,15 +286,6 @@ func matchesFilter(version string, include, exclude []string) bool {
 	}
 	for _, pattern := range include {
 		if strings.Contains(version, pattern) {
-			return true
-		}
-	}
-	return false
-}
-
-func matchesAny(s string, patterns []string) bool {
-	for _, p := range patterns {
-		if strings.Contains(s, p) {
 			return true
 		}
 	}
