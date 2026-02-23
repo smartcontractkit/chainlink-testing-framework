@@ -24,6 +24,7 @@
   - [Containers Network Isolation](framework/components/network_isolation.md)
   - [Fake Services](framework/components/mocking.md)
   - [Detecting Resource Leaks](framework/resource_leaks.md)
+  - [Compatibility Testing](framework/compat.md)
   - [Copying Files](framework/copying_files.md)
   - [Running in Kubernetes](./framework/kubernetes.md)
   - [External Environment](framework/components/external.md)
