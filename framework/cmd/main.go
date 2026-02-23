@@ -317,11 +317,11 @@ Be aware that any TODO requires your attention before your run the final test!
 								Usage:   "Test verification command",
 							},
 							&cli.StringSliceFlag{
-								Name:  "include",
+								Name:  "include_tags",
 								Usage: "Patterns to include specific tags (e.g., beta,rc,v0,v1)",
 							},
 							&cli.StringSliceFlag{
-								Name:  "exclude",
+								Name:  "exclude_tags",
 								Usage: "Patterns to exclude specific tags (e.g., beta,rc,v0,v1)",
 								Value: cli.NewStringSlice("beta", "rc", "v0", "ccip", "cre", "datastreams"),
 							},
@@ -330,8 +330,8 @@ Be aware that any TODO requires your attention before your run the final test!
 						Action: func(c *cli.Context) error {
 							versionsBack := c.Int("versions_back")
 							registry := c.String("registry")
-							include := c.StringSlice("include")
-							exclude := c.StringSlice("exclude")
+							include := c.StringSlice("include_tags")
+							exclude := c.StringSlice("exclude_tags")
 
 							buildcmd := c.String("buildcmd")
 							envcmd := c.String("envcmd")
