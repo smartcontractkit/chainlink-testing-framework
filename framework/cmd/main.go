@@ -363,15 +363,13 @@ Be aware that any TODO requires your attention before your run the final test!
 							// reverse and skip current version
 							slices.Reverse(tags)
 							tags = tags[1:]
-							// TODO: remove it with real tags when they match
 							for _, tag := range tags {
 								tagToPull := strings.ReplaceAll(tag, "+compat", "")
 								for i := range nodes {
-									err := framework.UpgradeContainer(
+									if err := framework.UpgradeContainer(
 										c.Context,
 										fmt.Sprintf("don-node%d", i),
-										fmt.Sprintf("%s:%s", registry, tagToPull))
-									if err != nil {
+										fmt.Sprintf("%s:%s", registry, tagToPull)); err != nil {
 										return err
 									}
 								}
