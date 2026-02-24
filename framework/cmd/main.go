@@ -344,7 +344,6 @@ Be aware that any TODO requires your attention before your run the final test!
 							&cli.StringSliceFlag{
 								Name:  "exclude-refs",
 								Usage: "Patterns to exclude specific refs (e.g., beta,rc,v0,v1)",
-								// Value: cli.NewStringSlice("beta", "rc", "v0", "ccip", "cre", "datastreams", "streams"),
 							},
 						},
 						Usage: "Rollbacks N versions back, runs the test the upgrades CL nodes with new versions",
