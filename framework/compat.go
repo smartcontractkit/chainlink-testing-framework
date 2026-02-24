@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 
@@ -27,7 +28,7 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 		Str("Container", containerName).
 		Str("Image", newImage).
 		Logger()
-	l.Info().Msg("Upgrading container")
+	l.Debug().Msg("Upgrading container")
 	cli, err := client.NewClientWithOpts(
 		client.FromEnv,
 		client.WithAPIVersionNegotiation(),
@@ -51,11 +52,6 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 	if err := cli.ContainerRemove(ctx, containerName, removeOpts); err != nil {
 		return fmt.Errorf("failed to remove container %s: %w", containerName, err)
 	}
-	l.Debug().Msg("Pulling new image")
-	if _, err := ExecCmdWithContext(ctx, fmt.Sprintf("docker pull %s", newImage)); err != nil {
-		return fmt.Errorf("failed to pull image %s: %w", newImage, err)
-	}
-	l.Debug().Msg("Image pulled successfully")
 
 	inspect.Config.Image = newImage
 
@@ -85,27 +81,15 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 	if err := cli.ContainerStart(ctx, createResp.ID, startOpts); err != nil {
 		return fmt.Errorf("failed to start container %s: %w", containerName, err)
 	}
-	l.Info().
+	l.Debug().
 		Str("ContainerID", createResp.ID[:12]).
 		Msg("Container successfully rebooted with new image")
 	return nil
 }
 
-// RestoreToBranch restores git back to the develop branch
-func RestoreToBranch(baseBranch string) error {
-	_, err := ExecCmd(fmt.Sprintf("git checkout %s", baseBranch))
-	if err != nil {
-		return fmt.Errorf("failed to checkout develop branch: %w", err)
-	}
-	L.Info().
-		Str("Branch", "develop").
-		Msg("Successfully restored to develop branch")
-	return nil
-}
-
-// RollbackToEarliestSemverTag gets all semver tags, sorts them, and rolls back to the earliest tag
+// FindSemVerRefSequence gets all semver tags, sorts them, and rolls back to the earliest tag
 // returns all the tags starting from the oldest one
-func RollbackToEarliestSemverTag(tagsBack int, include, exclude []string) ([]string, error) {
+func FindSemVerRefSequence(tagsBack int, include, exclude []string) ([]string, error) {
 	output, err := ExecCmd("git tag --list")
 	if err != nil {
 		return nil, fmt.Errorf("failed to list git tags: %w", err)
@@ -116,7 +100,7 @@ func RollbackToEarliestSemverTag(tagsBack int, include, exclude []string) ([]str
 		return nil, fmt.Errorf("no tags found in repository")
 	}
 
-	sortedDesc := SortSemverTags(tags, include, exclude)
+	sortedDesc := FilterSemverTags(tags, include, exclude)
 	if len(sortedDesc) == 0 {
 		return nil, fmt.Errorf("no valid semver tags found")
 	}
@@ -125,27 +109,20 @@ func RollbackToEarliestSemverTag(tagsBack int, include, exclude []string) ([]str
 	if len(sortedDesc) > tagsBack {
 		remainingTags = sortedDesc[:tagsBack]
 	}
-	earliestTag := remainingTags[len(remainingTags)-1]
 
-	L.Info().
-		Int("TotalValidTags", len(sortedDesc)).
-		Strs("SelectedTags", remainingTags).
-		Str("EarliestTag", earliestTag).
-		Msg("Selected previous tag")
-
-	_, err = ExecCmd("git checkout " + earliestTag)
-	if err != nil {
-		L.Error().
-			Str("Tag", earliestTag).
-			Err(err).
-			Msg("Failed to checkout tag")
-		return nil, fmt.Errorf("failed to checkout tag %s: %w", earliestTag, err)
-	}
-
-	L.Info().
-		Str("Tag", earliestTag).
-		Msg("Successfully rolled back to tag")
+	slices.Reverse(remainingTags)
 	return remainingTags, nil
+}
+
+func CheckOut(ref string) error {
+	_, err := ExecCmd("git checkout " + ref)
+	if err != nil {
+		return fmt.Errorf("failed to checkout ref %s: %w", ref, err)
+	}
+	L.Info().
+		Str("Ref", ref).
+		Msg("Successfully rolled back to ref")
+	return nil
 }
 
 type RaneSOTResponseBody struct {
@@ -155,17 +132,16 @@ type RaneSOTResponseBody struct {
 	} `json:"nodes"`
 }
 
-// GetTagsFromURL fetches tags from a JSON endpoint and applies filtering
-func GetTagsFromURL(url, imageTagSuffix string, nopSuffixes, ignores []string) ([]string, error) {
+// FindNOPRefs fetches NOP tags from a RANE SOT source
+func FindNOPRefs(url string, nopName string, exclude []string) ([]string, error) {
 	L.Info().
 		Str("URL", url).
-		Str("ImageTagSuffix", imageTagSuffix).
-		Strs("NOPs", nopSuffixes).
-		Strs("IgnoreSuffix", ignores).
-		Msg("Fetching tags from snapshot")
+		Str("NOP", nopName).
+		Strs("Exclude", exclude).
+		Msg("Fetching refs from snapshot")
 	resp, err := http.Get(url) //nolint:gosec
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch URL: %w", err)
+		return nil, fmt.Errorf("failed to fetch SOT URL: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -173,54 +149,50 @@ func GetTagsFromURL(url, imageTagSuffix string, nopSuffixes, ignores []string) (
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		return nil, fmt.Errorf("failed to read SOT URL response body: %w", err)
 	}
 	var response RaneSOTResponseBody
 
 	if err := json.Unmarshal(body, &response); err != nil {
-		return nil, fmt.Errorf("failed to parse JSON: %w", err)
+		return nil, fmt.Errorf("failed to parse SOT response body: %w", err)
 	}
 
-	tags := make([]string, 0)
-	seenTags := make(map[string]bool, 0)
+	refs := make([]string, 0)
+	nops := make([]string, 0)
+	seenRefs := make(map[string]bool, 0)
+	seenNOPs := make(map[string]bool, 0)
 	// check all the nodes for uniq tags
 	for _, node := range response.Nodes {
 		version := node.Version
 		nop := node.NOP
-		// skip if we are not interested in this NOP
-		for _, ns := range nopSuffixes {
-			if !strings.Contains(nop, ns) {
-				continue
-			}
-		}
 
+		// add uniq NOP
+		if _, ok := seenNOPs[nop]; !ok {
+			nops = append(nops, nop)
+			seenNOPs[nop] = true
+		}
+		// continue if it's not the NOP we need
+		if nop != nopName {
+			continue
+		}
 		// skip if version is empty
 		if version == "" {
 			continue
 		}
-
-		// skip if we ignore some images
-		ignored := false
-		for _, ignore := range ignores {
-			if strings.Contains(version, ignore) {
-				ignored = true
-				break
-			}
-		}
-
-		if strings.Contains(version, imageTagSuffix) && !ignored {
-			if _, ok := seenTags[version]; ok {
-				continue
-			}
-			tags = append(tags, version)
-			seenTags[version] = true
+		// add uniq version
+		if _, ok := seenRefs[version]; !ok {
+			refs = append(refs, version)
+			seenRefs[version] = true
 		}
 	}
-	return tags, nil
+	semverTags := FilterSemverTags(refs, []string{}, exclude)
+	slices.Reverse(semverTags)
+	L.Info().Strs("NOPs", nops).Msg("Scanned NOPs")
+	return semverTags, nil
 }
 
-// SortSemverTags parses valid versions and returns them sorted from latest to lowest
-func SortSemverTags(versions []string, include []string, exclude []string) []string {
+// FilterSemverTags parses valid versions and returns them sorted from latest to lowest
+func FilterSemverTags(versions []string, include []string, exclude []string) []string {
 	if len(versions) == 0 {
 		return []string{}
 	}
@@ -234,17 +206,15 @@ func SortSemverTags(versions []string, include []string, exclude []string) []str
 		}
 		parsedVersions = append(parsedVersions, parsed)
 	}
-
 	// descending order
 	sort.Slice(parsedVersions, func(i, j int) bool {
 		return parsedVersions[i].GreaterThan(parsedVersions[j])
 	})
-
 	// fliter include/exclude
 	filtered := filterVersions(parsedVersions, include, exclude)
 	L.Info().
-		Strs("include", include).
-		Strs("exclude", exclude).
+		Strs("Include", include).
+		Strs("Exclude", exclude).
 		Msg("Applied filters")
 	return filtered
 }

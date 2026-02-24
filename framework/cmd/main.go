@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"slices"
 	"strings"
 
 	"github.com/pelletier/go-toml"
@@ -275,7 +274,7 @@ Be aware that any TODO requires your attention before your run the final test!
 						},
 						Usage: "Restores back to develop",
 						Action: func(c *cli.Context) error {
-							return framework.RestoreToBranch(c.String("base_branch"))
+							return framework.CheckOut(c.String("base_branch"))
 						},
 					},
 					{
@@ -283,7 +282,7 @@ Be aware that any TODO requires your attention before your run the final test!
 						Aliases: []string{"b"},
 						Flags: []cli.Flag{
 							&cli.IntFlag{
-								Name:    "versions_back",
+								Name:    "versions-back",
 								Aliases: []string{"v"},
 								Usage:   "How many versions back to test",
 								Value:   1,
@@ -301,6 +300,10 @@ Be aware that any TODO requires your attention before your run the final test!
 								Value:   "smartcontract/chainlink",
 							},
 							&cli.StringFlag{
+								Name:  "strip-image-suffix",
+								Usage: "Stripts image suffix from ref to map it to registry images",
+							},
+							&cli.StringFlag{
 								Name:    "buildcmd",
 								Aliases: []string{"b"},
 								Usage:   "Environment build command",
@@ -316,41 +319,98 @@ Be aware that any TODO requires your attention before your run the final test!
 								Aliases: []string{"t"},
 								Usage:   "Test verification command",
 							},
-							&cli.StringSliceFlag{
-								Name:  "include_tags",
-								Usage: "Patterns to include specific tags (e.g., beta,rc,v0,v1)",
+							&cli.StringFlag{
+								Name:  "nop",
+								Usage: "Find specific NOPs ref upgrade sequence",
+							},
+							&cli.StringFlag{
+								Name:  "node-name-template",
+								Usage: "CL node Docker container name template",
+								Value: "don-node%d",
+							},
+							&cli.StringFlag{
+								Name:  "sot-url",
+								Usage: "RANE SOT snapshot API URL",
+								Value: "https://rane-sot-app.main.prod.cldev.sh/v1/snapshot",
 							},
 							&cli.StringSliceFlag{
-								Name:  "exclude_tags",
-								Usage: "Patterns to exclude specific tags (e.g., beta,rc,v0,v1)",
-								Value: cli.NewStringSlice("beta", "rc", "v0", "ccip", "cre", "datastreams"),
+								Name:  "refs",
+								Usage: "Refs to test, can be tag or commit. The corresponding image with ref should be present in registry",
+							},
+							&cli.StringSliceFlag{
+								Name:  "include-refs",
+								Usage: "Patterns to include specific refs (e.g., beta,rc,v0,v1), also used in CI to verify on test refs(tags)",
+							},
+							&cli.StringSliceFlag{
+								Name:  "exclude-refs",
+								Usage: "Patterns to exclude specific refs (e.g., beta,rc,v0,v1)",
 							},
 						},
 						Usage: "Rollbacks N versions back, runs the test the upgrades CL nodes with new versions",
 						Action: func(c *cli.Context) error {
-							versionsBack := c.Int("versions_back")
+							versionsBack := c.Int("versions-back")
 							registry := c.String("registry")
-							include := c.StringSlice("include_tags")
-							exclude := c.StringSlice("exclude_tags")
+							refs := c.StringSlice("refs")
+							include := c.StringSlice("include-refs")
+							exclude := c.StringSlice("exclude-refs")
 
 							buildcmd := c.String("buildcmd")
 							envcmd := c.String("envcmd")
 							testcmd := c.String("testcmd")
 							nodes := c.Int("nodes")
+							nodeNameTemplate := c.String("node-name-template")
+
+							nop := c.String("nop")
+							sotURL := c.String("sot-url")
+
 							// test logic is:
-							// - rollback to selected tag
+							// - rollback to selected ref
 							// - spin up the env and perform the initial smoke test
 							// - upgrade N CL nodes with preversing DB volume (shared database)
 							// - perform the test again
 							// - repeat until all the new versions are validated
-							tags, err := framework.RollbackToEarliestSemverTag(versionsBack, include, exclude)
-							if err != nil {
-								return err
+
+							// if no refs provided find refs (tags) sequence SemVer sequence for last N versions_back
+							// else, use refs param slice
+							//
+							var err error
+							if len(refs) == 0 && nop == "" {
+								refs, err = framework.FindSemVerRefSequence(versionsBack, include, exclude)
+								if err != nil {
+									return err
+								}
 							}
-							if envcmd == "" || testcmd == "" {
+							if nop != "" {
+								refs, err = framework.FindNOPRefs(sotURL, nop, exclude)
+								if err != nil {
+									return err
+								}
+							}
+							framework.L.Info().
+								Int("TotalSemVerRefs", len(refs)).
+								Strs("SelectedRefs", refs).
+								Str("EarliestRefs", refs[0]).
+								Msg("Formed upgrade sequence")
+							// if no commands just show the tags and return
+							if buildcmd == "" || envcmd == "" || testcmd == "" {
 								framework.L.Info().Msg("No envcmd or testcmd provided, skipping")
 								return nil
 							}
+							// checkout the oldest ref
+							if err := framework.CheckOut(refs[0]); err != nil {
+								return err
+							}
+
+							// this is a hack allowing us to match what we have in Git to registry or NOP version
+							// it'd exist until we stabilize tagging strategy
+							testImgSuffix := c.String("strip-image-suffix")
+							for i := range refs {
+								refs[i] = strings.ReplaceAll(refs[i], testImgSuffix, "")
+							}
+
+							// setup the env and verify with test command
+							framework.L.Info().Strs("Sequence", refs).Msg("Running upgrade sequence")
+							os.Setenv("CHAINLINK_IMAGE", fmt.Sprintf("%s:%s", registry, refs[0]))
 							if _, err := framework.ExecCmdWithContext(c.Context, buildcmd); err != nil {
 								return err
 							}
@@ -360,16 +420,18 @@ Be aware that any TODO requires your attention before your run the final test!
 							if _, err := framework.ExecCmdWithContext(c.Context, testcmd); err != nil {
 								return err
 							}
-							// reverse and skip current version
-							slices.Reverse(tags)
-							tags = tags[1:]
-							for _, tag := range tags {
-								tagToPull := strings.ReplaceAll(tag, "+compat", "")
+							// start upgrading nodes and verifying with tests, all the versions except the oldest one
+							for _, tag := range refs[1:] {
+								framework.L.Info().
+									Int("Nodes", nodes).
+									Str("Version", tag).
+									Msg("Upgrading nodes")
+								img := fmt.Sprintf("%s:%s", registry, tag)
+								if _, err := framework.ExecCmdWithContext(c.Context, fmt.Sprintf("docker pull %s", img)); err != nil {
+									return fmt.Errorf("failed to pull image %s: %w", img, err)
+								}
 								for i := range nodes {
-									if err := framework.UpgradeContainer(
-										c.Context,
-										fmt.Sprintf("don-node%d", i),
-										fmt.Sprintf("%s:%s", registry, tagToPull)); err != nil {
+									if err := framework.UpgradeContainer(c.Context, fmt.Sprintf(nodeNameTemplate, i), img); err != nil {
 										return err
 									}
 								}
