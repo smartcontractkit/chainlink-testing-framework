@@ -1848,16 +1848,16 @@ Docker version 27.3.1
 </code></pre>
 <p>Download our <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8">CLI</a></p>
 <p>OS X <code>arm64</code> (M1/M2/M3 MacBooks)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.14.4/framework-v0.14.4-darwin-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.14.5/framework-v0.14.5-darwin-arm64.tar.gz | tar -xz
 </code></pre>
 <p>OS X <code>amd64</code> (old Intel chips)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.14.4/framework-v0.14.4-darwin-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.14.5/framework-v0.14.5-darwin-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>arm64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.14.4/framework-v0.14.4-linux-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.14.5/framework-v0.14.5-linux-arm64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>amd64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.14.4/framework-v0.14.4-linux-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.14.5/framework-v0.14.5-linux-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Allow it to run in <code>System Settings -&gt; Security Settings</code> (OS X)</p>
 <p><img src="framework/images/img.png" alt="img.png" /></p>
@@ -1958,16 +1958,16 @@ Docker version 27.3.1
 </code></pre>
 <p>Download our <a href="https://github.com/smartcontractkit/chainlink-testing-framework/releases/tag/framework%2Fv0.1.8">CLI</a></p>
 <p>OS X <code>arm64</code> (M1/M2/M3 MacBooks)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.14.4/framework-v0.14.4-darwin-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.14.5/framework-v0.14.5-darwin-arm64.tar.gz | tar -xz
 </code></pre>
 <p>OS X <code>amd64</code> (old Intel chips)</p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.14.4/framework-v0.14.4-darwin-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.14.5/framework-v0.14.5-darwin-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>arm64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.14.4/framework-v0.14.4-linux-arm64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.14.5/framework-v0.14.5-linux-arm64.tar.gz | tar -xz
 </code></pre>
 <p>Linux <code>amd64</code></p>
-<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.14.4/framework-v0.14.4-linux-amd64.tar.gz | tar -xz
+<pre><code>curl -L https://github.com/smartcontractkit/chainlink-testing-framework/releases/download/framework%2Fv0.14.5/framework-v0.14.5-linux-amd64.tar.gz | tar -xz
 </code></pre>
 <p>Allow it to run in <code>System Settings -&gt; Security Settings</code> (OS X)</p>
 <p><img src="framework/images/img.png" alt="img.png" /></p>
@@ -3768,17 +3768,46 @@ go test -v -timeout 1h -run TestCyclicHog
 
 </style>
 <h1 id="compatibility-testing"><a class="header" href="#compatibility-testing">Compatibility Testing</a></h1>
-<p>We have a simple tool to check compatibility for CL nodes. The example command will filter and sort the available tags, rollback and install the oldest version, and then begin performing automatic upgrades to verify that each subsequent version remains compatible with the previous one.</p>
+<h2 id="prerequisites-2"><a class="header" href="#prerequisites-2">Prerequisites</a></h2>
+<p>Authorize in our SDLC ECR registry first. Get the creds and run</p>
+<pre><code class="language-bash">aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin &lt;sdlc_ecr_registry&gt;
+</code></pre>
+<h2 id="testing-upgrade-sequence"><a class="header" href="#testing-upgrade-sequence">Testing Upgrade Sequence</a></h2>
+<p>We have a simple tool to check compatibility for CL node clusters. The example command will filter and sort the available tags, rollback and install the oldest version, and then begin performing automatic upgrades to verify that each subsequent version remains compatible with the previous one.</p>
+<p><code>buildcmd</code>, <code>envcmd</code>, <code>testcmd</code> can be arbitrary bash commands.</p>
 <pre><code class="language-bash">ctf compat backward \
+--registry &lt;sdlc_ecr_registry&gt; \
 --buildcmd "just cli" \
 --envcmd "cl r" \
 --testcmd "cl test ocr2 TestSmoke/rounds" \
---include_tags +compat \
---nodes 3 \
---versions_back 3
+--refs 2.32.0 \
+--refs 2.33.0 \
+--refs 2.34.0 \
+--refs 2.35.0 \
+--nodes 3
 </code></pre>
-<p>Since some of our products have a different release and tagging strategies you should add <code>+compat</code> tags to all released versions and use this tool in CI to check compatibility on <code>+compat</code> tag.</p>
-<p>Use <code>ctf compat restore</code> to rollback to current branch (default is <code>develop</code>)</p>
+<p>Keep in mind that <code>refs</code> should be present in regsitry you are testing against, the first (oldest) <code>ref</code> should also have a valid end-to-end test that works.</p>
+<p>In CI we detect SemVer tags automatically, whenever a new tag appears we select last 3, rollback to the oldest and perform upgrade process.</p>
+<pre><code class="language-bash">ctf compat backward \
+--registry &lt;sdlc_ecr_registry&gt; \
+--buildcmd "just cli" \
+--envcmd "cl r" \
+--testcmd "cl test ocr2 TestSmoke/rounds" \
+--nodes 3 \
+--versions-back 3
+</code></pre>
+<p>In case you have multiple DONs in your product and names of nodes are different please use <code>--node-name-template custom-cl-node-%d</code> option</p>
+<h2 id="modelling-node-operators-cluster"><a class="header" href="#modelling-node-operators-cluster">Modelling Node Operators Cluster</a></h2>
+<p>It is possible to fetch versions node operators are currently running and model DON upgrade sequence locally. Logic is the same, get all the versions, rollback to the oldest one, setup product, verify, try to upgrade all the versions running the oldest test for each upgrade.</p>
+<pre><code class="language-bash">ctf compat backward \
+--registry &lt;sdlc_ecr_registry&gt;\
+--buildcmd "just cli" \
+--envcmd "cl r" \
+--testcmd "cl test ocr2 TestSmoke/rounds" \
+--nop northwestnodes \
+--versions-back 3 \
+--nodes 3
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -7100,7 +7129,7 @@ go test -v -run TestLayoutAPI
 
 </style>
 <h1 id="wasp---getting-started"><a class="header" href="#wasp---getting-started">WASP - Getting Started</a></h1>
-<h2 id="prerequisites-2"><a class="header" href="#prerequisites-2">Prerequisites</a></h2>
+<h2 id="prerequisites-3"><a class="header" href="#prerequisites-3">Prerequisites</a></h2>
 <ul>
 <li><a href="https://go.dev/doc/install">Golang</a></li>
 </ul>
@@ -10806,7 +10835,7 @@ require.NoError(t, err, "failed to create baseline report")
 <h1 id="wasp---how-to-start-local-observability-stack"><a class="header" href="#wasp---how-to-start-local-observability-stack">WASP - How to Start Local Observability Stack</a></h1>
 <p>To execute all examples or tests locally, you need to configure a local observability stack. This stack includes <strong>Loki</strong>, <strong>Grafana</strong>, and <strong>Pyroscope</strong>.</p>
 <hr />
-<h2 id="prerequisites-3"><a class="header" href="#prerequisites-3">Prerequisites</a></h2>
+<h2 id="prerequisites-4"><a class="header" href="#prerequisites-4">Prerequisites</a></h2>
 <p>Ensure you have the following installed:</p>
 <ul>
 <li><a href="https://docs.docker.com/get-docker/">Docker</a></li>
@@ -10931,7 +10960,7 @@ export DASHBOARD_NAME=Wasp
 </style>
 <h1 id="wasp---try-it-out-quickly"><a class="header" href="#wasp---try-it-out-quickly">WASP - Try It Out Quickly</a></h1>
 <hr />
-<h2 id="prerequisites-4"><a class="header" href="#prerequisites-4">Prerequisites</a></h2>
+<h2 id="prerequisites-5"><a class="header" href="#prerequisites-5">Prerequisites</a></h2>
 <p>Ensure you have the following installed:</p>
 <ul>
 <li><a href="https://go.dev/doc/install">Golang</a></li>
@@ -18461,7 +18490,7 @@ go run ./tools/breakingchanges/cmd/main.go --ignore tools,wasp,havoc,seth # to i
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>c8f04f96</code></li>
+<li>Commit: <code>1c350085</code></li>
 </ul>
 
                     </main>
