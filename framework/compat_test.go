@@ -97,7 +97,7 @@ func TestSmokeTagsFilter(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			tags := SortSemverTags(tc.tags, tc.includes, tc.excludes)
+			tags := FilterSemverTags(tc.tags, tc.includes, tc.excludes)
 			require.Equal(t, tc.expectedTags, tags, "Test case: %s", tc.name)
 		})
 	}
