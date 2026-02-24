@@ -361,10 +361,6 @@ Be aware that any TODO requires your attention before your run the final test!
 							nodes := c.Int("nodes")
 							nodeNameTemplate := c.String("node-name-template")
 
-							// this param is purely for testing if old image versions
-							// do not have test or image to verify in some registries
-							testImgSuffix := c.String("strip-image-suffix")
-
 							nop := c.String("nop")
 							sotURL := c.String("sot-url")
 
@@ -406,8 +402,9 @@ Be aware that any TODO requires your attention before your run the final test!
 								return err
 							}
 
-							// if we know there are no tests to verify specific version map to test refs
-							// by stripping suffix
+							// this is a hack allowing us to match what we have in Git to registry or NOP version
+							// it'd exist until we stabilize tagging strategy
+							testImgSuffix := c.String("strip-image-suffix")
 							for i := range refs {
 								refs[i] = strings.ReplaceAll(refs[i], testImgSuffix, "")
 							}
