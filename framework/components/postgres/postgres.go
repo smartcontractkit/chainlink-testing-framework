@@ -214,6 +214,9 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		}
 		return o, nil
 	}
+	if err := framework.DefaultNetwork(nil); err != nil {
+		return nil, fmt.Errorf("failed to ensure default docker network %q: %w", framework.DefaultNetworkName, err)
+	}
 	// local deployment
 	req := testcontainers.ContainerRequest{
 		AlwaysPullImage: in.PullImage,

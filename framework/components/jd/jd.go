@@ -26,15 +26,20 @@ const (
 )
 
 type Input struct {
-	Image            string          `toml:"image"`
-	GRPCPort         string          `toml:"grpc_port"`
-	WSRPCPort        string          `toml:"wsrpc_port"`
-	CSAEncryptionKey string          `toml:"csa_encryption_key"`
-	DockerFilePath   string          `toml:"docker_file"`
-	DockerContext    string          `toml:"docker_ctx"`
-	JDSQLDumpPath    string          `toml:"jd_sql_dump_path"`
-	DBInput          *postgres.Input `toml:"db"`
-	Out              *Output         `toml:"out"`
+	Image            string `toml:"image"`
+	GRPCPort         string `toml:"grpc_port"`
+	WSRPCPort        string `toml:"wsrpc_port"`
+	CSAEncryptionKey string `toml:"csa_encryption_key"`
+	DockerFilePath   string `toml:"docker_file"`
+	DockerContext    string `toml:"docker_ctx"`
+	JDSQLDumpPath    string `toml:"jd_sql_dump_path"`
+	// DisableDNSIsolation keeps Docker's embedded DNS (127.0.0.11).
+	// Leave false (default) to preserve historical isolation behavior.
+	// Set true when JD must resolve peer service names (for example jd-db)
+	// on a shared Docker network.
+	DisableDNSIsolation bool            `toml:"disable_dns_isolation"`
+	DBInput             *postgres.Input `toml:"db"`
+	Out                 *Output         `toml:"out"`
 }
 
 type Output struct {
@@ -90,6 +95,9 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	}
 	if in.DBInput == nil {
 		in.DBInput = defaultJDDB()
+		suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+		in.DBInput.Name = fmt.Sprintf("%s-%s", in.DBInput.Name, suffix)
+		in.DBInput.VolumeName = fmt.Sprintf("%s-%s", in.DBInput.VolumeName, suffix)
 	}
 	in.DBInput.JDSQLDumpPath = in.JDSQLDumpPath
 	pgOut, err := postgres.NewWithContext(ctx, in.DBInput)
@@ -98,10 +106,14 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	}
 	containerName := framework.DefaultTCName("jd")
 	grpcPort := fmt.Sprintf("%s/tcp", in.GRPCPort)
+	wsrpcPort := fmt.Sprintf("%s/tcp", in.WSRPCPort)
 	wsHealthPort := fmt.Sprintf("%s/tcp", WSRPCHealthPort)
 
 	if pods.K8sEnabled() {
 		return nil, fmt.Errorf("K8s support is not yet implemented")
+	}
+	if err := framework.DefaultNetwork(nil); err != nil {
+		return nil, fmt.Errorf("failed to ensure default docker network %q: %w", framework.DefaultNetworkName, err)
 	}
 
 	req := tc.ContainerRequest{
@@ -112,11 +124,13 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		NetworkAliases: map[string][]string{
 			framework.DefaultNetworkName: {containerName},
 		},
-		ExposedPorts: []string{grpcPort, wsHealthPort},
+		ExposedPorts: []string{grpcPort, wsrpcPort, wsHealthPort},
 		HostConfigModifier: func(h *container.HostConfig) {
-			// JobDistributor service is isolated from internet by default!
-			framework.NoDNS(true, h)
-			h.PortBindings = framework.MapTheSamePort(grpcPort)
+			// Default behavior keeps DNS isolation enabled for backwards compatibility.
+			// Disable only when JD needs Docker service-name resolution (for example jd-db).
+			framework.NoDNS(!in.DisableDNSIsolation, h)
+			h.PortBindings = framework.MapTheSamePort(grpcPort, wsrpcPort)
+			h.ExtraHosts = append(h.ExtraHosts, "host.docker.internal:host-gateway")
 		},
 		Env: map[string]string{
 			"DATABASE_URL":              pgOut.JDInternalURL,
