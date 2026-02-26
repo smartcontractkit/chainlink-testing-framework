@@ -112,10 +112,7 @@ func (m *DockerChaos) Chaos(containerName string, cmd, val string) error {
 		if err != nil {
 			return err
 		}
-		if err := verifyTCOutput(string(out)); err != nil {
-			return err
-		}
-		return nil
+		return verifyTCOutput(string(out))
 	}
 	// docker commands
 	m.Experiments[containerName] = fmt.Sprintf("docker unpause %s", containerName)
