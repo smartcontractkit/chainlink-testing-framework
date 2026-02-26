@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -12,91 +13,83 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
+var users = map[string]gin.H{
+	"1": {"id": 1, "name": "John Doe", "email": "john@example.com"},
+	"2": {"id": 2, "name": "Jane Smith", "email": "jane@example.com"},
+}
+
 func main() {
-	ctx := context.Background()
 	if pods.K8sEnabled() {
-		_, _, err := pods.Run(ctx, &pods.Config{
-			Pods: []*pods.PodConfig{
-				{
-					Name:     pods.Ptr("fakes-alex"),
-					Image:    pods.Ptr(os.Getenv("FAKE_IMAGE")),
-					Ports:    []string{"8080:8080"},
-					Requests: pods.ResourcesMedium(),
-					Limits:   pods.ResourcesMedium(),
-					ContainerSecurityContext: &v1.SecurityContext{
-						RunAsUser:  pods.Ptr[int64](999),
-						RunAsGroup: pods.Ptr[int64](999),
-					},
-				},
-			},
-		})
-		if err != nil {
-			panic(fmt.Sprintf("failed to deploy container: %s", err.Error()))
-		}
+		deployToK8s()
 		return
 	}
-
-	// Create a default Gin router
 	r := gin.Default()
+	registerRoutes(r)
+	log.Fatal(r.Run(":8080"))
+}
 
-	// ========== STATIC RESPONSE ROUTES ==========
-
-	// Simple static JSON response
-	r.GET("/api/users", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"users": []gin.H{
-				{"id": 1, "name": "John Doe", "email": "john@example.com"},
-				{"id": 2, "name": "Jane Smith", "email": "jane@example.com"},
+func deployToK8s() {
+	_, _, err := pods.Run(context.Background(), &pods.Config{
+		Pods: []*pods.PodConfig{
+			{
+				Name:     pods.Ptr("fakes-alex"),
+				Image:    pods.Ptr(os.Getenv("FAKE_IMAGE")),
+				Ports:    []string{"8080:8080"},
+				Requests: pods.ResourcesMedium(),
+				Limits:   pods.ResourcesMedium(),
+				ContainerSecurityContext: &v1.SecurityContext{
+					RunAsUser:  pods.Ptr[int64](999),
+					RunAsGroup: pods.Ptr[int64](999),
+				},
 			},
-			"total":  2,
-			"status": "success",
-		})
+		},
 	})
+	if err != nil {
+		panic(fmt.Sprintf("failed to deploy container: %s", err))
+	}
+}
 
-	// Static response with query parameter
-	r.GET("/api/user", func(c *gin.Context) {
-		id := c.Query("id")
-		if id == "" {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "id parameter is required",
-			})
-			return
-		}
+func registerRoutes(r *gin.Engine) {
+	webhook := r.Group("/api/webhook")
+	webhook.POST("", func(c *gin.Context) { c.Status(http.StatusOK) })
+	webhook.GET("/users", handleGetUsers)
+	webhook.GET("/user", handleGetUser)
+	webhook.GET("/users/:id", handleGetUserByID)
+}
 
-		// Still static but uses the ID in response
-		c.JSON(http.StatusOK, gin.H{
-			"id":    id,
-			"name":  "John Doe",
-			"email": "john@example.com",
-			"role":  "admin",
-		})
+func lookupUser(id string) gin.H {
+	if user, ok := users[id]; ok {
+		return user
+	}
+	return gin.H{"id": id, "name": "Unknown User", "email": "unknown@example.com"}
+}
+
+func handleGetUsers(c *gin.Context) {
+	allUsers := make([]gin.H, 0, len(users))
+	for _, u := range users {
+		allUsers = append(allUsers, u)
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"users":  allUsers,
+		"total":  len(users),
+		"status": "success",
 	})
+}
 
-	// ========== DYNAMIC RESPONSE ROUTES ==========
+func handleGetUser(c *gin.Context) {
+	id := c.Query("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id parameter is required"})
+		return
+	}
+	c.JSON(http.StatusOK, lookupUser(id))
+}
 
-	// Dynamic response based on path parameter
-	r.GET("/api/users/:id", func(c *gin.Context) {
-		id := c.Param("id")
-
-		// Dynamic logic based on the ID
-		var user gin.H
-		switch id {
-		case "1":
-			user = gin.H{"id": 1, "name": "John Doe", "email": "john@example.com"}
-		case "2":
-			user = gin.H{"id": 2, "name": "Jane Smith", "email": "jane@example.com"}
-		default:
-			user = gin.H{"id": id, "name": "Unknown User", "email": "unknown@example.com"}
-		}
-
-		// Add timestamp to show it's dynamic
-		c.JSON(http.StatusOK, gin.H{
-			"user":         user,
-			"timestamp":    time.Now().Unix(),
-			"requested_id": id,
-		})
+func handleGetUserByID(c *gin.Context) {
+	id := c.Param("id")
+	c.JSON(http.StatusOK, gin.H{
+		"user":         lookupUser(id),
+		"timestamp":    time.Now().Unix(),
+		"requested_id": id,
 	})
-
-	// Start the server on port 8080
-	r.Run(":8080")
 }
