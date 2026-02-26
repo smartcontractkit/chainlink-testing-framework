@@ -6,6 +6,7 @@ import (
 	"io"
 	"os/exec"
 	"strings"
+	"sync"
 )
 
 // ExecCmd executes a command and logs the output interactively
@@ -48,20 +49,25 @@ func ExecCmdWithOpts(ctx context.Context, command string, stdoutFunc func(string
 	// create a buffer, listen to both pipe outputs, wait them to finish and merge output
 	// both log it and return merged output
 	var combinedBuf strings.Builder
+	combinedBufMu := &sync.Mutex{}
 	stdoutDone := make(chan struct{})
 	stderrDone := make(chan struct{})
 
 	go func() {
 		readStdPipe(stdout, func(m string) {
 			stdoutFunc(m)
+			combinedBufMu.Lock()
 			combinedBuf.WriteString(m + "\n")
+			combinedBufMu.Unlock()
 		})
 		close(stdoutDone)
 	}()
 	go func() {
 		readStdPipe(stderr, func(m string) {
 			stderrFunc(m)
+			combinedBufMu.Lock()
 			combinedBuf.WriteString(m + "\n")
+			combinedBufMu.Unlock()
 		})
 		close(stderrDone)
 	}()
