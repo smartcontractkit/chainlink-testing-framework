@@ -3,7 +3,6 @@ package chaos
 import (
 	"context"
 	"fmt"
-	"os"
 	"slices"
 	"strings"
 	"time"
@@ -48,8 +47,6 @@ func NewDockerChaos(ctx context.Context) (*DockerChaos, error) {
 	framework.L.Info().
 		Str("Container", dockerTCContainerName).
 		Msg("Starting new docker-tc container")
-
-	_ = os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
 	req := testcontainers.ContainerRequest{
 		Image:      "lukaszlach/docker-tc",
 		Name:       dockerTCContainerName,
@@ -88,11 +85,15 @@ func (m *DockerChaos) RemoveAll() error {
 			return fmt.Errorf("failed to remove chaos experiment: name: %s, command:%s, err: %w", exName, exCmd, err)
 		}
 	}
+	m.Experiments = make(map[string]string)
 	return nil
 }
 
 // Chaos executes either Docker or "docker-tc" commands
 func (m *DockerChaos) Chaos(containerName string, cmd, val string) error {
+	if _, ok := m.Experiments[containerName]; ok {
+		return fmt.Errorf("chaos is already applied, only a single chaos can be applied to a container, call RemoveAll first")
+	}
 	if slices.Contains(tcCommands, cmd) {
 		m.Experiments[containerName] = fmt.Sprintf("%s -X DELETE %s/%s", defaultCURLCMD, dockerTCInternalSvc, containerName)
 		if _, err := framework.ExecCmd(fmt.Sprintf("%s -d %s=%s %s/%s", defaultCURLCMD, cmd, val, dockerTCInternalSvc, containerName)); err != nil {
