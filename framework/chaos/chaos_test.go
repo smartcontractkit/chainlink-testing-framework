@@ -16,6 +16,7 @@ func TestSmokeChaos(t *testing.T) {
 
 	i, err := c.Inspect(t.Context())
 	require.NoError(t, err)
+	containerName := i.Name[1:]
 
 	dtc, err := chaos.NewDockerChaos(t.Context())
 	require.NoError(t, err)
@@ -29,30 +30,30 @@ func TestSmokeChaos(t *testing.T) {
 	}{
 		{
 			name:          "pause container",
-			containerName: i.Name,
+			containerName: containerName,
 			cmd:           chaos.CmdPause,
 		},
 		{
 			name:          "delay container",
-			containerName: i.Name,
+			containerName: containerName,
 			cmd:           chaos.CmdDelay,
 			value:         "8000ms",
 		},
 		{
 			name:          "loss container",
-			containerName: i.Name,
+			containerName: containerName,
 			cmd:           chaos.CmdLoss,
 			value:         "50%",
 		},
 		{
 			name:          "corrupt traffic in container",
-			containerName: i.Name,
+			containerName: containerName,
 			cmd:           chaos.CmdCorrupt,
 			value:         "10%",
 		},
 		{
 			name:          "duplicate traffic in container",
-			containerName: i.Name,
+			containerName: containerName,
 			cmd:           chaos.CmdDuplicate,
 			value:         "50%",
 		},
@@ -66,7 +67,7 @@ func TestSmokeChaos(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
-			time.Sleep(10 * time.Second)
+			time.Sleep(5 * time.Second)
 
 			err = dtc.RemoveAll()
 			require.NoError(t, err)

@@ -16,6 +16,13 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
+/*
+ * A simple wrapper for "docker-tc" chaos actions.
+ * One small caveat is that in order for chaos to work your containers should be on a network so
+ * interfaces like 'vetha57f116' are created inside them.
+ * Works for any network, by default we are testing containers on "ctf" network.
+ */
+
 const (
 	// Docker and docker-tc commands
 	CmdPause     = "pause"
@@ -80,9 +87,13 @@ func NewDockerChaos(ctx context.Context) (*DockerChaos, error) {
 
 // RemoveAll removes all the experiments
 func (m *DockerChaos) RemoveAll() error {
-	for exName, exCmd := range m.Experiments {
-		if _, err := framework.ExecCmd(exCmd); err != nil {
-			return fmt.Errorf("failed to remove chaos experiment: name: %s, command:%s, err: %w", exName, exCmd, err)
+	for containerName, experimentCmd := range m.Experiments {
+		framework.L.Info().
+			Str("Container", containerName).
+			Str("Cmd", experimentCmd).
+			Msg("Removing chaos for container")
+		if _, err := framework.ExecCmd(experimentCmd); err != nil {
+			return fmt.Errorf("failed to remove chaos experiment: name: %s, command:%s, err: %w", containerName, experimentCmd, err)
 		}
 	}
 	m.Experiments = make(map[string]string)
@@ -94,16 +105,30 @@ func (m *DockerChaos) Chaos(containerName string, cmd, val string) error {
 	if _, ok := m.Experiments[containerName]; ok {
 		return fmt.Errorf("chaos is already applied, only a single chaos can be applied to a container, call RemoveAll first")
 	}
+	// tc commands
 	if slices.Contains(tcCommands, cmd) {
 		m.Experiments[containerName] = fmt.Sprintf("%s -X DELETE %s/%s", defaultCURLCMD, dockerTCInternalSvc, containerName)
-		if _, err := framework.ExecCmd(fmt.Sprintf("%s -d %s=%s %s/%s", defaultCURLCMD, cmd, val, dockerTCInternalSvc, containerName)); err != nil {
+		out, err := framework.ExecCmd(fmt.Sprintf("%s -d %s=%s %s/%s", defaultCURLCMD, cmd, val, dockerTCInternalSvc, containerName))
+		if err != nil {
 			return err
 		}
-	} else {
-		m.Experiments[containerName] = fmt.Sprintf("docker unpause %s", containerName)
-		if _, err := framework.ExecCmd(fmt.Sprintf("docker pause %s", containerName)); err != nil {
+		if err := verifyTCOutput(string(out)); err != nil {
 			return err
 		}
+		return nil
+	}
+	// docker commands
+	m.Experiments[containerName] = fmt.Sprintf("docker unpause %s", containerName)
+	_, err := framework.ExecCmd(fmt.Sprintf("docker pause %s", containerName))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func verifyTCOutput(out string) error {
+	if !strings.Contains(out, "Controlling traffic") {
+		return fmt.Errorf("experiment failed to apply, set debug logs, export CTF_LOG_LEVEL=debug. Your container also must be on a network, 'ctf' or any other, won't work with default 'bridge'")
 	}
 	return nil
 }
