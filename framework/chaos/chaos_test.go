@@ -10,7 +10,7 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
 )
 
-func TestChaos(t *testing.T) {
+func TestSmokeChaos(t *testing.T) {
 	c, err := rpc.StartAnvil([]string{"--balance", "1", "--block-time", "5"})
 	require.NoError(t, err)
 
