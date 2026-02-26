@@ -1,0 +1,13 @@
+build:
+    docker build -t chainlink-devenv-fakes:local .
+
+run:
+    docker run -p 8080:8080 chainlink-devenv-fakes:local
+
+push registry tag:
+    docker build --platform linux/amd64 -t chainlink-devenv-fakes:local .
+    docker tag chainlink-devenv-fakes:local {{registry}}/chainlink-devenv-fakes:{{tag}}
+    docker push {{registry}}/chainlink-devenv-fakes:{{tag}}
+
+deploy registry tag namespace:
+    FAKE_IMAGE={{registry}}/chainlink-devenv-fakes:{{tag}} KUBERNETES_NAMESPACE={{namespace}} go run main.go
