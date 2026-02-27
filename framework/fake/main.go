@@ -25,7 +25,7 @@ func main() {
 	}
 	r := gin.Default()
 	registerRoutes(r)
-	log.Fatal(r.Run(":8080"))
+	log.Fatal(r.Run(":80"))
 }
 
 func deployToK8s() {
@@ -34,7 +34,7 @@ func deployToK8s() {
 			{
 				Name:     pods.Ptr("fakes-alex"),
 				Image:    pods.Ptr(os.Getenv("FAKE_IMAGE")),
-				Ports:    []string{"8080:8080"},
+				Ports:    []string{"80:80"},
 				Requests: pods.ResourcesMedium(),
 				Limits:   pods.ResourcesMedium(),
 				ContainerSecurityContext: &v1.SecurityContext{
