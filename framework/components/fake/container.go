@@ -16,9 +16,10 @@ import (
 )
 
 type Input struct {
-	Image string  `toml:"image" comment:"Fake service image, usually can be found in our ECR with $project-fakes name"`
-	Port  int     `toml:"port" validate:"required" comment:"The port which Docker container is exposing"`
-	Out   *Output `toml:"out" comment:"Fakes service config output"`
+	Image         string  `toml:"image" comment:"Fake service image, usually can be found in our ECR with $project-fakes name"`
+	ContainerName string  `toml:"container_name" comment:"Docker container name"`
+	Port          int     `toml:"port" validate:"required" comment:"The port which Docker container is exposing"`
+	Out           *Output `toml:"out" comment:"Fakes service config output"`
 }
 
 type Output struct {
@@ -34,18 +35,27 @@ func NewDockerFakeDataProvider(in *Input) (*Output, error) {
 	return NewWithContext(context.Background(), in)
 }
 
+func defaultFake(in *Input) {
+	if in.Port == 0 {
+		in.Port = 9111
+	}
+	if in.ContainerName == "" {
+		in.ContainerName = "fake"
+	}
+}
+
 // NewWithContext creates new fake data provider in Docker using testcontainers-go
 func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
+	defaultFake(in)
 	bindPort := fmt.Sprintf("%d/tcp", in.Port)
-	containerName := framework.DefaultTCName("fake")
 	if pods.K8sEnabled() {
 		_, svc, err := pods.Run(ctx, &pods.Config{
 			Pods: []*pods.PodConfig{
 				{
-					Name:     pods.Ptr(containerName),
+					Name:     pods.Ptr(in.ContainerName),
 					Image:    &in.Image,
 					Ports:    []string{fmt.Sprintf("%d:%d", in.Port, in.Port)},
 					Requests: pods.ResourcesSmall(),
@@ -63,17 +73,17 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		in.Out = &Output{
 			K8sService:    svc,
 			BaseURLHost:   fmt.Sprintf("http://%s:%d", "localhost", in.Port),
-			BaseURLDocker: fmt.Sprintf("http://%s:%d", fmt.Sprintf("%s-svc", containerName), in.Port),
+			BaseURLDocker: fmt.Sprintf("http://%s:%d", fmt.Sprintf("%s-svc", in.ContainerName), in.Port),
 		}
 		return in.Out, nil
 	}
 	req := tc.ContainerRequest{
-		Name:     containerName,
+		Name:     in.ContainerName,
 		Image:    in.Image,
 		Labels:   framework.DefaultTCLabels(),
 		Networks: []string{framework.DefaultNetworkName},
 		NetworkAliases: map[string][]string{
-			framework.DefaultNetworkName: {containerName},
+			framework.DefaultNetworkName: {in.ContainerName},
 		},
 		ExposedPorts: []string{bindPort},
 		HostConfigModifier: func(h *container.HostConfig) {
@@ -92,7 +102,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	}
 	in.Out = &Output{
 		BaseURLHost:   fmt.Sprintf("http://localhost:%d", in.Port),
-		BaseURLDocker: fmt.Sprintf("http://%s:%d", containerName, in.Port),
+		BaseURLDocker: fmt.Sprintf("http://%s:%d", in.ContainerName, in.Port),
 	}
 	return in.Out, nil
 }
