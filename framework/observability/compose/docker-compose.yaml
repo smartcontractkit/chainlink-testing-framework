@@ -97,9 +97,8 @@ services:
     ports:
       - '4040:4040'
     command:
-      - '-config.file=/etc/pyroscope/config.yaml'
+      - 'server'
     volumes:
-      - ./pyroscope-config.yaml:/etc/pyroscope/config.yaml
       - pyroscope-storage:/var/lib/pyroscope
 
   postgres_exporter_0:
