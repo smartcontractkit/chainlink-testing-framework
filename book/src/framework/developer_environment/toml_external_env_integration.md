@@ -56,4 +56,4 @@ Example `env-stage-1.toml`:
 
 Deploy the infrastructure first, then use `up env-stage-1.toml` to orchestrate staging environment.
 
-In case your product has more infrastructure components define TOML keys `[[my_custom_component]]` and provide all therequired connection data, use the same config structure you are using in local environment, read more [here](https://smartcontractkit.github.io/chainlink-testing-framework/developing/developing_components.html?highlight=component#developing-components)
+In case your product has more infrastructure components define TOML keys `[[my_custom_component]]` and provide all the required connection data, use the same config structure you are using in your local environment, read more [here](https://smartcontractkit.github.io/chainlink-testing-framework/developing/developing_components.html?highlight=component#developing-components)
