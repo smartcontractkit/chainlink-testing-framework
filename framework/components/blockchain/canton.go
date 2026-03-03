@@ -156,7 +156,7 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	}
 	data := &CantonData{
 		InternalEndpoints: CantonEndpoints{
-			ScanAPIURL:     fmt.Sprintf("http://scan.%s:%s/api/scan", nginxContainerName, canton.DefaultNginxInternalPort),
+			ScanAPIURL:     fmt.Sprintf("http://scan.%s:%d/api/scan", nginxContainerName, canton.DefaultNginxInternalPort),
 			RegistryAPIURL: fmt.Sprintf("http://scan.%s:%d", nginxContainerName, canton.DefaultNginxInternalPort), // Don't add /registry to URL as this is part of the OpenAPI spec and the base URL should point to the root
 			SuperValidator: CantonParticipantEndpoints{
 				JSONLedgerAPIURL:   fmt.Sprintf("http://sv.json-ledger-api.%s:%d", nginxContainerName, canton.DefaultNginxInternalPort),
