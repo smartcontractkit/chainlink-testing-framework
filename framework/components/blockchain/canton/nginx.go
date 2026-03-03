@@ -222,7 +222,7 @@ func NginxContainerRequest(
 			framework.DefaultNetworkName: append([]string{nginxContainerName}, internalHostnames...),
 		},
 		WaitingFor:   wait.ForHTTP("/readyz").WithStartupTimeout(time.Second * 10),
-		ExposedPorts: []string{fmt.Sprintf("%s:8080", port)},
+		ExposedPorts: []string{fmt.Sprintf("%s:%d", port, DefaultNginxInternalPort)},
 		Env: map[string]string{
 			"CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX": DefaultHTTPHealthcheckPortPrefix,
 			"CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX": DefaultGRPCHealthcheckPortPrefix,
