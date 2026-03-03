@@ -688,50 +688,97 @@ ctf gen load -w -n ChaosGen default
         # Sui key address
         sui_address = ''
 
-      # Canton network endpoints info
-      [blockchains.out.network_specific_data.canton_endpoints]
-        # https://docs.sync.global/app_dev/scan_api/index.html
-        scan_api_url = ''
-        # https://docs.sync.global/app_dev/token_standard/index.html#api-references
-        registry_api_url = ''
+      # Canton network data
+      [blockchains.out.network_specific_data.canton_data]
+        # Docker-internal endpoints, only reachable from containers connected to the same networks
+        [blockchains.out.network_specific_data.canton_data.internal_endpoints]
+          # https://docs.sync.global/app_dev/scan_api/index.html
+          scan_api_url = ''
+          # https://docs.sync.global/app_dev/token_standard/index.html#api-references
+          registry_api_url = ''
 
-        # Canton network super validator
-        [blockchains.out.network_specific_data.canton_endpoints.super_validator]
-          # https://docs.digitalasset.com/build/3.5/reference/json-api/json-api.html
-          json_ledger_api_url = ''
-          # https://docs.digitalasset.com/build/3.5/reference/lapi-proto-docs.html
-          grpc_ledger_api_url = ''
-          # https://docs.digitalasset.com/operate/3.5/howtos/configure/apis/admin_api.html
-          admin_api_url = ''
-          # https://docs.sync.global/app_dev/validator_api/index.html
-          validator_api_url = ''
-          # HTTP health check endpoint, responds on GET /health
-          http_health_check_url = ''
-          # GRPC health check endpoint, responds to grpc.health.v1.Health/Check
-          grpc_health_check_url = ''
-          # the user id associated with this participant, used in the JWT token
-          user_id = ''
-          # JSON Web Token for this participant
-          jwt = ''
+          # Canton super validator endpoints
+          [blockchains.out.network_specific_data.canton_data.internal_endpoints.super_validator]
+            # https://docs.digitalasset.com/build/3.5/reference/json-api/json-api.html
+            json_ledger_api_url = ''
+            # https://docs.digitalasset.com/build/3.5/reference/lapi-proto-docs.html
+            grpc_ledger_api_url = ''
+            # https://docs.digitalasset.com/operate/3.5/howtos/configure/apis/admin_api.html
+            admin_api_url = ''
+            # https://docs.sync.global/app_dev/validator_api/index.html
+            validator_api_url = ''
+            # HTTP health check endpoint, responds on GET /health
+            http_health_check_url = ''
+            # GRPC health check endpoint, responds to grpc.health.v1.Health/Check
+            grpc_health_check_url = ''
+            # the user id associated with this participant, used in the JWT token
+            user_id = ''
+            # JSON Web Token for this participant
+            jwt = ''
 
-        # Canton participant endpoints
-        [[blockchains.out.network_specific_data.canton_endpoints.participants]]
-          # https://docs.digitalasset.com/build/3.5/reference/json-api/json-api.html
-          json_ledger_api_url = ''
-          # https://docs.digitalasset.com/build/3.5/reference/lapi-proto-docs.html
-          grpc_ledger_api_url = ''
-          # https://docs.digitalasset.com/operate/3.5/howtos/configure/apis/admin_api.html
-          admin_api_url = ''
-          # https://docs.sync.global/app_dev/validator_api/index.html
-          validator_api_url = ''
-          # HTTP health check endpoint, responds on GET /health
-          http_health_check_url = ''
-          # GRPC health check endpoint, responds to grpc.health.v1.Health/Check
-          grpc_health_check_url = ''
-          # the user id associated with this participant, used in the JWT token
-          user_id = ''
-          # JSON Web Token for this participant
-          jwt = ''
+          # Canton participant endpoints
+          [[blockchains.out.network_specific_data.canton_data.internal_endpoints.participants]]
+            # https://docs.digitalasset.com/build/3.5/reference/json-api/json-api.html
+            json_ledger_api_url = ''
+            # https://docs.digitalasset.com/build/3.5/reference/lapi-proto-docs.html
+            grpc_ledger_api_url = ''
+            # https://docs.digitalasset.com/operate/3.5/howtos/configure/apis/admin_api.html
+            admin_api_url = ''
+            # https://docs.sync.global/app_dev/validator_api/index.html
+            validator_api_url = ''
+            # HTTP health check endpoint, responds on GET /health
+            http_health_check_url = ''
+            # GRPC health check endpoint, responds to grpc.health.v1.Health/Check
+            grpc_health_check_url = ''
+            # the user id associated with this participant, used in the JWT token
+            user_id = ''
+            # JSON Web Token for this participant
+            jwt = ''
+
+        # Docker-external endpoints, only reachable from the Docker host
+        [blockchains.out.network_specific_data.canton_data.external_endpoints]
+          # https://docs.sync.global/app_dev/scan_api/index.html
+          scan_api_url = ''
+          # https://docs.sync.global/app_dev/token_standard/index.html#api-references
+          registry_api_url = ''
+
+          # Canton super validator endpoints
+          [blockchains.out.network_specific_data.canton_data.external_endpoints.super_validator]
+            # https://docs.digitalasset.com/build/3.5/reference/json-api/json-api.html
+            json_ledger_api_url = ''
+            # https://docs.digitalasset.com/build/3.5/reference/lapi-proto-docs.html
+            grpc_ledger_api_url = ''
+            # https://docs.digitalasset.com/operate/3.5/howtos/configure/apis/admin_api.html
+            admin_api_url = ''
+            # https://docs.sync.global/app_dev/validator_api/index.html
+            validator_api_url = ''
+            # HTTP health check endpoint, responds on GET /health
+            http_health_check_url = ''
+            # GRPC health check endpoint, responds to grpc.health.v1.Health/Check
+            grpc_health_check_url = ''
+            # the user id associated with this participant, used in the JWT token
+            user_id = ''
+            # JSON Web Token for this participant
+            jwt = ''
+
+          # Canton participant endpoints
+          [[blockchains.out.network_specific_data.canton_data.external_endpoints.participants]]
+            # https://docs.digitalasset.com/build/3.5/reference/json-api/json-api.html
+            json_ledger_api_url = ''
+            # https://docs.digitalasset.com/build/3.5/reference/lapi-proto-docs.html
+            grpc_ledger_api_url = ''
+            # https://docs.digitalasset.com/operate/3.5/howtos/configure/apis/admin_api.html
+            admin_api_url = ''
+            # https://docs.sync.global/app_dev/validator_api/index.html
+            validator_api_url = ''
+            # HTTP health check endpoint, responds on GET /health
+            http_health_check_url = ''
+            # GRPC health check endpoint, responds to grpc.health.v1.Health/Check
+            grpc_health_check_url = ''
+            # the user id associated with this participant, used in the JWT token
+            user_id = ''
+            # JSON Web Token for this participant
+            jwt = ''
 
       # Stellar network info
       [blockchains.out.network_specific_data.stellar_network]
@@ -18503,7 +18550,7 @@ go run ./tools/breakingchanges/cmd/main.go --ignore tools,wasp,havoc,seth # to i
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>main</code></li>
-<li>Commit: <code>3e02f483</code></li>
+<li>Commit: <code>86bec597</code></li>
 </ul>
 
                     </main>
