@@ -19,6 +19,13 @@ const (
 	TokenExpiry = time.Hour * 24 * 365 * 10 // 10 years
 )
 
+type CantonData struct {
+	// Docker internal endpoints, only reachable if connected to the same Docker network (framework.DefaultNetworkName)
+	InternalEndpoints CantonEndpoints `toml:"internal_endpoints" comment:"Docker-internal endpoints, only reachable from containers connected to the same networks"`
+	// External endpoints, reachable from the Docker host
+	ExternalEndpoints CantonEndpoints `toml:"external_endpoints" comment:"Docker-external endpoints, only reachable from the Docker host"`
+}
+
 type CantonEndpoints struct {
 	// ScanAPIURL https://docs.sync.global/app_dev/scan_api/index.html
 	ScanAPIURL string `toml:"scan_api_url" comment:"https://docs.sync.global/app_dev/scan_api/index.html"`
@@ -26,7 +33,7 @@ type CantonEndpoints struct {
 	RegistryAPIURL string `toml:"registry_api_url" comment:"https://docs.sync.global/app_dev/token_standard/index.html#api-references"`
 
 	// SuperValidator The endpoints for the super validator
-	SuperValidator CantonParticipantEndpoints `toml:"super_validator" comment:"Canton network super validator"`
+	SuperValidator CantonParticipantEndpoints `toml:"super_validator" comment:"Canton super validator endpoints"`
 	// Participants The endpoints for the participants, in order from participant1 to participantN - depending on the number of validators requested
 	Participants []CantonParticipantEndpoints `toml:"participants" comment:"Canton participant endpoints"`
 }
@@ -119,7 +126,7 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	}
 
 	// Set up Nginx container
-	nginxReq := canton.NginxContainerRequest(in.NumberOfCantonValidators, in.Port, cantonReq.Name, spliceReq.Name)
+	nginxReq, nginxContainerName := canton.NginxContainerRequest(in.NumberOfCantonValidators, in.Port, cantonReq.Name, spliceReq.Name)
 	nginxContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: nginxReq,
 		Started:          true,
@@ -133,6 +140,7 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 		return nil, err
 	}
 
+	// Add SV info to output
 	svUser := "user-sv"
 	svToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
 		Issuer:    "",
@@ -146,21 +154,40 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create token for sv: %w", err)
 	}
-	endpoints := &CantonEndpoints{
-		ScanAPIURL:     fmt.Sprintf("http://scan.%s:%s/api/scan", host, in.Port),
-		RegistryAPIURL: fmt.Sprintf("http://scan.%s:%s", host, in.Port), // Don't add /registry to URL as this is part of the OpenAPI spec and the base URL should point to the root
-		SuperValidator: CantonParticipantEndpoints{
-			JSONLedgerAPIURL:   fmt.Sprintf("http://sv.json-ledger-api.%s:%s", host, in.Port),
-			GRPCLedgerAPIURL:   fmt.Sprintf("sv.grpc-ledger-api.%s:%s", host, in.Port),
-			AdminAPIURL:        fmt.Sprintf("sv.admin-api.%s:%s", host, in.Port),
-			ValidatorAPIURL:    fmt.Sprintf("http://sv.validator-api.%s:%s/api/validator", host, in.Port),
-			HTTPHealthCheckURL: fmt.Sprintf("http://sv.http-health-check.%s:%s", host, in.Port),
-			GRPCHealthCheckURL: fmt.Sprintf("sv.grpc-health-check.%s:%s", host, in.Port),
-			UserID:             svUser,
-			JWT:                svToken,
+	data := &CantonData{
+		InternalEndpoints: CantonEndpoints{
+			ScanAPIURL:     fmt.Sprintf("http://scan.%s:%d/api/scan", nginxContainerName, canton.DefaultNginxInternalPort),
+			RegistryAPIURL: fmt.Sprintf("http://scan.%s:%d", nginxContainerName, canton.DefaultNginxInternalPort), // Don't add /registry to URL as this is part of the OpenAPI spec and the base URL should point to the root
+			SuperValidator: CantonParticipantEndpoints{
+				JSONLedgerAPIURL:   fmt.Sprintf("http://sv.json-ledger-api.%s:%d", nginxContainerName, canton.DefaultNginxInternalPort),
+				GRPCLedgerAPIURL:   fmt.Sprintf("sv.grpc-ledger-api.%s:%d", nginxContainerName, canton.DefaultNginxInternalPort),
+				AdminAPIURL:        fmt.Sprintf("sv.admin-api.%s:%d", nginxContainerName, canton.DefaultNginxInternalPort),
+				ValidatorAPIURL:    fmt.Sprintf("http://sv.validator-api.%s:%d/api/validator", nginxContainerName, canton.DefaultNginxInternalPort),
+				HTTPHealthCheckURL: fmt.Sprintf("http://sv.http-health-check.%s:%d", nginxContainerName, canton.DefaultNginxInternalPort),
+				GRPCHealthCheckURL: fmt.Sprintf("sv.grpc-health-check.%s:%d", nginxContainerName, canton.DefaultNginxInternalPort),
+				UserID:             svUser,
+				JWT:                svToken,
+			},
+			Participants: make([]CantonParticipantEndpoints, 0, in.NumberOfCantonValidators),
 		},
-		Participants: nil,
+		ExternalEndpoints: CantonEndpoints{
+			ScanAPIURL:     fmt.Sprintf("http://scan.%s:%s/api/scan", host, in.Port),
+			RegistryAPIURL: fmt.Sprintf("http://scan.%s:%s", host, in.Port), // Don't add /registry to URL as this is part of the OpenAPI spec and the base URL should point to the root
+			SuperValidator: CantonParticipantEndpoints{
+				JSONLedgerAPIURL:   fmt.Sprintf("http://sv.json-ledger-api.%s:%s", host, in.Port),
+				GRPCLedgerAPIURL:   fmt.Sprintf("sv.grpc-ledger-api.%s:%s", host, in.Port),
+				AdminAPIURL:        fmt.Sprintf("sv.admin-api.%s:%s", host, in.Port),
+				ValidatorAPIURL:    fmt.Sprintf("http://sv.validator-api.%s:%s/api/validator", host, in.Port),
+				HTTPHealthCheckURL: fmt.Sprintf("http://sv.http-health-check.%s:%s", host, in.Port),
+				GRPCHealthCheckURL: fmt.Sprintf("sv.grpc-health-check.%s:%s", host, in.Port),
+				UserID:             svUser,
+				JWT:                svToken,
+			},
+			Participants: make([]CantonParticipantEndpoints, 0, in.NumberOfCantonValidators),
+		},
 	}
+
+	// Add Participant info to output
 	for i := 1; i <= in.NumberOfCantonValidators; i++ {
 		participantUser := fmt.Sprintf("user-participant%v", i)
 		token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
@@ -175,7 +202,17 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create token for participant%v: %w", i, err)
 		}
-		participantEndpoints := CantonParticipantEndpoints{
+		data.InternalEndpoints.Participants = append(data.InternalEndpoints.Participants, CantonParticipantEndpoints{
+			JSONLedgerAPIURL:   fmt.Sprintf("http://participant%d.json-ledger-api.%s:%d", i, nginxContainerName, canton.DefaultNginxInternalPort),
+			GRPCLedgerAPIURL:   fmt.Sprintf("participant%d.grpc-ledger-api.%s:%d", i, nginxContainerName, canton.DefaultNginxInternalPort),
+			AdminAPIURL:        fmt.Sprintf("participant%d.admin-api.%s:%d", i, nginxContainerName, canton.DefaultNginxInternalPort),
+			ValidatorAPIURL:    fmt.Sprintf("http://participant%d.validator-api.%s:%d/api/validator", i, nginxContainerName, canton.DefaultNginxInternalPort),
+			HTTPHealthCheckURL: fmt.Sprintf("http://participant%d.http-health-check.%s:%d", i, nginxContainerName, canton.DefaultNginxInternalPort),
+			GRPCHealthCheckURL: fmt.Sprintf("participant%d.grpc-health-check.%s:%d", i, nginxContainerName, canton.DefaultNginxInternalPort),
+			UserID:             participantUser,
+			JWT:                token,
+		})
+		data.ExternalEndpoints.Participants = append(data.ExternalEndpoints.Participants, CantonParticipantEndpoints{
 			JSONLedgerAPIURL:   fmt.Sprintf("http://participant%d.json-ledger-api.%s:%s", i, host, in.Port),
 			GRPCLedgerAPIURL:   fmt.Sprintf("participant%d.grpc-ledger-api.%s:%s", i, host, in.Port),
 			AdminAPIURL:        fmt.Sprintf("participant%d.admin-api.%s:%s", i, host, in.Port),
@@ -184,8 +221,7 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 			GRPCHealthCheckURL: fmt.Sprintf("participant%d.grpc-health-check.%s:%s", i, host, in.Port),
 			UserID:             participantUser,
 			JWT:                token,
-		}
-		endpoints.Participants = append(endpoints.Participants, participantEndpoints)
+		})
 	}
 
 	return &Output{
@@ -195,7 +231,7 @@ func newCanton(ctx context.Context, in *Input) (*Output, error) {
 		ChainID:       in.ChainID,
 		ContainerName: nginxReq.Name,
 		NetworkSpecificData: &NetworkSpecificData{
-			CantonEndpoints: endpoints,
+			CantonData: data,
 		},
 	}, nil
 }
