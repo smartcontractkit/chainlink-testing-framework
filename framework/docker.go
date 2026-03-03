@@ -419,14 +419,14 @@ func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string, buildArgs m
 func BuildImage(dctx, dfile, nameAndTag string, buildArgs map[string]string) error {
 	dfilePath := filepath.Join(dctx, dfile)
 	if os.Getenv("CTF_CLNODE_DLV") == "true" {
-		commandParts := []string{"docker", "build", "--build-arg", `GO_GCFLAGS=all=-N -l`, "--build-arg", "CHAINLINK_USER=chainlink", "--build-arg", "CL_INSTALL_PRIVATE_PLUGINS=false"}
+		commandParts := []string{"docker", "build", "--build-arg", `GO_GCFLAGS=all=-N -l`, "--build-arg", "CHAINLINK_USER=chainlink"}
 		for k, v := range buildArgs {
 			commandParts = append(commandParts, "--build-arg", fmt.Sprintf("%s=%s", k, v))
 		}
 		commandParts = append(commandParts, "-t", nameAndTag, "-f", dfilePath, dctx)
 		return RunCommand(commandParts[0], commandParts[1:]...)
 	}
-	commandParts := []string{"docker", "build", "--build-arg", "CHAINLINK_USER=chainlink", "--build-arg", "CL_INSTALL_PRIVATE_PLUGINS=false"}
+	commandParts := []string{"docker", "build", "--build-arg", "CHAINLINK_USER=chainlink"}
 	for k, v := range buildArgs {
 		commandParts = append(commandParts, "--build-arg", fmt.Sprintf("%s=%s", k, v))
 	}
