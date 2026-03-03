@@ -21,9 +21,9 @@ const (
 
 type CantonData struct {
 	// Docker internal endpoints, only reachable if connected to the same Docker network (framework.DefaultNetworkName)
-	InternalEndpoints CantonEndpoints
+	InternalEndpoints CantonEndpoints `toml:"internal_endpoints" comment:"Docker-internal endpoints, only reachable from containers connected to the same networks"`
 	// External endpoints, reachable from the Docker host
-	ExternalEndpoints CantonEndpoints
+	ExternalEndpoints CantonEndpoints `toml:"external_endpoints" comment:"Docker-external endpoints, only reachable from the Docker host"`
 }
 
 type CantonEndpoints struct {
@@ -33,7 +33,7 @@ type CantonEndpoints struct {
 	RegistryAPIURL string `toml:"registry_api_url" comment:"https://docs.sync.global/app_dev/token_standard/index.html#api-references"`
 
 	// SuperValidator The endpoints for the super validator
-	SuperValidator CantonParticipantEndpoints `toml:"super_validator" comment:"Canton network super validator"`
+	SuperValidator CantonParticipantEndpoints `toml:"super_validator" comment:"Canton super validator endpoints"`
 	// Participants The endpoints for the participants, in order from participant1 to participantN - depending on the number of validators requested
 	Participants []CantonParticipantEndpoints `toml:"participants" comment:"Canton participant endpoints"`
 }
