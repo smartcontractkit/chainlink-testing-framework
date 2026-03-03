@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	DefaultNginxImage = "nginx:1.29.5"
+	DefaultNginxImage        = "nginx:1.29.5"
+	DefaultNginxInternalPort = 8080
 )
 
 const nginxConfig = `
@@ -21,6 +22,7 @@ events {
 }
 
 http {
+	server_names_hash_bucket_size 128;
 	include mime.types;
 	default_type application/octet-stream;
 	client_max_body_size 100M;
@@ -53,12 +55,12 @@ http {
 }
 `
 
-func getNginxTemplate(numberOfValidators int) string {
-	template := `
+func getNginxTemplate(nginxContainerName string, nginxInternalPort int, numberOfValidators int) (template string, internalHostnames []string) {
+	template = fmt.Sprintf(`
 # SV
 server {
-    listen 		8080;
-    server_name sv.json-ledger-api.localhost;
+    listen 		%[1]d;
+    server_name sv.json-ledger-api.*;
     location / {
         proxy_pass http://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_JSON_API_PORT_PREFIX}00;
 		add_header Access-Control-Allow-Origin *;
@@ -68,40 +70,40 @@ server {
 }
 
 server {
-    listen 		8080 http2;
-    server_name sv.grpc-ledger-api.localhost;
+    listen 		%[1]d http2;
+    server_name sv.grpc-ledger-api.*;
     location / {
         grpc_pass grpc://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_LEDGER_API_PORT_PREFIX}00;
     }
 }
 
 server {
-    listen 		8080;
-    server_name sv.http-health-check.localhost;
+    listen 		%[1]d;
+    server_name sv.http-health-check.*;
     location / {
         proxy_pass http://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX}00;
     }
 }
 
 server {
-    listen 		8080 http2;
-    server_name sv.grpc-health-check.localhost;
+    listen 		%[1]d http2;
+    server_name sv.grpc-health-check.*;
     location / {
         grpc_pass grpc://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}00;
     }
 }
 
 server {
-    listen 		8080 http2;
-    server_name sv.admin-api.localhost;
+    listen 		%[1]d http2;
+    server_name sv.admin-api.*;
     location / {
         grpc_pass grpc://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX}00;
     }
 }
 
 server {
-    listen 		8080;
-    server_name sv.validator-api.localhost;
+    listen 		%[1]d;
+    server_name sv.validator-api.*;
     location /api/validator {
         rewrite ^\/(.*) /$1 break;
         proxy_pass http://${SPLICE_CONTAINER_NAME}:${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}00/api/validator;
@@ -109,8 +111,8 @@ server {
 }
 
 server {
-	listen 		8080;
-	server_name scan.localhost;
+	listen 		%[1]d;
+	server_name scan.*;
 	
 	location /api/scan {
 		rewrite ^\/(.*) /$1 break;
@@ -121,17 +123,26 @@ server {
 		proxy_pass http://${SPLICE_CONTAINER_NAME}:5012/registry;
 	}
 }
-	`
+	`, nginxInternalPort)
+	internalHostnames = append(internalHostnames,
+		fmt.Sprintf("sv.json-ledger-api.%s", nginxContainerName),
+		fmt.Sprintf("sv.grpc-ledger-api.%s", nginxContainerName),
+		fmt.Sprintf("sv.http-health-check.%s", nginxContainerName),
+		fmt.Sprintf("sv.grpc-health-check.%s", nginxContainerName),
+		fmt.Sprintf("sv.admin-api.%s", nginxContainerName),
+		fmt.Sprintf("sv.validator-api.%s", nginxContainerName),
+		fmt.Sprintf("scan.%s", nginxContainerName),
+	)
 
 	// Add additional validators
 	for i := 1; i <= numberOfValidators; i++ {
 		template += fmt.Sprintf(`
-# Participant %[1]d
+# Participant %[2]d
 	server {
-		listen      8080;
-		server_name participant%[1]d.json-ledger-api.localhost;
+		listen      %[1]d;
+		server_name participant%[2]d.json-ledger-api.*;
 		location / {
-			proxy_pass http://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_JSON_API_PORT_PREFIX}%02[1]d;
+			proxy_pass http://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_JSON_API_PORT_PREFIX}%02[2]d;
 			add_header Access-Control-Allow-Origin *;
 			add_header Access-Control-Allow-Methods 'GET, POST, OPTIONS';
 			add_header Access-Control-Allow-Headers 'Origin, Content-Type, Accept';
@@ -139,49 +150,57 @@ server {
 	}
 	
 	server {
-		listen 		8080 http2;
-		server_name participant%[1]d.grpc-ledger-api.localhost;
+		listen 		%[1]d http2;
+		server_name participant%[2]d.grpc-ledger-api.*;
 		location / {
-			grpc_pass grpc://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_LEDGER_API_PORT_PREFIX}%02[1]d;
+			grpc_pass grpc://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_LEDGER_API_PORT_PREFIX}%02[2]d;
 		}
 	}
 	
 	server {
-		listen 		8080;
-		server_name participant%[1]d.http-health-check.localhost;
+		listen 		%[1]d;
+		server_name participant%[2]d.http-health-check.*;
 		location / {
-			proxy_pass http://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX}%02[1]d;
+			proxy_pass http://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX}%02[2]d;
 		}
 	}
 	
 	server {
-		listen 		8080 http2;
-		server_name participant%[1]d.grpc-health-check.localhost;
+		listen 		%[1]d http2;
+		server_name participant%[2]d.grpc-health-check.*;
 		location / {
-			grpc_pass grpc://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}%02[1]d;
+			grpc_pass grpc://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}%02[2]d;
 		}
 	}
 	
 	server {
-		listen 		8080 http2;
-		server_name participant%[1]d.admin-api.localhost;
+		listen 		%[1]d http2;
+		server_name participant%[2]d.admin-api.*;
 		location / {
-			grpc_pass grpc://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX}%02[1]d;
+			grpc_pass grpc://${CANTON_CONTAINER_NAME}:${CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX}%02[2]d;
 		}
 	}
 	
 	server {
-		listen 		8080;
-		server_name participant%[1]d.validator-api.localhost;
+		listen 		%[1]d;
+		server_name participant%[2]d.validator-api.*;
 		location /api/validator {
 			rewrite ^\/(.*) /$1 break;
-			proxy_pass http://${SPLICE_CONTAINER_NAME}:${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}%02[1]d/api/validator;
+			proxy_pass http://${SPLICE_CONTAINER_NAME}:${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}%02[2]d/api/validator;
 		}
 	}
-		`, i)
+		`, nginxInternalPort, i)
+		internalHostnames = append(internalHostnames,
+			fmt.Sprintf("participant%d.json-ledger-api.%s", i, nginxContainerName),
+			fmt.Sprintf("participant%d.grpc-ledger-api.%s", i, nginxContainerName),
+			fmt.Sprintf("participant%d.http-health-check.%s", i, nginxContainerName),
+			fmt.Sprintf("participant%d.grpc-health-check.%s", i, nginxContainerName),
+			fmt.Sprintf("participant%d.admin-api.%s", i, nginxContainerName),
+			fmt.Sprintf("participant%d.validator-api.%s", i, nginxContainerName),
+		)
 	}
 
-	return template
+	return template, internalHostnames
 }
 
 func NginxContainerRequest(
@@ -189,14 +208,18 @@ func NginxContainerRequest(
 	port string,
 	cantonContainerName string,
 	spliceContainerName string,
-) testcontainers.ContainerRequest {
-	nginxContainerName := framework.DefaultTCName("nginx")
+) (testcontainers.ContainerRequest, string) {
+	nginxContainerName := framework.DefaultTCName("canton-nginx")
+	// Docker doesn't support DNS wildcards: https://github.com/moby/moby/issues/43442
+	// In order to allow for another container to reach the Nginx container under all the defined hostnames,
+	// they need to be explicitly set as network aliases.
+	nginxTemplate, internalHostnames := getNginxTemplate(nginxContainerName, DefaultNginxInternalPort, numberOfValidators)
 	nginxReq := testcontainers.ContainerRequest{
 		Image:    DefaultNginxImage,
 		Name:     nginxContainerName,
 		Networks: []string{framework.DefaultNetworkName},
 		NetworkAliases: map[string][]string{
-			framework.DefaultNetworkName: {nginxContainerName},
+			framework.DefaultNetworkName: append([]string{nginxContainerName}, internalHostnames...),
 		},
 		WaitingFor:   wait.ForHTTP("/readyz").WithStartupTimeout(time.Second * 10),
 		ExposedPorts: []string{fmt.Sprintf("%s:8080", port)},
@@ -217,7 +240,7 @@ func NginxContainerRequest(
 				ContainerFilePath: "/etc/nginx/nginx.conf",
 				FileMode:          0755,
 			}, {
-				Reader:            strings.NewReader(getNginxTemplate(numberOfValidators)),
+				Reader:            strings.NewReader(nginxTemplate),
 				ContainerFilePath: "/etc/nginx/templates/participants.conf.template",
 				FileMode:          0755,
 			},
@@ -225,5 +248,5 @@ func NginxContainerRequest(
 		Labels: framework.DefaultTCLabels(),
 	}
 
-	return nginxReq
+	return nginxReq, nginxContainerName
 }

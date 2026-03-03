@@ -31,13 +31,13 @@ func TestCantonSmoke(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("Test scan endpoint", func(t *testing.T) {
-		resp, err := resty.New().SetBaseURL(bc.NetworkSpecificData.CantonEndpoints.ScanAPIURL).R().
+		resp, err := resty.New().SetBaseURL(bc.NetworkSpecificData.CantonData.ExternalEndpoints.ScanAPIURL).R().
 			Get("/v0/dso-party-id")
 		assert.NoError(t, err)
 		fmt.Println(resp)
 	})
 	t.Run("Test registry endpoint", func(t *testing.T) {
-		resp, err := resty.New().SetBaseURL(bc.NetworkSpecificData.CantonEndpoints.RegistryAPIURL).R().
+		resp, err := resty.New().SetBaseURL(bc.NetworkSpecificData.CantonData.ExternalEndpoints.RegistryAPIURL).R().
 			Get("/registry/metadata/v1/instruments")
 		assert.NoError(t, err)
 		fmt.Println(resp)
@@ -87,9 +87,9 @@ func TestCantonSmoke(t *testing.T) {
 	}
 
 	// Call all participants, starting with the SV
-	testParticipant(t, "sv", bc.NetworkSpecificData.CantonEndpoints.SuperValidator)
+	testParticipant(t, "sv", bc.NetworkSpecificData.CantonData.ExternalEndpoints.SuperValidator)
 	for i := 1; i <= in.BlockchainA.NumberOfCantonValidators; i++ {
-		testParticipant(t, fmt.Sprintf("participant%d", i), bc.NetworkSpecificData.CantonEndpoints.Participants[i-1])
+		testParticipant(t, fmt.Sprintf("participant%d", i), bc.NetworkSpecificData.CantonData.ExternalEndpoints.Participants[i-1])
 	}
 }
 

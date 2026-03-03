@@ -92,9 +92,9 @@ type Output struct {
 }
 
 type NetworkSpecificData struct {
-	SuiAccount      *SuiWalletInfo      `toml:"sui_account" comment:"Sui network account info"`
-	CantonEndpoints *CantonEndpoints    `toml:"canton_endpoints" comment:"Canton network endpoints info"`
-	StellarNetwork  *StellarNetworkInfo `toml:"stellar_network" comment:"Stellar network info"`
+	SuiAccount     *SuiWalletInfo      `toml:"sui_account" comment:"Sui network account info"`
+	CantonData     *CantonData         `toml:"canton_data" comment:"Canton network data"`
+	StellarNetwork *StellarNetworkInfo `toml:"stellar_network" comment:"Stellar network info"`
 }
 
 // Node represents blockchain node output, URLs required for connection locally and inside docker network
