@@ -420,7 +420,7 @@ func BuildImage(dctx, dfile, nameAndTag string, buildArgs map[string]string) err
 	dfilePath := filepath.Join(dctx, dfile)
 
 	if os.Getenv("CTF_CLNODE_DLV") == "true" {
-		commandParts := []string{"docker", "build", "--build-arg", `GO_GCFLAGS=all=-N -l`, "--build-arg", "CHAINLINK_USER=chainlink"}
+		commandParts := []string{"docker", "buildx", "build", "--build-arg", `GO_GCFLAGS=all=-N -l`, "--build-arg", "CHAINLINK_USER=chainlink"}
 		for k, v := range buildArgs {
 			commandParts = append(commandParts, "--build-arg", fmt.Sprintf("%s=%s", k, v))
 		}
@@ -430,7 +430,7 @@ func BuildImage(dctx, dfile, nameAndTag string, buildArgs map[string]string) err
 		commandParts = append(commandParts, "-t", nameAndTag, "-f", dfilePath, dctx)
 		return RunCommand(commandParts[0], commandParts[1:]...)
 	}
-	commandParts := []string{"docker", "build", "--build-arg", "CHAINLINK_USER=chainlink"}
+	commandParts := []string{"docker", "buildx", "build", "--build-arg", "CHAINLINK_USER=chainlink"}
 	for k, v := range buildArgs {
 		commandParts = append(commandParts, "--build-arg", fmt.Sprintf("%s=%s", k, v))
 	}
