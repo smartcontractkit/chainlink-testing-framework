@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Khan/genqlient/generate"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient/gql/schema"
 )
 
