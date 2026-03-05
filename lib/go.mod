@@ -217,6 +217,6 @@ require (
 retract (
 	// all of these tags were used, when testing new structure of the repository and by no mean represent latest versions
 	[v1.999.0-test-release, v1.999.999-test-release]
-	[v1.99.0, v1.99.9]
+	[v1.99.0, v1.99.10]
 	v1.50.0
 )
