@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	"github.com/Khan/genqlient/graphql"
-
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient/gql/gqlscalar"
 )
 
