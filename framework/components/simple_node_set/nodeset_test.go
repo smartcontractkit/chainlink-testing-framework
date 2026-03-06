@@ -1,6 +1,7 @@
 package simple_node_set_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -61,7 +62,7 @@ func TestSmokeComponentDockerNodeSetSharedDB(t *testing.T) {
 				NodeSpecs: []*clnode.Input{
 					{
 						Node: &clnode.NodeInput{
-							Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",
+							Image: os.Getenv("CTC_CHAINLINK_IMAGE"),
 							Name:  "cl-node-1",
 							UserConfigOverrides: `
 [Log]
@@ -71,7 +72,7 @@ level = 'info'
 					},
 					{
 						Node: &clnode.NodeInput{
-							Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",
+							Image: os.Getenv("CTC_CHAINLINK_IMAGE"),
 							Name:  "cl-node-2",
 							UserConfigOverrides: `
 [Log]

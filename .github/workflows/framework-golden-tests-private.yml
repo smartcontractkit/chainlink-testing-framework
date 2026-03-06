@@ -10,6 +10,7 @@ jobs:
         working-directory: framework/examples/myproject
     env:
       CTF_JD_IMAGE: "${{secrets.AWS_ACCOUNT_ID_PROD}}.dkr.ecr.us-west-2.amazonaws.com/job-distributor:0.22.1"
+      CTF_CHAINLINK_IMAGE: "${{secrets.AWS_ACCOUNT_ID_SDLC}}.dkr.ecr.us-west-2.amazonaws.com/chainlink:manual-9b82dc2"
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -22,11 +23,26 @@ jobs:
             config: jd.toml
             count: 1
             timeout: 10m
-            # TODO: sdlc auth
-#          - name: TestDockerFakes
-#            config: fake_docker.toml
-#            count: 1
-#            timeout: 10m
+          - name: TestSmoke
+            config: smoke.toml
+            count: 1
+            timeout: 10m
+          - name: TestDockerFakes
+            config: fake_docker.toml
+            count: 1
+            timeout: 10m
+          - name: TestFakes
+            config: fake.toml
+            count: 1
+            timeout: 10m
+          - name: TestPerformanceBaseline
+            config: performance_baseline.toml
+            count: 1
+            timeout: 10m
+          - name: TestScalability
+            config: scalability.toml
+            count: 1
+            timeout: 10m
     name: ${{ matrix.test.name }}
     steps:
       - name: Checkout repo
