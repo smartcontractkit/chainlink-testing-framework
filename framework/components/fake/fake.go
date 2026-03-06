@@ -14,7 +14,6 @@ const (
 	DefaultFakeServicePort = 9111
 )
 
-
 var (
 	Service     *gin.Engine
 	validMethod = regexp.MustCompile("GET|POST|PATCH|PUT|DELETE")

@@ -345,6 +345,10 @@ Be aware that any TODO requires your attention before your run the final test!
 								Name:  "exclude-refs",
 								Usage: "Patterns to exclude specific refs (e.g., beta,rc,v0,v1)",
 							},
+							&cli.BoolFlag{
+								Name:  "skip-pull",
+								Usage: "Skip docker pull; use locally built images (e.g. for local testing)",
+							},
 						},
 						Usage: "Rollbacks N versions back, runs the test the upgrades CL nodes with new versions",
 						Action: func(c *cli.Context) error {
@@ -362,6 +366,7 @@ Be aware that any TODO requires your attention before your run the final test!
 
 							nop := c.String("nop")
 							sotURL := c.String("sot-url")
+							skipPull := c.Bool("skip-pull")
 
 							// test logic is:
 							// - rollback to selected ref
@@ -393,7 +398,7 @@ Be aware that any TODO requires your attention before your run the final test!
 								Msg("Formed upgrade sequence")
 							// if no commands just show the tags and return
 							if buildcmd == "" || envcmd == "" || testcmd == "" {
-								framework.L.Info().Msg("No envcmd or testcmd provided, skipping")
+								framework.L.Info().Msg("No envcmd or testcmd or buildcmd provided, skipping")
 								return nil
 							}
 							// checkout the oldest ref
@@ -410,7 +415,9 @@ Be aware that any TODO requires your attention before your run the final test!
 
 							// setup the env and verify with test command
 							framework.L.Info().Strs("Sequence", refs).Msg("Running upgrade sequence")
+							// first env var is used by devenv, second by simple nodeset to override the image
 							os.Setenv("CHAINLINK_IMAGE", fmt.Sprintf("%s:%s", registry, refs[0]))
+							os.Setenv("CTF_CHAINLINK_IMAGE", fmt.Sprintf("%s:%s", registry, refs[0]))
 							if _, err := framework.ExecCmdWithContext(c.Context, buildcmd); err != nil {
 								return err
 							}
@@ -427,8 +434,10 @@ Be aware that any TODO requires your attention before your run the final test!
 									Str("Version", tag).
 									Msg("Upgrading nodes")
 								img := fmt.Sprintf("%s:%s", registry, tag)
-								if _, err := framework.ExecCmdWithContext(c.Context, fmt.Sprintf("docker pull %s", img)); err != nil {
-									return fmt.Errorf("failed to pull image %s: %w", img, err)
+								if !skipPull {
+									if _, err := framework.ExecCmdWithContext(c.Context, fmt.Sprintf("docker pull %s", img)); err != nil {
+										return fmt.Errorf("failed to pull image %s: %w", img, err)
+									}
 								}
 								for i := range nodes {
 									if err := framework.UpgradeContainer(c.Context, fmt.Sprintf(nodeNameTemplate, i), img); err != nil {
