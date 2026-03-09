@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/seth
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
@@ -15,7 +15,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/urfave/cli/v2 v2.27.5
 	go.uber.org/ratelimit v0.3.1
-	golang.org/x/sync v0.10.0
+	golang.org/x/sync v0.20.0
 )
 
 require github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
