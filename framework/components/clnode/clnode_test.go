@@ -40,7 +40,7 @@ func TestSmokeComponentDockerNodeWithSharedDB(t *testing.T) {
 					VolumeName: "a",
 				},
 				Node: &clnode.NodeInput{
-					Image: os.Getenv("CTC_CHAINLINK_IMAGE"),
+					Image: os.Getenv("CTF_CHAINLINK_IMAGE"),
 					Name:  "cl-node-1",
 				},
 			},
@@ -76,7 +76,7 @@ func TestSmokeComponentDockerNodeWithDB(t *testing.T) {
 					VolumeName: "b",
 				},
 				Node: &clnode.NodeInput{
-					Image: os.Getenv("CTC_CHAINLINK_IMAGE"),
+					Image: os.Getenv("CTF_CHAINLINK_IMAGE"),
 					Name:  "cl-node-2",
 				},
 			},

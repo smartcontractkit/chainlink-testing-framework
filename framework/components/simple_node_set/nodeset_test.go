@@ -62,7 +62,7 @@ func TestSmokeComponentDockerNodeSetSharedDB(t *testing.T) {
 				NodeSpecs: []*clnode.Input{
 					{
 						Node: &clnode.NodeInput{
-							Image: os.Getenv("CTC_CHAINLINK_IMAGE"),
+							Image: os.Getenv("CTF_CHAINLINK_IMAGE"),
 							Name:  "cl-node-1",
 							UserConfigOverrides: `
 [Log]
@@ -72,7 +72,7 @@ level = 'info'
 					},
 					{
 						Node: &clnode.NodeInput{
-							Image: os.Getenv("CTC_CHAINLINK_IMAGE"),
+							Image: os.Getenv("CTF_CHAINLINK_IMAGE"),
 							Name:  "cl-node-2",
 							UserConfigOverrides: `
 [Log]
