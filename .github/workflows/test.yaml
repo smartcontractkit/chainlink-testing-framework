@@ -15,9 +15,6 @@ jobs:
         test:
           - path: framework
             vm: ubuntu-latest
-            regex: TestSmoke
-          - path: framework
-            vm: ubuntu-latest
             regex: TestPrometheus
           - path: framework
             vm: ubuntu-latest

@@ -37,7 +37,7 @@ func TestMultiUpgrade(t *testing.T) {
 
 	// reboot both node sets and upgrade with new configs
 
-	in.NodeSetA.NodeSpecs[0].Node.Image = os.Getenv("CTC_CHAINLINK_IMAGE")
+	in.NodeSetA.NodeSpecs[0].Node.Image = os.Getenv("CTF_CHAINLINK_IMAGE")
 	in.NodeSetA.NodeSpecs[0].Node.UserConfigOverrides = `
 											[Log]
 											level = 'info'
@@ -46,7 +46,7 @@ func TestMultiUpgrade(t *testing.T) {
 	ns1, err = ns.UpgradeNodeSet(t, in.NodeSetA, bc, 3*time.Second)
 	require.NoError(t, err)
 
-	in.NodeSetB.NodeSpecs[0].Node.Image = os.Getenv("CTC_CHAINLINK_IMAGE")
+	in.NodeSetB.NodeSpecs[0].Node.Image = os.Getenv("CTF_CHAINLINK_IMAGE")
 	in.NodeSetB.NodeSpecs[0].Node.UserConfigOverrides = `
 											[Log]
 											level = 'info'

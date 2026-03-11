@@ -58,12 +58,12 @@ func TestUpgrade(t *testing.T) {
 	_, _, err = c[0].CreateJobRaw(testJob)
 	require.NoError(t, err)
 
-	in.NodeSets[0].NodeSpecs[0].Node.Image = os.Getenv("CTC_CHAINLINK_IMAGE")
+	in.NodeSets[0].NodeSpecs[0].Node.Image = os.Getenv("CTF_CHAINLINK_IMAGE")
 	in.NodeSets[0].NodeSpecs[0].Node.UserConfigOverrides = `
 											[Log]
 											level = 'info'
 	`
-	in.NodeSets[0].NodeSpecs[4].Node.Image = os.Getenv("CTC_CHAINLINK_IMAGE")
+	in.NodeSets[0].NodeSpecs[4].Node.Image = os.Getenv("CTF_CHAINLINK_IMAGE")
 	in.NodeSets[0].NodeSpecs[4].Node.UserConfigOverrides = `
 											[Log]
 											level = 'info'
