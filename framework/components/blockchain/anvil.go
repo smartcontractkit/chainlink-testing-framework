@@ -36,7 +36,7 @@ func defaultAnvil(in *Input) {
 		in.Port = "8545"
 	}
 	if in.ContainerName == "" {
-		in.ContainerName = "anvil"
+		in.ContainerName = "anvil-" + in.ChainID
 	}
 }
 

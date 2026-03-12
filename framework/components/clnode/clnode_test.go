@@ -1,6 +1,7 @@
 package clnode_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -39,7 +40,7 @@ func TestSmokeComponentDockerNodeWithSharedDB(t *testing.T) {
 					VolumeName: "a",
 				},
 				Node: &clnode.NodeInput{
-					Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",
+					Image: os.Getenv("CTF_CHAINLINK_IMAGE"),
 					Name:  "cl-node-1",
 				},
 			},
@@ -75,7 +76,7 @@ func TestSmokeComponentDockerNodeWithDB(t *testing.T) {
 					VolumeName: "b",
 				},
 				Node: &clnode.NodeInput{
-					Image: "public.ecr.aws/chainlink/chainlink:v2.17.0",
+					Image: os.Getenv("CTF_CHAINLINK_IMAGE"),
 					Name:  "cl-node-2",
 				},
 			},

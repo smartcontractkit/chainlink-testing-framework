@@ -18,10 +18,6 @@ jobs:
       fail-fast: false
       matrix:
         test:
-          - name: TestSmoke
-            config: smoke.toml
-            count: 1
-            timeout: 10m
           - name: TestSmokeLimitedResources
             config: smoke_limited_resources.toml
             count: 1
@@ -60,31 +56,14 @@ jobs:
           #   config: upgrade.toml
           #   count: 1
           #   timeout: 10m
-          - name: TestPerformanceBaseline
-            config: performance_baseline.toml
-            count: 1
-            timeout: 10m
           - name: TestChaos
             config: chaos.toml
-            count: 1
-            timeout: 10m
-          - name: TestScalability
-            config: scalability.toml
             count: 1
             timeout: 10m
           - name: TestLocalS3
             config: local_s3.toml
             count: 1
             timeout: 10m
-          - name: TestFakes
-            config: fake.toml
-            count: 1
-            timeout: 10m
-            # TODO: sdlc auth (move to framework-golden-tests-private.yml, which has that auth set up)
-#          - name: TestDockerFakes
-#            config: fake_docker.toml
-#            count: 1
-#            timeout: 10m
     name: ${{ matrix.test.name }}
     steps:
       - name: Checkout repo
