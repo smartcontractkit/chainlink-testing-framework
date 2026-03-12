@@ -22,6 +22,7 @@ import (
 const (
 	DefaultHTTPPortStaticRangeStart = 10000
 	DefaultP2PStaticRangeStart      = 12000
+	DefaultOCR2P2PStaticRangeStart  = 14000
 )
 
 // Input is a node set configuration input
@@ -30,6 +31,7 @@ type Input struct {
 	Nodes              int             `toml:"nodes" validate:"required" comment:"Number of nodes in node set"`
 	HTTPPortRangeStart int             `toml:"http_port_range_start" comment:"HTTP ports range starting with port X and increasing by 1"`
 	P2PPortRangeStart  int             `toml:"p2p_port_range_start" comment:"P2P ports range starting with port X and increasing by 1"`
+	OCR2P2PRangeStart  int             `toml:"ocr2_p2p_port_range_start" comment:"OCR2/SharedPeering ports range starting with port X and increasing by 1"`
 	DlvPortRangeStart  int             `toml:"dlv_port_range_start" comment:"Delve debugger ports range starting with port X and increasing by 1"`
 	OverrideMode       string          `toml:"override_mode" validate:"required,oneof=all each" comment:"Override mode, applicable only to 'localcre'. Changes how config overrides to TOML nodes apply"`
 	DbInput            *postgres.Input `toml:"db" validate:"required" comment:"Shared node set data base input for PostgreSQL"`
@@ -114,6 +116,7 @@ func sharedDBSetup(ctx context.Context, in *Input, bcOut *blockchain.Output) (*O
 	var (
 		httpPortRangeStart = DefaultHTTPPortStaticRangeStart
 		p2pPortRangeStart  = DefaultP2PStaticRangeStart
+		ocr2PortRangeStart = DefaultOCR2P2PStaticRangeStart
 		dlvPortStart       = clnode.DefaultDebuggerPort
 	)
 	if in.HTTPPortRangeStart != 0 {
@@ -121,6 +124,13 @@ func sharedDBSetup(ctx context.Context, in *Input, bcOut *blockchain.Output) (*O
 	}
 	if in.P2PPortRangeStart != 0 {
 		p2pPortRangeStart = in.P2PPortRangeStart
+	}
+	if in.OCR2P2PRangeStart != 0 {
+		ocr2PortRangeStart = in.OCR2P2PRangeStart
+	} else {
+		// Keep OCR2 host ports aligned with each node set's HTTP range to avoid
+		// collisions when multiple node sets run on the same host.
+		ocr2PortRangeStart = httpPortRangeStart + (DefaultOCR2P2PStaticRangeStart - DefaultHTTPPortStaticRangeStart)
 	}
 	if in.DlvPortRangeStart != 0 {
 		dlvPortStart = in.DlvPortRangeStart
@@ -156,6 +166,7 @@ func sharedDBSetup(ctx context.Context, in *Input, bcOut *blockchain.Output) (*O
 				Node: &clnode.NodeInput{
 					HTTPPort:                httpPortRangeStart + i,
 					P2PPort:                 p2pPortRangeStart + i,
+					OCR2P2PPort:             ocr2PortRangeStart + i,
 					DebuggerPort:            dlvPortStart + i,
 					CustomPorts:             in.NodeSpecs[overrideIdx].Node.CustomPorts,
 					Image:                   in.NodeSpecs[overrideIdx].Node.Image,

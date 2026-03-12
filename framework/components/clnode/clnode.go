@@ -29,6 +29,7 @@ import (
 const (
 	DefaultHTTPPort        = "6688"
 	DefaultP2PPort         = "6690"
+	DefaultOCR2P2PPort     = "5001"
 	DefaultDebuggerPort    = 40000
 	TmpImageName           = "chainlink-tmp:latest"
 	CustomPortSeparator    = ":"
@@ -81,6 +82,8 @@ type NodeInput struct {
 	HTTPPort int `toml:"port" comment:"Chainlink node API HTTP port"`
 	// P2PPort Chainlink node P2P port
 	P2PPort int `toml:"p2p_port" comment:"Chainlink node P2P port"`
+	// OCR2P2PPort Chainlink node OCR2/SharedPeering port exposed on host
+	OCR2P2PPort int `toml:"ocr2_p2p_port" comment:"Chainlink node OCR2/SharedPeering host port"`
 	// CustomPorts Custom ports pairs in format $host_port_number:$docker_port_number
 	CustomPorts []string `toml:"custom_ports" comment:"Custom ports pairs in format $host_port_number:$docker_port_number"`
 	// DebuggerPort Delve debugger port
@@ -202,12 +205,19 @@ func natPortsToK8sFormat(in *Input, nat nat.PortMap) []string {
 // exposes custom_ports in format "host:docker" or map 1-to-1 if only "host" port is provided
 func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
 	httpPort := fmt.Sprintf("%s/tcp", DefaultHTTPPort)
-	exposedPorts := []string{httpPort}
+	ocr2P2PPort := fmt.Sprintf("%s/tcp", DefaultOCR2P2PPort)
+	exposedPorts := []string{httpPort, ocr2P2PPort}
 	portBindings := nat.PortMap{
 		nat.Port(httpPort): []nat.PortBinding{
 			{
 				HostIP:   "0.0.0.0",
 				HostPort: strconv.Itoa(in.Node.HTTPPort),
+			},
+		},
+		nat.Port(ocr2P2PPort): []nat.PortBinding{
+			{
+				HostIP:   "0.0.0.0",
+				HostPort: strconv.Itoa(in.Node.OCR2P2PPort),
 			},
 		},
 	}
@@ -390,6 +400,9 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 			WithPort(DefaultHTTPPort).
 			WithStartupTimeout(3 * time.Minute).
 			WithPollInterval(200 * time.Millisecond),
+		HostConfigModifier: func(hc *container.HostConfig) {
+			hc.ExtraHosts = append(hc.ExtraHosts, "host.docker.internal:host-gateway")
+		},
 		Mounts: tc.ContainerMounts{
 			{
 				// various configuration files
@@ -408,12 +421,11 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 			},
 		},
 	}
-	if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {
-		req.HostConfigModifier = func(h *container.HostConfig) {
-			framework.NoDNS(in.NoDNS, h)
-			h.PortBindings = portBindings
-			framework.ResourceLimitsFunc(h, in.Node.ContainerResources)
-		}
+	req.HostConfigModifier = func(h *container.HostConfig) {
+		h.ExtraHosts = append(h.ExtraHosts, "host.docker.internal:host-gateway")
+		framework.NoDNS(in.NoDNS, h)
+		h.PortBindings = portBindings
+		framework.ResourceLimitsFunc(h, in.Node.ContainerResources)
 	}
 	files := []tc.ContainerFile{
 		{
