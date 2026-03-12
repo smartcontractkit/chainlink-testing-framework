@@ -257,29 +257,49 @@
 --refs 2.33.0 \
 --refs 2.34.0 \
 --refs 2.35.0 \
---nodes 3
+--upgrade-nodes 3
 </code></pre>
 <p>Keep in mind that <code>refs</code> should be present in regsitry you are testing against, the first (oldest) <code>ref</code> should also have a valid end-to-end test that works.</p>
 <p>In CI we detect SemVer tags automatically, whenever a new tag appears we select last 3, rollback to the oldest and perform upgrade process.</p>
 <pre><code class="language-bash">ctf compat backward \
---registry &lt;sdlc_ecr_registry&gt; \
+--registry &lt;sdlc_ecr_chainlink_registry&gt; \
 --buildcmd "just cli" \
---envcmd "cl r" \
+--envcmd "cl r env.toml,products/ocr2/basic.toml" \
 --testcmd "cl test ocr2 TestSmoke/rounds" \
---nodes 3 \
---versions-back 3
+--strip-image-suffix v \
+--upgrade-nodes 2 \
+--versions-back 2
 </code></pre>
 <p>In case you have multiple DONs in your product and names of nodes are different please use <code>--node-name-template custom-cl-node-%d</code> option</p>
-<h2 id="modelling-node-operators-cluster"><a class="header" href="#modelling-node-operators-cluster">Modelling Node Operators Cluster</a></h2>
-<p>It is possible to fetch versions node operators are currently running and model DON upgrade sequence locally. Logic is the same, get all the versions, rollback to the oldest one, setup product, verify, try to upgrade all the versions running the oldest test for each upgrade.</p>
+<h2 id="modelling-node-operators-cluster-wip"><a class="header" href="#modelling-node-operators-cluster-wip">Modelling Node Operators Cluster (WIP)</a></h2>
+<p>It is possible to fetch versions node operators are currently running and model DON upgrade sequence locally. When <code>product</code> is specified, <code>compat</code> will fetch the current versions from the RANE SOT data source and model the upgrade sequence for versions found on real DONs up to the latest one, each node one at a time.</p>
 <pre><code class="language-bash">ctf compat backward \
---registry &lt;sdlc_ecr_registry&gt;\
+--registry &lt;sdlc_ecr_chainlink_registry&gt; \
 --buildcmd "just cli" \
---envcmd "cl r" \
+--envcmd "cl r env.toml,products/ocr2/basic.toml" \
 --testcmd "cl test ocr2 TestSmoke/rounds" \
---nop northwestnodes \
---versions-back 3 \
---nodes 3
+--product data-feeds \
+--no-git-rollback \
+--don_nodes 5
+</code></pre>
+<p>The tool will check out earliest Git <code>ref</code> and setup environment and tests.</p>
+<p>If you don't have tests on this tag you can use <code>--no-git-rollback</code> to skip the rollback step.</p>
+<p>Since not all the versions from SOT are currently having corresponding Git tags or images, you can provide refs directly using <code>--refs</code> flag, useful for testing.</p>
+<pre><code class="language-bash">ctf compat backward \
+--registry &lt;sdlc_ecr_chainlink_registry&gt;\
+--buildcmd "just cli" \
+--envcmd "cl r env.toml,products/ocr2/basic.toml" \
+--testcmd "cl test ocr2 TestSmoke/rounds" \
+--product data-feeds \
+--refs "2.36.1-rc.0" \
+--refs "2.36.1-beta.0" \
+--refs "2.36.1-beta.2" \
+--refs "2.37.0-rc.0" \
+--refs "2.37.0-beta.0" \
+--refs "2.38.0-rc.0" \
+--refs "2.38.0-beta.0" \
+--no-git-rollback \
+--don_nodes 5
 </code></pre>
 
                     </main>
