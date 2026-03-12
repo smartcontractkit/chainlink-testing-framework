@@ -154,6 +154,25 @@ func TestSmokeMeasure(t *testing.T) {
 	}
 }
 
+func TestCLNodesLeakDetectorWithNodesetName(t *testing.T) {
+	qc := leak.NewFakeQueryClient()
+	lc := leak.NewResourceLeakChecker(leak.WithQueryClient(qc))
+	cd, err := leak.NewCLNodesLeakDetector(lc, leak.WithNodesetName("foo"))
+	require.NoError(t, err)
+
+	// All queries should use foo-node%d instead of don-node%d
+	require.Contains(t, cd.CPUQuery, "foo-node%d")
+	require.Contains(t, cd.MemoryQuery, "foo-node%d")
+	require.Contains(t, cd.CPUQueryAbsolute, "foo-node%d")
+	require.Contains(t, cd.MemoryQueryAbsolute, "foo-node%d")
+	require.Contains(t, cd.ContainerAliveQuery, "foo-node%d")
+
+	// Queries must format correctly with fmt.Sprintf (single %d for node index)
+	require.NotContains(t, cd.CPUQuery, "don-node")
+	formatted := fmt.Sprintf(cd.CPUQuery, 0)
+	require.Contains(t, formatted, "foo-node0")
+}
+
 func TestRealCLNodesLeakDetectionLocalDevenv(t *testing.T) {
 	t.Skip(`this test requires a real load run, see docs here https://github.com/smartcontractkit/chainlink/tree/develop/devenv, spin up the env and run "cl test load"`)
 

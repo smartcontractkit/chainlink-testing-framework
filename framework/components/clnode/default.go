@@ -22,6 +22,7 @@ Level = 'debug'
 [Pyroscope]
 ServerAddress = 'http://host.docker.internal:4040'
 Environment = 'local'
+LinkTracesToProfiles = true
 
 [WebServer]
 HTTPWriteTimeout = '30s'

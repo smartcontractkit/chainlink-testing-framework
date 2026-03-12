@@ -10,6 +10,8 @@ jobs:
         working-directory: framework/examples/myproject
     env:
       CTF_JD_IMAGE: "${{secrets.AWS_ACCOUNT_ID_PROD}}.dkr.ecr.us-west-2.amazonaws.com/job-distributor:0.22.1"
+      # TODO: once a public image with support for field [Pyrscope] LinkTracesToProfiles is available, use it instead of the private image.
+      CTF_CHAINLINK_IMAGE: "${{secrets.AWS_ACCOUNT_ID_SDLC}}.dkr.ecr.us-west-2.amazonaws.com/chainlink:manual-9b82dc2"
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -22,11 +24,27 @@ jobs:
             config: jd.toml
             count: 1
             timeout: 10m
-            # TODO: sdlc auth
-#          - name: TestDockerFakes
-#            config: fake_docker.toml
-#            count: 1
-#            timeout: 10m
+          - name: TestSmoke
+            config: smoke.toml
+            count: 1
+            timeout: 10m
+          # TODO: modify fake_docker.toml to use private registry, make sure that image is there.
+          # - name: TestDockerFakes
+          #   config: fake_docker.toml
+          #   count: 1
+          #   timeout: 10m
+          - name: TestFakes
+            config: fake.toml
+            count: 1
+            timeout: 10m
+          - name: TestPerformanceBaseline
+            config: performance_baseline.toml
+            count: 1
+            timeout: 10m
+          - name: TestScalability
+            config: scalability.toml
+            count: 1
+            timeout: 10m
     name: ${{ matrix.test.name }}
     steps:
       - name: Checkout repo
@@ -34,7 +52,7 @@ jobs:
       - name: Configure AWS credentials using OIDC
         uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
         with:
-          role-to-assume: ${{ secrets.AWS_CTF_READ_ACCESS_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_GHA_SMARTCONTRACTKIT_ROLE_ARN }}
           aws-region: us-west-2
       - name: Login to Amazon ECR
         id: login-ecr-private

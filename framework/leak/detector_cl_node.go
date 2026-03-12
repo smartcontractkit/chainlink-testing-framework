@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
@@ -41,6 +42,8 @@ type CLNodesLeakDetector struct {
 	// ContainerAliveQuery Prometheus memory for checking if container was alive the whole time
 	ContainerAliveQuery string
 	c                   *ResourceLeakChecker
+
+	nodesetName string
 }
 
 // WithCPUQuery allows to override CPU leak query (Prometheus)
@@ -50,11 +53,30 @@ func WithCPUQuery(q string) func(*CLNodesLeakDetector) {
 	}
 }
 
-// WithCPUQuery allows to override Memory leak query (Prometheus)
+// WithMemoryQuery allows to override Memory leak query (Prometheus)
 func WithMemoryQuery(q string) func(*CLNodesLeakDetector) {
 	return func(cd *CLNodesLeakDetector) {
 		cd.MemoryQuery = q
 	}
+}
+
+// WithNodesetName overrides the default nodeset name "don" in all Prometheus queries.
+// The name is used to build container labels like "name-node0", "name-node1", etc.
+// Name should be alphanumeric with hyphens/underscores; characters that could break
+// format strings (% or PromQL literals like ", \) are escaped for safety.
+func WithNodesetName(name string) func(*CLNodesLeakDetector) {
+	return func(cd *CLNodesLeakDetector) {
+		cd.nodesetName = sanitizeNodesetName(name)
+	}
+}
+
+// sanitizeNodesetName escapes characters that would corrupt fmt.Sprintf format strings
+// or invalidate PromQL double-quoted label literals.
+func sanitizeNodesetName(name string) string {
+	s := strings.ReplaceAll(name, `\`, `\\`)
+	s = strings.ReplaceAll(s, `"`, `\"`)
+	s = strings.ReplaceAll(s, "%", "%%")
+	return s
 }
 
 // NewCLNodesLeakDetector create new Chainlink node specific resource leak detector with Prometheus client
@@ -74,6 +96,18 @@ func NewCLNodesLeakDetector(c *ResourceLeakChecker, opts ...func(*CLNodesLeakDet
 	for _, o := range opts {
 		o(cd)
 	}
+
+	if cd.nodesetName != "" {
+		replaceNodeset := func(s string) string {
+			return strings.ReplaceAll(s, "don-node%d", cd.nodesetName+"-node%d")
+		}
+		cd.ContainerAliveQuery = replaceNodeset(cd.ContainerAliveQuery)
+		cd.CPUQuery = replaceNodeset(cd.CPUQuery)
+		cd.MemoryQuery = replaceNodeset(cd.MemoryQuery)
+		cd.CPUQueryAbsolute = replaceNodeset(cd.CPUQueryAbsolute)
+		cd.MemoryQueryAbsolute = replaceNodeset(cd.MemoryQueryAbsolute)
+	}
+
 	return cd, nil
 }
 
