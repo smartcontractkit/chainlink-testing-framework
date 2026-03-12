@@ -14,7 +14,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	f "github.com/smartcontractkit/chainlink-testing-framework/framework"
 
 	"github.com/testcontainers/testcontainers-go"
@@ -330,8 +329,9 @@ func StartAnvil(params []string) (*AnvilContainer, error) {
 	entryPoint := []string{"anvil", "--host", "0.0.0.0"}
 	entryPoint = append(entryPoint, params...)
 	req := testcontainers.ContainerRequest{
+		Name:         "anvil",
 		Image:        "ghcr.io/foundry-rs/foundry:stable",
-		Networks:     []string{framework.DefaultNetworkName},
+		Networks:     []string{f.DefaultNetworkName},
 		ExposedPorts: []string{"8545/tcp"},
 		WaitingFor:   wait.ForListeningPort("8545").WithStartupTimeout(10 * time.Second),
 		Entrypoint:   entryPoint,

@@ -6,20 +6,21 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/chaos"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/rpc"
 )
 
-func TestSmokeChaos(t *testing.T) {
-	c, err := rpc.StartAnvil([]string{"--balance", "1", "--block-time", "5"})
+func TestChaos(t *testing.T) {
+	err := framework.DefaultNetwork(nil)
 	require.NoError(t, err)
-
-	i, err := c.Inspect(t.Context())
+	_, err = rpc.StartAnvil([]string{"--balance", "1", "--block-time", "5"})
 	require.NoError(t, err)
-	containerName := i.Name[1:]
 
 	dtc, err := chaos.NewDockerChaos(t.Context())
 	require.NoError(t, err)
+
+	containerName := "anvil"
 
 	tests := []struct {
 		name          string
