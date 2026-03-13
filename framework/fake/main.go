@@ -50,6 +50,9 @@ func deployToK8s() {
 }
 
 func registerRoutes(r *gin.Engine) {
+	// health check
+	r.GET("/", func(c *gin.Context) { c.Status(http.StatusOK) })
+
 	webhook := r.Group("/api/webhook")
 	webhook.POST("", func(c *gin.Context) { c.Status(http.StatusOK) })
 	webhook.GET("/users", handleGetUsers)
