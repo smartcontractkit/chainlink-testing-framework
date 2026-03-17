@@ -241,11 +241,30 @@
 
 </style>
 <h1 id="compatibility-testing"><a class="header" href="#compatibility-testing">Compatibility Testing</a></h1>
+<h1 id="integrating-compatibility-ci"><a class="header" href="#integrating-compatibility-ci">Integrating Compatibility CI</a></h1>
+<p>To create CL node compatibility CI in your reporisoty follow these steps:</p>
+<ol>
+<li>Setup role to pull CL and JD <a href="https://github.com/smartcontractkit/infra/tree/master/accounts/production/global/aws/iam/roles/gha-smartcontractkit">images</a>.
+Add it to your secrets:</li>
+</ol>
+<pre><code class="language-bash">gh secret set MY_SECRET
+# enter your secret, it should be something like:
+# arn:aws:iam::&lt;prod_registry&gt;:role/gha-smartcontractkit-public-ecr &lt;- name for your role
+</code></pre>
+<ol start="2">
+<li>
+<p>Copy this <a href="https://github.com/smartcontractkit/chainlink/blob/sot-upgrade-workflow/.github/workflows/devenv-compat.yml">pipeline</a> to your repository</p>
+</li>
+<li>
+<p>Add calling pipeline for your product, see <code>df1-compat</code> <a href="https://github.com/smartcontractkit/chainlink/blob/sot-upgrade-workflow/.github/workflows/devenv-nightly-compat.yml#L42">example</a></p>
+</li>
+</ol>
+<h1 id="usage"><a class="header" href="#usage">Usage</a></h1>
 <h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
 <p>Authorize in our SDLC ECR registry first. Get the creds and run</p>
 <pre><code class="language-bash">aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin &lt;sdlc_ecr_registry&gt;
 </code></pre>
-<h2 id="testing-upgrade-sequence"><a class="header" href="#testing-upgrade-sequence">Testing Upgrade Sequence</a></h2>
+<h2 id="testing-upgrade-sequence-locally"><a class="header" href="#testing-upgrade-sequence-locally">Testing Upgrade Sequence Locally</a></h2>
 <p>We have a simple tool to check compatibility for CL node clusters. The example command will filter and sort the available tags, rollback and install the oldest version, and then begin performing automatic upgrades to verify that each subsequent version remains compatible with the previous one.</p>
 <p><code>buildcmd</code>, <code>envcmd</code>, <code>testcmd</code> can be arbitrary bash commands.</p>
 <pre><code class="language-bash">ctf compat backward \
