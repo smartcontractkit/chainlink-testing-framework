@@ -2,12 +2,13 @@
 
 ## Integrating Compatibility CI
 
-To create CL node compatibility CI in your reporisoty follow these steps:
+To create CL node compatibility CI in your repository follow these steps:
 
 1. Setup role to pull CL and JD [images](https://github.com/smartcontractkit/infra/tree/master/accounts/production/global/aws/iam/roles/gha-smartcontractkit).
-Add it to your secrets:
+   Add it to your secrets:
+
 ```bash
-gh secret set MY_SECRET
+gh secret set DEVENV_ECR_ROLE
 # enter your secret, it should be something like:
 # arn:aws:iam::<prod_registry>:role/gha-smartcontractkit-public-ecr <- name for your role
 ```

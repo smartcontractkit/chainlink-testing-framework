@@ -3937,12 +3937,12 @@ go test -v -timeout 1h -run TestCyclicHog
 </style>
 <h1 id="compatibility-testing"><a class="header" href="#compatibility-testing">Compatibility Testing</a></h1>
 <h2 id="integrating-compatibility-ci"><a class="header" href="#integrating-compatibility-ci">Integrating Compatibility CI</a></h2>
-<p>To create CL node compatibility CI in your reporisoty follow these steps:</p>
+<p>To create CL node compatibility CI in your repository follow these steps:</p>
 <ol>
 <li>Setup role to pull CL and JD <a href="https://github.com/smartcontractkit/infra/tree/master/accounts/production/global/aws/iam/roles/gha-smartcontractkit">images</a>.
 Add it to your secrets:</li>
 </ol>
-<pre><code class="language-bash">gh secret set MY_SECRET
+<pre><code class="language-bash">gh secret set DEVENV_ECR_ROLE
 # enter your secret, it should be something like:
 # arn:aws:iam::&lt;prod_registry&gt;:role/gha-smartcontractkit-public-ecr &lt;- name for your role
 </code></pre>
@@ -18589,8 +18589,8 @@ go run ./tools/breakingchanges/cmd/main.go --ignore tools,wasp,havoc,seth # to i
 <h1 id="build-info"><a class="header" href="#build-info">Build info</a></h1>
 <p>This documentation was generated from:</p>
 <ul>
-<li>Branch <code>main</code></li>
-<li>Commit: <code>17e35fa6</code></li>
+<li>Branch <code>docs-docs-compat</code></li>
+<li>Commit: <code>d0011dd6</code></li>
 </ul>
 
                     </main>
