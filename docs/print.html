@@ -3936,7 +3936,7 @@ go test -v -timeout 1h -run TestCyclicHog
 
 </style>
 <h1 id="compatibility-testing"><a class="header" href="#compatibility-testing">Compatibility Testing</a></h1>
-<h1 id="integrating-compatibility-ci"><a class="header" href="#integrating-compatibility-ci">Integrating Compatibility CI</a></h1>
+<h2 id="integrating-compatibility-ci"><a class="header" href="#integrating-compatibility-ci">Integrating Compatibility CI</a></h2>
 <p>To create CL node compatibility CI in your reporisoty follow these steps:</p>
 <ol>
 <li>Setup role to pull CL and JD <a href="https://github.com/smartcontractkit/infra/tree/master/accounts/production/global/aws/iam/roles/gha-smartcontractkit">images</a>.
@@ -3951,15 +3951,16 @@ Add it to your secrets:</li>
 <p>Copy this <a href="https://github.com/smartcontractkit/chainlink/blob/sot-upgrade-workflow/.github/workflows/devenv-compat.yml">pipeline</a> to your repository</p>
 </li>
 <li>
-<p>Add calling pipeline for your product, see <code>df1-compat</code> <a href="https://github.com/smartcontractkit/chainlink/blob/sot-upgrade-workflow/.github/workflows/devenv-nightly-compat.yml#L42">example</a></p>
+<p>Add nightly pipeline for your product, see <code>df1-compat</code> <a href="https://github.com/smartcontractkit/chainlink/blob/sot-upgrade-workflow/.github/workflows/devenv-nightly-compat.yml#L42">example</a></p>
 </li>
 </ol>
-<h1 id="usage-1"><a class="header" href="#usage-1">Usage</a></h1>
-<h2 id="prerequisites-2"><a class="header" href="#prerequisites-2">Prerequisites</a></h2>
+<h2 id="usage-1"><a class="header" href="#usage-1">Usage</a></h2>
+<h3 id="prerequisites-2"><a class="header" href="#prerequisites-2">Prerequisites</a></h3>
 <p>Authorize in our SDLC ECR registry first. Get the creds and run</p>
 <pre><code class="language-bash">aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin &lt;sdlc_ecr_registry&gt;
 </code></pre>
-<h2 id="testing-upgrade-sequence-locally"><a class="header" href="#testing-upgrade-sequence-locally">Testing Upgrade Sequence Locally</a></h2>
+<p>If you don't have <code>ctf</code> CLI, download it <a href="https://smartcontractkit.github.io/chainlink-testing-framework/framework/getting_started.html">here</a></p>
+<h3 id="testing-upgrade-sequence-locally"><a class="header" href="#testing-upgrade-sequence-locally">Testing Upgrade Sequence Locally</a></h3>
 <p>We have a simple tool to check compatibility for CL node clusters. The example command will filter and sort the available tags, rollback and install the oldest version, and then begin performing automatic upgrades to verify that each subsequent version remains compatible with the previous one.</p>
 <p><code>buildcmd</code>, <code>envcmd</code>, <code>testcmd</code> can be arbitrary bash commands.</p>
 <pre><code class="language-bash">ctf compat backward \
@@ -3985,7 +3986,7 @@ Add it to your secrets:</li>
 --versions-back 2
 </code></pre>
 <p>In case you have multiple DONs in your product and names of nodes are different please use <code>--node-name-template custom-cl-node-%d</code> option</p>
-<h2 id="modelling-node-operators-cluster-wip"><a class="header" href="#modelling-node-operators-cluster-wip">Modelling Node Operators Cluster (WIP)</a></h2>
+<h3 id="modelling-node-operators-cluster-wip"><a class="header" href="#modelling-node-operators-cluster-wip">Modelling Node Operators Cluster (WIP)</a></h3>
 <p>It is possible to fetch versions node operators are currently running and model DON upgrade sequence locally. When <code>product</code> is specified, <code>compat</code> will fetch the current versions from the RANE SOT data source and model the upgrade sequence for versions found on real DONs up to the latest one, each node one at a time.</p>
 <pre><code class="language-bash">ctf compat backward \
 --registry &lt;sdlc_ecr_chainlink_registry&gt; \
@@ -18589,7 +18590,7 @@ go run ./tools/breakingchanges/cmd/main.go --ignore tools,wasp,havoc,seth # to i
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>docs-compat</code></li>
-<li>Commit: <code>17a924de</code></li>
+<li>Commit: <code>0efbe543</code></li>
 </ul>
 
                     </main>
