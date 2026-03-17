@@ -3936,85 +3936,189 @@ go test -v -timeout 1h -run TestCyclicHog
 
 </style>
 <h1 id="compatibility-testing"><a class="header" href="#compatibility-testing">Compatibility Testing</a></h1>
-<h2 id="integrating-compatibility-ci"><a class="header" href="#integrating-compatibility-ci">Integrating Compatibility CI</a></h2>
-<p>To create CL node compatibility CI in your repository follow these steps:</p>
+<p>Compatibility testing verifies that your product remains functional when Chainlink nodes are upgraded from older versions to new ones. The <code>ctf compat backward</code> command automates this process: it rolls back to an older version, boots the environment, runs your tests, then upgrades nodes one step at a time — re-running tests after each upgrade — until the latest version is validated.</p>
+<h2 id="how-the-upgrade-process-works"><a class="header" href="#how-the-upgrade-process-works">How the Upgrade Process Works</a></h2>
+<pre><code>1. Select a version sequence  (e.g. v2.32.0 → v2.33.0 → v2.34.0)
+2. Check out the oldest Git tag  (so environment + test code match that release)
+3. Boot environment with the oldest image  →  run tests  (baseline)
+4. For each next version:
+     a. Pull the new Docker image
+     b. Upgrade N nodes  (stop container, swap image, restart — DB volumes preserved)
+     c. Run tests again  (mixed-version cluster)
+5. Repeat until the latest version is fully deployed and tested
+</code></pre>
+<p>Each step preserves the database volumes so node state is carried forward, exactly as it would be in a real rolling upgrade.</p>
+<hr />
+<h2 id="golden-path-enabling-compatibility-tests-in-your-repository"><a class="header" href="#golden-path-enabling-compatibility-tests-in-your-repository">Golden Path: Enabling Compatibility Tests in Your Repository</a></h2>
+<h3 id="step-1--create-an-iam-role-for-ecr-access"><a class="header" href="#step-1--create-an-iam-role-for-ecr-access">Step 1 — Create an IAM Role for ECR Access</a></h3>
+<p>Your GitHub Actions runner needs permission to pull Chainlink node and Job Distributor (JD) images from AWS ECR.</p>
+<p>Request the role from your infra team. The role should follow the pattern used in <a href="https://github.com/smartcontractkit/infra/tree/master/accounts/production/global/aws/iam/roles/gha-smartcontractkit">gha-smartcontractkit</a> and grant:</p>
+<ul>
+<li><code>ecr-public:GetAuthorizationToken</code> on <code>us-east-1</code> (public ECR, for CL images)</li>
+<li><code>ecr:GetAuthorizationToken</code> + <code>ecr:BatchGetImage</code> + <code>ecr:GetDownloadUrlForLayer</code> on <code>us-west-2</code> (private ECR, for JD images)</li>
+</ul>
+<h3 id="step-2--add-github-actions-secrets"><a class="header" href="#step-2--add-github-actions-secrets">Step 2 — Add GitHub Actions Secrets</a></h3>
+<p>Add the following secrets to your repository (<code>Settings → Secrets and variables → Actions</code>):</p>
+<div class="table-wrapper"><table><thead><tr><th>Secret name</th><th>Description</th><th>Example value</th></tr></thead><tbody>
+<tr><td><code>PRODUCT_IAM_ROLE</code></td><td>ARN of the IAM role that grants ECR pull access. Name it with your product name, for example CCV_IAM_ROLE</td><td><code>arn:aws:iam::&lt;account_id&gt;:role/gha-smartcontractkit-&lt;repo&gt;</code></td></tr>
+<tr><td><code>JD_REGISTRY</code></td><td>Private ECR registry ID for JD images</td><td><code>&lt;production_ecr_registry_number&gt;.dkr.ecr.us-west-2.amazonaws.com</code></td></tr>
+<tr><td><code>JD_IMAGE</code></td><td>Full JD image reference (used by your environment config)</td><td><code>&lt;production_ecr_registry_number&gt;.dkr.ecr.us-west-2.amazonaws.com/job-distributor:0.12.7</code></td></tr>
+</tbody></table>
+</div>
+<p>Using the GitHub CLI:</p>
+<pre><code class="language-bash">gh secret set CCV_IAM_ROLE   # paste the IAM role ARN
+gh secret set JD_REGISTRY    # paste the JD registry URL
+gh secret set JD_IMAGE       # paste the JD image reference
+</code></pre>
+<h3 id="step-3--copy-the-compat-pipeline"><a class="header" href="#step-3--copy-the-compat-pipeline">Step 3 — Copy the Compat Pipeline</a></h3>
+<p>Copy <code>devenv-compat.yml</code> from <a href="https://github.com/smartcontractkit/chainlink/blob/sot-upgrade-workflow/.github/workflows/devenv-compat.yml">chainlink/sot-upgrade-workflow</a> into your repository at <code>.github/workflows/devenv-compat.yml</code>.</p>
+<p>The workflow performs the following on each run:</p>
+<pre><code class="language-yaml">- name: Checkout code
+  uses: actions/checkout@v5
+  with:
+    fetch-depth: 0          # required: ctf reads all git tags
+
+- name: Authenticate to AWS ECR
+  uses: ./.github/actions/aws-ecr-auth
+  with:
+    role-to-assume: ${{ secrets.CCV_IAM_ROLE }}
+    aws-region: us-east-1
+    registry-type: public
+
+- name: Authenticate to AWS ECR (JD)
+  uses: ./.github/actions/aws-ecr-auth
+  with:
+    role-to-assume: ${{ secrets.CCV_IAM_ROLE }}
+    aws-region: us-west-2
+    registry-type: private
+    registries: ${{ secrets.JD_REGISTRY }}
+
+- name: Run compatibility test
+  run: |
+    ctf compat backward \
+      --registry &lt;your_ecr_registry&gt;/chainlink \
+      --buildcmd "just cli" \
+      --envcmd "mycli r env.toml,products/myproduct/basic.toml" \
+      --testcmd "mycli test myproduct TestSmoke/rounds" \
+      --strip-image-suffix v \
+      --upgrade-nodes 2 \
+      --versions-back 3
+</code></pre>
+<p><code>fetch-depth: 0</code> is required because <code>ctf</code> reads all Git tags to build the version sequence.</p>
+<h3 id="step-4--add-a-nightly-trigger"><a class="header" href="#step-4--add-a-nightly-trigger">Step 4 — Add a Nightly Trigger</a></h3>
+<p>Compatibility tests are typically run on a nightly schedule rather than on every PR. Add a nightly workflow (or a separate trigger in the same file) that points to your product configuration:</p>
+<pre><code class="language-yaml"># .github/workflows/devenv-nightly-compat.yml
+on:
+  schedule:
+    - cron: '0 6 * * *'   # 06:00 UTC every night, after the nightly CL image is built
+  workflow_dispatch:        # allow manual runs
+
+jobs:
+  compat:
+    uses: ./.github/workflows/devenv-compat.yml
+    secrets: inherit
+    with:
+</code></pre>
+<p>See the <a href="https://github.com/smartcontractkit/chainlink/blob/sot-upgrade-workflow/.github/workflows/devenv-nightly-compat.yml#L42">chainlink nightly example</a> for a complete reference.</p>
+<h3 id="step-5--write-your-compatibility-tests"><a class="header" href="#step-5--write-your-compatibility-tests">Step 5 — Write Your Compatibility Tests</a></h3>
+<p>Your tests are plain Go tests invoked via the <code>--testcmd</code> argument. They must:</p>
 <ol>
-<li>Setup role to pull CL and JD <a href="https://github.com/smartcontractkit/infra/tree/master/accounts/production/global/aws/iam/roles/gha-smartcontractkit">images</a>.
-Add it to your secrets:</li>
+<li>Connect to the already-running environment (do not spin up new nodes inside the test)</li>
+<li>Exercise the behaviour that must remain functional across versions</li>
+<li>Be runnable at the oldest supported version AND at every intermediate mixed-version state</li>
 </ol>
-<pre><code class="language-bash">gh secret set DEVENV_ECR_ROLE
-# enter your secret, it should be something like:
-# arn:aws:iam::&lt;prod_registry&gt;:role/gha-smartcontractkit-public-ecr &lt;- name for your role
+<p>A minimal example for <a href="https://github.com/smartcontractkit/chainlink/blob/develop/devenv/tests/ocr2/smoke_test.go#L22">DF1</a>:</p>
+<p>The test command passed to <code>--testcmd</code> is an arbitrary shell command, so you can target any subset of tests:</p>
+<hr />
+<h2 id="running-the-upgrade-sequence-locally"><a class="header" href="#running-the-upgrade-sequence-locally">Running the Upgrade Sequence Locally</a></h2>
+<p>Before pushing to CI, authenticate to the SDLC ECR registry:</p>
+<pre><code class="language-bash">aws ecr get-login-password --region us-west-2 \
+  | docker login --username AWS --password-stdin &lt;sdlc_ecr_registry&gt;
 </code></pre>
-<ol start="2">
-<li>
-<p>Copy this <a href="https://github.com/smartcontractkit/chainlink/blob/sot-upgrade-workflow/.github/workflows/devenv-compat.yml">pipeline</a> to your repository</p>
-</li>
-<li>
-<p>Add nightly pipeline for your product, see <code>df1-compat</code> <a href="https://github.com/smartcontractkit/chainlink/blob/sot-upgrade-workflow/.github/workflows/devenv-nightly-compat.yml#L42">example</a></p>
-</li>
-</ol>
-<h2 id="usage-1"><a class="header" href="#usage-1">Usage</a></h2>
-<h3 id="prerequisites-2"><a class="header" href="#prerequisites-2">Prerequisites</a></h3>
-<p>Authorize in our SDLC ECR registry first. Get the creds and run</p>
-<pre><code class="language-bash">aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin &lt;sdlc_ecr_registry&gt;
-</code></pre>
-<p>If you don't have <code>ctf</code> CLI, download it <a href="https://smartcontractkit.github.io/chainlink-testing-framework/framework/getting_started.html">here</a></p>
-<h3 id="testing-upgrade-sequence-locally"><a class="header" href="#testing-upgrade-sequence-locally">Testing Upgrade Sequence Locally</a></h3>
-<p>We have a simple tool to check compatibility for CL node clusters. The example command will filter and sort the available tags, rollback and install the oldest version, and then begin performing automatic upgrades to verify that each subsequent version remains compatible with the previous one.</p>
-<p><code>buildcmd</code>, <code>envcmd</code>, <code>testcmd</code> can be arbitrary bash commands.</p>
+<p>Install the <code>ctf</code> CLI if you haven't already — see <a href="https://smartcontractkit.github.io/chainlink-testing-framework/framework/getting_started.html">Getting Started</a>.</p>
+<h3 id="explicit-version-list"><a class="header" href="#explicit-version-list">Explicit version list</a></h3>
+<p>Provide the exact versions to test in order from oldest to newest. The first ref must have a working test at that Git tag.</p>
 <pre><code class="language-bash">ctf compat backward \
---registry &lt;sdlc_ecr_registry&gt; \
---buildcmd "just cli" \
---envcmd "cl r" \
---testcmd "cl test ocr2 TestSmoke/rounds" \
---refs 2.32.0 \
---refs 2.33.0 \
---refs 2.34.0 \
---refs 2.35.0 \
---upgrade-nodes 3
+  --registry &lt;sdlc_ecr_registry&gt; \
+  --buildcmd "just cli" \
+  --envcmd "mycli r env.toml" \
+  --testcmd "mycli test myproduct TestSmoke/rounds" \
+  --refs 2.32.0 \
+  --refs 2.33.0 \
+  --refs 2.34.0 \
+  --refs 2.35.0 \
+  --upgrade-nodes 3
 </code></pre>
-<p>Keep in mind that <code>refs</code> should be present in regsitry you are testing against, the first (oldest) <code>ref</code> should also have a valid end-to-end test that works.</p>
-<p>In CI we detect SemVer tags automatically, whenever a new tag appears we select last 3, rollback to the oldest and perform upgrade process.</p>
+<h3 id="automatic-semver-detection-ci-mode"><a class="header" href="#automatic-semver-detection-ci-mode">Automatic SemVer detection (CI mode)</a></h3>
+<p>In CI, omit <code>--refs</code> and let <code>ctf</code> detect the last N SemVer tags automatically:</p>
 <pre><code class="language-bash">ctf compat backward \
---registry &lt;sdlc_ecr_chainlink_registry&gt; \
---buildcmd "just cli" \
---envcmd "cl r env.toml,products/ocr2/basic.toml" \
---testcmd "cl test ocr2 TestSmoke/rounds" \
---strip-image-suffix v \
---upgrade-nodes 2 \
---versions-back 2
+  --registry &lt;sdlc_ecr_chainlink_registry&gt; \
+  --buildcmd "just cli" \
+  --envcmd "mycli r env.toml,products/myproduct/basic.toml" \
+  --testcmd "mycli test myproduct TestSmoke/rounds" \
+  --strip-image-suffix v \
+  --upgrade-nodes 2 \
+  --versions-back 3
 </code></pre>
-<p>In case you have multiple DONs in your product and names of nodes are different please use <code>--node-name-template custom-cl-node-%d</code> option</p>
-<h3 id="modelling-node-operators-cluster-wip"><a class="header" href="#modelling-node-operators-cluster-wip">Modelling Node Operators Cluster (WIP)</a></h3>
-<p>It is possible to fetch versions node operators are currently running and model DON upgrade sequence locally. When <code>product</code> is specified, <code>compat</code> will fetch the current versions from the RANE SOT data source and model the upgrade sequence for versions found on real DONs up to the latest one, each node one at a time.</p>
+<p>When a new SemVer tag is pushed, the pipeline selects the last <code>--versions-back</code> tags, rolls back to the oldest, and runs the full upgrade sequence.</p>
+<hr />
+<h2 id="all-ctf-compat-backward-flags"><a class="header" href="#all-ctf-compat-backward-flags">All <code>ctf compat backward</code> Flags</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>--registry</code></td><td><code>smartcontract/chainlink</code></td><td>Docker image registry for Chainlink nodes</td></tr>
+<tr><td><code>--refs</code></td><td><em>(none)</em></td><td>Explicit version list (oldest → newest). Repeat for each version. If omitted, SemVer tags are detected from git.</td></tr>
+<tr><td><code>--versions-back</code></td><td><code>1</code></td><td>How many previous SemVer tags to include when auto-detecting (used without <code>--refs</code>)</td></tr>
+<tr><td><code>--upgrade-nodes</code></td><td><code>3</code></td><td>Number of nodes to upgrade at each step</td></tr>
+<tr><td><code>--don_nodes</code></td><td><code>5</code></td><td>Total size of the DON (used with <code>--product</code> for SOT modelling)</td></tr>
+<tr><td><code>--buildcmd</code></td><td><code>just cli</code></td><td>Command to build the devenv CLI binary</td></tr>
+<tr><td><code>--envcmd</code></td><td><em>(required)</em></td><td>Command to start the environment</td></tr>
+<tr><td><code>--testcmd</code></td><td><em>(required)</em></td><td>Command to run the compatibility tests</td></tr>
+<tr><td><code>--node-name-template</code></td><td><code>don-node%d</code></td><td>Docker container name template for CL nodes. Use <code>--node-name-template custom-cl-node-%d</code> if your DON uses custom naming.</td></tr>
+<tr><td><code>--strip-image-suffix</code></td><td><em>(none)</em></td><td>Strip a prefix from refs before looking them up in the registry (e.g. <code>v</code> strips the leading <code>v</code> from <code>v2.34.0</code>)</td></tr>
+<tr><td><code>--include-refs</code></td><td><em>(none)</em></td><td>Only include refs matching these patterns (e.g. <code>rc,beta</code>)</td></tr>
+<tr><td><code>--exclude-refs</code></td><td><em>(none)</em></td><td>Exclude refs matching these patterns (e.g. <code>rc,beta</code>)</td></tr>
+<tr><td><code>--no-git-rollback</code></td><td><code>false</code></td><td>Skip checking out the oldest Git tag. Use when your tests don't live in the same repo as the node.</td></tr>
+<tr><td><code>--skip-pull</code></td><td><code>false</code></td><td>Skip <code>docker pull</code>; use locally cached images</td></tr>
+<tr><td><code>--product</code></td><td><em>(none)</em></td><td>Enable SOT DON modelling for this product name (see below)</td></tr>
+<tr><td><code>--sot-url</code></td><td><code>https://rane-sot-app.main.prod.cldev.sh/v1/snapshot</code></td><td>RANE SOT snapshot API URL</td></tr>
+<tr><td><code>--rane-add-git-tag-prefix</code></td><td><em>(none)</em></td><td>Prefix to add to RANE version strings to match Git tags</td></tr>
+</tbody></table>
+</div>
+<hr />
+<h2 id="advanced-modelling-real-node-operator-don-upgrades-wip"><a class="header" href="#advanced-modelling-real-node-operator-don-upgrades-wip">Advanced: Modelling Real Node Operator DON Upgrades (WIP)</a></h2>
+<p>When <code>--product</code> is specified, <code>ctf compat backward</code> fetches the versions currently running on real DONs from the RANE SOT data source and models the upgrade sequence across actual node operator versions.</p>
 <pre><code class="language-bash">ctf compat backward \
---registry &lt;sdlc_ecr_chainlink_registry&gt; \
---buildcmd "just cli" \
---envcmd "cl r env.toml,products/ocr2/basic.toml" \
---testcmd "cl test ocr2 TestSmoke/rounds" \
---product data-feeds \
---no-git-rollback \
---don_nodes 5
+  --registry &lt;sdlc_ecr_chainlink_registry&gt; \
+  --buildcmd "just cli" \
+  --envcmd "mycli r env.toml,products/myproduct/basic.toml" \
+  --testcmd "mycli test myproduct TestSmoke/rounds" \
+  --product data-feeds \
+  --don_nodes 5
 </code></pre>
-<p>The tool will check out earliest Git <code>ref</code> and setup environment and tests.</p>
-<p>If you don't have tests on this tag you can use <code>--no-git-rollback</code> to skip the rollback step.</p>
-<p>Since not all the versions from SOT are currently having corresponding Git tags or images, you can provide refs directly using <code>--refs</code> flag, useful for testing.</p>
+<p><code>--product</code> field is connected with <code>jq .nodes[].jobs[].product</code> field from <a href="https://rane-sot-app.main.prod.cldev.sh/v1/snapshot">SOT</a> data, find your product name there.</p>
+<p><code>--no-git-rollback</code> can be added if your product orchestration code and tests are compatible with all these versions, otherwise, Git rollback will be performed automatically.</p>
+<p>If SOT versions do not yet have corresponding Git tags or registry images, supply them explicitly with <code>--refs</code>:</p>
 <pre><code class="language-bash">ctf compat backward \
---registry &lt;sdlc_ecr_chainlink_registry&gt;\
---buildcmd "just cli" \
---envcmd "cl r env.toml,products/ocr2/basic.toml" \
---testcmd "cl test ocr2 TestSmoke/rounds" \
---product data-feeds \
---refs "2.36.1-rc.0" \
---refs "2.36.1-beta.0" \
---refs "2.36.1-beta.2" \
---refs "2.37.0-rc.0" \
---refs "2.37.0-beta.0" \
---refs "2.38.0-rc.0" \
---refs "2.38.0-beta.0" \
---no-git-rollback \
---don_nodes 5
+  --registry &lt;sdlc_ecr_chainlink_registry&gt; \
+  --buildcmd "just cli" \
+  --envcmd "mycli r env.toml,products/myproduct/basic.toml" \
+  --testcmd "mycli test myproduct TestSmoke/rounds" \
+  --product data-feeds \
+  --refs "2.36.1-rc.0" \
+  --refs "2.36.1-beta.0" \
+  --refs "2.36.1-beta.2" \
+  --refs "2.37.0-rc.0" \
+  --refs "2.37.0-beta.0" \
+  --refs "2.38.0-rc.0" \
+  --refs "2.38.0-beta.0" \
+  --no-git-rollback \
+  --don_nodes 5
+</code></pre>
+<hr />
+<h2 id="restoring-your-working-branch-after-testing"><a class="header" href="#restoring-your-working-branch-after-testing">Restoring Your Working Branch After Testing</a></h2>
+<p><code>ctf compat backward</code> checks out old Git tags during a run. To return to your working branch:</p>
+<pre><code class="language-bash">ctf compat restore --base_branch develop
+# or just:
+git checkout develop
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
@@ -5107,7 +5211,7 @@ ctf bs -r http://host.docker.internal:8555 d
       http_url = "http://127.0.0.1:33955"
       ws_url = "ws://127.0.0.1:33955"
 </code></pre>
-<h2 id="usage-2"><a class="header" href="#usage-2">Usage</a></h2>
+<h2 id="usage-1"><a class="header" href="#usage-1">Usage</a></h2>
 <pre><code class="language-golang">package my_test
 
 import (
@@ -5256,7 +5360,7 @@ arm64 public.ecr.aws/w0i8p0z9/solana-validator:main-1dcdbc4
   mcm = "6UmMZr5MEqiKWD5jqTJd1WCR5kT8oZuFYBLJFi1o6GQX"
 
 </code></pre>
-<h2 id="usage-3"><a class="header" href="#usage-3">Usage</a></h2>
+<h2 id="usage-2"><a class="header" href="#usage-2">Usage</a></h2>
 <pre><code class="language-golang">package examples
 
 import (
@@ -5378,7 +5482,7 @@ Private: [11,2,35,236,230,251,215,68,220,208,166,157,229,181,164,26,150,230,218,
   # add command params
   docker_cmd_params = ["--skip-metadata-apply"]
 </code></pre>
-<h2 id="usage-4"><a class="header" href="#usage-4">Usage</a></h2>
+<h2 id="usage-3"><a class="header" href="#usage-3">Usage</a></h2>
 <pre><code class="language-golang">package examples
 
 import (
@@ -5500,7 +5604,7 @@ func TestAptosSmoke(t *testing.T) {
   contracts_dir = "$your_dir"
   image_platform = "linux/amd64" # default one
 </code></pre>
-<h2 id="usage-5"><a class="header" href="#usage-5">Usage</a></h2>
+<h2 id="usage-4"><a class="header" href="#usage-4">Usage</a></h2>
 <pre><code class="language-golang">package examples
 
 import (
@@ -5634,7 +5738,7 @@ func TestSuiSmoke(t *testing.T) {
   # image = "tronbox/tre:1.0.3" is default image
 </code></pre>
 <p>Default port is <code>9090</code></p>
-<h2 id="usage-6"><a class="header" href="#usage-6">Usage</a></h2>
+<h2 id="usage-5"><a class="header" href="#usage-5">Usage</a></h2>
 <pre><code class="language-golang">package examples
 
 import (
@@ -5868,7 +5972,7 @@ More info on parameters can be found here <a href="https://github.com/neodix42/m
 <blockquote>
 <p>Note: <code>tonutils-go</code> library is used for TON blockchain interactions, which requires a TON Lite Server connection. The framework provides direct liteserver:// URLs that can be used immediately without additional configuration parsing.</p>
 </blockquote>
-<h2 id="usage-7"><a class="header" href="#usage-7">Usage</a></h2>
+<h2 id="usage-6"><a class="header" href="#usage-6">Usage</a></h2>
 <pre><code class="language-go">package examples
 
 import (
@@ -6133,7 +6237,7 @@ bucket = "test-bucket"
 region = "us-east-1"
 </code></pre>
 <p>Example values are defaults.</p>
-<h2 id="usage-8"><a class="header" href="#usage-8">Usage</a></h2>
+<h2 id="usage-7"><a class="header" href="#usage-7">Usage</a></h2>
 <pre><code class="language-golang">package my_test
 
 import (
@@ -7229,7 +7333,7 @@ go test -v -run TestLayoutAPI
 
 </style>
 <h1 id="wasp---getting-started"><a class="header" href="#wasp---getting-started">WASP - Getting Started</a></h1>
-<h2 id="prerequisites-3"><a class="header" href="#prerequisites-3">Prerequisites</a></h2>
+<h2 id="prerequisites-2"><a class="header" href="#prerequisites-2">Prerequisites</a></h2>
 <ul>
 <li><a href="https://go.dev/doc/install">Golang</a></li>
 </ul>
@@ -10753,7 +10857,7 @@ require.NoError(t, err, "failed to create baseline report")
 	LoadLatest(testName string) error
 }
 </code></pre>
-<h3 id="usage-9"><a class="header" href="#usage-9">Usage</a></h3>
+<h3 id="usage-8"><a class="header" href="#usage-8">Usage</a></h3>
 <ul>
 <li>If storing reports locally under Git satisfies your requirements, you can reuse the <code>LocalStorage</code> implementation of <code>Storer</code>.</li>
 <li>If you need to store reports in S3 or a database, you will need to implement the interface yourself.</li>
@@ -10935,7 +11039,7 @@ require.NoError(t, err, "failed to create baseline report")
 <h1 id="wasp---how-to-start-local-observability-stack"><a class="header" href="#wasp---how-to-start-local-observability-stack">WASP - How to Start Local Observability Stack</a></h1>
 <p>To execute all examples or tests locally, you need to configure a local observability stack. This stack includes <strong>Loki</strong>, <strong>Grafana</strong>, and <strong>Pyroscope</strong>.</p>
 <hr />
-<h2 id="prerequisites-4"><a class="header" href="#prerequisites-4">Prerequisites</a></h2>
+<h2 id="prerequisites-3"><a class="header" href="#prerequisites-3">Prerequisites</a></h2>
 <p>Ensure you have the following installed:</p>
 <ul>
 <li><a href="https://docs.docker.com/get-docker/">Docker</a></li>
@@ -11060,7 +11164,7 @@ export DASHBOARD_NAME=Wasp
 </style>
 <h1 id="wasp---try-it-out-quickly"><a class="header" href="#wasp---try-it-out-quickly">WASP - Try It Out Quickly</a></h1>
 <hr />
-<h2 id="prerequisites-5"><a class="header" href="#prerequisites-5">Prerequisites</a></h2>
+<h2 id="prerequisites-4"><a class="header" href="#prerequisites-4">Prerequisites</a></h2>
 <p>Ensure you have the following installed:</p>
 <ul>
 <li><a href="https://go.dev/doc/install">Golang</a></li>
@@ -13415,7 +13519,7 @@ max_tps = 8.0
 </ul>
 </li>
 </ol>
-<h2 id="usage-10"><a class="header" href="#usage-10">Usage</a></h2>
+<h2 id="usage-9"><a class="header" href="#usage-9">Usage</a></h2>
 <h3 id="initialize-sentinel"><a class="header" href="#initialize-sentinel">Initialize Sentinel</a></h3>
 <p>Set up a <code>Sentinel</code> instance:</p>
 <pre><code class="language-go">package main
@@ -13811,7 +13915,7 @@ Unsubscribes from a specific event.</p>
 </code></pre>
 <h3 id="running-tests-in-k8s"><a class="header" href="#running-tests-in-k8s">Running tests in k8s</a></h3>
 <p>To read how to run a test in k8s, read <a href="lib/k8s/REMOTE_RUN.html">here</a></p>
-<h3 id="usage-11"><a class="header" href="#usage-11">Usage</a></h3>
+<h3 id="usage-10"><a class="header" href="#usage-10">Usage</a></h3>
 <h4 id="with-env-vars-deprecated"><a class="header" href="#with-env-vars-deprecated">With env vars (deprecated)</a></h4>
 <p>Create an env in a separate file and run it</p>
 <pre><code class="language-sh">export CHAINLINK_IMAGE="public.ecr.aws/chainlink/chainlink"
@@ -18590,7 +18694,7 @@ go run ./tools/breakingchanges/cmd/main.go --ignore tools,wasp,havoc,seth # to i
 <p>This documentation was generated from:</p>
 <ul>
 <li>Branch <code>docs-docs-compat</code></li>
-<li>Commit: <code>d0011dd6</code></li>
+<li>Commit: <code>25d5ff4f</code></li>
 </ul>
 
                     </main>
