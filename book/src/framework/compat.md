@@ -14,7 +14,7 @@ gh secret set MY_SECRET
 
 2. Copy this [pipeline](https://github.com/smartcontractkit/chainlink/blob/sot-upgrade-workflow/.github/workflows/devenv-compat.yml) to your repository
 
-3. Add calling pipeline for your product, see `df1-compat` [example](https://github.com/smartcontractkit/chainlink/blob/sot-upgrade-workflow/.github/workflows/devenv-nightly-compat.yml#L42)
+3. Add nightly pipeline for your product, see `df1-compat` [example](https://github.com/smartcontractkit/chainlink/blob/sot-upgrade-workflow/.github/workflows/devenv-nightly-compat.yml#L42)
 
 ## Usage
 
