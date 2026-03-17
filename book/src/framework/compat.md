@@ -1,5 +1,23 @@
 # Compatibility Testing
 
+# Integrating Compatibility CI
+
+To create CL node compatibility CI in your reporisoty follow these steps:
+
+1. Setup role to pull CL and JD [images](https://github.com/smartcontractkit/infra/tree/master/accounts/production/global/aws/iam/roles/gha-smartcontractkit).
+Add it to your secrets:
+```bash
+gh secret set MY_SECRET
+# enter your secret, it should be something like:
+# arn:aws:iam::<prod_registry>:role/gha-smartcontractkit-public-ecr <- name for your role
+```
+
+2. Copy this [pipeline](https://github.com/smartcontractkit/chainlink/blob/sot-upgrade-workflow/.github/workflows/devenv-compat.yml) to your repository
+
+3. Add calling pipeline for your product, see `df1-compat` [example](https://github.com/smartcontractkit/chainlink/blob/sot-upgrade-workflow/.github/workflows/devenv-nightly-compat.yml#L42)
+
+# Usage
+
 ## Prerequisites
 
 Authorize in our SDLC ECR registry first. Get the creds and run
@@ -8,7 +26,7 @@ Authorize in our SDLC ECR registry first. Get the creds and run
 aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin <sdlc_ecr_registry>
 ```
 
-## Testing Upgrade Sequence
+## Testing Upgrade Sequence Locally
 
 We have a simple tool to check compatibility for CL node clusters. The example command will filter and sort the available tags, rollback and install the oldest version, and then begin performing automatic upgrades to verify that each subsequent version remains compatible with the previous one.
 
