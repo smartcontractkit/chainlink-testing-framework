@@ -92,9 +92,14 @@ type Output struct {
 }
 
 type NetworkSpecificData struct {
+	AptosNetwork   *AptosNetworkInfo   `toml:"aptos_network" comment:"Aptos network info"`
 	SuiAccount     *SuiWalletInfo      `toml:"sui_account" comment:"Sui network account info"`
 	CantonData     *CantonData         `toml:"canton_data" comment:"Canton network data"`
 	StellarNetwork *StellarNetworkInfo `toml:"stellar_network" comment:"Stellar network info"`
+}
+
+type AptosNetworkInfo struct {
+	FaucetURL string `toml:"faucet_url" comment:"Aptos faucet URL for funding accounts"`
 }
 
 // Node represents blockchain node output, URLs required for connection locally and inside docker network

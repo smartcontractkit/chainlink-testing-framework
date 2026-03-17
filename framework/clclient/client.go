@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	aptossdk "github.com/aptos-labs/aptos-go-sdk"
 	"github.com/avast/retry-go/v4"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -883,6 +884,51 @@ func (c *ChainlinkClient) MustReadAptosKeys() (*AptosKeys, error) {
 		framework.L.Warn().Str(NodeURL, c.Config.URL).Msg("Found no Aptos Keys on the node")
 	}
 	return aptosKeys, nil
+}
+
+// MustReadAptosAccounts reads and normalizes all Aptos accounts from the Chainlink node.
+func (c *ChainlinkClient) MustReadAptosAccounts() ([]string, error) {
+	aptosKeys, err := c.MustReadAptosKeys()
+	if err != nil {
+		return nil, err
+	}
+	return normalizeAptosAccounts(aptosKeys)
+}
+
+func normalizeAptosAccounts(keys *AptosKeys) ([]string, error) {
+	if keys == nil {
+		return nil, errors.New("aptos keys payload is nil")
+	}
+
+	seen := make(map[string]struct{})
+	out := make([]string, 0, len(keys.Data))
+	add := func(raw string) {
+		s := strings.TrimSpace(raw)
+		if s == "" {
+			return
+		}
+		var addr aptossdk.AccountAddress
+		if err := addr.ParseStringRelaxed(s); err != nil {
+			return
+		}
+		normalized := addr.StringLong()
+		if _, ok := seen[normalized]; ok {
+			return
+		}
+		seen[normalized] = struct{}{}
+		out = append(out, normalized)
+	}
+
+	for _, entry := range keys.Data {
+		add(entry.Attributes.Account)
+		add(entry.Attributes.Address)
+	}
+
+	if len(out) == 0 {
+		return nil, errors.New("no valid aptos accounts found")
+	}
+
+	return out, nil
 }
 
 // DeleteTxKey deletes an tx key based on the provided ID
