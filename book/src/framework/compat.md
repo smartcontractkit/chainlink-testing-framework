@@ -49,7 +49,7 @@ gh secret set JD_IMAGE       # paste the JD image reference
 
 ### Step 3 — Copy the Compat Pipeline
 
-Copy `devenv-compat.yml` from [chainlink/sot-upgrade-workflow](https://github.com/smartcontractkit/chainlink/blob/sot-upgrade-workflow/.github/workflows/devenv-compat.yml) into your repository at `.github/workflows/devenv-compat.yml`.
+Copy `devenv-compat.yml` from [chainlink](https://github.com/smartcontractkit/chainlink/blob/develop/.github/workflows/devenv-compat.yml) into your repository at `.github/workflows/devenv-compat.yml`.
 
 The workflow performs the following on each run:
 
