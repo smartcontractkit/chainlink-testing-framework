@@ -3943,7 +3943,7 @@ go test -v -timeout 1h -run TestCyclicHog
 3. Boot environment with the oldest image  →  run tests  (baseline)
 4. For each next version:
      a. Pull the new Docker image
-     b. Upgrade N nodes  (stop container, swap image, restart — DB volumes preserved)
+     b. Upgrade N nodes  (stop container, swap image, restart — node DB volumes preserved)
      c. Run tests again  (mixed-version cluster)
 5. Repeat until the latest version is fully deployed and tested
 </code></pre>
@@ -3962,16 +3962,16 @@ go test -v -timeout 1h -run TestCyclicHog
 <div class="table-wrapper"><table><thead><tr><th>Secret name</th><th>Description</th><th>Example value</th></tr></thead><tbody>
 <tr><td><code>PRODUCT_IAM_ROLE</code></td><td>ARN of the IAM role that grants ECR pull access. Name it with your product name, for example CCV_IAM_ROLE</td><td><code>arn:aws:iam::&lt;account_id&gt;:role/gha-smartcontractkit-&lt;repo&gt;</code></td></tr>
 <tr><td><code>JD_REGISTRY</code></td><td>Private ECR registry ID for JD images</td><td><code>&lt;production_ecr_registry_number&gt;.dkr.ecr.us-west-2.amazonaws.com</code></td></tr>
-<tr><td><code>JD_IMAGE</code></td><td>Full JD image reference (used by your environment config)</td><td><code>&lt;production_ecr_registry_number&gt;.dkr.ecr.us-west-2.amazonaws.com/job-distributor:0.12.7</code></td></tr>
+<tr><td><code>JD_IMAGE</code></td><td>Full JD image reference (used by your environment config)</td><td><code>&lt;production_ecr_registry_number&gt;.dkr.ecr.us-west-2.amazonaws.com/job-distributor:0.22.1</code></td></tr>
 </tbody></table>
 </div>
 <p>Using the GitHub CLI:</p>
-<pre><code class="language-bash">gh secret set CCV_IAM_ROLE   # paste the IAM role ARN
+<pre><code class="language-bash">gh secret set PRODUCT_IAM_ROLE   # paste the IAM role ARN
 gh secret set JD_REGISTRY    # paste the JD registry URL
 gh secret set JD_IMAGE       # paste the JD image reference
 </code></pre>
 <h3 id="step-3--copy-the-compat-pipeline"><a class="header" href="#step-3--copy-the-compat-pipeline">Step 3 — Copy the Compat Pipeline</a></h3>
-<p>Copy <code>devenv-compat.yml</code> from <a href="https://github.com/smartcontractkit/chainlink/blob/sot-upgrade-workflow/.github/workflows/devenv-compat.yml">chainlink/sot-upgrade-workflow</a> into your repository at <code>.github/workflows/devenv-compat.yml</code>.</p>
+<p>Copy <code>devenv-compat.yml</code> from <a href="https://github.com/smartcontractkit/chainlink/blob/develop/.github/workflows/devenv-compat.yml">chainlink</a> into your repository at <code>.github/workflows/devenv-compat.yml</code>.</p>
 <p>The workflow performs the following on each run:</p>
 <pre><code class="language-yaml">- name: Checkout code
   uses: actions/checkout@v5
@@ -3981,14 +3981,14 @@ gh secret set JD_IMAGE       # paste the JD image reference
 - name: Authenticate to AWS ECR
   uses: ./.github/actions/aws-ecr-auth
   with:
-    role-to-assume: ${{ secrets.CCV_IAM_ROLE }}
+    role-to-assume: ${{ secrets.PRODUCT_IAM_ROLE }}
     aws-region: us-east-1
     registry-type: public
 
 - name: Authenticate to AWS ECR (JD)
   uses: ./.github/actions/aws-ecr-auth
   with:
-    role-to-assume: ${{ secrets.CCV_IAM_ROLE }}
+    role-to-assume: ${{ secrets.PRODUCT_IAM_ROLE }}
     aws-region: us-west-2
     registry-type: private
     registries: ${{ secrets.JD_REGISTRY }}
@@ -4006,20 +4006,8 @@ gh secret set JD_IMAGE       # paste the JD image reference
 </code></pre>
 <p><code>fetch-depth: 0</code> is required because <code>ctf</code> reads all Git tags to build the version sequence.</p>
 <h3 id="step-4--add-a-nightly-trigger"><a class="header" href="#step-4--add-a-nightly-trigger">Step 4 — Add a Nightly Trigger</a></h3>
-<p>Compatibility tests are typically run on a nightly schedule rather than on every PR. Add a nightly workflow (or a separate trigger in the same file) that points to your product configuration:</p>
-<pre><code class="language-yaml"># .github/workflows/devenv-nightly-compat.yml
-on:
-  schedule:
-    - cron: '0 6 * * *'   # 06:00 UTC every night, after the nightly CL image is built
-  workflow_dispatch:        # allow manual runs
-
-jobs:
-  compat:
-    uses: ./.github/workflows/devenv-compat.yml
-    secrets: inherit
-    with:
-</code></pre>
-<p>See the <a href="https://github.com/smartcontractkit/chainlink/blob/sot-upgrade-workflow/.github/workflows/devenv-nightly-compat.yml#L42">chainlink nightly example</a> for a complete reference.</p>
+<p>Compatibility tests are typically run on a nightly schedule rather than on every PR. Add a nightly workflow that points to your product configuration:</p>
+<p>See the <a href="https://github.com/smartcontractkit/chainlink/blob/develop/.github/workflows/devenv-nightly-compat.yml#L42">chainlink nightly example</a> for a complete reference.</p>
 <h3 id="step-5--write-your-compatibility-tests"><a class="header" href="#step-5--write-your-compatibility-tests">Step 5 — Write Your Compatibility Tests</a></h3>
 <p>Your tests are plain Go tests invoked via the <code>--testcmd</code> argument. They must:</p>
 <ol>
@@ -18693,8 +18681,8 @@ go run ./tools/breakingchanges/cmd/main.go --ignore tools,wasp,havoc,seth # to i
 <h1 id="build-info"><a class="header" href="#build-info">Build info</a></h1>
 <p>This documentation was generated from:</p>
 <ul>
-<li>Branch <code>main</code></li>
-<li>Commit: <code>9d696ff5</code></li>
+<li>Branch <code>compat-update-docs</code></li>
+<li>Commit: <code>25d1b387</code></li>
 </ul>
 
                     </main>
