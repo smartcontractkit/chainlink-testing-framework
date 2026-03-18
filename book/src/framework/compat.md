@@ -10,7 +10,7 @@ Compatibility testing verifies that your product remains functional when Chainli
 3. Boot environment with the oldest image  →  run tests  (baseline)
 4. For each next version:
      a. Pull the new Docker image
-     b. Upgrade N nodes  (stop container, swap image, restart — DB volumes preserved)
+     b. Upgrade N nodes  (stop container, swap image, restart — node DB volumes preserved)
      c. Run tests again  (mixed-version cluster)
 5. Repeat until the latest version is fully deployed and tested
 ```
@@ -37,19 +37,19 @@ Add the following secrets to your repository (`Settings → Secrets and variable
 |---|---|---|
 | `PRODUCT_IAM_ROLE` | ARN of the IAM role that grants ECR pull access. Name it with your product name, for example CCV_IAM_ROLE | `arn:aws:iam::<account_id>:role/gha-smartcontractkit-<repo>` |
 | `JD_REGISTRY` | Private ECR registry ID for JD images | `<production_ecr_registry_number>.dkr.ecr.us-west-2.amazonaws.com` |
-| `JD_IMAGE` | Full JD image reference (used by your environment config) | `<production_ecr_registry_number>.dkr.ecr.us-west-2.amazonaws.com/job-distributor:0.12.7` |
+| `JD_IMAGE` | Full JD image reference (used by your environment config) | `<production_ecr_registry_number>.dkr.ecr.us-west-2.amazonaws.com/job-distributor:0.22.1` |
 
 Using the GitHub CLI:
 
 ```bash
-gh secret set CCV_IAM_ROLE   # paste the IAM role ARN
+gh secret set PRODUCT_IAM_ROLE   # paste the IAM role ARN
 gh secret set JD_REGISTRY    # paste the JD registry URL
 gh secret set JD_IMAGE       # paste the JD image reference
 ```
 
 ### Step 3 — Copy the Compat Pipeline
 
-Copy `devenv-compat.yml` from [chainlink/sot-upgrade-workflow](https://github.com/smartcontractkit/chainlink/blob/sot-upgrade-workflow/.github/workflows/devenv-compat.yml) into your repository at `.github/workflows/devenv-compat.yml`.
+Copy `devenv-compat.yml` from [chainlink](https://github.com/smartcontractkit/chainlink/blob/develop/.github/workflows/devenv-compat.yml) into your repository at `.github/workflows/devenv-compat.yml`.
 
 The workflow performs the following on each run:
 
@@ -62,14 +62,14 @@ The workflow performs the following on each run:
 - name: Authenticate to AWS ECR
   uses: ./.github/actions/aws-ecr-auth
   with:
-    role-to-assume: ${{ secrets.CCV_IAM_ROLE }}
+    role-to-assume: ${{ secrets.PRODUCT_IAM_ROLE }}
     aws-region: us-east-1
     registry-type: public
 
 - name: Authenticate to AWS ECR (JD)
   uses: ./.github/actions/aws-ecr-auth
   with:
-    role-to-assume: ${{ secrets.CCV_IAM_ROLE }}
+    role-to-assume: ${{ secrets.PRODUCT_IAM_ROLE }}
     aws-region: us-west-2
     registry-type: private
     registries: ${{ secrets.JD_REGISTRY }}
@@ -90,23 +90,9 @@ The workflow performs the following on each run:
 
 ### Step 4 — Add a Nightly Trigger
 
-Compatibility tests are typically run on a nightly schedule rather than on every PR. Add a nightly workflow (or a separate trigger in the same file) that points to your product configuration:
+Compatibility tests are typically run on a nightly schedule rather than on every PR. Add a nightly workflow that points to your product configuration:
 
-```yaml
-# .github/workflows/devenv-nightly-compat.yml
-on:
-  schedule:
-    - cron: '0 6 * * *'   # 06:00 UTC every night, after the nightly CL image is built
-  workflow_dispatch:        # allow manual runs
-
-jobs:
-  compat:
-    uses: ./.github/workflows/devenv-compat.yml
-    secrets: inherit
-    with:
-```
-
-See the [chainlink nightly example](https://github.com/smartcontractkit/chainlink/blob/sot-upgrade-workflow/.github/workflows/devenv-nightly-compat.yml#L42) for a complete reference.
+See the [chainlink nightly example](https://github.com/smartcontractkit/chainlink/blob/develop/.github/workflows/devenv-nightly-compat.yml#L42) for a complete reference.
 
 ### Step 5 — Write Your Compatibility Tests
 
