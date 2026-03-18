@@ -75,6 +75,7 @@ func NewDockerChaos(ctx context.Context) (*DockerChaos, error) {
 	_, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
+		Reuse:            true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to start docker-tc container: %w", err)
