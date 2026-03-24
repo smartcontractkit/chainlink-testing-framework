@@ -392,6 +392,29 @@ type TxKeyAttributes struct {
 	StarkKey  string `json:"starkPubKey,omitempty"`
 }
 
+// AptosKeys is the model that represents the created Aptos keys when read.
+type AptosKeys struct {
+	Data []AptosKeyData `json:"data"`
+}
+
+// AptosKey is the model that represents the created Aptos key when read.
+type AptosKey struct {
+	Data AptosKeyData `json:"data"`
+}
+
+// AptosKeyData is the model that represents the created Aptos keys when read.
+type AptosKeyData struct {
+	Type       string             `json:"type"`
+	ID         string             `json:"id"`
+	Attributes AptosKeyAttributes `json:"attributes"`
+}
+
+// AptosKeyAttributes is the model that represents the attributes of an Aptos key.
+type AptosKeyAttributes struct {
+	Account string `json:"account"`
+	Address string `json:"address"`
+}
+
 type SingleTransactionDataWrapper struct {
 	Data TransactionData `json:"data"`
 }

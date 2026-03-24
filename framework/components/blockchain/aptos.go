@@ -154,6 +154,11 @@ func newAptos(ctx context.Context, in *Input) (*Output, error) {
 		Type:          in.Type,
 		Family:        FamilyAptos,
 		ContainerName: containerName,
+		NetworkSpecificData: &NetworkSpecificData{
+			AptosNetwork: &AptosNetworkInfo{
+				FaucetURL: fmt.Sprintf("http://%s:%s", host, DefaultAptosFaucetPort),
+			},
+		},
 		Nodes: []*Node{
 			{
 				ExternalHTTPUrl: fmt.Sprintf("http://%s:%s", host, exposedAPIPort),
