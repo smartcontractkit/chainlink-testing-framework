@@ -864,13 +864,13 @@ func (c *ChainlinkClient) ReadAptosKeys() (*AptosKeys, *resty.Response, error) {
 	resp, err := c.APIClient.R().
 		SetResult(aptosKeys).
 		Get("/v2/keys/aptos")
-	if len(aptosKeys.Data) == 0 {
-		framework.L.Warn().Str(NodeURL, c.Config.URL).Msg("Found no Aptos Keys on the node")
-	}
 	if err != nil {
 		return nil, nil, err
 	}
-	return aptosKeys, resp, err
+	if len(aptosKeys.Data) == 0 {
+		framework.L.Warn().Str(NodeURL, c.Config.URL).Msg("Found no Aptos Keys on the node")
+	}
+	return aptosKeys, resp, nil
 }
 
 // MustReadAptosKeys reads all Aptos keys from the Chainlink node and returns an error if the request is unsuccessful.
