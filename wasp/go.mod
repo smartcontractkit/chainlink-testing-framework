@@ -85,7 +85,7 @@ require (
 	// post v3.4.2 version compatible with prometheus
 	github.com/grafana/loki/v3 v3.0.0-20250221202516-b37eefe24f82
 	github.com/grafana/pyroscope-go v1.1.2
-	github.com/montanaflynn/stats v0.7.1
+	github.com/montanaflynn/stats v0.9.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/smartcontractkit/chainlink-testing-framework/lib v1.50.20-0.20250106135623-15722ca32b64
 	github.com/stretchr/testify v1.10.0
