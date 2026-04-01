@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -132,7 +131,7 @@ func run() error {
 	}
 }
 
-func (r *router) Publish(_ context.Context, event *cepb.CloudEvent) (*chippb.PublishResponse, error) {
+func (r *router) Publish(ctx context.Context, event *cepb.CloudEvent) (*chippb.PublishResponse, error) {
 	snapshot := r.snapshotSubscribers()
 	if len(snapshot) == 0 {
 		return &chippb.PublishResponse{}, nil
@@ -143,7 +142,7 @@ func (r *router) Publish(_ context.Context, event *cepb.CloudEvent) (*chippb.Pub
 	for _, sub := range snapshot {
 		group.Go(func() error {
 			framework.L.Debug().Msgf("chip router forwarding event to subscriber id=%s name=%s endpoint=%s", sub.id, sub.name, sub.endpoint)
-			forwardCtx, cancel := context.WithTimeout(context.Background(), forwardTimeout)
+			forwardCtx, cancel := context.WithTimeout(ctx, forwardTimeout)
 			defer cancel()
 			_, err := sub.client.Publish(forwardCtx, event)
 			if err != nil {
@@ -157,7 +156,7 @@ func (r *router) Publish(_ context.Context, event *cepb.CloudEvent) (*chippb.Pub
 	return &chippb.PublishResponse{}, nil
 }
 
-func (r *router) PublishBatch(_ context.Context, batch *chippb.CloudEventBatch) (*chippb.PublishResponse, error) {
+func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch) (*chippb.PublishResponse, error) {
 	snapshot := r.snapshotSubscribers()
 	if len(snapshot) == 0 {
 		return &chippb.PublishResponse{}, nil
@@ -168,11 +167,11 @@ func (r *router) PublishBatch(_ context.Context, batch *chippb.CloudEventBatch) 
 	for _, sub := range snapshot {
 		group.Go(func() error {
 			framework.L.Debug().Msgf("chip router forwarding batch to subscriber id=%s name=%s endpoint=%s", sub.id, sub.name, sub.endpoint)
-			forwardCtx, cancel := context.WithTimeout(context.Background(), forwardTimeout)
+			forwardCtx, cancel := context.WithTimeout(ctx, forwardTimeout)
 			defer cancel()
 			_, err := sub.client.PublishBatch(forwardCtx, batch)
 			if err != nil {
-				log.Printf("chip router failed to forward batch to subscriber id=%s name=%s endpoint=%s err=%v", sub.id, sub.name, sub.endpoint, err)
+				framework.L.Error().Msgf("chip router failed to forward batch to subscriber id=%s name=%s endpoint=%s err=%v", sub.id, sub.name, sub.endpoint, err)
 			}
 			framework.L.Debug().Msgf("chip router forwarded batch to subscriber id=%s", sub.id)
 			return nil
@@ -243,9 +242,9 @@ func (r *router) handleSubscriberByID(w http.ResponseWriter, req *http.Request) 
 		delete(r.subscribers, id)
 	}
 	r.mu.Unlock()
-	framework.L.Info().Msgf("chip router unregistered subscriber id=%s name=%s endpoint=%s", id, sub.name, sub.endpoint)
 	if ok && sub.conn != nil {
 		_ = sub.conn.Close()
+		framework.L.Info().Msgf("chip router unregistered subscriber id=%s name=%s endpoint=%s", id, sub.name, sub.endpoint)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
