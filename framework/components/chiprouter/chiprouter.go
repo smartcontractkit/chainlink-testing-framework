@@ -20,7 +20,6 @@ const (
 	DefaultGRPCPort         = 50051
 	DefaultAdminPort        = 50050
 	DefaultBeholderGRPCPort = 50053
-	DefaultImageName        = "chip-router-local:latest"
 	adminPathHealth         = "/health"
 )
 
@@ -65,9 +64,6 @@ func defaults(in *Input) {
 	if in.ContainerName == "" {
 		in.ContainerName = framework.DefaultTCName("chip-router")
 	}
-	if in.Image == "" {
-		in.Image = DefaultImageName
-	}
 }
 
 func New(in *Input) (*Output, error) {
@@ -77,6 +73,10 @@ func New(in *Input) (*Output, error) {
 func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
+	}
+
+	if strings.TrimSpace(in.Image) == "" {
+		return nil, fmt.Errorf("chip router image must be provided")
 	}
 
 	defaults(in)
