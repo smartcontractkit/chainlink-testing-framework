@@ -2,8 +2,6 @@ module github.com/smartcontractkit/chainlink-testing-framework/framework/compone
 
 go 1.25.3
 
-// replace github.com/smartcontractkit/chainlink-testing-framework/framework => ../../../framework
-
 require (
 	github.com/cloudevents/sdk-go/binding/format/protobuf/v2 v2.16.2
 	github.com/docker/docker v28.5.2+incompatible

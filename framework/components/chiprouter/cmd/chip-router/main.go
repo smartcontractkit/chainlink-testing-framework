@@ -205,17 +205,28 @@ func (r *router) handleSubscribers(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "endpoint is required", http.StatusBadRequest)
 		return
 	}
+	body.Name = strings.TrimSpace(body.Name)
+
+	r.mu.Lock()
+	if existing := r.findSubscriberLocked(body.Name, body.Endpoint); existing != nil {
+		r.mu.Unlock()
+		framework.L.Info().Msgf("chip router reused subscriber id=%s name=%s endpoint=%s", existing.id, existing.name, existing.endpoint)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(registerSubscriberResponse{ID: existing.id})
+		return
+	}
+
 	framework.L.Info().Msgf("chip router attempting to register subscriber name=%s endpoint=%s", body.Name, body.Endpoint)
 	conn, err := grpc.NewClient(body.Endpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
+		r.mu.Unlock()
 		http.Error(w, fmt.Sprintf("dial subscriber: %v", err), http.StatusBadRequest)
 		return
 	}
 	id := uuid.NewString()
-	r.mu.Lock()
 	r.subscribers[id] = &subscriber{
 		id:       id,
-		name:     strings.TrimSpace(body.Name),
+		name:     body.Name,
 		endpoint: body.Endpoint,
 		conn:     conn,
 		client:   chippb.NewChipIngressClient(conn),
@@ -224,6 +235,15 @@ func (r *router) handleSubscribers(w http.ResponseWriter, req *http.Request) {
 	framework.L.Info().Msgf("chip router registered subscriber id=%s name=%s endpoint=%s", id, body.Name, body.Endpoint)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(registerSubscriberResponse{ID: id})
+}
+
+func (r *router) findSubscriberLocked(name, endpoint string) *subscriber {
+	for _, sub := range r.subscribers {
+		if sub.name == name && sub.endpoint == endpoint {
+			return sub
+		}
+	}
+	return nil
 }
 
 func (r *router) handleSubscriberByID(w http.ResponseWriter, req *http.Request) {
