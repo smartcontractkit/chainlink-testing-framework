@@ -233,7 +233,7 @@ require (
 )
 
 replace (
-	github.com/docker/docker v28.5.1+incompatible => github.com/docker/docker v28.3.3+incompatible
+	github.com/docker/docker => github.com/docker/docker v28.3.3+incompatible
 
 	// replicating the replace directive on cosmos SDK
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
