@@ -17,8 +17,8 @@ require (
 	github.com/smartcontractkit/chainlink-common/pkg/chipingress v0.0.11-0.20251211140724-319861e514c4
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.0.0-00010101000000-000000000000
 	github.com/smartcontractkit/freeport v0.1.3-0.20250716200817-cb5dfd0e369e
-	github.com/testcontainers/testcontainers-go v0.40.0
-	github.com/testcontainers/testcontainers-go/modules/compose v0.40.0
+	github.com/testcontainers/testcontainers-go v0.37.0
+	github.com/testcontainers/testcontainers-go/modules/compose v0.37.0
 	golang.org/x/oauth2 v0.32.0
 	google.golang.org/protobuf v1.36.9
 )
@@ -233,6 +233,8 @@ require (
 )
 
 replace (
+	github.com/docker/docker v28.5.1+incompatible => github.com/docker/docker v28.3.3+incompatible
+
 	// replicating the replace directive on cosmos SDK
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 
