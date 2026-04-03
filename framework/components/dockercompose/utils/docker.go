@@ -9,9 +9,8 @@ import (
 	"strings"
 	"time"
 
-	networkTypes "github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
+	networkTypes "github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/testcontainers/testcontainers-go"
 
@@ -49,7 +48,7 @@ func GetContainerHost(ctx context.Context, container *testcontainers.DockerConta
 	return container.Host(ctx)
 }
 
-func FindMappedPort(ctx context.Context, timeout time.Duration, container *testcontainers.DockerContainer, port nat.Port) (nat.Port, error) {
+func FindMappedPort(ctx context.Context, timeout time.Duration, container *testcontainers.DockerContainer, port string) (networkTypes.Port, error) {
 	forCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -60,16 +59,16 @@ func FindMappedPort(ctx context.Context, timeout time.Duration, container *testc
 	for {
 		select {
 		case <-forCtx.Done():
-			return "", fmt.Errorf("timeout while waiting for mapped port for %s", port)
+			return networkTypes.Port{}, fmt.Errorf("timeout while waiting for mapped port for %s", port)
 		case <-ticker.C:
 			portCtx, portCancel := context.WithTimeout(ctx, tickerInterval)
 			defer portCancel()
 			mappedPort, mappedPortErr := container.MappedPort(portCtx, port)
 			if mappedPortErr != nil {
-				return "", errors.Wrapf(mappedPortErr, "failed to get mapped port for %s", port)
+				return networkTypes.Port{}, errors.Wrapf(mappedPortErr, "failed to get mapped port for %s", port)
 			}
 			if mappedPort.Port() == "" {
-				return "", fmt.Errorf("mapped port for %s is empty", port)
+				return networkTypes.Port{}, fmt.Errorf("mapped port for %s is empty", port)
 			}
 			return mappedPort, nil
 		}
@@ -88,12 +87,14 @@ func ConnectNetwork(connCtx context.Context, timeout time.Duration, dockerClient
 		case <-networkCtx.Done():
 			return fmt.Errorf("timeout while trying to connect billing-platform-service to default network")
 		case <-ticker.C:
-			if networkErr := dockerClient.NetworkConnect(
+			if _, networkErr := dockerClient.NetworkConnect(
 				connCtx,
 				networkName,
-				containerID,
-				&networkTypes.EndpointSettings{
-					Aliases: []string{stackIdentifier},
+				client.NetworkConnectOptions{
+					Container: containerID,
+					EndpointConfig: &networkTypes.EndpointSettings{
+						Aliases: []string{stackIdentifier},
+					},
 				},
 			); networkErr != nil && !strings.Contains(networkErr.Error(), "already exists in network") {
 				framework.L.Trace().Msgf("failed to connect to default network: %v", networkErr)

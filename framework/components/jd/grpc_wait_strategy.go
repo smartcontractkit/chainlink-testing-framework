@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/docker/go-connections/nat"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 	"google.golang.org/grpc"
@@ -18,13 +17,13 @@ import (
 
 // GRPCHealthStrategy implements a wait strategy for gRPC health checks
 type GRPCHealthStrategy struct {
-	Port         nat.Port
+	Port         string
 	PollInterval time.Duration
 	timeout      time.Duration
 }
 
 // NewGRPCHealthStrategy creates a new gRPC health check wait strategy
-func NewGRPCHealthStrategy(port nat.Port) *GRPCHealthStrategy {
+func NewGRPCHealthStrategy(port string) *GRPCHealthStrategy {
 	return &GRPCHealthStrategy{
 		Port:         port,
 		PollInterval: 200 * time.Millisecond,

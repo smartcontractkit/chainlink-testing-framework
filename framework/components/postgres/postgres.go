@@ -12,8 +12,10 @@ import (
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
+	"net/netip"
+
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	"github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
@@ -259,10 +261,10 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 			WithPollInterval(200 * time.Millisecond),
 	}
 	req.HostConfigModifier = func(h *container.HostConfig) {
-		h.PortBindings = nat.PortMap{
-			nat.Port(bindPort): []nat.PortBinding{
+		h.PortBindings = network.PortMap{
+			network.MustParsePort(bindPort): []network.PortBinding{
 				{
-					HostIP:   "0.0.0.0",
+					HostIP:   netip.MustParseAddr("0.0.0.0"),
 					HostPort: strconv.Itoa(portToExpose),
 				},
 			},

@@ -7,9 +7,11 @@ import (
 	"net"
 	"strconv"
 
+	"net/netip"
+
 	"dario.cat/mergo"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -201,25 +203,24 @@ func (mf MinioFactory) run(ctx context.Context, m *Minio) (Provider, error) {
 			fmt.Sprintf(":%d", m.ConsolePort),
 		},
 		HostConfigModifier: func(h *container.HostConfig) {
-			framework.NoDNS(true, h)
-			h.PortBindings = nat.PortMap{
-				nat.Port(bindPort): []nat.PortBinding{
+			h.PortBindings = network.PortMap{
+				network.MustParsePort(bindPort): []network.PortBinding{
 					{
-						HostIP:   "0.0.0.0",
+						HostIP:   netip.MustParseAddr("0.0.0.0"),
 						HostPort: strconv.Itoa(m.Port),
 					},
 				},
-				nat.Port(bindConsolePort): []nat.PortBinding{
+				network.MustParsePort(bindConsolePort): []network.PortBinding{
 					{
-						HostIP:   "0.0.0.0",
+						HostIP:   netip.MustParseAddr("0.0.0.0"),
 						HostPort: strconv.Itoa(m.ConsolePort),
 					},
 				},
 			}
 		},
 		WaitingFor: tcwait.ForAll(
-			tcwait.ForListeningPort(nat.Port(bindPort)),
-			tcwait.ForListeningPort(nat.Port(bindConsolePort)),
+			tcwait.ForListeningPort(bindPort),
+			tcwait.ForListeningPort(bindConsolePort),
 		),
 	}
 

@@ -1355,7 +1355,7 @@ import (
 		"os/exec"
 		"syscall"
 
-		"github.com/docker/docker/client"
+		"github.com/moby/moby/client"
 		"github.com/spf13/cobra"
 
 		"github.com/smartcontractkit/chainlink-testing-framework/framework"

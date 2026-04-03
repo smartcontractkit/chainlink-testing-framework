@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
+	"github.com/moby/moby/api/types/container"
 	v1 "k8s.io/api/core/v1"
 
 	tc "github.com/testcontainers/testcontainers-go"
@@ -90,7 +89,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 			h.PortBindings = framework.MapTheSamePort(bindPort)
 		},
 		WaitingFor: tcwait.ForAll(
-			tcwait.ForListeningPort(nat.Port(fmt.Sprintf("%d/tcp", in.Port))),
+			tcwait.ForListeningPort(fmt.Sprintf("%d/tcp", in.Port)),
 		),
 	}
 	_, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
