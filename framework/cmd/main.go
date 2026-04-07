@@ -281,6 +281,10 @@ Be aware that any TODO requires your attention before your run the final test!
 						Name:    "backward",
 						Aliases: []string{"b"},
 						Flags: []cli.Flag{
+							&cli.BoolFlag{
+								Name:  "no-git-rollback",
+								Usage: "Disable Git rollback, run current version of env and command",
+							},
 							&cli.IntFlag{
 								Name:    "versions-back",
 								Aliases: []string{"v"},
@@ -288,10 +292,15 @@ Be aware that any TODO requires your attention before your run the final test!
 								Value:   1,
 							},
 							&cli.IntFlag{
-								Name:    "nodes",
+								Name:    "upgrade-nodes",
 								Aliases: []string{"n"},
 								Usage:   "How many nodes to upgrade",
 								Value:   3,
+							},
+							&cli.IntFlag{
+								Name:  "don_nodes",
+								Usage: "How many total nodes DON have",
+								Value: 5,
 							},
 							&cli.StringFlag{
 								Name:    "registry",
@@ -301,7 +310,11 @@ Be aware that any TODO requires your attention before your run the final test!
 							},
 							&cli.StringFlag{
 								Name:  "strip-image-suffix",
-								Usage: "Stripts image suffix from ref to map it to registry images",
+								Usage: "Strips image suffix from ref to map it to registry images",
+							},
+							&cli.StringFlag{
+								Name:  "rane-add-git-tag-prefix",
+								Usage: "Add Git tag prefix to RANE's refs to match Git tags",
 							},
 							&cli.StringFlag{
 								Name:    "buildcmd",
@@ -320,8 +333,8 @@ Be aware that any TODO requires your attention before your run the final test!
 								Usage:   "Test verification command",
 							},
 							&cli.StringFlag{
-								Name:  "nop",
-								Usage: "Find specific NOPs ref upgrade sequence",
+								Name:  "product",
+								Usage: "Find specific NOPs ref upgrade sequence by product. See RANE SOT default URL, maps to 'jq '.nodes[].jobs[].product' from data source",
 							},
 							&cli.StringFlag{
 								Name:  "node-name-template",
@@ -352,6 +365,7 @@ Be aware that any TODO requires your attention before your run the final test!
 						},
 						Usage: "Rollbacks N versions back, runs the test the upgrades CL nodes with new versions",
 						Action: func(c *cli.Context) error {
+							noGitRollback := c.Bool("no-git-rollback")
 							versionsBack := c.Int("versions-back")
 							registry := c.String("registry")
 							refs := c.StringSlice("refs")
@@ -361,12 +375,14 @@ Be aware that any TODO requires your attention before your run the final test!
 							buildcmd := c.String("buildcmd")
 							envcmd := c.String("envcmd")
 							testcmd := c.String("testcmd")
-							nodes := c.Int("nodes")
+							upgradeNodes := c.Int("upgrade-nodes")
+							donNodes := c.Int("don_nodes")
 							nodeNameTemplate := c.String("node-name-template")
 
-							nop := c.String("nop")
-							sotURL := c.String("sot-url")
+							product := c.String("product")
 							skipPull := c.Bool("skip-pull")
+
+							sotURL := c.String("sot-url")
 
 							// test logic is:
 							// - rollback to selected ref
@@ -377,33 +393,51 @@ Be aware that any TODO requires your attention before your run the final test!
 
 							// if no refs provided find refs (tags) sequence SemVer sequence for last N versions_back
 							// else, use refs param slice
-							//
+
+							// Step 1: Find upgrade sequence either from Git refs or product unique versions found in SOT data source
+
 							var err error
-							if len(refs) == 0 && nop == "" {
+							if len(refs) == 0 && product == "" {
 								refs, err = framework.FindSemVerRefSequence(versionsBack, include, exclude)
 								if err != nil {
 									return err
 								}
 							}
-							if nop != "" {
-								refs, err = framework.FindNOPRefs(sotURL, nop, exclude)
+
+							if product != "" {
+								// TODO: Stub, until versions are mapped properly and not skipped this is just an example
+								// Both Git, ECR and "versions" from SOT data do not match
+								// so we fetch the data but do not use it for now
+								// test refs are populated from --refs, see docs and CI in core
+								_, err := framework.FindNOPsVersionsByProduct(sotURL, product, exclude)
 								if err != nil {
 									return err
 								}
 							}
+
 							framework.L.Info().
 								Int("TotalSemVerRefs", len(refs)).
 								Strs("SelectedRefs", refs).
 								Str("EarliestRefs", refs[0]).
 								Msg("Formed upgrade sequence")
+
 							// if no commands just show the tags and return
 							if buildcmd == "" || envcmd == "" || testcmd == "" {
 								framework.L.Info().Msg("No envcmd or testcmd or buildcmd provided, skipping")
 								return nil
 							}
-							// checkout the oldest ref
-							if err := framework.CheckOut(refs[0]); err != nil {
-								return err
+
+							// RANE doesn't have Git tags so we are mapping field "version" to Git tag
+							gitTagPrefix := c.String("rane-add-git-tag-prefix")
+							for i := range refs {
+								refs[i] = fmt.Sprintf("%s%s", gitTagPrefix, refs[i])
+							}
+
+							// checkout the oldest ref if we need to preserve test setup isolation
+							if !noGitRollback {
+								if err := framework.CheckOut(refs[0]); err != nil {
+									return err
+								}
 							}
 
 							// this is a hack allowing us to match what we have in Git to registry or NOP version
@@ -413,42 +447,25 @@ Be aware that any TODO requires your attention before your run the final test!
 								refs[i] = strings.ReplaceAll(refs[i], testImgSuffix, "")
 							}
 
-							// setup the env and verify with test command
-							framework.L.Info().Strs("Sequence", refs).Msg("Running upgrade sequence")
-							// first env var is used by devenv, second by simple nodeset to override the image
-							os.Setenv("CHAINLINK_IMAGE", fmt.Sprintf("%s:%s", registry, refs[0]))
-							os.Setenv("CTF_CHAINLINK_IMAGE", fmt.Sprintf("%s:%s", registry, refs[0]))
-							if _, err := framework.ExecCmdWithContext(c.Context, buildcmd); err != nil {
-								return err
+							// Step 2: Perform upgrade testing with either upgrading through last N versions
+							// or by modelling versions from SOT data source, then upgrading to the latest version
+							upgradeContext := framework.UpgradeContext{
+								ProductName:      product,
+								Refs:             refs,
+								DonNodes:         donNodes,
+								UpgradeNodes:     upgradeNodes,
+								NodeNameTemplate: nodeNameTemplate,
+								Registry:         registry,
+								Buildcmd:         buildcmd,
+								Envcmd:           envcmd,
+								Testcmd:          testcmd,
+								SkipPull:         skipPull,
 							}
-							if _, err := framework.ExecCmdWithContext(c.Context, envcmd); err != nil {
-								return err
+
+							if product != "" {
+								return framework.UpgradeNProductUniqueVersionsRolling(c.Context, upgradeContext)
 							}
-							if _, err := framework.ExecCmdWithContext(c.Context, testcmd); err != nil {
-								return err
-							}
-							// start upgrading nodes and verifying with tests, all the versions except the oldest one
-							for _, tag := range refs[1:] {
-								framework.L.Info().
-									Int("Nodes", nodes).
-									Str("Version", tag).
-									Msg("Upgrading nodes")
-								img := fmt.Sprintf("%s:%s", registry, tag)
-								if !skipPull {
-									if _, err := framework.ExecCmdWithContext(c.Context, fmt.Sprintf("docker pull %s", img)); err != nil {
-										return fmt.Errorf("failed to pull image %s: %w", img, err)
-									}
-								}
-								for i := range nodes {
-									if err := framework.UpgradeContainer(c.Context, fmt.Sprintf(nodeNameTemplate, i), img); err != nil {
-										return err
-									}
-								}
-								if _, err := framework.ExecCmd(testcmd); err != nil {
-									return err
-								}
-							}
-							return nil
+							return framework.UpgradeNRolling(c.Context, upgradeContext)
 						},
 					},
 				},

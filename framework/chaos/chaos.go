@@ -58,7 +58,7 @@ func NewDockerChaos(ctx context.Context) (*DockerChaos, error) {
 		Image:      "lukaszlach/docker-tc",
 		Name:       dockerTCContainerName,
 		CapAdd:     []string{"NET_ADMIN"},
-		WaitingFor: wait.ForLog("Starting Docker Traffic Control"),
+		WaitingFor: wait.ForLog("Forwarding requests to /docker-tc"),
 		HostConfigModifier: func(h *container.HostConfig) {
 			h.Privileged = true
 			h.NetworkMode = "host"
@@ -87,13 +87,13 @@ func NewDockerChaos(ctx context.Context) (*DockerChaos, error) {
 
 // RemoveAll removes all the experiments
 func (m *DockerChaos) RemoveAll() error {
-	for containerName, experimentCmd := range m.Experiments {
+	for containerName, experimentRemoveCmd := range m.Experiments {
 		framework.L.Info().
 			Str("Container", containerName).
-			Str("Cmd", experimentCmd).
+			Str("Cmd", experimentRemoveCmd).
 			Msg("Removing chaos for container")
-		if _, err := framework.ExecCmd(experimentCmd); err != nil {
-			return fmt.Errorf("failed to remove chaos experiment: name: %s, command:%s, err: %w", containerName, experimentCmd, err)
+		if _, err := framework.ExecCmd(experimentRemoveCmd); err != nil {
+			return fmt.Errorf("failed to remove chaos experiment: name: %s, command:%s, err: %w", containerName, experimentRemoveCmd, err)
 		}
 	}
 	m.Experiments = make(map[string]string)
