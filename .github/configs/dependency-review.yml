@@ -7,3 +7,4 @@ fail_on_severity: "high" # low, moderate, high, critical
 license_check: false
 allow-ghsas:
   - GHSA-x744-4wpc-v9h2 # we cannot fix until we migrate all Docker deps to Moby
+  - GHSA-p436-gjf2-799p # we cannot fix until we migrate all Docker deps to Moby
