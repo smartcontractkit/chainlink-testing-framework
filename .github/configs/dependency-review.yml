@@ -1,0 +1,9 @@
+# Fails when:
+# - vulnerabilities are found in the dependency tree with specified severity or grater
+#
+# Copied from: https://github.com/smartcontractkit/.github/blob/0cc355785130a83a540187b609c5521094baed92/actions/dependency-review/configs/default-vulnerability-check-high.yml
+vulnerability_check: true
+fail_on_severity: "high" # low, moderate, high, critical
+license_check: false
+allow-ghsas:
+  - GHSA-x744-4wpc-v9h2 # we cannot fix until we migrate all Docker deps to Moby
