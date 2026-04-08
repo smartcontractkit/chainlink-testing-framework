@@ -22,7 +22,7 @@ import (
 const (
 	DefaultHTTPPortStaticRangeStart = 10000
 	DefaultP2PStaticRangeStart      = 12000
-	DefaultOCR2P2PStaticRangeStart  = 14000
+	DefaultOCR2P2PStaticRangeStart  = 15000
 )
 
 // Input is a node set configuration input
