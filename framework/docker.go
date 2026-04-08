@@ -427,7 +427,7 @@ func BuildImage(dctx, dfile, nameAndTag string, buildArgs map[string]string) err
 		if os.Getenv("GITHUB_TOKEN") != "" {
 			commandParts = append(commandParts, "--secret", "id=GIT_AUTH_TOKEN,env=GITHUB_TOKEN")
 		}
-		commandParts = append(commandParts, "-t", nameAndTag, "-f", dfilePath, dctx)
+		commandParts = append(commandParts, "--load", "-t", nameAndTag, "-f", dfilePath, dctx)
 		return RunCommand(commandParts[0], commandParts[1:]...)
 	}
 	commandParts := []string{"docker", "buildx", "build", "--build-arg", "CHAINLINK_USER=chainlink"}
@@ -437,7 +437,7 @@ func BuildImage(dctx, dfile, nameAndTag string, buildArgs map[string]string) err
 	if os.Getenv("GITHUB_TOKEN") != "" {
 		commandParts = append(commandParts, "--secret", "id=GIT_AUTH_TOKEN,env=GITHUB_TOKEN")
 	}
-	commandParts = append(commandParts, "-t", nameAndTag, "-f", dfilePath, dctx)
+	commandParts = append(commandParts, "--load", "-t", nameAndTag, "-f", dfilePath, dctx)
 	return RunCommand(commandParts[0], commandParts[1:]...)
 }
 
