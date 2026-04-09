@@ -127,10 +127,6 @@ func sharedDBSetup(ctx context.Context, in *Input, bcOut *blockchain.Output) (*O
 	}
 	if in.OCR2P2PRangeStart != 0 {
 		ocr2PortRangeStart = in.OCR2P2PRangeStart
-	} else {
-		// Keep OCR2 host ports aligned with each node set's HTTP range to avoid
-		// collisions when multiple node sets run on the same host.
-		ocr2PortRangeStart = httpPortRangeStart + (DefaultOCR2P2PStaticRangeStart - DefaultHTTPPortStaticRangeStart)
 	}
 	if in.DlvPortRangeStart != 0 {
 		dlvPortStart = in.DlvPortRangeStart
