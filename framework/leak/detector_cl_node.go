@@ -245,13 +245,25 @@ func (cd *CLNodesLeakDetector) Check(t *CLNodesCheck) error {
 		Msg("Leaks info")
 	framework.L.Info().Msg("Downloading pprof profile..")
 	dumper := NewProfileDumper(framework.LocalPyroscopeBaseURL)
-	profilePath, err := dumper.MemoryProfile(&ProfileDumperConfig{
-		ServiceName: "chainlink-node",
-	})
-	if err != nil {
-		errs = append(errs, fmt.Errorf("failed to download Pyroscopt profile: %w", err))
-		return errors.Join(errs...)
+
+	profilesToDump := []string{DefaultProfileType, "memory:inuse_space:bytes:space:bytes"}
+	for _, profileType := range profilesToDump {
+		profileSplit := strings.Split(profileType, ":")
+		outputPath := DefaultOutputPath
+		if len(profileSplit) > 1 {
+			// e.g. for "memory:inuse_space:bytes:space:bytes" we want to have output file "memory-inuse_space.pprof"
+			outputPath = fmt.Sprintf("%s-%s.pprof", profileSplit[0], profileSplit[1])
+		}
+		profilePath, err := dumper.MemoryProfile(&ProfileDumperConfig{
+			ServiceName: "chainlink-node",
+			ProfileType: profileType,
+			OutputPath:  outputPath,
+		})
+		if err != nil {
+			errs = append(errs, fmt.Errorf("failed to download Pyroscope profile %s: %w", profileType, err))
+			return errors.Join(errs...)
+		}
+		framework.L.Info().Str("Path", profilePath).Str("ProfileType", profileType).Msg("Saved pprof profile")
 	}
-	framework.L.Info().Str("Path", profilePath).Msg("Saved pprof profile")
 	return errors.Join(errs...)
 }
