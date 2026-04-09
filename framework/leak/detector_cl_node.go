@@ -1,6 +1,7 @@
 package leak
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -243,10 +244,11 @@ func (cd *CLNodesLeakDetector) Check(t *CLNodesCheck) error {
 		Str("TestDuration", t.End.Sub(t.Start).String()).
 		Float64("TestDurationSec", t.End.Sub(t.Start).Seconds()).
 		Msg("Leaks info")
-	framework.L.Info().Msg("Downloading pprof profile..")
-	dumper := NewProfileDumper(framework.LocalPyroscopeBaseURL)
 
 	profilesToDump := []string{DefaultProfileType, "memory:inuse_space:bytes:space:bytes"}
+	framework.L.Info().Msgf("Downloading %d pprof profiles..", len(profilesToDump))
+	dumper := NewProfileDumper(framework.LocalPyroscopeBaseURL)
+
 	for _, profileType := range profilesToDump {
 		profileSplit := strings.Split(profileType, ":")
 		outputPath := DefaultOutputPath
@@ -265,5 +267,13 @@ func (cd *CLNodesLeakDetector) Check(t *CLNodesCheck) error {
 		}
 		framework.L.Info().Str("Path", profilePath).Str("ProfileType", profileType).Msg("Saved pprof profile")
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultNodeProfileDumpTimeout)
+	defer cancel()
+	if err := DumpNodeProfiles(ctx, cd.nodesetName, DefaultAdminProfilesDir); err != nil {
+		framework.L.Error().Err(err).Msg("Failed to dump node profiles")
+		errs = append(errs, fmt.Errorf("failed to dump node profiles: %w", err))
+	}
+
 	return errors.Join(errs...)
 }

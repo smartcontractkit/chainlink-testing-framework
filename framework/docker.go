@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -186,6 +187,47 @@ func (dc *DockerClient) CopyFile(containerName, sourceFile, targetPath string) e
 	return dc.copyToContainer(containerID, sourceFile, targetPath)
 }
 
+// CopyFromContainer copies files from a container path and returns a tar archive stream.
+func (dc *DockerClient) CopyFromContainer(containerName, sourcePath string) (io.ReadCloser, container.PathStat, error) {
+	return dc.CopyFromContainerWithContext(context.Background(), containerName, sourcePath)
+}
+
+// CopyFromContainerWithContext copies files from a container path and returns a tar archive stream.
+func (dc *DockerClient) CopyFromContainerWithContext(ctx context.Context, containerName, sourcePath string) (io.ReadCloser, container.PathStat, error) {
+	containerID, err := dc.findContainerIDByName(ctx, containerName)
+	if err != nil {
+		return nil, container.PathStat{}, fmt.Errorf("failed to find container ID by name: %s", containerName)
+	}
+	reader, stat, err := dc.cli.CopyFromContainer(ctx, containerID, sourcePath)
+	if err != nil {
+		return nil, container.PathStat{}, fmt.Errorf("could not copy from container %s path %s: %w", containerName, sourcePath, err)
+	}
+	return reader, stat, nil
+}
+
+// CopyFromContainerToHost copies files from a container path and extracts them into hostDir.
+// If sourcePath points to a directory, only its contents are placed inside hostDir.
+func (dc *DockerClient) CopyFromContainerToHost(containerName, sourcePath, hostDir string) error {
+	return dc.CopyFromContainerToHostWithContext(context.Background(), containerName, sourcePath, hostDir)
+}
+
+// CopyFromContainerToHostWithContext copies files from a container path and extracts them into hostDir.
+// If sourcePath points to a directory, only its contents are placed inside hostDir.
+func (dc *DockerClient) CopyFromContainerToHostWithContext(ctx context.Context, containerName, sourcePath, hostDir string) error {
+	reader, _, err := dc.CopyFromContainerWithContext(ctx, containerName, sourcePath)
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+
+	if err := os.MkdirAll(hostDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create host destination directory %s: %w", hostDir, err)
+	}
+
+	stripTopDir := path.Base(path.Clean(sourcePath))
+	return extractTarArchiveToHostDir(reader, hostDir, stripTopDir)
+}
+
 // findContainerIDByName finds a container ID by its name
 func (dc *DockerClient) findContainerIDByName(ctx context.Context, containerName string) (string, error) {
 	containers, err := dc.cli.ContainerList(ctx, container.ListOptions{
@@ -241,6 +283,89 @@ func (dc *DockerClient) copyToContainer(containerID, sourceFile, targetPath stri
 	})
 	if err != nil {
 		return fmt.Errorf("could not copy file to container: %w", err)
+	}
+	return nil
+}
+
+func extractTarArchiveToHostDir(reader io.Reader, hostDir, stripTopDir string) error {
+	tarReader := tar.NewReader(reader)
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("failed reading tar stream: %w", err)
+		}
+
+		relativePath, ok := normalizeTarEntryPath(header.Name, stripTopDir)
+		if !ok {
+			continue
+		}
+		targetPath := filepath.Join(hostDir, filepath.FromSlash(relativePath))
+		if err := ensureSubpath(hostDir, targetPath); err != nil {
+			return err
+		}
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(targetPath, 0o755); err != nil {
+				return fmt.Errorf("failed to create dir %s: %w", targetPath, err)
+			}
+		case tar.TypeReg, tar.TypeRegA:
+			if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
+				return fmt.Errorf("failed to create parent dir for %s: %w", targetPath, err)
+			}
+			file, createErr := os.OpenFile(targetPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(header.Mode))
+			if createErr != nil {
+				return fmt.Errorf("failed to create file %s: %w", targetPath, createErr)
+			}
+			if _, copyErr := io.Copy(file, tarReader); copyErr != nil {
+				_ = file.Close()
+				return fmt.Errorf("failed to write file %s: %w", targetPath, copyErr)
+			}
+			if closeErr := file.Close(); closeErr != nil {
+				return fmt.Errorf("failed to close file %s: %w", targetPath, closeErr)
+			}
+		}
+	}
+}
+
+func normalizeTarEntryPath(entryName, stripTopDir string) (string, bool) {
+	normalized := strings.TrimPrefix(entryName, "./")
+	normalized = path.Clean(normalized)
+	if normalized == "." || normalized == "/" {
+		return "", false
+	}
+
+	if stripTopDir != "" {
+		stripTopDir = path.Clean(stripTopDir)
+		if normalized == stripTopDir {
+			return "", false
+		}
+		prefix := stripTopDir + "/"
+		normalized = strings.TrimPrefix(normalized, prefix)
+	}
+
+	normalized = strings.TrimPrefix(normalized, "/")
+	if normalized == "" {
+		return "", false
+	}
+	return normalized, true
+}
+
+func ensureSubpath(baseDir, targetPath string) error {
+	baseAbs, err := filepath.Abs(baseDir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve absolute path for %s: %w", baseDir, err)
+	}
+	targetAbs, err := filepath.Abs(targetPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve absolute path for %s: %w", targetPath, err)
+	}
+	prefix := baseAbs + string(filepath.Separator)
+	if targetAbs != baseAbs && !strings.HasPrefix(targetAbs, prefix) {
+		return fmt.Errorf("unsafe path detected outside destination: %s", targetPath)
 	}
 	return nil
 }
