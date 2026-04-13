@@ -312,14 +312,15 @@ func extractTarArchiveToHostDir(reader io.Reader, hostDir, stripTopDir string) e
 			if err := os.MkdirAll(targetPath, 0o755); err != nil {
 				return fmt.Errorf("failed to create dir %s: %w", targetPath, err)
 			}
-		case tar.TypeReg, tar.TypeRegA:
+		case tar.TypeReg:
 			if err := os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
 				return fmt.Errorf("failed to create parent dir for %s: %w", targetPath, err)
 			}
-			file, createErr := os.OpenFile(targetPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(header.Mode))
+			file, createErr := os.OpenFile(targetPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, header.FileInfo().Mode().Perm())
 			if createErr != nil {
 				return fmt.Errorf("failed to create file %s: %w", targetPath, createErr)
 			}
+			//nolint:gosec // G110: source is Docker daemon tar stream from local test containers
 			if _, copyErr := io.Copy(file, tarReader); copyErr != nil {
 				_ = file.Close()
 				return fmt.Errorf("failed to write file %s: %w", targetPath, copyErr)
