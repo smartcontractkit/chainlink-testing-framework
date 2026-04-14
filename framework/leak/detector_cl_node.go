@@ -1,6 +1,7 @@
 package leak
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -43,7 +44,9 @@ type CLNodesLeakDetector struct {
 	ContainerAliveQuery string
 	c                   *ResourceLeakChecker
 
-	nodesetName string
+	nodesetName           string
+	dumpPyroscopeProfiles bool
+	dumpAdminProfiles     bool
 }
 
 // WithCPUQuery allows to override CPU leak query (Prometheus)
@@ -67,6 +70,22 @@ func WithMemoryQuery(q string) func(*CLNodesLeakDetector) {
 func WithNodesetName(name string) func(*CLNodesLeakDetector) {
 	return func(cd *CLNodesLeakDetector) {
 		cd.nodesetName = sanitizeNodesetName(name)
+	}
+}
+
+// WithDumpPyroscopeProfiles allows to dump Pyroscope profiles for each node at the end of the test.
+// Dumped profiles are aggragate (cumulative) profiles from the whole test duration.
+func WithDumpPyroscopeProfiles(dump bool) func(*CLNodesLeakDetector) {
+	return func(cd *CLNodesLeakDetector) {
+		cd.dumpPyroscopeProfiles = dump
+	}
+}
+
+// WithDumpAdminProfiles allows to dump admin profiles for each node at the end of the test.
+// Uses CL node's debug endpoint to fetch pprof snapshots.
+func WithDumpAdminProfiles(dump bool) func(*CLNodesLeakDetector) {
+	return func(cd *CLNodesLeakDetector) {
+		cd.dumpAdminProfiles = dump
 	}
 }
 
@@ -106,6 +125,15 @@ func NewCLNodesLeakDetector(c *ResourceLeakChecker, opts ...func(*CLNodesLeakDet
 		cd.MemoryQuery = replaceNodeset(cd.MemoryQuery)
 		cd.CPUQueryAbsolute = replaceNodeset(cd.CPUQueryAbsolute)
 		cd.MemoryQueryAbsolute = replaceNodeset(cd.MemoryQueryAbsolute)
+	}
+
+	if cd.dumpPyroscopeProfiles == true && cd.dumpAdminProfiles == true {
+		return nil, fmt.Errorf("both Pyroscope and admin profile dumping enabled, please choose only one. Dumping admin profiles will fail if Pyroscope is enabled.")
+	}
+
+	if cd.dumpAdminProfiles == false && cd.dumpPyroscopeProfiles == false {
+		// default to dumping admin profiles since that's what engineers prefer
+		cd.dumpAdminProfiles = true
 	}
 
 	return cd, nil
@@ -243,15 +271,42 @@ func (cd *CLNodesLeakDetector) Check(t *CLNodesCheck) error {
 		Str("TestDuration", t.End.Sub(t.Start).String()).
 		Float64("TestDurationSec", t.End.Sub(t.Start).Seconds()).
 		Msg("Leaks info")
-	framework.L.Info().Msg("Downloading pprof profile..")
-	dumper := NewProfileDumper(framework.LocalPyroscopeBaseURL)
-	profilePath, err := dumper.MemoryProfile(&ProfileDumperConfig{
-		ServiceName: "chainlink-node",
-	})
-	if err != nil {
-		errs = append(errs, fmt.Errorf("failed to download Pyroscopt profile: %w", err))
-		return errors.Join(errs...)
+
+	if cd.dumpPyroscopeProfiles {
+		profilesToDump := []string{DefaultProfileType, "memory:inuse_space:bytes:space:bytes"}
+		framework.L.Info().Msgf("Downloading %d pprof profiles..", len(profilesToDump))
+		dumper := NewProfileDumper(framework.LocalPyroscopeBaseURL)
+
+		for _, profileType := range profilesToDump {
+			profileSplit := strings.Split(profileType, ":")
+			outputPath := DefaultOutputPath
+			if len(profileSplit) > 1 {
+				// e.g. for "memory:inuse_space:bytes:space:bytes" we want to have output file "memory-inuse_space.pprof"
+				outputPath = fmt.Sprintf("%s-%s.pprof", profileSplit[0], profileSplit[1])
+			}
+			profilePath, err := dumper.MemoryProfile(&ProfileDumperConfig{
+				ServiceName: "chainlink-node",
+				ProfileType: profileType,
+				OutputPath:  outputPath,
+			})
+			if err != nil {
+				errs = append(errs, fmt.Errorf("failed to download Pyroscope profile %s: %w", profileType, err))
+				return errors.Join(errs...)
+			}
+			framework.L.Info().Str("Path", profilePath).Str("ProfileType", profileType).Msg("Saved pprof profile")
+		}
 	}
-	framework.L.Info().Str("Path", profilePath).Msg("Saved pprof profile")
+
+	if cd.dumpAdminProfiles {
+		framework.L.Info().Msg("Dumping admin profiles..")
+		ctx, cancel := context.WithTimeout(context.Background(), DefaultNodeProfileDumpTimeout)
+		defer cancel()
+		if err := DumpNodeProfiles(ctx, cd.nodesetName+"-node", DefaultAdminProfilesDir); err != nil {
+			framework.L.Error().Err(err).Msg("Failed to dump node profiles")
+			errs = append(errs, fmt.Errorf("failed to dump node profiles: %w", err))
+		}
+		framework.L.Info().Str("Path", DefaultAdminProfilesDir).Msg("Admin profiles dumped successfully")
+	}
+
 	return errors.Join(errs...)
 }

@@ -186,6 +186,47 @@ func (dc *DockerClient) CopyFile(containerName, sourceFile, targetPath string) e
 	return dc.copyToContainer(containerID, sourceFile, targetPath)
 }
 
+// CopyFromContainer copies files from a container path and returns a tar archive stream.
+func (dc *DockerClient) CopyFromContainer(containerName, sourcePath string) (io.ReadCloser, container.PathStat, error) {
+	return dc.CopyFromContainerWithContext(context.Background(), containerName, sourcePath)
+}
+
+// CopyFromContainerWithContext copies files from a container path and returns a tar archive stream.
+func (dc *DockerClient) CopyFromContainerWithContext(ctx context.Context, containerName, sourcePath string) (io.ReadCloser, container.PathStat, error) {
+	containerID, err := dc.findContainerIDByName(ctx, containerName)
+	if err != nil {
+		return nil, container.PathStat{}, fmt.Errorf("failed to find container ID by name: %s", containerName)
+	}
+	reader, stat, err := dc.cli.CopyFromContainer(ctx, containerID, sourcePath)
+	if err != nil {
+		return nil, container.PathStat{}, fmt.Errorf("could not copy from container %s path %s: %w", containerName, sourcePath, err)
+	}
+	return reader, stat, nil
+}
+
+// CopyFromContainerToTarWithContext writes the Docker copy tar stream to targetTarPath.
+func (dc *DockerClient) CopyFromContainerToTarWithContext(ctx context.Context, containerName, sourcePath, targetTarPath string) error {
+	reader, _, err := dc.CopyFromContainerWithContext(ctx, containerName, sourcePath)
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+
+	if err := os.MkdirAll(filepath.Dir(targetTarPath), 0o755); err != nil {
+		return fmt.Errorf("failed to create destination directory for %s: %w", targetTarPath, err)
+	}
+	file, err := os.Create(targetTarPath)
+	if err != nil {
+		return fmt.Errorf("failed to create destination archive %s: %w", targetTarPath, err)
+	}
+	defer file.Close()
+
+	if _, err := io.Copy(file, reader); err != nil {
+		return fmt.Errorf("failed to write archive %s: %w", targetTarPath, err)
+	}
+	return nil
+}
+
 // findContainerIDByName finds a container ID by its name
 func (dc *DockerClient) findContainerIDByName(ctx context.Context, containerName string) (string, error) {
 	containers, err := dc.cli.ContainerList(ctx, container.ListOptions{
