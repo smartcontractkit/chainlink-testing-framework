@@ -24,7 +24,7 @@ const (
 )
 
 // DumpNodeProfiles runs chainlink profile collection in each running container
-// with a name containing namePattern and copies ./profiles content to dst/profile-<container-name>.
+// with a name containing namePattern and saves ./profiles as dst/profile-<container-name>.tar.
 func DumpNodeProfiles(ctx context.Context, namePattern, dst string) error {
 	f.L.Info().
 		Str("NamePattern", namePattern).
@@ -65,11 +65,7 @@ func DumpNodeProfiles(ctx context.Context, namePattern, dst string) error {
 
 		// Keep destination names safe and filesystem-friendly.
 		safeName := containerNameSanitizer.ReplaceAllString(c.name, "_")
-		targetDir := filepath.Join(dst, fmt.Sprintf("profile-%s", safeName))
-		if err := os.MkdirAll(targetDir, 0o755); err != nil {
-			errs = append(errs, fmt.Errorf("failed to create destination directory for %s: %w", c.name, err))
-			continue
-		}
+		targetArchivePath := filepath.Join(dst, fmt.Sprintf("profile-%s.tar", safeName))
 
 		f.L.Info().Str("ContainerName", c.name).Msg("Collecting node profile")
 
@@ -84,12 +80,12 @@ func DumpNodeProfiles(ctx context.Context, namePattern, dst string) error {
 		}
 
 		profilesPath := path.Clean(path.Join(c.workingDir, "profiles"))
-		if copyErr := dc.CopyFromContainerToHostWithContext(ctx, c.name, profilesPath, targetDir); copyErr != nil {
-			errs = append(errs, fmt.Errorf("failed to copy profiles from container %s to %s: %w", c.name, targetDir, copyErr))
+		if copyErr := dc.CopyFromContainerToTarWithContext(ctx, c.name, profilesPath, targetArchivePath); copyErr != nil {
+			errs = append(errs, fmt.Errorf("failed to copy profiles archive from container %s to %s: %w", c.name, targetArchivePath, copyErr))
 			continue
 		}
 
-		f.L.Info().Str("ContainerName", c.name).Str("Destination", targetDir).Msg("Profiles copied")
+		f.L.Info().Str("ContainerName", c.name).Str("Destination", targetArchivePath).Msg("Profiles copied as archive")
 	}
 
 	return errors.Join(errs...)

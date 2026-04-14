@@ -270,7 +270,7 @@ func (cd *CLNodesLeakDetector) Check(t *CLNodesCheck) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultNodeProfileDumpTimeout)
 	defer cancel()
-	if err := DumpNodeProfiles(ctx, cd.nodesetName, DefaultAdminProfilesDir); err != nil {
+	if err := DumpNodeProfiles(ctx, cd.nodesetName+"-node", DefaultAdminProfilesDir); err != nil {
 		framework.L.Error().Err(err).Msg("Failed to dump node profiles")
 		errs = append(errs, fmt.Errorf("failed to dump node profiles: %w", err))
 	}
