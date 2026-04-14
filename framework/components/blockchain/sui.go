@@ -95,9 +95,18 @@ func newSui(ctx context.Context, in *Input) (*Output, error) {
 	defaultSui(in)
 	containerName := framework.DefaultTCName("blockchain-node")
 
-	absPath, err := filepath.Abs(in.ContractsDir)
-	if err != nil {
-		return nil, err
+	var files []testcontainers.ContainerFile
+	if in.ContractsDir != "" {
+		absPath, err := filepath.Abs(in.ContractsDir)
+		if err != nil {
+			return nil, err
+		}
+		files = []testcontainers.ContainerFile{
+			{
+				HostFilePath:      absPath,
+				ContainerFilePath: "/",
+			},
+		}
 	}
 
 	// Sui container always listens on port 9000 internally
@@ -150,12 +159,7 @@ func newSui(ctx context.Context, in *Input) (*Output, error) {
 			"--force-regenesis",
 			"--with-faucet",
 		},
-		Files: []testcontainers.ContainerFile{
-			{
-				HostFilePath:      absPath,
-				ContainerFilePath: "/",
-			},
-		},
+		Files: files,
 		// we need faucet for funding
 		WaitingFor: wait.ForListeningPort(DefaultFaucetPort).WithStartupTimeout(1 * time.Minute).WithPollInterval(200 * time.Millisecond),
 	}
