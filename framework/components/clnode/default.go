@@ -19,11 +19,6 @@ const defaultConfigTmpl = `
 [Log]
 Level = 'debug'
 
-[Pyroscope]
-ServerAddress = 'http://pyroscope:4040'
-Environment = 'local'
-LinkTracesToProfiles = true
-
 [WebServer]
 HTTPWriteTimeout = '30s'
 SecureCookies = false
