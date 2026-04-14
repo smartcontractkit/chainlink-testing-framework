@@ -26,11 +26,6 @@ type RegisterSubscriberResponse struct {
 	ID string `json:"id"`
 }
 
-type RealthResponse struct {
-	AdminURL string `json:"admin_url"`
-	GRPCURL  string `json:"grpc_url"`
-}
-
 type Client struct {
 	httpClient *http.Client
 	adminURL   string
@@ -44,10 +39,10 @@ func New(ctx context.Context, adminURL, grpcURL string) (*Client, error) {
 		grpcURL:    grpcURL,
 	}
 
-	if !isHTTPReady(ctx, c.adminURL) {
+	if !c.isHTTPReady(ctx) {
 		return nil, fmt.Errorf("chip ingress router admin endpoint is not reachable: %s", c.adminURL)
 	}
-	if !isTCPReady(c.grpcURL) {
+	if !c.isTCPReady() {
 		return nil, fmt.Errorf("chip ingress router grpc endpoint is not reachable: %s", c.grpcURL)
 	}
 	return c, nil
@@ -108,37 +103,29 @@ func (c *Client) UnregisterSubscriber(ctx context.Context, id string) error {
 	return nil
 }
 
-func isHTTPReady(ctx context.Context, adminURL string) bool {
-	_, err := fetchHealth(ctx, adminURL)
-	return err == nil
-}
-
-func fetchHealth(ctx context.Context, adminURL string) (*RealthResponse, error) {
-	if strings.TrimSpace(adminURL) == "" {
-		return nil, pkgerrors.New("admin url is empty")
+func (c *Client) isHTTPReady(ctx context.Context) bool {
+	if strings.TrimSpace(c.adminURL) == "" {
+		return false
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(adminURL, "/")+"/health", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(c.adminURL, "/")+"/health", nil)
 	if err != nil {
-		return nil, err
+		return false
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, err
+		return false
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected health status %s", resp.Status)
+		return false
 	}
-	var health RealthResponse
-	if err := json.NewDecoder(resp.Body).Decode(&health); err != nil {
-		return nil, err
-	}
-	return &health, nil
+
+	return true
 }
 
-func isTCPReady(addr string) bool {
+func (c *Client) isTCPReady() bool {
 	dialer := &net.Dialer{Timeout: time.Second}
-	conn, err := dialer.Dial("tcp", addr)
+	conn, err := dialer.Dial("tcp", c.grpcURL)
 	if err != nil {
 		return false
 	}
