@@ -95,11 +95,6 @@ func newSui(ctx context.Context, in *Input) (*Output, error) {
 	defaultSui(in)
 	containerName := framework.DefaultTCName("blockchain-node")
 
-	absPath, err := filepath.Abs(in.ContractsDir)
-	if err != nil {
-		return nil, err
-	}
-
 	// Sui container always listens on port 9000 internally
 	containerPort := fmt.Sprintf("%s/tcp", DefaultSuiNodePort)
 
@@ -150,14 +145,28 @@ func newSui(ctx context.Context, in *Input) (*Output, error) {
 			"--force-regenesis",
 			"--with-faucet",
 		},
-		Files: []testcontainers.ContainerFile{
+		// we need faucet for funding
+		WaitingFor: wait.ForListeningPort(DefaultFaucetPort).WithStartupTimeout(1 * time.Minute).WithPollInterval(200 * time.Millisecond),
+	}
+
+	// Only copy host contracts into the container when the caller explicitly
+	// provides a ContractsDir. When empty, filepath.Abs("") resolves to the
+	// process working directory, which in integration tests is an actively
+	// written test working directory (logs, db dumps, artifacts). testcontainers
+	// tars that whole directory via archive/tar, and any file that grows
+	// between os.Stat (header size) and io.Copy (body) triggers
+	// archive/tar: write too long, surfacing as a flaky test.
+	if in.ContractsDir != "" {
+		absPath, err := filepath.Abs(in.ContractsDir)
+		if err != nil {
+			return nil, err
+		}
+		req.Files = []testcontainers.ContainerFile{
 			{
 				HostFilePath:      absPath,
 				ContainerFilePath: "/",
 			},
-		},
-		// we need faucet for funding
-		WaitingFor: wait.ForListeningPort(DefaultFaucetPort).WithStartupTimeout(1 * time.Minute).WithPollInterval(200 * time.Millisecond),
+		}
 	}
 
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{

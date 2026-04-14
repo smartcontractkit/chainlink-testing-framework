@@ -55,11 +55,6 @@ func newAptos(ctx context.Context, in *Input) (*Output, error) {
 	defaultAptos(in)
 	containerName := framework.DefaultTCName("blockchain-node")
 
-	absPath, err := filepath.Abs(in.ContractsDir)
-	if err != nil {
-		return nil, err
-	}
-
 	exposedPorts, bindings, err := framework.GenerateCustomPortsData(in.CustomPorts)
 	if err != nil {
 		return nil, err
@@ -108,12 +103,23 @@ func newAptos(ctx context.Context, in *Input) (*Output, error) {
 		},
 		ImagePlatform: imagePlatform,
 		Cmd:           cmd,
-		Files: []testcontainers.ContainerFile{
+	}
+
+	// Only copy host contracts into the container when the caller explicitly
+	// provides a ContractsDir. See sui.go for the full rationale — in short,
+	// filepath.Abs("") resolves to cwd, and tarring a live test working
+	// directory can flake with archive/tar: write too long.
+	if in.ContractsDir != "" {
+		absPath, err := filepath.Abs(in.ContractsDir)
+		if err != nil {
+			return nil, err
+		}
+		req.Files = []testcontainers.ContainerFile{
 			{
 				HostFilePath:      absPath,
 				ContainerFilePath: "/",
 			},
-		},
+		}
 	}
 
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
