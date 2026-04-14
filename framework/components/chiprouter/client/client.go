@@ -40,10 +40,10 @@ func New(ctx context.Context, adminURL, grpcURL string) (*Client, error) {
 	}
 
 	if !c.isHTTPReady(ctx) {
-		return nil, fmt.Errorf("chip ingress router admin endpoint is not reachable: %s", c.adminURL)
+		return nil, fmt.Errorf("chip router admin endpoint is not reachable: %s", c.adminURL)
 	}
 	if !c.isTCPReady() {
-		return nil, fmt.Errorf("chip ingress router grpc endpoint is not reachable: %s", c.grpcURL)
+		return nil, fmt.Errorf("chip router grpc endpoint is not reachable: %s", c.grpcURL)
 	}
 	return c, nil
 }
@@ -111,7 +111,7 @@ func (c *Client) isHTTPReady(ctx context.Context) bool {
 	if err != nil {
 		return false
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return false
 	}
@@ -124,7 +124,7 @@ func (c *Client) isHTTPReady(ctx context.Context) bool {
 }
 
 func (c *Client) isTCPReady() bool {
-	dialer := &net.Dialer{Timeout: time.Second}
+	dialer := &net.Dialer{Timeout: adminRequestTimeout}
 	conn, err := dialer.Dial("tcp", c.grpcURL)
 	if err != nil {
 		return false
