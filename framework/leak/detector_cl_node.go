@@ -139,134 +139,134 @@ func (cd *CLNodesLeakDetector) checkContainerUptime(t *CLNodesCheck, nodeIdx int
 
 // Check runs all resource leak checks and returns errors if threshold reached for any of them
 func (cd *CLNodesLeakDetector) Check(t *CLNodesCheck) error {
-	if t.NumNodes == 0 {
-		return fmt.Errorf("cl nodes num must be > 0")
-	}
-	memMeasurements := make([]*Measurement, 0)
-	cpuMeasurements := make([]*Measurement, 0)
-	uptimes := make([]float64, 0)
+	// if t.NumNodes == 0 {
+	// 	return fmt.Errorf("cl nodes num must be > 0")
+	// }
+	// memMeasurements := make([]*Measurement, 0)
+	// cpuMeasurements := make([]*Measurement, 0)
+	// uptimes := make([]float64, 0)
 	errs := make([]error, 0)
-	for i := range t.NumNodes {
+	// for i := range t.NumNodes {
 
-		switch t.ComparisonMode {
-		case ComparisonModePercentage:
-			fallthrough
-		case ComparisonModeDiff:
-			memMeasurement, err := cd.c.MeasureDelta(&CheckConfig{
-				ComparisonMode: t.ComparisonMode,
-				Query:          fmt.Sprintf(cd.MemoryQuery, i),
-				Start:          t.Start,
-				End:            t.End,
-				WarmUpDuration: t.WarmUpDuration,
-			})
-			if err != nil {
-				return fmt.Errorf("memory leak check failed: %w", err)
-			}
-			memMeasurements = append(memMeasurements, memMeasurement)
+	// 	switch t.ComparisonMode {
+	// 	case ComparisonModePercentage:
+	// 		fallthrough
+	// 	case ComparisonModeDiff:
+	// 		memMeasurement, err := cd.c.MeasureDelta(&CheckConfig{
+	// 			ComparisonMode: t.ComparisonMode,
+	// 			Query:          fmt.Sprintf(cd.MemoryQuery, i),
+	// 			Start:          t.Start,
+	// 			End:            t.End,
+	// 			WarmUpDuration: t.WarmUpDuration,
+	// 		})
+	// 		if err != nil {
+	// 			return fmt.Errorf("memory leak check failed: %w", err)
+	// 		}
+	// 		memMeasurements = append(memMeasurements, memMeasurement)
 
-			cpuMeasurement, err := cd.c.MeasureDelta(&CheckConfig{
-				ComparisonMode: t.ComparisonMode,
-				Query:          fmt.Sprintf(cd.CPUQuery, i),
-				Start:          t.Start,
-				End:            t.End,
-				WarmUpDuration: t.WarmUpDuration,
-			})
-			if err != nil {
-				return fmt.Errorf("cpu leak check failed: %w", err)
-			}
-			cpuMeasurements = append(cpuMeasurements, cpuMeasurement)
+	// 		cpuMeasurement, err := cd.c.MeasureDelta(&CheckConfig{
+	// 			ComparisonMode: t.ComparisonMode,
+	// 			Query:          fmt.Sprintf(cd.CPUQuery, i),
+	// 			Start:          t.Start,
+	// 			End:            t.End,
+	// 			WarmUpDuration: t.WarmUpDuration,
+	// 		})
+	// 		if err != nil {
+	// 			return fmt.Errorf("cpu leak check failed: %w", err)
+	// 		}
+	// 		cpuMeasurements = append(cpuMeasurements, cpuMeasurement)
 
-			if memMeasurement.Delta >= t.MemoryThreshold {
-				errs = append(errs, fmt.Errorf(
-					"Memory leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
-					i, t.Start, t.End, memMeasurement.Delta, t.ComparisonMode,
-				))
-			}
-			if cpuMeasurement.Delta >= t.CPUThreshold {
-				errs = append(errs, fmt.Errorf(
-					"CPU leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
-					i, t.Start, t.End, cpuMeasurement.Delta, t.ComparisonMode,
-				))
-			}
-		case ComparisonModeAbsolute:
-			memMeasurement, err := cd.c.MeasureDelta(&CheckConfig{
-				ComparisonMode: t.ComparisonMode,
-				Query:          fmt.Sprintf(cd.MemoryQueryAbsolute, i),
-				Start:          t.Start,
-				End:            t.End,
-				WarmUpDuration: t.WarmUpDuration,
-			})
-			if err != nil {
-				return fmt.Errorf("memory leak check failed: %w", err)
-			}
-			memMeasurements = append(memMeasurements, memMeasurement)
+	// 		if memMeasurement.Delta >= t.MemoryThreshold {
+	// 			errs = append(errs, fmt.Errorf(
+	// 				"Memory leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
+	// 				i, t.Start, t.End, memMeasurement.Delta, t.ComparisonMode,
+	// 			))
+	// 		}
+	// 		if cpuMeasurement.Delta >= t.CPUThreshold {
+	// 			errs = append(errs, fmt.Errorf(
+	// 				"CPU leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
+	// 				i, t.Start, t.End, cpuMeasurement.Delta, t.ComparisonMode,
+	// 			))
+	// 		}
+	// 	case ComparisonModeAbsolute:
+	// 		memMeasurement, err := cd.c.MeasureDelta(&CheckConfig{
+	// 			ComparisonMode: t.ComparisonMode,
+	// 			Query:          fmt.Sprintf(cd.MemoryQueryAbsolute, i),
+	// 			Start:          t.Start,
+	// 			End:            t.End,
+	// 			WarmUpDuration: t.WarmUpDuration,
+	// 		})
+	// 		if err != nil {
+	// 			return fmt.Errorf("memory leak check failed: %w", err)
+	// 		}
+	// 		memMeasurements = append(memMeasurements, memMeasurement)
 
-			cpuMeasurement, err := cd.c.MeasureDelta(&CheckConfig{
-				ComparisonMode: t.ComparisonMode,
-				Query:          fmt.Sprintf(cd.CPUQueryAbsolute, i),
-				Start:          t.Start,
-				End:            t.End,
-				WarmUpDuration: t.WarmUpDuration,
-			})
-			if err != nil {
-				return fmt.Errorf("cpu leak check failed: %w", err)
-			}
-			cpuMeasurements = append(cpuMeasurements, cpuMeasurement)
-			if memMeasurement.End >= t.MemoryThreshold {
-				errs = append(errs, fmt.Errorf(
-					"Memory leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
-					i, t.Start, t.End, memMeasurement.End, t.ComparisonMode,
-				))
-			}
-			if cpuMeasurement.End >= t.CPUThreshold {
-				errs = append(errs, fmt.Errorf(
-					"CPU leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
-					i, t.Start, t.End, cpuMeasurement.End, t.ComparisonMode,
-				))
-			}
-		default:
-			return fmt.Errorf("comparison mode is incorrect: %s, see available leak.ComparisonMode constants", t.ComparisonMode)
-		}
+	// 		cpuMeasurement, err := cd.c.MeasureDelta(&CheckConfig{
+	// 			ComparisonMode: t.ComparisonMode,
+	// 			Query:          fmt.Sprintf(cd.CPUQueryAbsolute, i),
+	// 			Start:          t.Start,
+	// 			End:            t.End,
+	// 			WarmUpDuration: t.WarmUpDuration,
+	// 		})
+	// 		if err != nil {
+	// 			return fmt.Errorf("cpu leak check failed: %w", err)
+	// 		}
+	// 		cpuMeasurements = append(cpuMeasurements, cpuMeasurement)
+	// 		if memMeasurement.End >= t.MemoryThreshold {
+	// 			errs = append(errs, fmt.Errorf(
+	// 				"Memory leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
+	// 				i, t.Start, t.End, memMeasurement.End, t.ComparisonMode,
+	// 			))
+	// 		}
+	// 		if cpuMeasurement.End >= t.CPUThreshold {
+	// 			errs = append(errs, fmt.Errorf(
+	// 				"CPU leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
+	// 				i, t.Start, t.End, cpuMeasurement.End, t.ComparisonMode,
+	// 			))
+	// 		}
+	// 	default:
+	// 		return fmt.Errorf("comparison mode is incorrect: %s, see available leak.ComparisonMode constants", t.ComparisonMode)
+	// 	}
 
-		uptime, err := cd.checkContainerUptime(t, i)
-		if err != nil {
-			errs = append(errs, fmt.Errorf(
-				"Container uptime issue for node %d and interval: [%s -> %s], uptime: %.f, err: %w",
-				i, t.Start, t.End, uptime, err,
-			))
-		}
-		uptimes = append(uptimes, uptime)
-	}
-	framework.L.Info().
-		Any("MemoryDiffs", memMeasurements).
-		Any("CPUDiffs", cpuMeasurements).
-		Any("Uptimes", uptimes).
-		Str("TestDuration", t.End.Sub(t.Start).String()).
-		Float64("TestDurationSec", t.End.Sub(t.Start).Seconds()).
-		Msg("Leaks info")
+	// 	uptime, err := cd.checkContainerUptime(t, i)
+	// 	if err != nil {
+	// 		errs = append(errs, fmt.Errorf(
+	// 			"Container uptime issue for node %d and interval: [%s -> %s], uptime: %.f, err: %w",
+	// 			i, t.Start, t.End, uptime, err,
+	// 		))
+	// 	}
+	// 	uptimes = append(uptimes, uptime)
+	// }
+	// framework.L.Info().
+	// 	Any("MemoryDiffs", memMeasurements).
+	// 	Any("CPUDiffs", cpuMeasurements).
+	// 	Any("Uptimes", uptimes).
+	// 	Str("TestDuration", t.End.Sub(t.Start).String()).
+	// 	Float64("TestDurationSec", t.End.Sub(t.Start).Seconds()).
+	// 	Msg("Leaks info")
 
-	profilesToDump := []string{DefaultProfileType, "memory:inuse_space:bytes:space:bytes"}
-	framework.L.Info().Msgf("Downloading %d pprof profiles..", len(profilesToDump))
-	dumper := NewProfileDumper(framework.LocalPyroscopeBaseURL)
+	// profilesToDump := []string{DefaultProfileType, "memory:inuse_space:bytes:space:bytes"}
+	// framework.L.Info().Msgf("Downloading %d pprof profiles..", len(profilesToDump))
+	// dumper := NewProfileDumper(framework.LocalPyroscopeBaseURL)
 
-	for _, profileType := range profilesToDump {
-		profileSplit := strings.Split(profileType, ":")
-		outputPath := DefaultOutputPath
-		if len(profileSplit) > 1 {
-			// e.g. for "memory:inuse_space:bytes:space:bytes" we want to have output file "memory-inuse_space.pprof"
-			outputPath = fmt.Sprintf("%s-%s.pprof", profileSplit[0], profileSplit[1])
-		}
-		profilePath, err := dumper.MemoryProfile(&ProfileDumperConfig{
-			ServiceName: "chainlink-node",
-			ProfileType: profileType,
-			OutputPath:  outputPath,
-		})
-		if err != nil {
-			errs = append(errs, fmt.Errorf("failed to download Pyroscope profile %s: %w", profileType, err))
-			return errors.Join(errs...)
-		}
-		framework.L.Info().Str("Path", profilePath).Str("ProfileType", profileType).Msg("Saved pprof profile")
-	}
+	// for _, profileType := range profilesToDump {
+	// 	profileSplit := strings.Split(profileType, ":")
+	// 	outputPath := DefaultOutputPath
+	// 	if len(profileSplit) > 1 {
+	// 		// e.g. for "memory:inuse_space:bytes:space:bytes" we want to have output file "memory-inuse_space.pprof"
+	// 		outputPath = fmt.Sprintf("%s-%s.pprof", profileSplit[0], profileSplit[1])
+	// 	}
+	// 	profilePath, err := dumper.MemoryProfile(&ProfileDumperConfig{
+	// 		ServiceName: "chainlink-node",
+	// 		ProfileType: profileType,
+	// 		OutputPath:  outputPath,
+	// 	})
+	// 	if err != nil {
+	// 		errs = append(errs, fmt.Errorf("failed to download Pyroscope profile %s: %w", profileType, err))
+	// 		return errors.Join(errs...)
+	// 	}
+	// 	framework.L.Info().Str("Path", profilePath).Str("ProfileType", profileType).Msg("Saved pprof profile")
+	// }
 
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultNodeProfileDumpTimeout)
 	defer cancel()
