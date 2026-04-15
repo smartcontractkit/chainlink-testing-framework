@@ -709,7 +709,7 @@ func writeDockerLogPayload(dst io.Writer, reader io.Reader) error {
 	header := make([]byte, 8)
 	for {
 		_, err := io.ReadFull(reader, header)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
 		if err != nil {

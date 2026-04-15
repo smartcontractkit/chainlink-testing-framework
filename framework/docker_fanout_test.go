@@ -125,7 +125,7 @@ func dockerMuxPayload(lines ...string) []byte {
 		msg := []byte(line)
 		header := make([]byte, 8)
 		header[0] = 1
-		binary.BigEndian.PutUint32(header[4:], uint32(len(msg)))
+		binary.BigEndian.PutUint32(header[4:], uint32(len(msg))) // #nosec: G115
 		out.Write(header)
 		out.Write(msg)
 	}
