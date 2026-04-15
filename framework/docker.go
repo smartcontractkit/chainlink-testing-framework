@@ -405,6 +405,16 @@ func PrintFailedContainerLogsFromStreams(logStream map[string]io.ReadCloser, log
 	return eg.Wait()
 }
 
+func CheckContainersForPanics(maxLinesAfterPanic int) bool {
+	logstream, err := StreamContainerLogs(CTFContainersListOpts(), CTFContainersLogsOpts())
+	if err != nil {
+		L.Error().Err(err).Msg("failed to stream container logs for panic check")
+		return true
+	}
+
+	return CheckContainersForPanicsFromStreams(logstream, maxLinesAfterPanic)
+}
+
 // CheckContainersForPanicsFromStreams scans the provided stream (usually Docker container logs) for panic-related patterns.
 // When a panic is detected, it displays the panic line and up to maxLinesAfterPanic lines following it.
 //
