@@ -241,31 +241,43 @@
 
 </style>
 <h1 id="asserting-container-logs"><a class="header" href="#asserting-container-logs">Asserting Container Logs</a></h1>
-<p>You can either assert that CL nodes have no errors like that, we check <code>(CRIT|PANIC|FATAL)</code> levels by default for all the nodes</p>
-<pre><code class="language-golang">	in, err := framework.Load[Cfg](t)
+<p>Use built-in critical-level assertion (<code>CRIT|PANIC|FATAL</code>) for Chainlink node logs:</p>
+<pre><code class="language-golang">in, err := framework.Load[Cfg](t)
+require.NoError(t, err)
+t.Cleanup(func() {
+	err := framework.SaveAndCheckLogs(t)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		err := framework.SaveAndCheckLogs(t)
-		require.NoError(t, err)
-	})
+})
 </code></pre>
-<p>or customize file assertions</p>
-<pre><code class="language-golang">	in, err := framework.Load[Cfg](t)
+<p>For custom checks, assert logs directly from streams with <code>StreamCTFContainerLogsFanout</code>.</p>
+<pre><code class="language-golang">re := regexp.MustCompile(`name=HeadReporter version=\d+`)
+t.Cleanup(func() {
+	err := framework.StreamCTFContainerLogsFanout(
+		framework.LogStreamConsumer{
+			Name: "custom-regex-assert",
+			Consume: func(logStreams map[string]io.ReadCloser) error {
+				for name, stream := range logStreams {
+					scanner := bufio.NewScanner(stream)
+					found := false
+					for scanner.Scan() {
+						if re.MatchString(scanner.Text()) {
+							found = true
+							break
+						}
+					}
+					if err := scanner.Err(); err != nil {
+						return fmt.Errorf("scan %s: %w", name, err)
+					}
+					if !found {
+						return fmt.Errorf("missing HeadReporter log in %s", name)
+					}
+				}
+				return nil
+			},
+		},
+	)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		// save all the logs to default directory "logs/docker-$test_name"
-		logs, err := framework.SaveContainerLogs(fmt.Sprintf("%s-%s", framework.DefaultCTFLogsDir, t.Name()))
-		require.NoError(t, err)
-		// check that CL nodes has no errors (CRIT|PANIC|FATAL) levels
-		err = framework.CheckCLNodeContainerErrors()
-		require.NoError(t, err)
-		// do custom assertions
-		for _, l := range logs {
-			matches, err := framework.SearchLogFile(l, " name=HeadReporter version=\\d")
-			require.NoError(t, err)
-			_ = matches
-		}
-	})
+})
 </code></pre>
 <p>Full <a href="https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/smoke_logs_test.go">example</a></p>
 
