@@ -56,12 +56,11 @@ func checkNodeLogErrorsFromStreams(streams map[string]io.ReadCloser) error {
 		return nil
 	}
 	for name, rc := range streams {
-		func() {
-			defer rc.Close()
-		}()
 		if err := checkNodeLogStream(name, rc); err != nil {
+			_ = rc.Close()
 			return err
 		}
+		_ = rc.Close()
 	}
 	return nil
 }
