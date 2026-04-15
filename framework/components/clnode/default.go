@@ -20,7 +20,7 @@ const defaultConfigTmpl = `
 Level = 'debug'
 
 [WebServer]
-HTTPWriteTimeout = '30s'
+HTTPWriteTimeout = '360s'
 SecureCookies = false
 HTTPPort = {{.HTTPPort}}
 
