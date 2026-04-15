@@ -6,12 +6,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -29,6 +33,20 @@ import (
 const (
 	DefaultCTFLogsDir = "logs/docker"
 )
+
+func CTFContainersListOpts() container.ListOptions {
+	return container.ListOptions{
+		All: true,
+		Filters: dfilter.NewArgs(dfilter.KeyValuePair{
+			Key:   "label",
+			Value: "framework=ctf",
+		}),
+	}
+}
+
+func CTFContainersLogsOpts() container.LogsOptions {
+	return container.LogsOptions{ShowStdout: true, ShowStderr: true}
+}
 
 func IsDockerRunning() bool {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
@@ -286,6 +304,17 @@ func SaveAndCheckLogs(t *testing.T) error {
 
 // SaveContainerLogs writes all Docker container logs to some directory
 func SaveContainerLogs(dir string) ([]string, error) {
+	logStream, lErr := StreamContainerLogs(CTFContainersListOpts(), CTFContainersLogsOpts())
+
+	if lErr != nil {
+		return nil, lErr
+	}
+
+	return SaveContainerLogsFromStreams(dir, logStream)
+}
+
+// SaveContainerLogsFromStreams writes all provided Docker log streams to files in some directory.
+func SaveContainerLogsFromStreams(dir string, logStream map[string]io.ReadCloser) ([]string, error) {
 	L.Info().Msg("Writing Docker containers logs")
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		if err := os.MkdirAll(dir, 0755); err != nil {
@@ -293,57 +322,32 @@ func SaveContainerLogs(dir string) ([]string, error) {
 		}
 	}
 
-	logStream, lErr := StreamContainerLogs(container.ListOptions{
-		All: true,
-		Filters: dfilter.NewArgs(dfilter.KeyValuePair{
-			Key:   "label",
-			Value: "framework=ctf",
-		}),
-	}, container.LogsOptions{ShowStdout: true, ShowStderr: true})
-
-	if lErr != nil {
-		return nil, lErr
-	}
-
 	eg := &errgroup.Group{}
 	logFilePaths := make([]string, 0)
+	var logFilePathsMu sync.Mutex
 	for containerName, reader := range logStream {
 		eg.Go(func() error {
+			defer func() {
+				_ = reader.Close()
+			}()
+
 			logFilePath := filepath.Join(dir, fmt.Sprintf("%s.log", containerName))
 			logFile, err := os.Create(logFilePath)
 			if err != nil {
 				L.Error().Err(err).Str("Container", containerName).Msg("failed to create container log file")
 				return err
 			}
+			defer func() {
+				_ = logFile.Close()
+			}()
+
+			logFilePathsMu.Lock()
 			logFilePaths = append(logFilePaths, logFilePath)
-			// Parse and write logs
-			header := make([]byte, 8) // Docker stream header is 8 bytes
-			for {
-				_, err := io.ReadFull(reader, header)
-				if err == io.EOF {
-					break
-				}
-				if err != nil {
-					L.Error().Err(err).Str("Container", containerName).Msg("failed to read log stream header")
-					break
-				}
+			logFilePathsMu.Unlock()
 
-				// Extract log message size
-				msgSize := binary.BigEndian.Uint32(header[4:8])
-
-				// Read the log message
-				msg := make([]byte, msgSize)
-				_, err = io.ReadFull(reader, msg)
-				if err != nil {
-					L.Error().Err(err).Str("Container", containerName).Msg("failed to read log message")
-					break
-				}
-
-				// Write the log message to the file
-				if _, err := logFile.Write(msg); err != nil {
-					L.Error().Err(err).Str("Container", containerName).Msg("failed to write log message to file")
-					break
-				}
+			if err := writeDockerLogPayload(logFile, reader); err != nil {
+				L.Error().Err(err).Str("Container", containerName).Msg("failed to write container logs")
+				return err
 			}
 			return nil
 		})
@@ -352,6 +356,53 @@ func SaveContainerLogs(dir string) ([]string, error) {
 		return nil, err
 	}
 	return logFilePaths, nil
+}
+
+// PrintFailedContainerLogs writes exited/dead CTF containers' last log lines to stdout.
+func PrintFailedContainerLogs(logLinesCount uint64) error {
+	logStream, lErr := StreamContainerLogs(ExitedCtfContainersListOpts, container.LogsOptions{
+		ShowStderr: true,
+		Tail:       strconv.FormatUint(logLinesCount, 10),
+	})
+	if lErr != nil {
+		return lErr
+	}
+
+	return PrintFailedContainerLogsFromStreams(logStream, logLinesCount)
+}
+
+// PrintFailedContainerLogsFromStreams prints all provided container streams as red text.
+func PrintFailedContainerLogsFromStreams(logStream map[string]io.ReadCloser, logLinesCount uint64) error {
+	if len(logStream) == 0 {
+		L.Info().Msg("No failed Docker containers found")
+		return nil
+	}
+
+	L.Error().Msgf("Containers that exited with non-zero codes: %s", strings.Join(slices.Collect(maps.Keys(logStream)), ", "))
+
+	eg := &errgroup.Group{}
+	for cName, ioReader := range logStream {
+		eg.Go(func() error {
+			defer func() {
+				_ = ioReader.Close()
+			}()
+
+			var content strings.Builder
+			if err := writeDockerLogPayload(&content, ioReader); err != nil {
+				return fmt.Errorf("failed to read logs for container %s: %w", cName, err)
+			}
+
+			trimmed := strings.TrimSpace(content.String())
+			if len(trimmed) > 0 {
+				L.Info().Str("Container", cName).Msgf("Last %d lines of logs", logLinesCount)
+				fmt.Println(RedText("%s\n", trimmed))
+			}
+
+			return nil
+		})
+	}
+
+	return eg.Wait()
 }
 
 var ExitedCtfContainersListOpts = container.ListOptions{
@@ -403,6 +454,157 @@ func StreamContainerLogs(listOptions container.ListOptions, logOptions container
 	}
 
 	return logMap, nil
+}
+
+// LogStreamConsumer represents a log stream consumer that receives one stream per container.
+type LogStreamConsumer struct {
+	Name    string
+	Consume func(map[string]io.ReadCloser) error
+}
+
+// StreamContainerLogsFanout fetches container logs once and fans out streams to all consumers.
+func StreamContainerLogsFanout(listOptions container.ListOptions, logOptions container.LogsOptions, consumers ...LogStreamConsumer) error {
+	logStream, err := StreamContainerLogs(listOptions, logOptions)
+	if err != nil {
+		return err
+	}
+
+	return fanoutContainerLogs(logStream, consumers...)
+}
+
+// StreamCTFContainerLogsFanout fetches CTF logs once and fans out streams to all consumers.
+func StreamCTFContainerLogsFanout(consumers ...LogStreamConsumer) error {
+	return StreamContainerLogsFanout(CTFContainersListOpts(), CTFContainersLogsOpts(), consumers...)
+}
+
+func fanoutContainerLogs(logStream map[string]io.ReadCloser, consumers ...LogStreamConsumer) error {
+	if len(consumers) == 0 {
+		for _, reader := range logStream {
+			_ = reader.Close()
+		}
+		return nil
+	}
+
+	consumerStreams := make([]map[string]io.ReadCloser, len(consumers))
+	for i := range consumers {
+		consumerStreams[i] = make(map[string]io.ReadCloser, len(logStream))
+	}
+
+	pumpGroup := &errgroup.Group{}
+	for containerName, sourceReader := range logStream {
+		writers := make([]*io.PipeWriter, len(consumers))
+		for i := range consumers {
+			reader, writer := io.Pipe()
+			consumerStreams[i][containerName] = reader
+			writers[i] = writer
+		}
+
+		pumpGroup.Go(func() error {
+			defer func() {
+				_ = sourceReader.Close()
+			}()
+
+			readBuf := make([]byte, 32*1024)
+			for {
+				n, readErr := sourceReader.Read(readBuf)
+				if n > 0 {
+					chunk := readBuf[:n]
+					for i, writer := range writers {
+						if writer == nil {
+							continue
+						}
+						if writeErr := writeAll(writer, chunk); writeErr != nil {
+							if errors.Is(writeErr, io.ErrClosedPipe) {
+								writers[i] = nil
+								continue
+							}
+							closeAllPipeWritersWithError(writers, fmt.Errorf("failed writing stream for container %s: %w", containerName, writeErr))
+							return fmt.Errorf("failed writing stream for container %s: %w", containerName, writeErr)
+						}
+					}
+				}
+
+				if readErr == io.EOF {
+					closeAllPipeWriters(writers)
+					return nil
+				}
+				if readErr != nil {
+					closeAllPipeWritersWithError(writers, readErr)
+					return fmt.Errorf("failed reading stream for container %s: %w", containerName, readErr)
+				}
+			}
+		})
+	}
+
+	consumerGroup := &errgroup.Group{}
+	for i, consumer := range consumers {
+		i := i
+		consumer := consumer
+		consumerGroup.Go(func() error {
+			if consumer.Consume == nil {
+				return fmt.Errorf("consumer %q has nil Consume function", consumer.Name)
+			}
+			if err := consumer.Consume(consumerStreams[i]); err != nil {
+				return fmt.Errorf("consumer %q failed: %w", consumer.Name, err)
+			}
+			return nil
+		})
+	}
+
+	pumpErr := pumpGroup.Wait()
+	consumerErr := consumerGroup.Wait()
+	return errors.Join(pumpErr, consumerErr)
+}
+
+func writeDockerLogPayload(dst io.Writer, reader io.Reader) error {
+	header := make([]byte, 8)
+	for {
+		_, err := io.ReadFull(reader, header)
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("failed to read log stream header: %w", err)
+		}
+
+		msgSize := binary.BigEndian.Uint32(header[4:8])
+		msg := make([]byte, msgSize)
+		if _, err = io.ReadFull(reader, msg); err != nil {
+			return fmt.Errorf("failed to read log message: %w", err)
+		}
+		if _, err = dst.Write(msg); err != nil {
+			return fmt.Errorf("failed to write log message: %w", err)
+		}
+	}
+}
+
+func writeAll(writer io.Writer, data []byte) error {
+	for len(data) > 0 {
+		n, err := writer.Write(data)
+		if err != nil {
+			return err
+		}
+		data = data[n:]
+	}
+	return nil
+}
+
+func closeAllPipeWriters(writers []*io.PipeWriter) {
+	for _, writer := range writers {
+		if writer == nil {
+			continue
+		}
+		_ = writer.Close()
+	}
+}
+
+func closeAllPipeWritersWithError(writers []*io.PipeWriter, err error) {
+	for _, writer := range writers {
+		if writer == nil {
+			continue
+		}
+		_ = writer.CloseWithError(err)
+	}
 }
 
 func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string, buildArgs map[string]string) error {
