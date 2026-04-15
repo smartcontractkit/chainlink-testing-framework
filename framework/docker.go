@@ -2,32 +2,22 @@ package framework
 
 import (
 	"archive/tar"
-	"bufio"
 	"bytes"
 	"context"
-	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
-	"testing"
 
 	"github.com/docker/docker/api/types/container"
-	dfilter "github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
-	"golang.org/x/sync/errgroup"
-)
-
-const (
-	DefaultCTFLogsDir = "logs/docker"
 )
 
 func IsDockerRunning() bool {
@@ -245,166 +235,6 @@ func (dc *DockerClient) copyToContainer(containerID, sourceFile, targetPath stri
 	return nil
 }
 
-// SearchLogFile searches logfile using regex and return matches or error
-func SearchLogFile(fp string, regex string) ([]string, error) {
-	file, err := os.Open(fp)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	re, err := regexp.Compile(regex)
-	if err != nil {
-		return nil, err
-	}
-	matches := make([]string, 0)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if re.MatchString(line) {
-			L.Info().Str("Regex", regex).Msg("Log match found")
-			matches = append(matches, line)
-		}
-	}
-
-	if err := scanner.Err(); err != nil {
-		return matches, err
-	}
-	return matches, nil
-}
-
-func SaveAndCheckLogs(t *testing.T) error {
-	_, err := SaveContainerLogs(fmt.Sprintf("%s-%s", DefaultCTFLogsDir, t.Name()))
-	if err != nil {
-		return err
-	}
-	err = CheckCLNodeContainerErrors()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// SaveContainerLogs writes all Docker container logs to some directory
-func SaveContainerLogs(dir string) ([]string, error) {
-	L.Info().Msg("Writing Docker containers logs")
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return nil, fmt.Errorf("failed to create directory %s: %w", dir, err)
-		}
-	}
-
-	logStream, lErr := StreamContainerLogs(container.ListOptions{
-		All: true,
-		Filters: dfilter.NewArgs(dfilter.KeyValuePair{
-			Key:   "label",
-			Value: "framework=ctf",
-		}),
-	}, container.LogsOptions{ShowStdout: true, ShowStderr: true})
-
-	if lErr != nil {
-		return nil, lErr
-	}
-
-	eg := &errgroup.Group{}
-	logFilePaths := make([]string, 0)
-	for containerName, reader := range logStream {
-		eg.Go(func() error {
-			logFilePath := filepath.Join(dir, fmt.Sprintf("%s.log", containerName))
-			logFile, err := os.Create(logFilePath)
-			if err != nil {
-				L.Error().Err(err).Str("Container", containerName).Msg("failed to create container log file")
-				return err
-			}
-			logFilePaths = append(logFilePaths, logFilePath)
-			// Parse and write logs
-			header := make([]byte, 8) // Docker stream header is 8 bytes
-			for {
-				_, err := io.ReadFull(reader, header)
-				if err == io.EOF {
-					break
-				}
-				if err != nil {
-					L.Error().Err(err).Str("Container", containerName).Msg("failed to read log stream header")
-					break
-				}
-
-				// Extract log message size
-				msgSize := binary.BigEndian.Uint32(header[4:8])
-
-				// Read the log message
-				msg := make([]byte, msgSize)
-				_, err = io.ReadFull(reader, msg)
-				if err != nil {
-					L.Error().Err(err).Str("Container", containerName).Msg("failed to read log message")
-					break
-				}
-
-				// Write the log message to the file
-				if _, err := logFile.Write(msg); err != nil {
-					L.Error().Err(err).Str("Container", containerName).Msg("failed to write log message to file")
-					break
-				}
-			}
-			return nil
-		})
-	}
-	if err := eg.Wait(); err != nil {
-		return nil, err
-	}
-	return logFilePaths, nil
-}
-
-var ExitedCtfContainersListOpts = container.ListOptions{
-	All: true,
-	Filters: dfilter.NewArgs(dfilter.KeyValuePair{
-		Key:   "label",
-		Value: "framework=ctf",
-	},
-		dfilter.KeyValuePair{
-			Key:   "status",
-			Value: "exited"},
-		dfilter.KeyValuePair{
-			Key:   "status",
-			Value: "dead"}),
-}
-
-func StreamContainerLogs(listOptions container.ListOptions, logOptions container.LogsOptions) (map[string]io.ReadCloser, error) {
-	L.Info().Msg("Streaming Docker containers logs")
-	provider, err := tc.NewDockerProvider()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Docker provider: %w", err)
-	}
-	containers, err := provider.Client().ContainerList(context.Background(), listOptions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list Docker containers: %w", err)
-	}
-
-	eg := &errgroup.Group{}
-	logMap := make(map[string]io.ReadCloser)
-	var mutex sync.Mutex
-
-	for _, containerInfo := range containers {
-		eg.Go(func() error {
-			containerName := containerInfo.Names[0]
-			L.Debug().Str("Container", containerName).Msg("Collecting logs")
-			logs, err := provider.Client().ContainerLogs(context.Background(), containerInfo.ID, logOptions)
-			if err != nil {
-				L.Error().Err(err).Str("Container", containerName).Msg("failed to fetch logs for container")
-				return err
-			}
-			mutex.Lock()
-			defer mutex.Unlock()
-			logMap[containerName] = logs
-			return nil
-		})
-	}
-	if err := eg.Wait(); err != nil {
-		return nil, err
-	}
-
-	return logMap, nil
-}
-
 func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string, buildArgs map[string]string) error {
 	var err error
 	once.Do(func() {
@@ -414,6 +244,22 @@ func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string, buildArgs m
 		}
 	})
 	return err
+}
+
+func safeContainerName(info container.Summary) string {
+	if len(info.Names) > 0 {
+		name := strings.TrimPrefix(info.Names[0], "/")
+		if name != "" {
+			// defensive: docker names normally don't include "/" beyond prefix,
+			// but this guarantees safe map keys and filenames.
+			return strings.ReplaceAll(name, "/", "_")
+		}
+	}
+	// fallback when Names is missing/unexpected
+	if len(info.ID) >= 12 {
+		return info.ID[:12]
+	}
+	return info.ID
 }
 
 func BuildImage(dctx, dfile, nameAndTag string, buildArgs map[string]string) error {
