@@ -378,7 +378,7 @@ func PrintFailedContainerLogsFromStreams(logStream map[string]io.ReadCloser, log
 		return nil
 	}
 
-	L.Error().Msgf("Containers that exited with non-zero codes: %s", strings.Join(slices.Collect(maps.Keys(logStream)), ", "))
+	L.Error().Msgf("Exited/dead containers: %s", strings.Join(slices.Collect(maps.Keys(logStream)), ", "))
 
 	eg := &errgroup.Group{}
 	for cName, ioReader := range logStream {
@@ -585,7 +585,7 @@ func StreamContainerLogs(listOptions container.ListOptions, logOptions container
 
 	for _, containerInfo := range containers {
 		eg.Go(func() error {
-			containerName := containerInfo.Names[0]
+			containerName := safeContainerName(containerInfo)
 			L.Debug().Str("Container", containerName).Msg("Collecting logs")
 			logs, err := provider.Client().ContainerLogs(context.Background(), containerInfo.ID, logOptions)
 			if err != nil {
@@ -657,6 +657,8 @@ func fanoutContainerLogs(logStream map[string]io.ReadCloser, consumers ...LogStr
 			for {
 				n, readErr := sourceReader.Read(readBuf)
 				if n > 0 {
+					// NOTE: io.Pipe is unbuffered, so a slow consumer can still backpressure others.
+					// Future improvement: decouple per-consumer delivery with bounded buffering.
 					chunk := readBuf[:n]
 					for i, writer := range writers {
 						if writer == nil {
@@ -687,9 +689,9 @@ func fanoutContainerLogs(logStream map[string]io.ReadCloser, consumers ...LogStr
 
 	consumerGroup := &errgroup.Group{}
 	for i, consumer := range consumers {
-		i := i
-		consumer := consumer
 		consumerGroup.Go(func() error {
+			defer closeAllPipeReaders(consumerStreams[i])
+
 			if consumer.Consume == nil {
 				return fmt.Errorf("consumer %q has nil Consume function", consumer.Name)
 			}
@@ -756,6 +758,15 @@ func closeAllPipeWritersWithError(writers []*io.PipeWriter, err error) {
 	}
 }
 
+func closeAllPipeReaders(readers map[string]io.ReadCloser) {
+	for _, reader := range readers {
+		if reader == nil {
+			continue
+		}
+		_ = reader.Close()
+	}
+}
+
 func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string, buildArgs map[string]string) error {
 	var err error
 	once.Do(func() {
@@ -765,6 +776,22 @@ func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string, buildArgs m
 		}
 	})
 	return err
+}
+
+func safeContainerName(info container.Summary) string {
+	if len(info.Names) > 0 {
+		name := strings.TrimPrefix(info.Names[0], "/")
+		if name != "" {
+			// defensive: docker names normally don't include "/" beyond prefix,
+			// but this guarantees safe map keys and filenames.
+			return strings.ReplaceAll(name, "/", "_")
+		}
+	}
+	// fallback when Names is missing/unexpected
+	if len(info.ID) >= 12 {
+		return info.ID[:12]
+	}
+	return info.ID
 }
 
 func BuildImage(dctx, dfile, nameAndTag string, buildArgs map[string]string) error {
