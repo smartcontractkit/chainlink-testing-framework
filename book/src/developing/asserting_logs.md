@@ -1,35 +1,47 @@
 # Asserting Container Logs
 
-You can either assert that CL nodes have no errors like that, we check `(CRIT|PANIC|FATAL)` levels by default for all the nodes
+Use built-in critical-level assertion (`CRIT|PANIC|FATAL`) for Chainlink node logs:
 
 ```golang
-	in, err := framework.Load[Cfg](t)
+in, err := framework.Load[Cfg](t)
+require.NoError(t, err)
+t.Cleanup(func() {
+	err := framework.SaveAndCheckLogs(t)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		err := framework.SaveAndCheckLogs(t)
-		require.NoError(t, err)
-	})
+})
 ```
 
-or customize file assertions
+For custom checks, assert logs directly from streams with `StreamCTFContainerLogsFanout`.
 
 ```golang
-	in, err := framework.Load[Cfg](t)
+re := regexp.MustCompile(`name=HeadReporter version=\d+`)
+t.Cleanup(func() {
+	err := framework.StreamCTFContainerLogsFanout(
+		framework.LogStreamConsumer{
+			Name: "custom-regex-assert",
+			Consume: func(logStreams map[string]io.ReadCloser) error {
+				for name, stream := range logStreams {
+					scanner := bufio.NewScanner(stream)
+					found := false
+					for scanner.Scan() {
+						if re.MatchString(scanner.Text()) {
+							found = true
+							break
+						}
+					}
+					if err := scanner.Err(); err != nil {
+						return fmt.Errorf("scan %s: %w", name, err)
+					}
+					if !found {
+						return fmt.Errorf("missing HeadReporter log in %s", name)
+					}
+				}
+				return nil
+			},
+		},
+	)
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		// save all the logs to default directory "logs/docker-$test_name"
-		logs, err := framework.SaveContainerLogs(fmt.Sprintf("%s-%s", framework.DefaultCTFLogsDir, t.Name()))
-		require.NoError(t, err)
-		// check that CL nodes has no errors (CRIT|PANIC|FATAL) levels
-		err = framework.CheckCLNodeContainerErrors()
-		require.NoError(t, err)
-		// do custom assertions
-		for _, l := range logs {
-			matches, err := framework.SearchLogFile(l, " name=HeadReporter version=\\d")
-			require.NoError(t, err)
-			_ = matches
-		}
-	})
+})
 ```
 
 Full [example](https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/framework/examples/myproject/smoke_logs_test.go)

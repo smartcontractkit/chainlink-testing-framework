@@ -226,7 +226,12 @@ func newSui(ctx context.Context, in *Input) (*Output, error) {
 			"--force-regenesis",
 			"--with-faucet",
 		},
+<<<<<<< HEAD
 		Files:      files,
+=======
+		Files: files,
+		// we need faucet for funding
+>>>>>>> main
 		WaitingFor: wait.ForListeningPort(DefaultFaucetPort).WithStartupTimeout(1 * time.Minute).WithPollInterval(200 * time.Millisecond),
 	}
 
