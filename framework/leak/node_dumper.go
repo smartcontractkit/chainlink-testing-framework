@@ -10,12 +10,14 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	f "github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
+	"golang.org/x/sync/errgroup"
 )
 
 var containerNameSanitizer = regexp.MustCompile(`[^a-zA-Z0-9._-]`)
@@ -23,6 +25,8 @@ var containerNameSanitizer = regexp.MustCompile(`[^a-zA-Z0-9._-]`)
 const (
 	DefaultAdminProfilesDir       = "admin-profiles"
 	DefaultNodeProfileDumpTimeout = 5 * time.Minute
+	// maxConcurrentNodeProfileDumps limits parallel Docker exec/copy work so the daemon is not flooded.
+	maxConcurrentNodeProfileDumps = 4
 )
 
 // DumpNodeProfiles runs chainlink profile collection in each running container
@@ -59,41 +63,63 @@ func DumpNodeProfiles(ctx context.Context, namePattern, dst string) error {
 		return err
 	}
 
-	var errs []error
+	targets := make([]runningContainer, 0)
 	for _, c := range containers {
-		if !strings.Contains(c.name, namePattern) {
-			continue
+		if strings.Contains(c.name, namePattern) {
+			targets = append(targets, c)
 		}
-
-		// Keep destination names safe and filesystem-friendly.
-		safeName := containerNameSanitizer.ReplaceAllString(c.name, "_")
-		targetArchivePath := filepath.Join(dst, fmt.Sprintf("profile-%s.tar", safeName))
-
-		if err := loginCLINodeAdmin(ctx, cli, c); err != nil {
-			return err
-		}
-
-		f.L.Info().Str("ContainerName", c.name).Msg("Collecting node profile")
-
-		out, execErr := dc.ExecContainerWithContext(
-			ctx,
-			c.name,
-			[]string{"chainlink", "admin", "profile", "-seconds", "1", "-output_dir", "./profiles"},
-		)
-		if execErr != nil {
-			errs = append(errs, fmt.Errorf("failed to execute profile command in container %s: %w, output: %s", c.name, execErr, strings.TrimSpace(out)))
-			continue
-		}
-
-		profilesPath := path.Clean(path.Join(c.workingDir, "profiles"))
-		if copyErr := dc.CopyFromContainerToTarWithContext(ctx, c.name, profilesPath, targetArchivePath); copyErr != nil {
-			errs = append(errs, fmt.Errorf("failed to copy profiles archive from container %s to %s: %w", c.name, targetArchivePath, copyErr))
-			continue
-		}
-
-		f.L.Info().Str("ContainerName", c.name).Str("Destination", targetArchivePath).Msg("Profiles copied as archive")
 	}
 
+	var (
+		mu   sync.Mutex
+		errs []error
+	)
+	g := new(errgroup.Group)
+	g.SetLimit(maxConcurrentNodeProfileDumps)
+
+	for _, c := range targets {
+		c := c
+		g.Go(func() error {
+			safeName := containerNameSanitizer.ReplaceAllString(c.name, "_")
+			targetArchivePath := filepath.Join(dst, fmt.Sprintf("profile-%s.tar", safeName))
+
+			if err := loginCLINodeAdmin(ctx, cli, c); err != nil {
+				mu.Lock()
+				errs = append(errs, err)
+				mu.Unlock()
+				return nil
+			}
+
+			f.L.Info().Str("ContainerName", c.name).Msg("Collecting node profile")
+
+			out, execErr := dc.ExecContainerWithContext(
+				ctx,
+				c.name,
+				[]string{"chainlink", "admin", "profile", "-seconds", "1", "-output_dir", "./profiles"},
+			)
+			if execErr != nil {
+				mu.Lock()
+				errs = append(errs, fmt.Errorf("failed to execute profile command in container %s: %w, output: %s", c.name, execErr, strings.TrimSpace(out)))
+				mu.Unlock()
+				return nil
+			}
+
+			profilesPath := path.Clean(path.Join(c.workingDir, "profiles"))
+			if copyErr := dc.CopyFromContainerToTarWithContext(ctx, c.name, profilesPath, targetArchivePath); copyErr != nil {
+				mu.Lock()
+				errs = append(errs, fmt.Errorf("failed to copy profiles archive from container %s to %s: %w", c.name, targetArchivePath, copyErr))
+				mu.Unlock()
+				return nil
+			}
+
+			f.L.Info().Str("ContainerName", c.name).Str("Destination", targetArchivePath).Msg("Profiles copied as archive")
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
 	return errors.Join(errs...)
 }
 
