@@ -1,9 +1,11 @@
 package blockchain
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,9 +40,11 @@ func TestParseSuiKeytoolGenerateJSON(t *testing.T) {
 
 	t.Run("docker multiplexed stdout", func(t *testing.T) {
 		t.Parallel()
-		// stdcopy multiplex: 1 = stdout, then payload
-		mux := string([]byte{1}) + compact
-		got, err := parseSuiKeytoolGenerateJSON(mux)
+		var buf bytes.Buffer
+		w := stdcopy.NewStdWriter(&buf, stdcopy.Stdout)
+		_, err := w.Write([]byte(compact))
+		require.NoError(t, err)
+		got, err := parseSuiKeytoolGenerateJSON(buf.String())
 		require.NoError(t, err)
 		require.Equal(t, addr, got.SuiAddress)
 	})

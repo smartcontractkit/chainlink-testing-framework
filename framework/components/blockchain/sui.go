@@ -131,7 +131,7 @@ func generateKeyData(ctx context.Context, containerName string, keyCipherType st
 	}
 	key, err := parseSuiKeytoolGenerateJSON(keyOut)
 	if err != nil {
-		return nil, fmt.Errorf("%w (raw output: %.300q)", err, keyOut)
+		return nil, fmt.Errorf("failed to parse sui keytool generate output: %w", err)
 	}
 
 	framework.L.Info().Str("suiAddress", key.SuiAddress).Msg("CTF test key generated")
