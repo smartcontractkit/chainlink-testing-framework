@@ -10,10 +10,10 @@ import (
 	"net/netip"
 
 	"dario.cat/mergo"
-	"github.com/moby/moby/api/types/container"
-	"github.com/moby/moby/api/types/network"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 

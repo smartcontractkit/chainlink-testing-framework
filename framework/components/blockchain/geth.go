@@ -125,7 +125,7 @@ func newGeth(ctx context.Context, in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = genesisFile.WriteString(fmt.Sprintf(GenesisClique, in.ChainID))
+	_, err = fmt.Fprintf(genesisFile, GenesisClique, in.ChainID)
 	if err != nil {
 		return nil, err
 	}

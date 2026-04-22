@@ -10,13 +10,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/block-vision/sui-go-sdk/models"
 	"net/netip"
 
+	"github.com/block-vision/sui-go-sdk/models"
+
+	"github.com/go-resty/resty/v2"
+	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/network"
-	"github.com/moby/moby/api/pkg/stdcopy"
-	"github.com/go-resty/resty/v2"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 

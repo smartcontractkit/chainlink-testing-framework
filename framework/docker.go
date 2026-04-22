@@ -14,10 +14,10 @@ import (
 
 	"net/netip"
 
+	"github.com/google/uuid"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 )
@@ -242,7 +242,6 @@ func (dc *DockerClient) copyToContainer(containerID, sourceFile, targetPath stri
 	}
 	return nil
 }
-
 
 func BuildImageOnce(once *sync.Once, dctx, dfile, nameAndTag string, buildArgs map[string]string) error {
 	var err error

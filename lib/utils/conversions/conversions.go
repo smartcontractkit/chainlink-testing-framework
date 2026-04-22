@@ -16,7 +16,7 @@ func PrivateKeyToAddress(privateKey *ecdsa.PrivateKey) (common.Address, error) {
 	publicKeyECDSA, ok := privateKey.Public().(*ecdsa.PublicKey)
 	if !ok {
 		return common.Address{}, fmt.Errorf(
-			"Error converting public key to ECDSA format. Private Key: %s Public Key: %s", privateKey, privateKey.Public())
+			"error converting public key to ECDSA format: private key %s public key %s", privateKey, privateKey.Public())
 	}
 	return crypto.PubkeyToAddress(*publicKeyECDSA), nil
 }
@@ -25,7 +25,7 @@ func PrivateKeyToAddress(privateKey *ecdsa.PrivateKey) (common.Address, error) {
 func PrivateKeyHexToAddress(privateKeyStr string) (common.Address, error) {
 	privateKey, err := crypto.HexToECDSA(privateKeyStr)
 	if err != nil {
-		return common.Address{}, fmt.Errorf("Error converting private key to ECDSA format: %s", err)
+		return common.Address{}, fmt.Errorf("error converting private key to ECDSA format: %s", err)
 	}
 	return PrivateKeyToAddress(privateKey)
 }

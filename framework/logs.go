@@ -103,7 +103,7 @@ func StreamContainerLogs(listOptions client.ContainerListOptions, logOptions cli
 
 func CTFContainersListOpts() client.ContainerListOptions {
 	return client.ContainerListOptions{
-		All: true,
+		All:     true,
 		Filters: make(client.Filters).Add("label", "framework=ctf"),
 	}
 }
@@ -350,7 +350,7 @@ func SaveContainerLogsFromStreams(dir string, logStream map[string]io.ReadCloser
 }
 
 var ExitedCtfContainersListOpts = client.ContainerListOptions{
-	All: true,
+	All:     true,
 	Filters: make(client.Filters).Add("label", "framework=ctf").Add("status", "exited", "dead"),
 }
 

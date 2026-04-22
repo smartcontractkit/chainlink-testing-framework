@@ -100,7 +100,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 				return nil, fmt.Errorf("error reading JD dump file '%s': %v", in.JDSQLDumpPath, err)
 			}
 			// transaction_timeout is a custom RDS instruction, we must replace it
-			sqlMigration := strings.Replace(string(d), "SET transaction_timeout = 0;", "", -1)
+			sqlMigration := strings.ReplaceAll(string(d), "SET transaction_timeout = 0;", "")
 			sqlCommands = append(sqlCommands, sqlMigration)
 			sqlCommands = append(sqlCommands, "DELETE FROM public.csa_keypairs where id = 1;")
 		} else {
