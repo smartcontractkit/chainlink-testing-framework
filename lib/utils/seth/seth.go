@@ -210,7 +210,7 @@ func MergeSethAndEvmNetworkConfigs(evmNetwork blockchain.EVMNetwork, sethConfig 
 
 	// If the network is still not found, return an error
 	if sethNetwork == nil {
-		msg := `Failed to build network config for chain ID %d. This could be the result of various reasons:
+		msg := `failed to build network config for chain ID %d. This could be the result of various reasons:
 1. You are running tests for a network that hasn't been defined in known_networks.go and you have not defined it under [Network.EVMNetworks.NETWORK_NAME] in TOML
 3. You have not defined Seth network settings for the chain ID %d in TOML under [Seth.Networks]
 2. You have not defined a Seth Default network in your TOML config file under [Seth.Networks] using name %s`
