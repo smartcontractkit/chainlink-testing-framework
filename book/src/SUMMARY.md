@@ -47,6 +47,7 @@
     - [Ton](framework/components/blockchains/ton.md)
   - [Storage](framework/components/storage.md)
     - [S3](framework/components/storage/s3.md)
+  - [Chip Router](framework/components/chiprouter/chip_router.md)
   - [Chip Ingress Set](framework/components/chipingresset/chip_ingress.md)
 - [Troubleshooting](framework/components/troubleshooting.md)
 - [Mono Repository Tooling](./monorepo-tools.md)
