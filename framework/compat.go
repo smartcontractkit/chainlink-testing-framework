@@ -265,10 +265,7 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 		Str("Image", newImage).
 		Logger()
 	l.Debug().Msg("Upgrading container")
-	cli, err := client.NewClientWithOpts(
-		client.FromEnv,
-		client.WithAPIVersionNegotiation(),
-	)
+	cli, err := client.New()
 	if err != nil {
 		return fmt.Errorf("failed to create Docker client: %w", err)
 	}

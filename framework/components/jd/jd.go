@@ -8,7 +8,6 @@ import (
 
 	"github.com/moby/moby/api/types/container"
 	tc "github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
@@ -123,7 +122,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		},
 		WaitingFor: tcwait.ForAll(
 			tcwait.ForListeningPort(fmt.Sprintf("%s/tcp", in.GRPCPort)),
-			wait.ForHTTP("/healthz").
+			tcwait.ForHTTP("/healthz").
 				WithPort(fmt.Sprintf("%s/tcp", WSRPCHealthPort)). // WSRPC health endpoint uses different port than WSRPC
 				WithStartupTimeout(1*time.Minute).
 				WithPollInterval(200*time.Millisecond),

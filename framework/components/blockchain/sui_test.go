@@ -45,7 +45,7 @@ func TestParseSuiKeytoolGenerateJSON(t *testing.T) {
 		var buf bytes.Buffer
 		header := make([]byte, 8)
 		header[0] = byte(stdcopy.Stdout)
-		binary.BigEndian.PutUint32(header[4:], uint32(len(payload)))
+		binary.BigEndian.PutUint32(header[4:], uint32(len(payload))) //nolint:gosec // payload length is bounded by test input
 		buf.Write(header)
 		buf.Write(payload)
 		got, err := parseSuiKeytoolGenerateJSON(buf.String())

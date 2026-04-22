@@ -23,7 +23,7 @@ import (
 )
 
 func IsDockerRunning() bool {
-	cli, err := client.NewClientWithOpts(client.FromEnv)
+	cli, err := client.New()
 	if err != nil {
 		return false
 	}
@@ -105,7 +105,7 @@ type DockerClient struct {
 
 // NewDockerClient creates a new instance of DockerClient
 func NewDockerClient() (*DockerClient, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := client.New()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Docker client: %w", err)
 	}

@@ -618,7 +618,7 @@ func (c *ChainlinkClient) MustReadP2PKeys() (*P2PKeys, error) {
 	}
 	err = VerifyStatusCode(resp.StatusCode(), http.StatusOK)
 	if len(p2pKeys.Data) == 0 {
-		err = fmt.Errorf("Found no P2P Keys on the Chainlink node. Node URL: %s", c.Config.URL)
+		err = fmt.Errorf("found no P2P keys on the Chainlink node. Node URL: %s", c.Config.URL)
 		framework.L.Err(err).Msg("Error getting P2P keys")
 		return nil, err
 	}
@@ -690,7 +690,7 @@ func (c *ChainlinkClient) ReadPrimaryETHKey(chainId string) (*ETHKeyData, error)
 		return nil, err
 	}
 	if len(ethKeys.Data) == 0 {
-		return nil, fmt.Errorf("Error retrieving primary eth key on node %s: No ETH keys present", c.URL())
+		return nil, fmt.Errorf("error retrieving primary eth key on node %s: no ETH keys present", c.URL())
 	}
 	for _, data := range ethKeys.Data {
 		if data.Attributes.ChainID == chainId {
@@ -707,7 +707,7 @@ func (c *ChainlinkClient) ReadETHKeyAtIndex(keyIndex int) (*ETHKeyData, error) {
 		return nil, err
 	}
 	if len(ethKeys.Data) == 0 {
-		return nil, fmt.Errorf("Error retrieving primary eth key on node %s: No ETH keys present", c.URL())
+		return nil, fmt.Errorf("error retrieving primary eth key on node %s: no ETH keys present", c.URL())
 	}
 	return &ethKeys.Data[keyIndex], nil
 }
