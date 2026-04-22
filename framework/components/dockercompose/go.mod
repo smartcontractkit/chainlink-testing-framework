@@ -11,13 +11,13 @@ require (
 	github.com/confluentinc/confluent-kafka-go v1.9.2
 	github.com/google/go-github/v72 v72.0.0
 	github.com/jhump/protocompile v0.0.0-20221021153901-4f6f732835e8
-	github.com/moby/moby/api v1.54.1-0.20260401134807-948d5691a093
-	github.com/moby/moby/client v0.3.1-0.20260401134807-948d5691a093
+	github.com/moby/moby/api v1.54.1
+	github.com/moby/moby/client v0.4.0
 	github.com/pkg/errors v0.9.1
 	github.com/smartcontractkit/chainlink-common/pkg/chipingress v0.0.11-0.20251211140724-319861e514c4
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.0.0-00010101000000-000000000000
 	github.com/smartcontractkit/freeport v0.1.3-0.20250716200817-cb5dfd0e369e
-	github.com/testcontainers/testcontainers-go v0.41.1-0.20260403073310-3e56fb95cf73
+	github.com/testcontainers/testcontainers-go v0.42.0
 	github.com/testcontainers/testcontainers-go/modules/compose v0.40.0
 	golang.org/x/oauth2 v0.32.0
 	google.golang.org/protobuf v1.36.9
@@ -121,7 +121,7 @@ require (
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.18.2 // indirect
+	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20250827001030-24949be3fa54 // indirect
 	github.com/magiconair/properties v1.8.10 // indirect
@@ -169,8 +169,8 @@ require (
 	github.com/secure-systems-lab/go-securesystemslib v0.6.0 // indirect
 	github.com/serialx/hashring v0.0.0-20200727003509-22c0c7ab6b1b // indirect
 	github.com/shibumi/go-pathspec v1.3.0 // indirect
-	github.com/shirou/gopsutil/v4 v4.26.2 // indirect
-	github.com/sirupsen/logrus v1.9.3 // indirect
+	github.com/shirou/gopsutil/v4 v4.26.3 // indirect
+	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 // indirect
 	github.com/spf13/cobra v1.10.1 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
@@ -211,7 +211,7 @@ require (
 	golang.org/x/mod v0.33.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/term v0.40.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	golang.org/x/time v0.12.0 // indirect

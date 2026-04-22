@@ -7,10 +7,10 @@ replace github.com/smartcontractkit/chainlink-testing-framework/framework => ../
 require (
 	github.com/gin-gonic/gin v1.10.1
 	github.com/go-resty/resty/v2 v2.16.5
-	github.com/moby/moby/api v1.54.1-0.20260401134807-948d5691a093
+	github.com/moby/moby/api v1.54.1
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.11.1
-	github.com/testcontainers/testcontainers-go v0.41.1-0.20260403073310-3e56fb95cf73
+	github.com/testcontainers/testcontainers-go v0.42.0
 	k8s.io/api v0.32.3
 )
 
@@ -59,7 +59,7 @@ require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.18.2 // indirect
+	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20240226150601-1dcf7310316a // indirect
@@ -69,7 +69,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/go-archive v0.2.0 // indirect
-	github.com/moby/moby/client v0.3.1-0.20260401134807-948d5691a093 // indirect
+	github.com/moby/moby/client v0.4.0 // indirect
 	github.com/moby/patternmatcher v0.6.1 // indirect
 	github.com/moby/spdystream v0.5.0 // indirect
 	github.com/moby/sys/sequential v0.6.0 // indirect
@@ -87,8 +87,8 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/rs/zerolog v1.33.0 // indirect
-	github.com/shirou/gopsutil/v4 v4.26.2 // indirect
-	github.com/sirupsen/logrus v1.9.3 // indirect
+	github.com/shirou/gopsutil/v4 v4.26.3 // indirect
+	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/tklauser/go-sysconf v0.3.16 // indirect
 	github.com/tklauser/numcpus v0.11.0 // indirect
@@ -109,7 +109,7 @@ require (
 	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/oauth2 v0.32.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/term v0.40.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
