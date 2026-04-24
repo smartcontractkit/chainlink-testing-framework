@@ -32,9 +32,22 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: ${{ matrix.dir }}/go.mod
+      - name: Install framework golangci-lint with module Go version
+        if: matrix.dir == 'framework'
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          GOBIN="$RUNNER_TEMP/bin" go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.5
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2.0.0
         with:
           just-version: '1.39.0'
       - name: Lint
+        if: matrix.dir == 'framework'
+        env:
+          GOLANGCI_LINT_BIN: ${{ runner.temp }}/bin/golangci-lint
+        run: |
+          devbox run -- just lint ${{ matrix.dir }}
+      - name: Lint
+        if: matrix.dir != 'framework'
         run: |
           devbox run -- just lint ${{ matrix.dir }}

@@ -8,7 +8,7 @@ on:
     types: [created]
 
 jobs:
-  llm-pr-generator:
+  llm-pr-writer:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -20,6 +20,6 @@ jobs:
         with:
           gh-token: ${{ github.token }}
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          openai-model: 'gpt-4-0125-preview'
+          openai-model: 'gpt-4o-mini'
           exclude-paths: 'artifacts/*;target/*;'
           workflow-ref: '763b4118dac59b74e3f4aef343918b7f334fb8a0' # 0.3.0
