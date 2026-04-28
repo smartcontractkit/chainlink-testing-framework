@@ -154,6 +154,7 @@ func newAptos(ctx context.Context, in *Input) (*Output, error) {
 		}
 	}
 	return &Output{
+		Container:     c,
 		UseCache:      true,
 		Type:          in.Type,
 		Family:        FamilyAptos,
