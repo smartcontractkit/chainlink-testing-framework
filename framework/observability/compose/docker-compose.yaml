@@ -33,6 +33,7 @@ services:
     container_name: cadvisor
     ports:
       - '8085:8080'
+    cgroup: host
     volumes:
       - /:/rootfs:ro
       - /sys:/sys:ro
