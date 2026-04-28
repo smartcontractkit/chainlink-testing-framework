@@ -264,6 +264,7 @@ rosetta error: Rosetta is only intended to run on Apple Silicon with a macOS hos
 </code></pre>
 <p>This can happen due to <code>Docker Desktop</code> updates, the issue is that the symlink to Docker socket is broken.</p>
 <h4 id="solution-2"><a class="header" href="#solution-2">Solution</a></h4>
+<p>Make sure you are not using <code>containerd</code> to store or pull images, see the <a href="https://github.com/google/cadvisor/issues/2838#issuecomment-2966600885">issue</a></p>
 <p>Disable and enable the option <code>Allow the default Docker socket to be used</code> again to relink it properly.</p>
 <p><img src="../images/cadvisor_socket.png" alt="cadvisor_socket.png" /></p>
 
