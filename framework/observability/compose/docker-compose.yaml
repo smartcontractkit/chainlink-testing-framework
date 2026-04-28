@@ -35,7 +35,6 @@ services:
       - '8085:8080'
     volumes:
       - /:/rootfs:ro
-      - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro # Docker container data
       - /var/run/docker.sock:/var/run/docker.sock

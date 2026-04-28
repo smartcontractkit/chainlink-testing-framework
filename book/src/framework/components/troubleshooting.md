@@ -36,6 +36,8 @@ This can happen due to `Docker Desktop` updates, the issue is that the symlink t
 
 #### Solution
 
+Make sure you are not using `containerd` to store or pull images, see the [issue](https://github.com/google/cadvisor/issues/2838#issuecomment-2966600885)
+
 Disable and enable the option `Allow the default Docker socket to be used` again to relink it properly.
 
 ![cadvisor_socket.png](../images/cadvisor_socket.png)
