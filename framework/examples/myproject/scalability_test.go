@@ -48,6 +48,7 @@ func TestScalability(t *testing.T) {
 			Add(wasp.NewGenerator(&wasp.Config{
 				T:        t,
 				LoadType: wasp.RPS,
+				FailOnErr: true,
 				Schedule: wasp.Combine(
 					wasp.Steps(1, 10, 9, 30*time.Second),
 					wasp.Plain(10, 30*time.Second),

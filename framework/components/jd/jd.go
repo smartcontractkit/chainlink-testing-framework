@@ -61,7 +61,8 @@ func defaults(in *Input) {
 
 func defaultJDDB() *postgres.Input {
 	return &postgres.Input{
-		Image:      "postgres:16",
+		// Use the public ECR mirror to avoid Docker Hub auth timeouts in CI.
+		Image:      "public.ecr.aws/docker/library/postgres:16",
 		Port:       14000,
 		Name:       "jd-db",
 		VolumeName: "jd",
