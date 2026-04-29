@@ -78,7 +78,7 @@ jobs:
 
       - name: Upload Logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: container-logs-${{ matrix.test.name }}
           path: framework/examples/myproject/logs

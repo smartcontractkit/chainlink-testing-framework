@@ -45,7 +45,7 @@ jobs:
           go test -timeout 20m -json -parallel 2 -cover -covermode=atomic -coverprofile=unit-test-coverage.out $(go list ./... | grep /docker/test_env) -run '${{ matrix.test.tests }}' 2>&1 | tee /tmp/gotest.log | ../gotestloghelper -ci
       - name: Publish Artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-logs
           path: ./lib/logs
