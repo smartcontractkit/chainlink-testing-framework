@@ -85,7 +85,7 @@ jobs:
         with:
           enable-cache: 'true'
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: seth/go.mod
       - name: Cache Go modules
