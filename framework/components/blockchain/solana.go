@@ -110,6 +110,9 @@ func newSolana(ctx context.Context, in *Input) (*Output, error) {
 		return nil, fmt.Errorf("K8s support is not yet implemented")
 	}
 
+	entrypoint := []string{"sh", "-c", fmt.Sprintf("mkdir -p /root/.config/solana/cli && solana-test-validator %s", strings.Join(args, " "))}
+	framework.L.Info().Any("Cmd", entrypoint).Msg("Creating solana container with command")
+
 	req := testcontainers.ContainerRequest{
 		AlwaysPullImage: in.PullImage,
 		Image:           in.Image,
@@ -145,7 +148,7 @@ func newSolana(ctx context.Context, in *Input) (*Output, error) {
 				FileMode:          0644,
 			},
 		},
-		Entrypoint: []string{"sh", "-c", fmt.Sprintf("mkdir -p /root/.config/solana/cli && solana-test-validator %s", strings.Join(args, " "))},
+		Entrypoint: entrypoint,
 	}
 
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
