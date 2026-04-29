@@ -6,10 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
+	"github.com/moby/moby/api/types/container"
 	tc "github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
@@ -114,8 +112,6 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		},
 		ExposedPorts: []string{grpcPort, wsHealthPort},
 		HostConfigModifier: func(h *container.HostConfig) {
-			// JobDistributor service is isolated from internet by default!
-			framework.NoDNS(true, h)
 			h.PortBindings = framework.MapTheSamePort(grpcPort)
 		},
 		Env: map[string]string{
@@ -125,12 +121,12 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 			"CSA_KEY_ENCRYPTION_SECRET": in.CSAEncryptionKey,
 		},
 		WaitingFor: tcwait.ForAll(
-			tcwait.ForListeningPort(nat.Port(fmt.Sprintf("%s/tcp", in.GRPCPort))),
-			wait.ForHTTP("/healthz").
-				WithPort(nat.Port(fmt.Sprintf("%s/tcp", WSRPCHealthPort))). // WSRPC health endpoint uses different port than WSRPC
+			tcwait.ForListeningPort(fmt.Sprintf("%s/tcp", in.GRPCPort)),
+			tcwait.ForHTTP("/healthz").
+				WithPort(fmt.Sprintf("%s/tcp", WSRPCHealthPort)). // WSRPC health endpoint uses different port than WSRPC
 				WithStartupTimeout(1*time.Minute).
 				WithPollInterval(200*time.Millisecond),
-			NewGRPCHealthStrategy(nat.Port(fmt.Sprintf("%s/tcp", in.GRPCPort))).
+			NewGRPCHealthStrategy(fmt.Sprintf("%s/tcp", in.GRPCPort)).
 				WithTimeout(1*time.Minute).
 				WithPollInterval(200*time.Millisecond),
 		),

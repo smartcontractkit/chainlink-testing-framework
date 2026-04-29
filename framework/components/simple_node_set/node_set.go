@@ -182,8 +182,8 @@ func sharedDBSetup(ctx context.Context, in *Input, bcOut *blockchain.Output) (*O
 				nodeSpec.Node.DockerFilePath = ""
 			}
 
-			dbURLHost := strings.Replace(dbOut.Url, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i), -1)
-			dbURL := strings.Replace(dbOut.InternalURL, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i), -1)
+			dbURLHost := strings.ReplaceAll(dbOut.Url, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i))
+			dbURL := strings.ReplaceAll(dbOut.InternalURL, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i))
 			dbSpec := &postgres.Output{
 				Url:         dbURLHost,
 				InternalURL: dbURL,

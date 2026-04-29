@@ -8,8 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
+	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/compose"
@@ -171,8 +170,8 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	stack.WaitForService(DEFAULT_BILLING_PLATFORM_SERVICE_SERVICE_NAME,
 		wait.ForAll(
 			wait.ForLog("GRPC server is live").WithPollInterval(200*time.Millisecond),
-			wait.ForListeningPort(nat.Port(DEFAULT_BILLING_PLATFORM_SERVICE_BILLING_GRPC_PORT)),
-			wait.ForListeningPort(nat.Port(DEFAULT_BILLING_PLATFORM_SERVICE_CREDIT_GRPC_PORT)),
+			wait.ForListeningPort(DEFAULT_BILLING_PLATFORM_SERVICE_BILLING_GRPC_PORT),
+			wait.ForListeningPort(DEFAULT_BILLING_PLATFORM_SERVICE_CREDIT_GRPC_PORT),
 		).WithDeadline(1*time.Minute),
 	)
 
@@ -209,12 +208,12 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 			return nil, errors.Wrapf(connectErr, "failed to connect billing-platform-service to %s network", networkName)
 		}
 		// verify that the container is connected to framework's network
-		inspected, inspectErr := cli.ContainerInspect(ctx, billingContainer.ID)
+		inspected, inspectErr := cli.ContainerInspect(ctx, billingContainer.ID, client.ContainerInspectOptions{})
 		if inspectErr != nil {
 			return nil, errors.Wrapf(inspectErr, "failed to inspect container %s", billingContainer.ID)
 		}
 
-		_, ok := inspected.NetworkSettings.Networks[networkName]
+		_, ok := inspected.Container.NetworkSettings.Networks[networkName]
 		if !ok {
 			return nil, fmt.Errorf("container %s is NOT on network %s", billingContainer.ID, networkName)
 		}
@@ -240,7 +239,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		return nil, errors.Wrap(err, "failed to get mapped port for Billing Platform Service")
 	}
 
-	externalPostgresPort, err := utils.FindMappedPort(ctx, 20*time.Second, postgresContainer, nat.Port(DEFAULT_POSTGRES_PORT+"/tcp"))
+	externalPostgresPort, err := utils.FindMappedPort(ctx, 20*time.Second, postgresContainer, DEFAULT_POSTGRES_PORT+"/tcp")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get mapped port for postgres")
 	}
@@ -258,7 +257,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 }
 
 func getExternalPorts(ctx context.Context, billingExternalHost string, billingContainer *testcontainers.DockerContainer) (*BillingPlatformServiceOutput, error) {
-	ports := map[string]nat.Port{
+	ports := map[string]string{
 		"billing": DEFAULT_BILLING_PLATFORM_SERVICE_BILLING_GRPC_PORT,
 		"credit":  DEFAULT_BILLING_PLATFORM_SERVICE_CREDIT_GRPC_PORT,
 	}

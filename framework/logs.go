@@ -17,8 +17,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/docker/docker/api/types/container"
-	dfilter "github.com/docker/docker/api/types/filters"
+	"github.com/moby/moby/client"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 	"golang.org/x/sync/errgroup"
@@ -65,7 +64,7 @@ func checkNodeLogErrorsFromStreams(streams map[string]io.ReadCloser) error {
 	return nil
 }
 
-func StreamContainerLogs(listOptions container.ListOptions, logOptions container.LogsOptions) (map[string]io.ReadCloser, error) {
+func StreamContainerLogs(listOptions client.ContainerListOptions, logOptions client.ContainerLogsOptions) (map[string]io.ReadCloser, error) {
 	L.Info().Msg("Streaming Docker containers logs")
 	provider, err := tc.NewDockerProvider()
 	if err != nil {
@@ -80,7 +79,7 @@ func StreamContainerLogs(listOptions container.ListOptions, logOptions container
 	logMap := make(map[string]io.ReadCloser)
 	var mutex sync.Mutex
 
-	for _, containerInfo := range containers {
+	for _, containerInfo := range containers.Items {
 		eg.Go(func() error {
 			containerName := safeContainerName(containerInfo)
 			L.Debug().Str("Container", containerName).Msg("Collecting logs")
@@ -102,18 +101,15 @@ func StreamContainerLogs(listOptions container.ListOptions, logOptions container
 	return logMap, nil
 }
 
-func CTFContainersListOpts() container.ListOptions {
-	return container.ListOptions{
-		All: true,
-		Filters: dfilter.NewArgs(dfilter.KeyValuePair{
-			Key:   "label",
-			Value: "framework=ctf",
-		}),
+func CTFContainersListOpts() client.ContainerListOptions {
+	return client.ContainerListOptions{
+		All:     true,
+		Filters: make(client.Filters).Add("label", "framework=ctf"),
 	}
 }
 
-func CTFContainersLogsOpts() container.LogsOptions {
-	return container.LogsOptions{ShowStdout: true, ShowStderr: true}
+func CTFContainersLogsOpts() client.ContainerLogsOptions {
+	return client.ContainerLogsOptions{ShowStdout: true, ShowStderr: true}
 }
 
 // LogStreamConsumer represents a log stream consumer that receives one stream per container.
@@ -123,7 +119,7 @@ type LogStreamConsumer struct {
 }
 
 // StreamContainerLogsFanout fetches container logs once and fans out streams to all consumers.
-func StreamContainerLogsFanout(listOptions container.ListOptions, logOptions container.LogsOptions, consumers ...LogStreamConsumer) error {
+func StreamContainerLogsFanout(listOptions client.ContainerListOptions, logOptions client.ContainerLogsOptions, consumers ...LogStreamConsumer) error {
 	logStream, err := StreamContainerLogs(listOptions, logOptions)
 	if err != nil {
 		return err
@@ -353,23 +349,14 @@ func SaveContainerLogsFromStreams(dir string, logStream map[string]io.ReadCloser
 	return logFilePaths, nil
 }
 
-var ExitedCtfContainersListOpts = container.ListOptions{
-	All: true,
-	Filters: dfilter.NewArgs(dfilter.KeyValuePair{
-		Key:   "label",
-		Value: "framework=ctf",
-	},
-		dfilter.KeyValuePair{
-			Key:   "status",
-			Value: "exited"},
-		dfilter.KeyValuePair{
-			Key:   "status",
-			Value: "dead"}),
+var ExitedCtfContainersListOpts = client.ContainerListOptions{
+	All:     true,
+	Filters: make(client.Filters).Add("label", "framework=ctf").Add("status", "exited", "dead"),
 }
 
 // PrintFailedContainerLogs writes exited/dead CTF containers' last log lines to stdout.
 func PrintFailedContainerLogs(logLinesCount uint64) error {
-	logStream, lErr := StreamContainerLogs(ExitedCtfContainersListOpts, container.LogsOptions{
+	logStream, lErr := StreamContainerLogs(ExitedCtfContainersListOpts, client.ContainerLogsOptions{
 		ShowStderr: true,
 		Tail:       strconv.FormatUint(logLinesCount, 10),
 	})

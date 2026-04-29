@@ -1,83 +1,99 @@
+version: "2"
 run:
   concurrency: 4
-  timeout: 5m
 linters:
   enable:
-    - errcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - typecheck
-    - unused
-    - exhaustive
+    - contextcheck
     - copyloopvar
-    - revive
-    - goimports
+    - errorlint
+    - exhaustive
     - gosec
     - misspell
-    - errorlint
-    - contextcheck
-linters-settings:
-  exhaustive:
-    default-signifies-exhaustive: true
-  goimports:
-    local-prefixes: github.com/smartcontractkit/chainlink-testing-framework/
-  gosec:
-    exclude-generated: true
-  errorlint:
-    # Allow formatting of errors without %w
-    errorf: false
-  revive:
-    confidence: 0.8
-    rules:
-      - name: blank-imports
-      - name: context-as-argument
-      - name: context-keys-type
-      - name: dot-imports
-      - name: error-return
-      - name: error-strings
-      - name: error-naming
-      - name: if-return
-      - name: increment-decrement
-      # - name: var-naming
-      - name: var-declaration
-      - name: package-comments
-      - name: range
-      - name: receiver-naming
-      - name: time-naming
-      - name: unexported-return
-      - name: indent-error-flow
-      - name: errorf
-      - name: exported
-      - name: empty-block
-      - name: superfluous-else
-      # - name: unused-parameter
-      - name: unreachable-code
-      - name: redefines-builtin-id
-      - name: waitgroup-by-value
-      - name: unconditional-recursion
-      - name: struct-tag
-      - name: string-format
-      - name: string-of-int
-      - name: range-val-address
-      - name: range-val-in-closure
-      - name: modifies-value-receiver
-      - name: modifies-parameter
-      - name: identical-branches
-      - name: get-return
-      - name: defer
-      - name: constant-logical-expr
-      - name: bool-literal-in-expr
-      - name: atomic
-issues:
-  exclude-dirs:
-    - contracts/ethereum
-    - examples
-    - imports
-    - wasp/examples/*
-    - k8s
-    - seth/examples_wasp/*
-    - seth/contracts
-    - seth/examples
-    - seth/examples_wasp
+    - revive
+  settings:
+    errorlint:
+      errorf: false
+    exhaustive:
+      default-signifies-exhaustive: true
+    revive:
+      confidence: 0.8
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: if-return
+        - name: increment-decrement
+        - name: var-declaration
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: errorf
+        - name: exported
+        - name: empty-block
+        - name: superfluous-else
+        - name: unreachable-code
+        - name: redefines-builtin-id
+        - name: waitgroup-by-value
+        - name: unconditional-recursion
+        - name: struct-tag
+        - name: string-format
+        - name: string-of-int
+        - name: range-val-address
+        - name: range-val-in-closure
+        - name: modifies-value-receiver
+        - name: modifies-parameter
+        - name: identical-branches
+        - name: get-return
+        - name: defer
+        - name: constant-logical-expr
+        - name: bool-literal-in-expr
+        - name: atomic
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - contracts/ethereum
+      - examples
+      - imports
+      - wasp/examples/*
+      - k8s
+      - seth/examples_wasp/*
+      - seth/contracts
+      - seth/examples
+      - seth/examples_wasp
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/smartcontractkit/chainlink-testing-framework/
+  exclusions:
+    generated: lax
+    paths:
+      - contracts/ethereum
+      - examples
+      - imports
+      - wasp/examples/*
+      - k8s
+      - seth/examples_wasp/*
+      - seth/contracts
+      - seth/examples
+      - seth/examples_wasp
+      - third_party$
+      - builtin$
+      - examples$

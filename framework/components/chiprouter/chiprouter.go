@@ -9,8 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
+	"github.com/moby/moby/api/types/container"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
@@ -104,9 +103,9 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 			h.ExtraHosts = append(h.ExtraHosts, "host.docker.internal:host-gateway")
 		},
 		WaitingFor: tcwait.ForAll(
-			tcwait.ForListeningPort(nat.Port(grpcPort)).WithPollInterval(200*time.Millisecond),
+			tcwait.ForListeningPort(grpcPort).WithPollInterval(200*time.Millisecond),
 			tcwait.ForHTTP(adminPathHealth).
-				WithPort(nat.Port(adminPort)).
+				WithPort(adminPort).
 				WithStartupTimeout(1*time.Minute).
 				WithPollInterval(200*time.Millisecond),
 		),

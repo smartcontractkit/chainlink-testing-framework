@@ -10,11 +10,14 @@ import (
 	"strings"
 	"time"
 
+	"net/netip"
+
 	"github.com/block-vision/sui-go-sdk/models"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/docker/go-connections/nat"
+
 	"github.com/go-resty/resty/v2"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
@@ -200,16 +203,16 @@ func newSui(ctx context.Context, in *Input) (*Output, error) {
 		},
 		HostConfigModifier: func(h *container.HostConfig) {
 			// Map user-provided host port to container's default port (9000)
-			h.PortBindings = nat.PortMap{
-				nat.Port(containerPort): []nat.PortBinding{
+			h.PortBindings = network.PortMap{
+				network.MustParsePort(containerPort): []network.PortBinding{
 					{
-						HostIP:   "0.0.0.0",
+						HostIP:   netip.MustParseAddr("0.0.0.0"),
 						HostPort: in.Port,
 					},
 				},
-				nat.Port(DefaultFaucetPort): []nat.PortBinding{
+				network.MustParsePort(DefaultFaucetPort): []network.PortBinding{
 					{
-						HostIP:   "0.0.0.0",
+						HostIP:   netip.MustParseAddr("0.0.0.0"),
 						HostPort: in.FaucetPort,
 					},
 				},

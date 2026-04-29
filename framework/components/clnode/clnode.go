@@ -17,8 +17,10 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
+	"net/netip"
+
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
@@ -183,13 +185,13 @@ func generateEntryPoint() []string {
 	return entrypoint
 }
 
-// natPortsToK8sFormat transforms nat.PortMap
+// natPortsToK8sFormat transforms network.PortMap
 // to Pods port pair format: $external_port:$internal_port
-func natPortsToK8sFormat(in *Input, nat nat.PortMap) []string {
+func natPortsToK8sFormat(in *Input, portMap network.PortMap) []string {
 	out := make([]string, 0)
-	for port, portBinding := range nat {
+	for port, portBinding := range portMap {
 		for _, b := range portBinding {
-			out = append(out, fmt.Sprintf("%s:%s", b.HostPort, strconv.Itoa(port.Int())))
+			out = append(out, fmt.Sprintf("%s:%s", b.HostPort, port.Port()))
 		}
 	}
 	// we are exposing P2P port in K8s via service
@@ -200,21 +202,21 @@ func natPortsToK8sFormat(in *Input, nat nat.PortMap) []string {
 // generatePortBindings generates exposed ports and port bindings
 // exposes default CL node port
 // exposes custom_ports in format "host:docker" or map 1-to-1 if only "host" port is provided
-func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
+func generatePortBindings(in *Input) ([]string, network.PortMap, error) {
 	httpPort := fmt.Sprintf("%s/tcp", DefaultHTTPPort)
 	exposedPorts := []string{httpPort}
-	portBindings := nat.PortMap{
-		nat.Port(httpPort): []nat.PortBinding{
+	portBindings := network.PortMap{
+		network.MustParsePort(httpPort): []network.PortBinding{
 			{
-				HostIP:   "0.0.0.0",
+				HostIP:   netip.MustParseAddr("0.0.0.0"),
 				HostPort: strconv.Itoa(in.Node.HTTPPort),
 			},
 		},
 	}
 	if os.Getenv("CTF_CLNODE_DLV") == "true" {
 		innerDebuggerPort := fmt.Sprintf("%d/tcp", DefaultDebuggerPort)
-		portBindings[nat.Port(innerDebuggerPort)] = append(portBindings[nat.Port(innerDebuggerPort)], nat.PortBinding{
-			HostIP:   "0.0.0.0",
+		portBindings[network.MustParsePort(innerDebuggerPort)] = append(portBindings[network.MustParsePort(innerDebuggerPort)], network.PortBinding{
+			HostIP:   netip.MustParseAddr("0.0.0.0"),
 			HostPort: strconv.Itoa(in.Node.DebuggerPort),
 		})
 		exposedPorts = append(exposedPorts, strconv.Itoa(DefaultDebuggerPort))
@@ -228,22 +230,22 @@ func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
 			}
 			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", pp[1]))
 
-			dockerPort := nat.Port(fmt.Sprintf("%s/tcp", pp[1]))
+			dockerPort := network.MustParsePort(fmt.Sprintf("%s/tcp", pp[1]))
 			hostPort := pp[0]
-			portBindings[dockerPort] = []nat.PortBinding{
+			portBindings[dockerPort] = []network.PortBinding{
 				{
-					HostIP:   "0.0.0.0",
+					HostIP:   netip.MustParseAddr("0.0.0.0"),
 					HostPort: hostPort,
 				},
 			}
 		} else {
 			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", p))
 
-			dockerPort := nat.Port(fmt.Sprintf("%s/tcp", p))
+			dockerPort := network.MustParsePort(fmt.Sprintf("%s/tcp", p))
 			hostPort := p
-			portBindings[dockerPort] = []nat.PortBinding{
+			portBindings[dockerPort] = []network.PortBinding{
 				{
-					HostIP:   "0.0.0.0",
+					HostIP:   netip.MustParseAddr("0.0.0.0"),
 					HostPort: hostPort,
 				},
 			}
@@ -410,7 +412,6 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 	}
 	if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {
 		req.HostConfigModifier = func(h *container.HostConfig) {
-			framework.NoDNS(in.NoDNS, h)
 			h.PortBindings = portBindings
 			framework.ResourceLimitsFunc(h, in.Node.ContainerResources)
 		}
@@ -496,13 +497,11 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 		return nil, err
 	}
 
-	mp := nat.Port(fmt.Sprintf("%d/tcp", in.Node.HTTPPort))
-
 	return &NodeOut{
 		APIAuthUser:     DefaultAPIUser,
 		APIAuthPassword: DefaultAPIPassword,
 		ContainerName:   containerName,
-		ExternalURL:     fmt.Sprintf("http://%s:%s", host, mp.Port()),
+		ExternalURL:     fmt.Sprintf("http://%s:%d", host, in.Node.HTTPPort),
 		InternalURL:     fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
 		InternalP2PUrl:  fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
 		InternalIP:      ip,

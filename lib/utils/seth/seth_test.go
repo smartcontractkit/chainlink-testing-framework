@@ -190,7 +190,7 @@ func TestMergeSethAndEvmNetworkConfigs(t *testing.T) {
 			),
 			sethConfig:       createSethConfig("Anvil", "Geth"),
 			expectedError:    true,
-			expectedErrorMsg: "Failed to build network config for chain ID",
+			expectedErrorMsg: "failed to build network config for chain ID",
 		},
 	}
 
