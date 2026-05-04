@@ -65,7 +65,8 @@ func defaultChipIngress(in *Input) *Input {
 }
 
 const (
-	DEFAULT_STACK_NAME = "chip-ingress"
+	DEFAULT_STACK_NAME  = "chip-ingress"
+	stackStartupTimeout = 2 * time.Minute
 
 	DEFAULT_CHIP_INGRESS_GRPC_PORT    = "50051"
 	DEFAULT_CHIP_INGRESS_SERVICE_NAME = "chip-ingress"
@@ -121,7 +122,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		return nil, errors.Wrap(stackErr, "failed to create compose stack for Chip Ingress")
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, stackStartupTimeout)
 	defer cancel()
 
 	envVars := make(map[string]string)
@@ -163,23 +164,23 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 			wait.ForLog("GRPC server is live").WithPollInterval(100*time.Millisecond),
 			wait.ForListeningPort(nat.Port(chipIngressGRPCPort)).WithPollInterval(100*time.Millisecond),
 			wait.NewHostPortStrategy(nat.Port(chipIngressGRPCHostPort)).WithPollInterval(100*time.Millisecond),
-		).WithDeadline(2*time.Minute),
+		).WithDeadline(stackStartupTimeout),
 	).WaitForService(DEFAULT_RED_PANDA_SERVICE_NAME,
 		wait.ForAll(
 			wait.ForListeningPort(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT).WithPollInterval(100*time.Millisecond),
 			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT).WithPollInterval(100*time.Millisecond),
 			wait.ForHTTP("/status/ready").WithPort(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT).WithPollInterval(100*time.Millisecond),
-		).WithDeadline(2*time.Minute),
+		).WithDeadline(stackStartupTimeout),
 	).WaitForService(DEFAULT_RED_PANDA_CONSOLE_SERVICE_NAME,
 		wait.ForAll(
 			wait.ForListeningPort(DEFAULT_RED_PANDA_CONSOLE_PORT).WithPollInterval(100*time.Millisecond),
 			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_CONSOLE_PORT).WithPollInterval(100*time.Millisecond),
-		).WithDeadline(2*time.Minute),
+		).WithDeadline(stackStartupTimeout),
 	).WaitForService(DEFAULT_CHIP_CONFIG_SERVICE_NAME,
 		wait.ForAll(
 			wait.ForListeningPort(DEFAULT_CHIP_CONFIG_INTERNAL_PORT).WithPollInterval(100*time.Millisecond),
 			wait.NewHostPortStrategy(DEFAULT_CHIP_CONFIG_EXTERNAL_PORT).WithPollInterval(100*time.Millisecond),
-		),
+		).WithDeadline(stackStartupTimeout),
 	)
 
 	chipIngressContainer, ingressErr := stack.ServiceContainer(ctx, DEFAULT_CHIP_INGRESS_SERVICE_NAME)

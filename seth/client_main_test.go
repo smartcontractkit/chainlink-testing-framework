@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -172,10 +173,31 @@ func NewDebugContractSetup() (
 	return c, contract, data.Address, subData.Address, data.BoundContract, nil
 }
 
+func newDebugContractSetupWithRetry(timeout time.Duration) (
+	*seth.Client,
+	*network_debug_contract.NetworkDebugContract,
+	common.Address,
+	common.Address,
+	*bind.BoundContract,
+	error,
+) {
+	deadline := time.Now().Add(timeout)
+	for {
+		client, contract, debugAddr, subAddr, bound, err := NewDebugContractSetup()
+		if err == nil {
+			return client, contract, debugAddr, subAddr, bound, nil
+		}
+		if time.Now().After(deadline) || (!strings.Contains(err.Error(), "connection refused") && !strings.Contains(err.Error(), "failed to connect")) {
+			return nil, nil, common.Address{}, common.Address{}, nil, err
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+}
+
 func TestMain(m *testing.M) {
 	if skip := os.Getenv("SKIP_MAIN_CONFIG"); skip == "" {
 		var err error
-		client, debugContract, debugContractAddress, debugSubContractAddress, debugContractRaw, err := NewDebugContractSetup()
+		client, debugContract, debugContractAddress, debugSubContractAddress, debugContractRaw, err := newDebugContractSetupWithRetry(15 * time.Second)
 		if err != nil {
 			panic(err)
 		}

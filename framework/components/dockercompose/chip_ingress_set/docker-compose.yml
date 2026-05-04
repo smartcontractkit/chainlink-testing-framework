@@ -74,7 +74,7 @@ services:
     restart: on-failure
 
   postgres:
-    image: postgres:16-alpine
+    image: public.ecr.aws/docker/library/postgres:16-alpine
     container_name: postgres-chip-config
     restart: always
     environment:
