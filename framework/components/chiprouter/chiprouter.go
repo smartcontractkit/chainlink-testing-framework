@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -21,6 +22,8 @@ const (
 	DefaultAdminPort        = 50050
 	DefaultBeholderGRPCPort = 50053
 	adminPathHealth         = "/health"
+
+	ImageOverrideEnvVar = "CTF_CHIP_ROUTER_IMAGE"
 )
 
 type Input struct {
@@ -55,14 +58,11 @@ type HealthResponse struct {
 }
 
 func defaults(in *Input) {
-	if in.GRPCPort == 0 {
-		in.GRPCPort = DefaultGRPCPort
-	}
-	if in.AdminPort == 0 {
-		in.AdminPort = DefaultAdminPort
-	}
 	if in.ContainerName == "" {
 		in.ContainerName = framework.DefaultTCName("chip-router")
+	}
+	if strings.TrimSpace(os.Getenv(ImageOverrideEnvVar)) != "" {
+		in.Image = os.Getenv(ImageOverrideEnvVar)
 	}
 }
 
@@ -75,14 +75,31 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		return in.Out, nil
 	}
 
+	defaults(in)
+
 	if strings.TrimSpace(in.Image) == "" {
 		return nil, fmt.Errorf("chip router image must be provided")
 	}
 
-	defaults(in)
+	var internalGRPCNatPort string
+	var internalGRPCPort int
+	if in.GRPCPort == 0 {
+		internalGRPCNatPort = fmt.Sprintf("%d/tcp", DefaultGRPCPort)
+		internalGRPCPort = DefaultGRPCPort
+	} else {
+		internalGRPCNatPort = fmt.Sprintf("%d/tcp", in.GRPCPort)
+		internalGRPCPort = in.GRPCPort
+	}
 
-	grpcPort := fmt.Sprintf("%d/tcp", in.GRPCPort)
-	adminPort := fmt.Sprintf("%d/tcp", in.AdminPort)
+	var internalAdminNatPort string
+	var internalAdminPort int
+	if in.AdminPort == 0 {
+		internalAdminNatPort = fmt.Sprintf("%d/tcp", DefaultAdminPort)
+		internalAdminPort = DefaultAdminPort
+	} else {
+		internalAdminNatPort = fmt.Sprintf("%d/tcp", in.AdminPort)
+		internalAdminPort = in.AdminPort
+	}
 
 	req := tc.ContainerRequest{
 		Name:            in.ContainerName,
@@ -93,23 +110,38 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		NetworkAliases: map[string][]string{
 			framework.DefaultNetworkName: {in.ContainerName},
 		},
-		ExposedPorts: []string{grpcPort, adminPort},
+		ExposedPorts: []string{internalGRPCNatPort, internalAdminNatPort},
 		Env: map[string]string{
-			"CHIP_ROUTER_GRPC_ADDR":  fmt.Sprintf("0.0.0.0:%d", in.GRPCPort),
-			"CHIP_ROUTER_ADMIN_ADDR": fmt.Sprintf("0.0.0.0:%d", in.AdminPort),
+			"CHIP_ROUTER_GRPC_ADDR":  fmt.Sprintf("0.0.0.0:%d", internalGRPCPort),
+			"CHIP_ROUTER_ADMIN_ADDR": fmt.Sprintf("0.0.0.0:%d", internalAdminPort),
 			"CTF_LOG_LEVEL":          in.LogLevel,
 		},
-		HostConfigModifier: func(h *container.HostConfig) {
-			h.PortBindings = framework.MapTheSamePort(grpcPort, adminPort)
-			h.ExtraHosts = append(h.ExtraHosts, "host.docker.internal:host-gateway")
-		},
 		WaitingFor: tcwait.ForAll(
-			tcwait.ForListeningPort(nat.Port(grpcPort)).WithPollInterval(200*time.Millisecond),
+			tcwait.ForListeningPort(nat.Port(internalGRPCNatPort)).WithPollInterval(200*time.Millisecond),
 			tcwait.ForHTTP(adminPathHealth).
-				WithPort(nat.Port(adminPort)).
+				WithPort(nat.Port(internalAdminNatPort)).
 				WithStartupTimeout(1*time.Minute).
 				WithPollInterval(200*time.Millisecond),
 		),
+	}
+
+	staticPortBindings := []string{}
+	if in.GRPCPort != 0 {
+		staticPortBindings = append(staticPortBindings, fmt.Sprintf("%d/tcp", in.GRPCPort))
+	}
+	if in.AdminPort != 0 {
+		staticPortBindings = append(staticPortBindings, fmt.Sprintf("%d/tcp", in.AdminPort))
+	}
+
+	if len(staticPortBindings) > 0 {
+		req.HostConfigModifier = func(h *container.HostConfig) {
+			h.PortBindings = framework.MapTheSamePort(staticPortBindings...)
+			h.ExtraHosts = append(h.ExtraHosts, "host.docker.internal:host-gateway")
+		}
+	} else {
+		req.HostConfigModifier = func(h *container.HostConfig) {
+			h.ExtraHosts = append(h.ExtraHosts, "host.docker.internal:host-gateway")
+		}
 	}
 
 	c, err := tc.GenericContainer(ctx, tc.GenericContainerRequest{
@@ -128,12 +160,32 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	out := &Output{
 		UseCache:         true,
 		ContainerName:    in.ContainerName,
-		ExternalGRPCURL:  fmt.Sprintf("%s:%d", host, in.GRPCPort),
-		InternalGRPCURL:  fmt.Sprintf("%s:%d", in.ContainerName, in.GRPCPort),
-		ExternalAdminURL: fmt.Sprintf("http://%s:%d", host, in.AdminPort),
-		InternalAdminURL: fmt.Sprintf("http://%s:%d", in.ContainerName, in.AdminPort),
+		InternalAdminURL: fmt.Sprintf("http://%s:%d", in.ContainerName, internalAdminPort),
+		InternalGRPCURL:  fmt.Sprintf("%s:%d", in.ContainerName, internalGRPCPort),
 	}
+
+	if in.GRPCPort != 0 {
+		out.ExternalGRPCURL = fmt.Sprintf("%s:%d", host, in.GRPCPort)
+	} else {
+		if p, err := c.MappedPort(ctx, nat.Port(internalGRPCNatPort)); err != nil {
+			return nil, err
+		} else {
+			out.ExternalGRPCURL = fmt.Sprintf("%s:%d", host, p.Int())
+		}
+	}
+
+	if in.AdminPort != 0 {
+		out.ExternalAdminURL = fmt.Sprintf("http://%s:%d", host, in.AdminPort)
+	} else {
+		if p, err := c.MappedPort(ctx, nat.Port(internalAdminNatPort)); err != nil {
+			return nil, err
+		} else {
+			out.ExternalAdminURL = fmt.Sprintf("http://%s:%d", host, p.Int())
+		}
+	}
+
 	in.Out = out
+
 	return out, nil
 }
 

@@ -2,6 +2,7 @@ package chip_ingress_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -16,12 +17,12 @@ type ChipConfig struct {
 	ChipIngress *chipingressset.Input `toml:"chip_ingress" validate:"required"`
 }
 
-// use config file: smoke_chip.toml
+// use config file: smoke_chip_ingress.toml
 func TestChipIngressSmoke(t *testing.T) {
 	in, err := framework.Load[ChipConfig](t)
 	require.NoError(t, err, "failed to load config")
-	require.NotEmpty(t, os.Getenv("CHIP_CONFIG_IMAGE"), "CHIP_CONFIG_IMAGE env var is not set")
-	require.NotEmpty(t, os.Getenv("CHIP_INGRESS_IMAGE"), "CHIP_INGRESS_IMAGE env var is not set")
+	require.NotEmpty(t, os.Getenv(chipingressset.ChipIngressImageEnvVar), fmt.Sprintf("%s env var is not set", chipingressset.ChipIngressImageEnvVar))
+	require.NotEmpty(t, os.Getenv(chipingressset.ChipConfigImageEnvVar), fmt.Sprintf("%s env var is not set", chipingressset.ChipConfigImageEnvVar))
 
 	out, err := chipingressset.NewWithContext(t.Context(), in.ChipIngress)
 	require.NoError(t, err, "failed to create chip ingress set")

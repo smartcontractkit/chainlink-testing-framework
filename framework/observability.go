@@ -33,6 +33,12 @@ const (
 func copyLocalDashboards(obsDir string) error {
 	wd, _ := os.Getwd()
 	localDir := filepath.Join(wd, CTFLocalDashboardsDirRelative)
+
+	if _, err := os.Stat(localDir); os.IsNotExist(err) {
+		L.Info().Str("Dir", localDir).Msg("No local dashboards to copy")
+		return nil
+	}
+
 	L.Info().
 		Str("From", localDir).
 		Str("To", obsDir).

@@ -3,10 +3,33 @@ on:
   push:
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      src: ${{ steps.changes.outputs.src }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+
+      - name: Check for changes in Docker Components
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: changes
+        with:
+          filters: |
+            src:
+              - 'framework/components/dockercompose/**'
+              - '.github/workflows/framework-components-tests.yml'
+              - 'framework/examples/chip_ingress'
+              - 'framework/examples/chip_router'
+              - 'framework/components/chiprouter'
   test:
+    if: needs.changes.outputs.src == 'true'
+    needs: changes
     defaults:
       run:
-        working-directory: framework/examples/chip_ingress
+        working-directory: ${{ matrix.test.directory }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -16,8 +39,19 @@ jobs:
       matrix:
         test:
           - name: TestChipIngressSmoke
-            config: smoke_chip.toml
+            config: smoke_chip_ingress.toml
             count: 1
+            directory: framework/examples/chip_ingress
+            timeout: 3m
+          - name: TestChipRouterDynamicPortsSmoke
+            config: smoke_chip_router.toml
+            count: 1
+            directory: framework/examples/chip_router
+            timeout: 3m
+          - name: TestChipRouterStaticPortsSmoke
+            config: smoke_chip_router.toml
+            count: 1
+            directory: framework/examples/chip_router
             timeout: 3m
     name: ${{ matrix.test.name }}
     steps:
@@ -37,16 +71,6 @@ jobs:
           registries: ${{ format('{0},{1}', secrets.AWS_ACCOUNT_ID_SDLC, secrets.AWS_ACCOUNT_ID_PROD) }}
         env:
           AWS_REGION: us-west-2
-
-      - name: Check for changes in Docker Components
-        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
-        id: changes
-        with:
-          filters: |
-            src:
-              - 'framework/components/dockercompose/**'
-              - '.github/workflows/framework-components-tests.yml'
-
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -58,20 +82,20 @@ jobs:
           path: |
             ~/.cache/go-build
             ~/go/pkg/mod
-          key: go-modules-${{ hashFiles('framework/examples/myproject/go.sum') }}-${{ runner.os }}-framework-golden-examples
+          key: go-modules-${{ hashFiles(format('{0}/go.sum', matrix.test.directory)) }}-${{ runner.os }}-${{ matrix.test.name }}
           restore-keys: |
-            go-modules-${{ runner.os }}-framework-golden-examples
+            go-modules-${{ runner.os }}-${{ matrix.test.name }}
             go-modules-${{ runner.os }}
 
       - name: Install dependencies
         run: go mod download
 
       - name: Run Docker Compose Tests
-        if: steps.changes.outputs.src == 'true'
         env:
           CTF_CONFIGS: ${{ matrix.test.config }}
-          CHIP_INGRESS_IMAGE: ${{ secrets.AWS_ACCOUNT_ID_PROD }}.dkr.ecr.us-west-2.amazonaws.com/atlas-chip-ingress:da84cb72d3a160e02896247d46ab4b9806ebee2f
-          CHIP_CONFIG_IMAGE: ${{ secrets.AWS_ACCOUNT_ID_PROD }}.dkr.ecr.us-west-2.amazonaws.com/atlas-chip-config:7b4e9ee68fd1c737dd3480b5a3ced0188f29b969
+          CTF_CHIP_INGRESS_IMAGE: ${{ secrets.AWS_ACCOUNT_ID_PROD }}.dkr.ecr.us-west-2.amazonaws.com/atlas-chip-ingress:da84cb72d3a160e02896247d46ab4b9806ebee2f
+          CTF_CHIP_CONFIG_IMAGE: ${{ secrets.AWS_ACCOUNT_ID_PROD }}.dkr.ecr.us-west-2.amazonaws.com/atlas-chip-config:7b4e9ee68fd1c737dd3480b5a3ced0188f29b969
+          CTF_CHIP_ROUTER_IMAGE: "${{secrets.AWS_ACCOUNT_ID_SDLC}}.dkr.ecr.us-west-2.amazonaws.com/local-cre-chip-router:v1.0.1"
           CTF_LOG_LEVEL: debug
         run: |
           go test -timeout ${{ matrix.test.timeout }} -v -count ${{ matrix.test.count }} -run ${{ matrix.test.name }}
@@ -81,5 +105,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: container-logs-${{ matrix.test.name }}
-          path: framework/examples/myproject/logs
+          path: ${{ matrix.test.directory }}/logs
           retention-days: 1
