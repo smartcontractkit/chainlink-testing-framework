@@ -107,8 +107,11 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	// set fallback values for backwards compatibility
 	fallbackEnvVars := []string{ChipConfigImageEnvVar, ChipIngressImageEnvVar, ChipIngressGRPCHostPortEnvVar, ChipIngressGRPCPortEnvVar}
 	for _, env := range fallbackEnvVars {
+		if v, ok := os.LookupEnv(env); ok && v != "" {
+			continue
+		}
 		if v, ok := os.LookupEnv(strings.TrimPrefix(env, "CTF_")); ok {
-			os.Setenv(env, v)
+			_ = os.Setenv(env, v)
 		}
 	}
 
@@ -156,20 +159,20 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	stack.WaitForService(DEFAULT_CHIP_INGRESS_SERVICE_NAME,
 		wait.ForAll(
 			wait.ForLog("GRPC server is live").WithPollInterval(100*time.Millisecond),
-			wait.NewHostPortStrategy(nat.Port(chipIngressGRPCPort)).WithPollInterval(100*time.Millisecond),
+			wait.NewHostPortStrategy(nat.Port(chipIngressGRPCPort+"/tcp")).WithPollInterval(100*time.Millisecond),
 		).WithDeadline(2*time.Minute),
 	).WaitForService(DEFAULT_CHIP_CONFIG_SERVICE_NAME,
 		wait.ForAll(
-			wait.NewHostPortStrategy(DEFAULT_CHIP_CONFIG_INTERNAL_PORT).WithPollInterval(100*time.Millisecond),
+			wait.NewHostPortStrategy(DEFAULT_CHIP_CONFIG_INTERNAL_PORT+"/tcp").WithPollInterval(100*time.Millisecond),
 		),
 	).WaitForService(DEFAULT_RED_PANDA_SERVICE_NAME,
 		wait.ForAll(
-			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT).WithPollInterval(100*time.Millisecond),
+			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT+"/tcp").WithPollInterval(100*time.Millisecond),
 			wait.ForHTTP("/status/ready").WithPort(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT).WithPollInterval(100*time.Millisecond),
 		).WithDeadline(2*time.Minute),
 	).WaitForService(DEFAULT_RED_PANDA_CONSOLE_SERVICE_NAME,
 		wait.ForAll(
-			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_CONSOLE_PORT).WithPollInterval(100*time.Millisecond),
+			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_CONSOLE_PORT+"/tcp").WithPollInterval(100*time.Millisecond),
 		).WithDeadline(2*time.Minute),
 	)
 
@@ -259,7 +262,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	if v, ok := envVars[ChipIngressGRPCHostPortEnvVar]; ok && v != "" {
 		chipIngressGRPCHostPort = v
 	} else {
-		port, pErr := chipIngressContainer.MappedPort(ctx, nat.Port(chipIngressGRPCPort))
+		port, pErr := chipIngressContainer.MappedPort(ctx, nat.Port(chipIngressGRPCPort+"/tcp"))
 		if pErr != nil {
 			return nil, errors.Wrap(pErr, "failed to get mapped port for Chip Ingress")
 		}

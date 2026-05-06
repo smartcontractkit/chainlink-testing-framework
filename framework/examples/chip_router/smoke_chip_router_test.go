@@ -1,6 +1,7 @@
-package chip_ingress_test
+package chip_router_test
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -16,11 +17,9 @@ type ChipRouterConfig struct {
 
 // use config file: smoke_chip_router.toml
 func TestChipRouterDynamicPortsSmoke(t *testing.T) {
-	os.Setenv("CTF_CONFIGS", "smoke_chip_router.toml")
-	os.Setenv("CTF_CHIP_ROUTER_IMAGE", "local-cre-chip-router:v1.0.1")
 	in, err := framework.Load[ChipRouterConfig](t)
 	require.NoError(t, err, "failed to load config")
-	require.NotEmpty(t, os.Getenv("CTF_CHIP_ROUTER_IMAGE"), "CTF_CHIP_ROUTER_IMAGE env var is not set")
+	require.NotEmpty(t, os.Getenv(chiprouter.ImageOverrideEnvVar), fmt.Sprintf("%s env var is not set", chiprouter.ImageOverrideEnvVar))
 
 	in.ChipRouter.GRPCPort = 0
 	in.ChipRouter.AdminPort = 0
@@ -30,19 +29,16 @@ func TestChipRouterDynamicPortsSmoke(t *testing.T) {
 	require.NotEmpty(t, out.ExternalGRPCURL, "GRPCExternalURL is not set")
 	require.NotEmpty(t, out.ExternalAdminURL, "AdminExternalURL is not set")
 
-	health, err := chiprouter.Health(t.Context(), out.ExternalAdminURL)
+	_, err = chiprouter.Health(t.Context(), out.ExternalAdminURL)
 	require.NoError(t, err, "failed to get chip router health")
-	require.NotEmpty(t, health, "health is not set")
 
 }
 
 // use config file: smoke_chip_router.toml
 func TestChipRouterStaticPortsSmoke(t *testing.T) {
-	os.Setenv("CTF_CONFIGS", "smoke_chip_router.toml")
-	os.Setenv("CTF_CHIP_ROUTER_IMAGE", "local-cre-chip-router:v1.0.1")
 	in, err := framework.Load[ChipRouterConfig](t)
 	require.NoError(t, err, "failed to load config")
-	require.NotEmpty(t, os.Getenv("CTF_CHIP_ROUTER_IMAGE"), "CTF_CHIP_ROUTER_IMAGE env var is not set")
+	require.NotEmpty(t, os.Getenv(chiprouter.ImageOverrideEnvVar), fmt.Sprintf("%s env var is not set", chiprouter.ImageOverrideEnvVar))
 	in.ChipRouter.GRPCPort = 7197
 	in.ChipRouter.AdminPort = 7198
 

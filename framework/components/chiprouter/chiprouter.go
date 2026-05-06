@@ -186,9 +186,6 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 
 	in.Out = out
 
-	fmt.Println("[ctf] chip router internal grpc url", out.InternalGRPCURL)
-	fmt.Println("[ctf] chip router internal grpc url", in.Out.InternalGRPCURL)
-
 	return out, nil
 }
 
