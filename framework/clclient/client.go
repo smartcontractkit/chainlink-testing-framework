@@ -857,6 +857,46 @@ func (c *ChainlinkClient) ReadTxKeys(chain string) (*TxKeys, *http.Response, err
 	return txKeys, resp.RawResponse, err
 }
 
+// ReadAptosKeys reads all Aptos keys from the Chainlink node
+func (c *ChainlinkClient) ReadAptosKeys() (*AptosKeys, *resty.Response, error) {
+	aptosKeys := &AptosKeys{}
+	framework.L.Info().Str(NodeURL, c.Config.URL).Msg("Reading Aptos Keys")
+	resp, err := c.APIClient.R().
+		SetResult(aptosKeys).
+		Get("/v2/keys/aptos")
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(aptosKeys.Data) == 0 {
+		framework.L.Warn().Str(NodeURL, c.Config.URL).Msg("Found no Aptos Keys on the node")
+	}
+	return aptosKeys, resp, nil
+}
+
+// MustReadAptosKeys reads all Aptos keys from the Chainlink node and returns an error if the request is unsuccessful.
+func (c *ChainlinkClient) MustReadAptosKeys() (*AptosKeys, *resty.Response, error) {
+	aptosKeys, res, err := c.ReadAptosKeys()
+	if err != nil {
+		return nil, res, err
+	}
+	return aptosKeys, res, VerifyStatusCodeWithResponse(res, http.StatusOK)
+}
+
+// MustReadAptosAccounts reads all Aptos account addresses from the Chainlink node.
+func (c *ChainlinkClient) MustReadAptosAccounts() ([]string, error) {
+	aptosKeys, _, err := c.MustReadAptosKeys()
+	if err != nil {
+		return nil, err
+	}
+
+	accounts := make([]string, 0, len(aptosKeys.Data))
+	for _, key := range aptosKeys.Data {
+		accounts = append(accounts, key.Attributes.Account)
+	}
+
+	return accounts, nil
+}
+
 // DeleteTxKey deletes an tx key based on the provided ID
 func (c *ChainlinkClient) DeleteTxKey(chain string, id string) (*http.Response, error) {
 	framework.L.Info().Str(NodeURL, c.Config.URL).Str("ID", id).Msg("Deleting Tx Key")

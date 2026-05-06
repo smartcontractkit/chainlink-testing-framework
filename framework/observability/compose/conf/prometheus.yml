@@ -17,9 +17,20 @@ scrape_configs:
       - host: 'unix:///var/run/docker.sock'
         refresh_interval: 20s
     relabel_configs:
+      # Drop containers with no exposed ports
       - source_labels: [__meta_docker_port_private]
-        regex: '6688'
+        regex: '.+'
         action: keep
+      # Use container name (strip leading /) as the job label
+      - source_labels: [__meta_docker_container_name]
+        regex: '/(.*)'
+        target_label: job
+        replacement: '$1'
+      # Build address from container name + private port
+      - source_labels: [__meta_docker_container_name, __meta_docker_port_private]
+        regex: '/(.+);(.+)'
+        target_label: __address__
+        replacement: '$1:$2'
   - job_name: cadvisor
     scrape_interval: 10s
     static_configs:

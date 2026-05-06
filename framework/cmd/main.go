@@ -320,7 +320,6 @@ Be aware that any TODO requires your attention before your run the final test!
 								Name:    "buildcmd",
 								Aliases: []string{"b"},
 								Usage:   "Environment build command",
-								Value:   "just cli",
 							},
 							&cli.StringFlag{
 								Name:    "envcmd",

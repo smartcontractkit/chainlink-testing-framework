@@ -228,6 +228,28 @@ type WorkflowKeys struct {
 	Data []WorkflowKey `json:"data"`
 }
 
+// AptosKeyAttributes is the model that represents the created Aptos key attributes when read
+type AptosKeyAttributes struct {
+	Account   string `json:"account"`
+	PublicKey string `json:"publicKey"`
+}
+
+// AptosKeyData is the model that represents the created Aptos keys when read
+type AptosKeyData struct {
+	ID         string             `json:"id"`
+	Attributes AptosKeyAttributes `json:"attributes"`
+}
+
+// AptosKey is the model that represents the created Aptos key when read
+type AptosKey struct {
+	Data AptosKeyData `json:"data"`
+}
+
+// AptosKeys is the model that represents the created Aptos keys when read
+type AptosKeys struct {
+	Data []AptosKeyData `json:"data"`
+}
+
 // OCRKeys is the model that represents the created OCR keys when read
 type OCRKeys struct {
 	Data []OCRKeyData `json:"data"`

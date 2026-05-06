@@ -13,7 +13,7 @@ import (
 
 // Canton Defaults
 const (
-	SpliceVersion = "0.5.13"
+	SpliceVersion = "0.5.17"
 	Image         = "ghcr.io/digital-asset/decentralized-canton-sync/docker/canton"
 )
 

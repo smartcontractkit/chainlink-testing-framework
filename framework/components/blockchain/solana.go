@@ -28,6 +28,15 @@ address_labels:
 commitment: finalized
 `
 
+const (
+	// DefaultSolanaPrivateKey is the base58-encoded private key matching the keypair
+	// written to the test validator's /root/.config/solana/cli/id.json.
+	// The corresponding public key is DefaultSolanaPublicKey.
+	DefaultSolanaPrivateKey = "DmPfeHBC8Brf8s5qQXi25bmJ996v6BHRtaLc6AH51yFGSqQpUMy1oHkbbXobPNBdgGH2F29PAmoq9ZZua4K9vCc"
+	// DefaultSolanaPublicKey is the public key derived from DefaultSolanaPrivateKey.
+	DefaultSolanaPublicKey = "9n1pyVGGo6V4mpiSDMVay5As9NurEkY283wwRk1Kto2C"
+)
+
 var idJSONRaw = `
 [11,2,35,236,230,251,215,68,220,208,166,157,229,181,164,26,150,230,218,229,41,20,235,80,183,97,20,117,191,159,228,243,130,101,145,43,51,163,139,142,11,174,113,54,206,213,188,127,131,147,154,31,176,81,181,147,78,226,25,216,193,243,136,149]
 `

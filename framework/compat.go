@@ -47,13 +47,14 @@ type UpgradeContext struct {
 type UpgradeNRollingSummaryTemplate struct {
 	Total    int
 	Earliest string
+	Latest   string
 	Sequence []string
 }
 
 // WriteRollingNUpgradeSummary renders an upgrade summary and writes it to ci_summary.txt
 func WriteRollingNUpgradeSummary(tmpl UpgradeNRollingSummaryTemplate) error {
 	r, err := RenderTemplate(`
-Testing upgrade sequence for previous versions:
+Testing upgrade sequence to {{.Latest}} from previous versions:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 {{- range .Sequence}}
   • {{.}}
@@ -79,7 +80,7 @@ type UpgradeSOTDONSummary struct {
 // WriteSOTDONUpgradeSummary renders an upgrade summary and writes it to ci_summary.txt
 func WriteSOTDONUpgradeSummary(tmpl UpgradeSOTDONSummary) error {
 	r, err := RenderTemplate(`
-Testing upgrade sequence for DON versions from RANE SOT, for product {{.ProductName}}:
+Testing upgrade sequence to {{.Latest}} for DON versions from RANE SOT, for product {{.ProductName}}:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 {{- range $index, $version := .Sequence}}
   • {{$version}}
@@ -158,7 +159,7 @@ func UpgradeNProductUniqueVersionsRolling(ctx context.Context, u UpgradeContext)
 			DONSize:        u.DonNodes,
 			Earliest:       u.Refs[0],
 			Latest:         u.Refs[len(u.Refs)-1],
-			Sequence:       u.Refs,
+			Sequence:       u.Refs[:len(u.Refs)-1],
 			SequenceChunks: donRefs,
 		},
 	); err != nil {
@@ -224,7 +225,8 @@ func UpgradeNRolling(ctx context.Context, u UpgradeContext) error {
 		UpgradeNRollingSummaryTemplate{
 			Total:    len(u.Refs),
 			Earliest: u.Refs[0],
-			Sequence: u.Refs,
+			Latest:   u.Refs[len(u.Refs)-1],
+			Sequence: u.Refs[:len(u.Refs)-1],
 		},
 	); err != nil {
 		return err
