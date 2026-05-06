@@ -29,7 +29,7 @@ services:
     depends_on:
       - loki
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.51.0
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
     container_name: cadvisor
     ports:
       - '8085:8080'
@@ -37,8 +37,8 @@ services:
     volumes:
       - /:/rootfs:ro
       - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro # Docker container data
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/:/var/lib/docker # Docker container data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
     privileged: true
 
