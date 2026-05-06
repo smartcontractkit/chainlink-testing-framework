@@ -7,11 +7,12 @@ import (
 )
 
 type testcase struct {
-	name         string
-	includes     []string
-	excludes     []string
-	tags         []string
-	expectedTags []string
+	name              string
+	includes          []string
+	excludes          []string
+	tags              []string
+	expectedTags      []string
+	tagVersionCeiling string
 }
 
 func TestSmokeTagsFilter(t *testing.T) {
@@ -93,11 +94,25 @@ func TestSmokeTagsFilter(t *testing.T) {
 			tags:         []string{"v1.0.0", "v1.0.1", "v2.0.0"},
 			expectedTags: []string{"v1.0.1", "v1.0.0"},
 		},
+		{
+			name:              "tag version ceiling works",
+			tagVersionCeiling: "v1.0.0",
+			tags:              []string{"v0.9.0", "v1.0.0", "v1.0.1", "v2.0.0"},
+			expectedTags:      []string{"v1.0.0", "v0.9.0"},
+		},
+		{
+			name:              "tag version ceiling works together with include and exclude",
+			includes:          []string{"v1", "v2"},
+			excludes:          []string{"rc"},
+			tagVersionCeiling: "v2.0.0",
+			tags:              []string{"v0.9.0-rc", "v1.0.0", "v1.0.1", "v2.0.0", "v2.0.1"},
+			expectedTags:      []string{"v2.0.0", "v1.0.1", "v1.0.0"},
+		},
 	}
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			tags := FilterSemverTags(tc.tags, tc.includes, tc.excludes)
+			tags := FilterSemverTags(tc.tags, tc.includes, tc.excludes, tc.tagVersionCeiling)
 			require.Equal(t, tc.expectedTags, tags, "Test case: %s", tc.name)
 		})
 	}
