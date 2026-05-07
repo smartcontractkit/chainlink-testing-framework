@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli/v2"
 
@@ -361,6 +362,10 @@ Be aware that any TODO requires your attention before your run the final test!
 								Name:  "skip-pull",
 								Usage: "Skip docker pull; use locally built images (e.g. for local testing)",
 							},
+							&cli.StringFlag{
+								Name:  "tag-version-ceiling",
+								Usage: "Tag version ceiling to use for the upgrade sequence, which limits the upgrade sequence to the given tag version and below",
+							},
 						},
 						Usage: "Rollbacks N versions back, runs the test the upgrades CL nodes with new versions",
 						Action: func(c *cli.Context) error {
@@ -368,6 +373,7 @@ Be aware that any TODO requires your attention before your run the final test!
 							versionsBack := c.Int("versions-back")
 							registry := c.String("registry")
 							refs := c.StringSlice("refs")
+							tagVersionCeiling := c.String("tag-version-ceiling")
 							include := c.StringSlice("include-refs")
 							exclude := c.StringSlice("exclude-refs")
 
@@ -390,14 +396,20 @@ Be aware that any TODO requires your attention before your run the final test!
 							// - perform the test again
 							// - repeat until all the new versions are validated
 
-							// if no refs provided find refs (tags) sequence SemVer sequence for last N versions_back
+							// if no refs provided find refs (tags) sequence SemVer sequence for last N versions_back (limited by tag-version-ceiling if provided)
 							// else, use refs param slice
 
 							// Step 1: Find upgrade sequence either from Git refs or product unique versions found in SOT data source
 
 							var err error
 							if len(refs) == 0 && product == "" {
-								refs, err = framework.FindSemVerRefSequence(versionsBack, include, exclude)
+								if tagVersionCeiling != "" {
+									_, tagErr := semver.NewVersion(tagVersionCeiling)
+									if tagErr != nil {
+										return fmt.Errorf("failed to parse tag version ceiling: %w", tagErr)
+									}
+								}
+								refs, err = framework.FindSemVerRefSequence(versionsBack, include, exclude, tagVersionCeiling)
 								if err != nil {
 									return err
 								}
