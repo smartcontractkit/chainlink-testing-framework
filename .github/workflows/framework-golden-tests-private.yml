@@ -55,7 +55,7 @@ jobs:
           aws-region: us-west-2
       - name: Login to private Amazon ECRs
         id: login-ecr-private
-        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
+        uses: aws-actions/amazon-ecr-login@fa648b43de3d4d023bcb3f89ed6940096949c419 # v2.1.5
         with:
           registries: ${{ format('{0},{1}', secrets.AWS_ACCOUNT_ID_SDLC, secrets.AWS_ACCOUNT_ID_PROD) }}
         env:
@@ -63,7 +63,7 @@ jobs:
 
       - name: Login to public Amazon ECR
         id: login-ecr-public
-        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
+        uses: aws-actions/amazon-ecr-login@fa648b43de3d4d023bcb3f89ed6940096949c419 # v2.1.5
         env:
           AWS_REGION: us-east-1
         with:
