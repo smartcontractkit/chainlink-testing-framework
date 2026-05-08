@@ -166,20 +166,20 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	if in.GRPCPort != 0 {
 		out.ExternalGRPCURL = fmt.Sprintf("%s:%d", host, in.GRPCPort)
 	} else {
-		if p, err := c.MappedPort(ctx, nat.Port(internalGRPCNatPort)); err != nil {
+		if p, err := c.MappedPort(ctx, internalGRPCNatPort); err != nil {
 			return nil, err
 		} else {
-			out.ExternalGRPCURL = fmt.Sprintf("%s:%d", host, p.Int())
+			out.ExternalGRPCURL = fmt.Sprintf("%s:%d", host, p.Num())
 		}
 	}
 
 	if in.AdminPort != 0 {
 		out.ExternalAdminURL = fmt.Sprintf("http://%s:%d", host, in.AdminPort)
 	} else {
-		if p, err := c.MappedPort(ctx, nat.Port(internalAdminNatPort)); err != nil {
+		if p, err := c.MappedPort(ctx, internalAdminNatPort); err != nil {
 			return nil, err
 		} else {
-			out.ExternalAdminURL = fmt.Sprintf("http://%s:%d", host, p.Int())
+			out.ExternalAdminURL = fmt.Sprintf("http://%s:%d", host, p.Num())
 		}
 	}
 

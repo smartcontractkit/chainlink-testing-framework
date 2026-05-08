@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/go-connections/nat"
 	networkTypes "github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
@@ -262,11 +261,11 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	if v, ok := envVars[ChipIngressGRPCHostPortEnvVar]; ok && v != "" {
 		chipIngressGRPCHostPort = v
 	} else {
-		port, pErr := chipIngressContainer.MappedPort(ctx, nat.Port(chipIngressGRPCPort+"/tcp"))
+		port, pErr := chipIngressContainer.MappedPort(ctx, chipIngressGRPCPort+"/tcp")
 		if pErr != nil {
 			return nil, errors.Wrap(pErr, "failed to get mapped port for Chip Ingress")
 		}
-		chipIngressGRPCHostPort = fmt.Sprintf("%d", port.Int())
+		chipIngressGRPCHostPort = fmt.Sprintf("%d", port.Num())
 	}
 
 	output := &Output{
