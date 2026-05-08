@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/go-connections/nat"
 	networkTypes "github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
@@ -82,10 +83,10 @@ const (
 	DEFAULT_RED_PANDA_CONSOLE_SERVICE_NAME = "redpanda-console"
 	DEFAULT_RED_PANDA_CONSOLE_PORT         = "8080"
 
-	ChipIngressGRPCHostPortEnvVar = "CHIP_INGRESS_GRPC_HOST_PORT"
-	ChipIngressGRPCPortEnvVar     = "CHIP_INGRESS_GRPC_PORT"
-	ChipIngressImageEnvVar        = "CHIP_INGRESS_IMAGE"
-	ChipConfigImageEnvVar         = "CHIP_CONFIG_IMAGE"
+	ChipIngressGRPCHostPortEnvVar = "CTF_CHIP_INGRESS_GRPC_HOST_PORT"
+	ChipIngressGRPCPortEnvVar     = "CTF_CHIP_INGRESS_GRPC_PORT"
+	ChipIngressImageEnvVar        = "CTF_CHIP_INGRESS_IMAGE"
+	ChipConfigImageEnvVar         = "CTF_CHIP_CONFIG_IMAGE"
 )
 
 func New(in *Input) (*Output, error) {
@@ -100,6 +101,17 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	if in.UseCache {
 		if in.Output != nil {
 			return in.Output, nil
+		}
+	}
+
+	// set fallback values for backwards compatibility
+	fallbackEnvVars := []string{ChipConfigImageEnvVar, ChipIngressImageEnvVar, ChipIngressGRPCHostPortEnvVar, ChipIngressGRPCPortEnvVar}
+	for _, env := range fallbackEnvVars {
+		if v, ok := os.LookupEnv(env); ok && v != "" {
+			continue
+		}
+		if v, ok := os.LookupEnv(strings.TrimPrefix(env, "CTF_")); ok {
+			_ = os.Setenv(env, v)
 		}
 	}
 
@@ -139,19 +151,6 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		return nil, fmt.Errorf("%s env var is not set", ChipConfigImageEnvVar)
 	}
 
-	upErr := stack.
-		WithEnv(envVars).
-		Up(ctx)
-
-	if upErr != nil {
-		return nil, errors.Wrap(upErr, "failed to start stack for Chip Ingress")
-	}
-
-	chipIngressGRPCHostPort := DEFAULT_CHIP_INGRESS_GRPC_PORT
-	if v, ok := envVars[ChipIngressGRPCHostPortEnvVar]; ok && v != "" {
-		chipIngressGRPCHostPort = v
-	}
-
 	chipIngressGRPCPort := DEFAULT_CHIP_INGRESS_GRPC_PORT
 	if v, ok := envVars[ChipIngressGRPCPortEnvVar]; ok && v != "" {
 		chipIngressGRPCPort = v
@@ -160,26 +159,30 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	stack.WaitForService(DEFAULT_CHIP_INGRESS_SERVICE_NAME,
 		wait.ForAll(
 			wait.ForLog("GRPC server is live").WithPollInterval(100*time.Millisecond),
-			wait.ForListeningPort(chipIngressGRPCPort).WithPollInterval(100*time.Millisecond),
-			wait.NewHostPortStrategy(chipIngressGRPCHostPort).WithPollInterval(100*time.Millisecond),
+			wait.NewHostPortStrategy(chipIngressGRPCPort+"/tcp").WithPollInterval(100*time.Millisecond),
 		).WithDeadline(2*time.Minute),
+	).WaitForService(DEFAULT_CHIP_CONFIG_SERVICE_NAME,
+		wait.ForAll(
+			wait.NewHostPortStrategy(DEFAULT_CHIP_CONFIG_INTERNAL_PORT+"/tcp").WithPollInterval(100*time.Millisecond),
+		),
 	).WaitForService(DEFAULT_RED_PANDA_SERVICE_NAME,
 		wait.ForAll(
-			wait.ForListeningPort(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT).WithPollInterval(100*time.Millisecond),
-			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT).WithPollInterval(100*time.Millisecond),
+			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT+"/tcp").WithPollInterval(100*time.Millisecond),
 			wait.ForHTTP("/status/ready").WithPort(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT).WithPollInterval(100*time.Millisecond),
 		).WithDeadline(2*time.Minute),
 	).WaitForService(DEFAULT_RED_PANDA_CONSOLE_SERVICE_NAME,
 		wait.ForAll(
-			wait.ForListeningPort(DEFAULT_RED_PANDA_CONSOLE_PORT).WithPollInterval(100*time.Millisecond),
-			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_CONSOLE_PORT).WithPollInterval(100*time.Millisecond),
+			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_CONSOLE_PORT+"/tcp").WithPollInterval(100*time.Millisecond),
 		).WithDeadline(2*time.Minute),
-	).WaitForService(DEFAULT_CHIP_CONFIG_SERVICE_NAME,
-		wait.ForAll(
-			wait.ForListeningPort(DEFAULT_CHIP_CONFIG_INTERNAL_PORT).WithPollInterval(100*time.Millisecond),
-			wait.NewHostPortStrategy(DEFAULT_CHIP_CONFIG_EXTERNAL_PORT).WithPollInterval(100*time.Millisecond),
-		),
 	)
+
+	upErr := stack.
+		WithEnv(envVars).
+		Up(ctx, compose.Wait(true))
+
+	if upErr != nil {
+		return nil, errors.Wrap(upErr, "failed to start stack for Chip Ingress")
+	}
 
 	chipIngressContainer, ingressErr := stack.ServiceContainer(ctx, DEFAULT_CHIP_INGRESS_SERVICE_NAME)
 	if ingressErr != nil {
@@ -253,6 +256,17 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	redpandaExternalConsoleHost, redpandaExternalConsoleHostErr := redpandaConsoleContainer.Host(ctx)
 	if redpandaExternalConsoleHostErr != nil {
 		return nil, errors.Wrap(redpandaExternalConsoleHostErr, "failed to get host for Red Panda Console")
+	}
+
+	var chipIngressGRPCHostPort string
+	if v, ok := envVars[ChipIngressGRPCHostPortEnvVar]; ok && v != "" {
+		chipIngressGRPCHostPort = v
+	} else {
+		port, pErr := chipIngressContainer.MappedPort(ctx, nat.Port(chipIngressGRPCPort+"/tcp"))
+		if pErr != nil {
+			return nil, errors.Wrap(pErr, "failed to get mapped port for Chip Ingress")
+		}
+		chipIngressGRPCHostPort = fmt.Sprintf("%d", port.Int())
 	}
 
 	output := &Output{

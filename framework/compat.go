@@ -315,7 +315,7 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 
 // FindSemVerRefSequence gets all semver tags, sorts them, and rolls back to the earliest tag
 // returns all the tags starting from the oldest one
-func FindSemVerRefSequence(tagsBack int, include, exclude []string) ([]string, error) {
+func FindSemVerRefSequence(tagsBack int, include, exclude []string, tagVersionCeiling string) ([]string, error) {
 	output, err := ExecCmd("git tag --list")
 	if err != nil {
 		return nil, fmt.Errorf("failed to list git tags: %w", err)
@@ -326,7 +326,7 @@ func FindSemVerRefSequence(tagsBack int, include, exclude []string) ([]string, e
 		return nil, fmt.Errorf("no tags found in repository")
 	}
 
-	sortedDesc := FilterSemverTags(tags, include, exclude)
+	sortedDesc := FilterSemverTags(tags, include, exclude, tagVersionCeiling)
 	if len(sortedDesc) == 0 {
 		return nil, fmt.Errorf("no valid semver tags found")
 	}
@@ -406,14 +406,14 @@ func FindNOPsVersionsByProduct(url string, product string, exclude []string) ([]
 			}
 		}
 	}
-	semverTags := FilterSemverTags(refs, []string{}, exclude)
+	semverTags := FilterSemverTags(refs, []string{}, exclude, "")
 	slices.Reverse(semverTags)
 	L.Info().Any("Products", slices.Collect(maps.Keys(products))).Msg("Found products")
 	return semverTags, nil
 }
 
 // FilterSemverTags parses valid versions and returns them sorted from latest to lowest
-func FilterSemverTags(versions []string, include []string, exclude []string) []string {
+func FilterSemverTags(versions []string, include []string, exclude []string, tagVersionCeiling string) []string {
 	if len(versions) == 0 {
 		return []string{}
 	}
@@ -431,6 +431,17 @@ func FilterSemverTags(versions []string, include []string, exclude []string) []s
 	sort.Slice(parsedVersions, func(i, j int) bool {
 		return parsedVersions[i].GreaterThan(parsedVersions[j])
 	})
+
+	// apply tag version ceiling if provided
+	if tagVersionCeiling != "" {
+		ceiling := semver.MustParse(tagVersionCeiling)
+		i := 0
+		for i < len(parsedVersions) && parsedVersions[i].GreaterThan(ceiling) {
+			i++
+		}
+		parsedVersions = parsedVersions[i:]
+	}
+
 	// fliter include/exclude
 	filtered := filterVersions(parsedVersions, include, exclude)
 	L.Info().
@@ -468,5 +479,6 @@ func matchesFilter(version string, include, exclude []string) bool {
 			return true
 		}
 	}
+
 	return false
 }
