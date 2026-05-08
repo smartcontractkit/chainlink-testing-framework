@@ -366,7 +366,8 @@ type RaneSOTResponseBody struct {
 		Jobs []struct {
 			Product string `json:"product"`
 		} `json:"jobs"`
-		Version string `json:"version"`
+		DockerTag  string `json:"docker_tag"`
+		VersionTag string `json:"version_tag"`
 	} `json:"nodes"`
 }
 
@@ -401,22 +402,24 @@ func FindNOPsVersionsByProduct(url string, product string, exclude []string) ([]
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch SOT data: %w", err)
 	}
-	refs := make([]string, 0)
+	versions := make([]string, 0)
 	products := make(map[string]bool)
 	seenRefs := make(map[string]bool, 0)
 	for _, n := range src.Nodes {
 		for _, j := range n.Jobs {
 			products[j.Product] = true
 			if j.Product == product {
-				if _, ok := seenRefs[n.Version]; !ok {
-					refs = append(refs, n.Version)
-					seenRefs[n.Version] = true
+				if _, ok := seenRefs[n.VersionTag]; !ok {
+					versions = append(versions, n.VersionTag)
+					seenRefs[n.VersionTag] = true
 				}
 			}
 		}
 	}
-	semverTags := FilterSemverTags(refs, []string{}, exclude, "")
+	L.Info().Any("Tags", versions).Msg("Found Version tags")
+	semverTags := FilterSemverTags(versions, []string{}, exclude, "")
 	slices.Reverse(semverTags)
+	L.Info().Any("SemVerTags", semverTags).Msg("Found SemVer tags")
 	L.Info().Any("Products", slices.Collect(maps.Keys(products))).Msg("Found products")
 	return semverTags, nil
 }

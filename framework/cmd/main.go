@@ -416,11 +416,7 @@ Be aware that any TODO requires your attention before your run the final test!
 							}
 
 							if product != "" {
-								// TODO: Stub, until versions are mapped properly and not skipped this is just an example
-								// Both Git, ECR and "versions" from SOT data do not match
-								// so we fetch the data but do not use it for now
-								// test refs are populated from --refs, see docs and CI in core
-								_, err := framework.FindNOPsVersionsByProduct(sotURL, product, exclude)
+								refs, err = framework.FindNOPsVersionsByProduct(sotURL, product, exclude)
 								if err != nil {
 									return err
 								}
