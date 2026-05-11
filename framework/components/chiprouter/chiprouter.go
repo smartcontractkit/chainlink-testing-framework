@@ -10,8 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
+	"github.com/moby/moby/api/types/container"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
@@ -117,9 +116,9 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 			"CTF_LOG_LEVEL":          in.LogLevel,
 		},
 		WaitingFor: tcwait.ForAll(
-			tcwait.ForListeningPort(nat.Port(internalGRPCNatPort)).WithPollInterval(200*time.Millisecond),
+			tcwait.ForListeningPort(internalGRPCNatPort).WithPollInterval(200*time.Millisecond),
 			tcwait.ForHTTP(adminPathHealth).
-				WithPort(nat.Port(internalAdminNatPort)).
+				WithPort(internalAdminNatPort).
 				WithStartupTimeout(1*time.Minute).
 				WithPollInterval(200*time.Millisecond),
 		),
@@ -167,20 +166,20 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	if in.GRPCPort != 0 {
 		out.ExternalGRPCURL = fmt.Sprintf("%s:%d", host, in.GRPCPort)
 	} else {
-		if p, err := c.MappedPort(ctx, nat.Port(internalGRPCNatPort)); err != nil {
+		if p, err := c.MappedPort(ctx, internalGRPCNatPort); err != nil {
 			return nil, err
 		} else {
-			out.ExternalGRPCURL = fmt.Sprintf("%s:%d", host, p.Int())
+			out.ExternalGRPCURL = fmt.Sprintf("%s:%d", host, p.Num())
 		}
 	}
 
 	if in.AdminPort != 0 {
 		out.ExternalAdminURL = fmt.Sprintf("http://%s:%d", host, in.AdminPort)
 	} else {
-		if p, err := c.MappedPort(ctx, nat.Port(internalAdminNatPort)); err != nil {
+		if p, err := c.MappedPort(ctx, internalAdminNatPort); err != nil {
 			return nil, err
 		} else {
-			out.ExternalAdminURL = fmt.Sprintf("http://%s:%d", host, p.Int())
+			out.ExternalAdminURL = fmt.Sprintf("http://%s:%d", host, p.Num())
 		}
 	}
 

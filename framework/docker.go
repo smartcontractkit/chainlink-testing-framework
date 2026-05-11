@@ -12,22 +12,24 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
+	"net/netip"
+
 	"github.com/google/uuid"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/client"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 )
 
 func IsDockerRunning() bool {
-	cli, err := client.NewClientWithOpts(client.FromEnv)
+	cli, err := client.New()
 	if err != nil {
 		return false
 	}
 	defer cli.Close()
 
-	_, err = cli.Ping(context.Background())
+	_, err = cli.Ping(context.Background(), client.PingOptions{})
 	return err == nil
 }
 
@@ -47,14 +49,18 @@ func GetHostWithContext(ctx context.Context, container tc.Container) (string, er
 	return host, nil
 }
 
-func MapTheSamePort(ports ...string) nat.PortMap {
-	portMap := nat.PortMap{}
+func MapTheSamePort(ports ...string) network.PortMap {
+	portMap := network.PortMap{}
 	for _, port := range ports {
 		// need to split off /tcp or /udp
 		onlyPort := strings.SplitN(port, "/", 2)
-		portMap[nat.Port(port)] = []nat.PortBinding{
+		p, err := network.ParsePort(port)
+		if err != nil {
+			continue
+		}
+		portMap[p] = []network.PortBinding{
 			{
-				HostIP:   "0.0.0.0",
+				HostIP:   netip.MustParseAddr("0.0.0.0"),
 				HostPort: onlyPort[0],
 			},
 		}
@@ -99,7 +105,7 @@ type DockerClient struct {
 
 // NewDockerClient creates a new instance of DockerClient
 func NewDockerClient() (*DockerClient, error) {
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := client.New()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Docker client: %w", err)
 	}
@@ -113,7 +119,7 @@ func (dc *DockerClient) ExecContainer(containerName string, command []string) (s
 
 // ExecContainerWithContext executes a command inside a running container by name and returns the combined stdout/stderr.
 func (dc *DockerClient) ExecContainerWithContext(ctx context.Context, containerName string, command []string) (string, error) {
-	execConfig := container.ExecOptions{
+	execConfig := client.ExecCreateOptions{
 		Cmd:          command,
 		AttachStdout: true,
 		AttachStderr: true,
@@ -123,21 +129,21 @@ func (dc *DockerClient) ExecContainerWithContext(ctx context.Context, containerN
 }
 
 // ExecContainer executes a command inside a running container by name and returns the combined stdout/stderr.
-func (dc *DockerClient) ExecContainerOptions(containerName string, execConfig container.ExecOptions) (string, error) {
+func (dc *DockerClient) ExecContainerOptions(containerName string, execConfig client.ExecCreateOptions) (string, error) {
 	return dc.ExecContainerOptionsWithContext(context.Background(), containerName, execConfig)
 }
 
 // ExecContainerOptionsWithContext executes a command inside a running container by name and returns the combined stdout/stderr.
-func (dc *DockerClient) ExecContainerOptionsWithContext(ctx context.Context, containerName string, execConfig container.ExecOptions) (string, error) {
+func (dc *DockerClient) ExecContainerOptionsWithContext(ctx context.Context, containerName string, execConfig client.ExecCreateOptions) (string, error) {
 	L.Info().Strs("Command", execConfig.Cmd).Str("ContainerName", containerName).Msg("Executing command")
-	containers, err := dc.cli.ContainerList(ctx, container.ListOptions{
+	containers, err := dc.cli.ContainerList(ctx, client.ContainerListOptions{
 		All: true,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to list containers: %w", err)
 	}
 	var containerID string
-	for _, cont := range containers {
+	for _, cont := range containers.Items {
 		for _, name := range cont.Names {
 			if name == "/"+containerName {
 				containerID = cont.ID
@@ -149,11 +155,11 @@ func (dc *DockerClient) ExecContainerOptionsWithContext(ctx context.Context, con
 		return "", fmt.Errorf("container with name '%s' not found", containerName)
 	}
 
-	execID, err := dc.cli.ContainerExecCreate(ctx, containerID, execConfig)
+	execID, err := dc.cli.ExecCreate(ctx, containerID, execConfig)
 	if err != nil {
 		return "", fmt.Errorf("failed to create exec instance: %w", err)
 	}
-	resp, err := dc.cli.ContainerExecAttach(ctx, execID.ID, container.ExecStartOptions{})
+	resp, err := dc.cli.ExecAttach(ctx, execID.ID, client.ExecAttachOptions{})
 	if err != nil {
 		return "", fmt.Errorf("failed to attach to exec instance: %w", err)
 	}
@@ -178,13 +184,13 @@ func (dc *DockerClient) CopyFile(containerName, sourceFile, targetPath string) e
 
 // findContainerIDByName finds a container ID by its name
 func (dc *DockerClient) findContainerIDByName(ctx context.Context, containerName string) (string, error) {
-	containers, err := dc.cli.ContainerList(ctx, container.ListOptions{
+	containers, err := dc.cli.ContainerList(ctx, client.ContainerListOptions{
 		All: true,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to list containers: %w", err)
 	}
-	for _, c := range containers {
+	for _, c := range containers.Items {
 		for _, name := range c.Names {
 			if name == "/"+containerName {
 				return c.ID, nil
@@ -226,7 +232,9 @@ func (dc *DockerClient) copyToContainer(containerID, sourceFile, targetPath stri
 	tw.Close()
 
 	// Copy the tar archive to the container
-	err = dc.cli.CopyToContainer(ctx, containerID, targetPath, &buf, container.CopyToContainerOptions{
+	_, err = dc.cli.CopyToContainer(ctx, containerID, client.CopyToContainerOptions{
+		DestinationPath:           targetPath,
+		Content:                   &buf,
 		AllowOverwriteDirWithFile: true,
 	})
 	if err != nil {
@@ -354,9 +362,9 @@ func ResourceLimitsFunc(h *container.HostConfig, resources *ContainerResources) 
 }
 
 // GenerateCustomPortsData generate custom ports data: exposed and forwarded port map
-func GenerateCustomPortsData(portsProvided []string) ([]string, nat.PortMap, error) {
+func GenerateCustomPortsData(portsProvided []string) ([]string, network.PortMap, error) {
 	exposedPorts := make([]string, 0)
-	portBindings := nat.PortMap{}
+	portBindings := network.PortMap{}
 	customPorts := make([]string, 0)
 	for _, p := range portsProvided {
 		if !strings.Contains(p, ":") {
@@ -368,22 +376,19 @@ func GenerateCustomPortsData(portsProvided []string) ([]string, nat.PortMap, err
 		}
 		customPorts = append(customPorts, fmt.Sprintf("%s/tcp", pp[1]))
 
-		dockerPort := nat.Port(fmt.Sprintf("%s/tcp", pp[1]))
+		dockerPortStr := fmt.Sprintf("%s/tcp", pp[1])
+		dockerPort, err := network.ParsePort(dockerPortStr)
+		if err != nil {
+			return nil, nil, fmt.Errorf("invalid port %s: %w", pp[1], err)
+		}
 		hostPort := pp[0]
-		portBindings[dockerPort] = []nat.PortBinding{
+		portBindings[dockerPort] = []network.PortBinding{
 			{
-				HostIP:   "0.0.0.0",
+				HostIP:   netip.MustParseAddr("0.0.0.0"),
 				HostPort: hostPort,
 			},
 		}
 	}
 	exposedPorts = append(exposedPorts, customPorts...)
 	return exposedPorts, portBindings, nil
-}
-
-// NoDNS removes default DNS server and sets it to localhost
-func NoDNS(noDNS bool, hc *container.HostConfig) {
-	if noDNS {
-		hc.DNS = []string{"127.0.0.1"}
-	}
 }

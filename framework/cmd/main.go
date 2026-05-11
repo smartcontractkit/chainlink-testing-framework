@@ -81,7 +81,7 @@ Usage:
 							}
 							productName := c.String("product-name")
 							if productName == "" {
-								return fmt.Errorf("Product name must be specified, call your product somehow, any name")
+								return fmt.Errorf("product name must be specified, call your product somehow, any name")
 							}
 							framework.L.Info().
 								Str("OutputDir", outputDir).
@@ -213,7 +213,7 @@ Be aware that any TODO requires your attention before your run the final test!
 						},
 						Action: func(c *cli.Context) error {
 							if c.Args().Len() == 0 {
-								return fmt.Errorf("Kubernetes namespace argument is required")
+								return fmt.Errorf("kubernetes namespace argument is required")
 							}
 							ns := c.Args().First()
 							testSuiteName := c.String("name")

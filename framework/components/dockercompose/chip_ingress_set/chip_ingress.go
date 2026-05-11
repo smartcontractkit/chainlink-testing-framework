@@ -11,9 +11,8 @@ import (
 	"strings"
 	"time"
 
-	networkTypes "github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
+	networkTypes "github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -159,7 +158,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	stack.WaitForService(DEFAULT_CHIP_INGRESS_SERVICE_NAME,
 		wait.ForAll(
 			wait.ForLog("GRPC server is live").WithPollInterval(100*time.Millisecond),
-			wait.NewHostPortStrategy(nat.Port(chipIngressGRPCPort+"/tcp")).WithPollInterval(100*time.Millisecond),
+			wait.NewHostPortStrategy(chipIngressGRPCPort+"/tcp").WithPollInterval(100*time.Millisecond),
 		).WithDeadline(2*time.Minute),
 	).WaitForService(DEFAULT_CHIP_CONFIG_SERVICE_NAME,
 		wait.ForAll(
@@ -212,12 +211,12 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 			return nil, errors.Wrapf(connectErr, "failed to connect chip-ingress to %s network", networkName)
 		}
 		// verify that the container is connected to framework's network
-		inspected, inspectErr := cli.ContainerInspect(ctx, chipIngressContainer.ID)
+		inspected, inspectErr := cli.ContainerInspect(ctx, chipIngressContainer.ID, client.ContainerInspectOptions{})
 		if inspectErr != nil {
 			return nil, errors.Wrapf(inspectErr, "failed to inspect container %s", chipIngressContainer.ID)
 		}
 
-		_, ok := inspected.NetworkSettings.Networks[networkName]
+		_, ok := inspected.Container.NetworkSettings.Networks[networkName]
 		if !ok {
 			return nil, fmt.Errorf("container %s is NOT on network %s", chipIngressContainer.ID, networkName)
 		}
@@ -262,11 +261,11 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	if v, ok := envVars[ChipIngressGRPCHostPortEnvVar]; ok && v != "" {
 		chipIngressGRPCHostPort = v
 	} else {
-		port, pErr := chipIngressContainer.MappedPort(ctx, nat.Port(chipIngressGRPCPort+"/tcp"))
+		port, pErr := chipIngressContainer.MappedPort(ctx, chipIngressGRPCPort+"/tcp")
 		if pErr != nil {
 			return nil, errors.Wrap(pErr, "failed to get mapped port for Chip Ingress")
 		}
-		chipIngressGRPCHostPort = fmt.Sprintf("%d", port.Int())
+		chipIngressGRPCHostPort = fmt.Sprintf("%d", port.Num())
 	}
 
 	output := &Output{
@@ -343,12 +342,14 @@ func connectNetwork(connCtx context.Context, timeout time.Duration, dockerClient
 		case <-networkCtx.Done():
 			return fmt.Errorf("timeout while trying to connect chip-ingress to default network")
 		case <-ticker.C:
-			if networkErr := dockerClient.NetworkConnect(
+			if _, networkErr := dockerClient.NetworkConnect(
 				connCtx,
 				networkName,
-				containerID,
-				&networkTypes.EndpointSettings{
-					Aliases: []string{stackIdentifier},
+				client.NetworkConnectOptions{
+					Container: containerID,
+					EndpointConfig: &networkTypes.EndpointSettings{
+						Aliases: []string{stackIdentifier},
+					},
 				},
 			); networkErr != nil && !strings.Contains(networkErr.Error(), "already exists in network") {
 				framework.L.Trace().Msgf("failed to connect to default network: %v", networkErr)

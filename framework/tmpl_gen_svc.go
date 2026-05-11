@@ -28,8 +28,10 @@ import (
 		"github.com/rs/zerolog"
 		"github.com/rs/zerolog/log"
 
-		"github.com/docker/docker/api/types/container"
-		"github.com/docker/go-connections/nat"
+		"net/netip"
+
+		"github.com/moby/moby/api/types/container"
+		"github.com/moby/moby/api/types/network"
 		"github.com/smartcontractkit/chainlink-testing-framework/framework"
 		"github.com/testcontainers/testcontainers-go"
 )
@@ -94,10 +96,10 @@ func NewService(in *ExampleSvcInput) error {
 			// add more internal ports here with /tcp suffix, ex.: 9501/tcp
 			ExposedPorts: []string{"9501/tcp"},
 			HostConfigModifier: func(h *container.HostConfig) {
-				h.PortBindings = nat.PortMap{
+				h.PortBindings = network.PortMap{
 					// add more internal/external pairs here, ex.: 9501/tcp as a key and HostPort is the exposed port (no /tcp prefix!)
-					"9501/tcp": []nat.PortBinding{
-						{HostPort: strconv.Itoa(in.Port)},
+					network.MustParsePort("9501/tcp"): []network.PortBinding{
+						{HostIP: netip.MustParseAddr("0.0.0.0"), HostPort: strconv.Itoa(in.Port)},
 					},
 				}
 			},

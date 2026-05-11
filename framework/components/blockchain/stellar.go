@@ -8,8 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
+	"net/netip"
+
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
@@ -92,10 +94,10 @@ func newStellar(ctx context.Context, in *Input) (*Output, error) {
 		},
 		HostConfigModifier: func(h *container.HostConfig) {
 			// Map user-provided host port to container's default port (8000)
-			h.PortBindings = nat.PortMap{
-				nat.Port(containerPort): []nat.PortBinding{
+			h.PortBindings = network.PortMap{
+				network.MustParsePort(containerPort): []network.PortBinding{
 					{
-						HostIP:   "0.0.0.0",
+						HostIP:   netip.MustParseAddr("0.0.0.0"),
 						HostPort: in.Port,
 					},
 				},
@@ -106,7 +108,7 @@ func newStellar(ctx context.Context, in *Input) (*Output, error) {
 		Cmd:           cmd,
 		// Wait for passing health check
 		WaitingFor: wait.ForHTTP("/").
-			WithPort(nat.Port(containerPort)).
+			WithPort(containerPort).
 			WithStatusCodeMatcher(func(status int) bool {
 				return status >= 200 && status < 500
 			}).

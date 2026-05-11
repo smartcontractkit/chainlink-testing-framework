@@ -2,9 +2,12 @@ package canton
 
 import (
 	"fmt"
+	"net/netip"
 	"strings"
 	"time"
 
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
@@ -222,7 +225,15 @@ func NginxContainerRequest(
 			framework.DefaultNetworkName: append([]string{nginxContainerName}, internalHostnames...),
 		},
 		WaitingFor:   wait.ForHTTP("/readyz").WithStartupTimeout(time.Second * 10),
-		ExposedPorts: []string{fmt.Sprintf("%s:%d", port, DefaultNginxInternalPort)},
+		ExposedPorts: []string{fmt.Sprintf("%d/tcp", DefaultNginxInternalPort)},
+		HostConfigModifier: func(h *container.HostConfig) {
+			containerPort := network.MustParsePort(fmt.Sprintf("%d/tcp", DefaultNginxInternalPort))
+			h.PortBindings = network.PortMap{
+				containerPort: []network.PortBinding{
+					{HostIP: netip.MustParseAddr("0.0.0.0"), HostPort: port},
+				},
+			}
+		},
 		Env: map[string]string{
 			"CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX": DefaultHTTPHealthcheckPortPrefix,
 			"CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX": DefaultGRPCHealthcheckPortPrefix,

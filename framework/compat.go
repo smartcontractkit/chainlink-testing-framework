@@ -12,9 +12,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/client"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/Masterminds/semver/v3"
@@ -266,31 +265,26 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 		Str("Image", newImage).
 		Logger()
 	l.Debug().Msg("Upgrading container")
-	cli, err := client.NewClientWithOpts(
-		client.FromEnv,
-		client.WithAPIVersionNegotiation(),
-	)
+	cli, err := client.New()
 	if err != nil {
 		return fmt.Errorf("failed to create Docker client: %w", err)
 	}
 	defer cli.Close()
-	inspect, err := cli.ContainerInspect(ctx, containerName)
+	inspected, err := cli.ContainerInspect(ctx, containerName, client.ContainerInspectOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to inspect container %s: %w", containerName, err)
 	}
 	l.Debug().Msg("Stopping container")
-	stopOpts := container.StopOptions{}
-	if err := cli.ContainerStop(ctx, containerName, stopOpts); err != nil {
+	if _, err := cli.ContainerStop(ctx, containerName, client.ContainerStopOptions{}); err != nil {
 		return fmt.Errorf("failed to stop container %s: %w", containerName, err)
 	}
 	l.Debug().Msg("Removing container")
 	// keep the volumes
-	removeOpts := container.RemoveOptions{RemoveVolumes: false}
-	if err := cli.ContainerRemove(ctx, containerName, removeOpts); err != nil {
+	if _, err := cli.ContainerRemove(ctx, containerName, client.ContainerRemoveOptions{RemoveVolumes: false}); err != nil {
 		return fmt.Errorf("failed to remove container %s: %w", containerName, err)
 	}
 
-	inspect.Config.Image = newImage
+	inspected.Container.Config.Image = newImage
 
 	networkingConfig := &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
@@ -299,14 +293,12 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 			},
 		},
 	}
-	createResp, err := cli.ContainerCreate(
-		ctx,
-		inspect.Config,
-		inspect.HostConfig,
-		networkingConfig,
-		nil,
-		containerName,
-	)
+	createResp, err := cli.ContainerCreate(ctx, client.ContainerCreateOptions{
+		Config:           inspected.Container.Config,
+		HostConfig:       inspected.Container.HostConfig,
+		NetworkingConfig: networkingConfig,
+		Name:             containerName,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to create container with image %s: %w", newImage, err)
 	}
@@ -314,8 +306,7 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 		Str("ContainerID", createResp.ID).
 		Msg("Container created")
 	l.Debug().Msg("Starting new container")
-	startOpts := container.StartOptions{}
-	if err := cli.ContainerStart(ctx, createResp.ID, startOpts); err != nil {
+	if _, err := cli.ContainerStart(ctx, createResp.ID, client.ContainerStartOptions{}); err != nil {
 		return fmt.Errorf("failed to start container %s: %w", containerName, err)
 	}
 	l.Info().Msg("Container successfully rebooted with new image")
