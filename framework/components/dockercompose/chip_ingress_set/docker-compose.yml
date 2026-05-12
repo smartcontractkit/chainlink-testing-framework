@@ -57,7 +57,7 @@ services:
     command:
       - start
     ports:
-      - "50052:50051"
+      - "${CHIP_CONFIG_HOST_PORT:-0}:50051"
     environment:
       SCHEMA_REGISTRY_URL: http://redpanda-0:8081
       # SERVER_METRICS_OTEL_EXPORTER_GRPC_ENDPOINT: otel-lgtm:4317

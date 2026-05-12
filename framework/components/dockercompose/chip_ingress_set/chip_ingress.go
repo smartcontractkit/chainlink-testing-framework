@@ -86,6 +86,7 @@ const (
 	ChipIngressGRPCPortEnvVar     = "CTF_CHIP_INGRESS_GRPC_PORT"
 	ChipIngressImageEnvVar        = "CTF_CHIP_INGRESS_IMAGE"
 	ChipConfigImageEnvVar         = "CTF_CHIP_CONFIG_IMAGE"
+	ChipConfigHostPortEnvVar      = "CTF_CHIP_CONFIG_HOST_PORT"
 )
 
 func New(in *Input) (*Output, error) {
@@ -268,6 +269,17 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		chipIngressGRPCHostPort = fmt.Sprintf("%d", port.Num())
 	}
 
+	var chipConfigHostPort string
+	if v, ok := envVars[ChipConfigHostPortEnvVar]; ok && v != "" {
+		chipConfigHostPort = v
+	} else {
+		port, pErr := chipConfigContainer.MappedPort(ctx, DEFAULT_CHIP_CONFIG_INTERNAL_PORT+"/tcp")
+		if pErr != nil {
+			return nil, errors.Wrap(pErr, "failed to get mapped port for Chip Ingress")
+		}
+		chipConfigHostPort = fmt.Sprintf("%d", port.Num())
+	}
+
 	output := &Output{
 		ChipIngress: &ChipIngressOutput{
 			GRPCInternalURL: fmt.Sprintf("%s:%s", DEFAULT_CHIP_INGRESS_SERVICE_NAME, chipIngressGRPCPort),
@@ -275,7 +287,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		},
 		ChipConfig: &ChipConfigOutput{
 			GRPCInternalURL: fmt.Sprintf("%s:%s", DEFAULT_CHIP_CONFIG_SERVICE_NAME, DEFAULT_CHIP_CONFIG_INTERNAL_PORT),
-			GRPCExternalURL: fmt.Sprintf("%s:%s", chipConfigExternalHost, DEFAULT_CHIP_CONFIG_EXTERNAL_PORT),
+			GRPCExternalURL: fmt.Sprintf("%s:%s", chipConfigExternalHost, chipConfigHostPort),
 			Username:        DEFAULT_CHIP_CONFIG_USERNAME,
 			Password:        DEFAULT_CHIP_CONFIG_PASSWORD,
 		},
