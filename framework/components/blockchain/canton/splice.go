@@ -144,11 +144,11 @@ canton {
     synchronizer-nodes {
       current {
         sequencer = {
-          address = canton
+          address = ${CANTON_CONTAINER_NAME}
           port = 5009
         }
         mediator = {
-          address = canton
+          address = ${CANTON_CONTAINER_NAME}
           port = 5007
         }
       }
