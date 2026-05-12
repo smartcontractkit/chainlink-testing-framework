@@ -13,7 +13,7 @@ import (
 
 // Canton Defaults
 const (
-	SpliceVersion = "0.5.17"
+	SpliceVersion = "0.6.3"
 	Image         = "ghcr.io/digital-asset/decentralized-canton-sync/docker/canton"
 )
 
@@ -43,7 +43,7 @@ set -eou pipefail
 
 # SV
 echo "Checking ${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}00"
-grpcurl -plaintext "localhost:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}00" grpc.health.v1.Health/Check
+grpc-health-probe -addr="localhost:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}00"
 
 	`
 	// Add additional participants
@@ -51,7 +51,7 @@ grpcurl -plaintext "localhost:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}
 		script += fmt.Sprintf(`
 # Participant %02[1]d
 echo "Checking ${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}%02[1]d"
-grpcurl -plaintext "localhost:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}%02[1]d" grpc.health.v1.Health/Check
+grpc-health-probe -addr="localhost:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}%02[1]d"
 `, i)
 	}
 
@@ -145,7 +145,6 @@ _participant {
   }
 
   parameters {
-    initial-protocol-version = 34
     # tune the synchronisation protocols contract store cache
     caching {
       contract-store {
