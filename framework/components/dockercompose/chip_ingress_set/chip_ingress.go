@@ -69,7 +69,6 @@ const (
 	DEFAULT_CHIP_INGRESS_GRPC_PORT    = "50051"
 	DEFAULT_CHIP_INGRESS_SERVICE_NAME = "chip-ingress"
 
-	DEFAULT_CHIP_CONFIG_EXTERNAL_PORT = "50052"
 	DEFAULT_CHIP_CONFIG_INTERNAL_PORT = "50051"
 	DEFAULT_CHIP_CONFIG_SERVICE_NAME  = "chip-config"
 	DEFAULT_CHIP_CONFIG_USERNAME      = "admin"
@@ -275,7 +274,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	} else {
 		port, pErr := chipConfigContainer.MappedPort(ctx, DEFAULT_CHIP_CONFIG_INTERNAL_PORT+"/tcp")
 		if pErr != nil {
-			return nil, errors.Wrap(pErr, "failed to get mapped port for Chip Ingress")
+			return nil, errors.Wrap(pErr, "failed to get mapped port for Chip Config")
 		}
 		chipConfigHostPort = fmt.Sprintf("%d", port.Num())
 	}
