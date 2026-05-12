@@ -7,10 +7,8 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strconv"
 	"time"
 
-	"github.com/docker/go-connections/nat"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -19,7 +17,7 @@ import (
 
 type HTTPStrategy struct {
 	Path               string
-	Port               nat.Port
+	Port               string
 	RetryDelay         time.Duration
 	ExpectedStatusCode int
 	timeout            time.Duration
@@ -27,7 +25,7 @@ type HTTPStrategy struct {
 
 // NewHTTPStrategy initializes a new HTTP strategy for waiting on a service to become available.
 // It sets the path, port, retry delay, expected status code, and timeout, allowing for flexible service readiness checks.
-func NewHTTPStrategy(path string, port nat.Port) *HTTPStrategy {
+func NewHTTPStrategy(path string, port string) *HTTPStrategy {
 	return &HTTPStrategy{
 		Path:               path,
 		Port:               port,
@@ -62,8 +60,7 @@ func (w *HTTPStrategy) WaitUntilReady(ctx context.Context, target tcwait.Strateg
 		return
 	}
 
-	var mappedPort nat.Port
-	mappedPort, err = target.MappedPort(ctx, w.Port)
+	mappedPort, err := target.MappedPort(ctx, w.Port)
 	if err != nil {
 		return err
 	}
@@ -82,7 +79,7 @@ func (w *HTTPStrategy) WaitUntilReady(ctx context.Context, target tcwait.Strateg
 	}
 
 	client := http.Client{Transport: tripper, Timeout: time.Second}
-	address := net.JoinHostPort(host, strconv.Itoa(mappedPort.Int()))
+	address := net.JoinHostPort(host, mappedPort.Port())
 
 	endpoint := url.URL{
 		Scheme: "http",
@@ -124,7 +121,7 @@ func (w *HTTPStrategy) WaitUntilReady(ctx context.Context, target tcwait.Strateg
 }
 
 type WebSocketStrategy struct {
-	Port       nat.Port
+	Port       string
 	RetryDelay time.Duration
 	timeout    time.Duration
 	l          zerolog.Logger
@@ -132,7 +129,7 @@ type WebSocketStrategy struct {
 
 // NewWebSocketStrategy initializes a WebSocket strategy for monitoring service readiness.
 // It sets the port and defines retry behavior, making it useful for ensuring services are operational before proceeding.
-func NewWebSocketStrategy(port nat.Port, l zerolog.Logger) *WebSocketStrategy {
+func NewWebSocketStrategy(port string, l zerolog.Logger) *WebSocketStrategy {
 	return &WebSocketStrategy{
 		Port:       port,
 		RetryDelay: 10 * time.Second,

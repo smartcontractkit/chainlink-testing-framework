@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/docker/docker/api/types/container"
+	"github.com/moby/moby/client"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 	"golang.org/x/sync/errgroup"
@@ -27,22 +27,22 @@ func WriteAllContainersLogs(logger zerolog.Logger, directory string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create Docker provider: %w", err)
 	}
-	containers, err := provider.Client().ContainerList(context.Background(), container.ListOptions{All: true})
+	containers, err := provider.Client().ContainerList(context.Background(), client.ContainerListOptions{All: true})
 	if err != nil {
 		return fmt.Errorf("failed to list Docker containers: %w", err)
 	}
 
 	eg := &errgroup.Group{}
 
-	for _, containerInfo := range containers {
+	for _, containerInfo := range containers.Items {
 		eg.Go(func() error {
 			containerName := containerInfo.Names[0]
 			if shouldIgnore(logger, containerName) {
 				return nil
 			}
 			logger.Debug().Str("Container", containerName).Msg("Collecting logs")
-			logOptions := container.LogsOptions{ShowStdout: true, ShowStderr: true}
-			logs, err := provider.Client().ContainerLogs(context.Background(), containerInfo.ID, logOptions)
+			logOpts := client.ContainerLogsOptions{ShowStdout: true, ShowStderr: true}
+			logs, err := provider.Client().ContainerLogs(context.Background(), containerInfo.ID, logOpts)
 			if err != nil {
 				logger.Error().Err(err).Str("Container", containerName).Msg("failed to fetch logs for container")
 				return err

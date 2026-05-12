@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
 	"github.com/google/uuid"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/mount"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"

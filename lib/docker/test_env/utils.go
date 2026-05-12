@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/docker/go-connections/nat"
 	tc "github.com/testcontainers/testcontainers-go"
 )
 
@@ -15,10 +14,10 @@ func NatPortFormat(port string) string {
 	return fmt.Sprintf("%s/tcp", port)
 }
 
-// NatPort converts a string representation of a port into a nat.Port type.
-// This is useful for ensuring that the port is formatted correctly for networking operations.
-func NatPort(port string) nat.Port {
-	return nat.Port(NatPortFormat(port))
+// NatPort converts a string representation of a port into the canonical exposed-port form ("NNN/tcp")
+// for testcontainers and the Moby API.
+func NatPort(port string) string {
+	return NatPortFormat(port)
 }
 
 // GetHost returns the host of a container, if localhost then force ipv4 localhost
@@ -39,11 +38,7 @@ func GetHost(ctx context.Context, container tc.Container) (string, error) {
 // if localhost then force ipv4 localhost
 // to avoid ipv6 docker bugs https://github.com/moby/moby/issues/42442 https://github.com/moby/moby/issues/42375
 func GetEndpointFromPort(ctx context.Context, container tc.Container, endpointType string, portStr string) (string, error) {
-	port, err := nat.NewPort("tcp", portStr)
-	if err != nil {
-		return "", err
-	}
-	endpoint, err := container.PortEndpoint(ctx, port, endpointType)
+	endpoint, err := container.PortEndpoint(ctx, NatPortFormat(portStr), endpointType)
 	if err != nil {
 		return "", err
 	}

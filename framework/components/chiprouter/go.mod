@@ -13,7 +13,7 @@ require (
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.15.8
 	github.com/testcontainers/testcontainers-go v0.42.0
 	golang.org/x/sync v0.20.0
-	google.golang.org/grpc v1.80.0
+	google.golang.org/grpc v1.81.0
 )
 
 require (
@@ -73,7 +73,6 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.60.0 // indirect
 	go.opentelemetry.io/otel v1.43.0 // indirect
 	go.opentelemetry.io/otel/metric v1.43.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.43.0 // indirect
 	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.49.0 // indirect
