@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -162,7 +161,7 @@ func (pg *PostgresDb) startOrRestartContainer(withReuse bool) error {
 		return err
 	}
 	pg.Container = c
-	externalPort, err := c.MappedPort(testcontext.Get(pg.t), nat.Port(fmt.Sprintf("%s/tcp", pg.InternalPort)))
+	externalPort, err := c.MappedPort(testcontext.Get(pg.t), NatPort(pg.InternalPort))
 	if err != nil {
 		return err
 	}

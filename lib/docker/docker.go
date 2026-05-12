@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/docker/docker/api/types/container"
 	"github.com/google/uuid"
+	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -190,7 +190,7 @@ func removeContainer(req tc.GenericContainerRequest) error {
 		return errors.Wrapf(providerErr, "failed to create Docker provider")
 	}
 
-	removeErr := provider.Client().ContainerRemove(context.Background(), req.Name, container.RemoveOptions{Force: true})
+	_, removeErr := provider.Client().ContainerRemove(context.Background(), req.Name, client.ContainerRemoveOptions{Force: true})
 	if removeErr != nil && strings.Contains(strings.ToLower(removeErr.Error()), "no such container") {
 		// container doesn't exist, nothing to remove
 		return nil
