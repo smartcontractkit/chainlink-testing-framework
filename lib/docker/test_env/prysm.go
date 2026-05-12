@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/mount"
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
@@ -75,7 +75,7 @@ func NewPrysmBeaconChain(networks []string, chainConfig *config.EthereumChainCon
 		opt(&g.EnvComponent)
 	}
 	// if the internal docker repo is set then add it to the version
-	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
+	g.ContainerImage = mirror.AddMirrorToImageIfSet(g.ContainerImage)
 	return g, nil
 }
 
@@ -220,7 +220,7 @@ func NewPrysmValidator(networks []string, chainConfig *config.EthereumChainConfi
 		opt(&g.EnvComponent)
 	}
 	// if the internal docker repo is set then add it to the version
-	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
+	g.ContainerImage = mirror.AddMirrorToImageIfSet(g.ContainerImage)
 	return g, nil
 }
 

@@ -116,7 +116,7 @@ func NewPostgresDb(networks []string, opts ...PostgresDbOption) (*PostgresDb, er
 	}
 
 	// if the internal docker repo is set then add it to the version
-	pg.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(pg.EnvComponent.ContainerImage)
+	pg.ContainerImage = mirror.AddMirrorToImageIfSet(pg.ContainerImage)
 
 	// Set default container envs
 	pg.ContainerEnvs["POSTGRES_USER"] = pg.User

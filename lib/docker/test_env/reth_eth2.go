@@ -10,9 +10,9 @@ import (
 
 	config_types "github.com/smartcontractkit/chainlink-testing-framework/lib/config/types"
 
+	"github.com/google/uuid"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/mount"
-	"github.com/google/uuid"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
@@ -47,10 +47,10 @@ func NewRethEth2(networks []string, chainConfig *config.EthereumChainConfig, gen
 
 	if !g.WasRecreated {
 		// set the container name again after applying functional options as version might have changed
-		g.EnvComponent.ContainerName = fmt.Sprintf("%s-%s-%s", "reth-eth2", strings.Replace(g.ContainerVersion, ".", "_", -1), uuid.NewString()[0:8])
+		g.ContainerName = fmt.Sprintf("%s-%s-%s", "reth-eth2", strings.ReplaceAll(g.ContainerVersion, ".", "_"), uuid.NewString()[0:8])
 	}
 	// if the internal docker repo is set then add it to the version
-	g.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(g.EnvComponent.ContainerImage)
+	g.ContainerImage = mirror.AddMirrorToImageIfSet(g.ContainerImage)
 	return g, nil
 }
 
