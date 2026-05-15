@@ -30,7 +30,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.20.5
 	github.com/prometheus/common v0.62.0
-	github.com/rs/zerolog v1.33.0
+	github.com/rs/zerolog v1.35.1
 	github.com/slack-go/slack v0.23.1
 	github.com/smartcontractkit/chainlink-testing-framework/parrot v0.6.2
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.50.10
@@ -57,7 +57,7 @@ require (
 	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/go-chi/chi v1.5.5 // indirect
 	github.com/moby/go-archive v0.2.0 // indirect
-	github.com/rs/xid v1.5.0 // indirect
+	github.com/rs/xid v1.6.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.3 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	golang.org/x/net v0.51.0 // indirect
@@ -143,7 +143,7 @@ require (
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/magiconair/properties v1.8.10 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
