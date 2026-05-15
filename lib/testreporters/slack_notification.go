@@ -22,7 +22,7 @@ var (
 )
 
 // Uploads a slack file to the designated channel using the API key
-func UploadSlackFile(slackClient *slack.Client, uploadParams slack.UploadFileV2Parameters) error {
+func UploadSlackFile(slackClient *slack.Client, uploadParams slack.UploadFileParameters) error {
 	log.Info().
 		Str("Slack API Key", SlackAPIKey).
 		Str("Slack Channel", SlackChannel).
@@ -50,7 +50,7 @@ func UploadSlackFile(slackClient *slack.Client, uploadParams slack.UploadFileV2P
 			uploadParams.FileSize = int(file.Size())
 		}
 	}
-	_, err := slackClient.UploadFileV2(uploadParams)
+	_, err := slackClient.UploadFile(uploadParams)
 	return err
 }
 
