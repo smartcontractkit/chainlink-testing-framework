@@ -24,7 +24,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/moby/moby/api v1.54.1
 	github.com/moby/moby/client v0.4.0
-	github.com/onsi/gomega v1.34.2
+	github.com/onsi/gomega v1.41.0
 	github.com/otiai10/copy v1.14.0
 	github.com/pelletier/go-toml/v2 v2.2.3
 	github.com/pkg/errors v0.9.1
@@ -60,6 +60,7 @@ require (
 	github.com/rs/xid v1.5.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.3 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
+	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/net v0.51.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )
