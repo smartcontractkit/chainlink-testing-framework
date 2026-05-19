@@ -22,8 +22,8 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.10.9
-	github.com/moby/moby/api v1.54.1
-	github.com/moby/moby/client v0.4.0
+	github.com/moby/moby/api v1.54.2
+	github.com/moby/moby/client v0.4.1
 	github.com/onsi/gomega v1.34.2
 	github.com/otiai10/copy v1.14.0
 	github.com/pelletier/go-toml/v2 v2.2.3
@@ -53,7 +53,7 @@ require (
 require (
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
-	github.com/docker/go-connections v0.6.0 // indirect
+	github.com/docker/go-connections v0.7.0 // indirect
 	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/go-chi/chi v1.5.5 // indirect
 	github.com/moby/go-archive v0.2.0 // indirect
