@@ -8,16 +8,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
+	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/smartcontractkit/freeport"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/dockercompose/utils"
-	"github.com/smartcontractkit/freeport"
 )
 
 const DefaultPostgresDSN = "postgres://postgres:postgres@postgres:5432/billing_platform?sslmode=disable"
@@ -77,6 +77,18 @@ const (
 //   - STREAMS_API_KEY = API key if using a staging or prod Streams API
 //   - STREAMS_API_SECRET = API secret if using a staging or prod Streams API
 func New(in *Input) (*Output, error) {
+	return NewWithContext(context.Background(), in)
+}
+
+// NewWithContext starts a Billing Platform Service stack using docker-compose. Various env vars are set to sensible defaults and
+// input values, but can be overridden by the host process env vars if needed.
+//
+// Import env vars that can be set to override defaults:
+//   - TEST_OWNERS = comma separated list of workflow owners
+//   - STREAMS_API_URL = URL for the Streams API; can use a mock server if needed
+//   - STREAMS_API_KEY = API key if using a staging or prod Streams API
+//   - STREAMS_API_SECRET = API secret if using a staging or prod Streams API
+func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	if in == nil {
 		return nil, errors.New("input is nil")
 	}
@@ -104,7 +116,7 @@ func New(in *Input) (*Output, error) {
 		return nil, errors.Wrap(stackErr, "failed to create compose stack for Billing Platform Service")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 	defer cancel()
 
 	// Start the stackwith all environment variables from the host process
@@ -114,11 +126,12 @@ func New(in *Input) (*Output, error) {
 	envVars["MAINNET_WORKFLOW_REGISTRY_CHAIN_SELECTOR"] = strconv.FormatUint(in.ChainSelector, 10)
 	envVars["MAINNET_WORKFLOW_REGISTRY_CONTRACT_ADDRESS"] = in.WorkflowRegistryAddress
 	envVars["MAINNET_WORKFLOW_REGISTRY_RPC_URL"] = in.RPCURL
-	envVars["MAINNET_WORKFLOW_REGISTRY_FINALITY_DEPTH"] = "0"                    // Instant finality on devnet
-	envVars["KMS_PROOF_SIGNING_KEY_ID"] = "00000000-0000-0000-0000-000000000001" // provisioned via LocalStack
-	envVars["VERIFIER_INITIAL_INTERVAL"] = "0s"                                  // reduced to force verifier to start immediately in integration tests
-	envVars["VERIFIER_MAXIMUM_INTERVAL"] = "1s"                                  // reduced to force verifier to start immediately in integration tests
-	envVars["LINKING_REQUEST_COOLDOWN"] = "0s"                                   // reduced to force consequtive linking requests to be processed immediately in integration tests
+	envVars["MAINNET_WORKFLOW_REGISTRY_FINALITY_DEPTH"] = "0"                                     // Instant finality on devnet
+	envVars["KMS_PROOF_SIGNING_KEY_ID"] = "00000000-0000-0000-0000-000000000001"                  // provisioned via LocalStack
+	envVars["VERIFIER_INITIAL_INTERVAL"] = "0s"                                                   // reduced to force verifier to start immediately in integration tests
+	envVars["VERIFIER_MAXIMUM_INTERVAL"] = "1s"                                                   // reduced to force verifier to start immediately in integration tests
+	envVars["LINKING_REQUEST_COOLDOWN"] = "0s"                                                    // reduced to force consequtive linking requests to be processed immediately in integration tests
+	envVars["ETH_FEED_ID"] = "0x000359843a543ee2fe414dc14c7e7920ef10f4372990b79d6361cdc0dd1ba782" // set as default eth feed ID
 
 	envVars["MAINNET_CAPABILITIES_REGISTRY_CHAIN_SELECTOR"] = strconv.FormatUint(in.ChainSelector, 10)
 	envVars["MAINNET_CAPABILITIES_REGISTRY_CONTRACT_ADDRESS"] = in.CapabilitiesRegistryAddress
@@ -157,8 +170,8 @@ func New(in *Input) (*Output, error) {
 	stack.WaitForService(DEFAULT_BILLING_PLATFORM_SERVICE_SERVICE_NAME,
 		wait.ForAll(
 			wait.ForLog("GRPC server is live").WithPollInterval(200*time.Millisecond),
-			wait.ForListeningPort(nat.Port(DEFAULT_BILLING_PLATFORM_SERVICE_BILLING_GRPC_PORT)),
-			wait.ForListeningPort(nat.Port(DEFAULT_BILLING_PLATFORM_SERVICE_CREDIT_GRPC_PORT)),
+			wait.ForListeningPort(DEFAULT_BILLING_PLATFORM_SERVICE_BILLING_GRPC_PORT),
+			wait.ForListeningPort(DEFAULT_BILLING_PLATFORM_SERVICE_CREDIT_GRPC_PORT),
 		).WithDeadline(1*time.Minute),
 	)
 
@@ -195,12 +208,12 @@ func New(in *Input) (*Output, error) {
 			return nil, errors.Wrapf(connectErr, "failed to connect billing-platform-service to %s network", networkName)
 		}
 		// verify that the container is connected to framework's network
-		inspected, inspectErr := cli.ContainerInspect(ctx, billingContainer.ID)
+		inspected, inspectErr := cli.ContainerInspect(ctx, billingContainer.ID, client.ContainerInspectOptions{})
 		if inspectErr != nil {
 			return nil, errors.Wrapf(inspectErr, "failed to inspect container %s", billingContainer.ID)
 		}
 
-		_, ok := inspected.NetworkSettings.Networks[networkName]
+		_, ok := inspected.Container.NetworkSettings.Networks[networkName]
 		if !ok {
 			return nil, fmt.Errorf("container %s is NOT on network %s", billingContainer.ID, networkName)
 		}
@@ -226,7 +239,7 @@ func New(in *Input) (*Output, error) {
 		return nil, errors.Wrap(err, "failed to get mapped port for Billing Platform Service")
 	}
 
-	externalPostgresPort, err := utils.FindMappedPort(ctx, 20*time.Second, postgresContainer, nat.Port(DEFAULT_POSTGRES_PORT+"/tcp"))
+	externalPostgresPort, err := utils.FindMappedPort(ctx, 20*time.Second, postgresContainer, DEFAULT_POSTGRES_PORT+"/tcp")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get mapped port for postgres")
 	}
@@ -244,7 +257,7 @@ func New(in *Input) (*Output, error) {
 }
 
 func getExternalPorts(ctx context.Context, billingExternalHost string, billingContainer *testcontainers.DockerContainer) (*BillingPlatformServiceOutput, error) {
-	ports := map[string]nat.Port{
+	ports := map[string]string{
 		"billing": DEFAULT_BILLING_PLATFORM_SERVICE_BILLING_GRPC_PORT,
 		"credit":  DEFAULT_BILLING_PLATFORM_SERVICE_CREDIT_GRPC_PORT,
 	}

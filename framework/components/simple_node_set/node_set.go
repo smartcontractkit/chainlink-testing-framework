@@ -1,13 +1,17 @@
 package simple_node_set
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"golang.org/x/sync/errgroup"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
@@ -22,28 +26,37 @@ const (
 
 // Input is a node set configuration input
 type Input struct {
-	Name               string          `toml:"name" validate:"required"`
-	Nodes              int             `toml:"nodes" validate:"required"`
-	HTTPPortRangeStart int             `toml:"http_port_range_start"`
-	P2PPortRangeStart  int             `toml:"p2p_port_range_start"`
-	DlvPortRangeStart  int             `toml:"dlv_port_range_start"`
-	OverrideMode       string          `toml:"override_mode" validate:"required,oneof=all each"`
-	DbInput            *postgres.Input `toml:"db" validate:"required"`
-	NodeSpecs          []*clnode.Input `toml:"node_specs" validate:"required"`
-	NoDNS              bool            `toml:"no_dns"`
-	Out                *Output         `toml:"out"`
+	Name               string          `toml:"name" validate:"required" comment:"Node set name, ex.:'don-1', Docker containers will be prefixed with this name so tests can distinguish one DON from another"`
+	Nodes              int             `toml:"nodes" validate:"required" comment:"Number of nodes in node set"`
+	HTTPPortRangeStart int             `toml:"http_port_range_start" comment:"HTTP ports range starting with port X and increasing by 1"`
+	P2PPortRangeStart  int             `toml:"p2p_port_range_start" comment:"P2P ports range starting with port X and increasing by 1"`
+	DlvPortRangeStart  int             `toml:"dlv_port_range_start" comment:"Delve debugger ports range starting with port X and increasing by 1"`
+	OverrideMode       string          `toml:"override_mode" validate:"required,oneof=all each" comment:"Override mode, applicable only to 'localcre'. Changes how config overrides to TOML nodes apply"`
+	DbInput            *postgres.Input `toml:"db" validate:"required" comment:"Shared node set data base input for PostgreSQL"`
+	NodeSpecs          []*clnode.Input `toml:"node_specs" validate:"required" comment:"Chainlink node TOML configurations"`
+	NoDNS              bool            `toml:"no_dns" comment:"Turn DNS on, helpful to isolate container from the internet"`
+	Out                *Output         `toml:"out" comment:"Nodeset config output"`
 }
 
 // Output is a node set configuration output, used for caching or external components
 type Output struct {
-	UseCache bool             `toml:"use_cache"`
-	DBOut    *postgres.Output `toml:"db_out"`
-	CLNodes  []*clnode.Output `toml:"cl_nodes"`
+	// UseCache Whether to respect caching or not, if cache = true component won't be deployed again
+	UseCache bool `toml:"use_cache" comment:"Whether to respect caching or not, if cache = true component won't be deployed again"`
+	// DBOut Nodeset shared database output (PostgreSQL)
+	DBOut *postgres.Output `toml:"db_out" comment:"Nodeset shared database output (PostgreSQL)"`
+	// CLNodes Chainlink node config outputs
+	CLNodes []*clnode.Output `toml:"cl_nodes" comment:"Chainlink node config outputs"`
 }
 
 // NewSharedDBNodeSet create a new node set with a shared database instance
 // all the nodes have their own isolated database
 func NewSharedDBNodeSet(in *Input, bcOut *blockchain.Output) (*Output, error) {
+	return NewSharedDBNodeSetWithContext(context.Background(), in, bcOut)
+}
+
+// NewSharedDBNodeSetWithContext create a new node set with a shared database instance
+// all the nodes have their own isolated database
+func NewSharedDBNodeSetWithContext(ctx context.Context, in *Input, bcOut *blockchain.Output) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
@@ -58,7 +71,7 @@ func NewSharedDBNodeSet(in *Input, bcOut *blockchain.Output) (*Output, error) {
 	if len(in.NodeSpecs) != in.Nodes && in.OverrideMode == "each" {
 		return nil, fmt.Errorf("amount of 'nodes' must be equal to specs provided in override_mode='each'")
 	}
-	out, err = sharedDBSetup(in, bcOut)
+	out, err = sharedDBSetup(ctx, in, bcOut)
 	if err != nil {
 		return nil, err
 	}
@@ -82,13 +95,13 @@ func printURLs(out *Output) {
 	framework.L.Debug().Any("DB", pgURLs).Send()
 }
 
-func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
+func sharedDBSetup(ctx context.Context, in *Input, bcOut *blockchain.Output) (*Output, error) {
 	in.DbInput.Name = fmt.Sprintf("%s-%s", in.Name, "ns-postgresql")
 	in.DbInput.VolumeName = in.Name
 
 	// create database for each node
 	in.DbInput.Databases = in.Nodes
-	dbOut, err := postgres.NewPostgreSQL(in.DbInput)
+	dbOut, err := postgres.NewWithContext(ctx, in.DbInput)
 	if err != nil {
 		return nil, err
 	}
@@ -164,16 +177,19 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 
 			if envImage != "" {
 				nodeSpec.Node.Image = envImage
+				// unset docker build context and file path to avoid conflicts, image provided via env var takes precedence
+				nodeSpec.Node.DockerContext = ""
+				nodeSpec.Node.DockerFilePath = ""
 			}
 
-			dbURLHost := strings.Replace(dbOut.Url, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i), -1)
-			dbURL := strings.Replace(dbOut.InternalURL, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i), -1)
+			dbURLHost := strings.ReplaceAll(dbOut.Url, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i))
+			dbURL := strings.ReplaceAll(dbOut.InternalURL, "/chainlink?sslmode=disable", fmt.Sprintf("/db_%d?sslmode=disable", i))
 			dbSpec := &postgres.Output{
 				Url:         dbURLHost,
 				InternalURL: dbURL,
 			}
 
-			o, err := clnode.NewNode(nodeSpec, dbSpec)
+			o, err := clnode.NewNodeWithContext(ctx, nodeSpec, dbSpec)
 			if err != nil {
 				return err
 			}
@@ -187,6 +203,12 @@ func sharedDBSetup(in *Input, bcOut *blockchain.Output) (*Output, error) {
 		return nil, err
 	}
 	sortNodeOutsByHostPort(nodeOuts)
+	// wait for all K8s services at once
+	if pods.K8sEnabled() {
+		if err := pods.WaitReady(ctx, 3*time.Minute); err != nil {
+			return nil, err
+		}
+	}
 	return &Output{
 		UseCache: true,
 		DBOut:    dbOut,

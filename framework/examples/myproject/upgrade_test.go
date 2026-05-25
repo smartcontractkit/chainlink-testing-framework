@@ -2,6 +2,7 @@ package examples
 
 import (
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -28,14 +29,14 @@ const (
 		                abi="submit(uint256 value)"
 		                data="{ \\"value\\": $(multiply) }"]
 		   submit_tx   [type="ethtx" to="0x859AAa51961284C94d970B47E82b8771942F1980" data="$(encode_tx)"]
-		
+
 		   fetch -> parse -> multiply -> encode_tx -> submit_tx
 		"""`
 )
 
 type CfgReload struct {
 	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
-	MockerDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
+	MockedDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
 	NodeSets           []*ns.Input       `toml:"nodesets" validate:"required"`
 }
 
@@ -45,7 +46,7 @@ func TestUpgrade(t *testing.T) {
 
 	bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
 	require.NoError(t, err)
-	_, err = fake.NewFakeDataProvider(in.MockerDataProvider)
+	_, err = fake.NewFakeDataProvider(in.MockedDataProvider)
 	require.NoError(t, err)
 
 	// deploy first time
@@ -57,12 +58,12 @@ func TestUpgrade(t *testing.T) {
 	_, _, err = c[0].CreateJobRaw(testJob)
 	require.NoError(t, err)
 
-	in.NodeSets[0].NodeSpecs[0].Node.Image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+	in.NodeSets[0].NodeSpecs[0].Node.Image = os.Getenv("CTF_CHAINLINK_IMAGE")
 	in.NodeSets[0].NodeSpecs[0].Node.UserConfigOverrides = `
 											[Log]
 											level = 'info'
 	`
-	in.NodeSets[0].NodeSpecs[4].Node.Image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+	in.NodeSets[0].NodeSpecs[4].Node.Image = os.Getenv("CTF_CHAINLINK_IMAGE")
 	in.NodeSets[0].NodeSpecs[4].Node.UserConfigOverrides = `
 											[Log]
 											level = 'info'

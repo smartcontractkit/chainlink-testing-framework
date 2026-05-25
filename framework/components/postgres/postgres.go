@@ -8,8 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
+	v1 "k8s.io/api/core/v1"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
+
+	"net/netip"
+
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	"github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
@@ -27,29 +33,48 @@ const (
 )
 
 type Input struct {
-	Image              string                        `toml:"image" validate:"required"`
-	Port               int                           `toml:"port"`
-	Name               string                        `toml:"name"`
-	VolumeName         string                        `toml:"volume_name"`
-	Databases          int                           `toml:"databases"`
-	JDDatabase         bool                          `toml:"jd_database"`
-	JDSQLDumpPath      string                        `toml:"jd_sql_dump_path"`
-	PullImage          bool                          `toml:"pull_image"`
-	ContainerResources *framework.ContainerResources `toml:"resources"`
-	Out                *Output                       `toml:"out"`
+	// Image PostgreSQL Docker image in format: $registry:$tag
+	Image string `toml:"image" validate:"required" comment:"PostgreSQL Docker image in format: $registry:$tag"`
+	// Port PostgreSQL connection port
+	Port int `toml:"port" comment:"PostgreSQL connection port"`
+	// Name PostgreSQL container name
+	Name string `toml:"name" comment:"PostgreSQL container name"`
+	// VolumeName PostgreSQL Docker volume name
+	VolumeName string `toml:"volume_name" comment:"PostgreSQL docker volume name"`
+	// Databases number of pre-created databases for Chainlink nodes
+	Databases int `toml:"databases" comment:"Number of pre-created databases for Chainlink nodes"`
+	// JDDatabase whether to create JobDistributor database or not
+	JDDatabase bool `toml:"jd_database" comment:"Whether to create JobDistributor database or not"`
+	// JDSQLDumpPath JobDistributor SQL dump path to load
+	JDSQLDumpPath string `toml:"jd_sql_dump_path" comment:"JobDistributor database dump path to load"`
+	// PullImage whether to pull PostgreSQL image or not
+	PullImage bool `toml:"pull_image" comment:"Whether to pull PostgreSQL image or not"`
+	// ContainerResources Docker container resources
+	ContainerResources *framework.ContainerResources `toml:"resources" comment:"Docker container resources"`
+	// Out PostgreSQL config output
+	Out *Output `toml:"out" comment:"PostgreSQL config output"`
 }
 
 type Output struct {
-	Url           string `toml:"url"`
-	ContainerName string `toml:"container_name"`
-	InternalURL   string `toml:"internal_url"`
-	JDUrl         string `toml:"jd_url"`
-	JDInternalURL string `toml:"jd_internal_url"`
+	// Url PostgreSQL connection Url
+	Url string `toml:"url" comment:"PostgreSQL connection URL"`
+	// ContainerName PostgreSQL Docker container name
+	ContainerName string `toml:"container_name" comment:"Docker container name"`
+	// InternalURL PostgreSQL internal connection URL
+	InternalURL string `toml:"internal_url" comment:"PostgreSQL internal connection URL"`
+	// JDUrl PostgreSQL external connection URL to JobDistributor database
+	JDUrl string `toml:"jd_url" comment:"PostgreSQL internal connection URL to JobDistributor database"`
+	// JDInternalURL PostgreSQL internal connection URL to JobDistributor database
+	JDInternalURL string `toml:"jd_internal_url" comment:"PostgreSQL internal connection URL to JobDistributor database"`
+	// K8sService is a Kubernetes service spec used to connect locally
+	K8sService *v1.Service `toml:"k8s_service" comment:"Kubernetes service spec used to connect locally"`
 }
 
 func NewPostgreSQL(in *Input) (*Output, error) {
-	ctx := context.Background()
+	return NewWithContext(context.Background(), in)
+}
 
+func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	bindPort := fmt.Sprintf("%s/tcp", Port)
 	var containerName string
 	if in.Name == "" {
@@ -75,7 +100,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 				return nil, fmt.Errorf("error reading JD dump file '%s': %v", in.JDSQLDumpPath, err)
 			}
 			// transaction_timeout is a custom RDS instruction, we must replace it
-			sqlMigration := strings.Replace(string(d), "SET transaction_timeout = 0;", "", -1)
+			sqlMigration := strings.ReplaceAll(string(d), "SET transaction_timeout = 0;", "")
 			sqlCommands = append(sqlCommands, sqlMigration)
 			sqlCommands = append(sqlCommands, "DELETE FROM public.csa_keypairs where id = 1;")
 		} else {
@@ -95,6 +120,103 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 		return nil, err
 	}
 
+	var portToExpose int
+	if in.Port != 0 {
+		portToExpose = in.Port
+	} else {
+		portToExpose = ExposedStaticPort
+	}
+
+	var o *Output
+
+	// k8s deployment
+	if pods.K8sEnabled() {
+		_, svc, err := pods.Run(ctx, &pods.Config{
+			Pods: []*pods.PodConfig{
+				{
+					Name:  pods.Ptr(in.Name),
+					Image: pods.Ptr(in.Image),
+					Ports: []string{fmt.Sprintf("%d:%s", portToExpose, Port)},
+					Env: []v1.EnvVar{
+						{
+							Name:  "POSTGRES_USER",
+							Value: User,
+						},
+						{
+							Name:  "POSTGRES_PASSWORD",
+							Value: Password,
+						},
+						{
+							Name:  "POSTGRES_DB",
+							Value: Database,
+						},
+					},
+					Requests: pods.ResourcesMedium(),
+					Limits:   pods.ResourcesMedium(),
+					// container and pod security settings are specific to
+					// 'postgres' Docker image
+					ContainerSecurityContext: &v1.SecurityContext{
+						RunAsUser:  pods.Ptr[int64](999),
+						RunAsGroup: pods.Ptr[int64](999),
+					},
+					PodSecurityContext: &v1.PodSecurityContext{
+						FSGroup: pods.Ptr[int64](999),
+					},
+					ConfigMap: map[string]string{
+						"init.sql": initSQL,
+					},
+					ConfigMapMountPath: map[string]string{
+						"init.sql": "/docker-entrypoint-initdb.d/init.sql",
+					},
+					VolumeClaimTemplates: pods.SizedVolumeClaim("4Gi"),
+				},
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		o = &Output{
+			K8sService:    svc,
+			ContainerName: containerName,
+			InternalURL: fmt.Sprintf(
+				"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
+				User,
+				Password,
+				fmt.Sprintf("%s-svc", in.Name),
+				// use svc internally too
+				portToExpose,
+				Database,
+			),
+			Url: fmt.Sprintf(
+				"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
+				User,
+				Password,
+				"localhost",
+				portToExpose,
+				Database,
+			),
+		}
+		if in.JDDatabase {
+			o.JDInternalURL = fmt.Sprintf(
+				"postgresql://%s:%s@%s:%s/%s?sslmode=disable",
+				User,
+				Password,
+				fmt.Sprintf("%s-svc", in.Name),
+				Port,
+				JDDatabase,
+			)
+			o.JDUrl = fmt.Sprintf(
+				"postgresql://%s:%s@%s:%d/%s?sslmode=disable",
+				User,
+				Password,
+				"localhost",
+				portToExpose,
+				JDDatabase,
+			)
+		}
+		return o, nil
+	}
+	// local deployment
 	req := testcontainers.ContainerRequest{
 		AlwaysPullImage: in.PullImage,
 		Image:           in.Image,
@@ -120,7 +242,7 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 			{
 				HostFilePath:      initFile.Name(),
 				ContainerFilePath: "/docker-entrypoint-initdb.d/init.sql",
-				FileMode:          0644,
+				FileMode:          0o644,
 			},
 		},
 		Mounts: testcontainers.ContainerMounts{
@@ -131,22 +253,18 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 				Target: "/var/lib/postgresql/data",
 			},
 		},
-		WaitingFor: tcwait.ForExec([]string{"psql", "-h", "127.0.0.1",
-			"-U", User, "-p", Port, "-c", "select", "1", "-d", Database}).
+		WaitingFor: tcwait.ForExec([]string{
+			"psql", "-h", "127.0.0.1",
+			"-U", User, "-p", Port, "-c", "select", "1", "-d", Database,
+		}).
 			WithStartupTimeout(3 * time.Minute).
 			WithPollInterval(200 * time.Millisecond),
 	}
-	var portToExpose int
-	if in.Port != 0 {
-		portToExpose = in.Port
-	} else {
-		portToExpose = ExposedStaticPort
-	}
 	req.HostConfigModifier = func(h *container.HostConfig) {
-		h.PortBindings = nat.PortMap{
-			nat.Port(bindPort): []nat.PortBinding{
+		h.PortBindings = network.PortMap{
+			network.MustParsePort(bindPort): []network.PortBinding{
 				{
-					HostIP:   "0.0.0.0",
+					HostIP:   netip.MustParseAddr("0.0.0.0"),
 					HostPort: strconv.Itoa(portToExpose),
 				},
 			},
@@ -161,11 +279,11 @@ func NewPostgreSQL(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	host, err := framework.GetHost(c)
+	host, err := framework.GetHostWithContext(ctx, c)
 	if err != nil {
 		return nil, err
 	}
-	o := &Output{
+	o = &Output{
 		ContainerName: containerName,
 		InternalURL: fmt.Sprintf(
 			"postgresql://%s:%s@%s:%s/%s?sslmode=disable",

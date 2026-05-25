@@ -1,0 +1,84 @@
+go_test_args := env('GO_TEST_ARGS', '')
+
+# Print all the commands
+default:
+    @just --list
+
+# Install pre-commit hooks
+install:
+    pre-commit install
+
+# Run golangci-lint
+lint:
+    golangci-lint --color=always run -v -c .golangci.yaml
+
+# Run composite product example tests
+example-composite:
+    cd examples/composite/product_a && SNAPSHOT_TESTS=true go test -v -run .
+
+# Run composite product example tests and update snapshots
+composite-update-snapshots:
+    cd examples/composite/product_a && UPDATE_SNAPS=true SNAPSHOT_TESTS=true go test -v -run .
+
+
+# Run real-world example of deploying Chainlink cluster of 4 nodes + 1 network
+example:
+    go test -v -count 1 -run TestPlatformEnvironment ./...
+
+# Run all the tests without deploying, just test snapshots
+test:
+    SNAPSHOT_TESTS=true go test -v -run TestPods
+
+# Update all the snapshots
+update-snapshots:
+    UPDATE_SNAPS=true go test -v -run TestPods ./...
+
+# Run all deployment tests
+test-deploy:
+    APPLY=true go test -v -count 1 -race -cover -coverprofile=cover.out -covermode=atomic -coverpkg=github.com/smartcontractkit/chainlink-testing-framework/pods -run TestPods ./... && go tool cover -html cover.out
+
+# Check coverage thresholds
+cover-action:
+    go install github.com/vladopajic/go-test-coverage/v2@latest
+    APPLY=true go test -v -count 1 -race -cover -coverprofile=cover.out -covermode=atomic -coverpkg=github.com/smartcontractkit/chainlink-testing-framework/pods -run TestPods ./...
+    go-test-coverage --badge-file-name=cover.svg --config=./.testcoverage.yml
+
+# Run go mod tidy
+tidy:
+    go mod tidy
+
+# Run GitHub Actions lint for CI workflows
+actionlint:
+    go install github.com/rhysd/actionlint/cmd/actionlint@latest
+    actionlint
+
+# Create a local Kind environment
+up:
+    kind create cluster --name pods --config kind.yml
+
+# Destroy a local Kind environment
+down:
+    kind delete cluster --name pods
+
+# Switch K8s context to local Kind environment
+ctx:
+    kubectl config use-context kind-pods
+
+# Forwards all services ports using Kubefwd
+forward namespace:
+    sudo kubefwd -n {{namespace}} svc
+
+# Print all cluster's CRDs and grep them
+crds filter:
+    kubectl get crds | grep {{filter}}
+
+# Get CRD from the cluster and copy it to a local path
+crd name file:
+    kubectl get crd {{name}} -o yaml > {{file}}.yml
+
+import-k8s:
+    cdk8s import
+
+# Generate cdk8s bindings for Golang
+import file:
+    cdk8s import {{file}} --language go

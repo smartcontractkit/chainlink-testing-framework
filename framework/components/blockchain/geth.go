@@ -1,13 +1,15 @@
 package blockchain
 
 import (
+	"context"
 	"fmt"
 	"os"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/mount"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 
 	"github.com/testcontainers/testcontainers-go"
 )
@@ -77,7 +79,7 @@ func defaultGeth(in *Input) {
 	}
 }
 
-func newGeth(in *Input) (*Output, error) {
+func newGeth(ctx context.Context, in *Input) (*Output, error) {
 	defaultGeth(in)
 	req := baseRequest(in, WithoutWsEndpoint)
 	defaultCmd := []string{
@@ -123,7 +125,7 @@ func newGeth(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = genesisFile.WriteString(fmt.Sprintf(GenesisClique, in.ChainID))
+	_, err = fmt.Fprintf(genesisFile, GenesisClique, in.ChainID)
 	if err != nil {
 		return nil, err
 	}
@@ -184,5 +186,9 @@ func newGeth(in *Input) (*Output, error) {
 	}
 	req.Cmd = entryPoint
 
-	return createGenericEvmContainer(in, req, false)
+	if pods.K8sEnabled() {
+		return nil, fmt.Errorf("K8s support is not yet implemented")
+	}
+
+	return createGenericEvmContainer(ctx, in, req, false)
 }

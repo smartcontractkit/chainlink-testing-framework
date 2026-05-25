@@ -5,31 +5,72 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
-//go:embed observability/*
+//go:embed observability
 var EmbeddedObservabilityFiles embed.FS
 
 const (
 	LocalGrafanaBaseURL    = "http://localhost:3000"
 	LocalLokiBaseURL       = "http://localhost:3030"
 	LocalPrometheusBaseURL = "http://localhost:9099"
+	LocalPyroscopeBaseURL  = "http://localhost:4040"
 	LocalCLNodeErrorsURL   = "http://localhost:3000/d/a7de535b-3e0f-4066-bed7-d505b6ec9ef1/cl-node-errors?orgId=1&refresh=5s"
 	LocalWorkflowEngineURL = "http://localhost:3000/d/ce589a98-b4be-4f80-bed1-bc62f3e4414a/workflow-engine?orgId=1&refresh=5s&from=now-15m&to=now"
 	LocalLogsURL           = "http://localhost:3000/explore?panes=%7B%22qZw%22:%7B%22datasource%22:%22P8E80F9AEF21F6940%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%7Bjob%3D%5C%22ctf%5C%22%7D%22,%22queryType%22:%22range%22,%22datasource%22:%7B%22type%22:%22loki%22,%22uid%22:%22P8E80F9AEF21F6940%22%7D,%22editorMode%22:%22code%22%7D%5D,%22range%22:%7B%22from%22:%22now-15m%22,%22to%22:%22now%22%7D%7D%7D&schemaVersion=1&orgId=1"
 	LocalPrometheusURL     = "http://localhost:3000/explore?panes=%7B%22qZw%22:%7B%22datasource%22:%22PBFA97CFB590B2093%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%22,%22range%22:true,%22datasource%22:%7B%22type%22:%22prometheus%22,%22uid%22:%22PBFA97CFB590B2093%22%7D%7D%5D,%22range%22:%7B%22from%22:%22now-15m%22,%22to%22:%22now%22%7D%7D%7D&schemaVersion=1&orgId=1"
 	LocalPostgresDebugURL  = "http://localhost:3000/d/000000039/postgresql-database?orgId=1&refresh=5s&var-DS_PROMETHEUS=PBFA97CFB590B2093&var-interval=$__auto_interval_interval&var-namespace=&var-release=&var-instance=postgres_exporter_0:9187&var-datname=All&var-mode=All&from=now-15m&to=now"
 	LocalPyroScopeURL      = "http://localhost:4040/?query=process_cpu%3Acpu%3Ananoseconds%3Acpu%3Ananoseconds%7Bservice_name%3D%22chainlink-node%22%7D&from=now-15m"
+
+	CTFObservabilityCacheDir      = ".local/share/ctf"
+	CTFLocalDashboardsDirRelative = "dashboards"
 )
 
-// extractAllFiles goes through the embedded directory and extracts all files to the current directory
-func extractAllFiles(embeddedDir string) error {
-	// Get current working directory where CLI is running
-	currentDir, err := os.Getwd()
+// copyLocalDashboards syncs local dashboards to CTF observability cache dir
+func copyLocalDashboards(obsDir string) error {
+	wd, _ := os.Getwd()
+	localDir := filepath.Join(wd, CTFLocalDashboardsDirRelative)
+
+	if _, err := os.Stat(localDir); os.IsNotExist(err) {
+		L.Info().Str("Dir", localDir).Msg("No local dashboards to copy")
+		return nil
+	}
+
+	L.Info().
+		Str("From", localDir).
+		Str("To", obsDir).
+		Msg("Copying local dashboards")
+	cmd := exec.Command(
+		"cp",
+		"-r",
+		localDir,
+		obsDir,
+	)
+	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("failed to get current directory: %w", err)
+		return fmt.Errorf("failed to sync local dashboard dirs, from %s to %s, error: %w", localDir, obsDir, err)
+	}
+	return nil
+}
+
+// getObservabilityDir returns the fixed directory where observability files are extracted
+func getObservabilityDir() (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get home directory: %w", err)
+	}
+	return filepath.Join(homeDir, CTFObservabilityCacheDir), nil
+}
+
+// extractAllFiles goes through the embedded directory and extracts all files to the fixed observability directory
+func extractAllFiles(embeddedDir string) error {
+	// Get fixed observability directory
+	obsDir, err := getObservabilityDir()
+	if err != nil {
+		return err
 	}
 
 	// Walk through the embedded files
@@ -47,7 +88,7 @@ func extractAllFiles(embeddedDir string) error {
 		}
 
 		// Read file content from embedded file system
-		content, err := EmbeddedObservabilityFiles.ReadFile(path)
+		content, err := fs.ReadFile(EmbeddedObservabilityFiles, path)
 		if err != nil {
 			return fmt.Errorf("failed to read file %s: %w", path, err)
 		}
@@ -57,7 +98,7 @@ func extractAllFiles(embeddedDir string) error {
 		if err != nil {
 			return fmt.Errorf("failed to determine relative path for %s: %w", path, err)
 		}
-		targetPath := filepath.Join(currentDir, relativePath)
+		targetPath := filepath.Join(obsDir, relativePath)
 
 		// Create target directories if necessary
 		targetDir := filepath.Dir(targetPath)
@@ -74,8 +115,11 @@ func extractAllFiles(embeddedDir string) error {
 		}
 		return nil
 	})
-
-	return err
+	if err != nil {
+		return err
+	}
+	// copy dashboards from a local dir to CTF cache dir
+	return copyLocalDashboards(obsDir)
 }
 
 func BlockScoutUp(url, chainID string) error {
@@ -83,8 +127,13 @@ func BlockScoutUp(url, chainID string) error {
 	if err := extractAllFiles("observability"); err != nil {
 		return err
 	}
+	obsDir, err := getObservabilityDir()
+	if err != nil {
+		return err
+	}
+	blockscoutDir := filepath.Join(obsDir, "blockscout")
 	os.Setenv("BLOCKSCOUT_RPC_URL", url)
-	os.Setenv("BLOCKSCOUT_CHAID_ID", chainID)
+	os.Setenv("BLOCKSCOUT_CHAIN_ID", chainID)
 	// old migrations for v15 is still applied somehow, cleaning up DB helps
 	if err := RunCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
@@ -93,13 +142,13 @@ func BlockScoutUp(url, chainID string) error {
 		rm -rf redis-data && \
 		rm -rf stats-db-data && \
 		rm -rf dets
-	`, filepath.Join("blockscout", "services"))); err != nil {
+	`, filepath.Join(blockscoutDir, "services"))); err != nil {
 		return err
 	}
-	err := RunCommand("bash", "-c", fmt.Sprintf(`
+	err = RunCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
 		docker compose up -d
-	`, "blockscout"))
+	`, blockscoutDir))
 	if err != nil {
 		return err
 	}
@@ -110,30 +159,64 @@ func BlockScoutUp(url, chainID string) error {
 
 func BlockScoutDown(url string) error {
 	L.Info().Msg("Removing local Blockscout stack")
-	os.Setenv("BLOCKSCOUT_RPC_URL", url)
-	err := RunCommand("bash", "-c", fmt.Sprintf(`
-		cd %s && \
-		docker compose down -v
-	`, "blockscout"))
+	obsDir, err := getObservabilityDir()
 	if err != nil {
 		return err
 	}
-	return RunCommand("bash", "-c", "rm -rf blockscout/")
+	blockscoutDir := filepath.Join(obsDir, "blockscout")
+	os.Setenv("BLOCKSCOUT_RPC_URL", url)
+	return RunCommand("bash", "-c", fmt.Sprintf(`
+		cd %s && \
+		docker compose down -v
+	`, blockscoutDir))
 }
 
+// ObservabilityUpOnlyLoki slim stack with only Loki to verify specific logs of CL nodes or services in tests
+func ObservabilityUpOnlyLoki() error {
+	L.Info().Msg("Creating local observability stack")
+	if err := extractAllFiles("observability"); err != nil {
+		return err
+	}
+	obsDir, err := getObservabilityDir()
+	if err != nil {
+		return err
+	}
+	composeDir := filepath.Join(obsDir, "compose")
+	_ = DefaultNetwork(nil)
+	if err := NewPromtail(); err != nil {
+		return err
+	}
+	err = RunCommand("bash", "-c", fmt.Sprintf(`
+		cd %s && \
+		docker compose up -d loki grafana
+	`, composeDir))
+	if err != nil {
+		return err
+	}
+	fmt.Println()
+	L.Info().Msgf("Loki: %s", LocalLogsURL)
+	return nil
+}
+
+// ObservabilityUp standard stack with logs/metrics for load testing and observability
 func ObservabilityUp() error {
 	L.Info().Msg("Creating local observability stack")
 	if err := extractAllFiles("observability"); err != nil {
 		return err
 	}
+	obsDir, err := getObservabilityDir()
+	if err != nil {
+		return err
+	}
+	composeDir := filepath.Join(obsDir, "compose")
 	_ = DefaultNetwork(nil)
 	if err := NewPromtail(); err != nil {
 		return err
 	}
-	err := RunCommand("bash", "-c", fmt.Sprintf(`
+	err = RunCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
 		docker compose up -d otel-collector prometheus loki grafana
-	`, "compose"))
+	`, composeDir))
 	if err != nil {
 		return err
 	}
@@ -145,19 +228,25 @@ func ObservabilityUp() error {
 	return nil
 }
 
+// ObservabilityUpFull full stack for load testing and performance investigations
 func ObservabilityUpFull() error {
 	L.Info().Msg("Creating full local observability stack")
 	if err := extractAllFiles("observability"); err != nil {
 		return err
 	}
+	obsDir, err := getObservabilityDir()
+	if err != nil {
+		return err
+	}
+	composeDir := filepath.Join(obsDir, "compose")
 	_ = DefaultNetwork(nil)
 	if err := NewPromtail(); err != nil {
 		return err
 	}
-	err := RunCommand("bash", "-c", fmt.Sprintf(`
+	err = RunCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
 		docker compose up -d
-	`, "compose"))
+	`, composeDir))
 	if err != nil {
 		return err
 	}
@@ -173,10 +262,14 @@ func ObservabilityUpFull() error {
 
 func ObservabilityDown() error {
 	L.Info().Msg("Removing local observability stack")
+	obsDir, err := getObservabilityDir()
+	if err != nil {
+		return err
+	}
+	composeDir := filepath.Join(obsDir, "compose")
 	_ = RunCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
 		docker compose down -v && docker rm -f promtail
-	`, "compose"))
-	_ = RunCommand("bash", "-c", "rm -rf compose/")
+	`, composeDir))
 	return nil
 }

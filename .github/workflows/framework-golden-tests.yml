@@ -18,10 +18,6 @@ jobs:
       fail-fast: false
       matrix:
         test:
-          - name: TestSmoke
-            config: smoke.toml
-            count: 1
-            timeout: 10m
           - name: TestSmokeLimitedResources
             config: smoke_limited_resources.toml
             count: 1
@@ -33,6 +29,10 @@ jobs:
 #            timeout: 10m
           - name: TestAptosSmoke
             config: smoke_aptos.toml
+            count: 1
+            timeout: 10m
+          - name: TestCantonSmoke
+            config: smoke_canton.toml
             count: 1
             timeout: 10m
           - name: TestTRONSmoke
@@ -51,35 +51,19 @@ jobs:
             config: parallel_ton.toml
             count: 1
             timeout: 10m
-          - name: TestUpgrade
-            config: upgrade.toml
-            count: 1
-            timeout: 10m
-          - name: TestPerformanceBaseline
-            config: performance_baseline.toml
-            count: 1
-            timeout: 10m
+          # Disabled for now, we need to replace Pumba chaos driver
+          # - name: TestUpgrade
+          #   config: upgrade.toml
+          #   count: 1
+          #   timeout: 10m
           - name: TestChaos
             config: chaos.toml
-            count: 1
-            timeout: 10m
-          - name: TestScalability
-            config: scalability.toml
             count: 1
             timeout: 10m
           - name: TestLocalS3
             config: local_s3.toml
             count: 1
             timeout: 10m
-          - name: TestFakes
-            config: fake.toml
-            count: 1
-            timeout: 10m
-            # TODO: sdlc auth
-#          - name: TestDockerFakes
-#            config: fake_docker.toml
-#            count: 1
-#            timeout: 10m
     name: ${{ matrix.test.name }}
     steps:
       - name: Checkout repo

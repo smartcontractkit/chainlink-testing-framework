@@ -1,18 +1,21 @@
 services:
   tempo:
-    image: grafana/tempo:2.3.1
+    image: grafana/tempo:2.7.1
+    user: '0:0'
     command: [ "-config.file=/etc/tempo.yaml" ]
     volumes:
       - ./tempo.yaml:/etc/tempo.yaml
       - tempo_data:/tmp/tempo
     ports:
       - "3200:3200"   # tempo
-#      - "5317:4317"   # otlp grpc
-#      - "5318:4318"   # otlp http
       - "9411:9411"   # zipkin
       - "14268:14268" # jaeger ingest
       - "14250:14250" # jaeger grpc
-      - "55680:55680" # otlp http legacy
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    restart: unless-stopped
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.123.0
     volumes:
@@ -30,9 +33,9 @@ services:
     container_name: cadvisor
     ports:
       - '8085:8080'
+    cgroup: host
     volumes:
       - /:/rootfs:ro
-      - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro # Docker container data
       - /var/run/docker.sock:/var/run/docker.sock
@@ -42,6 +45,10 @@ services:
   prometheus:
     image: prom/prometheus:v3.4.1
     user: '0:0'
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.enable-remote-write-receiver'
+      - '--enable-feature=exemplar-storage'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./conf/prometheus.yml:/etc/prometheus/prometheus.yml
@@ -62,7 +69,7 @@ services:
       - -ruler.storage.local.directory=/etc/loki/rules
 
   grafana:
-    image: grafana/grafana:10.1.0
+    image: grafana/grafana:12.3.1
     environment:
       - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=grafana-pyroscope-app
     volumes:

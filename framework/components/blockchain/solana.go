@@ -5,16 +5,18 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/mount"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 )
 
 var configYmlRaw = `
@@ -26,29 +28,38 @@ address_labels:
 commitment: finalized
 `
 
+const (
+	// DefaultSolanaPrivateKey is the base58-encoded private key matching the keypair
+	// written to the test validator's /root/.config/solana/cli/id.json.
+	// The corresponding public key is DefaultSolanaPublicKey.
+	DefaultSolanaPrivateKey = "DmPfeHBC8Brf8s5qQXi25bmJ996v6BHRtaLc6AH51yFGSqQpUMy1oHkbbXobPNBdgGH2F29PAmoq9ZZua4K9vCc"
+	// DefaultSolanaPublicKey is the public key derived from DefaultSolanaPrivateKey.
+	DefaultSolanaPublicKey = "9n1pyVGGo6V4mpiSDMVay5As9NurEkY283wwRk1Kto2C"
+)
+
 var idJSONRaw = `
 [11,2,35,236,230,251,215,68,220,208,166,157,229,181,164,26,150,230,218,229,41,20,235,80,183,97,20,117,191,159,228,243,130,101,145,43,51,163,139,142,11,174,113,54,206,213,188,127,131,147,154,31,176,81,181,147,78,226,25,216,193,243,136,149]
 `
 
 func defaultSolana(in *Input) {
-	ci := os.Getenv("CI") == "true"
-	if in.Image == "" && !ci {
-		in.Image = "f4hrenh9it/solana"
-	}
-	if in.Image == "" && ci {
-		in.Image = "anzaxyz/agave:v2.1.13"
+	if in.Image == "" {
+		// Official arm64 image does not exist for Solana so use custom built one
+		if runtime.GOARCH == "arm64" {
+			in.Image = "public.ecr.aws/w0i8p0z9/solana-validator:main-1dcdbc4"
+		} else {
+			in.Image = "anzaxyz/agave:v2.1.13"
+		}
 	}
 	if in.Port == "" {
 		in.Port = "8999"
 	}
 }
 
-func newSolana(in *Input) (*Output, error) {
+func newSolana(ctx context.Context, in *Input) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
 	defaultSolana(in)
-	ctx := context.Background()
 
 	containerName := framework.DefaultTCName("blockchain-node")
 	// Solana do not allow to set ws port, it just uses --rpc-port=N and sets WS as N+1 automatically
@@ -95,6 +106,13 @@ func newSolana(in *Input) (*Output, error) {
 	}, flags...)
 	args = append(args, in.DockerCmdParamsOverrides...)
 
+	if pods.K8sEnabled() {
+		return nil, fmt.Errorf("K8s support is not yet implemented")
+	}
+
+	entrypoint := []string{"sh", "-c", fmt.Sprintf("mkdir -p /root/.config/solana/cli && solana-test-validator %s", strings.Join(args, " "))}
+	framework.L.Info().Any("Cmd", entrypoint).Msg("Creating solana container with command")
+
 	req := testcontainers.ContainerRequest{
 		AlwaysPullImage: in.PullImage,
 		Image:           in.Image,
@@ -130,7 +148,7 @@ func newSolana(in *Input) (*Output, error) {
 				FileMode:          0644,
 			},
 		},
-		Entrypoint: []string{"sh", "-c", fmt.Sprintf("mkdir -p /root/.config/solana/cli && solana-test-validator %s", strings.Join(args, " "))},
+		Entrypoint: entrypoint,
 	}
 
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -140,7 +158,7 @@ func newSolana(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	host, err := framework.GetHost(c)
+	host, err := framework.GetHostWithContext(ctx, c)
 	if err != nil {
 		return nil, err
 	}

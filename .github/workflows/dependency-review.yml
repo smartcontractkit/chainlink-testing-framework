@@ -18,4 +18,4 @@ jobs:
       - name: Vulnerability Check
         uses: smartcontractkit/.github/actions/dependency-review@0cc355785130a83a540187b609c5521094baed92 # dependency-review@1.0.0
         with:
-          config-preset: default-vulnerability-check-high
+          config-file: .github/configs/dependency-review.yml

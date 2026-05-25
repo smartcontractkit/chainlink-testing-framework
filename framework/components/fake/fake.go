@@ -14,18 +14,6 @@ const (
 	DefaultFakeServicePort = 9111
 )
 
-type Input struct {
-	Image string  `toml:"image"`
-	Port  int     `toml:"port" validate:"required"`
-	Out   *Output `toml:"out"`
-}
-
-type Output struct {
-	UseCache      bool   `toml:"use_cache"`
-	BaseURLHost   string `toml:"base_url_host"`
-	BaseURLDocker string `toml:"base_url_docker"`
-}
-
 var (
 	Service     *gin.Engine
 	validMethod = regexp.MustCompile("GET|POST|PATCH|PUT|DELETE")

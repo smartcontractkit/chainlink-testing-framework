@@ -1,94 +1,44 @@
 package chipingressset
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
-	"time"
 
-	"github.com/avast/retry-go/v4"
 	"github.com/google/go-github/v72/github"
 	"github.com/pkg/errors"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"golang.org/x/oauth2"
+
+	"github.com/smartcontractkit/chainlink-common/pkg/chipingress"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
-type protoFile struct {
-	Name    string
-	Path    string
-	Content string
+type SchemaSet struct {
+	URI        string `toml:"uri"`
+	Ref        string `toml:"ref"`         // ref or tag or commit SHA
+	SchemaDir  string `toml:"schema_dir"`  // optional sub-directory in the repo where protos are located
+	ConfigFile string `toml:"config_file"` // optional path to config file in the repo (default: <schemaDir>/chip.json)
 }
 
-type ProtoSchemaSet struct {
-	URI           string   `toml:"uri"`
-	Ref           string   `toml:"ref"`            // ref or tag or commit SHA
-	Folders       []string `toml:"folders"`        // if not provided, all protos will be fetched, otherwise only protos in these folders will be fetched
-	SubjectPrefix string   `toml:"subject_prefix"` // optional prefix for subjects
-	ExcludeFiles  []string `toml:"exclude_files"`  // files to exclude from registration (e.g., ['workflows/v2/execution_status.proto'])
+func (s *SchemaSet) ConfigFileName() string {
+	if s.ConfigFile != "" {
+		return s.ConfigFile
+	}
+	return "chip.json"
 }
 
-// SubjectNamingStrategyFn is a function that is used to determine the subject name for a given proto file in a given repo
-type SubjectNamingStrategyFn func(subjectPrefix string, protoFile protoFile, repoConfig ProtoSchemaSet) (string, error)
+func FetchAndRegisterProtos(ctx context.Context, client *github.Client, chipIngressOutput *ChipIngressOutput, schemaSet []SchemaSet) error {
+	framework.L.Info().Msgf("Registering and fetching schemas from %d repositories", len(schemaSet))
 
-// RepositoryToSubjectNamingStrategyFn is a map of repository names to SubjectNamingStrategyFn functions
-type RepositoryToSubjectNamingStrategyFn map[string]SubjectNamingStrategyFn
-
-func validateRepoConfiguration(repoConfig ProtoSchemaSet) error {
-	if repoConfig.URI == "" {
-		return errors.New("uri is required")
-	}
-
-	if !strings.HasPrefix(repoConfig.URI, "https://") && !strings.HasPrefix(repoConfig.URI, "file://") {
-		return errors.New("uri has to start with either 'file://' or 'https://'")
-	}
-
-	if strings.HasPrefix(repoConfig.URI, "file://") {
-		if repoConfig.Ref != "" {
-			return errors.New("ref is not supported with local protos with 'file://' prefix")
-		}
-		return nil
-	}
-
-	trimmedURI := strings.TrimPrefix(repoConfig.URI, "https://")
-	if !strings.HasPrefix(trimmedURI, "github.com") {
-		return fmt.Errorf("only repositories hosted at github.com are supported, but %s was found", repoConfig.URI)
-	}
-
-	parts := strings.Split(trimmedURI, "/")
-	if len(parts) < 3 {
-		return fmt.Errorf("URI should have following format: 'https://github.com/<OWNER>/<REPOSITORY>', but %s was found", repoConfig.URI)
-	}
-
-	if repoConfig.Ref == "" {
-		return errors.New("ref is required, when fetching protos from Github repository")
-	}
-
-	return nil
-}
-
-func DefaultRegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSchemaSets []ProtoSchemaSet, schemaRegistryURL string) error {
-	return RegisterAndFetchProtos(ctx, client, protoSchemaSets, schemaRegistryURL, map[string]SubjectNamingStrategyFn{})
-}
-
-func RegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSchemaSets []ProtoSchemaSet, schemaRegistryURL string, repoToSubjectNamingStrategy RepositoryToSubjectNamingStrategyFn) error {
-	framework.L.Info().Msgf("Registering and fetching protos from %d repositories", len(protoSchemaSets))
-
-	for _, protoSchemaSet := range protoSchemaSets {
-		framework.L.Debug().Msgf("Processing proto schema set: %s", protoSchemaSet.URI)
-		if len(protoSchemaSet.ExcludeFiles) > 0 {
-			framework.L.Debug().Msgf("Excluding files: %s", strings.Join(protoSchemaSet.ExcludeFiles, ", "))
-		}
-		if valErr := validateRepoConfiguration(protoSchemaSet); valErr != nil {
-			return errors.Wrapf(valErr, "invalid repo configuration for schema set: %v", protoSchemaSet)
+	for _, set := range schemaSet {
+		framework.L.Debug().Msgf("Processing schema set: %s", set.URI)
+		if valErr := validateSchemaSet(set); valErr != nil {
+			return errors.Wrapf(valErr, "invalid repo configuration for schema set: %v", set)
 		}
 	}
 
@@ -107,267 +57,113 @@ func RegisterAndFetchProtos(ctx context.Context, client *github.Client, protoSch
 		return github.NewClient(nil)
 	}
 
-	for _, protoSchemaSet := range protoSchemaSets {
-		protos, protosErr := fetchProtoFilesInFolders(ctx, ghClientFn, protoSchemaSet.URI, protoSchemaSet.Ref, protoSchemaSet.Folders, protoSchemaSet.ExcludeFiles)
-		if protosErr != nil {
-			return errors.Wrapf(protosErr, "failed to fetch protos from %s", protoSchemaSet.URI)
+	for _, set := range schemaSet {
+		repoPath, repoErr := getSchemaRepository(ctx, ghClientFn, set.URI, set.Ref)
+		if repoErr != nil {
+			return errors.Wrapf(repoErr, "failed to get repository %s", set.URI)
 		}
 
-		protoMap := make(map[string]string)
-		subjects := make(map[string]string)
+		schemaDir := filepath.Join(repoPath, set.SchemaDir)
+		configFilePath := filepath.Join(schemaDir, set.ConfigFileName())
 
-		for _, proto := range protos {
-			protoMap[proto.Path] = proto.Content
-
-			var subjectStrategy SubjectNamingStrategyFn
-			if strategy, ok := repoToSubjectNamingStrategy[protoSchemaSet.URI]; ok {
-				subjectStrategy = strategy
-			} else {
-				subjectStrategy = DefaultSubjectNamingStrategy
-			}
-
-			subjectMessage, nameErr := subjectStrategy(protoSchemaSet.SubjectPrefix, proto, protoSchemaSet)
-			if nameErr != nil {
-				return errors.Wrapf(nameErr, "failed to extract message name from %s", proto.Path)
-			}
-			subjects[proto.Path] = subjectMessage
-		}
-
-		// Determine which folder prefixes should be stripped based on configuration, i.e. if our proto is located in `workflows/workflows/v1/metadata.proto`
-		// and folders=["workflows"], then we should strip "workflows/" from both the path and the subject name, so that the path becomes `workflows/v1/metadata.proto`
-		// and the subject name becomes `workflows.v1.metadata`.
-		// or in other words, we treat "workflows/" folder as the root folder for all protos in this schema set and strip it from the paths derived from the repository structure.
-		prefixesToStrip := determineFolderPrefixesToStrip(protoSchemaSet.Folders)
-
-		strippedProtdMap := make(map[string]string)
-		strippedSubjects := make(map[string]string)
-
-		for path := range protoMap {
-			strippedPath := stripFolderPrefix(path, prefixesToStrip)
-			strippedProtdMap[strippedPath] = protoMap[path]
-			strippedSubjects[strippedPath] = subjects[path]
-		}
-
-		registerErr := registerAllWithTopologicalSorting(schemaRegistryURL, strippedProtdMap, strippedSubjects)
+		registerErr := registerWithChipConfigService(ctx, chipIngressOutput, schemaDir, configFilePath)
 		if registerErr != nil {
-			return errors.Wrapf(registerErr, "failed to register protos from %s", protoSchemaSet.URI)
+			return errors.Wrapf(registerErr, "failed to register schemas from '%s' using Chip Config", set.URI)
 		}
 	}
 
 	return nil
 }
 
-func DefaultSubjectNamingStrategy(subjectPrefix string, proto protoFile, protoSchemaSet ProtoSchemaSet) (string, error) {
-	packageName, packageErr := extractPackageNameWithRegex(proto.Content)
-	if packageErr != nil {
-		return "", errors.Wrapf(packageErr, "failed to extract package name from %s", proto.Path)
+func registerWithChipConfigService(ctx context.Context, chipIngressOutput *ChipIngressOutput, schemaDir, configFilePath string) error {
+	registrationConfig, schemas, rErr := parseSchemaConfig(configFilePath, schemaDir)
+	if rErr != nil {
+		return fmt.Errorf("failed to parse schema config: %w", rErr)
 	}
 
-	messageNames, nameErr := extractTopLevelMessageNamesWithRegex(proto.Content)
-	if nameErr != nil {
-		return "", errors.Wrapf(nameErr, "failed to extract message name from %s", proto.Path)
-	}
-	messageName := messageNames[0]
+	fmt.Printf("📋 Parsed %d schema(s) from \033[1m%s\033[0m\n", len(schemas), configFilePath)
+	fmt.Printf("✅ All entity names validated successfully\n\n")
 
-	return subjectPrefix + packageName + "." + messageName, nil
-}
+	pbSchemas := convertToPbSchemas(schemas, registrationConfig.Domain)
 
-// extractPackageNameWithRegex extracts the package name from a proto source file using regex.
-// It returns an error if no package name is found.
-func extractPackageNameWithRegex(protoSrc string) (string, error) {
-	matches := regexp.MustCompile(`(?m)^\s*package\s+([a-zA-Z0-9._]+)\s*;`).FindStringSubmatch(protoSrc)
-	if len(matches) < 2 {
-		return "", fmt.Errorf("no package name found in proto source")
+	client, cErr := chipingress.NewClient(chipIngressOutput.GRPCExternalURL)
+	if cErr != nil {
+		return fmt.Errorf("failed to create Chip client: %w", cErr)
 	}
 
-	if matches[1] == "" {
-		return "", fmt.Errorf("empty package name found in proto source")
+	_, regErr := client.RegisterSchemas(ctx, pbSchemas...)
+	if regErr != nil {
+		return fmt.Errorf("failed to register schemas: %w", regErr)
 	}
 
-	return matches[1], nil
-}
-
-// extractTopLevelMessageNamesWithRegex extracts top-level message and enum names from a proto file using regex.
-func extractTopLevelMessageNamesWithRegex(protoSrc string) ([]string, error) {
-	// Extract message names
-	messageMatches := regexp.MustCompile(`(?m)^\s*message\s+(\w+)\s*{`).FindAllStringSubmatch(protoSrc, -1)
-	var names []string
-	for _, match := range messageMatches {
-		if len(match) >= 2 {
-			names = append(names, match[1])
-		}
+	fmt.Printf("✅ Registered %d schema(s)\n", len(pbSchemas))
+	for _, schema := range schemas {
+		subject := fmt.Sprintf("%s-%s", registrationConfig.Domain, schema.Entity)
+		fmt.Printf("   └── \033[1m%s\033[0m (\033[34m%s\033[0m)\n", subject, schema.Path)
 	}
+	fmt.Printf("\n")
 
-	// Extract enum names
-	enumMatches := regexp.MustCompile(`(?m)^\s*enum\s+(\w+)\s*{`).FindAllStringSubmatch(protoSrc, -1)
-	for _, match := range enumMatches {
-		if len(match) >= 2 {
-			names = append(names, match[1])
-		}
-	}
-
-	if len(names) == 0 {
-		return nil, fmt.Errorf("no message or enum names found in proto source")
-	}
-
-	return names, nil
-}
-
-// extractImportStatements extracts import statements from a proto source file using regex.
-func extractImportStatements(protoSrc string) []string {
-	matches := regexp.MustCompile(`(?m)^\s*import\s+"([^"]+)"\s*;`).FindAllStringSubmatch(protoSrc, -1)
-	var imports []string
-	for _, match := range matches {
-		if len(match) >= 2 {
-			imports = append(imports, match[1])
-		}
-	}
-	return imports
-}
-
-// fetchProtoFilesInFolders fetches .proto files from a GitHub repo optionally scoped to specific folders.
-// It is recommended to use `*github.Client` with auth token to avoid rate limiting.
-func fetchProtoFilesInFolders(ctx context.Context, clientFn func() *github.Client, uri, ref string, folders []string, excludeFiles []string) ([]protoFile, error) {
-	if strings.HasPrefix(uri, "file://") {
-		return fetchProtosFromFilesystem(uri, folders, excludeFiles)
-	}
-
-	parts := strings.Split(strings.TrimPrefix(uri, "https://"), "/")
-	return fetchProtosFromGithub(ctx, clientFn, parts[1], parts[2], ref, folders, excludeFiles)
-}
-
-func fetchProtosFromGithub(ctx context.Context, clientFn func() *github.Client, owner, repository, ref string, folders []string, excludeFiles []string) ([]protoFile, error) {
-	cachedFiles, found, cacheErr := loadCachedProtoFiles(owner, repository, ref, folders, excludeFiles)
-	if cacheErr == nil && found {
-		framework.L.Debug().Msgf("Using cached proto files for %s/%s at ref %s", owner, repository, ref)
-		return cachedFiles, nil
-	}
-	if cacheErr != nil {
-		framework.L.Warn().Msgf("Failed to load cached proto files for %s/%s at ref %s: %v", owner, repository, ref, cacheErr)
-	}
-
-	client := clientFn()
-	var files []protoFile
-
-	sha, shaErr := resolveRefSHA(ctx, client, owner, repository, ref)
-	if shaErr != nil {
-		return nil, errors.Wrapf(shaErr, "cannot resolve ref %q", ref)
-	}
-
-	tree, _, treeErr := client.Git.GetTree(ctx, owner, repository, sha, true)
-	if treeErr != nil {
-		return nil, errors.Wrap(treeErr, "failed to fetch tree")
-	}
-
-searchLoop:
-	for _, entry := range tree.Entries {
-		// skip non-blob entries and non-proto files
-		if entry.GetType() != "blob" || entry.Path == nil || !strings.HasSuffix(*entry.Path, ".proto") {
-			continue
-		}
-
-		// if folders are specified, check prefix match
-		if len(folders) > 0 {
-			matched := false
-			for _, folder := range folders {
-				if strings.HasPrefix(*entry.Path, strings.TrimSuffix(folder, "/")+"/") {
-					matched = true
-					break
-				}
-			}
-			if !matched {
-				continue searchLoop
-			}
-		}
-
-		// if excludeFiles are specified, check if the file should be excluded
-		if len(excludeFiles) > 0 {
-			excluded := false
-			for _, exclude := range excludeFiles {
-				if strings.HasPrefix(*entry.Path, exclude) {
-					framework.L.Debug().Msgf("Excluding proto file %s (matches exclude pattern: %s)", *entry.Path, exclude)
-					excluded = true
-					break
-				}
-			}
-			if excluded {
-				continue searchLoop
-			}
-		}
-
-		rawURL := fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s/%s", owner, repository, sha, *entry.Path)
-		resp, respErr := http.Get(rawURL)
-		if respErr != nil {
-			return nil, errors.Wrapf(respErr, "failed to fetch %s", *entry.Path)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != 200 {
-			return nil, errors.Errorf("bad status from GitHub for %s: %d", *entry.Path, resp.StatusCode)
-		}
-
-		body, bodyErr := io.ReadAll(resp.Body)
-		if bodyErr != nil {
-			return nil, errors.Wrapf(bodyErr, "failed to read body for %s", *entry.Path)
-		}
-
-		files = append(files, protoFile{
-			Name:    filepath.Base(*entry.Path),
-			Path:    *entry.Path,
-			Content: string(body),
-		})
-	}
-
-	if len(files) == 0 {
-		return nil, fmt.Errorf("no proto files found in %s/%s in folders %s", owner, repository, strings.Join(folders, ", "))
-	}
-
-	framework.L.Debug().Msgf("Fetched %d proto files from %s/%s", len(files), owner, repository)
-
-	saveErr := saveProtoFilesToCache(owner, repository, ref, files)
-	if saveErr != nil {
-		framework.L.Warn().Msgf("Failed to save proto files to cache for %s/%s at ref %s: %v", owner, repository, ref, saveErr)
-	}
-
-	return files, nil
-}
-
-func loadCachedProtoFiles(owner, repository, ref string, folders []string, excludeFiles []string) ([]protoFile, bool, error) {
-	cachePath, cacheErr := cacheFilePath(owner, repository, ref)
-	if cacheErr != nil {
-		return nil, false, errors.Wrapf(cacheErr, "failed to get cache file path for %s/%s at ref %s", owner, repository, ref)
-	}
-
-	if _, err := os.Stat(cachePath); os.IsNotExist(err) {
-		return nil, false, nil // cache not found
-	}
-
-	cachedFiles, cachedErr := fetchProtosFromFilesystem("file://"+cachePath, folders, excludeFiles)
-	if cachedErr != nil {
-		return nil, false, errors.Wrapf(cachedErr, "failed to load cached proto files from %s", cachePath)
-	}
-
-	return cachedFiles, true, nil
-}
-
-func saveProtoFilesToCache(owner, repository, ref string, files []protoFile) error {
-	cachePath, cacheErr := cacheFilePath(owner, repository, ref)
-	if cacheErr != nil {
-		return errors.Wrapf(cacheErr, "failed to get cache file path for %s/%s at ref %s", owner, repository, ref)
-	}
-
-	for _, file := range files {
-		path := filepath.Join(cachePath, file.Path)
-		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-			return errors.Wrapf(err, "failed to create directory for cache file %s", path)
-		}
-		if writeErr := os.WriteFile(path, []byte(file.Content), 0755); writeErr != nil {
-			return errors.Wrapf(writeErr, "failed to write cached proto file to %s", path)
-		}
-	}
-
-	framework.L.Debug().Msgf("Saved %d proto files to cache at %s", len(files), cachePath)
 	return nil
+}
+
+func validateSchemaSet(set SchemaSet) error {
+	if set.URI == "" {
+		return errors.New("uri is required")
+	}
+
+	if !strings.HasPrefix(set.URI, "https://") && !strings.HasPrefix(set.URI, "file://") {
+		return errors.New("uri has to start with either 'file://' or 'https://'")
+	}
+
+	if strings.HasPrefix(set.URI, "file://") {
+		if set.Ref != "" {
+			return errors.New("ref is not supported with local protos with 'file://' prefix")
+		}
+		return nil
+	}
+
+	trimmedURI := strings.TrimPrefix(set.URI, "https://")
+	if !strings.HasPrefix(trimmedURI, "github.com") {
+		return fmt.Errorf("only repositories hosted at github.com are supported, but %s was found", set.URI)
+	}
+
+	parts := strings.Split(trimmedURI, "/")
+	if len(parts) < 3 {
+		return fmt.Errorf("URI should have following format: 'https://github.com/<OWNER>/<REPOSITORY>', but %s was found", set.URI)
+	}
+
+	if set.Ref == "" {
+		return errors.New("ref is required, when fetching protos from Github repository")
+	}
+
+	return nil
+}
+
+func getSchemaRepository(ctx context.Context, clientFn func() *github.Client, uri, ref string) (string, error) {
+	uriParts := strings.Split(strings.TrimPrefix(uri, "https://"), "/")
+	if pathClean, ok := strings.CutPrefix(uri, "file://"); ok {
+		if _, err := os.Stat(pathClean); err == nil {
+			if hasFiles, hasErr := hasProtoFiles(pathClean); hasErr != nil {
+				return "", fmt.Errorf("failed to check for proto files in cache at %s: %w", pathClean, hasErr)
+			} else if !hasFiles {
+				return fetchFromGithub(ctx, clientFn, uriParts[1], uriParts[2], ref) // cache is invalid, download from GitHub
+			}
+
+			abs, absErr := filepath.Abs(pathClean)
+			if absErr != nil {
+				return "", errors.Wrapf(absErr, "failed to get absolute path for %s", pathClean)
+			}
+			return abs, nil
+		}
+	}
+
+	return fetchFromGithub(ctx, clientFn, uriParts[1], uriParts[2], ref)
+}
+
+type githubFile struct {
+	Name    string
+	Path    string
+	Content string
 }
 
 func cacheFilePath(owner, repository, ref string) (string, error) {
@@ -376,80 +172,6 @@ func cacheFilePath(owner, repository, ref string) (string, error) {
 		return "", errors.Wrap(homeErr, "failed to get user home directory")
 	}
 	return filepath.Join(homeDir, ".local", "share", "beholder", "protobufs", owner, repository, ref), nil
-}
-
-func fetchProtosFromFilesystem(uri string, folders []string, excludeFiles []string) ([]protoFile, error) {
-	var files []protoFile
-	protoDirPath := strings.TrimPrefix(uri, "file://")
-
-	walkErr := filepath.Walk(protoDirPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if info.IsDir() {
-			return nil
-		}
-
-		if !strings.HasSuffix(path, ".proto") {
-			return nil
-		}
-
-		relativePath := strings.TrimPrefix(strings.TrimPrefix(path, protoDirPath), "/")
-
-		// if folders are specified, check prefix match
-		if len(folders) > 0 {
-			matched := false
-			for _, folder := range folders {
-				if strings.HasPrefix(relativePath, folder) {
-					matched = true
-					break
-				}
-			}
-			if !matched {
-				return nil
-			}
-		}
-
-		// if excludeFiles are specified, check if the file should be excluded
-		if len(excludeFiles) > 0 {
-			excluded := false
-			for _, exclude := range excludeFiles {
-				if strings.HasPrefix(relativePath, exclude) {
-					framework.L.Debug().Msgf("Excluding proto file %s (matches exclude pattern: %s)", relativePath, exclude)
-					excluded = true
-					break
-				}
-			}
-			if excluded {
-				return nil
-			}
-		}
-
-		content, contentErr := os.ReadFile(path)
-		if contentErr != nil {
-			return errors.Wrapf(contentErr, "failed to read file at %s", path)
-		}
-
-		files = append(files, protoFile{
-			Name:    filepath.Base(path),
-			Path:    relativePath,
-			Content: string(content),
-		})
-
-		return nil
-	})
-
-	if walkErr != nil {
-		return nil, errors.Wrapf(walkErr, "failed to walk through directory %s", protoDirPath)
-	}
-
-	if len(files) == 0 {
-		return nil, fmt.Errorf("no proto files found in '%s' in folders %s", protoDirPath, strings.Join(folders, ", "))
-	}
-
-	framework.L.Debug().Msgf("Fetched %d proto files from local %s", len(files), protoDirPath)
-	return files, nil
 }
 
 func resolveRefSHA(ctx context.Context, client *github.Client, owner, repository, ref string) (string, error) {
@@ -465,383 +187,122 @@ func resolveRefSHA(ctx context.Context, client *github.Client, owner, repository
 	return "", fmt.Errorf("ref %q not found", ref)
 }
 
-type schemaStatus struct {
-	Source     string
-	Registered bool
-	Version    int
+func fetchFromGithub(ctx context.Context, clientFn func() *github.Client, owner, repository, ref string) (string, error) {
+	cachePath, found, cacheErr := getCachedProtoFiles(owner, repository, ref)
+	if cacheErr == nil && found {
+		framework.L.Debug().Msgf("Using cached proto files for %s/%s at ref %s", owner, repository, ref)
+		return cachePath, nil
+	}
+	if cacheErr != nil {
+		framework.L.Warn().Msgf("Failed to load cached proto files for %s/%s at ref %s: %v", owner, repository, ref, cacheErr)
+	}
+
+	client := clientFn()
+	var files []githubFile
+
+	sha, shaErr := resolveRefSHA(ctx, client, owner, repository, ref)
+	if shaErr != nil {
+		return "", errors.Wrapf(shaErr, "cannot resolve ref %q", ref)
+	}
+
+	tree, _, treeErr := client.Git.GetTree(ctx, owner, repository, sha, true)
+	if treeErr != nil {
+		return "", errors.Wrap(treeErr, "failed to fetch tree")
+	}
+
+	for _, entry := range tree.Entries {
+		// skip non-blob entries and non-proto or json files [JSON describes the schemas to be registered]
+		if entry.GetType() != "blob" || entry.Path == nil || (!strings.HasSuffix(*entry.Path, ".proto") && !strings.HasSuffix(*entry.Path, ".json")) {
+			continue
+		}
+
+		rawURL := fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s/%s", owner, repository, sha, *entry.Path)
+		resp, respErr := http.Get(rawURL)
+		if respErr != nil {
+			return "", errors.Wrapf(respErr, "failed to fetch %s", *entry.Path)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != 200 {
+			return "", errors.Errorf("bad status from GitHub for %s: %d", *entry.Path, resp.StatusCode)
+		}
+
+		body, bodyErr := io.ReadAll(resp.Body)
+		if bodyErr != nil {
+			return "", errors.Wrapf(bodyErr, "failed to read body for %s", *entry.Path)
+		}
+
+		files = append(files, githubFile{
+			Name:    filepath.Base(*entry.Path),
+			Path:    *entry.Path,
+			Content: string(body),
+		})
+	}
+
+	if len(files) == 0 {
+		return "", fmt.Errorf("no proto files found in %s/%s", owner, repository)
+	}
+
+	framework.L.Debug().Msgf("Fetched %d files from %s/%s", len(files), owner, repository)
+
+	savedPath, saveErr := saveFilesToCache(owner, repository, ref, files)
+	if saveErr != nil {
+		framework.L.Warn().Msgf("Failed to save files to cache for %s/%s at ref %s: %v", owner, repository, ref, saveErr)
+	}
+
+	return savedPath, nil
 }
 
-// registerAllWithTopologicalSorting registers protos in dependency order using topological sorting
-func registerAllWithTopologicalSorting(
-	schemaRegistryURL string,
-	protoMap map[string]string, // path -> proto source
-	subjectMap map[string]string, // path -> subject
-) error {
-	framework.L.Info().Msgf("Registering %d protobuf schemas", len(protoMap))
-
-	// Build dependency graph and sort topologically
-	dependencies, depErr := buildDependencyGraph(protoMap)
-	if depErr != nil {
-		return errors.Wrap(depErr, "failed to build dependency graph")
+func getCachedProtoFiles(owner, repository, ref string) (string, bool, error) {
+	cachePath, cacheErr := cacheFilePath(owner, repository, ref)
+	if cacheErr != nil {
+		return "", false, errors.Wrapf(cacheErr, "failed to get cache file path for %s/%s at ref %s", owner, repository, ref)
 	}
 
-	sortedFiles, sortErr := topologicalSort(dependencies)
-	if sortErr != nil {
-		return errors.Wrap(sortErr, "failed to sort files topologically")
+	if _, err := os.Stat(cachePath); os.IsNotExist(err) {
+		return "", false, nil // cache not found
 	}
 
-	framework.L.Debug().Msgf("Registration order (topologically sorted): %v", sortedFiles)
-
-	schemas := map[string]*schemaStatus{}
-	for path, src := range protoMap {
-		schemas[path] = &schemaStatus{Source: src}
+	if hasFiles, hasErr := hasProtoFiles(cachePath); hasErr != nil {
+		return "", false, fmt.Errorf("failed to check for proto files in cache at %s: %w", cachePath, hasErr)
+	} else if !hasFiles {
+		return "", false, nil // cache is invalid
 	}
 
-	// Register files in topological order
-	for _, path := range sortedFiles {
-		schema, exists := schemas[path]
-		if !exists {
-			framework.L.Warn().Msgf("File %s not found in schemas map", path)
-			continue
-		}
-
-		if schema.Registered {
-			continue
-		}
-
-		subject, ok := subjectMap[path]
-		if !ok {
-			return fmt.Errorf("no subject found for %s", path)
-		}
-
-		// Build references only for files that have dependencies
-		var fileRefs []map[string]any
-		if deps, hasDeps := dependencies[path]; hasDeps && len(deps) > 0 {
-			for _, dep := range deps {
-				if depSubject, depExists := subjectMap[dep]; depExists {
-					fileRefs = append(fileRefs, map[string]any{
-						"name":    dep,
-						"subject": depSubject,
-						"version": 1,
-					})
-				}
-			}
-		}
-
-		// Check if schema is already registered
-		if existingID, exists := checkSchemaExists(schemaRegistryURL, subject); exists {
-			framework.L.Debug().Msgf("Schema %s already exists with ID %d, skipping registration", subject, existingID)
-			schema.Registered = true
-			schema.Version = existingID
-			continue
-		}
-
-		_, registerErr := registerSingleProto(schemaRegistryURL, subject, schema.Source, fileRefs)
-		if registerErr != nil {
-			return errors.Wrapf(registerErr, "failed to register %s as %s", path, subject)
-		}
-
-		schema.Registered = true
-		schema.Version = 1
-
-		framework.L.Info().Msgf("✔ Registered: %s as %s", path, subject)
-	}
-
-	framework.L.Info().Msgf("✅ Successfully registered %d schemas", len(protoMap))
-	return nil
+	return cachePath, true, nil
 }
 
-// checkSchemaExists checks if a schema already exists in the registry
-func checkSchemaExists(registryURL, subject string) (int, bool) {
-	url := fmt.Sprintf("%s/subjects/%s/versions", registryURL, subject)
-
-	maxAttempts := uint(10)
-	var resp *http.Response
-	existErr := retry.Do(func() error {
-		if resp != nil && resp.Body != nil {
-			resp.Body.Close()
-		}
-
-		var err error
-		resp, err = http.Get(url)
+func hasProtoFiles(dir string) (bool, error) {
+	found := false
+	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
-			framework.L.Debug().Msgf("Failed to check schema existence for %s: %v", subject, err)
 			return err
 		}
-
-		if resp.StatusCode == 200 {
-			return nil
+		if !d.IsDir() && strings.HasSuffix(path, ".proto") {
+			found = true
+			return filepath.SkipAll // stop walking immediately
 		}
-
 		return nil
-	}, retry.Attempts(10), retry.Delay(100*time.Millisecond), retry.DelayType(retry.BackOffDelay), retry.OnRetry(func(n uint, err error) {
-		framework.L.Debug().Str("attempt/max", fmt.Sprintf("%d/%d", n, maxAttempts)).Msgf("Retrying to check schema existence for %s: %v", subject, err)
-	}), retry.RetryIf(func(err error) bool {
-		return isRetryableError(err)
-	}))
-
-	if existErr != nil {
-		return 0, false
-	}
-
-	defer resp.Body.Close()
-
-	var versions []struct {
-		ID int `json:"id"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&versions); err != nil {
-		framework.L.Debug().Msgf("Failed to decode versions for %s: %v", subject, err)
-		return 0, false
-	}
-	if len(versions) > 0 {
-		return versions[len(versions)-1].ID, true
-	}
-
-	return 0, false
+	})
+	return found, err
 }
 
-func registerSingleProto(
-	registryURL, subject, schemaSrc string,
-	references []map[string]any,
-) (int, error) {
-	framework.L.Trace().Msgf("Registering schema %s", subject)
-
-	body := map[string]any{
-		"schemaType": "PROTOBUF",
-		"schema":     schemaSrc,
-	}
-	if references != nil {
-		body["references"] = references
+func saveFilesToCache(owner, repository, ref string, files []githubFile) (string, error) {
+	cachePath, cacheErr := cacheFilePath(owner, repository, ref)
+	if cacheErr != nil {
+		return "", errors.Wrapf(cacheErr, "failed to get cache file path for %s/%s at ref %s", owner, repository, ref)
 	}
 
-	payload, payloadErr := json.Marshal(body)
-	if payloadErr != nil {
-		return 0, errors.Wrap(payloadErr, "failed to marshal payload")
-	}
-
-	parsedURL, urlErr := url.Parse(fmt.Sprintf("%s/subjects/%s/versions", registryURL, subject))
-	if urlErr != nil {
-		return 0, errors.Wrap(urlErr, "failed to parse schema registry URL")
-	}
-
-	maxAttempts := uint(10)
-	client := http.Client{Transport: &http.Transport{
-		DisableKeepAlives: true,
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			// prefer ipv4 to avoid issues with some local setups
-			return (&net.Dialer{Timeout: 10 * time.Second}).DialContext(ctx, "tcp4", addr)
-		},
-	}}
-
-	var resp *http.Response
-	registerErr := retry.Do(func() error {
-		// Close previous response before next attempt
-		if resp != nil && resp.Body != nil {
-			resp.Body.Close()
+	for _, file := range files {
+		path := filepath.Join(cachePath, file.Path)
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			return "", errors.Wrapf(err, "failed to create directory for cache file %s", path)
 		}
-
-		var respErr error
-		resp, respErr = client.Do(&http.Request{
-			Method: "POST",
-			URL:    parsedURL,
-			Header: map[string][]string{
-				"Content-Type": {"application/vnd.schemaregistry.v1+json"},
-			},
-			Body: io.NopCloser(bytes.NewReader(payload)),
-		})
-		if respErr != nil {
-			return errors.Wrap(respErr, "failed to post to schema registry")
-		}
-
-		if resp.StatusCode >= 300 {
-			body, bodyErr := io.ReadAll(resp.Body)
-			resp.Body.Close()
-			if bodyErr != nil {
-				return errors.Wrap(bodyErr, "failed to read response body")
-			}
-
-			if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-				return retry.Unrecoverable(fmt.Errorf("schema registry error (%d): %s", resp.StatusCode, string(body)))
-			}
-
-			return fmt.Errorf("schema registry error (%d): %s", resp.StatusCode, string(body))
-		}
-
-		return nil
-	}, retry.Attempts(maxAttempts), retry.Delay(100*time.Millisecond), retry.DelayType(retry.BackOffDelay), retry.OnRetry(func(n uint, err error) {
-		framework.L.Debug().Str("attempt/max", fmt.Sprintf("%d/%d", n, maxAttempts)).Msgf("Retrying to register schema %s: %v", subject, err)
-	}), retry.RetryIf(func(err error) bool {
-		// we don't want to retry all errors, because some of them are are expected (e.g. missing dependencies)
-		// and will be handled by higher-level code
-		shouldRetry := isRetryableError(err)
-
-		if !shouldRetry {
-			framework.L.Warn().Msgf("Determined to not retry error: %T (error: %s)", err, err.Error())
-		}
-
-		return shouldRetry
-	}))
-	if registerErr != nil {
-		return 0, errors.Wrapf(registerErr, "failed to register schema for subject %s", subject)
-	}
-
-	defer resp.Body.Close()
-
-	var result struct {
-		ID int `json:"id"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return 0, errors.Wrap(err, "failed to decode response")
-	}
-
-	framework.L.Debug().Msgf("Registered schema %s with ID %d", subject, result.ID)
-	return result.ID, nil
-}
-
-// determineFolderPrefixesToStrip determines which folder prefixes should be stripped from import paths
-// based on the folders configuration. The schema registry expects import names to be relative to the
-// configured folders, so we strip these prefixes to make imports work correctly.
-func determineFolderPrefixesToStrip(folders []string) []string {
-	var prefixes []string
-	for _, folder := range folders {
-		// Ensure folder ends with / for prefix matching
-		prefix := strings.TrimSuffix(folder, "/") + "/"
-		prefixes = append(prefixes, prefix)
-	}
-	return prefixes
-}
-
-// stripFolderPrefix removes any configured folder prefixes from the given path
-func stripFolderPrefix(path string, prefixes []string) string {
-	for _, prefix := range prefixes {
-		if after, ok := strings.CutPrefix(path, prefix); ok {
-			return after
-		}
-	}
-	return path
-}
-
-// buildDependencyGraph builds a dependency graph from protobuf files
-func buildDependencyGraph(protoMap map[string]string) (map[string][]string, error) {
-	dependencies := make(map[string][]string)
-
-	framework.L.Debug().Msgf("Building dependency graph for %d proto files", len(protoMap))
-
-	// Initialize dependencies map
-	for path := range protoMap {
-		dependencies[path] = []string{}
-	}
-
-	// Parse imports and build dependency graph
-	for path, content := range protoMap {
-		imports := extractImportStatements(content)
-
-		for _, importPath := range imports {
-			if strings.HasPrefix(importPath, "google/protobuf/") {
-				// Skip Google protobuf imports as they're not in our protoMap
-				continue
-			}
-
-			// Check if this import exists in our protoMap
-			if _, exists := protoMap[importPath]; exists {
-				// Check for self-reference - this indicates either an invalid proto file
-				// or a potential bug in our import/path handling
-				if importPath == path {
-					framework.L.Warn().Msgf("Self-reference detected: file %s imports itself (import: %s). This suggests either an invalid proto file or a path normalization issue. Skipping this dependency to avoid cycles.", path, importPath)
-					// Continue without adding the dependency to avoid cycles, but don't fail registration
-					// as this might be a recoverable issue or edge case
-					continue
-				}
-
-				dependencies[path] = append(dependencies[path], importPath)
-			} else {
-				framework.L.Warn().Msgf("Import %s in %s not found in protoMap", importPath, path)
-			}
+		if writeErr := os.WriteFile(path, []byte(file.Content), 0755); writeErr != nil {
+			return "", errors.Wrapf(writeErr, "failed to write cached proto file to %s", path)
 		}
 	}
 
-	return dependencies, nil
-}
-
-// topologicalSort performs topological sorting using Kahn's algorithm
-func topologicalSort(dependencies map[string][]string) ([]string, error) {
-	// Calculate in-degrees (how many files each file depends on)
-	inDegree := make(map[string]int)
-	for file := range dependencies {
-		inDegree[file] = 0
-	}
-
-	// Count dependencies for each file
-	for file, deps := range dependencies {
-		inDegree[file] = len(deps)
-	}
-
-	// Find files with no dependencies (in-degree = 0)
-	var queue []string
-	for file, degree := range inDegree {
-		if degree == 0 {
-			queue = append(queue, file)
-		}
-	}
-
-	var result []string
-	for len(queue) > 0 {
-		file := queue[0]
-		queue = queue[1:]
-		result = append(result, file)
-
-		// Reduce in-degree for files that depend on the current file
-		for dependent, deps := range dependencies {
-			for _, dep := range deps {
-				if dep == file {
-					inDegree[dependent]--
-					if inDegree[dependent] == 0 {
-						queue = append(queue, dependent)
-					}
-				}
-			}
-		}
-	}
-
-	// Check for cycles
-	if len(result) != len(dependencies) {
-		return nil, fmt.Errorf("circular dependency detected in protobuf files")
-	}
-
-	return result, nil
-}
-
-func isRetryableError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	var urlErr *url.Error
-	if errors.As(err, &urlErr) {
-		// Retry on timeouts
-		var ne net.Error
-		if errors.As(urlErr, &ne) && ne.Timeout() {
-			return true
-		}
-		// Fall through to check the cause too
-		err = urlErr.Err
-	}
-
-	// network-layer errors worth retrying (dial/read/write problems)
-	var opErr *net.OpError
-	if errors.As(err, &opErr) {
-		return true
-	}
-
-	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
-		return true
-	}
-
-	msg := err.Error()
-	return strings.Contains(msg, "connection reset by peer") ||
-		strings.Contains(msg, "broken pipe") ||
-		strings.Contains(msg, "connection refused") ||
-		strings.Contains(msg, "http2: stream error") ||
-		strings.Contains(msg, "EOF") ||
-		strings.Contains(strings.ToLower(msg), "timeout")
+	framework.L.Debug().Msgf("Saved %d proto files to cache at %s", len(files), cachePath)
+	return cachePath, nil
 }

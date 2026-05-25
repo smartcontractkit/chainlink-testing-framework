@@ -1,38 +1,49 @@
 package blockchain
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
+	"net/netip"
+
 	"github.com/block-vision/sui-go-sdk/models"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
+
 	"github.com/go-resty/resty/v2"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 )
 
 const (
 	DefaultFaucetPort    = "9123/tcp"
 	DefaultFaucetPortNum = "9123"
 	DefaultSuiNodePort   = "9000"
+	// DefaultSuiImage is the mysten/sui-tools image when Input.Image is empty on non-arm64 hosts.
+	DefaultSuiImage = "mysten/sui-tools:devnet-v1.69.0"
+	// DefaultSuiImageARM64 is used when Input.Image is empty on arm64 (e.g. Apple Silicon).
+	DefaultSuiImageARM64 = "mysten/sui-tools:ci-arm64"
 )
 
 // SuiWalletInfo info about Sui account/wallet
 type SuiWalletInfo struct {
-	Alias           *string `json:"alias"`           // Alias key name, usually "null"
-	Flag            int     `json:"flag"`            // Flag is an integer
-	KeyScheme       string  `json:"keyScheme"`       // Key scheme is a string
-	Mnemonic        string  `json:"mnemonic"`        // Mnemonic is a string
-	PeerId          string  `json:"peerId"`          // Peer ID is a string
-	PublicBase64Key string  `json:"publicBase64Key"` // Public key in Base64 format
-	SuiAddress      string  `json:"suiAddress"`      // Sui address is a 0x prefixed hex string
+	Alias           *string `toml:"alias" json:"alias" comment:"Alias key name, usually null"`                   // Alias key name, usually "null"
+	Flag            int     `toml:"flag" json:"flag" comment:"-"`                                                // Flag is an integer
+	KeyScheme       string  `toml:"key_scheme" json:"keyScheme" comment:"Sui key scheme"`                        // Key scheme is a string
+	Mnemonic        string  `toml:"mnemonic" json:"mnemonic" comment:"Sui key mnemonic"`                         // Mnemonic is a string
+	PeerId          string  `toml:"peer_id" json:"peerId" comment:"Sui key peer ID"`                             // Peer ID is a string
+	PublicBase64Key string  `toml:"public_base64_key" json:"publicBase64Key" comment:"Sui key in base64 format"` // Public key in Base64 format
+	SuiAddress      string  `toml:"sui_address" json:"suiAddress" comment:"Sui key address"`                     // Sui address is a 0x prefixed hex string
 }
 
 // funds provided key using local faucet
@@ -53,34 +64,95 @@ func fundAccount(url string, address string) error {
 	return nil
 }
 
+// demuxDockerExecOutput converts Docker exec attach output to plain text when it uses the
+// multiplexed stream format (first byte 1=stdout / 2=stderr). Must run before stripping 0x01,
+// which appears in stream headers and would corrupt the stream if removed globally.
+func demuxDockerExecOutput(raw string) string {
+	if len(raw) == 0 {
+		return raw
+	}
+	if raw[0] != 1 && raw[0] != 2 {
+		return raw
+	}
+	var stdout, stderr bytes.Buffer
+	if _, err := stdcopy.StdCopy(&stdout, &stderr, strings.NewReader(raw)); err != nil {
+		return raw
+	}
+	out := stdout.String() + stderr.String()
+	// Invalid or partial multiplex streams can make StdCopy succeed with empty output; keep raw so
+	// parseSuiKeytoolGenerateJSON can still find JSON after a single-byte preamble (e.g. 0x01).
+	if out == "" {
+		return raw
+	}
+
+	return out
+}
+
+// parseSuiKeytoolGenerateJSON extracts a SuiWalletInfo from `sui keytool generate --json` output.
+// The CLI may print a preamble, and v1.69+ may emit compact one-line JSON; older parsers assumed a
+// legacy layout (newline after '{') and corrupt compact output.
+func parseSuiKeytoolGenerateJSON(keyOut string) (*SuiWalletInfo, error) {
+	text := demuxDockerExecOutput(keyOut)
+	s := strings.ReplaceAll(text, "\x00", "")
+	for i := range s {
+		if s[i] != '{' {
+			continue
+		}
+		var key SuiWalletInfo
+		dec := json.NewDecoder(bytes.NewReader([]byte(s[i:])))
+		if err := dec.Decode(&key); err != nil {
+			continue
+		}
+		if key.SuiAddress != "" {
+			return &key, nil
+		}
+	}
+
+	return nil, fmt.Errorf("failed to parse SuiWalletInfo from keytool output: %.200q", keyOut)
+}
+
 // generateKeyData generates a wallet and returns all the data
-func generateKeyData(containerName string, keyCipherType string) (*SuiWalletInfo, error) {
-	cmdStr := []string{"sui", "keytool", "generate", keyCipherType, "--json"}
+func generateKeyData(ctx context.Context, containerName string, keyCipherType string) (*SuiWalletInfo, error) {
 	dc, err := framework.NewDockerClient()
 	if err != nil {
 		return nil, err
 	}
-	keyOut, err := dc.ExecContainer(containerName, cmdStr)
+
+	// Ensure a valid Sui client config exists. `sui start --force-regenesis`
+	// creates its config under /root/.sui/sui_config/ but the client.yaml it
+	// generates may not exist yet when this runs, so we use `sui client --yes`
+	// with an explicit config flag to force creation.
+	initCmd := []string{"sui", "client", "--client.config", "/root/.sui/sui_config/client.yaml", "--yes", "envs"}
+	if initOut, initErr := dc.ExecContainerWithContext(ctx, containerName, initCmd); initErr != nil {
+		framework.L.Warn().Err(initErr).Str("out", initOut).Msg("sui client init returned error (may be harmless)")
+	}
+
+	cmdStr := []string{"sui", "keytool", "generate", keyCipherType, "--json"}
+	keyOut, err := dc.ExecContainerWithContext(ctx, containerName, cmdStr)
 	if err != nil {
 		return nil, err
 	}
-	// formatted JSON with, no plain --json version, remove special symbols
-	cleanKey := strings.ReplaceAll(keyOut, "\x00", "")
-	cleanKey = strings.ReplaceAll(cleanKey, "\x01", "")
-	cleanKey = strings.ReplaceAll(cleanKey, "\x02", "")
-	cleanKey = strings.ReplaceAll(cleanKey, "\n", "")
-	cleanKey = "{" + cleanKey[2:]
-	var key *SuiWalletInfo
-	if err := json.Unmarshal([]byte(cleanKey), &key); err != nil {
-		return nil, err
+	key, err := parseSuiKeytoolGenerateJSON(keyOut)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse sui keytool generate output: %w", err)
 	}
-	framework.L.Info().Interface("Key", key).Msg("Test key")
+
+	framework.L.Info().Str("suiAddress", key.SuiAddress).Msg("CTF test key generated")
+
 	return key, nil
 }
 
 func defaultSui(in *Input) {
 	if in.Image == "" {
-		in.Image = "mysten/sui-tools:devnet"
+		if runtime.GOARCH == "arm64" {
+			in.Image = DefaultSuiImageARM64
+			if in.ImagePlatform == nil {
+				arm := "linux/arm64"
+				in.ImagePlatform = &arm
+			}
+		} else {
+			in.Image = DefaultSuiImage
+		}
 	}
 	if in.Port == "" {
 		in.Port = DefaultSuiNodePort
@@ -90,23 +162,34 @@ func defaultSui(in *Input) {
 	}
 }
 
-func newSui(in *Input) (*Output, error) {
+func newSui(ctx context.Context, in *Input) (*Output, error) {
 	defaultSui(in)
-	ctx := context.Background()
 	containerName := framework.DefaultTCName("blockchain-node")
 
-	absPath, err := filepath.Abs(in.ContractsDir)
-	if err != nil {
-		return nil, err
+	var files []testcontainers.ContainerFile
+	if in.ContractsDir != "" {
+		absPath, err := filepath.Abs(in.ContractsDir)
+		if err != nil {
+			return nil, err
+		}
+		files = []testcontainers.ContainerFile{
+			{
+				HostFilePath:      absPath,
+				ContainerFilePath: "/",
+			},
+		}
 	}
 
 	// Sui container always listens on port 9000 internally
 	containerPort := fmt.Sprintf("%s/tcp", DefaultSuiNodePort)
 
-	// default to amd64, unless otherwise specified
 	imagePlatform := "linux/amd64"
-	if in.ImagePlatform != nil {
+	if in.ImagePlatform != nil && *in.ImagePlatform != "" {
 		imagePlatform = *in.ImagePlatform
+	}
+
+	if pods.K8sEnabled() {
+		return nil, fmt.Errorf("K8s support is not yet implemented")
 	}
 
 	req := testcontainers.ContainerRequest{
@@ -120,16 +203,16 @@ func newSui(in *Input) (*Output, error) {
 		},
 		HostConfigModifier: func(h *container.HostConfig) {
 			// Map user-provided host port to container's default port (9000)
-			h.PortBindings = nat.PortMap{
-				nat.Port(containerPort): []nat.PortBinding{
+			h.PortBindings = network.PortMap{
+				network.MustParsePort(containerPort): []network.PortBinding{
 					{
-						HostIP:   "0.0.0.0",
+						HostIP:   netip.MustParseAddr("0.0.0.0"),
 						HostPort: in.Port,
 					},
 				},
-				nat.Port(DefaultFaucetPort): []nat.PortBinding{
+				network.MustParsePort(DefaultFaucetPort): []network.PortBinding{
 					{
-						HostIP:   "0.0.0.0",
+						HostIP:   netip.MustParseAddr("0.0.0.0"),
 						HostPort: in.FaucetPort,
 					},
 				},
@@ -146,12 +229,7 @@ func newSui(in *Input) (*Output, error) {
 			"--force-regenesis",
 			"--with-faucet",
 		},
-		Files: []testcontainers.ContainerFile{
-			{
-				HostFilePath:      absPath,
-				ContainerFilePath: "/",
-			},
-		},
+		Files: files,
 		// we need faucet for funding
 		WaitingFor: wait.ForListeningPort(DefaultFaucetPort).WithStartupTimeout(1 * time.Minute).WithPollInterval(200 * time.Millisecond),
 	}
@@ -167,7 +245,7 @@ func newSui(in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	suiAccount, err := generateKeyData(containerName, "ed25519")
+	suiAccount, err := generateKeyData(ctx, containerName, "ed25519")
 	if err != nil {
 		return nil, err
 	}
@@ -179,6 +257,7 @@ func newSui(in *Input) (*Output, error) {
 		Type:                in.Type,
 		Family:              FamilySui,
 		ContainerName:       containerName,
+		Container:           c,
 		NetworkSpecificData: &NetworkSpecificData{SuiAccount: suiAccount},
 		Nodes: []*Node{
 			{

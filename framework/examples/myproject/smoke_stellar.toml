@@ -1,0 +1,3 @@
+[blockchain_a]
+  type = "stellar"
+  port = "8100"  # avoids conflicts

@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
+	"github.com/moby/moby/api/types/container"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
@@ -44,7 +43,7 @@ func baseRequest(in *Input, useWS ExposeWs) testcontainers.ContainerRequest {
 				h.PortBindings = framework.MapTheSamePort(exposedPorts...)
 			}
 		},
-		WaitingFor: wait.ForListeningPort(nat.Port(in.Port)).WithStartupTimeout(1 * time.Minute).WithPollInterval(200 * time.Millisecond),
+		WaitingFor: wait.ForListeningPort(in.Port).WithStartupTimeout(1 * time.Minute).WithPollInterval(200 * time.Millisecond),
 	}
 	if !in.HostNetworkMode {
 		req.ExposedPorts = exposedPorts
@@ -65,8 +64,7 @@ func baseRequest(in *Input, useWS ExposeWs) testcontainers.ContainerRequest {
 	return req
 }
 
-func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest, useWS bool) (*Output, error) {
-	ctx := context.Background()
+func createGenericEvmContainer(ctx context.Context, in *Input, req testcontainers.ContainerRequest, useWS bool) (*Output, error) {
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
@@ -75,7 +73,7 @@ func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest, u
 		return nil, err
 	}
 
-	host, err := framework.GetHost(c)
+	host, err := framework.GetHostWithContext(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +85,7 @@ func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest, u
 		exposedPort = in.Port
 	} else {
 		bindPort := req.ExposedPorts[0]
-		ep, err := c.MappedPort(ctx, nat.Port(bindPort))
+		ep, err := c.MappedPort(ctx, bindPort)
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +112,7 @@ func createGenericEvmContainer(in *Input, req testcontainers.ContainerRequest, u
 	}
 
 	if useWS {
-		mp, err := c.MappedPort(ctx, nat.Port(req.ExposedPorts[1]))
+		mp, err := c.MappedPort(ctx, req.ExposedPorts[1])
 		if err != nil {
 			return nil, err
 		}

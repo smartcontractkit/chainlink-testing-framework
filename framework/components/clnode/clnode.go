@@ -13,8 +13,14 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
+
+	v1 "k8s.io/api/core/v1"
+
+	"net/netip"
+
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
@@ -33,69 +39,107 @@ const (
 	HomeVolumeName         = "clnode-home"
 )
 
-var (
-	once = &sync.Once{}
-)
+var once = &sync.Once{}
 
 // Input represents Chainlink node input
 type Input struct {
-	NoDNS   bool            `toml:"no_dns"`
-	DbInput *postgres.Input `toml:"db" validate:"required"`
-	Node    *NodeInput      `toml:"node" validate:"required"`
-	Out     *Output         `toml:"out"`
+	// NoDNS whether to allow DNS in Docker containers or not, useful for isolating containers from network if set to 'false'
+	NoDNS bool `toml:"no_dns" comment:"whether to allow DNS in Docker containers or not, useful for isolating containers from network if set to 'false'"`
+	// DbInput PostgreSQL database configuration
+	DbInput *postgres.Input `toml:"db" validate:"required" comment:"PostgreSQL database configuration"`
+	// Node Chainlink node configuration
+	Node *NodeInput `toml:"node" validate:"required" comment:"Chainlink node configuration"`
+	// Out Chainlink node configuration output
+	Out *Output `toml:"out" comment:"Chainlink node configuration output"`
 }
 
 // NodeInput is CL nod container inputs
 type NodeInput struct {
-	Image                   string                        `toml:"image" validate:"required"`
-	Name                    string                        `toml:"name"`
-	DockerFilePath          string                        `toml:"docker_file"`
-	DockerContext           string                        `toml:"docker_ctx"`
-	DockerBuildArgs         map[string]string             `toml:"docker_build_args"`
-	PullImage               bool                          `toml:"pull_image"`
-	CapabilitiesBinaryPaths []string                      `toml:"capabilities"`
-	CapabilityContainerDir  string                        `toml:"capabilities_container_dir"`
-	TestConfigOverrides     string                        `toml:"test_config_overrides"`
-	UserConfigOverrides     string                        `toml:"user_config_overrides"`
-	TestSecretsOverrides    string                        `toml:"test_secrets_overrides"`
-	UserSecretsOverrides    string                        `toml:"user_secrets_overrides"`
-	HTTPPort                int                           `toml:"port"`
-	P2PPort                 int                           `toml:"p2p_port"`
-	CustomPorts             []string                      `toml:"custom_ports"`
-	DebuggerPort            int                           `toml:"debugger_port"`
-	ContainerResources      *framework.ContainerResources `toml:"resources"`
-	EnvVars                 map[string]string             `toml:"env_vars"`
+	// Image Chainlink node Docker image in format $registry:$tag
+	Image string `toml:"image" validate:"required" comment:"Chainlink node Docker image in format $registry:$tag"`
+	// Name Chainlink node Docker container name
+	Name string `toml:"name" comment:"Chainlink node Docker container name"`
+	// DockerFilePath Docker file path to rebuild, relative to 'docker_ctx' field path
+	DockerFilePath string `toml:"docker_file" comment:"Docker file path to rebuild, relative to 'docker_ctx' field path"`
+	// DockerContext Docker build context path
+	DockerContext string `toml:"docker_ctx" comment:"Docker build context path"`
+	// DockerBuildArgs Docker build args
+	DockerBuildArgs map[string]string `toml:"docker_build_args" comment:"Docker build args in format key = value or map format, ex.: \"CL_IS_PROD_BUILD\" = \"false\" "`
+	// PullImage whether to pull Docker image or not
+	PullImage bool `toml:"pull_image" comment:"Whether to pull Docker image or not"`
+	// CapabilitiesBinaryPaths Chainlink CRE capabilities paths for WASM binaries
+	CapabilitiesBinaryPaths []string `toml:"capabilities" comment:"Chainlink CRE capabilities paths for WASM binaries"`
+	// CapabilityContainerDir path to capabilities inside Docker container (capabilities are copied inside container from local path)
+	CapabilityContainerDir string `toml:"capabilities_container_dir" comment:"path to capabilities inside Docker container (capabilities are copied inside container from local path)"`
+	// TestConfigOverrides node config overrides field for programmatic usage in tests
+	TestConfigOverrides string `toml:"test_config_overrides" comment:"node config overrides field for programmatic usage in tests"`
+	// UserConfigOverrides node config overrides field for manual overrides from env.toml configs
+	UserConfigOverrides string `toml:"user_config_overrides" comment:"node config overrides field for manual overrides from env.toml configs"`
+	// TestSecretsOverrides node secrets config overrides field for programmatic usage in tests
+	TestSecretsOverrides string `toml:"test_secrets_overrides" comment:"node secrets config overrides field for programmatic usage in tests"`
+	// UserSecretsOverrides node secrets config overrides field for manual overrides from env.toml configs
+	UserSecretsOverrides string `toml:"user_secrets_overrides" comment:"node secrets config overrides field for manual overrides from env.toml configs"`
+	// HTTPPort Chainlink node API HTTP port
+	HTTPPort int `toml:"port" comment:"Chainlink node API HTTP port"`
+	// P2PPort Chainlink node P2P port
+	P2PPort int `toml:"p2p_port" comment:"Chainlink node P2P port"`
+	// CustomPorts Custom ports pairs in format $host_port_number:$docker_port_number
+	CustomPorts []string `toml:"custom_ports" comment:"Custom ports pairs in format $host_port_number:$docker_port_number"`
+	// DebuggerPort Delve debugger port
+	DebuggerPort int `toml:"debugger_port" comment:"Delve debugger port"`
+	// ContainerResources Docker container resources
+	ContainerResources *framework.ContainerResources `toml:"resources" comment:"Docker container resources"`
+	// EnvVars Docker container environment variables
+	EnvVars map[string]string `toml:"env_vars" comment:"Docker container environment variables"`
 }
 
 // Output represents Chainlink node output, nodes and databases connection URLs
 type Output struct {
-	UseCache   bool             `toml:"use_cache"`
-	Node       *NodeOut         `toml:"node"`
-	PostgreSQL *postgres.Output `toml:"postgresql"`
+	// UseCache Whether to respect caching or not, if cache = true component won't be deployed again
+	UseCache bool `toml:"use_cache" comment:"Whether to respect caching or not, if cache = true component won't be deployed again"`
+	// Node Chainlink node config output
+	Node *NodeOut `toml:"node" comment:"Chainlink node config output"`
+	// PostgreSQL PostgreSQL config output
+	PostgreSQL *postgres.Output `toml:"postgresql" comment:"PostgreSQL config output"`
 }
 
 // NodeOut is CL node container output, URLs to connect
 type NodeOut struct {
-	APIAuthUser     string `toml:"api_auth_user"`
-	APIAuthPassword string `toml:"api_auth_password"`
-	ContainerName   string `toml:"container_name"`
-	ExternalURL     string `toml:"url"`
-	InternalURL     string `toml:"internal_url"`
-	InternalP2PUrl  string `toml:"p2p_internal_url"`
-	InternalIP      string `toml:"internal_ip"`
+	// APIAuthUser user name for basic login/password authorization in Chainlink node
+	APIAuthUser string `toml:"api_auth_user" comment:"User name for basic login/password authorization in Chainlink node"`
+	// APIAuthPassword password for basic login/password authorization in Chainlink node
+	APIAuthPassword string `toml:"api_auth_password" comment:"Password for basic login/password authorization in Chainlink node"`
+	// ContainerName node Docker contaienr name
+	ContainerName string `toml:"container_name" comment:"Node Docker contaner name"`
+	// ExternalURL node external API HTTP URL
+	ExternalURL string `toml:"url" comment:"Node external API HTTP URL"`
+	// InternalURL node internal API HTTP URL
+	InternalURL string `toml:"internal_url" comment:"Node internal API HTTP URL"`
+	// InternalP2PUrl node internal P2P URL
+	InternalP2PUrl string `toml:"p2p_internal_url" comment:"Node internal P2P URL"`
+	// InternalIP node internal IP
+	InternalIP string `toml:"internal_ip" comment:"Node internal IP"`
+	// K8sService is a Kubernetes service spec used to connect locally
+	K8sService *v1.Service `toml:"k8s_service" comment:"Kubernetes service spec used to connect locally"`
 }
 
 // NewNodeWithDB create a new Chainlink node with some image:tag and one or several configs
 // see config params: TestConfigOverrides, UserConfigOverrides, etc
 func NewNodeWithDB(in *Input) (*Output, error) {
+	return NewNodeWithDBAndContext(context.Background(), in)
+}
+
+// NewNodeWithDBAndContext create a new Chainlink node with some image:tag and one or several configs
+// see config params: TestConfigOverrides, UserConfigOverrides, etc
+func NewNodeWithDBAndContext(ctx context.Context, in *Input) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
-	pgOut, err := postgres.NewPostgreSQL(in.DbInput)
+	pgOut, err := postgres.NewWithContext(ctx, in.DbInput)
 	if err != nil {
 		return nil, err
 	}
-	nodeOut, err := newNode(in, pgOut)
+	nodeOut, err := newNode(ctx, in, pgOut)
 	if err != nil {
 		return nil, err
 	}
@@ -109,10 +153,14 @@ func NewNodeWithDB(in *Input) (*Output, error) {
 }
 
 func NewNode(in *Input, pgOut *postgres.Output) (*Output, error) {
+	return NewNodeWithContext(context.Background(), in, pgOut)
+}
+
+func NewNodeWithContext(ctx context.Context, in *Input, pgOut *postgres.Output) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
-	nodeOut, err := newNode(in, pgOut)
+	nodeOut, err := newNode(ctx, in, pgOut)
 	if err != nil {
 		return nil, err
 	}
@@ -130,31 +178,45 @@ func generateEntryPoint() []string {
 		"/bin/sh", "-c",
 	}
 	if os.Getenv("CTF_CLNODE_DLV") == "true" {
-		entrypoint = append(entrypoint, "dlv  exec /usr/local/bin/chainlink --continue --listen=0.0.0.0:40000 --headless=true --api-version=2 --accept-multiclient -- -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials")
+		entrypoint = append(entrypoint, "dlv exec /usr/local/bin/chainlink --continue --listen=0.0.0.0:40000 --headless=true --api-version=2 --accept-multiclient -- -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials")
 	} else {
 		entrypoint = append(entrypoint, "chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials")
 	}
 	return entrypoint
 }
 
+// natPortsToK8sFormat transforms network.PortMap
+// to Pods port pair format: $external_port:$internal_port
+func natPortsToK8sFormat(in *Input, portMap network.PortMap) []string {
+	out := make([]string, 0)
+	for port, portBinding := range portMap {
+		for _, b := range portBinding {
+			out = append(out, fmt.Sprintf("%s:%s", b.HostPort, port.Port()))
+		}
+	}
+	// we are exposing P2P port in K8s via service
+	out = append(out, fmt.Sprintf("%d:%s", in.Node.P2PPort, DefaultP2PPort))
+	return out
+}
+
 // generatePortBindings generates exposed ports and port bindings
 // exposes default CL node port
 // exposes custom_ports in format "host:docker" or map 1-to-1 if only "host" port is provided
-func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
+func generatePortBindings(in *Input) ([]string, network.PortMap, error) {
 	httpPort := fmt.Sprintf("%s/tcp", DefaultHTTPPort)
 	exposedPorts := []string{httpPort}
-	portBindings := nat.PortMap{
-		nat.Port(httpPort): []nat.PortBinding{
+	portBindings := network.PortMap{
+		network.MustParsePort(httpPort): []network.PortBinding{
 			{
-				HostIP:   "0.0.0.0",
+				HostIP:   netip.MustParseAddr("0.0.0.0"),
 				HostPort: strconv.Itoa(in.Node.HTTPPort),
 			},
 		},
 	}
 	if os.Getenv("CTF_CLNODE_DLV") == "true" {
 		innerDebuggerPort := fmt.Sprintf("%d/tcp", DefaultDebuggerPort)
-		portBindings[nat.Port(innerDebuggerPort)] = append(portBindings[nat.Port(innerDebuggerPort)], nat.PortBinding{
-			HostIP:   "0.0.0.0",
+		portBindings[network.MustParsePort(innerDebuggerPort)] = append(portBindings[network.MustParsePort(innerDebuggerPort)], network.PortBinding{
+			HostIP:   netip.MustParseAddr("0.0.0.0"),
 			HostPort: strconv.Itoa(in.Node.DebuggerPort),
 		})
 		exposedPorts = append(exposedPorts, strconv.Itoa(DefaultDebuggerPort))
@@ -168,22 +230,22 @@ func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
 			}
 			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", pp[1]))
 
-			dockerPort := nat.Port(fmt.Sprintf("%s/tcp", pp[1]))
+			dockerPort := network.MustParsePort(fmt.Sprintf("%s/tcp", pp[1]))
 			hostPort := pp[0]
-			portBindings[dockerPort] = []nat.PortBinding{
+			portBindings[dockerPort] = []network.PortBinding{
 				{
-					HostIP:   "0.0.0.0",
+					HostIP:   netip.MustParseAddr("0.0.0.0"),
 					HostPort: hostPort,
 				},
 			}
 		} else {
 			customPorts = append(customPorts, fmt.Sprintf("%s/tcp", p))
 
-			dockerPort := nat.Port(fmt.Sprintf("%s/tcp", p))
+			dockerPort := network.MustParsePort(fmt.Sprintf("%s/tcp", p))
 			hostPort := p
-			portBindings[dockerPort] = []nat.PortBinding{
+			portBindings[dockerPort] = []network.PortBinding{
 				{
-					HostIP:   "0.0.0.0",
+					HostIP:   netip.MustParseAddr("0.0.0.0"),
 					HostPort: hostPort,
 				},
 			}
@@ -193,9 +255,7 @@ func generatePortBindings(in *Input) ([]string, nat.PortMap, error) {
 	return exposedPorts, portBindings, nil
 }
 
-func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
-	ctx := context.Background()
-
+func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	passwordPath, err := WriteTmpFile(DefaultPasswordTxt, "password.txt")
 	if err != nil {
 		return nil, err
@@ -204,11 +264,20 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	if err != nil {
 		return nil, err
 	}
-	cfgPath, err := writeDefaultConfig()
+	cfg, err := generateDefaultConfig()
 	if err != nil {
 		return nil, err
 	}
-	secretsPath, err := writeDefaultSecrets(pgOut)
+	cfgPath, err := WriteTmpFile(cfg, "config.toml")
+	if err != nil {
+		return nil, err
+	}
+
+	secretsData, err := generateSecretsConfig(pgOut.InternalURL, DefaultTestKeystorePassword)
+	if err != nil {
+		return nil, err
+	}
+	secretsPath, err := WriteTmpFile(secretsData, "secrets.toml")
 	if err != nil {
 		return nil, err
 	}
@@ -240,6 +309,73 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	defaultHTTPPortInt, err := strconv.Atoi(DefaultHTTPPort)
+	if err != nil {
+		return nil, err
+	}
+
+	// k8s deployment
+	if pods.K8sEnabled() {
+		_, svc, err := pods.Run(ctx, &pods.Config{
+			Pods: []*pods.PodConfig{
+				{
+					Name:     pods.Ptr(containerName),
+					Image:    pods.Ptr(in.Node.Image),
+					Env:      pods.EnvsFromMap(in.Node.EnvVars),
+					Requests: pods.ResourcesMedium(),
+					Limits:   pods.ResourcesMedium(),
+					Ports:    natPortsToK8sFormat(in, portBindings),
+					ContainerSecurityContext: &v1.SecurityContext{
+						// these are specific things we need for staging cluster
+						RunAsNonRoot: pods.Ptr(true),
+						RunAsUser:    pods.Ptr[int64](14933),
+						RunAsGroup:   pods.Ptr[int64](999),
+					},
+					ReadinessProbe: pods.TCPReadyProbe(defaultHTTPPortInt),
+					ConfigMap: map[string]string{
+						"config.toml":         cfg,
+						"overrides.toml":      in.Node.TestConfigOverrides,
+						"user-overrides.toml": in.Node.UserConfigOverrides,
+						"node_password":       DefaultPasswordTxt,
+						"apicredentials": fmt.Sprintf(`%s
+			%s`, DefaultAPIUser, DefaultAPIPassword),
+					},
+					ConfigMapMountPath: map[string]string{
+						"config.toml":         "/config/config",
+						"overrides.toml":      "/config/overrides",
+						"user-overrides.toml": "/config/user-overrides",
+						"node_password":       "/config/node_password",
+						"apicredentials":      "/config/apicredentials",
+					},
+					Secrets: map[string]string{
+						"secrets.toml":                secretsData,
+						"secrets-overrides.toml":      in.Node.TestSecretsOverrides,
+						"secrets-user-overrides.toml": in.Node.UserSecretsOverrides,
+					},
+					SecretsMountPath: map[string]string{
+						"secrets.toml":                "/config/secrets",
+						"secrets-overrides.toml":      "/config/secrets-overrides",
+						"secrets-user-overrides.toml": "/config/user-secrets-overrides",
+					},
+					Command: pods.Ptr("chainlink -c /config/config -c /config/overrides -c /config/user-overrides -s /config/secrets -s /config/secrets-overrides -s /config/user-secrets-overrides node start -d -p /config/node_password -a /config/apicredentials"),
+				},
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		return &NodeOut{
+			APIAuthUser:     DefaultAPIUser,
+			APIAuthPassword: DefaultAPIPassword,
+			ContainerName:   containerName,
+			ExternalURL:     fmt.Sprintf("http://%s:%d", "localhost", in.Node.HTTPPort),
+			InternalURL:     fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
+			InternalP2PUrl:  fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
+			K8sService:      svc,
+		}, nil
+	}
+	// local deployment
 	req := tc.ContainerRequest{
 		AlwaysPullImage: in.Node.PullImage,
 		Image:           in.Node.Image,
@@ -276,7 +412,6 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	}
 	if in.Node.HTTPPort != 0 && in.Node.P2PPort != 0 {
 		req.HostConfigModifier = func(h *container.HostConfig) {
-			framework.NoDNS(in.NoDNS, h)
 			h.PortBindings = portBindings
 			framework.ResourceLimitsFunc(h, in.Node.ContainerResources)
 		}
@@ -285,42 +420,42 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		{
 			HostFilePath:      cfgPath.Name(),
 			ContainerFilePath: "/config/config",
-			FileMode:          0644,
+			FileMode:          0o644,
 		},
 		{
 			HostFilePath:      secretsPath.Name(),
 			ContainerFilePath: "/config/secrets",
-			FileMode:          0644,
+			FileMode:          0o644,
 		},
 		{
 			HostFilePath:      overridesFile.Name(),
 			ContainerFilePath: "/config/overrides",
-			FileMode:          0644,
+			FileMode:          0o644,
 		},
 		{
 			HostFilePath:      userOverridesFile.Name(),
 			ContainerFilePath: "/config/user-overrides",
-			FileMode:          0644,
+			FileMode:          0o644,
 		},
 		{
 			HostFilePath:      secretsOverridesFile.Name(),
 			ContainerFilePath: "/config/secrets-overrides",
-			FileMode:          0644,
+			FileMode:          0o644,
 		},
 		{
 			HostFilePath:      userSecretsOverridesFile.Name(),
 			ContainerFilePath: "/config/user-secrets-overrides",
-			FileMode:          0644,
+			FileMode:          0o644,
 		},
 		{
 			HostFilePath:      passwordPath.Name(),
 			ContainerFilePath: "/config/node_password",
-			FileMode:          0644,
+			FileMode:          0o644,
 		},
 		{
 			HostFilePath:      apiCredentialsPath.Name(),
 			ContainerFilePath: "/config/apicredentials",
-			FileMode:          0644,
+			FileMode:          0o644,
 		},
 	}
 	if in.Node.CapabilityContainerDir == "" {
@@ -332,7 +467,7 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 		files = append(files, tc.ContainerFile{
 			HostFilePath:      cp,
 			ContainerFilePath: filepath.Join(in.Node.CapabilityContainerDir, cpPath),
-			FileMode:          0777,
+			FileMode:          0o777,
 		})
 	}
 	req.Files = append(req.Files, files...)
@@ -357,18 +492,16 @@ func newNode(in *Input, pgOut *postgres.Output) (*NodeOut, error) {
 	if err != nil {
 		return nil, err
 	}
-	host, err := framework.GetHost(c)
+	host, err := framework.GetHostWithContext(ctx, c)
 	if err != nil {
 		return nil, err
 	}
-
-	mp := nat.Port(fmt.Sprintf("%d/tcp", in.Node.HTTPPort))
 
 	return &NodeOut{
 		APIAuthUser:     DefaultAPIUser,
 		APIAuthPassword: DefaultAPIPassword,
 		ContainerName:   containerName,
-		ExternalURL:     fmt.Sprintf("http://%s:%s", host, mp.Port()),
+		ExternalURL:     fmt.Sprintf("http://%s:%d", host, in.Node.HTTPPort),
 		InternalURL:     fmt.Sprintf("http://%s:%s", containerName, DefaultHTTPPort),
 		InternalP2PUrl:  fmt.Sprintf("http://%s:%s", containerName, DefaultP2PPort),
 		InternalIP:      ip,
@@ -418,22 +551,6 @@ func generateSecretsConfig(connString, password string) (string, error) {
 		return "", err
 	}
 	return output.String(), nil
-}
-
-func writeDefaultSecrets(pgOut *postgres.Output) (*os.File, error) {
-	secretsOverrides, err := generateSecretsConfig(pgOut.InternalURL, DefaultTestKeystorePassword)
-	if err != nil {
-		return nil, err
-	}
-	return WriteTmpFile(secretsOverrides, "secrets.toml")
-}
-
-func writeDefaultConfig() (*os.File, error) {
-	cfg, err := generateDefaultConfig()
-	if err != nil {
-		return nil, err
-	}
-	return WriteTmpFile(cfg, "config.toml")
 }
 
 // WriteTmpFile writes the provided data string to a specified filepath and returns the file and any error encountered.

@@ -50,6 +50,11 @@ spec:
             name: {{ $.Release.Name }}-{{ $cfg.name }}-cm
       containers:
         - name: chainlink-db
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 999
           {{- $image := $.Values.db.image.image }}
           {{- $tag := $.Values.db.image.version }}
           {{- if $cfg.db }}
@@ -127,13 +132,17 @@ spec:
               name: {{ $.Release.Name }}-{{ $cfg.name }}-config-map
               subPath: init.sql
           {{ if $.Values.db.stateful }}
-          volumeMounts:
             - mountPath: /var/lib/postgresql/data
               name: postgres
               subPath: postgres-db
           {{ end }}
         {{- if $.Values.db.enablePrometheusPostgresExporter }}
         - name: prometheus-postgres-exporter
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 999
           image: {{ $.Values.prometheusPostgresExporter.image.image }}
           args: ["--collector.statio_user_indexes"]
           resources:

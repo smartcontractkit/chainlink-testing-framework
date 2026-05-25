@@ -28,6 +28,9 @@ spec:
         {{ $key }}: {{ $value | quote }}
         {{- end }}
     spec:
+      securityContext:
+        runAsUser: 999
+        fsGroup: 999
       restartPolicy: Always
       enableServiceLinks: false
       volumes:
@@ -37,30 +40,30 @@ spec:
       containers:
       - name: geth-network
         image: "{{ .Values.geth.image.image }}:{{ .Values.geth.image.version }}"
-        command: [ "sh", "./root/init.sh" ]
+        command: [ "sh", "./chain/init.sh" ]
         volumeMounts:
         - name: geth
-          mountPath: /root/.ethereum/devchain/
+          mountPath: /chain/.ethereum/devchain/
         - name : configmap-volume
-          mountPath: /root/init.sh
+          mountPath: /chain/init.sh
           subPath: init.sh
         - name: configmap-volume
-          mountPath: /root/config
+          mountPath: /chain/config
         - name: configmap-volume
-          mountPath: /root/.ethereum/devchain/keystore/key1
+          mountPath: /chain/.ethereum/devchain/keystore/key1
           subPath: key1
         - name: configmap-volume
-          mountPath: /root/.ethereum/devchain/keystore/key2
+          mountPath: /chain/.ethereum/devchain/keystore/key2
           subPath: key2
         - name: configmap-volume
-          mountPath: /root/.ethereum/devchain/keystore/key3
+          mountPath: /chain/.ethereum/devchain/keystore/key3
           subPath: key3
         args:
           - '--dev'
           - '--password'
-          - '/root/config/password.txt'
+          - '/chain/config/password.txt'
           - '--datadir'
-          - '/root/.ethereum/devchain'
+          - '/chain/.ethereum/devchain'
           - '--unlock'
           - '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'
           - '--mine'

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -17,13 +18,13 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/clnode"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-resty/resty/v2"
-	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -32,6 +33,14 @@ const (
 	ChainlinkKeyPassword string = "twochains"
 	// NodeURL string for logging
 	NodeURL string = "Node URL"
+	// DefaultRetries default CL node client retries
+	DefaultRetries = 30
+	// DefaultRetryInterval default CL node client retry interval
+	DefaultRetryInterval = 5 * time.Second
+	// DefaultTimeout is a default CL node client timeout
+	DefaultTimeout = 10 * time.Second
+	// DefaultAuthRetryCount is a default CL node authorization retry count
+	DefaultAuthRetryCount = 20
 )
 
 var (
@@ -81,34 +90,54 @@ func New(outs []*clnode.Output) ([]*ChainlinkClient, error) {
 	return clients, nil
 }
 
-func initRestyClient(url string, email string, password string, headers map[string]string, timeout *time.Duration) (*resty.Client, error) {
+func initRestyClient(url string, email string, password string, headers map[string]string, _ *time.Duration) (*resty.Client, error) {
 	isDebug := os.Getenv("RESTY_DEBUG") == "true"
 	// G402 - TODO: certificates
 	//nolint
-	rc := resty.New().SetBaseURL(url).SetHeaders(headers).SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}).SetDebug(isDebug)
-	if timeout != nil {
-		rc.SetTimeout(*timeout)
-	}
-	session := &Session{Email: email, Password: password}
-	// Retry the connection on boot up, sometimes pods can still be starting up and not ready to accept connections
-	var resp *resty.Response
+	s := &Session{Email: email, Password: password}
+	rc := resty.New().
+		SetBaseURL(url).
+		SetHeaders(headers).
+		SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true}). //nolint:gosec
+		SetDebug(isDebug).
+		SetRetryWaitTime(DefaultRetryInterval).
+		SetRetryCount(DefaultRetries).
+		SetRetryAfter(func(c *resty.Client, r *resty.Response) (time.Duration, error) {
+			return DefaultRetryInterval, nil
+		}).
+		SetTimeout(DefaultTimeout)
+
+	rc.AddRetryCondition(func(r *resty.Response, err error) bool {
+		return r.StatusCode() == http.StatusNotFound
+	})
+
+	// Retry the connection on boot up, retrying authorization every time slows down AddRetryCondition too much
 	var err error
-	retryCount := 20
-	for i := 0; i < retryCount; i++ {
-		resp, err = rc.R().SetBody(session).Post("/sessions")
+	for i := 0; i < DefaultAuthRetryCount; i++ {
+		err = Authorize(rc, s)
 		if err != nil {
-			log.Warn().Err(err).Str("URL", url).Interface("Session Details", session).Msg("Error connecting to Chainlink node, retrying")
-			time.Sleep(5 * time.Second)
+			log.Warn().Err(err).Str("URL", url).Interface("Session Details", s).Msg("Error connecting to Chainlink node, retrying")
+			time.Sleep(DefaultRetryInterval)
 		} else {
 			break
 		}
 	}
 	if err != nil {
-		return nil, fmt.Errorf("error connecting to chainlink node after %d attempts: %w", retryCount, err)
+		return nil, fmt.Errorf("error connecting to chainlink node after %d attempts: %w", DefaultAuthRetryCount, err)
 	}
-	rc.SetCookies(resp.Cookies())
 	framework.L.Debug().Str("URL", url).Msg("Connected to Chainlink node")
 	return rc, nil
+}
+
+func Authorize(rc *resty.Client, session *Session) error {
+	resp, err := rc.R().
+		SetBody(session).
+		Post("/sessions")
+	if err != nil {
+		return fmt.Errorf("error authorizing in CL node: %w", err)
+	}
+	rc.SetCookies(resp.Cookies())
+	return nil
 }
 
 // URL Chainlink instance http url
@@ -191,7 +220,6 @@ func (c *ChainlinkClient) WaitHealthy(pattern, status string, attempts uint) err
 				Msg("Retrying health check")
 		}),
 	)
-
 	if err != nil {
 		return fmt.Errorf("health check failed after %d attempts: %w", attempts, err)
 	}
@@ -590,7 +618,7 @@ func (c *ChainlinkClient) MustReadP2PKeys() (*P2PKeys, error) {
 	}
 	err = VerifyStatusCode(resp.StatusCode(), http.StatusOK)
 	if len(p2pKeys.Data) == 0 {
-		err = fmt.Errorf("Found no P2P Keys on the Chainlink node. Node URL: %s", c.Config.URL)
+		err = fmt.Errorf("found no P2P keys on the Chainlink node. Node URL: %s", c.Config.URL)
 		framework.L.Err(err).Msg("Error getting P2P keys")
 		return nil, err
 	}
@@ -662,7 +690,7 @@ func (c *ChainlinkClient) ReadPrimaryETHKey(chainId string) (*ETHKeyData, error)
 		return nil, err
 	}
 	if len(ethKeys.Data) == 0 {
-		return nil, fmt.Errorf("Error retrieving primary eth key on node %s: No ETH keys present", c.URL())
+		return nil, fmt.Errorf("error retrieving primary eth key on node %s: no ETH keys present", c.URL())
 	}
 	for _, data := range ethKeys.Data {
 		if data.Attributes.ChainID == chainId {
@@ -679,7 +707,7 @@ func (c *ChainlinkClient) ReadETHKeyAtIndex(keyIndex int) (*ETHKeyData, error) {
 		return nil, err
 	}
 	if len(ethKeys.Data) == 0 {
-		return nil, fmt.Errorf("Error retrieving primary eth key on node %s: No ETH keys present", c.URL())
+		return nil, fmt.Errorf("error retrieving primary eth key on node %s: no ETH keys present", c.URL())
 	}
 	return &ethKeys.Data[keyIndex], nil
 }
@@ -827,6 +855,46 @@ func (c *ChainlinkClient) ReadTxKeys(chain string) (*TxKeys, *http.Response, err
 		return nil, nil, err
 	}
 	return txKeys, resp.RawResponse, err
+}
+
+// ReadAptosKeys reads all Aptos keys from the Chainlink node
+func (c *ChainlinkClient) ReadAptosKeys() (*AptosKeys, *resty.Response, error) {
+	aptosKeys := &AptosKeys{}
+	framework.L.Info().Str(NodeURL, c.Config.URL).Msg("Reading Aptos Keys")
+	resp, err := c.APIClient.R().
+		SetResult(aptosKeys).
+		Get("/v2/keys/aptos")
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(aptosKeys.Data) == 0 {
+		framework.L.Warn().Str(NodeURL, c.Config.URL).Msg("Found no Aptos Keys on the node")
+	}
+	return aptosKeys, resp, nil
+}
+
+// MustReadAptosKeys reads all Aptos keys from the Chainlink node and returns an error if the request is unsuccessful.
+func (c *ChainlinkClient) MustReadAptosKeys() (*AptosKeys, *resty.Response, error) {
+	aptosKeys, res, err := c.ReadAptosKeys()
+	if err != nil {
+		return nil, res, err
+	}
+	return aptosKeys, res, VerifyStatusCodeWithResponse(res, http.StatusOK)
+}
+
+// MustReadAptosAccounts reads all Aptos account addresses from the Chainlink node.
+func (c *ChainlinkClient) MustReadAptosAccounts() ([]string, error) {
+	aptosKeys, _, err := c.MustReadAptosKeys()
+	if err != nil {
+		return nil, err
+	}
+
+	accounts := make([]string, 0, len(aptosKeys.Data))
+	for _, key := range aptosKeys.Data {
+		accounts = append(accounts, key.Attributes.Account)
+	}
+
+	return accounts, nil
 }
 
 // DeleteTxKey deletes an tx key based on the provided ID
@@ -1430,4 +1498,34 @@ func ImportP2PKeys(cl []*ChainlinkClient, keys [][]byte) error {
 		})
 	}
 	return eg.Wait()
+}
+
+func ReplayLogPollerFromBlock(cl []*ChainlinkClient, fromBlock, evmChainID int64) error {
+	eg := &errgroup.Group{}
+	for _, c := range cl {
+		eg.Go(func() error {
+			_, _, err := c.ReplayLogPollerFromBlock(fromBlock, evmChainID)
+			return err
+		})
+	}
+	return eg.Wait()
+}
+
+func (c *ChainlinkClient) ReplayLogPollerFromBlock(fromBlock, evmChainID int64) (*ReplayResponse, *http.Response, error) {
+	specObj := &ReplayResponse{}
+	resp, err := c.APIClient.R().
+		SetResult(&specObj).
+		SetQueryParams(map[string]string{
+			"family":  "evm",
+			"ChainID": strconv.FormatInt(evmChainID, 10),
+		}).
+		SetPathParams(map[string]string{
+			"fromBlock": strconv.FormatInt(fromBlock, 10),
+		}).
+		Post("/v2/replay_from_block/{fromBlock}")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return specObj, resp.RawResponse, err
 }

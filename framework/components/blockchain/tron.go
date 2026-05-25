@@ -7,10 +7,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
+	"net/netip"
+
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -55,12 +58,11 @@ func defaultTron(in *Input) {
 	}
 }
 
-func newTron(in *Input) (*Output, error) {
+func newTron(ctx context.Context, in *Input) (*Output, error) {
 	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
 	defaultTron(in)
-	ctx := context.Background()
 
 	containerName := framework.DefaultTCName("blockchain-node")
 	// Tron container always listens on port 9090 internally
@@ -80,6 +82,10 @@ func newTron(in *Input) (*Output, error) {
 		return nil, err
 	}
 
+	if pods.K8sEnabled() {
+		return nil, fmt.Errorf("K8s support is not yet implemented")
+	}
+
 	req := testcontainers.ContainerRequest{
 		AlwaysPullImage: in.PullImage,
 		Image:           in.Image,
@@ -92,10 +98,10 @@ func newTron(in *Input) (*Output, error) {
 		Labels: framework.DefaultTCLabels(),
 		HostConfigModifier: func(h *container.HostConfig) {
 			// Map user-provided host port to container's default port (9090)
-			h.PortBindings = nat.PortMap{
-				nat.Port(containerPort): []nat.PortBinding{
+			h.PortBindings = network.PortMap{
+				network.MustParsePort(containerPort): []network.PortBinding{
 					{
-						HostIP:   "0.0.0.0",
+						HostIP:   netip.MustParseAddr("0.0.0.0"),
 						HostPort: in.Port,
 					},
 				},

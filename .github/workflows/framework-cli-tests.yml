@@ -21,13 +21,16 @@ jobs:
       - name: Configure AWS credentials using OIDC
         uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
         with:
-          role-to-assume: ${{ secrets.PUBLIC_AWS_ECR_ROLE }}
-          aws-region: us-east-1
-      - name: Authenticate to ECR Public
-        id: login-ecr-public
+          role-to-assume: ${{ secrets.AWS_CTF_READ_ACCESS_ROLE_ARN }}
+          aws-region: us-west-2
+
+      - name: Login to Amazon ECR
+        id: login-ecr-private
         uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
         with:
-          registry-type: public
+          registries: ${{ format('{0},{1}', secrets.AWS_ACCOUNT_ID_SDLC, secrets.AWS_ACCOUNT_ID_PROD) }}
+        env:
+          AWS_REGION: us-west-2
       - name: Check for changes in Framework
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
         id: changes

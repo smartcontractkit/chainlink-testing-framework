@@ -31,7 +31,7 @@ func (krc *KafkaRestClient) GetTopics() ([]string, error) {
 	responseBody := []string{}
 	resp, err := krc.APIClient.R().SetResult(responseBody).Get("/topics")
 	if resp.StatusCode() != http.StatusOK {
-		err = fmt.Errorf("Unexpected Status Code. Expected %d; Got %d", http.StatusOK, resp.StatusCode())
+		err = fmt.Errorf("unexpected status code: expected %d, got %d", http.StatusOK, resp.StatusCode())
 	}
 	return responseBody, err
 }

@@ -3,6 +3,7 @@ package clclient
 import (
 	"bytes"
 	"fmt"
+	"math/big"
 	"text/template"
 	"time"
 
@@ -225,6 +226,28 @@ type WorkflowKey struct {
 // WorkflowKeys is the model that represents the created workflow keys when read
 type WorkflowKeys struct {
 	Data []WorkflowKey `json:"data"`
+}
+
+// AptosKeyAttributes is the model that represents the created Aptos key attributes when read
+type AptosKeyAttributes struct {
+	Account   string `json:"account"`
+	PublicKey string `json:"publicKey"`
+}
+
+// AptosKeyData is the model that represents the created Aptos keys when read
+type AptosKeyData struct {
+	ID         string             `json:"id"`
+	Attributes AptosKeyAttributes `json:"attributes"`
+}
+
+// AptosKey is the model that represents the created Aptos key when read
+type AptosKey struct {
+	Data AptosKeyData `json:"data"`
+}
+
+// AptosKeys is the model that represents the created Aptos keys when read
+type AptosKeys struct {
+	Data []AptosKeyData `json:"data"`
 }
 
 // OCRKeys is the model that represents the created OCR keys when read
@@ -1418,4 +1441,17 @@ type ForwarderAttributes struct {
 	ChainID   string    `json:"evmChainId"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+type ReplayResponse struct {
+	Data ReplayResponseData `json:"data"`
+}
+
+type ReplayResponseData struct {
+	Attributes ReplayResponseAttributes `json:"attributes"`
+}
+
+type ReplayResponseAttributes struct {
+	Message    string   `json:"message"`
+	EVMChainID *big.Int `json:"evmChainID"`
 }

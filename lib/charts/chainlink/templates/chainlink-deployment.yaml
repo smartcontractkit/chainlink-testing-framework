@@ -103,6 +103,14 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 5
             failureThreshold: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 14933
+            runAsGroup: 14933
+            capabilities:
+              drop:
+                - ALL
           resources:
             requests:
               memory: {{ $.Values.chainlink.resources.requests.memory }}

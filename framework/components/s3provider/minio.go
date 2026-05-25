@@ -7,15 +7,18 @@ import (
 	"net"
 	"strconv"
 
+	"net/netip"
+
 	"dario.cat/mergo"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 )
 
 const (
@@ -109,13 +112,20 @@ func NewMinioFactory() ProviderFactory {
 }
 
 func (mf MinioFactory) NewFrom(input *Input) (*Output, error) {
+	return mf.NewWithContextFrom(context.Background(), input)
+}
+
+func (mf MinioFactory) NewWithContextFrom(ctx context.Context, input *Input) (*Output, error) {
+	if pods.K8sEnabled() {
+		return nil, fmt.Errorf("K8s support is not yet implemented")
+	}
 	// Fill in defaults on empty
 	err := mergo.Merge(input, DefaultMinio())
 	if err != nil {
 		return nil, err
 	}
 
-	provider, err := mf.run(input)
+	provider, err := mf.run(ctx, input)
 	if err != nil {
 		return nil, err
 	}
@@ -135,19 +145,22 @@ func DefaultMinio() *Minio {
 }
 
 func (mf MinioFactory) New(options ...Option) (Provider, error) {
+	return mf.NewWithContext(context.Background(), options...)
+}
+
+func (mf MinioFactory) NewWithContext(ctx context.Context, options ...Option) (Provider, error) {
 	m := DefaultMinio()
 
 	for _, opt := range options {
 		opt(m)
 	}
 
-	return mf.run(m)
+	return mf.run(ctx, m)
 }
 
-func (mf MinioFactory) run(m *Minio) (Provider, error) {
+func (mf MinioFactory) run(ctx context.Context, m *Minio) (Provider, error) {
 	var err error
 
-	ctx := context.Background()
 	containerName := framework.DefaultTCName(DefaultName)
 	bindPort := fmt.Sprintf("%d/tcp", m.Port)
 	bindConsolePort := fmt.Sprintf("%d/tcp", m.ConsolePort)
@@ -190,25 +203,24 @@ func (mf MinioFactory) run(m *Minio) (Provider, error) {
 			fmt.Sprintf(":%d", m.ConsolePort),
 		},
 		HostConfigModifier: func(h *container.HostConfig) {
-			framework.NoDNS(true, h)
-			h.PortBindings = nat.PortMap{
-				nat.Port(bindPort): []nat.PortBinding{
+			h.PortBindings = network.PortMap{
+				network.MustParsePort(bindPort): []network.PortBinding{
 					{
-						HostIP:   "0.0.0.0",
+						HostIP:   netip.MustParseAddr("0.0.0.0"),
 						HostPort: strconv.Itoa(m.Port),
 					},
 				},
-				nat.Port(bindConsolePort): []nat.PortBinding{
+				network.MustParsePort(bindConsolePort): []network.PortBinding{
 					{
-						HostIP:   "0.0.0.0",
+						HostIP:   netip.MustParseAddr("0.0.0.0"),
 						HostPort: strconv.Itoa(m.ConsolePort),
 					},
 				},
 			}
 		},
 		WaitingFor: tcwait.ForAll(
-			tcwait.ForListeningPort(nat.Port(bindPort)),
-			tcwait.ForListeningPort(nat.Port(bindConsolePort)),
+			tcwait.ForListeningPort(bindPort),
+			tcwait.ForListeningPort(bindConsolePort),
 		),
 	}
 
@@ -220,7 +232,7 @@ func (mf MinioFactory) run(m *Minio) (Provider, error) {
 		return nil, err
 	}
 
-	m.Host, err = framework.GetHost(c)
+	m.Host, err = framework.GetHostWithContext(ctx, c)
 	if err != nil {
 		return nil, err
 	}

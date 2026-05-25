@@ -26,21 +26,21 @@ exporters:
     add_metric_suffixes: false
 
 processors:
-  transform:
-    log_statements:
-      - context: log
-        statements:
-          - set(body, Base64Decode(log.body.string))
+  batch:
+    send_batch_size: 512
+    timeout: 5s
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
+      processors: [batch]
       exporters: [debug, otlp/traces]
     logs:
       receivers: [otlp]
-      processors: [transform]
+      processors: [batch]
       exporters: [debug, otlphttp/logs]
     metrics:
       receivers: [otlp]
+      processors: [batch]
       exporters: [debug, prometheus]

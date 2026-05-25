@@ -1,0 +1,8 @@
+run:
+    go run main.go
+
+build:
+    docker build -t resource-hog:latest .
+
+clean-hog:
+    docker rm -f resource-hog-test 2>/dev/null || true

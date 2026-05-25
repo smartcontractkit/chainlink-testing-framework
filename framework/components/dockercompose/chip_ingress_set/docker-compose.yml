@@ -3,16 +3,17 @@ services:
 
   chip-ingress:
     # added image (instead of build) to use image created by a setup script
-    image: ${CHIP_INGRESS_IMAGE:-chip-ingress:local-cre}
+    image: "${CTF_CHIP_INGRESS_IMAGE}"
     container_name: chip-ingress
     depends_on:
-      - redpanda-0
+      redpanda-0:
+        condition: service_healthy
     restart: on-failure
     tty: true
     command: ["write-service"]
     environment:
       SERVER_HOST: "0.0.0.0"
-      SERVER_GRPC_PORT: "50051"
+      SERVER_GRPC_PORT: "${CTF_CHIP_INGRESS_GRPC_PORT:-50051}"
       SERVER_METRICS_PORT: "9090"
       SERVER_HEALTHCHECKS_PORT: "9091"
       SERVER_METRICS_IMPLEMENTATION: "otel"
@@ -22,7 +23,7 @@ services:
       KAFKA_BROKERS: "redpanda-0:9092"
       SCHEMA_REGISTRY_URL: "http://redpanda-0:8081"
       # this has been modified and default values were removed, somehow we cannot override them in testcontainers-go
-      BASIC_AUTH_ENABLED: ${BASIC_AUTH_ENABLED:-}
+      BASIC_AUTH_ENABLED: ${BASIC_AUTH_ENABLED:-false}
       BASIC_AUTH_PREFIX: ${BASIC_AUTH_PREFIX:-}
       CE_SA_BEHOLDER_DEMO_CLIENT: |
         {"username": "beholder-demo-client", "password": "password", "allowed_domains": ["*"]}
@@ -31,16 +32,66 @@ services:
       CSA_AUTH_USERNAME: ${CSA_AUTH_USERNAME:-}
       CSA_AUTH_PASSWORD: ${CSA_AUTH_PASSWORD:-}
       CSA_AUTH_REQUIRE_TLS: ${CSA_AUTH_REQUIRE_TLS:-false}
+      CHIP_CONFIG_ENABLED: ${CHIP_CONFIG_ENABLED:-true}
+      CHIP_CONFIG_REQUIRE_TLS: ${CHIP_CONFIG_REQUIRE_TLS:-false}
+      CHIP_CONFIG_AUTH_USERNAME: ${CHIP_CONFIG_AUTH_USERNAME:-admin}
+      CHIP_CONFIG_AUTH_PASSWORD: ${CHIP_CONFIG_AUTH_PASSWORD:-password}
+      CHIP_CONFIG_HOST: ${CHIP_CONFIG_HOST:-chip-config}
+      CHIP_CONFIG_PORT: ${CHIP_CONFIG_PORT:-50051}
     ports:
-      - "50051:50051"
+      - "${CTF_CHIP_INGRESS_GRPC_HOST_PORT:-0}:${CTF_CHIP_INGRESS_GRPC_PORT:-50051}"
       - "9090:9090"
       - "9092:9091"
     healthcheck:
       # this has been modified from the original docker-compose.yml to use grpc_health_probe
-      test: [ "CMD", "grpc_health_probe", "-addr=localhost:50051" ]
-      interval: 200ms
+      test: [ "CMD", "grpc_health_probe", "-addr=localhost:${CTF_CHIP_INGRESS_GRPC_PORT:-50051}" ]
+      interval: 1s
       timeout: 10s
-      retries: 10
+      start_period: 15s
+      retries: 20
+
+  chip-config:
+    image: "${CTF_CHIP_CONFIG_IMAGE}"
+    container_name: chip-config
+    hostname: chip-config
+    command:
+      - start
+    ports:
+      - "${CTF_CHIP_CONFIG_HOST_PORT:-0}:50051"
+    environment:
+      SCHEMA_REGISTRY_URL: http://redpanda-0:8081
+      # SERVER_METRICS_OTEL_EXPORTER_GRPC_ENDPOINT: otel-lgtm:4317
+      SCHEMA_CACHE_ENABLED: true
+      BASIC_AUTH_PREFIX: CC_SA_
+      CC_SA_ADMIN: '{"username": "admin", "password": "password", "allowed_domains":["*"]}'
+      DB_DATABASE: chip_config
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_INSTANCE: postgres-chip-config
+      DB_PORT: 5432
+      LOG_LEVEL: debug
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: on-failure
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres-chip-config
+    restart: always
+    environment:
+      POSTGRES_DB: chip_config
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "postgres", "-d", "chip_config", "-h", "localhost" ]
+      interval: 5s
+      timeout: 10s
+      retries: 3
+    expose:
+      - 5437
+    ports:
+      - 5437:5432
 
   redpanda-0:
     # modified from the original:
@@ -70,13 +121,12 @@ services:
       - "19644:9644"
     healthcheck:
       test: curl -f http://localhost:9644/v1/status/ready || exit 1
-      interval: 1s
+      interval: 2s
       timeout: 10s
-      retries: 5
-      start_period: 1s
+      retries: 10
+      start_period: 5s
 
   redpanda-console:
-
     container_name: redpanda-console
     # modified from the original:
     # - pin point a specific version of the console image to ensure compatibility, because v3.x.x uses incompatible configuration format

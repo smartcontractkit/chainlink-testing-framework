@@ -7,18 +7,19 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/docker/docker/api/types/container"
+	"github.com/moby/moby/api/types/container"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 )
 
 const (
 	DefaultAptosAPIPort     = "8080"
 	DefaultAptosFaucetPort  = "8081"
-	DefaultAptosArm64Image  = "ghcr.io/friedemannf/aptos-tools:aptos-node-v1.34.3-hotfix"
-	DefaultAptosX86_64Image = "aptoslabs/tools:aptos-node-v1.34.3-hotfix"
+	DefaultAptosArm64Image  = "ghcr.io/friedemannf/aptos-tools:aptos-node-v1.42.1"
+	DefaultAptosX86_64Image = "aptoslabs/tools:aptos-node-v1.42.1"
 )
 
 var (
@@ -50,14 +51,22 @@ func defaultAptos(in *Input) {
 	}
 }
 
-func newAptos(in *Input) (*Output, error) {
+func newAptos(ctx context.Context, in *Input) (*Output, error) {
 	defaultAptos(in)
-	ctx := context.Background()
 	containerName := framework.DefaultTCName("blockchain-node")
 
-	absPath, err := filepath.Abs(in.ContractsDir)
-	if err != nil {
-		return nil, err
+	var files []testcontainers.ContainerFile
+	if in.ContractsDir != "" {
+		absPath, err := filepath.Abs(in.ContractsDir)
+		if err != nil {
+			return nil, err
+		}
+		files = []testcontainers.ContainerFile{
+			{
+				HostFilePath:      absPath,
+				ContainerFilePath: "/",
+			},
+		}
 	}
 
 	exposedPorts, bindings, err := framework.GenerateCustomPortsData(in.CustomPorts)
@@ -88,6 +97,10 @@ func newAptos(in *Input) (*Output, error) {
 		imagePlatform = "linux/amd64"
 	}
 
+	if pods.K8sEnabled() {
+		return nil, fmt.Errorf("K8s support is not yet implemented")
+	}
+
 	req := testcontainers.ContainerRequest{
 		Image:        in.Image,
 		ExposedPorts: exposedPorts,
@@ -104,12 +117,7 @@ func newAptos(in *Input) (*Output, error) {
 		},
 		ImagePlatform: imagePlatform,
 		Cmd:           cmd,
-		Files: []testcontainers.ContainerFile{
-			{
-				HostFilePath:      absPath,
-				ContainerFilePath: "/",
-			},
-		},
+		Files:         files,
 	}
 
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -129,12 +137,12 @@ func newAptos(in *Input) (*Output, error) {
 		return nil, err
 	}
 	cmdStr := []string{"aptos", "init", "--network=local", "--assume-yes", fmt.Sprintf("--private-key=%s", DefaultAptosPrivateKey)}
-	_, err = dc.ExecContainer(containerName, cmdStr)
+	_, err = dc.ExecContainerWithContext(ctx, containerName, cmdStr)
 	if err != nil {
 		return nil, err
 	}
 	fundCmd := []string{"aptos", "account", "fund-with-faucet", "--account", DefaultAptosAccount, "--amount", "1000000000000"}
-	_, err = dc.ExecContainer(containerName, fundCmd)
+	_, err = dc.ExecContainerWithContext(ctx, containerName, fundCmd)
 	if err != nil {
 		return nil, err
 	}
@@ -146,6 +154,7 @@ func newAptos(in *Input) (*Output, error) {
 		}
 	}
 	return &Output{
+		Container:     c,
 		UseCache:      true,
 		Type:          in.Type,
 		Family:        FamilyAptos,

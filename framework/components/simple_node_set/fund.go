@@ -19,6 +19,10 @@ import (
 )
 
 func SendETH(client *ethclient.Client, privateKeyHex string, toAddress string, amount *big.Float) error {
+	return SendETHWithContext(context.Background(), client, privateKeyHex, toAddress, amount)
+}
+
+func SendETHWithContext(ctx context.Context, client *ethclient.Client, privateKeyHex string, toAddress string, amount *big.Float) error {
 	privateKey, err := crypto.HexToECDSA(privateKeyHex)
 	if err != nil {
 		return er.Wrap(err, "failed to parse private key")
@@ -34,12 +38,12 @@ func SendETH(client *ethclient.Client, privateKeyHex string, toAddress string, a
 	}
 	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
 
-	nonce, err := client.PendingNonceAt(context.Background(), fromAddress)
+	nonce, err := client.PendingNonceAt(ctx, fromAddress)
 	if err != nil {
 		return er.Wrap(err, "failed to fetch nonce")
 	}
 
-	gasPrice, err := client.SuggestGasPrice(context.Background())
+	gasPrice, err := client.SuggestGasPrice(ctx)
 	if err != nil {
 		return er.Wrap(err, "failed to fetch gas price")
 	}
@@ -47,7 +51,7 @@ func SendETH(client *ethclient.Client, privateKeyHex string, toAddress string, a
 
 	tx := types.NewTransaction(nonce, common.HexToAddress(toAddress), wei, gasLimit, gasPrice, nil)
 
-	chainID, err := client.NetworkID(context.Background())
+	chainID, err := client.NetworkID(ctx)
 	if err != nil {
 		return er.Wrap(err, "failed to fetch chain ID")
 	}
@@ -56,21 +60,25 @@ func SendETH(client *ethclient.Client, privateKeyHex string, toAddress string, a
 		return er.Wrap(err, "failed to sign transaction")
 	}
 
-	err = client.SendTransaction(context.Background(), signedTx)
+	err = client.SendTransaction(ctx, signedTx)
 	if err != nil {
 		return er.Wrap(err, "failed to send transaction")
 	}
 	framework.L.Info().Msgf("Transaction sent: %s", signedTx.Hash().Hex())
-	_, err = bind.WaitMined(context.Background(), client, signedTx)
+	_, err = bind.WaitMined(ctx, client, signedTx)
 	return err
 }
 
-// FundNodes funds Chainlink nodes with N ETH each
 func FundNodes(c *ethclient.Client, nodes []*clclient.ChainlinkClient, pkey string, ethAmount float64) error {
+	return FundNodesWithContext(context.Background(), c, nodes, pkey, ethAmount)
+}
+
+// FundNodes funds Chainlink nodes with N ETH each
+func FundNodesWithContext(ctx context.Context, c *ethclient.Client, nodes []*clclient.ChainlinkClient, pkey string, ethAmount float64) error {
 	if ethAmount == 0 {
 		return errors.New("funds_eth is 0, set some value in config, ex.: funds_eth = 30.0")
 	}
-	chainID, err := c.ChainID(context.Background())
+	chainID, err := c.ChainID(ctx)
 	if err != nil {
 		return er.Wrap(err, "failed to fetch chain ID")
 	}
@@ -79,7 +87,7 @@ func FundNodes(c *ethclient.Client, nodes []*clclient.ChainlinkClient, pkey stri
 		if err != nil {
 			return err
 		}
-		if err := SendETH(c, pkey, ek.Attributes.Address, big.NewFloat(ethAmount)); err != nil {
+		if err := SendETHWithContext(ctx, c, pkey, ek.Attributes.Address, big.NewFloat(ethAmount)); err != nil {
 			return er.Wrapf(err, "failed to fund CL node %s", ek.Attributes.Address)
 		}
 	}

@@ -1,5 +1,12 @@
 package blockchain
 
+import (
+	"context"
+	"fmt"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
+)
+
 const (
 	DefaultBesuPrivateKey1 = "8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63"
 	DefaultBesuPrivateKey2 = "c87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3"
@@ -24,7 +31,7 @@ func defaultBesu(in *Input) {
 	}
 }
 
-func newBesu(in *Input) (*Output, error) {
+func newBesu(ctx context.Context, in *Input) (*Output, error) {
 	defaultBesu(in)
 	req := baseRequest(in, WithWsEndpoint)
 
@@ -48,5 +55,9 @@ func newBesu(in *Input) (*Output, error) {
 	entryPoint := append(defaultCmd, in.DockerCmdParamsOverrides...)
 	req.Cmd = entryPoint
 
-	return createGenericEvmContainer(in, req, true)
+	if pods.K8sEnabled() {
+		return nil, fmt.Errorf("K8s support is not yet implemented")
+	}
+
+	return createGenericEvmContainer(ctx, in, req, true)
 }

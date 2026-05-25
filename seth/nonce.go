@@ -3,6 +3,7 @@ package seth
 import (
 	"context"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"time"
 
@@ -158,56 +159,110 @@ func (m *NonceManager) anySyncedKey() int {
 			Interface("Address", m.Addresses[keyData.KeyNum]).
 			Msg("Key selected")
 		go func() {
+			addr := m.Addresses[keyData.KeyNum]
+			rpcTimeout := max(
+				// Use retry delay as RPC timeout
+				m.cfg.KeySyncRetryDelay.Duration(), 5*time.Second)
+
+			// Track the last known nonce across retries for recovery
+			var lastKnownNonce uint64
+			hasValidNonce := false
+
 			err := retry.Do(
 				func() error {
 					m.rl.Take()
 					L.Trace().
 						Interface("KeyNum", keyData.KeyNum).
-						Interface("Address", m.Addresses[keyData.KeyNum]).
+						Interface("Address", addr).
 						Msg("Key is syncing")
-					nonce, err := m.Client.Client.NonceAt(context.Background(), m.Addresses[keyData.KeyNum], nil)
-					if err != nil {
-						return fmt.Errorf("failed to get nonce for address %s (key #%d): %w\n"+
+
+					rpcCtx, rpcCancel := context.WithTimeout(context.Background(), rpcTimeout)
+					defer rpcCancel()
+
+					// Check both pending and latest nonce to determine if key is available
+					pendingNonce, pendingErr := m.Client.Client.PendingNonceAt(rpcCtx, addr)
+					if pendingErr != nil {
+						return fmt.Errorf("failed to get pending nonce for address %s (key #%d): %w\n"+
 							"This usually indicates:\n"+
 							"  1. RPC node connection issues\n"+
 							"  2. Network congestion or high latency\n"+
 							"  3. Address doesn't exist on the network\n"+
 							"Consider increasing key_sync_timeout in your config",
-							m.Addresses[keyData.KeyNum].Hex(), keyData.KeyNum, err)
+							m.Addresses[keyData.KeyNum].Hex(), keyData.KeyNum, pendingErr)
 					}
-					if nonce == keyData.Nonce+1 {
+					latestNonce, latestErr := m.Client.Client.NonceAt(rpcCtx, addr, nil)
+					if latestErr != nil {
+						return fmt.Errorf("failed to get latest nonce for address %s (key #%d): %w\n"+
+							"This usually indicates:\n"+
+							"  1. RPC node connection issues\n"+
+							"  2. Network congestion or high latency\n"+
+							"  3. Address doesn't exist on the network\n"+
+							"Consider increasing key_sync_timeout in your config",
+							m.Addresses[keyData.KeyNum].Hex(), keyData.KeyNum, latestErr)
+					}
+
+					// Store for potential recovery use
+					lastKnownNonce = latestNonce
+					hasValidNonce = true
+
+					// Key is synced if there's no pending transaction (pending == latest)
+					// OR if the nonce has incremented from what we expected
+					if pendingNonce == latestNonce || latestNonce >= keyData.Nonce+1 {
 						L.Trace().
 							Interface("KeyNum", keyData.KeyNum).
-							Uint64("Nonce", nonce).
-							Interface("Address", m.Addresses[keyData.KeyNum]).
+							Uint64("LatestNonce", latestNonce).
+							Uint64("PendingNonce", pendingNonce).
+							Interface("Address", addr).
 							Msg("Key synced")
 						m.SyncedKeys <- &KeyNonce{
 							KeyNum: keyData.KeyNum,
-							Nonce:  nonce,
+							Nonce:  latestNonce,
 						}
 						return nil
 					}
 
 					L.Trace().
 						Interface("KeyNum", keyData.KeyNum).
-						Uint64("Nonce", nonce).
-						Int("Expected nonce", mustSafeInt(keyData.Nonce+1)).
-						Interface("Address", m.Addresses[keyData.KeyNum]).
-						Msg("Key NOT synced")
+						Uint64("LatestNonce", latestNonce).
+						Uint64("PendingNonce", pendingNonce).
+						Uint64("ExpectedNonce", keyData.Nonce+1).
+						Interface("Address", addr).
+						Msg("Key NOT synced - has pending transaction")
 
 					return fmt.Errorf("key #%d (address: %s) sync failed. "+
 						"Expected nonce %d, but got %d. "+
 						"This indicates the transaction hasn't been mined yet",
 						keyData.KeyNum, m.Addresses[keyData.KeyNum].Hex(),
-						keyData.Nonce+1, nonce)
+						keyData.Nonce+1, latestNonce)
 				},
 				retry.Attempts(m.cfg.KeySyncRetries),
 				retry.Delay(m.cfg.KeySyncRetryDelay.Duration()),
 			)
 			if err != nil {
-				syncErr := fmt.Errorf("failed to sync key #%d after %d retries: %w",
-					keyData.KeyNum, m.cfg.KeySyncRetries, err)
-				m.Client.Errors = append(m.Client.Errors, syncErr)
+				m.Client.Errors = append(m.Client.Errors, errors.New(ErrKeySync))
+
+				// NEVER leak the key - always return it to the pool
+				var nonceToUse uint64
+				if hasValidNonce {
+					nonceToUse = lastKnownNonce
+					L.Warn().
+						Interface("KeyNum", keyData.KeyNum).
+						Uint64("Nonce", nonceToUse).
+						Interface("Address", addr).
+						Msg("Key sync failed, returning key to pool with last known nonce")
+				} else {
+					// Fall back to the original nonce when key was checked out
+					nonceToUse = keyData.Nonce
+					L.Warn().
+						Interface("KeyNum", keyData.KeyNum).
+						Uint64("Nonce", nonceToUse).
+						Interface("Address", addr).
+						Msg("Key sync failed, returning key to pool with original nonce")
+				}
+				m.SyncedKeys <- &KeyNonce{
+					KeyNum: keyData.KeyNum,
+					Nonce:  nonceToUse,
+				}
 			}
 		}()
 		return keyData.KeyNum

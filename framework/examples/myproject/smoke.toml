@@ -8,11 +8,11 @@
 
 [[nodesets]]
   name = "don"
-  nodes = 5
+  nodes = 4
   override_mode = "all"
 
   [nodesets.db]
-    image = "postgres:12.0"
+    image = "postgres:15"
 
   [[nodesets.node_specs]]
 

@@ -4,8 +4,6 @@ extend-exclude = [
     "**/go-cache",
     "framework/examples/myproject_cll/README.md",
     "framework/components/blockchain/tron.go",
-    "tools/flakeguard/e2e-flaky-test-guide.md",
-    "tools/flakeguard/runner/**",
     "infra/**",
     "book/**",
     "**/go.mod",
@@ -16,5 +14,5 @@ extend-exclude = [
     "wasp/HOW_IT_WORKS.md",
     "wasp/dashboard/**",
     "seth/*_test.go",
-    "seth/dot_graph.go"
+    "seth/dot_graph.go",
 ]

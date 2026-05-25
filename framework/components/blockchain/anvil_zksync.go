@@ -1,6 +1,8 @@
 package blockchain
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -8,6 +10,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 )
 
 var AnvilZKSyncRichAccountPks = []string{
@@ -41,7 +44,7 @@ RUN curl -L https://raw.githubusercontent.com/matter-labs/foundry-zksync/main/in
 // creating a dockerfile in a temporary directory with the necessary commands to install
 // foundry-zksync.
 // see: https://foundry-book.zksync.io/getting-started/installation#using-foundry-with-docker
-func newAnvilZksync(in *Input) (*Output, error) {
+func newAnvilZksync(ctx context.Context, in *Input) (*Output, error) {
 	defaultAnvilZksync(in)
 	req := baseRequest(in, WithoutWsEndpoint)
 
@@ -57,7 +60,7 @@ func newAnvilZksync(in *Input) (*Output, error) {
 
 	dockerfilePath := filepath.Join(tempDir, "anvilZksync.Dockerfile")
 
-	if err := os.WriteFile(dockerfilePath, []byte(dockerFile), 0600); err != nil {
+	if err := os.WriteFile(dockerfilePath, []byte(dockerFile), 0o600); err != nil {
 		return nil, err
 	}
 
@@ -73,11 +76,16 @@ func newAnvilZksync(in *Input) (*Output, error) {
 		"/root/.foundry/bin/anvil-zksync" +
 			" --chain-id " + in.ChainID +
 			" --port " + in.Port +
-			" --offline"}
+			" --offline",
+	}
 
 	framework.L.Info().Any("Cmd", strings.Join(req.Entrypoint, " ")).Msg("Creating anvil zkSync with command")
 
-	output, err := createGenericEvmContainer(in, req, false)
+	if pods.K8sEnabled() {
+		return nil, fmt.Errorf("K8s support is not yet implemented")
+	}
+
+	output, err := createGenericEvmContainer(ctx, in, req, false)
 	if err != nil {
 		return nil, err
 	}

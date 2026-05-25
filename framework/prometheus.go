@@ -27,14 +27,18 @@ func NewPrometheusQueryClient(baseURL string) *PrometheusQueryClient {
 
 // PrometheusQueryResponse represents the response from Prometheus API
 type PrometheusQueryResponse struct {
-	Status string `json:"status"`
-	Data   struct {
-		ResultType string `json:"resultType"`
-		Result     []struct {
-			Metric map[string]string `json:"metric"`
-			Value  []interface{}     `json:"value"`
-		} `json:"result"`
-	} `json:"data"`
+	Status string                 `json:"status"`
+	Data   *PromQueryResponseData `json:"data"`
+}
+
+type PromQueryResponseData struct {
+	ResultType string                    `json:"resultType"`
+	Result     []PromQueryResponseResult `json:"result"`
+}
+
+type PromQueryResponseResult struct {
+	Metric map[string]string `json:"metric"`
+	Value  []interface{}     `json:"value"`
 }
 
 // QueryRangeResponse represents the response from Prometheus range query API
