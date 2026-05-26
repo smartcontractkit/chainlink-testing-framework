@@ -16,10 +16,6 @@ import (
 )
 
 const (
-	ErrReadSethConfig      = "failed to read TOML config for seth"
-	ErrUnmarshalSethConfig = "failed to unmarshal TOML config for seth"
-	ErrEmptyRootPrivateKey = "no root private key were set, set %s=..."
-
 	GETH  = "Geth"
 	ANVIL = "Anvil"
 

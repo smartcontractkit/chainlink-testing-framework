@@ -29,9 +29,6 @@ import (
 const (
 	WrnEmptyFromInCallOpts = "you are running Seth without keys, key %d was not found. In case remote blockchain node is used (msg.sender) will be empty. Private functions which check msg.sender may require the correct key to be used"
 
-	ErrEmptyConfigPath          = "toml config path is empty, set SETH_CONFIG_PATH"
-	ErrContractDeploymentFailed = "contract deployment failed"
-
 	// unused by Seth, but used by upstream
 	ErrNoKeyLoaded = "failed to load private key"
 
@@ -1207,7 +1204,7 @@ func (m *Client) DeployContract(auth *bind.TransactOpts, name string, abi abi.AB
 		}),
 	); err != nil {
 		// pass this specific error, so that Decode knows that it's not the actual revert reason
-		_, _ = m.Decode(tx, errors.New(ErrContractDeploymentFailed))
+		_, _ = m.Decode(tx, errors.New("contract deployment failed"))
 
 		return DeploymentData{}, wrapErrInMessageWithASuggestion(m.rewriteDeploymentError(err))
 	}

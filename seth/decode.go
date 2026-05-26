@@ -170,7 +170,7 @@ func (m *Client) DecodeTx(tx *types.Transaction) (*DecodedTransaction, error) {
 			Msg("No post-decode hook found. Skipping")
 	}
 
-	if decodeErr != nil && errors.Is(decodeErr, errors.New(ErrNoABIMethod)) {
+	if decodeErr != nil && (errors.Is(decodeErr, ErrNoABIMethod) || errors.Is(decodeErr, ErrNoABIFound)) {
 		m.handleTxDecodingError(l, *decoded, decodeErr)
 		return decoded, revertErr
 	}

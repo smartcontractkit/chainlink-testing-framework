@@ -2,6 +2,7 @@ package seth
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -15,11 +16,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-const (
-	ErrOpenABIFile = "failed to open ABI file"
-	ErrParseABI    = "failed to parse ABI file"
-	ErrOpenBINFile = "failed to open BIN file"
-	ErrNoABIInFile = "no ABI content found in file"
+var (
+	ErrNoABIInFile = errors.New("no ABI content found in file")
 )
 
 // ContractStore contains all ABIs that are used in decoding. It might also contain contract bytecode for deployment
@@ -213,7 +211,7 @@ func (c *ContractStore) loadGethWrappers(gethWrappersPaths []string) error {
 			if filepath.Ext(path) == ".go" {
 				contractName, abiContent, err := extractABIFromGethWrapperDir(path)
 				if err != nil {
-					if !strings.Contains(err.Error(), ErrNoABIInFile) {
+					if !errors.Is(err, ErrNoABIInFile) {
 						return err
 					}
 					L.Debug().Msgf("ABI not found in file due to: %s. Skipping", err.Error())
@@ -284,7 +282,7 @@ TOP_LOOP:
 	}
 
 	if abiContent == "" {
-		return "", nil, fmt.Errorf("%s: %s", ErrNoABIInFile, filePath)
+		return "", nil, fmt.Errorf("%w: %s", ErrNoABIInFile, filePath)
 	}
 
 	// this cleans up all escape and similar characters that might interfere with the JSON unmarshalling

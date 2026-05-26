@@ -55,8 +55,9 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 				"  1. Verify ABI file '%s.abi' exists in the configured abi_dir\n"+
 				"  2. Check if save_deployed_contracts_map = true in config\n"+
 				"  3. Re-deploy the contract or manually add ABI with ContractStore.AddABI()\n"+
-				"  4. For external contracts, obtain and add the ABI manually",
-				contractName, address, contractName)
+				"  4. For external contracts, obtain and add the ABI manually\n"+
+				":%w",
+				contractName, address, contractName, ErrNoABIFound)
 			L.Err(err).
 				Str("Contract", contractName).
 				Str("Address", address).
@@ -149,8 +150,9 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 			"  2. Check the method signature is correct (case-sensitive, including parameter types)\n"+
 			"  3. Ensure ABI file exists in the directory specified by 'abi_dir'\n"+
 			"  4. Review contract_map_file for address-to-name mappings\n"+
-			"  5. Use ContractStore.AddABI() to manually add the ABI",
-			stringSignature, address, len(a.ContractStore.ABIs))
+			"  5. Use ContractStore.AddABI() to manually add the ABI\v"+
+			": %w",
+			stringSignature, address, len(a.ContractStore.ABIs), ErrNoABIMethod)
 	}
 
 	return result, nil

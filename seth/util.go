@@ -24,10 +24,6 @@ import (
 	network_sub_debug_contract "github.com/smartcontractkit/chainlink-testing-framework/seth/contracts/bind/NetworkDebugSubContract"
 )
 
-const (
-	ErrInsufficientRootKeyBalance = "insufficient root key balance: %s"
-)
-
 // FundingDetails funding details about shares we put into test keys
 type FundingDetails struct {
 	RootBalance        *big.Int

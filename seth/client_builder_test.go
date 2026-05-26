@@ -266,7 +266,7 @@ func TestConfig_NoPrivateKeys_RpcHealthEnabled(t *testing.T) {
 		Build()
 
 	require.Error(t, err, "succeeded in building the client")
-	require.Contains(t, err.Error(), seth.NoPkForRpcHealthCheckErr, "expected error message")
+	require.ErrorIs(t, err, seth.ErrNoPkForRpcHealthCheck, "expected error is not ErrNoPkForRpcHealthCheck")
 }
 
 func TestConfig_NoPrivateKeys_PendingNonce(t *testing.T) {
@@ -284,7 +284,7 @@ func TestConfig_NoPrivateKeys_PendingNonce(t *testing.T) {
 		Build()
 
 	require.Error(t, err, "succeeded in building the client")
-	require.Contains(t, err.Error(), seth.NoPkForNonceProtection, "expected error message")
+	require.ErrorIs(t, err, seth.ErrNoPkForNonceProtection, "expected error is not ErrNoPkForNonceProtection")
 }
 
 func TestConfig_NoPrivateKeys_EphemeralKeys(t *testing.T) {
@@ -303,7 +303,7 @@ func TestConfig_NoPrivateKeys_EphemeralKeys(t *testing.T) {
 		Build()
 
 	require.Error(t, err, "succeeded in building the client")
-	require.Contains(t, err.Error(), seth.NoPkForEphemeralKeys, "expected error message")
+	require.ErrorIs(t, err, seth.ErrNoPkForEphemeralKeys, "expected error is not ErrNoPkForEphemeralKeys")
 }
 
 func TestConfig_NoPrivateKeys_GasEstimations(t *testing.T) {
@@ -317,7 +317,7 @@ func TestConfig_NoPrivateKeys_GasEstimations(t *testing.T) {
 		Build()
 
 	require.Error(t, err, "succeeded in building the client")
-	require.Contains(t, err.Error(), seth.NoPkForGasPriceEstimation, "expected error message")
+	require.ErrorIs(t, err, seth.ErrNoPkForGasPriceEstimation, "expected error is not ErrNoPkForGasPriceEstimation")
 }
 
 func TestConfig_NoPrivateKeys_TxOpts(t *testing.T) {
@@ -827,7 +827,7 @@ func TestConfig_EthClient_DoesntAllowRpcUrl(t *testing.T) {
 		Build()
 
 	require.Error(t, err, "failed to build client")
-	require.Contains(t, err.Error(), seth.EthClientAndUrlsSet, "expected error message")
+	require.ErrorIs(t, err, seth.ErrEthClientAndUrlsSet, "expected error is not ErrEthClientAndUrlsSet")
 	require.Nil(t, client, "expected client to be nil")
 }
 

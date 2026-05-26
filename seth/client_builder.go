@@ -8,13 +8,14 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient/simulated"
 )
 
-const (
-	NoNetworkErr              = "you need to set the Network"
-	NoPkForRpcHealthCheckErr  = "you need to provide at least one private key to check the RPC health"
-	NoPkForNonceProtection    = "you need to provide at least one private key to enable nonce protection"
-	NoPkForEphemeralKeys      = "you need to provide at least one private key to generate and fund ephemeral addresses"
-	NoPkForGasPriceEstimation = "you need to provide at least one private key to enable gas price estimations"
-	EthClientAndUrlsSet       = "you cannot set both EthClient and RPC URLs"
+var (
+	ErrNoPkForRpcHealthCheck     = errors.New("you need to provide at least one private key to check the RPC health")
+	ErrNoPkForNonceProtection    = errors.New("you need to provide at least one private key to enable nonce protection")
+	ErrNoPkForEphemeralKeys      = errors.New("you need to provide at least one private key to generate and fund ephemeral addresses")
+	ErrNoPkForGasPriceEstimation = errors.New("you need to provide at least one private key to enable gas price estimations")
+	ErrEthClientAndUrlsSet       = errors.New("you cannot set both EthClient and RPC URLs")
+	ErrNetworkNotSet             = errors.New("you need to set the Network")
+	ErrNetworkNotSetButRequired  = errors.New("at least one method that required network to be set was called, but network is nil")
 )
 
 type ClientBuilder struct {
@@ -394,11 +395,8 @@ func (c *ClientBuilder) BuildConfig() (*Config, error) {
 	c.handleReadOnlyMode()
 	c.validateConfig()
 	if len(c.errors) > 0 {
-		var concatenatedErrors string
-		for _, err := range c.errors {
-			concatenatedErrors = fmt.Sprintf("%s\n%s", concatenatedErrors, err.Error())
-		}
-		return nil, fmt.Errorf("errors occurred during building the config:%s", concatenatedErrors)
+		return nil, fmt.Errorf("errors occurred during building the config: %w", errors.Join(c.errors...))
+
 	}
 	return c.config, nil
 }
@@ -422,30 +420,30 @@ func (c *ClientBuilder) handleReadOnlyMode() {
 
 func (c *ClientBuilder) validateConfig() {
 	if c.config.Network == nil {
-		c.errors = append(c.errors, errors.New(NoNetworkErr))
+		c.errors = append(c.errors, ErrNetworkNotSet)
 		return
 	}
 
 	if len(c.config.Network.PrivateKeys) == 0 && c.config.CheckRpcHealthOnStart {
-		c.errors = append(c.errors, errors.New(NoPkForRpcHealthCheckErr))
+		c.errors = append(c.errors, ErrNoPkForRpcHealthCheck)
 	}
 	if len(c.config.Network.PrivateKeys) == 0 && c.config.PendingNonceProtectionEnabled {
-		c.errors = append(c.errors, errors.New(NoPkForNonceProtection))
+		c.errors = append(c.errors, ErrNoPkForNonceProtection)
 	}
 	if len(c.config.Network.PrivateKeys) == 0 && c.config.EphemeralAddrs != nil && *c.config.EphemeralAddrs > 0 {
-		c.errors = append(c.errors, errors.New(NoPkForEphemeralKeys))
+		c.errors = append(c.errors, ErrNoPkForEphemeralKeys)
 	}
 	if len(c.config.Network.PrivateKeys) == 0 && c.config.Network.GasPriceEstimationEnabled {
-		c.errors = append(c.errors, errors.New(NoPkForGasPriceEstimation))
+		c.errors = append(c.errors, ErrNoPkForGasPriceEstimation)
 	}
 	if len(c.config.Network.URLs) > 0 && c.config.ethclient != nil {
-		c.errors = append(c.errors, errors.New(EthClientAndUrlsSet))
+		c.errors = append(c.errors, ErrEthClientAndUrlsSet)
 	}
 }
 
 func (c *ClientBuilder) checkIfNetworkIsSet() bool {
 	if c.config.Network == nil {
-		c.errors = append(c.errors, errors.New("at least one method that required network to be set was called, but network is nil"))
+		c.errors = append(c.errors, ErrNetworkNotSetButRequired)
 		return false
 	}
 	return true

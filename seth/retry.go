@@ -13,12 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-/* these are the common errors of RPCs */
-
-const (
-	RPCConnectionRefusedError = "connection refused"
-)
-
 // RetryTxAndDecode executes transaction several times, retries if connection is lost and decodes all the data
 func (m *Client) RetryTxAndDecode(f func() (*types.Transaction, error)) (*DecodedTransaction, error) {
 	var tx *types.Transaction
@@ -32,7 +26,7 @@ func (m *Client) RetryTxAndDecode(f func() (*types.Transaction, error)) (*Decode
 		}),
 		retry.DelayType(retry.FixedDelay),
 		retry.Attempts(10), retry.Delay(time.Duration(1)*time.Second), retry.RetryIf(func(err error) bool {
-			return strings.Contains(err.Error(), RPCConnectionRefusedError)
+			return strings.Contains(err.Error(), "connection refused")
 		}),
 	)
 

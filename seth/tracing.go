@@ -2,6 +2,7 @@ package seth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -14,12 +15,13 @@ import (
 	"github.com/rs/zerolog"
 )
 
+var (
+	ErrNoABIMethod = errors.New("no ABI method found")
+	ErrNoABIFound  = errors.New("no ABI found in Contract Store")
+)
+
 const (
-	ErrNoABIMethod            = "no ABI method found"
-	ErrNoAbiFound             = "no ABI found in Contract Store"
-	ErrNoFourByteFound        = "no method signatures found in tracing data"
-	ErrInvalidMethodSignature = "no method signature found or it's not 4 bytes long"
-	WrnMissingCallTrace       = "This call was missing from call trace, but it's signature was present in 4bytes trace. Most data is missing; Call order remains unknown"
+	WrnMissingCallTrace = "This call was missing from call trace, but it's signature was present in 4bytes trace. Most data is missing; Call order remains unknown"
 
 	FAILED_TO_DECODE = "failed to decode"
 	UNKNOWN          = "unknown"
@@ -258,7 +260,7 @@ func (t *Tracer) DecodeTrace(l zerolog.Logger, trace Trace) ([]*DecodedCall, err
 
 	// we can still decode the calls without 4byte signatures
 	if len(trace.FourByte) == 0 {
-		L.Debug().Msg(ErrNoFourByteFound)
+		L.Debug().Msg("No method signatures found in tracing data")
 	}
 
 	methods := make([]string, 0, len(trace.CallTrace.Calls)+1)

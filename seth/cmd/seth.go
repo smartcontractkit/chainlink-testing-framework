@@ -18,10 +18,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/seth"
 )
 
-const (
-	ErrNoNetwork = "no network specified, use -n flag. Ex.: 'seth -n Geth stats' or -u and -c flags. Ex.: 'seth -u http://localhost:8545 -c 1337 stats'"
-)
-
 var C *seth.Client
 
 func RunCLI(args []string) error {
@@ -38,7 +34,7 @@ func RunCLI(args []string) error {
 			networkName := cCtx.String("networkName")
 			url := cCtx.String("url")
 			if networkName == "" && url == "" {
-				return errors.New(ErrNoNetwork)
+				return errors.New("no network specified, use -n flag. Ex.: 'seth -n Geth stats' or -u and -c flags. Ex.: 'seth -u http://localhost:8545 -c 1337 stats'")
 			}
 			if networkName != "" {
 				_ = os.Setenv(seth.NETWORK_ENV_VAR, networkName)
@@ -200,16 +196,16 @@ func RunCLI(args []string) error {
 
 					cfgPath := os.Getenv(seth.CONFIG_FILE_ENV_VAR)
 					if cfgPath == "" {
-						return errors.New(seth.ErrEmptyConfigPath)
+						return errors.New("toml config path is empty, set SETH_CONFIG_PATH")
 					}
 					var cfg *seth.Config
 					d, err := os.ReadFile(cfgPath)
 					if err != nil {
-						return fmt.Errorf("%s: %w", seth.ErrReadSethConfig, err)
+						return fmt.Errorf("failed to read TOML config file: %w", err)
 					}
 					err = toml.Unmarshal(d, &cfg)
 					if err != nil {
-						return fmt.Errorf("%s: %w", seth.ErrUnmarshalSethConfig, err)
+						return fmt.Errorf("failed to unmarshal TOML config file: %w", err)
 					}
 					absPath, err := filepath.Abs(cfgPath)
 					if err != nil {
