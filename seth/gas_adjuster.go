@@ -2,11 +2,11 @@ package seth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
 	"slices"
-	"strings"
 	"sync"
 	"time"
 
@@ -35,8 +35,8 @@ const (
 )
 
 var (
-	ZeroGasSuggestedErr = "either base fee or suggested tip is 0"
-	BlockFetchingErr    = "failed to fetch enough block headers for congestion calculation"
+	ErrZeroGasSuggested    = errors.New("either base fee or suggested tip is 0")
+	ErrBlockFetchingFailed = errors.New("failed to fetch enough block headers for congestion calculation")
 )
 
 // CalculateNetworkCongestionMetric calculates a simple congestion metric based on the last N blocks
@@ -139,8 +139,9 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 			"  1. Retry the transaction (temporary RPC issue)\n"+
 			"  2. Use a different RPC endpoint\n"+
 			"  3. Disable gas estimation: set gas_price_estimation_enabled = false\n"+
-			"  4. Reduce gas_price_estimation_blocks to fetch fewer blocks",
-			minBlockCount, len(headers), float64(len(headers))/float64(blocksNumber)*100)
+			"  4. Reduce gas_price_estimation_blocks to fetch fewer blocks\n"+
+			": %w",
+			minBlockCount, len(headers), float64(len(headers))/float64(blocksNumber)*100, ErrBlockFetchingFailed)
 	}
 
 	switch strategy {
@@ -217,12 +218,13 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 	}
 	// defensive programming
 	if baseFee == nil || currentGasTip == nil {
-		err = fmt.Errorf("RPC node returned nil gas price or zero gas tip. " +
-			"This indicates the node's gas estimation is not working properly.\n" +
-			"Solutions:\n" +
-			"  1. Use a different RPC endpoint\n" +
-			"  2. Disable gas estimation: set gas_price_estimation_enabled = false in config\n" +
-			"  3. Set explicit gas values: gas_price, gas_fee_cap, and gas_tip_cap (in your config (seth.toml or ClientBuilder)")
+		err = fmt.Errorf("RPC node returned nil gas price or zero gas tip. "+
+			"This indicates the node's gas estimation is not working properly.\n"+
+			"Solutions:\n"+
+			"  1. Use a different RPC endpoint\n"+
+			"  2. Disable gas estimation: set gas_price_estimation_enabled = false in config\n"+
+			"  3. Set explicit gas values: gas_price, gas_fee_cap, and gas_tip_cap (in your config (seth.toml or ClientBuilder)\n"+
+			": %w", ErrZeroGasSuggested)
 		return
 	}
 
@@ -320,7 +322,7 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 			// Apply buffer also to the tip
 			bufferedTipCapFloat := new(big.Float).Mul(new(big.Float).SetInt(adjustedTipCap), big.NewFloat(bufferAdjustment))
 			adjustedTipCap, _ = bufferedTipCapFloat.Int(nil)
-		} else if !strings.Contains(err.Error(), BlockFetchingErr) {
+		} else if !errors.Is(err, ErrBlockFetchingFailed) {
 			return
 		} else {
 			L.Debug().
@@ -590,7 +592,7 @@ func (m *Client) GetSuggestedLegacyFees(ctx context.Context, priority string) (a
 			// Calculate and apply the buffer.
 			bufferedGasPriceFloat := new(big.Float).Mul(new(big.Float).SetInt(adjustedGasPrice), big.NewFloat(bufferAdjustment))
 			adjustedGasPrice, _ = bufferedGasPriceFloat.Int(nil)
-		} else if !strings.Contains(err.Error(), BlockFetchingErr) {
+		} else if !errors.Is(err, ErrBlockFetchingFailed) {
 			return
 		} else {
 			L.Debug().

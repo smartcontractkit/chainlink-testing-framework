@@ -16,11 +16,7 @@ import (
 /* these are the common errors of RPCs */
 
 const (
-	ErrRPCConnectionRefused = "connection refused"
-)
-
-const (
-	ErrRetryTimeout = "retry timeout"
+	RPCConnectionRefusedError = "connection refused"
 )
 
 // RetryTxAndDecode executes transaction several times, retries if connection is lost and decodes all the data
@@ -36,7 +32,7 @@ func (m *Client) RetryTxAndDecode(f func() (*types.Transaction, error)) (*Decode
 		}),
 		retry.DelayType(retry.FixedDelay),
 		retry.Attempts(10), retry.Delay(time.Duration(1)*time.Second), retry.RetryIf(func(err error) bool {
-			return strings.Contains(err.Error(), ErrRPCConnectionRefused)
+			return strings.Contains(err.Error(), RPCConnectionRefusedError)
 		}),
 	)
 

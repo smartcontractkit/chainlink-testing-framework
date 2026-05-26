@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	ErrNoTrace                = "no trace found"
 	ErrNoABIMethod            = "no ABI method found"
 	ErrNoAbiFound             = "no ABI found in Contract Store"
 	ErrNoFourByteFound        = "no method signatures found in tracing data"

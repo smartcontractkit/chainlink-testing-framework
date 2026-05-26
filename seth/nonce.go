@@ -15,11 +15,14 @@ import (
 	"go.uber.org/ratelimit"
 )
 
+var (
+	ErrKeySync        = errors.New("failed to sync the key")
+	ErrKeySyncTimeout = errors.New("key sync timeout, consider increasing key_sync_timeout in config (seth.toml or ClientBuilder), or increasing the number of keys")
+	ErrNonce          = errors.New("failed to get nonce")
+)
+
 const (
-	ErrKeySyncTimeout = "key sync timeout, consider increasing key_sync_timeout in config (seth.toml or ClientBuilder), or increasing the number of keys"
-	ErrKeySync        = "failed to sync the key"
-	ErrNonce          = "failed to get nonce"
-	TimeoutKeyNum     = -80001
+	TimeoutKeyNum = -80001
 )
 
 // NonceManager tracks nonce for each address
@@ -147,8 +150,9 @@ func (m *NonceManager) anySyncedKey() int {
 			"  1. Increase 'key_sync_timeout' in config (seth.toml or ClientBuilder) - current: %s\n"+
 			"  2. Reduce 'key_sync_rate_limit_per_sec' to allow faster sync attempts\n"+
 			"  3. Add more keys with 'ephemeral_addresses_number'\n"+
-			"  4. Check RPC node performance and connectivity",
-			m.cfg.KeySyncTimeout.Duration(), m.cfg.KeySyncTimeout.Duration())
+			"  4. Check RPC node performance and connectivity\n"+
+			": %w",
+			m.cfg.KeySyncTimeout.Duration(), m.cfg.KeySyncTimeout.Duration(), ErrKeySyncTimeout)
 		L.Error().Msg(timeoutErr.Error())
 		m.Client.Errors = append(m.Client.Errors, timeoutErr)
 		return TimeoutKeyNum //so that it's pretty unique number of invalid key
@@ -187,8 +191,9 @@ func (m *NonceManager) anySyncedKey() int {
 							"  1. RPC node connection issues\n"+
 							"  2. Network congestion or high latency\n"+
 							"  3. Address doesn't exist on the network\n"+
-							"Consider increasing key_sync_timeout in your config",
-							m.Addresses[keyData.KeyNum].Hex(), keyData.KeyNum, pendingErr)
+							"Consider increasing key_sync_timeout in your config\n"+
+							": %w",
+							m.Addresses[keyData.KeyNum].Hex(), keyData.KeyNum, pendingErr, ErrNonce)
 					}
 					latestNonce, latestErr := m.Client.Client.NonceAt(rpcCtx, addr, nil)
 					if latestErr != nil {
@@ -197,8 +202,9 @@ func (m *NonceManager) anySyncedKey() int {
 							"  1. RPC node connection issues\n"+
 							"  2. Network congestion or high latency\n"+
 							"  3. Address doesn't exist on the network\n"+
-							"Consider increasing key_sync_timeout in your config",
-							m.Addresses[keyData.KeyNum].Hex(), keyData.KeyNum, latestErr)
+							"Consider increasing key_sync_timeout in your config\n"+
+							": %w",
+							m.Addresses[keyData.KeyNum].Hex(), keyData.KeyNum, latestErr, ErrNonce)
 					}
 
 					// Store for potential recovery use
@@ -231,15 +237,16 @@ func (m *NonceManager) anySyncedKey() int {
 
 					return fmt.Errorf("key #%d (address: %s) sync failed. "+
 						"Expected nonce %d, but got %d. "+
-						"This indicates the transaction hasn't been mined yet",
+						"This indicates the transaction hasn't been mined yet\n"+
+						": %w",
 						keyData.KeyNum, m.Addresses[keyData.KeyNum].Hex(),
-						keyData.Nonce+1, latestNonce)
+						keyData.Nonce+1, latestNonce, ErrKeySync)
 				},
 				retry.Attempts(m.cfg.KeySyncRetries),
 				retry.Delay(m.cfg.KeySyncRetryDelay.Duration()),
 			)
 			if err != nil {
-				m.Client.Errors = append(m.Client.Errors, errors.New(ErrKeySync))
+				m.Client.Errors = append(m.Client.Errors, ErrKeySync)
 
 				// NEVER leak the key - always return it to the pool
 				var nonceToUse uint64
