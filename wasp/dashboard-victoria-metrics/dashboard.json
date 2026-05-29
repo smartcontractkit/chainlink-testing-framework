@@ -71,8 +71,8 @@
         {
           "refId": "A",
           "queryType": "stats",
-          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:responses | stats by (go_test_name, gen_name) count() value",
-          "legendFormat": "{{go_test_name}} {{gen_name}} Responses"
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND call_group:~\"${call_group:pipe}\" AND test_data_type:responses | stats by (go_test_name, gen_name, call_group) count() value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} {{call_group}} Responses"
         }
       ]
     },
@@ -179,19 +179,19 @@
         {
           "refId": "Q99",
           "queryType": "statsRange",
-          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:responses | unpack_json | stats by (go_test_name, gen_name) quantile(0.99, duration) value",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND call_group:~\"${call_group:pipe}\" AND test_data_type:responses | unpack_json | stats by (go_test_name, gen_name, call_group) quantile(0.99, duration) value",
           "legendFormat": "{{go_test_name}} {{gen_name}} Q99"
         },
         {
           "refId": "Q95",
           "queryType": "statsRange",
-          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:responses | unpack_json | stats by (go_test_name, gen_name) quantile(0.95, duration) value",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND call_group:~\"${call_group:pipe}\" AND test_data_type:responses | unpack_json | stats by (go_test_name, gen_name, call_group) quantile(0.95, duration) value",
           "legendFormat": "{{go_test_name}} {{gen_name}} Q95"
         },
         {
           "refId": "Q50",
           "queryType": "statsRange",
-          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:responses | unpack_json | stats by (go_test_name, gen_name) quantile(0.5, duration) value",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND call_group:~\"${call_group:pipe}\" AND test_data_type:responses | unpack_json | stats by (go_test_name, gen_name, call_group) quantile(0.5, duration) value",
           "legendFormat": "{{go_test_name}} {{gen_name}} Q50"
         }
       ]
@@ -201,7 +201,7 @@
       "type": "timeseries",
       "title": "Response latencies by call_group (latest per interval)",
       "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
-      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 13},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 13},
       "fieldConfig": {"defaults": {"unit": "ns"}},
       "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
       "targets": [
@@ -210,6 +210,29 @@
           "queryType": "statsRange",
           "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND call_group:~\"${call_group:pipe}\" AND test_data_type:responses | unpack_json | stats by (go_test_name, gen_name, call_group) max(duration) value",
           "legendFormat": "{{go_test_name}} {{gen_name}} {{call_group}}"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Responses/sec (Generator, CallGroup)",
+      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 13},
+      "fieldConfig": {"defaults": {"unit": "short"}},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "statsRange",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND call_group:~\"${call_group:pipe}\" AND test_data_type:responses | stats by (go_test_name, gen_name, call_group) count() value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} {{call_group}} responses/sec"
+        },
+        {
+          "refId": "B",
+          "queryType": "statsRange",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:responses | stats by (go_test_name, gen_name) count() value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Total responses/sec"
         }
       ]
     },
