@@ -91,7 +91,7 @@
         {
           "refId": "A",
           "queryType": "stats",
-          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:stats | unpack_json | stats by (go_test_name, gen_name) max(success) value",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND call_group:~\"${call_group:pipe}\" AND test_data_type:responses AND NOT _msg:\"\\\"failed\\\":true\" | stats by (go_test_name, gen_name) count() value",
           "legendFormat": "{{go_test_name}} {{gen_name}} Successful requests"
         }
       ]
@@ -115,7 +115,7 @@
         {
           "refId": "A",
           "queryType": "stats",
-          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:stats | unpack_json | stats by (go_test_name, gen_name) max(failed) value",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND call_group:~\"${call_group:pipe}\" AND test_data_type:responses AND _msg:\"\\\"failed\\\":true\" | stats by (go_test_name, gen_name) count() value",
           "legendFormat": "{{go_test_name}} {{gen_name}} Errored requests"
         }
       ]
@@ -139,7 +139,7 @@
         {
           "refId": "A",
           "queryType": "stats",
-          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:stats | unpack_json | stats by (go_test_name, gen_name) max(callTimeout) value",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND call_group:~\"${call_group:pipe}\" AND test_data_type:responses AND _msg:\"\\\"timeout\\\":true\" | stats by (go_test_name, gen_name) count() value",
           "legendFormat": "{{go_test_name}} {{gen_name}} Timed out requests"
         }
       ]
