@@ -850,9 +850,10 @@ func (g *Generator) handleLokiResponsePayload(r *Response) {
 	// we are removing time.Time{} because when it marshalled to string it creates N responses for some Loki queries
 	// and to minimize the payload, duration is already calculated at that point
 	ts := r.FinishedAt
-	r.StartedAt = nil
-	r.FinishedAt = nil
-	err := g.loki.HandleStruct(labels, *ts, r)
+	payload := *r
+	payload.StartedAt = nil
+	payload.FinishedAt = nil
+	err := g.loki.HandleStruct(labels, *ts, payload)
 	if err != nil {
 		g.Log.Err(err).Send()
 		g.Stop()
