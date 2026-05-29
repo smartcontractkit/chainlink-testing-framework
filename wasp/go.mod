@@ -21,7 +21,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.19.0
 )
 
-require github.com/klauspost/compress v1.18.5 // indirect
+require github.com/klauspost/compress v1.18.6 // indirect
 
 require (
 	github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b // indirect
@@ -87,7 +87,7 @@ require (
 	github.com/grafana/dskit v0.0.0-20241007172036-53283a0f6b41
 	// post v3.4.2 version compatible with prometheus
 	github.com/grafana/loki/v3 v3.0.0-20250221202516-b37eefe24f82
-	github.com/grafana/pyroscope-go v1.1.2
+	github.com/grafana/pyroscope-go v1.3.1
 	github.com/montanaflynn/stats v0.7.1
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/smartcontractkit/chainlink-testing-framework/lib v1.50.20-0.20250106135623-15722ca32b64
@@ -192,7 +192,7 @@ require (
 	github.com/grafana/gomemcache v0.0.0-20240229205252-cd6a66d6fb56 // indirect
 	github.com/grafana/jsonparser v0.0.0-20241004153430-023329977675 // indirect
 	github.com/grafana/loki/pkg/push v0.0.0-20240924133635-758364c7775f // indirect
-	github.com/grafana/pyroscope-go/godeltaprof v0.1.8 // indirect
+	github.com/grafana/pyroscope-go/godeltaprof v0.1.11 // indirect
 	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
 	github.com/hashicorp/consul/api v1.31.2 // indirect
