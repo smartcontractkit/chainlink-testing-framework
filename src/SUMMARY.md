@@ -94,7 +94,6 @@
       - [Adding new storage]()
     - [How to](./libs/wasp/how-to/overview.md)
       - [Start local observability stack](./libs/wasp/how-to/start_local_observability_stack.md)
-      - [Try it out quickly](./libs/wasp/how-to/run_included_tests.md)
       - [Chose between RPS and VUs](./libs/wasp/how-to/chose_rps_vu.md)
       - [Configure requests per minute or hour](./libs/wasp/how-to/rps_per_minute.md)
       - [Define NFRs and check alerts](./libs/wasp/how-to/define_nfr_check_alerts.md)
