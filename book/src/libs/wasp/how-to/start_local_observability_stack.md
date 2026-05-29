@@ -8,7 +8,7 @@ We have 2 versions of popular stacks: LGTM (Grafana, Loki, Prometheus) and Victo
 ## LGTM
 
 ```bash
-just lgtm-up
+just lgtm-up # from "wasp" directory
 cd examples/profiles && WASP_LOG_SEND_METHOD=loki go test -v -run TestNodeMixed && cd -
 just lgtm-down
 ```
@@ -20,7 +20,7 @@ Don't forget to remove the stack when you are done!
 ## VictoriaMetrics + OTEL
 
 ```bash
-just victoria-up
+just victoria-up # from "wasp" directory
 cd examples/profiles && WASP_LOG_SEND_METHOD=otel go test -v -run TestNodeMixed && cd -
 just victoria-down
 ```
