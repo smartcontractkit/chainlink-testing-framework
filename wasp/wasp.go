@@ -2,7 +2,6 @@ package wasp
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"os"
 	"sync"
@@ -745,72 +744,56 @@ func (g *Generator) Stats() *Stats {
 	return g.stats
 }
 
-/* Log backend dispatch (Loki / OTEL) — selected at runtime via LOG_SEND_METHOD */
+/* Log backend dispatch (Loki / OTEL) */
 
-// hasLogBackend reports whether any log backend has been configured on this Generator.
-func (g *Generator) hasLogBackend() bool {
-	return g.Cfg.LokiConfig != nil || g.Cfg.OTELConfig != nil
-}
-
-// logSendMethod returns the configured log backend. Defaults to OTEL when
-// LOG_SEND_METHOD is unset. Returns an error for any value that is not "otel" or "loki".
-func (g *Generator) logSendMethod() (string, error) {
+// logSendMethod returns the log backend selected via the LOG_SEND_METHOD env var.
+// Defaults to "otel" when unset. Unknown values are logged as a warning and treated as the default.
+// Used inside NewEnvLokiConfig / NewEnvOTELConfig to early-return nil when the corresponding
+// backend isn't selected.
+func logSendMethod() string {
 	m := os.Getenv(LogSendMethodEnvVar)
 	switch m {
 	case "":
-		return LogSendMethodOTEL, nil // default
-	case LogSendMethodOTEL:
-		return LogSendMethodOTEL, nil
-	case LogSendMethodLoki:
-		return LogSendMethodLoki, nil
+		return LogSendMethodOTEL
+	case LogSendMethodOTEL, LogSendMethodLoki:
+		return m
 	default:
-		return "", fmt.Errorf("unsupported %s value %q: expected %q or %q", LogSendMethodEnvVar, m, LogSendMethodOTEL, LogSendMethodLoki)
+		log.Warn().
+			Str("value", m).
+			Str("expected", LogSendMethodOTEL+"|"+LogSendMethodLoki).
+			Msgf("unknown %s, defaulting to %q", LogSendMethodEnvVar, LogSendMethodOTEL)
+		return LogSendMethodOTEL
 	}
 }
 
-// handleResponsePayload dispatches a Response to the configured log backend.
+// hasLogBackend reports whether any log backend has been configured on this Generator.
+func (g *Generator) hasLogBackend() bool {
+	return g.loki != nil || g.otel != nil
+}
+
+// handleResponsePayload dispatches a Response to whichever log backend was constructed.
 func (g *Generator) handleResponsePayload(r *Response) {
-	method, err := g.logSendMethod()
-	if err != nil {
-		g.Log.Err(err).Send()
-		g.Stop()
-		return
-	}
-	switch method {
-	case LogSendMethodOTEL:
-		if g.otel != nil {
-			g.handleOTELResponsePayload(r)
-		}
-	case LogSendMethodLoki:
-		if g.loki != nil {
-			g.handleLokiResponsePayload(r)
-		}
+	switch {
+	case g.otel != nil:
+		g.handleOTELResponsePayload(r)
+	case g.loki != nil:
+		g.handleLokiResponsePayload(r)
 	}
 }
 
-// handleStatsPayload dispatches a stats sample to the configured log backend.
+// handleStatsPayload dispatches a stats sample to whichever log backend was constructed.
 func (g *Generator) handleStatsPayload() {
-	method, err := g.logSendMethod()
-	if err != nil {
-		g.Log.Err(err).Send()
-		g.Stop()
-		return
-	}
-	switch method {
-	case LogSendMethodOTEL:
-		if g.otel != nil {
-			g.handleOTELStatsPayload()
-		}
-	case LogSendMethodLoki:
-		if g.loki != nil {
-			g.handleLokiStatsPayload()
-		}
+	switch {
+	case g.otel != nil:
+		g.handleOTELStatsPayload()
+	case g.loki != nil:
+		g.handleLokiStatsPayload()
 	}
 }
 
 // stopLogStream gracefully terminates whichever log backend is configured.
 func (g *Generator) stopLogStream() {
-	if g.loki != nil && g.Cfg.LokiConfig != nil && g.Cfg.LokiConfig.URL != "" {
+	if g.loki != nil {
 		g.Log.Info().Msg("Stopping Loki")
 		g.loki.StopNow()
 		g.Log.Info().Msg("Loki exited")
@@ -824,14 +807,7 @@ func (g *Generator) stopLogStream() {
 
 // sendResponsesToLogBackend streams response data to the configured log backend.
 func (g *Generator) sendResponsesToLogBackend() {
-	method, err := g.logSendMethod()
-	if err != nil {
-		g.Log.Err(err).Send()
-		g.Stop()
-		return
-	}
 	g.Log.Info().
-		Str("Method", method).
 		Interface("DefaultLabels", g.Cfg.Labels).
 		Msg("Streaming responses to log backend")
 	g.dataWaitGroup.Add(1)

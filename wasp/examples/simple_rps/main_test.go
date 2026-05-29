@@ -29,6 +29,7 @@ func TestGun(t *testing.T) {
 		Schedule:   wasp.Plain(5, 60*time.Second),
 		Gun:        NewExampleHTTPGun(srv.URL()),
 		Labels:     labels,
+		LokiConfig: wasp.NewEnvLokiConfig(),
 		OTELConfig: wasp.NewEnvOTELConfig(),
 	})
 	if err != nil {

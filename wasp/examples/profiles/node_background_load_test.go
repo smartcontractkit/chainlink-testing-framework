@@ -32,6 +32,7 @@ func TestBackgroundLoadSimple(t *testing.T) {
 			Schedule:   zetaSchedule,
 			Gun:        NewExampleHTTPGun(srv.URL()),
 			Labels:     labels,
+			LokiConfig: wasp.NewEnvLokiConfig(),
 			OTELConfig: wasp.NewEnvOTELConfig(),
 		}))
 
@@ -59,6 +60,7 @@ func TestBackgroundLoadSimple(t *testing.T) {
 			Schedule:   etaSchedule,
 			VU:         NewExampleScenario(srv.URL()),
 			Labels:     labels,
+			LokiConfig: wasp.NewEnvLokiConfig(),
 			OTELConfig: wasp.NewEnvOTELConfig(),
 		})).
 		Add(wasp.NewGenerator(&wasp.Config{
@@ -68,6 +70,7 @@ func TestBackgroundLoadSimple(t *testing.T) {
 			Schedule:   iotaSchedule,
 			VU:         NewExampleScenario(srv.URL()),
 			Labels:     labels,
+			LokiConfig: wasp.NewEnvLokiConfig(),
 			OTELConfig: wasp.NewEnvOTELConfig(),
 		})).
 		Run(true)
@@ -108,6 +111,7 @@ func TestBackgroundLoadGoRoutines(t *testing.T) {
 			Schedule:   zetaSchedule,
 			Gun:        NewExampleHTTPGun(srv.URL()),
 			Labels:     labels,
+			LokiConfig: wasp.NewEnvLokiConfig(),
 			OTELConfig: wasp.NewEnvOTELConfig(),
 		}))
 
@@ -137,6 +141,7 @@ func TestBackgroundLoadGoRoutines(t *testing.T) {
 			Schedule:   etaSchedule,
 			VU:         NewExampleScenario(srv.URL()),
 			Labels:     labels,
+			LokiConfig: wasp.NewEnvLokiConfig(),
 			OTELConfig: wasp.NewEnvOTELConfig(),
 		})).
 		Add(wasp.NewGenerator(&wasp.Config{
@@ -146,6 +151,7 @@ func TestBackgroundLoadGoRoutines(t *testing.T) {
 			Schedule:   iotaSchedule,
 			VU:         NewExampleScenario(srv.URL()),
 			Labels:     labels,
+			LokiConfig: wasp.NewEnvLokiConfig(),
 			OTELConfig: wasp.NewEnvOTELConfig(),
 		})).
 		Run(true)
@@ -192,6 +198,7 @@ func TestParallelLoad(t *testing.T) {
 		GenName:    "Kappa",
 		Labels:     labels,
 		Gun:        NewExampleHTTPGun(srv.URL()),
+		LokiConfig: wasp.NewEnvLokiConfig(),
 		OTELConfig: wasp.NewEnvOTELConfig(),
 	})
 
@@ -203,6 +210,7 @@ func TestParallelLoad(t *testing.T) {
 		GenName:    "Lambda",
 		Labels:     labels,
 		VU:         NewExampleScenario(srv.URL()),
+		LokiConfig: wasp.NewEnvLokiConfig(),
 		OTELConfig: wasp.NewEnvOTELConfig(),
 	})
 	require.NoError(t, err)
@@ -214,6 +222,7 @@ func TestParallelLoad(t *testing.T) {
 		Labels:   labels,
 		// here both VUs use the same VirtualUser implementation to keep it simple, but in a real-world use case they would different ones
 		VU:         NewExampleScenario(srv.URL()),
+		LokiConfig: wasp.NewEnvLokiConfig(),
 		OTELConfig: wasp.NewEnvOTELConfig(),
 	})
 	require.NoError(t, err)

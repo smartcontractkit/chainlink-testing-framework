@@ -18,7 +18,7 @@ func lokiLogTupleMsg() []interface{} {
 }
 
 func TestSmokeLokiFailIfURLIsNotResolving(t *testing.T) {
-	cfg := NewEnvLokiConfig()
+	cfg := DefaultLokiConfig()
 	cfg.URL = "http://nothing:3000"
 	_, err := NewLokiClient(cfg)
 	require.Error(t, err)
@@ -49,7 +49,7 @@ func TestLokiErrors(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			cfg := NewEnvLokiConfig()
+			cfg := DefaultLokiConfig()
 			cfg.MaxErrors = tc.maxErrors
 			lc, err := NewLokiClient(cfg)
 			require.NoError(t, err)

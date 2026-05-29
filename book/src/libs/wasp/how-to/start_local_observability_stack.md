@@ -1,18 +1,19 @@
 # WASP - How to Start Local Observability Stack
 
-To execute all examples or tests locally, you need to configure a local observability stack. We have 2 versions of popular stacks: LGTM (Grafana, Loki, Prometheus) and VictoriaMetrics + OTEL (Grafana, VictoriaMetrics, VictoriaLogs, OTEL).
+To execute all examples or tests locally, you need to configure a local observability stack.
 
+We have 2 versions of popular stacks: LGTM (Grafana, Loki, Prometheus) and VictoriaMetrics + OTEL (Grafana, VictoriaMetrics, VictoriaLogs, OTEL).
 
----
 
 ## LGTM
 
 ```bash
 just lgtm-up
+cd examples/profiles && WASP_LOG_SEND_METHOD=loki go test -v -run TestNodeMixed && cd -
 just lgtm-down
 ```
 
-* [Dashboard](http://localhost:3000/d/wasp-victorialogs/wasp-victorialogs?orgId=1&from=now-5m&to=now&timezone=browser&var-go_test_name=$__all&var-gen_name=$__all&var-call_group=$__all&var-branch=$__all&var-commit=$__all&refresh=5s)
+* [Dashboard](http://localhost:3000/d/wasp-loki/wasp-loki?orgId=1&from=now-5m&to=now&timezone=browser&var-go_test_name=$__all&var-gen_name=$__all&var-branch=$__all&var-commit=$__all&var-call_group=$__all&refresh=5s)
 
 Don't forget to remove the stack when you are done!
 
@@ -20,6 +21,7 @@ Don't forget to remove the stack when you are done!
 
 ```bash
 just victoria-up
+cd examples/profiles && WASP_LOG_SEND_METHOD=otel go test -v -run TestNodeMixed && cd -
 just victoria-down
 ```
 

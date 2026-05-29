@@ -27,6 +27,7 @@ func TestGrafanaOptsVU(t *testing.T) {
 			Schedule:   wasp.Steps(1, 1, 10, 30*time.Second),
 			VU:         NewExampleScenario(srv.URL()),
 			Labels:     labels,
+			LokiConfig: wasp.NewEnvLokiConfig(),
 			OTELConfig: wasp.NewEnvOTELConfig(),
 		})).
 		Add(wasp.NewGenerator(&wasp.Config{
@@ -36,6 +37,7 @@ func TestGrafanaOptsVU(t *testing.T) {
 			Schedule:   wasp.Steps(1, 2, 10, 30*time.Second),
 			VU:         NewExampleScenario(srv.URL()),
 			Labels:     labels,
+			LokiConfig: wasp.NewEnvLokiConfig(),
 			OTELConfig: wasp.NewEnvOTELConfig(),
 		})).
 		WithGrafana(&wasp.GrafanaOpts{

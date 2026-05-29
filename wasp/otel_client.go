@@ -49,9 +49,13 @@ func DefaultOTELConfig() *OTELConfig {
 }
 
 // NewEnvOTELConfig creates an OTELConfig populated from environment variables.
-// Recognized: OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_INSECURE,
-// OTEL_SERVICE_NAME.
+// Recognized: OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_INSECURE, OTEL_SERVICE_NAME.
+// Returns nil unless LOG_SEND_METHOD is unset or "otel" — this lets callers set both
+// LokiConfig and OTELConfig on wasp.Config and have only the selected backend become non-nil.
 func NewEnvOTELConfig() *OTELConfig {
+	if logSendMethod() != LogSendMethodOTEL {
+		return nil
+	}
 	d := DefaultOTELConfig()
 	if v := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"); v != "" {
 		d.Endpoint = v
