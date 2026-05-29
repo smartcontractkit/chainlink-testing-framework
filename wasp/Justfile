@@ -1,0 +1,18 @@
+_default:
+    @just --list
+
+# Start LGTM stack (Loki + Grafana) in compose/
+lgtm-up:
+    cd {{justfile_directory()}}/compose && docker compose down -v && docker compose up -d
+
+# Stop LGTM stack and wipe volumes
+lgtm-down:
+    cd {{justfile_directory()}}/compose && docker compose down -v
+
+# Start VictoriaMetrics + VictoriaLogs + OTEL stack in compose-victoria-metrics/
+victoria-up:
+    cd {{justfile_directory()}}/compose-victoria-metrics && docker compose down -v && docker compose up -d
+
+# Stop VictoriaMetrics stack and wipe volumes
+victoria-down:
+    cd {{justfile_directory()}}/compose-victoria-metrics && docker compose down -v

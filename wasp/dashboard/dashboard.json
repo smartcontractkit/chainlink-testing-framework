@@ -1,0 +1,428 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+      "id": 100,
+      "title": "WASP Load Stats",
+      "type": "row",
+      "panels": []
+    },
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "RPS (Now)",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "expr": "sum(last_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n| json\n| unwrap current_rps [10s]) by (node_id, go_test_name, gen_name)) by (__stream_shard__)",
+          "legendFormat": "{{go_test_name}} {{gen_name}} RPS"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "VUs (Now)",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "horizontal",
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "expr": "max_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n| json\n| unwrap current_instances [$__range]) by (node_id, go_test_name, gen_name)",
+          "legendFormat": "{{go_test_name}} {{gen_name}} VUs"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Responses/sec (Now)",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "horizontal",
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "expr": "sum(count_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\"} [1s])) by (node_id, go_test_name, gen_name)",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Responses/sec"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Successful requests (Total)",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "horizontal",
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "expr": "sum(count_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\", call_group=~\"${call_group:pipe}\"} !~ \"failed\\\":true\" [$__range])) by (node_id, go_test_name, gen_name)",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Successful requests"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Errored requests (Total)",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "expr": "sum by (node_id, go_test_name, gen_name) (count_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\", call_group=~\"${call_group:pipe}\"} |~ \"failed\\\":true\" [$__range])) or sum by (node_id, go_test_name, gen_name) (count_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\", call_group=~\"${call_group:pipe}\"}[$__range])) * 0",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Errored requests"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Timed out requests (Total)",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 4, "w": 4, "x": 20, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "expr": "sum by (node_id, go_test_name, gen_name) (count_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\", call_group=~\"${call_group:pipe}\"} |~ \"timeout\\\":true\" [$__range])) or sum by (node_id, go_test_name, gen_name) (count_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\", call_group=~\"${call_group:pipe}\"}[$__range])) * 0",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Timed out requests"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "RPS/VUs per schedule segments",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 5},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "expr": "max_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n| json\n| unwrap current_rps [$__interval]) by (node_id, go_test_name, gen_name)",
+          "legendFormat": "{{go_test_name}} {{gen_name}} RPS"
+        },
+        {
+          "refId": "B",
+          "queryType": "range",
+          "expr": "sum(last_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n| json\n| unwrap current_rps [$__interval]) by (node_id, go_test_name, gen_name))",
+          "legendFormat": "{{go_test_name}} Total RPS"
+        },
+        {
+          "refId": "C",
+          "queryType": "range",
+          "expr": "max_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n| json\n| unwrap current_instances [$__interval]) by (node_id, go_test_name, gen_name)",
+          "legendFormat": "{{go_test_name}} {{gen_name}} VUs"
+        },
+        {
+          "refId": "D",
+          "queryType": "range",
+          "expr": "sum(last_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n| json\n| unwrap current_instances [$__interval]) by (node_id, go_test_name, gen_name))",
+          "legendFormat": "{{go_test_name}} Total VUs"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Responses/sec (Generator, CallGroup)",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 5},
+      "fieldConfig": {"defaults": {"unit": "short"}},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "expr": "sum(count_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\", call_group=~\"${call_group:pipe}\"} [1s])) by (node_id, go_test_name, gen_name, call_group)",
+          "legendFormat": "{{go_test_name}} {{gen_name}} {{call_group}} responses/sec"
+        },
+        {
+          "refId": "B",
+          "queryType": "range",
+          "expr": "sum(count_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\"} [1s])) by (node_id, go_test_name, gen_name)",
+          "legendFormat": "{{go_test_name}} Total responses/sec"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Latency quantiles over groups (99, 95, 50)",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 13},
+      "fieldConfig": {"defaults": {"unit": "ms"}},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {
+          "refId": "Q99",
+          "queryType": "range",
+          "expr": "quantile_over_time(0.99, {branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\"}\n| json\n| unwrap duration [$__interval]) by (go_test_name, gen_name) / 1e6",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Q 99 - {{error}}"
+        },
+        {
+          "refId": "Q95",
+          "queryType": "range",
+          "expr": "quantile_over_time(0.95, {branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\"}\n| json\n| unwrap duration [$__interval]) by (go_test_name, gen_name) / 1e6",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Q 95 - {{error}}"
+        },
+        {
+          "refId": "Q50",
+          "queryType": "range",
+          "expr": "quantile_over_time(0.50, {branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\"}\n| json\n| unwrap duration [$__interval]) by (go_test_name, gen_name) / 1e6",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Q 50 - {{error}}"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Responses latencies by types over time (Generator, CallGroup)",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 13},
+      "fieldConfig": {"defaults": {"unit": "ms"}},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "expr": "last_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\", call_group=~\"${call_group}\"}\n| json\n| unwrap duration [$__interval]) / 1e6",
+          "legendFormat": "{{go_test_name}} {{gen_name}} {{call_group}} T: {{timeout}} E: {{error}}"
+        },
+        {
+          "refId": "B",
+          "queryType": "range",
+          "expr": "last_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\"}\n| json\n| unwrap duration [$__interval]) / 1e6",
+          "legendFormat": "{{go_test_name}} {{gen_name}} all groups T: {{timeout}} E: {{error}}"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 21},
+      "id": 200,
+      "title": "WASP Debug",
+      "type": "row",
+      "panels": []
+    },
+    {
+      "id": 20,
+      "type": "stat",
+      "title": "Latest segment stats",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 6, "w": 24, "x": 0, "y": 22},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "graphMode": "area",
+        "textMode": "value_and_name",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "expr": "sum(bytes_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", gen_name=~\"${gen_name:pipe}\"} [$__range]) * 1e-6)",
+          "legendFormat": "Overall logs size"
+        },
+        {
+          "refId": "B",
+          "queryType": "range",
+          "expr": "sum(bytes_rate({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", gen_name=~\"${gen_name:pipe}\"} [$__interval]) * 1e-6)",
+          "legendFormat": "Logs size per second"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "CallResult sampling (successful results)",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 28},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {
+          "refId": "REC",
+          "queryType": "range",
+          "expr": "sum(last_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n| json\n| unwrap samples_recorded [$__interval])) by (go_test_name, gen_name)",
+          "legendFormat": "{{go_test_name}} {{gen_name}} recorded"
+        },
+        {
+          "refId": "SKIP",
+          "queryType": "range",
+          "expr": "sum(last_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n| json\n| unwrap samples_skipped [$__interval])) by (go_test_name, gen_name)",
+          "legendFormat": "{{go_test_name}} {{gen_name}} skipped"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "type": "logs",
+      "title": "Stats logs",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 36},
+      "options": {"showTime": true, "wrapLogMessage": true, "sortOrder": "Descending"},
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "expr": "{branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "type": "logs",
+      "title": "Failed responses",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 44},
+      "options": {"showTime": true, "wrapLogMessage": true, "sortOrder": "Descending"},
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "expr": "{branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\"} |~ \"failed\\\":true\""
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "type": "logs",
+      "title": "Timed out responses",
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 44},
+      "options": {"showTime": true, "wrapLogMessage": true, "sortOrder": "Descending"},
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "expr": "{branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\"} |~ \"timeout\\\":true\""
+        }
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": ["generated", "load-test", "wasp", "loki"],
+  "templating": {
+    "list": [
+      {
+        "name": "go_test_name",
+        "label": "Go test name",
+        "type": "query",
+        "datasource": {"type": "loki", "uid": "loki"},
+        "query": {"label": "go_test_name", "type": 1, "refId": "LokiVariableQueryEditor-VariableQuery"},
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "sort": 3
+      },
+      {
+        "name": "gen_name",
+        "label": "Generator name",
+        "type": "query",
+        "datasource": {"type": "loki", "uid": "loki"},
+        "query": {"label": "gen_name", "type": 1, "refId": "LokiVariableQueryEditor-VariableQuery"},
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "sort": 3
+      },
+      {
+        "name": "branch",
+        "label": "Branch",
+        "type": "query",
+        "datasource": {"type": "loki", "uid": "loki"},
+        "query": {"label": "branch", "type": 1, "refId": "LokiVariableQueryEditor-VariableQuery"},
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "sort": 3
+      },
+      {
+        "name": "commit",
+        "label": "Commit",
+        "type": "query",
+        "datasource": {"type": "loki", "uid": "loki"},
+        "query": {"label": "commit", "type": 1, "refId": "LokiVariableQueryEditor-VariableQuery"},
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "sort": 3
+      },
+      {
+        "name": "call_group",
+        "label": "Call group",
+        "type": "query",
+        "datasource": {"type": "loki", "uid": "loki"},
+        "query": {"label": "call_group", "type": 1, "refId": "LokiVariableQueryEditor-VariableQuery"},
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "sort": 3
+      }
+    ]
+  },
+  "time": {"from": "now-30m", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "WASP (Loki)",
+  "uid": "wasp-loki",
+  "version": 1,
+  "weekStart": ""
+}

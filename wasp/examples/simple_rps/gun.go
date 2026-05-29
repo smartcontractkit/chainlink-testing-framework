@@ -22,7 +22,7 @@ func NewExampleHTTPGun(target string) *ExampleGun {
 
 // Call implements example gun call, assertions on response bodies should be done here
 func (m *ExampleGun) Call(l *wasp.Generator) *wasp.Response {
-	var result map[string]interface{}
+	var result map[string]any
 	r, err := m.client.R().
 		SetResult(&result).
 		Get(m.target)
