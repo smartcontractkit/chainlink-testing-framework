@@ -30,6 +30,7 @@ func TestGun(t *testing.T) {
 		Gun:        NewExampleHTTPGun(srv.URL()),
 		Labels:     labels,
 		LokiConfig: wasp.NewEnvLokiConfig(),
+		OTELConfig: wasp.NewEnvOTELConfig(),
 	})
 	if err != nil {
 		panic(err)
