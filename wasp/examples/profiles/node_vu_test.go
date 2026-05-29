@@ -26,7 +26,7 @@ func TestNodeVU(t *testing.T) {
 			Schedule:   wasp.Steps(1, 1, 10, 30*time.Second),
 			VU:         NewExampleScenario(srv.URL()),
 			Labels:     labels,
-			LokiConfig: wasp.NewEnvLokiConfig(),
+			OTELConfig: wasp.NewEnvOTELConfig(),
 		})).
 		Add(wasp.NewGenerator(&wasp.Config{
 			T:          t,
@@ -35,7 +35,7 @@ func TestNodeVU(t *testing.T) {
 			Schedule:   wasp.Steps(1, 2, 10, 30*time.Second),
 			VU:         NewExampleScenario(srv.URL()),
 			Labels:     labels,
-			LokiConfig: wasp.NewEnvLokiConfig(),
+			OTELConfig: wasp.NewEnvOTELConfig(),
 		})).
 		Run(true)
 	require.NoError(t, err)

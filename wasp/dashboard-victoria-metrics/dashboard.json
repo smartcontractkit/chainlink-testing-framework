@@ -1,0 +1,377 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0},
+      "id": 100,
+      "title": "WASP Load Stats",
+      "type": "row",
+      "panels": []
+    },
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "RPS (Now)",
+      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "stats",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:stats | unpack_json | stats by (go_test_name, gen_name) max(current_rps) value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} RPS"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "VUs (Now)",
+      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "horizontal",
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "stats",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:stats | unpack_json | stats by (go_test_name, gen_name) max(current_instances) value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} VUs"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Responses (Total)",
+      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "horizontal",
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "stats",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:responses | stats by (go_test_name, gen_name) count() value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Responses"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Successful requests (Total)",
+      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "horizontal",
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "stats",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:stats | unpack_json | stats by (go_test_name, gen_name) max(success) value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Success"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Errored requests (Total)",
+      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "stats",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:stats | unpack_json | stats by (go_test_name, gen_name) max(failed) value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Failed"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Timed out requests (Total)",
+      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+      "gridPos": {"h": 4, "w": 4, "x": 20, "y": 1},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "stats",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:stats | unpack_json | stats by (go_test_name, gen_name) max(callTimeout) value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Timeouts"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "RPS / VUs per schedule segment",
+      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 5},
+      "fieldConfig": {"defaults": {"custom": {"lineInterpolation": "stepBefore", "fillOpacity": 10}}},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {
+          "refId": "RPS",
+          "queryType": "statsRange",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:stats | unpack_json | stats by (go_test_name, gen_name) max(current_rps) value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} RPS"
+        },
+        {
+          "refId": "VUS",
+          "queryType": "statsRange",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:stats | unpack_json | stats by (go_test_name, gen_name) max(current_instances) value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} VUs"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Latency quantiles (99, 95, 50)",
+      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 5},
+      "fieldConfig": {"defaults": {"unit": "ns"}},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {
+          "refId": "Q99",
+          "queryType": "statsRange",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:responses | unpack_json | stats by (go_test_name, gen_name) quantile(0.99, duration) value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Q99"
+        },
+        {
+          "refId": "Q95",
+          "queryType": "statsRange",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:responses | unpack_json | stats by (go_test_name, gen_name) quantile(0.95, duration) value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Q95"
+        },
+        {
+          "refId": "Q50",
+          "queryType": "statsRange",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:responses | unpack_json | stats by (go_test_name, gen_name) quantile(0.5, duration) value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Q50"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Response latencies by call_group (latest per interval)",
+      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 13},
+      "fieldConfig": {"defaults": {"unit": "ns"}},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "statsRange",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND call_group:~\"${call_group:pipe}\" AND test_data_type:responses | unpack_json | stats by (go_test_name, gen_name, call_group) max(duration) value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} {{call_group}}"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 21},
+      "id": 200,
+      "title": "WASP Debug",
+      "type": "row",
+      "panels": []
+    },
+    {
+      "id": 20,
+      "type": "timeseries",
+      "title": "CallResult sampling (recorded vs skipped)",
+      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 22},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {
+          "refId": "REC",
+          "queryType": "statsRange",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:stats | unpack_json | stats by (go_test_name, gen_name) max(samples_recorded) value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} recorded"
+        },
+        {
+          "refId": "SKIP",
+          "queryType": "statsRange",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:stats | unpack_json | stats by (go_test_name, gen_name) max(samples_skipped) value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} skipped"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "Logs ingest rate (records/interval)",
+      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 22},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "hits",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\"",
+          "legendFormat": "{{go_test_name}} {{gen_name}}"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "type": "logs",
+      "title": "Stats logs",
+      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 30},
+      "options": {"showTime": true, "wrapLogMessage": true, "sortOrder": "Descending"},
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "logs",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:stats"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "type": "logs",
+      "title": "Failed responses",
+      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 38},
+      "options": {"showTime": true, "wrapLogMessage": true, "sortOrder": "Descending"},
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "logs",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:responses AND _msg:\"\\\"failed\\\":true\""
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "type": "logs",
+      "title": "Timed out responses",
+      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 38},
+      "options": {"showTime": true, "wrapLogMessage": true, "sortOrder": "Descending"},
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "logs",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:responses AND _msg:\"\\\"timeout\\\":true\""
+        }
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": ["generated", "load-test", "wasp", "victorialogs"],
+  "templating": {
+    "list": [
+      {
+        "name": "go_test_name",
+        "label": "Go test name",
+        "type": "query",
+        "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+        "query": {"editorMode": "builder", "type": "fieldValue", "field": "go_test_name"},
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "sort": 1
+      },
+      {
+        "name": "gen_name",
+        "label": "Generator name",
+        "type": "query",
+        "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+        "query": {"editorMode": "builder", "type": "fieldValue", "field": "gen_name"},
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "sort": 1
+      },
+      {
+        "name": "call_group",
+        "label": "Call group",
+        "type": "query",
+        "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+        "query": {"editorMode": "builder", "type": "fieldValue", "field": "call_group"},
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "sort": 1
+      },
+      {
+        "name": "branch",
+        "label": "Branch",
+        "type": "query",
+        "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+        "query": {"editorMode": "builder", "type": "fieldValue", "field": "branch"},
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "sort": 1
+      },
+      {
+        "name": "commit",
+        "label": "Commit",
+        "type": "query",
+        "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+        "query": {"editorMode": "builder", "type": "fieldValue", "field": "commit"},
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "sort": 1
+      }
+    ]
+  },
+  "time": {"from": "now-30m", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "WASP (VictoriaLogs)",
+  "uid": "wasp-victorialogs",
+  "version": 1,
+  "weekStart": ""
+}

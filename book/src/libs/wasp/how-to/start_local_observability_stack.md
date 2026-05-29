@@ -1,77 +1,26 @@
 # WASP - How to Start Local Observability Stack
 
-To execute all examples or tests locally, you need to configure a local observability stack. This stack includes **Loki**, **Grafana**, and **Pyroscope**.
+To execute all examples or tests locally, you need to configure a local observability stack. We have 2 versions of popular stacks: LGTM (Grafana, Loki, Prometheus) and VictoriaMetrics + OTEL (Grafana, VictoriaMetrics, VictoriaLogs, OTEL).
+
 
 ---
 
-## Prerequisites
-
-Ensure you have the following installed:
-* [Docker](https://docs.docker.com/get-docker/)
-
----
-
-## Grafana and Loki
-
-To start the local observability stack, run the following command:
+## LGTM
 
 ```bash
-make start
+just lgtm-up
+just lgtm-down
 ```
 
-This command will download and run Docker images for Loki and Grafana. Once completed, it will output something like:
+* [Dashboard](http://localhost:3000/d/wasp-victorialogs/wasp-victorialogs?orgId=1&from=now-5m&to=now&timezone=browser&var-go_test_name=$__all&var-gen_name=$__all&var-call_group=$__all&var-branch=$__all&var-commit=$__all&refresh=5s)
+
+Don't forget to remove the stack when you are done!
+
+## VictoriaMetrics + OTEL
 
 ```bash
-Service account id: 2
-Grafana token: "<grafana token>"
+just victoria-up
+just victoria-down
 ```
 
-### Setting Up Environment Variables
-
-Next, set up the required environment variables.
-> [!WARNING]  
-> Replace `<Grafana token>` with the token provided in the previous step.
-
-```bash
-export LOKI_TOKEN=
-export LOKI_URL=http://localhost:3030/loki/api/v1/push
-export GRAFANA_URL=http://localhost:3000
-export GRAFANA_TOKEN=<Grafana token>
-export DATA_SOURCE_NAME=Loki
-export DASHBOARD_FOLDER=LoadTests
-export DASHBOARD_NAME=Wasp
-```
-
-### Accessing Services
-
-* Grafana: [http://localhost:3000/](http://localhost:3000/)
-* Loki: [http://localhost:3030/](http://localhost:3030/)
-
-### Stopping the Containers
-
-To stop both containers, run:
-
-```bash
-make stop
-```
-
----
-
-## Pyroscope
-
-To start Pyroscope, execute:
-
-```bash
-make pyro_start
-```
-
-> [!NOTE]  
-> Pyroscope is available at: [http://localhost:4040/](http://localhost:4040/)
-
-### Stopping Pyroscope
-
-To stop Pyroscope, run:
-
-```bash
-make pyro_stop
-```
+* [Dashboard](http://localhost:3000/d/wasp-victorialogs/wasp-victorialogs?orgId=1&from=now-5m&to=now&timezone=browser&var-go_test_name=$__all&var-gen_name=$__all&var-call_group=$__all&var-branch=$__all&var-commit=$__all&refresh=5s)
