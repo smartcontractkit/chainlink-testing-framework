@@ -59,7 +59,7 @@
     {
       "id": 3,
       "type": "stat",
-      "title": "Responses (Total)",
+      "title": "Responses/sec (Now)",
       "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
       "gridPos": {"h": 4, "w": 4, "x": 8, "y": 1},
       "options": {
@@ -70,9 +70,9 @@
       "targets": [
         {
           "refId": "A",
-          "queryType": "stats",
-          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND call_group:~\"${call_group:pipe}\" AND test_data_type:responses | stats by (go_test_name, gen_name, call_group) count() value",
-          "legendFormat": "{{go_test_name}} {{gen_name}} {{call_group}} Responses"
+          "queryType": "statsRange",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:responses | stats by (go_test_name, gen_name) count() value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} Responses/sec"
         }
       ]
     },
@@ -92,7 +92,7 @@
           "refId": "A",
           "queryType": "stats",
           "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:stats | unpack_json | stats by (go_test_name, gen_name) max(success) value",
-          "legendFormat": "{{go_test_name}} {{gen_name}} Success"
+          "legendFormat": "{{go_test_name}} {{gen_name}} Successful requests"
         }
       ]
     },
@@ -116,7 +116,7 @@
           "refId": "A",
           "queryType": "stats",
           "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:stats | unpack_json | stats by (go_test_name, gen_name) max(failed) value",
-          "legendFormat": "{{go_test_name}} {{gen_name}} Failed"
+          "legendFormat": "{{go_test_name}} {{gen_name}} Errored requests"
         }
       ]
     },
@@ -140,14 +140,14 @@
           "refId": "A",
           "queryType": "stats",
           "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:stats | unpack_json | stats by (go_test_name, gen_name) max(callTimeout) value",
-          "legendFormat": "{{go_test_name}} {{gen_name}} Timeouts"
+          "legendFormat": "{{go_test_name}} {{gen_name}} Timed out requests"
         }
       ]
     },
     {
       "id": 10,
       "type": "timeseries",
-      "title": "RPS / VUs per schedule segment",
+      "title": "RPS/VUs per schedule segments",
       "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 5},
       "fieldConfig": {"defaults": {"custom": {"lineInterpolation": "stepBefore", "fillOpacity": 10}}},
@@ -170,55 +170,9 @@
     {
       "id": 11,
       "type": "timeseries",
-      "title": "Latency quantiles (99, 95, 50)",
-      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 5},
-      "fieldConfig": {"defaults": {"unit": "ns"}},
-      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
-      "targets": [
-        {
-          "refId": "Q99",
-          "queryType": "statsRange",
-          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND call_group:~\"${call_group:pipe}\" AND test_data_type:responses | unpack_json | stats by (go_test_name, gen_name, call_group) quantile(0.99, duration) value",
-          "legendFormat": "{{go_test_name}} {{gen_name}} Q99"
-        },
-        {
-          "refId": "Q95",
-          "queryType": "statsRange",
-          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND call_group:~\"${call_group:pipe}\" AND test_data_type:responses | unpack_json | stats by (go_test_name, gen_name, call_group) quantile(0.95, duration) value",
-          "legendFormat": "{{go_test_name}} {{gen_name}} Q95"
-        },
-        {
-          "refId": "Q50",
-          "queryType": "statsRange",
-          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND call_group:~\"${call_group:pipe}\" AND test_data_type:responses | unpack_json | stats by (go_test_name, gen_name, call_group) quantile(0.5, duration) value",
-          "legendFormat": "{{go_test_name}} {{gen_name}} Q50"
-        }
-      ]
-    },
-    {
-      "id": 12,
-      "type": "timeseries",
-      "title": "Response latencies by call_group (latest per interval)",
-      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 13},
-      "fieldConfig": {"defaults": {"unit": "ns"}},
-      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
-      "targets": [
-        {
-          "refId": "A",
-          "queryType": "statsRange",
-          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND call_group:~\"${call_group:pipe}\" AND test_data_type:responses | unpack_json | stats by (go_test_name, gen_name, call_group) max(duration) value",
-          "legendFormat": "{{go_test_name}} {{gen_name}} {{call_group}}"
-        }
-      ]
-    },
-    {
-      "id": 13,
-      "type": "timeseries",
       "title": "Responses/sec (Generator, CallGroup)",
       "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 13},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 5},
       "fieldConfig": {"defaults": {"unit": "short"}},
       "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
       "targets": [
@@ -237,6 +191,58 @@
       ]
     },
     {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Latency quantiles over groups (99, 95, 50)",
+      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 13},
+      "fieldConfig": {"defaults": {"unit": "ns"}},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {
+          "refId": "Q99",
+          "queryType": "statsRange",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND call_group:~\"${call_group:pipe}\" AND test_data_type:responses | unpack_json | stats by (go_test_name, gen_name, call_group) quantile(0.99, duration) value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} {{call_group}} Q 99"
+        },
+        {
+          "refId": "Q95",
+          "queryType": "statsRange",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND call_group:~\"${call_group:pipe}\" AND test_data_type:responses | unpack_json | stats by (go_test_name, gen_name, call_group) quantile(0.95, duration) value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} {{call_group}} Q 95"
+        },
+        {
+          "refId": "Q50",
+          "queryType": "statsRange",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND call_group:~\"${call_group:pipe}\" AND test_data_type:responses | unpack_json | stats by (go_test_name, gen_name, call_group) quantile(0.5, duration) value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} {{call_group}} Q 50"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Responses latencies by types over time (Generator, CallGroup)",
+      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 13},
+      "fieldConfig": {"defaults": {"unit": "ns"}},
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "statsRange",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND call_group:~\"${call_group:pipe}\" AND test_data_type:responses | unpack_json | stats by (go_test_name, gen_name, call_group) max(duration) value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} {{call_group}}"
+        },
+        {
+          "refId": "B",
+          "queryType": "statsRange",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" AND test_data_type:responses | unpack_json | stats by (go_test_name, gen_name) max(duration) value",
+          "legendFormat": "{{go_test_name}} {{gen_name}} all groups"
+        }
+      ]
+    },
+    {
       "collapsed": false,
       "gridPos": {"h": 1, "w": 24, "x": 0, "y": 21},
       "id": 200,
@@ -246,10 +252,38 @@
     },
     {
       "id": 20,
-      "type": "timeseries",
-      "title": "CallResult sampling (recorded vs skipped)",
+      "type": "stat",
+      "title": "Latest segment stats",
       "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 22},
+      "gridPos": {"h": 6, "w": 24, "x": 0, "y": 22},
+      "fieldConfig": {"defaults": {"unit": "decbytes"}},
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "graphMode": "area",
+        "textMode": "value_and_name",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "stats",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" | stats sum_len(_msg) value",
+          "legendFormat": "Overall logs size"
+        },
+        {
+          "refId": "B",
+          "queryType": "statsRange",
+          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\" | stats sum_len(_msg) value",
+          "legendFormat": "Logs size per second"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "CallResult sampling (successful results)",
+      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 28},
       "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
       "targets": [
         {
@@ -267,27 +301,11 @@
       ]
     },
     {
-      "id": 21,
-      "type": "timeseries",
-      "title": "Logs ingest rate (records/interval)",
-      "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 22},
-      "options": {"legend": {"displayMode": "list", "placement": "bottom"}},
-      "targets": [
-        {
-          "refId": "A",
-          "queryType": "hits",
-          "expr": "go_test_name:~\"${go_test_name:pipe}\" AND gen_name:~\"${gen_name:pipe}\"",
-          "legendFormat": "{{go_test_name}} {{gen_name}}"
-        }
-      ]
-    },
-    {
       "id": 30,
       "type": "logs",
       "title": "Stats logs",
       "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
-      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 30},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 36},
       "options": {"showTime": true, "wrapLogMessage": true, "sortOrder": "Descending"},
       "targets": [
         {
@@ -302,7 +320,7 @@
       "type": "logs",
       "title": "Failed responses",
       "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
-      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 38},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 44},
       "options": {"showTime": true, "wrapLogMessage": true, "sortOrder": "Descending"},
       "targets": [
         {
@@ -317,7 +335,7 @@
       "type": "logs",
       "title": "Timed out responses",
       "datasource": {"type": "victoriametrics-logs-datasource", "uid": "victorialogs"},
-      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 38},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 44},
       "options": {"showTime": true, "wrapLogMessage": true, "sortOrder": "Descending"},
       "targets": [
         {
