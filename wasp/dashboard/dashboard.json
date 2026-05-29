@@ -51,7 +51,7 @@
         {
           "refId": "A",
           "queryType": "instant",
-          "expr": "sum(max_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n| json\n| unwrap current_instances [$__range]) by (node_id, go_test_name, gen_name)) by (__stream_shard__)",
+          "expr": "max_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"stats\", gen_name=~\"${gen_name:pipe}\"}\n| json\n| unwrap current_instances [$__range]) by (node_id, go_test_name, gen_name)",
           "legendFormat": "{{go_test_name}} {{gen_name}} VUs"
         }
       ]
@@ -115,7 +115,7 @@
         {
           "refId": "A",
           "queryType": "instant",
-          "expr": "sum(count_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\", call_group=~\"${call_group:pipe}\"} |~ \"failed\\\":true\" [$__range])) by (node_id, go_test_name, gen_name)",
+          "expr": "sum by (node_id, go_test_name, gen_name) (count_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\", call_group=~\"${call_group:pipe}\"} |~ \"failed\\\":true\" [$__range])) or sum by (node_id, go_test_name, gen_name) (count_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\", call_group=~\"${call_group:pipe}\"}[$__range])) * 0",
           "legendFormat": "{{go_test_name}} {{gen_name}} Errored requests"
         }
       ]
@@ -139,7 +139,7 @@
         {
           "refId": "A",
           "queryType": "instant",
-          "expr": "sum(count_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\", call_group=~\"${call_group:pipe}\"} |~ \"timeout\\\":true\" [$__range])) by (node_id, go_test_name, gen_name)",
+          "expr": "sum by (node_id, go_test_name, gen_name) (count_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\", call_group=~\"${call_group:pipe}\"} |~ \"timeout\\\":true\" [$__range])) or sum by (node_id, go_test_name, gen_name) (count_over_time({branch=~\"${branch:pipe}\", commit=~\"${commit:pipe}\", go_test_name=~\"${go_test_name:pipe}\", test_data_type=~\"responses\", gen_name=~\"${gen_name:pipe}\", call_group=~\"${call_group:pipe}\"}[$__range])) * 0",
           "legendFormat": "{{go_test_name}} {{gen_name}} Timed out requests"
         }
       ]
