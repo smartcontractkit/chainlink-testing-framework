@@ -209,7 +209,7 @@ func NewLokiConfig(endpoint *string, tenant *string, basicAuth *string, token *s
 // It validates the configuration, sets up authentication, and prepares the client for interacting with Loki for logging purposes.
 func NewLokiClient(extCfg *LokiConfig) (*LokiClient, error) {
 	if extCfg == nil || extCfg.URL == "" {
-		return nil, errors.New("Loki URL is empty")
+		return nil, errors.New("loki URL is empty")
 	}
 	_, err := http.Get(extCfg.URL)
 	if err != nil {

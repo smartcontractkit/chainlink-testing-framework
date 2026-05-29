@@ -63,6 +63,7 @@ func TestPyroscopeLocalTraceRPSCalls(t *testing.T) {
 	t.Run("trace test", func(t *testing.T) {
 		t.Parallel()
 		pyroscope.TagWrapper(context.Background(), pyroscope.Labels("scope", "loadgen_impl"), func(c context.Context) {
+			//nolint:contextcheck // NewGenerator does not accept a context; the pyroscope tag wrapper's ctx is for profile tagging only
 			gen, err := NewGenerator(&Config{
 				T:           t,
 				LokiConfig:  DefaultLokiConfig(),
@@ -87,6 +88,7 @@ func TestPyroscopeLocalTraceVUCalls(t *testing.T) {
 	t.Run("trace test", func(t *testing.T) {
 		t.Parallel()
 		pyroscope.TagWrapper(context.Background(), pyroscope.Labels("scope", "loadgen_impl"), func(c context.Context) {
+			//nolint:contextcheck // NewGenerator does not accept a context; the pyroscope tag wrapper's ctx is for profile tagging only
 			gen, err := NewGenerator(&Config{
 				T:           t,
 				LokiConfig:  DefaultLokiConfig(),
