@@ -26,7 +26,7 @@ const (
 	DefaultGenName               = "Generator"
 
 	// LogSendMethodEnvVar selects the log backend used by the Generator at runtime.
-	// Accepted values: "otel" (default) or "loki". Any other value returns an error.
+	// Accepted values: "otel" (default) or "loki".
 	LogSendMethodEnvVar = "WASP_LOG_SEND_METHOD"
 	LogSendMethodLoki   = "loki"
 	LogSendMethodOTEL   = "otel"
@@ -247,33 +247,33 @@ type ResponseData struct {
 
 // Generator generates load with some RPS
 type Generator struct {
-	Cfg                *Config
-	sampler            *Sampler
-	Log                zerolog.Logger
-	labels             model.LabelSet
-	rl                 atomic.Pointer[ratelimit.Limiter]
-	rpsLoopOnce        *sync.Once
-	scheduleSegments   []*Segment
-	currentSegmentMu   *sync.Mutex
-	currentSegment     *Segment
-	ResponsesWaitGroup *sync.WaitGroup
-	dataWaitGroup      *sync.WaitGroup
-	ResponsesCtx       context.Context
-	responsesCancel    context.CancelFunc
-	dataCtx            context.Context
-	dataCancel         context.CancelFunc
-	gun                Gun
-	vu                 VirtualUser
-	vus                []VirtualUser
-	ResponsesChan      chan *Response
-	Responses          *Responses
-	responsesData      *ResponseData
-	errsMu             *sync.Mutex
-	errs               *SliceBuffer[string]
-	stats              *Stats
-	loki               *LokiClient
-	lokiResponsesChan  chan *Response
-	otel               *OTELClient
+	Cfg                  *Config
+	sampler              *Sampler
+	Log                  zerolog.Logger
+	labels               model.LabelSet
+	rl                   atomic.Pointer[ratelimit.Limiter]
+	rpsLoopOnce          *sync.Once
+	scheduleSegments     []*Segment
+	currentSegmentMu     *sync.Mutex
+	currentSegment       *Segment
+	ResponsesWaitGroup   *sync.WaitGroup
+	dataWaitGroup        *sync.WaitGroup
+	ResponsesCtx         context.Context
+	responsesCancel      context.CancelFunc
+	dataCtx              context.Context
+	dataCancel           context.CancelFunc
+	gun                  Gun
+	vu                   VirtualUser
+	vus                  []VirtualUser
+	ResponsesChan        chan *Response
+	Responses            *Responses
+	responsesData        *ResponseData
+	errsMu               *sync.Mutex
+	errs                 *SliceBuffer[string]
+	stats                *Stats
+	loki                 *LokiClient
+	backendResponsesChan chan *Response
+	otel                 *OTELClient
 }
 
 // NewGenerator initializes a Generator with the provided configuration.
@@ -341,11 +341,11 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 			failResponsesMu: &sync.Mutex{},
 			FailResponses:   NewSliceBuffer[*Response](cfg.CallResultBufLen),
 		},
-		errsMu:            &sync.Mutex{},
-		errs:              NewSliceBuffer[string](cfg.CallResultBufLen),
-		stats:             &Stats{},
-		Log:               l,
-		lokiResponsesChan: make(chan *Response, 50000),
+		errsMu:               &sync.Mutex{},
+		errs:                 NewSliceBuffer[string](cfg.CallResultBufLen),
+		stats:                &Stats{},
+		Log:                  l,
+		backendResponsesChan: make(chan *Response, 50000),
 	}
 	var err error
 	if cfg.LokiConfig != nil {
@@ -569,7 +569,7 @@ func (g *Generator) storeResponses(res *Response) {
 		return
 	}
 	if g.hasLogBackend() {
-		g.lokiResponsesChan <- res
+		g.backendResponsesChan <- res
 	}
 	g.responsesData.okDataMu.Lock()
 	g.responsesData.failResponsesMu.Lock()
@@ -746,10 +746,6 @@ func (g *Generator) Stats() *Stats {
 
 /* Log backend dispatch (Loki / OTEL) */
 
-// logSendMethod returns the log backend selected via the LOG_SEND_METHOD env var.
-// Defaults to "otel" when unset. Unknown values are logged as a warning and treated as the default.
-// Used inside NewEnvLokiConfig / NewEnvOTELConfig to early-return nil when the corresponding
-// backend isn't selected.
 func logSendMethod() string {
 	m := os.Getenv(LogSendMethodEnvVar)
 	switch m {
@@ -818,7 +814,7 @@ func (g *Generator) sendResponsesToLogBackend() {
 			case <-g.dataCtx.Done():
 				g.Log.Info().Msg("Log backend responses exited")
 				return
-			case r := <-g.lokiResponsesChan:
+			case r := <-g.backendResponsesChan:
 				g.handleResponsePayload(r)
 			}
 		}

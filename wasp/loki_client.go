@@ -164,8 +164,6 @@ func LocalCTFObsConfig() *LokiConfig {
 }
 
 // NewEnvLokiConfig creates a LokiConfig populated with settings from environment variables.
-// Returns nil unless LOG_SEND_METHOD=loki — this lets callers set both LokiConfig and
-// OTELConfig on wasp.Config and have only the selected backend become non-nil.
 func NewEnvLokiConfig() *LokiConfig {
 	if logSendMethod() != LogSendMethodLoki {
 		return nil
