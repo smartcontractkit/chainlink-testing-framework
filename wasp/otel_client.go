@@ -148,7 +148,7 @@ func (m *OTELClient) Handle(ls model.LabelSet, t time.Time, body string) error {
 func (m *OTELClient) HandleStruct(ls model.LabelSet, t time.Time, st any) error {
 	d, err := json.Marshal(st)
 	if err != nil {
-		return fmt.Errorf("failed to marshal struct: %v", st)
+		return fmt.Errorf("failed to marshal struct %T: %w", st, err)
 	}
 	return m.Handle(ls, t, string(d))
 }
