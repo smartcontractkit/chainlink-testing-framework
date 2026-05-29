@@ -881,9 +881,10 @@ func (g *Generator) handleOTELResponsePayload(r *Response) {
 		CallGroupLabel:   model.LabelValue(r.Group),
 	})
 	ts := r.FinishedAt
-	r.StartedAt = nil
-	r.FinishedAt = nil
-	err := g.otel.HandleStruct(labels, *ts, r)
+	payload := *r
+	payload.StartedAt = nil
+	payload.FinishedAt = nil
+	err := g.otel.HandleStruct(labels, *ts, payload)
 	if err != nil {
 		g.Log.Err(err).Send()
 		g.Stop()
