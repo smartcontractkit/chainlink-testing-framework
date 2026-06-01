@@ -14,20 +14,6 @@ Minimal setup for experimenting with OTEL metrics & logs in Grafana.
 ## Run
 
 ```bash
-docker compose up -d
-```
-
-Grafana: <http://localhost:3000> (no login required, anonymous admin).
-
-Both datasources (`VictoriaMetrics`, `VictoriaLogs`) are auto-provisioned.
-
-## Point your Go app at it
-
-In the OTEL exporter, use endpoint `localhost:4317` (gRPC) or `localhost:4318` (HTTP). Both metrics and logs go to the same collector — it fans them out to VM/VL.
-
-## Tear down
-
-```bash
 # start the observability stack
 ctf obs up -vm
 # remove the stack with all the data (volumes)
