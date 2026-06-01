@@ -8,3 +8,4 @@ providers:
     editable: true
     options:
       path: /etc/dashboards
+      foldersFromFilesStructure: true
