@@ -337,7 +337,12 @@ require (
 )
 
 // this dep is from otel, replace it to avoid security issues
-replace google.golang.org/grpc => google.golang.org/grpc v1.81.1
+replace (
+	github.com/prometheus/client_golang => github.com/prometheus/client_golang v1.21.0-rc.0
+	github.com/prometheus/common => github.com/prometheus/common v0.62.0
+	github.com/prometheus/procfs => github.com/prometheus/procfs v0.15.1
+	google.golang.org/grpc => google.golang.org/grpc v1.81.1
+)
 
 // replicating the replace directive on cosmos SDK
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
