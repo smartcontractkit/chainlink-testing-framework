@@ -336,6 +336,9 @@ require (
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
+// this dep is from otel, replace it to avoid security issues
+replace google.golang.org/grpc => google.golang.org/grpc v1.81.1
+
 // replicating the replace directive on cosmos SDK
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 
