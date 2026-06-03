@@ -4,8 +4,8 @@ go 1.24.0
 
 require (
 	github.com/BurntSushi/toml v1.4.0
-	github.com/aws/aws-sdk-go-v2 v1.32.2
-	github.com/aws/aws-sdk-go-v2/config v1.28.0
+	github.com/aws/aws-sdk-go-v2 v1.41.11
+	github.com/aws/aws-sdk-go-v2/config v1.32.22
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.36.2
 	github.com/go-playground/validator/v10 v10.22.1
 	github.com/google/uuid v1.6.0
@@ -20,17 +20,21 @@ require (
 )
 
 require (
-	github.com/aws/aws-sdk-go-v2/credentials v1.17.41 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.16.17 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.3.21 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.6.21 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.12.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.12.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.24.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.32.2 // indirect
-	github.com/aws/smithy-go v1.22.0
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.28 // indirect
+	github.com/aws/aws-sdk-go-v2/service/signin v1.1.3 // indirect
+)
+
+require (
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.21 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.27 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.27 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.27 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.11 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.27 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.31.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.36.4 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.43.1 // indirect
+	github.com/aws/smithy-go v1.27.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
