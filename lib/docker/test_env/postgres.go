@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/go-connections/nat"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -117,7 +116,7 @@ func NewPostgresDb(networks []string, opts ...PostgresDbOption) (*PostgresDb, er
 	}
 
 	// if the internal docker repo is set then add it to the version
-	pg.EnvComponent.ContainerImage = mirror.AddMirrorToImageIfSet(pg.EnvComponent.ContainerImage)
+	pg.ContainerImage = mirror.AddMirrorToImageIfSet(pg.ContainerImage)
 
 	// Set default container envs
 	pg.ContainerEnvs["POSTGRES_USER"] = pg.User
@@ -162,7 +161,7 @@ func (pg *PostgresDb) startOrRestartContainer(withReuse bool) error {
 		return err
 	}
 	pg.Container = c
-	externalPort, err := c.MappedPort(testcontext.Get(pg.t), nat.Port(fmt.Sprintf("%s/tcp", pg.InternalPort)))
+	externalPort, err := c.MappedPort(testcontext.Get(pg.t), NatPort(pg.InternalPort))
 	if err != nil {
 		return err
 	}

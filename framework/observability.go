@@ -14,6 +14,13 @@ import (
 var EmbeddedObservabilityFiles embed.FS
 
 const (
+	LGTMDockerComposePath            = "compose"
+	VictoriaMetricsDockerComposePath = "compose-victoria-metrics"
+
+	LocalVictoriaMetrics   = "http://localhost:8428"
+	LocalVictoriaLogs      = "http://localhost:9428"
+	LocalOTELCollectorHTTP = "http://localhost:4318"
+	LocalOTELCollectorgRPC = "http://localhost:4317"
 	LocalGrafanaBaseURL    = "http://localhost:3000"
 	LocalLokiBaseURL       = "http://localhost:3030"
 	LocalPrometheusBaseURL = "http://localhost:9099"
@@ -33,6 +40,12 @@ const (
 func copyLocalDashboards(obsDir string) error {
 	wd, _ := os.Getwd()
 	localDir := filepath.Join(wd, CTFLocalDashboardsDirRelative)
+
+	if _, err := os.Stat(localDir); os.IsNotExist(err) {
+		L.Info().Str("Dir", localDir).Msg("No local dashboards to copy")
+		return nil
+	}
+
 	L.Info().
 		Str("From", localDir).
 		Str("To", obsDir).
@@ -175,7 +188,7 @@ func ObservabilityUpOnlyLoki() error {
 	if err != nil {
 		return err
 	}
-	composeDir := filepath.Join(obsDir, "compose")
+	composeDir := filepath.Join(obsDir, LGTMDockerComposePath)
 	_ = DefaultNetwork(nil)
 	if err := NewPromtail(); err != nil {
 		return err
@@ -202,7 +215,7 @@ func ObservabilityUp() error {
 	if err != nil {
 		return err
 	}
-	composeDir := filepath.Join(obsDir, "compose")
+	composeDir := filepath.Join(obsDir, LGTMDockerComposePath)
 	_ = DefaultNetwork(nil)
 	if err := NewPromtail(); err != nil {
 		return err
@@ -222,6 +235,34 @@ func ObservabilityUp() error {
 	return nil
 }
 
+// ObservabilityVictoriaMetricsUp VictoriaMetrics stack for load testing and performance investigations
+func ObservabilityVictoriaMetricsUp() error {
+	L.Info().Msg("Creating local observability stack (VictoriaMetrics)")
+	if err := extractAllFiles("observability"); err != nil {
+		return err
+	}
+	obsDir, err := getObservabilityDir()
+	if err != nil {
+		return err
+	}
+	composeDir := filepath.Join(obsDir, VictoriaMetricsDockerComposePath)
+	_ = DefaultNetwork(nil)
+	err = RunCommand("bash", "-c", fmt.Sprintf(`
+		cd %s && \
+		docker compose up -d
+	`, composeDir))
+	if err != nil {
+		return err
+	}
+	fmt.Println()
+	L.Info().Msgf("Grafana: %s", LocalGrafanaBaseURL)
+	L.Info().Msgf("OTEL Collector HTTP: %s", LocalOTELCollectorHTTP)
+	L.Info().Msgf("OTEL Collector gRPC: %s", LocalOTELCollectorgRPC)
+	L.Info().Msgf("VictoriaMetrics: %s", LocalVictoriaMetrics)
+	L.Info().Msgf("VictoriaLogs: %s", LocalVictoriaLogs)
+	return nil
+}
+
 // ObservabilityUpFull full stack for load testing and performance investigations
 func ObservabilityUpFull() error {
 	L.Info().Msg("Creating full local observability stack")
@@ -232,7 +273,7 @@ func ObservabilityUpFull() error {
 	if err != nil {
 		return err
 	}
-	composeDir := filepath.Join(obsDir, "compose")
+	composeDir := filepath.Join(obsDir, LGTMDockerComposePath)
 	_ = DefaultNetwork(nil)
 	if err := NewPromtail(); err != nil {
 		return err
@@ -254,13 +295,27 @@ func ObservabilityUpFull() error {
 	return nil
 }
 
+func ObservabilityVictoriaDown() error {
+	L.Info().Msg("Removing local observability stack (Victoria Metrics)")
+	obsDir, err := getObservabilityDir()
+	if err != nil {
+		return err
+	}
+	composeDir := filepath.Join(obsDir, VictoriaMetricsDockerComposePath)
+	_ = RunCommand("bash", "-c", fmt.Sprintf(`
+		cd %s && \
+		docker compose down -v
+	`, composeDir))
+	return nil
+}
+
 func ObservabilityDown() error {
 	L.Info().Msg("Removing local observability stack")
 	obsDir, err := getObservabilityDir()
 	if err != nil {
 		return err
 	}
-	composeDir := filepath.Join(obsDir, "compose")
+	composeDir := filepath.Join(obsDir, LGTMDockerComposePath)
 	_ = RunCommand("bash", "-c", fmt.Sprintf(`
 		cd %s && \
 		docker compose down -v && docker rm -f promtail

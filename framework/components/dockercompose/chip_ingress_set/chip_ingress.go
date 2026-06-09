@@ -11,9 +11,8 @@ import (
 	"strings"
 	"time"
 
-	networkTypes "github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
-	"github.com/docker/go-connections/nat"
+	networkTypes "github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/client"
 	"github.com/pkg/errors"
 	"github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -70,7 +69,6 @@ const (
 	DEFAULT_CHIP_INGRESS_GRPC_PORT    = "50051"
 	DEFAULT_CHIP_INGRESS_SERVICE_NAME = "chip-ingress"
 
-	DEFAULT_CHIP_CONFIG_EXTERNAL_PORT = "50052"
 	DEFAULT_CHIP_CONFIG_INTERNAL_PORT = "50051"
 	DEFAULT_CHIP_CONFIG_SERVICE_NAME  = "chip-config"
 	DEFAULT_CHIP_CONFIG_USERNAME      = "admin"
@@ -83,10 +81,11 @@ const (
 	DEFAULT_RED_PANDA_CONSOLE_SERVICE_NAME = "redpanda-console"
 	DEFAULT_RED_PANDA_CONSOLE_PORT         = "8080"
 
-	ChipIngressGRPCHostPortEnvVar = "CHIP_INGRESS_GRPC_HOST_PORT"
-	ChipIngressGRPCPortEnvVar     = "CHIP_INGRESS_GRPC_PORT"
-	ChipIngressImageEnvVar        = "CHIP_INGRESS_IMAGE"
-	ChipConfigImageEnvVar         = "CHIP_CONFIG_IMAGE"
+	ChipIngressGRPCHostPortEnvVar = "CTF_CHIP_INGRESS_GRPC_HOST_PORT"
+	ChipIngressGRPCPortEnvVar     = "CTF_CHIP_INGRESS_GRPC_PORT"
+	ChipIngressImageEnvVar        = "CTF_CHIP_INGRESS_IMAGE"
+	ChipConfigImageEnvVar         = "CTF_CHIP_CONFIG_IMAGE"
+	ChipConfigHostPortEnvVar      = "CTF_CHIP_CONFIG_HOST_PORT"
 )
 
 func New(in *Input) (*Output, error) {
@@ -101,6 +100,17 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	if in.UseCache {
 		if in.Output != nil {
 			return in.Output, nil
+		}
+	}
+
+	// set fallback values for backwards compatibility
+	fallbackEnvVars := []string{ChipConfigImageEnvVar, ChipIngressImageEnvVar, ChipIngressGRPCHostPortEnvVar, ChipIngressGRPCPortEnvVar}
+	for _, env := range fallbackEnvVars {
+		if v, ok := os.LookupEnv(env); ok && v != "" {
+			continue
+		}
+		if v, ok := os.LookupEnv(strings.TrimPrefix(env, "CTF_")); ok {
+			_ = os.Setenv(env, v)
 		}
 	}
 
@@ -140,19 +150,6 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		return nil, fmt.Errorf("%s env var is not set", ChipConfigImageEnvVar)
 	}
 
-	upErr := stack.
-		WithEnv(envVars).
-		Up(ctx)
-
-	if upErr != nil {
-		return nil, errors.Wrap(upErr, "failed to start stack for Chip Ingress")
-	}
-
-	chipIngressGRPCHostPort := DEFAULT_CHIP_INGRESS_GRPC_PORT
-	if v, ok := envVars[ChipIngressGRPCHostPortEnvVar]; ok && v != "" {
-		chipIngressGRPCHostPort = v
-	}
-
 	chipIngressGRPCPort := DEFAULT_CHIP_INGRESS_GRPC_PORT
 	if v, ok := envVars[ChipIngressGRPCPortEnvVar]; ok && v != "" {
 		chipIngressGRPCPort = v
@@ -161,26 +158,30 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	stack.WaitForService(DEFAULT_CHIP_INGRESS_SERVICE_NAME,
 		wait.ForAll(
 			wait.ForLog("GRPC server is live").WithPollInterval(100*time.Millisecond),
-			wait.ForListeningPort(nat.Port(chipIngressGRPCPort)).WithPollInterval(100*time.Millisecond),
-			wait.NewHostPortStrategy(nat.Port(chipIngressGRPCHostPort)).WithPollInterval(100*time.Millisecond),
+			wait.NewHostPortStrategy(chipIngressGRPCPort+"/tcp").WithPollInterval(100*time.Millisecond),
 		).WithDeadline(2*time.Minute),
+	).WaitForService(DEFAULT_CHIP_CONFIG_SERVICE_NAME,
+		wait.ForAll(
+			wait.NewHostPortStrategy(DEFAULT_CHIP_CONFIG_INTERNAL_PORT+"/tcp").WithPollInterval(100*time.Millisecond),
+		),
 	).WaitForService(DEFAULT_RED_PANDA_SERVICE_NAME,
 		wait.ForAll(
-			wait.ForListeningPort(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT).WithPollInterval(100*time.Millisecond),
-			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT).WithPollInterval(100*time.Millisecond),
+			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT+"/tcp").WithPollInterval(100*time.Millisecond),
 			wait.ForHTTP("/status/ready").WithPort(DEFAULT_RED_PANDA_SCHEMA_REGISTRY_PORT).WithPollInterval(100*time.Millisecond),
 		).WithDeadline(2*time.Minute),
 	).WaitForService(DEFAULT_RED_PANDA_CONSOLE_SERVICE_NAME,
 		wait.ForAll(
-			wait.ForListeningPort(DEFAULT_RED_PANDA_CONSOLE_PORT).WithPollInterval(100*time.Millisecond),
-			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_CONSOLE_PORT).WithPollInterval(100*time.Millisecond),
+			wait.NewHostPortStrategy(DEFAULT_RED_PANDA_CONSOLE_PORT+"/tcp").WithPollInterval(100*time.Millisecond),
 		).WithDeadline(2*time.Minute),
-	).WaitForService(DEFAULT_CHIP_CONFIG_SERVICE_NAME,
-		wait.ForAll(
-			wait.ForListeningPort(DEFAULT_CHIP_CONFIG_INTERNAL_PORT).WithPollInterval(100*time.Millisecond),
-			wait.NewHostPortStrategy(DEFAULT_CHIP_CONFIG_EXTERNAL_PORT).WithPollInterval(100*time.Millisecond),
-		),
 	)
+
+	upErr := stack.
+		WithEnv(envVars).
+		Up(ctx, compose.Wait(true))
+
+	if upErr != nil {
+		return nil, errors.Wrap(upErr, "failed to start stack for Chip Ingress")
+	}
 
 	chipIngressContainer, ingressErr := stack.ServiceContainer(ctx, DEFAULT_CHIP_INGRESS_SERVICE_NAME)
 	if ingressErr != nil {
@@ -210,12 +211,12 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 			return nil, errors.Wrapf(connectErr, "failed to connect chip-ingress to %s network", networkName)
 		}
 		// verify that the container is connected to framework's network
-		inspected, inspectErr := cli.ContainerInspect(ctx, chipIngressContainer.ID)
+		inspected, inspectErr := cli.ContainerInspect(ctx, chipIngressContainer.ID, client.ContainerInspectOptions{})
 		if inspectErr != nil {
 			return nil, errors.Wrapf(inspectErr, "failed to inspect container %s", chipIngressContainer.ID)
 		}
 
-		_, ok := inspected.NetworkSettings.Networks[networkName]
+		_, ok := inspected.Container.NetworkSettings.Networks[networkName]
 		if !ok {
 			return nil, fmt.Errorf("container %s is NOT on network %s", chipIngressContainer.ID, networkName)
 		}
@@ -256,6 +257,28 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		return nil, errors.Wrap(redpandaExternalConsoleHostErr, "failed to get host for Red Panda Console")
 	}
 
+	var chipIngressGRPCHostPort string
+	if v, ok := envVars[ChipIngressGRPCHostPortEnvVar]; ok && v != "" {
+		chipIngressGRPCHostPort = v
+	} else {
+		port, pErr := chipIngressContainer.MappedPort(ctx, chipIngressGRPCPort+"/tcp")
+		if pErr != nil {
+			return nil, errors.Wrap(pErr, "failed to get mapped port for Chip Ingress")
+		}
+		chipIngressGRPCHostPort = fmt.Sprintf("%d", port.Num())
+	}
+
+	var chipConfigHostPort string
+	if v, ok := envVars[ChipConfigHostPortEnvVar]; ok && v != "" {
+		chipConfigHostPort = v
+	} else {
+		port, pErr := chipConfigContainer.MappedPort(ctx, DEFAULT_CHIP_CONFIG_INTERNAL_PORT+"/tcp")
+		if pErr != nil {
+			return nil, errors.Wrap(pErr, "failed to get mapped port for Chip Config")
+		}
+		chipConfigHostPort = fmt.Sprintf("%d", port.Num())
+	}
+
 	output := &Output{
 		ChipIngress: &ChipIngressOutput{
 			GRPCInternalURL: fmt.Sprintf("%s:%s", DEFAULT_CHIP_INGRESS_SERVICE_NAME, chipIngressGRPCPort),
@@ -263,7 +286,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		},
 		ChipConfig: &ChipConfigOutput{
 			GRPCInternalURL: fmt.Sprintf("%s:%s", DEFAULT_CHIP_CONFIG_SERVICE_NAME, DEFAULT_CHIP_CONFIG_INTERNAL_PORT),
-			GRPCExternalURL: fmt.Sprintf("%s:%s", chipConfigExternalHost, DEFAULT_CHIP_CONFIG_EXTERNAL_PORT),
+			GRPCExternalURL: fmt.Sprintf("%s:%s", chipConfigExternalHost, chipConfigHostPort),
 			Username:        DEFAULT_CHIP_CONFIG_USERNAME,
 			Password:        DEFAULT_CHIP_CONFIG_PASSWORD,
 		},
@@ -330,12 +353,14 @@ func connectNetwork(connCtx context.Context, timeout time.Duration, dockerClient
 		case <-networkCtx.Done():
 			return fmt.Errorf("timeout while trying to connect chip-ingress to default network")
 		case <-ticker.C:
-			if networkErr := dockerClient.NetworkConnect(
+			if _, networkErr := dockerClient.NetworkConnect(
 				connCtx,
 				networkName,
-				containerID,
-				&networkTypes.EndpointSettings{
-					Aliases: []string{stackIdentifier},
+				client.NetworkConnectOptions{
+					Container: containerID,
+					EndpointConfig: &networkTypes.EndpointSettings{
+						Aliases: []string{stackIdentifier},
+					},
 				},
 			); networkErr != nil && !strings.Contains(networkErr.Error(), "already exists in network") {
 				framework.L.Trace().Msgf("failed to connect to default network: %v", networkErr)

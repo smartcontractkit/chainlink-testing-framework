@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli/v2"
 
@@ -18,6 +19,7 @@ import (
 
 func main() {
 	app := &cli.App{
+		Version:   "v0.16.4",
 		Name:      "ctf",
 		Usage:     "Chainlink Testing Framework CLI",
 		UsageText: "'ctf' is a useful utility that can:\n- clean up test docker containers\n- modify test files\n- create a local observability stack with Grafana/Loki/Pyroscope",
@@ -80,7 +82,7 @@ Usage:
 							}
 							productName := c.String("product-name")
 							if productName == "" {
-								return fmt.Errorf("Product name must be specified, call your product somehow, any name")
+								return fmt.Errorf("product name must be specified, call your product somehow, any name")
 							}
 							framework.L.Info().
 								Str("OutputDir", outputDir).
@@ -212,7 +214,7 @@ Be aware that any TODO requires your attention before your run the final test!
 						},
 						Action: func(c *cli.Context) error {
 							if c.Args().Len() == 0 {
-								return fmt.Errorf("Kubernetes namespace argument is required")
+								return fmt.Errorf("kubernetes namespace argument is required")
 							}
 							ns := c.Args().First()
 							testSuiteName := c.String("name")
@@ -320,7 +322,6 @@ Be aware that any TODO requires your attention before your run the final test!
 								Name:    "buildcmd",
 								Aliases: []string{"b"},
 								Usage:   "Environment build command",
-								Value:   "just cli",
 							},
 							&cli.StringFlag{
 								Name:    "envcmd",
@@ -362,6 +363,10 @@ Be aware that any TODO requires your attention before your run the final test!
 								Name:  "skip-pull",
 								Usage: "Skip docker pull; use locally built images (e.g. for local testing)",
 							},
+							&cli.StringFlag{
+								Name:  "tag-version-ceiling",
+								Usage: "Tag version ceiling to use for the upgrade sequence, which limits the upgrade sequence to the given tag version and below",
+							},
 						},
 						Usage: "Rollbacks N versions back, runs the test the upgrades CL nodes with new versions",
 						Action: func(c *cli.Context) error {
@@ -369,6 +374,7 @@ Be aware that any TODO requires your attention before your run the final test!
 							versionsBack := c.Int("versions-back")
 							registry := c.String("registry")
 							refs := c.StringSlice("refs")
+							tagVersionCeiling := c.String("tag-version-ceiling")
 							include := c.StringSlice("include-refs")
 							exclude := c.StringSlice("exclude-refs")
 
@@ -391,25 +397,27 @@ Be aware that any TODO requires your attention before your run the final test!
 							// - perform the test again
 							// - repeat until all the new versions are validated
 
-							// if no refs provided find refs (tags) sequence SemVer sequence for last N versions_back
+							// if no refs provided find refs (tags) sequence SemVer sequence for last N versions_back (limited by tag-version-ceiling if provided)
 							// else, use refs param slice
 
 							// Step 1: Find upgrade sequence either from Git refs or product unique versions found in SOT data source
 
 							var err error
 							if len(refs) == 0 && product == "" {
-								refs, err = framework.FindSemVerRefSequence(versionsBack, include, exclude)
+								if tagVersionCeiling != "" {
+									_, tagErr := semver.NewVersion(tagVersionCeiling)
+									if tagErr != nil {
+										return fmt.Errorf("failed to parse tag version ceiling: %w", tagErr)
+									}
+								}
+								refs, err = framework.FindSemVerRefSequence(versionsBack, include, exclude, tagVersionCeiling)
 								if err != nil {
 									return err
 								}
 							}
 
 							if product != "" {
-								// TODO: Stub, until versions are mapped properly and not skipped this is just an example
-								// Both Git, ECR and "versions" from SOT data do not match
-								// so we fetch the data but do not use it for now
-								// test refs are populated from --refs, see docs and CI in core
-								_, err := framework.FindNOPsVersionsByProduct(sotURL, product, exclude)
+								refs, err = framework.FindNOPsVersionsByProduct(sotURL, product, exclude)
 								if err != nil {
 									return err
 								}
@@ -528,11 +536,20 @@ Be aware that any TODO requires your attention before your run the final test!
 								Usage:   "Spin up all the observability services",
 								Value:   false,
 							},
+							&cli.BoolFlag{
+								Name:    "victoria",
+								Aliases: []string{"vm"},
+								Usage:   "Spin up all the observability services (VictoriaMetrics)",
+								Value:   false,
+							},
 						},
 						Description: "Spins up a local observability stack. Has two modes, standard (Loki, Prometheus, Grafana and OTEL) and full including also Tempo, Cadvisor and PostgreSQL metrics",
 						Action: func(c *cli.Context) error {
 							if c.Bool("full") {
 								return framework.ObservabilityUpFull()
+							}
+							if c.Bool("victoria") {
+								return framework.ObservabilityVictoriaMetricsUp()
 							}
 							return framework.ObservabilityUp()
 						},
@@ -548,9 +565,20 @@ Be aware that any TODO requires your attention before your run the final test!
 								Usage:   "Removes all the observability services (this flag exists for compatibility, all the services are always removed with 'down')",
 								Value:   false,
 							},
+							&cli.BoolFlag{
+								Name:    "victoria",
+								Aliases: []string{"vm"},
+								Usage:   "Spin up all the observability services (VictoriaMetrics)",
+								Value:   false,
+							},
 						},
 						Description: "Removes local observability stack",
-						Action:      func(c *cli.Context) error { return framework.ObservabilityDown() },
+						Action: func(c *cli.Context) error {
+							if c.Bool("victoria") {
+								return framework.ObservabilityVictoriaDown()
+							}
+							return framework.ObservabilityDown()
+						},
 					},
 					{
 						Name:    "restart",
@@ -563,15 +591,29 @@ Be aware that any TODO requires your attention before your run the final test!
 								Usage:   "Restart all observability services (this flag exists for compatibility, all the services are always removed with 'down')",
 								Value:   false,
 							},
+							&cli.BoolFlag{
+								Name:    "victoria",
+								Aliases: []string{"vm"},
+								Usage:   "Spin up all the observability services (VictoriaMetrics)",
+								Value:   false,
+							},
 						},
 						Description: "Restart a local observability stack",
 						Action: func(c *cli.Context) error {
-							// always remove all the containers and volumes to clean up the data
-							if err := framework.ObservabilityDown(); err != nil {
-								return err
+							if c.Bool("victoria") {
+								if err := framework.ObservabilityVictoriaDown(); err != nil {
+									return err
+								}
+							} else {
+								if err := framework.ObservabilityDown(); err != nil {
+									return err
+								}
 							}
 							if c.Bool("full") {
 								return framework.ObservabilityUpFull()
+							}
+							if c.Bool("victoria") {
+								return framework.ObservabilityVictoriaMetricsUp()
 							}
 							return framework.ObservabilityUp()
 						},

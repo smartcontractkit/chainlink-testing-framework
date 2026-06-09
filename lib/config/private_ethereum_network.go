@@ -96,8 +96,7 @@ WithEthereumVersion(config.EthereumVersion_Eth2).
 
 If you are using a TOML file, please change the EthereumVersion to "eth2" in the TOML file:
 [PrivateEthereumNetwork]
-ethereum_version="eth2"
-`
+ethereum_version="eth2"`
 		return fmt.Errorf(msg, Eth1NotSupportedByRethMsg)
 	}
 

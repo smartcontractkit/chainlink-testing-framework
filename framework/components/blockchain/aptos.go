@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/docker/docker/api/types/container"
+	"github.com/moby/moby/api/types/container"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
@@ -55,9 +55,18 @@ func newAptos(ctx context.Context, in *Input) (*Output, error) {
 	defaultAptos(in)
 	containerName := framework.DefaultTCName("blockchain-node")
 
-	absPath, err := filepath.Abs(in.ContractsDir)
-	if err != nil {
-		return nil, err
+	var files []testcontainers.ContainerFile
+	if in.ContractsDir != "" {
+		absPath, err := filepath.Abs(in.ContractsDir)
+		if err != nil {
+			return nil, err
+		}
+		files = []testcontainers.ContainerFile{
+			{
+				HostFilePath:      absPath,
+				ContainerFilePath: "/",
+			},
+		}
 	}
 
 	exposedPorts, bindings, err := framework.GenerateCustomPortsData(in.CustomPorts)
@@ -108,12 +117,7 @@ func newAptos(ctx context.Context, in *Input) (*Output, error) {
 		},
 		ImagePlatform: imagePlatform,
 		Cmd:           cmd,
-		Files: []testcontainers.ContainerFile{
-			{
-				HostFilePath:      absPath,
-				ContainerFilePath: "/",
-			},
-		},
+		Files:         files,
 	}
 
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -150,6 +154,7 @@ func newAptos(ctx context.Context, in *Input) (*Output, error) {
 		}
 	}
 	return &Output{
+		Container:     c,
 		UseCache:      true,
 		Type:          in.Type,
 		Family:        FamilyAptos,

@@ -58,7 +58,7 @@ func (p *Prometheus) validateNotEmptyVec(q string, val model.Value) bool {
 // CPUBusyPercentage host CPU busy percentage
 func (p *Prometheus) CPUBusyPercentage() (float64, error) {
 	q := fmt.Sprintf(QueryAllCPUBusyPercentage, "2m")
-	val, warns, err := p.API.Query(context.Background(), q, time.Now())
+	val, warns, err := p.Query(context.Background(), q, time.Now())
 	if err != nil {
 		return 0, err
 	}
@@ -73,7 +73,7 @@ func (p *Prometheus) CPUBusyPercentage() (float64, error) {
 // MemoryUsage total memory used by interval
 func (p *Prometheus) MemoryUsage() (float64, error) {
 	q := fmt.Sprintf(QueryMemoryUsage, "2m", "2m", "2m", "2m")
-	val, warns, err := p.API.Query(context.Background(), q, time.Now())
+	val, warns, err := p.Query(context.Background(), q, time.Now())
 	if err != nil {
 		return 0, err
 	}
@@ -100,7 +100,7 @@ func (p *Prometheus) ResourcesSummary() (float64, float64, error) {
 
 // GetAlerts returns all firing alerts
 func (p *Prometheus) GetAlerts() (v1.AlertsResult, error) {
-	alerts, err := p.API.Alerts(context.Background())
+	alerts, err := p.Alerts(context.Background())
 	if err != nil {
 		return v1.AlertsResult{}, err
 	}
@@ -109,7 +109,7 @@ func (p *Prometheus) GetAlerts() (v1.AlertsResult, error) {
 
 // GetQuery returns the result of applying a PromQL query
 func (p *Prometheus) GetQuery(query string) (model.Value, error) {
-	value, _, err := p.API.Query(context.Background(), query, time.Now())
+	value, _, err := p.Query(context.Background(), query, time.Now())
 	if err != nil {
 		return nil, err
 	}

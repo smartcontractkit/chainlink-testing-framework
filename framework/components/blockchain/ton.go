@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
+	"net/netip"
+
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
@@ -93,16 +95,16 @@ func newTon(ctx context.Context, in *Input) (*Output, error) {
 			},
 		},
 		HostConfigModifier: func(h *container.HostConfig) {
-			h.PortBindings = nat.PortMap{
-				nat.Port(fmt.Sprintf("%s/tcp", defaultTonHTTPServerPort)): []nat.PortBinding{
+			h.PortBindings = network.PortMap{
+				network.MustParsePort(fmt.Sprintf("%s/tcp", defaultTonHTTPServerPort)): []network.PortBinding{
 					{
-						HostIP:   "0.0.0.0",
+						HostIP:   netip.MustParseAddr("0.0.0.0"),
 						HostPort: in.Port,
 					},
 				},
-				nat.Port(fmt.Sprintf("%s/tcp", defaultLiteServerPort)): []nat.PortBinding{
+				network.MustParsePort(fmt.Sprintf("%s/tcp", defaultLiteServerPort)): []network.PortBinding{
 					{
-						HostIP:   "0.0.0.0",
+						HostIP:   netip.MustParseAddr("0.0.0.0"),
 						HostPort: "", // Docker assigns a dynamic available port
 					},
 				},
@@ -124,11 +126,11 @@ func newTon(ctx context.Context, in *Input) (*Output, error) {
 		return nil, err
 	}
 
-	httpMappedPort, err := c.MappedPort(ctx, nat.Port(fmt.Sprintf("%s/tcp", defaultTonHTTPServerPort)))
+	httpMappedPort, err := c.MappedPort(ctx, fmt.Sprintf("%s/tcp", defaultTonHTTPServerPort))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get mapped HTTP port: %w", err)
 	}
-	lsMappedPort, err := c.MappedPort(ctx, nat.Port(fmt.Sprintf("%s/tcp", defaultLiteServerPort)))
+	lsMappedPort, err := c.MappedPort(ctx, fmt.Sprintf("%s/tcp", defaultLiteServerPort))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get mapped LiteServer port: %w", err)
 	}

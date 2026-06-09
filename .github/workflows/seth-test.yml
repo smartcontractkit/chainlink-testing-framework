@@ -4,7 +4,24 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      src: ${{ steps.changes.outputs.src }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for changes in Framework
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        id: changes
+        with:
+          filters: |
+            src:
+              - 'seth/**'
   test:
+    if: needs.changes.outputs.src == 'true'
+    needs: changes
     strategy:
       fail-fast: false
       matrix:
@@ -107,3 +124,17 @@ jobs:
       - name: Run tests
         run: |
           devbox run -- just seth-test ${{ matrix.test.network-type }} ${{ matrix.test.url }} ${{ matrix.test.regex }} ${{ matrix.test.extra_flags}}
+
+  test-results:
+    name: Seth Tests
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    needs: test
+    steps:
+      - name: Require all matrix jobs passed
+        run: |
+          if [ "${{ needs.test.result }}" != "skipped" ] && [ "${{ needs.test.result }}" != "success" ]; then
+            echo "::error::One or more Seth test matrix jobs failed or were cancelled."
+            exit 1
+          fi
+          echo "All Seth test matrix jobs succeeded."

@@ -74,7 +74,7 @@ func NewMockserverClient(cfg *MockserverConfig) *MockserverClient {
 func (em *MockserverClient) PutExpectations(body interface{}) error {
 	resp, err := em.APIClient.R().SetBody(body).Put("/expectation")
 	if resp.StatusCode() != http.StatusCreated {
-		err = fmt.Errorf("Unexpected Status Code. Expected %d; Got %d", http.StatusCreated, resp.StatusCode())
+		err = fmt.Errorf("unexpected status code: expected %d, got %d", http.StatusCreated, resp.StatusCode())
 	}
 	return err
 }
@@ -83,7 +83,7 @@ func (em *MockserverClient) PutExpectations(body interface{}) error {
 func (em *MockserverClient) ClearExpectation(body interface{}) error {
 	resp, err := em.APIClient.R().SetBody(body).Put("/clear")
 	if resp.StatusCode() != http.StatusOK {
-		err = fmt.Errorf("Unexpected Status Code. Expected %d; Got %d", http.StatusOK, resp.StatusCode())
+		err = fmt.Errorf("unexpected status code: expected %d, got %d", http.StatusOK, resp.StatusCode())
 	}
 	return err
 }

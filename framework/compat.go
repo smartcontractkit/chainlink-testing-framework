@@ -12,9 +12,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/client"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/Masterminds/semver/v3"
@@ -266,31 +265,26 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 		Str("Image", newImage).
 		Logger()
 	l.Debug().Msg("Upgrading container")
-	cli, err := client.NewClientWithOpts(
-		client.FromEnv,
-		client.WithAPIVersionNegotiation(),
-	)
+	cli, err := client.New()
 	if err != nil {
 		return fmt.Errorf("failed to create Docker client: %w", err)
 	}
 	defer cli.Close()
-	inspect, err := cli.ContainerInspect(ctx, containerName)
+	inspected, err := cli.ContainerInspect(ctx, containerName, client.ContainerInspectOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to inspect container %s: %w", containerName, err)
 	}
 	l.Debug().Msg("Stopping container")
-	stopOpts := container.StopOptions{}
-	if err := cli.ContainerStop(ctx, containerName, stopOpts); err != nil {
+	if _, err := cli.ContainerStop(ctx, containerName, client.ContainerStopOptions{}); err != nil {
 		return fmt.Errorf("failed to stop container %s: %w", containerName, err)
 	}
 	l.Debug().Msg("Removing container")
 	// keep the volumes
-	removeOpts := container.RemoveOptions{RemoveVolumes: false}
-	if err := cli.ContainerRemove(ctx, containerName, removeOpts); err != nil {
+	if _, err := cli.ContainerRemove(ctx, containerName, client.ContainerRemoveOptions{RemoveVolumes: false}); err != nil {
 		return fmt.Errorf("failed to remove container %s: %w", containerName, err)
 	}
 
-	inspect.Config.Image = newImage
+	inspected.Container.Config.Image = newImage
 
 	networkingConfig := &network.NetworkingConfig{
 		EndpointsConfig: map[string]*network.EndpointSettings{
@@ -299,14 +293,12 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 			},
 		},
 	}
-	createResp, err := cli.ContainerCreate(
-		ctx,
-		inspect.Config,
-		inspect.HostConfig,
-		networkingConfig,
-		nil,
-		containerName,
-	)
+	createResp, err := cli.ContainerCreate(ctx, client.ContainerCreateOptions{
+		Config:           inspected.Container.Config,
+		HostConfig:       inspected.Container.HostConfig,
+		NetworkingConfig: networkingConfig,
+		Name:             containerName,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to create container with image %s: %w", newImage, err)
 	}
@@ -314,8 +306,7 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 		Str("ContainerID", createResp.ID).
 		Msg("Container created")
 	l.Debug().Msg("Starting new container")
-	startOpts := container.StartOptions{}
-	if err := cli.ContainerStart(ctx, createResp.ID, startOpts); err != nil {
+	if _, err := cli.ContainerStart(ctx, createResp.ID, client.ContainerStartOptions{}); err != nil {
 		return fmt.Errorf("failed to start container %s: %w", containerName, err)
 	}
 	l.Info().Msg("Container successfully rebooted with new image")
@@ -324,7 +315,7 @@ func UpgradeContainer(ctx context.Context, containerName, newImage string) error
 
 // FindSemVerRefSequence gets all semver tags, sorts them, and rolls back to the earliest tag
 // returns all the tags starting from the oldest one
-func FindSemVerRefSequence(tagsBack int, include, exclude []string) ([]string, error) {
+func FindSemVerRefSequence(tagsBack int, include, exclude []string, tagVersionCeiling string) ([]string, error) {
 	output, err := ExecCmd("git tag --list")
 	if err != nil {
 		return nil, fmt.Errorf("failed to list git tags: %w", err)
@@ -335,7 +326,7 @@ func FindSemVerRefSequence(tagsBack int, include, exclude []string) ([]string, e
 		return nil, fmt.Errorf("no tags found in repository")
 	}
 
-	sortedDesc := FilterSemverTags(tags, include, exclude)
+	sortedDesc := FilterSemverTags(tags, include, exclude, tagVersionCeiling)
 	if len(sortedDesc) == 0 {
 		return nil, fmt.Errorf("no valid semver tags found")
 	}
@@ -366,7 +357,8 @@ type RaneSOTResponseBody struct {
 		Jobs []struct {
 			Product string `json:"product"`
 		} `json:"jobs"`
-		Version string `json:"version"`
+		DockerTag  string `json:"docker_tag"`
+		VersionTag string `json:"version_tag"`
 	} `json:"nodes"`
 }
 
@@ -401,28 +393,30 @@ func FindNOPsVersionsByProduct(url string, product string, exclude []string) ([]
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch SOT data: %w", err)
 	}
-	refs := make([]string, 0)
+	versions := make([]string, 0)
 	products := make(map[string]bool)
 	seenRefs := make(map[string]bool, 0)
 	for _, n := range src.Nodes {
 		for _, j := range n.Jobs {
 			products[j.Product] = true
 			if j.Product == product {
-				if _, ok := seenRefs[n.Version]; !ok {
-					refs = append(refs, n.Version)
-					seenRefs[n.Version] = true
+				if _, ok := seenRefs[n.VersionTag]; !ok {
+					versions = append(versions, n.VersionTag)
+					seenRefs[n.VersionTag] = true
 				}
 			}
 		}
 	}
-	semverTags := FilterSemverTags(refs, []string{}, exclude)
+	L.Info().Any("Tags", versions).Msg("Found Version tags")
+	semverTags := FilterSemverTags(versions, []string{}, exclude, "")
 	slices.Reverse(semverTags)
+	L.Info().Any("SemVerTags", semverTags).Msg("Found SemVer tags")
 	L.Info().Any("Products", slices.Collect(maps.Keys(products))).Msg("Found products")
 	return semverTags, nil
 }
 
 // FilterSemverTags parses valid versions and returns them sorted from latest to lowest
-func FilterSemverTags(versions []string, include []string, exclude []string) []string {
+func FilterSemverTags(versions []string, include []string, exclude []string, tagVersionCeiling string) []string {
 	if len(versions) == 0 {
 		return []string{}
 	}
@@ -440,6 +434,17 @@ func FilterSemverTags(versions []string, include []string, exclude []string) []s
 	sort.Slice(parsedVersions, func(i, j int) bool {
 		return parsedVersions[i].GreaterThan(parsedVersions[j])
 	})
+
+	// apply tag version ceiling if provided
+	if tagVersionCeiling != "" {
+		ceiling := semver.MustParse(tagVersionCeiling)
+		i := 0
+		for i < len(parsedVersions) && parsedVersions[i].GreaterThan(ceiling) {
+			i++
+		}
+		parsedVersions = parsedVersions[i:]
+	}
+
 	// fliter include/exclude
 	filtered := filterVersions(parsedVersions, include, exclude)
 	L.Info().
@@ -477,5 +482,6 @@ func matchesFilter(version string, include, exclude []string) bool {
 			return true
 		}
 	}
+
 	return false
 }

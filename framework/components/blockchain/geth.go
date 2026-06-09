@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/mount"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
@@ -125,7 +125,7 @@ func newGeth(ctx context.Context, in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = genesisFile.WriteString(fmt.Sprintf(GenesisClique, in.ChainID))
+	_, err = fmt.Fprintf(genesisFile, GenesisClique, in.ChainID)
 	if err != nil {
 		return nil, err
 	}

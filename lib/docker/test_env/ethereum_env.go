@@ -175,8 +175,8 @@ func (b *EthereumNetworkBuilder) buildNetworkConfig() EthereumNetwork {
 
 	n.DockerNetworkNames = b.dockerNetworks
 	n.WaitForFinalization = &b.waitForFinalization
-	n.EthereumNetworkConfig.EthereumChainConfig = b.ethereumChainConfig
-	n.EthereumNetworkConfig.CustomDockerImages = b.customDockerImages
+	n.EthereumChainConfig = b.ethereumChainConfig
+	n.CustomDockerImages = b.customDockerImages
 	n.NodeLogLevel = &b.nodeLogLevel
 	n.t = b.t
 

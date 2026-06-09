@@ -177,7 +177,7 @@ func (cd *CLNodesLeakDetector) Check(t *CLNodesCheck) error {
 
 			if memMeasurement.Delta >= t.MemoryThreshold {
 				errs = append(errs, fmt.Errorf(
-					"Memory leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
+					"memory leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
 					i, t.Start, t.End, memMeasurement.Delta, t.ComparisonMode,
 				))
 			}
@@ -213,7 +213,7 @@ func (cd *CLNodesLeakDetector) Check(t *CLNodesCheck) error {
 			cpuMeasurements = append(cpuMeasurements, cpuMeasurement)
 			if memMeasurement.End >= t.MemoryThreshold {
 				errs = append(errs, fmt.Errorf(
-					"Memory leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
+					"memory leak detected for node %d and interval: [%s -> %s], diff: %.f, comparison mode: %s",
 					i, t.Start, t.End, memMeasurement.End, t.ComparisonMode,
 				))
 			}
@@ -230,7 +230,7 @@ func (cd *CLNodesLeakDetector) Check(t *CLNodesCheck) error {
 		uptime, err := cd.checkContainerUptime(t, i)
 		if err != nil {
 			errs = append(errs, fmt.Errorf(
-				"Container uptime issue for node %d and interval: [%s -> %s], uptime: %.f, err: %w",
+				"container uptime issue for node %d and interval: [%s -> %s], uptime: %.f, err: %w",
 				i, t.Start, t.End, uptime, err,
 			))
 		}

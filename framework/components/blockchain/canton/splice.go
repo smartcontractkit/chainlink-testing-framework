@@ -23,16 +23,16 @@ func getSpliceHealthCheckScript(numberOfValidators int) string {
 
 set -eou pipefail
 
-curl -f http://localhost:5012/api/scan/readyz
-curl -f http://localhost:5014/api/sv/readyz
+wget --no-verbose --tries=1 --spider http://localhost:5012/api/scan/readyz
+wget --no-verbose --tries=1 --spider http://localhost:5014/api/sv/readyz
 
 # SV
-curl -f "http://localhost:${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}00/api/validator/readyz"
+wget --no-verbose --tries=1 --spider "http://localhost:${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}00/api/validator/readyz"
 `
 	for i := 1; i <= numberOfValidators; i++ {
 		script += fmt.Sprintf(`
 # Participant %02[1]d
-curl -f "http://localhost:${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}%02[1]d/api/validator/readyz"
+wget --no-verbose --tries=1 --spider "http://localhost:${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}%02[1]d/api/validator/readyz"
 		`, i)
 	}
 
@@ -141,13 +141,17 @@ canton {
       port = 5012
     }
     participant-client = ${_sv_participant_client}
-    sequencer-admin-client = {
-      address = ${CANTON_CONTAINER_NAME}
-      port = 5009
-    }
-    mediator-admin-client = {
-      address = ${CANTON_CONTAINER_NAME}
-      port = 5007
+    synchronizer-nodes {
+      current {
+        sequencer = {
+          address = ${CANTON_CONTAINER_NAME}
+          port = 5009
+        }
+        mediator = {
+          address = ${CANTON_CONTAINER_NAME}
+          port = 5007
+        }
+      }
     }
     sv-user = "user-sv"
     splice-instance-names = ${_splice-instance-names}
@@ -162,7 +166,7 @@ canton {
       public-url="http://localhost:5012"
       internal-url="http://localhost:5012"
     }
-    local-synchronizer-node {
+    local-synchronizer-nodes.current {
       sequencer {
         admin-api {
           address = ${CANTON_CONTAINER_NAME}
@@ -177,6 +181,12 @@ canton {
       mediator.admin-api {
         address = ${CANTON_CONTAINER_NAME}
         port = 5007
+      }
+      comet-bft-config = {
+        enabled = false
+        enabled = ${?SPLICE_APP_SV_COMETBFT_ENABLED}
+        connection-uri = ""
+        connection-uri = ${?SPLICE_APP_SV_COMETBFT_CONNECTION_URI}
       }
     }
 
@@ -215,6 +225,8 @@ canton {
         "org.lfdecentralizedtrust.splice.sv.automation.delegatebased.ExpiredAnsSubscriptionTrigger",
         "org.lfdecentralizedtrust.splice.sv.automation.delegatebased.ExpiredAnsEntryTrigger",
         "org.lfdecentralizedtrust.splice.sv.automation.delegatebased.ExpireTransferPreapprovalsTrigger",
+        "org.lfdecentralizedtrust.splice.sv.automation.delegatebased.ExpiredAmuletTransferInstructionTrigger",
+        "org.lfdecentralizedtrust.splice.sv.automation.delegatebased.ExpiredAmuletAllocationTrigger",
       ]
     }
 
@@ -232,12 +244,6 @@ canton {
       initial-round = ${?SPLICE_APP_SV_INITIAL_ROUND}
     }
     initial-amulet-price-vote = ${?SPLICE_APP_SV_INITIAL_AMULET_PRICE_VOTE}
-    comet-bft-config = {
-      enabled = false
-      enabled = ${?SPLICE_APP_SV_COMETBFT_ENABLED}
-      connection-uri = ""
-      connection-uri = ${?SPLICE_APP_SV_COMETBFT_CONNECTION_URI}
-    }
     contact-point = "contact@local.host"
     canton-identifier-config = {
       participant = sv
@@ -280,7 +286,6 @@ canton.validator-apps.sv-validator_backend = ${_validator_backend} {
 canton.validator-apps.participant%[1]d-validator_backend = ${_validator_backend} {
 	onboarding.secret = "participant%[1]d-validator-onboarding-secret"
 	validator-party-hint = "participant%[1]d-localparty-1"
-	domain-migration-dump-path = "/domain-upgrade-dump/domain_migration_dump-participant%[1]d.json"
 	storage.config.properties.databaseName = validator-%[1]d
 	admin-api.port = ${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}%02[1]d
 	participant-client {

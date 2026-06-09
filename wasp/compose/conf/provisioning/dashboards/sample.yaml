@@ -8,3 +8,11 @@ providers:
    type: file
    options:
      path: /etc/grafana/provisioning/dashboards
+ - name: 'wasp'
+   orgId: 1
+   folder: 'WASP'
+   type: file
+   disableDeletion: false
+   editable: true
+   options:
+     path: /etc/wasp-dashboards

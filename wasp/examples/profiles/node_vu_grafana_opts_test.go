@@ -28,6 +28,7 @@ func TestGrafanaOptsVU(t *testing.T) {
 			VU:         NewExampleScenario(srv.URL()),
 			Labels:     labels,
 			LokiConfig: wasp.NewEnvLokiConfig(),
+			OTELConfig: wasp.NewEnvOTELConfig(),
 		})).
 		Add(wasp.NewGenerator(&wasp.Config{
 			T:          t,
@@ -37,6 +38,7 @@ func TestGrafanaOptsVU(t *testing.T) {
 			VU:         NewExampleScenario(srv.URL()),
 			Labels:     labels,
 			LokiConfig: wasp.NewEnvLokiConfig(),
+			OTELConfig: wasp.NewEnvOTELConfig(),
 		})).
 		WithGrafana(&wasp.GrafanaOpts{
 			GrafanaURL:                   os.Getenv("GRAFANA_URL"),
