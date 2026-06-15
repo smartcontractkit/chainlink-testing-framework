@@ -82,7 +82,7 @@ require (
 )
 
 require (
-	github.com/coder/websocket v1.8.12
+	github.com/coder/websocket v1.8.15
 	github.com/gin-gonic/gin v1.10.0
 	github.com/grafana/dskit v0.0.0-20241007172036-53283a0f6b41
 	// post v3.4.2 version compatible with prometheus
