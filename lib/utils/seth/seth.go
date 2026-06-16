@@ -112,7 +112,7 @@ func GetChainClient(c config.SethConfig, network blockchain.EVMNetwork) (*pkg_se
 func GetChainClientWithConfigFunction(c config.SethConfig, network blockchain.EVMNetwork, configFn ConfigFunction) (*pkg_seth.Client, error) {
 	readSethCfg := c.GetSethConfig()
 	if readSethCfg == nil {
-		return nil, fmt.Errorf("Seth config not found in the provided configuration. " +
+		return nil, fmt.Errorf("seth config not found in the provided configuration. " +
 			"Ensure your TOML config file has a [Seth] section with required settings. " +
 			"See example: https://github.com/smartcontractkit/chainlink-testing-framework/blob/main/seth/seth.toml")
 	}
