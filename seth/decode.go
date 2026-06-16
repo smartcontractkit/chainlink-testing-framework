@@ -172,19 +172,20 @@ func (m *Client) DecodeTx(tx *types.Transaction) (*DecodedTransaction, error) {
 
 	if decodeErr != nil && (errors.Is(decodeErr, ErrNoABIMethod) || errors.Is(decodeErr, ErrNoABIFound)) {
 		m.handleTxDecodingError(l, *decoded, decodeErr)
-		return decoded, revertErr
+		// do not return here, because we want to continue with tracing
+		// we might still get some useful information from the trace
 	}
 
 	if m.Cfg.TracingLevel == TracingLevel_None {
 		m.handleDisabledTracing(l, *decoded)
-		return decoded, revertErr
+		return decoded, errors.Join(decodeErr, revertErr)
 	}
 
 	if m.Cfg.TracingLevel == TracingLevel_All || (m.Cfg.TracingLevel == TracingLevel_Reverted && revertErr != nil) {
 		decodedCalls, traceErr := m.Tracer.TraceGethTX(decoded.Hash)
 		if traceErr != nil {
 			m.handleTracingError(l, *decoded, traceErr, revertErr)
-			return decoded, revertErr
+			return decoded, errors.Join(decodeErr, revertErr)
 		}
 
 		m.handleSuccessfulTracing(l, *decoded, decodedCalls, revertErr)
@@ -195,7 +196,7 @@ func (m *Client) DecodeTx(tx *types.Transaction) (*DecodedTransaction, error) {
 			Msg("Transaction doesn't match tracing level, skipping decoding")
 	}
 
-	return decoded, revertErr
+	return decoded, errors.Join(decodeErr, revertErr)
 }
 
 func (m *Client) waitUntilMined(l zerolog.Logger, tx *types.Transaction) (*types.Transaction, *types.Receipt, error) {

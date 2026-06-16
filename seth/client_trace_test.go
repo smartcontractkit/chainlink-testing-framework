@@ -447,7 +447,8 @@ func TestTraceContractTracingUnknownAbi(t *testing.T) {
 	var x int64 = 2
 	var y int64 = 4
 	tx, txErr := c.Decode(TestEnv.DebugContract.TraceDifferent(c.NewTXOpts(), big.NewInt(x), big.NewInt(y)))
-	require.NoError(t, txErr, FailedToDecode)
+	require.Error(t, txErr, FailedToDecode)
+	require.ErrorIs(t, txErr, seth.ErrNoABIMethod, "expected error to be ErrNoABIMethod")
 
 	require.Equal(t, 1, len(c.Tracer.GetAllDecodedCalls()), "expected 1 decoded transacton")
 	require.NotNil(t, c.Tracer.GetDecodedCalls(tx.Hash), "expected decoded calls to contain the transaction hash")
