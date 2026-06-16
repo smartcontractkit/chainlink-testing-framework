@@ -170,8 +170,7 @@ func TestConfig_ModifyExistingConfigWithBuilder_UnknownChainId(t *testing.T) {
 		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
 		Build()
 
-	expectedError := `errors occurred during building the config:
-network with chainId '225' not found
+	expectedError := `errors occurred during building the config: network with chainId '225' not found
 at least one method that required network to be set was called, but network is nil
 you need to set the Network`
 
@@ -196,8 +195,7 @@ func TestConfig_ModifyExistingConfigWithBuilder_UnknownChainId_UseDefault(t *tes
 		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
 		Build()
 
-	expectedError := `errors occurred during building the config:
-network with chainId '225' not found
+	expectedError := `errors occurred during building the config: network with chainId '225' not found
 at least one method that required network to be set was called, but network is nil
 at least one method that required network to be set was called, but network is nil
 you need to set the Network`
