@@ -403,7 +403,7 @@ func (t *Tracer) decodeCall(byteSignature []byte, rawCall Call) (*DecodedCall, e
 
 	abiResult, err := t.ABIFinder.FindABIByMethod(rawCall.To, byteSignature)
 
-	defaultCall.CommonData.Signature = common.Bytes2Hex(byteSignature)
+	defaultCall.Signature = common.Bytes2Hex(byteSignature)
 	defaultCall.FromAddress = rawCall.From
 	defaultCall.ToAddress = rawCall.To
 	defaultCall.From = t.getHumanReadableAddressName(rawCall.From)

@@ -206,11 +206,10 @@ func ReadConfig() (*Config, error) {
 
 	rootPrivateKey := os.Getenv(ROOT_PRIVATE_KEY_ENV_VAR)
 	if rootPrivateKey == "" {
-		return nil, fmt.Errorf("no root private key was set"+
-			"You can provide the root private key via:\n"+
+		return nil, fmt.Errorf("no root private key was set. You can provide the root private key via:\n"+
 			"  1. %s environment variable (without 0x prefix)\n"+
 			"  2. 'private_keys_secret' array in seth.toml [[networks]] section\n"+
-			"WARNING: Never commit private keys to source control. We recommend to use the environment variable.",
+			"WARNING: Never commit private keys to source control. We recommend to use the environment variable",
 			ROOT_PRIVATE_KEY_ENV_VAR)
 	}
 	cfg.Network.PrivateKeys = append(cfg.Network.PrivateKeys, rootPrivateKey)

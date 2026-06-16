@@ -344,14 +344,14 @@ func CreateOrAppendToJsonArray(filePath string, newItem any) error {
 	jsonValue := string(jsonBytes)
 
 	if size == 0 {
-		_, err = f.WriteString(fmt.Sprintf("[%s]", jsonValue))
+		_, err = fmt.Fprintf(f, "[%s]", jsonValue)
 	} else {
 		// Move cursor back by one character, so we can append data just before array end.
 		_, err = f.Seek(-1, io.SeekEnd)
 		if err != nil {
 			return err
 		}
-		_, err = f.WriteString(fmt.Sprintf(",\n%s]", jsonValue))
+		_, err = fmt.Fprintf(f, ",\n%s]", jsonValue)
 	}
 	return err
 }
