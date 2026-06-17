@@ -139,8 +139,7 @@ func (m *Client) CalculateNetworkCongestionMetric(blocksNumber uint64, strategy 
 			"  1. Retry the transaction (temporary RPC issue)\n"+
 			"  2. Use a different RPC endpoint\n"+
 			"  3. Disable gas estimation: set gas_price_estimation_enabled = false\n"+
-			"  4. Reduce gas_price_estimation_blocks to fetch fewer blocks\n"+
-			": %w",
+			"  4. Reduce gas_price_estimation_blocks to fetch fewer blocks: %w",
 			minBlockCount, len(headers), float64(len(headers))/float64(blocksNumber)*100, ErrBlockFetchingFailed)
 	}
 
@@ -223,8 +222,8 @@ func (m *Client) GetSuggestedEIP1559Fees(ctx context.Context, priority string) (
 			"Solutions:\n"+
 			"  1. Use a different RPC endpoint\n"+
 			"  2. Disable gas estimation: set gas_price_estimation_enabled = false in config\n"+
-			"  3. Set explicit gas values: gas_price, gas_fee_cap, and gas_tip_cap (in your config (seth.toml or ClientBuilder)\n"+
-			": %w", ErrZeroGasSuggested)
+			"  3. Set explicit gas values: gas_price, gas_fee_cap, and gas_tip_cap in your config (seth.toml or ClientBuilder): %w",
+			ErrZeroGasSuggested)
 		return
 	}
 

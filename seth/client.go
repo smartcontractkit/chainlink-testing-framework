@@ -133,7 +133,7 @@ func NewClientWithConfig(cfg *Config) (*Client, error) {
 		contractAddressToNameMap.addressMap, err = LoadDeployedContracts(cfg.ContractMapFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load deployed contracts map from '%s': %w\n"+
-				"If this is a fresh deployment or you don't need contract mapping, ignore this error by setting save_deployed_contracts_map = false",
+				"If this is a fresh deployment or you don't need contract mapping, set save_deployed_contracts_map = false in seth.toml before creating the client",
 				cfg.ContractMapFile, err)
 		}
 	} else {
@@ -280,7 +280,7 @@ func NewClientRaw(
 			c.ContractAddressToNameMap.addressMap, err = LoadDeployedContracts(cfg.ContractMapFile)
 			if err != nil {
 				return nil, fmt.Errorf("failed to load deployed contracts map from '%s': %w\n"+
-					"If this is a fresh deployment or you don't need contract mapping, ignore this error by setting save_deployed_contracts_map = false",
+					"If this is a fresh deployment or you don't need contract mapping, set save_deployed_contracts_map = false in seth.toml before creating the client",
 					cfg.ContractMapFile, err)
 			}
 			if len(c.ContractAddressToNameMap.addressMap) > 0 {
@@ -1537,8 +1537,8 @@ func (m *Client) validateAddressesKeyNum(keyNum int) error {
 	if keyNum >= len(m.Addresses) || keyNum < 0 {
 		if len(m.Addresses) == 0 {
 			return fmt.Errorf("no addresses loaded, but tried to use key #%d.\n"+
-				"This should not happen if private keys were loaded correctly. "+
-				"Please report this issue at https://github.com/smartcontractkit/chainlink-testing-framework/issues with the stack trace",
+				"Addresses are derived from private keys during client initialization.\n"+
+				"Verify private keys were loaded via SETH_ROOT_PRIVATE_KEY, private_keys_secret in seth.toml, or WithPrivateKeys()",
 				keyNum)
 		}
 		return fmt.Errorf("keyNum %d is out of range. Available addresses: 0-%d (total: %d addresses loaded).\n"+

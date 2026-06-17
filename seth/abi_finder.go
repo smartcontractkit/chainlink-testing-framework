@@ -55,8 +55,7 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 				"  1. Verify ABI file '%s.abi' exists in the configured abi_dir\n"+
 				"  2. Check if save_deployed_contracts_map = true in config\n"+
 				"  3. Re-deploy the contract or manually add ABI with ContractStore.AddABI()\n"+
-				"  4. For external contracts, obtain and add the ABI manually\n"+
-				":%w",
+				"  4. For external contracts, obtain and add the ABI manually: %w",
 				contractName, address, contractName, ErrNoABIFound)
 			L.Err(err).
 				Str("Contract", contractName).
@@ -94,13 +93,20 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 				}
 			}
 
-			L.Err(err).
+			findErr := fmt.Errorf("method signature %s not found in ABI for contract '%s' at address %s, even though the address is registered in the contract map: %w\n"+
+				"This usually means the contract map points to the wrong ABI.\n"+
+				"Troubleshooting:\n"+
+				"  1. Verify '%s.abi' matches the deployed contract at %s\n"+
+				"  2. Re-deploy with DeployContract() or update the contract map\n"+
+				"  3. If multiple contracts share method signatures, Seth may have mapped the wrong ABI",
+				stringSignature, contractName, address, err, contractName, address)
+			L.Err(findErr).
 				Str("Signature", stringSignature).
 				Str("Supposed contract", contractName).
 				Str("Supposed address", address).
-				Msg("Method not found in known ABI instance. This should not happen. Contract map might be corrupted")
+				Msg("Method not found in known ABI instance")
 
-			return ABIFinderResult{}, err
+			return ABIFinderResult{}, findErr
 		}
 
 		result.Method = methodCandidate
@@ -150,8 +156,7 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 			"  2. Check the method signature is correct (case-sensitive, including parameter types)\n"+
 			"  3. Ensure ABI file exists in the directory specified by 'abi_dir'\n"+
 			"  4. Review contract_map_file for address-to-name mappings\n"+
-			"  5. Use ContractStore.AddABI() to manually add the ABI\v"+
-			": %w",
+			"  5. Use ContractStore.AddABI() to manually add the ABI: %w",
 			stringSignature, address, len(a.ContractStore.ABIs), ErrNoABIMethod)
 	}
 

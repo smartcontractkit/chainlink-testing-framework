@@ -70,11 +70,8 @@ func (cs *BlockStats) Stats(startBlock *big.Int, endBlock *big.Int) error {
 	}
 	if endBlock != nil && startBlock.Int64() > endBlock.Int64() {
 		return fmt.Errorf("invalid block range for statistics: start block %d > end block %d.\n"+
-			"This is a bug in Seth's block stats calculation logic.\n"+
-			"Please open a GitHub issue at https://github.com/smartcontractkit/chainlink-testing-framework/issues with:\n"+
-			"  1. Your configuration file\n"+
-			"  2. The operation you were performing\n"+
-			"  3. Network name and chain ID",
+			"Ensure the start block is less than or equal to the end block.\n"+
+			"If using relative block numbers in block_stats config, verify the values are correct for your network",
 			startBlock.Int64(), endBlock.Int64())
 	}
 	L.Info().

@@ -58,6 +58,7 @@ func TestSmokeDebugReverts(t *testing.T) {
 				}
 			}
 			require.Contains(t, err.Error(), expectedOutput, "expected error message to contain the reverted error type and values")
+			require.ErrorIs(t, err, seth.ErrReverted, "expected revert to be detectable via RevertedErr")
 		})
 	}
 }

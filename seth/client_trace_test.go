@@ -1471,7 +1471,8 @@ func TestTraceOldPragmaNoRevertReason(t *testing.T) {
 	require.NoError(t, txErr, "transaction should have reverted")
 	_, decodeErr := c.Decode(tx, txErr)
 	require.Error(t, decodeErr, "transaction should have reverted")
-	require.Equal(t, "execution reverted", decodeErr.Error(), "expected error message to contain the reverted error type and values")
+	require.ErrorIs(t, decodeErr, seth.ErrReverted, "expected error to be ErrReverted")
+	require.Contains(t, decodeErr.Error(), "execution reverted", "expected error message to contain the reverted error type and values")
 }
 
 func TestTraceeRevertReasonNonRootSender(t *testing.T) {

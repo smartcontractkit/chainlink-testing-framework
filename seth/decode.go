@@ -24,6 +24,10 @@ const (
 	WarnNoContractStore = "ContractStore is nil, use seth.NewContractStore(...) to decode transactions"
 )
 
+// ErrReverted is returned when a transaction was mined but reverted on-chain.
+// Use errors.Is(err, ErrReverted) to detect reverts regardless of the decoded reason string.
+var ErrReverted = errors.New("transaction reverted")
+
 // DecodedTransaction decoded transaction
 type DecodedTransaction struct {
 	CommonData
@@ -612,7 +616,7 @@ func (m *Client) callAndGetRevertReason(tx *types.Transaction, rc *types.Receipt
 		return err
 	}
 	if decodedABIErrString != "" {
-		return fmt.Errorf("transaction reverted with custom error: %s", decodedABIErrString)
+		return fmt.Errorf("%w with custom error: %s", ErrReverted, decodedABIErrString)
 	}
 
 	if plainStringErr != nil {
@@ -635,7 +639,7 @@ func (m *Client) callAndGetRevertReason(tx *types.Transaction, rc *types.Receipt
 			}
 		}
 
-		return plainStringErr
+		return fmt.Errorf("%w: %w", ErrReverted, plainStringErr)
 	}
 	return nil
 }

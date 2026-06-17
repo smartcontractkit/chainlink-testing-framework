@@ -303,7 +303,7 @@ func (c *Config) Validate() error {
 		case TraceOutput_DOT:
 		default:
 			return fmt.Errorf("invalid trace output '%s'. Must be one of: 'console', 'json', 'dot'. "+
-				"Set 'trace_outputs' in your seth.toml config or via WithTracing() option, if using ClientBuilder()"+
+				"Set 'trace_outputs' in your seth.toml config or via WithTracing() when using ClientBuilder(). "+
 				"You can specify multiple outputs as an array",
 				output)
 		}

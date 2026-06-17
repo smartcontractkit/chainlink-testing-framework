@@ -150,8 +150,7 @@ func (m *NonceManager) anySyncedKey() int {
 			"  1. Increase 'key_sync_timeout' in config (seth.toml or ClientBuilder) - current: %s\n"+
 			"  2. Reduce 'key_sync_rate_limit_per_sec' to allow faster sync attempts\n"+
 			"  3. Add more keys with 'ephemeral_addresses_number'\n"+
-			"  4. Check RPC node performance and connectivity\n"+
-			": %w",
+			"  4. Check RPC node performance and connectivity: %w",
 			m.cfg.KeySyncTimeout.Duration(), m.cfg.KeySyncTimeout.Duration(), ErrKeySyncTimeout)
 		L.Error().Msg(timeoutErr.Error())
 		m.Client.Errors = append(m.Client.Errors, timeoutErr)
@@ -191,9 +190,9 @@ func (m *NonceManager) anySyncedKey() int {
 							"  1. RPC node connection issues\n"+
 							"  2. Network congestion or high latency\n"+
 							"  3. Address doesn't exist on the network\n"+
-							"Consider increasing key_sync_timeout in your config\n"+
-							": %w",
-							m.Addresses[keyData.KeyNum].Hex(), keyData.KeyNum, pendingErr, ErrNonce)
+							"Consider increasing key_sync_timeout in your config",
+							m.Addresses[keyData.KeyNum].Hex(), keyData.KeyNum,
+							fmt.Errorf("%w: %w", ErrNonce, pendingErr))
 					}
 					latestNonce, latestErr := m.Client.Client.NonceAt(rpcCtx, addr, nil)
 					if latestErr != nil {
@@ -202,9 +201,9 @@ func (m *NonceManager) anySyncedKey() int {
 							"  1. RPC node connection issues\n"+
 							"  2. Network congestion or high latency\n"+
 							"  3. Address doesn't exist on the network\n"+
-							"Consider increasing key_sync_timeout in your config\n"+
-							": %w",
-							m.Addresses[keyData.KeyNum].Hex(), keyData.KeyNum, latestErr, ErrNonce)
+							"Consider increasing key_sync_timeout in your config",
+							m.Addresses[keyData.KeyNum].Hex(), keyData.KeyNum,
+							fmt.Errorf("%w: %w", ErrNonce, latestErr))
 					}
 
 					// Store for potential recovery use
@@ -237,8 +236,7 @@ func (m *NonceManager) anySyncedKey() int {
 
 					return fmt.Errorf("key #%d (address: %s) sync failed. "+
 						"Expected nonce %d, but got %d. "+
-						"This indicates the transaction hasn't been mined yet\n"+
-						": %w",
+						"This indicates the transaction hasn't been mined yet: %w",
 						keyData.KeyNum, m.Addresses[keyData.KeyNum].Hex(),
 						keyData.Nonce+1, latestNonce, ErrKeySync)
 				},
