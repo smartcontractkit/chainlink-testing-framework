@@ -18,3 +18,9 @@ datasources:
     access: proxy
     url: http://victorialogs:9428
     editable: true
+
+  - name: VictoriaTraces
+    type: jaeger
+    access: proxy
+    url: http://victoriatraces:8443/select/jaeger
+    editable: true

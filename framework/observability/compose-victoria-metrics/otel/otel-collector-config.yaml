@@ -24,17 +24,27 @@ exporters:
     tls:
       insecure: true
 
+  otlp/traces:
+    endpoint: victoriatraces:4317
+    tls:
+      insecure: true
+
   debug:
     verbosity: basic
 
 service:
   pipelines:
     metrics:
-      receivers: [otlp]
-      processors: [batch]
-      exporters: [prometheusremotewrite, debug]
+      receivers: [ otlp ]
+      processors: [ batch ]
+      exporters: [ prometheusremotewrite, debug ]
 
     logs:
-      receivers: [otlp]
-      processors: [batch]
-      exporters: [otlphttp/logs, debug]
+      receivers: [ otlp ]
+      processors: [ batch ]
+      exporters: [ otlphttp/logs, debug ]
+
+    traces:
+      receivers: [ otlp ]
+      processors: [ batch ]
+      exporters: [ otlp/traces, debug ]

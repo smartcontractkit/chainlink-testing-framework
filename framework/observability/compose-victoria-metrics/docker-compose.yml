@@ -25,6 +25,24 @@ services:
       - vl-data:/vlogs
     restart: unless-stopped
 
+  # VictoriaTraces for distributed tracing
+  victoriatraces:
+    image: victoriametrics/victoria-traces:v0.9.3
+    container_name: victoriatraces
+    ports:
+      - "14317:4317" # VictoriaTraces OTLP ingestion
+      - "8443:8443" # VictoriaTraces UI
+    command:
+      - '-otlpGRPCListenAddr=:4317'
+      - '-otlpGRPC.tls=false'
+      - '--storageDataPath=/vtraces'
+      - '--retentionPeriod=7d'
+      - '--httpListenAddr=0.0.0.0:8443'
+      - '--logNewStreams'
+    volumes:
+      - vt-data:/vtraces
+    restart: unless-stopped
+
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.115.1
     container_name: otel-collector
@@ -37,6 +55,7 @@ services:
     depends_on:
       - victoriametrics
       - victorialogs
+      - victoriatraces
     restart: unless-stopped
 
   grafana:
@@ -61,9 +80,11 @@ services:
     depends_on:
       - victoriametrics
       - victorialogs
+      - victoriatraces
     restart: unless-stopped
 
 volumes:
   vm-data:
   vl-data:
+  vt-data:
   grafana-data:
