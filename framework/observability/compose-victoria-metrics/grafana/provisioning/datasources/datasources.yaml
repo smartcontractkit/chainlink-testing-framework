@@ -20,6 +20,7 @@ datasources:
     editable: true
 
   - name: VictoriaTraces
+    uid: victoriatraces
     type: jaeger
     access: proxy
     url: http://victoriatraces:8443/select/jaeger
