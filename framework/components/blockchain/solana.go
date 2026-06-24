@@ -167,6 +167,7 @@ func newSolana(ctx context.Context, in *Input) (*Output, error) {
 		UseCache:      true,
 		Type:          in.Type,
 		Family:        FamilySolana,
+		ChainID:       in.ChainID,
 		ContainerName: containerName,
 		Container:     c,
 		Nodes: []*Node{
