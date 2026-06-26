@@ -25,6 +25,21 @@ services:
       - vl-data:/vlogs
     restart: unless-stopped
 
+  ## TODO remove after org migrates from Loki to VictoriaLogs
+  loki:
+    image: grafana/loki:3.4.1
+    container_name: loki
+    volumes:
+      - ./loki-config.yaml:/etc/loki/mounted-config.yaml
+      - ./conf/provisioning/rules/rules.yml:/etc/loki/rules/fake/rules.yml
+      - loki_data:/loki
+    ports:
+      - '3030:3100'
+    command:
+      - -config.file=/etc/loki/mounted-config.yaml
+      - -log.level=info
+      - -ruler.storage.local.directory=/etc/loki/rules
+
   # VictoriaTraces for distributed tracing
   victoriatraces:
     image: victoriametrics/victoria-traces:v0.9.3
@@ -86,5 +101,6 @@ services:
 volumes:
   vm-data:
   vl-data:
+  loki_data:
   vt-data:
   grafana-data:

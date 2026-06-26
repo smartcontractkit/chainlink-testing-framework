@@ -19,8 +19,13 @@ exporters:
       insecure: true
 
   # VictoriaLogs accepts OTLP logs natively
-  otlphttp/logs:
+  otlphttp/vl:
     endpoint: http://victorialogs:9428/insert/opentelemetry
+    tls:
+      insecure: true
+
+  otlphttp/loki:
+    endpoint: "http://loki:3100/otlp"
     tls:
       insecure: true
 
@@ -42,7 +47,7 @@ service:
     logs:
       receivers: [ otlp ]
       processors: [ batch ]
-      exporters: [ otlphttp/logs, debug ]
+      exporters: [ otlphttp/vl, otlphttp/loki, debug ]
 
     traces:
       receivers: [ otlp ]

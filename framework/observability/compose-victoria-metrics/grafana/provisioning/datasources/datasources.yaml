@@ -25,3 +25,13 @@ datasources:
     access: proxy
     url: http://victoriatraces:8443/select/jaeger
     editable: true
+
+  - name: Loki
+    type: loki
+    uid: loki
+    isDefault: false
+    access: proxy
+    editable: true
+    url: http://loki:3100
+    jsonData:
+      maxLines: 5000
