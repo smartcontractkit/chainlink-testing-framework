@@ -1,0 +1,27 @@
+apiVersion: 1
+
+datasources:
+  - name: VictoriaMetrics
+    uid: victoriametrics
+    type: prometheus
+    access: proxy
+    url: http://victoriametrics:8428
+    isDefault: true
+    editable: true
+    jsonData:
+      httpMethod: POST
+      timeInterval: "15s"
+
+  - name: VictoriaLogs
+    uid: victorialogs
+    type: victoriametrics-logs-datasource
+    access: proxy
+    url: http://victorialogs:9428
+    editable: true
+
+  - name: VictoriaTraces
+    uid: victoriatraces
+    type: jaeger
+    access: proxy
+    url: http://victoriatraces:8443/select/jaeger
+    editable: true

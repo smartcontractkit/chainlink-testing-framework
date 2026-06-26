@@ -43,7 +43,7 @@ func (m *LokiLogWrapper) SetClient(c *LokiClient) {
 
 // Log processes and forwards log entries to Loki, handling malformed messages and recording errors.
 // It ensures error limits are respected and logs at appropriate levels for monitoring purposes.
-func (m *LokiLogWrapper) Log(kvars ...interface{}) error {
+func (m *LokiLogWrapper) Log(kvars ...any) error {
 	if len(m.errors) > m.MaxErrors {
 		return nil
 	}
@@ -89,7 +89,7 @@ func (m *LokiClient) Handle(ls model.LabelSet, t time.Time, s string) error {
 
 // HandleStruct marshals the provided struct to JSON and sends it to Loki with the specified labels and timestamp.
 // Use this function to log structured data in a decentralized logging system.
-func (m *LokiClient) HandleStruct(ls model.LabelSet, t time.Time, st interface{}) error {
+func (m *LokiClient) HandleStruct(ls model.LabelSet, t time.Time, st any) error {
 	d, err := json.Marshal(st)
 	if err != nil {
 		return fmt.Errorf("failed to marshal struct in response: %v", st)
@@ -138,10 +138,12 @@ type LokiConfig struct {
 	MaxLineSizeTruncate     bool
 }
 
-// DefaultLokiConfig returns a LokiConfig initialized with default parameters.
-// It serves as a base configuration for Loki clients, allowing users to customize settings as needed.
+// DefaultLokiConfig returns a LokiConfig initialized with default parameters
+// pointing at the local compose/ Loki instance (host port 3030).
+// Override URL for production use.
 func DefaultLokiConfig() *LokiConfig {
 	return &LokiConfig{
+		URL:                     "http://localhost:3030/loki/api/v1/push",
 		MaxErrors:               5,
 		BatchWait:               3 * time.Second,
 		BatchSize:               500 * 1024,
@@ -163,11 +165,22 @@ func LocalCTFObsConfig() *LokiConfig {
 
 // NewEnvLokiConfig creates a LokiConfig populated with settings from environment variables.
 func NewEnvLokiConfig() *LokiConfig {
+	if logSendMethod() != LogSendMethodLoki {
+		return nil
+	}
 	d := DefaultLokiConfig()
-	d.TenantID = os.Getenv("LOKI_TENANT_ID")
-	d.URL = os.Getenv("LOKI_URL")
-	d.Token = os.Getenv("LOKI_TOKEN")
-	d.BasicAuth = os.Getenv("LOKI_BASIC_AUTH")
+	if v := os.Getenv("LOKI_URL"); v != "" {
+		d.URL = v
+	}
+	if v := os.Getenv("LOKI_TENANT_ID"); v != "" {
+		d.TenantID = v
+	}
+	if v := os.Getenv("LOKI_TOKEN"); v != "" {
+		d.Token = v
+	}
+	if v := os.Getenv("LOKI_BASIC_AUTH"); v != "" {
+		d.BasicAuth = v
+	}
 	return d
 }
 
@@ -193,6 +206,9 @@ func NewLokiConfig(endpoint *string, tenant *string, basicAuth *string, token *s
 // NewLokiClient initializes a new LokiClient with the given LokiConfig.
 // It validates the configuration, sets up authentication, and prepares the client for interacting with Loki for logging purposes.
 func NewLokiClient(extCfg *LokiConfig) (*LokiClient, error) {
+	if extCfg == nil || extCfg.URL == "" {
+		return nil, errors.New("loki URL is empty")
+	}
 	_, err := http.Get(extCfg.URL)
 	if err != nil {
 		return nil, err

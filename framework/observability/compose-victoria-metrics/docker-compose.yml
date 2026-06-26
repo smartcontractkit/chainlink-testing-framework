@@ -1,0 +1,90 @@
+services:
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.106.1
+    container_name: victoriametrics
+    ports:
+      - "8428:8428"
+    command:
+      - "--storageDataPath=/storage"
+      - "--retentionPeriod=7d"
+      - "--httpListenAddr=:8428"
+    volumes:
+      - vm-data:/storage
+    restart: unless-stopped
+
+  victorialogs:
+    image: victoriametrics/victoria-logs:v0.40.0-victorialogs
+    container_name: victorialogs
+    ports:
+      - "9428:9428"
+    command:
+      - "--storageDataPath=/vlogs"
+      - "--httpListenAddr=:9428"
+      - "--retentionPeriod=7d"
+    volumes:
+      - vl-data:/vlogs
+    restart: unless-stopped
+
+  # VictoriaTraces for distributed tracing
+  victoriatraces:
+    image: victoriametrics/victoria-traces:v0.9.3
+    container_name: victoriatraces
+    ports:
+      - "14317:4317" # VictoriaTraces OTLP ingestion
+      - "8443:8443" # VictoriaTraces UI
+    command:
+      - '-otlpGRPCListenAddr=:4317'
+      - '-otlpGRPC.tls=false'
+      - '--storageDataPath=/vtraces'
+      - '--retentionPeriod=7d'
+      - '--httpListenAddr=0.0.0.0:8443'
+      - '--logNewStreams'
+    volumes:
+      - vt-data:/vtraces
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.115.1
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    depends_on:
+      - victoriametrics
+      - victorialogs
+      - victoriatraces
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_INSTALL_PLUGINS=victoriametrics-logs-datasource
+      - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=victoriametrics-logs-datasource
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      # Embedded internal dashboards (e.g. WASP for VictoriaLogs)
+      - ./grafana/dashboards:/etc/dashboards/internal:ro
+      # User dashboards from $pwd/dashboards (synced by copyLocalDashboards)
+      - ../dashboards:/etc/dashboards/local:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - victoriametrics
+      - victorialogs
+      - victoriatraces
+    restart: unless-stopped
+
+volumes:
+  vm-data:
+  vl-data:
+  vt-data:
+  grafana-data:

@@ -23,16 +23,16 @@ func getSpliceHealthCheckScript(numberOfValidators int) string {
 
 set -eou pipefail
 
-curl -f http://localhost:5012/api/scan/readyz
-curl -f http://localhost:5014/api/sv/readyz
+wget --no-verbose --tries=1 --spider http://localhost:5012/api/scan/readyz
+wget --no-verbose --tries=1 --spider http://localhost:5014/api/sv/readyz
 
 # SV
-curl -f "http://localhost:${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}00/api/validator/readyz"
+wget --no-verbose --tries=1 --spider "http://localhost:${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}00/api/validator/readyz"
 `
 	for i := 1; i <= numberOfValidators; i++ {
 		script += fmt.Sprintf(`
 # Participant %02[1]d
-curl -f "http://localhost:${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}%02[1]d/api/validator/readyz"
+wget --no-verbose --tries=1 --spider "http://localhost:${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}%02[1]d/api/validator/readyz"
 		`, i)
 	}
 

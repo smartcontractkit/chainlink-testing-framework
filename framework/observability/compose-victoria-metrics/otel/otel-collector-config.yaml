@@ -1,0 +1,50 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+
+exporters:
+  # VictoriaMetrics accepts Prometheus remote_write
+  prometheusremotewrite:
+    endpoint: http://victoriametrics:8428/api/v1/write
+    tls:
+      insecure: true
+
+  # VictoriaLogs accepts OTLP logs natively
+  otlphttp/logs:
+    endpoint: http://victorialogs:9428/insert/opentelemetry
+    tls:
+      insecure: true
+
+  otlp/traces:
+    endpoint: victoriatraces:4317
+    tls:
+      insecure: true
+
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    metrics:
+      receivers: [ otlp ]
+      processors: [ batch ]
+      exporters: [ prometheusremotewrite, debug ]
+
+    logs:
+      receivers: [ otlp ]
+      processors: [ batch ]
+      exporters: [ otlphttp/logs, debug ]
+
+    traces:
+      receivers: [ otlp ]
+      processors: [ batch ]
+      exporters: [ otlp/traces, debug ]
