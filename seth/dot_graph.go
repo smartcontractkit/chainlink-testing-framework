@@ -18,12 +18,12 @@ import (
 func findShortestPath(calls []*DecodedCall) []string {
 	callMap := make(map[string]*DecodedCall)
 	for _, call := range calls {
-		callMap[call.CommonData.Signature] = call
+		callMap[call.Signature] = call
 	}
 
 	var root *DecodedCall
 	for _, call := range calls {
-		if call.CommonData.ParentSignature == "" {
+		if call.ParentSignature == "" {
 			root = call
 			break
 		}
@@ -35,7 +35,7 @@ func findShortestPath(calls []*DecodedCall) []string {
 
 	var end *DecodedCall
 	for i := len(calls) - 1; i >= 0; i-- {
-		if calls[i].CommonData.Error != "" {
+		if calls[i].Error != "" {
 			end = calls[i]
 			break
 		}
@@ -49,7 +49,7 @@ func findShortestPath(calls []*DecodedCall) []string {
 		path []string
 	}
 
-	queue := []node{{call: root, path: []string{root.CommonData.Signature}}}
+	queue := []node{{call: root, path: []string{root.Signature}}}
 	visited := make(map[string]bool)
 
 	for len(queue) > 0 {
@@ -59,16 +59,16 @@ func findShortestPath(calls []*DecodedCall) []string {
 		currentCall := currentNode.call
 		currentPath := currentNode.path
 
-		if currentCall.CommonData.Signature == end.CommonData.Signature {
+		if currentCall.Signature == end.Signature {
 			return currentPath
 		}
 
-		visited[currentCall.CommonData.Signature] = true
+		visited[currentCall.Signature] = true
 
 		for _, call := range calls {
-			if call.CommonData.ParentSignature == currentCall.CommonData.Signature && !visited[call.CommonData.Signature] {
+			if call.ParentSignature == currentCall.Signature && !visited[call.Signature] {
 				newPath := append([]string{}, currentPath...)
-				newPath = append(newPath, call.CommonData.Signature)
+				newPath = append(newPath, call.Signature)
 				queue = append(queue, node{call: call, path: newPath})
 			}
 		}
@@ -148,8 +148,8 @@ func (t *Tracer) generateDotGraph(txHash string, calls []*DecodedCall, revertErr
 			to = call.ToAddress
 		}
 
-		basicLabel := fmt.Sprintf("\"%s -> %s\n %s\"", from, to, call.CommonData.Method)
-		extraLabel := fmt.Sprintf("\"Inputs: %s\nOutputs: %s\"", formatMapForLabel(call.CommonData.Input, defaultTruncateTo), formatMapForLabel(call.CommonData.Output, defaultTruncateTo))
+		basicLabel := fmt.Sprintf("\"%s -> %s\n %s\"", from, to, call.Method)
+		extraLabel := fmt.Sprintf("\"Inputs: %s\nOutputs: %s\"", formatMapForLabel(call.Input, defaultTruncateTo), formatMapForLabel(call.Output, defaultTruncateTo))
 
 		isMajorNode := false
 		for _, path := range shortestPath {
@@ -200,9 +200,9 @@ func (t *Tracer) generateDotGraph(txHash string, calls []*DecodedCall, revertErr
 			}
 		}
 
-		if call.CommonData.ParentSignature != "" {
+		if call.ParentSignature != "" {
 			for _, parentCall := range calls {
-				if parentCall.CommonData.Signature == call.CommonData.ParentSignature {
+				if parentCall.Signature == call.ParentSignature {
 					parentHash := hashCall(parentCall)
 					parentID := callHashToID[parentHash]
 					parentBasicNodeID := "node" + strconv.Itoa(parentID) + "_basic"
@@ -303,7 +303,7 @@ func (t *Tracer) generateDotGraph(txHash string, calls []*DecodedCall, revertErr
 
 func formatTooltip(call *DecodedCall) string {
 	basicTooltip := fmt.Sprintf("\"BASIC\nFrom: %s\nTo: %s\nType: %s\nGas Used/Limit: %s\nValue: %d\n\nINPUTS%s\n\nOUTPUTS%s\n\nEVENTS%s\n\"",
-		call.FromAddress, call.ToAddress, call.CommonData.CallType, fmt.Sprintf("%d/%d", call.GasUsed, call.GasLimit), call.Value, formatMapForTooltip(call.CommonData.Input), formatMapForTooltip(call.CommonData.Output), formatEvent(call.Events))
+		call.FromAddress, call.ToAddress, call.CallType, fmt.Sprintf("%d/%d", call.GasUsed, call.GasLimit), call.Value, formatMapForTooltip(call.Input), formatMapForTooltip(call.Output), formatEvent(call.Events))
 
 	if call.Comment == "" {
 		return basicTooltip
@@ -359,7 +359,7 @@ func hashCall(call *DecodedCall) string {
 	//we use it only to generate hash that's used to identify a node in graph, so we don't care about this function being weak
 	//nolint
 	h := sha1.New()
-	h.Write([]byte(fmt.Sprintf("%v", call)))
+	fmt.Fprintf(h, "%v", call)
 	return hex.EncodeToString(h.Sum(nil))
 }
 

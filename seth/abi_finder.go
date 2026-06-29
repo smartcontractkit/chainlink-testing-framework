@@ -1,11 +1,11 @@
 package seth
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/pkg/errors"
 )
 
 type ABIFinder struct {
@@ -46,11 +46,21 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 		contractName := a.ContractMap.GetContractName(address)
 		abiInstanceCandidate, ok := a.ContractStore.ABIs[contractName+".abi"]
 		if !ok {
-			err := errors.New(ErrNoAbiFound)
+			err := fmt.Errorf("no ABI found for contract '%s' at address %s, even though it's registered in the contract map. "+
+				"This happens when:\n"+
+				"  1. Contract address is in the contract map but ABI file is missing from abi_dir\n"+
+				"  2. ABI files were moved or deleted after contract deployment\n"+
+				"  3. Contract map is corrupted or out of sync\n"+
+				"Troubleshooting:\n"+
+				"  1. Verify ABI file '%s.abi' exists in the configured abi_dir\n"+
+				"  2. Check if save_deployed_contracts_map = true in config\n"+
+				"  3. Re-deploy the contract or manually add ABI with ContractStore.AddABI()\n"+
+				"  4. For external contracts, obtain and add the ABI manually: %w",
+				contractName, address, contractName, ErrNoABIFound)
 			L.Err(err).
 				Str("Contract", contractName).
 				Str("Address", address).
-				Msg("ABI not found, even though contract is known. This should not happen. Contract map might be corrupted")
+				Msg("ABI not found for known contract")
 			return ABIFinderResult{}, err
 		}
 
@@ -83,13 +93,20 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 				}
 			}
 
-			L.Err(err).
+			findErr := fmt.Errorf("method signature %s not found in ABI for contract '%s' at address %s, even though the address is registered in the contract map: %w\n"+
+				"This usually means the contract map points to the wrong ABI.\n"+
+				"Troubleshooting:\n"+
+				"  1. Verify '%s.abi' matches the deployed contract at %s\n"+
+				"  2. Re-deploy with DeployContract() or update the contract map\n"+
+				"  3. If multiple contracts share method signatures, Seth may have mapped the wrong ABI",
+				stringSignature, contractName, address, err, contractName, address)
+			L.Err(findErr).
 				Str("Signature", stringSignature).
 				Str("Supposed contract", contractName).
 				Str("Supposed address", address).
-				Msg("Method not found in known ABI instance. This should not happen. Contract map might be corrupted")
+				Msg("Method not found in known ABI instance")
 
-			return ABIFinderResult{}, err
+			return ABIFinderResult{}, findErr
 		}
 
 		result.Method = methodCandidate
@@ -127,7 +144,20 @@ func (a *ABIFinder) FindABIByMethod(address string, signature []byte) (ABIFinder
 	}
 
 	if result.Method == nil {
-		return ABIFinderResult{}, errors.New(ErrNoABIMethod)
+		return ABIFinderResult{}, fmt.Errorf("no ABI found with method signature %s for contract at address %s.\n"+
+			"Checked %d ABIs but none matched.\n"+
+			"Possible causes:\n"+
+			"  1. Contract ABI not loaded (check abi_dir and contract_map_file)\n"+
+			"  2. Method signature doesn't match any function in loaded ABIs\n"+
+			"  3. Contract address not registered in contract map\n"+
+			"  4. Wrong contract address (check deployment logs)\n"+
+			"Troubleshooting:\n"+
+			"  1. Verify contract was deployed with DeployContract() or loaded with LoadContract()\n"+
+			"  2. Check the method signature is correct (case-sensitive, including parameter types)\n"+
+			"  3. Ensure ABI file exists in the directory specified by 'abi_dir'\n"+
+			"  4. Review contract_map_file for address-to-name mappings\n"+
+			"  5. Use ContractStore.AddABI() to manually add the ABI: %w",
+			stringSignature, address, len(a.ContractStore.ABIs), ErrNoABIMethod)
 	}
 
 	return result, nil
