@@ -131,7 +131,7 @@ func TestConfig_ReadOnly_WithPk(t *testing.T) {
 
 	_, err := seth.NewClientRaw(&cfg, addrs, nil)
 	require.Error(t, err, "succeeded in creating client")
-	require.Equal(t, seth.ErrReadOnlyWithPrivateKeys, err.Error(), "expected different error message")
+	require.Contains(t, err.Error(), "configuration conflict: read-only mode is enabled, but private keys were provided.", "expected different error message")
 
 	privateKey, err := crypto.HexToECDSA("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
 	require.NoError(t, err, "failed to parse private key")
@@ -139,11 +139,11 @@ func TestConfig_ReadOnly_WithPk(t *testing.T) {
 	pks := []*ecdsa.PrivateKey{privateKey}
 	_, err = seth.NewClientRaw(&cfg, nil, pks)
 	require.Error(t, err, "succeeded in creating client")
-	require.Equal(t, seth.ErrReadOnlyWithPrivateKeys, err.Error(), "expected different error message")
+	require.Contains(t, err.Error(), "configuration conflict: read-only mode is enabled, but private keys were provided.", "expected different error message")
 
 	_, err = seth.NewClientRaw(&cfg, addrs, pks)
 	require.Error(t, err, "succeeded in creating client")
-	require.Equal(t, seth.ErrReadOnlyWithPrivateKeys, err.Error(), "expected different error message")
+	require.Contains(t, err.Error(), "configuration conflict: read-only mode is enabled, but private keys were provided.", "expected different error message")
 }
 
 func TestConfig_ReadOnly_GasBumping(t *testing.T) {
@@ -161,7 +161,7 @@ func TestConfig_ReadOnly_GasBumping(t *testing.T) {
 
 	_, err := seth.NewClientRaw(&cfg, nil, nil)
 	require.Error(t, err, "succeeded in creating client")
-	require.Equal(t, seth.ErrReadOnlyGasBumping, err.Error(), "expected different error message")
+	require.Contains(t, err.Error(), "gas bumping is not supported in read-only mode because it requires sending replacement transactions.", "expected different error message")
 }
 
 func TestConfig_ReadOnly_RpcHealth(t *testing.T) {
@@ -177,7 +177,7 @@ func TestConfig_ReadOnly_RpcHealth(t *testing.T) {
 
 	_, err := seth.NewClientRaw(&cfg, nil, nil)
 	require.Error(t, err, "succeeded in creating client")
-	require.Equal(t, seth.ErrReadOnlyRpcHealth, err.Error(), "expected different error message")
+	require.Contains(t, err.Error(), "RPC health check is not supported in read-only mode", "expected different error message")
 }
 
 func TestConfig_ReadOnly_PendingNonce(t *testing.T) {
@@ -193,7 +193,7 @@ func TestConfig_ReadOnly_PendingNonce(t *testing.T) {
 
 	_, err := seth.NewClientRaw(&cfg, nil, nil)
 	require.Error(t, err, "succeeded in creating client")
-	require.Equal(t, seth.ErrReadOnlyPendingNonce, err.Error(), "expected different error message")
+	require.Contains(t, err.Error(), "pending nonce protection is not supported in read-only mode because it requires transaction monitoring.", "expected different error message")
 }
 
 func TestConfig_ReadOnly_EphemeralKeys(t *testing.T) {
@@ -210,5 +210,5 @@ func TestConfig_ReadOnly_EphemeralKeys(t *testing.T) {
 
 	_, err := seth.NewClientRaw(&cfg, nil, nil)
 	require.Error(t, err, "succeeded in creating client")
-	require.Equal(t, seth.ErrNoPksEphemeralMode, err.Error(), "expected different error message")
+	require.Contains(t, err.Error(), "ephemeral mode requires exactly one root private key to fund ephemeral addresses, but no keys were loaded.", "expected different error message")
 }

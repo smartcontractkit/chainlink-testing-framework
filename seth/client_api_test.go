@@ -2,13 +2,13 @@ package seth_test
 
 import (
 	"context"
+	"errors"
 	"math/big"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/seth"
