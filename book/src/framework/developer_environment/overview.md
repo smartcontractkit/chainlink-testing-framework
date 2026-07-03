@@ -16,7 +16,8 @@ ctf gen env --cli pcli --product-name MyProduct --output-dir devenv --nodes 4
 
 Follow further instructions in `devenv/README.md`.
 
-Use `devenv/AGENTS.md` if you work with AI.
+Use `devenv/AGENTS.md` if you work with AI. You can also read that guide here:
+[Extending a Generated Environment](./agents.md) (handy for environments generated before `AGENTS.md` was added).
 
 ## Remote Environment
 
