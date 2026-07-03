@@ -19,7 +19,7 @@
   [[nodeset_a.node_specs]]
 
     [nodeset_a.node_specs.node]
-      image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+      image = "public.ecr.aws/chainlink/chainlink:2.49.1-rc.2"
 
 [nodeset_b]
   http_port_range_start = 10100
@@ -34,4 +34,4 @@
   [[nodeset_b.node_specs]]
 
     [nodeset_b.node_specs.node]
-      image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+      image = "public.ecr.aws/chainlink/chainlink:2.49.1-rc.2"
