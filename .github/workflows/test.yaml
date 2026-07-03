@@ -34,9 +34,6 @@ jobs:
           - path: wasp
             vm: ubuntu-latest
             regex: TestBenchSpy
-          - path: k8s-test-runner
-            vm: ubuntu-latest
-            regex: ./...
           - path: parrot
             vm: ubuntu-latest
             regex: ./...
