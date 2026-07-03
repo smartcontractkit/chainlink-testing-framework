@@ -958,7 +958,7 @@ instances = 1
 	{{- range .NodeIndices }}
 	[[nodesets.node_specs]]
 	    [nodesets.node_specs.node]
-	    image = "public.ecr.aws/chainlink/chainlink:2.31.0"
+	    image = "public.ecr.aws/chainlink/chainlink:2.49.1-rc.2"
 	{{- end }}
 # additional nodeset to demonstrate how to add many
 # you need to add "nodesets.http_port_range_start" and "nodesets.db.port" so these nodesets
@@ -974,7 +974,7 @@ instances = 1
     port = 13001
 	[[nodesets.node_specs]]
 	    [nodesets.node_specs.node]
-	    image = "public.ecr.aws/chainlink/chainlink:2.31.0"
+	    image = "public.ecr.aws/chainlink/chainlink:2.49.1-rc.2"
 
 `
 
@@ -1611,7 +1611,7 @@ func checkDockerIsRunning() {
 		os.Exit(1)
 	}
 	defer cli.Close()
-	_, err = cli.Ping(context.Background())
+	_, err = cli.Ping(context.Background(), client.PingOptions{})
 	if err != nil {
 		fmt.Println("Docker is not running, please start Docker daemon first!")
 		os.Exit(1)
