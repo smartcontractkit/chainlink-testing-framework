@@ -23,7 +23,6 @@ lint-all:
     @just lint wasp
     @just lint seth
     @just lint havoc
-    @just lint k8s-test-runner
     @just lint lib
     @just lint tools/workflowresultparser
     @just lint tools/asciitable
@@ -34,7 +33,6 @@ lint-all:
 
 # Run all the tests
 test-all:
-    @just test k8s-test-runner ./... &
     @just test parrot ./... &
     @just test tools/workflowresultparser ./... &
     @just test tools/asciitable ./... &
@@ -49,7 +47,6 @@ test-all:
     @just test wasp TestBenchSpy
 
 goimports-all:
-    @just _default_goimports k8s-test-runner
     @just _default_goimports lib
     @just _default_goimports parrot
     @just _default_goimports tools/workflowresultparser
