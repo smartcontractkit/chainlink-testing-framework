@@ -14,7 +14,9 @@ ctf gen -h
 ctf gen env --cli pcli --product-name MyProduct --output-dir devenv --nodes 4
 ```
 
-Follow further instructions in `devenv/README.md`
+Follow further instructions in `devenv/README.md`.
+
+Use `devenv/AGENTS.md` if you work with AI.
 
 ## Remote Environment
 
