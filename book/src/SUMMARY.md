@@ -5,6 +5,7 @@
 - [Developer Environment](./framework/developer_environment/overview.md)
   - [Configuration](./framework/developer_environment/toml.md)
   - [External Environment Configuration](./framework/developer_environment/toml_external_env_integration.md)
+  - [Extending a Generated Environment (AGENTS.md)](./framework/developer_environment/agents.md)
 - [Usage](./framework/getting_started.md)
   - [Getting Started](./framework/getting_started.md)
   - [CLI](./framework/cli.md)
