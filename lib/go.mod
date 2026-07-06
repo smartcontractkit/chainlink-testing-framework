@@ -20,7 +20,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.10.9
-	github.com/moby/moby/api v1.54.1
+	github.com/moby/moby/api v1.55.0
 	github.com/moby/moby/client v0.4.0
 	github.com/onsi/gomega v1.34.2
 	github.com/otiai10/copy v1.14.0
