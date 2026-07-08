@@ -17,6 +17,8 @@ exporters:
     endpoint: http://victoriametrics:8428/api/v1/write
     tls:
       insecure: true
+    resource_to_telemetry_conversion:
+      enabled: true
 
   # VictoriaLogs accepts OTLP logs natively
   otlphttp/vl:
