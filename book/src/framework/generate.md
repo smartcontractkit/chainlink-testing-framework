@@ -11,6 +11,8 @@ ctf gen env --cli pcli --product-name MyProduct --output-dir devenv --nodes 4
 
 Follow further instructions in `devenv/README.md`
 
+The generated environment also ships an `devenv/AGENTS.md` — a short guide that teaches AI coding agents how the environment is structured and how to extend it (add CLI commands + completion, wire up new Docker components, add products/fakes) following the existing patterns.
+
 # Generating Infrastructure Testing Template
 
 If you have Chainlink infrastructure already deployed it's useful to generate a workload + chaos suite template.

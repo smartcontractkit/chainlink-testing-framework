@@ -38,10 +38,3 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - 'dependencies'
-  - package-ecosystem: gomod
-    directory: '/k8s-test-runner'
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 10
-    labels:
-      - 'dependencies'
