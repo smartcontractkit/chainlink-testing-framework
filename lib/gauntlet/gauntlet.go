@@ -170,7 +170,7 @@ func (g *Gauntlet) WriteNetworkConfigMap(networkDirPath string) error {
 	defer f.Close()
 	for k, v := range g.NetworkConfig {
 		log.Debug().Str(k, v).Msg("Gauntlet .env config value:")
-		_, err = f.WriteString(fmt.Sprintf("\n%s=%s", k, v))
+		_, err = fmt.Fprintf(f, "\n%s=%s", k, v)
 		if err != nil {
 			return err
 		}
@@ -185,7 +185,7 @@ func (g *Gauntlet) WriteNetworkConfigVar(networkDirPath string, k string, v stri
 	}
 	defer f.Close()
 	log.Debug().Str(k, v).Msg("Gauntlet .env config value:")
-	_, err = f.WriteString(fmt.Sprintf("\n%s=%s", k, v))
+	_, err = fmt.Fprintf(f, "\n%s=%s", k, v)
 	if err != nil {
 		return err
 	}

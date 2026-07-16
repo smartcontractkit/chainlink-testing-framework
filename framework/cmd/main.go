@@ -19,6 +19,7 @@ import (
 
 func main() {
 	app := &cli.App{
+		Version:   "v0.16.4",
 		Name:      "ctf",
 		Usage:     "Chainlink Testing Framework CLI",
 		UsageText: "'ctf' is a useful utility that can:\n- clean up test docker containers\n- modify test files\n- create a local observability stack with Grafana/Loki/Pyroscope",
@@ -535,11 +536,20 @@ Be aware that any TODO requires your attention before your run the final test!
 								Usage:   "Spin up all the observability services",
 								Value:   false,
 							},
+							&cli.BoolFlag{
+								Name:    "victoria",
+								Aliases: []string{"vm"},
+								Usage:   "Spin up all the observability services (VictoriaMetrics)",
+								Value:   false,
+							},
 						},
 						Description: "Spins up a local observability stack. Has two modes, standard (Loki, Prometheus, Grafana and OTEL) and full including also Tempo, Cadvisor and PostgreSQL metrics",
 						Action: func(c *cli.Context) error {
 							if c.Bool("full") {
 								return framework.ObservabilityUpFull()
+							}
+							if c.Bool("victoria") {
+								return framework.ObservabilityVictoriaMetricsUp()
 							}
 							return framework.ObservabilityUp()
 						},
@@ -555,9 +565,20 @@ Be aware that any TODO requires your attention before your run the final test!
 								Usage:   "Removes all the observability services (this flag exists for compatibility, all the services are always removed with 'down')",
 								Value:   false,
 							},
+							&cli.BoolFlag{
+								Name:    "victoria",
+								Aliases: []string{"vm"},
+								Usage:   "Spin up all the observability services (VictoriaMetrics)",
+								Value:   false,
+							},
 						},
 						Description: "Removes local observability stack",
-						Action:      func(c *cli.Context) error { return framework.ObservabilityDown() },
+						Action: func(c *cli.Context) error {
+							if c.Bool("victoria") {
+								return framework.ObservabilityVictoriaDown()
+							}
+							return framework.ObservabilityDown()
+						},
 					},
 					{
 						Name:    "restart",
@@ -570,15 +591,29 @@ Be aware that any TODO requires your attention before your run the final test!
 								Usage:   "Restart all observability services (this flag exists for compatibility, all the services are always removed with 'down')",
 								Value:   false,
 							},
+							&cli.BoolFlag{
+								Name:    "victoria",
+								Aliases: []string{"vm"},
+								Usage:   "Spin up all the observability services (VictoriaMetrics)",
+								Value:   false,
+							},
 						},
 						Description: "Restart a local observability stack",
 						Action: func(c *cli.Context) error {
-							// always remove all the containers and volumes to clean up the data
-							if err := framework.ObservabilityDown(); err != nil {
-								return err
+							if c.Bool("victoria") {
+								if err := framework.ObservabilityVictoriaDown(); err != nil {
+									return err
+								}
+							} else {
+								if err := framework.ObservabilityDown(); err != nil {
+									return err
+								}
 							}
 							if c.Bool("full") {
 								return framework.ObservabilityUpFull()
+							}
+							if c.Bool("victoria") {
+								return framework.ObservabilityVictoriaMetricsUp()
 							}
 							return framework.ObservabilityUp()
 						},

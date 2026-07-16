@@ -11,9 +11,10 @@ import (
 	"time"
 
 	"github.com/moby/moby/api/types/container"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	tc "github.com/testcontainers/testcontainers-go"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 const (
@@ -166,21 +167,21 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	if in.GRPCPort != 0 {
 		out.ExternalGRPCURL = fmt.Sprintf("%s:%d", host, in.GRPCPort)
 	} else {
-		if p, err := c.MappedPort(ctx, internalGRPCNatPort); err != nil {
+		p, err := c.MappedPort(ctx, internalGRPCNatPort)
+		if err != nil {
 			return nil, err
-		} else {
-			out.ExternalGRPCURL = fmt.Sprintf("%s:%d", host, p.Num())
 		}
+		out.ExternalGRPCURL = fmt.Sprintf("%s:%d", host, p.Num())
 	}
 
 	if in.AdminPort != 0 {
 		out.ExternalAdminURL = fmt.Sprintf("http://%s:%d", host, in.AdminPort)
 	} else {
-		if p, err := c.MappedPort(ctx, internalAdminNatPort); err != nil {
+		p, err := c.MappedPort(ctx, internalAdminNatPort)
+		if err != nil {
 			return nil, err
-		} else {
-			out.ExternalAdminURL = fmt.Sprintf("http://%s:%d", host, p.Num())
 		}
+		out.ExternalAdminURL = fmt.Sprintf("http://%s:%d", host, p.Num())
 	}
 
 	in.Out = out

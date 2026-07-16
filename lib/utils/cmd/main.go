@@ -1,12 +1,12 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"time"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/cmd/internal"
 )

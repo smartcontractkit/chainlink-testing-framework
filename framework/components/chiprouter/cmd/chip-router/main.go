@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -16,10 +17,11 @@ import (
 	cepb "github.com/cloudevents/sdk-go/binding/format/protobuf/v2/pb"
 	"github.com/google/uuid"
 	chippb "github.com/smartcontractkit/chainlink-common/pkg/chipingress/pb"
-	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
 
 const (
@@ -94,7 +96,10 @@ func run() error {
 	mux.HandleFunc("/subscribers", r.handleSubscribers)
 	mux.HandleFunc("/subscribers/", r.handleSubscriberByID)
 
-	adminServer := &http.Server{Handler: mux}
+	adminServer := &http.Server{
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -123,7 +128,7 @@ func run() error {
 		r.closeSubscribers()
 		return nil
 	case err := <-errCh:
-		if err == nil || err == http.ErrServerClosed {
+		if err == nil || errors.Is(err, http.ErrServerClosed) {
 			return nil
 		}
 		framework.L.Error().Msgf("chip router server error: %v", err)

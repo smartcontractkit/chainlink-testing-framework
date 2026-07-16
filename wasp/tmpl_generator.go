@@ -195,8 +195,9 @@ func (m *ExampleGun) Call(l *wasp.Generator) *wasp.Response {
 			Schedule:   wasp.Plain(5, 60*time.Second),
 			Gun:        NewExampleHTTPGun(serviceUnderLoadURL),
 			Labels:     labels,
-			// TODO: by default we are sending data to CTF obs stack, use wasp.
-			LokiConfig: wasp.LocalCTFObsConfig(),
+			// By default we send data to the local OTEL Collector (see compose-victoria-metrics/).
+			// Override with OTEL_EXPORTER_OTLP_ENDPOINT for production deployments.
+			OTELConfig: wasp.NewEnvOTELConfig(),
 		})
 		require.NoError(t, err)
 

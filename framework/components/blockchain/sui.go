@@ -30,7 +30,7 @@ const (
 	DefaultFaucetPortNum = "9123"
 	DefaultSuiNodePort   = "9000"
 	// DefaultSuiImage is the mysten/sui-tools image when Input.Image is empty on non-arm64 hosts.
-	DefaultSuiImage = "mysten/sui-tools:devnet-v1.69.0"
+	DefaultSuiImage = "mysten/sui-tools:devnet-v1.73.0"
 	// DefaultSuiImageARM64 is used when Input.Image is empty on arm64 (e.g. Apple Silicon).
 	DefaultSuiImageARM64 = "mysten/sui-tools:ci-arm64"
 )

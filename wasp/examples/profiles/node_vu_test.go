@@ -27,6 +27,7 @@ func TestNodeVU(t *testing.T) {
 			VU:         NewExampleScenario(srv.URL()),
 			Labels:     labels,
 			LokiConfig: wasp.NewEnvLokiConfig(),
+			OTELConfig: wasp.NewEnvOTELConfig(),
 		})).
 		Add(wasp.NewGenerator(&wasp.Config{
 			T:          t,
@@ -36,6 +37,7 @@ func TestNodeVU(t *testing.T) {
 			VU:         NewExampleScenario(srv.URL()),
 			Labels:     labels,
 			LokiConfig: wasp.NewEnvLokiConfig(),
+			OTELConfig: wasp.NewEnvOTELConfig(),
 		})).
 		Run(true)
 	require.NoError(t, err)

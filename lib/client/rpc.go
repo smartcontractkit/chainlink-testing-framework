@@ -287,7 +287,7 @@ func StartAnvil(params []string) (*AnvilContainer, error) {
 	req := testcontainers.ContainerRequest{
 		Image:        "ghcr.io/foundry-rs/foundry:stable",
 		ExposedPorts: []string{"8545/tcp"},
-		WaitingFor:   wait.ForListeningPort("8545").WithStartupTimeout(10 * time.Second),
+		WaitingFor:   wait.ForListeningPort("8545/tcp").WithStartupTimeout(10 * time.Second),
 		Entrypoint:   entryPoint,
 	}
 	container, err := testcontainers.GenericContainer(context.Background(), testcontainers.GenericContainerRequest{
@@ -298,7 +298,7 @@ func StartAnvil(params []string) (*AnvilContainer, error) {
 		return nil, err
 	}
 	time.Sleep(1 * time.Second)
-	mappedPort, err := container.MappedPort(context.Background(), "8545")
+	mappedPort, err := container.MappedPort(context.Background(), "8545/tcp")
 	if err != nil {
 		return nil, err
 	}

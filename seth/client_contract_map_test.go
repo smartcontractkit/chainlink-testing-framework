@@ -142,7 +142,7 @@ func TestContractMapNewClientIsNotCreatedWhenCorruptedContractMapFileExists(t *t
 	cfg.ContractMapFile = file.Name()
 	newClient, err := seth.NewClientRaw(cfg, addresses, pks)
 	require.Error(t, err, "succeeded in creation of new client")
-	require.Contains(t, err.Error(), seth.ErrReadContractMap, "expected error reading invalid toml")
+	require.Contains(t, err.Error(), "failed to load deployed contracts map from", "expected error reading invalid toml")
 	require.Nil(t, newClient, "expected new client to be nil")
 }
 
@@ -162,6 +162,6 @@ func TestContractMapNewClientIsNotCreatedWhenCorruptedContractMapFileExists_Inva
 	cfg.ContractMapFile = file.Name()
 	newClient, err := seth.NewClientRaw(cfg, addresses, pks)
 	require.Error(t, err, "succeeded in creation of new client")
-	require.Contains(t, err.Error(), seth.ErrReadContractMap, "expected error reading invalid contract address")
+	require.Contains(t, err.Error(), "failed to load deployed contracts map from", "expected error reading invalid contract address")
 	require.Nil(t, newClient, "expected new client to be nil")
 }

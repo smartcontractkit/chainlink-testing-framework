@@ -46,7 +46,7 @@ func (ct *CustomT) Write(p []byte) (n int, err error) {
 		l.Warn().Msgf("%s %s: %s", afterTestEndedMsg, ct.Name(), string(p))
 		return len(p), nil
 	}
-	ct.T.Log(strings.TrimSuffix(str, "\n"))
+	ct.Log(strings.TrimSuffix(str, "\n"))
 	return len(p), nil
 }
 

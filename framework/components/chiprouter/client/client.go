@@ -116,11 +116,7 @@ func (c *Client) isHTTPReady(ctx context.Context) bool {
 		return false
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return false
-	}
-
-	return true
+	return resp.StatusCode == http.StatusOK
 }
 
 func (c *Client) isTCPReady() bool {

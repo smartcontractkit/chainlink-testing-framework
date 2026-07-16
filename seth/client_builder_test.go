@@ -2,6 +2,7 @@ package seth_test
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"math/big"
 	"os"
 	"strings"
@@ -13,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/pkg/errors"
 
 	"github.com/pelletier/go-toml/v2"
 
@@ -170,8 +170,7 @@ func TestConfig_ModifyExistingConfigWithBuilder_UnknownChainId(t *testing.T) {
 		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
 		Build()
 
-	expectedError := `errors occurred during building the config:
-network with chainId '225' not found
+	expectedError := `errors occurred during building the config: network with chainId '225' not found
 at least one method that required network to be set was called, but network is nil
 you need to set the Network`
 
@@ -196,8 +195,7 @@ func TestConfig_ModifyExistingConfigWithBuilder_UnknownChainId_UseDefault(t *tes
 		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
 		Build()
 
-	expectedError := `errors occurred during building the config:
-network with chainId '225' not found
+	expectedError := `errors occurred during building the config: network with chainId '225' not found
 at least one method that required network to be set was called, but network is nil
 at least one method that required network to be set was called, but network is nil
 you need to set the Network`
@@ -266,7 +264,7 @@ func TestConfig_NoPrivateKeys_RpcHealthEnabled(t *testing.T) {
 		Build()
 
 	require.Error(t, err, "succeeded in building the client")
-	require.Contains(t, err.Error(), seth.NoPkForRpcHealthCheckErr, "expected error message")
+	require.ErrorIs(t, err, seth.ErrNoPkForRpcHealthCheck, "expected error is not ErrNoPkForRpcHealthCheck")
 }
 
 func TestConfig_NoPrivateKeys_PendingNonce(t *testing.T) {
@@ -284,7 +282,7 @@ func TestConfig_NoPrivateKeys_PendingNonce(t *testing.T) {
 		Build()
 
 	require.Error(t, err, "succeeded in building the client")
-	require.Contains(t, err.Error(), seth.NoPkForNonceProtection, "expected error message")
+	require.ErrorIs(t, err, seth.ErrNoPkForNonceProtection, "expected error is not ErrNoPkForNonceProtection")
 }
 
 func TestConfig_NoPrivateKeys_EphemeralKeys(t *testing.T) {
@@ -303,7 +301,7 @@ func TestConfig_NoPrivateKeys_EphemeralKeys(t *testing.T) {
 		Build()
 
 	require.Error(t, err, "succeeded in building the client")
-	require.Contains(t, err.Error(), seth.NoPkForEphemeralKeys, "expected error message")
+	require.ErrorIs(t, err, seth.ErrNoPkForEphemeralKeys, "expected error is not ErrNoPkForEphemeralKeys")
 }
 
 func TestConfig_NoPrivateKeys_GasEstimations(t *testing.T) {
@@ -317,7 +315,7 @@ func TestConfig_NoPrivateKeys_GasEstimations(t *testing.T) {
 		Build()
 
 	require.Error(t, err, "succeeded in building the client")
-	require.Contains(t, err.Error(), seth.NoPkForGasPriceEstimation, "expected error message")
+	require.ErrorIs(t, err, seth.ErrNoPkForGasPriceEstimation, "expected error is not ErrNoPkForGasPriceEstimation")
 }
 
 func TestConfig_NoPrivateKeys_TxOpts(t *testing.T) {
@@ -339,7 +337,7 @@ func TestConfig_NoPrivateKeys_TxOpts(t *testing.T) {
 
 	_ = client.NewTXOpts()
 	require.Equal(t, 1, len(client.Errors), "expected 1 error")
-	require.Equal(t, "no private keys were loaded, but keyNum 0 was requested", client.Errors[0].Error(), "expected error message")
+	require.Contains(t, client.Errors[0].Error(), "no private keys loaded, but tried to use key #0.", "expected error message")
 }
 
 func TestConfig_NoPrivateKeys_Tracing(t *testing.T) {
@@ -827,7 +825,7 @@ func TestConfig_EthClient_DoesntAllowRpcUrl(t *testing.T) {
 		Build()
 
 	require.Error(t, err, "failed to build client")
-	require.Contains(t, err.Error(), seth.EthClientAndUrlsSet, "expected error message")
+	require.ErrorIs(t, err, seth.ErrEthClientAndUrlsSet, "expected error is not ErrEthClientAndUrlsSet")
 	require.Nil(t, client, "expected client to be nil")
 }
 

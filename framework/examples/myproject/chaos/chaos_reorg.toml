@@ -23,4 +23,4 @@
   [[nodesets.node_specs]]
 
     [nodesets.node_specs.node]
-      image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+      image = "public.ecr.aws/chainlink/chainlink:2.49.1-rc.2"

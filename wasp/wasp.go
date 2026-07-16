@@ -24,6 +24,12 @@ const (
 	DefaultRateLimitUnitDuration = 1 * time.Second
 	DefaultCallResultBufLen      = 50000
 	DefaultGenName               = "Generator"
+
+	// LogSendMethodEnvVar selects the log backend used by the Generator at runtime.
+	// Accepted values: "otel" (default) or "loki".
+	LogSendMethodEnvVar = "WASP_LOG_SEND_METHOD"
+	LogSendMethodLoki   = "loki"
+	LogSendMethodOTEL   = "otel"
 )
 
 var (
@@ -145,6 +151,7 @@ type Config struct {
 	LoadType              ScheduleType      `json:"load_type"`
 	Labels                map[string]string `json:"-"`
 	LokiConfig            *LokiConfig       `json:"-"`
+	OTELConfig            *OTELConfig       `json:"-"`
 	Schedule              []*Segment        `json:"schedule"`
 	RateLimitUnitDuration time.Duration     `json:"rate_limit_unit_duration"`
 	CallResultBufLen      int               `json:"-"`
@@ -156,7 +163,7 @@ type Config struct {
 	Gun                   Gun               `json:"-"`
 	VU                    VirtualUser       `json:"-"`
 	Logger                zerolog.Logger    `json:"-"`
-	SharedData            interface{}       `json:"-"`
+	SharedData            any               `json:"-"`
 	SamplerConfig         *SamplerConfig    `json:"-"`
 	// calculated fields
 	duration time.Duration
@@ -240,32 +247,33 @@ type ResponseData struct {
 
 // Generator generates load with some RPS
 type Generator struct {
-	Cfg                *Config
-	sampler            *Sampler
-	Log                zerolog.Logger
-	labels             model.LabelSet
-	rl                 atomic.Pointer[ratelimit.Limiter]
-	rpsLoopOnce        *sync.Once
-	scheduleSegments   []*Segment
-	currentSegmentMu   *sync.Mutex
-	currentSegment     *Segment
-	ResponsesWaitGroup *sync.WaitGroup
-	dataWaitGroup      *sync.WaitGroup
-	ResponsesCtx       context.Context
-	responsesCancel    context.CancelFunc
-	dataCtx            context.Context
-	dataCancel         context.CancelFunc
-	gun                Gun
-	vu                 VirtualUser
-	vus                []VirtualUser
-	ResponsesChan      chan *Response
-	Responses          *Responses
-	responsesData      *ResponseData
-	errsMu             *sync.Mutex
-	errs               *SliceBuffer[string]
-	stats              *Stats
-	loki               *LokiClient
-	lokiResponsesChan  chan *Response
+	Cfg                  *Config
+	sampler              *Sampler
+	Log                  zerolog.Logger
+	labels               model.LabelSet
+	rl                   atomic.Pointer[ratelimit.Limiter]
+	rpsLoopOnce          *sync.Once
+	scheduleSegments     []*Segment
+	currentSegmentMu     *sync.Mutex
+	currentSegment       *Segment
+	ResponsesWaitGroup   *sync.WaitGroup
+	dataWaitGroup        *sync.WaitGroup
+	ResponsesCtx         context.Context
+	responsesCancel      context.CancelFunc
+	dataCtx              context.Context
+	dataCancel           context.CancelFunc
+	gun                  Gun
+	vu                   VirtualUser
+	vus                  []VirtualUser
+	ResponsesChan        chan *Response
+	Responses            *Responses
+	responsesData        *ResponseData
+	errsMu               *sync.Mutex
+	errs                 *SliceBuffer[string]
+	stats                *Stats
+	loki                 *LokiClient
+	backendResponsesChan chan *Response
+	otel                 *OTELClient
 }
 
 // NewGenerator initializes a Generator with the provided configuration.
@@ -333,15 +341,21 @@ func NewGenerator(cfg *Config) (*Generator, error) {
 			failResponsesMu: &sync.Mutex{},
 			FailResponses:   NewSliceBuffer[*Response](cfg.CallResultBufLen),
 		},
-		errsMu:            &sync.Mutex{},
-		errs:              NewSliceBuffer[string](cfg.CallResultBufLen),
-		stats:             &Stats{},
-		Log:               l,
-		lokiResponsesChan: make(chan *Response, 50000),
+		errsMu:               &sync.Mutex{},
+		errs:                 NewSliceBuffer[string](cfg.CallResultBufLen),
+		stats:                &Stats{},
+		Log:                  l,
+		backendResponsesChan: make(chan *Response, 50000),
 	}
 	var err error
 	if cfg.LokiConfig != nil {
 		g.loki, err = NewLokiClient(cfg.LokiConfig)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if cfg.OTELConfig != nil {
+		g.otel, err = NewOTELClient(cfg.OTELConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -554,8 +568,8 @@ func (g *Generator) storeResponses(res *Response) {
 	if !g.sampler.ShouldRecord(res, g.stats) {
 		return
 	}
-	if g.Cfg.LokiConfig != nil {
-		g.lokiResponsesChan <- res
+	if g.hasLogBackend() {
+		g.backendResponsesChan <- res
 	}
 	g.responsesData.okDataMu.Lock()
 	g.responsesData.failResponsesMu.Lock()
@@ -655,9 +669,9 @@ func (g *Generator) pacedCall() {
 func (g *Generator) Run(wait bool) (interface{}, bool) {
 	g.Log.Info().Msg("Load generator started")
 	g.printStatsLoop()
-	if g.Cfg.LokiConfig != nil {
-		g.sendResponsesToLoki()
-		g.sendStatsToLoki()
+	if g.hasLogBackend() {
+		g.sendResponsesToLogBackend()
+		g.sendStatsToLogBackend()
 	}
 	g.runScheduleLoop()
 	g.collectVUResults()
@@ -702,9 +716,7 @@ func (g *Generator) Wait() (interface{}, bool) {
 	g.stats.CurrentTimeUnit = g.Cfg.RateLimitUnitDuration.Nanoseconds()
 	g.dataCancel()
 	g.dataWaitGroup.Wait()
-	if g.Cfg.LokiConfig != nil {
-		g.stopLokiStream()
-	}
+	g.stopLogStream()
 	return g.GetData(), g.stats.RunFailed.Load()
 }
 
@@ -732,20 +744,104 @@ func (g *Generator) Stats() *Stats {
 	return g.stats
 }
 
-/* Loki's methods to handle CallResult/Stats and stream it to Loki */
+/* Log backend dispatch (Loki / OTEL) */
 
-// stopLokiStream gracefully terminates the Loki streaming service if it is configured.
-// It ensures that all Loki-related processes are properly stopped.
-func (g *Generator) stopLokiStream() {
-	if g.Cfg.LokiConfig != nil && g.Cfg.LokiConfig.URL != "" {
+func logSendMethod() string {
+	m := os.Getenv(LogSendMethodEnvVar)
+	switch m {
+	case "":
+		return LogSendMethodOTEL
+	case LogSendMethodOTEL, LogSendMethodLoki:
+		return m
+	default:
+		log.Warn().
+			Str("value", m).
+			Str("expected", LogSendMethodOTEL+"|"+LogSendMethodLoki).
+			Msgf("unknown %s, defaulting to %q", LogSendMethodEnvVar, LogSendMethodOTEL)
+		return LogSendMethodOTEL
+	}
+}
+
+// hasLogBackend reports whether any log backend has been configured on this Generator.
+func (g *Generator) hasLogBackend() bool {
+	return g.loki != nil || g.otel != nil
+}
+
+// handleResponsePayload dispatches a Response to whichever log backend was constructed.
+func (g *Generator) handleResponsePayload(r *Response) {
+	switch {
+	case g.otel != nil:
+		g.handleOTELResponsePayload(r)
+	case g.loki != nil:
+		g.handleLokiResponsePayload(r)
+	}
+}
+
+// handleStatsPayload dispatches a stats sample to whichever log backend was constructed.
+func (g *Generator) handleStatsPayload() {
+	switch {
+	case g.otel != nil:
+		g.handleOTELStatsPayload()
+	case g.loki != nil:
+		g.handleLokiStatsPayload()
+	}
+}
+
+// stopLogStream gracefully terminates whichever log backend is configured.
+func (g *Generator) stopLogStream() {
+	if g.loki != nil {
 		g.Log.Info().Msg("Stopping Loki")
 		g.loki.StopNow()
 		g.Log.Info().Msg("Loki exited")
 	}
+	if g.otel != nil {
+		g.Log.Info().Msg("Stopping OTEL")
+		g.otel.StopNow()
+		g.Log.Info().Msg("OTEL exited")
+	}
 }
 
-// handleLokiResponsePayload enriches a Response with additional labels and submits it to Loki for centralized logging.
-// It optimizes the payload by removing unnecessary timestamps and handles any errors that occur during submission.
+// sendResponsesToLogBackend streams response data to the configured log backend.
+func (g *Generator) sendResponsesToLogBackend() {
+	g.Log.Info().
+		Interface("DefaultLabels", g.Cfg.Labels).
+		Msg("Streaming responses to log backend")
+	g.dataWaitGroup.Add(1)
+	go func() {
+		defer g.dataWaitGroup.Done()
+		for {
+			select {
+			case <-g.dataCtx.Done():
+				g.Log.Info().Msg("Log backend responses exited")
+				return
+			case r := <-g.backendResponsesChan:
+				g.handleResponsePayload(r)
+			}
+		}
+	}()
+}
+
+// sendStatsToLogBackend periodically pushes generator stats to the configured log backend.
+func (g *Generator) sendStatsToLogBackend() {
+	g.dataWaitGroup.Add(1)
+	go func() {
+		defer g.dataWaitGroup.Done()
+		for {
+			select {
+			case <-g.dataCtx.Done():
+				g.Log.Info().Msg("Log backend stats exited")
+				return
+			default:
+				time.Sleep(g.Cfg.StatsPollInterval)
+				g.handleStatsPayload()
+			}
+		}
+	}()
+}
+
+/* Loki payload handlers */
+
+// handleLokiResponsePayload enriches a Response with additional labels and submits it to Loki.
 func (g *Generator) handleLokiResponsePayload(r *Response) {
 	labels := g.labels.Merge(model.LabelSet{
 		"test_data_type": "responses",
@@ -754,17 +850,17 @@ func (g *Generator) handleLokiResponsePayload(r *Response) {
 	// we are removing time.Time{} because when it marshalled to string it creates N responses for some Loki queries
 	// and to minimize the payload, duration is already calculated at that point
 	ts := r.FinishedAt
-	r.StartedAt = nil
-	r.FinishedAt = nil
-	err := g.loki.HandleStruct(labels, *ts, r)
+	payload := *r
+	payload.StartedAt = nil
+	payload.FinishedAt = nil
+	err := g.loki.HandleStruct(labels, *ts, payload)
 	if err != nil {
 		g.Log.Err(err).Send()
 		g.Stop()
 	}
 }
 
-// handleLokiStatsPayload transmits the generator’s current statistics to Loki for monitoring.
-// It merges relevant labels with the stats data and handles any transmission errors by logging and stopping the generator.
+// handleLokiStatsPayload transmits the generator’s current statistics to Loki.
 func (g *Generator) handleLokiStatsPayload() {
 	ls := g.labels.Merge(model.LabelSet{
 		"test_data_type": "stats",
@@ -776,44 +872,35 @@ func (g *Generator) handleLokiStatsPayload() {
 	}
 }
 
-// sendResponsesToLoki starts streaming response data to Loki using the generator's configuration.
-// It handles incoming responses for monitoring and logging purposes.
-func (g *Generator) sendResponsesToLoki() {
-	g.Log.Info().
-		Str("URL", g.Cfg.LokiConfig.URL).
-		Interface("DefaultLabels", g.Cfg.Labels).
-		Msg("Streaming data to Loki")
-	g.dataWaitGroup.Add(1)
-	go func() {
-		defer g.dataWaitGroup.Done()
-		for {
-			select {
-			case <-g.dataCtx.Done():
-				g.Log.Info().Msg("Loki responses exited")
-				return
-			case r := <-g.lokiResponsesChan:
-				g.handleLokiResponsePayload(r)
-			}
-		}
-	}()
+/* OTEL payload handlers */
+
+// handleOTELResponsePayload enriches a Response with additional labels and submits it as an OTEL log record.
+func (g *Generator) handleOTELResponsePayload(r *Response) {
+	labels := g.labels.Merge(model.LabelSet{
+		"test_data_type": "responses",
+		CallGroupLabel:   model.LabelValue(r.Group),
+	})
+	ts := r.FinishedAt
+	payload := *r
+	payload.StartedAt = nil
+	payload.FinishedAt = nil
+	err := g.otel.HandleStruct(labels, *ts, payload)
+	if err != nil {
+		g.Log.Err(err).Send()
+		g.Stop()
+	}
 }
 
-// sendStatsToLoki starts a background goroutine that periodically sends generator statistics to Loki for monitoring.
-func (g *Generator) sendStatsToLoki() {
-	g.dataWaitGroup.Add(1)
-	go func() {
-		defer g.dataWaitGroup.Done()
-		for {
-			select {
-			case <-g.dataCtx.Done():
-				g.Log.Info().Msg("Loki stats exited")
-				return
-			default:
-				time.Sleep(g.Cfg.StatsPollInterval)
-				g.handleLokiStatsPayload()
-			}
-		}
-	}()
+// handleOTELStatsPayload transmits the generator’s current statistics as an OTEL log record.
+func (g *Generator) handleOTELStatsPayload() {
+	ls := g.labels.Merge(model.LabelSet{
+		"test_data_type": "stats",
+	})
+	err := g.otel.HandleStruct(ls, time.Now(), g.StatsJSON())
+	if err != nil {
+		g.Log.Err(err).Send()
+		g.Stop()
+	}
 }
 
 /* Local logging methods */

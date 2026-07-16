@@ -76,7 +76,7 @@ func (ms *MockServer) SetExternalAdapterMocks(count int) error {
 		if err != nil {
 			return err
 		}
-		cName = strings.Replace(cName, "/", "", -1)
+		cName = strings.ReplaceAll(cName, "/", "")
 		eaUrl, err := url.Parse(fmt.Sprintf("http://%s:%s%s",
 			cName, "1080", path))
 		if err != nil {

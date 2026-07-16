@@ -48,7 +48,14 @@ func (cs *BlockStats) Stats(startBlock *big.Int, endBlock *big.Int) error {
 	if endBlock == nil || startBlock.Sign() < 0 {
 		header, err := cs.Client.Client.HeaderByNumber(context.Background(), nil)
 		if err != nil {
-			return fmt.Errorf("failed to get the latest block header: %v", err)
+			return fmt.Errorf("failed to get the latest block header for block stats: %w\n"+
+				"This indicates RPC connectivity issues.\n"+
+				"Troubleshooting:\n"+
+				"  1. Verify RPC endpoint is accessible\n"+
+				"  2. Check network connectivity\n"+
+				"  3. Ensure the node is synced\n"+
+				"  4. Try increasing dial_timeout in config",
+				err)
 		}
 		latestBlockNumber = header.Number
 	}
@@ -62,7 +69,10 @@ func (cs *BlockStats) Stats(startBlock *big.Int, endBlock *big.Int) error {
 		endBlock = latestBlockNumber
 	}
 	if endBlock != nil && startBlock.Int64() > endBlock.Int64() {
-		return fmt.Errorf("start block is less than the end block")
+		return fmt.Errorf("invalid block range for statistics: start block %d > end block %d.\n"+
+			"Ensure the start block is less than or equal to the end block.\n"+
+			"If using relative block numbers in block_stats config, verify the values are correct for your network",
+			startBlock.Int64(), endBlock.Int64())
 	}
 	L.Info().
 		Int64("EndBlock", endBlock.Int64()).
@@ -107,7 +117,12 @@ func (cs *BlockStats) Stats(startBlock *big.Int, endBlock *big.Int) error {
 // CalculateBlockDurations calculates and logs the duration, TPS, gas used, and gas limit between each consecutive block
 func (cs *BlockStats) CalculateBlockDurations(blocks []*types.Block) error {
 	if len(blocks) == 0 {
-		return fmt.Errorf("no blocks no analyze")
+		return fmt.Errorf("no block data available for duration analysis. " +
+			"This happens when:\n" +
+			"  1. No blocks were provided for analysis\n" +
+			"  2. All block fetch attempts failed\n" +
+			"  3. Block range is invalid\n" +
+			"Check RPC connectivity and ensure blocks exist in the specified range")
 	}
 	var (
 		durations          []time.Duration

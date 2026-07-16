@@ -180,7 +180,7 @@ func (d *StrDuration) UnmarshalJSON(b []byte) error {
 
 // MarshalText implements the text.Marshaler interface (used by toml)
 func (d StrDuration) MarshalText() ([]byte, error) {
-	return []byte(d.Duration.String()), nil
+	return []byte(d.String()), nil
 }
 
 // UnmarshalText implements the text.Unmarshaler interface (used by toml)

@@ -2,6 +2,8 @@
 
 ## Prerequisites
 * [Golang](https://go.dev/doc/install)
+* [Just](https://github.com/casey/just)
+* [Docker](https://docs.docker.com/get-docker/)
 
 ## Setup
 To start writing tests, create a directory for your project with a `go.mod` file, then add the WASP package:

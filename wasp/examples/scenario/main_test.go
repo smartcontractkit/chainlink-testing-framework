@@ -28,6 +28,7 @@ func TestScenario(t *testing.T) {
 				wasp.Plain(3, 30*time.Second),
 			),
 			LokiConfig: wasp.NewEnvLokiConfig(),
+			OTELConfig: wasp.NewEnvOTELConfig(),
 		})).Run(true)
 	require.NoError(t, err)
 }

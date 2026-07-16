@@ -20,8 +20,7 @@ jobs:
             src:
               - 'seth/**'
   test:
-    # TODO: uncomment once we have changed required checks in the repo to not include each test
-    # if: needs.changes.outputs.src == 'true'
+    if: needs.changes.outputs.src == 'true'
     needs: changes
     strategy:
       fail-fast: false
@@ -134,7 +133,7 @@ jobs:
     steps:
       - name: Require all matrix jobs passed
         run: |
-          if [ "${{ needs.test.result }}" != "success" ]; then
+          if [ "${{ needs.test.result }}" != "skipped" ] && [ "${{ needs.test.result }}" != "success" ]; then
             echo "::error::One or more Seth test matrix jobs failed or were cancelled."
             exit 1
           fi

@@ -31,6 +31,7 @@ func TestNodeRPS(t *testing.T) {
 			Gun:        NewExampleHTTPGun(srv.URL()),
 			Labels:     labels,
 			LokiConfig: wasp.NewEnvLokiConfig(),
+			OTELConfig: wasp.NewEnvOTELConfig(),
 		})).
 		Add(wasp.NewGenerator(&wasp.Config{
 			LoadType: wasp.RPS,
@@ -43,6 +44,7 @@ func TestNodeRPS(t *testing.T) {
 			Gun:        NewExampleHTTPGun(srv.URL()),
 			Labels:     labels,
 			LokiConfig: wasp.NewEnvLokiConfig(),
+			OTELConfig: wasp.NewEnvOTELConfig(),
 		})).
 		Run(true)
 	require.NoError(t, err)

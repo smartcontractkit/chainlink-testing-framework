@@ -2,6 +2,7 @@ package seth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -12,14 +13,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/pelletier/go-toml/v2"
-	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/seth"
-)
-
-const (
-	ErrNoNetwork = "no network specified, use -n flag. Ex.: 'seth -n Geth stats' or -u and -c flags. Ex.: 'seth -u http://localhost:8545 -c 1337 stats'"
 )
 
 var C *seth.Client
@@ -38,7 +34,7 @@ func RunCLI(args []string) error {
 			networkName := cCtx.String("networkName")
 			url := cCtx.String("url")
 			if networkName == "" && url == "" {
-				return errors.New(ErrNoNetwork)
+				return errors.New("no network specified, use -n flag. Ex.: 'seth -n Geth stats' or -u and -c flags. Ex.: 'seth -u http://localhost:8545 -c 1337 stats'")
 			}
 			if networkName != "" {
 				_ = os.Setenv(seth.NETWORK_ENV_VAR, networkName)
@@ -200,16 +196,16 @@ func RunCLI(args []string) error {
 
 					cfgPath := os.Getenv(seth.CONFIG_FILE_ENV_VAR)
 					if cfgPath == "" {
-						return errors.New(seth.ErrEmptyConfigPath)
+						return errors.New("toml config path is empty, set SETH_CONFIG_PATH")
 					}
 					var cfg *seth.Config
 					d, err := os.ReadFile(cfgPath)
 					if err != nil {
-						return errors.Wrap(err, seth.ErrReadSethConfig)
+						return fmt.Errorf("failed to read TOML config file: %w", err)
 					}
 					err = toml.Unmarshal(d, &cfg)
 					if err != nil {
-						return errors.Wrap(err, seth.ErrUnmarshalSethConfig)
+						return fmt.Errorf("failed to unmarshal TOML config file: %w", err)
 					}
 					absPath, err := filepath.Abs(cfgPath)
 					if err != nil {
@@ -272,7 +268,7 @@ func RunCLI(args []string) error {
 						if cfg.Network.Name == seth.DefaultNetworkName {
 							chainId, err := client.ChainID(context.Background())
 							if err != nil {
-								return errors.Wrap(err, "failed to get chain ID")
+								return fmt.Errorf("failed to get chain ID: %w", err)
 							}
 							cfg.Network.ChainID = chainId.Uint64()
 						}
@@ -298,7 +294,7 @@ func RunCLI(args []string) error {
 						tx, _, err := client.Client.TransactionByHash(ctx, common.HexToHash(txHash))
 						cancel()
 						if err != nil {
-							return errors.Wrapf(err, "failed to get transaction %s", txHash)
+							return fmt.Errorf("failed to get transaction %s: %w", txHash, err)
 						}
 
 						_, err = client.Decode(tx, nil)

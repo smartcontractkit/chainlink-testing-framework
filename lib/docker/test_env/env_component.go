@@ -165,13 +165,13 @@ func writeTargetNetworkParams(sb *strings.Builder, targetInterfaceName string, t
 		targetInterfaceName = "eth0"
 	}
 	for _, ip := range targetIPs {
-		sb.Write([]byte(fmt.Sprintf(` -t %s`, ip)))
+		fmt.Fprintf(sb, ` -t %s`, ip)
 	}
-	sb.Write([]byte(fmt.Sprintf(" --interface %s", targetInterfaceName)))
+	fmt.Fprintf(sb, " --interface %s", targetInterfaceName)
 	for _, p := range targetIngressPorts {
-		sb.Write([]byte(fmt.Sprintf(` --ingress-port %s`, p)))
+		fmt.Fprintf(sb, ` --ingress-port %s`, p)
 	}
 	for _, p := range targetEgressPorts {
-		sb.Write([]byte(fmt.Sprintf(` --egress-port %s`, p)))
+		fmt.Fprintf(sb, ` --egress-port %s`, p)
 	}
 }

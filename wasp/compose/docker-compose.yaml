@@ -18,6 +18,7 @@ services:
       - grafana_plugins:/var/lib/grafana/plugins
       - ./conf/grafana.ini:/etc/grafana/grafana.ini
       - ./conf/provisioning:/etc/grafana/provisioning
+      - ../dashboard/dashboard.json:/etc/wasp-dashboards/wasp.json:ro
     ports:
       - "3000:3000"
 

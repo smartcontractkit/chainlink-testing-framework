@@ -78,7 +78,7 @@ func (z *Zookeeper) StartContainer() error {
 	if err != nil {
 		return err
 	}
-	name = strings.Replace(name, "/", "", -1)
+	name = strings.ReplaceAll(name, "/", "")
 	z.InternalUrl = fmt.Sprintf("%s:%s", name, "2181")
 
 	z.l.Info().Str("containerName", name).

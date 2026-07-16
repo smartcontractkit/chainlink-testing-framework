@@ -28,6 +28,7 @@ func TestVirtualUser(t *testing.T) {
 		VU:         NewExampleWSVirtualUser(srv.URL()),
 		Labels:     labels,
 		LokiConfig: wasp.NewEnvLokiConfig(),
+		OTELConfig: wasp.NewEnvOTELConfig(),
 	})
 	if err != nil {
 		panic(err)

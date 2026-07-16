@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"github.com/montanaflynn/stats"
-	"github.com/pkg/errors"
 )
 
 // GasEstimator estimates gas prices
@@ -27,15 +26,25 @@ func (m *GasEstimator) Stats(ctx context.Context, blockCount uint64, priorityPer
 	estimations := GasSuggestions{}
 
 	if blockCount == 0 {
-		return estimations, errors.New("block count must be greater than zero")
+		return estimations, fmt.Errorf("block count must be greater than zero for gas estimation. "+
+			"Check 'gas_price_estimation_blocks' in your config (seth.toml or ClientBuilder) - current value: %d", blockCount)
 	}
 
 	currentBlock, err := m.Client.Client.BlockNumber(ctx)
 	if err != nil {
-		return GasSuggestions{}, fmt.Errorf("failed to get current block number: %w", err)
+		return GasSuggestions{}, fmt.Errorf("failed to get current block number: %w\n"+
+			"Ensure RPC endpoint is accessible and synced. "+
+			"Block history-based gas estimation requires access to recent block data. "+
+			"Alternatively, set 'gas_price_estimation_blocks = 0' to disable block-based estimation",
+			err)
 	}
 	if currentBlock == 0 {
-		return GasSuggestions{}, errors.New("current block number is zero. No fee history available")
+		return GasSuggestions{}, fmt.Errorf("current block number is zero, which indicates either:\n" +
+			"  1. The network hasn't produced any blocks yet (check if network is running)\n" +
+			"  2. RPC node is not synced\n" +
+			"  3. Connection to RPC node failed\n" +
+			"Block history-based gas estimation is not possible without block history. " +
+			"You can set 'gas_price_estimation_blocks = 0' to disable block-based estimation")
 	}
 	if blockCount >= currentBlock {
 		blockCount = currentBlock - 1
@@ -43,7 +52,13 @@ func (m *GasEstimator) Stats(ctx context.Context, blockCount uint64, priorityPer
 
 	hist, err := m.Client.Client.FeeHistory(ctx, blockCount, big.NewInt(mustSafeInt64(currentBlock)), []float64{priorityPerc})
 	if err != nil {
-		return GasSuggestions{}, fmt.Errorf("failed to get fee history: %w", err)
+		return GasSuggestions{}, fmt.Errorf("failed to get fee history for %d blocks: %w\n"+
+			"Possible causes:\n"+
+			"  1. RPC node doesn't support eth_feeHistory\n"+
+			"  2. Not enough blocks available (current block: %d)\n"+
+			"  3. Network connection issues\n"+
+			"Try reducing 'gas_price_estimation_blocks' in config",
+			blockCount, err, currentBlock)
 	}
 	L.Trace().
 		Interface("History", hist).
@@ -60,7 +75,10 @@ func (m *GasEstimator) Stats(ctx context.Context, blockCount uint64, priorityPer
 	}
 	gasPercs, err := quantilesFromFloatArray(baseFees)
 	if err != nil {
-		return GasSuggestions{}, fmt.Errorf("failed to calculate quantiles from fee history for base fee: %w", err)
+		return GasSuggestions{}, fmt.Errorf("failed to calculate gas price quantiles from %d blocks of fee history: %w\n"+
+			"This might indicate insufficient or invalid fee data. "+
+			"Try reducing 'gas_price_estimation_blocks' in config",
+			len(baseFees), err)
 	}
 	estimations.BaseFeePerc = gasPercs
 
@@ -82,7 +100,10 @@ func (m *GasEstimator) Stats(ctx context.Context, blockCount uint64, priorityPer
 	}
 	tipPercs, err := quantilesFromFloatArray(tips)
 	if err != nil {
-		return GasSuggestions{}, fmt.Errorf("failed to calculate quantiles from fee history for tip cap: %w", err)
+		return GasSuggestions{}, fmt.Errorf("failed to calculate tip cap quantiles from %d blocks of fee history: %w\n"+
+			"This might indicate insufficient or invalid tip data. "+
+			"Try reducing 'gas_price_estimation_blocks' in config",
+			len(tips), err)
 	}
 	estimations.TipCapPerc = tipPercs
 	L.Trace().
@@ -91,20 +112,32 @@ func (m *GasEstimator) Stats(ctx context.Context, blockCount uint64, priorityPer
 
 	suggestedGasPrice, err := m.Client.Client.SuggestGasPrice(ctx)
 	if err != nil {
-		return GasSuggestions{}, fmt.Errorf("failed to get suggested gas price: %w", err)
+		return GasSuggestions{}, fmt.Errorf("failed to get suggested gas price from RPC: %w\n"+
+			"Possible solutions:\n"+
+			"  1. Disable gas estimation and set explicit 'gas_price' in config (gas_price_estimation_enabled = false)\n"+
+			"  2. Check RPC node capabilities and accessibility\n"+
+			"  3. Verify the network supports gas price queries",
+			err)
 	}
 	estimations.SuggestedGasPrice = suggestedGasPrice
 
 	suggestedGasTipCap, err := m.Client.Client.SuggestGasTipCap(ctx)
 	if err != nil {
-		return GasSuggestions{}, fmt.Errorf("failed to get suggested gas tip cap: %w", err)
+		return GasSuggestions{}, fmt.Errorf("failed to get suggested gas tip cap from RPC: %w\n"+
+			"Possible solutions:\n"+
+			"  1. Disable gas estimation and set explicit 'gas_tip_cap' in config (gas_price_estimation_enabled = false)\n"+
+			"  2. Check if network supports EIP-1559\n"+
+			"  3. Verify RPC node capabilities",
+			err)
 	}
 
 	estimations.SuggestedGasTipCap = suggestedGasTipCap
 
 	header, err := m.Client.Client.HeaderByNumber(ctx, nil)
 	if err != nil {
-		return GasSuggestions{}, fmt.Errorf("failed to get latest block header: %w", err)
+		return GasSuggestions{}, fmt.Errorf("failed to get latest block header: %w\n"+
+			"Cannot determine current base fee. Check RPC connection",
+			err)
 	}
 	estimations.LastBaseFee = header.BaseFee
 

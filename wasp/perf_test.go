@@ -63,9 +63,10 @@ func TestPyroscopeLocalTraceRPSCalls(t *testing.T) {
 	t.Run("trace test", func(t *testing.T) {
 		t.Parallel()
 		pyroscope.TagWrapper(context.Background(), pyroscope.Labels("scope", "loadgen_impl"), func(c context.Context) {
+			//nolint:contextcheck // NewGenerator does not accept a context; the pyroscope tag wrapper's ctx is for profile tagging only
 			gen, err := NewGenerator(&Config{
 				T:           t,
-				LokiConfig:  NewEnvLokiConfig(),
+				LokiConfig:  DefaultLokiConfig(),
 				Labels:      labels,
 				CallTimeout: 100 * time.Millisecond,
 				LoadType:    RPS,
@@ -87,9 +88,10 @@ func TestPyroscopeLocalTraceVUCalls(t *testing.T) {
 	t.Run("trace test", func(t *testing.T) {
 		t.Parallel()
 		pyroscope.TagWrapper(context.Background(), pyroscope.Labels("scope", "loadgen_impl"), func(c context.Context) {
+			//nolint:contextcheck // NewGenerator does not accept a context; the pyroscope tag wrapper's ctx is for profile tagging only
 			gen, err := NewGenerator(&Config{
 				T:           t,
-				LokiConfig:  NewEnvLokiConfig(),
+				LokiConfig:  DefaultLokiConfig(),
 				Labels:      labels,
 				CallTimeout: 100 * time.Millisecond,
 				LoadType:    VU,
@@ -111,7 +113,7 @@ func TestPerfRenderLokiRPSRun(t *testing.T) {
 		t.Parallel()
 		gen, err := NewGenerator(&Config{
 			T:           t,
-			LokiConfig:  NewEnvLokiConfig(),
+			LokiConfig:  DefaultLokiConfig(),
 			GenName:     "rps",
 			Labels:      labels,
 			CallTimeout: 100 * time.Millisecond,
@@ -137,7 +139,7 @@ func TestPerfRenderLokiVUsRun(t *testing.T) {
 		t.Parallel()
 		gen, err := NewGenerator(&Config{
 			T:           t,
-			LokiConfig:  NewEnvLokiConfig(),
+			LokiConfig:  DefaultLokiConfig(),
 			GenName:     "vu",
 			Labels:      labels,
 			CallTimeout: 100 * time.Millisecond,
@@ -165,7 +167,7 @@ func TestRenderLokiParallelGenerators(t *testing.T) {
 		for i := 0; i < 50; i++ {
 			p.Add(NewGenerator(&Config{
 				T:           t,
-				LokiConfig:  NewEnvLokiConfig(),
+				LokiConfig:  DefaultLokiConfig(),
 				GenName:     fmt.Sprintf("rps-%d", i),
 				Labels:      labels,
 				CallTimeout: 100 * time.Millisecond,
@@ -190,7 +192,7 @@ func TestRenderLokiSpikeMaxLoadRun(t *testing.T) {
 		t.Parallel()
 		gen, err := NewGenerator(&Config{
 			T:           t,
-			LokiConfig:  NewEnvLokiConfig(),
+			LokiConfig:  DefaultLokiConfig(),
 			GenName:     "spike",
 			Labels:      labels,
 			CallTimeout: 100 * time.Millisecond,
@@ -215,7 +217,7 @@ func TestRenderWS(t *testing.T) {
 
 	gen, err := NewGenerator(&Config{
 		T:          t,
-		LokiConfig: NewEnvLokiConfig(),
+		LokiConfig: DefaultLokiConfig(),
 		GenName:    "ws",
 		Labels:     labels,
 		LoadType:   VU,
@@ -238,7 +240,7 @@ func TestRenderHTTP(t *testing.T) {
 
 	gen, err := NewGenerator(&Config{
 		T:          t,
-		LokiConfig: NewEnvLokiConfig(),
+		LokiConfig: DefaultLokiConfig(),
 		GenName:    "http",
 		Labels:     labels,
 		LoadType:   RPS,
