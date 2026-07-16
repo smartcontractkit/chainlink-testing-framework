@@ -98,36 +98,38 @@ jobs:
         working-directory: ${{ env.PACKAGE_NAME }}
         id: read_additional_notes
         run: |
-          
-          # Check if the .changeset directory exists and the file for the current version is present
-          if [ -f ".changeset/${{ env.VERSION }}.md" ]; then
-            # Read the content of the file
-            RELEASE_NOTES=$(cat ".changeset/${{ env.VERSION }}.md")
-            
-            # Format the release notes and breaking changes into FULL_RELEASE_NOTES
-            # shellcheck disable=SC2129
-            echo "FULL_RELEASE_NOTES<<EOF" >> "$GITHUB_ENV"
-            echo "## Release notes:" >> "$GITHUB_ENV"
-            echo "$RELEASE_NOTES" >> "$GITHUB_ENV"
-            echo "" >> "$GITHUB_ENV"
-            echo "## Commits:" >> "$GITHUB_ENV"
-            echo "${{ env.COMMITS }}" >> "$GITHUB_ENV"
-            echo "" >> "$GITHUB_ENV"
-            # shellcheck disable=SC2129
-            echo "## Breaking changes:" >> "$GITHUB_ENV"
-            echo "${{ env.BREAKING_CHANGES }}" >> "$GITHUB_ENV"
-            echo "EOF" >> "$GITHUB_ENV"
-          else
-            # Print error message and fail the pipeline if the file is not found
-            echo "Error: Release notes file '.changeset/${{ env.VERSION }}.md' not found."
+          NOTES_FILE=".changeset/${VERSION}.md"
+          if [ ! -f "$NOTES_FILE" ]; then
+            echo "Error: Release notes file '$NOTES_FILE' not found."
             exit 1
           fi
+
+          RELEASE_NOTES=$(cat "$NOTES_FILE")
+
+          # Build FULL_RELEASE_NOTES via bash env vars ($COMMITS, $BREAKING_CHANGES)
+          # uses $ bash syntax instead of ${{ env.PARAMETER }} to avoid escaping and multi-line issues
+          {
+            echo "FULL_RELEASE_NOTES<<CTF_RELEASE_NOTES_EOF"
+            echo "## Release notes:"
+            echo "$RELEASE_NOTES"
+            echo ""
+            echo "## Commits:"
+            echo "$COMMITS"
+            echo ""
+            echo "## Breaking changes:"
+            echo "$BREAKING_CHANGES"
+            echo "CTF_RELEASE_NOTES_EOF"
+          } >> "$GITHUB_ENV"
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           sudo apt-get install -y gh
-          gh release create "${{ env.PACKAGE_NAME }}/${{ env.VERSION }}" --title "${{ env.PACKAGE_NAME }}/${{ env.VERSION }}" --notes "${{ env.FULL_RELEASE_NOTES }}" || true
+          # Use "--notes-file -" to pipe release notes to stdin directly to avoid escaping and multi-line bugs
+          printf '%s' "$FULL_RELEASE_NOTES" | \
+            gh release create "${PACKAGE_NAME}/${VERSION}" \
+              --title "${PACKAGE_NAME}/${VERSION}" \
+              --notes-file - || true
       - name: Check if 'cmd' directory exists and set environment variable
         run: |
           if [ -f "$GITHUB_WORKSPACE/${{ env.PACKAGE_NAME }}/cmd/main.go" ]; then
