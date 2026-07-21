@@ -426,7 +426,7 @@ func (c *Config) AppendPksToNetwork(pks []string, name string) bool {
 
 	for _, n := range c.Networks {
 		if strings.EqualFold(n.Name, name) {
-			n.PrivateKeys = append(c.Network.PrivateKeys, pks...)
+			n.PrivateKeys = append(n.PrivateKeys, pks...)
 			return true
 		}
 	}
