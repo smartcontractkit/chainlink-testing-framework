@@ -47,7 +47,7 @@ func NewEphemeralKeys(addrs int64) ([]string, error) {
 }
 
 // CalculateSubKeyFunding calculates all required params to split funds from the root key to N test keys
-func (m *Client) CalculateSubKeyFunding(addrs, gasPrice, rooKeyBuffer int64) (*FundingDetails, error) {
+func (m *Client) CalculateSubKeyFunding(addrs, gasPrice, rootKeyBuffer int64) (*FundingDetails, error) {
 	if err := m.validateAddressesKeyNum(0); err != nil {
 		return nil, err
 	}
@@ -68,14 +68,14 @@ func (m *Client) CalculateSubKeyFunding(addrs, gasPrice, rooKeyBuffer int64) (*F
 
 	networkTransferFee := gasPrice * gasLimit
 	totalFee := new(big.Int).Mul(big.NewInt(networkTransferFee), big.NewInt(addrs))
-	rootKeyBuffer := new(big.Int).Mul(big.NewInt(rooKeyBuffer), big.NewInt(1_000_000_000_000_000_000))
-	freeBalance := new(big.Int).Sub(balance, big.NewInt(0).Add(totalFee, rootKeyBuffer))
+	rootKeyBufferWei := new(big.Int).Mul(big.NewInt(rootKeyBuffer), big.NewInt(1_000_000_000_000_000_000))
+	freeBalance := new(big.Int).Sub(balance, big.NewInt(0).Add(totalFee, rootKeyBufferWei))
 
 	L.Info().
 		Str("Balance (wei/ether)", fmt.Sprintf("%s/%s", balance.String(), WeiToEther(balance).Text('f', -1))).
 		Str("Total fee (wei/ether)", fmt.Sprintf("%s/%s", totalFee.String(), WeiToEther(totalFee).Text('f', -1))).
 		Str("Free Balance (wei/ether)", fmt.Sprintf("%s/%s", freeBalance.String(), WeiToEther(freeBalance).Text('f', -1))).
-		Str("Buffer (wei/ether)", fmt.Sprintf("%s/%s", rootKeyBuffer.String(), WeiToEther(rootKeyBuffer).Text('f', -1))).
+		Str("Buffer (wei/ether)", fmt.Sprintf("%s/%s", rootKeyBufferWei.String(), WeiToEther(rootKeyBufferWei).Text('f', -1))).
 		Msg("Root key balance")
 
 	if freeBalance.Cmp(big.NewInt(0)) < 0 {
@@ -88,9 +88,9 @@ func (m *Client) CalculateSubKeyFunding(addrs, gasPrice, rooKeyBuffer int64) (*F
 			"  2. Reduce number of ephemeral keys (current: %d)\n"+
 			"  3. Lower root_key_funds_buffer in config (current: %d ETH)",
 			balance.String(), WeiToEther(balance).Text('f', 6),
-			new(big.Int).Add(totalFee, rootKeyBuffer).String(), WeiToEther(new(big.Int).Add(totalFee, rootKeyBuffer)).Text('f', 6),
+			new(big.Int).Add(totalFee, rootKeyBufferWei).String(), WeiToEther(new(big.Int).Add(totalFee, rootKeyBufferWei)).Text('f', 6),
 			new(big.Int).Abs(freeBalance).String(), WeiToEther(new(big.Int).Abs(freeBalance)).Text('f', 6),
-			addrs, rooKeyBuffer)
+			addrs, rootKeyBuffer)
 	}
 
 	addrFunding := new(big.Int).Div(freeBalance, big.NewInt(addrs))
