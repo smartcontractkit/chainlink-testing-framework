@@ -117,7 +117,7 @@ func (m *Client) CalculateSubKeyFunding(addrs, gasPrice, rooKeyBuffer int64) (*F
 			addrFunding.String(), WeiToEther(addrFunding).Text('f', 6),
 			WeiToEther(requiredBalance).Text('f', 6),
 			new(big.Int).Div(freeBalance, addrFunding).Int64(),
-			rooKeyBuffer)
+			rootKeyBuffer)
 	}
 
 	bd := &FundingDetails{
