@@ -742,7 +742,7 @@ func (t *Tracer) printDecodedCallData(l zerolog.Logger, calls []*DecodedCall, re
 	}
 
 	L.Debug().
-		Msg("----------- Decoding transaction trace started -----------")
+		Msg("----------- Decoding transaction trace finished -----------")
 
 	if revertErr != nil {
 		L.Error().Err(revertErr).Msg("Transaction reverted")
