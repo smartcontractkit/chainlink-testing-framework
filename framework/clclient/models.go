@@ -250,6 +250,27 @@ type AptosKeys struct {
 	Data []AptosKeyData `json:"data"`
 }
 
+// SolanaKeyAttributes is the model that represents the created Solana key attributes when read
+type SolanaKeyAttributes struct {
+	PublicKey string `json:"publicKey"`
+}
+
+// SolanaKeyData is the model that represents the created Solana keys when read
+type SolanaKeyData struct {
+	ID         string              `json:"id"`
+	Attributes SolanaKeyAttributes `json:"attributes"`
+}
+
+// SolanaKey is the model that represents the created Solana key when read
+type SolanaKey struct {
+	Data SolanaKeyData `json:"data"`
+}
+
+// SolanaKeys is the model that represents the created Solana keys when read
+type SolanaKeys struct {
+	Data []SolanaKeyData `json:"data"`
+}
+
 // OCRKeys is the model that represents the created OCR keys when read
 type OCRKeys struct {
 	Data []OCRKeyData `json:"data"`

@@ -897,6 +897,46 @@ func (c *ChainlinkClient) MustReadAptosAccounts() ([]string, error) {
 	return accounts, nil
 }
 
+// ReadSolanaKeys reads all Solana keys from the Chainlink node
+func (c *ChainlinkClient) ReadSolanaKeys() (*SolanaKeys, *resty.Response, error) {
+	solanaKeys := &SolanaKeys{}
+	framework.L.Info().Str(NodeURL, c.Config.URL).Msg("Reading Solana Keys")
+	resp, err := c.APIClient.R().
+		SetResult(solanaKeys).
+		Get("/v2/keys/solana")
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(solanaKeys.Data) == 0 {
+		framework.L.Warn().Str(NodeURL, c.Config.URL).Msg("Found no Solana Keys on the node")
+	}
+	return solanaKeys, resp, nil
+}
+
+// MustReadSolanaKeys reads all Solana keys from the Chainlink node and returns an error if the request is unsuccessful.
+func (c *ChainlinkClient) MustReadSolanaKeys() (*SolanaKeys, *resty.Response, error) {
+	solanaKeys, res, err := c.ReadSolanaKeys()
+	if err != nil {
+		return nil, res, err
+	}
+	return solanaKeys, res, VerifyStatusCodeWithResponse(res, http.StatusOK)
+}
+
+// MustReadSolanaAccounts reads all Solana public keys (used as account addresses) from the Chainlink node.
+func (c *ChainlinkClient) MustReadSolanaAccounts() ([]string, error) {
+	solanaKeys, _, err := c.MustReadSolanaKeys()
+	if err != nil {
+		return nil, err
+	}
+
+	accounts := make([]string, 0, len(solanaKeys.Data))
+	for _, key := range solanaKeys.Data {
+		accounts = append(accounts, key.Attributes.PublicKey)
+	}
+
+	return accounts, nil
+}
+
 // DeleteTxKey deletes an tx key based on the provided ID
 func (c *ChainlinkClient) DeleteTxKey(chain string, id string) (*http.Response, error) {
 	framework.L.Info().Str(NodeURL, c.Config.URL).Str("ID", id).Msg("Deleting Tx Key")
