@@ -237,7 +237,11 @@ func TestConfig_Serizalization(t *testing.T) {
 		},
 	}
 
-	client, err := seth.NewClientBuilder().WithHooks(hooks).Build()
+	client, err := seth.NewClientBuilder().
+		WithHooks(hooks).
+		WithRpcUrl(os.Getenv("SETH_URL")).
+		WithPrivateKeys([]string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}).
+		Build()
 	require.NoError(t, err, "failed to create client with hooks")
 
 	_, err = toml.Marshal(client.Cfg)
