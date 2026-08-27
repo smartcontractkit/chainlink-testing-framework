@@ -6,7 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/pelletier/go-toml/v2"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
@@ -211,4 +215,35 @@ func TestConfig_ReadOnly_EphemeralKeys(t *testing.T) {
 	_, err := seth.NewClientRaw(&cfg, nil, nil)
 	require.Error(t, err, "succeeded in creating client")
 	require.Contains(t, err.Error(), "ephemeral mode requires exactly one root private key to fund ephemeral addresses, but no keys were loaded.", "expected different error message")
+}
+
+func TestConfig_Serizalization(t *testing.T) {
+	hooks := seth.Hooks{
+		ContractDeployment: seth.ContractDeploymentHooks{
+			Pre: func(auth *bind.TransactOpts, name string, abi abi.ABI, bytecode []byte, params ...any) error {
+				return nil
+			},
+			Post: func(client *seth.Client, tx *types.Transaction) error {
+				return nil
+			},
+		},
+		TxDecoding: seth.TxDecodingHooks{
+			Pre: func(client *seth.Client) error {
+				return nil
+			},
+			Post: func(client *seth.Client, decodedTx *seth.DecodedTransaction, decodedErr error) error {
+				return nil
+			},
+		},
+	}
+
+	client, err := seth.NewClientBuilder().WithHooks(hooks).Build()
+	require.NoError(t, err, "failed to create client with hooks")
+
+	_, err = toml.Marshal(client.Cfg)
+	require.NoError(t, err, "failed to marshal client config to TOML")
+
+	var unmarshaledCfg seth.Config
+	err = toml.Unmarshal([]byte{}, &unmarshaledCfg)
+	require.NoError(t, err, "failed to unmarshal TOML to config")
 }
