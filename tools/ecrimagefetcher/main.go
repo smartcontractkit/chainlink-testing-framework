@@ -17,7 +17,7 @@ import (
 )
 
 func fetchImageDetails(repositoryName string) ([]byte, error) {
-	// #nosec G204
+	// #nosec G204 G702 -- internal CLI tool, repositoryName is an operator-supplied CLI arg, not attacker-controlled
 	cmd := exec.Command("aws", "ecr", "describe-images", "--repository-name", repositoryName, "--region", os.Getenv("AWS_REGION"), "--output", "json", "--query", "imageDetails[?imageTags!=`null` && imageTags!=`[]`]")
 	return cmd.Output()
 }

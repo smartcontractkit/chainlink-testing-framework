@@ -45,6 +45,7 @@ func main() {
 
 // getLatestRelease fetches the latest release from the given repository URL
 func getLatestRelease(url string, client *http.Client) (*Release, error) {
+	// #nosec G704 -- internal CLI tool, host is hardcoded to api.github.com, only the path is CLI-arg-derived
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err

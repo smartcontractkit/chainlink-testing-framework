@@ -244,6 +244,7 @@ func NewClientRaw(
 		client = cfg.ethclient
 	}
 
+	// #nosec G118 -- CancelFunc is exported for callers to cancel the client's context themselves; this package doesn't own that lifecycle
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	c := &Client{
 		Client:      client,

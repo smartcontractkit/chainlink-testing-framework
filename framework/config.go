@@ -69,6 +69,7 @@ func mergeInputs[T any]() (*T, error) {
 	}
 	for _, path := range paths {
 		L.Info().Str("Path", path).Msg("Loading configuration input")
+		// #nosec G703 -- path comes from the EnvVarTestConfigs env var set by the operator, not attacker input
 		data, err := os.ReadFile(filepath.Join(DefaultConfigDir, path))
 		if err != nil {
 			if path == DefaultOverridesFilePath {
@@ -76,6 +77,7 @@ func mergeInputs[T any]() (*T, error) {
 				continue
 			}
 			var absError error
+			// #nosec G703 -- path comes from the EnvVarTestConfigs env var set by the operator, not attacker input
 			data, absError = os.ReadFile(path)
 			if absError != nil {
 				multiErr := multierr.Append(err, absError)

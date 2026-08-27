@@ -372,6 +372,7 @@ func (c *client) UpdateJobProposalSpecDefinition(ctx context.Context, id string,
 }
 
 func (c *client) login() error {
+	// #nosec G117 -- credentials are marshaled into the login request body itself, not logged or exposed
 	b, err := json.Marshal(c.credentials)
 	if err != nil {
 		return fmt.Errorf("failed to marshal credentials: %w", err)

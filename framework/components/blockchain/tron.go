@@ -72,6 +72,7 @@ func newTron(ctx context.Context, in *Input) (*Output, error) {
 	if err != nil {
 		return nil, err
 	}
+	// #nosec G117 -- TRONAccounts holds hardcoded, well-known public dev/test keys, not real secrets
 	accountsData, err := json.Marshal(TRONAccounts)
 	if err != nil {
 		return nil, err
