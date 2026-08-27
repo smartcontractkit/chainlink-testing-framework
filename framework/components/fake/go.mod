@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/framework/components/fake
 
-go 1.25.0
+go 1.26.5
 
 replace github.com/smartcontractkit/chainlink-testing-framework/framework => ../../../framework
 

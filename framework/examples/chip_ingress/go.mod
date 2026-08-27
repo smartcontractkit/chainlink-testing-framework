@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/framework/examples/chip_ingress
 
-go 1.25.5
+go 1.26.5
 
 replace (
 	github.com/smartcontractkit/chainlink-testing-framework/framework => ../../

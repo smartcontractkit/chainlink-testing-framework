@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/tools/ghlatestreleasechecker
 
-go 1.24.0
+go 1.26.5
 
 require github.com/stretchr/testify v1.9.0
 
