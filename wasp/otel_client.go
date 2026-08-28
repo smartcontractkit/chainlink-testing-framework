@@ -9,6 +9,7 @@ import (
 
 	"github.com/prometheus/common/model"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	otellog "go.opentelemetry.io/otel/log"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
@@ -130,7 +131,7 @@ func (m *OTELClient) Handle(ls model.LabelSet, t time.Time, body string) error {
 	rec.SetTimestamp(t)
 	rec.SetObservedTimestamp(observedTime)
 	rec.SetSeverity(otellog.SeverityInfo)
-	rec.SetBody(otellog.StringValue(body))
+	rec.SetBody(attribute.StringValue(body))
 	log.Trace().
 		Interface("Labels", ls).
 		Time("Time", t).
@@ -138,7 +139,7 @@ func (m *OTELClient) Handle(ls model.LabelSet, t time.Time, body string) error {
 		Str("Data", body).
 		Msg("Sending data to OTEL")
 	for k, v := range ls {
-		rec.AddAttributes(otellog.String(string(k), string(v)))
+		rec.AddAttributes(attribute.String(string(k), string(v)))
 	}
 	m.logger.Emit(context.Background(), rec)
 	return nil
