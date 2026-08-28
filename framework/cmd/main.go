@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 
@@ -711,13 +711,17 @@ func RemoveCacheFiles() error {
 	if err != nil {
 		return fmt.Errorf("failed to get current directory: %w", err)
 	}
-	err = filepath.Walk(currentDir, func(path string, info os.FileInfo, err error) error {
+	root, err := os.OpenRoot(currentDir)
+	if err != nil {
+		return fmt.Errorf("failed to open root %s: %w", currentDir, err)
+	}
+	defer root.Close()
+	err = fs.WalkDir(root.FS(), ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return fmt.Errorf("error accessing path %s: %w", path, err)
 		}
-		if !info.IsDir() && strings.HasSuffix(info.Name(), "-cache.toml") {
-			err := os.Remove(path)
-			if err != nil {
+		if !d.IsDir() && strings.HasSuffix(d.Name(), "-cache.toml") {
+			if err := root.Remove(path); err != nil {
 				return fmt.Errorf("failed to remove file %s: %w", path, err)
 			}
 		}

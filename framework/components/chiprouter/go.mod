@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/framework/components/chiprouter
 
-go 1.25.3
+go 1.26.5
 
 replace github.com/smartcontractkit/chainlink-testing-framework/framework => ../../
 

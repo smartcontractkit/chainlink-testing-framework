@@ -72,6 +72,7 @@ __debug*
 .private_chains/*
 
 .direnv
+.devbox/
 
 import_keys_test.go
 tag.py

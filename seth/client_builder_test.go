@@ -120,6 +120,7 @@ func TestConfig_ModifyExistingConfigWithBuilder(t *testing.T) {
 	configPath := os.Getenv(seth.CONFIG_FILE_ENV_VAR)
 	require.NotEmpty(t, configPath, "expected config file path to be set")
 
+	// #nosec G703 -- configPath comes from an env var set by the test/CI runner, not attacker input
 	d, err := os.ReadFile(configPath)
 	require.NoError(t, err, "failed to read config file")
 
@@ -148,6 +149,7 @@ func TestConfig_ModifyExistingConfigWithBuilder_UnknownChainId(t *testing.T) {
 	configPath := os.Getenv(seth.CONFIG_FILE_ENV_VAR)
 	require.NotEmpty(t, configPath, "expected config file path to be set")
 
+	// #nosec G703 -- configPath comes from an env var set by the test/CI runner, not attacker input
 	d, err := os.ReadFile(configPath)
 	require.NoError(t, err, "failed to read config file")
 
@@ -182,6 +184,7 @@ func TestConfig_ModifyExistingConfigWithBuilder_UnknownChainId_UseDefault(t *tes
 	configPath := os.Getenv(seth.CONFIG_FILE_ENV_VAR)
 	require.NotEmpty(t, configPath, "expected config file path to be set")
 
+	// #nosec G703 -- configPath comes from an env var set by the test/CI runner, not attacker input
 	d, err := os.ReadFile(configPath)
 	require.NoError(t, err, "failed to read config file")
 

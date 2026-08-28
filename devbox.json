@@ -5,7 +5,7 @@
     "go-ethereum@1.13.5",
     "foundry@1.0.0",
     "git@latest",
-    "go@1.24.0",
+    "go@1.26",
     "goreleaser@latest",
     "postgresql@15",
     "python@latest",
@@ -28,7 +28,7 @@
     "kubernetes-helm@3.15.2",
     "k9s@latest",
     "actionlint@1.6.26",
-    "golangci-lint@2.6.2",
+    "golangci-lint@2.12.2",
     "just@1.39.0",
     "shellcheck@0.10.0"
   ]

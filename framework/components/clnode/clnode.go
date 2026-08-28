@@ -341,6 +341,7 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 						"apicredentials": fmt.Sprintf(`%s
 			%s`, DefaultAPIUser, DefaultAPIPassword),
 					},
+					// #nosec G101 -- these are mount path strings, not credential values; actual secrets live in the ConfigMap/Secrets maps above
 					ConfigMapMountPath: map[string]string{
 						"config.toml":         "/config/config",
 						"overrides.toml":      "/config/overrides",
@@ -353,6 +354,7 @@ func newNode(ctx context.Context, in *Input, pgOut *postgres.Output) (*NodeOut, 
 						"secrets-overrides.toml":      in.Node.TestSecretsOverrides,
 						"secrets-user-overrides.toml": in.Node.UserSecretsOverrides,
 					},
+					// #nosec G101 -- these are mount path strings, not credential values; actual secrets live in the ConfigMap/Secrets maps above
 					SecretsMountPath: map[string]string{
 						"secrets.toml":                "/config/secrets",
 						"secrets-overrides.toml":      "/config/secrets-overrides",

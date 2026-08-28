@@ -199,6 +199,7 @@ func RunCLI(args []string) error {
 						return errors.New("toml config path is empty, set SETH_CONFIG_PATH")
 					}
 					var cfg *seth.Config
+					// #nosec G703 -- cfgPath comes from the SETH_CONFIG_PATH env var set by the operator, not attacker input
 					d, err := os.ReadFile(cfgPath)
 					if err != nil {
 						return fmt.Errorf("failed to read TOML config file: %w", err)
