@@ -97,6 +97,67 @@ func DeriveTimings(defs []Definition, override time.Duration) (rules map[string]
 	return rules, deriveGlobalTimings(defs), notes
 }
 
+// DeriveTimingsFromLog is DeriveTimings' log-mode counterpart, and the two
+// authorities of P5 are the whole reason it exists as a separate function.
+// pollEvery comes from the header — the cadence the recording ACTUALLY used,
+// after any --poll-interval override — and maxGap and healthGrace follow from
+// it. Re-deriving pollEvery from defs here would compare gaps recorded at the
+// override cadence against thresholds computed from the default: exit 2 on a
+// clean window when the override was slower, and, worse, a real recorder gap
+// passing silently when it was faster.
+//
+// evalStaleAfter still comes from defs (2 x intervalSeconds): it is a property
+// of the rule's own evaluation cadence and is unaffected by how often the gate
+// polled.
+//
+// Three shapes of header are errors rather than a best-effort derivation,
+// because each one would otherwise widen a threshold silently:
+//
+//   - a rule with no matching definition — a log that names a rule nobody can
+//     resolve cannot have that rule's coverage proved;
+//   - a non-positive recorded cadence — a log that cannot say how often it was
+//     written cannot have maxGap derived, and defaulting the cadence would
+//     prove a window that was never observed;
+//   - the same UID twice — last-one-wins would take whichever cadence happened
+//     to be written last, and a slower duplicate widens maxGap. That is a
+//     fail-open reachable through nothing but log corruption.
+//
+// It checks only the header-to-defs direction. The opposite direction — a
+// resolved definition absent from the header — is NOT this function's to
+// judge: it is §19.1 step 3's log-identity validation, and it belongs to P9's
+// Check, which is the only caller that knows both sets and can name the
+// mismatch. Without that check a definition simply gets no timings entry, and
+// a downstream lookup would read a zero maxGap: fail-closed (every gap
+// exceeds it) but silent, so P9 must reject the set mismatch by name rather
+// than let a rule fail for an unexplained reason.
+func DeriveTimingsFromLog(h Header, defs []Definition) (rules map[string]ruleTimings, global globalTimings, err error) {
+	byUID := make(map[string]Definition, len(defs))
+	for _, d := range defs {
+		byUID[d.UID] = d
+	}
+
+	rules = make(map[string]ruleTimings, len(h.Rules))
+	for _, lr := range h.Rules {
+		def, ok := byUID[lr.UID]
+		if !ok {
+			return nil, globalTimings{}, fmt.Errorf(
+				"log header names rule %s (%q), which no current definition matches", lr.UID, lr.Title)
+		}
+		if _, duplicate := rules[lr.UID]; duplicate {
+			return nil, globalTimings{}, fmt.Errorf(
+				"log header names rule %s (%q) twice; its recorded cadence is ambiguous", lr.UID, lr.Title)
+		}
+		if lr.PollEverySeconds <= 0 {
+			return nil, globalTimings{}, fmt.Errorf(
+				"log header records poll_every_seconds=%v for rule %s (%q); the recorded cadence is required to derive maxGap",
+				lr.PollEverySeconds, lr.UID, lr.Title)
+		}
+		pollEvery := time.Duration(lr.PollEverySeconds * float64(time.Second))
+		rules[lr.UID] = newRuleTimings(pollEvery, def.IntervalSeconds)
+	}
+	return rules, deriveGlobalTimings(defs), nil
+}
+
 // deriveGlobalTimings computes transitionGrace and drainTimeout over defs
 // (§5, §13.1, §19). A rule paused before the window opened — skipped, §12 —
 // is excluded from the transitionGrace max: its `for` value can never fire
