@@ -237,6 +237,34 @@ func (r *Reducer) Reduce(uid string, obs Observation) Poll {
 	return p
 }
 
+// seedFrom restores the marker state above from polls that are already in the
+// log, so the first poll a NEW Reducer produces compares against the last poll
+// the previous one wrote instead of against an empty set.
+//
+// It exists for the one place a recording changes hands: watch's parent takes
+// the first observation of every rule and its detached child continues from
+// there (P6). Without the seed, an instance that is abnormal in the parent's
+// observation and gone by the child's first poll produces no marker at all —
+// it leaves the record as though it had never been bad, which is H2's
+// fail-open reached through the handoff rather than through a reason string.
+//
+// Not-found polls are skipped, mirroring Reduce: an absent rule leaves the
+// previous abnormal set untouched rather than emptying it.
+func (r *Reducer) seedFrom(polls []Poll) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, p := range polls {
+		if !p.Found {
+			continue
+		}
+		keys := make(map[string]struct{}, len(p.Abnormal))
+		for _, inst := range p.Abnormal {
+			keys[instanceKey(inst.Labels)] = struct{}{}
+		}
+		r.prevAbnormal[p.RuleUID] = keys
+	}
+}
+
 // reasonNames reports whether reason names want. Newer Grafana versions
 // comma-join several reasons into one string, so this tests membership rather
 // than equality (P7 check 9 needs the same test for KeepLast).
