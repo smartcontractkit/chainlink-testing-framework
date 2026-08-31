@@ -21,8 +21,9 @@ import (
 //     not return a code, because a code is a presentation decision and the
 //     library must not make it.
 //   - §12.1 wants the paused rule AND --allow-paused both named to the user.
-//     decide names the rule in the shortfall Violation's Note (classify.go);
-//     the flag hint belongs to the CLI's renderer.
+//     decide names both in the shortfall Violation's Note (classify.go), and
+//     P10's renderer prints every Violation, including Note, in the human
+//     table — not only in --output json.
 //   - Config.Notes carries the running commentary (§13.2's planned run time,
 //     the countdown, the blind-interval warning). §20.2 puts the human output
 //     on stderr and reserves stdout for --output json, so the CLI must pass

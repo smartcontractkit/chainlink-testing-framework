@@ -1,8 +1,5 @@
-// Command grafana-alertcheck is the CLI entry point for the gate. P3 wires
-// only the `list` subcommand — enough to validate auth, the ruler parse, and
-// resolution against a real Grafana before any coverage logic exists (§9 rule
-// 4, "reach runnable at PR 5"). P10 extends this file with `watch` and
-// `check`.
+// Command grafana-alertcheck is the CLI entry point for the gate: `list`
+// (P3), `watch` (record, P10) and `check` (classify, P10).
 package main
 
 import (
@@ -15,7 +12,7 @@ func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
 
-const usage = "usage: grafana-alertcheck <list>"
+const usage = "usage: grafana-alertcheck <list|watch|check>"
 
 // run is the whole of main's testable surface: parse the subcommand, dispatch,
 // return the process exit code. Exit codes below 2 (pass/violations) belong to
@@ -36,6 +33,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "list":
 		return runList(args[1:], stdout, stderr)
+	case "watch":
+		return runWatch(args[1:], os.Stdin, stdout, stderr)
+	case "check":
+		return runCheck(args[1:], os.Stdin, stdout, stderr)
 	case "-h", "-help", "--help":
 		fmt.Fprintln(stdout, usage)
 		return 0

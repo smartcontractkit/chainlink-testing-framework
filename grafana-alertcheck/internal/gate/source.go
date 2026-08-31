@@ -263,7 +263,7 @@ type requestResult struct {
 // doRequest performs one HTTP GET and classifies the outcome (§14.5, §16):
 // a network failure, a non-2xx status, or a body-read failure is retryable
 // (*TransportError); a missing or unparseable Date header, or a skew beyond
-// skewHardLimit, is a hard error — retrying can never fix either, so neither
+// SkewHardLimit, is a hard error — retrying can never fix either, so neither
 // may enter the backoff loop (H4).
 //
 // The Date-header/skew check runs for every endpoint this hits, including
@@ -317,8 +317,8 @@ func (s *httpSource) doRequest(ctx context.Context, path string) (requestResult,
 	if absSkew < 0 {
 		absSkew = -absSkew
 	}
-	if absSkew > skewHardLimit {
-		return requestResult{}, fmt.Errorf("%s: clock skew %s exceeds hard limit %s (§16)", path, absSkew, skewHardLimit)
+	if absSkew > SkewHardLimit {
+		return requestResult{}, fmt.Errorf("%s: clock skew %s exceeds hard limit %s (§16)", path, absSkew, SkewHardLimit)
 	}
 
 	return requestResult{Body: b, ServerDate: serverDate, Skew: signedSkew, SkewBound: bound, Latency: latency}, nil

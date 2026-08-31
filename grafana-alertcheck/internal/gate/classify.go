@@ -104,6 +104,28 @@ type Policy struct {
 	From, To                          time.Time
 }
 
+// RuleThresholds is one non-skipped rule's resolved coverage thresholds
+// (§5/§10.1/§14.1), carried on Result so the CLI's table (P10, §20.2) can
+// print the numbers that answer "why" on exit 2 without decide exposing the
+// unexported ruleTimings type itself.
+type RuleThresholds struct {
+	MaxGap         time.Duration
+	HealthGrace    time.Duration
+	EvalStaleAfter time.Duration
+}
+
+// GlobalThresholds is the run-wide half of the same information (§13.1,
+// §19): transitionGrace and drainTimeout apply once, across every
+// non-skipped watched rule, not per rule (globalTimings).
+type GlobalThresholds struct {
+	TransitionGrace time.Duration
+	// GraceSource names, and already carries the `for` value of, the rule
+	// that set TransitionGrace (§13.2 requires printing both). "none" when no
+	// rule contributed (TransitionGrace is then 0).
+	GraceSource  string
+	DrainTimeout time.Duration
+}
+
 // Result is decide's whole answer: everything §20.2's table and the action's
 // JSON outputs need. Coverage carries one CoverageResult per non-skipped
 // rule — no separate Interval type anywhere in the project (§2's
@@ -112,9 +134,22 @@ type Result struct {
 	From, To       time.Time
 	GrafanaVersion string
 	ClockSkew      time.Duration // the largest |skew| across every poll decide was given, not only the ones a rule's window actually used
+	// ClockSkewBound is the skew BOUND (RTT/2, §16) of that SAME poll — not
+	// the largest bound seen overall, which would pair a wide bound from an
+	// unrelated slow request with the worst skew and misstate how tightly
+	// that skew is actually known. SkewHardLimit is a separate, fixed input
+	// validation threshold (source.go) and is not an error bound on this
+	// value; the CLI prints both, but must not conflate them.
+	ClockSkewBound time.Duration
 	Coverage       map[string]CoverageResult
-	Verdicts       []RuleVerdict
-	Violations     []Violation
+	// Thresholds carries one RuleThresholds per rule Coverage also covers —
+	// every non-skipped rule, keyed by UID. A skipped rule has neither: it
+	// was never scheduled, so it has no maxGap/healthGrace/evalStaleAfter to
+	// report (§12).
+	Thresholds map[string]RuleThresholds
+	Global     GlobalThresholds
+	Verdicts   []RuleVerdict
+	Violations []Violation
 }
 
 // episode is one contiguous, policy-bad span of one instance's timeline,
@@ -207,7 +242,7 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 		}
 		// Different polls can carry different measured skews. In theory a
 		// closing poll's translated time could land before the opening
-		// poll's — skew is capped at skewHardLimit (60s), so this is remote,
+		// poll's — skew is capped at SkewHardLimit (60s), so this is remote,
 		// not impossible — and a negative span would feed mergeDurations a
 		// duration that subtracts instead of adds. Clamp rather than trust
 		// the arithmetic never to invert.
@@ -482,14 +517,29 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 		To:             pol.To,
 		GrafanaVersion: h.GrafanaVersion,
 		Coverage:       make(map[string]CoverageResult),
+		Thresholds:     make(map[string]RuleThresholds),
+		Global: GlobalThresholds{
+			TransitionGrace: gt.transitionGrace,
+			GraceSource:     gt.graceSource,
+			DrainTimeout:    gt.drainTimeout,
+		},
 	}
+	skewSeen := false
 	for _, p := range polls {
 		s := p.Skew()
 		if s < 0 {
 			s = -s
 		}
-		if s > result.ClockSkew {
+		// The bound travels with ITS OWN poll's skew, never the largest bound
+		// seen overall (Result.ClockSkewBound's doc comment) — so it is only
+		// ever overwritten in lockstep with ClockSkew, on the same poll. >=
+		// rather than > on top of skewSeen: a strict > would never assign the
+		// bound at all when every poll's skew is exactly 0, understating the
+		// real measurement uncertainty as an unearned "bound ±0s".
+		if !skewSeen || s > result.ClockSkew {
 			result.ClockSkew = s
+			result.ClockSkewBound = p.SkewBound()
+			skewSeen = true
 		}
 	}
 
@@ -545,6 +595,11 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 			}
 		}
 		result.Coverage[def.UID] = cov
+		result.Thresholds[def.UID] = RuleThresholds{
+			MaxGap:         t.maxGap,
+			HealthGrace:    t.healthGrace,
+			EvalStaleAfter: t.evalStaleAfter,
+		}
 
 		outcome, badFor, viols := classifyRule(def, polls, pol.From, windowEnd, badStates, pol.Preexisting)
 		if cov.Unobservable {
@@ -581,9 +636,9 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 				break
 			}
 			// §12.1 requires the paused rule and --allow-paused both be
-			// named to the user; naming the rule is this Violation's job,
-			// the --allow-paused hint is the CLI table/renderer's (P10) —
-			// tracked here so it is not dropped when that phase is built.
+			// named to the user; both live in this one Violation, in Note —
+			// P10's renderer prints Note verbatim rather than re-deriving
+			// the hint, so the exact wording here is what an operator reads.
 			result.Violations = append(result.Violations, Violation{
 				Alert: def.Title, RuleUID: def.UID, Outcome: OutcomeSkipped,
 				Note: "paused before the window opened; counts against --min-observed unless --allow-paused is set",
