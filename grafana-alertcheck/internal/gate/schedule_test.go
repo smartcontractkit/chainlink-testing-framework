@@ -163,9 +163,9 @@ func TestScheduler_MarkAdvancesNextDue(t *testing.T) {
 // forced onto the tight rule's cadence.
 func TestScheduler_PerRuleCadenceOverTime(t *testing.T) {
 	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	rules := map[string]ruleTimings{
-		"tight": {pollEvery: 10 * time.Second},
-		"slack": {pollEvery: 300 * time.Second},
+	rules := map[string]time.Duration{
+		"tight": 10 * time.Second,
+		"slack": 300 * time.Second,
 	}
 	s := NewScheduler(rules, start)
 
@@ -196,7 +196,7 @@ func TestScheduler_PerRuleCadenceOverTime(t *testing.T) {
 
 func TestNewScheduler_StaggersWithinPollEvery(t *testing.T) {
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	rules := map[string]ruleTimings{"r1": {pollEvery: 100 * time.Second}}
+	rules := map[string]time.Duration{"r1": 100 * time.Second}
 	s := NewScheduler(rules, now)
 	offset := s.next["r1"].Sub(now)
 	if offset < 0 || offset >= 100*time.Second {

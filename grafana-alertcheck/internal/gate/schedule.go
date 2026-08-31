@@ -193,21 +193,27 @@ type Scheduler struct {
 	every map[string]time.Duration
 }
 
-// NewScheduler builds a Scheduler over rules (keyed by UID), staggering each
-// rule's initial next-due time across [0, pollEvery) so the fleet does not
-// start phase-aligned (§5's burst-bound proof depends on this: an
-// already-staggered fleet only re-aligns by chance, briefly, not by
+// NewScheduler builds a Scheduler over per-rule cadences (keyed by UID),
+// staggering each rule's initial next-due time across [0, pollEvery) so the
+// fleet does not start phase-aligned (§5's burst-bound proof depends on this:
+// an already-staggered fleet only re-aligns by chance, briefly, not by
 // construction).
-func NewScheduler(rules map[string]ruleTimings, now time.Time) *Scheduler {
+//
+// It takes cadences rather than whole ruleTimings on purpose: a scheduler
+// decides when to poll and nothing else, so it must not be handed maxGap,
+// healthGrace or evalStaleAfter. Those are coverage thresholds, they are
+// applied by the pure layer at classification time, and the recorder that
+// drives this scheduler never applies them at all.
+func NewScheduler(every map[string]time.Duration, now time.Time) *Scheduler {
 	s := &Scheduler{
-		next:  make(map[string]time.Time, len(rules)),
-		every: make(map[string]time.Duration, len(rules)),
+		next:  make(map[string]time.Time, len(every)),
+		every: make(map[string]time.Duration, len(every)),
 	}
-	for uid, rt := range rules {
-		s.every[uid] = rt.pollEvery
+	for uid, pollEvery := range every {
+		s.every[uid] = pollEvery
 		var offset time.Duration
-		if rt.pollEvery > 0 {
-			offset = rand.N(rt.pollEvery)
+		if pollEvery > 0 {
+			offset = rand.N(pollEvery)
 		}
 		s.next[uid] = now.Add(offset)
 	}
@@ -245,6 +251,22 @@ func (s *Scheduler) Due(now time.Time) []string {
 // cadence later.
 func (s *Scheduler) Mark(uid string, now time.Time) {
 	s.next[uid] = now.Add(s.every[uid])
+}
+
+// earliestDue returns the earliest scheduled next-due time, and false when the
+// scheduler holds no rules at all. The recorder's loop (P6) waits exactly that
+// long instead of waking on a fixed tick: a fixed tick either polls a slack
+// rule early — spending request budget the §5 formulas already accounted for —
+// or wakes too late for the tightest rule and opens a gap inside its own
+// maxGap.
+func (s *Scheduler) earliestDue() (time.Time, bool) {
+	var earliest time.Time
+	for _, t := range s.next {
+		if earliest.IsZero() || t.Before(earliest) {
+			earliest = t
+		}
+	}
+	return earliest, !earliest.IsZero()
 }
 
 // CheckBudget applies §5's error-at-start check to a fully resolved schedule.
