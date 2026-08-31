@@ -40,6 +40,17 @@ func TestResolve_UIDForm(t *testing.T) {
 	}
 }
 
+func TestResolve_FolderTitleForm(t *testing.T) {
+	defs := rulerDefs(t)
+	resolved, _, err := Resolve(defs, []string{"ExampleFeeds/TEMP - Example depeg alert"}, "")
+	if err != nil {
+		t.Fatalf("Resolve: unexpected error: %v", err)
+	}
+	if len(resolved) != 1 || resolved[0].UID != "rule0000008" {
+		t.Fatalf("resolved = %+v, want [rule0000008]", resolved)
+	}
+}
+
 func TestResolve_FolderGroupTitleForm(t *testing.T) {
 	defs := rulerDefs(t)
 	resolved, _, err := Resolve(defs, []string{"Example-Zone-A/Gateway/Example No Gateways Available"}, "")

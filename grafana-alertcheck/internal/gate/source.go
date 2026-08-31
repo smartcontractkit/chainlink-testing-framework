@@ -14,11 +14,6 @@ import (
 	"time"
 )
 
-// skewHardLimit is one of §5's filled-in values (basis: §16; §22.11 asserts
-// 120s errors, 30s does not). It belongs in schedule.go's named-constants
-// block once P4 exists; defined here because P2 needs it first.
-const skewHardLimit = 60 * time.Second
-
 // maxResponseBytes caps how much doRequest will read from a response body.
 // It is far above the largest real payload the gate retrieves (the ~600 KB
 // high-cardinality state fetch documented in parse_state_test.go), so a
