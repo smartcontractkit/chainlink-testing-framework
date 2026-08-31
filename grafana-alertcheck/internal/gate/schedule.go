@@ -14,6 +14,16 @@ import (
 // P2 needed it before this file did, so it started there.
 const skewHardLimit = 60 * time.Second
 
+// fromFutureTolerance is how far ahead of the runner's own clock a supplied
+// `from` may sit before check refuses it (§7: "from in the future, more than
+// the skew tolerance — error"). §7 names no number, so this is the judgment
+// call §5's table records: the same 60s as skewHardLimit, because the only
+// legitimate reason for a `from` in the future is clock disagreement between
+// the deploy step and the check step, and that is bounded by the same figure.
+// It is once-per-run input validation, not a per-rule coverage check, so
+// Check applies it (P9) and proveCoverage does not.
+const fromFutureTolerance = 60 * time.Second
+
 // minDrainTimeout is §5's floor on drainTimeout: max(2 x max(intervalSeconds),
 // 2m). Without the floor, a fleet of very tight rules would derive a
 // drainTimeout too short to let a healthy in-flight poll land.
@@ -94,7 +104,22 @@ func DeriveTimings(defs []Definition, override time.Duration) (rules map[string]
 		}
 		rules[d.UID] = newRuleTimings(pollEvery, d.IntervalSeconds)
 	}
-	return rules, deriveGlobalTimings(defs), notes
+	// In this mode the defs ARE the start-of-step snapshot — watch resolves
+	// them before it detaches, and single-step check before its first
+	// observation — so they can answer what was paused when the window opened.
+	// Only the log-mode counterpart below has to look elsewhere.
+	return rules, deriveGlobalTimings(defs, pausedSet(defs)), notes
+}
+
+// pausedSet is Header.pausedAtStart's counterpart for a set of definitions
+// resolved at the start of the step, which is the one moment a definition can
+// answer "was this paused when the window opened".
+func pausedSet(defs []Definition) map[string]bool {
+	paused := make(map[string]bool, len(defs))
+	for _, d := range defs {
+		paused[d.UID] = d.IsPaused
+	}
+	return paused
 }
 
 // DeriveTimingsFromLog is DeriveTimings' log-mode counterpart, and the two
@@ -155,17 +180,31 @@ func DeriveTimingsFromLog(h Header, defs []Definition) (rules map[string]ruleTim
 		pollEvery := time.Duration(lr.PollEverySeconds * float64(time.Second))
 		rules[lr.UID] = newRuleTimings(pollEvery, def.IntervalSeconds)
 	}
-	return rules, deriveGlobalTimings(defs), nil
+	// The header, not defs, decides which rules are excluded from the grace:
+	// defs were resolved after the window closed. See deriveGlobalTimings.
+	return rules, deriveGlobalTimings(defs, h.pausedAtStart()), nil
 }
 
 // deriveGlobalTimings computes transitionGrace and drainTimeout over defs
-// (§5, §13.1, §19). A rule paused before the window opened — skipped, §12 —
-// is excluded from the transitionGrace max: its `for` value can never fire
-// during the window, so counting it would only inflate the wait past what any
-// watched rule actually needs (a judgment call the v2 plan makes explicitly
-// for this formula; §19's drainTimeout carries no such exclusion, so it still
-// runs over every resolved rule).
-func deriveGlobalTimings(defs []Definition) globalTimings {
+// (§5, §13.1, §19).
+//
+// A rule paused before the window opened — skipped, §12 — is excluded from the
+// transitionGrace max: its `for` value can never fire during the window, so
+// counting it would only inflate the wait past what any watched rule actually
+// needs (a judgment call the v2 plan makes explicitly for this formula; §19's
+// drainTimeout carries no such exclusion, so it still runs over every resolved
+// rule).
+//
+// "Before the window opened" is the whole content of that exclusion, so the
+// authority is pausedAtStart and NEVER Definition.IsPaused: in log mode the
+// definitions are re-resolved after the window closed. Reading them instead
+// was a fail-open, and a quiet one. transitionGrace is what lets a condition
+// arising just before `to` be seen when it surfaces at to + `for`, and
+// windowEnd is BOTH the classification bound and the collection deadline — so
+// a rule somebody paused after `to` dropped out of the max, the grace
+// collapsed, the surfacing poll was never even recorded, and the run reported
+// clean. With one watched rule the shrink is total.
+func deriveGlobalTimings(defs []Definition, pausedAtStart map[string]bool) globalTimings {
 	var g globalTimings
 	var maxInterval time.Duration
 	for _, d := range defs {
@@ -173,7 +212,7 @@ func deriveGlobalTimings(defs []Definition) globalTimings {
 		if interval > maxInterval {
 			maxInterval = interval
 		}
-		if d.IsPaused {
+		if pausedAtStart[d.UID] {
 			continue
 		}
 		if candidate := d.For + interval; candidate > g.transitionGrace {

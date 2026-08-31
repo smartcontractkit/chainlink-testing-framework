@@ -77,6 +77,70 @@ func TestDeriveTimings_TransitionGraceZeroWhenAllSkipped(t *testing.T) {
 	}
 }
 
+// TestDeriveTimingsFromLog_TransitionGraceFollowsTheHeaderNotTheDefinition
+// pins the log-mode authority for the grace exclusion. Definitions are
+// re-resolved AFTER the window closed, so "paused" in a definition says
+// nothing about whether the rule was watched during it.
+//
+// The fail-open direction is the first case. transitionGrace exists so a
+// condition arising just before `to` is still seen when it surfaces at
+// to + `for`, and windowEnd is both the classification bound and the
+// collection deadline — so a rule somebody paused after `to` dropping out of
+// the max collapses the grace, the surfacing poll is never recorded, and the
+// run reports clean.
+func TestDeriveTimingsFromLog_TransitionGraceFollowsTheHeaderNotTheDefinition(t *testing.T) {
+	loggedRule := func(uid string, pausedAtStart bool) LoggedRule {
+		return LoggedRule{UID: uid, Title: uid, IntervalSeconds: 60, PollEverySeconds: 30, IsPaused: pausedAtStart}
+	}
+	// The definition says paused in BOTH cases: it is the post-window reading,
+	// and it must change nothing.
+	defs := []Definition{{UID: "r1", Title: "R1", IntervalSeconds: 60, For: 5 * time.Minute, IsPaused: true}}
+	want := 5*time.Minute + 60*time.Second
+
+	t.Run("header says active: the rule stays in the max", func(t *testing.T) {
+		h := Header{Rules: []LoggedRule{loggedRule("r1", false)}}
+		_, global, err := DeriveTimingsFromLog(h, defs)
+		if err != nil {
+			t.Fatalf("DeriveTimingsFromLog: %v", err)
+		}
+		if global.transitionGrace != want {
+			t.Fatalf("transitionGrace = %s, want %s: the rule was active when the recording opened, "+
+				"so a pause applied afterwards must not shrink the window", global.transitionGrace, want)
+		}
+		if !strings.Contains(global.graceSource, "R1") {
+			t.Errorf("graceSource = %q, want it to name R1", global.graceSource)
+		}
+	})
+
+	t.Run("header says paused: the rule stays out", func(t *testing.T) {
+		h := Header{Rules: []LoggedRule{loggedRule("r1", true)}}
+		_, global, err := DeriveTimingsFromLog(h, defs)
+		if err != nil {
+			t.Fatalf("DeriveTimingsFromLog: %v", err)
+		}
+		if global.transitionGrace != 0 {
+			t.Fatalf("transitionGrace = %s, want 0: a rule paused before the window opened can never fire during it",
+				global.transitionGrace)
+		}
+	})
+
+	t.Run("drainTimeout counts every rule either way", func(t *testing.T) {
+		// §19 puts no pause exclusion on drainTimeout, so both headers give the
+		// same floor-bound value.
+		for _, pausedAtStart := range []bool{false, true} {
+			h := Header{Rules: []LoggedRule{loggedRule("r1", pausedAtStart)}}
+			_, global, err := DeriveTimingsFromLog(h, defs)
+			if err != nil {
+				t.Fatalf("DeriveTimingsFromLog: %v", err)
+			}
+			if global.drainTimeout != minDrainTimeout {
+				t.Fatalf("drainTimeout = %s with pausedAtStart=%v, want the %s floor",
+					global.drainTimeout, pausedAtStart, minDrainTimeout)
+			}
+		}
+	})
+}
+
 func TestDeriveTimings_DrainTimeoutIncludesPaused(t *testing.T) {
 	defs := []Definition{{UID: "r1", Title: "R1", IntervalSeconds: 10}}
 	_, global, _ := DeriveTimings(defs, 0)

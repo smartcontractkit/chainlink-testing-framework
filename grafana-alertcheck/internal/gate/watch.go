@@ -353,7 +353,6 @@ func openRecording(ctx context.Context, cfg WatchConfig, src Source, writer *Wri
 	// it as skipped from the definitions.
 	var active []Definition
 	activeTimings := make(map[string]ruleTimings, len(resolved))
-	titles := make(map[string]string, len(resolved))
 	for _, d := range resolved {
 		if d.IsPaused {
 			fmt.Fprintf(cfg.Notes, "note: rule %q (%s) is paused: recorded as skipped, not waited for (§4.3)\n", d.Title, d.UID)
@@ -361,48 +360,15 @@ func openRecording(ctx context.Context, cfg WatchConfig, src Source, writer *Wri
 		}
 		active = append(active, d)
 		activeTimings[d.UID] = rt[d.UID]
-		titles[d.UID] = d.Title
 		fmt.Fprintf(cfg.Notes, "recording %q (%s) every %s (maxGap %s)\n", d.Title, d.UID, rt[d.UID].pollEvery, rt[d.UID].maxGap)
 	}
 
-	uids := make([]string, 0, len(active))
-	for _, d := range active {
-		uids = append(uids, d.UID)
-	}
-	observed, err := observeAll(ctx, src, titles, uids, cfg.Concurrency)
+	polls, measured, err := firstObservations(ctx, src, active, NewReducer(), cfg.Concurrency, cfg.Notes)
 	if err != nil {
 		return nil, err
 	}
-
-	// Verify §3.2 before anything downstream relies on it: if the state
-	// endpoint ever stops returning normal instances, the reduction's "keep
-	// the non-normal ones" silently becomes "keep everything it happened to
-	// send" and the transition markers lose their ground truth.
-	for _, d := range active {
-		if err := VerifyNormalInstancesVisible(observed[d.UID].Rules); err != nil {
-			return nil, err
-		}
-	}
-
-	// One poll record per rule, in resolve order so the log is byte-stable for
-	// a given set of observations. These ARE the log's first heartbeats: they
-	// predate the deploy step, which is the whole point of §4.3.
-	reducer := NewReducer()
-	measured := make(map[string]time.Duration, len(active))
-	for _, d := range active {
-		obs := observed[d.UID]
-		measured[d.UID] = obs.Latency
-		poll := reducer.Reduce(d.UID, obs)
-		if !poll.Found {
-			// Authoritative, not transient (P2 already retried transport
-			// failures): the rule resolved in the ruler API but the state
-			// endpoint does not serve it. Recorded as Found=false, which P7
-			// turns into unobservable — a note rather than an error here,
-			// because the state endpoint can lag a freshly created rule and
-			// check re-resolves and fails closed either way.
-			fmt.Fprintf(cfg.Notes, "warning: rule %q (%s) is absent from the state endpoint; recorded as not found\n", d.Title, d.UID)
-		}
-		if err := writer.WritePoll(poll); err != nil {
+	for _, p := range polls {
+		if err := writer.WritePoll(p); err != nil {
 			return nil, err
 		}
 	}
@@ -439,6 +405,66 @@ func loggedRules(defs []Definition, rt map[string]ruleTimings) []LoggedRule {
 		})
 	}
 	return out
+}
+
+// firstObservations takes one observation of every rule in active, verifies
+// §3.2 against those very responses, and reduces each into the poll record
+// that IS the window's first heartbeat — plus the measured latency of each,
+// which is the only honest input to §5.2's budget check (a fixed estimate is
+// worthless when one rule's payload is ~230x another's).
+//
+// Both entry paths share it: watch's parent, before it detaches (§4.3), and
+// single-step check's measurement pass, which keeps the polls as evidence
+// rather than writing them to a log (P9). Keeping one implementation is the
+// point — the §3.2 verification and the "absent is a warning, not an error"
+// rule are exactly the places where two copies would silently drift, and a
+// drift in either direction is fail-open.
+//
+// polls come back in `active` order, so a log written from them is byte-stable
+// for a given set of observations.
+func firstObservations(ctx context.Context, src Source, active []Definition, reducer *Reducer,
+	concurrency int, notes io.Writer) ([]Poll, map[string]time.Duration, error) {
+
+	titles := make(map[string]string, len(active))
+	uids := make([]string, 0, len(active))
+	for _, d := range active {
+		titles[d.UID] = d.Title
+		uids = append(uids, d.UID)
+	}
+
+	observed, err := observeAll(ctx, src, titles, uids, concurrency)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Verify §3.2 before anything downstream relies on it: if the state
+	// endpoint ever stops returning normal instances, the reduction's "keep
+	// the non-normal ones" silently becomes "keep everything it happened to
+	// send" and the transition markers lose their ground truth.
+	for _, d := range active {
+		if err := VerifyNormalInstancesVisible(observed[d.UID].Rules); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	polls := make([]Poll, 0, len(active))
+	measured := make(map[string]time.Duration, len(active))
+	for _, d := range active {
+		obs := observed[d.UID]
+		measured[d.UID] = obs.Latency
+		poll := reducer.Reduce(d.UID, obs)
+		if !poll.Found {
+			// Authoritative, not transient (P2 already retried transport
+			// failures): the rule resolved in the ruler API but the state
+			// endpoint does not serve it. Recorded as Found=false, which P7
+			// check 8 turns into unobservable — a note rather than an error
+			// here, because the state endpoint can lag a freshly created rule
+			// and the coverage proof fails closed either way.
+			fmt.Fprintf(notes, "warning: rule %q (%s) is absent from the state endpoint; recorded as not found\n", d.Title, d.UID)
+		}
+		polls = append(polls, poll)
+	}
+	return polls, measured, nil
 }
 
 // observeAll polls every rule in uids concurrently, bounded by concurrency,
