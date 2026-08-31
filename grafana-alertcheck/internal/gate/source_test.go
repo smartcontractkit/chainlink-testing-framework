@@ -349,6 +349,59 @@ func TestHTTPSource_ObservationTiming(t *testing.T) {
 	}
 }
 
+// §22.7/§16: a genuinely discriminating regression for "the gate compares
+// staleness against the Date header, never the runner's clock." lastEvaluation
+// sits 100s behind Grafana's TRUE now (obs.GrafanaNow, from the Date header)
+// — under the 120s evalStaleAfter limit — but 130s behind the RUNNER's clock.
+// An implementation that leaked the runner's clock into the staleness
+// comparison, instead of the Date header, would report a false violation
+// here; coverage_test.go's TestProveCoverage_SkewTranslationAtWindowBoundary
+// cannot catch that, because it sets LastEvaluation equal to GrafanaNow on
+// every poll, making staleness zero regardless of which clock is used.
+func TestHTTPSourceStalenessNeverFalsePositiveUnderSkew(t *testing.T) {
+	runnerNow := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	clock := newFakeClock(runnerNow)
+	const skew = 30 * time.Second // the runner's clock reads 30s ahead of Grafana's
+	serverDate := runnerNow.Add(-skew)
+	lastEval := serverDate.Add(-100 * time.Second)
+
+	def := Definition{UID: "r1", Title: "Rule One"}
+	srv := rawHTTPServer(t, func(r *http.Request) []byte {
+		body := fmt.Sprintf(`{"status":"success","data":{"groups":[{"file":"F","name":"G","interval":60,"rules":[`+
+			`{"uid":%q,"name":%q,"state":"inactive","health":"ok","isPaused":false,"lastEvaluation":%q}`+
+			`]}]}}`, def.UID, def.Title, lastEval.UTC().Format(time.RFC3339))
+		return rawResponse(200, "OK", map[string]string{
+			"Content-Type": "application/json",
+			"Date":         serverDate.UTC().Format(http.TimeFormat),
+		}, body)
+	})
+
+	src := NewHTTPSource(srv.URL, "", clock)
+	obs, err := src.RuleState(context.Background(), def.Title)
+	if err != nil {
+		t.Fatalf("RuleState(): %v", err)
+	}
+	if !obs.GrafanaNow.Equal(serverDate) {
+		t.Fatalf("GrafanaNow = %s, want the Date header %s, never the runner's clock %s", obs.GrafanaNow, serverDate, runnerNow)
+	}
+	if len(obs.Rules) != 1 {
+		t.Fatalf("Rules = %+v, want exactly one", obs.Rules)
+	}
+
+	rt := newRuleTimings(30*time.Second, 60) // evalStaleAfter = 120s
+	from := serverDate.Add(-10 * time.Minute)
+	to := serverDate
+	polls := denseHealthyPolls(def.UID, from, to, 30*time.Second)
+	polls[len(polls)-1].LastEvaluation = obs.Rules[0].LastEvaluation // the real, HTTP-sourced value
+	sentinel := to
+
+	res := proveCoverage(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, rt, def, from, to, 0)
+	if res.Unobservable {
+		t.Fatalf("Coverage = %+v, want no violation: 100s behind Grafana's TRUE now is under the 120s limit — "+
+			"only a runner-clock leak (skewed +30s here) would push this over", res)
+	}
+}
+
 func TestHTTPSource_Retry_TransientRecovers(t *testing.T) {
 	var mu sync.Mutex
 	calls := 0

@@ -3,6 +3,7 @@ package gate
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -300,6 +301,83 @@ func TestCheckSingleStepCleanWindowPasses(t *testing.T) {
 	}
 }
 
+// §22.2: the collapse-note-plus-satisfied-MinObserved path (resolve_test.go's
+// TestResolve_CollapseByUIDGivesNoteNotError and
+// TestResolve_MinObservedCountIsPostCollapse) is proven only at Resolve()
+// directly; this drives the same shape through check() end to end — the two
+// input names must collapse to one verdict, the run must pass, and the
+// collapse note must reach the run's own notes, not just Resolve()'s return
+// value.
+func TestCheckSingleStepDuplicateAlertNamesCollapseWithNote(t *testing.T) {
+	clock := newVirtualClock(testNow)
+	cfg := baseConfig(t, clock)
+	cfg.Alerts = []string{"uid:" + checkUID, checkTitle} // the same rule, named two different ways
+	src := newCheckSource(func(_ string, _ int) (Observation, error) {
+		return healthyObservation(clock.Now()), nil
+	})
+
+	res, err := check(context.Background(), cfg, src)
+	if err != nil {
+		t.Fatalf("check() = %v, want nil\nnotes:\n%s", err, notesOf(cfg))
+	}
+	if len(res.Verdicts) != 1 {
+		t.Fatalf("Verdicts = %+v, want exactly one — the duplicate must collapse to a single rule", res.Verdicts)
+	}
+	if len(res.Violations) != 0 {
+		t.Fatalf("Violations = %+v, want none: MinObserved must be satisfied by the post-collapse count of 1", res.Violations)
+	}
+	if notes := notesOf(cfg); !strings.Contains(notes, "counted once") {
+		t.Errorf("want the collapse note in the run's own notes; got:\n%s", notes)
+	}
+}
+
+// §22.1's highest-priority regression: a rule with health=error for the
+// whole window is unobservable, exit 2 — using the real "[JD] No Job
+// Proposals" capture (testdata/README.md), not a synthetic Poll table, so a
+// change in how the real payload shapes health/lastError cannot slip past a
+// hand-built fixture that happens to still look right.
+func TestCheckSingleStepContinuousHealthErrorIsUnobservable(t *testing.T) {
+	body := readFixture(t, "state_health_error.json")
+	rules, err := ParseState(body)
+	if err != nil {
+		t.Fatalf("ParseState: %v", err)
+	}
+	base := rules[0]
+	def := Definition{
+		UID: base.UID, Title: base.Title, Folder: base.Folder, Group: base.Group,
+		IntervalSeconds: int(base.Interval / time.Second), NoDataState: "OK", ExecErrState: "OK",
+		Kind: KindGrafanaManaged,
+	}
+
+	clock := newVirtualClock(testNow)
+	cfg := Config{
+		URL: "https://grafana.example.com", Alerts: []string{"uid:" + def.UID},
+		From: testNow, To: testNow.Add(5 * time.Minute), Clock: clock, Notes: &strings.Builder{},
+	}.withDefaults()
+
+	src := newCheckSource(func(_ string, _ int) (Observation, error) {
+		// Every field but LastEvaluation stays exactly as the real capture
+		// shaped it (health=error, the real lastError text, the real Error
+		// instance); LastEvaluation tracks the poll so staleness (a
+		// different coverage check, §14) never becomes the actual cause.
+		r := base
+		r.LastEvaluation = clock.Now()
+		return Observation{Rules: []StateRule{r}, GrafanaNow: clock.Now(), Latency: 200 * time.Millisecond}, nil
+	})
+	src.defs = []Definition{def}
+
+	res, err := check(context.Background(), cfg, src)
+	if err == nil {
+		t.Fatalf("check() = nil, want an error: continuous health=error must be unobservable (§22.1, H6/H7)\nnotes:\n%s", notesOf(cfg))
+	}
+	if len(res.Verdicts) != 1 || res.Verdicts[0].Outcome != OutcomeUnobservable {
+		t.Fatalf("Verdicts = %+v, want one unobservable verdict", res.Verdicts)
+	}
+	if cov := res.Coverage[def.UID]; cov.Reason != ReasonHealthError {
+		t.Fatalf("Coverage[%s].Reason = %q, want %q", def.UID, cov.Reason, ReasonHealthError)
+	}
+}
+
 // H5: a certain violation does not release the runner early, and it does not
 // stop the gate reporting exit-1 shape — violations with a nil error.
 func TestCheckSingleStepFiringInstanceReportsWithoutExitingEarly(t *testing.T) {
@@ -326,6 +404,65 @@ func TestCheckSingleStepFiringInstanceReportsWithoutExitingEarly(t *testing.T) {
 	}
 	if windowEnd := cfg.To.Add(checkGrace); clock.Now().Before(windowEnd) {
 		t.Errorf("exited early at %s; H5 requires collecting to %s", clock.Now(), windowEnd)
+	}
+}
+
+// §22.8: "newly_bad at from+30s gives exit 1, but ONLY after
+// to+transition_grace." The test above pins H5 for a rule already bad
+// before the window opened (persistently_bad); this pins the anti-fail-fast
+// case the plan names explicitly — a fresh onset just inside the window
+// must not release the runner the instant it is first observed.
+func TestCheckSingleStepNewOnsetDoesNotExitEarly(t *testing.T) {
+	clock := newVirtualClock(testNow)
+	cfg := baseConfig(t, clock)
+	onset := testNow.Add(30 * time.Second)
+	src := newCheckSource(func(_ string, _ int) (Observation, error) {
+		now := clock.Now()
+		if now.Before(onset) {
+			return healthyObservation(now), nil
+		}
+		firing := Instance{
+			Labels:   map[string]string{"alertname": checkTitle, "instance": "a"},
+			State:    StateFiring,
+			ActiveAt: onset,
+		}
+		return healthyObservation(now, firing), nil
+	})
+
+	res, err := check(context.Background(), cfg, src)
+	if err != nil {
+		t.Fatalf("check() = %v, want nil (a violation is exit 1, not an error)", err)
+	}
+	if len(res.Violations) != 1 || res.Violations[0].Outcome != OutcomeNewlyBad {
+		t.Fatalf("Violations = %+v, want exactly one newly_bad", res.Violations)
+	}
+	if windowEnd := cfg.To.Add(checkGrace); clock.Now().Before(windowEnd) {
+		t.Errorf("exited early at %s; H5 requires collecting to %s even for a fresh onset at from+30s", clock.Now(), windowEnd)
+	}
+}
+
+// §22.9: an ABSENT `from` in single-step mode (as opposed to recorder mode,
+// which hard-errors — TestCheckValidateRejectsBadConfigurations's "log mode
+// without from") falls back to the start of this check step, with the same
+// declared-blind-interval warning as an explicit early `from`.
+func TestCheckSingleStepAbsentFromFallsBackToStepStart(t *testing.T) {
+	clock := newVirtualClock(testNow)
+	cfg := baseConfig(t, clock)
+	cfg.From = time.Time{}
+	src := newCheckSource(func(_ string, _ int) (Observation, error) {
+		return healthyObservation(clock.Now()), nil
+	})
+
+	res, err := check(context.Background(), cfg, src)
+	if err != nil {
+		t.Fatalf("check() = %v, want nil: an absent `from` in single-step mode is a fallback, not an error\nnotes:\n%s", err, notesOf(cfg))
+	}
+	notes := notesOf(cfg)
+	if !strings.Contains(notes, "no `from` given") {
+		t.Errorf("want the §4.2 fallback note; notes were:\n%s", notes)
+	}
+	if !res.From.Equal(testNow) {
+		t.Errorf("Result.From = %s, want the step-start fallback %s", res.From, testNow)
 	}
 }
 
@@ -642,6 +779,51 @@ func TestCheckFailClosedOnCoverageGap(t *testing.T) {
 	}
 	if got := res.Verdicts[0].Outcome; got != OutcomeUnobservable {
 		t.Errorf("Outcome = %q, want %q", got, OutcomeUnobservable)
+	}
+}
+
+// §22.4: "an episode fully between the deploy and the start of the check" —
+// recorder mode must find this at the LEADING edge of the window too, right
+// after `from` (the deploy's completion), not only in the middle
+// (TestCheckFailClosedOnCoverageGap above). No poll exists for
+// [from, from+3m): whatever happened there is invisible to every per-poll
+// check, so only the coverage gap itself can catch it — the reason this
+// two-phase recorder model exists at all (§4.2).
+func TestCheckRecorderModeFindsAGapImmediatelyAfterTheDeploy(t *testing.T) {
+	dir := t.TempDir()
+	windowEnd := testNow.Add(5*time.Minute + checkGrace)
+	path := filepath.Join(dir, "log.jsonl")
+	clock := newFakeClock(windowEnd.Add(30 * time.Second))
+	w, err := NewWriter(path, clock)
+	if err != nil {
+		t.Fatalf("NewWriter: %v", err)
+	}
+	if err := w.WriteHeader(Header{
+		URL: "https://grafana.example.com", GrafanaVersion: "13.1.0", StartedAt: testNow.Add(-time.Minute),
+		Rules: []LoggedRule{{UID: checkUID, Title: checkTitle, IntervalSeconds: 60, PollEverySeconds: checkPollEvery.Seconds()}},
+	}); err != nil {
+		t.Fatalf("WriteHeader: %v", err)
+	}
+	gapEnd := testNow.Add(3 * time.Minute) // nothing recorded from `from` (testNow) to here
+	for at := gapEnd; !at.After(windowEnd.Add(30 * time.Second)); at = at.Add(checkPollEvery) {
+		if err := w.WritePoll(Poll{
+			RuleUID: checkUID, GrafanaNow: at, Found: true, State: "inactive", Health: "ok", LastEvaluation: at,
+		}); err != nil {
+			t.Fatalf("WritePoll: %v", err)
+		}
+	}
+	if err := w.Stop(); err != nil {
+		t.Fatalf("Stop: %v", err)
+	}
+	writePid(t, path+".pid", fmt.Sprintf("%d\n", deadPid(t)))
+
+	cfg := recorderConfig(t, newVirtualClock(testNow), path)
+	res, err := check(context.Background(), cfg, newCheckSource(nil))
+	if err == nil {
+		t.Fatalf("check() = nil, want exit 2: a hole right after the deploy hides whatever happened there just as much as one in the middle")
+	}
+	if len(res.Verdicts) != 1 || res.Verdicts[0].Outcome != OutcomeUnobservable {
+		t.Fatalf("Verdicts = %+v, want one unobservable verdict, never clean", res.Verdicts)
 	}
 }
 
@@ -1024,6 +1206,88 @@ func TestCheckDoesNotSignalABystanderHoldingAReusedPid(t *testing.T) {
 	}
 	if err := syscall.Kill(bystander.Process.Pid, 0); err != nil {
 		t.Fatalf("the bystander is gone (%v): check signalled a process that was not the recorder", err)
+	}
+}
+
+// §22.5: a dead pidfile (the recorder process has already exited, holding no
+// flock) with NO sentinel in the log — the shape a killed `watch` leaves
+// behind — must not hang the stop wait: the flock is free immediately, so
+// check reads the log at once, finds no sentinel, and fails closed.
+func TestCheckDeadPidWithNoSentinelIsUnobservable(t *testing.T) {
+	dir := t.TempDir()
+	windowEnd := testNow.Add(5*time.Minute + checkGrace)
+	logPath := filepath.Join(dir, "log.jsonl")
+	w, err := NewWriter(logPath, newFakeClock(testNow))
+	if err != nil {
+		t.Fatalf("NewWriter: %v", err)
+	}
+	if err := w.WriteHeader(Header{
+		URL: "https://grafana.example.com", GrafanaVersion: "13.1.0", StartedAt: testNow.Add(-time.Minute),
+		Rules: []LoggedRule{{
+			UID: checkUID, Title: checkTitle, Folder: "F", Group: "G",
+			IntervalSeconds: 60, NoDataState: "OK", ExecErrState: "OK",
+			PollEverySeconds: checkPollEvery.Seconds(),
+		}},
+	}); err != nil {
+		t.Fatalf("WriteHeader: %v", err)
+	}
+	// Healthy heartbeats all the way past windowEnd — evaluatedThrough is
+	// satisfied, so the drain wait needs no live re-poll — but no sentinel is
+	// ever written: the recorder died before it could call Stop.
+	for at := testNow.Add(-time.Minute); !at.After(windowEnd.Add(30 * time.Second)); at = at.Add(checkPollEvery) {
+		if err := w.WritePoll(Poll{RuleUID: checkUID, GrafanaNow: at, Found: true, State: "inactive", Health: "ok", LastEvaluation: at}); err != nil {
+			t.Fatalf("WritePoll: %v", err)
+		}
+	}
+	if err := w.Close(); err != nil { // no sentinel — a clean exit would call Stop
+		t.Fatalf("Close: %v", err)
+	}
+	writePid(t, logPath+".pid", fmt.Sprintf("%d\n", deadPid(t)))
+
+	cfg := recorderConfig(t, newVirtualClock(testNow), logPath)
+	res, err := check(context.Background(), cfg, newCheckSource(nil))
+	if err == nil {
+		t.Fatalf("check() = nil, want an error: no sentinel means the recorder never proved it ran to the end")
+	}
+	if len(res.Verdicts) != 1 || res.Verdicts[0].Outcome != OutcomeUnobservable {
+		t.Fatalf("Verdicts = %+v, want one unobservable verdict", res.Verdicts)
+	}
+}
+
+// §22.5: "an incomplete last line gives exit 2" is otherwise proven only
+// indirectly — log_test.go's TestReadLogRejectsBadLogs pins ReadLog's own
+// error, and TestExitCode pins that any non-nil error maps to exit 2 — but
+// nothing feeds a genuinely truncated log through check() itself. This closes
+// that seam: a raw file with a valid header and poll, then a torn JSON tail,
+// exactly what a recorder killed mid-write leaves behind.
+func TestCheckRecorderModeTruncatedLogFailsClosed(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "log.jsonl")
+
+	h := Header{
+		SchemaVersion: LogSchemaVersion,
+		URL:           "https://grafana.example.com", GrafanaVersion: "13.1.0", StartedAt: testNow.Add(-time.Minute),
+		Rules: []LoggedRule{{UID: checkUID, Title: checkTitle, IntervalSeconds: 60, PollEverySeconds: checkPollEvery.Seconds()}},
+	}
+	hb, err := json.Marshal(headerRecord{Type: RecordHeader, Header: h})
+	if err != nil {
+		t.Fatalf("marshal header: %v", err)
+	}
+	pb, err := json.Marshal(pollRecord{Type: RecordPoll, Poll: Poll{
+		RuleUID: checkUID, GrafanaNow: testNow, Found: true, State: "inactive", Health: "ok", LastEvaluation: testNow,
+	}})
+	if err != nil {
+		t.Fatalf("marshal poll: %v", err)
+	}
+	content := string(hb) + "\n" + string(pb) + "\n" + `{"type":"poll","rule_ui` // torn mid-write
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write log: %v", err)
+	}
+	writePid(t, path+".pid", fmt.Sprintf("%d\n", deadPid(t)))
+
+	cfg := recorderConfig(t, newVirtualClock(testNow), path)
+	if _, err := check(context.Background(), cfg, newCheckSource(nil)); err == nil || !strings.Contains(err.Error(), "unparseable") {
+		t.Fatalf("check() = %v, want a refusal naming the unparseable tail", err)
 	}
 }
 

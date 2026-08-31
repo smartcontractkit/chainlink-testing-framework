@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -428,6 +429,12 @@ func TestPrepareWatchDoesNotWaitForPausedRules(t *testing.T) {
 	}
 	if !polls[0].Found || !polls[0].GrafanaNow.Equal(testNow) {
 		t.Errorf("first poll = %+v, want a found observation at %s", polls[0], testNow)
+	}
+	// §22.3: "the poll record holds the state histogram. Assert that watch
+	// writes it" — through a real prepareWatch()/Reducer call, not just
+	// log_test.go's hand-built Writer/ReadLog round trip.
+	if want := map[string]int{"normal": 1}; !maps.Equal(polls[0].Histogram, want) {
+		t.Errorf("Histogram = %v, want %v: watch must record the state histogram on every poll it writes", polls[0].Histogram, want)
 	}
 	if !strings.Contains(notes.String(), watchPausedTitle) || !strings.Contains(notes.String(), "paused") {
 		t.Errorf("notes do not mention the paused rule:\n%s", notes.String())
