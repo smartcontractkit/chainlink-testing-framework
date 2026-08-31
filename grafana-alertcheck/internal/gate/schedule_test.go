@@ -69,6 +69,29 @@ func TestDeriveTimings_TransitionGraceExcludesSkippedRule(t *testing.T) {
 	}
 }
 
+// §22.2/§22.3: `for: 1d` and `for: 1w` parse correctly (parse_ruler_test.go),
+// but that alone never proves they flow into transitionGrace — a Prometheus
+// duration parser that silently truncated to time.Duration's other units, or
+// a transitionGrace derivation that only ever saw hand-built values, could
+// each pass every existing test and still be wrong together. This drives the
+// real ruler_rules.json fixture (rule0000010, for:1w, DERIVED to exercise the
+// w unit — testdata/README.md) through ParseDefinitions and DeriveTimings.
+func TestDeriveTimings_RealForOneWeekRuleSetsTransitionGrace(t *testing.T) {
+	defs := rulerDefs(t)
+	_, global, notes := DeriveTimings(defs, 0)
+	if len(notes) != 0 {
+		t.Fatalf("notes = %v, want none: no --poll-interval override is given, so no override note should fire", notes)
+	}
+
+	want := 7*24*time.Hour + 60*time.Second // rule0000010: for=1w, intervalSeconds=60
+	if global.transitionGrace != want {
+		t.Fatalf("transitionGrace = %s, want %s (rule0000010's for:1w plus its interval)", global.transitionGrace, want)
+	}
+	if !strings.Contains(global.graceSource, "Example Failure Ratio Above 10 Percent Weekly") {
+		t.Errorf("graceSource = %q, want it to name rule0000010", global.graceSource)
+	}
+}
+
 func TestDeriveTimings_TransitionGraceZeroWhenAllSkipped(t *testing.T) {
 	defs := []Definition{{UID: "r1", Title: "R1", IntervalSeconds: 60, For: time.Hour, IsPaused: true}}
 	_, global, _ := DeriveTimings(defs, 0)
@@ -392,6 +415,34 @@ func TestStartupSummary_WarningWhenGraceTooLarge(t *testing.T) {
 	}
 	if !strings.Contains(warning, "R (for=4m30s, interval=30s)") {
 		t.Errorf("warning = %q, want it to name the grace source", warning)
+	}
+}
+
+// §22.3: "a rule with for: 15m in a 10-minute window gives the warning about
+// a large grace period" — no such rule exists in the real capture
+// (testdata/README.md), so the test above pins the mechanism with a
+// hand-built globalTimings. This drives the same warning off the real
+// ruler_rules.json fixture's for:1w rule instead, tying ParseDefinitions and
+// DeriveTimings into the warning end to end, not just the warning formula in
+// isolation.
+func TestStartupSummary_RealForOneWeekRuleTriggersWarning(t *testing.T) {
+	defs := rulerDefs(t)
+	_, global, notes := DeriveTimings(defs, 0)
+	if len(notes) != 0 {
+		t.Fatalf("notes = %v, want none: no --poll-interval override is given, so no override note should fire", notes)
+	}
+
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute) // transitionGrace (>1w) dwarfs 1/4 of this window
+	summary, warning := StartupSummary(from, to, global)
+	if !strings.Contains(summary, "planned run time") {
+		t.Errorf("summary = %q, want it to name the planned run time", summary)
+	}
+	if warning == "" {
+		t.Fatal("warning = \"\", want one: a real for:1w rule's transitionGrace vastly exceeds 1/4 of a 10m window")
+	}
+	if !strings.Contains(warning, "Example Failure Ratio Above 10 Percent Weekly") {
+		t.Errorf("warning = %q, want it to name rule0000010", warning)
 	}
 }
 

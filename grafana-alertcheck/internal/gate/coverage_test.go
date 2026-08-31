@@ -71,6 +71,22 @@ func TestProveCoverage_SentinelBeforeGraceIsUnobservable(t *testing.T) {
 	if res.Reason != ReasonSentinelEarly {
 		t.Fatalf("Reason = %q, want sentinel_early", res.Reason)
 	}
+	if !res.Unobservable || res.Proved {
+		t.Fatalf("res = %+v, want Unobservable and not Proved — a reason string with no consequence is not a coverage failure", res)
+	}
+
+	// The consequence: decide() must turn this into exit 2, never a pass.
+	defs := []Definition{def}
+	drt := map[string]ruleTimings{def.UID: rt}
+	gt := globalTimings{transitionGrace: grace}
+	pol := Policy{From: from, To: to}
+	dres, err := decide(Header{StartedAt: from.Add(-time.Hour)}, nil, &sentinel, defs, drt, gt, pol)
+	if err == nil {
+		t.Fatalf("decide() err = nil, want non-nil: a sentinel short of to+grace must fail the run")
+	}
+	if len(dres.Verdicts) != 1 || dres.Verdicts[0].Outcome != OutcomeUnobservable {
+		t.Fatalf("Verdicts = %+v, want one unobservable verdict", dres.Verdicts)
+	}
 }
 
 func TestProveCoverage_SentinelExactlyAtGraceIsFine(t *testing.T) {
@@ -106,6 +122,22 @@ func TestProveCoverage_FromBeforeRecordIsUnobservable(t *testing.T) {
 	res := proveCoverage(Header{StartedAt: started}, nil, &sentinel, rt, def, from, to, 0)
 	if res.Reason != ReasonFromBeforeRecord {
 		t.Fatalf("Reason = %q, want from_before_record", res.Reason)
+	}
+	if !res.Unobservable || res.Proved {
+		t.Fatalf("res = %+v, want Unobservable and not Proved — a reason string with no consequence is not a coverage failure", res)
+	}
+
+	// The consequence: decide() must turn this into exit 2, never a pass.
+	defs := []Definition{def}
+	drt := map[string]ruleTimings{def.UID: rt}
+	gt := globalTimings{}
+	pol := Policy{From: from, To: to}
+	dres, err := decide(Header{StartedAt: started}, nil, &sentinel, defs, drt, gt, pol)
+	if err == nil {
+		t.Fatalf("decide() err = nil, want non-nil: `from` before the recording started must fail the run")
+	}
+	if len(dres.Verdicts) != 1 || dres.Verdicts[0].Outcome != OutcomeUnobservable {
+		t.Fatalf("Verdicts = %+v, want one unobservable verdict", dres.Verdicts)
 	}
 }
 
@@ -388,7 +420,7 @@ func denseHealthyPolls(uid string, from, to time.Time, every time.Duration) []Po
 
 // --- Check 9: KeepLast (§10.2) ---
 
-func TestProveCoverage_KeepLastIsNoteOnly(t *testing.T) {
+func TestProveCoverage_KeepLastObservedIsNoteOnly(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
 	rt := newRuleTimings(30*time.Second, 60)
@@ -411,6 +443,40 @@ func TestProveCoverage_KeepLastIsNoteOnly(t *testing.T) {
 	}
 	if !anyContains(res.Notes, "KeepLast") {
 		t.Fatalf("Notes = %v, want a KeepLast note (comma-joined membership, not a literal-key match)", res.Notes)
+	}
+}
+
+// §22.2/§10.2: "KeepLast in the configuration gives a note" — a DIFFERENT
+// claim from the observed-reason test above. A rule DECLARED with
+// no_data_state or exec_err_state = KeepLast is a standing blind spot
+// whether or not any poll ever actually reports the reason, so the note
+// must fire off the definition alone, over an otherwise perfectly healthy
+// window with zero KeepLast reasons anywhere in it.
+func TestProveCoverage_KeepLastConfiguredIsNoteOnly(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	rt := newRuleTimings(30*time.Second, 60)
+
+	tests := []struct {
+		name string
+		def  Definition
+	}{
+		{"no_data_state", Definition{UID: "r1", Title: "R1", NoDataState: "KeepLast"}},
+		{"exec_err_state", Definition{UID: "r1", Title: "R1", ExecErrState: "KeepLast"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			polls := denseHealthyPolls("r1", from, to, 30*time.Second)
+			sentinel := to
+
+			res := proveCoverage(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, rt, tc.def, from, to, 0)
+			if !res.Proved {
+				t.Fatalf("Proved = false, want true: a declared KeepLast is a note, never fatal: %+v", res)
+			}
+			if !anyContains(res.Notes, "KeepLast") {
+				t.Fatalf("Notes = %v, want a KeepLast note from the definition alone, with zero KeepLast reasons observed", res.Notes)
+			}
+		})
 	}
 }
 
