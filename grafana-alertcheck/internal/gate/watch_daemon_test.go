@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -22,10 +23,46 @@ import (
 // inherited environment, a real SIGTERM — with this function standing in for
 // the CLI's `watch --daemon-child` dispatch, which lands in P10.
 func TestMain(m *testing.M) {
+	if path := os.Getenv(lockHolderEnv); path != "" {
+		os.Exit(runTestLockHolder(path))
+	}
 	if slices.Contains(os.Args, DaemonChildFlag) {
 		os.Exit(runTestDaemonChild(os.Args[1:]))
 	}
 	os.Exit(m.Run())
+}
+
+// lockHolderEnv turns this test binary into a stand-in recorder that holds the
+// log's flock and refuses to die: a process check's stop protocol must wait
+// for and, on a timeout, refuse to read around.
+//
+// It has to be a real second process. flock is what stopRecorder probes, and
+// there is no flock(1) on darwin, so a shell one-liner cannot take the lock —
+// while a lock taken in the test process itself would be granted to the probe
+// on some platforms and prove nothing.
+const lockHolderEnv = "GRAFANA_ALERTCHECK_TEST_LOCK_HOLDER"
+
+// runTestLockHolder takes the log's exclusive lock, reports that it has it on
+// stdout, ignores SIGTERM, and waits to be killed. The report is what lets the
+// test start only once the lock is genuinely held, rather than racing it.
+func runTestLockHolder(path string) int {
+	signal.Ignore(syscall.SIGTERM)
+
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if err := lockExclusive(f); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	fmt.Println("locked")
+
+	// Long enough to outlive any test that starts it; the test kills it, and
+	// SIGKILL is not ignorable.
+	time.Sleep(5 * time.Minute)
+	return 0
 }
 
 // runTestDaemonChild parses the child argv childArgs() writes, and reads the

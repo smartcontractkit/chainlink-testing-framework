@@ -34,6 +34,18 @@ func quietPoll(uid string, at time.Time) Poll {
 
 var defaultBad = badStateSet(nil) // {firing}
 
+// pausedHeader builds the header decide reads `skipped` from: the pause state
+// as of record start. Definition.IsPaused is deliberately NOT that authority
+// — it comes from a ruler read taken after the window closed — so a test that
+// wants a rule treated as skipped must say so HERE (Header.pausedAtStart).
+func pausedHeader(startedAt time.Time, pausedUIDs ...string) Header {
+	h := Header{SchemaVersion: LogSchemaVersion, StartedAt: startedAt}
+	for _, uid := range pausedUIDs {
+		h.Rules = append(h.Rules, LoggedRule{UID: uid, IsPaused: true})
+	}
+	return h
+}
+
 // --- clean / newly_bad ---
 
 func TestClassifyRule_NoEvidenceIsClean(t *testing.T) {
@@ -310,7 +322,9 @@ func TestDecide_SkippedRuleNeverReachesProveCoverage(t *testing.T) {
 
 	// No polls, no sentinel at all: a heartbeat_gap/no_sentinel misclassification
 	// here would mean proveCoverage ran for a skipped rule (§4.3's obligation).
-	res, err := decide(Header{StartedAt: from.Add(-time.Hour)}, nil, nil, defs, rt, gt, pol)
+	// The HEADER is what says paused — decide reads skipped from there, not
+	// from def.IsPaused, which is a post-window reading (Header.pausedAtStart).
+	res, err := decide(pausedHeader(from.Add(-time.Hour), "r1"), nil, nil, defs, rt, gt, pol)
 	if err != nil {
 		t.Fatalf("err = %v, want nil: a rule paused before the window is skipped, not unobservable", err)
 	}
@@ -445,7 +459,7 @@ func TestDecide_SkippedOnlyShortfallProducesAViolationWithoutAnError(t *testing.
 	}
 	sentinel := to
 
-	res, err := decide(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, defs, rt, gt, pol)
+	res, err := decide(pausedHeader(from.Add(-time.Hour), "paused"), polls, &sentinel, defs, rt, gt, pol)
 	if err != nil {
 		t.Fatalf("err = %v, want nil: a shortfall caused only by a skipped rule is exit 1, not exit 2 (§9.1)", err)
 	}
@@ -516,7 +530,7 @@ func TestDecide_AllowPausedSuppressesTheShortfall(t *testing.T) {
 	}
 	sentinel := to
 
-	res, err := decide(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, defs, rt, gt, pol)
+	res, err := decide(pausedHeader(from.Add(-time.Hour), "paused"), polls, &sentinel, defs, rt, gt, pol)
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
