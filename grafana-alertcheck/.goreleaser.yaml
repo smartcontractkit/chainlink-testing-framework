@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema-pro.json
+version: 2
+project_name: grafana-alertcheck
+
+dist: grafana-alertcheck/dist
+
+monorepo:
+  tag_prefix: grafana-alertcheck/
+  dir: grafana-alertcheck
+
+builds:
+  - id: grafana-alertcheck
+    main: ./cmd/grafana-alertcheck/main.go
+    ldflags:
+      - -s
+      - -w
+      - -X github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck.version={{.Version}}
+      - -X github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck.commit={{.ShortCommit}}
+      - -X github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck.date={{.CommitDate}}
+      - -X github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck.builtBy=goreleaser
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    binary: grafana-alertcheck
+    env:
+      - CGO_ENABLED=0
+
+before:
+  hooks:
+    - sh -c "cd grafana-alertcheck && go mod tidy"
