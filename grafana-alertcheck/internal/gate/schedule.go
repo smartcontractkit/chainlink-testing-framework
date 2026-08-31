@@ -8,16 +8,18 @@ import (
 	"time"
 )
 
-// skewHardLimit is one of §5's filled-in values (basis: §16; §22.11 asserts
+// SkewHardLimit is one of §5's filled-in values (basis: §16; §22.11 asserts
 // 120s errors, 30s does not). Defined here, in schedule.go's named-constants
 // block, per §5's instruction — it moved out of source.go now that P4 exists;
-// P2 needed it before this file did, so it started there.
-const skewHardLimit = 60 * time.Second
+// P2 needed it before this file did, so it started there. Exported (P10) so
+// the CLI can report it verbatim next to a measured skew instead of keeping
+// its own mirrored copy.
+const SkewHardLimit = 60 * time.Second
 
 // fromFutureTolerance is how far ahead of the runner's own clock a supplied
 // `from` may sit before check refuses it (§7: "from in the future, more than
 // the skew tolerance — error"). §7 names no number, so this is the judgment
-// call §5's table records: the same 60s as skewHardLimit, because the only
+// call §5's table records: the same 60s as SkewHardLimit, because the only
 // legitimate reason for a `from` in the future is clock disagreement between
 // the deploy step and the check step, and that is bounded by the same figure.
 // It is once-per-run input validation, not a per-rule coverage check, so
