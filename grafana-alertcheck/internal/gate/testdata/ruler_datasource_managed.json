@@ -1,0 +1,21 @@
+{
+  "ExampleMetrics": [
+    {
+      "name": "Datasource Managed Group",
+      "interval": "1m",
+      "rules": [
+        {
+          "alert": "ExampleTargetDown",
+          "expr": "up == 0",
+          "for": "5m",
+          "labels": {
+            "severity": "warning"
+          },
+          "annotations": {
+            "summary": "target down"
+          }
+        }
+      ]
+    }
+  ]
+}
