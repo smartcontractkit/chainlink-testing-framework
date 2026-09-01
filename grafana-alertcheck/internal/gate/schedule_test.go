@@ -77,12 +77,23 @@ func TestDeriveTimings_TransitionGraceZeroWhenAllSkipped(t *testing.T) {
 	}
 }
 
-func TestDeriveTimings_DrainTimeoutFloor(t *testing.T) {
-	// Tiny intervals: 2 x max(intervalSeconds) would be far under the 2m floor.
+func TestDeriveTimings_DrainTimeoutIncludesPaused(t *testing.T) {
 	defs := []Definition{{UID: "r1", Title: "R1", IntervalSeconds: 10}}
 	_, global, _ := DeriveTimings(defs, 0)
 	if global.drainTimeout != minDrainTimeout {
 		t.Fatalf("drainTimeout = %s, want the %s floor", global.drainTimeout, minDrainTimeout)
+	}
+}
+
+func TestDeriveTimings_DrainTimeoutFloor(t *testing.T) {
+	defs := []Definition{
+		{UID: "r1", Title: "Tight", IntervalSeconds: 60, For: time.Minute},
+		{UID: "r2", Title: "PausedLongFor", IntervalSeconds: 180, For: time.Hour, IsPaused: true},
+	}
+	_, global, _ := DeriveTimings(defs, 0)
+	// double the longest interval (2 * 180s) should be the drain timeout
+	if global.drainTimeout != 2*180*time.Second {
+		t.Fatalf("drainTimeout = %s, want %s", global.drainTimeout, 180*time.Second)
 	}
 }
 
@@ -268,6 +279,17 @@ func TestCheckBudget_MissingMeasurementIsAnError(t *testing.T) {
 	err := CheckBudget(timings, map[string]time.Duration{}, 10)
 	if err == nil {
 		t.Fatal("CheckBudget = nil, want an error: r1 was never measured (fail closed, not a silent zero)")
+	}
+}
+
+func TestCheckBudget_MissingMixedMeasurementIsAnError(t *testing.T) {
+	timings := map[string]ruleTimings{
+		"tight": {pollEvery: 5 * time.Second},
+		"slow":  {pollEvery: 100 * time.Second},
+	}
+	measured := map[string]time.Duration{"tight": 100 * time.Millisecond}
+	if err := CheckBudget(timings, measured, 10); err == nil {
+		t.Fatal("CheckBudget = nil, want an error: slow was never measured (fail closed, not a silent zero)")
 	}
 }
 
