@@ -47,9 +47,8 @@ service:
             interval: 10000
             exporter:
               otlp:
-                protocol: grpc
-                endpoint: localhost:4317
-                insecure: true
+                protocol: http/protobuf
+                endpoint: http://localhost:4318
   pipelines:
     metrics:
       receivers: [ otlp ]
