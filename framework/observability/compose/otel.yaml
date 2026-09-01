@@ -31,6 +31,16 @@ processors:
     timeout: 5s
 
 service:
+  telemetry:
+    metrics:
+      readers:
+        - periodic:
+            interval: 10000
+            exporter:
+              otlp:
+                protocol: grpc
+                endpoint: localhost:4317
+                insecure: true
   pipelines:
     traces:
       receivers: [otlp]
