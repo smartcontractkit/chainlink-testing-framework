@@ -229,8 +229,10 @@ func TestHTTPSource_Skew(t *testing.T) {
 		drift   time.Duration
 		wantErr bool
 	}{
+		{"0s skew is fine", 0 * time.Second, false},
 		{"30s skew is fine", 30 * time.Second, false},
-		{"120s skew is a hard error", 120 * time.Second, true},
+		{"60s skew is fine", 60 * time.Second, false},
+		{"61s skew is a hard error", 61 * time.Second, true},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
