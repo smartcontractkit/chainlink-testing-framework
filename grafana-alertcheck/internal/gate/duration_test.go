@@ -47,15 +47,17 @@ func TestParsePromDuration(t *testing.T) {
 
 func TestParsePromDuration_Errors(t *testing.T) {
 	cases := []string{
-		"5",     // bare number, no unit
-		"-5m",   // negative
-		"5x",    // unknown unit
-		"30m1h", // ascending order (must be descending)
-		"1h1h",  // duplicate unit
-		"m",     // unit with no number
-		"1.5h",  // fractional number not supported by this grammar
-		"1 h",   // whitespace
-		"300y",  // overflows time.Duration (int64 nanoseconds) — must error, not wrap negative
+		"5",                   // bare number, no unit
+		"-5m",                 // negative
+		"5x",                  // unknown unit
+		"30m1h",               // ascending order (must be descending)
+		"1h1h",                // duplicate unit
+		"m",                   // unit with no number
+		"1.5h",                // fractional number not supported by this grammar
+		"1 h",                 // whitespace
+		"300y",                // overflows time.Duration (int64 nanoseconds) — must error, not wrap negative
+		"1w2d3h4m5s6ms7us8ns", // too many units
+		"carrot",              // completely invalid
 	}
 	for _, in := range cases {
 		if _, err := ParsePromDuration(in); err == nil {
