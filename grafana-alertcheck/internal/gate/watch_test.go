@@ -92,9 +92,9 @@ func countPolls(polls []Poll, uid string) int {
 	return n
 }
 
-// TestWatchLoopPollsEachRuleAtItsOwnCadence is §5's per-rule schedule seen
-// from the recorder: a 10s rule beside a 300s one keeps its own 5s cadence
-// instead of dragging the slack rule along with it or being slowed to its pace.
+// The per-rule schedule seen from the recorder: a 10s rule beside a 300s one
+// keeps its own 5s cadence instead of dragging the slack rule along with it or
+// being slowed to its pace.
 func TestWatchLoopPollsEachRuleAtItsOwnCadence(t *testing.T) {
 	const tightUID, slackUID = "tight", "slack"
 	path := filepath.Join(t.TempDir(), "log.jsonl")
@@ -148,9 +148,8 @@ func TestWatchLoopPollsEachRuleAtItsOwnCadence(t *testing.T) {
 	}
 }
 
-// TestWatchLoopHardErrorLeavesNoSentinel is §4.5's fail-closed rule from the
-// recorder's side: a recorder that dies must look exactly like a coverage gap,
-// so it must not sign off the log on its way out.
+// Fail-closed from the recorder's side: a recorder that dies must look exactly
+// like a coverage gap, so it must not sign off the log on its way out.
 func TestWatchLoopHardErrorLeavesNoSentinel(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "log.jsonl")
 	clock := newVirtualClock(testNow)
@@ -191,10 +190,9 @@ func TestWatchLoopHardErrorLeavesNoSentinel(t *testing.T) {
 	}
 }
 
-// TestWatchLoopSignalDuringPollIsACleanStop pins §4.4 step 1: SIGTERM arriving
-// while a poll is in flight is a clean stop, so the aborted poll's error must
-// not suppress the sentinel — otherwise every normal check run, which stops the
-// recorder exactly this way, would end unobservable.
+// SIGTERM arriving while a poll is in flight is a clean stop, so the aborted
+// poll's error must not suppress the sentinel — otherwise every normal check
+// run, which stops the recorder exactly this way, would end unobservable.
 func TestWatchLoopSignalDuringPollIsACleanStop(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "log.jsonl")
 	clock := newVirtualClock(testNow)
@@ -311,7 +309,7 @@ func TestWatchLoopPollBatchKeepsTheHeartbeatsItGot(t *testing.T) {
 	}
 }
 
-// TestReducerSeedFromKeepsMarkersAcrossTheHandoff is H2 at the one seam P6
+// The vanish-versus-clear distinction at the one seam the parent/child handoff
 // introduces. The parent observes a firing instance; the child starts with a
 // fresh Reducer and sees the instance gone. Seeded, that is a vanish — a
 // discontinuity. Unseeded, it is nothing at all, and the instance silently
@@ -321,7 +319,7 @@ func TestReducerSeedFromKeepsMarkersAcrossTheHandoff(t *testing.T) {
 	key := instanceKey(firing.Labels)
 	parentPoll := Poll{RuleUID: "r1", Found: true, Abnormal: []Instance{firing}}
 	// The child's first response: the instance is gone from the response
-	// entirely, which is a vanish and never a clear (§4.7).
+	// entirely, which is a vanish and never a clear.
 	childObs := observation(testNow, testStateRule("r1", "Example", time.Minute, testNow))
 
 	t.Run("seeded", func(t *testing.T) {
@@ -385,10 +383,9 @@ func liveObservation(grafanaNow time.Time) Observation {
 		testInstance(StateNormal, "", "a")))
 }
 
-// TestPrepareWatchDoesNotWaitForPausedRules is §22.4's regression test: a rule
-// paused in its definition is skipped, never waited for. Waiting for one either
-// hangs forever or errors before the deploy — and the header must still name
-// it, so check can report it as skipped rather than lose it.
+// A rule paused in its definition is skipped, never waited for. Waiting for one
+// either hangs forever or errors before the deploy — and the header must still
+// name it, so check can report it as skipped rather than lose it.
 func TestPrepareWatchDoesNotWaitForPausedRules(t *testing.T) {
 	var notes strings.Builder
 	cfg := watchTestConfig(t, &notes, "uid:"+watchActiveUID, "uid:"+watchPausedUID)
@@ -423,16 +420,16 @@ func TestPrepareWatchDoesNotWaitForPausedRules(t *testing.T) {
 	}
 
 	// One poll, for the live rule only — and it is already in the log before
-	// prepareWatch returned, which is the whole point of §4.3.
+	// prepareWatch returned, which is the whole point of the record step.
 	if len(polls) != 1 || polls[0].RuleUID != watchActiveUID {
 		t.Fatalf("polls = %+v, want exactly one first observation of %s", polls, watchActiveUID)
 	}
 	if !polls[0].Found || !polls[0].GrafanaNow.Equal(testNow) {
 		t.Errorf("first poll = %+v, want a found observation at %s", polls[0], testNow)
 	}
-	// §22.3: "the poll record holds the state histogram. Assert that watch
-	// writes it" — through a real prepareWatch()/Reducer call, not just
-	// log_test.go's hand-built Writer/ReadLog round trip.
+	// The poll record holds the state histogram, asserted through a real
+	// prepareWatch()/Reducer call rather than log_test.go's hand-built
+	// Writer/ReadLog round trip.
 	if want := map[string]int{"normal": 1}; !maps.Equal(polls[0].Histogram, want) {
 		t.Errorf("Histogram = %v, want %v: watch must record the state histogram on every poll it writes", polls[0].Histogram, want)
 	}
@@ -441,9 +438,9 @@ func TestPrepareWatchDoesNotWaitForPausedRules(t *testing.T) {
 	}
 }
 
-// TestPrepareWatchHeaderRecordsTheOverriddenCadence is P5's "two authorities"
-// from the writing side: whatever --poll-interval resolves to is what the
-// header records, because that is the only value check may derive maxGap from.
+// One authority for the cadence, from the writing side: whatever
+// --poll-interval resolves to is what the header records, because that is the
+// only value check may derive maxGap from.
 func TestPrepareWatchHeaderRecordsTheOverriddenCadence(t *testing.T) {
 	var notes strings.Builder
 	cfg := watchTestConfig(t, &notes, "uid:"+watchActiveUID)
@@ -467,8 +464,8 @@ func TestPrepareWatchHeaderRecordsTheOverriddenCadence(t *testing.T) {
 	}
 }
 
-// TestPrepareWatchFailsWhenTheScheduleDoesNotFit: the budget check runs on the
-// latencies the parent just measured, before the deploy runs (§5.2).
+// The budget check runs on the latencies the parent just measured, before the
+// deploy runs.
 func TestPrepareWatchFailsWhenTheScheduleDoesNotFit(t *testing.T) {
 	var notes strings.Builder
 	cfg := watchTestConfig(t, &notes, "uid:"+watchActiveUID)
@@ -484,9 +481,9 @@ func TestPrepareWatchFailsWhenTheScheduleDoesNotFit(t *testing.T) {
 	assertBudgetMessage(t, err.Error())
 }
 
-// TestPrepareWatchVerifiesNormalInstancesAreVisible is the §3.2 check at the
-// one place it can still be cheap: the first observation. If the state endpoint
-// stops returning normal instances, the reduction's predicate quietly inverts.
+// Normal instances are verified visible at the one place it is still cheap:
+// the first observation. If the state endpoint stops returning them, the
+// reduction's predicate quietly inverts.
 func TestPrepareWatchVerifiesNormalInstancesAreVisible(t *testing.T) {
 	var notes strings.Builder
 	cfg := watchTestConfig(t, &notes, "uid:"+watchActiveUID)
@@ -499,8 +496,8 @@ func TestPrepareWatchVerifiesNormalInstancesAreVisible(t *testing.T) {
 	if err == nil {
 		t.Fatal("prepareWatch: no error when totals claim normal instances the response omitted")
 	}
-	if !strings.Contains(err.Error(), "3.2") {
-		t.Errorf("error does not name §3.2: %v", err)
+	if !strings.Contains(err.Error(), "no longer returns normal instances") {
+		t.Errorf("error does not say the endpoint stopped returning normal instances: %v", err)
 	}
 
 	// The failure happens before any poll is appended, so the log holds a
@@ -525,9 +522,9 @@ func TestPrepareWatchRejectsAnUnsupportedGrafana(t *testing.T) {
 	}
 }
 
-// TestPrepareWatchNotesAnAbsentRule: a rule that resolved in the ruler API but
-// is absent from the state endpoint is recorded as Found=false — authoritative
-// evidence P7 turns into unobservable — not silently dropped.
+// A rule that resolved in the ruler API but is absent from the state endpoint
+// is recorded as Found=false — authoritative evidence the coverage proof turns
+// into unobservable — not silently dropped.
 func TestPrepareWatchNotesAnAbsentRule(t *testing.T) {
 	var notes strings.Builder
 	cfg := watchTestConfig(t, &notes, "uid:"+watchActiveUID)
@@ -601,8 +598,8 @@ func TestWatchConfigValidation(t *testing.T) {
 	})
 }
 
-// TestChildScheduleUsesTheRecordedCadence is P5's fail-open direction, checked
-// on the child's side: a log recorded at 5s on a 300s rule must schedule at 5s.
+// The fail-open direction, checked on the child's side: a log recorded at 5s on
+// a 300s rule must schedule at 5s.
 // Re-deriving from the interval would give 150s — and every real 250s hole in
 // that recording would pass.
 func TestChildScheduleUsesTheRecordedCadence(t *testing.T) {
@@ -616,7 +613,7 @@ func TestChildScheduleUsesTheRecordedCadence(t *testing.T) {
 		t.Fatalf("childSchedule: %v", err)
 	}
 	if _, ok := titles["paused"]; ok {
-		t.Error("the child scheduled a rule that was paused when the window opened (§4.3)")
+		t.Error("the child scheduled a rule that was paused when the window opened")
 	}
 	if got := cadence["fast"]; got != 5*time.Second {
 		t.Errorf("pollEvery = %s, want 5s from the header, not %s from the interval", got, defaultPollEvery(300))

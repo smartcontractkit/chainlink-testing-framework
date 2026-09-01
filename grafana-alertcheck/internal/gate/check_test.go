@@ -21,7 +21,7 @@ import (
 // from those three numbers, and the tests assert against them by name rather
 // than by magic constant:
 //
-//	pollEvery       30s   (§5: intervalSeconds/2)
+//	pollEvery       30s   (intervalSeconds/2)
 //	maxGap          60s   (2 x pollEvery)
 //	healthGrace     60s   (max(maxGap, interval))
 //	evalStaleAfter  120s  (2 x interval)
@@ -99,9 +99,9 @@ var _ Source = (*checkSource)(nil)
 
 // checkStateRule builds one state-endpoint rule whose totals agree with the
 // instances it carries. That agreement is load-bearing: a totals map claiming
-// normal instances that the instance list does not contain fails §3.2's
-// verification (VerifyNormalInstancesVisible), which is a different failure
-// from the one most of these tests are about.
+// normal instances that the instance list does not contain fails
+// VerifyNormalInstancesVisible, which is a different failure from the one most
+// of these tests are about.
 func checkStateRule(lastEval time.Time, insts ...Instance) StateRule {
 	totals := map[string]int{}
 	for _, i := range insts {
@@ -143,7 +143,7 @@ func baseConfig(t *testing.T, clock Clock) Config {
 func notesOf(cfg Config) string { return cfg.Notes.(*strings.Builder).String() }
 
 // ---------------------------------------------------------------------------
-// §19.1 step 1 — configuration validation
+// Configuration validation
 // ---------------------------------------------------------------------------
 
 func TestCheckValidateRejectsBadConfigurations(t *testing.T) {
@@ -173,7 +173,7 @@ func TestCheckValidateRejectsBadConfigurations(t *testing.T) {
 			wantErr: "no `to`",
 		},
 		{
-			// §19.1 step 1: an empty Alerts is an error — but only without a log.
+			// An empty Alerts is an error — but only without a log.
 			name:    "single-step without alerts",
 			mutate:  func(c *Config) {},
 			wantErr: "no alert names given",
@@ -185,13 +185,13 @@ func TestCheckValidateRejectsBadConfigurations(t *testing.T) {
 			wantErr: "no alert names given",
 		},
 		{
-			// §19.1 step 3, the other direction: the log names the alert set.
+			// The other direction: with a log, the log names the alert set.
 			name:    "log mode with alerts",
 			mutate:  func(c *Config) { c.Log = "log.jsonl"; c.Alerts = []string{"A"} },
 			wantErr: "--alerts is refused with a recorded log",
 		},
 		{
-			// §7 — never a warning-and-continue.
+			// Never a warning-and-continue.
 			name:    "log mode without from",
 			mutate:  func(c *Config) { c.Log = "log.jsonl"; c.From = time.Time{} },
 			wantErr: "the deploy step must emit a completion timestamp",
@@ -238,9 +238,9 @@ func TestCheckValidateRejectsBadConfigurations(t *testing.T) {
 	}
 }
 
-// A past `to` WITH a log is explicitly not a special mode (§7, §24.3): the
-// collection loop's condition is already true and the evidence classifies
-// immediately. No branch, and no refusal.
+// A past `to` WITH a log is not a special mode: the collection loop's condition
+// is already true and the evidence classifies immediately. No branch, and no
+// refusal.
 func TestCheckValidateAcceptsAPastToWithALog(t *testing.T) {
 	cfg := Config{
 		URL:   "https://grafana.example.com",
@@ -273,7 +273,7 @@ func TestCheckSingleStepCleanWindowPasses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("check() = %v, want nil\nnotes:\n%s", err, notesOf(cfg))
 	}
-	// H7: a pass is exactly this shape.
+	// A pass is exactly this shape.
 	if len(res.Violations) != 0 {
 		t.Fatalf("Violations = %+v, want none", res.Violations)
 	}
@@ -284,7 +284,7 @@ func TestCheckSingleStepCleanWindowPasses(t *testing.T) {
 		t.Fatalf("Coverage = %+v, want proved", cov)
 	}
 
-	// The collection loop ran to to+transitionGrace and no further (H5).
+	// The collection loop ran to to+transitionGrace and no further.
 	windowEnd := cfg.To.Add(checkGrace)
 	if clock.Now().Before(windowEnd) {
 		t.Errorf("stopped collecting at %s, before to+grace %s", clock.Now(), windowEnd)
@@ -297,15 +297,13 @@ func TestCheckSingleStepCleanWindowPasses(t *testing.T) {
 		t.Errorf("polled %d times, want at least the ~13 a full 6-minute window at 30s implies", got)
 	}
 	if notes := notesOf(cfg); !strings.Contains(notes, "planned run time") {
-		t.Errorf("§13.2 requires the planned run time at start; notes were:\n%s", notes)
+		t.Errorf("the planned run time must be printed at start; notes were:\n%s", notes)
 	}
 }
 
-// §22.2: the collapse-note-plus-satisfied-MinObserved path (resolve_test.go's
-// TestResolve_CollapseByUIDGivesNoteNotError and
-// TestResolve_MinObservedCountIsPostCollapse) is proven only at Resolve()
-// directly; this drives the same shape through check() end to end — the two
-// input names must collapse to one verdict, the run must pass, and the
+// resolve_test.go proves the collapse-note-plus-satisfied-MinObserved path at
+// Resolve() directly; this drives the same shape through check() end to end —
+// the two input names must collapse to one verdict, the run must pass, and the
 // collapse note must reach the run's own notes, not just Resolve()'s return
 // value.
 func TestCheckSingleStepDuplicateAlertNamesCollapseWithNote(t *testing.T) {
@@ -331,11 +329,11 @@ func TestCheckSingleStepDuplicateAlertNamesCollapseWithNote(t *testing.T) {
 	}
 }
 
-// §22.1's highest-priority regression: a rule with health=error for the
-// whole window is unobservable, exit 2 — using the real "[JD] No Job
-// Proposals" capture (testdata/README.md), not a synthetic Poll table, so a
-// change in how the real payload shapes health/lastError cannot slip past a
-// hand-built fixture that happens to still look right.
+// A rule with health=error for the whole window is unobservable, exit 2 —
+// driven from the real "[JD] No Job Proposals" capture (testdata/README.md),
+// not a synthetic Poll table, so a change in how the real payload shapes
+// health/lastError cannot slip past a hand-built fixture that happens to still
+// look right.
 func TestCheckSingleStepContinuousHealthErrorIsUnobservable(t *testing.T) {
 	body := readFixture(t, "state_health_error.json")
 	rules, err := ParseState(body)
@@ -358,8 +356,8 @@ func TestCheckSingleStepContinuousHealthErrorIsUnobservable(t *testing.T) {
 	src := newCheckSource(func(_ string, _ int) (Observation, error) {
 		// Every field but LastEvaluation stays exactly as the real capture
 		// shaped it (health=error, the real lastError text, the real Error
-		// instance); LastEvaluation tracks the poll so staleness (a
-		// different coverage check, §14) never becomes the actual cause.
+		// instance); LastEvaluation tracks the poll so staleness — a
+		// different coverage check — never becomes the actual cause.
 		r := base
 		r.LastEvaluation = clock.Now()
 		return Observation{Rules: []StateRule{r}, GrafanaNow: clock.Now(), Latency: 200 * time.Millisecond}, nil
@@ -368,7 +366,7 @@ func TestCheckSingleStepContinuousHealthErrorIsUnobservable(t *testing.T) {
 
 	res, err := check(context.Background(), cfg, src)
 	if err == nil {
-		t.Fatalf("check() = nil, want an error: continuous health=error must be unobservable (§22.1, H6/H7)\nnotes:\n%s", notesOf(cfg))
+		t.Fatalf("check() = nil, want an error: continuous health=error must be unobservable\nnotes:\n%s", notesOf(cfg))
 	}
 	if len(res.Verdicts) != 1 || res.Verdicts[0].Outcome != OutcomeUnobservable {
 		t.Fatalf("Verdicts = %+v, want one unobservable verdict", res.Verdicts)
@@ -378,8 +376,8 @@ func TestCheckSingleStepContinuousHealthErrorIsUnobservable(t *testing.T) {
 	}
 }
 
-// H5: a certain violation does not release the runner early, and it does not
-// stop the gate reporting exit-1 shape — violations with a nil error.
+// A certain violation does not release the runner early, and it does not stop
+// the gate reporting exit-1 shape — violations with a nil error.
 func TestCheckSingleStepFiringInstanceReportsWithoutExitingEarly(t *testing.T) {
 	clock := newVirtualClock(testNow)
 	cfg := baseConfig(t, clock)
@@ -403,15 +401,14 @@ func TestCheckSingleStepFiringInstanceReportsWithoutExitingEarly(t *testing.T) {
 		t.Errorf("Outcome = %q, want %q", got, OutcomePersistentlyBad)
 	}
 	if windowEnd := cfg.To.Add(checkGrace); clock.Now().Before(windowEnd) {
-		t.Errorf("exited early at %s; H5 requires collecting to %s", clock.Now(), windowEnd)
+		t.Errorf("exited early at %s; collection must run to %s", clock.Now(), windowEnd)
 	}
 }
 
-// §22.8: "newly_bad at from+30s gives exit 1, but ONLY after
-// to+transition_grace." The test above pins H5 for a rule already bad
-// before the window opened (persistently_bad); this pins the anti-fail-fast
-// case the plan names explicitly — a fresh onset just inside the window
-// must not release the runner the instant it is first observed.
+// A newly_bad instance at from+30s gives exit 1, but ONLY after
+// to+transitionGrace. The test above covers a rule already bad before the
+// window opened (persistently_bad); this covers a fresh onset just inside the
+// window, which must not release the runner the instant it is first observed.
 func TestCheckSingleStepNewOnsetDoesNotExitEarly(t *testing.T) {
 	clock := newVirtualClock(testNow)
 	cfg := baseConfig(t, clock)
@@ -437,13 +434,13 @@ func TestCheckSingleStepNewOnsetDoesNotExitEarly(t *testing.T) {
 		t.Fatalf("Violations = %+v, want exactly one newly_bad", res.Violations)
 	}
 	if windowEnd := cfg.To.Add(checkGrace); clock.Now().Before(windowEnd) {
-		t.Errorf("exited early at %s; H5 requires collecting to %s even for a fresh onset at from+30s", clock.Now(), windowEnd)
+		t.Errorf("exited early at %s; collection must run to %s even for a fresh onset at from+30s", clock.Now(), windowEnd)
 	}
 }
 
-// §22.9: an ABSENT `from` in single-step mode (as opposed to recorder mode,
-// which hard-errors — TestCheckValidateRejectsBadConfigurations's "log mode
-// without from") falls back to the start of this check step, with the same
+// An ABSENT `from` in single-step mode (as opposed to recorder mode, which
+// hard-errors — TestCheckValidateRejectsBadConfigurations's "log mode without
+// from") falls back to the start of this check step, with the same
 // declared-blind-interval warning as an explicit early `from`.
 func TestCheckSingleStepAbsentFromFallsBackToStepStart(t *testing.T) {
 	clock := newVirtualClock(testNow)
@@ -459,16 +456,16 @@ func TestCheckSingleStepAbsentFromFallsBackToStepStart(t *testing.T) {
 	}
 	notes := notesOf(cfg)
 	if !strings.Contains(notes, "no `from` given") {
-		t.Errorf("want the §4.2 fallback note; notes were:\n%s", notes)
+		t.Errorf("want the step-start fallback note; notes were:\n%s", notes)
 	}
 	if !res.From.Equal(testNow) {
 		t.Errorf("Result.From = %s, want the step-start fallback %s", res.From, testNow)
 	}
 }
 
-// §4.2/§22.4: in single-step mode an explicit `from` earlier than the first
-// observation is a DECLARED blind interval — a warning and a pass, naming the
-// exact interval it cannot see. Recorder mode keeps P7 check 2 strict.
+// In single-step mode an explicit `from` earlier than the first observation is
+// a DECLARED blind interval — a warning and a pass, naming the exact interval
+// it cannot see. Recorder mode keeps the from-bounds coverage check strict.
 func TestCheckSingleStepFromBeforeFirstObservationWarnsAndPasses(t *testing.T) {
 	clock := newVirtualClock(testNow)
 	cfg := baseConfig(t, clock)
@@ -492,9 +489,9 @@ func TestCheckSingleStepFromBeforeFirstObservationWarnsAndPasses(t *testing.T) {
 	}
 }
 
-// §19.3 case 1: the failure limit was exceeded. The measurement pass succeeds
-// and the collection loop then hits a terminal failure, so this exercises the
-// path a live run really takes.
+// The failure limit was exceeded. The measurement pass succeeds and the
+// collection loop then hits a terminal failure, so this exercises the path a
+// live run really takes.
 func TestCheckFailClosedOnExhaustedRetries(t *testing.T) {
 	clock := newVirtualClock(testNow)
 	cfg := baseConfig(t, clock)
@@ -517,8 +514,8 @@ func TestCheckFailClosedOnExhaustedRetries(t *testing.T) {
 	}
 }
 
-// §19.3 case 2: the resolution of the definitions failed. Both shapes — the
-// ruler read itself failing, and a name that resolves to nothing.
+// The resolution of the definitions failed. Both shapes — the ruler read
+// itself failing, and a name that resolves to nothing.
 func TestCheckFailClosedOnDefinitionResolution(t *testing.T) {
 	t.Run("ruler read fails", func(t *testing.T) {
 		clock := newVirtualClock(testNow)
@@ -545,8 +542,8 @@ func TestCheckFailClosedOnDefinitionResolution(t *testing.T) {
 	})
 }
 
-// The version gate (§2.7 control 2): an unsupported Grafana is exit 2 before
-// anything else is attempted.
+// The version gate: an unsupported Grafana is exit 2 before anything else is
+// attempted.
 func TestCheckRefusesUnsupportedGrafanaVersion(t *testing.T) {
 	clock := newVirtualClock(testNow)
 	cfg := baseConfig(t, clock)
@@ -559,9 +556,9 @@ func TestCheckRefusesUnsupportedGrafanaVersion(t *testing.T) {
 	}
 }
 
-// §5.2: the budget is checked against the latencies the measurement pass
-// actually measured, and a schedule that cannot fit errors at START rather
-// than producing a gap-riddled recording nobody can classify.
+// The budget is checked against the latencies the measurement pass actually
+// measured, and a schedule that cannot fit errors at START rather than
+// producing a gap-riddled recording nobody can classify.
 func TestCheckSingleStepRefusesAScheduleThatDoesNotFit(t *testing.T) {
 	clock := newVirtualClock(testNow)
 	cfg := baseConfig(t, clock)
@@ -577,7 +574,7 @@ func TestCheckSingleStepRefusesAScheduleThatDoesNotFit(t *testing.T) {
 	}
 	for _, want := range []string{"raising concurrency", "raising poll-interval", "watching fewer alerts"} {
 		if !strings.Contains(err.Error(), want) {
-			t.Errorf("err = %q, want it to name the control %q (§5.1)", err, want)
+			t.Errorf("err = %q, want it to name the control %q", err, want)
 		}
 	}
 }
@@ -691,16 +688,15 @@ func TestCheckRecorderModeCleanWindowPasses(t *testing.T) {
 	if res.GrafanaVersion != "13.1.0" {
 		t.Errorf("GrafanaVersion = %q, want the recorded one", res.GrafanaVersion)
 	}
-	// The collection loop still waited out to+transitionGrace (H5) even though
-	// the recorder had already finished.
+	// The collection loop still waited out to+transitionGrace even though the
+	// recorder had already finished.
 	if clock.Now().Before(windowEnd) {
 		t.Errorf("returned at %s, before to+grace %s", clock.Now(), windowEnd)
 	}
 }
 
-// §19.3 case 3: the identity of the log is not correct. The check runs against
-// the header read EARLY, so it fails before the window's wait rather than
-// after it.
+// The identity of the log is not correct. The check runs against the header
+// read EARLY, so it fails before the window's wait rather than after it.
 func TestCheckFailClosedOnWrongLogIdentity(t *testing.T) {
 	t.Run("different url", func(t *testing.T) {
 		dir := t.TempDir()
@@ -736,8 +732,8 @@ func TestCheckFailClosedOnWrongLogIdentity(t *testing.T) {
 	})
 }
 
-// §19.3 case 4: the coverage proof failed. A hole in the middle of the
-// recording is not saved by healthy data at both ends (§22.4).
+// The coverage proof failed: a hole in the middle of the recording is not
+// saved by healthy data at both ends.
 func TestCheckFailClosedOnCoverageGap(t *testing.T) {
 	dir := t.TempDir()
 	windowEnd := testNow.Add(5*time.Minute + checkGrace)
@@ -782,13 +778,12 @@ func TestCheckFailClosedOnCoverageGap(t *testing.T) {
 	}
 }
 
-// §22.4: "an episode fully between the deploy and the start of the check" —
-// recorder mode must find this at the LEADING edge of the window too, right
-// after `from` (the deploy's completion), not only in the middle
-// (TestCheckFailClosedOnCoverageGap above). No poll exists for
-// [from, from+3m): whatever happened there is invisible to every per-poll
-// check, so only the coverage gap itself can catch it — the reason this
-// two-phase recorder model exists at all (§4.2).
+// An episode fully between the deploy and the start of the check: recorder
+// mode must find this at the LEADING edge of the window too, right after `from`
+// (the deploy's completion), not only in the middle
+// (TestCheckFailClosedOnCoverageGap above). No poll exists for [from, from+3m),
+// so whatever happened there is invisible to every per-poll check and only the
+// coverage gap itself can catch it — the reason the recorder exists at all.
 func TestCheckRecorderModeFindsAGapImmediatelyAfterTheDeploy(t *testing.T) {
 	dir := t.TempDir()
 	windowEnd := testNow.Add(5*time.Minute + checkGrace)
@@ -827,14 +822,14 @@ func TestCheckRecorderModeFindsAGapImmediatelyAfterTheDeploy(t *testing.T) {
 	}
 }
 
-// §19.3 case 5: the drain limit passed. The recording itself is clean, so this
-// isolates the drain wait — the rule simply never evaluates through the end of
-// the window, and a rule that cannot answer that question is unobservable.
+// The drain limit passed. The recording itself is clean, so this isolates the
+// drain wait — the rule simply never evaluates through the end of the window,
+// and a rule that cannot answer that question is unobservable.
 func TestCheckFailClosedOnDrainTimeout(t *testing.T) {
 	dir := t.TempDir()
 	windowEnd := testNow.Add(5*time.Minute + checkGrace)
-	// A 45s lag keeps every poll inside evalStaleAfter (120s), so P7 check 6
-	// is silent and only the drain wait can fail.
+	// A 45s lag keeps every poll inside evalStaleAfter (120s), so the liveness
+	// coverage check is silent and only the drain wait can fail.
 	logPath := recordedLog(t, dir, "https://grafana.example.com",
 		testNow.Add(-time.Minute), testNow.Add(-time.Minute), windowEnd, windowEnd.Add(30*time.Second), 45*time.Second)
 	writePid(t, logPath+".pid", fmt.Sprintf("%d\n", deadPid(t)))
@@ -868,8 +863,8 @@ func TestCheckFailClosedOnDrainTimeout(t *testing.T) {
 	}
 }
 
-// §14.5: a rule the state endpoint no longer serves is knowable on the FIRST
-// drain poll, and the answer is rule_absent — the fault — rather than
+// A rule the state endpoint no longer serves is knowable on the FIRST drain
+// poll, and the answer is rule_absent — the fault — rather than
 // drain_timeout, which would only name the wait. It must not spend the whole
 // drain limit to reach it.
 func TestCheckDrainWaitNamesADeletedRuleAtOnce(t *testing.T) {
@@ -881,9 +876,9 @@ func TestCheckDrainWaitNamesADeletedRuleAtOnce(t *testing.T) {
 
 	clock := newVirtualClock(testNow)
 	cfg := recorderConfig(t, clock, logPath)
-	// An authoritative 2xx that parsed and carries no matching rule. P2
-	// retried every transport failure long before an Observation exists, so
-	// this is a deletion, not a hiccup.
+	// An authoritative 2xx that parsed and carries no matching rule. The
+	// transport retried every transient failure long before an Observation
+	// exists, so this is a deletion, not a hiccup.
 	src := newCheckSource(func(_ string, _ int) (Observation, error) {
 		return Observation{GrafanaNow: clock.Now()}, nil
 	})
@@ -1016,8 +1011,7 @@ func TestCheckHeaderPausedRuleStaysSkipped(t *testing.T) {
 		t.Fatalf("NewWriter: %v", err)
 	}
 	// Named in the header, is_paused true, and no poll records at all — the
-	// shape watch writes for a rule paused before the window opened (P6
-	// deviation 4).
+	// shape watch writes for a rule paused before the window opened.
 	if err := w.WriteHeader(Header{
 		URL: "https://grafana.example.com", GrafanaVersion: "13.1.0", StartedAt: testNow.Add(-time.Minute),
 		Rules: []LoggedRule{{
@@ -1054,7 +1048,7 @@ func TestCheckHeaderPausedRuleStaysSkipped(t *testing.T) {
 		t.Errorf("Coverage[%s] present, want absent: a skipped rule has no coverage to prove", checkUID)
 	}
 	if len(res.Violations) != 1 {
-		t.Errorf("Violations = %+v, want the MinObserved shortfall (§12.1)", res.Violations)
+		t.Errorf("Violations = %+v, want the MinObserved shortfall", res.Violations)
 	}
 
 	res, err = run(true)
@@ -1089,7 +1083,7 @@ func TestCheckDrainWaitConcludesAtOnceOnAPausedRule(t *testing.T) {
 		t.Errorf("polled %d times, want exactly 1: a paused rule can never catch up", got)
 	}
 	if got := res.Coverage[checkUID].Reason; got != ReasonDrainTimeout {
-		t.Errorf("Reason = %q, want %q — the vocabulary is published (§19.0), so the detail goes in the note", got, ReasonDrainTimeout)
+		t.Errorf("Reason = %q, want %q — the vocabulary is published, so the detail goes in the note", got, ReasonDrainTimeout)
 	}
 	if !strings.Contains(res.Verdicts[0].Note, "paused before it evaluated through") {
 		t.Errorf("Note = %q, want it to say the rule was paused", res.Verdicts[0].Note)
@@ -1099,10 +1093,10 @@ func TestCheckDrainWaitConcludesAtOnceOnAPausedRule(t *testing.T) {
 	}
 }
 
-// P6's obligation on this phase: an absent or unparseable pidfile is never
-// "there was nothing to stop". The parent writes the pidfile only once the
-// child reports that it is recording, so a missing one means the recording
-// never started — and the log must not be read at all.
+// An absent or unparseable pidfile is never "there was nothing to stop". The
+// parent writes the pidfile only once the child reports that it is recording,
+// so a missing one means the recording never started — and the log must not be
+// read at all.
 func TestCheckRefusesToReadALogItCannotStop(t *testing.T) {
 	windowEnd := testNow.Add(5*time.Minute + checkGrace)
 
@@ -1159,8 +1153,8 @@ func startLockHolder(t *testing.T, logPath string) int {
 	return cmd.Process.Pid
 }
 
-// §4.4 step 4: a recorder that will not let go of the log means the log may
-// still be appended to, and a log a writer can change cannot be read at all.
+// A recorder that will not let go of the log means the log may still be
+// appended to, and a log a writer can change cannot be read at all.
 func TestCheckFailsWhenTheRecorderWillNotExit(t *testing.T) {
 	dir := t.TempDir()
 	windowEnd := testNow.Add(5*time.Minute + checkGrace)
@@ -1209,9 +1203,9 @@ func TestCheckDoesNotSignalABystanderHoldingAReusedPid(t *testing.T) {
 	}
 }
 
-// §22.5: a dead pidfile (the recorder process has already exited, holding no
-// flock) with NO sentinel in the log — the shape a killed `watch` leaves
-// behind — must not hang the stop wait: the flock is free immediately, so
+// A dead pidfile (the recorder process has already exited, holding no flock)
+// with NO sentinel in the log — the shape a killed `watch` leaves behind —
+// must not hang the stop wait: the flock is free immediately, so
 // check reads the log at once, finds no sentinel, and fails closed.
 func TestCheckDeadPidWithNoSentinelIsUnobservable(t *testing.T) {
 	dir := t.TempDir()
@@ -1254,12 +1248,11 @@ func TestCheckDeadPidWithNoSentinelIsUnobservable(t *testing.T) {
 	}
 }
 
-// §22.5: "an incomplete last line gives exit 2" is otherwise proven only
-// indirectly — log_test.go's TestReadLogRejectsBadLogs pins ReadLog's own
-// error, and TestExitCode pins that any non-nil error maps to exit 2 — but
-// nothing feeds a genuinely truncated log through check() itself. This closes
-// that seam: a raw file with a valid header and poll, then a torn JSON tail,
-// exactly what a recorder killed mid-write leaves behind.
+// An incomplete last line gives exit 2. log_test.go's TestReadLogRejectsBadLogs
+// pins ReadLog's own error and TestExitCode pins that any non-nil error maps to
+// exit 2, but only this feeds a genuinely truncated log through check() itself:
+// a raw file with a valid header and poll, then a torn JSON tail, exactly what
+// a recorder killed mid-write leaves behind.
 func TestCheckRecorderModeTruncatedLogFailsClosed(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "log.jsonl")
@@ -1291,10 +1284,10 @@ func TestCheckRecorderModeTruncatedLogFailsClosed(t *testing.T) {
 	}
 }
 
-// P5's "two authorities", from check's side: maxGap comes from the cadence the
-// header records, never from a re-derivation off intervalSeconds. The
-// fail-open direction is the one asserted — a log recorded at 5s on a 60s rule
-// must still fail on a hole a re-derived 30s maxGap would have forgiven.
+// One authority for the cadence, from check's side: maxGap comes from the
+// cadence the header records, never from a re-derivation off intervalSeconds.
+// The fail-open direction is the one asserted — a log recorded at 5s on a 60s
+// rule must still fail on a hole a re-derived 30s maxGap would have forgiven.
 func TestCheckDerivesMaxGapFromTheRecordedCadence(t *testing.T) {
 	dir := t.TempDir()
 	windowEnd := testNow.Add(5*time.Minute + checkGrace)
@@ -1341,8 +1334,8 @@ func TestCheckDerivesMaxGapFromTheRecordedCadence(t *testing.T) {
 // The pieces, in isolation
 // ---------------------------------------------------------------------------
 
-// The drain wait's one comparison is cross-domain (§16), and its uncertainty
-// is spent in the fail-closed direction: an evaluation that only MIGHT have
+// The drain wait's one comparison is cross-domain, and its uncertainty is
+// spent in the fail-closed direction: an evaluation that only MIGHT have
 // reached the end of the window does not count as one that did.
 func TestEvaluatedThroughSpendsItsUncertaintyFailingClosed(t *testing.T) {
 	end := testNow
@@ -1381,8 +1374,8 @@ func TestEvaluatedThroughSpendsItsUncertaintyFailingClosed(t *testing.T) {
 	}
 }
 
-// H6 through the merge: a drain timeout on one rule and a coverage failure on
-// another must both reach the message. Neither error may shadow the other.
+// A drain timeout on one rule and a coverage failure on another must both
+// reach the message. Neither error may shadow the other.
 func TestMergeDrainTimeoutsNamesEveryUnobservableRule(t *testing.T) {
 	res := Result{
 		Coverage: map[string]CoverageResult{

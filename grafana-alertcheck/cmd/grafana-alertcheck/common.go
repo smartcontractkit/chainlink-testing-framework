@@ -12,11 +12,11 @@ import (
 )
 
 // commonFlags is registerCommon's result: the exactly three flags watch and
-// check share (§20). Connection details are never flags (§20.2) and states /
-// poll-interval are deliberately NOT here — states is check-only because
-// recording is unfiltered (P6), and poll-interval is watch-only because check
-// reads the cadence from the log header (P5). Putting either here would
-// silently reinstate a knob this plan removed.
+// check share. Connection details are never flags, and states / poll-interval
+// are deliberately NOT here — states is check-only because recording is
+// unfiltered, and poll-interval is watch-only because check reads the cadence
+// from the log header. Putting either here would give both commands an opinion
+// about a value only one of them may set.
 type commonFlags struct {
 	folder      *string
 	concurrency *int
@@ -25,13 +25,13 @@ type commonFlags struct {
 
 func registerCommon(fs *flag.FlagSet) *commonFlags {
 	return &commonFlags{
-		folder:      fs.String("folder", "", "default folder to scope an unqualified alert name to (§17)"),
+		folder:      fs.String("folder", "", "default folder to scope an unqualified alert name to"),
 		concurrency: fs.Int("concurrency", 1, "maximum concurrent requests to Grafana"),
 		alerts:      fs.String("alerts", "", "path to a file of alert names, one per line, or - for stdin"),
 	}
 }
 
-// readAlerts reads §17's alert names, one per line, from a file or from
+// readAlerts reads alert names, one per line, from a file or from
 // stdin when path is "-". An empty path is not an error here — watch and
 // check each decide for themselves whether an empty list is allowed
 // (log mode never wants one; single-step / record mode always does).
@@ -62,16 +62,15 @@ func readAlerts(stdin io.Reader, path string) ([]string, error) {
 }
 
 // parseStates parses check's --states flag: a comma-separated list of the
-// "bad" state vocabulary Config.States matches against (§13, classify.go's
+// "bad" state vocabulary Config.States matches against (classify.go's
 // badStateSet). An empty string is not resolved here — it means "use the
 // library default of {firing}" — so this returns nil, nil for "" rather than
 // an error.
 //
-// normal is deliberately NOT accepted: the v2 plan fixes this vocabulary to
-// firing | pending | nodata | error (line 378) precisely because "normal" is
-// the good state, never a bad one to classify against. Accepting it here
-// would let --states normal turn every healthy instance into a violation and
-// fail every healthy fleet — the exact fail-open shape H7 exists to prevent.
+// normal is deliberately NOT accepted. The vocabulary is fixed to
+// firing | pending | nodata | error precisely because "normal" is the good
+// state, never a bad one to classify against: --states normal would turn every
+// healthy instance into a violation and fail every healthy fleet.
 func parseStates(s string) ([]gate.State, error) {
 	if strings.TrimSpace(s) == "" {
 		return nil, nil
@@ -95,7 +94,7 @@ func parseStates(s string) ([]gate.State, error) {
 	return out, nil
 }
 
-// parsePreexisting parses check's --preexisting flag (§11.7).
+// parsePreexisting parses check's --preexisting flag.
 func parsePreexisting(s string) (gate.PreexistingPolicy, error) {
 	switch gate.PreexistingPolicy(s) {
 	case "":

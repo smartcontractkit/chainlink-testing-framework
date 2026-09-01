@@ -17,28 +17,27 @@ const checkUsage = "usage: grafana-alertcheck check [--in <file>] [--pidfile F] 
 	"[--alerts ...] [--folder F] [--states ...] [--preexisting ...] [--min-observed N] [--allow-paused] " +
 	"[--nodata-is-unobservable] [--concurrency N] [--output json]"
 
-// runCheck is the classify step's CLI surface: parse flags into a
-// gate.Config, run gate.Check, and translate its (Result, error) into
-// §20.2/§20.3's output and exit code. All of the correctness lives in
-// gate.Check (P9) and decide (P8) — this file's only job is presentation and
-// the H6/H7 exit-code mapping, which exitCode below keeps as one pure
-// function so it can be tested without a network.
+// runCheck is the classify step's CLI surface: parse flags into a gate.Config,
+// run gate.Check, and translate its (Result, error) into output and an exit
+// code. All of the correctness lives in the gate package — this file's only job
+// is presentation and the exit-code mapping, which exitCode below keeps as one
+// pure function so it can be tested without a network.
 func runCheck(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("check", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	fs.Usage = func() { fmt.Fprintln(stderr, checkUsage) }
 
 	common := registerCommon(fs)
-	in := fs.String("in", "", "path of a log recorded by watch; empty selects single-step mode (§9)")
+	in := fs.String("in", "", "path of a log recorded by watch; empty selects single-step mode")
 	pidfile := fs.String("pidfile", "", "pidfile of the recorder to stop before reading --in (default <in>.pid)")
-	from := fs.String("from", "", "the moment the deploy finished, RFC3339 (required in recorder mode, §7)")
+	from := fs.String("from", "", "the moment the deploy finished, RFC3339 (required with --in)")
 	to := fs.String("to", "", "the end of the window to classify, RFC3339 (required)")
-	states := fs.String("states", "", "comma-separated bad states to classify against (default: firing, §13)")
-	preexisting := fs.String("preexisting", "", "how to judge an instance already bad at `from` (default: fail-unless-recovered, §11.7)")
-	minObserved := fs.Int("min-observed", 0, "minimum rules that must be observed (default: every resolved rule, §12)")
-	allowPaused := fs.Bool("allow-paused", false, "do not count a rule paused before the window against --min-observed (§12.1)")
-	nodataIsUnobservable := fs.Bool("nodata-is-unobservable", false, "treat a sustained health=nodata as unobservable rather than a note (§10.2)")
-	output := fs.String("output", "", `"json" writes the machine-readable Result to stdout in addition to the table (§20.2); default is the table alone`)
+	states := fs.String("states", "", "comma-separated bad states to classify against (default: firing)")
+	preexisting := fs.String("preexisting", "", "how to judge an instance already bad at `from` (default: fail-unless-recovered)")
+	minObserved := fs.Int("min-observed", 0, "minimum rules that must be observed (default: every resolved rule)")
+	allowPaused := fs.Bool("allow-paused", false, "do not count a rule paused before the window against --min-observed")
+	nodataIsUnobservable := fs.Bool("nodata-is-unobservable", false, "treat a sustained health=nodata as unobservable rather than a note")
+	output := fs.String("output", "", `"json" writes the machine-readable Result to stdout in addition to the table; default is the table alone`)
 
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -86,7 +85,7 @@ func runCheck(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		Notes:                stderr,
 	}
 	if *to == "" {
-		fmt.Fprintln(stderr, "check: --to is required (§7)")
+		fmt.Fprintln(stderr, "check: --to is required")
 		return 2
 	}
 	t, err := time.Parse(time.RFC3339, *to)
@@ -131,11 +130,11 @@ func runCheck(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	return exitCode(result, checkErr)
 }
 
-// exitCode is §20.3/H6/H7's whole mapping, kept as one pure function of
+// exitCode is the whole exit-code mapping, kept as one pure function of
 // exactly what Check returns so it is testable without a network: err != nil
 // is exit 2 UNCONDITIONALLY — never 0 and never 1, even alongside real
-// violations, because inability beats violation (H6) and an error is never a
-// pass (H7). Violations without an error is exit 1. Neither is exit 0.
+// violations, because an inability to check beats a violation and an error is
+// never a pass. Violations without an error is exit 1. Neither is exit 0.
 func exitCode(res gate.Result, err error) int {
 	switch {
 	case err != nil:

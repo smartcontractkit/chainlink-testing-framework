@@ -48,7 +48,7 @@ func TestLogReduceKeepsOnlyAbnormalInstances(t *testing.T) {
 		Instances: []Instance{
 			testInstance(StateNormal, "", "a"),
 			testInstance(StateFiring, "", "b"),
-			// Both composites are canonical normal (P1.2a): they must NOT be
+			// Both composites are canonical normal: they must NOT be
 			// retained as abnormal, and their reasons must still be counted.
 			testInstance(StateNormal, "NoData", "c"),
 			testInstance(StateNormal, "Error", "d"),
@@ -67,11 +67,11 @@ func TestLogReduceKeepsOnlyAbnormalInstances(t *testing.T) {
 		t.Errorf("Reasons = %v, want %v", p.Reasons, want)
 	}
 	// The histogram is a verbatim copy of the response totals — raw keys, no
-	// normalization (§4.9).
+	// normalization.
 	if want := map[string]int{"alerting": 1, "normal": 2}; !reflect.DeepEqual(p.Histogram, want) {
 		t.Errorf("Histogram = %v, want %v", p.Histogram, want)
 	}
-	// Rule-level state and health stay raw and unnormalized (P1.2a).
+	// Rule-level state and health stay raw and unnormalized.
 	if p.State != "firing" || p.Health != "ok" {
 		t.Errorf("State/Health = %q/%q, want firing/ok", p.State, p.Health)
 	}
@@ -83,8 +83,8 @@ func TestLogReduceKeepsOnlyAbnormalInstances(t *testing.T) {
 	}
 }
 
-// A filtered response can hold several rules sharing one title (the known
-// 2-way collision, §14.5), so the reducer must select by UID.
+// A filtered response can hold several rules sharing one title, so the reducer
+// must select by UID.
 func TestLogReduceSelectsRuleByUID(t *testing.T) {
 	first := StateRule{UID: "ruleA", Title: "Same Title", Health: "ok", State: "inactive", LastEvaluation: testNow}
 	second := StateRule{
@@ -120,7 +120,7 @@ func TestLogReduceRuleAbsentIsAuthoritative(t *testing.T) {
 	}
 }
 
-// H2: an instance that leaves the abnormal set is resolved against the SAME
+// An instance that leaves the abnormal set is resolved against the SAME
 // response, and MissingSeries is a vanish, never a recovery.
 func TestTransitionMarkersClearedVersusVanished(t *testing.T) {
 	badKey := instanceKey(testInstance(StateFiring, "", "b").Labels)
@@ -249,8 +249,8 @@ func TestTransitionMarkersAreSortedAndPerRule(t *testing.T) {
 	}
 }
 
-// §3.2: the reduction depends on the state endpoint returning normal instances.
-// If it ever stops, that must fail loudly at start, never be assumed.
+// The reduction depends on the state endpoint returning normal instances. If it
+// ever stops, that must fail loudly at start, never be assumed.
 func TestLogVerifyNormalInstancesVisible(t *testing.T) {
 	cases := []struct {
 		fixture   string
@@ -275,8 +275,8 @@ func TestLogVerifyNormalInstancesVisible(t *testing.T) {
 				if err == nil {
 					t.Fatalf("VerifyNormalInstancesVisible: want an error, got nil")
 				}
-				if !strings.Contains(err.Error(), "§3.2") {
-					t.Errorf("error does not name §3.2: %v", err)
+				if !strings.Contains(err.Error(), "no longer returns normal instances") {
+					t.Errorf("error does not say the endpoint stopped returning normal instances: %v", err)
 				}
 				return
 			}
@@ -371,7 +371,7 @@ func TestLogModeCadenceComesFromTheHeader(t *testing.T) {
 	}
 }
 
-// watch polls a fleet concurrently through one Reducer (P6), so the marker
+// watch polls a fleet concurrently through one Reducer, so the marker
 // state it holds per rule must be safe under -race — a latent data race here
 // surfaces as a wrong transition, which is the one thing markers exist to get
 // right.
@@ -405,7 +405,7 @@ func TestLogReduceIsSafeForConcurrentUse(t *testing.T) {
 }
 
 // A not-found poll has no evaluation time, and the artifact is read by humans
-// and jq (§21.3) — the zero time must not appear as though it were real.
+// and jq — the zero time must not appear as though it were real.
 func TestLogPollOmitsTheZeroEvaluationTime(t *testing.T) {
 	absent := NewReducer().Reduce("rule1", observation(testNow))
 	b, err := json.Marshal(pollRecord{Type: RecordPoll, Poll: absent})
@@ -504,13 +504,13 @@ func TestWriterReadLogRoundTrip(t *testing.T) {
 		t.Fatalf("sentinel is nil after Stop")
 	}
 	// Stop stamps the recorder's own stop time and makes no comparison
-	// against `to` — watch never knows it (§4.5).
+	// against `to` — watch never knows it.
 	if !sentinel.Equal(testNow.Add(2 * time.Minute)) {
 		t.Errorf("sentinel = %s, want the writer's stop time %s", sentinel, testNow.Add(2*time.Minute))
 	}
 }
 
-// §8: the log is append-only. A second run against the same path must never
+// The log is append-only. A second run against the same path must never
 // destroy the evidence the first one recorded.
 func TestWriterAppendsAndNeverTruncates(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "log.jsonl")
@@ -529,7 +529,7 @@ func TestWriterAppendsAndNeverTruncates(t *testing.T) {
 		t.Fatalf("read: %v", err)
 	}
 
-	// The P6 handoff: the parent wrote the header and closed; the child
+	// The handoff: the parent wrote the header and closed; the child
 	// reopens the same path and appends without a second header.
 	child, _ := newTestWriter(t, path)
 	if err := child.WritePoll(Poll{RuleUID: "rule1", Found: true, GrafanaNow: testNow.Add(time.Minute)}); err != nil {
@@ -633,8 +633,8 @@ func TestSentinelStopIsIdempotentAndLast(t *testing.T) {
 	}
 }
 
-// Close is the parent's handoff path in P6: a sentinel there would tell check
-// the recording ended before the child had even started.
+// Close is the parent's handoff path: a sentinel there would tell check the
+// recording ended before the child had even started.
 func TestSentinelCloseWritesNone(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "log.jsonl")
 	w, _ := newTestWriter(t, path)
@@ -658,8 +658,9 @@ func TestSentinelCloseWritesNone(t *testing.T) {
 }
 
 // An unfinished recording reads cleanly with a nil sentinel — ReadLog reports
-// the absence and P7 turns it into unobservable. It is never ReadLog's job to
-// call that a failure, and never anyone's job to call it a pass.
+// the absence and the coverage proof turns it into unobservable. It is never
+// ReadLog's job to call that a failure, and never anyone's job to call it a
+// pass.
 func TestReadLogWithoutASentinel(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "log.jsonl")
 	w, _ := newTestWriter(t, path)
@@ -682,7 +683,7 @@ func TestReadLogWithoutASentinel(t *testing.T) {
 	}
 }
 
-// The read rules are deliberately the crudest possible (§24.2): any unparseable
+// The read rules are deliberately the crudest possible: any unparseable
 // line is an error, full stop — including the last one, and including a last
 // line that follows a sentinel.
 func TestReadLogRejectsBadLogs(t *testing.T) {
@@ -778,7 +779,7 @@ func TestReadLogMissingFile(t *testing.T) {
 	}
 }
 
-// §22.3: per-poll log size must not grow across polls on a high-cardinality
+// Per-poll log size must not grow across polls on a high-cardinality
 // rule, and the one firing instance among 2446 must still be attributed by its
 // labels. The reduction makes size independent of NORMAL cardinality — the
 // firing instances are still stored, which is why a clear shrinks the record.
@@ -851,8 +852,8 @@ func TestLogSizeIsFlatAcrossPollsOnAHighCardinalityRule(t *testing.T) {
 }
 
 // The log must stay readable by anything that reads JSONL, one flat object per
-// line with its type tag — an uploaded artifact (§21.3) is read by humans and
-// by jq, not only by ReadLog.
+// line with its type tag — an uploaded artifact is read by humans and by jq,
+// not only by ReadLog.
 func TestLogRecordsAreFlatOneLineObjects(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "log.jsonl")
 	w, _ := newTestWriter(t, path)
