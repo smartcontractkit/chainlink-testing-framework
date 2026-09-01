@@ -40,6 +40,15 @@ exporters:
     verbosity: basic
 
 service:
+  telemetry:
+    metrics:
+      readers:
+        - periodic:
+            interval: 10s
+            exporter:
+              otlp:
+                protocol: http/protobuf
+                endpoint: http://localhost:4318
   pipelines:
     metrics:
       receivers: [ otlp ]

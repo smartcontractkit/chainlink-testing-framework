@@ -31,6 +31,15 @@ processors:
     timeout: 5s
 
 service:
+  telemetry:
+    metrics:
+      readers:
+        - periodic:
+            interval: 10s
+            exporter:
+              otlp:
+                protocol: http/protobuf
+                endpoint: http://localhost:4318
   pipelines:
     traces:
       receivers: [otlp]
