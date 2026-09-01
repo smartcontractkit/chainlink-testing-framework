@@ -20,7 +20,7 @@ func TestParseDefinitions_RulerRules(t *testing.T) {
 	}
 
 	// The real 2-way duplicate title: same folder, same group, same title,
-	// distinct UIDs (§17, §22.2).
+	// distinct UIDs — only uid: can tell them apart.
 	a, ok := byUID["rule0000006a"]
 	if !ok {
 		t.Fatalf("missing rule0000006a")
@@ -81,7 +81,8 @@ func TestParseDefinitions_DatasourceManaged(t *testing.T) {
 	}
 	// A datasource-managed rule has no uid in this shape; its only identity
 	// is the Prometheus "alert" name — a synthetic UID would be invented
-	// shape, and an empty Title would make P3's refusal-by-name unreachable.
+	// shape, and an empty Title would make Resolve's refusal-by-name
+	// unreachable.
 	if defs[0].Title != "ExampleTargetDown" {
 		t.Errorf("Title = %q, want ExampleTargetDown", defs[0].Title)
 	}

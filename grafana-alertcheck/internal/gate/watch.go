@@ -14,7 +14,7 @@ import (
 )
 
 // DaemonChildFlag is the hidden flag the parent passes when it re-execs itself
-// as the detached recorder (§4.4). It is deliberately absent from the CLI's
+// as the detached recorder. It is deliberately absent from the CLI's
 // usage text: an operator never types it, and a child started by hand against
 // a log no parent prepared fails immediately on the header read.
 const DaemonChildFlag = "--daemon-child"
@@ -26,7 +26,7 @@ const DaemonChildFlag = "--daemon-child"
 // loop — and not an assumption drawn from surviving a timer. A timer cannot
 // tell a healthy child from one that is about to die on a slow runner, and
 // getting that wrong means watch returns success over a recording that never
-// happened (§4.3).
+// happened.
 const ReadyFDFlag = "--ready-fd"
 
 // childReadyTimeout bounds that wait. Everything before the signal is local —
@@ -43,7 +43,7 @@ const daemonLogTailBytes = 4096
 //
 // It has no To field and must never gain one: watch writes the stopped
 // sentinel with its OWN stop time and makes no comparison against `to`, which
-// only check knows (§4.5). Passing `to` here would give two components an
+// only check knows. Passing `to` here would give two components an
 // opinion about the same comparison, and the recorder's opinion is the one
 // that cannot be trusted — it exits before the grace it would have to wait for.
 //
@@ -55,18 +55,18 @@ const daemonLogTailBytes = 4096
 // Header carries no States field for the same reason.
 type WatchConfig struct {
 	// URL and Token are the connection details. The CLI reads both from the
-	// environment and never from a flag (§20.2); Token is never logged and
-	// never enters an error string.
+	// environment and never from a flag; Token is never logged and never
+	// enters an error string.
 	URL, Token string
 
-	// Alerts are the operator-supplied names, one per line, in any of §17's
-	// forms. Empty lines are discarded by Resolve.
+	// Alerts are the operator-supplied names, one per line, in any of the forms
+	// Resolve accepts. Empty lines are discarded by Resolve.
 	Alerts []string
 	Folder string
 
 	// Out is the JSONL log path. PidFile and DaemonLog default to
 	// <Out>.pid and <Out>.daemon.log — the same convention check uses to find
-	// the recorder it must stop (P9), so nothing has to be wired by hand.
+	// the recorder it must stop, so nothing has to be wired by hand.
 	Out       string
 	PidFile   string
 	DaemonLog string
@@ -77,11 +77,10 @@ type WatchConfig struct {
 	Until time.Time
 
 	// PollEvery is the --poll-interval override, used verbatim for every rule
-	// and never clamped (§5.1). Zero means each rule polls at half its own
-	// evaluation interval. Whatever this resolves to is written into the header
-	// as the cadence actually used, and that header value — never a
-	// re-derivation from the definitions — is what check derives maxGap from
-	// (P5, "two authorities").
+	// and never clamped. Zero means each rule polls at half its own evaluation
+	// interval. Whatever this resolves to is written into the header as the
+	// cadence actually used, and that header value — never a re-derivation from
+	// the definitions — is what check derives maxGap from.
 	PollEvery time.Duration
 
 	Concurrency int
@@ -90,7 +89,7 @@ type WatchConfig struct {
 	// Notes is where the parent prints what an operator has to see before the
 	// deploy step runs: resolve notes, the cadence per rule, the rules it will
 	// not wait for. nil discards them. The library prints nothing else — the
-	// CLI owns presentation (§20.2).
+	// CLI owns presentation.
 	Notes io.Writer
 }
 
@@ -138,20 +137,20 @@ func (cfg WatchConfig) validate() error {
 	return nil
 }
 
-// Watch is the record step's parent process (§4.3). It returns only once the
-// window is genuinely being recorded:
+// Watch is the record step's parent process. It returns only once the window
+// is genuinely being recorded:
 //
 //	version gate -> resolve definitions and names -> derive timings ->
 //	open the log and write the header -> ONE observation of every non-skipped
-//	rule -> verify §3.2 -> check the schedule budget -> detach the child ->
-//	wait for the child to report that it is recording -> write the pidfile ->
-//	return.
+//	rule -> verify normal instances are visible -> check the schedule budget ->
+//	detach the child -> wait for the child to report that it is recording ->
+//	write the pidfile -> return.
 //
 // The first-observation wait is not a convenience. Returning before it would
 // leave the deploy inside [from, first_poll] with no evidence — the exact
-// blind interval the two-phase model exists to remove — and it is also what
-// surfaces auth, name-resolution and parse failures BEFORE deploy.sh runs
-// rather than ten minutes later.
+// blind interval the record-then-check split exists to remove — and it is
+// also what surfaces auth, name-resolution and parse failures BEFORE
+// deploy.sh runs rather than ten minutes later.
 func Watch(ctx context.Context, cfg WatchConfig) error {
 	cfg = cfg.withDefaults()
 	if err := cfg.validate(); err != nil {
@@ -165,8 +164,8 @@ func Watch(ctx context.Context, cfg WatchConfig) error {
 	}
 
 	// Hand the log over with Close, never Stop: a sentinel here would tell
-	// check the recording ended before the child had even started (§4.5).
-	// Closing also releases the flock the child is about to take.
+	// check the recording ended before the child had even started. Closing
+	// also releases the flock the child is about to take.
 	if err := prep.writer.Close(); err != nil {
 		return err
 	}
@@ -181,8 +180,8 @@ func Watch(ctx context.Context, cfg WatchConfig) error {
 
 	// The PARENT writes the pidfile, not the child: check must find the pid the
 	// instant Watch returns, and a child writing its own would race the very
-	// next step of the pipeline. A deviation from P6's argv list, and the
-	// reason the child is never given --pidfile at all.
+	// next step of the pipeline. That is why the child is never given
+	// --pidfile at all.
 	//
 	// It is written only once the child has reported ready, so no path through
 	// this function leaves a pidfile naming a process that is not recording.
@@ -276,8 +275,8 @@ type preparedWatch struct {
 
 // prepareWatch is everything the parent does before it detaches. It takes a
 // Source rather than building one so the paused-rule, first-observation,
-// §3.2 and budget behaviours are all testable with a scripted fake — only the
-// process spawning needs a real binary.
+// instance-visibility and budget behaviours are all testable with a scripted
+// fake — only the process spawning needs a real binary.
 func prepareWatch(ctx context.Context, cfg WatchConfig, src Source) (*preparedWatch, error) {
 	version, err := src.Version(ctx)
 	if err != nil {
@@ -306,7 +305,7 @@ func prepareWatch(ctx context.Context, cfg WatchConfig, src Source) (*preparedWa
 	for _, d := range resolved {
 		// A cadence of zero would make the child spin: every rule is due the
 		// instant it was marked. It also cannot be written into the header,
-		// where check requires a positive value to derive maxGap from (P5).
+		// where check requires a positive value to derive maxGap from.
 		if rt[d.UID].pollEvery <= 0 {
 			return nil, fmt.Errorf("rule %q (%s) reports intervalSeconds=%d: there is no poll cadence to record at",
 				d.Title, d.UID, d.IntervalSeconds)
@@ -344,18 +343,18 @@ func openRecording(ctx context.Context, cfg WatchConfig, src Source, writer *Wri
 		return nil, err
 	}
 
-	// A rule whose DEFINITION says is_paused is skipped (§12): it is not
-	// waited for, not scheduled and never polled. Waiting for one either hangs
-	// forever or errors before the deploy (§4.3), and recording polls for it
-	// would report an in-window pause (coverage check 7) for a rule that was
-	// already paused when the window opened — turning §12's exit 1 into an
-	// exit 2. The header still names it, with is_paused true, so check reports
-	// it as skipped from the definitions.
+	// A rule whose DEFINITION says is_paused is skipped: it is not waited for,
+	// not scheduled and never polled. Waiting for one either hangs forever or
+	// errors before the deploy, and recording polls for it would report an
+	// in-window pause (coverage check 7) for a rule that was already paused
+	// when the window opened — turning a skipped rule's exit 1 into an exit 2.
+	// The header still names it, with is_paused true, so check reports it as
+	// skipped from the definitions.
 	var active []Definition
 	activeTimings := make(map[string]ruleTimings, len(resolved))
 	for _, d := range resolved {
 		if d.IsPaused {
-			fmt.Fprintf(cfg.Notes, "note: rule %q (%s) is paused: recorded as skipped, not waited for (§4.3)\n", d.Title, d.UID)
+			fmt.Fprintf(cfg.Notes, "note: rule %q (%s) is paused: recorded as skipped, not waited for\n", d.Title, d.UID)
 			continue
 		}
 		active = append(active, d)
@@ -373,9 +372,9 @@ func openRecording(ctx context.Context, cfg WatchConfig, src Source, writer *Wri
 		}
 	}
 
-	// Budget last, on the latencies just measured — never on a fixed estimate
-	// (§5.2). Only the active rules count: a skipped rule is never polled and
-	// consumes none of the capacity.
+	// Budget last, on the latencies just measured — never on a fixed estimate.
+	// Only the active rules count: a skipped rule is never polled and consumes
+	// none of the capacity.
 	if err := CheckBudget(activeTimings, measured, cfg.Concurrency); err != nil {
 		return nil, err
 	}
@@ -385,9 +384,9 @@ func openRecording(ctx context.Context, cfg WatchConfig, src Source, writer *Wri
 
 // loggedRules snapshots the resolved definitions into the header's rule list.
 // Every field but PollEverySeconds is forensic — a resolve-time snapshot that
-// makes an uploaded log self-describing (§21.3) — while PollEverySeconds is
+// makes an uploaded log self-describing — while PollEverySeconds is
 // load-bearing: it is the cadence this recording actually used, and check
-// derives maxGap from it rather than from the definitions (P5).
+// derives maxGap from it rather than from the definitions.
 func loggedRules(defs []Definition, rt map[string]ruleTimings) []LoggedRule {
 	out := make([]LoggedRule, 0, len(defs))
 	for _, d := range defs {
@@ -408,17 +407,17 @@ func loggedRules(defs []Definition, rt map[string]ruleTimings) []LoggedRule {
 }
 
 // firstObservations takes one observation of every rule in active, verifies
-// §3.2 against those very responses, and reduces each into the poll record
-// that IS the window's first heartbeat — plus the measured latency of each,
-// which is the only honest input to §5.2's budget check (a fixed estimate is
-// worthless when one rule's payload is ~230x another's).
+// that normal instances are visible in those very responses, and reduces each
+// into the poll record that IS the window's first heartbeat — plus the measured
+// latency of each, which is the only honest input to the budget check (a fixed
+// estimate is worthless when one rule's payload is ~230x another's).
 //
-// Both entry paths share it: watch's parent, before it detaches (§4.3), and
+// Both entry paths share it: watch's parent, before it detaches, and
 // single-step check's measurement pass, which keeps the polls as evidence
-// rather than writing them to a log (P9). Keeping one implementation is the
-// point — the §3.2 verification and the "absent is a warning, not an error"
-// rule are exactly the places where two copies would silently drift, and a
-// drift in either direction is fail-open.
+// rather than writing them to a log. Keeping one implementation is the point —
+// the instance-visibility verification and the "absent is a warning, not an
+// error" rule are exactly the places where two copies would silently drift, and
+// a drift in either direction is fail-open.
 //
 // polls come back in `active` order, so a log written from them is byte-stable
 // for a given set of observations.
@@ -437,7 +436,7 @@ func firstObservations(ctx context.Context, src Source, active []Definition, red
 		return nil, nil, err
 	}
 
-	// Verify §3.2 before anything downstream relies on it: if the state
+	// Verify this before anything downstream relies on it: if the state
 	// endpoint ever stops returning normal instances, the reduction's "keep
 	// the non-normal ones" silently becomes "keep everything it happened to
 	// send" and the transition markers lose their ground truth.
@@ -454,12 +453,12 @@ func firstObservations(ctx context.Context, src Source, active []Definition, red
 		measured[d.UID] = obs.Latency
 		poll := reducer.Reduce(d.UID, obs)
 		if !poll.Found {
-			// Authoritative, not transient (P2 already retried transport
-			// failures): the rule resolved in the ruler API but the state
-			// endpoint does not serve it. Recorded as Found=false, which P7
-			// check 8 turns into unobservable — a note rather than an error
-			// here, because the state endpoint can lag a freshly created rule
-			// and the coverage proof fails closed either way.
+			// Authoritative, not transient (the transport already retried
+			// every transient failure): the rule resolved in the ruler API but
+			// the state endpoint does not serve it. Recorded as Found=false,
+			// which the coverage proof turns into unobservable — a note rather
+			// than an error here, because the state endpoint can lag a freshly
+			// created rule and the coverage proof fails closed either way.
 			fmt.Fprintf(notes, "warning: rule %q (%s) is absent from the state endpoint; recorded as not found\n", d.Title, d.UID)
 		}
 		polls = append(polls, poll)
@@ -469,8 +468,9 @@ func firstObservations(ctx context.Context, src Source, active []Definition, red
 
 // observeAll polls every rule in uids concurrently, bounded by concurrency,
 // and returns one Observation per rule that answered. Every rule is polled by
-// TITLE (the ?rule_name= filter, §2.8) and selected out of the response by
-// UID (§14.5) — a filtered response can carry several rules sharing one title.
+// TITLE (the ?rule_name= filter is a title filter) and selected out of the
+// response by UID — a filtered response can carry several rules sharing one
+// title.
 //
 // It returns the successful observations alongside the first error in UID
 // order, so a caller that wants to keep the good heartbeats can, and the error
@@ -518,9 +518,9 @@ func observeAll(ctx context.Context, src Source, titles map[string]string, uids 
 // parent already wrote — one source of truth, no parent/child drift, and it
 // exercises ReadLog's header path — and the connection details come from the
 // inherited environment. Only the run facts the header does not carry travel
-// in argv (§4.4).
+// in argv.
 type DaemonChildConfig struct {
-	URL, Token  string // from the inherited environment, never from argv (§20.2)
+	URL, Token  string // from the inherited environment, never from argv
 	Out         string
 	Until       time.Time
 	Concurrency int
@@ -549,7 +549,7 @@ func RunDaemonChild(ctx context.Context, cfg DaemonChildConfig) error {
 	}
 
 	// Safe to read: the parent closed its writer before spawning this process,
-	// and no other writer can hold the log's flock (§4.4 step 4).
+	// and no other writer can hold the log's flock.
 	header, polls, sentinel, err := ReadLog(cfg.Out)
 	if err != nil {
 		return err
@@ -557,7 +557,7 @@ func RunDaemonChild(ctx context.Context, cfg DaemonChildConfig) error {
 	if sentinel != nil {
 		return fmt.Errorf("log %s already carries a stopped sentinel: another recorder finished it", cfg.Out)
 	}
-	// The header's URL is the log's identity (§19.1 step 3). Checking it here
+	// The header's URL is the log's identity. Checking it here
 	// catches a child that inherited an environment pointing somewhere else,
 	// before it appends a single poll from the wrong Grafana.
 	if header.URL != cfg.URL {
@@ -577,7 +577,7 @@ func RunDaemonChild(ctx context.Context, cfg DaemonChildConfig) error {
 	reducer := NewReducer()
 	reducer.seedFrom(polls)
 
-	// SIGTERM is how check stops the recorder (§4.4 step 1); SIGINT is the
+	// SIGTERM is how check stops the recorder; SIGINT is the
 	// same request from a human at a terminal. Both are clean stops, so both
 	// end with a sentinel. Registered before the readiness report, so a signal
 	// arriving the moment the parent unblocks is already handled.
@@ -623,10 +623,10 @@ func reportReady(fd int) error {
 
 // childSchedule derives what the child polls, and how often, from the header
 // alone. The cadence comes from PollEverySeconds — the cadence the recording
-// actually uses — and is never re-derived from the rule's evaluation interval:
-// that is P5's "two authorities", and getting it wrong is fail-open in the
-// faster-override direction. Paused rules are excluded here for the same
-// reason the parent never polls them (§4.3, §12).
+// actually uses — and is never re-derived from the rule's evaluation interval,
+// which would be a second authority for the same value and is fail-open in the
+// faster-override direction. Paused rules are excluded here for the same reason
+// the parent never polls them.
 //
 // It returns cadences and nothing else. maxGap, healthGrace and evalStaleAfter
 // are coverage thresholds applied by the pure layer at classification time, so
@@ -653,7 +653,7 @@ func childSchedule(h Header) (titles map[string]string, cadence map[string]time.
 
 // watchLoopConfig is the child's working state: what to poll, how often, and
 // where to append it. There is no threshold in here and no policy — the child
-// records and classifies nothing (H5).
+// records and classifies nothing.
 type watchLoopConfig struct {
 	Src         Source
 	Writer      *Writer
@@ -671,7 +671,7 @@ type watchLoopConfig struct {
 //
 // The sentinel policy is the load-bearing part. A clean stop (a signal, or
 // Until) writes it; a hard error does NOT. A recorder that died must look
-// exactly like a coverage gap to check, because it is one (§4.5) — writing a
+// exactly like a coverage gap to check, because it is one — writing a
 // sentinel on the way out of a failure would hand check a "recording finished"
 // claim about a window that stopped being observed.
 func watchLoop(ctx context.Context, cfg watchLoopConfig) error {
@@ -716,8 +716,8 @@ func watchLoop(ctx context.Context, cfg watchLoopConfig) error {
 		pollErr := cfg.pollBatch(ctx, due)
 		if ctx.Err() != nil {
 			// Signalled while a poll was in flight. The aborted poll's error is
-			// not a recorder failure, and a clean stop wins over it (§4.4 step
-			// 1: finish the in-flight write, then the sentinel).
+			// not a recorder failure, and a clean stop wins over it: finish the
+			// in-flight write, then the sentinel.
 			return cfg.Writer.Stop()
 		}
 		if pollErr != nil {
@@ -761,7 +761,7 @@ func untilNextPoll(sched *Scheduler, until, now time.Time) (time.Duration, bool)
 	return max(next.Sub(now), 0), true
 }
 
-// writePidFile records the child's pid where check looks for it (P9's
+// writePidFile records the child's pid where check looks for it (its
 // --pidfile, default <in>.pid). The format is the decimal pid and a newline,
 // so `kill $(cat log.jsonl.pid)` works and ReadPidFile stays trivial.
 func writePidFile(path string, pid int) error {
@@ -772,7 +772,7 @@ func writePidFile(path string, pid int) error {
 }
 
 // ReadPidFile is the other side of that contract: the pid of the recorder
-// check must stop before it may read the log (§4.4 steps 1-4).
+// check must stop before it may read the log.
 func ReadPidFile(path string) (int, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {

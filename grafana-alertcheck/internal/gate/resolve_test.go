@@ -143,8 +143,8 @@ func TestResolve_RejectsEmptySegments(t *testing.T) {
 }
 
 func TestResolve_UIDEmptySuffix(t *testing.T) {
-	// ruler_datasource_managed.json's only rule has UID == "" (P1.3: this
-	// shape has no uid at all). "uid:" with an empty suffix must not match it
+	// ruler_datasource_managed.json's only rule has UID == "" — that shape has
+	// no uid at all. "uid:" with an empty suffix must not match it
 	// — that would report the misleading "datasource-managed rule, not
 	// supported" for what is really a typo'd/empty uid.
 	defs, err := ParseDefinitions(readFixture(t, "ruler_datasource_managed.json"))
@@ -216,8 +216,7 @@ func TestResolve_UnsupportedHomonymResolvesSupportedSilently(t *testing.T) {
 func TestResolve_CollapseByUIDGivesNoteNotError(t *testing.T) {
 	defs := rulerDefs(t)
 	// The bare title and its Folder/Group/Title spelling both name the same
-	// rule (rule0000007) — a duplicate-name copy mistake, not an error
-	// (§17.3).
+	// rule (rule0000007) — a duplicate-name copy mistake, not an error.
 	resolved, notes, err := Resolve(defs, []string{
 		"example_workflow_paused_rule",
 		"ExampleObservability/Example Auth Production/example_workflow_paused_rule",
@@ -233,9 +232,8 @@ func TestResolve_CollapseByUIDGivesNoteNotError(t *testing.T) {
 	}
 }
 
-// §22.2: "the same rule with two identical names ... must collapse to one
-// rule" — the literal exact-duplicate-string case, distinct from the
-// different-spellings case above.
+// The same rule named twice with the identical string must collapse to one
+// rule — distinct from the different-spellings case above.
 func TestResolve_IdenticalDuplicateNameCollapsesWithNote(t *testing.T) {
 	defs := rulerDefs(t)
 	resolved, notes, err := Resolve(defs, []string{
@@ -264,7 +262,7 @@ func TestResolve_MinObservedCountIsPostCollapse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Resolve: unexpected error: %v", err)
 	}
-	// §17.3: the default MinObserved must come from len(resolved) (2 distinct
+	// The default MinObserved must come from len(resolved) (2 distinct
 	// rules) — never len(names) (3 input lines), which would be unsatisfiable.
 	if len(resolved) != 2 {
 		t.Fatalf("resolved = %+v, want 2 distinct rules after collapse", resolved)

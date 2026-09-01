@@ -14,8 +14,8 @@ import (
 	"time"
 )
 
-// Clock is the seam that lets tests advance time without sleeping (§22) — the
-// only two operations the gate ever needs from a clock.
+// Clock is the seam that lets tests advance time without sleeping — the only
+// two operations the gate ever needs from a clock.
 type Clock interface {
 	Now() time.Time
 	After(d time.Duration) <-chan time.Time
@@ -29,9 +29,9 @@ func (SystemClock) After(d time.Duration) <-chan time.Time { return time.After(d
 
 // Observation is one successful poll of the state endpoint for a single rule.
 type Observation struct {
-	Rules      []StateRule   // may be empty — an authoritative 2xx saying the rule is absent (§14.5)
-	GrafanaNow time.Time     // the Date header — H4
-	Skew       time.Duration // serverDate - (t_send+t_headers)/2, signed (§16)
+	Rules      []StateRule   // may be empty — an authoritative 2xx saying the rule is absent
+	GrafanaNow time.Time     // the response's Date header
+	Skew       time.Duration // serverDate - (t_send+t_headers)/2, signed
 	SkewBound  time.Duration // (t_headers-t_send)/2 — RTT/2 to the response headers
 	Latency    time.Duration // t_send through the full body read — see requestResult.Latency
 }
@@ -40,7 +40,7 @@ type Observation struct {
 // network failure, or a body that failed to parse. It is never a deleted rule
 // (an authoritative 2xx with no matching rule is not this) and never a clock
 // problem (a missing/unparseable Date header or an out-of-bounds skew is a
-// hard error instead — see doRequest). Never conflate them (§14.5).
+// hard error instead — see doRequest). Never conflate them.
 type TransportError struct {
 	Err    error
 	Status int // 0 when the failure never got a status (network/transport failure)
@@ -59,10 +59,10 @@ func (e *TransportError) Unwrap() error { return e.Err }
 // too many sequential *TransportError failures. It deliberately does not
 // implement Unwrap into the underlying *TransportError: once retries are
 // exhausted the result is a hard, terminal failure, and
-// errors.AsType[*TransportError] must never re-classify it as retryable —
-// that is the exact conflation §19.3 case 1 forbids. Cause is still exposed
-// as a plain field (and folded into Error()'s text) so a caller can log or
-// inspect it; it just cannot flow back into the retry classification.
+// errors.AsType[*TransportError] must never re-classify it as retryable.
+// Cause is still exposed as a plain field (and folded into Error()'s text) so
+// a caller can log or inspect it; it just cannot flow back into the retry
+// classification.
 type RetryExhaustedError struct {
 	Failures int
 	Cause    error
@@ -73,7 +73,7 @@ func (e *RetryExhaustedError) Error() string {
 }
 
 // Source is everything the gate reads from Grafana. httpSource is the one
-// production implementation; every later phase's tests use a scripted fake
+// production implementation; the tests use a scripted fake
 // (source_fake_test.go) instead of real HTTP.
 type Source interface {
 	Version(ctx context.Context) (string, error)
@@ -129,7 +129,7 @@ func parseGrafanaVersion(s string) (grafanaVersion, error) {
 }
 
 // supportedGrafanaMin and supportedGrafanaMax bound the platform this gate is
-// verified against (§2.7 control 2, §21.5): >= 13.0.0, < 14.0.0.
+// verified against: >= 13.0.0, < 14.0.0.
 var (
 	supportedGrafanaMin = grafanaVersion{13, 0, 0}
 	supportedGrafanaMax = grafanaVersion{14, 0, 0} // exclusive
@@ -137,8 +137,9 @@ var (
 
 // CheckGrafanaVersion enforces the supported range. An unparseable or
 // out-of-range version is a hard error naming both what was found and what is
-// supported — trusting an unverified schema is exactly the deprecation risk
-// §2.7 control 2 exists to catch.
+// supported: the response schemas this gate parses are only verified against
+// that range, and trusting an unverified one is how a deprecation turns into a
+// silent misread.
 func CheckGrafanaVersion(version string) error {
 	v, err := parseGrafanaVersion(version)
 	if err != nil {
@@ -152,12 +153,12 @@ func CheckGrafanaVersion(version string) error {
 	return nil
 }
 
-// httpSource is the production Source: stdlib net/http only, bearer auth
-// from a token supplied at construction (the caller reads it from the
-// environment — §20.2 — this type never touches env itself), and manual
-// strict decoding via ParseState/ParseDefinitions (H1). The retry limit and
-// backoff parameters are struct fields with production defaults set here,
-// not package constants, so a test can shrink them without a hook.
+// httpSource is the production Source: stdlib net/http only, bearer auth from
+// a token supplied at construction (the caller reads it from the environment;
+// this type never touches env itself), and manual strict decoding via
+// ParseState/ParseDefinitions. The retry limit and backoff parameters are
+// struct fields with production defaults set here, not package constants, so a
+// test can shrink them without a hook.
 type httpSource struct {
 	baseURL string
 	token   string
@@ -169,9 +170,8 @@ type httpSource struct {
 	backoffCap            time.Duration
 }
 
-// NewHTTPSource builds the production Source. token is never logged and
-// never enters an error string (§20.2) — it is used only to set the
-// Authorization header.
+// NewHTTPSource builds the production Source. token is never logged and never
+// enters an error string — it is used only to set the Authorization header.
 func NewHTTPSource(baseURL, token string, clock Clock) Source {
 	return &httpSource{
 		baseURL:               strings.TrimSuffix(baseURL, "/"),
@@ -228,8 +228,8 @@ func (s *httpSource) RuleState(ctx context.Context, title string) (Observation, 
 		if parseErr != nil {
 			// Treated as transient, not a schema break: an unparseable 2xx
 			// is far more likely a mid-stream hiccup than a permanent shape
-			// change, and H1's strict parser already turns a real shape
-			// change into a loud per-field error the moment it's visible.
+			// change, and the strict parser already turns a real shape change
+			// into a loud per-field error the moment it's visible.
 			return Observation{}, &TransportError{Err: fmt.Errorf("parse rule state: %w", parseErr)}
 		}
 		return Observation{
@@ -244,33 +244,32 @@ func (s *httpSource) RuleState(ctx context.Context, title string) (Observation, 
 
 // requestResult is the outcome of one successful HTTP attempt in doRequest:
 // the raw body plus everything derived from timing the round trip against
-// the response's own clock (§16).
+// the response's own clock.
 type requestResult struct {
 	Body       []byte
-	ServerDate time.Time     // the Date header — H4
+	ServerDate time.Time     // the response's Date header
 	Skew       time.Duration // serverDate - (t_send+t_headers)/2, signed
 	SkewBound  time.Duration // (t_headers-t_send)/2 — RTT/2 to the response headers
-	// Latency spans t_send through the full body read (§5.2's budget check
-	// needs the whole poll's wall time, or a schedule feasibility check that
-	// only sees header latency goes optimistic — fail-open). It does not
-	// include the caller's subsequent JSON parse (ParseState/ParseDefinitions
-	// run outside doRequest); if P4's budget accounting needs parse time
-	// folded in too, extend here rather than approximating it at the call
-	// site.
+	// Latency spans t_send through the full body read: the budget check needs
+	// the whole poll's wall time, or a schedule feasibility check that only
+	// sees header latency goes optimistic — fail-open. It does not include the
+	// caller's subsequent JSON parse (ParseState/ParseDefinitions run outside
+	// doRequest); if the budget accounting ever needs parse time folded in too,
+	// extend here rather than approximating it at the call site.
 	Latency time.Duration
 }
 
-// doRequest performs one HTTP GET and classifies the outcome (§14.5, §16):
-// a network failure, a non-2xx status, or a body-read failure is retryable
+// doRequest performs one HTTP GET and classifies the outcome: a network
+// failure, a non-2xx status, or a body-read failure is retryable
 // (*TransportError); a missing or unparseable Date header, or a skew beyond
 // SkewHardLimit, is a hard error — retrying can never fix either, so neither
-// may enter the backoff loop (H4).
+// may enter the backoff loop.
 //
 // The Date-header/skew check runs for every endpoint this hits, including
-// /api/health — broader than §16's own scope, which only discusses the state
-// endpoint. Deliberate: a skewed clock discovered only once RuleState starts
-// polling is a skew that has already masked whatever /api/health and the
-// ruler read reported; failing closed at the first response catches it
+// /api/health, and not only the state endpoint whose timestamps the gate
+// actually compares. Deliberate: a skewed clock discovered only once RuleState
+// starts polling is a skew that has already masked whatever /api/health and
+// the ruler read reported; failing closed at the first response catches it
 // before any of that is trusted, and every response comes with a Date header
 // for free.
 func (s *httpSource) doRequest(ctx context.Context, path string) (requestResult, error) {
@@ -303,7 +302,7 @@ func (s *httpSource) doRequest(ctx context.Context, path string) (requestResult,
 
 	dateHeader := resp.Header.Get("Date")
 	if dateHeader == "" {
-		return requestResult{}, fmt.Errorf("%s: response has no Date header (H4)", path)
+		return requestResult{}, fmt.Errorf("%s: response has no Date header", path)
 	}
 	serverDate, parseErr := http.ParseTime(dateHeader)
 	if parseErr != nil {
@@ -318,7 +317,7 @@ func (s *httpSource) doRequest(ctx context.Context, path string) (requestResult,
 		absSkew = -absSkew
 	}
 	if absSkew > SkewHardLimit {
-		return requestResult{}, fmt.Errorf("%s: clock skew %s exceeds hard limit %s (§16)", path, absSkew, SkewHardLimit)
+		return requestResult{}, fmt.Errorf("%s: clock skew %s exceeds hard limit %s", path, absSkew, SkewHardLimit)
 	}
 
 	return requestResult{Body: b, ServerDate: serverDate, Skew: signedSkew, SkewBound: bound, Latency: latency}, nil
@@ -327,9 +326,9 @@ func (s *httpSource) doRequest(ctx context.Context, path string) (requestResult,
 // retryTransport runs fn, retrying with backoff only while it fails with a
 // *TransportError — any other error is a hard error and returns immediately,
 // never retried. failures counts consecutive *TransportError results;
-// exceeding maxFailures gives up with a wrapped hard error (§19.3 case 1).
-// The wait between attempts goes through clock.After so a test with a fake
-// Clock never sleeps on real time (§22).
+// exceeding maxFailures gives up with a wrapped hard error. The wait between
+// attempts goes through clock.After so a test with a fake Clock never sleeps on
+// real time.
 func retryTransport[T any](ctx context.Context, clock Clock, maxFailures int, backoffBase, backoffCap time.Duration, fn func() (T, error)) (T, error) {
 	var zero T
 	failures := 0
@@ -354,7 +353,7 @@ func retryTransport[T any](ctx context.Context, clock Clock, maxFailures int, ba
 }
 
 // backoffDelay is 1s base, doubling per failure, capped at maxDelay, with
-// ±20% jitter (§5's filled-in value for maxSequentialFailures).
+// ±20% jitter.
 func backoffDelay(base, maxDelay time.Duration, failureCount int) time.Duration {
 	d := base
 	for i := 1; i < failureCount && d < maxDelay; i++ {

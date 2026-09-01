@@ -45,7 +45,7 @@ func TestProveCoverage_FiltersPollsByUID(t *testing.T) {
 	}
 }
 
-// --- Check 1: sentinel (§4.5) ---
+// --- Check 1: sentinel ---
 
 func TestProveCoverage_NoSentinelIsUnobservable(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -109,7 +109,7 @@ func TestProveCoverage_SentinelExactlyAtGraceIsFine(t *testing.T) {
 	}
 }
 
-// --- Check 2: from bounds (§7) ---
+// --- Check 2: from bounds ---
 
 func TestProveCoverage_FromBeforeRecordIsUnobservable(t *testing.T) {
 	started := time.Date(2026, 1, 1, 1, 0, 0, 0, time.UTC)
@@ -141,10 +141,10 @@ func TestProveCoverage_FromBeforeRecordIsUnobservable(t *testing.T) {
 	}
 }
 
-// --- Check 3: heartbeat continuity (§6) ---
+// --- Check 3: heartbeat continuity ---
 
-// TestProveCoverage_HeartbeatGapBetweenBoundariesIsUnobservable is §22.4's
-// core regression: data at both ends with a hole between is not enough.
+// The core heartbeat regression: data at both ends with a hole between is not
+// enough.
 func TestProveCoverage_HeartbeatGapBetweenBoundariesIsUnobservable(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
@@ -159,7 +159,7 @@ func TestProveCoverage_HeartbeatGapBetweenBoundariesIsUnobservable(t *testing.T)
 
 	res := proveCoverage(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, rt, def, from, to, 0)
 	if res.Reason != ReasonHeartbeatGap {
-		t.Fatalf("Reason = %q, want heartbeat_gap: healthy edges with a hole in the middle must still fail (§22.4)", res.Reason)
+		t.Fatalf("Reason = %q, want heartbeat_gap: healthy edges with a hole in the middle must still fail", res.Reason)
 	}
 	// The gap is the SPACING between the two polls (598s), not either
 	// boundary segment (1s each) — pin the actual values, not just the verdict.
@@ -172,7 +172,7 @@ func TestProveCoverage_HeartbeatGapBetweenBoundariesIsUnobservable(t *testing.T)
 	}
 }
 
-// --- Check 4/5: health (§10.1/§10.2) ---
+// --- Check 4/5: health ---
 
 func TestProveCoverage_HealthErrorShortBlipPassesWithNote(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -193,7 +193,7 @@ func TestProveCoverage_HealthErrorShortBlipPassesWithNote(t *testing.T) {
 
 	res := proveCoverage(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, rt, def, from, to, 0)
 	if !res.Proved {
-		t.Fatalf("Proved = false, want true: one failed evaluation must not fail an otherwise clean window (§22.1): %+v", res)
+		t.Fatalf("Proved = false, want true: one failed evaluation must not fail an otherwise clean window: %+v", res)
 	}
 	if !anyContains(res.Notes, "health=error") {
 		t.Fatalf("Notes = %v, want a health=error note even though it did not fail the window", res.Notes)
@@ -238,20 +238,19 @@ func TestProveCoverage_HealthNodataNeverFatalHere(t *testing.T) {
 	res := proveCoverage(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, rt, def, from, to, 0)
 	if !res.Proved {
 		t.Fatalf("Proved = false, want true: health=nodata for the WHOLE window must still not be fatal by itself "+
-			"(escalating it is Policy.NodataIsUnobservable's job, applied by decide in a later phase): %+v", res)
+			"(escalating it is Policy.NodataIsUnobservable's job, applied by decide): %+v", res)
 	}
 	if !anyContains(res.Notes, "health=nodata") {
 		t.Fatalf("Notes = %v, want a health=nodata note", res.Notes)
 	}
 }
 
-// --- Check 6: liveness / H3 ---
+// --- Check 6: liveness ---
 
-// TestProveCoverage_LivenessAbsoluteNeverFalseStale is §22.7's disproportionate
-// test: a healthy rule polled at intervalSeconds/2, across the full window,
-// must show zero staleness violations. lastEvaluation only advances once per
-// full evaluation interval here — the realistic shape a delta check
-// misreads as stale on roughly half of all polls (H3).
+// A healthy rule polled at intervalSeconds/2, across the full window, must
+// show zero staleness violations. lastEvaluation only advances once per full
+// evaluation interval here — the realistic shape a delta check misreads as
+// stale on roughly half of all polls.
 func TestProveCoverage_LivenessAbsoluteNeverFalseStale(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	pollEvery := 30 * time.Second
@@ -272,7 +271,7 @@ func TestProveCoverage_LivenessAbsoluteNeverFalseStale(t *testing.T) {
 
 	res := proveCoverage(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, rt, def, from, windowEnd, 0)
 	if res.Reason == ReasonStaleEvaluation || res.BlindFor != 0 {
-		t.Fatalf("proveCoverage flagged staleness on a healthy rule polled at intervalSeconds/2 — H3 must be absolute, "+
+		t.Fatalf("proveCoverage flagged staleness on a healthy rule polled at intervalSeconds/2 — liveness must be absolute, "+
 			"never a delta against a previous poll: %+v", res)
 	}
 	if !res.Proved {
@@ -312,9 +311,8 @@ func TestProveCoverage_ZeroLastEvaluationNeverFalseStale(t *testing.T) {
 	rt := newRuleTimings(30*time.Second, 60)
 	def := Definition{UID: "r1", Title: "R1"}
 
-	// A paused rule legitimately reports the zero time (§2.3); check 6 must
-	// not read that as an enormous staleness violation. Check 7 is its
-	// detector.
+	// A paused rule legitimately reports the zero time; check 6 must not read
+	// that as an enormous staleness violation. Check 7 is its detector.
 	polls := []Poll{
 		{RuleUID: "r1", GrafanaNow: from.Add(time.Minute), Found: true, IsPaused: true},
 	}
@@ -326,7 +324,7 @@ func TestProveCoverage_ZeroLastEvaluationNeverFalseStale(t *testing.T) {
 	}
 }
 
-// --- Check 7: isPaused in-window (§12.2, §14.8) ---
+// --- Check 7: isPaused in-window ---
 
 func TestProveCoverage_PausedInWindowIsUnobservable(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -341,7 +339,7 @@ func TestProveCoverage_PausedInWindowIsUnobservable(t *testing.T) {
 	for i := range polls {
 		if polls[i].GrafanaNow.Equal(pausedAt) {
 			polls[i].IsPaused = true
-			polls[i].LastEvaluation = time.Time{} // legal only while paused, §2.3
+			polls[i].LastEvaluation = time.Time{} // legal only while paused
 		}
 	}
 	sentinel := to
@@ -379,7 +377,7 @@ func TestProveCoverage_PausedAfterWindowIsFine(t *testing.T) {
 	}
 }
 
-// --- Check 8: rule absent (§14.5) ---
+// --- Check 8: rule absent ---
 
 func TestProveCoverage_RuleAbsentIsUnobservable(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -418,7 +416,7 @@ func denseHealthyPolls(uid string, from, to time.Time, every time.Duration) []Po
 	return out
 }
 
-// --- Check 9: KeepLast (§10.2) ---
+// --- Check 9: KeepLast ---
 
 func TestProveCoverage_KeepLastObservedIsNoteOnly(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -431,7 +429,7 @@ func TestProveCoverage_KeepLastObservedIsNoteOnly(t *testing.T) {
 		polls = append(polls, Poll{
 			RuleUID: "r1", GrafanaNow: ts, Found: true, Health: "ok", LastEvaluation: ts,
 			// A comma-joined composite — reasonsContain must match by
-			// membership, never by an exact key, per P5's markers.
+			// membership, never by an exact key.
 			Reasons: map[string]int{"KeepLast, MissingSeries": 1},
 		})
 	}
@@ -446,8 +444,8 @@ func TestProveCoverage_KeepLastObservedIsNoteOnly(t *testing.T) {
 	}
 }
 
-// §22.2/§10.2: "KeepLast in the configuration gives a note" — a DIFFERENT
-// claim from the observed-reason test above. A rule DECLARED with
+// KeepLast in the CONFIGURATION gives a note — a different claim from the
+// observed-reason test above. A rule DECLARED with
 // no_data_state or exec_err_state = KeepLast is a standing blind spot
 // whether or not any poll ever actually reports the reason, so the note
 // must fire off the definition alone, over an otherwise perfectly healthy
@@ -480,12 +478,11 @@ func TestProveCoverage_KeepLastConfiguredIsNoteOnly(t *testing.T) {
 	}
 }
 
-// --- Clock domains (§16) ---
+// --- Clock domains ---
 
-// TestProveCoverage_SkewTranslationAtWindowBoundary pins §16's "Clock
-// domains" rule: a constant clock skew on every poll must not itself read as
-// a coverage gap or a from-before-record violation, because every
-// cross-domain comparison translates by that poll's own skew first.
+// A constant clock skew on every poll must not itself read as a coverage gap
+// or a from-before-record violation, because every cross-domain comparison
+// translates by that poll's own skew first.
 func TestProveCoverage_SkewTranslationAtWindowBoundary(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
@@ -507,15 +504,14 @@ func TestProveCoverage_SkewTranslationAtWindowBoundary(t *testing.T) {
 
 	res := proveCoverage(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, rt, def, from, to, 0)
 	if !res.Proved {
-		t.Fatalf("res = %+v, want proved: a constant clock skew must not itself read as a coverage gap (§16)", res)
+		t.Fatalf("res = %+v, want proved: a constant clock skew must not itself read as a coverage gap", res)
 	}
 }
 
-// --- Override round-trip (P5's "two authorities") ---
+// --- Override round-trip: one authority for the cadence ---
 
-// TestProveCoverage_OverrideRoundTrip is P7's other disproportionate done-gate
-// test: it exercises DeriveTimingsFromLog and proveCoverage together, exactly
-// as check will, to prove maxGap tracks the RECORDED cadence, never a
+// This exercises DeriveTimingsFromLog and proveCoverage together, exactly as
+// check does, to prove maxGap tracks the RECORDED cadence and never a
 // re-derivation from the rule's own evaluation interval.
 func TestProveCoverage_OverrideRoundTrip(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -577,7 +573,7 @@ func TestProveCoverage_OverrideRoundTrip(t *testing.T) {
 		res := proveCoverage(h, polls, &sentinel, rt["r1"], defs[0], from, windowEnd, 0)
 		if res.Reason != ReasonHeartbeatGap {
 			t.Fatalf("Reason = %q, want heartbeat_gap: if maxGap had been re-derived from the 300s definition instead of "+
-				"the recorded 5s cadence, this 250s gap would pass silently — the fail-open direction P5 warns about", res.Reason)
+				"the recorded 5s cadence, this 250s gap would pass silently — the fail-open direction", res.Reason)
 		}
 	})
 }
@@ -598,7 +594,7 @@ func anyContains(notes []string, substr string) bool {
 // found:true, is_paused:false and still carry a zero LastEvaluation (a
 // corrupted write, a hand-edited fixture, a future log format bug). That
 // combination must read as maximally stale, not be waved through the way a
-// legitimately paused poll's zero time is (§2.3) — the skip must key off
+// legitimately paused poll's zero time is — the skip must key off
 // IsPaused/Found, never off LastEvaluation being zero.
 func TestProveCoverage_ZeroLastEvaluationWithoutPauseIsStale(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -624,10 +620,9 @@ func TestProveCoverage_ZeroLastEvaluationWithoutPauseIsStale(t *testing.T) {
 
 // --- Check 3, tightened: the boundary segments must widen by the skew bound ---
 
-// TestProveCoverage_BoundaryGapWidensBySkewBound pins §16's "with that
-// poll's bound as the tolerance" for the two boundary segments specifically:
-// a boundary gap that lands EXACTLY at maxGap must still fail once the
-// poll's own skew bound is added, because the translation is only a best
+// The two boundary segments take their own poll's bound as the tolerance: a
+// boundary gap that lands EXACTLY at maxGap must still fail once the poll's
+// own skew bound is added, because the translation is only a best
 // estimate and understating the gap by up to the bound would be fail-open.
 func TestProveCoverage_BoundaryGapWidensBySkewBound(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -647,17 +642,16 @@ func TestProveCoverage_BoundaryGapWidensBySkewBound(t *testing.T) {
 	res := proveCoverage(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, rt, def, from, to, 0)
 	if res.Reason != ReasonHeartbeatGap {
 		t.Fatalf("Reason = %q, want heartbeat_gap: the leading boundary segment sits at EXACTLY maxGap (60s) before "+
-			"widening; the poll's own %s skew bound must push it past the threshold (§16), not just the skew translation", res.Reason, bound)
+			"widening; the poll's own %s skew bound must push it past the threshold, not just the skew translation", res.Reason, bound)
 	}
 }
 
 // --- Multi-failure contract ---
 
-// TestProveCoverage_MultipleFailuresReasonIsFirstButAllNoted exercises two
-// checks failing in the same rule: check 7 (paused in-window) precedes check
-// 8 (rule absent) in the §5 order, so Reason must name the pause even though
-// the rule also goes absent later — and the later failure must still add its
-// own Note rather than being swallowed once Reason is set.
+// Two checks failing in the same rule: check 7 (paused in-window) runs before
+// check 8 (rule absent), so Reason must name the pause even though the rule
+// also goes absent later — and the later failure must still add its own Note
+// rather than being swallowed once Reason is set.
 func TestProveCoverage_MultipleFailuresReasonIsFirstButAllNoted(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
@@ -682,7 +676,7 @@ func TestProveCoverage_MultipleFailuresReasonIsFirstButAllNoted(t *testing.T) {
 
 	res := proveCoverage(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, rt, def, from, to, 0)
 	if res.Reason != ReasonPausedInWindow {
-		t.Fatalf("Reason = %q, want paused_in_window (the FIRST check to fail, in §5's order)", res.Reason)
+		t.Fatalf("Reason = %q, want paused_in_window: the FIRST check to fail names the reason", res.Reason)
 	}
 	if !anyContains(res.Notes, "paused") {
 		t.Fatalf("Notes = %v, want a note about the pause", res.Notes)
@@ -693,18 +687,16 @@ func TestProveCoverage_MultipleFailuresReasonIsFirstButAllNoted(t *testing.T) {
 	}
 }
 
-// --- Skipped rules (P6/P8 obligation) ---
+// --- Skipped rules ---
 
-// TestProveCoverage_SkippedRuleWithZeroPollsPinnedAsHeartbeatGap pins a known
-// gap in this function's contract, not a bug in it: a rule paused BEFORE the
-// window opened is never scheduled or polled (watch.go, §4.3), so it reaches
-// proveCoverage with zero polls at all. proveCoverage has no notion of
+// A known limit of this function's contract, not a bug in it: a rule paused
+// BEFORE the window opened is never scheduled or polled (watch.go), so it
+// reaches proveCoverage with zero polls at all. proveCoverage has no notion of
 // "skipped" — that classification belongs to the definitions
-// (LoggedRule.IsPaused / Definition.IsPaused), never to the polls — so today
-// it reports the whole window as one big heartbeat_gap instead. decide (P8)
-// MUST read skipped status from the definitions and either skip calling this
-// function for that rule entirely, or override this result — this test pins
-// today's behavior so that review has something concrete to check against.
+// (LoggedRule.IsPaused / Definition.IsPaused), never to the polls — so it
+// reports the whole window as one big heartbeat_gap instead. decide is what
+// reads skipped status from the header and never calls this function for such
+// a rule; this pins the behavior it relies on not reaching.
 func TestProveCoverage_SkippedRuleWithZeroPollsPinnedAsHeartbeatGap(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
@@ -715,7 +707,7 @@ func TestProveCoverage_SkippedRuleWithZeroPollsPinnedAsHeartbeatGap(t *testing.T
 	res := proveCoverage(Header{StartedAt: from.Add(-time.Hour)}, nil, &sentinel, rt, def, from, to, 0)
 	if res.Reason != ReasonHeartbeatGap {
 		t.Fatalf("Reason = %q, want heartbeat_gap (pinned, not the desired end state): proveCoverage has no "+
-			"'skipped' concept, so decide (P8) must handle a skipped rule's classification itself, before or "+
+			"'skipped' concept, so decide must handle a skipped rule's classification itself, before or "+
 			"instead of calling this function", res.Reason)
 	}
 }

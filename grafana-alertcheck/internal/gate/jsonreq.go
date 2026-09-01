@@ -8,7 +8,7 @@ import (
 
 // req decodes m[key] into *dst. It returns an error when key is absent from m
 // or explicitly JSON null, so a caller can never mistake absence for a zero
-// value (H1) — json.Unmarshal treats "null" as a documented no-op for
+// value — json.Unmarshal treats "null" as a documented no-op for
 // non-pointer targets (string, bool, int, ...), so without this check a
 // required field sent as null would silently pass through as its zero value.
 func req[T any](m map[string]json.RawMessage, key string, dst *T) error {

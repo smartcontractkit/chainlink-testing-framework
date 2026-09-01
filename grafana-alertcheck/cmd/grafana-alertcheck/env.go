@@ -7,8 +7,7 @@ import (
 
 // grafanaEnv reads the connection details from the environment only, never
 // from a flag — a flag value lands in the process argv and in CI logs, and
-// the token must never be logged or otherwise surface in an error string
-// (§20.2).
+// the token must never be logged or otherwise surface in an error string.
 func grafanaEnv() (url, token string, err error) {
 	url = os.Getenv("GRAFANA_URL")
 	if url == "" {

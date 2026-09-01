@@ -167,7 +167,7 @@ func TestParseState_HappyPaths(t *testing.T) {
 					t.Fatalf("Instances = %+v, want one firing instance", r.Instances)
 				}
 				if r.Totals["normal"] == 0 {
-					t.Errorf(`Totals["normal"] = 0, want >0 (this is the §3.2 mismatch the fixture exists to capture)`)
+					t.Errorf(`Totals["normal"] = 0, want >0 (the totals/instances mismatch this fixture exists to capture)`)
 				}
 			},
 		},
@@ -192,11 +192,11 @@ func TestParseState_HappyPaths(t *testing.T) {
 	}
 }
 
-// TestParseState_MustError is the H1 regression suite: it doesn't just check
-// err != nil (a stray comma in a fixture would keep that green forever while
-// the actual check regressed) — it asserts the error names the specific
-// offending field or value, so a real H1 check going missing fails loudly
-// here instead of surviving unnoticed.
+// The strict-parsing regression suite: it doesn't just check err != nil (a
+// stray comma in a fixture would keep that green forever while the actual
+// check regressed) — it asserts the error names the specific offending field
+// or value, so a check going missing fails loudly here instead of surviving
+// unnoticed.
 func TestParseState_MustError(t *testing.T) {
 	cases := []struct {
 		fixture      string
@@ -283,7 +283,7 @@ func TestInstanceKey(t *testing.T) {
 	}
 }
 
-// minimalStateBody is the smallest H1-legal state response: one group, one
+// minimalStateBody is the smallest legal state response: one group, one
 // rule, no optional keys at all, plus whatever extra is spliced in verbatim
 // before the rule's closing brace — for isolating one optional key at a time
 // rather than relying on a fixture that removes several together.
@@ -294,10 +294,10 @@ func minimalStateBody(extraRuleJSON string) []byte {
 			`"lastEvaluation":"2026-01-01T00:00:00Z"%s}]}]}}`, extraRuleJSON)
 }
 
-// §22.2: keepFiringFor is named alongside alerts/totals/labels as an optional
-// key (§3.1), but state_missing_optional.json removes it together with
-// everything else — never in isolation, so a regression that made it
-// required specifically would not be caught by that fixture alone.
+// keepFiringFor is optional alongside alerts/totals/labels, but
+// state_missing_optional.json removes it together with everything else — never
+// in isolation, so a regression that made it required specifically would not
+// be caught by that fixture alone.
 func TestParseState_KeepFiringForIsOptional(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -319,7 +319,7 @@ func TestParseState_KeepFiringForIsOptional(t *testing.T) {
 	}
 }
 
-// §22.2: labels is optional at the INSTANCE level (opt(m, "labels", ...) in
+// labels is optional at the INSTANCE level (opt(m, "labels", ...) in
 // parseInstance), distinct from the rule-level labels state_missing_optional.json
 // already covers — an instance can exist with no labels of its own.
 func TestParseState_InstanceWithoutLabelsParses(t *testing.T) {
@@ -339,9 +339,9 @@ func TestParseState_InstanceWithoutLabelsParses(t *testing.T) {
 // synthesizeHighCardinalityState builds a state response with a single rule
 // holding `alerting` Alerting instances and `normal` Normal instances, by
 // cloning the one real instance in state_one_instance.json. It is never
-// committed (§3.2, §22.3, §22.6) — the 2446-instance rule this stands in for
-// is ~600 KB and exists only to prove the parser and (in later phases) the
-// reducer don't choke on real fleet cardinality.
+// committed — the 2446-instance rule this stands in for is ~600 KB and exists
+// only to prove the parser and the reducer don't choke on real fleet
+// cardinality.
 func synthesizeHighCardinalityState(t *testing.T, alerting, normal int) []byte {
 	t.Helper()
 	base := readFixture(t, "state_one_instance.json")

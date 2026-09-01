@@ -7,9 +7,8 @@ import (
 	"testing"
 )
 
-// TestRunWatch_FlagValidation is the record step's flag-validation matrix.
-// Every case fails inside gate.WatchConfig.validate() (P6) or before it, so
-// none needs a reachable Grafana.
+// The record step's flag-validation matrix. Every case fails inside
+// gate.WatchConfig.validate() or before it, so none needs a reachable Grafana.
 func TestRunWatch_FlagValidation(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -58,9 +57,8 @@ func TestRunWatch_FlagValidation(t *testing.T) {
 	}
 }
 
-// TestRunWatch_DaemonChildDispatch pins P6's obligation on this phase: seeing
-// gate.DaemonChildFlag must dispatch to gate.RunDaemonChild, and the flag
-// must never appear in watchUsage (an operator never types it).
+// Seeing gate.DaemonChildFlag must dispatch to gate.RunDaemonChild, and the
+// flag must never appear in watchUsage (an operator never types it).
 func TestRunWatch_DaemonChildDispatch(t *testing.T) {
 	t.Setenv("GRAFANA_URL", "http://example.invalid")
 	t.Setenv("GRAFANA_TOKEN", "test-token")

@@ -10,27 +10,25 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck/internal/gate"
 )
 
-// renderTable is §20.2's required human table. It always writes to the
-// writer it is given, which the caller (runCheck) always points at
-// stderr — the human table is not the machine output §20.2 reserves stdout
-// for.
+// renderTable is the human table. It always writes to the writer it is given,
+// which the caller (runCheck) always points at stderr — stdout is reserved for
+// the machine-readable --output json.
 //
 // Three sections, in order:
 //
 //  1. one line per rule: outcome, BadFor, pollEvery, proved-or-not with the
 //     largest gap;
-//  2. one line per Violation (R2): a rule's worst-of outcome does not carry
-//     the State/Health of the instance that actually caused it — Violation
-//     does — so this is also where those two columns appear, sorted after
-//     the rule table rather than folded into it, and it is the only place an
-//     operator running WITHOUT --output json sees the §12.1 --allow-paused
-//     hint that Violation.Note already carries (classify.go);
-//  3. a footer with the per-rule thresholds and the run-wide numbers §20.2
-//     says are the answer to "why" on exit 2: each non-skipped rule's
-//     maxGap/healthGrace/evalStaleAfter, the global transitionGrace and
+//  2. one line per Violation: a rule's worst-of outcome does not carry the
+//     State/Health of the instance that actually caused it — Violation does —
+//     so this is also where those two columns appear, sorted after the rule
+//     table rather than folded into it, and it is the only place an operator
+//     running WITHOUT --output json sees the --allow-paused hint that
+//     Violation.Note already carries (classify.go);
+//  3. a footer with the numbers that answer "why" on exit 2: each non-skipped
+//     rule's maxGap/healthGrace/evalStaleAfter, the global transitionGrace and
 //     drainTimeout, and the largest measured clock skew alongside its own
-//     error bound (RTT/2) — SkewHardLimit is a separate, fixed input
-//     threshold and is reported next to it, never as if it were that bound.
+//     error bound (RTT/2) — SkewHardLimit is a separate, fixed input threshold
+//     and is reported next to it, never as if it were that bound.
 func renderTable(w io.Writer, res gate.Result) error {
 	alertOf := make(map[string]string, len(res.Verdicts))
 	for _, v := range res.Verdicts {
@@ -77,7 +75,7 @@ func renderTable(w io.Writer, res gate.Result) error {
 // provedLabel is the table's PROVED column: "yes" for a clean coverage
 // proof, "no" with the reason and largest gap for an unobservable rule, and
 // "-" for a rule decide never asked proveCoverage about at all (skipped —
-// paused before the window opened, §12).
+// paused before the window opened).
 func provedLabel(cov gate.CoverageResult) string {
 	if cov.Reason == "" && !cov.Unobservable && !cov.Proved {
 		return "-"

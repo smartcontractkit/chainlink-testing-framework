@@ -9,10 +9,9 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck/internal/gate"
 )
 
-// TestRenderTable is the golden table test: a fixed Result renders a
-// deterministic, ordered rule table, a violations section (R2) and a footer
-// carrying the per-rule and global thresholds plus the skew and its bound
-// (R3) — with no live Check involved.
+// The golden table test: a fixed Result renders a deterministic, ordered rule
+// table, a violations section and a footer carrying the per-rule and global
+// thresholds plus the skew and its bound — with no live Check involved.
 func TestRenderTable(t *testing.T) {
 	gapAt := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	res := gate.Result{
@@ -64,13 +63,13 @@ func TestRenderTable(t *testing.T) {
 		t.Fatalf("out = %q, want Zebra's clean row", out)
 	}
 
-	// Violations section (R2): must show up even without --output json, and
-	// must carry the §12.1 --allow-paused hint text verbatim.
+	// The violations section must show up even without --output json, and must
+	// carry the --allow-paused hint text verbatim.
 	if !strings.Contains(out, "VIOLATIONS") {
 		t.Fatalf("out = %q, want a VIOLATIONS section", out)
 	}
 	if !strings.Contains(out, "--allow-paused") {
-		t.Fatalf("out = %q, want the §12.1 --allow-paused hint in the human table", out)
+		t.Fatalf("out = %q, want the --allow-paused hint in the human table", out)
 	}
 	if !strings.Contains(out, "STATE") || !strings.Contains(out, "HEALTH") {
 		t.Fatalf("out = %q, want the violations table to have STATE and HEALTH columns", out)
@@ -79,8 +78,8 @@ func TestRenderTable(t *testing.T) {
 		t.Fatalf("out = %q, want Ape's violation State/Health", out)
 	}
 
-	// Footer (R3): per-rule thresholds, global thresholds, and skew with its
-	// own bound rather than the fixed hard limit.
+	// The footer: per-rule thresholds, global thresholds, and skew with its own
+	// bound rather than the fixed hard limit.
 	if !strings.Contains(out, "Ape Alert: maxGap=1m0s healthGrace=2m0s evalStaleAfter=1m0s") {
 		t.Fatalf("out = %q, want Ape's per-rule thresholds", out)
 	}
@@ -88,7 +87,7 @@ func TestRenderTable(t *testing.T) {
 		t.Fatalf("out = %q, want Zebra's per-rule thresholds", out)
 	}
 	if strings.Contains(out, "Paused Alert: maxGap") {
-		t.Fatalf("out = %q, a skipped rule must not report thresholds it never had (§12)", out)
+		t.Fatalf("out = %q, a skipped rule must not report thresholds it never had", out)
 	}
 	if !strings.Contains(out, "global: transitionGrace=5m0s (source: Ape Alert (for=5m)) drainTimeout=2m0s") {
 		t.Fatalf("out = %q, want the global thresholds line", out)
@@ -104,9 +103,9 @@ func TestRenderTable(t *testing.T) {
 	}
 }
 
-// TestProvedLabel_Skipped pins the "-" case: a rule decide never asked
-// proveCoverage about (paused before the window opened, §12) has an empty
-// CoverageResult and must not be reported as either proved or unobservable.
+// The "-" case: a rule decide never asked proveCoverage about (paused before
+// the window opened) has an empty CoverageResult and must not be reported as
+// either proved or unobservable.
 func TestProvedLabel_Skipped(t *testing.T) {
 	if got := provedLabel(gate.CoverageResult{}); got != "-" {
 		t.Fatalf("provedLabel(zero value) = %q, want \"-\"", got)
