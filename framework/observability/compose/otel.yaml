@@ -35,7 +35,7 @@ service:
     metrics:
       readers:
         - periodic:
-            interval: 10000
+            interval: 10s
             exporter:
               otlp:
                 protocol: http/protobuf
