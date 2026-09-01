@@ -117,7 +117,7 @@ func TestResolve_RefusesRecording(t *testing.T) {
 
 func TestResolve_RejectsEmptySegments(t *testing.T) {
 	defs := rulerDefs(t)
-	cases := []string{"/Title", "Folder/", "a//b"}
+	cases := []string{"/Title", "Folder/", "a//b", "//", "/"}
 	for _, name := range cases {
 		t.Run(name, func(t *testing.T) {
 			_, _, err := Resolve(defs, []string{name}, "")
