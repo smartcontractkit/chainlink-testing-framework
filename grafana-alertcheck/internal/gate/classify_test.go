@@ -761,6 +761,42 @@ func TestClassifyRule_ClearedEventPastWindowEndClampsToWindowEnd(t *testing.T) {
 	}
 }
 
+// TestClassifyRule_OnsetJustPastWindowEndIsNewlyBadNotClean pins the fail-closed
+// reading of the upper boundary: an instance whose runner-domain onset lands
+// only slightly past windowEnd (to + transitionGrace) is reachable at all only
+// because inWindowPolls widens the boundary outward by the skew bound, so the
+// gate cannot PROVE it belongs to the next window. It is charged as newly_bad —
+// with BadFor truncated to zero — rather than silently forgiven as clean.
+func TestClassifyRule_OnsetJustPastWindowEndIsNewlyBadNotClean(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	grace := time.Minute
+	windowEnd := to.Add(grace)
+	def := Definition{UID: "r1", Title: "R1"}
+
+	// A poll admitted only by its own skew bound: its GrafanaNow sits 20s past
+	// windowEnd, inside the 30s tolerance. It carries an instance whose onset
+	// is 10s past windowEnd — still "after the grace", but only by less than
+	// the measurement's own uncertainty.
+	bound := 30 * time.Second
+	poll := Poll{
+		RuleUID: "r1", GrafanaNow: windowEnd.Add(20 * time.Second), Found: true, Health: "ok",
+		LastEvaluation: windowEnd.Add(20 * time.Second), SkewBoundMS: bound.Milliseconds(),
+		Abnormal: []Instance{{Labels: lbl("a"), State: StateFiring, ActiveAt: windowEnd.Add(10 * time.Second)}},
+	}
+
+	outcome, badFor, viols := classifyRule(def, []Poll{poll}, from, windowEnd, defaultBad, PreexistingFailUnlessRecovered)
+	if outcome != OutcomeNewlyBad {
+		t.Fatalf("outcome = %v, want newly_bad: an onset past windowEnd seen only via the skew bound must fail closed", outcome)
+	}
+	if badFor != 0 {
+		t.Fatalf("badFor = %v, want 0: the zero-length episode must truncate to the window end", badFor)
+	}
+	if len(viols) != 1 {
+		t.Fatalf("viols = %+v, want exactly one newly_bad violation", viols)
+	}
+}
+
 // TestClassifyRule_CloseBeforeOpenClampsToZeroNotNegative pins the
 // end-before-start clamp: two polls with different measured skews can
 // translate so that a closing poll's runner-domain time lands before the

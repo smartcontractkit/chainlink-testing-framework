@@ -502,7 +502,7 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 
 	var (
 		skippedRules      []Definition
-		observedCount     int
+		watchedCount      int
 		anyUnobservable   bool
 		unobservableNames []string
 	)
@@ -517,7 +517,7 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 			})
 			continue
 		}
-		observedCount++
+		watchedCount++
 
 		t := rt[def.UID]
 		cov := proveCoverage(h, polls, sentinel, t, def, pol.From, pol.To, gt.transitionGrace)
@@ -558,17 +558,17 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 	// so a shortfall always produces at least one, even when no rule is
 	// paused at all (an operator-supplied MinObserved that simply exceeds
 	// what could ever be resolved).
-	counted := observedCount
-	var chargeable []Definition
+	counted := watchedCount
+	var attributable []Definition
 	if pol.AllowPaused {
 		counted += len(skippedRules)
 	} else {
-		chargeable = skippedRules
+		attributable = skippedRules
 	}
 	if shortfall := minObserved - counted; shortfall > 0 {
-		charged := 0
-		for _, def := range chargeable {
-			if charged >= shortfall {
+		attributed := 0
+		for _, def := range attributable {
+			if attributed >= shortfall {
 				break
 			}
 			// §12.1 requires the paused rule and --allow-paused both be
@@ -579,9 +579,9 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 				Alert: def.Title, RuleUID: def.UID, Outcome: OutcomeSkipped,
 				Note: "paused before the window opened; counts against --min-observed unless --allow-paused is set",
 			})
-			charged++
+			attributed++
 		}
-		for ; charged < shortfall; charged++ {
+		for ; attributed < shortfall; attributed++ {
 			// No named rule explains this part of the deficit — e.g. an
 			// operator-supplied --min-observed above what could ever be
 			// resolved. Note, not LastError: LastError is reporting-only
