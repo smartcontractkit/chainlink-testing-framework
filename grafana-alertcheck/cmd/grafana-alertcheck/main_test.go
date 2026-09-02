@@ -2,19 +2,16 @@ package main
 
 import (
 	"bytes"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestRun_NoArgs(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run(nil, &stdout, &stderr)
-	if code != 2 {
-		t.Fatalf("code = %d, want 2", code)
-	}
-	if !strings.Contains(stderr.String(), "usage") {
-		t.Fatalf("stderr = %q, want a usage message", stderr.String())
-	}
+	require.Equal(t, 2, code)
+	require.Contains(t, stderr.String(), "usage")
 }
 
 func TestRun_Help(t *testing.T) {
@@ -22,15 +19,9 @@ func TestRun_Help(t *testing.T) {
 		t.Run(flag, func(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			code := run([]string{flag}, &stdout, &stderr)
-			if code != 0 {
-				t.Fatalf("code = %d, want 0 (requested help is not a could-not-check condition)", code)
-			}
-			if !strings.Contains(stdout.String(), "usage") {
-				t.Fatalf("stdout = %q, want a usage message", stdout.String())
-			}
-			if stderr.String() != "" {
-				t.Fatalf("stderr = %q, want empty — help goes to stdout", stderr.String())
-			}
+			require.Equal(t, 0, code, "requested help is not a could-not-check condition")
+			require.Contains(t, stdout.String(), "usage")
+			require.Empty(t, stderr.String(), "help goes to stdout")
 		})
 	}
 }
@@ -38,12 +29,8 @@ func TestRun_Help(t *testing.T) {
 func TestRun_UnknownSubcommand(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"bogus"}, &stdout, &stderr)
-	if code != 2 {
-		t.Fatalf("code = %d, want 2", code)
-	}
-	if !strings.Contains(stderr.String(), `"bogus"`) {
-		t.Fatalf("stderr = %q, want it to name the unknown subcommand", stderr.String())
-	}
+	require.Equal(t, 2, code)
+	require.Contains(t, stderr.String(), `"bogus"`)
 }
 
 func TestRun_List_MissingEnv(t *testing.T) {
@@ -51,10 +38,6 @@ func TestRun_List_MissingEnv(t *testing.T) {
 	t.Setenv("GRAFANA_TOKEN", "")
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"list"}, &stdout, &stderr)
-	if code != 2 {
-		t.Fatalf("code = %d, want 2", code)
-	}
-	if !strings.Contains(stderr.String(), "GRAFANA_URL") {
-		t.Fatalf("stderr = %q, want it to name the missing env var", stderr.String())
-	}
+	require.Equal(t, 2, code)
+	require.Contains(t, stderr.String(), "GRAFANA_URL")
 }

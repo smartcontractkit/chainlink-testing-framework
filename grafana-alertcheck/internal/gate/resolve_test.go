@@ -2,128 +2,89 @@ package gate
 
 import (
 	"fmt"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func rulerDefs(t *testing.T) []Definition {
 	t.Helper()
 	defs, err := ParseDefinitions(readFixture(t, "ruler_rules.json"))
-	if err != nil {
-		t.Fatalf("ParseDefinitions: unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 	return defs
 }
 
 func TestResolve_SingleMatch(t *testing.T) {
 	defs := rulerDefs(t)
 	resolved, notes, err := Resolve(defs, []string{"example_workflow_paused_rule"}, "")
-	if err != nil {
-		t.Fatalf("Resolve: unexpected error: %v", err)
-	}
-	if len(notes) != 0 {
-		t.Errorf("notes = %v, want none", notes)
-	}
-	if len(resolved) != 1 || resolved[0].UID != "rule0000007" {
-		t.Fatalf("resolved = %+v, want [rule0000007]", resolved)
-	}
+	require.NoError(t, err)
+	require.Empty(t, notes)
+	require.Len(t, resolved, 1)
+	require.Equal(t, "rule0000007", resolved[0].UID)
 }
 
 func TestResolve_UIDForm(t *testing.T) {
 	defs := rulerDefs(t)
 	resolved, _, err := Resolve(defs, []string{"uid:rule0000006a"}, "")
-	if err != nil {
-		t.Fatalf("Resolve: unexpected error: %v", err)
-	}
-	if len(resolved) != 1 || resolved[0].UID != "rule0000006a" {
-		t.Fatalf("resolved = %+v, want [rule0000006a]", resolved)
-	}
+	require.NoError(t, err)
+	require.Len(t, resolved, 1)
+	require.Equal(t, "rule0000006a", resolved[0].UID)
 }
 
 func TestResolve_FolderTitleForm(t *testing.T) {
 	defs := rulerDefs(t)
 	resolved, _, err := Resolve(defs, []string{"ExampleFeeds/TEMP - Example depeg alert"}, "")
-	if err != nil {
-		t.Fatalf("Resolve: unexpected error: %v", err)
-	}
-	if len(resolved) != 1 || resolved[0].UID != "rule0000008" {
-		t.Fatalf("resolved = %+v, want [rule0000008]", resolved)
-	}
+	require.NoError(t, err)
+	require.Len(t, resolved, 1)
+	require.Equal(t, "rule0000008", resolved[0].UID)
 }
 
 func TestResolve_FolderGroupTitleForm(t *testing.T) {
 	defs := rulerDefs(t)
 	resolved, _, err := Resolve(defs, []string{"Example-Zone-A/Gateway/Example No Gateways Available"}, "")
-	if err == nil {
-		t.Fatalf("Resolve: want ambiguous error (real 2-way collision), got resolved=%+v", resolved)
-	}
-	if !strings.Contains(err.Error(), "matches 2 rules") {
-		t.Fatalf("Resolve: error = %q, want it to report 2 matches", err)
-	}
-	if !strings.Contains(err.Error(), "uid:rule0000006a") || !strings.Contains(err.Error(), "uid:rule0000006b") {
-		t.Fatalf("Resolve: error = %q, want both candidate uids listed", err)
-	}
+	require.Error(t, err, "want ambiguous error (real 2-way collision), got resolved=%+v", resolved)
+	require.Contains(t, err.Error(), "matches 2 rules")
+	require.Contains(t, err.Error(), "uid:rule0000006a")
+	require.Contains(t, err.Error(), "uid:rule0000006b")
 }
 
 func TestResolve_TrueCollisionResolvesByUID(t *testing.T) {
 	defs := rulerDefs(t)
 	resolved, _, err := Resolve(defs, []string{"uid:rule0000006a", "uid:rule0000006b"}, "")
-	if err != nil {
-		t.Fatalf("Resolve: unexpected error: %v", err)
-	}
-	if len(resolved) != 2 {
-		t.Fatalf("resolved = %+v, want 2 distinct rules", resolved)
-	}
+	require.NoError(t, err)
+	require.Len(t, resolved, 2)
 }
 
 func TestResolve_NoMatch(t *testing.T) {
 	defs := rulerDefs(t)
 	_, _, err := Resolve(defs, []string{"Does Not Exist"}, "")
-	if err == nil {
-		t.Fatal("Resolve: want error for unknown name")
-	}
-	if !strings.Contains(err.Error(), "no rule matched") || !strings.Contains(err.Error(), "list") {
-		t.Errorf("Resolve: error = %q, want it to name 'no rule matched' and point at 'list'", err)
-	}
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "no rule matched")
+	require.Contains(t, err.Error(), "list")
 }
 
 func TestResolve_NoMatchSubstringSuggestion(t *testing.T) {
 	defs := rulerDefs(t)
 	_, _, err := Resolve(defs, []string{"paused rule"}, "")
-	if err == nil {
-		t.Fatal("Resolve: want error for unknown name")
-	}
-	if !strings.Contains(err.Error(), "did you mean") || !strings.Contains(err.Error(), "Example Paused Rule") {
-		t.Errorf("Resolve: error = %q, want a case-insensitive substring suggestion", err)
-	}
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "did you mean")
+	require.Contains(t, err.Error(), "Example Paused Rule")
 }
 
 func TestResolve_RefusesDatasourceManaged(t *testing.T) {
 	defs, err := ParseDefinitions(readFixture(t, "ruler_datasource_managed.json"))
-	if err != nil {
-		t.Fatalf("ParseDefinitions: unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 	_, _, err = Resolve(defs, []string{"ExampleTargetDown"}, "")
-	if err == nil {
-		t.Fatal("Resolve: want refusal for a datasource-managed rule")
-	}
-	if !strings.Contains(err.Error(), "datasource-managed") {
-		t.Errorf("Resolve: error = %q, want it to name the datasource-managed kind", err)
-	}
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "datasource-managed")
 }
 
 func TestResolve_RefusesRecording(t *testing.T) {
 	defs, err := ParseDefinitions(readFixture(t, "ruler_recording.json"))
-	if err != nil {
-		t.Fatalf("ParseDefinitions: unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 	_, _, err = Resolve(defs, []string{"uid:rule0000011"}, "")
-	if err == nil {
-		t.Fatal("Resolve: want refusal for a recording rule")
-	}
-	if !strings.Contains(err.Error(), "recording rule") {
-		t.Errorf("Resolve: error = %q, want it to name the recording kind", err)
-	}
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "recording rule")
 }
 
 func TestResolve_RejectsEmptySegments(t *testing.T) {
@@ -132,12 +93,8 @@ func TestResolve_RejectsEmptySegments(t *testing.T) {
 	for _, name := range cases {
 		t.Run(name, func(t *testing.T) {
 			_, _, err := Resolve(defs, []string{name}, "")
-			if err == nil {
-				t.Fatalf("Resolve(%q): want error for an empty /-separated segment", name)
-			}
-			if !strings.Contains(err.Error(), "empty") {
-				t.Errorf("Resolve(%q): error = %q, want it to name the empty segment", name, err)
-			}
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "empty")
 		})
 	}
 }
@@ -148,51 +105,29 @@ func TestResolve_UIDEmptySuffix(t *testing.T) {
 	// — that would report the misleading "datasource-managed rule, not
 	// supported" for what is really a typo'd/empty uid.
 	defs, err := ParseDefinitions(readFixture(t, "ruler_datasource_managed.json"))
-	if err != nil {
-		t.Fatalf("ParseDefinitions: unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 	_, _, err = Resolve(defs, []string{"uid:"}, "")
-	if err == nil {
-		t.Fatal("Resolve: want error for an empty uid: suffix")
-	}
-	if !strings.Contains(err.Error(), "no rule has this uid") {
-		t.Errorf("Resolve: error = %q, want it to say no rule has this uid", err)
-	}
-	if strings.Contains(err.Error(), "datasource-managed") {
-		t.Errorf("Resolve: error = %q, must not misreport this as a datasource-managed refusal", err)
-	}
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "no rule has this uid")
+	require.NotContains(t, err.Error(), "datasource-managed")
 }
 
 func TestResolve_UnsupportedKindsExcludedFromNoMatchSurfaces(t *testing.T) {
 	dsDefs, err := ParseDefinitions(readFixture(t, "ruler_datasource_managed.json"))
-	if err != nil {
-		t.Fatalf("ParseDefinitions(datasource_managed): unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 	recDefs, err := ParseDefinitions(readFixture(t, "ruler_recording.json"))
-	if err != nil {
-		t.Fatalf("ParseDefinitions(recording): unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 	supported := rulerDefs(t)
 	combined := append(append(append([]Definition{}, supported...), dsDefs...), recDefs...)
 
 	_, _, err = Resolve(combined, []string{"Example"}, "")
-	if err == nil {
-		t.Fatal("Resolve: want a no-match error for a name matching no title exactly")
-	}
+	require.Error(t, err, "want a no-match error for a name matching no title exactly")
 
 	wantCount := fmt.Sprintf("(%d rules available", len(supported))
-	if !strings.Contains(err.Error(), wantCount) {
-		t.Errorf("Resolve: error = %q, want the available count scoped to the %d supported rules, not the %d combined", err, len(supported), len(combined))
-	}
-	if strings.Contains(err.Error(), "ExampleTargetDown") {
-		t.Errorf("Resolve: error = %q, must not suggest the datasource-managed rule", err)
-	}
-	if strings.Contains(err.Error(), "example:recorded_metric:rate5m") {
-		t.Errorf("Resolve: error = %q, must not suggest the recording rule", err)
-	}
-	if !strings.Contains(err.Error(), "Example Paused Rule") {
-		t.Errorf("Resolve: error = %q, want it to still suggest a matching supported rule", err)
-	}
+	require.Contains(t, err.Error(), wantCount)
+	require.NotContains(t, err.Error(), "ExampleTargetDown")
+	require.NotContains(t, err.Error(), "example:recorded_metric:rate5m")
+	require.Contains(t, err.Error(), "Example Paused Rule")
 }
 
 func TestResolve_UnsupportedHomonymResolvesSupportedSilently(t *testing.T) {
@@ -205,12 +140,9 @@ func TestResolve_UnsupportedHomonymResolvesSupportedSilently(t *testing.T) {
 		{UID: "", Folder: "F", Group: "G", Title: "Shared Title", Kind: KindDatasourceManaged},
 	}
 	resolved, _, err := Resolve(defs, []string{"F/G/Shared Title"}, "")
-	if err != nil {
-		t.Fatalf("Resolve: unexpected error: %v", err)
-	}
-	if len(resolved) != 1 || resolved[0].UID != "supported-1" {
-		t.Fatalf("resolved = %+v, want the supported rule alone, no ambiguity", resolved)
-	}
+	require.NoError(t, err)
+	require.Len(t, resolved, 1)
+	require.Equal(t, "supported-1", resolved[0].UID)
 }
 
 func TestResolve_CollapseByUIDGivesNoteNotError(t *testing.T) {
@@ -221,15 +153,10 @@ func TestResolve_CollapseByUIDGivesNoteNotError(t *testing.T) {
 		"example_workflow_paused_rule",
 		"ExampleObservability/Example Auth Production/example_workflow_paused_rule",
 	}, "")
-	if err != nil {
-		t.Fatalf("Resolve: unexpected error: %v", err)
-	}
-	if len(resolved) != 1 || resolved[0].UID != "rule0000007" {
-		t.Fatalf("resolved = %+v, want exactly one rule0000007", resolved)
-	}
-	if len(notes) != 1 {
-		t.Fatalf("notes = %v, want exactly one collapse note", notes)
-	}
+	require.NoError(t, err)
+	require.Len(t, resolved, 1)
+	require.Equal(t, "rule0000007", resolved[0].UID)
+	require.Len(t, notes, 1)
 }
 
 // The same rule named twice with the identical string must collapse to one
@@ -240,15 +167,10 @@ func TestResolve_IdenticalDuplicateNameCollapsesWithNote(t *testing.T) {
 		"example_workflow_paused_rule",
 		"example_workflow_paused_rule",
 	}, "")
-	if err != nil {
-		t.Fatalf("Resolve: unexpected error: %v", err)
-	}
-	if len(resolved) != 1 || resolved[0].UID != "rule0000007" {
-		t.Fatalf("resolved = %+v, want exactly one rule0000007", resolved)
-	}
-	if len(notes) != 1 {
-		t.Fatalf("notes = %v, want exactly one collapse note", notes)
-	}
+	require.NoError(t, err)
+	require.Len(t, resolved, 1)
+	require.Equal(t, "rule0000007", resolved[0].UID)
+	require.Len(t, notes, 1)
 }
 
 func TestResolve_MinObservedCountIsPostCollapse(t *testing.T) {
@@ -259,44 +181,30 @@ func TestResolve_MinObservedCountIsPostCollapse(t *testing.T) {
 		"Example Paused Rule",
 	}
 	resolved, notes, err := Resolve(defs, names, "")
-	if err != nil {
-		t.Fatalf("Resolve: unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 	// The default MinObserved must come from len(resolved) (2 distinct
 	// rules) — never len(names) (3 input lines), which would be unsatisfiable.
-	if len(resolved) != 2 {
-		t.Fatalf("resolved = %+v, want 2 distinct rules after collapse", resolved)
-	}
-	if len(notes) != 1 {
-		t.Fatalf("notes = %v, want exactly one collapse note", notes)
-	}
+	require.Len(t, resolved, 2)
+	require.Len(t, notes, 1)
 }
 
 func TestResolve_EmptyAndBlankLinesDiscarded(t *testing.T) {
 	defs := rulerDefs(t)
 	resolved, _, err := Resolve(defs, []string{"", "  ", "example_workflow_paused_rule", "   \t  "}, "")
-	if err != nil {
-		t.Fatalf("Resolve: unexpected error: %v", err)
-	}
-	if len(resolved) != 1 || resolved[0].UID != "rule0000007" {
-		t.Fatalf("resolved = %+v, want [rule0000007]", resolved)
-	}
+	require.NoError(t, err)
+	require.Len(t, resolved, 1)
+	require.Equal(t, "rule0000007", resolved[0].UID)
 }
 
 func TestResolve_FolderScopesBareTitle(t *testing.T) {
 	defs := rulerDefs(t)
 	// Bare title, scoped to the wrong folder — must not match.
 	_, _, err := Resolve(defs, []string{"example_workflow_paused_rule"}, "Example-Zone-A")
-	if err == nil {
-		t.Fatal("Resolve: want no-match when folder scope excludes the only candidate")
-	}
+	require.Error(t, err, "want no-match when folder scope excludes the only candidate")
 
 	// Scoped to the right folder — must match.
 	resolved, _, err := Resolve(defs, []string{"example_workflow_paused_rule"}, "ExampleObservability")
-	if err != nil {
-		t.Fatalf("Resolve: unexpected error: %v", err)
-	}
-	if len(resolved) != 1 || resolved[0].UID != "rule0000007" {
-		t.Fatalf("resolved = %+v, want [rule0000007]", resolved)
-	}
+	require.NoError(t, err)
+	require.Len(t, resolved, 1)
+	require.Equal(t, "rule0000007", resolved[0].UID)
 }

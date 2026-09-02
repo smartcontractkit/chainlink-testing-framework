@@ -3,6 +3,8 @@ package gate
 import (
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestParsePromDuration(t *testing.T) {
@@ -35,13 +37,8 @@ func TestParsePromDuration(t *testing.T) {
 	}
 	for _, c := range cases {
 		got, err := ParsePromDuration(c.in)
-		if err != nil {
-			t.Errorf("ParsePromDuration(%q): unexpected error: %v", c.in, err)
-			continue
-		}
-		if got != c.want {
-			t.Errorf("ParsePromDuration(%q) = %v, want %v", c.in, got, c.want)
-		}
+		require.NoErrorf(t, err, "ParsePromDuration(%q)", c.in)
+		require.Equalf(t, c.want, got, "ParsePromDuration(%q)", c.in)
 	}
 }
 
@@ -60,8 +57,7 @@ func TestParsePromDuration_Errors(t *testing.T) {
 		"carrot",              // completely invalid
 	}
 	for _, in := range cases {
-		if _, err := ParsePromDuration(in); err == nil {
-			t.Errorf("ParsePromDuration(%q): expected an error, got none", in)
-		}
+		_, err := ParsePromDuration(in)
+		require.Errorf(t, err, "ParsePromDuration(%q): expected an error, got none", in)
 	}
 }
