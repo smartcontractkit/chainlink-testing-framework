@@ -1,5 +1,3 @@
-//go:build unix
-
 package gate
 
 import (
@@ -30,10 +28,6 @@ type detachedChild struct {
 // group, so it would still take the terminal's signals and, on a runner, die
 // with the step that started it. Setsid gives it a new session AND a new
 // process group, which is what makes it survive to the end of the window.
-//
-// There is deliberately no Windows counterpart — runners are Linux and
-// goreleaser builds linux+darwin only (P12) — so the package does not build
-// there at all rather than silently recording in the foreground.
 func spawnChild(cfg WatchConfig) (detachedChild, error) {
 	exe, err := os.Executable()
 	if err != nil {

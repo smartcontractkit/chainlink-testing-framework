@@ -1,5 +1,3 @@
-//go:build unix
-
 package gate
 
 import (
@@ -269,6 +267,40 @@ func TestWatchSpawnsADetachedRecorder(t *testing.T) {
 	waitFor(t, "the recorder to exit", 10*time.Second, func() bool {
 		return syscall.Kill(pid, 0) != nil
 	})
+}
+
+// TestDaemonChildRejectsAnAlreadyFinishedLog covers the RunDaemonChild guard
+// against a reused --out path: a log that already carries a stopped sentinel is
+// a finished recording, and a child starting against it would either append to
+// a window already declared over, or take a flock over evidence that is about
+// to be classified — so it must refuse before polling once. This is the
+// fail-closed counterpart of §4.5 on the recorder's own startup path.
+func TestDaemonChildRejectsAnAlreadyFinishedLog(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "log.jsonl")
+	clock := newFakeClock(testNow)
+
+	w, err := NewWriter(path, clock)
+	if err != nil {
+		t.Fatalf("NewWriter: %v", err)
+	}
+	if err := w.WriteHeader(testHeader()); err != nil {
+		t.Fatalf("WriteHeader: %v", err)
+	}
+	if err := w.Stop(); err != nil {
+		t.Fatalf("Stop: %v", err)
+	}
+
+	err = RunDaemonChild(context.Background(), DaemonChildConfig{
+		URL:   testHeader().URL,
+		Out:   path,
+		Clock: clock,
+	})
+	if err == nil {
+		t.Fatal("RunDaemonChild: no error against a log that already carries a stopped sentinel")
+	}
+	if !strings.Contains(err.Error(), "sentinel") {
+		t.Errorf("error = %v, want it to name the stopped sentinel", err)
+	}
 }
 
 // TestWatchFailsWhenTheChildCannotStartRecording is the other half of the
