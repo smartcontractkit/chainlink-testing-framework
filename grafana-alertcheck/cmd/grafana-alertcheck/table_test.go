@@ -2,11 +2,11 @@ package main
 
 import (
 	"bytes"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck/internal/gate"
+	"github.com/stretchr/testify/require"
 )
 
 // The golden table test: a fixed Result renders a deterministic, ordered rule
@@ -46,68 +46,41 @@ func TestRenderTable(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := renderTable(&buf, res); err != nil {
-		t.Fatalf("renderTable: %v", err)
-	}
+	require.NoError(t, renderTable(&buf, res))
 	out := buf.String()
 
 	// Rule table: Ape sorts before Zebra sorts before... Paused is skipped and
 	// carries no coverage entry, so it renders "-" for PROVED.
-	if !strings.Contains(out, "Ape Alert") || !strings.Contains(out, "unobservable") {
-		t.Fatalf("out = %q, want Ape's unobservable row", out)
-	}
-	if !strings.Contains(out, "heartbeat_gap") || !strings.Contains(out, "largest gap 5m0s") {
-		t.Fatalf("out = %q, want the coverage reason and largest gap", out)
-	}
-	if !strings.Contains(out, "Zebra Alert") || !strings.Contains(out, "clean") {
-		t.Fatalf("out = %q, want Zebra's clean row", out)
-	}
+	require.Contains(t, out, "Ape Alert")
+	require.Contains(t, out, "unobservable")
+	require.Contains(t, out, "heartbeat_gap")
+	require.Contains(t, out, "largest gap 5m0s")
+	require.Contains(t, out, "Zebra Alert")
+	require.Contains(t, out, "clean")
 
 	// The violations section must show up even without --output json, and must
 	// carry the --allow-paused hint text verbatim.
-	if !strings.Contains(out, "VIOLATIONS") {
-		t.Fatalf("out = %q, want a VIOLATIONS section", out)
-	}
-	if !strings.Contains(out, "--allow-paused") {
-		t.Fatalf("out = %q, want the --allow-paused hint in the human table", out)
-	}
-	if !strings.Contains(out, "STATE") || !strings.Contains(out, "HEALTH") {
-		t.Fatalf("out = %q, want the violations table to have STATE and HEALTH columns", out)
-	}
-	if !strings.Contains(out, string(gate.StateFiring)) || !strings.Contains(out, "error") {
-		t.Fatalf("out = %q, want Ape's violation State/Health", out)
-	}
+	require.Contains(t, out, "VIOLATIONS")
+	require.Contains(t, out, "--allow-paused")
+	require.Contains(t, out, "STATE")
+	require.Contains(t, out, "HEALTH")
+	require.Contains(t, out, string(gate.StateFiring))
+	require.Contains(t, out, "error")
 
 	// The footer: per-rule thresholds, global thresholds, and skew with its own
 	// bound rather than the fixed hard limit.
-	if !strings.Contains(out, "Ape Alert: maxGap=1m0s healthGrace=2m0s evalStaleAfter=1m0s") {
-		t.Fatalf("out = %q, want Ape's per-rule thresholds", out)
-	}
-	if !strings.Contains(out, "Zebra Alert: maxGap=1m0s healthGrace=1m0s evalStaleAfter=1m0s") {
-		t.Fatalf("out = %q, want Zebra's per-rule thresholds", out)
-	}
-	if strings.Contains(out, "Paused Alert: maxGap") {
-		t.Fatalf("out = %q, a skipped rule must not report thresholds it never had", out)
-	}
-	if !strings.Contains(out, "global: transitionGrace=5m0s (source: Ape Alert (for=5m)) drainTimeout=2m0s") {
-		t.Fatalf("out = %q, want the global thresholds line", out)
-	}
-	if !strings.Contains(out, "largest measured clock skew: 1.5s (bound ±250ms, hard limit 1m0s)") {
-		t.Fatalf("out = %q, want the skew and its own bound, not the hard limit misused as one", out)
-	}
-	if !strings.Contains(out, "violations: 2") {
-		t.Fatalf("out = %q, want the violation count", out)
-	}
-	if !strings.Contains(out, "13.1.0") {
-		t.Fatalf("out = %q, want the grafana version", out)
-	}
+	require.Contains(t, out, "Ape Alert: maxGap=1m0s healthGrace=2m0s evalStaleAfter=1m0s")
+	require.Contains(t, out, "Zebra Alert: maxGap=1m0s healthGrace=1m0s evalStaleAfter=1m0s")
+	require.NotContains(t, out, "Paused Alert: maxGap")
+	require.Contains(t, out, "global: transitionGrace=5m0s (source: Ape Alert (for=5m)) drainTimeout=2m0s")
+	require.Contains(t, out, "largest measured clock skew: 1.5s (bound ±250ms, hard limit 1m0s)")
+	require.Contains(t, out, "violations: 2")
+	require.Contains(t, out, "13.1.0")
 }
 
 // The "-" case: a rule decide never asked proveCoverage about (paused before
 // the window opened) has an empty CoverageResult and must not be reported as
 // either proved or unobservable.
 func TestProvedLabel_Skipped(t *testing.T) {
-	if got := provedLabel(gate.CoverageResult{}); got != "-" {
-		t.Fatalf("provedLabel(zero value) = %q, want \"-\"", got)
-	}
+	require.Equal(t, "-", provedLabel(gate.CoverageResult{}))
 }

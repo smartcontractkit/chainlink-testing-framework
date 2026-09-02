@@ -236,6 +236,19 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 			return Result{}, fmt.Errorf("log identity: %w", err)
 		}
 		logHasHdr = true
+		// Fail fast on a statically-knowable bound violation. `from <
+		// StartedAt` makes coverage unprovable no matter how healthy the polls
+		// that DO exist look, and StartedAt is immutable (line 1, written
+		// first), so this cannot disagree with the authoritative header read
+		// later. proveCoverage's check 2 remains the backstop against the
+		// authoritative header, so a bad advisory read can only ever fail
+		// closed, never produce a false pass. This is recorder mode only: the
+		// single-step branch has no header, and its own `from < startedAt` is
+		// a warning-and-pass (see below), not an error.
+		if from.Before(earlyHdr.StartedAt) {
+			return Result{}, fmt.Errorf("check: `from` %s is before recording started at %s",
+				from.Format(time.RFC3339), earlyHdr.StartedAt.Format(time.RFC3339))
+		}
 		resolved, notes, err = resolveFromLog(allDefs, earlyHdr, cfg)
 	} else {
 		resolved, notes, err = Resolve(allDefs, cfg.namedAlerts(), cfg.Folder)

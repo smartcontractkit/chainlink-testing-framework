@@ -1,23 +1,20 @@
 package gate
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func readFixture(t *testing.T, name string) []byte {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join("testdata", name))
-	if err != nil {
-		t.Fatalf("reading fixture %s: %v", name, err)
-	}
+	require.NoErrorf(t, err, "reading fixture %s", name)
 	return b
 }
 
@@ -33,24 +30,15 @@ func TestParseState_HappyPaths(t *testing.T) {
 			wantRules:     1,
 			wantInstances: 1,
 			checkFirst: func(t *testing.T, r StateRule) {
-				if r.UID != "rule0000001" {
-					t.Errorf("UID = %q, want rule0000001", r.UID)
-				}
-				if r.Folder != "ExampleTeam" || r.Group != "Example Service - Prod" {
-					t.Errorf("Folder/Group = %q/%q, want ExampleTeam/Example Service - Prod", r.Folder, r.Group)
-				}
-				if r.Health != "ok" || r.State != "inactive" {
-					t.Errorf("Health/State = %q/%q, want ok/inactive", r.Health, r.State)
-				}
-				if r.Interval.Seconds() != 60 {
-					t.Errorf("Interval = %v, want 60s", r.Interval)
-				}
-				if r.IsPaused {
-					t.Errorf("IsPaused = true, want false")
-				}
-				if len(r.Instances) != 1 || r.Instances[0].State != StateNormal {
-					t.Fatalf("Instances = %+v, want one normal instance", r.Instances)
-				}
+				require.Equal(t, "rule0000001", r.UID)
+				require.Equal(t, "ExampleTeam", r.Folder)
+				require.Equal(t, "Example Service - Prod", r.Group)
+				require.Equal(t, "ok", r.Health)
+				require.Equal(t, "inactive", r.State)
+				require.Equal(t, float64(60), r.Interval.Seconds())
+				require.False(t, r.IsPaused)
+				require.Len(t, r.Instances, 1)
+				require.Equal(t, StateNormal, r.Instances[0].State)
 
 				inst := r.Instances[0]
 				wantLabels := map[string]string{
@@ -62,19 +50,11 @@ func TestParseState_HappyPaths(t *testing.T) {
 					"severity":       "critical",
 					"team":           "example-team",
 				}
-				if !maps.Equal(inst.Labels, wantLabels) {
-					t.Errorf("Labels = %+v, want %+v", inst.Labels, wantLabels)
-				}
+				require.Equal(t, wantLabels, inst.Labels)
 				wantActiveAt, err := time.Parse(time.RFC3339, "2026-08-31T08:02:50Z")
-				if err != nil {
-					t.Fatalf("test setup: %v", err)
-				}
-				if !inst.ActiveAt.Equal(wantActiveAt) {
-					t.Errorf("ActiveAt = %v, want %v", inst.ActiveAt, wantActiveAt)
-				}
-				if inst.Value != "" {
-					t.Errorf("Value = %q, want empty string", inst.Value)
-				}
+				require.NoError(t, err, "test setup")
+				require.True(t, inst.ActiveAt.Equal(wantActiveAt))
+				require.Empty(t, inst.Value)
 			},
 		},
 		{
@@ -82,15 +62,10 @@ func TestParseState_HappyPaths(t *testing.T) {
 			wantRules:     1,
 			wantInstances: 0,
 			checkFirst: func(t *testing.T, r StateRule) {
-				if !r.IsPaused {
-					t.Errorf("IsPaused = false, want true")
-				}
-				if !r.LastEvaluation.IsZero() {
-					t.Errorf("LastEvaluation = %v, want zero time", r.LastEvaluation)
-				}
-				if r.Health != "ok" || r.State != "inactive" {
-					t.Errorf("Health/State = %q/%q, want ok/inactive", r.Health, r.State)
-				}
+				require.True(t, r.IsPaused)
+				require.True(t, r.LastEvaluation.IsZero())
+				require.Equal(t, "ok", r.Health)
+				require.Equal(t, "inactive", r.State)
 			},
 		},
 		{
@@ -98,15 +73,10 @@ func TestParseState_HappyPaths(t *testing.T) {
 			wantRules:     1,
 			wantInstances: 1,
 			checkFirst: func(t *testing.T, r StateRule) {
-				if r.Health != "error" {
-					t.Errorf("Health = %q, want error", r.Health)
-				}
-				if r.LastError == "" {
-					t.Errorf("LastError is empty, want a message")
-				}
-				if len(r.Instances) != 1 || r.Instances[0].State != StateError {
-					t.Fatalf("Instances = %+v, want one error instance", r.Instances)
-				}
+				require.Equal(t, "error", r.Health)
+				require.NotEmpty(t, r.LastError)
+				require.Len(t, r.Instances, 1)
+				require.Equal(t, StateError, r.Instances[0].State)
 			},
 		},
 		{
@@ -114,12 +84,9 @@ func TestParseState_HappyPaths(t *testing.T) {
 			wantRules:     1,
 			wantInstances: 1,
 			checkFirst: func(t *testing.T, r StateRule) {
-				if r.Health != "nodata" {
-					t.Errorf("Health = %q, want nodata", r.Health)
-				}
-				if len(r.Instances) != 1 || r.Instances[0].State != StateNodata {
-					t.Fatalf("Instances = %+v, want one nodata instance", r.Instances)
-				}
+				require.Equal(t, "nodata", r.Health)
+				require.Len(t, r.Instances, 1)
+				require.Equal(t, StateNodata, r.Instances[0].State)
 			},
 		},
 		{
@@ -132,17 +99,14 @@ func TestParseState_HappyPaths(t *testing.T) {
 					byReason[inst.Reason] = inst
 				}
 				errInst, ok := byReason["Error"]
-				if !ok || errInst.State != StateNormal {
-					t.Errorf(`want an instance with State=normal Reason="Error", got %+v`, byReason["Error"])
-				}
+				require.True(t, ok, `want an instance with Reason="Error"`)
+				require.Equal(t, StateNormal, errInst.State)
 				nodataInst, ok := byReason["NoData"]
-				if !ok || nodataInst.State != StateNormal {
-					t.Errorf(`want an instance with State=normal Reason="NoData", got %+v`, byReason["NoData"])
-				}
+				require.True(t, ok, `want an instance with Reason="NoData"`)
+				require.Equal(t, StateNormal, nodataInst.State)
 				plain, ok := byReason[""]
-				if !ok || plain.State != StateNormal {
-					t.Errorf(`want a plain State=normal Reason="" instance, got %+v`, byReason[""])
-				}
+				require.True(t, ok, `want a plain Reason="" instance`)
+				require.Equal(t, StateNormal, plain.State)
 			},
 		},
 		{
@@ -150,12 +114,8 @@ func TestParseState_HappyPaths(t *testing.T) {
 			wantRules:     1,
 			wantInstances: 0,
 			checkFirst: func(t *testing.T, r StateRule) {
-				if r.Instances != nil {
-					t.Errorf("Instances = %+v, want nil", r.Instances)
-				}
-				if r.Totals != nil {
-					t.Errorf("Totals = %+v, want nil", r.Totals)
-				}
+				require.Nil(t, r.Instances)
+				require.Nil(t, r.Totals)
 			},
 		},
 		{
@@ -163,12 +123,10 @@ func TestParseState_HappyPaths(t *testing.T) {
 			wantRules:     1,
 			wantInstances: 1,
 			checkFirst: func(t *testing.T, r StateRule) {
-				if len(r.Instances) != 1 || r.Instances[0].State != StateFiring {
-					t.Fatalf("Instances = %+v, want one firing instance", r.Instances)
-				}
-				if r.Totals["normal"] == 0 {
-					t.Errorf(`Totals["normal"] = 0, want >0 (the totals/instances mismatch this fixture exists to capture)`)
-				}
+				require.Len(t, r.Instances, 1)
+				require.Equal(t, StateFiring, r.Instances[0].State)
+				require.NotZero(t, r.Totals["normal"],
+					"the totals/instances mismatch this fixture exists to capture")
 			},
 		},
 	}
@@ -176,15 +134,9 @@ func TestParseState_HappyPaths(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.fixture, func(t *testing.T) {
 			rules, err := ParseState(readFixture(t, c.fixture))
-			if err != nil {
-				t.Fatalf("ParseState(%s): unexpected error: %v", c.fixture, err)
-			}
-			if len(rules) != c.wantRules {
-				t.Fatalf("ParseState(%s): got %d rules, want %d", c.fixture, len(rules), c.wantRules)
-			}
-			if got := len(rules[0].Instances); got != c.wantInstances {
-				t.Fatalf("ParseState(%s): got %d instances, want %d", c.fixture, got, c.wantInstances)
-			}
+			require.NoErrorf(t, err, "ParseState(%s)", c.fixture)
+			require.Lenf(t, rules, c.wantRules, "ParseState(%s)", c.fixture)
+			require.Lenf(t, rules[0].Instances, c.wantInstances, "ParseState(%s)", c.fixture)
 			if c.checkFirst != nil {
 				c.checkFirst(t, rules[0])
 			}
@@ -214,13 +166,9 @@ func TestParseState_MustError(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.fixture, func(t *testing.T) {
 			_, err := ParseState(readFixture(t, c.fixture))
-			if err == nil {
-				t.Fatalf("ParseState(%s): expected an error, got none", c.fixture)
-			}
+			require.Errorf(t, err, "ParseState(%s): expected an error, got none", c.fixture)
 			for _, want := range c.wantContains {
-				if !strings.Contains(err.Error(), want) {
-					t.Errorf("ParseState(%s): error %q does not mention %q", c.fixture, err.Error(), want)
-				}
+				require.Containsf(t, err.Error(), want, "ParseState(%s): error", c.fixture)
 			}
 		})
 	}
@@ -248,39 +196,25 @@ func TestParseNormalizeInstanceState(t *testing.T) {
 	for _, c := range cases {
 		state, reason, err := normalizeInstanceState(c.in)
 		if c.wantErr {
-			if err == nil {
-				t.Errorf("normalizeInstanceState(%q): expected an error, got none", c.in)
-			}
+			require.Errorf(t, err, "normalizeInstanceState(%q)", c.in)
 			continue
 		}
-		if err != nil {
-			t.Errorf("normalizeInstanceState(%q): unexpected error: %v", c.in, err)
-			continue
-		}
-		if state != c.wantState || reason != c.wantReason {
-			t.Errorf("normalizeInstanceState(%q) = (%q, %q), want (%q, %q)", c.in, state, reason, c.wantState, c.wantReason)
-		}
+		require.NoErrorf(t, err, "normalizeInstanceState(%q)", c.in)
+		require.Equalf(t, c.wantState, state, "normalizeInstanceState(%q)", c.in)
+		require.Equalf(t, c.wantReason, reason, "normalizeInstanceState(%q)", c.in)
 	}
 }
 
 func TestInstanceKey(t *testing.T) {
 	a := instanceKey(map[string]string{"b": "2", "a": "1"})
 	b := instanceKey(map[string]string{"a": "1", "b": "2"})
-	if a != b {
-		t.Errorf("instanceKey order-independence: %q != %q", a, b)
-	}
-	if a != "a=1\nb=2\n" {
-		t.Errorf("instanceKey = %q, want a=1\\nb=2\\n", a)
-	}
+	require.Equal(t, b, a, "instanceKey order-independence")
+	require.Equal(t, "a=1\nb=2\n", a)
 
 	diff := instanceKey(map[string]string{"a": "1", "b": "3"})
-	if a == diff {
-		t.Errorf("instanceKey should differ when a label value differs")
-	}
+	require.NotEqual(t, a, diff, "instanceKey should differ when a label value differs")
 
-	if instanceKey(nil) != "" {
-		t.Errorf("instanceKey(nil) = %q, want empty string", instanceKey(nil))
-	}
+	require.Empty(t, instanceKey(nil))
 }
 
 // minimalStateBody is the smallest legal state response: one group, one
@@ -309,12 +243,8 @@ func TestParseState_KeepFiringForIsOptional(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			rules, err := ParseState(minimalStateBody(tc.extra))
-			if err != nil {
-				t.Fatalf("ParseState: %v", err)
-			}
-			if len(rules) != 1 {
-				t.Fatalf("rules = %+v, want one", rules)
-			}
+			require.NoError(t, err)
+			require.Len(t, rules, 1)
 		})
 	}
 }
@@ -325,15 +255,10 @@ func TestParseState_KeepFiringForIsOptional(t *testing.T) {
 func TestParseState_InstanceWithoutLabelsParses(t *testing.T) {
 	body := minimalStateBody(`,"alerts":[{"state":"Normal","activeAt":"2026-01-01T00:00:00Z"}]`)
 	rules, err := ParseState(body)
-	if err != nil {
-		t.Fatalf("ParseState: %v", err)
-	}
-	if len(rules) != 1 || len(rules[0].Instances) != 1 {
-		t.Fatalf("rules = %+v, want one rule with one instance", rules)
-	}
-	if got := rules[0].Instances[0].Labels; len(got) != 0 {
-		t.Errorf("Instance.Labels = %v, want empty/nil", got)
-	}
+	require.NoError(t, err)
+	require.Len(t, rules, 1)
+	require.Len(t, rules[0].Instances, 1)
+	require.Empty(t, rules[0].Instances[0].Labels)
 }
 
 // synthesizeHighCardinalityState builds a state response with a single rule
@@ -347,25 +272,15 @@ func synthesizeHighCardinalityState(t *testing.T, alerting, normal int) []byte {
 	base := readFixture(t, "state_one_instance.json")
 
 	var top map[string]json.RawMessage
-	if err := json.Unmarshal(base, &top); err != nil {
-		t.Fatalf("synthesize: %v", err)
-	}
+	require.NoError(t, json.Unmarshal(base, &top))
 	var data map[string]json.RawMessage
-	if err := json.Unmarshal(top["data"], &data); err != nil {
-		t.Fatalf("synthesize: %v", err)
-	}
+	require.NoError(t, json.Unmarshal(top["data"], &data))
 	var groups []map[string]json.RawMessage
-	if err := json.Unmarshal(data["groups"], &groups); err != nil {
-		t.Fatalf("synthesize: %v", err)
-	}
+	require.NoError(t, json.Unmarshal(data["groups"], &groups))
 	var rules []map[string]json.RawMessage
-	if err := json.Unmarshal(groups[0]["rules"], &rules); err != nil {
-		t.Fatalf("synthesize: %v", err)
-	}
+	require.NoError(t, json.Unmarshal(groups[0]["rules"], &rules))
 	var alerts []map[string]json.RawMessage
-	if err := json.Unmarshal(rules[0]["alerts"], &alerts); err != nil {
-		t.Fatalf("synthesize: %v", err)
-	}
+	require.NoError(t, json.Unmarshal(rules[0]["alerts"], &alerts))
 	template := alerts[0]
 
 	newAlerts := make([]map[string]json.RawMessage, 0, alerting+normal)
@@ -390,9 +305,7 @@ func synthesizeHighCardinalityState(t *testing.T, alerting, normal int) []byte {
 	top["data"] = mustRaw(t, data)
 
 	out, err := json.Marshal(top)
-	if err != nil {
-		t.Fatalf("synthesize: %v", err)
-	}
+	require.NoError(t, err)
 	return out
 }
 
@@ -409,29 +322,19 @@ func cloneRawMap(m map[string]json.RawMessage) map[string]json.RawMessage {
 func mustRaw(t *testing.T, v any) json.RawMessage {
 	t.Helper()
 	b, err := json.Marshal(v)
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
-	}
+	require.NoError(t, err)
 	return json.RawMessage(b)
 }
 
 func TestParseState_HighCardinality(t *testing.T) {
 	body := synthesizeHighCardinalityState(t, 445, 2004)
-	if !bytes.Contains(body, []byte("alerting-0")) {
-		t.Fatalf("synthesized body missing expected content")
-	}
+	require.Contains(t, string(body), "alerting-0")
 
 	rules, err := ParseState(body)
-	if err != nil {
-		t.Fatalf("ParseState: unexpected error: %v", err)
-	}
-	if len(rules) != 1 {
-		t.Fatalf("got %d rules, want 1", len(rules))
-	}
+	require.NoError(t, err)
+	require.Len(t, rules, 1)
 	r := rules[0]
-	if len(r.Instances) != 445+2004 {
-		t.Fatalf("got %d instances, want %d", len(r.Instances), 445+2004)
-	}
+	require.Len(t, r.Instances, 445+2004)
 
 	var firing, normal int
 	for _, inst := range r.Instances {
@@ -441,28 +344,21 @@ func TestParseState_HighCardinality(t *testing.T) {
 		case StateNormal:
 			normal++
 		default:
-			t.Fatalf("unexpected instance state %q", inst.State)
+			require.Fail(t, fmt.Sprintf("unexpected instance state %q", inst.State))
 		}
 	}
-	if firing != 445 || normal != 2004 {
-		t.Fatalf("got firing=%d normal=%d, want firing=445 normal=2004", firing, normal)
-	}
+	require.Equal(t, 445, firing)
+	require.Equal(t, 2004, normal)
 
 	// Each synthesized instance carries a distinct "instance" label; confirm
 	// Labels actually made it through parsing (not just State) by checking
 	// instanceKey produces one unique key per instance, with no collisions.
 	seen := make(map[string]bool, len(r.Instances))
 	for _, inst := range r.Instances {
-		if inst.Labels == nil {
-			t.Fatalf("instance has nil Labels")
-		}
+		require.NotNil(t, inst.Labels)
 		k := instanceKey(inst.Labels)
-		if seen[k] {
-			t.Fatalf("duplicate instance key %q", k)
-		}
+		require.Falsef(t, seen[k], "duplicate instance key %q", k)
 		seen[k] = true
 	}
-	if len(seen) != 445+2004 {
-		t.Fatalf("got %d unique instance keys, want %d", len(seen), 445+2004)
-	}
+	require.Len(t, seen, 445+2004)
 }

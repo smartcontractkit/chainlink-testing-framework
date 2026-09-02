@@ -15,6 +15,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 // TestMain doubles this test binary as the detached recorder. Watch spawns
@@ -163,37 +165,25 @@ func grafanaTestServer(t *testing.T) *httptest.Server {
 func patchedStateBody(t *testing.T) []byte {
 	t.Helper()
 	var body map[string]any
-	if err := json.Unmarshal(readFixture(t, "state_one_instance.json"), &body); err != nil {
-		t.Fatalf("unmarshal state fixture: %v", err)
-	}
+	require.NoError(t, json.Unmarshal(readFixture(t, "state_one_instance.json"), &body))
 	data, ok := body["data"].(map[string]any)
-	if !ok {
-		t.Fatal("state fixture: no data object")
-	}
+	require.True(t, ok, "state fixture: no data object")
 	groups, ok := data["groups"].([]any)
-	if !ok || len(groups) == 0 {
-		t.Fatal("state fixture: no groups")
-	}
+	require.True(t, ok, "state fixture: no groups")
+	require.NotEmpty(t, groups, "state fixture: no groups")
 	group, ok := groups[0].(map[string]any)
-	if !ok {
-		t.Fatal("state fixture: group 0 is not an object")
-	}
+	require.True(t, ok, "state fixture: group 0 is not an object")
 	rules, ok := group["rules"].([]any)
-	if !ok || len(rules) == 0 {
-		t.Fatal("state fixture: group 0 has no rules")
-	}
+	require.True(t, ok, "state fixture: group 0 has no rules")
+	require.NotEmpty(t, rules, "state fixture: group 0 has no rules")
 	rule, ok := rules[0].(map[string]any)
-	if !ok {
-		t.Fatal("state fixture: rule 0 is not an object")
-	}
+	require.True(t, ok, "state fixture: rule 0 is not an object")
 	rule["uid"] = watchActiveUID
 	rule["name"] = watchActiveTitle
 	rule["lastEvaluation"] = time.Now().UTC().Format(time.RFC3339Nano)
 
 	b, err := json.Marshal(body)
-	if err != nil {
-		t.Fatalf("marshal patched state fixture: %v", err)
-	}
+	require.NoError(t, err)
 	return b
 }
 
@@ -209,7 +199,7 @@ func waitFor(t *testing.T, what string, timeout time.Duration, cond func() bool)
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	t.Fatalf("timed out after %s waiting for %s", timeout, what)
+	require.Fail(t, fmt.Sprintf("timed out after %s waiting for %s", timeout, what))
 }
 
 // The one watch integration test: everything from the version gate to the
@@ -237,9 +227,7 @@ func TestWatchSpawnsADetachedRecorder(t *testing.T) {
 		Notes:       &notes,
 	}
 
-	if err := Watch(context.Background(), cfg); err != nil {
-		t.Fatalf("Watch: %v\nnotes:\n%s", err, notes.String())
-	}
+	require.NoError(t, Watch(context.Background(), cfg))
 	t.Cleanup(func() {
 		if t.Failed() {
 			t.Logf("notes:\n%s", notes.String())
@@ -248,20 +236,14 @@ func TestWatchSpawnsADetachedRecorder(t *testing.T) {
 	})
 
 	pid, err := ReadPidFile(out + ".pid")
-	if err != nil {
-		t.Fatalf("ReadPidFile: %v", err)
-	}
-	if err := syscall.Kill(pid, 0); err != nil {
-		t.Fatalf("recorder pid %d is not running right after Watch returned: %v", pid, err)
-	}
+	require.NoError(t, err)
+	require.NoError(t, syscall.Kill(pid, 0), "recorder pid %d is not running right after Watch returned", pid)
 	// Setsid, not a bare `&`: a session leader's process group id is its own
 	// pid. Without this the child would still share the parent's process group
 	// and die with the step that started it.
-	if pgid, err := syscall.Getpgid(pid); err != nil {
-		t.Errorf("Getpgid(%d): %v", pid, err)
-	} else if pgid != pid {
-		t.Errorf("recorder pgid = %d, want %d: it did not get its own session", pgid, pid)
-	}
+	pgid, err := syscall.Getpgid(pid)
+	require.NoError(t, err)
+	require.Equal(t, pid, pgid, "it did not get its own session")
 
 	// The parent already wrote the first heartbeat before it returned;
 	// these later ones prove the detached child is the one appending now.
@@ -271,35 +253,24 @@ func TestWatchSpawnsADetachedRecorder(t *testing.T) {
 	})
 
 	// Stop it exactly the way check does.
-	if err := syscall.Kill(pid, syscall.SIGTERM); err != nil {
-		t.Fatalf("SIGTERM %d: %v", pid, err)
-	}
+	require.NoError(t, syscall.Kill(pid, syscall.SIGTERM))
 	waitFor(t, "the stopped sentinel", 10*time.Second, func() bool {
 		_, _, sentinel, err := ReadLog(out)
 		return err == nil && sentinel != nil
 	})
 
 	header, polls, sentinel, err := ReadLog(out)
-	if err != nil {
-		t.Fatalf("ReadLog: %v", err)
-	}
-	if header.URL != srv.URL || header.GrafanaVersion != "13.1.0" {
-		t.Errorf("header identity = %q/%q, want %q/13.1.0", header.URL, header.GrafanaVersion, srv.URL)
-	}
-	if len(header.Rules) != 1 || header.Rules[0].PollEverySeconds != 0.2 {
-		t.Errorf("header rules = %+v, want one rule recorded at 0.2s", header.Rules)
-	}
+	require.NoError(t, err)
+	require.Equal(t, srv.URL, header.URL)
+	require.Equal(t, "13.1.0", header.GrafanaVersion)
+	require.Len(t, header.Rules, 1)
+	require.Equal(t, float64(0.2), header.Rules[0].PollEverySeconds)
 	for i, p := range polls {
-		if p.RuleUID != watchActiveUID || !p.Found {
-			t.Fatalf("poll %d = %+v, want a found observation of %s", i, p, watchActiveUID)
-		}
-		if p.GrafanaNow.IsZero() {
-			t.Fatalf("poll %d has no grafana_now; every poll needs the Date header of its own response", i)
-		}
+		require.Equalf(t, watchActiveUID, p.RuleUID, "poll %d", i)
+		require.Truef(t, p.Found, "poll %d", i)
+		require.Falsef(t, p.GrafanaNow.IsZero(), "poll %d has no grafana_now; every poll needs the Date header of its own response", i)
 	}
-	if sentinel.Before(header.StartedAt) {
-		t.Errorf("sentinel at %s precedes the record start %s", sentinel, header.StartedAt)
-	}
+	require.False(t, sentinel.Before(header.StartedAt), "sentinel precedes the record start")
 
 	waitFor(t, "the recorder to exit", 10*time.Second, func() bool {
 		return syscall.Kill(pid, 0) != nil
@@ -317,27 +288,17 @@ func TestDaemonChildRejectsAnAlreadyFinishedLog(t *testing.T) {
 	clock := newFakeClock(testNow)
 
 	w, err := NewWriter(path, clock)
-	if err != nil {
-		t.Fatalf("NewWriter: %v", err)
-	}
-	if err := w.WriteHeader(testHeader()); err != nil {
-		t.Fatalf("WriteHeader: %v", err)
-	}
-	if err := w.Stop(); err != nil {
-		t.Fatalf("Stop: %v", err)
-	}
+	require.NoError(t, err)
+	require.NoError(t, w.WriteHeader(testHeader()))
+	require.NoError(t, w.Stop())
 
 	err = RunDaemonChild(context.Background(), DaemonChildConfig{
 		URL:   testHeader().URL,
 		Out:   path,
 		Clock: clock,
 	})
-	if err == nil {
-		t.Fatal("RunDaemonChild: no error against a log that already carries a stopped sentinel")
-	}
-	if !strings.Contains(err.Error(), "sentinel") {
-		t.Errorf("error = %v, want it to name the stopped sentinel", err)
-	}
+	require.Error(t, err, "no error against a log that already carries a stopped sentinel")
+	require.Contains(t, err.Error(), "sentinel")
 }
 
 // TestWatchFailsWhenTheChildCannotStartRecording is the other half of the
@@ -365,13 +326,9 @@ func TestWatchFailsWhenTheChildCannotStartRecording(t *testing.T) {
 		Concurrency: 2,
 		Notes:       &notes,
 	})
-	if err == nil {
-		t.Fatal("Watch: no error, but the child could never have started recording")
-	}
-	if !strings.Contains(err.Error(), "records url") {
-		t.Errorf("error does not quote the child's own reason:\n%v", err)
-	}
-	if _, statErr := os.Stat(out + ".pid"); !os.IsNotExist(statErr) {
-		t.Errorf("a pidfile survived a failed detach (%v); pids are reused, so the next step would signal a stranger", statErr)
-	}
+	require.Error(t, err, "the child could never have started recording")
+	require.Contains(t, err.Error(), "records url")
+	_, statErr := os.Stat(out + ".pid")
+	require.True(t, os.IsNotExist(statErr),
+		"a pidfile survived a failed detach; pids are reused, so the next step would signal a stranger")
 }

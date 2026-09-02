@@ -4,14 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 // The two fixture rules every prepareWatch test below uses: one live, one
@@ -73,12 +73,8 @@ func testStateRule(uid, title string, interval time.Duration, grafanaNow time.Ti
 func newLoopWriter(t *testing.T, path string, clock Clock) *Writer {
 	t.Helper()
 	w, err := NewWriter(path, clock)
-	if err != nil {
-		t.Fatalf("NewWriter: %v", err)
-	}
-	if err := w.WriteHeader(testHeader()); err != nil {
-		t.Fatalf("WriteHeader: %v", err)
-	}
+	require.NoError(t, err)
+	require.NoError(t, w.WriteHeader(testHeader()))
 	return w
 }
 
@@ -123,29 +119,21 @@ func TestWatchLoopPollsEachRuleAtItsOwnCadence(t *testing.T) {
 		Concurrency: 2,
 		Clock:       clock,
 	})
-	if err != nil {
-		t.Fatalf("watchLoop: %v", err)
-	}
+	require.NoError(t, err)
 
 	_, polls, sentinel, readErr := ReadLog(path)
-	if readErr != nil {
-		t.Fatalf("ReadLog: %v", readErr)
-	}
-	if sentinel == nil {
-		t.Fatal("no stopped sentinel after a clean stop")
-	}
-	if sentinel.Before(testNow.Add(300 * time.Second)) {
-		t.Errorf("sentinel at %s, want >= the stop time %s", sentinel, testNow.Add(300*time.Second))
-	}
+	require.NoError(t, readErr)
+	require.NotNil(t, sentinel, "no stopped sentinel after a clean stop")
+	require.False(t, sentinel.Before(testNow.Add(300*time.Second)))
 	// 300s of window at 5s and 150s, minus the initial stagger offset of up to
 	// one cadence: 59-60 and 1-2. The assertion is the ratio, not the exact
 	// count — a single global cycle would give both rules the same number.
-	if got := countPolls(polls, tightUID); got < 59 || got > 61 {
-		t.Errorf("tight rule polled %d times, want ~60 (300s at 5s)", got)
-	}
-	if got := countPolls(polls, slackUID); got < 1 || got > 3 {
-		t.Errorf("slack rule polled %d times, want ~2 (300s at 150s)", got)
-	}
+	got := countPolls(polls, tightUID)
+	require.GreaterOrEqual(t, got, 59)
+	require.LessOrEqual(t, got, 61)
+	got = countPolls(polls, slackUID)
+	require.GreaterOrEqual(t, got, 1)
+	require.LessOrEqual(t, got, 3)
 }
 
 // Fail-closed from the recorder's side: a recorder that dies must look exactly
@@ -174,20 +162,12 @@ func TestWatchLoopHardErrorLeavesNoSentinel(t *testing.T) {
 		Concurrency: 1,
 		Clock:       clock,
 	})
-	if !errors.Is(err, boom) {
-		t.Fatalf("watchLoop error = %v, want %v", err, boom)
-	}
+	require.ErrorIs(t, err, boom)
 
 	_, polls, sentinel, readErr := ReadLog(path)
-	if readErr != nil {
-		t.Fatalf("ReadLog: %v", readErr)
-	}
-	if sentinel != nil {
-		t.Errorf("sentinel at %s after a failed recording; check would read that as a finished window", sentinel)
-	}
-	if len(polls) != 1 {
-		t.Errorf("kept %d polls, want the 1 that succeeded before the failure", len(polls))
-	}
+	require.NoError(t, readErr)
+	require.Nil(t, sentinel, "check would read that as a finished window")
+	require.Len(t, polls, 1, "want the 1 that succeeded before the failure")
 }
 
 // SIGTERM arriving while a poll is in flight is a clean stop, so the aborted
@@ -211,7 +191,7 @@ func TestWatchLoopSignalDuringPollIsACleanStop(t *testing.T) {
 		return observation(now, testStateRule("r1", title, time.Minute, now)), nil
 	})
 
-	if err := watchLoop(ctx, watchLoopConfig{
+	require.NoError(t, watchLoop(ctx, watchLoopConfig{
 		Src:         src,
 		Writer:      w,
 		Reducer:     NewReducer(),
@@ -219,15 +199,11 @@ func TestWatchLoopSignalDuringPollIsACleanStop(t *testing.T) {
 		Cadence:     map[string]time.Duration{"r1": 30 * time.Second},
 		Concurrency: 1,
 		Clock:       clock,
-	}); err != nil {
-		t.Fatalf("watchLoop: %v", err)
-	}
+	}))
 
-	if _, _, sentinel, err := ReadLog(path); err != nil {
-		t.Fatalf("ReadLog: %v", err)
-	} else if sentinel == nil {
-		t.Error("no sentinel after a signalled stop; check would call a fully observed window unobservable")
-	}
+	_, _, sentinel, err := ReadLog(path)
+	require.NoError(t, err)
+	require.NotNil(t, sentinel, "no sentinel after a signalled stop; check would call a fully observed window unobservable")
 }
 
 // TestWatchLoopWithNothingToPollStillFinishesTheLog covers the every-rule-is-
@@ -242,7 +218,7 @@ func TestWatchLoopWithNothingToPollStillFinishesTheLog(t *testing.T) {
 		return Observation{}, fmt.Errorf("nothing should be polled, got %q", title)
 	})
 
-	if err := watchLoop(context.Background(), watchLoopConfig{
+	require.NoError(t, watchLoop(context.Background(), watchLoopConfig{
 		Src:         src,
 		Writer:      w,
 		Reducer:     NewReducer(),
@@ -251,20 +227,12 @@ func TestWatchLoopWithNothingToPollStillFinishesTheLog(t *testing.T) {
 		Until:       testNow.Add(time.Minute),
 		Concurrency: 1,
 		Clock:       clock,
-	}); err != nil {
-		t.Fatalf("watchLoop: %v", err)
-	}
+	}))
 
 	_, polls, sentinel, err := ReadLog(path)
-	if err != nil {
-		t.Fatalf("ReadLog: %v", err)
-	}
-	if len(polls) != 0 {
-		t.Errorf("wrote %d polls with nothing to poll", len(polls))
-	}
-	if sentinel == nil {
-		t.Error("no sentinel: check cannot tell this recording from one that died")
-	}
+	require.NoError(t, err)
+	require.Empty(t, polls)
+	require.NotNil(t, sentinel, "no sentinel: check cannot tell this recording from one that died")
 }
 
 // TestWatchLoopPollBatchKeepsTheHeartbeatsItGot: one rule's failure must not
@@ -293,20 +261,13 @@ func TestWatchLoopPollBatchKeepsTheHeartbeatsItGot(t *testing.T) {
 		Concurrency: 2,
 		Clock:       clock,
 	}
-	if err := cfg.pollBatch(context.Background(), []string{"ok", "bad"}); !errors.Is(err, boom) {
-		t.Fatalf("pollBatch error = %v, want %v", err, boom)
-	}
-	if err := w.Close(); err != nil {
-		t.Fatalf("Close: %v", err)
-	}
+	require.ErrorIs(t, cfg.pollBatch(context.Background(), []string{"ok", "bad"}), boom)
+	require.NoError(t, w.Close())
 
 	_, polls, _, err := ReadLog(path)
-	if err != nil {
-		t.Fatalf("ReadLog: %v", err)
-	}
-	if len(polls) != 1 || polls[0].RuleUID != "ok" {
-		t.Errorf("polls = %+v, want the one heartbeat that was actually observed", polls)
-	}
+	require.NoError(t, err)
+	require.Len(t, polls, 1)
+	require.Equal(t, "ok", polls[0].RuleUID)
 }
 
 // The vanish-versus-clear distinction at the one seam the parent/child handoff
@@ -326,27 +287,20 @@ func TestReducerSeedFromKeepsMarkersAcrossTheHandoff(t *testing.T) {
 		r := NewReducer()
 		r.seedFrom([]Poll{parentPoll})
 		p := r.Reduce("r1", childObs)
-		if !slices.Contains(p.Vanished, key) {
-			t.Errorf("vanished = %v, want it to contain %q", p.Vanished, key)
-		}
-		if len(p.Cleared) != 0 {
-			t.Errorf("cleared = %v, want none: a vanish is not a recovery", p.Cleared)
-		}
+		require.Contains(t, p.Vanished, key)
+		require.Empty(t, p.Cleared, "a vanish is not a recovery")
 	})
 
 	t.Run("unseeded loses the transition", func(t *testing.T) {
 		p := NewReducer().Reduce("r1", childObs)
-		if len(p.Vanished) != 0 {
-			t.Fatalf("vanished = %v; this subtest exists to show the seed is what produces the marker", p.Vanished)
-		}
+		require.Empty(t, p.Vanished, "this subtest exists to show the seed is what produces the marker")
 	})
 
 	t.Run("a not-found poll does not clear the seed", func(t *testing.T) {
 		r := NewReducer()
 		r.seedFrom([]Poll{parentPoll, {RuleUID: "r1", Found: false}})
-		if p := r.Reduce("r1", childObs); !slices.Contains(p.Vanished, key) {
-			t.Errorf("vanished = %v, want it to contain %q: an absent rule leaves the abnormal set untouched", p.Vanished, key)
-		}
+		p := r.Reduce("r1", childObs)
+		require.Contains(t, p.Vanished, key, "an absent rule leaves the abnormal set untouched")
 	})
 }
 
@@ -392,50 +346,34 @@ func TestPrepareWatchDoesNotWaitForPausedRules(t *testing.T) {
 	src := watchTestSource(t, liveObservation(testNow))
 
 	prep, err := prepareWatch(context.Background(), cfg, src)
-	if err != nil {
-		t.Fatalf("prepareWatch: %v", err)
-	}
-	if err := prep.writer.Close(); err != nil {
-		t.Fatalf("Close: %v", err)
-	}
+	require.NoError(t, err)
+	require.NoError(t, prep.writer.Close())
 
 	header, polls, sentinel, err := ReadLog(cfg.Out)
-	if err != nil {
-		t.Fatalf("ReadLog: %v", err)
-	}
-	if sentinel != nil {
-		t.Error("the parent wrote a sentinel; that would tell check the recording ended before the child started")
-	}
+	require.NoError(t, err)
+	require.Nil(t, sentinel, "the parent wrote a sentinel; that would tell check the recording ended before the child started")
 
-	if len(header.Rules) != 2 {
-		t.Fatalf("header names %d rules, want both the live and the paused one", len(header.Rules))
-	}
+	require.Len(t, header.Rules, 2)
 	for _, lr := range header.Rules {
-		if lr.PollEverySeconds <= 0 {
-			t.Errorf("header rule %s records poll_every_seconds=%v; check needs a positive cadence to derive maxGap from", lr.UID, lr.PollEverySeconds)
-		}
-		if lr.UID == watchPausedUID && !lr.IsPaused {
-			t.Errorf("header rule %s: is_paused = false, want the resolve-time snapshot to say true", lr.UID)
+		require.Positive(t, lr.PollEverySeconds,
+			"check needs a positive cadence to derive maxGap from")
+		if lr.UID == watchPausedUID {
+			require.True(t, lr.IsPaused, "want the resolve-time snapshot to say true")
 		}
 	}
 
 	// One poll, for the live rule only — and it is already in the log before
 	// prepareWatch returned, which is the whole point of the record step.
-	if len(polls) != 1 || polls[0].RuleUID != watchActiveUID {
-		t.Fatalf("polls = %+v, want exactly one first observation of %s", polls, watchActiveUID)
-	}
-	if !polls[0].Found || !polls[0].GrafanaNow.Equal(testNow) {
-		t.Errorf("first poll = %+v, want a found observation at %s", polls[0], testNow)
-	}
+	require.Len(t, polls, 1)
+	require.Equal(t, watchActiveUID, polls[0].RuleUID)
+	require.True(t, polls[0].Found)
+	require.True(t, polls[0].GrafanaNow.Equal(testNow))
 	// The poll record holds the state histogram, asserted through a real
 	// prepareWatch()/Reducer call rather than log_test.go's hand-built
 	// Writer/ReadLog round trip.
-	if want := map[string]int{"normal": 1}; !maps.Equal(polls[0].Histogram, want) {
-		t.Errorf("Histogram = %v, want %v: watch must record the state histogram on every poll it writes", polls[0].Histogram, want)
-	}
-	if !strings.Contains(notes.String(), watchPausedTitle) || !strings.Contains(notes.String(), "paused") {
-		t.Errorf("notes do not mention the paused rule:\n%s", notes.String())
-	}
+	require.Equal(t, map[string]int{"normal": 1}, polls[0].Histogram)
+	require.Contains(t, notes.String(), watchPausedTitle)
+	require.Contains(t, notes.String(), "paused")
 }
 
 // One authority for the cadence, from the writing side: whatever
@@ -448,20 +386,13 @@ func TestPrepareWatchHeaderRecordsTheOverriddenCadence(t *testing.T) {
 	src := watchTestSource(t, liveObservation(testNow))
 
 	prep, err := prepareWatch(context.Background(), cfg, src)
-	if err != nil {
-		t.Fatalf("prepareWatch: %v", err)
-	}
+	require.NoError(t, err)
 	defer prep.writer.Close()
 
-	if got := prep.header.Rules[0].PollEverySeconds; got != 120 {
-		t.Errorf("header poll_every_seconds = %v, want 120 (the override, used verbatim and never clamped)", got)
-	}
-	if got := prep.timings[watchActiveUID].maxGap; got != 240*time.Second {
-		t.Errorf("maxGap = %s, want 240s (2 x the recorded cadence)", got)
-	}
-	if !strings.Contains(notes.String(), "--poll-interval") {
-		t.Errorf("notes do not report that the override exceeds half the evaluation interval:\n%s", notes.String())
-	}
+	require.Equal(t, float64(120), prep.header.Rules[0].PollEverySeconds,
+		"the override, used verbatim and never clamped")
+	require.Equal(t, 240*time.Second, prep.timings[watchActiveUID].maxGap)
+	require.Contains(t, notes.String(), "--poll-interval")
 }
 
 // The budget check runs on the latencies the parent just measured, before the
@@ -475,9 +406,7 @@ func TestPrepareWatchFailsWhenTheScheduleDoesNotFit(t *testing.T) {
 	src := watchTestSource(t, obs)
 
 	_, err := prepareWatch(context.Background(), cfg, src)
-	if err == nil {
-		t.Fatal("prepareWatch: no error on a schedule that cannot hold its own cadence")
-	}
+	require.Error(t, err, "a schedule cannot hold its own cadence")
 	assertBudgetMessage(t, err.Error())
 }
 
@@ -493,20 +422,14 @@ func TestPrepareWatchVerifiesNormalInstancesAreVisible(t *testing.T) {
 	src := watchTestSource(t, observation(testNow, rule))
 
 	_, err := prepareWatch(context.Background(), cfg, src)
-	if err == nil {
-		t.Fatal("prepareWatch: no error when totals claim normal instances the response omitted")
-	}
-	if !strings.Contains(err.Error(), "no longer returns normal instances") {
-		t.Errorf("error does not say the endpoint stopped returning normal instances: %v", err)
-	}
+	require.Error(t, err, "totals claim normal instances the response omitted")
+	require.Contains(t, err.Error(), "no longer returns normal instances")
 
 	// The failure happens before any poll is appended, so the log holds a
 	// header and nothing else.
-	if _, polls, _, readErr := ReadLog(cfg.Out); readErr != nil {
-		t.Fatalf("ReadLog: %v", readErr)
-	} else if len(polls) != 0 {
-		t.Errorf("wrote %d polls from an observation it refused to trust", len(polls))
-	}
+	_, polls, _, readErr := ReadLog(cfg.Out)
+	require.NoError(t, readErr)
+	require.Empty(t, polls)
 }
 
 func TestPrepareWatchRejectsAnUnsupportedGrafana(t *testing.T) {
@@ -515,11 +438,10 @@ func TestPrepareWatchRejectsAnUnsupportedGrafana(t *testing.T) {
 	src := watchTestSource(t, liveObservation(testNow))
 	src.version = "12.4.0"
 
-	if _, err := prepareWatch(context.Background(), cfg, src); err == nil {
-		t.Fatal("prepareWatch: no error on an unsupported grafana version")
-	} else if !strings.Contains(err.Error(), "12.4.0") || !strings.Contains(err.Error(), "13.0.0") {
-		t.Errorf("error names neither what was found nor what is supported: %v", err)
-	}
+	_, err := prepareWatch(context.Background(), cfg, src)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "12.4.0")
+	require.Contains(t, err.Error(), "13.0.0")
 }
 
 // A rule that resolved in the ruler API but is absent from the state endpoint
@@ -531,23 +453,14 @@ func TestPrepareWatchNotesAnAbsentRule(t *testing.T) {
 	src := watchTestSource(t, observation(testNow)) // an authoritative, empty 2xx
 
 	prep, err := prepareWatch(context.Background(), cfg, src)
-	if err != nil {
-		t.Fatalf("prepareWatch: %v", err)
-	}
-	if err := prep.writer.Close(); err != nil {
-		t.Fatalf("Close: %v", err)
-	}
+	require.NoError(t, err)
+	require.NoError(t, prep.writer.Close())
 
 	_, polls, _, err := ReadLog(cfg.Out)
-	if err != nil {
-		t.Fatalf("ReadLog: %v", err)
-	}
-	if len(polls) != 1 || polls[0].Found {
-		t.Fatalf("polls = %+v, want one poll recorded as not found", polls)
-	}
-	if !strings.Contains(notes.String(), "absent from the state endpoint") {
-		t.Errorf("notes do not warn about the absent rule:\n%s", notes.String())
-	}
+	require.NoError(t, err)
+	require.Len(t, polls, 1)
+	require.False(t, polls[0].Found, "want one poll recorded as not found")
+	require.Contains(t, notes.String(), "absent from the state endpoint")
 }
 
 func TestWatchConfigValidation(t *testing.T) {
@@ -575,26 +488,16 @@ func TestWatchConfigValidation(t *testing.T) {
 			cfg := base()
 			tc.mutate(&cfg)
 			err := cfg.withDefaults().validate()
-			if err == nil {
-				t.Fatalf("validate: no error, want one naming %q", tc.want)
-			}
-			if !strings.Contains(err.Error(), tc.want) {
-				t.Errorf("validate error = %v, want it to name %q", err, tc.want)
-			}
+			require.Errorf(t, err, "validate: no error, want one naming %q", tc.want)
+			require.Containsf(t, err.Error(), tc.want, "validate error")
 		})
 	}
 
 	t.Run("defaults derive the pidfile and daemon log from the log path", func(t *testing.T) {
 		cfg := base().withDefaults()
-		if cfg.PidFile != cfg.Out+".pid" {
-			t.Errorf("PidFile = %q, want %q — check finds the recorder by this convention", cfg.PidFile, cfg.Out+".pid")
-		}
-		if cfg.DaemonLog == "" {
-			t.Error("DaemonLog is empty: a detached child would have nowhere to explain a failure")
-		}
-		if err := cfg.validate(); err != nil {
-			t.Errorf("validate: %v", err)
-		}
+		require.Equal(t, cfg.Out+".pid", cfg.PidFile)
+		require.NotEmpty(t, cfg.DaemonLog, "a detached child would have nowhere to explain a failure")
+		require.NoError(t, cfg.validate())
 	})
 }
 
@@ -609,15 +512,10 @@ func TestChildScheduleUsesTheRecordedCadence(t *testing.T) {
 	}}
 
 	titles, cadence, err := childSchedule(h)
-	if err != nil {
-		t.Fatalf("childSchedule: %v", err)
-	}
-	if _, ok := titles["paused"]; ok {
-		t.Error("the child scheduled a rule that was paused when the window opened")
-	}
-	if got := cadence["fast"]; got != 5*time.Second {
-		t.Errorf("pollEvery = %s, want 5s from the header, not %s from the interval", got, defaultPollEvery(300))
-	}
+	require.NoError(t, err)
+	_, ok := titles["paused"]
+	require.False(t, ok, "the child scheduled a rule that was paused when the window opened")
+	require.Equal(t, 5*time.Second, cadence["fast"])
 }
 
 func TestChildScheduleRejectsAnUnusableHeader(t *testing.T) {
@@ -641,11 +539,9 @@ func TestChildScheduleRejectsAnUnusableHeader(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, _, err := childSchedule(tc.h); err == nil {
-				t.Fatalf("childSchedule: no error, want one naming %q", tc.want)
-			} else if !strings.Contains(err.Error(), tc.want) {
-				t.Errorf("error = %v, want it to name %q", err, tc.want)
-			}
+			_, _, err := childSchedule(tc.h)
+			require.Errorf(t, err, "childSchedule: no error, want one naming %q", tc.want)
+			require.Contains(t, err.Error(), tc.want)
 		})
 	}
 }
@@ -670,37 +566,24 @@ func TestChildArgsCarryNoSecretsAndNoRuleSet(t *testing.T) {
 	joined := strings.Join(args, " ")
 
 	for _, want := range []string{DaemonChildFlag, "--out /tmp/log.jsonl", "--concurrency 3", "--until ", ReadyFDFlag + " 3"} {
-		if !strings.Contains(joined, want) {
-			t.Errorf("child args %q do not contain %q", joined, want)
-		}
+		require.Contains(t, joined, want)
 	}
 	for _, forbidden := range []string{"secret-token", "Example", "--folder", "--poll-interval", "--pidfile"} {
-		if strings.Contains(joined, forbidden) {
-			t.Errorf("child args %q contain %q, which must not reach argv", joined, forbidden)
-		}
+		require.NotContains(t, joined, forbidden)
 	}
 }
 
 func TestPidFileRoundTrip(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "log.jsonl.pid")
-	if err := writePidFile(path, 4242); err != nil {
-		t.Fatalf("writePidFile: %v", err)
-	}
+	require.NoError(t, writePidFile(path, 4242))
 	pid, err := ReadPidFile(path)
-	if err != nil {
-		t.Fatalf("ReadPidFile: %v", err)
-	}
-	if pid != 4242 {
-		t.Errorf("pid = %d, want 4242", pid)
-	}
+	require.NoError(t, err)
+	require.Equal(t, 4242, pid)
 
 	t.Run("garbage is an error, never a pid", func(t *testing.T) {
 		bad := filepath.Join(t.TempDir(), "bad.pid")
-		if err := os.WriteFile(bad, []byte("not-a-pid\n"), 0o644); err != nil {
-			t.Fatalf("write: %v", err)
-		}
-		if _, err := ReadPidFile(bad); err == nil {
-			t.Error("ReadPidFile: no error on an unparseable pidfile")
-		}
+		require.NoError(t, os.WriteFile(bad, []byte("not-a-pid\n"), 0o644))
+		_, err := ReadPidFile(bad)
+		require.Error(t, err, "no error on an unparseable pidfile")
 	})
 }
