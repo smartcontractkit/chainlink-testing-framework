@@ -610,18 +610,6 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 		})
 	}
 
-<<<<<<< HEAD
-	// MinObserved (§12): default len(defs) after the collapse (already done
-	// by Resolve before decide ever sees defs). skipped rules count against
-	// it unless AllowPaused says otherwise. A shortfall counts toward exit 1
-	// (§9.1), never exit 2 — decide never returns an error for this — and H7
-	// requires it to surface through Violations like any other fail reason,
-	// so a shortfall always produces at least one, even when no rule is
-	// paused at all (an operator-supplied MinObserved that simply exceeds
-	// what could ever be resolved).
-	counted := watchedCount
-	var attributable []Definition
-=======
 	// MinObserved defaults to len(defs) after duplicate names collapse
 	// (already done by Resolve before decide ever sees defs). Skipped rules
 	// count against it unless AllowPaused says otherwise. A shortfall counts
@@ -630,9 +618,8 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 	// a shortfall always produces at least one, even when no rule is paused at
 	// all (an operator-supplied MinObserved that simply exceeds what could ever
 	// be resolved).
-	counted := observedCount
-	var chargeable []Definition
->>>>>>> 641701bb (chore: more concise comments)
+	counted := watchedCount
+	var attributable []Definition
 	if pol.AllowPaused {
 		counted += len(skippedRules)
 	} else {
