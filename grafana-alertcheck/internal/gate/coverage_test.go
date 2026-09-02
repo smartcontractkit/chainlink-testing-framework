@@ -320,6 +320,33 @@ func TestProveCoverage_PausedInWindowIsUnobservable(t *testing.T) {
 	}
 }
 
+// TestProveCoverage_PausedAfterWindowIsFine pins check 7's respect for the
+// window boundary: a poll that reports paused but lands beyond windowEnd (a
+// rule paused only after THIS release window closed) is filtered out by
+// inWindowPolls and must not fail the window. Without that filter, a pause in
+// the next release's window would wrongly fail this one.
+func TestProveCoverage_PausedAfterWindowIsFine(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	rt := newRuleTimings(30*time.Second, 60)
+	def := Definition{UID: "r1", Title: "R1"}
+
+	polls := denseHealthyPolls("r1", from, to, 30*time.Second)
+	polls = append(polls, Poll{
+		RuleUID: "r1", GrafanaNow: to.Add(2 * time.Minute),
+		Found: true, Health: "ok", IsPaused: true,
+	})
+	sentinel := to
+
+	res := proveCoverage(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, rt, def, from, to, 0)
+	if res.Reason == ReasonPausedInWindow {
+		t.Fatalf("a paused poll after windowEnd tripped check 7: %+v", res.Notes)
+	}
+	if !res.Proved {
+		t.Fatalf("Proved = false, want a clean window: %+v", res.Notes)
+	}
+}
+
 // --- Check 8: rule absent (§14.5) ---
 
 func TestProveCoverage_RuleAbsentIsUnobservable(t *testing.T) {
