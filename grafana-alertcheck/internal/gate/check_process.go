@@ -1,5 +1,3 @@
-//go:build unix
-
 package gate
 
 import (
@@ -7,11 +5,6 @@ import (
 	"fmt"
 	"syscall"
 )
-
-// There is deliberately no Windows counterpart, for the same reason
-// flock_unix.go and watch_unix.go have none: runners are Linux, goreleaser
-// builds linux+darwin only (P12), and a package that does not build there is
-// safer than one that silently skips the stop protocol.
 
 // signalRecorder asks the recorder to stop (§4.4 step 2).
 //
