@@ -339,12 +339,12 @@ func StartupSummary(from, to time.Time, global globalTimings) (summary, warning 
 		source = "none"
 	}
 	summary = fmt.Sprintf(
-		"planned run time: %s (window %s + transitionGrace %s [source: %s] + drainTimeout %s)",
-		total, window, global.transitionGrace, source, global.drainTimeout)
+		"planned run time: %s\n  window %s + transitionGrace %s + drainTimeout %s\n  transitionGrace source: %s",
+		total, window, global.transitionGrace, global.drainTimeout, source)
 
 	if window > 0 && float64(global.transitionGrace) > float64(window)*graceWarnFraction {
 		warning = fmt.Sprintf(
-			"transitionGrace %s is more than %.0f%% of the window %s (source: %s) — the window may be too short for this alert's `for`",
+			"transitionGrace %s is more than %.0f%% of the window %s — the window may be too short for this alert's `for`\n  source: %s",
 			global.transitionGrace, graceWarnFraction*100, window, source)
 	}
 	return summary, warning
