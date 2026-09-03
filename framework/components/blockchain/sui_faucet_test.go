@@ -76,9 +76,11 @@ func (f *faucetStub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // shortCtx keeps the retry budget tight so a misbehaving stub can't hang the test.
 // fundAccount wraps this in a 2min child, but the earlier parent deadline wins.
+// BackOffDelay is 1s<<n (2s, 4s, ...) computed after each increment, so a test that
+// fails twice needs ~6s before its third (success) attempt — 20s gives headroom.
 func shortCtx(t *testing.T) context.Context {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	t.Cleanup(cancel)
 	return ctx
 }
