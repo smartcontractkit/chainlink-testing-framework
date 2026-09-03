@@ -78,7 +78,7 @@ func runWatch(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		DaemonLog:   *daemonLog,
 		Concurrency: *common.concurrency,
 		Clock:       gate.SystemClock{},
-		Notes:       stderr,
+		Notes:       newNoteStyler(stderr),
 	}
 	if *until != "" {
 		t, err := time.Parse(time.RFC3339, *until)

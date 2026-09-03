@@ -82,7 +82,7 @@ func runCheck(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		PidFile:              *pidfile,
 		Concurrency:          *common.concurrency,
 		Clock:                gate.SystemClock{},
-		Notes:                stderr,
+		Notes:                newNoteStyler(stderr),
 	}
 	if *to == "" {
 		fmt.Fprintln(stderr, "check: --to is required")
