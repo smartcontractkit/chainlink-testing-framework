@@ -14,9 +14,9 @@ import (
 // That is sufficient here: every retry/backoff test in this phase only needs
 // to avoid a real sleep. It is NOT sufficient for a test that must prove a
 // wait did not fire early — e.g. a P4 scheduler test asserting Due() doesn't
-// return a rule before its next-due time. That needs a clock with a real
-// waiter list keyed off Advance, which does not exist yet; build it when a
-// phase actually needs it rather than guessing its shape now.
+// return a rule before its next-due time. Use virtualClock below for that: it
+// is the clock P6's recorder-loop tests needed, and it makes a wait and the
+// passage of time the same event.
 type fakeClock struct {
 	mu  sync.Mutex
 	now time.Time
@@ -39,6 +39,40 @@ func (c *fakeClock) Advance(d time.Duration) {
 func (c *fakeClock) After(d time.Duration) <-chan time.Time {
 	c.mu.Lock()
 	fireAt := c.now.Add(d)
+	c.mu.Unlock()
+	ch := make(chan time.Time, 1)
+	ch <- fireAt
+	return ch
+}
+
+// virtualClock is a Clock in which time moves only when something waits for
+// it: After(d) jumps Now() forward by d and fires at once. That makes a
+// recorder-loop test both instant and exact — a loop that waits for its next
+// scheduled poll gets that poll's time, never an early or a late wake — and it
+// terminates, which a clock whose After fires without advancing Now does not
+// (the loop would spin forever on a rule that never comes due).
+//
+// It is goroutine-safe, but a test that advances time from two goroutines gets
+// what it deserves: use it from the loop under test only.
+type virtualClock struct {
+	mu  sync.Mutex
+	now time.Time
+}
+
+func newVirtualClock(now time.Time) *virtualClock { return &virtualClock{now: now} }
+
+func (c *virtualClock) Now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.now
+}
+
+func (c *virtualClock) After(d time.Duration) <-chan time.Time {
+	c.mu.Lock()
+	if d > 0 {
+		c.now = c.now.Add(d)
+	}
+	fireAt := c.now
 	c.mu.Unlock()
 	ch := make(chan time.Time, 1)
 	ch <- fireAt
