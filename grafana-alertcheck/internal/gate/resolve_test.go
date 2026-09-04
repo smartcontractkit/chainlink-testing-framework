@@ -233,6 +233,26 @@ func TestResolve_CollapseByUIDGivesNoteNotError(t *testing.T) {
 	}
 }
 
+// §22.2: "the same rule with two identical names ... must collapse to one
+// rule" — the literal exact-duplicate-string case, distinct from the
+// different-spellings case above.
+func TestResolve_IdenticalDuplicateNameCollapsesWithNote(t *testing.T) {
+	defs := rulerDefs(t)
+	resolved, notes, err := Resolve(defs, []string{
+		"example_workflow_paused_rule",
+		"example_workflow_paused_rule",
+	}, "")
+	if err != nil {
+		t.Fatalf("Resolve: unexpected error: %v", err)
+	}
+	if len(resolved) != 1 || resolved[0].UID != "rule0000007" {
+		t.Fatalf("resolved = %+v, want exactly one rule0000007", resolved)
+	}
+	if len(notes) != 1 {
+		t.Fatalf("notes = %v, want exactly one collapse note", notes)
+	}
+}
+
 func TestResolve_MinObservedCountIsPostCollapse(t *testing.T) {
 	defs := rulerDefs(t)
 	names := []string{

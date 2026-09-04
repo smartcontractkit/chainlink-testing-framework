@@ -231,10 +231,21 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t ruleTimings, d
 		fail(ReasonRuleAbsent, fmt.Sprintf("state endpoint returned no rule on %d poll(s), first at %s", absentCount, absentAt.Format(time.RFC3339)))
 	}
 
-	// Check 9 — KeepLast (§10.2). A note, never fatal. It surfaces only as an
-	// instance Reason after P1.2a's parsing, and Reasons keys can be
-	// comma-joined composites, so membership (reasonsContain) is required —
-	// indexing "KeepLast" directly would miss "KeepLast, MissingSeries".
+	// Check 9 — KeepLast (§10.2). Two distinct notes, both non-fatal:
+	//
+	// DECLARED: the rule's own no_data_state/exec_err_state is configured as
+	// KeepLast — a standing blind spot (§10.2's "unclear condition") whether
+	// or not it is ever exercised during this particular window. This reads
+	// def, not polls, so it fires exactly once regardless of poll content.
+	if def.NoDataState == keepLastReason || def.ExecErrState == keepLastReason {
+		res.Notes = append(res.Notes, fmt.Sprintf(
+			"rule %q: configured with no_data_state/exec_err_state=KeepLast — a stale state can continue past a real fault (§10.2)", def.Title))
+	}
+	// OBSERVED: an instance actually reported the KeepLast reason during the
+	// window. It surfaces only as an instance Reason after P1.2a's parsing,
+	// and Reasons keys can be comma-joined composites, so membership
+	// (reasonsContain) is required — indexing "KeepLast" directly would miss
+	// "KeepLast, MissingSeries".
 	for _, p := range inWindow {
 		if reasonsContain(p.Reasons, keepLastReason) {
 			res.Notes = append(res.Notes, fmt.Sprintf(

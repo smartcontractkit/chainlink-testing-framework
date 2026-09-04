@@ -283,6 +283,59 @@ func TestInstanceKey(t *testing.T) {
 	}
 }
 
+// minimalStateBody is the smallest H1-legal state response: one group, one
+// rule, no optional keys at all, plus whatever extra is spliced in verbatim
+// before the rule's closing brace — for isolating one optional key at a time
+// rather than relying on a fixture that removes several together.
+func minimalStateBody(extraRuleJSON string) []byte {
+	return fmt.Appendf(nil,
+		`{"status":"success","data":{"groups":[{"file":"F","name":"G","interval":60,`+
+			`"rules":[{"uid":"r1","name":"R1","state":"inactive","health":"ok","isPaused":false,`+
+			`"lastEvaluation":"2026-01-01T00:00:00Z"%s}]}]}}`, extraRuleJSON)
+}
+
+// §22.2: keepFiringFor is named alongside alerts/totals/labels as an optional
+// key (§3.1), but state_missing_optional.json removes it together with
+// everything else — never in isolation, so a regression that made it
+// required specifically would not be caught by that fixture alone.
+func TestParseState_KeepFiringForIsOptional(t *testing.T) {
+	tests := []struct {
+		name  string
+		extra string
+	}{
+		{"present", `,"keepFiringFor":300`},
+		{"absent", ""},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			rules, err := ParseState(minimalStateBody(tc.extra))
+			if err != nil {
+				t.Fatalf("ParseState: %v", err)
+			}
+			if len(rules) != 1 {
+				t.Fatalf("rules = %+v, want one", rules)
+			}
+		})
+	}
+}
+
+// §22.2: labels is optional at the INSTANCE level (opt(m, "labels", ...) in
+// parseInstance), distinct from the rule-level labels state_missing_optional.json
+// already covers — an instance can exist with no labels of its own.
+func TestParseState_InstanceWithoutLabelsParses(t *testing.T) {
+	body := minimalStateBody(`,"alerts":[{"state":"Normal","activeAt":"2026-01-01T00:00:00Z"}]`)
+	rules, err := ParseState(body)
+	if err != nil {
+		t.Fatalf("ParseState: %v", err)
+	}
+	if len(rules) != 1 || len(rules[0].Instances) != 1 {
+		t.Fatalf("rules = %+v, want one rule with one instance", rules)
+	}
+	if got := rules[0].Instances[0].Labels; len(got) != 0 {
+		t.Errorf("Instance.Labels = %v, want empty/nil", got)
+	}
+}
+
 // synthesizeHighCardinalityState builds a state response with a single rule
 // holding `alerting` Alerting instances and `normal` Normal instances, by
 // cloning the one real instance in state_one_instance.json. It is never
