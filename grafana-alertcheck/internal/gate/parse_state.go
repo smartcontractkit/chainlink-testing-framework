@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// State is the canonical instance state (P1.2a). It is distinct from the raw,
+// State is the canonical instance state. It is distinct from the raw,
 // unnormalized vocabularies the API uses at the rule level and at the instance
 // level — see normalizeInstanceState.
 type State string
@@ -23,12 +23,12 @@ const (
 
 // Instance is one entry of a rule's alerts[]. State is always canonical; Reason
 // is the opaque suffix of a "State (Reason)" composite ("" when the API gave a
-// bare state). Reason is reporting-only except for the H2 MissingSeries routing
+// bare state). Reason is reporting-only except for the MissingSeries routing
 // done downstream in the log markers.
 //
-// The json tags are for the JSONL log's abnormal-instance list (P5) only —
-// parsing an API response never goes through them, because parseInstance
-// decodes field by field through req/opt to keep H1's presence checks explicit.
+// The json tags are for the JSONL log's abnormal-instance list only — parsing
+// an API response never goes through them, because parseInstance decodes field
+// by field through req/opt to keep the presence checks explicit.
 type Instance struct {
 	Labels   map[string]string `json:"labels"`
 	State    State             `json:"state"`
@@ -38,12 +38,12 @@ type Instance struct {
 }
 
 // StateRule is one rule from the state endpoint
-// (/api/prometheus/grafana/api/v1/rules), fully and strictly parsed (H1).
+// (/api/prometheus/grafana/api/v1/rules), fully and strictly parsed.
 type StateRule struct {
 	UID, Title, Folder, Group string
 	Interval                  time.Duration
 	// State and Health are raw, lowercase, and reporting-only — never
-	// classified (P1.2a). State in particular is never normalized.
+	// classified. State in particular is never normalized.
 	State, Health  string
 	LastError      string
 	LastEvaluation time.Time
@@ -54,7 +54,7 @@ type StateRule struct {
 
 // ParseState strictly parses a state-endpoint response body into its rules.
 // A missing or unparseable required field (health, state, lastEvaluation on
-// each rule; interval on each group) is an error, never a zero value (H1).
+// each rule; interval on each group) is an error, never a zero value.
 func ParseState(body []byte) ([]StateRule, error) {
 	var top map[string]json.RawMessage
 	if err := json.Unmarshal(body, &top); err != nil {
@@ -134,11 +134,10 @@ func parseStateRule(raw json.RawMessage, folder, group string, interval time.Dur
 	if err := req(m, "health", &r.Health); err != nil {
 		return StateRule{}, fmt.Errorf("rule %q: %w", uid, err)
 	}
-	// isPaused is not one of H1's four named required fields, but this parser
-	// extends that contract to it: the zero-time rule below can't tell a
-	// paused rule from a broken one without it, and it's the primary
-	// in-window pause detector (H2/§12.2) — a silent false default would be
-	// exactly the fail-open bug H1 exists to kill.
+	// isPaused is required rather than optional: the zero-time rule below
+	// can't tell a paused rule from a broken one without it, and it's the
+	// primary in-window pause detector — a silent false default would be
+	// exactly the fail-open this parser's strictness exists to kill.
 	if err := req(m, "isPaused", &r.IsPaused); err != nil {
 		return StateRule{}, fmt.Errorf("rule %q: %w", uid, err)
 	}
@@ -151,7 +150,7 @@ func parseStateRule(raw json.RawMessage, folder, group string, interval time.Dur
 	if err != nil {
 		return StateRule{}, fmt.Errorf("rule %q: lastEvaluation: %w", uid, err)
 	}
-	// The zero-time rule (§2.3): only a paused rule may report the zero time.
+	// Only a paused rule may report the zero time.
 	if lastEval.IsZero() && !r.IsPaused {
 		return StateRule{}, fmt.Errorf("rule %q: lastEvaluation is the zero time but isPaused is false", uid)
 	}
@@ -199,10 +198,10 @@ func parseInstance(raw json.RawMessage) (Instance, error) {
 		return Instance{}, err
 	}
 
-	// activeAt is also not in H1's named list, extended here for the same
-	// reason as StateRule.IsPaused: it's the onset time BadFor (P8) measures
-	// from, so a silently zeroed one would misclassify how long an instance
-	// has been bad rather than failing loudly.
+	// activeAt is required for the same reason as StateRule.IsPaused: it's the
+	// onset time BadFor measures from, so a silently zeroed one would
+	// misclassify how long an instance has been bad rather than failing
+	// loudly.
 	var activeAtStr string
 	if err := req(m, "activeAt", &activeAtStr); err != nil {
 		return Instance{}, err
@@ -225,8 +224,8 @@ func parseInstance(raw json.RawMessage) (Instance, error) {
 }
 
 // baseInstanceStates is the strict 5-value allowlist for the base of an
-// instance state (P1.2a). Anything else — including an unrecognized base
-// inside a "Base (Reason)" composite — is a parse error (H1, §2.7 control 3).
+// instance state. Anything else — including an unrecognized base inside a
+// "Base (Reason)" composite — is a parse error.
 var baseInstanceStates = map[string]State{
 	"Normal":   StateNormal,
 	"Alerting": StateFiring,

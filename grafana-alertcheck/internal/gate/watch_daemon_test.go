@@ -21,7 +21,7 @@ import (
 // os.Executable(), which under `go test` is this binary, so the one integration
 // test below exercises the real thing — a real fork/exec, a real setsid, a real
 // inherited environment, a real SIGTERM — with this function standing in for
-// the CLI's `watch --daemon-child` dispatch, which lands in P10.
+// the CLI's `watch --daemon-child` dispatch.
 func TestMain(m *testing.M) {
 	if path := os.Getenv(lockHolderEnv); path != "" {
 		os.Exit(runTestLockHolder(path))
@@ -66,8 +66,8 @@ func runTestLockHolder(path string) int {
 }
 
 // runTestDaemonChild parses the child argv childArgs() writes, and reads the
-// connection details from the environment — never from argv (§20.2). P10's
-// `watch` FlagSet does the same four flags.
+// connection details from the environment — never from argv. The CLI's `watch`
+// FlagSet does the same four flags.
 func runTestDaemonChild(args []string) int {
 	cfg := DaemonChildConfig{
 		URL:   os.Getenv("GRAFANA_URL"),
@@ -116,7 +116,7 @@ func runTestDaemonChild(args []string) int {
 }
 
 // testBearerToken is what every request to grafanaTestServer must carry. The
-// child never receives it in argv (§20.2), so a request that arrives
+// child never receives it in argv, so a request that arrives
 // authenticated is proof that the token reached the detached process through
 // the inherited environment — and a 401 is what a test sees if that ever
 // breaks.
@@ -147,7 +147,7 @@ func grafanaTestServer(t *testing.T) *httptest.Server {
 			_, _ = w.Write(ruler)
 		case strings.HasPrefix(r.URL.Path, "/api/prometheus/"):
 			if r.URL.Query().Get("rule_name") == "" {
-				// §2.8: the gate must never read the state endpoint unfiltered.
+				// The gate must never read the state endpoint unfiltered.
 				http.Error(w, "unfiltered state read", http.StatusBadRequest)
 				return
 			}
@@ -212,14 +212,14 @@ func waitFor(t *testing.T, what string, timeout time.Duration, cond func() bool)
 	t.Fatalf("timed out after %s waiting for %s", timeout, what)
 }
 
-// TestWatchSpawnsADetachedRecorder is P6's one integration test: everything
-// from the version gate to the sentinel, through a real detached process.
+// The one watch integration test: everything from the version gate to the
+// sentinel, through a real detached process.
 //
 // It asserts the four things only a real spawn can show — the pidfile points
 // at a live process, that process is in its own session (setsid, not a bare
 // `&`), it keeps appending after Watch returned, and SIGTERM makes it finish
-// the log in the §4.4 order — and it uses a 200ms --poll-interval to do it in
-// about a second, which also exercises the unclamped-override path (§5.1).
+// the log in the stop order — and it uses a 200ms --poll-interval to do it in
+// about a second, which also exercises the unclamped-override path.
 func TestWatchSpawnsADetachedRecorder(t *testing.T) {
 	srv := grafanaTestServer(t)
 	t.Setenv("GRAFANA_URL", srv.URL)
@@ -263,7 +263,7 @@ func TestWatchSpawnsADetachedRecorder(t *testing.T) {
 		t.Errorf("recorder pgid = %d, want %d: it did not get its own session", pgid, pid)
 	}
 
-	// The parent already wrote the first heartbeat before it returned (§4.3);
+	// The parent already wrote the first heartbeat before it returned;
 	// these later ones prove the detached child is the one appending now.
 	waitFor(t, "the detached recorder to append its own polls", 10*time.Second, func() bool {
 		_, polls, _, err := ReadLog(out)
@@ -294,7 +294,7 @@ func TestWatchSpawnsADetachedRecorder(t *testing.T) {
 			t.Fatalf("poll %d = %+v, want a found observation of %s", i, p, watchActiveUID)
 		}
 		if p.GrafanaNow.IsZero() {
-			t.Fatalf("poll %d has no grafana_now; H4 needs the Date header of its own response", i)
+			t.Fatalf("poll %d has no grafana_now; every poll needs the Date header of its own response", i)
 		}
 	}
 	if sentinel.Before(header.StartedAt) {

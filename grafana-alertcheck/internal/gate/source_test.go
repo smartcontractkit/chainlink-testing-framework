@@ -90,7 +90,7 @@ func TestCheckGrafanaVersion(t *testing.T) {
 		}
 		for _, want := range c.wantContains {
 			if !strings.Contains(err.Error(), want) {
-				t.Errorf("CheckGrafanaVersion(%q): error %q does not mention %q (the plan requires naming both what was found and what is supported)", c.version, err.Error(), want)
+				t.Errorf("CheckGrafanaVersion(%q): error %q does not mention %q — it must name both what was found and what is supported", c.version, err.Error(), want)
 			}
 		}
 	}
@@ -170,7 +170,7 @@ func TestHTTPSource_RuleState_EmptyIsNotAnError(t *testing.T) {
 		t.Fatalf("Rules = %+v, want empty (an authoritative 2xx is not a transport error)", obs.Rules)
 	}
 	if obs.GrafanaNow.IsZero() {
-		t.Fatalf("GrafanaNow is zero, want the response's Date header value (H4)")
+		t.Fatalf("GrafanaNow is zero, want the response's Date header value")
 	}
 }
 
@@ -274,7 +274,7 @@ func TestHTTPSource_MissingDateHeader(t *testing.T) {
 	src := NewHTTPSource(srv.URL, "", clock)
 	_, err := src.Version(context.Background())
 	if err == nil {
-		t.Fatalf("Version(): want error, got nil (H4: a missing Date header is a hard error)")
+		t.Fatalf("Version(): want error, got nil: a missing Date header is a hard error")
 	}
 	if calls.Load() != 1 {
 		t.Fatalf("calls = %d, want 1 — a missing Date header must never be retried", calls.Load())
@@ -294,7 +294,7 @@ func TestHTTPSource_UnparseableDateHeader(t *testing.T) {
 	src := NewHTTPSource(srv.URL, "", clock)
 	_, err := src.Version(context.Background())
 	if err == nil {
-		t.Fatalf("Version(): want error, got nil (H4: an unparseable Date header is a hard error)")
+		t.Fatalf("Version(): want error, got nil: an unparseable Date header is a hard error")
 	}
 	if calls.Load() != 1 {
 		t.Fatalf("calls = %d, want 1 — an unparseable Date header must never be retried", calls.Load())
@@ -343,14 +343,14 @@ func TestHTTPSource_ObservationTiming(t *testing.T) {
 				t.Errorf("SkewBound = %v, want 1s (RTT/2 with a 2s round trip to headers)", obs.SkewBound)
 			}
 			if obs.Latency != 4*time.Second {
-				t.Errorf("Latency = %v, want 4s (send through full body read, §5.2) — not just the 2s header round trip", obs.Latency)
+				t.Errorf("Latency = %v, want 4s (send through full body read) — not just the 2s header round trip", obs.Latency)
 			}
 		})
 	}
 }
 
-// §22.7/§16: a genuinely discriminating regression for "the gate compares
-// staleness against the Date header, never the runner's clock." lastEvaluation
+// A discriminating regression for "the gate compares staleness against the
+// Date header, never the runner's clock". lastEvaluation
 // sits 100s behind Grafana's TRUE now (obs.GrafanaNow, from the Date header)
 // — under the 120s evalStaleAfter limit — but 130s behind the RUNNER's clock.
 // An implementation that leaked the runner's clock into the staleness
@@ -531,8 +531,7 @@ func TestHTTPSource_NetworkFailureRetries(t *testing.T) {
 // it names how many failures it gave up after, and — the regression this
 // pins — it is never itself classified as a *TransportError. If it were,
 // something one layer up that also retries on *TransportError would treat an
-// already-exhausted give-up as retryable again, the exact conflation §19.3
-// case 1 forbids.
+// already-exhausted give-up as retryable again.
 func assertRetryExhausted(t *testing.T, err error, wantFailures int) {
 	t.Helper()
 	var reErr *RetryExhaustedError

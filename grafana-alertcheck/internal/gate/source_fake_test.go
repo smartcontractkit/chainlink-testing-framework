@@ -8,15 +8,13 @@ import (
 )
 
 // fakeClock is a manually-advanced Clock — no test in this package sleeps on
-// real time (§22). It is goroutine-safe (a concurrent fleet under -race must
-// not trip on the double itself), but After always fires immediately,
-// regardless of the requested duration or whether Advance was ever called.
-// That is sufficient here: every retry/backoff test in this phase only needs
-// to avoid a real sleep. It is NOT sufficient for a test that must prove a
-// wait did not fire early — e.g. a P4 scheduler test asserting Due() doesn't
-// return a rule before its next-due time. Use virtualClock below for that: it
-// is the clock P6's recorder-loop tests needed, and it makes a wait and the
-// passage of time the same event.
+// real time. It is goroutine-safe (a concurrent fleet under -race must not trip
+// on the double itself), but After always fires immediately, regardless of the
+// requested duration or whether Advance was ever called. That is enough for the
+// retry/backoff tests, which only need to avoid a real sleep. It is NOT enough
+// for a test that must prove a wait did not fire early — e.g. asserting Due()
+// does not return a rule before its next-due time. Use virtualClock below for
+// that: it makes a wait and the passage of time the same event.
 type fakeClock struct {
 	mu  sync.Mutex
 	now time.Time
@@ -112,12 +110,11 @@ type scriptedObservation struct {
 	err error
 }
 
-// fakeSource is a scripted Source with no HTTP, goroutine-safe so a phase
-// that polls several rules concurrently (P6) can share one instance across
-// goroutines without tripping -race. P3 through at least P5 can construct
-// one directly instead of talking to HTTP; a phase that needs it to behave
-// like a live server under concurrent load beyond simple locking should
-// verify that assumption rather than take this comment's word for it.
+// fakeSource is a scripted Source with no HTTP, goroutine-safe so a test that
+// polls several rules concurrently can share one instance across goroutines
+// without tripping -race. A test that needs it to behave like a live server
+// under concurrent load beyond simple locking should verify that assumption
+// rather than take this comment's word for it.
 type fakeSource struct {
 	mu sync.Mutex
 

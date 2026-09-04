@@ -69,7 +69,7 @@ func TestDeriveTimings_TransitionGraceExcludesSkippedRule(t *testing.T) {
 	}
 }
 
-// §22.2/§22.3: `for: 1d` and `for: 1w` parse correctly (parse_ruler_test.go),
+// `for: 1d` and `for: 1w` parse correctly (parse_ruler_test.go),
 // but that alone never proves they flow into transitionGrace — a Prometheus
 // duration parser that silently truncated to time.Duration's other units, or
 // a transitionGrace derivation that only ever saw hand-built values, could
@@ -148,7 +148,7 @@ func TestDeriveTimingsFromLog_TransitionGraceFollowsTheHeaderNotTheDefinition(t 
 	})
 
 	t.Run("drainTimeout counts every rule either way", func(t *testing.T) {
-		// §19 puts no pause exclusion on drainTimeout, so both headers give the
+		// drainTimeout carries no pause exclusion, so both headers give the
 		// same floor-bound value.
 		for _, pausedAtStart := range []bool{false, true} {
 			h := Header{Rules: []LoggedRule{loggedRule("r1", pausedAtStart)}}
@@ -192,9 +192,8 @@ func TestDeriveTimings_DrainTimeoutAboveFloor(t *testing.T) {
 	}
 }
 
-// TestScheduler_DueOrderingTiesBreakByTightestCadence pins the ordering
-// invariant the burst bound depends on (§5): when several rules become due at
-// the exact same instant, Due must serve the tightest cadence first, not
+// The ordering invariant the burst bound depends on: when several rules become
+// due at the exact same instant, Due must serve the tightest cadence first, not
 // whatever order the underlying map happens to iterate in. A refactor that
 // loses this ordering must fail here, not in a production phase-aligned gap.
 func TestScheduler_DueOrderingTiesBreakByTightestCadence(t *testing.T) {
@@ -244,8 +243,8 @@ func TestScheduler_MarkAdvancesNextDue(t *testing.T) {
 }
 
 // TestScheduler_PerRuleCadenceOverTime simulates a run and counts how often
-// each rule comes due, pinning §5's core claim: schedules are per rule, never
-// a global cycle. A tight rule must be polled at its own cadence regardless
+// each rule comes due: schedules are per rule, never a global cycle. A tight
+// rule must be polled at its own cadence regardless
 // of what slower rules in the same fleet need, and a slack rule must never be
 // forced onto the tight rule's cadence.
 func TestScheduler_PerRuleCadenceOverTime(t *testing.T) {
@@ -291,9 +290,8 @@ func TestNewScheduler_StaggersWithinPollEvery(t *testing.T) {
 	}
 }
 
-// TestCheckBudget_MixedIntervalRegression is §22.3's sanity check from the
-// plan: one rule at 10s beside twenty at 300s, all measured ~1.8s, must not
-// error at any reasonable concurrency — the exact case a naive worst-case-slot
+// One rule at 10s beside twenty at 300s, all measured ~1.8s, must not error at
+// any reasonable concurrency — the exact case a naive worst-case-slot
 // simulation would wrongly fail.
 func TestCheckBudget_MixedIntervalRegression(t *testing.T) {
 	timings := map[string]ruleTimings{"tight": {pollEvery: 5 * time.Second}}
@@ -386,9 +384,9 @@ func TestCheckBudget_EmptyScheduleIsFine(t *testing.T) {
 	}
 }
 
-// assertBudgetMessage checks §5.1's required message contents: a measured
-// duration is present, and all three controls are named — never a single
-// suggested interval.
+// assertBudgetMessage checks the message contents: a measured duration is
+// present, and all three controls are named — never a single suggested
+// interval.
 func assertBudgetMessage(t *testing.T, msg string) {
 	t.Helper()
 	for _, want := range []string{"measured", "concurrency", "poll-interval", "fewer"} {
@@ -418,13 +416,10 @@ func TestStartupSummary_WarningWhenGraceTooLarge(t *testing.T) {
 	}
 }
 
-// §22.3: "a rule with for: 15m in a 10-minute window gives the warning about
-// a large grace period" — no such rule exists in the real capture
-// (testdata/README.md), so the test above pins the mechanism with a
-// hand-built globalTimings. This drives the same warning off the real
-// ruler_rules.json fixture's for:1w rule instead, tying ParseDefinitions and
-// DeriveTimings into the warning end to end, not just the warning formula in
-// isolation.
+// The test above pins the warning formula with a hand-built globalTimings.
+// This drives the same warning off the real ruler_rules.json fixture's for:1w
+// rule instead, tying ParseDefinitions and DeriveTimings into the warning end
+// to end.
 func TestStartupSummary_RealForOneWeekRuleTriggersWarning(t *testing.T) {
 	defs := rulerDefs(t)
 	_, global, notes := DeriveTimings(defs, 0)

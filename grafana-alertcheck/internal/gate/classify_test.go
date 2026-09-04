@@ -83,8 +83,7 @@ func TestClassifyRule_NewOnsetInsideWindowIsNewlyBad(t *testing.T) {
 	}
 }
 
-// TestClassifyRule_NewOnsetThatClearsStillFails pins §11.4 point 3: a
-// genuinely new bad episode fails even if it clears again before the window
+// A genuinely new bad episode fails even if it clears again before the window
 // ends — only a PREEXISTING condition earns the benefit of `recovered`.
 func TestClassifyRule_NewOnsetThatClearsStillFails(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -134,9 +133,9 @@ func TestClassifyRule_PreexistingThatRecoversIsRecoveredAndNotAViolation(t *test
 	}
 }
 
-// §22.2's "late condition": bad for 58 of a 60-minute window, clear at
-// minute 58, still passes with a large BadFor — never a fail against some
-// derived deadline (e.g. "must clear before 90% of the window").
+// The late condition: bad for 58 of a 60-minute window, clear at minute 58,
+// still passes with a large BadFor — never a fail against some derived
+// deadline (e.g. "must clear before 90% of the window").
 func TestClassifyRule_LateRecoveryPassesRegardlessOfHowLateItIs(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(60 * time.Minute)
@@ -205,9 +204,9 @@ func TestClassifyRule_ClearThenBadAgainIsFlapping(t *testing.T) {
 	}
 }
 
-// §22.2: "a clear and then a second bad state gives flapping, at each
-// possible time of the second bad state." A table over where the second
-// onset lands — immediately after the clear, mid-window, and right at the
+// A clear and then a second bad state gives flapping, wherever the second bad
+// state lands. A table over where the second onset falls — immediately after
+// the clear, mid-window, and right at the
 // last instant before windowEnd — closes the boundary this single fixed
 // timing above cannot.
 func TestClassifyRule_FlappingAtEveryTimingOfTheSecondOnset(t *testing.T) {
@@ -244,7 +243,7 @@ func TestClassifyRule_FlappingAtEveryTimingOfTheSecondOnset(t *testing.T) {
 	}
 }
 
-// --- H2: vanished is a discontinuity, never a clear ---
+// --- vanished is a discontinuity, never a clear ---
 
 func TestClassifyRule_VanishedWhileBadStaysPersistentlyBad(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -259,7 +258,7 @@ func TestClassifyRule_VanishedWhileBadStaysPersistentlyBad(t *testing.T) {
 	}
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	if outcome != OutcomePersistentlyBad {
-		t.Fatalf("outcome = %v, want persistently_bad: a vanish must never read as a recovery (H2)", outcome)
+		t.Fatalf("outcome = %v, want persistently_bad: a vanish must never read as a recovery", outcome)
 	}
 	if badFor != to.Sub(from) {
 		t.Fatalf("badFor = %v, want the full window %v: the freeze must hold the episode open to windowEnd", badFor, to.Sub(from))
@@ -375,7 +374,7 @@ func TestClassifyRule_WorstOfMultipleInstancesWins(t *testing.T) {
 	}
 }
 
-// --- decide(): skipped rules, unobservable (H6), MinObserved, exit mapping (H7) ---
+// --- decide(): skipped rules, unobservable, MinObserved, exit mapping ---
 
 func TestDecide_SkippedRuleNeverReachesProveCoverage(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -387,7 +386,7 @@ func TestDecide_SkippedRuleNeverReachesProveCoverage(t *testing.T) {
 	pol := Policy{From: from, To: to, AllowPaused: true}
 
 	// No polls, no sentinel at all: a heartbeat_gap/no_sentinel misclassification
-	// here would mean proveCoverage ran for a skipped rule (§4.3's obligation).
+	// here would mean proveCoverage ran for a skipped rule.
 	// The HEADER is what says paused — decide reads skipped from there, not
 	// from def.IsPaused, which is a post-window reading (Header.pausedAtStart).
 	res, err := decide(pausedHeader(from.Add(-time.Hour), "r1"), nil, nil, defs, rt, gt, pol)
@@ -415,16 +414,15 @@ func TestDecide_UnobservableRuleAlwaysReturnsAnError(t *testing.T) {
 	// regardless of anything else.
 	res, err := decide(Header{StartedAt: from.Add(-time.Hour)}, nil, nil, defs, rt, gt, pol)
 	if err == nil {
-		t.Fatalf("err = nil, want non-nil: H6/H7 require an unobservable rule to always fail the run")
+		t.Fatalf("err = nil, want non-nil: an unobservable rule must always fail the run")
 	}
 	if len(res.Verdicts) != 1 || res.Verdicts[0].Outcome != OutcomeUnobservable {
 		t.Fatalf("Verdicts = %+v, want exactly one unobservable verdict", res.Verdicts)
 	}
 }
 
-// TestDecide_UnobservableWinsEvenAlongsideARealViolation pins H6 exactly:
-// "Any unobservable rule -> exit 2, no exception, even alongside a real
-// newly_bad."
+// Any unobservable rule means exit 2, with no exception — even alongside a
+// real newly_bad.
 func TestDecide_UnobservableWinsEvenAlongsideARealViolation(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
@@ -468,18 +466,17 @@ func TestDecide_UnobservableWinsEvenAlongsideARealViolation(t *testing.T) {
 		t.Fatalf("broken.Outcome = %v, want unobservable", gotBroken)
 	}
 	if gotBad != OutcomeNewlyBad {
-		t.Fatalf("bad.Outcome = %v, want newly_bad: classification still runs and is still visible in Verdicts (H5)", gotBad)
+		t.Fatalf("bad.Outcome = %v, want newly_bad: classification still runs and is still visible in Verdicts", gotBad)
 	}
 	if len(res.Violations) == 0 {
 		t.Fatalf("Violations empty, want the newly_bad instance still reported even though the run fails on the unobservable rule")
 	}
 }
 
-// §22.10: "a clean verdict with a coverage gap ... must never give exit 0",
-// and "a recovered verdict and a skipped verdict also need proved coverage
-// of the full window." One genuinely unobservable rule ("broken", zero
-// polls) alongside a rule with each of the three favorable outcomes — none
-// of them may waive the run.
+// A clean verdict with a coverage gap must never give exit 0, and recovered
+// and skipped verdicts need proved coverage of the full window just as much.
+// One genuinely unobservable rule ("broken", zero polls) alongside a rule with
+// each of the three favorable outcomes — none of them may waive the run.
 func TestDecide_UnobservableRuleWinsOverEveryFavorableOutcome(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
@@ -575,8 +572,8 @@ func TestDecide_UnobservableRuleWinsOverEveryFavorableOutcome(t *testing.T) {
 	}
 }
 
-// §22.10: the table above puts the coverage gap on a DIFFERENT rule from the
-// one with the favorable outcome. This pins the tighter claim: a rule that
+// The table above puts the coverage gap on a DIFFERENT rule from the one with
+// the favorable outcome. This pins the tighter claim: a rule that
 // itself recovers, but ALSO itself has a coverage gap, is still overridden to
 // unobservable — the favorable classification of a rule is never a reason to
 // skip that same rule's own coverage check.
@@ -637,21 +634,20 @@ func TestDecide_CleanWindowIsAPass(t *testing.T) {
 		t.Fatalf("err = %v, want nil", err)
 	}
 	if len(res.Violations) != 0 {
-		t.Fatalf("Violations = %+v, want none: H7 says a pass is exactly len(Violations)==0 && err==nil", res.Violations)
+		t.Fatalf("Violations = %+v, want none: a pass is exactly len(Violations)==0 && err==nil", res.Violations)
 	}
 	if res.Verdicts[0].Outcome != OutcomeClean {
 		t.Fatalf("Outcome = %v, want clean", res.Verdicts[0].Outcome)
 	}
 }
 
-// §22.7's second of the plan's "if only three tests could exist" cases: a
-// pause and then an unpause inside the window, with an episode that would
+// A pause and then an unpause inside the window, with an episode that would
 // fire and resolve entirely inside the blind interval. A drain wait alone —
 // "did the rule eventually evaluate through windowEnd?" — would see
 // lastEvaluation catch up after the unpause and answer yes, a pass. decide()
-// never runs a drain wait (that is check.go's I/O concern, §14.6); this pins
-// that proveCoverage's own per-poll checks already refuse the window without
-// one, so a live drain wait is not what is saving this case.
+// never runs a drain wait (that is check.go's I/O concern); this pins that
+// proveCoverage's own per-poll checks already refuse the window without one,
+// so a live drain wait is not what is saving this case.
 func TestDecide_PauseThenUnpauseWithHiddenEpisodeGivesUnobservableNotClean(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(20 * time.Minute)
@@ -671,7 +667,7 @@ func TestDecide_PauseThenUnpauseWithHiddenEpisodeGivesUnobservableNotClean(t *te
 	for ts := pauseStart; !ts.After(pauseEnd); ts = ts.Add(30 * time.Second) {
 		// No fire/resolve is ever observed here: the rule was not
 		// evaluating, so any real episode inside this stretch is invisible
-		// to every poll (§14.7).
+		// to every poll.
 		polls = append(polls, Poll{RuleUID: "r1", GrafanaNow: ts, Found: true, Health: "ok", IsPaused: true, LastEvaluation: pauseStart})
 	}
 	for ts := pauseEnd.Add(30 * time.Second); !ts.After(to); ts = ts.Add(30 * time.Second) {
@@ -693,7 +689,7 @@ func TestDecide_PauseThenUnpauseWithHiddenEpisodeGivesUnobservableNotClean(t *te
 	}
 }
 
-// --- MinObserved shortfall (§12) ---
+// --- MinObserved shortfall ---
 
 func TestDecide_SkippedOnlyShortfallProducesAViolationWithoutAnError(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -718,13 +714,13 @@ func TestDecide_SkippedOnlyShortfallProducesAViolationWithoutAnError(t *testing.
 
 	res, err := decide(pausedHeader(from.Add(-time.Hour), "paused"), polls, &sentinel, defs, rt, gt, pol)
 	if err != nil {
-		t.Fatalf("err = %v, want nil: a shortfall caused only by a skipped rule is exit 1, not exit 2 (§9.1)", err)
+		t.Fatalf("err = %v, want nil: a shortfall caused only by a skipped rule is exit 1, not exit 2", err)
 	}
 	if len(res.Violations) != 1 {
-		t.Fatalf("Violations = %+v, want exactly one: H7 needs the shortfall visible through Violations to keep its equivalence", res.Violations)
+		t.Fatalf("Violations = %+v, want exactly one: a shortfall must be visible through Violations like any other fail reason", res.Violations)
 	}
 	if v := res.Violations[0]; v.Outcome != OutcomeSkipped || v.RuleUID != "paused" || v.Alert != "Paused" {
-		t.Fatalf("Violations[0] = %+v, want Outcome=skipped naming the paused rule (§12.1: the message names the paused rule)", v)
+		t.Fatalf("Violations[0] = %+v, want Outcome=skipped naming the paused rule", v)
 	}
 	if res.Violations[0].Note == "" {
 		t.Fatalf("Violations[0].Note is empty, want an explanation: the shortfall reason must not be smuggled into LastError, " +
@@ -732,10 +728,9 @@ func TestDecide_SkippedOnlyShortfallProducesAViolationWithoutAnError(t *testing.
 	}
 }
 
-// TestDecide_ExplicitMinObservedShortfallWithNoPausedRuleStillProducesAViolation
-// pins F3: an operator-supplied MinObserved that exceeds what could ever be
-// resolved is still a shortfall, even with zero paused rules to blame it on
-// — H7 must not let this silently read as a pass.
+// An operator-supplied MinObserved that exceeds what could ever be resolved is
+// still a shortfall, even with zero paused rules to blame it on — it must not
+// silently read as a pass.
 func TestDecide_ExplicitMinObservedShortfallWithNoPausedRuleStillProducesAViolation(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
@@ -758,7 +753,7 @@ func TestDecide_ExplicitMinObservedShortfallWithNoPausedRuleStillProducesAViolat
 	}
 	if len(res.Violations) != 2 {
 		t.Fatalf("Violations = %+v, want two: the shortfall (3-1=2) is not explained by any paused rule, "+
-			"so H7 requires it to surface directly rather than pass silently", res.Violations)
+			"so it must surface directly rather than pass silently", res.Violations)
 	}
 	for _, v := range res.Violations {
 		if v.Outcome != OutcomeSkipped {
@@ -846,13 +841,12 @@ func TestDecide_NodataIsANoteByDefault(t *testing.T) {
 	}
 }
 
-// --- F1/F2 regressions: preexisting is decided by ActiveAt, not poll timing ---
+// --- preexisting is decided by ActiveAt, not poll timing ---
 
-// TestClassifyRule_OnsetBetweenFromAndFirstPollIsNewlyBadNotRecovered pins
-// F1: an instance whose true onset (ActiveAt) falls strictly inside the
-// window — even though the first poll that happens to observe it already
-// shows it bad — must never be treated as preexisting. If it then clears,
-// the plan requires newly_bad (exit 1), not recovered (exit 0).
+// An instance whose true onset (ActiveAt) falls strictly inside the window —
+// even though the first poll that happens to observe it already shows it bad —
+// must never be treated as preexisting. If it then clears, that is newly_bad
+// (exit 1), not recovered (exit 0).
 func TestClassifyRule_OnsetBetweenFromAndFirstPollIsNewlyBadNotRecovered(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
@@ -870,13 +864,13 @@ func TestClassifyRule_OnsetBetweenFromAndFirstPollIsNewlyBadNotRecovered(t *test
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	if outcome != OutcomeNewlyBad {
 		t.Fatalf("outcome = %v, want newly_bad: the onset is after `from`, so it is not preexisting even though "+
-			"the FIRST in-window poll already observes it bad (F1)", outcome)
+			"the FIRST in-window poll already observes it bad", outcome)
 	}
 	if len(viols) != 1 || viols[0].Outcome != OutcomeNewlyBad {
 		t.Fatalf("viols = %+v, want one newly_bad violation: a policy=fail-unless-recovered default must still fail this", viols)
 	}
 	if want := clearAt.Sub(onset); badFor != want {
-		t.Fatalf("badFor = %v, want %v: BadFor must count from the true onset, not from `from` (F1's overcount bug)", badFor, want)
+		t.Fatalf("badFor = %v, want %v: BadFor must count from the true onset, not from `from`", badFor, want)
 	}
 }
 
@@ -909,11 +903,9 @@ func TestClassifyRule_OnsetJustBeforeFromIsPreexisting(t *testing.T) {
 	}
 }
 
-// TestClassifyRule_SkewTranslatesActiveAtAcrossTheWindowBoundary pins F2: a
-// poll carrying a nonzero skew must have its ActiveAt (and GrafanaNow)
+// A poll carrying a nonzero skew must have its ActiveAt (and GrafanaNow)
 // translated to the runner domain before comparing against `from` — a raw,
-// untranslated comparison would land on the wrong side of the F1 boundary
-// check.
+// untranslated comparison would land on the wrong side of that boundary.
 func TestClassifyRule_SkewTranslatesActiveAtAcrossTheWindowBoundary(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
@@ -937,14 +929,14 @@ func TestClassifyRule_SkewTranslatesActiveAtAcrossTheWindowBoundary(t *testing.T
 
 	outcome, badFor, _ := classifyRule(def, []Poll{poll, stillBad}, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	if outcome != OutcomePersistentlyBad {
-		t.Fatalf("outcome = %v, want persistently_bad: a +90s skew must translate ActiveAt back to exactly `from` (F2)", outcome)
+		t.Fatalf("outcome = %v, want persistently_bad: a +90s skew must translate ActiveAt back to exactly `from`", outcome)
 	}
 	if badFor != to.Sub(from) {
 		t.Fatalf("badFor = %v, want the full window %v", badFor, to.Sub(from))
 	}
 }
 
-// --- F4: InstanceLabels must survive a timeline first created by a bare marker ---
+// --- InstanceLabels must survive a timeline first created by a bare marker ---
 
 func TestClassifyRule_LabelsSurviveWhenTimelineStartsFromAClearedMarker(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -967,12 +959,11 @@ func TestClassifyRule_LabelsSurviveWhenTimelineStartsFromAClearedMarker(t *testi
 	}
 	if viols[0].InstanceLabels == nil || viols[0].InstanceLabels["instance"] != "a" {
 		t.Fatalf("InstanceLabels = %+v, want {instance: a}: labels must backfill even though the "+
-			"timeline was first created by a label-less Cleared marker (F4)", viols[0].InstanceLabels)
+			"timeline was first created by a label-less Cleared marker", viols[0].InstanceLabels)
 	}
 }
 
-// TestClassifyRule_ViolationFieldsArePrecise pins FirstSeen/ClearedAt exactly,
-// not just that a violation exists (F7).
+// FirstSeen/ClearedAt are pinned exactly, not just that a violation exists.
 func TestClassifyRule_ViolationFieldsArePrecise(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
@@ -1002,10 +993,9 @@ func TestClassifyRule_ViolationFieldsArePrecise(t *testing.T) {
 	}
 }
 
-// TestClassifyRule_ClearedEventPastWindowEndClampsToWindowEnd pins the
-// episode.end clamp: inWindowPolls admits a poll up to its own skew bound
-// past windowEnd (§16's widened membership test), so a genuine Cleared event
-// on such a poll must not leave the episode extending beyond windowEnd.
+// The episode.end clamp: inWindowPolls admits a poll up to its own skew bound
+// past windowEnd, so a genuine Cleared event on such a poll must not leave the
+// episode extending beyond windowEnd.
 func TestClassifyRule_ClearedEventPastWindowEndClampsToWindowEnd(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
@@ -1069,7 +1059,7 @@ func TestClassifyRule_OnsetJustPastWindowEndIsNewlyBadNotClean(t *testing.T) {
 	}
 }
 
-// §22.2: "a clear after `to` gives persistently_bad." classifyRule filters
+// A clear after `to` gives persistently_bad. classifyRule filters
 // its input to [from, windowEnd] itself (inWindowPolls), so a Cleared event
 // GENUINELY past windowEnd — well beyond any skew bound, unlike the clamp
 // case above — never reaches the timeline at all: the instance is still bad

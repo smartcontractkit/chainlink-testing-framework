@@ -8,35 +8,26 @@ import (
 	"time"
 )
 
-// SkewHardLimit is one of §5's filled-in values (basis: §16; §22.11 asserts
-// 120s errors, 30s does not). Defined here, in schedule.go's named-constants
-// block, per §5's instruction — it moved out of source.go now that P4 exists;
-// P2 needed it before this file did, so it started there. Exported (P10) so
-// the CLI can report it verbatim next to a measured skew instead of keeping
-// its own mirrored copy.
+// SkewHardLimit is the largest runner↔Grafana clock skew a run tolerates.
+// Exported so the CLI reports it verbatim next to a measured skew.
 const SkewHardLimit = 60 * time.Second
 
-// fromFutureTolerance is how far ahead of the runner's own clock a supplied
-// `from` may sit before check refuses it (§7: "from in the future, more than
-// the skew tolerance — error"). §7 names no number, so this is the judgment
-// call §5's table records: the same 60s as SkewHardLimit, because the only
-// legitimate reason for a `from` in the future is clock disagreement between
-// the deploy step and the check step, and that is bounded by the same figure.
-// It is once-per-run input validation, not a per-rule coverage check, so
-// Check applies it (P9) and proveCoverage does not.
+// fromFutureTolerance is how far ahead of the runner's clock a `from` may sit
+// before check refuses it — the same 60s as SkewHardLimit, since a future `from`
+// can only be clock disagreement. Once-per-run input validation, not a coverage
+// check, so Check applies it and proveCoverage does not.
 const fromFutureTolerance = 60 * time.Second
 
-// minDrainTimeout is §5's floor on drainTimeout: max(2 x max(intervalSeconds),
-// 2m). Without the floor, a fleet of very tight rules would derive a
-// drainTimeout too short to let a healthy in-flight poll land.
+// minDrainTimeout floors drainTimeout (otherwise 2 × max intervalSeconds) so a
+// fleet of tight rules still lets a healthy in-flight poll land.
 const minDrainTimeout = 2 * time.Minute
 
-// graceWarnFraction is §13.2's threshold for warning that transitionGrace eats
-// too much of the requested window: "approximately one quarter of the window".
+// graceWarnFraction is the share of the window above which transitionGrace is
+// worth warning about.
 const graceWarnFraction = 0.25
 
-// ruleTimings groups the per-rule threshold values §5/§10.1/§14.1 derive from
-// a rule's poll cadence and its own evaluation interval.
+// ruleTimings groups the per-rule thresholds derived from a rule's poll
+// cadence and its own evaluation interval.
 type ruleTimings struct {
 	pollEvery      time.Duration
 	maxGap         time.Duration
@@ -45,26 +36,21 @@ type ruleTimings struct {
 }
 
 // globalTimings groups the values that apply to the whole run rather than to
-// one rule: §13.1's transitionGrace and §19's drainTimeout are each derived
-// once, across every non-skipped watched rule, not per rule.
+// one rule: transitionGrace and drainTimeout are each derived once, across
+// every non-skipped watched rule, not per rule.
 type globalTimings struct {
 	transitionGrace time.Duration
-	// graceSource names, and already carries the `for` value of, the rule
-	// that set transitionGrace (§13.2 requires printing both) — one string
-	// field rather than a second (rule, duration) pair, matching this
-	// struct's fixed shape. "none" when no rule contributed (transitionGrace
-	// is then 0).
+	// graceSource names, and already carries the `for` value of, the rule that
+	// set transitionGrace — one string field rather than a second
+	// (rule, duration) pair, matching this struct's fixed shape. "none" when no
+	// rule contributed (transitionGrace is then 0).
 	graceSource  string
 	drainTimeout time.Duration
 }
 
-// newRuleTimings derives one rule's thresholds from its fully-resolved poll
-// cadence and its evaluation interval (§5, §10.1, §14.1). pollEvery arrives
-// already resolved for the caller's mode — the §5 default, the operator's
-// --poll-interval override, or (in log mode, a later phase) the cadence
-// recorded in the log header. Deriving pollEvery inline here, instead of
-// accepting it as an input, would let a caller in the wrong mode compute
-// maxGap against the wrong authority — see the "Two authorities" note in P5.
+// newRuleTimings derives one rule's thresholds from its resolved cadence and
+// evaluation interval. pollEvery is an input — already resolved for the
+// caller's mode — so no caller can compute maxGap against the wrong authority.
 func newRuleTimings(pollEvery time.Duration, intervalSeconds int) ruleTimings {
 	interval := time.Duration(intervalSeconds) * time.Second
 	maxGap := 2 * pollEvery
@@ -77,20 +63,16 @@ func newRuleTimings(pollEvery time.Duration, intervalSeconds int) ruleTimings {
 	}
 }
 
-// defaultPollEvery is §5's default per-rule cadence: half the rule's own
+// defaultPollEvery is the default per-rule cadence: half the rule's own
 // evaluation interval.
 func defaultPollEvery(intervalSeconds int) time.Duration {
 	return time.Duration(intervalSeconds) * time.Second / 2
 }
 
-// DeriveTimings computes every resolved rule's ruleTimings, keyed by UID,
-// plus the shared globalTimings, from resolved definitions and watch's
-// optional --poll-interval override (0 = no override: use each rule's §5
-// default of half its own interval). Per §5.1, a supplied override is used
-// verbatim for every rule and is never clamped down to the default even when
-// it exceeds intervalSeconds/2 — that case is reported back as a note, not
-// silently corrected or refused, because clamping would defeat the one knob
-// §5.1 gives an operator for making a tight schedule fit.
+// DeriveTimings computes every resolved rule's ruleTimings (keyed by UID) plus
+// the shared globalTimings. A non-zero override is used verbatim for every rule
+// and never clamped to the default — an override above intervalSeconds/2 widens
+// maxGap and is reported as a note, not corrected.
 func DeriveTimings(defs []Definition, override time.Duration) (rules map[string]ruleTimings, global globalTimings, notes []string) {
 	rules = make(map[string]ruleTimings, len(defs))
 	for _, d := range defs {
@@ -106,10 +88,8 @@ func DeriveTimings(defs []Definition, override time.Duration) (rules map[string]
 		}
 		rules[d.UID] = newRuleTimings(pollEvery, d.IntervalSeconds)
 	}
-	// In this mode the defs ARE the start-of-step snapshot — watch resolves
-	// them before it detaches, and single-step check before its first
-	// observation — so they can answer what was paused when the window opened.
-	// Only the log-mode counterpart below has to look elsewhere.
+	// In this mode defs ARE the start-of-step snapshot, so they answer what was
+	// paused at the window open; only the log-mode counterpart uses the header.
 	return rules, deriveGlobalTimings(defs, pausedSet(defs)), notes
 }
 
@@ -124,39 +104,19 @@ func pausedSet(defs []Definition) map[string]bool {
 	return paused
 }
 
-// DeriveTimingsFromLog is DeriveTimings' log-mode counterpart, and the two
-// authorities of P5 are the whole reason it exists as a separate function.
-// pollEvery comes from the header — the cadence the recording ACTUALLY used,
-// after any --poll-interval override — and maxGap and healthGrace follow from
-// it. Re-deriving pollEvery from defs here would compare gaps recorded at the
-// override cadence against thresholds computed from the default: exit 2 on a
-// clean window when the override was slower, and, worse, a real recorder gap
-// passing silently when it was faster.
+// DeriveTimingsFromLog is DeriveTimings' log-mode counterpart: pollEvery comes
+// from the header (the cadence actually used), not the definitions — re-deriving
+// it here would compare recorded gaps against default-cadence thresholds, an
+// exit 2 on a clean window (slower override) or a silently passing recorder gap
+// (faster override). evalStaleAfter still comes from defs (2 × intervalSeconds).
 //
-// evalStaleAfter still comes from defs (2 x intervalSeconds): it is a property
-// of the rule's own evaluation cadence and is unaffected by how often the gate
-// polled.
+// Three header shapes are hard errors rather than a best-effort derivation,
+// because each would silently widen a threshold: a rule with no matching
+// definition, a non-positive recorded cadence, and a UID listed twice
+// (last-one-wins would widen maxGap on a corrupt log).
 //
-// Three shapes of header are errors rather than a best-effort derivation,
-// because each one would otherwise widen a threshold silently:
-//
-//   - a rule with no matching definition — a log that names a rule nobody can
-//     resolve cannot have that rule's coverage proved;
-//   - a non-positive recorded cadence — a log that cannot say how often it was
-//     written cannot have maxGap derived, and defaulting the cadence would
-//     prove a window that was never observed;
-//   - the same UID twice — last-one-wins would take whichever cadence happened
-//     to be written last, and a slower duplicate widens maxGap. That is a
-//     fail-open reachable through nothing but log corruption.
-//
-// It checks only the header-to-defs direction. The opposite direction — a
-// resolved definition absent from the header — is NOT this function's to
-// judge: it is §19.1 step 3's log-identity validation, and it belongs to P9's
-// Check, which is the only caller that knows both sets and can name the
-// mismatch. Without that check a definition simply gets no timings entry, and
-// a downstream lookup would read a zero maxGap: fail-closed (every gap
-// exceeds it) but silent, so P9 must reject the set mismatch by name rather
-// than let a rule fail for an unexplained reason.
+// It checks only the header-to-defs direction. A definition absent from the
+// header is Check's log-identity validation to judge, not this function's.
 func DeriveTimingsFromLog(h Header, defs []Definition) (rules map[string]ruleTimings, global globalTimings, err error) {
 	byUID := make(map[string]Definition, len(defs))
 	for _, d := range defs {
@@ -187,25 +147,15 @@ func DeriveTimingsFromLog(h Header, defs []Definition) (rules map[string]ruleTim
 	return rules, deriveGlobalTimings(defs, h.pausedAtStart()), nil
 }
 
-// deriveGlobalTimings computes transitionGrace and drainTimeout over defs
-// (§5, §13.1, §19).
+// deriveGlobalTimings computes transitionGrace and drainTimeout over defs. A
+// rule skipped at the window open is excluded from the transitionGrace max (its
+// `for` can never fire in-window); drainTimeout runs over every resolved rule.
 //
-// A rule paused before the window opened — skipped, §12 — is excluded from the
-// transitionGrace max: its `for` value can never fire during the window, so
-// counting it would only inflate the wait past what any watched rule actually
-// needs (a judgment call the v2 plan makes explicitly for this formula; §19's
-// drainTimeout carries no such exclusion, so it still runs over every resolved
-// rule).
-//
-// "Before the window opened" is the whole content of that exclusion, so the
-// authority is pausedAtStart and NEVER Definition.IsPaused: in log mode the
-// definitions are re-resolved after the window closed. Reading them instead
-// was a fail-open, and a quiet one. transitionGrace is what lets a condition
-// arising just before `to` be seen when it surfaces at to + `for`, and
-// windowEnd is BOTH the classification bound and the collection deadline — so
-// a rule somebody paused after `to` dropped out of the max, the grace
-// collapsed, the surfacing poll was never even recorded, and the run reported
-// clean. With one watched rule the shrink is total.
+// The exclusion authority is pausedAtStart, never Definition.IsPaused: log-mode
+// defs are re-resolved after the window closed. Reading the late definitions
+// was a quiet fail-open — a rule paused after `to` would drop out of the max,
+// collapse the grace past windowEnd (the classification bound AND collection
+// deadline), and pass a window the surfacing poll was never recorded for.
 func deriveGlobalTimings(defs []Definition, pausedAtStart map[string]bool) globalTimings {
 	var g globalTimings
 	var maxInterval time.Duration
@@ -226,25 +176,19 @@ func deriveGlobalTimings(defs []Definition, pausedAtStart map[string]bool) globa
 	return g
 }
 
-// Scheduler drives one per-rule schedule, never a global cycle (§5): a rule
-// at intervalSeconds=10 alongside twenty at 300 keeps its own 5s cadence
-// without forcing the same cadence onto the other twenty.
+// Scheduler drives one per-rule schedule, never a global cycle: a rule at
+// intervalSeconds=10 alongside twenty at 300 keeps its own 5s cadence without
+// forcing the same cadence onto the other twenty.
 type Scheduler struct {
 	next  map[string]time.Time
 	every map[string]time.Duration
 }
 
-// NewScheduler builds a Scheduler over per-rule cadences (keyed by UID),
-// staggering each rule's initial next-due time across [0, pollEvery) so the
-// fleet does not start phase-aligned (§5's burst-bound proof depends on this:
-// an already-staggered fleet only re-aligns by chance, briefly, not by
-// construction).
-//
-// It takes cadences rather than whole ruleTimings on purpose: a scheduler
-// decides when to poll and nothing else, so it must not be handed maxGap,
-// healthGrace or evalStaleAfter. Those are coverage thresholds, they are
-// applied by the pure layer at classification time, and the recorder that
-// drives this scheduler never applies them at all.
+// NewScheduler builds a Scheduler over per-rule cadences, staggering each
+// rule's initial next-due time across [0, pollEvery) so a phase-aligned fleet
+// (which would void CheckBudget's burst bound) never arises by construction.
+// It takes cadences, not ruleTimings: a scheduler only decides when to poll and
+// must not be handed coverage thresholds it never applies.
 func NewScheduler(every map[string]time.Duration, now time.Time) *Scheduler {
 	s := &Scheduler{
 		next:  make(map[string]time.Time, len(every)),
@@ -261,13 +205,10 @@ func NewScheduler(every map[string]time.Duration, now time.Time) *Scheduler {
 	return s
 }
 
-// Due returns the UIDs whose next-due time has arrived, earliest-due-first.
-// Ties (equal next-due time) break by tightest cadence first: the burst-bound
-// proof in §5 assumes a newly-due tight rule waits at most for one in-flight
-// request, which only holds if a simultaneous batch serves the tightest rule
-// ahead of slacker ones. A tie-break that instead followed map iteration
-// order would silently void that proof — nothing else would fail until a
-// phase-aligned fleet opened a mid-run gap in production.
+// Due returns the due UIDs, earliest-due-first. Ties break by tightest cadence
+// first: the burst bound assumes a newly-due tight rule waits at most one
+// in-flight request, which only holds if a simultaneous batch serves the
+// tightest rule first. A map-order tie-break would silently void that.
 func (s *Scheduler) Due(now time.Time) []string {
 	var due []string
 	for uid, t := range s.next {
@@ -294,12 +235,9 @@ func (s *Scheduler) Mark(uid string, now time.Time) {
 	s.next[uid] = now.Add(s.every[uid])
 }
 
-// earliestDue returns the earliest scheduled next-due time, and false when the
-// scheduler holds no rules at all. The recorder's loop (P6) waits exactly that
-// long instead of waking on a fixed tick: a fixed tick either polls a slack
-// rule early — spending request budget the §5 formulas already accounted for —
-// or wakes too late for the tightest rule and opens a gap inside its own
-// maxGap.
+// earliestDue returns the earliest next-due time (false when empty). The loop
+// waits exactly that long instead of a fixed tick, which would poll slack rules
+// early (wasting budget) or wake late for the tightest rule (opening a gap).
 func (s *Scheduler) earliestDue() (time.Time, bool) {
 	var earliest time.Time
 	for _, t := range s.next {
@@ -310,23 +248,18 @@ func (s *Scheduler) earliestDue() (time.Time, bool) {
 	return earliest, !earliest.IsZero()
 }
 
-// CheckBudget applies §5's error-at-start check to a fully resolved schedule.
-// t and measured are both keyed by rule UID; measured must carry every UID in
-// t; a rule this run never measured can't have its budget proved, and a
-// silent zero-duration default would be exactly the kind of pass-on-an-
-// unproven-window bug §5 exists to catch. CheckBudget fails when any of three
-// conditions holds (sanity-checked against §22.3's mixed-interval regression
-// in this phase's tests):
+// CheckBudget proves at start that a fully resolved schedule can be served. t
+// and measured are keyed by UID, and measured must carry every UID in t (a rule
+// never measured cannot have its budget proved). It fails on any of three
+// conditions:
 //
-//   - utilization: the long-run request rate exceeds what concurrency serves;
-//   - a single rule's own request cannot fit inside its own cadence;
-//   - the burst bound: the slowest measured request is slower than the
-//     fleet's tightest cadence, which — even under earliest-due-first
-//     ordering — can open a mid-run gap bigger than that rule's maxGap.
+//   - utilization — the long-run request rate exceeds the concurrency;
+//   - a single rule's request cannot fit inside its own cadence;
+//   - the burst bound — the slowest measured request is slower than the fleet's
+//     tightest cadence, which can open a mid-run gap beyond that rule's maxGap.
 //
-// The message never suggests a single interval (§5.1) — only the three
-// controls an operator actually has: concurrency, poll-interval, and the
-// alert list.
+// The message names only the three operator controls: concurrency,
+// poll-interval, and the alert list.
 func CheckBudget(t map[string]ruleTimings, measured map[string]time.Duration, concurrency int) error {
 	if len(t) == 0 {
 		return nil
@@ -393,10 +326,11 @@ func CheckBudget(t map[string]ruleTimings, measured map[string]time.Duration, co
 	return fmt.Errorf("%s", b.String())
 }
 
-// StartupSummary formats §13.2's required pre-run print: the total planned
-// run time and the rule (with its `for` value) that set transitionGrace, plus
-// a warning when the grace eats more than graceWarnFraction of the requested
-// window. from/to are the requested classification window.
+// StartupSummary formats the pre-run print an operator sees before the wait:
+// the total planned run time and the rule (with its `for` value) that set
+// transitionGrace, plus a warning when the grace eats more than
+// graceWarnFraction of the requested window. from/to are the requested
+// classification window.
 func StartupSummary(from, to time.Time, global globalTimings) (summary, warning string) {
 	window := to.Sub(from)
 	total := window + global.transitionGrace + global.drainTimeout

@@ -1,5 +1,5 @@
-// Command grafana-alertcheck is the CLI entry point for the gate: `list`
-// (P3), `watch` (record, P10) and `check` (classify, P10).
+// Command grafana-alertcheck is the CLI entry point for the gate: `list`,
+// `watch` (record) and `check` (classify).
 package main
 
 import (
@@ -16,9 +16,9 @@ const usage = "usage: grafana-alertcheck <list|watch|check>"
 
 // run is the whole of main's testable surface: parse the subcommand, dispatch,
 // return the process exit code. Exit codes below 2 (pass/violations) belong to
-// `check` alone (§20.3, P10); every failure reachable from here — a missing
-// subcommand, a bad flag, a transport or auth failure — is a could-not-check
-// condition and maps to 2, never to 0 or 1 (H7).
+// `check` alone; every failure reachable from here — a missing subcommand, a
+// bad flag, a transport or auth failure — is a could-not-check condition and
+// maps to 2, never to 0 or 1.
 //
 // Requested help (-h/--help) is not a failure — it is the one exception to
 // that rule. Convention (and every stdlib flag.FlagSet default) is exit 0 to

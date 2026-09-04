@@ -7,9 +7,9 @@ import (
 	"time"
 )
 
-// RuleKind classifies a ruler-endpoint rule by shape, not by name (P1.3).
-// P3 rejects KindDatasourceManaged and KindRecording, but only for rules a
-// user actually named — ParseDefinitions itself never rejects.
+// RuleKind classifies a ruler-endpoint rule by shape, not by name. Resolve
+// rejects KindDatasourceManaged and KindRecording, but only for rules a user
+// actually named — ParseDefinitions itself never rejects.
 type RuleKind int
 
 const (
@@ -22,8 +22,8 @@ const (
 // (/api/ruler/grafana/api/v1/rules). IntervalSeconds, NoDataState and
 // ExecErrState live inside the grafana_alert block and are only populated for
 // KindGrafanaManaged — a datasource-managed rule has no such block by
-// definition (§11.6 drops relativeTimeRange/keep_firing_for entirely; neither
-// is parsed here).
+// definition. relativeTimeRange and keep_firing_for are deliberately not
+// parsed: nothing in the gate reads them.
 type Definition struct {
 	UID, Title, Folder, FolderUID, Group string
 	For                                  time.Duration
@@ -43,8 +43,8 @@ func ParseDefinitions(body []byte) ([]Definition, error) {
 	}
 
 	// Map iteration order is nondeterministic; sort namespace names so
-	// ParseDefinitions' output order is stable across calls (P3's candidate
-	// listings and any golden test depend on that).
+	// ParseDefinitions' output order is stable across calls — Resolve's
+	// candidate listings and the golden tests depend on that.
 	names := make([]string, 0, len(namespaces))
 	for name := range namespaces {
 		names = append(names, name)
@@ -134,11 +134,11 @@ func parseDefinition(raw json.RawMessage, folder, group string) (Definition, err
 	// Classify by the presence of "record" before requiring anything else.
 	// no_data_state/exec_err_state/is_paused/intervalSeconds are alerting-only
 	// concepts a recording rule may not carry at all — its real shape is
-	// unverified (none exist in the fleet capture) — and P3 refuses this
-	// Kind categorically before any of this would gate a release. Strict-
-	// parsing a recording rule into a hard error over fields it was never
-	// going to use would brick `list` and every resolve for rules nobody
-	// named (§11.6, "do not reject here").
+	// unverified, none exist in the fleet capture — and Resolve refuses this
+	// Kind categorically before any of this would gate a release.
+	// Strict-parsing a recording rule into a hard error over fields it was
+	// never going to use would brick `list` and every resolve for rules nobody
+	// named.
 	var record json.RawMessage
 	if err := opt(ga, "record", &record); err != nil {
 		return Definition{}, fmt.Errorf("rule %q: grafana_alert: %w", uid, err)
