@@ -14,26 +14,21 @@ import (
 // Check returns (Result, error) and no exit code: the code is a presentation
 // decision the CLI makes. err != nil is exit 2 unconditionally, even alongside
 // real violations; violations with err == nil is exit 1; neither is exit 0.
-//
-// Check never reads the environment either. The URL and token are read by the
-// CLI and passed in as fields, and the token must never reach a *flag.FlagSet.
+// Check never reads the environment — the CLI reads URL/token and passes them
+// in, and the token must never reach a *flag.FlagSet.
 
 // countdownEvery is how often the collection loop reports what it is waiting
-// for. A silent wait is indistinguishable from a hung process, and the wait
-// after `to` is the longest silence in the whole run.
+// for; a silent wait is indistinguishable from a hung process.
 const countdownEvery = 30 * time.Second
 
-// recorderStopTimeout bounds the wait for the recorder's exit. Everything the
-// recorder does after SIGTERM is local (finish the in-flight write, append the
-// sentinel, fsync) and an in-flight poll aborts through the child's own
-// context, so the real figure is milliseconds; this is loose enough for an
-// overloaded runner. The timeout is a hard error rather than a longer wait — a
-// log a writer may still hold cannot be read at all.
+// recorderStopTimeout bounds the wait for the recorder's exit after SIGTERM.
+// Everything after the signal is local (finish the in-flight write, sentinel,
+// fsync), so this is loose; it stays a hard error because a log a writer still
+// holds cannot be read.
 const recorderStopTimeout = 30 * time.Second
 
-// recorderStopPoll is how often that wait re-checks the pid. There is no
-// wait(2) available: the recorder is a detached session leader, not this
-// process's child, so its exit can only be observed by polling.
+// recorderStopPoll is how often the wait re-checks the lock. With no wait(2)
+// on a detached session leader, its exit is observable only by polling.
 const recorderStopPoll = 100 * time.Millisecond
 
 // Config is check's whole input. It is the CLI's view of a run, and it is
@@ -117,14 +112,10 @@ func (cfg Config) namedAlerts() []string {
 }
 
 // Check is the I/O shell: HTTP, signals, the pidfile, file reads, the
-// countdown print. Every correctness question it touches is answered
-// elsewhere — by proveCoverage and decide, which are pure — and that split is
-// the most important seam in the project. Check therefore needs two
-// integration tests; decide carries the suite.
-//
-// A pass is exactly len(Violations) == 0 && err == nil. Every error path below
-// leaves err non-nil, and no path anywhere in this file converts an error into
-// an empty Result with a nil error.
+// countdown print. Every correctness question it touches is answered elsewhere
+// (proveCoverage, decide — both pure), which is the most important seam in the
+// project. A pass is exactly len(Violations) == 0 && err == nil; every error
+// path leaves err non-nil.
 func Check(ctx context.Context, cfg Config) (Result, error) {
 	cfg = cfg.withDefaults()
 	if err := cfg.validate(); err != nil {
@@ -160,10 +151,8 @@ func (cfg Config) validate() error {
 	}
 
 	now := cfg.Clock.Now()
-	// from mirrors what check() will use, so the two window checks below judge
-	// the window that will really be classified. The fallback is not written
-	// back into cfg: check() re-reads the clock at the same point, and one
-	// authority for that value is better than two that could disagree.
+	// from mirrors what check() will use, so the window checks below judge the
+	// window that will really be classified.
 	from := cfg.From
 	switch {
 	case from.IsZero() && cfg.Log != "":
@@ -185,13 +174,10 @@ func (cfg Config) validate() error {
 			from.Format(time.RFC3339), fromFutureTolerance, now.Format(time.RFC3339))
 	}
 
-	// A `to` already in the past is not a special mode WITH a log: the
-	// collection loop's condition is simply already true and the evidence is
-	// classified immediately. Without one it is a different thing entirely — a
-	// request to prove a window that nothing observed. Refusing it is not
-	// pedantry: the coverage window would end before the first observation,
-	// every heartbeat gap inside it would measure negative, and the run would
-	// report a proved window it never saw.
+	// A `to` in the past is fine WITH a log (the collection loop is already
+	// done). Without one it is a request to prove a window nothing observed:
+	// every heartbeat gap would measure negative, and the run would report a
+	// proved window it never saw.
 	if cfg.Log == "" && !cfg.To.After(now) {
 		return fmt.Errorf("check: `to` %s has already passed and there is no recorded log: a window that ended before check started can only be classified from a recording",
 			cfg.To.Format(time.RFC3339))
@@ -232,11 +218,9 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 
 	// ---- With a log, validate its identity. -------------------------------
 	// The header is read early — line 1 only, the one line a writer can never
-	// change (ReadLogHeader) — so a wrong URL or a rule that no longer
-	// resolves fails closed NOW rather than after the whole window has
-	// elapsed. It is advisory: the authoritative header comes from the single
-	// full ReadLog once collection is over and the writer has exited, and the
-	// identity is validated again against that one.
+	// change — so a wrong URL or an unresolvable rule fails closed NOW. It is
+	// advisory: the authoritative header is re-read once collection ends and
+	// the writer has exited.
 	var (
 		resolved   []Definition
 		notes      []string
@@ -291,11 +275,8 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 		fmt.Fprintf(cfg.Notes, "warning: %s\n", warning)
 	}
 
-	// The measurement pass and the budget check belong to single-step mode
-	// alone: in recorder mode watch already took one observation of every rule
-	// and checked the budget against those measured latencies before it
-	// detached, and repeating it here would spend a second poll of every rule
-	// to re-answer a question already answered.
+	// The measurement pass and budget check are single-step only: in recorder
+	// mode watch already measured and checked the budget before detaching.
 	var (
 		header  Header
 		initial []Poll
@@ -364,10 +345,8 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 	}
 	collected, err := collectUntil(ctx, cfg, windowEnd, poller)
 	if err != nil {
-		// The failure limit was exceeded (retryTransport already gave every
-		// transient failure its backoff), or the context ended. Nothing
-		// collected is classified — the count is there so an operator can tell
-		// a run that failed at once from one that failed at minute nine.
+		// Nothing collected is classified; the count lets an operator tell a
+		// run that failed at once from one that failed at minute nine.
 		return Result{}, fmt.Errorf("collect evidence after %d poll(s): %w", len(collected), err)
 	}
 
@@ -385,29 +364,20 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 			return Result{}, err
 		}
 		header, polls, sentinel, err = ReadLog(cfg.Log)
-		// The lock stays held across the read, so no writer can appear between
-		// the proof that there was none and the read itself. Released here
-		// rather than deferred: everything past this point works from bytes
-		// already in memory, and the drain wait below can take minutes.
+		// Held across the read so no writer can appear mid-read, then released
+		// (everything past here works from memory, and the drain wait is minutes).
 		_ = heldLog.Close()
 		if err != nil {
 			return Result{}, err
 		}
-		// The authoritative header, validated the same way the advisory one
-		// was — and its result is KEPT. Everything from here on judges the
-		// header ReadLog returned, so nothing downstream rests on the advisory
-		// read having been right. That read is what it claims to be: a
-		// fail-fast, and no part of the verdict depends on it.
+		// The authoritative header wins: the advisory read was only a fail-fast.
 		resolved, _, err = resolveFromLog(allDefs, header, cfg)
 		if err != nil {
 			return Result{}, err
 		}
-		// rt is re-derived because it depends on the header: PollEverySeconds
-		// is the one load-bearing value the advisory read supplied. windowEnd
-		// is deliberately NOT recomputed from the gt this returns: the
-		// collection loop has already stopped at the earlier value, and moving
-		// the end of the window afterwards would prove a window this run did
-		// not collect.
+		// rt is re-derived from the authoritative header. windowEnd is NOT
+		// recomputed: the loop already stopped at the earlier value, and moving
+		// it afterwards would prove a window this run did not collect.
 		if rt, gt, err = DeriveTimingsFromLog(header, resolved); err != nil {
 			return Result{}, fmt.Errorf("log identity: %w", err)
 		}
@@ -453,24 +423,14 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 	return result, errors.Join(decideErr, drainErr)
 }
 
-// resolveFromLog turns a log header into the resolved definitions, and is the
-// log's identity check in practice. Three things are verified: the URL
-// matches, the schema version matches (ReadLog/ReadLogHeader own that), and
-// every header UID still resolves against the fresh ruler read. The alert set
-// is TAKEN from the log, never compared — with Alerts required empty in log
-// mode there is nothing to compare it against, and refusing a log recorded
-// against a different alert set is exactly this URL-and-UID failure.
+// resolveFromLog is the log's identity check in practice: the URL must match
+// and every header UID must still resolve against a fresh ruler read. The
+// alert set is TAKEN from the log, never compared against --alerts (which the
+// validator requires empty in log mode). Resolving through Resolve by uid:
+// keeps one implementation of the resolution rules.
 //
-// Resolving through Resolve, by uid:, rather than by a private lookup, keeps
-// one implementation of the resolution rules: a header naming a recording or
-// datasource-managed rule gets the same specific refusal an operator would,
-// and a header naming the same UID twice collapses with a note
-// (DeriveTimingsFromLog rejects that case outright, so the note is belt and
-// braces).
-//
-// Only the header-to-defs direction needs checking. The opposite direction
-// cannot fail here: resolved is BUILT from the header, so no resolved
-// definition can be absent from it.
+// Only the header-to-defs direction can fail: resolved is BUILT from the
+// header, so no resolved definition can be absent from it.
 func resolveFromLog(allDefs []Definition, h Header, cfg Config) ([]Definition, []string, error) {
 	if h.URL != cfg.URL {
 		return nil, nil, fmt.Errorf("log identity: %s recorded url %q but this run is configured for %q",
@@ -619,32 +579,22 @@ func collectUntil(ctx context.Context, cfg Config, deadline time.Time, p *livePo
 	}
 }
 
-// stopRecorder signals the recorder and waits for it to go. Nothing here is
-// best-effort: the log may not be read until the writer has provably gone, so
-// every failure to reach that state is a hard error.
+// stopRecorder signals the recorder and waits for it to go; the log may not be
+// read until the writer has provably gone, so every failure is a hard error.
+// It returns the log held under an exclusive flock, which the caller must keep
+// open across ReadLog — the lock is the proof that no writer exists.
 //
-// It returns the log held under an exclusive flock. The caller must keep that
-// file open across ReadLog and close it afterwards — the lock is the proof
-// that no writer exists, and holding it across the read also shuts out a new
-// one appearing between the proof and the read.
+// Two authorities, only one of which is evidence:
 //
-// Two authorities, and only one of them is evidence:
+//   - the PIDFILE says whether a recording ever started (it is written only
+//     after the child reports ready, and removed on failure).
+//   - the FLOCK says whether a writer exists right now. A pidfile can go stale
+//     — nothing removes it on a clean --until stop, so it may name a pid
+//     somebody else now owns — but the kernel drops a flock when the holder
+//     exits, so the lock is always authoritative.
 //
-//   - The PIDFILE says whether a recording was ever started, and an absent or
-//     unparseable one must never read as "there was nothing to stop". The
-//     parent writes the pidfile only AFTER the child reports that it holds the
-//     log and is polling, and removes it on every failing path, so a missing
-//     one means watch failed and this run has no evidence at all.
-//   - The FLOCK says whether a writer exists RIGHT NOW. Nothing removes the
-//     pidfile when a recorder exits cleanly — the parent has long returned and
-//     the child never learns the path — so after a --until run, a supported
-//     flow, the pidfile names a pid nobody owns. Signalling it would SIGTERM
-//     whatever same-user process inherited that pid. The kernel releases a
-//     flock when its holder exits, crash included, so the lock cannot go
-//     stale that way.
-//
-// So: read the pidfile to learn that a recording happened, then ask the lock
-// whether it is still running, and signal only if it is.
+// So: read the pidfile to learn a recording happened, ask the lock whether it
+// is still running, and signal only if it is.
 func stopRecorder(ctx context.Context, cfg Config) (*os.File, error) {
 	pid, err := ReadPidFile(cfg.PidFile)
 	if err != nil {
@@ -724,27 +674,15 @@ type drainVerdict struct {
 	note   string
 }
 
-// drainWait is the final instance of the liveness check, asking each rule the
-// last question — did you evaluate through the end of the window? A rule that
-// cannot answer within drainTimeout is unobservable, never a pass.
+// drainWait is the final liveness check: did each rule evaluate through the
+// end of the window? A rule that cannot answer within drainTimeout is
+// unobservable, never a pass. It returns one verdict per rule it could not
+// clear (keyed by UID); an error only for a hard failure of the wait itself.
 //
-// It returns one verdict per rule it could not clear, keyed by UID, which the
-// caller folds into the Result. It returns an error only for a hard failure of
-// the wait itself; a rule that simply never catches up is reported, not
-// raised.
-//
-// Two kinds of rule are excluded before the wait starts, both because draining
-// them could not change a verdict:
-//
-//   - a rule the HEADER says was already paused when the recording opened: it
-//     is skipped, it was not evaluating, and it never was — there is no
-//     evaluation to wait for. The header and not the definition, for decide's
-//     reason (Header.pausedAtStart): a rule the header says was active must be
-//     drained or faulted, because a pause somebody applied after the window is
-//     not evidence about the window;
-//   - a rule whose last poll says Found == false: the rule-absent coverage
-//     check already makes it unobservable, so the only thing draining it could
-//     add is drainTimeout of waiting before the same answer.
+// Two kinds of rule are excluded up front because draining them could not
+// change a verdict: a rule the HEADER says was paused at the window open (the
+// header, not the late-resolved definitions — see Header.pausedAtStart), and a
+// rule whose last poll says Found == false (already unobservable via rule_absent).
 func drainWait(ctx context.Context, cfg Config, src Source, defs []Definition, pausedAtStart map[string]bool,
 	rt map[string]ruleTimings, polls []Poll, windowEnd time.Time, timeout time.Duration) (map[string]drainVerdict, error) {
 
@@ -872,16 +810,11 @@ func anyPollEvaluatedThrough(polls []Poll, windowEnd time.Time) bool {
 	return false
 }
 
-// evaluatedThrough is the drain wait's one comparison, and it is cross-domain:
-// lastEvaluation is a Grafana timestamp and windowEnd is runner-domain, so the
-// Grafana value is translated by its own poll's skew. The skew BOUND is then
-// subtracted rather than added — the pessimistic end of the uncertainty — so
-// an evaluation that only might have reached the end of the window does not
-// count as one that did. Understating it costs a few more seconds of waiting;
-// overstating it would pass an unproven window.
-//
-// A zero lastEvaluation never satisfies the wait: only a paused rule may
-// legitimately report it, and a paused rule has nothing to drain.
+// evaluatedThrough is the drain wait's cross-domain comparison: a Grafana
+// lastEvaluation is translated by its poll's skew, and the bound is SUBTRACTED
+// (the pessimistic end) so an evaluation that only *might* have reached the
+// window end is not counted as having reached it. A zero lastEvaluation never
+// satisfies the wait.
 func evaluatedThrough(lastEval time.Time, skew, bound time.Duration, windowEnd time.Time) bool {
 	if lastEval.IsZero() {
 		return false
@@ -889,16 +822,10 @@ func evaluatedThrough(lastEval time.Time, skew, bound time.Duration, windowEnd t
 	return !lastEval.Add(-skew).Add(-bound).Before(windowEnd)
 }
 
-// mergeDrainTimeouts folds the I/O drain wait's verdicts into the pure layer's
-// Result. It runs immediately after decide rather than before it, because
-// decide owns proveCoverage and therefore builds the Coverage map itself; that
-// keeps decide a pure function of its arguments.
-//
-// It returns its own error rather than mutating decide's, so neither hides the
-// other: a run with one rule unobservable from the coverage proof and another
-// from the drain wait must name both. The error says "at the drain wait" for
-// that reason — the two are joined into one message, and two counts under one
-// identical phrase read as a contradiction rather than as two findings.
+// mergeDrainTimeouts folds the drain wait's I/O verdicts into the pure Result,
+// running after decide so that function stays pure of its arguments. It returns
+// its own error rather than mutating decide's so neither hides the other: a run
+// faulted by both the coverage proof and the drain wait must name both.
 func mergeDrainTimeouts(res Result, drained map[string]drainVerdict) (Result, error) {
 	if len(drained) == 0 {
 		return res, nil
