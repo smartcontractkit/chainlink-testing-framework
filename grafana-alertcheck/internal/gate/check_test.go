@@ -657,6 +657,32 @@ func TestCheckFailFastWhenFromPrecedesRecordStart(t *testing.T) {
 	require.True(t, clock.Now().Equal(testNow), "it must fail before the wait")
 }
 
+// A whole-second `from` in the same second as the recording's sub-second
+// StartedAt is not a blind interval: the whole-second comparison lets the run
+// proceed to a clean pass instead of the fail-fast above.
+func TestCheckRecorderModeFromSameSecondAsStartedAtPasses(t *testing.T) {
+	dir := t.TempDir()
+	windowEnd := testNow.Add(5*time.Minute + checkGrace)
+	// StartedAt is 500ms after `from` (testNow via recorderConfig) — the same
+	// whole second. Polls still cover the whole window.
+	logPath := recordedLog(t, dir, "https://grafana.example.com",
+		testNow.Add(500*time.Millisecond), testNow.Add(-time.Minute), windowEnd.Add(30*time.Second), windowEnd.Add(30*time.Second), 0)
+	writePid(t, logPath+".pid", fmt.Sprintf("%d\n", deadPid(t)))
+
+	clock := newVirtualClock(testNow.Add(time.Minute))
+	cfg := recorderConfig(t, clock, logPath)
+	src := newCheckSource(func(title string, _ int) (Observation, error) {
+		require.Fail(t, fmt.Sprintf("the drain wait polled %q although the log already proves the evaluations", title))
+		return Observation{}, errors.New("unexpected poll")
+	})
+
+	res, err := check(context.Background(), cfg, src)
+	require.NoError(t, err)
+	require.Empty(t, res.Violations)
+	require.Len(t, res.Verdicts, 1)
+	require.Equal(t, OutcomeClean, res.Verdicts[0].Outcome)
+}
+
 // The coverage proof failed: a hole in the middle of the recording is not
 // saved by healthy data at both ends.
 func TestCheckFailClosedOnCoverageGap(t *testing.T) {
