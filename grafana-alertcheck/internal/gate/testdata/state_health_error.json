@@ -1,0 +1,68 @@
+{
+  "status": "success",
+  "data": {
+    "groups": [
+      {
+        "name": "ExampleService",
+        "file": "ExampleService",
+        "folderUid": "folder0000003",
+        "rules": [
+          {
+            "state": "inactive",
+            "name": "Example No Data Source",
+            "query": "sum(increase(example_requests_total{env=\"staging\", method=\"Example\"}[30d]))",
+            "queriedDatasourceUIDs": [
+              "datasource000003"
+            ],
+            "duration": 300,
+            "annotations": {
+              "description": "Just a test",
+              "summary": "Just a test"
+            },
+            "alerts": [
+              {
+                "labels": {
+                  "alertname": "Example No Data Source",
+                  "grafana_folder": "ExampleService",
+                  "product": "example-service"
+                },
+                "annotations": {
+                  "Error": "failed to build query 'A': data source not found",
+                  "description": "Just a test",
+                  "summary": "Just a test"
+                },
+                "state": "Error",
+                "activeAt": "2026-08-20T15:45:00Z",
+                "value": ""
+              }
+            ],
+            "totals": {
+              "error": 1
+            },
+            "totalsFiltered": {
+              "error": 1
+            },
+            "uid": "rule0000003",
+            "folderUid": "folder0000003",
+            "labels": {
+              "product": "example-service"
+            },
+            "health": "error",
+            "lastError": "failed to build query 'A': data source not found",
+            "type": "alerting",
+            "lastEvaluation": "2026-08-31T09:15:00Z",
+            "evaluationTime": 0.00109723,
+            "isPaused": false
+          }
+        ],
+        "totals": {
+          "error": 1,
+          "inactive": 1
+        },
+        "interval": 300,
+        "lastEvaluation": "2026-08-31T09:15:00Z",
+        "evaluationTime": 0.00109723
+      }
+    ]
+  }
+}

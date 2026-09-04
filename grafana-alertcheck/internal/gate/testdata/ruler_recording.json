@@ -1,0 +1,44 @@
+{
+  "ExampleMetrics": [
+    {
+      "name": "Recording Group",
+      "interval": "1m",
+      "rules": [
+        {
+          "expr": "",
+          "for": "0s",
+          "labels": {},
+          "annotations": {},
+          "grafana_alert": {
+            "title": "example:recorded_metric:rate5m",
+            "condition": "",
+            "data": [
+              {
+                "refId": "A",
+                "queryType": "",
+                "relativeTimeRange": {
+                  "from": 600,
+                  "to": 0
+                },
+                "datasourceUid": "datasource000010",
+                "model": {
+                  "expr": "rate(example_metric_total[5m])",
+                  "refId": "A"
+                }
+              }
+            ],
+            "record": {
+              "metric": "example:recorded_metric:rate5m",
+              "from": "A"
+            },
+            "updated": "2026-08-01T00:00:00Z",
+            "version": 1,
+            "uid": "rule0000011",
+            "rule_group": "Recording Group",
+            "guid": "example-guid-0011"
+          }
+        }
+      ]
+    }
+  ]
+}
