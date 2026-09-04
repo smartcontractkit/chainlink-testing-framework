@@ -8,25 +8,15 @@ import (
 // keepLastReason is the instance Reason that check 9 watches for.
 const keepLastReason = "KeepLast"
 
-// Two things this file deliberately leaves to its callers:
-//
-//   - "from more than fromFutureTolerance ahead of the runner's clock" is a
-//     hard error, but it is once-per-run input validation rather than a
-//     per-rule coverage check, and this function has no error return.
-//     Config.validate (check.go) applies it; check 2 below owns only the
-//     "from < StartedAt" half.
-//   - A rule paused before the window opened is never scheduled or polled, so
-//     it would reach this function with zero polls and read as one large
-//     heartbeat_gap rather than as skipped (pinned by
-//     TestProveCoverage_SkippedRuleWithZeroPollsPinnedAsHeartbeatGap). decide
-//     returns before it ever calls proveCoverage for such a rule, reading
-//     skipped from the log header (Header.pausedAtStart) and NOT from
-//     Definition.IsPaused — the definitions are re-resolved after the window
-//     closed, so they cannot answer what was paused when it opened.
+// Two things this file leaves to its callers: the "from too far ahead" bound is
+// Config.validate's once-per-run input validation (check 2 owns only the
+// "from < StartedAt" half), and a rule paused at the window open never reaches
+// proveCoverage — decide reads `skipped` from Header.pausedAtStart first, so a
+// paused rule's zero polls read as skipped, not as one large heartbeat gap.
 
 // UnobservableReason names why proveCoverage could not prove a rule's window.
-// It is machine-readable — this reaches the JSON output, so it is a published
-// vocabulary like Outcome; prose belongs in Notes.
+// It reaches the JSON output, so it is a published vocabulary like Outcome;
+// prose belongs in Notes.
 type UnobservableReason string
 
 const (
@@ -60,31 +50,18 @@ type CoverageResult struct {
 	BlindFor time.Duration
 }
 
-// proveCoverage applies the nine coverage checks to one rule's polls and is
-// PURE: no HTTP, no files, no clock reads — everything it needs arrives as an
-// argument, which is what lets its tests build []Poll literals instead of a
-// fixture server.
-//
-// polls need not be pre-filtered to this rule: proveCoverage selects by
-// def.UID itself, exactly as Reduce selects by UID rather than by title — a
-// caller handing it a whole log's polls must not have to pre-filter to get a
-// correct answer.
-//
-// Every check always runs, even once an earlier one has already set
-// Unobservable: LargestGap and the notes are diagnostics an operator reads on
-// exit 2 regardless of which check actually failed. Reason names the FIRST
-// check, in the order below, that failed; a later failure still adds its own
-// Note.
+// proveCoverage applies the nine coverage checks to one rule's polls. PURE: no
+// HTTP, no files, no clock reads — everything arrives as an argument. polls need
+// not be pre-filtered to this rule (selection is by def.UID). Every check runs
+// even after Unobservable is set, so LargestGap and the notes are complete on
+// exit 2; Reason names only the FIRST check that failed.
 func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t ruleTimings, def Definition,
 	from, to time.Time, grace time.Duration) CoverageResult {
 
 	windowEnd := to.Add(grace)
 
-	// pollsForRule (classify.go) is the single filter+sort implementation for
-	// "select one rule's polls, stably ordered by GrafanaNow" — proveCoverage
-	// and classifyRule must never carry two independent copies of this
-	// selection, or one drifting from the other becomes exactly the kind of
-	// silent membership mismatch this file's checks exist to prevent.
+	// pollsForRule (classify.go) is the single filter+sort implementation; this
+	// and classifyRule must not carry two independent copies.
 	rulePolls := pollsForRule(polls, def.UID)
 
 	var res CoverageResult
@@ -118,10 +95,7 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t ruleTimings, d
 			"requested from %s is before recording started at %s", from.Format(time.RFC3339), h.StartedAt.Format(time.RFC3339)))
 	}
 
-	// Filtered once, here, and threaded through every remaining check —
-	// ruleHeartbeatGap included — rather than re-filtered per check: two
-	// independent filters over the same polls would only invite one of them
-	// drifting from the other's membership test.
+	// Filtered once and threaded through every remaining check.
 	inWindow := inWindowPolls(rulePolls, from, windowEnd)
 
 	// Check 3 — heartbeat continuity. Data at both ends with a hole in between
@@ -143,30 +117,19 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t ruleTimings, d
 		}
 	}
 
-	// Check 5 — health=="nodata". Never fatal here: 96% of the fleet runs
-	// no_data_state:OK, so treating this as fatal by default would block
-	// nearly every healthy deploy in an idle environment. Escalating it under
-	// Policy.NodataIsUnobservable is decide's job, applied directly against
-	// the raw polls — this pure function has no Policy to consult and must not
-	// invent one.
+	// Check 5 — health=="nodata". Never fatal here (most of the fleet runs
+	// no_data_state:OK, so it would block healthy idle deploys). Escalating
+	// under Policy.NodataIsUnobservable is decide's job, since this pure
+	// function has no Policy to consult.
 	if _, sawAny := longestHealthRun(inWindow, "nodata"); sawAny {
 		res.Notes = append(res.Notes, fmt.Sprintf("rule %q: health=nodata observed (not fatal; see --nodata-is-unobservable)", def.Title))
 	}
 
-	// Check 6 — liveness. Absolute only, per poll: GrafanaNow and
-	// LastEvaluation are both Grafana-domain reads off the SAME response, so
-	// this is a same-domain comparison and uses raw values — never a delta
-	// against a previous poll, which reports stale on ~half the polls of a
-	// perfectly healthy rule (polling runs at intervalSeconds/2).
-	//
-	// Skipped only for a poll whose own flags SAY there is nothing to check:
-	// IsPaused (a zero LastEvaluation is legal only while paused; check 7 is
-	// its detector) or !Found (no rule, no evaluation; check 8 is its
-	// detector). Deliberately NOT skipped merely because LastEvaluation is
-	// zero: ReadLog does no field validation, so a corrupted or hand-edited
-	// log line can claim found:true, is_paused:false and still carry a zero
-	// LastEvaluation, and that combination must read as maximally stale
-	// rather than being silently waved through.
+	// Check 6 — liveness. Same-domain (GrafanaNow and LastEvaluation are from
+	// the SAME response), so raw values — never a delta against a previous
+	// poll, which reports stale ~half the polls of a healthy rule. Skipped only
+	// for IsPaused (check 7) or !Found (check 8); a zero LastEvaluation on a
+	// found, unpaused poll is treated as maximally stale, not waved through.
 	var staleCount int
 	var worstStale time.Duration
 	var worstStaleAt time.Time
@@ -225,20 +188,14 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t ruleTimings, d
 		fail(ReasonRuleAbsent, fmt.Sprintf("state endpoint returned no rule on %d poll(s), first at %s", absentCount, absentAt.Format(time.RFC3339)))
 	}
 
-	// Check 9 — KeepLast. Two distinct notes, both non-fatal:
-	//
-	// DECLARED: the rule's own no_data_state/exec_err_state is configured as
-	// KeepLast — a standing blind spot whether or not it is ever exercised
-	// during this particular window. This reads def, not polls, so it fires
-	// exactly once regardless of poll content.
+	// Check 9 — KeepLast. Two non-fatal notes: DECLARED (the rule is configured
+	// with no_data_state/exec_err_state=KeepLast, read from def so it fires once),
+	// and OBSERVED (an instance reported KeepLast in-window; Reasons keys can be
+	// comma-joined, so membership via reasonsContain, never a literal index).
 	if def.NoDataState == keepLastReason || def.ExecErrState == keepLastReason {
 		res.Notes = append(res.Notes, fmt.Sprintf(
 			"rule %q: configured with no_data_state/exec_err_state=KeepLast — a stale state can continue past a real fault", def.Title))
 	}
-	// OBSERVED: an instance actually reported the KeepLast reason during the
-	// window. It surfaces only as an instance Reason, and Reasons keys can be
-	// comma-joined composites, so membership (reasonsContain) is required —
-	// indexing "KeepLast" directly would miss "KeepLast, MissingSeries".
 	for _, p := range inWindow {
 		if reasonsContain(p.Reasons, keepLastReason) {
 			res.Notes = append(res.Notes, fmt.Sprintf(
@@ -251,17 +208,11 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t ruleTimings, d
 	return res
 }
 
-// inWindowPolls filters polls to those inside [from, windowEnd] using the
-// CROSS-DOMAIN membership test: each poll's Grafana-domain GrafanaNow is
-// translated to the runner domain by its OWN skew, and its own skew bound is
-// the membership tolerance, so a poll that is genuinely inside the window is
-// never excluded by ordinary clock imprecision.
-//
-// Everything downstream of this filter (health runs, liveness, pause, absence)
-// reads the poll's raw fields: GrafanaNow paired with LastEvaluation on the
-// SAME response, or one poll's GrafanaNow against the next's, are same-domain
-// comparisons and need no translation. Only window membership and check 3's
-// two boundary segments cross domains.
+// inWindowPolls filters to polls inside [from, windowEnd] via the cross-domain
+// membership test: each GrafanaNow is translated to the runner domain by its
+// own skew, widened by its skew bound, so clock imprecision never excludes a
+// genuinely in-window poll. Everything downstream reads same-domain raw fields;
+// only this filter and check 3's boundary segments cross domains.
 func inWindowPolls(polls []Poll, from, windowEnd time.Time) []Poll {
 	var out []Poll
 	for _, p := range polls {
@@ -276,21 +227,14 @@ func inWindowPolls(polls []Poll, from, windowEnd time.Time) []Poll {
 }
 
 // ruleHeartbeatGap finds the largest unobserved span inside [from, windowEnd],
-// including the two boundary segments — which is why "data at both ends with a
-// hole in the middle" still fails: the segment between the polls just inside
-// each edge is exactly what this measures. in must already be filtered to this
-// window (inWindowPolls) and sorted by GrafanaNow — proveCoverage computes that
-// filter once and threads it through every check, this one included, rather
-// than each check re-filtering.
+// including the two boundary segments — which is why data at both ends with a
+// hole in the middle still fails. in must be filtered (inWindowPolls) and
+// sorted by GrafanaNow.
 //
-// The two boundary segments compare a Grafana-domain poll time against the
-// runner-domain from/windowEnd, so each is translated by its own poll's skew
-// AND widened by that same poll's skew bound — on the side that makes the
-// segment larger, never smaller, so an uncertain boundary reads as at least as
-// big a gap as it might really be. Understating it by up to the bound would be
-// fail-open. The spacing BETWEEN consecutive polls compares two Grafana-domain
-// reads to each other — same domain — and uses the raw GrafanaNow difference,
-// no bound needed.
+// Boundary segments are cross-domain, so each translated poll time is widened
+// by its skew bound on the side that makes the gap LARGER (never smaller — an
+// uncertain boundary must read as at least as big a gap as it might be).
+// Consecutive-poll spacing is same-domain and uses the raw GrafanaNow diff.
 func ruleHeartbeatGap(in []Poll, from, windowEnd time.Time) (largestGap time.Duration, largestGapAt time.Time) {
 	if len(in) == 0 {
 		return windowEnd.Sub(from), from
@@ -314,15 +258,10 @@ func ruleHeartbeatGap(in []Poll, from, windowEnd time.Time) (largestGap time.Dur
 	return largestGap, largestGapAt
 }
 
-// longestHealthRun returns the longest contiguous wall-clock span during which
-// polls — already sorted by GrafanaNow, same-domain spacing — read the given
-// rule-level Health, and whether any poll matched it at all.
-//
-// It detects the span as it accumulates rather than waiting for the run to
-// end, so an open-ended run that is still failing at the last poll in the
-// window is measured correctly without needing data past the window: waiting
-// for the run to "end" would have to assume the best case about what happens
-// next, which is exactly what this gate must not do.
+// longestHealthRun returns the longest contiguous span of polls reading the
+// given rule-level Health, measured incrementally so a run still failing at the
+// last in-window poll is measured correctly without assuming anything past the
+// window.
 func longestHealthRun(polls []Poll, health string) (longest time.Duration, sawAny bool) {
 	var runStart time.Time
 	for _, p := range polls {

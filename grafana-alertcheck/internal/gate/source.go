@@ -36,11 +36,9 @@ type Observation struct {
 	Latency    time.Duration // t_send through the full body read — see requestResult.Latency
 }
 
-// TransportError marks a failure worth retrying: a non-2xx response, a
-// network failure, or a body that failed to parse. It is never a deleted rule
-// (an authoritative 2xx with no matching rule is not this) and never a clock
-// problem (a missing/unparseable Date header or an out-of-bounds skew is a
-// hard error instead — see doRequest). Never conflate them.
+// TransportError marks a failure worth retrying: a non-2xx response, a network
+// failure, or a body that failed to parse. Not a deleted rule (an authoritative
+// 2xx) and not a clock problem (a hard error — see doRequest).
 type TransportError struct {
 	Err    error
 	Status int // 0 when the failure never got a status (network/transport failure)
@@ -55,14 +53,10 @@ func (e *TransportError) Error() string {
 
 func (e *TransportError) Unwrap() error { return e.Err }
 
-// RetryExhaustedError is what retryTransport returns once it gives up after
-// too many sequential *TransportError failures. It deliberately does not
-// implement Unwrap into the underlying *TransportError: once retries are
-// exhausted the result is a hard, terminal failure, and
-// errors.AsType[*TransportError] must never re-classify it as retryable.
-// Cause is still exposed as a plain field (and folded into Error()'s text) so
-// a caller can log or inspect it; it just cannot flow back into the retry
-// classification.
+// RetryExhaustedError is the hard, terminal failure retryTransport returns once
+// it gives up. It deliberately omits Unwrap into *TransportError so
+// errors.AsType can never re-classify it as retryable; Cause stays a plain
+// field for logging only.
 type RetryExhaustedError struct {
 	Failures int
 	Cause    error
@@ -251,27 +245,20 @@ type requestResult struct {
 	Skew       time.Duration // serverDate - (t_send+t_headers)/2, signed
 	SkewBound  time.Duration // (t_headers-t_send)/2 — RTT/2 to the response headers
 	// Latency spans t_send through the full body read: the budget check needs
-	// the whole poll's wall time, or a schedule feasibility check that only
-	// sees header latency goes optimistic — fail-open. It does not include the
-	// caller's subsequent JSON parse (ParseState/ParseDefinitions run outside
-	// doRequest); if the budget accounting ever needs parse time folded in too,
-	// extend here rather than approximating it at the call site.
+	// the whole poll's wall time (header-only latency would be fail-open). The
+	// caller's JSON parse runs outside doRequest; extend here if that ever must
+	// be folded in.
 	Latency time.Duration
 }
 
-// doRequest performs one HTTP GET and classifies the outcome: a network
-// failure, a non-2xx status, or a body-read failure is retryable
-// (*TransportError); a missing or unparseable Date header, or a skew beyond
-// SkewHardLimit, is a hard error — retrying can never fix either, so neither
-// may enter the backoff loop.
+// doRequest performs one HTTP GET and classifies the outcome: network failure,
+// non-2xx, or body-read failure is retryable (*TransportError); a missing or
+// unparseable Date header or a skew beyond SkewHardLimit is a hard error —
+// retrying can never fix either, so neither enters the backoff loop.
 //
-// The Date-header/skew check runs for every endpoint this hits, including
-// /api/health, and not only the state endpoint whose timestamps the gate
-// actually compares. Deliberate: a skewed clock discovered only once RuleState
-// starts polling is a skew that has already masked whatever /api/health and
-// the ruler read reported; failing closed at the first response catches it
-// before any of that is trusted, and every response comes with a Date header
-// for free.
+// The Date/skew check runs on every endpoint (even /api/health): a skew only
+// noticed once RuleState starts polling has already masked earlier reads, so it
+// fails closed on the first response.
 func (s *httpSource) doRequest(ctx context.Context, path string) (requestResult, error) {
 	req, buildErr := http.NewRequestWithContext(ctx, http.MethodGet, s.baseURL+path, nil)
 	if buildErr != nil {
@@ -323,12 +310,10 @@ func (s *httpSource) doRequest(ctx context.Context, path string) (requestResult,
 	return requestResult{Body: b, ServerDate: serverDate, Skew: signedSkew, SkewBound: bound, Latency: latency}, nil
 }
 
-// retryTransport runs fn, retrying with backoff only while it fails with a
-// *TransportError — any other error is a hard error and returns immediately,
-// never retried. failures counts consecutive *TransportError results;
-// exceeding maxFailures gives up with a wrapped hard error. The wait between
-// attempts goes through clock.After so a test with a fake Clock never sleeps on
-// real time.
+// retryTransport runs fn, retrying with backoff only on *TransportError — any
+// other error returns immediately. failures counts consecutive *TransportError
+// results; exceeding maxFailures gives up with a wrapped hard error. Waits go
+// through clock.After so a fake Clock never sleeps real time.
 func retryTransport[T any](ctx context.Context, clock Clock, maxFailures int, backoffBase, backoffCap time.Duration, fn func() (T, error)) (T, error) {
 	var zero T
 	failures := 0

@@ -20,19 +20,13 @@ import (
 const DaemonChildFlag = "--daemon-child"
 
 // ReadyFDFlag names the inherited descriptor the child reports readiness on.
-// The parent passes the write end of a pipe as descriptor 3 and waits for one
-// byte, so "the recorder is running" is a POSITIVE signal from the child
-// itself — it has read the header, taken the log's flock and entered its poll
-// loop — and not an assumption drawn from surviving a timer. A timer cannot
-// tell a healthy child from one that is about to die on a slow runner, and
-// getting that wrong means watch returns success over a recording that never
-// happened.
+// "Ready" is a POSITIVE byte from the child (header read, flock taken, in its
+// poll loop), never a timer heuristic — a timer can't tell a healthy child from
+// one about to die on a slow runner.
 const ReadyFDFlag = "--ready-fd"
 
-// childReadyTimeout bounds that wait. Everything before the signal is local —
-// fork, exec, one read of a log holding a header and a handful of polls — so
-// the real figure is milliseconds; this is loose enough for a badly overloaded
-// runner and still fails closed rather than hanging the pipeline.
+// childReadyTimeout bounds that wait. Everything before the signal is local, so
+// it is loose enough for an overloaded runner yet still fails closed.
 const childReadyTimeout = 30 * time.Second
 
 // daemonLogTailBytes bounds how much of a dead child's output the parent
@@ -41,18 +35,12 @@ const daemonLogTailBytes = 4096
 
 // WatchConfig is the record step's whole input.
 //
-// It has no To field and must never gain one: watch writes the stopped
-// sentinel with its OWN stop time and makes no comparison against `to`, which
-// only check knows. Passing `to` here would give two components an
-// opinion about the same comparison, and the recorder's opinion is the one
-// that cannot be trusted — it exits before the grace it would have to wait for.
+// It has no To field (and must never gain one): watch writes the sentinel with
+// its OWN stop time and makes no `to` comparison — only check knows `to`, and
+// the recorder exits before the grace it would have to wait for.
 //
-// It has no States field either, and watch has no --states flag: recording is
-// deliberately unfiltered. The reduction keeps every non-normal instance and
-// the transition markers key off the same predicate, so neither consults
-// States. The payoff is real — because the log is raw evidence, one recording
-// can be re-classified under different --states without re-recording — and the
-// Header carries no States field for the same reason.
+// It has no States field either: recording is unfiltered, so the same raw log
+// can be re-classified under different --states without re-recording.
 type WatchConfig struct {
 	// URL and Token are the connection details. The CLI reads both from the
 	// environment and never from a flag; Token is never logged and never
@@ -137,20 +125,11 @@ func (cfg WatchConfig) validate() error {
 	return nil
 }
 
-// Watch is the record step's parent process. It returns only once the window
-// is genuinely being recorded:
-//
-//	version gate -> resolve definitions and names -> derive timings ->
-//	open the log and write the header -> ONE observation of every non-skipped
-//	rule -> verify normal instances are visible -> check the schedule budget ->
-//	detach the child -> wait for the child to report that it is recording ->
-//	write the pidfile -> return.
-//
-// The first-observation wait is not a convenience. Returning before it would
-// leave the deploy inside [from, first_poll] with no evidence — the exact
-// blind interval the record-then-check split exists to remove — and it is
-// also what surfaces auth, name-resolution and parse failures BEFORE
-// deploy.sh runs rather than ten minutes later.
+// Watch is the record step's parent process, returning only once the window is
+// genuinely being recorded (version gate, resolve, write header, one
+// observation per rule, budget check, then detach and await the child's
+// readiness). The first-observation wait is what surfaces auth, name-resolution
+// and parse failures before deploy.sh runs, rather than ten minutes later.
 func Watch(ctx context.Context, cfg WatchConfig) error {
 	cfg = cfg.withDefaults()
 	if err := cfg.validate(); err != nil {
@@ -343,13 +322,10 @@ func openRecording(ctx context.Context, cfg WatchConfig, src Source, writer *Wri
 		return nil, err
 	}
 
-	// A rule whose DEFINITION says is_paused is skipped: it is not waited for,
-	// not scheduled and never polled. Waiting for one either hangs forever or
-	// errors before the deploy, and recording polls for it would report an
-	// in-window pause (coverage check 7) for a rule that was already paused
-	// when the window opened — turning a skipped rule's exit 1 into an exit 2.
-	// The header still names it, with is_paused true, so check reports it as
-	// skipped from the definitions.
+	// A rule whose definition says is_paused is skipped (never waited for or
+	// polled); polling it would report an in-window pause (check 7) for a rule
+	// already paused at the open. The header still names it, so check reports
+	// it skipped from the definitions.
 	var active []Definition
 	activeTimings := make(map[string]ruleTimings, len(resolved))
 	for _, d := range resolved {
@@ -406,21 +382,11 @@ func loggedRules(defs []Definition, rt map[string]ruleTimings) []LoggedRule {
 	return out
 }
 
-// firstObservations takes one observation of every rule in active, verifies
-// that normal instances are visible in those very responses, and reduces each
-// into the poll record that IS the window's first heartbeat — plus the measured
-// latency of each, which is the only honest input to the budget check (a fixed
-// estimate is worthless when one rule's payload is ~230x another's).
-//
-// Both entry paths share it: watch's parent, before it detaches, and
-// single-step check's measurement pass, which keeps the polls as evidence
-// rather than writing them to a log. Keeping one implementation is the point —
-// the instance-visibility verification and the "absent is a warning, not an
-// error" rule are exactly the places where two copies would silently drift, and
-// a drift in either direction is fail-open.
-//
-// polls come back in `active` order, so a log written from them is byte-stable
-// for a given set of observations.
+// firstObservations takes one observation of every active rule, verifies normal
+// instances are visible in those very responses, and reduces each into the
+// window's first heartbeat, plus measured latency (the only honest budget
+// input). Watches parent and single-step check both share it. Polls return in
+// `active` order, so a log written from them is byte-stable.
 func firstObservations(ctx context.Context, src Source, active []Definition, reducer *Reducer,
 	concurrency int, notes io.Writer) ([]Poll, map[string]time.Duration, error) {
 
@@ -467,14 +433,11 @@ func firstObservations(ctx context.Context, src Source, active []Definition, red
 }
 
 // observeAll polls every rule in uids concurrently, bounded by concurrency,
-// and returns one Observation per rule that answered. Every rule is polled by
-// TITLE (the ?rule_name= filter is a title filter) and selected out of the
-// response by UID — a filtered response can carry several rules sharing one
-// title.
-//
-// It returns the successful observations alongside the first error in UID
-// order, so a caller that wants to keep the good heartbeats can, and the error
-// message is the same on every run.
+// returning one Observation per rule that answered. Each rule is polled by
+// TITLE (the ?rule_name= filter is a title filter) and selected by UID — a
+// filtered response can carry several rules sharing a title. Returns the
+// successes alongside the first error in UID order, so a caller can keep the
+// good heartbeats.
 func observeAll(ctx context.Context, src Source, titles map[string]string, uids []string, concurrency int) (map[string]Observation, error) {
 	if concurrency < 1 {
 		concurrency = 1
@@ -622,15 +585,10 @@ func reportReady(fd int) error {
 }
 
 // childSchedule derives what the child polls, and how often, from the header
-// alone. The cadence comes from PollEverySeconds — the cadence the recording
-// actually uses — and is never re-derived from the rule's evaluation interval,
-// which would be a second authority for the same value and is fail-open in the
-// faster-override direction. Paused rules are excluded here for the same reason
-// the parent never polls them.
-//
-// It returns cadences and nothing else. maxGap, healthGrace and evalStaleAfter
-// are coverage thresholds applied by the pure layer at classification time, so
-// the recorder must not carry them: it would only be able to misuse them.
+// alone. Cadence comes from PollEverySeconds (the cadence actually used), never
+// re-derived from the evaluation interval; paused rules are excluded. It
+// returns cadences only — the recorder must not carry coverage thresholds it
+// has no business applying.
 func childSchedule(h Header) (titles map[string]string, cadence map[string]time.Duration, err error) {
 	titles = make(map[string]string, len(h.Rules))
 	cadence = make(map[string]time.Duration, len(h.Rules))
@@ -665,15 +623,13 @@ type watchLoopConfig struct {
 	Clock       Clock
 }
 
-// watchLoop is the child's whole working life: poll the rules that are due,
-// reduce each observation to one poll record, append it, and — on a clean stop
-// only — finish the log with the stopped sentinel.
+// watchLoop is the child's whole working life: poll due rules, reduce each
+// observation to a poll record, append it, and — on a clean stop only — finish
+// the log with the stopped sentinel.
 //
-// The sentinel policy is the load-bearing part. A clean stop (a signal, or
-// Until) writes it; a hard error does NOT. A recorder that died must look
-// exactly like a coverage gap to check, because it is one — writing a
-// sentinel on the way out of a failure would hand check a "recording finished"
-// claim about a window that stopped being observed.
+// The sentinel policy is load-bearing: a clean stop (signal or Until) writes
+// it; a hard error does NOT. A recorder that died must look exactly like a
+// coverage gap to check, because it is one.
 func watchLoop(ctx context.Context, cfg watchLoopConfig) error {
 	sched := NewScheduler(cfg.Cadence, cfg.Clock.Now())
 

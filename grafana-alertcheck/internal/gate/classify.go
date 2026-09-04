@@ -7,19 +7,15 @@ import (
 	"time"
 )
 
-// ReasonNodata is decide's own unobservable reason: proveCoverage deliberately
-// never sets it — health=nodata is a note there, never fatal, because
-// escalating it needs Policy.NodataIsUnobservable, and the pure coverage layer
-// has no Policy to consult (coverage.go, check 5). decide is the seam that DOES
-// have a Policy, so the escalation lives here.
+// ReasonNodata is decide's own unobservable reason: proveCoverage never sets it
+// — health=nodata is a note there, never fatal — because escalating it needs
+// Policy.NodataIsUnobservable, which only decide (the Policy-holding seam) has.
 const ReasonNodata UnobservableReason = "nodata"
 
-// Outcome is the verdict of one instance's timeline, and — after decide takes
-// the worst across a rule's instances — of the rule itself. It is a published
-// JSON output: the three fail values stay distinct even though v1 maps all
-// three to exit 1, because a later reason string cannot recover the
-// information a single "fail" value would have thrown away, and because
-// splitting them later would break a published interface for no gain.
+// Outcome is the verdict of one instance's timeline, and (after decide takes
+// the worst across instances) of the rule. It is a published JSON output: the
+// fail values stay distinct even though v1 maps them all to exit 1, so a later
+// version can split them without breaking the interface.
 type Outcome string
 
 const (
@@ -62,28 +58,20 @@ type Violation struct {
 	State          State
 	Health         string // raw, reporting-only, like Poll.Health
 	LastError      string
-	// FirstSeen is the episode's onset, in the runner domain: activeAt
-	// translated by its poll's own skew when the episode opened strictly
-	// inside the window, or `from` itself when the instance was already bad
-	// at window-open (preexisting) — never a raw, untranslated Grafana
-	// timestamp.
+	// FirstSeen is the episode's onset in the runner domain (translated by the
+	// poll's own skew), or `from` when preexisting — never a raw Grafana time.
 	FirstSeen time.Time
-	// ClearedAt is zero unless the episode closed via a genuine Cleared
-	// event, also translated to the runner domain.
+	// ClearedAt is zero unless the episode closed via a genuine Cleared event.
 	ClearedAt      time.Time
 	InstanceLabels map[string]string
-	// Note carries an explanation for a Violation that has no instance
-	// behind it — the synthetic MinObserved shortfall entry decide emits when
-	// the deficit exceeds what any named paused rule explains. LastError is
-	// reporting-only rule state from a real poll and must not double as a
-	// message field for a Violation that never touched one.
+	// Note explains a Violation with no instance behind it — decide's synthetic
+	// MinObserved shortfall — and must not double as LastError (reporting-only
+	// rule state from a real poll).
 	Note string
 }
 
-// RuleVerdict is one rule's worst-of outcome, always present for every
-// resolved rule — Verdicts includes the passes, not only the failures — so a
-// human reading the table sees every alert that was asked for, not only the
-// ones that misbehaved.
+// RuleVerdict is one rule's worst-of outcome, present for every resolved rule
+// (passes included) so the table shows every alert asked for.
 type RuleVerdict struct {
 	Alert, RuleUID string
 	Outcome        Outcome
@@ -176,27 +164,17 @@ type instanceTimeline struct {
 	episodes     []episode
 }
 
-// runnerTime translates a Grafana-domain timestamp recorded on poll p into the
-// runner domain, undoing that poll's own measured skew. GrafanaNow and
-// ActiveAt come from the same response, so the same poll's skew applies to
-// both. This is the single implementation of that translation for the package
-// (same drift argument as pollsForRule): coverage.go's window membership test
-// and heartbeat boundary segments call it too, rather than each keeping its own
-// copy of `p.GrafanaNow.Add(-p.Skew())` that could silently diverge from this
-// one.
+// runnerTime translates a Grafana-domain timestamp into the runner domain by
+// undoing poll p's measured skew. The single implementation for the package —
+// coverage.go's window-membership and heartbeat-boundary checks use it too.
 func runnerTime(p Poll, grafanaDomain time.Time) time.Time {
 	return grafanaDomain.Add(-p.Skew())
 }
 
 // classifyRule builds every instance timeline for one rule across
-// [from, windowEnd] and reduces them to the rule's worst outcome, its merged
-// BadFor, and the Violations the preexisting policy actually charges against
-// the run. It is PURE: no I/O, no clock reads — decide supplies windowEnd
-// (to + transitionGrace) rather than this function deriving it, so a test can
-// pin the boundary directly.
-//
-// polls need not be pre-filtered to this rule, matching proveCoverage's own
-// contract: selection is by def.UID.
+// [from, windowEnd] and reduces them to the rule's worst outcome, merged
+// BadFor, and the Violations the preexisting policy charges against the run.
+// PURE: no I/O, no clock reads; polls need not be pre-filtered to this rule.
 func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badStates map[State]bool, pol PreexistingPolicy) (Outcome, time.Duration, []Violation) {
 	rulePolls := pollsForRule(polls, def.UID)
 	inWindow := inWindowPolls(rulePolls, from, windowEnd)
@@ -204,11 +182,9 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 	timelines := make(map[string]*instanceTimeline)
 	order := make([]string, 0)
 
-	// get backfills labels the first time a real Instance is seen: a key can
-	// be created earlier by a bare Cleared/Vanished marker, which carries
-	// no labels of its own, and the instance later re-firing must not report
-	// an empty InstanceLabels just because of which event happened to create
-	// the timeline first.
+	// get backfills labels on the first real Instance: a bare Cleared/Vanished
+	// marker can create the timeline first (with no labels), and a later re-fire
+	// must not report an empty InstanceLabels.
 	get := func(key string, labels map[string]string) *instanceTimeline {
 		tl, ok := timelines[key]
 		if !ok {
@@ -228,30 +204,20 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 		tl.episodeStart = start
 	}
 	closeEpisode := func(tl *instanceTimeline, end time.Time, real bool) {
-		// inWindowPolls admits a poll whose translated time is up to its own
-		// skew bound PAST windowEnd (the membership test widens the boundary
-		// outward). Without this clamp a genuine Cleared event on such a
-		// poll would produce an episode.end slightly beyond windowEnd,
-		// contradicting the episode type's own "clamped to
-		// [from, windowEnd]" contract.
+		// inWindowPolls widens its boundary outward by the skew bound, so a
+		// translated end can land past windowEnd or before episodeStart; clamp
+		// both, otherwise mergeDurations gets an inverted span.
 		if end.After(windowEnd) {
 			end = windowEnd
 		}
-		// Different polls can carry different measured skews. In theory a
-		// closing poll's translated time could land before the opening
-		// poll's — skew is capped at SkewHardLimit (60s), so this is remote,
-		// not impossible — and a negative span would feed mergeDurations a
-		// duration that subtracts instead of adds. Clamp rather than trust
-		// the arithmetic never to invert.
 		if end.Before(tl.episodeStart) {
 			end = tl.episodeStart
 		}
 		tl.episodes = append(tl.episodes, episode{start: tl.episodeStart, end: end, closedByRealClear: real})
 		tl.badOpen = false
 	}
-	// onsetOf resolves a fresh episode's start: the instance's own ActiveAt,
-	// translated to the runner domain by this poll's skew, clamped so it
-	// never reads as starting before the window opened.
+	// onsetOf is a fresh episode's start: the translate ActiveAt, clamped to
+	// never read as starting before the window opened.
 	onsetOf := func(p Poll, inst Instance) time.Time {
 		start := runnerTime(p, inst.ActiveAt)
 		if start.Before(from) {
@@ -273,12 +239,9 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 			case !tl.seen:
 				tl.seen = true
 				if bad {
-					// Fail-closed: only call an onset "preexisting" when
-					// even the worst-case skew error still puts it at or
-					// before `from`. An onset that might really have landed
-					// just inside the window must classify as a new episode,
-					// never earn the `recovered` benefit of the doubt it
-					// would get if it later clears.
+					// Fail-closed: "preexisting" only when even the worst-case
+					// skew error places the onset at or before `from`; an onset
+					// that might be in-window must classify as a new episode.
 					activeAtRunner := runnerTime(p, inst.ActiveAt)
 					tl.preexisting = !activeAtRunner.Add(p.SkewBound()).After(from)
 					if tl.preexisting {
@@ -298,11 +261,8 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 		for _, key := range p.Cleared {
 			tl := get(key, nil)
 			if !tl.seen {
-				// Cleared on the very first mention means the transition
-				// happened between the poll just before this one (possibly
-				// pre-window) and this one: there is no window-internal
-				// evidence that it was ever bad, so it is neither
-				// preexisting nor a new episode.
+				// Cleared on first mention: the transition happened pre-window,
+				// with no in-window evidence it was ever bad.
 				tl.seen = true
 				continue
 			}
@@ -312,9 +272,8 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 			tl.lastHealth, tl.lastError = p.Health, p.LastError
 		}
 
-		// Vanished is a deliberate no-op: freeze whatever badOpen/preexisting
-		// already holds. An instance that vanishes while bad must stay bad, and
-		// one that vanishes while never having been bad must stay uninteresting.
+		// Vanished is a deliberate no-op: freeze badOpen/preexisting as-is, so a
+		// vanish while bad stays bad (never reading as a recovery).
 		for _, key := range p.Vanished {
 			tl := get(key, nil)
 			tl.seen = true
@@ -322,10 +281,8 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 		}
 	}
 
-	// Multiple instances can appear for the first time within the same poll,
-	// and map iteration order is nondeterministic; sort so this pure
-	// function's Violations/BadFor output is stable across runs given the
-	// same input, like log.go sorts Cleared/Vanished for the same reason.
+	// Map iteration order is nondeterministic; sort so Violations/BadFor output
+	// is stable for a given input (like log.go sorts Cleared/Vanished).
 	slices.Sort(order)
 
 	var (
@@ -354,9 +311,8 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 				instOutcome = OutcomePersistentlyBad
 			}
 		default:
-			// A genuinely new onset always fails, whether or not it later
-			// clears within the window: only a PREEXISTING condition earns
-			// the benefit of `recovered`.
+			// A genuinely new onset fails whether or not it clears in-window;
+			// only a preexisting condition earns `recovered`.
 			instOutcome = OutcomeNewlyBad
 		}
 
@@ -526,12 +482,9 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 		if s < 0 {
 			s = -s
 		}
-		// The bound travels with ITS OWN poll's skew, never the largest bound
-		// seen overall (Result.ClockSkewBound's doc comment) — so it is only
-		// ever overwritten in lockstep with ClockSkew, on the same poll. >=
-		// rather than > on top of skewSeen: a strict > would never assign the
-		// bound at all when every poll's skew is exactly 0, understating the
-		// real measurement uncertainty as an unearned "bound ±0s".
+		// The bound travels with its own poll's skew (see Result.ClockSkewBound),
+		// overwritten in lockstep. >= rather than > so a bound is still assigned
+		// when every poll's skew is exactly 0.
 		if !skewSeen || s > result.ClockSkew {
 			result.ClockSkew = s
 			result.ClockSkewBound = p.SkewBound()
@@ -553,13 +506,10 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 		unobservableNames []string
 	)
 
-	// `skipped` is decided from the header, never from defs. defs are
-	// resolved after the window has closed, so Definition.IsPaused describes
-	// the present; Header.pausedAtStart describes the moment the recording
-	// opened, which is the only moment "paused before the window opened" can
-	// mean. Reading the late definition instead let a rule that fired and was
-	// then paused report as skipped, with its firing never classified — and
-	// under AllowPaused that was a pass.
+	// `skipped` is decided from the header, never from defs: defs are resolved
+	// after the window closed, so Definition.IsPaused describes the present,
+	// while Header.pausedAtStart describes the window open — the only moment
+	// "paused before the window opened" can mean.
 	pausedAtStart := h.pausedAtStart()
 
 	for _, def := range defs {
@@ -610,14 +560,9 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 		})
 	}
 
-	// MinObserved defaults to len(defs) after duplicate names collapse
-	// (already done by Resolve before decide ever sees defs). Skipped rules
-	// count against it unless AllowPaused says otherwise. A shortfall counts
-	// toward exit 1, never exit 2 — decide never returns an error for this —
-	// and it has to surface through Violations like any other fail reason, so
-	// a shortfall always produces at least one, even when no rule is paused at
-	// all (an operator-supplied MinObserved that simply exceeds what could ever
-	// be resolved).
+	// MinObserved defaults to len(defs) (post-collapse). A shortfall counts
+	// toward exit 1, never exit 2, and surfaces through Violations — so it
+	// always produces at least one, even when no rule is paused.
 	counted := watchedCount
 	var attributable []Definition
 	if pol.AllowPaused {
