@@ -1,0 +1,8 @@
+position: 1
+label: 'Grafana Alertcheck'
+collapsible: true
+collapsed: false
+link:
+  type: generated-index
+  slug: /platform-services/devex/cicd/grafana-alertcheck/index
+  description: 'CD quality gate for Grafana alerts: watch, classify, and gate releases.'
