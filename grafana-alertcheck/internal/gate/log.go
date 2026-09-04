@@ -1,6 +1,7 @@
 package gate
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -39,16 +40,22 @@ type LoggedRule struct {
 	Title  string `json:"title"`
 	Folder string `json:"folder"`
 	Group  string `json:"group"`
-	// ForSeconds, IntervalSeconds, IsPaused, NoDataState and ExecErrState are
-	// purely forensic: a resolve-time snapshot that makes the uploaded
-	// artifact self-describing to a human reading it after the runner is gone
-	// (§21.3). check never converts them back into a Definition — it always
-	// re-resolves definitions from the ruler API (§19.1 step 2).
+	// ForSeconds, IntervalSeconds, NoDataState and ExecErrState are purely
+	// forensic: a resolve-time snapshot that makes the uploaded artifact
+	// self-describing to a human reading it after the runner is gone (§21.3).
+	// check never converts them back into a Definition — it always re-resolves
+	// definitions from the ruler API (§19.1 step 2).
 	ForSeconds      float64 `json:"for_seconds"`
 	IntervalSeconds int     `json:"interval_seconds"`
-	IsPaused        bool    `json:"is_paused"`
-	NoDataState     string  `json:"no_data_state"`
-	ExecErrState    string  `json:"exec_err_state"`
+	// IsPaused is NOT forensic, and is the second load-bearing field here
+	// beside PollEverySeconds. It is the pause state at record start, which is
+	// the only moment `skipped` can honestly mean (§12), and decide reads it
+	// through Header.pausedAtStart rather than reading Definition.IsPaused off
+	// a ruler read taken after the window had already closed. See that method
+	// for what goes wrong the other way.
+	IsPaused     bool   `json:"is_paused"`
+	NoDataState  string `json:"no_data_state"`
+	ExecErrState string `json:"exec_err_state"`
 	// PollEverySeconds is the cadence this recording ACTUALLY used, after any
 	// --poll-interval override. Load-bearing, not forensic: check derives
 	// maxGap from it and never re-derives it from the definitions. Getting
@@ -67,6 +74,30 @@ type Header struct {
 	GrafanaVersion string       `json:"grafana_version"`
 	StartedAt      time.Time    `json:"started_at"` // the record start (§7 validation)
 	Rules          []LoggedRule `json:"rules"`      // THE alert set (§19.1 step 3)
+}
+
+// pausedAtStart reports, per rule UID, whether the rule was paused when the
+// recording opened. That instant — and no other — is what `skipped` means
+// (§12): a rule nobody was watching on purpose.
+//
+// It is the authority for `skipped` in BOTH modes, and the reason is that no
+// other source knows the right moment. `check` re-resolves the definitions
+// AFTER the window closed (§19.1 step 2), so Definition.IsPaused there
+// describes the present, not the window: a rule that fired and was then
+// paused would read as skipped, its firing would never be classified, and
+// under --allow-paused the run would pass. The header cannot drift that way,
+// because watch stamps it before the deploy step runs and single-step check
+// stamps it from definitions resolved at the start of its own step.
+//
+// A UID the header does not name is reported NOT paused, which is the safe
+// direction: it then reaches proveCoverage with no polls and fails closed as
+// a heartbeat gap, rather than being waved through as legitimately unwatched.
+func (h Header) pausedAtStart() map[string]bool {
+	paused := make(map[string]bool, len(h.Rules))
+	for _, lr := range h.Rules {
+		paused[lr.UID] = lr.IsPaused
+	}
+	return paused
 }
 
 // Poll is one reduced observation of one rule — the log's heartbeat and the
@@ -167,13 +198,7 @@ func (r *Reducer) Reduce(uid string, obs Observation) Poll {
 		LatencyMS:   obs.Latency.Milliseconds(),
 	}
 
-	var rule *StateRule
-	for i := range obs.Rules {
-		if obs.Rules[i].UID == uid {
-			rule = &obs.Rules[i]
-			break
-		}
-	}
+	rule := stateRuleByUID(obs.Rules, uid)
 	if rule == nil {
 		// An authoritative "the rule is absent". No markers are computed and
 		// the previous abnormal set is kept untouched: if the rule comes back
@@ -263,6 +288,25 @@ func (r *Reducer) seedFrom(polls []Poll) {
 		}
 		r.prevAbnormal[p.RuleUID] = keys
 	}
+}
+
+// stateRuleByUID picks one rule out of a state-endpoint response BY UID, and
+// nil means the response is an authoritative "the rule is absent" (§14.5).
+//
+// Never by title: the ?rule_name= filter is a title filter, and a filtered
+// response can carry several rules sharing one title (the known 2-way
+// collision), so picking the first would silently watch the wrong rule. This
+// is the single implementation of that selection for the package — Reduce
+// above and the drain wait (check.go) both call it, for the same reason
+// pollsForRule (classify.go) is shared between proveCoverage and classifyRule:
+// two copies of a membership test are two chances for one to drift.
+func stateRuleByUID(rules []StateRule, uid string) *StateRule {
+	for i := range rules {
+		if rules[i].UID == uid {
+			return &rules[i]
+		}
+	}
+	return nil
 }
 
 // reasonNames reports whether reason names want. Newer Grafana versions
@@ -458,6 +502,47 @@ func (w *Writer) Close() error {
 		return fmt.Errorf("close log: %w", err)
 	}
 	return nil
+}
+
+// ReadLogHeader reads ONLY line 1 and is the one read of a log that a writer
+// may still hold. That is safe for exactly one line and for no other: the
+// header is written once, by watch's parent, before any child appends a byte,
+// the file is opened O_APPEND and never O_TRUNC (§8), so line 1 is complete
+// and immutable for the whole life of the recording.
+//
+// It exists so check can fail closed EARLY (§19.1 steps 3-4): the log's
+// identity, the rule set and the cadences are all knowable at the start, and
+// discovering a wrong URL or an unresolvable rule after a ten-minute wait
+// helps nobody. It is advisory only — the authoritative read is still ReadLog,
+// once, after the writer has exited (§4.4 step 4), and check re-validates the
+// identity against that header rather than trusting this one.
+func ReadLogHeader(path string) (Header, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return Header{}, fmt.Errorf("read log header %s: %w", path, err)
+	}
+	defer f.Close()
+
+	line, err := bufio.NewReader(f).ReadString('\n')
+	if err != nil {
+		// io.EOF included: a log whose first line has no terminating newline is
+		// a log whose header was never fully written, which is not a header.
+		return Header{}, fmt.Errorf("log %s: no complete header on line 1: %w", path, err)
+	}
+
+	var rec headerRecord
+	if err := json.Unmarshal([]byte(line), &rec); err != nil {
+		return Header{}, fmt.Errorf("log %s line 1: unparseable header: %w", path, err)
+	}
+	if rec.Type != RecordHeader {
+		return Header{}, fmt.Errorf("log %s line 1: got record type %q; the header must be line 1", path, rec.Type)
+	}
+	if rec.SchemaVersion != LogSchemaVersion {
+		return Header{}, fmt.Errorf(
+			"log %s: schema version %d is not %d — this log was written by a different version of the gate",
+			path, rec.SchemaVersion, LogSchemaVersion)
+	}
+	return rec.Header, nil
 }
 
 // ReadLog reads the whole log once and returns its header, its polls in

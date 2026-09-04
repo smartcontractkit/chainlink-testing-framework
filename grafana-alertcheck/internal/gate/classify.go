@@ -507,8 +507,17 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 		unobservableNames []string
 	)
 
+	// `skipped` is decided from the header, never from defs (§12). defs are
+	// resolved after the window has closed, so Definition.IsPaused describes
+	// the present; Header.pausedAtStart describes the moment the recording
+	// opened, which is the only moment "paused before the window opened" can
+	// mean. Reading the late definition instead let a rule that fired and was
+	// then paused report as skipped, with its firing never classified — and
+	// under AllowPaused that was a pass.
+	pausedAtStart := h.pausedAtStart()
+
 	for _, def := range defs {
-		if def.IsPaused {
+		if pausedAtStart[def.UID] {
 			skippedRules = append(skippedRules, def)
 			result.Verdicts = append(result.Verdicts, RuleVerdict{
 				Alert: def.Title, RuleUID: def.UID, Outcome: OutcomeSkipped,

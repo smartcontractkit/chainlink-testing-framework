@@ -8,22 +8,25 @@ import (
 // keepLastReason is the instance Reason that check 9 watches for (§10.2).
 const keepLastReason = "KeepLast"
 
-// Obligations this phase leaves for later ones — carried forward the same
-// way P6's own deviations list did, so a later review has something concrete
-// to check against:
+// Two things this file deliberately does not do, and where they are done
+// instead — both were open obligations when P7 was written, and both are now
+// discharged:
 //
-//   - fromFutureTolerance (§5: 60s) has no constant and no hard-error check
-//     anywhere yet. Check 2 below implements only "from < StartedAt"; the
-//     second clause — from more than fromFutureTolerance ahead is a hard
-//     error — is once-per-run input validation, not a per-rule coverage
-//     check, and belongs to Check's construction in a later phase (P9).
-//   - decide (P8) must read a rule's skipped status from the definitions
-//     (LoggedRule.IsPaused / Definition.IsPaused), never from the polls, and
-//     must do so BEFORE calling proveCoverage for that rule: a rule paused
-//     before the window opened is never scheduled or polled (§4.3), so it
-//     reaches this function with zero polls and today reads as one large
-//     heartbeat_gap, not skipped (pinned by
+//   - §7's second clause, "from more than fromFutureTolerance ahead is a hard
+//     error", is once-per-run input validation rather than a per-rule
+//     coverage check, and this function has no error return. Discharged by
+//     P9: the constant is fromFutureTolerance (schedule.go) and Config.validate
+//     (check.go) applies it. Check 2 below still owns the first clause,
+//     "from < StartedAt".
+//   - A rule paused before the window opened is never scheduled or polled
+//     (§4.3), so it reaches this function with zero polls and reads as one
+//     large heartbeat_gap, not as skipped (pinned by
 //     TestProveCoverage_SkippedRuleWithZeroPollsPinnedAsHeartbeatGap).
+//     Discharged by P8: decide returns before it ever calls proveCoverage for
+//     such a rule (classify.go). It reads skipped from the log header
+//     (Header.pausedAtStart), NOT from Definition.IsPaused — the definitions
+//     are re-resolved after the window closed, so they cannot answer what was
+//     paused when it opened.
 
 // UnobservableReason names why proveCoverage could not prove a rule's window.
 // It is machine-readable — this reaches the action's JSON outputs, so it is a
