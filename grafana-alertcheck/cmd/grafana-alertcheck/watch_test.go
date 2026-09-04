@@ -3,8 +3,9 @@ package main
 import (
 	"bytes"
 	"os"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 // The record step's flag-validation matrix. Every case fails inside
@@ -47,12 +48,8 @@ func TestRunWatch_FlagValidation(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			args := append([]string{"watch"}, tt.args(t)...)
 			code := run(args, &stdout, &stderr)
-			if code != 2 {
-				t.Fatalf("code = %d, want 2; stderr = %q", code, stderr.String())
-			}
-			if !strings.Contains(stderr.String(), tt.wantErr) {
-				t.Fatalf("stderr = %q, want it to contain %q", stderr.String(), tt.wantErr)
-			}
+			require.Equal(t, 2, code)
+			require.Contains(t, stderr.String(), tt.wantErr)
 		})
 	}
 }
@@ -68,18 +65,10 @@ func TestRunWatch_DaemonChildDispatch(t *testing.T) {
 	// enough to prove dispatch happened without needing a real recording.
 	missing := os.DevNull + ".missing"
 	code := run([]string{"watch", "--daemon-child", "--out", missing, "--ready-fd", "0"}, &stdout, &stderr)
-	if code != 2 {
-		t.Fatalf("code = %d, want 2; stderr = %q", code, stderr.String())
-	}
-	if !strings.Contains(stderr.String(), missing) {
-		t.Fatalf("stderr = %q, want RunDaemonChild's read failure naming %q", stderr.String(), missing)
-	}
-	if strings.Contains(watchUsage, "daemon-child") {
-		t.Fatalf("watchUsage = %q, must never name --daemon-child", watchUsage)
-	}
-	if strings.Contains(watchUsage, "ready-fd") {
-		t.Fatalf("watchUsage = %q, must never name --ready-fd", watchUsage)
-	}
+	require.Equal(t, 2, code)
+	require.Contains(t, stderr.String(), missing)
+	require.NotContains(t, watchUsage, "daemon-child")
+	require.NotContains(t, watchUsage, "ready-fd")
 }
 
 func TestRunWatch_DaemonChild_MissingEnv(t *testing.T) {
@@ -88,10 +77,6 @@ func TestRunWatch_DaemonChild_MissingEnv(t *testing.T) {
 
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"watch", "--daemon-child", "--out", "log.jsonl"}, &stdout, &stderr)
-	if code != 2 {
-		t.Fatalf("code = %d, want 2; stderr = %q", code, stderr.String())
-	}
-	if !strings.Contains(stderr.String(), "GRAFANA_URL") {
-		t.Fatalf("stderr = %q, want it to name the missing env var", stderr.String())
-	}
+	require.Equal(t, 2, code)
+	require.Contains(t, stderr.String(), "GRAFANA_URL")
 }

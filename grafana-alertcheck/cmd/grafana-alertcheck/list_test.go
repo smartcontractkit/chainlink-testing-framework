@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 const rulerBody = `{
@@ -60,19 +61,11 @@ func TestRunList_HappyPath(t *testing.T) {
 
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"list"}, &stdout, &stderr)
-	if code != 0 {
-		t.Fatalf("code = %d, want 0; stderr = %q", code, stderr.String())
-	}
+	require.Equal(t, 0, code)
 	out := stdout.String()
-	if !strings.Contains(out, "rule0000006a") {
-		t.Errorf("stdout = %q, want it to list rule0000006a", out)
-	}
-	if !strings.Contains(out, "Example No Gateways Available") {
-		t.Errorf("stdout = %q, want it to list the rule title", out)
-	}
-	if !strings.Contains(out, "grafana-managed") {
-		t.Errorf("stdout = %q, want it to name the rule kind", out)
-	}
+	require.Contains(t, out, "rule0000006a")
+	require.Contains(t, out, "Example No Gateways Available")
+	require.Contains(t, out, "grafana-managed")
 }
 
 func TestRunList_UnsupportedVersion(t *testing.T) {
@@ -82,12 +75,8 @@ func TestRunList_UnsupportedVersion(t *testing.T) {
 
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"list"}, &stdout, &stderr)
-	if code != 2 {
-		t.Fatalf("code = %d, want 2", code)
-	}
-	if !strings.Contains(stderr.String(), "12.5.0") {
-		t.Fatalf("stderr = %q, want it to name the unsupported version", stderr.String())
-	}
+	require.Equal(t, 2, code)
+	require.Contains(t, stderr.String(), "12.5.0")
 }
 
 func TestRunList_RejectsArgs(t *testing.T) {
@@ -96,7 +85,5 @@ func TestRunList_RejectsArgs(t *testing.T) {
 
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"list", "extra"}, &stdout, &stderr)
-	if code != 2 {
-		t.Fatalf("code = %d, want 2", code)
-	}
+	require.Equal(t, 2, code)
 }

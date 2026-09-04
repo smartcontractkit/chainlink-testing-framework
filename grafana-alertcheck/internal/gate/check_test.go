@@ -14,6 +14,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 // The one rule every test in this file watches, unless it says otherwise: a
@@ -228,12 +230,8 @@ func TestCheckValidateRejectsBadConfigurations(t *testing.T) {
 			cfg := base()
 			tc.mutate(&cfg)
 			err := cfg.withDefaults().validate()
-			if err == nil {
-				t.Fatalf("validate() = nil, want an error containing %q", tc.wantErr)
-			}
-			if !strings.Contains(err.Error(), tc.wantErr) {
-				t.Fatalf("validate() = %q, want it to contain %q", err, tc.wantErr)
-			}
+			require.Errorf(t, err, "validate()")
+			require.Contains(t, err.Error(), tc.wantErr)
 		})
 	}
 }
@@ -250,12 +248,8 @@ func TestCheckValidateAcceptsAPastToWithALog(t *testing.T) {
 		Clock: newFakeClock(testNow),
 	}.withDefaults()
 
-	if err := cfg.validate(); err != nil {
-		t.Fatalf("validate() = %v, want nil", err)
-	}
-	if cfg.PidFile != "log.jsonl.pid" {
-		t.Errorf("PidFile = %q, want the <in>.pid default", cfg.PidFile)
-	}
+	require.NoError(t, cfg.validate())
+	require.Equal(t, "log.jsonl.pid", cfg.PidFile)
 }
 
 // ---------------------------------------------------------------------------
@@ -270,35 +264,24 @@ func TestCheckSingleStepCleanWindowPasses(t *testing.T) {
 	})
 
 	res, err := check(context.Background(), cfg, src)
-	if err != nil {
-		t.Fatalf("check() = %v, want nil\nnotes:\n%s", err, notesOf(cfg))
-	}
+	require.NoError(t, err)
 	// A pass is exactly this shape.
-	if len(res.Violations) != 0 {
-		t.Fatalf("Violations = %+v, want none", res.Violations)
-	}
-	if len(res.Verdicts) != 1 || res.Verdicts[0].Outcome != OutcomeClean {
-		t.Fatalf("Verdicts = %+v, want one clean verdict", res.Verdicts)
-	}
-	if cov := res.Coverage[checkUID]; !cov.Proved || cov.Unobservable {
-		t.Fatalf("Coverage = %+v, want proved", cov)
-	}
+	require.Empty(t, res.Violations)
+	require.Len(t, res.Verdicts, 1)
+	require.Equal(t, OutcomeClean, res.Verdicts[0].Outcome)
+	cov := res.Coverage[checkUID]
+	require.True(t, cov.Proved)
+	require.False(t, cov.Unobservable)
 
 	// The collection loop ran to to+transitionGrace and no further.
 	windowEnd := cfg.To.Add(checkGrace)
-	if clock.Now().Before(windowEnd) {
-		t.Errorf("stopped collecting at %s, before to+grace %s", clock.Now(), windowEnd)
-	}
+	require.False(t, clock.Now().Before(windowEnd))
 	// One measurement-pass poll plus one every 30s across the 6-minute
 	// collection, plus the drain wait's own polls. The exact count depends on
 	// the scheduler's random stagger, so assert the order of magnitude a full
 	// window implies rather than an exact number.
-	if got := src.callCount(checkTitle); got < 12 {
-		t.Errorf("polled %d times, want at least the ~13 a full 6-minute window at 30s implies", got)
-	}
-	if notes := notesOf(cfg); !strings.Contains(notes, "planned run time") {
-		t.Errorf("the planned run time must be printed at start; notes were:\n%s", notes)
-	}
+	require.GreaterOrEqual(t, src.callCount(checkTitle), 12)
+	require.Contains(t, notesOf(cfg), "planned run time")
 }
 
 // resolve_test.go proves the collapse-note-plus-satisfied-MinObserved path at
@@ -315,18 +298,10 @@ func TestCheckSingleStepDuplicateAlertNamesCollapseWithNote(t *testing.T) {
 	})
 
 	res, err := check(context.Background(), cfg, src)
-	if err != nil {
-		t.Fatalf("check() = %v, want nil\nnotes:\n%s", err, notesOf(cfg))
-	}
-	if len(res.Verdicts) != 1 {
-		t.Fatalf("Verdicts = %+v, want exactly one — the duplicate must collapse to a single rule", res.Verdicts)
-	}
-	if len(res.Violations) != 0 {
-		t.Fatalf("Violations = %+v, want none: MinObserved must be satisfied by the post-collapse count of 1", res.Violations)
-	}
-	if notes := notesOf(cfg); !strings.Contains(notes, "counted once") {
-		t.Errorf("want the collapse note in the run's own notes; got:\n%s", notes)
-	}
+	require.NoError(t, err)
+	require.Len(t, res.Verdicts, 1, "the duplicate must collapse to a single rule")
+	require.Empty(t, res.Violations, "MinObserved must be satisfied by the post-collapse count of 1")
+	require.Contains(t, notesOf(cfg), "counted once")
 }
 
 // A rule with health=error for the whole window is unobservable, exit 2 —
@@ -337,9 +312,7 @@ func TestCheckSingleStepDuplicateAlertNamesCollapseWithNote(t *testing.T) {
 func TestCheckSingleStepContinuousHealthErrorIsUnobservable(t *testing.T) {
 	body := readFixture(t, "state_health_error.json")
 	rules, err := ParseState(body)
-	if err != nil {
-		t.Fatalf("ParseState: %v", err)
-	}
+	require.NoError(t, err)
 	base := rules[0]
 	def := Definition{
 		UID: base.UID, Title: base.Title, Folder: base.Folder, Group: base.Group,
@@ -365,15 +338,10 @@ func TestCheckSingleStepContinuousHealthErrorIsUnobservable(t *testing.T) {
 	src.defs = []Definition{def}
 
 	res, err := check(context.Background(), cfg, src)
-	if err == nil {
-		t.Fatalf("check() = nil, want an error: continuous health=error must be unobservable\nnotes:\n%s", notesOf(cfg))
-	}
-	if len(res.Verdicts) != 1 || res.Verdicts[0].Outcome != OutcomeUnobservable {
-		t.Fatalf("Verdicts = %+v, want one unobservable verdict", res.Verdicts)
-	}
-	if cov := res.Coverage[def.UID]; cov.Reason != ReasonHealthError {
-		t.Fatalf("Coverage[%s].Reason = %q, want %q", def.UID, cov.Reason, ReasonHealthError)
-	}
+	require.Error(t, err, "continuous health=error must be unobservable")
+	require.Len(t, res.Verdicts, 1)
+	require.Equal(t, OutcomeUnobservable, res.Verdicts[0].Outcome)
+	require.Equal(t, ReasonHealthError, res.Coverage[def.UID].Reason)
 }
 
 // A certain violation does not release the runner early, and it does not stop
@@ -391,18 +359,10 @@ func TestCheckSingleStepFiringInstanceReportsWithoutExitingEarly(t *testing.T) {
 	})
 
 	res, err := check(context.Background(), cfg, src)
-	if err != nil {
-		t.Fatalf("check() = %v, want nil (a violation is exit 1, not an error)", err)
-	}
-	if len(res.Violations) != 1 {
-		t.Fatalf("Violations = %+v, want exactly one", res.Violations)
-	}
-	if got := res.Violations[0].Outcome; got != OutcomePersistentlyBad {
-		t.Errorf("Outcome = %q, want %q", got, OutcomePersistentlyBad)
-	}
-	if windowEnd := cfg.To.Add(checkGrace); clock.Now().Before(windowEnd) {
-		t.Errorf("exited early at %s; collection must run to %s", clock.Now(), windowEnd)
-	}
+	require.NoError(t, err, "a violation is exit 1, not an error")
+	require.Len(t, res.Violations, 1)
+	require.Equal(t, OutcomePersistentlyBad, res.Violations[0].Outcome)
+	require.False(t, clock.Now().Before(cfg.To.Add(checkGrace)), "exited early; collection must run to to+grace")
 }
 
 // A newly_bad instance at from+30s gives exit 1, but ONLY after
@@ -427,15 +387,11 @@ func TestCheckSingleStepNewOnsetDoesNotExitEarly(t *testing.T) {
 	})
 
 	res, err := check(context.Background(), cfg, src)
-	if err != nil {
-		t.Fatalf("check() = %v, want nil (a violation is exit 1, not an error)", err)
-	}
-	if len(res.Violations) != 1 || res.Violations[0].Outcome != OutcomeNewlyBad {
-		t.Fatalf("Violations = %+v, want exactly one newly_bad", res.Violations)
-	}
-	if windowEnd := cfg.To.Add(checkGrace); clock.Now().Before(windowEnd) {
-		t.Errorf("exited early at %s; collection must run to %s even for a fresh onset at from+30s", clock.Now(), windowEnd)
-	}
+	require.NoError(t, err)
+	require.Len(t, res.Violations, 1)
+	require.Equal(t, OutcomeNewlyBad, res.Violations[0].Outcome)
+	require.False(t, clock.Now().Before(cfg.To.Add(checkGrace)),
+		"exited early; collection must run to to+grace even for a fresh onset at from+30s")
 }
 
 // An ABSENT `from` in single-step mode (as opposed to recorder mode, which
@@ -451,16 +407,9 @@ func TestCheckSingleStepAbsentFromFallsBackToStepStart(t *testing.T) {
 	})
 
 	res, err := check(context.Background(), cfg, src)
-	if err != nil {
-		t.Fatalf("check() = %v, want nil: an absent `from` in single-step mode is a fallback, not an error\nnotes:\n%s", err, notesOf(cfg))
-	}
-	notes := notesOf(cfg)
-	if !strings.Contains(notes, "no `from` given") {
-		t.Errorf("want the step-start fallback note; notes were:\n%s", notes)
-	}
-	if !res.From.Equal(testNow) {
-		t.Errorf("Result.From = %s, want the step-start fallback %s", res.From, testNow)
-	}
+	require.NoError(t, err, "an absent `from` in single-step mode is a fallback, not an error")
+	require.Contains(t, notesOf(cfg), "no `from` given")
+	require.True(t, res.From.Equal(testNow))
 }
 
 // In single-step mode an explicit `from` earlier than the first observation is
@@ -475,18 +424,13 @@ func TestCheckSingleStepFromBeforeFirstObservationWarnsAndPasses(t *testing.T) {
 	})
 
 	res, err := check(context.Background(), cfg, src)
-	if err != nil {
-		t.Fatalf("check() = %v, want a pass with a warning\nnotes:\n%s", err, notesOf(cfg))
-	}
+	require.NoError(t, err)
 	notes := notesOf(cfg)
-	if !strings.Contains(notes, "cannot see [") || !strings.Contains(notes, testNow.Format(time.RFC3339)) {
-		t.Errorf("want a warning naming the unseen interval; notes were:\n%s", notes)
-	}
+	require.Contains(t, notes, "cannot see [")
+	require.Contains(t, notes, testNow.Format(time.RFC3339))
 	// The classified window is the clamped one, and Result says so rather than
 	// reporting a window the run never proved.
-	if !res.From.Equal(testNow) {
-		t.Errorf("Result.From = %s, want the clamped %s", res.From, testNow)
-	}
+	require.True(t, res.From.Equal(testNow))
 }
 
 // The failure limit was exceeded. The measurement pass succeeds and the
@@ -503,15 +447,9 @@ func TestCheckFailClosedOnExhaustedRetries(t *testing.T) {
 	})
 
 	res, err := check(context.Background(), cfg, src)
-	if err == nil {
-		t.Fatalf("check() = nil, want the collection failure to fail closed")
-	}
-	if !strings.Contains(err.Error(), "collect evidence") {
-		t.Errorf("err = %q, want it to name the collection step", err)
-	}
-	if len(res.Violations) != 0 {
-		t.Errorf("Violations = %+v; an error must never be reported as a verdict", res.Violations)
-	}
+	require.Error(t, err, "the collection failure to fail closed")
+	require.Contains(t, err.Error(), "collect evidence")
+	require.Empty(t, res.Violations, "an error must never be reported as a verdict")
 }
 
 // The resolution of the definitions failed. Both shapes — the ruler read
@@ -523,10 +461,9 @@ func TestCheckFailClosedOnDefinitionResolution(t *testing.T) {
 		src := newCheckSource(nil)
 		src.defsErr = errors.New("502 bad gateway")
 
-		if _, err := check(context.Background(), cfg, src); err == nil ||
-			!strings.Contains(err.Error(), "read rule definitions") {
-			t.Fatalf("check() = %v, want a definitions-read failure", err)
-		}
+		_, err := check(context.Background(), cfg, src)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "read rule definitions")
 	})
 
 	t.Run("unknown alert name", func(t *testing.T) {
@@ -535,10 +472,9 @@ func TestCheckFailClosedOnDefinitionResolution(t *testing.T) {
 		cfg.Alerts = []string{"No Such Rule"}
 		src := newCheckSource(nil)
 
-		if _, err := check(context.Background(), cfg, src); err == nil ||
-			!strings.Contains(err.Error(), "no rule matched") {
-			t.Fatalf("check() = %v, want a no-match failure", err)
-		}
+		_, err := check(context.Background(), cfg, src)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "no rule matched")
 	})
 }
 
@@ -550,10 +486,9 @@ func TestCheckRefusesUnsupportedGrafanaVersion(t *testing.T) {
 	src := newCheckSource(nil)
 	src.version = "12.4.0"
 
-	if _, err := check(context.Background(), cfg, src); err == nil ||
-		!strings.Contains(err.Error(), "unsupported grafana version") {
-		t.Fatalf("check() = %v, want the version gate to refuse 12.4.0", err)
-	}
+	_, err := check(context.Background(), cfg, src)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unsupported grafana version")
 }
 
 // The budget is checked against the latencies the measurement pass actually
@@ -569,13 +504,9 @@ func TestCheckSingleStepRefusesAScheduleThatDoesNotFit(t *testing.T) {
 	})
 
 	_, err := check(context.Background(), cfg, src)
-	if err == nil {
-		t.Fatalf("check() = nil, want the budget check to refuse the schedule")
-	}
+	require.Error(t, err, "the budget check to refuse the schedule")
 	for _, want := range []string{"raising concurrency", "raising poll-interval", "watching fewer alerts"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("err = %q, want it to name the control %q", err, want)
-		}
+		require.Contains(t, err.Error(), want)
 	}
 }
 
@@ -592,9 +523,7 @@ func recordedLog(t *testing.T, dir string, url string, startedAt, start, end, se
 	path := filepath.Join(dir, "log.jsonl")
 	clock := newFakeClock(sentinelAt)
 	w, err := NewWriter(path, clock)
-	if err != nil {
-		t.Fatalf("NewWriter: %v", err)
-	}
+	require.NoError(t, err)
 	header := Header{
 		URL:            url,
 		GrafanaVersion: "13.1.0",
@@ -605,20 +534,14 @@ func recordedLog(t *testing.T, dir string, url string, startedAt, start, end, se
 			PollEverySeconds: checkPollEvery.Seconds(),
 		}},
 	}
-	if err := w.WriteHeader(header); err != nil {
-		t.Fatalf("WriteHeader: %v", err)
-	}
+	require.NoError(t, w.WriteHeader(header))
 	for at := start; !at.After(end); at = at.Add(checkPollEvery) {
-		if err := w.WritePoll(Poll{
+		require.NoError(t, w.WritePoll(Poll{
 			RuleUID: checkUID, GrafanaNow: at, Found: true,
 			State: "inactive", Health: "ok", LastEvaluation: at.Add(-lastEvalLag),
-		}); err != nil {
-			t.Fatalf("WritePoll: %v", err)
-		}
+		}))
 	}
-	if err := w.Stop(); err != nil {
-		t.Fatalf("Stop: %v", err)
-	}
+	require.NoError(t, w.Stop())
 	return path
 }
 
@@ -628,21 +551,15 @@ func recordedLog(t *testing.T, dir string, url string, startedAt, start, end, se
 func deadPid(t *testing.T) int {
 	t.Helper()
 	cmd := exec.Command("/bin/sh", "-c", "exit 0")
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("start a throwaway process: %v", err)
-	}
+	require.NoError(t, cmd.Start())
 	pid := cmd.Process.Pid
-	if err := cmd.Wait(); err != nil {
-		t.Fatalf("wait for the throwaway process: %v", err)
-	}
+	require.NoError(t, cmd.Wait())
 	return pid
 }
 
 func writePid(t *testing.T, path, contents string) {
 	t.Helper()
-	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {
-		t.Fatalf("write pidfile: %v", err)
-	}
+	require.NoError(t, os.WriteFile(path, []byte(contents), 0o644))
 }
 
 // recorderConfig points check at a recording of [testNow-1m, windowEnd+30s]
@@ -671,28 +588,19 @@ func TestCheckRecorderModeCleanWindowPasses(t *testing.T) {
 	// The drain wait is satisfied from the log's own evidence, so the source
 	// must never be asked for a state — asserted by the nil responder.
 	src := newCheckSource(func(title string, _ int) (Observation, error) {
-		t.Errorf("the drain wait polled %q although the log already proves the evaluations", title)
+		require.Fail(t, fmt.Sprintf("the drain wait polled %q although the log already proves the evaluations", title))
 		return Observation{}, errors.New("unexpected poll")
 	})
 
 	res, err := check(context.Background(), cfg, src)
-	if err != nil {
-		t.Fatalf("check() = %v, want nil\nnotes:\n%s", err, notesOf(cfg))
-	}
-	if len(res.Violations) != 0 {
-		t.Fatalf("Violations = %+v, want none", res.Violations)
-	}
-	if len(res.Verdicts) != 1 || res.Verdicts[0].Outcome != OutcomeClean {
-		t.Fatalf("Verdicts = %+v, want one clean verdict", res.Verdicts)
-	}
-	if res.GrafanaVersion != "13.1.0" {
-		t.Errorf("GrafanaVersion = %q, want the recorded one", res.GrafanaVersion)
-	}
+	require.NoError(t, err)
+	require.Empty(t, res.Violations)
+	require.Len(t, res.Verdicts, 1)
+	require.Equal(t, OutcomeClean, res.Verdicts[0].Outcome)
+	require.Equal(t, "13.1.0", res.GrafanaVersion)
 	// The collection loop still waited out to+transitionGrace even though the
 	// recorder had already finished.
-	if clock.Now().Before(windowEnd) {
-		t.Errorf("returned at %s, before to+grace %s", clock.Now(), windowEnd)
-	}
+	require.False(t, clock.Now().Before(windowEnd))
 }
 
 // The identity of the log is not correct. The check runs against the header
@@ -707,12 +615,9 @@ func TestCheckFailClosedOnWrongLogIdentity(t *testing.T) {
 		clock := newVirtualClock(testNow)
 		cfg := recorderConfig(t, clock, logPath)
 		_, err := check(context.Background(), cfg, newCheckSource(nil))
-		if err == nil || !strings.Contains(err.Error(), "log identity") {
-			t.Fatalf("check() = %v, want a log-identity failure", err)
-		}
-		if !clock.Now().Equal(testNow) {
-			t.Errorf("the identity check waited out the window (now %s); it must fail before the wait", clock.Now())
-		}
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "log identity")
+		require.True(t, clock.Now().Equal(testNow), "it must fail before the wait")
 	})
 
 	t.Run("rule no longer resolves", func(t *testing.T) {
@@ -726,10 +631,30 @@ func TestCheckFailClosedOnWrongLogIdentity(t *testing.T) {
 		src.defs = []Definition{{UID: "somebody-else", Title: "Other", Kind: KindGrafanaManaged, IntervalSeconds: 60}}
 
 		_, err := check(context.Background(), cfg, src)
-		if err == nil || !strings.Contains(err.Error(), "log identity") {
-			t.Fatalf("check() = %v, want a log-identity failure", err)
-		}
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "log identity")
 	})
+}
+
+// `from` before the recording's StartedAt is statically knowable from the
+// header (immutable line 1), so check fails closed on it BEFORE the window's
+// wait — exactly like the identity check above — rather than surfacing a
+// from_before_record verdict only after the drain.
+func TestCheckFailFastWhenFromPrecedesRecordStart(t *testing.T) {
+	dir := t.TempDir()
+	startedAt := testNow.Add(time.Minute) // the recording opened a minute AFTER `from`
+	windowEnd := testNow.Add(5*time.Minute + checkGrace)
+	// The poll range is irrelevant to the assertion: the fail-fast reads
+	// StartedAt from the header alone, before any polling would matter.
+	logPath := recordedLog(t, dir, "https://grafana.example.com",
+		startedAt, startedAt, windowEnd.Add(30*time.Second), windowEnd.Add(30*time.Second), 0)
+
+	clock := newVirtualClock(testNow)
+	cfg := recorderConfig(t, clock, logPath) // From = testNow, before StartedAt
+	_, err := check(context.Background(), cfg, newCheckSource(nil))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "before recording started")
+	require.True(t, clock.Now().Equal(testNow), "it must fail before the wait")
 }
 
 // The coverage proof failed: a hole in the middle of the recording is not
@@ -740,42 +665,28 @@ func TestCheckFailClosedOnCoverageGap(t *testing.T) {
 	path := filepath.Join(dir, "log.jsonl")
 	clock := newFakeClock(windowEnd.Add(30 * time.Second))
 	w, err := NewWriter(path, clock)
-	if err != nil {
-		t.Fatalf("NewWriter: %v", err)
-	}
-	if err := w.WriteHeader(Header{
+	require.NoError(t, err)
+	require.NoError(t, w.WriteHeader(Header{
 		URL: "https://grafana.example.com", GrafanaVersion: "13.1.0", StartedAt: testNow.Add(-time.Minute),
 		Rules: []LoggedRule{{UID: checkUID, Title: checkTitle, IntervalSeconds: 60, PollEverySeconds: checkPollEvery.Seconds()}},
-	}); err != nil {
-		t.Fatalf("WriteHeader: %v", err)
-	}
+	}))
 	for at := testNow.Add(-time.Minute); !at.After(windowEnd.Add(30 * time.Second)); at = at.Add(checkPollEvery) {
 		// A three-minute hole in the middle of the window.
 		if at.After(testNow.Add(time.Minute)) && at.Before(testNow.Add(4*time.Minute)) {
 			continue
 		}
-		if err := w.WritePoll(Poll{
+		require.NoError(t, w.WritePoll(Poll{
 			RuleUID: checkUID, GrafanaNow: at, Found: true, State: "inactive", Health: "ok", LastEvaluation: at,
-		}); err != nil {
-			t.Fatalf("WritePoll: %v", err)
-		}
+		}))
 	}
-	if err := w.Stop(); err != nil {
-		t.Fatalf("Stop: %v", err)
-	}
+	require.NoError(t, w.Stop())
 	writePid(t, path+".pid", fmt.Sprintf("%d\n", deadPid(t)))
 
 	cfg := recorderConfig(t, newVirtualClock(testNow), path)
 	res, err := check(context.Background(), cfg, newCheckSource(nil))
-	if err == nil {
-		t.Fatalf("check() = nil, want the coverage gap to fail closed")
-	}
-	if got := res.Coverage[checkUID].Reason; got != ReasonHeartbeatGap {
-		t.Errorf("Reason = %q, want %q", got, ReasonHeartbeatGap)
-	}
-	if got := res.Verdicts[0].Outcome; got != OutcomeUnobservable {
-		t.Errorf("Outcome = %q, want %q", got, OutcomeUnobservable)
-	}
+	require.Error(t, err, "the coverage gap to fail closed")
+	require.Equal(t, ReasonHeartbeatGap, res.Coverage[checkUID].Reason)
+	require.Equal(t, OutcomeUnobservable, res.Verdicts[0].Outcome)
 }
 
 // An episode fully between the deploy and the start of the check: recorder
@@ -790,36 +701,25 @@ func TestCheckRecorderModeFindsAGapImmediatelyAfterTheDeploy(t *testing.T) {
 	path := filepath.Join(dir, "log.jsonl")
 	clock := newFakeClock(windowEnd.Add(30 * time.Second))
 	w, err := NewWriter(path, clock)
-	if err != nil {
-		t.Fatalf("NewWriter: %v", err)
-	}
-	if err := w.WriteHeader(Header{
+	require.NoError(t, err)
+	require.NoError(t, w.WriteHeader(Header{
 		URL: "https://grafana.example.com", GrafanaVersion: "13.1.0", StartedAt: testNow.Add(-time.Minute),
 		Rules: []LoggedRule{{UID: checkUID, Title: checkTitle, IntervalSeconds: 60, PollEverySeconds: checkPollEvery.Seconds()}},
-	}); err != nil {
-		t.Fatalf("WriteHeader: %v", err)
-	}
+	}))
 	gapEnd := testNow.Add(3 * time.Minute) // nothing recorded from `from` (testNow) to here
 	for at := gapEnd; !at.After(windowEnd.Add(30 * time.Second)); at = at.Add(checkPollEvery) {
-		if err := w.WritePoll(Poll{
+		require.NoError(t, w.WritePoll(Poll{
 			RuleUID: checkUID, GrafanaNow: at, Found: true, State: "inactive", Health: "ok", LastEvaluation: at,
-		}); err != nil {
-			t.Fatalf("WritePoll: %v", err)
-		}
+		}))
 	}
-	if err := w.Stop(); err != nil {
-		t.Fatalf("Stop: %v", err)
-	}
+	require.NoError(t, w.Stop())
 	writePid(t, path+".pid", fmt.Sprintf("%d\n", deadPid(t)))
 
 	cfg := recorderConfig(t, newVirtualClock(testNow), path)
 	res, err := check(context.Background(), cfg, newCheckSource(nil))
-	if err == nil {
-		t.Fatalf("check() = nil, want exit 2: a hole right after the deploy hides whatever happened there just as much as one in the middle")
-	}
-	if len(res.Verdicts) != 1 || res.Verdicts[0].Outcome != OutcomeUnobservable {
-		t.Fatalf("Verdicts = %+v, want one unobservable verdict, never clean", res.Verdicts)
-	}
+	require.Error(t, err, "a hole right after the deploy hides whatever happened there")
+	require.Len(t, res.Verdicts, 1)
+	require.Equal(t, OutcomeUnobservable, res.Verdicts[0].Outcome, "never clean")
 }
 
 // The drain limit passed. The recording itself is clean, so this isolates the
@@ -846,21 +746,12 @@ func TestCheckFailClosedOnDrainTimeout(t *testing.T) {
 	})
 
 	res, err := check(context.Background(), cfg, src)
-	if err == nil {
-		t.Fatalf("check() = nil, want the drain limit to fail closed")
-	}
-	if got := res.Coverage[checkUID].Reason; got != ReasonDrainTimeout {
-		t.Errorf("Reason = %q, want %q", got, ReasonDrainTimeout)
-	}
-	if got := res.Verdicts[0].Outcome; got != OutcomeUnobservable {
-		t.Errorf("Outcome = %q, want %q", got, OutcomeUnobservable)
-	}
-	if !strings.Contains(res.Verdicts[0].Note, "drain limit") {
-		t.Errorf("Note = %q, want it to explain the drain limit", res.Verdicts[0].Note)
-	}
-	if waited := clock.Now().Sub(windowEnd); waited < checkDrainLimit {
-		t.Errorf("gave up after %s of drain wait, want the full %s", waited, checkDrainLimit)
-	}
+	require.Error(t, err, "the drain limit to fail closed")
+	require.Equal(t, ReasonDrainTimeout, res.Coverage[checkUID].Reason)
+	require.Equal(t, OutcomeUnobservable, res.Verdicts[0].Outcome)
+	require.Contains(t, res.Verdicts[0].Note, "drain limit")
+	require.GreaterOrEqual(t, clock.Now().Sub(windowEnd), checkDrainLimit,
+		"the rule never evaluates through the window, so the drain wait must run its full limit")
 }
 
 // A rule the state endpoint no longer serves is knowable on the FIRST drain
@@ -884,18 +775,10 @@ func TestCheckDrainWaitNamesADeletedRuleAtOnce(t *testing.T) {
 	})
 
 	res, err := check(context.Background(), cfg, src)
-	if err == nil {
-		t.Fatalf("check() = nil, want a deleted rule to fail closed")
-	}
-	if got := res.Coverage[checkUID].Reason; got != ReasonRuleAbsent {
-		t.Errorf("Reason = %q, want %q — the fault, not the wait", got, ReasonRuleAbsent)
-	}
-	if got := src.callCount(checkTitle); got != 1 {
-		t.Errorf("polled %d times, want exactly 1: the absence is knowable on the first poll", got)
-	}
-	if waited := clock.Now().Sub(windowEnd); waited >= checkDrainLimit {
-		t.Errorf("spent %s in the drain wait, want it to conclude at once", waited)
-	}
+	require.Error(t, err, "a deleted rule to fail closed")
+	require.Equal(t, ReasonRuleAbsent, res.Coverage[checkUID].Reason, "the fault, not the wait")
+	require.Equal(t, 1, src.callCount(checkTitle), "the absence is knowable on the first poll")
+	require.Less(t, clock.Now().Sub(windowEnd), checkDrainLimit)
 }
 
 // ---------------------------------------------------------------------------
@@ -909,18 +792,14 @@ func pausedAfterWindowLog(t *testing.T, dir string, firesAt time.Time, end, sent
 	t.Helper()
 	path := filepath.Join(dir, "log.jsonl")
 	w, err := NewWriter(path, newFakeClock(sentinelAt))
-	if err != nil {
-		t.Fatalf("NewWriter: %v", err)
-	}
-	if err := w.WriteHeader(Header{
+	require.NoError(t, err)
+	require.NoError(t, w.WriteHeader(Header{
 		URL: "https://grafana.example.com", GrafanaVersion: "13.1.0", StartedAt: testNow.Add(-time.Minute),
 		Rules: []LoggedRule{{
 			UID: checkUID, Title: checkTitle, IntervalSeconds: 60,
 			IsPaused: false, PollEverySeconds: checkPollEvery.Seconds(),
 		}},
-	}); err != nil {
-		t.Fatalf("WriteHeader: %v", err)
-	}
+	}))
 	firing := Instance{
 		Labels:   map[string]string{"alertname": checkTitle, "instance": "a"},
 		State:    StateFiring,
@@ -932,13 +811,9 @@ func pausedAfterWindowLog(t *testing.T, dir string, firesAt time.Time, end, sent
 			p.State = "firing"
 			p.Abnormal = []Instance{firing}
 		}
-		if err := w.WritePoll(p); err != nil {
-			t.Fatalf("WritePoll: %v", err)
-		}
+		require.NoError(t, w.WritePoll(p))
 	}
-	if err := w.Stop(); err != nil {
-		t.Fatalf("Stop: %v", err)
-	}
+	require.NoError(t, w.Stop())
 	return path
 }
 
@@ -970,19 +845,13 @@ func pausedAfterWindowCheck(t *testing.T, allowPaused bool) (Result, error, Conf
 // that was active at record start is classified, whatever its pause state is
 // by the time check resolves the definitions.
 func TestCheckPausingARuleAfterTheWindowDoesNotMakeItSkipped(t *testing.T) {
-	res, err, cfg := pausedAfterWindowCheck(t, false)
-	if err != nil {
-		t.Fatalf("check() = %v, want a classified verdict\nnotes:\n%s", err, notesOf(cfg))
-	}
-	if got := res.Verdicts[0].Outcome; got != OutcomeNewlyBad {
-		t.Fatalf("Outcome = %q, want %q: the rule was active for the whole window and fired inside it", got, OutcomeNewlyBad)
-	}
-	if len(res.Violations) != 1 || res.Violations[0].Outcome != OutcomeNewlyBad {
-		t.Fatalf("Violations = %+v, want the firing reported", res.Violations)
-	}
-	if strings.Contains(res.Verdicts[0].Note, "paused before the window opened") {
-		t.Errorf("Note = %q, which the log's own polls contradict", res.Verdicts[0].Note)
-	}
+	res, err, _ := pausedAfterWindowCheck(t, false)
+	require.NoError(t, err)
+	require.Equal(t, OutcomeNewlyBad, res.Verdicts[0].Outcome,
+		"the rule was active for the whole window and fired inside it")
+	require.Len(t, res.Violations, 1)
+	require.Equal(t, OutcomeNewlyBad, res.Violations[0].Outcome)
+	require.NotContains(t, res.Verdicts[0].Note, "paused before the window opened")
 }
 
 // The regression pin for the loophole this fix closed. Reading skipped from
@@ -990,13 +859,9 @@ func TestCheckPausingARuleAfterTheWindowDoesNotMakeItSkipped(t *testing.T) {
 // skipped free; and a window in which the alert fired reported exit 0. The
 // default message names --allow-paused, so an operator was led straight to it.
 func TestCheckAllowPausedCannotExcuseARulePausedAfterItFired(t *testing.T) {
-	res, err, cfg := pausedAfterWindowCheck(t, true)
-	if err != nil {
-		t.Fatalf("check() = %v, want a classified verdict\nnotes:\n%s", err, notesOf(cfg))
-	}
-	if len(res.Violations) == 0 {
-		t.Fatalf("Violations = none with --allow-paused: the run passed over a window in which the alert fired")
-	}
+	res, err, _ := pausedAfterWindowCheck(t, true)
+	require.NoError(t, err)
+	require.NotEmpty(t, res.Violations, "the run passed over a window in which the alert fired")
 }
 
 // The other direction, unchanged: a rule the HEADER says was paused when the
@@ -1007,23 +872,17 @@ func TestCheckHeaderPausedRuleStaysSkipped(t *testing.T) {
 	windowEnd := testNow.Add(5*time.Minute + checkGrace)
 	path := filepath.Join(dir, "log.jsonl")
 	w, err := NewWriter(path, newFakeClock(windowEnd.Add(30*time.Second)))
-	if err != nil {
-		t.Fatalf("NewWriter: %v", err)
-	}
+	require.NoError(t, err)
 	// Named in the header, is_paused true, and no poll records at all — the
 	// shape watch writes for a rule paused before the window opened.
-	if err := w.WriteHeader(Header{
+	require.NoError(t, w.WriteHeader(Header{
 		URL: "https://grafana.example.com", GrafanaVersion: "13.1.0", StartedAt: testNow.Add(-time.Minute),
 		Rules: []LoggedRule{{
 			UID: checkUID, Title: checkTitle, IntervalSeconds: 60,
 			IsPaused: true, PollEverySeconds: checkPollEvery.Seconds(),
 		}},
-	}); err != nil {
-		t.Fatalf("WriteHeader: %v", err)
-	}
-	if err := w.Stop(); err != nil {
-		t.Fatalf("Stop: %v", err)
-	}
+	}))
+	require.NoError(t, w.Stop())
 	writePid(t, path+".pid", fmt.Sprintf("%d\n", deadPid(t)))
 
 	run := func(allowPaused bool) (Result, error) {
@@ -1031,30 +890,22 @@ func TestCheckHeaderPausedRuleStaysSkipped(t *testing.T) {
 		cfg.AllowPaused = allowPaused
 		// The definition is unpaused now; the header still decides.
 		src := newCheckSource(func(title string, _ int) (Observation, error) {
-			t.Errorf("the drain wait polled skipped rule %q", title)
+			require.Fail(t, fmt.Sprintf("the drain wait polled skipped rule %q", title))
 			return Observation{}, errors.New("unexpected poll")
 		})
 		return check(context.Background(), cfg, src)
 	}
 
 	res, err := run(false)
-	if err != nil {
-		t.Fatalf("check() = %v, want exit-1 shape: a skipped rule is a known condition, not an inability", err)
-	}
-	if got := res.Verdicts[0].Outcome; got != OutcomeSkipped {
-		t.Fatalf("Outcome = %q, want %q", got, OutcomeSkipped)
-	}
-	if _, ok := res.Coverage[checkUID]; ok {
-		t.Errorf("Coverage[%s] present, want absent: a skipped rule has no coverage to prove", checkUID)
-	}
-	if len(res.Violations) != 1 {
-		t.Errorf("Violations = %+v, want the MinObserved shortfall", res.Violations)
-	}
+	require.NoError(t, err, "a skipped rule is a known condition, not an inability")
+	require.Equal(t, OutcomeSkipped, res.Verdicts[0].Outcome)
+	_, ok := res.Coverage[checkUID]
+	require.False(t, ok, "a skipped rule has no coverage to prove")
+	require.Len(t, res.Violations, 1, "the MinObserved shortfall")
 
 	res, err = run(true)
-	if err != nil || len(res.Violations) != 0 {
-		t.Errorf("with --allow-paused: err = %v, Violations = %+v, want a pass", err, res.Violations)
-	}
+	require.NoError(t, err)
+	require.Empty(t, res.Violations, "with --allow-paused: want a pass")
 }
 
 // A paused rule does not evaluate, so it can never catch up: the drain wait
@@ -1076,21 +927,12 @@ func TestCheckDrainWaitConcludesAtOnceOnAPausedRule(t *testing.T) {
 	})
 
 	res, err := check(context.Background(), cfg, src)
-	if err == nil {
-		t.Fatalf("check() = nil, want a rule that stopped evaluating to fail closed")
-	}
-	if got := src.callCount(checkTitle); got != 1 {
-		t.Errorf("polled %d times, want exactly 1: a paused rule can never catch up", got)
-	}
-	if got := res.Coverage[checkUID].Reason; got != ReasonDrainTimeout {
-		t.Errorf("Reason = %q, want %q — the vocabulary is published, so the detail goes in the note", got, ReasonDrainTimeout)
-	}
-	if !strings.Contains(res.Verdicts[0].Note, "paused before it evaluated through") {
-		t.Errorf("Note = %q, want it to say the rule was paused", res.Verdicts[0].Note)
-	}
-	if waited := clock.Now().Sub(windowEnd); waited >= checkDrainLimit {
-		t.Errorf("spent %s in the drain wait, want it to conclude at once", waited)
-	}
+	require.Error(t, err, "a rule that stopped evaluating must fail closed")
+	require.Equal(t, 1, src.callCount(checkTitle), "a paused rule can never catch up")
+	require.Equal(t, ReasonDrainTimeout, res.Coverage[checkUID].Reason,
+		"the vocabulary is published, so the detail goes in the note")
+	require.Contains(t, res.Verdicts[0].Note, "paused before it evaluated through")
+	require.Less(t, clock.Now().Sub(windowEnd), checkDrainLimit)
 }
 
 // An absent or unparseable pidfile is never "there was nothing to stop". The
@@ -1120,9 +962,8 @@ func TestCheckRefusesToReadALogItCannotStop(t *testing.T) {
 
 			cfg := recorderConfig(t, newVirtualClock(testNow), logPath)
 			_, err := check(context.Background(), cfg, newCheckSource(nil))
-			if err == nil || !strings.Contains(err.Error(), "cannot stop the recorder") {
-				t.Fatalf("check() = %v, want a refusal to stop the recorder", err)
-			}
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "cannot stop the recorder")
 		})
 	}
 }
@@ -1137,19 +978,14 @@ func startLockHolder(t *testing.T, logPath string) int {
 	cmd.Env = append(os.Environ(), lockHolderEnv+"="+logPath)
 	cmd.Stderr = os.Stderr
 	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		t.Fatalf("pipe: %v", err)
-	}
-	if err := cmd.Start(); err != nil {
-		t.Fatalf("start the lock holder: %v", err)
-	}
+	require.NoError(t, err)
+	require.NoError(t, cmd.Start())
 	t.Cleanup(func() {
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
 	})
-	if _, err := bufio.NewReader(stdout).ReadString('\n'); err != nil {
-		t.Fatalf("the lock holder never reported holding the lock: %v", err)
-	}
+	_, err = bufio.NewReader(stdout).ReadString('\n')
+	require.NoError(t, err, "the lock holder never reported holding the lock")
 	return cmd.Process.Pid
 }
 
@@ -1165,9 +1001,8 @@ func TestCheckFailsWhenTheRecorderWillNotExit(t *testing.T) {
 
 	cfg := recorderConfig(t, newVirtualClock(testNow), logPath)
 	_, err := check(context.Background(), cfg, newCheckSource(nil))
-	if err == nil || !strings.Contains(err.Error(), "still holds") {
-		t.Fatalf("check() = %v, want the stop wait to time out on the lock", err)
-	}
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "still holds")
 }
 
 // The regression pin for a stray SIGTERM. Nothing removes the pidfile when a
@@ -1185,9 +1020,7 @@ func TestCheckDoesNotSignalABystanderHoldingAReusedPid(t *testing.T) {
 	// left behind. It does not hold the log's lock, because it is not a
 	// recorder.
 	bystander := exec.Command("sleep", "30")
-	if err := bystander.Start(); err != nil {
-		t.Fatalf("start the bystander: %v", err)
-	}
+	require.NoError(t, bystander.Start())
 	t.Cleanup(func() {
 		_ = bystander.Process.Kill()
 		_ = bystander.Wait()
@@ -1195,12 +1028,10 @@ func TestCheckDoesNotSignalABystanderHoldingAReusedPid(t *testing.T) {
 	writePid(t, logPath+".pid", fmt.Sprintf("%d\n", bystander.Process.Pid))
 
 	cfg := recorderConfig(t, newVirtualClock(testNow), logPath)
-	if _, err := check(context.Background(), cfg, newCheckSource(nil)); err != nil {
-		t.Fatalf("check() = %v, want nil\nnotes:\n%s", err, notesOf(cfg))
-	}
-	if err := syscall.Kill(bystander.Process.Pid, 0); err != nil {
-		t.Fatalf("the bystander is gone (%v): check signalled a process that was not the recorder", err)
-	}
+	_, err := check(context.Background(), cfg, newCheckSource(nil))
+	require.NoError(t, err)
+	require.NoError(t, syscall.Kill(bystander.Process.Pid, 0),
+		"check signalled a process that was not the recorder")
 }
 
 // A dead pidfile (the recorder process has already exited, holding no flock)
@@ -1212,40 +1043,29 @@ func TestCheckDeadPidWithNoSentinelIsUnobservable(t *testing.T) {
 	windowEnd := testNow.Add(5*time.Minute + checkGrace)
 	logPath := filepath.Join(dir, "log.jsonl")
 	w, err := NewWriter(logPath, newFakeClock(testNow))
-	if err != nil {
-		t.Fatalf("NewWriter: %v", err)
-	}
-	if err := w.WriteHeader(Header{
+	require.NoError(t, err)
+	require.NoError(t, w.WriteHeader(Header{
 		URL: "https://grafana.example.com", GrafanaVersion: "13.1.0", StartedAt: testNow.Add(-time.Minute),
 		Rules: []LoggedRule{{
 			UID: checkUID, Title: checkTitle, Folder: "F", Group: "G",
 			IntervalSeconds: 60, NoDataState: "OK", ExecErrState: "OK",
 			PollEverySeconds: checkPollEvery.Seconds(),
 		}},
-	}); err != nil {
-		t.Fatalf("WriteHeader: %v", err)
-	}
+	}))
 	// Healthy heartbeats all the way past windowEnd — evaluatedThrough is
 	// satisfied, so the drain wait needs no live re-poll — but no sentinel is
 	// ever written: the recorder died before it could call Stop.
 	for at := testNow.Add(-time.Minute); !at.After(windowEnd.Add(30 * time.Second)); at = at.Add(checkPollEvery) {
-		if err := w.WritePoll(Poll{RuleUID: checkUID, GrafanaNow: at, Found: true, State: "inactive", Health: "ok", LastEvaluation: at}); err != nil {
-			t.Fatalf("WritePoll: %v", err)
-		}
+		require.NoError(t, w.WritePoll(Poll{RuleUID: checkUID, GrafanaNow: at, Found: true, State: "inactive", Health: "ok", LastEvaluation: at}))
 	}
-	if err := w.Close(); err != nil { // no sentinel — a clean exit would call Stop
-		t.Fatalf("Close: %v", err)
-	}
+	require.NoError(t, w.Close()) // no sentinel — a clean exit would call Stop
 	writePid(t, logPath+".pid", fmt.Sprintf("%d\n", deadPid(t)))
 
 	cfg := recorderConfig(t, newVirtualClock(testNow), logPath)
 	res, err := check(context.Background(), cfg, newCheckSource(nil))
-	if err == nil {
-		t.Fatalf("check() = nil, want an error: no sentinel means the recorder never proved it ran to the end")
-	}
-	if len(res.Verdicts) != 1 || res.Verdicts[0].Outcome != OutcomeUnobservable {
-		t.Fatalf("Verdicts = %+v, want one unobservable verdict", res.Verdicts)
-	}
+	require.Error(t, err, "no sentinel means the recorder never proved it ran to the end")
+	require.Len(t, res.Verdicts, 1)
+	require.Equal(t, OutcomeUnobservable, res.Verdicts[0].Outcome)
 }
 
 // An incomplete last line gives exit 2. log_test.go's TestReadLogRejectsBadLogs
@@ -1263,25 +1083,19 @@ func TestCheckRecorderModeTruncatedLogFailsClosed(t *testing.T) {
 		Rules: []LoggedRule{{UID: checkUID, Title: checkTitle, IntervalSeconds: 60, PollEverySeconds: checkPollEvery.Seconds()}},
 	}
 	hb, err := json.Marshal(headerRecord{Type: RecordHeader, Header: h})
-	if err != nil {
-		t.Fatalf("marshal header: %v", err)
-	}
+	require.NoError(t, err)
 	pb, err := json.Marshal(pollRecord{Type: RecordPoll, Poll: Poll{
 		RuleUID: checkUID, GrafanaNow: testNow, Found: true, State: "inactive", Health: "ok", LastEvaluation: testNow,
 	}})
-	if err != nil {
-		t.Fatalf("marshal poll: %v", err)
-	}
+	require.NoError(t, err)
 	content := string(hb) + "\n" + string(pb) + "\n" + `{"type":"poll","rule_ui` // torn mid-write
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write log: %v", err)
-	}
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
 	writePid(t, path+".pid", fmt.Sprintf("%d\n", deadPid(t)))
 
 	cfg := recorderConfig(t, newVirtualClock(testNow), path)
-	if _, err := check(context.Background(), cfg, newCheckSource(nil)); err == nil || !strings.Contains(err.Error(), "unparseable") {
-		t.Fatalf("check() = %v, want a refusal naming the unparseable tail", err)
-	}
+	_, err = check(context.Background(), cfg, newCheckSource(nil))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unparseable")
 }
 
 // One authority for the cadence, from check's side: maxGap comes from the
@@ -1293,15 +1107,11 @@ func TestCheckDerivesMaxGapFromTheRecordedCadence(t *testing.T) {
 	windowEnd := testNow.Add(5*time.Minute + checkGrace)
 	path := filepath.Join(dir, "log.jsonl")
 	w, err := NewWriter(path, newFakeClock(windowEnd.Add(30*time.Second)))
-	if err != nil {
-		t.Fatalf("NewWriter: %v", err)
-	}
-	if err := w.WriteHeader(Header{
+	require.NoError(t, err)
+	require.NoError(t, w.WriteHeader(Header{
 		URL: "https://grafana.example.com", GrafanaVersion: "13.1.0", StartedAt: testNow.Add(-time.Minute),
 		Rules: []LoggedRule{{UID: checkUID, Title: checkTitle, IntervalSeconds: 60, PollEverySeconds: 5}},
-	}); err != nil {
-		t.Fatalf("WriteHeader: %v", err)
-	}
+	}))
 	for at := testNow.Add(-time.Minute); !at.After(windowEnd.Add(30 * time.Second)); at = at.Add(5 * time.Second) {
 		// A 20s hole: under the recorded 5s cadence maxGap is 10s and this
 		// fails; under a cadence re-derived from intervalSeconds it would be
@@ -1309,25 +1119,17 @@ func TestCheckDerivesMaxGapFromTheRecordedCadence(t *testing.T) {
 		if at.After(testNow.Add(time.Minute)) && at.Before(testNow.Add(80*time.Second)) {
 			continue
 		}
-		if err := w.WritePoll(Poll{
+		require.NoError(t, w.WritePoll(Poll{
 			RuleUID: checkUID, GrafanaNow: at, Found: true, State: "inactive", Health: "ok", LastEvaluation: at,
-		}); err != nil {
-			t.Fatalf("WritePoll: %v", err)
-		}
+		}))
 	}
-	if err := w.Stop(); err != nil {
-		t.Fatalf("Stop: %v", err)
-	}
+	require.NoError(t, w.Stop())
 	writePid(t, path+".pid", fmt.Sprintf("%d\n", deadPid(t)))
 
 	cfg := recorderConfig(t, newVirtualClock(testNow), path)
 	res, err := check(context.Background(), cfg, newCheckSource(nil))
-	if err == nil {
-		t.Fatalf("check() = nil; a 20s hole exceeds the 10s maxGap the recorded 5s cadence implies")
-	}
-	if got := res.Coverage[checkUID].Reason; got != ReasonHeartbeatGap {
-		t.Errorf("Reason = %q, want %q", got, ReasonHeartbeatGap)
-	}
+	require.Error(t, err, "a 20s hole exceeds the 10s maxGap the recorded 5s cadence implies")
+	require.Equal(t, ReasonHeartbeatGap, res.Coverage[checkUID].Reason)
 }
 
 // ---------------------------------------------------------------------------
@@ -1367,9 +1169,7 @@ func TestEvaluatedThroughSpendsItsUncertaintyFailingClosed(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := evaluatedThrough(tc.lastEval, tc.skew, tc.bound, end); got != tc.wantSatisfied {
-				t.Errorf("evaluatedThrough() = %v, want %v", got, tc.wantSatisfied)
-			}
+			require.Equal(t, tc.wantSatisfied, evaluatedThrough(tc.lastEval, tc.skew, tc.bound, end))
 		})
 	}
 }
@@ -1392,33 +1192,17 @@ func TestMergeDrainTimeoutsNamesEveryUnobservableRule(t *testing.T) {
 		"a": {reason: ReasonDrainTimeout, note: "rule \"A\": did not evaluate through the end within the drain limit"},
 		"b": {reason: ReasonDrainTimeout, note: "rule \"B\": did not evaluate through the end within the drain limit"},
 	})
-	if err == nil {
-		t.Fatal("mergeDrainTimeouts() = nil, want an error naming the newly unobservable rule")
-	}
-	// Its own shape: joined with decide's, two counts under one identical
-	// phrase would read as a contradiction rather than as two findings.
-	if !strings.Contains(err.Error(), "unobservable at the drain wait") {
-		t.Errorf("err = %q, want the drain wait's own error shape", err)
-	}
+	require.Error(t, err, "naming the newly unobservable rule")
+	require.Contains(t, err.Error(), "unobservable at the drain wait")
 	// Only A is newly unobservable; B was already, so naming it twice would
 	// only lengthen the message.
-	if !strings.Contains(err.Error(), "A ("+string(ReasonDrainTimeout)+")") {
-		t.Errorf("err = %q, want it to name A's drain timeout", err)
-	}
-	if strings.Contains(err.Error(), "B (") {
-		t.Errorf("err = %q, want it not to re-report B, which decide already reported", err)
-	}
-	if got := merged.Coverage["a"].Reason; got != ReasonDrainTimeout {
-		t.Errorf("Coverage[a].Reason = %q, want %q", got, ReasonDrainTimeout)
-	}
+	require.Contains(t, err.Error(), "A ("+string(ReasonDrainTimeout)+")")
+	require.NotContains(t, err.Error(), "B (")
+	require.Equal(t, ReasonDrainTimeout, merged.Coverage["a"].Reason)
 	// B keeps the reason the coverage proof gave it — the FIRST reason wins,
 	// as it does inside proveCoverage.
-	if got := merged.Coverage["b"].Reason; got != ReasonHeartbeatGap {
-		t.Errorf("Coverage[b].Reason = %q, want the earlier %q", got, ReasonHeartbeatGap)
-	}
-	if merged.Verdicts[0].Outcome != OutcomeUnobservable {
-		t.Errorf("Verdicts[0].Outcome = %q, want %q", merged.Verdicts[0].Outcome, OutcomeUnobservable)
-	}
+	require.Equal(t, ReasonHeartbeatGap, merged.Coverage["b"].Reason)
+	require.Equal(t, OutcomeUnobservable, merged.Verdicts[0].Outcome)
 }
 
 // ReadLogHeader is the one read of a log a writer may still hold, so its
@@ -1429,45 +1213,30 @@ func TestReadLogHeader(t *testing.T) {
 	t.Run("reads line 1 while the log keeps growing", func(t *testing.T) {
 		path := filepath.Join(dir, "growing.jsonl")
 		w, err := NewWriter(path, newFakeClock(testNow))
-		if err != nil {
-			t.Fatalf("NewWriter: %v", err)
-		}
+		require.NoError(t, err)
 		defer w.Close()
-		if err := w.WriteHeader(testHeader()); err != nil {
-			t.Fatalf("WriteHeader: %v", err)
-		}
-		if err := w.WritePoll(Poll{RuleUID: "rule1", GrafanaNow: testNow, Found: true}); err != nil {
-			t.Fatalf("WritePoll: %v", err)
-		}
+		require.NoError(t, w.WriteHeader(testHeader()))
+		require.NoError(t, w.WritePoll(Poll{RuleUID: "rule1", GrafanaNow: testNow, Found: true}))
 
 		h, err := ReadLogHeader(path)
-		if err != nil {
-			t.Fatalf("ReadLogHeader: %v", err)
-		}
-		if h.URL != testHeader().URL || len(h.Rules) != 1 {
-			t.Errorf("header = %+v, want the written one", h)
-		}
+		require.NoError(t, err)
+		require.Equal(t, testHeader().URL, h.URL)
+		require.Len(t, h.Rules, 1)
 	})
 
 	t.Run("a half-written header is not a header", func(t *testing.T) {
 		path := filepath.Join(dir, "torn.jsonl")
-		if err := os.WriteFile(path, []byte(`{"type":"header","url":"htt`), 0o644); err != nil {
-			t.Fatalf("write: %v", err)
-		}
-		if _, err := ReadLogHeader(path); err == nil ||
-			!strings.Contains(err.Error(), "no complete header") {
-			t.Fatalf("ReadLogHeader() = %v, want a refusal", err)
-		}
+		require.NoError(t, os.WriteFile(path, []byte(`{"type":"header","url":"htt`), 0o644))
+		_, err := ReadLogHeader(path)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "no complete header")
 	})
 
 	t.Run("a wrong schema version is refused", func(t *testing.T) {
 		path := filepath.Join(dir, "old.jsonl")
-		if err := os.WriteFile(path, []byte(`{"type":"header","schema_version":99,"url":"u"}`+"\n"), 0o644); err != nil {
-			t.Fatalf("write: %v", err)
-		}
-		if _, err := ReadLogHeader(path); err == nil ||
-			!strings.Contains(err.Error(), "schema version 99") {
-			t.Fatalf("ReadLogHeader() = %v, want a schema refusal", err)
-		}
+		require.NoError(t, os.WriteFile(path, []byte(`{"type":"header","schema_version":99,"url":"u"}`+"\n"), 0o644))
+		_, err := ReadLogHeader(path)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "schema version 99")
 	})
 }
