@@ -25,12 +25,16 @@ const (
 // is the opaque suffix of a "State (Reason)" composite ("" when the API gave a
 // bare state). Reason is reporting-only except for the H2 MissingSeries routing
 // done downstream in the log markers.
+//
+// The json tags are for the JSONL log's abnormal-instance list (P5) only —
+// parsing an API response never goes through them, because parseInstance
+// decodes field by field through req/opt to keep H1's presence checks explicit.
 type Instance struct {
-	Labels   map[string]string
-	State    State
-	Reason   string
-	ActiveAt time.Time
-	Value    string
+	Labels   map[string]string `json:"labels"`
+	State    State             `json:"state"`
+	Reason   string            `json:"reason,omitempty"`
+	ActiveAt time.Time         `json:"active_at"`
+	Value    string            `json:"value,omitempty"`
 }
 
 // StateRule is one rule from the state endpoint
