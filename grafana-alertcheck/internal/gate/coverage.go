@@ -2,7 +2,6 @@ package gate
 
 import (
 	"fmt"
-	"slices"
 	"time"
 )
 
@@ -82,16 +81,12 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t ruleTimings, d
 
 	windowEnd := to.Add(grace)
 
-	var rulePolls []Poll
-	for _, p := range polls {
-		if p.RuleUID == def.UID {
-			rulePolls = append(rulePolls, p)
-		}
-	}
-	// Stable, not sort.Slice: two polls sharing a GrafanaNow (a coarse Date
-	// header, or a corrupted/replayed log) must not reorder nondeterministically
-	// in a function that promises to be pure.
-	slices.SortStableFunc(rulePolls, func(a, b Poll) int { return a.GrafanaNow.Compare(b.GrafanaNow) })
+	// pollsForRule (classify.go) is the single filter+sort implementation for
+	// "select one rule's polls, stably ordered by GrafanaNow" — proveCoverage
+	// and classifyRule must never carry two independent copies of this
+	// selection, or one drifting from the other becomes exactly the kind of
+	// silent membership mismatch this file's checks exist to prevent.
+	rulePolls := pollsForRule(polls, def.UID)
 
 	var res CoverageResult
 	fail := func(reason UnobservableReason, note string) {
@@ -264,7 +259,7 @@ func inWindowPolls(polls []Poll, from, windowEnd time.Time) []Poll {
 	var out []Poll
 	for _, p := range polls {
 		bound := p.SkewBound()
-		runner := p.GrafanaNow.Add(-p.Skew())
+		runner := runnerTime(p, p.GrafanaNow)
 		if runner.Before(from.Add(-bound)) || runner.After(windowEnd.Add(bound)) {
 			continue
 		}
@@ -294,7 +289,7 @@ func ruleHeartbeatGap(in []Poll, from, windowEnd time.Time) (largestGap time.Dur
 		return windowEnd.Sub(from), from
 	}
 
-	runnerOf := func(p Poll) time.Time { return p.GrafanaNow.Add(-p.Skew()) }
+	runnerOf := func(p Poll) time.Time { return runnerTime(p, p.GrafanaNow) }
 
 	first := in[0]
 	if gap := runnerOf(first).Sub(from) + first.SkewBound(); gap > largestGap {
