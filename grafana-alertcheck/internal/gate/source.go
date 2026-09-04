@@ -14,11 +14,6 @@ import (
 	"time"
 )
 
-// skewHardLimit is one of §5's filled-in values (basis: §16; §22.11 asserts
-// 120s errors, 30s does not). It belongs in schedule.go's named-constants
-// block once P4 exists; defined here because P2 needs it first.
-const skewHardLimit = 60 * time.Second
-
 // Clock is the seam that lets tests advance time without sleeping (§22) — the
 // only two operations the gate ever needs from a clock.
 type Clock interface {
