@@ -245,9 +245,9 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 		// closed, never produce a false pass. This is recorder mode only: the
 		// single-step branch has no header, and its own `from < startedAt` is
 		// a warning-and-pass (see below), not an error.
-		if from.Before(earlyHdr.StartedAt) {
+		if from.Truncate(time.Second).Before(earlyHdr.StartedAt.Truncate(time.Second)) {
 			return Result{}, fmt.Errorf("check: `from` %s is before recording started at %s",
-				from.Format(time.RFC3339), earlyHdr.StartedAt.Format(time.RFC3339))
+				from.Format(time.RFC3339Nano), earlyHdr.StartedAt.Format(time.RFC3339Nano))
 		}
 		resolved, notes, err = resolveFromLog(allDefs, earlyHdr, cfg)
 	} else {
