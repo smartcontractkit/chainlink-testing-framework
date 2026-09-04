@@ -126,6 +126,63 @@ func TestProveCoverage_FromBeforeRecordIsUnobservable(t *testing.T) {
 	require.Equal(t, OutcomeUnobservable, dres.Verdicts[0].Outcome)
 }
 
+// The from-bounds check compares at whole-second granularity: a whole-second
+// `from` may precede the recorder's sub-second StartedAt INSIDE the same second
+// without being judged early. That one sliver is the --from truncation, not a
+// blind interval, so the window is still proved.
+func TestProveCoverage_FromSameSecondAsStartedAtIsProved(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	started := from.Add(500 * time.Millisecond)
+	rt := newRuleTimings(30*time.Second, 60)
+	def := Definition{UID: "r1", Title: "R1"}
+
+	var polls []Poll
+	for ts := from; !ts.After(to); ts = ts.Add(30 * time.Second) {
+		polls = append(polls, Poll{RuleUID: "r1", GrafanaNow: ts, Found: true, Health: "ok", State: "inactive", LastEvaluation: ts})
+	}
+	sentinel := to
+
+	res := proveCoverage(Header{StartedAt: started}, polls, &sentinel, rt, def, from, to, 0)
+	require.True(t, res.Proved)
+	require.False(t, res.Unobservable)
+	require.Empty(t, res.Reason)
+}
+
+// Exactly one whole second later is a different second: even at the boundary,
+// the whole-second comparison reads it as before, however healthy the polls.
+func TestProveCoverage_FromExactlyOneSecondBeforeStartedAtIsUnobservable(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	started := from.Add(time.Second)
+	rt := newRuleTimings(30*time.Second, 60)
+	def := Definition{UID: "r1", Title: "R1"}
+
+	sentinel := to
+	res := proveCoverage(Header{StartedAt: started}, nil, &sentinel, rt, def, from, to, 0)
+	require.Equal(t, ReasonFromBeforeRecord, res.Reason)
+	require.True(t, res.Unobservable)
+	require.False(t, res.Proved)
+}
+
+// A sub-second sliver that straddles the second boundary is still "before":
+// 900ms into one second vs 100ms into the next are distinct seconds, so the
+// 200ms gap is a from_before_record, not rounding noise.
+func TestProveCoverage_FromSubSecondEarlierAcrossSecondBoundaryIsUnobservable(t *testing.T) {
+	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	from := base.Add(900 * time.Millisecond)
+	started := base.Add(time.Second + 100*time.Millisecond)
+	to := from.Add(10 * time.Minute)
+	rt := newRuleTimings(30*time.Second, 60)
+	def := Definition{UID: "r1", Title: "R1"}
+
+	sentinel := to
+	res := proveCoverage(Header{StartedAt: started}, nil, &sentinel, rt, def, from, to, 0)
+	require.Equal(t, ReasonFromBeforeRecord, res.Reason)
+	require.True(t, res.Unobservable)
+	require.False(t, res.Proved)
+}
+
 // --- Check 3: heartbeat continuity ---
 
 // The core heartbeat regression: data at both ends with a hole between is not
