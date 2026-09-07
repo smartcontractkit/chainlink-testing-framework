@@ -230,9 +230,7 @@ func TestScheduler_EarliestDueEmpty(t *testing.T) {
 	}
 }
 
-// TestScheduler_EarliestDueZeroTime pins the empty-detection fix: a
-// non-empty scheduler whose earliest next-due time is the zero time must still
-// report ok=true. The old IsZero() sentinel misread exactly this as "no rules".
+// A zero next-due time is real, not an empty scheduler.
 func TestScheduler_EarliestDueZeroTime(t *testing.T) {
 	s := &Scheduler{
 		next:  map[string]time.Time{"r1": {}},

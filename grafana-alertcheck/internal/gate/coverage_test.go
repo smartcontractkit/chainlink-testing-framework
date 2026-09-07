@@ -556,6 +556,29 @@ func TestProveCoverage_ZeroLastEvaluationWithoutPauseIsStale(t *testing.T) {
 	}
 }
 
+// A lastEvaluation in the future of grafana_now (corrupted log) must fail closed.
+func TestProveCoverage_FutureLastEvaluationIsUnobservable(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	rt := newRuleTimings(30*time.Second, 60)
+	def := Definition{UID: "r1", Title: "R1"}
+
+	polls := denseHealthyPolls("r1", from, to, 30*time.Second)
+	corruptAt := from.Add(5 * time.Minute)
+	for i := range polls {
+		if polls[i].GrafanaNow.Equal(corruptAt) {
+			polls[i].LastEvaluation = corruptAt.Add(2 * time.Minute) // in the future of its own grafana_now
+		}
+	}
+	sentinel := to
+
+	res := proveCoverage(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, rt, def, from, to, 0)
+	if res.Reason != ReasonFutureEvaluation {
+		t.Fatalf("Reason = %q, want future_evaluation: a lastEvaluation in the future of grafana_now must fail "+
+			"closed rather than read its negative staleness as fresh", res.Reason)
+	}
+}
+
 // --- Check 3, tightened: the boundary segments must widen by the skew bound ---
 
 // TestProveCoverage_BoundaryGapWidensBySkewBound pins §16's "with that

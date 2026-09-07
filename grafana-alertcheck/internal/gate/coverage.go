@@ -38,6 +38,7 @@ const (
 	ReasonHeartbeatGap     UnobservableReason = "heartbeat_gap"
 	ReasonHealthError      UnobservableReason = "health_error"
 	ReasonStaleEvaluation  UnobservableReason = "stale_evaluation"
+	ReasonFutureEvaluation UnobservableReason = "future_evaluation"
 	ReasonPausedInWindow   UnobservableReason = "paused_in_window"
 	ReasonRuleAbsent       UnobservableReason = "rule_absent"
 	// ReasonDrainTimeout is set by check.go's drain wait (a later phase),
@@ -181,6 +182,16 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t ruleTimings, d
 		if p.IsPaused || !p.Found {
 			continue
 		}
+		// lastEvaluation in the future of its own poll's grafana_now is
+		// corrupted or hand-edited data (ReadLog does no field validation);
+		// GrafanaNow-LastEvaluation would go negative and silently read as
+		// fresh — fail-open. Treat it as unobservable instead.
+		if p.LastEvaluation.After(p.GrafanaNow) {
+			fail(ReasonFutureEvaluation, fmt.Sprintf(
+				"lastEvaluation %s is after grafana_now %s (corrupted poll)",
+				p.LastEvaluation.Format(time.RFC3339), p.GrafanaNow.Format(time.RFC3339)))
+			continue
+		}
 		if stale := p.GrafanaNow.Sub(p.LastEvaluation); stale > t.evalStaleAfter {
 			staleCount++
 			if stale > worstStale {
@@ -191,7 +202,7 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t ruleTimings, d
 	if staleCount > 0 {
 		res.BlindFor = worstStale
 		fail(ReasonStaleEvaluation, fmt.Sprintf(
-			"lastEvaluation stale on %d poll(s); worst %s (> evalStaleAfter %s) as of %s",
+			"lastEvaluation stale on %d poll(s); worst %s (> evalStaleAfter %s) as of grafana_now %s",
 			staleCount, worstStale, t.evalStaleAfter, worstStaleAt.Format(time.RFC3339)))
 	}
 

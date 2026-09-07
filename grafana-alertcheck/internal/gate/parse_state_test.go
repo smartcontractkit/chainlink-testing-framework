@@ -283,10 +283,7 @@ func TestInstanceKey(t *testing.T) {
 	}
 }
 
-// TestInstanceKey_NoCollision guards against ambiguous identities: label
-// values may legally contain "\n" or "=", and a naive "k=v\n" join would
-// collide e.g. {a:"1\nb=2"} with {a:"1",b:"2"}. The JSON encoding must keep
-// such sets distinct.
+// Label values may contain "\n" or "="; the JSON encoding must keep them distinct.
 func TestInstanceKey_NoCollision(t *testing.T) {
 	if instanceKey(map[string]string{"a": "1\nb=2"}) == instanceKey(map[string]string{"a": "1", "b": "2"}) {
 		t.Errorf("instanceKey collided for sets {a:1\\nb=2} and {a:1,b:2}")
