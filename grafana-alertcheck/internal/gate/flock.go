@@ -1,6 +1,7 @@
 package gate
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"syscall"
@@ -15,4 +16,10 @@ func lockExclusive(f *os.File) error {
 		return fmt.Errorf("flock: %w", err)
 	}
 	return nil
+}
+
+// isLockContention reports whether a flock failure means another writer holds
+// the lock, as opposed to an unrelated failure.
+func isLockContention(err error) bool {
+	return errors.Is(err, syscall.EWOULDBLOCK) || errors.Is(err, syscall.EAGAIN)
 }

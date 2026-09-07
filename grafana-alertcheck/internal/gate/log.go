@@ -335,7 +335,10 @@ func NewWriter(path string, clock Clock) (*Writer, error) {
 	}
 	if err := lockExclusive(f); err != nil {
 		f.Close()
-		return nil, fmt.Errorf("lock log %s: %w (another writer holds it)", path, err)
+		if isLockContention(err) {
+			return nil, fmt.Errorf("lock log %s: %w (another writer holds it)", path, err)
+		}
+		return nil, fmt.Errorf("lock log %s: %w", path, err)
 	}
 	return &Writer{f: f, enc: json.NewEncoder(f), clock: clock}, nil
 }
