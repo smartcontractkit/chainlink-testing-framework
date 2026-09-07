@@ -75,9 +75,13 @@ An error is never a pass: `2` wins over any violation found alongside it.
 - The gate checks alert **state and health**, not notification delivery — a silenced alert that still fires fails.
 - `recovered` has **no deadline** — a bad-at-`from` alert that clears by `to` passes; set `--preexisting fail` to forbid it.
 - A **retry is a new deploy**, not a replay — re-running the job re-records against a new `from`.
+- `watch` and `check` must run in **one job, one runner, one filesystem** — nothing persists across jobs or attempts.
+- The gate **never exits early** — a violation at minute 2 still holds the runner to `to + transitionGrace + drainTimeout`; size the job timeout to the planned run time the gate prints at start.
 
 ## More
 
 - [How alerts are evaluated](./how-alerts-are-evaluated) — the verdict model and coverage proof
 - [Check budget and scheduling](./advanced) — why the schedule and budget look the way they do, and why history isn't queried
+- [Architecture](./architecture) — design invariants and the recorder lifecycle, for maintainers
 - [CLI reference](./reference/cli) — every subcommand and flag
+- [Log format](./reference/log-format) — the JSONL log schema, for debugging artifacts
