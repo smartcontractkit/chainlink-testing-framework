@@ -181,9 +181,17 @@ func (s *Scheduler) Due(now time.Time) []string {
 }
 
 // Mark records that uid was just polled at now, scheduling its next poll one
-// cadence later.
-func (s *Scheduler) Mark(uid string, now time.Time) {
-	s.next[uid] = now.Add(s.every[uid])
+// cadence later. It fails on an unknown uid rather than silently treating the
+// missing cadence as zero: a zero cadence would schedule an immediate re-due
+// (next = now.Add(0)) and insert a bogus next-due entry, hiding a caller that
+// is polling a rule the scheduler never owns.
+func (s *Scheduler) Mark(uid string, now time.Time) error {
+	every, ok := s.every[uid]
+	if !ok {
+		return fmt.Errorf("Mark: unknown rule uid %q", uid)
+	}
+	s.next[uid] = now.Add(every)
+	return nil
 }
 
 // CheckBudget applies §5's error-at-start check to a fully resolved schedule.
@@ -217,6 +225,9 @@ func CheckBudget(t map[string]ruleTimings, measured map[string]time.Duration, co
 	for _, uid := range uids {
 		if _, ok := measured[uid]; !ok {
 			return fmt.Errorf("schedule budget: rule %s was never measured", uid)
+		}
+		if t[uid].pollEvery <= 0 {
+			return fmt.Errorf("schedule budget: rule %s has a non-positive poll-interval %s", uid, t[uid].pollEvery)
 		}
 	}
 

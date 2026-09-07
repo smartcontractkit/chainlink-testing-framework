@@ -93,7 +93,7 @@ func TestDeriveTimings_DrainTimeoutFloor(t *testing.T) {
 	_, global, _ := DeriveTimings(defs, 0)
 	// double the longest interval (2 * 180s) should be the drain timeout
 	if global.drainTimeout != 2*180*time.Second {
-		t.Fatalf("drainTimeout = %s, want %s", global.drainTimeout, 180*time.Second)
+		t.Fatalf("drainTimeout = %s, want %s", global.drainTimeout, 2*180*time.Second)
 	}
 }
 
@@ -147,12 +147,29 @@ func TestScheduler_MarkAdvancesNextDue(t *testing.T) {
 		next:  map[string]time.Time{"r1": now},
 		every: map[string]time.Duration{"r1": 30 * time.Second},
 	}
-	s.Mark("r1", now)
+	if err := s.Mark("r1", now); err != nil {
+		t.Fatalf("Mark: unexpected error: %v", err)
+	}
 	if got := s.Due(now); len(got) != 0 {
 		t.Fatalf("Due right after Mark = %v, want none (next due is 30s out)", got)
 	}
 	if got := s.Due(now.Add(30 * time.Second)); len(got) != 1 {
 		t.Fatalf("Due at next-due time = %v, want [r1]", got)
+	}
+}
+
+func TestScheduler_MarkUnknownUIDFails(t *testing.T) {
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	s := &Scheduler{
+		next:  map[string]time.Time{"r1": now},
+		every: map[string]time.Duration{"r1": 30 * time.Second},
+	}
+	if err := s.Mark("not-a-rule", now); err == nil {
+		t.Fatalf("Mark of an unknown uid: want error, got nil (a missing cadence must not read as zero and loop)")
+	}
+	// The failed Mark must not have inserted a bogus next-due entry.
+	if _, ok := s.next["not-a-rule"]; ok {
+		t.Errorf("Mark of an unknown uid inserted a next-due entry")
 	}
 }
 
@@ -176,7 +193,9 @@ func TestScheduler_PerRuleCadenceOverTime(t *testing.T) {
 		now := start.Add(elapsed)
 		for _, uid := range s.Due(now) {
 			counts[uid]++
-			s.Mark(uid, now)
+			if err := s.Mark(uid, now); err != nil {
+				t.Fatalf("Mark(%q): unexpected error: %v", uid, err)
+			}
 		}
 	}
 
@@ -296,6 +315,20 @@ func TestCheckBudget_MissingMixedMeasurementIsAnError(t *testing.T) {
 func TestCheckBudget_EmptyScheduleIsFine(t *testing.T) {
 	if err := CheckBudget(nil, nil, 1); err != nil {
 		t.Fatalf("CheckBudget = %v, want nil for an empty schedule", err)
+	}
+}
+
+func TestCheckBudget_NonPositivePollIntervalIsAnError(t *testing.T) {
+	for _, pe := range []time.Duration{0, -time.Second} {
+		timings := map[string]ruleTimings{"r1": {pollEvery: pe}}
+		measured := map[string]time.Duration{"r1": time.Second}
+		err := CheckBudget(timings, measured, 1)
+		if err == nil {
+			t.Fatalf("CheckBudget(pollEvery=%s) = nil, want error (non-positive poll-interval would divide by zero)", pe)
+		}
+		if !strings.Contains(err.Error(), "non-positive") {
+			t.Errorf("error %q does not name the non-positive poll-interval", err.Error())
+		}
 	}
 }
 
