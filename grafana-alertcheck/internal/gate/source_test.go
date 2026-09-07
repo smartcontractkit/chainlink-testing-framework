@@ -461,6 +461,39 @@ func TestHTTPSource_Definitions_GarbageBodyGivesUp(t *testing.T) {
 	assertRetryExhausted(t, err, 6)
 }
 
+func TestHTTPSource_ResponseBodyTooLarge(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		// Stream more than maxResponseBytes in 1 MiB chunks so the test never
+		// materializes the whole oversized body in its own memory — doRequest
+		// must cut it off, not buffer it.
+		chunk := strings.Repeat("x", 1<<20)
+		for i := 0; i < (maxResponseBytes/(1<<20))+2; i++ {
+			if _, err := w.Write([]byte(chunk)); err != nil {
+				return
+			}
+		}
+	}))
+	defer srv.Close()
+
+	clock := newFakeClock(time.Now())
+	src := NewHTTPSource(srv.URL, "", clock)
+	_, err := src.Version(context.Background())
+	if err == nil {
+		t.Fatalf("Version(): want error, got nil (an oversized body must fail loudly)")
+	}
+	if !strings.Contains(err.Error(), "exceeded") {
+		t.Fatalf("error %q does not name the size limit", err.Error())
+	}
+	// An oversized body is a stable condition, not a transient one: it must
+	// fail hard on the first attempt, never burning retries re-reading it.
+	if n := calls.Load(); n != 1 {
+		t.Fatalf("calls = %d, want 1 — an oversized body must never be retried", n)
+	}
+}
+
 func TestHTTPSource_NetworkFailureRetries(t *testing.T) {
 	// A server that is never listening: every attempt is a network failure,
 	// classified as *TransportError, so this exercises the same retry path

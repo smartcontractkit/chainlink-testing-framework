@@ -19,6 +19,14 @@ import (
 // block once P4 exists; defined here because P2 needs it first.
 const skewHardLimit = 60 * time.Second
 
+// maxResponseBytes caps how much doRequest will read from a response body.
+// It is far above the largest real payload the gate retrieves (the ~600 KB
+// high-cardinality state fetch documented in parse_state_test.go), so a
+// legitimate response never trips it, but a misbehaving server or proxy
+// streaming an unbounded body is cut off loudly instead of OOMing the process
+// across retries.
+const maxResponseBytes = 25 << 20 // 25 MiB
+
 // Clock is the seam that lets tests advance time without sleeping (§22) — the
 // only two operations the gate ever needs from a clock.
 type Clock interface {
@@ -295,10 +303,16 @@ func (s *httpSource) doRequest(ctx context.Context, path string) (requestResult,
 	}
 	defer resp.Body.Close()
 
-	b, readErr := io.ReadAll(resp.Body)
+	b, readErr := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
 	tBodyRead := s.clock.Now()
 	if readErr != nil {
 		return requestResult{}, &TransportError{Err: fmt.Errorf("read response body (status %d): %w", resp.StatusCode, readErr)}
+	}
+	if len(b) >= maxResponseBytes {
+		// Hard error, never retried: a response this large is a stable
+		// property of the server's reply, not a transient network hiccup, so
+		// retrying would just reallocate the same bounded-but-pointless body.
+		return requestResult{}, fmt.Errorf("response body exceeded %d bytes", maxResponseBytes)
 	}
 	latency := tBodyRead.Sub(tSend)
 

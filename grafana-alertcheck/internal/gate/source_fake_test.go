@@ -3,6 +3,7 @@ package gate
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 )
@@ -114,7 +115,10 @@ func (f *fakeSource) Version(_ context.Context) (string, error) {
 func (f *fakeSource) Definitions(_ context.Context) ([]Definition, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.defs, f.defsErr
+	// Defensive copy: Definition is a value type, so Clone copies the
+	// full slice contents, not just the header — callers are free to mutate
+	// what they got back without racing or corrupting later reads.
+	return slices.Clone(f.defs), f.defsErr
 }
 
 func (f *fakeSource) RuleState(_ context.Context, title string) (Observation, error) {
@@ -128,6 +132,9 @@ func (f *fakeSource) RuleState(_ context.Context, title string) (Observation, er
 	if len(q) > 1 {
 		f.states[title] = q[1:]
 	}
+	// Defensive copy of the shared Rules slice so a caller mutating the
+	// returned Observation can't corrupt the scripted state other calls read.
+	next.obs.Rules = slices.Clone(next.obs.Rules)
 	return next.obs, next.err
 }
 
