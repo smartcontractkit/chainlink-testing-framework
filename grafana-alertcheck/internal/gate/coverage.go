@@ -244,11 +244,18 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t ruleTimings, d
 
 	// Check 9 — KeepLast (§10.2). Two distinct notes, both non-fatal:
 	//
-	// DECLARED: the rule's own no_data_state/exec_err_state is configured as
-	// KeepLast — a standing blind spot (§10.2's "unclear condition") whether
-	// or not it is ever exercised during this particular window. This reads
-	// def, not polls, so it fires exactly once regardless of poll content.
-	if def.NoDataState == keepLastReason || def.ExecErrState == keepLastReason {
+	// DECLARED: the rule's no_data_state/exec_err_state is configured as
+	// KeepLast — a standing blind spot (§10.2). Prefer the header's
+	// LoggedRule snapshot: in log mode def is re-resolved after the window
+	// and can drift (see pausedAtStart, log.go). Reads config, fires once.
+	nds, ees := def.NoDataState, def.ExecErrState
+	for _, lr := range h.Rules {
+		if lr.UID == def.UID {
+			nds, ees = lr.NoDataState, lr.ExecErrState
+			break
+		}
+	}
+	if nds == keepLastReason || ees == keepLastReason {
 		res.Notes = append(res.Notes, fmt.Sprintf(
 			"rule %q: configured with no_data_state/exec_err_state=KeepLast — a stale state can continue past a real fault (§10.2)", def.Title))
 	}

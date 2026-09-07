@@ -254,9 +254,7 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 	}
 	// onsetOf resolves a fresh episode's start: the instance's own ActiveAt,
 	// translated to the runner domain by this poll's skew, clamped to
-	// [from, windowEnd] so closeEpisode never has to undo its own clamp on a
-	// start that already overran the window (§16: a poll admitted by the skew
-	// bound can carry an ActiveAt past windowEnd).
+	// [from, windowEnd].
 	onsetOf := func(p Poll, inst Instance) time.Time {
 		start := runnerTime(p, inst.ActiveAt)
 		if start.Before(from) {
