@@ -14,10 +14,10 @@ builds:
     ldflags:
       - -s
       - -w
-      - -X github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck.version={{.Version}}
-      - -X github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck.commit={{.ShortCommit}}
-      - -X github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck.date={{.CommitDate}}
-      - -X github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck.builtBy=goreleaser
+      - -X github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck/cmd/grafana-alertcheck.version={{.Version}}
+      - -X github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck/cmd/grafana-alertcheck.commit={{.ShortCommit}}
+      - -X github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck/cmd/grafana-alertcheck.date={{.CommitDate}}
+      - -X github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck/cmd/grafana-alertcheck.builtBy=goreleaser
     goos:
       - linux
       - darwin

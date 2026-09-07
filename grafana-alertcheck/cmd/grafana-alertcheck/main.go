@@ -12,7 +12,7 @@ func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
 
-const usage = "usage: grafana-alertcheck <list|watch|check>"
+const usage = "usage: grafana-alertcheck <list|watch|check|version>"
 
 // run is the whole of main's testable surface: parse the subcommand, dispatch,
 // return the process exit code. Exit codes below 2 (pass/violations) belong to
@@ -37,6 +37,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return runWatch(args[1:], os.Stdin, stdout, stderr)
 	case "check":
 		return runCheck(args[1:], os.Stdin, stdout, stderr)
+	case "version":
+		return runVersion(args[1:], stdout, stderr)
 	case "-h", "-help", "--help":
 		fmt.Fprintln(stdout, usage)
 		return 0
