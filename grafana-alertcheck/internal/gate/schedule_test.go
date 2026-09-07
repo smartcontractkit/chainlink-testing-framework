@@ -223,6 +223,48 @@ func TestNewScheduler_StaggersWithinPollEvery(t *testing.T) {
 	}
 }
 
+func TestScheduler_EarliestDueEmpty(t *testing.T) {
+	s := &Scheduler{next: map[string]time.Time{}, every: map[string]time.Duration{}}
+	if _, ok := s.earliestDue(); ok {
+		t.Fatalf("earliestDue on an empty scheduler = ok=true, want false")
+	}
+}
+
+// TestScheduler_EarliestDueZeroTime pins the empty-detection fix: a
+// non-empty scheduler whose earliest next-due time is the zero time must still
+// report ok=true. The old IsZero() sentinel misread exactly this as "no rules".
+func TestScheduler_EarliestDueZeroTime(t *testing.T) {
+	s := &Scheduler{
+		next:  map[string]time.Time{"r1": {}},
+		every: map[string]time.Duration{"r1": time.Second},
+	}
+	earliest, ok := s.earliestDue()
+	if !ok {
+		t.Fatalf("earliestDue = ok=false, want true (the zero time is a real next-due, not an empty scheduler)")
+	}
+	if !earliest.IsZero() {
+		t.Errorf("earliestDue = %v, want the zero time", earliest)
+	}
+}
+
+func TestScheduler_EarliestDuePicksMinimum(t *testing.T) {
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	s := &Scheduler{
+		next: map[string]time.Time{
+			"later": now.Add(2 * time.Minute),
+			"soon":  now.Add(time.Minute),
+		},
+		every: map[string]time.Duration{"later": time.Minute, "soon": time.Minute},
+	}
+	earliest, ok := s.earliestDue()
+	if !ok {
+		t.Fatalf("earliestDue = ok=false, want true")
+	}
+	if !earliest.Equal(now.Add(time.Minute)) {
+		t.Errorf("earliestDue = %v, want the earliest next-due time", earliest)
+	}
+}
+
 // TestCheckBudget_MixedIntervalRegression is §22.3's sanity check from the
 // plan: one rule at 10s beside twenty at 300s, all measured ~1.8s, must not
 // error at any reasonable concurrency — the exact case a naive worst-case-slot

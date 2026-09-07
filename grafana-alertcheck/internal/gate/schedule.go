@@ -269,12 +269,14 @@ func (s *Scheduler) Mark(uid string, now time.Time) error {
 // maxGap.
 func (s *Scheduler) earliestDue() (time.Time, bool) {
 	var earliest time.Time
+	ok := false
 	for _, t := range s.next {
-		if earliest.IsZero() || t.Before(earliest) {
+		if !ok || t.Before(earliest) {
 			earliest = t
+			ok = true
 		}
 	}
-	return earliest, !earliest.IsZero()
+	return earliest, ok
 }
 
 // CheckBudget applies §5's error-at-start check to a fully resolved schedule.

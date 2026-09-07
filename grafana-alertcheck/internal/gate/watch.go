@@ -248,15 +248,34 @@ func waitForChildReady(cfg WatchConfig, child detachedChild) error {
 // honest when several runs share one --daemon-log path: without it the tail can
 // name a previous run's failure as the current one's cause.
 func daemonLogTail(path string, from int64) string {
-	b, err := os.ReadFile(path)
+	f, err := os.Open(path)
 	if err != nil {
 		return fmt.Sprintf("(daemon log %s is unreadable: %v)", path, err)
 	}
-	if from > 0 && from <= int64(len(b)) {
-		b = b[from:]
+	defer f.Close()
+
+	info, err := f.Stat()
+	if err != nil {
+		return fmt.Sprintf("(daemon log %s is unreadable: %v)", path, err)
 	}
-	if len(b) > daemonLogTailBytes {
-		b = b[len(b)-daemonLogTailBytes:]
+	size := info.Size()
+
+	// Only the tail is ever quoted, so read at most daemonLogTailBytes from
+	// disk rather than the whole (possibly unbounded, shared-across-runs) file.
+	start := int64(0)
+	if from > 0 && from <= size {
+		start = from
+	}
+	if tailStart := size - daemonLogTailBytes; tailStart > start {
+		start = tailStart
+	}
+	if _, err := f.Seek(start, io.SeekStart); err != nil {
+		return fmt.Sprintf("(daemon log %s is unreadable: %v)", path, err)
+	}
+
+	b, err := io.ReadAll(io.LimitReader(f, daemonLogTailBytes))
+	if err != nil {
+		return fmt.Sprintf("(daemon log %s is unreadable: %v)", path, err)
 	}
 	if len(b) == 0 {
 		return fmt.Sprintf("(this run wrote nothing to the daemon log %s)", path)
