@@ -269,8 +269,8 @@ func TestInstanceKey(t *testing.T) {
 	if a != b {
 		t.Errorf("instanceKey order-independence: %q != %q", a, b)
 	}
-	if a != "a=1\nb=2\n" {
-		t.Errorf("instanceKey = %q, want a=1\\nb=2\\n", a)
+	if a != `{"a":"1","b":"2"}` {
+		t.Errorf("instanceKey = %q, want %q", a, `{"a":"1","b":"2"}`)
 	}
 
 	diff := instanceKey(map[string]string{"a": "1", "b": "3"})
@@ -278,8 +278,21 @@ func TestInstanceKey(t *testing.T) {
 		t.Errorf("instanceKey should differ when a label value differs")
 	}
 
-	if instanceKey(nil) != "" {
-		t.Errorf("instanceKey(nil) = %q, want empty string", instanceKey(nil))
+	if instanceKey(nil) != "null" {
+		t.Errorf("instanceKey(nil) = %q, want \"null\"", instanceKey(nil))
+	}
+}
+
+// TestInstanceKey_NoCollision guards against ambiguous identities: label
+// values may legally contain "\n" or "=", and a naive "k=v\n" join would
+// collide e.g. {a:"1\nb=2"} with {a:"1",b:"2"}. The JSON encoding must keep
+// such sets distinct.
+func TestInstanceKey_NoCollision(t *testing.T) {
+	if instanceKey(map[string]string{"a": "1\nb=2"}) == instanceKey(map[string]string{"a": "1", "b": "2"}) {
+		t.Errorf("instanceKey collided for sets {a:1\\nb=2} and {a:1,b:2}")
+	}
+	if instanceKey(map[string]string{"a": "1=b"}) == instanceKey(map[string]string{"a": "1", "b": ""}) {
+		t.Errorf("instanceKey collided for a value containing '='")
 	}
 }
 

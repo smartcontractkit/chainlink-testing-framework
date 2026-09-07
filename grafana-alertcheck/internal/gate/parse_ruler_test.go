@@ -114,3 +114,14 @@ func TestParseDefinitions_Recording(t *testing.T) {
 		t.Errorf("expected zero-valued alert-only fields for a recording rule, got %+v", d)
 	}
 }
+
+// A datasource-managed rule with neither an "alert" nor a "record" name has no
+// identity (its only name is the Prometheus rule name), and an empty Title
+// would make P3's refusal-by-name unreachable. It must fail parsing, not hand
+// back a silently unusable Definition.
+func TestParseDefinitions_DatasourceManagedNoName(t *testing.T) {
+	body := []byte(`{"ExampleMetrics":[{"name":"g","rules":[{"expr":"up == 0","for":"5m"}]}]}`)
+	if _, err := ParseDefinitions(body); err == nil {
+		t.Fatalf("ParseDefinitions: expected error for datasource-managed rule with no alert/record, got nil")
+	}
+}

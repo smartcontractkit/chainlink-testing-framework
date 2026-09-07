@@ -13,8 +13,11 @@ import (
 // required field sent as null would silently pass through as its zero value.
 func req[T any](m map[string]json.RawMessage, key string, dst *T) error {
 	raw, ok := m[key]
-	if !ok || isJSONNull(raw) {
+	if !ok {
 		return fmt.Errorf("required field %q is absent", key)
+	}
+	if isJSONNull(raw) {
+		return fmt.Errorf("required field %q is null", key)
 	}
 	if err := json.Unmarshal(raw, dst); err != nil {
 		return fmt.Errorf("field %q: %w", key, err)

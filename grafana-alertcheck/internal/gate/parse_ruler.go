@@ -115,6 +115,9 @@ func parseDefinition(raw json.RawMessage, folder, group string) (Definition, err
 				return Definition{}, err
 			}
 		}
+		if def.Title == "" {
+			return Definition{}, fmt.Errorf("datasource-managed rule has no alert or record name")
+		}
 		return def, nil
 	}
 

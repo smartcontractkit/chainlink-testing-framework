@@ -3,7 +3,6 @@ package gate
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 )
@@ -249,21 +248,13 @@ func normalizeInstanceState(s string) (State, string, error) {
 	return state, reason, nil
 }
 
-// instanceKey is a stable identity for an instance's label set: a sorted
-// "k=v\n" join. Used to correlate an instance across polls without hashing.
+// instanceKey is a stable identity for an instance's label set. It is the
+// JSON encoding of the label map, which encoding/json deterministically emits
+// with sorted keys, so the string is order-independent and collision-free (a
+// value containing "=" or "\n" can't be mistaken for a key/value boundary).
+// Used to correlate an instance across polls without hashing. Marshal cannot
+// fail for map[string]string, so the error is discarded.
 func instanceKey(labels map[string]string) string {
-	keys := make([]string, 0, len(labels))
-	for k := range labels {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	var b strings.Builder
-	for _, k := range keys {
-		b.WriteString(k)
-		b.WriteByte('=')
-		b.WriteString(labels[k])
-		b.WriteByte('\n')
-	}
-	return b.String()
+	b, _ := json.Marshal(labels)
+	return string(b)
 }
