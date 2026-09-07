@@ -566,10 +566,8 @@ func TestProveCoverage_FutureLastEvaluationIsUnobservable(t *testing.T) {
 	sentinel := to
 
 	res := proveCoverage(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, rt, def, from, to, 0)
-	if res.Reason != ReasonFutureEvaluation {
-		t.Fatalf("Reason = %q, want future_evaluation: a lastEvaluation in the future of grafana_now must fail "+
-			"closed rather than read its negative staleness as fresh", res.Reason)
-	}
+	require.Equal(t, ReasonFutureEvaluation, res.Reason,
+		"a lastEvaluation in the future of grafana_now must fail closed rather than read its negative staleness as fresh")
 }
 
 // --- Check 3, tightened: the boundary segments must widen by the skew bound ---

@@ -1,7 +1,6 @@
 package gate
 
 import (
-	"strings"
 	"testing"
 	"time"
 
@@ -194,13 +193,11 @@ func TestScheduler_MarkUnknownUIDFails(t *testing.T) {
 		next:  map[string]time.Time{"r1": now},
 		every: map[string]time.Duration{"r1": 30 * time.Second},
 	}
-	if err := s.Mark("not-a-rule", now); err == nil {
-		t.Fatalf("Mark of an unknown uid: want error, got nil (a missing cadence must not read as zero and loop)")
-	}
+	err := s.Mark("not-a-rule", now)
+	require.Error(t, err, "a missing cadence must not read as zero and loop")
 	// The failed Mark must not have inserted a bogus next-due entry.
-	if _, ok := s.next["not-a-rule"]; ok {
-		t.Errorf("Mark of an unknown uid inserted a next-due entry")
-	}
+	_, ok := s.next["not-a-rule"]
+	require.False(t, ok, "a failed Mark must not insert a next-due entry")
 }
 
 // TestScheduler_PerRuleCadenceOverTime simulates a run and counts how often
@@ -223,9 +220,7 @@ func TestScheduler_PerRuleCadenceOverTime(t *testing.T) {
 		now := start.Add(elapsed)
 		for _, uid := range s.Due(now) {
 			counts[uid]++
-			if err := s.Mark(uid, now); err != nil {
-				t.Fatalf("Mark(%q): unexpected error: %v", uid, err)
-			}
+			require.NoErrorf(t, s.Mark(uid, now), "Mark(%q)", uid)
 		}
 	}
 
@@ -251,9 +246,8 @@ func TestNewScheduler_StaggersWithinPollEvery(t *testing.T) {
 
 func TestScheduler_EarliestDueEmpty(t *testing.T) {
 	s := &Scheduler{next: map[string]time.Time{}, every: map[string]time.Duration{}}
-	if _, ok := s.earliestDue(); ok {
-		t.Fatalf("earliestDue on an empty scheduler = ok=true, want false")
-	}
+	_, ok := s.earliestDue()
+	require.False(t, ok)
 }
 
 // A zero next-due time is real, not an empty scheduler.
@@ -263,12 +257,8 @@ func TestScheduler_EarliestDueZeroTime(t *testing.T) {
 		every: map[string]time.Duration{"r1": time.Second},
 	}
 	earliest, ok := s.earliestDue()
-	if !ok {
-		t.Fatalf("earliestDue = ok=false, want true (the zero time is a real next-due, not an empty scheduler)")
-	}
-	if !earliest.IsZero() {
-		t.Errorf("earliestDue = %v, want the zero time", earliest)
-	}
+	require.True(t, ok, "the zero time is a real next-due, not an empty scheduler")
+	require.Truef(t, earliest.IsZero(), "earliestDue = %v, want the zero time", earliest)
 }
 
 func TestScheduler_EarliestDuePicksMinimum(t *testing.T) {
@@ -281,12 +271,8 @@ func TestScheduler_EarliestDuePicksMinimum(t *testing.T) {
 		every: map[string]time.Duration{"later": time.Minute, "soon": time.Minute},
 	}
 	earliest, ok := s.earliestDue()
-	if !ok {
-		t.Fatalf("earliestDue = ok=false, want true")
-	}
-	if !earliest.Equal(now.Add(time.Minute)) {
-		t.Errorf("earliestDue = %v, want the earliest next-due time", earliest)
-	}
+	require.True(t, ok)
+	require.Truef(t, earliest.Equal(now.Add(time.Minute)), "earliestDue = %v, want the earliest next-due time", earliest)
 }
 
 // One rule at 10s beside twenty at 300s, all measured ~1.8s, must not error at
@@ -370,12 +356,8 @@ func TestCheckBudget_NonPositivePollIntervalIsAnError(t *testing.T) {
 		timings := map[string]ruleTimings{"r1": {pollEvery: pe}}
 		measured := map[string]time.Duration{"r1": time.Second}
 		err := CheckBudget(timings, measured, 1)
-		if err == nil {
-			t.Fatalf("CheckBudget(pollEvery=%s) = nil, want error (non-positive poll-interval would divide by zero)", pe)
-		}
-		if !strings.Contains(err.Error(), "non-positive") {
-			t.Errorf("error %q does not name the non-positive poll-interval", err.Error())
-		}
+		require.Errorf(t, err, "pollEvery=%s would divide by zero", pe)
+		require.Contains(t, err.Error(), "non-positive", "the error must name the non-positive poll-interval")
 	}
 }
 

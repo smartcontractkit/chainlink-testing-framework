@@ -455,17 +455,11 @@ func TestHTTPSource_ResponseBodyTooLarge(t *testing.T) {
 	clock := newFakeClock(time.Now())
 	src := NewHTTPSource(srv.URL, "", clock)
 	_, err := src.Version(context.Background())
-	if err == nil {
-		t.Fatalf("Version(): want error, got nil (an oversized body must fail loudly)")
-	}
-	if !strings.Contains(err.Error(), "exceeded") {
-		t.Fatalf("error %q does not name the size limit", err.Error())
-	}
+	require.Error(t, err, "an oversized body must fail loudly")
+	require.Contains(t, err.Error(), "exceeded", "the error must name the size limit")
 	// An oversized body is a stable condition, not a transient one: it must
 	// fail hard on the first attempt, never burning retries re-reading it.
-	if n := calls.Load(); n != 1 {
-		t.Fatalf("calls = %d, want 1 — an oversized body must never be retried", n)
-	}
+	require.Equal(t, int32(1), calls.Load(), "an oversized body must never be retried")
 }
 
 func TestHTTPSource_NetworkFailureRetries(t *testing.T) {

@@ -591,47 +591,30 @@ func TestPidFileRoundTrip(t *testing.T) {
 func TestDaemonLogTail(t *testing.T) {
 	t.Run("missing file is unreadable", func(t *testing.T) {
 		out := daemonLogTail(filepath.Join(t.TempDir(), "nope.daemon.log"), 0)
-		if !strings.Contains(out, "unreadable") {
-			t.Errorf("daemonLogTail = %q, want it to name the file as unreadable", out)
-		}
+		require.Contains(t, out, "unreadable")
 	})
 
 	t.Run("small file returns its content", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "small.daemon.log")
-		if err := os.WriteFile(path, []byte("line one\nline two\n"), 0o644); err != nil {
-			t.Fatalf("write: %v", err)
-		}
-		if out := daemonLogTail(path, 0); out != "line one\nline two" {
-			t.Errorf("daemonLogTail = %q, want the full trimmed content", out)
-		}
+		require.NoError(t, os.WriteFile(path, []byte("line one\nline two\n"), 0o644))
+		require.Equal(t, "line one\nline two", daemonLogTail(path, 0))
 	})
 
 	t.Run("large file keeps only the tail", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "large.daemon.log")
 		prefix := strings.Repeat("P", 1000)
 		suffix := strings.Repeat("S", daemonLogTailBytes)
-		if err := os.WriteFile(path, []byte(prefix+suffix), 0o644); err != nil {
-			t.Fatalf("write: %v", err)
-		}
-		out := daemonLogTail(path, 0)
-		if out != suffix {
-			t.Errorf("daemonLogTail = %q, want exactly the trailing %d bytes (the %d leading bytes dropped)", out, daemonLogTailBytes, len(prefix))
-		}
+		require.NoError(t, os.WriteFile(path, []byte(prefix+suffix), 0o644))
+		require.Equal(t, suffix, daemonLogTail(path, 0))
 	})
 
 	t.Run("offset skips a previous run's content", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "shared.daemon.log")
 		prior := strings.Repeat("p", 2000)
-		if err := os.WriteFile(path, []byte(prior), 0o644); err != nil {
-			t.Fatalf("write: %v", err)
-		}
+		require.NoError(t, os.WriteFile(path, []byte(prior), 0o644))
 		from := int64(len(prior))
 		thisRun := "this run's output\n"
-		if err := os.WriteFile(path, []byte(prior+thisRun), 0o644); err != nil {
-			t.Fatalf("write: %v", err)
-		}
-		if out := daemonLogTail(path, from); out != "this run's output" {
-			t.Errorf("daemonLogTail = %q, want only this run's bytes after offset %d", out, from)
-		}
+		require.NoError(t, os.WriteFile(path, []byte(prior+thisRun), 0o644))
+		require.Equal(t, "this run's output", daemonLogTail(path, from))
 	})
 }

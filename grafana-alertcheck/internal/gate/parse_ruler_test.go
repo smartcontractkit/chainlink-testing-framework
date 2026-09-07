@@ -85,7 +85,6 @@ func TestParseDefinitions_Recording(t *testing.T) {
 // A datasource-managed rule with no alert/record name must fail parsing.
 func TestParseDefinitions_DatasourceManagedNoName(t *testing.T) {
 	body := []byte(`{"ExampleMetrics":[{"name":"g","rules":[{"expr":"up == 0","for":"5m"}]}]}`)
-	if _, err := ParseDefinitions(body); err == nil {
-		t.Fatalf("ParseDefinitions: expected error for datasource-managed rule with no alert/record, got nil")
-	}
+	_, err := ParseDefinitions(body)
+	require.Error(t, err, "a datasource-managed rule with no alert/record must fail")
 }
