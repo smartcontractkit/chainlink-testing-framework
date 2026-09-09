@@ -1,0 +1,8 @@
+position: 3
+label: Reference
+collapsible: true
+collapsed: false
+link:
+  type: generated-index
+  slug: /platform-services/devex/cicd/grafana-alertcheck/reference
+  description: 'CLI reference for grafana-alertcheck.'
