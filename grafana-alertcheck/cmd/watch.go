@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -49,6 +50,13 @@ func runWatch(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	readyFD := fs.Int(gate.ReadyFDFlag[2:], 0, "")
 
 	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 2
+	}
+	if fs.NArg() != 0 {
+		fmt.Fprintf(stderr, "watch: unexpected arguments %v\n", fs.Args())
 		return 2
 	}
 
@@ -78,7 +86,7 @@ func runWatch(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		DaemonLog:   *daemonLog,
 		Concurrency: *common.concurrency,
 		Clock:       gate.SystemClock{},
-		Notes:       stderr,
+		Notes:       newNoteStyler(stderr),
 	}
 	if *until != "" {
 		t, err := time.Parse(time.RFC3339, *until)

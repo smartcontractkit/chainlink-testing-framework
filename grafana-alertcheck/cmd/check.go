@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -40,6 +41,13 @@ func runCheck(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	output := fs.String("output", "", `"json" writes the machine-readable Result to stdout in addition to the table; default is the table alone`)
 
 	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 2
+	}
+	if fs.NArg() != 0 {
+		fmt.Fprintf(stderr, "check: unexpected arguments %v\n", fs.Args())
 		return 2
 	}
 	if *output != "" && *output != "json" {
@@ -82,7 +90,7 @@ func runCheck(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		PidFile:              *pidfile,
 		Concurrency:          *common.concurrency,
 		Clock:                gate.SystemClock{},
-		Notes:                stderr,
+		Notes:                newNoteStyler(stderr),
 	}
 	if *to == "" {
 		fmt.Fprintln(stderr, "check: --to is required")
@@ -113,11 +121,10 @@ func runCheck(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 
 	result, checkErr := gate.Check(ctx, cfg)
 
-	if err := renderTable(stderr, result); err != nil {
-		fmt.Fprintln(stderr, err)
-	}
 	if checkErr != nil {
 		fmt.Fprintln(stderr, checkErr)
+	} else if err := renderTable(stderr, result); err != nil {
+		fmt.Fprintln(stderr, err)
 	}
 	if *output == "json" {
 		enc := json.NewEncoder(stdout)

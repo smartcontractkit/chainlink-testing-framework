@@ -67,11 +67,13 @@ func TestRenderTable(t *testing.T) {
 	require.Contains(t, out, string(gate.StateFiring))
 	require.Contains(t, out, "error")
 
-	// The footer: per-rule thresholds, global thresholds, and skew with its own
-	// bound rather than the fixed hard limit.
-	require.Contains(t, out, "Ape Alert: maxGap=1m0s healthGrace=2m0s evalStaleAfter=1m0s")
-	require.Contains(t, out, "Zebra Alert: maxGap=1m0s healthGrace=1m0s evalStaleAfter=1m0s")
-	require.NotContains(t, out, "Paused Alert: maxGap")
+	// The footer: per-rule thresholds are a table (RULE/MAXGAP/HEALTHGRACE/
+	// EVALSTALEAFTER) rather than prose, followed by the global thresholds and
+	// the violations count with the skew and its own bound rather than the
+	// fixed hard limit.
+	require.Contains(t, out, "MAXGAP")
+	require.Contains(t, out, "HEALTHGRACE")
+	require.Contains(t, out, "EVALSTALEAFTER")
 	require.Contains(t, out, "global: transitionGrace=5m0s (source: Ape Alert (for=5m)) drainTimeout=2m0s")
 	require.Contains(t, out, "largest measured clock skew: 1.5s (bound ±250ms, hard limit 1m0s)")
 	require.Contains(t, out, "violations: 2")

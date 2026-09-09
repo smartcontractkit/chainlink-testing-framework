@@ -44,9 +44,10 @@ type Observation struct {
 	Latency    time.Duration // t_send through the full body read — see requestResult.Latency
 }
 
-// TransportError marks a failure worth retrying: a non-2xx response, a network
-// failure, or a body that failed to parse. Not a deleted rule (an authoritative
-// 2xx) and not a clock problem (a hard error — see doRequest).
+// TransportError marks a failure worth retrying: a 5xx/429 response, a network
+// failure, or a body that failed to parse. Not a 4xx (wrong auth, missing
+// resource), not a deleted rule (an authoritative 2xx) and not a clock problem
+// (a hard error — see doRequest).
 type TransportError struct {
 	Err    error
 	Status int // 0 when the failure never got a status (network/transport failure)
@@ -111,17 +112,7 @@ func parseGrafanaVersion(s string) (grafanaVersion, error) {
 	var v grafanaVersion
 	fields := [3]*int{&v.major, &v.minor, &v.patch}
 	for i, field := range fields {
-		// Trim any trailing non-digit suffix (prerelease/build metadata, e.g.
-		// "0+security") rather than requiring an exact numeric match.
-		digits := parts[i]
-		j := 0
-		for j < len(digits) && digits[j] >= '0' && digits[j] <= '9' {
-			j++
-		}
-		if j == 0 {
-			return grafanaVersion{}, fmt.Errorf("unparseable version %q", s)
-		}
-		n, err := strconv.Atoi(digits[:j])
+		n, err := strconv.Atoi(parts[i])
 		if err != nil {
 			return grafanaVersion{}, fmt.Errorf("unparseable version %q: %w", s, err)
 		}
@@ -259,10 +250,11 @@ type requestResult struct {
 	Latency time.Duration
 }
 
-// doRequest performs one HTTP GET and classifies the outcome: network failure,
-// non-2xx, or body-read failure is retryable (*TransportError); a missing or
-// unparseable Date header or a skew beyond SkewHardLimit is a hard error —
-// retrying can never fix either, so neither enters the backoff loop.
+// doRequest performs one HTTP GET and classifies the outcome: a 5xx/429, a
+// network failure, or a body-read failure is retryable (*TransportError); a
+// 4xx (wrong auth, missing resource — retrying cannot fix it), a missing or
+// unparseable Date header, or a skew beyond SkewHardLimit is a hard error, so
+// none of those enters the backoff loop.
 //
 // The Date/skew check runs on every endpoint (even /api/health): a skew only
 // noticed once RuleState starts polling has already masked earlier reads, so it
@@ -298,7 +290,11 @@ func (s *httpSource) doRequest(ctx context.Context, path string) (requestResult,
 	latency := tBodyRead.Sub(tSend)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return requestResult{}, &TransportError{Err: fmt.Errorf("unexpected status %d", resp.StatusCode), Status: resp.StatusCode}
+		err := fmt.Errorf("unexpected status %d", resp.StatusCode)
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != http.StatusTooManyRequests {
+			return requestResult{}, err
+		}
+		return requestResult{}, &TransportError{Err: err, Status: resp.StatusCode}
 	}
 
 	dateHeader := resp.Header.Get("Date")
