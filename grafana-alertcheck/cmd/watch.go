@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -15,19 +16,17 @@ const watchUsage = "usage: grafana-alertcheck watch --out <file> [--pidfile F] [
 
 // runWatch is the record step's entire CLI surface, split in two by one flag
 // set — gate.DaemonChildFlag ("--daemon-child") and gate.ReadyFDFlag
-// ("--ready-fd") select which side of P6's parent/child split this
-// invocation is:
+// ("--ready-fd") select which side of the parent/child split this invocation
+// is:
 //
 //   - without them: the record command an operator types. It parses --out,
 //     --alerts and the rest, builds a gate.WatchConfig and calls gate.Watch,
 //     which resolves, records the first observation of every rule, and
-//     detaches the recorder before returning (§4.3).
+//     detaches the recorder before returning.
 //   - with them: the detached recorder itself. gate.Watch's own childArgs
 //     (watch_unix.go) is the only thing that ever sets them — an operator
-//     never types "--daemon-child" and it does not appear in watchUsage —
-//     and this dispatches straight to gate.RunDaemonChild. P6's integration
-//     test already covers the spawn; this is the one new test P10 owns: that
-//     seeing the flag reaches RunDaemonChild.
+//     never types "--daemon-child" and it does not appear in watchUsage — and
+//     this dispatches straight to gate.RunDaemonChild.
 //
 // Both flags live in the SAME flag set as the operator-facing ones rather
 // than a second, hidden set: the child is started with childArgs' exact
@@ -51,6 +50,13 @@ func runWatch(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	readyFD := fs.Int(gate.ReadyFDFlag[2:], 0, "")
 
 	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 2
+	}
+	if fs.NArg() != 0 {
+		fmt.Fprintf(stderr, "watch: unexpected arguments %v\n", fs.Args())
 		return 2
 	}
 
@@ -80,7 +86,7 @@ func runWatch(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		DaemonLog:   *daemonLog,
 		Concurrency: *common.concurrency,
 		Clock:       gate.SystemClock{},
-		Notes:       stderr,
+		Notes:       newNoteStyler(stderr),
 	}
 	if *until != "" {
 		t, err := time.Parse(time.RFC3339, *until)
@@ -106,11 +112,10 @@ func runWatch(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// runDaemonChild is the detached recorder's whole entry point (P6's
-// obligation on this phase). Its stdout and stderr are already the daemon
-// log file — spawnChild (watch_unix.go) redirects both before Start — so
-// writing to stderr here lands exactly where waitForChildReady's failure
-// path quotes from.
+// runDaemonChild is the detached recorder's whole entry point. Its stdout and
+// stderr are already the daemon log file — spawnChild (watch_unix.go)
+// redirects both before Start — so writing to stderr here lands exactly where
+// waitForChildReady's failure path quotes from.
 func runDaemonChild(out, until string, concurrency, readyFD int, stderr io.Writer) int {
 	url, token, err := grafanaEnv()
 	if err != nil {

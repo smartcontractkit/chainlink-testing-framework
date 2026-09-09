@@ -29,7 +29,7 @@ var promDurationUnits = []promDurationUnit{
 }
 
 // ParsePromDuration parses a Grafana/Prometheus-style duration ("1h30m", "1d", "1w").
-// Unlike time.ParseDuration, it accepts "d" and "w" (§11.8). "" and "0" are 0.
+// Unlike time.ParseDuration, it accepts "d" and "w". "" and "0" are 0.
 func ParsePromDuration(s string) (time.Duration, error) {
 	if s == "" || s == "0" {
 		return 0, nil

@@ -4,15 +4,15 @@ import (
 	"bytes"
 	"errors"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck/internal/gate"
+	"github.com/stretchr/testify/require"
 )
 
-// TestExitCode pins §20.3/H6/H7's mapping directly against exitCode, with no
-// network involved: err != nil is exit 2 even alongside violations (H6 —
-// inability beats violation), violations alone are exit 1, and neither is 0.
+// The exit-code mapping, pinned directly against exitCode with no network
+// involved: err != nil is exit 2 even alongside violations (an inability to
+// check beats a violation), violations alone are exit 1, and neither is 0.
 func TestExitCode(t *testing.T) {
 	tests := []struct {
 		name string
@@ -27,9 +27,7 @@ func TestExitCode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := exitCode(tt.res, tt.err); got != tt.want {
-				t.Fatalf("exitCode(...) = %d, want %d", got, tt.want)
-			}
+			require.Equal(t, tt.want, exitCode(tt.res, tt.err))
 		})
 	}
 }
@@ -37,16 +35,14 @@ func TestExitCode(t *testing.T) {
 func writeTempAlerts(t *testing.T) string {
 	t.Helper()
 	path := t.TempDir() + "/alerts.txt"
-	if err := os.WriteFile(path, []byte("Some Alert\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(path, []byte("Some Alert\n"), 0o644))
 	return path
 }
 
-// TestRunCheck_FlagValidation is the flag-validation matrix: every one of
-// these must fail before any network call, because Config.validate() (P9)
-// runs first — an unreachable GRAFANA_URL succeeding or timing out is a
-// different test than these, which check pure input validation.
+// The flag-validation matrix: every one of these must fail before any network
+// call, because gate.Config.validate() runs first — an unreachable GRAFANA_URL
+// succeeding or timing out is a different test than these, which check pure
+// input validation.
 func TestRunCheck_FlagValidation(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -73,9 +69,9 @@ func TestRunCheck_FlagValidation(t *testing.T) {
 			return []string{"--to", "2026-01-01T00:00:00Z", "--states", "bogus", "--alerts", writeTempAlerts(t)}
 		}, "--states"},
 		{"states normal is rejected", true, func(t *testing.T) []string {
-			// normal is the good state, never a state to classify AS bad
-			// (R1): accepting it would make --states normal fail every
-			// healthy instance, the fail-open shape H7 exists to prevent.
+			// normal is the good state, never a state to classify AS bad:
+			// accepting it would make --states normal fail every healthy
+			// instance.
 			return []string{"--to", "2026-01-01T00:00:00Z", "--states", "normal", "--alerts", writeTempAlerts(t)}
 		}, "--states"},
 		{"bad preexisting", true, func(t *testing.T) []string {
@@ -100,19 +96,14 @@ func TestRunCheck_FlagValidation(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			args := append([]string{"check"}, tt.args(t)...)
 			code := run(args, &stdout, &stderr)
-			if code != 2 {
-				t.Fatalf("code = %d, want 2; stderr = %q", code, stderr.String())
-			}
-			if !strings.Contains(stderr.String(), tt.wantErr) {
-				t.Fatalf("stderr = %q, want it to contain %q", stderr.String(), tt.wantErr)
-			}
+			require.Equal(t, 2, code)
+			require.Contains(t, stderr.String(), tt.wantErr)
 		})
 	}
 }
 
-// TestRunCheck_ToInPastNoLog pins §4.2's refusal: a `to` already in the past
-// with no recorded log cannot be classified from anything, because nothing
-// ever observed the window.
+// A `to` already in the past with no recorded log cannot be classified from
+// anything, because nothing ever observed the window.
 func TestRunCheck_ToInPastNoLog(t *testing.T) {
 	t.Setenv("GRAFANA_URL", "http://example.invalid")
 	t.Setenv("GRAFANA_TOKEN", "test-token")
@@ -122,26 +113,18 @@ func TestRunCheck_ToInPastNoLog(t *testing.T) {
 		"--from", "1999-01-01T00:00:00Z", "--to", "2000-01-01T00:00:00Z",
 		"--alerts", writeTempAlerts(t),
 	}, &stdout, &stderr)
-	if code != 2 {
-		t.Fatalf("code = %d, want 2; stderr = %q", code, stderr.String())
-	}
-	if !strings.Contains(stderr.String(), "already passed") {
-		t.Fatalf("stderr = %q, want the §4.2 refusal", stderr.String())
-	}
+	require.Equal(t, 2, code)
+	require.Contains(t, stderr.String(), "already passed")
 }
 
-// TestRunCheck_NoResultOnConfigError pins §20.2: --output json never writes
-// to stdout when Check was never reached, because there is no Result to
-// encode — only the table (on stderr) can report a configuration failure.
+// --output json never writes to stdout when Check was never reached, because
+// there is no Result to encode — only the table (on stderr) can report a
+// configuration failure.
 func TestRunCheck_NoResultOnConfigError(t *testing.T) {
 	t.Setenv("GRAFANA_URL", "")
 	t.Setenv("GRAFANA_TOKEN", "")
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"check", "--to", "2026-01-01T00:00:00Z", "--output", "json"}, &stdout, &stderr)
-	if code != 2 {
-		t.Fatalf("code = %d, want 2", code)
-	}
-	if stdout.Len() != 0 {
-		t.Fatalf("stdout = %q, want empty", stdout.String())
-	}
+	require.Equal(t, 2, code)
+	require.Empty(t, stdout.String())
 }

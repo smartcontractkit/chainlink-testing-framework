@@ -23,7 +23,7 @@ type detachedChild struct {
 	logOffset int64
 }
 
-// spawnChild re-execs this binary as the detached recorder (§4.4). A trailing
+// spawnChild re-execs this binary as the detached recorder. A trailing
 // `&` is NOT sufficient: the child would keep the parent's session and process
 // group, so it would still take the terminal's signals and, on a runner, die
 // with the step that started it. Setsid gives it a new session AND a new
@@ -52,7 +52,7 @@ func spawnChild(cfg WatchConfig) (detachedChild, error) {
 		logOffset = info.Size()
 	}
 
-	// The readiness pipe (§ReadyFDFlag): the child gets the write end as
+	// The readiness pipe: the child gets the write end as
 	// descriptor 3 and reports on it once it holds the log and is polling.
 	readyRead, readyWrite, err := os.Pipe()
 	if err != nil {
@@ -64,9 +64,9 @@ func spawnChild(cfg WatchConfig) (detachedChild, error) {
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
 	cmd.ExtraFiles = []*os.File{readyWrite} // descriptor 3 in the child
-	// The environment is how the connection details reach the child (§20.2):
-	// the token must never appear in argv, where it would land in the process
-	// table and in CI logs.
+	// The environment is how the connection details reach the child: the token
+	// must never appear in argv, where it would land in the process table and
+	// in CI logs.
 	cmd.Env = os.Environ()
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 

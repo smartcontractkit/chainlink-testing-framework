@@ -3,6 +3,8 @@ package gate
 import (
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func lbl(name string) map[string]string { return map[string]string{"instance": name} }
@@ -55,9 +57,9 @@ func TestClassifyRule_NoEvidenceIsClean(t *testing.T) {
 
 	polls := []Poll{quietPoll("r1", from), quietPoll("r1", to)}
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	if outcome != OutcomeClean || badFor != 0 || len(viols) != 0 {
-		t.Fatalf("outcome=%v badFor=%v viols=%v, want clean/0/none", outcome, badFor, viols)
-	}
+	require.Equal(t, OutcomeClean, outcome)
+	require.Zero(t, badFor)
+	require.Empty(t, viols)
 }
 
 func TestClassifyRule_NewOnsetInsideWindowIsNewlyBad(t *testing.T) {
@@ -72,19 +74,13 @@ func TestClassifyRule_NewOnsetInsideWindowIsNewlyBad(t *testing.T) {
 		abnormalPoll("r1", to, StateFiring, lbl("a"), onset),
 	}
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	if outcome != OutcomeNewlyBad {
-		t.Fatalf("outcome = %v, want newly_bad", outcome)
-	}
-	if want := to.Sub(onset); badFor != want {
-		t.Fatalf("badFor = %v, want %v", badFor, want)
-	}
-	if len(viols) != 1 || viols[0].Outcome != OutcomeNewlyBad {
-		t.Fatalf("viols = %+v, want exactly one newly_bad violation", viols)
-	}
+	require.Equal(t, OutcomeNewlyBad, outcome)
+	require.Equal(t, to.Sub(onset), badFor)
+	require.Len(t, viols, 1)
+	require.Equal(t, OutcomeNewlyBad, viols[0].Outcome)
 }
 
-// TestClassifyRule_NewOnsetThatClearsStillFails pins §11.4 point 3: a
-// genuinely new bad episode fails even if it clears again before the window
+// A genuinely new bad episode fails even if it clears again before the window
 // ends — only a PREEXISTING condition earns the benefit of `recovered`.
 func TestClassifyRule_NewOnsetThatClearsStillFails(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -100,12 +96,8 @@ func TestClassifyRule_NewOnsetThatClearsStillFails(t *testing.T) {
 		quietPoll("r1", to),
 	}
 	outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	if outcome != OutcomeNewlyBad {
-		t.Fatalf("outcome = %v, want newly_bad even though it cleared", outcome)
-	}
-	if len(viols) != 1 {
-		t.Fatalf("viols = %+v, want one violation", viols)
-	}
+	require.Equal(t, OutcomeNewlyBad, outcome, "even though it cleared")
+	require.Len(t, viols, 1)
 }
 
 // --- recovered / persistently_bad (preexisting) ---
@@ -123,20 +115,14 @@ func TestClassifyRule_PreexistingThatRecoversIsRecoveredAndNotAViolation(t *test
 		quietPoll("r1", to),
 	}
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	if outcome != OutcomeRecovered {
-		t.Fatalf("outcome = %v, want recovered", outcome)
-	}
-	if want := clearAt.Sub(from); badFor != want {
-		t.Fatalf("badFor = %v, want %v", badFor, want)
-	}
-	if len(viols) != 0 {
-		t.Fatalf("viols = %+v, want none: default policy passes a recovered preexisting instance", viols)
-	}
+	require.Equal(t, OutcomeRecovered, outcome)
+	require.Equal(t, clearAt.Sub(from), badFor)
+	require.Empty(t, viols, "default policy passes a recovered preexisting instance")
 }
 
-// §22.2's "late condition": bad for 58 of a 60-minute window, clear at
-// minute 58, still passes with a large BadFor — never a fail against some
-// derived deadline (e.g. "must clear before 90% of the window").
+// The late condition: bad for 58 of a 60-minute window, clear at minute 58,
+// still passes with a large BadFor — never a fail against some derived
+// deadline (e.g. "must clear before 90% of the window").
 func TestClassifyRule_LateRecoveryPassesRegardlessOfHowLateItIs(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(60 * time.Minute)
@@ -150,15 +136,9 @@ func TestClassifyRule_LateRecoveryPassesRegardlessOfHowLateItIs(t *testing.T) {
 		quietPoll("r1", to),
 	}
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	if outcome != OutcomeRecovered {
-		t.Fatalf("outcome = %v, want recovered even 58 minutes into a 60-minute window", outcome)
-	}
-	if want := clearAt.Sub(from); badFor != want {
-		t.Fatalf("badFor = %v, want the full %v bad duration, not a value clamped against a deadline", badFor, want)
-	}
-	if len(viols) != 0 {
-		t.Fatalf("viols = %+v, want none: there is no deadline a preexisting recovery must beat", viols)
-	}
+	require.Equal(t, OutcomeRecovered, outcome, "even 58 minutes into a 60-minute window")
+	require.Equal(t, clearAt.Sub(from), badFor, "not a value clamped against a deadline")
+	require.Empty(t, viols, "there is no deadline a preexisting recovery must beat")
 }
 
 func TestClassifyRule_PreexistingStillBadAtWindowEndIsPersistentlyBad(t *testing.T) {
@@ -171,15 +151,10 @@ func TestClassifyRule_PreexistingStillBadAtWindowEndIsPersistentlyBad(t *testing
 		abnormalPoll("r1", to, StateFiring, lbl("a"), from.Add(-time.Hour)),
 	}
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	if outcome != OutcomePersistentlyBad {
-		t.Fatalf("outcome = %v, want persistently_bad", outcome)
-	}
-	if badFor != to.Sub(from) {
-		t.Fatalf("badFor = %v, want the full window %v", badFor, to.Sub(from))
-	}
-	if len(viols) != 1 || viols[0].Outcome != OutcomePersistentlyBad {
-		t.Fatalf("viols = %+v, want one persistently_bad violation", viols)
-	}
+	require.Equal(t, OutcomePersistentlyBad, outcome)
+	require.Equal(t, to.Sub(from), badFor)
+	require.Len(t, viols, 1)
+	require.Equal(t, OutcomePersistentlyBad, viols[0].Outcome)
 }
 
 // --- flapping ---
@@ -197,17 +172,14 @@ func TestClassifyRule_ClearThenBadAgainIsFlapping(t *testing.T) {
 		quietPoll("r1", to),
 	}
 	outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	if outcome != OutcomeFlapping {
-		t.Fatalf("outcome = %v, want flapping", outcome)
-	}
-	if len(viols) != 1 || viols[0].Outcome != OutcomeFlapping {
-		t.Fatalf("viols = %+v, want one flapping violation, always a fail regardless of policy", viols)
-	}
+	require.Equal(t, OutcomeFlapping, outcome)
+	require.Len(t, viols, 1)
+	require.Equal(t, OutcomeFlapping, viols[0].Outcome, "always a fail regardless of policy")
 }
 
-// §22.2: "a clear and then a second bad state gives flapping, at each
-// possible time of the second bad state." A table over where the second
-// onset lands — immediately after the clear, mid-window, and right at the
+// A clear and then a second bad state gives flapping, wherever the second bad
+// state lands. A table over where the second onset falls — immediately after
+// the clear, mid-window, and right at the
 // last instant before windowEnd — closes the boundary this single fixed
 // timing above cannot.
 func TestClassifyRule_FlappingAtEveryTimingOfTheSecondOnset(t *testing.T) {
@@ -234,17 +206,14 @@ func TestClassifyRule_FlappingAtEveryTimingOfTheSecondOnset(t *testing.T) {
 				quietPoll("r1", to),
 			}
 			outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-			if outcome != OutcomeFlapping {
-				t.Fatalf("outcome = %v, want flapping for a second onset at %s", outcome, tc.secondOnset)
-			}
-			if len(viols) != 1 || viols[0].Outcome != OutcomeFlapping {
-				t.Fatalf("viols = %+v, want one flapping violation", viols)
-			}
+			require.Equalf(t, OutcomeFlapping, outcome, "second onset at %s", tc.secondOnset)
+			require.Len(t, viols, 1)
+			require.Equal(t, OutcomeFlapping, viols[0].Outcome)
 		})
 	}
 }
 
-// --- H2: vanished is a discontinuity, never a clear ---
+// --- vanished is a discontinuity, never a clear ---
 
 func TestClassifyRule_VanishedWhileBadStaysPersistentlyBad(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -258,15 +227,9 @@ func TestClassifyRule_VanishedWhileBadStaysPersistentlyBad(t *testing.T) {
 		quietPoll("r1", to),
 	}
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	if outcome != OutcomePersistentlyBad {
-		t.Fatalf("outcome = %v, want persistently_bad: a vanish must never read as a recovery (H2)", outcome)
-	}
-	if badFor != to.Sub(from) {
-		t.Fatalf("badFor = %v, want the full window %v: the freeze must hold the episode open to windowEnd", badFor, to.Sub(from))
-	}
-	if len(viols) != 1 {
-		t.Fatalf("viols = %+v, want one violation", viols)
-	}
+	require.Equal(t, OutcomePersistentlyBad, outcome, "a vanish must never read as a recovery")
+	require.Equal(t, to.Sub(from), badFor, "the freeze must hold the episode open to windowEnd")
+	require.Len(t, viols, 1)
 }
 
 func TestClassifyRule_VanishedWhileNeverBadIsUninteresting(t *testing.T) {
@@ -283,9 +246,9 @@ func TestClassifyRule_VanishedWhileNeverBadIsUninteresting(t *testing.T) {
 		quietPoll("r1", to),
 	}
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	if outcome != OutcomeClean || badFor != 0 || len(viols) != 0 {
-		t.Fatalf("outcome=%v badFor=%v viols=%v, want clean/0/none", outcome, badFor, viols)
-	}
+	require.Equal(t, OutcomeClean, outcome)
+	require.Zero(t, badFor)
+	require.Empty(t, viols)
 }
 
 // --- preexisting policy ---
@@ -302,12 +265,10 @@ func TestClassifyRule_PreexistingPolicyFailFailsARecoveredInstance(t *testing.T)
 		quietPoll("r1", to),
 	}
 	outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFail)
-	if outcome != OutcomeRecovered {
-		t.Fatalf("outcome = %v, want recovered — the descriptive outcome does not change under policy=fail", outcome)
-	}
-	if len(viols) != 1 || viols[0].Outcome != OutcomeRecovered {
-		t.Fatalf("viols = %+v, want one violation: policy=fail gives no benefit of the doubt to a preexisting instance", viols)
-	}
+	require.Equal(t, OutcomeRecovered, outcome, "the descriptive outcome does not change under policy=fail")
+	require.Len(t, viols, 1)
+	require.Equal(t, OutcomeRecovered, viols[0].Outcome,
+		"policy=fail gives no benefit of the doubt to a preexisting instance")
 }
 
 func TestClassifyRule_PreexistingPolicyIgnoreForgivesPersistentlyBad(t *testing.T) {
@@ -320,12 +281,8 @@ func TestClassifyRule_PreexistingPolicyIgnoreForgivesPersistentlyBad(t *testing.
 		abnormalPoll("r1", to, StateFiring, lbl("a"), from.Add(-time.Hour)),
 	}
 	outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingIgnore)
-	if outcome != OutcomePersistentlyBad {
-		t.Fatalf("outcome = %v, want persistently_bad — the descriptive outcome does not change under policy=ignore", outcome)
-	}
-	if len(viols) != 0 {
-		t.Fatalf("viols = %+v, want none: policy=ignore disregards a preexisting instance even if it never recovers", viols)
-	}
+	require.Equal(t, OutcomePersistentlyBad, outcome, "the descriptive outcome does not change under policy=ignore")
+	require.Empty(t, viols, "policy=ignore disregards a preexisting instance even if it never recovers")
 }
 
 func TestClassifyRule_PreexistingPolicyIgnoreStillFailsANewOnset(t *testing.T) {
@@ -340,9 +297,8 @@ func TestClassifyRule_PreexistingPolicyIgnoreStillFailsANewOnset(t *testing.T) {
 		abnormalPoll("r1", to, StateFiring, lbl("a"), onset),
 	}
 	outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingIgnore)
-	if outcome != OutcomeNewlyBad || len(viols) != 1 {
-		t.Fatalf("outcome=%v viols=%v, want newly_bad/1: ignore only forgives PREEXISTING badness", outcome, viols)
-	}
+	require.Equal(t, OutcomeNewlyBad, outcome)
+	require.Len(t, viols, 1, "ignore only forgives PREEXISTING badness")
 }
 
 // --- worst-of across instances ---
@@ -367,15 +323,12 @@ func TestClassifyRule_WorstOfMultipleInstancesWins(t *testing.T) {
 		},
 	}
 	outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	if outcome != OutcomePersistentlyBad {
-		t.Fatalf("outcome = %v, want persistently_bad: the worse of {recovered, persistently_bad}", outcome)
-	}
-	if len(viols) != 1 || viols[0].Outcome != OutcomePersistentlyBad {
-		t.Fatalf("viols = %+v, want exactly the persistently_bad instance's violation", viols)
-	}
+	require.Equal(t, OutcomePersistentlyBad, outcome, "the worse of {recovered, persistently_bad}")
+	require.Len(t, viols, 1)
+	require.Equal(t, OutcomePersistentlyBad, viols[0].Outcome)
 }
 
-// --- decide(): skipped rules, unobservable (H6), MinObserved, exit mapping (H7) ---
+// --- decide(): skipped rules, unobservable, MinObserved, exit mapping ---
 
 func TestDecide_SkippedRuleNeverReachesProveCoverage(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -387,19 +340,15 @@ func TestDecide_SkippedRuleNeverReachesProveCoverage(t *testing.T) {
 	pol := Policy{From: from, To: to, AllowPaused: true}
 
 	// No polls, no sentinel at all: a heartbeat_gap/no_sentinel misclassification
-	// here would mean proveCoverage ran for a skipped rule (§4.3's obligation).
+	// here would mean proveCoverage ran for a skipped rule.
 	// The HEADER is what says paused — decide reads skipped from there, not
 	// from def.IsPaused, which is a post-window reading (Header.pausedAtStart).
 	res, err := decide(pausedHeader(from.Add(-time.Hour), "r1"), nil, nil, defs, rt, gt, pol)
-	if err != nil {
-		t.Fatalf("err = %v, want nil: a rule paused before the window is skipped, not unobservable", err)
-	}
-	if len(res.Verdicts) != 1 || res.Verdicts[0].Outcome != OutcomeSkipped {
-		t.Fatalf("Verdicts = %+v, want exactly one skipped verdict", res.Verdicts)
-	}
-	if _, ok := res.Coverage["r1"]; ok {
-		t.Fatalf("Coverage[r1] present, want absent: a skipped rule has no coverage to prove")
-	}
+	require.NoError(t, err, "a rule paused before the window is skipped, not unobservable")
+	require.Len(t, res.Verdicts, 1)
+	require.Equal(t, OutcomeSkipped, res.Verdicts[0].Outcome)
+	_, ok := res.Coverage["r1"]
+	require.False(t, ok, "a skipped rule has no coverage to prove")
 }
 
 func TestDecide_UnobservableRuleAlwaysReturnsAnError(t *testing.T) {
@@ -414,17 +363,13 @@ func TestDecide_UnobservableRuleAlwaysReturnsAnError(t *testing.T) {
 	// No sentinel at all: check 1 fails, so the rule is unobservable
 	// regardless of anything else.
 	res, err := decide(Header{StartedAt: from.Add(-time.Hour)}, nil, nil, defs, rt, gt, pol)
-	if err == nil {
-		t.Fatalf("err = nil, want non-nil: H6/H7 require an unobservable rule to always fail the run")
-	}
-	if len(res.Verdicts) != 1 || res.Verdicts[0].Outcome != OutcomeUnobservable {
-		t.Fatalf("Verdicts = %+v, want exactly one unobservable verdict", res.Verdicts)
-	}
+	require.Error(t, err, "an unobservable rule must always fail the run")
+	require.Len(t, res.Verdicts, 1)
+	require.Equal(t, OutcomeUnobservable, res.Verdicts[0].Outcome)
 }
 
-// TestDecide_UnobservableWinsEvenAlongsideARealViolation pins H6 exactly:
-// "Any unobservable rule -> exit 2, no exception, even alongside a real
-// newly_bad."
+// Any unobservable rule means exit 2, with no exception — even alongside a
+// real newly_bad.
 func TestDecide_UnobservableWinsEvenAlongsideARealViolation(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
@@ -452,9 +397,7 @@ func TestDecide_UnobservableWinsEvenAlongsideARealViolation(t *testing.T) {
 	sentinel := to
 
 	res, err := decide(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, defs, rt, gt, pol)
-	if err == nil {
-		t.Fatalf("err = nil, want non-nil: one rule is unobservable")
-	}
+	require.Error(t, err, "one rule is unobservable")
 	var gotBroken, gotBad Outcome
 	for _, v := range res.Verdicts {
 		switch v.RuleUID {
@@ -464,22 +407,17 @@ func TestDecide_UnobservableWinsEvenAlongsideARealViolation(t *testing.T) {
 			gotBad = v.Outcome
 		}
 	}
-	if gotBroken != OutcomeUnobservable {
-		t.Fatalf("broken.Outcome = %v, want unobservable", gotBroken)
-	}
-	if gotBad != OutcomeNewlyBad {
-		t.Fatalf("bad.Outcome = %v, want newly_bad: classification still runs and is still visible in Verdicts (H5)", gotBad)
-	}
-	if len(res.Violations) == 0 {
-		t.Fatalf("Violations empty, want the newly_bad instance still reported even though the run fails on the unobservable rule")
-	}
+	require.Equal(t, OutcomeUnobservable, gotBroken)
+	require.Equal(t, OutcomeNewlyBad, gotBad,
+		"classification still runs and is still visible in Verdicts")
+	require.NotEmpty(t, res.Violations,
+		"the newly_bad instance still reported even though the run fails on the unobservable rule")
 }
 
-// §22.10: "a clean verdict with a coverage gap ... must never give exit 0",
-// and "a recovered verdict and a skipped verdict also need proved coverage
-// of the full window." One genuinely unobservable rule ("broken", zero
-// polls) alongside a rule with each of the three favorable outcomes — none
-// of them may waive the run.
+// A clean verdict with a coverage gap must never give exit 0, and recovered
+// and skipped verdicts need proved coverage of the full window just as much.
+// One genuinely unobservable rule ("broken", zero polls) alongside a rule with
+// each of the three favorable outcomes — none of them may waive the run.
 func TestDecide_UnobservableRuleWinsOverEveryFavorableOutcome(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
@@ -553,9 +491,7 @@ func TestDecide_UnobservableRuleWinsOverEveryFavorableOutcome(t *testing.T) {
 			// so it is unobservable regardless of "good".
 			sentinel := to
 			res, err := decide(h, tc.goodPolls, &sentinel, defs, rt, gt, pol)
-			if err == nil {
-				t.Fatalf("err = nil, want non-nil: 'broken' is unobservable regardless of 'good' being %s", tc.name)
-			}
+			require.Errorf(t, err, "'broken' is unobservable regardless of 'good' being %s", tc.name)
 			var gotGood, gotBroken Outcome
 			for _, v := range res.Verdicts {
 				switch v.RuleUID {
@@ -565,18 +501,14 @@ func TestDecide_UnobservableRuleWinsOverEveryFavorableOutcome(t *testing.T) {
 					gotBroken = v.Outcome
 				}
 			}
-			if gotGood != tc.wantOutcome {
-				t.Errorf("good.Outcome = %v, want %v", gotGood, tc.wantOutcome)
-			}
-			if gotBroken != OutcomeUnobservable {
-				t.Errorf("broken.Outcome = %v, want unobservable", gotBroken)
-			}
+			require.Equal(t, tc.wantOutcome, gotGood)
+			require.Equal(t, OutcomeUnobservable, gotBroken)
 		})
 	}
 }
 
-// §22.10: the table above puts the coverage gap on a DIFFERENT rule from the
-// one with the favorable outcome. This pins the tighter claim: a rule that
+// The table above puts the coverage gap on a DIFFERENT rule from the one with
+// the favorable outcome. This pins the tighter claim: a rule that
 // itself recovers, but ALSO itself has a coverage gap, is still overridden to
 // unobservable — the favorable classification of a rule is never a reason to
 // skip that same rule's own coverage check.
@@ -606,15 +538,10 @@ func TestDecide_RecoveredOutcomeOverriddenByItsOwnCoverageGap(t *testing.T) {
 	sentinel := to
 
 	res, err := decide(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, defs, rt, gt, pol)
-	if err == nil {
-		t.Fatalf("err = nil, want non-nil: r1's own coverage gap must fail the run even though it recovered")
-	}
-	if len(res.Verdicts) != 1 || res.Verdicts[0].Outcome != OutcomeUnobservable {
-		t.Fatalf("Verdicts = %+v, want unobservable, never recovered", res.Verdicts)
-	}
-	if cov := res.Coverage["r1"]; cov.Proved {
-		t.Fatalf("Coverage = %+v, want not proved", cov)
-	}
+	require.Error(t, err, "r1's own coverage gap must fail the run even though it recovered")
+	require.Len(t, res.Verdicts, 1)
+	require.Equal(t, OutcomeUnobservable, res.Verdicts[0].Outcome, "never recovered")
+	require.False(t, res.Coverage["r1"].Proved)
 }
 
 func TestDecide_CleanWindowIsAPass(t *testing.T) {
@@ -633,25 +560,18 @@ func TestDecide_CleanWindowIsAPass(t *testing.T) {
 	sentinel := to
 
 	res, err := decide(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, defs, rt, gt, pol)
-	if err != nil {
-		t.Fatalf("err = %v, want nil", err)
-	}
-	if len(res.Violations) != 0 {
-		t.Fatalf("Violations = %+v, want none: H7 says a pass is exactly len(Violations)==0 && err==nil", res.Violations)
-	}
-	if res.Verdicts[0].Outcome != OutcomeClean {
-		t.Fatalf("Outcome = %v, want clean", res.Verdicts[0].Outcome)
-	}
+	require.NoError(t, err)
+	require.Empty(t, res.Violations, "a pass is exactly len(Violations)==0 && err==nil")
+	require.Equal(t, OutcomeClean, res.Verdicts[0].Outcome)
 }
 
-// §22.7's second of the plan's "if only three tests could exist" cases: a
-// pause and then an unpause inside the window, with an episode that would
+// A pause and then an unpause inside the window, with an episode that would
 // fire and resolve entirely inside the blind interval. A drain wait alone —
 // "did the rule eventually evaluate through windowEnd?" — would see
 // lastEvaluation catch up after the unpause and answer yes, a pass. decide()
-// never runs a drain wait (that is check.go's I/O concern, §14.6); this pins
-// that proveCoverage's own per-poll checks already refuse the window without
-// one, so a live drain wait is not what is saving this case.
+// never runs a drain wait (that is check.go's I/O concern); this pins that
+// proveCoverage's own per-poll checks already refuse the window without one,
+// so a live drain wait is not what is saving this case.
 func TestDecide_PauseThenUnpauseWithHiddenEpisodeGivesUnobservableNotClean(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(20 * time.Minute)
@@ -671,7 +591,7 @@ func TestDecide_PauseThenUnpauseWithHiddenEpisodeGivesUnobservableNotClean(t *te
 	for ts := pauseStart; !ts.After(pauseEnd); ts = ts.Add(30 * time.Second) {
 		// No fire/resolve is ever observed here: the rule was not
 		// evaluating, so any real episode inside this stretch is invisible
-		// to every poll (§14.7).
+		// to every poll.
 		polls = append(polls, Poll{RuleUID: "r1", GrafanaNow: ts, Found: true, Health: "ok", IsPaused: true, LastEvaluation: pauseStart})
 	}
 	for ts := pauseEnd.Add(30 * time.Second); !ts.After(to); ts = ts.Add(30 * time.Second) {
@@ -682,18 +602,13 @@ func TestDecide_PauseThenUnpauseWithHiddenEpisodeGivesUnobservableNotClean(t *te
 	sentinel := to
 
 	res, err := decide(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, defs, rt, gt, pol)
-	if err == nil {
-		t.Fatalf("err = nil, want the pause-then-unpause blind interval to fail closed")
-	}
-	if len(res.Verdicts) != 1 || res.Verdicts[0].Outcome != OutcomeUnobservable {
-		t.Fatalf("Verdicts = %+v, want unobservable, never clean", res.Verdicts)
-	}
-	if cov := res.Coverage["r1"]; cov.Proved {
-		t.Fatalf("Coverage = %+v, want not proved", cov)
-	}
+	require.Error(t, err, "the pause-then-unpause blind interval must fail closed")
+	require.Len(t, res.Verdicts, 1)
+	require.Equal(t, OutcomeUnobservable, res.Verdicts[0].Outcome, "never clean")
+	require.False(t, res.Coverage["r1"].Proved)
 }
 
-// --- MinObserved shortfall (§12) ---
+// --- MinObserved shortfall ---
 
 func TestDecide_SkippedOnlyShortfallProducesAViolationWithoutAnError(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -717,25 +632,19 @@ func TestDecide_SkippedOnlyShortfallProducesAViolationWithoutAnError(t *testing.
 	sentinel := to
 
 	res, err := decide(pausedHeader(from.Add(-time.Hour), "paused"), polls, &sentinel, defs, rt, gt, pol)
-	if err != nil {
-		t.Fatalf("err = %v, want nil: a shortfall caused only by a skipped rule is exit 1, not exit 2 (§9.1)", err)
-	}
-	if len(res.Violations) != 1 {
-		t.Fatalf("Violations = %+v, want exactly one: H7 needs the shortfall visible through Violations to keep its equivalence", res.Violations)
-	}
-	if v := res.Violations[0]; v.Outcome != OutcomeSkipped || v.RuleUID != "paused" || v.Alert != "Paused" {
-		t.Fatalf("Violations[0] = %+v, want Outcome=skipped naming the paused rule (§12.1: the message names the paused rule)", v)
-	}
-	if res.Violations[0].Note == "" {
-		t.Fatalf("Violations[0].Note is empty, want an explanation: the shortfall reason must not be smuggled into LastError, " +
-			"which is reporting-only rule state from a real poll this synthetic Violation never touched")
-	}
+	require.NoError(t, err, "a shortfall caused only by a skipped rule is exit 1, not exit 2")
+	require.Len(t, res.Violations, 1)
+	v := res.Violations[0]
+	require.Equal(t, OutcomeSkipped, v.Outcome)
+	require.Equal(t, "paused", v.RuleUID)
+	require.Equal(t, "Paused", v.Alert)
+	require.NotEmpty(t, v.Note,
+		"the shortfall reason must not be smuggled into LastError")
 }
 
-// TestDecide_ExplicitMinObservedShortfallWithNoPausedRuleStillProducesAViolation
-// pins F3: an operator-supplied MinObserved that exceeds what could ever be
-// resolved is still a shortfall, even with zero paused rules to blame it on
-// — H7 must not let this silently read as a pass.
+// An operator-supplied MinObserved that exceeds what could ever be resolved is
+// still a shortfall, even with zero paused rules to blame it on — it must not
+// silently read as a pass.
 func TestDecide_ExplicitMinObservedShortfallWithNoPausedRuleStillProducesAViolation(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
@@ -753,17 +662,10 @@ func TestDecide_ExplicitMinObservedShortfallWithNoPausedRuleStillProducesAViolat
 	sentinel := to
 
 	res, err := decide(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, defs, rt, gt, pol)
-	if err != nil {
-		t.Fatalf("err = %v, want nil: an unmet MinObserved is exit 1, never exit 2", err)
-	}
-	if len(res.Violations) != 2 {
-		t.Fatalf("Violations = %+v, want two: the shortfall (3-1=2) is not explained by any paused rule, "+
-			"so H7 requires it to surface directly rather than pass silently", res.Violations)
-	}
+	require.NoError(t, err, "an unmet MinObserved is exit 1, never exit 2")
+	require.Len(t, res.Violations, 2, "the shortfall (3-1=2) must surface directly rather than pass silently")
 	for _, v := range res.Violations {
-		if v.Outcome != OutcomeSkipped {
-			t.Fatalf("Violations = %+v, want Outcome=skipped on the synthetic shortfall entries", res.Violations)
-		}
+		require.Equal(t, OutcomeSkipped, v.Outcome)
 	}
 }
 
@@ -788,12 +690,8 @@ func TestDecide_AllowPausedSuppressesTheShortfall(t *testing.T) {
 	sentinel := to
 
 	res, err := decide(pausedHeader(from.Add(-time.Hour), "paused"), polls, &sentinel, defs, rt, gt, pol)
-	if err != nil {
-		t.Fatalf("err = %v, want nil", err)
-	}
-	if len(res.Violations) != 0 {
-		t.Fatalf("Violations = %+v, want none: --allow-paused must suppress the shortfall entirely", res.Violations)
-	}
+	require.NoError(t, err)
+	require.Empty(t, res.Violations, "--allow-paused must suppress the shortfall entirely")
 }
 
 // --- nodata escalation (decide's own Policy-driven check) ---
@@ -814,12 +712,8 @@ func TestDecide_NodataIsUnobservableEscalatesASustainedRun(t *testing.T) {
 	sentinel := to
 
 	res, err := decide(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, defs, rt, gt, pol)
-	if err == nil {
-		t.Fatalf("err = nil, want non-nil: a sustained nodata run must be unobservable under --nodata-is-unobservable")
-	}
-	if res.Coverage["r1"].Reason != ReasonNodata {
-		t.Fatalf("Reason = %q, want %q", res.Coverage["r1"].Reason, ReasonNodata)
-	}
+	require.Error(t, err, "a sustained nodata run must be unobservable under --nodata-is-unobservable")
+	require.Equal(t, ReasonNodata, res.Coverage["r1"].Reason)
 }
 
 func TestDecide_NodataIsANoteByDefault(t *testing.T) {
@@ -838,21 +732,16 @@ func TestDecide_NodataIsANoteByDefault(t *testing.T) {
 	sentinel := to
 
 	res, err := decide(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, defs, rt, gt, pol)
-	if err != nil {
-		t.Fatalf("err = %v, want nil: 96%% of the fleet runs no_data_state:OK and must not fail by default", err)
-	}
-	if res.Coverage["r1"].Unobservable {
-		t.Fatalf("Coverage[r1].Unobservable = true, want false by default")
-	}
+	require.NoError(t, err, "96%% of the fleet runs no_data_state:OK and must not fail by default")
+	require.False(t, res.Coverage["r1"].Unobservable)
 }
 
-// --- F1/F2 regressions: preexisting is decided by ActiveAt, not poll timing ---
+// --- preexisting is decided by ActiveAt, not poll timing ---
 
-// TestClassifyRule_OnsetBetweenFromAndFirstPollIsNewlyBadNotRecovered pins
-// F1: an instance whose true onset (ActiveAt) falls strictly inside the
-// window — even though the first poll that happens to observe it already
-// shows it bad — must never be treated as preexisting. If it then clears,
-// the plan requires newly_bad (exit 1), not recovered (exit 0).
+// An instance whose true onset (ActiveAt) falls strictly inside the window —
+// even though the first poll that happens to observe it already shows it bad —
+// must never be treated as preexisting. If it then clears, that is newly_bad
+// (exit 1), not recovered (exit 0).
 func TestClassifyRule_OnsetBetweenFromAndFirstPollIsNewlyBadNotRecovered(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
@@ -868,16 +757,11 @@ func TestClassifyRule_OnsetBetweenFromAndFirstPollIsNewlyBadNotRecovered(t *test
 		quietPoll("r1", to),
 	}
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	if outcome != OutcomeNewlyBad {
-		t.Fatalf("outcome = %v, want newly_bad: the onset is after `from`, so it is not preexisting even though "+
-			"the FIRST in-window poll already observes it bad (F1)", outcome)
-	}
-	if len(viols) != 1 || viols[0].Outcome != OutcomeNewlyBad {
-		t.Fatalf("viols = %+v, want one newly_bad violation: a policy=fail-unless-recovered default must still fail this", viols)
-	}
-	if want := clearAt.Sub(onset); badFor != want {
-		t.Fatalf("badFor = %v, want %v: BadFor must count from the true onset, not from `from` (F1's overcount bug)", badFor, want)
-	}
+	require.Equal(t, OutcomeNewlyBad, outcome,
+		"the onset is after `from`, so it is not preexisting even though the FIRST in-window poll already observes it bad")
+	require.Len(t, viols, 1)
+	require.Equal(t, OutcomeNewlyBad, viols[0].Outcome)
+	require.Equal(t, clearAt.Sub(onset), badFor, "BadFor must count from the true onset, not from `from`")
 }
 
 // TestClassifyRule_OnsetJustBeforeFromIsPreexisting is the mirror check: an
@@ -898,22 +782,15 @@ func TestClassifyRule_OnsetJustBeforeFromIsPreexisting(t *testing.T) {
 		quietPoll("r1", to),
 	}
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	if outcome != OutcomeRecovered {
-		t.Fatalf("outcome = %v, want recovered: the onset is at/before `from`, genuinely preexisting", outcome)
-	}
-	if len(viols) != 0 {
-		t.Fatalf("viols = %+v, want none: default policy passes a recovered preexisting instance", viols)
-	}
-	if want := clearAt.Sub(from); badFor != want {
-		t.Fatalf("badFor = %v, want %v: a preexisting episode's BadFor is clamped to window-open, not backdated past it", badFor, want)
-	}
+	require.Equal(t, OutcomeRecovered, outcome, "the onset is at/before `from`, genuinely preexisting")
+	require.Empty(t, viols, "default policy passes a recovered preexisting instance")
+	require.Equal(t, clearAt.Sub(from), badFor,
+		"a preexisting episode's BadFor is clamped to window-open, not backdated past it")
 }
 
-// TestClassifyRule_SkewTranslatesActiveAtAcrossTheWindowBoundary pins F2: a
-// poll carrying a nonzero skew must have its ActiveAt (and GrafanaNow)
+// A poll carrying a nonzero skew must have its ActiveAt (and GrafanaNow)
 // translated to the runner domain before comparing against `from` — a raw,
-// untranslated comparison would land on the wrong side of the F1 boundary
-// check.
+// untranslated comparison would land on the wrong side of that boundary.
 func TestClassifyRule_SkewTranslatesActiveAtAcrossTheWindowBoundary(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
@@ -936,15 +813,12 @@ func TestClassifyRule_SkewTranslatesActiveAtAcrossTheWindowBoundary(t *testing.T
 	stillBad.LastEvaluation = to.Add(skew)
 
 	outcome, badFor, _ := classifyRule(def, []Poll{poll, stillBad}, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	if outcome != OutcomePersistentlyBad {
-		t.Fatalf("outcome = %v, want persistently_bad: a +90s skew must translate ActiveAt back to exactly `from` (F2)", outcome)
-	}
-	if badFor != to.Sub(from) {
-		t.Fatalf("badFor = %v, want the full window %v", badFor, to.Sub(from))
-	}
+	require.Equal(t, OutcomePersistentlyBad, outcome,
+		"a +90s skew must translate ActiveAt back to exactly `from`")
+	require.Equal(t, to.Sub(from), badFor)
 }
 
-// --- F4: InstanceLabels must survive a timeline first created by a bare marker ---
+// --- InstanceLabels must survive a timeline first created by a bare marker ---
 
 func TestClassifyRule_LabelsSurviveWhenTimelineStartsFromAClearedMarker(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -962,17 +836,13 @@ func TestClassifyRule_LabelsSurviveWhenTimelineStartsFromAClearedMarker(t *testi
 		quietPoll("r1", to),
 	}
 	_, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	if len(viols) != 1 {
-		t.Fatalf("viols = %+v, want exactly one newly_bad violation", viols)
-	}
-	if viols[0].InstanceLabels == nil || viols[0].InstanceLabels["instance"] != "a" {
-		t.Fatalf("InstanceLabels = %+v, want {instance: a}: labels must backfill even though the "+
-			"timeline was first created by a label-less Cleared marker (F4)", viols[0].InstanceLabels)
-	}
+	require.Len(t, viols, 1)
+	require.NotNil(t, viols[0].InstanceLabels)
+	require.Equal(t, "a", viols[0].InstanceLabels["instance"],
+		"labels must backfill even though the timeline was first created by a label-less Cleared marker")
 }
 
-// TestClassifyRule_ViolationFieldsArePrecise pins FirstSeen/ClearedAt exactly,
-// not just that a violation exists (F7).
+// FirstSeen/ClearedAt are pinned exactly, not just that a violation exists.
 func TestClassifyRule_ViolationFieldsArePrecise(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
@@ -987,25 +857,16 @@ func TestClassifyRule_ViolationFieldsArePrecise(t *testing.T) {
 		quietPoll("r1", to),
 	}
 	_, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	if len(viols) != 1 {
-		t.Fatalf("viols = %+v, want exactly one violation", viols)
-	}
+	require.Len(t, viols, 1)
 	v := viols[0]
-	if !v.FirstSeen.Equal(onset) {
-		t.Fatalf("FirstSeen = %v, want %v", v.FirstSeen, onset)
-	}
-	if !v.ClearedAt.Equal(clearAt) {
-		t.Fatalf("ClearedAt = %v, want %v", v.ClearedAt, clearAt)
-	}
-	if v.InstanceLabels["instance"] != "a" {
-		t.Fatalf("InstanceLabels = %+v, want {instance: a}", v.InstanceLabels)
-	}
+	require.True(t, v.FirstSeen.Equal(onset))
+	require.True(t, v.ClearedAt.Equal(clearAt))
+	require.Equal(t, "a", v.InstanceLabels["instance"])
 }
 
-// TestClassifyRule_ClearedEventPastWindowEndClampsToWindowEnd pins the
-// episode.end clamp: inWindowPolls admits a poll up to its own skew bound
-// past windowEnd (§16's widened membership test), so a genuine Cleared event
-// on such a poll must not leave the episode extending beyond windowEnd.
+// The episode.end clamp: inWindowPolls admits a poll up to its own skew bound
+// past windowEnd, so a genuine Cleared event on such a poll must not leave the
+// episode extending beyond windowEnd.
 func TestClassifyRule_ClearedEventPastWindowEndClampsToWindowEnd(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
@@ -1023,13 +884,9 @@ func TestClassifyRule_ClearedEventPastWindowEndClampsToWindowEnd(t *testing.T) {
 		},
 	}
 	outcome, badFor, _ := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	if outcome != OutcomeRecovered {
-		t.Fatalf("outcome = %v, want recovered", outcome)
-	}
-	if badFor != to.Sub(from) {
-		t.Fatalf("badFor = %v, want the window %v exactly: the episode end must clamp to windowEnd, "+
-			"not extend to the late Cleared event's raw time", badFor, to.Sub(from))
-	}
+	require.Equal(t, OutcomeRecovered, outcome)
+	require.Equal(t, to.Sub(from), badFor,
+		"the episode end must clamp to windowEnd, not extend to the late Cleared event's raw time")
 }
 
 // TestClassifyRule_OnsetJustPastWindowEndIsNewlyBadNotClean pins the fail-closed
@@ -1057,19 +914,13 @@ func TestClassifyRule_OnsetJustPastWindowEndIsNewlyBadNotClean(t *testing.T) {
 	}
 
 	outcome, badFor, viols := classifyRule(def, []Poll{poll}, from, windowEnd, defaultBad, PreexistingFailUnlessRecovered)
-	if outcome != OutcomeNewlyBad {
-		t.Fatalf("outcome = %v, want newly_bad: an onset past windowEnd seen only via the skew bound must fail closed", outcome)
-	}
-	if badFor != 0 {
-		t.Fatalf("badFor = %v, want 0: the zero-length episode must truncate to the window end", badFor)
-	}
-	if len(viols) != 1 {
-		t.Fatalf("viols = %+v, want exactly one newly_bad violation", viols)
-
-	}
+	require.Equal(t, OutcomeNewlyBad, outcome,
+		"an onset past windowEnd seen only via the skew bound must fail closed")
+	require.Zero(t, badFor, "the zero-length episode must truncate to the window end")
+	require.Len(t, viols, 1)
 }
 
-// §22.2: "a clear after `to` gives persistently_bad." classifyRule filters
+// A clear after `to` gives persistently_bad. classifyRule filters
 // its input to [from, windowEnd] itself (inWindowPolls), so a Cleared event
 // GENUINELY past windowEnd — well beyond any skew bound, unlike the clamp
 // case above — never reaches the timeline at all: the instance is still bad
@@ -1085,15 +936,10 @@ func TestClassifyRule_ClearAfterWindowEndIsPersistentlyBad(t *testing.T) {
 		clearedPoll("r1", to.Add(time.Hour), key), // far past `to`, not a boundary case
 	}
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	if outcome != OutcomePersistentlyBad {
-		t.Fatalf("outcome = %v, want persistently_bad: a clear outside the window must not read as a recovery", outcome)
-	}
-	if badFor != to.Sub(from) {
-		t.Fatalf("badFor = %v, want the full window %v", badFor, to.Sub(from))
-	}
-	if len(viols) != 1 || viols[0].Outcome != OutcomePersistentlyBad {
-		t.Fatalf("viols = %+v, want one persistently_bad violation", viols)
-	}
+	require.Equal(t, OutcomePersistentlyBad, outcome, "a clear outside the window must not read as a recovery")
+	require.Equal(t, to.Sub(from), badFor)
+	require.Len(t, viols, 1)
+	require.Equal(t, OutcomePersistentlyBad, viols[0].Outcome)
 }
 
 // TestClassifyRule_CloseBeforeOpenClampsToZeroNotNegative pins the
@@ -1120,19 +966,11 @@ func TestClassifyRule_CloseBeforeOpenClampsToZeroNotNegative(t *testing.T) {
 		quietPoll("r1", to),
 	}
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	if outcome != OutcomeNewlyBad {
-		t.Fatalf("outcome = %v, want newly_bad", outcome)
-	}
-	if badFor < 0 {
-		t.Fatalf("badFor = %v, want a non-negative duration even though the closing poll's translated "+
-			"time landed before the opening poll's", badFor)
-	}
-	if badFor != 0 {
-		t.Fatalf("badFor = %v, want 0: the clamp collapses the inverted span to a zero-length episode", badFor)
-	}
-	if len(viols) != 1 {
-		t.Fatalf("viols = %+v, want one violation", viols)
-	}
+	require.Equal(t, OutcomeNewlyBad, outcome)
+	require.GreaterOrEqual(t, badFor, time.Duration(0),
+		"a non-negative duration even though the closing poll's translated time landed before the opening poll's")
+	require.Zero(t, badFor, "the clamp collapses the inverted span to a zero-length episode")
+	require.Len(t, viols, 1)
 }
 
 // --- mergeDurations ---
@@ -1146,13 +984,9 @@ func TestMergeDurations_OverlappingEpisodesCountOnce(t *testing.T) {
 	}
 	got := mergeDurations(eps)
 	want := 8*time.Minute + 1*time.Minute // [0,8) merged = 8m, plus the disjoint 1m
-	if got != want {
-		t.Fatalf("mergeDurations = %v, want %v: two simultaneously-bad instances must not double-count their overlap", got, want)
-	}
+	require.Equal(t, want, got, "two simultaneously-bad instances must not double-count their overlap")
 }
 
 func TestMergeDurations_Empty(t *testing.T) {
-	if got := mergeDurations(nil); got != 0 {
-		t.Fatalf("mergeDurations(nil) = %v, want 0", got)
-	}
+	require.Zero(t, mergeDurations(nil))
 }
