@@ -278,18 +278,18 @@ func TestScheduler_EarliestDuePicksMinimum(t *testing.T) {
 // One rule at 10s beside twenty at 300s, all measured ~1.8s, must not error at
 // any reasonable concurrency — the exact case a naive worst-case-slot
 func TestCheckBudget_MixedIntervalRegression(t *testing.T) {
-	timings := map[string]ruleTimings{"tight": {pollEvery: 5 * time.Second}}
+	timings := map[string]RuleTimings{"tight": {pollEvery: 5 * time.Second}}
 	measured := map[string]time.Duration{"tight": 1800 * time.Millisecond}
 	for i := range 20 {
 		uid := uidN(i)
-		timings[uid] = ruleTimings{pollEvery: 150 * time.Second}
+		timings[uid] = RuleTimings{pollEvery: 150 * time.Second}
 		measured[uid] = 1800 * time.Millisecond
 	}
 	require.NoError(t, CheckBudget(timings, measured, 1))
 }
 
 func TestCheckBudget_UtilizationExceeded(t *testing.T) {
-	timings := map[string]ruleTimings{
+	timings := map[string]RuleTimings{
 		"a": {pollEvery: 10 * time.Second},
 		"b": {pollEvery: 10 * time.Second},
 	}
@@ -300,7 +300,7 @@ func TestCheckBudget_UtilizationExceeded(t *testing.T) {
 }
 
 func TestCheckBudget_SingleRuleExceedsOwnCadence(t *testing.T) {
-	timings := map[string]ruleTimings{"slow": {pollEvery: 5 * time.Second}}
+	timings := map[string]RuleTimings{"slow": {pollEvery: 5 * time.Second}}
 	measured := map[string]time.Duration{"slow": 6 * time.Second}
 	err := CheckBudget(timings, measured, 10)
 	require.Error(t, err, "measured 6s exceeds its own 5s poll-interval")
@@ -311,7 +311,7 @@ func TestCheckBudget_BurstBoundViolation(t *testing.T) {
 	// Utilization is trivially fine, but the slower rule's request time (3s)
 	// exceeds the tighter rule's cadence (2s) — a mid-run gap risk even
 	// though no single rule breaches its own cadence and utilization is low.
-	timings := map[string]ruleTimings{
+	timings := map[string]RuleTimings{
 		"tight": {pollEvery: 2 * time.Second},
 		"slow":  {pollEvery: 100 * time.Second},
 	}
@@ -323,7 +323,7 @@ func TestCheckBudget_BurstBoundViolation(t *testing.T) {
 }
 
 func TestCheckBudget_BurstBoundOKWhenNotExceeded(t *testing.T) {
-	timings := map[string]ruleTimings{
+	timings := map[string]RuleTimings{
 		"tight": {pollEvery: 5 * time.Second},
 		"slow":  {pollEvery: 100 * time.Second},
 	}
@@ -332,13 +332,13 @@ func TestCheckBudget_BurstBoundOKWhenNotExceeded(t *testing.T) {
 }
 
 func TestCheckBudget_MissingMeasurementIsAnError(t *testing.T) {
-	timings := map[string]ruleTimings{"r1": {pollEvery: 30 * time.Second}}
+	timings := map[string]RuleTimings{"r1": {pollEvery: 30 * time.Second}}
 	err := CheckBudget(timings, map[string]time.Duration{}, 10)
 	require.Error(t, err, "r1 was never measured (fail closed, not a silent zero)")
 }
 
 func TestCheckBudget_MissingMixedMeasurementIsAnError(t *testing.T) {
-	timings := map[string]ruleTimings{
+	timings := map[string]RuleTimings{
 		"tight": {pollEvery: 5 * time.Second},
 		"slow":  {pollEvery: 100 * time.Second},
 	}
@@ -353,7 +353,7 @@ func TestCheckBudget_EmptyScheduleIsFine(t *testing.T) {
 
 func TestCheckBudget_NonPositivePollIntervalIsAnError(t *testing.T) {
 	for _, pe := range []time.Duration{0, -time.Second} {
-		timings := map[string]ruleTimings{"r1": {pollEvery: pe}}
+		timings := map[string]RuleTimings{"r1": {pollEvery: pe}}
 		measured := map[string]time.Duration{"r1": time.Second}
 		err := CheckBudget(timings, measured, 1)
 		require.Errorf(t, err, "pollEvery=%s would divide by zero", pe)
@@ -372,13 +372,13 @@ func assertBudgetMessage(t *testing.T, msg string) {
 }
 
 func uidN(i int) string {
-	return "slack" + string(rune('a'+i))
+	return "slack" + string(rune('a'+i)) // nolint:gosec // test-only uid generator
 }
 
 func TestStartupSummary_WarningWhenGraceTooLarge(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
-	global := globalTimings{transitionGrace: 5 * time.Minute, graceSource: "R (for=4m30s, interval=30s)", drainTimeout: time.Minute}
+	global := GlobalTimings{transitionGrace: 5 * time.Minute, graceSource: "R (for=4m30s, interval=30s)", drainTimeout: time.Minute}
 	summary, warning := StartupSummary(from, to, global)
 	require.Contains(t, summary, "planned run time")
 	require.NotEmpty(t, warning, "transitionGrace (5m) > 1/4 of the 10m window")
@@ -405,7 +405,7 @@ func TestStartupSummary_RealForOneWeekRuleTriggersWarning(t *testing.T) {
 func TestStartupSummary_NoWarningWhenGraceSmall(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(time.Hour)
-	global := globalTimings{transitionGrace: time.Minute, graceSource: "R (for=30s, interval=30s)", drainTimeout: time.Minute}
+	global := GlobalTimings{transitionGrace: time.Minute, graceSource: "R (for=30s, interval=30s)", drainTimeout: time.Minute}
 	_, warning := StartupSummary(from, to, global)
 	require.Empty(t, warning)
 }
@@ -413,6 +413,6 @@ func TestStartupSummary_NoWarningWhenGraceSmall(t *testing.T) {
 func TestStartupSummary_NoGraceSourceReadsNone(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(time.Hour)
-	summary, _ := StartupSummary(from, to, globalTimings{})
+	summary, _ := StartupSummary(from, to, GlobalTimings{})
 	require.Contains(t, summary, "none")
 }

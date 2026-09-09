@@ -226,8 +226,8 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 		notes      []string
 		earlyHdr   Header
 		logHasHdr  bool
-		rt         map[string]ruleTimings
-		gt         globalTimings
+		rt         map[string]RuleTimings
+		gt         GlobalTimings
 		timingNote []string
 	)
 	if cfg.Log != "" {
@@ -470,8 +470,8 @@ func activeRules(defs []Definition) []Definition {
 // polled, which is what the request budget is spent on: a skipped rule
 // consumes none of the capacity, so counting it would refuse schedules that
 // fit.
-func activeTimingsOf(active []Definition, rt map[string]ruleTimings) map[string]ruleTimings {
-	out := make(map[string]ruleTimings, len(active))
+func activeTimingsOf(active []Definition, rt map[string]RuleTimings) map[string]RuleTimings {
+	out := make(map[string]RuleTimings, len(active))
 	for _, d := range active {
 		out[d.UID] = rt[d.UID]
 	}
@@ -490,7 +490,7 @@ type livePoller struct {
 	concurrency int
 }
 
-func newLivePoller(src Source, reducer *Reducer, active []Definition, rt map[string]ruleTimings,
+func newLivePoller(src Source, reducer *Reducer, active []Definition, rt map[string]RuleTimings,
 	concurrency int, now time.Time) *livePoller {
 
 	titles := make(map[string]string, len(active))
@@ -562,7 +562,9 @@ func collectUntil(ctx context.Context, cfg Config, deadline time.Time, p *livePo
 			// maxGap (the same rule watchLoop follows).
 			due := p.sched.Due(now)
 			for _, uid := range due {
-				p.sched.Mark(uid, now)
+				if merr := p.sched.Mark(uid, now); merr != nil {
+					return polls, fmt.Errorf("mark %s: %w", uid, merr)
+				}
 			}
 			if len(due) > 0 {
 				batch, err := p.poll(ctx, due)
@@ -689,7 +691,7 @@ type drainVerdict struct {
 // header, not the late-resolved definitions — see Header.pausedAtStart), and a
 // rule whose last poll says Found == false (already unobservable via rule_absent).
 func drainWait(ctx context.Context, cfg Config, src Source, defs []Definition, pausedAtStart map[string]bool,
-	rt map[string]ruleTimings, polls []Poll, windowEnd time.Time, timeout time.Duration) (map[string]drainVerdict, error) {
+	rt map[string]RuleTimings, polls []Poll, windowEnd time.Time, timeout time.Duration) (map[string]drainVerdict, error) {
 
 	pending := make(map[string]string) // uid -> title, the shape observeAll wants
 	for _, d := range defs {

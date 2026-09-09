@@ -37,7 +37,7 @@ func tryLockExclusive(f *os.File) (held bool, err error) {
 	switch err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); {
 	case err == nil:
 		return true, nil
-	case errors.Is(err, syscall.EWOULDBLOCK):
+	case isLockContention(err):
 		return false, nil
 	default:
 		return false, fmt.Errorf("flock %s: %w", f.Name(), err)

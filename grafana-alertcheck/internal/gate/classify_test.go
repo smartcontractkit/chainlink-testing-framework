@@ -335,8 +335,8 @@ func TestDecide_SkippedRuleNeverReachesProveCoverage(t *testing.T) {
 	to := from.Add(10 * time.Minute)
 	def := Definition{UID: "r1", Title: "R1", IsPaused: true}
 	defs := []Definition{def}
-	rt := map[string]ruleTimings{"r1": newRuleTimings(30*time.Second, 60)}
-	gt := globalTimings{}
+	rt := map[string]RuleTimings{"r1": newRuleTimings(30*time.Second, 60)}
+	gt := GlobalTimings{}
 	pol := Policy{From: from, To: to, AllowPaused: true}
 
 	// No polls, no sentinel at all: a heartbeat_gap/no_sentinel misclassification
@@ -356,8 +356,8 @@ func TestDecide_UnobservableRuleAlwaysReturnsAnError(t *testing.T) {
 	to := from.Add(10 * time.Minute)
 	def := Definition{UID: "r1", Title: "R1"}
 	defs := []Definition{def}
-	rt := map[string]ruleTimings{"r1": newRuleTimings(30*time.Second, 60)}
-	gt := globalTimings{}
+	rt := map[string]RuleTimings{"r1": newRuleTimings(30*time.Second, 60)}
+	gt := GlobalTimings{}
 	pol := Policy{From: from, To: to}
 
 	// No sentinel at all: check 1 fails, so the rule is unobservable
@@ -378,11 +378,11 @@ func TestDecide_UnobservableWinsEvenAlongsideARealViolation(t *testing.T) {
 	defBroken := Definition{UID: "broken", Title: "Broken"}
 	defBad := Definition{UID: "bad", Title: "Bad"}
 	defs := []Definition{defBroken, defBad}
-	rt := map[string]ruleTimings{
+	rt := map[string]RuleTimings{
 		"broken": newRuleTimings(30*time.Second, 60),
 		"bad":    newRuleTimings(30*time.Second, 60),
 	}
-	gt := globalTimings{}
+	gt := GlobalTimings{}
 	pol := Policy{From: from, To: to}
 
 	var polls []Poll
@@ -475,11 +475,11 @@ func TestDecide_UnobservableRuleWinsOverEveryFavorableOutcome(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			defs := []Definition{{UID: "good", Title: "Good"}, {UID: "broken", Title: "Broken"}}
-			rt := map[string]ruleTimings{
+			rt := map[string]RuleTimings{
 				"good":   newRuleTimings(30*time.Second, 60),
 				"broken": newRuleTimings(30*time.Second, 60),
 			}
-			gt := globalTimings{}
+			gt := GlobalTimings{}
 			pol := Policy{From: from, To: to}
 
 			h := Header{StartedAt: from.Add(-time.Hour)}
@@ -517,8 +517,8 @@ func TestDecide_RecoveredOutcomeOverriddenByItsOwnCoverageGap(t *testing.T) {
 	to := from.Add(10 * time.Minute)
 	def := Definition{UID: "r1", Title: "R1"}
 	defs := []Definition{def}
-	rt := map[string]ruleTimings{"r1": newRuleTimings(30*time.Second, 60)} // maxGap = 60s
-	gt := globalTimings{}
+	rt := map[string]RuleTimings{"r1": newRuleTimings(30*time.Second, 60)} // maxGap = 60s
+	gt := GlobalTimings{}
 	pol := Policy{From: from, To: to}
 	key := instanceKey(lbl("a"))
 
@@ -549,8 +549,8 @@ func TestDecide_CleanWindowIsAPass(t *testing.T) {
 	to := from.Add(10 * time.Minute)
 	def := Definition{UID: "r1", Title: "R1"}
 	defs := []Definition{def}
-	rt := map[string]ruleTimings{"r1": newRuleTimings(30*time.Second, 60)}
-	gt := globalTimings{}
+	rt := map[string]RuleTimings{"r1": newRuleTimings(30*time.Second, 60)}
+	gt := GlobalTimings{}
 	pol := Policy{From: from, To: to}
 
 	var polls []Poll
@@ -577,8 +577,8 @@ func TestDecide_PauseThenUnpauseWithHiddenEpisodeGivesUnobservableNotClean(t *te
 	to := from.Add(20 * time.Minute)
 	def := Definition{UID: "r1", Title: "R1"}
 	defs := []Definition{def}
-	rt := map[string]ruleTimings{"r1": newRuleTimings(30*time.Second, 60)}
-	gt := globalTimings{}
+	rt := map[string]RuleTimings{"r1": newRuleTimings(30*time.Second, 60)}
+	gt := GlobalTimings{}
 	pol := Policy{From: from, To: to}
 
 	pauseStart := from.Add(5 * time.Minute)
@@ -617,11 +617,11 @@ func TestDecide_SkippedOnlyShortfallProducesAViolationWithoutAnError(t *testing.
 	watched := Definition{UID: "watched", Title: "Watched"}
 	paused := Definition{UID: "paused", Title: "Paused", IsPaused: true}
 	defs := []Definition{watched, paused}
-	rt := map[string]ruleTimings{
+	rt := map[string]RuleTimings{
 		"watched": newRuleTimings(30*time.Second, 60),
 		"paused":  newRuleTimings(30*time.Second, 60),
 	}
-	gt := globalTimings{}
+	gt := GlobalTimings{}
 	// MinObserved defaults to len(defs) = 2, but only "watched" is observable.
 	pol := Policy{From: from, To: to}
 
@@ -651,8 +651,8 @@ func TestDecide_ExplicitMinObservedShortfallWithNoPausedRuleStillProducesAViolat
 
 	def := Definition{UID: "r1", Title: "R1"}
 	defs := []Definition{def}
-	rt := map[string]ruleTimings{"r1": newRuleTimings(30*time.Second, 60)}
-	gt := globalTimings{}
+	rt := map[string]RuleTimings{"r1": newRuleTimings(30*time.Second, 60)}
+	gt := GlobalTimings{}
 	pol := Policy{From: from, To: to, MinObserved: 3} // only one rule will ever be resolved
 
 	var polls []Poll
@@ -676,11 +676,11 @@ func TestDecide_AllowPausedSuppressesTheShortfall(t *testing.T) {
 	watched := Definition{UID: "watched", Title: "Watched"}
 	paused := Definition{UID: "paused", Title: "Paused", IsPaused: true}
 	defs := []Definition{watched, paused}
-	rt := map[string]ruleTimings{
+	rt := map[string]RuleTimings{
 		"watched": newRuleTimings(30*time.Second, 60),
 		"paused":  newRuleTimings(30*time.Second, 60),
 	}
-	gt := globalTimings{}
+	gt := GlobalTimings{}
 	pol := Policy{From: from, To: to, AllowPaused: true}
 
 	var polls []Poll
@@ -701,8 +701,8 @@ func TestDecide_NodataIsUnobservableEscalatesASustainedRun(t *testing.T) {
 	to := from.Add(10 * time.Minute)
 	def := Definition{UID: "r1", Title: "R1"}
 	defs := []Definition{def}
-	rt := map[string]ruleTimings{"r1": newRuleTimings(30*time.Second, 60)} // healthGrace = max(60s,60s) = 60s
-	gt := globalTimings{}
+	rt := map[string]RuleTimings{"r1": newRuleTimings(30*time.Second, 60)} // healthGrace = max(60s,60s) = 60s
+	gt := GlobalTimings{}
 	pol := Policy{From: from, To: to, NodataIsUnobservable: true}
 
 	var polls []Poll
@@ -721,8 +721,8 @@ func TestDecide_NodataIsANoteByDefault(t *testing.T) {
 	to := from.Add(10 * time.Minute)
 	def := Definition{UID: "r1", Title: "R1"}
 	defs := []Definition{def}
-	rt := map[string]ruleTimings{"r1": newRuleTimings(30*time.Second, 60)}
-	gt := globalTimings{}
+	rt := map[string]RuleTimings{"r1": newRuleTimings(30*time.Second, 60)}
+	gt := GlobalTimings{}
 	pol := Policy{From: from, To: to} // NodataIsUnobservable defaults to false
 
 	var polls []Poll

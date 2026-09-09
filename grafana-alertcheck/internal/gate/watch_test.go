@@ -582,7 +582,7 @@ func TestPidFileRoundTrip(t *testing.T) {
 
 	t.Run("garbage is an error, never a pid", func(t *testing.T) {
 		bad := filepath.Join(t.TempDir(), "bad.pid")
-		require.NoError(t, os.WriteFile(bad, []byte("not-a-pid\n"), 0o644))
+		require.NoError(t, os.WriteFile(bad, []byte("not-a-pid\n"), 0o644)) // nolint:gosec // test-only temp file
 		_, err := ReadPidFile(bad)
 		require.Error(t, err, "no error on an unparseable pidfile")
 	})
@@ -596,7 +596,7 @@ func TestDaemonLogTail(t *testing.T) {
 
 	t.Run("small file returns its content", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "small.daemon.log")
-		require.NoError(t, os.WriteFile(path, []byte("line one\nline two\n"), 0o644))
+		require.NoError(t, os.WriteFile(path, []byte("line one\nline two\n"), 0o644)) // nolint:gosec // test-only temp file
 		require.Equal(t, "line one\nline two", daemonLogTail(path, 0))
 	})
 
@@ -604,17 +604,17 @@ func TestDaemonLogTail(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "large.daemon.log")
 		prefix := strings.Repeat("P", 1000)
 		suffix := strings.Repeat("S", daemonLogTailBytes)
-		require.NoError(t, os.WriteFile(path, []byte(prefix+suffix), 0o644))
+		require.NoError(t, os.WriteFile(path, []byte(prefix+suffix), 0o644)) // nolint:gosec // test-only temp file
 		require.Equal(t, suffix, daemonLogTail(path, 0))
 	})
 
 	t.Run("offset skips a previous run's content", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "shared.daemon.log")
 		prior := strings.Repeat("p", 2000)
-		require.NoError(t, os.WriteFile(path, []byte(prior), 0o644))
+		require.NoError(t, os.WriteFile(path, []byte(prior), 0o644)) // nolint:gosec // test-only temp file
 		from := int64(len(prior))
 		thisRun := "this run's output\n"
-		require.NoError(t, os.WriteFile(path, []byte(prior+thisRun), 0o644))
+		require.NoError(t, os.WriteFile(path, []byte(prior+thisRun), 0o644)) // nolint:gosec // test-only temp file
 		require.Equal(t, "this run's output", daemonLogTail(path, from))
 	})
 }

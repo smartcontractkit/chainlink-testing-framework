@@ -203,7 +203,7 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 		tl.badOpen = true
 		tl.episodeStart = start
 	}
-	closeEpisode := func(tl *instanceTimeline, end time.Time, real bool) {
+	closeEpisode := func(tl *instanceTimeline, end time.Time, isReal bool) {
 		// inWindowPolls widens its boundary outward by the skew bound, so a
 		// translated end can land past windowEnd or before episodeStart; clamp
 		// both, otherwise mergeDurations gets an inverted span.
@@ -213,7 +213,7 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 		if end.Before(tl.episodeStart) {
 			end = tl.episodeStart
 		}
-		tl.episodes = append(tl.episodes, episode{start: tl.episodeStart, end: end, closedByRealClear: real})
+		tl.episodes = append(tl.episodes, episode{start: tl.episodeStart, end: end, closedByRealClear: isReal})
 		tl.badOpen = false
 	}
 	// onsetOf resolves a fresh episode's start: the instance's own ActiveAt,
@@ -290,7 +290,7 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 	slices.Sort(order)
 
 	var (
-		outcome Outcome = OutcomeClean
+		outcome = OutcomeClean
 		badFor  []episode
 		viols   []Violation
 	)
@@ -464,7 +464,7 @@ func badStateSet(states []State) map[State]bool {
 // must not use Violations to second-guess the error, but Result stays useful
 // for the human table on exit 2.
 func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
-	rt map[string]ruleTimings, gt globalTimings, pol Policy) (Result, error) {
+	rt map[string]RuleTimings, gt GlobalTimings, pol Policy) (Result, error) {
 
 	badStates := badStateSet(pol.States)
 

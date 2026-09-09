@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck/internal/gate"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck/internal/gate"
 )
 
 // The golden table test: a fixed Result renders a deterministic, ordered rule

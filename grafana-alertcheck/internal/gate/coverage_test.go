@@ -73,8 +73,8 @@ func TestProveCoverage_SentinelBeforeGraceIsUnobservable(t *testing.T) {
 
 	// The consequence: decide() must turn this into exit 2, never a pass.
 	defs := []Definition{def}
-	drt := map[string]ruleTimings{def.UID: rt}
-	gt := globalTimings{transitionGrace: grace}
+	drt := map[string]RuleTimings{def.UID: rt}
+	gt := GlobalTimings{transitionGrace: grace}
 	pol := Policy{From: from, To: to}
 	dres, err := decide(Header{StartedAt: from.Add(-time.Hour)}, nil, &sentinel, defs, drt, gt, pol)
 	require.Error(t, err, "a sentinel short of to+grace must fail the run")
@@ -117,8 +117,8 @@ func TestProveCoverage_FromBeforeRecordIsUnobservable(t *testing.T) {
 
 	// The consequence: decide() must turn this into exit 2, never a pass.
 	defs := []Definition{def}
-	drt := map[string]ruleTimings{def.UID: rt}
-	gt := globalTimings{}
+	drt := map[string]RuleTimings{def.UID: rt}
+	gt := GlobalTimings{}
 	pol := Policy{From: from, To: to}
 	dres, err := decide(Header{StartedAt: started}, nil, &sentinel, defs, drt, gt, pol)
 	require.Error(t, err, "`from` before the recording started must fail the run")

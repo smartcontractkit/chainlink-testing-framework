@@ -50,7 +50,7 @@ const lockHolderEnv = "GRAFANA_ALERTCHECK_TEST_LOCK_HOLDER"
 func runTestLockHolder(path string) int {
 	signal.Ignore(syscall.SIGTERM)
 
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644) // nolint:gosec // test-only
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1

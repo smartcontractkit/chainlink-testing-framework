@@ -87,7 +87,7 @@ Field notes:
 - `abnormal` holds only instances whose **canonical** state is not `normal`.
 - `cleared`/`vanished` are instance keys that left the bad set, resolved against the same response: `cleared` = a real recovery; `vanished` = a discontinuity, never a recovery.
 
-Instance keys are a sorted `k=v\n` join of labels, so they correlate across polls without hashing.
+Instance keys are the JSON encoding of the labels map (with stable key order), so they correlate across polls without hashing.
 
 ## Stopped
 

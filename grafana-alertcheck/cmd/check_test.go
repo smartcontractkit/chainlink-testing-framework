@@ -6,8 +6,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck/internal/gate"
 	"github.com/stretchr/testify/require"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck/internal/gate"
 )
 
 // The exit-code mapping, pinned directly against exitCode with no network
@@ -35,7 +36,7 @@ func TestExitCode(t *testing.T) {
 func writeTempAlerts(t *testing.T) string {
 	t.Helper()
 	path := t.TempDir() + "/alerts.txt"
-	require.NoError(t, os.WriteFile(path, []byte("Some Alert\n"), 0o644))
+	require.NoError(t, os.WriteFile(path, []byte("Some Alert\n"), 0o644)) // nolint:gosec // test-only temp file
 	return path
 }
 

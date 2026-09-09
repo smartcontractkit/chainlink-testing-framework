@@ -26,19 +26,19 @@ const minDrainTimeout = 2 * time.Minute
 // worth warning about.
 const graceWarnFraction = 0.25
 
-// ruleTimings groups the per-rule thresholds derived from a rule's poll
+// RuleTimings groups the per-rule thresholds derived from a rule's poll
 // cadence and its own evaluation interval.
-type ruleTimings struct {
+type RuleTimings struct {
 	pollEvery      time.Duration
 	maxGap         time.Duration
 	healthGrace    time.Duration
 	evalStaleAfter time.Duration
 }
 
-// globalTimings groups the values that apply to the whole run rather than to
+// GlobalTimings groups the values that apply to the whole run rather than to
 // one rule: transitionGrace and drainTimeout are each derived once, across
 // every non-skipped watched rule, not per rule.
-type globalTimings struct {
+type GlobalTimings struct {
 	transitionGrace time.Duration
 	// graceSource names, and already carries the `for` value of, the rule that
 	// set transitionGrace — one string field rather than a second
@@ -51,11 +51,11 @@ type globalTimings struct {
 // newRuleTimings derives one rule's thresholds from its resolved cadence and
 // evaluation interval. pollEvery is an input — already resolved for the
 // caller's mode — so no caller can compute maxGap against the wrong authority.
-func newRuleTimings(pollEvery time.Duration, intervalSeconds int) ruleTimings {
+func newRuleTimings(pollEvery time.Duration, intervalSeconds int) RuleTimings {
 	interval := time.Duration(intervalSeconds) * time.Second
 	maxGap := 2 * pollEvery
 	healthGrace := max(maxGap, interval)
-	return ruleTimings{
+	return RuleTimings{
 		pollEvery:      pollEvery,
 		maxGap:         maxGap,
 		healthGrace:    healthGrace,
@@ -73,8 +73,8 @@ func defaultPollEvery(intervalSeconds int) time.Duration {
 // the shared globalTimings. A non-zero override is used verbatim for every rule
 // and never clamped to the default — an override above intervalSeconds/2 widens
 // maxGap and is reported as a note, not corrected.
-func DeriveTimings(defs []Definition, override time.Duration) (rules map[string]ruleTimings, global globalTimings, notes []string) {
-	rules = make(map[string]ruleTimings, len(defs))
+func DeriveTimings(defs []Definition, override time.Duration) (rules map[string]RuleTimings, global GlobalTimings, notes []string) {
+	rules = make(map[string]RuleTimings, len(defs))
 	for _, d := range defs {
 		def := defaultPollEvery(d.IntervalSeconds)
 		pollEvery := def
@@ -117,25 +117,25 @@ func pausedSet(defs []Definition) map[string]bool {
 //
 // It checks only the header-to-defs direction. A definition absent from the
 // header is Check's log-identity validation to judge, not this function's.
-func DeriveTimingsFromLog(h Header, defs []Definition) (rules map[string]ruleTimings, global globalTimings, err error) {
+func DeriveTimingsFromLog(h Header, defs []Definition) (rules map[string]RuleTimings, global GlobalTimings, err error) {
 	byUID := make(map[string]Definition, len(defs))
 	for _, d := range defs {
 		byUID[d.UID] = d
 	}
 
-	rules = make(map[string]ruleTimings, len(h.Rules))
+	rules = make(map[string]RuleTimings, len(h.Rules))
 	for _, lr := range h.Rules {
 		def, ok := byUID[lr.UID]
 		if !ok {
-			return nil, globalTimings{}, fmt.Errorf(
+			return nil, GlobalTimings{}, fmt.Errorf(
 				"log header names rule %s (%q), which no current definition matches", lr.UID, lr.Title)
 		}
 		if _, duplicate := rules[lr.UID]; duplicate {
-			return nil, globalTimings{}, fmt.Errorf(
+			return nil, GlobalTimings{}, fmt.Errorf(
 				"log header names rule %s (%q) twice; its recorded cadence is ambiguous", lr.UID, lr.Title)
 		}
 		if lr.PollEverySeconds <= 0 {
-			return nil, globalTimings{}, fmt.Errorf(
+			return nil, GlobalTimings{}, fmt.Errorf(
 				"log header records poll_every_seconds=%v for rule %s (%q); the recorded cadence is required to derive maxGap",
 				lr.PollEverySeconds, lr.UID, lr.Title)
 		}
@@ -156,8 +156,8 @@ func DeriveTimingsFromLog(h Header, defs []Definition) (rules map[string]ruleTim
 // was a quiet fail-open — a rule paused after `to` would drop out of the max,
 // collapse the grace past windowEnd (the classification bound AND collection
 // deadline), and pass a window the surfacing poll was never recorded for.
-func deriveGlobalTimings(defs []Definition, pausedAtStart map[string]bool) globalTimings {
-	var g globalTimings
+func deriveGlobalTimings(defs []Definition, pausedAtStart map[string]bool) GlobalTimings {
+	var g GlobalTimings
 	var maxInterval time.Duration
 	for _, d := range defs {
 		interval := time.Duration(d.IntervalSeconds) * time.Second
@@ -198,7 +198,7 @@ func NewScheduler(every map[string]time.Duration, now time.Time) *Scheduler {
 		s.every[uid] = pollEvery
 		var offset time.Duration
 		if pollEvery > 0 {
-			offset = rand.N(pollEvery)
+			offset = rand.N(pollEvery) // nolint:gosec // we don't need strong randomness, just a spread across [0, pollEvery)
 		}
 		s.next[uid] = now.Add(offset)
 	}
@@ -270,7 +270,7 @@ func (s *Scheduler) earliestDue() (time.Time, bool) {
 //
 // The message names only the three operator controls: concurrency,
 // poll-interval, and the alert list.
-func CheckBudget(t map[string]ruleTimings, measured map[string]time.Duration, concurrency int) error {
+func CheckBudget(t map[string]RuleTimings, measured map[string]time.Duration, concurrency int) error {
 	if len(t) == 0 {
 		return nil
 	}
@@ -354,7 +354,7 @@ func graceSourceOrNone(source string) string {
 // transitionGrace, plus a warning when the grace eats more than
 // graceWarnFraction of the requested window. from/to are the requested
 // classification window.
-func StartupSummary(from, to time.Time, global globalTimings) (summary, warning string) {
+func StartupSummary(from, to time.Time, global GlobalTimings) (summary, warning string) {
 	window := to.Sub(from)
 	total := window + global.transitionGrace + global.drainTimeout
 	source := graceSourceOrNone(global.graceSource)

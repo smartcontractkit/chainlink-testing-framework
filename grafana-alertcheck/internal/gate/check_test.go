@@ -559,7 +559,7 @@ func deadPid(t *testing.T) int {
 
 func writePid(t *testing.T, path, contents string) {
 	t.Helper()
-	require.NoError(t, os.WriteFile(path, []byte(contents), 0o644))
+	require.NoError(t, os.WriteFile(path, []byte(contents), 0o644)) // nolint:gosec // test-only temp file
 }
 
 // recorderConfig points check at a recording of [testNow-1m, windowEnd+30s]
@@ -847,7 +847,7 @@ func pausedAfterWindowLog(t *testing.T, dir string, firesAt time.Time, end, sent
 // to + transitionGrace, which for this 60s rule is to + 60s: the fresh
 // definition says paused, but that no longer shrinks the grace — the header
 // does, and the header says the rule was active (deriveGlobalTimings).
-func pausedAfterWindowCheck(t *testing.T, allowPaused bool) (Result, error, Config) {
+func pausedAfterWindowCheck(t *testing.T, allowPaused bool) (Result, Config, error) {
 	t.Helper()
 	dir := t.TempDir()
 	to := testNow.Add(5 * time.Minute)
@@ -864,14 +864,14 @@ func pausedAfterWindowCheck(t *testing.T, allowPaused bool) (Result, error, Conf
 	src.defs = []Definition{paused}
 
 	res, err := check(context.Background(), cfg, src)
-	return res, err, cfg
+	return res, cfg, err
 }
 
 // The window's own evidence outranks a definition read after it closed: a rule
 // that was active at record start is classified, whatever its pause state is
 // by the time check resolves the definitions.
 func TestCheckPausingARuleAfterTheWindowDoesNotMakeItSkipped(t *testing.T) {
-	res, err, _ := pausedAfterWindowCheck(t, false)
+	res, _, err := pausedAfterWindowCheck(t, false)
 	require.NoError(t, err)
 	require.Equal(t, OutcomeNewlyBad, res.Verdicts[0].Outcome,
 		"the rule was active for the whole window and fired inside it")
@@ -885,7 +885,7 @@ func TestCheckPausingARuleAfterTheWindowDoesNotMakeItSkipped(t *testing.T) {
 // skipped free; and a window in which the alert fired reported exit 0. The
 // default message names --allow-paused, so an operator was led straight to it.
 func TestCheckAllowPausedCannotExcuseARulePausedAfterItFired(t *testing.T) {
-	res, err, _ := pausedAfterWindowCheck(t, true)
+	res, _, err := pausedAfterWindowCheck(t, true)
 	require.NoError(t, err)
 	require.NotEmpty(t, res.Violations, "the run passed over a window in which the alert fired")
 }
@@ -1000,7 +1000,7 @@ func TestCheckRefusesToReadALogItCannotStop(t *testing.T) {
 // real process rather than a shell one-liner.
 func startLockHolder(t *testing.T, logPath string) int {
 	t.Helper()
-	cmd := exec.Command(os.Args[0])
+	cmd := exec.Command(os.Args[0]) // nolint:gosec // test-only exec
 	cmd.Env = append(os.Environ(), lockHolderEnv+"="+logPath)
 	cmd.Stderr = os.Stderr
 	stdout, err := cmd.StdoutPipe()
@@ -1115,7 +1115,7 @@ func TestCheckRecorderModeTruncatedLogFailsClosed(t *testing.T) {
 	}})
 	require.NoError(t, err)
 	content := string(hb) + "\n" + string(pb) + "\n" + `{"type":"poll","rule_ui` // torn mid-write
-	require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o644))               // nolint:gosec // test-only temp file
 	writePid(t, path+".pid", fmt.Sprintf("%d\n", deadPid(t)))
 
 	cfg := recorderConfig(t, newVirtualClock(testNow), path)
@@ -1252,7 +1252,7 @@ func TestReadLogHeader(t *testing.T) {
 
 	t.Run("a half-written header is not a header", func(t *testing.T) {
 		path := filepath.Join(dir, "torn.jsonl")
-		require.NoError(t, os.WriteFile(path, []byte(`{"type":"header","url":"htt`), 0o644))
+		require.NoError(t, os.WriteFile(path, []byte(`{"type":"header","url":"htt`), 0o644)) // nolint:gosec // test-only temp file
 		_, err := ReadLogHeader(path)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "no complete header")
@@ -1260,7 +1260,7 @@ func TestReadLogHeader(t *testing.T) {
 
 	t.Run("a wrong schema version is refused", func(t *testing.T) {
 		path := filepath.Join(dir, "old.jsonl")
-		require.NoError(t, os.WriteFile(path, []byte(`{"type":"header","schema_version":99,"url":"u"}`+"\n"), 0o644))
+		require.NoError(t, os.WriteFile(path, []byte(`{"type":"header","schema_version":99,"url":"u"}`+"\n"), 0o644)) // nolint:gosec // test-only temp file
 		_, err := ReadLogHeader(path)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "schema version 99")

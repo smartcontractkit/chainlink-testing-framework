@@ -56,7 +56,7 @@ type CoverageResult struct {
 // not be pre-filtered to this rule (selection is by def.UID). Every check runs
 // even after Unobservable is set, so LargestGap and the notes are complete on
 // exit 2; Reason names only the FIRST check that failed.
-func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t ruleTimings, def Definition,
+func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t RuleTimings, def Definition,
 	from, to time.Time, grace time.Duration) CoverageResult {
 
 	windowEnd := to.Add(grace)

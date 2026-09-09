@@ -267,7 +267,7 @@ func daemonLogTail(path string, from int64) string {
 type preparedWatch struct {
 	writer   *Writer
 	header   Header
-	timings  map[string]ruleTimings
+	timings  map[string]RuleTimings
 	measured map[string]time.Duration
 }
 
@@ -328,7 +328,7 @@ func prepareWatch(ctx context.Context, cfg WatchConfig, src Source) (*preparedWa
 // the recorder will actually watch, appends those observations as the log's
 // first heartbeats, and only then decides whether the schedule is feasible.
 func openRecording(ctx context.Context, cfg WatchConfig, src Source, writer *Writer,
-	version string, resolved []Definition, rt map[string]ruleTimings) (*preparedWatch, error) {
+	version string, resolved []Definition, rt map[string]RuleTimings) (*preparedWatch, error) {
 
 	header := Header{
 		SchemaVersion:  LogSchemaVersion,
@@ -346,7 +346,7 @@ func openRecording(ctx context.Context, cfg WatchConfig, src Source, writer *Wri
 	// already paused at the open. The header still names it, so check reports
 	// it skipped from the definitions.
 	var active []Definition
-	activeTimings := make(map[string]ruleTimings, len(resolved))
+	activeTimings := make(map[string]RuleTimings, len(resolved))
 	for _, d := range resolved {
 		if d.IsPaused {
 			fmt.Fprintf(cfg.Notes, "note: rule %q (%s) is paused: recorded as skipped, not waited for\n", d.Title, d.UID)
@@ -382,7 +382,7 @@ func openRecording(ctx context.Context, cfg WatchConfig, src Source, writer *Wri
 // makes an uploaded log self-describing — while PollEverySeconds is
 // load-bearing: it is the cadence this recording actually used, and check
 // derives maxGap from it rather than from the definitions.
-func loggedRules(defs []Definition, rt map[string]ruleTimings) []LoggedRule {
+func loggedRules(defs []Definition, rt map[string]RuleTimings) []LoggedRule {
 	out := make([]LoggedRule, 0, len(defs))
 	for _, d := range defs {
 		out = append(out, LoggedRule{
@@ -685,7 +685,9 @@ func watchLoop(ctx context.Context, cfg watchLoopConfig) error {
 		// returned, so request latency cannot make the heartbeat spacing drift
 		// towards maxGap.
 		for _, uid := range due {
-			sched.Mark(uid, now)
+			if mErr := sched.Mark(uid, now); mErr != nil {
+				return mErr
+			}
 		}
 
 		pollErr := cfg.pollBatch(ctx, due)
@@ -740,7 +742,7 @@ func untilNextPoll(sched *Scheduler, until, now time.Time) (time.Duration, bool)
 // --pidfile, default <in>.pid). The format is the decimal pid and a newline,
 // so `kill $(cat log.jsonl.pid)` works and ReadPidFile stays trivial.
 func writePidFile(path string, pid int) error {
-	if err := os.WriteFile(path, []byte(strconv.Itoa(pid)+"\n"), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(strconv.Itoa(pid)+"\n"), 0o600); err != nil {
 		return fmt.Errorf("write pidfile %s: %w", path, err)
 	}
 	return nil

@@ -276,12 +276,12 @@ func (s *httpSource) doRequest(ctx context.Context, path string) (requestResult,
 	}
 	defer resp.Body.Close()
 
-	b, readErr := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
+	b, readErr := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes+1))
 	tBodyRead := s.clock.Now()
 	if readErr != nil {
 		return requestResult{}, &TransportError{Err: fmt.Errorf("read response body (status %d): %w", resp.StatusCode, readErr)}
 	}
-	if len(b) >= maxResponseBytes {
+	if len(b) > maxResponseBytes {
 		// Hard error, never retried: a response this large is a stable
 		// property of the server's reply, not a transient network hiccup, so
 		// retrying would just reallocate the same bounded-but-pointless body.
@@ -357,6 +357,6 @@ func backoffDelay(base, maxDelay time.Duration, failureCount int) time.Duration 
 	if d > maxDelay {
 		d = maxDelay
 	}
-	jitter := 0.8 + rand.Float64()*0.4 // [0.8, 1.2]
+	jitter := 0.8 + rand.Float64()*0.4 // nolint:gosec // we don't need strong randomness, just a spread across [0.8, 1.2]
 	return time.Duration(float64(d) * jitter)
 }

@@ -75,7 +75,7 @@ Alert names take one of four forms:
 | ---- | ------- |
 | `HighErrorRate` | Title only, scoped by `--folder` |
 | `Platform/HighErrorRate` | Folder + title |
-| `Platform/api/HighErrorRate` | Folder + group + title (always unique) |
+| `Platform/api/HighErrorRate` | Folder + group + title (may still be ambiguous; use `uid:` for guaranteed uniqueness) |
 | `uid:abc123` | Exact uid (present on both endpoints) |
 
 Datasource-managed and recording rules are refused with a specific error. A name matching multiple rules errors listing every candidate with the copyable `Folder/Group/Title` and its `uid:` form. A no-match errors with case-insensitive substring suggestions and points at `list`. Duplicate names that resolve to the same uid collapse to one (a note, not an error).
