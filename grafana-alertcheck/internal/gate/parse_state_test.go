@@ -217,10 +217,6 @@ func TestInstanceKey(t *testing.T) {
 	require.Equal(t, "null", instanceKey(nil), "instanceKey(nil) should be \"null\"")
 }
 
-<<<<<<< HEAD
-// Label values may contain "\n" or "="; the JSON encoding must keep them distinct.
-=======
->>>>>>> c276546b (chore: use testify's require in tests)
 func TestInstanceKey_NoCollision(t *testing.T) {
 	require.NotEqual(t, instanceKey(map[string]string{"a": "1\nb=2"}), instanceKey(map[string]string{"a": "1", "b": "2"}), "instanceKey should not collide for sets {a:1\\nb=2} and {a:1,b:2}")
 

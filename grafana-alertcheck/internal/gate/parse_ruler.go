@@ -84,7 +84,7 @@ func ParseDefinitions(body []byte) ([]Definition, error) {
 func parseDefinition(raw json.RawMessage, folder, group string) (Definition, error) {
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &m); err != nil {
-		return Definition{}, fmt.Errorf("%w", err)
+		return Definition{}, err
 	}
 
 	var forStr string

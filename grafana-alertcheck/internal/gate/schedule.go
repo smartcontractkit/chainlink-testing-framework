@@ -339,6 +339,16 @@ func CheckBudget(t map[string]ruleTimings, measured map[string]time.Duration, co
 	return fmt.Errorf("%s", b.String())
 }
 
+// graceSourceOrNone is the single "none" default for the grace-source field:
+// an empty source means no rule contributed a transitionGrace. Applied here so
+// StartupSummary and the human table print the same thing.
+func graceSourceOrNone(source string) string {
+	if source == "" {
+		return "none"
+	}
+	return source
+}
+
 // StartupSummary formats the pre-run print an operator sees before the wait:
 // the total planned run time and the rule (with its `for` value) that set
 // transitionGrace, plus a warning when the grace eats more than
@@ -347,10 +357,7 @@ func CheckBudget(t map[string]ruleTimings, measured map[string]time.Duration, co
 func StartupSummary(from, to time.Time, global globalTimings) (summary, warning string) {
 	window := to.Sub(from)
 	total := window + global.transitionGrace + global.drainTimeout
-	source := global.graceSource
-	if source == "" {
-		source = "none"
-	}
+	source := graceSourceOrNone(global.graceSource)
 	summary = fmt.Sprintf(
 		"planned run time: %s\n  window %s + transitionGrace %s + drainTimeout %s\n  transitionGrace source: %s",
 		total, window, global.transitionGrace, global.drainTimeout, source)
