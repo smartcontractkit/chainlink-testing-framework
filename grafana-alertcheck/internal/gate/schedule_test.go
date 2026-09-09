@@ -1,9 +1,10 @@
 package gate
 
 import (
-	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestDeriveTimings_Default(t *testing.T) {
@@ -11,22 +12,12 @@ func TestDeriveTimings_Default(t *testing.T) {
 		{UID: "r1", Title: "R1", IntervalSeconds: 60},
 	}
 	rules, _, notes := DeriveTimings(defs, 0)
-	if len(notes) != 0 {
-		t.Fatalf("notes = %v, want none", notes)
-	}
+	require.Empty(t, notes)
 	rt := rules["r1"]
-	if rt.pollEvery != 30*time.Second {
-		t.Errorf("pollEvery = %s, want 30s", rt.pollEvery)
-	}
-	if rt.maxGap != 60*time.Second {
-		t.Errorf("maxGap = %s, want 60s", rt.maxGap)
-	}
-	if rt.healthGrace != 60*time.Second {
-		t.Errorf("healthGrace = %s, want 60s", rt.healthGrace)
-	}
-	if rt.evalStaleAfter != 120*time.Second {
-		t.Errorf("evalStaleAfter = %s, want 120s", rt.evalStaleAfter)
-	}
+	require.Equal(t, 30*time.Second, rt.pollEvery)
+	require.Equal(t, 60*time.Second, rt.maxGap)
+	require.Equal(t, 60*time.Second, rt.healthGrace)
+	require.Equal(t, 120*time.Second, rt.evalStaleAfter)
 }
 
 func TestDeriveTimings_OverrideVerbatimNoClamp(t *testing.T) {
@@ -35,23 +26,16 @@ func TestDeriveTimings_OverrideVerbatimNoClamp(t *testing.T) {
 	}
 	rules, _, notes := DeriveTimings(defs, 20*time.Second)
 	rt := rules["r1"]
-	if rt.pollEvery != 20*time.Second {
-		t.Fatalf("pollEvery = %s, want the override verbatim (20s), never clamped down to the 5s default", rt.pollEvery)
-	}
-	if rt.maxGap != 40*time.Second {
-		t.Errorf("maxGap = %s, want 2x the override (40s)", rt.maxGap)
-	}
-	if len(notes) != 1 || !strings.Contains(notes[0], "R1") {
-		t.Fatalf("notes = %v, want one note naming R1's exceeded default", notes)
-	}
+	require.Equal(t, 20*time.Second, rt.pollEvery, "the override verbatim (20s), never clamped down to the 5s default")
+	require.Equal(t, 40*time.Second, rt.maxGap)
+	require.Len(t, notes, 1)
+	require.Contains(t, notes[0], "R1")
 }
 
 func TestDeriveTimings_OverrideBelowDefaultNoNote(t *testing.T) {
 	defs := []Definition{{UID: "r1", Title: "R1", IntervalSeconds: 60}} // default pollEvery = 30s
 	_, _, notes := DeriveTimings(defs, 5*time.Second)
-	if len(notes) != 0 {
-		t.Fatalf("notes = %v, want none when the override tightens rather than exceeds the default", notes)
-	}
+	require.Empty(t, notes)
 }
 
 func TestDeriveTimings_TransitionGraceExcludesSkippedRule(t *testing.T) {
@@ -61,28 +45,86 @@ func TestDeriveTimings_TransitionGraceExcludesSkippedRule(t *testing.T) {
 	}
 	_, global, _ := DeriveTimings(defs, 0)
 	want := time.Minute + 60*time.Second // r1's for+interval; r2 (skipped) must not win despite its huge `for`
-	if global.transitionGrace != want {
-		t.Fatalf("transitionGrace = %s, want %s (paused rule r2 must be excluded from the max)", global.transitionGrace, want)
-	}
-	if !strings.Contains(global.graceSource, "Tight") {
-		t.Errorf("graceSource = %q, want it to name the contributing rule Tight", global.graceSource)
-	}
+	require.Equal(t, want, global.transitionGrace)
+	require.Contains(t, global.graceSource, "Tight")
+}
+
+// `for: 1d` and `for: 1w` parse correctly (parse_ruler_test.go),
+// but that alone never proves they flow into transitionGrace — a Prometheus
+// duration parser that silently truncated to time.Duration's other units, or
+// a transitionGrace derivation that only ever saw hand-built values, could
+// each pass every existing test and still be wrong together. This drives the
+// real ruler_rules.json fixture (rule0000010, for:1w, DERIVED to exercise the
+// w unit — testdata/README.md) through ParseDefinitions and DeriveTimings.
+func TestDeriveTimings_RealForOneWeekRuleSetsTransitionGrace(t *testing.T) {
+	defs := rulerDefs(t)
+	_, global, notes := DeriveTimings(defs, 0)
+	require.Empty(t, notes, "no --poll-interval override is given, so no override note should fire")
+
+	want := 7*24*time.Hour + 60*time.Second // rule0000010: for=1w, intervalSeconds=60
+	require.Equal(t, want, global.transitionGrace)
+	require.Contains(t, global.graceSource, "Example Failure Ratio Above 10 Percent Weekly")
 }
 
 func TestDeriveTimings_TransitionGraceZeroWhenAllSkipped(t *testing.T) {
 	defs := []Definition{{UID: "r1", Title: "R1", IntervalSeconds: 60, For: time.Hour, IsPaused: true}}
 	_, global, _ := DeriveTimings(defs, 0)
-	if global.transitionGrace != 0 {
-		t.Fatalf("transitionGrace = %s, want 0 when every rule is skipped", global.transitionGrace)
+	require.Zero(t, global.transitionGrace)
+}
+
+// TestDeriveTimingsFromLog_TransitionGraceFollowsTheHeaderNotTheDefinition
+// pins the log-mode authority for the grace exclusion. Definitions are
+// re-resolved AFTER the window closed, so "paused" in a definition says
+// nothing about whether the rule was watched during it.
+//
+// The fail-open direction is the first case. transitionGrace exists so a
+// condition arising just before `to` is still seen when it surfaces at
+// to + `for`, and windowEnd is both the classification bound and the
+// collection deadline — so a rule somebody paused after `to` dropping out of
+// the max collapses the grace, the surfacing poll is never recorded, and the
+// run reports clean.
+func TestDeriveTimingsFromLog_TransitionGraceFollowsTheHeaderNotTheDefinition(t *testing.T) {
+	loggedRule := func(uid string, pausedAtStart bool) LoggedRule {
+		return LoggedRule{UID: uid, Title: uid, IntervalSeconds: 60, PollEverySeconds: 30, IsPaused: pausedAtStart}
 	}
+	// The definition says paused in BOTH cases: it is the post-window reading,
+	// and it must change nothing.
+	defs := []Definition{{UID: "r1", Title: "R1", IntervalSeconds: 60, For: 5 * time.Minute, IsPaused: true}}
+	want := 5*time.Minute + 60*time.Second
+
+	t.Run("header says active: the rule stays in the max", func(t *testing.T) {
+		h := Header{Rules: []LoggedRule{loggedRule("r1", false)}}
+		_, global, err := DeriveTimingsFromLog(h, defs)
+		require.NoError(t, err)
+		require.Equal(t, want, global.transitionGrace,
+			"the rule was active when the recording opened, so a pause applied afterwards must not shrink the window")
+		require.Contains(t, global.graceSource, "R1")
+	})
+
+	t.Run("header says paused: the rule stays out", func(t *testing.T) {
+		h := Header{Rules: []LoggedRule{loggedRule("r1", true)}}
+		_, global, err := DeriveTimingsFromLog(h, defs)
+		require.NoError(t, err)
+		require.Zero(t, global.transitionGrace,
+			"a rule paused before the window opened can never fire during it")
+	})
+
+	t.Run("drainTimeout counts every rule either way", func(t *testing.T) {
+		// drainTimeout carries no pause exclusion, so both headers give the
+		// same floor-bound value.
+		for _, pausedAtStart := range []bool{false, true} {
+			h := Header{Rules: []LoggedRule{loggedRule("r1", pausedAtStart)}}
+			_, global, err := DeriveTimingsFromLog(h, defs)
+			require.NoError(t, err)
+			require.Equalf(t, minDrainTimeout, global.drainTimeout, "pausedAtStart=%v", pausedAtStart)
+		}
+	})
 }
 
 func TestDeriveTimings_DrainTimeoutIncludesPaused(t *testing.T) {
 	defs := []Definition{{UID: "r1", Title: "R1", IntervalSeconds: 10}}
 	_, global, _ := DeriveTimings(defs, 0)
-	if global.drainTimeout != minDrainTimeout {
-		t.Fatalf("drainTimeout = %s, want the %s floor", global.drainTimeout, minDrainTimeout)
-	}
+	require.Equal(t, minDrainTimeout, global.drainTimeout)
 }
 
 func TestDeriveTimings_DrainTimeoutFloor(t *testing.T) {
@@ -92,22 +134,17 @@ func TestDeriveTimings_DrainTimeoutFloor(t *testing.T) {
 	}
 	_, global, _ := DeriveTimings(defs, 0)
 	// double the longest interval (2 * 180s) should be the drain timeout
-	if global.drainTimeout != 2*180*time.Second {
-		t.Fatalf("drainTimeout = %s, want %s", global.drainTimeout, 2*180*time.Second)
-	}
+	require.Equal(t, 2*180*time.Second, global.drainTimeout)
 }
 
 func TestDeriveTimings_DrainTimeoutAboveFloor(t *testing.T) {
 	defs := []Definition{{UID: "r1", Title: "R1", IntervalSeconds: 300}} // 2x300s = 600s > 2m floor
 	_, global, _ := DeriveTimings(defs, 0)
-	if global.drainTimeout != 600*time.Second {
-		t.Fatalf("drainTimeout = %s, want 600s", global.drainTimeout)
-	}
+	require.Equal(t, 600*time.Second, global.drainTimeout)
 }
 
-// TestScheduler_DueOrderingTiesBreakByTightestCadence pins the ordering
-// invariant the burst bound depends on (§5): when several rules become due at
-// the exact same instant, Due must serve the tightest cadence first, not
+// The ordering invariant the burst bound depends on: when several rules become
+// due at the exact same instant, Due must serve the tightest cadence first, not
 // whatever order the underlying map happens to iterate in. A refactor that
 // loses this ordering must fail here, not in a production phase-aligned gap.
 func TestScheduler_DueOrderingTiesBreakByTightestCadence(t *testing.T) {
@@ -124,9 +161,8 @@ func TestScheduler_DueOrderingTiesBreakByTightestCadence(t *testing.T) {
 		},
 	}
 	due := s.Due(now)
-	if len(due) != 4 || due[0] != "tight" {
-		t.Fatalf("Due = %v, want the tightest-cadence rule (tight) first when all are simultaneously due", due)
-	}
+	require.Len(t, due, 4)
+	require.Equal(t, "tight", due[0], "the tightest-cadence rule must be first when all are simultaneously due")
 }
 
 func TestScheduler_DueExcludesNotYetDue(t *testing.T) {
@@ -136,9 +172,8 @@ func TestScheduler_DueExcludesNotYetDue(t *testing.T) {
 		every: map[string]time.Duration{"soon": 10 * time.Second, "later": 10 * time.Second},
 	}
 	due := s.Due(now)
-	if len(due) != 1 || due[0] != "soon" {
-		t.Fatalf("Due = %v, want only [soon]", due)
-	}
+	require.Len(t, due, 1)
+	require.Equal(t, "soon", due[0])
 }
 
 func TestScheduler_MarkAdvancesNextDue(t *testing.T) {
@@ -147,15 +182,9 @@ func TestScheduler_MarkAdvancesNextDue(t *testing.T) {
 		next:  map[string]time.Time{"r1": now},
 		every: map[string]time.Duration{"r1": 30 * time.Second},
 	}
-	if err := s.Mark("r1", now); err != nil {
-		t.Fatalf("Mark: unexpected error: %v", err)
-	}
-	if got := s.Due(now); len(got) != 0 {
-		t.Fatalf("Due right after Mark = %v, want none (next due is 30s out)", got)
-	}
-	if got := s.Due(now.Add(30 * time.Second)); len(got) != 1 {
-		t.Fatalf("Due at next-due time = %v, want [r1]", got)
-	}
+	require.NoError(t, s.Mark("r1", now), "Mark must succeed for a known rule")
+	require.Empty(t, s.Due(now), "next due is 30s out")
+	require.Len(t, s.Due(now.Add(30*time.Second)), 1)
 }
 
 func TestScheduler_MarkUnknownUIDFails(t *testing.T) {
@@ -164,25 +193,23 @@ func TestScheduler_MarkUnknownUIDFails(t *testing.T) {
 		next:  map[string]time.Time{"r1": now},
 		every: map[string]time.Duration{"r1": 30 * time.Second},
 	}
-	if err := s.Mark("not-a-rule", now); err == nil {
-		t.Fatalf("Mark of an unknown uid: want error, got nil (a missing cadence must not read as zero and loop)")
-	}
+	err := s.Mark("not-a-rule", now)
+	require.Error(t, err, "a missing cadence must not read as zero and loop")
 	// The failed Mark must not have inserted a bogus next-due entry.
-	if _, ok := s.next["not-a-rule"]; ok {
-		t.Errorf("Mark of an unknown uid inserted a next-due entry")
-	}
+	_, ok := s.next["not-a-rule"]
+	require.False(t, ok, "a failed Mark must not insert a next-due entry")
 }
 
 // TestScheduler_PerRuleCadenceOverTime simulates a run and counts how often
-// each rule comes due, pinning §5's core claim: schedules are per rule, never
-// a global cycle. A tight rule must be polled at its own cadence regardless
+// each rule comes due: schedules are per rule, never a global cycle. A tight
+// rule must be polled at its own cadence regardless
 // of what slower rules in the same fleet need, and a slack rule must never be
 // forced onto the tight rule's cadence.
 func TestScheduler_PerRuleCadenceOverTime(t *testing.T) {
 	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	rules := map[string]ruleTimings{
-		"tight": {pollEvery: 10 * time.Second},
-		"slack": {pollEvery: 300 * time.Second},
+	rules := map[string]time.Duration{
+		"tight": 10 * time.Second,
+		"slack": 300 * time.Second,
 	}
 	s := NewScheduler(rules, start)
 
@@ -193,40 +220,63 @@ func TestScheduler_PerRuleCadenceOverTime(t *testing.T) {
 		now := start.Add(elapsed)
 		for _, uid := range s.Due(now) {
 			counts[uid]++
-			if err := s.Mark(uid, now); err != nil {
-				t.Fatalf("Mark(%q): unexpected error: %v", uid, err)
-			}
+			require.NoErrorf(t, s.Mark(uid, now), "Mark(%q)", uid)
 		}
 	}
 
 	// 900s of runtime: "tight" (10s cadence) polls ~90 times, "slack" (300s
 	// cadence) ~3 times. Assert the ratio holds rather than an exact count,
 	// since the staggered initial offset shifts each by up to one cadence.
-	if counts["tight"] < 85 || counts["tight"] > 91 {
-		t.Errorf("tight polled %d times over 900s, want ~90 (its own 10s cadence)", counts["tight"])
-	}
-	if counts["slack"] < 2 || counts["slack"] > 4 {
-		t.Errorf("slack polled %d times over 900s, want ~3 (its own 300s cadence, not tight's)", counts["slack"])
-	}
-	if counts["slack"] >= counts["tight"] {
-		t.Fatalf("slack polled as often as tight (%d vs %d) — schedules must be per rule, not a shared global cycle", counts["slack"], counts["tight"])
-	}
+	require.GreaterOrEqual(t, counts["tight"], 85)
+	require.LessOrEqual(t, counts["tight"], 91)
+	require.GreaterOrEqual(t, counts["slack"], 2)
+	require.LessOrEqual(t, counts["slack"], 4)
+	require.Less(t, counts["slack"], counts["tight"],
+		"schedules must be per rule, not a shared global cycle")
 }
 
 func TestNewScheduler_StaggersWithinPollEvery(t *testing.T) {
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	rules := map[string]ruleTimings{"r1": {pollEvery: 100 * time.Second}}
+	rules := map[string]time.Duration{"r1": 100 * time.Second}
 	s := NewScheduler(rules, now)
 	offset := s.next["r1"].Sub(now)
-	if offset < 0 || offset >= 100*time.Second {
-		t.Fatalf("initial offset = %s, want within [0, 100s)", offset)
-	}
+	require.GreaterOrEqual(t, offset, time.Duration(0))
+	require.Less(t, offset, 100*time.Second)
 }
 
-// TestCheckBudget_MixedIntervalRegression is §22.3's sanity check from the
-// plan: one rule at 10s beside twenty at 300s, all measured ~1.8s, must not
-// error at any reasonable concurrency — the exact case a naive worst-case-slot
-// simulation would wrongly fail.
+func TestScheduler_EarliestDueEmpty(t *testing.T) {
+	s := &Scheduler{next: map[string]time.Time{}, every: map[string]time.Duration{}}
+	_, ok := s.earliestDue()
+	require.False(t, ok)
+}
+
+// A zero next-due time is real, not an empty scheduler.
+func TestScheduler_EarliestDueZeroTime(t *testing.T) {
+	s := &Scheduler{
+		next:  map[string]time.Time{"r1": {}},
+		every: map[string]time.Duration{"r1": time.Second},
+	}
+	earliest, ok := s.earliestDue()
+	require.True(t, ok, "the zero time is a real next-due, not an empty scheduler")
+	require.Truef(t, earliest.IsZero(), "earliestDue = %v, want the zero time", earliest)
+}
+
+func TestScheduler_EarliestDuePicksMinimum(t *testing.T) {
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	s := &Scheduler{
+		next: map[string]time.Time{
+			"later": now.Add(2 * time.Minute),
+			"soon":  now.Add(time.Minute),
+		},
+		every: map[string]time.Duration{"later": time.Minute, "soon": time.Minute},
+	}
+	earliest, ok := s.earliestDue()
+	require.True(t, ok)
+	require.Truef(t, earliest.Equal(now.Add(time.Minute)), "earliestDue = %v, want the earliest next-due time", earliest)
+}
+
+// One rule at 10s beside twenty at 300s, all measured ~1.8s, must not error at
+// any reasonable concurrency — the exact case a naive worst-case-slot
 func TestCheckBudget_MixedIntervalRegression(t *testing.T) {
 	timings := map[string]ruleTimings{"tight": {pollEvery: 5 * time.Second}}
 	measured := map[string]time.Duration{"tight": 1800 * time.Millisecond}
@@ -235,9 +285,7 @@ func TestCheckBudget_MixedIntervalRegression(t *testing.T) {
 		timings[uid] = ruleTimings{pollEvery: 150 * time.Second}
 		measured[uid] = 1800 * time.Millisecond
 	}
-	if err := CheckBudget(timings, measured, 1); err != nil {
-		t.Fatalf("CheckBudget = %v, want nil (utilization 0.6, burst bound 1.8s <= 5s)", err)
-	}
+	require.NoError(t, CheckBudget(timings, measured, 1))
 }
 
 func TestCheckBudget_UtilizationExceeded(t *testing.T) {
@@ -247,9 +295,7 @@ func TestCheckBudget_UtilizationExceeded(t *testing.T) {
 	}
 	measured := map[string]time.Duration{"a": 9 * time.Second, "b": 9 * time.Second}
 	err := CheckBudget(timings, measured, 1)
-	if err == nil {
-		t.Fatal("CheckBudget = nil, want an error: utilization 1.8 > concurrency 1")
-	}
+	require.Error(t, err)
 	assertBudgetMessage(t, err.Error())
 }
 
@@ -257,9 +303,7 @@ func TestCheckBudget_SingleRuleExceedsOwnCadence(t *testing.T) {
 	timings := map[string]ruleTimings{"slow": {pollEvery: 5 * time.Second}}
 	measured := map[string]time.Duration{"slow": 6 * time.Second}
 	err := CheckBudget(timings, measured, 10)
-	if err == nil {
-		t.Fatal("CheckBudget = nil, want an error: measured 6s exceeds its own 5s poll-interval")
-	}
+	require.Error(t, err, "measured 6s exceeds its own 5s poll-interval")
 	assertBudgetMessage(t, err.Error())
 }
 
@@ -273,12 +317,8 @@ func TestCheckBudget_BurstBoundViolation(t *testing.T) {
 	}
 	measured := map[string]time.Duration{"tight": 100 * time.Millisecond, "slow": 3 * time.Second}
 	err := CheckBudget(timings, measured, 10)
-	if err == nil {
-		t.Fatal("CheckBudget = nil, want a burst-bound error: slow's 3s measured exceeds tight's 2s cadence")
-	}
-	if !strings.Contains(err.Error(), "burst bound") {
-		t.Errorf("error = %q, want it to name the burst bound", err.Error())
-	}
+	require.Error(t, err, "slow's 3s measured exceeds tight's 2s cadence")
+	require.Contains(t, err.Error(), "burst bound")
 	assertBudgetMessage(t, err.Error())
 }
 
@@ -288,17 +328,13 @@ func TestCheckBudget_BurstBoundOKWhenNotExceeded(t *testing.T) {
 		"slow":  {pollEvery: 100 * time.Second},
 	}
 	measured := map[string]time.Duration{"tight": 100 * time.Millisecond, "slow": 1800 * time.Millisecond}
-	if err := CheckBudget(timings, measured, 10); err != nil {
-		t.Fatalf("CheckBudget = %v, want nil (1.8s <= 5s tightest cadence)", err)
-	}
+	require.NoError(t, CheckBudget(timings, measured, 10))
 }
 
 func TestCheckBudget_MissingMeasurementIsAnError(t *testing.T) {
 	timings := map[string]ruleTimings{"r1": {pollEvery: 30 * time.Second}}
 	err := CheckBudget(timings, map[string]time.Duration{}, 10)
-	if err == nil {
-		t.Fatal("CheckBudget = nil, want an error: r1 was never measured (fail closed, not a silent zero)")
-	}
+	require.Error(t, err, "r1 was never measured (fail closed, not a silent zero)")
 }
 
 func TestCheckBudget_MissingMixedMeasurementIsAnError(t *testing.T) {
@@ -307,15 +343,12 @@ func TestCheckBudget_MissingMixedMeasurementIsAnError(t *testing.T) {
 		"slow":  {pollEvery: 100 * time.Second},
 	}
 	measured := map[string]time.Duration{"tight": 100 * time.Millisecond}
-	if err := CheckBudget(timings, measured, 10); err == nil {
-		t.Fatal("CheckBudget = nil, want an error: slow was never measured (fail closed, not a silent zero)")
-	}
+	require.Error(t, CheckBudget(timings, measured, 10),
+		"slow was never measured (fail closed, not a silent zero)")
 }
 
 func TestCheckBudget_EmptyScheduleIsFine(t *testing.T) {
-	if err := CheckBudget(nil, nil, 1); err != nil {
-		t.Fatalf("CheckBudget = %v, want nil for an empty schedule", err)
-	}
+	require.NoError(t, CheckBudget(nil, nil, 1))
 }
 
 func TestCheckBudget_NonPositivePollIntervalIsAnError(t *testing.T) {
@@ -323,24 +356,18 @@ func TestCheckBudget_NonPositivePollIntervalIsAnError(t *testing.T) {
 		timings := map[string]ruleTimings{"r1": {pollEvery: pe}}
 		measured := map[string]time.Duration{"r1": time.Second}
 		err := CheckBudget(timings, measured, 1)
-		if err == nil {
-			t.Fatalf("CheckBudget(pollEvery=%s) = nil, want error (non-positive poll-interval would divide by zero)", pe)
-		}
-		if !strings.Contains(err.Error(), "non-positive") {
-			t.Errorf("error %q does not name the non-positive poll-interval", err.Error())
-		}
+		require.Errorf(t, err, "pollEvery=%s would divide by zero", pe)
+		require.Contains(t, err.Error(), "non-positive", "the error must name the non-positive poll-interval")
 	}
 }
 
-// assertBudgetMessage checks §5.1's required message contents: a measured
-// duration is present, and all three controls are named — never a single
-// suggested interval.
+// assertBudgetMessage checks the message contents: a measured duration is
+// present, and all three controls are named — never a single suggested
+// interval.
 func assertBudgetMessage(t *testing.T, msg string) {
 	t.Helper()
 	for _, want := range []string{"measured", "concurrency", "poll-interval", "fewer"} {
-		if !strings.Contains(msg, want) {
-			t.Errorf("message %q missing %q", msg, want)
-		}
+		require.Contains(t, msg, want)
 	}
 }
 
@@ -353,15 +380,26 @@ func TestStartupSummary_WarningWhenGraceTooLarge(t *testing.T) {
 	to := from.Add(10 * time.Minute)
 	global := globalTimings{transitionGrace: 5 * time.Minute, graceSource: "R (for=4m30s, interval=30s)", drainTimeout: time.Minute}
 	summary, warning := StartupSummary(from, to, global)
-	if !strings.Contains(summary, "planned run time") {
-		t.Errorf("summary = %q, want it to name the planned run time", summary)
-	}
-	if warning == "" {
-		t.Fatal("warning = \"\", want one: transitionGrace (5m) > 1/4 of the 10m window")
-	}
-	if !strings.Contains(warning, "R (for=4m30s, interval=30s)") {
-		t.Errorf("warning = %q, want it to name the grace source", warning)
-	}
+	require.Contains(t, summary, "planned run time")
+	require.NotEmpty(t, warning, "transitionGrace (5m) > 1/4 of the 10m window")
+	require.Contains(t, warning, "R (for=4m30s, interval=30s)")
+}
+
+// The test above pins the warning formula with a hand-built globalTimings.
+// This drives the same warning off the real ruler_rules.json fixture's for:1w
+// rule instead, tying ParseDefinitions and DeriveTimings into the warning end
+// to end.
+func TestStartupSummary_RealForOneWeekRuleTriggersWarning(t *testing.T) {
+	defs := rulerDefs(t)
+	_, global, notes := DeriveTimings(defs, 0)
+	require.Empty(t, notes)
+
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute) // transitionGrace (>1w) dwarfs 1/4 of this window
+	summary, warning := StartupSummary(from, to, global)
+	require.Contains(t, summary, "planned run time")
+	require.NotEmpty(t, warning)
+	require.Contains(t, warning, "Example Failure Ratio Above 10 Percent Weekly")
 }
 
 func TestStartupSummary_NoWarningWhenGraceSmall(t *testing.T) {
@@ -369,16 +407,12 @@ func TestStartupSummary_NoWarningWhenGraceSmall(t *testing.T) {
 	to := from.Add(time.Hour)
 	global := globalTimings{transitionGrace: time.Minute, graceSource: "R (for=30s, interval=30s)", drainTimeout: time.Minute}
 	_, warning := StartupSummary(from, to, global)
-	if warning != "" {
-		t.Fatalf("warning = %q, want none: 1m grace is well under 1/4 of a 1h window", warning)
-	}
+	require.Empty(t, warning)
 }
 
 func TestStartupSummary_NoGraceSourceReadsNone(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(time.Hour)
 	summary, _ := StartupSummary(from, to, globalTimings{})
-	if !strings.Contains(summary, "none") {
-		t.Fatalf("summary = %q, want it to read \"none\" when no rule set the grace", summary)
-	}
+	require.Contains(t, summary, "none")
 }
