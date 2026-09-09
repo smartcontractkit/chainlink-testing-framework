@@ -238,11 +238,7 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 		logHasHdr = true
 		resolved, notes, err = resolveFromLog(allDefs, earlyHdr, cfg)
 		if err == nil {
-			// Fail fast on a bound violation that can't change: StartedAt is
-			// immutable (line 1), so check 2's backstop still catches any bad
-			// advisory read — fail closed, never false-pass. Recorder mode only;
-			// single-step warns-and-passes (see below).
-			if from.Before(earlyHdr.StartedAt) {
+			if from.Truncate(time.Second).Before(earlyHdr.StartedAt.Truncate(time.Second)) {
 				return Result{}, fmt.Errorf("check: `from` %s is before recording started at %s",
 					from.Format(time.RFC3339), earlyHdr.StartedAt.Format(time.RFC3339))
 			}
