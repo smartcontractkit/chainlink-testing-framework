@@ -11,11 +11,10 @@ import (
 )
 
 // runList reads every rule definition from the ruler endpoint and prints one
-// line per rule: its kind, its Folder/Group/Title, and its uid. This is what
-// makes the gate runnable end to end before any coverage logic exists (§9
-// rule 4) — it validates auth, the ruler parse, and the shapes Resolve
-// matches against, all against a real Grafana. It is also the "did you mean"
-// surface §17.2's no-match error points operators at.
+// line per rule: its kind, its Folder/Group/Title, and its uid. It validates
+// auth, the ruler parse, and the shapes Resolve matches against, all against a
+// real Grafana, and it is the surface Resolve's no-match error points operators
+// at.
 func runList(args []string, stdout, stderr io.Writer) int {
 	if len(args) != 0 {
 		fmt.Fprintf(stderr, "list takes no arguments, got %v\n", args)
@@ -34,7 +33,7 @@ func runList(args []string, stdout, stderr io.Writer) int {
 	// always terminates. It can still take minutes end-to-end under repeated
 	// transient failures (5 retries * up to 30s backoff each, per call) — an
 	// acceptable wait for an interactive `list`, not for `watch`/`check`,
-	// which get their own deadlines from `--until`/`to` in P10.
+	// which get their own deadlines from `--until`/`--to`.
 	src := gate.NewHTTPSource(url, token, gate.SystemClock{})
 	version, err := src.Version(context.Background())
 	if err != nil {
