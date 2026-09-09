@@ -1,6 +1,6 @@
 module github.com/smartcontractkit/chainlink-testing-framework/wasp
 
-go 1.25.0
+go 1.26.0
 
 replace github.com/smartcontractkit/chainlink-testing-framework/lib => ../lib
 
@@ -285,7 +285,7 @@ require (
 	golang.org/x/arch v0.8.0 // indirect
 	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/mod v0.38.0 // indirect
-	golang.org/x/sync v0.22.0
+	golang.org/x/sync v0.23.0
 	golang.org/x/tools v0.48.0 // indirect
 	google.golang.org/api v0.264.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260819154853-08b0e4226688 // indirect
