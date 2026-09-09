@@ -6,7 +6,7 @@ import (
 	"syscall"
 )
 
-// signalRecorder asks the recorder to stop (§4.4 step 2).
+// signalRecorder asks the recorder to stop.
 //
 // The caller must have established that a writer is alive — by taking the
 // log's flock and being refused — before it calls this. Nothing removes the
