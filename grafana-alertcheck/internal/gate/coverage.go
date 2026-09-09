@@ -146,7 +146,7 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t ruleTimings, d
 		// corrupted or hand-edited data (ReadLog does no field validation);
 		// GrafanaNow-LastEvaluation would go negative and silently read as
 		// fresh — fail-open. Treat it as unobservable instead.
-		if p.LastEvaluation.After(p.GrafanaNow) {
+		if p.LastEvaluation.Truncate(time.Second).After(p.GrafanaNow) {
 			fail(ReasonFutureEvaluation, fmt.Sprintf(
 				"lastEvaluation %s is after grafana_now %s (corrupted poll)",
 				p.LastEvaluation.Format(time.RFC3339), p.GrafanaNow.Format(time.RFC3339)))

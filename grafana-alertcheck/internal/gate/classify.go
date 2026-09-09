@@ -476,7 +476,7 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 		Thresholds:     make(map[string]RuleThresholds),
 		Global: GlobalThresholds{
 			TransitionGrace: gt.transitionGrace,
-			GraceSource:     gt.graceSource,
+			GraceSource:     graceSourceOrNone(gt.graceSource),
 			DrainTimeout:    gt.drainTimeout,
 		},
 	}

@@ -23,7 +23,7 @@ It **fails closed**: if it cannot get an answer, it stops the release. It never 
 ## Install
 
 ```bash
-go install github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck/cmd/grafana-alertcheck@latest
+go install github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck/cmd@latest
 ```
 
 Connection details come from the environment — the token is env-only, never a flag:
