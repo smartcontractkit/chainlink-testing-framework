@@ -37,6 +37,9 @@ jobs:
           - path: parrot
             vm: ubuntu-latest
             regex: ./...
+          - path: grafana-alertcheck
+            vm: ubuntu-latest
+            regex: ./...
           - path: tools/workflowresultparser
             vm: ubuntu-latest
             regex: ./...
