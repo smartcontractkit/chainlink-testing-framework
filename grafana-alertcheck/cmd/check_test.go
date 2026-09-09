@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck/internal/gate"
+	"github.com/stretchr/testify/require"
 )
 
 // The exit-code mapping, pinned directly against exitCode with no network
@@ -27,9 +27,7 @@ func TestExitCode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := exitCode(tt.res, tt.err); got != tt.want {
-				t.Fatalf("exitCode(...) = %d, want %d", got, tt.want)
-			}
+			require.Equal(t, tt.want, exitCode(tt.res, tt.err))
 		})
 	}
 }
@@ -37,9 +35,7 @@ func TestExitCode(t *testing.T) {
 func writeTempAlerts(t *testing.T) string {
 	t.Helper()
 	path := t.TempDir() + "/alerts.txt"
-	if err := os.WriteFile(path, []byte("Some Alert\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.WriteFile(path, []byte("Some Alert\n"), 0o644))
 	return path
 }
 
@@ -100,12 +96,8 @@ func TestRunCheck_FlagValidation(t *testing.T) {
 			var stdout, stderr bytes.Buffer
 			args := append([]string{"check"}, tt.args(t)...)
 			code := run(args, &stdout, &stderr)
-			if code != 2 {
-				t.Fatalf("code = %d, want 2; stderr = %q", code, stderr.String())
-			}
-			if !strings.Contains(stderr.String(), tt.wantErr) {
-				t.Fatalf("stderr = %q, want it to contain %q", stderr.String(), tt.wantErr)
-			}
+			require.Equal(t, 2, code)
+			require.Contains(t, stderr.String(), tt.wantErr)
 		})
 	}
 }
@@ -121,12 +113,8 @@ func TestRunCheck_ToInPastNoLog(t *testing.T) {
 		"--from", "1999-01-01T00:00:00Z", "--to", "2000-01-01T00:00:00Z",
 		"--alerts", writeTempAlerts(t),
 	}, &stdout, &stderr)
-	if code != 2 {
-		t.Fatalf("code = %d, want 2; stderr = %q", code, stderr.String())
-	}
-	if !strings.Contains(stderr.String(), "already passed") {
-		t.Fatalf("stderr = %q, want the past-`to` refusal", stderr.String())
-	}
+	require.Equal(t, 2, code)
+	require.Contains(t, stderr.String(), "already passed")
 }
 
 // --output json never writes to stdout when Check was never reached, because
@@ -137,10 +125,6 @@ func TestRunCheck_NoResultOnConfigError(t *testing.T) {
 	t.Setenv("GRAFANA_TOKEN", "")
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"check", "--to", "2026-01-01T00:00:00Z", "--output", "json"}, &stdout, &stderr)
-	if code != 2 {
-		t.Fatalf("code = %d, want 2", code)
-	}
-	if stdout.Len() != 0 {
-		t.Fatalf("stdout = %q, want empty", stdout.String())
-	}
+	require.Equal(t, 2, code)
+	require.Empty(t, stdout.String())
 }

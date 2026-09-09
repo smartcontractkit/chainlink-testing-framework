@@ -237,6 +237,16 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 		}
 		logHasHdr = true
 		resolved, notes, err = resolveFromLog(allDefs, earlyHdr, cfg)
+		if err == nil {
+			// Fail fast on a bound violation that can't change: StartedAt is
+			// immutable (line 1), so check 2's backstop still catches any bad
+			// advisory read — fail closed, never false-pass. Recorder mode only;
+			// single-step warns-and-passes (see below).
+			if from.Before(earlyHdr.StartedAt) {
+				return Result{}, fmt.Errorf("check: `from` %s is before recording started at %s",
+					from.Format(time.RFC3339), earlyHdr.StartedAt.Format(time.RFC3339))
+			}
+		}
 	} else {
 		resolved, notes, err = Resolve(allDefs, cfg.namedAlerts(), cfg.Folder)
 	}
@@ -271,6 +281,16 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 	}
 	summary, warning := StartupSummary(from, cfg.To, gt)
 	fmt.Fprintln(cfg.Notes, summary)
+	// MinObserved is printed with the plan, beside "planned run time", rather
+	// than after it: it is a fact about the run, not a diagnostic. Its default
+	// is the resolved rule count AFTER duplicate names collapse, which is
+	// len(resolved) by construction; decide defaults it identically, and it is
+	// resolved here rather than inferred from the verdict afterwards.
+	minObserved := cfg.MinObserved
+	if minObserved == 0 {
+		minObserved = len(resolved)
+	}
+	fmt.Fprintf(cfg.Notes, "min-observed: %d of %d resolved rule(s)\n", minObserved, len(resolved))
 	if warning != "" {
 		fmt.Fprintf(cfg.Notes, "warning: %s\n", warning)
 	}
@@ -320,17 +340,6 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 			from = startedAt
 		}
 	}
-
-	// ---- Apply MinObserved. -----------------------------------------------
-	// Its default is the resolved rule count AFTER duplicate names collapse,
-	// which is len(resolved) by construction. decide defaults it identically;
-	// it is resolved here as well so the value the run will judge against is
-	// printed before the wait rather than inferred from the verdict afterwards.
-	minObserved := cfg.MinObserved
-	if minObserved == 0 {
-		minObserved = len(resolved)
-	}
-	fmt.Fprintf(cfg.Notes, "min-observed: %d of %d resolved rule(s)\n", minObserved, len(resolved))
 
 	// ---- Collect the evidence. --------------------------------------------
 	// Collect ONLY. No classification happens here and there is no early exit,

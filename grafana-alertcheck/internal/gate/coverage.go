@@ -88,12 +88,16 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t ruleTimings, d
 	// Check 2 — from bounds: from < StartedAt makes coverage unprovable, no
 	// matter how healthy the polls that DO exist look. Both are runner-domain
 	// clock reads (the recorder's own Clock.Now()), so no cross-domain
-	// translation applies here. The other half of the bound — from too far
-	// ahead of the runner's clock — is Check's input validation, once per run
-	// rather than per rule.
-	if from.Before(h.StartedAt) {
+	// translation applies here. The comparison is at whole-second granularity:
+	// `from` is supplied at second precision (--from RFC3339) while StartedAt
+	// carries the recorder's sub-second clock stamp, so an operator naming the
+	// exact second the recording opened must not be judged early for the
+	// sub-second sliver inside that same second. The other half of the bound —
+	// from too far ahead of the runner's clock — is Check's input validation,
+	// once per run rather than per rule.
+	if from.Truncate(time.Second).Before(h.StartedAt.Truncate(time.Second)) {
 		fail(ReasonFromBeforeRecord, fmt.Sprintf(
-			"requested from %s is before recording started at %s", from.Format(time.RFC3339), h.StartedAt.Format(time.RFC3339)))
+			"requested from %s is before recording started at %s", from.Format(time.RFC3339Nano), h.StartedAt.Format(time.RFC3339Nano)))
 	}
 
 	// Filtered once and threaded through every remaining check.
@@ -142,7 +146,7 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t ruleTimings, d
 		// corrupted or hand-edited data (ReadLog does no field validation);
 		// GrafanaNow-LastEvaluation would go negative and silently read as
 		// fresh — fail-open. Treat it as unobservable instead.
-		if p.LastEvaluation.After(p.GrafanaNow) {
+		if p.LastEvaluation.Truncate(time.Second).After(p.GrafanaNow) {
 			fail(ReasonFutureEvaluation, fmt.Sprintf(
 				"lastEvaluation %s is after grafana_now %s (corrupted poll)",
 				p.LastEvaluation.Format(time.RFC3339), p.GrafanaNow.Format(time.RFC3339)))
