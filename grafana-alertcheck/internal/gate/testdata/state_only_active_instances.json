@@ -1,0 +1,79 @@
+{
+  "status": "success",
+  "data": {
+    "groups": [
+      {
+        "name": "example-reporting-stage",
+        "file": "ExampleTeam",
+        "folderUid": "folder0000001",
+        "rules": [
+          {
+            "state": "firing",
+            "name": "Example Missing Pipeline Events",
+            "query": "max by (pipeline, event_name) (example_oldest_missing_event_age_ms{cluster=\"example-cluster\"})",
+            "queriedDatasourceUIDs": [
+              "datasource000001"
+            ],
+            "duration": 300,
+            "annotations": {
+              "description": "The oldest un-materialized event has been missing for more than 30 minutes.",
+              "runbook_url": "https://example.com/runbook",
+              "summary": "Pipeline event stuck"
+            },
+            "activeAt": "2026-08-31T04:38:10Z",
+            "alerts": [
+              {
+                "labels": {
+                  "alertname": "Example Missing Pipeline Events",
+                  "env": "stage",
+                  "event_name": "PolicyConfigured",
+                  "grafana_folder": "ExampleTeam",
+                  "pipeline": "policy_configured",
+                  "service": "example-svc",
+                  "severity": "critical",
+                  "team": "example-team"
+                },
+                "annotations": {
+                  "description": "The oldest un-materialized event for pipeline policy_configured has been missing for more than 30 minutes.",
+                  "runbook_url": "https://example.com/runbook",
+                  "summary": "Pipeline policy_configured has a PolicyConfigured event stuck for 18747998ms"
+                },
+                "state": "Alerting",
+                "activeAt": "2026-08-31T04:38:10Z",
+                "value": "1e+00"
+              }
+            ],
+            "totals": {
+              "alerting": 1,
+              "normal": 22
+            },
+            "totalsFiltered": {
+              "alerting": 1,
+              "normal": 22
+            },
+            "uid": "rule0000006",
+            "folderUid": "folder0000001",
+            "labels": {
+              "env": "stage",
+              "service": "example-svc",
+              "severity": "critical",
+              "team": "example-team"
+            },
+            "health": "ok",
+            "type": "alerting",
+            "lastEvaluation": "2026-08-31T09:16:10Z",
+            "evaluationTime": 0.016299343,
+            "isPaused": false
+          }
+        ],
+        "totals": {
+          "firing": 1,
+          "inactive": 9
+        },
+        "interval": 60,
+        "lastEvaluation": "2026-08-31T09:16:10Z",
+        "evaluationTime": 0.003291541
+      }
+    ]
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "status": "success",
+  "data": {
+    "groups": [
+      {
+        "name": "example-infra",
+        "file": "ExampleInfra",
+        "folderUid": "folder0000005",
+        "rules": [
+          {
+            "state": "inactive",
+            "name": "Example Composite Reasons",
+            "query": "sum(increase(example_reconcile_total{result=\"error\"}[1m])) by (cluster)",
+            "queriedDatasourceUIDs": [
+              "datasource000005"
+            ],
+            "duration": 300,
+            "annotations": {
+              "summary": "{{ cluster }} is having reconciliation issues."
+            },
+            "alerts": [
+              {
+                "labels": {
+                  "alertname": "Example Composite Reasons",
+                  "grafana_folder": "ExampleInfra",
+                  "cluster": "example-cluster-a",
+                  "severity": "error",
+                  "team": "example-infra"
+                },
+                "annotations": {
+                  "Error": "failed to build query 'B': data source not found",
+                  "summary": "example-cluster-a is having reconciliation issues."
+                },
+                "state": "Normal (Error)",
+                "activeAt": "2025-08-07T11:48:10Z",
+                "value": ""
+              },
+              {
+                "labels": {
+                  "alertname": "Example Composite Reasons",
+                  "grafana_folder": "ExampleInfra",
+                  "cluster": "example-cluster-b",
+                  "severity": "warning",
+                  "team": "example-infra"
+                },
+                "annotations": {
+                  "Error": "unexpected response with status code 429",
+                  "description": "example-cluster-b query returned no data recently.",
+                  "summary": "example-cluster-b is not reporting"
+                },
+                "state": "Normal (NoData)",
+                "activeAt": "2026-08-31T08:02:50Z",
+                "value": ""
+              },
+              {
+                "labels": {
+                  "alertname": "Example Composite Reasons",
+                  "grafana_folder": "ExampleInfra",
+                  "cluster": "example-cluster-c",
+                  "severity": "warning",
+                  "team": "example-infra"
+                },
+                "annotations": {
+                  "summary": "example-cluster-c is healthy"
+                },
+                "state": "Normal",
+                "activeAt": "2026-08-31T08:02:50Z",
+                "value": ""
+              }
+            ],
+            "totals": {
+              "normal": 3
+            },
+            "totalsFiltered": {
+              "normal": 3
+            },
+            "uid": "rule0000005",
+            "folderUid": "folder0000005",
+            "labels": {
+              "severity": "error",
+              "team": "example-infra"
+            },
+            "health": "ok",
+            "type": "alerting",
+            "lastEvaluation": "2026-08-31T09:16:10Z",
+            "evaluationTime": 0.001283254,
+            "isPaused": false
+          }
+        ],
+        "totals": {
+          "inactive": 1
+        },
+        "interval": 60,
+        "lastEvaluation": "2026-08-31T09:16:10Z",
+        "evaluationTime": 0.001283254
+      }
+    ]
+  }
+}

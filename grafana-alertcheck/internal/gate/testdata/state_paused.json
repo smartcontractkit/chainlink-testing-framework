@@ -1,0 +1,40 @@
+{
+  "status": "success",
+  "data": {
+    "groups": [
+      {
+        "name": "Example Paused Rule",
+        "file": "ExampleMetrics",
+        "folderUid": "folder0000002",
+        "rules": [
+          {
+            "state": "inactive",
+            "name": "Example Paused Rule",
+            "query": "example_metric{env=\"production\"}",
+            "queriedDatasourceUIDs": [
+              "datasource000002"
+            ],
+            "duration": 300,
+            "annotations": {
+              "__dashboardUid__": "example-dashboard-uid",
+              "__panelId__": "1"
+            },
+            "uid": "rule0000002",
+            "folderUid": "folder0000002",
+            "health": "ok",
+            "type": "alerting",
+            "lastEvaluation": "0001-01-01T00:00:00Z",
+            "evaluationTime": 0,
+            "isPaused": true
+          }
+        ],
+        "totals": {
+          "inactive": 1
+        },
+        "interval": 300,
+        "lastEvaluation": "0001-01-01T00:00:00Z",
+        "evaluationTime": 0
+      }
+    ]
+  }
+}
