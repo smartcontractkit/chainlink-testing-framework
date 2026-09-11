@@ -35,6 +35,8 @@ export GRAFANA_TOKEN=…
 
 Requires Grafana >= 13.0.0 and < 14.0.0. Outside that range the gate exits `2`.
 
+Grafana API token needs to have `fixed:alerting:reader` permissions. Ask the o11y team for your token.
+
 ## Quickstart — recorder mode
 
 ```bash
@@ -74,7 +76,7 @@ An error is never a pass: `2` wins over any violation found alongside it.
 - A fix that **stops emitting a metric is not a recovery** — the instance vanishes, which is a discontinuity, not health.
 - The gate checks alert **state and health**, not notification delivery — a silenced alert that still fires fails.
 - `recovered` has **no deadline** — a bad-at-`from` alert that clears by `to` passes; set `--preexisting fail` to forbid it.
-- A **retry is a new deploy**, not a replay — re-running the job re-records against a new `from`.
+- If you retry the check, then the work also needs to be retried - there is no way to check the past.
 - `watch` and `check` must run in **one job, one runner, one filesystem** — nothing persists across jobs or attempts.
 - The gate **never exits early** — a violation at minute 2 still holds the runner to `to + transitionGrace + drainTimeout`; size the job timeout to the planned run time the gate prints at start.
 

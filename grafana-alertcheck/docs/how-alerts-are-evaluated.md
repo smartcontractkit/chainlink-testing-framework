@@ -40,7 +40,7 @@ For each instance the gate builds a timeline of bad spans over `[from, to]`, the
 | `skipped` | Paused **before** the window opened | reported, not observable |
 | `unobservable` | Coverage gap / sustained `health=error` / stale / absent | → 2 |
 
-`recovered` has **no deadline** — an alert that clears at minute 58 of a 60-minute window still passes. The total bad time is reported as `BadFor`; the removed deadline is replaced by that measured value rather than a derived limit.
+`recovered` has **no deadline** — an alert that clears at minute 58 of a 60-minute window still passes. The total bad time is reported as `BadFor`.
 
 ### Preexisting policy
 

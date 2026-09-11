@@ -10,7 +10,7 @@ description: Why grafana-alertcheck schedules per rule, how the request budget w
 
 ## Per-rule schedules, never a global cycle
 
-Each rule polls at its **own** cadence, `--poll-interval` (default: half the rule's own evaluation interval). There is deliberately no single global minimum-interval cycle.
+Each rule polls at its **own** cadence (default: half the rule's own evaluation interval). There is deliberately no single global minimum-interval cycle. Overwrite with `--poll-interval`.
 
 One rule at `intervalSeconds=10` beside twenty at `300` keeps a 5 s cadence for itself and 150 s for the other twenty — not a 5 s cycle for all of them, which would be a 60× request bloat at ~1.8 s per request and would fail to start on a reasonable fleet.
 
@@ -18,7 +18,7 @@ The scheduler staggers each rule's initial next-due time across its cadence, and
 
 ## The check budget
 
-The gate records one observation of every rule up front and checks the schedule against those **measured** latencies (payload sizes vary ~230× across rules, so a fixed estimate is meaningless). It errors at start — before waiting — if any of three conditions hold:
+The gate records one observation of every rule up front and checks the schedule against those **measured** latencies (payload sizes varied ~230× across existing rules, so a fixed estimate would be meaningless). It errors at start — before waiting — if any of three conditions hold:
 
 - **Utilization** — total request rate exceeds `--concurrency`.
 - **Per-rule** — one rule's request can't fit its own cadence.
@@ -38,4 +38,4 @@ Querying Grafana's alert state history after the fact fails closed *in the wrong
 
 Instead, `watch` records its own evidence live and the log becomes the source of truth. The trade-off: the gate can miss an episode shorter than a rule's poll interval, though `activeAt` still surfaces sub-interval onsets for instances still active at a poll.
 
-A corollary of recording fresh: there is no replay. Re-running a failed job is a new deploy with a new `from` and a new recording — never a re-classification of old evidence.
+A corollary of recording fresh: there is no replay. Re-running a failed job is a new piece of work with a new `from` and a new recording — never a re-classification of old evidence.
