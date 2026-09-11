@@ -65,6 +65,7 @@ func TestRenderTable(t *testing.T) {
 	require.Contains(t, out, "--allow-paused")
 	require.Contains(t, out, "STATE")
 	require.Contains(t, out, "HEALTH")
+	require.Contains(t, out, "INSTANCE COUNT")
 	require.Contains(t, out, string(gate.StateFiring))
 	require.Contains(t, out, "error")
 
@@ -86,4 +87,28 @@ func TestRenderTable(t *testing.T) {
 // either proved or unobservable.
 func TestProvedLabel_Skipped(t *testing.T) {
 	require.Equal(t, "-", provedLabel(gate.CoverageResult{}))
+}
+
+// groupedViolations collapses a rule's many firing instances into one row per
+// rendered signature, each with a count.
+func TestGroupedViolations(t *testing.T) {
+	in := []gate.Violation{
+		{Alert: "OCR2 Consensus failure", RuleUID: "uid-o", Outcome: gate.OutcomePersistentlyBad, State: gate.StateFiring, Health: "ok"},
+		{Alert: "OCR2 Consensus failure", RuleUID: "uid-o", Outcome: gate.OutcomePersistentlyBad, State: gate.StateFiring, Health: "ok"},
+		{Alert: "OCR2 Consensus failure", RuleUID: "uid-o", Outcome: gate.OutcomePersistentlyBad, State: gate.StateFiring, Health: "ok"},
+		{Alert: "OCR2 Consensus failure", RuleUID: "uid-o", Outcome: gate.OutcomePersistentlyBad, State: gate.StateFiring, Health: "error"},
+		{Alert: "Other Alert", RuleUID: "uid-p", Outcome: gate.OutcomeNewlyBad, State: gate.StateFiring, Health: "ok", Note: "x"},
+		{Alert: "Other Alert", RuleUID: "uid-p", Outcome: gate.OutcomeNewlyBad, State: gate.StateFiring, Health: "ok", Note: "x"},
+	}
+
+	got := groupedViolations(in)
+
+	require.Len(t, got, 3)
+	counts := map[string]int{}
+	for _, g := range got {
+		counts[g.v.Health+"|"+string(g.v.Outcome)] = g.n
+	}
+	require.Equal(t, 3, counts["ok|"+string(gate.OutcomePersistentlyBad)])
+	require.Equal(t, 1, counts["error|"+string(gate.OutcomePersistentlyBad)])
+	require.Equal(t, 2, counts["ok|"+string(gate.OutcomeNewlyBad)])
 }

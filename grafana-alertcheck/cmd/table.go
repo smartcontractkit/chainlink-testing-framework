@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 	"text/tabwriter"
 	"time"
 
@@ -19,12 +20,7 @@ import (
 //
 //  1. RESULTS, one line per rule: outcome, BadFor, pollEvery, proved-or-not
 //     with the largest gap;
-//  2. VIOLATIONS, one line per Violation (only when any): a rule's worst-of
-//     outcome does not carry the State/Health of the instance that actually
-//     caused it — Violation does — so this is also where those two columns
-//     appear, sorted after the result table rather than folded into it, and it
-//     is the only place an operator running WITHOUT --output json sees the
-//     --allow-paused hint that Violation.Note already carries (classify.go);
+//  2. VIOLATIONS, one line per distinct violation.
 //  3. THRESHOLDS, the numbers that answer "why" on exit 2: each non-skipped
 //     rule's maxGap/healthGrace/evalStaleAfter, followed by the global
 //     transitionGrace and drainTimeout, and the largest measured clock skew
@@ -59,9 +55,9 @@ func renderTable(w io.Writer, res gate.Result) error {
 	if len(res.Violations) > 0 {
 		fmt.Fprintln(w, "\nVIOLATIONS")
 		vtw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-		fmt.Fprintln(vtw, "RULE\tOUTCOME\tSTATE\tHEALTH\tNOTE")
-		for _, v := range sortedViolations(res.Violations) {
-			fmt.Fprintf(vtw, "%s\t%s\t%s\t%s\t%s\n", alertLabel(v, alertOf), v.Outcome, v.State, v.Health, v.Note)
+		fmt.Fprintln(vtw, "RULE\tOUTCOME\tSTATE\tHEALTH\tINSTANCE COUNT\tNOTE")
+		for _, g := range groupedViolations(res.Violations) {
+			fmt.Fprintf(vtw, "%s\t%s\t%s\t%s\t%s\t%s\n", alertLabel(g.v, alertOf), g.v.Outcome, g.v.State, g.v.Health, instanceCount(g), g.v.Note)
 		}
 		if err := vtw.Flush(); err != nil {
 			return fmt.Errorf("render table: %w", err)
@@ -157,10 +153,40 @@ func sortedVerdicts(in []gate.RuleVerdict) []gate.RuleVerdict {
 	return out
 }
 
-func sortedViolations(in []gate.Violation) []gate.Violation {
-	out := append([]gate.Violation(nil), in...)
-	sort.SliceStable(out, func(i, j int) bool { return out[i].Alert < out[j].Alert })
+type violationGroup struct {
+	v gate.Violation
+	n int
+}
+
+func groupedViolations(in []gate.Violation) []violationGroup {
+	sorted := append([]gate.Violation(nil), in...)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		return violationSignature(sorted[i]) < violationSignature(sorted[j])
+	})
+	var out []violationGroup
+	for _, v := range sorted {
+		if n := len(out); n > 0 && sameRendered(out[n-1].v, v) {
+			out[n-1].n++
+		} else {
+			out = append(out, violationGroup{v: v, n: 1})
+		}
+	}
 	return out
+}
+
+func violationSignature(v gate.Violation) string {
+	return v.Alert + "\x00" + v.RuleUID + "\x00" + string(v.Outcome) + "\x00" + string(v.State) + "\x00" + v.Health + "\x00" + v.Note
+}
+
+func sameRendered(a, b gate.Violation) bool {
+	return violationSignature(a) == violationSignature(b)
+}
+
+func instanceCount(g violationGroup) string {
+	if g.v.Outcome == gate.OutcomeSkipped {
+		return "-"
+	}
+	return strconv.Itoa(g.n)
 }
 
 func sortedThresholdUIDs(thresholds map[string]gate.RuleThresholds, alertOf map[string]string) []string {

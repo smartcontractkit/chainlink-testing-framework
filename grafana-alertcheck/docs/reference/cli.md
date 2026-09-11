@@ -82,7 +82,7 @@ Datasource-managed and recording rules are refused with a specific error. A name
 
 ## Output and exit codes
 
-The human table goes to **stderr**: `RESULTS` (one row per rule), `VIOLATIONS` (one per violation), and `THRESHOLDS` (each rule's `maxGap`/`healthGrace`/`evalStaleAfter` plus global `transitionGrace`/`drainTimeout` and the largest measured clock skew). `--output json` writes the result to stdout.
+The human table goes to **stderr**: `RESULTS` (one row per rule), `VIOLATIONS` (one per distinct rule/outcome/state/health/note signature, with a `COUNT` of the instances it stands for — instance identity is only in the JSON), and `THRESHOLDS` (each rule's `maxGap`/`healthGrace`/`evalStaleAfter` plus global `transitionGrace`/`drainTimeout` and the largest measured clock skew). `--output json` writes the result to stdout.
 
 | Code | Meaning |
 | ---- | ------- |
