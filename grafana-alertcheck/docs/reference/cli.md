@@ -3,7 +3,7 @@ id: grafana-alertcheck-cli
 title: CLI reference
 sidebar_label: CLI reference
 sidebar_position: 0
-description: Full reference for the grafana-alertcheck CLI: watch, check, list, environment, naming, and output.
+description: "Full reference for the grafana-alertcheck CLI: watch, check, list, environment, naming, and output."
 ---
 
 # CLI reference
