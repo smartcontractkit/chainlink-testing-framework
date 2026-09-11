@@ -12,15 +12,15 @@ This page documents the invariants and seams a maintainer must not break. It exi
 
 ## Fail-closed invariants
 
-The gate must stop the release if it cannot get an answer. Every rule below is a specific instance of that:
+The gate must fail if it cannot get an answer. Every rule below is a specific instance of that:
 
 - **An error is never a pass.** A pass is exactly `len(Violations) == 0 && err == nil`. Every error path leaves `err` non-nil, and the CLI maps that to exit `2` unconditionally.
 - **Inability beats violation.** Any `unobservable` rule is exit `2`, even alongside a real violation found first.
 - **Absent never means normal.** An instance that leaves the bad set is looked up in the *same* response: present as `normal` → cleared; absent (or `MissingSeries`) → vanished (a discontinuity, not a recovery).
-- **Staleness is absolute.** `grafana_now − lastEvaluation` is compared against a threshold, never "did it increase since the last poll" — a delta check reports stale on ~half the polls of a healthy rule.
+- **Staleness is absolute.** `grafana_now − lastEvaluation` is compared against a threshold, never "did it increase since the last poll" — a delta check reports stale on ~half the polls of a healthy rule (we poll at half of `intervalSeconds` of each rule).
 - **`grafana_now` is the response `Date` header.** Never the runner clock, in any comparison against a Grafana timestamp.
 - **No early exit.** `check` collects to `to + transitionGrace` before classifying once.
-- **No replay.** No run-id key, no artifact download, no state between attempts. A retry is a new deploy.
+- **No replay.** No run-id key, no artifact download, no state between attempts. A retry is a new piece of work and observation.
 
 ## The pure-function seam
 
