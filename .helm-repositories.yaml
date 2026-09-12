@@ -5,15 +5,6 @@ repositories:
     certFile: ''
     insecure_skip_tls_verify: false
     keyFile: ''
-    name: bitnami
-    pass_credentials_all: false
-    password: ''
-    url: https://charts.bitnami.com/bitnami
-    username: ''
-  - caFile: ''
-    certFile: ''
-    insecure_skip_tls_verify: false
-    keyFile: ''
     name: chainlink-qa
     pass_credentials_all: false
     password: ''

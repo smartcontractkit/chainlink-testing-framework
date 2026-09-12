@@ -36,7 +36,6 @@ RUN apt-get update && apt-get install -y ca-certificates wget curl git gnupg && 
     npm install -g yarn && \
     apt-get clean all && \
     helm repo add chainlink-qa https://raw.githubusercontent.com/smartcontractkit/qa-charts/gh-pages/ && \
-    helm repo add bitnami https://charts.bitnami.com/bitnami && \
     helm repo update
 
 ENTRYPOINT ["sh"]
